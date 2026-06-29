@@ -24431,12 +24431,8 @@ html.theme-light .landing-hero-section .hero-trace-map--signal .hero-route-proof
 }
 
 @media (min-width: 1361px) {
-  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) {
+  .landing-hero-section .hero-object-frame:not(.hero-object-frame--product-proof):has(.hero-trace-map--trust-globe) {
     grid-template-columns: minmax(0, 1fr) !important;
-  }
-
-  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) .hero-object-product-pane:has(.hero-asset-showcase) {
-    display: none !important;
   }
 }
 
@@ -27405,10 +27401,6 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
     min-height: clamp(27rem, 40vw, 34rem) !important;
   }
 
-  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) .hero-object-product-pane:has(.hero-asset-showcase) {
-    display: none !important;
-  }
-
   .landing-hero-section .hero-scene-stage-card:has(.hero-trace-map--trust-globe) + .hero-scene-result-card {
     display: grid !important;
     grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
@@ -27431,9 +27423,6 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
     min-height: clamp(25rem, 28vw, 31rem) !important;
   }
 
-  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) .hero-object-product-pane:has(.hero-asset-showcase) {
-    display: none !important;
-  }
 }
 
 @media (min-width: 1800px) {
@@ -27467,9 +27456,6 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
     display: grid !important;
   }
 
-  .landing-hero-section .hero-object-frame:has(.hero-trace-map--trust-globe) .hero-object-product-pane:has(.hero-asset-showcase) {
-    display: none !important;
-  }
 }
 
 @media (max-width: 720px) {
@@ -28164,9 +28150,9 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
 }
 
 /* Enterprise landing proof lock.
-   This intentionally sits after the older hero patches: the product evidence
-   must remain visible beside the atlas on large monitors instead of being
-   squeezed by oversized globe rules. */
+   One scoped layout rule for the public hero. The atlas, product evidence and
+   cellular output must remain visible together on wide monitors, notebooks,
+   tablets and phones without relying on browser zoom. */
 .landing-hero-section .hero-scene--product-proof {
   overflow: visible !important;
 }
@@ -28178,12 +28164,20 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
   align-items: start !important;
 }
 
+.landing-hero-section .hero-scene--product-proof .hero-scene-stage-card--product-proof,
+.landing-hero-section .hero-scene--product-proof .hero-scene-result-card--product-proof,
+.landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
+.landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof,
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof {
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
 .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof {
   display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: clamp(0.72rem, 1vw, 1rem) !important;
   width: 100% !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
-  max-height: none !important;
   overflow: hidden !important;
 }
 
@@ -28193,7 +28187,6 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
   position: relative !important;
   inset: auto !important;
   width: 100% !important;
-  min-width: 0 !important;
   min-height: 0 !important;
   height: auto !important;
   opacity: 1 !important;
@@ -28201,8 +28194,17 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
 }
 
 .landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof #trace-signal-atlas.hero-trace-map--trust-globe {
-  min-height: clamp(22rem, 42vw, 30rem) !important;
+  height: clamp(21rem, 48vw, 29rem) !important;
+  min-height: clamp(21rem, 48vw, 29rem) !important;
   max-height: none !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof .traceability-globe__stage {
+  min-height: clamp(14.5rem, 30vw, 20rem) !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof .traceability-globe__routebar {
+  max-width: min(86%, calc(100% - 1.25rem)) !important;
 }
 
 .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-showcase {
@@ -28217,97 +28219,55 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
 .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-media {
   display: grid !important;
   grid-template-columns: minmax(0, 1fr) !important;
-  min-height: clamp(14rem, 20vw, 18rem) !important;
+  min-height: clamp(15.25rem, 24vw, 19rem) !important;
   height: auto !important;
-  gap: clamp(0.5rem, 0.8vw, 0.7rem) !important;
+  gap: clamp(0.5rem, 0.8vw, 0.75rem) !important;
   overflow: hidden !important;
 }
 
 .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-passport-phone {
   display: none !important;
-  width: clamp(6.25rem, 6vw, 8rem) !important;
   min-width: 0 !important;
 }
 
 .landing-hero-section .hero-scene--product-proof .hero-scene-result-card--product-proof {
   align-self: start !important;
-  min-width: 0 !important;
-  max-width: 100% !important;
   max-height: none !important;
   overflow: visible !important;
 }
 
-@media (min-width: 1280px) {
+@media (min-width: 1180px) {
   .landing-hero-section > .container-shell > .hero-demo-shell {
-    width: min(1380px, calc(100vw - clamp(2.5rem, 8vw, 12rem))) !important;
-    max-width: min(1380px, calc(100vw - clamp(2.5rem, 8vw, 12rem))) !important;
-  }
-
-  .landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
-  .landing-hero-section
-    .hero-scene--product-proof
-    > .hero-scene-proof-grid.hero-scene-proof-grid:has(.hero-object-frame--product-proof) {
-    grid-template-columns: minmax(0, 0.96fr) minmax(430px, 0.86fr) !important;
+    width: min(1500px, calc(100vw - clamp(2rem, 5vw, 6rem))) !important;
+    max-width: min(1500px, calc(100vw - clamp(2rem, 5vw, 6rem))) !important;
   }
 
   .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
   .landing-hero-section
     .hero-scene--product-proof
     .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
-    grid-template-columns: minmax(320px, 0.92fr) minmax(280px, 0.78fr) !important;
-    gap: clamp(0.72rem, 0.9vw, 0.95rem) !important;
+    grid-template-columns: minmax(0, 0.98fr) minmax(300px, 0.82fr) !important;
+    padding: clamp(0.72rem, 0.9vw, 0.95rem) !important;
     min-height: auto !important;
-    padding: clamp(0.7rem, 0.9vw, 0.95rem) !important;
-  }
-
-  .landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof,
-  .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof {
-    min-height: 0 !important;
   }
 
   .landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof #trace-signal-atlas.hero-trace-map--trust-globe {
-    height: clamp(23rem, 24vw, 29rem) !important;
-    min-height: clamp(23rem, 24vw, 29rem) !important;
+    height: clamp(22rem, 27vw, 27.5rem) !important;
+    min-height: clamp(22rem, 27vw, 27.5rem) !important;
   }
 
   .landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof .traceability-globe__stage {
-    min-height: clamp(15.5rem, 16vw, 20rem) !important;
+    min-height: clamp(15.25rem, 17vw, 19.5rem) !important;
   }
 
   .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-media {
-    grid-template-columns: minmax(0, 1fr) !important;
-    min-height: clamp(13.25rem, 14.6vw, 16.5rem) !important;
+    grid-template-columns: minmax(0, 1fr) minmax(6.8rem, 0.42fr) !important;
+    min-height: clamp(15rem, 16.5vw, 19rem) !important;
   }
 
   .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-passport-phone {
-    display: none !important;
-  }
-}
-
-@media (min-width: 1600px) {
-  .landing-hero-section > .container-shell > .hero-demo-shell {
-    width: min(1440px, calc(100vw - clamp(5rem, 16vw, 22rem))) !important;
-    max-width: min(1440px, calc(100vw - clamp(5rem, 16vw, 22rem))) !important;
-  }
-
-  .landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
-  .landing-hero-section
-    .hero-scene--product-proof
-    > .hero-scene-proof-grid.hero-scene-proof-grid:has(.hero-object-frame--product-proof) {
-    grid-template-columns: minmax(0, 0.92fr) minmax(470px, 0.88fr) !important;
-  }
-
-  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
-  .landing-hero-section
-    .hero-scene--product-proof
-    .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
-    grid-template-columns: minmax(330px, 0.9fr) minmax(300px, 0.8fr) !important;
-    min-height: auto !important;
-  }
-
-  .landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof #trace-signal-atlas.hero-trace-map--trust-globe {
-    height: clamp(23rem, 22vw, 28rem) !important;
-    min-height: clamp(23rem, 22vw, 28rem) !important;
+    display: block !important;
+    width: clamp(6.5rem, 6vw, 8.25rem) !important;
   }
 }
 
@@ -28320,7 +28280,51 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
   }
 }
 
-@media (max-width: 1279px) {
+@media (min-width: 1451px) {
+  .landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
+  .landing-hero-section
+    .hero-scene--product-proof
+    > .hero-scene-proof-grid.hero-scene-proof-grid:has(.hero-object-frame--product-proof) {
+    grid-template-columns: minmax(0, 1fr) minmax(450px, 0.74fr) !important;
+  }
+}
+
+@media (min-width: 1600px) {
+  .landing-hero-section > .container-shell > .hero-demo-shell {
+    width: min(1760px, calc(100vw - clamp(4rem, 8vw, 9rem))) !important;
+    max-width: min(1760px, calc(100vw - clamp(4rem, 8vw, 9rem))) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
+  .landing-hero-section
+    .hero-scene--product-proof
+    > .hero-scene-proof-grid.hero-scene-proof-grid:has(.hero-object-frame--product-proof) {
+    grid-template-columns: minmax(0, 1.02fr) minmax(540px, 0.82fr) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
+  .landing-hero-section
+    .hero-scene--product-proof
+    .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(430px, 0.94fr) minmax(400px, 0.92fr) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof #trace-signal-atlas.hero-trace-map--trust-globe {
+    height: clamp(23rem, 22vw, 29rem) !important;
+    min-height: clamp(23rem, 22vw, 29rem) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-media {
+    grid-template-columns: minmax(14rem, 1fr) minmax(8.5rem, 0.48fr) !important;
+    min-height: clamp(16.5rem, 14.5vw, 19.5rem) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-passport-phone {
+    width: clamp(7.75rem, 5.6vw, 9.25rem) !important;
+  }
+}
+
+@media (max-width: 1179px) {
   .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof {
     grid-template-columns: minmax(0, 1fr) !important;
   }
@@ -28332,15 +28336,399 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
 
 @media (max-width: 680px) {
   .landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof #trace-signal-atlas.hero-trace-map--trust-globe {
-    min-height: clamp(20rem, 88vw, 24rem) !important;
+    height: clamp(19rem, 86vw, 23rem) !important;
+    min-height: clamp(19rem, 86vw, 23rem) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof .traceability-globe__routebar {
+    max-width: min(92%, calc(100% - 1rem)) !important;
   }
 
   .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-media {
-    grid-template-columns: minmax(0, 1fr) !important;
     min-height: clamp(18rem, 84vw, 23rem) !important;
   }
 
   .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-passport-phone {
     display: none !important;
+  }
+}
+
+/* Landing proof final authority.
+   This is intentionally scoped to the public product proof scene: it prevents
+   old atlas-first rules from overpowering the product, cellular output and
+   commercial details on wide monitors or browser zoom > 100%. */
+.landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
+.landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof {
+  min-width: 0 !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof,
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof:has(.hero-asset-showcase) {
+  display: grid !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative !important;
+  inset: auto !important;
+}
+
+@media (min-width: 1180px) {
+  .landing-hero-section > .container-shell > .hero-demo-shell {
+    width: min(1540px, calc(100vw - clamp(2rem, 5vw, 6.5rem))) !important;
+    max-width: min(1540px, calc(100vw - clamp(2rem, 5vw, 6.5rem))) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
+  .landing-hero-section
+    .hero-scene--product-proof
+    > .hero-scene-proof-grid.hero-scene-proof-grid:has(.hero-object-frame--product-proof) {
+    grid-template-columns: minmax(660px, 1fr) minmax(360px, 0.62fr) !important;
+    gap: clamp(0.95rem, 1.2vw, 1.35rem) !important;
+    align-items: start !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-scene-result-card--product-proof {
+    align-self: start !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
+  .landing-hero-section
+    .hero-scene--product-proof
+    .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 0.58fr) !important;
+    gap: clamp(0.7rem, 0.9vw, 0.95rem) !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: hidden !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof #trace-signal-atlas.hero-trace-map--trust-globe {
+    height: clamp(21.25rem, 23vw, 26.5rem) !important;
+    min-height: clamp(21.25rem, 23vw, 26.5rem) !important;
+    max-height: 26.5rem !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof .traceability-globe__stage {
+    min-height: clamp(14.5rem, 15vw, 18.25rem) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof .traceability-globe__routebar {
+    bottom: 0.9rem !important;
+    left: 0.8rem !important;
+    right: 0.8rem !important;
+    max-width: min(78%, calc(100% - 1.6rem)) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-showcase {
+    display: grid !important;
+    align-content: start !important;
+    gap: clamp(0.55rem, 0.72vw, 0.75rem) !important;
+    overflow: hidden !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-media {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(6.25rem, 0.38fr) !important;
+    min-height: clamp(13.75rem, 14.5vw, 17rem) !important;
+    height: auto !important;
+    gap: 0.55rem !important;
+    overflow: hidden !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-passport-phone {
+    display: block !important;
+    width: clamp(6rem, 5.2vw, 7.6rem) !important;
+    min-width: 0 !important;
+  }
+}
+
+@media (min-width: 1500px) {
+  .landing-hero-section > .container-shell > .hero-demo-shell {
+    width: min(1620px, calc(100vw - clamp(3rem, 6vw, 8rem))) !important;
+    max-width: min(1620px, calc(100vw - clamp(3rem, 6vw, 8rem))) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
+  .landing-hero-section
+    .hero-scene--product-proof
+    > .hero-scene-proof-grid.hero-scene-proof-grid:has(.hero-object-frame--product-proof) {
+    grid-template-columns: minmax(760px, 1fr) minmax(430px, 0.64fr) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
+  .landing-hero-section
+    .hero-scene--product-proof
+    .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(0, 1fr) minmax(330px, 0.62fr) !important;
+  }
+}
+
+@media (min-width: 1800px) {
+  .landing-hero-section > .container-shell > .hero-demo-shell {
+    width: min(1680px, calc(100vw - clamp(4rem, 8vw, 10rem))) !important;
+    max-width: min(1680px, calc(100vw - clamp(4rem, 8vw, 10rem))) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
+  .landing-hero-section
+    .hero-scene--product-proof
+    > .hero-scene-proof-grid.hero-scene-proof-grid:has(.hero-object-frame--product-proof) {
+    grid-template-columns: minmax(850px, 1fr) minmax(500px, 0.68fr) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof #trace-signal-atlas.hero-trace-map--trust-globe {
+    height: clamp(22rem, 20vw, 27rem) !important;
+    min-height: clamp(22rem, 20vw, 27rem) !important;
+  }
+}
+
+@media (min-width: 1180px) and (max-width: 1320px) {
+  .landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
+  .landing-hero-section
+    .hero-scene--product-proof
+    > .hero-scene-proof-grid.hero-scene-proof-grid:has(.hero-object-frame--product-proof) {
+    grid-template-columns: minmax(600px, 1fr) minmax(330px, 0.58fr) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
+  .landing-hero-section
+    .hero-scene--product-proof
+    .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(0, 1fr) minmax(250px, 0.52fr) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-passport-phone {
+    display: none !important;
+  }
+}
+
+@media (max-width: 1179px) {
+  .landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+/* Enterprise product-proof layout authority.
+   Final scoped rules for the public landing proof block: the product evidence
+   must stay visible on large monitors, notebooks, tablets and mobile. */
+.landing-hero-section .hero-scene--product-proof,
+.landing-hero-section .hero-scene--product-proof * {
+  box-sizing: border-box;
+}
+
+.landing-hero-section .hero-scene--product-proof {
+  overflow: visible !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
+.landing-hero-section
+  .hero-scene--product-proof
+  > .hero-scene-proof-grid.hero-scene-proof-grid:has(.hero-object-frame--product-proof) {
+  display: grid !important;
+  min-width: 0 !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  align-items: start !important;
+  gap: clamp(0.85rem, 1.2vw, 1.2rem) !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-scene-stage-card--product-proof,
+.landing-hero-section .hero-scene--product-proof .hero-scene-result-card--product-proof {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: visible !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
+.landing-hero-section
+  .hero-scene--product-proof
+  .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
+  display: grid !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: clamp(0.72rem, 0.95vw, 1rem) !important;
+  overflow: hidden !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof,
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof {
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof,
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof:has(.hero-asset-showcase) {
+  display: grid !important;
+  position: relative !important;
+  inset: auto !important;
+  height: auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof #trace-signal-atlas.hero-trace-map--trust-globe {
+  height: clamp(20rem, 56vw, 27rem) !important;
+  min-height: clamp(20rem, 56vw, 27rem) !important;
+  max-height: 27rem !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof .traceability-globe__stage {
+  min-height: clamp(14.5rem, 40vw, 20rem) !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof .traceability-globe__routebar {
+  left: 0.8rem !important;
+  right: 0.8rem !important;
+  bottom: 0.85rem !important;
+  max-width: calc(100% - 1.6rem) !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-showcase {
+  display: grid !important;
+  align-content: start !important;
+  gap: clamp(0.58rem, 0.8vw, 0.82rem) !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-media {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  min-height: clamp(15rem, 48vw, 22rem) !important;
+  height: auto !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-passport-phone {
+  display: none !important;
+}
+
+@media (min-width: 1180px) {
+  .landing-hero-section > .container-shell > .hero-demo-shell {
+    width: min(1360px, calc(100vw - clamp(2rem, 6vw, 7.5rem))) !important;
+    max-width: min(1360px, calc(100vw - clamp(2rem, 6vw, 7.5rem))) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
+  .landing-hero-section
+    .hero-scene--product-proof
+    .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(0, 0.95fr) minmax(330px, 0.68fr) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof #trace-signal-atlas.hero-trace-map--trust-globe {
+    height: clamp(21rem, 26vw, 25.5rem) !important;
+    min-height: clamp(21rem, 26vw, 25.5rem) !important;
+    max-height: 25.5rem !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof .traceability-globe__stage {
+    min-height: clamp(15.5rem, 18vw, 19.5rem) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-media {
+    grid-template-columns: minmax(0, 1fr) minmax(6.5rem, 0.36fr) !important;
+    min-height: clamp(14rem, 15vw, 17.5rem) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-passport-phone {
+    display: block !important;
+    width: clamp(6.1rem, 5.4vw, 7.75rem) !important;
+  }
+}
+
+@media (min-width: 1500px) {
+  .landing-hero-section > .container-shell > .hero-demo-shell {
+    width: min(1500px, calc(100vw - clamp(3rem, 7vw, 9rem))) !important;
+    max-width: min(1500px, calc(100vw - clamp(3rem, 7vw, 9rem))) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
+  .landing-hero-section
+    .hero-scene--product-proof
+    > .hero-scene-proof-grid.hero-scene-proof-grid:has(.hero-object-frame--product-proof) {
+    grid-template-columns: minmax(0, 0.98fr) minmax(420px, 0.62fr) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
+  .landing-hero-section
+    .hero-scene--product-proof
+    .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(0, 0.82fr) minmax(350px, 0.7fr) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof #trace-signal-atlas.hero-trace-map--trust-globe {
+    height: clamp(21.5rem, 21vw, 24.75rem) !important;
+    min-height: clamp(21.5rem, 21vw, 24.75rem) !important;
+    max-height: 24.75rem !important;
+  }
+}
+
+@media (min-width: 1800px) {
+  .landing-hero-section > .container-shell > .hero-demo-shell {
+    width: min(1600px, calc(100vw - clamp(4rem, 7vw, 9rem))) !important;
+    max-width: min(1600px, calc(100vw - clamp(4rem, 7vw, 9rem))) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
+  .landing-hero-section
+    .hero-scene--product-proof
+    > .hero-scene-proof-grid.hero-scene-proof-grid:has(.hero-object-frame--product-proof) {
+    grid-template-columns: minmax(0, 1fr) minmax(520px, 0.5fr) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
+  .landing-hero-section
+    .hero-scene--product-proof
+    .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(360px, 0.92fr) minmax(420px, 0.75fr) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof #trace-signal-atlas.hero-trace-map--trust-globe {
+    height: clamp(20rem, 17vw, 23rem) !important;
+    min-height: clamp(20rem, 17vw, 23rem) !important;
+    max-height: 23rem !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-media {
+    grid-template-columns: minmax(14rem, 1fr) minmax(6rem, 0.28fr) !important;
+    min-height: clamp(15rem, 14vw, 18rem) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-passport-phone {
+    width: clamp(5.8rem, 4.8vw, 7rem) !important;
+  }
+}
+
+@media (max-width: 1179px) {
+  .landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
+  .landing-hero-section
+    .hero-scene--product-proof
+    > .hero-scene-proof-grid.hero-scene-proof-grid:has(.hero-object-frame--product-proof),
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
+  .landing-hero-section
+    .hero-scene--product-proof
+    .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+@media (max-width: 680px) {
+  .landing-hero-section .hero-scene--product-proof .hero-scene-stage-card--product-proof,
+  .landing-hero-section .hero-scene--product-proof .hero-scene-result-card--product-proof {
+    padding: clamp(0.78rem, 4vw, 1rem) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof #trace-signal-atlas.hero-trace-map--trust-globe {
+    height: clamp(19rem, 88vw, 23rem) !important;
+    min-height: clamp(19rem, 88vw, 23rem) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-media {
+    min-height: clamp(18rem, 86vw, 22.5rem) !important;
   }
 }

@@ -60,6 +60,27 @@ const Globe = dynamic(async () => {
   const module = await import("react-globe.gl");
   return module.default;
 }, { ssr: false });
+
+class GlobeRuntimeBoundary extends React.Component<
+  { children: React.ReactNode; onError: (error: Error) => void },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error) {
+    this.props.onError(error);
+  }
+
+  render() {
+    if (this.state.hasError) return null;
+    return this.props.children;
+  }
+}
+
 const COUNTRY_GEOJSON_URL = "/assets/geo/ne_110m_admin_0_countries.geojson";
 const THREE_GLOBE_ASSET_BASE = "https://cdn.jsdelivr.net/npm/three-globe/example/img";
 const PROFESSIONAL_GLOBE_IMAGE_URL = `${THREE_GLOBE_ASSET_BASE}/earth-blue-marble.jpg`;
@@ -557,6 +578,32 @@ function pointTone(point: GlobePoint) {
   return "#22d3ee";
 }
 
+function finiteNumber(value: unknown, fallback = 0) {
+  const numeric = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
+}
+
+function sanitizeGlobePoint(point: GlobePoint): GlobePoint | null {
+  if (!Number.isFinite(point.lat) || !Number.isFinite(point.lng)) return null;
+  return {
+    ...point,
+    scans: Math.max(0, finiteNumber(point.scans, 0)),
+    risk: Math.max(0, finiteNumber(point.risk, 0)),
+  };
+}
+
+function sanitizeGlobeRoute(route: GlobeRoute): GlobeRoute | null {
+  if (
+    !Number.isFinite(route.fromLat) ||
+    !Number.isFinite(route.fromLng) ||
+    !Number.isFinite(route.toLat) ||
+    !Number.isFinite(route.toLng)
+  ) {
+    return null;
+  }
+  return route;
+}
+
 function GlobeFallbackVisual({
   points,
   routes,
@@ -682,7 +729,10 @@ function GlobeFallbackVisual({
         })}
       </svg>
       {primaryRoute ? (
-        <div className="absolute left-4 right-4 top-4 z-10 rounded-2xl border border-cyan-200/18 bg-slate-950/72 px-3 py-2 text-left shadow-[0_16px_46px_rgba(0,0,0,.28)] backdrop-blur-xl">
+        <div
+          className="absolute left-4 top-4 z-10 max-w-[min(88%,18rem)] rounded-2xl border border-cyan-200/18 bg-slate-950/72 px-3 py-2 text-left shadow-[0_16px_46px_rgba(0,0,0,.28)] backdrop-blur-xl"
+          style={{ maxWidth: "min(88%, 18rem)" }}
+        >
           <p className="text-[0.56rem] font-black uppercase tracking-[0.2em] text-cyan-200">Ruta activa</p>
           <strong className="mt-1 block truncate text-sm font-black leading-tight text-white">
             {primaryFrom?.city || "Origen"} → {primaryTo?.city || "Tap"}
@@ -723,8 +773,18 @@ export function Globe3dMap({
   const [containerWidth, setContainerWidth] = useState(width);
   const [globeReady, setGlobeReady] = useState(false);
   const [globeFailed, setGlobeFailed] = useState(false);
+  const [hasRenderedCanvas, setHasRenderedCanvas] = useState(false);
+  const globeReadyRef = useRef(false);
   const [countryPolygons, setCountryPolygons] = useState<CountryFeature[]>([]);
   const [hoverCard, setHoverCard] = useState<GlobeHoverCard | null>(null);
+  const finitePoints = useMemo(
+    () => points.map(sanitizeGlobePoint).filter((point): point is GlobePoint => Boolean(point)),
+    [points],
+  );
+  const finiteRoutes = useMemo(
+    () => routes.map(sanitizeGlobeRoute).filter((route): route is GlobeRoute => Boolean(route)),
+    [routes],
+  );
 
   useEffect(() => {
     setMounted(true);
@@ -746,6 +806,20 @@ export function Globe3dMap({
     observer.observe(root, { attributes: true, attributeFilter: ["class", "data-theme", "data-nexid-theme"] });
     return () => observer.disconnect();
   }, [theme]);
+
+  const handleGlobeRuntimeError = useCallback((_error?: Error) => {
+    ensureThreeRendererCompatibility();
+    const hasCanvas = Boolean(containerRef.current?.querySelector("canvas"));
+    if (hasCanvas) {
+      globeReadyRef.current = true;
+      setHasRenderedCanvas(true);
+      setGlobeFailed(false);
+      setGlobeReady(true);
+      return;
+    }
+    setGlobeFailed(true);
+    setGlobeReady(true);
+  }, []);
 
   useEffect(() => {
     if (!mounted || typeof window === "undefined") return;
@@ -769,17 +843,13 @@ export function Globe3dMap({
     const handleWindowError = (event: ErrorEvent) => {
       if (!isGlobeRuntimeError(event.error || event.message)) return;
       event.preventDefault();
-      ensureThreeRendererCompatibility();
-      setGlobeFailed(true);
-      setGlobeReady(true);
+      handleGlobeRuntimeError(event.error instanceof Error ? event.error : undefined);
     };
 
     const handleRejection = (event: PromiseRejectionEvent) => {
       if (!isGlobeRuntimeError(event.reason)) return;
       event.preventDefault();
-      ensureThreeRendererCompatibility();
-      setGlobeFailed(true);
-      setGlobeReady(true);
+      handleGlobeRuntimeError(event.reason instanceof Error ? event.reason : undefined);
     };
 
     window.addEventListener("error", handleWindowError);
@@ -788,10 +858,22 @@ export function Globe3dMap({
       window.removeEventListener("error", handleWindowError);
       window.removeEventListener("unhandledrejection", handleRejection);
     };
-  }, [mounted]);
+  }, [handleGlobeRuntimeError, mounted]);
 
   useEffect(() => {
     if (!mounted || !containerRef.current) return;
+
+    const root = containerRef.current;
+
+    const syncRenderedCanvas = () => {
+      const nextHasCanvas = Boolean(root.querySelector("canvas"));
+      setHasRenderedCanvas((previous) => (previous === nextHasCanvas ? previous : nextHasCanvas));
+      if (!nextHasCanvas) return;
+
+      globeReadyRef.current = true;
+      setGlobeReady(true);
+      setGlobeFailed(false);
+    };
 
     const scrubGlobeNavText = () => {
       const root = containerRef.current;
@@ -813,11 +895,19 @@ export function Globe3dMap({
       });
     };
 
+    syncRenderedCanvas();
     scrubGlobeNavText();
-    const observer = new MutationObserver(scrubGlobeNavText);
-    observer.observe(containerRef.current, { childList: true, subtree: true });
+    const observer = new MutationObserver(() => {
+      syncRenderedCanvas();
+      scrubGlobeNavText();
+    });
+    observer.observe(root, { childList: true, subtree: true });
+    const interval = window.setInterval(syncRenderedCanvas, 600);
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      window.clearInterval(interval);
+    };
   }, [mounted]);
 
   useEffect(() => {
@@ -863,32 +953,32 @@ export function Globe3dMap({
   const mediumRequested = height <= 360;
   const minRenderHeight = compactRequested ? 220 : mediumRequested ? 300 : 360;
   const renderHeight = Math.max(minRenderHeight, Math.round(renderWidth * (height / Math.max(width, 1))));
-  const compactHud = renderWidth < 500 || height <= 360;
-  const routePreviewOnly = mode === "preview" || (mode === "auto" && (renderWidth < 360 || height <= 240));
+  const compactHud = renderWidth < 360 || (height <= 260 && renderWidth < 420);
+  const routePreviewOnly = mode === "preview" || (mode === "auto" && (renderWidth < 320 || height <= 220));
   const globeImageUrl = useMemo(() => PROFESSIONAL_GLOBE_IMAGE_URL || localGlobeTexture(isLightTheme), [isLightTheme]);
   const globeBumpUrl = useMemo(() => PROFESSIONAL_GLOBE_BUMP_URL || localGlobeBumpTexture(isLightTheme), [isLightTheme]);
   const activeCountryNames = useMemo(
-    () => new Set(points.map((point) => normalizeCountryName(inferCountryName(point))).filter(Boolean)),
-    [points],
+    () => new Set(finitePoints.map((point) => normalizeCountryName(inferCountryName(point))).filter(Boolean)),
+    [finitePoints],
   );
   const hexPoints = useMemo(
-    () => points.filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng)),
-    [points],
+    () => finitePoints,
+    [finitePoints],
   );
   const ringPoints = useMemo(
     () =>
-      points
+      finitePoints
         .filter((point) => point.status !== "origin")
         .slice(0, 18)
         .map((point) => ({
           ...point,
           tone: point.risk || point.status === "risk" ? "#fb7185" : point.status === "passport" ? "#a78bfa" : "#22d3ee",
         })),
-    [points],
+    [finitePoints],
   );
   const defaultHoverCard = useMemo<GlobeHoverCard>(() => {
-    const scans = points.reduce((sum, point) => sum + (point.scans || 0), 0);
-    const regions = new Set(points.map((point) => inferCountryName(point) || point.city).filter(Boolean)).size;
+    const scans = finitePoints.reduce((sum, point) => sum + (point.scans || 0), 0);
+    const regions = new Set(finitePoints.map((point) => inferCountryName(point) || point.city).filter(Boolean)).size;
     return {
       eyebrow: "nexID Global Trust Mesh",
       title: "Red global de producto",
@@ -896,22 +986,21 @@ export function Globe3dMap({
       meta: `${points.length} nodos · ${routes.length} rutas · ${scans.toLocaleString("es-AR")} taps · ${regions} regiones`,
       tone: "#22d3ee",
     };
-  }, [points, routes]);
+  }, [finitePoints, finiteRoutes, points.length, routes.length]);
 
   const globeFocus = useMemo(() => {
-    const validPoints = points.filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng));
-    if (!validPoints.length) return { lat: 10, lng: -28, altitude: 2.15 };
+    if (!finitePoints.length) return { lat: 10, lng: -28, altitude: 2.15 };
 
-    const latMin = Math.min(...validPoints.map((point) => point.lat));
-    const latMax = Math.max(...validPoints.map((point) => point.lat));
-    const lngMin = Math.min(...validPoints.map((point) => point.lng));
-    const lngMax = Math.max(...validPoints.map((point) => point.lng));
+    const latMin = Math.min(...finitePoints.map((point) => point.lat));
+    const latMax = Math.max(...finitePoints.map((point) => point.lat));
+    const lngMin = Math.min(...finitePoints.map((point) => point.lng));
+    const lngMax = Math.max(...finitePoints.map((point) => point.lng));
     const lat = (latMin + latMax) / 2;
     const lng = (lngMin + lngMax) / 2;
     const span = Math.max(latMax - latMin, lngMax - lngMin);
     const altitude = span > 96 ? 2.45 : span > 56 ? 2.08 : span > 22 ? 1.68 : 1.34;
     return { lat, lng, altitude };
-  }, [points]);
+  }, [finitePoints]);
 
   const setPointHover = useCallback((point?: GlobePoint | null) => {
     if (!point) {
@@ -939,7 +1028,7 @@ export function Globe3dMap({
     const country = featureCountryName(feature);
     const canonicalCountry = canonicalCountryName(country);
     const normalized = normalizeCountryName(canonicalCountry);
-    const activePoints = points.filter((point) => normalizeCountryName(inferCountryName(point)) === normalized);
+    const activePoints = finitePoints.filter((point) => normalizeCountryName(inferCountryName(point)) === normalized);
     const scans = activePoints.reduce((sum, point) => sum + (point.scans || 0), 0);
     const active = activeCountryNames.has(normalized);
 
@@ -952,7 +1041,7 @@ export function Globe3dMap({
         : "Sin taps visibles en la ventana actual",
       tone: active ? "#34d399" : "#67e8f9",
     });
-  }, [activeCountryNames, points]);
+  }, [activeCountryNames, finitePoints]);
 
   const setRouteHover = useCallback((route?: GlobeRoute | null) => {
     if (!route) {
@@ -964,15 +1053,16 @@ export function Globe3dMap({
       eyebrow: route.tone === "warn" ? "Ruta con alerta" : "Ruta de trazabilidad",
       title: route.label || "Ruta verificada",
       subtitle: "Origen, tap físico y evidencia comercial unidos",
-      meta: routeMeta(route, points),
+      meta: routeMeta(route, finitePoints),
       tone: route.tone === "warn" ? "#fb7185" : route.tone === "success" ? "#34d399" : "#22d3ee",
     });
-  }, [points]);
+  }, [finitePoints]);
 
   const handleGlobeReady = useCallback(() => {
     const globe = globeRef.current;
     if (globe) {
       ensureThreeRendererCompatibility();
+      setGlobeFailed(false);
       setGlobeReady(true);
       globe.pointOfView(globeFocus, 900);
 
@@ -1001,6 +1091,10 @@ export function Globe3dMap({
   }, [compactHud, globeFocus]);
 
   useEffect(() => {
+    globeReadyRef.current = globeReady;
+  }, [globeReady]);
+
+  useEffect(() => {
     if (!globeReady || !globeRef.current || routePreviewOnly) return;
     globeRef.current.pointOfView(globeFocus, 1100);
   }, [globeFocus, globeReady, routePreviewOnly]);
@@ -1027,16 +1121,24 @@ export function Globe3dMap({
     };
 
     const timer = window.setTimeout(syncGlobe, 80);
+    const failTimer = window.setTimeout(() => {
+      const hasVisibleCanvas = Boolean(containerRef.current?.querySelector("canvas"));
+      if (cancelled || globeReadyRef.current || hasVisibleCanvas) return;
+      setGlobeFailed(true);
+      setGlobeReady(true);
+    }, 9000);
+
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
+      window.clearTimeout(failTimer);
     };
   }, [mounted, isLightTheme, offset[0], offset[1], handleGlobeReady]);
 
   // Prevent overlapping labels by deduplicating by city and adjusting coordinates slightly
   const labelPoints = useMemo(() => {
     const unique: Record<string, GlobePoint> = {};
-    points.forEach((p) => {
+    finitePoints.forEach((p) => {
       if (p.city) {
         unique[p.city] = { ...p };
       }
@@ -1064,7 +1166,7 @@ export function Globe3dMap({
       }
     }
     return list;
-  }, [points]);
+  }, [finitePoints]);
 
   const visibleLabelPoints = useMemo(() => {
     const labelLimit = compactHud ? 3 : 9;
@@ -1074,27 +1176,20 @@ export function Globe3dMap({
       .slice(0, labelLimit);
   }, [compactHud, labelPoints]);
 
-  const primaryRoute = routes[0];
-  const primaryFrom = primaryRoute ? closestPoint(points, primaryRoute.fromLat, primaryRoute.fromLng) : null;
-  const primaryTo = primaryRoute ? closestPoint(points, primaryRoute.toLat, primaryRoute.toLng) : null;
+  const primaryRoute = finiteRoutes[0];
+  const primaryFrom = primaryRoute ? closestPoint(finitePoints, primaryRoute.fromLat, primaryRoute.fromLng) : null;
+  const primaryTo = primaryRoute ? closestPoint(finitePoints, primaryRoute.toLat, primaryRoute.toLng) : null;
   const primaryDistance = routeDistanceLabel(primaryRoute);
-  const totalScans = points.reduce((sum, point) => sum + (point.scans || 0), 0);
+  const totalScans = finitePoints.reduce((sum, point) => sum + (point.scans || 0), 0);
   const routeCaption = primaryRoute
     ? `${primaryFrom?.city || "Origen"} → ${primaryTo?.city || "Destino"}`
-    : `${points.length.toLocaleString("es-AR")} nodos activos`;
+    : `${finitePoints.length.toLocaleString("es-AR")} nodos activos`;
   const routePaths = useMemo(
     () =>
-      routes
-        .filter(
-          (route) =>
-            Number.isFinite(route.fromLat) &&
-            Number.isFinite(route.fromLng) &&
-            Number.isFinite(route.toLat) &&
-            Number.isFinite(route.toLng),
-        )
+      finiteRoutes
         .slice(0, compactHud ? 7 : 14)
-        .map((route) => buildRoutePath(route, points, compactHud)),
-    [compactHud, points, routes],
+        .map((route) => buildRoutePath(route, finitePoints, compactHud)),
+    [compactHud, finitePoints, finiteRoutes],
   );
   const routeParticles = useMemo(
     () =>
@@ -1168,31 +1263,33 @@ export function Globe3dMap({
           <p className="text-[0.58rem] font-black uppercase tracking-[0.2em] text-cyan-200">Ruta verificada</p>
           <strong className="mt-1 block text-base font-black leading-tight text-white">{routeCaption}</strong>
           <span className="mt-1 block text-xs font-bold text-slate-300">
-            {primaryDistance || `${routes.length.toLocaleString("es-AR")} rutas`} - ruta compacta segura
+            {primaryDistance || `${finiteRoutes.length.toLocaleString("es-AR")} rutas`} - ruta compacta segura
           </span>
         </div>
         <div className="absolute bottom-4 left-4 right-4 z-20 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-slate-950/74 px-3 py-2 text-[0.68rem] font-bold text-slate-200 shadow-[0_14px_40px_rgba(0,0,0,.24)] backdrop-blur-xl">
-          <span className="text-cyan-100">{points.length.toLocaleString("es-AR")} nodos · {routes.length.toLocaleString("es-AR")} rutas</span>
+          <span className="text-cyan-100">{finitePoints.length.toLocaleString("es-AR")} nodos · {finiteRoutes.length.toLocaleString("es-AR")} rutas</span>
           <span className="text-emerald-200">Ruta verificada</span>
         </div>
       </div>
     );
   }
 
+  const showFallback = globeFailed && !hasRenderedCanvas;
+
   return (
     <div
       ref={containerRef}
       className={`relative select-none flex items-center justify-center overflow-hidden rounded-2xl border border-white/5 shadow-2xl p-0 pointer-events-auto ${className}`}
       style={{ width: "100%", maxWidth: width, height: renderHeight }}
-      data-globe-ready={globeReady ? "true" : "false"}
+      data-globe-ready={globeReady || hasRenderedCanvas ? "true" : "false"}
       data-globe-mode="interactive"
     >
       <GlobeLoadingBackdrop
         isLightTheme={isLightTheme}
         className={globeReady ? "opacity-0 pointer-events-none" : "opacity-100"}
       />
-      {globeFailed ? (
-        <GlobeFallbackVisual points={points} routes={routes} isLightTheme={isLightTheme} />
+      {showFallback ? (
+        <GlobeFallbackVisual points={finitePoints} routes={finiteRoutes} isLightTheme={isLightTheme} />
       ) : null}
 
       {hoverCard ? (
@@ -1227,6 +1324,7 @@ export function Globe3dMap({
           className={`absolute z-20 pointer-events-none rounded-2xl border border-cyan-200/18 bg-slate-950/70 text-left shadow-[0_18px_54px_rgba(0,0,0,.34)] backdrop-blur-xl ${
             compactHud ? "bottom-3 left-3 right-3 px-3 py-2" : "bottom-4 left-4 max-w-[min(88%,24rem)] px-4 py-3"
           }`}
+          style={compactHud ? undefined : { maxWidth: "min(88%, 24rem)" }}
         >
           <p className="text-[0.56rem] font-black uppercase tracking-[0.18em] text-cyan-200">
             Ruta trazable
@@ -1240,8 +1338,9 @@ export function Globe3dMap({
         </div>
       ) : null}
 
-      {!globeFailed ? (
-        <Globe
+      {!showFallback ? (
+        <GlobeRuntimeBoundary onError={handleGlobeRuntimeError}>
+          <Globe
           ref={globeRef}
           width={renderWidth}
           height={renderHeight}
@@ -1297,7 +1396,7 @@ export function Globe3dMap({
         heatmapsTransitionDuration={900}
         
         // Points
-        pointsData={points}
+        pointsData={finitePoints}
         pointLat="lat"
         pointLng="lng"
         pointColor={(p: any) => pointTone(p)}
@@ -1384,12 +1483,12 @@ export function Globe3dMap({
         particleLabel={(particle: any) => `Señal de ruta ${particle.color || ""}`}
         
         // Arcs
-        arcsData={routes}
+        arcsData={finiteRoutes}
         arcStartLat="fromLat"
         arcStartLng="fromLng"
         arcEndLat="toLat"
         arcEndLng="toLng"
-        arcLabel={(route: any) => `${routeTitle(route, points)}<br/>${routeMeta(route, points)}`}
+        arcLabel={(route: any) => `${routeTitle(route, finitePoints)}<br/>${routeMeta(route, finitePoints)}`}
         arcColor={(r: any) => (r.tone === "warn" ? "#fb7185" : r.tone === "success" ? "#34d399" : "#22d3ee")}
         arcDashLength={compactHud ? 0.34 : 0.45}
         arcDashGap={compactHud ? 0.22 : 0.15}
@@ -1411,7 +1510,8 @@ export function Globe3dMap({
         ringPropagationSpeed={(p: any) => (p.risk || p.status === "risk" ? (compactHud ? 1.25 : 1.7) : (compactHud ? 0.95 : 1.25))}
         ringRepeatPeriod={(p: any) => (p.risk || p.status === "risk" ? 950 : 1400)}
           ringResolution={compactHud ? 48 : 96}
-        />
+          />
+        </GlobeRuntimeBoundary>
       ) : null}
     </div>
   );
