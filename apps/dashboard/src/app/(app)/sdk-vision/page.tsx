@@ -194,9 +194,9 @@ export default async function SdkVisionPage() {
               <p className="mt-2 text-xs leading-relaxed text-slate-400">Para redes de distribución masivas y marcas globales de lujo.</p>
               <ul className="mt-4 space-y-2 text-[11px] text-slate-300">
                 <li className="flex items-center gap-2">✔️ API Keys y Webhooks ilimitados</li>
-                <li className="flex items-center gap-2">✔️ Descarga de claves SUN privadas</li>
-                <li className="flex items-center gap-2">✔️ Pipeline NFT en Polygon prioritario</li>
-                <li className="flex items-center gap-2">✔️ Soporte SLA 99.99%</li>
+                <li className="flex items-center gap-2">✔️ Pack cifrado auditado para fábrica</li>
+                <li className="flex items-center gap-2">✔️ Pipeline NFT en Polygon cuando aplica</li>
+                <li className="flex items-center gap-2">✔️ Soporte enterprise con SLA contractual</li>
               </ul>
             </div>
             <div className="mt-6 border-t border-white/5 pt-4 text-center">
@@ -238,7 +238,7 @@ export default async function SdkVisionPage() {
           </div>
           <h3 className="mt-4 text-base font-bold text-white">2. Conquistando Europa</h3>
           <p className="mt-2 text-xs leading-relaxed text-slate-400">
-            Competimos directamente con las firmas europeas de lujo en Suiza, Francia e Italia. nexID ofrece validación criptográfica de grado bancario **EAL4+ (NTAG 424 DNA)** y trazabilidad Web3 con acuñación de NFTs de propiedad en Polygon. El lujo europeo encuentra máxima ciberseguridad con total flexibilidad digital.
+            Competimos directamente con las firmas europeas de lujo en Suiza, Francia e Italia. nexID ofrece validación criptográfica con NTAG 424 DNA, evidencias auditables y trazabilidad Web3 opcional con NFTs de propiedad en Polygon. El lujo europeo encuentra control operativo fuerte con total flexibilidad digital.
           </p>
         </Card>
 

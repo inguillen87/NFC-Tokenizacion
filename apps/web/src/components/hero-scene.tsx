@@ -13,7 +13,7 @@ const HeroThreeStage = dynamic(() => import("./hero-three-stage").then((mod) => 
   ssr: false,
 });
 
-const heroAtlasMapSize = { width: 460, height: 270 };
+const heroAtlasMapSize = { width: 360, height: 220 };
 
 function verticalLabel(item: PlatformVertical, locale: AppLocale) {
   if (locale === "en") return item.titleEn;
@@ -1406,7 +1406,7 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
           ))}
         </div>
 
-        <div className="hero-scene-proof-grid mt-4 grid gap-3 xl:grid-cols-[1.05fr_0.95fr]">
+        <div className="hero-scene-proof-grid mt-4 grid gap-3">
           <div className="hero-scene-stage-card hero-scene-stage-card--product-proof rounded-xl border border-white/10 bg-slate-950/70 p-3">
             <div className="flex items-start justify-between gap-3">
               <div>

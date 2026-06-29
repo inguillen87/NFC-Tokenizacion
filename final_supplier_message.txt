@@ -10,11 +10,11 @@ Use case:
 - curved glass / neck / capsule application
 - humidity and cellar conditions
 
-Please use the same sample keys already shared and this exact NDEF URL format:
-https://api.inmov.ar/sun/?v=1&bid=DEMO-2026-02&picc_data=00000000000000000000000000000000&enc=00000000000000000000000000000000&cmac=0000000000000000
+Please use the tenant-specific keys generated in the nexID supplier pack and this exact NDEF URL format:
+https://api.nexid.lat/sun/?v=1&bid=<ASSIGNED_BATCH_ID>&picc_data=00000000000000000000000000000000&enc=00000000000000000000000000000000&cmac=0000000000000000
 
 Please keep:
-- bid fixed as DEMO-2026-02
+- bid exactly as assigned in the encrypted supplier pack
 - picc_data = dynamic PICC data
 - enc = dynamic encrypted SDM file data
 - cmac = dynamic SUN/SDM MAC

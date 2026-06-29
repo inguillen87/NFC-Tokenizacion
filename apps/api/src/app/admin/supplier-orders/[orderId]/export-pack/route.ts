@@ -140,6 +140,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
           ssb.metadata_json,
           b.id AS batch_id,
           b.sdm_config,
+          bk.id AS batch_key_id,
           bk.meta_key_ct,
           bk.file_key_ct,
           bk.key_fingerprint,
@@ -159,6 +160,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
           ssb.metadata_json,
           b.id AS batch_id,
           b.sdm_config,
+          bk.id AS batch_key_id,
           bk.meta_key_ct,
           bk.file_key_ct,
           bk.key_fingerprint,
@@ -184,6 +186,57 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       reason: "supplier_pack_already_exported",
       message: "Supplier encoding packs are one-time artifacts. Rotate sub-batch keys or create a new supplier order instead of re-exporting plaintext factory material.",
       blocked: alreadyExported,
+    }, 409);
+  }
+
+  const subBatchIds = rows.map((row) => String(row.supplier_sub_batch_id));
+  const reservationRows = await sql/*sql*/`
+    WITH target AS (
+      SELECT unnest(${subBatchIds}::uuid[]) AS supplier_sub_batch_id
+    ),
+    locked AS MATERIALIZED (
+      SELECT ssb.id AS supplier_sub_batch_id
+      FROM target
+      JOIN supplier_sub_batches ssb ON ssb.id = target.supplier_sub_batch_id
+      JOIN batch_keys bk ON bk.supplier_sub_batch_id = ssb.id
+      WHERE ssb.key_export_count = 0
+        AND bk.export_count = 0
+      FOR UPDATE OF ssb, bk
+    ),
+    readiness AS (
+      SELECT COUNT(*)::int = ${rows.length} AS ok
+      FROM locked
+    ),
+    reserved_sub_batches AS (
+      UPDATE supplier_sub_batches ssb
+      SET key_export_count = key_export_count + 1, key_exported_at = now(), updated_at = now()
+      FROM locked, readiness
+      WHERE readiness.ok
+        AND ssb.id = locked.supplier_sub_batch_id
+      RETURNING ssb.id
+    ),
+    reserved_keys AS (
+      UPDATE batch_keys bk
+      SET export_count = export_count + 1, exported_at = now()
+      FROM locked, readiness
+      WHERE readiness.ok
+        AND bk.supplier_sub_batch_id = locked.supplier_sub_batch_id
+      RETURNING bk.supplier_sub_batch_id
+    )
+    SELECT
+      (SELECT ok FROM readiness) AS ready,
+      (SELECT COUNT(*)::int FROM reserved_sub_batches) AS reserved_sub_batches,
+      (SELECT COUNT(*)::int FROM reserved_keys) AS reserved_keys
+  `;
+  const reservation = reservationRows[0] || {};
+  if (reservation.ready !== true || Number(reservation.reserved_sub_batches || 0) !== rows.length || Number(reservation.reserved_keys || 0) !== rows.length) {
+    return json({
+      ok: false,
+      reason: "supplier_pack_already_exported",
+      message: "Supplier encoding pack export is a one-time atomic reservation. Another request already reserved or exported one of these sub-batches.",
+      requested: rows.length,
+      reserved_sub_batches: Number(reservation.reserved_sub_batches || 0),
+      reserved_keys: Number(reservation.reserved_keys || 0),
     }, 409);
   }
 
@@ -238,17 +291,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
         (${order.tenant_id}, ${order.id}, ${row.supplier_sub_batch_id}, 'supplier_sub_batch', ${row.supplier_sub_batch_id}, 'supplier_pack_json', ${jsonHash}, 'application/json', ${JSON.stringify({ bid: row.bid, key_fingerprint: row.key_fingerprint })}::jsonb),
         (${order.tenant_id}, ${order.id}, ${row.supplier_sub_batch_id}, 'supplier_sub_batch', ${row.supplier_sub_batch_id}, 'supplier_pack_pdf_summary', ${pdfHash}, 'application/pdf', ${JSON.stringify({ bid: row.bid, key_fingerprint: row.key_fingerprint })}::jsonb)
     `;
-    await sql/*sql*/`
-      UPDATE batch_keys
-      SET export_count = export_count + 1, exported_at = now()
-      WHERE supplier_sub_batch_id = ${row.supplier_sub_batch_id}
-    `;
-    await sql/*sql*/`
-      UPDATE supplier_sub_batches
-      SET key_export_count = key_export_count + 1, key_exported_at = now(), updated_at = now()
-      WHERE id = ${row.supplier_sub_batch_id}
-    `;
-
     const eventPayload = {
       supplier_order_id: order.id,
       supplier_sub_batch_id: row.supplier_sub_batch_id,

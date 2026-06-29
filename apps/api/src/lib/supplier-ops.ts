@@ -581,21 +581,37 @@ export function canActivateSupplierSubBatch(input: {
   expectedQuantity?: number | null;
   manifestCount?: number | null;
   overrideReason?: string | null;
+  overrideBy?: string | null;
 }) {
   const overrideReason = String(input.overrideReason || "").trim();
-  if (overrideReason) return { ok: false as const, reason: "supplier_activation_override_disabled" };
+  const overrideBy = String(input.overrideBy || "").trim();
+  const failures: Array<{ reason: string; expected?: number; received?: number }> = [];
   if (input.manifestStatus !== "imported") {
-    return { ok: false as const, reason: "manifest_not_imported" };
+    failures.push({ reason: "manifest_not_imported" });
   }
   if (input.qaStatus !== "passed") {
-    return { ok: false as const, reason: "qa_not_passed" };
+    failures.push({ reason: "qa_not_passed" });
   }
   const expected = Math.trunc(Number(input.expectedQuantity || 0));
   const received = Math.trunc(Number(input.manifestCount || 0));
   if (expected > 0 && received !== expected) {
-    return { ok: false as const, reason: "manifest_quantity_mismatch", expected, received };
+    failures.push({ reason: "manifest_quantity_mismatch", expected, received });
   }
-  return { ok: true as const, override: false as const };
+  if (!failures.length) return { ok: true as const, override: false as const };
+  if (!overrideReason) {
+    const failure = failures[0];
+    return failure.expected == null
+      ? { ok: false as const, reason: failure.reason }
+      : { ok: false as const, reason: failure.reason, expected: failure.expected, received: failure.received };
+  }
+  if (overrideReason.length < 16 || !overrideBy) {
+    return {
+      ok: false as const,
+      reason: "supplier_activation_override_audit_required",
+      message: "override_reason with at least 16 characters and override_by are required",
+    };
+  }
+  return { ok: true as const, override: true as const, overrideReason, overrideBy, blockedReasons: failures };
 }
 
 export function validateSupplierQaEvidence(input: {

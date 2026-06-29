@@ -32,7 +32,7 @@ Que cada lote fisico tenga:
 1. Crear tenant y batch.
 2. Definir chip model, por ejemplo `NTAG 424 DNA TagTamper`.
 3. Dividir el pedido en sub-batches cuando aplique por SKU, rollo, carton, region, artwork o ventana QA.
-4. Generar o registrar `K_META` y `K_FILE` por sub-batch.
+4. Generar o registrar claves de encoding por sub-batch.
 5. Guardar claves cifradas en backend; nunca en frontend.
 6. Exportar paquete de encoding para proveedor.
 7. Proveedor codifica tags y devuelve manifest.
@@ -45,7 +45,7 @@ Que cada lote fisico tenga:
 
 ## Paquete de encoding
 
-El proveedor solo debe recibir lo necesario para programar el sub-batch autorizado. En copy externo usar `K_META` y `K_FILE`; la fabrica no necesita conocer nombres internos de KMS, base de datos ni infraestructura.
+El proveedor solo debe recibir lo necesario para programar el sub-batch autorizado. En copy externo usar "claves de encoding por sub-batch"; los nombres internos y valores reales viajan solo dentro del paquete cifrado.
 
 Puede incluir:
 
@@ -56,17 +56,16 @@ Puede incluir:
   "sub_batch_id": "NXD2606-A01-R001",
   "bid": "NXD2606-A01-R001",
   "chip_model": "NTAG 424 DNA TagTamper",
-  "K_META": "<32_HEX_CHARS>",
-  "K_FILE": "<32_HEX_CHARS>",
-  "url_template": "https://api.nexid.lat/sun?v=1&bid=NXD2606-A01-R001&picc_data=<PICC_DATA_DYNAMIC>&enc=<ENC_DYNAMIC>&cmac=<CMAC_DYNAMIC>",
+  "encoding_keys": "<REDACTED_SECURE_CHANNEL>",
+  "url_template": "<VALIDATION_URL_TEMPLATE_REDACTED>",
   "manifest_format": "sub_batch_id,bid,uid_hex,ic_type,roll_id,qc_status,timestamp"
 }
 ```
 
 Nunca debe incluir:
 
-- `KMS_MASTER_KEY_HEX`.
-- `DATABASE_URL`.
+- Master keys.
+- Database URLs.
 - Private keys de Polygon.
 - Secretos de executor.
 - Tokens de Vercel, base de datos o admin.
@@ -88,7 +87,7 @@ El manifest es stock y allowlist. No es prueba de autenticidad por si solo. La a
 
 Tenant Vault es la superficie de evidencia visible para tenant y operaciones. Debe mostrar estado de orden, sub-batches, fingerprint del pack exportado, importacion de manifest, hashes, reportes QA, ZIP/PDF/JSON y eventos DPP autorizados.
 
-Tenant Vault no es una pantalla de secretos. No debe exponer `K_META`, `K_FILE`, `KMS_MASTER_KEY_HEX`, `DATABASE_URL`, private keys, tokens admin ni paths internos de storage. Si se necesita prueba externa, publicar o anclar solo hash, digest, proof envelope o Merkle root sanitizado.
+Tenant Vault no es una pantalla de secretos. No debe exponer claves de encoding, master keys, database URLs, private keys, tokens admin ni paths internos de storage. Si se necesita prueba externa, publicar o anclar solo hash, digest, proof envelope o Merkle root sanitizado.
 
 ## Checklist de recepcion
 

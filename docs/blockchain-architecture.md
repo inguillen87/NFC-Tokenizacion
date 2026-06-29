@@ -19,7 +19,7 @@ IOTA puede estar completamente deshabilitado sin romper autenticacion NFC, passp
 2. **IOTA es opcional y probatorio**. IOTA puede aportar evidencia adicional para auditoria, DPP o logistica, pero no reemplaza el NFT ni el claim.
 3. **No se publica PII on-chain**. Emails, telefonos, nombres, direcciones, documentos, geolocalizacion precisa y datos personales quedan off-chain.
 4. **No se publica data cruda de negocio on-chain**. Precios, condiciones comerciales, inventario sensible, rutas completas, facturas, contratos y manifest completos quedan en sistemas privados.
-5. **No se publica UID crudo ni secretos SUN**. La cadena nunca recibe UID real, `K_META`, `K_FILE`, `KMS_MASTER_KEY_HEX`, payload SUN completo, CMAC completo como secreto operativo ni private keys.
+5. **No se publica UID crudo ni secretos SUN**. La cadena nunca recibe UID real, claves de encoding, master keys, payload SUN completo, CMAC completo como secreto operativo ni private keys.
 6. **No todos los taps van on-chain**. Los taps se registran en el backend. Solo eventos seleccionados por politica se anclan o tokenizan.
 7. **Sin claims falsos de alianzas o costo cero**. La documentacion no debe afirmar alianzas formales con Polygon/IOTA ni gratuidad operativa. Costos, limites y disponibilidad dependen de red, RPC, proveedor y volumen.
 8. **Hashes y Merkle roots antes que datos crudos**. Cuando se necesita prueba publica, publicar digests o Merkle roots minimizados. El evento completo queda off-chain con acceso controlado.
@@ -85,7 +85,7 @@ IOTA se usa solo si el tenant o la vertical necesita evidencia adicional:
 - Evidencia de handoff logistico.
 - Digest de certificado de calidad o inspeccion.
 
-Si `IOTA_PROOF_ENABLED=false`, el sistema debe seguir operando con DPP privado y Polygon ownership.
+Si `IOTA_PROOF_ENABLED=false`, el sistema debe seguir operando con DPP privado y propiedad digital en Polygon cuando este habilitada.
 
 ## Politica de anclaje
 
@@ -103,9 +103,9 @@ La regla por defecto es **off-chain first, on-chain when useful**.
 
 ## Supplier Encoding Pack y Tenant Vault
 
-Las operaciones de fabrica pertenecen a la fuente de verdad privada de nexID. Un Supplier Encoding Pack entrega a la fabrica solo lo necesario para codificar cada sub-batch: `order_id`, `batch_id`, `sub_batch_id`/`bid`, chip model, perfil SDM/TagTamper, URL template, formato de manifest y `K_META`/`K_FILE` de ese sub-batch.
+Las operaciones de fabrica pertenecen a la fuente de verdad privada de nexID. Un Supplier Encoding Pack entrega a la fabrica solo lo necesario para codificar cada sub-batch: `order_id`, `batch_id`, `sub_batch_id`/`bid`, chip model, perfil SDM/TagTamper, route template redacted para documentacion publica, formato de manifest y claves de encoding del sub-batch por canal cifrado.
 
-La fabrica nunca recibe `KMS_MASTER_KEY_HEX`, `DATABASE_URL`, private keys de Polygon, secretos de executor, tokens admin ni PII. Tenant Vault muestra evidencia operativa para el tenant: estado de orden, sub-batches, fingerprints, manifest, hashes, Merkle roots sanitizados, reportes QA y eventos DPP autorizados. No es una UI para revelar secretos.
+La fabrica nunca recibe master keys, database URLs, private keys de Polygon, secretos de executor, tokens admin ni PII. Tenant Vault muestra evidencia operativa para el tenant: estado de orden, sub-batches, fingerprints, manifest, hashes, Merkle roots sanitizados, reportes QA y eventos DPP autorizados. No es una UI para revelar secretos.
 
 Polygon no se usa para manifest de proveedor ni QA de fabrica. Polygon se usa si hay ownership, NFT/certificado, claim o transferencia. IOTA puede usarse como proof opcional para hash/Merkle root de manifest, QA, DPP o logistica.
 

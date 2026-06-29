@@ -52,7 +52,7 @@ export function LandingProofSection({ proof }: { proof: ProofSummary }) {
             <p className="text-xs uppercase tracking-[0.14em] text-cyan-300">Últimos eventos públicos</p>
             {proof.demoMode ? (
               <span className="inline-flex items-center rounded-full border border-amber-300/40 bg-amber-500/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-200">
-                Demo data
+                Sandbox data
               </span>
             ) : (
               <p className="text-xs text-slate-400">Datos operativos</p>

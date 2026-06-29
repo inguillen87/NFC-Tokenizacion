@@ -25,6 +25,31 @@ test("supplier export requires operator password and never returns it", () => {
   assert.doesNotMatch(source, /randomBytes\(8\)/);
 });
 
+test("supplier export reserves one-time packs with conditional updates before secret material is built", () => {
+  const source = readWorkspaceFile("apps/api/src/app/admin/supplier-orders/[orderId]/export-pack/route.ts");
+  const reservationIndex = source.indexOf("reserved_sub_batches AS");
+  const decryptIndex = source.indexOf("decryptKey16(String");
+
+  assert.notEqual(reservationIndex, -1);
+  assert.ok(reservationIndex < decryptIndex);
+  assert.match(source, /ssb\.key_export_count = 0/);
+  assert.match(source, /bk\.export_count = 0/);
+  assert.match(source, /reserved_sub_batches[\s\S]*reserved_keys/);
+  assert.match(source, /reserved_sub_batches[\s\S]*!== rows\.length/);
+  assert.match(source, /reserved_keys[\s\S]*!== rows\.length/);
+  assert.doesNotMatch(source, /SET export_count = export_count \+ 1[\s\S]*WHERE supplier_sub_batch_id = \$\{row\.supplier_sub_batch_id\}/);
+});
+
+test("public proof and anchor input stay hash-only", () => {
+  const anchorSource = readWorkspaceFile("apps/api/src/app/admin/proof/anchor/route.ts");
+  const verifySource = readWorkspaceFile("apps/api/src/app/public/proof/verify/route.ts");
+
+  assert.match(anchorSource, /findForbiddenProofPayloadKey\(payload\)/);
+  assert.match(anchorSource, /proof_payload_sensitive_key_rejected/);
+  assert.match(verifySource, /isSha256Hash\(eventHash\)/);
+  assert.match(verifySource, /event_hash_invalid/);
+});
+
 test("dashboard supplier console keeps pack password client-side only", () => {
   const source = readWorkspaceFile("apps/dashboard/src/components/supplier-order-console.tsx");
 

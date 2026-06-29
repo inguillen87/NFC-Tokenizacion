@@ -19,7 +19,7 @@ export function dashboardOneClickAccessAllowed() {
   );
   if (explicit !== null) return explicit;
 
-  return true;
+  return false;
 }
 
 export function dashboardFallbackSessionAllowed() {

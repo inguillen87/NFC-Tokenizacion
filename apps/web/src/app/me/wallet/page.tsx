@@ -185,7 +185,7 @@ export default async function WalletLedgerPage({ searchParams }: { searchParams?
                  Red Descentralizada nexID
                </h4>
                <p className="mt-2 text-[11px] leading-relaxed text-slate-300">
-                 Tus certificados se registran en Polygon. Esto te otorga un título de autenticidad transferible si decides regalar o vender la botella en nuestro marketplace.
+                 Cuando un producto premium se tokeniza, nexID registra la prueba de propiedad en Polygon. Eso habilita un título transferible para regalar o vender la botella en el marketplace sin exponer tus datos completos.
                </p>
                <div className="mt-4 space-y-2 text-[10px] text-slate-300 font-mono">
                  {["1. Tap Físico Seguro", "2. Firma Criptográfica", "3. Acuñación del NFT", "4. Drops Habilitados"].map((step, idx) => (

@@ -8,7 +8,7 @@ Estado actual del piloto Amoy:
 
 - Tap SUN/NTAG 424 DNA TT valida autenticidad, anti-replay y tamper server-side.
 - Replay bloquea ownership, rewards y tokenizacion hasta un tap fisico fresco.
-- `/sun` muestra passport, trazabilidad, portal, marketplace y estado Polygon/tokenizacion.
+- El passport autorizado muestra trazabilidad, portal, marketplace y estado Polygon/tokenizacion.
 - Portal consumidor guarda producto, historial, tenant, promos y certificado si existe.
 - Admin/superadmin ven cola de tokenizacion y readiness de Polygon Amoy.
 - Polygon usa hash de UID + salt. No publica UID crudo ni recibe todos los taps.
@@ -16,16 +16,16 @@ Estado actual del piloto Amoy:
 - La API puede mintear directo con `ethers` cuando `TOKENIZATION_USE_LOCAL_MINTER=true`.
 - `tsc` API/web, `qa-static` y tests SUN pasan.
 
-Valores del piloto actual:
+Valores del piloto/sandbox actual:
 
 ```txt
 Network: Polygon Amoy
 Chain ID: 80002
-RPC: https://polygon-amoy.g.alchemy.com/v2/lkdR5ChJ14TarIAHeZKxj
-Owner/Minter/Recipient: 0x644c5D77a34182Db01257bC4C469B01850bc6B2d
-Contract: 0x673CAE3D79f825bba9cfb2096184c295A5C9Eb4C
-Manual test tx: 0x15dc4cb688eae448d0bfd8582b3fe8d5cb8003bc682c440114d10ea4a4645679
-Manual test token_id: 1
+RPC: <POLYGON_AMOY_RPC_URL_REDACTED>
+Owner/Minter/Recipient: <POLYGON_WALLET_ADDRESS_REDACTED>
+Contract: <POLYGON_CONTRACT_ADDRESS_REDACTED>
+Manual test tx: <POLYGON_TX_HASH_REDACTED>
+Manual test token_id: <TOKEN_ID_REDACTED>
 ```
 
 ## 1. Cuentas que vas a crear
@@ -34,7 +34,7 @@ Crea tres wallets separadas:
 
 1. `nexID Amoy Owner`: owner del contrato.
 2. `nexID Amoy Minter`: wallet backend que firma mints en testnet.
-3. `nexID Demo Recipient`: wallet default para tokens si el usuario aun no conecto wallet.
+3. `nexID Sandbox Recipient`: wallet default para tokens si el usuario aun no conecto wallet.
 
 No uses tu wallet personal como minter. No cargues seed phrase en Vercel. Solo private key de la wallet minter dedicada, y solo en API o en el executor. El contrato permite separar roles: `owner` administra y `minter` firma certificados/tokens.
 
@@ -54,13 +54,7 @@ RPC publico alternativo: https://polygon-amoy.drpc.org
 
 Agrega la red en MetaMask y manda POL testnet a `nexID Amoy Minter`.
 
-Faucets:
-
-- https://www.alchemy.com/faucets/polygon-amoy
-- https://faucet.quicknode.com/polygon/amoy
-- https://ethglobal.com/faucet/polygon-amoy-80002
-- https://thirdweb.com/polygon-amoy-testnet
-- https://ghostchain.io/faucet/polygon-amoy/
+Faucets: usar fuentes Polygon Amoy confiables y vigentes desde el navegador. No fijar links con cuentas, project IDs o tokens en docs publicos.
 
 Nota: algunos faucets piden saldo minimo en Ethereum/Polygon mainnet para evitar abuso. Eso no implica que debas comprar fondos mainnet para el piloto; si un faucet bloquea la wallet, probar otro faucet o usar una wallet dev con historial. Igual hay dependencias operativas de gas testnet, RPC, rate limits y disponibilidad del proveedor.
 
@@ -68,7 +62,7 @@ Nota: algunos faucets piden saldo minimo en Ethereum/Polygon mainnet para evitar
 
 Recomendado: Alchemy.
 
-1. Entra a https://dashboard.alchemy.com/
+1. Entra al dashboard del proveedor RPC elegido.
 2. Crea app nueva.
 3. Chain: Polygon.
 4. Network: Polygon Amoy.
@@ -77,7 +71,7 @@ Recomendado: Alchemy.
 Ejemplo:
 
 ```txt
-https://polygon-amoy.g.alchemy.com/v2/TU_API_KEY
+https://polygon-amoy.g.alchemy.com/v2/<RPC_API_KEY>
 ```
 
 Crear un RPC propio no requiere gas ni saldo en la wallet. El gas solo se necesita para enviar transacciones desde la wallet minter. Si todavia no tenes RPC propio, se puede probar temporalmente con el RPC publico:
@@ -108,7 +102,7 @@ En local:
 
 ```powershell
 cd C:\Users\guill\OneDrive\Documentos\GitHub\NFC-Tokenizacion\apps\api
-$env:POLYGON_RPC_URL="https://polygon-amoy.g.alchemy.com/v2/TU_API_KEY"
+$env:POLYGON_RPC_URL="https://polygon-amoy.g.alchemy.com/v2/<RPC_API_KEY>"
 $env:POLYGON_MINTER_PRIVATE_KEY="0xPRIVATE_KEY_DE_NEXID_AMOY_MINTER"
 $env:POLYGON_DEPLOY_OWNER="0xOWNER_DEL_CONTRATO"
 $env:POLYGON_MINTER_ADDRESS="0xADDRESS_PUBLICA_DE_NEXID_AMOY_MINTER"
@@ -143,7 +137,7 @@ https://amoy.polygonscan.com/address/0xCONTRATO
 
 ## 6. Variables de entorno en Vercel API
 
-Proyecto: API que sirve `https://api.nexid.lat`.
+Proyecto: API backend correspondiente. No fijar dominios productivos en copy publico.
 
 Tenes dos modos.
 
@@ -157,15 +151,15 @@ SUN_AUTO_TOKENIZE_ON_VALID_TAP=true
 TOKENIZATION_USE_LOCAL_MINTER=true
 TOKENIZATION_UID_SALT=<random largo secreto>
 TOKENIZATION_METADATA_CID_PREFIX=nexid-metadata
-POLYGON_RPC_URL=https://polygon-amoy.g.alchemy.com/v2/lkdR5ChJ14TarIAHeZKxj
+POLYGON_RPC_URL=https://polygon-amoy.g.alchemy.com/v2/<RPC_API_KEY>
 POLYGON_MINTER_PRIVATE_KEY=0xPRIVATE_KEY_DE_NEXID_AMOY_MINTER
-POLYGON_MINTER_ADDRESS=0x644c5D77a34182Db01257bC4C469B01850bc6B2d
-POLYGON_CONTRACT_ADDRESS=0x673CAE3D79f825bba9cfb2096184c295A5C9Eb4C
-POLYGON_DEFAULT_RECIPIENT=0x644c5D77a34182Db01257bC4C469B01850bc6B2d
-POLYGON_DEPLOY_OWNER=0x644c5D77a34182Db01257bC4C469B01850bc6B2d
+POLYGON_MINTER_ADDRESS=0xMINTER_PUBLIC_ADDRESS
+POLYGON_CONTRACT_ADDRESS=0xCONTRACT_ADDRESS
+POLYGON_DEFAULT_RECIPIENT=0xDEFAULT_RECIPIENT_ADDRESS
+POLYGON_DEPLOY_OWNER=0xOWNER_ADDRESS
 PUBLIC_DEMO_SHARE_SECRET=<mismo secreto fuerte en web y api>
 SUN_HANDOFF_SECRET=<mismo secreto fuerte o uno dedicado>
-CONSUMER_SESSION_COOKIE_DOMAIN=.nexid.lat
+CONSUMER_SESSION_COOKIE_DOMAIN=<COOKIE_DOMAIN>
 ```
 
 ### Opcion B - executor separado
@@ -180,7 +174,7 @@ SUN_AUTO_TOKENIZE_ON_VALID_TAP=true
 TOKENIZATION_USE_LOCAL_MINTER=false
 TOKENIZATION_UID_SALT=<random largo secreto>
 TOKENIZATION_METADATA_CID_PREFIX=nexid-metadata
-TOKENIZATION_EXECUTOR_URL=https://executor.nexid.lat/mint
+TOKENIZATION_EXECUTOR_URL=<EXECUTOR_MINT_URL>
 TOKENIZATION_EXECUTOR_SECRET=<random largo secreto compartido con executor>
 ```
 
@@ -189,7 +183,7 @@ En executor:
 ```txt
 TOKENIZATION_EXECUTOR_SECRET=<mismo secreto>
 EXECUTOR_SIGNER_MODE=private_key
-POLYGON_RPC_URL=https://polygon-amoy.g.alchemy.com/v2/TU_API_KEY
+POLYGON_RPC_URL=https://polygon-amoy.g.alchemy.com/v2/<RPC_API_KEY>
 POLYGON_MINTER_PRIVATE_KEY=0xPRIVATE_KEY_DE_NEXID_AMOY_MINTER
 POLYGON_MINTER_ADDRESS=0xADDRESS_PUBLICA_DE_NEXID_AMOY_MINTER
 POLYGON_CONTRACT_ADDRESS=0xCONTRATO_DESPLEGADO
@@ -198,14 +192,14 @@ POLYGON_DEFAULT_RECIPIENT=0xWALLET_RECEPTORA_DEFAULT
 
 No poner ninguna de estas como `NEXT_PUBLIC_*`.
 
-En el proyecto web (`https://nexid.lat`) usar el mismo secreto publico de CTA, pero nunca private keys:
+En el proyecto web usar solo variables publicas estrictamente necesarias. Nunca private keys:
 
 ```txt
-NEXT_PUBLIC_API_BASE_URL=https://api.nexid.lat
+NEXT_PUBLIC_API_BASE_URL=<PUBLIC_API_BASE_URL>
 PUBLIC_DEMO_SHARE_SECRET=<mismo secreto fuerte que API>
 ```
 
-Si web y API no comparten `PUBLIC_DEMO_SHARE_SECRET`, los botones publicos de `/sun` pueden fallar aunque el tap sea valido.
+Si web y API no comparten el secreto publico de CTA, las acciones publicas del passport pueden fallar aunque el tap sea valido.
 
 ## 7. Diagnostico antes de probar tags
 
@@ -238,7 +232,7 @@ Debe mostrar:
 
 ```powershell
 cd C:\Users\guill\OneDrive\Documentos\GitHub\NFC-Tokenizacion\apps\api
-node scripts/mint-on-valid-tap.mjs --uid=04A7DEMO1090 --to=0xWALLET_RECEPTORA_DEFAULT --token_uri=ipfs://nexid-metadata/demo/nx-manual-test.json --asset_ref=DEMO-BODEGA-0424:nx-manual-test
+node scripts/mint-on-valid-tap.mjs --uid=<SAMPLE_UID_REDACTED> --to=0xWALLET_RECEPTORA_DEFAULT --token_uri=ipfs://<METADATA_PREFIX>/sandbox/nx-manual-test.json --asset_ref=<BATCH_PUBLIC_REF>:nx-manual-test
 ```
 
 Esperado:
@@ -264,11 +258,11 @@ https://amoy.polygonscan.com/tx/0xTX_HASH
 2. Abrir URL real:
 
 ```txt
-https://api.nexid.lat/sun?v=1&bid=...&picc_data=...&enc=...&cmac=...
+<PASSPORT_VALIDATION_URL_REDACTED>
 ```
 
 3. Confirmar que el tap es valido y fresco.
-4. Confirmar que `/sun` muestra tokenizacion `anchored/minted` o `pending`.
+4. Confirmar que el passport muestra tokenizacion `anchored/minted` o `pending`.
 5. Confirmar que el portal consumidor muestra el certificado.
 6. Confirmar que admin/superadmin ve la request.
 7. Abrir tx en Amoy Polygonscan.
@@ -285,10 +279,10 @@ Para probar el boton real de tokenizacion:
 1. Abrir la pantalla que viene de un tap fisico fresco, no una snapshot vieja.
 2. Tocar `Tokenizar en Polygon`.
 3. Esperar respuesta OK.
-4. Revisar `/admin/tokenization/requests`.
+4. Revisar la cola privada de tokenizacion.
 5. Abrir `https://amoy.polygonscan.com/tx/0xTX_HASH`.
 
-Si aparece `anchor.ok=false`, mirar logs de `api.nexid.lat` y revisar: private key, gas, contrato, RPC o secreto de handoff. No mostrar ese intento como tokenizacion exitosa hasta tener una transaccion real.
+Si aparece `anchor.ok=false`, mirar logs privados de backend y revisar: private key, gas, contrato, RPC o secreto de handoff. No mostrar ese intento como tokenizacion exitosa hasta tener una transaccion real.
 
 ## 10. Prueba con las 10 etiquetas
 
@@ -327,7 +321,7 @@ Blockchain queda lista cuando:
 - Dashboard readiness muestra `ready`.
 - Un mint manual genera `tx_hash`.
 - Un tap real genera request y proof.
-- `/sun` y `/me/products` muestran el certificado con link a Polygonscan.
+- Passport y portal consumidor muestran el certificado con link a Polygonscan.
 
 ## 13. Verificacion rapida desde Codex/local
 

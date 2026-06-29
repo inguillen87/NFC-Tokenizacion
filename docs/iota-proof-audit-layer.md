@@ -4,7 +4,7 @@ IOTA es una capa opcional de pruebas dentro del Enterprise Trust Layer de nexID.
 
 ## Rol de IOTA en nexID
 
-IOTA no es la capa de ownership de nexID. No reemplaza a Polygon para NFT, certificados o claims. IOTA se usa cuando un cliente necesita demostrar que cierta evidencia existia en un momento dado y que no fue alterada despues.
+IOTA no es la capa de propiedad digital de nexID. No reemplaza a Polygon para NFT, certificados o claims. IOTA se usa cuando un cliente necesita demostrar que cierta evidencia existia en un momento dado y que no fue alterada despues.
 
 Casos adecuados:
 
@@ -90,7 +90,7 @@ Si hay muchos taps o eventos de bajo valor probatorio individual, nexID debe cal
 
 - IOTA no debe presentarse como partner oficial salvo que exista un acuerdo publico y verificable.
 - IOTA no debe venderse como capa de costo operativo cero; aun si una red o testnet no cobra valor real, existen costos de integracion, RPC, monitoreo, custodia, soporte y operacion.
-- IOTA no debe describirse como la capa de NFT, ownership o warranty transfer de nexID. Ese rol corresponde a Polygon cuando la politica lo habilita.
+- IOTA no debe describirse como la capa de NFT, propiedad digital o warranty transfer de nexID. Ese rol corresponde a Polygon cuando la politica lo habilita.
 
 ## Verificacion de evidencia
 

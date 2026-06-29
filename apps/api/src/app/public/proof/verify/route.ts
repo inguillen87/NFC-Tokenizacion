@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 import { json } from "../../../../lib/http";
 import { sql } from "../../../../lib/db";
 import { ensureSupplierOpsSchema } from "../../../../lib/supplier-ops-schema";
-import { verifyHashInAnchor } from "../../../../lib/proof-layer";
+import { isSha256Hash, verifyHashInAnchor } from "../../../../lib/proof-layer";
 
 export async function GET(req: Request) {
   await ensureSupplierOpsSchema();
@@ -12,6 +12,7 @@ export async function GET(req: Request) {
   const eventHash = String(url.searchParams.get("event_hash") || url.searchParams.get("hash") || "").trim();
   const anchorId = String(url.searchParams.get("anchor_id") || url.searchParams.get("anchorId") || "").trim();
   if (!eventHash) return json({ ok: false, reason: "event_hash_required" }, 400);
+  if (!isSha256Hash(eventHash)) return json({ ok: false, reason: "event_hash_invalid" }, 400);
 
   const rows = anchorId
     ? await sql/*sql*/`

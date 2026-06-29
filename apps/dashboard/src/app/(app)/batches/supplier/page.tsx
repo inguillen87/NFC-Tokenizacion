@@ -136,12 +136,12 @@ export default async function SupplierBatchPage() {
         <p className="font-semibold text-white">Uso recomendado</p>
         <ul className="mt-3 list-disc space-y-2 pl-5">
           <li>Pedido industrial nuevo: usa Supplier Order. El sistema genera sub-batches, llaves por lote, fingerprints y evidencia batch_created.</li>
-          <li>Export pack: solo superadmin, una respuesta con llaves plaintext dentro del ZIP cifrado y password por canal separado.</li>
+          <li>Export pack: solo superadmin/security operator, una entrega cifrada de un solo uso y clave por canal separado.</li>
           <li>Manifiesto: se importa TXT/CSV por BID y se rechaza cantidad incorrecta, batch_id cruzado o UID duplicado.</li>
           <li>Activación: queda bloqueada hasta manifiesto importado, cantidad esperada y QA aprobado.</li>
         </ul>
         <p className="mt-3 rounded-xl border border-amber-300/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-          No se expone KMS. No se guardan llaves plaintext en frontend. No se ancla cada tap on-chain; la prueba externa se hace por hashes agregados.
+          No se expone KMS. No se guardan llaves en claro en frontend. No se ancla cada tap on-chain; la prueba externa se hace por hashes agregados.
         </p>
       </Card>
 

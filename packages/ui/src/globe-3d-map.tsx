@@ -948,13 +948,14 @@ export function Globe3dMap({
     };
   }, [mounted, countryPolygons.length]);
 
-  const renderWidth = Math.max(280, Math.min(width, containerWidth || width));
+  const renderWidth = Math.max(260, Math.min(width, containerWidth || width));
   const compactRequested = height <= 240;
   const mediumRequested = height <= 360;
-  const minRenderHeight = compactRequested ? 220 : mediumRequested ? 300 : 360;
-  const renderHeight = Math.max(minRenderHeight, Math.round(renderWidth * (height / Math.max(width, 1))));
-  const compactHud = renderWidth < 360 || (height <= 260 && renderWidth < 420);
-  const routePreviewOnly = mode === "preview" || (mode === "auto" && (renderWidth < 320 || height <= 220));
+  const minRenderHeight = compactRequested ? 180 : mediumRequested ? 220 : 300;
+  const aspectHeight = Math.round(renderWidth * (height / Math.max(width, 1)));
+  const renderHeight = Math.min(height, Math.max(minRenderHeight, aspectHeight));
+  const compactHud = renderWidth < 360 || height <= 260 || (height <= 320 && renderWidth < 460);
+  const routePreviewOnly = mode === "preview" || (mode === "auto" && (renderWidth < 300 || height <= 190));
   const globeImageUrl = useMemo(() => PROFESSIONAL_GLOBE_IMAGE_URL || localGlobeTexture(isLightTheme), [isLightTheme]);
   const globeBumpUrl = useMemo(() => PROFESSIONAL_GLOBE_BUMP_URL || localGlobeBumpTexture(isLightTheme), [isLightTheme]);
   const activeCountryNames = useMemo(

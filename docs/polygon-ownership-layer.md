@@ -21,7 +21,7 @@ Polygon no debe usarse para:
 - Guardar todos los taps.
 - Guardar PII o datos crudos del consumidor.
 - Guardar UID crudo de los chips.
-- Guardar payload SUN, CMAC, `K_META`, `K_FILE` o secretos KMS.
+- Guardar payload SUN, CMAC, claves de encoding o secretos KMS.
 - Publicar inventario sensible, rutas logisticas completas, precios o condiciones comerciales.
 - Simular autenticidad fisica sin validacion SUN previa.
 
@@ -68,7 +68,7 @@ Los datos on-chain deben ser minimizados y publicos por diseno.
 | `batch_ref` | Identificador de lote publico o derivado |
 | `event_digest` | Hash opcional de evento canonico, no evento completo |
 
-Los Merkle roots y checkpoints agregados pertenecen por defecto a la capa IOTA proof/audit, no al contrato Polygon de ownership.
+Los Merkle roots y checkpoints agregados pertenecen por defecto a la capa IOTA proof/audit, no al contrato Polygon de propiedad digital.
 
 Ejemplo conceptual:
 

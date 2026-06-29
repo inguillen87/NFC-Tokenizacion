@@ -11,7 +11,7 @@ Cliente tapea NFC
   -> API llama executor por HTTP privado
   -> executor firma/minta en Polygon Amoy
   -> executor devuelve tx_hash/token_id
-  -> API guarda proof y lo muestra en /sun, portal, admin y superadmin
+  -> API guarda proof y lo muestra en passport/portal autorizado y consola privada
 ```
 
 ## Por que es mejor
@@ -37,7 +37,7 @@ npm run dev:executor
 npm run executor:check
 ```
 
-Endpoint local:
+Endpoint local de desarrollo:
 
 ```txt
 GET  http://localhost:3010/health
@@ -61,14 +61,14 @@ En `apps/executor`:
 PORT=3010
 TOKENIZATION_EXECUTOR_SECRET=<random largo secreto>
 EXECUTOR_SIGNER_MODE=private_key
-POLYGON_RPC_URL=https://polygon-amoy.g.alchemy.com/v2/TU_API_KEY
+POLYGON_RPC_URL=https://polygon-amoy.g.alchemy.com/v2/<RPC_API_KEY>
 POLYGON_MINTER_PRIVATE_KEY=0xPRIVATE_KEY_DE_NEXID_AMOY_MINTER
 POLYGON_MINTER_ADDRESS=0xADDRESS_PUBLICA_DE_NEXID_AMOY_MINTER
 POLYGON_CONTRACT_ADDRESS=0xCONTRATO
 POLYGON_DEFAULT_RECIPIENT=0xWALLET_RECEPTORA
 ```
 
-Para el piloto Amoy, esta private key queda fuera de la API principal y solo en el executor. Usa gas de testnet sin valor real de produccion. La API manda `chip_uid_hash`; el executor no necesita `K_META`, `K_FILE`, `KMS_MASTER_KEY_HEX` ni UID crudo en operacion normal.
+Para el piloto Amoy, esta private key queda fuera de la API principal y solo en el executor. Usa gas de testnet sin valor real de produccion. La API manda `chip_uid_hash`; el executor no necesita claves de encoding, master keys ni UID crudo en operacion normal.
 
 ## KMS real
 
@@ -97,7 +97,7 @@ Frontend: nada sensible
 4. Ejecutar `npm run tokenization:check`.
 5. Probar un mint manual.
 6. Probar 1 tag real.
-7. Revisar `/sun`, portal consumidor y dashboard tokenization.
+7. Revisar passport/portal consumidor y consola privada de tokenization.
 
 ## Seguridad minima
 

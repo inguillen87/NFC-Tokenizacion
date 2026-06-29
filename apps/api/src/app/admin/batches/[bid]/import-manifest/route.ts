@@ -18,6 +18,8 @@ type ManifestPayload = {
   csv?: string;
   activateImported?: boolean;
   dryRun?: boolean;
+  overrideReason?: string;
+  overrideBy?: string;
 };
 
 function safeActor(req: Request) {
@@ -32,7 +34,13 @@ async function readPayload(req: Request): Promise<ManifestPayload & { csv: strin
   const contentType = req.headers.get("content-type") || "";
   if (contentType.includes("application/json")) {
     const body = (await req.json().catch(() => ({}))) as ManifestPayload;
-    return { csv: String(body.csv || ""), activateImported: Boolean(body.activateImported), dryRun: Boolean(body.dryRun) };
+    return {
+      csv: String(body.csv || ""),
+      activateImported: Boolean(body.activateImported),
+      dryRun: Boolean(body.dryRun),
+      overrideReason: String(body.overrideReason || (body as Record<string, unknown>).override_reason || "").trim(),
+      overrideBy: String(body.overrideBy || (body as Record<string, unknown>).override_by || "").trim(),
+    };
   }
 
   const raw = await req.text();
@@ -137,15 +145,24 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
   const supplierQuantityGate = supplierSubBatch
     ? validateSupplierManifestQuantity(manifest, Number(supplierSubBatch.expected_quantity || 0))
     : { ok: true as const };
+  const quantityOverrideReason = String(payload.overrideReason || "").trim();
+  const quantityOverrideBy = String(payload.overrideBy || safeActor(req)).trim();
+  const quantityOverride = Boolean(supplierSubBatch && !supplierQuantityGate.ok && quantityOverrideReason);
   if (!supplierQuantityGate.ok) {
-    return json({
-      ok: false,
-      reason: supplierQuantityGate.reason,
-      message: "Supplier manifest quantity must match the planned sub-batch quantity.",
-      expected: supplierQuantityGate.expected,
-      received: supplierQuantityGate.received,
-      bid,
-    }, 409);
+    if (!quantityOverride || quantityOverrideReason.length < 16 || !quantityOverrideBy) {
+      return json({
+        ok: false,
+        reason: supplierQuantityGate.reason,
+        message: "Supplier manifest quantity must match the planned sub-batch quantity unless an explicit audited override is provided.",
+        expected: supplierQuantityGate.expected,
+        received: supplierQuantityGate.received,
+        bid,
+        override_required: {
+          fields: ["overrideReason", "overrideBy"],
+          min_reason_length: 16,
+        },
+      }, 409);
+    }
   }
 
   const manifestUids = Array.from(new Set(manifest.rows.map((row) => row.uidHex.toUpperCase()).filter(Boolean)));
@@ -262,6 +279,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
         manifest_hash: supplierSubBatch.manifest_hash || null,
         qa_status: supplierSubBatch.qa_status || "pending",
         activation_requires_qa: true,
+        quantity_override: quantityOverride ? {
+          reason: quantityOverrideReason,
+          override_by: quantityOverrideBy,
+          expected: "expected" in supplierQuantityGate ? supplierQuantityGate.expected : null,
+          received: "received" in supplierQuantityGate ? supplierQuantityGate.received : null,
+        } : null,
       } : null,
     });
   }
@@ -373,7 +396,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
     ) VALUES (
       ${batch.tenant_id}, ${batch.id}, ${bid}, ${manifest.manifestType}, ${manifest.rows.length},
       ${inserted}, ${reactivated}, 0, 0, ${manifest.contentHash}, 'imported',
-      ${JSON.stringify({ registeredSunPayloads })}::jsonb, ${batchCarrierCode},
+      ${JSON.stringify({
+        registeredSunPayloads,
+        quantity_override: quantityOverride ? {
+          reason: quantityOverrideReason,
+          override_by: quantityOverrideBy,
+          expected: "expected" in supplierQuantityGate ? supplierQuantityGate.expected : null,
+          received: "received" in supplierQuantityGate ? supplierQuantityGate.received : null,
+        } : null,
+      })}::jsonb, ${batchCarrierCode},
       ${supplierSubBatch?.supplier_order_id || null}, ${supplierSubBatch?.id || null},
       ${supplierSubBatch?.expected_quantity || null}
     )
@@ -387,6 +418,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
         manifest_count = ${manifest.rows.length},
         manifest_hash = ${manifest.contentHash},
         manifest_imported_at = now(),
+        metadata_json = metadata_json || ${JSON.stringify({
+          quantity_override: quantityOverride ? {
+            reason: quantityOverrideReason,
+            override_by: quantityOverrideBy,
+            expected: "expected" in supplierQuantityGate ? supplierQuantityGate.expected : null,
+            received: "received" in supplierQuantityGate ? supplierQuantityGate.received : null,
+          } : null,
+        })}::jsonb,
         updated_at = now()
       WHERE id = ${supplierSubBatch.id}
     `;
@@ -413,6 +452,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
         row_count: manifest.rows.length,
         content_hash: manifest.contentHash,
         carrier_profile_code: batchCarrierCode,
+        quantity_override: quantityOverride ? {
+          reason: quantityOverrideReason,
+          override_by: quantityOverrideBy,
+          expected: "expected" in supplierQuantityGate ? supplierQuantityGate.expected : null,
+          received: "received" in supplierQuantityGate ? supplierQuantityGate.received : null,
+        } : null,
       };
       const eventHash = hashEvidencePayload({
         tenantId: String(batch.tenant_id),
@@ -441,6 +486,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
         content_hash: manifest.contentHash,
         carrier_profile_code: batchCarrierCode,
         imported_by: safeActor(req),
+        quantity_override: quantityOverride ? {
+          reason: quantityOverrideReason,
+          override_by: quantityOverrideBy,
+          expected: "expected" in supplierQuantityGate ? supplierQuantityGate.expected : null,
+          received: "received" in supplierQuantityGate ? supplierQuantityGate.received : null,
+        } : null,
       },
       userAgent: req.headers.get("user-agent"),
       requestId: req.headers.get("x-request-id"),
@@ -464,6 +515,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
       manifest_status: "imported",
       qa_status: supplierSubBatch.qa_status || "pending",
       activation_requires_qa: true,
+      quantity_override: quantityOverride ? {
+        reason: quantityOverrideReason,
+        override_by: quantityOverrideBy,
+        expected: "expected" in supplierQuantityGate ? supplierQuantityGate.expected : null,
+        received: "received" in supplierQuantityGate ? supplierQuantityGate.received : null,
+      } : null,
     } : null,
   });
 }

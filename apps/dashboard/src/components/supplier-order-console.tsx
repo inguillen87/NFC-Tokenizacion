@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Button, Card } from "@product/ui";
+import { CheckCircle2, Download, FileCheck2, LockKeyhole, ShieldCheck, UploadCloud } from "lucide-react";
 
 type SupplierSubBatch = {
   id: string;
@@ -27,6 +28,8 @@ type SupplierOrder = {
   total_quantity?: number;
   sub_batch_size?: number;
   status?: string;
+  pack_exported_at?: string;
+  pack_status?: string;
   sub_batches?: SupplierSubBatch[];
 };
 
@@ -217,6 +220,90 @@ function hasScopedPermission(grants: string[], permission: string) {
   });
 }
 
+function isSensitiveMetadataKey(key: string) {
+  const normalized = key.toLowerCase();
+  if (normalized.includes("fingerprint")) return false;
+  return [
+    "k_meta",
+    "k_file",
+    "secret",
+    "password",
+    "kms",
+    "private",
+    "raw",
+    "plaintext_key",
+    "file_key",
+    "meta_key",
+    "storage",
+    "bucket",
+    "path",
+    "url",
+    "token",
+  ].some((needle) => normalized.includes(needle));
+}
+
+function formatSafeMetadataValue(value: unknown) {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return String(value);
+  return "";
+}
+
+function safeVaultMetadataEntries(metadata?: Record<string, unknown>) {
+  if (!metadata) return [];
+  return Object.entries(metadata)
+    .filter(([key, value]) => !isSensitiveMetadataKey(key) && formatSafeMetadataValue(value))
+    .slice(0, 6)
+    .map(([key, value]) => `${key}: ${formatSafeMetadataValue(value)}`);
+}
+
+function sanitizeVaultArtifact(artifact: SupplierVaultArtifact) {
+  const safeMetadata = Object.fromEntries(
+    safeVaultMetadataEntries(artifact.metadata).map((entry) => {
+      const [key, ...rest] = entry.split(": ");
+      return [key, rest.join(": ")];
+    }),
+  );
+  return {
+    id: artifact.id,
+    bid: artifact.bid,
+    resource_type: artifact.resource_type,
+    artifact_type: artifact.artifact_type,
+    content_hash: artifact.content_hash,
+    mime_type: artifact.mime_type,
+    status: artifact.status,
+    created_at: artifact.created_at,
+    metadata: Object.keys(safeMetadata).length ? safeMetadata : undefined,
+  };
+}
+
+function safeResponseForPath(path: string, data: unknown) {
+  if (path.includes("/export-pack") && data && typeof data === "object") {
+    const record = data as SupplierPackResponse;
+    if (record.encrypted_pack || record.packs || record.order) return safePackSummary(record);
+  }
+  if (path.includes("/vault") && data && typeof data === "object") {
+    const record = data as { artifacts?: SupplierVaultArtifact[] };
+    return {
+      ...record,
+      artifacts: Array.isArray(record.artifacts) ? record.artifacts.map(sanitizeVaultArtifact) : [],
+    };
+  }
+  return data;
+}
+
+function normalStatus(value?: string | null) {
+  return (value || "pending").toLowerCase();
+}
+
+function hasExportEvidence(order: SupplierOrder | undefined, artifacts: SupplierVaultArtifact[], sessionPack: SupplierPackResponse | null) {
+  if (sessionPack?.encrypted_pack) return true;
+  if (order?.pack_exported_at || normalStatus(order?.pack_status).includes("export")) return true;
+  return artifacts.some((artifact) => {
+    const kind = `${artifact.artifact_type || ""} ${artifact.resource_type || ""}`.toLowerCase();
+    return kind.includes("pack") || kind.includes("factory") || kind.includes("encrypted_pack");
+  });
+}
+
 export function SupplierOrderConsole({
   currentRole = "tenant-admin",
   currentPermissions = [],
@@ -226,13 +313,21 @@ export function SupplierOrderConsole({
   const isSuperAdmin = normalizedRole === "super-admin";
   const isSecurityOperator = normalizedRole === "security-operator";
   const canCreateOrder = isSuperAdmin
-    || hasPermission(currentPermissions, "supplier:write")
+    || isSecurityOperator
+    || hasScopedPermission(currentPermissions, "supplier:write");
+  const canManageManifest = isSuperAdmin
+    || isSecurityOperator
+    || hasPermission(currentPermissions, "supplier:manifest")
     || hasPermission(currentPermissions, "batches:write");
   const canRunQa = isSuperAdmin
     || hasPermission(currentPermissions, "supplier:qa")
     || hasPermission(currentPermissions, "batches:qa")
     || hasPermission(currentPermissions, "batches:write");
   const canExportPack = isSuperAdmin || isSecurityOperator || hasScopedPermission(currentPermissions, "supplier:export_pack");
+  const canActivateTags = isSuperAdmin
+    || isSecurityOperator
+    || hasPermission(currentPermissions, "supplier:activate")
+    || hasPermission(currentPermissions, "batches:write");
 
   const [tenantSlug, setTenantSlug] = useState(sessionTenantSlug || "");
   const [customerSlug, setCustomerSlug] = useState("");
@@ -257,6 +352,7 @@ export function SupplierOrderConsole({
   const [qaTtstatusChecked, setQaTtstatusChecked] = useState(false);
   const [orders, setOrders] = useState<SupplierOrder[]>([]);
   const [packPassword, setPackPassword] = useState("");
+  const [packPasswordVisible, setPackPasswordVisible] = useState(false);
   const [vaultArtifacts, setVaultArtifacts] = useState<SupplierVaultArtifact[]>([]);
   const [manifestCsv, setManifestCsv] = useState("");
   const [manifestResult, setManifestResult] = useState<ManifestImportResponse | null>(null);
@@ -271,13 +367,6 @@ export function SupplierOrderConsole({
   const activeCarrierProfile = created?.order?.carrier_profile_code || carrierProfileCode;
   const requiresTtstatus = activeCarrierProfile === "ntag424_dna_tt";
   const manifestRows = useMemo(() => countManifestRows(manifestCsv), [manifestCsv]);
-  const canImportManifest = Boolean(selectedOrderId && qaBid.trim() && manifestCsv.trim());
-  const canActivateSubBatch = Boolean(
-    selectedOrderId
-    && qaBid.trim()
-    && selectedSubBatch?.manifest_status === "imported"
-    && selectedSubBatch?.qa_status === "passed",
-  );
   const qaUrls = useMemo(
     () => qaSampleUrls
       .split(/[\n,]+/)
@@ -285,7 +374,97 @@ export function SupplierOrderConsole({
       .filter((value) => /^https?:\/\//i.test(value) && !/[<>]/.test(value)),
     [qaSampleUrls],
   );
-  const qaReadyToPass = Boolean(selectedOrderId && qaBid.trim() && qaUrls.length && qaReplayChecked && (!requiresTtstatus || qaTtstatusChecked));
+  const packAlreadyExported = hasExportEvidence(created?.order, vaultArtifacts, pack);
+  const totalQuantityValue = Number(totalQuantity);
+  const subBatchSizeValue = Number(subBatchSize);
+  const createOrderBlockReason = !canCreateOrder
+    ? "Solo superadmin, security operator o supplier:write puede crear un Supplier Order."
+    : !tenantSlug.trim()
+      ? "Falta tenant slug."
+      : !orderName.trim() && !baseBatchId.trim()
+        ? "Falta order name o base batch ID."
+        : !Number.isFinite(totalQuantityValue) || totalQuantityValue <= 0
+          ? "Cantidad total invalida."
+          : !Number.isFinite(subBatchSizeValue) || subBatchSizeValue <= 0
+            ? "Tamano de sub-batch invalido."
+            : subBatchSizeValue > totalQuantityValue
+              ? "El sub-batch no puede superar la cantidad total."
+              : "";
+  const manifestBlockReason = !canManageManifest
+    ? "Tu perfil no puede importar manifiestos."
+    : !selectedOrderId
+      ? "Primero selecciona un Supplier Order."
+      : !qaBid.trim()
+        ? "Selecciona un BID."
+        : !selectedSubBatch
+          ? "El BID no pertenece al Supplier Order seleccionado."
+          : normalStatus(selectedSubBatch.manifest_status) === "imported"
+            ? "Este sub-batch ya tiene manifiesto importado. Las correcciones deben auditarse desde backend."
+            : !manifestCsv.trim()
+              ? "Pega el CSV/TXT recibido del proveedor."
+              : "";
+  const activationBlockReason = !canActivateTags
+    ? "Tu perfil no puede activar tags."
+    : !selectedOrderId
+      ? "Primero selecciona un Supplier Order."
+      : !qaBid.trim()
+        ? "Selecciona un BID."
+        : !selectedSubBatch
+          ? "El BID no pertenece al Supplier Order seleccionado."
+          : normalStatus(selectedSubBatch.manifest_status) !== "imported"
+            ? "Falta manifiesto importado."
+            : normalStatus(selectedSubBatch.qa_status) !== "passed"
+              ? "Falta QA aprobado."
+              : "";
+  const qaPassBlockReason = !canRunQa
+    ? "Tu perfil no puede aprobar QA."
+    : !selectedOrderId
+      ? "Primero selecciona un Supplier Order."
+      : !qaBid.trim()
+        ? "Selecciona un BID."
+        : !selectedSubBatch
+          ? "El BID no pertenece al Supplier Order seleccionado."
+          : normalStatus(selectedSubBatch.manifest_status) !== "imported"
+            ? "Importa el manifiesto antes de aprobar QA."
+            : !qaUrls.length
+              ? "Agrega al menos una URL real escaneada."
+              : !qaReplayChecked
+                ? "Confirma replay verificado."
+                : requiresTtstatus && !qaTtstatusChecked
+                  ? "Confirma TTStatus para TagTamper."
+                  : "";
+  const qaRejectBlockReason = !canRunQa
+    ? "Tu perfil no puede rechazar QA."
+    : !selectedOrderId
+      ? "Primero selecciona un Supplier Order."
+      : !qaBid.trim()
+        ? "Selecciona un BID."
+        : "";
+  const exportPackBlockReason = !canExportPack
+    ? "Solo superadmin, security operator o supplier:export_pack puede exportar el pack."
+    : !selectedOrderId
+      ? "Primero selecciona un Supplier Order."
+      : packAlreadyExported
+        ? "Pack ya exportado o con evidencia en Vault."
+        : "";
+  const canImportManifest = Boolean(!pending && !manifestBlockReason);
+  const canActivateSubBatch = Boolean(!pending && !activationBlockReason);
+  const canPassQa = Boolean(!pending && !qaPassBlockReason);
+  const canRejectQa = Boolean(!pending && !qaRejectBlockReason);
+  const canExportCurrentPack = Boolean(!pending && !exportPackBlockReason);
+  const nextAction = !selectedOrderId
+    ? "Crea o selecciona un Supplier Order."
+    : !selectedSubBatch
+      ? "Selecciona un sub-batch del pedido."
+      : !packAlreadyExported && canExportPack
+        ? "Exporta el pack cifrado una sola vez y entrega la clave por canal separado."
+        : normalStatus(selectedSubBatch.manifest_status) !== "imported"
+          ? "Valida el manifiesto con dry-run y despues importalo."
+          : normalStatus(selectedSubBatch.qa_status) !== "passed"
+            ? "Completa QA con muestra real, replay y TTStatus si aplica."
+            : normalStatus(selectedSubBatch.status).includes("activated")
+              ? "Sub-batch activo. Revisa Vault y evidencias."
+              : "Activacion habilitada: ejecuta activate-all o define un limite.";
 
   async function run(path: string, init?: RequestInit) {
     const result = await fetch(path, {
@@ -300,7 +479,7 @@ export function SupplierOrderConsole({
     } catch {
       data = { raw: text };
     }
-    setResponse(asJson(data));
+    setResponse(asJson(safeResponseForPath(path, data)));
     if (!result.ok || (data && typeof data === "object" && (data as { ok?: unknown }).ok === false)) {
       throw new Error(formatError(data, result.statusText));
     }
@@ -322,8 +501,8 @@ export function SupplierOrderConsole({
   }
 
   async function createOrder() {
-    if (!canCreateOrder) {
-      setStatus("Tu perfil no puede crear pedidos de fábrica. Pedí a un superadmin o a un operador con permiso de lotes.");
+    if (createOrderBlockReason) {
+      setStatus(createOrderBlockReason);
       return;
     }
     setPending(true);
@@ -357,6 +536,7 @@ export function SupplierOrderConsole({
       setManifestResult(null);
       setActivationLimit("");
       setPackPassword("");
+      setPackPasswordVisible(false);
       setStatus(`Pedido creado: ${data.sub_batches?.length || 0} sub-batches con fingerprints, llaves cifradas y sin KMS expuesta.`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "No se pudo crear el pedido.");
@@ -383,7 +563,7 @@ export function SupplierOrderConsole({
     if (!orderId) return;
     const result = await fetch(`/api/admin/supplier-orders/${encodeURIComponent(orderId)}/vault`, { cache: "no-store" });
     const data = await result.json().catch(() => ({}));
-    setResponse(asJson(data));
+    setResponse(asJson(safeResponseForPath(`/api/admin/supplier-orders/${encodeURIComponent(orderId)}/vault`, data)));
     if (!result.ok || (data && typeof data === "object" && (data as { ok?: unknown }).ok === false)) {
       throw new Error(formatError(data, result.statusText || "No se pudo cargar Tenant Vault."));
     }
@@ -400,9 +580,14 @@ export function SupplierOrderConsole({
       setStatus("Primero crea o selecciona un Supplier Order.");
       return;
     }
+    if (packAlreadyExported) {
+      setStatus("Pack bloqueado: este pedido ya tiene evidencia de export. Para reemitir hace falta rotar lote o un override auditado del backend.");
+      return;
+    }
     const effectivePassword = packPassword.trim()
       || makeLocalPackPassword(created?.order?.customer_slug || customerSlug, created?.order?.tenant_slug || tenantSlug);
     setPackPassword(effectivePassword);
+    setPackPasswordVisible(false);
     setPending(true);
     setStatus("Generando ZIP cifrado con TXT/JSON/PDF/checksums por sub-batch. La API no devuelve el password.");
     try {
@@ -422,12 +607,8 @@ export function SupplierOrderConsole({
   }
 
   async function importManifest(dryRun: boolean) {
-    if (!selectedOrderId || !qaBid.trim()) {
-      setStatus("Seleccioná un Supplier Order y un BID antes de importar manifiesto.");
-      return;
-    }
-    if (!manifestCsv.trim()) {
-      setStatus("Pegá el CSV/TXT de fábrica antes de validar el manifiesto.");
+    if (manifestBlockReason) {
+      setStatus(manifestBlockReason);
       return;
     }
     setPending(true);
@@ -461,12 +642,8 @@ export function SupplierOrderConsole({
   }
 
   async function activateSubBatch() {
-    if (!selectedOrderId || !qaBid.trim()) {
-      setStatus("Seleccioná un Supplier Order y un BID antes de activar.");
-      return;
-    }
-    if (!canActivateSubBatch) {
-      setStatus("Activación bloqueada: el sub-batch necesita manifiesto importado y QA aprobado.");
+    if (activationBlockReason) {
+      setStatus(`Activacion bloqueada: ${activationBlockReason}`);
       return;
     }
     const limit = Math.max(0, Math.trunc(Number(activationLimit || 0)));
@@ -499,10 +676,8 @@ export function SupplierOrderConsole({
       setStatus("Falta order y BID para QA.");
       return;
     }
-    if (passed && !qaReadyToPass) {
-      setStatus(requiresTtstatus
-        ? "Para aprobar QA hace falta una muestra real del carrier, replay verificado y TTStatus validado."
-        : "Para aprobar QA hace falta una muestra real del carrier y replay verificado.");
+    if (passed && qaPassBlockReason) {
+      setStatus(qaPassBlockReason);
       return;
     }
     setPending(true);
@@ -556,6 +731,7 @@ export function SupplierOrderConsole({
     setManifestResult(null);
     setActivationLimit("");
     setPackPassword("");
+    setPackPasswordVisible(false);
     setStatus(`Pedido seleccionado: ${order.order_name || order.id}. ${subBatchesFromOrder.length} sub-batches disponibles.`);
     void loadVaultArtifacts(order.id).catch((error) => {
       setStatus(error instanceof Error ? error.message : "No se pudo cargar Tenant Vault.");
@@ -571,6 +747,22 @@ export function SupplierOrderConsole({
           <p className="mt-2 text-sm leading-6 text-slate-300">
             Crea sub-batches, genera credenciales por lote, las guarda cifradas, exporta pack de fábrica solo para superadmin y bloquea activación hasta manifest + QA.
           </p>
+          <div className="mt-4 grid gap-2 text-xs sm:grid-cols-2">
+            <div className="rounded-xl border border-white/10 bg-slate-950/60 p-3 text-slate-300">
+              <span className="flex items-center gap-2 font-black uppercase tracking-[0.14em] text-cyan-100">
+                <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+                Perfil activo
+              </span>
+              <span className="mt-1 block text-slate-400">{normalizedRole || "sin rol"} / {currentPermissions.length ? currentPermissions.join(", ") : "sin permisos explicitos"}</span>
+            </div>
+            <div className="rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3 text-emerald-50">
+              <span className="flex items-center gap-2 font-black uppercase tracking-[0.14em] text-emerald-100">
+                <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                Proxima accion
+              </span>
+              <span className="mt-1 block">{nextAction}</span>
+            </div>
+          </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <Field label="Tenant slug" value={tenantSlug} onChange={setTenantSlug} placeholder="bodega-balmec o syngenta-ar" />
             <Field label="Customer slug" value={customerSlug} onChange={setCustomerSlug} placeholder="opcional, por defecto tenant" />
@@ -599,16 +791,23 @@ export function SupplierOrderConsole({
             placeholder="Notas: region piloto, proveedor, empaque, requisitos de QC..."
           />
           <div className="mt-4 flex flex-wrap gap-3">
-            <Button disabled={pending || !canCreateOrder} onClick={() => void createOrder()}>{pending ? "Procesando..." : "Crear Supplier Order"}</Button>
-            <Button variant="secondary" disabled={pending} onClick={() => void refreshOrders()}>Ver pedidos</Button>
+            <Button className="gap-2" disabled={pending || Boolean(createOrderBlockReason)} title={createOrderBlockReason || "Crear orden y sub-batches"} onClick={() => void createOrder()}>
+              <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+              {pending ? "Procesando..." : "Crear Supplier Order"}
+            </Button>
+            <Button className="gap-2" variant="secondary" disabled={pending} onClick={() => void refreshOrders()}>
+              <FileCheck2 className="h-4 w-4" aria-hidden="true" />
+              Ver pedidos
+            </Button>
           </div>
+          {createOrderBlockReason ? <p className="mt-2 text-xs text-amber-100">{createOrderBlockReason}</p> : null}
           <p className="mt-4 rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-3 text-sm leading-6 text-cyan-50">{status}</p>
         </div>
 
         <div className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-4">
             <Metric label="Sub-batches" value={String(subBatches.length)} />
-            <Metric label="Pack" value={pack?.packs?.length ? "exportado" : "pendiente"} />
+            <Metric label="Pack" value={packAlreadyExported ? "exportado" : "pendiente"} />
             <Metric label="Manifiesto" value={selectedSubBatch?.manifest_status || "pendiente"} />
             <Metric label="QA BID" value={qaBid || "pendiente"} />
           </div>
@@ -684,7 +883,10 @@ export function SupplierOrderConsole({
                     variant="secondary"
                     type="button"
                     disabled={!canExportPack}
-                    onClick={() => setPackPassword(makeLocalPackPassword(created?.order?.customer_slug || customerSlug, created?.order?.tenant_slug || tenantSlug))}
+                    onClick={() => {
+                      setPackPassword(makeLocalPackPassword(created?.order?.customer_slug || customerSlug, created?.order?.tenant_slug || tenantSlug));
+                      setPackPasswordVisible(false);
+                    }}
                   >
                     Generar
                   </Button>
@@ -695,15 +897,37 @@ export function SupplierOrderConsole({
               </p>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-              <Button disabled={pending || !selectedOrderId || !canExportPack} onClick={() => void exportPack()}>Exportar pack</Button>
-              <Button variant="secondary" disabled={!pack?.encrypted_pack || !canExportPack} onClick={downloadEncryptedPack}>Descargar ZIP cifrado</Button>
-              <Button variant="secondary" disabled={!pack || !canExportPack} onClick={downloadSafeSummary}>Resumen seguro</Button>
-              <Button variant="secondary" disabled={pending || !selectedOrderId} onClick={() => void loadVaultArtifacts(selectedOrderId).catch((error) => setStatus(error instanceof Error ? error.message : "No se pudo cargar Tenant Vault."))}>Ver Tenant Vault</Button>
+              <Button className="gap-2" disabled={!canExportCurrentPack} title={exportPackBlockReason || "Exportar pack cifrado una sola vez"} onClick={() => void exportPack()}>
+                <LockKeyhole className="h-4 w-4" aria-hidden="true" />
+                Exportar pack
+              </Button>
+              <Button className="gap-2" variant="secondary" disabled={!pack?.encrypted_pack || !canExportPack} onClick={downloadEncryptedPack}>
+                <Download className="h-4 w-4" aria-hidden="true" />
+                Descargar ZIP cifrado
+              </Button>
+              <Button className="gap-2" variant="secondary" disabled={!pack || !canExportPack} onClick={downloadSafeSummary}>
+                <FileCheck2 className="h-4 w-4" aria-hidden="true" />
+                Resumen seguro
+              </Button>
+              <Button className="gap-2" variant="secondary" disabled={pending || !selectedOrderId} onClick={() => void loadVaultArtifacts(selectedOrderId).catch((error) => setStatus(error instanceof Error ? error.message : "No se pudo cargar Tenant Vault."))}>
+                <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+                Ver Tenant Vault
+              </Button>
             </div>
+            {exportPackBlockReason ? <p className="mt-2 text-xs leading-5 text-amber-100">{exportPackBlockReason}</p> : null}
             {packPassword ? (
-              <p className="mt-3 rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 font-mono text-xs text-white">
-                Password local: {packPassword}
-              </p>
+              <div className="mt-3 flex flex-col gap-2 rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-xs text-white sm:flex-row sm:items-center sm:justify-between">
+                <p className="min-w-0 font-mono">
+                  Password local: <span className="break-all">{packPasswordVisible ? packPassword : "********************"}</span>
+                </p>
+                <button
+                  type="button"
+                  className="shrink-0 rounded-full border border-cyan-300/25 px-3 py-1 font-black uppercase tracking-[0.12em] text-cyan-100 transition hover:border-cyan-200"
+                  onClick={() => setPackPasswordVisible((value) => !value)}
+                >
+                  {packPasswordVisible ? "Ocultar" : "Mostrar"}
+                </button>
+              </div>
             ) : null}
             {pack?.encrypted_pack?.envelope_sha256 ? (
               <div className="mt-3 space-y-1 rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2 text-[11px] text-slate-300">
@@ -735,8 +959,8 @@ export function SupplierOrderConsole({
                     </div>
                     <p className="mt-1 font-mono text-[11px] text-cyan-100">{artifact.content_hash || "hash pendiente"}</p>
                     <p className="mt-1 text-slate-400">{artifact.mime_type || "mime n/a"} / {artifact.status || "active"} / {artifact.created_at ? new Date(artifact.created_at).toLocaleString("es-AR") : "sin fecha"}</p>
-                    {artifact.metadata ? (
-                      <p className="mt-1 truncate text-slate-500">{Object.entries(artifact.metadata).map(([key, value]) => `${key}: ${String(value)}`).join(" · ")}</p>
+                    {safeVaultMetadataEntries(artifact.metadata).length ? (
+                      <p className="mt-1 truncate text-slate-500">{safeVaultMetadataEntries(artifact.metadata).join(" / ")}</p>
                     ) : null}
                   </div>
                 ))}
@@ -787,10 +1011,27 @@ export function SupplierOrderConsole({
             </div>
 
             <div className="mt-3 flex flex-wrap gap-2">
-              <Button variant="secondary" disabled={pending || !canImportManifest} onClick={() => void importManifest(true)}>Validar sin importar</Button>
-              <Button disabled={pending || !canImportManifest} onClick={() => void importManifest(false)}>Importar manifiesto</Button>
-              <Button disabled={pending || !canActivateSubBatch} onClick={() => void activateSubBatch()}>Activar sub-batch</Button>
+              <Button className="gap-2" variant="secondary" disabled={!canImportManifest} title={manifestBlockReason || "Validar manifiesto sin escribir datos"} onClick={() => void importManifest(true)}>
+                <FileCheck2 className="h-4 w-4" aria-hidden="true" />
+                Validar sin importar
+              </Button>
+              <Button className="gap-2" disabled={!canImportManifest} title={manifestBlockReason || "Importar manifiesto auditado"} onClick={() => void importManifest(false)}>
+                <UploadCloud className="h-4 w-4" aria-hidden="true" />
+                Importar manifiesto
+              </Button>
+              <Button className="gap-2" disabled={!canActivateSubBatch} title={activationBlockReason || "Activar sub-batch"} onClick={() => void activateSubBatch()}>
+                <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                Activar sub-batch
+              </Button>
             </div>
+            {(manifestBlockReason || activationBlockReason) ? (
+              <p className="mt-2 text-xs leading-5 text-sky-100">
+                {manifestBlockReason || activationBlockReason}
+              </p>
+            ) : null}
+            <p className="mt-2 rounded-xl border border-amber-300/20 bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-100">
+              Override auditado: no hay endpoint/payload en el cliente actual. Backend requerido: activar con reason, approver, snapshot de manifest/QA gate y evidencia de auditoria.
+            </p>
 
             {manifestResult ? (
               <div className="mt-3 rounded-xl border border-white/10 bg-slate-950/60 p-3 text-xs text-slate-300">
@@ -848,9 +1089,18 @@ export function SupplierOrderConsole({
               </label>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-              <Button disabled={pending || !qaReadyToPass || !canRunQa} onClick={() => void markQa(true)}>Aprobar QA</Button>
-              <Button variant="secondary" disabled={pending || !selectedOrderId || !qaBid.trim() || !canRunQa} onClick={() => void markQa(false)}>Rechazar QA</Button>
+              <Button className="gap-2" disabled={!canPassQa} title={qaPassBlockReason || "Aprobar QA con evidencia"} onClick={() => void markQa(true)}>
+                <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                Aprobar QA
+              </Button>
+              <Button className="gap-2" variant="secondary" disabled={!canRejectQa} title={qaRejectBlockReason || "Rechazar QA"} onClick={() => void markQa(false)}>
+                <FileCheck2 className="h-4 w-4" aria-hidden="true" />
+                Rechazar QA
+              </Button>
             </div>
+            {(qaPassBlockReason || qaRejectBlockReason) ? (
+              <p className="mt-2 text-xs leading-5 text-emerald-100">{qaPassBlockReason || qaRejectBlockReason}</p>
+            ) : null}
             <p className="mt-3 text-xs leading-5 text-slate-400">
               Carrier activo: <span className="font-mono text-cyan-100">{activeCarrierProfile}</span>. {requiresTtstatus ? "El backend exige TTStatus además de replay." : "El backend exige muestra real y replay/control equivalente."}
             </p>

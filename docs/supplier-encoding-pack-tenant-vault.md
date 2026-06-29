@@ -10,22 +10,22 @@ The factory receives only the materials required to encode a specific sub-batch:
 - `order_id` and `batch_id`.
 - `sub_batch_id` / `bid`.
 - Chip model and SDM/TagTamper profile.
-- `K_META` and `K_FILE` for that sub-batch only.
-- URL template.
+- Per-sub-batch encoding keys, delivered only through the encrypted pack.
+- URL template or route template, redacted in public copy.
 - Manifest return format.
 - QA sample count and acceptance criteria.
 
 The factory never receives:
 
-- `KMS_MASTER_KEY_HEX`.
-- `DATABASE_URL`.
+- Master keys.
+- Database URLs.
 - Vercel, database, admin, GitHub or cloud tokens.
 - Polygon minter private keys.
 - Executor secrets.
 - Consumer PII.
 - Tenant commercial contracts, margins or private routes.
 
-Use `K_META` and `K_FILE` in supplier-facing copy. Internally the backend may store those values as encrypted per-batch or per-sub-batch key ciphertexts, but the supplier should not see KMS terminology or database implementation details.
+Use generic labels such as "sub-batch encoding keys" in public and tenant-facing copy. The actual key field names and values belong only in the encrypted supplier pack and secure backend logs; the supplier should not see KMS terminology or database implementation details.
 
 ## Why sub-batches matter
 
@@ -37,8 +37,8 @@ Each sub-batch must have its own encoding scope:
 | --- | --- |
 | `order_id` | Commercial/operational order across one supplier run |
 | `batch_id` | Tenant product batch or campaign |
-| `sub_batch_id` / `bid` | Exact encoding scope used by `/sun` |
-| `K_META` / `K_FILE` | AES-128 keys for that sub-batch |
+| `sub_batch_id` / `bid` | Exact encoding scope used by the validation service |
+| sub-batch encoding keys | AES-128 keys for that sub-batch, redacted in public docs |
 | manifest | UID allowlist returned by supplier for that sub-batch |
 
 Do not reuse one supplier key pack across unrelated tenants, products, cartons or supplier runs. If physical production is split, the encoding pack should make that split explicit.
@@ -63,11 +63,8 @@ The pack should be encrypted for transfer and treated as one-time operational ma
     "ttstatus_offset": 0,
     "ttstatus_length": 2
   },
-  "keys": {
-    "K_META": "<32_HEX_CHARS>",
-    "K_FILE": "<32_HEX_CHARS>"
-  },
-  "url_template": "https://api.nexid.lat/sun?v=1&bid=NXD2606-A01-R001&picc_data=<PICC_DATA_DYNAMIC>&enc=<ENC_DYNAMIC>&cmac=<CMAC_DYNAMIC>",
+  "keys": "<REDACTED_SECURE_CHANNEL>",
+  "url_template": "<VALIDATION_URL_TEMPLATE_REDACTED>",
   "manifest_format": "sub_batch_id,bid,uid_hex,ic_type,roll_id,qc_status,timestamp",
   "qa": {
     "sample_count": 12,
@@ -78,7 +75,7 @@ The pack should be encrypted for transfer and treated as one-time operational ma
 
 Recommended transport controls:
 
-- Export from backend/admin flow only, not from a public browser form.
+- Export only from an authenticated backend operations flow, not from a public browser form.
 - Encrypt the ZIP or JSON before sending.
 - Share the archive and password/key through separate channels.
 - Record export time, exporter, supplier recipient and pack fingerprint.
@@ -98,11 +95,11 @@ The backend must validate:
 - `bid` exists and is unique.
 - Manifest rows belong to the expected tenant/order/sub-batch.
 - UID format is valid and not duplicated in the wrong scope.
-- Sample tags decode with the expected `K_META`/`K_FILE` and SDM profile.
+- Sample tags decode with the expected sub-batch encoding keys and SDM profile.
 - Replay checks fail as expected when a URL is reused.
 - TagTamper values match the configured profile when supported.
 
-If UID decode fails, inspect key/profile/layout first. The manifest cannot fix a wrong `K_META`, wrong `K_FILE`, changed PICCData layout or supplier programming drift.
+If UID decode fails, inspect key/profile/layout first. The manifest cannot fix wrong sub-batch keys, changed PICCData layout or supplier programming drift.
 
 ## Tenant Vault
 
@@ -122,9 +119,9 @@ Tenant Vault can show:
 
 Tenant Vault must not show:
 
-- Raw `K_META` or `K_FILE` after export.
-- `KMS_MASTER_KEY_HEX`.
-- `DATABASE_URL`.
+- Raw sub-batch encoding keys after export.
+- Master keys.
+- Database URLs.
 - Internal storage paths that reveal infrastructure.
 - Private keys, admin tokens or executor secrets.
 - Consumer PII.
@@ -148,7 +145,7 @@ valid claim -> policy approval -> Polygon mint/transfer -> tx_hash/token_id
 
 ## Approved language
 
-- "The supplier receives K_META and K_FILE for each authorized sub-batch only."
+- "The supplier receives sub-batch encoding keys through an encrypted pack for the authorized scope only."
 - "Tenant Vault exposes evidence, hashes, manifests and QA status, not infrastructure secrets."
 - "Polygon is used for ownership, NFT/certificate, claim and transfer events."
 - "IOTA can be enabled as an optional proof layer for hashes, Merkle roots, DPP and logistics evidence."
@@ -157,7 +154,7 @@ valid claim -> policy approval -> Polygon mint/transfer -> tx_hash/token_id
 ## Language to avoid
 
 - "The supplier receives KMS access."
-- "Send DATABASE_URL to the factory."
+- "Send database URLs to the factory."
 - "Every tap is anchored on-chain."
 - "Formal Polygon/IOTA alliance" unless there is a public signed agreement.
 - "Free network/RPC/custody proof."

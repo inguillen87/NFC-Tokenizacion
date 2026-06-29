@@ -27,14 +27,14 @@ Activar este flujo:
 3. Si el tap es valido, fresco y elegible por politica, nexID crea o procesa una solicitud de tokenizacion.
 4. El backend firma una transaccion en Polygon Amoy.
 5. El producto queda asociado a un token/certificado con `tx_hash`, `token_id`, red, contrato y metadata.
-6. El usuario ve el estado en `/sun`, portal consumidor, admin tenant y superadmin.
+6. El usuario ve el estado en el passport/portal autorizado y los equipos internos lo auditan en consola privada.
 
 ## Estado actual verificado
 
 - `tsc` API, web y dashboard: OK.
 - `qa-static`: OK.
 - Tests SUN/TT: 31/31 OK.
-- `http://127.0.0.1:3000/sun`: 200 OK.
+- Passport local: 200 OK en entorno de desarrollo.
 - Contrato disponible: `apps/api/contracts/NexidTraceabilityNFT.sol`.
 - Scripts disponibles:
   - `npm run contracts:compile`
@@ -46,27 +46,17 @@ Activar este flujo:
   - minter local backend: `TOKENIZATION_USE_LOCAL_MINTER=true`
   - executor externo futuro: `TOKENIZATION_EXECUTOR_URL` + `TOKENIZATION_EXECUTOR_SECRET`
 - Executor separado incluido: `apps/executor`
-- Piloto Amoy actual:
-  - RPC: `https://polygon-amoy.g.alchemy.com/v2/lkdR5ChJ14TarIAHeZKxj`
-  - Owner/minter/recipient: `0x644c5D77a34182Db01257bC4C469B01850bc6B2d`
-  - Contrato: `0x673CAE3D79f825bba9cfb2096184c295A5C9Eb4C`
-  - Mint manual probado: `0x15dc4cb688eae448d0bfd8582b3fe8d5cb8003bc682c440114d10ea4a4645679`
+- Piloto Amoy/sandbox:
+  - RPC: `<POLYGON_AMOY_RPC_URL_REDACTED>`
+  - Owner/minter/recipient: `<POLYGON_WALLET_ADDRESS_REDACTED>`
+  - Contrato: `<POLYGON_CONTRACT_ADDRESS_REDACTED>`
+  - Mint manual probado: `<POLYGON_TX_HASH_REDACTED>`
 
 ## Links que vas a abrir
 
 Usa estos links como tablero de trabajo:
 
-- MetaMask: https://metamask.io/
-- Guia MetaMask para agregar red custom: https://support.metamask.io/configure/networks/how-to-add-a-custom-network-rpc/
-- Polygon docs: https://docs.polygon.technology/
-- Polygon Amoy explorer: https://amoy.polygonscan.com/
-- Alchemy dashboard: https://dashboard.alchemy.com/
-- Alchemy Polygon Amoy faucet: https://www.alchemy.com/faucets/polygon-amoy
-- QuickNode Polygon Amoy faucet: https://faucet.quicknode.com/polygon/amoy
-- Infura dashboard: https://app.infura.io/
-- QuickNode dashboard: https://dashboard.quicknode.com/
-- Vercel dashboard: https://vercel.com/dashboard
-- Vercel environment variables docs: https://vercel.com/docs/environment-variables
+- MetaMask, Polygon, RPC provider and Vercel dashboards. Do not paste account-specific URLs, RPC keys or project links into public docs.
 
 ## Datos de red Polygon Amoy
 
@@ -81,7 +71,7 @@ Explorer: https://amoy.polygonscan.com/
 RPC publico de referencia: https://rpc-amoy.polygon.technology/
 ```
 
-Para produccion de demo/piloto conviene usar RPC propio de Alchemy, QuickNode, Infura o similar. El RPC publico sirve para pruebas, pero puede rate-limitear o fallar.
+Para sandbox/piloto conviene usar RPC propio de Alchemy, QuickNode, Infura o similar, guardado solo como secreto de backend. El RPC publico sirve para pruebas temporales, pero puede rate-limitear o fallar.
 
 ## Cuentas que tenes que crear
 
@@ -120,8 +110,8 @@ Esta wallet recibe tokens cuando no hay una wallet real del usuario/tenant.
 
 Puede ser:
 
-- wallet demo de nexID
-- wallet del tenant `demobodega`
+- wallet sandbox de nexID
+- wallet del tenant sandbox
 - wallet temporal para pruebas
 
 Variable:
@@ -174,9 +164,7 @@ Despues cambialo por un RPC propio.
 
 Necesitas POL testnet en la wallet `nexID Amoy Minter`.
 
-1. Abrir faucet:
-   - https://www.alchemy.com/faucets/polygon-amoy
-   - o https://faucet.quicknode.com/polygon/amoy
+1. Abrir un faucet Polygon Amoy confiable desde el navegador.
 2. Pegar address publica de `nexID Amoy Minter`.
 3. Solicitar fondos.
 4. Esperar unos minutos.
@@ -199,7 +187,7 @@ Si aparece un error tipo `Invalid ETH mainnet balance`, el faucet esta aplicando
 
 Opcion recomendada: Alchemy.
 
-1. Abrir https://dashboard.alchemy.com/
+1. Abrir el dashboard del proveedor RPC elegido.
 2. Crear una cuenta o entrar.
 3. Crear una app nueva.
 4. Seleccionar:
@@ -214,7 +202,7 @@ Network: Polygon Amoy
 Ejemplo:
 
 ```txt
-https://polygon-amoy.g.alchemy.com/v2/TU_API_KEY
+https://polygon-amoy.g.alchemy.com/v2/<RPC_API_KEY>
 ```
 
 Tambien puede ser QuickNode o Infura. Lo importante es que sea RPC de Polygon Amoy y que responda `chainId 80002`.
@@ -259,7 +247,7 @@ cd C:\Users\guill\OneDrive\Documentos\GitHub\NFC-Tokenizacion\apps\api
 Setear variables solo en esa terminal:
 
 ```powershell
-$env:POLYGON_RPC_URL="https://polygon-amoy.g.alchemy.com/v2/TU_API_KEY"
+$env:POLYGON_RPC_URL="https://polygon-amoy.g.alchemy.com/v2/<RPC_API_KEY>"
 $env:POLYGON_MINTER_PRIVATE_KEY="0xPRIVATE_KEY_DE_NEXID_AMOY_MINTER"
 $env:POLYGON_DEPLOY_OWNER="0xOWNER_DEL_CONTRATO"
 $env:POLYGON_MINTER_ADDRESS="0xADDRESS_PUBLICA_DE_NEXID_AMOY_MINTER"
@@ -291,17 +279,7 @@ https://amoy.polygonscan.com/address/0xCONTRATO_DESPLEGADO
 
 ## Paso 7 - Variables de entorno en Vercel/API
 
-Abrir:
-
-```txt
-https://vercel.com/dashboard
-```
-
-Entrar al proyecto de API que sirve:
-
-```txt
-https://api.nexid.lat
-```
+Abrir el dashboard del hosting y entrar al proyecto API correspondiente. No documentar dominios productivos ni project links en copy publico.
 
 Ir a:
 
@@ -317,7 +295,7 @@ SUN_AUTO_TOKENIZE_ON_VALID_TAP=true
 TOKENIZATION_USE_LOCAL_MINTER=true
 TOKENIZATION_UID_SALT=<random largo secreto>
 TOKENIZATION_METADATA_CID_PREFIX=nexid-metadata
-POLYGON_RPC_URL=https://polygon-amoy.g.alchemy.com/v2/TU_API_KEY
+POLYGON_RPC_URL=https://polygon-amoy.g.alchemy.com/v2/<RPC_API_KEY>
 POLYGON_MINTER_PRIVATE_KEY=0xPRIVATE_KEY_DE_NEXID_AMOY_MINTER
 POLYGON_MINTER_ADDRESS=0xADDRESS_PUBLICA_DE_NEXID_AMOY_MINTER
 POLYGON_CONTRACT_ADDRESS=0xCONTRATO_DESPLEGADO
@@ -452,7 +430,7 @@ Usar primero una sola etiqueta fisica.
 2. Abrir URL SUN generada, por ejemplo:
 
 ```txt
-https://api.nexid.lat/sun?v=1&bid=...&picc_data=...&enc=...&cmac=...
+<PASSPORT_VALIDATION_URL_REDACTED>
 ```
 
 3. Confirmar que la API valida:
@@ -464,7 +442,7 @@ tamper = estado correcto
 ```
 
 4. Confirmar que crea tokenizacion.
-5. Confirmar que `/sun` muestra:
+5. Confirmar que el passport muestra:
 
 ```txt
 SANDBOX_READY -> solo si esta en modo simulated
@@ -472,7 +450,7 @@ POLYGON_PENDING -> si esta en cola
 POLYGON_MINTED / ANCHORED -> si ya hay tx real
 ```
 
-6. Confirmar en admin/superadmin que aparece la solicitud.
+6. Confirmar en consola privada que aparece la solicitud.
 7. Abrir `tx_hash` en Amoy Polygonscan.
 
 ## Paso 12 - Test con las 10 etiquetas fisicas
@@ -497,7 +475,7 @@ Llevar una tabla de control:
 
 Despues de un tap valido:
 
-1. `/sun` debe mostrar passport, origen, trazabilidad, estado tamper y tokenizacion.
+1. El passport debe mostrar origen, trazabilidad, estado tamper y tokenizacion.
 2. El usuario puede tocar `Registrarme`.
 3. Se asocia el tap al portal consumidor.
 4. El portal muestra:
@@ -534,7 +512,7 @@ Checklist rapido:
 - Se crea solicitud de tokenizacion: OK.
 - Hay `tx_hash`: OK.
 - `tx_hash` abre en Amoy Polygonscan: OK.
-- `/sun` muestra tokenizacion real: OK.
+- Passport muestra tokenizacion real: OK.
 - Admin/superadmin muestran el evento: OK.
 
 ## Errores comunes
@@ -606,8 +584,8 @@ Campos recomendados:
   "name": "Gran Reserva Malbec - Digital Passport",
   "description": "nexID verified physical product passport.",
   "attributes": [
-    { "trait_type": "Tenant", "value": "demobodega" },
-    { "trait_type": "Batch", "value": "DEMO-BODEGA-0424" },
+    { "trait_type": "Tenant", "value": "tenant_public_ref" },
+    { "trait_type": "Batch", "value": "BATCH_PUBLIC_REF" },
     { "trait_type": "Security", "value": "NTAG 424 DNA TT" },
     { "trait_type": "Origin", "value": "Valle de Uco, Argentina" }
   ]
@@ -616,7 +594,7 @@ Campos recomendados:
 
 ## Camino premium despues del piloto
 
-Para demo con 10 tags, `TOKENIZATION_USE_LOCAL_MINTER=true` esta bien si la private key vive solo en Vercel API y la wallet es dedicada.
+Para sandbox con un lote controlado, `TOKENIZATION_USE_LOCAL_MINTER=true` puede aceptarse temporalmente si la private key vive solo en backend y la wallet es dedicada.
 
 Para produccion premium:
 
@@ -624,7 +602,7 @@ Para produccion premium:
 2. Usar:
 
 ```txt
-TOKENIZATION_EXECUTOR_URL=https://...
+TOKENIZATION_EXECUTOR_URL=<EXECUTOR_MINT_URL>
 TOKENIZATION_EXECUTOR_SECRET=...
 ```
 
@@ -644,7 +622,7 @@ Checklist para vos:
 3. Crear o elegir wallet recipient default.
 4. Conseguir POL testnet en Amoy para la minter.
 5. Crear RPC Amoy en Alchemy/QuickNode/Infura.
-6. Pasarme o cargar vos en Vercel:
+6. Cargar en el gestor de secretos del hosting:
    - RPC URL
    - private key minter
    - address publica de la minter
@@ -699,7 +677,7 @@ Auto tokenizacion: solo para lote piloto/allowlist; produccion debe usar politic
 Minter: wallet dedicada con gas testnet
 Privacidad: UID hash + salt
 Metadata: prefix sandbox primero, IPFS despues
-Recipient: wallet demo o tenant wallet
+Recipient: wallet sandbox o tenant wallet
 ```
 
 Cuando el piloto este estable, pasar a executor/KMS antes de mainnet.

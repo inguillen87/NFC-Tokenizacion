@@ -4,34 +4,34 @@ Este documento conecta lo que ya existe en el codigo con la capa de tokenizacion
 
 ## 1. Lo que ya existe para validar los tags
 
-El backend ya tiene una custodia de secretos por lote:
+El backend ya tiene una custodia de secretos por lote. En documentacion publica no se deben publicar nombres exactos ni valores de las claves de encoding:
 
 ```txt
-KMS_MASTER_KEY_HEX
-  -> cifra/descifra K_META y K_FILE de cada batch
+backend master key
+  -> cifra/descifra claves de encoding de cada batch
   -> valida SUN/SDM/CMAC server-side
   -> detecta UID, contador, replay, tamper y estado del tag
 ```
 
 En codigo:
 
-- `apps/api/src/lib/keys.ts`
-  - `KMS_MASTER_KEY_HEX` debe ser AES-256, 32 bytes / 64 hex chars.
-  - `encryptKey16()` guarda `K_META` y `K_FILE` cifradas con AES-256-GCM.
-  - `decryptKey16()` las descifra solo dentro del backend.
+- Key custody module:
+  - La master key debe ser AES-256, 32 bytes / 64 hex chars.
+  - Las claves de encoding se guardan cifradas con AES-256-GCM.
+  - Las claves se descifran solo dentro del backend.
 
-- `apps/api/src/app/admin/batches/register/route.ts`
-  - recibe/importa `k_meta_hex` y `k_file_hex`.
-  - guarda `meta_key_ct` y `file_key_ct`, no las keys planas.
+- Batch registration flow:
+  - Recibe/importa claves de encoding por canal privado.
+  - Guarda ciphertext, no claves planas.
 
-- `apps/api/src/lib/sun-service.ts`
+- SUN validation service:
   - busca el batch por `bid`.
-  - descifra `meta_key_ct` y `file_key_ct`.
+  - descifra claves de encoding.
   - llama `verifySun()`.
   - valida UID, contador, CMAC, allowlist, replay, tamper y eventos.
 
-- `apps/api/src/lib/crypto/sdm.ts`
-  - deriva session keys desde `K_FILE`, UID y contador.
+- SDM crypto module:
+  - deriva session keys desde la clave de archivo, UID y contador.
   - verifica CMAC.
   - descifra payload SDM.
 
@@ -39,7 +39,7 @@ Esto es la capa de autenticidad fisica. Es la fuente de verdad.
 
 ## 2. Que significa KMS aca
 
-En el codigo actual, `KMS_MASTER_KEY_HEX` funciona como una master key guardada en variables de entorno de backend. Conceptualmente es una envoltura tipo KMS: las keys de lote no quedan planas en DB.
+La master key de backend vive solo en variables de entorno privadas o en KMS. Conceptualmente es una envoltura tipo KMS: las keys de lote no quedan planas en DB.
 
 Mas adelante se puede migrar esa master key a un KMS real/cloud, pero la separacion logica ya esta:
 
@@ -47,7 +47,7 @@ Mas adelante se puede migrar esa master key a un KMS real/cloud, pero la separac
 DB guarda ciphertext
 Backend tiene master key
 Frontend nunca ve keys
-Dashboard no recibe K_META/K_FILE salvo en flujos controlados de alta/registro
+Dashboard no recibe claves de encoding salvo en flujos controlados de alta/registro, y nunca debe mostrarlas en copy publico
 ```
 
 ## 3. Que agrega blockchain
@@ -60,16 +60,15 @@ Tap valido y fresco
   -> policy engine decide si corresponde claim/tokenizacion/proof
   -> si corresponde, se crea tokenization_request
   -> se calcula chip_uid_hash = sha256(UID + TOKENIZATION_UID_SALT)
-  -> se mintea certificado en Polygon Amoy si hay ownership/claim
+  -> se emite certificado en Polygon Amoy si hay propiedad digital/claim
   -> si compliance lo requiere, se ancla hash o Merkle root en proof layer opcional
   -> se guarda tx_hash/token_id
 ```
 
 La cadena nunca debe recibir:
 
-- `K_META`
-- `K_FILE`
-- `KMS_MASTER_KEY_HEX`
+- Claves de encoding
+- Master keys
 - UID crudo
 - CMAC/ENC/PICC completos como secreto operativo
 
@@ -87,8 +86,8 @@ La cadena no recibe todos los taps. Los eventos DPP completos quedan en backend;
 
 | Capa | Secreto | Para que sirve | Donde vive |
 | --- | --- | --- | --- |
-| SUN validation | `KMS_MASTER_KEY_HEX` | Descifrar K_META/K_FILE y validar tags | API backend |
-| Per batch | `K_META`, `K_FILE` cifradas | Validar CMAC/SDM de cada lote | DB cifrada + API |
+| SUN validation | Backend master key | Descifrar claves de encoding y validar tags | API backend |
+| Per batch | Claves de encoding cifradas | Validar CMAC/SDM de cada lote | DB cifrada + API |
 | Blockchain pilot | `POLYGON_MINTER_PRIVATE_KEY` | Firmar mint Polygon Amoy | Executor o API local minter |
 | Blockchain premium | KMS/HSM/custody signer | Firmar tx sin private key exportable | Executor/KMS |
 
@@ -97,15 +96,15 @@ La cadena no recibe todos los taps. Los eventos DPP completos quedan en backend;
 Para los 10 tags reales de China:
 
 ```txt
-1. Batch ya existe con K_META/K_FILE cifradas.
-2. Tap real llega a /sun.
+1. Batch ya existe con claves de encoding cifradas.
+2. Tap real llega al servicio de validacion.
 3. API descifra keys solo en memoria.
 4. API valida CMAC, UID, counter, replay y tamper.
 5. Si es valido, fresco y elegible por politica de piloto, API crea request de tokenizacion.
 6. API calcula chip_uid_hash con TOKENIZATION_UID_SALT.
 7. API llama executor.
 8. Executor firma tx en Polygon Amoy con gas de testnet.
-9. API guarda tx_hash/token_id y lo muestra en /sun + portal + admin.
+9. API guarda tx_hash/token_id y lo muestra en passport/portal autorizado y consola privada.
 ```
 
 ## 6. Privacidad corregida
@@ -131,7 +130,7 @@ Modo testnet manana:
 API:
 TOKENIZATION_MODE=polygon
 TOKENIZATION_USE_LOCAL_MINTER=false
-TOKENIZATION_EXECUTOR_URL=https://executor.nexid.lat/mint
+TOKENIZATION_EXECUTOR_URL=<EXECUTOR_MINT_URL>
 TOKENIZATION_EXECUTOR_SECRET=<secreto>
 TOKENIZATION_UID_SALT=<salt>
 

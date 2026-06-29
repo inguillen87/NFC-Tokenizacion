@@ -7,6 +7,15 @@ import { sql } from '../../../../../lib/db';
 import { ensureSupplierOpsSchema } from '../../../../../lib/supplier-ops-schema';
 import { canActivateSupplierSubBatch } from '../../../../../lib/supplier-ops';
 import { hashEvidencePayload } from '../../../../../lib/proof-layer';
+import { logAuditEvent } from '../../../../../lib/audit-logger';
+
+function safeActor(req: Request) {
+  return req.headers.get('x-nexid-actor')
+    || req.headers.get('x-nexid-actor-id')
+    || req.headers.get('x-dashboard-user')
+    || req.headers.get('x-forwarded-user')
+    || 'unknown_admin';
+}
 
 export async function POST(req: Request, { params }: { params: Promise<{ bid: string }> }) {
   const auth = checkAdmin(req, ['super_admin', 'tenant_admin']);
@@ -17,14 +26,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const limit = Math.max(0, Math.trunc(Number(body.limit || 0)));
   const overrideReason = String(body.override_reason || body.overrideReason || '').trim();
-  if (overrideReason) {
-    return json({
-      ok: false,
-      reason: 'supplier_activation_override_disabled',
-      message: 'Industrial supplier batches cannot bypass manifest and QA gates. Fix the manifest, quantity or QA evidence instead of using override.',
-      bid,
-    }, 409);
-  }
+  const overrideBy = String(body.override_by || body.overrideBy || safeActor(req)).trim();
 
   const { forcedTenantSlug } = getAdminTenantScope(req);
   const batchRows = forcedTenantSlug
@@ -69,21 +71,26 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
     LIMIT 1
   `;
   const supplierSubBatch = supplierRows[0] || null;
+  let activationGate: ReturnType<typeof canActivateSupplierSubBatch> | null = null;
   if (supplierSubBatch) {
-    const gate = canActivateSupplierSubBatch({
+    activationGate = canActivateSupplierSubBatch({
       manifestStatus: supplierSubBatch.manifest_status,
       qaStatus: supplierSubBatch.qa_status,
       expectedQuantity: supplierSubBatch.expected_quantity,
       manifestCount: supplierSubBatch.manifest_count,
+      overrideReason,
+      overrideBy,
     });
-    if (!gate.ok) {
+    if (!activationGate.ok) {
       return json({
         ok: false,
-        reason: gate.reason,
-        message: 'Industrial supplier batch activation is blocked until manifest import, quantity match and QA approval are complete.',
+        reason: activationGate.reason,
+        message: activationGate.reason === 'supplier_activation_override_audit_required'
+          ? 'Activation override requires override_reason with at least 16 characters and override_by.'
+          : 'Industrial supplier batch activation is blocked until manifest import, quantity match and QA approval are complete.',
         bid,
-        expected: 'expected' in gate ? gate.expected : undefined,
-        received: 'received' in gate ? gate.received : undefined,
+        expected: 'expected' in activationGate ? activationGate.expected : undefined,
+        received: 'received' in activationGate ? activationGate.received : undefined,
       }, 409);
     }
   }
@@ -135,6 +142,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
         WHERE id = ${batch.id}
       `;
     }
+    const overrideAudit = activationGate?.ok === true && activationGate.override ? activationGate : null;
     const eventPayload = {
       supplier_order_id: supplierSubBatch.supplier_order_id,
       supplier_sub_batch_id: supplierSubBatch.id,
@@ -142,7 +150,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
       activated_tags: updated.length,
       remaining_inactive: remainingInactive,
       activation_complete: activationComplete,
-      override: false,
+      override: Boolean(overrideAudit),
+      override_reason: overrideAudit ? overrideAudit.overrideReason : null,
+      override_by: overrideAudit ? overrideAudit.overrideBy : null,
+      override_blocked_reasons: overrideAudit ? overrideAudit.blockedReasons : [],
     };
     const eventHash = hashEvidencePayload({
       tenantId: String(batch.tenant_id),
@@ -156,6 +167,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
       VALUES (${batch.tenant_id}, 'supplier_sub_batch', ${supplierSubBatch.id}, ${activationComplete ? 'batch_activated' : 'batch_partially_activated'}, ${JSON.stringify(eventPayload)}::jsonb, ${eventHash})
       ON CONFLICT (payload_hash) DO NOTHING
     `;
+    if (overrideAudit) {
+      await logAuditEvent({
+        actorId: null,
+        tenantId: String(batch.tenant_id),
+        action: 'supplier_activation_override_used',
+        resourceType: 'supplier_sub_batch',
+        resourceId: String(supplierSubBatch.id),
+        afterData: eventPayload,
+        userAgent: req.headers.get('user-agent'),
+        requestId: req.headers.get('x-request-id'),
+      });
+    }
   }
 
   return json({
@@ -169,7 +192,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
       qa_status: supplierSubBatch.qa_status,
       expected_quantity: Number(supplierSubBatch.expected_quantity || 0),
       manifest_count: Number(supplierSubBatch.manifest_count || 0),
-      override: false,
+      override: Boolean(overrideReason),
     } : null,
   });
 }

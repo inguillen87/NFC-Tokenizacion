@@ -205,8 +205,8 @@ export function PremiumTraceabilityGlobe({
   const defaultGlobeSize =
     variant === "hero"
       ? compact
-        ? { width: 560, height: 360 }
-        : { width: 660, height: 420 }
+        ? { width: 420, height: 260 }
+        : { width: 580, height: 360 }
       : variant === "panel"
         ? { width: 620, height: 390 }
       : compact
@@ -232,7 +232,7 @@ export function PremiumTraceabilityGlobe({
         </div>
       </div>
 
-      <div className="traceability-globe__stage flex justify-center items-center relative min-h-[350px]">
+      <div className="traceability-globe__stage flex justify-center items-center relative">
         <div className="absolute inset-0 flex justify-center items-center z-10 pointer-events-auto">
           <Globe3dMap
             theme="dark"

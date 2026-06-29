@@ -12,7 +12,7 @@ nexID valida productos fisicos con NFC criptografico y registra eventos DPP en s
 | --- | --- | --- | --- |
 | Backend nexID + DPP | Fuente de verdad operacional: valida SUN, replay, tamper, tenant, batch y policy | Estados resumidos, certificados visibles y auditoria autorizada | PII abierta, secretos, UID crudo o eventos internos completos |
 | Polygon ownership layer | Certificados NFT, claims, warranty transfer y titularidad digital controlada | `tx_hash`, `token_id`, contrato, red, `token_uri` sanitizado, `asset_ref` publico | Todos los taps, manifest completo, rutas logisticas, datos comerciales o PII |
-| IOTA proof layer opcional | Prueba externa para auditoria, DPP, logistica y compliance | Hashes, Merkle roots, checkpoints, proof envelopes minimizados | Ownership/NFT, PII, UID crudo, payload SUN completo o contratos comerciales |
+| IOTA proof layer opcional | Prueba externa para auditoria, DPP, logistica y compliance | Hashes, Merkle roots, checkpoints, proof envelopes minimizados | Propiedad digital/NFT, PII, UID crudo, payload SUN completo o contratos comerciales |
 
 ## Preguntas frecuentes
 
@@ -45,11 +45,11 @@ La pregunta que responde IOTA es: "esta evidencia existia y no fue modificada de
 
 ### IOTA reemplaza a Polygon?
 
-No. IOTA no reemplaza ownership/NFT/claim. Si el caso de uso es propiedad digital o certificado transferible, la capa sigue siendo Polygon. Si el caso de uso es evidencia, auditoria o logistica, IOTA puede complementar.
+No. IOTA no reemplaza propiedad digital, NFT ni claim. Si el caso de uso es propiedad digital o certificado transferible, la capa sigue siendo Polygon. Si el caso de uso es evidencia, auditoria o logistica, IOTA puede complementar.
 
 ### Se puede desactivar IOTA?
 
-Si. IOTA debe ser una capacidad configurable. Si esta apagado, nexID sigue validando NFC, mostrando DPP, registrando eventos y operando Polygon ownership si esta habilitado.
+Si. IOTA debe ser una capacidad configurable. Si esta apagado, nexID sigue validando NFC, mostrando DPP, registrando eventos y operando propiedad digital en Polygon si esta habilitada.
 
 ### Que datos se publican on-chain?
 
@@ -66,7 +66,7 @@ Solo datos publicos, minimizados o hashes:
 - PII de consumidores.
 - Emails, telefonos, documentos, direcciones o perfiles de compra.
 - UID crudo de chips.
-- `K_META`, `K_FILE`, `KMS_MASTER_KEY_HEX` o private keys.
+- Claves de encoding, master keys, database URLs o private keys.
 - Payload SUN completo.
 - Manifest completo de UIDs.
 - Contratos comerciales, precios, margenes, facturas o rutas logisticas completas.
@@ -86,13 +86,13 @@ evento/manifest autorizado -> JSON canonico -> sha256 -> event_digest
 varios event_digest -> Merkle tree -> Merkle root -> proof envelope opcional
 ```
 
-El hash prueba integridad de un artefacto concreto. El Merkle root permite probar inclusion dentro de un conjunto sin publicar todas las filas. El proof envelope debe incluir version de canonicalizacion, tipo de evento, referencias publicas y digest/root; no debe incluir UID crudo, PII, `K_META`, `K_FILE`, `KMS_MASTER_KEY_HEX` ni `DATABASE_URL`.
+El hash prueba integridad de un artefacto concreto. El Merkle root permite probar inclusion dentro de un conjunto sin publicar todas las filas. El proof envelope debe incluir version de canonicalizacion, tipo de evento, referencias publicas y digest/root; no debe incluir UID crudo, PII, claves de encoding, master keys ni database URLs.
 
 ### Que recibe la fabrica cuando codifica tags?
 
-La fabrica recibe un Supplier Encoding Pack acotado al sub-batch: `order_id`, `batch_id`, `sub_batch_id`/`bid`, chip model, perfil SDM/TagTamper, URL template, formato de manifest y `K_META`/`K_FILE` de ese sub-batch.
+La fabrica recibe un Supplier Encoding Pack acotado al sub-batch: `order_id`, `batch_id`, `sub_batch_id`/`bid`, chip model, perfil SDM/TagTamper, route template redacted para documentacion publica, formato de manifest y claves de encoding de ese sub-batch por canal cifrado.
 
-La fabrica nunca recibe KMS, `DATABASE_URL`, private keys de Polygon, secretos de executor, tokens admin ni PII. Tenant Vault muestra evidencia operativa, hashes, manifest, QA y estado; no muestra secretos internos.
+La fabrica nunca recibe KMS, database URLs, private keys de Polygon, secretos de executor, tokens admin ni PII. Tenant Vault muestra evidencia operativa, hashes, manifest, QA y estado; no muestra secretos internos.
 
 ### Existe una alianza formal con Polygon o IOTA?
 
@@ -108,7 +108,7 @@ nexID puede dejar la solicitud en estado pendiente y reintentar. No debe mostrar
 
 ### Que pasa si IOTA falla?
 
-La validacion NFC, DPP, dashboard y Polygon no deben caerse. El evento puede quedar con proof pendiente o fallido. La ausencia de proof IOTA no invalida automaticamente la autenticidad SUN ni el ownership Polygon.
+La validacion NFC, DPP, dashboard y Polygon no deben caerse. El evento puede quedar con proof pendiente o fallido. La ausencia de proof IOTA no invalida automaticamente la autenticidad SUN ni la propiedad digital registrada en Polygon.
 
 ### El consumidor necesita wallet?
 

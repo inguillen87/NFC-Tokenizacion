@@ -6,7 +6,7 @@ import { json } from "../../../../lib/http";
 import { sql } from "../../../../lib/db";
 import { logAuditEvent } from "../../../../lib/audit-logger";
 import { ensureSupplierOpsSchema } from "../../../../lib/supplier-ops-schema";
-import { buildMerkleRoot, hashEvidencePayload } from "../../../../lib/proof-layer";
+import { buildMerkleRoot, findForbiddenProofPayloadKey, hashEvidencePayload } from "../../../../lib/proof-layer";
 
 type EvidenceEventRow = {
   id: string;
@@ -16,44 +16,8 @@ type EvidenceEventRow = {
   event_type: string;
 };
 
-const BLOCKED_PII_KEYS = new Set([
-  "email",
-  "mail",
-  "phone",
-  "telefono",
-  "whatsapp",
-  "contact",
-  "contacto",
-  "name",
-  "nombre",
-  "full_name",
-  "dni",
-  "document",
-  "documento",
-  "address",
-  "direccion",
-]);
-
 function safeString(value: unknown) {
   return String(value || "").trim();
-}
-
-function containsBlockedPiiKey(input: unknown): string | null {
-  if (!input || typeof input !== "object") return null;
-  if (Array.isArray(input)) {
-    for (const item of input) {
-      const nested = containsBlockedPiiKey(item);
-      if (nested) return nested;
-    }
-    return null;
-  }
-  for (const [key, value] of Object.entries(input as Record<string, unknown>)) {
-    const normalized = key.toLowerCase();
-    if (BLOCKED_PII_KEYS.has(normalized)) return key;
-    const nested = containsBlockedPiiKey(value);
-    if (nested) return nested;
-  }
-  return null;
 }
 
 async function resolveTenant(req: Request, body: Record<string, unknown>) {
@@ -125,9 +89,9 @@ export async function POST(req: Request) {
       if (!resourceType || !resourceId || !eventType) {
         return json({ ok: false, reason: "event_identity_required" }, 400);
       }
-      const piiKey = containsBlockedPiiKey(payload);
-      if (piiKey) {
-        return json({ ok: false, reason: "pii_payload_rejected", key: piiKey }, 400);
+      const forbiddenKey = findForbiddenProofPayloadKey(payload);
+      if (forbiddenKey) {
+        return json({ ok: false, reason: "proof_payload_sensitive_key_rejected", key: forbiddenKey }, 400);
       }
       const payloadHash = hashEvidencePayload({
         tenantId: tenant?.id ? String(tenant.id) : null,

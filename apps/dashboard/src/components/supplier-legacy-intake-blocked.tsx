@@ -21,7 +21,7 @@ export function SupplierLegacyIntakeBlocked({ context = "supplier" }: SupplierLe
             Las llaves de fabrica ya no se pegan en el navegador.
           </h2>
           <p className="mt-2 text-sm leading-6 text-slate-300">
-            El flujo productivo usa Supplier Order: nexID genera K_META_BATCH y K_FILE_BATCH en servidor, crea sub-batches, exporta un pack cifrado de un solo uso y deja evidencia en Tenant Vault.
+            El flujo productivo usa Supplier Order: nexID genera llaves batch cifradas en servidor, crea sub-batches, exporta un pack cifrado de un solo uso y deja evidencia en Tenant Vault.
             {isOnboarding ? " Para onboarding operativo, el primer paso es abrir Supplier batches y trabajar contra el pedido industrial." : ""}
           </p>
         </div>
@@ -37,8 +37,8 @@ export function SupplierLegacyIntakeBlocked({ context = "supplier" }: SupplierLe
         {[
           {
             Icon: ShieldCheck,
-            title: "Sin llaves plaintext",
-            body: "El frontend no pide K_META ni K_FILE. El proveedor recibe solo el ZIP cifrado y la clave va por canal separado.",
+            title: "Sin llaves en claro",
+            body: "El frontend no pide secretos de lote. El proveedor recibe solo el ZIP cifrado y la clave va por canal separado.",
           },
           {
             Icon: TimerReset,

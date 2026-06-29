@@ -18,7 +18,9 @@ const {
 const { normalizeCarrierProfileCode } = await import("../src/lib/carrier-profiles.ts");
 const {
   buildMerkleRoot,
+  findForbiddenProofPayloadKey,
   hashEvidencePayload,
+  isSha256Hash,
   verifyHashInAnchor,
 } = await import("../src/lib/proof-layer.ts");
 const { parseTagManifest } = await import("../src/lib/tag-manifest.ts");
@@ -181,16 +183,41 @@ test("supplier pack and manifest gates are one-time production controls", () => 
   assert.equal(canImportSupplierManifest({ manifestStatus: "imported" }).reason, "supplier_manifest_already_imported");
 });
 
-test("supplier activation override is disabled for production sub-batches", () => {
-  const gate = canActivateSupplierSubBatch({
+test("supplier activation override requires explicit audit fields", () => {
+  const blocked = canActivateSupplierSubBatch({
     manifestStatus: "pending",
     qaStatus: "pending",
     expectedQuantity: 1000,
     manifestCount: 0,
-    overrideReason: "urgent shipment",
   });
-  assert.equal(gate.ok, false);
-  assert.equal(gate.reason, "supplier_activation_override_disabled");
+  assert.equal(blocked.ok, false);
+  assert.equal(blocked.reason, "manifest_not_imported");
+
+  const unaudited = canActivateSupplierSubBatch({
+    manifestStatus: "pending",
+    qaStatus: "pending",
+    expectedQuantity: 1000,
+    manifestCount: 0,
+    overrideReason: "urgent",
+  });
+  assert.equal(unaudited.ok, false);
+  assert.equal(unaudited.reason, "supplier_activation_override_audit_required");
+
+  const override = canActivateSupplierSubBatch({
+    manifestStatus: "pending",
+    qaStatus: "pending",
+    expectedQuantity: 1000,
+    manifestCount: 0,
+    overrideReason: "customer-approved corrective activation",
+    overrideBy: "security-operator@nexid",
+  });
+  assert.equal(override.ok, true);
+  assert.equal(override.override, true);
+  assert.deepEqual(override.blockedReasons.map((item) => item.reason), [
+    "manifest_not_imported",
+    "qa_not_passed",
+    "manifest_quantity_mismatch",
+  ]);
 });
 
 test("supplier QA gate rejects empty pass declarations", () => {
@@ -256,4 +283,9 @@ test("proof layer builds a verifiable Merkle root without exposing raw events", 
   assert.match(merkleRoot, /^sha256:[0-9a-f]{64}$/);
   assert.equal(verifyHashInAnchor(eventA, [eventA, eventB]), true);
   assert.equal(verifyHashInAnchor("sha256:" + "0".repeat(64), [eventA, eventB]), false);
+  assert.equal(isSha256Hash(eventA), true);
+  assert.equal(isSha256Hash("04AABBCCDD1090"), false);
+  assert.equal(findForbiddenProofPayloadKey({ uid_hex: "04AABBCCDD1090" }), "uid_hex");
+  assert.equal(findForbiddenProofPayloadKey({ nested: { K_META_BATCH: "A".repeat(32) } }), "K_META_BATCH");
+  assert.equal(findForbiddenProofPayloadKey({ bid: "SYN-AR-2026-001-A", content_hash: eventA }), null);
 });

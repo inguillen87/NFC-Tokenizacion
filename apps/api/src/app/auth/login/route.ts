@@ -24,6 +24,13 @@ function normalizeLoginEmail(rawEmail: string) {
   return String(aliases[normalized] || normalized).trim().toLowerCase();
 }
 
+function unsafeMissingUsersFallbackAllowed() {
+  const explicit = String(process.env.DASHBOARD_MISSING_USERS_TABLE_FALLBACK || "").trim().toLowerCase();
+  const allowed = explicit === "1" || explicit === "true" || explicit === "yes" || explicit === "on";
+  const runtime = String(process.env.VERCEL_ENV || process.env.NODE_ENV || "").trim().toLowerCase();
+  return allowed && runtime !== "production";
+}
+
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({})) as { email?: string; password?: string; mfaCode?: string; };
   const email = normalizeLoginEmail(String(body.email || ''));
@@ -39,14 +46,17 @@ export async function POST(req: Request) {
   } catch (error) {
     const code = String((error as { code?: string } | null)?.code || "");
     if (code === "42P01") {
-      const fallback = {
-        "super-admin": { email: "superadmin@nexid.lat", password: "nexid_demo_2026", role: "super-admin", label: "Super Admin Demo" },
-        "tenant-admin": { email: "demobodega@nexid.lat", password: "nexid_demo_2026", role: "tenant-admin", label: "Bodega Balmec Admin" },
-      } as const;
-      const matched = Object.values(fallback).find((entry) => entry.email === email && entry.password === password);
-      if (matched) {
-        return json({ ok: true, email: matched.email, role: matched.role, label: matched.label, permissions: ["*"], mfaRequired: false, sessionToken: `demo.${Buffer.from(email).toString("base64url")}`, expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(), fallback: "missing_users_table" });
+      if (unsafeMissingUsersFallbackAllowed()) {
+        const fallback = {
+          "super-admin": { email: "superadmin@nexid.lat", password: process.env.DASHBOARD_SUPERADMIN_FALLBACK_PASSWORD || "", role: "super-admin", label: "Super Admin" },
+          "tenant-admin": { email: "demobodega@nexid.lat", password: process.env.DASHBOARD_TENANT_FALLBACK_PASSWORD || "", role: "tenant-admin", label: "Bodega Balmec Admin" },
+        } as const;
+        const matched = Object.values(fallback).find((entry) => entry.email === email && entry.password && entry.password === password);
+        if (matched) {
+          return json({ ok: true, email: matched.email, role: matched.role, label: matched.label, permissions: ["*"], mfaRequired: false, sessionToken: `local.${Buffer.from(email).toString("base64url")}`, expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(), fallback: "missing_users_table_local_only" });
+        }
       }
+      return json({ ok: false, reason: "auth schema unavailable" }, 503);
     }
     throw error;
   }

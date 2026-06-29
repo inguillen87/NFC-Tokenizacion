@@ -52,7 +52,7 @@ function safeBuildShare(bid: string, uid: string) {
   const now = Math.floor(Date.now() / 1000);
   try {
     const token = createDemoShareToken({ bid, uid, exp: now + 60 * 30 });
-    return token ? ({ token } as const) : ({ reason: "share secret missing; using insecure demo fallback" } as const);
+    return token ? ({ token } as const) : ({ reason: "share secret missing" } as const);
   } catch (error) {
     const reason = error instanceof Error ? error.message : "failed to create share token";
     return { reason } as const;
@@ -74,11 +74,12 @@ async function forward(req: Request, action: string, method: "GET" | "POST", bid
   if (!UID_OR_EVENT_RE.test(shareUid)) return NextResponse.json({ ok: false, reason: "invalid uid/event format", trace_id: trace }, { status: 400 });
 
   const share = safeBuildShare(bid, shareUid);
-  const url = new URL(`${productUrls.api}/public/cta/${action}`);
-  const shareToken = "token" in share ? share.token : "";
-  if (shareToken) {
-    url.searchParams.set("share", shareToken);
+  const shareToken = "token" in share && typeof share.token === "string" ? share.token : "";
+  if (!shareToken) {
+    return NextResponse.json({ ok: false, reason: "share_token_unavailable", trace_id: trace }, { status: 503 });
   }
+  const url = new URL(`${productUrls.api}/public/cta/${action}`);
+  url.searchParams.set("share", shareToken);
   if (method === "GET") {
     url.searchParams.set("bid", bid);
     url.searchParams.set("uid", uid);
@@ -100,13 +101,11 @@ async function forward(req: Request, action: string, method: "GET" | "POST", bid
   });
 
   const text = await response.text();
-  const fallbackReason = "reason" in share ? share.reason : null;
   const next = new NextResponse(text, {
     status: response.status,
     headers: {
       "Content-Type": response.headers.get("content-type") || "application/json",
       "x-nexid-trace-id": trace,
-      ...(fallbackReason ? { "x-nexid-share-mode": "insecure-demo-fallback" } : {}),
     },
   });
   for (const cookie of getSetCookies(response)) {

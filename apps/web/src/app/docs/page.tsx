@@ -61,7 +61,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
   "es-AR": {
     eyebrow: "Guia comercial + producto",
     title: "nexID explicado sin jerga: producto real, confianza y postventa en un solo toque",
-    description: "No vendemos chips sueltos ni blockchain como moda. Creamos una capa para que cada producto pueda probar autenticidad, mostrar origen, activar garantía, beneficios, datos y certificado digital.",
+    description: "No vendemos chips sueltos ni blockchain como moda. Creamos una capa de confianza para que cada producto pueda probar autenticidad, mostrar origen y habilitar garantías, beneficios, certificados digitales o propiedad digital cuando la política lo permite.",
     simpleFlowEyebrow: "Arquitectura simple",
     simpleFlowTitle: "La arquitectura en una frase",
     simpleFlowBody: "Un producto físico recibe una identidad digital; cada toque valida si es real, cuenta su historia y abre el siguiente paso comercial seguro.",
@@ -85,16 +85,16 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       { chip: "NTAG 424 DNA TagTamper", bestFor: "Integridad física de cierre/sello: wine, cosmética premium, pharma packaging.", avoid: "No usarlo donde no importa estado físico del empaque." },
     ],
     apiTitle: "API enterprise para operación real",
-    apiIntro: "Rutas para salud, validación criptográfica, CRM comercial, Demo Lab y orquestación multi-tenant.",
+    apiIntro: "Rutas para salud, validación criptográfica, CRM comercial, eventos operativos y orquestación multi-tenant.",
     apiRoutes: [
       { method: "GET", path: "/health", detail: "Estado del backend para uptime checks." },
-      { method: "GET", path: "/sun", detail: "Validación SDM/SUN para tags seguros." },
+      { method: "GET", path: "Passport validation", detail: "Validación SDM/SUN para tags seguros; endpoint exacto redacted en documentación pública." },
       { method: "POST", path: "/assistant/chat", detail: "BotIA comercial: captura leads, tickets y pedidos." },
-      { method: "GET/POST", path: "/admin/leads", detail: "CRM-lite para super-admin y pipeline comercial." },
-      { method: "POST", path: "/internal/demo/use-pack", detail: "Carga packs por vertical para demos y ventas." },
-      { method: "POST", path: "/internal/demo/simulate-tap", detail: "Simula tap NFC end-to-end (geo/device/tenant) y devuelve flujo consumer + marketplace + dashboard." },
+      { method: "GET/POST", path: "Private CRM endpoint", detail: "CRM-lite para super-admin y pipeline comercial; ruta interna no publicada." },
+      { method: "POST", path: "Sandbox pack loader", detail: "Carga paquetes verticales en ambiente sandbox controlado." },
+      { method: "POST", path: "Sandbox validation runner", detail: "Ejecuta una validación NFC simulada para QA comercial, sin tratarla como evidencia productiva." },
     ],
-    packsTitle: "Packs priorizados para vender ya",
+    packsTitle: "Packs priorizados para adopción",
     packs: [
       "1) Wine Secure (wedge premium de mayor claridad comercial).",
       "2) Events Basic + Events Secure (volumen + moat en el mismo vertical).",
@@ -104,7 +104,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     rolloutTitle: "Estándar operativo para pilotos y rollouts serios",
     rolloutBullets: [
       "Crear batch por cliente/campaña con batch_id, SKU, cantidad esperada y perfil de seguridad definidos.",
-      "Entregar al proveedor un spec cerrado: chip, URL template, key ownership, formato CSV manifest, banco visual (image_url/label_image_url/model_url/gallery_urls) y criterio de activación.",
+      "Entregar al proveedor un spec cerrado: chip, URL template, custodia de claves, formato CSV manifest, banco visual (image_url/label_image_url/model_url/gallery_urls) y criterio de activación.",
       "Importar manifest solo si el batch_id del archivo coincide exactamente con el batch creado en plataforma.",
       "Operar estados planned / imported / active para detectar diferencias antes de escalar a 10k/50k unidades.",
     ],
@@ -112,8 +112,8 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     revenueBullets: [
       "Setup/Pilot fee: discovery, diseño de caso, onboarding y activación.",
       "Hardware margin: tags/inlays/cards/seals como capa, no como core.",
-      "SaaS/usage: verificaciones, ownership, alertas, analítica y automatizaciones.",
-      "Channel/white-label: rev-share y operación partner multi-tenant.",
+      "SaaS/usage: verificaciones, certificados, claims, alertas, analítica y automatizaciones.",
+      "Channel/white-label: rev-share y operación multi-tenant para distribuidores.",
     ],
     roadmapTitle: "Roadmap técnico (sin sobreprometer)",
     roadmapBullets: [
@@ -121,11 +121,11 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "Siguiente fase: middle tier con StatusDetect para casos de estado/sensing battery-free.",
       "Siempre: NFC + QR fallback + data model DPP-ready.",
     ],
-    trustOpsTitle: "Trust layer enterprise",
+    trustOpsTitle: "Capa de confianza enterprise",
     trustOpsBullets: [
-      "Polygon se usa para ownership, NFT/certificado, claims y transferencias; no para escribir cada tap.",
-      "IOTA es proof layer opcional para hashes, Merkle roots, DPP y evidencia logistica.",
-      "Supplier Encoding Pack entrega K_META/K_FILE solo por sub-batch; fabrica nunca recibe KMS ni DATABASE_URL.",
+      "Polygon se usa para propiedad digital, NFT/certificado, claims y transferencias; no para escribir cada tap.",
+      "IOTA es una capa probatoria opcional para hashes, Merkle roots, DPP y evidencia logística.",
+      "Supplier Encoding Pack entrega claves de encoding solo por sub-batch y canal cifrado; fábrica nunca recibe KMS ni database URLs.",
       "Tenant Vault muestra evidencia, manifest, QA y hashes; no muestra secretos internos.",
     ],
     actionsTitle: "Siguientes pasos",
@@ -133,10 +133,10 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     faqTitle: "FAQ corta para explicar bien el producto",
     faqItems: [
       { q: "Que problema resuelve para una marca premium?", a: "Permite demostrar que una unidad es real, saber donde se valida, reducir fraude, recuperar datos propios del consumidor y abrir una relacion postventa despues de la compra." },
-      { q: "Que ve el consumidor final?", a: "Una pantalla simple: producto autentico, origen, lote, estado del sello, garantia, beneficios y, si corresponde, certificado digital o ownership." },
-      { q: "Como se empieza sin hacer un proyecto enorme?", a: "Con un piloto sobre una linea, lote o edicion: banco de fotos, reglas de claim, tags o QR, portal mobile, dashboard y metricas de uso." },
+      { q: "Que ve el consumidor final?", a: "Una pantalla simple: producto auténtico, origen, lote, estado del sello, garantía, beneficios y, si corresponde, certificado digital o propiedad digital." },
+      { q: "Como se empieza sin hacer un proyecto enorme?", a: "Con un piloto sobre una línea, lote o edición: banco de fotos, reglas de claim, tags o QR, portal mobile, dashboard y métricas de uso." },
       { q: "¿nexID vende chips NFC?", a: "No. nexID vende infraestructura para emitir, validar y operar identidades físicas verificables usando carriers como NFC y QR." },
-      { q: "¿Sirve solo para antifraude?", a: "No. También habilita ownership, acceso, garantías, vouchers, trazabilidad y analytics." },
+      { q: "¿Sirve solo para antifraude?", a: "No. También habilita propiedad digital, acceso, garantías, vouchers, trazabilidad y analytics." },
       { q: "¿Tokenización y autenticación son lo mismo?", a: "No. La autenticación prueba el objeto; la tokenización digitaliza derechos sobre ese objeto." },
       { q: "¿Se puede usar con QR?", a: "Sí. Un backend único puede operar NFC y QR como fallback según cada contexto." },
       { q: "¿Sirve solo para vino?", a: "No. También aplica a eventos, documentos, credenciales, cosmética, lujo y sector público." },
@@ -146,7 +146,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     stackPage: "Ver pila Verify → Passport → Rights",
     audiencesPage: "Ver pitch por audiencia (inversor, reseller, cliente, gobierno)",
     glossaryPage: "Abrir glosario operativo de marca",
-    demoPage: "Ver demo self-serve",
+    demoPage: "Ver entorno guiado",
     jumpPillars: "Tesis",
     jumpChipProfiles: "Perfiles de chip",
     jumpApi: "API",
@@ -158,13 +158,13 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     exploreLinks: [
       { label: "Ir al stack Verify → Passport → Rights", href: "/stack" },
       { label: "Abrir glosario operativo", href: "/glossary" },
-      { label: "Ver demo y Demo Lab", href: "/demo" },
+      { label: "Ver entorno guiado", href: "/demo" },
       { label: "Ver pitch por audiencia", href: "/audiences" },
     ],
     openAssistant: "Abrir BotIA",
     talkAgent: "Hablar con agente (WhatsApp)",
     bookDemo: "Agendar demo",
-    openLab: "Abrir Demo Lab",
+    openLab: "Abrir laboratorio",
   },
   "pt-BR": {
     eyebrow: "Docs comercial + técnica",
@@ -193,14 +193,14 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       { chip: "NTAG 424 DNA TagTamper", bestFor: "Selo/fecho com integridade física: vinho, cosméticos premium e pharma.", avoid: "Não usar quando estado físico da embalagem não importa." },
     ],
     apiTitle: "API enterprise para operação",
-    apiIntro: "Rotas para saúde, validação criptográfica, CRM comercial e Demo Lab multi-tenant.",
+    apiIntro: "Rotas para saúde, validação criptográfica, CRM comercial, eventos operacionais e orquestração multi-tenant.",
     apiRoutes: [
       { method: "GET", path: "/health", detail: "Saúde do backend para uptime." },
-      { method: "GET", path: "/sun", detail: "Validação SDM/SUN para tags seguras." },
+      { method: "GET", path: "Passport validation", detail: "Validação SDM/SUN para tags seguras; endpoint exato redacted na documentação pública." },
       { method: "POST", path: "/assistant/chat", detail: "BotIA comercial para leads/tickets/pedidos." },
-      { method: "GET/POST", path: "/admin/leads", detail: "CRM-lite para super-admin." },
-      { method: "POST", path: "/internal/demo/use-pack", detail: "Carrega packs verticais para demo comercial." },
-      { method: "POST", path: "/internal/demo/simulate-tap", detail: "Simula tap NFC ponta a ponta (geo/device/tenant) e retorna fluxo consumer + marketplace + dashboard." },
+      { method: "GET/POST", path: "Private CRM endpoint", detail: "CRM-lite para super-admin; rota interna não publicada." },
+      { method: "POST", path: "Sandbox pack loader", detail: "Carrega pacotes verticais em ambiente sandbox controlado." },
+      { method: "POST", path: "Sandbox validation runner", detail: "Executa validação NFC simulada para QA comercial, sem tratá-la como evidência produtiva." },
     ],
     packsTitle: "Packs priorizados",
     packs: [
@@ -212,7 +212,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     rolloutTitle: "Padrão operacional para pilotos e rollouts sérios",
     rolloutBullets: [
       "Criar batch por cliente/campanha com batch_id, SKU, volume esperado e perfil de segurança definidos.",
-      "Enviar ao fornecedor um spec fechado: chip, URL template, ownership das keys, formato CSV manifest, banco visual (image_url/label_image_url/model_url/gallery_urls) e critério de ativação.",
+      "Enviar ao fornecedor um spec fechado: chip, URL template, custódia de chaves, formato CSV manifest, banco visual (image_url/label_image_url/model_url/gallery_urls) e critério de ativação.",
       "Importar manifest apenas se o batch_id do arquivo coincidir exatamente com o batch criado na plataforma.",
       "Operar estados planned / imported / active para detectar diferenças antes de escalar para 10k/50k unidades.",
     ],
@@ -229,22 +229,22 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "Próxima fase: middle tier com StatusDetect.",
       "Sempre: NFC + fallback QR + modelo DPP-ready.",
     ],
-    trustOpsTitle: "Trust layer enterprise",
+    trustOpsTitle: "Camada de confiança enterprise",
     trustOpsBullets: [
-      "Polygon e usado para ownership, NFT/certificado, claims e transferencias; nao para registrar cada toque.",
-      "IOTA e proof layer opcional para hashes, Merkle roots, DPP e evidencia logistica.",
-      "Supplier Encoding Pack entrega K_META/K_FILE apenas por sub-batch; fabrica nunca recebe KMS nem DATABASE_URL.",
-      "Tenant Vault mostra evidencia, manifest, QA e hashes; nao mostra segredos internos.",
+      "Polygon é usado para titularidade digital, NFT/certificado, claims e transferências; não para registrar cada toque.",
+      "IOTA é uma camada probatória opcional para hashes, Merkle roots, DPP e evidência logística.",
+      "Supplier Encoding Pack entrega chaves de encoding apenas por sub-batch e canal cifrado; fábrica nunca recebe KMS nem database URLs.",
+      "Tenant Vault mostra evidência, manifest, QA e hashes; não mostra segredos internos.",
     ],
     actionsTitle: "Próximos passos",
     quickJumpTitle: "Explorar rápido",
     faqTitle: "FAQ curta para explicar o produto",
     faqItems: [
       { q: "Que problema resolve para uma marca premium?", a: "Permite demonstrar que uma unidade e real, saber onde foi validada, reduzir fraude, recuperar dados proprios do consumidor e abrir uma relacao pos-venda depois da compra." },
-      { q: "O que o consumidor final ve?", a: "Uma tela simples: produto autentico, origem, lote, estado do lacre, garantia, beneficios e, quando fizer sentido, certificado digital ou ownership." },
-      { q: "Como comecar sem um projeto enorme?", a: "Com um piloto em uma linha, lote ou edicao: banco de fotos, regras de claim, tags ou QR, portal mobile, dashboard e metricas de uso." },
+      { q: "O que o consumidor final vê?", a: "Uma tela simples: produto autêntico, origem, lote, estado do lacre, garantia, benefícios e, quando fizer sentido, certificado digital ou titularidade digital." },
+      { q: "Como começar sem um projeto enorme?", a: "Com um piloto em uma linha, lote ou edição: banco de fotos, regras de claim, tags ou QR, portal mobile, dashboard e métricas de uso." },
       { q: "A nexID vende chips NFC?", a: "Não. A nexID vende infraestrutura para emitir, validar e operar identidades físicas verificáveis com NFC e QR." },
-      { q: "Serve só para antifraude?", a: "Não. Também habilita ownership, acesso, garantia, vouchers, rastreabilidade e analytics." },
+      { q: "Serve só para antifraude?", a: "Não. Também habilita titularidade digital, acesso, garantia, vouchers, rastreabilidade e analytics." },
       { q: "Tokenização e autenticação são iguais?", a: "Não. Autenticação valida o objeto; tokenização digitaliza direitos sobre ele." },
       { q: "Pode usar com QR?", a: "Sim. Um backend único opera NFC e QR como fallback." },
       { q: "Serve só para vinho?", a: "Não. Também aplica a eventos, documentos, credenciais, cosméticos, luxo e governo." },
@@ -254,7 +254,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     stackPage: "Ver pilha Verify → Passport → Rights",
     audiencesPage: "Ver pitch por audiência (investidor, revendedor, cliente, governo)",
     glossaryPage: "Abrir glossário operacional de marca",
-    demoPage: "Ver demo self-serve",
+    demoPage: "Ver ambiente guiado",
     jumpPillars: "Tese",
     jumpChipProfiles: "Perfis de chip",
     jumpApi: "API",
@@ -266,13 +266,13 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     exploreLinks: [
       { label: "Ir para o stack Verify → Passport → Rights", href: "/stack" },
       { label: "Abrir glossário operacional", href: "/glossary" },
-      { label: "Ver demo e Demo Lab", href: "/demo" },
+      { label: "Ver ambiente guiado", href: "/demo" },
       { label: "Ver pitch por audiência", href: "/audiences" },
     ],
     openAssistant: "Abrir BotIA",
     talkAgent: "Falar com agente (WhatsApp)",
     bookDemo: "Agendar demo",
-    openLab: "Abrir Demo Lab",
+    openLab: "Abrir laboratório",
   },
   en: {
     eyebrow: "Commercial + product guide",
@@ -301,14 +301,14 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       { chip: "NTAG 424 DNA TagTamper", bestFor: "Packaging integrity use cases where open/closed matters.", avoid: "Do not force into rigid credentials where tamper loop adds little value." },
     ],
     apiTitle: "Enterprise API",
-    apiIntro: "Routes for health, cryptographic validation, CRM capture, and demo orchestration.",
+    apiIntro: "Routes for health, cryptographic validation, CRM capture, operational events and multi-tenant orchestration.",
     apiRoutes: [
       { method: "GET", path: "/health", detail: "Backend health and uptime checks." },
-      { method: "GET", path: "/sun", detail: "SDM/SUN secure validation endpoint." },
+      { method: "GET", path: "Passport validation", detail: "SDM/SUN secure validation; exact endpoint redacted in public docs." },
       { method: "POST", path: "/assistant/chat", detail: "Sales BotIA for leads/tickets/orders." },
-      { method: "GET/POST", path: "/admin/leads", detail: "CRM-lite pipeline for super-admin." },
-      { method: "POST", path: "/internal/demo/use-pack", detail: "Load vertical demo packs." },
-      { method: "POST", path: "/internal/demo/simulate-tap", detail: "Simulate end-to-end NFC taps (geo/device/tenant) and return consumer + marketplace + dashboard flow." },
+      { method: "GET/POST", path: "Private CRM endpoint", detail: "CRM-lite pipeline for super-admin; internal route not published." },
+      { method: "POST", path: "Sandbox pack loader", detail: "Load vertical packs in a controlled sandbox environment." },
+      { method: "POST", path: "Sandbox validation runner", detail: "Run a simulated NFC validation for commercial QA without treating it as production evidence." },
     ],
     packsTitle: "Prioritized sellable packs",
     packs: [
@@ -320,7 +320,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     rolloutTitle: "Operational standard for serious pilots and rollouts",
     rolloutBullets: [
       "Create one batch per customer/campaign with batch_id, SKU, expected volume and security profile defined up front.",
-      "Give suppliers a closed spec: chip, URL template, key ownership, CSV manifest format, visual bank fields (image_url/label_image_url/model_url/gallery_urls) and activation criteria.",
+      "Give suppliers a closed spec: chip, URL template, key custody, CSV manifest format, visual bank fields (image_url/label_image_url/model_url/gallery_urls) and activation criteria.",
       "Import manifests only when the file batch_id exactly matches the batch created in platform.",
       "Track planned / imported / active states to catch supplier mismatches before scaling to 10k/50k units.",
     ],
@@ -339,9 +339,9 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     ],
     trustOpsTitle: "Enterprise trust layer",
     trustOpsBullets: [
-      "Polygon is for ownership, NFT/certificates, claims and transfers; not every tap.",
+      "Polygon is for digital ownership, NFT/certificates, claims and transfers; not every tap.",
       "IOTA is an optional proof layer for hashes, Merkle roots, DPP and logistics evidence.",
-      "Supplier Encoding Pack sends K_META/K_FILE only per sub-batch; factories never receive KMS or DATABASE_URL.",
+      "Supplier Encoding Pack sends encoding keys only per sub-batch through an encrypted channel; factories never receive KMS or database URLs.",
       "Tenant Vault shows evidence, manifests, QA and hashes; it does not expose internal secrets.",
     ],
     actionsTitle: "Next steps",
@@ -352,7 +352,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       { q: "What does the end customer see?", a: "A simple screen: authentic product, origin, batch, seal status, warranty, benefits and, when relevant, digital certificate or ownership." },
       { q: "How can a company start without a huge project?", a: "With a pilot on one line, batch or edition: product photos, claim rules, tags or QR, mobile portal, dashboard and usage metrics." },
       { q: "Does nexID sell NFC chips?", a: "No. nexID delivers infrastructure to issue, verify and operate physical digital identities using NFC and QR carriers." },
-      { q: "Is this only anti-fraud?", a: "No. It also enables ownership, access, warranty, vouchers, traceability and analytics." },
+      { q: "Is this only anti-fraud?", a: "No. It also enables digital ownership, access, warranty, vouchers, traceability and analytics." },
       { q: "Are tokenization and authentication the same?", a: "No. Authentication proves the object; tokenization digitizes rights on top of that object." },
       { q: "Can it work with QR?", a: "Yes. A single backend can run NFC plus QR fallback." },
       { q: "Is this only for wine?", a: "No. It also fits events, documents, credentials, cosmetics, luxury and public sector workflows." },
@@ -362,7 +362,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     stackPage: "View Verify → Passport → Rights stack",
     audiencesPage: "View audience pitch (investor, reseller, client, government)",
     glossaryPage: "Open operational brand glossary",
-    demoPage: "View self-serve demo",
+    demoPage: "View guided environment",
     jumpPillars: "Thesis",
     jumpChipProfiles: "Chip profiles",
     jumpApi: "API",
@@ -374,13 +374,13 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     exploreLinks: [
       { label: "Go to the Verify → Passport → Rights stack", href: "/stack" },
       { label: "Open the operational glossary", href: "/glossary" },
-      { label: "See the demo and Demo Lab", href: "/demo" },
+      { label: "View guided environment", href: "/demo" },
       { label: "View the audience pitch page", href: "/audiences" },
     ],
     openAssistant: "Open BotIA",
     talkAgent: "Talk to agent (WhatsApp)",
     bookDemo: "Book demo",
-    openLab: "Open Demo Lab",
+    openLab: "Open lab",
   },
 };
 
@@ -493,7 +493,7 @@ export default async function DocsPage() {
               </div>
               <div className="rounded-xl border border-white/5 bg-slate-900/60 p-3">
                 <strong className="text-cyan-200 block">Orquestación de Reclamos</strong>
-                Registro seguro del ownership físico en el pasaporte digital al procesarse el pago (token nxpos).
+                Registro seguro de propiedad digital en el pasaporte del producto al procesarse el pago (token nxpos).
               </div>
               <div className="rounded-xl border border-white/5 bg-slate-900/60 p-3">
                 <strong className="text-cyan-200 block">Webhooks en Tiempo Real</strong>
@@ -541,7 +541,7 @@ export default async function DocsPage() {
               <div>
                 <p>Video explainer</p>
                 <strong>Original institutional cut</strong>
-                <span>A useful English FAQ companion for buyers who want the story before entering Demo Lab.</span>
+                <span>A useful English FAQ companion for buyers who want the story before entering the guided environment.</span>
               </div>
               <video controls preload="metadata" playsInline controlsList="nodownload" aria-label="nexID original institutional FAQ video">
                 <source src={legacyInstitutionalVideo} type="video/mp4" />
