@@ -73,9 +73,9 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
   return (
     <main className="space-y-6">
       <SectionHeading
-        eyebrow="Consumer Network"
-        title="Portal de Usuarios"
-        description="Conversión real de taps → consumidores → memberships → productos guardados, con scope por tenant."
+        eyebrow="Clientes CRM"
+        title="Clientes & campañas"
+        description="Conversión real de lecturas post-tap a consumidores, membresías y productos guardados, con scope por tenant."
       />
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

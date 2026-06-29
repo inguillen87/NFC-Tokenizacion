@@ -442,7 +442,7 @@ export default function LoyaltyCampaignsClient() {
       steps: [
         {
           label: "Tap verificado",
-          value: `${audienceKpis.taps.toLocaleString("es-AR")} taps`,
+          value: `${audienceKpis.taps.toLocaleString("es-AR")} lecturas`,
           detail: "Senal fisica del producto usada como disparador comercial.",
           ready: audienceKpis.taps > 0,
           Icon: Gauge,
@@ -1072,7 +1072,7 @@ export default function LoyaltyCampaignsClient() {
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            Growth Campaigns <span className="text-xs bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2.5 py-0.5 rounded-full font-black uppercase">Cognitive Suite</span>
+            Clientes & campañas <span className="text-xs bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2.5 py-0.5 rounded-full font-black uppercase">IA comercial</span>
           </h1>
           <p className="mt-1 text-sm text-slate-400">
             Fidelizá a tus consumidores mediante campañas inteligentes optimizadas en tiempo real por el motor cognitivo de nexID.
@@ -1085,11 +1085,11 @@ export default function LoyaltyCampaignsClient() {
           <div>
             <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">
               <MessageCircle className="h-4 w-4" />
-              Audience CRM live
+              Audiencia CRM en vivo
             </div>
-            <h2 className="mt-1 text-xl font-black text-white">Segmentos, vouchers y WhatsApp</h2>
+            <h2 className="mt-1 text-xl font-black text-white">Segmentos, beneficios y WhatsApp</h2>
             <p className="mt-1 max-w-3xl text-xs leading-relaxed text-slate-400">
-              De tap verificado a relación comercial: usuario registrado, ciudad, producto, consentimiento, plantilla y envío controlado.
+              De lectura verificada a relación comercial: usuario registrado, ciudad, producto, consentimiento, plantilla y envío controlado.
             </p>
           </div>
           <div className="flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-xs font-bold text-emerald-200">
@@ -1100,11 +1100,11 @@ export default function LoyaltyCampaignsClient() {
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           {[
-            { label: "Contactos CRM", value: audienceKpis.total, hint: "registrados", icon: Phone, color: "text-cyan-300" },
+            { label: "Clientes registrados", value: audienceKpis.total, hint: "con perfil CRM", icon: Phone, color: "text-cyan-300" },
             { label: "Con teléfono", value: audienceKpis.withPhone, hint: "listos para canal", icon: MessageCircle, color: "text-sky-300" },
             { label: "WhatsApp opt-in", value: audienceKpis.whatsappOptIn, hint: "consentidos", icon: ShieldCheck, color: "text-emerald-300" },
             { label: "Mendoza", value: audienceKpis.mendoza, hint: "cercanía bodega", icon: MapPin, color: "text-amber-300" },
-            { label: "Taps acumulados", value: audienceKpis.taps, hint: "señal comercial", icon: Gauge, color: "text-purple-300" },
+            { label: "Lecturas acumuladas", value: audienceKpis.taps, hint: "señal comercial", icon: Gauge, color: "text-purple-300" },
           ].map((item) => (
             <div key={item.label} className="rounded-xl border border-white/10 bg-slate-900/50 p-3">
               <div className="flex items-center justify-between gap-2">
@@ -1122,7 +1122,7 @@ export default function LoyaltyCampaignsClient() {
             <div>
               <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200">
                 <Sparkles className="h-4 w-4" />
-                Investor flow
+                Flujo comercial
               </div>
               <h3 className="mt-1 text-sm font-black text-white">Circuito post-tap listo para mostrar</h3>
               <p className="mt-1 max-w-3xl text-[11px] leading-relaxed text-slate-400">
@@ -1324,7 +1324,7 @@ export default function LoyaltyCampaignsClient() {
               <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                 Ciudad / segmento
                 <select
-                  title="Filtra la audiencia por ciudad detectada en los taps"
+                  title="Filtra la audiencia por ciudad detectada en las lecturas"
                   value={selectedCity}
                   onChange={(event) => setSelectedCity(event.target.value)}
                   className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs normal-case tracking-normal text-white outline-none focus:border-cyan-400"
@@ -1535,7 +1535,7 @@ export default function LoyaltyCampaignsClient() {
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 px-4 py-3">
             <div>
               <h3 className="text-sm font-black text-white">Usuarios accionables del tenant</h3>
-              <p className="text-[11px] text-slate-400">Nombre, contacto enmascarado, ciudad, taps, puntos, opt-in y segmento.</p>
+              <p className="text-[11px] text-slate-400">Nombre, contacto enmascarado, ciudad, lecturas, puntos, opt-in y segmento.</p>
             </div>
             <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-300">
               {filteredAudience.length} perfiles
@@ -1565,7 +1565,7 @@ export default function LoyaltyCampaignsClient() {
                     <div className="truncate font-bold text-slate-200">{member.city || "Sin ciudad"}</div>
                   </div>
                   <div className="rounded-xl bg-slate-950/55 p-2">
-                    <div className="uppercase tracking-wider text-slate-600">Taps</div>
+                    <div className="uppercase tracking-wider text-slate-600">Lecturas</div>
                     <div className="font-bold text-cyan-200">{asNumber(member.tap_count)}</div>
                   </div>
                   <div className="rounded-xl bg-slate-950/55 p-2">
@@ -1598,7 +1598,7 @@ export default function LoyaltyCampaignsClient() {
                   <th className="px-4 py-2">Usuario</th>
                   <th className="px-4 py-2">Ciudad</th>
                   <th className="px-4 py-2">Telefono</th>
-                  <th className="px-4 py-2">Taps</th>
+                  <th className="px-4 py-2">Lecturas</th>
                   <th className="px-4 py-2">Puntos</th>
                   <th className="px-4 py-2">Consentimiento</th>
                   <th className="px-4 py-2">Accion</th>
@@ -2127,7 +2127,7 @@ export default function LoyaltyCampaignsClient() {
                 <Bot className="w-4 h-4 text-slate-950" />
               </div>
               <div>
-                <h3 className="text-xs font-black text-white uppercase tracking-wider">BotIA Growth Suite</h3>
+                <h3 className="text-xs font-black text-white uppercase tracking-wider">IA de cercanía comercial</h3>
                 <p className="text-[9px] text-cyan-300 font-bold uppercase tracking-wider">Asistente de Fidelización</p>
               </div>
             </div>
@@ -2217,7 +2217,7 @@ export default function LoyaltyCampaignsClient() {
             <div className="relative flex items-center">
               <input
                 type="text"
-                placeholder="Preguntale a BotIA..."
+                placeholder="Preguntale a la IA comercial..."
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 className="w-full bg-slate-950 border border-white/10 rounded-xl pl-3 pr-10 py-2.5 text-xs text-white outline-none focus:border-cyan-500 transition-colors"

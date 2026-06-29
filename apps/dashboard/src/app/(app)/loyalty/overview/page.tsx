@@ -40,8 +40,8 @@ export default async function LoyaltyOverviewPage({ searchParams }: { searchPara
     <div className="space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">Loyalty Studio</h1>
-          <p className="mt-1 text-sm text-slate-400">Rendimiento del programa, métricas de engagement y prevención de fraude.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-white">CRM de clientes</h1>
+          <p className="mt-1 text-sm text-slate-400">Rendimiento de beneficios, miembros, canjes y prevención de fraude post-tap.</p>
         </div>
         <div className="flex gap-2">
           <Link href="/loyalty/rewards" className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-semibold rounded-lg transition-colors">

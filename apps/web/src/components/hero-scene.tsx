@@ -13,7 +13,7 @@ const HeroThreeStage = dynamic(() => import("./hero-three-stage").then((mod) => 
   ssr: false,
 });
 
-const heroAtlasMapSize = { width: 520, height: 300 };
+const heroAtlasMapSize = { width: 460, height: 270 };
 
 function verticalLabel(item: PlatformVertical, locale: AppLocale) {
   if (locale === "en") return item.titleEn;

@@ -201,15 +201,15 @@ export function DashboardShellInner({
     ...items,
     { href: "/batches/supplier", label: "Pedidos proveedor y packs fábrica" },
     { href: "/tokenization", label: "Tokenization Queue" },
-    { href: "/superadmin-network", label: "Consumer Network", role: "super-admin" },
-    { href: "/loyalty/overview", label: "Loyalty Studio" },
-    { href: "/consumer-network/overview", label: "Portal de Usuarios" },
+    { href: "/superadmin-network", label: "Red de clientes", role: "super-admin" },
+    { href: "/loyalty/overview", label: "CRM de clientes" },
+    { href: "/consumer-network/overview", label: "Clientes CRM" },
     { href: "/loyalty/rewards", label: "Catálogo Beneficios" },
     { href: "/loyalty/experiences", label: "Experiencias & Eventos" },
-    { href: "/loyalty/campaigns", label: "Growth & BotIA" },
+    { href: "/loyalty/campaigns", label: "Campañas por señal" },
     { href: "/investor-snapshot", label: "Investor Presentation" },
     { href: "/sales-playbook", label: "Sales Playbook & FAQs" },
-    { href: "/consumer-network/marketplace", label: "Marketplace Opt-in" },
+    { href: "/consumer-network/marketplace", label: "Marketplace con opt-in" },
     { href: "/consumer-network/offers", label: "Ofertas & Drops" },
     { href: "/consumer-network/order-requests", label: "Order Requests" },
     { href: "/users", label: "IAM Users" },
@@ -243,21 +243,21 @@ export function DashboardShellInner({
 
   const globalNetworkItems = [];
   if (currentRole === "super-admin") {
-    globalNetworkItems.push({ href: "/superadmin-network", label: "Consumer Network", icon: Network });
+    globalNetworkItems.push({ href: "/superadmin-network", label: "Red de clientes", icon: Network });
     globalNetworkItems.push({ href: "/resellers", label: nav.resellers, icon: Users });
     globalNetworkItems.push({ href: "/subscriptions", label: nav.subscriptions, icon: CreditCard });
   }
 
   const loyaltyNetworkItems = [];
   if (currentRole === "tenant-admin" || currentRole === "super-admin") {
-    loyaltyNetworkItems.push({ href: "/loyalty/overview", label: "Loyalty Studio", icon: Award });
-    loyaltyNetworkItems.push({ href: "/consumer-network/overview", label: "Portal de Usuarios", icon: UserSquare2 });
+    loyaltyNetworkItems.push({ href: "/loyalty/overview", label: "CRM de clientes", icon: Award });
+    loyaltyNetworkItems.push({ href: "/consumer-network/overview", label: "Clientes CRM", icon: UserSquare2 });
     loyaltyNetworkItems.push({ href: "/loyalty/rewards", label: "Catálogo Beneficios", icon: Gift });
     loyaltyNetworkItems.push({ href: "/loyalty/experiences", label: "Experiencias & Eventos", icon: PartyPopper });
-    loyaltyNetworkItems.push({ href: "/loyalty/campaigns", label: "Growth & BotIA", icon: Bot });
+    loyaltyNetworkItems.push({ href: "/loyalty/campaigns", label: "Campañas por señal", icon: Bot });
     loyaltyNetworkItems.push({ href: "/investor-snapshot", label: "Investor Presentation", icon: Presentation, badge: "PDF" });
     loyaltyNetworkItems.push({ href: "/sales-playbook", label: "Sales Playbook & FAQs", icon: BookOpen, badge: "PDF" });
-    loyaltyNetworkItems.push({ href: "/consumer-network/marketplace", label: "Marketplace Opt-in", icon: ShoppingBag, badge: "Web3" });
+    loyaltyNetworkItems.push({ href: "/consumer-network/marketplace", label: "Marketplace con opt-in", icon: ShoppingBag, badge: "Web3" });
     loyaltyNetworkItems.push({ href: "/consumer-network/offers", label: "Ofertas & Drops", icon: Flame });
     loyaltyNetworkItems.push({ href: "/consumer-network/order-requests", label: "Order Requests", icon: FileCheck2 });
   }
@@ -415,10 +415,10 @@ export function DashboardShellInner({
             </div>
           )}
 
-          {/* Loyalty & Network Group */}
+          {/* Clientes & campañas Group */}
           {loyaltyNetworkItems.length > 0 && (
             <div>
-              <p className="px-3 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Loyalty & Network</p>
+              <p className="px-3 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Clientes & campañas</p>
               <div className="space-y-0.5">
                 {loyaltyNetworkItems.map(renderNavLink)}
               </div>

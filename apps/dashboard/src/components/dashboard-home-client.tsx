@@ -101,17 +101,17 @@ export default function DashboardHomeClient({
     <div className="space-y-6">
       {/* Dynamic Tab Navigation */}
       <nav className="flex flex-wrap gap-2 p-1.5 rounded-2xl bg-slate-950/80 border border-white/5 backdrop-blur-xl sticky top-[72px] z-40">
-        <button type="button" title="CRM realtime: mapa vivo, taps, riesgo, ventas y decisiones por zona" aria-label="Abrir CRM realtime" onClick={() => setActiveTab("summary")} className={tabClass("summary")}>
+        <button type="button" title="CRM en vivo: lecturas, riesgo, mapa por zona y próxima acción comercial" aria-label="Abrir CRM en vivo" onClick={() => setActiveTab("summary")} className={tabClass("summary")}>
           <LayoutDashboard className="h-4 w-4" />
-          {tabText("CRM realtime", "mapa, riesgo, ventas")}
+          {tabText("CRM en vivo", "lecturas, riesgo, zona")}
         </button>
-        <button type="button" title="Rollout NFC: recibir lote, activar tags, auditar campo, anclar y publicar producto" aria-label="Abrir rollout NFC" onClick={() => setActiveTab("infra")} className={tabClass("infra")}>
+        <button type="button" title="Operación NFC: recibir lote, activar tags, auditar campo, anclar y publicar producto" aria-label="Abrir operación NFC" onClick={() => setActiveTab("infra")} className={tabClass("infra")}>
           <Cpu className="h-4 w-4" />
-          {tabText("Rollout NFC", "lotes, QA, anclaje")}
+          {tabText("Operación NFC", "lotes, QA, anclaje")}
         </button>
-        <button type="button" title="Growth post-tap: convertir taps reales en clientes, vouchers, campañas y recompra" aria-label="Abrir growth post-tap" onClick={() => setActiveTab("loyalty")} className={tabClass("loyalty")}>
+        <button type="button" title="Clientes & campañas: convertir lecturas verificadas en segmentos, beneficios y recompra" aria-label="Abrir clientes y campañas" onClick={() => setActiveTab("loyalty")} className={tabClass("loyalty")}>
           <Trophy className="h-4 w-4" />
-          {tabText(isTenantAdmin ? "Growth post-tap" : "Marketing & loyalty", "leads, vouchers, club")}
+          {tabText("Clientes & campañas", isTenantAdmin ? "segmentos, beneficios" : "portfolio, campañas")}
         </button>
         {!isTenantAdmin && (
           <button type="button" title="Abrir showroom: escenarios guiados de validación, replay y tamper" aria-label="Abrir showroom" onClick={() => setActiveTab("demo")} className={tabClass("demo")}>
@@ -238,13 +238,13 @@ export default function DashboardHomeClient({
               actionLabel={copy.shell.openModule}
               modules={isTenantAdmin
                 ? [
-                    { title: "Growth & BotIA", description: "Crear campañas WhatsApp/email desde señales de tap, ciudad y producto.", href: "/loyalty/campaigns", status: "activo", tone: "green" as const },
+                    { title: "Campañas por señal", description: "Crear campañas WhatsApp/email desde señales de tap, ciudad y producto.", href: "/loyalty/campaigns", status: "activo", tone: "green" as const },
                     { title: "Beneficios y vouchers", description: "Configurar premios, canjes, códigos QR y reglas de expiración.", href: "/loyalty/rewards", status: "activo", tone: "green" as const },
-                    { title: "Portal de usuarios", description: "Ver usuarios, opt-in, taps, wallet, rewards y marketplace conectado.", href: "/consumer-network/overview", status: "activo", tone: "green" as const },
+                    { title: "Clientes CRM", description: "Ver usuarios, opt-in, lecturas, wallet, rewards y marketplace conectado.", href: "/consumer-network/overview", status: "activo", tone: "green" as const },
                     { title: "Experiencias verificadas", description: "Reviews owner-only con moderación de marca y evidencia de tap real.", href: "/loyalty/experiences", status: "activo", tone: "green" as const },
                   ]
                 : [
-                    { title: "Portfolio growth", description: "Comparar tenants por audiencia, campaña, canje, recurrencia y riesgo.", href: "/loyalty/campaigns", status: "activo", tone: "green" as const },
+                    { title: "Portfolio de campañas", description: "Comparar tenants por audiencia, campaña, canje, recurrencia y riesgo.", href: "/loyalty/campaigns", status: "activo", tone: "green" as const },
                     { title: "Beneficios y vouchers", description: "Gobernar catálogos de premios por marca, ciudad, campaña y segmento.", href: "/loyalty/rewards", status: "activo", tone: "green" as const },
                     { title: "Marketplace opt-in", description: "Usuarios habilitados para comprar, vender, tokenizar o reclamar ownership.", href: "/consumer-network/marketplace", status: "activo", tone: "green" as const },
                   ]}
@@ -302,7 +302,7 @@ export default function DashboardHomeClient({
                 </div>
                 <div className="rounded-2xl border border-white/5 bg-slate-900/50 p-4 text-xs text-slate-300">
                   <p className="font-bold text-white mb-1">2) Importá y activá</p>
-                  <p className="leading-relaxed">Abrí Rollout NFC para cargar lote, activar tags, auditar campo, anclar y publicar salida comercial.</p>
+                  <p className="leading-relaxed">Abrí Operación NFC para cargar lote, activar tags, auditar campo, anclar y publicar salida comercial.</p>
                 </div>
                 <div className="rounded-2xl border border-white/5 bg-slate-900/50 p-4 text-xs text-slate-300">
                   <p className="font-bold text-white mb-1">3) Hacé el Tap</p>

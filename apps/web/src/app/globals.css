@@ -29030,6 +29030,259 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
   }
 }
 
+/* Atlas/Responsive landing authority.
+   Keep the route atlas supportive and reserve enough room for the product card
+   even when browser zoom or custom root font size inflates rem-based rules. */
+.landing-hero-section .hero-scene--product-proof {
+  --landing-proof-atlas-height: clamp(280px, 17vw, 350px);
+  --landing-proof-atlas-stage-height: clamp(200px, 12.5vw, 270px);
+  --landing-proof-product-media-height: clamp(250px, 14vw, 315px);
+  --landing-proof-product-phone-width: clamp(116px, 6.6vw, 138px);
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
+.landing-hero-section .hero-scene--product-proof > .hero-scene-proof-grid.hero-scene-proof-grid:has(.hero-object-frame--product-proof),
+.landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
+.landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
+  min-width: 0 !important;
+  align-items: start !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
+.landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
+  overflow: hidden !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof,
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof {
+  align-self: start !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof #trace-signal-atlas.hero-trace-map--trust-globe {
+  height: var(--landing-proof-atlas-height) !important;
+  min-height: var(--landing-proof-atlas-height) !important;
+  max-height: var(--landing-proof-atlas-height) !important;
+}
+
+.landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe > .hero-traceability-globe {
+  min-height: 0 !important;
+  height: 100% !important;
+}
+
+.landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe .traceability-globe__header {
+  align-items: start !important;
+  padding: 13px 14px 0 !important;
+}
+
+.landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe .traceability-globe__kpis {
+  display: none !important;
+}
+
+.landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe .traceability-globe__stage {
+  min-height: var(--landing-proof-atlas-stage-height) !important;
+  height: var(--landing-proof-atlas-stage-height) !important;
+  margin: 4px 10px 8px !important;
+}
+
+.landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe .traceability-globe__routebar {
+  left: 12px !important;
+  right: 12px !important;
+  bottom: 12px !important;
+  max-width: calc(100% - 24px) !important;
+}
+
+.landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe .scene-container,
+.landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe canvas,
+.landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe [data-globe-mode] {
+  max-width: 100% !important;
+  max-height: 100% !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof {
+  min-width: 0 !important;
+  width: 100% !important;
+  height: auto !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-showcase {
+  min-height: 0 !important;
+  align-content: start !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-media {
+  grid-template-columns: minmax(0, 1fr) var(--landing-proof-product-phone-width) !important;
+  height: var(--landing-proof-product-media-height) !important;
+  min-height: var(--landing-proof-product-media-height) !important;
+  max-height: var(--landing-proof-product-media-height) !important;
+  aspect-ratio: auto !important;
+}
+
+.landing-hero-section
+  .hero-scene--product-proof
+  .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe)
+  .hero-object-product-pane--product-proof
+  .hero-asset-media {
+  grid-template-columns: minmax(0, 1fr) var(--landing-proof-product-phone-width) !important;
+  height: var(--landing-proof-product-media-height) !important;
+  min-height: var(--landing-proof-product-media-height) !important;
+  max-height: var(--landing-proof-product-media-height) !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-passport-phone {
+  display: grid !important;
+  justify-self: end !important;
+  width: var(--landing-proof-product-phone-width) !important;
+  min-width: 0 !important;
+  border-width: 3px !important;
+  border-radius: 16px !important;
+}
+
+.landing-hero-section
+  .hero-scene--product-proof
+  .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe)
+  .hero-object-product-pane--product-proof
+  .hero-passport-phone {
+  display: grid !important;
+  justify-self: end !important;
+  width: var(--landing-proof-product-phone-width) !important;
+  min-width: 0 !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-passport-thumb {
+  height: clamp(52px, 3.6vw, 66px) !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-passport-body {
+  gap: 4px !important;
+  padding: 7px 8px 8px !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-passport-body strong {
+  font-size: clamp(12px, 0.72vw, 14px) !important;
+  line-height: 1.08 !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-passport-body dl {
+  gap: 4px !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-passport-body dd,
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-passport-body p {
+  font-size: 10px !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-passport-body em {
+  display: none !important;
+}
+
+@media (min-width: 1500px) {
+  .landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
+  .landing-hero-section .hero-scene--product-proof > .hero-scene-proof-grid.hero-scene-proof-grid:has(.hero-object-frame--product-proof) {
+    grid-template-columns: minmax(0, 1.12fr) minmax(430px, 0.88fr) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(250px, 0.72fr) minmax(380px, 1fr) !important;
+    gap: clamp(10px, 0.75vw, 14px) !important;
+  }
+}
+
+@media (min-width: 1900px) {
+  .landing-hero-section .hero-scene--product-proof {
+    --landing-proof-atlas-height: clamp(270px, 14vw, 335px);
+    --landing-proof-atlas-stage-height: clamp(190px, 10.5vw, 255px);
+    --landing-proof-product-media-height: clamp(245px, 12vw, 300px);
+  }
+
+  .landing-hero-section > .container-shell > .hero-demo-shell {
+    width: min(1540px, calc(100vw - clamp(48px, 7vw, 128px))) !important;
+    max-width: min(1540px, calc(100vw - clamp(48px, 7vw, 128px))) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
+  .landing-hero-section .hero-scene--product-proof > .hero-scene-proof-grid.hero-scene-proof-grid:has(.hero-object-frame--product-proof) {
+    grid-template-columns: minmax(0, 1.08fr) minmax(460px, 0.82fr) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(270px, 0.66fr) minmax(420px, 1fr) !important;
+  }
+}
+
+@media (min-width: 1180px) and (max-width: 1499px) {
+  .landing-hero-section .hero-scene--product-proof {
+    --landing-proof-atlas-height: clamp(270px, 24vw, 340px);
+    --landing-proof-atlas-stage-height: clamp(190px, 17vw, 255px);
+    --landing-proof-product-media-height: clamp(240px, 24vw, 320px);
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
+  .landing-hero-section .hero-scene--product-proof > .hero-scene-proof-grid.hero-scene-proof-grid:has(.hero-object-frame--product-proof) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(300px, 0.78fr) minmax(380px, 1fr) !important;
+  }
+}
+
+@media (max-width: 1179px) {
+  .landing-hero-section .hero-scene--product-proof {
+    --landing-proof-atlas-height: clamp(260px, 42vw, 340px);
+    --landing-proof-atlas-stage-height: clamp(185px, 30vw, 255px);
+    --landing-proof-product-media-height: clamp(250px, 46vw, 340px);
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-media {
+    width: min(100%, 560px) !important;
+  }
+}
+
+@media (max-width: 680px) {
+  .landing-hero-section .hero-scene--product-proof {
+    --landing-proof-atlas-height: clamp(235px, 72vw, 315px);
+    --landing-proof-atlas-stage-height: clamp(165px, 50vw, 230px);
+    --landing-proof-product-media-height: clamp(245px, 74vw, 330px);
+    --landing-proof-product-phone-width: clamp(104px, 33vw, 124px);
+  }
+
+  .landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe .traceability-globe__header {
+    padding: 11px 12px 0 !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe .traceability-globe__routebar {
+    padding: 8px 10px !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-passport-body dl {
+    display: none !important;
+  }
+
+  .landing-hero-section
+    .hero-scene--product-proof
+    .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe)
+    .hero-object-product-pane--product-proof
+    .hero-asset-media {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .landing-hero-section
+    .hero-scene--product-proof
+    .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe)
+    .hero-object-product-pane--product-proof
+    .hero-passport-phone {
+    display: none !important;
+  }
+}
+
 .demo-lab-premium-globe,
 .demo-lab-tech-map .traceability-globe {
   min-height: clamp(28rem, 42vw, 36rem) !important;

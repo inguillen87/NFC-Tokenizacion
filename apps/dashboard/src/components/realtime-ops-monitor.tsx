@@ -263,7 +263,7 @@ export function RealtimeOpsMonitor({
       const latest = visible[0];
 
       let diagnosis = "Red limpia: no hay alertas de replay/tamper en el feed visible.";
-      let recommendation = "Convertir el interés: mostrar oferta de club, marketplace y puntos después de cada tap válido.";
+      let recommendation = "Convertir el interés: mostrar oferta de club, marketplace y puntos después de cada lectura válida.";
 
       if (ratio > 15) {
         diagnosis = "Riesgo alto: demasiadas lecturas no limpias en la ventana actual.";
@@ -276,7 +276,7 @@ export function RealtimeOpsMonitor({
         recommendation = "Pedir permiso de ubicación en mobile tap y marcar IP/ciudad como aproximada.";
       }
 
-      setAiReport(`Operación: ${total} taps, ${uids} UIDs, ${cities} ciudades, ${gps} con GPS del teléfono.
+      setAiReport(`Operación: ${total} lecturas, ${uids} UIDs, ${cities} ciudades, ${gps} con GPS del teléfono.
 Confianza: ${(100 - ratio).toFixed(1)}% de lecturas limpias.
 Diagnóstico: ${diagnosis}
 Acción recomendada: ${recommendation}
@@ -535,11 +535,11 @@ Acción recomendada: ${recommendation}
     }).length;
     const max = Math.max(taps, 1);
     return [
-      { label: "Tap", value: taps, tone: "cyan", detail: "lecturas" },
-      { label: "Válido", value: valid, tone: "emerald", detail: "autenticados" },
-      { label: "GPS", value: gps, tone: "amber", detail: "ubicación real" },
-      { label: "Mobile", value: mobile, tone: "violet", detail: "teléfono" },
-      { label: "Acción", value: actionable, tone: "sky", detail: "CRM listo" },
+      { label: "Lecturas", value: taps, tone: "cyan", detail: "eventos del stream" },
+      { label: "Válidas", value: valid, tone: "emerald", detail: "aptas para acción" },
+      { label: "Ubicación", value: gps, tone: "amber", detail: "GPS del teléfono" },
+      { label: "Mobile", value: mobile, tone: "violet", detail: "lecturas desde teléfono" },
+      { label: "Señal CRM", value: actionable, tone: "sky", detail: "UID + zona usable" },
     ].map((stage) => ({ ...stage, pct: Math.round((stage.value / max) * 100) }));
   }, [liveMetrics.gps, liveMetrics.mobile, liveMetrics.valid, visibleEvents]);
   const riskEvents = useMemo(
@@ -556,8 +556,8 @@ Acción recomendada: ${recommendation}
     if (!visibleEvents.length) {
       return {
         tone: "border-slate-500/20 bg-slate-900/70 text-slate-200",
-        label: "ESPERANDO TAPS",
-        action: "Hacer 1 tap NFC real para abrir telemetría, mapa y funnel.",
+        label: "ESPERANDO LECTURAS",
+        action: "Hacer 1 lectura NFC real para abrir eventos, mapa y funnel.",
       };
     }
     if (fraudRate >= 15 || liveMetrics.risk >= 3) {
@@ -571,20 +571,20 @@ Acción recomendada: ${recommendation}
       return {
         tone: "border-amber-300/35 bg-amber-500/10 text-amber-100",
         label: "GPS BAJO",
-        action: "Mejorar permiso de ubicación en mobile tap para vender heatmap preciso por ciudad.",
+        action: "Mejorar permiso de ubicación en mobile tap para segmentar con mayor precisión por ciudad.",
       };
     }
     if (realtimePulse.tapsPerMinute >= 1) {
       return {
         tone: "border-emerald-300/35 bg-emerald-500/10 text-emerald-100",
-        label: "DEMANDA EN VIVO",
-        action: `Activar oferta o puntos extra en ${hottest?.city || "la zona con más taps"}.`,
+        label: "ACTIVIDAD EN VIVO",
+        action: `Activar oferta o puntos extra en ${hottest?.city || "la zona con más lecturas"}.`,
       };
     }
     return {
       tone: "border-cyan-300/35 bg-cyan-500/10 text-cyan-100",
       label: "OPERACIÓN LIMPIA",
-      action: `Convertir taps válidos en club, garantía o marketplace desde ${hottest?.city || "el feed activo"}.`,
+      action: `Convertir lecturas válidas en club, garantía o marketplace desde ${hottest?.city || "el feed activo"}.`,
     };
   }, [cityHotspots, fraudRate, gpsCoverage, liveMetrics.risk, realtimePulse.tapsPerMinute, visibleEvents.length]);
   const latestImpactEvent = useMemo(() => {
@@ -618,10 +618,10 @@ Acción recomendada: ${recommendation}
             </span>
             <div>
               <h1 className="text-sm md:text-base font-black tracking-widest text-cyan-200">
-                NEXID TELEMETRY OPERATIONAL COMMAND CENTER
+                NEXID CRM SEMANTICA OPERATIVA
               </h1>
               <p className="text-[10px] text-cyan-500/80">
-                SATELLITE TRACING SYSTEM // MULTI-TENANT CRYPTO-LEDGER ANCHORING
+                STREAM DE EVENTOS NFC/QR // MAPA OPERATIVO MULTI-TENANT
               </p>
             </div>
           </div>
@@ -665,15 +665,15 @@ Acción recomendada: ${recommendation}
         {/* HUD grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3 mb-4">
           <div className="bg-slate-950/60 border border-cyan-500/20 rounded-xl p-3 text-center">
-            <span className="text-[10px] text-slate-400 uppercase tracking-widest">Taps Totales</span>
+            <span className="text-[10px] text-slate-400 uppercase tracking-widest">Lecturas totales</span>
             <div className="text-2xl font-black text-cyan-200 mt-1">{visibleEvents.length}</div>
           </div>
           <div className="bg-slate-950/60 border border-emerald-500/20 rounded-xl p-3 text-center">
-            <span className="text-[10px] text-emerald-500/80 uppercase tracking-widest">Autenticados OK</span>
+            <span className="text-[10px] text-emerald-500/80 uppercase tracking-widest">Lecturas válidas</span>
             <div className="text-2xl font-black text-emerald-400 mt-1">{liveMetrics.valid}</div>
           </div>
           <div className="bg-slate-950/60 border border-rose-500/20 rounded-xl p-3 text-center">
-            <span className="text-[10px] text-rose-500/80 uppercase tracking-widest">Fraude</span>
+            <span className="text-[10px] text-rose-500/80 uppercase tracking-widest">Riesgo</span>
             <div className="text-2xl font-black text-rose-400 mt-1">{fraudRate}%</div>
           </div>
           <div className="bg-slate-950/60 border border-emerald-500/20 rounded-xl p-3 text-center">
@@ -681,7 +681,7 @@ Acción recomendada: ${recommendation}
             <div className="text-2xl font-black text-emerald-300 mt-1">{formatPercent(cleanRate)}</div>
           </div>
           <div className="bg-slate-950/60 border border-indigo-500/20 rounded-xl p-3 text-center">
-            <span className="text-[10px] text-indigo-400 uppercase tracking-widest">Zonas Activas</span>
+            <span className="text-[10px] text-indigo-400 uppercase tracking-widest">Zonas activas</span>
             <div className="text-2xl font-black text-indigo-300 mt-1">{liveMetrics.uniqueCities}</div>
           </div>
           <div className="bg-slate-950/60 border border-amber-500/20 rounded-xl p-3 text-center">
@@ -689,7 +689,7 @@ Acción recomendada: ${recommendation}
             <div className="text-2xl font-black text-amber-200 mt-1">{formatPercent(gpsCoverage)}</div>
           </div>
           <div className="bg-slate-950/60 border border-fuchsia-500/20 rounded-xl p-3 text-center">
-            <span className="text-[10px] text-fuchsia-400 uppercase tracking-widest">Taps Recientes (5m)</span>
+            <span className="text-[10px] text-fuchsia-400 uppercase tracking-widest">Lecturas recientes (5m)</span>
             <div className="text-2xl font-black text-fuchsia-300 mt-1">{realtimePulse.recentCount}</div>
           </div>
           <div className="bg-slate-950/60 border border-sky-500/20 rounded-xl p-3 text-center">
@@ -730,7 +730,7 @@ Acción recomendada: ${recommendation}
             <div className="absolute top-4 left-4 z-10 bg-slate-950/80 border border-cyan-500/30 px-3 py-1.5 rounded-lg">
               <span className="text-[10px] text-cyan-400 flex items-center gap-1.5">
                 <Globe className="h-3.5 w-3.5 text-cyan-400 animate-spin" />
-                VISTA SATELITAL CONCENTRIS SYSTEM
+                MAPA OPERATIVO: EVENTOS + HOTSPOTS
               </span>
             </div>
             <div className="flex-1 min-h-0 overflow-hidden">
@@ -745,7 +745,7 @@ Acción recomendada: ${recommendation}
               <div className="flex items-center justify-between border-b border-cyan-500/10 pb-2 mb-3">
                 <span className="text-xs font-black tracking-widest text-cyan-300 flex items-center gap-1.5">
                   <Terminal className="h-4 w-4 text-cyan-400" />
-                  RAW TELEMETRY EVENT STREAM
+                  STREAM DE EVENTOS DEL CRM
                 </span>
                 <span className="text-[10px] text-cyan-500">LIVE FEED</span>
               </div>
@@ -785,7 +785,7 @@ Acción recomendada: ${recommendation}
               <div className="flex items-center justify-between border-b border-violet-500/10 pb-2 mb-2">
                 <span className="text-xs font-black tracking-widest text-violet-300 flex items-center gap-1.5">
                   <Activity className="h-4 w-4 text-violet-400" />
-                  CO-PILOT AI DIAGNOSIS ENGINE
+                  IA OPERATIVA SOBRE STREAM
                 </span>
               </div>
               <div className="text-slate-300 leading-5 text-[11px] whitespace-pre-line bg-violet-950/5 p-2 rounded border border-violet-500/10 h-24 overflow-y-auto">
@@ -797,9 +797,9 @@ Acción recomendada: ${recommendation}
               <div className="flex items-center justify-between border-b border-cyan-500/10 pb-2 mb-2">
                 <span className="text-xs font-black tracking-widest text-cyan-300 flex items-center gap-1.5">
                   <MapPin className="h-4 w-4 text-cyan-400" />
-                  HOTSPOT PRIORITY QUEUE
+                  ZONAS PRIORIZADAS PARA ACCION
                 </span>
-                <span className="text-[10px] text-cyan-500">HEATMAP</span>
+                <span className="text-[10px] text-cyan-500">CAPA DENSIDAD</span>
               </div>
               <div className="space-y-2">
                 {cityHotspots.slice(0, 4).map((hotspot, index) => {
@@ -809,7 +809,7 @@ Acción recomendada: ${recommendation}
                     <div key={hotspot.key} className="rounded-lg border border-white/10 bg-slate-900/50 px-3 py-2">
                       <div className="flex items-center justify-between gap-2">
                         <p className="font-black text-white">#{index + 1} {hotspot.city}, {hotspot.country}</p>
-                        <p className="text-cyan-200">{hotspot.taps} taps</p>
+                        <p className="text-cyan-200">{hotspot.taps} lecturas</p>
                       </div>
                       <div className="mt-1 grid grid-cols-3 gap-1 text-[10px] text-slate-300">
                         <span>GPS {formatPercent(gpsPct)}</span>
@@ -846,7 +846,7 @@ Acción recomendada: ${recommendation}
               CRM en vivo
             </h2>
             <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-400">
-              Taps reales, mapa vivo, riesgo, conversión post-tap y acción comercial en una sola consola.
+              Lecturas reales, mapa por zona, riesgo y acción comercial post-tap en una sola consola.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2 no-print">
@@ -902,12 +902,12 @@ Acción recomendada: ${recommendation}
         <div className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {[
-              { label: "Taps vivos", value: visibleEvents.length, detail: `${realtimePulse.recentCount} últimos 5m`, tone: "cyan" },
-              { label: "Confianza", value: formatPercent(cleanRate), detail: `${liveMetrics.valid} válidos`, tone: "emerald" },
-              { label: "Riesgo fraude", value: `${fraudRate}%`, detail: `${liveMetrics.risk} alertas`, tone: liveMetrics.risk ? "rose" : "slate" },
-              { label: "GPS real", value: formatPercent(gpsCoverage), detail: `${liveMetrics.gps} con coordenada`, tone: "amber" },
-              { label: "UIDs activas", value: liveMetrics.uniqueTags, detail: `${liveMetrics.uniqueCities} ciudades`, tone: "violet" },
-              { label: "Velocidad", value: realtimePulse.tapsPerMinute, detail: "taps por minuto", tone: "sky" },
+              { label: "Lecturas", value: visibleEvents.length, detail: `${realtimePulse.recentCount} últimos 5m`, tone: "cyan" },
+              { label: "Lecturas válidas", value: formatPercent(cleanRate), detail: `${liveMetrics.valid} VALID`, tone: "emerald" },
+              { label: "Riesgo", value: `${fraudRate}%`, detail: `${liveMetrics.risk} alertas`, tone: liveMetrics.risk ? "rose" : "slate" },
+              { label: "Ubicación útil", value: formatPercent(gpsCoverage), detail: `${liveMetrics.gps} con GPS`, tone: "amber" },
+              { label: "UIDs únicas", value: liveMetrics.uniqueTags, detail: `${liveMetrics.uniqueCities} ciudades`, tone: "violet" },
+              { label: "Velocidad", value: realtimePulse.tapsPerMinute, detail: "lecturas por minuto", tone: "sky" },
             ].map((metric) => (
               <div key={metric.label} className={`rounded-xl border p-3 text-xs ${
                 metric.tone === "emerald" ? "border-emerald-300/25 bg-emerald-500/10 text-emerald-100"
@@ -927,7 +927,7 @@ Acción recomendada: ${recommendation}
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(17rem,.72fr)]">
             <div className="rounded-xl border border-white/10 bg-slate-950/65 p-4">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-200">Velocidad de taps</p>
+                <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-200">Velocidad de lecturas</p>
                 <p className="text-[11px] text-slate-500">ventana 60m</p>
               </div>
               <div className="mt-3 h-44">
@@ -956,6 +956,7 @@ Acción recomendada: ${recommendation}
 
             <div className="rounded-xl border border-white/10 bg-slate-950/65 p-4">
               <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-200">Funnel post-tap</p>
+              <p className="mt-1 text-[11px] text-slate-500">De lectura física a señal utilizable por CRM.</p>
               <div className="mt-3 space-y-2">
                 {funnelStages.map((stage) => (
                   <div key={stage.label}>
@@ -984,7 +985,7 @@ Acción recomendada: ${recommendation}
 
           <div className="rounded-xl border border-violet-300/20 bg-slate-950/70 p-4">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-xs font-black uppercase tracking-[0.14em] text-violet-200">Resumen ejecutivo IA</p>
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-violet-200">IA de cercanía comercial</p>
               <button
                 suppressHydrationWarning
                 type="button"
@@ -992,11 +993,11 @@ Acción recomendada: ${recommendation}
                 onClick={generateAiInsights}
                 disabled={aiAnalyzing}
               >
-                {aiAnalyzing ? "Analizando..." : "Actualizar"}
+                {aiAnalyzing ? "Analizando..." : "Recalcular"}
               </button>
             </div>
             <div className="mt-3 whitespace-pre-line text-sm leading-6 text-slate-200">
-              {aiReport || "Analizando el stream de taps reales..."}
+              {aiReport || "Recalculá con el stream visible para priorizar zona, riesgo y próxima acción comercial."}
             </div>
           </div>
         </div>
@@ -1004,9 +1005,9 @@ Acción recomendada: ${recommendation}
         <div className="min-w-0 rounded-2xl border border-cyan-300/18 bg-slate-950/70 p-4">
           <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-black uppercase tracking-[0.16em] text-cyan-100">Mapa vivo de taps</p>
+              <p className="text-sm font-black uppercase tracking-[0.16em] text-cyan-100">Mapa vivo de lecturas</p>
               <p className="mt-1 text-xs text-slate-400">
-                Único mapa realtime del CRM. Usa coordenadas del evento y fallback de ciudad solo cuando falta GPS.
+                Usa coordenadas del evento y fallback de ciudad solo cuando falta GPS.
               </p>
             </div>
             {latestTap ? (
@@ -1024,23 +1025,23 @@ Acción recomendada: ${recommendation}
         <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-100">Hotspots accionables</p>
-              <p className="mt-1 text-xs text-slate-400">Donde conviene vender, activar puntos o mirar riesgo.</p>
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-100">Zonas accionables</p>
+              <p className="mt-1 text-xs text-slate-400">Priorizadas por lecturas, GPS útil y riesgo.</p>
             </div>
             <p className="text-[11px] text-slate-500">Top {cityHotspots.length}</p>
           </div>
           <div className="mt-3 overflow-hidden rounded-xl border border-white/10">
             <div className="grid grid-cols-[1.2fr_.6fr_.65fr_.85fr_1fr] bg-slate-900/80 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
               <span>Zona</span>
-              <span>Taps</span>
+              <span>Lecturas</span>
               <span>GPS</span>
               <span>Riesgo</span>
-              <span>Acción</span>
+              <span>Siguiente acción</span>
             </div>
             {cityHotspots.map((hotspot) => {
               const gpsPct = hotspot.taps ? (hotspot.gps / hotspot.taps) * 100 : 0;
               const riskPct = hotspot.taps ? (hotspot.risk / hotspot.taps) * 100 : 0;
-              const action = riskPct > 0 ? "Auditar UID/lote" : gpsPct >= 50 ? "Activar oferta local" : "Mejorar GPS";
+              const action = riskPct > 0 ? "Auditar UID/lote" : gpsPct >= 50 ? "Activar beneficio local" : "Pedir opt-in GPS";
               return (
                 <div key={hotspot.key} className="grid grid-cols-[1.2fr_.6fr_.65fr_.85fr_1fr] border-t border-white/10 px-3 py-2 text-xs text-slate-200">
                   <span className="min-w-0 truncate font-semibold">{hotspot.city}, {hotspot.country}</span>
@@ -1056,7 +1057,7 @@ Acción recomendada: ${recommendation}
         </div>
 
         <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-4">
-          <p className="text-xs font-black uppercase tracking-[0.16em] text-rose-100">Alertas y últimos taps</p>
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-rose-100">Riesgos y últimos eventos</p>
           <div className="mt-3 space-y-2">
             {(riskEvents.length ? riskEvents : visibleEvents.slice(0, 5)).map((event) => {
               const result = String(event.verdict || "valid").toUpperCase();
@@ -1072,7 +1073,7 @@ Acción recomendada: ${recommendation}
                 </div>
               );
             })}
-            {!visibleEvents.length ? <p className="text-sm text-slate-400">Esperando taps reales del stream.</p> : null}
+            {!visibleEvents.length ? <p className="text-sm text-slate-400">Esperando lecturas reales del stream.</p> : null}
           </div>
         </div>
       </section>

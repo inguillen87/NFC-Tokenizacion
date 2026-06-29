@@ -101,6 +101,14 @@ La regla por defecto es **off-chain first, on-chain when useful**.
 | Handoff logistico | Si | No | Puede anclar digest del handoff |
 | Auditoria mensual | Si | No | Puede anclar Merkle root/checkpoint |
 
+## Supplier Encoding Pack y Tenant Vault
+
+Las operaciones de fabrica pertenecen a la fuente de verdad privada de nexID. Un Supplier Encoding Pack entrega a la fabrica solo lo necesario para codificar cada sub-batch: `order_id`, `batch_id`, `sub_batch_id`/`bid`, chip model, perfil SDM/TagTamper, URL template, formato de manifest y `K_META`/`K_FILE` de ese sub-batch.
+
+La fabrica nunca recibe `KMS_MASTER_KEY_HEX`, `DATABASE_URL`, private keys de Polygon, secretos de executor, tokens admin ni PII. Tenant Vault muestra evidencia operativa para el tenant: estado de orden, sub-batches, fingerprints, manifest, hashes, Merkle roots sanitizados, reportes QA y eventos DPP autorizados. No es una UI para revelar secretos.
+
+Polygon no se usa para manifest de proveedor ni QA de fabrica. Polygon se usa si hay ownership, NFT/certificado, claim o transferencia. IOTA puede usarse como proof opcional para hash/Merkle root de manifest, QA, DPP o logistica.
+
 ## Clasificacion de datos
 
 | Categoria | Ubicacion permitida | Observacion |

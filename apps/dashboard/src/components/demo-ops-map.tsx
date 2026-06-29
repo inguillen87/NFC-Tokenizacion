@@ -107,7 +107,7 @@ export function DemoOpsMap({
             <MapPin className="h-4 w-4 text-cyan-400 animate-pulse" />
             Mapa Geográfico Operativo
           </h3>
-          <p className="text-xs text-slate-400">Rastreo satelital en vivo de taps de producto, procedencias y detección de fraude por geolocalización.</p>
+          <p className="text-xs text-slate-400">Mapa operativo de lecturas de producto, zonas, procedencia reportada y riesgo por geolocalización.</p>
         </div>
         <button
           suppressHydrationWarning

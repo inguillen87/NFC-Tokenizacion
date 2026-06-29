@@ -346,9 +346,9 @@ export function OpsCommandCenter({
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-200">Playbook enterprise agro</p>
-            <h3 className="mt-2 text-xl font-black tracking-tight text-white">De producto físico a señal operativa para Syngenta, agro y pharma.</h3>
+            <h3 className="mt-2 text-xl font-black tracking-tight text-white">De producto físico a señal operativa para agro, pharma y marcas enterprise.</h3>
             <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-400">
-              Esta zona explica para qué existe Rollout NFC: no es un tablero decorativo, es la cadena de trabajo para transformar cada unidad en evidencia verificable, auditable y accionable por sistemas externos.
+              Esta zona explica para qué existe Operación NFC: no es un tablero decorativo, es la cadena de trabajo para transformar cada unidad en evidencia verificable, auditable y accionable por sistemas externos.
             </p>
           </div>
           <StatusChip label="Cropwise-ready" tone="good" />

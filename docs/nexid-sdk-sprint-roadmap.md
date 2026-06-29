@@ -34,7 +34,7 @@ Estado: siguiente foco inmediato.
 - Primer viewport debe responder: que producto es, que puedo hacer ahora, que es opcional y que exige compra.
 - Acciones principales: ficha, sommelier IA, comprar/marketplace, verificar compra.
 - No forzar registro al primer tap.
-- Separar claramente: visitante curioso, comprador, miembro del club y duenio verificado.
+- Separar claramente: visitante curioso, comprador, miembro del club y dueño verificado.
 - Sommelier IA como burbuja accesible y no como bloque enterrado al final del scroll.
 
 ## Sprint 4 - GS1 Digital Link y carriers hibridos

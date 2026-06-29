@@ -348,7 +348,7 @@ export function SupplierOrderConsole({
       setCreated(data);
       setPack(null);
       setVaultArtifacts([]);
-    const firstBid = data.sub_batches?.[0]?.bid || "";
+      const firstBid = data.sub_batches?.[0]?.bid || "";
       setQaBid(firstBid);
       setQaSampleUrls("");
       setQaReplayChecked(false);
@@ -421,6 +421,75 @@ export function SupplierOrderConsole({
     }
   }
 
+  async function importManifest(dryRun: boolean) {
+    if (!selectedOrderId || !qaBid.trim()) {
+      setStatus("Seleccioná un Supplier Order y un BID antes de importar manifiesto.");
+      return;
+    }
+    if (!manifestCsv.trim()) {
+      setStatus("Pegá el CSV/TXT de fábrica antes de validar el manifiesto.");
+      return;
+    }
+    setPending(true);
+    setStatus(dryRun ? "Validando manifiesto sin escribir datos..." : "Importando manifiesto y registrando evidencia...");
+    try {
+      const data = await run(`/api/admin/batches/${encodeURIComponent(qaBid.trim())}/import-manifest`, {
+        method: "POST",
+        body: JSON.stringify({
+          csv: manifestCsv,
+          dryRun,
+          activateImported: false,
+        }),
+      }) as ManifestImportResponse;
+      setManifestResult(data);
+      if (!dryRun) {
+        updateSubBatchStatus(qaBid.trim(), {
+          manifest_status: "imported",
+          manifest_count: Number(data.inserted || data.importedRows || manifestRows || 0),
+        });
+        await loadVaultArtifacts(selectedOrderId);
+      }
+      const count = Number(data.inserted || data.importedRows || manifestRows || 0);
+      setStatus(dryRun
+        ? `Preflight OK: ${count} filas válidas para ${qaBid.trim()}. Todavía no se activó nada.`
+        : `Manifiesto importado: ${count} UIDs registrados. Ahora falta QA aprobado antes de activar.`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "No se pudo importar el manifiesto.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function activateSubBatch() {
+    if (!selectedOrderId || !qaBid.trim()) {
+      setStatus("Seleccioná un Supplier Order y un BID antes de activar.");
+      return;
+    }
+    if (!canActivateSubBatch) {
+      setStatus("Activación bloqueada: el sub-batch necesita manifiesto importado y QA aprobado.");
+      return;
+    }
+    const limit = Math.max(0, Math.trunc(Number(activationLimit || 0)));
+    setPending(true);
+    setStatus(limit > 0 ? `Activando hasta ${limit} tags del sub-batch...` : "Activando todos los tags pendientes del sub-batch...");
+    try {
+      const data = await run(`/api/admin/batches/${encodeURIComponent(qaBid.trim())}/activate-all`, {
+        method: "POST",
+        body: JSON.stringify({ limit }),
+      }) as ActivationResponse;
+      updateSubBatchStatus(qaBid.trim(), {
+        status: data.activationComplete ? "activated" : "partially_activated",
+      });
+      setStatus(data.activationComplete
+        ? `Sub-batch activo: ${data.activated || 0} tags activados y sin pendientes.`
+        : `Activación parcial: ${data.activated || 0} tags activados, ${data.remainingInactive || 0} pendientes.`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "No se pudo activar el sub-batch.");
+    } finally {
+      setPending(false);
+    }
+  }
+
   async function markQa(passed: boolean) {
     if (!canRunQa) {
       setStatus("Tu perfil no puede aprobar QA. Necesitás permiso de lotes o supplier QA.");
@@ -454,6 +523,7 @@ export function SupplierOrderConsole({
             : "QA rechazado desde consola supplier. No activar este sub-batch.",
         }),
       });
+      updateSubBatchStatus(qaBid.trim(), { qa_status: passed ? "passed" : "failed" });
       setStatus(passed ? "QA aprobado. El sub-batch ya puede pasar a activación controlada." : "QA rechazado. No activar este sub-batch.");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "No se pudo actualizar QA.");
@@ -536,9 +606,10 @@ export function SupplierOrderConsole({
         </div>
 
         <div className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-4">
             <Metric label="Sub-batches" value={String(subBatches.length)} />
             <Metric label="Pack" value={pack?.packs?.length ? "exportado" : "pendiente"} />
+            <Metric label="Manifiesto" value={selectedSubBatch?.manifest_status || "pendiente"} />
             <Metric label="QA BID" value={qaBid || "pendiente"} />
           </div>
 
@@ -551,7 +622,10 @@ export function SupplierOrderConsole({
                     key={item.bid}
                     type="button"
                     className={`w-full rounded-xl border px-3 py-2 text-left text-xs transition ${qaBid === item.bid ? "border-cyan-300/50 bg-cyan-500/15 text-cyan-50" : "border-white/10 bg-slate-900/60 text-slate-300 hover:border-cyan-300/30"}`}
-                    onClick={() => setQaBid(item.bid)}
+                    onClick={() => {
+                      setQaBid(item.bid);
+                      setManifestResult(null);
+                    }}
                   >
                     <b className="text-white">{item.bid}</b>
                     <span className="ml-2 text-slate-400">{item.expected_quantity || 0} tags</span>
@@ -672,6 +746,65 @@ export function SupplierOrderConsole({
                 Sin artefactos visibles todavia. Exporta el pack o importa el manifest para poblar el Vault.
               </p>
             )}
+          </div>
+
+          <div className="rounded-2xl border border-sky-300/20 bg-sky-500/10 p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-sky-100">Manifiesto + activación</p>
+                <p className="mt-2 text-sm leading-6 text-sky-50">
+                  Flujo real de fábrica: primero se valida el archivo recibido, después se importa, luego QA aprueba muestras reales y recién ahí se activa el sub-batch.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-[0.12em]">
+                <span className="rounded-full border border-sky-300/25 bg-sky-400/10 px-3 py-1 text-sky-100">{qaBid || "sin BID"}</span>
+                <span className="rounded-full border border-white/10 bg-slate-950/60 px-3 py-1 text-slate-200">{manifestRows} filas</span>
+                <span className="rounded-full border border-emerald-300/20 bg-emerald-500/10 px-3 py-1 text-emerald-100">QA {selectedSubBatch?.qa_status || "pendiente"}</span>
+              </div>
+            </div>
+
+            <label className="mt-3 block">
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">CSV/TXT recibido del proveedor</span>
+              <textarea
+                className="mt-1 min-h-32 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 font-mono text-xs text-white placeholder:text-slate-500"
+                value={manifestCsv}
+                onChange={(event) => setManifestCsv(event.target.value)}
+                placeholder={"uid_hex,bid,product_name,sku,lot,serial\n04AABBCCDD0011,SYN-AR-2026-001-A,Producto,SKU-001,LOT-001,SER-001"}
+              />
+              <span className="mt-1 block text-xs text-slate-400">
+                No activa tags durante el dry-run. La importación queda registrada en Tenant Vault y no expone llaves.
+              </span>
+            </label>
+
+            <div className="mt-3 grid gap-3 sm:grid-cols-[0.45fr_1fr]">
+              <Field label="Límite activación" value={activationLimit} onChange={setActivationLimit} placeholder="0 = todos" />
+              <div className="rounded-xl border border-white/10 bg-slate-950/50 p-3 text-xs leading-5 text-slate-300">
+                <b className="text-white">Regla de seguridad</b>
+                <span className="mt-1 block">
+                  El botón de activación queda bloqueado hasta tener <span className="text-cyan-100">manifiesto importado</span> y <span className="text-emerald-100">QA aprobado</span>.
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button variant="secondary" disabled={pending || !canImportManifest} onClick={() => void importManifest(true)}>Validar sin importar</Button>
+              <Button disabled={pending || !canImportManifest} onClick={() => void importManifest(false)}>Importar manifiesto</Button>
+              <Button disabled={pending || !canActivateSubBatch} onClick={() => void activateSubBatch()}>Activar sub-batch</Button>
+            </div>
+
+            {manifestResult ? (
+              <div className="mt-3 rounded-xl border border-white/10 bg-slate-950/60 p-3 text-xs text-slate-300">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <b className="text-white">{manifestResult.dryRun ? "Validación de manifiesto" : "Manifiesto importado"}</b>
+                  <span className="rounded-full border border-white/10 px-2 py-0.5 font-mono text-[10px] text-sky-100">{manifestResult.bid || qaBid}</span>
+                </div>
+                <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                  <Metric label="Filas" value={String(manifestResult.inserted || manifestResult.importedRows || manifestRows || 0)} />
+                  <Metric label="SUN payloads" value={String(manifestResult.registeredSunPayloads || 0)} />
+                  <Metric label="Estado" value={manifestResult.ok ? "OK" : "revisar"} />
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-4">

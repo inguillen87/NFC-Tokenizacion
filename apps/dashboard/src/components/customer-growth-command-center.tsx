@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Badge, Card, StatusChip } from "@product/ui";
-import { AlertTriangle, Bot, ClipboardCheck, Download, Gift, Mail, MapPin, MessageCircle, MousePointerClick, Route, Send, ShieldCheck, ShoppingBag, Sparkles, Sprout, Users } from "lucide-react";
+import { AlertTriangle, Bot, ClipboardCheck, Download, Mail, MapPin, MessageCircle, MousePointerClick, Route, Send, ShieldCheck, Sparkles, Sprout, Users } from "lucide-react";
 import type { TenantTapRealtimeEvent } from "../lib/realtime-feed";
 
 type SegmentTone = "cyan" | "green" | "amber" | "rose" | "violet";
@@ -62,6 +62,7 @@ export function CustomerGrowthCommandCenter({ events, tenantScope, successfulTap
   const insights = useMemo(() => {
     const validEvents = events.filter((event) => String(event.verdict || "").toUpperCase() === "VALID");
     const gpsEvents = events.filter((event) => Number.isFinite(Number(event.lat)) && Number.isFinite(Number(event.lng)));
+    const validGpsEvents = validEvents.filter((event) => Number.isFinite(Number(event.lat)) && Number.isFinite(Number(event.lng)));
     const riskEvents = events.filter((event) => String(event.riskLevel || "").toLowerCase() !== "low" && String(event.riskLevel || "").trim());
     const uniqueUids = new Set(events.map((event) => event.uidMasked).filter(Boolean));
     const cityCounts = new Map<string, number>();
@@ -76,6 +77,7 @@ export function CustomerGrowthCommandCenter({ events, tenantScope, successfulTap
       total: events.length,
       valid: validEvents.length,
       gps: gpsEvents.length,
+      validGps: validGpsEvents.length,
       missingGps: Math.max(events.length - gpsEvents.length, 0),
       risk: riskEvents.length || failedTaps,
       unique: uniqueUids.size,
@@ -88,16 +90,16 @@ export function CustomerGrowthCommandCenter({ events, tenantScope, successfulTap
 
   const segments = [
     {
-      title: `${insights.topCityName} caliente`,
+      title: `${insights.topCityName} prioritaria`,
       audience: insights.topCityCount,
-      detail: "Ciudad con mayor intención post-tap en la ventana visible.",
-      action: "Enviar voucher geolocalizado",
+      detail: "Zona con mayor cantidad de lecturas en la ventana visible.",
+      action: "Crear campaña local",
       href: `/loyalty/campaigns?city=${encodeURIComponent(insights.topCityName)}&offer=${encodeURIComponent("voucher_cercania")}`,
       tone: "cyan" as const,
       icon: MapPin,
     },
     {
-      title: "Clientes con evidencia real",
+      title: "UIDs con evidencia real",
       audience: insights.unique,
       detail: "UIDs únicos con tap físico listos para club, puntos o garantía.",
       action: "Abrir portal de usuarios",
@@ -117,7 +119,7 @@ export function CustomerGrowthCommandCenter({ events, tenantScope, successfulTap
     {
       title: "Riesgo o soporte",
       audience: insights.risk,
-      detail: "Taps que conviene revisar antes de entregar beneficio o ownership.",
+      detail: "Lecturas que conviene revisar antes de entregar beneficio o abrir reclamo.",
       action: "Abrir tickets",
       href: "/leads-tickets",
       tone: insights.risk ? "rose" as const : "green" as const,
@@ -137,25 +139,25 @@ export function CustomerGrowthCommandCenter({ events, tenantScope, successfulTap
   };
 
   const funnel = [
-    { label: "Tap", value: insights.total, pct: 100, icon: MousePointerClick },
-    { label: "Válido", value: successfulTaps || insights.valid, pct: insights.conversionRate, icon: ShieldCheck },
-    { label: "Contacto", value: Math.max(insights.unique, successfulTaps), pct: insights.total ? Math.round((Math.max(insights.unique, successfulTaps) / insights.total) * 100) : 0, icon: MessageCircle },
-    { label: "Voucher", value: Math.max(Math.round((successfulTaps || insights.valid) * 0.65), 0), pct: insights.total ? Math.round((Math.max(Math.round((successfulTaps || insights.valid) * 0.65), 0) / insights.total) * 100) : 0, icon: Gift },
-    { label: "Compra", value: Math.max(Math.round((successfulTaps || insights.valid) * 0.22), 0), pct: insights.total ? Math.round((Math.max(Math.round((successfulTaps || insights.valid) * 0.22), 0) / insights.total) * 100) : 0, icon: ShoppingBag },
+    { label: "Lectura", value: insights.total, pct: insights.total ? 100 : 0, detail: "evento NFC/QR recibido", icon: MousePointerClick },
+    { label: "Válida", value: successfulTaps || insights.valid, pct: insights.conversionRate, detail: "apta para beneficio", icon: ShieldCheck },
+    { label: "Ubicación", value: insights.validGps, pct: insights.total ? Math.round((insights.validGps / insights.total) * 100) : 0, detail: "válida con GPS útil", icon: MapPin },
+    { label: "Audiencia", value: insights.unique, pct: insights.total ? Math.round((insights.unique / insights.total) * 100) : 0, detail: "UIDs únicos visibles", icon: Users },
+    { label: "Zona", value: insights.topCityCount, pct: insights.total ? Math.round((insights.topCityCount / insights.total) * 100) : 0, detail: "segmento local sugerido", icon: Route },
   ];
 
   const enterpriseGrowthPlays = [
     {
       icon: Sprout,
       title: "Soporte técnico desde producto real",
-      body: "Después del tap válido se abre ficha técnica, EPP, dosificación, soporte y confirmación de lectura. No reemplaza sistemas agro: les entrega una señal verificable.",
+      body: "Después de la lectura válida se abre ficha técnica, EPP, dosificación, soporte y confirmación. No reemplaza sistemas agro: les entrega una señal verificable.",
       metric: `${formatNumber(insights.valid)} lecturas confiables`,
       href: "/loyalty/campaigns?template=agro_soporte",
     },
     {
       icon: Route,
       title: "Canal gris y distribución",
-      body: "Cruza ciudad, lote y repetición de UID para detectar producto fuera de zona, vendedor no previsto o concentración sospechosa de taps.",
+      body: "Cruza ciudad, lote y repetición de UID para detectar producto fuera de zona, vendedor no previsto o concentración sospechosa de lecturas.",
       metric: `${formatNumber(insights.risk)} alertas`,
       href: "/events?view=channel-risk",
     },
@@ -178,16 +180,16 @@ export function CustomerGrowthCommandCenter({ events, tenantScope, successfulTap
       <div className="border-b border-white/10 bg-[radial-gradient(circle_at_12%_10%,rgba(168,85,247,.2),transparent_28%),radial-gradient(circle_at_86%_20%,rgba(34,211,238,.18),transparent_30%),linear-gradient(135deg,rgba(15,23,42,.98),rgba(2,6,23,.98))] p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-200">Growth post-tap</p>
-            <h2 className="mt-2 text-2xl font-black tracking-tight text-white sm:text-3xl">Convertir taps reales en clientes, campañas y recompra.</h2>
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-200">Clientes & campañas</p>
+            <h2 className="mt-2 text-2xl font-black tracking-tight text-white sm:text-3xl">Convertir lecturas verificadas en segmentos, beneficios y recompra.</h2>
             <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-300">
-              Esta solapa sirve para decidir a quién contactar, con qué beneficio, por qué canal y desde qué ciudad. WhatsApp/email siguen siendo alta liviana; wallet y NFT aparecen solo cuando el usuario lo pide.
+              Esta solapa sirve para decidir qué segmento activar, con qué beneficio, por qué canal y desde qué ciudad. WhatsApp/email siguen siendo alta liviana; wallet y NFT aparecen solo cuando el usuario lo pide.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Badge tone="cyan">CRM-ready</Badge>
-            <Badge tone="green">opt-in first</Badge>
-            <Badge>tenant-safe</Badge>
+            <Badge tone="cyan">Listo para CRM</Badge>
+            <Badge tone="green">Opt-in primero</Badge>
+            <Badge>Scope tenant</Badge>
           </div>
         </div>
 
@@ -195,17 +197,17 @@ export function CustomerGrowthCommandCenter({ events, tenantScope, successfulTap
           <div className="rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-4">
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-100">Audiencia visible</p>
             <p className="mt-2 text-3xl font-black text-white">{formatNumber(insights.unique)}</p>
-            <p className="mt-1 text-xs text-cyan-100/80">UIDs únicos en la ventana actual</p>
+            <p className="mt-1 text-xs text-cyan-100/80">UIDs únicos, no contactos confirmados</p>
           </div>
           <div className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-4">
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-100">Tasa válida</p>
             <p className="mt-2 text-3xl font-black text-white">{insights.conversionRate}%</p>
-            <p className="mt-1 text-xs text-emerald-100/80">{formatNumber(insights.valid)} taps confiables</p>
+            <p className="mt-1 text-xs text-emerald-100/80">{formatNumber(insights.valid)} lecturas confiables</p>
           </div>
           <div className="rounded-2xl border border-amber-300/20 bg-amber-500/10 p-4">
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-100">GPS útil</p>
             <p className="mt-2 text-3xl font-black text-white">{insights.gpsRate}%</p>
-            <p className="mt-1 text-xs text-amber-100/80">Base para cercanía, logística y pauta</p>
+            <p className="mt-1 text-xs text-amber-100/80">Base para cercanía comercial y pauta</p>
           </div>
           <div className="rounded-2xl border border-violet-300/20 bg-violet-500/10 p-4">
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-violet-100">Tenant activo</p>
@@ -217,13 +219,13 @@ export function CustomerGrowthCommandCenter({ events, tenantScope, successfulTap
         <div className="mt-5 rounded-3xl border border-emerald-300/15 bg-slate-950/45 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-200">Modo agro enterprise</p>
-              <h3 className="mt-1 text-lg font-black text-white">De tap verificado a campaña útil para productor, canal y equipo técnico.</h3>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-200">Modo enterprise por vertical</p>
+              <h3 className="mt-1 text-lg font-black text-white">De lectura verificada a campaña útil para cliente, canal y equipo técnico.</h3>
               <p className="mt-1 text-xs leading-5 text-slate-400">
                 Esta capa evita vender un CRM genérico: convierte señales físicas en acciones comerciales, soporte y aprendizaje de mercado.
               </p>
             </div>
-            <Badge tone="green">Syngenta-ready</Badge>
+            <Badge tone="green">Verticalizable</Badge>
           </div>
           <div className="mt-4 grid gap-3 lg:grid-cols-3">
             {enterpriseGrowthPlays.map((play) => {
@@ -251,7 +253,7 @@ export function CustomerGrowthCommandCenter({ events, tenantScope, successfulTap
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-200">Segmentos accionables</p>
-              <p className="mt-1 text-xs text-slate-400">No es una lista infinita: son decisiones comerciales con destino claro.</p>
+              <p className="mt-1 text-xs text-slate-400">No es una lista infinita: son decisiones comerciales con segmento, canal y destino claro.</p>
             </div>
             <button type="button" onClick={exportSegments} className="inline-flex items-center gap-2 rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-100 hover:bg-cyan-500/20">
               <Download className="h-4 w-4" /> Exportar CSV
@@ -282,7 +284,10 @@ export function CustomerGrowthCommandCenter({ events, tenantScope, successfulTap
         <aside className="space-y-4">
           <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-200">Funnel de monetización</p>
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-200">Funnel de activación comercial</p>
+                <p className="mt-1 text-[11px] text-slate-500">Etapas calculadas desde eventos visibles; no son ventas confirmadas.</p>
+              </div>
               <StatusChip label="post-tap" tone="good" />
             </div>
             <div className="mt-4 space-y-3">
@@ -294,6 +299,7 @@ export function CustomerGrowthCommandCenter({ events, tenantScope, successfulTap
                       <span className="flex items-center gap-2 text-sm font-bold text-white"><Icon className="h-4 w-4 text-cyan-200" /> {step.label}</span>
                       <span className="font-mono text-sm font-black text-cyan-100">{formatNumber(step.value)} <span className="text-xs text-slate-500">({step.pct}%)</span></span>
                     </div>
+                    <p className="mt-1 text-[11px] text-slate-500">{step.detail}</p>
                     <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-800">
                       <div className="h-full rounded-full bg-gradient-to-r from-cyan-300 to-emerald-300" style={{ width: `${Math.max(4, Math.min(100, step.pct))}%` }} />
                     </div>
@@ -306,7 +312,7 @@ export function CustomerGrowthCommandCenter({ events, tenantScope, successfulTap
           <div className="rounded-2xl border border-violet-300/20 bg-violet-500/10 p-4">
             <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-violet-100"><Sparkles className="h-4 w-4" /> Playbook recomendado</p>
             <div className="mt-3 space-y-2 text-xs leading-5 text-violet-50/90">
-              <p className="rounded-xl border border-white/10 bg-slate-950/45 p-3">1. Enviar voucher corto a la ciudad caliente, con vencimiento y QR de canje.</p>
+              <p className="rounded-xl border border-white/10 bg-slate-950/45 p-3">1. Enviar beneficio corto a la ciudad prioritaria, con vencimiento y QR de canje.</p>
               <p className="rounded-xl border border-white/10 bg-slate-950/45 p-3">2. Pedir opt-in de ubicación solo después del beneficio, no antes del registro.</p>
               <p className="rounded-xl border border-white/10 bg-slate-950/45 p-3">3. Activar trivia o encuesta post-tap para medir conocimiento del producto.</p>
             </div>

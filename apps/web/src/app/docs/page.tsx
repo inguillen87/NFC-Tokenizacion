@@ -30,6 +30,8 @@ type DocsCopy = {
   revenueBullets: string[];
   roadmapTitle: string;
   roadmapBullets: string[];
+  trustOpsTitle: string;
+  trustOpsBullets: string[];
   actionsTitle: string;
   quickJumpTitle: string;
   faqTitle: string;
@@ -118,6 +120,13 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "Hoy: NTAG215 + NTAG 424 DNA/TagTamper.",
       "Siguiente fase: middle tier con StatusDetect para casos de estado/sensing battery-free.",
       "Siempre: NFC + QR fallback + data model DPP-ready.",
+    ],
+    trustOpsTitle: "Trust layer enterprise",
+    trustOpsBullets: [
+      "Polygon se usa para ownership, NFT/certificado, claims y transferencias; no para escribir cada tap.",
+      "IOTA es proof layer opcional para hashes, Merkle roots, DPP y evidencia logistica.",
+      "Supplier Encoding Pack entrega K_META/K_FILE solo por sub-batch; fabrica nunca recibe KMS ni DATABASE_URL.",
+      "Tenant Vault muestra evidencia, manifest, QA y hashes; no muestra secretos internos.",
     ],
     actionsTitle: "Siguientes pasos",
     quickJumpTitle: "Explorar rápido",
@@ -220,6 +229,13 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "Próxima fase: middle tier com StatusDetect.",
       "Sempre: NFC + fallback QR + modelo DPP-ready.",
     ],
+    trustOpsTitle: "Trust layer enterprise",
+    trustOpsBullets: [
+      "Polygon e usado para ownership, NFT/certificado, claims e transferencias; nao para registrar cada toque.",
+      "IOTA e proof layer opcional para hashes, Merkle roots, DPP e evidencia logistica.",
+      "Supplier Encoding Pack entrega K_META/K_FILE apenas por sub-batch; fabrica nunca recebe KMS nem DATABASE_URL.",
+      "Tenant Vault mostra evidencia, manifest, QA e hashes; nao mostra segredos internos.",
+    ],
     actionsTitle: "Próximos passos",
     quickJumpTitle: "Explorar rápido",
     faqTitle: "FAQ curta para explicar o produto",
@@ -320,6 +336,13 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       "Now: NTAG215 + NTAG 424 DNA/TagTamper.",
       "Next: middle tier with StatusDetect capabilities.",
       "Always: NFC + QR fallback + DPP-ready data model.",
+    ],
+    trustOpsTitle: "Enterprise trust layer",
+    trustOpsBullets: [
+      "Polygon is for ownership, NFT/certificates, claims and transfers; not every tap.",
+      "IOTA is an optional proof layer for hashes, Merkle roots, DPP and logistics evidence.",
+      "Supplier Encoding Pack sends K_META/K_FILE only per sub-batch; factories never receive KMS or DATABASE_URL.",
+      "Tenant Vault shows evidence, manifests, QA and hashes; it does not expose internal secrets.",
     ],
     actionsTitle: "Next steps",
     quickJumpTitle: "Quick explore",
@@ -487,7 +510,7 @@ export default async function DocsPage() {
           </div>
         </Card>
       </div>
-      <div id="rollout" className="grid gap-6 scroll-mt-28 lg:grid-cols-2 xl:grid-cols-4">
+      <div id="rollout" className="grid gap-6 scroll-mt-28 lg:grid-cols-2 xl:grid-cols-5">
         <Card className="p-6">
           <h3 className="text-lg font-semibold text-white">{copy.packsTitle}</h3>
           <ul className="mt-4 space-y-2 text-sm text-slate-300">{copy.packs.map((item) => <li key={item}>• {item}</li>)}</ul>
@@ -503,6 +526,10 @@ export default async function DocsPage() {
         <Card className="p-6">
           <h3 className="text-lg font-semibold text-white">{copy.roadmapTitle}</h3>
           <ul className="mt-4 space-y-2 text-sm text-slate-300">{copy.roadmapBullets.map((item) => <li key={item}>• {item}</li>)}</ul>
+        </Card>
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold text-white">{copy.trustOpsTitle}</h3>
+          <ul className="mt-4 space-y-2 text-sm text-slate-300">{copy.trustOpsBullets.map((item) => <li key={item}>• {item}</li>)}</ul>
         </Card>
       </div>
 

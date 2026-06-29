@@ -79,6 +79,21 @@ No debe venderse asi. Puede haber redes testnet sin valor real para piloto, pero
 
 Significa que nexID conserva el evento completo off-chain y publica solo una huella criptografica verificable. Para un evento seleccionado se puede publicar un `event_digest`. Para muchos eventos, se calcula un Merkle root: el auditor puede verificar que un evento autorizado pertenece al conjunto sin publicar todo el lote, todos los taps ni datos sensibles.
 
+Flujo recomendado:
+
+```txt
+evento/manifest autorizado -> JSON canonico -> sha256 -> event_digest
+varios event_digest -> Merkle tree -> Merkle root -> proof envelope opcional
+```
+
+El hash prueba integridad de un artefacto concreto. El Merkle root permite probar inclusion dentro de un conjunto sin publicar todas las filas. El proof envelope debe incluir version de canonicalizacion, tipo de evento, referencias publicas y digest/root; no debe incluir UID crudo, PII, `K_META`, `K_FILE`, `KMS_MASTER_KEY_HEX` ni `DATABASE_URL`.
+
+### Que recibe la fabrica cuando codifica tags?
+
+La fabrica recibe un Supplier Encoding Pack acotado al sub-batch: `order_id`, `batch_id`, `sub_batch_id`/`bid`, chip model, perfil SDM/TagTamper, URL template, formato de manifest y `K_META`/`K_FILE` de ese sub-batch.
+
+La fabrica nunca recibe KMS, `DATABASE_URL`, private keys de Polygon, secretos de executor, tokens admin ni PII. Tenant Vault muestra evidencia operativa, hashes, manifest, QA y estado; no muestra secretos internos.
+
 ### Existe una alianza formal con Polygon o IOTA?
 
 No se debe afirmar eso salvo que exista un acuerdo publico y verificable. La documentacion debe decir que nexID integra o puede integrar esas redes como capas tecnicas.

@@ -2,15 +2,15 @@
 
 Este documento resume el flujo operacional para proveedores que codifican tags NFC nexID y para equipos internos que reciben, activan y auditan lotes.
 
-Para detalles criptograficos de claves y manifest, ver `docs/nexid-key-lifecycle.md`.
+Para detalles criptograficos de claves y manifest, ver `docs/nexid-key-lifecycle.md`. Para el contrato de entrega a fabrica y Tenant Vault, ver `docs/supplier-encoding-pack-tenant-vault.md`.
 
 ## Objetivo
 
 Que cada lote fisico tenga:
 
 - Tenant y batch creados antes de codificar.
-- Claves de lote controladas.
-- Paquete de encoding claro para proveedor.
+- Claves controladas por sub-batch.
+- Paquete de encoding claro para proveedor, limitado al sub-batch autorizado.
 - Manifest recibido y validado.
 - Pruebas de calidad antes de venta.
 - Eventos DPP registrados.
@@ -31,37 +31,42 @@ Que cada lote fisico tenga:
 
 1. Crear tenant y batch.
 2. Definir chip model, por ejemplo `NTAG 424 DNA TagTamper`.
-3. Generar o registrar `K_META_BATCH` y `K_FILE_BATCH`.
-4. Guardar claves cifradas en backend; nunca en frontend.
-5. Exportar paquete de encoding para proveedor.
-6. Proveedor codifica tags y devuelve manifest.
-7. Importar manifest en nexID.
-8. Activar lote en estado controlado.
-9. Probar muestras fisicas.
-10. Aprobar lote para produccion o venta.
-11. Registrar eventos DPP relevantes.
-12. Anclar en IOTA solo si la politica enterprise lo requiere.
+3. Dividir el pedido en sub-batches cuando aplique por SKU, rollo, carton, region, artwork o ventana QA.
+4. Generar o registrar `K_META` y `K_FILE` por sub-batch.
+5. Guardar claves cifradas en backend; nunca en frontend.
+6. Exportar paquete de encoding para proveedor.
+7. Proveedor codifica tags y devuelve manifest.
+8. Importar manifest en nexID.
+9. Activar lote en estado controlado.
+10. Probar muestras fisicas.
+11. Aprobar lote para produccion o venta.
+12. Registrar eventos DPP relevantes.
+13. Anclar en IOTA solo si la politica enterprise lo requiere.
 
 ## Paquete de encoding
 
-El proveedor solo debe recibir lo necesario para programar el lote.
+El proveedor solo debe recibir lo necesario para programar el sub-batch autorizado. En copy externo usar `K_META` y `K_FILE`; la fabrica no necesita conocer nombres internos de KMS, base de datos ni infraestructura.
 
 Puede incluir:
 
 ```json
 {
+  "order_id": "SUP-2026-00041",
   "batch_id": "NXD2606-A01",
+  "sub_batch_id": "NXD2606-A01-R001",
+  "bid": "NXD2606-A01-R001",
   "chip_model": "NTAG 424 DNA TagTamper",
-  "k_meta_batch": "<32_HEX_CHARS>",
-  "k_file_batch": "<32_HEX_CHARS>",
-  "url_template": "https://api.nexid.lat/sun?v=1&bid=NXD2606-A01&picc_data=<PICC_DATA_DYNAMIC>&enc=<ENC_DYNAMIC>&cmac=<CMAC_DYNAMIC>",
-  "manifest_format": "batch_id,uid_hex,ic_type,roll_id,qc_status,timestamp"
+  "K_META": "<32_HEX_CHARS>",
+  "K_FILE": "<32_HEX_CHARS>",
+  "url_template": "https://api.nexid.lat/sun?v=1&bid=NXD2606-A01-R001&picc_data=<PICC_DATA_DYNAMIC>&enc=<ENC_DYNAMIC>&cmac=<CMAC_DYNAMIC>",
+  "manifest_format": "sub_batch_id,bid,uid_hex,ic_type,roll_id,qc_status,timestamp"
 }
 ```
 
 Nunca debe incluir:
 
 - `KMS_MASTER_KEY_HEX`.
+- `DATABASE_URL`.
 - Private keys de Polygon.
 - Secretos de executor.
 - Tokens de Vercel, base de datos o admin.
@@ -73,11 +78,17 @@ Nunca debe incluir:
 Formato minimo recomendado:
 
 ```csv
-batch_id,uid_hex,ic_type,roll_id,qc_status,timestamp
-NXD2606-A01,04AABBCCDDEEFF,NTAG424DNA_TT,R001,PASS,2026-06-27T00:00:00Z
+sub_batch_id,bid,uid_hex,ic_type,roll_id,qc_status,timestamp
+NXD2606-A01-R001,NXD2606-A01-R001,04AABBCCDDEEFF,NTAG424DNA_TT,R001,PASS,2026-06-27T00:00:00Z
 ```
 
 El manifest es stock y allowlist. No es prueba de autenticidad por si solo. La autenticidad se valida en cada tap con SUN/SDM y claves del lote.
+
+## Tenant Vault
+
+Tenant Vault es la superficie de evidencia visible para tenant y operaciones. Debe mostrar estado de orden, sub-batches, fingerprint del pack exportado, importacion de manifest, hashes, reportes QA, ZIP/PDF/JSON y eventos DPP autorizados.
+
+Tenant Vault no es una pantalla de secretos. No debe exponer `K_META`, `K_FILE`, `KMS_MASTER_KEY_HEX`, `DATABASE_URL`, private keys, tokens admin ni paths internos de storage. Si se necesita prueba externa, publicar o anclar solo hash, digest, proof envelope o Merkle root sanitizado.
 
 ## Checklist de recepcion
 
@@ -97,6 +108,7 @@ El manifest es stock y allowlist. No es prueba de autenticidad por si solo. La a
 Eventos operativos que conviene registrar internamente:
 
 - `supplier_batch_created`.
+- `supplier_pack_exported`.
 - `supplier_manifest_received`.
 - `batch_activated`.
 - `quality_check_completed`.
@@ -106,6 +118,7 @@ Eventos operativos que conviene registrar internamente:
 Eventos que pueden anclarse en IOTA si el tenant lo pide:
 
 - Hash del manifest sanitizado.
+- Merkle root de manifest o QA sanitizado.
 - Checkpoint de recepcion del lote.
 - Digest de QA aprobado.
 - Handoff logistico critico.

@@ -73,10 +73,34 @@ const TIME_RANGE_OPTIONS: Array<{ value: TimeRange; label: string; ms: number }>
 ];
 
 const BASEMAP_OPTIONS: Array<{ value: BaseMapLayer; label: string; title: string }> = [
-  { value: "dark", label: "Oscuro", title: "Mapa operativo oscuro para sala de control" },
-  { value: "light", label: "Calles", title: "Mapa claro con calles para ubicar comercios y barrios" },
-  { value: "satellite", label: "Satélite", title: "Vista satelital para acercamiento urbano y territorio" },
-  { value: "terrain", label: "Terreno", title: "Relieve, pitch y sombreado para lectura territorial premium" },
+  { value: "dark", label: "Control", title: "Capa base oscura para sala de control" },
+  { value: "light", label: "Calles", title: "Capa de calles para ubicar comercios y barrios" },
+  { value: "satellite", label: "Imagen", title: "Capa de imagen satelital provista por el mapa base" },
+  { value: "terrain", label: "Relieve", title: "Capa de relieve y sombreado para lectura territorial" },
+];
+
+const MAP_VIEW_OPTIONS: Array<{ value: MapView; label: string; title: string; description: string; icon: ReactNode }> = [
+  {
+    value: "heat",
+    label: "Densidad",
+    title: "Ver concentración de lecturas por ciudad o zona",
+    description: "Concentración relativa de lecturas NFC/QR; no equivale a ventas confirmadas.",
+    icon: <Activity className="h-4 w-4" />,
+  },
+  {
+    value: "points",
+    label: "Eventos",
+    title: "Ver lecturas individuales como puntos",
+    description: "Cada punto representa un evento visible del stream, con color por riesgo.",
+    icon: <MapPin className="h-4 w-4" />,
+  },
+  {
+    value: "nearby",
+    label: "Cercanía",
+    title: "Ver radios visuales para priorizar acciones por zona",
+    description: "Radio visual de cercanía comercial; no activa geofencing automático.",
+    icon: <Crosshair className="h-4 w-4" />,
+  },
 ];
 
 type CommercialContext = {
@@ -91,23 +115,23 @@ type CommercialContext = {
 const COMMERCIAL_CONTEXTS: Record<CommercialContext["key"], CommercialContext> = {
   wine: {
     key: "wine",
-    panelTitle: "IA comercial para bodega",
-    panelSubtitle: "dónde vender más, activar club, reponer stock y medir canjes",
-    headline: "Próxima acción recomendada",
-    noData: "Apenas entren taps válidos, la IA prioriza ciudad, club, voucher, stock y punto de canje.",
+    panelTitle: "IA de cercanía comercial",
+    panelSubtitle: "reglas sobre lecturas visibles para priorizar ciudad, club, stock y canje",
+    headline: "Próxima acción comercial",
+    noData: "Cuando entren lecturas válidas, la consola prioriza ciudad, club, voucher, stock y punto de canje.",
     playbooks: [
       {
-        eyebrow: "Bodega 1",
-        title: "Producto premium verificado",
-        body: "Cada botella, caja o ticket queda unido a NFC/QR, lote, producto, ciudad y momento real del tap.",
+        eyebrow: "Señal",
+        title: "Unidad verificada",
+        body: "Cada botella, caja o ticket queda unido a NFC/QR, lote, producto, ciudad y momento real de lectura.",
       },
       {
-        eyebrow: "Bodega 2",
-        title: "Zona con intención",
-        body: "El CRM muestra dónde hay lecturas válidas, conversión a cliente y demanda para reponer o pautar.",
+        eyebrow: "Zona",
+        title: "Actividad por ciudad",
+        body: "El CRM muestra dónde hay lecturas válidas, audiencia accionable y actividad suficiente para reponer o pautar.",
       },
       {
-        eyebrow: "Bodega 3",
+        eyebrow: "Acción",
         title: "Club y recompra",
         body: "Activa voucher, cata, visita guiada, WhatsApp/email y recompra desde el mismo evento.",
       },
@@ -115,23 +139,23 @@ const COMMERCIAL_CONTEXTS: Record<CommercialContext["key"], CommercialContext> =
   },
   agro: {
     key: "agro",
-    panelTitle: "IA comercial agro",
-    panelSubtitle: "canal, territorio, uso responsable, stock y logística",
+    panelTitle: "IA de cercanía comercial",
+    panelSubtitle: "reglas sobre lecturas visibles para priorizar canal, territorio, stock y soporte",
     headline: "Zona agro accionable",
-    noData: "Apenas entren taps válidos, la IA prioriza lote, canal, región, uso responsable y soporte técnico.",
+    noData: "Cuando entren lecturas válidas, la consola prioriza lote, canal, región, uso responsable y soporte técnico.",
     playbooks: [
       {
-        eyebrow: "Agro 1",
+        eyebrow: "Señal",
         title: "Unidad física verificada",
         body: "Bolsa, bidón, caja o ticket queda unido a NFC/QR, lote, canal y geografía real del tap.",
       },
       {
-        eyebrow: "Agro 2",
+        eyebrow: "Zona",
         title: "Canal y territorio",
-        body: "El CRM muestra demanda, GPS bajo, riesgo, canal gris y audiencia lista para soporte o campaña.",
+        body: "El CRM muestra actividad por zona, GPS bajo, riesgo, canal gris y audiencia lista para soporte o campaña.",
       },
       {
-        eyebrow: "Agro 3",
+        eyebrow: "Acción",
         title: "Post-venta accionable",
         body: "Activa capacitación, uso responsable, reclamos, garantía, recompra y logística desde el mismo evento.",
       },
@@ -139,23 +163,23 @@ const COMMERCIAL_CONTEXTS: Record<CommercialContext["key"], CommercialContext> =
   },
   general: {
     key: "general",
-    panelTitle: "IA comercial por zona",
-    panelSubtitle: "promos, stock, soporte, campañas y logística",
+    panelTitle: "IA de cercanía comercial",
+    panelSubtitle: "reglas sobre lecturas visibles para priorizar zona, segmento, canal y acción",
     headline: "Dónde actuar ahora",
-    noData: "Apenas entren taps válidos, la IA prioriza ciudad, segmento, canal y acción comercial.",
+    noData: "Cuando entren lecturas válidas, la consola prioriza ciudad, segmento, canal y acción comercial.",
     playbooks: [
       {
-        eyebrow: "Operacion 1",
+        eyebrow: "Señal",
         title: "Producto real",
         body: "Cada unidad queda unida a NFC/QR, lote, ubicación, evento y contexto de cliente.",
       },
       {
-        eyebrow: "Operacion 2",
-        title: "Demanda por zona",
-        body: "El CRM muestra ciudades con actividad, riesgo, conversión y audiencia accionable.",
+        eyebrow: "Zona",
+        title: "Actividad por zona",
+        body: "El CRM muestra ciudades con actividad, riesgo, lectura válida y audiencia accionable.",
       },
       {
-        eyebrow: "Operacion 3",
+        eyebrow: "Acción",
         title: "Accion post-tap",
         body: "Activa beneficio, soporte, encuesta, ticket, recompra o campaña desde el mismo tap.",
       },
@@ -357,19 +381,19 @@ function buildMarketOpportunities(
 
     let channel = "WhatsApp + voucher";
     let offer = "15% club post-tap";
-    let playbook = "Enviar voucher de recompra a UIDs válidos y medir canje por ciudad.";
-    let reason = "Alta señal válida para fidelización.";
+    let playbook = "Enviar beneficio a UIDs válidos y medir canje por ciudad.";
+    let reason = "Señal válida suficiente para probar fidelización.";
 
     if (riskRate > 12) {
-      channel = "Riesgo + retencion";
+      channel = "Riesgo + retención";
       offer = "Beneficio con validación";
-      playbook = "Separar taps sospechosos, auditar device y mandar promo solo a válidos.";
-      reason = "La zona vende, pero necesita control antifraude antes de escalar.";
+      playbook = "Separar lecturas sospechosas, auditar dispositivo y mandar beneficio solo a válidos.";
+      reason = "La zona tiene actividad, pero necesita control antifraude antes de escalar.";
     } else if (gpsRate < 60) {
       channel = "Portal + WhatsApp";
       offer = "Bono por activar GPS";
       playbook = "Pedir opt-in de portal y mejorar precision antes de pauta paga.";
-      reason = "Hay demanda, pero falta ubicación fina para cercanías.";
+      reason = "Hay actividad, pero falta ubicación fina para cercanía comercial.";
     } else if (hotspot.taps >= 10) {
       channel = "Instagram + WhatsApp";
       offer = "Drop local 2x1";
@@ -379,7 +403,7 @@ function buildMarketOpportunities(
       channel = "Voucher premium";
       offer = "Early access club";
       playbook = "Premiar primeros compradores y pedir referido en portal de usuario.";
-      reason = "Pocos taps, pero de alta calidad comercial.";
+      reason = "Pocas lecturas, pero de alta calidad comercial.";
     }
 
     const score = Math.max(
@@ -402,7 +426,7 @@ function buildMarketOpportunities(
       offer,
       playbook,
       reason,
-      campaignName: `Growth ${index + 1}: ${hotspot.city}`,
+      campaignName: `Campaña CRM ${index + 1}: ${hotspot.city}`,
     };
   }).sort((a, b) => b.score - a.score || b.taps - a.taps).slice(0, 5);
 }
@@ -429,12 +453,12 @@ function resolveCommercialContext(
 
 function commercialRecommendation(context: CommercialContext, opportunity: MarketOpportunity) {
   if (context.key === "wine") {
-    return `Activar ${opportunity.offer} en ${opportunity.city}: cata, visita o beneficio para UIDs válidos. Reponer producto, habilitar QR/NFC de canje y pauta local donde ya hay ${opportunity.taps} taps.`;
+    return `Activar ${opportunity.offer} en ${opportunity.city}: cata, visita o beneficio para UIDs válidos. Reponer producto, habilitar QR/NFC de canje y pauta local donde ya hay ${opportunity.taps} lecturas.`;
   }
   if (context.key === "agro") {
-    return `Priorizar ${opportunity.city}: revisar canal, disponibilidad de lote, soporte técnico y uso responsable. Activar comunicación por ${opportunity.channel} donde ya hay ${opportunity.taps} taps.`;
+    return `Priorizar ${opportunity.city}: revisar canal, disponibilidad de lote, soporte técnico y uso responsable. Activar comunicación por ${opportunity.channel} donde ya hay ${opportunity.taps} lecturas.`;
   }
-  return `Activar ${opportunity.offer} en ${opportunity.city} por ${opportunity.channel}. Priorizar stock, QR/NFC activos, puntos de canje y pauta local donde ya hay ${opportunity.taps} taps.`;
+  return `Activar ${opportunity.offer} en ${opportunity.city} por ${opportunity.channel}. Priorizar stock, QR/NFC activos, puntos de canje y pauta local donde ya hay ${opportunity.taps} lecturas.`;
 }
 
 function MiniSparkline({ data, color, dataKey = "taps" }: { data: Array<Record<string, number | string>>; color: string; dataKey?: string }) {
@@ -454,6 +478,7 @@ function MetricCard({
   label,
   value,
   delta,
+  help,
   tone,
   data,
   dataKey,
@@ -462,6 +487,7 @@ function MetricCard({
   label: string;
   value: string | number;
   delta: string;
+  help: string;
   tone: "cyan" | "green" | "red" | "blue";
   data: Array<Record<string, number | string>>;
   dataKey?: string;
@@ -480,6 +506,7 @@ function MetricCard({
         <p className="text-[22px] font-black tracking-[-0.02em] text-white">{value}</p>
         <p className="pb-1 text-[10px] text-slate-500">ventana activa</p>
       </div>
+      <p className="mt-1 min-h-[28px] text-[10px] leading-3 text-slate-400">{help}</p>
       <div className="mt-1">
         <MiniSparkline data={data} color={color} dataKey={dataKey} />
       </div>
@@ -487,7 +514,23 @@ function MetricCard({
   );
 }
 
-function FunnelNode({ icon, label, value, pct, tone }: { icon: ReactNode; label: string; value: number; pct: number; tone: string }) {
+function FunnelNode({
+  icon,
+  label,
+  value,
+  pct,
+  tone,
+  detail,
+  pctLabel,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: number;
+  pct: number;
+  tone: string;
+  detail: string;
+  pctLabel?: string;
+}) {
   return (
     <div className="flex min-w-0 flex-1 flex-col items-center text-center">
       <div className="grid h-10 w-10 place-items-center rounded-full border shadow-[0_0_22px_rgba(34,211,238,.16)]" style={{ borderColor: tone, background: `${tone}22`, color: tone }}>
@@ -495,7 +538,8 @@ function FunnelNode({ icon, label, value, pct, tone }: { icon: ReactNode; label:
       </div>
       <p className="mt-1 text-[11px] font-semibold text-slate-200">{label}</p>
       <p className="text-sm font-black text-white">{formatNumber(value)}</p>
-      <p className="text-xs text-slate-400">{formatPercent(pct)}</p>
+      <p className="text-xs text-slate-400">{pctLabel || formatPercent(pct)}</p>
+      <p className="mt-0.5 max-w-[5.5rem] text-[9px] leading-3 text-slate-500">{detail}</p>
     </div>
   );
 }
@@ -687,13 +731,13 @@ export function ExecutiveRealtimeCrm({
       rows.push({ id: `risk-${hotspots[0]?.key || "operation"}`, tone: "red", title: `Riesgo elevado en ${hotspots[0]?.city || "la operación"}`, detail: `Tasa de riesgo ${formatPercent(metrics.fraudRate)} en la ventana visible`, time: formatShortTimeInZone(Date.now(), consoleTimezone) });
     }
     if (metrics.gpsCoverage < 60 && metrics.total > 0) {
-      rows.push({ id: `gps-${metrics.total}-${Math.round(metrics.gpsCoverage)}`, tone: "amber", title: "Cobertura GPS baja", detail: `Solo ${formatPercent(metrics.gpsCoverage)} de taps con GPS real`, time: formatShortTimeInZone(Date.now(), consoleTimezone) });
+      rows.push({ id: `gps-${metrics.total}-${Math.round(metrics.gpsCoverage)}`, tone: "amber", title: "Cobertura GPS baja", detail: `Solo ${formatPercent(metrics.gpsCoverage)} de lecturas con GPS útil`, time: formatShortTimeInZone(Date.now(), consoleTimezone) });
     }
     visibleEvents.filter((event) => String(event.verdict || "").toLowerCase() !== "valid").slice(0, 3).forEach((event, index) => {
       rows.push({ id: `exception-${String(event.eventId || event.uidMasked || "uid")}-${index}`, tone: "amber", title: `UID con excepción ${event.uidMasked}`, detail: `${event.city || "sin ciudad"} · ${deviceSummary(event)}`, time: timeAgo(event.occurredAt) });
     });
     if (metrics.actionable > 0) {
-      rows.push({ id: `actionable-${String(latestEvent?.eventId || metrics.actionable)}`, tone: "blue", title: "Pico de actividad listo para CRM", detail: `${metrics.actionable} taps válidos tienen ubicación accionable`, time: timeAgo(latestEvent?.occurredAt) });
+      rows.push({ id: `actionable-${String(latestEvent?.eventId || metrics.actionable)}`, tone: "blue", title: "Pico de actividad listo para CRM", detail: `${metrics.actionable} lecturas válidas tienen ubicación accionable`, time: timeAgo(latestEvent?.occurredAt) });
     }
     return rows.slice(0, 4);
   }, [consoleTimezone, hotspots, latestEvent, metrics, visibleEvents]);
@@ -775,7 +819,7 @@ export function ExecutiveRealtimeCrm({
         { key: "location", label: "Ubicacion" },
       ],
     );
-    setCampaignDraft(`${opportunity.campaignName}: segmento ${opportunity.channel} exportado (${rows.length} taps).`);
+    setCampaignDraft(`${opportunity.campaignName}: segmento ${opportunity.channel} exportado (${rows.length} lecturas).`);
   };
 
   const openCampaignStudio = (opportunity: MarketOpportunity) => {
@@ -816,13 +860,13 @@ export function ExecutiveRealtimeCrm({
   };
 
   const railItems = [
-    { icon: <Activity className="h-5 w-5" />, active: true, label: "Resumen CRM", short: "CRM", title: "Ver KPIs de la ventana activa, funnel y mapa en vivo.", action: () => onSectionChange?.("summary") },
-    { icon: <Globe className="h-5 w-5" />, active: false, label: "Enfocar mapa", short: "Mapa", title: "Centrar la vista operativa sin cambiar la capa seleccionada.", action: () => { setMapZoom(1); document.getElementById("live-tap-map")?.scrollIntoView({ behavior: "smooth", block: "start" }); } },
-    { icon: <Megaphone className="h-5 w-5" />, active: false, label: "Growth IA", short: "Growth", title: "Ver recomendacion comercial por zona y crear campana.", action: () => document.getElementById("commercial-ai-panel")?.scrollIntoView({ behavior: "smooth", block: "nearest" }) },
-    { icon: <Users className="h-5 w-5" />, active: false, label: "Clientes", short: "Clientes", title: "Abrir clientes, loyalty, vouchers y campanas post-tap.", action: () => onSectionChange?.("loyalty") },
-    { icon: <ShieldCheck className="h-5 w-5" />, active: false, label: "Riesgo", short: "Riesgo", title: "Abrir eventos para auditar replay, tamper, GPS bajo y dispositivos.", action: () => { window.location.href = "/events?filter=risk"; } },
-    { icon: <BarChart3 className="h-5 w-5" />, active: false, label: "Exportar CSV", short: "CSV", title: "Exportar la ventana activa con horario del tenant.", action: handleExport },
-    { icon: <Settings className="h-5 w-5" />, active: false, label: "Reset vista", short: "Reset", title: "Restablecer tenant, calor, zoom y capa base para presentacion.", action: () => { setSelectedTenant("all"); setMapView("heat"); setMapZoom(1); setBaseMap("dark"); } },
+    { icon: <Activity className="h-5 w-5" />, active: true, label: "Resumen operativo", short: "Vista", title: "Ver KPIs explicados, funnel post-tap y estado de la ventana activa.", action: () => onSectionChange?.("summary") },
+    { icon: <Globe className="h-5 w-5" />, active: false, label: "Mapa por capas", short: "Capas", title: "Centrar el mapa y conservar la capa seleccionada.", action: () => { setMapZoom(1); document.getElementById("live-tap-map")?.scrollIntoView({ behavior: "smooth", block: "start" }); } },
+    { icon: <Megaphone className="h-5 w-5" />, active: false, label: "IA de cercanía", short: "IA", title: "Ver priorización comercial por zona basada en eventos visibles.", action: () => document.getElementById("commercial-ai-panel")?.scrollIntoView({ behavior: "smooth", block: "nearest" }) },
+    { icon: <Users className="h-5 w-5" />, active: false, label: "Clientes & campañas", short: "Clientes", title: "Abrir segmentos, beneficios, vouchers y campañas post-tap.", action: () => onSectionChange?.("loyalty") },
+    { icon: <ShieldCheck className="h-5 w-5" />, active: false, label: "Riesgos", short: "Riesgo", title: "Abrir eventos para auditar replay, tamper, GPS bajo y dispositivos.", action: () => { window.location.href = "/events?filter=risk"; } },
+    { icon: <BarChart3 className="h-5 w-5" />, active: false, label: "Exportar ventana", short: "CSV", title: "Exportar eventos visibles con horario del tenant.", action: handleExport },
+    { icon: <Settings className="h-5 w-5" />, active: false, label: "Limpiar filtros", short: "Reset", title: "Restablecer tenant, densidad, zoom y capa base.", action: () => { setSelectedTenant("all"); setMapView("heat"); setMapZoom(1); setBaseMap("dark"); } },
   ];
 
   return (
@@ -834,25 +878,25 @@ export function ExecutiveRealtimeCrm({
             nex<span className="text-cyan-300">ID</span>
           </div>
           <div className="border-l border-white/10 pl-4 lg:pl-5">
-            <p className="text-xs text-slate-400">Centro de Control</p>
-            <h1 className="text-xl font-black tracking-[-0.03em] text-white lg:text-2xl">CRM realtime</h1>
+            <p className="text-xs text-slate-400">Admin enterprise</p>
+            <h1 className="text-xl font-black tracking-[-0.03em] text-white lg:text-2xl">CRM Semántica Operativa</h1>
           </div>
         </div>
 
-        <nav className="order-3 grid h-11 w-full grid-cols-3 overflow-hidden rounded-xl border border-white/8 bg-slate-950/45 text-xs font-semibold text-slate-300 sm:text-sm lg:order-none lg:mx-auto lg:h-12 lg:w-[470px]">
-          <button type="button" title="Volver al cockpit de CRM realtime" onClick={() => onSectionChange?.("summary")} className="flex items-center justify-center gap-2 border-b-2 border-cyan-300 bg-cyan-400/10 text-cyan-200">
+        <nav className="order-3 grid h-11 w-full grid-cols-3 overflow-hidden rounded-xl border border-white/8 bg-slate-950/45 text-[11px] font-semibold text-slate-300 sm:text-sm lg:order-none lg:mx-auto lg:h-12 lg:w-[500px]">
+          <button type="button" title="Volver a métricas, mapa y funnel del CRM en vivo" onClick={() => onSectionChange?.("summary")} className="flex items-center justify-center gap-2 border-b-2 border-cyan-300 bg-cyan-400/10 text-cyan-200">
             <Activity className="h-4 w-4" /> CRM en vivo
           </button>
-          <button type="button" title="Abrir rollout operativo: lotes, tags, preflight y tokenización" onClick={() => onSectionChange?.("infra")} className="flex items-center justify-center gap-2 hover:bg-white/5">
+          <button type="button" title="Abrir operación NFC: lotes, tags, QA, anclaje y publicación" onClick={() => onSectionChange?.("infra")} className="flex items-center justify-center gap-2 hover:bg-white/5">
             <Truck className="h-4 w-4" /> Operación NFC
           </button>
-          <button type="button" title="Abrir clientes, loyalty y campañas post-tap" onClick={() => onSectionChange?.("loyalty")} className="flex items-center justify-center gap-2 hover:bg-white/5">
-            <Users className="h-4 w-4" /> Clientes
+          <button type="button" title="Abrir segmentos, beneficios y campañas post-tap" onClick={() => onSectionChange?.("loyalty")} className="flex items-center justify-center gap-2 hover:bg-white/5">
+            <Users className="h-4 w-4" /> Clientes & campañas
           </button>
         </nav>
 
         <div className="ml-0 flex w-full flex-wrap items-center justify-between gap-3 text-xs text-slate-300 lg:ml-auto lg:w-auto lg:flex-nowrap lg:justify-start lg:gap-5">
-          <span className="flex items-center gap-2"><i className={`h-2 w-2 rounded-full ${connected ? "bg-emerald-400" : "bg-amber-300"}`} /> Sistema operativo</span>
+          <span className="flex items-center gap-2"><i className={`h-2 w-2 rounded-full ${connected ? "bg-emerald-400" : "bg-amber-300"}`} /> Stream de eventos</span>
           <span className="flex items-center gap-2" title={`Horario operativo del tenant: ${consoleTimezone}`}><Clock className="h-4 w-4 text-slate-500" /> {clock}<span className="hidden text-[10px] uppercase tracking-[0.08em] text-slate-500 xl:inline">{consoleTimezoneLabel}</span></span>
           <span className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-slate-500" /> {todayLabel}</span>
           <button type="button" title="Filtrar la consola al tenant de tu sesion" className="flex items-center gap-3 rounded-xl border border-white/8 bg-slate-950/55 px-3 py-2 text-left" onClick={() => setSelectedTenant(tenantScope || "all")}>
@@ -892,24 +936,24 @@ export function ExecutiveRealtimeCrm({
         <section className="order-2 min-h-0 space-y-2 overflow-hidden lg:order-1 lg:w-96 lg:shrink-0">
           <div className="flex items-start justify-between gap-3">
             <span>
-              <h2 className="text-lg font-bold text-white">Visión ejecutiva en vivo</h2>
-              <p className="text-[11px] text-slate-500">Basado en tenant, periodo y filtros activos del stream.</p>
+              <h2 className="text-lg font-bold text-white">Lectura operativa</h2>
+              <p className="text-[11px] text-slate-500">Qué pasó, qué es confiable y qué se puede activar ahora.</p>
             </span>
             <span className="flex items-center gap-2 text-xs text-slate-400"><i className={`h-2 w-2 rounded-full ${connected ? "bg-emerald-400" : "bg-amber-300"}`} /> {connected ? "En vivo" : "Sincronizando"}</span>
           </div>
 
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <MetricCard icon={<Radio className="h-5 w-5" />} label="Taps en vivo" value={formatNumber(metrics.total)} delta="real" tone="cyan" data={velocitySeries} />
-            <MetricCard icon={<ShieldCheck className="h-5 w-5" />} label="Tasa válida" value={formatPercent(metrics.validRate)} delta="autenticados" tone="green" data={velocitySeries} dataKey="valid" />
-            <MetricCard icon={<ShieldAlert className="h-5 w-5" />} label="Riesgo de fraude" value={formatPercent(metrics.fraudRate)} delta={metrics.risk ? "revisar" : "0 alertas"} tone="red" data={velocitySeries} dataKey="risk" />
-            <MetricCard icon={<MapPin className="h-5 w-5" />} label="Cobertura GPS real" value={formatPercent(metrics.gpsCoverage)} delta="GPS" tone="green" data={velocitySeries} />
-            <MetricCard icon={<Users className="h-5 w-5" />} label="Contactos CRM" value={formatNumber(metrics.actionable)} delta="accionables" tone="blue" data={velocitySeries} dataKey="valid" />
-            <MetricCard icon={<Filter className="h-5 w-5" />} label="Conversión CRM" value={formatPercent(metrics.leadConversion)} delta="post-tap" tone="green" data={velocitySeries} dataKey="valid" />
+            <MetricCard icon={<Radio className="h-5 w-5" />} label="Lecturas" value={formatNumber(metrics.total)} delta="stream" help="Eventos NFC/QR recibidos para tenant y ventana activos." tone="cyan" data={velocitySeries} />
+            <MetricCard icon={<ShieldCheck className="h-5 w-5" />} label="Lecturas válidas" value={formatPercent(metrics.validRate)} delta="VALID" help="Porcentaje de eventos con verdict válido sobre el total visible." tone="green" data={velocitySeries} dataKey="valid" />
+            <MetricCard icon={<ShieldAlert className="h-5 w-5" />} label="Riesgo" value={formatPercent(metrics.fraudRate)} delta={metrics.risk ? "revisar" : "0 alertas"} help="Eventos no válidos; revisar UID, lote y dispositivo antes de campañas." tone="red" data={velocitySeries} dataKey="risk" />
+            <MetricCard icon={<MapPin className="h-5 w-5" />} label="Ubicación útil" value={formatPercent(metrics.gpsCoverage)} delta="GPS" help="Eventos con coordenada de teléfono, no solo ciudad o IP aproximada." tone="green" data={velocitySeries} />
+            <MetricCard icon={<Users className="h-5 w-5" />} label="Audiencia accionable" value={formatNumber(metrics.actionable)} delta="UID + zona" help="Lecturas válidas con UID y ubicación para segmentar sin asumir identidad." tone="blue" data={velocitySeries} dataKey="valid" />
+            <MetricCard icon={<Filter className="h-5 w-5" />} label="Señales listas" value={formatPercent(metrics.leadConversion)} delta="post-tap" help="Share de lecturas que pueden alimentar segmento, beneficio o campaña." tone="green" data={velocitySeries} dataKey="valid" />
           </div>
 
           <div className="rounded-lg border border-slate-700/75 bg-[linear-gradient(180deg,rgba(10,22,41,.94),rgba(4,10,20,.94))] p-3">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-white">Velocidad de taps <span className="font-normal text-slate-400">(taps por minuto)</span></p>
+              <p className="text-sm font-semibold text-white">Velocidad de lecturas <span className="font-normal text-slate-400">(lecturas por minuto)</span></p>
               <button type="button" title="Cambiar ventana temporal del CRM" onClick={cycleTimeRange} className="rounded-lg border border-white/8 bg-slate-950/60 px-3 py-1 text-xs text-slate-300">{timeRangeLabel(timeRange)}</button>
             </div>
             <div className="mt-2 h-[92px] 2xl:h-[112px]">
@@ -937,18 +981,18 @@ export function ExecutiveRealtimeCrm({
                 <p className="text-sm font-bold text-white">Funnel post-tap</p>
                 <p className="text-[11px] text-slate-500">De lectura física a acción comercial.</p>
               </span>
-              <span className="text-xs text-slate-500">{metrics.actionable ? `${metrics.actionable} contactos accionables` : "sin contactos aún"}</span>
+              <span className="text-xs text-slate-500">{metrics.actionable ? `${metrics.actionable} señales accionables` : "sin señales listas aún"}</span>
             </div>
             <div className="mt-3 flex items-start gap-1 overflow-x-auto pb-1">
-              <FunnelNode icon={<MousePointerClick className="h-5 w-5" />} label="Lecturas" value={metrics.total} pct={100} tone="#22d3ee" />
+              <FunnelNode icon={<MousePointerClick className="h-5 w-5" />} label="Lecturas" value={metrics.total} pct={100} tone="#22d3ee" detail="entrada del stream" pctLabel="base" />
               <span className="mt-4 text-xl text-slate-600">-&gt;</span>
-              <FunnelNode icon={<ShieldCheck className="h-5 w-5" />} label="Válidas" value={metrics.valid} pct={metrics.validRate} tone="#22c55e" />
+              <FunnelNode icon={<ShieldCheck className="h-5 w-5" />} label="Válidas" value={metrics.valid} pct={metrics.validRate} tone="#22c55e" detail="aptas para acción" />
               <span className="mt-4 text-xl text-slate-600">-&gt;</span>
-              <FunnelNode icon={<BadgeCheck className="h-5 w-5" />} label="GPS real" value={metrics.gps} pct={metrics.gpsCoverage} tone="#facc15" />
+              <FunnelNode icon={<BadgeCheck className="h-5 w-5" />} label="Ubicación" value={metrics.gps} pct={metrics.gpsCoverage} tone="#facc15" detail="GPS del teléfono" />
               <span className="mt-4 text-xl text-slate-600">-&gt;</span>
-              <FunnelNode icon={<Users className="h-5 w-5" />} label="Contacto" value={metrics.actionable} pct={metrics.leadConversion} tone="#a855f7" />
+              <FunnelNode icon={<Users className="h-5 w-5" />} label="UID + zona" value={metrics.actionable} pct={metrics.leadConversion} tone="#a855f7" detail="segmento usable" />
               <span className="mt-4 text-xl text-slate-600">-&gt;</span>
-              <FunnelNode icon={<Tags className="h-5 w-5" />} label="Zonas" value={metrics.offerReady} pct={metrics.total ? (metrics.offerReady / metrics.total) * 100 : 0} tone="#38bdf8" />
+              <FunnelNode icon={<Tags className="h-5 w-5" />} label="Campaña" value={metrics.offerReady} pct={metrics.offerReady ? 100 : 0} tone="#38bdf8" detail="zonas con señal" pctLabel={metrics.offerReady ? "zonas listas" : "sin zona"} />
             </div>
           </div>
         </section>
@@ -957,11 +1001,11 @@ export function ExecutiveRealtimeCrm({
           <div className="flex min-h-0 flex-col lg:flex-1">
             <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex items-center gap-3">
-                <h2 className="text-lg font-bold text-white">Mapa vivo de taps</h2>
+                <h2 className="text-lg font-bold text-white">Mapa vivo por capas</h2>
                 <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-300">Live</span>
               </div>
               <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:w-auto sm:flex-wrap">
-                <select size={1} title="Filtrar taps por tenant" value={selectedTenant} onChange={(event) => setSelectedTenant(event.target.value)} className="col-span-2 h-9 w-full min-w-0 rounded-lg border border-slate-700 bg-slate-950/80 px-3 text-sm text-white sm:col-span-1 sm:w-auto sm:min-w-[150px]">
+                <select size={1} title="Filtrar lecturas por tenant" value={selectedTenant} onChange={(event) => setSelectedTenant(event.target.value)} className="col-span-2 h-9 w-full min-w-0 rounded-lg border border-slate-700 bg-slate-950/80 px-3 text-sm text-white sm:col-span-1 sm:w-auto sm:min-w-[150px]">
                   <option value="all">Todos los tenants</option>
                   {tenantOptions.map((tenant) => <option key={tenant} value={tenant}>{tenantDisplayName(tenant)}</option>)}
                 </select>
@@ -977,20 +1021,16 @@ export function ExecutiveRealtimeCrm({
 
             <div id="live-tap-map" ref={mapPanelRef} className={`relative overflow-hidden border border-cyan-100/10 bg-[#061426] shadow-[inset_0_1px_0_rgba(255,255,255,.05)] ${isMapFullscreen ? "fixed inset-0 z-[260] h-screen min-h-screen rounded-none border-cyan-300/25 bg-[#020713] p-2" : "min-h-[520px] rounded-xl sm:min-h-[560px] lg:min-h-0"}`}>
               <div className="absolute left-4 top-4 z-20 grid gap-2">
-                <button type="button" title="Acercar mapa sin agrandar artificialmente los taps" onClick={() => setMapZoom((value) => Math.min(1.22, Number((value + 0.08).toFixed(2))))} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-white" aria-label="Acercar mapa">+</button>
+                <button type="button" title="Acercar mapa sin agrandar artificialmente los eventos" onClick={() => setMapZoom((value) => Math.min(1.22, Number((value + 0.08).toFixed(2))))} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-white" aria-label="Acercar mapa">+</button>
                 <button type="button" title="Alejar mapa para ver más territorio" onClick={() => setMapZoom((value) => Math.max(0.9, Number((value - 0.08).toFixed(2))))} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-white" aria-label="Alejar mapa">-</button>
-                <button type="button" title="Mostrar radio de cercanía por hotspot" onClick={() => setMapView("nearby")} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-cyan-200" aria-label="Mostrar cercanías"><Crosshair className="h-4 w-4" /></button>
-                <button type="button" title="Mostrar puntos individuales de tap" onClick={() => setMapView("points")} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-cyan-200" aria-label="Mostrar puntos"><Layers className="h-4 w-4" /></button>
+                <button type="button" title="Mostrar radio visual de cercanía por hotspot" onClick={() => setMapView("nearby")} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-cyan-200" aria-label="Mostrar cercanía comercial"><Crosshair className="h-4 w-4" /></button>
+                <button type="button" title="Mostrar puntos individuales de lectura" onClick={() => setMapView("points")} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-cyan-200" aria-label="Mostrar puntos"><Layers className="h-4 w-4" /></button>
               </div>
 
               <div className="absolute left-[72px] right-3 top-4 z-30 flex flex-wrap items-center justify-end gap-2 lg:left-auto lg:right-5 lg:flex-nowrap">
-                {[
-                  ["heat", <Activity key="heat" className="h-4 w-4" />, "Calor"],
-                  ["points", <MapPin key="points" className="h-4 w-4" />, "Puntos"],
-                  ["nearby", <Crosshair key="nearby" className="h-4 w-4" />, "Cercanías"],
-                ].map(([key, icon, label]) => (
-                  <button key={String(key)} type="button" aria-pressed={mapView === key} title={key === "heat" ? "Ver concentración de actividad por ciudad" : key === "points" ? "Ver taps individuales como puntos chicos" : "Ver radios de cercanía accionables"} onClick={() => setMapView(key as MapView)} className={`flex h-9 items-center gap-2 rounded-lg border px-2 text-sm font-semibold sm:px-3 ${mapView === key ? "border-cyan-300 bg-cyan-400/12 text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,.22)]" : "border-white/10 bg-slate-950/65 text-slate-300"}`}>
-                    {icon}<span className="hidden sm:inline">{label}</span>
+                {MAP_VIEW_OPTIONS.map((option) => (
+                  <button key={option.value} type="button" aria-pressed={mapView === option.value} title={option.title} onClick={() => setMapView(option.value)} className={`flex h-9 items-center gap-2 rounded-lg border px-2 text-sm font-semibold sm:px-3 ${mapView === option.value ? "border-cyan-300 bg-cyan-400/12 text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,.22)]" : "border-white/10 bg-slate-950/65 text-slate-300"}`}>
+                    {option.icon}<span className="hidden sm:inline">{option.label}</span>
                   </button>
                 ))}
                 <div className="hidden items-center gap-1 rounded-lg border border-white/10 bg-slate-950/70 p-1 xl:flex" title="Cambiar capa base del mapa">
@@ -1007,11 +1047,13 @@ export function ExecutiveRealtimeCrm({
                   ))}
                 </div>
                 <button type="button" title="Abrir Google Maps Street View en la coordenada más reciente" onClick={openStreetView} className="hidden h-9 items-center gap-2 rounded-lg border border-white/10 bg-slate-950/65 px-3 text-sm font-semibold text-slate-300 hover:border-cyan-300/50 hover:text-cyan-100 xl:flex"><Globe className="h-4 w-4" /> Street</button>
-                <button type="button" title="Restablecer mapa: calor y zoom normal" onClick={() => { setMapView("heat"); setMapZoom(1); }} className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-slate-950/65 text-slate-300" aria-label="Restablecer mapa"><Settings className="h-4 w-4" /></button>
+                <button type="button" title="Restablecer mapa a capa de densidad y zoom normal" onClick={() => { setMapView("heat"); setMapZoom(1); }} className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-slate-950/65 text-slate-300" aria-label="Restablecer mapa"><Settings className="h-4 w-4" /></button>
                 <button type="button" title={isMapFullscreen ? "Salir de pantalla completa" : "Pantalla completa real para monitor de control"} onClick={() => void toggleMapFullscreen()} className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-slate-950/65 text-slate-300 hover:border-cyan-300/50 hover:text-cyan-100" aria-label={isMapFullscreen ? "Salir de pantalla completa" : "Abrir pantalla completa"}><Expand className="h-4 w-4" /></button>
               </div>
 
               <div className="absolute bottom-[260px] left-4 z-20 rounded-lg border border-white/10 bg-slate-950/75 p-3 text-xs text-slate-200 shadow-xl lg:bottom-20">
+                <p className="mb-1 text-[10px] font-black uppercase tracking-[0.14em] text-cyan-100">Capa {MAP_VIEW_OPTIONS.find((option) => option.value === mapView)?.label}</p>
+                <p className="mb-2 max-w-[13rem] text-[10px] leading-4 text-slate-400">{MAP_VIEW_OPTIONS.find((option) => option.value === mapView)?.description}</p>
                 {[
                   ["Muy alto", "bg-red-500"],
                   ["Alto", "bg-amber-400"],
@@ -1027,7 +1069,7 @@ export function ExecutiveRealtimeCrm({
               </div>
 
               <div className="relative z-20 m-3 mt-0 max-h-[250px] overflow-y-auto rounded-xl border border-white/10 bg-slate-950/72 p-3 shadow-2xl backdrop-blur lg:absolute lg:bottom-4 lg:right-4 lg:top-[76px] lg:m-0 lg:w-[270px] lg:max-h-none">
-                <p className="text-sm font-semibold text-white">Eventos cercanos (5 km)</p>
+                <p className="text-sm font-semibold text-white">Últimos eventos visibles</p>
                 <div className="mt-3 space-y-2">
                   {visibleEvents.slice(0, 4).map((event) => {
                     const valid = String(event.verdict || "").toLowerCase() === "valid";
@@ -1056,7 +1098,7 @@ export function ExecutiveRealtimeCrm({
                   <span className="truncate">{commercialContext.panelTitle}</span>
                   <span className="hidden text-sm font-normal text-slate-400 sm:inline">({commercialContext.panelSubtitle})</span>
                 </p>
-                <button type="button" title="Abrir Growth & BotIA para crear campañas con estas señales" onClick={() => { window.location.href = "/loyalty/campaigns"; }} className="shrink-0 text-sm font-semibold text-cyan-300">Growth & BotIA</button>
+                <button type="button" title="Abrir Clientes & campañas con estas señales" onClick={() => { window.location.href = "/loyalty/campaigns"; }} className="shrink-0 text-sm font-semibold text-cyan-300">Crear campaña</button>
               </div>
 
               {topOpportunity ? (
@@ -1068,8 +1110,8 @@ export function ExecutiveRealtimeCrm({
                     </p>
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-center">
-                    <span className="rounded-lg border border-white/8 bg-slate-950/55 p-2"><b className="block text-base text-white">{topOpportunity.score}</b> score</span>
-                    <span className="rounded-lg border border-white/8 bg-slate-950/55 p-2"><b className="block text-base text-white">{topOpportunity.audience}</b> audiencia</span>
+                    <span className="rounded-lg border border-white/8 bg-slate-950/55 p-2" title="Prioridad heurística calculada con lecturas válidas, GPS, volumen y riesgo."><b className="block text-base text-white">{topOpportunity.score}</b> prioridad</span>
+                    <span className="rounded-lg border border-white/8 bg-slate-950/55 p-2"><b className="block text-base text-white">{topOpportunity.audience}</b> señales</span>
                     <span className="rounded-lg border border-white/8 bg-slate-950/55 p-2"><b className="block text-base text-white">{formatPercent(topOpportunity.validRate)}</b> válido</span>
                   </div>
                 </div>
@@ -1099,15 +1141,15 @@ export function ExecutiveRealtimeCrm({
                         <b className="block truncate text-sm text-white">{opportunity.city}, {opportunity.country}</b>
                         <span className="block truncate text-[11px] text-slate-400">{opportunity.reason}</span>
                       </span>
-                      <span className="shrink-0 rounded-full border border-cyan-300/20 bg-cyan-400/10 px-2 py-0.5 text-xs font-bold text-cyan-200">{opportunity.score}/99</span>
+                      <span className="shrink-0 rounded-full border border-cyan-300/20 bg-cyan-400/10 px-2 py-0.5 text-xs font-bold text-cyan-200" title="Prioridad heurística">P{opportunity.score}</span>
                     </div>
                     <div className="mt-2 grid grid-cols-3 gap-2 text-[11px] text-slate-400">
-                      <span className="rounded-md border border-white/8 bg-slate-900/70 px-2 py-1"><b className="block text-sm text-white">{opportunity.audience}</b> audiencia CRM</span>
+                      <span className="rounded-md border border-white/8 bg-slate-900/70 px-2 py-1"><b className="block text-sm text-white">{opportunity.audience}</b> señales CRM</span>
                       <span className="rounded-md border border-white/8 bg-slate-900/70 px-2 py-1"><b className="block truncate text-sm text-white">{opportunity.channel}</b> canal</span>
-                      <span className="rounded-md border border-white/8 bg-slate-900/70 px-2 py-1"><b className="block truncate text-sm text-emerald-200">{opportunity.offer}</b> promo</span>
+                      <span className="rounded-md border border-white/8 bg-slate-900/70 px-2 py-1"><b className="block truncate text-sm text-emerald-200">{opportunity.offer}</b> beneficio</span>
                     </div>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <button type="button" title={`Exportar audiencia de ${opportunity.city} con UIDs, canal y promo sugerida`} onClick={() => handleCampaignExport(opportunity)} className="rounded-md border border-white/10 bg-slate-950/60 px-2.5 py-1 text-xs font-semibold text-slate-100 hover:border-cyan-300/50">
+                      <button type="button" title={`Exportar señales de ${opportunity.city} con UIDs, canal y beneficio sugerido`} onClick={() => handleCampaignExport(opportunity)} className="rounded-md border border-white/10 bg-slate-950/60 px-2.5 py-1 text-xs font-semibold text-slate-100 hover:border-cyan-300/50">
                         <Download className="mr-1 inline h-3.5 w-3.5" /> CSV
                       </button>
                       <button type="button" title={`Abrir campaña para ${opportunity.city}: ${opportunity.playbook}`} onClick={() => openCampaignStudio(opportunity)} className="rounded-md border border-emerald-300/25 bg-emerald-400/10 px-2.5 py-1 text-xs font-semibold text-emerald-200 hover:border-emerald-200/60">

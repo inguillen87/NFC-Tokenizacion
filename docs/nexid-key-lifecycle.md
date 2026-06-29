@@ -8,7 +8,7 @@ This document defines the production model for NTAG 424 DNA and NTAG 424 DNA Tag
 
 Every real supplier carton must work through the same generic chain:
 
-`tenant -> batch -> batch keys -> supplier encoding spec -> UID manifest -> activation -> SUN validation`
+`tenant -> supplier order -> sub-batch -> sub-batch keys -> supplier encoding spec -> UID manifest -> activation -> SUN validation`
 
 ## Key roles
 
@@ -20,21 +20,21 @@ It is not a chip key. It is not sent to the supplier. It is not stored in GitHub
 
 If this key is rotated, existing encrypted batch keys require a re-encryption plan.
 
-### K_META_BATCH
+### K_META
 
-`K_META_BATCH` is a per-batch AES-128 key, represented as 16 bytes / 32 hex chars.
+`K_META` is the supplier-facing name for the per-sub-batch AES-128 key, represented as 16 bytes / 32 hex chars.
 
-It is sent to the supplier for chip encoding. The backend stores it encrypted in `batches.meta_key_ct`.
+It is sent to the supplier only for the authorized sub-batch. The backend stores it encrypted in the batch/sub-batch key ciphertext field such as `batches.meta_key_ct`.
 
 At tap time, the backend decrypts `picc_data` with this key to recover the UID and read counter.
 
 If this key or the PICCData layout does not match the supplier encoding, `/sun` fails before UID decode and must report `SUN_PROFILE_MISMATCH`.
 
-### K_FILE_BATCH
+### K_FILE
 
-`K_FILE_BATCH` is a per-batch AES-128 key, represented as 16 bytes / 32 hex chars.
+`K_FILE` is the supplier-facing name for the per-sub-batch AES-128 key, represented as 16 bytes / 32 hex chars.
 
-It is sent to the supplier for chip encoding. The backend stores it encrypted in `batches.file_key_ct`.
+It is sent to the supplier only for the authorized sub-batch. The backend stores it encrypted in the batch/sub-batch key ciphertext field such as `batches.file_key_ct`.
 
 At tap time, the backend derives SDM session keys from this key, UID, and read counter. It validates CMAC and decrypts `enc`.
 
@@ -78,7 +78,7 @@ Supported CMAC input modes:
 - `query_from_enc_to_cmac`: ASCII `enc=ENC&cmac=`
 - `query_from_picc_data_to_cmac`: ASCII `picc_data=PICC&enc=ENC&cmac=`
 
-If none of those candidates match, the likely causes are wrong `K_META_BATCH`, wrong `K_FILE_BATCH`, changed PICCData layout, changed file settings, or supplier programming drift. Do not inspect the UID manifest first when UID is null.
+If none of those candidates match, the likely causes are wrong `K_META`, wrong `K_FILE`, changed PICCData layout, changed file settings, or supplier programming drift. Do not inspect the UID manifest first when UID is null.
 
 ## UID manifest
 
@@ -104,17 +104,20 @@ If `/sun` cannot decode UID, the manifest is not the first thing to inspect. Fix
 
 ## Supplier encoding package
 
-The platform can generate or register `K_META_BATCH` and `K_FILE_BATCH` for each supplier batch, then export an encoding package to the supplier.
+The platform can generate or register `K_META` and `K_FILE` for each supplier sub-batch, then export an encoding package to the supplier.
 
 The package may include:
 
 ```json
 {
+  "order_id": "SUP-2026-00041",
   "batch_id": "NXD2606-A01",
+  "sub_batch_id": "NXD2606-A01-R001",
+  "bid": "NXD2606-A01-R001",
   "chip_model": "NTAG 424 DNA TagTamper",
-  "k_meta_batch": "<32_HEX_CHARS>",
-  "k_file_batch": "<32_HEX_CHARS>",
-  "url_template": "https://api.nexid.lat/sun?v=1&bid=NXD2606-A01&picc_data=<PICC_DATA_DYNAMIC>&enc=<ENC_DYNAMIC>&cmac=<CMAC_DYNAMIC>",
+  "K_META": "<32_HEX_CHARS>",
+  "K_FILE": "<32_HEX_CHARS>",
+  "url_template": "https://api.nexid.lat/sun?v=1&bid=NXD2606-A01-R001&picc_data=<PICC_DATA_DYNAMIC>&enc=<ENC_DYNAMIC>&cmac=<CMAC_DYNAMIC>",
   "ttstatus": {
     "enabled": true,
     "source": "enc_decrypted",
@@ -128,7 +131,7 @@ The package may include:
 }
 ```
 
-The package must never include `KMS_MASTER_KEY_HEX`, database URLs, Vercel tokens, admin tokens, or private API keys.
+The package must never include `KMS_MASTER_KEY_HEX`, `DATABASE_URL`, database URLs, Vercel tokens, admin tokens, Polygon minter keys, executor secrets, or private API keys. The factory receives `K_META` and `K_FILE` for the sub-batch, never KMS or database access.
 
 ## Receiving checklist
 
@@ -136,7 +139,7 @@ Before releasing a supplier carton:
 
 1. Create tenant.
 2. Create batch in `planned` or `pending_supplier`.
-3. Generate or register `K_META_BATCH` and `K_FILE_BATCH`.
+3. Generate or register `K_META` and `K_FILE` for each sub-batch.
 4. Store encrypted keys in DB.
 5. Export supplier encoding package.
 6. Import supplier UID manifest.
