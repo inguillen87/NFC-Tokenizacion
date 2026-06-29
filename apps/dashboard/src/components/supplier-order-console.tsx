@@ -10,9 +10,11 @@ type SupplierSubBatch = {
   sequence_index?: number;
   expected_quantity?: number;
   manifest_status?: string;
+  manifest_count?: number;
   qa_status?: string;
   key_fingerprint?: string;
   url_template?: string;
+  status?: string;
 };
 
 type SupplierOrder = {
@@ -80,6 +82,25 @@ type SupplierVaultArtifact = {
   status?: string;
   created_at?: string;
   metadata?: Record<string, unknown>;
+};
+
+type ManifestImportResponse = {
+  ok?: boolean;
+  dryRun?: boolean;
+  bid?: string;
+  importedRows?: number;
+  inserted?: number;
+  registeredSunPayloads?: number;
+  supplier_gate?: Record<string, unknown> | null;
+  warning?: string;
+};
+
+type ActivationResponse = {
+  ok?: boolean;
+  activated?: number;
+  remainingInactive?: number;
+  activationComplete?: boolean;
+  supplier_gate?: Record<string, unknown> | null;
 };
 
 type SupplierOrderConsoleProps = {
@@ -169,6 +190,17 @@ function makeLocalPackPassword(customerSlug: string, tenantSlug: string) {
   return `nexID-${prefix}-${secret}`;
 }
 
+function countManifestRows(value: string) {
+  const lines = value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (!lines.length) return 0;
+  const firstLine = lines[0]?.toLowerCase() || "";
+  const hasHeader = firstLine.includes("uid") || firstLine.includes("batch") || firstLine.includes("bid");
+  return Math.max(0, lines.length - (hasHeader ? 1 : 0));
+}
+
 function hasPermission(grants: string[], permission: string) {
   return grants.some((grant) => {
     if (grant === "*" || grant === permission) return true;
@@ -226,11 +258,26 @@ export function SupplierOrderConsole({
   const [orders, setOrders] = useState<SupplierOrder[]>([]);
   const [packPassword, setPackPassword] = useState("");
   const [vaultArtifacts, setVaultArtifacts] = useState<SupplierVaultArtifact[]>([]);
+  const [manifestCsv, setManifestCsv] = useState("");
+  const [manifestResult, setManifestResult] = useState<ManifestImportResponse | null>(null);
+  const [activationLimit, setActivationLimit] = useState("");
 
   const subBatches = useMemo(() => created?.sub_batches || [], [created]);
   const selectedOrderId = created?.order?.id || "";
+  const selectedSubBatch = useMemo(
+    () => subBatches.find((item) => item.bid === qaBid) || null,
+    [qaBid, subBatches],
+  );
   const activeCarrierProfile = created?.order?.carrier_profile_code || carrierProfileCode;
   const requiresTtstatus = activeCarrierProfile === "ntag424_dna_tt";
+  const manifestRows = useMemo(() => countManifestRows(manifestCsv), [manifestCsv]);
+  const canImportManifest = Boolean(selectedOrderId && qaBid.trim() && manifestCsv.trim());
+  const canActivateSubBatch = Boolean(
+    selectedOrderId
+    && qaBid.trim()
+    && selectedSubBatch?.manifest_status === "imported"
+    && selectedSubBatch?.qa_status === "passed",
+  );
   const qaUrls = useMemo(
     () => qaSampleUrls
       .split(/[\n,]+/)
@@ -260,6 +307,20 @@ export function SupplierOrderConsole({
     return data as Record<string, unknown>;
   }
 
+  function updateSubBatchStatus(bid: string, patch: Partial<SupplierSubBatch>) {
+    setCreated((previous) => {
+      if (!previous?.sub_batches?.length) return previous;
+      const nextSubBatches = previous.sub_batches.map((item) => (
+        item.bid === bid ? { ...item, ...patch } : item
+      ));
+      return {
+        ...previous,
+        sub_batches: nextSubBatches,
+        order: previous.order ? { ...previous.order, sub_batches: nextSubBatches } : previous.order,
+      };
+    });
+  }
+
   async function createOrder() {
     if (!canCreateOrder) {
       setStatus("Tu perfil no puede crear pedidos de fábrica. Pedí a un superadmin o a un operador con permiso de lotes.");
@@ -287,11 +348,14 @@ export function SupplierOrderConsole({
       setCreated(data);
       setPack(null);
       setVaultArtifacts([]);
-      const firstBid = data.sub_batches?.[0]?.bid || "";
+    const firstBid = data.sub_batches?.[0]?.bid || "";
       setQaBid(firstBid);
       setQaSampleUrls("");
       setQaReplayChecked(false);
       setQaTtstatusChecked(false);
+      setManifestCsv("");
+      setManifestResult(null);
+      setActivationLimit("");
       setPackPassword("");
       setStatus(`Pedido creado: ${data.sub_batches?.length || 0} sub-batches con fingerprints, llaves cifradas y sin KMS expuesta.`);
     } catch (error) {
@@ -418,6 +482,9 @@ export function SupplierOrderConsole({
     setQaSampleUrls("");
     setQaReplayChecked(false);
     setQaTtstatusChecked(false);
+    setManifestCsv("");
+    setManifestResult(null);
+    setActivationLimit("");
     setPackPassword("");
     setStatus(`Pedido seleccionado: ${order.order_name || order.id}. ${subBatchesFromOrder.length} sub-batches disponibles.`);
     void loadVaultArtifacts(order.id).catch((error) => {

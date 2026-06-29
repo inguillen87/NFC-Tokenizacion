@@ -13,6 +13,8 @@ const HeroThreeStage = dynamic(() => import("./hero-three-stage").then((mod) => 
   ssr: false,
 });
 
+const heroAtlasMapSize = { width: 520, height: 300 };
+
 function verticalLabel(item: PlatformVertical, locale: AppLocale) {
   if (locale === "en") return item.titleEn;
   if (locale === "pt-BR") return item.titlePt;
@@ -919,6 +921,7 @@ function HeroTraceMap({
         points={globePoints}
         routes={globeRoutes}
         compact
+        mapSize={heroAtlasMapSize}
         variant="hero"
         className="hero-traceability-globe"
       />

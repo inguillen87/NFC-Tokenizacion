@@ -46,6 +46,7 @@ type DemoScenario = {
 type DemoRealProductVariant = "studio" | "cinematic" | "stage";
 
 const DEMO_VERTICAL_ORDER: Vertical[] = platformVerticals.map((item) => item.demoVertical as Vertical);
+const demoLabPanelMapSize = { width: 560, height: 330 };
 
 const DEMO_VERTICAL_ALIASES: Record<string, Vertical> = {
   wine: "wine",
@@ -904,6 +905,7 @@ export function DemoLabClient({ locale, initialVertical }: { locale: AppLocale; 
                 ctaHref={mapsLink(destination)}
                 ctaLabel="Abrir ubicación"
                 variant="panel"
+                mapSize={demoLabPanelMapSize}
                 className="demo-lab-premium-globe"
               />
             </div>
@@ -3375,6 +3377,7 @@ function DemoCrmDashboard({
               routes={routes}
               caption="Los toques sospechosos (alertas de copia) se proyectan en color naranja/rojo."
               variant="panel"
+              mapSize={demoLabPanelMapSize}
               className="demo-lab-premium-globe demo-lab-premium-globe--live"
             />
           </div>

@@ -36,6 +36,7 @@ type TraceabilityGlobeProps = {
   ctaLabel?: string;
   className?: string;
   compact?: boolean;
+  mapSize?: { width: number; height: number };
   variant?: "default" | "hero" | "panel";
   onPointSelect?: (point: TraceabilityGlobePoint) => void;
 };
@@ -98,6 +99,7 @@ export function PremiumTraceabilityGlobe({
   ctaLabel,
   className = "",
   compact = false,
+  mapSize,
   variant = "default",
 }: TraceabilityGlobeProps) {
   const [liveData, setLiveData] = useState<{
@@ -200,16 +202,17 @@ export function PremiumTraceabilityGlobe({
   const primaryFrom = primaryRoute ? nearestTracePoint(safePoints, primaryRoute.fromLat, primaryRoute.fromLng) : null;
   const primaryTo = primaryRoute ? nearestTracePoint(safePoints, primaryRoute.toLat, primaryRoute.toLng) : null;
   const primaryDistance = primaryRoute ? Math.round(routeDistanceKm(primaryRoute)).toLocaleString("es-AR") : "";
-  const globeSize =
+  const defaultGlobeSize =
     variant === "hero"
       ? compact
         ? { width: 560, height: 360 }
         : { width: 660, height: 420 }
       : variant === "panel"
         ? { width: 620, height: 390 }
-        : compact
+      : compact
           ? { width: 420, height: 300 }
           : { width: 720, height: 440 };
+  const globeSize = mapSize || defaultGlobeSize;
 
   return (
     <section
