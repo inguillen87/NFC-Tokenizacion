@@ -4,20 +4,42 @@ import React, { useCallback, useEffect, useRef, useState, useMemo } from "react"
 import dynamic from "next/dynamic";
 import * as THREE from "three";
 
+function determinantAffineShim(this: { determinant?: () => number }) {
+  return typeof this?.determinant === "function" ? this.determinant() : 1;
+}
+
+function patchMatrixPrototype(matrix4Prototype?: Record<string, unknown>) {
+  if (!matrix4Prototype || typeof matrix4Prototype.determinantAffine === "function") return;
+
+  try {
+    Object.defineProperty(matrix4Prototype, "determinantAffine", {
+      configurable: true,
+      value: determinantAffineShim,
+    });
+  } catch {
+    matrix4Prototype.determinantAffine = determinantAffineShim;
+  }
+}
+
+function patchMatrixInstance(matrix?: unknown) {
+  if (!matrix || typeof matrix !== "object") return;
+
+  patchMatrixPrototype(Object.getPrototypeOf(matrix) as Record<string, unknown> | undefined);
+
+  const matrixRecord = matrix as Record<string, unknown>;
+  if (typeof matrixRecord.determinantAffine === "function") return;
+
+  try {
+    Object.defineProperty(matrixRecord, "determinantAffine", {
+      configurable: true,
+      value: determinantAffineShim,
+    });
+  } catch {
+    matrixRecord.determinantAffine = determinantAffineShim;
+  }
+}
+
 function ensureThreeRendererCompatibility() {
-  const patchMatrixPrototype = (matrix4Prototype?: Record<string, unknown>) => {
-    if (!matrix4Prototype || typeof matrix4Prototype.determinantAffine === "function") return;
-
-    try {
-      Object.defineProperty(matrix4Prototype, "determinantAffine", {
-        configurable: true,
-        value: THREE.Matrix4.prototype.determinant,
-      });
-    } catch {
-      matrix4Prototype.determinantAffine = THREE.Matrix4.prototype.determinant;
-    }
-  };
-
   patchMatrixPrototype((THREE.Matrix4 as unknown as { prototype?: Record<string, unknown> }).prototype);
 
   const globalScope = globalThis as typeof globalThis & { THREE?: typeof THREE };
@@ -700,11 +722,13 @@ export function Globe3dMap({
   const [isLightTheme, setIsLightTheme] = useState(false);
   const [containerWidth, setContainerWidth] = useState(width);
   const [globeReady, setGlobeReady] = useState(false);
+  const [globeFailed, setGlobeFailed] = useState(false);
   const [countryPolygons, setCountryPolygons] = useState<CountryFeature[]>([]);
   const [hoverCard, setHoverCard] = useState<GlobeHoverCard | null>(null);
 
   useEffect(() => {
     setMounted(true);
+    ensureThreeRendererCompatibility();
     
     if (theme !== "auto") {
       setIsLightTheme(theme === "light");
@@ -722,6 +746,49 @@ export function Globe3dMap({
     observer.observe(root, { attributes: true, attributeFilter: ["class", "data-theme", "data-nexid-theme"] });
     return () => observer.disconnect();
   }, [theme]);
+
+  useEffect(() => {
+    if (!mounted || typeof window === "undefined") return;
+
+    const isGlobeRuntimeError = (reason: unknown) => {
+      const message =
+        reason instanceof Error
+          ? `${reason.name} ${reason.message} ${reason.stack || ""}`
+          : typeof reason === "string"
+            ? reason
+            : (() => {
+                try {
+                  return JSON.stringify(reason);
+                } catch {
+                  return String(reason);
+                }
+              })();
+      return /determinantAffine|react-globe|three-globe|WebGLRenderer|matrixWorld/i.test(message);
+    };
+
+    const handleWindowError = (event: ErrorEvent) => {
+      if (!isGlobeRuntimeError(event.error || event.message)) return;
+      event.preventDefault();
+      ensureThreeRendererCompatibility();
+      setGlobeFailed(true);
+      setGlobeReady(true);
+    };
+
+    const handleRejection = (event: PromiseRejectionEvent) => {
+      if (!isGlobeRuntimeError(event.reason)) return;
+      event.preventDefault();
+      ensureThreeRendererCompatibility();
+      setGlobeFailed(true);
+      setGlobeReady(true);
+    };
+
+    window.addEventListener("error", handleWindowError);
+    window.addEventListener("unhandledrejection", handleRejection);
+    return () => {
+      window.removeEventListener("error", handleWindowError);
+      window.removeEventListener("unhandledrejection", handleRejection);
+    };
+  }, [mounted]);
 
   useEffect(() => {
     if (!mounted || !containerRef.current) return;
@@ -905,8 +972,20 @@ export function Globe3dMap({
   const handleGlobeReady = useCallback(() => {
     const globe = globeRef.current;
     if (globe) {
+      ensureThreeRendererCompatibility();
       setGlobeReady(true);
       globe.pointOfView(globeFocus, 900);
+
+      try {
+        const scene = (globe as unknown as { scene?: () => { traverse?: (callback: (node: unknown) => void) => void } }).scene?.();
+        scene?.traverse?.((node: unknown) => {
+          const object3d = node as { matrix?: unknown; matrixWorld?: unknown };
+          patchMatrixInstance(object3d.matrix);
+          patchMatrixInstance(object3d.matrixWorld);
+        });
+      } catch {
+        // The globe still renders if the scene API is unavailable.
+      }
 
       const controls = globe.controls();
       if (controls) {
@@ -1112,6 +1191,9 @@ export function Globe3dMap({
         isLightTheme={isLightTheme}
         className={globeReady ? "opacity-0 pointer-events-none" : "opacity-100"}
       />
+      {globeFailed ? (
+        <GlobeFallbackVisual points={points} routes={routes} isLightTheme={isLightTheme} />
+      ) : null}
 
       {hoverCard ? (
         <div
@@ -1158,10 +1240,11 @@ export function Globe3dMap({
         </div>
       ) : null}
 
-      <Globe
-        ref={globeRef}
-        width={renderWidth}
-        height={renderHeight}
+      {!globeFailed ? (
+        <Globe
+          ref={globeRef}
+          width={renderWidth}
+          height={renderHeight}
         globeOffset={offset}
         backgroundColor="rgba(0,0,0,0)"
         backgroundImageUrl={!compactHud ? PROFESSIONAL_GLOBE_BACKGROUND_URL : undefined}
@@ -1327,8 +1410,9 @@ export function Globe3dMap({
         ringMaxRadius={(p: any) => (p.risk || p.status === "risk" ? (compactHud ? 2.4 : 4.4) : (compactHud ? 1.8 : 3.1))}
         ringPropagationSpeed={(p: any) => (p.risk || p.status === "risk" ? (compactHud ? 1.25 : 1.7) : (compactHud ? 0.95 : 1.25))}
         ringRepeatPeriod={(p: any) => (p.risk || p.status === "risk" ? 950 : 1400)}
-        ringResolution={compactHud ? 48 : 96}
-      />
+          ringResolution={compactHud ? 48 : 96}
+        />
+      ) : null}
     </div>
   );
 }

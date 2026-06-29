@@ -28162,3 +28162,185 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
     display: none !important;
   }
 }
+
+/* Enterprise landing proof lock.
+   This intentionally sits after the older hero patches: the product evidence
+   must remain visible beside the atlas on large monitors instead of being
+   squeezed by oversized globe rules. */
+.landing-hero-section .hero-scene--product-proof {
+  overflow: visible !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: clamp(0.9rem, 1.2vw, 1.25rem) !important;
+  align-items: start !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof {
+  display: grid !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  max-height: none !important;
+  overflow: hidden !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof,
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof:has(.hero-asset-showcase) {
+  display: grid !important;
+  position: relative !important;
+  inset: auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof #trace-signal-atlas.hero-trace-map--trust-globe {
+  min-height: clamp(22rem, 42vw, 30rem) !important;
+  max-height: none !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-showcase {
+  display: grid !important;
+  align-content: start !important;
+  gap: clamp(0.62rem, 0.9vw, 0.85rem) !important;
+  min-height: 0 !important;
+  height: auto !important;
+  overflow: hidden !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-media {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  min-height: clamp(14rem, 20vw, 18rem) !important;
+  height: auto !important;
+  gap: clamp(0.5rem, 0.8vw, 0.7rem) !important;
+  overflow: hidden !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-passport-phone {
+  display: none !important;
+  width: clamp(6.25rem, 6vw, 8rem) !important;
+  min-width: 0 !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-scene-result-card--product-proof {
+  align-self: start !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+@media (min-width: 1280px) {
+  .landing-hero-section > .container-shell > .hero-demo-shell {
+    width: min(1380px, calc(100vw - clamp(2.5rem, 8vw, 12rem))) !important;
+    max-width: min(1380px, calc(100vw - clamp(2.5rem, 8vw, 12rem))) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
+  .landing-hero-section
+    .hero-scene--product-proof
+    > .hero-scene-proof-grid.hero-scene-proof-grid:has(.hero-object-frame--product-proof) {
+    grid-template-columns: minmax(0, 0.96fr) minmax(430px, 0.86fr) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
+  .landing-hero-section
+    .hero-scene--product-proof
+    .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(320px, 0.92fr) minmax(280px, 0.78fr) !important;
+    gap: clamp(0.72rem, 0.9vw, 0.95rem) !important;
+    min-height: auto !important;
+    padding: clamp(0.7rem, 0.9vw, 0.95rem) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof,
+  .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof {
+    min-height: 0 !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof #trace-signal-atlas.hero-trace-map--trust-globe {
+    height: clamp(23rem, 24vw, 29rem) !important;
+    min-height: clamp(23rem, 24vw, 29rem) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof .traceability-globe__stage {
+    min-height: clamp(15.5rem, 16vw, 20rem) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-media {
+    grid-template-columns: minmax(0, 1fr) !important;
+    min-height: clamp(13.25rem, 14.6vw, 16.5rem) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-passport-phone {
+    display: none !important;
+  }
+}
+
+@media (min-width: 1600px) {
+  .landing-hero-section > .container-shell > .hero-demo-shell {
+    width: min(1440px, calc(100vw - clamp(5rem, 16vw, 22rem))) !important;
+    max-width: min(1440px, calc(100vw - clamp(5rem, 16vw, 22rem))) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
+  .landing-hero-section
+    .hero-scene--product-proof
+    > .hero-scene-proof-grid.hero-scene-proof-grid:has(.hero-object-frame--product-proof) {
+    grid-template-columns: minmax(0, 0.92fr) minmax(470px, 0.88fr) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
+  .landing-hero-section
+    .hero-scene--product-proof
+    .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(330px, 0.9fr) minmax(300px, 0.8fr) !important;
+    min-height: auto !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof #trace-signal-atlas.hero-trace-map--trust-globe {
+    height: clamp(23rem, 22vw, 28rem) !important;
+    min-height: clamp(23rem, 22vw, 28rem) !important;
+  }
+}
+
+@media (min-width: 1280px) and (max-width: 1450px) {
+  .landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
+  .landing-hero-section
+    .hero-scene--product-proof
+    > .hero-scene-proof-grid.hero-scene-proof-grid:has(.hero-object-frame--product-proof) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+@media (max-width: 1279px) {
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-media {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+@media (max-width: 680px) {
+  .landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof #trace-signal-atlas.hero-trace-map--trust-globe {
+    min-height: clamp(20rem, 88vw, 24rem) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-media {
+    grid-template-columns: minmax(0, 1fr) !important;
+    min-height: clamp(18rem, 84vw, 23rem) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-passport-phone {
+    display: none !important;
+  }
+}
