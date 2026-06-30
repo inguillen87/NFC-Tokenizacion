@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { AppLocale } from "@product/config";
+import { PremiumVectorMap, type VectorMapEvidenceStep, type VectorMapLedgerItem, type VectorMapPoint, type VectorMapRoute } from "@product/ui";
 import { CheckCircle2, Maximize2, X } from "lucide-react";
 import { platformVerticals, traceabilityGlobePoints, traceabilityGlobeRoutes, type PlatformDemoVertical, type PlatformVertical } from "../lib/platform-verticals";
 import { PremiumTraceabilityGlobe, type TraceabilityGlobePoint, type TraceabilityGlobeRoute } from "./premium-traceability-globe";
@@ -89,7 +90,7 @@ const productModalCopy: Record<AppLocale, {
     productTitle: "Activo fisico",
     productSubtitle: "Click para abrir ficha completa",
     livePhoneTitle: "Demo celular en vivo",
-    phoneNote: "El celular cambia con cada vertical y simula el tap NFC/QR sin abrir modal.",
+    phoneNote: "La autenticidad se valida en el momento del tap con la informacion disponible. Si no hay conexion, la lectura queda pendiente hasta sincronizar.",
   },
   "pt-BR": {
     open: "Ampliar ficha",
@@ -107,7 +108,7 @@ const productModalCopy: Record<AppLocale, {
     productTitle: "Ativo fisico",
     productSubtitle: "Clique para abrir ficha completa",
     livePhoneTitle: "Demo mobile ao vivo",
-    phoneNote: "O celular muda com cada vertical e simula o toque NFC/QR sem abrir modal.",
+    phoneNote: "A autenticidade e validada no momento do toque com a evidencia disponivel. Sem conexao, a leitura fica pendente ate sincronizar.",
   },
   en: {
     open: "Open product detail",
@@ -125,7 +126,85 @@ const productModalCopy: Record<AppLocale, {
     productTitle: "Physical asset",
     productSubtitle: "Click to open full detail",
     livePhoneTitle: "Live phone demo",
-    phoneNote: "The phone changes by vertical and simulates the NFC/QR tap without opening a modal.",
+    phoneNote: "Authenticity is validated at tap time with available evidence. When offline, the read remains pending until sync.",
+  },
+};
+
+const heroStageCopy: Record<AppLocale, {
+  identityTitle: string;
+  consumerTitle: string;
+  routeTitle: string;
+  routeSubtitle: string;
+  live: string;
+  custodyTitle: string;
+  integrity: string;
+  verified: string;
+  events: string;
+  alerts: string;
+  clickHint: string;
+  detailHint: string;
+  cellularState: string;
+  productType: string;
+  bottle: string;
+  tapFinal: string;
+  demoEvent: string;
+}> = {
+  "es-AR": {
+    identityTitle: "PRUEBA DE IDENTIDAD",
+    consumerTitle: "TAP FINAL (CONSUMIDOR)",
+    routeTitle: "RUTA VIVA",
+    routeSubtitle: "Trazabilidad en tiempo real",
+    live: "En vivo",
+    custodyTitle: "HITOS DE CUSTODIA",
+    integrity: "Integridad de ruta",
+    verified: "verificada",
+    events: "Eventos",
+    alerts: "Alertas",
+    clickHint: "Hacé click para abrir la ficha completa en una vista centrada",
+    detailHint: "Ver detalle completo del producto",
+    cellularState: "SALIDA CELULAR",
+    productType: "Tipo",
+    bottle: "Botella",
+    tapFinal: "Tap final",
+    demoEvent: "Evento demo",
+  },
+  "pt-BR": {
+    identityTitle: "PROVA DE IDENTIDADE",
+    consumerTitle: "TOQUE FINAL (CONSUMIDOR)",
+    routeTitle: "ROTA VIVA",
+    routeSubtitle: "Rastreabilidade em tempo real",
+    live: "Ao vivo",
+    custodyTitle: "MARCOS DE CUSTODIA",
+    integrity: "Integridade da rota",
+    verified: "verificada",
+    events: "Eventos",
+    alerts: "Alertas",
+    clickHint: "Clique para abrir a ficha completa em uma vista centralizada",
+    detailHint: "Ver detalhe completo do produto",
+    cellularState: "SAIDA MOBILE",
+    productType: "Tipo",
+    bottle: "Unidade",
+    tapFinal: "Toque final",
+    demoEvent: "Evento demo",
+  },
+  en: {
+    identityTitle: "IDENTITY PROOF",
+    consumerTitle: "FINAL TAP (CONSUMER)",
+    routeTitle: "LIVE ROUTE",
+    routeSubtitle: "Real-time traceability",
+    live: "Live",
+    custodyTitle: "CUSTODY MILESTONES",
+    integrity: "Route integrity",
+    verified: "verified",
+    events: "Events",
+    alerts: "Alerts",
+    clickHint: "Click to open the full product detail in a centered view",
+    detailHint: "View complete product detail",
+    cellularState: "MOBILE OUTPUT",
+    productType: "Type",
+    bottle: "Unit",
+    tapFinal: "Final tap",
+    demoEvent: "Demo event",
   },
 };
 
@@ -1062,6 +1141,223 @@ function HeroTraceMap({
   );
 }
 
+function HeroEnterpriseTraceMap({
+  origin,
+  tap,
+  distance,
+  numberLocale,
+  txt,
+  stageCopy,
+}: {
+  origin: LocationPoint;
+  tap: LocationPoint;
+  distance: number;
+  numberLocale: string;
+  txt: Pick<(typeof labels)["es-AR"], "routeTitle" | "originMap" | "tapMap" | "custody">;
+  stageCopy: (typeof heroStageCopy)["es-AR"];
+}) {
+  const formattedDistance = distance.toLocaleString(numberLocale);
+  const evidenceCopy = txt.routeTitle === "Trust route"
+    ? `${formattedDistance} km with physical tap, SUN and channel evidence.`
+    : txt.routeTitle.startsWith("Rota")
+      ? `${formattedDistance} km com evidencia de toque, SUN e canal.`
+      : `${formattedDistance} km con evidencia de tap fisico, SUN y canal.`;
+  const [routeHover, setRouteHover] = useState<HeroRouteHover | null>(null);
+
+  const custodyStops = useMemo<VectorMapPoint[]>(() => {
+    const base: VectorMapPoint[] = [
+      {
+        id: "origin",
+        label: origin.city,
+        sublabel: origin.country,
+        lat: origin.lat,
+        lng: origin.lng,
+        scans: 1,
+        risk: 0,
+        tone: "origin",
+        stageLabel: txt.originMap,
+        evidence: txt.custody,
+      },
+      {
+        id: "custody-miami",
+        label: "Miami",
+        sublabel: "USA",
+        lat: 25.7617,
+        lng: -80.1918,
+        scans: 1,
+        risk: 0,
+        tone: "hub",
+        stageLabel: "Custodia",
+        evidence: "Centro de distribucion",
+      },
+      {
+        id: "custody-madrid",
+        label: "Madrid",
+        sublabel: "Espana",
+        lat: 40.4168,
+        lng: -3.7038,
+        scans: 1,
+        risk: 0,
+        tone: "hub",
+        stageLabel: "Custodia",
+        evidence: "Control documental",
+      },
+      {
+        id: "custody-singapore",
+        label: "Singapur",
+        sublabel: "SGP",
+        lat: 1.3521,
+        lng: 103.8198,
+        scans: 1,
+        risk: 0,
+        tone: "hub",
+        stageLabel: "Custodia",
+        evidence: "Canal de exportacion",
+      },
+      {
+        id: "tap",
+        label: tap.city,
+        sublabel: tap.country,
+        lat: tap.lat,
+        lng: tap.lng,
+        scans: 1,
+        risk: 0,
+        tone: "tap",
+        stageLabel: stageCopy.tapFinal,
+        evidence: tap.label,
+        lastSeen: stageCopy.demoEvent,
+      },
+    ];
+
+    return base.filter((point, index, all) => all.findIndex((item) => Math.abs(item.lat - point.lat) < 0.01 && Math.abs(item.lng - point.lng) < 0.01) === index);
+  }, [origin, stageCopy.demoEvent, stageCopy.tapFinal, tap, txt.custody, txt.originMap]);
+
+  const vectorRoutes = useMemo<VectorMapRoute[]>(() => custodyStops.slice(1).map((stop, index) => {
+    const previous = custodyStops[index];
+    const isFinal = stop.id === "tap";
+    return {
+      id: `route-${previous.id}-${stop.id}`,
+      fromLat: previous.lat,
+      fromLng: previous.lng,
+      toLat: stop.lat,
+      toLng: stop.lng,
+      label: `${previous.label} -> ${stop.label}`,
+      tone: isFinal ? "success" : "info",
+      distanceLabel: isFinal ? `${formattedDistance} km` : undefined,
+      evidence: isFinal ? evidenceCopy : stop.evidence,
+    };
+  }), [custodyStops, evidenceCopy, formattedDistance]);
+
+  const evidenceSteps = useMemo<VectorMapEvidenceStep[]>(() => custodyStops.map((stop, index) => ({
+    id: `evidence-${stop.id}`,
+    label: index === 0 ? txt.originMap : stop.id === "tap" ? txt.tapMap : stop.stageLabel || "Custodia",
+    value: stop.label,
+    detail: stop.evidence || stop.sublabel,
+    tone: stop.id === "origin" ? "origin" : stop.id === "tap" ? "tap" : "loyalty",
+  })), [custodyStops, txt.originMap, txt.tapMap]);
+
+  const ledgerItems = useMemo<VectorMapLedgerItem[]>(() => [
+    { id: "integrity", label: stageCopy.integrity, value: stageCopy.verified, detail: evidenceCopy, tone: "loyalty" },
+    { id: "events", label: stageCopy.events, value: `${custodyStops.length}/${custodyStops.length}`, detail: `${formattedDistance} km`, tone: "tap" },
+    { id: "alerts", label: stageCopy.alerts, value: "0", detail: "Sin alertas en esta lectura demo", tone: "origin" },
+  ], [custodyStops.length, evidenceCopy, formattedDistance, stageCopy.alerts, stageCopy.events, stageCopy.integrity, stageCopy.verified]);
+
+  const proofSteps: HeroRouteHover[] = [
+    { eyebrow: "01", title: txt.originMap, detail: `${origin.city} - ${origin.country}`, tone: "origin" },
+    { eyebrow: "02", title: "SUN / UID", detail: "Evidencia firmada por lectura", tone: "route" },
+    { eyebrow: "03", title: stageCopy.tapFinal, detail: `${tap.city} - ${tap.label}`, tone: "tap" },
+    { eyebrow: "04", title: "CRM", detail: "Beneficio, garantia y recompra", tone: "crm" },
+  ];
+  const selectedProof = routeHover || proofSteps[0];
+  const timelineStops = custodyStops.map((stop, index) => ({
+    ...stop,
+    title: index === 0 ? txt.originMap : stop.id === "tap" ? stageCopy.tapFinal : stop.stageLabel || "Custodia",
+    date: index === 0 ? "12 ENE 08:15" : index === 1 ? "15 ENE 14:22" : index === 2 ? "19 ENE 09:10" : index === 3 ? "22 ENE 12:45" : "24 ENE 18:33",
+  }));
+
+  return (
+    <div id="trace-signal-atlas" className="hero-trace-map hero-trace-map--atlas hero-live-route-card" aria-label={txt.routeTitle}>
+      <div className="hero-live-route-card__head">
+        <div>
+          <strong>{stageCopy.routeTitle}</strong>
+          <span>{stageCopy.routeSubtitle}</span>
+        </div>
+        <em><i />{stageCopy.live}</em>
+      </div>
+
+      <div className="hero-route-vector-atlas" aria-hidden="true">
+        <PremiumVectorMap
+          points={custodyStops}
+          routes={vectorRoutes}
+          selectedPointId="tap"
+          density="route"
+          chrome="minimal"
+          title={stageCopy.routeTitle}
+          subtitle={`${origin.city} -> ${tap.city} - ${formattedDistance} km`}
+          caption={evidenceCopy}
+          heightClassName="h-full"
+          className="hero-route-vector-atlas__map"
+          evidenceSteps={evidenceSteps}
+          ledgerItems={ledgerItems}
+          maxPoints={8}
+          maxRoutes={8}
+        />
+      </div>
+
+      <div className="hero-map-intel hero-map-intel--atlas">
+        <p>{selectedProof.eyebrow}</p>
+        <strong>{selectedProof.title}</strong>
+        <span>{selectedProof.detail}</span>
+      </div>
+
+      <div className="hero-route-proof-steps hero-route-proof-steps--atlas" aria-label="Evidencia de ruta">
+        {proofSteps.map((step) => (
+          <button
+            key={step.eyebrow}
+            className={`hero-route-proof-step hero-route-proof-step--${step.tone}`}
+            type="button"
+            aria-label={`${step.title}: ${step.detail}`}
+            title={`${step.title}: ${step.detail}`}
+            onMouseEnter={() => setRouteHover(step)}
+            onFocus={() => setRouteHover(step)}
+            onMouseLeave={() => setRouteHover(null)}
+            onBlur={() => setRouteHover(null)}
+          >
+            <small>{step.eyebrow}</small>
+          </button>
+        ))}
+      </div>
+
+      <div className="hero-custody-timeline">
+        <div className="hero-custody-timeline__head">
+          <strong>{stageCopy.custodyTitle}</strong>
+          <span>{custodyStops.length} eventos</span>
+        </div>
+        <div className="hero-custody-timeline__rail">
+          {timelineStops.map((stop) => (
+            <article key={stop.id} className={stop.id === "tap" ? "is-final" : ""}>
+              <i>{stop.id === "tap" ? "" : "✓"}</i>
+              <span>{stop.title}</span>
+              <strong>{stop.label}</strong>
+              <em>{stop.sublabel}</em>
+              <small>{stop.date}</small>
+            </article>
+          ))}
+        </div>
+      </div>
+
+      <div className="hero-atlas-status-row">
+        {ledgerItems.map((item) => (
+          <span key={item.id}>
+            <em>{item.label}</em>
+            <strong>{item.value}</strong>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const heroPrimeProducts: Record<Vertical, {
   kind: "wine" | "bracelet" | "perfume" | "seeds";
   seal: string;
@@ -1419,54 +1715,58 @@ function HeroPassportPhone({
 function HeroProductShowcase({
   active,
   data,
-  distance,
-  numberLocale,
   txt,
   detailCopy,
+  stageCopy,
 }: {
   active: Vertical;
   data: Scene;
-  distance: number;
-  numberLocale: string;
   txt: Pick<(typeof labels)["es-AR"], "assetBank" | "realAsset" | "renderFallback" | "evidenceChart" | "metrics" | "phoneLabel" | "labels">;
   detailCopy: (typeof productModalCopy)["es-AR"];
+  stageCopy: (typeof heroStageCopy)["es-AR"];
 }) {
   const asset = heroRealAssets[active];
+  const recordRows = [
+    { label: txt.labels.batch, value: data.batch },
+    { label: stageCopy.bottle, value: data.uid },
+    { label: stageCopy.productType, value: data.security },
+  ];
 
   return (
-    <div className={`hero-asset-showcase hero-asset-showcase--${active}`}>
-      <div className="hero-asset-media">
-        <div className="hero-asset-open-target" aria-hidden="true">
-          {asset ? (
-          <span className="hero-asset-photo">
-            <img className="hero-real-asset" src={asset.imageUrl} alt={asset.alt} loading="eager" />
-            <span className="hero-asset-brand-mask" aria-hidden="true" />
-            <span className="hero-asset-label-cover" aria-hidden="true">
-              <em>nexID</em>
-              <strong>{data.product}</strong>
-              <small>{data.profile}</small>
-            </span>
-          </span>
+    <article className={`hero-identity-card hero-identity-card--${active}`}>
+      <span className="hero-identity-card__eyebrow">{stageCopy.identityTitle}</span>
+      <div className="hero-identity-card__media">
+        {asset ? (
+          <img className="hero-real-asset" src={asset.imageUrl} alt={asset.alt} loading="eager" />
         ) : (
-          <span className="hero-asset-photo hero-asset-photo--fallback">
-            <HeroProductVisual active={active} product={data.product} />
-          </span>
+          <HeroProductVisual active={active} product={data.product} />
         )}
-          <span className="hero-asset-open-badge" aria-hidden="true">
-            <Maximize2 className="h-4 w-4" />
-            {detailCopy.productSubtitle}
-          </span>
+        <span className="hero-identity-card__chip">
+          <strong>nexID</strong>
+          <em>{data.profile}</em>
+        </span>
+        <span className="hero-identity-card__nfc">NFC</span>
+      </div>
+
+      <div className="hero-identity-card__body">
+        <span>{asset ? txt.realAsset : txt.renderFallback}</span>
+        <h3>{data.product}</h3>
+        <p>{data.origin.city} - {data.origin.country}</p>
+        <div className="hero-identity-card__records">
+          {recordRows.map((row) => (
+            <span key={row.label}>
+              <em>{row.label}</em>
+              <strong>{row.value}</strong>
+            </span>
+          ))}
         </div>
-        <span className="hero-asset-nfc">NFC</span>
-        <span className="hero-asset-status">{data.profile}</span>
+        <span className="hero-identity-card__cta">
+          <Maximize2 className="h-4 w-4" />
+          <strong>{detailCopy.open}</strong>
+          <em>{stageCopy.detailHint}</em>
+        </span>
       </div>
-      <div className="hero-asset-copy">
-        <span>{detailCopy.productTitle} / {asset ? txt.realAsset : txt.renderFallback}</span>
-        <strong>{data.product}</strong>
-        <p>{data.batch} - {data.security}</p>
-      </div>
-      <HeroEvidenceChart active={active} distance={distance} numberLocale={numberLocale} txt={txt} />
-    </div>
+    </article>
   );
 }
 
@@ -1477,6 +1777,9 @@ function HeroPhoneEmulator({
   numberLocale,
   copy,
   model,
+  tap,
+  stageCopy,
+  originLabel,
 }: {
   active: Vertical;
   data: Scene;
@@ -1484,39 +1787,71 @@ function HeroPhoneEmulator({
   numberLocale: string;
   copy: (typeof productModalCopy)["es-AR"];
   model: "iphone" | "samsung";
+  tap: LocationPoint;
+  stageCopy: (typeof heroStageCopy)["es-AR"];
+  originLabel: string;
 }) {
   const asset = heroRealAssets[active];
+  const productOrigin = `${data.origin.city}, ${data.origin.country}`;
+  const tapLabel = `${tap.city}, ${tap.country}`;
 
   return (
-    <article className={`hero-mobile-emulator hero-mobile-emulator--${model}`}>
-      <div className="hero-mobile-emulator__chrome">
-        <span>{model === "iphone" ? copy.iphone : copy.samsung}</span>
-        <i />
-      </div>
-      <div className="hero-mobile-emulator__screen">
-        <div className="hero-mobile-emulator__hero">
-          {asset ? <img src={asset.imageUrl} alt="" loading="lazy" /> : <HeroProductVisual active={active} product={data.product} />}
-          <span>{data.profile}</span>
-        </div>
-        <div className="hero-mobile-emulator__content">
-          <p>{copy.trustedTap}</p>
-          <h4>{data.product}</h4>
-          <dl>
+    <article className={`hero-consumer-device hero-consumer-device--${model}`}>
+      <div className="hero-consumer-device__frame">
+        <span className="hero-consumer-device__notch" />
+        <div className="hero-consumer-device__screen">
+          <header className="hero-consumer-device__status">
+            <span>9:41</span>
+            <strong>nexID</strong>
+            <i />
+          </header>
+
+          <section className="hero-consumer-verdict" aria-label={copy.trustedTap}>
+            <span className="hero-consumer-verdict__shield">
+              <CheckCircle2 className="h-8 w-8" />
+            </span>
             <div>
-              <dt>UID</dt>
-              <dd>{data.uid}</dd>
+              <em>{stageCopy.cellularState}</em>
+              <strong>{data.result}</strong>
+              <small>{data.security}</small>
+            </div>
+          </section>
+
+          <section className="hero-consumer-product">
+            <span>
+              {asset ? <img src={asset.imageUrl} alt="" loading="lazy" /> : <HeroProductVisual active={active} product={data.product} />}
+            </span>
+            <div>
+              <strong>{data.product}</strong>
+              <em>{productOrigin}</em>
+              <small>{distance.toLocaleString(numberLocale)} km</small>
+            </div>
+          </section>
+
+          <dl className="hero-consumer-specs">
+            <div>
+              <dt>{copy.productTitle}</dt>
+              <dd>{data.product}</dd>
             </div>
             <div>
-              <dt>BID</dt>
+              <dt>{originLabel}</dt>
+              <dd>{productOrigin}</dd>
+            </div>
+            <div>
+              <dt>Lote</dt>
               <dd>{data.batch}</dd>
             </div>
             <div>
-              <dt>KM</dt>
-              <dd>{distance.toLocaleString(numberLocale)}</dd>
+              <dt>Tap</dt>
+              <dd>{tapLabel}</dd>
+            </div>
+            <div>
+              <dt>{stageCopy.demoEvent}</dt>
+              <dd>{data.phoneTag}</dd>
             </div>
           </dl>
-          <strong>{data.result}</strong>
-          <em>{data.nextAction}</em>
+
+          <p className="hero-consumer-note">{copy.phoneNote}</p>
         </div>
       </div>
     </article>
@@ -1644,6 +1979,7 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
   const productTriggerRef = useRef<HTMLButtonElement>(null);
   const txt = labels[locale] || labels["es-AR"];
   const modalCopy = productModalCopy[locale] || productModalCopy["es-AR"];
+  const stageCopy = heroStageCopy[locale] || heroStageCopy["es-AR"];
   const active = selectedVertical;
   const data = useMemo(() => txt.items[active], [txt, active]);
   const tap = tapLocations[tapIndex % tapLocations.length];
@@ -1710,7 +2046,7 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
             <div className={`hero-product-stage hero-product-stage--${active} mt-3`}>
               <div className="hero-object-frame hero-object-frame--split hero-object-frame--product-proof">
                 <div className="hero-object-map-pane hero-object-map-pane--product-proof">
-                  <HeroTraceMap origin={data.origin} tap={tap} distance={distance} numberLocale={numberLocale} txt={txt} />
+                  <HeroEnterpriseTraceMap origin={data.origin} tap={tap} distance={distance} numberLocale={numberLocale} txt={txt} stageCopy={stageCopy} />
                 </div>
                 <button
                   suppressHydrationWarning
@@ -1723,10 +2059,9 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
                   <HeroProductShowcase
                     active={active}
                     data={data}
-                    distance={distance}
-                    numberLocale={numberLocale}
                     txt={txt}
                     detailCopy={modalCopy}
+                    stageCopy={stageCopy}
                   />
                 </button>
               </div>
@@ -1752,13 +2087,13 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
           <aside className="hero-scene-result-card hero-scene-result-card--product-proof hero-phone-demo-card rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3">
             <div className="hero-phone-demo-card__head">
               <div>
-                <p className="hero-scene-result-label text-[11px] uppercase tracking-[0.14em] text-cyan-200">{modalCopy.livePhoneTitle}</p>
+                <p className="hero-scene-result-label text-[11px] uppercase tracking-[0.14em] text-cyan-200">{stageCopy.consumerTitle}</p>
                 <p className="hero-scene-result-state mt-1 text-xs font-semibold uppercase tracking-[0.1em] text-emerald-300">{data.result}</p>
               </div>
               <span>{data.phoneTag}</span>
             </div>
             <div className="hero-phone-demo-card__device">
-              <HeroPhoneEmulator active={active} data={data} distance={distance} numberLocale={numberLocale} copy={modalCopy} model={active === "electronics" || active === "logistics" || active === "seeds" ? "samsung" : "iphone"} />
+              <HeroPhoneEmulator active={active} data={data} distance={distance} numberLocale={numberLocale} copy={modalCopy} model={active === "electronics" || active === "logistics" || active === "seeds" ? "samsung" : "iphone"} tap={tap} stageCopy={stageCopy} originLabel={txt.labels.origin} />
             </div>
             <div className="hero-passport-summary mt-3">
               <span>{data.profile}</span>

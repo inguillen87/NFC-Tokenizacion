@@ -31019,3 +31019,954 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
     padding: 0.5rem 0.58rem !important;
   }
 }
+
+/* Final winning layer for the enterprise landing mockup. Keep this last. */
+.landing-hero-section .hero-main-copy,
+.landing-hero-section .hero-demo-brief--executive-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+}
+
+.landing-hero-section .hero-demo-shell {
+  width: min(1536px, calc(100vw - clamp(1rem, 4vw, 4.6rem))) !important;
+  max-width: min(1536px, calc(100vw - clamp(1rem, 4vw, 4.6rem))) !important;
+  margin-top: 0 !important;
+}
+
+.landing-hero-section .hero-scene--product-proof {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+.landing-hero-section .hero-scene--product-proof > .mt-3.flex {
+  justify-content: center !important;
+  gap: 0.18rem !important;
+  margin-top: -2.25rem !important;
+  padding-left: clamp(6.5rem, 12vw, 12rem) !important;
+  padding-right: clamp(6.5rem, 12vw, 12rem) !important;
+}
+
+.landing-hero-section .hero-scene-proof-grid {
+  display: grid !important;
+  grid-template-columns: minmax(0, 2.42fr) minmax(280px, 0.78fr) !important;
+  gap: clamp(1rem, 1.8vw, 1.55rem) !important;
+  align-items: start !important;
+  margin-top: clamp(1rem, 1.7vw, 1.45rem) !important;
+}
+
+.landing-hero-section .hero-scene-stage-card--product-proof,
+.landing-hero-section .hero-scene-result-card--product-proof {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+.landing-hero-section .hero-scene-stage-card--product-proof > .flex:first-child,
+.landing-hero-section .hero-flow-steps,
+.landing-hero-section .hero-commercial-rail,
+.landing-hero-section .hero-scene-microcopy,
+.landing-hero-section .hero-scene-band,
+.landing-hero-section .hero-passport-summary,
+.landing-hero-section .hero-commerce-stack,
+.landing-hero-section .hero-result-explain {
+  display: none !important;
+}
+
+.landing-hero-section .hero-object-frame--product-proof,
+.landing-hero-section .hero-object-frame--product-proof.hero-object-frame {
+  display: grid !important;
+  grid-template-columns: minmax(470px, 1.5fr) minmax(315px, 0.82fr) !important;
+  gap: clamp(1rem, 1.7vw, 1.45rem) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  overflow: visible !important;
+}
+
+.landing-hero-section .hero-object-frame--product-proof::before,
+.landing-hero-section .hero-object-frame--product-proof::after {
+  display: none !important;
+}
+
+.landing-hero-section #trace-signal-atlas.hero-live-route-card {
+  min-height: clamp(35rem, 43vw, 46rem) !important;
+  height: clamp(35rem, 43vw, 46rem) !important;
+  border: 1px solid rgba(34, 211, 238, 0.22) !important;
+  border-radius: 8px !important;
+  background:
+    radial-gradient(circle at 24% 20%, rgba(34, 211, 238, 0.14), transparent 34%),
+    radial-gradient(circle at 82% 58%, rgba(52, 211, 153, 0.1), transparent 30%),
+    linear-gradient(145deg, rgba(3, 20, 34, 0.96), rgba(2, 8, 23, 0.98)) !important;
+  overflow: hidden !important;
+}
+
+.landing-hero-section .hero-route-vector-atlas {
+  height: clamp(22rem, 30vw, 32rem) !important;
+  margin-top: -0.45rem !important;
+}
+
+.landing-hero-section .hero-route-vector-atlas__map,
+.landing-hero-section .hero-route-vector-atlas__map > div {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.landing-hero-section .hero-identity-card {
+  min-height: clamp(31rem, 38vw, 42rem) !important;
+  border-radius: 8px !important;
+}
+
+.landing-hero-section .hero-phone-demo-card__device {
+  display: grid !important;
+  place-items: center !important;
+}
+
+.hero-consumer-device {
+  width: min(100%, clamp(17.2rem, 20.5vw, 21.5rem)) !important;
+}
+
+.hero-consumer-device__screen {
+  min-height: clamp(33.5rem, 43vw, 39.5rem) !important;
+}
+
+@media (max-width: 1180px) {
+  .landing-hero-section .hero-scene--product-proof > .mt-3.flex {
+    margin-top: 0.75rem !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .landing-hero-section .hero-scene-proof-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .landing-hero-section .hero-object-frame--product-proof,
+  .landing-hero-section .hero-object-frame--product-proof.hero-object-frame {
+    grid-template-columns: minmax(0, 1.35fr) minmax(290px, 0.8fr) !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .landing-hero-section .hero-object-frame--product-proof,
+  .landing-hero-section .hero-object-frame--product-proof.hero-object-frame {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .landing-hero-section #trace-signal-atlas.hero-live-route-card {
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  .landing-hero-section .hero-route-vector-atlas {
+    height: clamp(19.5rem, 57vw, 27rem) !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .landing-hero-section .hero-demo-shell {
+    width: min(100%, calc(100vw - 1rem)) !important;
+    max-width: min(100%, calc(100vw - 1rem)) !important;
+  }
+
+  .landing-hero-section .hero-route-vector-atlas {
+    height: clamp(17rem, 74vw, 22rem) !important;
+  }
+
+  .landing-hero-section .hero-identity-card {
+    min-height: 0 !important;
+  }
+
+  .landing-hero-section .hero-identity-card__records {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .hero-consumer-device__screen {
+    min-height: 32rem !important;
+  }
+}
+
+/* Enterprise mockup detail finish. */
+.landing-hero-section .hero-live-route-card__head {
+  position: relative !important;
+  z-index: 8 !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 1rem !important;
+  padding: clamp(1rem, 1.5vw, 1.25rem) clamp(1rem, 1.6vw, 1.35rem) 0 !important;
+}
+
+.landing-hero-section .hero-live-route-card__head strong {
+  display: block !important;
+  color: rgb(103, 232, 249) !important;
+  font-size: clamp(1rem, 1.3vw, 1.16rem) !important;
+  font-weight: 950 !important;
+  letter-spacing: 0.16em !important;
+}
+
+.landing-hero-section .hero-live-route-card__head span {
+  display: block !important;
+  margin-top: 0.22rem !important;
+  color: rgb(203, 213, 225) !important;
+  font-size: 0.86rem !important;
+}
+
+.landing-hero-section .hero-live-route-card__head em {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.45rem !important;
+  border: 1px solid rgba(103, 232, 249, 0.22) !important;
+  border-radius: 8px !important;
+  background: rgba(15, 23, 42, 0.78) !important;
+  color: rgb(226, 232, 240) !important;
+  font-size: 0.78rem !important;
+  font-style: normal !important;
+  font-weight: 900 !important;
+  padding: 0.48rem 0.68rem !important;
+}
+
+.landing-hero-section .hero-live-route-card__head em i {
+  width: 0.48rem !important;
+  height: 0.48rem !important;
+  border-radius: 999px !important;
+  background: rgb(74, 222, 128) !important;
+  box-shadow: 0 0 16px rgba(74, 222, 128, 0.78) !important;
+}
+
+.landing-hero-section .hero-map-intel--atlas {
+  position: absolute !important;
+  left: clamp(1rem, 1.6vw, 1.35rem) !important;
+  top: clamp(4.2rem, 5.8vw, 5.4rem) !important;
+  z-index: 9 !important;
+  width: min(14.8rem, calc(100% - 2rem)) !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(103, 232, 249, 0.18) !important;
+  background: rgba(2, 8, 23, 0.7) !important;
+  padding: 0.68rem 0.78rem !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+.landing-hero-section .hero-route-proof-steps--atlas {
+  display: none !important;
+}
+
+.landing-hero-section .hero-route-proof-step {
+  width: 2.2rem !important;
+  height: 2.2rem !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(103, 232, 249, 0.24) !important;
+  background: rgba(2, 8, 23, 0.72) !important;
+}
+
+.landing-hero-section .hero-custody-timeline {
+  position: relative !important;
+  z-index: 8 !important;
+  margin: clamp(0.15rem, 0.8vw, 0.6rem) clamp(0.9rem, 1.5vw, 1.2rem) 0 !important;
+  border: 1px solid rgba(148, 163, 184, 0.16) !important;
+  border-radius: 8px !important;
+  background: rgba(2, 8, 23, 0.62) !important;
+  padding: clamp(0.75rem, 1.1vw, 0.95rem) !important;
+  backdrop-filter: blur(14px) !important;
+}
+
+.landing-hero-section .hero-custody-timeline__head {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 0.75rem !important;
+  color: rgb(226, 232, 240) !important;
+  font-size: 0.82rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.1em !important;
+}
+
+.landing-hero-section .hero-custody-timeline__head span {
+  color: rgb(203, 213, 225) !important;
+  font-size: 0.78rem !important;
+  font-weight: 750 !important;
+  letter-spacing: 0 !important;
+}
+
+.landing-hero-section .hero-custody-timeline__rail {
+  position: relative !important;
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: 0.55rem !important;
+  margin-top: 0.86rem !important;
+}
+
+.landing-hero-section .hero-custody-timeline__rail::before {
+  content: "" !important;
+  position: absolute !important;
+  left: 6% !important;
+  right: 6% !important;
+  top: 0.9rem !important;
+  height: 1px !important;
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.8), rgba(52, 211, 153, 0.68), rgba(251, 191, 36, 0.72)) !important;
+}
+
+.landing-hero-section .hero-custody-timeline article {
+  position: relative !important;
+  z-index: 1 !important;
+  min-width: 0 !important;
+  text-align: center !important;
+}
+
+.landing-hero-section .hero-custody-timeline article i {
+  display: inline-grid !important;
+  width: 1.95rem !important;
+  height: 1.95rem !important;
+  place-items: center !important;
+  border: 1px solid rgba(45, 212, 191, 0.78) !important;
+  border-radius: 999px !important;
+  background: rgba(6, 78, 59, 0.56) !important;
+  color: rgb(153, 246, 228) !important;
+  font-size: 0.9rem !important;
+  font-style: normal !important;
+  font-weight: 900 !important;
+}
+
+.landing-hero-section .hero-custody-timeline article.is-final i {
+  border-color: rgba(251, 191, 36, 0.86) !important;
+  background: rgba(113, 63, 18, 0.58) !important;
+}
+
+.landing-hero-section .hero-custody-timeline article.is-final i::before {
+  content: "" !important;
+  width: 0.62rem !important;
+  height: 0.62rem !important;
+  border-radius: 999px !important;
+  border: 2px solid rgb(251, 191, 36) !important;
+}
+
+.landing-hero-section .hero-custody-timeline article span,
+.landing-hero-section .hero-custody-timeline article em,
+.landing-hero-section .hero-custody-timeline article small {
+  display: block !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.landing-hero-section .hero-custody-timeline article span {
+  margin-top: 0.48rem !important;
+  color: rgb(148, 163, 184) !important;
+  font-size: 0.72rem !important;
+}
+
+.landing-hero-section .hero-custody-timeline article strong {
+  display: block !important;
+  margin-top: 0.18rem !important;
+  overflow-wrap: anywhere !important;
+  color: rgb(241, 245, 249) !important;
+  font-size: 0.78rem !important;
+  font-weight: 850 !important;
+  line-height: 1.18 !important;
+}
+
+.landing-hero-section .hero-custody-timeline article em,
+.landing-hero-section .hero-custody-timeline article small {
+  color: rgb(148, 163, 184) !important;
+  font-size: 0.68rem !important;
+  font-style: normal !important;
+}
+
+.landing-hero-section .hero-atlas-status-row {
+  position: relative !important;
+  z-index: 8 !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto auto !important;
+  gap: 0.9rem !important;
+  margin: 0.58rem clamp(0.9rem, 1.5vw, 1.2rem) clamp(0.9rem, 1.5vw, 1.2rem) !important;
+  border: 1px solid rgba(148, 163, 184, 0.14) !important;
+  border-radius: 8px !important;
+  background: rgba(2, 8, 23, 0.64) !important;
+  padding: 0.72rem 0.86rem !important;
+}
+
+.landing-hero-section .hero-atlas-status-row span {
+  display: inline-flex !important;
+  min-width: 0 !important;
+  align-items: center !important;
+  gap: 0.35rem !important;
+}
+
+.landing-hero-section .hero-atlas-status-row em {
+  color: rgb(203, 213, 225) !important;
+  font-size: 0.78rem !important;
+  font-style: normal !important;
+}
+
+.landing-hero-section .hero-atlas-status-row strong {
+  color: rgb(103, 232, 249) !important;
+  font-size: 0.82rem !important;
+  font-weight: 950 !important;
+}
+
+.landing-hero-section .hero-identity-card {
+  display: grid !important;
+  grid-template-rows: auto auto 1fr !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(148, 163, 184, 0.24) !important;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(2, 8, 23, 0.96)) !important;
+  color: white !important;
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.32) !important;
+}
+
+.landing-hero-section .hero-identity-card__eyebrow {
+  display: block !important;
+  padding: 0 0 0.58rem !important;
+  color: rgb(203, 213, 225) !important;
+  font-size: 0.74rem !important;
+  font-weight: 950 !important;
+  letter-spacing: 0.16em !important;
+}
+
+.landing-hero-section .hero-identity-card__media {
+  position: relative !important;
+  min-height: clamp(15.5rem, 21vw, 23rem) !important;
+  overflow: hidden !important;
+  background: linear-gradient(145deg, #151a21, #050a12) !important;
+}
+
+.landing-hero-section .hero-identity-card__media::after {
+  content: "" !important;
+  position: absolute !important;
+  inset: auto 0 0 !important;
+  height: 42% !important;
+  background: linear-gradient(180deg, transparent, rgba(2, 8, 23, 0.82)) !important;
+}
+
+.landing-hero-section .hero-identity-card__media img,
+.landing-hero-section .hero-identity-card__media .hero-product-visual-shell {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: inherit !important;
+  object-fit: cover !important;
+}
+
+.landing-hero-section .hero-identity-card__media img {
+  transform: scale(1.03) !important;
+}
+
+.landing-hero-section .hero-identity-card__chip {
+  position: absolute !important;
+  top: 0.85rem !important;
+  right: 0.85rem !important;
+  z-index: 2 !important;
+  display: grid !important;
+  gap: 0.22rem !important;
+  min-width: 5.9rem !important;
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+  border-radius: 8px !important;
+  background: rgba(2, 8, 23, 0.68) !important;
+  padding: 0.65rem 0.7rem !important;
+  text-align: center !important;
+  backdrop-filter: blur(14px) !important;
+}
+
+.landing-hero-section .hero-identity-card__chip strong {
+  color: white !important;
+  font-size: 0.88rem !important;
+  font-weight: 950 !important;
+}
+
+.landing-hero-section .hero-identity-card__chip em,
+.landing-hero-section .hero-identity-card__nfc {
+  color: rgb(226, 232, 240) !important;
+  font-size: 0.58rem !important;
+  font-style: normal !important;
+  font-weight: 850 !important;
+  letter-spacing: 0.08em !important;
+}
+
+.landing-hero-section .hero-identity-card__nfc {
+  position: absolute !important;
+  left: 50% !important;
+  bottom: 0.62rem !important;
+  z-index: 2 !important;
+  transform: translateX(-50%) !important;
+  border-radius: 999px !important;
+  background: rgba(2, 8, 23, 0.64) !important;
+  padding: 0.22rem 0.5rem !important;
+}
+
+.landing-hero-section .hero-identity-card__body {
+  padding: clamp(1rem, 1.5vw, 1.35rem) !important;
+}
+
+.landing-hero-section .hero-identity-card__body > span:first-child {
+  color: rgb(148, 163, 184) !important;
+  font-size: 0.72rem !important;
+  font-weight: 850 !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+}
+
+.landing-hero-section .hero-identity-card__body h3 {
+  margin-top: 0.48rem !important;
+  color: white !important;
+  font-size: clamp(1.35rem, 1.8vw, 1.75rem) !important;
+  font-weight: 950 !important;
+  line-height: 1.06 !important;
+}
+
+.landing-hero-section .hero-identity-card__body p {
+  margin-top: 0.3rem !important;
+  color: rgb(226, 232, 240) !important;
+  font-size: 0.94rem !important;
+}
+
+.landing-hero-section .hero-identity-card__records {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 0.7rem !important;
+  margin-top: 0.9rem !important;
+  border-top: 1px solid rgba(148, 163, 184, 0.16) !important;
+  padding-top: 0.85rem !important;
+}
+
+.landing-hero-section .hero-identity-card__records em {
+  display: block !important;
+  color: rgb(148, 163, 184) !important;
+  font-size: 0.64rem !important;
+  font-style: normal !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.09em !important;
+  text-transform: uppercase !important;
+}
+
+.landing-hero-section .hero-identity-card__records strong {
+  display: block !important;
+  margin-top: 0.24rem !important;
+  overflow-wrap: anywhere !important;
+  color: rgb(241, 245, 249) !important;
+  font-size: 0.84rem !important;
+  font-weight: 850 !important;
+  line-height: 1.2 !important;
+}
+
+.landing-hero-section .hero-identity-card__cta {
+  display: grid !important;
+  grid-template-columns: auto 1fr !important;
+  column-gap: 0.62rem !important;
+  row-gap: 0.18rem !important;
+  align-items: center !important;
+  margin-top: 1rem !important;
+  min-height: 4.2rem !important;
+  border: 1px solid rgba(34, 211, 238, 0.52) !important;
+  border-radius: 8px !important;
+  background: rgba(8, 145, 178, 0.12) !important;
+  padding: 0.82rem 1rem !important;
+  color: rgb(103, 232, 249) !important;
+}
+
+.landing-hero-section .hero-identity-card__cta svg {
+  grid-row: span 2 !important;
+}
+
+.landing-hero-section .hero-identity-card__cta strong {
+  color: rgb(165, 243, 252) !important;
+  font-size: 0.95rem !important;
+  font-weight: 950 !important;
+}
+
+.landing-hero-section .hero-identity-card__cta em {
+  color: rgb(203, 213, 225) !important;
+  font-size: 0.78rem !important;
+  font-style: normal !important;
+}
+
+.hero-consumer-device__frame {
+  position: relative !important;
+  border: 7px solid rgba(31, 41, 55, 0.98) !important;
+  border-radius: 2.55rem !important;
+  background: #030712 !important;
+  padding: 0.48rem !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14), 0 24px 70px rgba(0, 0, 0, 0.48) !important;
+}
+
+.hero-consumer-device--samsung .hero-consumer-device__frame {
+  border-radius: 2.05rem !important;
+}
+
+.hero-consumer-device__notch {
+  position: absolute !important;
+  left: 50% !important;
+  top: 0.68rem !important;
+  z-index: 4 !important;
+  width: 5.4rem !important;
+  height: 1.65rem !important;
+  transform: translateX(-50%) !important;
+  border-radius: 999px !important;
+  background: #020617 !important;
+}
+
+.hero-consumer-device__screen {
+  position: relative !important;
+  overflow: hidden !important;
+  border-radius: 2rem !important;
+  background:
+    radial-gradient(circle at 22% 18%, rgba(34, 211, 238, 0.14), transparent 34%),
+    linear-gradient(180deg, #07162a 0%, #061121 48%, #020817 100%) !important;
+  color: white !important;
+  padding: clamp(1rem, 1.4vw, 1.18rem) !important;
+}
+
+.hero-consumer-device--samsung .hero-consumer-device__screen {
+  border-radius: 1.55rem !important;
+}
+
+.hero-consumer-device__status {
+  display: grid !important;
+  grid-template-columns: 1fr auto 1fr !important;
+  align-items: center !important;
+  gap: 0.75rem !important;
+  min-height: 2.25rem !important;
+  color: white !important;
+  font-size: 0.78rem !important;
+  font-weight: 850 !important;
+}
+
+.hero-consumer-device__status strong {
+  justify-self: start !important;
+  color: white !important;
+  font-size: 1.35rem !important;
+  font-weight: 950 !important;
+}
+
+.hero-consumer-device__status i {
+  justify-self: end !important;
+  width: 1.15rem !important;
+  height: 0.8rem !important;
+  border-top: 2px solid rgba(255, 255, 255, 0.82) !important;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.82) !important;
+}
+
+.hero-consumer-verdict {
+  display: grid !important;
+  grid-template-columns: auto 1fr !important;
+  gap: 0.85rem !important;
+  align-items: center !important;
+  margin-top: clamp(1.2rem, 2vw, 2rem) !important;
+}
+
+.hero-consumer-verdict__shield {
+  display: grid !important;
+  width: 4.2rem !important;
+  height: 4.2rem !important;
+  place-items: center !important;
+  border: 2px solid rgba(74, 222, 128, 0.68) !important;
+  border-radius: 1.25rem !important;
+  background: rgba(21, 128, 61, 0.34) !important;
+  color: rgb(110, 231, 183) !important;
+  box-shadow: 0 0 28px rgba(74, 222, 128, 0.18) !important;
+}
+
+.hero-consumer-verdict em {
+  display: block !important;
+  color: rgb(103, 232, 249) !important;
+  font-size: 0.68rem !important;
+  font-style: normal !important;
+  font-weight: 950 !important;
+  letter-spacing: 0.12em !important;
+}
+
+.hero-consumer-verdict strong {
+  display: block !important;
+  margin-top: 0.22rem !important;
+  color: rgb(134, 239, 172) !important;
+  font-size: clamp(1.22rem, 1.8vw, 1.65rem) !important;
+  font-weight: 950 !important;
+  line-height: 1.08 !important;
+}
+
+.hero-consumer-verdict small {
+  display: block !important;
+  margin-top: 0.7rem !important;
+  color: rgb(103, 232, 249) !important;
+  font-size: 0.68rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.08em !important;
+}
+
+.hero-consumer-product {
+  display: grid !important;
+  grid-template-columns: 4.2rem minmax(0, 1fr) !important;
+  gap: 0.8rem !important;
+  align-items: center !important;
+  margin-top: 1.35rem !important;
+  border: 1px solid rgba(103, 232, 249, 0.18) !important;
+  border-radius: 8px !important;
+  background: rgba(15, 23, 42, 0.58) !important;
+  padding: 0.65rem !important;
+}
+
+.hero-consumer-product > span {
+  display: block !important;
+  overflow: hidden !important;
+  height: 4.2rem !important;
+  border-radius: 6px !important;
+  background: rgba(2, 8, 23, 0.8) !important;
+}
+
+.hero-consumer-product img,
+.hero-consumer-product .hero-product-visual-shell {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+.hero-consumer-product strong,
+.hero-consumer-product em,
+.hero-consumer-product small {
+  display: block !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.hero-consumer-product strong {
+  color: white !important;
+  font-size: 0.94rem !important;
+  font-weight: 950 !important;
+}
+
+.hero-consumer-product em,
+.hero-consumer-product small {
+  color: rgb(203, 213, 225) !important;
+  font-size: 0.75rem !important;
+  font-style: normal !important;
+}
+
+.hero-consumer-specs {
+  margin-top: 0.85rem !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(103, 232, 249, 0.16) !important;
+  border-radius: 8px !important;
+  background: rgba(8, 47, 73, 0.26) !important;
+}
+
+.hero-consumer-specs div {
+  display: grid !important;
+  grid-template-columns: minmax(4.3rem, 0.6fr) minmax(0, 1fr) !important;
+  gap: 0.5rem !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.13) !important;
+  padding: 0.56rem 0.72rem !important;
+}
+
+.hero-consumer-specs div:last-child {
+  border-bottom: 0 !important;
+}
+
+.hero-consumer-specs dt,
+.hero-consumer-specs dd {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  font-size: 0.72rem !important;
+}
+
+.hero-consumer-specs dt {
+  color: rgb(148, 163, 184) !important;
+}
+
+.hero-consumer-specs dd {
+  color: rgb(226, 232, 240) !important;
+  text-align: right !important;
+}
+
+.hero-consumer-note {
+  margin-top: 0.85rem !important;
+  border: 1px solid rgba(148, 163, 184, 0.16) !important;
+  border-radius: 8px !important;
+  background: rgba(2, 8, 23, 0.58) !important;
+  color: rgb(203, 213, 225) !important;
+  font-size: 0.72rem !important;
+  line-height: 1.45 !important;
+  padding: 0.78rem 0.85rem !important;
+}
+
+@media (max-width: 900px) {
+  .landing-hero-section .hero-map-intel--atlas,
+  .landing-hero-section .hero-route-proof-steps--atlas {
+    display: none !important;
+  }
+
+  .landing-hero-section .hero-custody-timeline__rail {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .landing-hero-section .hero-custody-timeline__rail::before {
+    display: none !important;
+  }
+
+  .landing-hero-section .hero-atlas-status-row {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .landing-hero-section .hero-custody-timeline {
+    margin: 0 0.68rem !important;
+    padding: 0.7rem !important;
+  }
+
+  .landing-hero-section .hero-atlas-status-row {
+    margin: 0.5rem 0.68rem 0.68rem !important;
+    padding: 0.65rem !important;
+  }
+
+  .landing-hero-section .hero-identity-card__media {
+    min-height: clamp(14rem, 68vw, 18rem) !important;
+  }
+
+  .hero-consumer-device__frame {
+    border-width: 5px !important;
+    border-radius: 2rem !important;
+  }
+
+  .hero-consumer-device__screen {
+    border-radius: 1.55rem !important;
+    padding: 0.88rem !important;
+  }
+
+  .hero-consumer-verdict {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .hero-consumer-verdict__shield {
+    width: 3.35rem !important;
+    height: 3.35rem !important;
+  }
+}
+
+/* Final layout corrections after screenshot review. */
+.landing-hero-section #trace-signal-atlas.hero-live-route-card {
+  position: relative !important;
+}
+
+.landing-hero-section .hero-route-vector-atlas {
+  position: absolute !important;
+  inset: 4.35rem 0 0 !important;
+  height: auto !important;
+  margin: 0 !important;
+}
+
+.landing-hero-section .hero-route-vector-atlas__map {
+  height: 100% !important;
+}
+
+.landing-hero-section .hero-custody-timeline {
+  position: absolute !important;
+  left: clamp(0.9rem, 1.5vw, 1.2rem) !important;
+  right: clamp(0.9rem, 1.5vw, 1.2rem) !important;
+  bottom: 4.2rem !important;
+  margin: 0 !important;
+}
+
+.landing-hero-section .hero-atlas-status-row {
+  position: absolute !important;
+  left: clamp(0.9rem, 1.5vw, 1.2rem) !important;
+  right: clamp(0.9rem, 1.5vw, 1.2rem) !important;
+  bottom: clamp(0.9rem, 1.5vw, 1.2rem) !important;
+  margin: 0 !important;
+}
+
+.landing-hero-section .hero-scene-result-card--product-proof {
+  display: block !important;
+}
+
+.landing-hero-section .hero-phone-demo-card {
+  display: block !important;
+}
+
+.landing-hero-section .hero-phone-demo-card__head {
+  display: block !important;
+  margin: 0 0 0.86rem !important;
+}
+
+.landing-hero-section .hero-phone-demo-card__head p {
+  white-space: nowrap !important;
+  color: rgb(203, 213, 225) !important;
+}
+
+.landing-hero-section .hero-phone-demo-card__head span {
+  display: none !important;
+}
+
+.landing-hero-section .hero-phone-demo-card__device {
+  width: 100% !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-phone-demo-card.hero-scene-result-card--product-proof {
+  display: block !important;
+  overflow: visible !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-phone-demo-card__head {
+  display: block !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-phone-demo-card__device {
+  display: grid !important;
+  width: 100% !important;
+  justify-items: center !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-phone-demo-card__device .hero-consumer-device {
+  width: min(100%, clamp(20rem, 22vw, 22.5rem)) !important;
+}
+
+@media (max-width: 1180px) {
+  .landing-hero-section .hero-route-proof-steps--atlas {
+    display: none !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .landing-hero-section .hero-custody-timeline {
+    display: none !important;
+  }
+
+  .landing-hero-section .hero-route-vector-atlas {
+    min-height: clamp(18rem, 82vw, 22rem) !important;
+  }
+}
+
+.hero-consumer-device {
+  width: min(100%, clamp(20rem, 22vw, 22.5rem)) !important;
+}
+
+@media (max-width: 900px) {
+  .landing-hero-section .hero-route-vector-atlas {
+    position: relative !important;
+    inset: auto !important;
+    height: clamp(19.5rem, 57vw, 27rem) !important;
+  }
+
+  .landing-hero-section .hero-custody-timeline,
+  .landing-hero-section .hero-atlas-status-row {
+    position: relative !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    margin: 0.58rem clamp(0.9rem, 1.5vw, 1.2rem) 0 !important;
+  }
+}

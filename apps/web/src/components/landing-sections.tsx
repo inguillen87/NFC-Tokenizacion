@@ -42,7 +42,7 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
       <div className="hero-signal-field absolute inset-0 z-0 pointer-events-none" aria-hidden="true" />
 
       <div className="container-shell relative z-10">
-        <div className="mx-auto max-w-6xl text-center">
+        <div className="hero-main-copy mx-auto max-w-6xl text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 backdrop-blur-md transition-colors hover:bg-white/10">
              <span className="flex h-2 w-2 rounded-full bg-emerald-400" />
              <span className="text-xs font-medium text-slate-300 uppercase tracking-widest">{trustBadge}</span>
@@ -57,7 +57,7 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
         </div>
 
         <div className="hero-demo-shell mx-auto mt-6 max-w-7xl text-left">
-          <div className="hero-demo-brief mb-3 flex flex-wrap items-end justify-between gap-3">
+          <div className="hero-demo-brief hero-demo-brief--executive-hidden mb-3 flex flex-wrap items-end justify-between gap-3">
             <div className="hero-demo-copy">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">{demoEyebrow}</p>
               <p className="mt-1 max-w-2xl text-sm text-slate-300">{demoBody}</p>
