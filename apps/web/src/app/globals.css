@@ -31264,6 +31264,232 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
   display: none !important;
 }
 
+.hero-trust-atlas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: #020817;
+}
+
+.hero-trust-atlas__parallels path {
+  fill: none;
+  stroke: rgba(125, 211, 252, 0.12);
+  stroke-width: 1;
+  stroke-dasharray: 7 18;
+}
+
+.hero-trust-atlas__region {
+  fill: url(#hero-atlas-land);
+  stroke: rgba(103, 232, 249, 0.24);
+  stroke-width: 1.15;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 10px rgba(34, 211, 238, 0.08));
+}
+
+.hero-trust-atlas__region--americas {
+  stroke: rgba(45, 212, 191, 0.28);
+}
+
+.hero-trust-atlas__region--europe,
+.hero-trust-atlas__region--asia {
+  stroke: rgba(103, 232, 249, 0.28);
+}
+
+.hero-trust-atlas__region--africa,
+.hero-trust-atlas__region--oceania {
+  stroke: rgba(125, 211, 252, 0.2);
+}
+
+.hero-trust-atlas__coastline {
+  opacity: 0.74;
+  filter: drop-shadow(0 0 8px rgba(103, 232, 249, 0.14));
+}
+
+.hero-trust-atlas__region-group--americas .hero-trust-atlas__coastline {
+  stroke: rgba(94, 234, 212, 0.28);
+}
+
+.hero-trust-atlas__region-group--europe .hero-trust-atlas__coastline,
+.hero-trust-atlas__region-group--asia .hero-trust-atlas__coastline {
+  stroke: rgba(186, 230, 253, 0.3);
+}
+
+.hero-trust-atlas__region-group--africa .hero-trust-atlas__coastline,
+.hero-trust-atlas__region-group--oceania .hero-trust-atlas__coastline {
+  stroke: rgba(125, 211, 252, 0.22);
+}
+
+.hero-trust-atlas__route-halo {
+  fill: none;
+  stroke: rgba(2, 6, 23, 0.72);
+  stroke-width: 13;
+  stroke-linecap: round;
+}
+
+.hero-trust-atlas__route {
+  fill: none;
+  stroke-linecap: round;
+  stroke-width: 3.2;
+  stroke-dasharray: 15 18;
+  animation: hero-atlas-route-flow 4.4s linear infinite;
+}
+
+.hero-trust-atlas__route--info {
+  stroke: url(#hero-atlas-route-info);
+}
+
+.hero-trust-atlas__route--success {
+  stroke: url(#hero-atlas-route-success);
+  stroke-width: 4;
+}
+
+.hero-trust-atlas__route--warn {
+  stroke: #f59e0b;
+}
+
+.hero-trust-atlas__comet {
+  fill: url(#hero-atlas-node-glow);
+  opacity: 0.9;
+}
+
+.hero-trust-atlas__node-pulse {
+  fill: rgba(34, 211, 238, 0.12);
+  stroke: rgba(103, 232, 249, 0.22);
+  stroke-width: 1.2;
+  animation: hero-atlas-node-pulse 2.6s ease-in-out infinite;
+}
+
+.hero-trust-atlas__node-ring {
+  fill: rgba(2, 8, 23, 0.78);
+  stroke: rgba(103, 232, 249, 0.85);
+  stroke-width: 2.4;
+}
+
+.hero-trust-atlas__node-core {
+  fill: rgb(103, 232, 249);
+  stroke: white;
+  stroke-width: 1.5;
+}
+
+.hero-trust-atlas__node--origin .hero-trust-atlas__node-ring,
+.hero-trust-atlas__node--origin .hero-trust-atlas__node-core {
+  stroke: rgb(134, 239, 172);
+  fill: rgb(52, 211, 153);
+}
+
+.hero-trust-atlas__node--tap .hero-trust-atlas__node-ring,
+.hero-trust-atlas__node--tap .hero-trust-atlas__node-core {
+  stroke: rgb(251, 191, 36);
+  fill: rgb(251, 191, 36);
+}
+
+.hero-trust-atlas__node.is-selected .hero-trust-atlas__node-pulse {
+  fill: rgba(251, 191, 36, 0.14);
+  stroke: rgba(251, 191, 36, 0.38);
+}
+
+.hero-trust-atlas__label-object {
+  overflow: visible;
+}
+
+.hero-trust-atlas__label {
+  box-sizing: border-box;
+  width: 160px;
+  min-height: 58px;
+  border: 1px solid rgba(103, 232, 249, 0.2);
+  border-radius: 8px;
+  background: rgba(2, 8, 23, 0.72);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.28);
+  color: white;
+  padding: 9px 11px;
+  backdrop-filter: blur(12px);
+}
+
+.hero-trust-atlas__label span,
+.hero-trust-atlas__label em {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hero-trust-atlas__label span {
+  color: rgb(103, 232, 249);
+  font-size: 8.5px;
+  font-weight: 950;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.hero-trust-atlas__label strong {
+  display: block;
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgb(248, 250, 252);
+  font-size: 14px;
+  font-weight: 950;
+  line-height: 1.05;
+}
+
+.hero-trust-atlas__label em {
+  margin-top: 3px;
+  color: rgb(148, 163, 184);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 750;
+}
+
+.hero-trust-atlas__label--origin {
+  border-color: rgba(52, 211, 153, 0.32);
+}
+
+.hero-trust-atlas__label--tap {
+  border-color: rgba(251, 191, 36, 0.34);
+}
+
+.hero-trust-atlas__legend rect {
+  fill: rgba(2, 8, 23, 0.68);
+  stroke: rgba(103, 232, 249, 0.22);
+}
+
+.hero-trust-atlas__legend text:first-of-type {
+  fill: rgb(103, 232, 249);
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 1.7px;
+}
+
+.hero-trust-atlas__legend text:last-of-type {
+  fill: rgb(203, 213, 225);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+@keyframes hero-atlas-route-flow {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -99;
+  }
+}
+
+@keyframes hero-atlas-node-pulse {
+  0%,
+  100% {
+    opacity: 0.42;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.08);
+  }
+}
+
 .landing-hero-section .hero-route-proof-step {
   width: 2.2rem !important;
   height: 2.2rem !important;
