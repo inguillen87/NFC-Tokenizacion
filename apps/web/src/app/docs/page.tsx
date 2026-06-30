@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { BackLink } from "../../components/back-link";
-import { ProductExitLink, productExitHref } from "../../components/product-exit-link";
+import { productExitHref } from "../../components/product-exit-link";
 import { PublicLinkChip } from "../../components/public-link-chip";
 import { Card, SectionHeading } from "@product/ui";
 import { getWebI18n } from "../../lib/locale";
@@ -542,7 +542,7 @@ export default async function DocsPage() {
             <div className="mt-5 grid gap-3 text-xs text-slate-200">
               <div className="rounded-xl border border-white/5 bg-slate-900/60 p-3">
                 <strong className="text-cyan-200 block">Lectura Criptográfica</strong>
-                Validación de firmas dinámicas SUN (Secure Unique NFC) y detección de copias sin exponer llaves privadas.
+                Validación de CMAC/SUN dinámico y detección de replay/copias sin exponer material criptográfico.
               </div>
               <div className="rounded-xl border border-white/5 bg-slate-900/60 p-3">
                 <strong className="text-cyan-200 block">Orquestación de Reclamos</strong>

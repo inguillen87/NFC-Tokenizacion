@@ -145,8 +145,8 @@ const faqCategories = [
       },
       {
         q: "¿Cómo garantizan la seguridad de la base de datos si es centralizada?",
-        a: "La seguridad del sistema no depende del servidor, sino de la criptografía de firma única de cada chip físico. Cada lectura genera una firma de seguridad dinámica que solo puede ser descifrada por nuestras claves criptográficas maestras.",
-        ctx: "Incluso ante una intrusión en el servidor de base de datos, un atacante no puede generar firmas dinámicas falsas de chips físicos porque no posee las claves maestras de cifrado."
+        a: "La seguridad del sistema no depende solo del servidor, sino de la validación criptográfica SUN/CMAC de cada chip físico compatible. Cada lectura genera evidencia dinámica que el backend verifica con material criptográfico custodiado.",
+        ctx: "Incluso ante una intrusión en el servidor de base de datos, un atacante no puede generar respuestas SUN/CMAC válidas de chips físicos porque no posee las claves de validación protegidas."
       },
       {
         q: "¿Cómo escala el modelo SaaS en Render y AWS?",

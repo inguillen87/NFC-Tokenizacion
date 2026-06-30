@@ -48,7 +48,7 @@ La frase corta:
 | Proof IOTA | Requiere digest/root anclado o estado pendiente/fallido explicito |
 | Evidencia DPP | Puede vivir solo en backend si el tenant no requiere proof publico |
 | Datos logisticos | Publicar solo hashes/checkpoints; rutas completas quedan privadas |
-| Veredicto offline | Local y provisional salvo app/lector controlado con claves derivadas; backend finaliza replay y policy al sincronizar |
+| Veredicto offline | Siempre local y provisional; app/lector controlado solo valida criptografia local con claves derivadas; backend finaliza replay, policy, ownership y warranty al sincronizar |
 
 ## Frases por audiencia
 

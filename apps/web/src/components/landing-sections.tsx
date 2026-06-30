@@ -1,4 +1,4 @@
-import { Card, SectionHeading, Badge, Button } from "@product/ui";
+import { Card, SectionHeading, Badge } from "@product/ui";
 import { schedulingUrls } from "@product/config";
 import Link from "next/link";
 import { BadgeCheck, Cpu, Fingerprint, Network, PackageCheck, QrCode, RadioTower, ShieldCheck } from "lucide-react";

@@ -4,11 +4,11 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, useRef, type CSSProperties } from "react";
 import { DEMO_TENANT_SLUG } from "@product/config";
 import type { AppLocale } from "@product/config";
-import { ArrowLeft, BadgeCheck, CalendarDays, CheckCircle2, ChevronRight, Fingerprint, MapPin, PackageCheck, ShieldCheck, UserRound, AlertTriangle, ShoppingCart, RefreshCw, Check, Mail, Cpu, Network, QrCode, RadioTower } from "lucide-react";
+import { ArrowLeft, BadgeCheck, CalendarDays, CheckCircle2, ChevronRight, Fingerprint, MapPin, PackageCheck, ShieldCheck, UserRound, AlertTriangle, ShoppingCart, RefreshCw, Check, Cpu, Network, QrCode, RadioTower } from "lucide-react";
 import { PremiumTraceabilityGlobe } from "../../components/premium-traceability-globe";
 import { platformVerticals } from "../../lib/platform-verticals";
 import { ThreeDProduct } from "../investor-snapshot/investor-snapshot-client";
-import { ATLAS_REGIONS, Globe3dMap } from "@product/ui";
+import { Globe3dMap } from "@product/ui";
 
 type Role = "ceo" | "operator" | "buyer";
 type Beat = 0 | 1 | 2 | 3;
@@ -334,7 +334,7 @@ const copy: Record<AppLocale, {
         { title: "QR / GS1 Digital Link", body: "Entrada economica para contenido, lote, retiro de producto y trazabilidad GS1. Ideal como respaldo visible; cualquiera puede copiarlo, por eso no habilita reclamo de dueño por si solo." },
         { title: "NTAG213 / NTAG215", body: "UID físico serializado para entradas, pulseras, garantías simples y activaciones masivas. Sube la fricción contra capturas de pantalla y permite reglas por lote desde el servidor." },
         { title: "NTAG 424 DNA", body: "Cada toque genera SUN dinamico con CMAC para detectar copias, enlaces reutilizados y lecturas sospechosas. Es la capa recomendada para productos de valor medio/alto." },
-        { title: "Offline Verifier", body: "App Android/iOS o lector dedicado para campo sin senal: valida SUN/SDM localmente con claves derivadas por dispositivo y sincroniza el veredicto final al backend." },
+        { title: "Offline Verifier", body: "Android primero, iOS donde Core NFC/ISO 7816 lo permita, o lector dedicado para campo sin senal: valida SUN/SDM localmente con claves derivadas y mantiene veredicto provisional hasta sync backend." },
         { title: "Polygon Ownership Demo", body: "Activa ownership, certificado o token premium solo despues de tap fresco, comprador validado y politica aprobada. Polygon no reemplaza la validacion SUN ni recibe cada tap." },
         { title: "IOTA Proof Layer Demo", body: "Muestra auditoria opcional para DPP, lotes y logistica: se anclan hashes o Merkle roots, no datos privados ni lecturas individuales." },
         { title: "Dual Proof DPP", body: "Combina QR/GS1, NFC 424, Polygon para ownership e IOTA para evidencia industrial cuando el cliente necesita compliance avanzado." },
@@ -384,7 +384,7 @@ const copy: Record<AppLocale, {
       { title: "QR / GS1 Digital Link", body: "Entrada economica para conteudo, lote, recall e rastreabilidade GS1. Otimo fallback visivel; pode ser copiado, entao nao libera propriedade premium sozinho." },
       { title: "NTAG213 / NTAG215", body: "UID fisico serializado para tickets, pulseiras, garantias simples e ativacoes massivas. Permite regras server-side por lote." },
       { title: "NTAG 424 DNA", body: "Cada toque gera SUN dinamico com CMAC para detectar replay, links reutilizados e copias. Recomendado para valor medio/alto." },
-      { title: "Offline Verifier", body: "App Android/iOS ou leitor dedicado para campo sem sinal: valida SUN/SDM localmente com chaves derivadas por device e sincroniza o veredito final no backend." },
+      { title: "Offline Verifier", body: "Android primeiro, iOS onde Core NFC/ISO 7816 permitir, ou leitor dedicado para campo sem sinal: valida SUN/SDM localmente com chaves derivadas e mantem veredito provisional ate sync backend." },
       { title: "Polygon Ownership Demo", body: "Ativa ownership, certificado ou token premium somente depois de toque fresco, comprador validado e politica aprovada. Polygon nao substitui SUN nem recebe todo toque." },
       { title: "IOTA Proof Layer Demo", body: "Mostra auditoria opcional para DPP, lotes e logistica: ancoramos hashes ou Merkle roots, nao dados privados nem leituras individuais." },
       { title: "Dual Proof DPP", body: "Combina QR/GS1, NFC 424, Polygon para ownership e IOTA para evidencia industrial quando o cliente precisa de compliance avancado." },
@@ -434,7 +434,7 @@ const copy: Record<AppLocale, {
       { title: "QR / GS1 Digital Link", body: "Low-cost entry for content, batch, recall and GS1 traceability. It is a strong visible fallback, but it can be copied, so it should not unlock premium ownership by itself." },
       { title: "NTAG213 / NTAG215", body: "Serialized physical UID for tickets, wristbands, simple warranty and mass activations. Adds server-side rules by batch." },
       { title: "NTAG 424 DNA", body: "Every tap creates dynamic SUN + CMAC proof to detect replay, reused links and simple copies. Recommended for mid/high-value products." },
-      { title: "Offline Verifier", body: "Android/iOS field app or dedicated reader for no-signal zones: validates SUN/SDM locally with device-scoped derived keys and syncs final verdicts to backend." },
+      { title: "Offline Verifier", body: "Android first, iOS where Core NFC/ISO 7816 allows it, or a dedicated reader for no-signal zones: validates SUN/SDM locally with derived keys and keeps verdicts provisional until backend sync." },
       { title: "Polygon Ownership Demo", body: "Enables ownership, certificates or premium tokens only after a fresh tap, validated buyer and approved policy. Polygon does not replace SUN or receive every tap." },
       { title: "IOTA Proof Layer Demo", body: "Shows optional audit evidence for DPP, batches and logistics: hashes or Merkle roots are anchored, not private data or individual taps." },
       { title: "Dual Proof DPP", body: "Combines QR/GS1, NFC 424, Polygon for ownership and IOTA for industrial evidence when a client needs advanced compliance." },
@@ -1191,7 +1191,7 @@ function DemoLabStudioHero({
             <div className="demo-lab-studio-passport-row">
               <span className="demo-lab-studio-shield"><ShieldCheck size={32} strokeWidth={2.4} /></span>
               <div>
-                <strong>{beat === 2 ? "COPIA BLOQUEADA" : beat === 0 ? "LISTO PARA TOQUE" : "NFT VERIFICADO"}</strong>
+                <strong>{beat === 2 ? "COPIA BLOQUEADA" : beat === 0 ? "LISTO PARA TOQUE" : "CERTIFICADO PENDIENTE"}</strong>
                 <small>{scenario.chain}</small>
               </div>
             </div>
@@ -1688,7 +1688,7 @@ function DemoCinematicShowcase({
       },
       proofLabels: { claim: "Claim", market: "Store" },
       passport: "Digital passport",
-      tokenTitle: beat === 2 ? "Risk blocked" : beat === 0 ? "Waiting tap" : beat === 3 ? "Owner + NFT" : "NFT ready",
+      tokenTitle: beat === 2 ? "Risk blocked" : beat === 0 ? "Waiting tap" : beat === 3 ? "Claim ready" : "Certificate pending",
       tokenBody: beat === 2 ? "Replay does not unlock benefits." : "Hashed UID, access rules and proof-layer evidence.",
       graph: "demand / risk / claim / repurchase",
     }
@@ -1712,7 +1712,7 @@ function DemoCinematicShowcase({
         },
         proofLabels: { claim: "Dono", market: "Loja" },
         passport: "Passaporte digital",
-        tokenTitle: beat === 2 ? "Risco bloqueado" : beat === 0 ? "Esperando toque" : beat === 3 ? "Dono + NFT" : "NFT pronto",
+        tokenTitle: beat === 2 ? "Risco bloqueado" : beat === 0 ? "Esperando toque" : beat === 3 ? "Claim pronto" : "Certificado pendente",
         tokenBody: beat === 2 ? "Replay nao libera beneficios." : "UID com hash, regras de acesso e evidencia em cadeia.",
         graph: "demanda / risco / dono / recompra",
       }
@@ -3662,7 +3662,7 @@ function DemoCrmDashboard({
 
           <div className="mt-4 rounded-xl border border-white/5 bg-black/20 p-3 text-center">
             <span className="text-[10px] text-slate-500 font-mono">
-              Consola Operativa Segura · TLS 1.3 · IPFS Registry
+              Consola Operativa Segura · TLS 1.3 · Proof registry opcional
             </span>
           </div>
         </div>
