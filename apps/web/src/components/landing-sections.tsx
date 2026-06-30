@@ -38,7 +38,7 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
   const meetingCta = isEn ? "Schedule meeting" : isBr ? "Agendar reunião" : "Agendar reunión";
 
   return (
-    <section className="landing-hero-section relative overflow-hidden border-b border-white/5 bg-slate-950 pb-16 pt-16 lg:pb-24 lg:pt-24">
+    <section className="landing-hero-section relative overflow-hidden border-b border-white/5 bg-slate-950 pb-10 pt-10 lg:pb-14 lg:pt-14">
       <div className="hero-signal-field absolute inset-0 z-0 pointer-events-none" aria-hidden="true" />
 
       <div className="container-shell relative z-10">
@@ -48,28 +48,28 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
              <span className="text-xs font-medium text-slate-300 uppercase tracking-widest">{trustBadge}</span>
           </div>
 
-          <h1 className="mx-auto mt-8 max-w-[22rem] pb-2 text-[2rem] font-extrabold leading-[1.13] tracking-normal text-transparent bg-clip-text bg-gradient-to-br from-white to-slate-400 sm:max-w-5xl sm:text-5xl sm:leading-[1.12] lg:text-[3.45rem] lg:leading-[1.1]">
+          <h1 className="mx-auto mt-5 max-w-[22rem] pb-2 text-[2rem] font-extrabold leading-[1.12] tracking-normal text-transparent bg-clip-text bg-gradient-to-br from-white to-slate-400 sm:max-w-5xl sm:text-[2.85rem] sm:leading-[1.08] lg:text-[3rem] lg:leading-[1.06]">
             {hero.title}
           </h1>
-          <p className="hero-subtitle mx-auto mt-5 max-w-xl text-sm leading-7 text-slate-400">
+          <p className="hero-subtitle mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-400">
             {heroSubtitle}
           </p>
         </div>
 
-        <div className="hero-demo-shell mx-auto mt-10 max-w-7xl text-left">
+        <div className="hero-demo-shell mx-auto mt-6 max-w-7xl text-left">
           <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">{demoEyebrow}</p>
               <p className="mt-1 max-w-2xl text-sm text-slate-300">{demoBody}</p>
-              <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                 {heroFlow.map((item, index) => (
-                  <span key={item} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/10 bg-slate-950/55 px-3 py-2 text-xs font-black text-slate-100">
+                  <span key={item} className="inline-flex min-h-8 items-center gap-2 rounded-xl border border-white/10 bg-slate-950/55 px-3 py-1.5 text-xs font-black text-slate-100">
                     <strong className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-cyan-300/35 bg-cyan-500/15 text-[10px] text-cyan-100">{index + 1}</strong>
                     {item}
                   </span>
                 ))}
               </div>
-              <p className="mt-3 max-w-2xl rounded-xl border border-emerald-300/20 bg-emerald-500/10 px-3 py-2 text-xs font-semibold leading-5 text-emerald-100">
+              <p className="mt-2 max-w-2xl rounded-xl border border-emerald-300/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold leading-5 text-emerald-100">
                 {heroAssurance}
               </p>
             </div>

@@ -30094,3 +30094,427 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
     width: min(100%, 21rem);
   }
 }
+
+/* Enterprise atlas/product/phone v2.
+   Product owns the modal; phone stays as live demo output beside the atlas. */
+.landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
+.landing-hero-section .hero-scene--product-proof > .hero-scene-proof-grid.hero-scene-proof-grid:has(.hero-object-frame--product-proof) {
+  gap: clamp(0.95rem, 1.25vw, 1.35rem) !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
+.landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
+  align-items: stretch !important;
+  gap: clamp(0.9rem, 1.2vw, 1.25rem) !important;
+  padding: clamp(0.8rem, 1vw, 1rem) !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof #trace-signal-atlas.hero-trace-map--trust-globe {
+  height: clamp(22rem, 30vw, 30rem) !important;
+  min-height: clamp(22rem, 30vw, 30rem) !important;
+  max-height: 30rem !important;
+}
+
+.landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe .traceability-globe__stage {
+  min-height: clamp(16rem, 22vw, 23rem) !important;
+}
+
+.hero-asset-open-target {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 18px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  overflow: hidden;
+  text-align: left;
+}
+
+.hero-asset-open-target:focus-visible {
+  outline: 2px solid rgba(103, 232, 249, 0.95);
+  outline-offset: 3px;
+}
+
+.hero-asset-open-target .hero-asset-photo {
+  width: 100%;
+  height: 100%;
+}
+
+.hero-asset-open-target:hover .hero-real-asset {
+  transform: scale(1.035);
+}
+
+.hero-asset-open-badge {
+  position: absolute;
+  left: 0.85rem;
+  right: 0.85rem;
+  bottom: 0.85rem;
+  z-index: 5;
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.74);
+  color: rgb(236, 254, 255);
+  font-size: clamp(0.72rem, 0.72vw, 0.82rem);
+  font-weight: 950;
+  letter-spacing: 0;
+  line-height: 1.2;
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(14px);
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-media {
+  grid-template-columns: minmax(0, 1fr) !important;
+  height: clamp(18rem, 18vw, 23rem) !important;
+  min-height: clamp(18rem, 18vw, 23rem) !important;
+  aspect-ratio: auto !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-passport-phone {
+  display: none !important;
+}
+
+.hero-phone-demo-card.hero-scene-result-card--product-proof {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.9rem !important;
+  overflow: hidden !important;
+}
+
+.hero-phone-demo-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.hero-phone-demo-card__head > span {
+  flex: none;
+  max-width: 9rem;
+  border: 1px solid rgba(52, 211, 153, 0.22);
+  border-radius: 999px;
+  background: rgba(6, 78, 59, 0.2);
+  color: rgb(167, 243, 208);
+  font-size: 0.58rem;
+  font-weight: 950;
+  letter-spacing: 0.1em;
+  line-height: 1.2;
+  padding: 0.38rem 0.52rem;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.hero-phone-demo-card__device {
+  display: grid;
+  justify-items: center;
+}
+
+.hero-phone-demo-card__device .hero-mobile-emulator {
+  width: min(100%, 17.5rem);
+  transform-origin: top center;
+}
+
+.hero-phone-demo-card__device .hero-mobile-emulator__hero {
+  height: clamp(7.5rem, 9vw, 10.5rem);
+}
+
+.hero-phone-demo-card__device .hero-mobile-emulator__content h4 {
+  font-size: clamp(1rem, 1.25vw, 1.22rem);
+}
+
+.hero-phone-demo-card__device .hero-mobile-emulator__content em {
+  display: block;
+  max-height: 3.6rem;
+  overflow: hidden;
+}
+
+.hero-product-modal__grid {
+  grid-template-columns: minmax(320px, 0.88fr) minmax(0, 1fr) !important;
+}
+
+.hero-product-modal__product {
+  min-width: 0;
+}
+
+.hero-product-modal__asset {
+  position: relative;
+  margin-top: 0.9rem;
+  min-height: clamp(21rem, 38vw, 30rem);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(34, 211, 238, 0.14), transparent 34%),
+    linear-gradient(145deg, rgba(8, 47, 73, 0.45), rgba(2, 6, 23, 0.95));
+}
+
+.hero-product-modal__asset img,
+.hero-product-modal__asset .hero-product-visual-shell {
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+  object-fit: cover;
+}
+
+.hero-product-modal__asset-caption {
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  bottom: 1rem;
+  display: grid;
+  gap: 0.18rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 14px;
+  background: rgba(2, 6, 23, 0.78);
+  padding: 0.9rem 1rem;
+  backdrop-filter: blur(14px);
+}
+
+.hero-product-modal__asset-caption span {
+  color: rgb(103, 232, 249);
+  font-size: 0.66rem;
+  font-weight: 950;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.hero-product-modal__asset-caption strong {
+  color: white;
+  font-size: clamp(1.2rem, 2vw, 1.7rem);
+  font-weight: 950;
+  line-height: 1.05;
+}
+
+.hero-product-modal__asset-caption em {
+  color: rgb(203, 213, 225);
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.hero-product-modal__summary {
+  margin-top: 0.9rem;
+  border: 1px solid rgba(52, 211, 153, 0.18);
+  border-radius: 16px;
+  background: rgba(6, 78, 59, 0.14);
+  padding: 0.95rem;
+}
+
+.hero-product-modal__summary strong {
+  display: block;
+  color: rgb(134, 239, 172);
+  font-size: clamp(1.05rem, 1.5vw, 1.32rem);
+  font-weight: 950;
+  line-height: 1.1;
+}
+
+.hero-product-modal__summary p {
+  margin-top: 0.5rem;
+  color: rgb(226, 232, 240);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.hero-product-modal__summary span {
+  margin-top: 0.55rem;
+  display: block;
+  color: rgb(148, 163, 184);
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+@media (min-width: 1440px) {
+  .landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
+  .landing-hero-section .hero-scene--product-proof > .hero-scene-proof-grid.hero-scene-proof-grid:has(.hero-object-frame--product-proof) {
+    grid-template-columns: minmax(0, 1fr) minmax(19.5rem, 0.32fr) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(420px, 1.08fr) minmax(300px, 0.72fr) !important;
+  }
+}
+
+@media (min-width: 1720px) {
+  .landing-hero-section > .container-shell > .hero-demo-shell {
+    width: min(1660px, calc(100vw - clamp(3rem, 7vw, 9rem))) !important;
+    max-width: min(1660px, calc(100vw - clamp(3rem, 7vw, 9rem))) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
+  .landing-hero-section .hero-scene--product-proof > .hero-scene-proof-grid.hero-scene-proof-grid:has(.hero-object-frame--product-proof) {
+    grid-template-columns: minmax(0, 1fr) minmax(22rem, 0.34fr) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(500px, 1.16fr) minmax(350px, 0.72fr) !important;
+  }
+}
+
+@media (max-width: 1439px) {
+  .landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
+  .landing-hero-section .hero-scene--product-proof > .hero-scene-proof-grid.hero-scene-proof-grid:has(.hero-object-frame--product-proof) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .hero-phone-demo-card__device .hero-mobile-emulator {
+    width: min(100%, 22rem);
+  }
+}
+
+@media (max-width: 760px) {
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
+    padding: 0.65rem !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof #trace-signal-atlas.hero-trace-map--trust-globe {
+    height: clamp(19rem, 82vw, 23rem) !important;
+    min-height: clamp(19rem, 82vw, 23rem) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-media {
+    height: clamp(18rem, 88vw, 22rem) !important;
+    min-height: clamp(18rem, 88vw, 22rem) !important;
+  }
+
+  .hero-product-modal__grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .hero-product-modal__asset {
+    min-height: clamp(18rem, 82vw, 24rem);
+  }
+}
+
+/* Enterprise hero viewport fit + click target hardening.
+   The first viewport must show the real atlas/product/phone demo, not only copy. */
+.landing-hero-section .hero-demo-shell {
+  margin-top: clamp(1.25rem, 2vw, 1.75rem) !important;
+}
+
+.landing-hero-section .hero-demo-shell > .mb-3 {
+  margin-bottom: 0.65rem !important;
+}
+
+.landing-hero-section .hero-scene--product-proof {
+  padding: clamp(0.72rem, 1vw, 0.95rem) !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
+.landing-hero-section .hero-scene--product-proof > .hero-scene-proof-grid.hero-scene-proof-grid:has(.hero-object-frame--product-proof) {
+  gap: clamp(0.72rem, 1vw, 1rem) !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof {
+  pointer-events: none !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-showcase,
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-media,
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-open-target,
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-open-badge {
+  pointer-events: auto !important;
+}
+
+.hero-asset-open-target {
+  isolation: isolate;
+  z-index: 2;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof #trace-signal-atlas.hero-trace-map--trust-globe {
+  height: clamp(19rem, 24vw, 25rem) !important;
+  min-height: clamp(19rem, 24vw, 25rem) !important;
+  max-height: 25rem !important;
+}
+
+.landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe .traceability-globe__stage {
+  min-height: clamp(13.8rem, 17vw, 18rem) !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-media {
+  height: clamp(15.5rem, 16vw, 19rem) !important;
+  min-height: clamp(15.5rem, 16vw, 19rem) !important;
+  max-height: clamp(15.5rem, 16vw, 19rem) !important;
+}
+
+.hero-phone-demo-card__device .hero-mobile-emulator {
+  width: min(100%, 16rem) !important;
+}
+
+.hero-phone-demo-card__device .hero-mobile-emulator__hero {
+  height: clamp(6.8rem, 7.6vw, 8.7rem) !important;
+}
+
+.demo-lab-trust-scenarios__grid {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)) !important;
+}
+
+@media (min-width: 1024px) {
+  .landing-hero-section h1 {
+    max-width: min(62rem, calc(100vw - 4rem)) !important;
+    margin-top: 1.1rem !important;
+    font-size: clamp(2.35rem, 3.15vw, 3rem) !important;
+    line-height: 1.05 !important;
+    text-wrap: balance;
+  }
+
+  .landing-hero-section .hero-subtitle {
+    margin-top: 0.65rem !important;
+    line-height: 1.55 !important;
+  }
+
+  .landing-hero-section .hero-demo-shell > .mb-3 {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end !important;
+    gap: 0.75rem !important;
+  }
+
+  .landing-hero-section .hero-demo-shell > .mb-3 > div:first-child p {
+    max-width: 46rem !important;
+  }
+
+  .demo-lab-trust-scenarios__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (min-width: 1440px) {
+  .landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
+  .landing-hero-section .hero-scene--product-proof > .hero-scene-proof-grid.hero-scene-proof-grid:has(.hero-object-frame--product-proof) {
+    grid-template-columns: minmax(0, 1fr) minmax(18.5rem, 0.3fr) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(390px, 1.06fr) minmax(285px, 0.7fr) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .landing-hero-section .hero-demo-shell {
+    margin-top: 1.1rem !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof #trace-signal-atlas.hero-trace-map--trust-globe {
+    height: clamp(18rem, 78vw, 21.5rem) !important;
+    min-height: clamp(18rem, 78vw, 21.5rem) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-media {
+    height: clamp(17rem, 82vw, 21rem) !important;
+    min-height: clamp(17rem, 82vw, 21rem) !important;
+    max-height: none !important;
+  }
+}

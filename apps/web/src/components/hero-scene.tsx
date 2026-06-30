@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import type { AppLocale } from "@product/config";
-import { Maximize2, Smartphone, X } from "lucide-react";
+import { CheckCircle2, Maximize2, X } from "lucide-react";
 import { platformVerticals, type PlatformDemoVertical, type PlatformVertical } from "../lib/platform-verticals";
 import { PremiumTraceabilityGlobe, type TraceabilityGlobePoint, type TraceabilityGlobeRoute } from "./premium-traceability-globe";
 
@@ -67,48 +67,64 @@ const productModalCopy: Record<AppLocale, {
   samsung: string;
   state: string;
   trustedTap: string;
+  productTitle: string;
+  productSubtitle: string;
+  livePhoneTitle: string;
+  phoneNote: string;
 }> = {
   "es-AR": {
     open: "Ampliar ficha",
     close: "Cerrar",
     title: "Ficha completa de producto",
-    subtitle: "El hero mantiene solo el resumen. La ficha completa vive aca para que atlas, producto y celular no compitan por espacio.",
-    consumerTitle: "Salida celular",
-    operatorTitle: "Vista operador",
+    subtitle: "Registro ampliado del activo fisico: producto, lote, origen, estado, evidencia SUN, proxima accion comercial y trazabilidad.",
+    consumerTitle: "Producto ampliado",
+    operatorTitle: "Ficha premium",
     proofTitle: "Evidencia tecnica",
     commerceTitle: "Acciones post-tap",
     iphone: "iPhone",
     samsung: "Samsung",
     state: "Estado",
     trustedTap: "Tap fisico verificado",
+    productTitle: "Activo fisico",
+    productSubtitle: "Click para abrir ficha completa",
+    livePhoneTitle: "Demo celular en vivo",
+    phoneNote: "El celular cambia con cada vertical y simula el tap NFC/QR sin abrir modal.",
   },
   "pt-BR": {
     open: "Ampliar ficha",
     close: "Fechar",
     title: "Ficha completa do produto",
-    subtitle: "O hero mostra apenas o resumo. A ficha completa fica aqui para atlas, produto e celular nao competirem por espaco.",
-    consumerTitle: "Saida mobile",
-    operatorTitle: "Vista operador",
+    subtitle: "Registro ampliado do ativo fisico: produto, lote, origem, estado, evidencia SUN, proxima acao comercial e rastreabilidade.",
+    consumerTitle: "Produto ampliado",
+    operatorTitle: "Ficha premium",
     proofTitle: "Evidencia tecnica",
     commerceTitle: "Acoes pos-toque",
     iphone: "iPhone",
     samsung: "Samsung",
     state: "Estado",
     trustedTap: "Toque fisico verificado",
+    productTitle: "Ativo fisico",
+    productSubtitle: "Clique para abrir ficha completa",
+    livePhoneTitle: "Demo mobile ao vivo",
+    phoneNote: "O celular muda com cada vertical e simula o toque NFC/QR sem abrir modal.",
   },
   en: {
     open: "Open product detail",
     close: "Close",
     title: "Complete product detail",
-    subtitle: "The hero keeps the executive summary. The full product record lives here so the atlas, product and phone output do not fight for space.",
-    consumerTitle: "Mobile output",
-    operatorTitle: "Operator view",
+    subtitle: "Expanded record for the physical asset: product, batch, origin, state, SUN evidence, commercial next action and traceability.",
+    consumerTitle: "Expanded product",
+    operatorTitle: "Premium record",
     proofTitle: "Technical evidence",
     commerceTitle: "Post-tap actions",
     iphone: "iPhone",
     samsung: "Samsung",
     state: "State",
     trustedTap: "Verified physical tap",
+    productTitle: "Physical asset",
+    productSubtitle: "Click to open full detail",
+    livePhoneTitle: "Live phone demo",
+    phoneNote: "The phone changes by vertical and simulates the NFC/QR tap without opening a modal.",
   },
 };
 
@@ -1375,20 +1391,30 @@ function HeroProductShowcase({
   distance,
   numberLocale,
   txt,
+  detailCopy,
+  onOpenDetail,
 }: {
   active: Vertical;
   data: Scene;
   distance: number;
   numberLocale: string;
   txt: Pick<(typeof labels)["es-AR"], "assetBank" | "realAsset" | "renderFallback" | "evidenceChart" | "metrics" | "phoneLabel" | "labels">;
+  detailCopy: (typeof productModalCopy)["es-AR"];
+  onOpenDetail: () => void;
 }) {
   const asset = heroRealAssets[active];
 
   return (
     <div className={`hero-asset-showcase hero-asset-showcase--${active}`}>
       <div className="hero-asset-media">
-        {asset ? (
-          <div className="hero-asset-photo">
+        <button
+          type="button"
+          className="hero-asset-open-target"
+          onClick={onOpenDetail}
+          aria-label={`${detailCopy.open}: ${data.product}`}
+        >
+          {asset ? (
+          <span className="hero-asset-photo">
             <img className="hero-real-asset" src={asset.imageUrl} alt={asset.alt} loading="eager" />
             <span className="hero-asset-brand-mask" aria-hidden="true" />
             <span className="hero-asset-label-cover" aria-hidden="true">
@@ -1396,18 +1422,22 @@ function HeroProductShowcase({
               <strong>{data.product}</strong>
               <small>{data.profile}</small>
             </span>
-          </div>
+          </span>
         ) : (
-          <div className="hero-asset-photo hero-asset-photo--fallback">
+          <span className="hero-asset-photo hero-asset-photo--fallback">
             <HeroProductVisual active={active} product={data.product} />
-          </div>
+          </span>
         )}
+          <span className="hero-asset-open-badge" aria-hidden="true">
+            <Maximize2 className="h-4 w-4" />
+            {detailCopy.productSubtitle}
+          </span>
+        </button>
         <span className="hero-asset-nfc">NFC</span>
         <span className="hero-asset-status">{data.profile}</span>
-        <HeroPassportPhone active={active} data={data} distance={distance} numberLocale={numberLocale} txt={txt} />
       </div>
       <div className="hero-asset-copy">
-        <span>{txt.assetBank} / {asset ? txt.realAsset : txt.renderFallback}</span>
+        <span>{detailCopy.productTitle} / {asset ? txt.realAsset : txt.renderFallback}</span>
         <strong>{data.product}</strong>
         <p>{data.batch} - {data.security}</p>
       </div>
@@ -1488,7 +1518,7 @@ function ProductDetailModal({
   copy: (typeof productModalCopy)["es-AR"];
   onClose: () => void;
 }) {
-  const [selectedPhone, setSelectedPhone] = useState<"iphone" | "samsung">("iphone");
+  const asset = heroRealAssets[active];
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -1520,25 +1550,27 @@ function ProductDetailModal({
         </div>
 
         <div className="hero-product-modal__grid">
-          <section className="hero-product-modal__mobile" aria-label={copy.consumerTitle}>
+          <section className="hero-product-modal__product" aria-label={copy.consumerTitle}>
             <div className="hero-product-modal__section-head">
-              <Smartphone className="h-4 w-4" />
+              <CheckCircle2 className="h-4 w-4" />
               <span>{copy.consumerTitle}</span>
             </div>
-            <div className="hero-product-modal__device-tabs" aria-label="Mobile preview device">
-              {(["iphone", "samsung"] as const).map((model) => (
-                <button
-                  key={model}
-                  type="button"
-                  className={selectedPhone === model ? "is-active" : ""}
-                  onClick={() => setSelectedPhone(model)}
-                >
-                  {model === "iphone" ? "iPhone" : "Samsung"}
-                </button>
-              ))}
+            <div className={`hero-product-modal__asset hero-product-modal__asset--${active}`}>
+              {asset ? (
+                <img src={asset.imageUrl} alt={asset.alt} loading="lazy" />
+              ) : (
+                <HeroProductVisual active={active} product={data.product} />
+              )}
+              <div className="hero-product-modal__asset-caption">
+                <span>{data.profile}</span>
+                <strong>{data.product}</strong>
+                <em>{data.batch}</em>
+              </div>
             </div>
-            <div className="hero-product-modal__phones">
-              <HeroPhoneEmulator active={active} data={data} distance={distance} numberLocale={numberLocale} copy={copy} model={selectedPhone} />
+            <div className="hero-product-modal__summary">
+              <strong>{data.result}</strong>
+              <p>{data.action}</p>
+              <span>{distance.toLocaleString(numberLocale)} km · {data.origin.city} → {data.nextAction}</span>
             </div>
           </section>
 
@@ -1610,13 +1642,6 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
     { label: txt.labels.loyalty, value: data.loyalty },
     { label: txt.labels.businessValue, value: data.businessValue },
   ];
-  const compactProofRows = [
-    proofRows[0],
-    proofRows[3],
-    proofRows[5],
-    proofRows[6],
-  ].filter(Boolean);
-
   return (
     <div>
       <div className="hero-scene hero-scene--product-proof rounded-2xl border border-white/10 p-4 md:p-5">
@@ -1656,14 +1681,16 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
                   <HeroTraceMap origin={data.origin} tap={tap} distance={distance} numberLocale={numberLocale} txt={txt} />
                 </div>
                 <div className="hero-object-product-pane hero-object-product-pane--product-proof">
-                  <HeroProductShowcase active={active} data={data} distance={distance} numberLocale={numberLocale} txt={txt} />
+                  <HeroProductShowcase
+                    active={active}
+                    data={data}
+                    distance={distance}
+                    numberLocale={numberLocale}
+                    txt={txt}
+                    detailCopy={modalCopy}
+                    onOpenDetail={() => setIsProductModalOpen(true)}
+                  />
                 </div>
-              </div>
-              <div className="hero-scene-phone">
-                <span />
-                <em>{data.phoneTag}</em>
-                <strong>{data.result}</strong>
-                <small>{tap.city} - {distance.toLocaleString(numberLocale)} km</small>
               </div>
             </div>
             <div className="hero-flow-steps mt-3">
@@ -1684,21 +1711,21 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
             </div>
           </div>
 
-          <div className="hero-scene-result-card hero-scene-result-card--product-proof rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3">
-            <p className="hero-scene-result-label text-[11px] uppercase tracking-[0.14em] text-cyan-200">{txt.phoneLabel}</p>
-            <p className="hero-scene-result-state mt-1 text-xs font-semibold uppercase tracking-[0.1em] text-emerald-300">{data.result}</p>
+          <aside className="hero-scene-result-card hero-scene-result-card--product-proof hero-phone-demo-card rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3">
+            <div className="hero-phone-demo-card__head">
+              <div>
+                <p className="hero-scene-result-label text-[11px] uppercase tracking-[0.14em] text-cyan-200">{modalCopy.livePhoneTitle}</p>
+                <p className="hero-scene-result-state mt-1 text-xs font-semibold uppercase tracking-[0.1em] text-emerald-300">{data.result}</p>
+              </div>
+              <span>{data.phoneTag}</span>
+            </div>
+            <div className="hero-phone-demo-card__device">
+              <HeroPhoneEmulator active={active} data={data} distance={distance} numberLocale={numberLocale} copy={modalCopy} model={active === "electronics" || active === "logistics" || active === "seeds" ? "samsung" : "iphone"} />
+            </div>
             <div className="hero-passport-summary mt-3">
               <span>{data.profile}</span>
               <strong>{data.product}</strong>
               <em>{tap.city} - {distance.toLocaleString(numberLocale)} km</em>
-            </div>
-            <div className="hero-output-grid hero-output-grid--proof mt-3">
-              {compactProofRows.map((item) => (
-                <div key={item.label} className="hero-output-row">
-                  <span>{item.label}</span>
-                  <strong>{item.value}</strong>
-                </div>
-              ))}
             </div>
             <div className="hero-commerce-stack hero-commerce-stack--compact mt-3">
               {commerceRows.slice(0, 2).map((item) => (
@@ -1708,19 +1735,12 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
                 </article>
               ))}
             </div>
-            <button
-              type="button"
-              className="hero-product-detail-trigger"
-              onClick={() => setIsProductModalOpen(true)}
-            >
-              <Maximize2 className="h-4 w-4" />
-              {modalCopy.open}
-            </button>
             <div className="hero-result-explain mt-3 rounded-xl border border-white/10 bg-slate-950/50 p-3">
               <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-300">{txt.whatHappened}</p>
               <p className="mt-2 text-xs leading-5 text-slate-300">{data.action}</p>
+              <span className="mt-2 block text-[11px] leading-5 text-slate-400">{modalCopy.phoneNote}</span>
             </div>
-          </div>
+          </aside>
         </div>
 
         <p className="hero-scene-microcopy mt-3 text-xs text-slate-300">{txt.microcopy}</p>
