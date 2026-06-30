@@ -396,13 +396,14 @@ export default async function DocsPage() {
       title: "Enterprise trust FAQ",
       docsTitle: "Internal technical notes for due diligence",
       docsNote: "Available to qualified buyers and partners; public claims stay conservative until releases and agreements are signed.",
-      docs: ["blockchain-architecture.md", "offline-nfc-validation.md", "polygon-ownership-layer.md", "iota-proof-audit-layer.md", "enterprise-trust-faq.md", "dpp-event-model.md"],
+      docs: ["blockchain-architecture.md", "offline-nfc-validation.md", "offline-verifier-architecture.md", "polygon-ownership-layer.md", "iota-proof-audit-layer.md", "enterprise-trust-faq.md", "dpp-event-model.md"],
       items: [
         ["Official partnerships?", "No. Polygon and IOTA are technologies the architecture can integrate with; do not claim an official partnership unless there is a signed public agreement."],
         ["Does every tap go on-chain?", "No. Taps are validated server-side. Chains are used only for approved ownership, certificates, claims, transfers or batched proof anchors."],
         ["Is IOTA zero-fee here?", "No. We position IOTA as an optional proof/audit layer for hashes, Merkle roots, DPP and logistics evidence, without zero-fee claims."],
         ["Do customers need a wallet?", "No. Consumer UX stays mobile-first. Custodial or wallet flows are optional and policy-driven."],
         ["Does NTAG 424 DNA work offline?", "The chip can be read and can generate a fresh SUN/SDM response without internet. A normal browser still needs connectivity for the final backend trust verdict; industrial offline validation needs a controlled app or reader with secure keys."],
+        ["Can we build an offline verifier app or reader?", "Yes, but it must be a controlled verifier with device-scoped, batch-scoped and expiring keys. Do not embed tenant master keys in a consumer app; backend sync still finalizes replay, policy, ownership and warranty."],
         ["Is private data stored on-chain?", "No. Private data and raw UIDs stay off-chain; proofs use hashes, salts, policy checks and tenant-scoped records."],
       ],
     }
@@ -411,13 +412,14 @@ export default async function DocsPage() {
       title: "FAQ enterprise de confianca",
       docsTitle: "Notas tecnicas internas para due diligence",
       docsNote: "Disponiveis para compradores e parceiros qualificados; claims publicos seguem conservadores ate releases e acordos assinados.",
-      docs: ["blockchain-architecture.md", "offline-nfc-validation.md", "polygon-ownership-layer.md", "iota-proof-audit-layer.md", "enterprise-trust-faq.md", "dpp-event-model.md"],
+      docs: ["blockchain-architecture.md", "offline-nfc-validation.md", "offline-verifier-architecture.md", "polygon-ownership-layer.md", "iota-proof-audit-layer.md", "enterprise-trust-faq.md", "dpp-event-model.md"],
       items: [
         ["Parcerias oficiais?", "Nao. Polygon e IOTA sao tecnologias integraveis; nao declarar parceria oficial sem acordo publico assinado."],
         ["Todo toque vai on-chain?", "Nao. Taps sao validados server-side. Chains entram apenas para ownership, certificados, claims, transferencias ou ancoras de prova aprovadas."],
         ["IOTA e zero-fee aqui?", "Nao. IOTA e camada opcional de prova/auditoria para hashes, Merkle roots, DPP e logistica, sem claims de zero-fee."],
         ["Cliente precisa de wallet?", "Nao. A UX segue mobile-first. Wallet ou custodia sao opcionais e governadas por politica."],
         ["NTAG 424 DNA funciona offline?", "O chip pode ser lido e gerar uma resposta SUN/SDM fresca sem internet. Um browser comum ainda precisa de conexao para o veredito final do backend; validacao industrial offline exige app ou leitor controlado com chaves seguras."],
+        ["Podemos criar app ou leitor offline?", "Sim, mas precisa ser um verificador controlado com chaves por device, batch e vencimento. Nao colocar master keys do tenant em app consumidor; o backend ainda finaliza replay, politica, ownership e garantia."],
         ["Dados privados ficam on-chain?", "Nao. Dados privados e UIDs crus ficam off-chain; provas usam hashes, salts, regras e registros por tenant."],
       ],
     }
@@ -425,13 +427,14 @@ export default async function DocsPage() {
       title: "FAQ enterprise de confianza",
       docsTitle: "Notas tecnicas internas para due diligence",
       docsNote: "Disponibles para compradores y partners calificados; los claims publicos se mantienen conservadores hasta release y acuerdos firmados.",
-      docs: ["blockchain-architecture.md", "offline-nfc-validation.md", "polygon-ownership-layer.md", "iota-proof-audit-layer.md", "enterprise-trust-faq.md", "dpp-event-model.md"],
+      docs: ["blockchain-architecture.md", "offline-nfc-validation.md", "offline-verifier-architecture.md", "polygon-ownership-layer.md", "iota-proof-audit-layer.md", "enterprise-trust-faq.md", "dpp-event-model.md"],
       items: [
         ["Alianzas oficiales?", "No. Polygon e IOTA son tecnologias integrables; no se debe declarar partnership oficial sin acuerdo publico firmado."],
         ["Cada tap va on-chain?", "No. Los taps se validan server-side. Las cadenas entran solo para ownership, certificados, claims, transferencias o anclas de prueba aprobadas."],
         ["IOTA es zero-fee aca?", "No. IOTA se posiciona como capa opcional de prueba/auditoria para hashes, Merkle roots, DPP y logistica, sin claims de zero-fee."],
         ["El cliente necesita wallet?", "No. La UX sigue mobile-first. Wallet o custodia son opcionales y dependen de la politica del tenant."],
         ["NTAG 424 DNA funciona offline?", "El chip se puede leer y puede generar una respuesta SUN/SDM fresca sin internet. Un navegador comun igual necesita conexion para el veredicto final del backend; la validacion industrial offline exige app o lector controlado con claves seguras."],
+        ["Podemos crear app o lector offline?", "Si, pero tiene que ser un verificador controlado con claves por dispositivo, batch y vencimiento. No se meten master keys del tenant en una app consumer; el backend igual finaliza replay, politica, ownership y garantia."],
         ["Datos privados quedan on-chain?", "No. Datos privados y UIDs crudos quedan off-chain; las pruebas usan hashes, salts, reglas y registros por tenant."],
       ],
     };

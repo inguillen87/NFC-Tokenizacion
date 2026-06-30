@@ -31,7 +31,7 @@ type SimulationMode = "valid" | "tamper" | "replay";
 type DemoAction = "origin" | "tap" | "join" | "warranty" | "tokenize" | "report";
 type DemoModalView = "mobile" | "nft" | "claim" | null;
 type DemoScenarioTone = "origin" | "ok" | "risk" | "open";
-type DemoTrustScenarioKey = "qr-gs1" | "nfc-424" | "polygon-ownership" | "iota-proof" | "dual-proof" | "sensor-evidence" | "authorized-network";
+type DemoTrustScenarioKey = "qr-gs1" | "nfc-424" | "offline-verifier" | "polygon-ownership" | "iota-proof" | "dual-proof" | "sensor-evidence" | "authorized-network";
 type DemoScenario = {
   tone: DemoScenarioTone;
   headline: string;
@@ -115,6 +115,12 @@ function normalizeDemoTrustScenario(value?: string | null): DemoTrustScenarioKey
     "424": "nfc-424",
     "nfc-424": "nfc-424",
     "ntag-424": "nfc-424",
+    "offline": "offline-verifier",
+    "offline-verifier": "offline-verifier",
+    "offline-reader": "offline-verifier",
+    "field-verifier": "offline-verifier",
+    "lector-offline": "offline-verifier",
+    "app-offline": "offline-verifier",
     "polygon": "polygon-ownership",
     "ownership": "polygon-ownership",
     "polygon-ownership": "polygon-ownership",
@@ -139,6 +145,7 @@ function normalizeDemoTrustScenario(value?: string | null): DemoTrustScenarioKey
 function getScenarioStart(value?: string | null): { key: DemoTrustScenarioKey | null; beat: Beat; vertical: Vertical } {
   const key = normalizeDemoTrustScenario(value);
   if (key === "iota-proof" || key === "sensor-evidence" || key === "dual-proof") return { key, beat: 1, vertical: key === "sensor-evidence" ? "logistics" : "textile" };
+  if (key === "offline-verifier") return { key, beat: 1, vertical: "seeds" };
   if (key === "authorized-network") return { key, beat: 0, vertical: "electronics" };
   if (key === "polygon-ownership") return { key, beat: 3, vertical: "luxury" };
   if (key === "nfc-424") return { key, beat: 1, vertical: "wine" };
@@ -327,6 +334,7 @@ const copy: Record<AppLocale, {
         { title: "QR / GS1 Digital Link", body: "Entrada economica para contenido, lote, retiro de producto y trazabilidad GS1. Ideal como respaldo visible; cualquiera puede copiarlo, por eso no habilita reclamo de dueño por si solo." },
         { title: "NTAG213 / NTAG215", body: "UID físico serializado para entradas, pulseras, garantías simples y activaciones masivas. Sube la fricción contra capturas de pantalla y permite reglas por lote desde el servidor." },
         { title: "NTAG 424 DNA", body: "Cada toque genera SUN dinamico con CMAC para detectar copias, enlaces reutilizados y lecturas sospechosas. Es la capa recomendada para productos de valor medio/alto." },
+        { title: "Offline Verifier", body: "App Android/iOS o lector dedicado para campo sin senal: valida SUN/SDM localmente con claves derivadas por dispositivo y sincroniza el veredicto final al backend." },
         { title: "Polygon Ownership Demo", body: "Activa ownership, certificado o token premium solo despues de tap fresco, comprador validado y politica aprobada. Polygon no reemplaza la validacion SUN ni recibe cada tap." },
         { title: "IOTA Proof Layer Demo", body: "Muestra auditoria opcional para DPP, lotes y logistica: se anclan hashes o Merkle roots, no datos privados ni lecturas individuales." },
         { title: "Dual Proof DPP", body: "Combina QR/GS1, NFC 424, Polygon para ownership e IOTA para evidencia industrial cuando el cliente necesita compliance avanzado." },
@@ -376,6 +384,7 @@ const copy: Record<AppLocale, {
       { title: "QR / GS1 Digital Link", body: "Entrada economica para conteudo, lote, recall e rastreabilidade GS1. Otimo fallback visivel; pode ser copiado, entao nao libera propriedade premium sozinho." },
       { title: "NTAG213 / NTAG215", body: "UID fisico serializado para tickets, pulseiras, garantias simples e ativacoes massivas. Permite regras server-side por lote." },
       { title: "NTAG 424 DNA", body: "Cada toque gera SUN dinamico com CMAC para detectar replay, links reutilizados e copias. Recomendado para valor medio/alto." },
+      { title: "Offline Verifier", body: "App Android/iOS ou leitor dedicado para campo sem sinal: valida SUN/SDM localmente com chaves derivadas por device e sincroniza o veredito final no backend." },
       { title: "Polygon Ownership Demo", body: "Ativa ownership, certificado ou token premium somente depois de toque fresco, comprador validado e politica aprovada. Polygon nao substitui SUN nem recebe todo toque." },
       { title: "IOTA Proof Layer Demo", body: "Mostra auditoria opcional para DPP, lotes e logistica: ancoramos hashes ou Merkle roots, nao dados privados nem leituras individuais." },
       { title: "Dual Proof DPP", body: "Combina QR/GS1, NFC 424, Polygon para ownership e IOTA para evidencia industrial quando o cliente precisa de compliance avancado." },
@@ -425,6 +434,7 @@ const copy: Record<AppLocale, {
       { title: "QR / GS1 Digital Link", body: "Low-cost entry for content, batch, recall and GS1 traceability. It is a strong visible fallback, but it can be copied, so it should not unlock premium ownership by itself." },
       { title: "NTAG213 / NTAG215", body: "Serialized physical UID for tickets, wristbands, simple warranty and mass activations. Adds server-side rules by batch." },
       { title: "NTAG 424 DNA", body: "Every tap creates dynamic SUN + CMAC proof to detect replay, reused links and simple copies. Recommended for mid/high-value products." },
+      { title: "Offline Verifier", body: "Android/iOS field app or dedicated reader for no-signal zones: validates SUN/SDM locally with device-scoped derived keys and syncs final verdicts to backend." },
       { title: "Polygon Ownership Demo", body: "Enables ownership, certificates or premium tokens only after a fresh tap, validated buyer and approved policy. Polygon does not replace SUN or receive every tap." },
       { title: "IOTA Proof Layer Demo", body: "Shows optional audit evidence for DPP, batches and logistics: hashes or Merkle roots are anchored, not private data or individual taps." },
       { title: "Dual Proof DPP", body: "Combines QR/GS1, NFC 424, Polygon for ownership and IOTA for industrial evidence when a client needs advanced compliance." },
@@ -1365,6 +1375,7 @@ function DemoTrustScenarioRail({
   const items: Array<{ key: DemoTrustScenarioKey; title: string; body: string; icon: typeof ShieldCheck; tone: string }> = [
     { key: "qr-gs1", title: configByTitle.get("QR / GS1 Digital Link")?.title || "QR / GS1 Digital Link", body: configByTitle.get("QR / GS1 Digital Link")?.body || "", icon: QrCode, tone: "identity" },
     { key: "nfc-424", title: configByTitle.get("NTAG 424 DNA")?.title || "NTAG 424 DNA", body: configByTitle.get("NTAG 424 DNA")?.body || "", icon: Fingerprint, tone: "secure" },
+    { key: "offline-verifier", title: configByTitle.get("Offline Verifier")?.title || "Offline Verifier", body: configByTitle.get("Offline Verifier")?.body || "", icon: Cpu, tone: "industrial" },
     { key: "polygon-ownership", title: configByTitle.get("Polygon Ownership Demo")?.title || "Polygon Ownership Demo", body: configByTitle.get("Polygon Ownership Demo")?.body || "", icon: BadgeCheck, tone: "ownership" },
     { key: "iota-proof", title: configByTitle.get("IOTA Proof Layer Demo")?.title || "IOTA Proof Layer Demo", body: configByTitle.get("IOTA Proof Layer Demo")?.body || "", icon: Network, tone: "proof" },
     { key: "dual-proof", title: configByTitle.get("Dual Proof DPP")?.title || "Dual Proof DPP", body: configByTitle.get("Dual Proof DPP")?.body || "", icon: PackageCheck, tone: "dpp" },

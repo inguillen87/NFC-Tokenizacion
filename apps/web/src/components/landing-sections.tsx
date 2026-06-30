@@ -1,7 +1,7 @@
 import { Card, SectionHeading, Badge, Button } from "@product/ui";
 import { schedulingUrls } from "@product/config";
 import Link from "next/link";
-import { BadgeCheck, Fingerprint, Network, PackageCheck, QrCode, RadioTower, ShieldCheck } from "lucide-react";
+import { BadgeCheck, Cpu, Fingerprint, Network, PackageCheck, QrCode, RadioTower, ShieldCheck } from "lucide-react";
 import { HeroScene } from "./hero-scene";
 import { InstitutionalVideoPanel } from "./institutional-video-panel";
 import { PremiumTraceabilityGlobe } from "./premium-traceability-globe";
@@ -265,11 +265,12 @@ export function EnterpriseTrustLayersSection({ locale }: { locale: string }) {
       cta: "Read trust docs",
       paths: [
         { label: "SME rollout", body: "Start with QR/GS1, product passport, batch analytics and simple support workflows." },
-        { label: "Enterprise rollout", body: "Add Supplier Ops, Tenant Vault, NFC 424, Polygon ownership, IOTA proof and UHF/IoT evidence only where risk justifies it." },
+        { label: "Enterprise rollout", body: "Add Supplier Ops, Tenant Vault, NFC 424, offline verifier, Polygon ownership, IOTA proof and UHF/IoT evidence only where risk justifies it." },
       ],
       cards: [
         { title: "QR / GS1", body: "Visible identity, product data, resolver links and low-cost entry for SMEs.", meta: "Identity layer", icon: QrCode },
         { title: "NFC 424 DNA", body: "Cryptographic freshness, anti-copy checks and server-side verification.", meta: "Authenticity layer", icon: Fingerprint },
+        { title: "Offline Verifier", body: "Controlled app or reader for rural and industrial checks with scoped device keys and later sync.", meta: "Field layer", icon: Cpu },
         { title: "TagTamper", body: "Physical opening evidence for bottles, seals, pharma and premium packaging.", meta: "Tamper layer", icon: ShieldCheck },
         { title: "Polygon", body: "Ownership, claims, certificates, warranty transfer and premium tokenization.", meta: "Ownership layer", icon: BadgeCheck },
         { title: "IOTA", body: "Optional audit trail for DPP lifecycle, logistics evidence and Merkle-root proofs.", meta: "Proof layer", icon: Network },
@@ -285,11 +286,12 @@ export function EnterpriseTrustLayersSection({ locale }: { locale: string }) {
       cta: "Ler docs de confianca",
       paths: [
         { label: "Rollout PME", body: "Comeca com QR/GS1, passport do produto, analytics por lote e suporte simples." },
-        { label: "Rollout enterprise", body: "Adiciona Supplier Ops, Tenant Vault, NFC 424, ownership Polygon, prova IOTA e UHF/IoT apenas quando o risco justifica." },
+        { label: "Rollout enterprise", body: "Adiciona Supplier Ops, Tenant Vault, NFC 424, verificador offline, ownership Polygon, prova IOTA e UHF/IoT apenas quando o risco justifica." },
       ],
       cards: [
         { title: "QR / GS1", body: "Identidade visivel, dados do produto, resolver links e entrada low-cost para PMEs.", meta: "Identidade", icon: QrCode },
         { title: "NFC 424 DNA", body: "Frescor criptografico, anti-copia e verificacao server-side.", meta: "Autenticidade", icon: Fingerprint },
+        { title: "Offline Verifier", body: "App ou leitor controlado para zonas rurais e industriais com chaves por device e sync posterior.", meta: "Campo", icon: Cpu },
         { title: "TagTamper", body: "Evidencia fisica de abertura para garrafas, lacres, pharma e embalagens premium.", meta: "Tamper", icon: ShieldCheck },
         { title: "Polygon", body: "Ownership, claims, certificados, garantia transferivel e tokenizacao premium.", meta: "Ownership", icon: BadgeCheck },
         { title: "IOTA", body: "Audit trail opcional para DPP, logistica e provas por Merkle root.", meta: "Proof", icon: Network },
@@ -304,11 +306,12 @@ export function EnterpriseTrustLayersSection({ locale }: { locale: string }) {
       cta: "Leer docs de confianza",
       paths: [
         { label: "Rollout pyme", body: "Arranca con QR/GS1, pasaporte de producto, analitica por lote y soporte simple." },
-        { label: "Rollout enterprise", body: "Suma Supplier Ops, Tenant Vault, NFC 424, ownership Polygon, prueba IOTA y UHF/IoT solo donde el riesgo lo justifica." },
+        { label: "Rollout enterprise", body: "Suma Supplier Ops, Tenant Vault, NFC 424, verificador offline, ownership Polygon, prueba IOTA y UHF/IoT solo donde el riesgo lo justifica." },
       ],
       cards: [
         { title: "QR / GS1", body: "Identidad visible, datos de producto, resolver links y entrada low-cost para pymes.", meta: "Identidad", icon: QrCode },
         { title: "NFC 424 DNA", body: "Frescura criptografica, anti-copia y verificacion server-side.", meta: "Autenticidad", icon: Fingerprint },
+        { title: "Offline Verifier", body: "App o lector controlado para campo e industria con claves por dispositivo y sincronizacion posterior.", meta: "Campo", icon: Cpu },
         { title: "TagTamper", body: "Evidencia fisica de apertura para botellas, sellos, pharma y packaging premium.", meta: "Tamper", icon: ShieldCheck },
         { title: "Polygon", body: "Ownership, claims, certificados, garantia transferible y tokenizacion premium.", meta: "Ownership", icon: BadgeCheck },
         { title: "IOTA", body: "Audit trail opcional para DPP, logistica y pruebas por Merkle root.", meta: "Proof", icon: Network },

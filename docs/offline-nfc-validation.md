@@ -39,6 +39,8 @@ Do not call the product fully authenticated until the backend validates it.
 
 An industrial reader or controlled mobile app can validate locally if it has the right cryptographic validation code and securely provisioned keys or derived keys.
 
+Implementation detail lives in `docs/offline-verifier-architecture.md`. The important distinction is that a controlled verifier can be enrolled, device-bound, scoped and revoked; a normal consumer browser cannot safely hold the validation key material required for full local authentication.
+
 Use this for:
 
 - mine, warehouse or cold-chain checkpoints

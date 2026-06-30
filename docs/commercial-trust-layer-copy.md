@@ -22,6 +22,7 @@ La frase corta:
 - "No escribimos cada tap en blockchain. Los taps se registran en nexID y solo eventos seleccionados se tokenizan o anclan."
 - "Tenant Vault muestra evidencia operativa, manifest, QA y hashes sin exponer secretos internos."
 - "Supplier Encoding Pack entrega claves de encoding solo para el sub-batch autorizado y por canal cifrado; la fabrica no recibe KMS, database URLs ni private keys."
+- "Offline Verifier permite app o lector controlado para campo sin señal, con claves derivadas por dispositivo y veredicto final al sincronizar."
 
 ## Copy a evitar
 
@@ -33,6 +34,9 @@ La frase corta:
 - "IOTA emite NFTs o reemplaza la propiedad digital en Polygon."
 - "El proveedor recibe acceso KMS."
 - "Wallet, certificado o claim habilitados sin tap fresco ni policy."
+- "La app consumer contiene la master key."
+- "Usamos la misma master key para todos los tags para que nunca falle."
+- "Cualquier navegador autentica 100% offline."
 
 ## Matriz de claims
 
@@ -44,6 +48,7 @@ La frase corta:
 | Proof IOTA | Requiere digest/root anclado o estado pendiente/fallido explicito |
 | Evidencia DPP | Puede vivir solo en backend si el tenant no requiere proof publico |
 | Datos logisticos | Publicar solo hashes/checkpoints; rutas completas quedan privadas |
+| Veredicto offline | Local y provisional salvo app/lector controlado con claves derivadas; backend finaliza replay y policy al sincronizar |
 
 ## Frases por audiencia
 
@@ -54,6 +59,10 @@ La frase corta:
 ### Proveedor/fabrica
 
 "El proveedor codifica tags con un paquete acotado al sub-batch. Recibe claves de encoding de ese alcance, route template redacted en documentacion publica y formato de manifest. No recibe KMS, base de datos, private keys, tokens admin ni PII."
+
+### Operador offline
+
+"El operador puede usar una app o lector controlado para validar en campo cuando no hay señal. La lectura local usa claves derivadas por device/batch y queda en cola cifrada; nexID sincroniza y confirma replay, policy, auditoria, garantia u ownership cuando vuelve la conectividad."
 
 ### Consumidor final
 
