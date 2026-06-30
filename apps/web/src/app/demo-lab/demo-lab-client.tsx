@@ -242,49 +242,49 @@ const copy: Record<AppLocale, {
 }> = {
   "es-AR": {
     heroEyebrow: "Laboratorio comercial nexID",
-    heroTitle: "Mira como un producto fisico se vuelve verificable, vendible y medible.",
-    heroBody: "Una prueba para vender la historia completa: origen, toque del cliente, seguridad, portal, tienda y datos de negocio.",
+    heroTitle: "Mirá cómo un producto físico se vuelve verificable, vendible y medible.",
+    heroBody: "Un entorno guiado para vender la historia completa: origen, toque del cliente, seguridad, portal, tienda y datos de negocio sin tratar el sandbox como evidencia productiva.",
     nav: { landing: "Inicio", login: "Ingresar", sun: "SUN celular", portal: "Portal usuario" },
     kpis: { tags: "Etiquetas fisicas", events: "Eventos", portal: "Portal", route: "Ruta origen-toque", noFeed: "Sin eventos recientes", leads: "Contactos / asociaciones" },
     valueCards: [
-      { metric: "CRM + club", title: "Fidelizacion despues del toque", body: "Puntos, garantias, recompra y promociones de la marca quedan conectados al pasaporte del consumidor." },
+      { metric: "CRM + club", title: "Fidelización después del toque", body: "Puntos, garantías, recompra y promociones de la marca quedan conectados al pasaporte del consumidor." },
       { metric: "Tienda", title: "Red de alta gama por marca y zona", body: "Cada marca conserva su tienda, pero convive en una red nexID para descubrir productos de valor cercanos." },
-      { metric: "Canal listo", title: "Operable para terceros", body: "Imprentas, integradores y agencias pueden cargar lotes, operar cuentas de marca y ver contactos sin tocar criptografia." },
-      { metric: "Datos vivos", title: "Ventas con analitica", body: "Lecturas, rutas, riesgo, clics y solicitudes llegan al CRM y al panel en tiempo real." },
+      { metric: "Canal listo", title: "Operable para terceros", body: "Imprentas, integradores y agencias pueden cargar lotes, operar cuentas de marca y ver contactos sin tocar criptografía." },
+      { metric: "Datos vivos", title: "Ventas con analítica", body: "Lecturas, rutas, riesgo, clics y solicitudes llegan al CRM y al panel en tiempo real." },
     ],
     roles: {
-      ceo: { label: "CEO / inversor", headline: "Del toque al ingreso: proteccion de marca, datos y fidelizacion.", focus: "Usalo para mostrar margen, canal de revendedores y valor recurrente sin entrar en jerga tecnica." },
+      ceo: { label: "CEO / inversor", headline: "Del toque al ingreso: protección de marca, datos y fidelización.", focus: "Usalo para mostrar margen, canal de revendedores y valor recurrente sin entrar en jerga técnica." },
       operator: { label: "Operaciones", headline: "Control real de lotes, UIDs, mapas y alertas.", focus: "Aterriza importacion, activacion, lecturas reales y excepciones de riesgo." },
-      buyer: { label: "Comprador", headline: "Confianza instantanea antes de comprar o consumir.", focus: "La persona entiende origen, estado del sello, beneficios y proximo paso." },
+      buyer: { label: "Comprador", headline: "Confianza clara antes de comprar o consumir.", focus: "La persona entiende origen, estado del sello, beneficios y próximo paso." },
     },
     beats: {
       0: { title: "1. Nace el producto", body: "La marca activa lote, UID y origen.", event: "Lote real conectado a Bodega Balmec.", mode: "valid", location: "mendoza", status: "ORIGEN_LISTO", cta: "Ver origen" },
       1: { title: "2. Toque del cliente", body: "El consumidor verifica y ve distancia.", event: "Toque valido en Zurich con ruta al origen.", mode: "valid", location: "zurich", status: "AUTENTICADO", cta: "Unirme al club" },
       2: { title: "3. Riesgo bloqueado", body: "Copia o lectura duplicada entra al registro.", event: "Senial de copia para antifraude.", mode: "replay", location: "zurich", status: "COPIA_BLOQUEADA", cta: "Ver alerta" },
-      3: { title: "4. Apertura + venta", body: "El sello cambia estado y abre beneficios.", event: "Sello abierto + llamado a reclamar dueño/tokenizar.", mode: "tamper", location: "zurich", status: "ABIERTO", cta: "Reclamar dueño" },
+      3: { title: "4. Apertura + venta", body: "El sello cambia estado y prepara beneficios sujetos a política.", event: "Sello abierto + solicitud de reclamo/tokenización.", mode: "tamper", location: "zurich", status: "ABIERTO", cta: "Solicitar propiedad" },
     },
     verticals: {
       wine: { label: "Vino", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Etiqueta adherida a botella", "Descorche / sello roto", "SUN anti copia", "Origen + toque global"] },
       seeds: { label: "Semillas", profile: "QR + NFC UID", product: "Sobre semilla certificada", visual: "seed-packet-demo", proof: ["Sobre antifalsificacion", "Lote y variedad", "Custodia agro", "Uso rural"] },
       pharma: { label: "Pharma", profile: "QR + NFC + recall", product: "Medicamento serializado", visual: "pharma-pack-demo", proof: ["Caja y lote auditables", "Prospecto digital", "Cadena de frio", "Recall por unidad"] },
-      creamJar: { label: "Skincare", profile: "NTAG 424 DNA", product: "Set dermocosmetico premium", visual: "cream-jar-demo", proof: ["Sello tapa-envase", "Apertura cambia estado", "Garantia premium", "Anti mercado gris"] },
-      perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Perfume premium", visual: "perfume-demo", proof: ["Sello en tapa y cuello", "Lote y serie", "Garantia", "Anti falsificacion"] },
-      creamTube: { label: "Crema", profile: "NTAG213 + lote", product: "Crema dermocosmetica", visual: "cream-tube-demo", proof: ["Sello sobre tapa flip", "Lote visible", "Garantia", "Recompra"] },
+      creamJar: { label: "Skincare", profile: "NTAG 424 DNA", product: "Set dermocosmético premium", visual: "cream-jar-demo", proof: ["Sello tapa-envase", "Apertura cambia estado", "Garantía premium", "Anti mercado gris"] },
+      perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Perfume premium", visual: "perfume-demo", proof: ["Sello en tapa y cuello", "Lote y serie", "Garantía", "Anti falsificación"] },
+      creamTube: { label: "Crema", profile: "NTAG213 + lote", product: "Crema dermocosmética", visual: "cream-tube-demo", proof: ["Sello sobre tapa flip", "Lote visible", "Garantía", "Recompra"] },
       bracelet: { label: "Brazalete", profile: "NTAG215", product: "Brazalete VIP evento", visual: "event-bracelet-demo", proof: ["Celular toca pulsera", "UID serializado", "Zonas VIP", "Bloqueo de reingreso"] },
       ticket: { label: "Entrada", profile: "QR + NFC UID", product: "Entrada fiesta VIP", visual: "party-ticket-demo", proof: ["QR visible", "UID respaldo", "Acceso por zona", "Copia bloqueada"] },
       sneaker: { label: "Zapatilla", profile: "NTAG 424 DNA", product: "Drop Runner 37Z", visual: "sneaker-demo", proof: ["Toque en lengueta", "UID + SUN", "Rareza visible", "Dueño/token"] },
       luxury: { label: "Lujo", profile: "NTAG 424 DNA", product: "Reloj Cronógrafo Premium", visual: "luxury-demo", proof: ["Toque en tarjeta", "UID + SUN", "Certificado de autenticidad", "Owner/club"] },
       bottle: { label: "Botellas", profile: "NFC + QR", product: "Bebida Gaseosa Orgánica", visual: "bottle-demo", proof: ["Envase con tag", "UID + QR de retorno", "impacto verde", "Recompensa activa"] },
       logistics: { label: "Logistica", profile: "UHF + NFC + sensor", product: "Caja cadena fria", visual: "logistics-pack-demo", proof: ["Pallet/caja trazable", "Sensor temperatura", "Ruta auditada", "Entrega verificada"] },
-      electronics: { label: "Electronica", profile: "QR + NFC garantia", product: "Dispositivo serializado", visual: "electronics-demo", proof: ["Serial verificable", "Garantia por unidad", "Soporte postventa", "Reclamo antifraude"] },
+      electronics: { label: "Electrónica", profile: "QR + NFC garantía", product: "Dispositivo serializado", visual: "electronics-demo", proof: ["Serial verificable", "Garantía por unidad", "Soporte postventa", "Reclamo antifraude"] },
       textile: { label: "Textil DPP", profile: "QR + NFC DPP", product: "Etiqueta pasaporte textil", visual: "textile-dpp-demo", proof: ["Origen y composicion", "Cuidado conectado", "Sustentabilidad", "Reventa verificable"] },
     },
     controls: {
       narrative: "Narrativa por audiencia", cinematicStart: "Iniciar recorrido", cinematicStop: "Pausar recorrido", product: "Producto físico", mobile: "Resultado en celular", feed: "Registro de eventos", valid: "Registrar toque válido en Zúrich", tamper: "Romper sello / descorchar", replay: "Simular copia duplicada", refresh: "Actualizar", marketplace: "Portal + tienda", mapTitle: "Mapa vivo: origen del producto vs toque del cliente", mapSubtitle: "Línea animada, distancia y enlaces de ubicación para construir confianza.", realFeed: "Registro público real conectado.", adminKey: "Modo lectura/prueba: la escritura privada de lecturas corre en entorno seguro.", noGeo: "Todavía no hay eventos geolocalizados disponibles desde la API.", origin: "Origen", currentTap: "Toque actual", distance: "Distancia", openOrigin: "Abrir origen", openTap: "Abrir toque", joinClub: "Unirme al club", warranty: "Activar garantía", tokenize: "Crear NFT", syncing: "Conectando con Bodega Balmec...", synced: "Bodega Balmec sincronizada con servidor.", unavailable: "Bodega Balmec no disponible.", sendingScan: "Enviando lectura", registeredScan: "Lectura registrada en Bodega Balmec.", failedScan: "No se pudo simular el toque.", configs: [
         { title: "QR / GS1 Digital Link", body: "Entrada economica para contenido, lote, retiro de producto y trazabilidad GS1. Ideal como respaldo visible; cualquiera puede copiarlo, por eso no habilita reclamo de dueño por si solo." },
-        { title: "NTAG213 / NTAG215", body: "UID fisico serializado para entradas, pulseras, garantias simples y activaciones masivas. Sube la friccion contra capturas de pantalla y permite reglas por lote desde el servidor." },
+        { title: "NTAG213 / NTAG215", body: "UID físico serializado para entradas, pulseras, garantías simples y activaciones masivas. Sube la fricción contra capturas de pantalla y permite reglas por lote desde el servidor." },
         { title: "NTAG 424 DNA", body: "Cada toque genera SUN dinamico con CMAC para detectar copias, enlaces reutilizados y lecturas sospechosas. Es la capa recomendada para productos de valor medio/alto." },
-        { title: "NTAG 424 DNA TT + tokenizacion", body: "Suma estado fisico del sello: cerrado, abierto o manipulado. Permite pasaporte, garantia, tienda y token Polygon solo cuando la politica de compra/reclamo lo habilita." },
+        { title: "NTAG 424 DNA TT + tokenización", body: "Suma estado físico del sello: cerrado, abierto o manipulado. Permite pasaporte, garantía, tienda y token Polygon solo cuando la política de compra/reclamo lo habilita." },
       ] },
   },
   "pt-BR": {
@@ -430,11 +430,11 @@ function getScenarioState(txt: DemoCopy, beat: Beat, routeKm: number, locale: Ap
     return {
       tone: "origin",
       headline: "Producto activado en origen",
-      body: "La marca programa lote, UID, origen y politica comercial antes de entregar el producto al canal.",
+      body: "La marca programa lote, UID, origen y política comercial antes de entregar el producto al canal.",
       stateLabel: "ORIGEN ACTIVO",
       allowed: ["Auditar lote", "Abrir ubicación", "Preparar QR/NFC"],
-      blocked: ["Reclamo de dueño", "Token de valor", "Garantia postventa"],
-      chain: "Sin NFT: producto todavia no fue comprado ni reclamado.",
+      blocked: ["Reclamo de dueño", "Token de valor", "Garantía postventa"],
+      chain: "Sin NFT: producto todavía no fue comprado ni reclamado.",
       primaryAction: "origin",
       primaryLabel: txt.controls.openOrigin,
     };
@@ -443,10 +443,10 @@ function getScenarioState(txt: DemoCopy, beat: Beat, routeKm: number, locale: Ap
     return {
       tone: "risk",
       headline: "Copia o duplicado bloqueado",
-      body: "El sistema conserva trazabilidad, pero bloquea club, puntos, tienda y tokenizacion hasta un nuevo toque fisico valido.",
+      body: "El sistema conserva trazabilidad, pero bloquea club, puntos, tienda y tokenización hasta un nuevo toque físico válido.",
       stateLabel: "RIESGO BLOQUEADO",
       allowed: ["Ver procedencia", "Reportar incidente"],
-      blocked: ["Reclamo de dueño", "Garantia", "Tokenizacion", "Tienda"],
+      blocked: ["Reclamo de dueño", "Garantía", "Tokenización", "Tienda"],
       chain: "No se firma en cadena cuando hay copia o URL reutilizada.",
       primaryAction: "report",
       primaryLabel: "Reportar copia",
@@ -456,23 +456,23 @@ function getScenarioState(txt: DemoCopy, beat: Beat, routeKm: number, locale: Ap
     return {
       tone: "open",
       headline: "Sello abierto como evento del producto",
-      body: "El producto sigue siendo autentico. Cambia su estado fisico y habilita postventa o token de valor solo con compra/reclamo validado.",
+      body: "El producto conserva evidencia válida. Cambia su estado físico y solo prepara postventa o token de valor con compra/reclamo validado.",
       stateLabel: "SELLO ABIERTO",
-      allowed: ["Garantia postventa", "Procedencia", "Token de valor con prueba de compra"],
+      allowed: ["Garantía postventa", "Procedencia", "Token de valor con prueba de compra"],
       blocked: ["Reventa como cerrado", "Reclamo anonimo sin prueba"],
-      chain: "NFT Polygon disponible cuando la politica de dueño confirma comprador.",
+      chain: "Solicitud Polygon disponible cuando la política de dueño confirma comprador.",
       primaryAction: "tokenize",
       primaryLabel: txt.controls.tokenize,
     };
   }
   return {
     tone: "ok",
-    headline: "Toque valido con ruta de confianza",
-    body: `Origen y toque quedan unidos en ${distance}. El consumidor ve autenticidad y la marca recibe datos accionables.`,
+    headline: "Toque válido con ruta de confianza",
+    body: `Origen y toque quedan unidos en ${distance}. El consumidor ve el resultado de confianza y la marca recibe datos accionables.`,
     stateLabel: "AUTENTICADO",
-    allowed: ["Unirse al club", "Guardar pasaporte", "Tokenizacion Amoy", "Voucher o recompra"],
+    allowed: ["Unirse al club", "Guardar pasaporte", "Solicitud Polygon", "Voucher o recompra"],
     blocked: ["Transferir dueño sin ingreso/reclamo"],
-    chain: "Tokenizacion bajo politica: el toque valido crea una solicitud y solo cierra con tx_hash/token_id si el tenant aprueba la operacion.",
+    chain: "Tokenización bajo política: el toque válido crea una solicitud y solo cierra con tx_hash/token_id si el tenant aprueba la operación.",
     primaryAction: "join",
     primaryLabel: txt.controls.joinClub,
   };
@@ -659,11 +659,11 @@ export function DemoLabClient({ locale, initialVertical }: { locale: AppLocale; 
       if (!response.ok || payload?.ok === false) throw new Error(String(payload?.reason || payload?.payload?.reason || "lectura fallida"));
       if (payload?.degraded) {
         setStatus(`${modeLabel}: ${String(payload.reason || txt.controls.adminKey)}`);
-        setActionMessage(mode === "replay" ? "Copia simulada: reclamo de dueño, puntos y tokenizacion quedan bloqueados." : mode === "tamper" ? "Sello abierto: se registra evento del producto y queda listo para postventa controlada." : "Toque valido: club, tienda y analitica quedan listos para activar.");
+        setActionMessage(mode === "replay" ? "Copia simulada: reclamo de dueño, puntos y tokenización quedan bloqueados." : mode === "tamper" ? "Sello abierto: se registra evento del producto y queda listo para postventa controlada." : "Toque válido: club, tienda y analítica quedan listos para activar.");
         return;
       }
       setStatus(`${modeLabel}: ${txt.controls.registeredScan}`);
-      setActionMessage(mode === "replay" ? "Copia simulada: reclamo de dueño, puntos y tokenizacion quedan bloqueados." : mode === "tamper" ? "Sello abierto: se registra evento del producto y queda listo para postventa controlada." : "Toque valido: club, tienda y analitica quedan listos para activar.");
+      setActionMessage(mode === "replay" ? "Copia simulada: reclamo de dueño, puntos y tokenización quedan bloqueados." : mode === "tamper" ? "Sello abierto: se registra evento del producto y queda listo para postventa controlada." : "Toque válido: club, tienda y analítica quedan listos para activar.");
       await refreshSummary();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : txt.controls.failedScan);
@@ -688,21 +688,21 @@ export function DemoLabClient({ locale, initialVertical }: { locale: AppLocale; 
       return;
     }
     if (action === "warranty") {
-      setActionMessage(beat === 2 ? "Garantia bloqueada: se necesita un nuevo toque fisico valido." : "Garantia preparada: queda asociada al pasaporte del consumidor y a la marca.");
+      setActionMessage(beat === 2 ? "Garantía bloqueada: se necesita un nuevo toque físico válido." : "Garantía preparada: queda asociada al pasaporte del consumidor y a la marca.");
       return;
     }
     if (action === "tokenize") {
-      setActionMessage(beat === 3 ? "Tokenizacion de valor preparada: requiere compra o reclamo validado antes de transferir propiedad." : beat === 1 ? "Solicitud de tokenizacion lista: Polygon registra tx_hash/token_id solo si el tenant aprueba la operacion." : "Tokenizacion bloqueada por politica de seguridad para este estado.");
+      setActionMessage(beat === 3 ? "Tokenización de valor preparada: requiere compra o reclamo validado antes de transferir propiedad." : beat === 1 ? "Solicitud de tokenización lista: Polygon registra tx_hash/token_id solo si el tenant aprueba la operación." : "Tokenización bloqueada por política de seguridad para este estado.");
       return;
     }
-    setActionMessage(beat === 2 ? "Club bloqueado por copia. Repeti el toque fisico para continuar." : "Club/tienda listo: el consumidor puede asociarse y recibir beneficios de la marca.");
+    setActionMessage(beat === 2 ? "Club bloqueado por copia. Repetí el toque físico para continuar." : "Club/tienda listo: el consumidor puede asociarse y recibir beneficios de la marca.");
   }
 
   function startGuidedDemo() {
     setBeat(0);
     setRunning(true);
     setModalView(null);
-    setActionMessage("Modo guiado activo: primero mira la etiqueta cerrada, despues el toque valido, copia bloqueada y apertura con reclamo/tokenizacion.");
+    setActionMessage("Modo guiado activo: primero mira la etiqueta cerrada, después el toque válido, copia bloqueada y apertura con reclamo/tokenización.");
   }
 
   return (
@@ -1379,7 +1379,7 @@ function DemoFirstRunGuide({
       <div className="demo-lab-guide-copy">
         <p>Primera vez aca</p>
         <h3>Proba el flujo como lo haria un cliente en 30 segundos.</h3>
-        <span>Arranca cerrado, hace un toque valido, mira como bloquea la copia y termina con sello abierto, NFT y reclamo.</span>
+        <span>Arranca cerrado, hace un toque válido, muestra cómo bloquea la copia y termina con sello abierto, solicitud Polygon y reclamo.</span>
       </div>
       <div className="demo-lab-guide-steps">
         {guideSteps.map((step) => (
@@ -1410,10 +1410,10 @@ function DemoStageExplainer({ beat, scenario, routeKm, locale }: { beat: Beat; s
       next: "Siguiente: simular toque valido.",
     },
     1: {
-      title: "Toque fisico fresco",
-      body: `El cliente valida autenticidad y ve la ruta al origen en ${distance}.`,
-      backend: "Servidor: evento valido, anti copia OK, acciones comerciales habilitadas.",
-      next: "Siguiente: abrir celular, tokenizar o simular apertura.",
+      title: "Toque físico fresco",
+      body: `El cliente ve el resultado de confianza y la ruta al origen en ${distance}.`,
+      backend: "Servidor: evento válido, anti copia OK, acciones comerciales habilitables según política.",
+      next: "Siguiente: abrir celular, preparar tokenización o simular apertura.",
     },
     2: {
       title: "Copia bloqueada",
@@ -1424,8 +1424,8 @@ function DemoStageExplainer({ beat, scenario, routeKm, locale }: { beat: Beat; s
     3: {
       title: "Sello abierto",
       body: "La etiqueta se parte visualmente y el producto cambia de estado.",
-      backend: "Servidor: postventa, certificado, solicitud de token y reclamo requieren politica de compra/dueño.",
-      next: "Siguiente: abrir NFT/certificado o reclamar dueño.",
+      backend: "Servidor: postventa, certificado, solicitud de token y reclamo requieren política de compra/dueño.",
+      next: "Siguiente: abrir solicitud de certificado o reclamar dueño.",
     },
   };
   const item = copyByBeat[beat];
@@ -1447,7 +1447,7 @@ function DemoStageExplainer({ beat, scenario, routeKm, locale }: { beat: Beat; s
 
 function getTrustSignals(beat: Beat) {
   return [
-    { label: "Toque fisico", value: beat === 0 ? "pendiente" : beat === 2 ? "sospechoso" : "fresco", tone: beat === 0 ? "pending" : beat === 2 ? "blocked" : "ok" },
+    { label: "Toque físico", value: beat === 0 ? "pendiente" : beat === 2 ? "sospechoso" : "fresco", tone: beat === 0 ? "pending" : beat === 2 ? "blocked" : "ok" },
     { label: "SUN anti copia", value: beat === 2 ? "bloqueado" : beat === 0 ? "en espera" : "ok", tone: beat === 2 ? "blocked" : beat === 0 ? "pending" : "ok" },
     { label: "Marca", value: "Bodega Balmec", tone: "ok" },
     { label: "Dueño", value: beat === 3 ? "reclamo listo" : beat === 2 ? "bloqueado" : "con regla", tone: beat === 3 ? "ok" : beat === 2 ? "blocked" : "pending" },
@@ -1457,7 +1457,7 @@ function getTrustSignals(beat: Beat) {
 }
 
 function DemoDifferentiatorStrip({ beat, onGuided }: { beat: Beat; onGuided: () => void }) {
-  const chain = ["Producto fisico", "Confianza", "Dueño", "Comunidad", "Recompra", "Tienda", "Datos"];
+  const chain = ["Producto físico", "Confianza", "Dueño", "Comunidad", "Recompra", "Tienda", "Datos"];
   const activeIndex = beat === 0 ? 0 : beat === 1 ? 2 : beat === 2 ? 1 : 6;
 
   return (
@@ -1547,20 +1547,20 @@ function DemoCinematicShowcase({
         openPack: "Abrir paquete visual",
         scenes: [
           { beat: 0, tag: "Escena 01", title: "Producto nace", body: "Envase de alto valor, UID y etiqueta NFC cerrada antes del primer toque.", stat: "UID + lote", tone: "origin" },
-          { beat: 1, tag: "Escena 02", title: "Toque vivo", body: "SUN dinamico, distancia, origen y datos accionables para consumidor y marca.", stat: "Verificado", tone: "ok" },
-          { beat: 2, tag: "Escena 03", title: "Ataque bloqueado", body: "Una URL copiada no abre beneficios, reclamo, tokenizacion ni tienda.", stat: "Sin reclamo", tone: "risk" },
-          { beat: 3, tag: "Escena 04", title: "Ciclo comercial", body: "Sello abierto, reclamo de dueño, certificado, comunidad y recompra.", stat: "Abierto", tone: "open" },
+          { beat: 1, tag: "Escena 02", title: "Toque vivo", body: "SUN dinámico, distancia, origen y datos accionables para consumidor y marca.", stat: "Verificado", tone: "ok" },
+          { beat: 2, tag: "Escena 03", title: "Ataque bloqueado", body: "Una URL copiada no abre beneficios, reclamo, tokenización ni tienda.", stat: "Sin reclamo", tone: "risk" },
+          { beat: 3, tag: "Escena 04", title: "Ciclo comercial", body: "Sello abierto, reclamo de dueño, certificado, comunidad y recompra sujetos a política.", stat: "Abierto", tone: "open" },
         ],
         proof: {
-          sun: beat === 0 ? "en espera" : beat === 2 ? "bloqueado" : "valido",
-          claim: beat === 3 ? "dueño listo" : beat === 2 ? "denegado" : "con regla",
+          sun: beat === 0 ? "en espera" : beat === 2 ? "bloqueado" : "válido",
+          claim: beat === 3 ? "dueño pendiente" : beat === 2 ? "denegado" : "con regla",
           nft: beat === 2 ? "sin NFT" : beat === 0 ? "antes de cadena" : "pedido listo",
           market: beat === 2 ? "cerrada" : beat === 0 ? "publica" : "abierta",
         },
         proofLabels: { claim: "Reclamo", market: "Tienda" },
         passport: "Pasaporte digital",
-        tokenTitle: beat === 2 ? "Riesgo bloqueado" : beat === 0 ? "Esperando toque" : beat === 3 ? "Dueño + NFT" : "NFT listo",
-        tokenBody: beat === 2 ? "La copia no libera beneficios." : "UID con hash, reglas de acceso y evidencia en cadena.",
+        tokenTitle: beat === 2 ? "Riesgo bloqueado" : beat === 0 ? "Esperando toque" : beat === 3 ? "Solicitud lista" : "Solicitud pendiente",
+        tokenBody: beat === 2 ? "La copia no libera beneficios." : "UID con hash, reglas de acceso y evidencia opcional en cadena.",
         graph: "demanda / riesgo / reclamo / recompra",
       };
   const scenes: Array<{ beat: Beat; tag: string; title: string; body: string; stat: string; tone: "origin" | "ok" | "risk" | "open" }> = [
@@ -1695,7 +1695,7 @@ function getPremiumSceneMeta(vertical: Vertical, beat: Beat, badge: string, stat
           : "LISTO";
   const phoneAction =
     tone === "risk"
-      ? "Repetir tap fisico"
+      ? "Repetir tap físico"
       : tone === "open"
         ? "Reclamar dueño"
         : tone === "ok"
@@ -1706,7 +1706,7 @@ function getPremiumSceneMeta(vertical: Vertical, beat: Beat, badge: string, stat
 
   const proofBody =
     tone === "risk"
-      ? "Acciones bloqueadas hasta nuevo tap fisico."
+      ? "Acciones bloqueadas hasta nuevo tap físico."
       : tone === "open"
         ? "Postventa, dueño y beneficios habilitados."
         : "Producto, UID y canal validados.";
@@ -2023,7 +2023,7 @@ function DemoPhoneMirror({
   destination: DemoLocation;
   onOpen: (view: DemoModalView) => void;
 }) {
-  const cta = beat === 2 ? "Repetir toque fisico" : beat === 3 ? "Reclamar dueño" : beat === 0 ? "Acercar telefono" : "Unirme al club";
+  const cta = beat === 2 ? "Repetir toque físico" : beat === 3 ? "Solicitar propiedad" : beat === 0 ? "Acercar teléfono" : "Unirme al club";
 
   return (
     <article className={`demo-lab-phone-mirror demo-lab-phone-mirror--${scenario.tone}`}>
@@ -2046,9 +2046,9 @@ function DemoPhoneMirror({
 function DemoUnlockLadder({ beat }: { beat: Beat }) {
   const rows = [
     { label: "Info publica", body: "Origen, lote, historia y contenido de marca.", unlocked: true },
-    { label: "Club + beneficios", body: "Beneficios y recompra solo con toque valido.", unlocked: beat === 1 || beat === 3 },
-    { label: "Garantia + reclamo", body: "Dueño, garantia y postventa con ingreso.", unlocked: beat === 3 },
-    { label: "NFT / certificado", body: "Solicitud Polygon y token de valor si la politica lo permite.", unlocked: beat === 1 || beat === 3 },
+    { label: "Club + beneficios", body: "Beneficios y recompra solo con toque válido.", unlocked: beat === 1 || beat === 3 },
+    { label: "Garantía + reclamo", body: "Dueño, garantía y postventa con ingreso.", unlocked: beat === 3 },
+    { label: "Solicitud / certificado", body: "Solicitud Polygon y token de valor si la política lo permite.", unlocked: beat === 1 || beat === 3 },
     { label: "Tienda", body: "Reventa, comunidad y ofertas contextuales.", unlocked: beat === 1 || beat === 3 },
     { label: "Registro de datos", body: "Eventos, riesgo, zona, demanda y atribucion.", unlocked: beat !== 0 },
   ];
@@ -2056,7 +2056,7 @@ function DemoUnlockLadder({ beat }: { beat: Beat }) {
   return (
     <article className="demo-lab-unlock-ladder">
       <p>Escalera comercial</p>
-      <h4>Que se habilita despues del toque</h4>
+      <h4>Qué se habilita después del toque</h4>
       <div>
         {rows.map((row) => (
           <span key={row.label} className={row.unlocked && beat !== 2 ? "unlocked" : beat === 2 && row.label !== "Info publica" ? "blocked" : ""}>
@@ -2110,7 +2110,7 @@ function DemoWineProduct({
   const blocked = beat === 2;
   const opened = beat === 3;
   const status = blocked ? "COPIA BLOQUEADA" : opened ? "SELLO ABIERTO" : beat === 0 ? "LISTO PARA TOQUE" : "AUTENTICADO";
-  const action = blocked ? "Replay bloqueado" : opened ? "Reclamo + token listo" : "Compra confiable";
+  const action = blocked ? "Replay bloqueado" : opened ? "Reclamo + token pendiente" : "Compra confiable";
   const proof = stat || (blocked ? "SUN bloquea copia y beneficios" : "Origen, lote, sello y canal auditados");
 
   return (
@@ -2169,7 +2169,7 @@ function DemoPremiumCosmeticProduct({
   const opened = beat === 3;
   const isPerfume = vertical === "perfume";
   const status = blocked ? "RIESGO BLOQUEADO" : opened ? "SELLO ABIERTO" : beat === 0 ? "SELLADO" : "AUTENTICADO";
-  const action = blocked ? "Sin reclamo" : opened ? "Garantia lista" : "Compra confiable";
+  const action = blocked ? "Sin reclamo" : opened ? "Garantía lista" : "Compra confiable";
   const referenceLabel = isPerfume ? "Perfume premium real" : vertical === "creamJar" ? "Set skincare real" : "Dermo premium real";
   const proofLabel = isPerfume ? "Tapa NFC + lote" : "Envase sellado + lote";
 
@@ -2198,7 +2198,7 @@ function DemoPremiumCosmeticProduct({
       <div className="demo-lab-cosmetic-proof-card" aria-hidden="true">
         <span>NTAG 424 DNA</span>
         <strong>{isPerfume ? "Tapa + serie + lote" : "Envase + sello + lote"}</strong>
-        <small>{blocked ? "Replay no abre garantia" : "SUN dinamico validado"}</small>
+        <small>{blocked ? "Replay no abre garantía" : "SUN dinámico validado"}</small>
       </div>
     </div>
   );
@@ -2253,7 +2253,7 @@ function DemoEventAccessProduct({
       <div className="demo-lab-event-proof-card" aria-hidden="true">
         <span>NTAG215</span>
         <strong>NFC + pasaporte</strong>
-        <small>{blocked ? "Replay no abre reclamo" : "Toque fisico validado"}</small>
+        <small>{blocked ? "Replay no abre reclamo" : "Toque físico validado"}</small>
       </div>
     </div>
   );
@@ -2276,7 +2276,7 @@ function DemoSneakerProduct({
   const blocked = beat === 2;
   const opened = beat === 3;
   const status = blocked ? "COPIA BLOQUEADA" : opened ? "OWNER LISTO" : beat === 0 ? "LISTO PARA TOQUE" : "AUTENTICADO";
-  const action = blocked ? "Repetir tap fisico" : opened ? "Claim + token listo" : "SUN dinamico validado";
+  const action = blocked ? "Repetir tap físico" : opened ? "Claim + token pendiente" : "SUN dinámico validado";
   const proof = stat || (blocked ? "Replay no habilita beneficios" : "Lengueta NFC + UID + lote verificable");
 
   return (
@@ -2787,7 +2787,7 @@ function MobileOutcome({
 
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <InfoCell label="Pasaporte" value={passport} />
-        <InfoCell label="Garantia" value={beat === 2 ? "bloqueada" : txt.controls.warranty} />
+        <InfoCell label="Garantía" value={beat === 2 ? "bloqueada" : txt.controls.warranty} />
         <InfoCell label="Tienda" value={marketplace} />
       </div>
       {actionMessage ? <p className="demo-lab-action-message mt-4 rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-3 py-3 text-xs font-bold text-emerald-100">{actionMessage}</p> : null}
@@ -2851,9 +2851,9 @@ function DemoFlowModal({
 
   const title = view === "mobile" ? "Resultado en celular" : view === "nft" ? "NFT / certificado Polygon" : "Reclamar propiedad";
   const subtitle = view === "mobile"
-    ? "Lo que ve el consumidor despues del toque."
+    ? "Lo que ve el consumidor después del toque."
     : view === "nft"
-      ? "Como se conecta el toque valido con tokenizacion y evidencia en cadena."
+      ? "Cómo se conecta el toque válido con tokenización y evidencia en cadena."
       : "Como el consumidor pasa de autenticar a asociar el producto en el portal.";
 
   return (
@@ -2888,16 +2888,16 @@ function DemoFlowModal({
 function DemoNftModalContent({ beat, scenario }: { beat: Beat; scenario: DemoScenario }) {
   const blocked = beat === 2;
   const steps = [
-    { label: "01", title: "Toque valido", body: blocked ? "Copia detectada: no se firma en cadena." : "SUN fresco confirma autenticidad y crea evento." },
+    { label: "01", title: "Toque válido", body: blocked ? "Copia detectada: no se firma en cadena." : "SUN fresco aporta evidencia y crea evento." },
     { label: "02", title: "UID hasheado", body: "El UID no se expone crudo; se usa hash con salt para el certificado." },
-    { label: "03", title: "Solicitud", body: blocked ? "La solicitud queda bloqueada por politica." : "Se prepara solicitud idempotente de tokenizacion." },
-    { label: "04", title: "Polygon Amoy", body: blocked ? "Sin tx_hash/token_id hasta nuevo toque valido." : "Si la politica aprueba el reclamo, el minter registra tx_hash y token_id." },
+    { label: "03", title: "Solicitud", body: blocked ? "La solicitud queda bloqueada por política." : "Se prepara solicitud idempotente de tokenización." },
+    { label: "04", title: "Polygon Amoy", body: blocked ? "Sin tx_hash/token_id hasta nuevo toque válido." : "Si la política aprueba el reclamo, el minter registra tx_hash y token_id." },
   ];
   return (
     <div className="demo-lab-modal-story">
       <div className={`demo-lab-modal-status demo-lab-modal-status--${scenario.tone}`}>
         <span>{scenario.stateLabel}</span>
-        <strong>{blocked ? "Tokenizacion bloqueada por seguridad" : "Solicitud de tokenizacion lista para revisar"}</strong>
+        <strong>{blocked ? "Tokenización bloqueada por seguridad" : "Solicitud de tokenización lista para revisar"}</strong>
         <p>{scenario.chain}</p>
       </div>
       <div className="demo-lab-modal-step-grid">
@@ -2916,16 +2916,16 @@ function DemoNftModalContent({ beat, scenario }: { beat: Beat; scenario: DemoSce
 function DemoClaimModalContent({ beat, scenario }: { beat: Beat; scenario: DemoScenario }) {
   const blocked = beat === 2;
   const steps = [
-    { label: "Ingreso", body: "El consumidor entra al portal con sesion propia." },
+    { label: "Ingreso", body: "El consumidor entra al portal con sesión propia." },
     { label: "Marca", body: "El reclamo valida que producto, marca y evento coincidan." },
-    { label: "Dueño", body: blocked ? "La copia bloquea el reclamo hasta nuevo toque fisico." : "El producto queda asociado al usuario." },
-    { label: "Tienda", body: blocked ? "Beneficios de valor bloqueados." : "Se habilitan club, garantia, recompra y beneficios." },
+    { label: "Dueño", body: blocked ? "La copia bloquea el reclamo hasta nuevo toque físico." : "El producto queda asociado al usuario si la política lo permite." },
+    { label: "Tienda", body: blocked ? "Beneficios de valor bloqueados." : "Se habilitan club, garantía, recompra y beneficios." },
   ];
   return (
     <div className="demo-lab-modal-story">
       <div className={`demo-lab-modal-status demo-lab-modal-status--${scenario.tone}`}>
         <span>{scenario.stateLabel}</span>
-        <strong>{blocked ? "Reclamo bloqueado correctamente" : "Reclamo listo con politica de dueño"}</strong>
+        <strong>{blocked ? "Reclamo bloqueado correctamente" : "Reclamo listo con política de dueño"}</strong>
         <p>{scenario.body}</p>
       </div>
       <div className="demo-lab-modal-step-grid">
@@ -2966,10 +2966,10 @@ function DemoFinalTapDock({
   onRefresh: () => void;
 }) {
   const flow = [
-    { step: "01", title: "Toque fisico fresco", body: "El chip genera SUN dinamico. No sirve URL copiada." },
-    { step: "02", title: "Anti copia + pasaporte", body: "Si es valido, se habilitan acciones y queda evento." },
-    { step: "03", title: "NFT / certificado", body: "Se crea solicitud y Polygon devuelve tx_hash + token_id." },
-    { step: "04", title: "Reclamar dueño", body: "El usuario asocia producto con ingreso, marca y politica de dueño." },
+    { step: "01", title: "Toque físico fresco", body: "El chip genera SUN dinámico. No sirve URL copiada." },
+    { step: "02", title: "Anti copia + pasaporte", body: "Si es válido, se habilitan acciones sujetas a política y queda evento." },
+    { step: "03", title: "Solicitud / certificado", body: "Se crea solicitud; Polygon devuelve tx_hash + token_id solo si la política aprueba." },
+    { step: "04", title: "Reclamar dueño", body: "El usuario asocia producto con ingreso, marca y política de dueño." },
   ];
 
   return (
@@ -2977,12 +2977,12 @@ function DemoFinalTapDock({
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div className="max-w-2xl">
           <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-300">Lista antes del toque final</p>
-          <h2 className="mt-2 text-2xl font-black text-white md:text-3xl">Probar el camino real: toque valido - NFT - reclamar dueño.</h2>
+          <h2 className="mt-2 text-2xl font-black text-white md:text-3xl">Probar el camino real: toque válido - solicitud - reclamar dueño.</h2>
           <p className="mt-2 text-sm leading-6 text-slate-300">{status}</p>
         </div>
         <div className="demo-lab-final-actions">
           <button suppressHydrationWarning type="button" disabled={simulating} onClick={onValid} className="demo-lab-final-button demo-lab-final-button--primary">
-            Simular toque valido
+            Simular toque válido
           </button>
           <button suppressHydrationWarning type="button" disabled={simulating} onClick={onReplay} className="demo-lab-final-button demo-lab-final-button--danger">
             Probar copia bloqueada
@@ -3057,7 +3057,7 @@ function StageRouteLayer({
       tap: "Toque actual",
       chain: "Cadena de prueba",
       path: "Ruta auditada del producto",
-      pathBody: "Una prueba legible: producto, UID, SUN, sello y politica de canal.",
+      pathBody: "Una prueba legible: producto, UID, SUN, sello y política de canal.",
       checkpointA: "UID",
       checkpointB: "SUN",
       checkpointC: "Politica",
@@ -3065,7 +3065,7 @@ function StageRouteLayer({
   const proofStrip = [
     { label: txt.controls.origin, value: LOCATIONS.origin.city },
     { label: txt.controls.currentTap, value: destination.city },
-    { label: "SUN", value: scenario.tone === "risk" ? "bloqueado" : "valido" },
+    { label: "SUN", value: scenario.tone === "risk" ? "bloqueado" : "válido" },
     { label: routeCopy.checkpointC, value: scenario.stateLabel },
   ];
 
@@ -3170,9 +3170,9 @@ function DemoActionMatrix({
 }) {
   const actions: Array<{ id: DemoAction; label: string; body: string; locked: boolean }> = [
     { id: "join", label: txt.controls.joinClub, body: "Asocia al consumidor con club, beneficios y tienda de la marca.", locked: beat === 0 || beat === 2 },
-    { id: "warranty", label: txt.controls.warranty, body: "Registra garantia, postventa o fecha de apertura con politica de la marca.", locked: beat === 0 || beat === 2 },
+    { id: "warranty", label: txt.controls.warranty, body: "Registra garantía, postventa o fecha de apertura con política de la marca.", locked: beat === 0 || beat === 2 },
     { id: "tokenize", label: txt.controls.tokenize, body: "Prepara solicitud Polygon con UID hasheado y prueba de dueño.", locked: beat === 0 || beat === 2 },
-    { id: "report", label: "Reportar riesgo", body: "Crea alerta operativa cuando aparece copia, duplicado o manipulacion sospechosa.", locked: beat !== 2 },
+    { id: "report", label: "Reportar riesgo", body: "Crea alerta operativa cuando aparece copia, duplicado o manipulación sospechosa.", locked: beat !== 2 },
   ];
 
   return (
@@ -3197,7 +3197,7 @@ function DemoActionMatrix({
           <button suppressHydrationWarning key={action.id} type="button" onClick={() => onAction(action.id)} className={`demo-lab-action-tile ${action.locked ? "demo-lab-action-tile--locked" : ""}`}>
             <span>{action.label}</span>
             <small>{action.body}</small>
-            <strong>{action.locked ? "Ver por que bloquea" : "Ejecutar accion"}</strong>
+            <strong>{action.locked ? "Ver por qué bloquea" : "Ejecutar acción"}</strong>
           </button>
         ))}
       </div>
@@ -3208,7 +3208,7 @@ function DemoActionMatrix({
         <InfoCell label="Marca" value="Bodega Balmec" />
       </div>
       <p className="mt-3 text-xs text-slate-400">
-        Ruta activa: {LOCATIONS.origin.city} -&gt; {destination.city}. Los botones cambian de politica segun estado fisico, copia y compra/reclamo.
+        Ruta activa: {LOCATIONS.origin.city} -&gt; {destination.city}. Los botones cambian de política según estado físico, copia y compra/reclamo.
       </p>
       {actionMessage ? <p className="demo-lab-action-message mt-4 rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-3 py-3 text-xs font-bold text-emerald-100">{actionMessage}</p> : null}
     </article>

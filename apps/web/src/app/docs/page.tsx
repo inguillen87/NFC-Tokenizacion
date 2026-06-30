@@ -61,10 +61,10 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
   "es-AR": {
     eyebrow: "Guia comercial + producto",
     title: "nexID explicado sin jerga: producto real, confianza y postventa en un solo toque",
-    description: "No vendemos chips sueltos ni blockchain como moda. Creamos una capa de confianza para que cada producto pueda probar autenticidad, mostrar origen y habilitar garantías, beneficios, certificados digitales o propiedad digital cuando la política lo permite.",
+    description: "No vendemos chips sueltos ni blockchain como moda. Creamos una capa de confianza para que cada producto pueda mostrar evidencia de autenticidad, origen y estado, y habilitar garantías, beneficios, certificados digitales o propiedad digital cuando la política lo permite.",
     simpleFlowEyebrow: "Arquitectura simple",
     simpleFlowTitle: "La arquitectura en una frase",
-    simpleFlowBody: "Un producto físico recibe una identidad digital; cada toque valida si es real, cuenta su historia y abre el siguiente paso comercial seguro.",
+    simpleFlowBody: "Un producto físico recibe una identidad digital; cada toque ejecuta reglas de confianza, cuenta su historia y abre el siguiente paso comercial seguro si corresponde.",
     simpleFlow: [
       "Producto + lote + fotos reales",
       "NFC o QR seguro",
@@ -132,8 +132,8 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     quickJumpTitle: "Explorar rápido",
     faqTitle: "FAQ corta para explicar bien el producto",
     faqItems: [
-      { q: "Que problema resuelve para una marca premium?", a: "Permite demostrar que una unidad es real, saber donde se valida, reducir fraude, recuperar datos propios del consumidor y abrir una relacion postventa despues de la compra." },
-      { q: "Que ve el consumidor final?", a: "Una pantalla simple: producto auténtico, origen, lote, estado del sello, garantía, beneficios y, si corresponde, certificado digital o propiedad digital." },
+      { q: "¿Qué problema resuelve para una marca premium?", a: "Permite mostrar evidencia de confianza por unidad, saber dónde se valida, reducir fraude, recuperar datos propios del consumidor y abrir una relación postventa después de la compra." },
+      { q: "¿Qué ve el consumidor final?", a: "Una pantalla simple: resultado de confianza, origen, lote, estado del sello, garantía, beneficios y, si corresponde, certificado digital o propiedad digital." },
       { q: "Como se empieza sin hacer un proyecto enorme?", a: "Con un piloto sobre una línea, lote o edición: banco de fotos, reglas de claim, tags o QR, portal mobile, dashboard y métricas de uso." },
       { q: "¿nexID vende chips NFC?", a: "No. nexID vende infraestructura para emitir, validar y operar identidades físicas verificables usando carriers como NFC y QR." },
       { q: "¿Sirve solo para antifraude?", a: "No. También habilita propiedad digital, acceso, garantías, vouchers, trazabilidad y analytics." },
@@ -493,7 +493,7 @@ export default async function DocsPage() {
               </div>
               <div className="rounded-xl border border-white/5 bg-slate-900/60 p-3">
                 <strong className="text-cyan-200 block">Orquestación de Reclamos</strong>
-                Registro seguro de propiedad digital en el pasaporte del producto al procesarse el pago (token nxpos).
+                Registro seguro de propiedad digital en el pasaporte del producto cuando el pago, la política de reclamo y el riesgo lo permiten (token nxpos).
               </div>
               <div className="rounded-xl border border-white/5 bg-slate-900/60 p-3">
                 <strong className="text-cyan-200 block">Webhooks en Tiempo Real</strong>

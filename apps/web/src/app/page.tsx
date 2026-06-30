@@ -199,32 +199,32 @@ export default async function HomePage() {
     ? {
       eyebrow: "Premium tokenization + blockchain-ready trust layer",
       title: "Built for premium brands, resellers, and enterprise teams that need anti-fraud, traceability, and loyalty in one flow.",
-      body: "Each tap validates authenticity, activates the digital passport, and opens tenant-aware commercial actions.",
+      body: "Each tap runs the configured trust checks, updates the digital passport, and opens tenant-aware actions only when policy allows it.",
       points: [
-        "Tap & verify: SUN/NFC authenticity and trust outcome in seconds.",
+        "Tap & verify: SUN/NFC evidence and trust outcome in seconds.",
         "Passport & provenance: product context, status, and guided consumer actions.",
-        "Club & marketplace: ownership activation, loyalty and contextual offers.",
+        "Club & marketplace: gated ownership activation, loyalty and contextual offers.",
       ],
     }
     : locale === "pt-BR"
       ? {
         eyebrow: "Premium tokenization + blockchain-ready trust layer",
         title: "Projetado para marcas premium, revendedores e equipes enterprise que precisam de antifraude, rastreabilidade e fidelização no mesmo fluxo.",
-        body: "Cada tap valida autenticidade, ativa o passport digital e abre ações comerciais por tenant.",
+        body: "Cada tap executa as validações configuradas, atualiza o passport digital e abre ações comerciais somente quando a política permite.",
         points: [
-          "Tap & verificação: autenticidade SUN/NFC e resultado de confiança em segundos.",
+          "Tap & verificação: evidência SUN/NFC e resultado de confiança em segundos.",
           "Passport & provenance: contexto do produto, estado e ações guiadas ao consumidor.",
-          "Clube & marketplace: ativação de ownership, loyalty e ofertas contextuais.",
+          "Clube & marketplace: ativação de ownership, loyalty e ofertas contextuais com regras de aprovação.",
         ],
       }
       : {
         eyebrow: "Premium tokenization + blockchain-ready trust layer",
         title: "Diseñada para marcas premium, resellers y equipos enterprise que necesitan antifraude, trazabilidad y fidelización en la misma experiencia.",
-        body: "Cada tap valida autenticidad, activa el passport digital y habilita acciones comerciales por tenant.",
+        body: "Cada tap ejecuta las validaciones configuradas, actualiza el pasaporte digital y habilita acciones comerciales solo cuando la política lo permite.",
         points: [
-          "Tap & verificación: autenticidad SUN/NFC y estado de confianza en segundos.",
+          "Tap & verificación: evidencia SUN/NFC y estado de confianza en segundos.",
           "Passport & provenance: contexto de producto, estado y acciones guiadas al consumidor.",
-          "Club & marketplace: activación de ownership, loyalty y ofertas contextuales.",
+          "Club & marketplace: activación de ownership, loyalty y ofertas contextuales con reglas de aprobación.",
         ],
       };
 
@@ -418,7 +418,7 @@ export default async function HomePage() {
           <Link href="/" aria-label="nexID home" className="inline-flex items-center">
             <BrandLockup size={42} variant="ripple" theme="dark" className="hero-brand brand-surface-footer" />
           </Link>
-          <p className="text-sm site-muted">nexID ayuda a marcas y organizaciones a probar autenticidad, contar la historia del producto y activar garantia, beneficios, certificado digital y postventa desde un toque NFC o QR.</p>
+          <p className="text-sm site-muted">nexID ayuda a marcas y organizaciones a verificar evidencia de autenticidad, contar la historia del producto y activar garantía, beneficios, certificado digital y postventa desde un toque NFC o QR.</p>
           <div className="flex flex-wrap gap-2">
             <Link href="/docs" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">Arquitectura</Link>
             <Link href="/sdk" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">SDK</Link>

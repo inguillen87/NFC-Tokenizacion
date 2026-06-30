@@ -29030,58 +29030,83 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
   }
 }
 
-/* Atlas/Responsive landing authority.
-   Keep the route atlas supportive and reserve enough room for the product card
-   even when browser zoom or custom root font size inflates rem-based rules. */
+/* Product-proof authority: the atlas is context; product and credentials must
+   remain readable on wide monitors, notebooks, tablets and phones. */
+.landing-hero-section .hero-scene--product-proof,
+.demo-lab-shell {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
 .landing-hero-section .hero-scene--product-proof {
-  --landing-proof-atlas-height: clamp(280px, 17vw, 350px);
-  --landing-proof-atlas-stage-height: clamp(200px, 12.5vw, 270px);
-  --landing-proof-product-media-height: clamp(250px, 14vw, 315px);
-  --landing-proof-product-phone-width: clamp(116px, 6.6vw, 138px);
+  --landing-proof-atlas-height: clamp(285px, 20vw, 365px);
+  --landing-proof-atlas-stage-height: clamp(196px, 14vw, 270px);
+  --landing-proof-product-media-height: clamp(260px, 18vw, 330px);
+  --landing-proof-product-phone-width: clamp(112px, 6.2vw, 138px);
 }
 
 .landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
 .landing-hero-section .hero-scene--product-proof > .hero-scene-proof-grid.hero-scene-proof-grid:has(.hero-object-frame--product-proof),
 .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
-.landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
+.landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe),
+.landing-hero-section .hero-scene--product-proof .hero-scene-stage-card--product-proof,
+.landing-hero-section .hero-scene--product-proof .hero-scene-result-card--product-proof,
+.landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof,
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof {
   min-width: 0 !important;
+  max-width: 100% !important;
   align-items: start !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-scene-result-card--product-proof {
+  overflow: visible !important;
+  align-content: start !important;
 }
 
 .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
 .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
-  overflow: hidden !important;
+  overflow: visible !important;
+  gap: clamp(10px, 0.9vw, 16px) !important;
 }
 
-.landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof,
-.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof {
-  align-self: start !important;
+.landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
+.landing-hero-section .hero-scene--product-proof > .hero-scene-proof-grid.hero-scene-proof-grid:has(.hero-object-frame--product-proof) {
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: clamp(12px, 1vw, 16px) !important;
 }
 
-.landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof #trace-signal-atlas.hero-trace-map--trust-globe {
+.landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe {
   height: var(--landing-proof-atlas-height) !important;
   min-height: var(--landing-proof-atlas-height) !important;
   max-height: var(--landing-proof-atlas-height) !important;
 }
 
 .landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe > .hero-traceability-globe {
-  min-height: 0 !important;
   height: 100% !important;
+  min-height: 0 !important;
+  grid-template-rows: auto minmax(0, 1fr) auto !important;
 }
 
 .landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe .traceability-globe__header {
-  align-items: start !important;
-  padding: 13px 14px 0 !important;
+  padding: 12px 13px 0 !important;
 }
 
-.landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe .traceability-globe__kpis {
+.landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe .traceability-globe__header h2 {
+  font-size: clamp(0.88rem, 0.95vw, 1.05rem) !important;
+}
+
+.landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe .traceability-globe__header span,
+.landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe .traceability-globe__kpis,
+.landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe .traceability-globe__floating,
+.landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe .traceability-globe__footer {
   display: none !important;
 }
 
 .landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe .traceability-globe__stage {
-  min-height: var(--landing-proof-atlas-stage-height) !important;
   height: var(--landing-proof-atlas-stage-height) !important;
-  margin: 4px 10px 8px !important;
+  min-height: var(--landing-proof-atlas-stage-height) !important;
+  max-height: var(--landing-proof-atlas-stage-height) !important;
+  margin: 6px 9px 9px !important;
 }
 
 .landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe .traceability-globe__routebar {
@@ -29089,19 +29114,23 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
   right: 12px !important;
   bottom: 12px !important;
   max-width: calc(100% - 24px) !important;
+  padding: 9px 11px !important;
+  z-index: 6 !important;
 }
 
+.landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe [data-globe-mode],
 .landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe .scene-container,
-.landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe canvas,
-.landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe [data-globe-mode] {
+.landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe canvas {
+  width: 100% !important;
+  height: 100% !important;
   max-width: 100% !important;
   max-height: 100% !important;
 }
 
 .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof {
-  min-width: 0 !important;
   width: 100% !important;
   height: auto !important;
+  align-self: stretch !important;
 }
 
 .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-showcase {
@@ -29117,17 +29146,6 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
   aspect-ratio: auto !important;
 }
 
-.landing-hero-section
-  .hero-scene--product-proof
-  .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe)
-  .hero-object-product-pane--product-proof
-  .hero-asset-media {
-  grid-template-columns: minmax(0, 1fr) var(--landing-proof-product-phone-width) !important;
-  height: var(--landing-proof-product-media-height) !important;
-  min-height: var(--landing-proof-product-media-height) !important;
-  max-height: var(--landing-proof-product-media-height) !important;
-}
-
 .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-passport-phone {
   display: grid !important;
   justify-self: end !important;
@@ -29137,19 +29155,8 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
   border-radius: 16px !important;
 }
 
-.landing-hero-section
-  .hero-scene--product-proof
-  .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe)
-  .hero-object-product-pane--product-proof
-  .hero-passport-phone {
-  display: grid !important;
-  justify-self: end !important;
-  width: var(--landing-proof-product-phone-width) !important;
-  min-width: 0 !important;
-}
-
 .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-passport-thumb {
-  height: clamp(52px, 3.6vw, 66px) !important;
+  height: clamp(52px, 3.6vw, 68px) !important;
 }
 
 .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-passport-body {
@@ -29158,12 +29165,8 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
 }
 
 .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-passport-body strong {
-  font-size: clamp(12px, 0.72vw, 14px) !important;
+  font-size: clamp(12px, 0.76vw, 14px) !important;
   line-height: 1.08 !important;
-}
-
-.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-passport-body dl {
-  gap: 4px !important;
 }
 
 .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-passport-body dd,
@@ -29175,122 +29178,14 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
   display: none !important;
 }
 
-@media (min-width: 1500px) {
-  .landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
-  .landing-hero-section .hero-scene--product-proof > .hero-scene-proof-grid.hero-scene-proof-grid:has(.hero-object-frame--product-proof) {
-    grid-template-columns: minmax(0, 1.12fr) minmax(430px, 0.88fr) !important;
-  }
-
-  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
-  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
-    grid-template-columns: minmax(250px, 0.72fr) minmax(380px, 1fr) !important;
-    gap: clamp(10px, 0.75vw, 14px) !important;
-  }
-}
-
-@media (min-width: 1900px) {
-  .landing-hero-section .hero-scene--product-proof {
-    --landing-proof-atlas-height: clamp(270px, 14vw, 335px);
-    --landing-proof-atlas-stage-height: clamp(190px, 10.5vw, 255px);
-    --landing-proof-product-media-height: clamp(245px, 12vw, 300px);
-  }
-
-  .landing-hero-section > .container-shell > .hero-demo-shell {
-    width: min(1540px, calc(100vw - clamp(48px, 7vw, 128px))) !important;
-    max-width: min(1540px, calc(100vw - clamp(48px, 7vw, 128px))) !important;
-  }
-
-  .landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
-  .landing-hero-section .hero-scene--product-proof > .hero-scene-proof-grid.hero-scene-proof-grid:has(.hero-object-frame--product-proof) {
-    grid-template-columns: minmax(0, 1.08fr) minmax(460px, 0.82fr) !important;
-  }
-
-  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
-  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
-    grid-template-columns: minmax(270px, 0.66fr) minmax(420px, 1fr) !important;
-  }
-}
-
-@media (min-width: 1180px) and (max-width: 1499px) {
-  .landing-hero-section .hero-scene--product-proof {
-    --landing-proof-atlas-height: clamp(270px, 24vw, 340px);
-    --landing-proof-atlas-stage-height: clamp(190px, 17vw, 255px);
-    --landing-proof-product-media-height: clamp(240px, 24vw, 320px);
-  }
-
-  .landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
-  .landing-hero-section .hero-scene--product-proof > .hero-scene-proof-grid.hero-scene-proof-grid:has(.hero-object-frame--product-proof) {
-    grid-template-columns: minmax(0, 1fr) !important;
-  }
-
-  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
-  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
-    grid-template-columns: minmax(300px, 0.78fr) minmax(380px, 1fr) !important;
-  }
-}
-
-@media (max-width: 1179px) {
-  .landing-hero-section .hero-scene--product-proof {
-    --landing-proof-atlas-height: clamp(260px, 42vw, 340px);
-    --landing-proof-atlas-stage-height: clamp(185px, 30vw, 255px);
-    --landing-proof-product-media-height: clamp(250px, 46vw, 340px);
-  }
-
-  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
-  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
-    grid-template-columns: minmax(0, 1fr) !important;
-  }
-
-  .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-media {
-    width: min(100%, 560px) !important;
-  }
-}
-
-@media (max-width: 680px) {
-  .landing-hero-section .hero-scene--product-proof {
-    --landing-proof-atlas-height: clamp(235px, 72vw, 315px);
-    --landing-proof-atlas-stage-height: clamp(165px, 50vw, 230px);
-    --landing-proof-product-media-height: clamp(245px, 74vw, 330px);
-    --landing-proof-product-phone-width: clamp(104px, 33vw, 124px);
-  }
-
-  .landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe .traceability-globe__header {
-    padding: 11px 12px 0 !important;
-  }
-
-  .landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe .traceability-globe__routebar {
-    padding: 8px 10px !important;
-  }
-
-  .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-passport-body dl {
-    display: none !important;
-  }
-
-  .landing-hero-section
-    .hero-scene--product-proof
-    .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe)
-    .hero-object-product-pane--product-proof
-    .hero-asset-media {
-    grid-template-columns: minmax(0, 1fr) !important;
-  }
-
-  .landing-hero-section
-    .hero-scene--product-proof
-    .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe)
-    .hero-object-product-pane--product-proof
-    .hero-passport-phone {
-    display: none !important;
-  }
-}
-
 .demo-lab-premium-globe,
 .demo-lab-tech-map .traceability-globe {
-  min-height: clamp(28rem, 42vw, 36rem) !important;
+  min-height: clamp(400px, 32vw, 510px) !important;
 }
 
 .demo-lab-premium-globe .traceability-globe__stage,
 .demo-lab-tech-map .traceability-globe__stage {
-  min-height: clamp(18rem, 30vw, 24rem) !important;
+  min-height: clamp(245px, 21vw, 325px) !important;
 }
 
 .demo-lab-product-stage {
@@ -29307,32 +29202,6 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
   max-height: 100% !important;
 }
 
-@media (max-width: 1024px) {
-  .demo-lab-product-stage {
-    height: clamp(21rem, 54vw, 26rem) !important;
-    max-height: 26rem !important;
-    aspect-ratio: 4 / 3 !important;
-  }
-}
-
-@media (max-width: 640px) {
-  .demo-lab-premium-globe,
-  .demo-lab-tech-map .traceability-globe {
-    min-height: clamp(27rem, 118vw, 33rem) !important;
-  }
-
-  .demo-lab-premium-globe .traceability-globe__stage,
-  .demo-lab-tech-map .traceability-globe__stage {
-    min-height: clamp(18rem, 82vw, 23rem) !important;
-  }
-
-  .demo-lab-product-stage {
-    height: clamp(20.5rem, 82vw, 24rem) !important;
-    max-height: 24rem !important;
-    aspect-ratio: 1 / 1.08 !important;
-  }
-}
-
 .sdk-premium-hero {
   min-height: min(700px, calc(100vh - 70px)) !important;
 }
@@ -29345,7 +29214,61 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
   min-height: clamp(20rem, 28vw, 24rem) !important;
 }
 
-@media (max-width: 1100px) {
+@media (min-width: 1024px) {
+  .landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
+  .landing-hero-section .hero-scene--product-proof > .hero-scene-proof-grid.hero-scene-proof-grid:has(.hero-object-frame--product-proof) {
+    grid-template-columns: minmax(0, 1.45fr) minmax(330px, 0.7fr) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(255px, 0.78fr) minmax(330px, 1fr) !important;
+  }
+}
+
+@media (min-width: 1500px) {
+  .landing-hero-section > .container-shell > .hero-demo-shell {
+    width: min(1440px, calc(100vw - clamp(48px, 8vw, 150px))) !important;
+    max-width: min(1440px, calc(100vw - clamp(48px, 8vw, 150px))) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
+  .landing-hero-section .hero-scene--product-proof > .hero-scene-proof-grid.hero-scene-proof-grid:has(.hero-object-frame--product-proof) {
+    grid-template-columns: minmax(0, 1.35fr) minmax(420px, 0.78fr) !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(275px, 0.74fr) minmax(390px, 1fr) !important;
+  }
+}
+
+@media (min-width: 1900px) {
+  .landing-hero-section .hero-scene--product-proof {
+    --landing-proof-atlas-height: clamp(290px, 14vw, 350px);
+    --landing-proof-atlas-stage-height: clamp(200px, 10vw, 250px);
+    --landing-proof-product-media-height: clamp(265px, 12vw, 310px);
+  }
+}
+
+@media (max-width: 1179px) {
+  .landing-hero-section .hero-scene--product-proof {
+    --landing-proof-atlas-height: clamp(255px, 42vw, 335px);
+    --landing-proof-atlas-stage-height: clamp(178px, 30vw, 250px);
+    --landing-proof-product-media-height: clamp(250px, 46vw, 340px);
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .demo-lab-product-stage {
+    height: clamp(21rem, 54vw, 26rem) !important;
+    max-height: 26rem !important;
+    aspect-ratio: 4 / 3 !important;
+  }
+
   .sdk-premium-hero {
     min-height: 0 !important;
   }
@@ -29355,151 +29278,19 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
   }
 }
 
-@media (max-width: 760px) {
-  .sdk-global-hero-globe {
-    min-height: clamp(35rem, 146vw, 43rem) !important;
-  }
-
-  .sdk-global-hero-globe .traceability-globe__stage {
-    min-height: clamp(23rem, 88vw, 29rem) !important;
-  }
-}
-
-/* Mies / Atlas responsive authority.
-   Keep the atlas supportive and bounded; the physical product remains the main visual signal. */
-.landing-hero-section .hero-scene--product-proof,
-.demo-lab-shell {
-  max-width: 100%;
-  overflow-x: clip;
-}
-
-.landing-hero-section .hero-scene--product-proof {
-  --landing-proof-atlas-height: clamp(265px, 15vw, 320px);
-  --landing-proof-atlas-stage-height: clamp(175px, 10vw, 225px);
-  --landing-proof-product-media-height: clamp(245px, 15vw, 305px);
-  --landing-proof-product-phone-width: clamp(108px, 5.8vw, 128px);
-}
-
-.landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
-.landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
-  min-width: 0 !important;
-  overflow: hidden !important;
-}
-
-.landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe {
-  height: var(--landing-proof-atlas-height) !important;
-  min-height: var(--landing-proof-atlas-height) !important;
-  max-height: var(--landing-proof-atlas-height) !important;
-}
-
-.landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe > .hero-traceability-globe {
-  height: 100% !important;
-  min-height: 0 !important;
-  grid-template-rows: auto minmax(0, 1fr) auto !important;
-}
-
-.landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe .traceability-globe__header {
-  padding: 11px 12px 0 !important;
-}
-
-.landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe .traceability-globe__header h2 {
-  font-size: clamp(0.86rem, 0.9vw, 1rem) !important;
-}
-
-.landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe .traceability-globe__header span,
-.landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe .traceability-globe__kpis,
-.landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe .traceability-globe__floating,
-.landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe .traceability-globe__footer {
-  display: none !important;
-}
-
-.landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe .traceability-globe__stage {
-  height: var(--landing-proof-atlas-stage-height) !important;
-  min-height: var(--landing-proof-atlas-stage-height) !important;
-  max-height: var(--landing-proof-atlas-stage-height) !important;
-  margin: 6px 8px 8px !important;
-}
-
-.landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe .traceability-globe__routebar {
-  left: 10px !important;
-  right: 10px !important;
-  bottom: 10px !important;
-  max-width: calc(100% - 20px) !important;
-  padding: 8px 10px !important;
-}
-
-.landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe [data-globe-mode],
-.landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe .scene-container,
-.landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe canvas {
-  height: 100% !important;
-  max-width: 100% !important;
-  max-height: 100% !important;
-}
-
-.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-media {
-  grid-template-columns: minmax(0, 1fr) var(--landing-proof-product-phone-width) !important;
-  height: var(--landing-proof-product-media-height) !important;
-  min-height: var(--landing-proof-product-media-height) !important;
-  max-height: var(--landing-proof-product-media-height) !important;
-  aspect-ratio: auto !important;
-}
-
-.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-passport-phone {
-  width: var(--landing-proof-product-phone-width) !important;
-  min-width: 0 !important;
-}
-
-.demo-lab-premium-globe,
-.demo-lab-tech-map .traceability-globe {
-  min-height: clamp(400px, 32vw, 510px) !important;
-}
-
-.demo-lab-premium-globe .traceability-globe__stage,
-.demo-lab-tech-map .traceability-globe__stage {
-  min-height: clamp(245px, 21vw, 325px) !important;
-}
-
-@media (min-width: 1180px) {
-  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
-  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
-    grid-template-columns: minmax(240px, 0.72fr) minmax(360px, 1fr) !important;
-    gap: clamp(10px, 0.85vw, 14px) !important;
-  }
-}
-
-@media (min-width: 1500px) {
-  .landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
-  .landing-hero-section .hero-scene--product-proof > .hero-scene-proof-grid.hero-scene-proof-grid:has(.hero-object-frame--product-proof) {
-    grid-template-columns: minmax(0, 1.06fr) minmax(440px, 0.84fr) !important;
-  }
-}
-
-@media (min-width: 1900px) {
-  .landing-hero-section .hero-scene--product-proof {
-    --landing-proof-atlas-height: clamp(255px, 12.5vw, 305px);
-    --landing-proof-atlas-stage-height: clamp(168px, 8.7vw, 212px);
-    --landing-proof-product-media-height: clamp(245px, 11.5vw, 292px);
-  }
-}
-
-@media (max-width: 1179px) {
-  .landing-hero-section .hero-scene--product-proof {
-    --landing-proof-atlas-height: clamp(245px, 39vw, 320px);
-    --landing-proof-atlas-stage-height: clamp(170px, 28vw, 230px);
-    --landing-proof-product-media-height: clamp(245px, 45vw, 325px);
-  }
-
-  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
-  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
-    grid-template-columns: minmax(0, 1fr) !important;
-  }
-}
-
 @media (max-width: 680px) {
   .landing-hero-section .hero-scene--product-proof {
-    --landing-proof-atlas-height: clamp(225px, 66vw, 300px);
-    --landing-proof-atlas-stage-height: clamp(155px, 46vw, 212px);
+    --landing-proof-atlas-height: clamp(230px, 67vw, 300px);
+    --landing-proof-atlas-stage-height: clamp(148px, 42vw, 196px);
     --landing-proof-product-media-height: clamp(235px, 72vw, 310px);
+  }
+
+  .landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe .traceability-globe__routebar {
+    left: 14px !important;
+    right: 14px !important;
+    bottom: 14px !important;
+    max-width: calc(100% - 28px) !important;
+    padding: 8px 10px !important;
   }
 
   .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-media {
@@ -29519,59 +29310,18 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
   .demo-lab-tech-map .traceability-globe__stage {
     min-height: clamp(230px, 70vw, 305px) !important;
   }
-}
 
-/* Landing hero final authority: the product proof card must stay visible at
-   desktop zoom/scaling, with the atlas acting as context instead of taking over. */
-.landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
-.landing-hero-section .hero-scene--product-proof > .hero-scene-proof-grid.hero-scene-proof-grid:has(.hero-object-frame--product-proof) {
-  grid-template-columns: minmax(0, 1fr) !important;
-  align-items: start !important;
-}
-
-.landing-hero-section .hero-scene--product-proof .hero-scene-stage-card--product-proof,
-.landing-hero-section .hero-scene--product-proof .hero-scene-result-card--product-proof,
-.landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof,
-.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof {
-  min-width: 0 !important;
-}
-
-@media (min-width: 1180px) {
-  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
-  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
-    grid-template-columns: minmax(260px, 0.82fr) minmax(390px, 1.05fr) !important;
-    gap: clamp(12px, 0.9vw, 16px) !important;
-  }
-}
-
-@media (min-width: 1180px) and (max-width: 1459px) {
-  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
-  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
-    grid-template-columns: minmax(0, 1fr) !important;
+  .demo-lab-product-stage {
+    height: clamp(20.5rem, 82vw, 24rem) !important;
+    max-height: 24rem !important;
+    aspect-ratio: 1 / 1.08 !important;
   }
 
-  .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-media {
-    grid-template-columns: minmax(0, 1fr) minmax(96px, 120px) !important;
-  }
-}
-
-@media (min-width: 1460px) and (max-width: 1699px) {
-  .landing-hero-section .hero-scene--product-proof .hero-scene-result-card--product-proof {
-    display: grid !important;
-    grid-template-columns: minmax(220px, 0.62fr) minmax(0, 1fr) !important;
-    gap: 12px !important;
+  .sdk-global-hero-globe {
+    min-height: clamp(35rem, 146vw, 43rem) !important;
   }
 
-  .landing-hero-section .hero-scene--product-proof .hero-scene-result-card--product-proof > p,
-  .landing-hero-section .hero-scene--product-proof .hero-scene-result-card--product-proof .hero-passport-summary,
-  .landing-hero-section .hero-scene--product-proof .hero-scene-result-card--product-proof .hero-result-explain {
-    grid-column: 1 / -1 !important;
-  }
-}
-
-@media (min-width: 1700px) {
-  .landing-hero-section .hero-scene--product-proof .hero-scene-proof-grid,
-  .landing-hero-section .hero-scene--product-proof > .hero-scene-proof-grid.hero-scene-proof-grid:has(.hero-object-frame--product-proof) {
-    grid-template-columns: minmax(720px, 1fr) minmax(430px, 0.72fr) !important;
+  .sdk-global-hero-globe .traceability-globe__stage {
+    min-height: clamp(23rem, 88vw, 29rem) !important;
   }
 }
