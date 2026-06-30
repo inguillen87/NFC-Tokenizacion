@@ -5,10 +5,10 @@ import { useEffect, useMemo, useState, useRef, type CSSProperties } from "react"
 import { DEMO_TENANT_SLUG } from "@product/config";
 import type { AppLocale } from "@product/config";
 import { ArrowLeft, BadgeCheck, CalendarDays, CheckCircle2, ChevronRight, Fingerprint, MapPin, PackageCheck, ShieldCheck, UserRound, AlertTriangle, ShoppingCart, RefreshCw, Check, Cpu, Network, QrCode, RadioTower } from "lucide-react";
-import { PremiumTraceabilityGlobe } from "../../components/premium-traceability-globe";
+import { HeroTrustAtlasSvg } from "../../components/hero-scene";
 import { platformVerticals } from "../../lib/platform-verticals";
 import { ThreeDProduct } from "../investor-snapshot/investor-snapshot-client";
-import { Globe3dMap } from "@product/ui";
+import { Globe3dMap, type VectorMapPoint, type VectorMapRoute } from "@product/ui";
 
 type Role = "ceo" | "operator" | "buyer";
 type Beat = 0 | 1 | 2 | 3;
@@ -47,7 +47,6 @@ type DemoScenario = {
 type DemoRealProductVariant = "studio" | "cinematic" | "stage";
 
 const DEMO_VERTICAL_ORDER: Vertical[] = platformVerticals.map((item) => item.demoVertical as Vertical);
-const demoLabPanelMapSize = { width: 560, height: 330 };
 
 const DEMO_VERTICAL_ALIASES: Record<string, Vertical> = {
   wine: "wine",
@@ -486,6 +485,29 @@ function formatEventResult(value?: string | null) {
   return "EVENTO REGISTRADO";
 }
 
+function demoAtlasPointId(point: DemoMapPoint, index: number) {
+  if (index === 0) return "origin";
+  if (index === 1) return "tap";
+  const slug = `${point.city}-${point.country || ""}`.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return `tap-${index}-${slug || "point"}`;
+}
+
+function toDemoAtlasPoints(points: DemoMapPoint[], controls: Pick<DemoCopy["controls"], "origin" | "currentTap">): VectorMapPoint[] {
+  return points.map((point, index) => ({
+    id: demoAtlasPointId(point, index),
+    label: point.city,
+    sublabel: point.country || point.status || "",
+    lat: point.lat,
+    lng: point.lng,
+    scans: point.scans,
+    risk: point.risk,
+    tone: index === 0 ? "origin" : point.risk ? "risk" : "tap",
+    stageLabel: index === 0 ? controls.origin : controls.currentTap,
+    evidence: point.status || point.lastSeen,
+    lastSeen: point.lastSeen,
+  }));
+}
+
 function getScenarioState(txt: DemoCopy, beat: Beat, routeKm: number, locale: AppLocale): DemoScenario {
   const distance = `${routeKm.toLocaleString(locale)} km`;
   if (beat === 0) {
@@ -712,6 +734,19 @@ export function DemoLabClient({ locale, initialVertical, initialScenario }: { lo
     if (livePoints.length) return [originPoint, ...livePoints.slice(0, 18)];
     return [originPoint, { city: destination.city, country: destination.country, lat: destination.lat, lng: destination.lng, scans: 1, risk: activeBeat.mode === "replay" ? 1 : 0, status: activeBeat.status, lastSeen: fallbackLastSeen, vertical }];
   }, [activeBeat.mode, activeBeat.status, destination, fallbackLastSeen, livePoints, vertical]);
+
+  const atlasPoints = useMemo(() => toDemoAtlasPoints(mapPoints, txt.controls), [mapPoints, txt.controls]);
+  const atlasRoutes = useMemo<VectorMapRoute[]>(() => [{
+    id: `route-origin-${destination.city.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+    fromLat: LOCATIONS.origin.lat,
+    fromLng: LOCATIONS.origin.lng,
+    toLat: destination.lat,
+    toLng: destination.lng,
+    label: `${LOCATIONS.origin.city} -> ${destination.city}`,
+    tone: activeBeat.mode === "replay" ? "warn" : "info",
+    distanceLabel: `${routeKm.toLocaleString(locale)} km`,
+    evidence: scenario.stateLabel,
+  }], [activeBeat.mode, destination.city, destination.lat, destination.lng, locale, routeKm, scenario.stateLabel]);
 
   async function refreshSummary() {
     try {
@@ -977,21 +1012,10 @@ export function DemoLabClient({ locale, initialVertical, initialScenario }: { lo
                 <h3 className="text-sm font-black uppercase tracking-wider text-cyan-300">Mapa Operativo del Escaneo</h3>
                 <p className="text-xs text-slate-400">{LOCATIONS.origin.city} &rarr; {destination.city}</p>
               </div>
-              <span className="text-xs font-bold text-slate-300 bg-white/5 px-3 py-1 rounded-full">{routeKm.toLocaleString(locale)} km</span>
+              <a href={mapsLink(destination)} target="_blank" rel="noreferrer" className="text-xs font-bold text-slate-300 bg-white/5 px-3 py-1 rounded-full hover:text-white">{routeKm.toLocaleString(locale)} km</a>
             </div>
-            <div className="mt-4">
-              <PremiumTraceabilityGlobe
-                title={txt.controls.mapTitle}
-                subtitle={`${LOCATIONS.origin.city} -> ${destination.city}. ${txt.controls.distance}: ${routeKm.toLocaleString(locale)} km.`}
-                points={mapPoints}
-                routes={[{ fromLat: LOCATIONS.origin.lat, fromLng: LOCATIONS.origin.lng, toLat: destination.lat, toLng: destination.lng, tone: activeBeat.mode === "replay" ? "warn" : "info" }]}
-                caption="Vista ejecutiva: origen, destino, distancia, estado y señales de riesgo. Las coordenadas finas se conservan en el evento y el CRM."
-                ctaHref={mapsLink(destination)}
-                ctaLabel="Abrir ubicación"
-                variant="panel"
-                mapSize={demoLabPanelMapSize}
-                className="demo-lab-premium-globe"
-              />
+            <div className="demo-lab-atlas-panel mt-4">
+              <HeroTrustAtlasSvg points={atlasPoints} routes={atlasRoutes} selectedPointId="tap" />
             </div>
           </div>
         </>
@@ -3437,18 +3461,23 @@ function DemoCrmDashboard({
   const recentOrders = summary?.recentOrders || [];
   const liveEvents = summary?.events || [];
 
-  const routes = useMemo(() => {
-    return liveEvents
-      .filter((e) => e.lat != null && e.lng != null)
-      .map((e) => ({
-        fromLat: -33.6131, // Origin: Valle de Uco
-        fromLng: -69.2075,
-        toLat: e.lat!,
-        toLng: e.lng!,
-        tone: e.result === "REPLAY_FAIL" || e.result === "SUSPICIOUS" ? ("warn" as const) : ("info" as const)
-      }))
-      .slice(0, 10);
-  }, [liveEvents]);
+  const atlasPoints = useMemo(() => toDemoAtlasPoints(mapPoints, txt.controls), [mapPoints, txt.controls]);
+  const routes = useMemo<VectorMapRoute[]>(() => liveEvents
+    .filter((event) => event.lat != null && event.lng != null)
+    .map((event, index) => {
+      const tone: VectorMapRoute["tone"] = event.result === "REPLAY_FAIL" || event.result === "SUSPICIOUS" ? "warn" : "info";
+      return {
+        id: `crm-route-${event.id || event.created_at || index}`,
+        fromLat: LOCATIONS.origin.lat,
+        fromLng: LOCATIONS.origin.lng,
+        toLat: event.lat!,
+        toLng: event.lng!,
+        label: `${LOCATIONS.origin.city} -> ${event.city || "scan"}`,
+        tone,
+        evidence: formatEventResult(event.result),
+      };
+    })
+    .slice(0, 10), [liveEvents]);
 
   const formatTime = (isoString: string) => {
     try {
@@ -3550,17 +3579,8 @@ function DemoCrmDashboard({
             </div>
           </div>
           
-          <div className="mt-4 overflow-hidden rounded-2xl border border-white/5 bg-black/30 flex justify-center w-full">
-            <PremiumTraceabilityGlobe
-              title="Live Scan Activity"
-              subtitle="Rastreo global de lecturas de seguridad y accesos"
-              points={mapPoints}
-              routes={routes}
-              caption="Los toques sospechosos (alertas de copia) se proyectan en color naranja/rojo."
-              variant="panel"
-              mapSize={demoLabPanelMapSize}
-              className="demo-lab-premium-globe demo-lab-premium-globe--live"
-            />
+          <div className="demo-lab-atlas-panel demo-lab-atlas-panel--live mt-4">
+            <HeroTrustAtlasSvg points={atlasPoints} routes={routes} selectedPointId="tap" />
           </div>
         </div>
 

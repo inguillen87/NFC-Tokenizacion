@@ -34,9 +34,9 @@ import {
   Settings
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Button } from "@product/ui";
-import { PremiumTraceabilityGlobe } from "../../components/premium-traceability-globe";
-import { platformVerticals, traceabilityGlobePoints, traceabilityGlobeRoutes } from "../../lib/platform-verticals";
+import { Button, type VectorMapPoint, type VectorMapRoute } from "@product/ui";
+import { HeroTrustAtlasSvg } from "../../components/hero-scene";
+import { platformVerticals } from "../../lib/platform-verticals";
 
 // Multi-market FAQs object
 const faqCategories = [
@@ -233,6 +233,19 @@ const slides = [
   }
 ];
 
+const investorAtlasPoints: VectorMapPoint[] = [
+  { id: "origin", label: "LATAM", sublabel: "Piloto comercial", lat: -34.6037, lng: -58.3816, scans: 1, risk: 0, tone: "origin", stageLabel: "Entrada", evidence: "QR/NFC segun caso" },
+  { id: "custody-miami", label: "Miami", sublabel: "Canal export", lat: 25.7617, lng: -80.1918, scans: 1, risk: 0, tone: "hub", stageLabel: "Canal", evidence: "Retail / distribucion" },
+  { id: "custody-madrid", label: "Madrid", sublabel: "DPP / compliance", lat: 40.4168, lng: -3.7038, scans: 1, risk: 0, tone: "hub", stageLabel: "Europa", evidence: "Passport opcional" },
+  { id: "tap", label: "Zurich", sublabel: "Producto premium", lat: 47.3769, lng: 8.5417, scans: 1, risk: 0, tone: "tap", stageLabel: "Tap final", evidence: "Claim controlado" },
+];
+
+const investorAtlasRoutes: VectorMapRoute[] = [
+  { id: "investor-route-latam-miami", fromLat: -34.6037, fromLng: -58.3816, toLat: 25.7617, toLng: -80.1918, label: "LATAM -> Miami", tone: "info", evidence: "Expansion demo" },
+  { id: "investor-route-miami-madrid", fromLat: 25.7617, fromLng: -80.1918, toLat: 40.4168, toLng: -3.7038, label: "Miami -> Madrid", tone: "info", evidence: "DPP / SDK" },
+  { id: "investor-route-madrid-zurich", fromLat: 40.4168, fromLng: -3.7038, toLat: 47.3769, toLng: 8.5417, label: "Madrid -> Zurich", tone: "success", evidence: "Tap fisico" },
+];
+
 function InvestorVerticalMoat() {
   return (
     <section className="grid gap-5 rounded-3xl border border-cyan-300/15 bg-slate-950/72 p-5 shadow-2xl backdrop-blur-md xl:grid-cols-[0.95fr_1.05fr]">
@@ -264,16 +277,9 @@ function InvestorVerticalMoat() {
         </div>
       </div>
       <div className="investor-proof-atlas">
-        <PremiumTraceabilityGlobe
-          title="Trazabilidad global por industria"
-          subtitle="Una vista para explicar origen, destino, riesgo y canales a inversores sin abrumarlos."
-          caption="SDK abierto, datos propios y carrier mix: QR, NFC, 424 TT, UHF y sensores."
-          points={traceabilityGlobePoints}
-          routes={traceabilityGlobeRoutes}
-          ctaHref="/sdk"
-          ctaLabel="Ver SDK"
-          compact
-        />
+        <div className="investor-proof-atlas-map" aria-label="Atlas de trazabilidad para inversores">
+          <HeroTrustAtlasSvg points={investorAtlasPoints} routes={investorAtlasRoutes} selectedPointId="tap" />
+        </div>
         <div className="investor-proof-live-card">
           <span>Salida celular</span>
           <strong>Producto, atlas y claim en un solo tap</strong>

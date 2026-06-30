@@ -24,9 +24,9 @@ import {
   Footprints,
   GlassWater,
 } from "lucide-react";
-import { BrandLockup, Button, Card } from "@product/ui";
-import { PremiumTraceabilityGlobe } from "../../components/premium-traceability-globe";
-import { platformTrustedBy, platformVerticals, traceabilityGlobePoints, traceabilityGlobeRoutes, type PlatformIconKey } from "../../lib/platform-verticals";
+import { BrandLockup, Button, Card, type VectorMapPoint, type VectorMapRoute } from "@product/ui";
+import { HeroTrustAtlasSvg } from "../../components/hero-scene";
+import { platformTrustedBy, platformVerticals, type PlatformIconKey } from "../../lib/platform-verticals";
 
 export const metadata: Metadata = {
   title: "SDK y APIs - nexID",
@@ -146,21 +146,31 @@ function SdkTopNav() {
   );
 }
 
+const sdkAtlasPoints: VectorMapPoint[] = [
+  { id: "origin", label: "Mendoza", sublabel: "Origen demo", lat: -32.8895, lng: -68.8458, scans: 1, risk: 0, tone: "origin", stageLabel: "Origen", evidence: "Lote demo" },
+  { id: "custody-miami", label: "Miami", sublabel: "Canal retail", lat: 25.7617, lng: -80.1918, scans: 1, risk: 0, tone: "hub", stageLabel: "Custodia", evidence: "Distribucion demo" },
+  { id: "custody-madrid", label: "Madrid", sublabel: "DPP / SDK", lat: 40.4168, lng: -3.7038, scans: 1, risk: 0, tone: "hub", stageLabel: "Integracion", evidence: "API + GS1" },
+  { id: "tap", label: "Zurich", sublabel: "Tap consumidor", lat: 47.3769, lng: 8.5417, scans: 1, risk: 0, tone: "tap", stageLabel: "Tap final", evidence: "VALID_AUTHENTIC" },
+];
+
+const sdkAtlasRoutes: VectorMapRoute[] = [
+  { id: "sdk-route-origin-miami", fromLat: -32.8895, fromLng: -68.8458, toLat: 25.7617, toLng: -80.1918, label: "Mendoza -> Miami", tone: "info", evidence: "Custodia demo" },
+  { id: "sdk-route-miami-madrid", fromLat: 25.7617, fromLng: -80.1918, toLat: 40.4168, toLng: -3.7038, label: "Miami -> Madrid", tone: "info", evidence: "SDK / DPP" },
+  { id: "sdk-route-madrid-zurich", fromLat: 40.4168, fromLng: -3.7038, toLat: 47.3769, toLng: 8.5417, label: "Madrid -> Zurich", tone: "success", evidence: "Tap fisico demo" },
+];
+
 function SdkGlobalHeroScene() {
   const wine = platformVerticals.find((item) => item.demoVertical === "wine") || platformVerticals[0];
 
   return (
     <div className="sdk-proof-hero-system">
-      <PremiumTraceabilityGlobe
-        title="Infraestructura viva para productos reales"
-        subtitle="Taps, rutas, origen, riesgo y canales QR/NFC/UHF conectados al CRM y al SDK."
-        caption="Una capa visual y operativa para mostrarle a cualquier empresa que nexID no es solo vino: es identidad física verificable."
-        points={traceabilityGlobePoints}
-        routes={traceabilityGlobeRoutes}
-        ctaHref="/demo-lab?vertical=wine"
-        ctaLabel="Abrir Demo Lab"
-        className="sdk-global-hero-globe"
-      />
+      <div className="sdk-global-hero-globe sdk-global-hero-atlas" aria-label="Atlas SDK nexID">
+        <HeroTrustAtlasSvg points={sdkAtlasPoints} routes={sdkAtlasRoutes} selectedPointId="tap" />
+        <div className="sdk-global-hero-atlas__caption">
+          <span>Infraestructura viva</span>
+          <strong>QR, NFC, UHF, GS1 y CRM en una ruta operativa.</strong>
+        </div>
+      </div>
       <div className="sdk-proof-live-card">
         <div className="sdk-proof-product-shot">
           <img src={wine.image} alt={`${wine.title} con nexID`} />

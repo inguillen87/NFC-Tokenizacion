@@ -31281,7 +31281,7 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
 }
 
 .hero-trust-atlas__region {
-  fill: url(#hero-atlas-land);
+  fill: var(--hero-atlas-land-fill, url(#hero-atlas-land));
   stroke: rgba(103, 232, 249, 0.24);
   stroke-width: 1.15;
   vector-effect: non-scaling-stroke;
@@ -31337,20 +31337,20 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
 }
 
 .hero-trust-atlas__route--info {
-  stroke: url(#hero-atlas-route-info);
+  stroke: var(--hero-atlas-route-stroke, url(#hero-atlas-route-info));
 }
 
 .hero-trust-atlas__route--success {
-  stroke: url(#hero-atlas-route-success);
+  stroke: var(--hero-atlas-route-stroke, url(#hero-atlas-route-success));
   stroke-width: 4;
 }
 
 .hero-trust-atlas__route--warn {
-  stroke: #f59e0b;
+  stroke: var(--hero-atlas-route-stroke, #f59e0b);
 }
 
 .hero-trust-atlas__comet {
-  fill: url(#hero-atlas-node-glow);
+  fill: var(--hero-atlas-node-glow, url(#hero-atlas-node-glow));
   opacity: 0.9;
 }
 
@@ -32194,5 +32194,248 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
     right: auto !important;
     bottom: auto !important;
     margin: 0.58rem clamp(0.9rem, 1.5vw, 1.2rem) 0 !important;
+  }
+}
+
+/* Final enterprise atlas reset: real world map, readable cities, no oversized map panels. */
+.landing-hero-section #trace-signal-atlas.hero-live-route-card {
+  background:
+    radial-gradient(circle at 22% 18%, rgba(34, 211, 238, 0.16), transparent 30%),
+    radial-gradient(circle at 74% 54%, rgba(52, 211, 153, 0.1), transparent 34%),
+    linear-gradient(145deg, rgba(2, 18, 32, 0.98), rgba(2, 8, 23, 0.99)) !important;
+}
+
+.landing-hero-section .hero-route-vector-atlas {
+  inset: 4.05rem 0 0 !important;
+}
+
+.landing-hero-section .hero-route-vector-atlas > .hero-trust-atlas {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.landing-hero-section .hero-map-intel--atlas {
+  display: none !important;
+}
+
+.hero-trust-atlas__parallels path {
+  stroke: rgba(125, 211, 252, 0.11) !important;
+  stroke-width: 1 !important;
+}
+
+.hero-trust-atlas__region {
+  filter: drop-shadow(0 0 10px rgba(34, 211, 238, 0.1));
+}
+
+.hero-trust-atlas__coastline {
+  opacity: 0.78;
+}
+
+.hero-trust-atlas__route-halo {
+  stroke: rgba(1, 7, 18, 0.72) !important;
+  stroke-width: 12 !important;
+}
+
+.hero-trust-atlas__route {
+  stroke-width: 3.4 !important;
+  stroke-dasharray: 16 20 !important;
+}
+
+.hero-trust-atlas__route--info {
+  stroke: var(--hero-atlas-route-stroke, url(#hero-atlas-route-info)) !important;
+}
+
+.hero-trust-atlas__route--success {
+  stroke: var(--hero-atlas-route-stroke, url(#hero-atlas-route-success)) !important;
+  stroke-width: 4.2 !important;
+}
+
+.hero-trust-atlas__label-callout {
+  pointer-events: none;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.5));
+}
+
+.hero-trust-atlas__label-eyebrow {
+  fill: rgb(103, 232, 249);
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 1.7px;
+  text-transform: uppercase;
+}
+
+.hero-trust-atlas__label-main {
+  fill: rgb(248, 250, 252);
+  font-size: 17px;
+  font-weight: 950;
+}
+
+.hero-trust-atlas__label-sub {
+  fill: rgb(186, 230, 253);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.hero-trust-atlas__label-callout--origin .hero-trust-atlas__label-eyebrow,
+.hero-trust-atlas__label-callout--origin .hero-trust-atlas__label-sub {
+  fill: rgb(134, 239, 172);
+}
+
+.hero-trust-atlas__label-callout--tap .hero-trust-atlas__label-eyebrow,
+.hero-trust-atlas__label-callout--tap .hero-trust-atlas__label-sub {
+  fill: rgb(253, 224, 71);
+}
+
+.hero-trust-atlas__legend {
+  opacity: 0.82;
+}
+
+.landing-hero-section .hero-custody-timeline {
+  bottom: 3.95rem !important;
+  padding: clamp(0.62rem, 0.9vw, 0.82rem) !important;
+}
+
+.landing-hero-section .hero-custody-timeline__head {
+  margin-bottom: 0.52rem !important;
+}
+
+.landing-hero-section .hero-custody-timeline article span,
+.landing-hero-section .hero-custody-timeline article em,
+.landing-hero-section .hero-custody-timeline article small {
+  font-size: 0.68rem !important;
+}
+
+.landing-hero-section .hero-custody-timeline article strong {
+  font-size: 0.78rem !important;
+}
+
+.landing-hero-section .hero-atlas-status-row {
+  padding: 0.58rem 0.74rem !important;
+}
+
+@media (max-width: 900px) {
+  .landing-hero-section .hero-route-vector-atlas {
+    inset: auto !important;
+  }
+
+  .hero-trust-atlas__label-main {
+    font-size: 15px;
+  }
+
+  .hero-trust-atlas__label-sub {
+    font-size: 11px;
+  }
+}
+
+/* Final polish: keep the atlas clean on constrained viewports. */
+.landing-hero-section .hero-trust-atlas__legend {
+  display: none !important;
+}
+
+@media (max-width: 640px) {
+  .landing-hero-section #trace-signal-atlas.hero-live-route-card {
+    min-height: clamp(13rem, 54vw, 15rem) !important;
+  }
+
+  .landing-hero-section .hero-route-vector-atlas {
+    inset: 3.7rem 0.2rem 3.55rem !important;
+    min-height: clamp(10.75rem, 47vw, 13rem) !important;
+  }
+
+  .landing-hero-section .hero-trust-atlas__label-eyebrow {
+    font-size: 8px;
+  }
+
+  .landing-hero-section .hero-trust-atlas__label-main {
+    font-size: 13px;
+  }
+
+  .landing-hero-section .hero-trust-atlas__label-sub {
+    font-size: 9px;
+  }
+}
+
+/* Shared enterprise atlas wrappers for SDK, DemoLab and investor views. */
+.sdk-global-hero-atlas,
+.investor-proof-atlas-map,
+.demo-lab-atlas-panel {
+  position: relative !important;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(103, 232, 249, 0.16);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(34, 211, 238, 0.16), transparent 32%),
+    linear-gradient(145deg, rgba(2, 18, 32, 0.98), rgba(2, 8, 23, 0.99));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.035), 0 24px 78px rgba(0, 0, 0, 0.35);
+}
+
+.sdk-global-hero-atlas {
+  min-height: clamp(31rem, 46vw, 39rem) !important;
+}
+
+.investor-proof-atlas-map {
+  min-height: clamp(28rem, 38vw, 34rem);
+}
+
+.demo-lab-atlas-panel {
+  min-height: clamp(20rem, 34vw, 24rem);
+}
+
+.demo-lab-atlas-panel--live {
+  min-height: clamp(21rem, 36vw, 25rem);
+}
+
+.sdk-global-hero-atlas > .hero-trust-atlas,
+.investor-proof-atlas-map > .hero-trust-atlas,
+.demo-lab-atlas-panel > .hero-trust-atlas {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.sdk-global-hero-atlas__caption {
+  position: absolute;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 4;
+  max-width: min(24rem, calc(100% - 2rem));
+  border: 1px solid rgba(125, 211, 252, 0.22);
+  border-radius: 12px;
+  background: rgba(2, 8, 23, 0.78);
+  padding: 0.78rem 0.9rem;
+  backdrop-filter: blur(14px);
+}
+
+.sdk-global-hero-atlas__caption span {
+  display: block;
+  color: rgb(103, 232, 249);
+  font-size: 0.62rem;
+  font-weight: 950;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.sdk-global-hero-atlas__caption strong {
+  display: block;
+  margin-top: 0.32rem;
+  color: rgb(248, 250, 252);
+  font-size: 0.9rem;
+  line-height: 1.32;
+}
+
+@media (max-width: 760px) {
+  .sdk-global-hero-atlas,
+  .investor-proof-atlas-map,
+  .demo-lab-atlas-panel,
+  .demo-lab-atlas-panel--live {
+    min-height: clamp(18rem, 72vw, 24rem) !important;
+  }
+
+  .sdk-global-hero-atlas__caption {
+    right: 0.75rem;
+    bottom: 0.75rem;
   }
 }
