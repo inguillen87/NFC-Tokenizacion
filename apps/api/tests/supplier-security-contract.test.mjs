@@ -55,6 +55,32 @@ test("supplier order creation writes lifecycle records without returning raw bat
   assert.doesNotMatch(successResponse, /kFileHex/);
 });
 
+test("supplier key rotation is gated pre-export and never returns raw batch keys", () => {
+  const source = readWorkspaceFile("apps/api/src/app/admin/supplier-orders/[orderId]/sub-batches/[bid]/keys/rotate/route.ts");
+  const client = readWorkspaceFile("packages/api-client/src/index.ts");
+
+  assert.match(source, /supplier_key_rotation_forbidden/);
+  assert.match(source, /security_operator/);
+  assert.match(source, /supplier:key_rotate/);
+  assert.match(source, /canRotateSupplierSubBatchKeys/);
+  assert.match(source, /ssb\.key_export_count = 0/);
+  assert.match(source, /bk\.export_count = 0/);
+  assert.match(source, /ssb\.manifest_status <> 'imported'/);
+  assert.match(source, /ssb\.manifest_count = 0/);
+  assert.match(source, /ssb\.qa_status <> 'passed'/);
+  assert.match(source, /b\.status NOT IN \('active', 'active_in_market'\)/);
+  assert.match(source, /buildBatchKeyLifecycleRecords/);
+  assert.match(source, /status = 'rotated'/);
+  assert.match(source, /rotated_from_key_id/);
+  assert.match(source, /batch_keys_rotated/);
+  assert.match(source, /batch_key_rotation_report/);
+  assert.doesNotMatch(source, /decryptBatchKeyHex|decryptKey16/);
+  const successResponse = source.slice(source.indexOf("return json({\n    ok: true"));
+  assert.doesNotMatch(successResponse, /kMetaHex|kFileHex|encryptedKeyCt|meta_key_ct|file_key_ct/);
+  assert.match(client, /supplierKeyRotationResponseSchema/);
+  assert.match(client, /adminRotateSupplierSubBatchKeys/);
+});
+
 test("public proof and anchor input stay hash-only", () => {
   const anchorSource = readWorkspaceFile("apps/api/src/app/admin/proof/anchor/route.ts");
   const verifySource = readWorkspaceFile("apps/api/src/app/public/proof/verify/route.ts");

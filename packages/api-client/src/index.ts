@@ -130,6 +130,16 @@ export const supplierQaResponseSchema = z.object({
   requires_ttstatus: optionalBoolean,
 }).passthrough();
 
+export const supplierKeyRotationResponseSchema = z.object({
+  ok: z.literal(true),
+  bid: z.string(),
+  key_version: z.number(),
+  key_fingerprint: z.string(),
+  role_key_fingerprints: z.record(z.string()).optional(),
+  evidence_hash: z.string().optional(),
+  warning: z.string().optional(),
+}).passthrough();
+
 export const supplierActivationResponseSchema = z.object({
   ok: z.literal(true),
   batch: z.string(),
@@ -222,6 +232,7 @@ export type SupplierVaultResponse = z.infer<typeof supplierVaultResponseSchema>;
 export type SupplierPackExportResponse = z.infer<typeof supplierPackExportResponseSchema>;
 export type SupplierManifestResponse = z.infer<typeof supplierManifestResponseSchema>;
 export type SupplierQaResponse = z.infer<typeof supplierQaResponseSchema>;
+export type SupplierKeyRotationResponse = z.infer<typeof supplierKeyRotationResponseSchema>;
 export type SupplierActivationResponse = z.infer<typeof supplierActivationResponseSchema>;
 export type OfflineVerifierDevice = z.infer<typeof offlineVerifierDeviceSchema>;
 export type OfflineVerifierDevicesResponse = z.infer<typeof offlineVerifierDevicesResponseSchema>;
@@ -280,6 +291,10 @@ export type SupplierQaPayload = {
   ttstatus_checked?: boolean;
   ttstatusChecked?: boolean;
   notes?: string;
+};
+
+export type RotateSupplierSubBatchKeysPayload = {
+  reason: string;
 };
 
 export type ActivateSupplierSubBatchPayload = {
@@ -418,6 +433,7 @@ export function createApiClient(opts: ApiClientOptions = {}) {
     adminExportSupplierPack: (orderId: string, payload: ExportSupplierPackPayload) => request(opts, `/admin/supplier-orders/${pathSegment(orderId)}/export-pack`, { method: "POST", body: JSON.stringify(payload) }, supplierPackExportResponseSchema),
     adminGetSupplierVault: (orderId: string) => request(opts, `/admin/supplier-orders/${pathSegment(orderId)}/vault`, undefined, supplierVaultResponseSchema),
     adminRunSupplierQa: (orderId: string, payload: SupplierQaPayload) => request(opts, `/admin/supplier-orders/${pathSegment(orderId)}/qa`, { method: "POST", body: JSON.stringify(payload) }, supplierQaResponseSchema),
+    adminRotateSupplierSubBatchKeys: (orderId: string, bid: string, payload: RotateSupplierSubBatchKeysPayload) => request(opts, `/admin/supplier-orders/${pathSegment(orderId)}/sub-batches/${pathSegment(bid)}/keys/rotate`, { method: "POST", body: JSON.stringify(payload) }, supplierKeyRotationResponseSchema),
     adminListBatches: (tenant_slug?: string) => request(opts, withQuery("/admin/batches", { tenant: tenant_slug }), undefined, z.array(batchSchema)),
     adminImportSupplierManifest: (bid: string, payload: string | ImportSupplierManifestPayload) => request(opts, `/admin/batches/${pathSegment(bid)}/import-manifest`, { method: "POST", body: JSON.stringify(normalizeManifestPayload(payload)) }, supplierManifestResponseSchema),
     adminImportManifest: (bid: string, csvText: string) => request(opts, `/admin/batches/${pathSegment(bid)}/import-manifest`, { method: "POST", body: JSON.stringify({ csv: csvText }) }, supplierManifestResponseSchema),

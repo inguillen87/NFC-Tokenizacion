@@ -1053,11 +1053,11 @@ function heroAtlasRoutePath(route: VectorMapRoute) {
 function heroAtlasLabelPosition(point: VectorMapPoint) {
   const projected = projectHeroAtlasPoint(point);
   const offsets: Record<string, { dx: number; dy: number; anchor: "start" | "end" }> = {
-    origin: { dx: 18, dy: -38, anchor: "start" },
+    origin: { dx: 18, dy: -64, anchor: "start" },
     "custody-miami": { dx: 22, dy: -40, anchor: "start" },
     "custody-madrid": { dx: 24, dy: -48, anchor: "start" },
     "custody-singapore": { dx: 24, dy: -34, anchor: "start" },
-    tap: { dx: -22, dy: -42, anchor: "end" },
+    tap: { dx: -48, dy: -82, anchor: "end" },
   };
   const offset = offsets[point.id] || { dx: 18, dy: -34, anchor: "start" as const };
   return {
@@ -1089,7 +1089,7 @@ export function HeroTrustAtlasSvg({
     <svg
       className="hero-trust-atlas"
       viewBox={`0 0 ${HERO_ATLAS_WIDTH} ${HERO_ATLAS_HEIGHT}`}
-      preserveAspectRatio="none"
+      preserveAspectRatio="xMidYMid meet"
       role="img"
       aria-label="Atlas nexID de trazabilidad en tiempo real"
       data-nexid-map="hero-trust-atlas"
@@ -1195,14 +1195,25 @@ export function HeroTrustAtlasSvg({
           const label = heroAtlasLabelPosition(point);
           const tone = point.tone || "hub";
           const isSelected = point.id === selectedPointId;
+          const plateWidth = point.id === "tap" ? 136 : 148;
+          const plateX = label.anchor === "end" ? -plateWidth + 12 : -12;
+          const leaderX = label.x + (label.anchor === "end" ? -10 : 10);
+          const leaderY = label.y + 13;
           return (
             <g key={point.id}>
+              <path
+                className={`hero-trust-atlas__leader hero-trust-atlas__leader--${tone}`}
+                d={`M ${x.toFixed(1)} ${y.toFixed(1)} L ${leaderX.toFixed(1)} ${leaderY.toFixed(1)}`}
+                vectorEffect="non-scaling-stroke"
+              />
               <g className={`hero-trust-atlas__node hero-trust-atlas__node--${tone} ${isSelected ? "is-selected" : ""}`} transform={`translate(${x.toFixed(1)} ${y.toFixed(1)})`}>
                 <circle className="hero-trust-atlas__node-pulse" r={isSelected ? 22 : 18} />
                 <circle className="hero-trust-atlas__node-ring" r={isSelected ? 11 : 9} />
                 <circle className="hero-trust-atlas__node-core" r={isSelected ? 4.8 : 4} />
               </g>
               <g className={`hero-trust-atlas__label-callout hero-trust-atlas__label-callout--${tone}`} transform={`translate(${label.x.toFixed(1)} ${label.y.toFixed(1)})`}>
+                <rect className="hero-trust-atlas__label-plate" x={plateX} y="-15" width={plateWidth} height="54" rx="9" />
+                <rect className="hero-trust-atlas__label-accent" x={label.anchor === "end" ? -7 : -12} y="-15" width="4" height="54" rx="2" />
                 <text textAnchor={label.anchor} className="hero-trust-atlas__label-eyebrow">{point.stageLabel || (point.id === "tap" ? "Tap final" : "Custodia")}</text>
                 <text textAnchor={label.anchor} y="17" className="hero-trust-atlas__label-main">{point.label}</text>
                 <text textAnchor={label.anchor} y="32" className="hero-trust-atlas__label-sub">{point.sublabel}</text>
@@ -1218,6 +1229,178 @@ export function HeroTrustAtlasSvg({
         <text x="14" y="31">live custody + physical tap</text>
       </g>
     </svg>
+  );
+}
+
+function EnterpriseHeroAtlasPanel({
+  origin,
+  tap,
+  distance,
+  numberLocale,
+  txt,
+  stageCopy,
+}: {
+  origin: LocationPoint;
+  tap: LocationPoint;
+  distance: number;
+  numberLocale: string;
+  txt: Pick<(typeof labels)["es-AR"], "routeTitle" | "originMap" | "tapMap" | "custody">;
+  stageCopy: (typeof heroStageCopy)["es-AR"];
+}) {
+  const formattedDistance = distance.toLocaleString(numberLocale);
+  const isEnglish = txt.routeTitle === "Trust route";
+  const isPortuguese = txt.routeTitle.startsWith("Rota");
+  const custodyStage = isEnglish ? "Custody" : "Custodia";
+  const madridCountry = isEnglish ? "Spain" : isPortuguese ? "Espanha" : "Espana";
+  const singaporeLabel = isEnglish ? "Singapore" : isPortuguese ? "Singapura" : "Singapur";
+  const distributionEvidence = isEnglish ? "Distribution center" : isPortuguese ? "Centro de distribuicao" : "Centro de distribucion";
+  const documentEvidence = isEnglish ? "Document control" : isPortuguese ? "Controle documental" : "Control documental";
+  const exportEvidence = isEnglish ? "Export channel" : isPortuguese ? "Canal de exportacao" : "Canal de exportacion";
+  const evidenceCopy = txt.routeTitle === "Trust route"
+    ? `${formattedDistance} km with physical tap, SUN and channel evidence.`
+    : txt.routeTitle.startsWith("Rota")
+      ? `${formattedDistance} km com evidencia de toque, SUN e canal.`
+      : `${formattedDistance} km con evidencia de tap fisico, SUN y canal.`;
+
+  const custodyStops = useMemo<VectorMapPoint[]>(() => {
+    const stops: VectorMapPoint[] = [
+      {
+        id: "origin",
+        label: origin.city,
+        sublabel: origin.country,
+        lat: origin.lat,
+        lng: origin.lng,
+        scans: 1,
+        risk: 0,
+        tone: "origin",
+        stageLabel: txt.originMap,
+        evidence: txt.custody,
+      },
+      {
+        id: "custody-miami",
+        label: "Miami",
+        sublabel: "USA",
+        lat: 25.7617,
+        lng: -80.1918,
+        scans: 1,
+        risk: 0,
+        tone: "hub",
+        stageLabel: custodyStage,
+        evidence: distributionEvidence,
+      },
+      {
+        id: "custody-madrid",
+        label: "Madrid",
+        sublabel: madridCountry,
+        lat: 40.4168,
+        lng: -3.7038,
+        scans: 1,
+        risk: 0,
+        tone: "hub",
+        stageLabel: custodyStage,
+        evidence: documentEvidence,
+      },
+      {
+        id: "custody-singapore",
+        label: singaporeLabel,
+        sublabel: "SGP",
+        lat: 1.3521,
+        lng: 103.8198,
+        scans: 1,
+        risk: 0,
+        tone: "hub",
+        stageLabel: custodyStage,
+        evidence: exportEvidence,
+      },
+      {
+        id: "tap",
+        label: tap.city,
+        sublabel: tap.country,
+        lat: tap.lat,
+        lng: tap.lng,
+        scans: 1,
+        risk: 0,
+        tone: "tap",
+        stageLabel: stageCopy.tapFinal,
+        evidence: tap.label,
+        lastSeen: stageCopy.demoEvent,
+      },
+    ];
+
+    return stops.filter((point, index, all) => all.findIndex((item) => Math.abs(item.lat - point.lat) < 0.01 && Math.abs(item.lng - point.lng) < 0.01) === index);
+  }, [custodyStage, distributionEvidence, documentEvidence, exportEvidence, madridCountry, origin, singaporeLabel, stageCopy.demoEvent, stageCopy.tapFinal, tap, txt.custody, txt.originMap]);
+
+  const eventCountLabel = isEnglish ? `${custodyStops.length} events` : `${custodyStops.length} eventos`;
+
+  const vectorRoutes = useMemo<VectorMapRoute[]>(() => custodyStops.slice(1).map((stop, index) => {
+    const previous = custodyStops[index];
+    const isFinal = stop.id === "tap";
+    return {
+      id: `enterprise-route-${previous.id}-${stop.id}`,
+      fromLat: previous.lat,
+      fromLng: previous.lng,
+      toLat: stop.lat,
+      toLng: stop.lng,
+      label: `${previous.label} -> ${stop.label}`,
+      tone: isFinal ? "success" : "info",
+      distanceLabel: isFinal ? `${formattedDistance} km` : undefined,
+      evidence: isFinal ? evidenceCopy : stop.evidence,
+    };
+  }), [custodyStops, evidenceCopy, formattedDistance]);
+
+  const timelineStops = custodyStops.map((stop, index) => ({
+    ...stop,
+    title: index === 0 ? txt.originMap : stop.id === "tap" ? stageCopy.tapFinal : stop.stageLabel || "Custodia",
+    date: index === 0 ? "12 ENE 08:15" : index === 1 ? "15 ENE 14:22" : index === 2 ? "19 ENE 09:10" : index === 3 ? "22 ENE 12:45" : "24 ENE 18:33",
+  }));
+
+  const ledgerItems = [
+    { id: "integrity", label: stageCopy.integrity, value: stageCopy.verified },
+    { id: "events", label: stageCopy.events, value: `${custodyStops.length}/${custodyStops.length}` },
+    { id: "alerts", label: stageCopy.alerts, value: "0" },
+  ];
+
+  return (
+    <section className="nexid-hero-atlas-card" aria-label={stageCopy.routeTitle}>
+      <header className="nexid-hero-atlas-card__head">
+        <div>
+          <span>{stageCopy.routeTitle}</span>
+          <strong>{stageCopy.routeSubtitle}</strong>
+        </div>
+        <em><i />{stageCopy.live}</em>
+      </header>
+
+      <div className="nexid-hero-atlas-card__map">
+        <HeroTrustAtlasSvg points={custodyStops} routes={vectorRoutes} selectedPointId="tap" />
+      </div>
+
+      <div className="nexid-hero-atlas-card__timeline">
+        <div className="nexid-hero-atlas-card__timeline-head">
+          <span>{stageCopy.custodyTitle}</span>
+          <strong>{eventCountLabel}</strong>
+        </div>
+        <div className="nexid-hero-atlas-card__stops">
+          {timelineStops.map((stop) => (
+            <article key={stop.id} className={stop.id === "tap" ? "is-final" : ""}>
+              <i>{stop.id === "tap" ? "" : "✓"}</i>
+              <span>{stop.title}</span>
+              <strong>{stop.label}</strong>
+              <em>{stop.sublabel}</em>
+              <small>{stop.date}</small>
+            </article>
+          ))}
+        </div>
+      </div>
+
+      <footer className="nexid-hero-atlas-card__ledger">
+        {ledgerItems.map((item) => (
+          <span key={item.id}>
+            <em>{item.label}</em>
+            <strong>{item.value}</strong>
+          </span>
+        ))}
+      </footer>
+    </section>
   );
 }
 
@@ -2039,6 +2222,160 @@ function HeroPhoneEmulator({
   );
 }
 
+function EnterpriseHeroProductCard({
+  active,
+  data,
+  txt,
+  detailCopy,
+  stageCopy,
+}: {
+  active: Vertical;
+  data: Scene;
+  txt: Pick<(typeof labels)["es-AR"], "realAsset" | "renderFallback" | "labels">;
+  detailCopy: (typeof productModalCopy)["es-AR"];
+  stageCopy: (typeof heroStageCopy)["es-AR"];
+}) {
+  const asset = heroRealAssets[active];
+  const recordRows = [
+    { label: txt.labels.batch, value: data.batch },
+    { label: stageCopy.bottle, value: data.uid },
+    { label: stageCopy.productType, value: data.security },
+  ];
+
+  return (
+    <article className={`nexid-hero-product-card nexid-hero-product-card--${active}`}>
+      <span className="nexid-hero-product-card__eyebrow">{stageCopy.identityTitle}</span>
+      <div className="nexid-hero-product-card__media">
+        {asset ? (
+          <img src={asset.imageUrl} alt={asset.alt} loading="eager" />
+        ) : (
+          <HeroProductVisual active={active} product={data.product} />
+        )}
+        <span className="nexid-hero-product-card__chip">
+          <strong>nexID</strong>
+          <em>{data.profile}</em>
+        </span>
+      </div>
+
+      <div className="nexid-hero-product-card__body">
+        <span>{asset ? txt.realAsset : txt.renderFallback}</span>
+        <h3>{data.product}</h3>
+        <p>{data.origin.city} · {data.origin.country}</p>
+        <div className="nexid-hero-product-card__records">
+          {recordRows.map((row) => (
+            <span key={row.label}>
+              <em>{row.label}</em>
+              <strong>{row.value}</strong>
+            </span>
+          ))}
+        </div>
+        <span className="nexid-hero-product-card__cta">
+          <Maximize2 className="h-4 w-4" />
+          <strong>{detailCopy.open}</strong>
+          <em>{stageCopy.detailHint}</em>
+        </span>
+      </div>
+    </article>
+  );
+}
+
+function EnterpriseHeroPhoneDemo({
+  active,
+  data,
+  distance,
+  numberLocale,
+  copy,
+  model,
+  tap,
+  stageCopy,
+  originLabel,
+  distanceLabel,
+}: {
+  active: Vertical;
+  data: Scene;
+  distance: number;
+  numberLocale: string;
+  copy: (typeof productModalCopy)["es-AR"];
+  model: "iphone" | "samsung";
+  tap: LocationPoint;
+  stageCopy: (typeof heroStageCopy)["es-AR"];
+  originLabel: string;
+  distanceLabel: string;
+}) {
+  const asset = heroRealAssets[active];
+  const productOrigin = `${data.origin.city}, ${data.origin.country}`;
+  const tapLabel = `${tap.city}, ${tap.country}`;
+
+  return (
+    <aside className="nexid-hero-phone-panel" aria-label={stageCopy.consumerTitle}>
+      <div className="nexid-hero-phone-panel__head">
+        <span>{stageCopy.consumerTitle}</span>
+        <strong>{stageCopy.cellularState}</strong>
+      </div>
+
+      <article className={`nexid-hero-phone nexid-hero-phone--${model}`}>
+        <span className="nexid-hero-phone__notch" />
+        <div className="nexid-hero-phone__screen">
+          <header className="nexid-hero-phone__status">
+            <span>9:41</span>
+            <strong>nex<span>ID</span></strong>
+            <i />
+          </header>
+
+          <section className="nexid-hero-phone__verdict">
+            <span className="nexid-hero-phone__shield">
+              <CheckCircle2 className="h-9 w-9" />
+            </span>
+            <div>
+              <em>{stageCopy.cellularState}</em>
+              <strong>{data.result}</strong>
+              <small>{data.security}</small>
+            </div>
+          </section>
+
+          <section className="nexid-hero-phone__product">
+            <span>
+              {asset ? <img src={asset.imageUrl} alt="" loading="lazy" /> : <HeroProductVisual active={active} product={data.product} />}
+            </span>
+            <div>
+              <strong>{data.product}</strong>
+              <em>{productOrigin}</em>
+              <small>{data.batch}</small>
+            </div>
+          </section>
+
+          <dl className="nexid-hero-phone__specs">
+            <div>
+              <dt>{copy.productTitle}</dt>
+              <dd>{data.product}</dd>
+            </div>
+            <div>
+              <dt>{originLabel}</dt>
+              <dd>{productOrigin}</dd>
+            </div>
+            <div>
+              <dt>Tap</dt>
+              <dd>{tapLabel}</dd>
+            </div>
+            <div>
+              <dt>{distanceLabel}</dt>
+              <dd>{distance.toLocaleString(numberLocale)} km</dd>
+            </div>
+          </dl>
+
+          <div className="nexid-hero-phone__scan" aria-hidden="true">
+            <span />
+            <i />
+            <em />
+          </div>
+
+          <p className="nexid-hero-phone__note">{copy.phoneNote}</p>
+        </div>
+      </article>
+    </aside>
+  );
+}
+
 function ProductDetailModal({
   active,
   data,
@@ -2211,93 +2548,43 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
           ))}
         </div>
 
-        <div className="hero-scene-proof-grid mt-4 grid gap-3">
-          <div className="hero-scene-stage-card hero-scene-stage-card--product-proof rounded-xl border border-white/10 bg-slate-950/70 p-3">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="hero-scene-action text-xs font-semibold text-slate-200">{data.action}</p>
-                <p className="mt-1 text-[11px] text-slate-400">{txt.liveTap}: {tap.city}, {tap.country}</p>
-              </div>
-              <span className="rounded-full border border-cyan-300/25 bg-cyan-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-100">{data.profile}</span>
-            </div>
-            <div className={`hero-product-stage hero-product-stage--${active} mt-3`}>
-              <div className="hero-object-frame hero-object-frame--split hero-object-frame--product-proof">
-                <div className="hero-object-map-pane hero-object-map-pane--product-proof">
-                  <HeroEnterpriseTraceMap origin={data.origin} tap={tap} distance={distance} numberLocale={numberLocale} txt={txt} stageCopy={stageCopy} />
-                </div>
-                <div
-                  suppressHydrationWarning
-                  ref={productTriggerRef}
-                  role="button"
-                  tabIndex={0}
-                  className="hero-object-product-pane hero-object-product-pane--product-proof"
-                  aria-label={`${modalCopy.open}: ${data.product}`}
-                  onClick={() => setIsProductModalOpen(true)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      setIsProductModalOpen(true);
-                    }
-                  }}
-                >
-                  <HeroProductShowcase
-                    active={active}
-                    data={data}
-                    txt={txt}
-                    detailCopy={modalCopy}
-                    stageCopy={stageCopy}
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="hero-flow-steps mt-3">
-              {data.steps.map((step, index) => (
-                <div key={step} className="hero-flow-step">
-                  <span>{index + 1}</span>
-                  <p>{step}</p>
-                </div>
-              ))}
-            </div>
-            <div className="hero-commercial-rail mt-3">
-              <span>{txt.commercialRail}</span>
-              <div>
-                {txt.valuePills.map((pill) => (
-                  <em key={pill}>{pill}</em>
-                ))}
-              </div>
-            </div>
+        <div className="nexid-hero-board mt-4">
+          <EnterpriseHeroAtlasPanel origin={data.origin} tap={tap} distance={distance} numberLocale={numberLocale} txt={txt} stageCopy={stageCopy} />
+          <div
+            suppressHydrationWarning
+            ref={productTriggerRef}
+            role="button"
+            tabIndex={0}
+            className="nexid-hero-product-trigger"
+            aria-label={`${modalCopy.open}: ${data.product}`}
+            onClick={() => setIsProductModalOpen(true)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                setIsProductModalOpen(true);
+              }
+            }}
+          >
+            <EnterpriseHeroProductCard
+              active={active}
+              data={data}
+              txt={txt}
+              detailCopy={modalCopy}
+              stageCopy={stageCopy}
+            />
           </div>
-
-          <aside className="hero-scene-result-card hero-scene-result-card--product-proof hero-phone-demo-card rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3">
-            <div className="hero-phone-demo-card__head">
-              <div>
-                <p className="hero-scene-result-label text-[11px] uppercase tracking-[0.14em] text-cyan-200">{stageCopy.consumerTitle}</p>
-                <p className="hero-scene-result-state mt-1 text-xs font-semibold uppercase tracking-[0.1em] text-emerald-300">{data.result}</p>
-              </div>
-              <span>{data.phoneTag}</span>
-            </div>
-            <div className="hero-phone-demo-card__device">
-              <HeroPhoneEmulator active={active} data={data} distance={distance} numberLocale={numberLocale} copy={modalCopy} model={active === "electronics" || active === "logistics" || active === "seeds" ? "samsung" : "iphone"} tap={tap} stageCopy={stageCopy} originLabel={txt.labels.origin} />
-            </div>
-            <div className="hero-passport-summary mt-3">
-              <span>{data.profile}</span>
-              <strong>{data.product}</strong>
-              <em>{tap.city} - {distance.toLocaleString(numberLocale)} km</em>
-            </div>
-            <div className="hero-commerce-stack hero-commerce-stack--compact mt-3">
-              {commerceRows.slice(0, 2).map((item) => (
-                <article key={item.label} className="hero-commerce-card">
-                  <span>{item.label}</span>
-                  <strong>{item.value}</strong>
-                </article>
-              ))}
-            </div>
-            <div className="hero-result-explain mt-3 rounded-xl border border-white/10 bg-slate-950/50 p-3">
-              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-300">{txt.whatHappened}</p>
-              <p className="mt-2 text-xs leading-5 text-slate-300">{data.action}</p>
-              <span className="mt-2 block text-[11px] leading-5 text-slate-400">{modalCopy.phoneNote}</span>
-            </div>
-          </aside>
+          <EnterpriseHeroPhoneDemo
+            active={active}
+            data={data}
+            distance={distance}
+            numberLocale={numberLocale}
+            copy={modalCopy}
+            model={active === "electronics" || active === "logistics" || active === "seeds" ? "samsung" : "iphone"}
+            tap={tap}
+            stageCopy={stageCopy}
+            originLabel={txt.labels.origin}
+            distanceLabel={txt.labels.distance}
+          />
         </div>
 
         <p className="hero-scene-microcopy mt-3 text-xs text-slate-300">{txt.microcopy}</p>

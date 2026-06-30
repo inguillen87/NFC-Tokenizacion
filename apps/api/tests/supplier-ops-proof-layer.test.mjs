@@ -13,6 +13,7 @@ const {
   canExportSupplierPack,
   canImportSupplierManifest,
   canActivateSupplierSubBatch,
+  canRotateSupplierSubBatchKeys,
   validateSupplierQaEvidence,
 } = await import("../src/lib/supplier-ops.ts");
 const { normalizeCarrierProfileCode } = await import("../src/lib/carrier-profiles.ts");
@@ -181,6 +182,25 @@ test("supplier pack and manifest gates are one-time production controls", () => 
 
   assert.equal(canImportSupplierManifest({ manifestStatus: "pending" }).ok, true);
   assert.equal(canImportSupplierManifest({ manifestStatus: "imported" }).reason, "supplier_manifest_already_imported");
+});
+
+test("supplier key rotation is allowed only before export, manifest, QA and activation", () => {
+  assert.equal(canRotateSupplierSubBatchKeys({
+    keyExportCount: 0,
+    batchKeyExportCount: 0,
+    manifestStatus: "pending",
+    manifestCount: 0,
+    qaStatus: "pending",
+    subBatchStatus: "pack_ready",
+    batchStatus: "production_registered",
+  }).ok, true);
+  assert.equal(canRotateSupplierSubBatchKeys({ keyExportCount: 1 }).reason, "supplier_keys_already_exported");
+  assert.equal(canRotateSupplierSubBatchKeys({ batchKeyExportCount: 1 }).reason, "supplier_keys_already_exported");
+  assert.equal(canRotateSupplierSubBatchKeys({ manifestStatus: "imported" }).reason, "supplier_manifest_already_imported");
+  assert.equal(canRotateSupplierSubBatchKeys({ manifestCount: 1 }).reason, "supplier_manifest_already_imported");
+  assert.equal(canRotateSupplierSubBatchKeys({ qaStatus: "passed" }).reason, "supplier_qa_already_passed");
+  assert.equal(canRotateSupplierSubBatchKeys({ subBatchStatus: "activated" }).reason, "supplier_batch_already_activated");
+  assert.equal(canRotateSupplierSubBatchKeys({ batchStatus: "active_in_market" }).reason, "supplier_batch_already_activated");
 });
 
 test("supplier activation override requires explicit audit fields", () => {

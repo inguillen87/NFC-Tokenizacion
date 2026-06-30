@@ -31771,11 +31771,15 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
 
 .landing-hero-section .hero-identity-card__records {
   display: grid !important;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   gap: 0.7rem !important;
   margin-top: 0.9rem !important;
   border-top: 1px solid rgba(148, 163, 184, 0.16) !important;
   padding-top: 0.85rem !important;
+}
+
+.landing-hero-section .hero-identity-card__records span:nth-child(3) {
+  grid-column: 1 / -1 !important;
 }
 
 .landing-hero-section .hero-identity-card__records em {
@@ -32238,11 +32242,16 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
 }
 
 .hero-trust-atlas__region {
-  filter: drop-shadow(0 0 10px rgba(34, 211, 238, 0.1));
+  fill: rgba(8, 47, 73, 0.5) !important;
+  opacity: 0.72 !important;
+  stroke: rgba(103, 232, 249, 0.24) !important;
+  stroke-width: 0.68 !important;
+  filter: none !important;
 }
 
 .hero-trust-atlas__coastline {
-  opacity: 0.78;
+  opacity: 0.74;
+  filter: none !important;
 }
 
 .hero-trust-atlas__route-halo {
@@ -32267,6 +32276,40 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
 .hero-trust-atlas__label-callout {
   pointer-events: none;
   filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.5));
+}
+
+.hero-trust-atlas__leader {
+  fill: none;
+  stroke: rgba(125, 211, 252, 0.34);
+  stroke-dasharray: 3 5;
+  stroke-linecap: round;
+  stroke-width: 1.2;
+}
+
+.hero-trust-atlas__leader--origin {
+  stroke: rgba(134, 239, 172, 0.5);
+}
+
+.hero-trust-atlas__leader--tap {
+  stroke: rgba(253, 224, 71, 0.52);
+}
+
+.hero-trust-atlas__label-plate {
+  fill: rgba(2, 8, 23, 0.76);
+  stroke: rgba(125, 211, 252, 0.24);
+  stroke-width: 1;
+}
+
+.hero-trust-atlas__label-accent {
+  fill: rgba(34, 211, 238, 0.82);
+}
+
+.hero-trust-atlas__label-callout--origin .hero-trust-atlas__label-accent {
+  fill: rgba(52, 211, 153, 0.92);
+}
+
+.hero-trust-atlas__label-callout--tap .hero-trust-atlas__label-accent {
+  fill: rgba(251, 191, 36, 0.94);
 }
 
 .hero-trust-atlas__label-eyebrow {
@@ -32297,6 +32340,23 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
 .hero-trust-atlas__label-callout--tap .hero-trust-atlas__label-eyebrow,
 .hero-trust-atlas__label-callout--tap .hero-trust-atlas__label-sub {
   fill: rgb(253, 224, 71);
+}
+
+html.theme-light .hero-trust-atlas__label-plate {
+  fill: rgba(255, 255, 255, 0.78);
+  stroke: rgba(14, 116, 144, 0.22);
+}
+
+html.theme-light .hero-trust-atlas__leader {
+  stroke: rgba(14, 116, 144, 0.28);
+}
+
+html.theme-light .hero-trust-atlas__label-main {
+  fill: #0f172a;
+}
+
+html.theme-light .hero-trust-atlas__label-sub {
+  fill: #334155;
 }
 
 .hero-trust-atlas__legend {
@@ -32458,17 +32518,17 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
 
 /* Enterprise theme polish for the new atlas, modal and proof surfaces. */
 .hero-trust-atlas {
-  --hero-atlas-ocean-a: #06233a;
-  --hero-atlas-ocean-b: #031321;
-  --hero-atlas-ocean-c: #050918;
-  --hero-atlas-land-a: #0f766e;
-  --hero-atlas-land-b: #0891b2;
-  --hero-atlas-land-c: #1e3a8a;
-  --hero-atlas-route-info-a: #22d3ee;
+  --hero-atlas-ocean-a: #06283d;
+  --hero-atlas-ocean-b: #031929;
+  --hero-atlas-ocean-c: #020713;
+  --hero-atlas-land-a: #0f5963;
+  --hero-atlas-land-b: #0e7490;
+  --hero-atlas-land-c: #0f315f;
+  --hero-atlas-route-info-a: #0e7490;
   --hero-atlas-route-info-b: #67e8f9;
-  --hero-atlas-route-info-c: #a78bfa;
-  --hero-atlas-route-success-a: #34d399;
-  --hero-atlas-route-success-b: #22d3ee;
+  --hero-atlas-route-info-c: #38bdf8;
+  --hero-atlas-route-success-a: #10b981;
+  --hero-atlas-route-success-b: #67e8f9;
   --hero-atlas-route-success-c: #fbbf24;
   --hero-atlas-node-a: #ffffff;
   --hero-atlas-node-b: #67e8f9;
@@ -32476,12 +32536,12 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
 }
 
 html.theme-light .hero-trust-atlas {
-  --hero-atlas-ocean-a: #eff8ff;
-  --hero-atlas-ocean-b: #dff1ff;
+  --hero-atlas-ocean-a: #e8f8ff;
+  --hero-atlas-ocean-b: #dceff9;
   --hero-atlas-ocean-c: #f8fbff;
-  --hero-atlas-land-a: #0891b2;
-  --hero-atlas-land-b: #14b8a6;
-  --hero-atlas-land-c: #2563eb;
+  --hero-atlas-land-a: #8ddfe3;
+  --hero-atlas-land-b: #6dd1d8;
+  --hero-atlas-land-c: #9cc8f6;
   --hero-atlas-route-info-a: #0891b2;
   --hero-atlas-route-info-b: #0e7490;
   --hero-atlas-route-info-c: #4f46e5;
@@ -32499,8 +32559,10 @@ html.theme-light .hero-trust-atlas__parallels path {
 }
 
 html.theme-light .hero-trust-atlas__region {
+  fill: rgba(20, 184, 166, 0.2) !important;
+  opacity: 0.72 !important;
   stroke: rgba(14, 116, 144, 0.26) !important;
-  filter: drop-shadow(0 0 8px rgba(14, 116, 144, 0.1));
+  filter: none !important;
 }
 
 html.theme-light .hero-trust-atlas__coastline {
@@ -32889,5 +32951,1445 @@ html.theme-light .demo-lab-live-feed-mini strong {
   .hero-product-modal__header p {
     font-size: 0.84rem !important;
     line-height: 1.55 !important;
+  }
+}
+
+/* SDK proof phone light-mode polish. */
+html.theme-light .sdk-proof-phone {
+  border-color: rgba(16, 185, 129, 0.24) !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.14), transparent 38%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(240, 253, 250, 0.9)) !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .sdk-proof-phone span,
+html.theme-light .sdk-proof-phone a {
+  color: #0e7490 !important;
+}
+
+html.theme-light .sdk-proof-phone strong {
+  color: #047857 !important;
+}
+
+html.theme-light .sdk-proof-phone p {
+  color: #0f172a !important;
+}
+
+html.theme-light .sdk-proof-phone small {
+  color: #475569 !important;
+}
+
+@media (max-width: 760px) {
+  .landing-hero-section .hero-trust-atlas__label-callout,
+  .landing-hero-section .hero-trust-atlas__label-plate,
+  .landing-hero-section .hero-trust-atlas__label-accent,
+  .landing-hero-section .hero-trust-atlas__leader {
+    display: none !important;
+  }
+}
+
+/* Hero atlas agency pass: technical map depth, restrained routes and readable direct labels. */
+.landing-hero-section #trace-signal-atlas.hero-live-route-card {
+  border-color: rgba(34, 211, 238, 0.22) !important;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(34, 211, 238, 0.13), transparent 28%),
+    radial-gradient(circle at 72% 26%, rgba(59, 130, 246, 0.09), transparent 30%),
+    radial-gradient(circle at 82% 76%, rgba(52, 211, 153, 0.08), transparent 25%),
+    linear-gradient(142deg, rgba(2, 20, 35, 0.98), rgba(2, 9, 23, 0.99) 58%, rgba(1, 5, 14, 0.99)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(207, 250, 254, 0.1),
+    inset 0 -46px 86px rgba(2, 6, 23, 0.66),
+    0 26px 80px rgba(2, 8, 23, 0.28) !important;
+}
+
+.landing-hero-section .hero-route-vector-atlas::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 1 !important;
+  pointer-events: none !important;
+  background:
+    linear-gradient(90deg, rgba(2, 8, 23, 0.24), transparent 20%, transparent 80%, rgba(2, 8, 23, 0.32)),
+    linear-gradient(180deg, rgba(2, 8, 23, 0.08), transparent 48%, rgba(2, 8, 23, 0.42));
+}
+
+.landing-hero-section .hero-trust-atlas {
+  --hero-atlas-ocean-a: #06283d;
+  --hero-atlas-ocean-b: #031929;
+  --hero-atlas-ocean-c: #020713;
+  --hero-atlas-land-a: #0f5963;
+  --hero-atlas-land-b: #0e7490;
+  --hero-atlas-land-c: #0f315f;
+  --hero-atlas-route-info-a: #0e7490;
+  --hero-atlas-route-info-b: #67e8f9;
+  --hero-atlas-route-info-c: #38bdf8;
+  --hero-atlas-route-success-a: #10b981;
+  --hero-atlas-route-success-b: #67e8f9;
+  --hero-atlas-route-success-c: #facc15;
+}
+
+.landing-hero-section .hero-trust-atlas__region {
+  fill: rgba(8, 47, 73, 0.52) !important;
+  opacity: 0.66 !important;
+  stroke: rgba(103, 232, 249, 0.28) !important;
+  stroke-width: 0.62 !important;
+  filter: none !important;
+}
+
+.landing-hero-section .hero-trust-atlas__region-group--americas .hero-trust-atlas__region {
+  fill: rgba(13, 92, 104, 0.56) !important;
+  stroke: rgba(94, 234, 212, 0.3) !important;
+}
+
+.landing-hero-section .hero-trust-atlas__region-group--europe .hero-trust-atlas__region,
+.landing-hero-section .hero-trust-atlas__region-group--asia .hero-trust-atlas__region {
+  fill: rgba(8, 63, 91, 0.48) !important;
+  stroke: rgba(125, 211, 252, 0.28) !important;
+}
+
+.landing-hero-section .hero-trust-atlas__coastline {
+  opacity: 0.72 !important;
+  stroke: rgba(186, 230, 253, 0.3) !important;
+  stroke-width: 0.42 !important;
+  filter: none !important;
+}
+
+.landing-hero-section .hero-trust-atlas__parallels path {
+  stroke: rgba(125, 211, 252, 0.075) !important;
+  stroke-width: 0.7 !important;
+  stroke-dasharray: 4 18 !important;
+}
+
+.landing-hero-section .hero-trust-atlas__route-halo {
+  stroke: rgba(1, 7, 18, 0.82) !important;
+  stroke-width: 9 !important;
+}
+
+.landing-hero-section .hero-trust-atlas__route {
+  stroke-width: 3 !important;
+  stroke-dasharray: 11 13 !important;
+  filter: drop-shadow(0 0 6px rgba(103, 232, 249, 0.36)) !important;
+}
+
+.landing-hero-section .hero-trust-atlas__route--success {
+  stroke-width: 3.7 !important;
+  filter: drop-shadow(0 0 7px rgba(251, 191, 36, 0.32)) !important;
+}
+
+.landing-hero-section .hero-trust-atlas__comet {
+  opacity: 0.74 !important;
+}
+
+.landing-hero-section .hero-trust-atlas__leader,
+.landing-hero-section .hero-trust-atlas__label-plate,
+.landing-hero-section .hero-trust-atlas__label-accent {
+  display: none !important;
+}
+
+.landing-hero-section .hero-trust-atlas__label-callout {
+  filter: drop-shadow(0 3px 8px rgba(2, 6, 23, 0.72)) !important;
+}
+
+.landing-hero-section .hero-trust-atlas__label-eyebrow,
+.landing-hero-section .hero-trust-atlas__label-main,
+.landing-hero-section .hero-trust-atlas__label-sub {
+  paint-order: stroke fill !important;
+  stroke: rgba(1, 7, 18, 0.74) !important;
+  stroke-linejoin: round !important;
+}
+
+.landing-hero-section .hero-trust-atlas__label-eyebrow {
+  fill: rgb(103, 232, 249) !important;
+  font-size: 8.4px !important;
+  font-weight: 950 !important;
+  letter-spacing: 1.35px !important;
+  stroke-width: 1.9px !important;
+}
+
+.landing-hero-section .hero-trust-atlas__label-main {
+  fill: rgb(248, 250, 252) !important;
+  font-size: 15.2px !important;
+  font-weight: 950 !important;
+  stroke-width: 2.45px !important;
+}
+
+.landing-hero-section .hero-trust-atlas__label-sub {
+  fill: rgb(165, 243, 252) !important;
+  font-size: 10px !important;
+  font-weight: 850 !important;
+  stroke-width: 2px !important;
+}
+
+.landing-hero-section .hero-trust-atlas__node-pulse {
+  opacity: 0.5 !important;
+}
+
+.landing-hero-section .hero-trust-atlas__node-ring {
+  stroke-width: 2.1 !important;
+}
+
+.landing-hero-section .hero-trust-atlas__node-core {
+  filter: drop-shadow(0 0 7px rgba(165, 243, 252, 0.76)) !important;
+}
+
+html.theme-light .landing-hero-section #trace-signal-atlas.hero-live-route-card {
+  border-color: rgba(14, 116, 144, 0.24) !important;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(14, 165, 233, 0.16), transparent 28%),
+    radial-gradient(circle at 78% 28%, rgba(20, 184, 166, 0.12), transparent 24%),
+    linear-gradient(142deg, rgba(240, 249, 255, 0.99), rgba(219, 239, 250, 0.98)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    inset 0 -36px 72px rgba(148, 163, 184, 0.18),
+    0 26px 70px rgba(15, 23, 42, 0.1) !important;
+}
+
+html.theme-light .landing-hero-section .hero-trust-atlas {
+  --hero-atlas-ocean-a: #e8f8ff;
+  --hero-atlas-ocean-b: #dceff9;
+  --hero-atlas-ocean-c: #f8fbff;
+  --hero-atlas-land-a: #8ddfe3;
+  --hero-atlas-land-b: #6dd1d8;
+  --hero-atlas-land-c: #9cc8f6;
+}
+
+html.theme-light .landing-hero-section .hero-trust-atlas__region {
+  fill: rgba(20, 184, 166, 0.2) !important;
+  opacity: 0.72 !important;
+  stroke: rgba(14, 116, 144, 0.24) !important;
+  filter: none !important;
+}
+
+html.theme-light .landing-hero-section .hero-trust-atlas__coastline {
+  stroke: rgba(8, 47, 73, 0.2) !important;
+}
+
+html.theme-light .landing-hero-section .hero-trust-atlas__label-eyebrow,
+html.theme-light .landing-hero-section .hero-trust-atlas__label-main,
+html.theme-light .landing-hero-section .hero-trust-atlas__label-sub {
+  stroke: rgba(255, 255, 255, 0.78) !important;
+}
+
+html.theme-light .landing-hero-section .hero-trust-atlas__label-main {
+  fill: #082f49 !important;
+}
+
+html.theme-light .landing-hero-section .hero-trust-atlas__label-sub {
+  fill: #155e75 !important;
+}
+
+/* Enterprise hero rebuild: atlas, product record and phone demo are now three
+   explicit surfaces. These selectors intentionally sit last to outrank older
+   screenshot-driven hero patches without touching backend flows. */
+.landing-hero-section .nexid-hero-board {
+  display: grid;
+  grid-template-columns: minmax(34rem, 1.46fr) minmax(18rem, 0.76fr) minmax(18rem, 0.7fr);
+  gap: clamp(1rem, 1.35vw, 1.45rem);
+  align-items: stretch;
+  margin-top: clamp(1rem, 1.4vw, 1.35rem);
+  scroll-margin-top: 5.25rem;
+}
+
+.landing-hero-section .nexid-hero-board * {
+  box-sizing: border-box;
+}
+
+.landing-hero-section .nexid-hero-atlas-card,
+.landing-hero-section .nexid-hero-product-card,
+.landing-hero-section .nexid-hero-phone-panel {
+  min-width: 0;
+  scroll-margin-top: 5.25rem;
+  border: 1px solid rgba(103, 232, 249, 0.18);
+  border-radius: 10px;
+  background:
+    radial-gradient(circle at 18% 16%, rgba(34, 211, 238, 0.12), transparent 28%),
+    linear-gradient(145deg, rgba(3, 18, 32, 0.95), rgba(2, 8, 23, 0.98));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 22px 68px rgba(0, 0, 0, 0.28);
+}
+
+.landing-hero-section .nexid-hero-atlas-card {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  min-height: clamp(34rem, 43vw, 43rem);
+  overflow: hidden;
+}
+
+.landing-hero-section .nexid-hero-atlas-card__head {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: clamp(1rem, 1.35vw, 1.25rem) clamp(1rem, 1.5vw, 1.35rem) 0;
+}
+
+.landing-hero-section .nexid-hero-atlas-card__head span,
+.landing-hero-section .nexid-hero-phone-panel__head span,
+.landing-hero-section .nexid-hero-product-card__eyebrow {
+  display: block;
+  color: rgb(103, 232, 249);
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.16em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.landing-hero-section .nexid-hero-atlas-card__head strong {
+  display: block;
+  margin-top: 0.2rem;
+  color: rgb(226, 232, 240);
+  font-size: 0.92rem;
+  font-weight: 750;
+  letter-spacing: 0;
+}
+
+.landing-hero-section .nexid-hero-atlas-card__head em {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: none;
+  border: 1px solid rgba(103, 232, 249, 0.22);
+  border-radius: 8px;
+  background: rgba(2, 8, 23, 0.68);
+  color: rgb(226, 232, 240);
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 900;
+  padding: 0.48rem 0.68rem;
+}
+
+.landing-hero-section .nexid-hero-atlas-card__head em i {
+  width: 0.48rem;
+  height: 0.48rem;
+  border-radius: 999px;
+  background: rgb(74, 222, 128);
+  box-shadow: 0 0 16px rgba(74, 222, 128, 0.78);
+}
+
+.landing-hero-section .nexid-hero-atlas-card__map {
+  position: relative;
+  min-height: clamp(20.5rem, 27vw, 28.5rem);
+  margin: -0.35rem 0 0;
+  overflow: hidden;
+}
+
+.landing-hero-section .nexid-hero-atlas-card__map::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(2, 8, 23, 0.38), transparent 17%, transparent 83%, rgba(2, 8, 23, 0.42)),
+    linear-gradient(180deg, transparent 54%, rgba(2, 8, 23, 0.38));
+}
+
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  background: transparent !important;
+  --hero-atlas-ocean-a: #06283d;
+  --hero-atlas-ocean-b: #031929;
+  --hero-atlas-ocean-c: #020713;
+  --hero-atlas-land-a: #0c6570;
+  --hero-atlas-land-b: #0e7490;
+  --hero-atlas-land-c: #123c6a;
+  --hero-atlas-route-info-a: #0891b2;
+  --hero-atlas-route-info-b: #67e8f9;
+  --hero-atlas-route-info-c: #38bdf8;
+  --hero-atlas-route-success-a: #10b981;
+  --hero-atlas-route-success-b: #67e8f9;
+  --hero-atlas-route-success-c: #facc15;
+}
+
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__parallels path {
+  stroke: rgba(125, 211, 252, 0.09) !important;
+  stroke-width: 0.75 !important;
+  stroke-dasharray: 4 16 !important;
+}
+
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__region {
+  fill: var(--hero-atlas-land-fill, rgba(8, 47, 73, 0.58)) !important;
+  opacity: 0.7 !important;
+  stroke: rgba(103, 232, 249, 0.3) !important;
+  stroke-width: 0.65 !important;
+  filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.08)) !important;
+}
+
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__coastline {
+  stroke: rgba(186, 230, 253, 0.34) !important;
+  stroke-width: 0.4 !important;
+  opacity: 0.72 !important;
+  filter: none !important;
+}
+
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__route-halo {
+  stroke: rgba(1, 7, 18, 0.84) !important;
+  stroke-width: 9 !important;
+}
+
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__route {
+  stroke-width: 3 !important;
+  stroke-dasharray: 11 13 !important;
+  filter: drop-shadow(0 0 8px rgba(103, 232, 249, 0.34)) !important;
+}
+
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__route--success {
+  stroke-width: 3.8 !important;
+  filter: drop-shadow(0 0 9px rgba(250, 204, 21, 0.34)) !important;
+}
+
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__leader,
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-plate,
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-accent {
+  display: block !important;
+}
+
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__leader {
+  fill: none !important;
+  stroke: rgba(125, 211, 252, 0.42) !important;
+  stroke-dasharray: 3 5 !important;
+  stroke-linecap: round !important;
+  stroke-width: 1.15 !important;
+}
+
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-plate {
+  fill: rgba(2, 8, 23, 0.74) !important;
+  stroke: rgba(125, 211, 252, 0.24) !important;
+  stroke-width: 1 !important;
+}
+
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-accent {
+  fill: rgba(34, 211, 238, 0.86) !important;
+}
+
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-callout--origin .hero-trust-atlas__label-accent {
+  fill: rgba(52, 211, 153, 0.92) !important;
+}
+
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-callout--tap .hero-trust-atlas__label-accent {
+  fill: rgba(251, 191, 36, 0.94) !important;
+}
+
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-eyebrow,
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-main,
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-sub {
+  paint-order: stroke fill !important;
+  stroke: rgba(1, 7, 18, 0.52) !important;
+  stroke-linejoin: round !important;
+}
+
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-eyebrow {
+  fill: rgb(103, 232, 249) !important;
+  font-size: 9px !important;
+  font-weight: 950 !important;
+  letter-spacing: 1.4px !important;
+  stroke-width: 1.2px !important;
+}
+
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-main {
+  fill: rgb(248, 250, 252) !important;
+  font-size: 15px !important;
+  font-weight: 950 !important;
+  stroke-width: 1.4px !important;
+}
+
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-sub {
+  fill: rgb(165, 243, 252) !important;
+  font-size: 10.2px !important;
+  font-weight: 850 !important;
+  stroke-width: 1.2px !important;
+}
+
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__legend {
+  display: none !important;
+}
+
+.landing-hero-section .nexid-hero-atlas-card__timeline {
+  position: relative;
+  z-index: 4;
+  margin: 0 clamp(0.9rem, 1.3vw, 1.1rem);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 10px;
+  background: rgba(2, 8, 23, 0.66);
+  padding: clamp(0.72rem, 0.95vw, 0.88rem);
+  backdrop-filter: blur(14px);
+}
+
+.landing-hero-section .nexid-hero-atlas-card__timeline-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.landing-hero-section .nexid-hero-atlas-card__timeline-head span {
+  color: rgb(226, 232, 240);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.landing-hero-section .nexid-hero-atlas-card__timeline-head strong {
+  color: rgb(203, 213, 225);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.landing-hero-section .nexid-hero-atlas-card__stops {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.54rem;
+  margin-top: 0.82rem;
+}
+
+.landing-hero-section .nexid-hero-atlas-card__stops::before {
+  content: "";
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  top: 0.91rem;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.86), rgba(52, 211, 153, 0.68), rgba(251, 191, 36, 0.72));
+}
+
+.landing-hero-section .nexid-hero-atlas-card__stops article {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  text-align: center;
+}
+
+.landing-hero-section .nexid-hero-atlas-card__stops i {
+  display: inline-grid;
+  width: 1.9rem;
+  height: 1.9rem;
+  place-items: center;
+  border: 1px solid rgba(45, 212, 191, 0.78);
+  border-radius: 999px;
+  background: rgba(6, 78, 59, 0.58);
+  color: rgb(153, 246, 228);
+  font-size: 0.88rem;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.landing-hero-section .nexid-hero-atlas-card__stops article.is-final i {
+  border-color: rgba(251, 191, 36, 0.88);
+  background: rgba(113, 63, 18, 0.58);
+}
+
+.landing-hero-section .nexid-hero-atlas-card__stops article.is-final i::before {
+  content: "";
+  width: 0.62rem;
+  height: 0.62rem;
+  border: 2px solid rgb(251, 191, 36);
+  border-radius: 999px;
+}
+
+.landing-hero-section .nexid-hero-atlas-card__stops span,
+.landing-hero-section .nexid-hero-atlas-card__stops strong,
+.landing-hero-section .nexid-hero-atlas-card__stops em,
+.landing-hero-section .nexid-hero-atlas-card__stops small {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.landing-hero-section .nexid-hero-atlas-card__stops span {
+  margin-top: 0.45rem;
+  color: rgb(148, 163, 184);
+  font-size: 0.68rem;
+}
+
+.landing-hero-section .nexid-hero-atlas-card__stops strong {
+  margin-top: 0.18rem;
+  color: rgb(241, 245, 249);
+  font-size: 0.75rem;
+  font-weight: 850;
+}
+
+.landing-hero-section .nexid-hero-atlas-card__stops em,
+.landing-hero-section .nexid-hero-atlas-card__stops small {
+  color: rgb(148, 163, 184);
+  font-size: 0.65rem;
+  font-style: normal;
+}
+
+.landing-hero-section .nexid-hero-atlas-card__ledger {
+  position: relative;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0.72rem;
+  margin: 0.58rem clamp(0.9rem, 1.3vw, 1.1rem) clamp(0.9rem, 1.3vw, 1.1rem);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 10px;
+  background: rgba(2, 8, 23, 0.64);
+  padding: 0.66rem 0.8rem;
+}
+
+.landing-hero-section .nexid-hero-atlas-card__ledger span {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.36rem;
+}
+
+.landing-hero-section .nexid-hero-atlas-card__ledger em {
+  color: rgb(203, 213, 225);
+  font-size: 0.74rem;
+  font-style: normal;
+}
+
+.landing-hero-section .nexid-hero-atlas-card__ledger strong {
+  color: rgb(103, 232, 249);
+  font-size: 0.8rem;
+  font-weight: 950;
+}
+
+.landing-hero-section .nexid-hero-product-trigger {
+  display: block;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.landing-hero-section .nexid-hero-product-trigger:focus-visible {
+  border-radius: 10px;
+  outline: 2px solid rgba(103, 232, 249, 0.95);
+  outline-offset: 4px;
+}
+
+.landing-hero-section .nexid-hero-product-card {
+  display: grid;
+  grid-template-rows: auto minmax(15rem, 1fr) auto;
+  height: 100%;
+  overflow: hidden;
+  transition: border-color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+}
+
+.landing-hero-section .nexid-hero-product-trigger:hover .nexid-hero-product-card,
+.landing-hero-section .nexid-hero-product-trigger:focus-visible .nexid-hero-product-card {
+  border-color: rgba(103, 232, 249, 0.55);
+  transform: translateY(-2px);
+  box-shadow: 0 28px 88px rgba(8, 145, 178, 0.2);
+}
+
+.landing-hero-section .nexid-hero-product-card__eyebrow {
+  padding: 1rem 1.05rem 0.66rem;
+}
+
+.landing-hero-section .nexid-hero-product-card__media {
+  position: relative;
+  min-height: clamp(16.5rem, 25vw, 24rem);
+  overflow: hidden;
+  background: linear-gradient(145deg, #151a21, #050a12);
+}
+
+.landing-hero-section .nexid-hero-product-card__media::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 46%;
+  background: linear-gradient(180deg, transparent, rgba(2, 8, 23, 0.84));
+}
+
+.landing-hero-section .nexid-hero-product-card__media img,
+.landing-hero-section .nexid-hero-product-card__media .hero-product-visual-shell {
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+  object-fit: cover;
+  transition: transform 240ms ease;
+}
+
+.landing-hero-section .nexid-hero-product-trigger:hover .nexid-hero-product-card__media img {
+  transform: scale(1.035);
+}
+
+.landing-hero-section .nexid-hero-product-card__chip {
+  position: absolute;
+  top: 0.82rem;
+  right: 0.82rem;
+  z-index: 2;
+  display: grid;
+  gap: 0.2rem;
+  min-width: 5.8rem;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 8px;
+  background: rgba(2, 8, 23, 0.7);
+  padding: 0.62rem 0.7rem;
+  text-align: center;
+  backdrop-filter: blur(14px);
+}
+
+.landing-hero-section .nexid-hero-product-card__chip strong {
+  color: white;
+  font-size: 0.86rem;
+  font-weight: 950;
+}
+
+.landing-hero-section .nexid-hero-product-card__chip em {
+  color: rgb(226, 232, 240);
+  font-size: 0.56rem;
+  font-style: normal;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+}
+
+.landing-hero-section .nexid-hero-product-card__body {
+  padding: clamp(0.95rem, 1.25vw, 1.18rem);
+}
+
+.landing-hero-section .nexid-hero-product-card__body > span:first-child {
+  color: rgb(148, 163, 184);
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.landing-hero-section .nexid-hero-product-card__body h3 {
+  margin-top: 0.42rem;
+  color: white;
+  font-size: clamp(1.25rem, 1.6vw, 1.58rem);
+  font-weight: 950;
+  letter-spacing: 0;
+  line-height: 1.05;
+}
+
+.landing-hero-section .nexid-hero-product-card__body p {
+  margin-top: 0.3rem;
+  color: rgb(226, 232, 240);
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+
+.landing-hero-section .nexid-hero-product-card__records {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.62rem;
+  margin-top: 0.85rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.16);
+  padding-top: 0.78rem;
+}
+
+.landing-hero-section .nexid-hero-product-card__records span:nth-child(3) {
+  grid-column: 1 / -1;
+}
+
+.landing-hero-section .nexid-hero-product-card__records em {
+  display: block;
+  color: rgb(148, 163, 184);
+  font-size: 0.6rem;
+  font-style: normal;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.landing-hero-section .nexid-hero-product-card__records strong {
+  display: block;
+  margin-top: 0.22rem;
+  overflow-wrap: anywhere;
+  color: rgb(241, 245, 249);
+  font-size: 0.78rem;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
+.landing-hero-section .nexid-hero-product-card__cta {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 0.58rem;
+  row-gap: 0.16rem;
+  align-items: center;
+  margin-top: 0.92rem;
+  border: 1px solid rgba(34, 211, 238, 0.5);
+  border-radius: 8px;
+  background: rgba(8, 145, 178, 0.12);
+  color: rgb(103, 232, 249);
+  padding: 0.78rem 0.86rem;
+}
+
+.landing-hero-section .nexid-hero-product-card__cta svg {
+  grid-row: span 2;
+}
+
+.landing-hero-section .nexid-hero-product-card__cta strong {
+  color: rgb(165, 243, 252);
+  font-size: 0.9rem;
+  font-weight: 950;
+}
+
+.landing-hero-section .nexid-hero-product-card__cta em {
+  color: rgb(203, 213, 225);
+  font-size: 0.74rem;
+  font-style: normal;
+  line-height: 1.25;
+}
+
+.landing-hero-section .nexid-hero-phone-panel {
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  gap: 0.88rem;
+  overflow: visible;
+  padding: 0 0 clamp(1rem, 1.3vw, 1.25rem);
+  background:
+    radial-gradient(circle at 48% 12%, rgba(34, 211, 238, 0.14), transparent 28%),
+    linear-gradient(145deg, rgba(3, 18, 32, 0.95), rgba(2, 8, 23, 0.98));
+}
+
+.landing-hero-section .nexid-hero-phone-panel__head {
+  width: 100%;
+  padding: 1rem 1.05rem 0;
+}
+
+.landing-hero-section .nexid-hero-phone-panel__head strong {
+  display: block;
+  margin-top: 0.26rem;
+  color: rgb(134, 239, 172);
+  font-size: 0.9rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.landing-hero-section .nexid-hero-phone {
+  position: relative;
+  width: min(100%, clamp(18.4rem, 21vw, 21rem));
+  border: 7px solid rgba(24, 31, 42, 0.98);
+  border-radius: 2.65rem;
+  background: #020617;
+  padding: 0.48rem;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.16),
+    0 24px 70px rgba(0, 0, 0, 0.46);
+}
+
+.landing-hero-section .nexid-hero-phone--samsung {
+  border-radius: 2.15rem;
+}
+
+.landing-hero-section .nexid-hero-phone__notch {
+  display: none;
+}
+
+.landing-hero-section .nexid-hero-phone--samsung .nexid-hero-phone__notch {
+  display: none;
+}
+
+.landing-hero-section .nexid-hero-phone__screen {
+  position: relative;
+  min-height: clamp(32.8rem, 41vw, 37.4rem);
+  overflow: hidden;
+  border-radius: 2rem;
+  background:
+    radial-gradient(circle at 20% 16%, rgba(34, 211, 238, 0.16), transparent 34%),
+    linear-gradient(180deg, #07162a 0%, #061121 48%, #020817 100%);
+  color: white;
+  padding: clamp(0.92rem, 1.1vw, 1.08rem);
+}
+
+.landing-hero-section .nexid-hero-phone--samsung .nexid-hero-phone__screen {
+  border-radius: 1.55rem;
+}
+
+.landing-hero-section .nexid-hero-phone__status {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  align-items: start;
+  column-gap: 0.72rem;
+  row-gap: 0.18rem;
+  min-height: 3.18rem;
+  color: white;
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.landing-hero-section .nexid-hero-phone__status > span:first-child {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.landing-hero-section .nexid-hero-phone__status strong {
+  grid-column: 1 / 3;
+  grid-row: 2;
+  justify-self: start;
+  position: relative;
+  z-index: 5;
+  color: white;
+  font-size: 1.34rem;
+  font-weight: 950;
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+
+.landing-hero-section .nexid-hero-phone__status strong span {
+  color: #67e8f9;
+}
+
+.landing-hero-section .nexid-hero-phone__status i {
+  grid-column: 3;
+  grid-row: 1 / 3;
+  justify-self: end;
+  align-self: start;
+  margin-top: 0.12rem;
+  width: 1.12rem;
+  height: 0.78rem;
+  border-top: 2px solid rgba(255, 255, 255, 0.82);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.82);
+}
+
+.landing-hero-section .nexid-hero-phone__verdict {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.82rem;
+  align-items: center;
+  margin-top: clamp(1.1rem, 1.7vw, 1.65rem);
+}
+
+.landing-hero-section .nexid-hero-phone__shield {
+  display: grid;
+  width: 4.05rem;
+  height: 4.05rem;
+  place-items: center;
+  border: 2px solid rgba(74, 222, 128, 0.7);
+  border-radius: 1.22rem;
+  background: rgba(21, 128, 61, 0.34);
+  color: rgb(110, 231, 183);
+  box-shadow: 0 0 28px rgba(74, 222, 128, 0.18);
+}
+
+.landing-hero-section .nexid-hero-phone__verdict em {
+  display: block;
+  color: rgb(103, 232, 249);
+  font-size: 0.66rem;
+  font-style: normal;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.landing-hero-section .nexid-hero-phone__verdict strong {
+  display: block;
+  margin-top: 0.22rem;
+  color: rgb(134, 239, 172);
+  font-size: clamp(1.14rem, 1.55vw, 1.44rem);
+  font-weight: 950;
+  line-height: 1.08;
+}
+
+.landing-hero-section .nexid-hero-phone__verdict small {
+  display: block;
+  margin-top: 0.56rem;
+  color: rgb(103, 232, 249);
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.landing-hero-section .nexid-hero-phone__product {
+  display: grid;
+  grid-template-columns: 4.1rem minmax(0, 1fr);
+  gap: 0.78rem;
+  align-items: center;
+  margin-top: 1.15rem;
+  border: 1px solid rgba(103, 232, 249, 0.18);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.58);
+  padding: 0.62rem;
+}
+
+.landing-hero-section .nexid-hero-phone__product > span {
+  display: block;
+  overflow: hidden;
+  height: 4.1rem;
+  border-radius: 6px;
+  background: rgba(2, 8, 23, 0.8);
+}
+
+.landing-hero-section .nexid-hero-phone__product img,
+.landing-hero-section .nexid-hero-phone__product .hero-product-visual-shell {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.landing-hero-section .nexid-hero-phone__product strong,
+.landing-hero-section .nexid-hero-phone__product em,
+.landing-hero-section .nexid-hero-phone__product small {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.landing-hero-section .nexid-hero-phone__product strong {
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 950;
+  line-height: 1.16;
+}
+
+.landing-hero-section .nexid-hero-phone__product em,
+.landing-hero-section .nexid-hero-phone__product small {
+  color: rgb(203, 213, 225);
+  font-size: 0.72rem;
+  font-style: normal;
+  line-height: 1.28;
+}
+
+.landing-hero-section .nexid-hero-phone__specs {
+  margin-top: 0.8rem;
+  overflow: hidden;
+  border: 1px solid rgba(103, 232, 249, 0.16);
+  border-radius: 8px;
+  background: rgba(8, 47, 73, 0.26);
+}
+
+.landing-hero-section .nexid-hero-phone__specs div {
+  display: grid;
+  grid-template-columns: minmax(4.3rem, 0.62fr) minmax(0, 1fr);
+  gap: 0.5rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.13);
+  padding: 0.54rem 0.68rem;
+}
+
+.landing-hero-section .nexid-hero-phone__specs div:last-child {
+  border-bottom: 0;
+}
+
+.landing-hero-section .nexid-hero-phone__specs dt,
+.landing-hero-section .nexid-hero-phone__specs dd {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.69rem;
+}
+
+.landing-hero-section .nexid-hero-phone__specs dt {
+  color: rgb(148, 163, 184);
+}
+
+.landing-hero-section .nexid-hero-phone__specs dd {
+  color: rgb(226, 232, 240);
+  text-align: right;
+}
+
+.landing-hero-section .nexid-hero-phone__scan {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 2rem;
+  margin-top: 0.75rem;
+}
+
+.landing-hero-section .nexid-hero-phone__scan span,
+.landing-hero-section .nexid-hero-phone__scan i,
+.landing-hero-section .nexid-hero-phone__scan em {
+  position: absolute;
+  border-radius: 999px;
+}
+
+.landing-hero-section .nexid-hero-phone__scan span {
+  width: 7rem;
+  height: 0.16rem;
+  background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.9), rgba(52, 211, 153, 0.9), transparent);
+  animation: nexid-phone-scan-line 2.6s ease-in-out infinite;
+}
+
+.landing-hero-section .nexid-hero-phone__scan i {
+  width: 0.48rem;
+  height: 0.48rem;
+  background: rgb(103, 232, 249);
+  box-shadow: 0 0 18px rgba(103, 232, 249, 0.75);
+  animation: nexid-phone-scan-dot 2.6s ease-in-out infinite;
+}
+
+.landing-hero-section .nexid-hero-phone__scan em {
+  width: 5rem;
+  height: 1.4rem;
+  border: 1px solid rgba(103, 232, 249, 0.18);
+  opacity: 0.8;
+}
+
+.landing-hero-section .nexid-hero-phone__note {
+  margin-top: 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 8px;
+  background: rgba(2, 8, 23, 0.58);
+  color: rgb(203, 213, 225);
+  font-size: 0.68rem;
+  line-height: 1.42;
+  padding: 0.72rem 0.78rem;
+}
+
+@keyframes nexid-phone-scan-line {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateX(-10%);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(10%);
+  }
+}
+
+@keyframes nexid-phone-scan-dot {
+  0%,
+  100% {
+    transform: translateX(-3.1rem);
+  }
+  50% {
+    transform: translateX(3.1rem);
+  }
+}
+
+.hero-product-modal {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 1000 !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left)) !important;
+}
+
+.hero-product-modal__backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(2, 6, 23, 0.68) !important;
+  backdrop-filter: blur(14px) !important;
+}
+
+.hero-product-modal__panel {
+  position: relative !important;
+  width: min(1120px, calc(100vw - 2rem)) !important;
+  max-height: min(88dvh, 860px) !important;
+  overflow: auto !important;
+  border-radius: 16px !important;
+}
+
+@media (max-width: 1180px) {
+  .hero-product-modal__grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+html.theme-light .landing-hero-section .nexid-hero-atlas-card,
+html.theme-light .landing-hero-section .nexid-hero-product-card,
+html.theme-light .landing-hero-section .nexid-hero-phone-panel {
+  border-color: rgba(14, 116, 144, 0.22);
+  background:
+    radial-gradient(circle at 18% 16%, rgba(14, 165, 233, 0.12), transparent 28%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(231, 244, 255, 0.92));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 22px 60px rgba(15, 23, 42, 0.1);
+}
+
+html.theme-light .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas {
+  --hero-atlas-ocean-a: #ecfeff;
+  --hero-atlas-ocean-b: #dff3fb;
+  --hero-atlas-ocean-c: #f8fbff;
+  --hero-atlas-land-a: #99e4e8;
+  --hero-atlas-land-b: #73d7de;
+  --hero-atlas-land-c: #a8cffa;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__region {
+  opacity: 0.78 !important;
+  stroke: rgba(14, 116, 144, 0.24) !important;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__coastline {
+  stroke: rgba(8, 47, 73, 0.2) !important;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-atlas-card__map::after {
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.44), transparent 18%, transparent 82%, rgba(255, 255, 255, 0.48)),
+    linear-gradient(180deg, transparent 54%, rgba(255, 255, 255, 0.52)) !important;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__route-halo {
+  stroke: rgba(255, 255, 255, 0.9) !important;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-plate,
+html.theme-light .landing-hero-section .nexid-hero-atlas-card__timeline,
+html.theme-light .landing-hero-section .nexid-hero-atlas-card__ledger,
+html.theme-light .landing-hero-section .nexid-hero-phone__note,
+html.theme-light .landing-hero-section .nexid-hero-phone__specs,
+html.theme-light .landing-hero-section .nexid-hero-phone__product {
+  border-color: rgba(14, 116, 144, 0.18) !important;
+  background: rgba(255, 255, 255, 0.78) !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-atlas-card__head strong,
+html.theme-light .landing-hero-section .nexid-hero-atlas-card__timeline-head span,
+html.theme-light .landing-hero-section .nexid-hero-atlas-card__stops strong,
+html.theme-light .landing-hero-section .nexid-hero-product-card__body h3,
+html.theme-light .landing-hero-section .nexid-hero-product-card__records strong,
+html.theme-light .landing-hero-section .nexid-hero-phone__product strong,
+html.theme-light .landing-hero-section .nexid-hero-phone__specs dd,
+html.theme-light .landing-hero-section .nexid-hero-phone__status,
+html.theme-light .landing-hero-section .nexid-hero-phone__status strong {
+  color: #0f172a !important;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-phone__verdict strong {
+  color: #047857 !important;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-phone__verdict em,
+html.theme-light .landing-hero-section .nexid-hero-phone__verdict small,
+html.theme-light .landing-hero-section .nexid-hero-product-card__cta strong {
+  color: #0e7490 !important;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-product-card__cta {
+  border-color: rgba(8, 145, 178, 0.34) !important;
+  background: rgba(236, 254, 255, 0.82) !important;
+  color: #0e7490 !important;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-atlas-card__timeline-head strong,
+html.theme-light .landing-hero-section .nexid-hero-atlas-card__stops span,
+html.theme-light .landing-hero-section .nexid-hero-atlas-card__stops em,
+html.theme-light .landing-hero-section .nexid-hero-atlas-card__stops small,
+html.theme-light .landing-hero-section .nexid-hero-product-card__body p,
+html.theme-light .landing-hero-section .nexid-hero-product-card__records em,
+html.theme-light .landing-hero-section .nexid-hero-product-card__cta em,
+html.theme-light .landing-hero-section .nexid-hero-phone__product em,
+html.theme-light .landing-hero-section .nexid-hero-phone__product small,
+html.theme-light .landing-hero-section .nexid-hero-phone__specs dt,
+html.theme-light .landing-hero-section .nexid-hero-phone__note {
+  color: #475569 !important;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-phone__screen {
+  background:
+    radial-gradient(circle at 20% 16%, rgba(14, 165, 233, 0.16), transparent 34%),
+    linear-gradient(180deg, #eef8ff 0%, #ffffff 48%, #e5f2ff 100%) !important;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-phone__status i {
+  border-color: rgba(15, 23, 42, 0.72) !important;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-phone__scan span {
+  background: linear-gradient(90deg, transparent, rgba(8, 145, 178, 0.85), rgba(5, 150, 105, 0.82), transparent) !important;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-phone__scan i {
+  background: #0891b2 !important;
+  box-shadow: 0 0 18px rgba(8, 145, 178, 0.45) !important;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-product-card__media::after {
+  background: linear-gradient(180deg, transparent, rgba(15, 23, 42, 0.18));
+}
+
+html.theme-light .landing-hero-section .nexid-hero-product-card__chip {
+  border-color: rgba(14, 116, 144, 0.22);
+  background: rgba(255, 255, 255, 0.78);
+}
+
+html.theme-light .landing-hero-section .nexid-hero-product-card__chip strong {
+  color: #0f172a;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-product-card__chip em {
+  color: #475569;
+}
+
+@media (max-width: 1240px) {
+  .landing-hero-section .nexid-hero-board {
+    grid-template-columns: minmax(0, 1.25fr) minmax(17rem, 0.72fr);
+  }
+
+  .landing-hero-section .nexid-hero-phone-panel {
+    grid-column: 1 / -1;
+  }
+
+  .landing-hero-section .nexid-hero-phone-panel {
+    grid-template-columns: minmax(0, 0.5fr) minmax(18rem, 0.5fr);
+    align-items: start;
+    justify-items: center;
+    padding: 1rem;
+  }
+
+  .landing-hero-section .nexid-hero-phone-panel__head {
+    align-self: center;
+    padding: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-callout,
+  .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__leader {
+    display: none !important;
+  }
+}
+
+@media (max-width: 980px) {
+  .landing-hero-section .nexid-hero-board {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .landing-hero-section .nexid-hero-phone-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .landing-hero-section .nexid-hero-atlas-card {
+    min-height: 0;
+  }
+
+  .landing-hero-section .nexid-hero-atlas-card__map {
+    min-height: clamp(20rem, 58vw, 28rem);
+  }
+
+  .landing-hero-section .nexid-hero-atlas-card__stops {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .landing-hero-section .nexid-hero-atlas-card__stops::before {
+    display: none;
+  }
+
+  .landing-hero-section .nexid-hero-atlas-card__ledger {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .landing-hero-section .nexid-hero-board {
+    gap: 0.82rem;
+    margin-top: 0.88rem;
+  }
+
+  .landing-hero-section .nexid-hero-atlas-card__head,
+  .landing-hero-section .nexid-hero-product-card__eyebrow,
+  .landing-hero-section .nexid-hero-product-card__body,
+  .landing-hero-section .nexid-hero-phone-panel__head {
+    padding-inline: 0.82rem;
+  }
+
+  .landing-hero-section .nexid-hero-atlas-card__head {
+    flex-direction: column;
+    gap: 0.58rem;
+  }
+
+  .landing-hero-section .nexid-hero-atlas-card__map {
+    min-height: clamp(15.8rem, 72vw, 20rem);
+  }
+
+  .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-callout,
+  .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__leader {
+    display: none !important;
+  }
+
+  .landing-hero-section .nexid-hero-atlas-card__timeline {
+    margin-inline: 0.7rem;
+  }
+
+  .landing-hero-section .nexid-hero-atlas-card__stops {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .landing-hero-section .nexid-hero-atlas-card__ledger {
+    margin-inline: 0.7rem;
+  }
+
+  .landing-hero-section .nexid-hero-product-card {
+    grid-template-rows: auto auto auto;
+  }
+
+  .landing-hero-section .nexid-hero-product-card__media {
+    min-height: clamp(15rem, 72vw, 19rem);
+  }
+
+  .landing-hero-section .nexid-hero-phone-panel {
+    padding: 0 0.7rem 0.9rem;
+  }
+
+  .landing-hero-section .nexid-hero-phone {
+    width: min(100%, 21rem);
+    border-width: 5px;
+    border-radius: 2rem;
+  }
+
+  .landing-hero-section .nexid-hero-phone__screen {
+    min-height: 0;
+    height: auto;
+    overflow: visible;
+    border-radius: 1.55rem;
+    padding: 0.86rem;
+  }
+
+  .landing-hero-section .nexid-hero-phone__verdict {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .landing-hero-section .nexid-hero-phone__shield {
+    width: 3.35rem;
+    height: 3.35rem;
+  }
+
+  .landing-hero-section .nexid-hero-phone__specs div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.15rem;
+  }
+
+  .landing-hero-section .nexid-hero-phone__specs dd {
+    text-align: left;
+    white-space: normal;
+  }
+
+  .landing-hero-section .nexid-hero-phone__note {
+    font-size: 0.64rem;
+    line-height: 1.36;
+    padding: 0.62rem 0.68rem;
+  }
+
+  .hero-product-modal {
+    padding: max(0.55rem, env(safe-area-inset-top)) 0.55rem max(0.55rem, env(safe-area-inset-bottom)) !important;
+  }
+
+  .hero-product-modal__panel {
+    width: min(100%, calc(100vw - 1.1rem)) !important;
+    max-height: calc(100dvh - max(1.1rem, env(safe-area-inset-top) + env(safe-area-inset-bottom))) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-hero-section .nexid-hero-phone__scan span,
+  .landing-hero-section .nexid-hero-phone__scan i,
+  .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__route,
+  .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__node-pulse {
+    animation: none !important;
   }
 }

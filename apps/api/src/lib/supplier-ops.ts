@@ -537,6 +537,51 @@ export function canImportSupplierManifest(input: {
   return { ok: true as const };
 }
 
+export function canRotateSupplierSubBatchKeys(input: {
+  keyExportCount?: number | null;
+  batchKeyExportCount?: number | null;
+  manifestStatus?: string | null;
+  manifestCount?: number | null;
+  qaStatus?: string | null;
+  subBatchStatus?: string | null;
+  batchStatus?: string | null;
+}) {
+  const keyExportCount = Math.trunc(Number(input.keyExportCount || 0));
+  const batchKeyExportCount = Math.trunc(Number(input.batchKeyExportCount || 0));
+  const manifestCount = Math.trunc(Number(input.manifestCount || 0));
+  const manifestStatus = String(input.manifestStatus || "").trim().toLowerCase();
+  const qaStatus = String(input.qaStatus || "").trim().toLowerCase();
+  const subBatchStatus = String(input.subBatchStatus || "").trim().toLowerCase();
+  const batchStatus = String(input.batchStatus || "").trim().toLowerCase();
+
+  if (keyExportCount > 0 || batchKeyExportCount > 0) {
+    return {
+      ok: false as const,
+      reason: "supplier_keys_already_exported",
+      keyExportCount,
+      batchKeyExportCount,
+    };
+  }
+  if (manifestStatus === "imported" || manifestCount > 0) {
+    return {
+      ok: false as const,
+      reason: "supplier_manifest_already_imported",
+      manifestStatus,
+      manifestCount,
+    };
+  }
+  if (qaStatus === "passed") {
+    return { ok: false as const, reason: "supplier_qa_already_passed", qaStatus };
+  }
+  if (["activated", "partially_activated", "active"].includes(subBatchStatus)) {
+    return { ok: false as const, reason: "supplier_batch_already_activated", subBatchStatus };
+  }
+  if (["active", "active_in_market"].includes(batchStatus)) {
+    return { ok: false as const, reason: "supplier_batch_already_activated", batchStatus };
+  }
+  return { ok: true as const };
+}
+
 export function buildSupplierEncodingPack(input: SupplierPackInput): SupplierPack {
   const carrierProfile = canonicalCarrierProfile(input.carrierProfile);
   const profile = getCarrierProfile(carrierProfile);
