@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Button, Card } from "@product/ui";
-import { CheckCircle2, Download, FileCheck2, LockKeyhole, ShieldCheck, UploadCloud } from "lucide-react";
+import { CheckCircle2, CloudOff, Download, FileCheck2, LockKeyhole, ShieldCheck, Smartphone, UploadCloud } from "lucide-react";
 
 type SupplierSubBatch = {
   id: string;
@@ -106,6 +106,54 @@ type ActivationResponse = {
   supplier_gate?: Record<string, unknown> | null;
 };
 
+type OfflineVerifierDevice = {
+  id: string;
+  tenant_slug?: string;
+  device_label?: string;
+  device_type?: string;
+  device_fingerprint?: string;
+  operator_ref?: string | null;
+  status?: string;
+  last_seen_at?: string | null;
+  created_at?: string;
+};
+
+type OfflineVerifierBundle = {
+  id: string;
+  bundle_ref?: string;
+  tenant_slug?: string;
+  device_id?: string;
+  allowed_bids?: string[];
+  key_fingerprints?: Record<string, unknown>;
+  key_material_included?: false;
+  policy?: {
+    contains_key_material?: false;
+    local_verdict_model?: string;
+    allowed_local_verdicts?: string[];
+    requires_backend_sync_for?: string[];
+  };
+  bundle_hash?: string;
+  status?: string;
+  expires_at?: string;
+  created_at?: string;
+};
+
+type OfflineVerifierDevicesResponse = {
+  ok?: boolean;
+  devices?: OfflineVerifierDevice[];
+};
+
+type OfflineVerifierDeviceResponse = {
+  ok?: boolean;
+  device?: OfflineVerifierDevice;
+};
+
+type OfflineVerifierBundleResponse = {
+  ok?: boolean;
+  bundle?: OfflineVerifierBundle;
+  warning?: string;
+};
+
 type SupplierOrderConsoleProps = {
   currentRole?: string;
   currentPermissions?: string[];
@@ -204,6 +252,21 @@ function countManifestRows(value: string) {
   return Math.max(0, lines.length - (hasHeader ? 1 : 0));
 }
 
+function parseBidList(value: string) {
+  return Array.from(new Set(
+    value
+      .split(/[\s,\n]+/)
+      .map((item) => item.trim())
+      .filter(Boolean),
+  ));
+}
+
+function offlineExpiryFromDays(value: string) {
+  const parsed = Math.trunc(Number(value || 7));
+  const days = Number.isFinite(parsed) ? Math.max(1, Math.min(30, parsed)) : 7;
+  return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+}
+
 function hasPermission(grants: string[], permission: string) {
   return grants.some((grant) => {
     if (grant === "*" || grant === permission) return true;
@@ -288,6 +351,31 @@ function safeResponseForPath(path: string, data: unknown) {
       artifacts: Array.isArray(record.artifacts) ? record.artifacts.map(sanitizeVaultArtifact) : [],
     };
   }
+  if (path.includes("/offline-verifier") && data && typeof data === "object") {
+    const record = data as OfflineVerifierBundleResponse & OfflineVerifierDeviceResponse & OfflineVerifierDevicesResponse;
+    return {
+      ok: record.ok,
+      warning: record.warning,
+      device: record.device,
+      devices: record.devices,
+      bundle: record.bundle
+        ? {
+            id: record.bundle.id,
+            bundle_ref: record.bundle.bundle_ref,
+            tenant_slug: record.bundle.tenant_slug,
+            device_id: record.bundle.device_id,
+            allowed_bids: record.bundle.allowed_bids,
+            key_fingerprints: record.bundle.key_fingerprints,
+            key_material_included: false,
+            policy: record.bundle.policy,
+            bundle_hash: record.bundle.bundle_hash,
+            status: record.bundle.status,
+            expires_at: record.bundle.expires_at,
+            created_at: record.bundle.created_at,
+          }
+        : undefined,
+    };
+  }
   return data;
 }
 
@@ -328,6 +416,7 @@ export function SupplierOrderConsole({
     || isSecurityOperator
     || hasPermission(currentPermissions, "supplier:activate")
     || hasPermission(currentPermissions, "batches:write");
+  const canManageOfflineVerifier = canExportPack || hasScopedPermission(currentPermissions, "supplier:offline_verifier");
 
   const [tenantSlug, setTenantSlug] = useState(sessionTenantSlug || "");
   const [customerSlug, setCustomerSlug] = useState("");
@@ -357,6 +446,15 @@ export function SupplierOrderConsole({
   const [manifestCsv, setManifestCsv] = useState("");
   const [manifestResult, setManifestResult] = useState<ManifestImportResponse | null>(null);
   const [activationLimit, setActivationLimit] = useState("");
+  const [offlineDevices, setOfflineDevices] = useState<OfflineVerifierDevice[]>([]);
+  const [offlineDeviceLabel, setOfflineDeviceLabel] = useState("Samsung field verifier");
+  const [offlineDeviceType, setOfflineDeviceType] = useState("field_app");
+  const [offlineDeviceFingerprint, setOfflineDeviceFingerprint] = useState("");
+  const [offlineOperatorRef, setOfflineOperatorRef] = useState("");
+  const [offlineSelectedDeviceId, setOfflineSelectedDeviceId] = useState("");
+  const [offlineBundleBids, setOfflineBundleBids] = useState("");
+  const [offlineBundleExpiryDays, setOfflineBundleExpiryDays] = useState("7");
+  const [offlineBundle, setOfflineBundle] = useState<OfflineVerifierBundle | null>(null);
 
   const subBatches = useMemo(() => created?.sub_batches || [], [created]);
   const selectedOrderId = created?.order?.id || "";
@@ -365,6 +463,7 @@ export function SupplierOrderConsole({
     [qaBid, subBatches],
   );
   const activeCarrierProfile = created?.order?.carrier_profile_code || carrierProfileCode;
+  const effectiveTenantSlug = (created?.order?.tenant_slug || tenantSlug).trim();
   const requiresTtstatus = activeCarrierProfile === "ntag424_dna_tt";
   const manifestRows = useMemo(() => countManifestRows(manifestCsv), [manifestCsv]);
   const qaUrls = useMemo(
@@ -377,6 +476,11 @@ export function SupplierOrderConsole({
   const packAlreadyExported = hasExportEvidence(created?.order, vaultArtifacts, pack);
   const totalQuantityValue = Number(totalQuantity);
   const subBatchSizeValue = Number(subBatchSize);
+  const offlineBids = useMemo(() => {
+    const manualBids = parseBidList(offlineBundleBids);
+    if (manualBids.length) return manualBids;
+    return qaBid ? [qaBid] : [];
+  }, [offlineBundleBids, qaBid]);
   const createOrderBlockReason = !canCreateOrder
     ? "Solo superadmin, security operator o supplier:write puede crear un Supplier Order."
     : !tenantSlug.trim()
@@ -447,11 +551,27 @@ export function SupplierOrderConsole({
       : packAlreadyExported
         ? "Pack ya exportado o con evidencia en Vault."
         : "";
+  const offlineBlockReason = !canManageOfflineVerifier
+    ? "Solo superadmin, security operator, supplier:export_pack o supplier:offline_verifier puede emitir bundles offline."
+    : !effectiveTenantSlug
+      ? "Falta tenant slug."
+      : "";
+  const offlineBundleBlockReason = offlineBlockReason
+    || (!offlineSelectedDeviceId ? "Selecciona o enrola un dispositivo offline." : "")
+    || (!offlineBids.length ? "Selecciona al menos un BID para el bundle." : "");
   const canImportManifest = Boolean(!pending && !manifestBlockReason);
   const canActivateSubBatch = Boolean(!pending && !activationBlockReason);
   const canPassQa = Boolean(!pending && !qaPassBlockReason);
   const canRejectQa = Boolean(!pending && !qaRejectBlockReason);
   const canExportCurrentPack = Boolean(!pending && !exportPackBlockReason);
+  const canLoadOfflineDevices = Boolean(!pending && !offlineBlockReason);
+  const canEnrollOfflineDevice = Boolean(
+    !pending
+    && !offlineBlockReason
+    && offlineDeviceLabel.trim()
+    && offlineDeviceFingerprint.trim(),
+  );
+  const canIssueOfflineBundle = Boolean(!pending && !offlineBundleBlockReason);
   const nextAction = !selectedOrderId
     ? "Crea o selecciona un Supplier Order."
     : !selectedSubBatch
@@ -537,6 +657,10 @@ export function SupplierOrderConsole({
       setActivationLimit("");
       setPackPassword("");
       setPackPasswordVisible(false);
+      setOfflineBundleBids(firstBid);
+      setOfflineBundle(null);
+      setOfflineSelectedDeviceId("");
+      setOfflineDevices([]);
       setStatus(`Pedido creado: ${data.sub_batches?.length || 0} sub-batches con fingerprints, llaves cifradas y sin KMS expuesta.`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "No se pudo crear el pedido.");
@@ -569,6 +693,86 @@ export function SupplierOrderConsole({
     }
     const record = data as { artifacts?: SupplierVaultArtifact[] };
     setVaultArtifacts(Array.isArray(record.artifacts) ? record.artifacts : []);
+  }
+
+  async function loadOfflineDevices() {
+    if (offlineBlockReason) {
+      setStatus(offlineBlockReason);
+      return;
+    }
+    setPending(true);
+    setStatus("Consultando dispositivos offline enrolados para este tenant...");
+    try {
+      const path = `/api/admin/offline-verifier/devices?tenant=${encodeURIComponent(effectiveTenantSlug)}`;
+      const data = await run(path) as OfflineVerifierDevicesResponse;
+      const devices = Array.isArray(data.devices) ? data.devices : [];
+      setOfflineDevices(devices);
+      setOfflineSelectedDeviceId((current) => current || devices[0]?.id || "");
+      setStatus(`${devices.length} dispositivos offline cargados. Los bundles no contienen K_META, K_FILE ni master keys.`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "No se pudieron cargar dispositivos offline.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function enrollOfflineDevice() {
+    if (!canEnrollOfflineDevice) {
+      setStatus(offlineBlockReason || "Falta label y fingerprint/public key del dispositivo.");
+      return;
+    }
+    setPending(true);
+    setStatus("Enrolando dispositivo offline. La API hashea el identificador y audita el alta.");
+    try {
+      const data = await run("/api/admin/offline-verifier/devices", {
+        method: "POST",
+        body: JSON.stringify({
+          tenant: effectiveTenantSlug,
+          device_label: offlineDeviceLabel.trim(),
+          device_type: offlineDeviceType.trim() || "field_app",
+          device_fingerprint: offlineDeviceFingerprint.trim(),
+          operator_ref: offlineOperatorRef.trim(),
+          platform: offlineDeviceType.trim() || "field_app",
+        }),
+      }) as OfflineVerifierDeviceResponse;
+      if (data.device) {
+        setOfflineDevices((current) => {
+          const remaining = current.filter((device) => device.id !== data.device?.id);
+          return [data.device as OfflineVerifierDevice, ...remaining];
+        });
+        setOfflineSelectedDeviceId(data.device.id);
+      }
+      setStatus("Dispositivo offline enrolado. No se guardo ninguna master key en el dashboard.");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "No se pudo enrolar el dispositivo offline.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function issueOfflineBundle() {
+    if (offlineBundleBlockReason) {
+      setStatus(offlineBundleBlockReason);
+      return;
+    }
+    setPending(true);
+    setStatus("Emitiendo bundle offline con scope de dispositivo, BIDs y vencimiento. Veredicto local queda provisional.");
+    try {
+      const data = await run("/api/admin/offline-verifier/bundles", {
+        method: "POST",
+        body: JSON.stringify({
+          device_id: offlineSelectedDeviceId,
+          bids: offlineBids,
+          expires_at: offlineExpiryFromDays(offlineBundleExpiryDays),
+        }),
+      }) as OfflineVerifierBundleResponse;
+      setOfflineBundle(data.bundle || null);
+      setStatus(data.warning || "Bundle offline emitido. Sin material de llave; resultado final requiere backend sync.");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "No se pudo emitir el bundle offline.");
+    } finally {
+      setPending(false);
+    }
   }
 
   async function exportPack() {
@@ -732,6 +936,10 @@ export function SupplierOrderConsole({
     setActivationLimit("");
     setPackPassword("");
     setPackPasswordVisible(false);
+    setOfflineBundleBids(subBatchesFromOrder[0]?.bid || "");
+    setOfflineBundle(null);
+    setOfflineSelectedDeviceId("");
+    setOfflineDevices([]);
     setStatus(`Pedido seleccionado: ${order.order_name || order.id}. ${subBatchesFromOrder.length} sub-batches disponibles.`);
     void loadVaultArtifacts(order.id).catch((error) => {
       setStatus(error instanceof Error ? error.message : "No se pudo cargar Tenant Vault.");
@@ -970,6 +1178,132 @@ export function SupplierOrderConsole({
                 Sin artefactos visibles todavia. Exporta el pack o importa el manifest para poblar el Vault.
               </p>
             )}
+          </div>
+
+          <div className="rounded-2xl border border-teal-300/20 bg-teal-500/10 p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-teal-100">Offline verifier</p>
+                <p className="mt-2 text-sm leading-6 text-teal-50">
+                  Modo de baja conectividad para campo, cavas, plantas, minas y depositos: enrola un celular/lector, emite un bundle por BIDs y sincroniza evidencia hasheada cuando vuelve la senal.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-[0.12em]">
+                <span className="rounded-full border border-teal-300/25 bg-teal-400/10 px-3 py-1 text-teal-100">Provisional</span>
+                <span className="rounded-full border border-amber-300/25 bg-amber-400/10 px-3 py-1 text-amber-100">No master keys</span>
+                <span className="rounded-full border border-white/10 bg-slate-950/60 px-3 py-1 text-slate-200">Final sync backend</span>
+              </div>
+            </div>
+
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              <Field label="Device label" value={offlineDeviceLabel} onChange={setOfflineDeviceLabel} placeholder="Samsung S24 campo norte" />
+              <label className="block">
+                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Device type</span>
+                <select
+                  className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white"
+                  value={offlineDeviceType}
+                  onChange={(event) => setOfflineDeviceType(event.target.value)}
+                >
+                  <option value="field_app">Android/iOS app</option>
+                  <option value="nfc_reader">NFC reader</option>
+                  <option value="uhf_reader">UHF reader</option>
+                  <option value="rugged_scanner">Rugged scanner</option>
+                </select>
+              </label>
+              <Field label="Public key / fingerprint" value={offlineDeviceFingerprint} onChange={setOfflineDeviceFingerprint} placeholder="public key or sha256 fingerprint, never private key" />
+              <Field label="Operator ref" value={offlineOperatorRef} onChange={setOfflineOperatorRef} placeholder="turno, tecnico o contratista" />
+            </div>
+
+            <label className="mt-3 block">
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">BIDs autorizados</span>
+              <textarea
+                className="mt-1 min-h-20 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 font-mono text-xs text-white placeholder:text-slate-500"
+                value={offlineBundleBids}
+                onChange={(event) => setOfflineBundleBids(event.target.value)}
+                placeholder={qaBid || "SYN-AR-2026-001-A, SYN-AR-2026-001-B"}
+              />
+              <span className="mt-1 block text-xs text-slate-400">
+                {offlineBids.length} BID(s) en scope. Si queda vacio, se usa el BID seleccionado.
+              </span>
+            </label>
+
+            <div className="mt-3 grid gap-3 md:grid-cols-[0.45fr_1fr]">
+              <Field label="TTL dias" value={offlineBundleExpiryDays} onChange={setOfflineBundleExpiryDays} placeholder="1 a 30" />
+              <label className="block">
+                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Dispositivo enrolado</span>
+                <select
+                  className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white"
+                  value={offlineSelectedDeviceId}
+                  onChange={(event) => setOfflineSelectedDeviceId(event.target.value)}
+                >
+                  <option value="">Sin dispositivo seleccionado</option>
+                  {offlineDevices.map((device) => (
+                    <option key={device.id} value={device.id}>
+                      {device.device_label || device.id} / {device.status || "status"} / {device.device_fingerprint || "fingerprint"}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button className="gap-2" variant="secondary" disabled={!canLoadOfflineDevices} title={offlineBlockReason || "Cargar dispositivos offline"} onClick={() => void loadOfflineDevices()}>
+                <Smartphone className="h-4 w-4" aria-hidden="true" />
+                Ver dispositivos
+              </Button>
+              <Button className="gap-2" variant="secondary" disabled={!canEnrollOfflineDevice} title={offlineBlockReason || "Enrolar dispositivo offline"} onClick={() => void enrollOfflineDevice()}>
+                <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+                Enrolar dispositivo
+              </Button>
+              <Button className="gap-2" disabled={!canIssueOfflineBundle} title={offlineBundleBlockReason || "Emitir bundle offline"} onClick={() => void issueOfflineBundle()}>
+                <CloudOff className="h-4 w-4" aria-hidden="true" />
+                Emitir bundle offline
+              </Button>
+            </div>
+            {(offlineBlockReason || offlineBundleBlockReason) ? (
+              <p className="mt-2 text-xs leading-5 text-teal-100">{offlineBlockReason || offlineBundleBlockReason}</p>
+            ) : null}
+
+            {offlineDevices.length ? (
+              <div className="mt-3 grid gap-2 md:grid-cols-2">
+                {offlineDevices.slice(0, 4).map((device) => (
+                  <button
+                    key={device.id}
+                    type="button"
+                    className={`rounded-xl border px-3 py-2 text-left text-xs transition ${offlineSelectedDeviceId === device.id ? "border-teal-300/50 bg-teal-500/15 text-teal-50" : "border-white/10 bg-slate-950/60 text-slate-300 hover:border-teal-300/30"}`}
+                    onClick={() => setOfflineSelectedDeviceId(device.id)}
+                  >
+                    <b className="text-white">{device.device_label || device.id}</b>
+                    <span className="ml-2 text-teal-200">{device.device_type || "field_app"}</span>
+                    <span className="mt-1 block font-mono text-[11px] text-slate-400">{device.device_fingerprint || "fingerprint pendiente"}</span>
+                    <span className="mt-1 block text-slate-500">{device.operator_ref || "sin operador"} / {device.last_seen_at ? `sync ${new Date(device.last_seen_at).toLocaleString("es-AR")}` : "sin sync"}</span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            {offlineBundle ? (
+              <div className="mt-3 rounded-xl border border-white/10 bg-slate-950/65 p-3 text-xs text-slate-300">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <b className="text-white">Bundle emitido</b>
+                  <span className="rounded-full border border-teal-300/25 px-2 py-0.5 font-mono text-[10px] text-teal-100">{offlineBundle.bundle_ref || offlineBundle.id}</span>
+                </div>
+                <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                  <Metric label="BIDs" value={String(offlineBundle.allowed_bids?.length || 0)} />
+                  <Metric label="Keys" value={offlineBundle.key_material_included === false ? "fingerprints" : "revisar"} />
+                  <Metric label="Estado" value={offlineBundle.status || "active"} />
+                </div>
+                <p className="mt-2 break-all font-mono text-[11px] text-teal-100">{offlineBundle.bundle_hash || "hash pendiente"}</p>
+                <p className="mt-2 text-slate-400">
+                  Vence: {offlineBundle.expires_at ? new Date(offlineBundle.expires_at).toLocaleString("es-AR") : "sin fecha"}.
+                  Requiere backend para {offlineBundle.policy?.requires_backend_sync_for?.join(", ") || "replay, ownership, warranty, CRM y proof anchors"}.
+                </p>
+              </div>
+            ) : null}
+
+            <p className="mt-3 rounded-xl border border-amber-300/20 bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-100">
+              Este modo no certifica ownership, warranty, CRM ni proof anchors sin backend. El bundle no incluye K_META_BATCH, K_FILE_BATCH, KMS ni tenant master keys.
+            </p>
           </div>
 
           <div className="rounded-2xl border border-sky-300/20 bg-sky-500/10 p-4">

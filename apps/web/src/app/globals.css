@@ -11554,7 +11554,7 @@ html.theme-light .demo-lab-policy-card--blocked {
 
 .demo-lab-differentiator-chain {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
   gap: 0.42rem;
 }
 
@@ -29949,7 +29949,7 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
 
 .demo-lab-trust-scenarios__grid {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 10px;
 }
 

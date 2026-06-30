@@ -147,6 +147,18 @@ The app or reader talks to the tag through ISO-DEP / ISO 7816 style APDUs. This 
 7. Admin screen showing offline scan count, sync status and conflicts.
 8. iOS and dedicated reader after the Android field flow is proven.
 
+## Backend endpoints added first
+
+The current backend support is intentionally conservative. It enables low-connectivity operations without pretending that nexID has shipped a native cryptographic APK or rugged reader firmware.
+
+| Endpoint | Purpose | Key-material behavior |
+| --- | --- | --- |
+| `POST /admin/offline-verifier/devices` | Enroll or reactivate a controlled verifier device for a tenant. | Stores only a hashed device fingerprint. |
+| `POST /admin/offline-verifier/bundles` | Issue a low-connectivity bundle for allowed supplier BIDs. | Returns BIDs, policy and key fingerprints only; no `K_META_BATCH`, `K_FILE_BATCH`, encrypted keys or tenant master keys. |
+| `POST /admin/offline-verifier/sync` | Receive queued local scan events from an enrolled verifier. | Accepts hashed evidence only and marks server verdicts as pending/review, not final ownership or warranty. |
+
+This is not yet a full local SUN/SDM verifier. A real local cryptographic verifier still requires a native Android/iOS app or dedicated reader with device-scoped derived validation keys, secure local storage and revocation.
+
 ## Tooling
 
 - NXP NTAG 424 DNA documentation for AES-128, SUN and SDM behavior.

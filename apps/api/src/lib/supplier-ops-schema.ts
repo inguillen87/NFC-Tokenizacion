@@ -91,6 +91,36 @@ export async function ensureSupplierOpsSchema() {
       `;
 
       await sql/*sql*/`
+        CREATE TABLE IF NOT EXISTS batch_key_material (
+          id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+          tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+          supplier_order_id uuid REFERENCES supplier_orders(id) ON DELETE CASCADE,
+          supplier_sub_batch_id uuid REFERENCES supplier_sub_batches(id) ON DELETE CASCADE,
+          batch_id uuid REFERENCES batches(id) ON DELETE CASCADE,
+          bid text NOT NULL,
+          key_role text NOT NULL CHECK (key_role IN ('K_META_BATCH', 'K_FILE_BATCH')),
+          key_version integer NOT NULL DEFAULT 1 CHECK (key_version > 0),
+          encrypted_key_ct text NOT NULL,
+          key_fingerprint text NOT NULL,
+          status text NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'rotated', 'revoked', 'destroyed')),
+          export_count integer NOT NULL DEFAULT 0,
+          exported_at timestamptz,
+          created_by text,
+          exported_by text,
+          rotated_from_key_id uuid REFERENCES batch_key_material(id) ON DELETE SET NULL,
+          rotated_at timestamptz,
+          revoked_at timestamptz,
+          rotation_reason text,
+          kms_key_id text,
+          kms_key_version text,
+          metadata_json jsonb NOT NULL DEFAULT '{}'::jsonb,
+          created_at timestamptz NOT NULL DEFAULT now(),
+          updated_at timestamptz NOT NULL DEFAULT now(),
+          UNIQUE (supplier_sub_batch_id, key_role, key_version)
+        )
+      `;
+
+      await sql/*sql*/`
         CREATE TABLE IF NOT EXISTS vault_artifacts (
           id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
           tenant_id uuid REFERENCES tenants(id) ON DELETE CASCADE,
@@ -174,6 +204,63 @@ export async function ensureSupplierOpsSchema() {
         )
       `;
 
+      await sql/*sql*/`
+        CREATE TABLE IF NOT EXISTS offline_verifier_devices (
+          id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+          tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+          device_label text NOT NULL,
+          device_type text NOT NULL DEFAULT 'field_app',
+          device_fingerprint text NOT NULL,
+          operator_ref text,
+          status text NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'revoked', 'disabled')),
+          last_seen_at timestamptz,
+          metadata_json jsonb NOT NULL DEFAULT '{}'::jsonb,
+          created_at timestamptz NOT NULL DEFAULT now(),
+          updated_at timestamptz NOT NULL DEFAULT now(),
+          UNIQUE (tenant_id, device_fingerprint)
+        )
+      `;
+
+      await sql/*sql*/`
+        CREATE TABLE IF NOT EXISTS offline_verifier_bundles (
+          id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+          tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+          device_id uuid NOT NULL REFERENCES offline_verifier_devices(id) ON DELETE CASCADE,
+          bundle_ref text NOT NULL UNIQUE,
+          allowed_bids_json jsonb NOT NULL DEFAULT '[]'::jsonb,
+          key_fingerprints_json jsonb NOT NULL DEFAULT '{}'::jsonb,
+          policy_json jsonb NOT NULL DEFAULT '{}'::jsonb,
+          bundle_hash text NOT NULL,
+          status text NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'expired', 'revoked')),
+          issued_by text,
+          expires_at timestamptz NOT NULL,
+          revoked_at timestamptz,
+          created_at timestamptz NOT NULL DEFAULT now()
+        )
+      `;
+
+      await sql/*sql*/`
+        CREATE TABLE IF NOT EXISTS offline_scan_events (
+          id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+          tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+          device_id uuid NOT NULL REFERENCES offline_verifier_devices(id) ON DELETE CASCADE,
+          bundle_id uuid NOT NULL REFERENCES offline_verifier_bundles(id) ON DELETE CASCADE,
+          client_event_id text NOT NULL,
+          bid text NOT NULL,
+          uid_hash text,
+          sun_payload_hash text,
+          local_verdict text NOT NULL CHECK (local_verdict IN ('OFFLINE_LOCAL_PASS', 'OFFLINE_LOCAL_FAIL', 'SYNC_PENDING')),
+          sync_status text NOT NULL DEFAULT 'received' CHECK (sync_status IN ('received', 'duplicate', 'rejected')),
+          server_verdict text NOT NULL DEFAULT 'SYNC_PENDING',
+          reason text,
+          payload_hash text NOT NULL,
+          observed_at timestamptz NOT NULL,
+          received_at timestamptz NOT NULL DEFAULT now(),
+          metadata_json jsonb NOT NULL DEFAULT '{}'::jsonb,
+          UNIQUE (tenant_id, device_id, client_event_id)
+        )
+      `;
+
       await sql/*sql*/`ALTER TABLE batches ADD COLUMN IF NOT EXISTS supplier_order_id uuid`;
       await sql/*sql*/`ALTER TABLE batches ADD COLUMN IF NOT EXISTS supplier_sub_batch_id uuid`;
       await sql/*sql*/`ALTER TABLE batches ADD COLUMN IF NOT EXISTS expected_quantity integer`;
@@ -182,16 +269,29 @@ export async function ensureSupplierOpsSchema() {
       await sql/*sql*/`ALTER TABLE tenant_manifests ADD COLUMN IF NOT EXISTS supplier_order_id uuid`;
       await sql/*sql*/`ALTER TABLE tenant_manifests ADD COLUMN IF NOT EXISTS supplier_sub_batch_id uuid`;
       await sql/*sql*/`ALTER TABLE tenant_manifests ADD COLUMN IF NOT EXISTS expected_quantity integer`;
+      await sql/*sql*/`ALTER TABLE batch_keys ADD COLUMN IF NOT EXISTS key_version integer NOT NULL DEFAULT 1`;
+      await sql/*sql*/`ALTER TABLE batch_keys ADD COLUMN IF NOT EXISTS created_by text`;
+      await sql/*sql*/`ALTER TABLE batch_keys ADD COLUMN IF NOT EXISTS exported_by text`;
+      await sql/*sql*/`ALTER TABLE batch_keys ADD COLUMN IF NOT EXISTS rotated_at timestamptz`;
+      await sql/*sql*/`ALTER TABLE batch_keys ADD COLUMN IF NOT EXISTS revoked_at timestamptz`;
+      await sql/*sql*/`ALTER TABLE batch_keys ADD COLUMN IF NOT EXISTS kms_key_version text`;
 
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_supplier_orders_tenant_created ON supplier_orders(tenant_id, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_supplier_sub_batches_order ON supplier_sub_batches(supplier_order_id, sequence_index)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_supplier_sub_batches_batch ON supplier_sub_batches(batch_id)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_batch_keys_batch ON batch_keys(batch_id)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_batch_key_material_batch ON batch_key_material(batch_id, key_role, key_version)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_batch_key_material_bid ON batch_key_material(bid, key_role, status)`;
+      await sql/*sql*/`CREATE UNIQUE INDEX IF NOT EXISTS idx_batch_key_material_active_role ON batch_key_material(supplier_sub_batch_id, key_role) WHERE status = 'active'`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_vault_artifacts_resource ON vault_artifacts(resource_type, resource_id, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_supplier_qa_checks_bid ON supplier_qa_checks(bid, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_evidence_events_resource ON evidence_events(resource_type, resource_id, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_evidence_events_tenant_created ON evidence_events(tenant_id, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_evidence_anchors_tenant_created ON evidence_anchors(tenant_id, created_at DESC)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_offline_verifier_devices_tenant ON offline_verifier_devices(tenant_id, status, created_at DESC)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_offline_verifier_bundles_device ON offline_verifier_bundles(device_id, status, expires_at DESC)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_offline_scan_events_bundle ON offline_scan_events(bundle_id, received_at DESC)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_offline_scan_events_bid ON offline_scan_events(tenant_id, bid, received_at DESC)`;
 
       await sql/*sql*/`
         INSERT INTO ledger_providers (code, network, rpc_url_env_name, chain_id, enabled, metadata_json)

@@ -5,9 +5,9 @@ import { createHash } from "node:crypto";
 import { checkAdmin, getAdminTenantScope, type AdminScope } from "../../../../../lib/auth";
 import { json } from "../../../../../lib/http";
 import { sql } from "../../../../../lib/db";
-import { decryptKey16 } from "../../../../../lib/keys";
 import { logAuditEvent } from "../../../../../lib/audit-logger";
 import { ensureSupplierOpsSchema } from "../../../../../lib/supplier-ops-schema";
+import { decryptBatchKeyHex } from "../../../../../lib/batch-keys";
 import {
   buildSupplierEncodingPack,
   buildSupplierPackPdfSummary,
@@ -240,12 +240,23 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
     }, 409);
   }
 
+  await sql/*sql*/`
+    UPDATE batch_key_material
+    SET export_count = export_count + 1,
+        exported_at = now(),
+        exported_by = ${actor},
+        updated_at = now()
+    WHERE supplier_sub_batch_id = ANY(${subBatchIds}::uuid[])
+      AND status = 'active'
+      AND export_count = 0
+  `;
+
   const packs = [];
   const zipEntries: SupplierZipEntry[] = [];
 
   for (const row of rows) {
-    const kMetaHex = decryptKey16(String(row.meta_key_ct)).toString("hex").toUpperCase();
-    const kFileHex = decryptKey16(String(row.file_key_ct)).toString("hex").toUpperCase();
+    const kMetaHex = decryptBatchKeyHex(String(row.meta_key_ct));
+    const kFileHex = decryptBatchKeyHex(String(row.file_key_ct));
     const urlTemplate = String(row.metadata_json?.url_template || row.sdm_config?.url_template || "");
     const pack = buildSupplierEncodingPack({
       clientSlug: String(order.customer_slug || order.tenant_slug),

@@ -1,7 +1,7 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-import { checkAdmin } from '../../../../lib/auth';
+import { checkAdmin, getAdminTenantScope, type AdminScope } from '../../../../lib/auth';
 import { json } from '../../../../lib/http';
 import { sql } from '../../../../lib/db';
 import { encryptKey16 } from '../../../../lib/keys';
@@ -31,6 +31,34 @@ function keyFingerprint(kMetaHex: string, kFileHex: string) {
   return `sha256:${createHash('sha256').update(`${kMetaHex}:${kFileHex}`).digest('hex')}`;
 }
 
+function parsePermissionHeader(value: string | null) {
+  return String(value || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function hasScopedPermission(grants: string[], permission: string) {
+  const current = permission.trim();
+  for (const rawGrant of grants) {
+    const grant = String(rawGrant || '').trim();
+    if (!grant || grant === '*') continue;
+    if (grant === current) return true;
+    if (grant.endsWith(':*')) {
+      const prefix = grant.slice(0, -2);
+      if (current === prefix || current.startsWith(`${prefix}:`)) return true;
+    }
+  }
+  return false;
+}
+
+function canRegisterInternalBatch(scope: AdminScope | null, permissions: string[]) {
+  return scope === null
+    || scope === 'super_admin'
+    || scope === 'security_operator'
+    || hasScopedPermission(permissions, 'batch:register_internal');
+}
+
 function resolveApiOrigin(req: Request) {
   const forwardedProto = (req.headers.get('x-forwarded-proto') || '').trim();
   const forwardedHost = (req.headers.get('x-forwarded-host') || req.headers.get('host') || '').trim();
@@ -43,7 +71,7 @@ function resolveApiOrigin(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = checkAdmin(req);
+  const auth = checkAdmin(req, ['super_admin', 'tenant_admin', 'security_operator', 'reseller']);
   if (auth) return auth;
   await ensureCarrierProfileSchema();
 
@@ -60,6 +88,15 @@ export async function POST(req: Request) {
       reason: 'legacy_supplier_registration_disabled',
       message: 'Use /admin/supplier-orders. Supplier batches require server-side key generation, encrypted one-time supplier packs, immutable manifests and QA gates.',
     }, 410);
+  }
+  const adminTenantScope = getAdminTenantScope(req);
+  const permissionGrants = parsePermissionHeader(req.headers.get('x-nexid-permissions'));
+  if (!canRegisterInternalBatch(adminTenantScope.scope, permissionGrants)) {
+    return json({
+      ok: false,
+      reason: 'internal_batch_registration_forbidden',
+      message: 'Internal encrypted batch registration requires superadmin, security-operator scope, or batch:register_internal permission. Use Supplier Orders for production supplier stock.',
+    }, 403);
   }
 
   const tenant = await resolveTenant(tenantSlug);

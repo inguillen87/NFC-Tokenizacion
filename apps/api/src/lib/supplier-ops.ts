@@ -1,6 +1,24 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes, scryptSync } from "node:crypto";
+import {
+  assertBatchKeyHex32,
+  fingerprintSupplierKeyPair,
+  generateSupplierBatchKeyPair,
+} from "./batch-keys.ts";
 import { getCarrierProfile, normalizeCarrierProfileCode } from "./carrier-profiles.ts";
 import type { ManifestParseResult } from "./tag-manifest.ts";
+
+export {
+  BATCH_KEY_ROLES,
+  assertBatchKeyHex32,
+  buildBatchKeyLifecycleRecords,
+  decryptBatchKeyHex,
+  encryptBatchKeyHex,
+  fingerprintBatchKey,
+  generateBatchKeyHex,
+  redactSecretsDeep,
+  type BatchKeyLifecycleRecord,
+  type BatchKeyRole,
+} from "./batch-keys.ts";
 
 export type SupplierSubBatchPlan = {
   bid: string;
@@ -460,27 +478,20 @@ export function buildSupplierSubBatchPlan(input: SupplierOrderInput): SupplierSu
 }
 
 export function generateSupplierBatchKeys(): SupplierBatchKeys {
-  const kMetaHex = randomBytes(16).toString("hex").toUpperCase();
-  const kFileHex = randomBytes(16).toString("hex").toUpperCase();
+  const { kMetaHex, kFileHex, fingerprint } = generateSupplierBatchKeyPair();
   return {
     kMetaHex,
     kFileHex,
-    fingerprint: fingerprintSupplierKeys(kMetaHex, kFileHex),
+    fingerprint,
   };
 }
 
 export function fingerprintSupplierKeys(kMetaHex: string, kFileHex: string) {
-  const meta = assertHex32(kMetaHex, "K_META_BATCH");
-  const file = assertHex32(kFileHex, "K_FILE_BATCH");
-  return createHash("sha256").update(`${meta}:${file}`).digest("hex").slice(0, 16).toUpperCase();
+  return fingerprintSupplierKeyPair(kMetaHex, kFileHex);
 }
 
 export function assertHex32(value: unknown, field: string) {
-  const normalized = String(value || "").trim().toUpperCase();
-  if (!/^[0-9A-F]{32}$/.test(normalized)) {
-    throw new Error(`${field} must be a 32-char hex string`);
-  }
-  return normalized;
+  return assertBatchKeyHex32(value, field);
 }
 
 export function validateSupplierManifestQuantity(manifest: ManifestParseResult, expectedQuantity: number) {
@@ -648,8 +659,9 @@ export function validateSupplierQaEvidence(input: {
   if (input.requiresTtstatus && !input.ttstatusChecked) {
     return { ok: false as const, reason: "qa_ttstatus_check_required", sampleCount };
   }
-  return { ok: true as const, sampleCount, sampleUrls, evidenceDigest: buildSupplierQaEvidenceDigest({
-    sampleUrls,
+  const sampleUrlHashes = sampleUrls.map(hashSupplierQaSampleUrl);
+  return { ok: true as const, sampleCount, sampleUrls, sampleUrlHashes, evidenceDigest: buildSupplierQaEvidenceDigest({
+    sample_url_hashes: sampleUrlHashes,
     replayChecked: Boolean(input.replayChecked),
     ttstatusChecked: Boolean(input.ttstatusChecked),
     requiresTtstatus: Boolean(input.requiresTtstatus),
@@ -666,6 +678,10 @@ export function normalizeSupplierQaSampleUrls(sampleUrls?: unknown[] | null) {
       .filter(Boolean)
       .slice(0, 25),
   ));
+}
+
+export function hashSupplierQaSampleUrl(sampleUrl: string) {
+  return sha256(String(sampleUrl || "").trim());
 }
 
 export function buildSupplierQaEvidenceDigest(payload: Record<string, unknown>) {

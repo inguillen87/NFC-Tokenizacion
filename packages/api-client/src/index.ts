@@ -139,6 +139,80 @@ export const supplierActivationResponseSchema = z.object({
   supplier_gate: z.record(z.unknown()).nullable().optional(),
 }).passthrough();
 
+export const offlineVerifierDeviceSchema = z.object({
+  id: z.string(),
+  tenant_slug: z.string().optional(),
+  device_label: z.string(),
+  device_type: z.string(),
+  device_fingerprint: z.string(),
+  operator_ref: z.string().nullable().optional(),
+  status: z.string(),
+  last_seen_at: nullableString,
+  created_at: z.string().optional(),
+}).passthrough();
+
+export const offlineVerifierDevicesResponseSchema = z.object({
+  ok: z.literal(true),
+  devices: z.array(offlineVerifierDeviceSchema),
+}).passthrough();
+
+export const offlineVerifierDeviceResponseSchema = z.object({
+  ok: z.literal(true),
+  device: offlineVerifierDeviceSchema,
+}).passthrough();
+
+export const offlineVerifierBundleSchema = z.object({
+  id: z.string(),
+  bundle_ref: z.string(),
+  tenant_slug: z.string(),
+  device_id: z.string(),
+  allowed_bids: z.array(z.string()),
+  key_fingerprints: z.record(z.object({
+    pair: z.string().nullable().optional(),
+    roles: z.record(z.string()).optional(),
+  }).passthrough()),
+  key_material_included: z.literal(false),
+  policy: z.object({
+    contains_key_material: z.literal(false),
+    local_verdict_model: z.literal("provisional_until_backend_sync"),
+    allowed_local_verdicts: z.array(z.enum(["OFFLINE_LOCAL_PASS", "OFFLINE_LOCAL_FAIL", "SYNC_PENDING"])),
+    requires_backend_sync_for: z.array(z.string()),
+  }).passthrough(),
+  bundle_hash: z.string(),
+  status: z.string(),
+  expires_at: z.string(),
+  created_at: z.string(),
+}).passthrough();
+
+export const offlineVerifierBundleResponseSchema = z.object({
+  ok: z.literal(true),
+  bundle: offlineVerifierBundleSchema,
+  warning: z.string().optional(),
+}).passthrough();
+
+export const offlineVerifierSyncResultSchema = z.object({
+  ok: z.boolean(),
+  client_event_id: z.string().nullable(),
+  bid: z.string().optional(),
+  reason: z.string().nullable().optional(),
+  key: z.string().optional(),
+  sync_status: z.enum(["received", "duplicate"]).optional(),
+  server_verdict: z.string().optional(),
+  final: z.literal(false).optional(),
+  payload_hash: z.string().optional(),
+}).passthrough();
+
+export const offlineVerifierSyncResponseSchema = z.object({
+  ok: z.literal(true),
+  bundle_ref: z.string(),
+  tenant_slug: z.string(),
+  received: z.number(),
+  rejected: z.number(),
+  final_verdict: z.literal(false),
+  warning: z.string().optional(),
+  results: z.array(offlineVerifierSyncResultSchema),
+}).passthrough();
+
 export type SupplierSubBatch = z.infer<typeof supplierSubBatchSchema>;
 export type SupplierOrder = z.infer<typeof supplierOrderSchema>;
 export type SupplierOrdersResponse = z.infer<typeof supplierOrdersResponseSchema>;
@@ -149,6 +223,12 @@ export type SupplierPackExportResponse = z.infer<typeof supplierPackExportRespon
 export type SupplierManifestResponse = z.infer<typeof supplierManifestResponseSchema>;
 export type SupplierQaResponse = z.infer<typeof supplierQaResponseSchema>;
 export type SupplierActivationResponse = z.infer<typeof supplierActivationResponseSchema>;
+export type OfflineVerifierDevice = z.infer<typeof offlineVerifierDeviceSchema>;
+export type OfflineVerifierDevicesResponse = z.infer<typeof offlineVerifierDevicesResponseSchema>;
+export type OfflineVerifierDeviceResponse = z.infer<typeof offlineVerifierDeviceResponseSchema>;
+export type OfflineVerifierBundle = z.infer<typeof offlineVerifierBundleSchema>;
+export type OfflineVerifierBundleResponse = z.infer<typeof offlineVerifierBundleResponseSchema>;
+export type OfflineVerifierSyncResponse = z.infer<typeof offlineVerifierSyncResponseSchema>;
 
 export type CreateSupplierOrderPayload = {
   tenant_id?: string;
@@ -204,6 +284,77 @@ export type SupplierQaPayload = {
 
 export type ActivateSupplierSubBatchPayload = {
   limit?: number;
+};
+
+export type OfflineVerifierDevicesQuery = {
+  tenant?: string;
+  tenant_slug?: string;
+  tenant_id?: string;
+};
+
+export type EnrollOfflineVerifierDevicePayload = {
+  tenant_id?: string;
+  tenantId?: string;
+  tenant_slug?: string;
+  tenantSlug?: string;
+  tenant?: string;
+  device_label?: string;
+  deviceLabel?: string;
+  label?: string;
+  device_type?: string;
+  deviceType?: string;
+  device_fingerprint?: string;
+  deviceFingerprint?: string;
+  device_public_key?: string;
+  devicePublicKey?: string;
+  device_serial?: string;
+  deviceSerial?: string;
+  operator_ref?: string;
+  operatorRef?: string;
+  operator?: string;
+  app_version?: string;
+  appVersion?: string;
+  platform?: string;
+};
+
+export type IssueOfflineVerifierBundlePayload = {
+  device_id?: string;
+  deviceId?: string;
+  bids?: string[] | string;
+  bid?: string;
+  batch_ids?: string[] | string;
+  batchIds?: string[] | string;
+  expires_at?: string;
+  expiresAt?: string;
+};
+
+export type OfflineLocalVerdict = "OFFLINE_LOCAL_PASS" | "OFFLINE_LOCAL_FAIL" | "SYNC_PENDING";
+
+export type SyncOfflineVerifierEventPayload = {
+  client_event_id?: string;
+  clientEventId?: string;
+  id?: string;
+  bid?: string;
+  batch_id?: string;
+  batchId?: string;
+  local_verdict?: OfflineLocalVerdict;
+  localVerdict?: OfflineLocalVerdict;
+  observed_at?: string;
+  observedAt?: string;
+  uid_hash?: string;
+  uidHash?: string;
+  sun_payload_hash?: string;
+  sunPayloadHash?: string;
+  app_version?: string;
+  appVersion?: string;
+};
+
+export type SyncOfflineVerifierEventsPayload = {
+  bundle_ref?: string;
+  bundleRef?: string;
+  bundle_id?: string;
+  bundleId?: string;
+  events: SyncOfflineVerifierEventPayload[];
 };
 
 function pathSegment(value: string) {
@@ -271,6 +422,10 @@ export function createApiClient(opts: ApiClientOptions = {}) {
     adminImportSupplierManifest: (bid: string, payload: string | ImportSupplierManifestPayload) => request(opts, `/admin/batches/${pathSegment(bid)}/import-manifest`, { method: "POST", body: JSON.stringify(normalizeManifestPayload(payload)) }, supplierManifestResponseSchema),
     adminImportManifest: (bid: string, csvText: string) => request(opts, `/admin/batches/${pathSegment(bid)}/import-manifest`, { method: "POST", body: JSON.stringify({ csv: csvText }) }, supplierManifestResponseSchema),
     adminActivateSupplierSubBatch: (bid: string, payload: ActivateSupplierSubBatchPayload = {}) => request(opts, `/admin/batches/${pathSegment(bid)}/activate-all`, { method: "POST", body: JSON.stringify(payload) }, supplierActivationResponseSchema),
+    adminListOfflineVerifierDevices: (filters?: OfflineVerifierDevicesQuery) => request(opts, withQuery("/admin/offline-verifier/devices", { tenant: filters?.tenant, tenant_slug: filters?.tenant_slug, tenant_id: filters?.tenant_id }), undefined, offlineVerifierDevicesResponseSchema),
+    adminEnrollOfflineVerifierDevice: (payload: EnrollOfflineVerifierDevicePayload) => request(opts, "/admin/offline-verifier/devices", { method: "POST", body: JSON.stringify(payload) }, offlineVerifierDeviceResponseSchema),
+    adminIssueOfflineVerifierBundle: (payload: IssueOfflineVerifierBundlePayload) => request(opts, "/admin/offline-verifier/bundles", { method: "POST", body: JSON.stringify(payload) }, offlineVerifierBundleResponseSchema),
+    adminSyncOfflineVerifierEvents: (payload: SyncOfflineVerifierEventsPayload) => request(opts, "/admin/offline-verifier/sync", { method: "POST", body: JSON.stringify(payload) }, offlineVerifierSyncResponseSchema),
     adminActivateTags: (payload: { batchId: string; count: number }) => request(opts, "/admin/tags/activate", { method: "POST", body: JSON.stringify(payload) }),
     adminRevokeBatch: (bid: string, reason: string) => request(opts, `/admin/batches/${bid}/revoke`, { method: "POST", body: JSON.stringify({ reason }) }),
     adminGetOverview: (tenant_slug?: string) => request(opts, withQuery("/admin/overview", { tenant: tenant_slug })),

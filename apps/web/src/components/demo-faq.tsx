@@ -35,6 +35,18 @@ const faqByLocale: Record<Props["locale"], { title: string; lead: string; items:
         a: "El sistema clasifica resultados como VALID, NOT_ACTIVE, NOT_REGISTERED, REPLAY_SUSPECT o INVALID para auditar cada evento.",
       },
       {
+        q: "Offline significa verificacion final sin backend?",
+        a: "No. El modo offline entrega una decision local limitada para operacion de campo; el veredicto final se confirma al sincronizar con nexID y el bundle no incluye claves maestras.",
+      },
+      {
+        q: "Polygon e IOTA son obligatorios o partners oficiales?",
+        a: "No. Polygon se usa como capa opcional de ownership/certificado y IOTA como capa opcional de prueba/auditoria. No se afirma partnership ni que cada tap vaya on-chain.",
+      },
+      {
+        q: "La app usa GPS automaticamente?",
+        a: "No. La ubicacion se solicita solo por accion del usuario en la demo movil y se puede continuar sin compartir GPS.",
+      },
+      {
         q: "¿Esto escala a volúmenes enterprise?",
         a: "Sí. El modelo operativo es el mismo: batch governance, import controlado, activación y observabilidad antifraude.",
       },
@@ -69,6 +81,18 @@ const faqByLocale: Record<Props["locale"], { title: string; lead: string; items:
         a: "A plataforma classifica eventos como VALID, NOT_ACTIVE, NOT_REGISTERED, REPLAY_SUSPECT ou INVALID.",
       },
       {
+        q: "Offline significa verificacao final sem backend?",
+        a: "Nao. O modo offline oferece uma decisao local limitada para operacao de campo; o veredito final e confirmado ao sincronizar com nexID e o bundle nao inclui chaves mestras.",
+      },
+      {
+        q: "Polygon e IOTA sao obrigatorios ou parceiros oficiais?",
+        a: "Nao. Polygon e uma camada opcional de ownership/certificado e IOTA e uma camada opcional de prova/auditoria. Nao afirmamos parceria nem que cada tap vai on-chain.",
+      },
+      {
+        q: "O app usa GPS automaticamente?",
+        a: "Nao. A localizacao e solicitada apenas por acao do usuario na demo mobile e o fluxo continua sem compartilhar GPS.",
+      },
+      {
         q: "Isso escala para nível enterprise?",
         a: "Sim. O modelo operacional permanece: governança de lote, importação controlada, ativação e observabilidade antifraude.",
       },
@@ -101,6 +125,18 @@ const faqByLocale: Record<Props["locale"], { title: string; lead: string; items:
       {
         q: "How do we detect cloning or replay risk?",
         a: "The platform classifies each event as VALID, NOT_ACTIVE, NOT_REGISTERED, REPLAY_SUSPECT or INVALID.",
+      },
+      {
+        q: "Does offline mode mean final verification without the backend?",
+        a: "No. Offline mode provides a limited local decision for field operations; the final verdict is confirmed after sync with nexID and the bundle does not include master keys.",
+      },
+      {
+        q: "Are Polygon and IOTA mandatory or official partners?",
+        a: "No. Polygon is an optional ownership/certificate layer and IOTA is an optional proof/audit layer. We do not claim partnership or that every tap goes on-chain.",
+      },
+      {
+        q: "Does the app use GPS automatically?",
+        a: "No. Location is requested only after a user action in the mobile demo, and the flow can continue without sharing GPS.",
       },
       {
         q: "Does this scale to enterprise volume?",

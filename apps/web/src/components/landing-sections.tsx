@@ -1,7 +1,7 @@
 import { Card, SectionHeading, Badge } from "@product/ui";
 import { schedulingUrls } from "@product/config";
 import Link from "next/link";
-import { BadgeCheck, Cpu, Fingerprint, Network, PackageCheck, QrCode, RadioTower, ShieldCheck } from "lucide-react";
+import { BadgeCheck, CloudOff, Cpu, Fingerprint, KeyRound, Network, PackageCheck, QrCode, RadioTower, RotateCcw, ShieldCheck, Smartphone } from "lucide-react";
 import { HeroScene } from "./hero-scene";
 import { InstitutionalVideoPanel } from "./institutional-video-panel";
 import { PremiumTraceabilityGlobe } from "./premium-traceability-globe";
@@ -360,6 +360,149 @@ export function EnterpriseTrustLayersSection({ locale }: { locale: string }) {
         <div className="enterprise-trust-layers__note">
           <PackageCheck className="h-4 w-4" />
           <span>{copy.note}</span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function OfflineFieldOperationsSection({ locale }: { locale: string }) {
+  const isEn = locale === "en";
+  const isBr = locale === "pt-BR";
+  const copy = isEn
+    ? {
+      eyebrow: "Offline and low-connectivity operations",
+      title: "Field verification for farms, wine cellars, plants, mines and warehouses without signal.",
+      body: "nexID now models enrolled verifier devices, scoped low-connectivity bundles and hashed sync events. The local result is operational, not a final ownership or warranty verdict until backend sync.",
+      docs: "Read offline architecture",
+      demo: "Open offline DemoLab",
+      phoneLabel: "Samsung field verifier",
+      phoneStatus: "OFFLINE_LOCAL_PASS",
+      phoneSub: "Provisional until backend sync",
+      phoneWarning: "Final replay, policy, warranty, ownership and proof checks happen after sync.",
+      stages: [
+        { label: "Enroll", body: "Security operator registers the device fingerprint and operator.", icon: Smartphone },
+        { label: "Bundle", body: "Backend issues allowed BIDs, policy and key fingerprints only.", icon: KeyRound },
+        { label: "Scan", body: "The app or reader queues hashed evidence in no-signal zones.", icon: CloudOff },
+        { label: "Sync", body: "nexID performs final replay, policy, warranty and proof checks.", icon: RotateCcw },
+      ],
+      atlas: [
+        ["Field", "Seed lots, rural depots and crop inputs"],
+        ["Cellar", "Wine caves, cavas and storage rooms"],
+        ["Plant", "Factories, mines and remote QA stations"],
+      ],
+      warning: "No tenant master keys, KMS keys or raw batch keys are returned in offline bundles.",
+    }
+    : isBr
+    ? {
+      eyebrow: "Operacao offline e baixa conectividade",
+      title: "Verificacao de campo para fazendas, cavas, plantas, minas e armazens sem sinal.",
+      body: "nexID agora modela dispositivos verificadores enrolados, bundles de baixa conectividade e eventos com evidencias hasheadas. O resultado local e operacional, nao verdict final de ownership ou garantia ate sync no backend.",
+      docs: "Ler arquitetura offline",
+      demo: "Abrir DemoLab offline",
+      phoneLabel: "Samsung field verifier",
+      phoneStatus: "OFFLINE_LOCAL_PASS",
+      phoneSub: "Provisorio ate sync backend",
+      phoneWarning: "Replay, politica, garantia, ownership e proof checks finais acontecem apos sync.",
+      stages: [
+        { label: "Enroll", body: "Operador de seguranca registra fingerprint do device e operador.", icon: Smartphone },
+        { label: "Bundle", body: "Backend emite BIDs permitidos, politica e fingerprints de chaves.", icon: KeyRound },
+        { label: "Scan", body: "App ou leitor guarda evidencia hasheada em zonas sem sinal.", icon: CloudOff },
+        { label: "Sync", body: "nexID faz replay, politica, garantia e proof checks finais.", icon: RotateCcw },
+      ],
+      atlas: [
+        ["Campo", "Lotes agro, depositos rurais e insumos"],
+        ["Cava", "Adegas, cavas e salas de armazenamento"],
+        ["Planta", "Fabricas, minas e QA remoto"],
+      ],
+      warning: "Bundles offline nao retornam master keys, KMS nem chaves cruas de batch.",
+    }
+    : {
+      eyebrow: "Operacion offline y baja conectividad",
+      title: "Verificacion de campo para agro, cavas, plantas, minas y depositos sin senal.",
+      body: "nexID ahora modela dispositivos verificadores enrolados, bundles de baja conectividad y eventos sincronizados con evidencia hasheada. El resultado local es operativo, no un veredicto final de ownership o garantia hasta sincronizar con backend.",
+      docs: "Leer arquitectura offline",
+      demo: "Abrir DemoLab offline",
+      phoneLabel: "Samsung field verifier",
+      phoneStatus: "OFFLINE_LOCAL_PASS",
+      phoneSub: "Provisorio hasta sync backend",
+      phoneWarning: "Replay, politica, garantia, ownership y proof checks finales ocurren despues del sync.",
+      stages: [
+        { label: "Enroll", body: "Security operator registra fingerprint del dispositivo y operador.", icon: Smartphone },
+        { label: "Bundle", body: "Backend emite BIDs permitidos, politica y fingerprints de llaves.", icon: KeyRound },
+        { label: "Scan", body: "La app o lector guarda evidencia hasheada en zonas sin senal.", icon: CloudOff },
+        { label: "Sync", body: "nexID hace replay, politica, garantia y proof checks finales.", icon: RotateCcw },
+      ],
+      atlas: [
+        ["Campo", "Lotes agro, depositos rurales e insumos"],
+        ["Cava", "Cavas de vino y salas de guarda"],
+        ["Planta", "Fabricas, minas y QA remoto"],
+      ],
+      warning: "Los bundles offline no devuelven master keys, KMS ni llaves crudas de batch.",
+    };
+
+  return (
+    <section id="offline-field-operations" className="container-shell scroll-mt-24 py-12 md:py-16">
+      <div className="overflow-hidden rounded-[1.35rem] border border-cyan-300/15 bg-slate-950/80 p-5 shadow-[0_28px_80px_rgba(2,8,23,0.3)] md:p-7">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(270px,360px)] lg:items-center">
+          <div className="min-w-0">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-300">{copy.eyebrow}</p>
+            <h2 className="mt-3 max-w-4xl text-3xl font-black leading-tight text-white md:text-5xl">{copy.title}</h2>
+            <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-300">{copy.body}</p>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {copy.stages.map((stage) => {
+                const Icon = stage.icon;
+                return (
+                  <article key={stage.label} className="min-w-0 rounded-lg border border-white/10 bg-slate-900/70 p-4">
+                    <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-cyan-300/25 bg-cyan-500/10 text-cyan-100">
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <h3 className="mt-3 text-sm font-black text-white">{stage.label}</h3>
+                    <p className="mt-2 text-xs leading-5 text-slate-400">{stage.body}</p>
+                  </article>
+                );
+              })}
+            </div>
+            <div className="mt-5 grid gap-3 md:grid-cols-3">
+              {copy.atlas.map(([label, body]) => (
+                <article key={label} className="rounded-lg border border-emerald-300/15 bg-emerald-500/10 p-4">
+                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-emerald-200">{label}</p>
+                  <p className="mt-2 text-sm font-semibold leading-6 text-slate-100">{body}</p>
+                </article>
+              ))}
+            </div>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Link href="/docs#offline-verifier-architecture" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-cyan-300/35 bg-cyan-500/10 px-4 text-sm font-black text-cyan-100 transition hover:bg-cyan-500/20">
+                {copy.docs}
+              </Link>
+              <Link href="/demo-lab?scenario=offline-verifier" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-white/15 bg-white/5 px-4 text-sm font-black text-white transition hover:bg-white/10">
+                {copy.demo}
+              </Link>
+            </div>
+            <p className="mt-4 rounded-lg border border-amber-300/20 bg-amber-500/10 px-4 py-3 text-xs font-bold leading-5 text-amber-100">{copy.warning}</p>
+          </div>
+
+          <div className="mx-auto w-full max-w-[21rem] rounded-[2rem] border border-white/15 bg-slate-900 p-3 shadow-2xl">
+            <div className="rounded-[1.6rem] border border-slate-700 bg-slate-950 p-4">
+              <div className="mx-auto h-1.5 w-20 rounded-full bg-slate-700" />
+              <div className="mt-5 rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">{copy.phoneLabel}</p>
+                <h3 className="mt-2 text-xl font-black text-white">{copy.phoneStatus}</h3>
+                <p className="mt-1 text-xs font-bold text-cyan-100">{copy.phoneSub}</p>
+              </div>
+              <div className="mt-4 space-y-2">
+                {["BID: SYN-AR-2026-001-A", "UID hash: sha256:8f4c...", "Queue: 18 pending", "Bundle: expires 24h"].map((line) => (
+                  <div key={line} className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[11px] font-mono text-slate-300">
+                    <span>{line}</span>
+                    <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 rounded-xl border border-amber-300/20 bg-amber-500/10 px-3 py-2 text-[11px] font-bold leading-5 text-amber-100">
+                {copy.phoneWarning}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>

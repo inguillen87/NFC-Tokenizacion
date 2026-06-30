@@ -113,11 +113,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
     }, 409);
   }
   const normalizedSampleUrls = evidenceGate.ok ? evidenceGate.sampleUrls ?? sampleUrls : sampleUrls;
+  const sampleUrlHashes = evidenceGate.ok ? evidenceGate.sampleUrlHashes ?? [] : [];
   const notes = safeString(body.notes) || null;
   const status = passed ? "passed" : "failed";
   const actor = safeActor(req);
   const evidence = {
-    sample_urls: normalizedSampleUrls,
+    sample_url_hashes: sampleUrlHashes,
     replay_checked: replayChecked,
     ttstatus_checked: ttstatusChecked,
     evidence_digest: evidenceGate.ok ? evidenceGate.evidenceDigest : null,
@@ -134,6 +135,25 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       ${subBatch.tenant_id}, ${subBatch.supplier_order_id}, ${subBatch.supplier_sub_batch_id},
       ${subBatch.batch_id}, ${subBatch.bid}, ${status}, ${normalizedSampleUrls.length}, ${replayChecked},
       ${ttstatusChecked}, ${notes}, ${JSON.stringify(evidence)}::jsonb, ${actor}
+    )
+  `;
+  await sql/*sql*/`
+    INSERT INTO vault_artifacts (
+      tenant_id, supplier_order_id, supplier_sub_batch_id, resource_type, resource_id,
+      artifact_type, content_hash, mime_type, metadata_json
+    ) VALUES (
+      ${subBatch.tenant_id}, ${subBatch.supplier_order_id}, ${subBatch.supplier_sub_batch_id},
+      'supplier_sub_batch', ${subBatch.supplier_sub_batch_id}, 'qa_report',
+      ${evidenceGate.ok ? evidenceGate.evidenceDigest : hashEvidencePayload({ status, bid: subBatch.bid, sample_count: normalizedSampleUrls.length })},
+      'application/json',
+      ${JSON.stringify({
+        bid: subBatch.bid,
+        qa_status: status,
+        sample_count: normalizedSampleUrls.length,
+        replay_checked: replayChecked,
+        ttstatus_checked: ttstatusChecked,
+        evidence_digest: evidenceGate.ok ? evidenceGate.evidenceDigest : null,
+      })}::jsonb
     )
   `;
   await sql/*sql*/`

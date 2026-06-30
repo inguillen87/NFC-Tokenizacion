@@ -28,7 +28,7 @@ test("supplier export requires operator password and never returns it", () => {
 test("supplier export reserves one-time packs with conditional updates before secret material is built", () => {
   const source = readWorkspaceFile("apps/api/src/app/admin/supplier-orders/[orderId]/export-pack/route.ts");
   const reservationIndex = source.indexOf("reserved_sub_batches AS");
-  const decryptIndex = source.indexOf("decryptKey16(String");
+  const decryptIndex = source.indexOf("decryptBatchKeyHex(String");
 
   assert.notEqual(reservationIndex, -1);
   assert.ok(reservationIndex < decryptIndex);
@@ -37,7 +37,22 @@ test("supplier export reserves one-time packs with conditional updates before se
   assert.match(source, /reserved_sub_batches[\s\S]*reserved_keys/);
   assert.match(source, /reserved_sub_batches[\s\S]*!== rows\.length/);
   assert.match(source, /reserved_keys[\s\S]*!== rows\.length/);
+  assert.match(source, /UPDATE batch_key_material[\s\S]*exported_by/);
   assert.doesNotMatch(source, /SET export_count = export_count \+ 1[\s\S]*WHERE supplier_sub_batch_id = \$\{row\.supplier_sub_batch_id\}/);
+});
+
+test("supplier order creation writes lifecycle records without returning raw batch keys", () => {
+  const source = readWorkspaceFile("apps/api/src/app/admin/supplier-orders/route.ts");
+  const lifecycle = readWorkspaceFile("apps/api/src/lib/batch-keys.ts");
+
+  assert.match(source, /buildBatchKeyLifecycleRecords/);
+  assert.match(source, /INSERT INTO batch_key_material/);
+  assert.match(source, /pair_fingerprint/);
+  assert.match(lifecycle, /BATCH_KEY_ROLES/);
+  assert.match(lifecycle, /redactSecretsDeep/);
+  const successResponse = source.slice(source.indexOf("return json({\n      ok: true"));
+  assert.doesNotMatch(successResponse, /kMetaHex/);
+  assert.doesNotMatch(successResponse, /kFileHex/);
 });
 
 test("public proof and anchor input stay hash-only", () => {
@@ -68,11 +83,24 @@ test("dashboard supplier console keeps pack password client-side only", () => {
 
 test("legacy uid import cannot bypass supplier manifest and QA gates", () => {
   const source = readWorkspaceFile("apps/api/src/app/admin/batches/[bid]/import-uids/route.ts");
+  const registerSource = readWorkspaceFile("apps/api/src/app/admin/batches/register/route.ts");
 
   assert.match(source, /checkAdmin\(req,\s*\["super_admin",\s*"tenant_admin"\]\)/);
   assert.match(source, /getAdminTenantScope/);
   assert.match(source, /legacy_import_disabled_for_supplier_batch/);
   assert.match(source, /import-manifest/);
+  assert.match(registerSource, /legacy_supplier_registration_disabled/);
+  assert.match(registerSource, /canRegisterInternalBatch/);
+  assert.match(registerSource, /batch:register_internal/);
+  assert.match(registerSource, /internal_batch_registration_forbidden/);
+});
+
+test("supplier manifest import requires SUN tenant profile only for secure SUN carriers", () => {
+  const source = readWorkspaceFile("apps/api/src/app/admin/batches/[bid]/import-manifest/route.ts");
+
+  assert.match(source, /requiresSecureSunEncoding/);
+  assert.match(source, /if \(requiresSecureSunEncoding\(batchCarrierCode\)\)/);
+  assert.doesNotMatch(source, /Complete tenant SUN profile before importing manifests\./);
 });
 
 test("tenant vault endpoint returns only safe supplier artifact metadata", () => {
@@ -85,6 +113,26 @@ test("tenant vault endpoint returns only safe supplier artifact metadata", () =>
   assert.doesNotMatch(source, /SELECT[\s\S]*storage_ref/i);
   assert.doesNotMatch(source, /raw_key|K_META_BATCH|K_FILE_BATCH|pack_password/i);
   assert.doesNotMatch(source, /metadata:\s*row\.metadata_json/);
+});
+
+test("supplier QA stores hashed evidence and publishes a sanitized vault report", () => {
+  const source = readWorkspaceFile("apps/api/src/app/admin/supplier-orders/[orderId]/qa/route.ts");
+
+  assert.match(source, /sample_url_hashes/);
+  assert.match(source, /artifact_type, content_hash, mime_type, metadata_json/);
+  assert.match(source, /'qa_report'/);
+  assert.match(source, /evidence_digest/);
+  assert.doesNotMatch(source, /sample_urls:\s*normalizedSampleUrls/);
+});
+
+test("supplier activate-all override is restricted to security scope or explicit permission", () => {
+  const source = readWorkspaceFile("apps/api/src/app/admin/batches/[bid]/activate-all/route.ts");
+
+  assert.match(source, /security_operator/);
+  assert.match(source, /supplier:activate_override/);
+  assert.match(source, /supplier_activation_override_forbidden/);
+  assert.match(source, /canUseActivationOverride/);
+  assert.match(source, /overrideReason:\s*overrideAllowed \? overrideReason : ''/);
 });
 
 test("SUN debug diagnostics are redacted unless an explicit lab gate is enabled", () => {

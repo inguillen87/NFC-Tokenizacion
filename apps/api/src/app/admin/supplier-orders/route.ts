@@ -4,11 +4,11 @@ export const dynamic = "force-dynamic";
 import { checkAdmin, getAdminTenantScope } from "../../../lib/auth";
 import { json } from "../../../lib/http";
 import { sql } from "../../../lib/db";
-import { encryptKey16 } from "../../../lib/keys";
 import { logAuditEvent } from "../../../lib/audit-logger";
 import { ensureCarrierProfileSchema } from "../../../lib/commercial-runtime-schema";
 import { ensureSupplierOpsSchema } from "../../../lib/supplier-ops-schema";
 import { getCarrierProfile, inferCarrierProfileFromPayload } from "../../../lib/carrier-profiles";
+import { buildBatchKeyLifecycleRecords } from "../../../lib/batch-keys";
 import {
   buildSupplierSubBatchPlan,
   generateSupplierBatchKeys,
@@ -223,6 +223,7 @@ export async function POST(req: Request) {
       }, 409);
     }
 
+    const actor = firstString(req.headers.get("x-nexid-actor"), req.headers.get("x-dashboard-user")) || null;
     const orderRows = await sql/*sql*/`
       INSERT INTO supplier_orders (
         tenant_id, customer_slug, order_name, base_batch_id, total_quantity, sub_batch_size,
@@ -230,7 +231,7 @@ export async function POST(req: Request) {
       ) VALUES (
         ${tenant.id}, ${customerSlug}, ${orderName}, ${baseBatchId}, ${totalQuantity}, ${subBatchSize},
         ${chipModel}, ${carrierProfileCode}, ${firstString(body.material_type, body.materialType) || null},
-        ${firstString(body.notes) || null}, 'pack_ready', ${firstString(req.headers.get("x-nexid-actor"), req.headers.get("x-dashboard-user")) || null}
+        ${firstString(body.notes) || null}, 'pack_ready', ${actor}
       )
       RETURNING *
     `;
@@ -240,8 +241,18 @@ export async function POST(req: Request) {
 
     for (const subBatch of plan) {
       const keys = generateSupplierBatchKeys();
-      const metaCt = encryptKey16(Buffer.from(keys.kMetaHex, "hex"));
-      const fileCt = encryptKey16(Buffer.from(keys.kFileHex, "hex"));
+      const keyMaterial = buildBatchKeyLifecycleRecords({
+        bid: subBatch.bid,
+        kMetaHex: keys.kMetaHex,
+        kFileHex: keys.kFileHex,
+        keyVersion: 1,
+        createdBy: actor,
+      });
+      const metaKey = keyMaterial.find((item) => item.keyRole === "K_META_BATCH");
+      const fileKey = keyMaterial.find((item) => item.keyRole === "K_FILE_BATCH");
+      if (!metaKey || !fileKey) throw new Error("supplier_batch_key_material_missing");
+      const metaCt = metaKey.encryptedKeyCt;
+      const fileCt = fileKey.encryptedKeyCt;
       const secureSunProfile = requiresSecureSunEncoding(carrierProfileCode);
       const urlTemplate = buildSupplierUrlTemplate(apiOrigin, carrierProfileCode, subBatch.bid);
       const sdmConfig = {
@@ -301,6 +312,22 @@ export async function POST(req: Request) {
           ${tenant.id}, ${order.id}, ${createdSubBatch.id}, ${batch.id}, ${subBatch.bid},
           ${metaCt}, ${fileCt}, ${keys.fingerprint}
         )
+      `;
+      await sql/*sql*/`
+        INSERT INTO batch_key_material (
+          tenant_id, supplier_order_id, supplier_sub_batch_id, batch_id, bid,
+          key_role, key_version, encrypted_key_ct, key_fingerprint, status, created_by, metadata_json
+        ) VALUES
+          (
+            ${tenant.id}, ${order.id}, ${createdSubBatch.id}, ${batch.id}, ${subBatch.bid},
+            ${metaKey.keyRole}, ${metaKey.keyVersion}, ${metaKey.encryptedKeyCt}, ${metaKey.keyFingerprint},
+            ${metaKey.status}, ${metaKey.createdBy}, ${JSON.stringify({ source: "supplier_order", pair_fingerprint: keys.fingerprint })}::jsonb
+          ),
+          (
+            ${tenant.id}, ${order.id}, ${createdSubBatch.id}, ${batch.id}, ${subBatch.bid},
+            ${fileKey.keyRole}, ${fileKey.keyVersion}, ${fileKey.encryptedKeyCt}, ${fileKey.keyFingerprint},
+            ${fileKey.status}, ${fileKey.createdBy}, ${JSON.stringify({ source: "supplier_order", pair_fingerprint: keys.fingerprint })}::jsonb
+          )
       `;
       const eventPayload = {
         supplier_order_id: order.id,

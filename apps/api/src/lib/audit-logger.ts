@@ -1,6 +1,7 @@
 import { createHash } from "crypto";
 import { sql } from "./db";
 import { ensureAuditLogsSchema } from "./commercial-runtime-schema";
+import { redactSecretsDeep } from "./batch-keys";
 
 export type AuditLogInput = {
   actorId: string | null;
@@ -17,7 +18,8 @@ export type AuditLogInput = {
 
 function computeHash(data: unknown) {
   if (data == null) return null;
-  const str = typeof data === "string" ? data : JSON.stringify(data);
+  const safeData = redactSecretsDeep(data);
+  const str = typeof safeData === "string" ? safeData : JSON.stringify(safeData);
   return createHash("sha256").update(str).digest("hex");
 }
 

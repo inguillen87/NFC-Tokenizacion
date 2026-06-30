@@ -47,7 +47,7 @@ const WINERY_HQ = { name: "Bodega demo · Mendoza", lat: -33.0086, lng: -68.7794
 
 const STATE_COPY: Record<ConsumerState, { label: string; tone: "green" | "amber" | "cyan" | "red"; message: string }> = {
   AUTH_PENDING: { label: "AUTH PENDING", tone: "cyan", message: "Verificando autenticidad criptográfica y estado del lote." },
-  VALID: { label: "VALID", tone: "green", message: "Producto auténtico. Escaneo válido y trazabilidad activa." },
+  VALID: { label: "VALID", tone: "green", message: "Lectura aceptada por la demo; en produccion depende de validacion backend, SUN/SDM y estado del lote." },
   OPENED: { label: "OPENED", tone: "cyan", message: "Producto abierto: estado transparente para comprador final." },
   TAMPER_RISK: { label: "TAMPER RISK", tone: "amber", message: "Riesgo de manipulación detectado en sello o contexto." },
   CLAIMED: { label: "CLAIMED", tone: "green", message: "Ownership activado para lifecycle, soporte y postventa." },
@@ -171,12 +171,14 @@ export function MobileDemoClient({
   const [scanProgress, setScanProgress] = useState(5);
   const [geoState, setGeoState] = useState<GeoState | null>(null);
   const [geoError, setGeoError] = useState("");
+  const [geoRequestId, setGeoRequestId] = useState(0);
 
   const contextSyncKeyRef = useRef<string>("");
   const demoSessionId = useMemo(() => `${tenant}:${itemId}:${pack}`, [itemId, pack, tenant]);
 
   const current = STATE_COPY[consumerState];
   const effectiveBid = (bid || "").trim();
+  const geoRequested = geoRequestId > 0;
   const activeItem = useMemo(() => seedItems.find((item) => (item.uidHex || item.uid_hex || "").length > 0) || seedItems[0] || {}, [seedItems]);
   const activeVertical = detectVertical(pack, activeItem);
   const template = VERTICAL_TEMPLATES[activeVertical];
@@ -255,14 +257,14 @@ export function MobileDemoClient({
       id: "tap",
       label: "Tap actual",
       value: geoState ? `${geoState.lat.toFixed(3)}, ${geoState.lng.toFixed(3)}` : "Ubicacion pendiente",
-      detail: consumerState === "REPLAY_SUSPECT" ? "Replay bloqueado." : "Lectura verificada para asociar ownership.",
+      detail: consumerState === "REPLAY_SUSPECT" ? "Replay bloqueado." : "Ownership disponible solo si backend confirma la lectura.",
       tone: consumerState === "REPLAY_SUSPECT" || consumerState === "TAMPER_RISK" ? "risk" : "tap",
     },
     {
       id: "token",
       label: "Token / NFT",
-      value: leadIntent === "tokenization_optional" || events.some((item) => item.type.includes("TOKENIZATION")) ? "solicitado" : "listo",
-      detail: "UID fisico + usuario + prueba on-chain.",
+      value: leadIntent === "tokenization_optional" || events.some((item) => item.type.includes("TOKENIZATION")) ? "solicitado" : "opcional",
+      detail: "Polygon se solicita solo cuando la marca habilita tokenizacion.",
       tone: "token",
     },
     {
@@ -278,6 +280,13 @@ export function MobileDemoClient({
     { id: "events", label: "Eventos", value: String(events.length), tone: "tap" },
     { id: "risk", label: "Riesgo", value: consumerState === "REPLAY_SUSPECT" || consumerState === "TAMPER_RISK" ? "bloqueado" : "controlado", tone: consumerState === "REPLAY_SUSPECT" || consumerState === "TAMPER_RISK" ? "risk" : "loyalty" },
   ], [consumerState, distanceFromWinery, events.length]);
+  const ctaBlocked = consumerState === "REPLAY_SUSPECT" || consumerState === "TAMPER_RISK";
+  const ctaPendingAuth = consumerState === "AUTH_PENDING";
+  const actionDisabled = ctaBlocked || ctaPendingAuth || ctaPending;
+  const ctaBlockedReason = ctaBlocked
+    ? "Accion bloqueada: la lectura quedo en riesgo y requiere revision backend antes de ownership, garantia o tokenizacion."
+    : "Accion bloqueada: la validacion todavia esta pendiente.";
+  const actionDisabledClass = actionDisabled ? "cursor-not-allowed opacity-50" : "";
 
   useEffect(() => {
     const mapped = MODE_STATE[mode] || "VALID";
@@ -309,7 +318,12 @@ export function MobileDemoClient({
   }, [tenant, itemId, pack]);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !("geolocation" in navigator)) return;
+    if (geoRequestId <= 0) return;
+    if (typeof window === "undefined" || !("geolocation" in navigator)) {
+      setGeoError("Geolocation unavailable on this device.");
+      return;
+    }
+    setGeoError("Solicitando permiso de ubicacion...");
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setGeoError("");
@@ -325,7 +339,12 @@ export function MobileDemoClient({
       },
       { enableHighAccuracy: true, timeout: 12_000, maximumAge: 60_000 },
     );
-  }, []);
+  }, [geoRequestId]);
+
+  function requestGeoTrace() {
+    setGeoError("");
+    setGeoRequestId((value) => value + 1);
+  }
 
 
   async function syncSunContext() {
@@ -375,6 +394,7 @@ export function MobileDemoClient({
 
   async function postCta(action: "claim-ownership" | "register-warranty" | "tokenize-request") {
     const uid = String(activeItem.uidHex || activeItem.uid_hex || "").trim().toUpperCase();
+    if (ctaBlocked || ctaPendingAuth) throw new Error(ctaBlockedReason);
     if (!effectiveBid) throw new Error("Batch ID missing (add ?bid=... in public demo URL)");
     if (!uid) throw new Error("UID missing for CTA call");
     const response = await fetch(`/api/public-cta/${action}`, {
@@ -421,16 +441,21 @@ export function MobileDemoClient({
   }
 
   async function activateOwnership() {
-    setConsumerState("CLAIMED");
+    if (ctaBlocked || ctaPendingAuth) {
+      setCtaStatus(ctaBlockedReason);
+      pushEvent("OWNERSHIP_BLOCKED", ctaBlockedReason);
+      return;
+    }
     setCtaPending(true);
     try {
       await postCta("claim-ownership");
+      setConsumerState("CLAIMED");
       setCtaStatus("Ownership activado y persistido en backend.");
       pushEvent("OWNERSHIP_CLAIMED", "Ownership activado y persistido en backend CTA.");
     } catch (error) {
       const reason = error instanceof Error ? error.message : "CTA unavailable";
-      setCtaStatus(`Ownership fallback local: ${reason}`);
-      pushEvent("OWNERSHIP_CLAIMED_LOCAL", `Fallback local: ${reason}`);
+      setCtaStatus(`Ownership no confirmado: ${reason}`);
+      pushEvent("OWNERSHIP_CLAIM_FAILED", reason);
     } finally {
       setCtaPending(false);
     }
@@ -438,22 +463,32 @@ export function MobileDemoClient({
 
   async function saveWarranty() {
     if (!warrantyName.trim()) return;
-    setWarrantySaved(true);
+    if (ctaBlocked || ctaPendingAuth) {
+      setCtaStatus(ctaBlockedReason);
+      pushEvent("WARRANTY_BLOCKED", ctaBlockedReason);
+      return;
+    }
     setCtaPending(true);
     try {
       await postCta("register-warranty");
+      setWarrantySaved(true);
       setCtaStatus(`Garantía registrada para ${warrantyName.trim()} y persistida en backend.`);
       pushEvent("WARRANTY_REGISTERED", `Garantía registrada para ${warrantyName.trim()} y persistida en backend.`);
     } catch (error) {
       const reason = error instanceof Error ? error.message : "CTA unavailable";
-      setCtaStatus(`Garantía fallback local: ${reason}`);
-      pushEvent("WARRANTY_REGISTERED_LOCAL", `Fallback local: ${reason}`);
+      setCtaStatus(`Garantia no confirmada: ${reason}`);
+      pushEvent("WARRANTY_REGISTER_FAILED", reason);
     } finally {
       setCtaPending(false);
     }
   }
 
   function requestTokenization() {
+    if (ctaBlocked || ctaPendingAuth) {
+      setCtaStatus(ctaBlockedReason);
+      pushEvent("TOKENIZATION_BLOCKED", ctaBlockedReason);
+      return;
+    }
     setShowTokenModal(true);
     setLeadIntent("tokenization_optional");
     pushEvent("TOKENIZATION_GATE_OPENED", "Interés en tokenización capturado (tokenization-ready).");
@@ -489,11 +524,15 @@ export function MobileDemoClient({
       // keep demo resilient even if backend is unavailable
     } finally {
       if (leadIntent === "tokenization_optional") {
-        try {
-          await postCta("tokenize-request");
-          pushEvent("TOKENIZATION_REQUESTED", "Tokenización opcional solicitada y guardada en CTA backend.");
-        } catch (error) {
-          pushEvent("TOKENIZATION_REQUESTED_LOCAL", `Fallback local: ${error instanceof Error ? error.message : "CTA unavailable"}`);
+        if (ctaBlocked || ctaPendingAuth) {
+          pushEvent("TOKENIZATION_BLOCKED", ctaBlockedReason);
+        } else {
+          try {
+            await postCta("tokenize-request");
+            pushEvent("TOKENIZATION_REQUESTED", "Tokenización opcional solicitada y guardada en CTA backend.");
+          } catch (error) {
+            pushEvent("TOKENIZATION_REQUEST_FAILED", error instanceof Error ? error.message : "CTA unavailable");
+          }
         }
       }
       setLeadSaved(true);
@@ -531,7 +570,7 @@ export function MobileDemoClient({
               <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
                 <div className="h-full rounded-full bg-cyan-400 transition-all" style={{ width: `${scanProgress}%` }} />
               </div>
-              <p className="mt-1 text-[11px] text-slate-300">Cryptographic handshake {scanProgress}%</p>
+              <p className="mt-1 text-[11px] text-slate-300">Backend trust check demo {scanProgress}%</p>
             </div>
             <div className="mt-3 grid grid-cols-3 gap-2">
               {investorSignals.map((signal) => (
@@ -545,11 +584,16 @@ export function MobileDemoClient({
               <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">Geo trace capture</p>
               {geoState ? (
                 <p className="mt-1 text-[11px] text-cyan-100">
-                  📍 {geoState.lat.toFixed(5)}, {geoState.lng.toFixed(5)} · ±{Math.round(geoState.accuracy || 0)}m
+                  GPS {geoState.lat.toFixed(5)}, {geoState.lng.toFixed(5)} · ±{Math.round(geoState.accuracy || 0)}m
                 </p>
               ) : (
-                <p className="mt-1 text-[11px] text-slate-300">{geoError || "Esperando permiso de ubicación del dispositivo..."}</p>
+                <p className="mt-1 text-[11px] text-slate-300">
+                  {geoError || (geoRequested ? "Esperando permiso de ubicacion del dispositivo..." : "Ubicacion no compartida; la demo puede continuar sin GPS.")}
+                </p>
               )}
+              <button suppressHydrationWarning type="button" className="mt-2 rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-[11px] font-semibold text-cyan-100" onClick={requestGeoTrace}>
+                {geoState ? "Actualizar ubicacion demo" : "Compartir ubicacion para esta demo"}
+              </button>
               <div className="mt-2 overflow-hidden rounded-lg border border-white/10 flex justify-center">
                 <Globe3dMap
                   points={mobileMapPoints.map((p) => ({
@@ -673,7 +717,7 @@ export function MobileDemoClient({
                 <p className="mt-2 text-[10px] text-slate-300">
                   {consumerState === "REPLAY_SUSPECT"
                     ? "Payload reutilizado: se bloquean token, ownership y acciones comerciales."
-                    : "Mapa preparado para contar distribucion, token/NFT, ownership y beneficios post-tap."}
+                    : "Mapa preparado para contar distribucion, token/NFT opcional, ownership confirmado por backend y beneficios post-tap."}
                 </p>
               </div>
             </div>
@@ -681,9 +725,12 @@ export function MobileDemoClient({
 
           <Card className="p-4 text-xs text-slate-300">
             <h2 className="text-sm font-semibold text-white">Ownership · Warranty · Provenance</h2>
+            {ctaBlocked || ctaPendingAuth ? (
+              <p className="mt-2 rounded-lg border border-amber-300/25 bg-amber-500/10 p-2 text-[11px] text-amber-100">{ctaBlockedReason}</p>
+            ) : null}
             <div className="mt-2 grid gap-2 md:grid-cols-2">
-              <button suppressHydrationWarning type="button" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2.5 text-left text-cyan-100 shadow-[0_0_0_1px_rgba(34,211,238,.08)]" onClick={() => void activateOwnership()}>✅ Activar ownership</button>
-              <button suppressHydrationWarning type="button" className="rounded-xl border border-violet-300/30 bg-violet-500/10 px-3 py-2.5 text-left text-violet-100 shadow-[0_0_0_1px_rgba(167,139,250,.10)]" onClick={() => void saveWarranty()}>🛡️ Registrar garantía</button>
+              <button suppressHydrationWarning type="button" disabled={actionDisabled} className={`rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2.5 text-left text-cyan-100 shadow-[0_0_0_1px_rgba(34,211,238,.08)] ${actionDisabledClass}`} onClick={() => void activateOwnership()}>Activar ownership</button>
+              <button suppressHydrationWarning type="button" disabled={actionDisabled} className={`rounded-xl border border-violet-300/30 bg-violet-500/10 px-3 py-2.5 text-left text-violet-100 shadow-[0_0_0_1px_rgba(167,139,250,.10)] ${actionDisabledClass}`} onClick={() => void saveWarranty()}>Registrar garantia</button>
               <button suppressHydrationWarning type="button" className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-3 py-2.5 text-left text-amber-100 shadow-[0_0_0_1px_rgba(251,191,36,.10)]" onClick={() => void (async () => {
                 try {
                   const data = await fetchProvenance();
@@ -696,8 +743,8 @@ export function MobileDemoClient({
                   pushEvent("PROVENANCE_VIEWED_LOCAL", `Fallback local: ${reason}`);
                 }
                 setTimelineOpen((value) => !value);
-              })()}>📜 Ver provenance</button>
-              <button suppressHydrationWarning type="button" className="rounded-xl border border-white/20 bg-white/5 px-3 py-2.5 text-left text-white" onClick={requestTokenization}>✨ Tokenización opcional</button>
+              })()}>Ver provenance</button>
+              <button suppressHydrationWarning type="button" disabled={actionDisabled} className={`rounded-xl border border-white/20 bg-white/5 px-3 py-2.5 text-left text-white ${actionDisabledClass}`} onClick={requestTokenization}>Tokenizacion opcional</button>
             </div>
             <div className="mt-3 rounded-lg border border-white/10 bg-slate-900 p-2">
               <input suppressHydrationWarning value={warrantyName} onChange={(event) => setWarrantyName(event.target.value)} placeholder="Nombre para garantía" className="w-full rounded border border-white/10 bg-slate-950 px-2 py-1 text-white" />

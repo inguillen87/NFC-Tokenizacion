@@ -10,7 +10,7 @@ import { ensureCarrierProfileSchema } from "../../../../../lib/commercial-runtim
 import { getCarrierProfile, normalizeCarrierProfileCode } from "../../../../../lib/carrier-profiles";
 import { upsertTagSunPayload } from "../../../../../lib/sun-payload-registry.ts";
 import { ensureSupplierOpsSchema } from "../../../../../lib/supplier-ops-schema";
-import { canImportSupplierManifest, validateSupplierManifestQuantity } from "../../../../../lib/supplier-ops";
+import { canImportSupplierManifest, requiresSecureSunEncoding, validateSupplierManifestQuantity } from "../../../../../lib/supplier-ops";
 import { hashEvidencePayload } from "../../../../../lib/proof-layer";
 import { logAuditEvent } from "../../../../../lib/audit-logger";
 
@@ -103,14 +103,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
       message: "The batch must have a carrier_profile_code before importing manifests. Edit/register the batch with qr_basic, gs1_digital_link, ntag213, ntag215, ntag216, ntag424_dna or ntag424_dna_tt.",
     }, 409);
   }
-  const readiness = await requireTenantSunProfile(String(batch.tenant_id)).catch((error) => ({ ok: false, missing: (error as Error & { missing?: string[] }).missing || ["tenant_sun_profiles"] }));
-  if (!readiness.ok) {
-    return json({
-      ok: false,
-      reason: "tenant_sun_profile_incomplete",
-      message: "Complete tenant SUN profile before importing manifests.",
-      missing: readiness.missing,
-    }, 409);
+  if (requiresSecureSunEncoding(batchCarrierCode)) {
+    const readiness = await requireTenantSunProfile(String(batch.tenant_id)).catch((error) => ({ ok: false, missing: (error as Error & { missing?: string[] }).missing || ["tenant_sun_profiles"] }));
+    if (!readiness.ok) {
+      return json({
+        ok: false,
+        reason: "tenant_sun_profile_incomplete",
+        message: "Complete tenant SUN profile before importing secure SUN manifests.",
+        missing: readiness.missing,
+      }, 409);
+    }
   }
 
   const payload = await readPayload(req);

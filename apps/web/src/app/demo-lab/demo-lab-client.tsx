@@ -669,11 +669,16 @@ export function DemoLabClient({ locale, initialVertical, initialScenario }: { lo
 
   useEffect(() => {
     if (!modalView) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") setModalView(null);
     }
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
   }, [modalView]);
 
   const activeBeat = txt.beats[beat];

@@ -17,6 +17,11 @@ const SAFE_METADATA_KEYS = new Set([
   "row_count",
   "manifest_type",
   "key_fingerprint",
+  "qa_status",
+  "sample_count",
+  "replay_checked",
+  "ttstatus_checked",
+  "evidence_digest",
 ]);
 
 function sanitizeMetadata(value: unknown) {
