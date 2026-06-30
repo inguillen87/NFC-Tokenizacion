@@ -46,6 +46,7 @@ type DocsCopy = {
   jumpChipProfiles: string;
   jumpApi: string;
   jumpRollout: string;
+  jumpTrustLayers: string;
   jumpFaq: string;
   jumpStrategy: string;
   jumpActions: string;
@@ -151,6 +152,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     jumpChipProfiles: "Perfiles de chip",
     jumpApi: "API",
     jumpRollout: "Rollout",
+    jumpTrustLayers: "Trust layers",
     jumpFaq: "FAQ",
     jumpStrategy: "Strategy",
     jumpActions: "Actions",
@@ -259,6 +261,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     jumpChipProfiles: "Perfis de chip",
     jumpApi: "API",
     jumpRollout: "Rollout",
+    jumpTrustLayers: "Trust layers",
     jumpFaq: "FAQ",
     jumpStrategy: "Strategy",
     jumpActions: "Actions",
@@ -367,6 +370,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     jumpChipProfiles: "Chip profiles",
     jumpApi: "API",
     jumpRollout: "Rollout",
+    jumpTrustLayers: "Trust layers",
     jumpFaq: "FAQ",
     jumpStrategy: "Strategy",
     jumpActions: "Actions",
@@ -387,6 +391,44 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
 export default async function DocsPage() {
   const { locale } = await getWebI18n();
   const copy = docsCopy[locale];
+  const trustLayerFaq = locale === "en"
+    ? {
+      title: "Enterprise trust FAQ",
+      docsTitle: "Deep technical docs in this repo",
+      docs: ["blockchain-architecture.md", "polygon-ownership-layer.md", "iota-proof-audit-layer.md", "enterprise-trust-faq.md", "dpp-event-model.md"],
+      items: [
+        ["Official partnerships?", "No. Polygon and IOTA are technologies the architecture can integrate with; do not claim an official partnership unless there is a signed public agreement."],
+        ["Does every tap go on-chain?", "No. Taps are validated server-side. Chains are used only for approved ownership, certificates, claims, transfers or batched proof anchors."],
+        ["Is IOTA zero-fee here?", "No. We position IOTA as an optional proof/audit layer for hashes, Merkle roots, DPP and logistics evidence, without zero-fee claims."],
+        ["Do customers need a wallet?", "No. Consumer UX stays mobile-first. Custodial or wallet flows are optional and policy-driven."],
+        ["Is private data stored on-chain?", "No. Private data and raw UIDs stay off-chain; proofs use hashes, salts, policy checks and tenant-scoped records."],
+      ],
+    }
+    : locale === "pt-BR"
+    ? {
+      title: "FAQ enterprise de confianca",
+      docsTitle: "Docs tecnicos profundos neste repo",
+      docs: ["blockchain-architecture.md", "polygon-ownership-layer.md", "iota-proof-audit-layer.md", "enterprise-trust-faq.md", "dpp-event-model.md"],
+      items: [
+        ["Parcerias oficiais?", "Nao. Polygon e IOTA sao tecnologias integraveis; nao declarar parceria oficial sem acordo publico assinado."],
+        ["Todo toque vai on-chain?", "Nao. Taps sao validados server-side. Chains entram apenas para ownership, certificados, claims, transferencias ou ancoras de prova aprovadas."],
+        ["IOTA e zero-fee aqui?", "Nao. IOTA e camada opcional de prova/auditoria para hashes, Merkle roots, DPP e logistica, sem claims de zero-fee."],
+        ["Cliente precisa de wallet?", "Nao. A UX segue mobile-first. Wallet ou custodia sao opcionais e governadas por politica."],
+        ["Dados privados ficam on-chain?", "Nao. Dados privados e UIDs crus ficam off-chain; provas usam hashes, salts, regras e registros por tenant."],
+      ],
+    }
+    : {
+      title: "FAQ enterprise de confianza",
+      docsTitle: "Docs tecnicos profundos en este repo",
+      docs: ["blockchain-architecture.md", "polygon-ownership-layer.md", "iota-proof-audit-layer.md", "enterprise-trust-faq.md", "dpp-event-model.md"],
+      items: [
+        ["Alianzas oficiales?", "No. Polygon e IOTA son tecnologias integrables; no se debe declarar partnership oficial sin acuerdo publico firmado."],
+        ["Cada tap va on-chain?", "No. Los taps se validan server-side. Las cadenas entran solo para ownership, certificados, claims, transferencias o anclas de prueba aprobadas."],
+        ["IOTA es zero-fee aca?", "No. IOTA se posiciona como capa opcional de prueba/auditoria para hashes, Merkle roots, DPP y logistica, sin claims de zero-fee."],
+        ["El cliente necesita wallet?", "No. La UX sigue mobile-first. Wallet o custodia son opcionales y dependen de la politica del tenant."],
+        ["Datos privados quedan on-chain?", "No. Datos privados y UIDs crudos quedan off-chain; las pruebas usan hashes, salts, reglas y registros por tenant."],
+      ],
+    };
 
   return (
     <main className="knowledge-page-surface docs-page container-shell space-y-8 py-16">
@@ -419,9 +461,10 @@ export default async function DocsPage() {
           </p>
           <div className="flex flex-wrap gap-2">
             <PublicLinkChip href="#thesis" icon={<Layers3 className="h-3.5 w-3.5" />} variant="cyan">{copy.jumpPillars}</PublicLinkChip>
-            <PublicLinkChip href="#chips" icon={<ShieldCheck className="h-3.5 w-3.5" />} variant="cyan">{copy.jumpChipProfiles}</PublicLinkChip>
+            <PublicLinkChip href="#carrier-profiles" icon={<ShieldCheck className="h-3.5 w-3.5" />} variant="cyan">{copy.jumpChipProfiles}</PublicLinkChip>
             <PublicLinkChip href="#api" icon={<ShieldCheck className="h-3.5 w-3.5" />} variant="indigo">{copy.jumpApi}</PublicLinkChip>
             <PublicLinkChip href="#rollout" icon={<Rocket className="h-3.5 w-3.5" />} variant="emerald">{copy.jumpRollout}</PublicLinkChip>
+            <PublicLinkChip href="#trust-layers" icon={<ShieldCheck className="h-3.5 w-3.5" />} variant="cyan">{copy.jumpTrustLayers}</PublicLinkChip>
             <PublicLinkChip href="#faq" icon={<CircleHelp className="h-3.5 w-3.5" />} variant="amber">{copy.jumpFaq}</PublicLinkChip>
             <PublicLinkChip href="#strategy" icon={<BookOpen className="h-3.5 w-3.5" />} variant="violet">{copy.jumpStrategy}</PublicLinkChip>
             <PublicLinkChip href="#actions">{copy.jumpActions}</PublicLinkChip>
@@ -449,7 +492,8 @@ export default async function DocsPage() {
         </Card>
       </div>
 
-      <div id="chips" className="scroll-mt-28">
+      <div id="carrier-profiles" className="scroll-mt-28">
+        <span id="chips" className="sr-only" />
         <Card className="p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(14,165,233,0.08)]">
           <h3 className="text-lg font-semibold text-white">{copy.chipTitle}</h3>
           <div className="mt-4 grid gap-3">
@@ -527,9 +571,28 @@ export default async function DocsPage() {
           <h3 className="text-lg font-semibold text-white">{copy.roadmapTitle}</h3>
           <ul className="mt-4 space-y-2 text-sm text-slate-300">{copy.roadmapBullets.map((item) => <li key={item}>• {item}</li>)}</ul>
         </Card>
-        <Card className="p-6">
+        <Card id="trust-layers" className="scroll-mt-28 p-6">
           <h3 className="text-lg font-semibold text-white">{copy.trustOpsTitle}</h3>
           <ul className="mt-4 space-y-2 text-sm text-slate-300">{copy.trustOpsBullets.map((item) => <li key={item}>• {item}</li>)}</ul>
+          <div className="mt-5 rounded-2xl border border-cyan-300/15 bg-cyan-500/10 p-4">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-200">{trustLayerFaq.title}</p>
+            <div className="mt-3 grid gap-3">
+              {trustLayerFaq.items.map(([question, answer]) => (
+                <div key={question} className="rounded-xl border border-white/10 bg-slate-950/45 p-3">
+                  <p className="text-xs font-black text-white">{question}</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-300">{answer}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-300">{trustLayerFaq.docsTitle}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {trustLayerFaq.docs.map((item) => (
+                <span key={item} className="rounded-full border border-white/10 bg-slate-950/55 px-3 py-1.5 text-[11px] font-semibold text-slate-200">{item}</span>
+              ))}
+            </div>
+          </div>
         </Card>
       </div>
 

@@ -25,6 +25,10 @@ function clean(value: unknown) {
 
 function detectIntent(question: string) {
   const q = question.toLowerCase();
+  if (q.includes("partner") || q.includes("partnership") || q.includes("alianza") || q.includes("socio oficial") || q.includes("parceria") || q.includes("oficial")) return "partnership_risk";
+  if (q.includes("iota") || q.includes("merkle") || q.includes("audit") || q.includes("auditoria") || q.includes("auditoría") || q.includes("dpp")) return "iota_proof";
+  if (q.includes("uhf") || q.includes("iot") || q.includes("sensor") || q.includes("pallet") || q.includes("logistica") || q.includes("logística") || q.includes("industrial")) return "industrial_trace";
+  if (q.includes("gs1") || q.includes("digital link") || q.includes("gtin")) return "gs1_qr";
   if (q.includes("424") || q.includes("215") || q.includes("ntag") || q.includes("qr") || q.includes("sun") || q.includes("sdm")) return "tag_stack";
   if (q.includes("reseller") || q.includes("revendedor") || q.includes("revenda") || q.includes("white-label")) return "reseller";
   if (q.includes("precio") || q.includes("pricing") || q.includes("cotiz") || q.includes("orcamento") || q.includes("quote")) return "quote";
@@ -60,7 +64,11 @@ function localAnswer(locale: string, question: string, leadSaved: boolean) {
       tag_stack: "Short version: in nexID, 215 and 424 are NFC tag profiles, not payment codes. NTAG215 is BASIC: lower cost, fast tap UX, wristbands/events, serialized assets and low-risk QR/NFC campaigns. NTAG 424 DNA is SECURE: dynamic SUN/SDM, where each tap generates different cryptographic evidence. NTAG 424 DNA TagTamper is PREMIUM: best for bottles, seals, caps, warranty, ownership, anti-copy and open-state policy. Recommendation: use 215 for simple scale and 424 DNA/TT when the brand must prove authenticity, route, owner, warranty or resale.",
       reseller: "For resellers we package hardware + encoding + SaaS + onboarding. The value story is recurring revenue, CRM leads, analytics exports, tenant dashboards and a white-label rollout model. Start with Bodega Balmec, show live taps, then quote volume and tag profile.",
       quote: "To quote cleanly I need vertical, yearly volume, target tag profile (QR/NTAG215/424 DNA/424 TT), country and whether you are buying as brand or reseller. The calculator can model enterprise client vs reseller margin in the same flow.",
-      tokenization: "Tokenization is premium and optional. We keep NFC/SUN authentication as the core trust layer, then add a sandbox Polygon-style ownership passport for warranty, lifecycle, vouchers or resale. MetaMask is useful for demos, but the consumer flow should not depend on wallet complexity.",
+      tokenization: "Tokenization is premium and optional. We keep NFC/SUN authentication as the core trust layer, then add Polygon-based ownership, certificates, warranty transfer or resale only after a fresh tap, buyer validation and tenant policy approval. MetaMask is useful for demos, but the consumer flow should not depend on wallet complexity.",
+      iota_proof: "IOTA fits as an optional proof/audit layer, not as the primary consumer tap flow. The platform can anchor hashes or Merkle roots for DPP, batch lifecycle and logistics evidence, while private data and individual taps remain off-chain.",
+      industrial_trace: "For industrial traceability, use UHF/IoT for pallets, cartons and sensor events, then connect that evidence to the same product passport. Consumer QR/NFC stays simple; operations get route, temperature, custody and audit views.",
+      gs1_qr: "GS1 Digital Link and QR are the low-cost identity and resolver layer: GTIN, lot, serial, recall, content and retailer compatibility. They are useful as visible fallback, but should not unlock premium ownership or high-value claims without stronger proof.",
+      partnership_risk: "Careful wording: Polygon and IOTA are technologies we can integrate with, not official partnerships unless a signed public agreement exists. The safe claim is architecture support or integration path, not endorsement.",
       demo: "For a strong demo, show three moments: product born in origin, customer tap in destination with route/distance, and post-tap action: warranty, club, voucher, marketplace or ownership claim.",
       integration: "Integration usually needs API keys, webhook destinations, tenant roles, batch import and a SUN/UID validation contract. We can start with public lead capture, admin analytics and exportable reports, then add private API keys.",
       general: "I can help you decide tag profile, estimate rollout, explain Basic vs Secure vs Premium, plan reseller margins or prepare a demo flow. Tell me vertical, volume and risk level.",
@@ -73,7 +81,11 @@ function localAnswer(locale: string, question: string, leadSaved: boolean) {
       tag_stack: "Resumo: em nexID, 215 e 424 sao perfis de tag NFC, nao codigos de pagamento. NTAG215 e BASIC: menor custo, tap rapido, pulseiras/eventos, ativos serializados e campanhas QR/NFC de baixo risco. NTAG 424 DNA e SECURE: SUN/SDM dinamico, cada toque gera evidencia criptografica diferente. NTAG 424 DNA TagTamper e PREMIUM: ideal para garrafas, lacres, tampas, garantia, ownership, anti-copia e politica de abertura. Recomendacao: 215 para escala simples; 424 DNA/TT quando a marca precisa provar autenticidade, rota, dono, garantia ou revenda.",
       reseller: "Para revendedores, empacotamos hardware + encoding + SaaS + onboarding. A historia de valor e receita recorrente, CRM de leads, exports de analytics, dashboards por tenant e rollout white-label.",
       quote: "Para cotar bem preciso de vertical, volume anual, perfil de tag (QR/NTAG215/424 DNA/424 TT), pais e se voce compra como marca ou reseller. A calculadora modela cliente empresa vs margem reseller.",
-      tokenization: "Tokenizacao e premium e opcional. Mantemos NFC/SUN como camada principal de confianca e adicionamos um ownership passport sandbox estilo Polygon para garantia, lifecycle, vouchers ou revenda.",
+      tokenization: "Tokenizacao e premium e opcional. Mantemos NFC/SUN como camada principal de confianca e adicionamos ownership, certificados, garantia transferivel ou revenda em Polygon somente com toque fresco, comprador validado e politica do tenant aprovada.",
+      iota_proof: "IOTA entra como camada opcional de prova/auditoria, nao como fluxo principal de toque do consumidor. A plataforma pode ancorar hashes ou Merkle roots para DPP, ciclo de lote e logistica, mantendo dados privados e taps individuais off-chain.",
+      industrial_trace: "Para rastreabilidade industrial, use UHF/IoT em pallets, caixas e sensores, conectando essa evidencia ao mesmo passport. QR/NFC do consumidor fica simples; operacoes ganham rota, temperatura, custodia e auditoria.",
+      gs1_qr: "GS1 Digital Link e QR sao a camada economica de identidade e resolver: GTIN, lote, serie, recall, conteudo e compatibilidade retail. Sao fallback visivel, mas nao liberam ownership premium sozinhos.",
+      partnership_risk: "Cuidado no wording: Polygon e IOTA sao tecnologias integraveis, nao parcerias oficiais salvo acordo publico assinado. O claim seguro e suporte arquitetural ou caminho de integracao, nao endorsement.",
       demo: "Para uma demo forte, mostre tres momentos: produto nasce na origem, cliente toca no destino com rota/distancia e acao pos-toque: garantia, clube, voucher, marketplace ou ownership.",
       integration: "Integracao normalmente precisa de API keys, webhooks, papeis por tenant, import de batch e contrato de validacao SUN/UID.",
       general: "Posso ajudar a escolher tag profile, estimar rollout, explicar Basic vs Secure vs Premium, planejar margem reseller ou montar uma demo.",
@@ -85,7 +97,11 @@ function localAnswer(locale: string, question: string, leadSaved: boolean) {
     tag_stack: "Version corta: en nexID, 215 y 424 son perfiles de tag NFC, no codigos de pago. NTAG215 es BASIC: menor costo, tap rapido, brazaletes/eventos, activos serializados y campanas QR/NFC de bajo riesgo. NTAG 424 DNA es SECURE: SUN/SDM dinamico, cada tap genera evidencia criptografica distinta. NTAG 424 DNA TagTamper es PREMIUM: ideal para botellas, sellos, capsulas, garantia, ownership, anti-copia y apertura/manipulacion. Recomendacion: 215 para escala simple; 424 DNA/TT cuando hay que probar autenticidad, ruta, dueño, garantia o reventa.",
     reseller: "Para revendedores, el paquete es hardware + encoding + SaaS + onboarding. La historia de valor es margen inicial, MRR, CRM de leads, exportaciones, dashboard por tenant y rollout white-label. Arranca con Bodega Balmec, mostra taps en vivo y despues cotiza volumen + perfil de tag.",
     quote: "Para cotizar bien necesito vertical, volumen anual, perfil de tag (QR/NTAG215/424 DNA/424 TT), pais y si compras como marca o reseller. La calculadora separa cliente empresa vs margen reseller para que sea facil de explicar.",
-    tokenization: "La tokenizacion es premium y opcional. La confianza principal queda en NFC/SUN; despues agregamos ownership passport sandbox tipo Polygon para garantia, lifecycle, vouchers o reventa. MetaMask sirve para demo, pero el consumidor no deberia sufrir complejidad wallet.",
+    tokenization: "La tokenizacion es premium y opcional. La confianza principal queda en NFC/SUN; despues agregamos ownership, certificados, garantia transferible o reventa sobre Polygon solo con tap fresco, comprador validado y politica del tenant aprobada. MetaMask sirve para demo, pero el consumidor no deberia sufrir complejidad wallet.",
+    iota_proof: "IOTA encaja como capa opcional de prueba/auditoria, no como flujo principal del tap del consumidor. La plataforma puede anclar hashes o Merkle roots para DPP, ciclo de lote y evidencia logistica, manteniendo datos privados y taps individuales off-chain.",
+    industrial_trace: "Para trazabilidad industrial, UHF/IoT cubre pallets, cajas y eventos de sensores, conectado al mismo pasaporte del producto. El consumidor ve QR/NFC simple; operaciones ve ruta, temperatura, custodia y auditoria.",
+    gs1_qr: "GS1 Digital Link y QR son la capa economica de identidad y resolver: GTIN, lote, serie, recall, contenido y compatibilidad retail. Son un fallback visible, pero no deberian habilitar ownership premium solos.",
+    partnership_risk: "Cuidado con el wording: Polygon e IOTA son tecnologias integrables, no partnerships oficiales salvo acuerdo publico firmado. El claim seguro es soporte arquitectural o camino de integracion, no endorsement.",
     demo: "Para una demo fuerte, mostra tres momentos: producto nacido en origen, tap del cliente en destino con ruta/distancia y accion post-tap: garantia, club, voucher, marketplace u ownership.",
     integration: "La integracion normalmente pide API keys, webhooks, roles por tenant, importacion de batches y contrato de validacion SUN/UID. Podemos empezar con lead capture, analytics y exports, y luego API privada.",
     general: "Puedo ayudarte a elegir tag profile, estimar rollout, explicar Basic vs Secure vs Premium, planear margen reseller o preparar una demo. Pasame vertical, volumen y nivel de riesgo.",
@@ -135,7 +151,7 @@ export async function POST(req: Request) {
   const forwardedBody = JSON.stringify({ ...parsed, question });
   const localIntent = detectIntent(question);
 
-  if (localIntent === "tag_stack") {
+  if (["tag_stack", "iota_proof", "industrial_trace", "gs1_qr", "partnership_risk"].includes(localIntent)) {
     const leadSaved = shouldCaptureLead ? await saveLead(req, parsed, question) : false;
     return NextResponse.json({
       answer: localAnswer(locale, question, leadSaved),

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { BrandLockup, Button, LocaleSwitcher, ThemeToggle } from "@product/ui";
 import {
   CtaSection,
+  EnterpriseTrustLayersSection,
   HeroSection,
   SimpleTrustFlowSection,
 } from "../components/landing-sections";
@@ -283,6 +284,7 @@ export default async function HomePage() {
       <HeroSection content={content} stats={t.web.stats} locale={locale} radar={content.radar} />
 
       <SimpleTrustFlowSection locale={locale} />
+      <EnterpriseTrustLayersSection locale={locale} />
       {/* nexID Cognitive AI & Brand Synergy Section */}
       <section className="container-shell my-16">
         <div className="relative overflow-hidden rounded-3xl border border-purple-500/25 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.15),transparent_40%),linear-gradient(135deg,rgba(15,23,42,0.95),rgba(2,6,23,0.98))] p-8 shadow-2xl md:p-10">

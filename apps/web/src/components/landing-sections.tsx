@@ -1,6 +1,7 @@
 import { Card, SectionHeading, Badge, Button } from "@product/ui";
 import { schedulingUrls } from "@product/config";
 import Link from "next/link";
+import { BadgeCheck, Fingerprint, Network, PackageCheck, QrCode, RadioTower, ShieldCheck } from "lucide-react";
 import { HeroScene } from "./hero-scene";
 import { InstitutionalVideoPanel } from "./institutional-video-panel";
 import { PremiumTraceabilityGlobe } from "./premium-traceability-globe";
@@ -246,6 +247,116 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
               </article>
             </div>
           </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function EnterpriseTrustLayersSection({ locale }: { locale: string }) {
+  const isEn = locale === "en";
+  const isBr = locale === "pt-BR";
+  const copy = isEn
+    ? {
+      eyebrow: "Trust layers for physical products",
+      title: "One platform. The right proof layer for each risk, budget and rollout stage.",
+      body: "nexID keeps the business workflow first: product identity, SUN validation, CRM, loyalty, DPP and analytics. Blockchain is optional and policy-driven, not a requirement for every tap.",
+      note: "Polygon and IOTA are integrated technologies, not official partnerships unless a signed public agreement exists. We do not send every tap on-chain or store private customer data on-chain.",
+      cta: "Read trust docs",
+      paths: [
+        { label: "SME rollout", body: "Start with QR/GS1, product passport, batch analytics and simple support workflows." },
+        { label: "Enterprise rollout", body: "Add Supplier Ops, Tenant Vault, NFC 424, Polygon ownership, IOTA proof and UHF/IoT evidence only where risk justifies it." },
+      ],
+      cards: [
+        { title: "QR / GS1", body: "Visible identity, product data, resolver links and low-cost entry for SMEs.", meta: "Identity layer", icon: QrCode },
+        { title: "NFC 424 DNA", body: "Cryptographic freshness, anti-copy checks and server-side verification.", meta: "Authenticity layer", icon: Fingerprint },
+        { title: "TagTamper", body: "Physical opening evidence for bottles, seals, pharma and premium packaging.", meta: "Tamper layer", icon: ShieldCheck },
+        { title: "Polygon", body: "Ownership, claims, certificates, warranty transfer and premium tokenization.", meta: "Ownership layer", icon: BadgeCheck },
+        { title: "IOTA", body: "Optional audit trail for DPP lifecycle, logistics evidence and Merkle-root proofs.", meta: "Proof layer", icon: Network },
+        { title: "UHF / IoT", body: "Pallets, logistics, sensors and industrial traceability without forcing consumer UX.", meta: "Industrial layer", icon: RadioTower },
+      ],
+    }
+    : isBr
+    ? {
+      eyebrow: "Camadas de confianca para produtos fisicos",
+      title: "Uma plataforma. A camada certa para cada risco, custo e etapa de rollout.",
+      body: "nexID prioriza a operacao de negocio: identidade do produto, validacao SUN, CRM, loyalty, DPP e analytics. Blockchain e opcional e governado por politica, nao obrigatorio em todo toque.",
+      note: "Polygon e IOTA sao tecnologias integraveis, nao parcerias oficiais salvo acordo publico assinado. Nao enviamos todo toque on-chain nem gravamos dados privados de clientes on-chain.",
+      cta: "Ler docs de confianca",
+      paths: [
+        { label: "Rollout PME", body: "Comeca com QR/GS1, passport do produto, analytics por lote e suporte simples." },
+        { label: "Rollout enterprise", body: "Adiciona Supplier Ops, Tenant Vault, NFC 424, ownership Polygon, prova IOTA e UHF/IoT apenas quando o risco justifica." },
+      ],
+      cards: [
+        { title: "QR / GS1", body: "Identidade visivel, dados do produto, resolver links e entrada low-cost para PMEs.", meta: "Identidade", icon: QrCode },
+        { title: "NFC 424 DNA", body: "Frescor criptografico, anti-copia e verificacao server-side.", meta: "Autenticidade", icon: Fingerprint },
+        { title: "TagTamper", body: "Evidencia fisica de abertura para garrafas, lacres, pharma e embalagens premium.", meta: "Tamper", icon: ShieldCheck },
+        { title: "Polygon", body: "Ownership, claims, certificados, garantia transferivel e tokenizacao premium.", meta: "Ownership", icon: BadgeCheck },
+        { title: "IOTA", body: "Audit trail opcional para DPP, logistica e provas por Merkle root.", meta: "Proof", icon: Network },
+        { title: "UHF / IoT", body: "Pallets, logistica, sensores e rastreabilidade industrial sem complicar o consumidor.", meta: "Industrial", icon: RadioTower },
+      ],
+    }
+    : {
+      eyebrow: "Capas de confianza para productos fisicos",
+      title: "Una plataforma. La capa correcta para cada riesgo, costo y etapa de rollout.",
+      body: "nexID mantiene primero el flujo de negocio: identidad de producto, validacion SUN, CRM, loyalty, DPP y analitica. Blockchain es opcional y se activa por politica, no por cada tap.",
+      note: "Polygon e IOTA son tecnologias integrables, no partnerships oficiales salvo acuerdo publico firmado. No mandamos cada tap on-chain ni guardamos datos privados de clientes en blockchain.",
+      cta: "Leer docs de confianza",
+      paths: [
+        { label: "Rollout pyme", body: "Arranca con QR/GS1, pasaporte de producto, analitica por lote y soporte simple." },
+        { label: "Rollout enterprise", body: "Suma Supplier Ops, Tenant Vault, NFC 424, ownership Polygon, prueba IOTA y UHF/IoT solo donde el riesgo lo justifica." },
+      ],
+      cards: [
+        { title: "QR / GS1", body: "Identidad visible, datos de producto, resolver links y entrada low-cost para pymes.", meta: "Identidad", icon: QrCode },
+        { title: "NFC 424 DNA", body: "Frescura criptografica, anti-copia y verificacion server-side.", meta: "Autenticidad", icon: Fingerprint },
+        { title: "TagTamper", body: "Evidencia fisica de apertura para botellas, sellos, pharma y packaging premium.", meta: "Tamper", icon: ShieldCheck },
+        { title: "Polygon", body: "Ownership, claims, certificados, garantia transferible y tokenizacion premium.", meta: "Ownership", icon: BadgeCheck },
+        { title: "IOTA", body: "Audit trail opcional para DPP, logistica y pruebas por Merkle root.", meta: "Proof", icon: Network },
+        { title: "UHF / IoT", body: "Pallets, logistica, sensores y trazabilidad industrial sin complicar al consumidor.", meta: "Industrial", icon: RadioTower },
+      ],
+    };
+
+  return (
+    <section className="enterprise-trust-layers container-shell py-12 md:py-16">
+      <div className="enterprise-trust-layers__shell">
+        <div className="enterprise-trust-layers__head">
+          <div>
+            <p>{copy.eyebrow}</p>
+            <h2>{copy.title}</h2>
+          </div>
+          <div>
+            <span>{copy.body}</span>
+            <Link href="/docs#trust-layers">{copy.cta}</Link>
+          </div>
+        </div>
+        <div className="enterprise-trust-layers__grid">
+          {copy.paths.map((item) => (
+            <article key={item.label} className="enterprise-trust-layer-card enterprise-trust-layer-card--path">
+              <div>
+                <span><PackageCheck className="h-5 w-5" /></span>
+                <em>{item.label}</em>
+              </div>
+              <h3>{item.label}</h3>
+              <p>{item.body}</p>
+            </article>
+          ))}
+          {copy.cards.map((item) => {
+            const Icon = item.icon;
+            return (
+              <article key={item.title} className="enterprise-trust-layer-card">
+                <div>
+                  <span><Icon className="h-5 w-5" /></span>
+                  <em>{item.meta}</em>
+                </div>
+                <h3>{item.title}</h3>
+                <p>{item.body}</p>
+              </article>
+            );
+          })}
+        </div>
+        <div className="enterprise-trust-layers__note">
+          <PackageCheck className="h-4 w-4" />
+          <span>{copy.note}</span>
         </div>
       </div>
     </section>
@@ -1107,31 +1218,31 @@ export function CarrierProfileMatrixSection({ locale }: { locale: string }) {
   const copy = isEn
     ? {
       eyebrow: "Carrier profiles",
-      title: "One platform for QR, GS1, NFC, tamper and blockchain-ready products",
-      body: "nexID lets a small brand start with a low-cost QR passport and grow into cryptographic NFC, TagTamper and tokenization without rebuilding the operating model.",
-      note: "Planning ranges for pilots. Final quotes depend on volume, printing, encoding, import, support and SLA.",
+      title: "One platform for QR, GS1, NFC, tamper, ownership proof and industrial traceability",
+      body: "nexID lets a small brand start with a low-cost QR passport and grow into cryptographic NFC, TagTamper, Polygon ownership, IOTA proof and UHF/IoT logistics without rebuilding the operating model.",
+      note: "Planning ranges for pilots. Final quotes depend on volume, printing, encoding, import, integrations, support and SLA.",
       action: "See technical docs",
     }
     : isBr
     ? {
       eyebrow: "Perfis de carrier",
-      title: "Uma plataforma para QR, GS1, NFC, tamper e produtos prontos para blockchain",
-      body: "nexID permite comecar com QR passport de baixo custo e evoluir para NFC criptografico, TagTamper e tokenizacao sem refazer a operacao.",
-      note: "Faixas de planejamento para pilotos. A cotacao final depende de volume, impressao, encoding, importacao, suporte e SLA.",
+      title: "Uma plataforma para QR, GS1, NFC, tamper, ownership proof e rastreabilidade industrial",
+      body: "nexID permite comecar com QR passport de baixo custo e evoluir para NFC criptografico, TagTamper, ownership Polygon, prova IOTA e logistica UHF/IoT sem refazer a operacao.",
+      note: "Faixas de planejamento para pilotos. A cotacao final depende de volume, impressao, encoding, importacao, integracoes, suporte e SLA.",
       action: "Ver docs tecnicos",
     }
     : {
       eyebrow: "Perfiles de soporte físico",
-      title: "Una sola plataforma para QR, GS1, NFC, sello y productos listos para blockchain",
-      body: "nexID permite arrancar con un QR de bajo costo y subir a NFC criptográfico, TagTamper y tokenización sin rehacer la operación.",
-      note: "Rangos de planificación para pilotos. La cotización final depende de volumen, impresión, codificación, importación, soporte y SLA.",
+      title: "Una sola plataforma para QR, GS1, NFC, sello, ownership proof y trazabilidad industrial",
+      body: "nexID permite arrancar con QR de bajo costo y subir a NFC criptográfico, TagTamper, ownership Polygon, prueba IOTA y logística UHF/IoT sin rehacer la operación.",
+      note: "Rangos de planificación para pilotos. La cotización final depende de volumen, impresión, codificación, importación, integraciones, soporte y SLA.",
       action: "Ver documentación técnica",
     };
 
   const profiles = [
     {
       name: "QR comun",
-      range: "0.005 - 0.03",
+      price: "USD 0.005 - 0.03",
       level: "Marketing",
       promise: isEn ? "Content, lead capture and analytics." : isBr ? "Conteudo, leads e analytics." : "Contenido, leads y analytics.",
       best: isEn ? "Menus, promos, small batches." : isBr ? "Menus, promos, pequenos lotes." : "Menus, promos, lotes chicos.",
@@ -1139,7 +1250,7 @@ export function CarrierProfileMatrixSection({ locale }: { locale: string }) {
     },
     {
       name: "QR GS1 Digital Link",
-      range: "0.01 - 0.05",
+      price: "USD 0.01 - 0.05",
       level: "Retail",
       promise: isEn ? "GTIN, lot, serial and export-friendly identity." : isBr ? "GTIN, lote, serie e identidade para retail/exportacao." : "GTIN, lote, serie e identidad retail/exportacion.",
       best: isEn ? "Food, pharma, agro, export." : isBr ? "Alimentos, pharma, agro, exportacao." : "Alimentos, pharma, agro, exportacion.",
@@ -1147,7 +1258,7 @@ export function CarrierProfileMatrixSection({ locale }: { locale: string }) {
     },
     {
       name: "NTAG213",
-      range: "0.08 - 0.20",
+      price: "USD 0.08 - 0.20",
       level: "Toque web",
       promise: isEn ? "Low-cost NFC for campaigns and basic warranty." : isBr ? "NFC economico para campanhas e garantia basica." : "NFC económico para campañas y garantía básica.",
       best: isEn ? "Tourism, local brands, simple activation." : isBr ? "Turismo, marcas locais, ativacao simples." : "Turismo, marcas locales, activacion simple.",
@@ -1155,7 +1266,7 @@ export function CarrierProfileMatrixSection({ locale }: { locale: string }) {
     },
     {
       name: "NTAG215 / 216",
-      range: "0.12 - 0.45",
+      price: "USD 0.12 - 0.45",
       level: "Operacion",
       promise: isEn ? "Serialized UID, events, credentials and high-frequency validation." : isBr ? "UID serializado, eventos, credenciais e validacao frequente." : "UID serializado, eventos, credenciales y validacion frecuente.",
       best: isEn ? "Wristbands, tickets, access and mid-value products." : isBr ? "Pulseiras, tickets, acesso e produtos medios." : "Pulseras, tickets, accesos y productos medios.",
@@ -1163,7 +1274,7 @@ export function CarrierProfileMatrixSection({ locale }: { locale: string }) {
     },
     {
       name: "NTAG424 DNA",
-      range: "0.55 - 0.90",
+      price: "USD 0.55 - 0.90",
       level: "Secure",
       promise: isEn ? "SUN/SDM, dynamic URL and anti-replay evidence." : isBr ? "SUN/SDM, URL dinamica e evidencia anti-replay." : "SUN/SDM, URL dinamica y evidencia anti-replay.",
       best: isEn ? "Premium products, documents, warranty." : isBr ? "Produtos premium, documentos, garantia." : "Productos premium, documentos, garantía.",
@@ -1171,11 +1282,35 @@ export function CarrierProfileMatrixSection({ locale }: { locale: string }) {
     },
     {
       name: "NTAG424 DNA TT",
-      range: "0.85 - 1.25",
+      price: "USD 0.85 - 1.25",
       level: "Luxury",
       promise: isEn ? "Cryptographic tap plus physical opened/closed seal." : isBr ? "Toque criptografico mais selo fisico aberto/fechado." : "Toque criptográfico más sello físico abierto/cerrado.",
       best: isEn ? "Wine, luxury, pharma, collectibles." : isBr ? "Vinho, luxo, pharma, colecionaveis." : "Vino, lujo, pharma, coleccionables.",
       risk: isEn ? "Best fit for ownership and token gates." : isBr ? "Ideal para titularidade digital e acessos por token." : "Ideal para propiedad digital y accesos por token.",
+    },
+    {
+      name: "Polygon ownership",
+      price: isEn ? "Policy add-on" : isBr ? "Add-on por politica" : "Add-on por politica",
+      level: "Ownership",
+      promise: isEn ? "Certificates, claims, warranty transfer and premium ownership." : isBr ? "Certificados, claims, transferencia de garantia e ownership premium." : "Certificados, claims, transferencia de garantia y ownership premium.",
+      best: isEn ? "Luxury, collectibles, warranty and resale." : isBr ? "Luxo, colecionaveis, garantia e revenda." : "Lujo, coleccionables, garantia y reventa.",
+      risk: isEn ? "Only after fresh tap, validated buyer and tenant approval." : isBr ? "Somente com toque fresco, comprador validado e aprovacao do tenant." : "Solo con tap fresco, comprador validado y aprobacion del tenant.",
+    },
+    {
+      name: "IOTA proof layer",
+      price: isEn ? "Proof add-on" : isBr ? "Add-on de prova" : "Add-on de prueba",
+      level: "Audit",
+      promise: isEn ? "Hashes, Merkle roots, DPP lifecycle and logistics evidence." : isBr ? "Hashes, Merkle roots, ciclo DPP e evidencia logistica." : "Hashes, Merkle roots, ciclo DPP y evidencia logistica.",
+      best: isEn ? "DPP, regulated exports, audit and supply-chain evidence." : isBr ? "DPP, exportacao regulada, auditoria e supply chain." : "DPP, exportacion regulada, auditoria y supply chain.",
+      risk: isEn ? "Optional proof layer; no private data or every tap on-chain." : isBr ? "Camada opcional; sem dados privados nem todo toque on-chain." : "Capa opcional; sin datos privados ni cada tap on-chain.",
+    },
+    {
+      name: "UHF / IoT",
+      price: isEn ? "Custom" : isBr ? "Custom" : "Custom",
+      level: "Industrial",
+      promise: isEn ? "Pallets, cartons, sensor events and operational traceability." : isBr ? "Pallets, caixas, eventos de sensores e rastreabilidade operacional." : "Pallets, cajas, eventos de sensores y trazabilidad operacional.",
+      best: isEn ? "Logistics, cold chain, warehouses and field operations." : isBr ? "Logistica, cadeia fria, armazens e campo." : "Logistica, cadena fria, depositos y campo.",
+      risk: isEn ? "Industrial evidence, not the consumer tap experience." : isBr ? "Evidencia industrial, nao a experiencia de toque do consumidor." : "Evidencia industrial, no la experiencia de tap del consumidor.",
     },
   ];
 
@@ -1201,7 +1336,7 @@ export function CarrierProfileMatrixSection({ locale }: { locale: string }) {
                   <p className="text-lg font-black text-white">{item.name}</p>
                   <p className="mt-1 text-xs uppercase tracking-[0.18em] text-cyan-300">{item.level}</p>
                 </div>
-                <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-bold text-slate-200">USD {item.range}</span>
+                <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-bold text-slate-200">{item.price}</span>
               </div>
               <p className="mt-4 text-sm font-semibold leading-6 text-cyan-100">{item.promise}</p>
               <div className="mt-4 grid gap-2 text-xs leading-5 text-slate-300">

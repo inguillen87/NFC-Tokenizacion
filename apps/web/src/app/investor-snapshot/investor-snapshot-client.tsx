@@ -90,16 +90,16 @@ const faqCategories = [
       {
         q: "En cosmética, ¿cómo evito que un falsificador compre mis envases vacíos originales, los rellene con producto falso y los revenda con el chip original marcando 'auténtico'?",
         a: "Esta es la mayor vulnerabilidad en el mercado secundario de perfumes y cremas premium. Si el chip sigue activo, el sistema dirá que es original. nexID aborda este problema con honestidad técnica mediante la tecnología TagTamper: un micro-filamento conductor que recorre el cierre del frasco o el sello del atomizador. En el momento en que el consumidor presiona el atomizador por primera vez o desenrosca la tapa para usar el producto, el filamento físico se rompe mecánicamente. El chip sigue funcionando para marketing, pero el estado cambia permanentemente en nuestra base de datos a 'abierto/consumido'. Si alguien intenta rellenarlo y revenderlo, cualquier escaneo posterior alertará al comprador de que el envase ya fue abierto y violado.",
-        ctx: "Esto destruye el mercado negro de rellenado de perfumes de lujo en origen, protegiendo tu marca y asegurando al consumidor final que está pagando por la fórmula original sin alteraciones."
+        ctx: "Esto reduce de forma fuerte el mercado negro de rellenado de perfumes de lujo, protege la marca y le da al consumidor una señal clara de que el envase ya fue abierto."
       },
       {
         q: "¿Cómo justifico la inversión en chips NFC frente a mis accionistas cuando existen alternativas de trazabilidad mucho más económicas como los códigos QR?",
-        a: "Si solo buscas marcar una casilla de trazabilidad básica para el mercado local, un código QR estático es más barato. Pero si tu objetivo es exportar y competir globalmente, el QR es un peligro: cualquiera lo puede fotocopiar y duplicar en miles de envases falsos en el extranjero. Además, la Unión Europea avanza firmemente hacia la obligatoriedad del Pasaporte Digital de Producto (DPP) para cosméticos, exigiendo registrar la circularidad y la cadena de suministro de forma inmutable. Con nexID, no solo cumples con estas leyes internacionales antes que tus competidores de LATAM, sino que conviertes el envase físico en un portal interactivo directo al consumidor (D2C) para compras recurrentes con un solo toque, aumentando la lealtad y el valor del ciclo de vida del cliente (LTV).",
+        a: "Si solo buscas marcar una casilla de trazabilidad básica para el mercado local, un código QR estático es más barato. Pero si tu objetivo es exportar y competir globalmente, el QR por sí solo es débil: cualquiera lo puede fotocopiar y duplicar en envases falsos. Además, la Unión Europea avanza hacia Pasaporte Digital de Producto (DPP), con más presión sobre circularidad y cadena de suministro verificable. Con nexID, el envase físico puede convertirse en un portal D2C para garantía, recompra, soporte y evidencia de lote, sumando capas NFC, Polygon o IOTA solo cuando el caso lo justifica.",
         ctx: "El retorno de la inversión (ROI) no proviene solo de la prevención de la falsificación, sino de la eficiencia regulatoria internacional y de la creación de un nuevo canal digital de ventas recurrentes sin intermediarios."
       },
       {
         q: "En cosméticos, si un falsificador despega la etiqueta del perfume original para pegarla en un frasco clonado, ¿cómo detectamos el fraude si no usamos adhesivos VOID?",
-        a: "Las antenas NFC de papel son extremadamente frágiles y se cortan al despegar el pegamento. Pero si buscas protección física total, existen etiquetas de transferencia de adhesivo o tipo 'tatuaje' (VOID) que se consiguen fácilmente con proveedores globales. Al intentar despegarlas, la antena metálica y el diseño se fragmentan y quedan parcialmente pegados ('tatuados') en el frasco de vidrio, haciendo imposible su reutilización. Si prefieres tags más económicos sin VOID, nuestro motor de telemetría detecta comportamientos incongruentes en la nube (como escaneos duplicados o geolocalizaciones imposibles de un mismo chip en dos países distintos), marcando de inmediato el envase como sospechoso en la base de datos centralizada.",
+        a: "Las antenas NFC de papel son frágiles y suelen dañarse al despegar el adhesivo. Si buscás mayor protección física, existen etiquetas VOID o de transferencia de adhesivo con proveedores globales: al intentar despegarlas, la antena y el diseño se fragmentan y reducen la posibilidad de reutilización. Si preferís tags más económicos sin VOID, el motor de telemetría detecta patrones incongruentes, como escaneos duplicados o ubicaciones incompatibles para un mismo chip, y marca el envase como sospechoso.",
         ctx: "Al contrastar la base de datos de despachos a distribuidores autorizados con las coordenadas GPS del cliente final que escanea el perfume, nexID identifica de inmediato la fuga al mercado gris o la reutilización del chip."
       }
     ]
@@ -112,7 +112,7 @@ const faqCategories = [
       {
         q: "¿Qué ventaja tiene sobre el código de barras que exige la regulación de medicamentos?",
         a: "El código de barras es estático y fácilmente duplicable por fotocopiadoras en empaques apócrifos. El microchip nexID genera una firma criptográfica dinámica de un solo uso que se valida contra nuestro servidor seguro en Render/AWS.",
-        ctx: "Si una mafia copia el empaque, el servidor detecta que la firma del chip está ausente, es inválida o reporta ubicaciones geográficas simultáneas imposibles, bloqueando la falsificación de medicamentos de alto costo."
+        ctx: "Si una red copia el empaque, el servidor detecta firma ausente, inválida o patrones geográficos incompatibles, bloquea beneficios sensibles y eleva el caso para revisión operativa."
       },
       {
         q: "En el agro, ¿qué valor tiene colocar chips en bolsas de semillas de autor o agroquímicos?",
@@ -129,7 +129,7 @@ const faqCategories = [
       {
         q: "Los códigos QR de las entradas se revenden y duplican. ¿Cómo lo soluciona nexID?",
         a: "Reemplazamos el QR digital por pulseras o credenciales VIP físicas inteligentes equipadas con chip NFC nexID. Cada ingreso requiere un tap físico que se procesa en milisegundos contra nuestro servidor Render.",
-        ctx: "Al ser imposible clonar la llave criptográfica del chip, se erradica por completo la entrada duplicada o el fraude de accesos en eventos VIP y corporativos."
+        ctx: "Al no exponer la clave criptográfica del chip y exigir tap físico fresco, se reduce fuertemente la entrada duplicada y se bloquean acciones de alto riesgo en eventos VIP y corporativos."
       }
     ]
   },
@@ -141,7 +141,7 @@ const faqCategories = [
       {
         q: "¿Por qué ofrecer una solución híbrida (Servidor Seguro + Blockchain Opcional)?",
         a: "Muchos clientes tradicionales le temen a las tecnologías criptográficas complejas y a las billeteras digitales. Al ofrecer por defecto una base de datos segura hospedada en la nube, logramos un registro e integración inmediatos y sin fricciones.",
-        ctx: "Si una marca lanza una edición especial y desea máxima inmutabilidad para el mercado de reventa o coleccionistas, activamos la capa digital descentralizada como un servicio de valor agregado premium."
+        ctx: "Si una marca lanza una edición especial y necesita evidencia pública de ownership para reventa o coleccionistas, activamos una capa digital descentralizada como servicio premium."
       },
       {
         q: "¿Cómo garantizan la seguridad de la base de datos si es centralizada?",
@@ -1179,7 +1179,7 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
       }
       
       if (userQuestion.includes("reutili") || userQuestion.includes("nuevo") || userQuestion.includes("lote") || userQuestion.includes("consumible")) {
-        return `Para garantizar la autenticidad física de cada botella o envase, nexID asocia criptográficamente un identificador único (UID) a la firma de hardware del chip NFC. Si los chips fueran reutilizables, un falsificador podría extraer el chip de una botella original consumida e insertarlo en una botella rellenada, burlando al sistema. Al usar chips consumibles no reutilizables adheridos al tapón o al sello de seguridad, la apertura destruye físicamente el sensor o invalida el estado en el registro seguro, haciendo imposible el rellenado ilegal o mercado gris. Esto es lo que permite una eficiencia del 98% en la prevención de fraude y pérdidas.`;
+        return `Para proteger la autenticidad física de cada botella o envase, nexID asocia criptográficamente un identificador único (UID) a la firma de hardware del chip NFC. Si los chips fueran reutilizables, un falsificador podría extraer el chip de una botella original consumida e insertarlo en una botella rellenada, burlando al sistema. Al usar chips consumibles o TagTamper adheridos al tapón o al sello de seguridad, la apertura cambia el estado físico o invalida el registro seguro, reduciendo fuertemente el rellenado ilegal y el mercado gris. La eficiencia final debe medirse por vertical, carrier, adopción y política de operación.`;
       }
       
       if (userQuestion.includes("costo") || userQuestion.includes("precio") || userQuestion.includes("invert") || userQuestion.includes("plata") || userQuestion.includes("dinero") || userQuestion.includes("inversión")) {
@@ -1204,7 +1204,7 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
 
     switch (qId) {
       case "non-reusable":
-        return `Para garantizar la autenticidad física de cada botella o envase, nexID asocia criptográficamente un identificador único (UID) a la firma de hardware del chip NFC. Si los chips fueran reutilizables, un falsificador podría extraer el chip de una botella original consumida e insertarlo en una botella rellenada, burlando al sistema. Al usar chips consumibles no reutilizables adheridos al tapón o al sello de seguridad, la apertura destruye físicamente el sensor o invalida el estado en el registro seguro, haciendo imposible el rellenado ilegal o mercado gris. Esto es lo que permite una eficiencia del 98% en la prevención de fraude y pérdidas.`;
+        return `Para proteger la autenticidad física de cada botella o envase, nexID asocia criptográficamente un identificador único (UID) a la firma de hardware del chip NFC. Si los chips fueran reutilizables, un falsificador podría extraer el chip de una botella original consumida e insertarlo en una botella rellenada, burlando al sistema. Al usar chips consumibles o TagTamper adheridos al tapón o al sello de seguridad, la apertura cambia el estado físico o invalida el registro seguro, reduciendo fuertemente el rellenado ilegal y el mercado gris. La eficiencia final debe medirse por vertical, carrier, adopción y política de operación.`;
       
       case "tagtamper-cost":
         const extraInvestment = volume * 1.00;

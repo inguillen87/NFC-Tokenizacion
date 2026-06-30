@@ -30,5 +30,6 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
   const { locale } = await getWebI18n();
   const params = searchParams ? await searchParams : {};
   const initialVertical = firstParam(params.vertical || params.rubro || params.industry || params.useCase);
-  return <DemoLabClient locale={locale} initialVertical={initialVertical} />;
+  const initialScenario = firstParam(params.scenario || params.proof || params.layer);
+  return <DemoLabClient locale={locale} initialVertical={initialVertical} initialScenario={initialScenario} />;
 }

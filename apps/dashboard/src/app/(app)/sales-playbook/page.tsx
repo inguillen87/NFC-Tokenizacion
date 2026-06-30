@@ -49,7 +49,7 @@ export default function SalesPlaybookPage() {
         {
           question: "¿Esto me va a encarecer mucho el costo por botella o empaque premium?",
           answer: "El microchip criptográfico representa centavos de dólar por unidad (menos del 1.5% en botellas o perfumes premium). La línea estándar opera en backend seguro nexID sin transacciones on-chain por cada tap; Polygon o IOTA se activan solo cuando hay ownership, auditoría, DPP o mercado secundario que justifican gas, RPC y custodia.",
-          context: "A cambio de este mínimo costo, eliminas el fraude y adquieres un canal de datos directo al consumidor final (DTC) que te ahorra miles de dólares en intermediarios de marketing."
+          context: "A cambio de este mínimo costo, reducís fuertemente el fraude y abrís un canal de datos directo al consumidor final (DTC), con impacto medible frente a intermediarios de marketing."
         },
         {
           question: "¿Me va a ralentizar la línea de empaque industrial o embotellado?",
@@ -58,8 +58,8 @@ export default function SalesPlaybookPage() {
         },
         {
           question: "En cosmética, ¿cómo evito que rellenen mis envases originales de perfume o cremas?",
-          answer: "nexID utiliza circuitos micro-electrónicos TagTamper integrados en el cierre. Al abrir la tapa o atomizador, el filamento del chip se rompe físicamente. El sistema registra permanentemente en el servidor SQL que el sello fue violado.",
-          context: "Si alguien escanea un perfume rellenado, el sistema advertirá inmediatamente al comprador que el envase original ya fue abierto, destruyendo el mercado negro de adulteraciones."
+          answer: "nexID utiliza circuitos micro-electrónicos TagTamper integrados en el cierre. Al abrir la tapa o atomizador, el filamento del chip cambia de estado físicamente. El sistema registra el evento del sello en el backend para auditoría y reglas de postventa.",
+          context: "Si alguien escanea un perfume rellenado, el sistema puede advertir al comprador que el envase original ya fue abierto, reduciendo el mercado negro de adulteraciones."
         }
       ]
     },
@@ -71,7 +71,7 @@ export default function SalesPlaybookPage() {
         {
           question: "¿Qué ventaja tiene sobre el código de barras que exige la regulación de medicamentos?",
           answer: "El código de barras es estático y fácilmente duplicable por fotocopiadoras en empaques apócrifos. El microchip nexID genera una firma criptográfica dinámica de un solo uso que se valida contra nuestro servidor seguro en Render/AWS.",
-          context: "Si una mafia copia el empaque, el servidor detecta que la firma del chip está ausente, es inválida o reporta ubicaciones geográficas simultáneas imposibles, bloqueando la falsificación de medicamentos de alto costo."
+          context: "Si una red copia el empaque, el servidor detecta firma ausente, inválida o patrones geográficos incompatibles, bloqueando beneficios y elevando el caso para revisión operativa."
         },
         {
           question: "En el agro, ¿qué valor tiene colocar chips en bolsas de semillas de autor o agroquímicos?",
@@ -88,7 +88,7 @@ export default function SalesPlaybookPage() {
         {
           question: "Los códigos QR de las entradas se revenden y duplican. ¿Cómo lo soluciona nexID?",
           answer: "Reemplazamos el QR digital por pulseras o credenciales VIP físicas inteligentes equipadas con chip NFC nexID. Cada ingreso requiere un tap físico que se procesa en milisegundos contra nuestro servidor Render.",
-          context: "Al ser imposible clonar la llave criptográfica del chip, se erradica por completo la entrada duplicada o el fraude de accesos en eventos VIP y corporativos."
+          context: "Al no exponer la clave criptográfica del chip y exigir tap físico fresco, se reduce fuertemente la entrada duplicada y se bloquean acciones de alto riesgo en eventos VIP y corporativos."
         }
       ]
     },
@@ -100,11 +100,11 @@ export default function SalesPlaybookPage() {
         {
           question: "¿Por qué ofrecer una solución híbrida (SQL + Blockchain Opcional)?",
           answer: "Muchos clientes B2B tradicionales le temen a la Web3, gas fees y billeteras digitales. Al ofrecer por defecto una arquitectura SQL segura hospedada en AWS y Render, logramos un onboarding inmediato y sin fricciones.",
-          context: "Si un cliente final lanza una línea ultra-premium o de colección y desea inmutabilidad total para el mercado de subastas, activamos la capa de Polygon on-chain como un add-on premium facturado en el plan SaaS."
+          context: "Si un cliente final lanza una línea ultra-premium o de colección y necesita evidencia pública de ownership, activamos la capa Polygon on-chain como add-on premium facturado en el plan SaaS."
         },
         {
           question: "¿Cómo garantizan la seguridad de la base de datos SQL si es centralizada?",
-          answer: "La seguridad no depende de la base de datos, sino de la criptografía del chip. Cada tap dinámico genera una firma SUN que solo puede ser descifrada por claves maestras almacenadas en un KMS/HSM de nivel bancario.",
+          answer: "La seguridad no depende solo de la base de datos, sino de la criptografía del chip y de la política del backend. Cada tap dinámico genera una firma SUN verificada con claves protegidas por KMS/HSM o custody signer según el despliegue.",
           context: "Incluso si un hacker vulnera el servidor SQL, no puede generar firmas dinámicas falsas de chips físicos porque no posee las claves criptográficas maestras."
         },
         {
@@ -317,7 +317,7 @@ export default function SalesPlaybookPage() {
             },
             {
               step: "2. Tap Criptográfico",
-              desc: "Pedile que apoye su celular en tu botella inteligente con chip nexID. Se abrirá de inmediato su Portal VIP mostrando la botella en 3D. Explicale que el celular validó una firma criptográfica única y que es imposible sacarle foto al chip."
+              desc: "Pedile que apoye su celular en tu botella inteligente con chip nexID. Se abrirá de inmediato su Portal VIP mostrando la botella en 3D. Explicale que el celular validó una firma criptográfica dinámica y que una foto o captura no reemplaza el tap físico fresco."
             },
             {
               step: "3. Demostrar el Control",

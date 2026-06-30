@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import type { AppLocale } from "@product/config";
+import { Maximize2, Smartphone, X } from "lucide-react";
 import { platformVerticals, type PlatformDemoVertical, type PlatformVertical } from "../lib/platform-verticals";
 import { PremiumTraceabilityGlobe, type TraceabilityGlobePoint, type TraceabilityGlobeRoute } from "./premium-traceability-globe";
 
@@ -46,6 +47,69 @@ type Scene = {
   objectClass: string;
   phoneTag: string;
   steps: string[];
+};
+
+type ProductInfoRow = {
+  label: string;
+  value: string;
+};
+
+const productModalCopy: Record<AppLocale, {
+  open: string;
+  close: string;
+  title: string;
+  subtitle: string;
+  consumerTitle: string;
+  operatorTitle: string;
+  proofTitle: string;
+  commerceTitle: string;
+  iphone: string;
+  samsung: string;
+  state: string;
+  trustedTap: string;
+}> = {
+  "es-AR": {
+    open: "Ampliar ficha",
+    close: "Cerrar",
+    title: "Ficha completa de producto",
+    subtitle: "El hero mantiene solo el resumen. La ficha completa vive aca para que atlas, producto y celular no compitan por espacio.",
+    consumerTitle: "Salida celular",
+    operatorTitle: "Vista operador",
+    proofTitle: "Evidencia tecnica",
+    commerceTitle: "Acciones post-tap",
+    iphone: "iPhone",
+    samsung: "Samsung",
+    state: "Estado",
+    trustedTap: "Tap fisico verificado",
+  },
+  "pt-BR": {
+    open: "Ampliar ficha",
+    close: "Fechar",
+    title: "Ficha completa do produto",
+    subtitle: "O hero mostra apenas o resumo. A ficha completa fica aqui para atlas, produto e celular nao competirem por espaco.",
+    consumerTitle: "Saida mobile",
+    operatorTitle: "Vista operador",
+    proofTitle: "Evidencia tecnica",
+    commerceTitle: "Acoes pos-toque",
+    iphone: "iPhone",
+    samsung: "Samsung",
+    state: "Estado",
+    trustedTap: "Toque fisico verificado",
+  },
+  en: {
+    open: "Open product detail",
+    close: "Close",
+    title: "Complete product detail",
+    subtitle: "The hero keeps the executive summary. The full product record lives here so the atlas, product and phone output do not fight for space.",
+    consumerTitle: "Mobile output",
+    operatorTitle: "Operator view",
+    proofTitle: "Technical evidence",
+    commerceTitle: "Post-tap actions",
+    iphone: "iPhone",
+    samsung: "Samsung",
+    state: "State",
+    trustedTap: "Verified physical tap",
+  },
 };
 
 const tapLocations: LocationPoint[] = [
@@ -1352,10 +1416,175 @@ function HeroProductShowcase({
   );
 }
 
+function HeroPhoneEmulator({
+  active,
+  data,
+  distance,
+  numberLocale,
+  copy,
+  model,
+}: {
+  active: Vertical;
+  data: Scene;
+  distance: number;
+  numberLocale: string;
+  copy: (typeof productModalCopy)["es-AR"];
+  model: "iphone" | "samsung";
+}) {
+  const asset = heroRealAssets[active];
+
+  return (
+    <article className={`hero-mobile-emulator hero-mobile-emulator--${model}`}>
+      <div className="hero-mobile-emulator__chrome">
+        <span>{model === "iphone" ? copy.iphone : copy.samsung}</span>
+        <i />
+      </div>
+      <div className="hero-mobile-emulator__screen">
+        <div className="hero-mobile-emulator__hero">
+          {asset ? <img src={asset.imageUrl} alt="" loading="lazy" /> : <HeroProductVisual active={active} product={data.product} />}
+          <span>{data.profile}</span>
+        </div>
+        <div className="hero-mobile-emulator__content">
+          <p>{copy.trustedTap}</p>
+          <h4>{data.product}</h4>
+          <dl>
+            <div>
+              <dt>UID</dt>
+              <dd>{data.uid}</dd>
+            </div>
+            <div>
+              <dt>BID</dt>
+              <dd>{data.batch}</dd>
+            </div>
+            <div>
+              <dt>KM</dt>
+              <dd>{distance.toLocaleString(numberLocale)}</dd>
+            </div>
+          </dl>
+          <strong>{data.result}</strong>
+          <em>{data.nextAction}</em>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function ProductDetailModal({
+  active,
+  data,
+  distance,
+  numberLocale,
+  proofRows,
+  commerceRows,
+  copy,
+  onClose,
+}: {
+  active: Vertical;
+  data: Scene;
+  distance: number;
+  numberLocale: string;
+  proofRows: ProductInfoRow[];
+  commerceRows: ProductInfoRow[];
+  copy: (typeof productModalCopy)["es-AR"];
+  onClose: () => void;
+}) {
+  const [selectedPhone, setSelectedPhone] = useState<"iphone" | "samsung">("iphone");
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [onClose]);
+
+  return (
+    <div className="hero-product-modal" role="dialog" aria-modal="true" aria-labelledby="hero-product-modal-title">
+      <button className="hero-product-modal__backdrop" type="button" aria-label={copy.close} onClick={onClose} />
+      <div className="hero-product-modal__panel">
+        <div className="hero-product-modal__header">
+          <div>
+            <p>{copy.operatorTitle}</p>
+            <h3 id="hero-product-modal-title">{copy.title}</h3>
+            <span>{copy.subtitle}</span>
+          </div>
+          <button className="hero-product-modal__close" type="button" onClick={onClose} aria-label={copy.close}>
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="hero-product-modal__grid">
+          <section className="hero-product-modal__mobile" aria-label={copy.consumerTitle}>
+            <div className="hero-product-modal__section-head">
+              <Smartphone className="h-4 w-4" />
+              <span>{copy.consumerTitle}</span>
+            </div>
+            <div className="hero-product-modal__device-tabs" aria-label="Mobile preview device">
+              {(["iphone", "samsung"] as const).map((model) => (
+                <button
+                  key={model}
+                  type="button"
+                  className={selectedPhone === model ? "is-active" : ""}
+                  onClick={() => setSelectedPhone(model)}
+                >
+                  {model === "iphone" ? "iPhone" : "Samsung"}
+                </button>
+              ))}
+            </div>
+            <div className="hero-product-modal__phones">
+              <HeroPhoneEmulator active={active} data={data} distance={distance} numberLocale={numberLocale} copy={copy} model={selectedPhone} />
+            </div>
+          </section>
+
+          <section className="hero-product-modal__records">
+            <div className="hero-product-modal__state">
+              <span>{copy.state}</span>
+              <strong>{data.result}</strong>
+              <em>{data.profile}</em>
+            </div>
+
+            <div className="hero-product-modal__record-block">
+              <h4>{copy.proofTitle}</h4>
+              <div>
+                {proofRows.map((item) => (
+                  <article key={item.label}>
+                    <span>{item.label}</span>
+                    <strong>{item.value}</strong>
+                  </article>
+                ))}
+              </div>
+            </div>
+
+            <div className="hero-product-modal__record-block">
+              <h4>{copy.commerceTitle}</h4>
+              <div>
+                {commerceRows.map((item) => (
+                  <article key={item.label}>
+                    <span>{item.label}</span>
+                    <strong>{item.value}</strong>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function HeroScene({ locale }: { locale: AppLocale }) {
   const [selectedVertical, setSelectedVertical] = useState<HeroSelectorKey>("wine");
   const [tapIndex, setTapIndex] = useState(0);
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const txt = labels[locale] || labels["es-AR"];
+  const modalCopy = productModalCopy[locale] || productModalCopy["es-AR"];
   const active = selectedVertical;
   const data = useMemo(() => txt.items[active], [txt, active]);
   const tap = tapLocations[tapIndex % tapLocations.length];
@@ -1381,6 +1610,12 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
     { label: txt.labels.loyalty, value: data.loyalty },
     { label: txt.labels.businessValue, value: data.businessValue },
   ];
+  const compactProofRows = [
+    proofRows[0],
+    proofRows[3],
+    proofRows[5],
+    proofRows[6],
+  ].filter(Boolean);
 
   return (
     <div>
@@ -1458,21 +1693,29 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
               <em>{tap.city} - {distance.toLocaleString(numberLocale)} km</em>
             </div>
             <div className="hero-output-grid hero-output-grid--proof mt-3">
-              {proofRows.map((item) => (
+              {compactProofRows.map((item) => (
                 <div key={item.label} className="hero-output-row">
                   <span>{item.label}</span>
                   <strong>{item.value}</strong>
                 </div>
               ))}
             </div>
-            <div className="hero-commerce-stack mt-3">
-              {commerceRows.map((item) => (
+            <div className="hero-commerce-stack hero-commerce-stack--compact mt-3">
+              {commerceRows.slice(0, 2).map((item) => (
                 <article key={item.label} className="hero-commerce-card">
                   <span>{item.label}</span>
                   <strong>{item.value}</strong>
                 </article>
               ))}
             </div>
+            <button
+              type="button"
+              className="hero-product-detail-trigger"
+              onClick={() => setIsProductModalOpen(true)}
+            >
+              <Maximize2 className="h-4 w-4" />
+              {modalCopy.open}
+            </button>
             <div className="hero-result-explain mt-3 rounded-xl border border-white/10 bg-slate-950/50 p-3">
               <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-300">{txt.whatHappened}</p>
               <p className="mt-2 text-xs leading-5 text-slate-300">{data.action}</p>
@@ -1490,6 +1733,18 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
           </span>
         ))}
       </div>
+      {isProductModalOpen ? (
+        <ProductDetailModal
+          active={active}
+          data={data}
+          distance={distance}
+          numberLocale={numberLocale}
+          proofRows={proofRows}
+          commerceRows={commerceRows}
+          copy={modalCopy}
+          onClose={() => setIsProductModalOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }

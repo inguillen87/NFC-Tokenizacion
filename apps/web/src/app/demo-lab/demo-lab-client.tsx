@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, useRef, type CSSProperties } from "react";
 import { DEMO_TENANT_SLUG } from "@product/config";
 import type { AppLocale } from "@product/config";
-import { ArrowLeft, BadgeCheck, CalendarDays, CheckCircle2, ChevronRight, Fingerprint, MapPin, PackageCheck, ShieldCheck, UserRound, AlertTriangle, ShoppingCart, RefreshCw, Check, Mail, Cpu } from "lucide-react";
+import { ArrowLeft, BadgeCheck, CalendarDays, CheckCircle2, ChevronRight, Fingerprint, MapPin, PackageCheck, ShieldCheck, UserRound, AlertTriangle, ShoppingCart, RefreshCw, Check, Mail, Cpu, Network, QrCode, RadioTower } from "lucide-react";
 import { PremiumTraceabilityGlobe } from "../../components/premium-traceability-globe";
 import { platformVerticals } from "../../lib/platform-verticals";
 import { ThreeDProduct } from "../investor-snapshot/investor-snapshot-client";
@@ -31,6 +31,7 @@ type SimulationMode = "valid" | "tamper" | "replay";
 type DemoAction = "origin" | "tap" | "join" | "warranty" | "tokenize" | "report";
 type DemoModalView = "mobile" | "nft" | "claim" | null;
 type DemoScenarioTone = "origin" | "ok" | "risk" | "open";
+type DemoTrustScenarioKey = "qr-gs1" | "nfc-424" | "polygon-ownership" | "iota-proof" | "dual-proof" | "sensor-evidence" | "authorized-network";
 type DemoScenario = {
   tone: DemoScenarioTone;
   headline: string;
@@ -101,6 +102,48 @@ const DEMO_VERTICAL_ALIASES: Record<string, Vertical> = {
 function normalizeDemoVertical(value?: string | null): Vertical {
   const normalized = String(value || "").trim().toLowerCase().replace(/[\s_]+/g, "-");
   return DEMO_VERTICAL_ALIASES[normalized] || "wine";
+}
+
+function normalizeDemoTrustScenario(value?: string | null): DemoTrustScenarioKey | null {
+  const normalized = String(value || "").trim().toLowerCase().replace(/[\s_]+/g, "-");
+  const aliases: Record<string, DemoTrustScenarioKey> = {
+    "qr": "qr-gs1",
+    "gs1": "qr-gs1",
+    "qr-gs1": "qr-gs1",
+    "gs1-qr": "qr-gs1",
+    "nfc": "nfc-424",
+    "424": "nfc-424",
+    "nfc-424": "nfc-424",
+    "ntag-424": "nfc-424",
+    "polygon": "polygon-ownership",
+    "ownership": "polygon-ownership",
+    "polygon-ownership": "polygon-ownership",
+    "iota": "iota-proof",
+    "iota-proof": "iota-proof",
+    "audit-proof": "iota-proof",
+    "dual": "dual-proof",
+    "dual-proof": "dual-proof",
+    "dpp": "dual-proof",
+    "sensor": "sensor-evidence",
+    "sensors": "sensor-evidence",
+    "sensor-evidence": "sensor-evidence",
+    "uhf": "sensor-evidence",
+    "iot": "sensor-evidence",
+    "authorized": "authorized-network",
+    "authorized-network": "authorized-network",
+    "network": "authorized-network",
+  };
+  return aliases[normalized] || null;
+}
+
+function getScenarioStart(value?: string | null): { key: DemoTrustScenarioKey | null; beat: Beat; vertical: Vertical } {
+  const key = normalizeDemoTrustScenario(value);
+  if (key === "iota-proof" || key === "sensor-evidence" || key === "dual-proof") return { key, beat: 1, vertical: key === "sensor-evidence" ? "logistics" : "textile" };
+  if (key === "authorized-network") return { key, beat: 0, vertical: "electronics" };
+  if (key === "polygon-ownership") return { key, beat: 3, vertical: "luxury" };
+  if (key === "nfc-424") return { key, beat: 1, vertical: "wine" };
+  if (key === "qr-gs1") return { key, beat: 0, vertical: "pharma" };
+  return { key: null, beat: 1, vertical: "wine" };
 }
 
 function verticalTo3DIndustry(vertical: Vertical): string {
@@ -284,6 +327,9 @@ const copy: Record<AppLocale, {
         { title: "QR / GS1 Digital Link", body: "Entrada economica para contenido, lote, retiro de producto y trazabilidad GS1. Ideal como respaldo visible; cualquiera puede copiarlo, por eso no habilita reclamo de dueño por si solo." },
         { title: "NTAG213 / NTAG215", body: "UID físico serializado para entradas, pulseras, garantías simples y activaciones masivas. Sube la fricción contra capturas de pantalla y permite reglas por lote desde el servidor." },
         { title: "NTAG 424 DNA", body: "Cada toque genera SUN dinamico con CMAC para detectar copias, enlaces reutilizados y lecturas sospechosas. Es la capa recomendada para productos de valor medio/alto." },
+        { title: "Polygon Ownership Demo", body: "Activa ownership, certificado o token premium solo despues de tap fresco, comprador validado y politica aprobada. Polygon no reemplaza la validacion SUN ni recibe cada tap." },
+        { title: "IOTA Proof Layer Demo", body: "Muestra auditoria opcional para DPP, lotes y logistica: se anclan hashes o Merkle roots, no datos privados ni lecturas individuales." },
+        { title: "Dual Proof DPP", body: "Combina QR/GS1, NFC 424, Polygon para ownership e IOTA para evidencia industrial cuando el cliente necesita compliance avanzado." },
         { title: "NTAG 424 DNA TT + tokenización", body: "Suma estado físico del sello: cerrado, abierto o manipulado. Permite pasaporte, garantía, tienda y token Polygon solo cuando la política de compra/reclamo lo habilita." },
       ] },
   },
@@ -330,6 +376,9 @@ const copy: Record<AppLocale, {
       { title: "QR / GS1 Digital Link", body: "Entrada economica para conteudo, lote, recall e rastreabilidade GS1. Otimo fallback visivel; pode ser copiado, entao nao libera propriedade premium sozinho." },
       { title: "NTAG213 / NTAG215", body: "UID fisico serializado para tickets, pulseiras, garantias simples e ativacoes massivas. Permite regras server-side por lote." },
       { title: "NTAG 424 DNA", body: "Cada toque gera SUN dinamico com CMAC para detectar replay, links reutilizados e copias. Recomendado para valor medio/alto." },
+      { title: "Polygon Ownership Demo", body: "Ativa ownership, certificado ou token premium somente depois de toque fresco, comprador validado e politica aprovada. Polygon nao substitui SUN nem recebe todo toque." },
+      { title: "IOTA Proof Layer Demo", body: "Mostra auditoria opcional para DPP, lotes e logistica: ancoramos hashes ou Merkle roots, nao dados privados nem leituras individuais." },
+      { title: "Dual Proof DPP", body: "Combina QR/GS1, NFC 424, Polygon para ownership e IOTA para evidencia industrial quando o cliente precisa de compliance avancado." },
       { title: "NTAG 424 DNA TT + tokenizacao", body: "Soma estado fisico do lacre: fechado, aberto ou manipulado. Habilita passport, garantia, marketplace e token Polygon conforme politica comercial." },
     ] },
   },
@@ -376,6 +425,9 @@ const copy: Record<AppLocale, {
       { title: "QR / GS1 Digital Link", body: "Low-cost entry for content, batch, recall and GS1 traceability. It is a strong visible fallback, but it can be copied, so it should not unlock premium ownership by itself." },
       { title: "NTAG213 / NTAG215", body: "Serialized physical UID for tickets, wristbands, simple warranty and mass activations. Adds server-side rules by batch." },
       { title: "NTAG 424 DNA", body: "Every tap creates dynamic SUN + CMAC proof to detect replay, reused links and simple copies. Recommended for mid/high-value products." },
+      { title: "Polygon Ownership Demo", body: "Enables ownership, certificates or premium tokens only after a fresh tap, validated buyer and approved policy. Polygon does not replace SUN or receive every tap." },
+      { title: "IOTA Proof Layer Demo", body: "Shows optional audit evidence for DPP, batches and logistics: hashes or Merkle roots are anchored, not private data or individual taps." },
+      { title: "Dual Proof DPP", body: "Combines QR/GS1, NFC 424, Polygon for ownership and IOTA for industrial evidence when a client needs advanced compliance." },
       { title: "NTAG 424 DNA TT + tokenization", body: "Adds physical seal state: closed, opened or tampered. Enables passport, warranty, marketplace and Polygon token only when claim policy allows it." },
     ] },
   },
@@ -485,12 +537,14 @@ async function readDemoSummary(): Promise<DemoSummary> {
   return data as DemoSummary;
 }
 
-export function DemoLabClient({ locale, initialVertical }: { locale: AppLocale; initialVertical?: string }) {
+export function DemoLabClient({ locale, initialVertical, initialScenario }: { locale: AppLocale; initialVertical?: string; initialScenario?: string }) {
   const txt = copy[locale] || copy["es-AR"];
+  const scenarioStart = useMemo(() => getScenarioStart(initialScenario), [initialScenario]);
   const [viewMode, setViewMode] = useState<"simulator" | "crm">("simulator");
   const [role, setRole] = useState<Role>("ceo");
-  const [vertical, setVertical] = useState<Vertical>(() => normalizeDemoVertical(initialVertical));
-  const [beat, setBeat] = useState<Beat>(1);
+  const [vertical, setVertical] = useState<Vertical>(() => initialVertical ? normalizeDemoVertical(initialVertical) : scenarioStart.vertical);
+  const [beat, setBeat] = useState<Beat>(scenarioStart.beat);
+  const [trustScenario, setTrustScenario] = useState<DemoTrustScenarioKey | null>(scenarioStart.key);
   const [running, setRunning] = useState(false);
   const [summary, setSummary] = useState<DemoSummary | null>(null);
   const [status, setStatus] = useState(txt.controls.syncing);
@@ -549,8 +603,21 @@ export function DemoLabClient({ locale, initialVertical }: { locale: AppLocale; 
   useEffect(() => setFallbackLastSeen(new Date().toISOString()), []);
 
   useEffect(() => {
-    setVertical(normalizeDemoVertical(initialVertical));
-  }, [initialVertical]);
+    if (initialVertical) {
+      setVertical(normalizeDemoVertical(initialVertical));
+      return;
+    }
+    setVertical(scenarioStart.vertical);
+    setBeat(scenarioStart.beat);
+    setTrustScenario(scenarioStart.key);
+  }, [initialVertical, scenarioStart.beat, scenarioStart.key, scenarioStart.vertical]);
+
+  function selectTrustScenario(key: DemoTrustScenarioKey) {
+    const next = getScenarioStart(key);
+    setTrustScenario(key);
+    setVertical(next.vertical);
+    setBeat(next.beat);
+  }
 
   useEffect(() => {
     let alive = true;
@@ -771,8 +838,10 @@ export function DemoLabClient({ locale, initialVertical }: { locale: AppLocale; 
             liveEvents={liveEvents}
             latestEvent={latestEvent}
             simulating={simulating}
+            activeTrustScenario={trustScenario}
             onVertical={setVertical}
             onBeat={setBeat}
+            onTrustScenario={selectTrustScenario}
             onPassport={() => setModalView("mobile")}
             onValid={() => void simulate("valid")}
             onOpen={() => void simulate("tamper")}
@@ -1006,8 +1075,10 @@ function DemoLabStudioHero({
   liveEvents,
   latestEvent,
   simulating,
+  activeTrustScenario,
   onVertical,
   onBeat,
+  onTrustScenario,
   onPassport,
   onValid,
   onOpen,
@@ -1026,8 +1097,10 @@ function DemoLabStudioHero({
   liveEvents: DemoEvent[];
   latestEvent?: DemoEvent;
   simulating: boolean;
+  activeTrustScenario: DemoTrustScenarioKey | null;
   onVertical: (vertical: Vertical) => void;
   onBeat: (beat: Beat) => void;
+  onTrustScenario: (scenario: DemoTrustScenarioKey) => void;
   onPassport: () => void;
   onValid: () => void;
   onOpen: () => void;
@@ -1228,6 +1301,13 @@ function DemoLabStudioHero({
         </div>
       </div>
 
+      <DemoTrustScenarioRail
+        txt={txt}
+        locale={locale}
+        active={activeTrustScenario}
+        onSelect={onTrustScenario}
+      />
+
       <div className="demo-lab-studio-beats" aria-label="Estados de la experiencia">
         {([0, 1, 2, 3] as Beat[]).map((item) => (
           <button suppressHydrationWarning key={item} type="button" onClick={() => onBeat(item)} className={beat === item ? "is-active" : ""}>
@@ -1237,6 +1317,91 @@ function DemoLabStudioHero({
         ))}
       </div>
     </section>
+  );
+}
+
+function DemoTrustScenarioRail({
+  txt,
+  locale,
+  active,
+  onSelect,
+}: {
+  txt: DemoCopy;
+  locale: AppLocale;
+  active: DemoTrustScenarioKey | null;
+  onSelect: (scenario: DemoTrustScenarioKey) => void;
+}) {
+  const labels = locale === "en"
+    ? {
+      eyebrow: "Enterprise proof scenarios",
+      title: "Open the exact trust layer a buyer is asking about.",
+      route: "Share route",
+      sensorTitle: "UHF / IoT Sensor Evidence",
+      sensorBody: "Pallet, carton and sensor evidence for industrial traceability. Consumer UX stays simple while logistics keeps audit depth.",
+      networkTitle: "Authorized Network",
+      networkBody: "Supplier, reseller and tenant roles can encode, validate and audit without receiving raw KMS keys or database URLs.",
+    }
+    : locale === "pt-BR"
+    ? {
+      eyebrow: "Cenarios enterprise de prova",
+      title: "Abra a camada de confianca exata que o comprador pediu.",
+      route: "Compartilhar rota",
+      sensorTitle: "UHF / IoT Sensor Evidence",
+      sensorBody: "Evidencia de pallet, caixa e sensores para rastreabilidade industrial. UX do consumidor fica simples; logistica guarda a auditoria.",
+      networkTitle: "Rede autorizada",
+      networkBody: "Fornecedor, reseller e tenant codificam, validam e auditam sem receber chaves KMS cruas nem URLs de banco.",
+    }
+    : {
+      eyebrow: "Escenarios enterprise de prueba",
+      title: "Abrir la capa de confianza exacta que pregunta el comprador.",
+      route: "Compartir ruta",
+      sensorTitle: "UHF / IoT Sensor Evidence",
+      sensorBody: "Evidencia de pallet, caja y sensores para trazabilidad industrial. La UX del consumidor sigue simple y logistica conserva profundidad de auditoria.",
+      networkTitle: "Red autorizada",
+      networkBody: "Proveedor, reseller y tenant codifican, validan y auditan sin recibir claves KMS crudas ni URLs de base de datos.",
+    };
+
+  const configByTitle = new Map(txt.controls.configs.map((item) => [item.title, item]));
+  const items: Array<{ key: DemoTrustScenarioKey; title: string; body: string; icon: typeof ShieldCheck; tone: string }> = [
+    { key: "qr-gs1", title: configByTitle.get("QR / GS1 Digital Link")?.title || "QR / GS1 Digital Link", body: configByTitle.get("QR / GS1 Digital Link")?.body || "", icon: QrCode, tone: "identity" },
+    { key: "nfc-424", title: configByTitle.get("NTAG 424 DNA")?.title || "NTAG 424 DNA", body: configByTitle.get("NTAG 424 DNA")?.body || "", icon: Fingerprint, tone: "secure" },
+    { key: "polygon-ownership", title: configByTitle.get("Polygon Ownership Demo")?.title || "Polygon Ownership Demo", body: configByTitle.get("Polygon Ownership Demo")?.body || "", icon: BadgeCheck, tone: "ownership" },
+    { key: "iota-proof", title: configByTitle.get("IOTA Proof Layer Demo")?.title || "IOTA Proof Layer Demo", body: configByTitle.get("IOTA Proof Layer Demo")?.body || "", icon: Network, tone: "proof" },
+    { key: "dual-proof", title: configByTitle.get("Dual Proof DPP")?.title || "Dual Proof DPP", body: configByTitle.get("Dual Proof DPP")?.body || "", icon: PackageCheck, tone: "dpp" },
+    { key: "sensor-evidence", title: labels.sensorTitle, body: labels.sensorBody, icon: RadioTower, tone: "industrial" },
+    { key: "authorized-network", title: labels.networkTitle, body: labels.networkBody, icon: ShieldCheck, tone: "network" },
+  ];
+
+  return (
+    <div className="demo-lab-trust-scenarios">
+      <div className="demo-lab-trust-scenarios__head">
+        <span>{labels.eyebrow}</span>
+        <strong>{labels.title}</strong>
+      </div>
+      <div className="demo-lab-trust-scenarios__grid">
+        {items.map((item) => {
+          const Icon = item.icon;
+          const href = `/demo-lab?scenario=${item.key}`;
+          return (
+            <Link
+              key={item.key}
+              href={href}
+              onClick={(event) => {
+                event.preventDefault();
+                window.history.replaceState(null, "", href);
+                onSelect(item.key);
+              }}
+              className={`demo-lab-trust-scenario demo-lab-trust-scenario--${item.tone} ${active === item.key ? "is-active" : ""}`}
+            >
+              <Icon size={18} />
+              <span>{item.title}</span>
+              <p>{item.body}</p>
+              <small>{labels.route}</small>
+            </Link>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
