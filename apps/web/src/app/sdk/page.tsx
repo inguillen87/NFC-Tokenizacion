@@ -34,21 +34,28 @@ export const metadata: Metadata = {
 };
 const code = `import { NexIdClient } from "@nexid/sdk";
 
-// 1. Inicializar cliente con tu API Key
-const nexid = new NexIdClient({ apiKey: "nx_live_...", tenantSlug: "mi-marca" });
+const nexid = new NexIdClient({
+  apiKey: process.env.NEXID_API_KEY!,
+  tenantSlug: "mi-marca",
+});
 
-// 2. Leer credenciales del tag físico (QR o chip NFC seguro)
-const tag = await nexid.readPhysicalTag({ uidHex, sunSignature });
+const verification = await nexid.verifyTap({
+  bid: tag.bid,
+  uidHex: tag.uidHex,
+  sunUrl: tag.capturedUrl,
+});
 
-// 3. Validar autenticidad y verificar estado del sello físico
-const verification = await nexid.verifyAuthenticity(tag);
-console.log(verification.genuine ? "Producto original" : "Alerta de copia");
-// 4. Registrar propiedad (ownership) del consumidor al comprar
-if (verification.genuine) {
-  await nexid.claimOwnership({
-    contact: buyer.email,
+if (verification.verdict === "VALID_AUTHENTIC") {
+  const pos = await nexid.activatePosPurchase({
     bid: tag.bid,
-    posToken: pos.token // Emitido al facturar en caja o e-commerce
+    sku: cart.sku,
+    receiptRef: order.id,
+  });
+
+  await nexid.claimOwnership({
+    bid: tag.bid,
+    contact: buyer.email,
+    posToken: pos.posToken,
   });
 }`;
 const pillars = [
@@ -140,17 +147,38 @@ function SdkTopNav() {
 }
 
 function SdkGlobalHeroScene() {
+  const wine = platformVerticals.find((item) => item.demoVertical === "wine") || platformVerticals[0];
+
   return (
-    <PremiumTraceabilityGlobe
-      title="Infraestructura viva para productos reales"
-      subtitle="Taps, rutas, origen, riesgo y canales QR/NFC/UHF conectados al CRM y al SDK."
-      caption="Una capa visual y operativa para mostrarle a cualquier empresa que nexID no es solo vino: es identidad física verificable."
-      points={traceabilityGlobePoints}
-      routes={traceabilityGlobeRoutes}
-      ctaHref="/demo-lab?vertical=wine"
-      ctaLabel="Abrir Demo Lab"
-      className="sdk-global-hero-globe"
-    />
+    <div className="sdk-proof-hero-system">
+      <PremiumTraceabilityGlobe
+        title="Infraestructura viva para productos reales"
+        subtitle="Taps, rutas, origen, riesgo y canales QR/NFC/UHF conectados al CRM y al SDK."
+        caption="Una capa visual y operativa para mostrarle a cualquier empresa que nexID no es solo vino: es identidad física verificable."
+        points={traceabilityGlobePoints}
+        routes={traceabilityGlobeRoutes}
+        ctaHref="/demo-lab?vertical=wine"
+        ctaLabel="Abrir Demo Lab"
+        className="sdk-global-hero-globe"
+      />
+      <div className="sdk-proof-live-card">
+        <div className="sdk-proof-product-shot">
+          <img src={wine.image} alt={`${wine.title} con nexID`} />
+          <span>NTAG 424 DNA TT</span>
+        </div>
+        <div className="sdk-proof-phone">
+          <div>
+            <span>Salida celular</span>
+            <strong>VALID_AUTHENTIC</strong>
+            <p>Gran Reserva Malbec</p>
+            <small>Origen, lote, UID hasheado, garantía y claim seguro.</small>
+          </div>
+          <Link href="/demo-lab/mobile/demobodega/demo-item-001?pack=wine-secure&demoMode=consumer_tap">
+            Ver salida mobile <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+      </div>
+    </div>
   );
 }
 

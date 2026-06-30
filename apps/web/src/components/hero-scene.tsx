@@ -1,10 +1,11 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { AppLocale } from "@product/config";
 import { CheckCircle2, Maximize2, X } from "lucide-react";
-import { platformVerticals, type PlatformDemoVertical, type PlatformVertical } from "../lib/platform-verticals";
+import { platformVerticals, traceabilityGlobePoints, traceabilityGlobeRoutes, type PlatformDemoVertical, type PlatformVertical } from "../lib/platform-verticals";
 import { PremiumTraceabilityGlobe, type TraceabilityGlobePoint, type TraceabilityGlobeRoute } from "./premium-traceability-globe";
 
 type Vertical = PlatformDemoVertical;
@@ -14,7 +15,7 @@ const HeroThreeStage = dynamic(() => import("./hero-three-stage").then((mod) => 
   ssr: false,
 });
 
-const heroAtlasMapSize = { width: 360, height: 220 };
+const heroAtlasMapSize = { width: 440, height: 270 };
 
 function verticalLabel(item: PlatformVertical, locale: AppLocale) {
   if (locale === "en") return item.titleEn;
@@ -136,6 +137,27 @@ const tapLocations: LocationPoint[] = [
   { city: "Zúrich", country: "Suiza", label: "coleccionista premium", lat: 47.3769, lng: 8.5417 },
   { city: "Córdoba", country: "Argentina", label: "ingreso de evento", lat: -31.4201, lng: -64.1888 },
 ];
+
+const atlasNetworkPoints: TraceabilityGlobePoint[] = traceabilityGlobePoints.map((point) => ({
+  city: point.city,
+  country: point.country,
+  lat: point.lat,
+  lng: point.lng,
+  scans: point.scans,
+  risk: point.risk,
+  status: point.status,
+  vertical: point.vertical,
+}));
+
+function uniqueAtlasPoints(points: TraceabilityGlobePoint[]) {
+  const seen = new Set<string>();
+  return points.filter((point) => {
+    const key = `${point.city}|${point.country || ""}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
 
 const labels: Record<AppLocale, {
   selectorTitle: string;
@@ -958,39 +980,40 @@ function HeroTraceMap({
   const [routeHover, setRouteHover] = useState<HeroRouteHover | null>(null);
   const routeDistanceLabel = `${formattedDistance} km`;
   const selectedProof = routeHover || proofSteps[0];
-  const globePoints: TraceabilityGlobePoint[] = [
-    {
-      city: origin.city,
-      country: origin.country,
-      lat: origin.lat,
-      lng: origin.lng,
-      scans: 6,
-      risk: 0,
-      status: "origin",
-      vertical: "wine",
-    },
-    {
-      city: tap.city,
-      country: tap.country,
-      lat: tap.lat,
-      lng: tap.lng,
-      scans: 14,
-      risk: 0,
-      status: "tap",
-      vertical: "wine",
-      lastSeen: new Date().toISOString(),
-    },
-  ];
+  const originPoint: TraceabilityGlobePoint = {
+    city: origin.city,
+    country: origin.country,
+    lat: origin.lat,
+    lng: origin.lng,
+    scans: 6,
+    risk: 0,
+    status: "origin",
+    vertical: "wine",
+  };
+  const tapPoint: TraceabilityGlobePoint = {
+    city: tap.city,
+    country: tap.country,
+    lat: tap.lat,
+    lng: tap.lng,
+    scans: 14,
+    risk: 0,
+    status: "tap",
+    vertical: "wine",
+    lastSeen: new Date().toISOString(),
+  };
+  const globePoints = uniqueAtlasPoints([originPoint, tapPoint, ...atlasNetworkPoints]);
   const globeRoutes: TraceabilityGlobeRoute[] = [
     {
       fromLat: origin.lat,
       fromLng: origin.lng,
       toLat: tap.lat,
       toLng: tap.lng,
-      label: `${origin.city} → ${tap.city}`,
+      label: `${origin.city} -> ${tap.city}`,
       tone: "info",
     },
+    ...traceabilityGlobeRoutes.slice(0, 4),
   ];
+  const atlasCities = globePoints.slice(0, 6);
 
   return (
     <div id="trace-signal-atlas" className="hero-trace-map hero-trace-map--trust-globe" aria-label={txt.routeTitle}>
@@ -1005,6 +1028,14 @@ function HeroTraceMap({
         variant="hero"
         className="hero-traceability-globe"
       />
+      <div className="hero-atlas-city-rail" aria-hidden="true">
+        {atlasCities.map((point) => (
+          <span key={`${point.city}-${point.country || "network"}`}>
+            <strong>{point.city}</strong>
+            <em>{point.country || "nexID"}</em>
+          </span>
+        ))}
+      </div>
       <div className="hero-map-intel hero-map-intel--atlas">
         <p>{selectedProof.eyebrow}</p>
         <strong>{selectedProof.title}</strong>
@@ -1392,7 +1423,6 @@ function HeroProductShowcase({
   numberLocale,
   txt,
   detailCopy,
-  onOpenDetail,
 }: {
   active: Vertical;
   data: Scene;
@@ -1400,19 +1430,13 @@ function HeroProductShowcase({
   numberLocale: string;
   txt: Pick<(typeof labels)["es-AR"], "assetBank" | "realAsset" | "renderFallback" | "evidenceChart" | "metrics" | "phoneLabel" | "labels">;
   detailCopy: (typeof productModalCopy)["es-AR"];
-  onOpenDetail: () => void;
 }) {
   const asset = heroRealAssets[active];
 
   return (
     <div className={`hero-asset-showcase hero-asset-showcase--${active}`}>
       <div className="hero-asset-media">
-        <button
-          type="button"
-          className="hero-asset-open-target"
-          onClick={onOpenDetail}
-          aria-label={`${detailCopy.open}: ${data.product}`}
-        >
+        <div className="hero-asset-open-target" aria-hidden="true">
           {asset ? (
           <span className="hero-asset-photo">
             <img className="hero-real-asset" src={asset.imageUrl} alt={asset.alt} loading="eager" />
@@ -1432,7 +1456,7 @@ function HeroProductShowcase({
             <Maximize2 className="h-4 w-4" />
             {detailCopy.productSubtitle}
           </span>
-        </button>
+        </div>
         <span className="hero-asset-nfc">NFC</span>
         <span className="hero-asset-status">{data.profile}</span>
       </div>
@@ -1519,10 +1543,12 @@ function ProductDetailModal({
   onClose: () => void;
 }) {
   const asset = heroRealAssets[active];
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    closeButtonRef.current?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
     };
@@ -1544,7 +1570,7 @@ function ProductDetailModal({
             <h3 id="hero-product-modal-title">{copy.title}</h3>
             <span>{copy.subtitle}</span>
           </div>
-          <button className="hero-product-modal__close" type="button" onClick={onClose} aria-label={copy.close}>
+          <button ref={closeButtonRef} className="hero-product-modal__close" type="button" onClick={onClose} aria-label={copy.close}>
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -1615,6 +1641,7 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
   const [selectedVertical, setSelectedVertical] = useState<HeroSelectorKey>("wine");
   const [tapIndex, setTapIndex] = useState(0);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const productTriggerRef = useRef<HTMLButtonElement>(null);
   const txt = labels[locale] || labels["es-AR"];
   const modalCopy = productModalCopy[locale] || productModalCopy["es-AR"];
   const active = selectedVertical;
@@ -1626,6 +1653,11 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
   useEffect(() => {
     setTapIndex(Math.floor(Math.random() * tapLocations.length));
   }, []);
+
+  const closeProductModal = () => {
+    setIsProductModalOpen(false);
+    window.setTimeout(() => productTriggerRef.current?.focus(), 0);
+  };
 
   const proofRows = [
     { label: txt.labels.product, value: data.product },
@@ -1680,7 +1712,14 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
                 <div className="hero-object-map-pane hero-object-map-pane--product-proof">
                   <HeroTraceMap origin={data.origin} tap={tap} distance={distance} numberLocale={numberLocale} txt={txt} />
                 </div>
-                <div className="hero-object-product-pane hero-object-product-pane--product-proof">
+                <button
+                  suppressHydrationWarning
+                  ref={productTriggerRef}
+                  type="button"
+                  className="hero-object-product-pane hero-object-product-pane--product-proof"
+                  aria-label={`${modalCopy.open}: ${data.product}`}
+                  onClick={() => setIsProductModalOpen(true)}
+                >
                   <HeroProductShowcase
                     active={active}
                     data={data}
@@ -1688,9 +1727,8 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
                     numberLocale={numberLocale}
                     txt={txt}
                     detailCopy={modalCopy}
-                    onOpenDetail={() => setIsProductModalOpen(true)}
                   />
-                </div>
+                </button>
               </div>
             </div>
             <div className="hero-flow-steps mt-3">
@@ -1753,18 +1791,21 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
           </span>
         ))}
       </div>
-      {isProductModalOpen ? (
-        <ProductDetailModal
-          active={active}
-          data={data}
-          distance={distance}
-          numberLocale={numberLocale}
-          proofRows={proofRows}
-          commerceRows={commerceRows}
-          copy={modalCopy}
-          onClose={() => setIsProductModalOpen(false)}
-        />
-      ) : null}
+      {isProductModalOpen && typeof document !== "undefined"
+        ? createPortal(
+            <ProductDetailModal
+              active={active}
+              data={data}
+              distance={distance}
+              numberLocale={numberLocale}
+              proofRows={proofRows}
+              commerceRows={commerceRows}
+              copy={modalCopy}
+              onClose={closeProductModal}
+            />,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

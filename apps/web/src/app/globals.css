@@ -30503,6 +30503,18 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
 }
 
 @media (max-width: 760px) {
+  .landing-hero-section h1 {
+    margin-top: 1rem !important;
+    font-size: clamp(1.72rem, 7.2vw, 1.95rem) !important;
+    line-height: 1.12 !important;
+  }
+
+  .landing-hero-section .hero-subtitle {
+    margin-top: 0.85rem !important;
+    font-size: 0.82rem !important;
+    line-height: 1.6 !important;
+  }
+
   .landing-hero-section .hero-demo-shell {
     margin-top: 1.1rem !important;
   }
@@ -30516,5 +30528,494 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
     height: clamp(17rem, 82vw, 21rem) !important;
     min-height: clamp(17rem, 82vw, 21rem) !important;
     max-height: none !important;
+  }
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof {
+  pointer-events: auto !important;
+  z-index: 20 !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof {
+  cursor: pointer;
+  outline: none;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof:focus-visible {
+  outline: 2px solid rgba(103, 232, 249, 0.95);
+  outline-offset: 4px;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-showcase,
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-media {
+  position: relative !important;
+  z-index: 21 !important;
+}
+
+.landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-open-target {
+  pointer-events: auto !important;
+  position: relative !important;
+  z-index: 22 !important;
+}
+
+/* Enterprise UX pass: atlas as the primary proof surface, product as modal trigger,
+   phone as the live mobile result. Keep this final to override older hero patches. */
+.landing-hero-section .hero-object-product-pane--product-proof {
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  padding: 0 !important;
+  color: inherit !important;
+  text-align: left !important;
+  appearance: none !important;
+}
+
+.landing-hero-section .hero-object-product-pane--product-proof:hover .hero-asset-open-badge,
+.landing-hero-section .hero-object-product-pane--product-proof:focus-visible .hero-asset-open-badge {
+  border-color: rgba(103, 232, 249, 0.72);
+  background: rgba(8, 47, 73, 0.86);
+}
+
+.hero-atlas-city-rail {
+  position: absolute;
+  top: 0.78rem;
+  right: 0.78rem;
+  left: 0.78rem;
+  z-index: 6;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.35rem;
+  pointer-events: none;
+}
+
+.hero-atlas-city-rail span {
+  min-width: 0;
+  border: 1px solid rgba(125, 211, 252, 0.16);
+  border-radius: 8px;
+  background: rgba(2, 8, 23, 0.68);
+  padding: 0.38rem 0.45rem;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(12px);
+}
+
+.hero-atlas-city-rail strong,
+.hero-atlas-city-rail em {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hero-atlas-city-rail strong {
+  color: rgb(236, 254, 255);
+  font-size: clamp(0.62rem, 0.64vw, 0.72rem);
+  font-weight: 950;
+  line-height: 1.1;
+}
+
+.hero-atlas-city-rail em {
+  margin-top: 0.12rem;
+  color: rgb(125, 211, 252);
+  font-size: clamp(0.5rem, 0.52vw, 0.58rem);
+  font-style: normal;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+@media (min-width: 1280px) {
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof,
+  .landing-hero-section .hero-scene--product-proof .hero-object-frame--product-proof.hero-object-frame:has(.hero-trace-map--trust-globe) {
+    grid-template-columns: minmax(470px, 1.18fr) minmax(330px, 0.72fr) !important;
+  }
+}
+
+@media (max-width: 620px) {
+  .hero-atlas-city-rail {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hero-atlas-city-rail span:nth-child(n + 5) {
+    display: none;
+  }
+}
+
+.sdk-proof-hero-system {
+  position: relative;
+  min-width: 0;
+}
+
+.sdk-proof-hero-system .sdk-global-hero-globe {
+  min-height: clamp(33rem, 48vw, 40rem) !important;
+}
+
+.sdk-proof-live-card {
+  position: absolute;
+  right: clamp(0.9rem, 2vw, 1.35rem);
+  bottom: clamp(0.9rem, 2vw, 1.35rem);
+  z-index: 12;
+  display: grid;
+  width: min(92%, 28rem);
+  grid-template-columns: minmax(9.5rem, 0.9fr) minmax(0, 1fr);
+  gap: 0.72rem;
+  border: 1px solid rgba(125, 211, 252, 0.2);
+  border-radius: 14px;
+  background: rgba(2, 8, 23, 0.78);
+  padding: 0.72rem;
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(16px);
+}
+
+.sdk-proof-product-shot {
+  position: relative;
+  min-height: 11rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: rgb(2, 6, 23);
+}
+
+.sdk-proof-product-shot img {
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+  object-fit: cover;
+}
+
+.sdk-proof-product-shot span {
+  position: absolute;
+  right: 0.55rem;
+  bottom: 0.55rem;
+  left: 0.55rem;
+  border: 1px solid rgba(34, 211, 238, 0.28);
+  border-radius: 8px;
+  background: rgba(2, 6, 23, 0.74);
+  color: rgb(207, 250, 254);
+  font-size: 0.62rem;
+  font-weight: 950;
+  letter-spacing: 0.1em;
+  padding: 0.42rem 0.5rem;
+  text-align: center;
+}
+
+.sdk-proof-phone {
+  display: grid;
+  align-content: space-between;
+  min-width: 0;
+  border: 1px solid rgba(52, 211, 153, 0.18);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(52, 211, 153, 0.16), transparent 35%),
+    rgba(15, 23, 42, 0.84);
+  padding: 0.78rem;
+}
+
+.sdk-proof-phone span {
+  color: rgb(103, 232, 249);
+  font-size: 0.58rem;
+  font-weight: 950;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.sdk-proof-phone strong {
+  display: block;
+  margin-top: 0.35rem;
+  color: rgb(134, 239, 172);
+  font-size: clamp(0.95rem, 1.4vw, 1.18rem);
+  font-weight: 950;
+  line-height: 1.05;
+}
+
+.sdk-proof-phone p {
+  margin-top: 0.45rem;
+  color: white;
+  font-size: 0.88rem;
+  font-weight: 900;
+}
+
+.sdk-proof-phone small {
+  display: block;
+  margin-top: 0.38rem;
+  color: rgb(148, 163, 184);
+  font-size: 0.7rem;
+  line-height: 1.45;
+}
+
+.sdk-proof-phone a {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 0.34rem;
+  margin-top: 0.9rem;
+  color: rgb(165, 243, 252);
+  font-size: 0.72rem;
+  font-weight: 950;
+}
+
+@media (max-width: 900px) {
+  .sdk-proof-live-card {
+    position: relative;
+    right: auto;
+    bottom: auto;
+    width: 100%;
+    margin-top: 0.85rem;
+  }
+}
+
+@media (max-width: 560px) {
+  .sdk-proof-live-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.demo-lab-experience-layer {
+  grid-template-columns: minmax(0, 0.78fr) minmax(18rem, 0.9fr) minmax(0, 0.86fr) !important;
+  align-items: stretch;
+}
+
+.demo-lab-experience-layer .demo-lab-phone-mirror {
+  grid-row: span 2;
+  padding: 0.72rem;
+  border-color: rgba(52, 211, 153, 0.22);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(52, 211, 153, 0.16), transparent 34%),
+    linear-gradient(145deg, rgba(8, 47, 73, 0.78), rgba(2, 6, 23, 0.9));
+}
+
+.demo-lab-experience-layer .demo-lab-phone-shell {
+  min-height: 100%;
+  border-radius: 1.55rem;
+  padding: 1.1rem 0.9rem 0.9rem;
+}
+
+.demo-lab-experience-layer .demo-lab-phone-status {
+  font-size: clamp(1rem, 1.5vw, 1.35rem);
+}
+
+.demo-lab-experience-layer .demo-lab-phone-shell h4 {
+  font-size: clamp(1rem, 1.35vw, 1.2rem);
+}
+
+@media (max-width: 1180px) {
+  .demo-lab-experience-layer {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .demo-lab-experience-layer {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .demo-lab-experience-layer .demo-lab-phone-mirror {
+    grid-row: auto;
+  }
+}
+
+.investor-proof-atlas {
+  position: relative;
+  min-width: 0;
+}
+
+.investor-proof-live-card {
+  position: absolute;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 8;
+  width: min(20rem, calc(100% - 2rem));
+  border: 1px solid rgba(52, 211, 153, 0.2);
+  border-radius: 14px;
+  background: rgba(2, 8, 23, 0.8);
+  padding: 0.9rem;
+  box-shadow: 0 22px 64px rgba(0, 0, 0, 0.38);
+  backdrop-filter: blur(16px);
+}
+
+.investor-proof-live-card span {
+  color: rgb(103, 232, 249);
+  font-size: 0.62rem;
+  font-weight: 950;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.investor-proof-live-card strong {
+  display: block;
+  margin-top: 0.4rem;
+  color: white;
+  font-size: 1rem;
+  font-weight: 950;
+  line-height: 1.12;
+}
+
+.investor-proof-live-card p {
+  margin-top: 0.48rem;
+  color: rgb(203, 213, 225);
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 760px) {
+  .investor-proof-live-card {
+    position: relative;
+    right: auto;
+    bottom: auto;
+    width: 100%;
+    margin-top: 0.8rem;
+  }
+}
+
+/* Final enterprise landing fit.
+   Keeps the proof scene visible in the first viewport and uses a real button
+   focus state for the product detail trigger. */
+.landing-hero-section {
+  padding-top: clamp(1.75rem, 2.2vw, 2.5rem) !important;
+  padding-bottom: clamp(2.25rem, 3vw, 3.25rem) !important;
+}
+
+.landing-hero-section h1 {
+  max-width: min(76rem, calc(100vw - 2rem)) !important;
+  margin-top: clamp(0.85rem, 1.4vw, 1.2rem) !important;
+  font-size: clamp(2.1rem, 2.65vw, 2.72rem) !important;
+  line-height: 1.04 !important;
+  text-wrap: balance;
+}
+
+.landing-hero-section .hero-subtitle {
+  margin-top: clamp(0.55rem, 1vw, 0.72rem) !important;
+  max-width: 42rem !important;
+  line-height: 1.5 !important;
+}
+
+.landing-hero-section .hero-demo-shell {
+  margin-top: clamp(0.85rem, 1.4vw, 1.15rem) !important;
+}
+
+.landing-hero-section .hero-demo-brief {
+  margin-bottom: 0.52rem !important;
+}
+
+.landing-hero-section .hero-demo-copy > p:nth-child(2) {
+  max-width: 48rem !important;
+  line-height: 1.45 !important;
+}
+
+.landing-hero-section .hero-proof-flow {
+  gap: 0.45rem !important;
+}
+
+.landing-hero-section .hero-proof-flow > span {
+  min-height: 2rem !important;
+  border-radius: 10px !important;
+  padding: 0.35rem 0.58rem !important;
+}
+
+.landing-hero-section .hero-assurance-pill {
+  max-width: 48rem !important;
+  padding-top: 0.4rem !important;
+  padding-bottom: 0.4rem !important;
+  line-height: 1.42 !important;
+}
+
+.landing-hero-section .hero-demo-actions > a {
+  min-height: 2.38rem !important;
+  display: inline-flex;
+  align-items: center;
+}
+
+.landing-hero-section .hero-object-product-pane--product-proof {
+  cursor: pointer !important;
+  outline: none !important;
+  pointer-events: auto !important;
+}
+
+.landing-hero-section .hero-object-product-pane--product-proof:focus-visible {
+  border-radius: 16px !important;
+  outline: 2px solid rgba(103, 232, 249, 0.95) !important;
+  outline-offset: 5px !important;
+}
+
+.landing-hero-section .hero-object-product-pane--product-proof:focus-visible .hero-asset-open-badge {
+  border-color: rgba(103, 232, 249, 0.88) !important;
+  background: rgba(8, 47, 73, 0.92) !important;
+}
+
+@media (min-width: 1024px) {
+  .landing-hero-section .hero-demo-brief {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end !important;
+    gap: 0.85rem !important;
+  }
+
+  .landing-hero-section .hero-proof-flow {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+
+  .landing-hero-section .hero-demo-actions {
+    justify-content: flex-end;
+  }
+}
+
+@media (min-width: 1440px) {
+  .landing-hero-section .hero-scene--product-proof .hero-object-map-pane--product-proof #trace-signal-atlas.hero-trace-map--trust-globe {
+    height: clamp(18.6rem, 22vw, 23.5rem) !important;
+    min-height: clamp(18.6rem, 22vw, 23.5rem) !important;
+    max-height: 23.5rem !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof .hero-object-product-pane--product-proof .hero-asset-media {
+    height: clamp(14.5rem, 14.6vw, 18rem) !important;
+    min-height: clamp(14.5rem, 14.6vw, 18rem) !important;
+    max-height: clamp(14.5rem, 14.6vw, 18rem) !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .landing-hero-section .hero-proof-flow {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .landing-hero-section .hero-demo-actions {
+    width: 100%;
+  }
+
+  .landing-hero-section .hero-demo-actions > a {
+    flex: 1 1 13rem;
+  }
+}
+
+@media (max-width: 760px) {
+  .landing-hero-section {
+    padding-top: 1.4rem !important;
+  }
+
+  .landing-hero-section h1 {
+    max-width: 22rem !important;
+    font-size: clamp(1.62rem, 7vw, 1.9rem) !important;
+    line-height: 1.12 !important;
+  }
+
+  .landing-hero-section .hero-demo-copy > p:nth-child(2),
+  .landing-hero-section .hero-assurance-pill {
+    font-size: 0.82rem !important;
+  }
+
+  .landing-hero-section .hero-proof-flow > span {
+    min-height: 2.18rem !important;
+    padding: 0.42rem 0.58rem !important;
+  }
+
+  .landing-hero-section .hero-atlas-city-rail,
+  .landing-hero-section .hero-route-proof-steps--atlas {
+    display: none !important;
+  }
+
+  .landing-hero-section .hero-scene--product-proof #trace-signal-atlas.hero-trace-map--trust-globe .traceability-globe__routebar {
+    bottom: 0.58rem !important;
+    padding: 0.5rem 0.58rem !important;
   }
 }

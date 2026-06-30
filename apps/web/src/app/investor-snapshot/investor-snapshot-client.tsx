@@ -62,7 +62,7 @@ const faqCategories = [
       },
       {
         q: "¿Qué pasa si los servidores de nexID se caen y el consumidor en Europa escanea la botella y da error? ¿No daña eso la reputación de mi bodega?",
-        a: "Sí, absolutamente. Si un consumidor premium en un restaurante exclusivo escanea el vino y el sistema no responde, la experiencia de marca es un fracaso total. Es un riesgo real en cualquier infraestructura digital. Para evitar esto, en nexID implementamos redundancia geográfica múltiple en la nube (AWS y Render) con copias de seguridad locales y CDN perimetral. Además, cada chip nexID posee una firma criptográfica offline estática pregrabada. Si el servidor no está accesible, la app web realiza una validación criptográfica local en el dispositivo del cliente garantizando que el chip es auténtico, incluso sin conexión a internet.",
+        a: "Sí, absolutamente. Si un consumidor premium en un restaurante exclusivo escanea el vino y el sistema no responde, la experiencia de marca es un fracaso total. Es un riesgo real en cualquier infraestructura digital. Para evitarlo, nexID debe operar con redundancia geográfica, CDN perimetral y colas de reintento. Si no hay conexión, el consumidor puede ver información pública/cacheada y guardar el escaneo como pendiente, pero la autenticidad criptográfica fuerte se confirma cuando vuelve el backend o mediante un verificador autorizado de operador. No prometemos veredicto final offline en un browser público.",
         ctx: "La resiliencia tecnológica es parte de nuestro acuerdo de nivel de servicio (SLA) para B2B. Ser pioneros en implementar trazabilidad digital de contingencia demuestra el nivel de profesionalismo de tu bodega ante los distribuidores de todo el mundo."
       },
       {
@@ -263,16 +263,23 @@ function InvestorVerticalMoat() {
           ))}
         </div>
       </div>
-      <PremiumTraceabilityGlobe
-        title="Trazabilidad global por industria"
-        subtitle="Una vista para explicar origen, destino, riesgo y canales a inversores sin abrumarlos."
-        caption="SDK abierto, datos propios y carrier mix: QR, NFC, 424 TT, UHF y sensores."
-        points={traceabilityGlobePoints}
-        routes={traceabilityGlobeRoutes}
-        ctaHref="/sdk"
-        ctaLabel="Ver SDK"
-        compact
-      />
+      <div className="investor-proof-atlas">
+        <PremiumTraceabilityGlobe
+          title="Trazabilidad global por industria"
+          subtitle="Una vista para explicar origen, destino, riesgo y canales a inversores sin abrumarlos."
+          caption="SDK abierto, datos propios y carrier mix: QR, NFC, 424 TT, UHF y sensores."
+          points={traceabilityGlobePoints}
+          routes={traceabilityGlobeRoutes}
+          ctaHref="/sdk"
+          ctaLabel="Ver SDK"
+          compact
+        />
+        <div className="investor-proof-live-card">
+          <span>Salida celular</span>
+          <strong>Producto, atlas y claim en un solo tap</strong>
+          <p>El inversor ve unidad física, ruta, riesgo y próximo paso comercial sin prometer blockchain para cada lectura.</p>
+        </div>
+      </div>
     </section>
   );
 }

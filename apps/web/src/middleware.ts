@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { clerkMiddleware } from "@clerk/nextjs/server";
 
-export default clerkMiddleware((_auth, req: NextRequest) => {
+function landingMiddleware(req: NextRequest) {
   const host = req.headers.get("host") || "";
 
   // Canonicalize www -> apex to avoid redirect loops across domain aliases.
@@ -14,7 +14,19 @@ export default clerkMiddleware((_auth, req: NextRequest) => {
   }
 
   return NextResponse.next();
-});
+}
+
+const clerkGuard = clerkMiddleware((_auth, req: NextRequest) => landingMiddleware(req));
+
+export default function middleware(req: NextRequest, event: Parameters<typeof clerkGuard>[1]) {
+  const host = req.headers.get("host") || "";
+  const isLocalHost = /^(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i.test(host);
+  if (isLocalHost && req.method === "GET" && req.nextUrl.pathname === "/") {
+    return landingMiddleware(req);
+  }
+
+  return clerkGuard(req, event);
+}
 
 export const config = {
   matcher: [

@@ -38,7 +38,7 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
   const meetingCta = isEn ? "Schedule meeting" : isBr ? "Agendar reunião" : "Agendar reunión";
 
   return (
-    <section className="landing-hero-section relative overflow-hidden border-b border-white/5 bg-slate-950 pb-10 pt-10 lg:pb-14 lg:pt-14">
+    <section className="landing-hero-section relative overflow-hidden border-b border-white/5 bg-slate-950 pb-8 pt-8 lg:pb-10 lg:pt-10">
       <div className="hero-signal-field absolute inset-0 z-0 pointer-events-none" aria-hidden="true" />
 
       <div className="container-shell relative z-10">
@@ -57,11 +57,11 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
         </div>
 
         <div className="hero-demo-shell mx-auto mt-6 max-w-7xl text-left">
-          <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-            <div>
+          <div className="hero-demo-brief mb-3 flex flex-wrap items-end justify-between gap-3">
+            <div className="hero-demo-copy">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">{demoEyebrow}</p>
               <p className="mt-1 max-w-2xl text-sm text-slate-300">{demoBody}</p>
-              <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="hero-proof-flow mt-2 grid grid-cols-2 gap-2 lg:grid-cols-4">
                 {heroFlow.map((item, index) => (
                   <span key={item} className="inline-flex min-h-8 items-center gap-2 rounded-xl border border-white/10 bg-slate-950/55 px-3 py-1.5 text-xs font-black text-slate-100">
                     <strong className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-cyan-300/35 bg-cyan-500/15 text-[10px] text-cyan-100">{index + 1}</strong>
@@ -69,11 +69,11 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
                   </span>
                 ))}
               </div>
-              <p className="mt-2 max-w-2xl rounded-xl border border-emerald-300/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold leading-5 text-emerald-100">
+              <p className="hero-assurance-pill mt-2 max-w-2xl rounded-xl border border-emerald-300/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold leading-5 text-emerald-100">
                 {heroAssurance}
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="hero-demo-actions flex flex-wrap gap-2">
               <a href={schedulingUrls.meeting} target="_blank" rel="noreferrer" className="rounded-xl border border-emerald-300/35 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/20">
                 {meetingCta}
               </a>
