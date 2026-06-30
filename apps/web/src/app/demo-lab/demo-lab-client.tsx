@@ -8,7 +8,7 @@ import { ArrowLeft, BadgeCheck, CalendarDays, CheckCircle2, ChevronRight, Finger
 import { HeroTrustAtlasSvg } from "../../components/hero-scene";
 import { platformVerticals } from "../../lib/platform-verticals";
 import { ThreeDProduct } from "../investor-snapshot/investor-snapshot-client";
-import { Globe3dMap, type VectorMapPoint, type VectorMapRoute } from "@product/ui";
+import type { VectorMapPoint, VectorMapRoute } from "@product/ui";
 
 type Role = "ceo" | "operator" | "buyer";
 type Beat = 0 | 1 | 2 | 3;
@@ -1295,6 +1295,7 @@ function DemoLabStudioHero({
             destination={destination}
             locale={locale}
             routeKm={routeKm}
+            labels={txt.controls}
           />
 
           <div className="demo-lab-studio-info">
@@ -1453,19 +1454,16 @@ function DemoStudioMiniProduct({ vertical }: { vertical: Vertical }) {
   );
 }
 
-function projectDemoMapPoint(point: Pick<DemoMapPoint, "lat" | "lng">) {
-  const x = ((point.lng + 180) / 360) * 1200;
-  const clippedLat = Math.max(-85.05112878, Math.min(85.05112878, point.lat));
-  const sin = Math.sin((clippedLat * Math.PI) / 180);
-  const y = (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * 620;
-  return { x, y };
-}
-
 function formatDemoTapTime(value?: string, locale: AppLocale = "es-AR") {
   if (!value) return locale === "en" ? "live" : "en vivo";
   const parsed = Date.parse(value);
   if (Number.isNaN(parsed)) return value;
-  return new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" }).format(parsed);
+  const date = new Date(parsed);
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const hour = String(date.getUTCHours()).padStart(2, "0");
+  const minute = String(date.getUTCMinutes()).padStart(2, "0");
+  return locale === "en" ? `${month}/${day}, ${hour}:${minute}` : `${day}/${month}, ${hour}:${minute}`;
 }
 
 function DemoLiveOpsMap({
@@ -1475,6 +1473,7 @@ function DemoLiveOpsMap({
   destination,
   locale,
   routeKm,
+  labels,
 }: {
   points: DemoMapPoint[];
   liveEvents: DemoEvent[];
@@ -1482,6 +1481,7 @@ function DemoLiveOpsMap({
   destination: DemoLocation;
   locale: AppLocale;
   routeKm: number;
+  labels: Pick<DemoCopy["controls"], "origin" | "currentTap">;
 }) {
   const visiblePoints = points.slice(0, 9);
   const recentEvents = liveEvents.slice(0, 4);
@@ -1491,26 +1491,19 @@ function DemoLiveOpsMap({
   const feedTitle = locale === "en" ? "Latest taps" : locale === "pt-BR" ? "Ultimos taps" : "Últimos taps";
   const fallbackText = locale === "en" ? "Waiting for live feed; showing route simulation." : locale === "pt-BR" ? "Aguardando feed real; mostrando rota simulada." : "Esperando feed real; mostrando ruta simulada.";
 
-  const globePoints = visiblePoints.map((p, index) => ({
-    city: p.city,
-    country: p.country,
-    lat: p.lat,
-    lng: p.lng,
-    scans: p.scans || 1,
-    risk: p.risk || 0,
-    status: index === 0 ? "origin" : p.risk ? "risk" : "tap",
-    vertical: p.vertical,
-  }));
-
   const originPoint = visiblePoints[0];
-  const globeRoutes = originPoint
-    ? visiblePoints.slice(1).map((p) => ({
+  const atlasPoints = toDemoAtlasPoints(visiblePoints, labels);
+  const atlasRoutes: VectorMapRoute[] = originPoint
+    ? visiblePoints.slice(1).map((p, index) => ({
+        id: `studio-route-${demoAtlasPointId(p, index + 1)}`,
         fromLat: originPoint.lat,
         fromLng: originPoint.lng,
         toLat: p.lat,
         toLng: p.lng,
         tone: p.risk ? ("warn" as const) : ("info" as const),
         label: `Ruta ${originPoint.city} → ${p.city}`,
+        distanceLabel: `${routeKm.toLocaleString(locale)} km`,
+        evidence: p.status || formatDemoTapTime(p.lastSeen, locale),
       }))
     : [];
 
@@ -1520,18 +1513,8 @@ function DemoLiveOpsMap({
         <p>{title}</p>
         <span><i /> {totalScans} taps</span>
       </div>
-      <div className={`demo-lab-mini-map demo-lab-mini-map--${vertical} flex justify-center items-center relative overflow-hidden`} aria-label={`${title}: ${LOCATIONS.origin.city} a ${destination.city}`}>
-        <div className="absolute inset-0 flex justify-center items-center pointer-events-auto">
-          <Globe3dMap
-            theme="dark"
-            mode="globe"
-            points={globePoints}
-            routes={globeRoutes}
-            width={680}
-            height={420}
-            className="demo-lab-mini-map__globe border-0 bg-transparent shadow-none"
-          />
-        </div>
+      <div className={`demo-lab-mini-map demo-lab-mini-map--atlas demo-lab-mini-map--${vertical} flex justify-center items-center relative overflow-hidden`} aria-label={`${title}: ${LOCATIONS.origin.city} a ${destination.city}`}>
+        <HeroTrustAtlasSvg points={atlasPoints} routes={atlasRoutes} selectedPointId="tap" />
         <div className="demo-lab-mini-map__legend z-10 pointer-events-none">
           <span>{LOCATIONS.origin.city}</span>
           <strong>{routeKm.toLocaleString(locale)} km</strong>
@@ -3768,7 +3751,7 @@ function DemoCrmDashboard({
                         </td>
                         <td className="py-3 px-4 font-mono">{lead.email || lead.phone || lead.contact}</td>
                         <td className="py-3 px-4 uppercase font-bold text-cyan-355">{lead.vertical || "General"}</td>
-                        <td className="py-3 px-4">{lead.volume ? `${lead.volume.toLocaleString()} tags` : "S/D"}</td>
+                        <td className="py-3 px-4">{lead.volume ? `${lead.volume.toLocaleString(locale)} tags` : "S/D"}</td>
                         <td className="py-3 px-4 uppercase font-bold text-slate-400">{lead.source}</td>
                         <td className="py-3 px-4 text-slate-500">{formatTime(lead.created_at)}</td>
                         <td className="py-3 px-4">
@@ -3895,7 +3878,7 @@ function DemoCrmDashboard({
                         </td>
                         <td className="py-3 px-4 font-mono">{order.contact}</td>
                         <td className="py-3 px-4 uppercase font-bold text-violet-300">{order.tag_type || "NTAG 424 DNA"}</td>
-                        <td className="py-3 px-4">{order.volume ? `${order.volume.toLocaleString()} unidades` : "S/D"}</td>
+                        <td className="py-3 px-4">{order.volume ? `${order.volume.toLocaleString(locale)} unidades` : "S/D"}</td>
                         <td className="py-3 px-4 uppercase font-bold text-slate-400">{order.source}</td>
                         <td className="py-3 px-4 text-slate-500">{formatTime(order.created_at)}</td>
                         <td className="py-3 px-4">

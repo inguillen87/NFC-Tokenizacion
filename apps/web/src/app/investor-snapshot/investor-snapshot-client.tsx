@@ -38,6 +38,8 @@ import { Button, type VectorMapPoint, type VectorMapRoute } from "@product/ui";
 import { HeroTrustAtlasSvg } from "../../components/hero-scene";
 import { platformVerticals } from "../../lib/platform-verticals";
 
+const INVESTOR_NUMBER_LOCALE = "es-AR";
+
 // Multi-market FAQs object
 const faqCategories = [
   {
@@ -1196,12 +1198,12 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
       }
       
       if (userQuestion.includes("costo") || userQuestion.includes("precio") || userQuestion.includes("invert") || userQuestion.includes("plata") || userQuestion.includes("dinero") || userQuestion.includes("inversión")) {
-        return `Tu inversión anual estimada es de $${finalInvestment.toLocaleString(undefined, {maximumFractionDigits:0})} USD (que incluye $${nexIdChipsCost.toLocaleString(undefined, {maximumFractionDigits:0})} USD en chips y $${nexIdSaaSYearly.toLocaleString(undefined, {maximumFractionDigits:0})} USD de suscripción SaaS). Dado que el precio de venta de tu producto es de $${retailPrice} USD y previenes pérdidas por $${preventedFraud.toLocaleString(undefined, {maximumFractionDigits:0})} USD anuales, cada botella que produce tu marca ahorra en promedio $${(retailPrice * (fraudRate / 100) * 0.98).toFixed(2)} USD frente al fraude de la región ${exportRegion === 'latam' ? 'Mendoza / Mercosur' : exportRegion === 'europe_usa' ? 'Europa / EE.UU.' : exportRegion === 'asia' ? 'Asia / Pacífico' : 'Mercado Gris Global'}. El costo del chip se recupera con creces, rindiendo un retorno neto anual de $${finalNetGain.toLocaleString(undefined, {maximumFractionDigits:0})} USD.`;
+        return `Tu inversión anual estimada es de $${finalInvestment.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD (que incluye $${nexIdChipsCost.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD en chips y $${nexIdSaaSYearly.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD de suscripción SaaS). Dado que el precio de venta de tu producto es de $${retailPrice} USD y previenes pérdidas por $${preventedFraud.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD anuales, cada botella que produce tu marca ahorra en promedio $${(retailPrice * (fraudRate / 100) * 0.98).toFixed(2)} USD frente al fraude de la región ${exportRegion === 'latam' ? 'Mendoza / Mercosur' : exportRegion === 'europe_usa' ? 'Europa / EE.UU.' : exportRegion === 'asia' ? 'Asia / Pacífico' : 'Mercado Gris Global'}. El costo del chip se recupera con creces, rindiendo un retorno neto anual de $${finalNetGain.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD.`;
       }
       
       if (userQuestion.includes("tiempo") || userQuestion.includes("recuper") || userQuestion.includes("mes") || userQuestion.includes("dia") || userQuestion.includes("amorti")) {
         const paybackDays = preventedFraud > 0 ? ((nexIdChipsCost / preventedFraud) * 365) : 0;
-        return `El tiempo estimado de recuperación de la inversión de hardware (chips) es de ${paybackDays.toFixed(1)} días de ventas de cada lote. Dado que vendes aproximadamente ${Math.round(volume / 12).toLocaleString()} unidades al mes, el costo mensual de chips es de $${Math.round(nexIdChipsCost / 12).toLocaleString()} USD. Con un ahorro preventivo neto de $${Math.round(finalNetGain / 12).toLocaleString()} USD/mes, la inversión en chips del lote de cada mes se amortiza en los primeros días del ciclo de ventas de ese mismo lote. No es un costo hundido de infraestructura, sino un insumo que se autofinancia de inmediato.`;
+        return `El tiempo estimado de recuperación de la inversión de hardware (chips) es de ${paybackDays.toFixed(1)} días de ventas de cada lote. Dado que vendes aproximadamente ${Math.round(volume / 12).toLocaleString(INVESTOR_NUMBER_LOCALE)} unidades al mes, el costo mensual de chips es de $${Math.round(nexIdChipsCost / 12).toLocaleString(INVESTOR_NUMBER_LOCALE)} USD. Con un ahorro preventivo neto de $${Math.round(finalNetGain / 12).toLocaleString(INVESTOR_NUMBER_LOCALE)} USD/mes, la inversión en chips del lote de cada mes se amortiza en los primeros días del ciclo de ventas de ese mismo lote. No es un costo hundido de infraestructura, sino un insumo que se autofinancia de inmediato.`;
       }
       
       if (userQuestion.includes("blockchain") || userQuestion.includes("web3") || userQuestion.includes("nft") || userQuestion.includes("seguridad") || userQuestion.includes("seguro") || userQuestion.includes("nube")) {
@@ -1212,7 +1214,7 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
         return `Esta plataforma ayuda al empresario y a su equipo de ventas a calcular el Retorno de Inversión (ROI) real antes de comprar hardware. Al mover los controles de volumen, precio y tasa de fraude, nuestro sistema calcula instantáneamente el impacto financiero de nexID. Como consultor financiero IA, te recomiendo configurar tu volumen de ventas real y precio minorista para demostrarle a tu directorio cómo cada chip evita pérdidas y genera un canal directo de contacto (DTC) con el 35% de tus compradores.`;
       }
       
-      return `Interesante pregunta sobre tu marca. Con tus variables actuales (volumen de ${volume.toLocaleString()} unidades y precio de $${retailPrice} USD), cada chip de $${chipCost.toFixed(2)} USD te protege de una pérdida de $${(retailPrice * (fraudRate / 100) * 0.98).toFixed(2)} USD por botella. Esto genera un ahorro neto de $${finalNetGain.toLocaleString(undefined, {maximumFractionDigits:0})} USD anuales. ¿Deseas que profundicemos en cómo la tasa de fraude del ${fraudRate}% de tu región influye en este resultado o cómo calcular la amortización por lote?`;
+      return `Interesante pregunta sobre tu marca. Con tus variables actuales (volumen de ${volume.toLocaleString(INVESTOR_NUMBER_LOCALE)} unidades y precio de $${retailPrice} USD), cada chip de $${chipCost.toFixed(2)} USD te protege de una pérdida de $${(retailPrice * (fraudRate / 100) * 0.98).toFixed(2)} USD por botella. Esto genera un ahorro neto de $${finalNetGain.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD anuales. ¿Deseas que profundicemos en cómo la tasa de fraude del ${fraudRate}% de tu región influye en este resultado o cómo calcular la amortización por lote?`;
     }
 
     switch (qId) {
@@ -1224,17 +1226,17 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
         const baseInvestment = volume * 0.50;
         const diffCost = extraInvestment - baseInvestment;
         const additionalLoss = volume * retailPrice * (fraudRate / 100) * 0.38;
-        return `¡Totalmente rentable! Con tus parámetros actuales (Volumen: ${volume.toLocaleString()} uds, Precio: $${retailPrice} USD, Tasa de Pérdida: ${fraudRate.toFixed(1)}%), el uso de un chip premium como el NTAG 424 DNA TagTamper ($1.00) representa una inversión en chips de $${extraInvestment.toLocaleString(undefined, {maximumFractionDigits:0})} USD, mientras que un chip estándar de $0.50 costaría $${baseInvestment.toLocaleString(undefined, {maximumFractionDigits:0})} USD. Si bien ahorras $${diffCost.toLocaleString(undefined, {maximumFractionDigits:0})} USD en el hardware, al no contar con detección física de apertura, la eficiencia de protección cae drásticamente del 98% a menos del 60%. Esto significa que la marca perdería más de $${additionalLoss.toLocaleString(undefined, {maximumFractionDigits:0})} USD anuales debido a fraudes y reventas que el chip básico no puede detectar. El chip TagTamper se paga solo protegiendo tu reputación y evitando fugas de canal.`;
+        return `¡Totalmente rentable! Con tus parámetros actuales (Volumen: ${volume.toLocaleString(INVESTOR_NUMBER_LOCALE)} uds, Precio: $${retailPrice} USD, Tasa de Pérdida: ${fraudRate.toFixed(1)}%), el uso de un chip premium como el NTAG 424 DNA TagTamper ($1.00) representa una inversión en chips de $${extraInvestment.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD, mientras que un chip estándar de $0.50 costaría $${baseInvestment.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD. Si bien ahorras $${diffCost.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD en el hardware, al no contar con detección física de apertura, la eficiencia de protección cae drásticamente del 98% a menos del 60%. Esto significa que la marca perdería más de $${additionalLoss.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD anuales debido a fraudes y reventas que el chip básico no puede detectar. El chip TagTamper se paga solo protegiendo tu reputación y evitando fugas de canal.`;
       
       case "payback-period":
         const monthlyChips = Math.round(nexIdChipsCost / 12);
         const monthlyGain = Math.round(finalNetGain / 12);
         const paybackDays = preventedFraud > 0 ? ((nexIdChipsCost / preventedFraud) * 365) : 0;
         const coverageRatio = chipCost > 0 ? ((retailPrice * (fraudRate / 100) * 0.98) / chipCost) : 0;
-        return `Dado que los chips son un insumo físico consumible por lote y no un activo fijo, la recuperación del dinero invertido se mide sobre la velocidad de venta y la detención de pérdidas de ese mismo lote. Con tus parámetros, la inversión anual en chips es de $${nexIdChipsCost.toLocaleString(undefined, {maximumFractionDigits:0})} USD ($${monthlyChips.toLocaleString(undefined, {maximumFractionDigits:0})} USD/mes) y tu ahorro neto anual proyectado es de $${finalNetGain.toLocaleString(undefined, {maximumFractionDigits:0})} USD ($${monthlyGain.toLocaleString(undefined, {maximumFractionDigits:0})} USD/mes). Esto significa que recuperas la inversión total en chips de cada lote en los primeros ${paybackDays.toFixed(1)} días de ventas de dicho lote. A nivel unitario, cada chip que cuesta $${chipCost.toFixed(2)} USD evita una pérdida estimada de $${(retailPrice * (fraudRate / 100) * 0.98).toFixed(2)} USD. ¡Un ratio de cobertura unitaria de ${coverageRatio.toFixed(1)}x!`;
+        return `Dado que los chips son un insumo físico consumible por lote y no un activo fijo, la recuperación del dinero invertido se mide sobre la velocidad de venta y la detención de pérdidas de ese mismo lote. Con tus parámetros, la inversión anual en chips es de $${nexIdChipsCost.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD ($${monthlyChips.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD/mes) y tu ahorro neto anual proyectado es de $${finalNetGain.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD ($${monthlyGain.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD/mes). Esto significa que recuperas la inversión total en chips de cada lote en los primeros ${paybackDays.toFixed(1)} días de ventas de dicho lote. A nivel unitario, cada chip que cuesta $${chipCost.toFixed(2)} USD evita una pérdida estimada de $${(retailPrice * (fraudRate / 100) * 0.98).toFixed(2)} USD. ¡Un ratio de cobertura unitaria de ${coverageRatio.toFixed(1)}x!`;
       
       case "region-influence":
-        return `La región seleccionada (${regionName}) posee una tasa de pérdida/fraude estimada del ${fraudRate.toFixed(1)}% según reportes de ${regionSource}. Con un precio de venta de $${retailPrice} USD por unidad, esto significa que tu marca pierde un promedio de $${(retailPrice * (fraudRate / 100)).toFixed(2)} USD por cada botella producida antes de implementar nexID. En regiones con alta incidencia de falsificación, el retorno de inversión del sistema se dispara a un multiplicador de ${roiMultiplier.toFixed(1)}x. En zonas con menor tasa de fraude, el ROI se mantiene sumamente atractivo porque nexID no solo previene fraude, sino que conecta de manera directa al ${Math.round(volume * 0.35).toLocaleString()} clientes (35% de lecturas estimadas) a tu canal directo DTC, abriendo nuevas oportunidades de venta recurrente.`;
+        return `La región seleccionada (${regionName}) posee una tasa de pérdida/fraude estimada del ${fraudRate.toFixed(1)}% según reportes de ${regionSource}. Con un precio de venta de $${retailPrice} USD por unidad, esto significa que tu marca pierde un promedio de $${(retailPrice * (fraudRate / 100)).toFixed(2)} USD por cada botella producida antes de implementar nexID. En regiones con alta incidencia de falsificación, el retorno de inversión del sistema se dispara a un multiplicador de ${roiMultiplier.toFixed(1)}x. En zonas con menor tasa de fraude, el ROI se mantiene sumamente atractivo porque nexID no solo previene fraude, sino que conecta de manera directa al ${Math.round(volume * 0.35).toLocaleString(INVESTOR_NUMBER_LOCALE)} clientes (35% de lecturas estimadas) a tu canal directo DTC, abriendo nuevas oportunidades de venta recurrente.`;
       
       default:
         return "";
@@ -1527,7 +1529,7 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
             <div className="pt-3 border-t border-white/5 space-y-1.5 text-[9px] text-slate-400 leading-none font-mono">
               <div className="flex justify-between">
                 <span>Volumen Mensual Promedio:</span>
-                <span className="text-slate-200">{Math.round(monthlyVolume).toLocaleString()} uds/mes</span>
+                <span className="text-slate-200">{Math.round(monthlyVolume).toLocaleString(INVESTOR_NUMBER_LOCALE)} uds/mes</span>
               </div>
               <div className="flex justify-between">
                 <span>Precio SaaS/unidad:</span>
@@ -1535,33 +1537,33 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
               </div>
               <div className="flex justify-between">
                 <span>Suscripción SaaS:</span>
-                <span className="text-slate-200">${Math.round(nexIdSaaSMonthly).toLocaleString()} USD/mes (${Math.round(nexIdSaaSYearly).toLocaleString()}/año)</span>
+                <span className="text-slate-200">${Math.round(nexIdSaaSMonthly).toLocaleString(INVESTOR_NUMBER_LOCALE)} USD/mes (${Math.round(nexIdSaaSYearly).toLocaleString(INVESTOR_NUMBER_LOCALE)}/año)</span>
               </div>
               
               {!isReseller ? (
                 <>
                   <div className="flex justify-between">
                     <span>Inversión en Chips:</span>
-                    <span className="text-slate-200">${nexIdChipsCost.toLocaleString(undefined, {maximumFractionDigits:0})} USD</span>
+                    <span className="text-slate-200">${nexIdChipsCost.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD</span>
                   </div>
                   <div className="flex justify-between border-t border-white/5 pt-2 text-xs font-bold leading-none">
                     <span>Inversión Anual Total:</span>
-                    <span className="text-white">${finalInvestment.toLocaleString(undefined, {maximumFractionDigits:0})} USD</span>
+                    <span className="text-white">${finalInvestment.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD</span>
                   </div>
                 </>
               ) : (
                 <>
                   <div className="flex justify-between">
                     <span>Costo Compra Chips:</span>
-                    <span className="text-slate-200">${hardwareCostToReseller.toLocaleString(undefined, {maximumFractionDigits:0})} USD</span>
+                    <span className="text-slate-200">${hardwareCostToReseller.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Reventa Chips a Cliente:</span>
-                    <span className="text-slate-200">${hardwareRevenueFromClient.toLocaleString(undefined, {maximumFractionDigits:0})} USD</span>
+                    <span className="text-slate-200">${hardwareRevenueFromClient.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD</span>
                   </div>
                   <div className="flex justify-between border-t border-white/5 pt-2 text-xs font-bold leading-none">
                     <span>Inversión Anual (Chips):</span>
-                    <span className="text-white">${finalInvestment.toLocaleString(undefined, {maximumFractionDigits:0})} USD</span>
+                    <span className="text-white">${finalInvestment.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD</span>
                   </div>
                 </>
               )}
@@ -1685,7 +1687,7 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
                 <div className="space-y-1.5">
                   <div className="flex justify-between items-end">
                     <span className="text-[10px] text-slate-400">Nuevos Clientes:</span>
-                    <span className="text-xs font-black text-white font-mono">{dtcClients.toLocaleString()} /año</span>
+                    <span className="text-xs font-black text-white font-mono">{dtcClients.toLocaleString(INVESTOR_NUMBER_LOCALE)} /año</span>
                   </div>
                   <div className="w-full bg-slate-950 h-1 rounded overflow-hidden">
                     <div className="bg-cyan-400 h-full w-[35%]" />
@@ -1721,11 +1723,11 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
                 <div className="space-y-1.5">
                   <div className="flex justify-between items-center text-[9px] text-slate-400 px-1 font-mono">
                     <span>{!isReseller ? "Inversión:" : "Costo Compra:"}</span>
-                    <span className="text-slate-200 font-bold">${finalInvestment.toLocaleString(undefined, {maximumFractionDigits:0})} USD</span>
+                    <span className="text-slate-200 font-bold">${finalInvestment.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD</span>
                   </div>
                   <div className="flex justify-between items-center text-[9px] text-slate-400 px-1 font-mono">
                     <span>{!isReseller ? "Ahorro Neto:" : "Ganancia Neta:"}</span>
-                    <span className="text-emerald-400 font-bold">${finalNetGain.toLocaleString(undefined, {maximumFractionDigits:0})} USD</span>
+                    <span className="text-emerald-400 font-bold">${finalNetGain.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD</span>
                   </div>
                 </div>
               </div>
@@ -1781,7 +1783,7 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
                 {/* Metric 1 */}
                 <div className="bg-slate-950/50 border border-white/10 rounded-xl p-4 shadow-inner">
                   <span className="text-xs lg:text-sm font-bold text-slate-200 uppercase tracking-wide">Costo de Chips (Consumible)</span>
-                  <div className="text-2xl font-black text-white font-mono mt-1">${nexIdChipsCost.toLocaleString(undefined, {maximumFractionDigits:0})} USD</div>
+                  <div className="text-2xl font-black text-white font-mono mt-1">${nexIdChipsCost.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD</div>
                   <p className="text-xs text-slate-400 mt-1.5 leading-normal">
                     *Gasto operativo anual. Chips nuevos no reutilizables por lote.
                   </p>
@@ -1821,7 +1823,7 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
                   ) : roiMultiplier > 2.5 ? (
                     `⚡ Tu modelo de negocio muestra una viabilidad excepcional. Con un ROI proyectado de ${roiMultiplier.toFixed(1)}x, el diferencial entre el costo de chip ($${chipCost.toFixed(2)}) y el precio de venta ($${retailPrice} USD) absorbe holgadamente el gasto operativo. Recomendamos iniciar el piloto comercial de inmediato.`
                   ) : (
-                    `📈 Con un multiplicador de retorno de ${roiMultiplier.toFixed(1)}x, la implementación de nexID se justifica plenamente. Además de prevenir pérdidas físicas, la activación de canales de interacción directa con el consumidor (estimamos ${Math.round(volume * 0.35).toLocaleString()} escaneos anuales) compensará con creces el costo del hardware a través de fidelización y recompra directa.`
+                    `📈 Con un multiplicador de retorno de ${roiMultiplier.toFixed(1)}x, la implementación de nexID se justifica plenamente. Además de prevenir pérdidas físicas, la activación de canales de interacción directa con el consumidor (estimamos ${Math.round(volume * 0.35).toLocaleString(INVESTOR_NUMBER_LOCALE)} escaneos anuales) compensará con creces el costo del hardware a través de fidelización y recompra directa.`
                   )}
                 </p>
               </div>
@@ -2718,7 +2720,7 @@ export function InvestorSnapshotClient() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 lg:py-16 space-y-12 relative">
+    <div className="investor-snapshot-shell max-w-7xl mx-auto px-4 py-8 lg:py-16 space-y-12 relative">
       
       {/* Background Neon Orbs */}
       <div className="absolute top-[10%] left-[-10%] w-[400px] h-[400px] rounded-full bg-cyan-500/10 blur-[120px] pointer-events-none" />

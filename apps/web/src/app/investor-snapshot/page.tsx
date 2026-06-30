@@ -7,7 +7,7 @@ export const metadata = {
 
 export default function InvestorSnapshotPage() {
   return (
-    <main className="min-h-screen bg-[#020617] text-slate-100 overflow-x-hidden selection:bg-cyan-500/30 selection:text-cyan-200">
+    <main className="investor-snapshot-page min-h-screen bg-[#020617] text-slate-100 overflow-x-hidden selection:bg-cyan-500/30 selection:text-cyan-200">
       <InvestorSnapshotClient />
     </main>
   );

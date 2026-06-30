@@ -1096,29 +1096,29 @@ export function HeroTrustAtlasSvg({
     >
       <defs>
         <linearGradient id={oceanId} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#06233a" />
-          <stop offset="48%" stopColor="#031321" />
-          <stop offset="100%" stopColor="#050918" />
+          <stop offset="0%" stopColor="var(--hero-atlas-ocean-a, #06233a)" />
+          <stop offset="48%" stopColor="var(--hero-atlas-ocean-b, #031321)" />
+          <stop offset="100%" stopColor="var(--hero-atlas-ocean-c, #050918)" />
         </linearGradient>
         <linearGradient id={landId} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#0f766e" stopOpacity="0.72" />
-          <stop offset="52%" stopColor="#0891b2" stopOpacity="0.46" />
-          <stop offset="100%" stopColor="#1e3a8a" stopOpacity="0.34" />
+          <stop offset="0%" stopColor="var(--hero-atlas-land-a, #0f766e)" stopOpacity="0.72" />
+          <stop offset="52%" stopColor="var(--hero-atlas-land-b, #0891b2)" stopOpacity="0.46" />
+          <stop offset="100%" stopColor="var(--hero-atlas-land-c, #1e3a8a)" stopOpacity="0.34" />
         </linearGradient>
         <linearGradient id={routeInfoId} x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.2" />
-          <stop offset="45%" stopColor="#67e8f9" stopOpacity="0.98" />
-          <stop offset="100%" stopColor="#a78bfa" stopOpacity="0.8" />
+          <stop offset="0%" stopColor="var(--hero-atlas-route-info-a, #22d3ee)" stopOpacity="0.2" />
+          <stop offset="45%" stopColor="var(--hero-atlas-route-info-b, #67e8f9)" stopOpacity="0.98" />
+          <stop offset="100%" stopColor="var(--hero-atlas-route-info-c, #a78bfa)" stopOpacity="0.8" />
         </linearGradient>
         <linearGradient id={routeSuccessId} x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#34d399" stopOpacity="0.42" />
-          <stop offset="50%" stopColor="#22d3ee" stopOpacity="1" />
-          <stop offset="100%" stopColor="#fbbf24" stopOpacity="0.88" />
+          <stop offset="0%" stopColor="var(--hero-atlas-route-success-a, #34d399)" stopOpacity="0.42" />
+          <stop offset="50%" stopColor="var(--hero-atlas-route-success-b, #22d3ee)" stopOpacity="1" />
+          <stop offset="100%" stopColor="var(--hero-atlas-route-success-c, #fbbf24)" stopOpacity="0.88" />
         </linearGradient>
         <radialGradient id={nodeGlowId} cx="50%" cy="50%" r="62%">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.98" />
-          <stop offset="36%" stopColor="#67e8f9" stopOpacity="0.72" />
-          <stop offset="100%" stopColor="#22d3ee" stopOpacity="0" />
+          <stop offset="0%" stopColor="var(--hero-atlas-node-a, #ffffff)" stopOpacity="0.98" />
+          <stop offset="36%" stopColor="var(--hero-atlas-node-b, #67e8f9)" stopOpacity="0.72" />
+          <stop offset="100%" stopColor="var(--hero-atlas-node-c, #22d3ee)" stopOpacity="0" />
         </radialGradient>
         <filter id={softGlowId} x="-40%" y="-40%" width="180%" height="180%">
           <feGaussianBlur stdDeviation="5" result="blur" />
