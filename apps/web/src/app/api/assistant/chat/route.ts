@@ -23,11 +23,19 @@ function clean(value: unknown) {
   return String(value || "").trim();
 }
 
+function normalizeQuery(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
 function detectIntent(question: string) {
-  const q = question.toLowerCase();
+  const q = normalizeQuery(question);
+  if (["offline", "sin internet", "sin senal", "no hay senal", "sin cobertura", "sin conexion", "no hay conexion", "no hay internet", "sem internet", "sem sinal", "sem conexao", "sem rede", "no internet", "without internet", "no connectivity", "no signal", "out of coverage"].some((term) => q.includes(term))) return "offline_validation";
   if (q.includes("partner") || q.includes("partnership") || q.includes("alianza") || q.includes("socio oficial") || q.includes("parceria") || q.includes("oficial")) return "partnership_risk";
-  if (q.includes("iota") || q.includes("merkle") || q.includes("audit") || q.includes("auditoria") || q.includes("auditoría") || q.includes("dpp")) return "iota_proof";
-  if (q.includes("uhf") || q.includes("iot") || q.includes("sensor") || q.includes("pallet") || q.includes("logistica") || q.includes("logística") || q.includes("industrial")) return "industrial_trace";
+  if (q.includes("iota") || q.includes("merkle") || q.includes("audit") || q.includes("auditoria") || q.includes("dpp")) return "iota_proof";
+  if (q.includes("uhf") || q.includes("iot") || q.includes("sensor") || q.includes("pallet") || q.includes("logistica") || q.includes("industrial")) return "industrial_trace";
   if (q.includes("gs1") || q.includes("digital link") || q.includes("gtin")) return "gs1_qr";
   if (q.includes("424") || q.includes("215") || q.includes("ntag") || q.includes("qr") || q.includes("sun") || q.includes("sdm")) return "tag_stack";
   if (q.includes("reseller") || q.includes("revendedor") || q.includes("revenda") || q.includes("white-label")) return "reseller";
@@ -61,7 +69,8 @@ function localAnswer(locale: string, question: string, leadSaved: boolean) {
 
   if (locale === "en") {
     const answers: Record<string, string> = {
-      tag_stack: "Short version: in nexID, 215 and 424 are NFC tag profiles, not payment codes. NTAG215 is BASIC: lower cost, fast tap UX, wristbands/events, serialized assets and low-risk QR/NFC campaigns. NTAG 424 DNA is SECURE: dynamic SUN/SDM, where each tap generates different cryptographic evidence. NTAG 424 DNA TagTamper is PREMIUM: best for bottles, seals, caps, warranty, ownership, anti-copy and open-state policy. Recommendation: use 215 for simple scale and 424 DNA/TT when the brand must prove authenticity, route, owner, warranty or resale.",
+      tag_stack: "Short version: in nexID, 215 and 424 are NFC tag profiles, not payment codes. NTAG215 is BASIC: lower cost, fast tap UX, wristbands/events, serialized assets and low-risk QR/NFC campaigns. NTAG 424 DNA is SECURE: dynamic SUN/SDM, where each tap generates fresh cryptographic evidence of physical presence. NTAG 424 DNA TagTamper adds open/closed seal evidence when the tamper loop is physically integrated. Recommendation: use 215 for simple scale; use 424 DNA/TT when the brand must prove authentic physical presence first, then let nexID policy attach route, ownership, warranty, certificate or resale workflows.",
+      offline_validation: "Yes, NFC reading works without internet, and NTAG 424 DNA can generate a fresh SUN/SDM cryptographic response offline because the chip computes it internally when powered by the phone or reader. The important limit: a normal browser still needs internet to load the passport and ask nexID for the final trust verdict. For remote areas, use deferred validation: store/retry the tap and finalize when connectivity returns. For industrial offline use, use a controlled app or reader with securely provisioned validation keys. Do not promise wallet, warranty, ownership, NFT or CRM writes as fully offline browser actions.",
       reseller: "For resellers we package hardware + encoding + SaaS + onboarding. The value story is recurring revenue, CRM leads, analytics exports, tenant dashboards and a white-label rollout model. Start with Bodega Balmec, show live taps, then quote volume and tag profile.",
       quote: "To quote cleanly I need vertical, yearly volume, target tag profile (QR/NTAG215/424 DNA/424 TT), country and whether you are buying as brand or reseller. The calculator can model enterprise client vs reseller margin in the same flow.",
       tokenization: "Tokenization is premium and optional. We keep NFC/SUN authentication as the core trust layer, then add Polygon-based ownership, certificates, warranty transfer or resale only after a fresh tap, buyer validation and tenant policy approval. MetaMask is useful for demos, but the consumer flow should not depend on wallet complexity.",
@@ -78,7 +87,8 @@ function localAnswer(locale: string, question: string, leadSaved: boolean) {
 
   if (locale === "pt-BR") {
     const answers: Record<string, string> = {
-      tag_stack: "Resumo: em nexID, 215 e 424 sao perfis de tag NFC, nao codigos de pagamento. NTAG215 e BASIC: menor custo, tap rapido, pulseiras/eventos, ativos serializados e campanhas QR/NFC de baixo risco. NTAG 424 DNA e SECURE: SUN/SDM dinamico, cada toque gera evidencia criptografica diferente. NTAG 424 DNA TagTamper e PREMIUM: ideal para garrafas, lacres, tampas, garantia, ownership, anti-copia e politica de abertura. Recomendacao: 215 para escala simples; 424 DNA/TT quando a marca precisa provar autenticidade, rota, dono, garantia ou revenda.",
+      tag_stack: "Resumo: em nexID, 215 e 424 sao perfis de tag NFC, nao codigos de pagamento. NTAG215 e BASIC: menor custo, tap rapido, pulseiras/eventos, ativos serializados e campanhas QR/NFC de baixo risco. NTAG 424 DNA e SECURE: SUN/SDM dinamico, cada toque gera evidencia criptografica fresca de presenca fisica. NTAG 424 DNA TagTamper adiciona evidencia de lacre aberto/fechado quando o circuito de tamper esta fisicamente integrado. Recomendacao: 215 para escala simples; 424 DNA/TT quando a marca precisa provar presenca fisica autentica primeiro, e depois aplicar politicas nexID para rota, titularidade, garantia, certificado ou revenda.",
+      offline_validation: "Sim, a leitura NFC funciona sem internet, e o NTAG 424 DNA pode gerar uma resposta criptografica SUN/SDM fresca offline porque o chip calcula isso internamente quando recebe energia do celular ou leitor. O limite importante: um navegador comum ainda precisa de internet para carregar o passport e pedir o veredito final ao backend nexID. Para areas remotas, use validacao diferida: guardar/retry do tap e finalizar quando a conexao voltar. Para uso industrial offline, use app ou leitor controlado com chaves de validacao provisionadas com seguranca. Nao prometa wallet, garantia, ownership, NFT ou CRM 100% offline no browser.",
       reseller: "Para revendedores, empacotamos hardware + encoding + SaaS + onboarding. A historia de valor e receita recorrente, CRM de leads, exports de analytics, dashboards por tenant e rollout white-label.",
       quote: "Para cotar bem preciso de vertical, volume anual, perfil de tag (QR/NTAG215/424 DNA/424 TT), pais e se voce compra como marca ou reseller. A calculadora modela cliente empresa vs margem reseller.",
       tokenization: "Tokenizacao e premium e opcional. Mantemos NFC/SUN como camada principal de confianca e adicionamos ownership, certificados, garantia transferivel ou revenda em Polygon somente com toque fresco, comprador validado e politica do tenant aprovada.",
@@ -94,7 +104,8 @@ function localAnswer(locale: string, question: string, leadSaved: boolean) {
   }
 
   const answers: Record<string, string> = {
-    tag_stack: "Version corta: en nexID, 215 y 424 son perfiles de tag NFC, no codigos de pago. NTAG215 es BASIC: menor costo, tap rapido, brazaletes/eventos, activos serializados y campanas QR/NFC de bajo riesgo. NTAG 424 DNA es SECURE: SUN/SDM dinamico, cada tap genera evidencia criptografica distinta. NTAG 424 DNA TagTamper es PREMIUM: ideal para botellas, sellos, capsulas, garantia, ownership, anti-copia y apertura/manipulacion. Recomendacion: 215 para escala simple; 424 DNA/TT cuando hay que probar autenticidad, ruta, dueño, garantia o reventa.",
+    tag_stack: "Version corta: en nexID, 215 y 424 son perfiles de tag NFC, no codigos de pago. NTAG215 es BASIC: menor costo, tap rapido, brazaletes/eventos, activos serializados y campanas QR/NFC de bajo riesgo. NTAG 424 DNA es SECURE: SUN/SDM dinamico, cada tap genera evidencia criptografica fresca de presencia fisica. NTAG 424 DNA TagTamper agrega evidencia de sello abierto/cerrado cuando el circuito tamper esta fisicamente integrado. Recomendacion: 215 para escala simple; 424 DNA/TT cuando hay que probar presencia fisica autentica primero, y despues aplicar politica nexID para ruta, ownership, garantia, certificado o reventa.",
+    offline_validation: "Si, NFC se puede leer sin internet, y NTAG 424 DNA puede generar una respuesta criptografica SUN/SDM fresca offline porque el chip la calcula internamente cuando recibe energia del celular o lector. El limite importante: un navegador comun igual necesita internet para cargar el pasaporte y pedirle a nexID el veredicto final. Para zonas remotas, usamos validacion diferida: guardar/reintentar el tap y finalizar cuando vuelve la conexion. Para uso industrial offline, se necesita app o lector controlado con claves de validacion provisionadas de forma segura. No prometemos wallet, garantia, ownership, NFT ni CRM 100% offline en browser.",
     reseller: "Para revendedores, el paquete es hardware + encoding + SaaS + onboarding. La historia de valor es margen inicial, MRR, CRM de leads, exportaciones, dashboard por tenant y rollout white-label. Arranca con Bodega Balmec, mostra taps en vivo y despues cotiza volumen + perfil de tag.",
     quote: "Para cotizar bien necesito vertical, volumen anual, perfil de tag (QR/NTAG215/424 DNA/424 TT), pais y si compras como marca o reseller. La calculadora separa cliente empresa vs margen reseller para que sea facil de explicar.",
     tokenization: "La tokenizacion es premium y opcional. La confianza principal queda en NFC/SUN; despues agregamos ownership, certificados, garantia transferible o reventa sobre Polygon solo con tap fresco, comprador validado y politica del tenant aprobada. MetaMask sirve para demo, pero el consumidor no deberia sufrir complejidad wallet.",
@@ -151,7 +162,7 @@ export async function POST(req: Request) {
   const forwardedBody = JSON.stringify({ ...parsed, question });
   const localIntent = detectIntent(question);
 
-  if (["tag_stack", "iota_proof", "industrial_trace", "gs1_qr", "partnership_risk"].includes(localIntent)) {
+  if (["tag_stack", "offline_validation", "iota_proof", "industrial_trace", "gs1_qr", "partnership_risk"].includes(localIntent)) {
     const leadSaved = shouldCaptureLead ? await saveLead(req, parsed, question) : false;
     return NextResponse.json({
       answer: localAnswer(locale, question, leadSaved),

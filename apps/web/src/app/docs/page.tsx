@@ -75,7 +75,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     pillarsTitle: "Tesis de producto",
     pillars: [
       "Línea BASIC (NTAG215): volumen, UX por toque, activaciones y control operativo.",
-      "Línea SECURE (NTAG 424 DNA / TagTamper): autenticidad fuerte, anti-clone, tamper y evidencia verificable.",
+      "Línea SECURE (NTAG 424 DNA): autenticidad fuerte, anti-clone y evidencia verificable. TagTamper agrega estado físico de apertura cuando el circuito está integrado.",
       "nexID OS: issuance + verification API + dashboard + webhooks + canal reseller/white-label.",
       "Arquitectura marker-agnostic: NFC + QR fallback desde el diseño para escalar adopción.",
     ],
@@ -118,7 +118,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     ],
     roadmapTitle: "Roadmap técnico (sin sobreprometer)",
     roadmapBullets: [
-      "Hoy: NTAG215 + NTAG 424 DNA/TagTamper.",
+      "Hoy: NTAG215 + NTAG 424 DNA; TagTamper cuando el estado físico del sello importa.",
       "Siguiente fase: middle tier con StatusDetect para casos de estado/sensing battery-free.",
       "Siempre: NFC + QR fallback + data model DPP-ready.",
     ],
@@ -184,7 +184,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     pillarsTitle: "Tese de produto",
     pillars: [
       "Linha BASIC (NTAG215): volume, UX por toque e operação.",
-      "Linha SECURE (NTAG 424 DNA / TagTamper): autenticidade forte e evidência verificável.",
+      "Linha SECURE (NTAG 424 DNA): autenticidade forte e evidência verificável. TagTamper adiciona estado físico de abertura quando o circuito está integrado.",
       "nexID OS: issuance + verification API + dashboard + webhooks + canal revenda.",
       "Arquitetura marker-agnostic: NFC + fallback QR para escala.",
     ],
@@ -227,7 +227,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     ],
     roadmapTitle: "Roadmap técnico",
     roadmapBullets: [
-      "Hoje: NTAG215 + NTAG 424 DNA/TagTamper.",
+      "Hoje: NTAG215 + NTAG 424 DNA; TagTamper quando o estado físico do lacre importa.",
       "Próxima fase: middle tier com StatusDetect.",
       "Sempre: NFC + fallback QR + modelo DPP-ready.",
     ],
@@ -293,7 +293,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     pillarsTitle: "Product thesis",
     pillars: [
       "BASIC line (NTAG215): volume UX and operational control.",
-      "SECURE line (NTAG 424 DNA / TagTamper): strong authenticity and tamper-aware trust.",
+      "SECURE line (NTAG 424 DNA): strong authenticity and verifiable freshness. TagTamper adds physical open-state evidence when the loop is integrated.",
       "nexID OS: issuance + verification API + dashboard + webhooks + reseller channel.",
       "Marker-agnostic architecture: NFC + QR fallback from day one.",
     ],
@@ -336,7 +336,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     ],
     roadmapTitle: "Technical roadmap",
     roadmapBullets: [
-      "Now: NTAG215 + NTAG 424 DNA/TagTamper.",
+      "Now: NTAG215 + NTAG 424 DNA; TagTamper where seal state matters.",
       "Next: middle tier with StatusDetect capabilities.",
       "Always: NFC + QR fallback + DPP-ready data model.",
     ],
@@ -394,38 +394,44 @@ export default async function DocsPage() {
   const trustLayerFaq = locale === "en"
     ? {
       title: "Enterprise trust FAQ",
-      docsTitle: "Deep technical docs in this repo",
-      docs: ["blockchain-architecture.md", "polygon-ownership-layer.md", "iota-proof-audit-layer.md", "enterprise-trust-faq.md", "dpp-event-model.md"],
+      docsTitle: "Internal technical notes for due diligence",
+      docsNote: "Available to qualified buyers and partners; public claims stay conservative until releases and agreements are signed.",
+      docs: ["blockchain-architecture.md", "offline-nfc-validation.md", "polygon-ownership-layer.md", "iota-proof-audit-layer.md", "enterprise-trust-faq.md", "dpp-event-model.md"],
       items: [
         ["Official partnerships?", "No. Polygon and IOTA are technologies the architecture can integrate with; do not claim an official partnership unless there is a signed public agreement."],
         ["Does every tap go on-chain?", "No. Taps are validated server-side. Chains are used only for approved ownership, certificates, claims, transfers or batched proof anchors."],
         ["Is IOTA zero-fee here?", "No. We position IOTA as an optional proof/audit layer for hashes, Merkle roots, DPP and logistics evidence, without zero-fee claims."],
         ["Do customers need a wallet?", "No. Consumer UX stays mobile-first. Custodial or wallet flows are optional and policy-driven."],
+        ["Does NTAG 424 DNA work offline?", "The chip can be read and can generate a fresh SUN/SDM response without internet. A normal browser still needs connectivity for the final backend trust verdict; industrial offline validation needs a controlled app or reader with secure keys."],
         ["Is private data stored on-chain?", "No. Private data and raw UIDs stay off-chain; proofs use hashes, salts, policy checks and tenant-scoped records."],
       ],
     }
     : locale === "pt-BR"
     ? {
       title: "FAQ enterprise de confianca",
-      docsTitle: "Docs tecnicos profundos neste repo",
-      docs: ["blockchain-architecture.md", "polygon-ownership-layer.md", "iota-proof-audit-layer.md", "enterprise-trust-faq.md", "dpp-event-model.md"],
+      docsTitle: "Notas tecnicas internas para due diligence",
+      docsNote: "Disponiveis para compradores e parceiros qualificados; claims publicos seguem conservadores ate releases e acordos assinados.",
+      docs: ["blockchain-architecture.md", "offline-nfc-validation.md", "polygon-ownership-layer.md", "iota-proof-audit-layer.md", "enterprise-trust-faq.md", "dpp-event-model.md"],
       items: [
         ["Parcerias oficiais?", "Nao. Polygon e IOTA sao tecnologias integraveis; nao declarar parceria oficial sem acordo publico assinado."],
         ["Todo toque vai on-chain?", "Nao. Taps sao validados server-side. Chains entram apenas para ownership, certificados, claims, transferencias ou ancoras de prova aprovadas."],
         ["IOTA e zero-fee aqui?", "Nao. IOTA e camada opcional de prova/auditoria para hashes, Merkle roots, DPP e logistica, sem claims de zero-fee."],
         ["Cliente precisa de wallet?", "Nao. A UX segue mobile-first. Wallet ou custodia sao opcionais e governadas por politica."],
+        ["NTAG 424 DNA funciona offline?", "O chip pode ser lido e gerar uma resposta SUN/SDM fresca sem internet. Um browser comum ainda precisa de conexao para o veredito final do backend; validacao industrial offline exige app ou leitor controlado com chaves seguras."],
         ["Dados privados ficam on-chain?", "Nao. Dados privados e UIDs crus ficam off-chain; provas usam hashes, salts, regras e registros por tenant."],
       ],
     }
     : {
       title: "FAQ enterprise de confianza",
-      docsTitle: "Docs tecnicos profundos en este repo",
-      docs: ["blockchain-architecture.md", "polygon-ownership-layer.md", "iota-proof-audit-layer.md", "enterprise-trust-faq.md", "dpp-event-model.md"],
+      docsTitle: "Notas tecnicas internas para due diligence",
+      docsNote: "Disponibles para compradores y partners calificados; los claims publicos se mantienen conservadores hasta release y acuerdos firmados.",
+      docs: ["blockchain-architecture.md", "offline-nfc-validation.md", "polygon-ownership-layer.md", "iota-proof-audit-layer.md", "enterprise-trust-faq.md", "dpp-event-model.md"],
       items: [
         ["Alianzas oficiales?", "No. Polygon e IOTA son tecnologias integrables; no se debe declarar partnership oficial sin acuerdo publico firmado."],
         ["Cada tap va on-chain?", "No. Los taps se validan server-side. Las cadenas entran solo para ownership, certificados, claims, transferencias o anclas de prueba aprobadas."],
         ["IOTA es zero-fee aca?", "No. IOTA se posiciona como capa opcional de prueba/auditoria para hashes, Merkle roots, DPP y logistica, sin claims de zero-fee."],
         ["El cliente necesita wallet?", "No. La UX sigue mobile-first. Wallet o custodia son opcionales y dependen de la politica del tenant."],
+        ["NTAG 424 DNA funciona offline?", "El chip se puede leer y puede generar una respuesta SUN/SDM fresca sin internet. Un navegador comun igual necesita conexion para el veredicto final del backend; la validacion industrial offline exige app o lector controlado con claves seguras."],
         ["Datos privados quedan on-chain?", "No. Datos privados y UIDs crudos quedan off-chain; las pruebas usan hashes, salts, reglas y registros por tenant."],
       ],
     };
@@ -528,7 +534,7 @@ export default async function DocsPage() {
             </span>
             <h3 className="mt-4 text-xl font-bold text-white">nexID SDK & APIs</h3>
             <p className="mt-3 text-sm leading-relaxed text-slate-300">
-              Ofrecemos bibliotecas listas para integrar en tu e-commerce (Shopify, WooCommerce, Next.js), aplicaciones móviles (React Native, iOS, Android) y cajas registradoras/POS.
+              Ofrecemos un SDK base, contratos API y webhooks para integraciones propias. Adaptadores para Shopify, WooCommerce, mobile o POS se definen por proyecto hasta que estén publicados como paquetes versionados.
             </p>
             <div className="mt-5 grid gap-3 text-xs text-slate-200">
               <div className="rounded-xl border border-white/5 bg-slate-900/60 p-3">
@@ -541,12 +547,12 @@ export default async function DocsPage() {
               </div>
               <div className="rounded-xl border border-white/5 bg-slate-900/60 p-3">
                 <strong className="text-cyan-200 block">Webhooks en Tiempo Real</strong>
-                Notificación instantánea de toques, cambios de estado del sello y geolocalización hacia tus sistemas.
+                Entrega de eventos de toques, cambios de estado del sello y señales de ubicación consentidas hacia tus sistemas.
               </div>
             </div>
           </div>
           <div className="mt-6 pt-4 border-t border-white/5 flex items-center justify-between">
-            <span className="text-[11px] font-mono text-slate-400">Versión estable v1.4.2</span>
+            <span className="text-[11px] font-mono text-slate-400">SDK base + contratos API</span>
             <Link href="/sdk" className="inline-flex items-center gap-1.5 rounded-xl bg-cyan-400 px-4 py-2 text-xs font-bold text-slate-950 transition hover:bg-cyan-300">
               Ir a la sección SDK completa
               <ArrowRight className="h-3.5 w-3.5" />
@@ -587,6 +593,7 @@ export default async function DocsPage() {
           </div>
           <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
             <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-300">{trustLayerFaq.docsTitle}</p>
+            <p className="mt-2 text-xs leading-5 text-slate-400">{trustLayerFaq.docsNote}</p>
             <div className="mt-3 flex flex-wrap gap-2">
               {trustLayerFaq.docs.map((item) => (
                 <span key={item} className="rounded-full border border-white/10 bg-slate-950/55 px-3 py-1.5 text-[11px] font-semibold text-slate-200">{item}</span>

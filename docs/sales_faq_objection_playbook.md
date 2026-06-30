@@ -33,17 +33,17 @@ Esta es la pregunta más frecuente. La respuesta corta es: **El QR es un cartel 
 ### Objeción B: *"Me va a ralentizar la línea de embotellado y etiquetado"*
 * **La Realidad:** Los chips NFC vienen integrados en rollos autoadhesivos estándar (inlays) que las máquinas etiquetadoras industriales pueden aplicar de manera automática en el mismo proceso de etiquetado frontal, contra-etiquetado o debajo de la cápsula.
 * **Respuesta:**
-  > *"No se preocupe por la parte operativa. Los chips vienen en formato autoadhesivo (rollos industriales) que se integran directamente en el reverso de su contraetiqueta o bajo el sello de la cápsula de forma automatizada. No hay que detener la línea ni aplicar procesos manuales; sus máquinas etiquetadoras actuales pueden colocarlos sin perder velocidad de producción. Nosotros le proveemos el rollo pre-programado y encriptado."*
+  > *"La parte operativa se valida con una prueba de línea, no con promesas genéricas. Los chips vienen en formato autoadhesivo industrial y normalmente se integran con aplicadores/labelers roll-fed en contraetiqueta, etiqueta frontal o bajo cápsula. La velocidad real depende del formato, ubicación del inlay, radio de lectura y QA de cada línea. Nosotros entregamos el rollo preprogramado y el spec de aplicación para reducir fricción antes de escalar."*
 
 ### Objeción C: *"El público que compra mis vinos es gente grande, no van a usar el celular para esto"*
 * **La Realidad:** El consumidor de vinos de alta gama valora el ritual y el estatus. NFC no requiere descargar aplicaciones y la tecnología está tan difundida (por los pagos sin contacto como Apple Pay / Google Pay) que su uso es intuitivo.
 * **Respuesta:**
   > *"Es un excelente punto. Por eso diseñamos la plataforma para que **no requiera descargar ninguna aplicación**. El comprador solo tiene que acercar el celular y la pantalla se enciende sola con su botella digital en 3D. Hoy en día, la gente mayor ya paga el supermercado o el taxi apoyando el celular en el posnet; el gesto es exactamente el mismo. Además, para los coleccionistas de vinos finos, el hecho de tener su 'cava digital' e influir en votaciones de la bodega mediante la gobernanza les otorga un estatus exclusivo que les encanta presumir."*
 
-### Objeción D: *"¿Qué pasa en las bodegas o restaurantes subterráneos donde no hay señal de internet?"*
-* **La Realidad:** El teléfono puede detectar el chip sin app, pero la validación SUN, el claim y cualquier tokenización requieren backend. Si no hay señal, la experiencia debe degradar claro y validar cuando vuelva la conectividad.
+### Objeción D: *"¿Qué pasa en bodegas, restaurantes subterráneos o zonas rurales sin internet?"*
+* **La Realidad:** NFC se puede leer sin internet. NTAG 424 DNA puede generar una respuesta SUN/SDM fresca sin internet porque el chip calcula la prueba internamente cuando recibe energía del celular o lector. Pero en el flujo web normal, el veredicto de confianza, claim, garantía, CRM y tokenización se completan cuando el backend vuelve a estar disponible. Para verificación instantánea offline se necesita app/lector controlado con reglas y claves provisionadas de forma segura.
 * **Respuesta:**
-  > *"Nuestra tecnología contempla este escenario, pero sin vender magia. Si el cliente está en una cava sin señal, el celular puede detectar el chip y abrir o reintentar la experiencia cuando vuelva internet. La validación criptográfica ocurre en el backend; recién después, si el tap es fresco y la política lo permite, se habilitan garantía, claim o certificado Polygon. No mandamos cada tap a blockchain ni inventamos propiedad offline."*
+  > *"Si el cliente está en una cava sin señal, el celular puede leer el NFC y el NTAG 424 DNA puede generar su código criptográfico fresco. Lo correcto es hablar de validación diferida: el tap queda guardado o se reintenta, y cuando vuelve internet el backend valida SUN/SDM, replay, tamper, lote y política. En operaciones industriales también podemos usar lectores o apps cerradas que validan localmente con claves derivadas y seguras. Lo que no prometemos es ownership, NFT o garantía final 100% offline en un navegador común."*
 
 ---
 
@@ -63,7 +63,7 @@ Esta es la pregunta más frecuente. La respuesta corta es: **El QR es un cartel 
 
 ### Pregunta C: *"¿Cómo escalan el modelo de negocio? (SaaS vs. Hardware)"*
 * **Respuesta:**
-  > *"Nuestro modelo de negocio es híbrido y sumamente escalable. Por un lado, vendemos los tags físicos nexID programados (ingreso por volumen). Por el otro, operamos bajo un modelo SaaS recurrente mensual para las bodegas, cobrándoles por el uso del CRM, el nexID Cognitive AI Engine, la telemetría de geolocalización antifraude y el portal de gobernanza VIP. A medida que la bodega embotella más cosechas con nuestro chip, su dependencia y volumen de datos en nuestro CRM crece, asegurando retención a largo plazo y facturación SaaS recurrente."*
+  > *"El modelo es híbrido: margen inicial por tags, encoding y onboarding; y SaaS recurrente por CRM/analytics, reglas de riesgo, webhooks, reportes, portal del consumidor y automatizaciones. El hardware abre la puerta, pero la retención viene de operar batches, garantías, campañas, alertas y datos propios por cosecha o línea de producto. Esa es la diferencia entre vender chips y vender infraestructura de confianza."*
 
 ---
 
@@ -71,11 +71,11 @@ Esta es la pregunta más frecuente. La respuesta corta es: **El QR es un cartel 
 
 ### Pregunta A: *"¿Tengo que descargar una aplicación para usar nexID?"*
 * **Respuesta:**
-  > *"No. La tecnología NFC nexID es 100% nativa. Con solo apoyar la parte trasera del celular en la cápsula de la botella, se abrirá automáticamente una pestaña segura del navegador mostrándote el certificado de autenticidad, la cava digital y el sommelier virtual. Sin descargas, sin registros pesados."*
+  > *"No hace falta descargar una app en teléfonos NFC compatibles. El usuario acerca el celular al punto marcado y, si el teléfono está desbloqueado, NFC está habilitado y hay conectividad para cargar el pasaporte, se abre una experiencia web segura con autenticidad, origen, garantía y beneficios. Sin app obligatoria ni registros pesados."*
 
 ### Pregunta B: *"¿Esta etiqueta inteligente consume batería o emite radiación?"*
 * **Respuesta:**
-  > *"Absolutamente no. El chip es pasivo (no tiene batería propia). Solo se enciende durante una milésima de segundo cuando recibe la energía electromagnética que emite el celular al apoyarse. Es totalmente inocuo y seguro para el vino."*
+  > *"No tiene batería propia ni emite señal activa. El chip es pasivo: se energiza solo cuando el celular o lector genera el campo NFC durante el tap. Es el mismo principio de etiquetas NFC pasivas usadas en retail, credenciales y packaging."*
 
 ### Pregunta C: *"¿Mi información personal y de ubicación está protegida?"*
 * **Respuesta:**
