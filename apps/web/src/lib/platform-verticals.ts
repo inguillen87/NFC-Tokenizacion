@@ -60,6 +60,7 @@ export type PlatformVertical = {
   bodyEn: string;
   bodyPt: string;
   image: string;
+  imageLight: string;
   tags: string[];
   metric: string;
   icon: PlatformIconKey;
@@ -78,6 +79,7 @@ export const platformVerticals: PlatformVertical[] = [
     bodyEn: "Seeds, crop protection, biologicals and food with physical authenticity, channel control, responsible-use support and field data for CRM, ERP or Cropwise.",
     bodyPt: "Sementes, defensivos, biológicos e alimentos com autenticidade física, canal seguro, suporte de uso responsável e dados de campo para CRM, ERP ou Cropwise.",
     image: "/sdk/verticals/agro-nfc-qr-traceability.webp",
+    imageLight: "/sdk/verticals/light/premium-agro-light.webp",
     tags: ["424 DNA", "Tamper", "Webhook"],
     metric: "Canal + soporte",
     icon: "sprout",
@@ -94,6 +96,7 @@ export const platformVerticals: PlatformVertical[] = [
     bodyEn: "Wristbands, tickets, cashless, VIP zones, consumption and live capacity with replay blocking.",
     bodyPt: "Pulseiras, ingressos, cashless, zonas VIP, consumos e capacidade ao vivo com bloqueio de copia.",
     image: "/sdk/verticals/events-nfc-qr-access.webp",
+    imageLight: "/sdk/verticals/light/premium-events-light.webp",
     tags: ["NFC", "QR", "POS"],
     metric: "Tap + acceso",
     icon: "ticket",
@@ -110,6 +113,7 @@ export const platformVerticals: PlatformVertical[] = [
     bodyEn: "Medicine authenticity, digital leaflet, unit recall, cold chain and batch audit trail.",
     bodyPt: "Autenticidade de medicamentos, bula digital, recall por unidade, cadeia fria e auditoria de lote.",
     image: "/sdk/pharma-authentication-pack.webp",
+    imageLight: "/sdk/verticals/light/premium-pharma-agro-light.webp",
     tags: ["QR", "NFC", "Recall"],
     metric: "Recall listo",
     icon: "pill",
@@ -126,6 +130,7 @@ export const platformVerticals: PlatformVertical[] = [
     bodyEn: "Perfume, skincare, refills, NFC/QR seals and tamper protection against refill fraud.",
     bodyPt: "Perfumes, skincare, recargas, selo NFC/QR e tamper contra refill e mercado cinza.",
     image: "/sdk/verticals/cosmetics-nfc-qr-tamper.webp",
+    imageLight: "/sdk/verticals/light/premium-beauty-light.webp",
     tags: ["NFC", "QR", "Tamper"],
     metric: "Tamper + refill",
     icon: "sparkles",
@@ -142,6 +147,7 @@ export const platformVerticals: PlatformVertical[] = [
     bodyEn: "Premium bottles with NTAG 424 DNA TT, opening tail, passport, ownership and export control.",
     bodyPt: "Garrafas premium com NTAG 424 DNA TT, tail de abertura, passport, ownership e exportacao.",
     image: "/sdk/verticals/wine-spirits-424-tt.png",
+    imageLight: "/sdk/verticals/light/premium-wine-light.webp",
     tags: ["424 DNA", "Tail", "SUN"],
     metric: "424 TT",
     icon: "shield",
@@ -158,6 +164,7 @@ export const platformVerticals: PlatformVertical[] = [
     bodyEn: "Original products, warranty, resale, exclusive experiences and premium loyalty.",
     bodyPt: "Produto original, garantia, revenda, experiencias exclusivas e fidelizacao premium.",
     image: "/sdk/verticals/luxury-nfc-qr-tamper.webp",
+    imageLight: "/sdk/verticals/light/premium-beauty-light.webp",
     tags: ["NFC", "QR", "Cert"],
     metric: "Ownership",
     icon: "gem",
@@ -174,6 +181,7 @@ export const platformVerticals: PlatformVertical[] = [
     bodyEn: "Verified drop authenticity, resale control, digital ownership certificate and exclusive club benefits.",
     bodyPt: "Autenticacao de drop verificado, controle de revenda, certificado de propriedade digital e beneficios de clube.",
     image: "/sdk/verticals/sneaker-nfc-qr-tamper.png",
+    imageLight: "/sdk/verticals/light/premium-sneaker-light.webp",
     tags: ["424 DNA", "Drop", "Cert"],
     metric: "Drop verificado",
     icon: "sneaker",
@@ -190,6 +198,7 @@ export const platformVerticals: PlatformVertical[] = [
     bodyEn: "Beverage and soda bottles with NFC/QR tags and returns, recycling or origin control.",
     bodyPt: "Garrafas de bebidas e refrigerantes com tags NFC/QR e controle de retorno, reciclagem ou procedencia.",
     image: "/sdk/verticals/beverages-bottle-nfc-qr.png",
+    imageLight: "/sdk/verticals/light/premium-wine-light.webp",
     tags: ["QR", "NFC", "Retorno"],
     metric: "Retorno + reciclado",
     icon: "bottle",
@@ -206,6 +215,7 @@ export const platformVerticals: PlatformVertical[] = [
     bodyEn: "Pallets, cartons, UHF/RFID, QR, NFC and sensors for auditable route and temperature control.",
     bodyPt: "Pallets, caixas, UHF/RFID, QR, NFC e sensores para rotas e temperatura auditaveis.",
     image: "/sdk/verticals/logistics-uhf-nfc-qr.webp",
+    imageLight: "/sdk/verticals/light/premium-logistics-light.webp",
     tags: ["UHF", "NFC", "Temp"],
     metric: "UHF + IoT",
     icon: "truck",
@@ -222,6 +232,7 @@ export const platformVerticals: PlatformVertical[] = [
     bodyEn: "Serialization, ownership, warranty, post-sale support and anti-fraud claims per unit.",
     bodyPt: "Serializacao, ownership, garantia, suporte pos-venda e reclamos antifraude por unidade.",
     image: "/sdk/verticals/electronics-warranty-nfc-qr.webp",
+    imageLight: "/sdk/verticals/light/premium-electronics-light.webp",
     tags: ["QR", "NFC", "DPP"],
     metric: "Warranty",
     icon: "cpu",
@@ -238,6 +249,7 @@ export const platformVerticals: PlatformVertical[] = [
     bodyEn: "Digital product passport, origin, composition, connected care and verified resale.",
     bodyPt: "Passaporte digital de produto, origem, composicao, cuidado conectado e revenda verificavel.",
     image: "/sdk/verticals/textile-dpp-nfc-qr.webp",
+    imageLight: "/sdk/verticals/light/premium-textile-light.webp",
     tags: ["QR", "NFC", "DPP"],
     metric: "EU DPP",
     icon: "shirt",

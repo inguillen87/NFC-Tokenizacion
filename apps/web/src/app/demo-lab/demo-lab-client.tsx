@@ -29,7 +29,7 @@ type Vertical =
   | "textile";
 type SimulationMode = "valid" | "tamper" | "replay";
 type DemoAction = "origin" | "tap" | "join" | "warranty" | "tokenize" | "report";
-type DemoModalView = "mobile" | "nft" | "claim" | null;
+type DemoModalView = "product" | "mobile" | "nft" | "claim" | null;
 type DemoScenarioTone = "origin" | "ok" | "risk" | "open";
 type DemoTrustScenarioKey = "qr-gs1" | "nfc-424" | "offline-verifier" | "polygon-ownership" | "iota-proof" | "dual-proof" | "sensor-evidence" | "authorized-network";
 type DemoScenario = {
@@ -161,21 +161,21 @@ function verticalTo3DIndustry(vertical: Vertical): string {
   return "bodegas";
 }
 
-const demoLabRealAssets: Record<Vertical, { imageUrl: string; credit: string }> = {
-  wine: { imageUrl: "/sdk/verticals/wine-spirits-424-tt.png", credit: "nexID generated asset" },
-  seeds: { imageUrl: "/sdk/verticals/agro-nfc-qr-traceability.webp", credit: "nexID generated asset" },
-  pharma: { imageUrl: "/sdk/pharma-authentication-pack.webp", credit: "nexID generated asset" },
-  creamJar: { imageUrl: "/sdk/verticals/cosmetics-nfc-qr-tamper.webp", credit: "nexID generated asset" },
-  perfume: { imageUrl: "/sdk/verticals/cosmetics-nfc-qr-tamper.webp", credit: "nexID generated asset" },
-  creamTube: { imageUrl: "/sdk/verticals/cosmetics-nfc-qr-tamper.webp", credit: "nexID generated asset" },
-  bracelet: { imageUrl: "/sdk/verticals/events-nfc-qr-access.webp", credit: "nexID generated asset" },
-  ticket: { imageUrl: "/sdk/verticals/events-nfc-qr-access.webp", credit: "nexID generated asset" },
-  sneaker: { imageUrl: "/sdk/verticals/sneaker-nfc-qr-tamper.png", credit: "nexID generated asset" },
-  luxury: { imageUrl: "/sdk/verticals/luxury-nfc-qr-tamper.webp", credit: "nexID generated asset" },
-  bottle: { imageUrl: "/sdk/verticals/beverages-bottle-nfc-qr.png", credit: "nexID generated asset" },
-  logistics: { imageUrl: "/sdk/verticals/logistics-uhf-nfc-qr.webp", credit: "nexID generated asset" },
-  electronics: { imageUrl: "/sdk/verticals/electronics-warranty-nfc-qr.webp", credit: "nexID generated asset" },
-  textile: { imageUrl: "/sdk/verticals/textile-dpp-nfc-qr.webp", credit: "nexID generated asset" },
+const demoLabRealAssets: Record<Vertical, { imageUrl: string; imageLightUrl: string; credit: string }> = {
+  wine: { imageUrl: "/sdk/verticals/wine-spirits-424-tt.png", imageLightUrl: "/sdk/verticals/light/premium-wine-light.webp", credit: "nexID generated asset" },
+  seeds: { imageUrl: "/sdk/verticals/agro-nfc-qr-traceability.webp", imageLightUrl: "/sdk/verticals/light/premium-agro-light.webp", credit: "nexID generated asset" },
+  pharma: { imageUrl: "/sdk/pharma-authentication-pack.webp", imageLightUrl: "/sdk/verticals/light/premium-pharma-agro-light.webp", credit: "nexID generated asset" },
+  creamJar: { imageUrl: "/sdk/verticals/cosmetics-nfc-qr-tamper.webp", imageLightUrl: "/sdk/verticals/light/premium-beauty-light.webp", credit: "nexID generated asset" },
+  perfume: { imageUrl: "/sdk/verticals/cosmetics-nfc-qr-tamper.webp", imageLightUrl: "/sdk/verticals/light/premium-beauty-light.webp", credit: "nexID generated asset" },
+  creamTube: { imageUrl: "/sdk/verticals/cosmetics-nfc-qr-tamper.webp", imageLightUrl: "/sdk/verticals/light/premium-beauty-light.webp", credit: "nexID generated asset" },
+  bracelet: { imageUrl: "/sdk/verticals/events-nfc-qr-access.webp", imageLightUrl: "/sdk/verticals/light/premium-events-light.webp", credit: "nexID generated asset" },
+  ticket: { imageUrl: "/sdk/verticals/events-nfc-qr-access.webp", imageLightUrl: "/sdk/verticals/light/premium-events-light.webp", credit: "nexID generated asset" },
+  sneaker: { imageUrl: "/sdk/verticals/sneaker-nfc-qr-tamper.png", imageLightUrl: "/sdk/verticals/light/premium-sneaker-light.webp", credit: "nexID generated asset" },
+  luxury: { imageUrl: "/sdk/verticals/luxury-nfc-qr-tamper.webp", imageLightUrl: "/sdk/verticals/light/premium-beauty-light.webp", credit: "nexID generated asset" },
+  bottle: { imageUrl: "/sdk/verticals/beverages-bottle-nfc-qr.png", imageLightUrl: "/sdk/verticals/light/premium-wine-light.webp", credit: "nexID generated asset" },
+  logistics: { imageUrl: "/sdk/verticals/logistics-uhf-nfc-qr.webp", imageLightUrl: "/sdk/verticals/light/premium-logistics-light.webp", credit: "nexID generated asset" },
+  electronics: { imageUrl: "/sdk/verticals/electronics-warranty-nfc-qr.webp", imageLightUrl: "/sdk/verticals/light/premium-electronics-light.webp", credit: "nexID generated asset" },
+  textile: { imageUrl: "/sdk/verticals/textile-dpp-nfc-qr.webp", imageLightUrl: "/sdk/verticals/light/premium-textile-light.webp", credit: "nexID generated asset" },
 };
 
 type DemoEvent = {
@@ -329,12 +329,12 @@ const copy: Record<AppLocale, {
       textile: { label: "Textil DPP", profile: "QR + NFC DPP", product: "Etiqueta pasaporte textil", visual: "textile-dpp-demo", proof: ["Origen y composicion", "Cuidado conectado", "Sustentabilidad", "Reventa verificable"] },
     },
     controls: {
-      narrative: "Narrativa por audiencia", cinematicStart: "Iniciar recorrido", cinematicStop: "Pausar recorrido", product: "Producto físico", mobile: "Resultado en celular", feed: "Registro de eventos", valid: "Registrar toque válido en Zúrich", tamper: "Romper sello / descorchar", replay: "Simular copia duplicada", refresh: "Actualizar", marketplace: "Portal + tienda", mapTitle: "Mapa vivo: origen del producto vs toque del cliente", mapSubtitle: "Línea animada, distancia y enlaces de ubicación para construir confianza.", realFeed: "Registro público real conectado.", adminKey: "Modo lectura/prueba: la escritura privada de lecturas corre en entorno seguro.", noGeo: "Todavía no hay eventos geolocalizados disponibles desde la API.", origin: "Origen", currentTap: "Toque actual", distance: "Distancia", openOrigin: "Abrir origen", openTap: "Abrir toque", joinClub: "Unirme al club", warranty: "Activar garantía", tokenize: "Crear NFT", syncing: "Conectando con Bodega Balmec...", synced: "Bodega Balmec sincronizada con servidor.", unavailable: "Bodega Balmec no disponible.", sendingScan: "Enviando lectura", registeredScan: "Lectura registrada en Bodega Balmec.", failedScan: "No se pudo simular el toque.", configs: [
+      narrative: "Narrativa por audiencia", cinematicStart: "Iniciar recorrido", cinematicStop: "Pausar recorrido", product: "Producto físico", mobile: "Resultado en celular", feed: "Registro de eventos", valid: "Registrar toque válido en Zúrich", tamper: "Romper sello / descorchar", replay: "Simular copia duplicada", refresh: "Actualizar", marketplace: "Portal + tienda", mapTitle: "Mapa vivo: origen del producto vs toque del cliente", mapSubtitle: "Línea animada, distancia y enlaces de ubicación para construir confianza.", realFeed: "Registro público real conectado.", adminKey: "Modo lectura/prueba: la escritura privada de lecturas corre en entorno seguro.", noGeo: "Todavía no hay eventos públicos con ubicación disponibles desde la API.", origin: "Origen", currentTap: "Toque actual", distance: "Distancia", openOrigin: "Abrir origen", openTap: "Abrir toque", joinClub: "Unirme al club", warranty: "Activar garantía", tokenize: "Crear NFT", syncing: "Conectando con Bodega Balmec...", synced: "Bodega Balmec sincronizada con servidor.", unavailable: "Bodega Balmec no disponible.", sendingScan: "Enviando lectura", registeredScan: "Lectura registrada en Bodega Balmec.", failedScan: "No se pudo simular el toque.", configs: [
         { title: "QR / GS1 Digital Link", body: "Entrada economica para contenido, lote, retiro de producto y trazabilidad GS1. Ideal como respaldo visible; cualquiera puede copiarlo, por eso no habilita reclamo de dueño por si solo." },
         { title: "NTAG213 / NTAG215", body: "UID físico serializado para entradas, pulseras, garantías simples y activaciones masivas. Sube la fricción contra capturas de pantalla y permite reglas por lote desde el servidor." },
         { title: "NTAG 424 DNA", body: "Cada toque genera SUN dinamico con CMAC para detectar copias, enlaces reutilizados y lecturas sospechosas. Es la capa recomendada para productos de valor medio/alto." },
         { title: "Offline Verifier", body: "Android primero, iOS donde Core NFC/ISO 7816 lo permita, o lector dedicado para campo sin senal: valida SUN/SDM localmente con claves derivadas y mantiene veredicto provisional hasta sync backend." },
-        { title: "Polygon Ownership Demo", body: "Activa ownership, certificado o token premium solo despues de tap fresco, comprador validado y politica aprobada. Polygon no reemplaza la validacion SUN ni recibe cada tap." },
+        { title: "Polygon Ownership Demo", body: "Activa ownership, certificado o token premium solo despues de tap fresco, comprador validado y politica aprobada. Polygon no reemplaza la validacion SUN ni recibe taps individuales." },
         { title: "IOTA Proof Layer Demo", body: "Muestra auditoria opcional para DPP, lotes y logistica: se anclan hashes o Merkle roots, no datos privados ni lecturas individuales." },
         { title: "Dual Proof DPP", body: "Combina QR/GS1, NFC 424, Polygon para ownership e IOTA para evidencia industrial cuando el cliente necesita compliance avanzado." },
         { title: "NTAG 424 DNA TT + tokenización", body: "Suma estado físico del sello: cerrado, abierto o manipulado. Permite pasaporte, garantía, tienda y token Polygon solo cuando la política de compra/reclamo lo habilita." },
@@ -379,7 +379,7 @@ const copy: Record<AppLocale, {
       electronics: { label: "Eletronica", profile: "QR + NFC garantia", product: "Dispositivo serializado", visual: "electronics-demo", proof: ["Serial verificavel", "Garantia por unidade", "Suporte pos-venda", "Reclamo antifraude"] },
       textile: { label: "Textil DPP", profile: "QR + NFC DPP", product: "Etiqueta passport textil", visual: "textile-dpp-demo", proof: ["Origem e composicao", "Cuidado conectado", "Sustentabilidade", "Revenda verificavel"] },
     },
-    controls: { narrative: "Narrativa por audiencia", cinematicStart: "Iniciar cinematic", cinematicStop: "Pausar cinematic", product: "Produto fisico", mobile: "Resultado mobile", feed: "Command feed", valid: "Registrar toque valido em Zurique", tamper: "Abrir lacre / rolha", replay: "Simular replay duplicado", refresh: "Atualizar", marketplace: "Portal + marketplace", mapTitle: "Mapa vivo: origem do produto vs toque do cliente", mapSubtitle: "Linha animada, distancia e links de localizacao para construir confianca.", realFeed: "Feed publico real conectado.", adminKey: "Modo leitura/validacao: a escrita privada de scans roda em ambiente seguro.", noGeo: "Ainda nao ha eventos geolocalizados na API.", origin: "Origem", currentTap: "Toque atual", distance: "Distancia", openOrigin: "Abrir origem", openTap: "Abrir toque", joinClub: "Entrar no clube", warranty: "Ativar garantia", tokenize: "Tokenizar premium", syncing: "Conectando ao Bodega Balmec...", synced: "Bodega Balmec sincronizada com backend.", unavailable: "Bodega Balmec indisponivel.", sendingScan: "Enviando scan", registeredScan: "Scan registrado no Bodega Balmec.", failedScan: "Nao foi possivel simular o toque.", configs: [
+    controls: { narrative: "Narrativa por audiencia", cinematicStart: "Iniciar cinematic", cinematicStop: "Pausar cinematic", product: "Produto fisico", mobile: "Resultado mobile", feed: "Command feed", valid: "Registrar toque valido em Zurique", tamper: "Abrir lacre / rolha", replay: "Simular replay duplicado", refresh: "Atualizar", marketplace: "Portal + marketplace", mapTitle: "Mapa vivo: origem do produto vs toque do cliente", mapSubtitle: "Linha animada, distancia e links de localizacao para construir confianca.", realFeed: "Feed publico real conectado.", adminKey: "Modo leitura/validacao: a escrita privada de scans roda em ambiente seguro.", noGeo: "Ainda nao ha eventos publicos com localizacao na API.", origin: "Origem", currentTap: "Toque atual", distance: "Distancia", openOrigin: "Abrir origem", openTap: "Abrir toque", joinClub: "Entrar no clube", warranty: "Ativar garantia", tokenize: "Tokenizar premium", syncing: "Conectando ao Bodega Balmec...", synced: "Bodega Balmec sincronizada com backend.", unavailable: "Bodega Balmec indisponivel.", sendingScan: "Enviando scan", registeredScan: "Scan registrado no Bodega Balmec.", failedScan: "Nao foi possivel simular o toque.", configs: [
       { title: "QR / GS1 Digital Link", body: "Entrada economica para conteudo, lote, recall e rastreabilidade GS1. Otimo fallback visivel; pode ser copiado, entao nao libera propriedade premium sozinho." },
       { title: "NTAG213 / NTAG215", body: "UID fisico serializado para tickets, pulseiras, garantias simples e ativacoes massivas. Permite regras server-side por lote." },
       { title: "NTAG 424 DNA", body: "Cada toque gera SUN dinamico com CMAC para detectar replay, links reutilizados e copias. Recomendado para valor medio/alto." },
@@ -434,7 +434,7 @@ const copy: Record<AppLocale, {
       { title: "NTAG213 / NTAG215", body: "Serialized physical UID for tickets, wristbands, simple warranty and mass activations. Adds server-side rules by batch." },
       { title: "NTAG 424 DNA", body: "Every tap creates dynamic SUN + CMAC proof to detect replay, reused links and simple copies. Recommended for mid/high-value products." },
       { title: "Offline Verifier", body: "Android first, iOS where Core NFC/ISO 7816 allows it, or a dedicated reader for no-signal zones: validates SUN/SDM locally with derived keys and keeps verdicts provisional until backend sync." },
-      { title: "Polygon Ownership Demo", body: "Enables ownership, certificates or premium tokens only after a fresh tap, validated buyer and approved policy. Polygon does not replace SUN or receive every tap." },
+      { title: "Polygon Ownership Demo", body: "Enables ownership, certificates or premium tokens only after a fresh tap, validated buyer and approved policy. Polygon does not replace SUN or receive individual taps." },
       { title: "IOTA Proof Layer Demo", body: "Shows optional audit evidence for DPP, batches and logistics: hashes or Merkle roots are anchored, not private data or individual taps." },
       { title: "Dual Proof DPP", body: "Combines QR/GS1, NFC 424, Polygon for ownership and IOTA for industrial evidence when a client needs advanced compliance." },
       { title: "NTAG 424 DNA TT + tokenization", body: "Adds physical seal state: closed, opened or tampered. Enables passport, warranty, marketplace and Polygon token only when claim policy allows it." },
@@ -942,7 +942,7 @@ export function DemoLabClient({ locale, initialVertical, initialScenario }: { lo
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <span className="rounded-full border border-violet-300/30 bg-violet-500/10 px-3 py-1 text-[11px] font-bold text-violet-100">{activeVertical.profile}</span>
-                      <button suppressHydrationWarning type="button" onClick={() => setModalView("mobile")} className="demo-lab-modal-open-button">Ver resultado en celular</button>
+                      <button suppressHydrationWarning type="button" onClick={() => setModalView("product")} className="demo-lab-modal-open-button">Ampliar ficha</button>
                     </div>
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">
@@ -2054,12 +2054,10 @@ function DemoPremiumProductScene({
 
       <figure className="demo-lab-premium-scene__media" data-credit={asset?.credit} aria-hidden="true">
         {asset ? (
-          <img
-            src={asset.imageUrl}
-            alt={product}
-            loading="eager"
-            decoding="async"
-          />
+          <>
+            <img className="nexid-premium-image--dark" src={asset.imageUrl} alt={product} loading="eager" decoding="async" />
+            <img className="nexid-premium-image--light" src={asset.imageLightUrl} alt={product} loading="eager" decoding="async" />
+          </>
         ) : (
           <div className="w-full h-[225px] relative overflow-hidden rounded-2xl bg-slate-950/20 border border-white/5 shadow-inner">
             <ThreeDProduct
@@ -2216,7 +2214,10 @@ function DemoPhoneMirror({
   return (
     <article className={`demo-lab-phone-mirror demo-lab-phone-mirror--${scenario.tone}`}>
       <div className="demo-lab-phone-shell">
-        <div className="demo-lab-phone-topbar"><span />nexID celular</div>
+        <div className="demo-lab-phone-topbar">
+          <strong>nexID</strong>
+          <em>Salida celular</em>
+        </div>
         <div className="demo-lab-phone-status">{scenario.stateLabel}</div>
         <h4>{product}</h4>
         <p>{scenario.headline}</p>
@@ -2310,7 +2311,8 @@ function DemoWineProduct({
       <span className="demo-lab-wine-product__aura" aria-hidden="true" />
       <span className="demo-lab-wine-product__floor" aria-hidden="true" />
       <figure className="demo-lab-wine-product__packshot" data-credit={asset.credit} aria-hidden="true">
-        <img src={asset.imageUrl} alt="" loading="eager" decoding="async" />
+        <img className="nexid-premium-image--dark" src={asset.imageUrl} alt="" loading="eager" decoding="async" />
+        <img className="nexid-premium-image--light" src={asset.imageLightUrl} alt="" loading="eager" decoding="async" />
         <figcaption>
           <span>Producto real</span>
           <strong>{product}</strong>
@@ -2368,7 +2370,8 @@ function DemoPremiumCosmeticProduct({
       aria-label={`${badge}: ${product}. ${status}.`}
     >
       <figure className="demo-lab-cosmetic-photo" data-credit={asset.credit} aria-hidden="true">
-        <img src={asset.imageUrl} alt="" loading="eager" decoding="async" />
+        <img className="nexid-premium-image--dark" src={asset.imageUrl} alt="" loading="eager" decoding="async" />
+        <img className="nexid-premium-image--light" src={asset.imageLightUrl} alt="" loading="eager" decoding="async" />
         <figcaption>
           <span>{referenceLabel}</span>
           <strong>{product}</strong>
@@ -2419,7 +2422,8 @@ function DemoEventAccessProduct({
       aria-label={`${badge}: ${product}. ${status}.`}
     >
       <figure className="demo-lab-event-photo" data-credit={asset.credit}>
-        <img src={asset.imageUrl} alt="" loading="eager" decoding="async" />
+        <img className="nexid-premium-image--dark" src={asset.imageUrl} alt="" loading="eager" decoding="async" />
+        <img className="nexid-premium-image--light" src={asset.imageLightUrl} alt="" loading="eager" decoding="async" />
         <figcaption>
           <span>{badge}</span>
           <strong>{product}</strong>
@@ -2476,7 +2480,8 @@ function DemoSneakerProduct({
       <span className="demo-lab-sneaker-product__aura" aria-hidden="true" />
       <span className="demo-lab-sneaker-product__floor" aria-hidden="true" />
       <figure className="demo-lab-sneaker-product__photo" data-credit={asset.credit}>
-        <img src={asset.imageUrl} alt="" loading="eager" decoding="async" />
+        <img className="nexid-premium-image--dark" src={asset.imageUrl} alt="" loading="eager" decoding="async" />
+        <img className="nexid-premium-image--light" src={asset.imageLightUrl} alt="" loading="eager" decoding="async" />
         <figcaption>
           <span>{badge}</span>
           <strong>{product}</strong>
@@ -2523,7 +2528,8 @@ function DemoRealProductShot({
       role="img"
       aria-label={`${badge}: ${product}`}
     >
-      <img src={asset.imageUrl} alt="" loading="eager" decoding="async" />
+      <img className="nexid-premium-image--dark" src={asset.imageUrl} alt="" loading="eager" decoding="async" />
+      <img className="nexid-premium-image--light" src={asset.imageLightUrl} alt="" loading="eager" decoding="async" />
       <figcaption>
         <span>{badge}</span>
         <strong>{product}</strong>
@@ -2935,7 +2941,7 @@ function MobileOutcome({
             <animate attributeName="opacity" values="1;0" dur="1.8s" repeatCount="indefinite" />
           </circle>
 
-          {/* Ambient micro telemetry dots */}
+          {/* Ambient micro signal dots */}
           {[
             { x: 36, y: 11, dx: 13, dy: 7, c: "#22d3ee" },
             { x: 121, y: 29, dx: -16, dy: -5, c: "#a78bfa" },
@@ -2986,7 +2992,8 @@ function MobileOutcome({
 function DemoFlowRail({ scenario, beat, onOpen }: { scenario: DemoScenario; beat: Beat; onOpen: (view: DemoModalView) => void }) {
   const riskCopy = beat === 2 ? "Bloqueado por copia" : "Listo para continuar";
   const items: Array<{ view: Exclude<DemoModalView, null>; eyebrow: string; title: string; body: string; tone: string }> = [
-    { view: "mobile", eyebrow: scenario.stateLabel, title: "Resultado en celular", body: riskCopy, tone: scenario.tone },
+    { view: "product", eyebrow: scenario.stateLabel, title: "Ficha completa", body: "Producto, ruta y prueba", tone: scenario.tone },
+    { view: "mobile", eyebrow: "Salida celular", title: "Vista consumidor", body: riskCopy, tone: scenario.tone },
     { view: "nft", eyebrow: "Polygon Amoy", title: "NFT / certificado", body: beat === 2 ? "No crea NFT si hay copia" : "Solicitud con aprobacion", tone: "nft" },
     { view: "claim", eyebrow: "Portal usuario", title: "Reclamar propiedad", body: "Ingreso, marca y titular", tone: "claim" },
   ];
@@ -3037,12 +3044,14 @@ function DemoFlowModal({
 }) {
   if (!view) return null;
 
-  const title = view === "mobile" ? "Resultado en celular" : view === "nft" ? "NFT / certificado Polygon" : "Reclamar propiedad";
-  const subtitle = view === "mobile"
-    ? "Lo que ve el consumidor después del toque."
-    : view === "nft"
-      ? "Cómo se conecta el toque válido con tokenización y evidencia en cadena."
-      : "Como el consumidor pasa de autenticar a asociar el producto en el portal.";
+  const title = view === "product" ? "Ficha completa del producto" : view === "mobile" ? "Resultado en celular" : view === "nft" ? "NFT / certificado Polygon" : "Reclamar propiedad";
+  const subtitle = view === "product"
+    ? "Producto, ruta, estado de prueba y salida operativa sin romper el layout principal."
+    : view === "mobile"
+      ? "Lo que ve el consumidor después del toque."
+      : view === "nft"
+        ? "Cómo se conecta el toque válido con tokenización y evidencia en cadena."
+        : "Como el consumidor pasa de autenticar a asociar el producto en el portal.";
 
   return (
     <div className="demo-lab-modal-backdrop" role="dialog" aria-modal="true" aria-label={title}>
@@ -3057,17 +3066,87 @@ function DemoFlowModal({
           <button suppressHydrationWarning type="button" onClick={onClose}>Cerrar</button>
         </div>
         <div className="demo-lab-modal-tabs">
+          <button suppressHydrationWarning type="button" onClick={() => onOpen("product")} className={view === "product" ? "active" : ""}>Ficha</button>
           <button suppressHydrationWarning type="button" onClick={() => onOpen("mobile")} className={view === "mobile" ? "active" : ""}>Celular</button>
           <button suppressHydrationWarning type="button" onClick={() => onOpen("nft")} className={view === "nft" ? "active" : ""}>NFT</button>
           <button suppressHydrationWarning type="button" onClick={() => onOpen("claim")} className={view === "claim" ? "active" : ""}>Reclamo</button>
         </div>
-        {view === "mobile" ? (
+        {view === "product" ? (
+          <DemoProductModalContent txt={txt} beat={beat} vertical={vertical} product={product} destination={destination} routeKm={routeKm} scenario={scenario} locale={locale} />
+        ) : view === "mobile" ? (
           <MobileOutcome txt={txt} beat={beat} verticalLabel={txt.verticals[vertical].label} status={status} product={product} destination={destination} routeKm={routeKm} scenario={scenario} onAction={onAction} actionMessage={actionMessage} locale={locale} />
         ) : view === "nft" ? (
           <DemoNftModalContent beat={beat} scenario={scenario} />
         ) : (
           <DemoClaimModalContent beat={beat} scenario={scenario} />
         )}
+      </section>
+    </div>
+  );
+}
+
+function DemoProductModalContent({
+  txt,
+  beat,
+  vertical,
+  product,
+  destination,
+  routeKm,
+  scenario,
+  locale,
+}: {
+  txt: DemoCopy;
+  beat: Beat;
+  vertical: Vertical;
+  product: string;
+  destination: DemoLocation;
+  routeKm: number;
+  scenario: DemoScenario;
+  locale: AppLocale;
+}) {
+  const verticalCopy = txt.verticals[vertical];
+  const proofItems = verticalCopy.proof.slice(0, 4);
+  const state = beat === 2 ? "Bloqueado por replay" : beat === 3 ? "Sello abierto / reclamo" : beat === 0 ? "Listo para primer toque" : "Autenticado";
+
+  return (
+    <div className="demo-lab-product-modal">
+      <section className="demo-lab-product-modal__visual" aria-label={`Ficha de ${product}`}>
+        <div className={`demo-lab-product-modal__stage demo-lab-product-modal__stage--${vertical}`}>
+          <DemoLabProductThreeStage
+            vertical={vertical}
+            product={product}
+            beat={beat}
+            badge={getRealProductBadge(locale)}
+            simulating={false}
+          />
+        </div>
+      </section>
+
+      <section className="demo-lab-product-modal__info">
+        <div className={`demo-lab-modal-status demo-lab-modal-status--${scenario.tone}`}>
+          <span>{scenario.stateLabel}</span>
+          <strong>{product}</strong>
+          <p>{scenario.body}</p>
+        </div>
+
+        <div className="demo-lab-product-modal__facts">
+          <InfoCell label="Vertical" value={verticalCopy.label} />
+          <InfoCell label="Perfil" value={verticalCopy.profile} />
+          <InfoCell label="Estado" value={state} />
+          <InfoCell label="Ruta" value={`${routeKm.toLocaleString(locale)} km`} />
+          <InfoCell label="Origen" value={LOCATIONS.origin.city} />
+          <InfoCell label="Tap" value={destination.city} />
+        </div>
+
+        <div className="demo-lab-product-modal__proofs">
+          {proofItems.map((item, index) => (
+            <article key={item}>
+              <span>{String(index + 1).padStart(2, "0")}</span>
+              <strong>{item}</strong>
+              <p>{index <= beat ? "Activo en este paso del flujo." : "Se habilita en una etapa posterior."}</p>
+            </article>
+          ))}
+        </div>
       </section>
     </div>
   );

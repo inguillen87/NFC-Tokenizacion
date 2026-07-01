@@ -1195,10 +1195,14 @@ export function HeroTrustAtlasSvg({
           const label = heroAtlasLabelPosition(point);
           const tone = point.tone || "hub";
           const isSelected = point.id === selectedPointId;
-          const plateWidth = point.id === "tap" ? 136 : 148;
-          const plateX = label.anchor === "end" ? -plateWidth + 12 : -12;
+          const isEndpoint = point.id === "origin" || point.id === "tap";
+          const plateWidth = isEndpoint ? 122 : 106;
+          const plateHeight = isEndpoint ? 42 : 38;
+          const plateY = isEndpoint ? -12 : -10;
+          const plateX = label.anchor === "end" ? -plateWidth + 10 : -10;
+          const accentX = label.anchor === "end" ? -6 : -10;
           const leaderX = label.x + (label.anchor === "end" ? -10 : 10);
-          const leaderY = label.y + 13;
+          const leaderY = label.y + 10;
           return (
             <g key={point.id}>
               <path
@@ -1211,12 +1215,12 @@ export function HeroTrustAtlasSvg({
                 <circle className="hero-trust-atlas__node-ring" r={isSelected ? 11 : 9} />
                 <circle className="hero-trust-atlas__node-core" r={isSelected ? 4.8 : 4} />
               </g>
-              <g className={`hero-trust-atlas__label-callout hero-trust-atlas__label-callout--${tone}`} transform={`translate(${label.x.toFixed(1)} ${label.y.toFixed(1)})`}>
-                <rect className="hero-trust-atlas__label-plate" x={plateX} y="-15" width={plateWidth} height="54" rx="9" />
-                <rect className="hero-trust-atlas__label-accent" x={label.anchor === "end" ? -7 : -12} y="-15" width="4" height="54" rx="2" />
+              <g className={`hero-trust-atlas__label-callout hero-trust-atlas__label-callout--${tone} hero-trust-atlas__label-callout--point-${point.id}`} transform={`translate(${label.x.toFixed(1)} ${label.y.toFixed(1)})`}>
+                <rect className="hero-trust-atlas__label-plate" x={plateX} y={plateY} width={plateWidth} height={plateHeight} rx="7" />
+                <rect className="hero-trust-atlas__label-accent" x={accentX} y={plateY} width="3" height={plateHeight} rx="1.5" />
                 <text textAnchor={label.anchor} className="hero-trust-atlas__label-eyebrow">{point.stageLabel || (point.id === "tap" ? "Tap final" : "Custodia")}</text>
-                <text textAnchor={label.anchor} y="17" className="hero-trust-atlas__label-main">{point.label}</text>
-                <text textAnchor={label.anchor} y="32" className="hero-trust-atlas__label-sub">{point.sublabel}</text>
+                <text textAnchor={label.anchor} y="14" className="hero-trust-atlas__label-main">{point.label}</text>
+                <text textAnchor={label.anchor} y="27" className="hero-trust-atlas__label-sub">{point.sublabel}</text>
               </g>
             </g>
           );
@@ -1372,6 +1376,10 @@ function EnterpriseHeroAtlasPanel({
 
       <div className="nexid-hero-atlas-card__map">
         <HeroTrustAtlasSvg points={custodyStops} routes={vectorRoutes} selectedPointId="tap" />
+        <div className="nexid-hero-atlas-card__map-controls" aria-hidden="true">
+          <span>+</span>
+          <span>-</span>
+        </div>
       </div>
 
       <div className="nexid-hero-atlas-card__timeline">
@@ -1743,6 +1751,7 @@ const heroPrimeProducts: Record<Vertical, {
 
 const heroRealAssets: Record<Vertical, {
   imageUrl: string;
+  imageLightUrl: string;
   alt: string;
   bank: string;
   sourceLabel: string;
@@ -1750,6 +1759,7 @@ const heroRealAssets: Record<Vertical, {
 }> = {
   seeds: {
     imageUrl: "/sdk/verticals/agro-nfc-qr-traceability.webp",
+    imageLightUrl: "/sdk/verticals/light/premium-agro-light.webp",
     alt: "Bolsa de semillas de Agro & Alimentos con tag NFC nexID.",
     bank: "nexID",
     sourceLabel: "nexID secure asset",
@@ -1757,6 +1767,7 @@ const heroRealAssets: Record<Vertical, {
   },
   bracelet: {
     imageUrl: "/sdk/verticals/events-nfc-qr-access.webp",
+    imageLightUrl: "/sdk/verticals/light/premium-events-light.webp",
     alt: "Brazalete y app de Eventos & Tickets con tags NFC/QR nexID.",
     bank: "nexID",
     sourceLabel: "nexID secure asset",
@@ -1764,6 +1775,7 @@ const heroRealAssets: Record<Vertical, {
   },
   pharma: {
     imageUrl: "/sdk/pharma-authentication-pack.webp",
+    imageLightUrl: "/sdk/verticals/light/premium-pharma-agro-light.webp",
     alt: "Envase de medicamento y app de Pharma & Salud con tag NFC nexID.",
     bank: "nexID",
     sourceLabel: "nexID secure asset",
@@ -1771,6 +1783,7 @@ const heroRealAssets: Record<Vertical, {
   },
   perfume: {
     imageUrl: "/sdk/verticals/cosmetics-nfc-qr-tamper.webp",
+    imageLightUrl: "/sdk/verticals/light/premium-beauty-light.webp",
     alt: "Envase de perfume premium de Belleza & Cosmética con tag NFC nexID.",
     bank: "nexID",
     sourceLabel: "nexID secure asset",
@@ -1778,6 +1791,7 @@ const heroRealAssets: Record<Vertical, {
   },
   wine: {
     imageUrl: "/sdk/verticals/wine-spirits-424-tt.png",
+    imageLightUrl: "/sdk/verticals/light/premium-wine-light.webp",
     alt: "Botella premium de Vinos & Spirits con tag NFC nexID.",
     bank: "nexID",
     sourceLabel: "nexID secure asset",
@@ -1785,6 +1799,7 @@ const heroRealAssets: Record<Vertical, {
   },
   bottle: {
     imageUrl: "/sdk/verticals/beverages-bottle-nfc-qr.png",
+    imageLightUrl: "/sdk/verticals/light/premium-wine-light.webp",
     alt: "Botella de bebida y refresco con tag NFC/QR nexID.",
     bank: "nexID",
     sourceLabel: "nexID secure asset",
@@ -1792,6 +1807,7 @@ const heroRealAssets: Record<Vertical, {
   },
   luxury: {
     imageUrl: "/sdk/verticals/luxury-nfc-qr-tamper.webp",
+    imageLightUrl: "/sdk/verticals/light/premium-beauty-light.webp",
     alt: "Caja y tarjeta premium de Retail & Lujo con tag NFC nexID.",
     bank: "nexID",
     sourceLabel: "nexID secure asset",
@@ -1799,6 +1815,7 @@ const heroRealAssets: Record<Vertical, {
   },
   sneaker: {
     imageUrl: "/sdk/verticals/sneaker-nfc-qr-tamper.png",
+    imageLightUrl: "/sdk/verticals/light/premium-sneaker-light.webp",
     alt: "Zapatillas premium de colección con chip NFC nexID.",
     bank: "nexID",
     sourceLabel: "nexID secure asset",
@@ -1806,6 +1823,7 @@ const heroRealAssets: Record<Vertical, {
   },
   logistics: {
     imageUrl: "/sdk/verticals/logistics-uhf-nfc-qr.webp",
+    imageLightUrl: "/sdk/verticals/light/premium-logistics-light.webp",
     alt: "Cajas de Logística & Cadena de Frío con tags UHF/NFC nexID.",
     bank: "nexID",
     sourceLabel: "nexID secure asset",
@@ -1813,6 +1831,7 @@ const heroRealAssets: Record<Vertical, {
   },
   electronics: {
     imageUrl: "/sdk/verticals/electronics-warranty-nfc-qr.webp",
+    imageLightUrl: "/sdk/verticals/light/premium-electronics-light.webp",
     alt: "Dispositivo electrónico con tag NFC nexID.",
     bank: "nexID",
     sourceLabel: "nexID secure asset",
@@ -1820,6 +1839,7 @@ const heroRealAssets: Record<Vertical, {
   },
   textile: {
     imageUrl: "/sdk/verticals/textile-dpp-nfc-qr.webp",
+    imageLightUrl: "/sdk/verticals/light/premium-textile-light.webp",
     alt: "Prenda de vestir y pasaporte digital textil con tag NFC/QR nexID.",
     bank: "nexID",
     sourceLabel: "nexID secure asset",
@@ -2052,7 +2072,6 @@ function HeroPassportPhone({
 
   return (
     <div className={`hero-passport-phone hero-passport-phone--${active}`} aria-hidden="true">
-      <span className="hero-passport-notch" />
       <div className="hero-passport-thumb">
         {asset ? <img src={asset.imageUrl} alt="" loading="eager" /> : <HeroProductVisual active={active} product={data.product} />}
       </div>
@@ -2162,7 +2181,6 @@ function HeroPhoneEmulator({
   return (
     <article className={`hero-consumer-device hero-consumer-device--${model}`}>
       <div className="hero-consumer-device__frame">
-        <span className="hero-consumer-device__notch" />
         <div className="hero-consumer-device__screen">
           <header className="hero-consumer-device__status">
             <span>9:41</span>
@@ -2247,7 +2265,13 @@ function EnterpriseHeroProductCard({
       <span className="nexid-hero-product-card__eyebrow">{stageCopy.identityTitle}</span>
       <div className="nexid-hero-product-card__media">
         {asset ? (
-          <img src={asset.imageUrl} alt={asset.alt} loading="eager" />
+          <>
+            <img className="nexid-hero-product-card__photo nexid-premium-image--dark" src={asset.imageUrl} alt={asset.alt} loading="eager" />
+            <img className="nexid-hero-product-card__photo nexid-premium-image--light" src={asset.imageLightUrl} alt={asset.alt} loading="eager" />
+            <div className="nexid-hero-product-card__light-render" aria-hidden="true">
+              <HeroPrimeProduct active={active} product={data.product} />
+            </div>
+          </>
         ) : (
           <HeroProductVisual active={active} product={data.product} />
         )}
@@ -2314,7 +2338,6 @@ function EnterpriseHeroPhoneDemo({
       </div>
 
       <article className={`nexid-hero-phone nexid-hero-phone--${model}`}>
-        <span className="nexid-hero-phone__notch" />
         <div className="nexid-hero-phone__screen">
           <header className="nexid-hero-phone__status">
             <span>9:41</span>
@@ -2335,7 +2358,17 @@ function EnterpriseHeroPhoneDemo({
 
           <section className="nexid-hero-phone__product">
             <span>
-              {asset ? <img src={asset.imageUrl} alt="" loading="lazy" /> : <HeroProductVisual active={active} product={data.product} />}
+              {asset ? (
+                <>
+                  <img className="nexid-hero-phone__product-photo nexid-premium-image--dark" src={asset.imageUrl} alt="" loading="lazy" />
+                  <img className="nexid-hero-phone__product-photo nexid-premium-image--light" src={asset.imageLightUrl} alt="" loading="lazy" />
+                  <span className="nexid-hero-phone__product-light" aria-hidden="true">
+                    <HeroPrimeProduct active={active} product={data.product} />
+                  </span>
+                </>
+              ) : (
+                <HeroProductVisual active={active} product={data.product} />
+              )}
             </span>
             <div>
               <strong>{data.product}</strong>
@@ -2436,7 +2469,13 @@ function ProductDetailModal({
             </div>
             <div className={`hero-product-modal__asset hero-product-modal__asset--${active}`}>
               {asset ? (
-                <img src={asset.imageUrl} alt={asset.alt} loading="lazy" />
+                <>
+                  <img className="hero-product-modal__asset-photo nexid-premium-image--dark" src={asset.imageUrl} alt={asset.alt} loading="lazy" />
+                  <img className="hero-product-modal__asset-photo nexid-premium-image--light" src={asset.imageLightUrl} alt={asset.alt} loading="lazy" />
+                  <div className="hero-product-modal__asset-light-render" aria-hidden="true">
+                    <HeroPrimeProduct active={active} product={data.product} />
+                  </div>
+                </>
               ) : (
                 <HeroProductVisual active={active} product={data.product} />
               )}

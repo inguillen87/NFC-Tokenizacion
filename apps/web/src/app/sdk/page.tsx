@@ -26,7 +26,13 @@ import {
 } from "lucide-react";
 import { BrandLockup, Button, Card, type VectorMapPoint, type VectorMapRoute } from "@product/ui";
 import { HeroTrustAtlasSvg } from "../../components/hero-scene";
-import { platformTrustedBy, platformVerticals, type PlatformIconKey } from "../../lib/platform-verticals";
+import {
+  platformTrustedBy,
+  platformVerticals,
+  type PlatformDemoVertical,
+  type PlatformIconKey,
+  type PlatformVertical,
+} from "../../lib/platform-verticals";
 
 export const metadata: Metadata = {
   title: "SDK y APIs - nexID",
@@ -96,7 +102,7 @@ const strategy = [
 ];
 
 const trustSignals = [
-  { label: "Anti-falsificacion", detail: "Criptografia y telemetria de riesgo.", Icon: ShieldCheck },
+  { label: "Anti-falsificacion", detail: "Criptografia y senales de riesgo del servidor.", Icon: ShieldCheck },
   { label: "Implementacion rapida", detail: "SDK para web, mobile, POS y ERP.", Icon: Zap },
   { label: "Estandares globales", detail: "QR, NFC, UHF y GS1 Digital Link.", Icon: Globe2 },
   { label: "Privacidad por diseno", detail: "Datos minimos y control del usuario.", Icon: KeyRound },
@@ -146,44 +152,183 @@ function SdkTopNav() {
   );
 }
 
-const sdkAtlasPoints: VectorMapPoint[] = [
-  { id: "origin", label: "Mendoza", sublabel: "Origen demo", lat: -32.8895, lng: -68.8458, scans: 1, risk: 0, tone: "origin", stageLabel: "Origen", evidence: "Lote demo" },
-  { id: "custody-miami", label: "Miami", sublabel: "Canal retail", lat: 25.7617, lng: -80.1918, scans: 1, risk: 0, tone: "hub", stageLabel: "Custodia", evidence: "Distribucion demo" },
-  { id: "custody-madrid", label: "Madrid", sublabel: "DPP / SDK", lat: 40.4168, lng: -3.7038, scans: 1, risk: 0, tone: "hub", stageLabel: "Integracion", evidence: "API + GS1" },
-  { id: "tap", label: "Zurich", sublabel: "Tap consumidor", lat: 47.3769, lng: 8.5417, scans: 1, risk: 0, tone: "tap", stageLabel: "Tap final", evidence: "VALID_AUTHENTIC" },
-];
+type SdkGeoPoint = {
+  city: string;
+  sublabel: string;
+  lat: number;
+  lng: number;
+};
 
-const sdkAtlasRoutes: VectorMapRoute[] = [
-  { id: "sdk-route-origin-miami", fromLat: -32.8895, fromLng: -68.8458, toLat: 25.7617, toLng: -80.1918, label: "Mendoza -> Miami", tone: "info", evidence: "Custodia demo" },
-  { id: "sdk-route-miami-madrid", fromLat: 25.7617, fromLng: -80.1918, toLat: 40.4168, toLng: -3.7038, label: "Miami -> Madrid", tone: "info", evidence: "SDK / DPP" },
-  { id: "sdk-route-madrid-zurich", fromLat: 40.4168, fromLng: -3.7038, toLat: 47.3769, toLng: 8.5417, label: "Madrid -> Zurich", tone: "success", evidence: "Tap fisico demo" },
-];
+type SdkVerticalProfile = {
+  origin: SdkGeoPoint;
+  hub: SdkGeoPoint;
+  integration: SdkGeoPoint;
+  tap: SdkGeoPoint;
+  verdict: string;
+  proof: string;
+  mobileBody: string;
+};
 
-function SdkGlobalHeroScene() {
-  const wine = platformVerticals.find((item) => item.demoVertical === "wine") || platformVerticals[0];
+const sdkVerticalProfiles: Record<PlatformDemoVertical, SdkVerticalProfile> = {
+  seeds: {
+    origin: { city: "Pergamino", sublabel: "Lote campo", lat: -33.8895, lng: -60.5736 },
+    hub: { city: "Sao Paulo", sublabel: "Canal agro", lat: -23.5558, lng: -46.6396 },
+    integration: { city: "Miami", sublabel: "ERP / GS1", lat: 25.7617, lng: -80.1918 },
+    tap: { city: "Bogota", sublabel: "Operador rural", lat: 4.711, lng: -74.0721 },
+    verdict: "LOT_AUTHORIZED",
+    proof: "424 DNA + canal",
+    mobileBody: "Lote, origen y uso responsable quedan listos para sincronizar con el canal.",
+  },
+  bracelet: {
+    origin: { city: "Buenos Aires", sublabel: "Emisor", lat: -34.6037, lng: -58.3816 },
+    hub: { city: "Miami", sublabel: "Partner", lat: 25.7617, lng: -80.1918 },
+    integration: { city: "Madrid", sublabel: "POS / SDK", lat: 40.4168, lng: -3.7038 },
+    tap: { city: "Lisboa", sublabel: "Acceso VIP", lat: 38.7223, lng: -9.1393 },
+    verdict: "ACCESS_VALID",
+    proof: "NFC + QR + POS",
+    mobileBody: "Ingreso, zona VIP y consumo quedan validados sin habilitar reuso de copia.",
+  },
+  pharma: {
+    origin: { city: "Basel", sublabel: "Laboratorio", lat: 47.5596, lng: 7.5886 },
+    hub: { city: "Madrid", sublabel: "Distribuidor", lat: 40.4168, lng: -3.7038 },
+    integration: { city: "Bogota", sublabel: "Recall API", lat: 4.711, lng: -74.0721 },
+    tap: { city: "Lima", sublabel: "Farmacia", lat: -12.0464, lng: -77.0428 },
+    verdict: "BATCH_VERIFIED",
+    proof: "QR + NFC + recall",
+    mobileBody: "Prospecto, lote y recall por unidad se muestran sin prometer sello fisico.",
+  },
+  perfume: {
+    origin: { city: "Grasse", sublabel: "Origen", lat: 43.6584, lng: 6.9253 },
+    hub: { city: "Paris", sublabel: "Retail", lat: 48.8566, lng: 2.3522 },
+    integration: { city: "New York", sublabel: "CRM", lat: 40.7128, lng: -74.006 },
+    tap: { city: "Miami", sublabel: "Cliente", lat: 25.7617, lng: -80.1918 },
+    verdict: "VALID_AUTHENTIC",
+    proof: "NFC + tamper",
+    mobileBody: "Producto, tapa, lote y politica de refill quedan visibles para postventa.",
+  },
+  wine: {
+    origin: { city: "Mendoza", sublabel: "Origen demo", lat: -32.8895, lng: -68.8458 },
+    hub: { city: "Miami", sublabel: "Canal retail", lat: 25.7617, lng: -80.1918 },
+    integration: { city: "Madrid", sublabel: "DPP / SDK", lat: 40.4168, lng: -3.7038 },
+    tap: { city: "Zurich", sublabel: "Tap consumidor", lat: 47.3769, lng: 8.5417 },
+    verdict: "VALID_AUTHENTIC",
+    proof: "NTAG 424 DNA TT",
+    mobileBody: "Origen, lote, UID hasheado, garantia y claim seguro.",
+  },
+  bottle: {
+    origin: { city: "Cordoba", sublabel: "Planta", lat: -31.4201, lng: -64.1888 },
+    hub: { city: "Santiago", sublabel: "Distribucion", lat: -33.4489, lng: -70.6693 },
+    integration: { city: "Lima", sublabel: "GS1 resolver", lat: -12.0464, lng: -77.0428 },
+    tap: { city: "Quito", sublabel: "Retorno", lat: -0.1807, lng: -78.4678 },
+    verdict: "GS1_RESOLVED",
+    proof: "QR / GS1 + NFC opcional",
+    mobileBody: "Identidad y retorno resueltos; NFC queda como capa fuerte opcional.",
+  },
+  luxury: {
+    origin: { city: "Milano", sublabel: "Atelier", lat: 45.4642, lng: 9.19 },
+    hub: { city: "Paris", sublabel: "Retail", lat: 48.8566, lng: 2.3522 },
+    integration: { city: "Dubai", sublabel: "Certificado", lat: 25.2048, lng: 55.2708 },
+    tap: { city: "Singapore", sublabel: "Cliente", lat: 1.3521, lng: 103.8198 },
+    verdict: "CERT_READY",
+    proof: "NFC + QR + certificado",
+    mobileBody: "Garantia, certificado y reventa se activan solo con prueba fisica y canal valido.",
+  },
+  sneaker: {
+    origin: { city: "Portland", sublabel: "Drop", lat: 45.5152, lng: -122.6784 },
+    hub: { city: "Los Angeles", sublabel: "Retail", lat: 34.0522, lng: -118.2437 },
+    integration: { city: "Tokyo", sublabel: "Marketplace", lat: 35.6762, lng: 139.6503 },
+    tap: { city: "Seoul", sublabel: "Claim", lat: 37.5665, lng: 126.978 },
+    verdict: "DROP_VERIFIED",
+    proof: "424 DNA + ownership",
+    mobileBody: "Drop, propiedad y reventa quedan conectados sin depender de una foto del ticket.",
+  },
+  logistics: {
+    origin: { city: "Antofagasta", sublabel: "Planta", lat: -23.6509, lng: -70.3975 },
+    hub: { city: "Panama", sublabel: "Hub", lat: 8.9824, lng: -79.5199 },
+    integration: { city: "Houston", sublabel: "Sensor API", lat: 29.7604, lng: -95.3698 },
+    tap: { city: "Toronto", sublabel: "Recepcion", lat: 43.6532, lng: -79.3832 },
+    verdict: "TRACE_SYNCED",
+    proof: "UHF + NFC + sensor",
+    mobileBody: "Pallet, temperatura y recepcion quedan auditados con blockchain opcional por hito relevante.",
+  },
+  electronics: {
+    origin: { city: "Shenzhen", sublabel: "Serie", lat: 22.5431, lng: 114.0579 },
+    hub: { city: "Los Angeles", sublabel: "Importador", lat: 34.0522, lng: -118.2437 },
+    integration: { city: "Mexico City", sublabel: "Soporte", lat: 19.4326, lng: -99.1332 },
+    tap: { city: "Bogota", sublabel: "Garantia", lat: 4.711, lng: -74.0721 },
+    verdict: "WARRANTY_READY",
+    proof: "QR + NFC + DPP",
+    mobileBody: "Serie, garantia y soporte por unidad quedan listos para postventa.",
+  },
+  textile: {
+    origin: { city: "Porto", sublabel: "Origen textil", lat: 41.1579, lng: -8.6291 },
+    hub: { city: "Barcelona", sublabel: "Retail", lat: 41.3874, lng: 2.1686 },
+    integration: { city: "Berlin", sublabel: "EU DPP", lat: 52.52, lng: 13.405 },
+    tap: { city: "Copenhagen", sublabel: "Reventa", lat: 55.6761, lng: 12.5683 },
+    verdict: "DPP_READY",
+    proof: "QR + NFC + EU DPP",
+    mobileBody: "Composicion, cuidado, origen y reventa se muestran como passport verificable.",
+  },
+};
+
+function normalizeSdkVertical(value: string | string[] | undefined): PlatformVertical {
+  const vertical = Array.isArray(value) ? value[0] : value;
+  return platformVerticals.find((item) => item.demoVertical === vertical) || platformVerticals.find((item) => item.demoVertical === "wine") || platformVerticals[0];
+}
+
+function sdkAtlasForProfile(profile: SdkVerticalProfile): { points: VectorMapPoint[]; routes: VectorMapRoute[] } {
+  const points: VectorMapPoint[] = [
+    { id: "origin", label: profile.origin.city, sublabel: profile.origin.sublabel, lat: profile.origin.lat, lng: profile.origin.lng, scans: 1, risk: 0, tone: "origin", stageLabel: "Origen", evidence: "Lote demo" },
+    { id: "custody-miami", label: profile.hub.city, sublabel: profile.hub.sublabel, lat: profile.hub.lat, lng: profile.hub.lng, scans: 1, risk: 0, tone: "hub", stageLabel: "Custodia", evidence: "Canal demo" },
+    { id: "custody-madrid", label: profile.integration.city, sublabel: profile.integration.sublabel, lat: profile.integration.lat, lng: profile.integration.lng, scans: 1, risk: 0, tone: "hub", stageLabel: "Integracion", evidence: "API + GS1" },
+    { id: "tap", label: profile.tap.city, sublabel: profile.tap.sublabel, lat: profile.tap.lat, lng: profile.tap.lng, scans: 1, risk: 0, tone: "tap", stageLabel: "Tap final", evidence: profile.verdict },
+  ];
+
+  const routes: VectorMapRoute[] = [
+    { id: "sdk-route-origin-hub", fromLat: profile.origin.lat, fromLng: profile.origin.lng, toLat: profile.hub.lat, toLng: profile.hub.lng, label: `${profile.origin.city} -> ${profile.hub.city}`, tone: "info", evidence: "Custodia demo" },
+    { id: "sdk-route-hub-integration", fromLat: profile.hub.lat, fromLng: profile.hub.lng, toLat: profile.integration.lat, toLng: profile.integration.lng, label: `${profile.hub.city} -> ${profile.integration.city}`, tone: "info", evidence: "SDK / DPP" },
+    { id: "sdk-route-integration-tap", fromLat: profile.integration.lat, fromLng: profile.integration.lng, toLat: profile.tap.lat, toLng: profile.tap.lng, label: `${profile.integration.city} -> ${profile.tap.city}`, tone: "success", evidence: "Tap fisico demo" },
+  ];
+
+  return { points, routes };
+}
+
+function SdkGlobalHeroScene({ activeVertical }: { activeVertical: PlatformVertical }) {
+  const profile = sdkVerticalProfiles[activeVertical.demoVertical] || sdkVerticalProfiles.wine;
+  const atlas = sdkAtlasForProfile(profile);
 
   return (
     <div className="sdk-proof-hero-system">
       <div className="sdk-global-hero-globe sdk-global-hero-atlas" aria-label="Atlas SDK nexID">
-        <HeroTrustAtlasSvg points={sdkAtlasPoints} routes={sdkAtlasRoutes} selectedPointId="tap" />
+        <HeroTrustAtlasSvg points={atlas.points} routes={atlas.routes} selectedPointId="tap" />
         <div className="sdk-global-hero-atlas__caption">
           <span>Infraestructura viva</span>
-          <strong>QR, NFC, UHF, GS1 y CRM en una ruta operativa.</strong>
+          <strong>{activeVertical.shortTitle}: {profile.proof} en una ruta operativa.</strong>
         </div>
       </div>
       <div className="sdk-proof-live-card">
         <div className="sdk-proof-product-shot">
-          <img src={wine.image} alt={`${wine.title} con nexID`} />
-          <span>NTAG 424 DNA TT</span>
+          <img className="nexid-premium-image--dark" src={activeVertical.image} alt={`${activeVertical.title} con nexID`} />
+          <img className="nexid-premium-image--light" src={activeVertical.imageLight} alt={`${activeVertical.title} con nexID`} />
+          <span>{profile.proof}</span>
         </div>
-        <div className="sdk-proof-phone">
-          <div>
-            <span>Salida celular</span>
-            <strong>VALID_AUTHENTIC</strong>
-            <p>Gran Reserva Malbec</p>
-            <small>Origen, lote, UID hasheado, garantía y claim seguro.</small>
+        <div className="sdk-proof-phone" aria-label="Salida celular SDK nexID">
+          <div className="sdk-proof-phone__chrome" aria-hidden="true">
+            <strong>nexID</strong>
+            <em>9:41</em>
           </div>
-          <Link href="/demo-lab/mobile/demobodega/demo-item-001?pack=wine-secure&demoMode=consumer_tap">
+          <div className="sdk-proof-phone__verdict">
+            <span>Salida celular</span>
+            <strong>{profile.verdict}</strong>
+            <p>{activeVertical.title}</p>
+            <small>{profile.mobileBody}</small>
+          </div>
+          <div className="sdk-proof-phone__checks" aria-hidden="true">
+            <span><em>{activeVertical.tags[0]}</em><strong>OK</strong></span>
+            <span><em>{activeVertical.tags[1]}</em><strong>Activo</strong></span>
+            <span><em>Webhook</em><strong>Firmado</strong></span>
+          </div>
+          <Link href={`/demo-lab?vertical=${activeVertical.demoVertical}`}>
             Ver salida mobile <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
@@ -192,15 +337,17 @@ function SdkGlobalHeroScene() {
   );
 }
 
-function SdkIndustryShowcase() {
+function SdkIndustryShowcase({ activeVertical }: { activeVertical: PlatformVertical }) {
   return (
     <section className="sdk-industry-showcase">
       {platformVerticals.map((item) => {
         const Icon = iconByKey[item.icon];
+        const isActive = item.demoVertical === activeVertical.demoVertical;
         return (
-          <article key={item.title} className={`sdk-industry-card sdk-industry-card--${item.tone}`}>
+          <article key={item.title} className={`sdk-industry-card sdk-industry-card--${item.tone}${isActive ? " is-active" : ""}`}>
             <div className="sdk-industry-image-wrap">
-              <img src={item.image} alt={`${item.title} conectado a nexID`} className="sdk-industry-image" />
+              <img src={item.image} alt={`${item.title} conectado a nexID`} className="sdk-industry-image nexid-premium-image--dark" />
+              <img src={item.imageLight} alt={`${item.title} conectado a nexID`} className="sdk-industry-image nexid-premium-image--light" />
               <span>{item.metric}</span>
             </div>
             <div className="sdk-industry-content">
@@ -210,8 +357,8 @@ function SdkIndustryShowcase() {
               <div className="sdk-industry-tags">
                 {item.tags.map((tag) => <span key={tag}>{tag}</span>)}
               </div>
-              <Link href={`/demo-lab?vertical=${item.demoVertical}`}>
-                Ver solucion <ArrowRight className="h-4 w-4" />
+              <Link href={`/sdk?vertical=${item.demoVertical}#sdk-proof-hero`} aria-current={isActive ? "true" : undefined}>
+                {isActive ? "Activo en escena" : "Ver en escena"} <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
           </article>
@@ -221,13 +368,20 @@ function SdkIndustryShowcase() {
   );
 }
 
-export default function SdkPage() {
+type SdkPageProps = {
+  searchParams?: Promise<{ vertical?: string | string[] }> | { vertical?: string | string[] };
+};
+
+export default async function SdkPage({ searchParams }: SdkPageProps) {
+  const params = await searchParams;
+  const activeVertical = normalizeSdkVertical(params?.vertical);
+
   return (
     <main className="knowledge-page-surface public-page-shell sdk-page-shell">
       <SdkTopNav />
 
       <div className="container-shell space-y-10 pb-16">
-        <section className="sdk-premium-hero">
+        <section id="sdk-proof-hero" className="sdk-premium-hero">
           <div className="sdk-premium-copy">
             <p className="sdk-hero-eyebrow">Identidad - Autenticidad - Confianza</p>
             <h1>
@@ -244,7 +398,7 @@ export default function SdkPage() {
               <Link href="/docs">
                 <Button><Code2 className="mr-2 h-4 w-4" />Explorar documentacion</Button>
               </Link>
-              <Link href="/demo-lab?vertical=wine">
+              <Link href={`/demo-lab?vertical=${activeVertical.demoVertical}`}>
                 <Button variant="secondary"><PlayCircle className="mr-2 h-4 w-4" />Ver demo interactiva</Button>
               </Link>
             </div>
@@ -261,10 +415,10 @@ export default function SdkPage() {
               })}
             </div>
           </div>
-          <SdkGlobalHeroScene />
+          <SdkGlobalHeroScene activeVertical={activeVertical} />
         </section>
 
-        <SdkIndustryShowcase />
+        <SdkIndustryShowcase activeVertical={activeVertical} />
 
         <div className="sdk-trusted-rail">
           <span>Confian en nexID</span>

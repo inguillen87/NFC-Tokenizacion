@@ -12991,17 +12991,33 @@ html.theme-light .demo-lab-studio-product .demo-lab-cinematic-render--studio .de
 .demo-lab-phone-topbar {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.45rem;
+  justify-content: space-between;
+  gap: 0.65rem;
   color: #a5f3fc;
 }
 
-.demo-lab-phone-topbar span {
-  width: 0.48rem;
-  height: 0.48rem;
-  border-radius: 999px;
-  background: #34d399;
-  box-shadow: 0 0 14px rgba(52, 211, 153, 0.62);
+.demo-lab-phone-topbar strong,
+.demo-lab-phone-topbar em {
+  display: block;
+  min-width: 0;
+  color: inherit;
+  font-style: normal;
+}
+
+.demo-lab-phone-topbar strong {
+  font-size: 0.78rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.demo-lab-phone-topbar em {
+  overflow: hidden;
+  color: #67e8f9;
+  font-size: 0.54rem;
+  letter-spacing: 0.08em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .demo-lab-phone-status {
@@ -13116,7 +13132,7 @@ html.theme-light .demo-lab-studio-product .demo-lab-cinematic-render--studio .de
 
 .demo-lab-flow-rail {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.75rem;
 }
 
@@ -13351,6 +13367,97 @@ html.theme-light .demo-lab-studio-product .demo-lab-cinematic-render--studio .de
   line-height: 1.6;
 }
 
+.demo-lab-product-modal {
+  display: grid;
+  grid-template-columns: minmax(18rem, 0.92fr) minmax(0, 1.08fr);
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.demo-lab-product-modal__visual {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(103, 232, 249, 0.18);
+  border-radius: 1.25rem;
+  background:
+    radial-gradient(circle at 34% 18%, rgba(34, 211, 238, 0.16), transparent 30%),
+    radial-gradient(circle at 76% 62%, rgba(52, 211, 153, 0.1), transparent 32%),
+    linear-gradient(145deg, rgba(2, 18, 32, 0.94), rgba(2, 6, 23, 0.98));
+}
+
+.demo-lab-product-modal__stage {
+  position: relative;
+  min-height: clamp(24rem, 42vw, 31rem);
+  overflow: hidden;
+}
+
+.demo-lab-product-modal__stage .demo-lab-premium-scene,
+.demo-lab-product-modal__stage .demo-lab-wine-product,
+.demo-lab-product-modal__stage .demo-lab-cosmetic-product,
+.demo-lab-product-modal__stage .demo-lab-event-product,
+.demo-lab-product-modal__stage .demo-lab-cinematic-render {
+  position: absolute;
+  inset: 0;
+}
+
+.demo-lab-product-modal__info {
+  display: grid;
+  min-width: 0;
+  gap: 0.85rem;
+  align-content: start;
+}
+
+.demo-lab-product-modal__facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.demo-lab-product-modal__facts .rounded-xl {
+  border-color: rgba(125, 211, 252, 0.14) !important;
+  background: rgba(15, 23, 42, 0.62) !important;
+}
+
+.demo-lab-product-modal__proofs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.demo-lab-product-modal__proofs article {
+  min-width: 0;
+  border: 1px solid rgba(125, 211, 252, 0.14);
+  border-radius: 1rem;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(34, 211, 238, 0.09), transparent 34%),
+    rgba(15, 23, 42, 0.64);
+  padding: 0.9rem;
+}
+
+.demo-lab-product-modal__proofs span {
+  color: #67e8f9;
+  font-size: 0.68rem;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.demo-lab-product-modal__proofs strong {
+  display: block;
+  margin-top: 0.5rem;
+  color: #f8fafc;
+  font-size: 0.95rem;
+  font-weight: 950;
+  line-height: 1.15;
+}
+
+.demo-lab-product-modal__proofs p {
+  margin-top: 0.45rem;
+  color: #cbd5e1;
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
 @keyframes demo-cinematic-float {
   0%,
   100% {
@@ -13419,7 +13526,10 @@ html.theme-light .demo-lab-studio-product .demo-lab-cinematic-render--studio .de
   .demo-lab-first-run-guide,
   .demo-lab-stage-explainer,
   .demo-lab-flow-rail,
-  .demo-lab-modal-step-grid {
+  .demo-lab-modal-step-grid,
+  .demo-lab-product-modal,
+  .demo-lab-product-modal__facts,
+  .demo-lab-product-modal__proofs {
     grid-template-columns: 1fr;
   }
 
@@ -24303,6 +24413,12 @@ html.theme-light .demo-lab-studio-live-map .demo-lab-mini-map__legend strong {
   color: #0369a1;
 }
 
+.demo-lab-studio-live-map .demo-lab-mini-map.demo-lab-mini-map--atlas {
+  aspect-ratio: 16 / 9;
+  height: clamp(15.75rem, 19.2vw, 17.5rem) !important;
+  min-height: 0 !important;
+}
+
 @media (min-width: 1181px) {
   .demo-lab-studio-grid {
     grid-template-columns: minmax(16.5rem, 0.62fr) minmax(27rem, 1fr) minmax(34rem, 1.26fr);
@@ -24313,7 +24429,13 @@ html.theme-light .demo-lab-studio-live-map .demo-lab-mini-map__legend strong {
   }
 
   .demo-lab-studio-live-map .demo-lab-mini-map {
-    min-height: clamp(26rem, 38vw, 32rem);
+    min-height: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .demo-lab-studio-live-map .demo-lab-mini-map.demo-lab-mini-map--atlas {
+    height: clamp(14rem, 58vw, 18rem) !important;
   }
 }
 
@@ -32775,6 +32897,25 @@ html.theme-light .demo-lab-policy-card span {
   color: #475569 !important;
 }
 
+html.theme-light .demo-lab-panel .bg-white\/5,
+html.theme-light .demo-lab-proof-grid .rounded-xl {
+  border-color: rgba(148, 163, 184, 0.3) !important;
+  background: rgba(255, 255, 255, 0.72) !important;
+}
+
+html.theme-light .demo-lab-panel .border-dashed {
+  border-color: rgba(14, 116, 144, 0.2) !important;
+  background: rgba(248, 251, 255, 0.72) !important;
+}
+
+html.theme-light .demo-lab-proof-grid .rounded-xl p:first-child {
+  color: #64748b !important;
+}
+
+html.theme-light .demo-lab-proof-grid .rounded-xl p:last-child {
+  color: #0f172a !important;
+}
+
 /* Final light-mode readability corrections after visual QA. */
 html.theme-light .sdk-top-nav {
   border-color: rgba(148, 163, 184, 0.28) !important;
@@ -32981,10 +33122,10 @@ html.theme-light .sdk-proof-phone small {
 }
 
 @media (max-width: 760px) {
-  .landing-hero-section .hero-trust-atlas__label-callout,
-  .landing-hero-section .hero-trust-atlas__label-plate,
-  .landing-hero-section .hero-trust-atlas__label-accent,
-  .landing-hero-section .hero-trust-atlas__leader {
+  .landing-hero-section .hero-trust-atlas__label-callout--hub,
+  .landing-hero-section .hero-trust-atlas__label-callout--hub .hero-trust-atlas__label-plate,
+  .landing-hero-section .hero-trust-atlas__label-callout--hub .hero-trust-atlas__label-accent,
+  .landing-hero-section .hero-trust-atlas__leader--hub {
     display: none !important;
   }
 }
@@ -33213,6 +33354,7 @@ html.theme-light .landing-hero-section .hero-trust-atlas__label-sub {
 .landing-hero-section .nexid-hero-atlas-card {
   position: relative;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto auto;
   min-height: clamp(34rem, 43vw, 43rem);
   overflow: hidden;
@@ -33274,6 +33416,9 @@ html.theme-light .landing-hero-section .hero-trust-atlas__label-sub {
 
 .landing-hero-section .nexid-hero-atlas-card__map {
   position: relative;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   min-height: clamp(20.5rem, 27vw, 28.5rem);
   margin: -0.35rem 0 0;
   overflow: hidden;
@@ -34137,6 +34282,13 @@ html.theme-light .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas_
   stroke: rgba(255, 255, 255, 0.9) !important;
 }
 
+html.theme-light .landing-hero-section .nexid-hero-atlas-card__head em {
+  border-color: rgba(14, 116, 144, 0.24) !important;
+  background: rgba(255, 255, 255, 0.74) !important;
+  color: #0f172a !important;
+  box-shadow: 0 0.8rem 1.8rem rgba(15, 23, 42, 0.08);
+}
+
 html.theme-light .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-plate,
 html.theme-light .landing-hero-section .nexid-hero-atlas-card__timeline,
 html.theme-light .landing-hero-section .nexid-hero-atlas-card__ledger,
@@ -34180,6 +34332,7 @@ html.theme-light .landing-hero-section .nexid-hero-atlas-card__timeline-head str
 html.theme-light .landing-hero-section .nexid-hero-atlas-card__stops span,
 html.theme-light .landing-hero-section .nexid-hero-atlas-card__stops em,
 html.theme-light .landing-hero-section .nexid-hero-atlas-card__stops small,
+html.theme-light .landing-hero-section .nexid-hero-atlas-card__ledger em,
 html.theme-light .landing-hero-section .nexid-hero-product-card__body p,
 html.theme-light .landing-hero-section .nexid-hero-product-card__records em,
 html.theme-light .landing-hero-section .nexid-hero-product-card__cta em,
@@ -34188,6 +34341,10 @@ html.theme-light .landing-hero-section .nexid-hero-phone__product small,
 html.theme-light .landing-hero-section .nexid-hero-phone__specs dt,
 html.theme-light .landing-hero-section .nexid-hero-phone__note {
   color: #475569 !important;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-atlas-card__ledger strong {
+  color: #0891b2 !important;
 }
 
 html.theme-light .landing-hero-section .nexid-hero-phone__screen {
@@ -34249,8 +34406,8 @@ html.theme-light .landing-hero-section .nexid-hero-product-card__chip em {
 }
 
 @media (max-width: 760px) {
-  .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-callout,
-  .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__leader {
+  .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-callout--hub,
+  .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__leader--hub {
     display: none !important;
   }
 }
@@ -34273,11 +34430,29 @@ html.theme-light .landing-hero-section .nexid-hero-product-card__chip em {
   }
 
   .landing-hero-section .nexid-hero-atlas-card__stops {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: grid;
+    grid-auto-columns: minmax(8.4rem, 34%);
+    grid-auto-flow: column;
+    grid-template-columns: none;
+    gap: 0.78rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    padding: 0 0.35rem 0.62rem;
+    scroll-padding-inline: 0.35rem;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
   }
 
   .landing-hero-section .nexid-hero-atlas-card__stops::before {
-    display: none;
+    left: calc(0.35rem + 4.2rem);
+    right: calc(0.35rem + 4.2rem);
+    display: block;
+    min-width: calc((8.4rem + 0.78rem) * 4);
+  }
+
+  .landing-hero-section .nexid-hero-atlas-card__stops article {
+    scroll-snap-align: center;
   }
 
   .landing-hero-section .nexid-hero-atlas-card__ledger {
@@ -34307,8 +34482,8 @@ html.theme-light .landing-hero-section .nexid-hero-product-card__chip em {
     min-height: clamp(15.8rem, 72vw, 20rem);
   }
 
-  .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-callout,
-  .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__leader {
+  .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-callout--hub,
+  .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__leader--hub {
     display: none !important;
   }
 
@@ -34317,7 +34492,8 @@ html.theme-light .landing-hero-section .nexid-hero-product-card__chip em {
   }
 
   .landing-hero-section .nexid-hero-atlas-card__stops {
-    grid-template-columns: minmax(0, 1fr);
+    grid-auto-columns: minmax(7.2rem, 48%);
+    grid-template-columns: none;
   }
 
   .landing-hero-section .nexid-hero-atlas-card__ledger {
@@ -34392,4 +34568,1527 @@ html.theme-light .landing-hero-section .nexid-hero-product-card__chip em {
   .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__node-pulse {
     animation: none !important;
   }
+
+  .hero-trust-atlas__comet {
+    display: none !important;
+  }
+}
+
+/* Enterprise surface polish for SDK, DemoLab and investor views. Keep this at
+   the end so older visual experiments cannot reintroduce dark patches or weak
+   light-mode contrast. */
+.hero-passport-notch,
+.hero-consumer-device__notch,
+.landing-hero-section .nexid-hero-phone__notch {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+.landing-hero-section .nexid-hero-phone::before,
+.landing-hero-section .nexid-hero-phone::after,
+.landing-hero-section .nexid-hero-phone__screen::before,
+.landing-hero-section .nexid-hero-phone__screen::after,
+.hero-consumer-device__frame::before,
+.hero-consumer-device__frame::after,
+.hero-consumer-device__screen::before,
+.hero-consumer-device__screen::after,
+.sdk-proof-phone::before,
+.sdk-proof-phone::after,
+.sdk-proof-phone__chrome::before,
+.sdk-proof-phone__chrome::after,
+.demo-lab-experience-layer .demo-lab-phone-shell::before,
+.demo-lab-experience-layer .demo-lab-phone-shell::after,
+.demo-lab-experience-layer .demo-lab-phone-topbar::before,
+.demo-lab-experience-layer .demo-lab-phone-topbar::after {
+  content: none !important;
+  display: none !important;
+}
+
+.demo-lab-cinematic-render__phone::before,
+.demo-lab-event-phone::before,
+.demo-lab-wine-product__phone::before,
+.demo-lab-sneaker-product__phone::before,
+.demo-lab-cosmetic-phone::before,
+.demo-lab-premium-scene__phone::before {
+  content: none !important;
+  display: none !important;
+}
+
+.demo-lab-cinematic-render__phone,
+.demo-lab-event-phone,
+.demo-lab-wine-product__phone,
+.demo-lab-sneaker-product__phone,
+.demo-lab-cosmetic-phone {
+  padding-top: 0.82rem !important;
+}
+
+.demo-lab-premium-scene__phone {
+  padding-top: 1rem !important;
+}
+
+.sdk-proof-live-card {
+  width: min(94%, 31rem) !important;
+  grid-template-columns: minmax(9.8rem, 0.84fr) minmax(11.5rem, 1fr) !important;
+  gap: 0.86rem !important;
+  border-color: rgba(103, 232, 249, 0.24) !important;
+  border-radius: 12px !important;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(34, 211, 238, 0.12), transparent 34%),
+    rgba(2, 8, 23, 0.82) !important;
+}
+
+.sdk-proof-product-shot {
+  min-height: 12.4rem !important;
+  border-radius: 12px !important;
+}
+
+.sdk-proof-product-shot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, transparent 42%, rgba(2, 8, 23, 0.7)),
+    radial-gradient(circle at 50% 20%, rgba(255, 255, 255, 0.08), transparent 36%);
+}
+
+.sdk-proof-product-shot span {
+  z-index: 2;
+}
+
+.sdk-proof-phone {
+  position: relative !important;
+  display: grid !important;
+  min-height: 16rem;
+  grid-template-rows: auto 1fr auto auto;
+  gap: 0.66rem;
+  border: 6px solid rgba(16, 24, 39, 0.98) !important;
+  border-radius: 1.8rem !important;
+  background:
+    radial-gradient(circle at 18% 14%, rgba(34, 211, 238, 0.16), transparent 30%),
+    linear-gradient(180deg, #071827, #06111f 58%, #020817) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.12),
+    0 1.2rem 2.6rem rgba(0, 0, 0, 0.34) !important;
+  color: #ffffff !important;
+  padding: 0.86rem !important;
+}
+
+.sdk-proof-phone__chrome {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  min-height: 1.35rem;
+}
+
+.sdk-proof-phone__chrome strong {
+  margin: 0 !important;
+  color: #f8fafc !important;
+  font-size: 0.9rem !important;
+  font-weight: 950 !important;
+  line-height: 1 !important;
+}
+
+.sdk-proof-phone__chrome strong::first-letter {
+  color: #67e8f9;
+}
+
+.sdk-proof-phone__chrome em {
+  color: #cbd5e1;
+  font-size: 0.62rem;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.sdk-proof-phone__verdict {
+  min-width: 0;
+  border: 1px solid rgba(52, 211, 153, 0.18);
+  border-radius: 1rem;
+  background: rgba(2, 8, 23, 0.42);
+  padding: 0.76rem;
+}
+
+.sdk-proof-phone__verdict span {
+  color: #67e8f9 !important;
+}
+
+.sdk-proof-phone__verdict strong {
+  margin-top: 0.42rem !important;
+  color: #86efac !important;
+  font-size: clamp(1rem, 1.3vw, 1.18rem) !important;
+  letter-spacing: 0 !important;
+}
+
+.sdk-proof-phone__verdict p {
+  color: #f8fafc !important;
+}
+
+.sdk-proof-phone__checks {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.38rem;
+}
+
+.sdk-proof-phone__checks span {
+  display: grid;
+  min-width: 0;
+  gap: 0.1rem;
+  border: 1px solid rgba(125, 211, 252, 0.14);
+  border-radius: 0.7rem;
+  background: rgba(15, 23, 42, 0.58);
+  padding: 0.42rem;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+.sdk-proof-phone__checks em,
+.sdk-proof-phone__checks strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sdk-proof-phone__checks em {
+  color: #94a3b8;
+  font-size: 0.54rem;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.sdk-proof-phone__checks strong {
+  margin: 0 !important;
+  color: #e0f2fe !important;
+  font-size: 0.62rem !important;
+  font-weight: 950 !important;
+  line-height: 1.1 !important;
+}
+
+.sdk-proof-phone a {
+  min-height: 2.3rem;
+  width: 100% !important;
+  justify-content: center;
+  border: 1px solid rgba(103, 232, 249, 0.28);
+  border-radius: 0.9rem;
+  background: rgba(8, 47, 73, 0.72);
+  color: #a5f3fc !important;
+}
+
+.sdk-industry-card.is-active {
+  transform: translateY(-2px);
+  border-color: rgba(103, 232, 249, 0.5) !important;
+  box-shadow:
+    0 1.35rem 3.1rem rgba(8, 47, 73, 0.26),
+    inset 0 0 0 1px rgba(103, 232, 249, 0.14) !important;
+}
+
+.sdk-industry-card.is-active .sdk-industry-content > svg {
+  color: #67e8f9 !important;
+}
+
+.sdk-industry-card.is-active .sdk-industry-content a {
+  border-color: rgba(103, 232, 249, 0.38) !important;
+  background: rgba(8, 47, 73, 0.7) !important;
+  color: #a5f3fc !important;
+}
+
+.demo-lab-experience-layer .demo-lab-phone-mirror {
+  border-color: rgba(103, 232, 249, 0.22) !important;
+  border-radius: 1.25rem !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(52, 211, 153, 0.14), transparent 35%),
+    linear-gradient(145deg, rgba(2, 18, 32, 0.94), rgba(2, 8, 23, 0.98)) !important;
+}
+
+.demo-lab-experience-layer .demo-lab-phone-shell {
+  width: min(100%, 16.8rem) !important;
+  min-height: 25rem !important;
+  display: grid;
+  grid-template-rows: auto auto auto 1fr auto auto;
+  border: 6px solid rgba(16, 24, 39, 0.98) !important;
+  border-radius: 2rem !important;
+  background:
+    radial-gradient(circle at 20% 13%, rgba(34, 211, 238, 0.16), transparent 32%),
+    linear-gradient(180deg, #071827, #06111f 58%, #020817) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.12),
+    0 1.4rem 3rem rgba(0, 0, 0, 0.36) !important;
+}
+
+.demo-lab-experience-layer .demo-lab-phone-topbar {
+  justify-content: space-between !important;
+  color: #f8fafc !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+.demo-lab-experience-layer .demo-lab-phone-topbar > span {
+  display: none !important;
+}
+
+.demo-lab-experience-layer .demo-lab-phone-status {
+  border: 1px solid rgba(52, 211, 153, 0.24) !important;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(52, 211, 153, 0.16), transparent 36%),
+    rgba(6, 78, 59, 0.18) !important;
+  color: #86efac !important;
+  line-height: 1.05 !important;
+}
+
+.demo-lab-experience-layer .demo-lab-phone-route span {
+  border: 1px solid rgba(125, 211, 252, 0.14);
+  background: rgba(15, 23, 42, 0.68) !important;
+}
+
+.demo-lab-experience-layer .demo-lab-phone-shell button {
+  min-height: 2.55rem;
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.28), rgba(34, 211, 238, 0.12)) !important;
+}
+
+.investor-proof-atlas-map {
+  border-radius: 18px !important;
+  background:
+    radial-gradient(circle at 17% 18%, rgba(34, 211, 238, 0.15), transparent 32%),
+    radial-gradient(circle at 78% 32%, rgba(52, 211, 153, 0.09), transparent 30%),
+    linear-gradient(145deg, rgba(2, 18, 32, 0.98), rgba(2, 8, 23, 0.99)) !important;
+}
+
+.investor-proof-atlas-map::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(2, 8, 23, 0.22), transparent 18%, transparent 82%, rgba(2, 8, 23, 0.28)),
+    linear-gradient(180deg, transparent 56%, rgba(2, 8, 23, 0.34));
+}
+
+.investor-proof-live-card {
+  border-color: rgba(103, 232, 249, 0.22) !important;
+  border-radius: 12px !important;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(34, 211, 238, 0.14), transparent 34%),
+    rgba(2, 8, 23, 0.82) !important;
+}
+
+.investor-proof-live-card span::before {
+  content: "";
+  display: inline-block;
+  width: 0.46rem;
+  height: 0.46rem;
+  margin-right: 0.38rem;
+  border-radius: 999px;
+  background: #34d399;
+  box-shadow: 0 0 14px rgba(52, 211, 153, 0.68);
+  vertical-align: 0.04rem;
+}
+
+html.theme-light .sdk-proof-live-card,
+html.theme-light .demo-lab-experience-layer .demo-lab-phone-mirror,
+html.theme-light .investor-proof-live-card {
+  border-color: rgba(14, 116, 144, 0.22) !important;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(14, 165, 233, 0.12), transparent 34%),
+    rgba(255, 255, 255, 0.86) !important;
+  box-shadow: 0 1.2rem 3.2rem rgba(15, 23, 42, 0.1) !important;
+}
+
+html.theme-light .sdk-proof-product-shot,
+html.theme-light .sdk-proof-phone,
+html.theme-light .demo-lab-experience-layer .demo-lab-phone-shell {
+  border-color: rgba(30, 41, 59, 0.86) !important;
+  background:
+    radial-gradient(circle at 18% 14%, rgba(14, 165, 233, 0.16), transparent 30%),
+    linear-gradient(180deg, #eef8ff, #ffffff 54%, #e5f2ff) !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .sdk-proof-phone__chrome strong,
+html.theme-light .sdk-proof-phone__verdict p,
+html.theme-light .sdk-proof-phone__checks strong,
+html.theme-light .demo-lab-experience-layer .demo-lab-phone-topbar,
+html.theme-light .demo-lab-experience-layer .demo-lab-phone-shell h4 {
+  color: #0f172a !important;
+}
+
+html.theme-light .sdk-proof-phone__chrome em,
+html.theme-light .sdk-proof-phone__verdict small,
+html.theme-light .sdk-proof-phone__checks em,
+html.theme-light .demo-lab-experience-layer .demo-lab-phone-shell p {
+  color: #475569 !important;
+}
+
+html.theme-light .sdk-proof-phone__verdict,
+html.theme-light .sdk-proof-phone__checks span,
+html.theme-light .demo-lab-experience-layer .demo-lab-phone-route span {
+  border-color: rgba(14, 116, 144, 0.16) !important;
+  background: rgba(255, 255, 255, 0.72) !important;
+}
+
+html.theme-light .demo-lab-experience-layer .demo-lab-phone-status {
+  border-color: rgba(5, 150, 105, 0.22) !important;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(16, 185, 129, 0.12), transparent 36%),
+    rgba(236, 253, 245, 0.82) !important;
+  color: #047857 !important;
+}
+
+html.theme-light .sdk-proof-phone a,
+html.theme-light .demo-lab-experience-layer .demo-lab-phone-shell button {
+  border-color: rgba(14, 116, 144, 0.24) !important;
+  background: rgba(236, 254, 255, 0.82) !important;
+  color: #0e7490 !important;
+}
+
+html.theme-light .sdk-industry-card.is-active {
+  border-color: rgba(14, 116, 144, 0.36) !important;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(14, 165, 233, 0.1), transparent 32%),
+    rgba(255, 255, 255, 0.9) !important;
+  box-shadow:
+    0 1.2rem 2.8rem rgba(15, 23, 42, 0.1),
+    inset 0 0 0 1px rgba(14, 116, 144, 0.12) !important;
+}
+
+html.theme-light .sdk-industry-card.is-active .sdk-industry-content > svg,
+html.theme-light .sdk-industry-card.is-active .sdk-industry-content a {
+  color: #0e7490 !important;
+}
+
+html.theme-light .investor-proof-atlas-map {
+  background:
+    radial-gradient(circle at 17% 18%, rgba(14, 165, 233, 0.16), transparent 32%),
+    radial-gradient(circle at 78% 32%, rgba(16, 185, 129, 0.1), transparent 30%),
+    linear-gradient(145deg, rgba(248, 251, 255, 0.98), rgba(226, 242, 255, 0.96)) !important;
+}
+
+html.theme-light .investor-proof-atlas-map::after {
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.2), transparent 18%, transparent 82%, rgba(255, 255, 255, 0.28)),
+    linear-gradient(180deg, transparent 56%, rgba(148, 163, 184, 0.16));
+}
+
+@media (max-width: 900px) {
+  .sdk-proof-live-card {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .sdk-proof-phone {
+    width: min(100%, 21rem);
+    justify-self: center;
+  }
+}
+
+@media (max-width: 520px) {
+  .sdk-proof-phone__checks {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .demo-lab-experience-layer .demo-lab-phone-shell {
+    min-height: 0 !important;
+  }
+}
+
+/* DemoLab light-mode enterprise cleanup. */
+html.theme-light .demo-lab-trust-scenarios {
+  border-color: rgba(14, 116, 144, 0.18) !important;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(14, 165, 233, 0.08), transparent 34%),
+    rgba(255, 255, 255, 0.84) !important;
+  box-shadow: 0 1.1rem 2.8rem rgba(15, 23, 42, 0.08) !important;
+}
+
+html.theme-light .demo-lab-trust-scenarios__head strong,
+html.theme-light .demo-lab-trust-scenario span,
+html.theme-light .demo-lab-trust-score h4,
+html.theme-light .demo-lab-proof-card h4,
+html.theme-light .demo-lab-unlock-ladder h4,
+html.theme-light .demo-lab-trust-meter strong,
+html.theme-light .demo-lab-flow-rail-card strong,
+html.theme-light .demo-lab-modal-header h2,
+html.theme-light .demo-lab-modal-status strong,
+html.theme-light .demo-lab-modal-step-grid strong,
+html.theme-light .demo-lab-product-modal__proofs strong,
+html.theme-light .demo-lab-final-step strong {
+  color: #0f172a !important;
+}
+
+html.theme-light .demo-lab-trust-scenarios__head span,
+html.theme-light .demo-lab-trust-scenario small,
+html.theme-light .demo-lab-trust-score p,
+html.theme-light .demo-lab-proof-card-header strong,
+html.theme-light .demo-lab-flow-rail-card span,
+html.theme-light .demo-lab-modal-header p,
+html.theme-light .demo-lab-modal-status span,
+html.theme-light .demo-lab-modal-step-grid span,
+html.theme-light .demo-lab-product-modal__proofs span,
+html.theme-light .demo-lab-final-step span {
+  color: #0e7490 !important;
+}
+
+html.theme-light .demo-lab-trust-scenario p,
+html.theme-light .demo-lab-trust-signal em,
+html.theme-light .demo-lab-unlock-ladder em,
+html.theme-light .demo-lab-flow-rail-card small,
+html.theme-light .demo-lab-modal-header span,
+html.theme-light .demo-lab-modal-status p,
+html.theme-light .demo-lab-modal-step-grid p,
+html.theme-light .demo-lab-product-modal__proofs p,
+html.theme-light .demo-lab-final-step p {
+  color: #475569 !important;
+}
+
+html.theme-light .demo-lab-trust-scenario,
+html.theme-light .demo-lab-trust-score,
+html.theme-light .demo-lab-proof-card,
+html.theme-light .demo-lab-unlock-ladder,
+html.theme-light .demo-lab-flow-rail-card,
+html.theme-light .demo-lab-modal-step-grid article,
+html.theme-light .demo-lab-product-modal__proofs article,
+html.theme-light .demo-lab-final-step {
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(14, 165, 233, 0.07), transparent 34%),
+    rgba(255, 255, 255, 0.78) !important;
+  color: #0f172a !important;
+  box-shadow: 0 0.9rem 2rem rgba(15, 23, 42, 0.07) !important;
+}
+
+html.theme-light .demo-lab-trust-scenario:hover,
+html.theme-light .demo-lab-trust-scenario.is-active {
+  border-color: rgba(14, 116, 144, 0.34) !important;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(20, 184, 166, 0.11), transparent 34%),
+    rgba(236, 254, 255, 0.9) !important;
+}
+
+html.theme-light .demo-lab-trust-meter {
+  background:
+    radial-gradient(circle at center, #ffffff 0 56%, transparent 57%),
+    conic-gradient(#0891b2 var(--trust-score), rgba(203, 213, 225, 0.72) 0) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(14, 116, 144, 0.16),
+    0 1rem 2rem rgba(15, 23, 42, 0.08) !important;
+}
+
+html.theme-light .demo-lab-trust-signal,
+html.theme-light .demo-lab-unlock-ladder span {
+  border-color: rgba(148, 163, 184, 0.26) !important;
+  background: rgba(255, 255, 255, 0.76) !important;
+}
+
+html.theme-light .demo-lab-trust-signal b,
+html.theme-light .demo-lab-unlock-ladder b {
+  color: #0f172a !important;
+}
+
+html.theme-light .demo-lab-trust-signal--ok,
+html.theme-light .demo-lab-unlock-ladder span.unlocked {
+  border-color: rgba(5, 150, 105, 0.2) !important;
+  background: rgba(236, 253, 245, 0.84) !important;
+}
+
+html.theme-light .demo-lab-trust-signal--blocked,
+html.theme-light .demo-lab-unlock-ladder span.blocked {
+  border-color: rgba(225, 29, 72, 0.2) !important;
+  background: rgba(255, 241, 242, 0.82) !important;
+}
+
+html.theme-light .demo-lab-studio-bottom {
+  border-color: rgba(14, 116, 144, 0.14) !important;
+  background: rgba(14, 116, 144, 0.12) !important;
+}
+
+html.theme-light .demo-lab-studio-bottom div {
+  background: rgba(255, 255, 255, 0.82) !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .demo-lab-studio-bottom svg {
+  color: #0e7490 !important;
+}
+
+html.theme-light .demo-lab-studio-bottom strong {
+  color: #0f172a !important;
+}
+
+html.theme-light .demo-lab-studio-bottom small {
+  color: #475569 !important;
+}
+
+html.theme-light .demo-lab-modal-panel {
+  border-color: rgba(14, 116, 144, 0.2) !important;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(14, 165, 233, 0.12), transparent 32%),
+    radial-gradient(circle at 88% 22%, rgba(16, 185, 129, 0.1), transparent 30%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(241, 248, 255, 0.98)) !important;
+  box-shadow: 0 2rem 7rem rgba(15, 23, 42, 0.18) !important;
+}
+
+html.theme-light .demo-lab-modal-header button,
+html.theme-light .demo-lab-modal-tabs button {
+  border-color: rgba(148, 163, 184, 0.34) !important;
+  background: rgba(255, 255, 255, 0.82) !important;
+  color: #334155 !important;
+}
+
+html.theme-light .demo-lab-modal-tabs button.active {
+  border-color: rgba(14, 116, 144, 0.38) !important;
+  background: rgba(236, 254, 255, 0.92) !important;
+  color: #0e7490 !important;
+}
+
+html.theme-light .demo-lab-modal-status,
+html.theme-light .demo-lab-product-modal__facts .rounded-xl {
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  background: rgba(255, 255, 255, 0.78) !important;
+}
+
+html.theme-light .demo-lab-product-modal__facts .rounded-xl p:first-child {
+  color: #64748b !important;
+}
+
+html.theme-light .demo-lab-product-modal__facts .rounded-xl p:last-child {
+  color: #0f172a !important;
+}
+
+html.theme-light .demo-lab-product-modal__visual {
+  border-color: rgba(14, 116, 144, 0.18) !important;
+  background:
+    radial-gradient(circle at 34% 18%, rgba(14, 165, 233, 0.16), transparent 30%),
+    radial-gradient(circle at 76% 62%, rgba(16, 185, 129, 0.09), transparent 32%),
+    linear-gradient(145deg, rgba(248, 251, 255, 0.98), rgba(226, 242, 255, 0.96)) !important;
+}
+
+/* Shared enterprise atlas polish for SDK, DemoLab and Investor. These maps must
+   feel like the landing trust atlas, not like older dashboard callouts. */
+.sdk-global-hero-atlas > .hero-trust-atlas,
+.investor-proof-atlas-map > .hero-trust-atlas,
+.demo-lab-atlas-panel > .hero-trust-atlas {
+  transform: translateY(4%) scale(1.08) !important;
+  transform-origin: 50% 48%;
+}
+
+.sdk-global-hero-atlas .hero-trust-atlas__label-plate,
+.sdk-global-hero-atlas .hero-trust-atlas__label-accent,
+.investor-proof-atlas-map .hero-trust-atlas__label-plate,
+.investor-proof-atlas-map .hero-trust-atlas__label-accent,
+.demo-lab-atlas-panel .hero-trust-atlas__label-plate,
+.demo-lab-atlas-panel .hero-trust-atlas__label-accent {
+  display: none !important;
+}
+
+.sdk-global-hero-atlas .hero-trust-atlas__leader,
+.investor-proof-atlas-map .hero-trust-atlas__leader,
+.demo-lab-atlas-panel .hero-trust-atlas__leader {
+  stroke: rgba(125, 211, 252, 0.34) !important;
+  stroke-dasharray: 2 7 !important;
+  stroke-width: 0.95 !important;
+}
+
+.sdk-global-hero-atlas .hero-trust-atlas__label-callout,
+.investor-proof-atlas-map .hero-trust-atlas__label-callout,
+.demo-lab-atlas-panel .hero-trust-atlas__label-callout {
+  filter: drop-shadow(0 2px 5px rgba(2, 8, 23, 0.78)) !important;
+}
+
+.sdk-global-hero-atlas .hero-trust-atlas__label-eyebrow,
+.sdk-global-hero-atlas .hero-trust-atlas__label-main,
+.sdk-global-hero-atlas .hero-trust-atlas__label-sub,
+.investor-proof-atlas-map .hero-trust-atlas__label-eyebrow,
+.investor-proof-atlas-map .hero-trust-atlas__label-main,
+.investor-proof-atlas-map .hero-trust-atlas__label-sub,
+.demo-lab-atlas-panel .hero-trust-atlas__label-eyebrow,
+.demo-lab-atlas-panel .hero-trust-atlas__label-main,
+.demo-lab-atlas-panel .hero-trust-atlas__label-sub {
+  paint-order: stroke fill !important;
+  stroke: rgba(1, 7, 18, 0.86) !important;
+  stroke-linejoin: round !important;
+}
+
+.sdk-global-hero-atlas .hero-trust-atlas__label-eyebrow,
+.investor-proof-atlas-map .hero-trust-atlas__label-eyebrow,
+.demo-lab-atlas-panel .hero-trust-atlas__label-eyebrow {
+  font-size: 8.4px !important;
+  letter-spacing: 1.3px !important;
+  stroke-width: 2.2px !important;
+}
+
+.sdk-global-hero-atlas .hero-trust-atlas__label-main,
+.investor-proof-atlas-map .hero-trust-atlas__label-main,
+.demo-lab-atlas-panel .hero-trust-atlas__label-main {
+  font-size: 14px !important;
+  stroke-width: 2.8px !important;
+}
+
+.sdk-global-hero-atlas .hero-trust-atlas__label-sub,
+.investor-proof-atlas-map .hero-trust-atlas__label-sub,
+.demo-lab-atlas-panel .hero-trust-atlas__label-sub {
+  font-size: 9.3px !important;
+  stroke-width: 2.1px !important;
+}
+
+.sdk-global-hero-atlas .hero-trust-atlas__route,
+.investor-proof-atlas-map .hero-trust-atlas__route,
+.demo-lab-atlas-panel .hero-trust-atlas__route {
+  stroke-width: 3px !important;
+  stroke-dasharray: 11 13 !important;
+}
+
+.sdk-global-hero-atlas .hero-trust-atlas__route--success,
+.investor-proof-atlas-map .hero-trust-atlas__route--success,
+.demo-lab-atlas-panel .hero-trust-atlas__route--success {
+  stroke-width: 3.7px !important;
+}
+
+.sdk-global-hero-atlas > .hero-trust-atlas {
+  transform: translateY(-6%) scale(1.24) !important;
+  transform-origin: 50% 46%;
+}
+
+.investor-proof-atlas-map > .hero-trust-atlas {
+  transform: translateY(-5%) scale(1.2) !important;
+  transform-origin: 50% 46%;
+}
+
+html.theme-light .sdk-global-hero-atlas .hero-trust-atlas__label-callout,
+html.theme-light .investor-proof-atlas-map .hero-trust-atlas__label-callout,
+html.theme-light .demo-lab-atlas-panel .hero-trust-atlas__label-callout {
+  filter: drop-shadow(0 2px 4px rgba(255, 255, 255, 0.9)) !important;
+}
+
+html.theme-light .sdk-global-hero-atlas .hero-trust-atlas__label-eyebrow,
+html.theme-light .sdk-global-hero-atlas .hero-trust-atlas__label-main,
+html.theme-light .sdk-global-hero-atlas .hero-trust-atlas__label-sub,
+html.theme-light .investor-proof-atlas-map .hero-trust-atlas__label-eyebrow,
+html.theme-light .investor-proof-atlas-map .hero-trust-atlas__label-main,
+html.theme-light .investor-proof-atlas-map .hero-trust-atlas__label-sub,
+html.theme-light .demo-lab-atlas-panel .hero-trust-atlas__label-eyebrow,
+html.theme-light .demo-lab-atlas-panel .hero-trust-atlas__label-main,
+html.theme-light .demo-lab-atlas-panel .hero-trust-atlas__label-sub {
+  stroke: rgba(255, 255, 255, 0.92) !important;
+}
+
+@media (max-width: 760px) {
+  .sdk-global-hero-atlas > .hero-trust-atlas,
+  .investor-proof-atlas-map > .hero-trust-atlas,
+  .demo-lab-atlas-panel > .hero-trust-atlas {
+    transform: translateY(1.5%) scale(1.02) !important;
+  }
+
+  .sdk-global-hero-atlas .hero-trust-atlas__label-callout--hub,
+  .sdk-global-hero-atlas .hero-trust-atlas__leader--hub,
+  .investor-proof-atlas-map .hero-trust-atlas__label-callout--hub,
+  .investor-proof-atlas-map .hero-trust-atlas__leader--hub,
+  .demo-lab-atlas-panel .hero-trust-atlas__label-callout--hub,
+  .demo-lab-atlas-panel .hero-trust-atlas__leader--hub {
+    display: none !important;
+  }
+}
+
+/* Landing atlas final framing: keep the live route visually full and avoid the
+   empty lower ocean band that made the enterprise map feel unfinished. */
+.landing-hero-section .nexid-hero-atlas-card__map {
+  min-height: clamp(18.8rem, 24.5vw, 25.6rem) !important;
+}
+
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas {
+  transform: translateY(5.5%) scale(1.12) !important;
+  transform-origin: 50% 48%;
+}
+
+.landing-hero-section .nexid-hero-atlas-card__map-controls {
+  position: absolute;
+  left: clamp(0.92rem, 1.2vw, 1.1rem);
+  bottom: clamp(1.12rem, 1.6vw, 1.45rem);
+  z-index: 5;
+  display: grid;
+  width: 2.25rem;
+  overflow: hidden;
+  border: 1px solid rgba(125, 211, 252, 0.24);
+  border-radius: 8px;
+  background: rgba(2, 12, 25, 0.72);
+  color: #e0f2fe;
+  opacity: 0.76;
+  pointer-events: none;
+  box-shadow: 0 0.9rem 2rem rgba(2, 8, 23, 0.28);
+  backdrop-filter: blur(12px);
+}
+
+.landing-hero-section .nexid-hero-atlas-card__map-controls span {
+  display: grid;
+  height: 2.1rem;
+  place-items: center;
+  font-size: 1.28rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.landing-hero-section .nexid-hero-atlas-card__map-controls span + span {
+  border-top: 1px solid rgba(125, 211, 252, 0.16);
+}
+
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-plate,
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-accent {
+  display: block !important;
+}
+
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-plate {
+  fill: rgba(2, 8, 23, 0.62) !important;
+  stroke: rgba(125, 211, 252, 0.2) !important;
+  stroke-width: 0.85 !important;
+}
+
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-accent {
+  fill: rgba(34, 211, 238, 0.74) !important;
+}
+
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__leader {
+  stroke: rgba(125, 211, 252, 0.34) !important;
+  stroke-dasharray: 2 7 !important;
+  stroke-width: 0.95 !important;
+}
+
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-callout {
+  filter: drop-shadow(0 2px 5px rgba(2, 8, 23, 0.78)) !important;
+}
+
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-eyebrow,
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-main,
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-sub {
+  stroke: rgba(1, 7, 18, 0.86) !important;
+}
+
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-eyebrow {
+  font-size: 8.6px !important;
+  letter-spacing: 1.35px !important;
+  stroke-width: 2.2px !important;
+}
+
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-main {
+  font-size: 14.4px !important;
+  stroke-width: 2.8px !important;
+}
+
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-sub {
+  font-size: 9.6px !important;
+  stroke-width: 2.1px !important;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-atlas-card__map::after {
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.34), transparent 15%, transparent 85%, rgba(255, 255, 255, 0.38)),
+    linear-gradient(180deg, transparent 68%, rgba(255, 255, 255, 0.34)) !important;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-atlas-card__map-controls {
+  border-color: rgba(14, 116, 144, 0.24);
+  background: rgba(255, 255, 255, 0.7);
+  color: #0f172a;
+  box-shadow: 0 0.9rem 2rem rgba(15, 23, 42, 0.1);
+}
+
+html.theme-light .landing-hero-section .nexid-hero-atlas-card__map-controls span + span {
+  border-top-color: rgba(14, 116, 144, 0.18);
+}
+
+html.theme-light .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-callout {
+  filter: drop-shadow(0 2px 4px rgba(255, 255, 255, 0.9)) !important;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-plate {
+  fill: rgba(255, 255, 255, 0.78) !important;
+  stroke: rgba(14, 116, 144, 0.2) !important;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-accent {
+  fill: rgba(8, 145, 178, 0.72) !important;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-eyebrow,
+html.theme-light .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-main,
+html.theme-light .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-sub {
+  stroke: rgba(255, 255, 255, 0.92) !important;
+}
+
+@media (max-width: 1240px) {
+  .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas {
+    transform: translateY(3.5%) scale(1.08) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .landing-hero-section .nexid-hero-atlas-card__map {
+    min-height: clamp(15.6rem, 64vw, 19rem) !important;
+  }
+
+  .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas {
+    transform: translateY(1.5%) scale(1.02) !important;
+  }
+
+  .landing-hero-section .nexid-hero-atlas-card__map-controls {
+    display: none;
+  }
+}
+
+/* Final enterprise phone/atlas cleanup.
+   Keep this last: older visual experiments used black notches and heavy map
+   label plates that read as patches in both dark and light mode. */
+:where(
+  .hero-passport-notch,
+  .hero-consumer-device__notch,
+  .landing-hero-section .nexid-hero-phone__notch
+) {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+:where(
+  .landing-hero-section .nexid-hero-phone,
+  .landing-hero-section .nexid-hero-phone__screen,
+  .hero-consumer-device__frame,
+  .hero-consumer-device__screen,
+  .sdk-proof-phone,
+  .sdk-proof-phone__chrome,
+  .demo-lab-experience-layer .demo-lab-phone-mirror,
+  .demo-lab-experience-layer .demo-lab-phone-shell,
+  .demo-lab-experience-layer .demo-lab-phone-topbar,
+  .demo-lab-cinematic-render__phone,
+  .demo-lab-event-phone,
+  .demo-lab-wine-product__phone,
+  .demo-lab-sneaker-product__phone,
+  .demo-lab-cosmetic-phone,
+  .demo-lab-premium-scene__phone
+)::before,
+:where(
+  .landing-hero-section .nexid-hero-phone,
+  .landing-hero-section .nexid-hero-phone__screen,
+  .hero-consumer-device__frame,
+  .hero-consumer-device__screen,
+  .sdk-proof-phone,
+  .sdk-proof-phone__chrome,
+  .demo-lab-experience-layer .demo-lab-phone-mirror,
+  .demo-lab-experience-layer .demo-lab-phone-shell,
+  .demo-lab-experience-layer .demo-lab-phone-topbar,
+  .demo-lab-cinematic-render__phone,
+  .demo-lab-event-phone,
+  .demo-lab-wine-product__phone,
+  .demo-lab-sneaker-product__phone,
+  .demo-lab-cosmetic-phone,
+  .demo-lab-premium-scene__phone
+)::after {
+  content: none !important;
+  display: none !important;
+}
+
+.landing-hero-section .nexid-hero-phone {
+  border-width: 6px !important;
+  border-color: rgba(15, 23, 42, 0.96) !important;
+  border-radius: 2.32rem !important;
+  background: linear-gradient(180deg, #111827, #020617) !important;
+  padding: 0.4rem !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.12),
+    0 1.45rem 3.9rem rgba(0, 0, 0, 0.42) !important;
+}
+
+.landing-hero-section .nexid-hero-phone__screen {
+  border-radius: 1.78rem !important;
+  background:
+    radial-gradient(circle at 82% 12%, rgba(34, 211, 238, 0.13), transparent 31%),
+    radial-gradient(circle at 10% 28%, rgba(16, 185, 129, 0.08), transparent 34%),
+    linear-gradient(180deg, #071827 0%, #06111f 52%, #020817 100%) !important;
+}
+
+.landing-hero-section .nexid-hero-phone__status {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) auto !important;
+  grid-template-rows: auto !important;
+  align-items: center !important;
+  gap: 0.72rem !important;
+  min-height: 1.72rem !important;
+  margin-bottom: 0.92rem !important;
+}
+
+.landing-hero-section .nexid-hero-phone__status > span:first-child,
+.landing-hero-section .nexid-hero-phone__status strong,
+.landing-hero-section .nexid-hero-phone__status i {
+  grid-row: 1 !important;
+}
+
+.landing-hero-section .nexid-hero-phone__status > span:first-child {
+  grid-column: 1 !important;
+  color: rgba(248, 250, 252, 0.92) !important;
+  font-size: 0.68rem !important;
+}
+
+.landing-hero-section .nexid-hero-phone__status strong {
+  grid-column: 2 !important;
+  justify-self: start !important;
+  color: #f8fafc !important;
+  font-size: 1.16rem !important;
+  letter-spacing: 0 !important;
+}
+
+.landing-hero-section .nexid-hero-phone__status i {
+  grid-column: 3 !important;
+  align-self: center !important;
+  margin-top: 0 !important;
+  opacity: 0.82 !important;
+}
+
+.landing-hero-section .nexid-hero-phone__verdict {
+  margin-top: clamp(0.72rem, 1vw, 1rem) !important;
+}
+
+.hero-consumer-device__frame {
+  border-width: 6px !important;
+  border-radius: 2.3rem !important;
+  background: linear-gradient(180deg, #111827, #020617) !important;
+  padding: 0.4rem !important;
+}
+
+.hero-consumer-device__screen {
+  border-radius: 1.78rem !important;
+}
+
+.hero-consumer-device__status {
+  grid-template-columns: auto minmax(0, 1fr) auto !important;
+  min-height: 1.72rem !important;
+}
+
+.hero-consumer-device__status strong {
+  justify-self: start !important;
+  font-size: 1.14rem !important;
+}
+
+.sdk-proof-phone__chrome,
+.demo-lab-experience-layer .demo-lab-phone-topbar {
+  position: relative !important;
+  min-height: 1.58rem !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.sdk-proof-phone,
+.demo-lab-experience-layer .demo-lab-phone-shell {
+  border-width: 6px !important;
+  border-color: rgba(15, 23, 42, 0.96) !important;
+  background:
+    radial-gradient(circle at 82% 12%, rgba(34, 211, 238, 0.13), transparent 31%),
+    linear-gradient(180deg, #071827, #06111f 58%, #020817) !important;
+}
+
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-plate,
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-accent {
+  display: none !important;
+  opacity: 0 !important;
+}
+
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-callout {
+  filter: drop-shadow(0 1px 3px rgba(2, 8, 23, 0.88)) !important;
+}
+
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-eyebrow,
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-main,
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-sub {
+  paint-order: stroke fill !important;
+  stroke: rgba(1, 7, 18, 0.92) !important;
+  stroke-linejoin: round !important;
+}
+
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-eyebrow {
+  font-size: 8.4px !important;
+  letter-spacing: 1.2px !important;
+  stroke-width: 2px !important;
+}
+
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-main {
+  font-size: 14px !important;
+  stroke-width: 2.5px !important;
+}
+
+.landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-sub {
+  font-size: 9.4px !important;
+  stroke-width: 1.9px !important;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-phone,
+html.theme-light .sdk-proof-phone,
+html.theme-light .demo-lab-experience-layer .demo-lab-phone-shell {
+  border-color: rgba(30, 41, 59, 0.82) !important;
+  background: linear-gradient(180deg, #1e293b, #0f172a) !important;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-phone__screen {
+  background:
+    radial-gradient(circle at 82% 12%, rgba(14, 165, 233, 0.12), transparent 31%),
+    radial-gradient(circle at 10% 28%, rgba(16, 185, 129, 0.08), transparent 34%),
+    linear-gradient(180deg, #eef8ff 0%, #ffffff 54%, #e5f2ff 100%) !important;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-phone__status > span:first-child,
+html.theme-light .landing-hero-section .nexid-hero-phone__status strong {
+  color: #0f172a !important;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-callout {
+  filter: drop-shadow(0 1px 2px rgba(255, 255, 255, 0.94)) !important;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-eyebrow,
+html.theme-light .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-main,
+html.theme-light .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-sub {
+  stroke: rgba(255, 255, 255, 0.96) !important;
+}
+
+@media (max-width: 520px) {
+  .landing-hero-section .nexid-hero-phone {
+    border-width: 5px !important;
+    border-radius: 2.05rem !important;
+    padding: 0.32rem !important;
+  }
+
+  .landing-hero-section .nexid-hero-phone__screen {
+    border-radius: 1.56rem !important;
+  }
+}
+
+/* Responsive narrative correction: desktop shows atlas/product/phone together;
+   mobile starts with product and mobile output so the hero does not become only
+   a map before the buyer sees the proof. */
+@media (min-width: 981px) and (max-width: 1240px) {
+  .landing-hero-section .nexid-hero-board {
+    grid-template-columns: minmax(27rem, 1.25fr) minmax(14.5rem, 0.72fr) minmax(14.5rem, 0.72fr) !important;
+    gap: clamp(0.62rem, 1vw, 0.9rem) !important;
+  }
+
+  .landing-hero-section .nexid-hero-atlas-card {
+    min-height: clamp(31rem, 48vw, 36rem) !important;
+  }
+
+  .landing-hero-section .nexid-hero-atlas-card__map {
+    min-height: clamp(18.5rem, 28vw, 22rem) !important;
+  }
+
+  .landing-hero-section .nexid-hero-phone-panel {
+    grid-column: auto !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    align-content: start !important;
+    justify-items: center !important;
+    padding: 0 0.65rem 0.85rem !important;
+  }
+
+  .landing-hero-section .nexid-hero-phone-panel__head {
+    align-self: auto !important;
+    padding: 0.82rem 0.2rem 0 !important;
+  }
+
+  .landing-hero-section .nexid-hero-product-card {
+    grid-template-rows: auto minmax(12rem, auto) auto !important;
+  }
+
+  .landing-hero-section .nexid-hero-product-card__media {
+    min-height: clamp(12.2rem, 22vw, 18rem) !important;
+  }
+
+  .landing-hero-section .nexid-hero-product-card__records {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .landing-hero-section .nexid-hero-phone {
+    width: min(100%, 18rem) !important;
+  }
+
+  .landing-hero-section .nexid-hero-phone__screen {
+    min-height: 0 !important;
+    padding: 0.78rem !important;
+  }
+
+  .landing-hero-section .nexid-hero-phone__verdict {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 0.58rem !important;
+  }
+
+  .landing-hero-section .nexid-hero-phone__shield {
+    width: 3.1rem !important;
+    height: 3.1rem !important;
+  }
+
+  .landing-hero-section .nexid-hero-phone__product {
+    grid-template-columns: 3.35rem minmax(0, 1fr) !important;
+    gap: 0.55rem !important;
+    padding: 0.48rem !important;
+  }
+
+  .landing-hero-section .nexid-hero-phone__product > span {
+    height: 3.35rem !important;
+  }
+
+  .landing-hero-section .nexid-hero-phone__specs div {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 0.1rem !important;
+    padding: 0.42rem 0.5rem !important;
+  }
+
+  .landing-hero-section .nexid-hero-phone__specs dd {
+    text-align: left !important;
+    white-space: normal !important;
+  }
+
+  .landing-hero-section .nexid-hero-phone__note {
+    font-size: 0.58rem !important;
+    line-height: 1.32 !important;
+    padding: 0.54rem 0.58rem !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .landing-hero-section .nexid-hero-product-trigger {
+    order: 1 !important;
+  }
+
+  .landing-hero-section .nexid-hero-phone-panel {
+    order: 2 !important;
+  }
+
+  .landing-hero-section .nexid-hero-atlas-card {
+    order: 3 !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .landing-hero-section .nexid-hero-product-card__media {
+    height: clamp(10.8rem, 45vw, 12.8rem) !important;
+    min-height: 0 !important;
+  }
+
+  .landing-hero-section .nexid-hero-product-card__media img,
+  .landing-hero-section .nexid-hero-product-card__media .hero-product-visual-shell {
+    min-height: 0 !important;
+  }
+
+  .landing-hero-section .nexid-hero-product-card__records {
+    display: none !important;
+  }
+
+  .landing-hero-section .nexid-hero-product-card__body {
+    padding-block: 0.82rem !important;
+  }
+
+  .landing-hero-section .nexid-hero-product-card__body h3 {
+    font-size: clamp(1.14rem, 7vw, 1.46rem) !important;
+  }
+
+  .landing-hero-section .nexid-hero-product-card__body p {
+    margin-top: 0.22rem !important;
+  }
+
+  .landing-hero-section .nexid-hero-product-card__cta {
+    margin-top: 0.72rem !important;
+    min-height: 3.1rem !important;
+    padding: 0.58rem 0.65rem !important;
+  }
+
+  .landing-hero-section .nexid-hero-product-card__chip {
+    min-width: 4.8rem !important;
+    padding: 0.48rem 0.55rem !important;
+  }
+
+  .landing-hero-section .nexid-hero-atlas-card__map {
+    min-height: clamp(13.5rem, 52vw, 16.5rem) !important;
+  }
+
+  .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-callout,
+  .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__leader {
+    display: none !important;
+  }
+
+  .landing-hero-section .nexid-hero-atlas-card__stops {
+    grid-auto-columns: minmax(6.9rem, 46%) !important;
+  }
+
+  .hero-product-modal__asset {
+    min-height: clamp(13rem, 58vw, 17rem) !important;
+  }
+}
+
+.nexid-hero-product-card__light-render,
+.hero-product-modal__asset-light-render,
+.nexid-hero-phone__product-light {
+  display: none;
+}
+
+.nexid-hero-product-card__light-render,
+.hero-product-modal__asset-light-render {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  place-items: center;
+  pointer-events: none;
+}
+
+.nexid-hero-product-card__light-render .hero-prime-product,
+.hero-product-modal__asset-light-render .hero-prime-product {
+  width: min(76%, 24rem);
+  height: min(92%, 28rem);
+  max-height: none;
+  filter: drop-shadow(0 1.6rem 2.6rem rgba(15, 23, 42, 0.18));
+}
+
+.nexid-hero-phone__product-light {
+  position: absolute;
+  inset: 0;
+  place-items: center;
+  pointer-events: none;
+}
+
+.nexid-hero-phone__product-light .hero-prime-product {
+  width: 110%;
+  height: 110%;
+  filter: drop-shadow(0 0.55rem 0.8rem rgba(15, 23, 42, 0.16));
+}
+
+html.theme-light .landing-hero-section .nexid-hero-product-card__media,
+html.theme-light .hero-product-modal__asset {
+  background:
+    radial-gradient(circle at 50% 24%, rgba(14, 165, 233, 0.14), transparent 32%),
+    radial-gradient(circle at 52% 72%, rgba(16, 185, 129, 0.1), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(235, 249, 255, 0.94)) !important;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-product-card__media::after,
+html.theme-light .hero-product-modal__asset::after {
+  background:
+    linear-gradient(180deg, transparent 62%, rgba(14, 116, 144, 0.1)),
+    radial-gradient(ellipse at 50% 88%, rgba(14, 116, 144, 0.1), transparent 44%) !important;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-product-card__photo,
+html.theme-light .hero-product-modal__asset-photo,
+html.theme-light .landing-hero-section .nexid-hero-phone__product-photo {
+  opacity: 1 !important;
+  visibility: visible !important;
+  object-fit: contain !important;
+  padding: clamp(0.35rem, 1vw, 0.9rem) !important;
+  filter: invert(1) hue-rotate(180deg) brightness(0.58) contrast(1.46) saturate(1.04) drop-shadow(0 1.2rem 1.7rem rgba(15, 23, 42, 0.16)) !important;
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 0 58%, rgba(0, 0, 0, 0.78) 76%, transparent 100%);
+  mask-image: radial-gradient(ellipse at center, #000 0 58%, rgba(0, 0, 0, 0.78) 76%, transparent 100%);
+}
+
+html.theme-light .nexid-hero-product-card__light-render,
+html.theme-light .hero-product-modal__asset-light-render,
+html.theme-light .nexid-hero-phone__product-light {
+  display: none !important;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-phone__product > span {
+  position: relative;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(14, 165, 233, 0.12), transparent 54%),
+    rgba(255, 255, 255, 0.9) !important;
+}
+
+html.theme-light .sdk-proof-product-shot,
+html.theme-light .sdk-industry-image-wrap,
+html.theme-light .demo-lab-real-product-shot,
+html.theme-light .demo-lab-premium-scene__media,
+html.theme-light .demo-lab-wine-product__packshot,
+html.theme-light .demo-lab-cosmetic-photo,
+html.theme-light .demo-lab-sneaker-product__photo,
+html.theme-light .demo-lab-event-photo {
+  background:
+    radial-gradient(circle at 50% 24%, rgba(14, 165, 233, 0.12), transparent 34%),
+    radial-gradient(ellipse at 50% 90%, rgba(14, 116, 144, 0.13), transparent 42%),
+    linear-gradient(180deg, #ffffff, #eef8ff) !important;
+}
+
+html.theme-light .sdk-proof-product-shot::after,
+html.theme-light .sdk-industry-image-wrap::after,
+html.theme-light .demo-lab-real-product-shot::after,
+html.theme-light .demo-lab-premium-scene__media::after,
+html.theme-light .demo-lab-wine-product__packshot::after,
+html.theme-light .demo-lab-cosmetic-photo::after,
+html.theme-light .demo-lab-sneaker-product__photo::after,
+html.theme-light .demo-lab-event-photo::after {
+  background:
+    linear-gradient(180deg, transparent 48%, rgba(14, 116, 144, 0.08)),
+    radial-gradient(ellipse at 50% 90%, rgba(14, 116, 144, 0.12), transparent 44%) !important;
+}
+
+html.theme-light .sdk-proof-product-shot img,
+html.theme-light .sdk-industry-image,
+html.theme-light .demo-lab-real-product-shot img,
+html.theme-light .demo-lab-premium-scene__media img,
+html.theme-light .demo-lab-wine-product__packshot img,
+html.theme-light .demo-lab-cosmetic-photo img,
+html.theme-light .demo-lab-sneaker-product__photo img,
+html.theme-light .demo-lab-event-photo img {
+  object-fit: contain !important;
+  padding: clamp(0.45rem, 1.2vw, 1rem) !important;
+  filter: invert(1) hue-rotate(180deg) brightness(0.58) contrast(1.46) saturate(1.04) drop-shadow(0 1.35rem 1.8rem rgba(15, 23, 42, 0.16)) !important;
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 0 60%, rgba(0, 0, 0, 0.76) 78%, transparent 100%);
+  mask-image: radial-gradient(ellipse at center, #000 0 60%, rgba(0, 0, 0, 0.76) 78%, transparent 100%);
+}
+
+html.theme-light .landing-hero-section .nexid-hero-product-card__photo,
+html.theme-light .hero-product-modal__asset-photo,
+html.theme-light .landing-hero-section .nexid-hero-phone__product-photo,
+html.theme-light .sdk-proof-product-shot img,
+html.theme-light .sdk-industry-image,
+html.theme-light .demo-lab-real-product-shot img,
+html.theme-light .demo-lab-premium-scene__media img,
+html.theme-light .demo-lab-wine-product__packshot img,
+html.theme-light .demo-lab-cosmetic-photo img,
+html.theme-light .demo-lab-sneaker-product__photo img,
+html.theme-light .demo-lab-event-photo img {
+  position: relative;
+  z-index: 1;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-product-card__media::before,
+html.theme-light .hero-product-modal__asset::before,
+html.theme-light .landing-hero-section .nexid-hero-phone__product > span::before,
+html.theme-light .sdk-proof-product-shot::before,
+html.theme-light .sdk-industry-image-wrap::before,
+html.theme-light .demo-lab-real-product-shot::before,
+html.theme-light .demo-lab-premium-scene__media::before,
+html.theme-light .demo-lab-wine-product__packshot::before,
+html.theme-light .demo-lab-cosmetic-photo::before,
+html.theme-light .demo-lab-sneaker-product__photo::before,
+html.theme-light .demo-lab-event-photo::before {
+  content: "";
+  position: absolute;
+  inset: clamp(0.25rem, 1vw, 0.8rem);
+  z-index: 2;
+  pointer-events: none;
+  background-image: var(--nexid-product-image);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  opacity: 0.42;
+  filter: brightness(0.78) contrast(1.22) saturate(0.95) drop-shadow(0 1.15rem 1.45rem rgba(15, 23, 42, 0.18));
+  -webkit-mask-image: radial-gradient(ellipse 30% 50% at center, #000 0 42%, rgba(0, 0, 0, 0.68) 58%, transparent 100%);
+  mask-image: radial-gradient(ellipse 30% 50% at center, #000 0 42%, rgba(0, 0, 0, 0.68) 58%, transparent 100%);
+}
+
+html.theme-light .sdk-industry-image-wrap::before,
+html.theme-light .demo-lab-sneaker-product__photo::before,
+html.theme-light .demo-lab-event-photo::before {
+  opacity: 0.36;
+  -webkit-mask-image: radial-gradient(ellipse 46% 42% at center, #000 0 38%, rgba(0, 0, 0, 0.6) 58%, transparent 100%);
+  mask-image: radial-gradient(ellipse 46% 42% at center, #000 0 38%, rgba(0, 0, 0, 0.6) 58%, transparent 100%);
+}
+
+html.theme-light .landing-hero-section .nexid-hero-product-card__chip,
+html.theme-light .hero-product-modal__asset-caption,
+html.theme-light .sdk-proof-product-shot span,
+html.theme-light .sdk-industry-image-wrap span,
+html.theme-light .demo-lab-real-product-shot figcaption,
+html.theme-light .demo-lab-premium-scene__media figcaption,
+html.theme-light .demo-lab-wine-product__packshot figcaption,
+html.theme-light .demo-lab-cosmetic-photo figcaption,
+html.theme-light .demo-lab-sneaker-product__photo figcaption,
+html.theme-light .demo-lab-event-photo figcaption {
+  z-index: 5;
+}
+
+/* Premium light-mode assets: prefer real light studio photos over destructive CSS filters. */
+.nexid-premium-image--light {
+  display: none !important;
+}
+
+html.theme-light .nexid-premium-image--dark,
+html[data-theme="light"] .nexid-premium-image--dark,
+.theme-light .nexid-premium-image--dark,
+[data-theme="light"] .nexid-premium-image--dark {
+  display: none !important;
+}
+
+html.theme-light .nexid-premium-image--light,
+html[data-theme="light"] .nexid-premium-image--light,
+.theme-light .nexid-premium-image--light,
+[data-theme="light"] .nexid-premium-image--light {
+  display: block !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  filter: none !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+  padding: 0 !important;
+  object-fit: cover !important;
+  transform: none !important;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-product-card__photo.nexid-premium-image--light,
+html.theme-light .hero-product-modal__asset-photo.nexid-premium-image--light,
+html.theme-light .landing-hero-section .nexid-hero-phone__product-photo.nexid-premium-image--light,
+html.theme-light .sdk-proof-product-shot .nexid-premium-image--light,
+html.theme-light .sdk-industry-image.nexid-premium-image--light,
+html.theme-light .demo-lab-real-product-shot .nexid-premium-image--light,
+html.theme-light .demo-lab-premium-scene__media .nexid-premium-image--light,
+html.theme-light .demo-lab-wine-product__packshot .nexid-premium-image--light,
+html.theme-light .demo-lab-cosmetic-photo .nexid-premium-image--light,
+html.theme-light .demo-lab-sneaker-product__photo .nexid-premium-image--light,
+html.theme-light .demo-lab-event-photo .nexid-premium-image--light,
+html[data-theme="light"] .landing-hero-section .nexid-hero-product-card__photo.nexid-premium-image--light,
+html[data-theme="light"] .hero-product-modal__asset-photo.nexid-premium-image--light,
+html[data-theme="light"] .landing-hero-section .nexid-hero-phone__product-photo.nexid-premium-image--light,
+html[data-theme="light"] .sdk-proof-product-shot .nexid-premium-image--light,
+html[data-theme="light"] .sdk-industry-image.nexid-premium-image--light,
+html[data-theme="light"] .demo-lab-real-product-shot .nexid-premium-image--light,
+html[data-theme="light"] .demo-lab-premium-scene__media .nexid-premium-image--light,
+html[data-theme="light"] .demo-lab-wine-product__packshot .nexid-premium-image--light,
+html[data-theme="light"] .demo-lab-cosmetic-photo .nexid-premium-image--light,
+html[data-theme="light"] .demo-lab-sneaker-product__photo .nexid-premium-image--light,
+html[data-theme="light"] .demo-lab-event-photo .nexid-premium-image--light {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: inherit !important;
+  max-width: none !important;
+  border-radius: inherit;
+  object-fit: cover !important;
+  object-position: center !important;
+  padding: 0 !important;
+  filter: none !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-product-card__media::before,
+html.theme-light .hero-product-modal__asset::before,
+html.theme-light .landing-hero-section .nexid-hero-phone__product > span::before,
+html.theme-light .sdk-proof-product-shot::before,
+html.theme-light .sdk-industry-image-wrap::before,
+html.theme-light .demo-lab-real-product-shot::before,
+html.theme-light .demo-lab-premium-scene__media::before,
+html.theme-light .demo-lab-wine-product__packshot::before,
+html.theme-light .demo-lab-cosmetic-photo::before,
+html.theme-light .demo-lab-sneaker-product__photo::before,
+html.theme-light .demo-lab-event-photo::before,
+html[data-theme="light"] .landing-hero-section .nexid-hero-product-card__media::before,
+html[data-theme="light"] .hero-product-modal__asset::before,
+html[data-theme="light"] .landing-hero-section .nexid-hero-phone__product > span::before,
+html[data-theme="light"] .sdk-proof-product-shot::before,
+html[data-theme="light"] .sdk-industry-image-wrap::before,
+html[data-theme="light"] .demo-lab-real-product-shot::before,
+html[data-theme="light"] .demo-lab-premium-scene__media::before,
+html[data-theme="light"] .demo-lab-wine-product__packshot::before,
+html[data-theme="light"] .demo-lab-cosmetic-photo::before,
+html[data-theme="light"] .demo-lab-sneaker-product__photo::before,
+html[data-theme="light"] .demo-lab-event-photo::before {
+  content: none !important;
+  display: none !important;
 }

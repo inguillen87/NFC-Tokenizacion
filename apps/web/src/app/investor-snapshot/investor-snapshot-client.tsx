@@ -54,7 +54,7 @@ const faqCategories = [
       },
       {
         q: "¿Qué pasa si un falsificador inyecta vino barato con una jeringa ultra-fina a través del corcho sin tocar la cápsula ni el chip? ¿El sistema no da un falso positivo de autenticidad?",
-        a: "Es una verdad incómoda: un ataque quirúrgico con micro-jeringa directo al corcho sin alterar la cápsula exterior no puede ser detectado físicamente por un sensor electrónico, ya que el chip no mide la composición química del líquido en tiempo real. Cualquiera que te diga lo contrario te está mintiendo. Sin embargo, nexID neutraliza el fraude a escala comercial: primero, porque rellenar artesanalmente botella por botella con jeringa es económicamente inviable para el crimen organizado a gran escala; segundo, porque el circuito TagTamper detecta cualquier rotura física al girar la cápsula; y tercero, si la botella viaja al mercado gris, nuestra telemetría de geolocalización detecta escaneos anómalos (por ejemplo, el mismo chip leído en Londres y Shanghái a la vez), alertando a tu equipo de inmediato.",
+        a: "Es una verdad incómoda: un ataque quirúrgico con micro-jeringa directo al corcho sin alterar la cápsula exterior no puede ser detectado físicamente por un sensor electrónico, ya que el chip no mide la composición química del líquido en tiempo real. Cualquiera que te diga lo contrario te está mintiendo. Sin embargo, nexID neutraliza el fraude a escala comercial: primero, porque rellenar artesanalmente botella por botella con jeringa es económicamente inviable para el crimen organizado a gran escala; segundo, porque el circuito TagTamper detecta cualquier rotura física al girar la cápsula; y tercero, si la botella viaja al mercado gris, nuestras señales de riesgo del backend detectan escaneos anómalos por ciudad aproximada, canal y ventana temporal, alertando a tu equipo de inmediato.",
         ctx: "La seguridad perfecta no existe, pero nexID eleva tanto la barrera de entrada y el costo para el falsificador que el fraude deja de ser rentable, protegiendo la reputación y la prima de precio de tu marca en mercados internacionales de alta gama."
       },
       {
@@ -69,7 +69,7 @@ const faqCategories = [
       },
       {
         q: "¿Qué pasa si un falsificador simplemente despega la etiqueta con el chip (sin material VOID) y la pega en una botella falsa? ¿Cómo justifica nexID la inversión en este escenario?",
-        a: "Es una objeción crítica. Si el material no es auto-destructivo (VOID), despegarlo intacto es sumamente difícil: el adhesivo acrílico de alta cohesión sobre vidrio curvo rompe el filamento de aluminio de la antena NFC en el 90% de los intentos, dejando el chip inoperativo. Pero si buscas seguridad física total, ofrecemos como opcional de setup etiquetas con adhesivo destructible de transferencia o tipo 'tatuaje' (VOID Tamper-Evident), que se pueden solicitar fácilmente a proveedores globales. Aunque incrementan levemente el costo unitario, al intentar despegarlas dejan un patrón de residuo físico 'tatuado' en el vidrio que evidencia visualmente la manipulación y destruye la antena. Si optas por tags estándar sin VOID, nexID lo resuelve cruzando telemetría en la nube: comparamos despachos oficiales con lecturas geográficas en destino, alertando de inmediato ante cualquier desvío de canal o intento de reutilización.",
+        a: "Es una objeción crítica. Si el material no es auto-destructivo (VOID), despegarlo intacto es sumamente difícil: el adhesivo acrílico de alta cohesión sobre vidrio curvo rompe el filamento de aluminio de la antena NFC en el 90% de los intentos, dejando el chip inoperativo. Pero si buscas seguridad física total, ofrecemos como opcional de setup etiquetas con adhesivo destructible de transferencia o tipo 'tatuaje' (VOID Tamper-Evident), que se pueden solicitar fácilmente a proveedores globales. Aunque incrementan levemente el costo unitario, al intentar despegarlas dejan un patrón de residuo físico 'tatuado' en el vidrio que evidencia visualmente la manipulación y destruye la antena. Si optas por tags estándar sin VOID, nexID lo resuelve cruzando señales operativas del backend: comparamos despachos oficiales con lecturas por país, ciudad aproximada y canal de destino, alertando de inmediato ante cualquier desvío de canal o intento de reutilización.",
         ctx: "La base de datos de exportaciones sincroniza las lecturas de aduana con las del consumidor final en tiempo real. Así, la bodega sabe exactamente qué porcentaje del lote llegó al destino correcto y detecta desvíos de canal sin depender exclusivamente de la seguridad física del envase."
       }
     ]
@@ -101,8 +101,8 @@ const faqCategories = [
       },
       {
         q: "En cosméticos, si un falsificador despega la etiqueta del perfume original para pegarla en un frasco clonado, ¿cómo detectamos el fraude si no usamos adhesivos VOID?",
-        a: "Las antenas NFC de papel son frágiles y suelen dañarse al despegar el adhesivo. Si buscás mayor protección física, existen etiquetas VOID o de transferencia de adhesivo con proveedores globales: al intentar despegarlas, la antena y el diseño se fragmentan y reducen la posibilidad de reutilización. Si preferís tags más económicos sin VOID, el motor de telemetría detecta patrones incongruentes, como escaneos duplicados o ubicaciones incompatibles para un mismo chip, y marca el envase como sospechoso.",
-        ctx: "Al contrastar la base de datos de despachos a distribuidores autorizados con las coordenadas GPS del cliente final que escanea el perfume, nexID identifica de inmediato la fuga al mercado gris o la reutilización del chip."
+        a: "Las antenas NFC de papel son frágiles y suelen dañarse al despegar el adhesivo. Si buscás mayor protección física, existen etiquetas VOID o de transferencia de adhesivo con proveedores globales: al intentar despegarlas, la antena y el diseño se fragmentan y reducen la posibilidad de reutilización. Si preferís tags más económicos sin VOID, el motor de riesgo del backend detecta patrones incongruentes, como escaneos duplicados o ubicaciones incompatibles para un mismo chip, y marca el envase como sospechoso.",
+        ctx: "Al contrastar la base de datos de despachos a distribuidores autorizados con país, ciudad aproximada y canal declarado del escaneo, nexID identifica de inmediato la fuga al mercado gris o la reutilización del chip."
       }
     ]
   },
@@ -152,7 +152,7 @@ const faqCategories = [
       },
       {
         q: "¿Cómo escala el modelo SaaS en Render y AWS?",
-        a: "Operamos un modelo de software de alta rentabilidad: margen por volumen en el hardware programado (chips) + suscripción SaaS mensual por el uso del panel CRM, telemetría y el motor nexID Cognitive AI Engine.",
+        a: "Operamos un modelo de software de alta rentabilidad: margen por volumen en el hardware programado (chips) + suscripción SaaS mensual por el uso del panel CRM, analítica operativa y el motor nexID Cognitive AI Engine.",
         ctx: "Esto nos da ingresos predecibles y un moat defensivo basado en el software y la integración criptográfica propietaria."
       }
     ]
@@ -193,7 +193,7 @@ const slides = [
     tagline: "Monitoreo Activo de Claves",
     bullets: [
       "Cada tap genera una firma dinámica única (SUN) que se descifra con llaves custodiadas en HSM/KMS.",
-      "Telemetría de geolocalización activa: alerta si el mismo chip es leído simultáneamente en dos ciudades.",
+      "Señales de riesgo activas: alerta si el mismo chip aparece en ciudades o canales incompatibles.",
       "Circuito físico TagTamper: el chip detecta e informa si la cápsula o sello original ya fue abierto."
     ]
   },
@@ -202,7 +202,7 @@ const slides = [
     tagline: "Motor de Optimización de Tono",
     bullets: [
       "Reescritura de campañas comerciales en 3 perfiles: Sommelier, Club Privado y Modern Web3.",
-      "Telemetría de impacto live: calcula el Prestige Score, Viralidad y la Huella Emocional del texto.",
+      "Analítica de impacto live: calcula el Prestige Score, Viralidad y la Huella Emocional del texto.",
       "Traducción semántica inteligente de palabras planas a jerga enológica y tecnológica premium."
     ]
   },
@@ -212,14 +212,14 @@ const slides = [
     bullets: [
       "Cava digital interactiva donde los consumidores reclaman la propiedad y coleccionan sus botellas.",
       "Categorías de membresía metálica (Bronce, Plata, Oro) con beneficios y preventas exclusivas.",
-      "Gobernanza activa: encuestas on-chain para decidir cortes del próximo Blend o diseño de etiquetas."
+      "Gobernanza activa: encuestas de comunidad para decidir cortes del próximo Blend o diseño de etiquetas."
     ]
   },
   {
     title: "7) Tracción y Modelo B2B",
     tagline: "SaaS Recurrente y Alto Margen",
     bullets: [
-      "Ingresos recurrentes por SaaS de acceso al CRM, geolocalización, AI Engine y portal VIP.",
+      "Ingresos recurrentes por SaaS de acceso al CRM, mapa operacional, AI Engine y portal VIP.",
       "Venta del hardware pre-programado en inlays autoadhesivos con margen del 40%.",
       "Ecosistema multimercado aplicable a Bodegas, Cosmética, Farmacéutica, Agro y Eventos."
     ]
@@ -862,7 +862,7 @@ export const INDUSTRY_SIM_DETAILS: Record<string, {
     authText: "Autenticidad de Origen",
     selloText: "Sello Cerrado Original",
     nodes: ["MDZ", "BUE", "RTM", "ZRH"],
-    iot: ["🌡️ Temp: 14.2°C", "💧 Hum: 58%", "⚡ GPS Lock: OK"],
+    iot: ["🌡️ Temp: 14.2°C", "💧 Hum: 58%", "⚡ Hub validado: OK"],
     steps: [
       { title: "1. Viñedo Origen", desc: "Luján de Cuyo, Mendoza · Registrado en Origen" },
       { title: "2. Logística y Aduana", desc: "Despacho de puerto e ingreso en Zurich" },
@@ -3179,11 +3179,6 @@ export function InvestorSnapshotClient() {
                 }
                 className="absolute right-[8%] w-[270px] h-[460px] border-[8px] border-slate-800 rounded-[40px] bg-slate-950 shadow-2xl z-20 flex flex-col items-center justify-between overflow-hidden shadow-cyan-500/5"
               >
-                {/* iPhone Bezel notch */}
-                <div className="w-28 h-5 bg-slate-900 rounded-b-2xl absolute top-0 z-30 flex items-center justify-center">
-                  <div className="w-10 h-1 bg-slate-800 rounded-full mb-1" />
-                </div>
-                
                 {simStep === "idle" && (
                   <div className="text-center p-4 my-auto space-y-4">
                     <Smartphone className="w-14 h-14 mx-auto text-slate-500 animate-pulse" />
