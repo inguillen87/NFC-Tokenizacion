@@ -57,34 +57,7 @@ export function HeroSection({ content, stats, locale, initialTheme = "dark" }: {
         </div>
 
         <div className="hero-demo-shell mx-auto mt-6 max-w-7xl text-left">
-          <div className="hero-demo-brief hero-demo-brief--executive-hidden mb-3 flex flex-wrap items-end justify-between gap-3">
-            <div className="hero-demo-copy">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">{demoEyebrow}</p>
-              <p className="mt-1 max-w-2xl text-sm text-slate-300">{demoBody}</p>
-              <div className="hero-proof-flow mt-2 grid grid-cols-2 gap-2 lg:grid-cols-4">
-                {heroFlow.map((item, index) => (
-                  <span key={item} className="inline-flex min-h-8 items-center gap-2 rounded-xl border border-white/10 bg-slate-950/55 px-3 py-1.5 text-xs font-black text-slate-100">
-                    <strong className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-cyan-300/35 bg-cyan-500/15 text-[10px] text-cyan-100">{index + 1}</strong>
-                    {item}
-                  </span>
-                ))}
-              </div>
-              <p className="hero-assurance-pill mt-2 max-w-2xl rounded-xl border border-emerald-300/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold leading-5 text-emerald-100">
-                {heroAssurance}
-              </p>
-            </div>
-            <div className="hero-demo-actions flex flex-wrap gap-2">
-              <a href={schedulingUrls.meeting} target="_blank" rel="noreferrer" className="rounded-xl border border-emerald-300/35 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/20">
-                {meetingCta}
-              </a>
-              <Link href="/demo-lab?vertical=wine" className="rounded-xl border border-cyan-300/35 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/20">
-                {demoCta}
-              </Link>
-              <Link href="/login?next=/me" className="rounded-xl border border-purple-500/35 bg-purple-500/10 px-4 py-2 text-sm font-semibold text-purple-300 transition hover:bg-purple-500/20">
-                {isEn ? "Consumer Portal" : isBr ? "Portal do Consumidor" : "Portal Consumidor"}
-              </Link>
-            </div>
-          </div>
+
           <HeroScene locale={locale as any} />
           <InstitutionalVideoPanel locale={locale} variant="landing" className="mt-5" initialTheme={initialTheme} />
         </div>
