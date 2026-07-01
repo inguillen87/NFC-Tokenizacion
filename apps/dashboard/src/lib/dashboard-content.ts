@@ -31,6 +31,9 @@ type DashboardContent = {
     subscriptions: string;
     apiKeys: string;
     sdkVision: string;
+    logistics: string;
+    proof: string;
+    supplierBatches: string;
   };
   pages: {
     overview: { title: string; description: string };
@@ -107,7 +110,7 @@ export const roleAccess: Record<UserRole, Array<keyof DashboardContent["nav"]>> 
 export const dashboardContent: Record<AppLocale, DashboardContent> = {
   "es-AR": {
     shell: { subtitle: "Control multi-tenant enterprise", search: "Buscar...", role: "Rol", logout: "Salir", apiConnected: "API conectada", loading: "Cargando...", empty: "Sin resultados", all: "Todos", refresh: "Actualizar", openModule: "Abrir módulo", ready: "Listo." },
-    nav: { overview: "Resumen", tenants: "Tenants", batches: "Lotes", tags: "Tags", analytics: "Analítica", events: "Eventos", resellers: "Resellers", leadsTickets: "Leads & Tickets", loyalty: "Fidelización", experiences: "Experiencias", campaigns: "Campañas", subscriptions: "Suscripciones", apiKeys: "API Keys", sdkVision: "Ecosistema SDK" },
+    nav: { overview: "Resumen", tenants: "Tenants", batches: "Lotes", tags: "Tags", analytics: "Analítica", events: "Eventos", resellers: "Resellers", leadsTickets: "Leads & Tickets", loyalty: "Fidelización", experiences: "Experiencias", campaigns: "Campañas", subscriptions: "Suscripciones", apiKeys: "API Keys", sdkVision: "Ecosistema SDK", logistics: "Logistics Hub", proof: "Trust Layers", supplierBatches: "Pedidos proveedor" },
     pages: {
       overview: { title: "Overview operativo", description: "KPIs críticos de autenticación, fraude y operación de lotes." },
       tenants: { title: "Gestión de tenants", description: "Clientes, planes y estado operativo por tenant." },
@@ -174,7 +177,7 @@ export const dashboardContent: Record<AppLocale, DashboardContent> = {
   },
   "pt-BR": {
     shell: { subtitle: "Controle multi-tenant enterprise", search: "Buscar...", role: "Papel", logout: "Sair", apiConnected: "API conectada", loading: "Carregando...", empty: "Sem resultados", all: "Todos", refresh: "Atualizar", openModule: "Abrir módulo", ready: "Pronto." },
-    nav: { overview: "Visão geral", tenants: "Tenants", batches: "Lotes", tags: "Tags", analytics: "Analytics", events: "Eventos", resellers: "Revendedores", leadsTickets: "Leads & Tickets", loyalty: "Fidelidade", experiences: "Experiências", campaigns: "Campanhas", subscriptions: "Assinaturas", apiKeys: "API Keys", sdkVision: "Ecossistema SDK" },
+    nav: { overview: "Visão geral", tenants: "Tenants", batches: "Lotes", tags: "Tags", analytics: "Analytics", events: "Eventos", resellers: "Revendedores", leadsTickets: "Leads & Tickets", loyalty: "Fidelidade", experiences: "Experiências", campaigns: "Campanhas", subscriptions: "Assinaturas", apiKeys: "API Keys", sdkVision: "Ecossistema SDK", logistics: "Logistics Hub", proof: "Trust Layers", supplierBatches: "Pedidos fornecedor" },
     pages: {
       overview: { title: "Overview operacional", description: "KPIs críticos de autenticação, fraude e lotes." },
       tenants: { title: "Gestão de tenants", description: "Clientes, planos e estado operacional por tenant." },
@@ -241,7 +244,7 @@ export const dashboardContent: Record<AppLocale, DashboardContent> = {
   },
   en: {
     shell: { subtitle: "Enterprise multi-tenant control", search: "Search...", role: "Role", logout: "Logout", apiConnected: "API connected", loading: "Loading...", empty: "No results", all: "All", refresh: "Refresh", openModule: "Open module", ready: "Ready." },
-    nav: { overview: "Overview", tenants: "Tenants", batches: "Batches", tags: "Tags", analytics: "Analytics", events: "Events", resellers: "Resellers", leadsTickets: "Leads & Tickets", loyalty: "Loyalty Studio", experiences: "Experiences", campaigns: "Campaigns", subscriptions: "Subscriptions", apiKeys: "API Keys", sdkVision: "SDK Developer Hub" },
+    nav: { overview: "Overview", tenants: "Tenants", batches: "Batches", tags: "Tags", analytics: "Analytics", events: "Events", resellers: "Resellers", leadsTickets: "Leads & Tickets", loyalty: "Loyalty Studio", experiences: "Experiences", campaigns: "Campaigns", subscriptions: "Subscriptions", apiKeys: "API Keys", sdkVision: "SDK Developer Hub", logistics: "Logistics Hub", proof: "Trust Layers", supplierBatches: "Supplier Orders" },
     pages: {
       overview: { title: "Operational overview", description: "Critical authentication, fraud and batch KPIs." },
       tenants: { title: "Tenant management", description: "Customers, plans and operating health by tenant." },
