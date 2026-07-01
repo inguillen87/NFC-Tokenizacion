@@ -12,6 +12,12 @@ export const institutionalVideoPosters = {
   "pt-BR": "/video/poster_nexid_institutional_pt.jpg",
 } as const;
 
+export const institutionalVideoLightPosters = {
+  "es-AR": "/video/poster_nexid_institutional_es_light.jpg",
+  en: "/video/poster_nexid_institutional_en_light.jpg",
+  "pt-BR": "/video/poster_nexid_institutional_pt_light.jpg",
+} as const;
+
 const activeInstitutionalVideos: Record<string, string> = {
   "es-AR": institutionalVideoDropTargets["es-AR"],
   en: institutionalVideoDropTargets.en,
@@ -25,6 +31,7 @@ export function resolveInstitutionalVideo(locale: string) {
     src: activeInstitutionalVideos[normalized] || activeInstitutionalVideos["es-AR"],
     futureSrc: institutionalVideoDropTargets[normalized],
     poster: institutionalVideoPosters[normalized] || institutionalVideoPosters["es-AR"],
+    lightPoster: institutionalVideoLightPosters[normalized] || institutionalVideoLightPosters["es-AR"],
     type: "video/mp4",
   };
 }

@@ -2038,6 +2038,32 @@ const DEFAULT_CRM_QUERIES: Record<string, Array<{ id: string; query: string; ans
       status: "respondido"
     }
   ],
+  botellas: [
+    {
+      id: "q-r1",
+      query: "Donde puedo devolver este envase y recuperar el deposito?",
+      answer: "El portal muestra puntos de retorno solo si el tenant los cargo como operadores autorizados. nexID valida identidad del envase, estado del ciclo y politica de incentivo antes de liberar el beneficio.",
+      timestamp: "19:41:18",
+      tag: "Retorno",
+      status: "respondido"
+    },
+    {
+      id: "q-r2",
+      query: "Este envase sirve para refill o ya cumplio su ciclo?",
+      answer: "La ficha del envase puede mostrar si el lote esta apto para refill, pendiente de sanitizacion o retirado del circuito. La decision final depende de la politica operativa cargada por la marca.",
+      timestamp: "18:58:03",
+      tag: "Refill",
+      status: "respondido"
+    },
+    {
+      id: "q-r3",
+      query: "Que evidencia queda para reportes ESG o auditoria circular?",
+      answer: "nexID puede registrar retornos, puntos de recarga, lote, operador y evidencia de ciclo. Los hitos relevantes pueden enviarse a una capa de prueba sin afirmar que cada lectura va on-chain.",
+      timestamp: "18:12:44",
+      tag: "ESG",
+      status: "respondido"
+    }
+  ],
   cosmetica: [
     {
       id: "q-c1",
@@ -2150,6 +2176,10 @@ const detectTag = (query: string, industry: string): string => {
     if (q.includes("cena") || q.includes("comida") || q.includes("marida") || q.includes("comer") || q.includes("llevar") || q.includes("quedar bien") || q.includes("precio") || q.includes("comprar")) return "Venta Directa";
     if (q.includes("convenio") || q.includes("alianza") || q.includes("catena") || q.includes("rutini") || q.includes("socios")) return "Alianza B2B";
     return "Enología";
+  } else if (industry === "botellas") {
+    if (q.includes("devolver") || q.includes("retorno") || q.includes("deposito") || q.includes("punto")) return "Retorno";
+    if (q.includes("refill") || q.includes("recarga") || q.includes("ciclo") || q.includes("sanitizacion")) return "Refill";
+    return "ESG";
   } else if (industry === "cosmetica") {
     if (q.includes("parecido") || q.includes("crema") || q.includes("otro") || q.includes("rutina") || q.includes("combinar")) return "Venta Cruzada";
     if (q.includes("convenio") || q.includes("distrib") || q.includes("sephora") || q.includes("juleriaque") || q.includes("tienda")) return "Distribución";
@@ -2245,7 +2275,9 @@ export function InvestorSnapshotClient() {
   }, []);
 
   const getIndustryDefaultChat = (ind: string) => {
-    if (ind === "cosmetica") {
+    if (ind === "botellas") {
+      return [{ sender: "bot" as const, text: "Hola. Soy tu asistente de circularidad nexID. Puedo ayudarte con retorno, refill, puntos autorizados y evidencia ESG del envase." }];
+    } else if (ind === "cosmetica") {
       return [{ sender: "bot" as const, text: "¡Hola! Soy tu Asistente de Estilo Aura. ¿En qué fragancia te puedo asesorar hoy?" }];
     } else if (ind === "agro") {
       return [{ sender: "bot" as const, text: "¡Hola! Soy tu Inspector de Lotes nexID. ¿Qué consulta de trazabilidad tenés sobre el lote?" }];
@@ -2270,7 +2302,7 @@ export function InvestorSnapshotClient() {
       setChipCost(preset.defaultChipCost);
       setResellPrice(preset.defaultChipCost * 1.5);
       
-      if (industryName === "eventos") {
+      if (industryName === "eventos" || industryName === "botellas") {
         setExportRegion("latam");
       } else if (industryName === "bodegas" || industryName === "cosmetica") {
         setExportRegion("europe_usa");
@@ -2352,6 +2384,8 @@ export function InvestorSnapshotClient() {
                     placeholder={
                       selectedIndustry === "bodegas"
                         ? "Ej: Un fénix dorado volando sobre viñas de Mendoza, estilo art decó..."
+                        : selectedIndustry === "botellas"
+                        ? "Ej: Envase refill minimalista con textura aqua, icono GS1/QR y fondo limpio..."
                         : selectedIndustry === "cosmetica"
                         ? "Ej: Flores silvestres y rocío matutino sobre vidrio dorado, abstracto..."
                         : selectedIndustry === "agro"
@@ -2696,7 +2730,16 @@ export function InvestorSnapshotClient() {
         const q = msgText.toLowerCase();
         let reply = "";
         
-        if (selectedIndustry === "cosmetica") {
+        if (selectedIndustry === "botellas") {
+          reply = "Como asistente de circularidad nexID, confirmo que este envase tiene identidad de ciclo. Puedo ayudarte con retorno, refill, puntos autorizados o evidencia ESG.";
+          if (q.includes("devolver") || q.includes("retorno") || q.includes("deposito") || q.includes("punto")) {
+            reply = "El retorno se valida contra el envase fisico y la politica del tenant. Si el punto esta autorizado, el sistema puede liberar deposito, cupon o credito.";
+          } else if (q.includes("refill") || q.includes("recarga") || q.includes("ciclo") || q.includes("sanitizacion")) {
+            reply = "La ficha indica si el envase esta apto para refill, pendiente de sanitizacion o retirado. Esa decision se controla por lote y operador autorizado.";
+          } else if (q.includes("esg") || q.includes("auditoria") || q.includes("evidencia") || q.includes("impacto")) {
+            reply = "nexID registra hitos de retorno, refill, operador y lote. Los eventos relevantes pueden enviarse a una capa de prueba sin afirmar que cada lectura va on-chain.";
+          }
+        } else if (selectedIndustry === "cosmetica") {
           reply = "Como tu Asistente Aura, te confirmo que Elysian Elixir es 100% original. ¿Quieres consultar sobre las notas olfativas o el cuidado?";
           if (q.includes("nota") || q.includes("aroma") || q.includes("olfativa") || q.includes("olor")) {
             reply = "Elysian Elixir abre con flores de jazmín y azafrán, corazón de ámbar gris y fondo de madera de cedro. Una concentración premium del 30%.";
@@ -3675,7 +3718,7 @@ export function InvestorSnapshotClient() {
                               {phoneChatTyping && (
                                 <div className="flex justify-start">
                                   <div className="rounded-lg p-2 bg-slate-950/70 border border-white/5 text-slate-500 rounded-tl-none animate-pulse">
-                                    {selectedIndustry === "bodegas" ? "Sommelier AI escribiendo..." : selectedIndustry === "cosmetica" ? "Aura AI escribiendo..." : selectedIndustry === "agro" ? "Inspector AI escribiendo..." : selectedIndustry === "pharma" ? "Validador AI escribiendo..." : "Coordinador AI escribiendo..."}
+                                    {selectedIndustry === "bodegas" ? "Sommelier AI escribiendo..." : selectedIndustry === "botellas" ? "Circularidad AI escribiendo..." : selectedIndustry === "cosmetica" ? "Aura AI escribiendo..." : selectedIndustry === "agro" ? "Inspector AI escribiendo..." : selectedIndustry === "pharma" ? "Validador AI escribiendo..." : "Coordinador AI escribiendo..."}
                                   </div>
                                 </div>
                               )}
@@ -3708,6 +3751,7 @@ export function InvestorSnapshotClient() {
                                 onChange={(e) => setPhoneChatInput(e.target.value)}
                                 placeholder={
                                   selectedIndustry === "bodegas" ? "Preguntale al Sommelier..." :
+                                  selectedIndustry === "botellas" ? "Preguntale sobre refill..." :
                                   selectedIndustry === "cosmetica" ? "Preguntale a Aura..." :
                                   selectedIndustry === "agro" ? "Preguntale al Inspector..." :
                                   selectedIndustry === "pharma" ? "Preguntale al Validador..." :

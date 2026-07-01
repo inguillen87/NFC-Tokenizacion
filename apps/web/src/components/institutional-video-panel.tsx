@@ -60,10 +60,42 @@ function normalizeLocale(locale: string): SupportedLocale {
   return "es-AR";
 }
 
+function readIsLightTheme() {
+  if (typeof document === "undefined") return false;
+  const root = document.documentElement;
+  return root.classList.contains("theme-light") || root.getAttribute("data-theme") === "light";
+}
+
 export function InstitutionalVideoPanel({ locale, variant = "landing", className = "" }: InstitutionalVideoPanelProps) {
   const activeLocale = normalizeLocale(locale);
   const video = resolveInstitutionalVideo(locale);
   const copy = PANEL_COPY[activeLocale];
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const [isLightTheme, setIsLightTheme] = React.useState(false);
+  const [hasStarted, setHasStarted] = React.useState(false);
+
+  React.useEffect(() => {
+    const root = document.documentElement;
+    const syncTheme = () => setIsLightTheme(readIsLightTheme());
+    syncTheme();
+    const observer = new MutationObserver(syncTheme);
+    observer.observe(root, { attributes: true, attributeFilter: ["class", "data-theme"] });
+    return () => observer.disconnect();
+  }, []);
+
+  const poster = isLightTheme ? video.lightPoster : video.poster;
+  const showLightPlayButton = isLightTheme && !hasStarted;
+
+  React.useEffect(() => {
+    setHasStarted(false);
+  }, [video.src, poster]);
+
+  const playVideo = () => {
+    setHasStarted(true);
+    void videoRef.current?.play().catch(() => {
+      setHasStarted(false);
+    });
+  };
 
   return (
     <section className={`institutional-video-panel institutional-video-panel--${variant} ${className}`} aria-label={copy.aria}>
@@ -99,16 +131,24 @@ export function InstitutionalVideoPanel({ locale, variant = "landing", className
 
         <div className="institutional-video-frame relative aspect-video min-h-[260px] overflow-hidden bg-slate-950">
           <video
-            key={video.src}
-            className="h-full w-full object-cover"
-            controls
-            preload="metadata"
+            ref={videoRef}
+            key={`${video.src}-${poster}`}
+            className={`institutional-video-media h-full w-full object-cover ${isLightTheme ? "institutional-video-media--light" : ""}`}
+            controls={!isLightTheme || hasStarted}
+            onPlay={() => setHasStarted(true)}
+            preload={isLightTheme ? "none" : "metadata"}
             playsInline
             controlsList="nodownload"
-            poster={video.poster}
+            poster={poster}
           >
             <source src={video.src} type={video.type} />
           </video>
+          {showLightPlayButton ? (
+            <button className="institutional-video-play" type="button" onClick={playVideo} aria-label={copy.aria}>
+              <Play className="h-5 w-5" />
+              <span>{copy.eyebrow}</span>
+            </button>
+          ) : null}
           <span className="institutional-video-watermark font-bold tracking-wider opacity-60">nexID</span>
         </div>
 

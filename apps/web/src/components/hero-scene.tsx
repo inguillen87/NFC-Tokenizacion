@@ -2393,6 +2393,19 @@ function EnterpriseHeroPhoneDemo({
             </div>
           </section>
 
+          <section className="nexid-hero-phone__tap-demo" aria-label={copy.trustedTap}>
+            <span className="nexid-hero-phone__tap-beacon" aria-hidden="true">
+              <i />
+              <i />
+              <i />
+            </span>
+            <div>
+              <em>{copy.trustedTap}</em>
+              <strong>{data.phoneTag}</strong>
+              <small>{tapLabel}</small>
+            </div>
+          </section>
+
           <dl className="nexid-hero-phone__specs">
             <div>
               <dt>{copy.productTitle}</dt>
@@ -2549,7 +2562,7 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
   const [selectedVertical, setSelectedVertical] = useState<HeroSelectorKey>("wine");
   const [tapIndex, setTapIndex] = useState(0);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
-  const productTriggerRef = useRef<HTMLDivElement>(null);
+  const productTriggerRef = useRef<HTMLButtonElement>(null);
   const txt = labels[locale] || labels["es-AR"];
   const modalCopy = productModalCopy[locale] || productModalCopy["es-AR"];
   const stageCopy = heroStageCopy[locale] || heroStageCopy["es-AR"];
@@ -2605,21 +2618,7 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
 
         <div className="nexid-hero-board mt-4">
           <EnterpriseHeroAtlasPanel origin={data.origin} tap={tap} distance={distance} numberLocale={numberLocale} txt={txt} stageCopy={stageCopy} />
-          <div
-            suppressHydrationWarning
-            ref={productTriggerRef}
-            role="button"
-            tabIndex={0}
-            className="nexid-hero-product-trigger"
-            aria-label={`${modalCopy.open}: ${data.product}`}
-            onClick={() => setIsProductModalOpen(true)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                setIsProductModalOpen(true);
-              }
-            }}
-          >
+          <div suppressHydrationWarning className="nexid-hero-product-trigger">
             <EnterpriseHeroProductCard
               active={active}
               data={data}
@@ -2627,6 +2626,15 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
               detailCopy={modalCopy}
               stageCopy={stageCopy}
             />
+            <button
+              ref={productTriggerRef}
+              type="button"
+              className="nexid-hero-product-trigger__button"
+              aria-label={`${modalCopy.open}: ${data.product}`}
+              onClick={() => setIsProductModalOpen(true)}
+            >
+              <span>{`${modalCopy.open}: ${data.product}`}</span>
+            </button>
           </div>
           <EnterpriseHeroPhoneDemo
             active={active}

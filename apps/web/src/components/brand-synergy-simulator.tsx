@@ -93,7 +93,7 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
   }, [activeId]);
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] items-center">
+    <div className="brand-synergy-simulator grid gap-8 lg:grid-cols-[1.1fr_0.9fr] items-center">
       <div>
         <span className="rounded-full border border-purple-400/25 bg-purple-400/5 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-purple-300 inline-flex items-center gap-1">
           <Network className="h-3 w-3 animate-spin-slow" />
@@ -155,7 +155,7 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
       </div>
 
       {/* Visual Live Simulator Terminal */}
-      <div className="rounded-2xl border border-purple-500/20 bg-slate-950/80 p-5 font-mono text-[11.5px] text-slate-300 space-y-4 relative shadow-[0_20px_50px_rgba(168,85,247,0.06)] overflow-hidden">
+      <div className="brand-synergy-terminal rounded-2xl border border-purple-500/20 bg-slate-950/80 p-5 font-mono text-[11.5px] text-slate-300 space-y-4 relative shadow-[0_20px_50px_rgba(168,85,247,0.06)] overflow-hidden">
         <div className="absolute top-0 right-0 left-0 h-[2px] bg-gradient-to-r from-purple-500/20 via-purple-500 to-cyan-500/20" />
         
         <div className="flex justify-between items-center">
