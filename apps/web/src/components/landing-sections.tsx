@@ -56,7 +56,7 @@ export function HeroSection({ content, stats, locale, initialTheme = "dark" }: {
           </p>
         </div>
 
-        <div className="hero-demo-shell mx-auto mt-6 max-w-7xl text-left">
+        <div className="hero-demo-shell mx-auto mt-16 md:mt-24 max-w-7xl text-left relative z-20">
 
           <HeroScene locale={locale as any} />
           <InstitutionalVideoPanel locale={locale} variant="landing" className="mt-5" initialTheme={initialTheme} />
@@ -311,17 +311,19 @@ export function EnterpriseTrustLayersSection({ locale }: { locale: string }) {
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 auto-rows-min">
           {copy.paths.map((item, i) => (
-            <article key={item.label} className="col-span-1 md:col-span-2 flex flex-col justify-between rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900/80 to-slate-950/80 p-6 md:p-8 backdrop-blur-md shadow-2xl relative overflow-hidden group">
+            <article key={item.label} className="col-span-1 md:col-span-2 flex flex-col justify-between rounded-3xl border border-slate-200 dark:border-white/10 bg-gradient-to-br from-white/90 to-slate-50/90 dark:from-slate-900/80 dark:to-slate-950/80 p-6 md:p-8 backdrop-blur-md shadow-2xl relative overflow-hidden group">
               <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <div className="relative z-10">
                 <div className="flex items-center gap-3 mb-4">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 border border-white/10 text-emerald-300 shadow-inner">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-emerald-500 dark:text-emerald-300 shadow-inner">
                     <PackageCheck className="h-5 w-5" />
                   </span>
-                  <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Phase {i + 1}</span>
+                  <span className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                    {locale === "en" ? `Phase ${i + 1}` : locale === "pt-BR" ? `Fase ${i + 1}` : `Fase ${i + 1}`}
+                  </span>
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2">{item.label}</h3>
-                <p className="text-sm text-slate-400 leading-relaxed">{item.body}</p>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{item.label}</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{item.body}</p>
               </div>
             </article>
           ))}
@@ -330,15 +332,15 @@ export function EnterpriseTrustLayersSection({ locale }: { locale: string }) {
             const Icon = item.icon;
             const isWide = item.title === "Polygon" || item.title === "NFC 424 DNA";
             return (
-              <article key={item.title} className={`col-span-1 ${isWide ? 'md:col-span-2' : 'md:col-span-1'} flex flex-col justify-between rounded-3xl border border-white/10 bg-slate-900/40 p-6 backdrop-blur-sm hover:bg-slate-900/60 transition-colors relative overflow-hidden group`}>
+              <article key={item.title} className={`col-span-1 ${isWide ? 'md:col-span-2' : 'md:col-span-1'} flex flex-col justify-between rounded-3xl border border-slate-200 dark:border-white/10 bg-white/60 dark:bg-slate-900/40 p-6 backdrop-blur-md hover:bg-white/90 dark:hover:bg-slate-900/60 transition-colors relative overflow-hidden group shadow-sm dark:shadow-none`}>
                 <div className="absolute -right-8 -top-8 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
                 <div className="relative z-10 flex flex-col h-full">
                   <div className="flex items-center gap-2 mb-4">
-                    <Icon className="h-4 w-4 text-emerald-400" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">{item.meta}</span>
+                    <Icon className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">{item.meta}</span>
                   </div>
-                  <h3 className={`font-bold text-white mb-2 ${isWide ? 'text-2xl' : 'text-lg'}`}>{item.title}</h3>
-                  <p className="text-sm text-slate-400 leading-relaxed mt-auto">{item.body}</p>
+                  <h3 className={`font-bold text-slate-900 dark:text-white mb-2 ${isWide ? 'text-2xl' : 'text-lg'}`}>{item.title}</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mt-auto">{item.body}</p>
                 </div>
               </article>
             );
@@ -435,20 +437,20 @@ export function OfflineFieldOperationsSection({ locale }: { locale: string }) {
       
       <div className="relative z-10 grid gap-12 lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_450px] lg:items-center">
         <div className="max-w-2xl">
-          <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-400">{copy.eyebrow}</p>
-          <h2 className="mt-4 text-3xl font-black leading-tight text-white md:text-5xl">{copy.title}</h2>
-          <p className="mt-6 text-base leading-relaxed text-slate-300">{copy.body}</p>
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-600 dark:text-cyan-400">{copy.eyebrow}</p>
+          <h2 className="mt-4 text-3xl font-black leading-tight text-slate-900 dark:text-white md:text-5xl">{copy.title}</h2>
+          <p className="mt-6 text-base leading-relaxed text-slate-600 dark:text-slate-300">{copy.body}</p>
           
           <div className="mt-10 grid gap-4 sm:grid-cols-2">
             {copy.stages.map((stage) => {
               const Icon = stage.icon;
               return (
-                <article key={stage.label} className="rounded-2xl border border-white/5 bg-white/[0.02] p-5 transition-colors hover:bg-white/[0.04]">
-                  <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                <article key={stage.label} className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-white/[0.02] p-5 shadow-sm dark:shadow-none transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.04]">
+                  <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-100 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-500/20">
                     <Icon className="h-5 w-5" />
                   </div>
-                  <h3 className="text-base font-bold text-white mb-2">{stage.label}</h3>
-                  <p className="text-sm leading-relaxed text-slate-400">{stage.body}</p>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2">{stage.label}</h3>
+                  <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">{stage.body}</p>
                 </article>
               );
             })}
