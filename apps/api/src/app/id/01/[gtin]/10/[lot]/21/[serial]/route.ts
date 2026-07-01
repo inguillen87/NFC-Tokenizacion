@@ -3,8 +3,9 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
   req: Request,
-  { params }: { params: { gtin: string; lot: string; serial: string } }
+  props: { params: Promise<{ gtin: string; lot: string; serial: string }> }
 ) {
+  const params = await props.params;
   const { gtin, lot, serial } = params;
 
   // Search for the batchId associated with this GS1 combination

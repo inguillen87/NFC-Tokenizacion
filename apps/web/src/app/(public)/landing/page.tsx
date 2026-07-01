@@ -30,12 +30,12 @@ export default function LandingB2BPage() {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
             <Link href="/demo-lab?scenario=polygon-ownership">
-              <Button size="lg" className="bg-brand-600 hover:bg-brand-500 text-white rounded-full px-8 py-6 h-auto text-lg shadow-[0_0_40px_-10px_rgba(var(--brand-500),0.5)] transition-all hover:scale-105">
+              <Button className="bg-brand-600 hover:bg-brand-500 text-white rounded-full px-8 py-6 h-auto text-lg shadow-[0_0_40px_-10px_rgba(var(--brand-500),0.5)] transition-all hover:scale-105">
                 Launch Enterprise DemoLab <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
             </Link>
             <Link href="/pricing">
-              <Button size="lg" variant="outline" className="rounded-full px-8 py-6 h-auto text-lg border-neutral-800 hover:bg-neutral-900 transition-all">
+              <Button variant="secondary" className="rounded-full px-8 py-6 h-auto text-lg border-neutral-800 hover:bg-neutral-900 transition-all">
                 View Rollout Specs
               </Button>
             </Link>
@@ -171,7 +171,7 @@ export default function LandingB2BPage() {
           <h2 className="text-3xl md:text-5xl font-bold mb-6">Ready to secure your rollout?</h2>
           <p className="text-xl text-neutral-300 mb-10">Test Polygon Ownership, IOTA Proofs, and Offline Scans in our DemoLab.</p>
           <Link href="/demo-lab">
-            <Button size="lg" className="bg-white text-black hover:bg-neutral-200 rounded-full px-10 py-6 h-auto text-lg shadow-xl font-bold">
+            <Button className="bg-white text-black hover:bg-neutral-200 rounded-full px-8 py-4 h-auto text-lg font-semibold transition-all">
               Enter DemoLab
             </Button>
           </Link>
