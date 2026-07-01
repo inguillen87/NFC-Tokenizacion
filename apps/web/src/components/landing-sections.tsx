@@ -293,46 +293,61 @@ export function EnterpriseTrustLayersSection({ locale }: { locale: string }) {
     };
 
   return (
-    <section className="enterprise-trust-layers container-shell py-12 md:py-16">
-      <div className="enterprise-trust-layers__shell">
-        <div className="enterprise-trust-layers__head">
-          <div>
-            <p>{copy.eyebrow}</p>
-            <h2>{copy.title}</h2>
+    <section className="container-shell py-16 md:py-24 relative overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_top,rgba(16,185,129,0.05),transparent_50%)]" />
+      <div className="relative z-10 mx-auto max-w-7xl">
+        <div className="mb-12 flex flex-col items-start gap-6 md:flex-row md:items-end md:justify-between">
+          <div className="max-w-2xl">
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-400">{copy.eyebrow}</p>
+            <h2 className="mt-4 text-3xl font-black leading-tight text-white md:text-5xl">{copy.title}</h2>
           </div>
-          <div>
-            <span>{copy.body}</span>
-            <Link href="/docs#trust-layers">{copy.cta}</Link>
+          <div className="max-w-md shrink-0">
+            <p className="text-sm leading-relaxed text-slate-300">{copy.body}</p>
+            <Link href="/docs#trust-layers" className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-emerald-400 hover:text-emerald-300 transition-colors">
+              {copy.cta} <span aria-hidden="true">&rarr;</span>
+            </Link>
           </div>
         </div>
-        <div className="enterprise-trust-layers__grid">
-          {copy.paths.map((item) => (
-            <article key={item.label} className="enterprise-trust-layer-card enterprise-trust-layer-card--path">
-              <div>
-                <span><PackageCheck className="h-5 w-5" /></span>
-                <em>{item.label}</em>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 auto-rows-min">
+          {copy.paths.map((item, i) => (
+            <article key={item.label} className="col-span-1 md:col-span-2 flex flex-col justify-between rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900/80 to-slate-950/80 p-6 md:p-8 backdrop-blur-md shadow-2xl relative overflow-hidden group">
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="relative z-10">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 border border-white/10 text-emerald-300 shadow-inner">
+                    <PackageCheck className="h-5 w-5" />
+                  </span>
+                  <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Phase {i + 1}</span>
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2">{item.label}</h3>
+                <p className="text-sm text-slate-400 leading-relaxed">{item.body}</p>
               </div>
-              <h3>{item.label}</h3>
-              <p>{item.body}</p>
             </article>
           ))}
+
           {copy.cards.map((item) => {
             const Icon = item.icon;
+            const isWide = item.title === "Polygon" || item.title === "NFC 424 DNA";
             return (
-              <article key={item.title} className="enterprise-trust-layer-card">
-                <div>
-                  <span><Icon className="h-5 w-5" /></span>
-                  <em>{item.meta}</em>
+              <article key={item.title} className={`col-span-1 ${isWide ? 'md:col-span-2' : 'md:col-span-1'} flex flex-col justify-between rounded-3xl border border-white/10 bg-slate-900/40 p-6 backdrop-blur-sm hover:bg-slate-900/60 transition-colors relative overflow-hidden group`}>
+                <div className="absolute -right-8 -top-8 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                <div className="relative z-10 flex flex-col h-full">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Icon className="h-4 w-4 text-emerald-400" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">{item.meta}</span>
+                  </div>
+                  <h3 className={`font-bold text-white mb-2 ${isWide ? 'text-2xl' : 'text-lg'}`}>{item.title}</h3>
+                  <p className="text-sm text-slate-400 leading-relaxed mt-auto">{item.body}</p>
                 </div>
-                <h3>{item.title}</h3>
-                <p>{item.body}</p>
               </article>
             );
           })}
         </div>
-        <div className="enterprise-trust-layers__note">
-          <PackageCheck className="h-4 w-4" />
-          <span>{copy.note}</span>
+
+        <div className="mt-6 flex items-start gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 md:items-center">
+          <BadgeCheck className="h-5 w-5 shrink-0 text-amber-500/70 mt-0.5 md:mt-0" />
+          <p className="text-xs font-medium text-amber-200/70 leading-relaxed">{copy.note}</p>
         </div>
       </div>
     </section>
@@ -415,68 +430,126 @@ export function OfflineFieldOperationsSection({ locale }: { locale: string }) {
     };
 
   return (
-    <section id="offline-field-operations" className="container-shell scroll-mt-24 py-12 md:py-16">
-      <div className="overflow-hidden rounded-[1.35rem] border border-cyan-300/15 bg-slate-950/80 p-5 shadow-[0_28px_80px_rgba(2,8,23,0.3)] md:p-7">
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(270px,360px)] lg:items-center">
-          <div className="min-w-0">
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-300">{copy.eyebrow}</p>
-            <h2 className="mt-3 max-w-4xl text-3xl font-black leading-tight text-white md:text-5xl">{copy.title}</h2>
-            <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-300">{copy.body}</p>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {copy.stages.map((stage) => {
-                const Icon = stage.icon;
-                return (
-                  <article key={stage.label} className="min-w-0 rounded-lg border border-white/10 bg-slate-900/70 p-4">
-                    <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-cyan-300/25 bg-cyan-500/10 text-cyan-100">
-                      <Icon className="h-4 w-4" />
-                    </span>
-                    <h3 className="mt-3 text-sm font-black text-white">{stage.label}</h3>
-                    <p className="mt-2 text-xs leading-5 text-slate-400">{stage.body}</p>
-                  </article>
-                );
-              })}
-            </div>
-            <div className="mt-5 grid gap-3 md:grid-cols-3">
-              {copy.atlas.map(([label, body]) => (
-                <article key={label} className="rounded-lg border border-emerald-300/15 bg-emerald-500/10 p-4">
-                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-emerald-200">{label}</p>
-                  <p className="mt-2 text-sm font-semibold leading-6 text-slate-100">{body}</p>
+    <section id="offline-field-operations" className="container-shell scroll-mt-24 py-16 md:py-24 relative overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_70%_50%,rgba(6,182,212,0.08),transparent_50%)]" />
+      
+      <div className="relative z-10 grid gap-12 lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_450px] lg:items-center">
+        <div className="max-w-2xl">
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-400">{copy.eyebrow}</p>
+          <h2 className="mt-4 text-3xl font-black leading-tight text-white md:text-5xl">{copy.title}</h2>
+          <p className="mt-6 text-base leading-relaxed text-slate-300">{copy.body}</p>
+          
+          <div className="mt-10 grid gap-4 sm:grid-cols-2">
+            {copy.stages.map((stage) => {
+              const Icon = stage.icon;
+              return (
+                <article key={stage.label} className="rounded-2xl border border-white/5 bg-white/[0.02] p-5 transition-colors hover:bg-white/[0.04]">
+                  <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="text-base font-bold text-white mb-2">{stage.label}</h3>
+                  <p className="text-sm leading-relaxed text-slate-400">{stage.body}</p>
                 </article>
-              ))}
-            </div>
-            <div className="mt-5 flex flex-wrap gap-3">
-              <Link href="/docs#offline-verifier-architecture" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-cyan-300/35 bg-cyan-500/10 px-4 text-sm font-black text-cyan-100 transition hover:bg-cyan-500/20">
-                {copy.docs}
-              </Link>
-              <Link href="/demo-lab?scenario=offline-verifier" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-white/15 bg-white/5 px-4 text-sm font-black text-white transition hover:bg-white/10">
-                {copy.demo}
-              </Link>
-            </div>
-            <p className="mt-4 rounded-lg border border-amber-300/20 bg-amber-500/10 px-4 py-3 text-xs font-bold leading-5 text-amber-100">{copy.warning}</p>
+              );
+            })}
           </div>
 
-          <div className="mx-auto w-full max-w-[21rem] rounded-[2rem] border border-white/15 bg-slate-900 p-3 shadow-2xl">
-            <div className="rounded-[1.6rem] border border-slate-700 bg-slate-950 p-4">
-              <div className="mx-auto h-1.5 w-20 rounded-full bg-slate-700" />
-              <div className="mt-5 rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-4">
-                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">{copy.phoneLabel}</p>
-                <h3 className="mt-2 text-xl font-black text-white">{copy.phoneStatus}</h3>
-                <p className="mt-1 text-xs font-bold text-cyan-100">{copy.phoneSub}</p>
+          <div className="mt-10 grid gap-3 sm:grid-cols-3">
+            {copy.atlas.map(([label, body]) => (
+              <div key={label} className="rounded-xl border border-white/5 bg-slate-900/50 p-4">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{label}</p>
+                <p className="mt-1 text-sm font-medium text-slate-200">{body}</p>
               </div>
-              <div className="mt-4 space-y-2">
-                {["BID: SYN-AR-2026-001-A", "UID hash: sha256:8f4c...", "Queue: 18 pending", "Bundle: expires 24h"].map((line) => (
-                  <div key={line} className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[11px] font-mono text-slate-300">
-                    <span>{line}</span>
-                    <span className="h-2 w-2 rounded-full bg-emerald-400" />
+            ))}
+          </div>
+
+          <div className="mt-8 flex flex-wrap items-center gap-4">
+            <Link href="/docs#offline-verifier-architecture" className="inline-flex h-12 items-center justify-center rounded-xl bg-cyan-500 px-6 text-sm font-bold text-slate-950 transition-transform hover:scale-105 hover:bg-cyan-400">
+              {copy.docs}
+            </Link>
+            <Link href="/demo-lab?scenario=offline-verifier" className="inline-flex h-12 items-center justify-center rounded-xl border border-white/10 bg-white/5 px-6 text-sm font-bold text-white transition-colors hover:bg-white/10">
+              {copy.demo}
+            </Link>
+          </div>
+
+          <div className="mt-8 rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 flex items-start gap-3">
+            <ShieldCheck className="h-5 w-5 text-amber-500 shrink-0" />
+            <p className="text-xs font-semibold leading-relaxed text-amber-200/90">{copy.warning}</p>
+          </div>
+        </div>
+
+        {/* Mobile Mockup Glassmorphic */}
+        <div className="relative mx-auto w-full max-w-[320px] lg:max-w-full perspective-[1000px]">
+          <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500/20 to-purple-500/20 blur-3xl opacity-50 rounded-full" />
+          
+          <div className="relative rounded-[2.5rem] border-[6px] border-slate-800 bg-slate-950 shadow-2xl overflow-hidden transform-gpu rotate-y-[-5deg] rotate-x-[2deg] hover:rotate-y-0 hover:rotate-x-0 transition-transform duration-700">
+            {/* Notch */}
+            <div className="absolute top-0 inset-x-0 h-6 flex justify-center z-20">
+              <div className="w-24 h-full bg-slate-800 rounded-b-xl" />
+            </div>
+
+            {/* Screen Content */}
+            <div className="relative h-full w-full bg-[#0a0f1a] p-5 pt-12 pb-8 flex flex-col">
+              {/* App Header */}
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-full bg-cyan-500/20 flex items-center justify-center border border-cyan-500/30">
+                    <Smartphone className="h-4 w-4 text-cyan-400" />
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-cyan-500/70">{copy.phoneLabel}</p>
+                    <p className="text-xs font-semibold text-white">Scanner App</p>
+                  </div>
+                </div>
+                <CloudOff className="h-5 w-5 text-slate-500" />
+              </div>
+
+              {/* Status Card (Glassmorphic) */}
+              <div className="relative overflow-hidden rounded-3xl border border-emerald-500/30 bg-emerald-500/10 p-6 backdrop-blur-md mb-6 shadow-[0_0_30px_rgba(16,185,129,0.15)] text-center">
+                <div className="absolute -top-4 -right-4 p-4 opacity-10">
+                  <Fingerprint className="h-28 w-28" />
+                </div>
+                <div className="relative z-10 flex flex-col items-center">
+                  <div className="h-16 w-16 rounded-full bg-emerald-500/20 flex items-center justify-center mb-4 border border-emerald-500/40">
+                    <ShieldCheck className="h-8 w-8 text-emerald-400" />
+                  </div>
+                  <h3 className="text-xl font-black text-white tracking-tight">{copy.phoneStatus}</h3>
+                  <p className="mt-2 text-xs font-bold text-emerald-300/80 bg-emerald-950/50 px-3 py-1 rounded-full">{copy.phoneSub}</p>
+                </div>
+              </div>
+
+              {/* Data Rows */}
+              <div className="space-y-3 mb-6">
+                {[
+                  { label: "BID", value: "SYN-AR-2026-001", icon: KeyRound },
+                  { label: "UID Hash", value: "sha256:8f4c...", icon: Fingerprint },
+                  { label: "Queue", value: "18 pending sync", icon: RotateCcw, highlight: true },
+                  { label: "Bundle", value: "expires 24h", icon: PackageCheck }
+                ].map((row, i) => (
+                  <div key={i} className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] p-3 backdrop-blur-sm">
+                    <div className="flex items-center gap-3">
+                      <row.icon className="h-4 w-4 text-slate-500" />
+                      <span className="text-xs font-medium text-slate-400">{row.label}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-mono ${row.highlight ? 'text-amber-400' : 'text-slate-200'}`}>{row.value}</span>
+                      {row.highlight && <span className="flex h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />}
+                    </div>
                   </div>
                 ))}
               </div>
-              <div className="mt-4 rounded-xl border border-amber-300/20 bg-amber-500/10 px-3 py-2 text-[11px] font-bold leading-5 text-amber-100">
-                {copy.phoneWarning}
+
+              {/* Warning Notice */}
+              <div className="mt-auto rounded-xl border border-amber-500/20 bg-amber-500/10 p-3">
+                <p className="text-[10px] font-bold leading-relaxed text-amber-400/90 text-center">
+                  {copy.phoneWarning}
+                </p>
               </div>
+
             </div>
           </div>
         </div>
+
       </div>
     </section>
   );

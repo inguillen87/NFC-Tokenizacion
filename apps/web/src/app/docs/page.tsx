@@ -5,7 +5,19 @@ import { PublicLinkChip } from "../../components/public-link-chip";
 import { Card, SectionHeading } from "@product/ui";
 import { getWebI18n } from "../../lib/locale";
 import { legacyInstitutionalVideo } from "../../lib/institutional-video";
-import { ArrowRight, BookOpen, CircleHelp, Layers3, Rocket, ShieldCheck, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  BookOpen,
+  ChevronDown,
+  CircleHelp,
+  Hexagon,
+  Layers3,
+  Network,
+  Rocket,
+  ShieldCheck,
+  Sparkles,
+  WifiOff,
+} from "lucide-react";
 
 type DocsCopy = {
   eyebrow: string;
@@ -61,11 +73,14 @@ type DocsCopy = {
 const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
   "es-AR": {
     eyebrow: "Guia comercial + producto",
-    title: "nexID explicado sin jerga: producto real, confianza y postventa en un solo toque",
-    description: "No vendemos chips sueltos ni blockchain como moda. Creamos una capa de confianza para que cada producto pueda mostrar evidencia de autenticidad, origen y estado, y habilitar garantías, beneficios, certificados digitales o propiedad digital cuando la política lo permite.",
+    title:
+      "nexID explicado sin jerga: producto real, confianza y postventa en un solo toque",
+    description:
+      "No vendemos chips sueltos ni blockchain como moda. Creamos una capa de confianza para que cada producto pueda mostrar evidencia de autenticidad, origen y estado, y habilitar garantías, beneficios, certificados digitales o propiedad digital cuando la política lo permite.",
     simpleFlowEyebrow: "Arquitectura simple",
     simpleFlowTitle: "La arquitectura en una frase",
-    simpleFlowBody: "Un producto físico recibe una identidad digital; cada toque ejecuta reglas de confianza, cuenta su historia y abre el siguiente paso comercial seguro si corresponde.",
+    simpleFlowBody:
+      "Un producto físico recibe una identidad digital; cada toque ejecuta reglas de confianza, cuenta su historia y abre el siguiente paso comercial seguro si corresponde.",
     simpleFlow: [
       "Producto + lote + fotos reales",
       "NFC o QR seguro",
@@ -81,19 +96,62 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     ],
     chipTitle: "Qué vender con cada chip (sin humo)",
     chipRows: [
-      { chip: "NTAG215", bestFor: "Eventos, activaciones, warranties, loyalty, lead capture, tap-to-web.", avoid: "No prometer antifraude premium ni voucher monetario sensible." },
-      { chip: "NTAG 424 DNA", bestFor: "Autenticidad fuerte, SUN/SDM, documentos, vouchers seguros, control de canal.", avoid: "No venderlo como sensor de temperatura/cold-chain por sí solo." },
-      { chip: "NTAG 424 DNA TagTamper", bestFor: "Integridad física de cierre/sello: wine, cosmética premium, pharma packaging.", avoid: "No usarlo donde no importa estado físico del empaque." },
+      {
+        chip: "NTAG215",
+        bestFor:
+          "Eventos, activaciones, warranties, loyalty, lead capture, tap-to-web.",
+        avoid: "No prometer antifraude premium ni voucher monetario sensible.",
+      },
+      {
+        chip: "NTAG 424 DNA",
+        bestFor:
+          "Autenticidad fuerte, SUN/SDM, documentos, vouchers seguros, control de canal.",
+        avoid: "No venderlo como sensor de temperatura/cold-chain por sí solo.",
+      },
+      {
+        chip: "NTAG 424 DNA TagTamper",
+        bestFor:
+          "Integridad física de cierre/sello: wine, cosmética premium, pharma packaging.",
+        avoid: "No usarlo donde no importa estado físico del empaque.",
+      },
     ],
     apiTitle: "API enterprise para operación real",
-    apiIntro: "Rutas para salud, validación criptográfica, CRM comercial, eventos operativos y orquestación multi-tenant.",
+    apiIntro:
+      "Rutas para salud, validación criptográfica, CRM comercial, eventos operativos y orquestación multi-tenant.",
     apiRoutes: [
-      { method: "GET", path: "/health", detail: "Estado del backend para uptime checks." },
-      { method: "GET", path: "Passport validation", detail: "Validación SDM/SUN para tags seguros; endpoint exacto redacted en documentación pública." },
-      { method: "POST", path: "/assistant/chat", detail: "BotIA comercial: captura leads, tickets y pedidos." },
-      { method: "GET/POST", path: "Private CRM endpoint", detail: "CRM-lite para super-admin y pipeline comercial; ruta interna no publicada." },
-      { method: "POST", path: "Sandbox pack loader", detail: "Carga paquetes verticales en ambiente sandbox controlado." },
-      { method: "POST", path: "Sandbox validation runner", detail: "Ejecuta una validación NFC simulada para QA comercial, sin tratarla como evidencia productiva." },
+      {
+        method: "GET",
+        path: "/health",
+        detail: "Estado del backend para uptime checks.",
+      },
+      {
+        method: "GET",
+        path: "Passport validation",
+        detail:
+          "Validación SDM/SUN para tags seguros; endpoint exacto redacted en documentación pública.",
+      },
+      {
+        method: "POST",
+        path: "/assistant/chat",
+        detail: "BotIA comercial: captura leads, tickets y pedidos.",
+      },
+      {
+        method: "GET/POST",
+        path: "Private CRM endpoint",
+        detail:
+          "CRM-lite para super-admin y pipeline comercial; ruta interna no publicada.",
+      },
+      {
+        method: "POST",
+        path: "Sandbox pack loader",
+        detail: "Carga paquetes verticales en ambiente sandbox controlado.",
+      },
+      {
+        method: "POST",
+        path: "Sandbox validation runner",
+        detail:
+          "Ejecuta una validación NFC simulada para QA comercial, sin tratarla como evidencia productiva.",
+      },
     ],
     packsTitle: "Packs priorizados para adopción",
     packs: [
@@ -133,19 +191,45 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     quickJumpTitle: "Explorar rápido",
     faqTitle: "FAQ corta para explicar bien el producto",
     faqItems: [
-      { q: "¿Qué problema resuelve para una marca premium?", a: "Permite mostrar evidencia de confianza por unidad, saber dónde se valida, reducir fraude, recuperar datos propios del consumidor y abrir una relación postventa después de la compra." },
-      { q: "¿Qué ve el consumidor final?", a: "Una pantalla simple: resultado de confianza, origen, lote, estado del sello, garantía, beneficios y, si corresponde, certificado digital o propiedad digital." },
-      { q: "Como se empieza sin hacer un proyecto enorme?", a: "Con un piloto sobre una línea, lote o edición: banco de fotos, reglas de claim, tags o QR, portal mobile, dashboard y métricas de uso." },
-      { q: "¿nexID vende chips NFC?", a: "No. nexID vende infraestructura para emitir, validar y operar identidades físicas verificables usando carriers como NFC y QR." },
-      { q: "¿Sirve solo para antifraude?", a: "No. También habilita propiedad digital, acceso, garantías, vouchers, trazabilidad y analytics." },
-      { q: "¿Tokenización y autenticación son lo mismo?", a: "No. La autenticación prueba el objeto; la tokenización digitaliza derechos sobre ese objeto." },
-      { q: "¿Se puede usar con QR?", a: "Sí. Un backend único puede operar NFC y QR como fallback según cada contexto." },
-      { q: "¿Sirve solo para vino?", a: "No. También aplica a eventos, documentos, credenciales, cosmética, lujo y sector público." },
+      {
+        q: "¿Qué problema resuelve para una marca premium?",
+        a: "Permite mostrar evidencia de confianza por unidad, saber dónde se valida, reducir fraude, recuperar datos propios del consumidor y abrir una relación postventa después de la compra.",
+      },
+      {
+        q: "¿Qué ve el consumidor final?",
+        a: "Una pantalla simple: resultado de confianza, origen, lote, estado del sello, garantía, beneficios y, si corresponde, certificado digital o propiedad digital.",
+      },
+      {
+        q: "Como se empieza sin hacer un proyecto enorme?",
+        a: "Con un piloto sobre una línea, lote o edición: banco de fotos, reglas de claim, tags o QR, portal mobile, dashboard y métricas de uso.",
+      },
+      {
+        q: "¿nexID vende chips NFC?",
+        a: "No. nexID vende infraestructura para emitir, validar y operar identidades físicas verificables usando carriers como NFC y QR.",
+      },
+      {
+        q: "¿Sirve solo para antifraude?",
+        a: "No. También habilita propiedad digital, acceso, garantías, vouchers, trazabilidad y analytics.",
+      },
+      {
+        q: "¿Tokenización y autenticación son lo mismo?",
+        a: "No. La autenticación prueba el objeto; la tokenización digitaliza derechos sobre ese objeto.",
+      },
+      {
+        q: "¿Se puede usar con QR?",
+        a: "Sí. Un backend único puede operar NFC y QR como fallback según cada contexto.",
+      },
+      {
+        q: "¿Sirve solo para vino?",
+        a: "No. También aplica a eventos, documentos, credenciales, cosmética, lujo y sector público.",
+      },
     ],
     strategyTitle: "Guías estratégicas nuevas",
-    strategyBody: "Sumamos dos páginas para explicar la diferencia entre antifraude, passport y derechos programables, y para adaptar el pitch según cada comprador.",
+    strategyBody:
+      "Sumamos dos páginas para explicar la diferencia entre antifraude, passport y derechos programables, y para adaptar el pitch según cada comprador.",
     stackPage: "Ver pila Verify → Passport → Rights",
-    audiencesPage: "Ver pitch por audiencia (inversor, reseller, cliente, gobierno)",
+    audiencesPage:
+      "Ver pitch por audiencia (inversor, reseller, cliente, gobierno)",
     glossaryPage: "Abrir glosario operativo de marca",
     demoPage: "Ver entorno guiado",
     jumpPillars: "Tesis",
@@ -171,10 +255,12 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
   "pt-BR": {
     eyebrow: "Docs comercial + técnica",
     title: "nexID = infraestrutura de identidade física verificável",
-    description: "Não vendemos chips isolados: vendemos emissão, verificação e analytics de eventos físicos.",
+    description:
+      "Não vendemos chips isolados: vendemos emissão, verificação e analytics de eventos físicos.",
     simpleFlowEyebrow: "Arquitetura simples",
     simpleFlowTitle: "A arquitetura em uma frase",
-    simpleFlowBody: "Um produto físico recebe uma identidade digital; cada toque valida se é real, conta sua história e abre o próximo passo comercial seguro.",
+    simpleFlowBody:
+      "Um produto físico recebe uma identidade digital; cada toque valida se é real, conta sua história e abre o próximo passo comercial seguro.",
     simpleFlow: [
       "Produto + lote + fotos reais",
       "NFC ou QR seguro",
@@ -190,19 +276,60 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     ],
     chipTitle: "O que vender com cada chip",
     chipRows: [
-      { chip: "NTAG215", bestFor: "Eventos, ativações, warranty, loyalty e tap-to-web.", avoid: "Não prometer antifraude premium." },
-      { chip: "NTAG 424 DNA", bestFor: "Autenticidade forte, SUN/SDM, documentos e vouchers sensíveis.", avoid: "Não vender como sensor de temperatura sozinho." },
-      { chip: "NTAG 424 DNA TagTamper", bestFor: "Selo/fecho com integridade física: vinho, cosméticos premium e pharma.", avoid: "Não usar quando estado físico da embalagem não importa." },
+      {
+        chip: "NTAG215",
+        bestFor: "Eventos, ativações, warranty, loyalty e tap-to-web.",
+        avoid: "Não prometer antifraude premium.",
+      },
+      {
+        chip: "NTAG 424 DNA",
+        bestFor:
+          "Autenticidade forte, SUN/SDM, documentos e vouchers sensíveis.",
+        avoid: "Não vender como sensor de temperatura sozinho.",
+      },
+      {
+        chip: "NTAG 424 DNA TagTamper",
+        bestFor:
+          "Selo/fecho com integridade física: vinho, cosméticos premium e pharma.",
+        avoid: "Não usar quando estado físico da embalagem não importa.",
+      },
     ],
     apiTitle: "API enterprise para operação",
-    apiIntro: "Rotas para saúde, validação criptográfica, CRM comercial, eventos operacionais e orquestração multi-tenant.",
+    apiIntro:
+      "Rotas para saúde, validação criptográfica, CRM comercial, eventos operacionais e orquestração multi-tenant.",
     apiRoutes: [
-      { method: "GET", path: "/health", detail: "Saúde do backend para uptime." },
-      { method: "GET", path: "Passport validation", detail: "Validação SDM/SUN para tags seguras; endpoint exato redacted na documentação pública." },
-      { method: "POST", path: "/assistant/chat", detail: "BotIA comercial para leads/tickets/pedidos." },
-      { method: "GET/POST", path: "Private CRM endpoint", detail: "CRM-lite para super-admin; rota interna não publicada." },
-      { method: "POST", path: "Sandbox pack loader", detail: "Carrega pacotes verticais em ambiente sandbox controlado." },
-      { method: "POST", path: "Sandbox validation runner", detail: "Executa validação NFC simulada para QA comercial, sem tratá-la como evidência produtiva." },
+      {
+        method: "GET",
+        path: "/health",
+        detail: "Saúde do backend para uptime.",
+      },
+      {
+        method: "GET",
+        path: "Passport validation",
+        detail:
+          "Validação SDM/SUN para tags seguras; endpoint exato redacted na documentação pública.",
+      },
+      {
+        method: "POST",
+        path: "/assistant/chat",
+        detail: "BotIA comercial para leads/tickets/pedidos.",
+      },
+      {
+        method: "GET/POST",
+        path: "Private CRM endpoint",
+        detail: "CRM-lite para super-admin; rota interna não publicada.",
+      },
+      {
+        method: "POST",
+        path: "Sandbox pack loader",
+        detail: "Carrega pacotes verticais em ambiente sandbox controlado.",
+      },
+      {
+        method: "POST",
+        path: "Sandbox validation runner",
+        detail:
+          "Executa validação NFC simulada para QA comercial, sem tratá-la como evidência produtiva.",
+      },
     ],
     packsTitle: "Packs priorizados",
     packs: [
@@ -242,19 +369,45 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     quickJumpTitle: "Explorar rápido",
     faqTitle: "FAQ curta para explicar o produto",
     faqItems: [
-      { q: "Que problema resolve para uma marca premium?", a: "Permite demonstrar que uma unidade e real, saber onde foi validada, reduzir fraude, recuperar dados proprios do consumidor e abrir uma relacao pos-venda depois da compra." },
-      { q: "O que o consumidor final vê?", a: "Uma tela simples: produto autêntico, origem, lote, estado do lacre, garantia, benefícios e, quando fizer sentido, certificado digital ou titularidade digital." },
-      { q: "Como começar sem um projeto enorme?", a: "Com um piloto em uma linha, lote ou edição: banco de fotos, regras de claim, tags ou QR, portal mobile, dashboard e métricas de uso." },
-      { q: "A nexID vende chips NFC?", a: "Não. A nexID vende infraestrutura para emitir, validar e operar identidades físicas verificáveis com NFC e QR." },
-      { q: "Serve só para antifraude?", a: "Não. Também habilita titularidade digital, acesso, garantia, vouchers, rastreabilidade e analytics." },
-      { q: "Tokenização e autenticação são iguais?", a: "Não. Autenticação valida o objeto; tokenização digitaliza direitos sobre ele." },
-      { q: "Pode usar com QR?", a: "Sim. Um backend único opera NFC e QR como fallback." },
-      { q: "Serve só para vinho?", a: "Não. Também aplica a eventos, documentos, credenciais, cosméticos, luxo e governo." },
+      {
+        q: "Que problema resolve para uma marca premium?",
+        a: "Permite demonstrar que uma unidade e real, saber onde foi validada, reduzir fraude, recuperar dados proprios do consumidor e abrir uma relacao pos-venda depois da compra.",
+      },
+      {
+        q: "O que o consumidor final vê?",
+        a: "Uma tela simples: produto autêntico, origem, lote, estado do lacre, garantia, benefícios e, quando fizer sentido, certificado digital ou titularidade digital.",
+      },
+      {
+        q: "Como começar sem um projeto enorme?",
+        a: "Com um piloto em uma linha, lote ou edição: banco de fotos, regras de claim, tags ou QR, portal mobile, dashboard e métricas de uso.",
+      },
+      {
+        q: "A nexID vende chips NFC?",
+        a: "Não. A nexID vende infraestrutura para emitir, validar e operar identidades físicas verificáveis com NFC e QR.",
+      },
+      {
+        q: "Serve só para antifraude?",
+        a: "Não. Também habilita titularidade digital, acesso, garantia, vouchers, rastreabilidade e analytics.",
+      },
+      {
+        q: "Tokenização e autenticação são iguais?",
+        a: "Não. Autenticação valida o objeto; tokenização digitaliza direitos sobre ele.",
+      },
+      {
+        q: "Pode usar com QR?",
+        a: "Sim. Um backend único opera NFC e QR como fallback.",
+      },
+      {
+        q: "Serve só para vinho?",
+        a: "Não. Também aplica a eventos, documentos, credenciais, cosméticos, luxo e governo.",
+      },
     ],
     strategyTitle: "Novos guias estratégicos",
-    strategyBody: "Adicionamos duas páginas para separar antifraude, passport e direitos programáveis e adaptar a narrativa por comprador.",
+    strategyBody:
+      "Adicionamos duas páginas para separar antifraude, passport e direitos programáveis e adaptar a narrativa por comprador.",
     stackPage: "Ver pilha Verify → Passport → Rights",
-    audiencesPage: "Ver pitch por audiência (investidor, revendedor, cliente, governo)",
+    audiencesPage:
+      "Ver pitch por audiência (investidor, revendedor, cliente, governo)",
     glossaryPage: "Abrir glossário operacional de marca",
     demoPage: "Ver ambiente guiado",
     jumpPillars: "Tese",
@@ -279,11 +432,14 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
   },
   en: {
     eyebrow: "Commercial + product guide",
-    title: "nexID without jargon: real products, trust and after-sales in one tap",
-    description: "We do not sell loose chips or blockchain as a trend. We create a layer for each product to prove authenticity, show origin, activate warranty, benefits, data and a digital certificate.",
+    title:
+      "nexID without jargon: real products, trust and after-sales in one tap",
+    description:
+      "We do not sell loose chips or blockchain as a trend. We create a layer for each product to prove authenticity, show origin, activate warranty, benefits, data and a digital certificate.",
     simpleFlowEyebrow: "Simple architecture",
     simpleFlowTitle: "Architecture in one sentence",
-    simpleFlowBody: "A physical product receives a digital identity; each tap checks if it is real, tells its story and opens the next safe commercial step.",
+    simpleFlowBody:
+      "A physical product receives a digital identity; each tap checks if it is real, tells its story and opens the next safe commercial step.",
     simpleFlow: [
       "Product + batch + real photos",
       "Secure NFC or QR",
@@ -299,19 +455,60 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     ],
     chipTitle: "What to sell with each chip",
     chipRows: [
-      { chip: "NTAG215", bestFor: "Events, activations, loyalty, warranties, tap-to-web.", avoid: "Do not position as premium anti-fraud." },
-      { chip: "NTAG 424 DNA", bestFor: "Strong authenticity, SUN/SDM, secure vouchers and docs.", avoid: "Do not claim native cold-chain sensing." },
-      { chip: "NTAG 424 DNA TagTamper", bestFor: "Packaging integrity use cases where open/closed matters.", avoid: "Do not force into rigid credentials where tamper loop adds little value." },
+      {
+        chip: "NTAG215",
+        bestFor: "Events, activations, loyalty, warranties, tap-to-web.",
+        avoid: "Do not position as premium anti-fraud.",
+      },
+      {
+        chip: "NTAG 424 DNA",
+        bestFor: "Strong authenticity, SUN/SDM, secure vouchers and docs.",
+        avoid: "Do not claim native cold-chain sensing.",
+      },
+      {
+        chip: "NTAG 424 DNA TagTamper",
+        bestFor: "Packaging integrity use cases where open/closed matters.",
+        avoid:
+          "Do not force into rigid credentials where tamper loop adds little value.",
+      },
     ],
     apiTitle: "Enterprise API",
-    apiIntro: "Routes for health, cryptographic validation, CRM capture, operational events and multi-tenant orchestration.",
+    apiIntro:
+      "Routes for health, cryptographic validation, CRM capture, operational events and multi-tenant orchestration.",
     apiRoutes: [
-      { method: "GET", path: "/health", detail: "Backend health and uptime checks." },
-      { method: "GET", path: "Passport validation", detail: "SDM/SUN secure validation; exact endpoint redacted in public docs." },
-      { method: "POST", path: "/assistant/chat", detail: "Sales BotIA for leads/tickets/orders." },
-      { method: "GET/POST", path: "Private CRM endpoint", detail: "CRM-lite pipeline for super-admin; internal route not published." },
-      { method: "POST", path: "Sandbox pack loader", detail: "Load vertical packs in a controlled sandbox environment." },
-      { method: "POST", path: "Sandbox validation runner", detail: "Run a simulated NFC validation for commercial QA without treating it as production evidence." },
+      {
+        method: "GET",
+        path: "/health",
+        detail: "Backend health and uptime checks.",
+      },
+      {
+        method: "GET",
+        path: "Passport validation",
+        detail:
+          "SDM/SUN secure validation; exact endpoint redacted in public docs.",
+      },
+      {
+        method: "POST",
+        path: "/assistant/chat",
+        detail: "Sales BotIA for leads/tickets/orders.",
+      },
+      {
+        method: "GET/POST",
+        path: "Private CRM endpoint",
+        detail:
+          "CRM-lite pipeline for super-admin; internal route not published.",
+      },
+      {
+        method: "POST",
+        path: "Sandbox pack loader",
+        detail: "Load vertical packs in a controlled sandbox environment.",
+      },
+      {
+        method: "POST",
+        path: "Sandbox validation runner",
+        detail:
+          "Run a simulated NFC validation for commercial QA without treating it as production evidence.",
+      },
     ],
     packsTitle: "Prioritized sellable packs",
     packs: [
@@ -351,19 +548,45 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     quickJumpTitle: "Quick explore",
     faqTitle: "Short FAQ to make the value clear",
     faqItems: [
-      { q: "What problem does this solve for a premium brand?", a: "It proves a unit is real, shows where it is validated, reduces fraud, recovers first-party customer data and opens an after-sales relationship after purchase." },
-      { q: "What does the end customer see?", a: "A simple screen: authentic product, origin, batch, seal status, warranty, benefits and, when relevant, digital certificate or ownership." },
-      { q: "How can a company start without a huge project?", a: "With a pilot on one line, batch or edition: product photos, claim rules, tags or QR, mobile portal, dashboard and usage metrics." },
-      { q: "Does nexID sell NFC chips?", a: "No. nexID delivers infrastructure to issue, verify and operate physical digital identities using NFC and QR carriers." },
-      { q: "Is this only anti-fraud?", a: "No. It also enables digital ownership, access, warranty, vouchers, traceability and analytics." },
-      { q: "Are tokenization and authentication the same?", a: "No. Authentication proves the object; tokenization digitizes rights on top of that object." },
-      { q: "Can it work with QR?", a: "Yes. A single backend can run NFC plus QR fallback." },
-      { q: "Is this only for wine?", a: "No. It also fits events, documents, credentials, cosmetics, luxury and public sector workflows." },
+      {
+        q: "What problem does this solve for a premium brand?",
+        a: "It proves a unit is real, shows where it is validated, reduces fraud, recovers first-party customer data and opens an after-sales relationship after purchase.",
+      },
+      {
+        q: "What does the end customer see?",
+        a: "A simple screen: authentic product, origin, batch, seal status, warranty, benefits and, when relevant, digital certificate or ownership.",
+      },
+      {
+        q: "How can a company start without a huge project?",
+        a: "With a pilot on one line, batch or edition: product photos, claim rules, tags or QR, mobile portal, dashboard and usage metrics.",
+      },
+      {
+        q: "Does nexID sell NFC chips?",
+        a: "No. nexID delivers infrastructure to issue, verify and operate physical digital identities using NFC and QR carriers.",
+      },
+      {
+        q: "Is this only anti-fraud?",
+        a: "No. It also enables digital ownership, access, warranty, vouchers, traceability and analytics.",
+      },
+      {
+        q: "Are tokenization and authentication the same?",
+        a: "No. Authentication proves the object; tokenization digitizes rights on top of that object.",
+      },
+      {
+        q: "Can it work with QR?",
+        a: "Yes. A single backend can run NFC plus QR fallback.",
+      },
+      {
+        q: "Is this only for wine?",
+        a: "No. It also fits events, documents, credentials, cosmetics, luxury and public sector workflows.",
+      },
     ],
     strategyTitle: "New strategic guides",
-    strategyBody: "We added two pages to clearly separate anti-fraud, passport and programmable rights, and to tailor the pitch by buyer profile.",
+    strategyBody:
+      "We added two pages to clearly separate anti-fraud, passport and programmable rights, and to tailor the pitch by buyer profile.",
     stackPage: "View Verify → Passport → Rights stack",
-    audiencesPage: "View audience pitch (investor, reseller, client, government)",
+    audiencesPage:
+      "View audience pitch (investor, reseller, client, government)",
     glossaryPage: "Open operational brand glossary",
     demoPage: "View guided environment",
     jumpPillars: "Thesis",
@@ -391,70 +614,176 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
 export default async function DocsPage() {
   const { locale } = await getWebI18n();
   const copy = docsCopy[locale];
-  const trustLayerFaq = locale === "en"
-    ? {
-      title: "Enterprise trust FAQ",
-      docsTitle: "Internal technical notes for due diligence",
-      docsNote: "Available to qualified buyers and partners; public claims stay conservative until releases and agreements are signed.",
-      docs: ["blockchain-architecture.md", "offline-nfc-validation.md", "offline-verifier-architecture.md", "polygon-ownership-layer.md", "iota-proof-audit-layer.md", "enterprise-trust-faq.md", "dpp-event-model.md"],
-      items: [
-        ["Official partnerships?", "No. Polygon and IOTA are technologies the architecture can integrate with; do not claim an official partnership unless there is a signed public agreement."],
-        ["Does every tap go on-chain?", "No. Taps are validated server-side. Chains are used only for approved ownership, certificates, claims, transfers or batched proof anchors."],
-        ["Is IOTA zero-fee here?", "No. We position IOTA as an optional proof/audit layer for hashes, Merkle roots, DPP and logistics evidence, without zero-fee claims."],
-        ["Do customers need a wallet?", "No. Consumer UX stays mobile-first. Custodial or wallet flows are optional and policy-driven."],
-        ["Does NTAG 424 DNA work offline?", "The chip can be read and can generate a fresh SUN/SDM response without internet. A normal browser still needs connectivity for the final backend trust verdict; industrial offline validation needs a controlled app or reader with secure keys."],
-        ["Can we build an offline verifier app or reader?", "Yes, but it must be a controlled verifier with device-scoped, batch-scoped and expiring keys. Do not embed tenant master keys in a consumer app; backend sync still finalizes replay, policy, ownership and warranty."],
-        ["Is private data stored on-chain?", "No. Private data and raw UIDs stay off-chain; proofs use hashes, salts, policy checks and tenant-scoped records."],
-      ],
-    }
-    : locale === "pt-BR"
-    ? {
-      title: "FAQ enterprise de confianca",
-      docsTitle: "Notas tecnicas internas para due diligence",
-      docsNote: "Disponiveis para compradores e parceiros qualificados; claims publicos seguem conservadores ate releases e acordos assinados.",
-      docs: ["blockchain-architecture.md", "offline-nfc-validation.md", "offline-verifier-architecture.md", "polygon-ownership-layer.md", "iota-proof-audit-layer.md", "enterprise-trust-faq.md", "dpp-event-model.md"],
-      items: [
-        ["Parcerias oficiais?", "Nao. Polygon e IOTA sao tecnologias integraveis; nao declarar parceria oficial sem acordo publico assinado."],
-        ["Todo toque vai on-chain?", "Nao. Taps sao validados server-side. Chains entram apenas para ownership, certificados, claims, transferencias ou ancoras de prova aprovadas."],
-        ["IOTA e zero-fee aqui?", "Nao. IOTA e camada opcional de prova/auditoria para hashes, Merkle roots, DPP e logistica, sem claims de zero-fee."],
-        ["Cliente precisa de wallet?", "Nao. A UX segue mobile-first. Wallet ou custodia sao opcionais e governadas por politica."],
-        ["NTAG 424 DNA funciona offline?", "O chip pode ser lido e gerar uma resposta SUN/SDM fresca sem internet. Um browser comum ainda precisa de conexao para o veredito final do backend; validacao industrial offline exige app ou leitor controlado com chaves seguras."],
-        ["Podemos criar app ou leitor offline?", "Sim, mas precisa ser um verificador controlado com chaves por device, batch e vencimento. Nao colocar master keys do tenant em app consumidor; o backend ainda finaliza replay, politica, ownership e garantia."],
-        ["Dados privados ficam on-chain?", "Nao. Dados privados e UIDs crus ficam off-chain; provas usam hashes, salts, regras e registros por tenant."],
-      ],
-    }
-    : {
-      title: "FAQ enterprise de confianza",
-      docsTitle: "Notas tecnicas internas para due diligence",
-      docsNote: "Disponibles para compradores y partners calificados; los claims publicos se mantienen conservadores hasta release y acuerdos firmados.",
-      docs: ["blockchain-architecture.md", "offline-nfc-validation.md", "offline-verifier-architecture.md", "polygon-ownership-layer.md", "iota-proof-audit-layer.md", "enterprise-trust-faq.md", "dpp-event-model.md"],
-      items: [
-        ["Alianzas oficiales?", "No. Polygon e IOTA son tecnologias integrables; no se debe declarar partnership oficial sin acuerdo publico firmado."],
-        ["Cada tap va on-chain?", "No. Los taps se validan server-side. Las cadenas entran solo para ownership, certificados, claims, transferencias o anclas de prueba aprobadas."],
-        ["IOTA es zero-fee aca?", "No. IOTA se posiciona como capa opcional de prueba/auditoria para hashes, Merkle roots, DPP y logistica, sin claims de zero-fee."],
-        ["El cliente necesita wallet?", "No. La UX sigue mobile-first. Wallet o custodia son opcionales y dependen de la politica del tenant."],
-        ["NTAG 424 DNA funciona offline?", "El chip se puede leer y puede generar una respuesta SUN/SDM fresca sin internet. Un navegador comun igual necesita conexion para el veredicto final del backend; la validacion industrial offline exige app o lector controlado con claves seguras."],
-        ["Podemos crear app o lector offline?", "Si, pero tiene que ser un verificador controlado con claves por dispositivo, batch y vencimiento. No se meten master keys del tenant en una app consumer; el backend igual finaliza replay, politica, ownership y garantia."],
-        ["Datos privados quedan on-chain?", "No. Datos privados y UIDs crudos quedan off-chain; las pruebas usan hashes, salts, reglas y registros por tenant."],
-      ],
-    };
+  const trustLayerFaq =
+    locale === "en"
+      ? {
+          title: "Enterprise trust FAQ",
+          docsTitle: "Internal technical notes for due diligence",
+          docsNote:
+            "Available to qualified buyers and partners; public claims stay conservative until releases and agreements are signed.",
+          docs: [
+            "blockchain-architecture.md",
+            "offline-nfc-validation.md",
+            "offline-verifier-architecture.md",
+            "polygon-ownership-layer.md",
+            "iota-proof-audit-layer.md",
+            "enterprise-trust-faq.md",
+            "dpp-event-model.md",
+          ],
+          items: [
+            [
+              "Official partnerships?",
+              "No. Polygon and IOTA are technologies the architecture can integrate with; do not claim an official partnership unless there is a signed public agreement.",
+            ],
+            [
+              "Does every tap go on-chain?",
+              "No. Taps are validated server-side. Chains are used only for approved ownership, certificates, claims, transfers or batched proof anchors.",
+            ],
+            [
+              "Is IOTA zero-fee here?",
+              "No. We position IOTA as an optional proof/audit layer for hashes, Merkle roots, DPP and logistics evidence, without zero-fee claims.",
+            ],
+            [
+              "Do customers need a wallet?",
+              "No. Consumer UX stays mobile-first. Custodial or wallet flows are optional and policy-driven.",
+            ],
+            [
+              "Does NTAG 424 DNA work offline?",
+              "The chip can be read and can generate a fresh SUN/SDM response without internet. A normal browser still needs connectivity for the final backend trust verdict; industrial offline validation needs a controlled app or reader with secure keys.",
+            ],
+            [
+              "Can we build an offline verifier app or reader?",
+              "Yes, but it must be a controlled verifier with device-scoped, batch-scoped and expiring keys. Do not embed tenant master keys in a consumer app; backend sync still finalizes replay, policy, ownership and warranty.",
+            ],
+            [
+              "Is private data stored on-chain?",
+              "No. Private data and raw UIDs stay off-chain; proofs use hashes, salts, policy checks and tenant-scoped records.",
+            ],
+          ],
+        }
+      : locale === "pt-BR"
+        ? {
+            title: "FAQ enterprise de confianca",
+            docsTitle: "Notas tecnicas internas para due diligence",
+            docsNote:
+              "Disponiveis para compradores e parceiros qualificados; claims publicos seguem conservadores ate releases e acordos assinados.",
+            docs: [
+              "blockchain-architecture.md",
+              "offline-nfc-validation.md",
+              "offline-verifier-architecture.md",
+              "polygon-ownership-layer.md",
+              "iota-proof-audit-layer.md",
+              "enterprise-trust-faq.md",
+              "dpp-event-model.md",
+            ],
+            items: [
+              [
+                "Parcerias oficiais?",
+                "Nao. Polygon e IOTA sao tecnologias integraveis; nao declarar parceria oficial sem acordo publico assinado.",
+              ],
+              [
+                "Todo toque vai on-chain?",
+                "Nao. Taps sao validados server-side. Chains entram apenas para ownership, certificados, claims, transferencias ou ancoras de prova aprovadas.",
+              ],
+              [
+                "IOTA e zero-fee aqui?",
+                "Nao. IOTA e camada opcional de prova/auditoria para hashes, Merkle roots, DPP e logistica, sem claims de zero-fee.",
+              ],
+              [
+                "Cliente precisa de wallet?",
+                "Nao. A UX segue mobile-first. Wallet ou custodia sao opcionais e governadas por politica.",
+              ],
+              [
+                "NTAG 424 DNA funciona offline?",
+                "O chip pode ser lido e gerar uma resposta SUN/SDM fresca sem internet. Um browser comum ainda precisa de conexao para o veredito final do backend; validacao industrial offline exige app ou leitor controlado com chaves seguras.",
+              ],
+              [
+                "Podemos criar app ou leitor offline?",
+                "Sim, mas precisa ser um verificador controlado com chaves por device, batch e vencimento. Nao colocar master keys do tenant em app consumidor; o backend ainda finaliza replay, politica, ownership e garantia.",
+              ],
+              [
+                "Dados privados ficam on-chain?",
+                "Nao. Dados privados e UIDs crus ficam off-chain; provas usam hashes, salts, regras e registros por tenant.",
+              ],
+            ],
+          }
+        : {
+            title: "FAQ enterprise de confianza",
+            docsTitle: "Notas tecnicas internas para due diligence",
+            docsNote:
+              "Disponibles para compradores y partners calificados; los claims publicos se mantienen conservadores hasta release y acuerdos firmados.",
+            docs: [
+              "blockchain-architecture.md",
+              "offline-nfc-validation.md",
+              "offline-verifier-architecture.md",
+              "polygon-ownership-layer.md",
+              "iota-proof-audit-layer.md",
+              "enterprise-trust-faq.md",
+              "dpp-event-model.md",
+            ],
+            items: [
+              [
+                "Alianzas oficiales?",
+                "No. Polygon e IOTA son tecnologias integrables; no se debe declarar partnership oficial sin acuerdo publico firmado.",
+              ],
+              [
+                "Cada tap va on-chain?",
+                "No. Los taps se validan server-side. Las cadenas entran solo para ownership, certificados, claims, transferencias o anclas de prueba aprobadas.",
+              ],
+              [
+                "IOTA es zero-fee aca?",
+                "No. IOTA se posiciona como capa opcional de prueba/auditoria para hashes, Merkle roots, DPP y logistica, sin claims de zero-fee.",
+              ],
+              [
+                "El cliente necesita wallet?",
+                "No. La UX sigue mobile-first. Wallet o custodia son opcionales y dependen de la politica del tenant.",
+              ],
+              [
+                "NTAG 424 DNA funciona offline?",
+                "El chip se puede leer y puede generar una respuesta SUN/SDM fresca sin internet. Un navegador comun igual necesita conexion para el veredicto final del backend; la validacion industrial offline exige app o lector controlado con claves seguras.",
+              ],
+              [
+                "Podemos crear app o lector offline?",
+                "Si, pero tiene que ser un verificador controlado con claves por dispositivo, batch y vencimiento. No se meten master keys del tenant en una app consumer; el backend igual finaliza replay, politica, ownership y garantia.",
+              ],
+              [
+                "Datos privados quedan on-chain?",
+                "No. Datos privados y UIDs crudos quedan off-chain; las pruebas usan hashes, salts, reglas y registros por tenant.",
+              ],
+            ],
+          };
 
   return (
     <main className="knowledge-page-surface docs-page container-shell space-y-8 py-16">
       <BackLink />
-      <SectionHeading eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
+      <SectionHeading
+        eyebrow={copy.eyebrow}
+        title={copy.title}
+        description={copy.description}
+      />
 
       <Card className="public-clarity-card p-6">
         <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">{copy.simpleFlowEyebrow}</p>
-            <h2 className="mt-3 text-2xl font-black tracking-tight text-white md:text-3xl">{copy.simpleFlowTitle}</h2>
-            <p className="mt-3 text-sm leading-7 text-slate-300">{copy.simpleFlowBody}</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">
+              {copy.simpleFlowEyebrow}
+            </p>
+            <h2 className="mt-3 text-2xl font-black tracking-tight text-white md:text-3xl">
+              {copy.simpleFlowTitle}
+            </h2>
+            <p className="mt-3 text-sm leading-7 text-slate-300">
+              {copy.simpleFlowBody}
+            </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-4">
             {copy.simpleFlow.map((item, index) => (
-              <div key={item} className="public-clarity-tile rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm font-semibold leading-6 text-slate-100">
-                <span className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-cyan-300/30 bg-cyan-500/15 text-xs text-cyan-100">{index + 1}</span>
+              <div
+                key={item}
+                className="public-clarity-tile rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm font-semibold leading-6 text-slate-100"
+              >
+                <span className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-cyan-300/30 bg-cyan-500/15 text-xs text-cyan-100">
+                  {index + 1}
+                </span>
                 <p>{item}</p>
               </div>
             ))}
@@ -469,22 +798,71 @@ export default async function DocsPage() {
             {copy.quickJumpTitle}
           </p>
           <div className="flex flex-wrap gap-2">
-            <PublicLinkChip href="#thesis" icon={<Layers3 className="h-3.5 w-3.5" />} variant="cyan">{copy.jumpPillars}</PublicLinkChip>
-            <PublicLinkChip href="#carrier-profiles" icon={<ShieldCheck className="h-3.5 w-3.5" />} variant="cyan">{copy.jumpChipProfiles}</PublicLinkChip>
-            <PublicLinkChip href="#api" icon={<ShieldCheck className="h-3.5 w-3.5" />} variant="indigo">{copy.jumpApi}</PublicLinkChip>
-            <PublicLinkChip href="#rollout" icon={<Rocket className="h-3.5 w-3.5" />} variant="emerald">{copy.jumpRollout}</PublicLinkChip>
-            <PublicLinkChip href="#trust-layers" icon={<ShieldCheck className="h-3.5 w-3.5" />} variant="cyan">{copy.jumpTrustLayers}</PublicLinkChip>
-            <PublicLinkChip href="#faq" icon={<CircleHelp className="h-3.5 w-3.5" />} variant="amber">{copy.jumpFaq}</PublicLinkChip>
-            <PublicLinkChip href="#strategy" icon={<BookOpen className="h-3.5 w-3.5" />} variant="violet">{copy.jumpStrategy}</PublicLinkChip>
+            <PublicLinkChip
+              href="#thesis"
+              icon={<Layers3 className="h-3.5 w-3.5" />}
+              variant="cyan"
+            >
+              {copy.jumpPillars}
+            </PublicLinkChip>
+            <PublicLinkChip
+              href="#carrier-profiles"
+              icon={<ShieldCheck className="h-3.5 w-3.5" />}
+              variant="cyan"
+            >
+              {copy.jumpChipProfiles}
+            </PublicLinkChip>
+            <PublicLinkChip
+              href="#api"
+              icon={<ShieldCheck className="h-3.5 w-3.5" />}
+              variant="indigo"
+            >
+              {copy.jumpApi}
+            </PublicLinkChip>
+            <PublicLinkChip
+              href="#rollout"
+              icon={<Rocket className="h-3.5 w-3.5" />}
+              variant="emerald"
+            >
+              {copy.jumpRollout}
+            </PublicLinkChip>
+            <PublicLinkChip
+              href="#trust-layers"
+              icon={<ShieldCheck className="h-3.5 w-3.5" />}
+              variant="cyan"
+            >
+              {copy.jumpTrustLayers}
+            </PublicLinkChip>
+            <PublicLinkChip
+              href="#faq"
+              icon={<CircleHelp className="h-3.5 w-3.5" />}
+              variant="amber"
+            >
+              {copy.jumpFaq}
+            </PublicLinkChip>
+            <PublicLinkChip
+              href="#strategy"
+              icon={<BookOpen className="h-3.5 w-3.5" />}
+              variant="violet"
+            >
+              {copy.jumpStrategy}
+            </PublicLinkChip>
             <PublicLinkChip href="#actions">{copy.jumpActions}</PublicLinkChip>
           </div>
         </div>
 
         <Card className="p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{copy.exploreTitle}</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+            {copy.exploreTitle}
+          </p>
           <div className="mt-3 flex flex-wrap gap-2">
             {copy.exploreLinks.map((item) => (
-              <PublicLinkChip key={item.href} href={item.href} size="md" trailingArrow>
+              <PublicLinkChip
+                key={item.href}
+                href={item.href}
+                size="md"
+                trailingArrow
+              >
                 {item.label}
               </PublicLinkChip>
             ))}
@@ -494,9 +872,13 @@ export default async function DocsPage() {
 
       <div id="thesis" className="scroll-mt-28">
         <Card className="p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(14,165,233,0.08)]">
-          <h3 className="text-lg font-semibold text-white">{copy.pillarsTitle}</h3>
+          <h3 className="text-lg font-semibold text-white">
+            {copy.pillarsTitle}
+          </h3>
           <ul className="mt-4 space-y-2 text-sm text-slate-300">
-            {copy.pillars.map((entry) => <li key={entry}>• {entry}</li>)}
+            {copy.pillars.map((entry) => (
+              <li key={entry}>• {entry}</li>
+            ))}
           </ul>
         </Card>
       </div>
@@ -507,8 +889,13 @@ export default async function DocsPage() {
           <h3 className="text-lg font-semibold text-white">{copy.chipTitle}</h3>
           <div className="mt-4 grid gap-3">
             {copy.chipRows.map((row) => (
-              <div key={row.chip} className="rounded-xl border border-white/10 bg-white/5 p-3">
-                <p className="text-sm font-semibold text-cyan-200">{row.chip}</p>
+              <div
+                key={row.chip}
+                className="rounded-xl border border-white/10 bg-white/5 p-3"
+              >
+                <p className="text-sm font-semibold text-cyan-200">
+                  {row.chip}
+                </p>
                 <p className="mt-1 text-sm text-slate-300">✓ {row.bestFor}</p>
                 <p className="mt-1 text-sm text-rose-300">⚠ {row.avoid}</p>
               </div>
@@ -522,8 +909,14 @@ export default async function DocsPage() {
           <p className="mt-2 text-sm text-slate-300">{copy.apiIntro}</p>
           <div className="mt-4 space-y-3">
             {copy.apiRoutes.map((route) => (
-              <div key={`${route.method}-${route.path}`} className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm">
-                <p className="font-semibold text-cyan-200">{route.method} <span className="text-white">{route.path}</span></p>
+              <div
+                key={`${route.method}-${route.path}`}
+                className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm"
+              >
+                <p className="font-semibold text-cyan-200">
+                  {route.method}{" "}
+                  <span className="text-white">{route.path}</span>
+                </p>
                 <p className="mt-1 text-slate-300">{route.detail}</p>
               </div>
             ))}
@@ -535,76 +928,186 @@ export default async function DocsPage() {
             <span className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-cyan-100">
               Integración de Clientes
             </span>
-            <h3 className="mt-4 text-xl font-bold text-white">nexID SDK & APIs</h3>
+            <h3 className="mt-4 text-xl font-bold text-white">
+              nexID SDK & APIs
+            </h3>
             <p className="mt-3 text-sm leading-relaxed text-slate-300">
-              Ofrecemos un SDK base, contratos API y webhooks para integraciones propias. Adaptadores para Shopify, WooCommerce, mobile o POS se definen por proyecto hasta que estén publicados como paquetes versionados.
+              Ofrecemos un SDK base, contratos API y webhooks para integraciones
+              propias. Adaptadores para Shopify, WooCommerce, mobile o POS se
+              definen por proyecto hasta que estén publicados como paquetes
+              versionados.
             </p>
             <div className="mt-5 grid gap-3 text-xs text-slate-200">
               <div className="rounded-xl border border-white/5 bg-slate-900/60 p-3">
-                <strong className="text-cyan-200 block">Lectura Criptográfica</strong>
-                Validación de CMAC/SUN dinámico y detección de replay/copias sin exponer material criptográfico.
+                <strong className="text-cyan-200 block">
+                  Lectura Criptográfica
+                </strong>
+                Validación de CMAC/SUN dinámico y detección de replay/copias sin
+                exponer material criptográfico.
               </div>
               <div className="rounded-xl border border-white/5 bg-slate-900/60 p-3">
-                <strong className="text-cyan-200 block">Orquestación de Reclamos</strong>
-                Registro seguro de propiedad digital en el pasaporte del producto cuando el pago, la política de reclamo y el riesgo lo permiten (token nxpos).
+                <strong className="text-cyan-200 block">
+                  Orquestación de Reclamos
+                </strong>
+                Registro seguro de propiedad digital en el pasaporte del
+                producto cuando el pago, la política de reclamo y el riesgo lo
+                permiten (token nxpos).
               </div>
               <div className="rounded-xl border border-white/5 bg-slate-900/60 p-3">
-                <strong className="text-cyan-200 block">Webhooks en Tiempo Real</strong>
-                Entrega de eventos de toques, cambios de estado del sello y señales de ubicación consentidas hacia tus sistemas.
+                <strong className="text-cyan-200 block">
+                  Webhooks en Tiempo Real
+                </strong>
+                Entrega de eventos de toques, cambios de estado del sello y
+                señales de ubicación consentidas hacia tus sistemas.
               </div>
             </div>
           </div>
           <div className="mt-6 pt-4 border-t border-white/5 flex items-center justify-between">
-            <span className="text-[11px] font-mono text-slate-400">SDK base + contratos API</span>
-            <Link href="/sdk" className="inline-flex items-center gap-1.5 rounded-xl bg-cyan-400 px-4 py-2 text-xs font-bold text-slate-950 transition hover:bg-cyan-300">
+            <span className="text-[11px] font-mono text-slate-400">
+              SDK base + contratos API
+            </span>
+            <Link
+              href="/sdk"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-cyan-400 px-4 py-2 text-xs font-bold text-slate-950 transition hover:bg-cyan-300"
+            >
               Ir a la sección SDK completa
               <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
         </Card>
       </div>
-      <div id="rollout" className="grid gap-6 scroll-mt-28 lg:grid-cols-2 xl:grid-cols-5">
+      <div
+        id="rollout"
+        className="grid gap-6 scroll-mt-28 lg:grid-cols-2 xl:grid-cols-4"
+      >
         <Card className="p-6">
-          <h3 className="text-lg font-semibold text-white">{copy.packsTitle}</h3>
-          <ul className="mt-4 space-y-2 text-sm text-slate-300">{copy.packs.map((item) => <li key={item}>• {item}</li>)}</ul>
+          <h3 className="text-lg font-semibold text-white">
+            {copy.packsTitle}
+          </h3>
+          <ul className="mt-4 space-y-2 text-sm text-slate-300">
+            {copy.packs.map((item) => (
+              <li key={item}>• {item}</li>
+            ))}
+          </ul>
         </Card>
         <Card className="p-6">
-          <h3 className="text-lg font-semibold text-white">{copy.rolloutTitle}</h3>
-          <ul className="mt-4 space-y-2 text-sm text-slate-300">{copy.rolloutBullets.map((item) => <li key={item}>• {item}</li>)}</ul>
+          <h3 className="text-lg font-semibold text-white">
+            {copy.rolloutTitle}
+          </h3>
+          <ul className="mt-4 space-y-2 text-sm text-slate-300">
+            {copy.rolloutBullets.map((item) => (
+              <li key={item}>• {item}</li>
+            ))}
+          </ul>
         </Card>
         <Card className="p-6">
-          <h3 className="text-lg font-semibold text-white">{copy.revenueTitle}</h3>
-          <ul className="mt-4 space-y-2 text-sm text-slate-300">{copy.revenueBullets.map((item) => <li key={item}>• {item}</li>)}</ul>
+          <h3 className="text-lg font-semibold text-white">
+            {copy.revenueTitle}
+          </h3>
+          <ul className="mt-4 space-y-2 text-sm text-slate-300">
+            {copy.revenueBullets.map((item) => (
+              <li key={item}>• {item}</li>
+            ))}
+          </ul>
         </Card>
         <Card className="p-6">
-          <h3 className="text-lg font-semibold text-white">{copy.roadmapTitle}</h3>
-          <ul className="mt-4 space-y-2 text-sm text-slate-300">{copy.roadmapBullets.map((item) => <li key={item}>• {item}</li>)}</ul>
+          <h3 className="text-lg font-semibold text-white">
+            {copy.roadmapTitle}
+          </h3>
+          <ul className="mt-4 space-y-2 text-sm text-slate-300">
+            {copy.roadmapBullets.map((item) => (
+              <li key={item}>• {item}</li>
+            ))}
+          </ul>
         </Card>
-        <Card id="trust-layers" className="scroll-mt-28 p-6">
-          <span id="offline-verifier-architecture" className="sr-only" />
-          <h3 className="text-lg font-semibold text-white">{copy.trustOpsTitle}</h3>
-          <ul className="mt-4 space-y-2 text-sm text-slate-300">{copy.trustOpsBullets.map((item) => <li key={item}>• {item}</li>)}</ul>
-          <div className="mt-5 rounded-2xl border border-cyan-300/15 bg-cyan-500/10 p-4">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-200">{trustLayerFaq.title}</p>
-            <div className="mt-3 grid gap-3">
+      </div>
+
+      <div id="trust-layers" className="scroll-mt-28">
+        <div className="relative overflow-hidden rounded-3xl border border-cyan-500/20 bg-slate-950/50 p-8 shadow-[0_0_40px_rgba(6,182,212,0.1)] backdrop-blur-md">
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-purple-500/5" />
+
+          <div className="relative z-10 mb-10">
+            <span id="offline-verifier-architecture" className="sr-only" />
+            <h3 className="text-2xl font-black text-white">
+              {copy.trustOpsTitle}
+            </h3>
+          </div>
+
+          <div className="relative z-10 grid gap-6 md:grid-cols-3">
+            <div className="relative rounded-2xl border border-white/10 bg-slate-900/60 p-6 backdrop-blur-md transition-all hover:border-cyan-500/30 hover:bg-slate-900/80">
+              <div className="mb-4 inline-flex rounded-xl bg-slate-800 p-3 text-cyan-400">
+                <WifiOff className="h-6 w-6" />
+              </div>
+              <p className="mt-2 text-sm leading-relaxed text-slate-300">
+                {copy.trustOpsBullets[3]}
+              </p>
+              <p className="mt-4 border-t border-white/10 pt-4 text-sm leading-relaxed text-slate-300">
+                {copy.trustOpsBullets[2]}
+              </p>
+              <div className="absolute top-1/2 -right-4 z-0 hidden w-8 border-t-2 border-dashed border-cyan-500/30 md:block" />
+            </div>
+
+            <div className="relative rounded-2xl border border-white/10 bg-slate-900/60 p-6 backdrop-blur-md transition-all hover:border-indigo-500/30 hover:bg-slate-900/80">
+              <div className="mb-4 inline-flex rounded-xl bg-indigo-500/20 p-3 text-indigo-400">
+                <Network className="h-6 w-6" />
+              </div>
+              <p className="mt-2 text-sm leading-relaxed text-slate-300">
+                {copy.trustOpsBullets[1]}
+              </p>
+              <div className="absolute top-1/2 -right-4 z-0 hidden w-8 border-t-2 border-dashed border-indigo-500/30 md:block" />
+            </div>
+
+            <div className="relative rounded-2xl border border-white/10 bg-slate-900/60 p-6 backdrop-blur-md transition-all hover:border-purple-500/30 hover:bg-slate-900/80">
+              <div className="mb-4 inline-flex rounded-xl bg-purple-500/20 p-3 text-purple-400">
+                <Hexagon className="h-6 w-6" />
+              </div>
+              <p className="mt-2 text-sm leading-relaxed text-slate-300">
+                {copy.trustOpsBullets[0]}
+              </p>
+            </div>
+          </div>
+
+          <div className="relative z-10 mt-12 rounded-2xl border border-cyan-300/15 bg-cyan-950/20 p-6">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-400">
+              {trustLayerFaq.title}
+            </p>
+            <div className="mt-6 grid gap-3">
               {trustLayerFaq.items.map(([question, answer]) => (
-                <div key={question} className="rounded-xl border border-white/10 bg-slate-950/45 p-3">
-                  <p className="text-xs font-black text-white">{question}</p>
-                  <p className="mt-1 text-xs leading-5 text-slate-300">{answer}</p>
-                </div>
+                <details
+                  key={question}
+                  className="group rounded-xl border border-white/5 bg-slate-950/50 p-4 transition-all duration-200 hover:border-white/10 open:border-cyan-500/30 open:bg-slate-900/80"
+                >
+                  <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-bold text-white">
+                    <span>{question}</span>
+                    <ChevronDown className="h-4 w-4 text-cyan-500 transition-transform group-open:rotate-180" />
+                  </summary>
+                  <p className="mt-3 text-sm leading-relaxed text-slate-300">
+                    {answer}
+                  </p>
+                </details>
               ))}
             </div>
           </div>
-          <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-300">{trustLayerFaq.docsTitle}</p>
-            <p className="mt-2 text-xs leading-5 text-slate-400">{trustLayerFaq.docsNote}</p>
-            <div className="mt-3 flex flex-wrap gap-2">
+
+          <div className="relative z-10 mt-6 rounded-2xl border border-white/5 bg-slate-950/40 p-6 backdrop-blur-sm">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-300">
+              {trustLayerFaq.docsTitle}
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-slate-400">
+              {trustLayerFaq.docsNote}
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
               {trustLayerFaq.docs.map((item) => (
-                <span key={item} className="rounded-full border border-white/10 bg-slate-950/55 px-3 py-1.5 text-[11px] font-semibold text-slate-200">{item}</span>
+                <span
+                  key={item}
+                  className="cursor-default rounded-full border border-white/10 bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:border-cyan-500/30 hover:text-cyan-300"
+                >
+                  {item}
+                </span>
               ))}
             </div>
           </div>
-        </Card>
+        </div>
       </div>
 
       <div id="faq" className="scroll-mt-28">
@@ -615,19 +1118,34 @@ export default async function DocsPage() {
               <div>
                 <p>Video explainer</p>
                 <strong>Original institutional cut</strong>
-                <span>A useful English FAQ companion for buyers who want the story before entering the guided environment.</span>
+                <span>
+                  A useful English FAQ companion for buyers who want the story
+                  before entering the guided environment.
+                </span>
               </div>
-              <video controls preload="metadata" playsInline controlsList="nodownload" aria-label="nexID original institutional FAQ video">
+              <video
+                controls
+                preload="metadata"
+                playsInline
+                controlsList="nodownload"
+                aria-label="nexID original institutional FAQ video"
+              >
                 <source src={legacyInstitutionalVideo} type="video/mp4" />
               </video>
             </div>
           ) : null}
           <div className="mt-4 grid gap-3">
             {copy.faqItems.map((item) => (
-              <details key={item.q} className="group rounded-xl border border-white/10 bg-white/5 p-3 transition-all duration-200 open:border-cyan-300/30 open:bg-cyan-500/5 hover:border-white/20">
+              <details
+                key={item.q}
+                className="group rounded-xl border border-white/10 bg-white/5 p-3 transition-all duration-200 open:border-cyan-300/30 open:bg-cyan-500/5 hover:border-white/20"
+              >
                 <summary className="cursor-pointer list-none text-sm font-semibold text-white">
                   <span className="inline-flex items-center gap-2">
-                    <span className="text-cyan-300 transition-transform group-open:rotate-45">＋</span>{item.q}
+                    <span className="text-cyan-300 transition-transform group-open:rotate-45">
+                      ＋
+                    </span>
+                    {item.q}
                   </span>
                 </summary>
                 <p className="mt-3 text-sm text-slate-300">{item.a}</p>
@@ -639,25 +1157,83 @@ export default async function DocsPage() {
 
       <div id="strategy" className="scroll-mt-28">
         <Card className="p-6">
-          <h3 className="text-lg font-semibold text-white">{copy.strategyTitle}</h3>
+          <h3 className="text-lg font-semibold text-white">
+            {copy.strategyTitle}
+          </h3>
           <p className="mt-2 text-sm text-slate-300">{copy.strategyBody}</p>
           <div className="mt-4 flex flex-wrap gap-3">
-            <PublicLinkChip href="/stack" variant="cyan" size="md" trailingArrow>{copy.stackPage}</PublicLinkChip>
-            <PublicLinkChip href="/audiences" variant="indigo" size="md" trailingArrow>{copy.audiencesPage}</PublicLinkChip>
-            <PublicLinkChip href="/glossary" variant="emerald" size="md" trailingArrow>{copy.glossaryPage}</PublicLinkChip>
-            <PublicLinkChip href="/demo" variant="amber" size="md" trailingArrow>{copy.demoPage}</PublicLinkChip>
+            <PublicLinkChip
+              href="/stack"
+              variant="cyan"
+              size="md"
+              trailingArrow
+            >
+              {copy.stackPage}
+            </PublicLinkChip>
+            <PublicLinkChip
+              href="/audiences"
+              variant="indigo"
+              size="md"
+              trailingArrow
+            >
+              {copy.audiencesPage}
+            </PublicLinkChip>
+            <PublicLinkChip
+              href="/glossary"
+              variant="emerald"
+              size="md"
+              trailingArrow
+            >
+              {copy.glossaryPage}
+            </PublicLinkChip>
+            <PublicLinkChip
+              href="/demo"
+              variant="amber"
+              size="md"
+              trailingArrow
+            >
+              {copy.demoPage}
+            </PublicLinkChip>
           </div>
         </Card>
       </div>
 
       <div id="actions" className="scroll-mt-28">
         <Card className="p-6">
-          <h3 className="text-lg font-semibold text-white">{copy.actionsTitle}</h3>
+          <h3 className="text-lg font-semibold text-white">
+            {copy.actionsTitle}
+          </h3>
           <div className="mt-4 flex flex-wrap gap-3">
-            <PublicLinkChip href="/?assistant=open" variant="cyan" size="md" trailingArrow>{copy.openAssistant}</PublicLinkChip>
-            <PublicLinkChip href={productExitHref.demoLab} size="md" trailingArrow>{copy.openLab}</PublicLinkChip>
-            <a className="rounded-lg border border-white/20 px-4 py-2 text-sm text-slate-100" href="https://wa.me/5492613168608" target="_blank" rel="noreferrer">{copy.talkAgent}</a>
-            <Link className="inline-flex items-center gap-2 rounded-lg border border-emerald-300/35 bg-emerald-500/15 px-4 py-2 text-sm text-emerald-100 transition-transform duration-200 hover:-translate-y-0.5" href="/?contact=demo#contact-modal">{copy.bookDemo}<ArrowRight className="h-4 w-4" /></Link>
+            <PublicLinkChip
+              href="/?assistant=open"
+              variant="cyan"
+              size="md"
+              trailingArrow
+            >
+              {copy.openAssistant}
+            </PublicLinkChip>
+            <PublicLinkChip
+              href={productExitHref.demoLab}
+              size="md"
+              trailingArrow
+            >
+              {copy.openLab}
+            </PublicLinkChip>
+            <a
+              className="rounded-lg border border-white/20 px-4 py-2 text-sm text-slate-100"
+              href="https://wa.me/5492613168608"
+              target="_blank"
+              rel="noreferrer"
+            >
+              {copy.talkAgent}
+            </a>
+            <Link
+              className="inline-flex items-center gap-2 rounded-lg border border-emerald-300/35 bg-emerald-500/15 px-4 py-2 text-sm text-emerald-100 transition-transform duration-200 hover:-translate-y-0.5"
+              href="/?contact=demo#contact-modal"
+            >
+              {copy.bookDemo}
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
         </Card>
       </div>
