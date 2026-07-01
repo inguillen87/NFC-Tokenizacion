@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState, useEffect } from "react";
-import { Card, Badge, Button } from "@product/ui";
+import { Card, Badge, Button, SectionHeading } from "@product/ui";
 import { 
   AlertTriangle,
   Sparkles, 
@@ -1068,18 +1068,12 @@ export default function LoyaltyCampaignsClient() {
   const optimizerIsConfigured = Boolean(hfTokenInput || serverAiConfigured === true);
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            Clientes & campañas <span className="text-xs bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2.5 py-0.5 rounded-full font-black uppercase">IA comercial</span>
-          </h1>
-          <p className="mt-1 text-sm text-slate-400">
-            Fidelizá a tus consumidores mediante campañas inteligentes optimizadas en tiempo real por el motor cognitivo de nexID.
-          </p>
-        </div>
-      </header>
-
+    <div className="space-y-8 pb-12">
+      <SectionHeading 
+        eyebrow="IA Comercial" 
+        title="Clientes & campañas" 
+        description="Fidelizá a tus consumidores mediante campañas inteligentes optimizadas en tiempo real por el motor cognitivo de nexID." 
+      />
       <section className="rounded-2xl border border-cyan-500/20 bg-slate-950/70 p-4 shadow-[0_0_30px_rgba(6,182,212,0.06)]">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>

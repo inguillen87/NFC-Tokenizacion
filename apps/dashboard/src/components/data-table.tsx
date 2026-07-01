@@ -42,10 +42,11 @@ function buildExcelHtml(title: string, columns: Array<{ key: string; label: stri
 
 function resolveTone(value: string) {
   const v = String(value || "").toUpperCase();
-  if (["VALID", "ACTIVE", "HEALTHY"].includes(v)) return "green" as const;
-  if (["REPLAY_SUSPECT", "PENDING", "DRAFT", "QUALIFIED"].includes(v)) return "amber" as const;
-  if (["INVALID", "NOT_ACTIVE", "NOT_REGISTERED", "REVOKED", "RISK", "HOT", "BLOCKED", "TAMPER"].includes(v)) return "red" as const;
+  if (["VALID", "ACTIVE", "HEALTHY", "DELIVERED_CLOSED", "SEALED"].includes(v)) return "green" as const;
+  if (["REPLAY_SUSPECT", "PENDING", "DRAFT", "QUALIFIED", "QUARANTINED", "UNASSIGNED"].includes(v)) return "amber" as const;
+  if (["INVALID", "NOT_ACTIVE", "NOT_REGISTERED", "REVOKED", "RISK", "HOT", "BLOCKED", "TAMPER", "DELIVERED_OPENED"].includes(v)) return "red" as const;
   if (["DUPLICATE", "OPEN", "NEW"].includes(v)) return "violet" as const;
+  if (["IN_TRANSIT", "ASSIGNED"].includes(v)) return "blue" as const;
   return "default" as const;
 }
 
