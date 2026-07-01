@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge, Card, PremiumVectorMap, Globe3dMap, type VectorMapEvidenceStep, type VectorMapLedgerItem, type VectorMapPoint, type VectorMapRoute } from "@product/ui";
 
 type DemoMode = "consumer_tap" | "consumer_opened" | "consumer_tamper" | "consumer_duplicate";
-type ConsumerState = "AUTH_PENDING" | "VALID" | "OPENED" | "TAMPER_RISK" | "CLAIMED" | "REPLAY_SUSPECT";
+type ConsumerState = "AUTH_PENDING" | "VALID" | "OPENED" | "TAMPER_RISK" | "CLAIMED" | "REPLAY_SUSPECT" | "DELIVERED_CLOSED" | "DELIVERED_OPENED" | "OFFLINE_PENDING";
 
 type EventItem = { type: string; note: string; at: string };
 type LeadIntent = "request_demo" | "talk_sales" | "become_reseller" | "request_quote" | "tokenization_optional";
@@ -52,6 +52,9 @@ const STATE_COPY: Record<ConsumerState, { label: string; tone: "green" | "amber"
   TAMPER_RISK: { label: "TAMPER RISK", tone: "amber", message: "Riesgo de manipulación detectado en sello o contexto." },
   CLAIMED: { label: "CLAIMED", tone: "green", message: "Ownership activado para lifecycle, soporte y postventa." },
   REPLAY_SUSPECT: { label: "REPLAY SUSPECT", tone: "red", message: "Lectura sospechosa por repetición o posible clonación." },
+  DELIVERED_CLOSED: { label: "SEAL INTACT", tone: "green", message: "Tu paquete llegó sellado y es auténtico." },
+  DELIVERED_OPENED: { label: "SEAL OPENED", tone: "red", message: "El sello aparece abierto. Crear reclamo inmediato." },
+  OFFLINE_PENDING: { label: "OFFLINE PENDING", tone: "amber", message: "Verificación pendiente. La autenticidad criptográfica se confirmará al volver la conexión." },
 };
 
 function nowIso() {
@@ -182,7 +185,7 @@ export function MobileDemoClient({
   const activeItem = useMemo(() => seedItems.find((item) => (item.uidHex || item.uid_hex || "").length > 0) || seedItems[0] || {}, [seedItems]);
   const activeVertical = detectVertical(pack, activeItem);
   const template = VERTICAL_TEMPLATES[activeVertical];
-  const stateTimeline: ConsumerState[] = ["AUTH_PENDING", "VALID", "OPENED", "TAMPER_RISK", "CLAIMED", "REPLAY_SUSPECT"];
+  const stateTimeline: ConsumerState[] = ["AUTH_PENDING", "VALID", "DELIVERED_CLOSED", "DELIVERED_OPENED", "OFFLINE_PENDING", "OPENED", "TAMPER_RISK", "CLAIMED", "REPLAY_SUSPECT"];
   const firstScan = events.length ? events[events.length - 1] : null;
   const lastScan = events.length ? events[0] : null;
   const trustIndex = useMemo(() => {

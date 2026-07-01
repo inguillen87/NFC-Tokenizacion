@@ -5,9 +5,9 @@ import { useEffect, useMemo, useState, useRef, type CSSProperties } from "react"
 import { DEMO_TENANT_SLUG } from "@product/config";
 import type { AppLocale } from "@product/config";
 import { ArrowLeft, BadgeCheck, CalendarDays, CheckCircle2, ChevronRight, Fingerprint, MapPin, PackageCheck, ShieldCheck, UserRound, AlertTriangle, ShoppingCart, RefreshCw, Check, Cpu, Network, QrCode, RadioTower } from "lucide-react";
-import { HeroTrustAtlasSvg } from "../../components/hero-scene";
-import { platformVerticals } from "../../lib/platform-verticals";
-import { ThreeDProduct } from "../investor-snapshot/investor-snapshot-client";
+import { HeroTrustAtlasSvg } from "../../../components/hero-scene";
+import { platformVerticals } from "../../../lib/platform-verticals";
+import { ThreeDProduct } from "../../investor-snapshot/investor-snapshot-client";
 import type { VectorMapPoint, VectorMapRoute } from "@product/ui";
 
 type Role = "ceo" | "operator" | "buyer";

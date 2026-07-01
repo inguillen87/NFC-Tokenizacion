@@ -55,7 +55,7 @@ export default async function SupplierOrderDetailPage({ params }: { params: Prom
       headers: { 
         "Content-Type": "application/json",
         Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}`,
-        "X-NexID-Actor": session.userId,
+        "X-NexID-Actor": session.userId || "",
       },
       body: JSON.stringify({ password }),
     });

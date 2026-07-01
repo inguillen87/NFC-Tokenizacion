@@ -1,0 +1,11 @@
+- `[x]` Phase 1: Dashboard B2B (Admin Panel)
+  - `[x]` Create `apps/dashboard/src/app/(app)/logistics/page.tsx` (Secure Delivery Hub)
+  - `[x]` Create `apps/dashboard/src/app/(app)/logistics/shipments/page.tsx` (Shipments Table)
+  - `[x]` Enhance `apps/dashboard/src/app/(app)/proof/page.tsx` (IOTA vs Polygon, Merkle Roots)
+- `[x]` Phase 2: Mobile PWA Scanner (Recipient & Courier)
+  - `[x]` Update Product Passport component for TagTamper states (`DELIVERED_CLOSED`, `OPENED`, `Offline`)
+  - `[x]` Add Courier Handoff screen
+- `[x]` Phase 3: Marketing B2B (Landing & DemoLab) (Assigned to subagent)
+  - `[x]` Add Secure Delivery pitch to `landing/page.tsx`
+  - `[x]` Add Polygon vs IOTA demos to `demo-lab/page.tsx`
+- `[ ]` Final Verification & Build Tests
