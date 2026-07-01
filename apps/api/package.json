@@ -11,7 +11,7 @@
     "db:migrate": "node scripts/db-apply.mjs",
     "db:seed": "node scripts/db-seed-dev.mjs",
     "db:reset:local": "node scripts/db-reset-local.mjs",
-    "prisma:generate": "prisma generate --schema=prisma/schema.prisma",
+    "prisma:generate": "npx prisma generate --schema=prisma/schema.prisma",
     "prisma:migrate:deploy": "prisma migrate deploy --schema=prisma/schema.prisma",
     "prisma:seed": "node prisma/seed.mjs",
     "demo:demobodega": "node scripts/demo-demobodega.mjs",
