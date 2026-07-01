@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { BrandLockup, Button, LocaleSwitcher, ThemeToggle } from "@product/ui";
 import {
   CtaSection,
@@ -25,6 +26,8 @@ const mipymeCertificateHref = "/certificados/certificado-mipyme-intellitech.pdf"
 
 export default async function HomePage() {
   const { locale, locales, t } = await getWebI18n();
+  const cookieStore = await cookies();
+  const initialTheme = cookieStore.get("theme")?.value === "light" ? "light" : "dark";
   const content = landingContent[locale];
 
   const labels = locale === "en"
@@ -282,7 +285,7 @@ export default async function HomePage() {
         </div>
       </header>
 
-      <HeroSection content={content} stats={t.web.stats} locale={locale} radar={content.radar} />
+      <HeroSection content={content} stats={t.web.stats} locale={locale} radar={content.radar} initialTheme={initialTheme} />
 
       <SimpleTrustFlowSection locale={locale} />
       <EnterpriseTrustLayersSection locale={locale} />
@@ -316,8 +319,8 @@ export default async function HomePage() {
             <h3 className="mt-4 text-base font-bold text-white">🧪 Demo Lab & Sandbox</h3>
             <p className="mt-2 text-xs leading-5 text-slate-400">
               {locale === "en" 
-                ? "Simulate physical NFC scans, GPS coordinates, verification logs, and tamper events in real-time."
-                : "Simulá escaneos físicos de chips, coordenadas GPS de riesgo, logs de auditoría y tamper en tiempo real."
+                ? "Simulate physical NFC scans, read-location risk signals, verification logs, and tamper events in real-time."
+                : "Simulá escaneos físicos de chips, señales de riesgo por ubicación de lectura, logs de auditoría y tamper en tiempo real."
               }
             </p>
             <Link href="/demo-lab" className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-cyan-300 group-hover:text-cyan-200">

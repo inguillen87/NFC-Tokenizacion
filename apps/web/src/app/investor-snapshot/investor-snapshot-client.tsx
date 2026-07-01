@@ -49,8 +49,8 @@ const faqCategories = [
     items: [
       {
         q: "¿El chip NFC nexID encarece el costo unitario por botella y reduce mi margen en líneas de volumen? ¿Realmente lo necesito?",
-        a: "Seamos totalmente directos: sí. En líneas de volumen de gama media o baja, un costo adicional de 1.00 USD por botella (en chip NTAG/TagTamper) destruye el margen comercial. Esta tecnología no es para consumo masivo local. Sin embargo, en tus líneas de exportación y alta gama, no adoptarla es un riesgo existencial: la Unión Europea está implementando el Pasaporte Digital de Productos (DPP bajo la ley ESPR) y EE.UU. endurece la trazabilidad con la FDA FSMA 204. Las bodegas que sigan usando etiquetas de papel tradicionales quedarán fuera del mercado internacional. Ser los innovadores que lideran esta transición en LATAM no es un costo de embalaje: es la llave de entrada obligatoria al mercado de exportación global, permitiéndote además cobrar un sobreprecio por la autenticidad certificada.",
-        ctx: "Ser el primer exportador de tu región en cumplir digitalmente con las normativas de la UE te posiciona como socio estratégico preferente frente a los importadores europeos, quienes prefieren bodegas con trazabilidad de origen 100% automatizada."
+        a: "Seamos totalmente directos: sí. En líneas de volumen de gama media o baja, un costo adicional de 1.00 USD por botella (en chip NTAG/TagTamper) destruye el margen comercial. Esta tecnología no es para consumo masivo local. Sin embargo, en tus líneas de exportación y alta gama, no adoptarla es un riesgo existencial: la Unión Europea está implementando el Pasaporte Digital de Productos (DPP bajo la ley ESPR) y EE.UU. endurece la trazabilidad con la FDA FSMA 204. Las bodegas que sigan usando etiquetas de papel tradicionales quedarán fuera del mercado internacional. Ser los innovadores que lideran esta transición en LATAM no es un costo de embalaje: es la llave de entrada obligatoria al mercado de exportación global, permitiéndote además respaldar precio premium con evidencia digital verificable.",
+        ctx: "Ser el primer exportador de tu región en cumplir digitalmente con las normativas de la UE te posiciona como socio estratégico preferente frente a los importadores europeos, quienes prefieren bodegas con trazabilidad de origen digitalizada y auditable."
       },
       {
         q: "¿Qué pasa si un falsificador inyecta vino barato con una jeringa ultra-fina a través del corcho sin tocar la cápsula ni el chip? ¿El sistema no da un falso positivo de autenticidad?",
@@ -91,7 +91,7 @@ const faqCategories = [
       },
       {
         q: "En cosmética, ¿cómo evito que un falsificador compre mis envases vacíos originales, los rellene con producto falso y los revenda con el chip original marcando 'auténtico'?",
-        a: "Esta es la mayor vulnerabilidad en el mercado secundario de perfumes y cremas premium. Si el chip sigue activo, el sistema dirá que es original. nexID aborda este problema con honestidad técnica mediante la tecnología TagTamper: un micro-filamento conductor que recorre el cierre del frasco o el sello del atomizador. En el momento en que el consumidor presiona el atomizador por primera vez o desenrosca la tapa para usar el producto, el filamento físico se rompe mecánicamente. El chip sigue funcionando para marketing, pero el estado cambia permanentemente en nuestra base de datos a 'abierto/consumido'. Si alguien intenta rellenarlo y revenderlo, cualquier escaneo posterior alertará al comprador de que el envase ya fue abierto y violado.",
+        a: "Esta es la mayor vulnerabilidad en el mercado secundario de perfumes y cremas premium. Si el chip sigue activo, el sistema puede ver un tap válido del identificador aunque el contenido haya sido alterado. nexID aborda este problema con honestidad técnica mediante la tecnología TagTamper: un micro-filamento conductor que recorre el cierre del frasco o el sello del atomizador. En el momento en que el consumidor presiona el atomizador por primera vez o desenrosca la tapa para usar el producto, el filamento físico se rompe mecánicamente. El chip sigue funcionando para marketing, pero el estado cambia permanentemente en nuestra base de datos a 'abierto/consumido'. Si alguien intenta rellenarlo y revenderlo, cualquier escaneo posterior alertará al comprador de que el envase ya fue abierto y requiere revisión.",
         ctx: "Esto reduce de forma fuerte el mercado negro de rellenado de perfumes de lujo, protege la marca y le da al consumidor una señal clara de que el envase ya fue abierto."
       },
       {
@@ -118,8 +118,8 @@ const faqCategories = [
       },
       {
         q: "En el agro, ¿qué valor tiene colocar chips en bolsas de semillas de autor o agroquímicos?",
-        a: "El mercado negro de semillas adulteradas y agroquímicos diluidos genera pérdidas millonarias y daña cosechas enteras. El chip nexID certifica el origen del criadero o laboratorio oficial directamente en el campo mediante un tap con el celular.",
-        ctx: "El productor escanea el bidón o bolsa con su celular y valida que el agroquímico posee la composición y concentración original, protegiendo los derechos de autor y la producción agrícola."
+        a: "El mercado negro de semillas adulteradas y agroquímicos diluidos genera pérdidas millonarias y daña cosechas enteras. El chip nexID vincula el lote declarado por el criadero o laboratorio oficial directamente en el campo mediante un tap con el celular.",
+        ctx: "El productor escanea el bidón o bolsa con su celular y consulta composición, concentración declarada, lote y documentación técnica cargada por la marca."
       }
     ]
   },
@@ -185,16 +185,16 @@ const slides = [
     bullets: [
       "Firma criptográfica dinámica validada contra nuestro servidor en la nube ultra-seguro por defecto.",
       "Integración inmediata para marcas tradicionales sin necesidad de lidiar con criptomonedas o costos de transacción de red.",
-      "Registro descentralizado opcional para generar certificados digitales de propiedad y garantizar inmutabilidad."
+      "Registro descentralizado opcional para generar certificados digitales de propiedad o evidencia externa cuando aporta valor."
     ]
   },
   {
     title: "4) Seguridad Criptográfica",
     tagline: "Monitoreo Activo de Claves",
     bullets: [
-      "Cada tap genera una firma dinámica única (SUN) que se descifra con llaves custodiadas en HSM/KMS.",
+      "Cada tap genera una firma dinámica única (SUN) verificable server-side con claves custodiadas en HSM/KMS.",
       "Señales de riesgo activas: alerta si el mismo chip aparece en ciudades o canales incompatibles.",
-      "Circuito físico TagTamper: el chip detecta e informa si la cápsula o sello original ya fue abierto."
+      "Circuito físico TagTamper: el chip detecta e informa si la cápsula o sello físico ya fue abierto."
     ]
   },
   {
@@ -248,6 +248,56 @@ const investorAtlasRoutes: VectorMapRoute[] = [
   { id: "investor-route-madrid-zurich", fromLat: 40.4168, fromLng: -3.7038, toLat: 47.3769, toLng: 8.5417, label: "Madrid -> Zurich", tone: "success", evidence: "Tap fisico" },
 ];
 
+function InvestorMobileOutput() {
+  const metrics = [
+    { label: "SUN", value: "OK" },
+    { label: "Claim", value: "Opcional" },
+    { label: "Offline", value: "Pendiente" },
+  ];
+
+  return (
+    <div className="investor-proof-mobile-card" data-investor-phone="true" aria-label="Salida celular del tap para inversores">
+      <div className="investor-proof-mobile-shell">
+        <div className="investor-proof-mobile-status">
+          <Smartphone className="h-4 w-4" />
+          <span>Tap final</span>
+          <em>Server-side</em>
+        </div>
+        <div className="investor-proof-mobile-hero">
+          <ShieldCheck className="h-9 w-9" />
+          <div>
+            <p>Salida celular</p>
+            <strong>Autenticidad validada</strong>
+            <span>Tap fisico + SUN dinamico</span>
+          </div>
+        </div>
+        <div className="investor-proof-mobile-product">
+          <span>N</span>
+          <div>
+            <strong>Producto premium</strong>
+            <p>Atlas, riesgo y claim en una vista</p>
+          </div>
+        </div>
+        <div className="investor-proof-mobile-metrics">
+          {metrics.map((metric) => (
+            <div key={metric.label}>
+              <span>{metric.label}</span>
+              <strong>{metric.value}</strong>
+            </div>
+          ))}
+        </div>
+        <p className="investor-proof-mobile-note">
+          Sin conexion, el consumidor ve datos publicos/cacheados y la verificacion fuerte queda pendiente hasta backend o verificador autorizado.
+        </p>
+      </div>
+      <div className="investor-proof-mobile-footer">
+        <CheckCircle2 className="h-4 w-4" />
+        <span>Polygon/IOTA se activan por politica, no por cada tap.</span>
+      </div>
+    </div>
+  );
+}
+
 function InvestorVerticalMoat() {
   return (
     <section className="grid gap-5 rounded-3xl border border-cyan-300/15 bg-slate-950/72 p-5 shadow-2xl backdrop-blur-md xl:grid-cols-[0.95fr_1.05fr]">
@@ -261,9 +311,10 @@ function InvestorVerticalMoat() {
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {platformVerticals.map((item) => (
-            <a key={item.id} href={`/demo-lab?vertical=${item.demoVertical}`} className="group overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035] transition hover:border-cyan-300/35 hover:bg-cyan-500/10">
-              <div className="h-24 overflow-hidden bg-slate-950">
-                <img src={item.image} alt={`${item.title} nexID`} className="h-full w-full object-cover opacity-82 transition duration-500 group-hover:scale-105 group-hover:opacity-100" />
+            <a key={item.id} href={`/demo-lab?vertical=${item.demoVertical}`} className="investor-vertical-card group overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035] transition hover:border-cyan-300/35 hover:bg-cyan-500/10">
+              <div className="investor-vertical-card__media h-24 overflow-hidden bg-slate-950">
+                <img src={item.image} alt={`${item.title} nexID`} className="investor-vertical-card__image investor-vertical-card__image--dark h-full w-full object-cover opacity-82 transition duration-500 group-hover:scale-105 group-hover:opacity-100" />
+                <img src={item.imageLight} alt="" aria-hidden="true" className="investor-vertical-card__image investor-vertical-card__image--light h-full w-full object-cover opacity-0 transition duration-500 group-hover:scale-105" />
               </div>
               <div className="p-3">
                 <p className="text-sm font-black text-white">{item.title}</p>
@@ -279,8 +330,11 @@ function InvestorVerticalMoat() {
         </div>
       </div>
       <div className="investor-proof-atlas">
-        <div className="investor-proof-atlas-map" aria-label="Atlas de trazabilidad para inversores">
-          <HeroTrustAtlasSvg points={investorAtlasPoints} routes={investorAtlasRoutes} selectedPointId="tap" />
+        <div className="investor-proof-output-grid">
+          <div className="investor-proof-atlas-map" aria-label="Atlas de trazabilidad para inversores">
+            <HeroTrustAtlasSvg points={investorAtlasPoints} routes={investorAtlasRoutes} selectedPointId="tap" />
+          </div>
+          <InvestorMobileOutput />
         </div>
         <div className="investor-proof-live-card">
           <span>Salida celular</span>
@@ -928,8 +982,8 @@ export const INDUSTRY_SIM_DETAILS: Record<string, {
     ],
     detailsQuote: '"Color rubí, notas a ciruela madura, cacao y vainilla persistentes."',
     mintTitle: "Registrar en Blockchain",
-    mintDesc: "Generá el gemelo digital de esta botella para poseer el certificado inmutable de autenticidad en el ledger de Polygon.",
-    mintSuccess: "Tu certificado inmutable en la red Polygon Amoy ha sido generado con éxito.",
+    mintDesc: "Generá un certificado de ownership o claim transferible cuando la marca habilita Polygon para esta línea.",
+    mintSuccess: "Certificado de ownership generado en modo Polygon demo.",
     reward1Title: "Copa de Degustación",
     reward1Sub: "Cata en Cava Mendoza",
     reward2Title: "Tour VIP Bodega",
@@ -965,7 +1019,7 @@ export const INDUSTRY_SIM_DETAILS: Record<string, {
     ],
     detailsQuote: '"El valor no esta en parecer vino: esta en medir retornos, refill, inventario y fidelizacion circular por unidad."',
     mintTitle: "Registrar evidencia de ciclo",
-    mintDesc: "Notariza hitos relevantes del envase cuando aportan valor operativo, sin afirmar que cada lectura va on-chain.",
+    mintDesc: "Notariza hitos relevantes del envase cuando aportan valor operativo y deja la trazabilidad diaria en nexID.",
     mintSuccess: "Evidencia de ciclo preparada para auditoria.",
     reward1Title: "Deposito retornable",
     reward1Sub: "Credito por devolver envase",
@@ -1001,9 +1055,9 @@ export const INDUSTRY_SIM_DETAILS: Record<string, {
       { label: "Volumen:", val: "100 ml" }
     ],
     detailsQuote: '"Notas de salida de jazmín y azafrán, con fondo de cedro y ámbar gris."',
-    mintTitle: "Certificado de Lujo NFT",
-    mintDesc: "Registrá la autenticidad y propiedad única de tu frasco de perfume en el registro descentralizado de Polygon.",
-    mintSuccess: "Tu certificado de autenticidad y propiedad de lujo ha sido minteado en Polygon.",
+    mintTitle: "Certificado de Lujo Opcional",
+    mintDesc: "Registrá ownership o certificado premium cuando la marca habilita Polygon para esta colección.",
+    mintSuccess: "Certificado premium emitido en modo Polygon demo.",
     reward1Title: "Masterclass de Perfumería",
     reward1Sub: "Acceso digital exclusivo",
     reward2Title: "Muestra Exclusiva",
@@ -1038,9 +1092,9 @@ export const INDUSTRY_SIM_DETAILS: Record<string, {
       { label: "Aplicación:", val: "Foliar Directa" }
     ],
     detailsQuote: '"Producto orgánico de amplio espectro para cereales y oleaginosas premium."',
-    mintTitle: "Tokenización Fitosanitaria",
-    mintDesc: "Registrá la huella de carbono y trazabilidad de este lote agroquímico en el ledger público de Polygon.",
-    mintSuccess: "Pasaporte digital del lote fitosanitario registrado en la red Polygon.",
+    mintTitle: "Prueba Fitosanitaria Opcional",
+    mintDesc: "Anclá evidencia agregada de trazabilidad o cumplimiento cuando el cliente necesita auditoría externa.",
+    mintSuccess: "Resumen verificable del lote preparado para capa de prueba.",
     reward1Title: "Asesoramiento Agrónomo",
     reward1Sub: "Consulta técnica live",
     reward2Title: "Descuento Reabastecimiento",
@@ -1075,9 +1129,9 @@ export const INDUSTRY_SIM_DETAILS: Record<string, {
       { label: "Lote ID:", val: "ON-88392-A" }
     ],
     detailsQuote: '"Medicamento oncológico de alta especialidad. No exponer a la luz directa del sol."',
-    mintTitle: "Pasaporte de Salud Cripto",
-    mintDesc: "Generá el certificado inmutable de cumplimiento de la cadena de frío y autenticidad del medicamento para el paciente.",
-    mintSuccess: "Pasaporte médico registrado y verificado en la blockchain Polygon.",
+    mintTitle: "Pasaporte de Salud Auditable",
+    mintDesc: "Prepará un resumen verificable de cadena de frío y lote cuando la política regulatoria lo permite.",
+    mintSuccess: "Resumen médico verificable preparado para auditoría.",
     reward1Title: "Soporte al Paciente",
     reward1Sub: "Línea médica 24/7 VIP",
     reward2Title: "Rebaja Deducible",
@@ -1112,9 +1166,9 @@ export const INDUSTRY_SIM_DETAILS: Record<string, {
       { label: "Beneficios:", val: "Afterparty Pass" }
     ],
     detailsQuote: '"Válido para todas las conferencias magistrales, workshops y cocktail de networking."',
-    mintTitle: "Mint Ticket a NFT Coleccionable",
-    mintDesc: "Convertí tu credencial física en un ticket NFT digital inmutable de colección (POAP) en la blockchain.",
-    mintSuccess: "POAP NFT Coleccionable emitido con éxito en la red Polygon.",
+    mintTitle: "Coleccionable Digital Opcional",
+    mintDesc: "Convertí tu credencial física en un recuerdo digital transferible solo si el evento habilita esa política.",
+    mintSuccess: "Coleccionable digital emitido en modo demo.",
     reward1Title: "Acceso Afterparty",
     reward1Sub: "Cocktail de Cierre VIP",
     reward2Title: "Preventa Summit 2027",
@@ -1265,7 +1319,7 @@ export function RoiCalculator({
 3. **Riesgo de falsificación**: Facilita que intermediarios deshonestos mezclen botellas falsificadas con el stock original desviado.
 
 ¿Cómo lo soluciona nexID?
-Al incorporar chips NFC inmutables con firma criptográfica en el tapón, nexID asocia cada botella a un destino de exportación específico. Si una botella configurada para el mercado de "Mendoza / Mercosur" es escaneada por un consumidor final en "Londres / Europa", el sistema detecta de inmediato la anomalía geográfica y envía una alerta en tiempo real a tu CRM con la ubicación exacta. Esto te permite identificar con precisión qué distribuidor está rompiendo el acuerdo de exclusividad de canal.`;
+Al incorporar chips NFC seguros con firma criptográfica en el tapón, nexID asocia cada botella a un destino de exportación específico. Si una botella configurada para el mercado de "Mendoza / Mercosur" es escaneada por un consumidor final en "Londres / Europa", el sistema detecta la anomalía usando país, ciudad aproximada, canal, hora y contexto del tap. Esto permite abrir una investigación operativa sobre qué distribuidor podría estar rompiendo el acuerdo de exclusividad de canal.`;
       }
       
       if (userQuestion.includes("2.87") || userQuestion.includes("ahorra") || userQuestion.includes("perdida") || userQuestion.includes("pérdida") || userQuestion.includes("cómo se calcula") || userQuestion.includes("calcula") || userQuestion.includes("formula") || userQuestion.includes("fórmula")) {
@@ -1294,7 +1348,7 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
       }
       
       if (userQuestion.includes("blockchain") || userQuestion.includes("web3") || userQuestion.includes("nft") || userQuestion.includes("seguridad") || userQuestion.includes("seguro") || userQuestion.includes("nube")) {
-        return `La arquitectura de nexID utiliza un modelo híbrido: el chip NFC se valida contra nuestro backend seguro, el CRM conserva la operación en tiempo real y Polygon se usa cuando la marca necesita ownership, certificado transferible, NFT o claim público. No escribimos todos los taps en blockchain ni publicamos datos sensibles. Para auditoría avanzada, se pueden anclar hashes agregados en Polygon/IOTA, manteniendo trazabilidad verificable sin exponer al consumidor ni encarecer cada lectura.`;
+        return `La arquitectura de nexID utiliza un modelo híbrido: el chip NFC se valida contra nuestro backend seguro, el CRM conserva la operación en tiempo real y Polygon se usa cuando la marca necesita ownership, certificado transferible, NFT o claim público. La operación transaccional de taps queda en backend/CRM y no publicamos datos sensibles. Para auditoría avanzada, se pueden anclar hashes agregados en Polygon/IOTA, manteniendo trazabilidad verificable sin exponer al consumidor ni encarecer cada lectura.`;
       }
 
       if (userQuestion.includes("ayuda") || userQuestion.includes("como") || userQuestion.includes("plataforma") || userQuestion.includes("que es") || userQuestion.includes("explic")) {
@@ -2058,7 +2112,7 @@ const DEFAULT_CRM_QUERIES: Record<string, Array<{ id: string; query: string; ans
     {
       id: "q-r3",
       query: "Que evidencia queda para reportes ESG o auditoria circular?",
-      answer: "nexID puede registrar retornos, puntos de recarga, lote, operador y evidencia de ciclo. Los hitos relevantes pueden enviarse a una capa de prueba sin afirmar que cada lectura va on-chain.",
+      answer: "nexID puede registrar retornos, puntos de recarga, lote, operador y evidencia de ciclo. Los hitos relevantes pueden enviarse a una capa de prueba opcional y la operacion diaria queda en nexID.",
       timestamp: "18:12:44",
       tag: "ESG",
       status: "respondido"
@@ -2084,7 +2138,7 @@ const DEFAULT_CRM_QUERIES: Record<string, Array<{ id: string; query: string; ans
     {
       id: "q-c3",
       query: "¿Los componentes y esencias que usan para el fijador cumplen con normativas veganas y libres de crueldad?",
-      answer: "Absolutamente. Elysian Elixir está certificado como Cruelty-Free y 100% Vegano. Todos los ingredientes cumplen con el estándar REACH europeo de seguridad dermatológica.",
+      answer: "La ficha puede mostrar certificaciones cruelty-free, veganas, REACH u otras solo si el tenant cargó documentos aprobados. nexID no inventa certificaciones ni claims dermatológicos.",
       timestamp: "17:40:05",
       tag: "Sostenibilidad",
       status: "respondido"
@@ -2094,7 +2148,7 @@ const DEFAULT_CRM_QUERIES: Record<string, Array<{ id: string; query: string; ans
     {
       id: "q-a1",
       query: "Si llueve en unas dos horas, ¿el BioGuard Max 500 resiste el lavado o pierdo la aplicación en el cultivo?",
-      answer: "BioGuard Max posee un agente adherente de rápida absorción que se fija en la cutícula foliar en solo 45 minutos. Si la lluvia es menor a 15mm transcurrida una hora, el activo mantiene un 92% de efectividad.",
+      answer: "Las condiciones de lluvia, lavado y eficacia deben salir de la etiqueta o ficha técnica aprobada. nexID puede mostrar esa información y registrar consultas por lote, zona y operador.",
       timestamp: "19:33:04",
       tag: "Soporte Técnico",
       status: "respondido"
@@ -2110,7 +2164,7 @@ const DEFAULT_CRM_QUERIES: Record<string, Array<{ id: string; query: string; ans
     {
       id: "q-a3",
       query: "¿Qué dosis por hectárea recomiendan para un ataque severo de roya en soja?",
-      answer: "Para ataques severos detectados (más del 20% de incidencia foliar), sugerimos aplicar 1.8 litros por hectárea, preferentemente en horas de baja radiación solar (mañana o atardecer).",
+      answer: "La dosis por hectárea se informa desde la ficha técnica aprobada por el fabricante o distribuidor autorizado. nexID no reemplaza criterio agronómico ni etiqueta regulatoria.",
       timestamp: "18:14:50",
       tag: "Uso de Producto",
       status: "respondido"
@@ -2136,7 +2190,7 @@ const DEFAULT_CRM_QUERIES: Record<string, Array<{ id: string; query: string; ans
     {
       id: "q-p3",
       query: "¿Este lote ON-88392-A cuenta con cobertura y convenios directos de prepagas como OSDE o Swiss Medical?",
-      answer: "Sí, OncoCure está incluido en el plan de oncología especial al 100% de cobertura para afiliados de OSDE (Planes 310 en adelante) y Swiss Medical, previa validación del pasaporte digital de cadena de frío.",
+      answer: "La cobertura se muestra solo si el tenant o pagador cargó convenios vigentes, reglas aprobadas y documentación del lote. nexID puede validar estado y trazabilidad antes de mostrar beneficios.",
       timestamp: "17:55:40",
       tag: "Descuento VIP",
       status: "respondido"
@@ -2737,14 +2791,14 @@ export function InvestorSnapshotClient() {
           } else if (q.includes("refill") || q.includes("recarga") || q.includes("ciclo") || q.includes("sanitizacion")) {
             reply = "La ficha indica si el envase esta apto para refill, pendiente de sanitizacion o retirado. Esa decision se controla por lote y operador autorizado.";
           } else if (q.includes("esg") || q.includes("auditoria") || q.includes("evidencia") || q.includes("impacto")) {
-            reply = "nexID registra hitos de retorno, refill, operador y lote. Los eventos relevantes pueden enviarse a una capa de prueba sin afirmar que cada lectura va on-chain.";
+            reply = "nexID registra hitos de retorno, refill, operador y lote. Los eventos relevantes pueden enviarse a una capa de prueba opcional y la operacion diaria queda en nexID.";
           }
         } else if (selectedIndustry === "cosmetica") {
-          reply = "Como tu Asistente Aura, te confirmo que Elysian Elixir es 100% original. ¿Quieres consultar sobre las notas olfativas o el cuidado?";
+          reply = "Como tu Asistente Aura, la ficha muestra evidencia de autenticidad disponible para Elysian Elixir. ¿Quieres consultar notas olfativas, cuidado o retailers autorizados?";
           if (q.includes("nota") || q.includes("aroma") || q.includes("olfativa") || q.includes("olor")) {
             reply = "Elysian Elixir abre con flores de jazmín y azafrán, corazón de ámbar gris y fondo de madera de cedro. Una concentración premium del 30%.";
           } else if (q.includes("cuidado") || q.includes("piel") || q.includes("crema") || q.includes("sensible")) {
-            reply = "Nuestros productos son hipoalergénicos e integran principios activos orgánicos con resistencia química testada ante REACH.";
+            reply = "Puedo mostrar ingredientes, advertencias y documentos cargados por el tenant. Las afirmaciones dermatologicas deben venir de la ficha aprobada de la marca.";
           } else if (q.includes("origen") || q.includes("grasse") || q.includes("donde")) {
             reply = "La esencia se produce en Grasse, Francia, y se fracciona bajo estrictos estándares en laboratorios locales acreditados.";
           } else if (q.includes("parecido") || q.includes("crema") || q.includes("otro") || q.includes("rutina") || q.includes("combinar")) {
@@ -2753,20 +2807,20 @@ export function InvestorSnapshotClient() {
             reply = "Los convenios se muestran solo si están cargados y aprobados por contrato. El tenant puede habilitar retailers autorizados, puntos y beneficios por sucursal desde el CRM.";
           }
         } else if (selectedIndustry === "agro") {
-          reply = "Como tu Inspector Técnico BioGuard, confirmo que este lote fitosanitario es original. ¿Quieres consultar dosis o el origen?";
+          reply = "Como tu Inspector Tecnico BioGuard, este lote fitosanitario tiene evidencia valida cargada para auditoria. ¿Quieres consultar dosis, origen o canal autorizado?";
           if (q.includes("dosis") || q.includes("aplicar") || q.includes("uso") || q.includes("hectarea")) {
-            reply = "BioGuard Max se aplica de forma foliar directa diluyendo 1.5 litros por hectárea en condiciones de viento menor a 10km/h.";
+            reply = "La dosis debe leerse desde la ficha tecnica aprobada del tenant y ajustarse por cultivo, zona y operador autorizado.";
           } else if (q.includes("origen") || q.includes("lote") || q.includes("rosario")) {
-            reply = "Este lote fitosanitario fue sintetizado en laboratorio y despachado desde el puerto de Rosario hacia Pergamino, certificado por SENASA.";
+            reply = "La ficha puede mostrar laboratorio, despacho, SENASA u otros documentos solo si fueron cargados y aprobados por el tenant.";
           } else if (q.includes("plaga") || q.includes("hongo") || q.includes("enfermedad")) {
-            reply = "Controla hongos de suelo y de hoja de amplio espectro, con degradación biodegradable en 14 días sin residuos químicos.";
+            reply = "Las plagas objetivo, degradacion y restricciones se muestran segun documentacion tecnica aprobada; nexID no inventa claims agronomicos.";
           } else if (q.includes("lluvia") || q.includes("viento") || q.includes("clima") || q.includes("lavado")) {
-            reply = "BioGuard Max 500 incluye polímeros adherentes que resisten el lavado por lluvia transcurridos 45 minutos de la aplicación foliar.";
+            reply = "Las condiciones de lluvia, viento y lavado deben salir de la etiqueta/ficha tecnica cargada por el fabricante o distribuidor autorizado.";
           } else if (q.includes("convenio") || q.includes("cooperativa") || q.includes("pergamino") || q.includes("compras") || q.includes("granel")) {
             reply = "Las entregas a granel y convenios cooperativos deben cargarse como canales autorizados del tenant. nexID valida lote, zona, stock y condiciones antes de mostrar una oferta al productor.";
           }
         } else if (selectedIndustry === "pharma") {
-          reply = "Como tu Asistente Validante, confirmo la autenticidad y cadena de frío de OncoCure. ¿Quieres auditar la temperatura o el lote?";
+          reply = "Como tu Asistente Validante, la ficha muestra evidencia disponible de autenticidad y cadena de frio de OncoCure. ¿Quieres auditar temperatura o lote?";
           if (q.includes("temperatura") || q.includes("frio") || q.includes("grados") || q.includes("cadena")) {
             reply = "La temperatura histórica se mantuvo constante en 4.8°C (Rango exigido: 2°C a 8°C). No se registran alertas de desviación térmica.";
           } else if (q.includes("lote") || q.includes("origen") || q.includes("frankfurt")) {
@@ -2774,12 +2828,12 @@ export function InvestorSnapshotClient() {
           } else if (q.includes("seguridad") || q.includes("fda") || q.includes("ema")) {
             reply = "Cumple con las normativas FDA/EMA de serialización y sellado inteligente TagTamper contra falsificación de medicamentos de alto costo.";
           } else if (q.includes("resfrio") || q.includes("gripe") || q.includes("tos") || q.includes("tomar") || q.includes("dosis") || q.includes("medico") || q.includes("paracetamol")) {
-            reply = "⚠️ ALERTA: OncoCure es una inmunoterapia oncológica. Para resfríos, sugerimos usar paracetamol o antigripales certificados de laboratorios de nuestra red.";
+            reply = "ALERTA: OncoCure es una inmunoterapia oncologica. No doy indicaciones medicas; consulta a un profesional de salud o el prospecto oficial.";
           } else if (q.includes("convenio") || q.includes("prepaga") || q.includes("cobertura") || q.includes("osde")) {
-            reply = "Este lote cuenta con cobertura del 100% de la cartilla oncológica para afiliados de OSDE (planes 310 en adelante) y Swiss Medical.";
+            reply = "La cobertura solo se muestra si el tenant o pagador cargo convenios vigentes y reglas aprobadas. nexID puede validar documentacion y estado del lote.";
           }
         } else if (selectedIndustry === "eventos") {
-          reply = "Como tu Coordinador de Accesos, te confirmo que este VIP Pass es 100% auténtico. ¿Quieres consultar accesos o el catering?";
+          reply = "Como tu Coordinador de Accesos, esta credencial presenta evidencia valida para el evento. ¿Quieres consultar accesos o servicios habilitados?";
           if (q.includes("acceso") || q.includes("sector") || q.includes("entrar") || q.includes("donde")) {
             reply = "Tu credencial otorga acceso al Sector VIP Front Row, charlas plenarias y VIP Lounge. Solo debes hacer tap en los molinetes.";
           } else if (q.includes("catering") || q.includes("comida") || q.includes("bebida")) {
@@ -2790,7 +2844,7 @@ export function InvestorSnapshotClient() {
             reply = "Contamos con convenios y tarifas corporativas en el Hotel Hilton y el Sheraton Buenos Aires para todos los asistentes del Summit.";
           }
         } else {
-          reply = "Como Sommelier AI de nexID, te confirmo que este Gran Blend 2026 es 100% auténtico. ¿Te gustaría saber de su maridaje o notas de cata?";
+          reply = "Como Sommelier AI de nexID, la ficha muestra evidencia de autenticidad disponible para este Gran Blend 2026. ¿Te gustaria saber de su maridaje o notas de cata?";
           if (q.includes("maridaje") || q.includes("comida") || q.includes("comer") || q.includes("marida")) {
             reply = "Este Gran Blend 2026 de Luján de Cuyo marida de forma excepcional con carnes rojas a la brasa, empanadas criollas y quesos duros maduros. Servir a 17°C.";
           } else if (q.includes("cata") || q.includes("notas") || q.includes("sabor") || q.includes("olor") || q.includes("aroma")) {
@@ -2798,7 +2852,7 @@ export function InvestorSnapshotClient() {
           } else if (q.includes("origen") || q.includes("mendoza") || q.includes("viñedo") || q.includes("donde")) {
             reply = "Las uvas provienen de un viñedo exclusivo a 1.100 msnm en Luján de Cuyo, Mendoza. La amplitud térmica del desierto aporta frescura y concentración única.";
           } else if (q.includes("blockchain") || q.includes("token") || q.includes("nft") || q.includes("web3")) {
-            reply = "Cada botella posee un gemelo digital registrado en Polygon Amoy. Esto certifica que el lote es original y te permite reclamar beneficios y airdrops.";
+            reply = "La marca puede habilitar un certificado u ownership en Polygon cuando aporta valor. La blockchain no certifica por si sola el contenido fisico: la evidencia operativa sigue en nexID y en el carrier.";
           } else if (q.includes("cena") || q.includes("quedar bien") || q.includes("llevar") || q.includes("impresionar")) {
             reply = "Para una cena especial, este Gran Blend 2026 es una opción fuerte. Si el tenant carga una red de bodegas autorizadas, nexID puede sugerir alternativas y beneficios aprobados por contrato.";
           } else if (q.includes("convenio") || q.includes("alianza") || q.includes("catena") || q.includes("rutini")) {
@@ -3307,7 +3361,7 @@ export function InvestorSnapshotClient() {
                     ? { type: "spring", stiffness: 220, damping: 14 }
                     : { type: "spring", stiffness: 100, damping: 18 }
                 }
-                className="absolute right-[8%] w-[270px] h-[460px] border-[8px] border-slate-800 rounded-[40px] bg-slate-950 shadow-2xl z-20 flex flex-col items-center justify-between overflow-hidden shadow-cyan-500/5"
+                className="investor-demo-phone-frame absolute right-[8%] w-[270px] h-[460px] border-[8px] border-slate-800 rounded-[40px] bg-slate-950 shadow-2xl z-20 flex flex-col items-center justify-between overflow-hidden shadow-cyan-500/5"
               >
                 {simStep === "idle" && (
                   <div className="text-center p-4 my-auto space-y-4">
@@ -3333,7 +3387,7 @@ export function InvestorSnapshotClient() {
                 {simStep === "active" && (() => {
                   const simData = INDUSTRY_SIM_DETAILS[selectedIndustry] || INDUSTRY_SIM_DETAILS.bodegas;
                   return (
-                    <div className="w-full h-full bg-[#020617] flex flex-col justify-between p-4 pt-10 relative select-none">
+                    <div className="investor-demo-phone-screen w-full h-full flex flex-col justify-between p-4 pt-10 relative select-none">
                       
                       {/* Status bar */}
                       <div className="absolute top-1.5 left-4 right-4 flex justify-between items-center text-[8px] text-slate-500 font-mono">
@@ -3351,7 +3405,7 @@ export function InvestorSnapshotClient() {
                       </div>
 
                       {/* Sim Phone Screen Content */}
-                      <div className="flex-1 my-3 rounded-lg bg-slate-900/60 p-3 flex flex-col justify-between text-xs leading-relaxed text-slate-300 overflow-y-auto">
+                      <div className="investor-demo-phone-panel flex-1 my-3 rounded-lg bg-slate-900/60 p-3 flex flex-col justify-between text-xs leading-relaxed text-slate-300 overflow-y-auto">
                         {phoneTab === "validate" && (
                           <div className="space-y-3.5 w-full text-left my-auto">
                             <div className="flex items-center gap-2 border-b border-white/5 pb-2 justify-center">
@@ -3553,7 +3607,7 @@ export function InvestorSnapshotClient() {
                                 <Award className="w-8 h-8 mx-auto text-purple-400 filter drop-shadow-[0_0_8px_rgba(168,85,247,0.3)]" />
                                 <div>
                                   <p className="font-black text-white text-[11px] uppercase leading-none">Propiedad Digital Registrada</p>
-                                  <span className="text-[8px] text-emerald-400 font-bold mt-1 block">Inmutable · Polygon Ledger</span>
+                                  <span className="text-[8px] text-emerald-400 font-bold mt-1 block">Ownership · Polygon opcional</span>
                                 </div>
                                 <div className="text-[8px] font-mono text-slate-300 bg-slate-950 p-2 rounded border border-white/5 text-left space-y-1">
                                   <div className="flex justify-between">
@@ -3828,7 +3882,7 @@ export function InvestorSnapshotClient() {
                 <p>💡 <strong>Cómo probar:</strong> Haz clic en <strong>Simular NFC Tap</strong>. Observa el arco de traslación del móvil y escucha el \"bip\" dinámico al conectar.</p>
               )}
               {simStep === "active" && (
-                <p>🚀 <strong>Interactúa:</strong> Navega por las pestañas del celular simulado en el centro. Intenta generar el NFT en Polygon o reclamar beneficios en el club.</p>
+                <p>🚀 <strong>Interactúa:</strong> Navega por las pestañas del celular simulado en el centro. Intenta preparar una solicitud Polygon o reclamar beneficios en el club.</p>
               )}
             </div>
 
@@ -3887,7 +3941,7 @@ export function InvestorSnapshotClient() {
                 <strong>¿Para qué sirve esta tarjeta Gold digital?</strong> Si hoy vendés únicamente a través de Instagram, dependés de responder mensajes directos y de interacciones manuales. Al incorporar el chip NFC de nexID, cada botella se convierte en un punto de contacto automatizado.
               </p>
               <p>
-                Al escanear el chip con su celular, el consumidor no solo verifica la autenticidad del producto, sino que activa de inmediato su <strong>Pasaporte de Fidelidad</strong>. Suma puntos automáticamente y sube de rango en la cava digital. Esto desbloquea beneficios exclusivos, catas privadas o prioridad en preventas de cosechas limitadas, impulsando una <strong>recurrencia de compra directa B2C de +24%</strong> sin depender de comisiones de distribuidores.
+                Al escanear el chip con su celular, el consumidor consulta evidencia del producto y activa su <strong>Pasaporte de Fidelidad</strong>. Suma puntos segun politica del tenant y sube de rango en la cava digital. Esto desbloquea beneficios exclusivos, catas privadas o prioridad en preventas de cosechas limitadas, creando un <strong>canal de recompra directa B2C medible</strong> sin depender de comisiones de distribuidores.
               </p>
               <p className="border-l-2 border-cyan-500/40 pl-3 italic text-slate-400 text-xs lg:text-sm">
                 No vendés solo un producto físico; vendés una membresía y estatus dentro de tu comunidad.
@@ -3901,7 +3955,7 @@ export function InvestorSnapshotClient() {
               </div>
               <div className="bg-slate-900/60 p-4 rounded-xl border border-white/10">
                 <span className="text-[10px] text-slate-400 block uppercase font-bold">Retención B2C</span>
-                <span className="text-base text-purple-400 font-black">+24% Recurrencia</span>
+                <span className="text-base text-purple-400 font-black">Recompra Medible</span>
               </div>
               <div className="bg-slate-900/60 p-4 rounded-xl border border-white/10">
                 <span className="text-[10px] text-slate-400 block uppercase font-bold">Canal Directo</span>

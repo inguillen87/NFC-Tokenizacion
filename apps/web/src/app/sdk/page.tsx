@@ -47,15 +47,15 @@ const nexid = new NexIdClient({
 
 const verification = await nexid.verifyTap({
   bid: tag.bid,
-  uidHex: tag.uidHex,
-  sunUrl: tag.capturedUrl,
+  picc_data: tag.picc_data,
+  enc: tag.enc,
+  cmac: tag.cmac,
 });
 
-if (verification.verdict === "VALID_AUTHENTIC") {
+if (verification.verdict === "VALID") {
   const pos = await nexid.activatePosPurchase({
     bid: tag.bid,
-    sku: cart.sku,
-    receiptRef: order.id,
+    externalOrderId: order.id,
   });
 
   await nexid.claimOwnership({
@@ -202,7 +202,7 @@ const sdkVerticalProfiles: Record<PlatformDemoVertical, SdkVerticalProfile> = {
     hub: { city: "Paris", sublabel: "Retail", lat: 48.8566, lng: 2.3522 },
     integration: { city: "New York", sublabel: "CRM", lat: 40.7128, lng: -74.006 },
     tap: { city: "Miami", sublabel: "Cliente", lat: 25.7617, lng: -80.1918 },
-    verdict: "VALID_AUTHENTIC",
+    verdict: "VALID",
     proof: "NFC + tamper",
     mobileBody: "Producto, tapa, lote y politica de refill quedan visibles para postventa.",
   },
@@ -211,7 +211,7 @@ const sdkVerticalProfiles: Record<PlatformDemoVertical, SdkVerticalProfile> = {
     hub: { city: "Miami", sublabel: "Canal retail", lat: 25.7617, lng: -80.1918 },
     integration: { city: "Madrid", sublabel: "DPP / SDK", lat: 40.4168, lng: -3.7038 },
     tap: { city: "Zurich", sublabel: "Tap consumidor", lat: 47.3769, lng: 8.5417 },
-    verdict: "VALID_AUTHENTIC",
+    verdict: "VALID",
     proof: "NTAG 424 DNA TT",
     mobileBody: "Origen, lote, UID hasheado, garantia y claim seguro.",
   },
@@ -392,7 +392,7 @@ export default async function SdkPage({ searchParams }: SdkPageProps) {
               <span>mueves y vendes.</span>
             </h1>
             <p>
-              nexID SDK y APIs convierten cualquier producto, empaque, evento o activo físico en una identidad digital verificable. Integración en horas, preparada para millones de interacciones, sin depender de integraciones caras y difíciles de cambiar.
+              nexID SDK y APIs convierten cualquier producto, empaque, evento o activo fisico en una identidad digital verificable. Arquitectura disenada para integracion rapida, escala progresiva y cambios controlados sin depender de contratos cerrados.
             </p>
             <div className="sdk-hero-actions">
               <Link href="/docs">
@@ -421,7 +421,7 @@ export default async function SdkPage({ searchParams }: SdkPageProps) {
         <SdkIndustryShowcase activeVertical={activeVertical} />
 
         <div className="sdk-trusted-rail">
-          <span>Confian en nexID</span>
+          <span>Verticales objetivo</span>
           {platformTrustedBy.map((item) => <strong key={item}>{item}</strong>)}
         </div>
 

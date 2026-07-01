@@ -163,20 +163,20 @@ function verticalTo3DIndustry(vertical: Vertical): string {
 }
 
 const demoLabRealAssets: Record<Vertical, { imageUrl: string; imageLightUrl: string; credit: string }> = {
-  wine: { imageUrl: "/sdk/verticals/wine-spirits-424-tt.png", imageLightUrl: "/sdk/verticals/light/premium-wine-light.webp", credit: "nexID generated asset" },
+  wine: { imageUrl: "/sdk/verticals/wine-spirits-424-tt.png", imageLightUrl: "/sdk/verticals/light/premium-wine-light-enterprise.webp", credit: "nexID generated asset" },
   seeds: { imageUrl: "/sdk/verticals/agro-nfc-qr-traceability.webp", imageLightUrl: "/sdk/verticals/light/premium-agro-light.webp", credit: "nexID generated asset" },
-  pharma: { imageUrl: "/sdk/pharma-authentication-pack.webp", imageLightUrl: "/sdk/verticals/light/premium-pharma-agro-light.webp", credit: "nexID generated asset" },
+  pharma: { imageUrl: "/sdk/pharma-authentication-pack.webp", imageLightUrl: "/sdk/verticals/light/premium-pharma-agro-light-enterprise.webp", credit: "nexID generated asset" },
   creamJar: { imageUrl: "/sdk/verticals/cosmetics-nfc-qr-tamper.webp", imageLightUrl: "/sdk/verticals/light/premium-beauty-light.webp", credit: "nexID generated asset" },
   perfume: { imageUrl: "/sdk/verticals/cosmetics-nfc-qr-tamper.webp", imageLightUrl: "/sdk/verticals/light/premium-beauty-light.webp", credit: "nexID generated asset" },
   creamTube: { imageUrl: "/sdk/verticals/cosmetics-nfc-qr-tamper.webp", imageLightUrl: "/sdk/verticals/light/premium-beauty-light.webp", credit: "nexID generated asset" },
-  bracelet: { imageUrl: "/sdk/verticals/events-nfc-qr-access.webp", imageLightUrl: "/sdk/verticals/light/premium-events-light.webp", credit: "nexID generated asset" },
-  ticket: { imageUrl: "/sdk/verticals/events-nfc-qr-access.webp", imageLightUrl: "/sdk/verticals/light/premium-events-light.webp", credit: "nexID generated asset" },
-  sneaker: { imageUrl: "/sdk/verticals/sneaker-nfc-qr-tamper.png", imageLightUrl: "/sdk/verticals/light/premium-sneaker-light.webp", credit: "nexID generated asset" },
+  bracelet: { imageUrl: "/sdk/verticals/events-nfc-qr-access.webp", imageLightUrl: "/sdk/verticals/light/premium-events-light-enterprise.webp", credit: "nexID generated asset" },
+  ticket: { imageUrl: "/sdk/verticals/events-nfc-qr-access.webp", imageLightUrl: "/sdk/verticals/light/premium-events-light-enterprise.webp", credit: "nexID generated asset" },
+  sneaker: { imageUrl: "/sdk/verticals/sneaker-nfc-qr-tamper.png", imageLightUrl: "/sdk/verticals/light/premium-sneaker-light-enterprise.webp", credit: "nexID generated asset" },
   luxury: { imageUrl: "/sdk/verticals/luxury-nfc-qr-tamper.webp", imageLightUrl: "/sdk/verticals/light/premium-beauty-light.webp", credit: "nexID generated asset" },
-  bottle: { imageUrl: "/sdk/verticals/beverages-bottle-nfc-qr.png", imageLightUrl: "/sdk/verticals/light/premium-bottle-light.webp", credit: "nexID generated asset" },
-  logistics: { imageUrl: "/sdk/verticals/logistics-uhf-nfc-qr.webp", imageLightUrl: "/sdk/verticals/light/premium-logistics-light.webp", credit: "nexID generated asset" },
-  electronics: { imageUrl: "/sdk/verticals/electronics-warranty-nfc-qr.webp", imageLightUrl: "/sdk/verticals/light/premium-electronics-light.webp", credit: "nexID generated asset" },
-  textile: { imageUrl: "/sdk/verticals/textile-dpp-nfc-qr.webp", imageLightUrl: "/sdk/verticals/light/premium-textile-light.webp", credit: "nexID generated asset" },
+  bottle: { imageUrl: "/sdk/verticals/beverages-bottle-nfc-qr.png", imageLightUrl: "/sdk/verticals/light/premium-bottle-light-enterprise.webp", credit: "nexID generated asset" },
+  logistics: { imageUrl: "/sdk/verticals/logistics-uhf-nfc-qr.webp", imageLightUrl: "/sdk/verticals/light/premium-logistics-light-enterprise.webp", credit: "nexID generated asset" },
+  electronics: { imageUrl: "/sdk/verticals/electronics-warranty-nfc-qr.webp", imageLightUrl: "/sdk/verticals/light/premium-electronics-light-enterprise.webp", credit: "nexID generated asset" },
+  textile: { imageUrl: "/sdk/verticals/textile-dpp-nfc-qr.webp", imageLightUrl: "/sdk/verticals/light/premium-textile-light-enterprise.webp", credit: "nexID generated asset" },
 };
 
 type DemoEvent = {
@@ -323,8 +323,8 @@ const copy: Record<AppLocale, {
       bracelet: { label: "Brazalete", profile: "NTAG215", product: "Brazalete VIP evento", visual: "event-bracelet-demo", proof: ["Celular toca pulsera", "UID serializado", "Zonas VIP", "Bloqueo de reingreso"] },
       ticket: { label: "Entrada", profile: "QR + NFC UID", product: "Entrada fiesta VIP", visual: "party-ticket-demo", proof: ["QR visible", "UID respaldo", "Acceso por zona", "Copia bloqueada"] },
       sneaker: { label: "Zapatilla", profile: "NTAG 424 DNA", product: "Drop Runner 37Z", visual: "sneaker-demo", proof: ["Toque en lengueta", "UID + SUN", "Rareza visible", "Dueño/token"] },
-      luxury: { label: "Lujo", profile: "NTAG 424 DNA", product: "Reloj Cronógrafo Premium", visual: "luxury-demo", proof: ["Toque en tarjeta", "UID + SUN", "Certificado de autenticidad", "Owner/club"] },
-      bottle: { label: "Botellas", profile: "GS1/QR + NFC", product: "Envase Refill Premium", visual: "bottle-demo", proof: ["Envase retornable", "GS1/QR + NFC opcional", "ciclo refill", "Incentivo activo"] },
+      luxury: { label: "Lujo", profile: "NTAG 424 DNA", product: "Reloj Cronógrafo Premium", visual: "luxury-demo", proof: ["Toque en tarjeta", "UID + SUN", "Evidencia de autenticidad", "Owner/club"] },
+      bottle: { label: "Envases refill", profile: "GS1/QR + NFC", product: "Envase Refill Premium", visual: "bottle-demo", proof: ["Envase retornable", "GS1/QR + NFC opcional", "ciclo refill", "Incentivo activo"] },
       logistics: { label: "Logistica", profile: "UHF + NFC + sensor", product: "Caja cadena fria", visual: "logistics-pack-demo", proof: ["Pallet/caja trazable", "Sensor temperatura", "Ruta auditada", "Entrega verificada"] },
       electronics: { label: "Electrónica", profile: "QR + NFC garantía", product: "Dispositivo serializado", visual: "electronics-demo", proof: ["Serial verificable", "Garantía por unidad", "Soporte postventa", "Reclamo antifraude"] },
       textile: { label: "Textil DPP", profile: "QR + NFC DPP", product: "Etiqueta pasaporte textil", visual: "textile-dpp-demo", proof: ["Origen y composicion", "Cuidado conectado", "Sustentabilidad", "Reventa verificable"] },
@@ -334,7 +334,7 @@ const copy: Record<AppLocale, {
         { title: "QR / GS1 Digital Link", body: "Entrada economica para contenido, lote, retiro de producto y trazabilidad GS1. Ideal como respaldo visible; cualquiera puede copiarlo, por eso no habilita reclamo de dueño por si solo." },
         { title: "NTAG213 / NTAG215", body: "UID físico serializado para entradas, pulseras, garantías simples y activaciones masivas. Sube la fricción contra capturas de pantalla y permite reglas por lote desde el servidor." },
         { title: "NTAG 424 DNA", body: "Cada toque genera SUN dinamico con CMAC para detectar copias, enlaces reutilizados y lecturas sospechosas. Es la capa recomendada para productos de valor medio/alto." },
-        { title: "Offline Verifier", body: "Android primero, iOS donde Core NFC/ISO 7816 lo permita, o lector dedicado para campo sin senal: valida SUN/SDM localmente con claves derivadas y mantiene veredicto provisional hasta sync backend." },
+        { title: "Offline Verifier", body: "Android primero, iOS donde Core NFC/ISO 7816 lo permita, o lector dedicado para campo sin senal: ejecuta checks locales con bundle autorizado, sin master keys, y mantiene veredicto provisional hasta sync backend." },
         { title: "Polygon Ownership Demo", body: "Activa ownership, certificado o token premium solo despues de tap fresco, comprador validado y politica aprobada. Polygon no reemplaza la validacion SUN ni recibe taps individuales." },
         { title: "IOTA Proof Layer Demo", body: "Muestra auditoria opcional para DPP, lotes y logistica: se anclan hashes o Merkle roots, no datos privados ni lecturas individuales." },
         { title: "Dual Proof DPP", body: "Combina QR/GS1, NFC 424, Polygon para ownership e IOTA para evidencia industrial cuando el cliente necesita compliance avanzado." },
@@ -374,8 +374,8 @@ const copy: Record<AppLocale, {
       bracelet: { label: "Pulseira", profile: "NTAG215", product: "Pulseira VIP evento", visual: "event-bracelet-demo", proof: ["Celular toca pulseira", "UID serializado", "Zonas VIP", "Bloqueio duplicado"] },
       ticket: { label: "Ingresso", profile: "QR + NFC UID", product: "Ingresso festa VIP", visual: "party-ticket-demo", proof: ["QR visivel", "UID respaldo", "Acesso por zona", "Replay bloqueado"] },
       sneaker: { label: "Tenis", profile: "NTAG 424 DNA", product: "Drop Runner 37Z", visual: "sneaker-demo", proof: ["Toque na lingueta", "UID + SUN", "Raridade visivel", "Dono/token"] },
-      luxury: { label: "Luxo", profile: "NTAG 424 DNA", product: "Relogio de Luxo", visual: "luxury-demo", proof: ["Toque no cartao", "UID + SUN", "Certificado de autenticidade", "Dono/clube"] },
-      bottle: { label: "Garrafas", profile: "GS1/QR + NFC", product: "Embalagem Refill Premium", visual: "bottle-demo", proof: ["Embalagem retornavel", "GS1/QR + NFC opcional", "ciclo refill", "Incentivo ativo"] },
+      luxury: { label: "Luxo", profile: "NTAG 424 DNA", product: "Relogio de Luxo", visual: "luxury-demo", proof: ["Toque no cartao", "UID + SUN", "Evidencia de autenticidade", "Dono/clube"] },
+      bottle: { label: "Embalagens refill", profile: "GS1/QR + NFC", product: "Embalagem Refill Premium", visual: "bottle-demo", proof: ["Embalagem retornavel", "GS1/QR + NFC opcional", "ciclo refill", "Incentivo ativo"] },
       logistics: { label: "Logistica", profile: "UHF + NFC + sensor", product: "Caixa cadeia fria", visual: "logistics-pack-demo", proof: ["Pallet/caixa rastreavel", "Sensor temperatura", "Rota auditada", "Entrega verificada"] },
       electronics: { label: "Eletronica", profile: "QR + NFC garantia", product: "Dispositivo serializado", visual: "electronics-demo", proof: ["Serial verificavel", "Garantia por unidade", "Suporte pos-venda", "Reclamo antifraude"] },
       textile: { label: "Textil DPP", profile: "QR + NFC DPP", product: "Etiqueta passport textil", visual: "textile-dpp-demo", proof: ["Origem e composicao", "Cuidado conectado", "Sustentabilidade", "Revenda verificavel"] },
@@ -384,8 +384,8 @@ const copy: Record<AppLocale, {
       { title: "QR / GS1 Digital Link", body: "Entrada economica para conteudo, lote, recall e rastreabilidade GS1. Otimo fallback visivel; pode ser copiado, entao nao libera propriedade premium sozinho." },
       { title: "NTAG213 / NTAG215", body: "UID fisico serializado para tickets, pulseiras, garantias simples e ativacoes massivas. Permite regras server-side por lote." },
       { title: "NTAG 424 DNA", body: "Cada toque gera SUN dinamico com CMAC para detectar replay, links reutilizados e copias. Recomendado para valor medio/alto." },
-      { title: "Offline Verifier", body: "Android primeiro, iOS onde Core NFC/ISO 7816 permitir, ou leitor dedicado para campo sem sinal: valida SUN/SDM localmente com chaves derivadas e mantem veredito provisional ate sync backend." },
-      { title: "Polygon Ownership Demo", body: "Ativa ownership, certificado ou token premium somente depois de toque fresco, comprador validado e politica aprovada. Polygon nao substitui SUN nem recebe todo toque." },
+      { title: "Offline Verifier", body: "Android primeiro, iOS onde Core NFC/ISO 7816 permitir, ou leitor dedicado para campo sem sinal: executa checks locais com bundle autorizado, sem master keys, e mantem veredito provisional ate sync backend." },
+      { title: "Polygon Ownership Demo", body: "Ativa ownership, certificado ou token premium somente depois de toque fresco, comprador validado e politica aprovada. Polygon nao substitui SUN nem recebe eventos individuais." },
       { title: "IOTA Proof Layer Demo", body: "Mostra auditoria opcional para DPP, lotes e logistica: ancoramos hashes ou Merkle roots, nao dados privados nem leituras individuais." },
       { title: "Dual Proof DPP", body: "Combina QR/GS1, NFC 424, Polygon para ownership e IOTA para evidencia industrial quando o cliente precisa de compliance avancado." },
       { title: "NTAG 424 DNA TT + tokenizacao", body: "Soma estado fisico do lacre: fechado, aberto ou manipulado. Habilita passport, garantia, marketplace e token Polygon conforme politica comercial." },
@@ -425,7 +425,7 @@ const copy: Record<AppLocale, {
       ticket: { label: "Ticket", profile: "QR + NFC UID", product: "VIP party ticket", visual: "party-ticket-demo", proof: ["Visible QR", "UID fallback", "Zone access", "Replay blocked"] },
       sneaker: { label: "Sneaker", profile: "NTAG 424 DNA", product: "Drop Runner 37Z", visual: "sneaker-demo", proof: ["Tongue tap", "UID + SUN", "Rarity visible", "Owner/token"] },
       luxury: { label: "Luxury", profile: "NTAG 424 DNA", product: "Luxury Watch", visual: "luxury-demo", proof: ["Card tap", "UID + SUN", "Certificate of authenticity", "Owner/club"] },
-      bottle: { label: "Bottles", profile: "GS1/QR + NFC", product: "Premium Refill Bottle", visual: "bottle-demo", proof: ["Reusable container", "GS1/QR + optional NFC", "refill cycle", "Active incentive"] },
+      bottle: { label: "Refill packaging", profile: "GS1/QR + NFC", product: "Premium Refill Pack", visual: "bottle-demo", proof: ["Reusable container", "GS1/QR + optional NFC", "refill cycle", "Active incentive"] },
       logistics: { label: "Logistics", profile: "UHF + NFC + sensor", product: "Cold-chain carton", visual: "logistics-pack-demo", proof: ["Traceable pallet/carton", "Temperature sensor", "Audited route", "Verified delivery"] },
       electronics: { label: "Electronics", profile: "QR + NFC warranty", product: "Serialized device", visual: "electronics-demo", proof: ["Verifiable serial", "Unit warranty", "Support", "Anti-fraud claim"] },
       textile: { label: "Textile DPP", profile: "QR + NFC DPP", product: "Textile passport label", visual: "textile-dpp-demo", proof: ["Origin and composition", "Connected care", "Sustainability", "Verified resale"] },
@@ -434,7 +434,7 @@ const copy: Record<AppLocale, {
       { title: "QR / GS1 Digital Link", body: "Low-cost entry for content, batch, recall and GS1 traceability. It is a strong visible fallback, but it can be copied, so it should not unlock premium ownership by itself." },
       { title: "NTAG213 / NTAG215", body: "Serialized physical UID for tickets, wristbands, simple warranty and mass activations. Adds server-side rules by batch." },
       { title: "NTAG 424 DNA", body: "Every tap creates dynamic SUN + CMAC proof to detect replay, reused links and simple copies. Recommended for mid/high-value products." },
-      { title: "Offline Verifier", body: "Android first, iOS where Core NFC/ISO 7816 allows it, or a dedicated reader for no-signal zones: validates SUN/SDM locally with derived keys and keeps verdicts provisional until backend sync." },
+      { title: "Offline Verifier", body: "Android first, iOS where Core NFC/ISO 7816 allows it, or a dedicated reader for no-signal zones: runs local checks from an authorized bundle, without master keys, and keeps verdicts provisional until backend sync." },
       { title: "Polygon Ownership Demo", body: "Enables ownership, certificates or premium tokens only after a fresh tap, validated buyer and approved policy. Polygon does not replace SUN or receive individual taps." },
       { title: "IOTA Proof Layer Demo", body: "Shows optional audit evidence for DPP, batches and logistics: hashes or Merkle roots are anchored, not private data or individual taps." },
       { title: "Dual Proof DPP", body: "Combines QR/GS1, NFC 424, Polygon for ownership and IOTA for industrial evidence when a client needs advanced compliance." },
@@ -826,7 +826,7 @@ export function DemoLabClient({ locale, initialVertical, initialScenario }: { lo
   return (
     <main className="demo-lab-shell container-shell py-8 text-slate-100">
       {/* Premium Toggle Header */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-white/10 bg-slate-950/45 p-4 backdrop-blur-md">
+      <div className="demo-lab-mode-bar mb-6 flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-white/10 bg-slate-950/45 p-4 backdrop-blur-md">
         <div className="flex items-center gap-3">
           <div className="h-2.5 w-2.5 rounded-full bg-cyan-400 animate-pulse" />
           <span className="text-xs font-black uppercase tracking-widest text-cyan-300">nexID B2B Admin Console</span>
@@ -835,7 +835,7 @@ export function DemoLabClient({ locale, initialVertical, initialScenario }: { lo
           <button
             type="button"
             onClick={() => setViewMode("simulator")}
-            className={`rounded-xl px-4 py-2 text-xs font-black uppercase tracking-wider transition ${
+            className={`demo-lab-mode-tab ${viewMode === "simulator" ? "is-active" : "is-inactive"} rounded-xl px-4 py-2 text-xs font-black uppercase tracking-wider transition ${
               viewMode === "simulator"
                 ? "border border-cyan-400/30 bg-cyan-500/20 text-cyan-200"
                 : "border border-white/5 bg-white/5 text-slate-400 hover:text-white"
@@ -846,7 +846,7 @@ export function DemoLabClient({ locale, initialVertical, initialScenario }: { lo
           <button
             type="button"
             onClick={() => setViewMode("crm")}
-            className={`rounded-xl px-4 py-2 text-xs font-black uppercase tracking-wider transition flex items-center gap-2 ${
+            className={`demo-lab-mode-tab ${viewMode === "crm" ? "is-active" : "is-inactive"} rounded-xl px-4 py-2 text-xs font-black uppercase tracking-wider transition flex items-center gap-2 ${
               viewMode === "crm"
                 ? "border border-cyan-400/30 bg-cyan-500/20 text-cyan-200"
                 : "border border-white/5 bg-white/5 text-slate-400 hover:text-white"
@@ -1568,7 +1568,7 @@ function DemoFirstRunGuide({
       <div className="demo-lab-guide-copy">
         <p>Primera vez aca</p>
         <h3>Proba el flujo como lo haria un cliente en 30 segundos.</h3>
-        <span>Arranca cerrado, hace un toque válido, muestra cómo bloquea la copia y termina con sello abierto, solicitud Polygon y reclamo.</span>
+        <span>Arranca cerrado, hace un toque válido, muestra cómo detecta copia/replay y termina con sello abierto, solicitud Polygon y reclamo.</span>
       </div>
       <div className="demo-lab-guide-steps">
         {guideSteps.map((step) => (
@@ -2210,7 +2210,7 @@ function DemoPhoneMirror({
   destination: DemoLocation;
   onOpen: (view: DemoModalView) => void;
 }) {
-  const cta = beat === 2 ? "Repetir toque físico" : beat === 3 ? "Solicitar propiedad" : beat === 0 ? "Acercar teléfono" : "Unirme al club";
+  const cta = beat === 2 ? "Repetir toque fisico" : beat === 3 ? "Ver salida celular" : beat === 0 ? "Acercar telefono" : "Unirme al club";
 
   return (
     <article className={`demo-lab-phone-mirror demo-lab-phone-mirror--${scenario.tone}`}>
@@ -2227,7 +2227,7 @@ function DemoPhoneMirror({
           <i />
           <span>{destination.city}</span>
         </div>
-        <button suppressHydrationWarning type="button" onClick={() => onOpen(beat === 3 ? "claim" : "mobile")}>{cta}</button>
+        <button suppressHydrationWarning type="button" onClick={() => onOpen("mobile")}>{cta}</button>
       </div>
     </article>
   );
@@ -2995,7 +2995,7 @@ function DemoFlowRail({ scenario, beat, onOpen }: { scenario: DemoScenario; beat
   const items: Array<{ view: Exclude<DemoModalView, null>; eyebrow: string; title: string; body: string; tone: string }> = [
     { view: "product", eyebrow: scenario.stateLabel, title: "Ficha completa", body: "Producto, ruta y prueba", tone: scenario.tone },
     { view: "mobile", eyebrow: "Salida celular", title: "Vista consumidor", body: riskCopy, tone: scenario.tone },
-    { view: "nft", eyebrow: "Polygon Amoy", title: "NFT / certificado", body: beat === 2 ? "No crea NFT si hay copia" : "Solicitud con aprobacion", tone: "nft" },
+    { view: "nft", eyebrow: "Polygon Amoy", title: "NFT / certificado", body: beat === 2 ? "Solicitud bloqueada por riesgo" : "Solicitud con aprobacion", tone: "nft" },
     { view: "claim", eyebrow: "Portal usuario", title: "Reclamar propiedad", body: "Ingreso, marca y titular", tone: "claim" },
   ];
 
@@ -3043,6 +3043,23 @@ function DemoFlowModal({
   onClose: () => void;
   onOpen: (view: DemoModalView) => void;
 }) {
+  useEffect(() => {
+    if (!view || typeof document === "undefined") return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [view, onClose]);
+
   if (!view) return null;
 
   const title = view === "product" ? "Ficha completa del producto" : view === "mobile" ? "Resultado en celular" : view === "nft" ? "NFT / certificado Polygon" : "Reclamar propiedad";
@@ -3052,7 +3069,7 @@ function DemoFlowModal({
       ? "Lo que ve el consumidor después del toque."
       : view === "nft"
         ? "Cómo se conecta el toque válido con tokenización y evidencia en cadena."
-        : "Como el consumidor pasa de autenticar a asociar el producto en el portal.";
+        : "Como el consumidor pasa de validar a asociar el producto en el portal.";
 
   return (
     <div className="demo-lab-modal-backdrop" role="dialog" aria-modal="true" aria-label={title}>
@@ -3439,7 +3456,7 @@ function DemoActionMatrix({
   const actions: Array<{ id: DemoAction; label: string; body: string; locked: boolean }> = [
     { id: "join", label: txt.controls.joinClub, body: "Asocia al consumidor con club, beneficios y tienda de la marca.", locked: beat === 0 || beat === 2 },
     { id: "warranty", label: txt.controls.warranty, body: "Registra garantía, postventa o fecha de apertura con política de la marca.", locked: beat === 0 || beat === 2 },
-    { id: "tokenize", label: txt.controls.tokenize, body: "Prepara solicitud Polygon con UID hasheado y prueba de dueño.", locked: beat === 0 || beat === 2 },
+    { id: "tokenize", label: txt.controls.tokenize, body: "Prepara solicitud Polygon con UID hasheado y evidencia de reclamo.", locked: beat === 0 || beat === 2 },
     { id: "report", label: "Reportar riesgo", body: "Crea alerta operativa cuando aparece copia, duplicado o manipulación sospechosa.", locked: beat !== 2 },
   ];
 

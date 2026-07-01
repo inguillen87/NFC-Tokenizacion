@@ -75,8 +75,8 @@ export default function SalesPlaybookPage() {
         },
         {
           question: "En el agro, ¿qué valor tiene colocar chips en bolsas de semillas de autor o agroquímicos?",
-          answer: "El mercado negro de semillas adulteradas y agroquímicos diluidos genera pérdidas millonarias y daña cosechas enteras. El chip nexID certifica el origen del criadero o laboratorio oficial directamente en el campo de cultivo.",
-          context: "El productor escanea el bidón o bolsa con su celular y valida que el agroquímico posee la composición y concentración original, protegiendo los derechos de autor y la producción agrícola."
+          answer: "El mercado negro de semillas adulteradas y agroquímicos diluidos genera pérdidas millonarias y daña cosechas enteras. nexID vincula el lote declarado por el criadero o laboratorio oficial con el envase físico mediante QR/NFC y verificación server-side cuando corresponde.",
+          context: "El productor escanea el bidón o bolsa con su celular y consulta lote, canal autorizado, documentación técnica y composición declarada por la marca, sin reemplazar la etiqueta regulatoria ni la recomendación del asesor agronómico."
         }
       ]
     },
@@ -234,7 +234,7 @@ export default function SalesPlaybookPage() {
               <tr>
                 <td className="p-3 font-semibold text-white print-title">Ubicación Antifraude</td>
                 <td className="p-3">Fácil de falsificar (IP de red)</td>
-                <td className="p-3 text-cyan-300">Validación satelital activa (GPS/IP)</td>
+                <td className="p-3 text-cyan-300">Señal de riesgo por ubicación de lectura e IP</td>
               </tr>
               <tr>
                 <td className="p-3 font-semibold text-white print-title">Percepción de Valor</td>
@@ -321,7 +321,7 @@ export default function SalesPlaybookPage() {
             },
             {
               step: "3. Demostrar el Control",
-              desc: "Abrí tu notebook con el panel CRM nexID. Mostrale cómo su tap en Mendoza apareció en tiempo real en el mapa, y cómo el sistema calcula su huella, su prestigio y el ledger Polygonscan listo para auditoría comercial."
+              desc: "Abrí tu notebook con el panel CRM nexID. Mostrale cómo su tap en Mendoza apareció en tiempo real en el mapa, cómo el sistema calcula riesgo y, si el tenant activó Polygon, dónde queda el certificado listo para auditoría comercial."
             }
           ].map((item, idx) => (
             <div key={idx} className="rounded-xl border border-white/5 bg-slate-950/40 p-4 space-y-2 relative">

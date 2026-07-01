@@ -27,10 +27,10 @@ export default async function SdkVisionPage() {
           <div>
             <h2 className="text-xl font-bold text-white">¿Qué hace el nexID SDK y por qué democratiza el mercado?</h2>
             <p className="mt-2 text-sm leading-relaxed text-slate-300">
-              Un **SDK (Software Development Kit)** es un kit de desarrollo de software que permite a cualquier programador conectar un sistema físico (como un chip NFC seguro o un código QR de botella) a una aplicación digital (e-commerce, Shopify, apps móviles) con muy pocas líneas de código.
+              Un SDK (Software Development Kit) es un kit de desarrollo de software que permite conectar un sistema físico, como un chip NFC seguro o un código QR, a una aplicación digital, e-commerce, Shopify o app móvil con una integración controlada.
             </p>
             <p className="mt-3 text-sm leading-relaxed text-slate-400">
-              Mientras competidores globales como **Authena**, **Qliktag** y **Selinko** obligan a depender de proveedores cerrados, consultoria lenta, contratos dificiles de cambiar y aplicaciones rigidas, **nexID provee una infraestructura abierta**. Al dar un SDK publico (`@nexid/sdk`), permitimos que cualquier desarrollador integre autenticacion de originalidad y programas de fidelidad con libertad, velocidad y bajo costo de entrada.
+              Frente a plataformas cerradas, nexID prioriza una infraestructura integrable: SDK publico, APIs, webhooks y políticas por tenant para que el equipo técnico conecte identidad física, telemetría y fidelización sin exponer llaves crudas.
             </p>
           </div>
         </div>
@@ -56,13 +56,13 @@ export default async function SdkVisionPage() {
               <h4 className="text-base font-bold text-white">1. Chips Criptográficos (nexID Keys)</h4>
             </div>
             <p className="mt-4 text-xs leading-relaxed text-slate-300 font-semibold">
-              ¿Requiere nuestros chips? **Sí, para la máxima ciberseguridad anti-clonación.**
+              Requiere chips seguros cuando la marca necesita autenticación criptográfica fuerte y defensa server-side contra replay/copia.
             </p>
             <p className="mt-2 text-xs leading-relaxed text-slate-400">
-              El SDK invoca a nuestro descifrador en la nube para desencriptar el payload SUN (Secure Unique NFC) generado por los chips premium **NTAG 424 DNA** o **NTAG 224 DNA** que grabamos con nuestras llaves criptográficas Diversificadas.
+              El SDK invoca a nuestro servicio de verificacion en la nube para validar el payload SUN generado por chips premium NTAG 424 DNA o perfiles equivalentes configurados por tenant, sin exponer llaves crudas en frontend.
             </p>
             <div className="mt-4 rounded-lg bg-black/45 p-3 text-[11px] text-cyan-300 border border-cyan-500/10">
-              📌 **Estrategia Comercial:** Este servicio del SDK se incluye **sin costo adicional** para los clientes que ya nos pagan por el SaaS y la compra física de nuestros chips NFC. Sirve para blindar el "lock-in" y darles valor agregado.
+              Estrategia comercial: el alcance se define por plan y contrato. El valor está en vender SaaS, soporte, analítica e integración sin entregar claves maestras al frontend.
             </div>
           </Card>
 
@@ -76,13 +76,13 @@ export default async function SdkVisionPage() {
               <h4 className="text-base font-bold text-white">2. Bring Your Own QR / NFC (Hardware del Cliente)</h4>
             </div>
             <p className="mt-4 text-xs leading-relaxed text-slate-300 font-semibold">
-              ¿Funciona con sus propios QR o NFC básicos? **¡Sí, absolutamente!**
+              Funciona con sus propios QR o NFC básicos como carriers visibles, sin afirmar autenticación criptográfica anticopia.
             </p>
             <p className="mt-2 text-xs leading-relaxed text-slate-400">
-              Si la marca ya tiene códigos de barras GS1 impresos, códigos QR de marketing, o compró tags NFC standard (NTAG 213/215) a otros proveedores chinas, el SDK canaliza el evento de lectura a nuestro API de telemetría sin validar firmas criptográficas.
+              Si la marca ya tiene códigos de barras GS1 impresos, códigos QR de marketing, o compró tags NFC standard (NTAG 213/215) a proveedores externos, el SDK canaliza el evento de lectura a nuestro API de telemetría sin afirmar autenticación criptográfica anticopia.
             </p>
             <div className="mt-4 rounded-lg bg-black/45 p-3 text-[11px] text-amber-300 border border-amber-500/10">
-              📌 **Estrategia Comercial:** Cobramos la suscripción **SaaS de $99 USD/mes** + cuotas por excedente de llamadas de API. Permitimos que el cliente acceda a mapas, telemetría geográfica, IA Sommelier y Web3 usando su hardware actual.
+              Estrategia comercial: el SaaS, cuotas de API e integraciones se cotizan por plan. El cliente puede empezar con hardware actual y subir a chips seguros donde el riesgo lo justifique.
             </div>
           </Card>
         </div>
@@ -90,7 +90,7 @@ export default async function SdkVisionPage() {
 
       {/* 5. Panel de Monitoreo Live del SDK (Consumo de API de la Marca) */}
       <div className="space-y-4">
-        <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Consumo y Telemetría del SDK (Mes Actual)</h3>
+        <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Simulación de consumo y telemetría del SDK</h3>
         <div className="grid gap-4 sm:grid-cols-3">
           {/* Requests */}
           <Card className="border border-white/5 bg-slate-950/40 p-5">
@@ -99,14 +99,14 @@ export default async function SdkVisionPage() {
               <Activity className="h-4 w-4 text-cyan-400" />
             </div>
             <div className="mt-4">
-              <b className="text-2xl font-black text-white">24,815</b>
-              <span className="text-xs text-slate-500"> / 50,000 requests</span>
+              <b className="text-2xl font-black text-white">24.8k</b>
+              <span className="text-xs text-slate-500"> requests demo</span>
             </div>
             {/* Progress Bar */}
             <div className="mt-3 h-1.5 w-full rounded-full bg-white/5">
               <div className="h-full rounded-full bg-cyan-400" style={{ width: "49.6%" }} />
             </div>
-            <span className="mt-2 block text-[10px] text-slate-500">49.6% consumido de tu plan actual.</span>
+            <span className="mt-2 block text-[10px] text-slate-500">Ejemplo de consumo para sandbox comercial.</span>
           </Card>
 
           {/* Latency */}
@@ -116,10 +116,10 @@ export default async function SdkVisionPage() {
               <Cpu className="h-4 w-4 text-indigo-400" />
             </div>
             <div className="mt-4">
-              <b className="text-2xl font-black text-white">34 ms</b>
-              <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold text-emerald-400 border border-emerald-500/20 ml-2">Óptimo</span>
+              <b className="text-2xl font-black text-white">Demo</b>
+              <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold text-emerald-400 border border-emerald-500/20 ml-2">Variable</span>
             </div>
-            <span className="mt-5 block text-[10px] text-slate-500">Tiempo de respuesta del descifrador SUN.</span>
+            <span className="mt-5 block text-[10px] text-slate-500">La latencia real depende de región, carrier y backend contratado.</span>
           </Card>
 
           {/* Monetización en Exceso */}
@@ -129,10 +129,10 @@ export default async function SdkVisionPage() {
               <DollarSign className="h-4 w-4 text-amber-400" />
             </div>
             <div className="mt-4">
-              <b className="text-2xl font-black text-white">$124.08</b>
-              <span className="text-xs text-slate-500"> USD</span>
+              <b className="text-2xl font-black text-white">Estimado</b>
+              <span className="text-xs text-slate-500"> por plan</span>
             </div>
-            <span className="mt-5 block text-[10px] text-slate-500">Facturación estimada por excesos + claims Web3.</span>
+            <span className="mt-5 block text-[10px] text-slate-500">Facturación definida por contrato, uso y políticas activas.</span>
           </Card>
         </div>
       </div>
@@ -146,12 +146,12 @@ export default async function SdkVisionPage() {
             <div>
               <div className="flex justify-between items-center">
                 <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Developer</span>
-                <span className="text-xs font-bold text-cyan-400">Gratis</span>
+                <span className="text-xs font-bold text-cyan-400">Sandbox</span>
               </div>
               <h4 className="mt-3 text-lg font-black text-white">Free Sandbox</h4>
               <p className="mt-2 text-xs leading-relaxed text-slate-400">Para agencias de software y pruebas iniciales en local.</p>
               <ul className="mt-4 space-y-2 text-[11px] text-slate-300">
-                <li className="flex items-center gap-2">✔️ 1,000 validaciones / mes</li>
+                <li className="flex items-center gap-2">✔️ Límites definidos por sandbox</li>
                 <li className="flex items-center gap-2">✔️ 1 API Key activa</li>
                 <li className="flex items-center gap-2">✔️ Redirecciones QR básicas</li>
               </ul>
@@ -167,15 +167,15 @@ export default async function SdkVisionPage() {
             <div>
               <div className="flex justify-between items-center">
                 <span className="text-[10px] font-bold uppercase tracking-widest text-cyan-300">E-Commerce</span>
-                <span className="text-xs font-bold text-white">$99 USD / mes</span>
+                <span className="text-xs font-bold text-white">Cotización</span>
               </div>
               <h4 className="mt-3 text-lg font-black text-white">Growth Core</h4>
               <p className="mt-2 text-xs leading-relaxed text-slate-200">Para bodegas y marcas vendiendo en Shopify/WooCommerce.</p>
               <ul className="mt-4 space-y-2 text-[11px] text-slate-200">
-                <li className="flex items-center gap-2">✔️ 25,000 validaciones / mes</li>
-                <li className="flex items-center gap-2">✔️ 5 Webhooks concurrentes</li>
-                <li className="flex items-center gap-2">✔️ Exceso: $0.005 USD por tap</li>
-                <li className="flex items-center gap-2">✔️ Conector Shopify App</li>
+                <li className="flex items-center gap-2">✔️ Volumen mensual por contrato</li>
+                <li className="flex items-center gap-2">✔️ Webhooks firmados configurables</li>
+                <li className="flex items-center gap-2">✔️ Excedentes por política comercial</li>
+                <li className="flex items-center gap-2">✔️ Conectores cuando estén contratados</li>
               </ul>
             </div>
             <div className="mt-6 border-t border-cyan-500/20 pt-4 text-center">
@@ -188,15 +188,15 @@ export default async function SdkVisionPage() {
             <div>
               <div className="flex justify-between items-center">
                 <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Enterprise</span>
-                <span className="text-xs font-bold text-amber-400">$499 USD / mes</span>
+                <span className="text-xs font-bold text-amber-400">Enterprise</span>
               </div>
               <h4 className="mt-3 text-lg font-black text-white">White-Label API</h4>
               <p className="mt-2 text-xs leading-relaxed text-slate-400">Para redes de distribución masivas y marcas globales de lujo.</p>
               <ul className="mt-4 space-y-2 text-[11px] text-slate-300">
-                <li className="flex items-center gap-2">✔️ API Keys y Webhooks ilimitados</li>
+                <li className="flex items-center gap-2">✔️ API Keys y webhooks según contrato</li>
                 <li className="flex items-center gap-2">✔️ Pack cifrado auditado para fábrica</li>
-                <li className="flex items-center gap-2">✔️ Pipeline NFT en Polygon cuando aplica</li>
-                <li className="flex items-center gap-2">✔️ Soporte enterprise con SLA contractual</li>
+                <li className="flex items-center gap-2">✔️ Ownership/certificado Polygon cuando aplica</li>
+                <li className="flex items-center gap-2">✔️ Soporte enterprise y SLA cuando está firmado</li>
               </ul>
             </div>
             <div className="mt-6 border-t border-white/5 pt-4 text-center">
@@ -210,7 +210,7 @@ export default async function SdkVisionPage() {
           <div className="flex items-center gap-2.5">
             <Coins className="h-5 w-5 text-amber-400 shrink-0" />
             <span>
-              <strong>Comisión Transaccional Web3:</strong> Adicionalmente cobramos <strong>$0.10 USD</strong> por cada reclamo de titularidad digital que ejecute un mint de NFT en Polygon. Esto abstrae los costos de gas para la bodega y provee un margen recurrente y líquido por cada botella tokenizada en el mundo.
+              <strong>Web3 opcional:</strong> los costos por mint, gas, custodia o certificados Polygon se activan solo si la política del tenant y el contrato lo justifican. No todo tap va on-chain.
             </span>
           </div>
         </Card>
@@ -224,9 +224,9 @@ export default async function SdkVisionPage() {
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/25">
             <Globe className="h-5 w-5" />
           </div>
-          <h3 className="mt-4 text-base font-bold text-white">1. Líderes de LATAM</h3>
+          <h3 className="mt-4 text-base font-bold text-white">1. Entrada LATAM</h3>
           <p className="mt-2 text-xs leading-relaxed text-slate-400">
-            Nacemos en el corazón del mercado vitivinícola y agrícola sudamericano. Al incorporar soporte para los chips de bajo costo **NTAG 223/224 DNA** (cuyo valor es menor a $0.15 USD), eliminamos la barrera económica y permitimos la adopción masiva en bodegas de Argentina, Chile, Uruguay y Brasil.
+            Nacemos en el corazón del mercado vitivinícola y agrícola sudamericano. Al incorporar soporte para QR/GS1 y tags NTAG21x básicos como carriers de bajo costo, bajamos la barrera económica para trazabilidad, marketing y telemetría; la autenticación criptográfica fuerte queda reservada para NTAG 424 DNA o carriers equivalentes.
           </p>
         </Card>
 
@@ -236,9 +236,9 @@ export default async function SdkVisionPage() {
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/25">
             <Shield className="h-5 w-5" />
           </div>
-          <h3 className="mt-4 text-base font-bold text-white">2. Conquistando Europa</h3>
+          <h3 className="mt-4 text-base font-bold text-white">2. Europa premium</h3>
           <p className="mt-2 text-xs leading-relaxed text-slate-400">
-            Competimos directamente con las firmas europeas de lujo en Suiza, Francia e Italia. nexID ofrece validación criptográfica con NTAG 424 DNA, evidencias auditables y trazabilidad Web3 opcional con NFTs de propiedad en Polygon. El lujo europeo encuentra control operativo fuerte con total flexibilidad digital.
+            Para lujo y productos regulados, nexID ofrece validación criptográfica con NTAG 424 DNA, evidencias auditables y ownership Polygon opcional cuando agrega valor. La plataforma mantiene el control operativo en el SaaS.
           </p>
         </Card>
 
@@ -250,7 +250,7 @@ export default async function SdkVisionPage() {
           </div>
           <h3 className="mt-4 text-base font-bold text-white">3. Escala Global e Interoperable</h3>
           <p className="mt-2 text-xs leading-relaxed text-slate-400">
-            Adoptamos el estándar global **GS1 Digital Link**. Una sola etiqueta NFC o código de barras QR sirve para el escaneo logístico de distribución en China, inventario en estantes mediante UHF RFID (RAIN RFID) de largo alcance, y la interacción interactiva B2C del consumidor final.
+            GS1 Digital Link, QR, NFC y UHF/RFID pueden convivir por carrier y caso de uso: consumidor final, inventario, cajas, pallets o auditoría industrial sin prometer que un solo carrier resuelve todos los flujos.
           </p>
         </Card>
       </div>
@@ -273,12 +273,12 @@ export default async function SdkVisionPage() {
 import { NexIdClient } from '@nexid/sdk';
 
 const nexid = new NexIdClient({
-  apiKey: process.env.NEXID_API_KEY,      // Llave privada de tu CRM
+  apiKey: process.env.NEXID_API_KEY,      // Solo backend; nunca exponer en frontend
   tenantSlug: 'bodegagranblend',
   environment: 'production'
 });
 
-// 2. Validar autenticidad física en tu servidor (Shopify/Next.js/React Native)
+// 2. Verificar el tap en tu servidor (Shopify/Next.js/React Native)
 const verification = await nexid.verifyTap({
   bid: "MALBEC-2022-LOT1",
   picc_data: "04A7F3...",  // Parámetros capturados en el tap NFC
@@ -287,14 +287,19 @@ const verification = await nexid.verifyTap({
 });
 
 if (verification.verdict === 'VALID') {
-  console.log("¡Botella 100% original!");
+  console.log("Tap validado por nexID con evidencia disponible.");
+
+  const pos = await nexid.activatePosPurchase({
+    bid: "MALBEC-2022-LOT1",
+    externalOrderId: "ORDER-1001"
+  });
   
-  // 3. Reclamar propiedad y registrar lead en el CRM
+  // 3. Reclamar propiedad con POS token y registrar lead en CRM
   const claim = await nexid.claimOwnership({
     contact: "cliente@gmail.com",
     name: "Carlos Gómez",
     bid: "MALBEC-2022-LOT1",
-    uidHex: verification.uidDecrypted,
+    posToken: pos.posToken,
     meta: {
       occasion: "Regalo",
       gender: "Hombre"
@@ -313,7 +318,7 @@ if (verification.verdict === 'VALID') {
             <h4 className="text-sm font-bold text-white">Monitoreo de Eventos en Tiempo Real</h4>
           </div>
           <p className="mt-2 text-xs leading-relaxed text-slate-400">
-            Cada vez que un cliente utiliza el SDK para realizar un `verifyTap`, nexID registra la geolocalización por IP, el dispositivo y la velocidad de escaneo. Esto alimenta directamente los gráficos de analíticas del panel, identificando instantáneamente desvíos de mercado gris y sospechas de copiado de tags (Replay attacks).
+            Cada vez que un cliente utiliza el SDK para realizar un `verifyTap`, nexID registra el evento y las señales disponibles bajo política del tenant. Geolocalización, dispositivo y riesgo se usan solo cuando están disponibles, permitidos y son necesarios para auditoría.
           </p>
         </Card>
         
@@ -323,7 +328,7 @@ if (verification.verdict === 'VALID') {
             <h4 className="text-sm font-bold text-white">Webhooks y Automatización Activa</h4>
           </div>
           <p className="mt-2 text-xs leading-relaxed text-slate-400">
-            El SDK soporta suscripción a Webhooks. Tu servidor recibirá avisos automáticos ante eventos como `tap.invalid` (sospecha de falsificación física), `seal.broken` (sensor de corcho abierto reportado por chip TagTamper) y `ownership.claimed`, permitiendo disparar correos de soporte o puntos en tu club de fidelización.
+            El SDK se integra con webhooks firmados cuando están configurados. Tu servidor puede recibir eventos de verificación, riesgo, apertura física o ownership y disparar soporte, CRM o beneficios sin exponer llaves maestras.
           </p>
         </Card>
       </div>

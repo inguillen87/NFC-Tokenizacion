@@ -57,13 +57,13 @@ export function InteractiveSdkGuide() {
           color: "border-emerald-500/30 text-emerald-400 bg-emerald-500/10",
           accentColor: "bg-emerald-600",
           icon: <ShieldCheck className="h-4 w-4 text-emerald-400" />,
-          aiText: "¡Hola! Soy tu Asistente de Salud IA. Este CardioProtec 50mg es original y vence en Octubre de 2028. Instrucciones: tomar 1 comprimido por la mañana. ¿Querés ver el prospecto interactivo?"
+          aiText: "Hola. La ficha de CardioProtec 50mg muestra evidencia valida de lote y vencimiento. Puedo abrir prospecto, trazabilidad o contacto profesional; no reemplazo indicacion medica."
         };
       case "cosmetic":
         return {
           title: "Sérum Anti-Age Hialurónico",
           subtitle: "Cosmética PielDorée • Edición Gold",
-          badge: "Cosmético 100% Original",
+          badge: "Cosmetico con evidencia validada",
           color: "border-pink-500/30 text-pink-400 bg-pink-500/10",
           accentColor: "bg-pink-600",
           icon: <Wand2 className="h-4 w-4 text-pink-400" />,
@@ -77,7 +77,7 @@ export function InteractiveSdkGuide() {
           color: "border-amber-500/30 text-amber-400 bg-amber-500/10",
           accentColor: "bg-amber-600",
           icon: <Globe className="h-4 w-4 text-amber-400" />,
-          aiText: "¡Hola! Soy tu Asesor Agrónomo IA. El BioNutriente F10 aumenta el rendimiento del cultivo un 18%. Dilución recomendada: 5L por hectárea. ¿Querés calcular la dosificación exacta para tu campo?"
+          aiText: "Hola. Soy tu Asesor Agronomo IA. Puedo consultar ficha tecnica, lote, dosis cargada por el tenant y recomendaciones autorizadas para tu zona."
         };
       case "event":
         return {
@@ -139,7 +139,7 @@ export function InteractiveSdkGuide() {
       id: 1,
       title: "Obtén tus credenciales",
       subtitle: "API Keys seguras",
-      description: "En tu panel nexID, navega a Configuración de API. Copia tu 'API Key Privada' (para transacciones del servidor) y tu 'Tenant Slug' (el identificador único de tu marca, ej. 'bodega-mendoza').",
+      description: "En tu panel nexID, navega a Configuracion de API. Usa una API Key de servidor solo en backend y tu Tenant Slug como identificador de marca. Nunca pegues llaves privadas en frontend.",
       role: "developer",
       icon: <KeyRound className="h-5 w-5" />,
       badge: "JWT & API Key Authorized"
@@ -170,18 +170,18 @@ export function InteractiveSdkGuide() {
     },
     {
       id: 3,
-      title: "Inicializa el Cliente e Invoca el Widget",
-      subtitle: "Menos de 10 líneas de código",
-      description: "Importa el cliente de nexID, inicialízalo con tu API Key y Tenant Slug, y renderiza la suite interactiva del Sommelier/Asistente IA en la landing page del QR.",
+      title: "Inicializa el cliente y reporta el evento",
+      subtitle: "Backend seguro, sin exponer API Keys",
+      description: "Importa el cliente de nexID en tu backend, inicialízalo con tu API Key y Tenant Slug, y reporta el scan QR/GS1 o valida el tap NFC seguro con los métodos reales del SDK.",
       role: "developer",
       icon: <Cpu className="h-5 w-5" />,
       badge: "Javascript / TypeScript",
       extraElement: (
         <div className="mt-3 relative rounded-lg bg-black/60 border border-white/5 p-3 font-mono text-[11px] text-slate-300">
           <div className="flex justify-between items-center text-[10px] text-slate-500 mb-1">
-            <span>INDEX.JS (SDK INITIALIZATION)</span>
+            <span>INDEX.JS (SDK EVENT)</span>
             <button 
-              onClick={() => handleCopy(`import { NexIdClient } from '@nexid/sdk';\nconst nexid = new NexIdClient({ apiKey: 'nexid_live_...', tenantSlug: 'bodegadeejemplo' });\nconst telemetry = await nexid.registerQrScan({ productName: 'Gran Reserva Malbec 2022' });\nnexid.showEngagementWidget({ eventId: telemetry.eventId });`, "js")}
+              onClick={() => handleCopy(`import { NexIdClient } from '@nexid/sdk';\nconst nexid = new NexIdClient({ apiKey: process.env.NEXID_API_KEY, tenantSlug: 'bodega-mendoza' });\nconst event = await nexid.reportEvent({ eventType: 'qr.scan', bid: 'MALBEC-2022-LOT1', source: 'qr_landing' });`, "js")}
               className="hover:text-white transition flex items-center gap-1"
             >
               {copiedCode === "js" ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
@@ -192,18 +192,23 @@ export function InteractiveSdkGuide() {
 {`import { NexIdClient } from '@nexid/sdk';
 
 const nexid = new NexIdClient({
-  apiKey: "nexid_live_7d8a9f...",
+  apiKey: process.env.NEXID_API_KEY,
   tenantSlug: "bodega-mendoza"
 });
 
-// Captura telemetría y despliega widget
-const telemetry = await nexid.registerQrScan({
-  productName: "Reserva Malbec 2022"
+// QR/GS1 fallback: registra el evento visible sin afirmar anticopia.
+const event = await nexid.reportEvent({
+  eventType: "qr.scan",
+  bid: "MALBEC-2022-LOT1",
+  source: "qr_landing"
 });
 
-nexid.showEngagementWidget({
-  eventId: telemetry.eventId,
-  theme: "dark-premium"
+// NFC seguro: usa verifyTap con picc_data, enc y cmac capturados.
+const verification = await nexid.verifyTap({
+  bid: "MALBEC-2022-LOT1",
+  picc_data,
+  enc,
+  cmac
 });`}
           </pre>
         </div>
@@ -222,7 +227,7 @@ nexid.showEngagementWidget({
           <div className="flex justify-between items-center text-[10px] text-slate-500 mb-1">
             <span>WEBHOOK EVENT PAYLOAD</span>
             <button 
-              onClick={() => handleCopy(`{\n  "event": "tap.invalid",\n  "timestamp": 1781294803,\n  "data": {\n    "tenant": "bodega-mendoza",\n    "productId": "MALBEC-2022-LOT1",\n    "location": "Mendoza, Argentina",\n    "reason": "Invalid Signature / Cloned QR Pattern Detected"\n  }\n}`, "json")}
+              onClick={() => handleCopy(`{\n  "event": "tap.invalid",\n  "timestamp": 1781294803,\n  "data": {\n    "tenant": "bodega-mendoza",\n    "productId": "MALBEC-2022-LOT1",\n    "location": "Mendoza, Argentina",\n    "reason": "Invalid signature or copied identifier pattern suspected"\n  }\n}`, "json")}
               className="hover:text-white transition flex items-center gap-1"
             >
               {copiedCode === "json" ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
@@ -237,7 +242,7 @@ nexid.showEngagementWidget({
     "tenant": "bodega-mendoza",
     "productId": "MALBEC-2022-LOT1",
     "location": "Mendoza, Argentina",
-    "reason": "Cloned QR Pattern Detected"
+    "reason": "Copied identifier pattern suspected"
   }
 }`}
           </pre>
@@ -310,7 +315,7 @@ nexid.showEngagementWidget({
                     isActive 
                       ? "border-cyan-400 bg-slate-950 text-cyan-400 ring-4 ring-cyan-500/20 scale-110" 
                       : isCompleted 
-                        ? "border-emerald-400 bg-emerald-505 bg-slate-950 text-emerald-400" 
+                        ? "border-emerald-400 bg-emerald-500/10 text-emerald-400"
                         : "border-slate-700 bg-slate-950 text-slate-400 hover:border-slate-500"
                   }`}
                 >
@@ -412,7 +417,7 @@ nexid.showEngagementWidget({
       <div className="lg:col-span-5 space-y-6">
         
         {/* Controles del Simulador */}
-        <div className="rounded-xl border border-white/5 bg-slate-955/60 p-4 space-y-4">
+        <div className="rounded-xl border border-white/5 bg-slate-950/60 p-4 space-y-4">
           <div className="flex items-center justify-between">
             <h4 className="text-xs font-bold text-white flex items-center gap-1.5 uppercase tracking-wider">
               <Wand2 className="h-4 w-4 text-cyan-400" />
@@ -521,7 +526,7 @@ nexid.showEngagementWidget({
               {simulatorTab === "before" ? (
                 /* VISTA VIEJA (SIN NEXID) */
                 <div className="space-y-4">
-                  <div className="h-10 w-10 bg-slate-800 rounded-xl flex items-center justify-center text-slate-555">
+                  <div className="h-10 w-10 bg-slate-800 rounded-xl flex items-center justify-center text-slate-500">
                     <QrCode className="h-6 w-6" />
                   </div>
                   

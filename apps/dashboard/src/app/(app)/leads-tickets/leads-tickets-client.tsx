@@ -143,7 +143,7 @@ const DEFAULT_AI_QUERIES = [
     vertical: "agro",
     company: "Establecimiento Don Luis",
     query: "Si llueve en unas dos horas, ¿el BioGuard Max 500 resiste el lavado o pierdo la aplicación en el cultivo?",
-    answer: "BioGuard Max posee un agente adherente de rápida absorción que se fija en la cutícula foliar en solo 45 minutos. Si la lluvia es menor a 15mm transcurrida una hora, el activo mantiene un 92% de efectividad.",
+    answer: "La ficha tecnica cargada por el tenant puede mostrar ventana de secado, recomendaciones de etiqueta, lote y canal autorizado. nexID no calcula eficacia agronomica por clima en tiempo real; registra la consulta y deriva a la documentacion aprobada o al asesor tecnico.",
     tag: "Soporte Técnico",
     created_at: "2026-06-13",
     status: "RESPONDIDO"

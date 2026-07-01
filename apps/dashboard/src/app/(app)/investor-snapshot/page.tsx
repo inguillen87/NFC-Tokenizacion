@@ -130,7 +130,7 @@ export default function InvestorPitchDeck() {
               { step: "1. Embotellado Físico", desc: "Se inserta un microchip NFC criptográfico nexID en el cuello de la botella o empaque.", icon: QrCode },
               { step: "2. Validación y Tap", desc: "El comprador toca el empaque con su celular y valida la procedencia al instante.", icon: Smartphone },
               { step: "3. Nube SQL Segura", desc: "La firma dinámica se verifica contra la base SQL custodiada en Render/AWS.", icon: ShieldCheck },
-              { step: "4. Web3 Opcional", desc: "Registro opcional on-chain (Polygon) para generar el gemelo digital de líneas de alta gama.", icon: Sparkles }
+              { step: "4. Web3 Opcional", desc: "Polygon opcional para ownership, certificado o reclamo digital en líneas de alta gama.", icon: Sparkles }
             ].map((item, idx) => (
               <div key={idx} className="rounded-xl border border-white/5 bg-slate-900/30 p-4 text-center relative">
                 <item.icon className="w-6 h-6 text-purple-400 mx-auto mb-2" />
@@ -148,7 +148,7 @@ export default function InvestorPitchDeck() {
           <div className="rounded-2xl border border-purple-500/20 bg-purple-500/5 p-4 text-xs text-slate-300 leading-relaxed flex items-center gap-4">
             <span className="p-3 bg-purple-500/20 rounded-xl text-purple-300 font-black">Híbrido: SQL + Web3</span>
             <p>
-              <strong>Una arquitectura flexible de alta velocidad y máxima compatibilidad:</strong> Registramos firmas dinámicas en bases de datos SQL redundantes por defecto. Activamos la capa de Polygon Blockchain on-chain con un clic únicamente para productos de colección o trazabilidad ultra-premium.
+              <strong>Una arquitectura flexible de alta velocidad y máxima compatibilidad:</strong> Registramos firmas dinámicas en bases de datos SQL redundantes por defecto. Polygon se habilita como capa opcional de ownership/certificado cuando la política del tenant y el caso de negocio lo justifican.
             </p>
           </div>
         </div>
@@ -165,15 +165,15 @@ export default function InvestorPitchDeck() {
             {[
               {
                 title: "Firma Dinámica (NFC SUN)",
-                desc: "Cada toque físico genera un código de un solo uso criptográfico. La etiqueta no se puede duplicar ni clonar mediante clonadores estándar."
+                desc: "Cada toque físico en chips compatibles genera una prueba dinámica verificable server-side. Esto reduce fuertemente replay/copia frente a tags básicos o QR fotocopiables."
               },
               {
-                title: "Telemetría de Geolocalización",
-                desc: "Análisis en tiempo real de coordenadas GPS e IPs. Si la misma botella reporta lecturas en Buenos Aires y Miami al mismo tiempo, el sistema levanta alerta de copia."
+                title: "Señales de Riesgo por Lectura",
+                desc: "Análisis de ubicación aproximada reportada por el teléfono cuando hay permiso, IP aproximada, canal y patrones de tiempo. El chip NFC no transmite GPS por sí mismo; el backend levanta alerta si un mismo UID aparece en puntos incompatibles."
               },
               {
                 title: "Detección de Sello Violado",
-                desc: "El circuito del chip se rompe físicamente al descorchar, informando al ledger si la botella ya fue abierta anteriormente, evitando rellenos."
+                desc: "El circuito del chip se rompe físicamente al descorchar, informando al backend si la botella ya fue abierta anteriormente y reduciendo el riesgo de rellenado."
               }
             ].map((item, idx) => (
               <div key={idx} className="flex gap-3">
@@ -192,8 +192,8 @@ export default function InvestorPitchDeck() {
               <span className="animate-pulse">ACTIVO</span>
             </div>
             <p>· Firma Criptográfica: <span className="text-emerald-400 font-bold">VERIFICADA (OK)</span></p>
-            <p>· Estado de Sello: <span className="text-emerald-400 font-bold">CERRADO ORIGINAL</span></p>
-            <p>· GPS Tap: <span className="text-white">Lat -34.6037 / Lon -58.3816</span></p>
+            <p>· Estado de Sello: <span className="text-emerald-400 font-bold">CERRADO / SIN APERTURA</span></p>
+            <p>· Ubicación evento: <span className="text-white">Teléfono autorizado / IP aproximada</span></p>
             <p>· Mobile Device: <span className="text-slate-300">iOS 18.2 (iPhone 16 Pro)</span></p>
           </div>
         </div>
@@ -252,7 +252,7 @@ export default function InvestorPitchDeck() {
             {[
               {
                 title: "Cava Digital del Coleccionista",
-                desc: "Los clientes visualizan sus botellas originales escaneadas en 3D en su portal, incentivando la compra para completar la colección digital."
+                desc: "Los clientes visualizan sus botellas registradas en 3D en su portal, incentivando la compra para completar la colección digital."
               },
               {
                 title: "Categorías Metálicas de Estatus",
@@ -313,20 +313,20 @@ export default function InvestorPitchDeck() {
             {
               title: "Datos Directos de Mercado",
               desc: "Las bodegas finalmente saben quién es su cliente final en el extranjero, obteniendo demografía y hábitos sin depender del distribuidor.",
-              metric: "100%",
-              label: "Propiedad de Datos"
+              metric: "DTC",
+              label: "Datos propios"
             },
             {
               title: "Control en Exportación",
-              desc: "Monitoreo activo del mercado gris y reventa. Certificación del lote original en aduana para proteger el valor comercial.",
-              metric: "Zero",
-              label: "Falsificaciones en Red"
+              desc: "Monitoreo activo del mercado gris y reventa. Evidencia del lote y canal en aduana para proteger el valor comercial.",
+              metric: "Alertas",
+              label: "Fraude monitoreado"
             },
             {
               title: "Recurrencia e Ingresos",
               desc: "Membresías recurrentes y mercado integrado (Marketplace). Los taps físicos generan compras secundarias directas a la bodega.",
-              metric: "+24%",
-              label: "Venta Directa Direct-to-Consumer"
+              metric: "Canal",
+              label: "Venta directa habilitada"
             }
           ].map((item, idx) => (
             <div key={idx} className="rounded-2xl border border-white/5 bg-slate-900/40 p-5 space-y-3 h-full flex flex-col justify-between">
@@ -362,7 +362,7 @@ export default function InvestorPitchDeck() {
               { title: "NFC Smart Tag", step: "Apunta el teléfono" },
               { title: "Consumer App", step: "Reclamar Dueño" },
               { title: "Bodega CRM", step: "IA Campaign Telemetry" },
-              { title: "Polygon Ledger", step: "Tokenización NFT" }
+              { title: "Polygon opcional", step: "Solicitud / certificado" }
             ].map((item, idx) => (
               <div key={idx} className="rounded-xl border border-white/5 bg-slate-950 p-3 text-center">
                 <span className="text-[8px] uppercase text-slate-500 font-bold block">Fase {idx + 1}</span>

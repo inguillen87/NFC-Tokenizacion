@@ -10,6 +10,7 @@ type InstitutionalVideoPanelProps = {
   locale: string;
   variant?: "landing" | "demo";
   className?: string;
+  initialTheme?: "light" | "dark";
 };
 
 type SupportedLocale = "es-AR" | "en" | "pt-BR";
@@ -66,13 +67,14 @@ function readIsLightTheme() {
   return root.classList.contains("theme-light") || root.getAttribute("data-theme") === "light";
 }
 
-export function InstitutionalVideoPanel({ locale, variant = "landing", className = "" }: InstitutionalVideoPanelProps) {
+export function InstitutionalVideoPanel({ locale, variant = "landing", className = "", initialTheme = "dark" }: InstitutionalVideoPanelProps) {
   const activeLocale = normalizeLocale(locale);
   const video = resolveInstitutionalVideo(locale);
   const copy = PANEL_COPY[activeLocale];
   const videoRef = React.useRef<HTMLVideoElement>(null);
-  const [isLightTheme, setIsLightTheme] = React.useState(false);
+  const [isLightTheme, setIsLightTheme] = React.useState(initialTheme === "light");
   const [hasStarted, setHasStarted] = React.useState(false);
+  const [isAtStart, setIsAtStart] = React.useState(true);
 
   React.useEffect(() => {
     const root = document.documentElement;
@@ -84,21 +86,60 @@ export function InstitutionalVideoPanel({ locale, variant = "landing", className
   }, []);
 
   const poster = isLightTheme ? video.lightPoster : video.poster;
-  const showLightPlayButton = isLightTheme && !hasStarted;
+  const showLightPreview = isLightTheme && (!hasStarted || isAtStart);
 
   React.useEffect(() => {
     setHasStarted(false);
+    setIsAtStart(true);
   }, [video.src, poster]);
 
   const playVideo = () => {
-    setHasStarted(true);
-    void videoRef.current?.play().catch(() => {
+    const target = videoRef.current;
+    if (!target) return;
+
+    const revealVideo = () => {
+      setHasStarted(true);
+      setIsAtStart(false);
+    };
+
+    const resetVideo = () => {
+      target.pause();
+      target.currentTime = 0;
       setHasStarted(false);
+      setIsAtStart(true);
+    };
+
+    window.requestAnimationFrame(() => {
+      const playPromise = target.play();
+
+      if (playPromise && typeof playPromise.then === "function") {
+        void playPromise
+          .then(revealVideo)
+          .catch(() => {
+            target.muted = true;
+            const mutedPromise = target.play();
+
+            if (mutedPromise && typeof mutedPromise.then === "function") {
+              void mutedPromise.then(revealVideo).catch(resetVideo);
+              return;
+            }
+
+            revealVideo();
+          });
+        return;
+      }
+
+      revealVideo();
     });
   };
 
   return (
-    <section className={`institutional-video-panel institutional-video-panel--${variant} ${className}`} aria-label={copy.aria}>
+    <section
+      className={`institutional-video-panel institutional-video-panel--${variant} ${
+        showLightPreview ? "institutional-video-panel--light-preview" : ""
+      } ${className}`}
+      aria-label={copy.aria}
+    >
       <div className="institutional-video-copy">
         <p className="text-cyan-400 font-mono tracking-widest uppercase text-xs">{copy.eyebrow}</p>
         <h2>{copy.title}</h2>
@@ -129,21 +170,80 @@ export function InstitutionalVideoPanel({ locale, variant = "landing", className
           </div>
         </div>
 
-        <div className="institutional-video-frame relative aspect-video min-h-[260px] overflow-hidden bg-slate-950">
+        <div
+          className={`institutional-video-frame relative aspect-video min-h-[260px] overflow-hidden bg-slate-950 ${
+            showLightPreview ? "institutional-video-frame--light-preview" : ""
+          }`}
+        >
           <video
             ref={videoRef}
             key={`${video.src}-${poster}`}
-            className={`institutional-video-media h-full w-full object-cover ${isLightTheme ? "institutional-video-media--light" : ""}`}
-            controls={!isLightTheme || hasStarted}
-            onPlay={() => setHasStarted(true)}
-            preload={isLightTheme ? "none" : "metadata"}
+            className={`institutional-video-media h-full w-full object-cover ${
+              isLightTheme ? "institutional-video-media--light" : ""
+            } ${showLightPreview ? "institutional-video-media--parked" : ""}`}
+            controls={!showLightPreview && (!isLightTheme || hasStarted)}
+            onPlay={() => {
+              setHasStarted(true);
+              setIsAtStart(false);
+            }}
+            onPause={(event) => {
+              if (isLightTheme && event.currentTarget.currentTime <= 0.35) {
+                setIsAtStart(true);
+                setHasStarted(false);
+              }
+            }}
+            onSeeked={(event) => {
+              if (isLightTheme && event.currentTarget.paused && event.currentTarget.currentTime <= 0.35) {
+                setIsAtStart(true);
+                setHasStarted(false);
+              } else {
+                setIsAtStart(false);
+              }
+            }}
+            onLoadedMetadata={(event) => {
+              if (isLightTheme && event.currentTarget.paused && event.currentTarget.currentTime <= 0.35) {
+                setIsAtStart(true);
+                setHasStarted(false);
+              }
+            }}
+            onError={(event) => {
+              if (isLightTheme) {
+                event.currentTarget.currentTime = 0;
+                setIsAtStart(true);
+                setHasStarted(false);
+              }
+            }}
+            onEnded={() => {
+              setIsAtStart(true);
+              setHasStarted(false);
+            }}
+            preload={showLightPreview ? "none" : "metadata"}
             playsInline
             controlsList="nodownload"
             poster={poster}
+            tabIndex={showLightPreview ? -1 : undefined}
           >
             <source src={video.src} type={video.type} />
           </video>
-          {showLightPlayButton ? (
+          {showLightPreview ? (
+            <div className="institutional-video-light-preview" aria-hidden="true">
+              <div className="institutional-video-light-preview__scene">
+                <div className="institutional-video-light-preview__chip">
+                  <span>N</span>
+                </div>
+                <div className="institutional-video-light-preview__signal">
+                  <i />
+                  <i />
+                  <i />
+                </div>
+              </div>
+              <div>
+                <strong>{copy.title}</strong>
+                <p>{copy.strip}</p>
+              </div>
+            </div>
+          ) : null}
+          {showLightPreview ? (
             <button className="institutional-video-play" type="button" onClick={playVideo} aria-label={copy.aria}>
               <Play className="h-5 w-5" />
               <span>{copy.eyebrow}</span>

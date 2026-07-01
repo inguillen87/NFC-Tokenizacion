@@ -80,8 +80,8 @@ const productModalCopy: Record<AppLocale, {
     close: "Cerrar",
     title: "Ficha completa de producto",
     subtitle: "Registro ampliado del activo fisico: producto, lote, origen, estado, evidencia SUN, proxima accion comercial y trazabilidad.",
-    consumerTitle: "Producto ampliado",
-    operatorTitle: "Ficha premium",
+    consumerTitle: "Ficha de producto",
+    operatorTitle: "Registro premium",
     proofTitle: "Evidencia tecnica",
     commerceTitle: "Acciones post-tap",
     iphone: "iPhone",
@@ -98,8 +98,8 @@ const productModalCopy: Record<AppLocale, {
     close: "Fechar",
     title: "Ficha completa do produto",
     subtitle: "Registro ampliado do ativo fisico: produto, lote, origem, estado, evidencia SUN, proxima acao comercial e rastreabilidade.",
-    consumerTitle: "Produto ampliado",
-    operatorTitle: "Ficha premium",
+    consumerTitle: "Ficha do produto",
+    operatorTitle: "Registro premium",
     proofTitle: "Evidencia tecnica",
     commerceTitle: "Acoes pos-toque",
     iphone: "iPhone",
@@ -116,7 +116,7 @@ const productModalCopy: Record<AppLocale, {
     close: "Close",
     title: "Complete product detail",
     subtitle: "Expanded record for the physical asset: product, batch, origin, state, SUN evidence, commercial next action and traceability.",
-    consumerTitle: "Expanded product",
+    consumerTitle: "Product record",
     operatorTitle: "Premium record",
     proofTitle: "Technical evidence",
     commerceTitle: "Post-tap actions",
@@ -165,7 +165,7 @@ const heroStageCopy: Record<AppLocale, {
     detailHint: "Ver detalle completo del producto",
     cellularState: "SALIDA CELULAR",
     productType: "Tipo",
-    bottle: "Botella",
+    bottle: "Unidad",
     tapFinal: "Tap final",
     demoEvent: "Evento demo",
   },
@@ -498,7 +498,7 @@ const labels: Record<AppLocale, {
         steps: ["Toque en tarjeta", "SUN verifica autenticidad", "Valida propiedad", "Abre club de valor"],
       },
       bottle: {
-        label: "Botellas",
+        label: "Envases refill",
         profile: "NFC + QR",
         action: "Envase retornable escaneado: procedencia, ciclo de refill y retorno validados.",
         result: "Retorno validado",
@@ -736,7 +736,7 @@ const labels: Record<AppLocale, {
         steps: ["Toque no cartao", "SUN verifica autenticidade", "Valida propriedade", "Abre clube de valor"],
       },
       bottle: {
-        label: "Garrafas",
+        label: "Embalagens refill",
         profile: "NFC + QR",
         action: "Embalagem retornavel escaneada: procedencia, ciclo de refill e retorno validados.",
         result: "Retorno validado",
@@ -974,7 +974,7 @@ const labels: Record<AppLocale, {
         steps: ["Card tap", "SUN verifies authenticity", "Validates ownership", "Opens value club"],
       },
       bottle: {
-        label: "Bottles",
+        label: "Refill packaging",
         profile: "NFC + QR",
         action: "Reusable container scanned: provenance, refill cycle and return status verified.",
         result: "Return verified",
@@ -1029,6 +1029,58 @@ const HERO_ATLAS_MIN_LAT = -105;
 const HERO_ATLAS_MAX_LAT = 84;
 const HERO_ATLAS_WORLD_SCALE_Y = 142 / (HERO_ATLAS_MAX_LAT - HERO_ATLAS_MIN_LAT);
 
+type HeroAtlasCityMarker = {
+  id: string;
+  label: string;
+  country: string;
+  lat: number;
+  lng: number;
+  tier: "primary" | "secondary";
+  dx?: number;
+  dy?: number;
+  anchor?: "start" | "end";
+};
+
+type HeroAtlasNetworkLink = {
+  id: string;
+  from: Pick<HeroAtlasCityMarker, "lat" | "lng">;
+  to: Pick<HeroAtlasCityMarker, "lat" | "lng">;
+  tone: "corridor" | "handoff";
+};
+
+type HeroAtlasMeshMode = "none" | "compact" | "hero";
+
+const HERO_ATLAS_CITY_MARKERS: HeroAtlasCityMarker[] = [
+  { id: "buenos-aires", label: "Buenos Aires", country: "ARG", lat: -34.6037, lng: -58.3816, tier: "primary", dx: 12, dy: 22 },
+  { id: "santiago", label: "Santiago", country: "CHL", lat: -33.4489, lng: -70.6693, tier: "secondary" },
+  { id: "sao-paulo", label: "Sao Paulo", country: "BRA", lat: -23.5505, lng: -46.6333, tier: "secondary" },
+  { id: "mexico-city", label: "Mexico City", country: "MEX", lat: 19.4326, lng: -99.1332, tier: "secondary" },
+  { id: "miami", label: "Miami", country: "USA", lat: 25.7617, lng: -80.1918, tier: "primary", dx: 12, dy: -20 },
+  { id: "new-york", label: "New York", country: "USA", lat: 40.7128, lng: -74.006, tier: "secondary" },
+  { id: "london", label: "London", country: "GBR", lat: 51.5072, lng: -0.1276, tier: "secondary" },
+  { id: "madrid", label: "Madrid", country: "ESP", lat: 40.4168, lng: -3.7038, tier: "primary", dx: 14, dy: -24 },
+  { id: "dubai", label: "Dubai", country: "UAE", lat: 25.2048, lng: 55.2708, tier: "secondary" },
+  { id: "mumbai", label: "Mumbai", country: "IND", lat: 19.076, lng: 72.8777, tier: "secondary" },
+  { id: "singapore", label: "Singapore", country: "SGP", lat: 1.3521, lng: 103.8198, tier: "primary", dx: -14, dy: 18, anchor: "end" },
+  { id: "shanghai", label: "Shanghai", country: "CHN", lat: 31.2304, lng: 121.4737, tier: "secondary" },
+  { id: "tokyo", label: "Tokyo", country: "JPN", lat: 35.6762, lng: 139.6503, tier: "secondary" },
+  { id: "sydney", label: "Sydney", country: "AUS", lat: -33.8688, lng: 151.2093, tier: "primary", dx: -14, dy: 22, anchor: "end" },
+  { id: "johannesburg", label: "Johannesburg", country: "ZAF", lat: -26.2041, lng: 28.0473, tier: "secondary" },
+];
+
+const heroAtlasCityById = new Map(HERO_ATLAS_CITY_MARKERS.map((city) => [city.id, city]));
+
+const HERO_ATLAS_NETWORK_LINKS: HeroAtlasNetworkLink[] = [
+  { id: "south-america-us", from: heroAtlasCityById.get("buenos-aires")!, to: heroAtlasCityById.get("miami")!, tone: "handoff" },
+  { id: "us-europe", from: heroAtlasCityById.get("miami")!, to: heroAtlasCityById.get("madrid")!, tone: "corridor" },
+  { id: "europe-mea", from: heroAtlasCityById.get("madrid")!, to: heroAtlasCityById.get("dubai")!, tone: "corridor" },
+  { id: "mea-asia", from: heroAtlasCityById.get("dubai")!, to: heroAtlasCityById.get("singapore")!, tone: "corridor" },
+  { id: "asia-oceania", from: heroAtlasCityById.get("singapore")!, to: heroAtlasCityById.get("sydney")!, tone: "handoff" },
+  { id: "asia-north", from: heroAtlasCityById.get("singapore")!, to: heroAtlasCityById.get("tokyo")!, tone: "corridor" },
+  { id: "latam-network", from: heroAtlasCityById.get("buenos-aires")!, to: heroAtlasCityById.get("sao-paulo")!, tone: "corridor" },
+  { id: "africa-europe", from: heroAtlasCityById.get("johannesburg")!, to: heroAtlasCityById.get("madrid")!, tone: "corridor" },
+];
+
 function projectHeroAtlasPoint(point: Pick<VectorMapPoint, "lat" | "lng">) {
   const lat = clamp(point.lat, HERO_ATLAS_MIN_LAT, HERO_ATLAS_MAX_LAT);
   return {
@@ -1056,8 +1108,8 @@ function heroAtlasLabelPosition(point: VectorMapPoint) {
     origin: { dx: 18, dy: -64, anchor: "start" },
     "custody-miami": { dx: 22, dy: -40, anchor: "start" },
     "custody-madrid": { dx: 24, dy: -48, anchor: "start" },
-    "custody-singapore": { dx: 24, dy: -34, anchor: "start" },
-    tap: { dx: -48, dy: -82, anchor: "end" },
+    "custody-singapore": { dx: -42, dy: -44, anchor: "end" },
+    tap: { dx: -56, dy: -78, anchor: "end" },
   };
   const offset = offsets[point.id] || { dx: 18, dy: -34, anchor: "start" as const };
   return {
@@ -1067,14 +1119,25 @@ function heroAtlasLabelPosition(point: VectorMapPoint) {
   };
 }
 
+function heroAtlasNetworkPath(link: HeroAtlasNetworkLink) {
+  const start = projectHeroAtlasPoint(link.from);
+  const end = projectHeroAtlasPoint(link.to);
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const lift = Math.min(120, Math.max(36, Math.abs(dx) * 0.1 + Math.abs(dy) * 0.05));
+  return `M ${start.x.toFixed(1)} ${start.y.toFixed(1)} C ${(start.x + dx * 0.36).toFixed(1)} ${(Math.min(start.y, end.y) - lift).toFixed(1)} ${(start.x + dx * 0.72).toFixed(1)} ${(Math.min(start.y, end.y) - lift * 0.74).toFixed(1)} ${end.x.toFixed(1)} ${end.y.toFixed(1)}`;
+}
+
 export function HeroTrustAtlasSvg({
   points,
   routes,
   selectedPointId = "tap",
+  mesh = "compact",
 }: {
   points: VectorMapPoint[];
   routes: VectorMapRoute[];
   selectedPointId?: string;
+  mesh?: HeroAtlasMeshMode;
 }) {
   const atlasId = useId().replace(/:/g, "");
   const oceanId = `hero-atlas-ocean-${atlasId}`;
@@ -1085,9 +1148,12 @@ export function HeroTrustAtlasSvg({
   const softGlowId = `hero-atlas-soft-glow-${atlasId}`;
   const gridId = `hero-atlas-grid-${atlasId}`;
 
+  const meshCities = mesh === "hero" ? HERO_ATLAS_CITY_MARKERS : HERO_ATLAS_CITY_MARKERS.filter((city) => city.tier === "primary");
+  const showNetworkMesh = mesh !== "none";
+
   return (
     <svg
-      className="hero-trust-atlas"
+      className={`hero-trust-atlas hero-trust-atlas--${mesh}`}
       viewBox={`0 0 ${HERO_ATLAS_WIDTH} ${HERO_ATLAS_HEIGHT}`}
       preserveAspectRatio="xMidYMid meet"
       role="img"
@@ -1171,6 +1237,43 @@ export function HeroTrustAtlasSvg({
           </g>
         ))}
       </g>
+
+      {showNetworkMesh ? (
+        <g className="hero-trust-atlas__network" aria-hidden="true">
+          {HERO_ATLAS_NETWORK_LINKS.map((link, index) => (
+            <path
+              key={link.id}
+              className={`hero-trust-atlas__network-link hero-trust-atlas__network-link--${link.tone}`}
+              d={heroAtlasNetworkPath(link)}
+              style={{ animationDelay: `${index * -0.42}s` } as CSSProperties}
+              vectorEffect="non-scaling-stroke"
+            />
+          ))}
+        </g>
+      ) : null}
+
+      {mesh !== "none" ? (
+        <g className="hero-trust-atlas__cities" aria-hidden="true">
+          {meshCities.map((city) => {
+          const { x, y } = projectHeroAtlasPoint(city);
+          const anchor = city.anchor || "start";
+          const labelX = x + (city.dx ?? (anchor === "end" ? -12 : 12));
+          const labelY = y + (city.dy ?? -10);
+          return (
+            <g key={city.id} className={`hero-trust-atlas__city hero-trust-atlas__city--${city.tier}`} transform={`translate(${x.toFixed(1)} ${y.toFixed(1)})`}>
+              <circle className="hero-trust-atlas__city-halo" r={city.tier === "primary" ? 8 : 5.5} />
+              <circle className="hero-trust-atlas__city-dot" r={city.tier === "primary" ? 2.7 : 1.8} />
+              {city.tier === "primary" ? (
+                <g transform={`translate(${(labelX - x).toFixed(1)} ${(labelY - y).toFixed(1)})`}>
+                  <text className="hero-trust-atlas__city-label" textAnchor={anchor}>{city.label}</text>
+                  <text className="hero-trust-atlas__city-country" y="10" textAnchor={anchor}>{city.country}</text>
+                </g>
+              ) : null}
+            </g>
+          );
+          })}
+        </g>
+      ) : null}
 
       <g className="hero-trust-atlas__routes" filter={`url(#${softGlowId})`}>
         {routes.map((route, index) => {
@@ -1363,6 +1466,16 @@ function EnterpriseHeroAtlasPanel({
     { id: "events", label: stageCopy.events, value: `${custodyStops.length}/${custodyStops.length}` },
     { id: "alerts", label: stageCopy.alerts, value: "0" },
   ];
+  const countriesLabel = isEnglish ? "Countries" : isPortuguese ? "Paises" : "Paises";
+  const citiesLabel = isEnglish ? "Cities" : isPortuguese ? "Cidades" : "Ciudades";
+  const routeLabel = isEnglish ? "Active route" : isPortuguese ? "Rota ativa" : "Ruta activa";
+  const custodyLabel = isEnglish ? "Custody" : isPortuguese ? "Custodia" : "Custodia";
+  const atlasOps = [
+    { id: "countries", label: countriesLabel, value: String(new Set(HERO_ATLAS_CITY_MARKERS.map((city) => city.country)).size) },
+    { id: "cities", label: citiesLabel, value: String(HERO_ATLAS_CITY_MARKERS.length) },
+    { id: "route", label: routeLabel, value: `${formattedDistance} km` },
+    { id: "custody", label: custodyLabel, value: `${custodyStops.length} ${stageCopy.events.toLowerCase()}` },
+  ];
 
   return (
     <section className="nexid-hero-atlas-card" aria-label={stageCopy.routeTitle}>
@@ -1375,11 +1488,20 @@ function EnterpriseHeroAtlasPanel({
       </header>
 
       <div className="nexid-hero-atlas-card__map">
-        <HeroTrustAtlasSvg points={custodyStops} routes={vectorRoutes} selectedPointId="tap" />
+        <HeroTrustAtlasSvg points={custodyStops} routes={vectorRoutes} selectedPointId="tap" mesh="hero" />
         <div className="nexid-hero-atlas-card__map-controls" aria-hidden="true">
           <span>+</span>
           <span>-</span>
         </div>
+      </div>
+
+      <div className="nexid-hero-atlas-card__ops" aria-hidden="true">
+        {atlasOps.map((item) => (
+          <span key={item.id}>
+            <em>{item.label}</em>
+            <strong>{item.value}</strong>
+          </span>
+        ))}
       </div>
 
       <div className="nexid-hero-atlas-card__timeline">
@@ -1767,7 +1889,7 @@ const heroRealAssets: Record<Vertical, {
   },
   bracelet: {
     imageUrl: "/sdk/verticals/events-nfc-qr-access.webp",
-    imageLightUrl: "/sdk/verticals/light/premium-events-light.webp",
+    imageLightUrl: "/sdk/verticals/light/premium-events-light-enterprise.webp",
     alt: "Brazalete y app de Eventos & Tickets con tags NFC/QR nexID.",
     bank: "nexID",
     sourceLabel: "nexID secure asset",
@@ -1775,7 +1897,7 @@ const heroRealAssets: Record<Vertical, {
   },
   pharma: {
     imageUrl: "/sdk/pharma-authentication-pack.webp",
-    imageLightUrl: "/sdk/verticals/light/premium-pharma-agro-light.webp",
+    imageLightUrl: "/sdk/verticals/light/premium-pharma-agro-light-enterprise.webp",
     alt: "Envase de medicamento y app de Pharma & Salud con tag NFC nexID.",
     bank: "nexID",
     sourceLabel: "nexID secure asset",
@@ -1791,7 +1913,7 @@ const heroRealAssets: Record<Vertical, {
   },
   wine: {
     imageUrl: "/sdk/verticals/wine-spirits-424-tt.png",
-    imageLightUrl: "/sdk/verticals/light/premium-wine-light.webp",
+    imageLightUrl: "/sdk/verticals/light/premium-wine-light-enterprise.webp",
     alt: "Botella premium de Vinos & Spirits con tag NFC nexID.",
     bank: "nexID",
     sourceLabel: "nexID secure asset",
@@ -1799,7 +1921,7 @@ const heroRealAssets: Record<Vertical, {
   },
   bottle: {
     imageUrl: "/sdk/verticals/beverages-bottle-nfc-qr.png",
-    imageLightUrl: "/sdk/verticals/light/premium-bottle-light.webp",
+    imageLightUrl: "/sdk/verticals/light/premium-bottle-light-enterprise.webp",
     alt: "Envase retornable premium con identidad GS1/QR y NFC opcional nexID.",
     bank: "nexID",
     sourceLabel: "nexID secure asset",
@@ -1815,7 +1937,7 @@ const heroRealAssets: Record<Vertical, {
   },
   sneaker: {
     imageUrl: "/sdk/verticals/sneaker-nfc-qr-tamper.png",
-    imageLightUrl: "/sdk/verticals/light/premium-sneaker-light.webp",
+    imageLightUrl: "/sdk/verticals/light/premium-sneaker-light-enterprise.webp",
     alt: "Zapatillas premium de colección con chip NFC nexID.",
     bank: "nexID",
     sourceLabel: "nexID secure asset",
@@ -1823,7 +1945,7 @@ const heroRealAssets: Record<Vertical, {
   },
   logistics: {
     imageUrl: "/sdk/verticals/logistics-uhf-nfc-qr.webp",
-    imageLightUrl: "/sdk/verticals/light/premium-logistics-light.webp",
+    imageLightUrl: "/sdk/verticals/light/premium-logistics-light-enterprise.webp",
     alt: "Cajas de Logística & Cadena de Frío con tags UHF/NFC nexID.",
     bank: "nexID",
     sourceLabel: "nexID secure asset",
@@ -1831,7 +1953,7 @@ const heroRealAssets: Record<Vertical, {
   },
   electronics: {
     imageUrl: "/sdk/verticals/electronics-warranty-nfc-qr.webp",
-    imageLightUrl: "/sdk/verticals/light/premium-electronics-light.webp",
+    imageLightUrl: "/sdk/verticals/light/premium-electronics-light-enterprise.webp",
     alt: "Dispositivo electrónico con tag NFC nexID.",
     bank: "nexID",
     sourceLabel: "nexID secure asset",
@@ -1839,7 +1961,7 @@ const heroRealAssets: Record<Vertical, {
   },
   textile: {
     imageUrl: "/sdk/verticals/textile-dpp-nfc-qr.webp",
-    imageLightUrl: "/sdk/verticals/light/premium-textile-light.webp",
+    imageLightUrl: "/sdk/verticals/light/premium-textile-light-enterprise.webp",
     alt: "Prenda de vestir y pasaporte digital textil con tag NFC/QR nexID.",
     bank: "nexID",
     sourceLabel: "nexID secure asset",
@@ -2345,6 +2467,7 @@ function EnterpriseHeroPhoneDemo({
   const asset = heroRealAssets[active];
   const productOrigin = `${data.origin.city}, ${data.origin.country}`;
   const tapLabel = `${tap.city}, ${tap.country}`;
+  const flowSteps = data.steps.slice(0, 4);
 
   return (
     <aside className="nexid-hero-phone-panel" aria-label={stageCopy.consumerTitle}>
@@ -2354,6 +2477,7 @@ function EnterpriseHeroPhoneDemo({
       </div>
 
       <article className={`nexid-hero-phone nexid-hero-phone--${model}`}>
+        <span className="nexid-hero-phone__device-label">{model === "iphone" ? copy.iphone : copy.samsung}</span>
         <div className="nexid-hero-phone__screen">
           <header className="nexid-hero-phone__status">
             <span>9:41</span>
@@ -2404,6 +2528,16 @@ function EnterpriseHeroPhoneDemo({
               <strong>{data.phoneTag}</strong>
               <small>{tapLabel}</small>
             </div>
+          </section>
+
+          <section className="nexid-hero-phone__flow" aria-label={copy.livePhoneTitle}>
+            <i className="nexid-hero-phone__flow-line" aria-hidden="true" />
+            {flowSteps.map((step, index) => (
+              <span key={`${step}-${index}`} className={index === flowSteps.length - 1 ? "is-final" : ""}>
+                <em>{String(index + 1).padStart(2, "0")}</em>
+                <strong>{step}</strong>
+              </span>
+            ))}
           </section>
 
           <dl className="nexid-hero-phone__specs">

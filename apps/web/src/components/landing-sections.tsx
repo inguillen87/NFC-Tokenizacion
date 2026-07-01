@@ -9,7 +9,7 @@ import { platformVerticals, traceabilityGlobePoints, traceabilityGlobeRoutes } f
 
 type Content = any;
 
-export function HeroSection({ content, stats, locale }: { content: Content; stats: any; locale: string; radar?: any }) {
+export function HeroSection({ content, stats, locale, initialTheme = "dark" }: { content: Content; stats: any; locale: string; radar?: any; initialTheme?: "light" | "dark" }) {
   const isEn = locale === "en";
   const isBr = locale === "pt-BR";
   const hero = content?.hero || {};
@@ -86,7 +86,7 @@ export function HeroSection({ content, stats, locale }: { content: Content; stat
             </div>
           </div>
           <HeroScene locale={locale as any} />
-          <InstitutionalVideoPanel locale={locale} variant="landing" className="mt-5" />
+          <InstitutionalVideoPanel locale={locale} variant="landing" className="mt-5" initialTheme={initialTheme} />
         </div>
 
         <div className="mx-auto mt-10 max-w-6xl text-center">
