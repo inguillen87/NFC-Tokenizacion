@@ -1027,7 +1027,7 @@ const HERO_ATLAS_WIDTH = 1200;
 const HERO_ATLAS_HEIGHT = 620;
 const HERO_ATLAS_MIN_LAT = -105;
 const HERO_ATLAS_MAX_LAT = 84;
-const HERO_ATLAS_WORLD_SCALE_Y = 142 / (HERO_ATLAS_MAX_LAT - HERO_ATLAS_MIN_LAT);
+const HERO_ATLAS_WORLD_SCALE_Y = 1;
 
 type HeroAtlasCityMarker = {
   id: string;
@@ -1476,6 +1476,14 @@ function EnterpriseHeroAtlasPanel({
     { id: "route", label: routeLabel, value: `${formattedDistance} km` },
     { id: "custody", label: custodyLabel, value: `${custodyStops.length} ${stageCopy.events.toLowerCase()}` },
   ];
+  const atlasZoomLevels = [1, 1.16, 1.32] as const;
+  const [atlasZoomIndex, setAtlasZoomIndex] = useState(0);
+  const atlasZoom = atlasZoomLevels[atlasZoomIndex];
+  const canZoomOut = atlasZoomIndex > 0;
+  const canZoomIn = atlasZoomIndex < atlasZoomLevels.length - 1;
+  const zoomGroupLabel = isEnglish ? "Trust atlas zoom controls" : isPortuguese ? "Controles de zoom do atlas de confianca" : "Controles de zoom del atlas de confianza";
+  const zoomInLabel = isEnglish ? "Zoom into trust atlas" : isPortuguese ? "Aproximar atlas de confianca" : "Acercar atlas de confianza";
+  const zoomOutLabel = isEnglish ? "Zoom out trust atlas" : isPortuguese ? "Afastar atlas de confianca" : "Alejar atlas de confianza";
 
   return (
     <section className="nexid-hero-atlas-card" aria-label={stageCopy.routeTitle}>
@@ -1488,10 +1496,32 @@ function EnterpriseHeroAtlasPanel({
       </header>
 
       <div className="nexid-hero-atlas-card__map">
-        <HeroTrustAtlasSvg points={custodyStops} routes={vectorRoutes} selectedPointId="tap" mesh="hero" />
-        <div className="nexid-hero-atlas-card__map-controls" aria-hidden="true">
-          <span>+</span>
-          <span>-</span>
+        <div
+          className="nexid-hero-atlas-card__viewport"
+          data-zoom-level={atlasZoomIndex}
+          style={{ "--nexid-hero-atlas-zoom": atlasZoom } as CSSProperties}
+        >
+          <HeroTrustAtlasSvg points={custodyStops} routes={vectorRoutes} selectedPointId="tap" mesh="hero" />
+        </div>
+        <div className="nexid-hero-atlas-card__map-controls" role="group" aria-label={zoomGroupLabel}>
+          <button
+            type="button"
+            aria-label={zoomInLabel}
+            title={zoomInLabel}
+            disabled={!canZoomIn}
+            onClick={() => setAtlasZoomIndex((value) => Math.min(value + 1, atlasZoomLevels.length - 1))}
+          >
+            +
+          </button>
+          <button
+            type="button"
+            aria-label={zoomOutLabel}
+            title={zoomOutLabel}
+            disabled={!canZoomOut}
+            onClick={() => setAtlasZoomIndex((value) => Math.max(value - 1, 0))}
+          >
+            -
+          </button>
         </div>
       </div>
 
@@ -1913,7 +1943,7 @@ const heroRealAssets: Record<Vertical, {
   },
   wine: {
     imageUrl: "/sdk/verticals/wine-spirits-424-tt.png",
-    imageLightUrl: "/sdk/verticals/light/premium-wine-light-enterprise.webp",
+    imageLightUrl: "/sdk/verticals/light/premium-wine-light.webp",
     alt: "Botella premium de Vinos & Spirits con tag NFC nexID.",
     bank: "nexID",
     sourceLabel: "nexID secure asset",
@@ -2517,6 +2547,23 @@ function EnterpriseHeroPhoneDemo({
             </div>
           </section>
 
+          <section className="nexid-hero-phone__nfc-moment" aria-label={copy.trustedTap}>
+            <span className="nexid-hero-phone__nfc-chip" aria-hidden="true">
+              <i />
+              <em>NFC</em>
+            </span>
+            <span className="nexid-hero-phone__nfc-wave" aria-hidden="true">
+              <i />
+              <i />
+              <i />
+            </span>
+            <div>
+              <em>{copy.livePhoneTitle}</em>
+              <strong>{copy.trustedTap}</strong>
+              <small>{data.phoneTag}</small>
+            </div>
+          </section>
+
           <section className="nexid-hero-phone__tap-demo" aria-label={copy.trustedTap}>
             <span className="nexid-hero-phone__tap-beacon" aria-hidden="true">
               <i />
@@ -2622,6 +2669,21 @@ function ProductDetailModal({
           <button ref={closeButtonRef} className="hero-product-modal__close" type="button" onClick={onClose} aria-label={copy.close}>
             <X className="h-5 w-5" />
           </button>
+        </div>
+
+        <div className="hero-product-modal__trust-strip" aria-hidden="true">
+          <span>
+            <em>{copy.productTitle}</em>
+            <strong>{data.product}</strong>
+          </span>
+          <span>
+            <em>{copy.state}</em>
+            <strong>{data.result}</strong>
+          </span>
+          <span>
+            <em>{copy.trustedTap}</em>
+            <strong>{data.phoneTag}</strong>
+          </span>
         </div>
 
         <div className="hero-product-modal__grid">

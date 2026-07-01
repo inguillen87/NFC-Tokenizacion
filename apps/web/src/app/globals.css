@@ -40830,3 +40830,677 @@ html[data-theme="light"] .landing-hero-section .nexid-hero-phone__screen {
     animation: none !important;
   }
 }
+
+/* Absolute enterprise hero closure: must remain the last hero override. */
+body .landing-root .landing-hero-section .nexid-hero-board {
+  grid-template-columns: minmax(34rem, 1.46fr) minmax(20rem, 0.78fr) minmax(18.5rem, 0.68fr) !important;
+  gap: clamp(0.95rem, 1.5vw, 1.35rem) !important;
+}
+
+body .landing-root .landing-hero-section .nexid-hero-atlas-card__viewport {
+  transform: scale(var(--nexid-hero-atlas-zoom, 1)) !important;
+  transform-origin: 51% 49% !important;
+  transition: transform 220ms ease, filter 220ms ease !important;
+}
+
+body .landing-root .landing-hero-section .nexid-hero-atlas-card__viewport[data-zoom-level="1"] {
+  filter: saturate(1.05) contrast(1.04) !important;
+}
+
+body .landing-root .landing-hero-section .nexid-hero-atlas-card__viewport[data-zoom-level="2"] {
+  filter: saturate(1.08) contrast(1.06) !important;
+}
+
+body .landing-root .landing-hero-section .nexid-hero-atlas-card__map {
+  height: clamp(24.5rem, 29vw, 30.5rem) !important;
+  min-height: clamp(24.5rem, 29vw, 30.5rem) !important;
+  margin: 0.78rem 0.72rem 0 !important;
+  border-color: rgba(103, 232, 249, 0.34) !important;
+  background:
+    radial-gradient(circle at 20% 22%, rgba(34, 211, 238, 0.22), transparent 28%),
+    radial-gradient(circle at 80% 62%, rgba(52, 211, 153, 0.15), transparent 31%),
+    linear-gradient(180deg, #073955 0%, #05263e 42%, #02101f 100%) !important;
+}
+
+body .landing-root .landing-hero-section .nexid-hero-atlas-card__viewport > .hero-trust-atlas,
+body .landing-root .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas {
+  inset: 0.28rem 0.32rem 0.24rem !important;
+  width: calc(100% - 0.64rem) !important;
+  height: calc(100% - 0.52rem) !important;
+  transform: none !important;
+}
+
+body .landing-root .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__route {
+  stroke-width: 3.35px !important;
+  stroke-dasharray: 13 13 !important;
+}
+
+body .landing-root .landing-hero-section .nexid-hero-product-card__media {
+  min-height: clamp(21rem, 29vw, 29rem) !important;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(34, 211, 238, 0.12), transparent 30%),
+    radial-gradient(ellipse at 50% 92%, rgba(15, 23, 42, 0.42), transparent 44%),
+    linear-gradient(180deg, #0b1824 0%, #07111c 52%, #020817 100%) !important;
+}
+
+body .landing-root .landing-hero-section .nexid-hero-product-card__media::after {
+  height: 30% !important;
+  background: linear-gradient(180deg, transparent 0%, rgba(2, 8, 23, 0.16) 42%, rgba(2, 8, 23, 0.9) 100%) !important;
+}
+
+body .landing-root .landing-hero-section .nexid-hero-product-card__photo.nexid-premium-image--dark {
+  filter: brightness(0.97) contrast(1.1) saturate(1.04) drop-shadow(0 1.4rem 2rem rgba(0, 0, 0, 0.38)) !important;
+  transform: scale(1.12) !important;
+}
+
+html.theme-light body .landing-root .landing-hero-section .nexid-hero-atlas-card__map,
+html[data-theme="light"] body .landing-root .landing-hero-section .nexid-hero-atlas-card__map {
+  border-color: rgba(14, 116, 144, 0.24) !important;
+  background:
+    radial-gradient(circle at 16% 18%, rgba(14, 165, 233, 0.18), transparent 30%),
+    radial-gradient(circle at 80% 66%, rgba(16, 185, 129, 0.13), transparent 32%),
+    linear-gradient(180deg, #dff7ff 0%, #f8fdff 52%, #d8f0fb 100%) !important;
+}
+
+html.theme-light body .landing-root .landing-hero-section .nexid-hero-product-card__media,
+html[data-theme="light"] body .landing-root .landing-hero-section .nexid-hero-product-card__media,
+html.theme-light body .hero-product-modal__asset,
+html[data-theme="light"] body .hero-product-modal__asset {
+  background:
+    radial-gradient(circle at 50% 18%, rgba(14, 165, 233, 0.12), transparent 31%),
+    radial-gradient(ellipse at 50% 92%, rgba(15, 23, 42, 0.1), transparent 44%),
+    linear-gradient(180deg, #ffffff 0%, #f4fbff 58%, #ffffff 100%) !important;
+}
+
+html.theme-light body .landing-root .landing-hero-section .nexid-hero-phone__screen,
+html[data-theme="light"] body .landing-root .landing-hero-section .nexid-hero-phone__screen {
+  background: linear-gradient(180deg, #f8fdff 0%, #ffffff 50%, #eef8ff 100%) !important;
+}
+
+@media (max-width: 1400px) {
+  body .landing-root .landing-hero-section .nexid-hero-board {
+    grid-template-columns: minmax(0, 1.26fr) minmax(18rem, 0.78fr) !important;
+  }
+
+  body .landing-root .landing-hero-section .nexid-hero-phone-panel {
+    grid-column: 1 / -1 !important;
+  }
+}
+
+@media (max-width: 980px) {
+  body .landing-root .landing-hero-section .nexid-hero-board {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  body .landing-root .landing-hero-section .nexid-hero-atlas-card__map {
+    height: clamp(19.5rem, 58vw, 26rem) !important;
+    min-height: clamp(19.5rem, 58vw, 26rem) !important;
+  }
+}
+
+@media (max-width: 640px) {
+  body .landing-root .landing-hero-section .nexid-hero-atlas-card__map {
+    height: clamp(15.75rem, 69vw, 18.5rem) !important;
+    min-height: clamp(15.75rem, 69vw, 18.5rem) !important;
+  }
+}
+
+/* Absolute enterprise hero closure v2: EOF authority for current landing hero. */
+body .landing-root .landing-hero-section .nexid-hero-atlas-card__viewport {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  transform: scale(var(--nexid-hero-atlas-zoom, 1.12)) !important;
+  transform-origin: 51% 48% !important;
+  transition: transform 220ms ease, filter 220ms ease !important;
+  pointer-events: none !important;
+}
+
+body .landing-root .landing-hero-section .nexid-hero-atlas-card__viewport > .hero-trust-atlas {
+  position: absolute !important;
+  inset: 0.28rem 0.32rem 0.24rem !important;
+  width: calc(100% - 0.64rem) !important;
+  height: calc(100% - 0.52rem) !important;
+  pointer-events: none !important;
+}
+
+body .landing-root .landing-hero-section .nexid-hero-atlas-card__map-controls {
+  z-index: 12 !important;
+  pointer-events: auto !important;
+}
+
+body .landing-root .landing-hero-section .nexid-hero-atlas-card__map-controls button {
+  pointer-events: auto !important;
+}
+
+html.theme-light body .landing-root .landing-hero-section .nexid-hero-atlas-card__map,
+html[data-theme="light"] body .landing-root .landing-hero-section .nexid-hero-atlas-card__map {
+  border-color: rgba(14, 116, 144, 0.24) !important;
+  background:
+    radial-gradient(circle at 16% 18%, rgba(14, 165, 233, 0.18), transparent 30%),
+    radial-gradient(circle at 80% 66%, rgba(16, 185, 129, 0.13), transparent 32%),
+    linear-gradient(180deg, #dff7ff 0%, #d5f2fb 52%, #c9eaf6 100%) !important;
+}
+
+html.theme-light body .landing-root .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas,
+html[data-theme="light"] body .landing-root .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas {
+  --hero-atlas-ocean-a: #d6f4fc !important;
+  --hero-atlas-ocean-b: #d2eef8 !important;
+  --hero-atlas-ocean-c: #c7e8f4 !important;
+  --hero-atlas-land-a: #37bcc2 !important;
+  --hero-atlas-land-b: #168ba1 !important;
+  --hero-atlas-land-c: #5d8ee9 !important;
+}
+
+html.theme-light body .landing-root .landing-hero-section .nexid-hero-product-card__media,
+html[data-theme="light"] body .landing-root .landing-hero-section .nexid-hero-product-card__media {
+  background:
+    radial-gradient(circle at 50% 21%, rgba(14, 165, 233, 0.12), transparent 30%),
+    radial-gradient(ellipse at 50% 92%, rgba(15, 23, 42, 0.16), transparent 44%),
+    linear-gradient(180deg, #fbfdff 0%, #eaf4f8 58%, #f8fbfd 100%) !important;
+}
+
+html.theme-light body .hero-product-modal__asset,
+html[data-theme="light"] body .hero-product-modal__asset {
+  background:
+    radial-gradient(circle at 50% 18%, rgba(14, 165, 233, 0.11), transparent 31%),
+    radial-gradient(ellipse at 50% 92%, rgba(15, 23, 42, 0.1), transparent 44%),
+    linear-gradient(180deg, #ffffff 0%, #f4fbff 58%, #ffffff 100%) !important;
+}
+
+html.theme-light body .landing-root .landing-hero-section .nexid-hero-product-card__photo.nexid-premium-image--light,
+html[data-theme="light"] body .landing-root .landing-hero-section .nexid-hero-product-card__photo.nexid-premium-image--light {
+  object-fit: cover !important;
+  object-position: center 45% !important;
+  padding: 0 !important;
+  filter: brightness(0.78) contrast(1.36) saturate(1.02) drop-shadow(0 1.2rem 1.55rem rgba(15, 23, 42, 0.2)) !important;
+  mix-blend-mode: normal !important;
+  transform: scale(1.02) !important;
+}
+
+html.theme-light body .landing-root .landing-hero-section .nexid-hero-product-card__media::after,
+html[data-theme="light"] body .landing-root .landing-hero-section .nexid-hero-product-card__media::after {
+  height: 34% !important;
+  opacity: 0.88 !important;
+  background:
+    radial-gradient(ellipse at 50% 93%, rgba(15, 23, 42, 0.14), transparent 44%),
+    linear-gradient(180deg, transparent 0%, rgba(247, 252, 255, 0.2) 42%, rgba(235, 244, 248, 0.84) 100%) !important;
+}
+
+body .landing-root .landing-hero-section .nexid-hero-phone__nfc-moment {
+  position: relative !important;
+  display: grid !important;
+  grid-template-columns: auto 2.7rem minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 0.58rem !important;
+  overflow: hidden !important;
+  margin: 0.58rem 0 0 !important;
+  padding: 0.66rem !important;
+  border: 1px solid rgba(34, 211, 238, 0.28) !important;
+  border-radius: 12px !important;
+  background:
+    radial-gradient(circle at 18% 48%, rgba(34, 211, 238, 0.22), transparent 28%),
+    linear-gradient(135deg, rgba(8, 47, 73, 0.42), rgba(6, 78, 59, 0.22)) !important;
+}
+
+body .landing-root .landing-hero-section .nexid-hero-phone__nfc-chip {
+  position: relative !important;
+  display: grid !important;
+  width: 2.25rem !important;
+  height: 2.25rem !important;
+  place-items: center !important;
+  border: 1px solid rgba(103, 232, 249, 0.42) !important;
+  border-radius: 10px !important;
+  background: rgba(2, 8, 23, 0.48) !important;
+  color: #67e8f9 !important;
+  font-size: 0.52rem !important;
+  font-weight: 950 !important;
+  letter-spacing: 0.08em !important;
+}
+
+body .landing-root .landing-hero-section .nexid-hero-phone__nfc-chip i {
+  position: absolute !important;
+  inset: 0.44rem !important;
+  border: 1px solid rgba(103, 232, 249, 0.52) !important;
+  border-radius: 6px !important;
+}
+
+body .landing-root .landing-hero-section .nexid-hero-phone__nfc-wave {
+  position: relative !important;
+  display: grid !important;
+  width: 2.7rem !important;
+  height: 2.7rem !important;
+  place-items: center !important;
+}
+
+body .landing-root .landing-hero-section .nexid-hero-phone__nfc-wave i {
+  position: absolute !important;
+  inset: 0.34rem !important;
+  border: 1px solid rgba(103, 232, 249, 0.46) !important;
+  border-radius: 999px !important;
+  opacity: 0 !important;
+  animation: nexid-enterprise-nfc-wave 2.4s ease-out infinite !important;
+}
+
+body .landing-root .landing-hero-section .nexid-hero-phone__nfc-wave i:nth-child(2) {
+  animation-delay: 0.52s !important;
+}
+
+body .landing-root .landing-hero-section .nexid-hero-phone__nfc-wave i:nth-child(3) {
+  animation-delay: 1.04s !important;
+}
+
+body .landing-root .landing-hero-section .nexid-hero-phone__nfc-moment em,
+body .landing-root .landing-hero-section .nexid-hero-phone__nfc-moment small {
+  color: rgba(165, 243, 252, 0.82) !important;
+  display: block !important;
+  font-size: 0.58rem !important;
+  font-weight: 850 !important;
+  letter-spacing: 0.08em !important;
+  line-height: 1.15 !important;
+  text-transform: uppercase !important;
+}
+
+body .landing-root .landing-hero-section .nexid-hero-phone__nfc-moment strong {
+  color: #f8fafc !important;
+  display: block !important;
+  overflow: hidden !important;
+  font-size: 0.74rem !important;
+  font-weight: 950 !important;
+  line-height: 1.12 !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+html.theme-light body .landing-root .landing-hero-section .nexid-hero-phone__nfc-moment,
+html[data-theme="light"] body .landing-root .landing-hero-section .nexid-hero-phone__nfc-moment {
+  border-color: rgba(14, 116, 144, 0.18) !important;
+  background:
+    radial-gradient(circle at 18% 48%, rgba(14, 165, 233, 0.16), transparent 28%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(236, 253, 245, 0.74)) !important;
+}
+
+html.theme-light body .landing-root .landing-hero-section .nexid-hero-phone__nfc-moment strong,
+html[data-theme="light"] body .landing-root .landing-hero-section .nexid-hero-phone__nfc-moment strong {
+  color: #064e3b !important;
+}
+
+html.theme-light body .landing-root .landing-hero-section .nexid-hero-phone__nfc-moment em,
+html.theme-light body .landing-root .landing-hero-section .nexid-hero-phone__nfc-moment small,
+html[data-theme="light"] body .landing-root .landing-hero-section .nexid-hero-phone__nfc-moment em,
+html[data-theme="light"] body .landing-root .landing-hero-section .nexid-hero-phone__nfc-moment small {
+  color: #087f5b !important;
+}
+
+.hero-product-modal__trust-strip {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 0.72rem !important;
+  margin: 0.85rem clamp(1rem, 2vw, 1.4rem) 0 !important;
+}
+
+.hero-product-modal__trust-strip span {
+  min-width: 0 !important;
+  border: 1px solid rgba(103, 232, 249, 0.18) !important;
+  border-radius: 12px !important;
+  padding: 0.72rem 0.82rem !important;
+  background: rgba(8, 47, 73, 0.26) !important;
+}
+
+.hero-product-modal__trust-strip em,
+.hero-product-modal__trust-strip strong {
+  display: block !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.hero-product-modal__trust-strip em {
+  color: rgba(125, 211, 252, 0.78) !important;
+  font-size: 0.62rem !important;
+  font-style: normal !important;
+  font-weight: 850 !important;
+  letter-spacing: 0.09em !important;
+  text-transform: uppercase !important;
+}
+
+.hero-product-modal__trust-strip strong {
+  color: #f8fafc !important;
+  font-size: 0.82rem !important;
+  font-weight: 900 !important;
+}
+
+html.theme-light .hero-product-modal__trust-strip span,
+html[data-theme="light"] .hero-product-modal__trust-strip span {
+  border-color: rgba(14, 116, 144, 0.16) !important;
+  background: rgba(255, 255, 255, 0.78) !important;
+}
+
+html.theme-light .hero-product-modal__trust-strip strong,
+html[data-theme="light"] .hero-product-modal__trust-strip strong {
+  color: #0f172a !important;
+}
+
+@keyframes nexid-enterprise-nfc-wave {
+  0% {
+    opacity: 0.64;
+    transform: scale(0.48);
+  }
+
+  70% {
+    opacity: 0.12;
+    transform: scale(1.36);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.62);
+  }
+}
+
+@media (max-width: 640px) {
+  body .landing-root .landing-hero-section .nexid-hero-atlas-card__map {
+    height: clamp(11.5rem, 46vw, 13.25rem) !important;
+    min-height: clamp(11.5rem, 46vw, 13.25rem) !important;
+  }
+
+  .hero-product-modal__trust-strip {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+/* Enterprise UX final pass: premium media and atlas must stay deterministic
+   across light/dark without destructive filters or decorative-only controls. */
+body .landing-root .landing-hero-section .nexid-hero-atlas-card__viewport {
+  transform: scale(var(--nexid-hero-atlas-zoom, 1)) !important;
+  transform-origin: 50% 50% !important;
+}
+
+body .landing-root .landing-hero-section .nexid-hero-atlas-card__map-controls {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(125, 211, 252, 0.24) !important;
+  border-radius: 10px !important;
+  background: rgba(2, 8, 23, 0.62) !important;
+  box-shadow: 0 0.9rem 1.8rem rgba(2, 8, 23, 0.28) !important;
+  backdrop-filter: blur(14px) !important;
+}
+
+body .landing-root .landing-hero-section .nexid-hero-atlas-card__map-controls button {
+  width: 2.15rem !important;
+  min-height: 1.9rem !important;
+  border: 0 !important;
+  border-bottom: 1px solid rgba(125, 211, 252, 0.18) !important;
+  background: rgba(8, 47, 73, 0.3) !important;
+  color: #e0f2fe !important;
+  font-size: 1.1rem !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  transition: background 160ms ease, color 160ms ease, opacity 160ms ease !important;
+}
+
+body .landing-root .landing-hero-section .nexid-hero-atlas-card__map-controls button:last-child {
+  border-bottom: 0 !important;
+}
+
+body .landing-root .landing-hero-section .nexid-hero-atlas-card__map-controls button:not(:disabled):hover {
+  background: rgba(34, 211, 238, 0.22) !important;
+  color: #ffffff !important;
+}
+
+body .landing-root .landing-hero-section .nexid-hero-atlas-card__map-controls button:disabled {
+  cursor: not-allowed !important;
+  opacity: 0.42 !important;
+}
+
+body .landing-root .landing-hero-section .nexid-hero-product-card__media,
+body .hero-product-modal__asset {
+  overflow: hidden !important;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(34, 211, 238, 0.1), transparent 30%),
+    radial-gradient(ellipse at 50% 91%, rgba(0, 0, 0, 0.34), transparent 44%),
+    linear-gradient(180deg, #0b141d 0%, #070e17 58%, #020817 100%) !important;
+}
+
+body .landing-root .landing-hero-section .nexid-hero-product-card__media::before,
+body .hero-product-modal__asset::before,
+body .landing-root .landing-hero-section .nexid-hero-phone__product > span::before,
+body .sdk-proof-product-shot::before,
+body .sdk-industry-image-wrap::before,
+body .demo-lab-real-product-shot::before,
+body .demo-lab-premium-scene__media::before,
+body .demo-lab-wine-product__packshot::before,
+body .demo-lab-cosmetic-photo::before,
+body .demo-lab-sneaker-product__photo::before,
+body .demo-lab-event-photo::before {
+  content: none !important;
+  display: none !important;
+}
+
+body .landing-root .landing-hero-section .nexid-hero-product-card__media::after,
+body .hero-product-modal__asset::after {
+  content: "" !important;
+  position: absolute !important;
+  inset: auto 0 0 !important;
+  height: 18% !important;
+  opacity: 0.72 !important;
+  background: linear-gradient(180deg, transparent 0%, rgba(2, 8, 23, 0.72) 100%) !important;
+  pointer-events: none !important;
+}
+
+body .landing-root .landing-hero-section .nexid-hero-product-card__photo.nexid-premium-image--dark,
+body .hero-product-modal__asset-photo.nexid-premium-image--dark {
+  position: absolute !important;
+  inset: 0 !important;
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center 46% !important;
+  padding: 0 !important;
+  filter: brightness(0.98) contrast(1.1) saturate(1.04) drop-shadow(0 1.35rem 1.9rem rgba(0, 0, 0, 0.34)) !important;
+  mix-blend-mode: normal !important;
+  transform: scale(1.02) !important;
+}
+
+body .hero-product-modal__asset-photo.nexid-premium-image--dark {
+  object-fit: contain !important;
+  transform: scale(1.04) !important;
+}
+
+html.theme-light body .landing-root .landing-hero-section .nexid-hero-product-card__media,
+html[data-theme="light"] body .landing-root .landing-hero-section .nexid-hero-product-card__media,
+html.theme-light body .hero-product-modal__asset,
+html[data-theme="light"] body .hero-product-modal__asset {
+  background:
+    radial-gradient(circle at 50% 20%, rgba(14, 165, 233, 0.1), transparent 30%),
+    radial-gradient(ellipse at 50% 92%, rgba(15, 23, 42, 0.13), transparent 42%),
+    linear-gradient(180deg, #ffffff 0%, #f5fbff 54%, #ffffff 100%) !important;
+}
+
+html.theme-light body .landing-root .landing-hero-section .nexid-hero-product-card__media::after,
+html[data-theme="light"] body .landing-root .landing-hero-section .nexid-hero-product-card__media::after,
+html.theme-light body .hero-product-modal__asset::after,
+html[data-theme="light"] body .hero-product-modal__asset::after {
+  height: 12% !important;
+  opacity: 0.34 !important;
+  background: linear-gradient(180deg, transparent 0%, rgba(226, 239, 247, 0.54) 100%) !important;
+}
+
+html.theme-light body .landing-root .landing-hero-section .nexid-hero-product-card__photo.nexid-premium-image--light,
+html[data-theme="light"] body .landing-root .landing-hero-section .nexid-hero-product-card__photo.nexid-premium-image--light,
+html.theme-light body .hero-product-modal__asset-photo.nexid-premium-image--light,
+html[data-theme="light"] body .hero-product-modal__asset-photo.nexid-premium-image--light,
+html.theme-light body .landing-root .landing-hero-section .nexid-hero-phone__product-photo.nexid-premium-image--light,
+html[data-theme="light"] body .landing-root .landing-hero-section .nexid-hero-phone__product-photo.nexid-premium-image--light {
+  position: absolute !important;
+  inset: 0 !important;
+  display: block !important;
+  opacity: 1 !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center 46% !important;
+  padding: 0 !important;
+  filter: brightness(0.98) contrast(1.14) saturate(1.06) drop-shadow(0 1.1rem 1.55rem rgba(15, 23, 42, 0.16)) !important;
+  mix-blend-mode: normal !important;
+  transform: scale(1.01) !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+
+html.theme-light body .hero-product-modal__asset-photo.nexid-premium-image--light,
+html[data-theme="light"] body .hero-product-modal__asset-photo.nexid-premium-image--light {
+  object-fit: contain !important;
+  transform: scale(1.02) !important;
+}
+
+html.theme-light body .landing-root .landing-hero-section .nexid-hero-phone__product-photo.nexid-premium-image--light,
+html[data-theme="light"] body .landing-root .landing-hero-section .nexid-hero-phone__product-photo.nexid-premium-image--light {
+  object-fit: cover !important;
+  transform: scale(1.04) !important;
+}
+
+html.theme-light body .sdk-proof-product-shot,
+html[data-theme="light"] body .sdk-proof-product-shot,
+html.theme-light body .sdk-industry-image-wrap,
+html[data-theme="light"] body .sdk-industry-image-wrap,
+html.theme-light body .demo-lab-real-product-shot,
+html[data-theme="light"] body .demo-lab-real-product-shot,
+html.theme-light body .demo-lab-premium-scene__media,
+html[data-theme="light"] body .demo-lab-premium-scene__media,
+html.theme-light body .demo-lab-wine-product__packshot,
+html[data-theme="light"] body .demo-lab-wine-product__packshot,
+html.theme-light body .demo-lab-cosmetic-photo,
+html[data-theme="light"] body .demo-lab-cosmetic-photo,
+html.theme-light body .demo-lab-sneaker-product__photo,
+html[data-theme="light"] body .demo-lab-sneaker-product__photo,
+html.theme-light body .demo-lab-event-photo,
+html[data-theme="light"] body .demo-lab-event-photo {
+  background:
+    radial-gradient(circle at 50% 22%, rgba(14, 165, 233, 0.1), transparent 32%),
+    radial-gradient(ellipse at 50% 92%, rgba(15, 23, 42, 0.12), transparent 42%),
+    linear-gradient(180deg, #ffffff 0%, #f4fbff 58%, #ffffff 100%) !important;
+}
+
+html.theme-light body .sdk-proof-product-shot .nexid-premium-image--light,
+html[data-theme="light"] body .sdk-proof-product-shot .nexid-premium-image--light,
+html.theme-light body .sdk-industry-image.nexid-premium-image--light,
+html[data-theme="light"] body .sdk-industry-image.nexid-premium-image--light,
+html.theme-light body .demo-lab-real-product-shot .nexid-premium-image--light,
+html[data-theme="light"] body .demo-lab-real-product-shot .nexid-premium-image--light,
+html.theme-light body .demo-lab-premium-scene__media .nexid-premium-image--light,
+html[data-theme="light"] body .demo-lab-premium-scene__media .nexid-premium-image--light,
+html.theme-light body .demo-lab-wine-product__packshot .nexid-premium-image--light,
+html[data-theme="light"] body .demo-lab-wine-product__packshot .nexid-premium-image--light,
+html.theme-light body .demo-lab-cosmetic-photo .nexid-premium-image--light,
+html[data-theme="light"] body .demo-lab-cosmetic-photo .nexid-premium-image--light,
+html.theme-light body .demo-lab-sneaker-product__photo .nexid-premium-image--light,
+html[data-theme="light"] body .demo-lab-sneaker-product__photo .nexid-premium-image--light,
+html.theme-light body .demo-lab-event-photo .nexid-premium-image--light,
+html[data-theme="light"] body .demo-lab-event-photo .nexid-premium-image--light {
+  filter: brightness(0.98) contrast(1.1) saturate(1.05) drop-shadow(0 1rem 1.35rem rgba(15, 23, 42, 0.14)) !important;
+  mix-blend-mode: normal !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+
+html.theme-light body .enterprise-trust-layers__shell,
+html[data-theme="light"] body .enterprise-trust-layers__shell,
+html.theme-light body .landing-brand-synergy-shell,
+html[data-theme="light"] body .landing-brand-synergy-shell,
+html.theme-light body .institutional-video-panel--landing,
+html[data-theme="light"] body .institutional-video-panel--landing {
+  border-color: rgba(14, 116, 144, 0.18) !important;
+  background:
+    radial-gradient(circle at 14% 18%, rgba(14, 165, 233, 0.11), transparent 32%),
+    radial-gradient(circle at 88% 76%, rgba(16, 185, 129, 0.09), transparent 34%),
+    linear-gradient(135deg, #ffffff 0%, #f7fbff 58%, #f8fffb 100%) !important;
+  color: #0f172a !important;
+  box-shadow: 0 1.7rem 4.2rem rgba(15, 23, 42, 0.12) !important;
+}
+
+html.theme-light body .landing-root .landing-hero-section .nexid-hero-phone::before,
+html.theme-light body .landing-root .landing-hero-section .nexid-hero-phone::after,
+html.theme-light body .landing-root .landing-hero-section .nexid-hero-phone__screen::before,
+html.theme-light body .landing-root .landing-hero-section .nexid-hero-phone__screen::after,
+html[data-theme="light"] body .landing-root .landing-hero-section .nexid-hero-phone::before,
+html[data-theme="light"] body .landing-root .landing-hero-section .nexid-hero-phone::after,
+html[data-theme="light"] body .landing-root .landing-hero-section .nexid-hero-phone__screen::before,
+html[data-theme="light"] body .landing-root .landing-hero-section .nexid-hero-phone__screen::after,
+body .landing-root .landing-hero-section .nexid-hero-phone::before,
+body .landing-root .landing-hero-section .nexid-hero-phone::after,
+body .landing-root .landing-hero-section .nexid-hero-phone__screen::before,
+body .landing-root .landing-hero-section .nexid-hero-phone__screen::after {
+  content: none !important;
+  display: none !important;
+}
+
+html.theme-light body .landing-root .landing-hero-section .nexid-hero-product-card__photo.nexid-premium-image--dark,
+html[data-theme="light"] body .landing-root .landing-hero-section .nexid-hero-product-card__photo.nexid-premium-image--dark,
+html.theme-light body .hero-product-modal__asset-photo.nexid-premium-image--dark,
+html[data-theme="light"] body .hero-product-modal__asset-photo.nexid-premium-image--dark,
+html.theme-light body .landing-root .landing-hero-section .nexid-hero-phone__product-photo.nexid-premium-image--dark,
+html[data-theme="light"] body .landing-root .landing-hero-section .nexid-hero-phone__product-photo.nexid-premium-image--dark {
+  display: none !important;
+}
+
+html:not(.theme-light):not([data-theme="light"]) body .landing-root .landing-hero-section .nexid-hero-product-card__photo.nexid-premium-image--light,
+html:not(.theme-light):not([data-theme="light"]) body .hero-product-modal__asset-photo.nexid-premium-image--light,
+html:not(.theme-light):not([data-theme="light"]) body .landing-root .landing-hero-section .nexid-hero-phone__product-photo.nexid-premium-image--light {
+  display: none !important;
+}
+
+html.theme-light body .landing-root .landing-hero-section .nexid-hero-atlas-card__map,
+html[data-theme="light"] body .landing-root .landing-hero-section .nexid-hero-atlas-card__map {
+  background:
+    radial-gradient(circle at 20% 18%, rgba(14, 165, 233, 0.18), transparent 31%),
+    radial-gradient(circle at 82% 66%, rgba(16, 185, 129, 0.12), transparent 33%),
+    linear-gradient(180deg, #d9f8ff 0%, #c8eff8 54%, #e5f9ff 100%) !important;
+}
+
+html.theme-light body .landing-root .landing-hero-section .nexid-hero-atlas-card__map::before,
+html[data-theme="light"] body .landing-root .landing-hero-section .nexid-hero-atlas-card__map::before {
+  opacity: 0.12 !important;
+}
+
+html.theme-light body .landing-root .landing-hero-section .nexid-hero-atlas-card__map::after,
+html[data-theme="light"] body .landing-root .landing-hero-section .nexid-hero-atlas-card__map::after {
+  opacity: 0.22 !important;
+  background:
+    linear-gradient(90deg, rgba(218, 246, 255, 0.32), transparent 12%, transparent 88%, rgba(218, 246, 255, 0.32)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 58%, rgba(14, 116, 144, 0.12)) !important;
+}
+
+html.theme-light body .landing-root .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas--hero,
+html[data-theme="light"] body .landing-root .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas--hero {
+  --hero-atlas-ocean-a: #d6f7ff !important;
+  --hero-atlas-ocean-b: #bcebf5 !important;
+  --hero-atlas-ocean-c: #dff7ff !important;
+  --hero-atlas-land-a: #58cfd1 !important;
+  --hero-atlas-land-b: #1aa2ad !important;
+  --hero-atlas-land-c: #78a9f7 !important;
+  background: linear-gradient(180deg, #d6f7ff 0%, #c2eff8 55%, #e1f8ff 100%) !important;
+  filter: drop-shadow(0 1rem 1.8rem rgba(14, 116, 144, 0.12)) !important;
+}
+
+html.theme-light body .landing-root .landing-hero-section .nexid-hero-product-card__photo.nexid-premium-image--light,
+html[data-theme="light"] body .landing-root .landing-hero-section .nexid-hero-product-card__photo.nexid-premium-image--light,
+html.theme-light body .hero-product-modal__asset-photo.nexid-premium-image--light,
+html[data-theme="light"] body .hero-product-modal__asset-photo.nexid-premium-image--light,
+html.theme-light body .landing-root .landing-hero-section .nexid-hero-phone__product-photo.nexid-premium-image--light,
+html[data-theme="light"] body .landing-root .landing-hero-section .nexid-hero-phone__product-photo.nexid-premium-image--light {
+  filter: brightness(0.95) contrast(1.18) saturate(1.06) drop-shadow(0 1.1rem 1.55rem rgba(15, 23, 42, 0.16)) !important;
+}
+
+body .hero-product-modal__asset-photo.nexid-premium-image--dark,
+body .hero-product-modal__asset-photo.nexid-premium-image--light,
+html.theme-light body .hero-product-modal__asset-photo.nexid-premium-image--light,
+html[data-theme="light"] body .hero-product-modal__asset-photo.nexid-premium-image--light {
+  object-fit: contain !important;
+  object-position: center 34% !important;
+  padding: clamp(0.65rem, 1vw, 1rem) clamp(0.65rem, 1vw, 1rem) clamp(6.75rem, 9vh, 7.75rem) !important;
+  transform: none !important;
+}

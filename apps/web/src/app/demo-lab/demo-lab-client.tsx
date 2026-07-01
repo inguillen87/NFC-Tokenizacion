@@ -163,7 +163,7 @@ function verticalTo3DIndustry(vertical: Vertical): string {
 }
 
 const demoLabRealAssets: Record<Vertical, { imageUrl: string; imageLightUrl: string; credit: string }> = {
-  wine: { imageUrl: "/sdk/verticals/wine-spirits-424-tt.png", imageLightUrl: "/sdk/verticals/light/premium-wine-light-enterprise.webp", credit: "nexID generated asset" },
+  wine: { imageUrl: "/sdk/verticals/wine-spirits-424-tt.png", imageLightUrl: "/sdk/verticals/light/premium-wine-light.webp", credit: "nexID generated asset" },
   seeds: { imageUrl: "/sdk/verticals/agro-nfc-qr-traceability.webp", imageLightUrl: "/sdk/verticals/light/premium-agro-light.webp", credit: "nexID generated asset" },
   pharma: { imageUrl: "/sdk/pharma-authentication-pack.webp", imageLightUrl: "/sdk/verticals/light/premium-pharma-agro-light-enterprise.webp", credit: "nexID generated asset" },
   creamJar: { imageUrl: "/sdk/verticals/cosmetics-nfc-qr-tamper.webp", imageLightUrl: "/sdk/verticals/light/premium-beauty-light.webp", credit: "nexID generated asset" },

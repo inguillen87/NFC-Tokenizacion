@@ -147,7 +147,7 @@ export const platformVerticals: PlatformVertical[] = [
     bodyEn: "Premium bottles with NTAG 424 DNA TT, opening tail, passport, ownership and export control.",
     bodyPt: "Garrafas premium com NTAG 424 DNA TT, tail de abertura, passport, ownership e exportacao.",
     image: "/sdk/verticals/wine-spirits-424-tt.png",
-    imageLight: "/sdk/verticals/light/premium-wine-light-enterprise.webp",
+    imageLight: "/sdk/verticals/light/premium-wine-light.webp",
     tags: ["424 DNA", "Tail", "SUN"],
     metric: "424 TT",
     icon: "shield",
