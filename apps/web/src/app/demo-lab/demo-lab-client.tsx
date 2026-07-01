@@ -153,7 +153,8 @@ function getScenarioStart(value?: string | null): { key: DemoTrustScenarioKey | 
 }
 
 function verticalTo3DIndustry(vertical: Vertical): string {
-  if (vertical === "wine" || vertical === "bottle") return "bodegas";
+  if (vertical === "wine") return "bodegas";
+  if (vertical === "bottle") return "botellas";
   if (vertical === "seeds" || vertical === "logistics") return "agro";
   if (vertical === "pharma") return "pharma";
   if (vertical === "creamJar" || vertical === "perfume" || vertical === "creamTube" || vertical === "sneaker" || vertical === "luxury" || vertical === "textile") return "cosmetica";
@@ -172,7 +173,7 @@ const demoLabRealAssets: Record<Vertical, { imageUrl: string; imageLightUrl: str
   ticket: { imageUrl: "/sdk/verticals/events-nfc-qr-access.webp", imageLightUrl: "/sdk/verticals/light/premium-events-light.webp", credit: "nexID generated asset" },
   sneaker: { imageUrl: "/sdk/verticals/sneaker-nfc-qr-tamper.png", imageLightUrl: "/sdk/verticals/light/premium-sneaker-light.webp", credit: "nexID generated asset" },
   luxury: { imageUrl: "/sdk/verticals/luxury-nfc-qr-tamper.webp", imageLightUrl: "/sdk/verticals/light/premium-beauty-light.webp", credit: "nexID generated asset" },
-  bottle: { imageUrl: "/sdk/verticals/beverages-bottle-nfc-qr.png", imageLightUrl: "/sdk/verticals/light/premium-wine-light.webp", credit: "nexID generated asset" },
+  bottle: { imageUrl: "/sdk/verticals/beverages-bottle-nfc-qr.png", imageLightUrl: "/sdk/verticals/light/premium-bottle-light.webp", credit: "nexID generated asset" },
   logistics: { imageUrl: "/sdk/verticals/logistics-uhf-nfc-qr.webp", imageLightUrl: "/sdk/verticals/light/premium-logistics-light.webp", credit: "nexID generated asset" },
   electronics: { imageUrl: "/sdk/verticals/electronics-warranty-nfc-qr.webp", imageLightUrl: "/sdk/verticals/light/premium-electronics-light.webp", credit: "nexID generated asset" },
   textile: { imageUrl: "/sdk/verticals/textile-dpp-nfc-qr.webp", imageLightUrl: "/sdk/verticals/light/premium-textile-light.webp", credit: "nexID generated asset" },

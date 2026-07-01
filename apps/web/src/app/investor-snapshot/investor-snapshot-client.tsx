@@ -338,7 +338,9 @@ export function ThreeDProduct({ active, tapping, labelImageUrl, industry, chipMo
     let hotspotX = 0;
     let hotspotZ = 0;
     
-    if (industry === "cosmetica") {
+    if (industry === "botellas") {
+      hotspotY = 5.2;
+    } else if (industry === "cosmetica") {
       hotspotY = 4.65;
     } else if (industry === "agro") {
       hotspotX = 0.8;
@@ -367,7 +369,50 @@ export function ThreeDProduct({ active, tapping, labelImageUrl, industry, chipMo
     let labelRotationY = 0;
 
     // Build Morphing Geometries
-    if (industry === "cosmetica") {
+    if (industry === "botellas") {
+      // Reusable smart bottle / refill container, separate from wine.
+      mainGeometry = new THREE.CylinderGeometry(1.35, 1.55, 5.2, 32);
+      mainMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0xbae6fd,
+        roughness: 0.16,
+        metalness: 0.04,
+        transmission: 0.18,
+        thickness: 0.5,
+        ior: 1.45,
+        clearcoat: 0.85,
+        transparent: true,
+        opacity: 0.84,
+      });
+      const refillBody = new THREE.Mesh(mainGeometry, mainMaterial);
+      refillBody.position.y = 2.6;
+      productGroup.add(refillBody);
+
+      const capGeo = new THREE.CylinderGeometry(1.0, 1.0, 0.75, 32);
+      const capMat = new THREE.MeshStandardMaterial({
+        color: 0xe5e7eb,
+        roughness: 0.18,
+        metalness: 0.82,
+      });
+      const cap = new THREE.Mesh(capGeo, capMat);
+      cap.position.set(0, 5.55, 0);
+      productGroup.add(cap);
+
+      const gripGeo = new THREE.CylinderGeometry(1.58, 1.54, 2.2, 32, 1, true);
+      const gripMat = new THREE.MeshStandardMaterial({
+        color: 0x7dd3fc,
+        roughness: 0.36,
+        metalness: 0.02,
+        transparent: true,
+        opacity: 0.72,
+      });
+      const grip = new THREE.Mesh(gripGeo, gripMat);
+      grip.position.y = 2.55;
+      productGroup.add(grip);
+
+      labelGeometry = new THREE.PlaneGeometry(2.4, 2.6);
+      labelY = 2.6;
+      labelZ = 1.57;
+    } else if (industry === "cosmetica") {
       // Rectangular glass perfume bottle
       mainGeometry = new THREE.BoxGeometry(3, 4.5, 1.8);
       mainMaterial = new THREE.MeshPhysicalMaterial({
@@ -568,7 +613,11 @@ export function ThreeDProduct({ active, tapping, labelImageUrl, industry, chipMo
       let chipName = chipModel === "tamper" ? "NTAG 424 DNA TT" : chipModel === "dna" ? "NTAG 424 DNA" : "NTAG 215";
       let detail2 = `NFC CHIP: ${chipName}`;
       
-      if (industry === "cosmetica") {
+      if (industry === "botellas") {
+        title = "N E X I D   R E F I L L";
+        subtitle = "Envase circular inteligente";
+        detail1 = "ORIGEN: PLANTA / RETORNO";
+      } else if (industry === "cosmetica") {
         title = "N E X I D   A U R A";
         subtitle = "Eau de Parfum Premium";
         detail1 = "ORIGEN: GRASSE / BS. AS.";
@@ -825,6 +874,7 @@ export interface IndustryPreset {
 }
 
 export const INDUSTRY_PRESETS: IndustryPreset[] = [
+  { name: "botellas", label: "Botellas & Refill", volume: 500000, fraudRate: 2.6, icon: "BTL", price: 8, defaultChip: "ntag", defaultChipCost: 0.50 },
   { name: "bodegas", label: "Bodegas Premium", volume: 150000, fraudRate: 4.2, icon: "🍷", price: 45, defaultChip: "tamper", defaultChipCost: 1.00 },
   { name: "cosmetica", label: "Cosmética de Lujo", volume: 300000, fraudRate: 5.5, icon: "💄", price: 75, defaultChip: "tamper", defaultChipCost: 1.00 },
   { name: "agro", label: "Agro Premium", volume: 80000, fraudRate: 6.8, icon: "🌾", price: 60, defaultChip: "dna", defaultChipCost: 0.80 },
@@ -891,6 +941,43 @@ export const INDUSTRY_SIM_DETAILS: Record<string, {
       { label: "🍷 Maridaje", q: "¿Con qué comida marida este blend?" },
       { label: "🍇 Notas de Cata", q: "¿Cuáles son sus notas de cata?" },
       { label: "🏔️ Origen", q: "¿Cuál es el origen de este viñedo?" }
+    ]
+  },
+  botellas: {
+    productName: "Envase Refill Premium",
+    location: "Red de retorno y recarga",
+    authText: "Identidad circular verificada",
+    selloText: "Envase listo para retorno",
+    nodes: ["PLT", "DIST", "POS", "RET"],
+    iot: ["Temp: estable", "GS1 resuelto: OK", "Retorno pendiente: NO"],
+    steps: [
+      { title: "1. Produccion y serializacion", desc: "Envase asignado a lote fisico con GS1/QR y NFC opcional" },
+      { title: "2. Distribucion y venta", desc: "Canal, punto de venta y deposito retornable quedan vinculados" },
+      { title: "3. Retorno o refill", desc: "El consumidor valida el envase y activa incentivo circular" }
+    ],
+    detailsTitle: "Ficha de envase",
+    detailsTagline: "Packaging circular con identidad unitaria",
+    detailsGrid: [
+      { label: "Formato:", val: "Botella reutilizable" },
+      { label: "Ciclo:", val: "Refill / retorno" },
+      { label: "Carrier:", val: "GS1 + QR + NFC" },
+      { label: "Estado:", val: "Apto para recarga" }
+    ],
+    detailsQuote: '"El valor no esta en parecer vino: esta en medir retornos, refill, inventario y fidelizacion circular por unidad."',
+    mintTitle: "Registrar evidencia de ciclo",
+    mintDesc: "Notariza hitos relevantes del envase cuando aportan valor operativo, sin afirmar que cada lectura va on-chain.",
+    mintSuccess: "Evidencia de ciclo preparada para auditoria.",
+    reward1Title: "Deposito retornable",
+    reward1Sub: "Credito por devolver envase",
+    reward2Title: "Refill autorizado",
+    reward2Sub: "Beneficio en punto de recarga",
+    marketTitle: "Red circular",
+    marketDesc: "Operadores, puntos de recarga e incentivos conectados",
+    tabLabels: ["Envase", "Evidencia", "Incentivos", "Red", "Chat"],
+    chatPrompts: [
+      { label: "Retorno", q: "Como se valida el retorno de este envase?" },
+      { label: "Refill", q: "Que puntos de recarga estan autorizados?" },
+      { label: "ESG", q: "Que evidencia queda para auditoria circular?" }
     ]
   },
   cosmetica: {

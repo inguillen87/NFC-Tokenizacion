@@ -9,6 +9,7 @@ export type ProductKind =
   | "cosmetics"
   | "agro"
   | "seeds"
+  | "bottle"
   | "creamJar"
   | "perfume"
   | "creamTube"
@@ -75,6 +76,14 @@ const tones: Record<ProductKind, Tone> = {
     bodyDeep: "#14532d",
     label: "#f7fee7",
     metal: "#facc15",
+  },
+  bottle: {
+    accent: "#38bdf8",
+    accentSoft: "#0ea5e9",
+    body: "#bae6fd",
+    bodyDeep: "#075985",
+    label: "#ecfeff",
+    metal: "#e5e7eb",
   },
   bracelet: {
     accent: "#2dd4bf",
@@ -341,6 +350,7 @@ function createLights(tone: Tone) {
 
 function createProduct(active: ProductKind) {
   if (active === "wine") return createWineBottle();
+  if (active === "bottle") return createReusableBottle();
   if (active === "events" || active === "bracelet") return createEventBracelet();
   if (active === "ticket") return createEventTicket();
   if (active === "creamJar") return createCreamJar();
@@ -353,6 +363,7 @@ function createProduct(active: ProductKind) {
 
 function productDefaultZoom(active: ProductKind) {
   if (active === "wine") return 0.7;
+  if (active === "bottle") return 0.72;
   if (active === "perfume") return 0.74;
   if (active === "creamTube") return 0.7;
   if (active === "bracelet" || active === "events") return 0.66;
@@ -474,6 +485,64 @@ function createWineBottle() {
   group.add(createGlassHighlightCurved(0.32, -0.18, 0.435, 2.1, 0.04, 0.12));
   group.add(createGlassHighlightCurved(0.08, -0.22, 0.438, 1.9, 0.024, 0.09));
   group.add(createSmallNfcDisc(tone.accent, [0.35, 1.28, 0.22], 0.08));
+
+  return group;
+}
+
+function createReusableBottle() {
+  const tone = tones.bottle;
+  const group = new THREE.Group();
+  group.position.set(0, -0.12, 0);
+  group.scale.setScalar(0.98);
+
+  const body = mesh(
+    new THREE.CylinderGeometry(0.47, 0.54, 2.52, 96),
+    new THREE.MeshPhysicalMaterial({
+      color: "#bae6fd",
+      clearcoat: 0.92,
+      ior: 1.42,
+      metalness: 0.02,
+      opacity: 0.78,
+      roughness: 0.12,
+      thickness: 0.4,
+      transmission: 0.18,
+      transparent: true,
+    }),
+    [0, -0.35, 0],
+  );
+  body.name = "refillBottleBody";
+  group.add(body);
+
+  group.add(mesh(
+    new THREE.CylinderGeometry(0.42, 0.48, 0.24, 96),
+    new THREE.MeshStandardMaterial({ color: "#cbd5e1", metalness: 0.6, roughness: 0.16 }),
+    [0, -1.72, 0],
+  ));
+  group.add(mesh(
+    new THREE.CylinderGeometry(0.34, 0.36, 0.34, 80),
+    new THREE.MeshStandardMaterial({ color: tone.metal, metalness: 0.62, roughness: 0.14 }),
+    [0, 1.12, 0],
+  ));
+  group.add(mesh(
+    new THREE.CylinderGeometry(0.42, 0.4, 0.18, 80),
+    new THREE.MeshStandardMaterial({ color: "#67e8f9", roughness: 0.22, metalness: 0.08 }),
+    [0, 0.88, 0],
+  ));
+
+  const handle = mesh(
+    new THREE.TorusGeometry(0.46, 0.045, 18, 72, Math.PI * 1.15),
+    new THREE.MeshStandardMaterial({ color: "#67e8f9", metalness: 0.06, roughness: 0.22 }),
+    [-0.44, 0.68, 0],
+    [0.1, 0.08, -0.62],
+  );
+  handle.name = "refillBottleHandle";
+  group.add(handle);
+
+  group.add(createFlatCanvasPanel("REFILL", "GS1 + NFC", tone.accent, [0, -0.44, 0.55], [0.72, 0.62, 1]));
+  group.add(createSmallNfcDisc(tone.accent, [0.31, 0.3, 0.46], 0.09));
+  group.add(createGlassHighlight([-0.36, -0.28, 0.51], 2.04));
+  group.add(createTapPhone(tone, [0.98, -0.22, 0.86], [-0.06, -0.48, -0.16]));
+  group.add(createTapWaveStack(tone.accent, [0.42, 0.32, 0.5], [-0.1, -0.22, 0.08]));
 
   return group;
 }

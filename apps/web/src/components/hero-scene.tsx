@@ -500,20 +500,20 @@ const labels: Record<AppLocale, {
       bottle: {
         label: "Botellas",
         profile: "NFC + QR",
-        action: "Botella de bebida retornable escaneada: procedencia, ciclo de reciclaje y retorno validados.",
-        result: "Retorno Validado",
-        product: "Bebida Gaseosa Orgánica",
+        action: "Envase retornable escaneado: procedencia, ciclo de refill y retorno validados.",
+        result: "Retorno validado",
+        product: "Envase Refill Premium",
         batch: "BEV-OR-902",
         uid: "048E****2039",
         origin: { city: "Rosario", country: "Argentina", label: "planta embotelladora", lat: -32.9442, lng: -60.6505 },
-        security: "QR + UID NFC + control de ciclo",
-        nextAction: "Registrar retorno de envase o ver impacto ecológico",
-        marketplace: "Tienda de recarga + cupones verdes",
-        loyalty: "Descuento en próxima compra por retornar envase",
-        businessValue: "Estadísticas ESG + incentivos de circularidad + control de inventario",
+        security: "GS1/QR + UID NFC opcional + control de ciclo",
+        nextAction: "Registrar retorno, refill o impacto circular",
+        marketplace: "Recarga, deposito retornable y cupones verdes",
+        loyalty: "Descuento por retorno, refill o compra circular",
+        businessValue: "Inventario de envases + incentivos ESG + circularidad medible",
         objectClass: "bottle-demo scanning",
         phoneTag: "BOTTLE - RETURN_OK",
-        steps: ["Lectura de envase", "Verifica retorno", "Asigna incentivo ecológico", "Confirma recepción"],
+        steps: ["Lectura de envase", "Verifica retorno", "Asigna incentivo circular", "Confirma recepcion"],
       },
     },
   },
@@ -738,20 +738,20 @@ const labels: Record<AppLocale, {
       bottle: {
         label: "Garrafas",
         profile: "NFC + QR",
-        action: "Garrafa de bebida retornavel escaneada: procedencia, ciclo de reciclagem e retorno validados.",
-        result: "Retorno Validado",
-        product: "Refrigerante Organico",
+        action: "Embalagem retornavel escaneada: procedencia, ciclo de refill e retorno validados.",
+        result: "Retorno validado",
+        product: "Embalagem Refill Premium",
         batch: "BEV-OR-902",
         uid: "048E****2039",
         origin: { city: "Rosario", country: "Argentina", label: "planta de engarrafamento", lat: -32.9442, lng: -60.6505 },
-        security: "QR + UID NFC + controle de ciclo",
-        nextAction: "Registrar retorno da embalagem ou ver impacto ecologico",
-        marketplace: "Loja de recarga + cupons verdes",
-        loyalty: "Desconto na proxima compra por retornar embalagem",
-        businessValue: "Estatisticas ESG + incentivos de circularidade + controle de estoque",
+        security: "GS1/QR + UID NFC opcional + controle de ciclo",
+        nextAction: "Registrar retorno, refill ou impacto circular",
+        marketplace: "Recarga, deposito retornavel e cupons verdes",
+        loyalty: "Desconto por retorno, refill ou compra circular",
+        businessValue: "Inventario de embalagens + incentivos ESG + circularidade mensuravel",
         objectClass: "bottle-demo scanning",
         phoneTag: "BOTTLE - RETURN_OK",
-        steps: ["Leitura da garrafa", "Verifica retorno", "Atribui incentivo ecologico", "Confirma recepcao"],
+        steps: ["Leitura da embalagem", "Verifica retorno", "Atribui incentivo circular", "Confirma recepcao"],
       },
     },
   },
@@ -976,20 +976,20 @@ const labels: Record<AppLocale, {
       bottle: {
         label: "Bottles",
         profile: "NFC + QR",
-        action: "Returnable beverage bottle scanned: provenance, recycling cycle and returns verified.",
-        result: "Return Verified",
-        product: "Organic Soda Bottle",
+        action: "Reusable container scanned: provenance, refill cycle and return status verified.",
+        result: "Return verified",
+        product: "Premium Refill Bottle",
         batch: "BEV-OR-902",
         uid: "048E****2039",
         origin: { city: "Rosario", country: "Argentina", label: "bottling plant", lat: -32.9442, lng: -60.6505 },
-        security: "QR + UID NFC + cycle control",
-        nextAction: "Register container return or see green impact",
-        marketplace: "Refill store + green coupons",
-        loyalty: "Next purchase discount for returning container",
-        businessValue: "ESG stats + circularity incentives + inventory control",
+        security: "GS1/QR + optional NFC UID + cycle control",
+        nextAction: "Register return, refill or circular impact",
+        marketplace: "Refill, deposit return and green coupons",
+        loyalty: "Discount for return, refill or circular purchase",
+        businessValue: "Container inventory + ESG incentives + measurable circularity",
         objectClass: "bottle-demo scanning",
         phoneTag: "BOTTLE - RETURN_OK",
-        steps: ["Bottle read", "Verify return", "Assigns green incentive", "Confirms reception"],
+        steps: ["Container read", "Verify return", "Assign circular incentive", "Confirm reception"],
       },
     },
   },
@@ -1731,7 +1731,7 @@ function HeroEnterpriseTraceMap({
 }
 
 const heroPrimeProducts: Record<Vertical, {
-  kind: "wine" | "bracelet" | "perfume" | "seeds";
+  kind: "wine" | "bottle" | "bracelet" | "perfume" | "seeds";
   seal: string;
   detail: string;
   accent: string;
@@ -1741,7 +1741,7 @@ const heroPrimeProducts: Record<Vertical, {
   pharma: { kind: "perfume", seal: "AUTH", detail: "LOTE OK", accent: "#38bdf8" },
   perfume: { kind: "perfume", seal: "AUTH", detail: "LOTE OK", accent: "#a78bfa" },
   wine: { kind: "wine", seal: "NFC TT", detail: "SUN OK", accent: "#22d3ee" },
-  bottle: { kind: "wine", seal: "NFC QR", detail: "RETORNO", accent: "#38bdf8" },
+  bottle: { kind: "bottle", seal: "QR NFC", detail: "REFILL", accent: "#38bdf8" },
   luxury: { kind: "bracelet", seal: "LUJO", detail: "OWNER", accent: "#c084fc" },
   sneaker: { kind: "bracelet", seal: "DROP", detail: "OWNER", accent: "#a78bfa" },
   logistics: { kind: "seeds", seal: "LOTE", detail: "ORIGEN", accent: "#a3e635" },
@@ -1799,8 +1799,8 @@ const heroRealAssets: Record<Vertical, {
   },
   bottle: {
     imageUrl: "/sdk/verticals/beverages-bottle-nfc-qr.png",
-    imageLightUrl: "/sdk/verticals/light/premium-wine-light.webp",
-    alt: "Botella de bebida y refresco con tag NFC/QR nexID.",
+    imageLightUrl: "/sdk/verticals/light/premium-bottle-light.webp",
+    alt: "Envase retornable premium con identidad GS1/QR y NFC opcional nexID.",
     bank: "nexID",
     sourceLabel: "nexID secure asset",
     sourceUrl: "#",
@@ -1906,6 +1906,22 @@ function HeroPrimeProduct({ active, product }: { active: Vertical; product: stri
           <text x="180" y="271" textAnchor="middle" fill="#0f172a" fontSize="15" fontWeight="900" letterSpacing="2">MALBEC</text>
           <path d="M149 53c-13 48-17 116-14 205" fill="none" stroke="#ffffff" strokeWidth="7" strokeLinecap="round" opacity="0.1" />
           <path d="M134 60c11-9 29-11 38-2 10 10 2 25-12 22-14-3-21-9-26-20Z" fill="#fde68a" opacity="0.54" />
+        </g>
+      ) : null}
+
+      {spec.kind === "bottle" ? (
+        <g filter={`url(#${uid}-shadow)`}>
+          <path d="M155 48h50l8 52c2 13 12 23 22 34 12 14 18 31 18 52v128c0 32-21 53-53 53h-40c-32 0-53-21-53-53V186c0-21 6-38 18-52 10-11 20-21 22-34l8-52Z" fill={`url(#${uid}-glass)`} />
+          <path d="M151 39h58v34h-58V39Z" fill={`url(#${uid}-metal)`} />
+          <path d="M138 94c-32 24-42 73-25 106" fill="none" stroke="#67e8f9" strokeWidth="14" strokeLinecap="round" opacity="0.54" />
+          <path d="M211 103c24 17 36 44 36 79v127c0 28-18 46-46 46h-15c18-25 23-72 23-152 0-42 1-74 2-100Z" fill="#0f172a" opacity="0.14" />
+          <rect x="124" y="176" width="112" height="124" rx="18" fill="#cffafe" opacity="0.95" />
+          <rect x="140" y="195" width="80" height="12" rx="6" fill={`url(#${uid}-holo)`} opacity="0.58" />
+          <text x="180" y="232" textAnchor="middle" fill="#0f172a" fontSize="14" fontWeight="900" letterSpacing="2">REFILL</text>
+          <text x="180" y="252" textAnchor="middle" fill="#155e75" fontSize="8" fontWeight="900" letterSpacing="1.4">GS1 / QR / NFC</text>
+          <path d="M149 72c-10 59-12 151-6 251" fill="none" stroke="#ffffff" strokeWidth="8" strokeLinecap="round" opacity="0.24" />
+          <circle cx="180" cy="160" r="18" fill="#f8fafc" stroke={spec.accent} strokeWidth="3" opacity="0.92" />
+          <path d="M171 160c7-8 17-8 24 0M175 168c4-4 10-4 14 0" fill="none" stroke="#0e7490" strokeWidth="3" strokeLinecap="round" opacity="0.8" />
         </g>
       ) : null}
 
