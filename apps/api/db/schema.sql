@@ -381,3 +381,186 @@ CREATE INDEX IF NOT EXISTS idx_loyalty_members_consumer_program ON loyalty_membe
 CREATE INDEX IF NOT EXISTS idx_points_ledger_member_created ON points_ledger(member_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_rewards_program_status ON rewards(program_id, status, starts_at);
 CREATE INDEX IF NOT EXISTS idx_reward_redemptions_member ON reward_redemptions(member_id, created_at DESC);
+
+-- ENUMS AND TABLES FOR NEXID ENTERPRISE SUPPLIER OPERATIONS & PROOF LAYERS
+
+DO $$ BEGIN
+  CREATE TYPE supplier_order_status AS ENUM ('DRAFT', 'PLANNED', 'PACK_GENERATED', 'SENT_TO_SUPPLIER', 'MANIFEST_RECEIVED', 'QA_PENDING', 'QA_PASSED', 'ACTIVE', 'QUARANTINED', 'CANCELLED');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE qa_status_enum AS ENUM ('pending', 'passed', 'failed', 'waived');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE vault_artifact_type AS ENUM ('supplier_pack_zip', 'supplier_pack_pdf', 'manifest_template', 'manifest_received', 'qa_report', 'proof_report');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE offline_scan_status AS ENUM ('PENDING_BACKEND_VERIFICATION', 'SYNCED_VALID', 'SYNCED_INVALID', 'SYNC_FAILED');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE proof_event_status AS ENUM ('pending', 'ready', 'anchored', 'failed', 'disabled');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE evidence_anchor_status AS ENUM ('pending', 'submitted', 'confirmed', 'failed', 'disabled');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+CREATE TABLE IF NOT EXISTS supplier_orders (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  customer_slug text NOT NULL,
+  order_code text NOT NULL UNIQUE,
+  order_name text NOT NULL,
+  total_quantity integer NOT NULL,
+  sub_batch_size integer NOT NULL,
+  chip_model text NOT NULL,
+  carrier_profile_code text NOT NULL,
+  material_type text NOT NULL,
+  supplier_name text NOT NULL,
+  status supplier_order_status NOT NULL DEFAULT 'DRAFT',
+  notes text,
+  created_by text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS supplier_sub_batches (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  supplier_order_id uuid NOT NULL REFERENCES supplier_orders(id) ON DELETE CASCADE,
+  tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  batch_id text NOT NULL UNIQUE,
+  quantity integer NOT NULL,
+  sequence text NOT NULL,
+  chip_model text NOT NULL,
+  carrier_profile_code text NOT NULL,
+  material_type text NOT NULL,
+  meta_key_id uuid,
+  file_key_id uuid,
+  sdm_config jsonb NOT NULL DEFAULT '{}'::jsonb,
+  status text NOT NULL DEFAULT 'DRAFT',
+  manifest_count integer NOT NULL DEFAULT 0,
+  active_count integer NOT NULL DEFAULT 0,
+  qa_status qa_status_enum NOT NULL DEFAULT 'pending'
+);
+
+CREATE TABLE IF NOT EXISTS batch_keys (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  batch_id text NOT NULL,
+  key_role text NOT NULL,
+  encrypted_key_ct text NOT NULL,
+  key_fingerprint_sha256_prefix text NOT NULL,
+  key_version integer NOT NULL DEFAULT 1,
+  status text NOT NULL DEFAULT 'active',
+  created_by text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  exported_at timestamptz,
+  exported_by text
+);
+
+CREATE TABLE IF NOT EXISTS vault_artifacts (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  supplier_order_id uuid REFERENCES supplier_orders(id) ON DELETE CASCADE,
+  sub_batch_id uuid REFERENCES supplier_sub_batches(id) ON DELETE CASCADE,
+  artifact_type vault_artifact_type NOT NULL,
+  storage_path text NOT NULL,
+  sha256 text NOT NULL,
+  encrypted boolean NOT NULL DEFAULT false,
+  created_by text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  expires_at timestamptz,
+  download_count integer NOT NULL DEFAULT 0,
+  last_downloaded_at timestamptz
+);
+
+CREATE TABLE IF NOT EXISTS offline_scan_events (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  local_id text NOT NULL,
+  operator_id text NOT NULL,
+  tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  captured_url text NOT NULL,
+  captured_at timestamptz NOT NULL,
+  approximate_location jsonb,
+  device_id text NOT NULL,
+  status offline_scan_status NOT NULL DEFAULT 'PENDING_BACKEND_VERIFICATION'
+);
+
+CREATE TABLE IF NOT EXISTS ledger_providers (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  code text NOT NULL UNIQUE,
+  name text NOT NULL,
+  network text NOT NULL,
+  chain_id integer,
+  rpc_url_env_name text,
+  explorer_base_url text,
+  enabled boolean NOT NULL DEFAULT false,
+  purpose text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS proof_events (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  event_type text NOT NULL,
+  resource_type text NOT NULL,
+  resource_id text NOT NULL,
+  batch_id text,
+  tag_id text,
+  product_id text,
+  payload_json jsonb NOT NULL,
+  payload_hash text NOT NULL,
+  hash_algorithm text NOT NULL DEFAULT 'sha256',
+  provider_preference text NOT NULL DEFAULT 'none',
+  status proof_event_status NOT NULL DEFAULT 'pending',
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS evidence_anchors (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  provider text NOT NULL,
+  network text NOT NULL,
+  anchor_type text NOT NULL,
+  resource_type text,
+  resource_id text,
+  event_count integer NOT NULL,
+  event_hashes text[] NOT NULL,
+  merkle_root text NOT NULL,
+  tx_hash text,
+  explorer_url text,
+  status evidence_anchor_status NOT NULL DEFAULT 'pending',
+  anchored_at timestamptz,
+  error_message text,
+  created_by text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS ownership_records (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  product_id text,
+  tag_id text,
+  batch_id text,
+  owner_user_id text,
+  wallet_address text,
+  provider text NOT NULL DEFAULT 'polygon',
+  network text NOT NULL,
+  token_contract text,
+  token_id text,
+  tx_hash text,
+  status text NOT NULL DEFAULT 'pending',
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_supplier_orders_tenant ON supplier_orders(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_supplier_sub_batches_tenant ON supplier_sub_batches(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_supplier_sub_batches_order ON supplier_sub_batches(supplier_order_id);
+CREATE INDEX IF NOT EXISTS idx_vault_artifacts_tenant ON vault_artifacts(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_vault_artifacts_order ON vault_artifacts(supplier_order_id);
+CREATE INDEX IF NOT EXISTS idx_proof_events_tenant ON proof_events(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_evidence_anchors_tenant ON evidence_anchors(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_ownership_records_tenant ON ownership_records(tenant_id);
