@@ -11,7 +11,7 @@
     "dev:dashboard": "npm run dev --workspace=dashboard",
     "dev:api": "npm run dev --workspace=api",
     "dev:executor": "npm run dev --workspace=executor",
-    "postinstall": "npm run prisma:generate --workspace=api",
+
     "build:web": "npm run qa:static && npm run build --workspace=web",
     "build:dashboard": "npm run qa:static && npm run build --workspace=dashboard",
     "build:api": "npm run verify:routes && npm run build --workspace=api",
