@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import type { CSSProperties } from "react";
 import type { AppLocale } from "@product/config";
-import { getWebI18n } from "../../../lib/locale";
+import { getWebI18n } from "../../../../lib/locale";
 
 type ProductKey = "wine" | "seeds" | "cream" | "perfume" | "bracelet" | "ticket";
 

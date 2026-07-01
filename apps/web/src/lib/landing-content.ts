@@ -50,9 +50,9 @@ export const landingContent: Record<AppLocale, LandingContent> = {
   "es-AR": {
     nav: { product: "Producto", pricing: "Planes", reseller: "Canal", docs: "Arquitectura", cta: "Ingresar", requestDemo: "Solicitar demo" },
     hero: {
-      badge: "Autenticidad, trazabilidad y postventa digital",
-      title: "Convertí cada producto premium en una experiencia verificable de autenticidad, postventa y fidelización.",
-      body: "El cliente toca NFC o QR, ve el resultado de confianza, revisa origen y lote, reclama garantía si corresponde, entra al club de la marca y guarda un certificado digital propio.",
+      badge: "Protección y crecimiento corporativo",
+      title: "Transformá cada producto en un canal directo de protección, lealtad y nuevas ventas.",
+      body: "Elevá el prestigio de tu marca. Con un simple toque, tus clientes verifican autenticidad, conocen el origen exacto y acceden a una experiencia exclusiva que asegura recompras sin intermediarios.",
       primary: "Agendar demo",
       secondary: "Ver Demo Lab",
       tertiary: "Quiero ser reseller",

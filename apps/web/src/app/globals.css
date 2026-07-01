@@ -31654,18 +31654,7 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
   }
 }
 
-/* Final winning layer for the enterprise landing mockup. Keep this last. */
-.landing-hero-section .hero-main-copy,
-.landing-hero-section .hero-demo-brief--executive-hidden {
-  position: absolute !important;
-  width: 1px !important;
-  height: 1px !important;
-  margin: -1px !important;
-  overflow: hidden !important;
-  clip: rect(0 0 0 0) !important;
-  clip-path: inset(50%) !important;
-  white-space: nowrap !important;
-}
+
 
 .landing-hero-section .hero-demo-shell {
   width: min(1536px, calc(100vw - clamp(1rem, 4vw, 4.6rem))) !important;

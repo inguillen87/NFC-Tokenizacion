@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import dynamic from "next/dynamic";
 import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from "react";
@@ -2793,9 +2793,6 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
       <div className="hero-scene hero-scene--product-proof rounded-2xl border border-white/10 p-4 md:p-5">
         <div className="hero-scene-topline flex flex-wrap items-center justify-between gap-3">
           <p className="text-[11px] uppercase tracking-[0.16em] text-cyan-300">{txt.selectorTitle}</p>
-          <button suppressHydrationWarning type="button" onClick={() => setTapIndex((current) => current + 1)} className="hero-scene-swap">
-            {txt.swapTap}
-          </button>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
           {platformVerticals.map((item) => (
