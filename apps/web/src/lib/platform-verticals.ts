@@ -101,10 +101,6 @@ export const platformVerticals: PlatformVertical[] = [
     metric: "Tap + acceso",
     icon: "ticket",
     tone: "amber",
-    tags: ["NFC", "QR", "POS"],
-    metric: "Tap + acceso",
-    icon: "ticket",
-    tone: "amber",
   },
   {
     id: "pharma",
