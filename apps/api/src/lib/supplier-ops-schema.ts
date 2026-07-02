@@ -274,6 +274,8 @@ export async function ensureSupplierOpsSchema() {
       await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS resource_type text`;
       await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS resource_id text`;
       await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS event_hashes_json jsonb NOT NULL DEFAULT '[]'::jsonb`;
+      await sql/*sql*/`ALTER TABLE supplier_sub_batches ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT now()`;
+      await sql/*sql*/`ALTER TABLE supplier_sub_batches ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now()`;
       await sql/*sql*/`ALTER TABLE supplier_sub_batches ADD COLUMN IF NOT EXISTS sequence_index integer`;
       await sql/*sql*/`
         WITH numbered_sub_batches AS (

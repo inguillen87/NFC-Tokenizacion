@@ -98,6 +98,8 @@ test("public proof and anchor input stay hash-only", () => {
   assert.doesNotMatch(anchorsSource, /json-rpc\.evm\.testnet\.iotaledger\.net/);
   assert.match(schemaSource, /ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS resource_type/);
   assert.match(schemaSource, /ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS event_hashes_json/);
+  assert.match(schemaSource, /ALTER TABLE supplier_sub_batches ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT now\(\)/);
+  assert.match(schemaSource, /ALTER TABLE supplier_sub_batches ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now\(\)/);
   assert.match(schemaSource, /ALTER TABLE supplier_sub_batches ADD COLUMN IF NOT EXISTS sequence_index integer/);
   assert.match(schemaSource, /row_number\(\) OVER \(PARTITION BY supplier_order_id ORDER BY created_at ASC, id ASC\)/);
   assert.match(verifySource, /isSha256Hash\(eventHash\)/);

@@ -1,3 +1,5 @@
+ALTER TABLE supplier_sub_batches ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT now();
+ALTER TABLE supplier_sub_batches ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
 ALTER TABLE supplier_sub_batches ADD COLUMN IF NOT EXISTS sequence_index integer;
 
 WITH numbered_sub_batches AS (
