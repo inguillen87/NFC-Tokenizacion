@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 /**
  * DemoLabHubTheme
@@ -7,7 +7,7 @@
  * and keeps <html> class + data-theme in sync without a full page reload.
  * Also renders the sun/moon ThemeToggle button to be slotted into the hub nav.
  *
- * The key is "theme" � same key used by packages/ui/src/theme-toggle.tsx and
+ * The key is "theme" — same key used by packages/ui/src/theme-toggle.tsx and
  * set as a cookie by applyTheme() for SSR hydration.
  */
 
@@ -106,3 +106,4 @@ export function DemoLabThemeToggle() {
     </button>
   );
 }
+

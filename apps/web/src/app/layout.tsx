@@ -8,29 +8,33 @@ import { ContextualHelpBot } from "../components/contextual-helpbot";
 import { PwaSetup } from "../components/pwa-setup";
 import { MisconfigurationBanner } from "../components/misconfiguration-banner";
 import { WalletExtensionGuard } from "../components/wallet-extension-guard";
+import { StructuredData } from "../components/structured-data";
 
 const DEFAULT_SITE_URL = "https://nexid.lat";
 
 const socialCopyByLocale = {
   "es-AR": {
-    title: "nexID | Autenticidad NFC para productos premium",
+    title: "nexID | Autenticación de Productos, NFC y Tokenización para Cadena de Suministro",
     description:
-      "Protegé cada unidad con NFC seguro: autenticidad, trazabilidad, garantía, ownership y ventas post-compra desde un solo toque.",
-    imageAlt: "nexID - autenticidad NFC, trazabilidad y producto verificado para marcas premium",
+      "Protegé tu cadena de suministro empresarial con nexID. Autenticación de productos, trazabilidad y tokenización mediante tecnología NFC segura para marcas premium.",
+    imageAlt: "nexID - Autenticación de productos, NFC y tokenización para marcas premium",
+    keywords: ["Autenticación de Productos", "NFC", "Tokenización", "Cadena de Suministro Empresarial", "Trazabilidad", "Web3", "nexID"]
   },
   "pt-BR": {
-    title: "nexID | Autenticidade NFC para produtos premium",
+    title: "nexID | Autenticação de Produtos, NFC e Tokenização para Cadeia de Suprimentos",
     description:
-      "Proteja cada unidade com NFC seguro: autenticidade, rastreabilidade, ownership e vendas pós-compra em um toque.",
-    imageAlt: "nexID - autenticidade NFC, rastreabilidade e produto verificado para marcas premium",
+      "Proteja sua cadeia de suprimentos corporativa com nexID. Autenticação de produtos, rastreabilidade e tokenização usando tecnologia NFC segura para marcas premium.",
+    imageAlt: "nexID - Autenticação de produtos, NFC e tokenização para marcas premium",
+    keywords: ["Autenticação de Produtos", "NFC", "Tokenização", "Cadeia de Suprimentos Corporativa", "Rastreabilidade", "Web3", "nexID"]
   },
   en: {
-    title: "nexID | NFC authenticity for premium products",
+    title: "nexID | NFC Product Authentication & Tokenization for Enterprise Supply Chain",
     description:
-      "Protect every unit with secure NFC: authenticity, traceability, ownership and post-purchase sales from one tap.",
-    imageAlt: "nexID - NFC authenticity, traceability and verified products for premium brands",
-  },
-} as const;
+      "Secure your enterprise supply chain with nexID. Premium product authentication, traceability, and tokenization powered by secure NFC technology.",
+    imageAlt: "nexID - Product authentication, NFC, and tokenization for premium brands",
+    keywords: ["Product Authentication", "NFC", "Tokenization", "Enterprise Supply Chain", "Traceability", "Web3", "nexID"]
+  }
+};
 
 function getSocialCopy(locale: string) {
   return locale === "en" ? socialCopyByLocale.en : locale === "pt-BR" ? socialCopyByLocale["pt-BR"] : socialCopyByLocale["es-AR"];
@@ -117,6 +121,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: socialCopy.title,
     description: socialCopy.description,
+    keywords: socialCopy.keywords,
     metadataBase: siteUrl,
     alternates: {
       canonical: siteUrl,
@@ -202,6 +207,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <meta property="og:image:alt" content={socialCopy.imageAlt} />
         <meta name="twitter:image:alt" content={socialCopy.imageAlt} />
         {facebookAppId ? <meta property="fb:app_id" content={facebookAppId} /> : null}
+        <StructuredData />
       </head>
       <body>
         {process.env.NODE_ENV !== "production" ? <script dangerouslySetInnerHTML={{ __html: extensionConsoleShieldScript }} /> : null}

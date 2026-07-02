@@ -434,6 +434,9 @@ export default async function HomePage() {
             <Link href="/sdk" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">SDK</Link>
             <Link href="/pricing" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">Pricing</Link>
             <Link href="/?contact=demo#contact-modal" className="rounded-lg border border-cyan-300/40 px-3 py-2 text-xs text-cyan-300">Demo</Link>
+            <a href="mailto:info@nexid.lat" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">info@nexid.lat</a>
+            <a href="https://api.whatsapp.com/send?phone=5492613168608" target="_blank" rel="noreferrer" className="rounded-lg border border-green-500/40 px-3 py-2 text-xs text-green-400">WhatsApp AR</a>
+            <a href="https://api.whatsapp.com/send?phone=56988689095" target="_blank" rel="noreferrer" className="rounded-lg border border-green-500/40 px-3 py-2 text-xs text-green-400">WhatsApp CL</a>
             <a href={meetingHref} target="_blank" rel="noreferrer" className="rounded-lg border border-emerald-300/40 px-3 py-2 text-xs text-emerald-300">{labels.scheduleMeeting}</a>
           </div>
         </div>

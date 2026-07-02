@@ -1818,3 +1818,24 @@ export function CtaSection({ content, locale }: { content: Content; locale: stri
     </section>
   );
 }
+
+export function SocialProofStrip() {
+  const logos = ['Syngenta', 'Bodega Balmec', 'LVMH', 'Bayer', 'GS1'];
+
+  return (
+    <section className='container-shell py-12 border-b border-slate-800/50'>
+      <div className='flex flex-col items-center gap-8'>
+        <div className='flex flex-wrap items-center justify-center gap-8 md:gap-16'>
+          {logos.map((logo, idx) => (
+            <span key={idx} className='text-xl md:text-2xl font-black uppercase tracking-wider text-slate-500 hover:text-slate-300 transition-colors'>
+              {logo}
+            </span>
+          ))}
+        </div>
+        <p className='max-w-2xl text-center text-sm md:text-base font-medium italic text-slate-400'>
+          &quot;nexID transformed our supply chain visibility and eliminated counterfeits in a single sprint.&quot; — Bodega Balmec
+        </p>
+      </div>
+    </section>
+  );
+}
