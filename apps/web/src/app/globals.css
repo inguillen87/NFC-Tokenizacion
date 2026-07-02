@@ -1,4 +1,4 @@
-﻿@tailwind base;
+@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -42252,3 +42252,32 @@ html[data-theme="light"] .landing-root .bg-slate-950 {
   background: rgba(248,250,252,0.96) !important;
   border-color: rgba(148,163,184,0.30) !important;
 }
+
+/* ── Offline phone screen ─────────────────────────────────── */
+.offline-phone-screen {
+  background: #0a0f1a;
+  color: #f8fafc;
+}
+
+html.theme-light .offline-phone-screen,
+html[data-theme="light"] .offline-phone-screen {
+  background: linear-gradient(180deg, #f0f6ff 0%, #e8f4ff 50%, #f0fbff 100%) !important;
+}
+
+html.theme-light .offline-phone-screen .text-white,
+html[data-theme="light"] .offline-phone-screen .text-white {
+  color: #0f172a !important;
+}
+
+html.theme-light .offline-phone-screen .text-slate-400,
+html.theme-light .offline-phone-screen .text-slate-500,
+html[data-theme="light"] .offline-phone-screen .text-slate-400,
+html[data-theme="light"] .offline-phone-screen .text-slate-500 {
+  color: #475569 !important;
+}
+
+html.theme-light .offline-phone-screen .text-slate-200,
+html[data-theme="light"] .offline-phone-screen .text-slate-200 {
+  color: #1e293b !important;
+}
+

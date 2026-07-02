@@ -458,9 +458,9 @@ export function OfflineFieldOperationsSection({ locale }: { locale: string }) {
 
           <div className="mt-10 grid gap-3 sm:grid-cols-3">
             {copy.atlas.map(([label, body]) => (
-              <div key={label} className="rounded-xl border border-white/5 bg-slate-900/50 p-4">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{label}</p>
-                <p className="mt-1 text-sm font-medium text-slate-200">{body}</p>
+              <div key={label} className="rounded-xl border border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-slate-900/50 p-4">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-500">{label}</p>
+                <p className="mt-1 text-sm font-medium text-slate-700 dark:text-slate-200">{body}</p>
               </div>
             ))}
           </div>
@@ -474,9 +474,9 @@ export function OfflineFieldOperationsSection({ locale }: { locale: string }) {
             </Link>
           </div>
 
-          <div className="mt-8 rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 flex items-start gap-3">
-            <ShieldCheck className="h-5 w-5 text-amber-500 shrink-0" />
-            <p className="text-xs font-semibold leading-relaxed text-amber-200/90">{copy.warning}</p>
+          <div className="mt-8 rounded-xl border border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-4 flex items-start gap-3">
+            <ShieldCheck className="h-5 w-5 text-amber-600 dark:text-amber-500 shrink-0" />
+            <p className="text-xs font-semibold leading-relaxed text-amber-800 dark:text-amber-200/90">{copy.warning}</p>
           </div>
         </div>
 
@@ -491,7 +491,7 @@ export function OfflineFieldOperationsSection({ locale }: { locale: string }) {
             </div>
 
             {/* Screen Content */}
-            <div className="relative h-full w-full bg-[#0a0f1a] p-5 pt-12 pb-8 flex flex-col">
+            <div className="offline-phone-screen relative h-full w-full p-5 pt-12 pb-8 flex flex-col">
               {/* App Header */}
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-2">
@@ -499,8 +499,8 @@ export function OfflineFieldOperationsSection({ locale }: { locale: string }) {
                     <Smartphone className="h-4 w-4 text-cyan-400" />
                   </div>
                   <div>
-                    <p className="text-[9px] font-bold uppercase tracking-widest text-cyan-500/70">{copy.phoneLabel}</p>
-                    <p className="text-xs font-semibold text-white">Scanner App</p>
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-cyan-600 dark:text-cyan-500/70">{copy.phoneLabel}</p>
+                    <p className="text-xs font-semibold text-slate-900 dark:text-white">Scanner App</p>
                   </div>
                 </div>
                 <CloudOff className="h-5 w-5 text-slate-500" />
@@ -513,10 +513,10 @@ export function OfflineFieldOperationsSection({ locale }: { locale: string }) {
                 </div>
                 <div className="relative z-10 flex flex-col items-center">
                   <div className="h-16 w-16 rounded-full bg-emerald-500/20 flex items-center justify-center mb-4 border border-emerald-500/40">
-                    <ShieldCheck className="h-8 w-8 text-emerald-400" />
+                    <ShieldCheck className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
                   </div>
-                  <h3 className="text-xl font-black text-white tracking-tight">{copy.phoneStatus}</h3>
-                  <p className="mt-2 text-xs font-bold text-emerald-300/80 bg-emerald-950/50 px-3 py-1 rounded-full">{copy.phoneSub}</p>
+                  <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">{copy.phoneStatus}</h3>
+                  <p className="mt-2 text-xs font-bold text-emerald-700 dark:text-emerald-300/80 bg-emerald-100 dark:bg-emerald-950/50 px-3 py-1 rounded-full">{copy.phoneSub}</p>
                 </div>
               </div>
 
@@ -528,13 +528,13 @@ export function OfflineFieldOperationsSection({ locale }: { locale: string }) {
                   { label: "Queue", value: "18 pending sync", icon: RotateCcw, highlight: true },
                   { label: "Bundle", value: "expires 24h", icon: PackageCheck }
                 ].map((row, i) => (
-                  <div key={i} className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] p-3 backdrop-blur-sm">
+                  <div key={i} className="flex items-center justify-between rounded-xl border border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-white/[0.02] p-3 backdrop-blur-sm">
                     <div className="flex items-center gap-3">
-                      <row.icon className="h-4 w-4 text-slate-500" />
-                      <span className="text-xs font-medium text-slate-400">{row.label}</span>
+                      <row.icon className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                      <span className="text-xs font-medium text-slate-600 dark:text-slate-400">{row.label}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className={`text-xs font-mono ${row.highlight ? 'text-amber-400' : 'text-slate-200'}`}>{row.value}</span>
+                      <span className={`text-xs font-mono ${row.highlight ? 'text-amber-600 dark:text-amber-400' : 'text-slate-700 dark:text-slate-200'}`}>{row.value}</span>
                       {row.highlight && <span className="flex h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />}
                     </div>
                   </div>
@@ -542,8 +542,8 @@ export function OfflineFieldOperationsSection({ locale }: { locale: string }) {
               </div>
 
               {/* Warning Notice */}
-              <div className="mt-auto rounded-xl border border-amber-500/20 bg-amber-500/10 p-3">
-                <p className="text-[10px] font-bold leading-relaxed text-amber-400/90 text-center">
+              <div className="mt-auto rounded-xl border border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-3">
+                <p className="text-[10px] font-bold leading-relaxed text-amber-700 dark:text-amber-400/90 text-center">
                   {copy.phoneWarning}
                 </p>
               </div>
