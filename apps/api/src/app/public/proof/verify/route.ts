@@ -6,11 +6,12 @@ import { sql } from "../../../../lib/db";
 import { ensureSupplierOpsSchema } from "../../../../lib/supplier-ops-schema";
 import { isSha256Hash, verifyHashInAnchor } from "../../../../lib/proof-layer";
 
-export async function GET(req: Request) {
+function readText(value: unknown) {
+  return String(value || "").trim();
+}
+
+async function verifyPublicProof(eventHash: string, anchorId = "") {
   await ensureSupplierOpsSchema();
-  const url = new URL(req.url);
-  const eventHash = String(url.searchParams.get("event_hash") || url.searchParams.get("hash") || "").trim();
-  const anchorId = String(url.searchParams.get("anchor_id") || url.searchParams.get("anchorId") || "").trim();
   if (!eventHash) return json({ ok: false, reason: "event_hash_required" }, 400);
   if (!isSha256Hash(eventHash)) return json({ ok: false, reason: "event_hash_invalid" }, 400);
 
@@ -40,11 +41,32 @@ export async function GET(req: Request) {
       anchored_at: anchor.anchored_at || anchor.created_at,
     }));
 
+  const firstMatch = matches[0] || null;
   return json({
     ok: true,
     valid: matches.length > 0,
+    included: matches.length > 0,
     event_hash: eventHash,
+    provider: firstMatch?.provider || null,
+    network: firstMatch?.network || null,
+    merkle_root: firstMatch?.merkle_root || null,
+    tx_hash: firstMatch?.tx_hash || null,
+    explorer_url: firstMatch?.explorer_url || null,
     matches,
     privacy: "Verification is hash-only; no raw product, customer or business data is exposed.",
   });
+}
+
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const eventHash = readText(url.searchParams.get("event_hash") || url.searchParams.get("hash"));
+  const anchorId = readText(url.searchParams.get("anchor_id") || url.searchParams.get("anchorId"));
+  return verifyPublicProof(eventHash, anchorId);
+}
+
+export async function POST(req: Request) {
+  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+  const eventHash = readText(body.event_hash || body.eventHash || body.hash);
+  const anchorId = readText(body.anchor_id || body.anchorId);
+  return verifyPublicProof(eventHash, anchorId);
 }

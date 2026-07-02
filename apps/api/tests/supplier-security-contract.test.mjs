@@ -101,6 +101,12 @@ test("public proof and anchor input stay hash-only", () => {
   assert.match(verifySource, /isSha256Hash\(eventHash\)/);
   assert.match(verifySource, /event_hash_invalid/);
   assert.match(verifySource, /event_hashes_json/);
+  assert.match(verifySource, /export async function POST\(req: Request\)/);
+  assert.match(verifySource, /body\.event_hash \|\| body\.eventHash \|\| body\.hash/);
+  assert.match(verifySource, /body\.anchor_id \|\| body\.anchorId/);
+  assert.match(verifySource, /included:\s*matches\.length > 0/);
+  assert.match(verifySource, /provider:\s*firstMatch\?\.provider \|\| null/);
+  assert.match(verifySource, /Verification is hash-only/);
 });
 
 test("secure delivery recipient verification cannot hardcode a healthy delivery", () => {
