@@ -344,7 +344,7 @@ export function EnterpriseTrustLayersSection({ locale }: { locale: string }) {
         { title: "Offline Verifier", body: "Your phone or reader works in warehouses and remote areas. Syncs to server when back online.", meta: "Field", icon: Cpu },
         { title: "TagTamper", body: "Physical opening evidence: the tag changes state if the package was opened or broken.", meta: "Tamper", icon: ShieldCheck },
         { title: "Polygon", body: "The buyer claims the product as theirs: creates a digital twin, activates a transferable warranty and can resell with a verified certificate.", meta: "Ownership", icon: BadgeCheck },
-        { title: "IOTA", body: "Records supply chain milestones (packaging, transit, arrival) on a feeless blockchain. Public audit trail for exports, EU DPP compliance and IoT traceability.", meta: "Supply Chain", icon: Network },
+        { title: "IOTA", body: "Anchors selected supply-chain evidence as hashes or Merkle roots when audit policy requires it. Private product and customer data stay off-chain.", meta: "Supply Chain", icon: Network },
         { title: "UHF / IoT", body: "Pallets, cartons and industrial sensors: operational traceability without complicating consumer UX.", meta: "Industrial", icon: RadioTower },
       ],
     }
@@ -365,7 +365,7 @@ export function EnterpriseTrustLayersSection({ locale }: { locale: string }) {
         { title: "Offline Verifier", body: "App ou leitor controlado para zonas rurais e industriais com chaves por device e sync posterior.", meta: "Campo", icon: Cpu },
         { title: "TagTamper", body: "Evidencia fisica de abertura para garrafas, lacres, pharma e embalagens premium.", meta: "Tamper", icon: ShieldCheck },
         { title: "Polygon", body: "O comprador reivindica o produto como seu: cria um gêmeo digital, ativa garantia transferível e pode revender com certificado verificado.", meta: "Propriedade", icon: BadgeCheck },
-        { title: "IOTA", body: "Registra marcos da cadeia de fornecimento (embalagem, transporte, chegada) em blockchain sem taxas. Auditoria pública para exportações, DPP e conformidade IoT.", meta: "Cadeia de Suprimentos", icon: Network },
+        { title: "IOTA", body: "Ancora evidencias selecionadas da cadeia como hashes ou Merkle roots quando a politica de auditoria exige. Dados privados ficam fora da blockchain.", meta: "Cadeia de Suprimentos", icon: Network },
         { title: "UHF / IoT", body: "Pallets, logistica, sensores e rastreabilidade industrial sem complicar o consumidor.", meta: "Industrial", icon: RadioTower },
       ],
     }
@@ -385,7 +385,7 @@ export function EnterpriseTrustLayersSection({ locale }: { locale: string }) {
         { title: "Verificador Offline", body: "El celular o lector valida en campo o galpón sin internet. Al conectarse, sincroniza con el servidor.", meta: "Campo", icon: Cpu },
         { title: "Sello Tamper", body: "Evidencia física de apertura: el sello cambia de estado si el envase fue abierto.", meta: "Tamper", icon: ShieldCheck },
         { title: "Polygon", body: "El comprador reclama el producto como suyo: crea un gemelo digital, activa garantía transferible y puede revender con certificado verificado.", meta: "Propiedad", icon: BadgeCheck },
-        { title: "IOTA", body: "Registra hitos de la cadena de suministro (embolsado, traslado, llegada) en blockchain feeless. Auditoría pública para exportaciones, DPP y normativa IoT.", meta: "Cadena de Suministro", icon: Network },
+        { title: "IOTA", body: "Ancla evidencia seleccionada de cadena como hashes o Merkle roots cuando la política de auditoría lo exige. Los datos privados quedan fuera de blockchain.", meta: "Cadena de Suministro", icon: Network },
         { title: "UHF / IoT", body: "Pallets, cajas y sensores industriales: trazabilidad operacional sin complicar al consumidor.", meta: "Industrial", icon: RadioTower },
       ],
     };
@@ -1589,7 +1589,7 @@ export function CarrierProfileMatrixSection({ locale }: { locale: string }) {
       name: "IOTA proof layer",
       price: isEn ? "Proof add-on" : isBr ? "Add-on de prova" : "Add-on de prueba",
       level: "Audit",
-      promise: isEn ? "Immutable audit log for logistics and product history." : isBr ? "Historico inalteravel para logistica e ciclo de vida do produto." : "Historial inalterable para logistica y ciclo de vida del producto.",
+      promise: isEn ? "Audit evidence for logistics and product history." : isBr ? "Evidencia auditavel para logistica e ciclo de vida do produto." : "Evidencia auditable para logistica y ciclo de vida del producto.",
       best: isEn ? "Regulated exports, auditing and transparent supply chain." : isBr ? "Exportacoes regulamentadas, auditoria e cadeia de suprimentos." : "Exportaciones reguladas, auditorias y cadena de suministro transparente.",
       risk: isEn ? "Optional blockchain layer for public proof. No private data exposed." : isBr ? "Camada blockchain opcional para provas publicas. Sem expor dados privados." : "Capa blockchain opcional para confianza publica. No expone datos privados.",
     },

@@ -53,7 +53,7 @@ export default async function PassportPage({ searchParams }: { searchParams?: Pr
       <section className="grid gap-4 md:grid-cols-3">
         {[
           { title: "Memberships", value: "Activo por Tenant", desc: "Te unes automáticamente a las bodegas al escanear botellas físicas.", Icon: Award, colorClass: "text-amber-400" },
-          { title: "Propiedad Digital", value: "Vino + Certificado NFT", desc: "Garantía de procedencia encriptada e inmutable en tu Wallet.", Icon: WalletCards, colorClass: "text-cyan-400" },
+          { title: "Propiedad Digital", value: "Vino + Certificado NFT", desc: "Garantía de procedencia cifrada y verificable en tu Wallet.", Icon: WalletCards, colorClass: "text-cyan-400" },
           { title: "Estatus de Reputación", value: isVerif ? "Premium Collector" : "Starter Account", desc: "Nivel de confianza calculado según tus interacciones y reclamos.", Icon: ShieldCheck, colorClass: "text-emerald-400" }
         ].map(({ title, value, desc, Icon, colorClass }) => {
           const FeatureIcon = Icon;

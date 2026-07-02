@@ -151,20 +151,20 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
           </p>
 
           {/* ── Animated flow ── Brand A → [NFC TAP] → nexID → Brand B */}
-          <div className="mt-6 flex items-center gap-2 overflow-x-auto pb-1 text-[11px] font-bold">
-            <span className="rounded-lg bg-slate-800 border border-white/10 px-3 py-1.5 text-white whitespace-nowrap">
+          <div className="brand-synergy-flow mt-6 flex items-center gap-2 overflow-x-auto pb-1 text-[11px] font-bold">
+            <span className="brand-synergy-flow__chip brand-synergy-flow__chip--brand rounded-lg bg-slate-800 border border-white/10 px-3 py-1.5 text-white whitespace-nowrap">
               🍷 {isEn ? "Brand A" : "Marca A"}
             </span>
             <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-500" />
-            <span className="rounded-lg bg-cyan-500/20 border border-cyan-500/30 px-3 py-1.5 text-cyan-300 whitespace-nowrap animate-pulse">
+            <span className="brand-synergy-flow__chip brand-synergy-flow__chip--tap rounded-lg bg-cyan-500/20 border border-cyan-500/30 px-3 py-1.5 text-cyan-300 whitespace-nowrap animate-pulse">
               📡 {isEn ? "NFC Tap" : "Tap NFC"}
             </span>
             <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-500" />
-            <span className="rounded-lg bg-purple-500/20 border border-purple-500/30 px-3 py-1.5 text-purple-300 whitespace-nowrap font-black">
+            <span className="brand-synergy-flow__chip brand-synergy-flow__chip--nexid rounded-lg bg-purple-500/20 border border-purple-500/30 px-3 py-1.5 text-purple-300 whitespace-nowrap font-black">
               nexID
             </span>
             <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-500" />
-            <span className="rounded-lg bg-emerald-500/20 border border-emerald-500/30 px-3 py-1.5 text-emerald-300 whitespace-nowrap">
+            <span className="brand-synergy-flow__chip brand-synergy-flow__chip--reward rounded-lg bg-emerald-500/20 border border-emerald-500/30 px-3 py-1.5 text-emerald-300 whitespace-nowrap">
               🎁 {isEn ? "Brand B reward" : "Recompensa Marca B"}
             </span>
           </div>
@@ -179,9 +179,11 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
                 const isActive = scen.id === activeId;
                 return (
                   <button
+                    type="button"
                     key={scen.id}
                     onClick={() => setActiveId(scen.id)}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-bold transition-all duration-300 ${
+                    aria-pressed={isActive}
+                    className={`brand-synergy-scenario-pill ${isActive ? "is-active" : ""} flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-bold transition-all duration-300 ${
                       isActive
                         ? `${scen.activeBg} ${scen.activeBorder} text-white shadow-lg scale-105`
                         : `bg-slate-900/60 border-white/10 text-slate-400 hover:border-white/20 hover:text-white hover:scale-[1.02]`
@@ -230,7 +232,7 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
 
           <div className="p-4 space-y-3 font-mono text-[11.5px] text-slate-300">
             {/* Step 1 */}
-            <div className="rounded-xl border border-white/10 bg-slate-900 p-3">
+            <div className="brand-synergy-terminal-row brand-synergy-terminal-row--tap rounded-xl border border-white/10 bg-slate-900 p-3">
               <p className="text-[9px] uppercase tracking-wider text-slate-500 mb-2">
                 {isEn ? "1 · PHYSICAL TAP DETECTED" : "1 · TAP FÍSICO DETECTADO"}
               </p>
@@ -245,7 +247,7 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
 
             {/* Step 2 */}
             {step >= 1 && (
-              <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/40 p-3">
+              <div className="brand-synergy-terminal-row brand-synergy-terminal-row--auth rounded-xl border border-emerald-500/30 bg-emerald-950/40 p-3">
                 <p className="text-[9px] uppercase tracking-wider text-slate-500 mb-2">
                   {isEn ? "2 · AUTHENTICITY CHECK" : "2 · CHEQUEO DE AUTENTICIDAD"}
                 </p>
@@ -260,7 +262,7 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
 
             {/* Step 3 */}
             {step >= 2 && (
-              <div className="rounded-xl border border-cyan-500/20 bg-cyan-950/30 p-3">
+              <div className="brand-synergy-terminal-row brand-synergy-terminal-row--query rounded-xl border border-cyan-500/20 bg-cyan-950/30 p-3">
                 <p className="text-[9px] uppercase tracking-wider text-slate-500 mb-2">
                   {isEn ? "3 · AI SYNERGY QUERY" : "3 · CONSULTA DE SINERGIA IA"}
                 </p>
@@ -276,7 +278,7 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
 
             {/* Step 4 – Voucher unlocked */}
             {step >= 3 && (
-              <div className="rounded-xl border border-purple-500/40 bg-purple-950/40 p-3 relative overflow-hidden">
+              <div className="brand-synergy-terminal-row brand-synergy-terminal-row--voucher rounded-xl border border-purple-500/40 bg-purple-950/40 p-3 relative overflow-hidden">
                 <div className="absolute right-1 bottom-1 opacity-10">
                   <Zap className="h-16 w-16 text-purple-400" />
                 </div>

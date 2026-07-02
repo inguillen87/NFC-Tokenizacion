@@ -157,11 +157,11 @@ const PANEL_CONTENT: Record<
     color: "text-emerald-400",
     gradientFrom: "from-emerald-500/20",
     title: "Auditoría de Cadena de Suministro (IOTA)",
-    subtitle: "Hitos logísticos inmutables para exportaciones, IoT y DPP",
+    subtitle: "Evidencia logística anclable para exportaciones, IoT y DPP",
     context:
-      "Cada evento clave de la cadena de suministro — embolsado en planta, salida del depósito, traslado en frío, llegada al distribuidor, ingreso al comercio — genera un hash registrado en IOTA. Es un historial público, inalterable y sin costo de transacción.",
+      "Cada evento clave de la cadena de suministro genera evidencia privada en nexID. Cuando la política lo exige, se anclan hashes o Merkle roots en IOTA; no se publican datos privados ni cada lectura individual.",
     value:
-      "Cumplí normativas de exportación (SENASA, FDA, DPP europeo) con evidencia blockchain. Tus clientes B2B y auditores pueden verificar toda la cadena de custodia sin depender de tu servidor.",
+      "Cumplí normativas de exportación (SENASA, FDA, DPP europeo) con evidencia auditable. Clientes B2B y auditores pueden verificar pruebas sin exponer datos sensibles.",
     doc: { label: "Ver capa de auditoría", href: "/docs#trust-layers" },
   },
   "offline-verifier": {
@@ -245,7 +245,7 @@ const PANEL_CONTENT: Record<
     context:
       "Los pallets y bultos llevan tags UHF o QR. En cada punto de la cadena se registra la temperatura, la ubicación y el responsable. Todo queda en el historial de cadena de custodia.",
     value:
-      "Demostrá a tus clientes que la cadena de frío se mantuvo intacta. Reducí disputas de entrega y cumplí normativas de exportación con evidencia inalterable.",
+      "Demostrá a tus clientes que la cadena de frío se mantuvo intacta. Reducí disputas de entrega y cumplí normativas de exportación con evidencia auditable.",
     doc: { label: "Ver vertical Logística", href: "/docs" },
   },
   bracelet: {
@@ -344,7 +344,7 @@ const HUB_SCENARIOS = [
     accent: "bg-emerald-500/30 text-emerald-200",
     accentGlow: "group-hover:shadow-emerald-500/20",
     title: "Auditoría de Cadena de Suministro (IOTA)",
-    body: "Registra hitos de cadena de suministro (embolsado, traslado, llegada) en blockchain feeless para exportaciones y DPP europeo.",
+    body: "Ancla hashes o Merkle roots de hitos logísticos cuando la política de auditoría lo exige; no publica datos privados ni cada tap.",
   },
   {
     id: "offline-verifier",
@@ -617,7 +617,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
           <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-600 mb-4">
             Capas de confianza
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="demo-lab-hub-card-grid grid grid-cols-1 md:grid-cols-2 gap-4">
             {HUB_SCENARIOS.map((s) => {
               const Icon = s.icon;
               return (
@@ -657,7 +657,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
           <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-600 mb-4">
             Por industria
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          <div className="demo-lab-hub-vertical-grid grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] gap-3">
             {HUB_VERTICALS.map((v) => {
               const Icon = v.icon;
               return (
@@ -669,7 +669,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
                   <div className={`w-7 h-7 shrink-0 rounded-xl flex items-center justify-center ${v.color}`}>
                     <Icon className="w-3.5 h-3.5" />
                   </div>
-                  <span className="text-sm font-bold text-slate-200">
+                  <span className="min-w-0 text-sm font-bold text-slate-200">
                     {v.label}
                   </span>
                 </Link>

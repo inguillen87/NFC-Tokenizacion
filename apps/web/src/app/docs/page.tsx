@@ -201,7 +201,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     trustOpsTitle: "Cómo funciona cada capa de confianza",
     trustOpsBullets: [
       "Polygon permite que el comprador reclame el producto como suyo: crea un gemelo digital, activa garantía transferible y habilita la reventa con certificado NFT verificado. No registra cada toque del consumidor.",
-      "IOTA registra hitos de la cadena de suministro (embolsado en planta, traslado, llegada al distribuidor) en blockchain feeless. Auditoría pública e inalterable para exportaciones reguladas, DPP europeo e integraciones IoT.",
+      "IOTA puede anclar evidencia seleccionada de cadena de suministro como hashes o Merkle roots cuando la política de auditoría lo exige. No enviamos datos privados ni cada lectura individual on-chain.",
       "El paquete de operaciones de proveedor entrega los permisos necesarios para encodear chips por sub-lote y canal cifrado. El proveedor nunca recibe acceso al sistema central.",
       "El verificador offline permite que un celular o lector funcione sin internet en campo, galpón o cava. Al recuperar señal, sincroniza con el servidor y emite el veredicto oficial.",
     ],
@@ -379,7 +379,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     trustOpsTitle: "Camada de confiança enterprise",
     trustOpsBullets: [
       "Polygon permite que o comprador reivindique o produto como seu: cria um gêmeo digital, ativa garantia transferível e habilita a revenda com certificado NFT verificado. Não registra cada toque do consumidor.",
-      "IOTA registra marcos da cadeia de fornecimento (embalagem, transporte, chegada) em blockchain sem taxas. Auditoria pública e imutável para exportações reguladas, DPP europeu e integrações IoT.",
+      "IOTA pode ancorar evidencias selecionadas da cadeia como hashes ou Merkle roots quando a politica de auditoria exige. Nao enviamos dados privados nem cada leitura individual on-chain.",
       "Supplier Encoding Pack entrega chaves de encoding apenas por sub-batch e canal cifrado; fábrica nunca recebe KMS nem database URLs.",
       "Tenant Vault mostra evidência, manifest, QA e hashes; não mostra segredos internos.",
     ],
@@ -558,7 +558,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     trustOpsTitle: "Enterprise trust layer",
     trustOpsBullets: [
       "Polygon lets the buyer claim the product as theirs: creates a digital twin, activates a transferable warranty and enables resale with a verified NFT certificate. Not used to record every consumer tap.",
-      "IOTA records supply-chain milestones (packaging, transit, arrival) on a feeless blockchain. Public, immutable audit trail for regulated exports, EU DPP compliance and IoT integrations.",
+      "IOTA can anchor selected supply-chain evidence as hashes or Merkle roots when audit policy requires it. We do not put private data or every individual tap on-chain.",
       "Supplier Encoding Pack sends encoding keys only per sub-batch through an encrypted channel; factories never receive KMS or database URLs.",
       "Tenant Vault shows evidence, manifests, QA and hashes; it does not expose internal secrets.",
     ],

@@ -82,7 +82,7 @@ export default function LandingB2BPage() {
                 Medicamentos con prospecto digital, recall por unidad y auditoría de lote en tiempo real. Detectá manipulaciones y asegurar cumplimiento normativo.
               </p>
               <ul className="space-y-3">
-                <li className="flex items-center gap-3 text-sm text-neutral-300"><CheckCircle2 className="w-4 h-4 text-sky-400 shrink-0" /> Historial inalterable para logística</li>
+                <li className="flex items-center gap-3 text-sm text-neutral-300"><CheckCircle2 className="w-4 h-4 text-sky-400 shrink-0" /> Evidencia logística auditable</li>
                 <li className="flex items-center gap-3 text-sm text-neutral-300"><CheckCircle2 className="w-4 h-4 text-sky-400 shrink-0" /> Sello físico TagTamper anti-apertura</li>
               </ul>
               <Link href="/demo-lab?vertical=pharma" className="mt-6 inline-flex items-center gap-1 text-xs font-bold text-sky-400 hover:text-sky-300 transition-colors">
@@ -113,13 +113,13 @@ export default function LandingB2BPage() {
               <Truck className="w-10 h-10 text-lime-400 mb-6" />
               <h3 className="text-2xl font-bold mb-3 text-white">Logística &amp; Cadena de Frío</h3>
               <p className="text-neutral-400 leading-relaxed mb-6">
-                Pallets, bultos y temperatura auditables. UHF/RFID, NFC y QR para rutas, depósitos y cadena fría. Control de entrega con evidencia inalterable.
+                Pallets, bultos y temperatura auditables. UHF/RFID, NFC y QR para rutas, depósitos y cadena fría. Control de entrega con evidencia anclable por política.
               </p>
               <ul className="space-y-3">
                 <li className="flex items-center gap-3 text-sm text-neutral-300"><CheckCircle2 className="w-4 h-4 text-lime-400 shrink-0" /> UHF + IoT para operaciones industriales</li>
                 <li className="flex items-center gap-3 text-sm text-neutral-300"><CheckCircle2 className="w-4 h-4 text-lime-400 shrink-0" /> Verificación offline con sync posterior</li>
               </ul>
-              <Link href="/demo-lab?scenario=offline-verifier" className="mt-6 inline-flex items-center gap-1 text-xs font-bold text-lime-400 hover:text-lime-300 transition-colors">
+              <Link href="/demo-lab?vertical=logistics" className="mt-6 inline-flex items-center gap-1 text-xs font-bold text-lime-400 hover:text-lime-300 transition-colors">
                 Ver demo Logística <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -292,7 +292,7 @@ export default function LandingB2BPage() {
                   "NFC 424 DNA con criptografía dinámica (SUN)",
                   "Verificación offline para campo e industria",
                   "Propiedad tokenizada en Polygon",
-                  "Auditoría logística inalterable (IOTA)",
+                  "Auditoría logística anclable por política (IOTA)",
                   "UHF/IoT donde el riesgo lo justifica",
                   "Tenant Vault y Supplier Ops",
                 ].map((item, i) => (
