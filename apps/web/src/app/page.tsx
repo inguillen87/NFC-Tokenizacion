@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { BrandLockup, Button, LocaleSwitcher, ThemeToggle } from "@product/ui";
 import {
   CtaSection,
+  EnterpriseMetricsStrip,
   EnterpriseTrustLayersSection,
   HeroSection,
   OfflineFieldOperationsSection,
@@ -286,6 +287,8 @@ export default async function HomePage() {
       </header>
 
       <HeroSection content={content} stats={t.web.stats} locale={locale} radar={content.radar} initialTheme={initialTheme} />
+
+      <EnterpriseMetricsStrip locale={locale} />
 
       <SimpleTrustFlowSection locale={locale} />
       <EnterpriseTrustLayersSection locale={locale} />

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getWebI18n } from "../../../lib/locale";
 import { DemoLabClient } from "./demo-lab-client";
+import { DemoLabThemeToggle } from "./demo-lab-hub-theme";
 import {
   Box,
   Network,
@@ -259,9 +260,10 @@ const HUB_SCENARIOS = [
     id: "polygon-ownership",
     icon: Box,
     color: "from-violet-400 to-purple-500",
-    border: "hover:border-violet-500/50",
-    shadow: "hover:shadow-violet-500/10",
-    accent: "bg-violet-500/20 text-violet-300",
+    border: "hover:border-violet-400/50",
+    shadow: "hover:shadow-violet-500/20",
+    accent: "bg-violet-500/30 text-violet-200",
+    accentGlow: "group-hover:shadow-violet-500/20",
     title: "Propiedad Digital (Polygon)",
     body: "El comprador reclama propiedad, activa garantía digital transferible y puede revender con certificado NFT verificado.",
   },
@@ -269,9 +271,10 @@ const HUB_SCENARIOS = [
     id: "iota-proof",
     icon: Network,
     color: "from-emerald-400 to-teal-500",
-    border: "hover:border-emerald-500/50",
-    shadow: "hover:shadow-emerald-500/10",
-    accent: "bg-emerald-500/20 text-emerald-300",
+    border: "hover:border-emerald-400/50",
+    shadow: "hover:shadow-emerald-500/20",
+    accent: "bg-emerald-500/30 text-emerald-200",
+    accentGlow: "group-hover:shadow-emerald-500/20",
     title: "Auditoría de Cadena de Suministro (IOTA)",
     body: "Registra hitos de cadena de suministro (embolsado, traslado, llegada) en blockchain feeless para exportaciones y DPP europeo.",
   },
@@ -279,9 +282,10 @@ const HUB_SCENARIOS = [
     id: "offline-verifier",
     icon: CloudOff,
     color: "from-blue-400 to-cyan-500",
-    border: "hover:border-blue-500/50",
-    shadow: "hover:shadow-blue-500/10",
-    accent: "bg-blue-500/20 text-blue-300",
+    border: "hover:border-blue-400/50",
+    shadow: "hover:shadow-blue-500/20",
+    accent: "bg-blue-500/30 text-blue-200",
+    accentGlow: "group-hover:shadow-blue-500/20",
     title: "Verificación Offline",
     body: "Validación criptográfica local para galpones, agro, cavas e industria sin señal.",
   },
@@ -289,9 +293,10 @@ const HUB_SCENARIOS = [
     id: "qr-gs1",
     icon: QrCode,
     color: "from-amber-400 to-orange-500",
-    border: "hover:border-amber-500/50",
-    shadow: "hover:shadow-amber-500/10",
-    accent: "bg-amber-500/20 text-amber-300",
+    border: "hover:border-amber-400/50",
+    shadow: "hover:shadow-amber-500/20",
+    accent: "bg-amber-500/30 text-amber-200",
+    accentGlow: "group-hover:shadow-amber-500/20",
     title: "Experiencia Core (QR / GS1)",
     body: "Flujo completo de producto: origen, autenticidad, portal y fidelización del cliente.",
   },
@@ -498,6 +503,8 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
             Demo Lab
           </span>
           <span className="hidden sm:inline w-px h-4 bg-white/10" />
+          {/* Theme toggle — reads localStorage "theme" key on mount */}
+          <DemoLabThemeToggle />
           <Link
             href="/?contact=demo#contact-modal"
             className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-gradient-to-r from-cyan-500/90 to-teal-500/90 text-slate-950 text-xs font-black tracking-wide hover:brightness-110 transition-all"
@@ -541,26 +548,27 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
                 <Link
                   key={s.id}
                   href={`/demo-lab?scenario=${s.id}`}
-                  className={`group relative p-6 rounded-3xl bg-white/[0.025] border border-white/[0.07] ${s.border} backdrop-blur-md transition-all duration-300 overflow-hidden hover:bg-white/[0.05] hover:shadow-lg ${s.shadow}`}
+                  className={`group relative p-6 rounded-3xl bg-white/[0.03] border border-white/[0.08] ${s.border} hover:border-cyan-400/40 backdrop-blur-md transition-all duration-300 overflow-hidden hover:bg-white/[0.07] hover:shadow-xl ${s.shadow}`}
                 >
+                  {/* Left accent bar — subtle at rest, vivid on hover */}
                   <div
-                    className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${s.color} opacity-0 group-hover:opacity-100 transition-opacity`}
+                    className={`absolute left-0 top-0 bottom-0 w-[3px] bg-gradient-to-b ${s.color} opacity-20 group-hover:opacity-100 transition-opacity duration-300 rounded-l-3xl`}
                   />
                   <div className="flex items-start gap-4">
                     <div
-                      className={`w-11 h-11 shrink-0 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform ${s.accent}`}
+                      className={`w-11 h-11 shrink-0 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-all duration-200 shadow-lg ${s.accentGlow} ${s.accent}`}
                     >
                       <Icon className="w-5 h-5" />
                     </div>
                     <div className="min-w-0">
-                      <h3 className="text-base font-bold text-white group-hover:text-slate-100 transition-colors mb-1">
+                      <h3 className="text-base font-bold text-slate-100 transition-colors mb-1">
                         {s.title}
                       </h3>
-                      <p className="text-sm text-slate-500 leading-relaxed">
+                      <p className="text-sm text-slate-400 leading-relaxed">
                         {s.body}
                       </p>
                     </div>
-                    <ArrowRight className="w-4 h-4 text-slate-700 group-hover:text-slate-400 transition-colors shrink-0 mt-1" />
+                    <ArrowRight className="w-4 h-4 text-slate-600 group-hover:text-slate-300 transition-colors shrink-0 mt-1" />
                   </div>
                 </Link>
               );
@@ -573,17 +581,19 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
           <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-600 mb-4">
             Por industria
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
             {HUB_VERTICALS.map((v) => {
               const Icon = v.icon;
               return (
                 <Link
                   key={v.vertical}
                   href={`/demo-lab?vertical=${v.vertical}`}
-                  className={`group flex items-center gap-3 px-4 py-3.5 rounded-2xl border bg-white/[0.02] hover:bg-white/[0.05] transition-all duration-200 ${v.color}`}
+                  className={`group flex items-center gap-2.5 px-4 py-3 rounded-2xl border bg-white/[0.02] hover:bg-white/[0.06] hover:scale-105 hover:shadow-lg transition-all duration-200 ${v.color}`}
                 >
-                  <Icon className="w-4 h-4 shrink-0" />
-                  <span className="text-sm font-bold text-white/90">
+                  <div className={`w-7 h-7 shrink-0 rounded-xl flex items-center justify-center ${v.color}`}>
+                    <Icon className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="text-sm font-bold text-slate-200">
                     {v.label}
                   </span>
                 </Link>

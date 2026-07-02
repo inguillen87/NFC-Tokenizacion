@@ -30596,14 +30596,18 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
   padding: 13px;
   color: #cbd5e1;
   text-decoration: none;
-  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.25s ease,
+              border-color 0.25s ease,
+              background 0.25s ease;
 }
 
 .demo-lab-trust-scenario:hover,
 .demo-lab-trust-scenario.is-active {
   border-color: rgba(103, 232, 249, 0.42);
   background: rgba(8, 47, 73, 0.5);
-  transform: translateY(-1px);
+  transform: translateY(-3px) scale(1.01);
+  box-shadow: 0 12px 40px rgba(6, 182, 212, 0.2), 0 0 0 1px rgba(6, 182, 212, 0.15);
 }
 
 .demo-lab-trust-scenario svg {
@@ -42281,3 +42285,239 @@ html[data-theme="light"] .offline-phone-screen .text-slate-200 {
   color: #1e293b !important;
 }
 
+/* ============================================================
+   PREMIUM MICRO-ANIMATIONS & TRANSITIONS
+   nexID Enterprise UX Polish
+   ============================================================ */
+
+/* Entrance animations */
+@keyframes nexid-fade-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes nexid-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes nexid-scale-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes nexid-slide-right {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes nexid-glow-pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(6, 182, 212, 0.3); }
+  50% { box-shadow: 0 0 50px rgba(6, 182, 212, 0.6), 0 0 80px rgba(6, 182, 212, 0.2); }
+}
+
+@keyframes nexid-gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes nexid-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes nexid-scan-line {
+  0% { transform: translateY(-100%); opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translateY(400%); opacity: 0; }
+}
+
+/* Utility classes */
+.nexid-animate-fade-up {
+  animation: nexid-fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.nexid-animate-fade-up--d100 { animation-delay: 0.1s; }
+.nexid-animate-fade-up--d200 { animation-delay: 0.2s; }
+.nexid-animate-fade-up--d300 { animation-delay: 0.3s; }
+.nexid-animate-fade-up--d400 { animation-delay: 0.4s; }
+.nexid-animate-fade-up--d500 { animation-delay: 0.5s; }
+
+.nexid-animate-float {
+  animation: nexid-float 4s ease-in-out infinite;
+}
+
+.nexid-glow-pulse {
+  animation: nexid-glow-pulse 3s ease-in-out infinite;
+}
+
+/* Premium gradient text animation */
+.nexid-gradient-text-animated {
+  background: linear-gradient(270deg, #67e8f9, #34d399, #818cf8, #67e8f9);
+  background-size: 400% 400%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: nexid-gradient-shift 6s ease infinite;
+}
+
+/* Scan line effect for NFC demos */
+.nexid-scan-container {
+  position: relative;
+  overflow: hidden;
+}
+.nexid-scan-container::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(6, 182, 212, 0.8), transparent);
+  animation: nexid-scan-line 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Premium card hover system */
+.nexid-card-hover {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.3s ease,
+              border-color 0.3s ease;
+}
+.nexid-card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(6, 182, 212, 0.2);
+}
+
+/* Hub scenario card — premium hover (mirrors demo-lab-trust-scenario upgrade) */
+.demo-lab-hub-card {
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.25s ease,
+              border-color 0.25s ease,
+              background 0.25s ease;
+}
+.demo-lab-hub-card:hover {
+  transform: translateY(-3px) scale(1.01);
+  box-shadow: 0 12px 40px rgba(6, 182, 212, 0.2), 0 0 0 1px rgba(6, 182, 212, 0.15);
+}
+
+/* Skeleton loader */
+@keyframes nexid-skeleton {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.nexid-skeleton {
+  background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%);
+  background-size: 200% 100%;
+  animation: nexid-skeleton 1.8s ease infinite;
+}
+
+/* Number counter animation */
+.nexid-counter-wrap {
+  overflow: hidden;
+}
+
+/* NFC tap ripple */
+@keyframes nexid-tap-ripple {
+  0% { transform: scale(0.8); opacity: 0.8; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+.nexid-tap-ripple {
+  animation: nexid-tap-ripple 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Status badge pulse */
+@keyframes nexid-status-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+.nexid-status-live {
+  position: relative;
+}
+.nexid-status-live::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  border: 1px solid currentColor;
+  opacity: 0.5;
+  animation: nexid-tap-ripple 2s ease infinite;
+}
+
+/* Page transition */
+.nexid-page-enter {
+  animation: nexid-fade-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Trust layer card hover glow by type */
+.enterprise-trust-layer-card:hover {
+  position: relative;
+  z-index: 1;
+}
+.enterprise-trust-layer-card--identity:hover {
+  box-shadow: 0 8px 32px rgba(6, 182, 212, 0.2);
+  border-color: rgba(6, 182, 212, 0.4) !important;
+}
+.enterprise-trust-layer-card--authenticity:hover {
+  box-shadow: 0 8px 32px rgba(139, 92, 246, 0.2);
+  border-color: rgba(139, 92, 246, 0.4) !important;
+}
+.enterprise-trust-layer-card--ownership:hover {
+  box-shadow: 0 8px 32px rgba(168, 85, 247, 0.2);
+  border-color: rgba(168, 85, 247, 0.4) !important;
+}
+.enterprise-trust-layer-card--supply-chain:hover {
+  box-shadow: 0 8px 32px rgba(20, 184, 166, 0.2);
+  border-color: rgba(20, 184, 166, 0.4) !important;
+}
+
+/* Improved scrollbar for demo lab panels */
+.demo-lab-wizard-events::-webkit-scrollbar,
+.demo-lab-wizard-verticals::-webkit-scrollbar,
+.demo-lab-wizard-trazo-side::-webkit-scrollbar {
+  width: 4px;
+}
+.demo-lab-wizard-events::-webkit-scrollbar-track,
+.demo-lab-wizard-verticals::-webkit-scrollbar-track,
+.demo-lab-wizard-trazo-side::-webkit-scrollbar-track {
+  background: transparent;
+}
+.demo-lab-wizard-events::-webkit-scrollbar-thumb,
+.demo-lab-wizard-verticals::-webkit-scrollbar-thumb,
+.demo-lab-wizard-trazo-side::-webkit-scrollbar-thumb {
+  background: rgba(125, 211, 252, 0.2);
+  border-radius: 2px;
+}
+
+/* Glassmorphism system — reusable */
+.nexid-glass {
+  background: rgba(4, 14, 31, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.nexid-glass--light {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+/* Enterprise grid pattern background */
+.nexid-grid-bg {
+  background-image:
+    linear-gradient(rgba(125, 211, 252, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(125, 211, 252, 0.04) 1px, transparent 1px);
+  background-size: 4rem 4rem;
+}
+
+/* Verified badge / SVG check animation */
+@keyframes nexid-check-draw {
+  from { stroke-dashoffset: 100; }
+  to { stroke-dashoffset: 0; }
+}
+.nexid-check-animated {
+  stroke-dasharray: 100;
+  animation: nexid-check-draw 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+}

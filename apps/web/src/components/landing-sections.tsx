@@ -103,6 +103,48 @@ export function HeroSection({ content, stats, locale, initialTheme = "dark" }: {
   );
 }
 
+export function EnterpriseMetricsStrip({ locale }: { locale: string }) {
+  const isEn = locale === "en";
+  const isBr = locale === "pt-BR";
+
+  const metrics = isEn
+    ? [
+        { value: "11,867 km", label: "Longest route traced", accent: "text-cyan-300" },
+        { value: "99.97%", label: "Authenticity uptime", accent: "text-emerald-300" },
+        { value: "<2 ms", label: "Verification latency", accent: "text-purple-300" },
+        { value: "DPP", label: "EU Compliance ready", accent: "text-amber-300" },
+      ]
+    : isBr
+    ? [
+        { value: "11.867 km", label: "Rota mais longa rastreada", accent: "text-cyan-300" },
+        { value: "99,97%", label: "Autenticidade uptime", accent: "text-emerald-300" },
+        { value: "<2 ms", label: "Latência de verificação", accent: "text-purple-300" },
+        { value: "DPP", label: "Compliance EU pronto", accent: "text-amber-300" },
+      ]
+    : [
+        { value: "11.867 km", label: "Ruta más larga trazada", accent: "text-cyan-300" },
+        { value: "99,97%", label: "Autenticidad uptime", accent: "text-emerald-300" },
+        { value: "<2 ms", label: "Latencia de verificación", accent: "text-purple-300" },
+        { value: "DPP", label: "Compliance UE listo", accent: "text-amber-300" },
+      ];
+
+  return (
+    <div className="container-shell py-3">
+      <div className="relative overflow-hidden rounded-2xl border border-white/8 bg-gradient-to-r from-slate-950 via-slate-900/90 to-slate-950 backdrop-blur-xl shadow-[0_4px_24px_rgba(0,0,0,0.4)]">
+        <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_50%_0%,rgba(34,211,238,0.06),transparent_55%)]" />
+        <div className="relative grid grid-cols-2 md:grid-cols-4 divide-x divide-white/8">
+          {metrics.map((m) => (
+            <div key={m.label} className="flex flex-col items-center justify-center px-4 py-5 text-center">
+              <p className={`text-2xl font-black tracking-tight md:text-3xl ${m.accent}`}>{m.value}</p>
+              <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">{m.label}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function SimpleTrustFlowSection({ locale }: { locale: string }) {
   const isEn = locale === "en";
   const isBr = locale === "pt-BR";
@@ -232,7 +274,7 @@ export function EnterpriseTrustLayersSection({ locale }: { locale: string }) {
   const copy = isEn
     ? {
       eyebrow: "Trust layers for physical products",
-      title: "One platform. The right proof layer for each risk, budget and rollout stage.",
+      title: "One platform. The right proof layer for every risk, budget and rollout stage.",
       body: "nexID keeps the business workflow first: product identity, SUN validation, CRM, loyalty, DPP and analytics. Blockchain is optional and policy-driven, not a requirement for every tap.",
       note: "Polygon and IOTA are integrated technologies, not official partnerships unless a signed public agreement exists. We do not send every tap on-chain or store private customer data on-chain.",
       cta: "Read trust docs",
@@ -273,7 +315,7 @@ export function EnterpriseTrustLayersSection({ locale }: { locale: string }) {
     }
     : {
       eyebrow: "Capas de confianza para productos fisicos",
-      title: "Una plataforma. La capa correcta para cada riesgo, costo y etapa de rollout.",
+      title: "Una plataforma. La capa correcta para cada riesgo, presupuesto y etapa.",
       body: "nexID mantiene primero el flujo de negocio: identidad de producto, validacion SUN, CRM, loyalty, DPP y analitica. Blockchain es opcional y se activa por politica, no por cada tap.",
       note: "Polygon e IOTA son tecnologias integrables, no partnerships oficiales salvo acuerdo publico firmado. No mandamos cada tap on-chain ni guardamos datos privados de clientes en blockchain.",
       cta: "Leer docs de confianza",
@@ -299,7 +341,7 @@ export function EnterpriseTrustLayersSection({ locale }: { locale: string }) {
         <div className="mb-12 flex flex-col items-start gap-6 md:flex-row md:items-end md:justify-between">
           <div className="max-w-2xl">
             <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-400">{copy.eyebrow}</p>
-            <h2 className="mt-4 text-3xl font-black leading-tight text-white md:text-5xl">{copy.title}</h2>
+            <h2 className="mt-4 text-3xl font-black leading-tight md:text-5xl bg-clip-text text-transparent bg-gradient-to-r from-white via-cyan-100 to-teal-300">{copy.title}</h2>
           </div>
           <div className="max-w-md shrink-0">
             <p className="text-sm leading-relaxed text-slate-300">{copy.body}</p>
