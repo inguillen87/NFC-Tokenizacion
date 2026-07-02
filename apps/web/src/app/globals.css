@@ -41656,3 +41656,403 @@ html[data-theme="light"] .offline-phone-status-badge {
   color: #0c4a6e !important;
 }
 
+/* ============================================================
+   DEMO LAB — FULL-SCREEN SYSTEM (world-class enterprise UX)
+   ============================================================ */
+
+/* Root wrapper: full viewport, dark, no scroll bleed */
+.demo-lab-fullscreen-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  min-height: 100vh;
+  background: #02070f;
+  overflow: hidden;
+}
+
+/* ── TOP INFOBAR ──────────────────────────────────────────── */
+.demo-lab-infobar {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(125, 211, 252, 0.12);
+  background: rgba(3, 8, 20, 0.92);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+}
+
+.demo-lab-infobar__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0 1.25rem;
+  height: 3.25rem;
+}
+
+.demo-lab-infobar__left {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.demo-lab-infobar__right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.demo-lab-infobar__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid rgba(125, 211, 252, 0.18);
+  border-radius: 999px;
+  background: rgba(125, 211, 252, 0.06);
+  color: #7dd3fc;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.demo-lab-infobar__back:hover {
+  background: rgba(125, 211, 252, 0.14);
+  color: #e0f2fe;
+  border-color: rgba(125, 211, 252, 0.35);
+}
+
+.demo-lab-infobar__divider {
+  width: 1px;
+  height: 1.4rem;
+  background: rgba(125, 211, 252, 0.14);
+  flex-shrink: 0;
+}
+
+.demo-lab-infobar__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.65rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.demo-lab-infobar__title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.demo-lab-infobar__eyebrow {
+  font-size: 0.6rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(125, 211, 252, 0.7);
+  line-height: 1;
+}
+
+.demo-lab-infobar__title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #f0f9ff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.demo-lab-infobar__context-pill {
+  display: none;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  color: rgba(148, 163, 184, 0.85);
+  font-size: 0.72rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+@media (min-width: 768px) {
+  .demo-lab-infobar__context-pill {
+    display: inline-flex;
+  }
+}
+
+.demo-lab-infobar__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 1rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.9), rgba(45, 212, 191, 0.9));
+  color: #020617;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: filter 0.15s, transform 0.1s;
+  letter-spacing: 0.02em;
+}
+.demo-lab-infobar__cta:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+/* ── CONTEXT STRIP ───────────────────────────────────────── */
+.demo-lab-context-strip {
+  border-top: 1px solid rgba(125, 211, 252, 0.06);
+}
+
+.demo-lab-context-strip__trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.25rem;
+  color: rgba(148, 163, 184, 0.7);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  transition: color 0.15s;
+}
+.demo-lab-context-strip__trigger::-webkit-details-marker { display: none; }
+.demo-lab-context-strip__trigger:hover {
+  color: #e0f2fe;
+}
+
+.demo-lab-context-strip__chevron {
+  margin-left: auto;
+  transition: transform 0.2s ease;
+}
+details[open] .demo-lab-context-strip__chevron {
+  transform: rotate(90deg);
+}
+
+.demo-lab-context-strip__body {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  padding: 1rem 1.25rem 1.25rem;
+  background: rgba(2, 8, 22, 0.6);
+  border-top: 1px solid rgba(125, 211, 252, 0.07);
+  animation: stripOpen 0.18s ease;
+}
+@keyframes stripOpen {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+@media (min-width: 768px) {
+  .demo-lab-context-strip__body {
+    grid-template-columns: 1fr 1fr auto;
+    align-items: start;
+  }
+}
+
+.demo-lab-context-strip__card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.demo-lab-context-strip__card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.6rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  flex-shrink: 0;
+}
+
+.demo-lab-context-strip__card-label {
+  margin: 0 0 0.2rem;
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(125, 211, 252, 0.65);
+}
+.demo-lab-context-strip__card-text {
+  margin: 0;
+  font-size: 0.78rem;
+  color: rgba(148, 163, 184, 0.9);
+  line-height: 1.6;
+  max-width: 28rem;
+}
+
+.demo-lab-context-strip__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  align-items: flex-start;
+  flex-shrink: 0;
+}
+@media (min-width: 768px) {
+  .demo-lab-context-strip__actions {
+    align-items: stretch;
+    min-width: 11rem;
+  }
+}
+
+.demo-lab-context-strip__doc-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #7dd3fc;
+  text-decoration: none;
+  transition: color 0.12s;
+}
+.demo-lab-context-strip__doc-link:hover { color: #e0f2fe; }
+
+.demo-lab-context-strip__demo-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  border-radius: 0.75rem;
+  background: rgba(34, 211, 238, 0.1);
+  border: 1px solid rgba(34, 211, 238, 0.25);
+  color: #67e8f9;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+.demo-lab-context-strip__demo-btn:hover {
+  background: rgba(34, 211, 238, 0.18);
+  border-color: rgba(34, 211, 238, 0.45);
+}
+
+/* ── FULL-SCREEN SIMULATOR STAGE ─────────────────────────── */
+.demo-lab-fullscreen-stage {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.demo-lab-fullscreen-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 0%, rgba(34,211,238,0.07), transparent 70%),
+    radial-gradient(ellipse 60% 50% at 80% 100%, rgba(139,92,246,0.06), transparent 60%);
+}
+
+/* Override the DemoLabClient internal grid when inside full-screen stage */
+.demo-lab-fullscreen-stage .demo-lab-studio {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  border-radius: 0;
+  border: none;
+  border-top: 1px solid rgba(125, 211, 252, 0.08);
+}
+
+.demo-lab-fullscreen-stage .demo-lab-studio-grid {
+  grid-template-columns:
+    minmax(16rem, 0.72fr)
+    minmax(32rem, 1.8fr)
+    minmax(20rem, 0.88fr);
+  height: 100%;
+  min-height: calc(100dvh - 7rem);
+}
+
+/* Give the center stage more breathing room */
+.demo-lab-fullscreen-stage .demo-lab-studio-stage {
+  padding: clamp(1.2rem, 2.5vw, 2.4rem);
+}
+
+/* Right panel: make map fill properly */
+.demo-lab-fullscreen-stage .demo-lab-studio-right {
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(125,211,252,0.14) transparent;
+}
+
+/* Responsive: below 1200px stack info on top, simulator fills full width */
+@media (max-width: 1199px) {
+  .demo-lab-fullscreen-stage .demo-lab-studio-grid {
+    grid-template-columns: minmax(14rem, 0.62fr) minmax(28rem, 1.6fr) minmax(18rem, 0.78fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .demo-lab-fullscreen-stage .demo-lab-studio-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr auto;
+  }
+  .demo-lab-context-strip__body {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Light mode adaptations */
+html.theme-light .demo-lab-infobar {
+  background: rgba(248, 250, 252, 0.95);
+  border-bottom-color: rgba(14, 116, 144, 0.12);
+}
+html.theme-light .demo-lab-infobar__back {
+  color: #0369a1;
+  border-color: rgba(14, 116, 144, 0.2);
+  background: rgba(14, 116, 144, 0.05);
+}
+html.theme-light .demo-lab-infobar__back:hover {
+  background: rgba(14, 116, 144, 0.1);
+}
+html.theme-light .demo-lab-infobar__title {
+  color: #0f172a;
+}
+html.theme-light .demo-lab-infobar__eyebrow {
+  color: rgba(3, 105, 161, 0.7);
+}
+html.theme-light .demo-lab-context-strip {
+  border-top-color: rgba(14, 116, 144, 0.08);
+}
+html.theme-light .demo-lab-context-strip__trigger {
+  color: rgba(71, 85, 105, 0.8);
+}
+html.theme-light .demo-lab-context-strip__body {
+  background: rgba(241, 245, 249, 0.85);
+}
+html.theme-light .demo-lab-context-strip__card-text {
+  color: rgba(51, 65, 85, 0.9);
+}
+html.theme-light .demo-lab-context-strip__doc-link {
+  color: #0369a1;
+}
+html.theme-light .demo-lab-context-strip__demo-btn {
+  background: rgba(14, 116, 144, 0.08);
+  border-color: rgba(14, 116, 144, 0.2);
+  color: #0c4a6e;
+}
+html.theme-light .demo-lab-fullscreen-root {
+  background: #f8fafc;
+}
