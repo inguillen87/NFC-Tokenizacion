@@ -1,4 +1,4 @@
-@tailwind base;
+﻿@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -16480,7 +16480,7 @@ html.theme-light .demo-lab-studio-product .demo-lab-cinematic-render--studio .de
 }
 
 .demo-lab-product-scene--open .demo-lab-nfc-state-pill::after {
-  content: "dueño y beneficios";
+  content: "dueÃ±o y beneficios";
   color: rgba(221, 214, 254, 0.78);
   font-size: 0.5rem;
   font-weight: 900;
@@ -27848,7 +27848,7 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
 }
 
 /* ==========================================
-   ✨ PREMIUM UX/UI REDESIGN TOKENS & STYLES
+   âœ¨ PREMIUM UX/UI REDESIGN TOKENS & STYLES
    ========================================== */
 
 /* Holographic Glass Card Glow & Shine */
@@ -41494,18 +41494,18 @@ html[data-theme="light"] body .hero-product-modal__asset-photo.nexid-premium-ima
   transform: none !important;
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
-   NEXID GLOBAL POLISH PASS – July 2026
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   NEXID GLOBAL POLISH PASS â€“ July 2026
    Fixes: hero spacing, dark/light mode vertical pills, map label legibility,
    nav menu in both themes.
-   ───────────────────────────────────────────────────────────────────────── */
+   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 /* 1. Hero demo-shell: extra breathing room between title copy and the demo */
 .landing-hero-section .hero-demo-shell {
   margin-top: clamp(4rem, 5.5vw, 6.5rem) !important;
 }
 
-/* 2. Vertical pill — dark mode (default): crisp, readable, premium */
+/* 2. Vertical pill â€” dark mode (default): crisp, readable, premium */
 .hero-vertical-pill {
   min-height: 2.2rem;
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -41534,7 +41534,7 @@ html[data-theme="light"] body .hero-product-modal__asset-photo.nexid-premium-ima
   box-shadow: 0 0 12px rgba(34, 211, 238, 0.18);
 }
 
-/* 3. Vertical pill — light mode: clear contrast on white background */
+/* 3. Vertical pill â€” light mode: clear contrast on white background */
 html.theme-light .hero-vertical-pill,
 html[data-theme="light"] .hero-vertical-pill {
   border-color: rgba(71, 85, 105, 0.28) !important;
@@ -41558,7 +41558,7 @@ html[data-theme="light"] .hero-vertical-pill--active {
   box-shadow: 0 0 10px rgba(14, 116, 144, 0.20) !important;
 }
 
-/* 4. Map city labels — dark mode: bright and clean */
+/* 4. Map city labels â€” dark mode: bright and clean */
 .hero-trust-atlas__city-label {
   fill: rgba(226, 252, 255, 0.92);
   font-size: 9px;
@@ -41579,7 +41579,7 @@ html[data-theme="light"] .hero-vertical-pill--active {
   paint-order: stroke fill;
 }
 
-/* 5. Map city labels — light mode: dark text, zero stroke bleed */
+/* 5. Map city labels â€” light mode: dark text, zero stroke bleed */
 html.theme-light .hero-trust-atlas__city-label,
 html[data-theme="light"] .hero-trust-atlas__city-label,
 html.theme-light .hero-trust-atlas__city-country,
@@ -41610,7 +41610,7 @@ html[data-theme="light"] .landing-hero-section article h3 {
   color: #0f172a;
 }
 
-/* 7. EnterpriseTrustLayersSection bento — stronger dark/light contrast */
+/* 7. EnterpriseTrustLayersSection bento â€” stronger dark/light contrast */
 .landing-trust-bento article {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
@@ -41636,7 +41636,7 @@ html[data-theme="dark"] .nexid-nav-link:hover {
   margin-bottom: 1.1rem !important;
 }
 
-/* 10. Offline section phone status badge — dark bg fix */
+/* 10. Offline section phone status badge â€” dark bg fix */
 .offline-phone-status-badge {
   background: rgba(8, 47, 73, 0.85);
   border: 1px solid rgba(34, 211, 238, 0.30);
@@ -41657,7 +41657,7 @@ html[data-theme="light"] .offline-phone-status-badge {
 }
 
 /* ============================================================
-   DEMO LAB — FULL-SCREEN SYSTEM (world-class enterprise UX)
+   DEMO LAB â€” FULL-SCREEN SYSTEM (world-class enterprise UX)
    ============================================================ */
 
 /* Root wrapper: full viewport, dark, no scroll bleed */
@@ -41670,7 +41670,7 @@ html[data-theme="light"] .offline-phone-status-badge {
   overflow: hidden;
 }
 
-/* ── TOP INFOBAR ──────────────────────────────────────────── */
+/* â”€â”€ TOP INFOBAR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .demo-lab-infobar {
   position: sticky;
   top: 0;
@@ -41813,7 +41813,7 @@ html[data-theme="light"] .offline-phone-status-badge {
   transform: translateY(-1px);
 }
 
-/* ── CONTEXT STRIP ───────────────────────────────────────── */
+/* â”€â”€ CONTEXT STRIP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .demo-lab-context-strip {
   border-top: 1px solid rgba(125, 211, 252, 0.06);
 }
@@ -41944,7 +41944,7 @@ details[open] .demo-lab-context-strip__chevron {
   border-color: rgba(34, 211, 238, 0.45);
 }
 
-/* ── FULL-SCREEN SIMULATOR STAGE ─────────────────────────── */
+/* â”€â”€ FULL-SCREEN SIMULATOR STAGE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .demo-lab-fullscreen-stage {
   flex: 1;
   position: relative;
@@ -42058,380 +42058,197 @@ html.theme-light .demo-lab-fullscreen-root {
 }
 
 /* ============================================================
-   LIGHT MODE — LANDING SECTIONS TARGETED FIXES
-   (all added 2026-07-02, corrects invisible-on-white issues)
+   LIGHT MODE â€” LANDING SECTIONS TARGETED FIXES
+   PostCSS-safe: NO Tailwind utility class names in selectors.
+   Uses BEM classes, element types, data-* attrs, id selectors.
    ============================================================ */
 
-/* ── 1. SimpleTrustFlowSection outer card ────────────────────
-   Selector: the section > first div with bg-slate-950/70
-   We target via the container-shell + unique cyan-300/15 border
-   ──────────────────────────────────────────────────────────── */
-html.theme-light .landing-root .border-cyan-300\/15.bg-slate-950\/70,
-html[data-theme="light"] .landing-root .border-cyan-300\/15.bg-slate-950\/70 {
+/* â”€â”€ 1. Section backgrounds that are near-black in dark mode â”€â”€ */
+html.theme-light .landing-root section,
+html[data-theme="light"] .landing-root section {
+  --tw-bg-opacity: 1;
+}
+
+/* SimpleTrustFlow outer wrapper */
+html.theme-light .simple-trust-flow-shell,
+html[data-theme="light"] .simple-trust-flow-shell {
   background: linear-gradient(135deg, rgba(240,249,255,0.98), rgba(236,254,255,0.96) 55%, rgba(240,253,250,0.95)) !important;
-  border-color: rgba(14, 116, 144, 0.22) !important;
-  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.10) !important;
+  border-color: rgba(14,116,144,0.22) !important;
+  box-shadow: 0 24px 64px rgba(15,23,42,0.10) !important;
 }
 
-/* Step cards inside SimpleTrustFlow (bg-slate-900/70, border-white/10) */
-html.theme-light .landing-root .border-white\/10.bg-slate-900\/70,
-html[data-theme="light"] .landing-root .border-white\/10.bg-slate-900\/70 {
-  background: rgba(255, 255, 255, 0.92) !important;
-  border-color: rgba(148, 163, 184, 0.38) !important;
-  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06) !important;
+html.theme-light .simple-trust-flow-step,
+html[data-theme="light"] .simple-trust-flow-step {
+  background: rgba(255,255,255,0.92) !important;
+  border-color: rgba(148,163,184,0.38) !important;
+  box-shadow: 0 4px 16px rgba(15,23,42,0.06) !important;
 }
 
-/* Audience cards (bg-emerald-500/10, border-emerald-300/15) */
-html.theme-light .landing-root .border-emerald-300\/15.bg-emerald-500\/10,
-html[data-theme="light"] .landing-root .border-emerald-300\/15.bg-emerald-500\/10 {
-  background: rgba(236, 253, 245, 0.88) !important;
-  border-color: rgba(16, 185, 129, 0.28) !important;
+/* â”€â”€ 2. Enterprise Trust Layers section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+html.theme-light .enterprise-trust-layers__shell,
+html[data-theme="light"] .enterprise-trust-layers__shell {
+  background: transparent !important;
 }
-html.theme-light .landing-root .border-emerald-300\/15.bg-emerald-500\/10 .text-emerald-200,
-html[data-theme="light"] .landing-root .border-emerald-300\/15.bg-emerald-500\/10 .text-emerald-200 {
+
+html.theme-light .enterprise-trust-layer-card,
+html[data-theme="light"] .enterprise-trust-layer-card {
+  background: rgba(255,255,255,0.92) !important;
+  border-color: rgba(148,163,184,0.38) !important;
+  box-shadow: 0 4px 20px rgba(15,23,42,0.06) !important;
+}
+
+html.theme-light .enterprise-trust-layer-card:hover,
+html[data-theme="light"] .enterprise-trust-layer-card:hover {
+  background: rgba(255,255,255,0.98) !important;
+}
+
+html.theme-light .enterprise-trust-layer-card h3,
+html.theme-light .enterprise-trust-layer-card em,
+html[data-theme="light"] .enterprise-trust-layer-card h3,
+html[data-theme="light"] .enterprise-trust-layer-card em {
+  color: #0f172a !important;
+}
+
+html.theme-light .enterprise-trust-layer-card p,
+html[data-theme="light"] .enterprise-trust-layer-card p {
+  color: #475569 !important;
+}
+
+html.theme-light .enterprise-trust-layers__head p,
+html[data-theme="light"] .enterprise-trust-layers__head p {
   color: #065f46 !important;
 }
-html.theme-light .landing-root .border-emerald-300\/15.bg-emerald-500\/10 .text-slate-100,
-html[data-theme="light"] .landing-root .border-emerald-300\/15.bg-emerald-500\/10 .text-slate-100 {
-  color: #1e293b !important;
+
+html.theme-light .enterprise-trust-layers__head h2,
+html[data-theme="light"] .enterprise-trust-layers__head h2 {
+  color: #0f172a !important;
 }
 
-/* Rubros paragraph (bg-violet-500/10, border-violet-300/20) */
-html.theme-light .landing-root .border-violet-300\/20.bg-violet-500\/10,
-html[data-theme="light"] .landing-root .border-violet-300\/20.bg-violet-500\/10 {
-  background: rgba(245, 243, 255, 0.90) !important;
-  border-color: rgba(109, 40, 217, 0.22) !important;
-}
-html.theme-light .landing-root .border-violet-300\/20.bg-violet-500\/10,
-html[data-theme="light"] .landing-root .border-violet-300\/20.bg-violet-500\/10 {
-  color: #4c1d95 !important;
+html.theme-light .enterprise-trust-layers__head span,
+html[data-theme="light"] .enterprise-trust-layers__head span {
+  color: #334155 !important;
 }
 
-/* Claim card (bg-cyan-500/10, border-cyan-300/20) */
-html.theme-light .landing-root .border-cyan-300\/20.bg-cyan-500\/10,
-html[data-theme="light"] .landing-root .border-cyan-300\/20.bg-cyan-500\/10 {
-  background: rgba(240, 249, 255, 0.90) !important;
-  border-color: rgba(14, 116, 144, 0.28) !important;
-}
-html.theme-light .landing-root .border-cyan-300\/20.bg-cyan-500\/10 .text-cyan-200,
-html[data-theme="light"] .landing-root .border-cyan-300\/20.bg-cyan-500\/10 .text-cyan-200 {
-  color: #0c4a6e !important;
-}
-html.theme-light .landing-root .border-cyan-300\/20.bg-cyan-500\/10 .text-slate-100,
-html[data-theme="light"] .landing-root .border-cyan-300\/20.bg-cyan-500\/10 .text-slate-100 {
-  color: #1e293b !important;
-}
-
-/* Step number badge (border-cyan-300/30, bg-cyan-500/10 or bg-cyan-500/15) — text-cyan-100 */
-html.theme-light .landing-root .border-cyan-300\/30.bg-cyan-500\/10,
-html.theme-light .landing-root .border-cyan-300\/30.bg-cyan-500\/15,
-html[data-theme="light"] .landing-root .border-cyan-300\/30.bg-cyan-500\/10,
-html[data-theme="light"] .landing-root .border-cyan-300\/30.bg-cyan-500\/15 {
-  background: rgba(224, 242, 254, 0.85) !important;
-  border-color: rgba(14, 116, 144, 0.32) !important;
-}
-
-/* CTA links inside SimpleTrustFlow (border-cyan-300/35, bg-cyan-500/15 → text-cyan-100) */
-html.theme-light .landing-root .border-cyan-300\/35.bg-cyan-500\/15,
-html[data-theme="light"] .landing-root .border-cyan-300\/35.bg-cyan-500\/15 {
-  background: rgba(224, 242, 254, 0.70) !important;
-  border-color: rgba(14, 116, 144, 0.38) !important;
-}
-html.theme-light .landing-root .border-emerald-300\/30.bg-emerald-500\/10,
-html[data-theme="light"] .landing-root .border-emerald-300\/30.bg-emerald-500\/10 {
-  background: rgba(209, 250, 229, 0.70) !important;
-  border-color: rgba(16, 185, 129, 0.34) !important;
-}
-
-
-/* ── 2. EnterpriseTrustLayersSection — NEW bento variant ─────
-   This section uses `dark:` Tailwind classes which only respond
-   to prefers-color-scheme, NOT html.theme-light. We override
-   the key structural patterns by targeting the section directly.
-   ──────────────────────────────────────────────────────────── */
-
-/* Section heading text: text-white, text-slate-300, text-emerald-400 */
-html.theme-light .landing-root section.container-shell .text-emerald-400,
-html[data-theme="light"] .landing-root section.container-shell .text-emerald-400 {
-  color: #065f46 !important;
-}
-html.theme-light .landing-root section.container-shell .text-emerald-300,
-html[data-theme="light"] .landing-root section.container-shell .text-emerald-300 {
-  color: #047857 !important;
-}
-
-/* Rollout path bento cards (dark:from-slate-900/80 dark:to-slate-950/80 fallback fix)
-   These use from-white/90 to-slate-50/90 in light already, but border needs fixing */
-html.theme-light .landing-root .rounded-3xl.border-slate-200,
-html[data-theme="light"] .landing-root .rounded-3xl.border-slate-200 {
-  border-color: rgba(148, 163, 184, 0.45) !important;
-  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.08) !important;
-}
-
-/* Trust layer technology cards (bg-white/60 dark:bg-slate-900/40) — force white on light */
-html.theme-light .landing-root .rounded-3xl.bg-white\/60,
-html[data-theme="light"] .landing-root .rounded-3xl.bg-white\/60 {
-  background: rgba(255, 255, 255, 0.92) !important;
-  border-color: rgba(148, 163, 184, 0.38) !important;
-  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06) !important;
-}
-html.theme-light .landing-root .rounded-3xl.bg-white\/60:hover,
-html[data-theme="light"] .landing-root .rounded-3xl.bg-white\/60:hover {
-  background: rgba(255, 255, 255, 0.98) !important;
-}
-
-/* PhaseN eyebrow label (dark:text-slate-400) — Tailwind dark: doesn't work with theme-light */
-html.theme-light .landing-root .rounded-3xl .bg-slate-100,
-html[data-theme="light"] .landing-root .rounded-3xl .bg-slate-100 {
-  background: rgba(241, 245, 249, 1) !important;
-  border-color: rgba(148, 163, 184, 0.40) !important;
-}
-
-/* Note / disclaimer (amber bg, text-amber-200/70 → invisible on white) */
-html.theme-light .landing-root .border-amber-500\/20.bg-amber-500\/5,
-html[data-theme="light"] .landing-root .border-amber-500\/20.bg-amber-500\/5 {
-  background: rgba(255, 251, 235, 0.88) !important;
-  border-color: rgba(217, 119, 6, 0.28) !important;
-}
-html.theme-light .landing-root .border-amber-500\/20.bg-amber-500\/5 p,
-html[data-theme="light"] .landing-root .border-amber-500\/20.bg-amber-500\/5 p {
+html.theme-light .enterprise-trust-layers__note,
+html[data-theme="light"] .enterprise-trust-layers__note {
+  background: rgba(255,251,235,0.88) !important;
+  border-color: rgba(217,119,6,0.28) !important;
   color: #78350f !important;
 }
-html.theme-light .landing-root .border-amber-500\/20.bg-amber-500\/5 svg,
-html[data-theme="light"] .landing-root .border-amber-500\/20.bg-amber-500\/5 svg {
-  color: #b45309 !important;
+
+/* â”€â”€ 3. Offline Field Operations section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+html.theme-light #offline-field-operations,
+html[data-theme="light"] #offline-field-operations {
+  background: linear-gradient(180deg, #f0f9ff 0%, #f8fafc 100%) !important;
 }
 
-/* amber-500/10 variant used in offline warning and other warnings */
-html.theme-light .landing-root .border-amber-500\/20.bg-amber-500\/10,
-html[data-theme="light"] .landing-root .border-amber-500\/20.bg-amber-500\/10 {
-  background: rgba(255, 251, 235, 0.90) !important;
-  border-color: rgba(217, 119, 6, 0.30) !important;
-}
-html.theme-light .landing-root .border-amber-500\/20.bg-amber-500\/10 p,
-html.theme-light .landing-root .border-amber-500\/20.bg-amber-500\/10 .text-amber-200\/90,
-html[data-theme="light"] .landing-root .border-amber-500\/20.bg-amber-500\/10 p {
-  color: #92400e !important;
-}
-html.theme-light .landing-root .border-amber-500\/20.bg-amber-500\/10 .text-amber-400,
-html.theme-light .landing-root .border-amber-500\/20.bg-amber-500\/10 .text-amber-400\/90,
-html[data-theme="light"] .landing-root .border-amber-500\/20.bg-amber-500\/10 .text-amber-400 {
-  color: #b45309 !important;
+html.theme-light #offline-field-operations h2,
+html[data-theme="light"] #offline-field-operations h2 {
+  color: #0f172a !important;
 }
 
-
-/* ── 3. OfflineFieldOperationsSection ────────────────────────
-   id="offline-field-operations"
-   ──────────────────────────────────────────────────────────── */
-
-/* Atlas location cards: bg-slate-900/50, border-white/5, text-slate-200/slate-500 */
-html.theme-light #offline-field-operations .border-white\/5.bg-slate-900\/50,
-html[data-theme="light"] #offline-field-operations .border-white\/5.bg-slate-900\/50 {
-  background: rgba(241, 245, 249, 0.92) !important;
-  border-color: rgba(148, 163, 184, 0.38) !important;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05) !important;
+html.theme-light #offline-field-operations p,
+html[data-theme="light"] #offline-field-operations p {
+  color: #334155 !important;
 }
-html.theme-light #offline-field-operations .border-white\/5.bg-slate-900\/50 .text-slate-500,
-html[data-theme="light"] #offline-field-operations .border-white\/5.bg-slate-900\/50 .text-slate-500 {
-  color: #64748b !important;
-}
-html.theme-light #offline-field-operations .border-white\/5.bg-slate-900\/50 .text-slate-200,
-html[data-theme="light"] #offline-field-operations .border-white\/5.bg-slate-900\/50 .text-slate-200 {
+
+/* Atlas location cards */
+html.theme-light #offline-field-operations article,
+html[data-theme="light"] #offline-field-operations article {
+  background: rgba(241,245,249,0.92) !important;
+  border-color: rgba(148,163,184,0.38) !important;
+  box-shadow: 0 4px 12px rgba(15,23,42,0.05) !important;
   color: #1e293b !important;
 }
 
-/* Phone mockup: the outer phone frame already uses light bg-slate-200 in light.
-   The SCREEN CONTENT div uses hardcoded bg-[#0a0f1a] — we must override it. */
-html.theme-light #offline-field-operations .relative.rounded-\[2\.5rem\],
-html[data-theme="light"] #offline-field-operations .relative.rounded-\[2\.5rem\] {
-  border-color: #cbd5e1 !important;
-  background: #f1f5f9 !important;
-  box-shadow: 0 32px 80px rgba(15, 23, 42, 0.18) !important;
+html.theme-light #offline-field-operations article strong,
+html.theme-light #offline-field-operations article span,
+html[data-theme="light"] #offline-field-operations article strong,
+html[data-theme="light"] #offline-field-operations article span {
+  color: #1e293b !important;
 }
 
-/* Phone notch */
-html.theme-light #offline-field-operations .rounded-b-xl.bg-slate-200,
-html[data-theme="light"] #offline-field-operations .rounded-b-xl.bg-slate-200 {
-  background: #e2e8f0 !important;
-}
-
-/* Phone screen - the hardcoded dark bg */
-html.theme-light #offline-field-operations .h-full.w-full.bg-\[\#0a0f1a\],
-html[data-theme="light"] #offline-field-operations .h-full.w-full.bg-\[\#0a0f1a\] {
+/* Phone screen â€” hardcoded dark bg fix via id context */
+html.theme-light #offline-field-operations .offline-phone-screen,
+html[data-theme="light"] #offline-field-operations .offline-phone-screen {
   background: linear-gradient(180deg, #f8faff 0%, #eef4ff 55%, #f0f9ff 100%) !important;
 }
 
-/* Phone app header label text */
-html.theme-light #offline-field-operations .text-cyan-500\/70,
-html[data-theme="light"] #offline-field-operations .text-cyan-500\/70 {
-  color: rgba(8, 145, 178, 0.80) !important;
-}
-html.theme-light #offline-field-operations .text-white,
-html[data-theme="light"] #offline-field-operations .text-white {
-  color: #0f172a !important;
-}
-
-/* CloudOff icon in top-right of phone header */
-html.theme-light #offline-field-operations .text-slate-500,
-html[data-theme="light"] #offline-field-operations .text-slate-500 {
-  color: #64748b !important;
-}
-
-/* Status card (emerald glassmorphic) */
-html.theme-light #offline-field-operations .border-emerald-500\/30.bg-emerald-500\/10,
-html[data-theme="light"] #offline-field-operations .border-emerald-500\/30.bg-emerald-500\/10 {
-  background: rgba(209, 250, 229, 0.85) !important;
-  border-color: rgba(16, 185, 129, 0.40) !important;
-  box-shadow: 0 0 30px rgba(16, 185, 129, 0.12) !important;
-}
-html.theme-light #offline-field-operations .border-emerald-500\/40,
-html[data-theme="light"] #offline-field-operations .border-emerald-500\/40 {
-  border-color: rgba(16, 185, 129, 0.50) !important;
-}
-html.theme-light #offline-field-operations .bg-emerald-500\/20,
-html[data-theme="light"] #offline-field-operations .bg-emerald-500\/20 {
-  background: rgba(209, 250, 229, 0.70) !important;
-}
-html.theme-light #offline-field-operations .text-emerald-400,
-html[data-theme="light"] #offline-field-operations .text-emerald-400 {
-  color: #065f46 !important;
-}
-
-/* Phone status sub-badge: bg-emerald-950/50 */
-html.theme-light #offline-field-operations .bg-emerald-950\/50,
-html[data-theme="light"] #offline-field-operations .bg-emerald-950\/50 {
-  background: rgba(209, 250, 229, 0.70) !important;
-}
-html.theme-light #offline-field-operations .text-emerald-300\/80,
-html[data-theme="light"] #offline-field-operations .text-emerald-300\/80 {
-  color: #065f46 !important;
-}
-
-/* Data rows: border-white/5, bg-white/[0.02] */
-html.theme-light #offline-field-operations .border-white\/5.bg-white\/\[0\.02\],
-html[data-theme="light"] #offline-field-operations .border-white\/5.bg-white\/\[0\.02\] {
-  background: rgba(248, 250, 252, 0.90) !important;
-  border-color: rgba(148, 163, 184, 0.35) !important;
-}
-html.theme-light #offline-field-operations .text-slate-400,
-html[data-theme="light"] #offline-field-operations .text-slate-400 {
+/* Phone data rows */
+html.theme-light #offline-field-operations .offline-data-row,
+html[data-theme="light"] #offline-field-operations .offline-data-row {
+  background: rgba(248,250,252,0.90) !important;
+  border-color: rgba(148,163,184,0.35) !important;
   color: #475569 !important;
 }
-html.theme-light #offline-field-operations .text-slate-200,
-html[data-theme="light"] #offline-field-operations .text-slate-200 {
-  color: #1e293b !important;
-}
-html.theme-light #offline-field-operations .text-amber-400,
-html[data-theme="light"] #offline-field-operations .text-amber-400 {
-  color: #b45309 !important;
+
+/* Sync status badge */
+html.theme-light #offline-field-operations .offline-sync-badge,
+html[data-theme="light"] #offline-field-operations .offline-sync-badge {
+  background: rgba(209,250,229,0.85) !important;
+  border-color: rgba(16,185,129,0.40) !important;
 }
 
-/* Icon container in stages: bg-cyan-500/10 → bg-cyan-100 already works, ensure border */
-html.theme-light #offline-field-operations .bg-cyan-100.border-cyan-200,
-html[data-theme="light"] #offline-field-operations .bg-cyan-100.border-cyan-200 {
-  background: rgba(224, 242, 254, 1) !important;
-  border-color: rgba(14, 116, 144, 0.32) !important;
+/* â”€â”€ 4. Amber warning notes across all landing sections â”€â”€â”€â”€â”€â”€ */
+html.theme-light .landing-root .landing-note--amber,
+html[data-theme="light"] .landing-root .landing-note--amber {
+  background: rgba(255,251,235,0.90) !important;
+  border-color: rgba(217,119,6,0.28) !important;
+  color: #78350f !important;
 }
 
-/* Stage article cards (bg-white in light mode already — just fix shadow) */
-html.theme-light #offline-field-operations article.bg-white,
-html[data-theme="light"] #offline-field-operations article.bg-white {
-  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.07) !important;
-  border-color: rgba(148, 163, 184, 0.38) !important;
-}
-html.theme-light #offline-field-operations article .text-slate-600,
-html[data-theme="light"] #offline-field-operations article .text-slate-600 {
-  color: #334155 !important;
-}
-
-/* CTA buttons in offline section */
-html.theme-light #offline-field-operations .border-slate-300.bg-white,
-html[data-theme="light"] #offline-field-operations .border-slate-300.bg-white {
-  background: rgba(255, 255, 255, 0.95) !important;
-  border-color: rgba(148, 163, 184, 0.60) !important;
-}
-
-
-/* ── 4. PlainLanguageValueSection & CommercialPromiseSection  ──
-   These sections already have .landing-root broad overrides, but
-   the gradient card (from-slate-950 via-slate-900) is not caught.
-   ──────────────────────────────────────────────────────────── */
-
-/* "from-slate-950 via-slate-900 to-cyan-950/60" gradient card */
-html.theme-light .landing-root .from-slate-950.via-slate-900.to-cyan-950\/60,
-html[data-theme="light"] .landing-root .from-slate-950.via-slate-900.to-cyan-950\/60 {
-  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 52%, #ecfdf5 100%) !important;
-  background-image: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 52%, #ecfdf5 100%) !important;
-  border-color: rgba(16, 185, 129, 0.22) !important;
-}
-html.theme-light .landing-root .from-slate-950.via-slate-900.to-cyan-950\/60 h2,
-html[data-theme="light"] .landing-root .from-slate-950.via-slate-900.to-cyan-950\/60 h2 {
-  color: #0f172a !important;
-}
-html.theme-light .landing-root .from-slate-950.via-slate-900.to-cyan-950\/60 p:not(.text-xs),
-html[data-theme="light"] .landing-root .from-slate-950.via-slate-900.to-cyan-950\/60 p:not(.text-xs) {
-  color: #334155 !important;
-}
-
-/* Inline story step blocks: border-white/10, bg-white/[0.03] */
-html.theme-light .landing-root .border-white\/10.bg-white\/\[0\.03\],
-html[data-theme="light"] .landing-root .border-white\/10.bg-white\/\[0\.03\] {
-  background: rgba(255, 255, 255, 0.88) !important;
-  border-color: rgba(148, 163, 184, 0.38) !important;
-}
-html.theme-light .landing-root .border-white\/10.bg-white\/\[0\.03\] .text-slate-100,
-html[data-theme="light"] .landing-root .border-white\/10.bg-white\/\[0\.03\] .text-slate-100 {
-  color: #1e293b !important;
-}
-
-/* bg-white/[0.04] tiles (commercial promise, about) */
-html.theme-light .landing-root .border-white\/10.bg-white\/\[0\.04\],
-html[data-theme="light"] .landing-root .border-white\/10.bg-white\/\[0\.04\] {
-  background: rgba(255, 255, 255, 0.90) !important;
-  border-color: rgba(148, 163, 184, 0.38) !important;
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05) !important;
-}
-
-
-/* ── 5. AboutInmovarSection ──────────────────────────────────
-   Outer rounded-[2rem] border-white/10 bg-slate-950/70 covered
-   by broad rules, but founder note (emerald-300/20, bg-emerald-500/10)
-   needs the text fixed: text-emerald-50 → dark green
-   ──────────────────────────────────────────────────────────── */
-html.theme-light .landing-root .border-emerald-300\/20.bg-emerald-500\/10,
-html[data-theme="light"] .landing-root .border-emerald-300\/20.bg-emerald-500\/10 {
-  background: rgba(209, 250, 229, 0.72) !important;
-  border-color: rgba(16, 185, 129, 0.30) !important;
-}
-html.theme-light .landing-root .border-emerald-300\/20.bg-emerald-500\/10.text-emerald-50,
-html.theme-light .landing-root p.border-emerald-300\/20,
-html[data-theme="light"] .landing-root p.border-emerald-300\/20 {
+/* â”€â”€ 5. About / founder note section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+html.theme-light .landing-founder-note,
+html[data-theme="light"] .landing-founder-note {
+  background: rgba(209,250,229,0.72) !important;
+  border-color: rgba(16,185,129,0.30) !important;
   color: #064e3b !important;
 }
 
-/* AboutInmovar bullet items (border-white/10, bg-white/[0.04]) already covered above.
-   The index number (text-cyan-300) → needs dark cyan */
+/* â”€â”€ 6. Text color overrides for ALL landing sections â”€â”€â”€â”€â”€â”€â”€ */
+html.theme-light .landing-root .text-slate-100,
+html.theme-light .landing-root .text-white,
+html[data-theme="light"] .landing-root .text-slate-100,
+html[data-theme="light"] .landing-root .text-white {
+  color: #0f172a !important;
+}
+
+html.theme-light .landing-root .text-slate-300,
+html.theme-light .landing-root .text-slate-400,
+html[data-theme="light"] .landing-root .text-slate-300,
+html[data-theme="light"] .landing-root .text-slate-400 {
+  color: #475569 !important;
+}
+
+html.theme-light .landing-root .text-slate-500,
+html[data-theme="light"] .landing-root .text-slate-500 {
+  color: #64748b !important;
+}
+
 html.theme-light .landing-root .text-cyan-300,
-html[data-theme="light"] .landing-root .text-cyan-300 {
+html.theme-light .landing-root .text-cyan-400,
+html[data-theme="light"] .landing-root .text-cyan-300,
+html[data-theme="light"] .landing-root .text-cyan-400 {
   color: #0e7490 !important;
 }
 
-
-/* ── 6. Broad catch-all: amber-200/70 opacity text ───────────
-   Used in warning notes across all sections. Invisible on white.
-   ──────────────────────────────────────────────────────────── */
-html.theme-light .landing-root [class*="text-amber-200"],
-html[data-theme="light"] .landing-root [class*="text-amber-200"] {
-  color: #92400e !important;
+html.theme-light .landing-root .text-emerald-300,
+html.theme-light .landing-root .text-emerald-400,
+html[data-theme="light"] .landing-root .text-emerald-300,
+html[data-theme="light"] .landing-root .text-emerald-400 {
+  color: #065f46 !important;
 }
 
-/* ── 7. Ensure bg-white/[0.02] data rows are always visible ──*/
-html.theme-light .landing-root [class*="bg-white/[0.02]"],
-html.theme-light .landing-root [class*="bg-white/[0.03]"],
-html.theme-light .landing-root [class*="bg-white/[0.04]"],
-html[data-theme="light"] .landing-root [class*="bg-white/[0.02]"],
-html[data-theme="light"] .landing-root [class*="bg-white/[0.03]"],
-html[data-theme="light"] .landing-root [class*="bg-white/[0.04]"] {
-  background-color: rgba(255, 255, 255, 0.88) !important;
-  border-color: rgba(148, 163, 184, 0.35) !important;
+html.theme-light .landing-root .text-amber-400,
+html[data-theme="light"] .landing-root .text-amber-400 {
+  color: #b45309 !important;
+}
+
+/* â”€â”€ 7. Card / tile backgrounds in landing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+html.theme-light .landing-root .bg-slate-900,
+html.theme-light .landing-root .bg-slate-950,
+html[data-theme="light"] .landing-root .bg-slate-900,
+html[data-theme="light"] .landing-root .bg-slate-950 {
+  background: rgba(248,250,252,0.96) !important;
+  border-color: rgba(148,163,184,0.30) !important;
 }
