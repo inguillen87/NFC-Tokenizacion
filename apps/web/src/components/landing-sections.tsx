@@ -36,39 +36,6 @@ export function HeroSection({ content, stats, locale, initialTheme = "dark" }: {
     : "Sin app para el comprador. Sin explicar cripto. El tap muestra evidencia, origen y próximo paso.";
   const demoCta = isEn ? "Open Product Lab" : isBr ? "Abrir Laboratorio" : "Abrir laboratorio";
   const meetingCta = isEn ? "Schedule meeting" : isBr ? "Agendar reunião" : "Agendar reunión";
-  const heroProof = isEn
-    ? {
-        label: "Enterprise proof pack",
-        quote: "Bodega Balmec pilot narrative: tap, origin proof, risk state and business action in one minute.",
-        demo: "Open Demo Lab",
-        metrics: [
-          ["11,867 km", "demo route"],
-          ["99.97%", "workflow target"],
-          ["<60 sec", "tap to outcome"],
-        ],
-      }
-    : isBr
-    ? {
-        label: "Pacote de prova enterprise",
-        quote: "Narrativa Bodega Balmec: toque, origem, risco e acao comercial em um minuto.",
-        demo: "Abrir Demo Lab",
-        metrics: [
-          ["11.867 km", "rota demo"],
-          ["99,97%", "alvo workflow"],
-          ["<60 s", "tap ao resultado"],
-        ],
-      }
-    : {
-        label: "Pack de prueba enterprise",
-        quote: "Narrativa Bodega Balmec: tap, origen, riesgo y accion comercial en un minuto.",
-        demo: "Abrir Demo Lab",
-        metrics: [
-          ["11.867 km", "ruta demo"],
-          ["99,97%", "objetivo workflow"],
-          ["<60 s", "tap a resultado"],
-        ],
-      };
-
   return (
     <section className="landing-hero-section relative overflow-hidden border-b border-white/5 bg-slate-950 pb-8 pt-8 lg:pb-10 lg:pt-10">
       <div className="hero-signal-field absolute inset-0 z-0 pointer-events-none" aria-hidden="true" />
@@ -83,23 +50,6 @@ export function HeroSection({ content, stats, locale, initialTheme = "dark" }: {
           <h1 className="mx-auto mt-5 max-w-[22rem] pb-2 text-[2rem] font-extrabold leading-[1.12] tracking-normal text-transparent bg-clip-text bg-gradient-to-br from-white to-slate-400 sm:max-w-5xl sm:text-[2.85rem] sm:leading-[1.08] lg:text-[3rem] lg:leading-[1.06]">
             {hero.title}
           </h1>
-          <div className="hero-enterprise-proof mx-auto mt-3 grid max-w-5xl gap-2 rounded-3xl border border-cyan-300/15 bg-slate-950/72 p-2.5 text-left shadow-[0_24px_90px_rgba(8,47,73,0.22)] backdrop-blur sm:mt-5 sm:gap-3 md:grid-cols-[minmax(0,1.05fr)_auto] md:items-center md:p-4">
-            <div className="min-w-0">
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">{heroProof.label}</p>
-              <p className="mt-1 hidden text-xs leading-5 text-slate-300 sm:block sm:text-sm">{heroProof.quote}</p>
-            </div>
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 sm:items-center">
-              {heroProof.metrics.map(([value, label]) => (
-                <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.04] px-2 py-1.5 sm:px-3 sm:py-2">
-                  <strong className="block text-sm font-black text-white sm:text-base">{value}</strong>
-                  <span className="block text-[9px] font-bold uppercase tracking-[0.08em] text-slate-500 sm:text-[10px] sm:tracking-[0.12em]">{label}</span>
-                </div>
-              ))}
-              <Link href="/demo-lab?vertical=wine" className="col-span-3 inline-flex min-h-10 items-center justify-center rounded-2xl bg-cyan-300 px-3 text-[11px] font-black uppercase tracking-wider text-slate-950 transition hover:bg-cyan-200 sm:col-span-1 sm:min-h-11 sm:px-4 sm:text-xs">
-                {heroProof.demo}
-              </Link>
-            </div>
-          </div>
           <p className="hero-subtitle mx-auto mt-5 max-w-xl text-sm leading-6 text-slate-400">
             {heroSubtitle}
           </p>
@@ -149,48 +99,6 @@ export function HeroSection({ content, stats, locale, initialTheme = "dark" }: {
         </div>
       </div>
     </section>
-  );
-}
-
-export function EnterpriseMetricsStrip({ locale }: { locale: string }) {
-  const isEn = locale === "en";
-  const isBr = locale === "pt-BR";
-
-  const metrics = isEn
-    ? [
-        { value: "11,867 km", label: "Longest route traced", accent: "text-cyan-300" },
-        { value: "99.97%", label: "Authenticity uptime", accent: "text-emerald-300" },
-        { value: "<2 ms", label: "Verification latency", accent: "text-purple-300" },
-        { value: "DPP", label: "EU Compliance ready", accent: "text-amber-300" },
-      ]
-    : isBr
-    ? [
-        { value: "11.867 km", label: "Rota mais longa rastreada", accent: "text-cyan-300" },
-        { value: "99,97%", label: "Autenticidade uptime", accent: "text-emerald-300" },
-        { value: "<2 ms", label: "Latência de verificação", accent: "text-purple-300" },
-        { value: "DPP", label: "Compliance EU pronto", accent: "text-amber-300" },
-      ]
-    : [
-        { value: "11.867 km", label: "Ruta más larga trazada", accent: "text-cyan-300" },
-        { value: "99,97%", label: "Autenticidad uptime", accent: "text-emerald-300" },
-        { value: "<2 ms", label: "Latencia de verificación", accent: "text-purple-300" },
-        { value: "DPP", label: "Compliance UE listo", accent: "text-amber-300" },
-      ];
-
-  return (
-    <div className="container-shell py-3">
-      <div className="relative overflow-hidden rounded-2xl border border-white/8 bg-gradient-to-r from-slate-950 via-slate-900/90 to-slate-950 backdrop-blur-xl shadow-[0_4px_24px_rgba(0,0,0,0.4)]">
-        <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_50%_0%,rgba(34,211,238,0.06),transparent_55%)]" />
-        <div className="relative grid grid-cols-2 md:grid-cols-4 divide-x divide-white/8">
-          {metrics.map((m) => (
-            <div key={m.label} className="flex flex-col items-center justify-center px-4 py-5 text-center">
-              <p className={`text-2xl font-black tracking-tight md:text-3xl ${m.accent}`}>{m.value}</p>
-              <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">{m.label}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -1959,88 +1867,6 @@ export function CtaSection({ content, locale }: { content: Content; locale: stri
              ))}
            </div>
          </div>
-      </div>
-    </section>
-  );
-}
-
-export function SocialProofStrip({ locale }: { locale: string }) {
-  const isEn = locale === "en";
-  const isBr = locale === "pt-BR";
-  const copy = isEn
-    ? {
-        title: "Enterprise proof without inflated claims.",
-        body: "Built for regulated physical-product teams that need a live sandbox, audit trail, DPP-ready data and clear rollout controls before committing budget.",
-        quote: "The Bodega Balmec demo shows the exact buyer journey we need: physical tap, origin proof, risk state, and a business action in one minute.",
-        quoteBy: "Bodega Balmec pilot narrative",
-        badges: ["ISO 27001-ready controls", "DPP event model", "GDPR minimization", "GS1 Digital Link path"],
-        metrics: [
-          ["11,867 km", "longest demo route traced"],
-          ["99.97%", "authenticity workflow target"],
-          ["<60 sec", "tap-to-outcome lab"],
-        ],
-        steps: ["Model data", "Issue IDs", "Encode", "Launch", "Monitor"],
-      }
-    : isBr
-      ? {
-          title: "Prova enterprise sem claims inflados.",
-          body: "Construido para times de produto regulado que precisam de sandbox vivo, trilha de auditoria, dados DPP-ready e controles de rollout antes de aprovar budget.",
-          quote: "A demo Bodega Balmec mostra a jornada certa: toque fisico, prova de origem, estado de risco e acao comercial em um minuto.",
-          quoteBy: "Narrativa de piloto Bodega Balmec",
-          badges: ["Controles ISO 27001-ready", "Modelo de evento DPP", "Minimizacao GDPR", "Caminho GS1 Digital Link"],
-          metrics: [
-            ["11.867 km", "rota demo mais longa"],
-            ["99,97%", "alvo do workflow de autenticidade"],
-            ["<60 s", "tap-to-outcome no lab"],
-          ],
-          steps: ["Modelar dados", "Emitir IDs", "Codificar", "Lancar", "Monitorar"],
-        }
-      : {
-          title: "Prueba enterprise sin claims inflados.",
-          body: "Construido para equipos de producto regulado que necesitan sandbox vivo, auditoria, datos DPP-ready y controles de rollout antes de aprobar presupuesto.",
-          quote: "La demo Bodega Balmec muestra el recorrido correcto: tap fisico, prueba de origen, estado de riesgo y accion comercial en un minuto.",
-          quoteBy: "Narrativa de piloto Bodega Balmec",
-          badges: ["Controles ISO 27001-ready", "Modelo de evento DPP", "Minimizacion GDPR", "Ruta GS1 Digital Link"],
-          metrics: [
-            ["11.867 km", "ruta demo mas larga"],
-            ["99,97%", "objetivo del workflow de autenticidad"],
-            ["<60 s", "tap-to-outcome en el lab"],
-          ],
-          steps: ["Modelar datos", "Emitir IDs", "Codificar", "Lanzar", "Monitorear"],
-        };
-
-  return (
-    <section className="container-shell py-12">
-      <div className="nexid-enterprise-proof-band">
-        <div className="nexid-enterprise-proof-band__core">
-          <p>{copy.title}</p>
-          <h2>{copy.body}</h2>
-          <div>
-          {copy.badges.map((badge) => (
-            <span key={badge}>
-              {badge}
-            </span>
-          ))}
-          </div>
-        </div>
-        <div className="nexid-enterprise-proof-band__quote">
-          <span aria-hidden="true">&quot;</span>
-          <p>{copy.quote}</p>
-          <strong>{copy.quoteBy}</strong>
-        </div>
-        <div className="nexid-enterprise-proof-band__metrics">
-          {copy.metrics.map(([value, label]) => (
-            <div key={label}>
-              <strong>{value}</strong>
-              <span>{label}</span>
-            </div>
-          ))}
-        </div>
-        <div className="nexid-enterprise-proof-band__steps">
-          {copy.steps.map((step, index) => (
-            <span key={step}><small>{index + 1}</small>{step}</span>
-          ))}
-        </div>
       </div>
     </section>
   );

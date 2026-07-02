@@ -3,12 +3,10 @@ import { cookies } from "next/headers";
 import { BrandLockup, Button, LocaleSwitcher, ThemeToggle } from "@product/ui";
 import {
   CtaSection,
-  EnterpriseMetricsStrip,
   EnterpriseTrustLayersSection,
   HeroSection,
   OfflineFieldOperationsSection,
   SimpleTrustFlowSection,
-  SocialProofStrip,
 } from "../components/landing-sections";
 import { BrandSynergySimulator } from "../components/brand-synergy-simulator";
 import { SalesChatWidget } from "../components/sales-chat-widget";
@@ -289,11 +287,8 @@ export default async function HomePage() {
 
       <HeroSection content={content} stats={t.web.stats} locale={locale} radar={content.radar} initialTheme={initialTheme} />
 
-      <EnterpriseMetricsStrip locale={locale} />
-
       <SimpleTrustFlowSection locale={locale} />
       <EnterpriseTrustLayersSection locale={locale} />
-      <SocialProofStrip locale={locale} />
       <OfflineFieldOperationsSection locale={locale} />
       {/* nexID Cognitive AI & Brand Synergy Section */}
       <section className="container-shell my-16">
