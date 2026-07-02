@@ -8,6 +8,7 @@ import {
   HeroSection,
   OfflineFieldOperationsSection,
   SimpleTrustFlowSection,
+  SocialProofStrip,
 } from "../components/landing-sections";
 import { BrandSynergySimulator } from "../components/brand-synergy-simulator";
 import { SalesChatWidget } from "../components/sales-chat-widget";
@@ -111,7 +112,7 @@ export default async function HomePage() {
         { title: "Usar na minha empresa", body: "Veja rollout, perfis de chip e operação.", href: "/?contact=sales&intent=company_rollout#contact-modal", type: "lead" },
         { title: "Ver meu perfil comprador", body: "Adapte o pitch para marca, revenda, governo ou operador.", href: "/?contact=sales&intent=buyer_profile#contact-modal", type: "lead" },
         { title: "Abrir Demo Lab", body: "Entre direto na superfície do produto e simule o fluxo.", href: "/?contact=demo&intent=demo_lab&vertical=events#contact-modal", type: "lead" },
-        { title: "Ângulo investidor", body: "Revise a narrativa de plataforma, moat e rollout.", href: "/?contact=quote&intent=investor_snapshot#contact-modal", type: "lead" },
+        { title: "Angulo investidor", body: "Revise a narrativa de plataforma, moat e rollout.", href: "/?contact=quote&intent=investor_snapshot#contact-modal", type: "lead" },
       ],
       rolloutTitle: "Fluxo piloto → rollout",
       rolloutBullets: [
@@ -292,6 +293,7 @@ export default async function HomePage() {
 
       <SimpleTrustFlowSection locale={locale} />
       <EnterpriseTrustLayersSection locale={locale} />
+      <SocialProofStrip locale={locale} />
       <OfflineFieldOperationsSection locale={locale} />
       {/* nexID Cognitive AI & Brand Synergy Section */}
       <section className="container-shell my-16">

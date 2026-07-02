@@ -8,6 +8,7 @@ import { ArrowLeft, BadgeCheck, CalendarDays, CheckCircle2, ChevronRight, Finger
 import { HeroTrustAtlasSvg } from "../../../components/hero-scene";
 import { platformVerticals } from "../../../lib/platform-verticals";
 import { ThreeDProduct } from "../../investor-snapshot/investor-snapshot-client";
+import { DemoLabThemeToggle } from "./demo-lab-hub-theme";
 import type { VectorMapPoint, VectorMapRoute } from "@product/ui";
 
 type Role = "ceo" | "operator" | "buyer";
@@ -292,18 +293,18 @@ const copy: Record<AppLocale, {
 }> = {
   "es-AR": {
     heroEyebrow: "Laboratorio comercial nexID",
-    heroTitle: "MirÃ¡ cómo un producto fÃ­sico se vuelve verificable, vendible y medible.",
+    heroTitle: "Mirá cómo un producto físico se vuelve verificable, vendible y medible.",
     heroBody: "Un entorno guiado para vender la historia completa: origen, toque del cliente, seguridad, portal, tienda y datos de negocio sin tratar el sandbox como evidencia productiva.",
     nav: { landing: "Inicio", login: "Ingresar", sun: "SUN celular", portal: "Portal usuario" },
     kpis: { tags: "Etiquetas fisicas", events: "Eventos", portal: "Portal", route: "Ruta origen-toque", noFeed: "Sin eventos recientes", leads: "Contactos / asociaciones" },
     valueCards: [
-      { metric: "CRM + club", title: "Fidelización despuÃ©s del toque", body: "Puntos, garantÃ­as, recompra y promociones de la marca quedan conectados al pasaporte del consumidor." },
+      { metric: "CRM + club", title: "Fidelización después del toque", body: "Puntos, garantías, recompra y promociones de la marca quedan conectados al pasaporte del consumidor." },
       { metric: "Tienda", title: "Red de alta gama por marca y zona", body: "Cada marca conserva su tienda, pero convive en una red nexID para descubrir productos de valor cercanos." },
-      { metric: "Canal listo", title: "Operable para terceros", body: "Imprentas, integradores y agencias pueden cargar lotes, operar cuentas de marca y ver contactos sin tocar criptografÃ­a." },
-      { metric: "Datos vivos", title: "Ventas con analÃ­tica", body: "Lecturas, rutas, riesgo, clics y solicitudes llegan al CRM y al panel en tiempo real." },
+      { metric: "Canal listo", title: "Operable para terceros", body: "Imprentas, integradores y agencias pueden cargar lotes, operar cuentas de marca y ver contactos sin tocar criptografía." },
+      { metric: "Datos vivos", title: "Ventas con analítica", body: "Lecturas, rutas, riesgo, clics y solicitudes llegan al CRM y al panel en tiempo real." },
     ],
     roles: {
-      ceo: { label: "CEO / inversor", headline: "Del toque al ingreso: protección de marca, datos y fidelización.", focus: "Usalo para mostrar margen, canal de revendedores y valor recurrente sin entrar en jerga tÃ©cnica." },
+      ceo: { label: "CEO / inversor", headline: "Del toque al ingreso: protección de marca, datos y fidelización.", focus: "Usalo para mostrar margen, canal de revendedores y valor recurrente sin entrar en jerga técnica." },
       operator: { label: "Operaciones", headline: "Control real de lotes, UIDs, mapas y alertas.", focus: "Aterriza importacion, activacion, lecturas reales y excepciones de riesgo." },
       buyer: { label: "Comprador", headline: "Confianza clara antes de comprar o consumir.", focus: "La persona entiende origen, estado del sello, beneficios y próximo paso." },
     },
@@ -311,34 +312,34 @@ const copy: Record<AppLocale, {
       0: { title: "1. Nace el producto", body: "La marca activa lote, UID y origen.", event: "Lote real conectado a Bodega Balmec.", mode: "valid", location: "mendoza", status: "ORIGEN_LISTO", cta: "Ver origen" },
       1: { title: "2. Toque del cliente", body: "El consumidor verifica y ve distancia.", event: "Toque valido en Zurich con ruta al origen.", mode: "valid", location: "zurich", status: "AUTENTICADO", cta: "Unirme al club" },
       2: { title: "3. Riesgo bloqueado", body: "Copia o lectura duplicada entra al registro.", event: "Senial de copia para antifraude.", mode: "replay", location: "zurich", status: "COPIA_BLOQUEADA", cta: "Ver alerta" },
-      3: { title: "4. Apertura + venta", body: "El sello cambia estado y prepara beneficios sujetos a polÃ­tica.", event: "Sello abierto + solicitud de reclamo/tokenización.", mode: "tamper", location: "zurich", status: "ABIERTO", cta: "Solicitar propiedad" },
+      3: { title: "4. Apertura + venta", body: "El sello cambia estado y prepara beneficios sujetos a política.", event: "Sello abierto + solicitud de reclamo/tokenización.", mode: "tamper", location: "zurich", status: "ABIERTO", cta: "Solicitar propiedad" },
     },
     verticals: {
       wine: { label: "Vino", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Etiqueta adherida a botella", "Descorche / sello roto", "SUN anti copia", "Origen + toque global"] },
       seeds: { label: "Semillas", profile: "QR + NFC UID", product: "Sobre semilla certificada", visual: "seed-packet-demo", proof: ["Sobre antifalsificacion", "Lote y variedad", "Custodia agro", "Uso rural"] },
       pharma: { label: "Pharma", profile: "QR + NFC + recall", product: "Medicamento serializado", visual: "pharma-pack-demo", proof: ["Caja y lote auditables", "Prospecto digital", "Cadena de frio", "Recall por unidad"] },
-      creamJar: { label: "Skincare", profile: "NTAG 424 DNA", product: "Set dermocosmÃ©tico premium", visual: "cream-jar-demo", proof: ["Sello tapa-envase", "Apertura cambia estado", "GarantÃ­a premium", "Anti mercado gris"] },
-      perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Perfume premium", visual: "perfume-demo", proof: ["Sello en tapa y cuello", "Lote y serie", "GarantÃ­a", "Anti falsificación"] },
-      creamTube: { label: "Crema", profile: "NTAG213 + lote", product: "Crema dermocosmÃ©tica", visual: "cream-tube-demo", proof: ["Sello sobre tapa flip", "Lote visible", "GarantÃ­a", "Recompra"] },
+      creamJar: { label: "Skincare", profile: "NTAG 424 DNA", product: "Set dermocosmético premium", visual: "cream-jar-demo", proof: ["Sello tapa-envase", "Apertura cambia estado", "Garantía premium", "Anti mercado gris"] },
+      perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Perfume premium", visual: "perfume-demo", proof: ["Sello en tapa y cuello", "Lote y serie", "Garantía", "Anti falsificación"] },
+      creamTube: { label: "Crema", profile: "NTAG213 + lote", product: "Crema dermocosmética", visual: "cream-tube-demo", proof: ["Sello sobre tapa flip", "Lote visible", "Garantía", "Recompra"] },
       bracelet: { label: "Brazalete", profile: "NTAG215", product: "Brazalete VIP evento", visual: "event-bracelet-demo", proof: ["Celular toca pulsera", "UID serializado", "Zonas VIP", "Bloqueo de reingreso"] },
       ticket: { label: "Entrada", profile: "QR + NFC UID", product: "Entrada fiesta VIP", visual: "party-ticket-demo", proof: ["QR visible", "UID respaldo", "Acceso por zona", "Copia bloqueada"] },
-      sneaker: { label: "Zapatilla", profile: "NTAG 424 DNA", product: "Drop Runner 37Z", visual: "sneaker-demo", proof: ["Toque en lengueta", "UID + SUN", "Rareza visible", "DueÃ±o/token"] },
+      sneaker: { label: "Zapatilla", profile: "NTAG 424 DNA", product: "Drop Runner 37Z", visual: "sneaker-demo", proof: ["Toque en lengueta", "UID + SUN", "Rareza visible", "Dueño/token"] },
       luxury: { label: "Lujo", profile: "NTAG 424 DNA", product: "Reloj Cronógrafo Premium", visual: "luxury-demo", proof: ["Toque en tarjeta", "UID + SUN", "Evidencia de autenticidad", "Owner/club"] },
       bottle: { label: "Envases refill", profile: "GS1/QR + NFC", product: "Envase Refill Premium", visual: "bottle-demo", proof: ["Envase retornable", "GS1/QR + NFC opcional", "ciclo refill", "Incentivo activo"] },
       logistics: { label: "Logistica", profile: "UHF + NFC + sensor", product: "Caja cadena fria", visual: "logistics-pack-demo", proof: ["Pallet/caja trazable", "Sensor temperatura", "Ruta auditada", "Entrega verificada"] },
-      electronics: { label: "Electrónica", profile: "QR + NFC garantÃ­a", product: "Dispositivo serializado", visual: "electronics-demo", proof: ["Serial verificable", "GarantÃ­a por unidad", "Soporte postventa", "Reclamo antifraude"] },
+      electronics: { label: "Electrónica", profile: "QR + NFC garantía", product: "Dispositivo serializado", visual: "electronics-demo", proof: ["Serial verificable", "Garantía por unidad", "Soporte postventa", "Reclamo antifraude"] },
       textile: { label: "Textil DPP", profile: "QR + NFC DPP", product: "Etiqueta pasaporte textil", visual: "textile-dpp-demo", proof: ["Origen y composicion", "Cuidado conectado", "Sustentabilidad", "Reventa verificable"] },
     },
     controls: {
-      narrative: "Narrativa por audiencia", cinematicStart: "Iniciar recorrido", cinematicStop: "Pausar recorrido", product: "Producto fÃ­sico", mobile: "Resultado en celular", feed: "Registro de eventos", valid: "Registrar toque vÃ¡lido en ZÃºrich", tamper: "Romper sello / descorchar", replay: "Simular copia duplicada", refresh: "Actualizar", marketplace: "Portal + tienda", mapTitle: "Mapa vivo: origen del producto vs toque del cliente", mapSubtitle: "LÃ­nea animada, distancia y enlaces de ubicación para construir confianza.", realFeed: "Registro pÃºblico real conectado.", adminKey: "Modo lectura/prueba: la escritura privada de lecturas corre en entorno seguro.", noGeo: "TodavÃ­a no hay eventos pÃºblicos con ubicación disponibles desde la API.", origin: "Origen", currentTap: "Toque actual", distance: "Distancia", openOrigin: "Abrir origen", openTap: "Abrir toque", joinClub: "Unirme al club", warranty: "Activar garantÃ­a", tokenize: "Crear NFT", syncing: "Conectando con Bodega Balmec...", synced: "Bodega Balmec sincronizada con servidor.", unavailable: "Bodega Balmec no disponible.", sendingScan: "Enviando lectura", registeredScan: "Lectura registrada en Bodega Balmec.", failedScan: "No se pudo simular el toque.", configs: [
-        { title: "QR / GS1 Digital Link", body: "Entrada economica para contenido, lote, retiro de producto y trazabilidad GS1. Ideal como respaldo visible; cualquiera puede copiarlo, por eso no habilita reclamo de dueÃ±o por si solo." },
-        { title: "NTAG213 / NTAG215", body: "UID fÃ­sico serializado para entradas, pulseras, garantÃ­as simples y activaciones masivas. Sube la fricción contra capturas de pantalla y permite reglas por lote desde el servidor." },
+      narrative: "Narrativa por audiencia", cinematicStart: "Iniciar recorrido", cinematicStop: "Pausar recorrido", product: "Producto físico", mobile: "Resultado en celular", feed: "Registro de eventos", valid: "Registrar toque válido en Zúrich", tamper: "Romper sello / descorchar", replay: "Simular copia duplicada", refresh: "Actualizar", marketplace: "Portal + tienda", mapTitle: "Mapa vivo: origen del producto vs toque del cliente", mapSubtitle: "Línea animada, distancia y enlaces de ubicación para construir confianza.", realFeed: "Registro público real conectado.", adminKey: "Modo lectura/prueba: la escritura privada de lecturas corre en entorno seguro.", noGeo: "Todavía no hay eventos públicos con ubicación disponibles desde la API.", origin: "Origen", currentTap: "Toque actual", distance: "Distancia", openOrigin: "Abrir origen", openTap: "Abrir toque", joinClub: "Unirme al club", warranty: "Activar garantía", tokenize: "Crear NFT", syncing: "Conectando con Bodega Balmec...", synced: "Bodega Balmec sincronizada con servidor.", unavailable: "Bodega Balmec no disponible.", sendingScan: "Enviando lectura", registeredScan: "Lectura registrada en Bodega Balmec.", failedScan: "No se pudo simular el toque.", configs: [
+        { title: "QR / GS1 Digital Link", body: "Entrada economica para contenido, lote, retiro de producto y trazabilidad GS1. Ideal como respaldo visible; cualquiera puede copiarlo, por eso no habilita reclamo de dueño por si solo." },
+        { title: "NTAG213 / NTAG215", body: "UID físico serializado para entradas, pulseras, garantías simples y activaciones masivas. Sube la fricción contra capturas de pantalla y permite reglas por lote desde el servidor." },
         { title: "NTAG 424 DNA", body: "Cada toque genera SUN dinamico con CMAC para detectar copias, enlaces reutilizados y lecturas sospechosas. Es la capa recomendada para productos de valor medio/alto." },
         { title: "Offline Verifier", body: "Android primero, iOS donde Core NFC/ISO 7816 lo permita, o lector dedicado para campo sin senal: ejecuta checks locales con bundle autorizado, sin master keys, y mantiene veredicto provisional hasta sync backend." },
         { title: "Polygon Ownership Demo", body: "Activa ownership, certificado o token premium solo despues de tap fresco, comprador validado y politica aprobada. Polygon no reemplaza la validacion SUN ni recibe taps individuales." },
         { title: "IOTA Proof Layer Demo", body: "Muestra auditoria opcional para DPP, lotes y logistica: se anclan hashes o Merkle roots, no datos privados ni lecturas individuales." },
         { title: "Dual Proof DPP", body: "Combina QR/GS1, NFC 424, Polygon para ownership e IOTA para evidencia industrial cuando el cliente necesita compliance avanzado." },
-        { title: "NTAG 424 DNA TT + tokenización", body: "Suma estado fÃ­sico del sello: cerrado, abierto o manipulado. Permite pasaporte, garantÃ­a, tienda y token Polygon solo cuando la polÃ­tica de compra/reclamo lo habilita." },
+        { title: "NTAG 424 DNA TT + tokenización", body: "Suma estado físico del sello: cerrado, abierto o manipulado. Permite pasaporte, garantía, tienda y token Polygon solo cuando la política de compra/reclamo lo habilita." },
       ] },
   },
   "pt-BR": {
@@ -482,7 +483,7 @@ function formatEventResult(value?: string | null) {
   if (normalized.includes("OPEN")) return "ABIERTO";
   if (normalized.includes("ORIGIN") || normalized.includes("PRODUCT")) return "ORIGEN LISTO";
   if (normalized.includes("REVOKED")) return "REVOCADO";
-  if (normalized.includes("INVALID")) return "INVÃLIDO";
+  if (normalized.includes("INVALID")) return "INVÁLIDO";
   return "EVENTO REGISTRADO";
 }
 
@@ -515,11 +516,11 @@ function getScenarioState(txt: DemoCopy, beat: Beat, routeKm: number, locale: Ap
     return {
       tone: "origin",
       headline: "Producto activado en origen",
-      body: "La marca programa lote, UID, origen y polÃ­tica comercial antes de entregar el producto al canal.",
+      body: "La marca programa lote, UID, origen y política comercial antes de entregar el producto al canal.",
       stateLabel: "ORIGEN ACTIVO",
       allowed: ["Auditar lote", "Abrir ubicación", "Preparar QR/NFC"],
-      blocked: ["Reclamo de dueÃ±o", "Token de valor", "GarantÃ­a postventa"],
-      chain: "Sin NFT: producto todavÃ­a no fue comprado ni reclamado.",
+      blocked: ["Reclamo de dueño", "Token de valor", "Garantía postventa"],
+      chain: "Sin NFT: producto todavía no fue comprado ni reclamado.",
       primaryAction: "origin",
       primaryLabel: txt.controls.openOrigin,
     };
@@ -528,10 +529,10 @@ function getScenarioState(txt: DemoCopy, beat: Beat, routeKm: number, locale: Ap
     return {
       tone: "risk",
       headline: "Copia o duplicado bloqueado",
-      body: "El sistema conserva trazabilidad, pero bloquea club, puntos, tienda y tokenización hasta un nuevo toque fÃ­sico vÃ¡lido.",
+      body: "El sistema conserva trazabilidad, pero bloquea club, puntos, tienda y tokenización hasta un nuevo toque físico válido.",
       stateLabel: "RIESGO BLOQUEADO",
       allowed: ["Ver procedencia", "Reportar incidente"],
-      blocked: ["Reclamo de dueÃ±o", "GarantÃ­a", "Tokenización", "Tienda"],
+      blocked: ["Reclamo de dueño", "Garantía", "Tokenización", "Tienda"],
       chain: "No se firma en cadena cuando hay copia o URL reutilizada.",
       primaryAction: "report",
       primaryLabel: "Reportar copia",
@@ -541,23 +542,23 @@ function getScenarioState(txt: DemoCopy, beat: Beat, routeKm: number, locale: Ap
     return {
       tone: "open",
       headline: "Sello abierto como evento del producto",
-      body: "El producto conserva evidencia vÃ¡lida. Cambia su estado fÃ­sico y solo prepara postventa o token de valor con compra/reclamo validado.",
+      body: "El producto conserva evidencia válida. Cambia su estado físico y solo prepara postventa o token de valor con compra/reclamo validado.",
       stateLabel: "SELLO ABIERTO",
-      allowed: ["GarantÃ­a postventa", "Procedencia", "Token de valor con prueba de compra"],
+      allowed: ["Garantía postventa", "Procedencia", "Token de valor con prueba de compra"],
       blocked: ["Reventa como cerrado", "Reclamo anonimo sin prueba"],
-      chain: "Solicitud Polygon disponible cuando la polÃ­tica de dueÃ±o confirma comprador.",
+      chain: "Solicitud Polygon disponible cuando la política de dueño confirma comprador.",
       primaryAction: "tokenize",
       primaryLabel: txt.controls.tokenize,
     };
   }
   return {
     tone: "ok",
-    headline: "Toque vÃ¡lido con ruta de confianza",
+    headline: "Toque válido con ruta de confianza",
     body: `Origen y toque quedan unidos en ${distance}. El consumidor ve el resultado de confianza y la marca recibe datos accionables.`,
     stateLabel: "AUTENTICADO",
     allowed: ["Unirse al club", "Guardar pasaporte", "Solicitud Polygon", "Voucher o recompra"],
-    blocked: ["Transferir dueÃ±o sin ingreso/reclamo"],
-    chain: "Tokenización bajo polÃ­tica: el toque vÃ¡lido crea una solicitud y solo cierra con tx_hash/token_id si el tenant aprueba la operación.",
+    blocked: ["Transferir dueño sin ingreso/reclamo"],
+    chain: "Tokenización bajo política: el toque válido crea una solicitud y solo cierra con tx_hash/token_id si el tenant aprueba la operación.",
     primaryAction: "join",
     primaryLabel: txt.controls.joinClub,
   };
@@ -622,7 +623,7 @@ export function DemoLabClient({ locale, initialVertical, initialScenario }: { lo
         const title = isSuccess 
           ? "Escaneo Autenticado" 
           : isRisk 
-          ? "Â¡Alerta de Fraude!" 
+          ? "¡Alerta de Fraude!"
           : isTamper 
           ? "Sello de Seguridad Abierto" 
           : "Lectura Registrada";
@@ -777,11 +778,11 @@ export function DemoLabClient({ locale, initialVertical, initialScenario }: { lo
       if (!response.ok || payload?.ok === false) throw new Error(String(payload?.reason || payload?.payload?.reason || "lectura fallida"));
       if (payload?.degraded) {
         setStatus(`${modeLabel}: ${String(payload.reason || txt.controls.adminKey)}`);
-        setActionMessage(mode === "replay" ? "Copia simulada: reclamo de dueÃ±o, puntos y tokenización quedan bloqueados." : mode === "tamper" ? "Sello abierto: se registra evento del producto y queda listo para postventa controlada." : "Toque vÃ¡lido: club, tienda y analÃ­tica quedan listos para activar.");
+        setActionMessage(mode === "replay" ? "Copia simulada: reclamo de dueño, puntos y tokenización quedan bloqueados." : mode === "tamper" ? "Sello abierto: se registra evento del producto y queda listo para postventa controlada." : "Toque válido: club, tienda y analítica quedan listos para activar.");
         return;
       }
       setStatus(`${modeLabel}: ${txt.controls.registeredScan}`);
-      setActionMessage(mode === "replay" ? "Copia simulada: reclamo de dueÃ±o, puntos y tokenización quedan bloqueados." : mode === "tamper" ? "Sello abierto: se registra evento del producto y queda listo para postventa controlada." : "Toque vÃ¡lido: club, tienda y analÃ­tica quedan listos para activar.");
+      setActionMessage(mode === "replay" ? "Copia simulada: reclamo de dueño, puntos y tokenización quedan bloqueados." : mode === "tamper" ? "Sello abierto: se registra evento del producto y queda listo para postventa controlada." : "Toque válido: club, tienda y analítica quedan listos para activar.");
       await refreshSummary();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : txt.controls.failedScan);
@@ -806,25 +807,25 @@ export function DemoLabClient({ locale, initialVertical, initialScenario }: { lo
       return;
     }
     if (action === "warranty") {
-      setActionMessage(beat === 2 ? "GarantÃ­a bloqueada: se necesita un nuevo toque fÃ­sico vÃ¡lido." : "GarantÃ­a preparada: queda asociada al pasaporte del consumidor y a la marca.");
+      setActionMessage(beat === 2 ? "Garantía bloqueada: se necesita un nuevo toque físico válido." : "Garantía preparada: queda asociada al pasaporte del consumidor y a la marca.");
       return;
     }
     if (action === "tokenize") {
-      setActionMessage(beat === 3 ? "Tokenización de valor preparada: requiere compra o reclamo validado antes de transferir propiedad." : beat === 1 ? "Solicitud de tokenización lista: Polygon registra tx_hash/token_id solo si el tenant aprueba la operación." : "Tokenización bloqueada por polÃ­tica de seguridad para este estado.");
+      setActionMessage(beat === 3 ? "Tokenización de valor preparada: requiere compra o reclamo validado antes de transferir propiedad." : beat === 1 ? "Solicitud de tokenización lista: Polygon registra tx_hash/token_id solo si el tenant aprueba la operación." : "Tokenización bloqueada por política de seguridad para este estado.");
       return;
     }
-    setActionMessage(beat === 2 ? "Club bloqueado por copia. RepetÃ­ el toque fÃ­sico para continuar." : "Club/tienda listo: el consumidor puede asociarse y recibir beneficios de la marca.");
+    setActionMessage(beat === 2 ? "Club bloqueado por copia. Repetí el toque físico para continuar." : "Club/tienda listo: el consumidor puede asociarse y recibir beneficios de la marca.");
   }
 
   function startGuidedDemo() {
     setBeat(0);
     setRunning(true);
     setModalView(null);
-    setActionMessage("Modo guiado activo: primero mira la etiqueta cerrada, despuÃ©s el toque vÃ¡lido, copia bloqueada y apertura con reclamo/tokenización.");
+    setActionMessage("Modo guiado activo: primero mira la etiqueta cerrada, después el toque válido, copia bloqueada y apertura con reclamo/tokenización.");
   }
 
   return (
-    <main className="demo-lab-shell container-shell py-8 text-slate-100">
+    <main className={`demo-lab-shell demo-lab-shell--${viewMode} container-shell py-8 text-slate-100`}>
       {/* Premium Toggle Header */}
       <div className="demo-lab-mode-bar mb-6 flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-white/10 bg-slate-950/45 p-4 backdrop-blur-md">
         <div className="flex items-center gap-3">
@@ -898,127 +899,6 @@ export function DemoLabClient({ locale, initialVertical, initialScenario }: { lo
             onOpen={() => void simulate("tamper")}
             onReplay={() => void simulate("replay")}
           />
-
-          <DemoFinalTapDock
-            status={status}
-            simulating={simulating}
-            onValid={() => void simulate("valid")}
-            onTamper={() => void simulate("tamper")}
-            onReplay={() => void simulate("replay")}
-            onRefresh={() => void refreshSummary()}
-          />
-
-          <section className="mt-5 grid gap-5 xl:grid-cols-[1.16fr_0.84fr]">
-            <article className="demo-lab-panel min-w-0 rounded-3xl border border-white/10 bg-slate-950/60 p-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-300">{txt.controls.narrative}</p>
-                  <h2 className="mt-2 text-2xl font-black text-white">{activeRole.headline}</h2>
-                  <p className="mt-2 text-sm leading-6 text-slate-300">{activeRole.focus}</p>
-                </div>
-                <button suppressHydrationWarning type="button" onClick={() => setRunning((current) => !current)} className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-4 py-2 text-xs font-bold text-cyan-100">{running ? txt.controls.cinematicStop : txt.controls.cinematicStart}</button>
-              </div>
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                {(Object.keys(txt.roles) as Role[]).map((item) => (
-                  <button suppressHydrationWarning key={item} type="button" onClick={() => setRole(item)} className={`rounded-full border px-3 py-2 text-xs font-bold ${role === item ? "border-cyan-300/50 bg-cyan-500/20 text-cyan-100" : "border-white/15 bg-white/5 text-slate-300"}`}>{txt.roles[item].label}</button>
-                ))}
-              </div>
-
-              <div className="mt-5 grid gap-3 md:grid-cols-4">
-                {([0, 1, 2, 3] as Beat[]).map((item) => (
-                  <button suppressHydrationWarning key={item} type="button" onClick={() => setBeat(item)} className={`demo-lab-beat-card rounded-2xl border p-3 text-left ${beat === item ? "demo-lab-beat-card--active border-emerald-300/45 bg-emerald-500/10" : "border-white/10 bg-slate-900/60"}`}>
-                    <p className="text-xs font-black text-white">{txt.beats[item].title}</p>
-                    <p className="mt-2 text-[11px] leading-5 text-slate-400">{txt.beats[item].body}</p>
-                  </button>
-                ))}
-              </div>
-
-              <div className="mt-5 grid min-w-0 gap-4">
-                <div className="demo-lab-product-card min-w-0 rounded-2xl border border-white/10 bg-slate-950/70 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-300">{txt.controls.product}</p>
-                      <h3 className="mt-1 text-xl font-black text-white">{activeVertical.product}</h3>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <span className="rounded-full border border-violet-300/30 bg-violet-500/10 px-3 py-1 text-[11px] font-bold text-violet-100">{activeVertical.profile}</span>
-                      <button suppressHydrationWarning type="button" onClick={() => setModalView("product")} className="demo-lab-modal-open-button">Ampliar ficha</button>
-                    </div>
-                  </div>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {DEMO_VERTICAL_ORDER.map((item) => (
-                      <button suppressHydrationWarning key={item} type="button" onClick={() => setVertical(item)} className={`rounded-full border px-3 py-1.5 text-xs font-bold ${vertical === item ? "border-cyan-300/50 bg-cyan-500/20 text-cyan-100" : "border-white/15 bg-white/5 text-slate-300"}`}>{txt.verticals[item].label}</button>
-                    ))}
-                  </div>
-                  <div className={`demo-lab-product-stage demo-lab-product-stage--${vertical} demo-lab-product-stage--beat-${beat} demo-lab-product-stage--${scenario.tone} mt-4`}>
-                    <StageRouteLayer txt={txt} routeKm={routeKm} destination={destination} scenario={scenario} locale={locale} />
-                    <span className="demo-lab-product-depth-floor" aria-hidden="true" />
-                    <span className="demo-lab-product-depth-rim" aria-hidden="true" />
-                    <DemoLabProductThreeStage
-                      vertical={vertical}
-                      product={activeVertical.product}
-                      beat={beat}
-                      badge={realProductBadge}
-                      simulating={simulating}
-                    />
-                    <span className="demo-lab-tap-chip">SUN</span>
-                    <span className="demo-lab-tap-wave" />
-                  </div>
-                  <DemoStageExplainer beat={beat} scenario={scenario} routeKm={routeKm} locale={locale} />
-                  <DemoExperienceLayer beat={beat} product={activeVertical.product} scenario={scenario} destination={destination} routeKm={routeKm} locale={locale} onOpen={setModalView} />
-                  <div className="demo-lab-sync-steps mt-4">
-                    {activeVertical.proof.map((item, index) => <p key={item} className={`demo-lab-sync-step ${index <= beat ? "demo-lab-sync-step--active" : ""}`}><span>{index + 1}</span>{item}</p>)}
-                  </div>
-                  <DemoFlowRail scenario={scenario} beat={beat} onOpen={setModalView} />
-                </div>
-              </div>
-            </article>
-
-            <aside className="min-w-0 space-y-5">
-              <DemoActionMatrix txt={txt} beat={beat} routeKm={routeKm} status={activeBeat.status} destination={destination} scenario={scenario} onAction={handleDemoAction} actionMessage={actionMessage} locale={locale} />
-
-              <article className="demo-lab-panel rounded-3xl border border-white/10 bg-slate-950/60 p-5">
-                <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-300">{txt.controls.feed}</p>
-                <h2 className="mt-2 text-2xl font-black text-white">{activeBeat.event}</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-300">{status}</p>
-                <div className="mt-4 grid gap-2">
-                  <button suppressHydrationWarning type="button" disabled={simulating} onClick={() => void simulate("valid")} className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-3 py-3 text-left text-xs font-bold text-emerald-100 disabled:opacity-60">{txt.controls.valid}</button>
-                  <button suppressHydrationWarning type="button" disabled={simulating} onClick={() => void simulate("tamper")} className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-3 py-3 text-left text-xs font-bold text-amber-100 disabled:opacity-60">{txt.controls.tamper}</button>
-                  <button suppressHydrationWarning type="button" disabled={simulating} onClick={() => void simulate("replay")} className="rounded-xl border border-rose-300/30 bg-rose-500/10 px-3 py-3 text-left text-xs font-bold text-rose-100 disabled:opacity-60">{txt.controls.replay}</button>
-                </div>
-                <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs font-black uppercase tracking-[0.14em] text-cyan-300">Bodega Balmec</p>
-                    <button suppressHydrationWarning type="button" onClick={() => void refreshSummary()} className="rounded-lg border border-white/15 px-2 py-1 text-[11px] text-slate-200">{txt.controls.refresh}</button>
-                  </div>
-                  <div className="mt-3 space-y-2">
-                    {liveEvents.slice(0, 5).length === 0 ? <p className="rounded-xl border border-dashed border-white/15 p-3 text-xs text-slate-400">{txt.controls.noGeo}</p> : liveEvents.slice(0, 5).map((event) => (
-                      <div key={event.id || `${event.created_at}-${event.uidMasked}`} className="rounded-xl border border-white/10 bg-slate-950/60 p-3 text-xs">
-                        <p className="font-bold text-white">{event.city || "Sin dato"}, {event.country_code || "S/D"} / {formatEventResult(event.result)}</p>
-                        <p className="mt-1 text-slate-400">{event.product_name || activeVertical.product} / {event.uidMasked || "UID-NA"}</p>
-                        <p className="mt-1 text-slate-500">{event.created_at || "sin fecha"}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </article>
-
-            </aside>
-          </section>
-
-          <div className="demo-lab-tech-map mt-5 rounded-3xl border border-white/10 bg-slate-950/60 p-4 md:p-6 shadow-xl">
-            <div className="flex items-center justify-between pb-3 border-b border-white/5">
-              <div>
-                <h3 className="text-sm font-black uppercase tracking-wider text-cyan-300">Mapa Operativo del Escaneo</h3>
-                <p className="text-xs text-slate-400">{LOCATIONS.origin.city} &rarr; {destination.city}</p>
-              </div>
-              <a href={mapsLink(destination)} target="_blank" rel="noreferrer" className="text-xs font-bold text-slate-300 bg-white/5 px-3 py-1 rounded-full hover:text-white">{routeKm.toLocaleString(locale)} km</a>
-            </div>
-            <div className="demo-lab-atlas-panel mt-4">
-              <HeroTrustAtlasSvg points={atlasPoints} routes={atlasRoutes} selectedPointId="tap" />
-            </div>
-          </div>
         </>
       )}
 
@@ -1091,7 +971,7 @@ export function DemoLabClient({ locale, initialVertical, initialScenario }: { lo
                 onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
                 className="text-slate-400 hover:text-white text-xs self-start"
               >
-                âœ•
+                ✕
               </button>
             </div>
           );
@@ -1159,44 +1039,55 @@ function DemoLabStudioHero({
   const backHome = locale === "en" ? "← nexID" : "← nexID";
 
   return (
-    <section className={`demo-lab-studio demo-lab-studio--${vertical} demo-lab-studio--${scenario.tone}`}>
+    <section className={`demo-lab-studio demo-lab-studio--${vertical} demo-lab-studio--${scenario.tone} relative min-h-[calc(100vh-7rem)] overflow-hidden rounded-[28px] border border-cyan-300/15 bg-gradient-to-br from-slate-950 via-slate-950 to-cyan-950/30 shadow-2xl`}>
 
-      {/* â”€â”€ WIZARD NAV BAR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-      <nav className="demo-lab-wizard-nav">
-        <Link href="/" className="demo-lab-wizard-nav-back">
+      {/* ── WIZARD NAV BAR ─────────────────────────────────────── */}
+      <nav className="demo-lab-wizard-nav sticky top-3 z-20 m-3 flex flex-col gap-2 rounded-2xl border border-slate-700/70 bg-slate-950/80 p-2 backdrop-blur md:flex-row md:items-center md:justify-between" aria-label="Demo Lab wizard">
+        <Link href="/" className="demo-lab-wizard-nav-back inline-flex h-10 shrink-0 items-center justify-center rounded-full border border-white/10 px-4 text-xs font-black uppercase tracking-wider text-slate-300">
           {backHome}
         </Link>
-        <div className="demo-lab-wizard-steps">
+        <div className="demo-lab-wizard-steps flex min-w-0 flex-1 gap-2 overflow-x-auto">
           {stepLabels.map((label, index) => (
             <button
               suppressHydrationWarning
               key={index}
               type="button"
+              aria-current={step === index ? "step" : undefined}
+              aria-label={`${index + 1}. ${label}`}
               onClick={() => setStep(index as 0 | 1 | 2 | 3)}
-              className={`demo-lab-wizard-step-pill ${step === index ? "is-active" : step > index ? "is-done" : ""}`}
+              className={`demo-lab-wizard-step-pill inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-full border px-4 text-xs font-black uppercase tracking-wider transition ${
+                step === index
+                  ? "is-active border-cyan-300 bg-cyan-300 text-slate-950 shadow-lg shadow-cyan-500/20"
+                  : step > index
+                    ? "is-done border-emerald-300/40 bg-emerald-500/10 text-emerald-200"
+                    : "border-white/10 bg-white/5 text-slate-400"
+              }`}
             >
-              <span className="demo-lab-wizard-step-num">{index + 1}</span>
-              {label}
+              <span className="demo-lab-wizard-step-num grid h-5 w-5 place-items-center rounded-full bg-white/15 text-[10px]" aria-hidden="true">{index + 1}</span>{" "}
+              <span>{label}</span>
             </button>
           ))}
         </div>
-        <a href="/?contact=demo#contact-modal" className="demo-lab-wizard-step-pill is-active" style={{ borderColor: "rgba(6,182,212,0.6)" }}>
-          {scheduleLabel}
-        </a>
+        <div className="demo-lab-wizard-actions">
+          <DemoLabThemeToggle />
+          <a href="/?contact=demo#contact-modal" className="demo-lab-wizard-step-pill demo-lab-wizard-cta is-active inline-flex h-10 shrink-0 items-center justify-center rounded-full border border-cyan-300 bg-cyan-300 px-4 text-xs font-black uppercase tracking-wider text-slate-950 shadow-lg shadow-cyan-500/20">
+            {scheduleLabel}
+          </a>
+        </div>
       </nav>
 
-      {/* â”€â”€ STEP 0: TOCA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── STEP 0: TOCA ─────────────────────────────────────── */}
       {step === 0 && (
-        <div className="demo-lab-wizard-scene demo-lab-wizard-scene--toca">
+        <div className="demo-lab-wizard-scene demo-lab-wizard-scene--toca grid min-h-[calc(100vh-12rem)] gap-5 p-3 lg:grid-cols-[minmax(12rem,0.8fr)_minmax(18rem,1.35fr)_minmax(12rem,0.75fr)]">
           {/* Left: product context */}
-          <div className="demo-lab-wizard-context">
-            <p className="demo-lab-wizard-eyebrow">{txt.heroEyebrow}</p>
-            <h2 className="demo-lab-wizard-product-name">{activeVertical.product}</h2>
-            <p className="demo-lab-wizard-tagline">{txt.verticals[vertical].label} · {activeVertical.profile}</p>
+          <div className="demo-lab-wizard-context rounded-3xl border border-white/10 bg-slate-900/65 p-5 shadow-inner">
+            <p className="demo-lab-wizard-eyebrow text-xs font-black uppercase tracking-[0.16em] text-cyan-300">{txt.heroEyebrow}</p>
+            <h2 className="demo-lab-wizard-product-name mt-2 text-3xl font-black leading-none text-white md:text-5xl">{activeVertical.product}</h2>
+            <p className="demo-lab-wizard-tagline mt-3 text-sm leading-6 text-slate-400">{txt.verticals[vertical].label} · {activeVertical.profile}</p>
           </div>
 
           {/* Center: product visual + tap button */}
-          <div className="demo-lab-wizard-center">
+          <div className="demo-lab-wizard-center grid min-w-0 justify-items-center gap-4">
             <DemoCinematicProductRender
               vertical={vertical}
               product={activeVertical.product}
@@ -1214,24 +1105,28 @@ function DemoLabStudioHero({
                 onValid();
                 setTimeout(() => setStep(1), 800);
               }}
-              className="demo-lab-wizard-tap-btn"
+              className="demo-lab-wizard-tap-btn relative grid h-44 w-44 place-items-center overflow-hidden rounded-full border border-cyan-300/40 bg-cyan-500/15 font-black uppercase text-cyan-50 shadow-[0_0_70px_rgba(6,182,212,0.25)]"
             >
-              <span className="demo-lab-wizard-tap-ring" />
-              <span className="demo-lab-wizard-tap-ring demo-lab-wizard-tap-ring--2" />
-              <Fingerprint size={48} />
-              <span>Tocar tag NFC</span>
+              <span className="demo-lab-wizard-tap-ring absolute inset-5 rounded-full border border-cyan-200/30 animate-ping" />
+              <span className="demo-lab-wizard-tap-ring demo-lab-wizard-tap-ring--2 absolute inset-9 rounded-full border border-cyan-200/20" />
+              <Fingerprint className="relative z-10" size={48} />
+              <span className="relative z-10 text-xs">Tocar tag NFC</span>
             </button>
           </div>
 
           {/* Right: vertical switcher */}
-          <div className="demo-lab-wizard-verticals">
+          <div className="demo-lab-wizard-verticals grid max-h-[68vh] gap-3 overflow-y-auto">
             {verticalList.map((item) => (
               <button
                 suppressHydrationWarning
                 key={item}
                 type="button"
                 onClick={() => onVertical(item)}
-                className={`demo-lab-wizard-vertical-btn ${vertical === item ? "is-active" : ""}`}
+                className={`demo-lab-wizard-vertical-btn grid w-full grid-cols-[3.2rem_minmax(0,1fr)] items-center gap-3 rounded-2xl border p-2 text-left transition ${
+                  vertical === item
+                    ? "is-active border-cyan-300/50 bg-cyan-500/20 text-white"
+                    : "border-white/10 bg-white/5 text-slate-300 hover:border-white/20"
+                }`}
               >
                 <DemoStudioMiniProduct vertical={item} />
                 <span>{txt.verticals[item].label}</span>
@@ -1241,35 +1136,35 @@ function DemoLabStudioHero({
         </div>
       )}
 
-      {/* â”€â”€ STEP 1: VERIFICÓ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── STEP 1: VERIFICÓ ─────────────────────────────────── */}
       {step === 1 && (
-        <div className="demo-lab-wizard-scene demo-lab-wizard-scene--verifico">
-          <div className="demo-lab-wizard-result-card">
-            <div className="demo-lab-wizard-result-icon">
+        <div className="demo-lab-wizard-scene demo-lab-wizard-scene--verifico grid min-h-[calc(100vh-12rem)] gap-5 p-3 lg:grid-cols-[minmax(0,1.35fr)_minmax(17rem,0.8fr)]">
+          <div className="demo-lab-wizard-result-card grid min-h-[28rem] content-center justify-items-start rounded-3xl border border-white/10 bg-slate-900/65 p-5 shadow-inner">
+            <div className="demo-lab-wizard-result-icon grid h-20 w-20 place-items-center rounded-3xl bg-emerald-500/15 text-emerald-200">
               <ShieldCheck size={64} />
             </div>
-            <h2 className="demo-lab-wizard-result-status">{scenario.stateLabel}</h2>
-            <div className="demo-lab-wizard-result-pills">
-              <span>ðŸŒ Valle de Uco, Argentina</span>
-              <span>✅ SUN Signature OK</span>
-              <span>â± {new Date().toLocaleTimeString(locale)}</span>
+            <h2 className="demo-lab-wizard-result-status mt-4 text-3xl font-black leading-none text-white md:text-5xl">{scenario.stateLabel}</h2>
+            <div className="demo-lab-wizard-result-pills mt-4 flex flex-wrap gap-2">
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-slate-200">🌍 Valle de Uco, Argentina</span>
+              <span className="rounded-full border border-emerald-300/20 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-100">✅ SUN Signature OK</span>
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-slate-200">⏱ {new Date().toLocaleTimeString(locale)}</span>
             </div>
-            <p className="demo-lab-wizard-result-desc">{scenario.headline}</p>
+            <p className="demo-lab-wizard-result-desc mt-3 max-w-2xl text-sm leading-6 text-slate-400">{scenario.headline}</p>
             <button
               suppressHydrationWarning
               type="button"
               onClick={() => setStep(2)}
-              className="demo-lab-wizard-next-btn"
+              className="demo-lab-wizard-next-btn mt-5 inline-flex h-11 items-center justify-center rounded-full border border-cyan-300 bg-cyan-300 px-5 text-xs font-black uppercase tracking-wider text-slate-950"
             >
               {locale === "en" ? "See traceability → Traced" : locale === "pt-BR" ? "Ver rastreabilidade → Rastreou" : "Ver trazabilidad → Trazó"}
             </button>
           </div>
 
           {/* Live scan events sidebar */}
-          <div className="demo-lab-wizard-events">
-            <p className="demo-lab-wizard-eyebrow" style={{ padding: "0 0 0.5rem 0" }}>ÚLTIMOS TAPS</p>
+          <div className="demo-lab-wizard-events grid max-h-[68vh] gap-3 overflow-y-auto rounded-3xl border border-white/10 bg-slate-900/65 p-5 shadow-inner">
+            <p className="demo-lab-wizard-eyebrow pb-2 text-xs font-black uppercase tracking-[0.16em] text-cyan-300">ÚLTIMOS TAPS</p>
             {liveEvents.length === 0 ? (
-              <div className="demo-lab-wizard-event demo-lab-wizard-event--autenticado">
+              <div className="demo-lab-wizard-event demo-lab-wizard-event--autenticado rounded-2xl border border-emerald-300/25 bg-emerald-500/10 p-3 text-xs">
                 <strong>AUTENTICADO</strong>
                 <span>Zurich, CH</span>
                 <small>SIM-DEMO · {new Date().toLocaleTimeString(locale)}</small>
@@ -1277,7 +1172,7 @@ function DemoLabStudioHero({
             ) : liveEvents.slice(0, 5).map((ev, i) => (
               <div
                 key={i}
-                className={`demo-lab-wizard-event demo-lab-wizard-event--${
+                className={`demo-lab-wizard-event rounded-2xl border bg-white/5 p-3 text-xs demo-lab-wizard-event--${
                   /AUTH_OK|VALID|AUTENTICADO/i.test(ev.result || "") ? "autenticado"
                   : /REPLAY|DUPLICATE|COPIA/i.test(ev.result || "") ? "invalido"
                   : /TAMPER|OPEN|ABIERTO/i.test(ev.result || "") ? "bloqueado"
@@ -1293,10 +1188,10 @@ function DemoLabStudioHero({
         </div>
       )}
 
-      {/* â”€â”€ STEP 2: TRAZÓ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── STEP 2: TRAZÓ ────────────────────────────────────── */}
       {step === 2 && (
-        <div className="demo-lab-wizard-scene demo-lab-wizard-scene--trazo">
-          <div className="demo-lab-wizard-map-container">
+        <div className="demo-lab-wizard-scene demo-lab-wizard-scene--trazo grid min-h-[calc(100vh-12rem)] gap-5 p-3 lg:grid-cols-[minmax(0,1.35fr)_minmax(17rem,0.8fr)]">
+          <div className="demo-lab-wizard-map-container min-h-[32rem] overflow-hidden rounded-3xl border border-white/10 bg-slate-900/65">
             <DemoLiveOpsMap
               points={mapPoints}
               liveEvents={liveEvents}
@@ -1307,10 +1202,10 @@ function DemoLabStudioHero({
               labels={txt.controls}
             />
           </div>
-          <div className="demo-lab-wizard-trazo-side">
-            <p className="demo-lab-wizard-eyebrow">ÚLTIMOS TAPS EN VIVO</p>
+          <div className="demo-lab-wizard-trazo-side grid max-h-[68vh] gap-3 overflow-y-auto rounded-3xl border border-white/10 bg-slate-900/65 p-5 shadow-inner">
+            <p className="demo-lab-wizard-eyebrow text-xs font-black uppercase tracking-[0.16em] text-cyan-300">ÚLTIMOS TAPS EN VIVO</p>
             {liveEvents.length === 0 ? (
-              <div className="demo-lab-wizard-event demo-lab-wizard-event--autenticado">
+              <div className="demo-lab-wizard-event demo-lab-wizard-event--autenticado rounded-2xl border border-emerald-300/25 bg-emerald-500/10 p-3 text-xs">
                 <strong>AUTENTICADO</strong>
                 <span>{destination.city}, {destination.countryCode}</span>
                 <small>SIM-DEMO · en vivo</small>
@@ -1318,7 +1213,7 @@ function DemoLabStudioHero({
             ) : liveEvents.slice(0, 6).map((ev, i) => (
               <div
                 key={i}
-                className={`demo-lab-wizard-event demo-lab-wizard-event--${
+                className={`demo-lab-wizard-event rounded-2xl border bg-white/5 p-3 text-xs demo-lab-wizard-event--${
                   /AUTH_OK|VALID|AUTENTICADO/i.test(ev.result || "") ? "autenticado"
                   : /REPLAY|DUPLICATE|COPIA/i.test(ev.result || "") ? "invalido"
                   : /TAMPER|OPEN|ABIERTO/i.test(ev.result || "") ? "bloqueado"
@@ -1334,7 +1229,7 @@ function DemoLabStudioHero({
               suppressHydrationWarning
               type="button"
               onClick={() => setStep(3)}
-              className="demo-lab-wizard-next-btn"
+              className="demo-lab-wizard-next-btn mt-3 inline-flex h-11 items-center justify-center rounded-full border border-cyan-300 bg-cyan-300 px-5 text-xs font-black uppercase tracking-wider text-slate-950"
             >
               {locale === "en" ? "See business outcome → Won" : locale === "pt-BR" ? "Ver resultado comercial → Ganhou" : "Ver resultado comercial → Ganó"}
             </button>
@@ -1342,14 +1237,14 @@ function DemoLabStudioHero({
         </div>
       )}
 
-      {/* â”€â”€ STEP 3: GANÓ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── STEP 3: GANÓ ─────────────────────────────────────── */}
       {step === 3 && (
-        <div className="demo-lab-wizard-scene demo-lab-wizard-scene--gano">
-          <div className="demo-lab-wizard-gano-header">
-            <p className="demo-lab-wizard-eyebrow">{locale === "en" ? "BRAND OUTCOME" : "RESULTADO PARA LA MARCA"}</p>
-            <h2>{locale === "en" ? "What the brand gained from this tap" : locale === "pt-BR" ? "O que a marca ganhou com esse toque" : "QuÃ© ganó la marca con este toque"}</h2>
+        <div className="demo-lab-wizard-scene demo-lab-wizard-scene--gano grid min-h-[calc(100vh-12rem)] content-center gap-5 p-3">
+          <div className="demo-lab-wizard-gano-header max-w-4xl">
+            <p className="demo-lab-wizard-eyebrow text-xs font-black uppercase tracking-[0.16em] text-cyan-300">{locale === "en" ? "BRAND OUTCOME" : "RESULTADO PARA LA MARCA"}</p>
+            <h2 className="mt-2 text-3xl font-black leading-none text-white md:text-5xl">{locale === "en" ? "What the brand gained from this tap" : locale === "pt-BR" ? "O que a marca ganhou com esse toque" : "Qué ganó la marca con este toque"}</h2>
           </div>
-          <div className="demo-lab-wizard-gano-grid">
+          <div className="demo-lab-wizard-gano-grid grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {[
               {
                 icon: <ShieldCheck size={32} />,
@@ -1372,22 +1267,22 @@ function DemoLabStudioHero({
                 body: locale === "en" ? "Login, brand, and verified holder." : "Ingreso, marca y titular verificado.",
               },
             ].map((card, i) => (
-              <div key={i} className="demo-lab-wizard-gano-card">
-                <div className="demo-lab-wizard-gano-icon">{card.icon}</div>
-                <h3>{card.title}</h3>
-                <p>{card.body}</p>
+              <div key={i} className="demo-lab-wizard-gano-card rounded-3xl border border-white/10 bg-slate-900/65 p-5 shadow-inner">
+                <div className="demo-lab-wizard-gano-icon grid h-14 w-14 place-items-center rounded-2xl bg-cyan-500/10 text-cyan-200">{card.icon}</div>
+                <h3 className="mt-4 text-lg font-black text-white">{card.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-400">{card.body}</p>
               </div>
             ))}
           </div>
-          <div className="demo-lab-wizard-gano-cta">
-            <a href="/?contact=demo#contact-modal" className="demo-lab-wizard-primary-cta">
+          <div className="demo-lab-wizard-gano-cta flex flex-wrap gap-3">
+            <a href="/?contact=demo#contact-modal" className="demo-lab-wizard-primary-cta inline-flex h-11 items-center justify-center rounded-full border border-cyan-300 bg-cyan-300 px-5 text-xs font-black uppercase tracking-wider text-slate-950">
               {locale === "en" ? "Schedule full demo →" : locale === "pt-BR" ? "Agendar demo completa →" : "Agendar demo completa →"}
             </a>
             <button
               suppressHydrationWarning
               type="button"
               onClick={() => setStep(0)}
-              className="demo-lab-wizard-secondary-cta"
+              className="demo-lab-wizard-secondary-cta inline-flex h-11 items-center justify-center rounded-full border border-white/10 bg-white/5 px-5 text-xs font-black uppercase tracking-wider text-slate-200"
             >
               {locale === "en" ? "Try another vertical" : locale === "pt-BR" ? "Testar outra vertical" : "Probar otra vertical"}
             </button>
@@ -1563,7 +1458,7 @@ function DemoLiveOpsMap({
       <div className="demo-lab-mini-map__stats">
         <span><strong>{visiblePoints.length}</strong> nodos</span>
         <span><strong>{risks}</strong> riesgo</span>
-        <span><strong>{formatDemoTapTime(visiblePoints[1]?.lastSeen, locale)}</strong> Ãºltimo</span>
+        <span><strong>{formatDemoTapTime(visiblePoints[1]?.lastSeen, locale)}</strong> último</span>
       </div>
       <div className="demo-lab-live-feed-mini">
         <p>{feedTitle}</p>
@@ -1595,10 +1490,10 @@ function DemoFirstRunGuide({
   onMobile: () => void;
 }) {
   const guideSteps = [
-    { beat: 0, kicker: "01", title: "Producto cerrado", body: "La etiqueta NFC esta intacta. Todavia no libera beneficios ni reclamo de dueÃ±o." },
-    { beat: 1, kicker: "02", title: "Toque vÃ¡lido", body: "El SUN dinÃ¡mico valida el producto y une origen, ubicación y consumidor." },
+    { beat: 0, kicker: "01", title: "Producto cerrado", body: "La etiqueta NFC esta intacta. Todavia no libera beneficios ni reclamo de dueño." },
+    { beat: 1, kicker: "02", title: "Toque válido", body: "El SUN dinámico valida el producto y une origen, ubicación y consumidor." },
     { beat: 2, kicker: "03", title: "Copia bloqueada", body: "Una URL repetida o copiada no habilita club, tienda ni NFT." },
-    { beat: 3, kicker: "04", title: "Apertura + reclamo", body: "El sello abierto dispara postventa, certificado y reclamo de dueÃ±o." },
+    { beat: 3, kicker: "04", title: "Apertura + reclamo", body: "El sello abierto dispara postventa, certificado y reclamo de dueño." },
   ];
 
   return (
@@ -1606,7 +1501,7 @@ function DemoFirstRunGuide({
       <div className="demo-lab-guide-copy">
         <p>Primera vez aca</p>
         <h3>Proba el flujo como lo haria un cliente en 30 segundos.</h3>
-        <span>Arranca cerrado, hace un toque vÃ¡lido, muestra cómo detecta copia/replay y termina con sello abierto, solicitud Polygon y reclamo.</span>
+        <span>Arranca cerrado, hace un toque válido, muestra cómo detecta copia/replay y termina con sello abierto, solicitud Polygon y reclamo.</span>
       </div>
       <div className="demo-lab-guide-steps">
         {guideSteps.map((step) => (
@@ -1619,7 +1514,7 @@ function DemoFirstRunGuide({
       </div>
       <div className="demo-lab-guide-actions">
         <button suppressHydrationWarning type="button" onClick={onGuided}>Ver prueba guiada</button>
-        <button suppressHydrationWarning type="button" disabled={simulating} onClick={onValid}>Toque vÃ¡lido</button>
+        <button suppressHydrationWarning type="button" disabled={simulating} onClick={onValid}>Toque válido</button>
         <button suppressHydrationWarning type="button" disabled={simulating} onClick={onOpen}>Abrir sello</button>
         <button suppressHydrationWarning type="button" onClick={onMobile}>Ver celular</button>
       </div>
@@ -1633,26 +1528,26 @@ function DemoStageExplainer({ beat, scenario, routeKm, locale }: { beat: Beat; s
     0: {
       title: "Etiqueta NFC cerrada",
       body: "El producto nacio con UID y origen, pero todavia no hay prueba fresca del consumidor.",
-      backend: "Servidor: lote y UID listos, sin reclamo de dueÃ±o ni token de valor habilitado.",
-      next: "Siguiente: simular toque vÃ¡lido.",
+      backend: "Servidor: lote y UID listos, sin reclamo de dueño ni token de valor habilitado.",
+      next: "Siguiente: simular toque válido.",
     },
     1: {
-      title: "Toque fÃ­sico fresco",
+      title: "Toque físico fresco",
       body: `El cliente ve el resultado de confianza y la ruta al origen en ${distance}.`,
-      backend: "Servidor: evento vÃ¡lido, anti copia OK, acciones comerciales habilitables segÃºn polÃ­tica.",
+      backend: "Servidor: evento válido, anti copia OK, acciones comerciales habilitables según política.",
       next: "Siguiente: abrir celular, preparar tokenización o simular apertura.",
     },
     2: {
       title: "Copia bloqueada",
       body: "La prueba muestra por que copiar una URL no alcanza para reclamar beneficios.",
       backend: "Servidor: riesgo registrado; reclamo, club, tienda sensible y token quedan bloqueados.",
-      next: "Siguiente: repetir con un toque vÃ¡lido.",
+      next: "Siguiente: repetir con un toque válido.",
     },
     3: {
       title: "Sello abierto",
       body: "La etiqueta se parte visualmente y el producto cambia de estado.",
-      backend: "Servidor: postventa, certificado, solicitud de token y reclamo requieren polÃ­tica de compra/dueÃ±o.",
-      next: "Siguiente: abrir solicitud de certificado o reclamar dueÃ±o.",
+      backend: "Servidor: postventa, certificado, solicitud de token y reclamo requieren política de compra/dueño.",
+      next: "Siguiente: abrir solicitud de certificado o reclamar dueño.",
     },
   };
   const item = copyByBeat[beat];
@@ -1674,17 +1569,17 @@ function DemoStageExplainer({ beat, scenario, routeKm, locale }: { beat: Beat; s
 
 function getTrustSignals(beat: Beat) {
   return [
-    { label: "Toque fÃ­sico", value: beat === 0 ? "pendiente" : beat === 2 ? "sospechoso" : "fresco", tone: beat === 0 ? "pending" : beat === 2 ? "blocked" : "ok" },
+    { label: "Toque físico", value: beat === 0 ? "pendiente" : beat === 2 ? "sospechoso" : "fresco", tone: beat === 0 ? "pending" : beat === 2 ? "blocked" : "ok" },
     { label: "SUN anti copia", value: beat === 2 ? "bloqueado" : beat === 0 ? "en espera" : "ok", tone: beat === 2 ? "blocked" : beat === 0 ? "pending" : "ok" },
     { label: "Marca", value: "Bodega Balmec", tone: "ok" },
-    { label: "DueÃ±o", value: beat === 3 ? "reclamo listo" : beat === 2 ? "bloqueado" : "con regla", tone: beat === 3 ? "ok" : beat === 2 ? "blocked" : "pending" },
+    { label: "Dueño", value: beat === 3 ? "reclamo listo" : beat === 2 ? "bloqueado" : "con regla", tone: beat === 3 ? "ok" : beat === 2 ? "blocked" : "pending" },
     { label: "Polygon", value: beat === 2 ? "sin NFT" : beat === 0 ? "antes de cadena" : "solicitud lista", tone: beat === 2 ? "blocked" : beat === 0 ? "pending" : "ok" },
     { label: "Tienda", value: beat === 2 ? "cerrada" : beat === 0 ? "publica" : "abierta", tone: beat === 2 ? "blocked" : beat === 0 ? "pending" : "ok" },
   ] as const;
 }
 
 function DemoDifferentiatorStrip({ beat, onGuided }: { beat: Beat; onGuided: () => void }) {
-  const chain = ["Producto fÃ­sico", "Confianza", "DueÃ±o", "Comunidad", "Recompra", "Tienda", "Datos"];
+  const chain = ["Producto físico", "Confianza", "Dueño", "Comunidad", "Recompra", "Tienda", "Datos"];
   const activeIndex = beat === 0 ? 0 : beat === 1 ? 2 : beat === 2 ? 1 : 6;
 
   return (
@@ -1692,7 +1587,7 @@ function DemoDifferentiatorStrip({ beat, onGuided }: { beat: Beat; onGuided: () 
       <div className="demo-lab-differentiator-copy">
         <p>Diferencial nexID</p>
         <h2>No vendemos solo anti-falsificacion. Convertimos cada producto en canal propio de ingresos.</h2>
-        <span>El flujo que tiene que entender cualquier bodega, marca o evento: validar confianza, reclamar dueÃ±o, activar comunidad, recompra, tienda y datos.</span>
+        <span>El flujo que tiene que entender cualquier bodega, marca o evento: validar confianza, reclamar dueño, activar comunidad, recompra, tienda y datos.</span>
       </div>
       <div className="demo-lab-differentiator-chain" aria-label="Cadena de valor nexID">
         {chain.map((item, index) => (
@@ -1770,17 +1665,17 @@ function DemoCinematicShowcase({
       : {
         label: "Estudio visual nexID",
         title: "Una prueba que se entiende como video: producto real, prueba fisica, riesgo y negocio.",
-        body: "Este bloque funciona como presentacion visual dentro de la plataforma: cualquier marca entiende confianza, dueÃ±o, datos e ingresos en segundos.",
+        body: "Este bloque funciona como presentacion visual dentro de la plataforma: cualquier marca entiende confianza, dueño, datos e ingresos en segundos.",
         openPack: "Abrir paquete visual",
         scenes: [
           { beat: 0, tag: "Escena 01", title: "Producto nace", body: "Envase de alto valor, UID y etiqueta NFC cerrada antes del primer toque.", stat: "UID + lote", tone: "origin" },
-          { beat: 1, tag: "Escena 02", title: "Toque vivo", body: "SUN dinÃ¡mico, distancia, origen y datos accionables para consumidor y marca.", stat: "Verificado", tone: "ok" },
+          { beat: 1, tag: "Escena 02", title: "Toque vivo", body: "SUN dinámico, distancia, origen y datos accionables para consumidor y marca.", stat: "Verificado", tone: "ok" },
           { beat: 2, tag: "Escena 03", title: "Ataque bloqueado", body: "Una URL copiada no abre beneficios, reclamo, tokenización ni tienda.", stat: "Sin reclamo", tone: "risk" },
-          { beat: 3, tag: "Escena 04", title: "Ciclo comercial", body: "Sello abierto, reclamo de dueÃ±o, certificado, comunidad y recompra sujetos a polÃ­tica.", stat: "Abierto", tone: "open" },
+          { beat: 3, tag: "Escena 04", title: "Ciclo comercial", body: "Sello abierto, reclamo de dueño, certificado, comunidad y recompra sujetos a política.", stat: "Abierto", tone: "open" },
         ],
         proof: {
-          sun: beat === 0 ? "en espera" : beat === 2 ? "bloqueado" : "vÃ¡lido",
-          claim: beat === 3 ? "dueÃ±o pendiente" : beat === 2 ? "denegado" : "con regla",
+          sun: beat === 0 ? "en espera" : beat === 2 ? "bloqueado" : "válido",
+          claim: beat === 3 ? "dueño pendiente" : beat === 2 ? "denegado" : "con regla",
           nft: beat === 2 ? "sin NFT" : beat === 0 ? "antes de cadena" : "pedido listo",
           market: beat === 2 ? "cerrada" : beat === 0 ? "publica" : "abierta",
         },
@@ -1922,20 +1817,20 @@ function getPremiumSceneMeta(vertical: Vertical, beat: Beat, badge: string, stat
           : "LISTO";
   const phoneAction =
     tone === "risk"
-      ? "Repetir tap fÃ­sico"
+      ? "Repetir tap físico"
       : tone === "open"
-        ? "Reclamar dueÃ±o"
+        ? "Reclamar dueño"
         : tone === "ok"
           ? "Compra confiable"
-          : "Acercar telÃ©fono";
-  const sun = tone === "risk" ? "SUN bloquea copia" : tone === "origin" ? "SUN listo" : "SUN vÃ¡lido";
+          : "Acercar teléfono";
+  const sun = tone === "risk" ? "SUN bloquea copia" : tone === "origin" ? "SUN listo" : "SUN válido";
   const lifecycle = tone === "open" ? "Beneficios abiertos" : tone === "risk" ? "Beneficios bloqueados" : "Beneficios listos";
 
   const proofBody =
     tone === "risk"
-      ? "Acciones bloqueadas hasta nuevo tap fÃ­sico."
+      ? "Acciones bloqueadas hasta nuevo tap físico."
       : tone === "open"
-        ? "Postventa, dueÃ±o y beneficios habilitados."
+        ? "Postventa, dueño y beneficios habilitados."
         : "Producto, UID y canal validados.";
 
   const base = {
@@ -1964,7 +1859,7 @@ function getPremiumSceneMeta(vertical: Vertical, beat: Beat, badge: string, stat
     return {
       ...base,
       family: "Zapatilla coleccionable real",
-      evidence: "UID, rareza, dueÃ±o y beneficio vinculados",
+      evidence: "UID, rareza, dueño y beneficio vinculados",
       proofTitle: "Lengueta NFC + owner",
       tagTitle: "Drop verificado",
       crop: "wide",
@@ -2214,7 +2109,7 @@ function DemoProofCard({
   locale: AppLocale;
 }) {
   const txStatus = beat === 2 ? "bloqueado" : beat === 0 ? "antes de cadena" : "tx/solicitud lista";
-  const owner = beat === 3 ? "dueÃ±o listo" : beat === 2 ? "reclamo bloqueado" : "ingreso requerido";
+  const owner = beat === 3 ? "dueño listo" : beat === 2 ? "reclamo bloqueado" : "ingreso requerido";
 
   return (
     <article className={`demo-lab-proof-card demo-lab-proof-card--${scenario.tone}`}>
@@ -2228,7 +2123,7 @@ function DemoProofCard({
         <InfoCell label="Toque" value={destination.city} />
         <InfoCell label="Ruta" value={`${routeKm.toLocaleString(locale)} km`} />
         <InfoCell label="Token" value={txStatus} />
-        <InfoCell label="DueÃ±o" value={owner} />
+        <InfoCell label="Dueño" value={owner} />
         <InfoCell label="UID" value="04B7****E2B5" />
       </div>
     </article>
@@ -2274,9 +2169,9 @@ function DemoPhoneMirror({
 function DemoUnlockLadder({ beat }: { beat: Beat }) {
   const rows = [
     { label: "Info publica", body: "Origen, lote, historia y contenido de marca.", unlocked: true },
-    { label: "Club + beneficios", body: "Beneficios y recompra solo con toque vÃ¡lido.", unlocked: beat === 1 || beat === 3 },
-    { label: "GarantÃ­a + reclamo", body: "DueÃ±o, garantÃ­a y postventa con ingreso.", unlocked: beat === 3 },
-    { label: "Solicitud / certificado", body: "Solicitud Polygon y token de valor si la polÃ­tica lo permite.", unlocked: beat === 1 || beat === 3 },
+    { label: "Club + beneficios", body: "Beneficios y recompra solo con toque válido.", unlocked: beat === 1 || beat === 3 },
+    { label: "Garantía + reclamo", body: "Dueño, garantía y postventa con ingreso.", unlocked: beat === 3 },
+    { label: "Solicitud / certificado", body: "Solicitud Polygon y token de valor si la política lo permite.", unlocked: beat === 1 || beat === 3 },
     { label: "Tienda", body: "Reventa, comunidad y ofertas contextuales.", unlocked: beat === 1 || beat === 3 },
     { label: "Registro de datos", body: "Eventos, riesgo, zona, demanda y atribucion.", unlocked: beat !== 0 },
   ];
@@ -2284,7 +2179,7 @@ function DemoUnlockLadder({ beat }: { beat: Beat }) {
   return (
     <article className="demo-lab-unlock-ladder">
       <p>Escalera comercial</p>
-      <h4>QuÃ© se habilita despuÃ©s del toque</h4>
+      <h4>Qué se habilita después del toque</h4>
       <div>
         {rows.map((row) => (
           <span key={row.label} className={row.unlocked && beat !== 2 ? "unlocked" : beat === 2 && row.label !== "Info publica" ? "blocked" : ""}>
@@ -2398,7 +2293,7 @@ function DemoPremiumCosmeticProduct({
   const opened = beat === 3;
   const isPerfume = vertical === "perfume";
   const status = blocked ? "RIESGO BLOQUEADO" : opened ? "SELLO ABIERTO" : beat === 0 ? "SELLADO" : "AUTENTICADO";
-  const action = blocked ? "Sin reclamo" : opened ? "GarantÃ­a lista" : "Compra confiable";
+  const action = blocked ? "Sin reclamo" : opened ? "Garantía lista" : "Compra confiable";
   const referenceLabel = isPerfume ? "Perfume premium real" : vertical === "creamJar" ? "Set skincare real" : "Dermo premium real";
   const proofLabel = isPerfume ? "Tapa NFC + lote" : "Envase sellado + lote";
 
@@ -2428,7 +2323,7 @@ function DemoPremiumCosmeticProduct({
       <div className="demo-lab-cosmetic-proof-card" aria-hidden="true">
         <span>NTAG 424 DNA</span>
         <strong>{isPerfume ? "Tapa + serie + lote" : "Envase + sello + lote"}</strong>
-        <small>{blocked ? "Replay no abre garantÃ­a" : "SUN dinÃ¡mico validado"}</small>
+        <small>{blocked ? "Replay no abre garantía" : "SUN dinámico validado"}</small>
       </div>
     </div>
   );
@@ -2484,7 +2379,7 @@ function DemoEventAccessProduct({
       <div className="demo-lab-event-proof-card" aria-hidden="true">
         <span>NTAG215</span>
         <strong>NFC + pasaporte</strong>
-        <small>{blocked ? "Replay no abre reclamo" : "Toque fÃ­sico validado"}</small>
+        <small>{blocked ? "Replay no abre reclamo" : "Toque físico validado"}</small>
       </div>
     </div>
   );
@@ -2507,7 +2402,7 @@ function DemoSneakerProduct({
   const blocked = beat === 2;
   const opened = beat === 3;
   const status = blocked ? "COPIA BLOQUEADA" : opened ? "OWNER LISTO" : beat === 0 ? "LISTO PARA TOQUE" : "AUTENTICADO";
-  const action = blocked ? "Repetir tap fÃ­sico" : opened ? "Claim + token pendiente" : "SUN dinÃ¡mico validado";
+  const action = blocked ? "Repetir tap físico" : opened ? "Claim + token pendiente" : "SUN dinámico validado";
   const proof = stat || (blocked ? "Replay no habilita beneficios" : "Lengueta NFC + UID + lote verificable");
 
   return (
@@ -2863,7 +2758,7 @@ function MobileOutcome({
           <span>Trazabilidad de Ruta</span>
           <span className="text-cyan-400 animate-pulse flex items-center gap-1">
             <span className="w-1 h-1 rounded-full bg-cyan-400 animate-ping" />
-            En TrÃ¡nsito Live
+            En Tránsito Live
           </span>
         </div>
         <svg className="w-full h-[40px] relative z-10" viewBox="0 0 160 40" preserveAspectRatio="none">
@@ -2996,7 +2891,7 @@ function MobileOutcome({
         <div className="flex justify-between text-[6.5px] text-slate-400 font-mono leading-none px-1">
           <span>Valle de Uco</span>
           <span>Mendoza QA</span>
-          <span>TrÃ¡nsito</span>
+          <span>Tránsito</span>
           <span>{destination.city}</span>
         </div>
       </div>
@@ -3020,7 +2915,7 @@ function MobileOutcome({
 
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <InfoCell label="Pasaporte" value={passport} />
-        <InfoCell label="GarantÃ­a" value={beat === 2 ? "bloqueada" : txt.controls.warranty} />
+        <InfoCell label="Garantía" value={beat === 2 ? "bloqueada" : txt.controls.warranty} />
         <InfoCell label="Tienda" value={marketplace} />
       </div>
       {actionMessage ? <p className="demo-lab-action-message mt-4 rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-3 py-3 text-xs font-bold text-emerald-100">{actionMessage}</p> : null}
@@ -3104,9 +2999,9 @@ function DemoFlowModal({
   const subtitle = view === "product"
     ? "Producto, ruta, estado de prueba y salida operativa sin romper el layout principal."
     : view === "mobile"
-      ? "Lo que ve el consumidor despuÃ©s del toque."
+      ? "Lo que ve el consumidor después del toque."
       : view === "nft"
-        ? "Cómo se conecta el toque vÃ¡lido con tokenización y evidencia en cadena."
+        ? "Cómo se conecta el toque válido con tokenización y evidencia en cadena."
         : "Como el consumidor pasa de validar a asociar el producto en el portal.";
 
   return (
@@ -3211,10 +3106,10 @@ function DemoProductModalContent({
 function DemoNftModalContent({ beat, scenario }: { beat: Beat; scenario: DemoScenario }) {
   const blocked = beat === 2;
   const steps = [
-    { label: "01", title: "Toque vÃ¡lido", body: blocked ? "Copia detectada: no se firma en cadena." : "SUN fresco aporta evidencia y crea evento." },
+    { label: "01", title: "Toque válido", body: blocked ? "Copia detectada: no se firma en cadena." : "SUN fresco aporta evidencia y crea evento." },
     { label: "02", title: "UID hasheado", body: "El UID no se expone crudo; se usa hash con salt para el certificado." },
-    { label: "03", title: "Solicitud", body: blocked ? "La solicitud queda bloqueada por polÃ­tica." : "Se prepara solicitud idempotente de tokenización." },
-    { label: "04", title: "Polygon Amoy", body: blocked ? "Sin tx_hash/token_id hasta nuevo toque vÃ¡lido." : "Si la polÃ­tica aprueba el reclamo, el minter registra tx_hash y token_id." },
+    { label: "03", title: "Solicitud", body: blocked ? "La solicitud queda bloqueada por política." : "Se prepara solicitud idempotente de tokenización." },
+    { label: "04", title: "Polygon Amoy", body: blocked ? "Sin tx_hash/token_id hasta nuevo toque válido." : "Si la política aprueba el reclamo, el minter registra tx_hash y token_id." },
   ];
   return (
     <div className="demo-lab-modal-story">
@@ -3241,14 +3136,14 @@ function DemoClaimModalContent({ beat, scenario }: { beat: Beat; scenario: DemoS
   const steps = [
     { label: "Ingreso", body: "El consumidor entra al portal con sesión propia." },
     { label: "Marca", body: "El reclamo valida que producto, marca y evento coincidan." },
-    { label: "DueÃ±o", body: blocked ? "La copia bloquea el reclamo hasta nuevo toque fÃ­sico." : "El producto queda asociado al usuario si la polÃ­tica lo permite." },
-    { label: "Tienda", body: blocked ? "Beneficios de valor bloqueados." : "Se habilitan club, garantÃ­a, recompra y beneficios." },
+    { label: "Dueño", body: blocked ? "La copia bloquea el reclamo hasta nuevo toque físico." : "El producto queda asociado al usuario si la política lo permite." },
+    { label: "Tienda", body: blocked ? "Beneficios de valor bloqueados." : "Se habilitan club, garantía, recompra y beneficios." },
   ];
   return (
     <div className="demo-lab-modal-story">
       <div className={`demo-lab-modal-status demo-lab-modal-status--${scenario.tone}`}>
         <span>{scenario.stateLabel}</span>
-        <strong>{blocked ? "Reclamo bloqueado correctamente" : "Reclamo listo con polÃ­tica de dueÃ±o"}</strong>
+        <strong>{blocked ? "Reclamo bloqueado correctamente" : "Reclamo listo con política de dueño"}</strong>
         <p>{scenario.body}</p>
       </div>
       <div className="demo-lab-modal-step-grid">
@@ -3289,10 +3184,10 @@ function DemoFinalTapDock({
   onRefresh: () => void;
 }) {
   const flow = [
-    { step: "01", title: "Toque fÃ­sico fresco", body: "El chip genera SUN dinÃ¡mico. No sirve URL copiada." },
-    { step: "02", title: "Anti copia + pasaporte", body: "Si es vÃ¡lido, se habilitan acciones sujetas a polÃ­tica y queda evento." },
-    { step: "03", title: "Solicitud / certificado", body: "Se crea solicitud; Polygon devuelve tx_hash + token_id solo si la polÃ­tica aprueba." },
-    { step: "04", title: "Reclamar dueÃ±o", body: "El usuario asocia producto con ingreso, marca y polÃ­tica de dueÃ±o." },
+    { step: "01", title: "Toque físico fresco", body: "El chip genera SUN dinámico. No sirve URL copiada." },
+    { step: "02", title: "Anti copia + pasaporte", body: "Si es válido, se habilitan acciones sujetas a política y queda evento." },
+    { step: "03", title: "Solicitud / certificado", body: "Se crea solicitud; Polygon devuelve tx_hash + token_id solo si la política aprueba." },
+    { step: "04", title: "Reclamar dueño", body: "El usuario asocia producto con ingreso, marca y política de dueño." },
   ];
 
   return (
@@ -3300,12 +3195,12 @@ function DemoFinalTapDock({
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div className="max-w-2xl">
           <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-300">Lista antes del toque final</p>
-          <h2 className="mt-2 text-2xl font-black text-white md:text-3xl">Probar el camino real: toque vÃ¡lido - solicitud - reclamar dueÃ±o.</h2>
+          <h2 className="mt-2 text-2xl font-black text-white md:text-3xl">Probar el camino real: toque válido - solicitud - reclamar dueño.</h2>
           <p className="mt-2 text-sm leading-6 text-slate-300">{status}</p>
         </div>
         <div className="demo-lab-final-actions">
           <button suppressHydrationWarning type="button" disabled={simulating} onClick={onValid} className="demo-lab-final-button demo-lab-final-button--primary">
-            Simular toque vÃ¡lido
+            Simular toque válido
           </button>
           <button suppressHydrationWarning type="button" disabled={simulating} onClick={onReplay} className="demo-lab-final-button demo-lab-final-button--danger">
             Probar copia bloqueada
@@ -3380,7 +3275,7 @@ function StageRouteLayer({
       tap: "Toque actual",
       chain: "Cadena de prueba",
       path: "Ruta auditada del producto",
-      pathBody: "Una prueba legible: producto, UID, SUN, sello y polÃ­tica de canal.",
+      pathBody: "Una prueba legible: producto, UID, SUN, sello y política de canal.",
       checkpointA: "UID",
       checkpointB: "SUN",
       checkpointC: "Politica",
@@ -3388,7 +3283,7 @@ function StageRouteLayer({
   const proofStrip = [
     { label: txt.controls.origin, value: LOCATIONS.origin.city },
     { label: txt.controls.currentTap, value: destination.city },
-    { label: "SUN", value: scenario.tone === "risk" ? "bloqueado" : "vÃ¡lido" },
+    { label: "SUN", value: scenario.tone === "risk" ? "bloqueado" : "válido" },
     { label: routeCopy.checkpointC, value: scenario.stateLabel },
   ];
 
@@ -3493,7 +3388,7 @@ function DemoActionMatrix({
 }) {
   const actions: Array<{ id: DemoAction; label: string; body: string; locked: boolean }> = [
     { id: "join", label: txt.controls.joinClub, body: "Asocia al consumidor con club, beneficios y tienda de la marca.", locked: beat === 0 || beat === 2 },
-    { id: "warranty", label: txt.controls.warranty, body: "Registra garantÃ­a, postventa o fecha de apertura con polÃ­tica de la marca.", locked: beat === 0 || beat === 2 },
+    { id: "warranty", label: txt.controls.warranty, body: "Registra garantía, postventa o fecha de apertura con política de la marca.", locked: beat === 0 || beat === 2 },
     { id: "tokenize", label: txt.controls.tokenize, body: "Prepara solicitud Polygon con UID hasheado y evidencia de reclamo.", locked: beat === 0 || beat === 2 },
     { id: "report", label: "Reportar riesgo", body: "Crea alerta operativa cuando aparece copia, duplicado o manipulación sospechosa.", locked: beat !== 2 },
   ];
@@ -3520,7 +3415,7 @@ function DemoActionMatrix({
           <button suppressHydrationWarning key={action.id} type="button" onClick={() => onAction(action.id)} className={`demo-lab-action-tile ${action.locked ? "demo-lab-action-tile--locked" : ""}`}>
             <span>{action.label}</span>
             <small>{action.body}</small>
-            <strong>{action.locked ? "Ver por quÃ© bloquea" : "Ejecutar acción"}</strong>
+            <strong>{action.locked ? "Ver por qué bloquea" : "Ejecutar acción"}</strong>
           </button>
         ))}
       </div>
@@ -3531,7 +3426,7 @@ function DemoActionMatrix({
         <InfoCell label="Marca" value="Bodega Balmec" />
       </div>
       <p className="mt-3 text-xs text-slate-400">
-        Ruta activa: {LOCATIONS.origin.city} -&gt; {destination.city}. Los botones cambian de polÃ­tica segÃºn estado fÃ­sico, copia y compra/reclamo.
+        Ruta activa: {LOCATIONS.origin.city} -&gt; {destination.city}. Los botones cambian de política según estado físico, copia y compra/reclamo.
       </p>
       {actionMessage ? <p className="demo-lab-action-message mt-4 rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-3 py-3 text-xs font-bold text-emerald-100">{actionMessage}</p> : null}
     </article>
@@ -3618,7 +3513,7 @@ function DemoCrmDashboard({
 
   const handleTicketAction = (ticketId: string, statusName: string) => {
     setLocalTicketsStatus((prev) => ({ ...prev, [ticketId]: statusName }));
-    setActionMessage(`Ticket de seguridad actualizado: Estado cambiado a "${statusName}". Registro de auditorÃ­a cerrado.`);
+    setActionMessage(`Ticket de seguridad actualizado: Estado cambiado a "${statusName}". Registro de auditoría cerrado.`);
     setTimeout(() => setActionMessage(null), 5000);
   };
 
@@ -3717,13 +3612,13 @@ function DemoCrmDashboard({
               </button>
             </div>
             
-            <p className="mt-2 text-xs text-slate-400">Transacciones y verificaciones criptogrÃ¡ficas activas</p>
+            <p className="mt-2 text-xs text-slate-400">Transacciones y verificaciones criptográficas activas</p>
 
-            {/* Consola de Simulación RÃ¡pida */}
+            {/* Consola de Simulación Rápida */}
             <div className="mt-4 mb-2 rounded-2xl border border-white/10 bg-slate-900/60 p-4 shadow-inner">
               <h4 className="text-[10px] font-black uppercase tracking-wider text-cyan-300 mb-2.5 flex items-center gap-1.5">
                 <Cpu className="h-3.5 w-3.5 text-cyan-400 animate-pulse" />
-                Consola de Simulación RÃ¡pida
+                Consola de Simulación Rápida
               </h4>
               <div className="grid grid-cols-3 gap-2">
                 <button
@@ -3732,8 +3627,8 @@ function DemoCrmDashboard({
                   onClick={() => void simulate("valid")}
                   className="flex flex-col items-center justify-center rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 px-2 py-2.5 text-center transition disabled:opacity-55"
                 >
-                  <span className="text-[11px] font-black text-emerald-400">âœ“ VÃ¡lido</span>
-                  <span className="text-[8px] text-slate-400 font-mono mt-0.5">ZÃºrich</span>
+                  <span className="text-[11px] font-black text-emerald-400">✓ Válido</span>
+                  <span className="text-[8px] text-slate-400 font-mono mt-0.5">Zúrich</span>
                 </button>
                 
                 <button
@@ -3742,7 +3637,7 @@ function DemoCrmDashboard({
                   onClick={() => void simulate("replay")}
                   className="flex flex-col items-center justify-center rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 px-2 py-2.5 text-center transition disabled:opacity-55"
                 >
-                  <span className="text-[11px] font-black text-rose-400">âš  Copia</span>
+                  <span className="text-[11px] font-black text-rose-400">⚠ Copia</span>
                   <span className="text-[8px] text-slate-400 font-mono mt-0.5">Replay</span>
                 </button>
 
@@ -3752,7 +3647,7 @@ function DemoCrmDashboard({
                   onClick={() => void simulate("tamper")}
                   className="flex flex-col items-center justify-center rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 px-2 py-2.5 text-center transition disabled:opacity-55"
                 >
-                  <span className="text-[11px] font-black text-amber-400">âœ• Abierto</span>
+                  <span className="text-[11px] font-black text-amber-400">✕ Abierto</span>
                   <span className="text-[8px] text-slate-400 font-mono mt-0.5">Tamper</span>
                 </button>
               </div>
@@ -3792,7 +3687,7 @@ function DemoCrmDashboard({
                           {event.result}
                         </span>
                       </div>
-                      <p className="mt-1 text-slate-350">
+                      <p className="mt-1 text-slate-300">
                         {event.product_name || activeVertical?.product || "Lote Premium"} / {event.uidMasked || "UID-NA"}
                       </p>
                       <p className="mt-1 text-[10px] text-slate-500">{formatTime(event.created_at || "")}</p>
@@ -3860,7 +3755,7 @@ function DemoCrmDashboard({
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-white/10 text-slate-400 uppercase font-black tracking-wider">
-                  <th className="py-3 px-4">CompaÃ±Ã­a / Nombre</th>
+                  <th className="py-3 px-4">Compañía / Nombre</th>
                   <th className="py-3 px-4">Contacto</th>
                   <th className="py-3 px-4">Rubro</th>
                   <th className="py-3 px-4">Volumen</th>
@@ -3885,7 +3780,7 @@ function DemoCrmDashboard({
                           <span className="text-slate-400 text-[10px]">{lead.name || lead.contact}</span>
                         </td>
                         <td className="py-3 px-4 font-mono">{lead.email || lead.phone || lead.contact}</td>
-                        <td className="py-3 px-4 uppercase font-bold text-cyan-355">{lead.vertical || "General"}</td>
+                        <td className="py-3 px-4 uppercase font-bold text-cyan-300">{lead.vertical || "General"}</td>
                         <td className="py-3 px-4">{lead.volume ? `${lead.volume.toLocaleString(locale)} tags` : "S/D"}</td>
                         <td className="py-3 px-4 uppercase font-bold text-slate-400">{lead.source}</td>
                         <td className="py-3 px-4 text-slate-500">{formatTime(lead.created_at)}</td>
@@ -3942,7 +3837,7 @@ function DemoCrmDashboard({
               <tbody className="divide-y divide-white/5">
                 {recentTickets.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-8 text-center text-slate-500">No hay alertas de seguridad registradas en este perÃ­odo.</td>
+                    <td colSpan={6} className="py-8 text-center text-slate-500">No hay alertas de seguridad registradas en este período.</td>
                   </tr>
                 ) : (
                   recentTickets.map((ticket) => {
@@ -3950,7 +3845,7 @@ function DemoCrmDashboard({
                     return (
                       <tr key={ticket.id} className="hover:bg-white/5 transition">
                         <td className="py-3 px-4">
-                          <strong className="text-rose-450 block">{ticket.title}</strong>
+                          <strong className="text-rose-400 block">{ticket.title}</strong>
                           <span className="text-slate-400 text-[10px] block max-w-sm overflow-hidden text-ellipsis whitespace-nowrap">{ticket.detail || "Sin detalles"}</span>
                         </td>
                         <td className="py-3 px-4 font-mono">{ticket.contact}</td>
@@ -3958,8 +3853,8 @@ function DemoCrmDashboard({
                         <td className="py-3 px-4 text-slate-500">{formatTime(ticket.created_at)}</td>
                         <td className="py-3 px-4">
                           <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase ${
-                            statusOverride === "open" || statusOverride === "Abierto" 
-                              ? "bg-rose-500/10 text-rose-350 border border-rose-400/20" 
+                            statusOverride === "open" || statusOverride === "Abierto"
+                              ? "bg-rose-500/10 text-rose-300 border border-rose-400/20"
                               : "bg-slate-500/10 text-slate-300 border border-white/10"
                           }`}>
                             {statusOverride}
@@ -3988,7 +3883,7 @@ function DemoCrmDashboard({
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-white/10 text-slate-400 uppercase font-black tracking-wider">
-                  <th className="py-3 px-4">Cliente / CompaÃ±Ã­a</th>
+                  <th className="py-3 px-4">Cliente / Compañía</th>
                   <th className="py-3 px-4">Contacto</th>
                   <th className="py-3 px-4">Tipo Tag NFC</th>
                   <th className="py-3 px-4">Cantidad</th>
@@ -4049,7 +3944,7 @@ function DemoCrmDashboard({
               <thead>
                 <tr className="border-b border-white/10 text-slate-400 uppercase font-black tracking-wider">
                   <th className="py-3 px-4">Ubicación</th>
-                  <th className="py-3 px-4">Código PaÃ­s</th>
+                  <th className="py-3 px-4">Código País</th>
                   <th className="py-3 px-4">Producto</th>
                   <th className="py-3 px-4">Tag UID</th>
                   <th className="py-3 px-4">Veredicto Cripto</th>

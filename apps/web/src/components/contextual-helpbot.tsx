@@ -12,6 +12,8 @@ export function ContextualHelpBot({ locale }: { locale: AppLocale }) {
     pathname.startsWith("/me") ||
     pathname.startsWith("/web3") ||
     pathname.startsWith("/demo-lab") ||
+    pathname.startsWith("/docs") ||
+    pathname.startsWith("/pricing") ||
     pathname.startsWith("/r")
   ) {
     return null;

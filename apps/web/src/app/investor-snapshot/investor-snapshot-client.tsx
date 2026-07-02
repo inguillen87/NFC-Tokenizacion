@@ -2400,7 +2400,7 @@ export function InvestorSnapshotClient() {
               className={`flex-1 py-1 rounded-md text-[7.5px] font-black uppercase tracking-wider transition ${
                 studioTab === "designer" 
                   ? "bg-slate-950 text-amber-400 border border-white/5" 
-                  : "text-slate-500 hover:text-slate-350"
+                  : "text-slate-500 hover:text-slate-300"
               }`}
             >
               🎨 Arte AI
@@ -2414,13 +2414,13 @@ export function InvestorSnapshotClient() {
               className={`flex-1 py-1 rounded-md text-[7.5px] font-black uppercase tracking-wider transition relative ${
                 studioTab === "crm" 
                   ? "bg-slate-950 text-cyan-400 border border-white/5" 
-                  : "text-slate-500 hover:text-slate-350"
+                  : "text-slate-500 hover:text-slate-300"
               }`}
             >
               📊 CRM Consultas
               {unreadCrmCount > 0 && (
                 <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-450 opacity-75"></span>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
                 </span>
               )}
@@ -2467,7 +2467,7 @@ export function InvestorSnapshotClient() {
                         key={idx}
                         type="button"
                         onClick={() => setLabelPrompt(item.prompt)}
-                        className="text-[7.5px] bg-slate-900 hover:bg-slate-850 border border-white/5 rounded py-1 text-slate-450 text-center transition truncate"
+                        className="text-[7.5px] bg-slate-900 hover:bg-slate-800 border border-white/5 rounded py-1 text-slate-400 text-center transition truncate"
                         title={item.prompt}
                       >
                         {item.name}
@@ -2504,11 +2504,11 @@ export function InvestorSnapshotClient() {
             </div>
           ) : (
             <div className="flex flex-col justify-between flex-1 overflow-hidden mt-1">
-              <div className="space-y-2 flex-1 overflow-y-auto pr-1 max-h-[310px] scrollbar-thin scrollbar-thumb-slate-850">
+              <div className="space-y-2 flex-1 overflow-y-auto pr-1 max-h-[310px] scrollbar-thin scrollbar-thumb-slate-800">
                 <div className="flex justify-between items-center text-[7.5px] font-mono text-slate-500 uppercase tracking-wider border-b border-white/5 pb-1">
                   <span>Feed de Consultas</span>
                   <span className="text-cyan-400 font-bold animate-pulse flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-455 animate-pulse"></span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
                     En Vivo
                   </span>
                 </div>
@@ -2536,10 +2536,10 @@ export function InvestorSnapshotClient() {
                         }`}>
                           {item.tag}
                         </span>
-                        <span className="text-[7px] text-slate-550 font-mono">{item.timestamp}</span>
+                        <span className="text-[7px] text-slate-500 font-mono">{item.timestamp}</span>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-slate-350 font-semibold leading-snug">
+                        <p className="text-slate-300 font-semibold leading-snug">
                           💬 {item.query}
                         </p>
                         <div className="pl-1.5 border-l border-cyan-500/20 text-slate-400 text-[8px] leading-snug space-y-0.5">
@@ -3230,7 +3230,7 @@ export function InvestorSnapshotClient() {
                 </button>
                 <button
                   onClick={() => setShowHfySettings(!showHfySettings)}
-                  className={`p-1.5 rounded-lg border transition ${showHfySettings ? "border-purple-500/50 bg-purple-500/10 text-purple-300 shadow-md" : "border-white/10 bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-850"}`}
+                  className={`p-1.5 rounded-lg border transition ${showHfySettings ? "border-purple-500/50 bg-purple-500/10 text-purple-300 shadow-md" : "border-white/10 bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800"}`}
                   title="Configurar Hugging Face API"
                 >
                   <Settings className="w-3.5 h-3.5" />
@@ -3784,7 +3784,7 @@ export function InvestorSnapshotClient() {
                                 <button
                                   key={idx}
                                   onClick={() => handleSendPhoneMessage(prompt.q)}
-                                  className="text-[7.5px] bg-slate-950 border border-white/5 rounded px-1.5 py-0.5 text-slate-450 hover:text-white transition"
+                                  className="text-[7.5px] bg-slate-950 border border-white/5 rounded px-1.5 py-0.5 text-slate-400 hover:text-white transition"
                                 >
                                   {prompt.label}
                                 </button>

@@ -38,12 +38,13 @@ interface Scenario {
 
 export function BrandSynergySimulator({ locale }: { locale: string }) {
   const isEn = locale === "en";
+  const isBr = locale === "pt-BR";
 
   const scenarios: Scenario[] = [
     {
       id: "wine-tourism",
-      name: isEn ? "Wine + VIP Transfer" : "Vinos + Traslados VIP",
-      industry: isEn ? "Beverages & Transport" : "Bebidas y Turismo",
+      name: isEn ? "Wine + VIP Transfer" : isBr ? "Vinhos + traslado VIP" : "Vinos + traslados VIP",
+      industry: isEn ? "Beverages & Transport" : isBr ? "Bebidas e turismo" : "Bebidas y turismo",
       icon: <Wine className="h-4 w-4" />,
       accentFrom: "from-purple-600",
       accentTo: "to-violet-500",
@@ -54,11 +55,13 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
       scannedProduct: "Gran Reserva Malbec 2023",
       scannedBatch: "Batch #BOD-2023-Mendoza",
       partnerBrand: "Combi VIP Traslados",
-      partnerBenefit: isEn ? "15% off Shuttle Tour" : "15% OFF en Traslado de Retorno",
+      partnerBenefit: isEn ? "15% off Shuttle Tour" : isBr ? "15% OFF no traslado de retorno" : "15% OFF en traslado de retorno",
       partnerBenefitDesc: isEn
         ? "Ensures safe travel back to the hotel after wine tasting."
-        : "Permite a los turistas regresar seguros al hotel sin tener que manejar.",
-      feeText: "1.5% Platform Fee · Gasless swap",
+        : isBr ? "Permite que turistas voltem ao hotel com seguranca depois da degustacao." : "Permite a los turistas regresar seguros al hotel sin manejar.",
+      feeText: isEn
+        ? "Partner eligibility + consent gate"
+        : isBr ? "Elegibilidade + consentimento" : "Elegibilidad + consentimiento",
       conversionEst: "94%",
     },
     {
@@ -75,17 +78,19 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
       scannedProduct: "VIP Wristband - Summer Fest",
       scannedBatch: "Batch #EV-SUMMER-2026",
       partnerBrand: "Patagonia Beer Gardens",
-      partnerBenefit: isEn ? "Free Craft Pint" : "Pinta de Artesanal de Regalo",
+      partnerBenefit: isEn ? "Free Craft Pint" : isBr ? "Pint artesanal de presente" : "Pinta artesanal de regalo",
       partnerBenefitDesc: isEn
         ? "Unlocked at the local pub after tapping the smart wristband."
         : "Se desbloquea al ingresar en los stands del predio con el tap físico.",
-      feeText: "1.2% Platform Fee · NFT check",
+      feeText: isEn
+        ? "Access proof + audience match"
+        : isBr ? "Prova de acesso + audiencia" : "Prueba de acceso + audiencia",
       conversionEst: "97%",
     },
     {
       id: "sneakers-club",
-      name: isEn ? "Luxury + Club Access" : "Lujo + Experiencias Club",
-      industry: isEn ? "Fashion & Nightlife" : "Moda y Eventos VIP",
+      name: isEn ? "Luxury + Club Access" : isBr ? "Luxo + acesso club" : "Lujo + experiencias club",
+      industry: isEn ? "Fashion & Nightlife" : isBr ? "Moda e eventos VIP" : "Moda y eventos VIP",
       icon: <Sparkles className="h-4 w-4" />,
       accentFrom: "from-yellow-500",
       accentTo: "to-amber-600",
@@ -96,11 +101,13 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
       scannedProduct: "Limited Edition Retro Sneakers",
       scannedBatch: "Batch #SNK-RETRO-09",
       partnerBrand: "Club 146 Lounge VIP",
-      partnerBenefit: isEn ? "Free Access + Welcome Drink" : "Acceso Directo + Trago VIP",
+      partnerBenefit: isEn ? "Free Access + Welcome Drink" : isBr ? "Acesso direto + drink VIP" : "Acceso directo + trago VIP",
       partnerBenefitDesc: isEn
         ? "Verified ownership grants queue-free access to exclusive lounge."
         : "La titularidad verificada del calzado sirve de membresía VIP.",
-      feeText: "2.0% Trade Royalty · Web3 ticket",
+      feeText: isEn
+        ? "Revenue share + fraud gate"
+        : isBr ? "Receita compartilhada + antifraude" : "Revenue share + antifraude",
       conversionEst: "89%",
     },
   ];
@@ -119,7 +126,7 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
 
   return (
     /* ── Outer glassmorphic dark card ── */
-    <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900/90 to-slate-950/90 backdrop-blur-xl p-8 shadow-2xl md:p-10">
+    <div className="brand-synergy-simulator relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900/90 to-slate-950/90 backdrop-blur-xl p-8 shadow-2xl md:p-10">
       {/* Ambient glow */}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(168,85,247,0.18),transparent_55%),radial-gradient(ellipse_at_bottom_left,rgba(34,211,238,0.10),transparent_50%)]" />
 
@@ -128,14 +135,14 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
         <div>
           {/* Eyebrow badge */}
           <span className="inline-flex items-center gap-1.5 rounded-full border border-purple-400/30 bg-purple-400/10 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-purple-300">
-            <Network className="h-3 w-3 animate-spin-slow" />
+            <Network className="h-3 w-3 animate-spin" />
             {isEn ? "NEXID BRAND SYNERGY ENGINE" : "MOTOR DE SINERGIA DE MARCAS"}
           </span>
 
           <h2 className="mt-5 text-3xl font-black tracking-tight text-white md:text-4xl leading-tight">
             {isEn
               ? "Unite products, build trust, share rewards"
-              : "Ecosistema de Sinergias Cruzadas & IA"}
+              : isBr ? "Ecossistema de sinergias cruzadas e IA" : "Ecosistema de sinergias cruzadas e IA"}
           </h2>
           <p className="mt-4 text-sm leading-relaxed text-slate-400">
             {isEn
@@ -177,7 +184,7 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-bold transition-all duration-300 ${
                       isActive
                         ? `${scen.activeBg} ${scen.activeBorder} text-white shadow-lg scale-105`
-                        : `bg-slate-900/60 border-white/10 text-slate-400 hover:border-white/20 hover:text-white hover:scale-102`
+                        : `bg-slate-900/60 border-white/10 text-slate-400 hover:border-white/20 hover:text-white hover:scale-[1.02]`
                     }`}
                   >
                     {scen.icon}
@@ -206,13 +213,13 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
         </div>
 
         {/* ── RIGHT: Demo panel with high-contrast white-bg steps ── */}
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] overflow-hidden shadow-xl">
+        <div className="brand-synergy-terminal rounded-2xl border border-white/10 bg-white/[0.03] overflow-hidden shadow-xl">
           {/* Terminal header */}
           <div className="flex items-center justify-between border-b border-white/10 bg-slate-900/60 px-4 py-3">
             <div className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-purple-500 animate-ping" />
               <span className="text-[10px] text-purple-300 uppercase font-black tracking-widest">
-                AI MATCHMAKER LIVE
+                PARTNER MATCHING LIVE
               </span>
             </div>
             <span className="text-[9px] text-slate-500 uppercase tracking-widest flex items-center gap-1">

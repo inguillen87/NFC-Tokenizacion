@@ -1,8 +1,11 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { BackLink } from "../../components/back-link";
+import { DocsIntegrationConsole } from "./docs-integration-console";
+import { JsonLd } from "../../components/json-ld";
 import { productExitHref } from "../../components/product-exit-link";
 import { PublicLinkChip } from "../../components/public-link-chip";
-import { Card, SectionHeading } from "@product/ui";
+import { Card } from "@product/ui";
 import { getWebI18n } from "../../lib/locale";
 import { legacyInstitutionalVideo } from "../../lib/institutional-video";
 import {
@@ -18,6 +21,21 @@ import {
   Sparkles,
   WifiOff,
 } from "lucide-react";
+
+export const metadata: Metadata = {
+  title: "Docs | nexID enterprise trust architecture",
+  description: "Technical and commercial documentation for nexID product identity, NFC/QR verification, DPP-ready event models, trust layers, rollout and API integration.",
+  openGraph: {
+    title: "Docs | nexID",
+    description: "Explore nexID architecture, trust layers, rollout, API routes, DPP model and enterprise FAQ.",
+    images: [{ url: "/opengraph-image?surface=docs&campaign=enterprise", width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Docs | nexID",
+    images: ["/twitter-image?surface=docs&campaign=enterprise"],
+  },
+};
 
 type DocsCopy = {
   eyebrow: string;
@@ -422,7 +440,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     exploreLinks: [
       { label: "Ir para o stack Verify → Passport → Rights", href: "/stack" },
       { label: "Abrir glossário operacional", href: "/glossary" },
-      { label: "Ver ambiente guiado", href: "/demo" },
+      { label: "Ver Demo Lab guiado", href: "/demo-lab" },
       { label: "Ver pitch por audiência", href: "/audiences" },
     ],
     openAssistant: "Abrir BotIA",
@@ -601,7 +619,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     exploreLinks: [
       { label: "Go to the Verify → Passport → Rights stack", href: "/stack" },
       { label: "Open the operational glossary", href: "/glossary" },
-      { label: "View guided environment", href: "/demo" },
+      { label: "Open guided Demo Lab", href: "/demo-lab" },
       { label: "View the audience pitch page", href: "/audiences" },
     ],
     openAssistant: "Open BotIA",
@@ -752,17 +770,58 @@ export default async function DocsPage() {
               ],
             ],
           };
+  const docsSchema = [
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: copy.faqItems.map((item) => ({
+        "@type": "Question",
+        name: item.q,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: item.a,
+        },
+      })),
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "nexID",
+          item: "https://nexid.lat/",
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "Docs",
+          item: "https://nexid.lat/docs",
+        },
+      ],
+    },
+  ];
 
   return (
-    <main className="knowledge-page-surface docs-page container-shell space-y-8 py-16">
+    <main className="knowledge-page-surface docs-page container-shell max-w-[100vw] space-y-8 overflow-x-hidden px-3 py-16 sm:px-4 md:px-8">
+      {docsSchema.map((schema) => (
+        <JsonLd key={schema["@type"]} data={schema} />
+      ))}
       <BackLink />
-      <SectionHeading
-        eyebrow={copy.eyebrow}
-        title={copy.title}
-        description={copy.description}
-      />
+      <header className="max-w-3xl">
+        <p className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-300">
+          {copy.eyebrow}
+        </p>
+        <h1 className="mt-3 text-3xl font-black tracking-tight text-white md:text-5xl">
+          {copy.title}
+        </h1>
+        <p className="mt-4 text-base leading-7 text-slate-400">
+          {copy.description}
+        </p>
+      </header>
 
-      <Card className="public-clarity-card p-6">
+      <Card className="public-clarity-card w-full min-w-0 max-w-full overflow-hidden p-4 sm:p-6">
         <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">
@@ -790,6 +849,8 @@ export default async function DocsPage() {
           </div>
         </div>
       </Card>
+
+      <DocsIntegrationConsole locale={locale} />
 
       <div className="space-y-4">
         <div className="space-y-3">
@@ -851,7 +912,7 @@ export default async function DocsPage() {
           </div>
         </div>
 
-        <Card className="p-4">
+        <Card className="w-full min-w-0 max-w-full overflow-hidden p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
             {copy.exploreTitle}
           </p>
@@ -871,7 +932,7 @@ export default async function DocsPage() {
       </div>
 
       <div id="thesis" className="scroll-mt-28">
-        <Card className="p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(14,165,233,0.08)]">
+        <Card className="w-full min-w-0 max-w-full overflow-hidden p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(14,165,233,0.08)] sm:p-6">
           <h3 className="text-lg font-semibold text-white">
             {copy.pillarsTitle}
           </h3>
@@ -885,7 +946,7 @@ export default async function DocsPage() {
 
       <div id="carrier-profiles" className="scroll-mt-28">
         <span id="chips" className="sr-only" />
-        <Card className="p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(14,165,233,0.08)]">
+        <Card className="w-full min-w-0 max-w-full overflow-hidden p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(14,165,233,0.08)] sm:p-6">
           <h3 className="text-lg font-semibold text-white">{copy.chipTitle}</h3>
           <div className="mt-4 grid gap-3">
             {copy.chipRows.map((row) => (
@@ -904,7 +965,7 @@ export default async function DocsPage() {
         </Card>
       </div>
       <div id="api" className="grid gap-6 scroll-mt-28 lg:grid-cols-2">
-        <Card className="p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(99,102,241,0.10)]">
+        <Card className="w-full min-w-0 max-w-full overflow-hidden p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(99,102,241,0.10)] sm:p-6">
           <h3 className="text-lg font-semibold text-white">{copy.apiTitle}</h3>
           <p className="mt-2 text-sm text-slate-300">{copy.apiIntro}</p>
           <div className="mt-4 space-y-3">
@@ -923,7 +984,7 @@ export default async function DocsPage() {
           </div>
         </Card>
 
-        <Card className="p-6 border border-cyan-500/20 bg-cyan-950/10 flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(6,182,212,0.10)]">
+        <Card className="flex w-full min-w-0 max-w-full flex-col justify-between overflow-hidden border border-cyan-500/20 bg-cyan-950/10 p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(6,182,212,0.10)] sm:p-6">
           <div>
             <span className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-cyan-100">
               Integración de Clientes
@@ -978,9 +1039,9 @@ export default async function DocsPage() {
       </div>
       <div
         id="rollout"
-        className="grid gap-6 scroll-mt-28 lg:grid-cols-2 xl:grid-cols-4"
+        className="grid min-w-0 max-w-full gap-4 scroll-mt-28 lg:grid-cols-2 xl:grid-cols-4"
       >
-        <Card className="p-6">
+        <Card className="w-full min-w-0 max-w-full overflow-hidden p-4 sm:p-6">
           <h3 className="text-lg font-semibold text-white">
             {copy.packsTitle}
           </h3>
@@ -990,7 +1051,7 @@ export default async function DocsPage() {
             ))}
           </ul>
         </Card>
-        <Card className="p-6">
+        <Card className="w-full min-w-0 max-w-full overflow-hidden p-4 sm:p-6">
           <h3 className="text-lg font-semibold text-white">
             {copy.rolloutTitle}
           </h3>
@@ -1000,7 +1061,7 @@ export default async function DocsPage() {
             ))}
           </ul>
         </Card>
-        <Card className="p-6">
+        <Card className="w-full min-w-0 max-w-full overflow-hidden p-4 sm:p-6">
           <h3 className="text-lg font-semibold text-white">
             {copy.revenueTitle}
           </h3>
@@ -1010,7 +1071,7 @@ export default async function DocsPage() {
             ))}
           </ul>
         </Card>
-        <Card className="p-6">
+        <Card className="w-full min-w-0 max-w-full overflow-hidden p-4 sm:p-6">
           <h3 className="text-lg font-semibold text-white">
             {copy.roadmapTitle}
           </h3>
@@ -1023,7 +1084,7 @@ export default async function DocsPage() {
       </div>
 
       <div id="trust-layers" className="scroll-mt-28">
-        <div className="relative overflow-hidden rounded-3xl border border-cyan-500/20 bg-slate-950/50 p-8 shadow-[0_0_40px_rgba(6,182,212,0.1)] backdrop-blur-md">
+        <div className="relative w-full min-w-0 max-w-full overflow-hidden rounded-3xl border border-cyan-500/20 bg-slate-950/50 p-4 shadow-[0_0_40px_rgba(6,182,212,0.1)] backdrop-blur-md sm:p-8">
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-purple-500/5" />
 
           <div className="relative z-10 mb-10">
@@ -1111,7 +1172,7 @@ export default async function DocsPage() {
       </div>
 
       <div id="faq" className="scroll-mt-28">
-        <Card className="p-6">
+        <Card className="w-full min-w-0 max-w-full overflow-hidden p-4 sm:p-6">
           <h3 className="text-lg font-semibold text-white">{copy.faqTitle}</h3>
           {locale === "en" ? (
             <div className="docs-faq-video mt-4">
@@ -1156,7 +1217,7 @@ export default async function DocsPage() {
       </div>
 
       <div id="strategy" className="scroll-mt-28">
-        <Card className="p-6">
+        <Card className="w-full min-w-0 max-w-full overflow-hidden p-4 sm:p-6">
           <h3 className="text-lg font-semibold text-white">
             {copy.strategyTitle}
           </h3>
@@ -1199,7 +1260,7 @@ export default async function DocsPage() {
       </div>
 
       <div id="actions" className="scroll-mt-28">
-        <Card className="p-6">
+        <Card className="w-full min-w-0 max-w-full overflow-hidden p-4 sm:p-6">
           <h3 className="text-lg font-semibold text-white">
             {copy.actionsTitle}
           </h3>

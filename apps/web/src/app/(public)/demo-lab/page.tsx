@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getWebI18n } from "../../../lib/locale";
+import { JsonLd } from "../../../components/json-ld";
 import { DemoLabClient } from "./demo-lab-client";
 import { DemoLabThemeToggle } from "./demo-lab-hub-theme";
 import {
@@ -56,6 +57,73 @@ type DemoLabPageProps = {
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
+}
+
+function demoLabStructuredData(locale: string) {
+  const isEn = locale === "en";
+  const isBr = locale === "pt-BR";
+  const title = isEn
+    ? "nexID Demo Lab"
+    : isBr
+      ? "nexID Demo Lab"
+      : "nexID Demo Lab";
+  const description = isEn
+    ? "Interactive product identity lab for NFC/QR verification, traceability, risk state and post-sale actions."
+    : isBr
+      ? "Laboratorio interativo de identidade de produto para NFC/QR, rastreabilidade, risco e pos-venda."
+      : "Laboratorio interactivo de identidad de producto para NFC/QR, trazabilidad, riesgo y postventa.";
+  const steps = isEn
+    ? ["Tap the product", "Verify authenticity", "Trace route and context", "Unlock the business outcome"]
+    : isBr
+      ? ["Tocar o produto", "Verificar autenticidade", "Rastrear rota e contexto", "Liberar resultado comercial"]
+      : ["Tocar el producto", "Verificar autenticidad", "Trazar ruta y contexto", "Activar resultado comercial"];
+
+  return [
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: title,
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      url: "https://nexid.lat/demo-lab",
+      description,
+      offers: {
+        "@type": "Offer",
+        category: "Enterprise pilot",
+        price: "0",
+        priceCurrency: "USD",
+      },
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "HowTo",
+      name: title,
+      description,
+      step: steps.map((name, index) => ({
+        "@type": "HowToStep",
+        position: index + 1,
+        name,
+      })),
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "nexID",
+          item: "https://nexid.lat/",
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "Demo Lab",
+          item: "https://nexid.lat/demo-lab",
+        },
+      ],
+    },
+  ];
 }
 
 // ─── Panel Content by Scenario / Vertical ───────────────────────────────────
@@ -373,6 +441,7 @@ const HUB_VERTICALS = [
 
 export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
   const { locale } = await getWebI18n();
+  const structuredData = demoLabStructuredData(locale);
   const params = searchParams ? await searchParams : {};
   const initialVertical = firstParam(
     params.vertical || params.rubro || params.industry || params.useCase
@@ -389,34 +458,38 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
 
     return (
       <div className="demo-lab-fullscreen-root">
+        {structuredData.map((schema) => (
+          <JsonLd key={schema["@type"]} data={schema} />
+        ))}
         {/* ── Top infobar ─────────────────────────────────────────────────── */}
-        <header className="demo-lab-infobar">
-          <div className="demo-lab-infobar__inner">
+        <header className="demo-lab-infobar sticky top-0 z-40 border-b border-white/10 bg-slate-950/90 px-4 py-3 text-slate-100 backdrop-blur-xl">
+          <div className="demo-lab-infobar__inner mx-auto flex max-w-7xl flex-col gap-3 md:flex-row md:items-center md:justify-between">
             {/* Left: back + title */}
-            <div className="demo-lab-infobar__left">
-              <Link href="/demo-lab" className="demo-lab-infobar__back">
+            <div className="demo-lab-infobar__left flex min-w-0 items-center gap-3">
+              <Link href="/demo-lab" className="demo-lab-infobar__back inline-flex h-9 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 text-xs font-black uppercase tracking-wider text-slate-200">
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span>Hub</span>
               </Link>
-              <div className="demo-lab-infobar__divider" />
-              <div className={`demo-lab-infobar__icon ${panel.color}`}>
+              <div className="demo-lab-infobar__divider hidden h-8 w-px bg-white/10 md:block" />
+              <div className={`demo-lab-infobar__icon grid h-9 w-9 shrink-0 place-items-center rounded-2xl border border-white/10 bg-white/5 ${panel.color}`}>
                 <PanelIcon className="w-4 h-4" />
               </div>
-              <div className="demo-lab-infobar__title-block">
-                <span className="demo-lab-infobar__eyebrow">nexID Demo Lab</span>
-                <strong className="demo-lab-infobar__title">{panel.title}</strong>
+              <div className="demo-lab-infobar__title-block min-w-0">
+                <span className="demo-lab-infobar__eyebrow block text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">nexID Demo Lab</span>
+                <h1 className="demo-lab-infobar__title block truncate text-sm font-black text-white md:text-base">{panel.title}</h1>
               </div>
             </div>
 
             {/* Right: context pills + CTA */}
-            <div className="demo-lab-infobar__right">
-              <span className="demo-lab-infobar__context-pill">
+            <div className="demo-lab-infobar__right flex flex-wrap items-center gap-2">
+              <span className="demo-lab-infobar__context-pill inline-flex min-h-9 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 text-xs font-bold text-slate-300">
                 <Smartphone className="w-3 h-3" />
                 {panel.subtitle}
               </span>
+              <DemoLabThemeToggle />
               <Link
                 href="/?contact=demo#contact-modal"
-                className="demo-lab-infobar__cta"
+                className="demo-lab-infobar__cta inline-flex h-9 items-center gap-2 rounded-full bg-cyan-300 px-4 text-xs font-black uppercase tracking-wider text-slate-950"
               >
                 Agendar demo
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -425,39 +498,39 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
           </div>
 
           {/* Context strip — collapsible details */}
-          <details className="demo-lab-context-strip">
-            <summary className="demo-lab-context-strip__trigger">
+          <details className="demo-lab-context-strip mx-auto mt-3 max-w-7xl rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-slate-300">
+            <summary className="demo-lab-context-strip__trigger flex cursor-pointer items-center gap-2 text-xs font-black uppercase tracking-wider text-cyan-200">
               <Info className="w-3.5 h-3.5" />
               <span>¿Cómo funciona este escenario?</span>
               <ArrowRight className="w-3 h-3 demo-lab-context-strip__chevron" />
             </summary>
-            <div className="demo-lab-context-strip__body">
-              <div className="demo-lab-context-strip__card">
-                <div className={`demo-lab-context-strip__card-icon ${panel.color}`}>
+            <div className="demo-lab-context-strip__body mt-3 grid gap-3 md:grid-cols-2">
+              <div className="demo-lab-context-strip__card flex gap-3 rounded-2xl border border-white/10 bg-slate-950/60 p-3">
+                <div className={`demo-lab-context-strip__card-icon grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/5 ${panel.color}`}>
                   <Smartphone className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="demo-lab-context-strip__card-label">¿Cómo funciona?</p>
-                  <p className="demo-lab-context-strip__card-text">{panel.context}</p>
+                  <p className="demo-lab-context-strip__card-label text-xs font-black uppercase tracking-wider text-white">¿Cómo funciona?</p>
+                  <p className="demo-lab-context-strip__card-text mt-1 text-xs leading-5 text-slate-400">{panel.context}</p>
                 </div>
               </div>
-              <div className="demo-lab-context-strip__card">
-                <div className="demo-lab-context-strip__card-icon text-emerald-400">
+              <div className="demo-lab-context-strip__card flex gap-3 rounded-2xl border border-white/10 bg-slate-950/60 p-3">
+                <div className="demo-lab-context-strip__card-icon grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/5 text-emerald-400">
                   <ShieldCheck className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="demo-lab-context-strip__card-label">Valor para tu negocio</p>
-                  <p className="demo-lab-context-strip__card-text">{panel.value}</p>
+                  <p className="demo-lab-context-strip__card-label text-xs font-black uppercase tracking-wider text-white">Valor para tu negocio</p>
+                  <p className="demo-lab-context-strip__card-text mt-1 text-xs leading-5 text-slate-400">{panel.value}</p>
                 </div>
               </div>
-              <div className="demo-lab-context-strip__actions">
-                <Link href={panel.doc.href} className="demo-lab-context-strip__doc-link">
+              <div className="demo-lab-context-strip__actions flex flex-wrap gap-2 md:col-span-2">
+                <Link href={panel.doc.href} className="demo-lab-context-strip__doc-link inline-flex h-9 items-center gap-2 rounded-full border border-white/10 px-3 text-xs font-bold text-slate-200">
                   {panel.doc.label}
                   <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
                 <Link
                   href="/?contact=demo#contact-modal"
-                  className="demo-lab-context-strip__demo-btn"
+                  className="demo-lab-context-strip__demo-btn inline-flex h-9 items-center rounded-full bg-cyan-300 px-4 text-xs font-black uppercase tracking-wider text-slate-950"
                 >
                   Agendar demo con asesor
                 </Link>
@@ -481,7 +554,10 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
 
   // ── HUB MODE ────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#03070f] text-white font-sans relative overflow-hidden">
+    <div className="demo-lab-hub-root min-h-screen bg-[#03070f] text-white font-sans relative overflow-hidden">
+      {structuredData.map((schema) => (
+        <JsonLd key={schema["@type"]} data={schema} />
+      ))}
       {/* Background blobs */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <div className="absolute top-[8%] left-[18%] w-[600px] h-[600px] bg-violet-700/12 rounded-full blur-[130px]" />
@@ -490,7 +566,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
       </div>
 
       {/* Top nav bar */}
-      <nav className="sticky top-0 z-50 flex items-center justify-between gap-4 px-5 h-13 border-b border-white/[0.06] bg-[#03070f]/90 backdrop-blur-xl" style={{ height: "3.25rem" }}>
+      <nav className="demo-lab-hub-nav sticky top-0 z-50 flex items-center justify-between gap-4 px-5 h-13 border-b border-white/[0.06] bg-[#03070f]/90 backdrop-blur-xl" style={{ height: "3.25rem" }}>
         <Link
           href="/"
           className="inline-flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-cyan-300 transition-colors"
@@ -548,7 +624,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
                 <Link
                   key={s.id}
                   href={`/demo-lab?scenario=${s.id}`}
-                  className={`group relative p-6 rounded-3xl bg-white/[0.03] border border-white/[0.08] ${s.border} hover:border-cyan-400/40 backdrop-blur-md transition-all duration-300 overflow-hidden hover:bg-white/[0.07] hover:shadow-xl ${s.shadow}`}
+                  className={`demo-lab-hub-card group relative p-6 rounded-3xl bg-white/[0.03] border border-white/[0.08] ${s.border} hover:border-cyan-400/40 backdrop-blur-md transition-all duration-300 overflow-hidden hover:bg-white/[0.07] hover:shadow-xl ${s.shadow}`}
                 >
                   {/* Left accent bar — subtle at rest, vivid on hover */}
                   <div
@@ -588,7 +664,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
                 <Link
                   key={v.vertical}
                   href={`/demo-lab?vertical=${v.vertical}`}
-                  className={`group flex items-center gap-2.5 px-4 py-3 rounded-2xl border bg-white/[0.02] hover:bg-white/[0.06] hover:scale-105 hover:shadow-lg transition-all duration-200 ${v.color}`}
+                  className={`demo-lab-hub-pill group flex items-center gap-2.5 px-4 py-3 rounded-2xl border bg-white/[0.02] hover:bg-white/[0.06] hover:scale-105 hover:shadow-lg transition-all duration-200 ${v.color}`}
                 >
                   <div className={`w-7 h-7 shrink-0 rounded-xl flex items-center justify-center ${v.color}`}>
                     <Icon className="w-3.5 h-3.5" />
