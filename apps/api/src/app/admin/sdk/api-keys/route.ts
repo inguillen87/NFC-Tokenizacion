@@ -9,7 +9,7 @@ import { sql } from "../../../../lib/db";
 import { json } from "../../../../lib/http";
 import { hashSdkApiKey, sdkKeyPrefix } from "../../../../lib/sdk-auth";
 
-const DEFAULT_SCOPES = ["sdk:verify", "sdk:claim", "sdk:products", "sdk:events", "sdk:pos"];
+const DEFAULT_SCOPES = ["sdk:verify", "sdk:claim", "sdk:products", "sdk:events", "sdk:pos", "sdk:logistics"];
 
 function clean(value: unknown) {
   return String(value || "").trim();

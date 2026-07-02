@@ -4,7 +4,7 @@ import { ensureSdkSchema } from "./commercial-runtime-schema";
 import { sql } from "./db";
 import { json } from "./http";
 
-export type SdkScope = "sdk:verify" | "sdk:claim" | "sdk:products" | "sdk:events" | "sdk:pos";
+export type SdkScope = "sdk:verify" | "sdk:claim" | "sdk:products" | "sdk:events" | "sdk:pos" | "sdk:logistics";
 
 export type SdkAuthContext = {
   apiKeyId: string;

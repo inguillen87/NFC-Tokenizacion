@@ -123,6 +123,44 @@ export interface PosActivationResponse {
   traceId?: string;
 }
 
+export interface LogisticsSealApplyRequest {
+  uidHex: string;
+  shipmentId: string;
+  ttRaw?: string;
+  location?: string;
+  scannedBy?: string;
+}
+
+export interface LogisticsHandoffRequest {
+  uidHex: string;
+  shipmentId?: string;
+  ttRaw?: string;
+  location?: string;
+  scannedBy?: string;
+}
+
+export interface LogisticsRecipientVerifyRequest {
+  uidHex: string;
+  shipmentId?: string;
+  ttRaw?: string;
+  location?: string;
+  recipientName?: string;
+  verificationMethod?: string;
+}
+
+export interface LogisticsScanResponse {
+  ok: boolean;
+  tenant?: { slug: string; name?: string };
+  trace_id?: string;
+  data: {
+    sealId: string;
+    previousStatus: string;
+    newStatus: string;
+    shipmentId: string | null;
+    tamperState: "closed" | "opened" | "unknown";
+  };
+}
+
 type RequestOptions = {
   method?: "GET" | "POST";
   body?: unknown;
@@ -186,5 +224,17 @@ export class NexIdClient {
 
   activatePosPurchase(params: PosActivationRequest): Promise<PosActivationResponse> {
     return this.request<PosActivationResponse>("/api/v1/sdk/pos/activate", { method: "POST", body: params });
+  }
+
+  applyDeliverySeal(params: LogisticsSealApplyRequest): Promise<LogisticsScanResponse> {
+    return this.request<LogisticsScanResponse>("/api/v1/logistics/seal-apply", { method: "POST", body: params });
+  }
+
+  handoffDeliverySeal(params: LogisticsHandoffRequest): Promise<LogisticsScanResponse> {
+    return this.request<LogisticsScanResponse>("/api/v1/logistics/handoff", { method: "POST", body: params });
+  }
+
+  verifyDeliverySeal(params: LogisticsRecipientVerifyRequest): Promise<LogisticsScanResponse> {
+    return this.request<LogisticsScanResponse>("/api/v1/logistics/recipient-verify", { method: "POST", body: params });
   }
 }

@@ -1576,6 +1576,19 @@ function EnterpriseHeroAtlasPanel({
             </article>
           ))}
         </div>
+        <div className="nexid-hero-atlas-card__mobile-stops" aria-hidden="true">
+          {timelineStops.map((stop, index) => (
+            <article key={`${stop.id}-mobile`} className={stop.id === "tap" ? "is-final" : ""}>
+              <i>{String(index + 1).padStart(2, "0")}</i>
+              <div>
+                <span>{stop.title}</span>
+                <strong>{stop.label}</strong>
+                <em>{stop.sublabel}</em>
+              </div>
+              <small>{stop.date}</small>
+            </article>
+          ))}
+        </div>
       </div>
 
       <footer className="nexid-hero-atlas-card__ledger">

@@ -381,7 +381,7 @@ export async function ensureSdkSchema() {
           name text NOT NULL DEFAULT 'SDK key',
           key_prefix text NOT NULL,
           key_hash text NOT NULL UNIQUE,
-          scopes jsonb NOT NULL DEFAULT '["sdk:verify","sdk:claim","sdk:products","sdk:events","sdk:pos"]'::jsonb,
+          scopes jsonb NOT NULL DEFAULT '["sdk:verify","sdk:claim","sdk:products","sdk:events","sdk:pos","sdk:logistics"]'::jsonb,
           status text NOT NULL DEFAULT 'active',
           last_used_at timestamptz,
           expires_at timestamptz,
@@ -394,7 +394,7 @@ export async function ensureSdkSchema() {
       await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS name text NOT NULL DEFAULT 'SDK key'`;
       await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS key_prefix text NOT NULL DEFAULT 'legacy'`;
       await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS key_hash text`;
-      await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS scopes jsonb NOT NULL DEFAULT '["sdk:verify","sdk:claim","sdk:products","sdk:events","sdk:pos"]'::jsonb`;
+      await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS scopes jsonb NOT NULL DEFAULT '["sdk:verify","sdk:claim","sdk:products","sdk:events","sdk:pos","sdk:logistics"]'::jsonb`;
       await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'active'`;
       await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS last_used_at timestamptz`;
       await sql/*sql*/`ALTER TABLE tenant_api_keys ADD COLUMN IF NOT EXISTS expires_at timestamptz`;

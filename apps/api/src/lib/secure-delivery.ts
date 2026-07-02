@@ -3,11 +3,12 @@ import { sql } from "./db";
 import {
   classifyTamperState,
   nextSealStatusForScan,
+  resolveSealStatusForScan,
   type SealStatus,
   type SecureDeliveryScanContext,
 } from "./secure-delivery-policy";
 
-export { classifyTamperState, nextSealStatusForScan };
+export { classifyTamperState, nextSealStatusForScan, resolveSealStatusForScan };
 export type { SealStatus, SecureDeliveryScanContext, TamperState } from "./secure-delivery-policy";
 
 type CreatedShipment = {
@@ -159,7 +160,7 @@ export async function processSealScan(params: {
 
   const shipmentId = params.shipmentId || packageSeal?.shipment_id || null;
   const tamperState = classifyTamperState(params.ttRaw);
-  const targetState = nextSealStatusForScan(params.context, params.ttRaw);
+  const targetState = resolveSealStatusForScan(seal.status, params.context, params.ttRaw);
 
   if (shipmentId || targetState !== seal.status) {
     await updateSealState(seal.id, targetState, shipmentId || undefined, params.location, params.scannedBy, `Transition via scan (${params.context}). ttRaw: ${params.ttRaw || 'N/A'}`);

@@ -6,6 +6,10 @@ import { logAuditEvent } from "../../../../lib/audit-logger";
 import { sql } from "../../../../lib/db";
 import { json } from "../../../../lib/http";
 import { processSealScan, type SecureDeliveryScanContext } from "../../../../lib/secure-delivery";
+import {
+  recipientVerificationStatusForSealStatus,
+  shouldCreateDeliveryClaimForStatus,
+} from "../../../../lib/secure-delivery-policy";
 import { ensureSecureDeliverySchema } from "../../../../lib/secure-delivery-schema";
 
 function firstString(...values: unknown[]) {
@@ -77,11 +81,7 @@ export async function POST(req: Request) {
   });
 
   if (context === "VERIFY" && result.shipmentId) {
-    const verificationStatus = result.newStatus === "DELIVERED_CLOSED"
-      ? "verified"
-      : result.newStatus === "DELIVERED_OPENED"
-        ? "tampered"
-        : "review_required";
+    const verificationStatus = recipientVerificationStatusForSealStatus(result.newStatus);
     await sql/*sql*/`
       INSERT INTO recipient_verifications (tenant_id, shipment_id, recipient_name, verification_method, status, verified_at)
       VALUES (
@@ -93,6 +93,26 @@ export async function POST(req: Request) {
         now()
       )
     `;
+
+    if (shouldCreateDeliveryClaimForStatus(result.newStatus)) {
+      const issueType = result.newStatus === "DELIVERED_OPENED" ? "tamper_reported" : "seal_review_required";
+      await sql/*sql*/`
+        INSERT INTO delivery_claims (tenant_id, shipment_id, issue_type, description, status)
+        SELECT
+          ${tenant.id},
+          ${result.shipmentId},
+          ${issueType},
+          ${`Recipient verification moved shipment to ${result.newStatus}; tamper state ${result.tamperState}.`},
+          'open'
+        WHERE NOT EXISTS (
+          SELECT 1
+          FROM delivery_claims
+          WHERE shipment_id = ${result.shipmentId}
+            AND issue_type = ${issueType}
+            AND status = 'open'
+        )
+      `;
+    }
   }
 
   await logAuditEvent({

@@ -192,6 +192,8 @@ export async function ensureSupplierOpsSchema() {
           provider text NOT NULL,
           network text NOT NULL,
           anchor_type text NOT NULL DEFAULT 'merkle_root',
+          resource_type text,
+          resource_id text,
           merkle_root text NOT NULL,
           event_count integer NOT NULL,
           event_hashes_json jsonb NOT NULL DEFAULT '[]'::jsonb,
@@ -269,6 +271,9 @@ export async function ensureSupplierOpsSchema() {
       await sql/*sql*/`ALTER TABLE tenant_manifests ADD COLUMN IF NOT EXISTS supplier_order_id uuid`;
       await sql/*sql*/`ALTER TABLE tenant_manifests ADD COLUMN IF NOT EXISTS supplier_sub_batch_id uuid`;
       await sql/*sql*/`ALTER TABLE tenant_manifests ADD COLUMN IF NOT EXISTS expected_quantity integer`;
+      await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS resource_type text`;
+      await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS resource_id text`;
+      await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS event_hashes_json jsonb NOT NULL DEFAULT '[]'::jsonb`;
       await sql/*sql*/`ALTER TABLE batch_keys ADD COLUMN IF NOT EXISTS key_version integer NOT NULL DEFAULT 1`;
       await sql/*sql*/`ALTER TABLE batch_keys ADD COLUMN IF NOT EXISTS created_by text`;
       await sql/*sql*/`ALTER TABLE batch_keys ADD COLUMN IF NOT EXISTS exported_by text`;

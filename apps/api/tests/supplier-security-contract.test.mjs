@@ -83,12 +83,38 @@ test("supplier key rotation is gated pre-export and never returns raw batch keys
 
 test("public proof and anchor input stay hash-only", () => {
   const anchorSource = readWorkspaceFile("apps/api/src/app/admin/proof/anchor/route.ts");
+  const anchorsSource = readWorkspaceFile("apps/api/src/app/admin/proof/anchors/route.ts");
   const verifySource = readWorkspaceFile("apps/api/src/app/public/proof/verify/route.ts");
+  const schemaSource = readWorkspaceFile("apps/api/src/lib/supplier-ops-schema.ts");
 
   assert.match(anchorSource, /findForbiddenProofPayloadKey\(payload\)/);
   assert.match(anchorSource, /proof_payload_sensitive_key_rejected/);
+  assert.match(anchorsSource, /event_hashes_required/);
+  assert.match(anchorsSource, /event_hashes_json/);
+  assert.match(anchorsSource, /buildMerkleRoot\(eventHashes\)/);
+  assert.match(anchorsSource, /IOTA_PROVIDER_MODE/);
+  assert.match(anchorsSource, /mock-iota-/);
+  assert.doesNotMatch(anchorsSource, /mock[\s\S]{0,160}status\s*=\s*"confirmed"/);
+  assert.doesNotMatch(anchorsSource, /json-rpc\.evm\.testnet\.iotaledger\.net/);
+  assert.match(schemaSource, /ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS resource_type/);
+  assert.match(schemaSource, /ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS event_hashes_json/);
   assert.match(verifySource, /isSha256Hash\(eventHash\)/);
   assert.match(verifySource, /event_hash_invalid/);
+  assert.match(verifySource, /event_hashes_json/);
+});
+
+test("secure delivery recipient verification cannot hardcode a healthy delivery", () => {
+  const adminSource = readWorkspaceFile("apps/api/src/app/admin/logistics/scan/route.ts");
+  const publicSource = readWorkspaceFile("apps/api/src/app/api/v1/logistics/recipient-verify/route.ts");
+  const policySource = readWorkspaceFile("apps/api/src/lib/secure-delivery-policy.ts");
+
+  assert.match(policySource, /recipientVerificationStatusForSealStatus/);
+  assert.match(policySource, /shouldCreateDeliveryClaimForStatus/);
+  assert.match(adminSource, /recipientVerificationStatusForSealStatus\(result\.newStatus\)/);
+  assert.match(publicSource, /recipientVerificationStatusForSealStatus\(result\.newStatus\)/);
+  assert.match(adminSource, /INSERT INTO delivery_claims/);
+  assert.match(publicSource, /INSERT INTO delivery_claims/);
+  assert.doesNotMatch(publicSource, /,\s*'verified',\s*now\(\)/);
 });
 
 test("dashboard supplier console keeps pack password client-side only", () => {

@@ -8,6 +8,10 @@ const files = {
   verify: "apps/api/src/app/api/v1/sdk/verify/route.ts",
   claim: "apps/api/src/app/api/v1/sdk/claim/route.ts",
   posActivate: "apps/api/src/app/api/v1/sdk/pos/activate/route.ts",
+  logisticsShared: "apps/api/src/app/api/v1/logistics/_shared.ts",
+  logisticsSealApply: "apps/api/src/app/api/v1/logistics/seal-apply/route.ts",
+  logisticsHandoff: "apps/api/src/app/api/v1/logistics/handoff/route.ts",
+  logisticsRecipientVerify: "apps/api/src/app/api/v1/logistics/recipient-verify/route.ts",
   products: "apps/api/src/app/api/v1/sdk/products/[bid]/route.ts",
   events: "apps/api/src/app/api/v1/sdk/events/route.ts",
   webhooks: "apps/api/src/lib/sdk-webhooks.ts",
@@ -44,6 +48,7 @@ test("sdk auth requires x-nexid-api-key, hashes secrets, scopes access, usage lo
   assert.match(auth, /key_hash = \$\{keyHash\}/);
   assert.match(auth, /sdk_scope_denied/);
   assert.match(auth, /"sdk:pos"/);
+  assert.match(auth, /"sdk:logistics"/);
   assert.match(auth, /logSdkUsage/);
   assert.match(auth, /sdk_usage_logs/);
   assert.doesNotMatch(auth, /WHERE\s+k\.(?:api_key|secret|token)\s*=\s*\$\{rawKey\}/i);
@@ -78,6 +83,23 @@ test("sdk protected routes expose verify, POS activation, claim, products and ex
   }
 });
 
+test("logistics v1 routes use SDK auth and derive tenant from the API key", () => {
+  const shared = read(files.logisticsShared);
+  const sealApply = read(files.logisticsSealApply);
+  const handoff = read(files.logisticsHandoff);
+  const recipientVerify = read(files.logisticsRecipientVerify);
+
+  assert.match(shared, /authenticateSdkRequest\(req,\s*"sdk:logistics"\)/);
+  assert.match(shared, /tenant_body_mismatch/);
+  for (const route of [sealApply, handoff, recipientVerify]) {
+    assert.match(route, /authenticateLogisticsRequest\(req,/);
+    assert.match(route, /rejectBodyTenantMismatch\(body,\s*auth\.context\)/);
+    assert.match(route, /tenantId:\s*auth\.context\.tenantId/);
+    assert.match(route, /logLogisticsUsage/);
+    assert.doesNotMatch(route, /const\s*{\s*[^}]*tenantId[^}]*}\s*=\s*body/);
+  }
+});
+
 test("admin SDK console can issue keys, set claim policy and dispatch signed webhooks without leaking secrets", () => {
   const webhooks = read(files.webhooks);
   const apiKeysAdmin = read(files.apiKeysAdmin);
@@ -87,7 +109,7 @@ test("admin SDK console can issue keys, set claim policy and dispatch signed web
   assert.match(webhooks, /webhook_deliveries/);
   assert.match(apiKeysAdmin, /generateSdkKey/);
   assert.match(apiKeysAdmin, /hashSdkApiKey/);
-  assert.match(apiKeysAdmin, /DEFAULT_SCOPES = \["sdk:verify", "sdk:claim", "sdk:products", "sdk:events", "sdk:pos"\]/);
+  assert.match(apiKeysAdmin, /DEFAULT_SCOPES = \["sdk:verify", "sdk:claim", "sdk:products", "sdk:events", "sdk:pos", "sdk:logistics"\]/);
   assert.match(claimPolicyAdmin, /claimRequiresPos/);
   assert.match(claimPolicyAdmin, /claim_pin_hash/);
 });
@@ -101,9 +123,15 @@ test("@nexid/sdk client is typed and maps to the protected gateway", () => {
   assert.match(sdk, /getProduct\(bid: string\)/);
   assert.match(sdk, /reportEvent\(params: ExternalEventRequest\)/);
   assert.match(sdk, /activatePosPurchase\(params: PosActivationRequest\)/);
+  assert.match(sdk, /applyDeliverySeal\(params: LogisticsSealApplyRequest\)/);
+  assert.match(sdk, /handoffDeliverySeal\(params: LogisticsHandoffRequest\)/);
+  assert.match(sdk, /verifyDeliverySeal\(params: LogisticsRecipientVerifyRequest\)/);
   assert.match(sdk, /\/api\/v1\/sdk\/verify/);
   assert.match(sdk, /\/api\/v1\/sdk\/claim/);
   assert.match(sdk, /\/api\/v1\/sdk\/products\/\$\{encodeURIComponent\(bid\)\}/);
   assert.match(sdk, /\/api\/v1\/sdk\/events/);
   assert.match(sdk, /\/api\/v1\/sdk\/pos\/activate/);
+  assert.match(sdk, /\/api\/v1\/logistics\/seal-apply/);
+  assert.match(sdk, /\/api\/v1\/logistics\/handoff/);
+  assert.match(sdk, /\/api\/v1\/logistics\/recipient-verify/);
 });
