@@ -360,7 +360,7 @@ export async function ensureSupplierOpsSchema() {
       const ledgerProviderSeeds = [
         { code: "none", name: "Local proof", network: "local", rpcEnv: null, chainId: null, enabled: true, purpose: "local proof without external ledger" },
         { code: "polygon", name: "Polygon Amoy", network: "amoy", rpcEnv: "POLYGON_RPC_URL", chainId: "80002", enabled: false, purpose: "ownership certificates and claim proofs" },
-        { code: "iota", name: "IOTA testnet", network: "testnet", rpcEnv: "IOTA_EVM_RPC_URL", chainId: null, enabled: false, purpose: "optional enterprise audit trail; testnet can reset" },
+        { code: "iota", name: "IOTA EVM Testnet", network: "testnet", rpcEnv: "IOTA_EVM_RPC_URL", chainId: "1076", enabled: false, purpose: "optional enterprise audit trail; testnet can reset" },
       ] as const;
 
       for (const provider of ledgerProviderSeeds) {
