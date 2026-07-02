@@ -245,8 +245,8 @@ export function EnterpriseTrustLayersSection({ locale }: { locale: string }) {
         { title: "NFC 424 DNA", body: "Unique one-time cryptographic signature per tap: impossible to clone or replay.", meta: "Authenticity", icon: Fingerprint },
         { title: "Offline Verifier", body: "Your phone or reader works in warehouses and remote areas. Syncs to server when back online.", meta: "Field", icon: Cpu },
         { title: "TagTamper", body: "Physical opening evidence: the tag changes state if the package was opened or broken.", meta: "Tamper", icon: ShieldCheck },
-        { title: "Polygon", body: "Tokenized digital ownership: the buyer registers the product to their name with verified transfer.", meta: "Ownership", icon: BadgeCheck },
-        { title: "IOTA", body: "Immutable public audit trail for regulated exports, logistics and batch history.", meta: "Audit", icon: Network },
+        { title: "Polygon", body: "The buyer claims the product as theirs: creates a digital twin, activates a transferable warranty and can resell with a verified certificate.", meta: "Ownership", icon: BadgeCheck },
+        { title: "IOTA", body: "Records supply chain milestones (packaging, transit, arrival) on a feeless blockchain. Public audit trail for exports, EU DPP compliance and IoT traceability.", meta: "Supply Chain", icon: Network },
         { title: "UHF / IoT", body: "Pallets, cartons and industrial sensors: operational traceability without complicating consumer UX.", meta: "Industrial", icon: RadioTower },
       ],
     }
@@ -266,8 +266,8 @@ export function EnterpriseTrustLayersSection({ locale }: { locale: string }) {
         { title: "NFC 424 DNA", body: "Frescor criptografico, anti-copia e verificacao server-side.", meta: "Autenticidade", icon: Fingerprint },
         { title: "Offline Verifier", body: "App ou leitor controlado para zonas rurais e industriais com chaves por device e sync posterior.", meta: "Campo", icon: Cpu },
         { title: "TagTamper", body: "Evidencia fisica de abertura para garrafas, lacres, pharma e embalagens premium.", meta: "Tamper", icon: ShieldCheck },
-        { title: "Polygon", body: "Certificados de propriedade, garantias, e beneficios digitais premium.", meta: "Propriedade", icon: BadgeCheck },
-        { title: "IOTA", body: "Registro publico opcional e imutavel para logistica, auditoria e rastreabilidade.", meta: "Auditoria", icon: Network },
+        { title: "Polygon", body: "O comprador reivindica o produto como seu: cria um gêmeo digital, ativa garantia transferível e pode revender com certificado verificado.", meta: "Propriedade", icon: BadgeCheck },
+        { title: "IOTA", body: "Registra marcos da cadeia de fornecimento (embalagem, transporte, chegada) em blockchain sem taxas. Auditoria pública para exportações, DPP e conformidade IoT.", meta: "Cadeia de Suprimentos", icon: Network },
         { title: "UHF / IoT", body: "Pallets, logistica, sensores e rastreabilidade industrial sem complicar o consumidor.", meta: "Industrial", icon: RadioTower },
       ],
     }
@@ -286,8 +286,8 @@ export function EnterpriseTrustLayersSection({ locale }: { locale: string }) {
         { title: "NFC 424 DNA", body: "Firma criptográfica única por cada toque: imposible de clonar o copiar.", meta: "Autenticidad", icon: Fingerprint },
         { title: "Verificador Offline", body: "El celular o lector valida en campo o galpón sin internet. Al conectarse, sincroniza con el servidor.", meta: "Campo", icon: Cpu },
         { title: "Sello Tamper", body: "Evidencia física de apertura: el sello cambia de estado si el envase fue abierto.", meta: "Tamper", icon: ShieldCheck },
-        { title: "Polygon", body: "Propiedad digital tokenizada: el comprador registra el producto a su nombre con transferencia verificada.", meta: "Propiedad", icon: BadgeCheck },
-        { title: "IOTA", body: "Historial público e inalterable para exportaciones, logística y auditorías de lote.", meta: "Auditoría", icon: Network },
+        { title: "Polygon", body: "El comprador reclama el producto como suyo: crea un gemelo digital, activa garantía transferible y puede revender con certificado verificado.", meta: "Propiedad", icon: BadgeCheck },
+        { title: "IOTA", body: "Registra hitos de la cadena de suministro (embolsado, traslado, llegada) en blockchain feeless. Auditoría pública para exportaciones, DPP y normativa IoT.", meta: "Cadena de Suministro", icon: Network },
         { title: "UHF / IoT", body: "Pallets, cajas y sensores industriales: trazabilidad operacional sin complicar al consumidor.", meta: "Industrial", icon: RadioTower },
       ],
     };

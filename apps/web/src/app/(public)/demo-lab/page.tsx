@@ -76,23 +76,23 @@ const PANEL_CONTENT: Record<
     color: "text-violet-400",
     gradientFrom: "from-violet-500/20",
     title: "Propiedad Digital (Polygon)",
-    subtitle: "Registro digital de propiedad para productos premium",
+    subtitle: "El comprador reclama el producto como suyo con certificado NFT",
     context:
-      "Al abrir el producto, el comprador activa su gemelo digital en Polygon. Esto registra la transferencia de propiedad y habilita garantía, reventa y beneficios de marca exclusivos.",
+      "Cuando el comprador toca el producto, puede reclamar su propiedad digital en Polygon. Esto crea un gemelo digital único vinculado al producto físico: activa garantía transferible, beneficios de club exclusivos y la posibilidad de revender con certificado verificado.",
     value:
-      "Eliminá el fraude de garantía y conectá directamente con el comprador real. Cada reventa del producto queda verificada y trazada sin intermediarios.",
+      "Cada reventa queda registrada y verificada. Eliminá el fraude de garantía y construí una relación directa y permanente con el dueño real del producto, no solo con el primer comprador.",
     doc: { label: "Ver arquitectura Polygon", href: "/docs#trust-layers" },
   },
   "iota-proof": {
     icon: Network,
     color: "text-emerald-400",
     gradientFrom: "from-emerald-500/20",
-    title: "Auditoría Logística (IOTA)",
-    subtitle: "Historial inalterable para cadena de custodia",
+    title: "Auditoría de Cadena de Suministro (IOTA)",
+    subtitle: "Hitos logísticos inmutables para exportaciones, IoT y DPP",
     context:
-      "Cada evento clave del producto (fabricación, despacho, llegada, apertura) genera un hash que se registra en la red IOTA. Es un historial público e inalterable.",
+      "Cada evento clave de la cadena de suministro — embolsado en planta, salida del depósito, traslado en frío, llegada al distribuidor, ingreso al comercio — genera un hash registrado en IOTA. Es un historial público, inalterable y sin costo de transacción.",
     value:
-      "Cumplí normativas de exportación, demo DPP europeo y auditá cualquier lote en tiempo real sin depender de un servidor centralizado.",
+      "Cumplí normativas de exportación (SENASA, FDA, DPP europeo) con evidencia blockchain. Tus clientes B2B y auditores pueden verificar toda la cadena de custodia sin depender de tu servidor.",
     doc: { label: "Ver capa de auditoría", href: "/docs#trust-layers" },
   },
   "offline-verifier": {
@@ -263,7 +263,7 @@ const HUB_SCENARIOS = [
     shadow: "hover:shadow-violet-500/10",
     accent: "bg-violet-500/20 text-violet-300",
     title: "Propiedad Digital (Polygon)",
-    body: "Gemelos digitales y transferencia de propiedad tokenizada para productos premium.",
+    body: "El comprador reclama propiedad, activa garantía digital transferible y puede revender con certificado NFT verificado.",
   },
   {
     id: "iota-proof",
@@ -272,8 +272,8 @@ const HUB_SCENARIOS = [
     border: "hover:border-emerald-500/50",
     shadow: "hover:shadow-emerald-500/10",
     accent: "bg-emerald-500/20 text-emerald-300",
-    title: "Auditoría Logística (IOTA)",
-    body: "Historial público e inalterable para exportaciones, cadena de custodia y DPP.",
+    title: "Auditoría de Cadena de Suministro (IOTA)",
+    body: "Registra hitos de cadena de suministro (embolsado, traslado, llegada) en blockchain feeless para exportaciones y DPP europeo.",
   },
   {
     id: "offline-verifier",
