@@ -195,6 +195,13 @@ function shortHash(value: string | null | undefined) {
   return `${text.slice(0, 18)}...${text.slice(-10)}`;
 }
 
+function utf8ToHex(value: string | null | undefined) {
+  const text = String(value || "");
+  if (!text) return "-";
+  const bytes = new TextEncoder().encode(text);
+  return `0x${Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+}
+
 function explorerLink(url: string | null | undefined, label: string) {
   if (!url) return null;
   return (
@@ -252,6 +259,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
   const activeDemo = result?.demo_case || demoCases.find((demoCase) =>
     demoCase.events.some((event) => event.hash.toLowerCase() === eventHash.toLowerCase()),
   ) || null;
+  const activeReceiptMemoHex = utf8ToHex(activeDemo?.public_receipt?.on_chain_memo);
 
   return (
     <main className="proof-verify-page min-h-screen text-slate-950">
@@ -386,6 +394,46 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           border-color: var(--proof-border-strong) !important;
           background: var(--proof-card-bg) !important;
           color: var(--proof-text) !important;
+        }
+
+        .proof-verify-page .proof-receipt-status-chip {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.4rem;
+          max-width: 100%;
+          border: 1px solid rgba(34, 211, 238, 0.38) !important;
+          background: linear-gradient(135deg, #a7f3d0 0%, #67e8f9 100%) !important;
+          color: #042f2e !important;
+          box-shadow: 0 14px 34px rgba(20, 184, 166, 0.2);
+          text-shadow: none !important;
+          white-space: normal;
+          text-align: center;
+        }
+
+        .proof-verify-page .proof-receipt-status-chip svg {
+          color: #064e3b !important;
+        }
+
+        .proof-verify-page .proof-receipt-action-link {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.45rem;
+          width: 100%;
+          min-height: 2.75rem;
+          border-radius: 0.9rem;
+          border: 1px solid rgba(34, 211, 238, 0.28) !important;
+          background: rgba(2, 6, 23, 0.78) !important;
+          color: #cffafe !important;
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+          text-align: center;
+        }
+
+        html[data-theme="light"] .proof-verify-page .proof-receipt-action-link,
+        html.theme-light .proof-verify-page .proof-receipt-action-link {
+          background: #083344 !important;
+          color: #ecfeff !important;
         }
       `}</style>
       <section className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-5 py-8 sm:px-8 lg:px-10">
@@ -598,7 +646,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           </div>
         </section>
 
-        <section className="grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
+        <section className="grid gap-5 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
           <div className="rounded-[1.5rem] border border-slate-200 bg-white/82 p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -669,8 +717,9 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                       <h4 className="mt-2 text-lg font-black leading-tight text-emerald-950">{activeDemo.public_receipt.title}</h4>
                     </div>
                     {activeDemo.public_receipt.tx_hash ? (
-                      <span className="rounded-full border border-emerald-300 bg-emerald-100 px-3 py-1 text-[0.68rem] font-black uppercase tracking-[0.1em] text-emerald-900">
-                        memo tx real
+                      <span className="proof-receipt-status-chip rounded-full px-3 py-1.5 text-[0.68rem] font-black uppercase tracking-[0.1em]">
+                        <BadgeCheck className="h-3.5 w-3.5 shrink-0" />
+                        Memo publico confirmado
                       </span>
                     ) : null}
                   </div>
@@ -688,7 +737,11 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                     <div className="rounded-2xl border border-emerald-200 bg-white/70 p-3">
                       <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-emerald-800">Transaccion memo</p>
                       <p className="mt-2 break-all font-mono text-[0.72rem] font-bold text-slate-900">{shortHash(activeDemo.public_receipt.tx_hash)}</p>
-                      <div className="mt-2">{explorerLink(activeDemo.public_receipt.explorer_url, "Abrir memo en explorer")}</div>
+                      {activeDemo.public_receipt.explorer_url ? (
+                        <a href={activeDemo.public_receipt.explorer_url} className="proof-receipt-action-link mt-3 text-xs font-black uppercase tracking-[0.12em]" target="_blank" rel="noreferrer">
+                          Abrir memo en explorer <ArrowRight className="h-4 w-4" />
+                        </a>
+                      ) : null}
                     </div>
                   </div>
                   <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -706,6 +759,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
             ) : null}
           </div>
 
+          <div className="grid gap-5 lg:self-start">
           <div className="rounded-[1.5rem] border border-slate-200 bg-white/82 p-5 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -744,6 +798,71 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                 </div>
               )}
             </div>
+          </div>
+
+          {activeDemo ? (
+            <div className="rounded-[1.5rem] border border-cyan-200 bg-cyan-50/75 p-5 shadow-sm">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">IOTA explorer</p>
+                  <h2 className="mt-2 text-2xl font-black leading-tight text-slate-950">Donde esta escrito el memo?</h2>
+                  <p className="mt-2 text-sm leading-6 text-slate-700">
+                    En IOTA EVM el memo queda dentro del campo <span className="font-mono font-black">Raw input</span>. El explorer lo muestra como hex; nexID lo decodifica como texto UTF-8 para que cualquiera pueda leerlo.
+                  </p>
+                </div>
+                <FileSearch className="mt-1 h-6 w-6 shrink-0 text-cyan-700" />
+              </div>
+
+              <div className="mt-4 grid gap-3">
+                <div className="rounded-2xl border border-cyan-200 bg-white/75 p-4">
+                  <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan-800">Raw input visible en IOTA Explorer</p>
+                  <p className="mt-2 max-h-32 overflow-auto break-all rounded-xl border border-slate-200 bg-slate-50 p-3 font-mono text-[0.72rem] font-bold leading-5 text-slate-900">
+                    {activeReceiptMemoHex}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                  <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-emerald-800">Mismo contenido decodificado por nexID</p>
+                  <p className="mt-2 break-all font-mono text-[0.72rem] font-bold leading-5 text-emerald-950">
+                    {activeDemo.public_receipt.on_chain_memo}
+                  </p>
+                </div>
+
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {["1. Abrir TX", "2. Show details", "3. Raw input"].map((step) => (
+                    <div key={step} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-[0.68rem] font-black uppercase tracking-[0.12em] text-slate-700">
+                      {step}
+                    </div>
+                  ))}
+                </div>
+
+                {activeDemo.public_receipt.explorer_url ? (
+                  <a href={activeDemo.public_receipt.explorer_url} className="proof-receipt-action-link text-xs font-black uppercase tracking-[0.12em]" target="_blank" rel="noreferrer">
+                    Abrir memo real en IOTA Explorer <ArrowRight className="h-4 w-4" />
+                  </a>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="rounded-[1.5rem] border border-slate-200 bg-white/82 p-5 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Lectura ejecutiva</p>
+            <h2 className="mt-2 text-2xl font-black leading-tight text-slate-950">Que deberia entender un cliente?</h2>
+            <div className="mt-4 grid gap-3">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <strong className="block text-sm text-slate-950">La blockchain no guarda la base privada.</strong>
+                <p className="mt-2 text-sm leading-6 text-slate-600">Guarda un recibo minimo: caso, tipo de recurso, cantidad de eventos, Merkle root y politica hash-only.</p>
+              </div>
+              <div className="rounded-2xl border border-cyan-200 bg-cyan-50/70 p-4">
+                <strong className="block text-sm text-slate-950">nexID conserva la evidencia sensible.</strong>
+                <p className="mt-2 text-sm leading-6 text-slate-700">UID/NFC, cliente, ruta completa, QA interno y contratos quedan protegidos en la plataforma.</p>
+              </div>
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                <strong className="block text-sm text-emerald-950">La auditoria compara dos cosas simples.</strong>
+                <p className="mt-2 text-sm leading-6 text-emerald-900">El hash pegado debe existir en el Merkle root y el memo del explorer debe coincidir con el recibo que muestra nexID.</p>
+              </div>
+            </div>
+          </div>
           </div>
         </section>
 
