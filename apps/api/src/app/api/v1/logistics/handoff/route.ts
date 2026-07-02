@@ -6,7 +6,7 @@ export async function POST(req: Request) {
   try {
     await ensureSecureDeliverySchema();
     const body = await req.json();
-    const { uidHex, ttRaw, tenantId, location, scannedBy } = body;
+    const { uidHex, ttRaw, tenantId, shipmentId, shipment_id, location, scannedBy } = body;
 
     if (!uidHex || !tenantId) {
       return NextResponse.json({ error: "uidHex and tenantId are required" }, { status: 400 });
@@ -16,6 +16,7 @@ export async function POST(req: Request) {
       uidHex,
       tenantId,
       ttRaw: ttRaw || null,
+      shipmentId: shipmentId || shipment_id,
       location,
       scannedBy,
       context: "HANDOFF",

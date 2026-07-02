@@ -6,16 +6,18 @@ export async function POST(req: Request) {
   try {
     await ensureSecureDeliverySchema();
     const body = await req.json();
-    const { uidHex, ttRaw, tenantId, location, scannedBy } = body;
+    const { uidHex, ttRaw, tenantId, shipmentId, shipment_id, location, scannedBy } = body;
 
-    if (!uidHex || !tenantId) {
-      return NextResponse.json({ error: "uidHex and tenantId are required" }, { status: 400 });
+    const resolvedShipmentId = shipmentId || shipment_id;
+    if (!uidHex || !tenantId || !resolvedShipmentId) {
+      return NextResponse.json({ error: "uidHex, tenantId and shipmentId are required" }, { status: 400 });
     }
 
     const result = await processSealScan({
       uidHex,
       tenantId,
       ttRaw: ttRaw || null,
+      shipmentId: resolvedShipmentId,
       location,
       scannedBy,
       context: "APPLY",

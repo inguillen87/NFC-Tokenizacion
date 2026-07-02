@@ -445,6 +445,136 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
       dataSource: "demo",
     }, { status: 201 });
   }
+  if (method === "GET" && normalized === "logistics/shipments") {
+    const shipments = [
+      {
+        id: "demo-secure-delivery-001",
+        tenant_id: demoTenant.slug,
+        tenant_slug: demoTenant.slug,
+        shipment_code: "SDL-DEMO-BALMEC-001",
+        status: "IN_TRANSIT",
+        tracking_number: "VIP-WINE-7421",
+        origin_address: "Valle de Uco warehouse",
+        destination_address: "Zurich collector delivery",
+        sender_name: "Bodega Balmec",
+        recipient_name: "Premium buyer",
+        courier_id: "private-courier",
+        carrier_name: "Private Courier",
+        item_count: 1,
+        item_quantity: 1,
+        seal_count: 1,
+        custody_event_count: 3,
+        verification_count: 0,
+        claim_count: 0,
+        created_at: new Date(Date.now() - 90 * 60 * 1000).toISOString(),
+        updated_at: new Date(Date.now() - 8 * 60 * 1000).toISOString(),
+      },
+    ];
+    return NextResponse.json(annotatePayload({
+      ok: true,
+      shipments,
+      stats: { total: 1, in_transit: 1, delivered: 0, alerts: 0 },
+    }, "demo"));
+  }
+  if (method === "GET" && normalized.startsWith("logistics/shipments/")) {
+    const shipmentId = normalized.split("/")[2] || "demo-secure-delivery-001";
+    const shipment = {
+      id: shipmentId,
+      tenant_id: demoTenant.slug,
+      tenant_slug: demoTenant.slug,
+      tenant_name: demoTenant.name,
+      shipment_code: shipmentId === "demo-secure-delivery-001" ? "SDL-DEMO-BALMEC-001" : shipmentId,
+      status: "IN_TRANSIT",
+      tracking_number: "VIP-WINE-7421",
+      origin_address: "Valle de Uco warehouse",
+      destination_address: "Zurich collector delivery",
+      sender_name: "Bodega Balmec",
+      recipient_name: "Premium buyer",
+      courier_id: "private-courier",
+      carrier_name: "Private Courier",
+      item_count: 1,
+      item_quantity: 1,
+      seal_count: 1,
+      custody_event_count: 3,
+      verification_count: 1,
+      claim_count: 0,
+      created_at: new Date(Date.now() - 90 * 60 * 1000).toISOString(),
+      updated_at: new Date(Date.now() - 8 * 60 * 1000).toISOString(),
+      last_custody_event_at: new Date(Date.now() - 8 * 60 * 1000).toISOString(),
+    };
+    return NextResponse.json(annotatePayload({
+      ok: true,
+      shipment,
+      items: [
+        { id: "demo-item-001", product_name: "Gran Reserva Malbec sealed case", quantity: 1, created_at: shipment.created_at },
+      ],
+      seals: [
+        {
+          id: "demo-package-seal-001",
+          seal_id: "demo-seal-inventory-001",
+          uid_hex: "04AABBCCDD1090",
+          status: "IN_TRANSIT",
+          inventory_status: "IN_TRANSIT",
+          applied_at: new Date(Date.now() - 70 * 60 * 1000).toISOString(),
+          created_at: new Date(Date.now() - 70 * 60 * 1000).toISOString(),
+        },
+      ],
+      custodyEvents: [
+        { id: "demo-custody-001", event_type: "SEALED", location: "Valle de Uco packing bench", scanned_by: "ops@nexid.lat", notes: "Seal applied to premium package.", created_at: new Date(Date.now() - 70 * 60 * 1000).toISOString() },
+        { id: "demo-custody-002", event_type: "IN_TRANSIT", location: "Private courier hub", scanned_by: "courier@nexid.lat", notes: "Courier handoff with TTSTATUS closed.", created_at: new Date(Date.now() - 42 * 60 * 1000).toISOString() },
+        { id: "demo-custody-003", event_type: "VERIFY_PENDING", location: "Zurich route", scanned_by: "system", notes: "Awaiting recipient verification.", created_at: new Date(Date.now() - 8 * 60 * 1000).toISOString() },
+      ],
+      verifications: [
+        { id: "demo-verification-001", recipient_name: "Premium buyer", verification_method: "NFC_TAP", status: "pending", verified_at: null, created_at: new Date(Date.now() - 7 * 60 * 1000).toISOString() },
+      ],
+      claims: [],
+    }, "demo"));
+  }
+  if (method === "POST" && normalized === "logistics/shipments") {
+    const now = Date.now();
+    const shipment = {
+      id: `demo-secure-delivery-${now}`,
+      tenantId: resolveDemoTenant(payload?.tenant_slug || payload?.tenant || tenantFilter).slug,
+      shipmentCode: String(payload?.shipment_code || `SDL-DEMO-${String(now).slice(-6)}`),
+      status: "draft",
+      trackingNumber: String(payload?.tracking_number || payload?.trackingNumber || "DEMO-TRACKING"),
+      itemCount: Array.isArray(payload?.items) ? payload.items.length : 1,
+    };
+    return NextResponse.json(annotatePayload({ ok: true, shipment }, "demo"), { status: 201 });
+  }
+  if (method === "POST" && normalized.startsWith("logistics/shipments/") && normalized.endsWith("/claims")) {
+    return NextResponse.json(annotatePayload({
+      ok: true,
+      claim: {
+        id: `demo-claim-${Date.now()}`,
+        issue_type: String(payload?.issue_type || "tamper_report"),
+        description: String(payload?.description || "Demo claim opened"),
+        status: "open",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+    }, "demo"), { status: 201 });
+  }
+  if (method === "POST" && normalized === "logistics/scan") {
+    const context = String(payload?.context || "APPLY").toUpperCase();
+    const ttRaw = String(payload?.tt_raw || payload?.ttRaw || "4343").toUpperCase();
+    const tamperState = ttRaw === "4343" ? "closed" : ttRaw ? "opened" : "unknown";
+    const newStatus = tamperState !== "closed"
+      ? context === "VERIFY" && tamperState === "opened" ? "DELIVERED_OPENED" : "QUARANTINED"
+      : context === "APPLY" ? "SEALED" : context === "HANDOFF" ? "IN_TRANSIT" : "DELIVERED_CLOSED";
+    return NextResponse.json(annotatePayload({
+      ok: true,
+      tenant: resolveDemoTenant(payload?.tenant_slug || payload?.tenant || tenantFilter),
+      context,
+      data: {
+        sealId: "demo-seal-inventory-001",
+        previousStatus: context === "APPLY" ? "UNASSIGNED" : "SEALED",
+        newStatus,
+        shipmentId: String(payload?.shipment_id || payload?.shipmentId || "demo-secure-delivery-001"),
+        tamperState,
+      },
+    }, "demo"));
+  }
   if (method === "GET" && normalized === "webhook-deliveries") {
     return NextResponse.json([
       {
@@ -811,6 +941,11 @@ async function forward(req: Request, path: string[]) {
     );
   }
 
+  if (!isProduction && forceSandbox && normalizedPath.startsWith("logistics/")) {
+    console.info("[admin_proxy_local_logistics_demo]", JSON.stringify({ method: req.method, path: normalizedPath, scopedRole: scopedRole || "none" }));
+    return markDemoData(demoAdminResponse(req.method, path, body || "", req.url));
+  }
+
   const unavailable = (reason: string) => {
     if (req.method === "GET" && normalizedPath === "analytics") {
       return NextResponse.json(annotatePayload({
@@ -883,7 +1018,9 @@ async function forward(req: Request, path: string[]) {
     );
   }
 
-  if (allowDemoFallbackForRequest && forceSandbox && scopedRole !== "tenant_admin") {
+  const allowForcedSandbox = forceSandbox && (scopedRole !== "tenant_admin" || normalizedPath.startsWith("logistics/"));
+
+  if (allowDemoFallbackForRequest && allowForcedSandbox) {
     console.info("[admin_proxy_demo_fallback]", JSON.stringify({ method: req.method, path: normalizedPath, scopedRole: scopedRole || "none" }));
     return markDemoData(demoAdminResponse(req.method, path, body || "", req.url));
   }
@@ -916,7 +1053,7 @@ async function forward(req: Request, path: string[]) {
     return unavailable(`Admin upstream error (${response.status}).`);
   }
 
-  if (!response.ok && allowDemoFallbackForRequest && forceSandbox && scopedRole !== "tenant_admin") {
+  if (!response.ok && allowDemoFallbackForRequest && allowForcedSandbox) {
     return markDemoData(demoAdminResponse(req.method, path, body || "", req.url));
   }
 

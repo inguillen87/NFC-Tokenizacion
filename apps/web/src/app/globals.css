@@ -44984,3 +44984,267 @@ html[data-theme="light"] .demo-lab-wizard-result-pills span {
     grid-template-columns: minmax(0, 1fr) !important;
   }
 }
+
+/* Post-QA enterprise polish: remove vanity KPI band, prevent SDK clipping, and make Demo Lab usable on touch screens. */
+.nexid-enterprise-proof-band,
+.nexid-enterprise-proof-band__metrics {
+  display: none !important;
+}
+
+.sdk-premium-hero {
+  align-items: center !important;
+  grid-template-columns: minmax(0, 0.94fr) minmax(460px, 1.06fr) !important;
+  padding-inline: clamp(0.15rem, 1vw, 0.75rem) !important;
+}
+
+.sdk-premium-copy h1 {
+  max-inline-size: 48rem !important;
+  font-size: clamp(2.8rem, 4.18vw, 4.95rem) !important;
+  line-height: 1.055 !important;
+  letter-spacing: 0 !important;
+  overflow-wrap: normal !important;
+}
+
+.sdk-premium-copy > p:not(.sdk-hero-eyebrow) {
+  max-inline-size: 44rem !important;
+}
+
+.sdk-proof-hero-system,
+.sdk-global-hero-atlas,
+.sdk-proof-live-card {
+  max-width: 100% !important;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__city-label,
+html[data-theme="light"] .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__city-label {
+  fill: rgba(15, 23, 42, 0.82) !important;
+  stroke-width: 0.45px !important;
+  font-weight: 500 !important;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__city-country,
+html[data-theme="light"] .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__city-country {
+  fill: rgba(14, 116, 144, 0.72) !important;
+  stroke-width: 0.35px !important;
+  font-weight: 450 !important;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-plate,
+html[data-theme="light"] .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-plate {
+  opacity: 0.68 !important;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-main,
+html[data-theme="light"] .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-main {
+  stroke-width: 0.45px !important;
+  font-weight: 560 !important;
+}
+
+html.theme-light .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-sub,
+html[data-theme="light"] .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas__label-sub {
+  stroke-width: 0.35px !important;
+  font-weight: 460 !important;
+}
+
+.enterprise-trust-layer-card,
+.enterprise-trust-layers__note,
+#offline-field-operations article,
+#offline-field-operations .offline-phone-screen {
+  min-width: 0 !important;
+  overflow-wrap: anywhere !important;
+}
+
+.enterprise-trust-layers__head h2,
+#offline-field-operations h2 {
+  letter-spacing: 0 !important;
+}
+
+.demo-lab-fullscreen-stage .demo-lab-studio {
+  max-width: min(100%, 1760px) !important;
+  margin-inline: auto !important;
+}
+
+.demo-lab-wizard-nav {
+  z-index: 70 !important;
+}
+
+.demo-lab-wizard-scene {
+  align-items: stretch !important;
+  gap: clamp(0.9rem, 1.7vw, 1.4rem) !important;
+}
+
+.demo-lab-wizard-verticals,
+.demo-lab-wizard-events,
+.demo-lab-wizard-trazo-side {
+  overscroll-behavior: contain !important;
+  scrollbar-gutter: stable !important;
+}
+
+.demo-lab-wizard-tap-btn,
+.demo-lab-wizard-next-btn,
+.demo-lab-wizard-step-pill,
+.demo-lab-wizard-vertical-btn {
+  touch-action: manipulation !important;
+}
+
+@media (max-width: 1280px) {
+  .sdk-premium-hero {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .sdk-premium-copy h1 br {
+    display: none !important;
+  }
+
+  .sdk-premium-copy h1 {
+    max-inline-size: 62rem !important;
+  }
+}
+
+@media (max-width: 980px) {
+  .demo-lab-wizard-scene--toca,
+  .demo-lab-wizard-scene--verifico,
+  .demo-lab-wizard-scene--trazo,
+  .demo-lab-wizard-scene--gano {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .demo-lab-wizard-verticals {
+    display: flex !important;
+    max-height: none !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding-bottom: 0.2rem !important;
+  }
+
+  .demo-lab-wizard-vertical-btn {
+    min-width: min(15rem, 72vw) !important;
+  }
+
+  .demo-lab-wizard-events,
+  .demo-lab-wizard-trazo-side {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .sdk-premium-hero {
+    width: 100% !important;
+    padding-inline: 0 !important;
+    gap: 1.15rem !important;
+  }
+
+  .sdk-premium-copy {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .sdk-premium-copy h1 {
+    max-inline-size: 100% !important;
+    font-size: clamp(1.72rem, 8.2vw, 2.45rem) !important;
+    line-height: 1.1 !important;
+    overflow-wrap: break-word !important;
+  }
+
+  .sdk-premium-copy > p:not(.sdk-hero-eyebrow) {
+    font-size: 1rem !important;
+    line-height: 1.75 !important;
+  }
+
+  .enterprise-trust-layers__head h2,
+  #offline-field-operations h2 {
+    font-size: clamp(1.9rem, 8.4vw, 2.55rem) !important;
+    line-height: 1.08 !important;
+  }
+
+  .enterprise-trust-layers__shell,
+  #offline-field-operations {
+    margin-inline: max(-0.25rem, -1vw) !important;
+  }
+
+  .enterprise-trust-layer-card {
+    padding: 1rem !important;
+  }
+
+  .enterprise-trust-layer-card > div:first-child {
+    align-items: flex-start !important;
+    gap: 0.55rem !important;
+  }
+
+  .enterprise-trust-layer-card > div:first-child em {
+    white-space: normal !important;
+    text-align: right !important;
+    line-height: 1.2 !important;
+  }
+
+  .trust-layer-sim {
+    width: 100% !important;
+    min-height: 4.25rem !important;
+  }
+
+  .demo-lab-fullscreen-stage {
+    padding: 0.5rem 0 2.5rem !important;
+  }
+
+  .demo-lab-fullscreen-stage .demo-lab-studio {
+    border-radius: 0 !important;
+    border-left: 0 !important;
+    border-right: 0 !important;
+    padding: 0.65rem !important;
+  }
+
+  .demo-lab-wizard-nav {
+    top: 0 !important;
+    margin: 0 0 0.7rem !important;
+    border-radius: 16px !important;
+  }
+
+  .demo-lab-wizard-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .demo-lab-wizard-steps .demo-lab-wizard-step-pill {
+    min-height: 2.45rem !important;
+    justify-content: flex-start !important;
+    padding-inline: 0.55rem !important;
+  }
+
+  .demo-lab-wizard-steps .demo-lab-wizard-step-pill span:last-child {
+    font-size: 0.68rem !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+  }
+
+  .demo-lab-wizard-actions {
+    display: grid !important;
+    grid-template-columns: 2.65rem minmax(0, 1fr) !important;
+    width: 100% !important;
+  }
+
+  .demo-lab-wizard-actions .theme-toggle {
+    width: 2.65rem !important;
+    min-width: 2.65rem !important;
+  }
+
+  .demo-lab-wizard-context,
+  .demo-lab-wizard-result-card,
+  .demo-lab-wizard-events,
+  .demo-lab-wizard-trazo-side,
+  .demo-lab-wizard-gano-card {
+    padding: 1rem !important;
+  }
+
+  .demo-lab-wizard-result-card,
+  .demo-lab-wizard-map-container {
+    min-height: clamp(24rem, 92vw, 34rem) !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .sdk-premium-copy h1 {
+    font-size: clamp(1.45rem, 7.8vw, 1.75rem) !important;
+    line-height: 1.12 !important;
+    overflow-wrap: anywhere !important;
+  }
+}

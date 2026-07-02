@@ -1012,6 +1012,35 @@ function localeName(locale: AppLocale) {
   return "es-AR";
 }
 
+function routeEvidenceSentenceFromTitle(routeTitle: string) {
+  if (routeTitle === "Trust route") return "Physical tap, SUN and channel evidence.";
+  if (routeTitle.startsWith("Rota")) return "Evidencia de toque fisico, SUN e canal.";
+  return "Evidencia de tap fisico, SUN y canal.";
+}
+
+function routeEvidenceValueFromTitle(routeTitle: string, distance?: number) {
+  if (routeTitle === "Trust route") return (distance || 0) > 2500 ? "Audited global route" : "Audited route";
+  if (routeTitle.startsWith("Rota")) return (distance || 0) > 2500 ? "Rota global auditada" : "Rota auditada";
+  return (distance || 0) > 2500 ? "Ruta global auditada" : "Ruta auditada";
+}
+
+function routeEvidenceValueFromNumberLocale(numberLocale: string, distance?: number) {
+  if (numberLocale.startsWith("en")) return (distance || 0) > 2500 ? "Audited global route" : "Audited route";
+  if (numberLocale.startsWith("pt")) return (distance || 0) > 2500 ? "Rota global auditada" : "Rota auditada";
+  return (distance || 0) > 2500 ? "Ruta global auditada" : "Ruta auditada";
+}
+
+function routeEvidenceLabelFromLocale(locale: AppLocale) {
+  if (locale === "en") return "Evidence";
+  if (locale === "pt-BR") return "Evidencia";
+  return "Evidencia";
+}
+
+function routeEvidenceLabelFromNumberLocale(numberLocale: string) {
+  if (numberLocale.startsWith("en")) return "Evidence";
+  return "Evidencia";
+}
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
@@ -1354,7 +1383,7 @@ function EnterpriseHeroAtlasPanel({
   txt: Pick<(typeof labels)["es-AR"], "routeTitle" | "originMap" | "tapMap" | "custody">;
   stageCopy: (typeof heroStageCopy)["es-AR"];
 }) {
-  const formattedDistance = distance.toLocaleString(numberLocale);
+  void numberLocale;
   const isEnglish = txt.routeTitle === "Trust route";
   const isPortuguese = txt.routeTitle.startsWith("Rota");
   const custodyStage = isEnglish ? "Custody" : "Custodia";
@@ -1363,11 +1392,8 @@ function EnterpriseHeroAtlasPanel({
   const distributionEvidence = isEnglish ? "Distribution center" : isPortuguese ? "Centro de distribuicao" : "Centro de distribucion";
   const documentEvidence = isEnglish ? "Document control" : isPortuguese ? "Controle documental" : "Control documental";
   const exportEvidence = isEnglish ? "Export channel" : isPortuguese ? "Canal de exportacao" : "Canal de exportacion";
-  const evidenceCopy = txt.routeTitle === "Trust route"
-    ? `${formattedDistance} km with physical tap, SUN and channel evidence.`
-    : txt.routeTitle.startsWith("Rota")
-      ? `${formattedDistance} km com evidencia de toque, SUN e canal.`
-      : `${formattedDistance} km con evidencia de tap fisico, SUN y canal.`;
+  const routeEvidence = routeEvidenceValueFromTitle(txt.routeTitle, distance);
+  const evidenceCopy = routeEvidenceSentenceFromTitle(txt.routeTitle);
 
   const custodyStops = useMemo<VectorMapPoint[]>(() => {
     const stops: VectorMapPoint[] = [
@@ -1450,10 +1476,10 @@ function EnterpriseHeroAtlasPanel({
       toLng: stop.lng,
       label: `${previous.label} -> ${stop.label}`,
       tone: isFinal ? "success" : "info",
-      distanceLabel: isFinal ? `${formattedDistance} km` : undefined,
+      distanceLabel: isFinal ? routeEvidence : undefined,
       evidence: isFinal ? evidenceCopy : stop.evidence,
     };
-  }), [custodyStops, evidenceCopy, formattedDistance]);
+  }), [custodyStops, evidenceCopy, routeEvidence]);
 
   const timelineStops = custodyStops.map((stop, index) => ({
     ...stop,
@@ -1473,7 +1499,7 @@ function EnterpriseHeroAtlasPanel({
   const atlasOps = [
     { id: "countries", label: countriesLabel, value: String(new Set(HERO_ATLAS_CITY_MARKERS.map((city) => city.country)).size) },
     { id: "cities", label: citiesLabel, value: String(HERO_ATLAS_CITY_MARKERS.length) },
-    { id: "route", label: routeLabel, value: `${formattedDistance} km` },
+    { id: "route", label: routeLabel, value: routeEvidence },
     { id: "custody", label: custodyLabel, value: `${custodyStops.length} ${stageCopy.events.toLowerCase()}` },
   ];
   const atlasZoomLevels = [1, 1.16, 1.32] as const;
@@ -1577,14 +1603,10 @@ function HeroTraceMap({
   numberLocale: string;
   txt: Pick<(typeof labels)["es-AR"], "routeTitle" | "originMap" | "tapMap" | "openOriginMap" | "custody">;
 }) {
-  const formattedDistance = distance.toLocaleString(numberLocale);
+  void numberLocale;
   const routeHeadline = txt.routeTitle === "Trust route" ? "Live route" : txt.routeTitle.startsWith("Rota") ? "Rota viva" : "Ruta viva";
   const tapCopy = txt.routeTitle === "Trust route" ? "Physical tap" : txt.routeTitle.startsWith("Rota") ? "Toque físico" : "Tap físico";
-  const evidenceCopy = txt.routeTitle === "Trust route"
-    ? `${formattedDistance} km with physical tap, SUN and channel evidence.`
-    : txt.routeTitle.startsWith("Rota")
-      ? `${formattedDistance} km com evidencia de toque, SUN e canal.`
-    : `${formattedDistance} km con evidencia de toque físico, SUN y canal.`;
+  const evidenceCopy = routeEvidenceSentenceFromTitle(txt.routeTitle);
   const signedCopy = txt.routeTitle === "Trust route" ? "Signed evidence" : txt.routeTitle.startsWith("Rota") ? "Evidência assinada" : "Evidencia firmada";
   const crmCopy = txt.routeTitle === "Trust route" ? "CRM ready" : txt.routeTitle.startsWith("Rota") ? "CRM pronto" : "CRM listo";
   const crmDetailCopy = txt.routeTitle === "Trust route"
@@ -1600,7 +1622,7 @@ function HeroTraceMap({
   ];
 
   const [routeHover, setRouteHover] = useState<HeroRouteHover | null>(null);
-  const routeDistanceLabel = `${formattedDistance} km`;
+  const routeDistanceLabel = routeEvidenceValueFromTitle(txt.routeTitle, distance);
   const selectedProof = routeHover || proofSteps[0];
   const originPoint: TraceabilityGlobePoint = {
     city: origin.city,
@@ -1699,12 +1721,9 @@ function HeroEnterpriseTraceMap({
   txt: Pick<(typeof labels)["es-AR"], "routeTitle" | "originMap" | "tapMap" | "custody">;
   stageCopy: (typeof heroStageCopy)["es-AR"];
 }) {
-  const formattedDistance = distance.toLocaleString(numberLocale);
-  const evidenceCopy = txt.routeTitle === "Trust route"
-    ? `${formattedDistance} km with physical tap, SUN and channel evidence.`
-    : txt.routeTitle.startsWith("Rota")
-      ? `${formattedDistance} km com evidencia de toque, SUN e canal.`
-      : `${formattedDistance} km con evidencia de tap fisico, SUN y canal.`;
+  void numberLocale;
+  const routeEvidence = routeEvidenceValueFromTitle(txt.routeTitle, distance);
+  const evidenceCopy = routeEvidenceSentenceFromTitle(txt.routeTitle);
   const [routeHover, setRouteHover] = useState<HeroRouteHover | null>(null);
 
   const custodyStops = useMemo<VectorMapPoint[]>(() => {
@@ -1786,16 +1805,16 @@ function HeroEnterpriseTraceMap({
       toLng: stop.lng,
       label: `${previous.label} -> ${stop.label}`,
       tone: isFinal ? "success" : "info",
-      distanceLabel: isFinal ? `${formattedDistance} km` : undefined,
+      distanceLabel: isFinal ? routeEvidence : undefined,
       evidence: isFinal ? evidenceCopy : stop.evidence,
     };
-  }), [custodyStops, evidenceCopy, formattedDistance]);
+  }), [custodyStops, evidenceCopy, routeEvidence]);
 
   const ledgerItems = useMemo<VectorMapLedgerItem[]>(() => [
     { id: "integrity", label: stageCopy.integrity, value: stageCopy.verified, detail: evidenceCopy, tone: "loyalty" },
-    { id: "events", label: stageCopy.events, value: `${custodyStops.length}/${custodyStops.length}`, detail: `${formattedDistance} km`, tone: "tap" },
+    { id: "events", label: stageCopy.events, value: `${custodyStops.length}/${custodyStops.length}`, detail: routeEvidence, tone: "tap" },
     { id: "alerts", label: stageCopy.alerts, value: "0", detail: "Sin alertas en esta lectura demo", tone: "origin" },
-  ], [custodyStops.length, evidenceCopy, formattedDistance, stageCopy.alerts, stageCopy.events, stageCopy.integrity, stageCopy.verified]);
+  ], [custodyStops.length, evidenceCopy, routeEvidence, stageCopy.alerts, stageCopy.events, stageCopy.integrity, stageCopy.verified]);
 
   const proofSteps: HeroRouteHover[] = [
     { eyebrow: "01", title: txt.originMap, detail: `${origin.city} - ${origin.country}`, tone: "origin" },
@@ -2191,7 +2210,7 @@ function HeroEvidenceChart({
     <div className="hero-evidence-chart" aria-label={txt.evidenceChart}>
       <div className="hero-evidence-chart-head">
         <span>{txt.evidenceChart}</span>
-        <strong>{distance.toLocaleString(numberLocale)} km</strong>
+        <strong>{routeEvidenceValueFromNumberLocale(numberLocale, distance)}</strong>
       </div>
       <svg viewBox="0 0 140 58" aria-hidden="true" focusable="false">
         <defs>
@@ -2252,8 +2271,8 @@ function HeroPassportPhone({
             <dd>{data.uid}</dd>
           </div>
           <div>
-            <dt>{txt.labels.distance}</dt>
-            <dd>{distance.toLocaleString(numberLocale)} km</dd>
+            <dt>{routeEvidenceLabelFromNumberLocale(numberLocale)}</dt>
+            <dd>{routeEvidenceValueFromNumberLocale(numberLocale, distance)}</dd>
           </div>
         </dl>
         <p><i />{data.result}</p>
@@ -2374,7 +2393,7 @@ function HeroPhoneEmulator({
             <div>
               <strong>{data.product}</strong>
               <em>{productOrigin}</em>
-              <small>{distance.toLocaleString(numberLocale)} km</small>
+              <small>{routeEvidenceValueFromNumberLocale(numberLocale, distance)}</small>
             </div>
           </section>
 
@@ -2602,7 +2621,7 @@ function EnterpriseHeroPhoneDemo({
             </div>
             <div>
               <dt>{distanceLabel}</dt>
-              <dd>{distance.toLocaleString(numberLocale)} km</dd>
+              <dd>{routeEvidenceValueFromNumberLocale(numberLocale, distance)}</dd>
             </div>
           </dl>
 
@@ -2713,7 +2732,7 @@ function ProductDetailModal({
             <div className="hero-product-modal__summary">
               <strong>{data.result}</strong>
               <p>{data.action}</p>
-              <span>{distance.toLocaleString(numberLocale)} km · {data.origin.city} → {data.nextAction}</span>
+              <span>{routeEvidenceValueFromNumberLocale(numberLocale, distance)} · {data.origin.city} → {data.nextAction}</span>
             </div>
           </section>
 
@@ -2777,7 +2796,7 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
     { label: txt.labels.product, value: data.product },
     { label: txt.labels.origin, value: `${data.origin.city}, ${data.origin.country}` },
     { label: txt.labels.tap, value: `${tap.city}, ${tap.country} - ${tap.label}` },
-    { label: txt.labels.distance, value: `${distance.toLocaleString(numberLocale)} km` },
+    { label: routeEvidenceLabelFromLocale(locale), value: routeEvidenceValueFromNumberLocale(numberLocale, distance) },
     { label: txt.labels.uid, value: data.uid },
     { label: txt.labels.batch, value: data.batch },
     { label: txt.labels.security, value: data.security },
@@ -2837,7 +2856,7 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
             tap={tap}
             stageCopy={stageCopy}
             originLabel={txt.labels.origin}
-            distanceLabel={txt.labels.distance}
+            distanceLabel={routeEvidenceLabelFromLocale(locale)}
           />
         </div>
 

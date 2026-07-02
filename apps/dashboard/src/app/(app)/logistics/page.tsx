@@ -3,6 +3,7 @@ import { SectionHeading } from "@product/ui";
 import { ShieldAlert, PackageCheck, Package, ShieldCheck, Navigation, Truck, MapPin, Zap, Activity } from "lucide-react";
 import { productUrls } from "@product/config";
 import { requireDashboardSession } from "../../../lib/session";
+import { SecureDeliveryOpsConsole } from "../../../components/secure-delivery-ops-console";
 
 const API_BASE = productUrls.api;
 
@@ -172,6 +173,8 @@ export default async function LogisticsHubPage() {
         </div>
       </div>
 
+      <SecureDeliveryOpsConsole tenantSlug={tenantScope || null} role={session.role} />
+
       <div className="rounded-3xl border border-white/5 bg-slate-900/30 backdrop-blur-xl p-8 shadow-2xl">
         <div className="flex items-center gap-3 mb-8">
           <div className="h-5 w-1.5 rounded-full bg-cyan-500 shadow-[0_0_10px_rgba(34,211,238,0.5)]"></div>
@@ -209,20 +212,20 @@ export default async function LogisticsHubPage() {
             </div>
           </Link>
 
-          <div className="relative block overflow-hidden rounded-2xl border border-white/5 bg-slate-950/30 p-6 opacity-60 cursor-not-allowed group">
+          <a href="#secure-delivery-ops" className="group relative block overflow-hidden rounded-2xl border border-emerald-500/20 bg-slate-950/50 p-6 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/40 hover:bg-slate-900 hover:shadow-[0_0_30px_rgba(52,211,153,0.15)]">
             <div className="absolute right-0 bottom-0 opacity-5 transform translate-x-4 translate-y-4">
               <Activity className="h-32 w-32" />
             </div>
             <div className="relative z-10">
-              <h3 className="text-xl font-bold text-emerald-500/80 mb-3 flex items-center gap-3">
+              <h3 className="text-xl font-bold text-emerald-400 mb-3 flex items-center gap-3">
                 Scan & Assign
                 <span className="text-[9px] uppercase tracking-widest bg-emerald-500/20 text-emerald-300 px-2.5 py-1 rounded-full font-bold border border-emerald-500/30">App</span>
               </h3>
-              <p className="text-sm text-slate-500 leading-relaxed">
-                Open the mobile Warehouse App to scan physical tags and cryptographicly bind them to shipments.
+              <p className="text-sm text-slate-400 leading-relaxed group-hover:text-slate-300">
+                Create shipments, apply physical seal UIDs, record courier handoff and verify recipient delivery.
               </p>
             </div>
-          </div>
+          </a>
         </div>
       </div>
     </main>

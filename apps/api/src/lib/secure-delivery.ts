@@ -1,21 +1,41 @@
+import { randomUUID } from "crypto";
 import { sql } from "./db";
+import {
+  classifyTamperState,
+  nextSealStatusForScan,
+  type SealStatus,
+  type SecureDeliveryScanContext,
+} from "./secure-delivery-policy";
 
-export type SealStatus =
-  | "UNASSIGNED"
-  | "ASSIGNED"
-  | "SEALED"
-  | "IN_TRANSIT"
-  | "DELIVERED_CLOSED"
-  | "DELIVERED_OPENED"
-  | "QUARANTINED"
-  | "VOIDED";
+export { classifyTamperState, nextSealStatusForScan };
+export type { SealStatus, SecureDeliveryScanContext, TamperState } from "./secure-delivery-policy";
+
+type CreatedShipment = {
+  id: string;
+  tenantId: string;
+  shipmentCode: string;
+  status: string;
+  trackingNumber: string | null;
+};
+
+function buildShipmentCode() {
+  const day = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  return `SDL-${day}-${randomUUID().slice(0, 8).toUpperCase()}`;
+}
+
+function positiveQuantity(value: unknown) {
+  const parsed = Math.trunc(Number(value || 0));
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
 
 export async function createShipment(params: {
   tenantId: string;
+  shipmentCode?: string;
   carrierCode?: string;
   trackingNumber?: string;
   originAddress?: string;
   destinationAddress?: string;
+  items?: Array<{ productName?: string; product_name?: string; quantity?: number }>;
 }) {
   let carrierId: string | null = null;
   if (params.carrierCode) {
@@ -29,7 +49,7 @@ export async function createShipment(params: {
     }
   }
 
-  const shipmentCode = `SHP-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+  const shipmentCode = String(params.shipmentCode || "").trim() || buildShipmentCode();
 
   const res = await sql/*sql*/`
     INSERT INTO shipments (
@@ -37,9 +57,25 @@ export async function createShipment(params: {
     ) VALUES (
       ${params.tenantId}, ${shipmentCode}, ${carrierId}, ${params.trackingNumber || null}, 'draft',
       ${params.originAddress || null}, ${params.destinationAddress || null}
-    ) RETURNING id, shipment_code as "shipmentCode", status
+    ) RETURNING id, tenant_id as "tenantId", shipment_code as "shipmentCode", status, tracking_number as "trackingNumber"
   `;
-  return res[0];
+  const shipment = res[0] as CreatedShipment;
+
+  const items = (params.items || [])
+    .map((item) => ({
+      productName: String(item.productName || item.product_name || "").trim(),
+      quantity: positiveQuantity(item.quantity),
+    }))
+    .filter((item) => item.productName);
+
+  for (const item of items) {
+    await sql/*sql*/`
+      INSERT INTO shipment_items (shipment_id, product_name, quantity)
+      VALUES (${shipment.id}, ${item.productName}, ${item.quantity})
+    `;
+  }
+
+  return { ...shipment, itemCount: items.length };
 }
 
 export async function updateSealState(
@@ -60,6 +96,13 @@ export async function updateSealState(
   if (!seal) throw new Error("Seal not found");
 
   if (shipmentId) {
+    const [shipment] = await sql/*sql*/`
+      SELECT id FROM shipments
+      WHERE id = ${shipmentId} AND tenant_id = ${seal.tenantId}
+      LIMIT 1
+    `;
+    if (!shipment) throw new Error("Shipment not found for tenant");
+
     await sql/*sql*/`
       INSERT INTO package_seals (shipment_id, seal_id, status, applied_at)
       VALUES (${shipmentId}, ${sealId}, ${targetStatus}, now())
@@ -71,6 +114,12 @@ export async function updateSealState(
       INSERT INTO custody_events (tenant_id, shipment_id, seal_id, event_type, location, scanned_by, notes)
       VALUES (${seal.tenantId}, ${shipmentId}, ${sealId}, ${targetStatus}, ${location || null}, ${scannedBy || null}, ${notes || null})
     `;
+
+    await sql/*sql*/`
+      UPDATE shipments
+      SET status = ${targetStatus}, updated_at = now()
+      WHERE id = ${shipmentId} AND tenant_id = ${seal.tenantId}
+    `;
   }
 
   return seal;
@@ -80,9 +129,10 @@ export async function processSealScan(params: {
   uidHex: string;
   tenantId: string;
   ttRaw: string | null;
+  shipmentId?: string;
   location?: string;
   scannedBy?: string;
-  context: "APPLY" | "HANDOFF" | "VERIFY";
+  context: SecureDeliveryScanContext;
 }) {
   const [seal] = await sql/*sql*/`
     SELECT * FROM seal_inventory WHERE uid_hex = ${params.uidHex} AND tenant_id = ${params.tenantId} LIMIT 1
@@ -95,35 +145,25 @@ export async function processSealScan(params: {
     SELECT * FROM package_seals WHERE seal_id = ${seal.id} ORDER BY created_at DESC LIMIT 1
   `;
 
-  const shipmentId = packageSeal ? packageSeal.shipment_id : null;
-  
-  const isOpen = params.ttRaw === "4F4F" || params.ttRaw === "4F43" || params.ttRaw === "4949";
-  const isClosed = params.ttRaw === "4343";
-  let targetState = seal.status;
-
-  if (params.context === "APPLY") {
-    if (isOpen) {
-      targetState = "QUARANTINED";
-    } else {
-      targetState = "SEALED";
-    }
-  } else if (params.context === "HANDOFF") {
-    if (isOpen) {
-      targetState = "QUARANTINED";
-    } else {
-      targetState = "IN_TRANSIT";
-    }
-  } else if (params.context === "VERIFY") {
-    if (isOpen) {
-      targetState = "DELIVERED_OPENED";
-    } else {
-      targetState = "DELIVERED_CLOSED";
-    }
+  if (params.context === "APPLY" && !params.shipmentId) {
+    throw new Error("shipmentId is required to apply a seal");
   }
 
-  if (targetState !== seal.status) {
-    await updateSealState(seal.id, targetState, shipmentId, params.location, params.scannedBy, `Transition via scan (${params.context}). ttRaw: ${params.ttRaw || 'N/A'}`);
+  if (params.context !== "APPLY" && !packageSeal && !params.shipmentId) {
+    throw new Error("Seal is not assigned to a shipment");
   }
 
-  return { sealId: seal.id, previousStatus: seal.status, newStatus: targetState, shipmentId };
+  if (params.context === "APPLY" && packageSeal && packageSeal.shipment_id !== params.shipmentId) {
+    throw new Error("Seal is already assigned to another shipment");
+  }
+
+  const shipmentId = params.shipmentId || packageSeal?.shipment_id || null;
+  const tamperState = classifyTamperState(params.ttRaw);
+  const targetState = nextSealStatusForScan(params.context, params.ttRaw);
+
+  if (shipmentId || targetState !== seal.status) {
+    await updateSealState(seal.id, targetState, shipmentId || undefined, params.location, params.scannedBy, `Transition via scan (${params.context}). ttRaw: ${params.ttRaw || 'N/A'}`);
+  }
+
+  return { sealId: seal.id, previousStatus: seal.status, newStatus: targetState, shipmentId, tamperState };
 }

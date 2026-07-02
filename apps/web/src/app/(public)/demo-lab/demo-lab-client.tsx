@@ -467,6 +467,53 @@ function mapsLink(location: { lat: number; lng: number }) {
   return `https://www.google.com/maps?q=${location.lat},${location.lng}`;
 }
 
+function routeScopeLabel(locale: AppLocale, routeKm?: number) {
+  if (locale === "en") {
+    if ((routeKm || 0) > 2500) return "International route";
+    if ((routeKm || 0) > 250) return "Regional route";
+    return "Local route";
+  }
+  if (locale === "pt-BR") {
+    if ((routeKm || 0) > 2500) return "Rota internacional";
+    if ((routeKm || 0) > 250) return "Rota regional";
+    return "Rota local";
+  }
+  if ((routeKm || 0) > 2500) return "Ruta internacional";
+  if ((routeKm || 0) > 250) return "Ruta regional";
+  return "Ruta local";
+}
+
+function routeEvidenceLabel(locale: AppLocale) {
+  if (locale === "en") return "Evidence";
+  if (locale === "pt-BR") return "Evidencia";
+  return "Evidencia";
+}
+
+function routePolicyLabel(locale: AppLocale) {
+  if (locale === "en") return "Policy";
+  if (locale === "pt-BR") return "Politica";
+  return "Politica";
+}
+
+function routeEvidenceValue(locale: AppLocale, scenario?: Pick<DemoScenario, "tone" | "stateLabel">, routeKm?: number) {
+  if (scenario?.tone === "risk") {
+    if (locale === "en") return "Blocked replay";
+    if (locale === "pt-BR") return "Copia bloqueada";
+    return "Copia bloqueada";
+  }
+  if (scenario?.tone === "open") {
+    if (locale === "en") return "Seal event audited";
+    if (locale === "pt-BR") return "Lacre auditado";
+    return "Sello auditado";
+  }
+  if (scenario?.tone === "origin") {
+    if (locale === "en") return "Origin prepared";
+    if (locale === "pt-BR") return "Origem preparada";
+    return "Origen preparado";
+  }
+  return routeScopeLabel(locale, routeKm);
+}
+
 function getRealProductBadge(locale: AppLocale) {
   if (locale === "en") return "Real product";
   if (locale === "pt-BR") return "Produto real";
@@ -511,7 +558,7 @@ function toDemoAtlasPoints(points: DemoMapPoint[], controls: Pick<DemoCopy["cont
 }
 
 function getScenarioState(txt: DemoCopy, beat: Beat, routeKm: number, locale: AppLocale): DemoScenario {
-  const distance = `${routeKm.toLocaleString(locale)} km`;
+  const routeEvidence = routeEvidenceValue(locale, undefined, routeKm);
   if (beat === 0) {
     return {
       tone: "origin",
@@ -554,7 +601,7 @@ function getScenarioState(txt: DemoCopy, beat: Beat, routeKm: number, locale: Ap
   return {
     tone: "ok",
     headline: "Toque válido con ruta de confianza",
-    body: `Origen y toque quedan unidos en ${distance}. El consumidor ve el resultado de confianza y la marca recibe datos accionables.`,
+    body: `Origen y toque quedan unidos por evidencia viva: ${routeEvidence}. El consumidor ve el resultado de confianza y la marca recibe datos accionables.`,
     stateLabel: "AUTENTICADO",
     allowed: ["Unirse al club", "Guardar pasaporte", "Solicitud Polygon", "Voucher o recompra"],
     blocked: ["Transferir dueño sin ingreso/reclamo"],
@@ -746,9 +793,9 @@ export function DemoLabClient({ locale, initialVertical, initialScenario }: { lo
     toLng: destination.lng,
     label: `${LOCATIONS.origin.city} -> ${destination.city}`,
     tone: activeBeat.mode === "replay" ? "warn" : "info",
-    distanceLabel: `${routeKm.toLocaleString(locale)} km`,
+    distanceLabel: routeEvidenceValue(locale, scenario, routeKm),
     evidence: scenario.stateLabel,
-  }], [activeBeat.mode, destination.city, destination.lat, destination.lng, locale, routeKm, scenario.stateLabel]);
+  }], [activeBeat.mode, destination.city, destination.lat, destination.lng, locale, routeKm, scenario.stateLabel, scenario.tone]);
 
   async function refreshSummary() {
     try {
@@ -1436,7 +1483,7 @@ function DemoLiveOpsMap({
         toLng: p.lng,
         tone: p.risk ? ("warn" as const) : ("info" as const),
         label: `Ruta ${originPoint.city} → ${p.city}`,
-        distanceLabel: `${routeKm.toLocaleString(locale)} km`,
+        distanceLabel: routeScopeLabel(locale, routeKm),
         evidence: p.status || formatDemoTapTime(p.lastSeen, locale),
       }))
     : [];
@@ -1451,7 +1498,7 @@ function DemoLiveOpsMap({
         <HeroTrustAtlasSvg points={atlasPoints} routes={atlasRoutes} selectedPointId="tap" />
         <div className="demo-lab-mini-map__legend z-10 pointer-events-none">
           <span>{LOCATIONS.origin.city}</span>
-          <strong>{routeKm.toLocaleString(locale)} km</strong>
+          <strong>{routeScopeLabel(locale, routeKm)}</strong>
           <span>{destination.city}</span>
         </div>
       </div>
@@ -1523,7 +1570,7 @@ function DemoFirstRunGuide({
 }
 
 function DemoStageExplainer({ beat, scenario, routeKm, locale }: { beat: Beat; scenario: DemoScenario; routeKm: number; locale: AppLocale }) {
-  const distance = `${routeKm.toLocaleString(locale)} km`;
+  const evidence = routeEvidenceValue(locale, scenario, routeKm);
   const copyByBeat: Record<Beat, { title: string; body: string; backend: string; next: string }> = {
     0: {
       title: "Etiqueta NFC cerrada",
@@ -1533,7 +1580,7 @@ function DemoStageExplainer({ beat, scenario, routeKm, locale }: { beat: Beat; s
     },
     1: {
       title: "Toque físico fresco",
-      body: `El cliente ve el resultado de confianza y la ruta al origen en ${distance}.`,
+      body: `El cliente ve el resultado de confianza y la ruta al origen con ${evidence}.`,
       backend: "Servidor: evento válido, anti copia OK, acciones comerciales habilitables según política.",
       next: "Siguiente: abrir celular, preparar tokenización o simular apertura.",
     },
@@ -2121,7 +2168,7 @@ function DemoProofCard({
       <div className="demo-lab-proof-grid">
         <InfoCell label="Origen" value={LOCATIONS.origin.city} />
         <InfoCell label="Toque" value={destination.city} />
-        <InfoCell label="Ruta" value={`${routeKm.toLocaleString(locale)} km`} />
+        <InfoCell label={routeEvidenceLabel(locale)} value={routeEvidenceValue(locale, scenario, routeKm)} />
         <InfoCell label="Token" value={txStatus} />
         <InfoCell label="Dueño" value={owner} />
         <InfoCell label="UID" value="04B7****E2B5" />
@@ -2899,7 +2946,7 @@ function MobileOutcome({
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <InfoCell label={txt.controls.origin} value={LOCATIONS.origin.city} />
         <InfoCell label={txt.controls.currentTap} value={destination.city} />
-        <InfoCell label={txt.controls.distance} value={`${routeKm.toLocaleString(locale)} km`} />
+        <InfoCell label={routeEvidenceLabel(locale)} value={routeEvidenceValue(locale, scenario, routeKm)} />
       </div>
 
       <div className="mt-5 rounded-2xl border border-white/10 bg-slate-950/45 p-4">
@@ -3084,7 +3131,7 @@ function DemoProductModalContent({
           <InfoCell label="Vertical" value={verticalCopy.label} />
           <InfoCell label="Perfil" value={verticalCopy.profile} />
           <InfoCell label="Estado" value={state} />
-          <InfoCell label="Ruta" value={`${routeKm.toLocaleString(locale)} km`} />
+          <InfoCell label={routeEvidenceLabel(locale)} value={routeEvidenceValue(locale, scenario, routeKm)} />
           <InfoCell label="Origen" value={LOCATIONS.origin.city} />
           <InfoCell label="Tap" value={destination.city} />
         </div>
@@ -3243,7 +3290,7 @@ function StageRouteLayer({
     ? {
       eyebrow: "Live route",
       title: "Origin to tap verified",
-      distance: "Distance",
+      distance: "Evidence",
       origin: "Origin",
       tap: "Current tap",
       chain: "Proof chain",
@@ -3257,7 +3304,7 @@ function StageRouteLayer({
     ? {
       eyebrow: "Rota viva",
       title: "Origem e toque verificados",
-      distance: "Distancia",
+      distance: "Evidencia",
       origin: "Origem",
       tap: "Toque atual",
       chain: "Cadeia de prova",
@@ -3270,7 +3317,7 @@ function StageRouteLayer({
     : {
       eyebrow: "Ruta viva",
       title: "Origen y toque verificados",
-      distance: "Distancia",
+      distance: "Evidencia",
       origin: "Origen",
       tap: "Toque actual",
       chain: "Cadena de prueba",
@@ -3337,7 +3384,7 @@ function StageRouteLayer({
       <div className="demo-lab-route-summary">
         <span>
           <small>{routeCopy.distance}</small>
-          <strong>{routeKm.toLocaleString(locale)} km</strong>
+          <strong>{routeEvidenceValue(locale, scenario, routeKm)}</strong>
         </span>
         <span>
           <small>{routeCopy.tap}</small>
@@ -3421,7 +3468,7 @@ function DemoActionMatrix({
       </div>
 
       <div className="mt-4 grid gap-2 sm:grid-cols-3">
-        <InfoCell label={txt.controls.distance} value={`${routeKm.toLocaleString(locale)} km`} />
+        <InfoCell label={routePolicyLabel(locale)} value={routeEvidenceValue(locale, scenario, routeKm)} />
         <InfoCell label="Estado" value={status} />
         <InfoCell label="Marca" value="Bodega Balmec" />
       </div>
