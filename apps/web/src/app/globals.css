@@ -46089,3 +46089,98 @@ html[data-theme="light"] .hero-trust-atlas__label-sub {
   letter-spacing: 0 !important;
   paint-order: stroke fill !important;
 }
+
+/* Demo Lab mobile wizard pass: keep controls useful without pushing the
+   product simulator below the first viewport. */
+@media (max-width: 760px) {
+  .demo-lab-fullscreen-root .demo-lab-wizard-nav {
+    display: grid !important;
+    grid-template-columns: minmax(0, 0.86fr) minmax(8.8rem, 1fr) !important;
+    grid-template-areas:
+      "back actions"
+      "steps steps" !important;
+    align-items: center !important;
+    gap: 0.48rem !important;
+    margin: 0.62rem !important;
+    padding: 0.52rem !important;
+    border-radius: 1.05rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-nav-back {
+    grid-area: back !important;
+    width: 100% !important;
+    min-height: 2.45rem !important;
+    padding-inline: 0.7rem !important;
+    border-radius: 999px !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-actions {
+    grid-area: actions !important;
+    display: grid !important;
+    grid-template-columns: 2.45rem minmax(0, 1fr) !important;
+    gap: 0.42rem !important;
+    width: 100% !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-actions .theme-toggle {
+    width: 2.45rem !important;
+    min-width: 2.45rem !important;
+    min-height: 2.45rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-actions > a {
+    width: 100% !important;
+    min-height: 2.45rem !important;
+    padding-inline: 0.55rem !important;
+    border-radius: 999px !important;
+    font-size: 0.62rem !important;
+    letter-spacing: 0.06em !important;
+    white-space: nowrap !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-steps {
+    grid-area: steps !important;
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 0.38rem !important;
+    overflow: visible !important;
+    width: 100% !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-step-pill {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 2.45rem !important;
+    height: 2.45rem !important;
+    gap: 0.14rem !important;
+    padding: 0.24rem 0.18rem !important;
+    border-radius: 0.8rem !important;
+    font-size: 0.5rem !important;
+    letter-spacing: 0 !important;
+    white-space: nowrap !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-step-num {
+    width: 1.12rem !important;
+    height: 1.12rem !important;
+    font-size: 0.54rem !important;
+  }
+}
+
+@media (max-width: 370px) {
+  .demo-lab-fullscreen-root .demo-lab-wizard-nav {
+    grid-template-columns: 1fr !important;
+    grid-template-areas:
+      "back"
+      "steps"
+      "actions" !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-actions {
+    grid-template-columns: 2.4rem minmax(0, 1fr) !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-step-pill {
+    font-size: 0.54rem !important;
+  }
+}
