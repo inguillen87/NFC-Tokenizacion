@@ -138,6 +138,9 @@ function SdkTopNav() {
           <Link href="/audiences">Casos de uso</Link>
           <Link href="/resellers">Partners</Link>
         </nav>
+        <Link href="/?contact=sales#contact-modal" className="sdk-mobile-primary-action" aria-label="Solicitar acceso al SDK nexID">
+          Solicitar acceso <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
         <div className="sdk-nav-actions">
           <span className="sdk-api-status"><i /> API Status</span>
           <Link href="https://app.nexid.lat/login">

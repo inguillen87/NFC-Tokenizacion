@@ -13,6 +13,7 @@ export function ContextualHelpBot({ locale }: { locale: AppLocale }) {
     pathname.startsWith("/web3") ||
     pathname.startsWith("/demo-lab") ||
     pathname.startsWith("/docs") ||
+    pathname.startsWith("/sdk") ||
     pathname.startsWith("/pricing") ||
     pathname.startsWith("/r")
   ) {

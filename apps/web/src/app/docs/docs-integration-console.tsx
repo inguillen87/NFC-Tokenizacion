@@ -186,7 +186,7 @@ export function DocsIntegrationConsole({ locale }: { locale: Locale }) {
   };
 
   return (
-    <section className="grid w-full min-w-0 gap-4 lg:grid-cols-[minmax(210px,0.55fr)_minmax(0,1.45fr)]">
+    <section className="docs-integration-console grid w-full min-w-0 gap-4 lg:grid-cols-[minmax(210px,0.55fr)_minmax(0,1.45fr)]">
       <aside className="sticky top-20 hidden h-fit rounded-3xl border border-cyan-300/15 bg-slate-950/70 p-4 shadow-[0_18px_80px_rgba(8,47,73,0.24)] backdrop-blur-xl lg:block">
         <div className="mb-4 flex items-start gap-3">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-2xl border border-cyan-300/20 bg-cyan-400/10 text-cyan-200">
@@ -218,7 +218,7 @@ export function DocsIntegrationConsole({ locale }: { locale: Locale }) {
         </nav>
       </aside>
 
-      <div className="min-w-0 overflow-hidden rounded-3xl border border-white/10 bg-slate-950/75 shadow-[0_20px_90px_rgba(2,6,23,0.42)]">
+      <div className="docs-integration-console__panel min-w-0 overflow-hidden rounded-3xl border border-white/10 bg-slate-950/75 shadow-[0_20px_90px_rgba(2,6,23,0.42)]">
         <div className="grid gap-0 lg:grid-cols-[0.72fr_1.28fr]">
           <div className="border-b border-white/10 p-5 sm:p-6 lg:border-b-0 lg:border-r">
             <span className="inline-flex items-center gap-2 rounded-full border border-cyan-300/25 bg-cyan-400/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-cyan-100">
@@ -241,8 +241,8 @@ export function DocsIntegrationConsole({ locale }: { locale: Locale }) {
           </div>
 
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-white/[0.03] px-4 py-3">
-              <div className="flex rounded-2xl border border-white/10 bg-slate-950 p-1">
+            <div className="docs-code-toolbar flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-white/[0.03] px-4 py-3">
+              <div className="docs-code-tabs flex rounded-2xl border border-white/10 bg-slate-950 p-1">
                 {(["curl", "node", "python"] as SnippetId[]).map((id) => (
                   <button
                     key={id}
@@ -268,7 +268,7 @@ export function DocsIntegrationConsole({ locale }: { locale: Locale }) {
               </button>
             </div>
 
-            <div className="min-w-0 overflow-x-auto bg-slate-950">
+            <div className="docs-code-pane min-w-0 overflow-x-auto bg-slate-950">
               <pre className="min-w-[680px] p-4 text-[11.5px] leading-6 sm:p-5">
                 <code>
                   {renderedCode.map((line, index) => (
@@ -281,7 +281,7 @@ export function DocsIntegrationConsole({ locale }: { locale: Locale }) {
               </pre>
             </div>
 
-            <div className="flex items-start gap-3 border-t border-white/10 bg-cyan-950/20 px-4 py-3 text-xs leading-5 text-cyan-100">
+            <div className="docs-code-note flex items-start gap-3 border-t border-white/10 bg-cyan-950/20 px-4 py-3 text-xs leading-5 text-cyan-100">
               <Code2 className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
               <p>{copy.note}</p>
             </div>

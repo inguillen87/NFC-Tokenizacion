@@ -575,14 +575,14 @@ export function PremiumVectorMap({
   const isTightRouteView = density === "route" && viewBoxMetrics.width < 260;
   const routeHaloColor = isLightTheme ? "#ffffff" : "#020617";
   const routeHaloOpacity = isLightTheme ? "0.86" : "0.42";
-  const labelPanelFill = isLightTheme ? "rgba(255,255,255,0.9)" : "rgba(2,6,23,0.74)";
-  const labelPanelStrokeOpacity = isLightTheme ? "0.42" : "0.32";
+  const labelPanelFill = isLightTheme ? "rgba(255,255,255,0.84)" : "rgba(2,6,23,0.74)";
+  const labelPanelStrokeOpacity = isLightTheme ? "0.28" : "0.32";
   const labelTextFill = isLightTheme ? "#0f172a" : "#e0f2fe";
-  const labelMutedFill = isLightTheme ? "#334155" : "#94a3b8";
-  const labelHaloColor = isLightTheme ? "rgba(255,255,255,0.92)" : "rgba(2,6,23,0.72)";
+  const labelMutedFill = isLightTheme ? "#475569" : "#94a3b8";
+  const labelHaloColor = isLightTheme ? "rgba(255,255,255,0.72)" : "rgba(2,6,23,0.72)";
   const pointCenterFill = isLightTheme ? "rgba(255,255,255,0.88)" : "rgba(2,6,23,0.7)";
-  const atlasLabelFill = isLightTheme ? "#155e75" : "#bae6fd";
-  const atlasHaloColor = isLightTheme ? "rgba(255,255,255,0.92)" : "rgba(2,6,23,0.7)";
+  const atlasLabelFill = isLightTheme ? "#0f766e" : "#bae6fd";
+  const atlasHaloColor = isLightTheme ? "rgba(255,255,255,0.74)" : "rgba(2,6,23,0.7)";
   const isEnterpriseAtlas = chrome === "enterprise-atlas";
   const isMinimalChrome = chrome === "minimal" || isEnterpriseAtlas;
   useEffect(() => {
@@ -907,13 +907,13 @@ export function PremiumVectorMap({
               x={item.x}
               y={item.y}
               fill={atlasLabelFill}
-              fontSize="15"
-              fontWeight="900"
-              letterSpacing="4"
-              opacity={isLightTheme ? "0.44" : "0.58"}
+              fontSize={isLightTheme ? "13" : "15"}
+              fontWeight={isLightTheme ? "650" : "900"}
+              letterSpacing={isLightTheme ? "1.6" : "4"}
+              opacity={isLightTheme ? "0.48" : "0.58"}
               paintOrder="stroke"
               stroke={atlasHaloColor}
-              strokeWidth="5"
+              strokeWidth={isLightTheme ? "2.2" : "5"}
             >
               {item.label}
             </text>
@@ -931,13 +931,13 @@ export function PremiumVectorMap({
                 y={dot.y}
                 textAnchor="middle"
                 fill={isCity ? labelTextFill : atlasLabelFill}
-                fontSize={isCity ? "13" : "16"}
-                fontWeight={isCity ? "850" : "950"}
-                letterSpacing={isCity ? "1.6" : "4.2"}
-                opacity={isLightTheme ? (isCity ? "0.58" : "0.32") : (isCity ? "0.68" : "0.38")}
+                fontSize={isLightTheme ? (isCity ? "11.5" : "12.5") : (isCity ? "13" : "16")}
+                fontWeight={isLightTheme ? (isCity ? "620" : "640") : (isCity ? "850" : "950")}
+                letterSpacing={isLightTheme ? (isCity ? "0.4" : "1.3") : (isCity ? "1.6" : "4.2")}
+                opacity={isLightTheme ? (isCity ? "0.66" : "0.46") : (isCity ? "0.68" : "0.38")}
                 paintOrder="stroke"
                 stroke={labelHaloColor}
-                strokeWidth={isCity ? "4" : "5"}
+                strokeWidth={isLightTheme ? (isCity ? "1.8" : "2.1") : (isCity ? "4" : "5")}
               >
                 {item.label}
               </text>
@@ -1086,7 +1086,7 @@ export function PremiumVectorMap({
                 {label && !isMinimalChrome ? (
                   <g transform={`translate(${labelX.toFixed(1)} ${labelY.toFixed(1)})`} opacity={index > 6 ? "0.68" : "0.92"}>
                     <rect x="-58" y="-14" width="116" height="27" rx="13.5" fill={labelPanelFill} stroke={color} strokeOpacity={labelPanelStrokeOpacity} />
-                    <text x="0" y="4" textAnchor="middle" fill={labelTextFill} fontSize="12" fontWeight="850" letterSpacing="1.4" paintOrder="stroke" stroke={labelHaloColor} strokeWidth="2">
+                    <text x="0" y="4" textAnchor="middle" fill={labelTextFill} fontSize="12" fontWeight={isLightTheme ? "650" : "850"} letterSpacing={isLightTheme ? "0.2" : "1.4"} paintOrder="stroke" stroke={labelHaloColor} strokeWidth={isLightTheme ? "0.8" : "2"}>
                       {label}
                     </text>
                   </g>
@@ -1206,7 +1206,7 @@ export function PremiumVectorMap({
                 {shouldLabel ? (
                   <g transform={`translate(${dot.x + 16} ${dot.y - 18})`}>
                     <rect x="0" y="-18" width={Math.max(70, Math.min(155, point.label.length * 8 + 24))} height="28" rx="14" fill={labelPanelFill} stroke={color} strokeOpacity={labelPanelStrokeOpacity} />
-                    <text x="12" y="1" fill={labelTextFill} fontSize={selected ? "13" : "12"} fontWeight="850" paintOrder="stroke" stroke={labelHaloColor} strokeWidth="2">
+                    <text x="12" y="1" fill={labelTextFill} fontSize={selected ? "13" : "12"} fontWeight={isLightTheme ? "650" : "850"} paintOrder="stroke" stroke={labelHaloColor} strokeWidth={isLightTheme ? "0.8" : "2"}>
                       {point.label}
                     </text>
                   </g>

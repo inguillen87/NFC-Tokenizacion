@@ -312,7 +312,7 @@ export default async function HomePage() {
         </div>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {/* Card 1: Demo Lab */}
-          <div className="group rounded-2xl border border-white/10 bg-slate-900/40 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-cyan-500/30 hover:bg-slate-900/60">
+          <div className="nexid-quick-hub-card group rounded-2xl border border-white/10 bg-slate-900/40 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-cyan-500/30 hover:bg-slate-900/60">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-300">
               <Zap className="h-5 w-5" />
             </span>
@@ -329,7 +329,7 @@ export default async function HomePage() {
           </div>
 
           {/* Card 2: Docs & APIs */}
-          <div className="group rounded-2xl border border-white/10 bg-slate-900/40 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/30 hover:bg-slate-900/60">
+          <div className="nexid-quick-hub-card group rounded-2xl border border-white/10 bg-slate-900/40 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/30 hover:bg-slate-900/60">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-300">
               <BookOpen className="h-5 w-5" />
             </span>
@@ -346,7 +346,7 @@ export default async function HomePage() {
           </div>
 
           {/* Card 3: Pricing & ROI */}
-          <div className="group rounded-2xl border border-white/10 bg-slate-900/40 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-amber-500/30 hover:bg-slate-900/60">
+          <div className="nexid-quick-hub-card group rounded-2xl border border-white/10 bg-slate-900/40 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-amber-500/30 hover:bg-slate-900/60">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-300">
               <BadgeDollarSign className="h-5 w-5" />
             </span>
@@ -363,7 +363,7 @@ export default async function HomePage() {
           </div>
 
           {/* Card 4: Verify Centre (SUN) */}
-          <div className="group rounded-2xl border border-white/10 bg-slate-900/40 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-blue-500/30 hover:bg-slate-900/60">
+          <div className="nexid-quick-hub-card group rounded-2xl border border-white/10 bg-slate-900/40 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-blue-500/30 hover:bg-slate-900/60">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-300">
               <ShieldCheck className="h-5 w-5" />
             </span>
@@ -380,7 +380,7 @@ export default async function HomePage() {
           </div>
 
           {/* Card 5: Billetera Consumidor */}
-          <div className="group rounded-2xl border border-white/10 bg-slate-900/40 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-purple-500/30 hover:bg-slate-900/60">
+          <div className="nexid-quick-hub-card group rounded-2xl border border-white/10 bg-slate-900/40 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-purple-500/30 hover:bg-slate-900/60">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-purple-500/10 text-purple-300">
               <Smartphone className="h-5 w-5" />
             </span>
@@ -397,7 +397,7 @@ export default async function HomePage() {
           </div>
 
           {/* Card 6: Glosario & Pitch */}
-          <div className="group rounded-2xl border border-white/10 bg-slate-900/40 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-pink-500/30 hover:bg-slate-900/60">
+          <div className="nexid-quick-hub-card group rounded-2xl border border-white/10 bg-slate-900/40 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-pink-500/30 hover:bg-slate-900/60">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-pink-500/10 text-pink-300">
               <Layers3 className="h-5 w-5" />
             </span>
