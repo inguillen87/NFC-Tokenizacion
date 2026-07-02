@@ -125,6 +125,38 @@ type DemoCasesResponse = {
   };
 };
 
+type DecodedProofField = {
+  key: string;
+  label: string;
+  value: string;
+  meaning: string;
+};
+
+type DecodeResponse = {
+  ok: boolean;
+  reason?: string;
+  message?: string;
+  input_format?: "hex_raw_input" | "plain_memo";
+  raw_input_hex?: string;
+  decoded_memo?: string;
+  protocol?: string;
+  fields?: Record<string, string>;
+  field_explanations?: DecodedProofField[];
+  executive_summary?: string;
+  business_meaning?: string;
+  verification_steps?: string[];
+  private_data_not_published?: string[];
+  matching_demo_case?: {
+    id: string;
+    title: string;
+    vertical: string;
+    primary_event_hash: string;
+    anchor_id: string;
+    verify_path: string;
+  } | null;
+  warnings?: string[];
+};
+
 export const metadata: Metadata = {
   title: "Proof Verifier | nexID",
   description: "Verificador publico hash-only para anchors, Merkle roots y evidencia DPP, QA y logistica en nexID.",
@@ -245,10 +277,24 @@ async function loadDemoCases(): Promise<DemoCasesResponse> {
   }
 }
 
+async function decodeProofInput(input: string): Promise<DecodeResponse | null> {
+  if (!input) return null;
+  const params = new URLSearchParams({ input });
+  try {
+    const response = await fetch(`${productUrls.api}/public/proof/decode?${params.toString()}`, { cache: "no-store" });
+    const data = await response.json().catch(() => null) as DecodeResponse | null;
+    if (!data) return { ok: false, reason: `proof_decode_http_${response.status}` };
+    return data;
+  } catch {
+    return { ok: false, reason: "proof_decode_unavailable", message: "Proof Decoder API unavailable." };
+  }
+}
+
 export default async function ProofVerifierPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const params = (await searchParams) || {};
   const eventHash = first(params.event_hash || params.eventHash || params.hash).trim();
   const anchorId = first(params.anchor_id || params.anchorId).trim();
+  const requestedDecoderInput = first(params.decode_input || params.raw_input || params.rawInput || params.memo || params.data).trim();
   const [result, demoCatalog] = await Promise.all([
     verifyProof(eventHash, anchorId),
     loadDemoCases(),
@@ -259,7 +305,9 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
   const activeDemo = result?.demo_case || demoCases.find((demoCase) =>
     demoCase.events.some((event) => event.hash.toLowerCase() === eventHash.toLowerCase()),
   ) || null;
-  const activeReceiptMemoHex = utf8ToHex(activeDemo?.public_receipt?.on_chain_memo);
+  const activeReceiptMemoHex = activeDemo ? utf8ToHex(activeDemo.public_receipt.on_chain_memo) : "";
+  const decoderInput = requestedDecoderInput || activeReceiptMemoHex;
+  const decodedProof = decoderInput ? await decodeProofInput(decoderInput) : null;
 
   return (
     <main className="proof-verify-page min-h-screen text-slate-950">
@@ -800,33 +848,78 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
             </div>
           </div>
 
-          {activeDemo ? (
-            <div className="rounded-[1.5rem] border border-cyan-200 bg-cyan-50/75 p-5 shadow-sm">
+          <div className="rounded-[1.5rem] border border-cyan-200 bg-cyan-50/75 p-5 shadow-sm">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">IOTA explorer</p>
-                  <h2 className="mt-2 text-2xl font-black leading-tight text-slate-950">Donde esta escrito el memo?</h2>
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Proof Decoder</p>
+                  <h2 className="mt-2 text-2xl font-black leading-tight text-slate-950">Traducir Raw input a negocio.</h2>
                   <p className="mt-2 text-sm leading-6 text-slate-700">
-                    En IOTA EVM el memo queda dentro del campo <span className="font-mono font-black">Raw input</span>. El explorer lo muestra como hex; nexID lo decodifica como texto UTF-8 para que cualquiera pueda leerlo.
+                    En IOTA EVM el memo queda dentro del campo <span className="font-mono font-black">Raw input</span>. El explorer lo muestra como hex; nexID lo decodifica como texto UTF-8 y lo explica para gerencia, auditoria o ventas.
                   </p>
                 </div>
                 <FileSearch className="mt-1 h-6 w-6 shrink-0 text-cyan-700" />
               </div>
 
+              <form action="/proof/verify" className="mt-4 grid gap-3 rounded-2xl border border-cyan-200 bg-white/72 p-4">
+                {eventHash ? <input type="hidden" name="event_hash" value={eventHash} /> : null}
+                {anchorId ? <input type="hidden" name="anchor_id" value={anchorId} /> : null}
+                <label className="grid gap-2 text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan-800">
+                  Raw input, memo o data de explorer
+                  <textarea
+                    name="decode_input"
+                    defaultValue={decoderInput}
+                    rows={5}
+                    placeholder="0x6e657849442d70726f6f662d76317c..."
+                    className="min-h-32 resize-y rounded-2xl border border-slate-200 bg-slate-50 p-3 font-mono text-xs font-bold normal-case leading-5 tracking-normal text-slate-900 outline-none transition focus:border-cyan-400 focus:bg-white"
+                  />
+                </label>
+                <button className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-cyan-900">
+                  Decodificar prueba <FileSearch className="h-4 w-4" />
+                </button>
+              </form>
+
+              {decodedProof?.ok ? (
+                <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                  <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-emerald-800">Lectura ejecutiva</p>
+                  <h3 className="mt-2 text-lg font-black leading-tight text-emerald-950">{decodedProof.matching_demo_case?.title || "Recibo publico nexID"}</h3>
+                  <p className="mt-2 text-sm leading-6 text-emerald-900">{decodedProof.executive_summary}</p>
+                  <p className="mt-2 text-sm leading-6 text-emerald-900">{decodedProof.business_meaning}</p>
+                </div>
+              ) : decoderInput ? (
+                <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+                  {decodedProof?.message || "No se pudo decodificar esa entrada. Pegue el Raw input completo del memo tx o un memo nexID-proof-v1."}
+                </div>
+              ) : null}
+
               <div className="mt-4 grid gap-3">
                 <div className="rounded-2xl border border-cyan-200 bg-white/75 p-4">
                   <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan-800">Raw input visible en IOTA Explorer</p>
                   <p className="mt-2 max-h-32 overflow-auto break-all rounded-xl border border-slate-200 bg-slate-50 p-3 font-mono text-[0.72rem] font-bold leading-5 text-slate-900">
-                    {activeReceiptMemoHex}
+                    {decodedProof?.raw_input_hex || activeReceiptMemoHex || "Pegue un Raw input para ver el hex aca."}
                   </p>
                 </div>
 
                 <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
                   <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-emerald-800">Mismo contenido decodificado por nexID</p>
                   <p className="mt-2 break-all font-mono text-[0.72rem] font-bold leading-5 text-emerald-950">
-                    {activeDemo.public_receipt.on_chain_memo}
+                    {decodedProof?.decoded_memo || activeDemo?.public_receipt.on_chain_memo || "El texto legible aparece despues de decodificar."}
                   </p>
                 </div>
+
+                {decodedProof?.ok && decodedProof.field_explanations?.length ? (
+                  <div className="grid gap-2">
+                    {decodedProof.field_explanations.map((field) => (
+                      <div key={field.key} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <strong className="text-sm text-slate-950">{field.label}</strong>
+                          <span className="font-mono text-[0.68rem] font-bold text-cyan-800">{field.key}</span>
+                        </div>
+                        <p className="mt-1 break-all font-mono text-[0.72rem] font-bold text-slate-900">{field.value}</p>
+                        <p className="mt-2 text-sm leading-6 text-slate-600">{field.meaning}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
 
                 <div className="grid gap-2 sm:grid-cols-3">
                   {["1. Abrir TX", "2. Show details", "3. Raw input"].map((step) => (
@@ -836,14 +929,19 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                   ))}
                 </div>
 
-                {activeDemo.public_receipt.explorer_url ? (
+                {decodedProof?.matching_demo_case ? (
+                  <Link href={decodedProof.matching_demo_case.verify_path} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-emerald-900">
+                    Verificar SHA del caso <ArrowRight className="h-4 w-4" />
+                  </Link>
+                ) : null}
+
+                {activeDemo?.public_receipt.explorer_url ? (
                   <a href={activeDemo.public_receipt.explorer_url} className="proof-receipt-action-link text-xs font-black uppercase tracking-[0.12em]" target="_blank" rel="noreferrer">
                     Abrir memo real en IOTA Explorer <ArrowRight className="h-4 w-4" />
                   </a>
                 ) : null}
               </div>
             </div>
-          ) : null}
 
           <div className="rounded-[1.5rem] border border-slate-200 bg-white/82 p-5 shadow-sm">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Lectura ejecutiva</p>
@@ -956,7 +1054,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           </div>
           <div className="flex gap-3">
             <Network className="mt-1 h-5 w-5 shrink-0 text-cyan-800" />
-            <p>La API tambien acepta POST JSON en <span className="font-mono">/public/proof/verify</span>.</p>
+            <p>La API acepta POST JSON en <span className="font-mono">/public/proof/verify</span> y <span className="font-mono">/public/proof/decode</span>.</p>
           </div>
         </section>
 

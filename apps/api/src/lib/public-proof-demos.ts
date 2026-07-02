@@ -360,3 +360,8 @@ export function findPublicProofDemoCaseById(id: string) {
   const normalized = id.trim().toLowerCase();
   return PUBLIC_PROOF_DEMO_CASES.find((demoCase) => demoCase.id === normalized) || null;
 }
+
+export function findPublicProofDemoCaseByMerkleRoot(merkleRoot: string) {
+  const normalized = merkleRoot.trim().toLowerCase();
+  return PUBLIC_PROOF_DEMO_CASES.find((demoCase) => demoCase.merkle_root.toLowerCase() === normalized) || null;
+}
