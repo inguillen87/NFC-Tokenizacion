@@ -41,9 +41,11 @@ ALTER TABLE offline_scan_events ADD COLUMN IF NOT EXISTS bid text NOT NULL DEFAU
 ALTER TABLE offline_scan_events ADD COLUMN IF NOT EXISTS received_at timestamptz NOT NULL DEFAULT now();
 
 ALTER TABLE ledger_providers ADD COLUMN IF NOT EXISTS code text NOT NULL DEFAULT 'legacy';
+ALTER TABLE ledger_providers ADD COLUMN IF NOT EXISTS name text NOT NULL DEFAULT 'Proof provider';
 ALTER TABLE ledger_providers ADD COLUMN IF NOT EXISTS network text NOT NULL DEFAULT 'legacy';
 ALTER TABLE ledger_providers ADD COLUMN IF NOT EXISTS rpc_url_env_name text;
 ALTER TABLE ledger_providers ADD COLUMN IF NOT EXISTS chain_id text;
 ALTER TABLE ledger_providers ADD COLUMN IF NOT EXISTS enabled boolean NOT NULL DEFAULT false;
+ALTER TABLE ledger_providers ADD COLUMN IF NOT EXISTS purpose text NOT NULL DEFAULT 'Proof provider';
 ALTER TABLE ledger_providers ADD COLUMN IF NOT EXISTS metadata_json jsonb NOT NULL DEFAULT '{}'::jsonb;
 ALTER TABLE ledger_providers ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();

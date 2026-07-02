@@ -102,8 +102,11 @@ test("public proof and anchor input stay hash-only", () => {
   assert.match(schemaSource, /ALTER TABLE vault_artifacts ADD COLUMN IF NOT EXISTS resource_type text NOT NULL DEFAULT 'legacy'/);
   assert.match(schemaSource, /ALTER TABLE batch_key_material ADD COLUMN IF NOT EXISTS key_role text NOT NULL DEFAULT 'K_META_BATCH'/);
   assert.match(schemaSource, /ALTER TABLE offline_scan_events ADD COLUMN IF NOT EXISTS received_at timestamptz NOT NULL DEFAULT now\(\)/);
+  assert.match(schemaSource, /ALTER TABLE ledger_providers ADD COLUMN IF NOT EXISTS name text NOT NULL DEFAULT 'Proof provider'/);
+  assert.match(schemaSource, /ALTER TABLE ledger_providers ADD COLUMN IF NOT EXISTS purpose text NOT NULL DEFAULT 'Proof provider'/);
   assert.match(schemaSource, /ALTER TABLE ledger_providers ADD COLUMN IF NOT EXISTS metadata_json jsonb NOT NULL DEFAULT '\{\}'::jsonb/);
-  assert.match(schemaSource, /WHERE NOT EXISTS \(\s*SELECT 1 FROM ledger_providers WHERE code = \$\{provider\.code\} AND network = \$\{provider\.network\}/);
+  assert.match(schemaSource, /INSERT INTO ledger_providers \(code, name, network, rpc_url_env_name, chain_id, enabled, purpose, metadata_json\)/);
+  assert.match(schemaSource, /WHERE NOT EXISTS \(\s*SELECT 1 FROM ledger_providers WHERE code = \$\{provider\.code\}/);
   assert.match(schemaSource, /ALTER TABLE supplier_sub_batches ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT now\(\)/);
   assert.match(schemaSource, /ALTER TABLE supplier_sub_batches ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now\(\)/);
   assert.match(schemaSource, /ALTER TABLE supplier_sub_batches ADD COLUMN IF NOT EXISTS sequence_index integer/);
