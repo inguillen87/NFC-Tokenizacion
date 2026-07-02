@@ -482,7 +482,7 @@ function formatEventResult(value?: string | null) {
   if (normalized.includes("OPEN")) return "ABIERTO";
   if (normalized.includes("ORIGIN") || normalized.includes("PRODUCT")) return "ORIGEN LISTO";
   if (normalized.includes("REVOKED")) return "REVOCADO";
-  if (normalized.includes("INVALID")) return "INVALIDO";
+  if (normalized.includes("INVALID")) return "INVÁLIDO";
   return "EVENTO REGISTRADO";
 }
 
@@ -1278,11 +1278,11 @@ function DemoLabStudioHero({
           <div className="demo-lab-studio-statusbar">
             <span><i /> {beat === 2 ? "Replay bloqueado" : beat === 3 ? "Sello abierto" : "Toque simulado"}</span>
             <span>{activeVertical.profile}</span>
-            <span>Ultima lectura</span>
+            <span>Última lectura</span>
             <strong>{latestEvent?.created_at ? "feed real" : "hace segundos"}</strong>
           </div>
           <div className="demo-lab-studio-actions">
-            <button suppressHydrationWarning type="button" disabled={simulating} onClick={onValid}>Toque valido</button>
+            <button suppressHydrationWarning type="button" disabled={simulating} onClick={onValid}>Toque válido</button>
             <button suppressHydrationWarning type="button" disabled={simulating} onClick={onReplay}>Copia bloqueada</button>
             <button suppressHydrationWarning type="button" disabled={simulating} onClick={onOpen}>Abrir sello</button>
           </div>
@@ -1581,7 +1581,7 @@ function DemoFirstRunGuide({
       </div>
       <div className="demo-lab-guide-actions">
         <button suppressHydrationWarning type="button" onClick={onGuided}>Ver prueba guiada</button>
-        <button suppressHydrationWarning type="button" disabled={simulating} onClick={onValid}>Toque valido</button>
+        <button suppressHydrationWarning type="button" disabled={simulating} onClick={onValid}>Toque válido</button>
         <button suppressHydrationWarning type="button" disabled={simulating} onClick={onOpen}>Abrir sello</button>
         <button suppressHydrationWarning type="button" onClick={onMobile}>Ver celular</button>
       </div>
@@ -1596,7 +1596,7 @@ function DemoStageExplainer({ beat, scenario, routeKm, locale }: { beat: Beat; s
       title: "Etiqueta NFC cerrada",
       body: "El producto nacio con UID y origen, pero todavia no hay prueba fresca del consumidor.",
       backend: "Servidor: lote y UID listos, sin reclamo de dueño ni token de valor habilitado.",
-      next: "Siguiente: simular toque valido.",
+      next: "Siguiente: simular toque válido.",
     },
     1: {
       title: "Toque físico fresco",
@@ -1608,7 +1608,7 @@ function DemoStageExplainer({ beat, scenario, routeKm, locale }: { beat: Beat; s
       title: "Copia bloqueada",
       body: "La prueba muestra por que copiar una URL no alcanza para reclamar beneficios.",
       backend: "Servidor: riesgo registrado; reclamo, club, tienda sensible y token quedan bloqueados.",
-      next: "Siguiente: repetir con un toque valido.",
+      next: "Siguiente: repetir con un toque válido.",
     },
     3: {
       title: "Sello abierto",
@@ -1889,8 +1889,8 @@ function getPremiumSceneMeta(vertical: Vertical, beat: Beat, badge: string, stat
         ? "Reclamar dueño"
         : tone === "ok"
           ? "Compra confiable"
-          : "Acercar telefono";
-  const sun = tone === "risk" ? "SUN bloquea copia" : tone === "origin" ? "SUN listo" : "SUN valido";
+          : "Acercar teléfono";
+  const sun = tone === "risk" ? "SUN bloquea copia" : tone === "origin" ? "SUN listo" : "SUN válido";
   const lifecycle = tone === "open" ? "Beneficios abiertos" : tone === "risk" ? "Beneficios bloqueados" : "Beneficios listos";
 
   const proofBody =
