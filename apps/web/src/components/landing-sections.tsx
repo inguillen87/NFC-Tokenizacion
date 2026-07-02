@@ -245,8 +245,8 @@ export function EnterpriseTrustLayersSection({ locale }: { locale: string }) {
         { title: "NFC 424 DNA", body: "Cryptographic freshness, anti-copy checks and server-side verification.", meta: "Authenticity layer", icon: Fingerprint },
         { title: "Offline Verifier", body: "Controlled app or reader for rural and industrial checks with scoped device keys and later sync.", meta: "Field layer", icon: Cpu },
         { title: "TagTamper", body: "Physical opening evidence for bottles, seals, pharma and premium packaging.", meta: "Tamper layer", icon: ShieldCheck },
-        { title: "Polygon", body: "Ownership, claims, certificates, warranty transfer and premium tokenization.", meta: "Ownership layer", icon: BadgeCheck },
-        { title: "IOTA", body: "Optional audit trail for DPP lifecycle, logistics evidence and Merkle-root proofs.", meta: "Proof layer", icon: Network },
+        { title: "Polygon", body: "Digital certificates, warranty claims, and premium tokenized ownership.", meta: "Ownership layer", icon: BadgeCheck },
+        { title: "IOTA", body: "Optional immutable public ledger for logistics, audit, and historical traceability.", meta: "Proof layer", icon: Network },
         { title: "UHF / IoT", body: "Pallets, logistics, sensors and industrial traceability without forcing consumer UX.", meta: "Industrial layer", icon: RadioTower },
       ],
     }
@@ -266,8 +266,8 @@ export function EnterpriseTrustLayersSection({ locale }: { locale: string }) {
         { title: "NFC 424 DNA", body: "Frescor criptografico, anti-copia e verificacao server-side.", meta: "Autenticidade", icon: Fingerprint },
         { title: "Offline Verifier", body: "App ou leitor controlado para zonas rurais e industriais com chaves por device e sync posterior.", meta: "Campo", icon: Cpu },
         { title: "TagTamper", body: "Evidencia fisica de abertura para garrafas, lacres, pharma e embalagens premium.", meta: "Tamper", icon: ShieldCheck },
-        { title: "Polygon", body: "Ownership, claims, certificados, garantia transferivel e tokenizacao premium.", meta: "Ownership", icon: BadgeCheck },
-        { title: "IOTA", body: "Audit trail opcional para DPP, logistica e provas por Merkle root.", meta: "Proof", icon: Network },
+        { title: "Polygon", body: "Certificados de propriedade, garantias, e beneficios digitais premium.", meta: "Propriedade", icon: BadgeCheck },
+        { title: "IOTA", body: "Registro publico opcional e imutavel para logistica, auditoria e rastreabilidade.", meta: "Auditoria", icon: Network },
         { title: "UHF / IoT", body: "Pallets, logistica, sensores e rastreabilidade industrial sem complicar o consumidor.", meta: "Industrial", icon: RadioTower },
       ],
     }
@@ -286,9 +286,9 @@ export function EnterpriseTrustLayersSection({ locale }: { locale: string }) {
         { title: "NFC 424 DNA", body: "Frescura criptografica, anti-copia y verificacion server-side.", meta: "Autenticidad", icon: Fingerprint },
         { title: "Offline Verifier", body: "App o lector controlado para campo e industria con claves por dispositivo y sincronizacion posterior.", meta: "Campo", icon: Cpu },
         { title: "TagTamper", body: "Evidencia fisica de apertura para botellas, sellos, pharma y packaging premium.", meta: "Tamper", icon: ShieldCheck },
-        { title: "Polygon", body: "Ownership, claims, certificados, garantia transferible y tokenizacion premium.", meta: "Ownership", icon: BadgeCheck },
-        { title: "IOTA", body: "Audit trail opcional para DPP, logistica y pruebas por Merkle root.", meta: "Proof", icon: Network },
-        { title: "UHF / IoT", body: "Pallets, logistica, sensores y trazabilidad industrial sin complicar al consumidor.", meta: "Industrial", icon: RadioTower },
+        { title: "Polygon", body: "Certificados de propiedad, reclamo de seguros, garantías y beneficios digitales.", meta: "Propiedad", icon: BadgeCheck },
+        { title: "IOTA", body: "Registro público opcional e inmutable para logística, auditoría y trazabilidad histórica.", meta: "Auditoría", icon: Network },
+        { title: "UHF / IoT", body: "Pallets, logística, sensores y trazabilidad industrial sin complicar al consumidor.", meta: "Industrial", icon: RadioTower },
       ],
     };
 
@@ -363,7 +363,7 @@ export function OfflineFieldOperationsSection({ locale }: { locale: string }) {
     ? {
       eyebrow: "Offline and low-connectivity operations",
       title: "Field verification for farms, wine cellars, plants, mines and warehouses without signal.",
-      body: "nexID now models enrolled verifier devices, scoped low-connectivity bundles and hashed sync events. The local result is operational, not a final ownership or warranty verdict until backend sync.",
+      body: "nexID allows authorized phones and scanners to work in areas without internet. The app securely saves the scan and issues a provisional pass. Upon regaining signal, the system syncs the data and issues the official authenticity verdict.",
       docs: "Read offline architecture",
       demo: "Open offline DemoLab",
       phoneLabel: "Samsung field verifier",
@@ -387,7 +387,7 @@ export function OfflineFieldOperationsSection({ locale }: { locale: string }) {
     ? {
       eyebrow: "Operacao offline e baixa conectividade",
       title: "Verificacao de campo para fazendas, cavas, plantas, minas e armazens sem sinal.",
-      body: "nexID agora modela dispositivos verificadores enrolados, bundles de baixa conectividade e eventos com evidencias hasheadas. O resultado local e operacional, nao verdict final de ownership ou garantia ate sync no backend.",
+      body: "nexID permite que celulares e leitores autorizados funcionem em areas sem internet. O app guarda a leitura com seguranca e emite um passe provisorio. Ao recuperar o sinal, o sistema sincroniza os dados e emite o veredicto oficial.",
       docs: "Ler arquitetura offline",
       demo: "Abrir DemoLab offline",
       phoneLabel: "Samsung field verifier",
@@ -408,9 +408,9 @@ export function OfflineFieldOperationsSection({ locale }: { locale: string }) {
       warning: "Bundles offline nao retornam master keys, KMS nem chaves cruas de batch.",
     }
     : {
-      eyebrow: "Operacion offline y baja conectividad",
-      title: "Verificacion de campo para agro, cavas, plantas, minas y depositos sin senal.",
-      body: "nexID ahora modela dispositivos verificadores enrolados, bundles de baja conectividad y eventos sincronizados con evidencia hasheada. El resultado local es operativo, no un veredicto final de ownership o garantia hasta sincronizar con backend.",
+      eyebrow: "Operación offline y baja conectividad",
+      title: "Verificación de campo para agro, cavas, plantas, minas y depósitos sin señal.",
+      body: "nexID permite que celulares y escáneres autorizados funcionen en zonas sin internet. La app guarda la lectura de forma segura y da un pase provisional en el momento. Al recuperar señal, el sistema sincroniza los datos y emite el veredicto oficial.",
       docs: "Leer arquitectura offline",
       demo: "Abrir DemoLab offline",
       phoneLabel: "Samsung field verifier",
@@ -469,7 +469,7 @@ export function OfflineFieldOperationsSection({ locale }: { locale: string }) {
             <Link href="/docs#offline-verifier-architecture" className="inline-flex h-12 items-center justify-center rounded-xl bg-cyan-500 px-6 text-sm font-bold text-slate-950 transition-transform hover:scale-105 hover:bg-cyan-400">
               {copy.docs}
             </Link>
-            <Link href="/demo-lab?scenario=offline-verifier" className="inline-flex h-12 items-center justify-center rounded-xl border border-white/10 bg-white/5 px-6 text-sm font-bold text-white transition-colors hover:bg-white/10">
+            <Link href="/demo-lab?scenario=offline-verifier" className="inline-flex h-12 items-center justify-center rounded-xl border border-slate-300 dark:border-white/10 bg-white dark:bg-white/5 px-6 text-sm font-bold text-slate-900 dark:text-white transition-colors hover:bg-slate-50 dark:hover:bg-white/10">
               {copy.demo}
             </Link>
           </div>
@@ -484,10 +484,10 @@ export function OfflineFieldOperationsSection({ locale }: { locale: string }) {
         <div className="relative mx-auto w-full max-w-[320px] lg:max-w-full perspective-[1000px]">
           <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500/20 to-purple-500/20 blur-3xl opacity-50 rounded-full" />
           
-          <div className="relative rounded-[2.5rem] border-[6px] border-slate-800 bg-slate-950 shadow-2xl overflow-hidden transform-gpu rotate-y-[-5deg] rotate-x-[2deg] hover:rotate-y-0 hover:rotate-x-0 transition-transform duration-700">
+          <div className="relative rounded-[2.5rem] border-[8px] border-slate-200 dark:border-slate-800 bg-slate-200 dark:bg-slate-950 shadow-2xl overflow-hidden transform-gpu rotate-y-[-5deg] rotate-x-[2deg] hover:rotate-y-0 hover:rotate-x-0 transition-transform duration-700 ring-1 ring-slate-300 dark:ring-white/10">
             {/* Notch */}
             <div className="absolute top-0 inset-x-0 h-6 flex justify-center z-20">
-              <div className="w-24 h-full bg-slate-800 rounded-b-xl" />
+              <div className="w-24 h-full bg-slate-200 dark:bg-slate-800 rounded-b-xl" />
             </div>
 
             {/* Screen Content */}

@@ -2791,9 +2791,7 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
   return (
     <div>
       <div className="hero-scene hero-scene--product-proof rounded-2xl border border-white/10 p-4 md:p-5">
-        <div className="hero-scene-topline flex flex-wrap items-center justify-between gap-3">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-cyan-300">{txt.selectorTitle}</p>
-        </div>
+        {/* Removed selectorTitle as per user request to clean UI */}
         <div className="mt-3 flex flex-wrap gap-2">
           {platformVerticals.map((item) => (
             <button
