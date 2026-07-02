@@ -31034,7 +31034,7 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
 /* Enterprise hero viewport fit + click target hardening.
    The first viewport must show the real atlas/product/phone demo, not only copy. */
 .landing-hero-section .hero-demo-shell {
-  margin-top: clamp(1.25rem, 2vw, 1.75rem) !important;
+  margin-top: clamp(3rem, 4vw, 5rem) !important;
 }
 
 .landing-hero-section .hero-demo-shell > .mb-3 {
@@ -37443,7 +37443,7 @@ html.theme-light .hero-trust-atlas__city-label,
 html.theme-light .hero-trust-atlas__city-country,
 html[data-theme="light"] .hero-trust-atlas__city-label,
 html[data-theme="light"] .hero-trust-atlas__city-country {
-  stroke: rgba(255, 255, 255, 0.96);
+  stroke: none;
 }
 
 html.theme-light .hero-trust-atlas__city-label,

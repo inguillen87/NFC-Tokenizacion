@@ -395,10 +395,10 @@ export function OfflineFieldOperationsSection({ locale }: { locale: string }) {
       phoneSub: "Provisorio ate sync backend",
       phoneWarning: "Replay, politica, garantia, ownership e proof checks finais acontecem apos sync.",
       stages: [
-        { label: "Enroll", body: "Operador de seguranca registra fingerprint do device e operador.", icon: Smartphone },
-        { label: "Bundle", body: "Backend emite BIDs permitidos, politica e fingerprints de chaves.", icon: KeyRound },
-        { label: "Scan", body: "App ou leitor guarda evidencia hasheada em zonas sem sinal.", icon: CloudOff },
-        { label: "Sync", body: "nexID faz replay, politica, garantia e proof checks finais.", icon: RotateCcw },
+        { label: "Enroll", body: "O administrador vincula o celular do operador com seguranca.", icon: Smartphone },
+        { label: "Bundle", body: "O sistema envia permissoes e dados dos produtos para o celular.", icon: KeyRound },
+        { label: "Scan", body: "O app valida os produtos no campo mesmo sem internet.", icon: CloudOff },
+        { label: "Sync", body: "Ao conectar na internet, o celular atualiza o sistema central.", icon: RotateCcw },
       ],
       atlas: [
         ["Campo", "Lotes agro, depositos rurais e insumos"],
@@ -418,10 +418,10 @@ export function OfflineFieldOperationsSection({ locale }: { locale: string }) {
       phoneSub: "Provisorio hasta sync backend",
       phoneWarning: "Replay, politica, garantia, ownership y proof checks finales ocurren despues del sync.",
       stages: [
-        { label: "Enroll", body: "Security operator registra fingerprint del dispositivo y operador.", icon: Smartphone },
-        { label: "Bundle", body: "Backend emite BIDs permitidos, politica y fingerprints de llaves.", icon: KeyRound },
-        { label: "Scan", body: "La app o lector guarda evidencia hasheada en zonas sin senal.", icon: CloudOff },
-        { label: "Sync", body: "nexID hace replay, politica, garantia y proof checks finales.", icon: RotateCcw },
+        { label: "Vincular", body: "El administrador vincula de forma segura el celular del operador.", icon: Smartphone },
+        { label: "Permisos", body: "Se envian los permisos y datos de los productos al celular.", icon: KeyRound },
+        { label: "Campo", body: "La app valida los productos en el campo aunque no haya internet.", icon: CloudOff },
+        { label: "Sincronizar", body: "Al conectarse a internet, el celular actualiza el sistema central.", icon: RotateCcw },
       ],
       atlas: [
         ["Campo", "Lotes agro, depositos rurales e insumos"],
@@ -1494,9 +1494,9 @@ export function CarrierProfileMatrixSection({ locale }: { locale: string }) {
       name: "IOTA proof layer",
       price: isEn ? "Proof add-on" : isBr ? "Add-on de prova" : "Add-on de prueba",
       level: "Audit",
-      promise: isEn ? "Hashes, Merkle roots, DPP lifecycle and logistics evidence." : isBr ? "Hashes, Merkle roots, ciclo DPP e evidencia logistica." : "Hashes, Merkle roots, ciclo DPP y evidencia logistica.",
-      best: isEn ? "DPP, regulated exports, audit and supply-chain evidence." : isBr ? "DPP, exportacao regulada, auditoria e supply chain." : "DPP, exportacion regulada, auditoria y supply chain.",
-      risk: isEn ? "Optional proof layer; no private data or every tap on-chain." : isBr ? "Camada opcional; sem dados privados nem todo toque on-chain." : "Capa opcional; sin datos privados ni cada tap on-chain.",
+      promise: isEn ? "Immutable audit log for logistics and product history." : isBr ? "Historico inalteravel para logistica e ciclo de vida do produto." : "Historial inalterable para logistica y ciclo de vida del producto.",
+      best: isEn ? "Regulated exports, auditing and transparent supply chain." : isBr ? "Exportacoes regulamentadas, auditoria e cadeia de suprimentos." : "Exportaciones reguladas, auditorias y cadena de suministro transparente.",
+      risk: isEn ? "Optional blockchain layer for public proof. No private data exposed." : isBr ? "Camada blockchain opcional para provas publicas. Sem expor dados privados." : "Capa blockchain opcional para confianza publica. No expone datos privados.",
     },
     {
       name: "UHF / IoT",
