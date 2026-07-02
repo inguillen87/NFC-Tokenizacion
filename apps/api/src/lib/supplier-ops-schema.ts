@@ -330,6 +330,13 @@ export async function ensureSupplierOpsSchema() {
       await sql/*sql*/`ALTER TABLE offline_scan_events ADD COLUMN IF NOT EXISTS tenant_id uuid`;
       await sql/*sql*/`ALTER TABLE offline_scan_events ADD COLUMN IF NOT EXISTS bid text NOT NULL DEFAULT 'legacy'`;
       await sql/*sql*/`ALTER TABLE offline_scan_events ADD COLUMN IF NOT EXISTS received_at timestamptz NOT NULL DEFAULT now()`;
+      await sql/*sql*/`ALTER TABLE ledger_providers ADD COLUMN IF NOT EXISTS code text NOT NULL DEFAULT 'legacy'`;
+      await sql/*sql*/`ALTER TABLE ledger_providers ADD COLUMN IF NOT EXISTS network text NOT NULL DEFAULT 'legacy'`;
+      await sql/*sql*/`ALTER TABLE ledger_providers ADD COLUMN IF NOT EXISTS rpc_url_env_name text`;
+      await sql/*sql*/`ALTER TABLE ledger_providers ADD COLUMN IF NOT EXISTS chain_id text`;
+      await sql/*sql*/`ALTER TABLE ledger_providers ADD COLUMN IF NOT EXISTS enabled boolean NOT NULL DEFAULT false`;
+      await sql/*sql*/`ALTER TABLE ledger_providers ADD COLUMN IF NOT EXISTS metadata_json jsonb NOT NULL DEFAULT '{}'::jsonb`;
+      await sql/*sql*/`ALTER TABLE ledger_providers ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now()`;
 
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_supplier_orders_tenant_created ON supplier_orders(tenant_id, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_supplier_sub_batches_order ON supplier_sub_batches(supplier_order_id, sequence_index)`;
@@ -348,18 +355,31 @@ export async function ensureSupplierOpsSchema() {
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_offline_scan_events_bundle ON offline_scan_events(bundle_id, received_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_offline_scan_events_bid ON offline_scan_events(tenant_id, bid, received_at DESC)`;
 
-      await sql/*sql*/`
-        INSERT INTO ledger_providers (code, network, rpc_url_env_name, chain_id, enabled, metadata_json)
-        VALUES
-          ('none', 'local', null, null, true, '{"purpose":"local proof without external ledger"}'::jsonb),
-          ('polygon', 'amoy', 'POLYGON_RPC_URL', '80002', false, '{"purpose":"ownership certificates and claim proofs"}'::jsonb),
-          ('iota', 'testnet', 'IOTA_EVM_RPC_URL', null, false, '{"purpose":"optional enterprise audit trail; testnet can reset"}'::jsonb)
-        ON CONFLICT (code, network) DO UPDATE SET
-          rpc_url_env_name = EXCLUDED.rpc_url_env_name,
-          chain_id = EXCLUDED.chain_id,
-          metadata_json = ledger_providers.metadata_json || EXCLUDED.metadata_json,
-          updated_at = now()
-      `;
+      const ledgerProviderSeeds = [
+        { code: "none", network: "local", rpcEnv: null, chainId: null, enabled: true, metadata: { purpose: "local proof without external ledger" } },
+        { code: "polygon", network: "amoy", rpcEnv: "POLYGON_RPC_URL", chainId: "80002", enabled: false, metadata: { purpose: "ownership certificates and claim proofs" } },
+        { code: "iota", network: "testnet", rpcEnv: "IOTA_EVM_RPC_URL", chainId: null, enabled: false, metadata: { purpose: "optional enterprise audit trail; testnet can reset" } },
+      ] as const;
+
+      for (const provider of ledgerProviderSeeds) {
+        const metadataJson = JSON.stringify(provider.metadata);
+        await sql/*sql*/`
+          UPDATE ledger_providers
+          SET
+            rpc_url_env_name = ${provider.rpcEnv},
+            chain_id = ${provider.chainId},
+            metadata_json = COALESCE(metadata_json, '{}'::jsonb) || ${metadataJson}::jsonb,
+            updated_at = now()
+          WHERE code = ${provider.code} AND network = ${provider.network}
+        `;
+        await sql/*sql*/`
+          INSERT INTO ledger_providers (code, network, rpc_url_env_name, chain_id, enabled, metadata_json)
+          SELECT ${provider.code}, ${provider.network}, ${provider.rpcEnv}, ${provider.chainId}, ${provider.enabled}, ${metadataJson}::jsonb
+          WHERE NOT EXISTS (
+            SELECT 1 FROM ledger_providers WHERE code = ${provider.code} AND network = ${provider.network}
+          )
+        `;
+      }
     })().catch((error) => {
       resetSupplierOpsSchema();
       throw error;

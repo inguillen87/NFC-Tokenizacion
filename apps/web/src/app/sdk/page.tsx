@@ -137,6 +137,7 @@ function SdkTopNav() {
           <Link href="/stack">Stack</Link>
           <Link href="/audiences">Casos de uso</Link>
           <Link href="/resellers">Partners</Link>
+          <Link href="/proof/verify">Proof Verify</Link>
         </nav>
         <Link href="/?contact=sales#contact-modal" className="sdk-mobile-primary-action" aria-label="Solicitar acceso al SDK nexID">
           Solicitar acceso <ArrowRight className="h-3.5 w-3.5" />
@@ -403,6 +404,9 @@ export default async function SdkPage({ searchParams }: SdkPageProps) {
               </Link>
               <Link href={`/demo-lab?vertical=${activeVertical.demoVertical}`}>
                 <Button variant="secondary"><PlayCircle className="mr-2 h-4 w-4" />Ver demo interactiva</Button>
+              </Link>
+              <Link href="/proof/verify">
+                <Button variant="secondary"><ShieldCheck className="mr-2 h-4 w-4" />Proof Verify</Button>
               </Link>
             </div>
             <div className="sdk-trust-rail">

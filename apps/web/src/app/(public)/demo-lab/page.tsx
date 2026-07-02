@@ -528,6 +528,12 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
                   {panel.doc.label}
                   <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
+                {panelKey === "iota-proof" || panelKey === "dual-proof" ? (
+                  <Link href="/proof/verify" className="demo-lab-context-strip__doc-link inline-flex h-9 items-center gap-2 rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 text-xs font-bold text-cyan-100">
+                    Abrir Proof Verify
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                ) : null}
                 <Link
                   href="/?contact=demo#contact-modal"
                   className="demo-lab-context-strip__demo-btn inline-flex h-9 items-center rounded-full bg-cyan-300 px-4 text-xs font-black uppercase tracking-wider text-slate-950"
@@ -581,6 +587,12 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
           <span className="hidden sm:inline w-px h-4 bg-white/10" />
           {/* Theme toggle — reads localStorage "theme" key on mount */}
           <DemoLabThemeToggle />
+          <Link
+            href="/proof/verify"
+            className="hover:text-slate-300 transition-colors"
+          >
+            Proof Verify
+          </Link>
           <Link
             href="/?contact=demo#contact-modal"
             className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-gradient-to-r from-cyan-500/90 to-teal-500/90 text-slate-950 text-xs font-black tracking-wide hover:brightness-110 transition-all"
