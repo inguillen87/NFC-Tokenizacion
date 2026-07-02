@@ -27,6 +27,11 @@ function demoIotaTxFor(caseId: string) {
     || cleanEnv(process.env.IOTA_DEMO_TX_HASH);
 }
 
+function demoReceiptTxFor(caseId: string) {
+  return cleanEnv(process.env[`PUBLIC_PROOF_RECEIPT_IOTA_TX_HASH_${envKeySuffix(caseId)}`])
+    || cleanEnv(process.env.PUBLIC_PROOF_RECEIPT_IOTA_TX_HASH);
+}
+
 function txExplorerUrl(baseUrl: string, txHash: string) {
   if (!baseUrl || !txHash) return null;
   return `${baseUrl.replace(/\/$/, "")}/tx/${txHash}`;
@@ -41,9 +46,12 @@ async function verifyPublicProof(eventHash: string, anchorId = "") {
 
   const demoCase = findPublicProofDemoCaseByHash(eventHash);
   const demoTxHash = demoCase ? demoIotaTxFor(demoCase.id) : "";
+  const receiptTxHash = demoCase ? demoReceiptTxFor(demoCase.id) : "";
+  const iotaExplorerBaseUrl = cleanEnv(process.env.IOTA_EXPLORER_BASE_URL) || "https://explorer.evm.testnet.iota.cafe";
   const demoExplorerUrl = demoTxHash
-    ? txExplorerUrl(cleanEnv(process.env.IOTA_EXPLORER_BASE_URL) || "https://explorer.evm.testnet.iota.cafe", demoTxHash)
+    ? txExplorerUrl(iotaExplorerBaseUrl, demoTxHash)
     : null;
+  const receiptExplorerUrl = receiptTxHash ? txExplorerUrl(iotaExplorerBaseUrl, receiptTxHash) : null;
   const demoMatches = demoCase && (!anchorId || anchorId.toLowerCase() === demoCase.anchor_id.toLowerCase())
     ? [{
         anchor_id: demoCase.anchor_id,
@@ -110,6 +118,11 @@ async function verifyPublicProof(eventHash: string, anchorId = "") {
         explorer_url: demoExplorerUrl || demoCase.explorer_url,
         status: demoTxHash ? "confirmed" : demoCase.status,
         network: demoTxHash ? "iota-evm-testnet" : demoCase.network,
+        public_receipt: {
+          ...demoCase.public_receipt,
+          tx_hash: receiptTxHash || null,
+          explorer_url: receiptExplorerUrl,
+        },
       }
     : null;
   return json({

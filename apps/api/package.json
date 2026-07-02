@@ -27,6 +27,7 @@
     "testnet:wallets": "node scripts/setup-testnet-wallets.mjs",
     "iota:l1:faucet": "node scripts/setup-iota-l1-faucet.mjs",
     "iota:bridge:evm": "node scripts/bridge-iota-l1-to-evm.mjs",
+    "iota:publish-proof-receipts": "node scripts/publish-public-proof-receipts-iota.mjs",
     "bootstrap:tenant": "node scripts/bootstrap-enterprise-tenant.mjs",
     "test:consumer": "node --test tests/consumer-portal-rules.test.mjs",
     "test:rewards": "node --test tests/reward-public-links-security.test.mjs",

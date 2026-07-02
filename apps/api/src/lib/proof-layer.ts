@@ -73,6 +73,10 @@ export function hashEvidencePayload(input: EvidenceEventInput | Record<string, u
   return `sha256:${createHash("sha256").update(stableJson(input)).digest("hex")}`;
 }
 
+export function hashPublicText(value: string) {
+  return `sha256:${createHash("sha256").update(value, "utf8").digest("hex")}`;
+}
+
 function stripShaPrefix(value: string) {
   return value.replace(/^sha256:/i, "").trim().toLowerCase();
 }

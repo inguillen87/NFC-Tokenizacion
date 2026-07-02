@@ -127,6 +127,10 @@ export function hashEvidencePayload(input) {
   return `sha256:${createHash("sha256").update(stableJson(input)).digest("hex")}`;
 }
 
+export function hashPublicText(value) {
+  return `sha256:${createHash("sha256").update(value, "utf8").digest("hex")}`;
+}
+
 function stripShaPrefix(value) {
   return String(value || "").replace(/^sha256:/i, "").trim().toLowerCase();
 }
@@ -147,6 +151,31 @@ export function buildMerkleRoot(eventHashes) {
   return `sha256:${level[0]}`;
 }
 
+function slug(value) {
+  return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
+const RECEIPTS = {
+  "secure-delivery": {
+    title: "Secure Delivery public proof receipt",
+    vertical: "Logistica premium",
+    business_claim: "Demuestra que un paquete sellado tuvo custodia y entrega verificable sin publicar receptor ni manifiesto.",
+    manager_explanation: "Para operaciones: el cliente ve una prueba externa de integridad; la empresa conserva la ruta completa, permisos y documentos en nexID.",
+  },
+  "pharma-cold-chain": {
+    title: "Pharma Cold Chain public proof receipt",
+    vertical: "Pharma regulado",
+    business_claim: "Demuestra que un lote sensible tuvo liberacion QA, control frio y revision de tamper incluidos en un mismo root.",
+    manager_explanation: "Para calidad/regulatorio: la prueba sirve para auditoria, DPP y reclamos sin publicar pacientes, certificados internos ni rutas privadas.",
+  },
+  "agro-stewardship": {
+    title: "Agro Stewardship public proof receipt",
+    vertical: "Agro quimico",
+    business_claim: "Demuestra origen, canal autorizado, escaneo de campo y politica de reclamo para un insumo agricola.",
+    manager_explanation: "Para canal y compliance: prueba stewardship y trazabilidad de uso responsable sin exponer clientes, lotes comerciales reales ni ubicaciones sensibles.",
+  },
+};
+
 export function buildPublicProofDemoCases() {
   return PUBLIC_PROOF_DEMO_SEEDS.map((seed) => {
     const events = seed.events.map((event) => ({
@@ -159,11 +188,46 @@ export function buildPublicProofDemoCases() {
         payload: event.payload,
       }),
     }));
+    const merkleRoot = buildMerkleRoot(events.map((event) => event.hash));
+    const receipt = RECEIPTS[seed.id];
+    const onChainMemo = [
+      "nexID-proof-v1",
+      `case=${seed.id}`,
+      `vertical=${slug(receipt.vertical)}`,
+      `resource=${seed.resource_type}:${seed.resource_id}`,
+      `events=${events.length}`,
+      `root=${merkleRoot}`,
+      "privacy=hash-only",
+    ].join("|");
     return {
       ...seed,
       events,
       primary_event_hash: events[0]?.hash || "",
-      merkle_root: buildMerkleRoot(events.map((event) => event.hash)),
+      merkle_root: merkleRoot,
+      public_receipt: {
+        title: receipt.title,
+        business_claim: receipt.business_claim,
+        manager_explanation: receipt.manager_explanation,
+        on_chain_memo: onChainMemo,
+        receipt_hash: hashPublicText(onChainMemo),
+        tx_hash: null,
+        explorer_url: null,
+        public_fields: [
+          "case",
+          "vertical",
+          "resource class",
+          "event count",
+          "Merkle root",
+          "privacy policy",
+        ],
+        private_fields: [
+          "UID/NFC secret material",
+          "customer or patient identity",
+          "route manifest",
+          "internal QA documents",
+          "commercial contract data",
+        ],
+      },
     };
   });
 }

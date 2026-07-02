@@ -1,4 +1,4 @@
-import { buildMerkleRoot, hashEvidencePayload } from "./proof-layer";
+import { buildMerkleRoot, hashEvidencePayload, hashPublicText } from "./proof-layer";
 
 export type PublicProofDemoEvent = {
   id: string;
@@ -25,6 +25,17 @@ export type PublicProofDemoCase = {
   anchored_at: string;
   explorer_url: null;
   tx_hash: null;
+  public_receipt: {
+    title: string;
+    business_claim: string;
+    manager_explanation: string;
+    on_chain_memo: string;
+    receipt_hash: string;
+    tx_hash: string | null;
+    explorer_url: string | null;
+    public_fields: string[];
+    private_fields: string[];
+  };
   events: PublicProofDemoEvent[];
   proof_layers: Array<{
     layer: string;
@@ -54,6 +65,10 @@ type DemoSeed = {
   resource_id: string;
   anchored_at: string;
   events: DemoSeedEvent[];
+  receipt: {
+    business_claim: string;
+    manager_explanation: string;
+  };
   proof_layers: PublicProofDemoCase["proof_layers"];
 };
 
@@ -115,6 +130,10 @@ const DEMO_SEEDS: DemoSeed[] = [
         },
       },
     ],
+    receipt: {
+      business_claim: "Demuestra que un paquete sellado tuvo custodia y entrega verificable sin publicar receptor ni manifiesto.",
+      manager_explanation: "Para operaciones: el cliente ve una prueba externa de integridad; la empresa conserva la ruta completa, permisos y documentos en nexID.",
+    },
     proof_layers: [
       { layer: "nexID", purpose: "Fuente privada de eventos, permisos y manifest", status: "activo" },
       { layer: "IOTA", purpose: "Merkle root para auditoria hash-only", status: "testnet-ready" },
@@ -178,6 +197,10 @@ const DEMO_SEEDS: DemoSeed[] = [
         },
       },
     ],
+    receipt: {
+      business_claim: "Demuestra que un lote sensible tuvo liberacion QA, control frio y revision de tamper incluidos en un mismo root.",
+      manager_explanation: "Para calidad/regulatorio: la prueba sirve para auditoria, DPP y reclamos sin publicar pacientes, certificados internos ni rutas privadas.",
+    },
     proof_layers: [
       { layer: "nexID", purpose: "QA, permisos, evidencia offline y dashboard privado", status: "activo" },
       { layer: "IOTA", purpose: "Anchor externo de integridad para auditor o inversor", status: "testnet-ready" },
@@ -238,6 +261,10 @@ const DEMO_SEEDS: DemoSeed[] = [
         },
       },
     ],
+    receipt: {
+      business_claim: "Demuestra origen, canal autorizado, escaneo de campo y politica de reclamo para un insumo agricola.",
+      manager_explanation: "Para canal y compliance: prueba stewardship y trazabilidad de uso responsable sin exponer clientes, lotes comerciales reales ni ubicaciones sensibles.",
+    },
     proof_layers: [
       { layer: "nexID", purpose: "Identidad de producto, reglas de canal y reclamo", status: "activo" },
       { layer: "IOTA", purpose: "Evidencia publica hash-only para hitos de stewardship", status: "testnet-ready" },
@@ -245,6 +272,10 @@ const DEMO_SEEDS: DemoSeed[] = [
     ],
   },
 ];
+
+function slug(value: string) {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
 
 function buildDemoCase(seed: DemoSeed): PublicProofDemoCase {
   const events = seed.events.map((event) => ({
@@ -260,6 +291,16 @@ function buildDemoCase(seed: DemoSeed): PublicProofDemoCase {
       payload: event.payload,
     }),
   }));
+  const merkleRoot = buildMerkleRoot(events.map((event) => event.hash));
+  const onChainMemo = [
+    "nexID-proof-v1",
+    `case=${seed.id}`,
+    `vertical=${slug(seed.vertical)}`,
+    `resource=${seed.resource_type}:${seed.resource_id}`,
+    `events=${events.length}`,
+    `root=${merkleRoot}`,
+    "privacy=hash-only",
+  ].join("|");
   return {
     id: seed.id,
     title: seed.title,
@@ -271,12 +312,36 @@ function buildDemoCase(seed: DemoSeed): PublicProofDemoCase {
     provider: "iota",
     network: "iota-evm-testnet-ready",
     status: "demo_ready",
-    merkle_root: buildMerkleRoot(events.map((event) => event.hash)),
+    merkle_root: merkleRoot,
     resource_type: seed.resource_type,
     resource_id: seed.resource_id,
     anchored_at: seed.anchored_at,
     explorer_url: null,
     tx_hash: null,
+    public_receipt: {
+      title: `${seed.title} public proof receipt`,
+      business_claim: seed.receipt.business_claim,
+      manager_explanation: seed.receipt.manager_explanation,
+      on_chain_memo: onChainMemo,
+      receipt_hash: hashPublicText(onChainMemo),
+      tx_hash: null,
+      explorer_url: null,
+      public_fields: [
+        "case",
+        "vertical",
+        "resource class",
+        "event count",
+        "Merkle root",
+        "privacy policy",
+      ],
+      private_fields: [
+        "UID/NFC secret material",
+        "customer or patient identity",
+        "route manifest",
+        "internal QA documents",
+        "commercial contract data",
+      ],
+    },
     events,
     proof_layers: seed.proof_layers,
   };

@@ -25,6 +25,11 @@ function iotaDemoTxFor(caseId: string) {
     || clean(process.env.IOTA_DEMO_TX_HASH);
 }
 
+function iotaReceiptTxFor(caseId: string) {
+  return clean(process.env[`PUBLIC_PROOF_RECEIPT_IOTA_TX_HASH_${envKeySuffix(caseId)}`])
+    || clean(process.env.PUBLIC_PROOF_RECEIPT_IOTA_TX_HASH);
+}
+
 export async function GET() {
   const polygonExplorerBaseUrl = clean(process.env.POLYGON_EXPLORER_BASE_URL) || "https://amoy.polygonscan.com";
   const polygonContract = clean(process.env.POLYGON_CONTRACT_ADDRESS) || "0x673CAE3D79f825bba9cfb2096184c295A5C9Eb4C";
@@ -34,12 +39,18 @@ export async function GET() {
   const iotaContract = clean(process.env.IOTA_EVM_ANCHOR_CONTRACT);
   const cases = PUBLIC_PROOF_DEMO_CASES.map((demoCase) => {
     const txHash = iotaDemoTxFor(demoCase.id);
+    const receiptTxHash = iotaReceiptTxFor(demoCase.id);
     return {
       ...demoCase,
       tx_hash: txHash || demoCase.tx_hash,
       explorer_url: explorerUrl(iotaExplorerBaseUrl, "tx", txHash) || demoCase.explorer_url,
       status: txHash ? "confirmed" : demoCase.status,
       network: txHash ? "iota-evm-testnet" : demoCase.network,
+      public_receipt: {
+        ...demoCase.public_receipt,
+        tx_hash: receiptTxHash || null,
+        explorer_url: explorerUrl(iotaExplorerBaseUrl, "tx", receiptTxHash),
+      },
     };
   });
   const iotaDemoTx = cases.find((demoCase) => demoCase.tx_hash)?.tx_hash || "";
@@ -64,6 +75,8 @@ export async function GET() {
           {
             tx_hash: demoCase.tx_hash,
             explorer_url: demoCase.explorer_url,
+            receipt_tx_hash: demoCase.public_receipt.tx_hash,
+            receipt_explorer_url: demoCase.public_receipt.explorer_url,
           },
         ])),
       },

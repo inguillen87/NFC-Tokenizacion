@@ -51,6 +51,17 @@ type DemoCase = {
   anchored_at: string;
   explorer_url: string | null;
   tx_hash: string | null;
+  public_receipt: {
+    title: string;
+    business_claim: string;
+    manager_explanation: string;
+    on_chain_memo: string;
+    receipt_hash: string;
+    tx_hash: string | null;
+    explorer_url: string | null;
+    public_fields: string[];
+    private_fields: string[];
+  };
   events: DemoEvent[];
   proof_layers: Array<{
     layer: string;
@@ -95,6 +106,8 @@ type DemoCasesResponse = {
       demo_txs?: Record<string, {
         tx_hash?: string | null;
         explorer_url?: string | null;
+        receipt_tx_hash?: string | null;
+        receipt_explorer_url?: string | null;
       }>;
     };
     polygon?: {
@@ -134,9 +147,14 @@ const proofFlow = [
     body: "Varios hashes se consolidan en un root auditable local o externo, segun politica del tenant.",
   },
   {
-    label: "4. Verificacion",
+    label: "4. Recibo publico",
+    title: "Se publica un memo entendible",
+    body: "IOTA puede guardar un texto publico minimo: caso, recurso, eventos, root y privacy=hash-only.",
+  },
+  {
+    label: "5. Verificacion",
     title: "El tercero comprueba inclusion",
-    body: "Con el hash, un auditor o cliente confirma si esa evidencia esta incluida en el anchor.",
+    body: "Con el hash, un auditor o cliente confirma si esa evidencia esta incluida sin ver el dato privado.",
   },
 ];
 
@@ -437,7 +455,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           </form>
         </div>
 
-        <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {proofFlow.map((item) => (
             <article key={item.label} className="rounded-[1.25rem] border border-slate-200 bg-white/82 p-4 shadow-sm">
               <p className="text-[0.68rem] font-black uppercase tracking-[0.18em] text-cyan-700">{item.label}</p>
@@ -558,6 +576,13 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                     <div className="mt-2">{explorerLink(demoCase.explorer_url, "Abrir tx")}</div>
                   </div>
                 ) : null}
+                {demoCase.public_receipt?.tx_hash ? (
+                  <div className="mt-3 rounded-2xl border border-cyan-200 bg-cyan-50 p-3">
+                    <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan-800">Memo publico en IOTA</p>
+                    <p className="mt-2 text-xs leading-5 text-slate-700">{demoCase.public_receipt.business_claim}</p>
+                    <div className="mt-2">{explorerLink(demoCase.public_receipt.explorer_url, "Abrir memo tx")}</div>
+                  </div>
+                ) : null}
                 <Link
                   href={`/proof/verify?event_hash=${encodeURIComponent(demoCase.primary_event_hash)}&anchor_id=${encodeURIComponent(demoCase.anchor_id)}`}
                   className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-cyan-900"
@@ -636,6 +661,46 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                       <p className="mt-2 break-all font-mono text-[0.72rem] font-bold text-slate-800">{event.hash}</p>
                     </div>
                   ))}
+                </div>
+                <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-emerald-800">Recibo publico on-chain</p>
+                      <h4 className="mt-2 text-lg font-black leading-tight text-emerald-950">{activeDemo.public_receipt.title}</h4>
+                    </div>
+                    {activeDemo.public_receipt.tx_hash ? (
+                      <span className="rounded-full border border-emerald-300 bg-emerald-100 px-3 py-1 text-[0.68rem] font-black uppercase tracking-[0.1em] text-emerald-900">
+                        memo tx real
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-emerald-900">{activeDemo.public_receipt.business_claim}</p>
+                  <p className="mt-2 text-sm leading-6 text-emerald-900">{activeDemo.public_receipt.manager_explanation}</p>
+                  <div className="mt-4 rounded-2xl border border-emerald-200 bg-white/70 p-3">
+                    <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-emerald-800">Texto exacto escrito como data de transaccion</p>
+                    <p className="mt-2 break-all font-mono text-[0.72rem] font-bold leading-5 text-slate-900">{activeDemo.public_receipt.on_chain_memo}</p>
+                  </div>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-2xl border border-emerald-200 bg-white/70 p-3">
+                      <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-emerald-800">Hash del memo</p>
+                      <p className="mt-2 break-all font-mono text-[0.72rem] font-bold text-slate-900">{activeDemo.public_receipt.receipt_hash}</p>
+                    </div>
+                    <div className="rounded-2xl border border-emerald-200 bg-white/70 p-3">
+                      <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-emerald-800">Transaccion memo</p>
+                      <p className="mt-2 break-all font-mono text-[0.72rem] font-bold text-slate-900">{shortHash(activeDemo.public_receipt.tx_hash)}</p>
+                      <div className="mt-2">{explorerLink(activeDemo.public_receipt.explorer_url, "Abrir memo en explorer")}</div>
+                    </div>
+                  </div>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-2xl border border-cyan-200 bg-cyan-50/70 p-3">
+                      <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan-800">Publico</p>
+                      <p className="mt-2 text-sm leading-6 text-slate-700">{activeDemo.public_receipt.public_fields.join(", ")}</p>
+                    </div>
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3">
+                      <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-amber-800">Privado dentro de nexID</p>
+                      <p className="mt-2 text-sm leading-6 text-amber-900">{activeDemo.public_receipt.private_fields.join(", ")}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             ) : null}
