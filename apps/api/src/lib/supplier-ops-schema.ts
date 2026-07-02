@@ -274,6 +274,22 @@ export async function ensureSupplierOpsSchema() {
       await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS resource_type text`;
       await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS resource_id text`;
       await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS event_hashes_json jsonb NOT NULL DEFAULT '[]'::jsonb`;
+      await sql/*sql*/`ALTER TABLE supplier_sub_batches ADD COLUMN IF NOT EXISTS sequence_index integer`;
+      await sql/*sql*/`
+        WITH numbered_sub_batches AS (
+          SELECT
+            id,
+            row_number() OVER (PARTITION BY supplier_order_id ORDER BY created_at ASC, id ASC)::integer AS generated_sequence_index
+          FROM supplier_sub_batches
+          WHERE sequence_index IS NULL
+        )
+        UPDATE supplier_sub_batches ssb
+        SET sequence_index = numbered_sub_batches.generated_sequence_index
+        FROM numbered_sub_batches
+        WHERE ssb.id = numbered_sub_batches.id
+      `;
+      await sql/*sql*/`ALTER TABLE supplier_sub_batches ALTER COLUMN sequence_index SET DEFAULT 1`;
+      await sql/*sql*/`ALTER TABLE supplier_sub_batches ALTER COLUMN sequence_index SET NOT NULL`;
       await sql/*sql*/`ALTER TABLE batch_keys ADD COLUMN IF NOT EXISTS key_version integer NOT NULL DEFAULT 1`;
       await sql/*sql*/`ALTER TABLE batch_keys ADD COLUMN IF NOT EXISTS created_by text`;
       await sql/*sql*/`ALTER TABLE batch_keys ADD COLUMN IF NOT EXISTS exported_by text`;
