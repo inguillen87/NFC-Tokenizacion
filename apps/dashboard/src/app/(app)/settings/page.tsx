@@ -29,7 +29,7 @@ export default async function SettingsPage() {
       href: tenantHref,
       label: "Perfil del tenant",
       eyebrow: "Workspace",
-      body: "Plan, vertical, region, health operativo, quick actions y playbook de expansion.",
+      body: "Plan, vertical, región, health operativo, quick actions y playbook de expansión.",
       tone: "cyan",
     },
     {
@@ -43,7 +43,7 @@ export default async function SettingsPage() {
       href: "/mfa",
       label: "Seguridad de cuenta",
       eyebrow: "Security",
-      body: "Segundo factor, postura de sesion y preparacion para acceso enterprise real.",
+      body: "Segundo factor, postura de sesión y preparación para acceso enterprise real.",
       tone: "amber",
     },
     {
@@ -55,9 +55,9 @@ export default async function SettingsPage() {
     },
     {
       href: `/subscriptions${tenantQuery}`,
-      label: "Plan y facturacion",
+      label: "Plan y facturación",
       eyebrow: "Revenue",
-      body: "Plan contratado, renovacion, upgrade path y alcance comercial del tenant.",
+      body: "Plan contratado, renovación, upgrade path y alcance comercial del tenant.",
       tone: "cyan",
     },
     {
@@ -72,9 +72,9 @@ export default async function SettingsPage() {
   return (
     <main className="space-y-8">
       <SectionHeading
-        eyebrow="Configuracion enterprise"
+        eyebrow="Configuración enterprise"
         title={tenantName}
-        description="Centro de administracion del workspace: identidad del tenant, usuarios, seguridad, integraciones, plan y soporte."
+        description="Centro de administración del workspace: identidad del tenant, usuarios, seguridad, integraciones, plan y soporte."
       />
 
       <div className="grid gap-4 lg:grid-cols-[1.15fr_.85fr]">
@@ -110,12 +110,26 @@ export default async function SettingsPage() {
             Este centro agrupa las mismas decisiones que un comprador enterprise espera encontrar en una consola seria:
             cuenta, miembros, seguridad, integraciones, plan, soporte y salida segura.
           </p>
+          <div className="mt-5 grid gap-2 text-sm">
+            <Link
+              href="/login"
+              className="rounded-xl border border-cyan-300/25 bg-cyan-400/10 px-4 py-3 text-center font-black text-cyan-100 transition hover:border-cyan-200/65 hover:bg-cyan-400/16"
+            >
+              Cambiar cuenta o perfil
+            </Link>
+            <Link
+              href={tenantHref}
+              className="rounded-xl border border-white/10 bg-slate-950/50 px-4 py-3 text-center font-bold text-slate-200 transition hover:border-cyan-300/35 hover:text-cyan-100"
+            >
+              Ver workspace asociado
+            </Link>
+          </div>
           <form method="post" action="/logout" className="mt-5">
             <button
               data-testid="settings-logout"
               className="w-full rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm font-black text-rose-100 transition hover:border-rose-200/70 hover:bg-rose-500/18"
             >
-              Cerrar sesion segura
+              Cerrar sesión segura
             </button>
           </form>
         </Card>

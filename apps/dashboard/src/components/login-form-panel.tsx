@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@product/ui";
+import { ArrowRight, Building2, KeyRound, LockKeyhole, ShieldCheck, UserCheck } from "lucide-react";
 import type { AccessProfile } from "../lib/access-profiles";
 import { ClerkGoogleSuperAdminButton } from "./clerk-google-super-admin-button";
 
@@ -33,7 +34,7 @@ const DEMO_ROLES: Array<{
     key: "super-admin",
     title: "Super Admin",
     label: "Entrar como SuperAdmin",
-    description: "Tenants, CRM, analiticas, seguridad y operaciones globales.",
+    description: "Tenants, CRM, analíticas, seguridad y operaciones globales.",
     tone: "border-emerald-300/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-300/50 hover:bg-emerald-500/15",
   },
   {
@@ -115,19 +116,19 @@ export function LoginFormPanel({
       const diagnosticsNote = formatDiagnostics(data?.diagnostics);
       if (diagnosticsNote) setOpsStatus(diagnosticsNote);
       if (data?.mfaRequired) {
-        setStatus("Ingresa tu codigo MFA de 6 digitos para continuar.");
+        setStatus("Ingresa tu código MFA de 6 dígitos para continuar.");
       } else if (res?.status === 502) {
-        setStatus("Servicio de autenticacion no disponible temporalmente.");
+        setStatus("Servicio de autenticación no disponible temporalmente.");
       } else if (res?.status === 403) {
         setStatus("Acceso denegado por politica y alcance del entorno.");
       } else if (res?.status === 401) {
-        setStatus("Credenciales invalidas.");
+        setStatus("Credenciales inválidas.");
       } else if (res?.status && res.status >= 500) {
         setStatus("Error interno al autenticar.");
       } else if (!res) {
         setStatus("El login tardo demasiado o no hubo respuesta. Reintenta en unos segundos.");
       } else {
-        setStatus(data?.reason || "Credenciales invalidas.");
+        setStatus(data?.reason || "Credenciales inválidas.");
       }
       setPending(false);
       return;
@@ -138,45 +139,109 @@ export function LoginFormPanel({
   const visibleDemoRoles = DEMO_ROLES.filter((demoRole) =>
     demoRole.key === "tenant-admin" ? bodegaDemoAllowed : demoLoginAllowed,
   );
+  const bodegaDemoRole = visibleDemoRoles.find((demoRole) => demoRole.key === "tenant-admin");
+  const secondaryDemoRoles = visibleDemoRoles.filter((demoRole) => demoRole.key !== "tenant-admin");
 
   return (
     <div>
-      {visibleDemoRoles.length > 0 ? (
-      <div className="rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-4 shadow-[0_18px_60px_rgba(8,145,178,0.16)]">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">Demo enterprise autorizada</p>
-            <h2 className="mt-2 text-xl font-semibold text-white">Entrar a Bodega Balmec</h2>
-            <p className="mt-1 text-sm text-slate-300">Sesion controlada por 12h para ventas y presentaciones. SuperAdmin y empleados quedan bajo credenciales reales.</p>
-          </div>
-          <span className="rounded-full border border-emerald-300/30 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-100">
-            habilitado
-          </span>
-        </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          {visibleDemoRoles.map((demoRole) => (
-            <Link
-              key={demoRole.key}
-              href={`/api/session/demo?role=${encodeURIComponent(demoRole.key)}`}
-              title={demoRole.label}
-              className={`rounded-xl border p-3 text-left transition ${demoRole.tone}`}
-            >
-              <p className="text-sm font-semibold">{demoRole.title}</p>
-              <p className="mt-1 text-xs opacity-80">{demoRole.description}</p>
-              <span className="mt-3 inline-flex rounded-full border border-current/20 px-2 py-1 text-[11px] font-semibold">
-                {demoRole.label}
+      <div className="grid gap-3">
+        <div className="rounded-2xl border border-cyan-300/25 bg-[radial-gradient(circle_at_14%_0%,rgba(34,211,238,.18),transparent_34%),linear-gradient(145deg,rgba(8,47,73,.74),rgba(15,23,42,.84))] p-4 shadow-[0_20px_70px_rgba(8,145,178,0.18)]">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex min-w-0 items-start gap-3">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-cyan-200/30 bg-cyan-300/10 text-cyan-100">
+                <Building2 className="h-5 w-5" />
               </span>
-            </Link>
-          ))}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">Demo comercial autorizada</p>
+                <h2 className="mt-1 text-xl font-black text-white">Bodega Balmec</h2>
+                <p className="mt-1 text-sm leading-5 text-slate-300">
+                  Entrada directa para mostrar el tenant completo: CRM, mapa vivo, tags, campañas, proof y marketplace sin tocar Super Admin.
+                </p>
+              </div>
+            </div>
+            <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${bodegaDemoRole ? "border-emerald-300/30 bg-emerald-400/10 text-emerald-100" : "border-amber-300/30 bg-amber-400/10 text-amber-100"}`}>
+              {bodegaDemoRole ? "habilitado 12h" : "requiere env"}
+            </span>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
+            {bodegaDemoRole ? (
+              <Link
+                href="/api/session/demo?role=tenant-admin"
+                title={bodegaDemoRole.label}
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-cyan-200/40 bg-cyan-300 px-4 py-3 text-sm font-black text-slate-950 shadow-[0_18px_50px_rgba(34,211,238,.22)] transition hover:bg-cyan-200"
+              >
+                <span>{bodegaDemoRole.label}</span>
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            ) : (
+              <div className="rounded-xl border border-amber-300/25 bg-amber-400/10 px-3 py-3 text-sm text-amber-100">
+                Demo Bodega Balmec deshabilitada en este entorno.
+              </div>
+            )}
+            <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-bold uppercase tracking-[0.1em] text-cyan-100/80">
+              <span className="rounded-lg border border-white/10 bg-white/5 px-2 py-2">Tenant</span>
+              <span className="rounded-lg border border-white/10 bg-white/5 px-2 py-2">Taps live</span>
+              <span className="rounded-lg border border-white/10 bg-white/5 px-2 py-2">CRM</span>
+            </div>
+          </div>
+          {secondaryDemoRoles.length ? (
+            <div className="mt-3 grid gap-2">
+              {secondaryDemoRoles.map((demoRole) => (
+                <Link
+                  key={demoRole.key}
+                  href={`/api/session/demo?role=${encodeURIComponent(demoRole.key)}`}
+                  title={demoRole.label}
+                  className={`rounded-xl border p-3 text-left transition ${demoRole.tone}`}
+                >
+                  <p className="text-sm font-semibold">{demoRole.title}</p>
+                  <p className="mt-1 text-xs opacity-80">{demoRole.description}</p>
+                </Link>
+              ))}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="grid gap-3 rounded-2xl border border-cyan-300/20 bg-slate-950/60 p-4">
+          <div className="flex items-start gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-cyan-300/20 bg-cyan-400/10 text-cyan-200">
+              <ShieldCheck className="h-5 w-5" />
+            </span>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">Super Admin fundador</p>
+              <p className="mt-1 text-sm leading-5 text-slate-300">
+                Google prueba identidad. nexID emite sesión Super Admin solo si el email está en allowlist server-side.
+              </p>
+            </div>
+          </div>
+          {authNotice ? (
+            <p className="rounded-xl border border-amber-300/30 bg-amber-400/10 px-3 py-2 text-xs font-semibold text-amber-100">
+              {authNotice}
+            </p>
+          ) : null}
+          {clerkEnabled ? (
+            <>
+              <ClerkGoogleSuperAdminButton />
+              <Link
+                href="/sign-in"
+                title="Abrir la pantalla completa de Google/Clerk si el flujo redirect no aparece."
+                className="flex w-full items-center justify-center rounded-xl border border-white/10 bg-slate-950/70 px-4 py-2.5 text-xs font-bold text-slate-200 transition hover:border-cyan-300/35 hover:text-cyan-100"
+              >
+                Abrir login seguro en pantalla completa
+              </Link>
+            </>
+          ) : (
+            <p className="rounded-xl border border-amber-300/30 bg-amber-400/10 px-3 py-2 text-xs leading-5 text-amber-100">
+              Google/Clerk todavía no está activo en este entorno: faltan claves Clerk live o no están asociadas a este deploy.
+            </p>
+          )}
         </div>
       </div>
-      ) : null}
 
       <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Presets de credenciales</p>
-            <p className="mt-1 text-xs text-slate-400">Toca un perfil para entrar con una cuenta operativa autorizada.</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Credenciales enterprise</p>
+            <p className="mt-1 text-xs text-slate-400">Para empleados y tenants reales: email, password y MFA si corresponde.</p>
           </div>
           <span
             className={`rounded-full border px-3 py-1 text-xs font-semibold ${
@@ -196,10 +261,17 @@ export function LoginFormPanel({
               disabled={!profile.available}
               onClick={() => useProfile(profile)}
               title={`Entrar como ${profile.label}`}
-              className="rounded-xl border border-white/10 bg-slate-950/60 p-3 text-left transition hover:border-cyan-300/30 hover:bg-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
+              className="group rounded-xl border border-white/10 bg-slate-950/60 p-3 text-left transition hover:border-cyan-300/30 hover:bg-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <p className="text-sm font-semibold text-white">{profile.label}</p>
-              <p className="mt-1 text-xs text-cyan-200">{profile.email || "Configurar en variables de entorno del server"}</p>
+              <div className="flex items-start gap-3">
+                <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-white/10 bg-white/5 text-cyan-200 group-disabled:text-slate-500">
+                  {profile.role === "super-admin" ? <LockKeyhole className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-white">{profile.label}</span>
+                  <span className="mt-1 block text-xs text-cyan-200">{profile.email || "Configurar en variables de entorno del server"}</span>
+                </span>
+              </div>
               <p className="mt-1 text-xs text-slate-400">{profile.note}</p>
             </button>
           ))}
@@ -212,44 +284,12 @@ export function LoginFormPanel({
         </p>
       ) : null}
 
-      <div className="mt-4 grid gap-3 rounded-2xl border border-cyan-300/20 bg-slate-950/60 p-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">Super Admin fundador</p>
-          <p className="mt-1 text-sm leading-5 text-slate-300">
-            Acceso por Google/Clerk solo para emails allowlisted. La sesion operativa final la emite nexID despues de validar politica.
-          </p>
-        </div>
-        {authNotice ? (
-          <p className="rounded-xl border border-amber-300/30 bg-amber-400/10 px-3 py-2 text-xs font-semibold text-amber-100">
-            {authNotice}
-          </p>
-        ) : null}
-        {clerkEnabled ? (
-          <>
-            <ClerkGoogleSuperAdminButton />
-            <Link
-              href="/sign-in"
-              title="Abrir la pantalla completa de Google/Clerk si el flujo redirect no aparece."
-              className="flex w-full items-center justify-center rounded-xl border border-white/10 bg-slate-950/70 px-4 py-2.5 text-xs font-bold text-slate-200 transition hover:border-cyan-300/35 hover:text-cyan-100"
-            >
-              Abrir login seguro en pantalla completa
-            </Link>
-          </>
-        ) : (
-          <p className="rounded-xl border border-amber-300/30 bg-amber-400/10 px-3 py-2 text-xs leading-5 text-amber-100">
-            Google/Clerk todavia no esta activo en este entorno: faltan claves Clerk live o no estan asociadas a este deploy.
-          </p>
-        )}
-        <div className="flex items-center gap-2 px-2 py-1">
-          <div className="h-px flex-1 bg-white/10" />
-          <span className="text-[10px] text-slate-500 uppercase tracking-wider">o con credenciales locales</span>
-          <div className="h-px flex-1 bg-white/10" />
-        </div>
-      </div>
-
       <div className="mt-4 grid gap-3">
-        <div className="rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-xs text-slate-300">
-          Ingresa con cuenta de <span className="text-cyan-200">dashboard admin</span>. Este login no corresponde al portal de consumidores.
+        <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-slate-950/70 px-3 py-3 text-xs text-slate-300">
+          <KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-cyan-200" />
+          <span>
+            Ingresa con cuenta de <span className="text-cyan-200">dashboard admin</span>. Este login no corresponde al portal de consumidores.
+          </span>
         </div>
         <input suppressHydrationWarning
           className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-none"

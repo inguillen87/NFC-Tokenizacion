@@ -64,6 +64,15 @@ function roleLabel(role: string) {
   return role.replace(/[-_]+/g, " ");
 }
 
+function roleDescription(role: string, mode: "tenant" | "global") {
+  if (role === "super-admin") return "Control global: tenants, seguridad, red comercial y plataforma.";
+  if (role === "tenant-admin") return mode === "tenant"
+    ? "Administra lotes, tags, taps, CRM, marketplace y usuarios del tenant."
+    : "Administra un tenant operativo desde el workspace global.";
+  if (role === "reseller") return "Opera cuentas, pipeline comercial y soporte de partners.";
+  return "Acceso operativo limitado por permisos del workspace.";
+}
+
 function initialsFor(role: string) {
   if (role === "super-admin") return "SA";
   if (role === "tenant-admin") return "TA";
@@ -92,6 +101,7 @@ export function TenantAccountMenu({
   const tenantHref = scopedTenant ? `/tenants/${encodeURIComponent(scopedTenant)}` : "/tenants";
   const accountLabel = label || tenantName;
   const isTenantMode = mode === "tenant";
+  const accountRoleDescription = roleDescription(role, mode);
 
   useEffect(() => {
     if (!open) return;
@@ -127,6 +137,11 @@ export function TenantAccountMenu({
       maxHeight: Math.max(280, window.innerHeight - top - gutter),
     });
   }, []);
+
+  const toggleMenu = useCallback(() => {
+    if (!open) updatePanelPosition();
+    setOpen((value) => !value);
+  }, [open, updatePanelPosition]);
 
   useIsomorphicLayoutEffect(() => {
     if (open) updatePanelPosition();
@@ -193,8 +208,14 @@ export function TenantAccountMenu({
       href: "mailto:soporte@nexid.lat?subject=nexID%20enterprise%20support",
       icon: <LifeBuoy className="h-4 w-4" />,
       label: "Soporte enterprise",
-      meta: "Cuenta, integracion, incidentes o preventa",
+      meta: "Cuenta, integración, incidentes o preventa",
       external: true,
+    },
+    {
+      href: "/login",
+      icon: <UserCog className="h-4 w-4" />,
+      label: "Cambiar cuenta o perfil",
+      meta: "Volver al login enterprise sin tocar el portal consumidor",
     },
   ], [tenantQuery]);
 
@@ -247,11 +268,12 @@ export function TenantAccountMenu({
         onClick={() => setOpen(false)}
       />
       <div
+        id="tenant-account-menu-panel"
         ref={panelRef}
         role="menu"
         data-testid="tenant-account-menu-panel"
         style={panelStyle}
-        className="isolate overflow-hidden rounded-2xl border border-cyan-100/35 bg-slate-950 text-slate-100 shadow-[0_34px_140px_rgba(0,0,0,.88)] ring-1 ring-cyan-200/18"
+        className="tenant-account-panel isolate overflow-hidden rounded-2xl border border-cyan-100/35 bg-slate-950 text-slate-100 shadow-[0_34px_140px_rgba(0,0,0,.88)] ring-1 ring-cyan-200/18"
       >
         <div className="border-b border-white/10 bg-[radial-gradient(circle_at_85%_12%,rgba(34,211,238,.2),transparent_40%),linear-gradient(135deg,#0f172a,#07111f)] p-4">
           <div className="flex items-start gap-3">
@@ -262,6 +284,7 @@ export function TenantAccountMenu({
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Cuenta operativa</p>
               <h2 className="mt-1 truncate text-base font-black text-white">{accountLabel}</h2>
               <p className="truncate text-xs text-slate-400">{email || "Cuenta enterprise"}</p>
+              <p className="mt-2 text-xs leading-5 text-slate-300">{accountRoleDescription}</p>
             </div>
           </div>
           <div className="mt-4 grid grid-cols-3 gap-2 text-[10px] font-bold uppercase tracking-[0.08em]">
@@ -275,6 +298,16 @@ export function TenantAccountMenu({
               {isTenantMode ? "tenant" : "global"}
             </span>
           </div>
+          <button
+            type="button"
+            className="mt-4 flex w-full items-center justify-between gap-3 rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-3 py-3 text-left text-sm font-black text-cyan-50 transition hover:border-cyan-200/70 hover:bg-cyan-400/20"
+            onClick={() => {
+              window.location.href = isTenantMode ? tenantHref : "/settings";
+            }}
+          >
+            <span>{isTenantMode ? "Abrir perfil del tenant" : "Abrir configuración global"}</span>
+            <span aria-hidden="true">-&gt;</span>
+          </button>
         </div>
 
         <div className="max-h-[calc(100vh-18rem)] overflow-y-auto p-3">
@@ -295,7 +328,7 @@ export function TenantAccountMenu({
               className="flex w-full items-center justify-center gap-2 rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm font-black text-rose-100 transition hover:border-rose-200/70 hover:bg-rose-500/18"
             >
               <LogOut className="h-4 w-4" />
-              Cerrar sesion segura
+              Cerrar sesión segura
             </button>
           </form>
         </div>
@@ -304,18 +337,28 @@ export function TenantAccountMenu({
   ) : null;
 
   return (
-    <div ref={menuRef} className={`relative ${className}`}>
+    <div ref={menuRef} className={`relative z-[720] ${className}`}>
       <button
         ref={triggerRef}
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-controls="tenant-account-menu-panel"
         data-testid="tenant-account-menu-trigger"
-        title="Abrir cuenta, configuracion y logout del workspace"
+        title="Abrir cuenta, configuración y logout del workspace"
         className="flex min-h-14 w-full items-center gap-3 rounded-xl border border-white/12 bg-slate-950/65 px-3 py-2 text-left shadow-[0_16px_38px_rgba(2,6,23,.22)] transition hover:border-cyan-300/40 hover:bg-cyan-400/10 lg:min-w-[190px]"
-        onClick={() => {
-          if (!open) updatePanelPosition();
-          setOpen((value) => !value);
+        onPointerDown={(event) => {
+          if (event.button !== 0) return;
+          event.preventDefault();
+          toggleMenu();
+        }}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          toggleMenu();
+        }}
+        onClick={(event) => {
+          if (event.detail === 0) toggleMenu();
         }}
       >
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-blue-600 text-xs font-black text-white shadow-[0_0_22px_rgba(37,99,235,.35)]">
