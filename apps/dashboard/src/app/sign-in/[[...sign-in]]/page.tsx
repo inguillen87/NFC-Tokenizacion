@@ -1,6 +1,7 @@
 import { SignIn } from "@clerk/nextjs";
 import Link from "next/link";
 import { BrandLockup } from "@product/ui";
+import { ClerkGoogleSuperAdminButton } from "../../../components/clerk-google-super-admin-button";
 import { getAccessProfiles } from "../../../lib/access-profiles";
 import { dashboardDemoAccessAllowedForRole } from "../../../lib/dashboard-access-flags";
 import { isClerkConfiguredForRuntime } from "../../../lib/clerk-env";
@@ -62,16 +63,27 @@ export default function SignInPage() {
             </p>
           </div>
           {clerkEnabled ? (
-            <SignIn
-              routing="path"
-              path="/sign-in"
-              signUpUrl="/sign-up"
-              forceRedirectUrl="/auth/clerk/super-admin"
-              fallbackRedirectUrl="/auth/clerk/super-admin"
-              appearance={{
-                variables: { colorPrimary: "#22d3ee", colorBackground: "#020617" },
-              }}
-            />
+            <div className="grid gap-4">
+              <ClerkGoogleSuperAdminButton
+                label="Continuar con Google allowlisted"
+                className="flex w-full items-center justify-center gap-3 rounded-2xl border border-cyan-300/45 bg-cyan-400 px-5 py-4 text-sm font-black text-slate-950 shadow-[0_22px_55px_rgba(34,211,238,0.22)] transition hover:bg-cyan-300 disabled:cursor-wait disabled:opacity-70"
+              />
+              <div className="rounded-2xl border border-white/10 bg-slate-950/80 p-3">
+                <p className="px-2 pb-3 text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">
+                  Fallback Clerk
+                </p>
+                <SignIn
+                  routing="path"
+                  path="/sign-in"
+                  signUpUrl="/sign-up"
+                  forceRedirectUrl="/auth/clerk/super-admin"
+                  fallbackRedirectUrl="/auth/clerk/super-admin"
+                  appearance={{
+                    variables: { colorPrimary: "#22d3ee", colorBackground: "#020617" },
+                  }}
+                />
+              </div>
+            </div>
           ) : (
             <div className="rounded-2xl border border-amber-300/25 bg-amber-500/10 p-5 text-sm leading-6 text-amber-100">
               Clerk no esta habilitado con claves live en este entorno. Usa Bodega Balmec demo o credenciales enterprise desde la pantalla principal.

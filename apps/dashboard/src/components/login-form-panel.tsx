@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@product/ui";
-import { SignInButton } from "@clerk/nextjs";
 import type { AccessProfile } from "../lib/access-profiles";
+import { ClerkGoogleSuperAdminButton } from "./clerk-google-super-admin-button";
 
 type Props = {
   emailPlaceholder: string;
@@ -226,11 +226,7 @@ export function LoginFormPanel({
         ) : null}
         {clerkEnabled ? (
           <>
-            <SignInButton mode="redirect" forceRedirectUrl="/auth/clerk/super-admin" fallbackRedirectUrl="/auth/clerk/super-admin">
-              <button type="button" title="Entrar como Super Admin con sesion Clerk validada por allowlist." className="flex w-full items-center justify-center gap-3 rounded-xl border border-cyan-400/35 bg-cyan-400/10 px-4 py-3 text-sm font-bold text-cyan-50 shadow-[0_18px_40px_rgba(6,182,212,0.12)] transition hover:border-cyan-200 hover:bg-cyan-400/20">
-                Entrar con Google como Super Admin
-              </button>
-            </SignInButton>
+            <ClerkGoogleSuperAdminButton />
             <Link
               href="/sign-in"
               title="Abrir la pantalla completa de Google/Clerk si el flujo redirect no aparece."
