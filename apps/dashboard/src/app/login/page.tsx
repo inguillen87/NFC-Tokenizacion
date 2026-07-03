@@ -9,6 +9,10 @@ import { getDashboardSession } from "../../lib/session";
 import { dashboardDemoAccessAllowedForRole } from "../../lib/dashboard-access-flags";
 import { isClerkConfiguredForRuntime } from "../../lib/clerk-env";
 
+type LoginPageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
 const visibleRoleCards = [
   {
     label: "Super Admin",
@@ -28,12 +32,39 @@ const visibleRoleCards = [
   },
 ];
 
-export default async function LoginPage() {
+function firstParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function authNoticeForCode(code?: string) {
+  switch (code) {
+    case "clerk_not_configured":
+      return "Google/Clerk no esta configurado con claves live para este deploy.";
+    case "clerk_email_unverified":
+      return "Clerk no devolvio un email verificado. Verifica el email en Google/Clerk y reintenta.";
+    case "admin_api_key_missing":
+      return "Falta ADMIN_API_KEY en el dashboard; no puedo convertir Google en sesion nexID.";
+    case "admin_api_key_invalid":
+      return "ADMIN_API_KEY del dashboard no coincide con la API. Hay que sincronizar envs en Vercel.";
+    case "auth_upstream_unavailable":
+      return "La API de autenticacion no respondio. Reintenta o revisa el deploy de api.nexid.lat.";
+    case "clerk_super_admin_not_allowed":
+      return "Ese Google no esta allowlisted como Super Admin de nexID.";
+    case "clerk_sync_failed":
+      return "Clerk autentico, pero nexID no pudo crear la sesion interna.";
+    default:
+      return "";
+  }
+}
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
   const { t, locale } = await getDashboardI18n();
   const copy = dashboardContent[locale];
   const profiles = getAccessProfiles();
   const demoLoginAllowed = dashboardDemoAccessAllowedForRole("super-admin");
   const bodegaDemoAllowed = dashboardDemoAccessAllowedForRole("tenant-admin");
+  const params = searchParams ? await searchParams : {};
+  const authNotice = authNoticeForCode(firstParam(params.auth_error));
   const session = await getDashboardSession();
   if (session) redirect("/");
 
@@ -99,6 +130,7 @@ export default async function LoginPage() {
               demoLoginAllowed={demoLoginAllowed}
               bodegaDemoAllowed={bodegaDemoAllowed}
               clerkEnabled={isClerkConfiguredForRuntime()}
+              authNotice={authNotice}
             />
           </div>
         </Card>

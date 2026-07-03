@@ -17,6 +17,7 @@ type Props = {
   demoLoginAllowed: boolean;
   bodegaDemoAllowed: boolean;
   clerkEnabled?: boolean;
+  authNotice?: string;
 };
 
 type DemoRole = "super-admin" | "tenant-admin";
@@ -55,6 +56,7 @@ export function LoginFormPanel({
   demoLoginAllowed,
   bodegaDemoAllowed,
   clerkEnabled,
+  authNotice,
 }: Props) {
   const LOGIN_TIMEOUT_MS = 10_000;
   const firstAvailable = profiles.find((profile) => profile.available) || profiles[0];
@@ -123,9 +125,9 @@ export function LoginFormPanel({
       } else if (res?.status && res.status >= 500) {
         setStatus("Error interno al autenticar.");
       } else if (!res) {
-        setStatus("El login tardó demasiado o no hubo respuesta. Reintenta en unos segundos.");
+        setStatus("El login tardo demasiado o no hubo respuesta. Reintenta en unos segundos.");
       } else {
-        setStatus(data?.reason || "Credenciales inválidas.");
+        setStatus(data?.reason || "Credenciales invalidas.");
       }
       setPending(false);
       return;
@@ -210,27 +212,44 @@ export function LoginFormPanel({
         </p>
       ) : null}
 
-      {clerkEnabled && (
-        <div className="mt-4 grid gap-3">
-          <SignInButton mode="modal">
-            <button type="button" title="Abrir login social con Clerk, Google o Facebook." className="flex w-full items-center justify-center gap-3 rounded-xl border border-cyan-400/35 bg-cyan-400/10 px-4 py-3 font-semibold text-[0px] text-cyan-50 shadow-[0_18px_40px_rgba(6,182,212,0.12)] transition after:text-sm after:content-['Ingresar_con_Google_o_Facebook'] hover:border-cyan-200 hover:bg-cyan-400/20">
-              <span>Ingresar con Google o Facebook</span>
-            </button>
-          </SignInButton>
-          <Link
-            href="/sign-in"
-            title="Abrir la pantalla completa de Clerk si el modal social no aparece."
-            className="flex w-full items-center justify-center rounded-xl border border-white/10 bg-slate-950/70 px-4 py-2.5 text-xs font-bold text-slate-200 transition hover:border-cyan-300/35 hover:text-cyan-100"
-          >
-            Abrir login seguro en pantalla completa
-          </Link>
-          <div className="flex items-center gap-2 px-2 py-1">
-            <div className="h-px flex-1 bg-white/10" />
-            <span className="text-[10px] text-slate-500 uppercase tracking-wider">o con credenciales locales</span>
-            <div className="h-px flex-1 bg-white/10" />
-          </div>
+      <div className="mt-4 grid gap-3 rounded-2xl border border-cyan-300/20 bg-slate-950/60 p-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">Super Admin fundador</p>
+          <p className="mt-1 text-sm leading-5 text-slate-300">
+            Acceso por Clerk solo para emails allowlisted. Google OAuth queda listo al cargar credenciales custom de Google Cloud.
+          </p>
         </div>
-      )}
+        {authNotice ? (
+          <p className="rounded-xl border border-amber-300/30 bg-amber-400/10 px-3 py-2 text-xs font-semibold text-amber-100">
+            {authNotice}
+          </p>
+        ) : null}
+        {clerkEnabled ? (
+          <>
+            <SignInButton mode="redirect" forceRedirectUrl="/auth/clerk/super-admin" fallbackRedirectUrl="/auth/clerk/super-admin">
+              <button type="button" title="Entrar como Super Admin con sesion Clerk validada por allowlist." className="flex w-full items-center justify-center gap-3 rounded-xl border border-cyan-400/35 bg-cyan-400/10 px-4 py-3 text-sm font-bold text-cyan-50 shadow-[0_18px_40px_rgba(6,182,212,0.12)] transition hover:border-cyan-200 hover:bg-cyan-400/20">
+                Entrar con Clerk como Super Admin
+              </button>
+            </SignInButton>
+            <Link
+              href="/sign-in"
+              title="Abrir la pantalla completa de Clerk si el flujo redirect no aparece."
+              className="flex w-full items-center justify-center rounded-xl border border-white/10 bg-slate-950/70 px-4 py-2.5 text-xs font-bold text-slate-200 transition hover:border-cyan-300/35 hover:text-cyan-100"
+            >
+              Abrir login Clerk en pantalla completa
+            </Link>
+          </>
+        ) : (
+          <p className="rounded-xl border border-amber-300/30 bg-amber-400/10 px-3 py-2 text-xs leading-5 text-amber-100">
+            Google/Clerk todavia no esta activo en este entorno: faltan claves Clerk live o no estan asociadas a este deploy.
+          </p>
+        )}
+        <div className="flex items-center gap-2 px-2 py-1">
+          <div className="h-px flex-1 bg-white/10" />
+          <span className="text-[10px] text-slate-500 uppercase tracking-wider">o con credenciales locales</span>
+          <div className="h-px flex-1 bg-white/10" />
+        </div>
+      </div>
 
       <div className="mt-4 grid gap-3">
         <div className="rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-xs text-slate-300">

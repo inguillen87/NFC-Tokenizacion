@@ -22,8 +22,8 @@ export default function SignInPage() {
             Ingreso seguro para equipos, tenants y operadores.
           </h1>
           <p className="mt-5 max-w-xl text-base leading-7 text-slate-300">
-            nexID mantiene un IAM operativo para CRM, tenants y empleados. Clerk queda como login social cuando
-            la cuenta ya existe en el directorio externo, sin bloquear la consola comercial.
+            nexID mantiene un IAM operativo para CRM, tenants y empleados. Clerk queda como login externo para el
+            email fundador allowlisted, sin bloquear la consola comercial ni abrir usuarios externos por accidente.
           </p>
           <div className="mt-8 grid max-w-xl gap-3 sm:grid-cols-2">
             {operationalProfiles.map((profile) => (
@@ -58,7 +58,7 @@ export default function SignInPage() {
           <div className="mb-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Login social opcional</p>
             <p className="mt-2 text-sm leading-5 text-slate-300">
-              Usa Google, MetaMask o email solo si la identidad ya fue creada en Clerk. Para la reunion, usa los accesos operativos.
+              Usa Clerk solo si el email esta allowlisted como Super Admin. La sesion final la emite nexID, no Clerk por si solo.
             </p>
           </div>
           {clerkEnabled ? (
@@ -66,7 +66,8 @@ export default function SignInPage() {
               routing="path"
               path="/sign-in"
               signUpUrl="/sign-up"
-              fallbackRedirectUrl="/"
+              forceRedirectUrl="/auth/clerk/super-admin"
+              fallbackRedirectUrl="/auth/clerk/super-admin"
               appearance={{
                 variables: { colorPrimary: "#22d3ee", colorBackground: "#020617" },
               }}
