@@ -50,16 +50,15 @@ function applyTheme(theme: Theme) {
 export function DemoLabThemeToggle() {
   const [theme, setTheme] = useState<Theme>("dark");
   const [mounted, setMounted] = useState(false);
-  const [toggleHref, setToggleHref] = useState("/api/theme?theme=light&returnTo=%2Fdemo-lab");
+  const [returnTo, setReturnTo] = useState("/demo-lab");
 
-  const writeToggleHref = useCallback((next: Theme) => {
+  const syncReturnTo = useCallback(() => {
     try {
       const url = new URL(window.location.href);
       url.searchParams.delete("theme");
-      const returnTo = `${url.pathname}${url.search}${url.hash}`;
-      setToggleHref(`/api/theme?theme=${next}&returnTo=${encodeURIComponent(returnTo)}`);
+      setReturnTo(`${url.pathname}${url.search}${url.hash}`);
     } catch {
-      setToggleHref(`/api/theme?theme=${next}&returnTo=%2Fdemo-lab`);
+      setReturnTo("/demo-lab");
     }
   }, []);
 
@@ -79,7 +78,7 @@ export function DemoLabThemeToggle() {
 
     setTheme(initial);
     applyTheme(initial);
-    writeToggleHref(initial === "dark" ? "light" : "dark");
+    syncReturnTo();
     setMounted(true);
 
     const onStorage = (e: StorageEvent) => {
@@ -88,45 +87,51 @@ export function DemoLabThemeToggle() {
       const next = e.newValue as Theme;
       setTheme(next);
       applyTheme(next);
-      writeToggleHref(next === "dark" ? "light" : "dark");
+      syncReturnTo();
     };
 
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
-  }, [writeToggleHref]);
+  }, [syncReturnTo]);
 
   const nextTheme: Theme = theme === "dark" ? "light" : "dark";
 
   // Render a placeholder during SSR / before mount to avoid hydration mismatch
   if (!mounted) {
     return (
-      <a
-        suppressHydrationWarning
-        href={toggleHref}
-        role="button"
-        aria-label="Toggle theme"
-        className="theme-toggle inline-flex h-11 w-11 min-h-11 min-w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-500 transition hover:bg-white/10 md:h-8 md:w-8 md:min-h-8 md:min-w-8"
-      >
-        <Moon className="w-3.5 h-3.5" />
-      </a>
+      <form action="/api/theme" method="get" className="m-0 inline-flex">
+        <input type="hidden" name="theme" value="light" />
+        <input type="hidden" name="returnTo" value={returnTo} />
+        <button
+          suppressHydrationWarning
+          type="submit"
+          aria-label="Toggle theme"
+          className="theme-toggle inline-flex h-11 w-11 min-h-11 min-w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-500 transition hover:bg-white/10 md:h-8 md:w-8 md:min-h-8 md:min-w-8"
+        >
+          <Moon className="w-3.5 h-3.5" />
+        </button>
+      </form>
     );
   }
 
   return (
-    <a
-      suppressHydrationWarning
-      href={toggleHref}
-      role="button"
-      aria-label={`Switch to ${nextTheme} mode`}
-      title={`Switch to ${nextTheme} mode`}
-      className="theme-toggle inline-flex h-11 w-11 min-h-11 min-w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-400 transition hover:border-cyan-400/30 hover:bg-white/10 hover:text-cyan-300 md:h-8 md:w-8 md:min-h-8 md:min-w-8"
-    >
-      {theme === "dark" ? (
-        <Sun className="w-3.5 h-3.5" />
-      ) : (
-        <Moon className="w-3.5 h-3.5" />
-      )}
-    </a>
+    <form action="/api/theme" method="get" className="m-0 inline-flex">
+      <input type="hidden" name="theme" value={nextTheme} />
+      <input type="hidden" name="returnTo" value={returnTo} />
+      <button
+        suppressHydrationWarning
+        type="submit"
+        aria-label={`Switch to ${nextTheme} mode`}
+        title={`Switch to ${nextTheme} mode`}
+        className="theme-toggle inline-flex h-11 w-11 min-h-11 min-w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-400 transition hover:border-cyan-400/30 hover:bg-white/10 hover:text-cyan-300 md:h-8 md:w-8 md:min-h-8 md:min-w-8"
+      >
+        {theme === "dark" ? (
+          <Sun className="w-3.5 h-3.5" />
+        ) : (
+          <Moon className="w-3.5 h-3.5" />
+        )}
+      </button>
+    </form>
   );
 }
 
