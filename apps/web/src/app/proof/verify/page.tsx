@@ -537,7 +537,8 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           }
 
           .helpbot-surface,
-          .helpbot-trigger {
+          .helpbot-trigger,
+          .helpbot-hint {
             display: none !important;
           }
         }
