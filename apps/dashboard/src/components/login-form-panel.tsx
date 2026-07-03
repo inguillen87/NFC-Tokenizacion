@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@product/ui";
 import { ArrowRight, Building2, KeyRound, LockKeyhole, ShieldCheck, UserCheck } from "lucide-react";
-import type { AccessProfile } from "../lib/access-profiles";
+import type { PublicAccessProfile } from "../lib/access-profiles";
 import { ClerkGoogleSuperAdminButton } from "./clerk-google-super-admin-button";
 
 type Props = {
@@ -14,7 +14,7 @@ type Props = {
   registerLabel: string;
   forgotLabel: string;
   inviteLabel: string;
-  profiles: AccessProfile[];
+  profiles: PublicAccessProfile[];
   demoLoginAllowed: boolean;
   bodegaDemoAllowed: boolean;
   clerkEnabled?: boolean;
@@ -63,7 +63,7 @@ export function LoginFormPanel({
   const firstAvailable = profiles.find((profile) => profile.available) || profiles[0];
   const hasAvailableProfiles = profiles.some((profile) => profile.available);
   const [email, setEmail] = useState(firstAvailable?.email || "");
-  const [password, setPassword] = useState(firstAvailable?.password || "");
+  const [password, setPassword] = useState("");
   const [role, setRole] = useState(firstAvailable?.role || "super-admin");
   const [profileLabel, setProfileLabel] = useState(firstAvailable?.label || "Super Admin");
   const [mfaCode, setMfaCode] = useState("");
@@ -85,15 +85,14 @@ export function LoginFormPanel({
     return parts.join(" ");
   }
 
-  function useProfile(profile: AccessProfile) {
+  function useProfile(profile: PublicAccessProfile) {
     setEmail(profile.email);
-    setPassword(profile.password);
+    setPassword("");
     setRole(profile.role);
     setProfileLabel(profile.label);
     setMfaCode("");
     setStatus("");
     setOpsStatus("");
-    void submit({ email: profile.email, password: profile.password });
   }
 
   async function submit(input?: { email?: string; password?: string }) {
@@ -280,7 +279,7 @@ export function LoginFormPanel({
 
       {!hasAvailableProfiles ? (
         <p className="mt-3 rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">
-          Los presets solo completan email/password. Configura credenciales reales para habilitar acceso operativo.
+          Los presets solo muestran perfiles habilitados. La password queda server-side y se ingresa manualmente o por Google/Clerk.
         </p>
       ) : null}
 

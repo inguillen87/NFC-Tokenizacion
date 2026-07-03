@@ -11,6 +11,8 @@ export type AccessProfile = {
   available: boolean;
 };
 
+export type PublicAccessProfile = Omit<AccessProfile, "password">;
+
 function readEnv(...names: string[]) {
   for (const name of names) {
     const value = String(process.env[name] || "").trim();
@@ -46,7 +48,7 @@ export function getAccessProfiles(): AccessProfile[] {
       role: "super-admin",
       label: "Super Admin",
       emailEnv: ["SUPER_ADMIN_EMAIL", "NEXT_PUBLIC_SUPER_ADMIN_EMAIL"],
-      passwordEnv: ["SUPER_ADMIN_PASSWORD", "NEXT_PUBLIC_SUPER_ADMIN_PASSWORD"],
+      passwordEnv: ["SUPER_ADMIN_PASSWORD"],
       note: "Control total de tenants, batches, seguridad y flujos críticos.",
       permissions: ["*"],
     }),
@@ -55,7 +57,7 @@ export function getAccessProfiles(): AccessProfile[] {
       role: "tenant-admin",
       label: "Admin tenant Bodega Balmec",
       emailEnv: ["TENANT_ADMIN_EMAIL", "BODEGA_ADMIN_EMAIL", "NEXT_PUBLIC_TENANT_ADMIN_EMAIL"],
-      passwordEnv: ["TENANT_ADMIN_PASSWORD", "BODEGA_ADMIN_PASSWORD", "NEXT_PUBLIC_TENANT_ADMIN_PASSWORD"],
+      passwordEnv: ["TENANT_ADMIN_PASSWORD", "BODEGA_ADMIN_PASSWORD"],
       note: "Administrador operativo del tenant: lotes, tags, taps, marketplace, rewards y empleados.",
       permissions: ["tenant:*", "batches:*", "tags:*", "events:*", "analytics:*", "crm:*", "marketplace:*", "rewards:*", "employees:*"],
     }),
@@ -64,7 +66,7 @@ export function getAccessProfiles(): AccessProfile[] {
       role: "tenant-admin",
       label: "Empleado Operaciones NFC",
       emailEnv: ["TENANT_OPS_EMAIL", "NEXT_PUBLIC_TENANT_OPS_EMAIL"],
-      passwordEnv: ["TENANT_OPS_PASSWORD", "NEXT_PUBLIC_TENANT_OPS_PASSWORD"],
+      passwordEnv: ["TENANT_OPS_PASSWORD"],
       note: "Puede operar lotes, tags, taps, validación en tienda y alertas sin tocar facturación ni seguridad global.",
       permissions: ["batches:read", "batches:write", "tags:read", "tags:write", "events:read", "analytics:read", "rewards:validate"],
     }),
@@ -73,9 +75,13 @@ export function getAccessProfiles(): AccessProfile[] {
       role: "tenant-admin",
       label: "Empleado CRM & Growth",
       emailEnv: ["TENANT_GROWTH_EMAIL", "NEXT_PUBLIC_TENANT_GROWTH_EMAIL"],
-      passwordEnv: ["TENANT_GROWTH_PASSWORD", "NEXT_PUBLIC_TENANT_GROWTH_PASSWORD"],
+      passwordEnv: ["TENANT_GROWTH_PASSWORD"],
       note: "Puede ver clientes, segmentos, campañas, vouchers y performance comercial del tenant.",
       permissions: ["events:read", "analytics:read", "crm:read", "campaigns:read", "campaigns:write", "rewards:read", "marketplace:read"],
     }),
   ];
+}
+
+export function getPublicAccessProfiles(): PublicAccessProfile[] {
+  return getAccessProfiles().map(({ password: _password, ...profile }) => profile);
 }

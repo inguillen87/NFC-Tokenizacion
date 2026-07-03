@@ -3,11 +3,12 @@ export const dynamic = 'force-dynamic';
 
 import { randomBytes } from "crypto";
 import { sql } from "../../../lib/db";
-import { checkAdmin } from "../../../lib/auth";
+import { checkAdmin, getAdminTenantScope } from "../../../lib/auth";
 import { encryptKey16 } from "../../../lib/keys";
 import { json } from "../../../lib/http";
 import { buildTenantSunProfileInput, normalizeTenantCreateSlug, upsertTenantSunProfile } from "../../../lib/tenant-onboarding";
 import { ensureSunTenantProfilesSchema } from "../../../lib/sun-tenant-profile-schema";
+import { effectiveTenantFilter } from "../../../lib/admin-tenant-filter";
 
 export async function GET(req: Request) {
   const auth = checkAdmin(req);
@@ -15,10 +16,30 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const withStats = searchParams.get("withStats") === "1";
+  const { forcedTenantSlug } = getAdminTenantScope(req);
+  const tenantSlug = effectiveTenantFilter({ forcedTenantSlug, requestedTenantSlug: searchParams.get("tenant") });
   await ensureSunTenantProfilesSchema();
 
   if (withStats) {
-    const rows = await sql/*sql*/`
+    const rows = tenantSlug
+      ? await sql/*sql*/`
+      SELECT
+        tn.id,
+        tn.slug,
+        tn.name,
+        tn.created_at,
+        COUNT(e.id)::int AS scans,
+        COUNT(*) FILTER (WHERE e.result IN ('DUPLICATE','REPLAY_SUSPECT'))::int AS duplicates,
+        COUNT(*) FILTER (WHERE e.result IN ('TAMPER','NOT_REGISTERED','NOT_ACTIVE','INVALID'))::int AS tamper
+      FROM tenants tn
+      LEFT JOIN batches b ON b.tenant_id = tn.id
+      LEFT JOIN events e ON e.batch_id = b.id
+      WHERE tn.slug = ${tenantSlug}
+      GROUP BY tn.id, tn.slug, tn.name, tn.created_at
+      ORDER BY tn.created_at DESC
+      LIMIT 200
+    `
+      : await sql/*sql*/`
       SELECT
         tn.id,
         tn.slug,
@@ -37,7 +58,38 @@ export async function GET(req: Request) {
     return json(rows);
   }
 
-  const rows = await sql/*sql*/`
+  const rows = tenantSlug
+    ? await sql/*sql*/`
+    SELECT
+      tn.id,
+      tn.slug,
+      tn.name,
+      tn.created_at,
+      tsp.vertical AS sun_vertical,
+      tsp.product_label AS sun_product_label,
+      tsp.tokenization_mode AS sun_tokenization_mode,
+      tsp.claim_policy AS sun_claim_policy,
+      (
+        tsp.tenant_id IS NOT NULL
+        AND tsp.vertical IS NOT NULL
+        AND NULLIF(tsp.club_name, '') IS NOT NULL
+        AND NULLIF(tsp.product_label, '') IS NOT NULL
+        AND NULLIF(tsp.origin_label, '') IS NOT NULL
+        AND NULLIF(tsp.origin_address, '') IS NOT NULL
+        AND tsp.origin_lat IS NOT NULL
+        AND tsp.origin_lng IS NOT NULL
+        AND tsp.tokenization_mode IS NOT NULL
+        AND tsp.claim_policy IS NOT NULL
+        AND tsp.ownership_policy <> '{}'::jsonb
+        AND tsp.manifest_policy <> '{}'::jsonb
+      ) AS sun_profile_ready
+    FROM tenants tn
+    LEFT JOIN tenant_sun_profiles tsp ON tsp.tenant_id = tn.id
+    WHERE tn.slug = ${tenantSlug}
+    ORDER BY tn.created_at DESC
+    LIMIT 200
+  `
+    : await sql/*sql*/`
     SELECT
       tn.id,
       tn.slug,
@@ -70,8 +122,10 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = checkAdmin(req);
+  const auth = checkAdmin(req, ["super_admin"]);
   if (auth) return auth;
+  const { scope } = getAdminTenantScope(req);
+  if (scope && scope !== "super_admin") return json({ ok: false, reason: "super_admin_required" }, 403);
 
   const body: Record<string, unknown> = await req.json().catch(() => ({}));
   const slug = normalizeTenantCreateSlug(body.slug);

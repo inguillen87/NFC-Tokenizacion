@@ -44,6 +44,7 @@ const ACCOUNT_MENU_DEFAULT_STYLE: CSSProperties = {
   right: 12,
   width: "min(calc(100vw - 24px), 26rem)",
   maxHeight: "calc(100vh - 104px)",
+  pointerEvents: "auto",
   transform: "translateZ(0)",
   backgroundColor: "#020817",
 };
@@ -262,14 +263,14 @@ export function TenantAccountMenu({
     <div
       className="nexid-account-layer fixed inset-0 isolate"
       data-testid="tenant-account-menu-layer"
-      style={{ zIndex: ACCOUNT_MENU_Z_INDEX }}
+      style={{ zIndex: ACCOUNT_MENU_Z_INDEX, pointerEvents: "auto" }}
     >
       <button
         type="button"
         aria-label="Cerrar menu de cuenta"
         data-testid="tenant-account-menu-backdrop"
-        className="fixed inset-0 cursor-default bg-[#020713]/58 backdrop-blur-[3px]"
-        style={{ zIndex: ACCOUNT_MENU_Z_INDEX + 1 }}
+        className="fixed inset-0 cursor-default bg-[#020713]/66 backdrop-blur-[4px]"
+        style={{ zIndex: ACCOUNT_MENU_Z_INDEX + 1, pointerEvents: "auto" }}
         onClick={() => setOpen(false)}
       />
       <div

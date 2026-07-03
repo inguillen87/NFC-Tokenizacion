@@ -112,7 +112,7 @@ export default async function SettingsPage() {
           </p>
           <div className="mt-5 grid gap-2 text-sm">
             <Link
-              href="/login"
+              href="/logout"
               className="rounded-xl border border-cyan-300/25 bg-cyan-400/10 px-4 py-3 text-center font-black text-cyan-100 transition hover:border-cyan-200/65 hover:bg-cyan-400/16"
             >
               Cambiar cuenta o perfil

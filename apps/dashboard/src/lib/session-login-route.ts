@@ -84,9 +84,14 @@ type LoginDiagnostics = {
   upstreamStatus: number | null;
   apiBaseConfigured: boolean;
   demoLoginAllowed: boolean;
+  localProfileFallbackAllowed: boolean;
   presetProfilesAvailable: boolean;
   missingEnvNames: string[];
 };
+
+function localProfileFallbackAllowed() {
+  return String(process.env.DASHBOARD_LOCAL_PROFILE_FALLBACK_ENABLED || "").trim() === "1" || process.env.NODE_ENV !== "production";
+}
 
 function buildDiagnostics(input: {
   upstreamReachable: boolean;
@@ -112,9 +117,39 @@ function buildDiagnostics(input: {
     upstreamStatus: input.upstreamStatus,
     apiBaseConfigured,
     demoLoginAllowed: input.demoLoginAllowed,
+    localProfileFallbackAllowed: localProfileFallbackAllowed(),
     presetProfilesAvailable,
     missingEnvNames,
   };
+}
+
+function buildProfileLoginResponse(req: Request, accessProfile: NonNullable<ReturnType<typeof findAccessProfile>>) {
+  const demoScope = demoTenantScope(accessProfile.role);
+  const response = NextResponse.json({
+    ok: true,
+    email: accessProfile.email,
+    role: accessProfile.role,
+    ...demoScope,
+    label: accessProfile.label,
+    permissions: accessProfile.permissions,
+    mfaRequired: false,
+  });
+  response.cookies.set(DASHBOARD_SESSION_COOKIE, encodeDemoToken(accessProfile.email, accessProfile.role), {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: useSecureCookie(req),
+    path: "/",
+    maxAge: 60 * 60 * 12,
+  });
+  response.cookies.set(DASHBOARD_SESSION_SNAPSHOT_COOKIE, buildSnapshot(accessProfile.email, accessProfile.role, accessProfile.label, accessProfile.permissions, demoScope), {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: useSecureCookie(req),
+    path: "/",
+    maxAge: 60 * 60 * 12,
+  });
+  console.info("[dashboard_login_audit]", JSON.stringify({ event: "profile_login_ok", email: accessProfile.email, role: accessProfile.role }));
+  return response;
 }
 
 export async function handleSessionLogin(req: Request) {
@@ -184,33 +219,8 @@ export async function handleSessionLogin(req: Request) {
   const accessProfile = findAccessProfile(submittedEmail, submittedPassword);
   const unreachableDiagnostics = buildDiagnostics({ upstreamReachable: false, upstreamStatus: null, demoLoginAllowed: canUseDemoLogin });
   if (!upstream) {
-    if (accessProfile) {
-      const demoScope = demoTenantScope(accessProfile.role);
-      const response = NextResponse.json({
-        ok: true,
-        email: accessProfile.email,
-        role: accessProfile.role,
-        ...demoScope,
-        label: accessProfile.label,
-        permissions: accessProfile.permissions,
-        mfaRequired: false,
-      });
-      response.cookies.set(DASHBOARD_SESSION_COOKIE, encodeDemoToken(accessProfile.email, accessProfile.role), {
-        httpOnly: true,
-        sameSite: "lax",
-        secure: useSecureCookie(req),
-        path: "/",
-        maxAge: 60 * 60 * 12,
-      });
-      response.cookies.set(DASHBOARD_SESSION_SNAPSHOT_COOKIE, buildSnapshot(accessProfile.email, accessProfile.role, accessProfile.label, accessProfile.permissions, demoScope), {
-        httpOnly: true,
-        sameSite: "lax",
-        secure: useSecureCookie(req),
-        path: "/",
-        maxAge: 60 * 60 * 12,
-      });
-      console.info("[dashboard_login_audit]", JSON.stringify({ event: "profile_login_ok", email: accessProfile.email, role: accessProfile.role }));
-      return response;
+    if (accessProfile && localProfileFallbackAllowed()) {
+      return buildProfileLoginResponse(req, accessProfile);
     }
     return NextResponse.json({ ok: false, reason: "auth upstream unavailable", diagnostics: unreachableDiagnostics }, { status: 502 });
   }
@@ -220,33 +230,8 @@ export async function handleSessionLogin(req: Request) {
   const upstreamStatus = Number.isFinite(upstream.status) ? upstream.status : null;
   const baseDiagnostics = buildDiagnostics({ upstreamReachable: true, upstreamStatus, demoLoginAllowed: canUseDemoLogin });
   if (!upstream.ok || !data?.ok || !data?.sessionToken) {
-    if (accessProfile) {
-      const demoScope = demoTenantScope(accessProfile.role);
-      const response = NextResponse.json({
-        ok: true,
-        email: accessProfile.email,
-        role: accessProfile.role,
-        ...demoScope,
-        label: accessProfile.label,
-        permissions: accessProfile.permissions,
-        mfaRequired: false,
-      });
-      response.cookies.set(DASHBOARD_SESSION_COOKIE, encodeDemoToken(accessProfile.email, accessProfile.role), {
-        httpOnly: true,
-        sameSite: "lax",
-        secure: useSecureCookie(req),
-        path: "/",
-        maxAge: 60 * 60 * 12,
-      });
-      response.cookies.set(DASHBOARD_SESSION_SNAPSHOT_COOKIE, buildSnapshot(accessProfile.email, accessProfile.role, accessProfile.label, accessProfile.permissions, demoScope), {
-        httpOnly: true,
-        sameSite: "lax",
-        secure: useSecureCookie(req),
-        path: "/",
-        maxAge: 60 * 60 * 12,
-      });
-      console.info("[dashboard_login_audit]", JSON.stringify({ event: "profile_login_ok", email: accessProfile.email, role: accessProfile.role }));
-      return response;
+    if (accessProfile && upstream.status >= 500 && localProfileFallbackAllowed()) {
+      return buildProfileLoginResponse(req, accessProfile);
     }
     const normalizedStatus = upstream.status === 401 ? 401 : upstream.status === 403 ? 403 : upstream.status >= 500 ? 502 : 500;
     const fallbackReason = normalizedStatus === 401

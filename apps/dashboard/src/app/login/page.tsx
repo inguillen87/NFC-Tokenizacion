@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { BrandLockup, Card } from "@product/ui";
 import { getDashboardI18n } from "../../lib/locale";
 import { dashboardContent } from "../../lib/dashboard-content";
-import { getAccessProfiles } from "../../lib/access-profiles";
+import { getPublicAccessProfiles } from "../../lib/access-profiles";
 import { LoginFormPanel } from "../../components/login-form-panel";
 import { getDashboardSession } from "../../lib/session";
 import { dashboardDemoAccessAllowedForRole } from "../../lib/dashboard-access-flags";
@@ -60,7 +60,7 @@ function authNoticeForCode(code?: string) {
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const { t, locale } = await getDashboardI18n();
   const copy = dashboardContent[locale];
-  const profiles = getAccessProfiles();
+  const profiles = getPublicAccessProfiles();
   const demoLoginAllowed = dashboardDemoAccessAllowedForRole("super-admin");
   const bodegaDemoAllowed = dashboardDemoAccessAllowedForRole("tenant-admin");
   const params = searchParams ? await searchParams : {};

@@ -41,3 +41,30 @@ test("access profiles no exponen fallbacks de credenciales", async () => {
     else process.env[key] = value;
   }
 });
+
+test("access profiles ignoran passwords publicas y exponen payload publico sin secretos", async () => {
+  const backup = new Map(PROFILE_ENV_KEYS.map((key) => [key, process.env[key]]));
+  for (const key of PROFILE_ENV_KEYS) delete process.env[key];
+
+  process.env.TENANT_ADMIN_EMAIL = "tenant@example.com";
+  process.env.NEXT_PUBLIC_TENANT_ADMIN_PASSWORD = "public-password-should-not-work";
+
+  const { getAccessProfiles, getPublicAccessProfiles } = await import(`../src/lib/access-profiles.ts?ts=${Date.now()}-public`);
+  const tenantProfile = getAccessProfiles().find((profile) => profile.key === "tenant-admin");
+  assert.ok(tenantProfile);
+  assert.equal(tenantProfile.email, "tenant@example.com");
+  assert.equal(tenantProfile.password, "");
+  assert.equal(tenantProfile.available, false);
+
+  process.env.TENANT_ADMIN_PASSWORD = "server-only-password";
+  const { getPublicAccessProfiles: getPublicAccessProfilesWithServerPassword } = await import(`../src/lib/access-profiles.ts?ts=${Date.now()}-server`);
+  const publicProfile = getPublicAccessProfilesWithServerPassword().find((profile) => profile.key === "tenant-admin");
+  assert.ok(publicProfile);
+  assert.equal(publicProfile.available, true);
+  assert.equal(Object.hasOwn(publicProfile, "password"), false);
+
+  for (const [key, value] of backup.entries()) {
+    if (typeof value === "undefined") delete process.env[key];
+    else process.env[key] = value;
+  }
+});
