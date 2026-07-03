@@ -6,7 +6,6 @@ import {
   BadgeCheck,
   BarChart3,
   CalendarDays,
-  ChevronDown,
   Clock,
   Crosshair,
   Download,
@@ -32,6 +31,7 @@ import {
 } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { RealtimeMapLibreMap, type BaseMapLayer } from "./realtime-maplibre-map";
+import { TenantAccountMenu } from "./tenant-account-menu";
 import { exportToCsv } from "../lib/export-utils";
 import { mergeRealtimeEvents, sortRealtimeEvents, type TenantTapRealtimeEvent } from "../lib/realtime-feed";
 
@@ -545,11 +545,20 @@ function FunnelNode({
 }
 
 export function ExecutiveRealtimeCrm({
+  account,
   initialEvents,
   tenantScope,
   mode,
   onSectionChange,
 }: {
+  account: {
+    email?: string | null;
+    label?: string | null;
+    mfaVerified?: boolean | null;
+    role: string;
+    setupCompleted?: boolean | null;
+    tenantSlug?: string | null;
+  };
   initialEvents: TenantTapRealtimeEvent[];
   tenantScope: string;
   mode: MapMode;
@@ -899,11 +908,16 @@ export function ExecutiveRealtimeCrm({
           <span className="flex items-center gap-2"><i className={`h-2 w-2 rounded-full ${connected ? "bg-emerald-400" : "bg-amber-300"}`} /> Stream de eventos</span>
           <span className="flex items-center gap-2" title={`Horario operativo del tenant: ${consoleTimezone}`}><Clock className="h-4 w-4 text-slate-500" /> {clock}<span className="hidden text-[10px] uppercase tracking-[0.08em] text-slate-500 xl:inline">{consoleTimezoneLabel}</span></span>
           <span className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-slate-500" /> {todayLabel}</span>
-          <button type="button" title="Filtrar la consola al tenant de tu sesion" className="flex items-center gap-3 rounded-xl border border-white/8 bg-slate-950/55 px-3 py-2 text-left" onClick={() => setSelectedTenant(tenantScope || "all")}>
-            <span className="grid h-8 w-8 place-items-center rounded-full bg-blue-600 text-xs font-black text-white">{mode === "global" ? "SA" : "TA"}</span>
-            <span><b className="block text-white">{mode === "global" ? "Super Admin" : "Admin tenant"}</b>{tenantDisplayName(selectedTenant === "all" ? tenantScope : selectedTenant)}</span>
-            <ChevronDown className="h-4 w-4 text-slate-500" />
-          </button>
+          <TenantAccountMenu
+            className="w-full sm:w-auto"
+            email={account.email}
+            label={account.label}
+            mfaVerified={account.mfaVerified}
+            mode={mode}
+            role={account.role}
+            setupCompleted={account.setupCompleted}
+            tenantSlug={account.tenantSlug || tenantScope}
+          />
         </div>
       </header>
 
@@ -927,9 +941,11 @@ export function ExecutiveRealtimeCrm({
             </button>
           ))}
         </div>
-        <button type="button" title="Cerrar sesion" onClick={() => { window.location.href = "/logout"; }} className="mt-auto grid h-10 w-10 place-items-center rounded-lg border border-white/8 text-slate-500 hover:text-white" aria-label="Salir">
-          <LogOut className="h-5 w-5" />
-        </button>
+        <form method="post" action="/logout" className="mt-auto">
+          <button type="submit" title="Cerrar sesion" className="grid h-10 w-10 place-items-center rounded-lg border border-white/8 text-slate-500 hover:border-rose-300/35 hover:text-rose-100" aria-label="Salir">
+            <LogOut className="h-5 w-5" />
+          </button>
+        </form>
       </aside>
 
       <main className="relative z-10 flex min-h-[calc(100vh-70px)] flex-col gap-3 overflow-visible px-3 py-3 pb-14 lg:ml-24 lg:h-[calc(100vh-102px)] lg:flex-row lg:gap-3 lg:overflow-hidden lg:p-3 2xl:gap-4 2xl:p-4">

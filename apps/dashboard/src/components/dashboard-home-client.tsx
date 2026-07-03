@@ -133,6 +133,14 @@ export default function DashboardHomeClient({
         {activeTab === "summary" && (
           <div className="space-y-4">
             <ExecutiveRealtimeCrm
+              account={{
+                email: session.email,
+                label: session.label,
+                mfaVerified: session.mfaVerified,
+                role: session.role,
+                setupCompleted: session.setupCompleted,
+                tenantSlug: session.tenantSlug,
+              }}
               initialEvents={initialRealtimeEvents}
               tenantScope={tenantScope}
               mode={isTenantAdmin ? "tenant" : "global"}
