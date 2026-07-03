@@ -52,6 +52,6 @@ export function dashboardDemoAccessAllowedForRole(role: string) {
 }
 
 export function dashboardFallbackSessionAllowed() {
-  const explicitAutoSession = readFlag("DASHBOARD_AUTO_SESSION", "ENABLE_PUBLIC_DEMO_SESSION");
+  const explicitAutoSession = readFlag("DASHBOARD_AUTO_SESSION");
   return explicitAutoSession === true;
 }
