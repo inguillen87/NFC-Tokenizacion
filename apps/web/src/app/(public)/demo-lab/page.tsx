@@ -601,7 +601,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>nexID</span>
         </Link>
-        <div className="grid min-w-0 grid-cols-[44px_auto] items-center justify-end gap-2 md:flex md:flex-wrap">
+        <div className="grid w-full min-w-0 justify-self-end grid-cols-[44px_auto] items-center justify-end gap-2 md:flex md:w-auto md:flex-wrap">
           <span className="hidden text-xs font-black uppercase tracking-[0.18em] text-slate-400 md:inline">
             Demo Lab
           </span>

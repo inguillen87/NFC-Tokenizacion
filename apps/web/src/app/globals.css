@@ -46217,7 +46217,13 @@ html[data-theme="light"] .hero-trust-atlas__label-sub {
 }
 
 .demo-lab-hub-nav {
+  grid-template-columns: max-content minmax(0, 1fr) !important;
   box-shadow: 0 1px 0 rgba(125, 211, 252, 0.08), 0 18px 40px rgba(2, 6, 23, 0.28);
+}
+
+.demo-lab-hub-nav > div {
+  justify-self: end;
+  min-width: 0;
 }
 
 .demo-lab-hub-card,
@@ -46354,7 +46360,10 @@ html[data-theme="light"] .demo-lab-hub-signal-card__icon {
     grid-template-columns: 44px minmax(0, max-content) !important;
     gap: 0.55rem !important;
     justify-content: end !important;
-    max-width: calc(100% - 5.5rem);
+    grid-column: 2 !important;
+    width: 100% !important;
+    max-width: min(18rem, 100%) !important;
+    min-width: 0 !important;
   }
 
   .demo-lab-hub-nav > div > span {

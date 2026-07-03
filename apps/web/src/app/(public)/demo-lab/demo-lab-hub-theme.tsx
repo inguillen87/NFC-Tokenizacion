@@ -11,21 +11,22 @@
  * set as a cookie by applyTheme() for SSR hydration.
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Sun, Moon } from "lucide-react";
 
 type Theme = "dark" | "light";
 
 function readTheme(): Theme {
+  const attr = document.documentElement.getAttribute("data-theme");
+  if (attr === "dark" || attr === "light") return attr;
+
   try {
     const saved = localStorage.getItem("theme");
     if (saved === "dark" || saved === "light") return saved;
   } catch {
     // SSR / private-browse guard
   }
-  // Fallback: read the data-theme attribute already set by the server
-  const attr = document.documentElement.getAttribute("data-theme");
-  return attr === "light" ? "light" : "dark";
+  return "dark";
 }
 
 function applyTheme(theme: Theme) {
@@ -49,11 +50,36 @@ function applyTheme(theme: Theme) {
 export function DemoLabThemeToggle() {
   const [theme, setTheme] = useState<Theme>("dark");
   const [mounted, setMounted] = useState(false);
+  const [toggleHref, setToggleHref] = useState("/api/theme?theme=light&returnTo=%2Fdemo-lab");
+
+  const writeToggleHref = useCallback((next: Theme) => {
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("theme");
+      const returnTo = `${url.pathname}${url.search}${url.hash}`;
+      setToggleHref(`/api/theme?theme=${next}&returnTo=${encodeURIComponent(returnTo)}`);
+    } catch {
+      setToggleHref(`/api/theme?theme=${next}&returnTo=%2Fdemo-lab`);
+    }
+  }, []);
 
   useEffect(() => {
-    const initial = readTheme();
+    let initial = readTheme();
+    try {
+      const url = new URL(window.location.href);
+      const requested = url.searchParams.get("theme");
+      if (requested === "dark" || requested === "light") {
+        initial = requested;
+        url.searchParams.delete("theme");
+        window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+      }
+    } catch {
+      // ignore
+    }
+
     setTheme(initial);
     applyTheme(initial);
+    writeToggleHref(initial === "dark" ? "light" : "dark");
     setMounted(true);
 
     const onStorage = (e: StorageEvent) => {
@@ -62,38 +88,35 @@ export function DemoLabThemeToggle() {
       const next = e.newValue as Theme;
       setTheme(next);
       applyTheme(next);
+      writeToggleHref(next === "dark" ? "light" : "dark");
     };
 
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
-  }, []);
+  }, [writeToggleHref]);
 
   const nextTheme: Theme = theme === "dark" ? "light" : "dark";
-
-  const handleToggle = () => {
-    setTheme(nextTheme);
-    applyTheme(nextTheme);
-  };
 
   // Render a placeholder during SSR / before mount to avoid hydration mismatch
   if (!mounted) {
     return (
-      <button
+      <a
         suppressHydrationWarning
-        type="button"
+        href={toggleHref}
+        role="button"
         aria-label="Toggle theme"
         className="theme-toggle inline-flex h-11 w-11 min-h-11 min-w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-500 transition hover:bg-white/10 md:h-8 md:w-8 md:min-h-8 md:min-w-8"
       >
         <Moon className="w-3.5 h-3.5" />
-      </button>
+      </a>
     );
   }
 
   return (
-    <button
+    <a
       suppressHydrationWarning
-      type="button"
-      onClick={handleToggle}
+      href={toggleHref}
+      role="button"
       aria-label={`Switch to ${nextTheme} mode`}
       title={`Switch to ${nextTheme} mode`}
       className="theme-toggle inline-flex h-11 w-11 min-h-11 min-w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-400 transition hover:border-cyan-400/30 hover:bg-white/10 hover:text-cyan-300 md:h-8 md:w-8 md:min-h-8 md:min-w-8"
@@ -103,7 +126,7 @@ export function DemoLabThemeToggle() {
       ) : (
         <Moon className="w-3.5 h-3.5" />
       )}
-    </button>
+    </a>
   );
 }
 
