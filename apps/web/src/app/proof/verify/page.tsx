@@ -453,6 +453,13 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           color: var(--proof-title) !important;
         }
 
+        .proof-verify-page .proof-decoder-input {
+          overflow-x: hidden;
+          overflow-wrap: anywhere;
+          white-space: pre-wrap;
+          word-break: break-all;
+        }
+
         .proof-verify-page input::placeholder,
         .proof-verify-page textarea::placeholder {
           color: var(--proof-muted);
@@ -519,6 +526,40 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           display: none;
         }
 
+        .proof-verify-page .proof-workstation-sidebar {
+          position: relative;
+        }
+
+        .proof-verify-page .proof-workstation-grid {
+          display: grid;
+          gap: 1.25rem;
+        }
+
+        @media (min-width: 1280px) {
+          .proof-verify-page .proof-workstation-grid {
+            grid-template-columns: minmax(0, 1fr) 420px;
+            align-items: start;
+          }
+
+          .proof-verify-page .proof-workstation-sidebar {
+            position: sticky;
+            top: 1.25rem;
+            max-height: calc(100vh - 2.5rem);
+            overflow: auto;
+            overscroll-behavior: contain;
+            padding-right: 0.2rem;
+          }
+
+          .proof-verify-page .proof-workstation-sidebar::-webkit-scrollbar {
+            width: 0.45rem;
+          }
+
+          .proof-verify-page .proof-workstation-sidebar::-webkit-scrollbar-thumb {
+            border-radius: 999px;
+            background: rgba(34, 211, 238, 0.34);
+          }
+        }
+
         @media (max-width: 640px) {
           .proof-verify-page {
             padding-bottom: 6rem;
@@ -543,7 +584,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           }
         }
       `}</style>
-      <section className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-5 py-8 sm:px-8 lg:px-10">
+      <section className="mx-auto flex w-full max-w-7xl flex-col gap-10 px-5 py-8 sm:px-8 lg:px-10">
         <div className="flex items-center justify-between gap-4">
           <BackLink href="/" label="Volver a nexID" />
           <div className="flex flex-wrap items-center justify-end gap-2">
@@ -762,7 +803,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           </div>
         </section>
 
-        <section className="grid gap-5 lg:grid-cols-[0.92fr_1.08fr] lg:items-start">
+        <section className="proof-workstation-grid">
           <div className="proof-elevated rounded-[1.5rem] border border-slate-200 bg-white/82 p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -878,7 +919,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
             ) : null}
           </div>
 
-          <div className="grid gap-5 lg:self-start">
+          <div className="proof-workstation-sidebar grid gap-5 xl:self-start">
           <div className="proof-elevated rounded-[1.5rem] border border-cyan-200 bg-cyan-50/75 p-5 shadow-sm">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Lectura ejecutiva</p>
             <h2 className="mt-2 text-2xl font-black leading-tight text-slate-950">
@@ -965,9 +1006,10 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                   <textarea
                     name="decode_input"
                     defaultValue={decoderInput}
+                    wrap="soft"
                     rows={5}
                     placeholder="0x6e657849442d70726f6f662d76317c..."
-                    className="min-h-32 resize-y rounded-2xl border border-slate-200 bg-slate-50 p-3 font-mono text-xs font-bold normal-case leading-5 tracking-normal text-slate-900 outline-none transition focus:border-cyan-400 focus:bg-white"
+                    className="proof-decoder-input min-h-32 resize-y rounded-2xl border border-slate-200 bg-slate-50 p-3 font-mono text-xs font-bold normal-case leading-5 tracking-normal text-slate-900 outline-none transition focus:border-cyan-400 focus:bg-white"
                   />
                 </label>
                 <button className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-cyan-900">
@@ -1019,9 +1061,14 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                 ) : null}
 
                 <div className="grid gap-2 sm:grid-cols-3">
-                  {["1. Abrir TX", "2. Show details", "3. Raw input"].map((step) => (
-                    <div key={step} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-[0.68rem] font-black uppercase tracking-[0.12em] text-slate-700">
-                      {step}
+                  {[
+                    { title: "1. Abrir tx", body: "Desde IOTA Explorer" },
+                    { title: "2. Copiar Raw input", body: "Show details -> Hex" },
+                    { title: "3. Traducir", body: "nexID lo explica" },
+                  ].map((step) => (
+                    <div key={step.title} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
+                      <p className="text-[0.68rem] font-black uppercase tracking-[0.12em] text-slate-700">{step.title}</p>
+                      <p className="mt-1 text-xs font-bold leading-5 text-slate-500">{step.body}</p>
                     </div>
                   ))}
                 </div>
@@ -1047,6 +1094,25 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                 </div>
               </div>
             </div>
+
+          <div className="proof-elevated rounded-[1.5rem] border border-emerald-200 bg-emerald-50/75 p-5 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-800">Como se lo explicas a gerencia</p>
+            <h2 className="mt-2 text-2xl font-black leading-tight text-slate-950">El explorer prueba fecha y red. nexID prueba contexto.</h2>
+            <div className="mt-4 grid gap-3">
+              <div className="proof-flat rounded-2xl border border-emerald-200 bg-white/70 p-4">
+                <strong className="block text-sm text-emerald-950">Lo publico</strong>
+                <p className="mt-2 text-sm leading-6 text-emerald-900">Caso, tipo de recurso, cantidad de eventos, Merkle root y politica hash-only.</p>
+              </div>
+              <div className="proof-flat rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                <strong className="block text-sm text-amber-950">Lo privado</strong>
+                <p className="mt-2 text-sm leading-6 text-amber-900">UID secreto, cliente, manifiesto, ruta, QA interno, precio, contrato y datos personales.</p>
+              </div>
+              <div className="proof-flat rounded-2xl border border-cyan-200 bg-cyan-50/70 p-4">
+                <strong className="block text-sm text-slate-950">El valor comercial</strong>
+                <p className="mt-2 text-sm leading-6 text-slate-700">Auditoria externa sin convertir blockchain en base de datos publica. Sirve para ventas, compliance, DPP, QA y reclamos.</p>
+              </div>
+            </div>
+          </div>
           </div>
         </section>
 
