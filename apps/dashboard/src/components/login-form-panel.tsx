@@ -133,13 +133,6 @@ export function LoginFormPanel({
     window.location.href = "/";
   }
 
-  function enterDemoRole(demoRole: DemoRole) {
-    setPending(true);
-    setStatus("");
-    setOpsStatus("");
-    window.location.assign(`/api/session/demo?role=${encodeURIComponent(demoRole)}`);
-  }
-
   const visibleDemoRoles = DEMO_ROLES.filter((demoRole) =>
     demoRole.key === "tenant-admin" ? bodegaDemoAllowed : demoLoginAllowed,
   );
@@ -160,20 +153,18 @@ export function LoginFormPanel({
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {visibleDemoRoles.map((demoRole) => (
-            <button suppressHydrationWarning
+            <Link
               key={demoRole.key}
-              type="button"
-              disabled={pending}
-              onClick={() => void enterDemoRole(demoRole.key)}
+              href={`/api/session/demo?role=${encodeURIComponent(demoRole.key)}`}
               title={demoRole.label}
-              className={`rounded-xl border p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${demoRole.tone}`}
+              className={`rounded-xl border p-3 text-left transition ${demoRole.tone}`}
             >
               <p className="text-sm font-semibold">{demoRole.title}</p>
               <p className="mt-1 text-xs opacity-80">{demoRole.description}</p>
               <span className="mt-3 inline-flex rounded-full border border-current/20 px-2 py-1 text-[11px] font-semibold">
                 {demoRole.label}
               </span>
-            </button>
+            </Link>
           ))}
         </div>
       </div>
