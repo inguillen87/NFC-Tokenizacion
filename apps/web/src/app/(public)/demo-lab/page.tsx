@@ -439,6 +439,29 @@ const HUB_VERTICALS = [
   },
 ];
 
+const HUB_STEPS = [
+  {
+    icon: Smartphone,
+    label: "1. Tap o QR",
+    body: "El producto abre una lectura verificable para cliente, canal o auditor.",
+  },
+  {
+    icon: ShieldCheck,
+    label: "2. Verifica",
+    body: "nexID resuelve autenticidad, estado fisico y politica del tenant.",
+  },
+  {
+    icon: Network,
+    label: "3. Traza",
+    body: "Muestra ruta, hitos, hash-only proof y anchors cuando aplica.",
+  },
+  {
+    icon: ArrowRight,
+    label: "4. Activa",
+    body: "Habilita garantia, reclamo, beneficio, CRM o salida enterprise.",
+  },
+];
+
 export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
   const { locale } = await getWebI18n();
   const structuredData = demoLabStructuredData(locale);
@@ -564,38 +587,38 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
       {structuredData.map((schema) => (
         <JsonLd key={schema["@type"]} data={schema} />
       ))}
-      {/* Background blobs */}
-      <div className="absolute inset-0 z-0 pointer-events-none">
-        <div className="absolute top-[8%] left-[18%] w-[600px] h-[600px] bg-violet-700/12 rounded-full blur-[130px]" />
-        <div className="absolute bottom-[8%] right-[18%] w-[700px] h-[700px] bg-cyan-600/10 rounded-full blur-[160px]" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[900px] bg-blue-900/8 rounded-full blur-[120px]" />
+      <div className="demo-lab-hub-bg absolute inset-0 z-0 pointer-events-none" aria-hidden="true">
+        <div className="demo-lab-hub-bg__grid" />
+        <div className="demo-lab-hub-bg__scan" />
       </div>
 
       {/* Top nav bar */}
-      <nav className="demo-lab-hub-nav sticky top-0 z-50 flex items-center justify-between gap-4 px-5 h-13 border-b border-white/[0.06] bg-[#03070f]/90 backdrop-blur-xl" style={{ height: "3.25rem" }}>
+      <nav className="demo-lab-hub-nav sticky top-0 z-50 grid min-h-[3.75rem] grid-cols-[auto_minmax(0,1fr)] items-start justify-between gap-3 border-b border-white/[0.06] bg-[#03070f]/90 px-4 py-2 backdrop-blur-xl md:flex md:items-center">
         <Link
           href="/"
-          className="inline-flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-cyan-300 transition-colors"
+          className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 text-xs font-black text-slate-300 transition-colors hover:border-cyan-300/40 hover:text-cyan-200"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>nexID</span>
         </Link>
-        <div className="flex items-center gap-2">
-          <span className="hidden sm:inline text-xs font-black uppercase tracking-[0.18em] text-slate-600">
+        <div className="grid min-w-0 grid-cols-[44px_auto] items-center justify-end gap-2 md:flex md:flex-wrap">
+          <span className="hidden text-xs font-black uppercase tracking-[0.18em] text-slate-400 md:inline">
             Demo Lab
           </span>
-          <span className="hidden sm:inline w-px h-4 bg-white/10" />
+          <span className="hidden h-4 w-px bg-white/10 md:inline" />
           {/* Theme toggle — reads localStorage "theme" key on mount */}
           <DemoLabThemeToggle />
           <Link
             href="/proof/verify"
-            className="hover:text-slate-300 transition-colors"
+            className="inline-flex min-h-10 items-center justify-self-end rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 text-xs font-black text-cyan-100 transition-colors hover:border-cyan-200/50 hover:bg-cyan-300/16 md:gap-2"
           >
-            Proof Verify & Decoder
+            <ShieldCheck className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Proof Verify & Decoder</span>
+            <span className="sm:hidden">Proof</span>
           </Link>
           <Link
             href="/?contact=demo#contact-modal"
-            className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-gradient-to-r from-cyan-500/90 to-teal-500/90 text-slate-950 text-xs font-black tracking-wide hover:brightness-110 transition-all"
+            className="col-span-2 inline-flex min-h-10 items-center justify-self-end gap-1.5 rounded-full bg-gradient-to-r from-cyan-400 to-teal-400 px-4 text-xs font-black tracking-wide text-slate-950 transition-all hover:brightness-110 md:col-span-1"
           >
             Agendar demo
             <ArrowRight className="w-3 h-3" />
@@ -603,61 +626,79 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
         </div>
       </nav>
 
-      <div className="relative z-10 w-full max-w-4xl mx-auto px-6 py-12 md:py-20">
+      <div className="relative z-10 mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 md:py-16">
         {/* Header */}
-        <div className="text-center mb-14">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/5 border border-white/10 mb-6 relative">
-            <div className="absolute inset-0 bg-cyan-500/15 rounded-2xl blur-md" />
-            <Fingerprint className="w-8 h-8 text-cyan-300 relative z-10" />
+        <div className="mx-auto mb-10 max-w-3xl text-center md:mb-12">
+          <div className="relative mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl border border-cyan-200/18 bg-slate-950/70">
+            <Fingerprint className="relative z-10 h-8 w-8 text-cyan-300" />
           </div>
-          <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-500 mb-3">
+          <p className="mb-3 text-xs font-black uppercase tracking-[0.25em] text-cyan-200">
             nexID Platform
           </p>
-          <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-5">
+          <h1 className="mb-5 text-4xl font-extrabold tracking-tight md:text-6xl">
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-white to-violet-400">
               Demo Lab
             </span>
           </h1>
-          <p className="text-lg text-slate-400 max-w-xl mx-auto leading-relaxed">
+          <p className="mx-auto max-w-2xl text-base leading-7 text-slate-300 md:text-lg">
             Seleccioná una capa de confianza o tu industria para simular la
             experiencia completa end-to-end.
           </p>
         </div>
 
+        <div className="demo-lab-hub-signal-grid mb-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {HUB_STEPS.map((step) => {
+            const Icon = step.icon;
+            return (
+              <div key={step.label} className="demo-lab-hub-signal-card">
+                <div className="demo-lab-hub-signal-card__icon">
+                  <Icon className="h-4 w-4" />
+                </div>
+                <div>
+                  <strong>{step.label}</strong>
+                  <p>{step.body}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
         {/* Scenarios Grid */}
         <div className="mb-12">
-          <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-600 mb-4">
+          <p className="mb-4 text-xs font-black uppercase tracking-[0.22em] text-slate-400">
             Capas de confianza
           </p>
-          <div className="demo-lab-hub-card-grid grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="demo-lab-hub-card-grid grid grid-cols-1 gap-4 md:grid-cols-2">
             {HUB_SCENARIOS.map((s) => {
               const Icon = s.icon;
               return (
                 <Link
                   key={s.id}
                   href={`/demo-lab?scenario=${s.id}`}
-                  className={`demo-lab-hub-card group relative p-6 rounded-3xl bg-white/[0.03] border border-white/[0.08] ${s.border} hover:border-cyan-400/40 backdrop-blur-md transition-all duration-300 overflow-hidden hover:bg-white/[0.07] hover:shadow-xl ${s.shadow}`}
+                  className={`demo-lab-hub-card group relative flex min-h-[10.5rem] flex-col justify-between gap-4 overflow-hidden rounded-2xl border border-white/[0.1] bg-slate-950/70 p-5 backdrop-blur-md transition-all duration-300 hover:border-cyan-300/40 hover:bg-slate-900/88 ${s.border} ${s.shadow}`}
                 >
                   {/* Left accent bar — subtle at rest, vivid on hover */}
                   <div
-                    className={`absolute left-0 top-0 bottom-0 w-[3px] bg-gradient-to-b ${s.color} opacity-20 group-hover:opacity-100 transition-opacity duration-300 rounded-l-3xl`}
+                    className={`absolute left-0 top-0 bottom-0 w-[3px] bg-gradient-to-b ${s.color} opacity-75 transition-opacity duration-300 group-hover:opacity-100`}
                   />
                   <div className="flex items-start gap-4">
                     <div
-                      className={`w-11 h-11 shrink-0 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-all duration-200 shadow-lg ${s.accentGlow} ${s.accent}`}
+                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl shadow-lg transition-all duration-200 ${s.accentGlow} ${s.accent}`}
                     >
                       <Icon className="w-5 h-5" />
                     </div>
                     <div className="min-w-0">
-                      <h3 className="text-base font-bold text-slate-100 transition-colors mb-1">
+                      <h3 className="mb-1 text-base font-black text-slate-50 transition-colors">
                         {s.title}
                       </h3>
-                      <p className="text-sm text-slate-400 leading-relaxed">
+                      <p className="text-sm leading-6 text-slate-300">
                         {s.body}
                       </p>
                     </div>
-                    <ArrowRight className="w-4 h-4 text-slate-600 group-hover:text-slate-300 transition-colors shrink-0 mt-1" />
                   </div>
+                  <span className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-cyan-200">
+                    Abrir demo <ArrowRight className="h-3.5 w-3.5" />
+                  </span>
                 </Link>
               );
             })}
@@ -666,22 +707,22 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
 
         {/* Verticals Grid */}
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-600 mb-4">
+          <p className="mb-4 text-xs font-black uppercase tracking-[0.22em] text-slate-400">
             Por industria
           </p>
-          <div className="demo-lab-hub-vertical-grid grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] gap-3">
+          <div className="demo-lab-hub-vertical-grid grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {HUB_VERTICALS.map((v) => {
               const Icon = v.icon;
               return (
                 <Link
                   key={v.vertical}
                   href={`/demo-lab?vertical=${v.vertical}`}
-                  className={`demo-lab-hub-pill group flex items-center gap-2.5 px-4 py-3 rounded-2xl border bg-white/[0.02] hover:bg-white/[0.06] hover:scale-105 hover:shadow-lg transition-all duration-200 ${v.color}`}
+                  className={`demo-lab-hub-pill group flex min-h-14 items-center gap-2.5 rounded-2xl border bg-slate-950/58 px-4 py-3 transition-all duration-200 hover:border-cyan-300/32 hover:bg-slate-900/82 ${v.color}`}
                 >
-                  <div className={`w-7 h-7 shrink-0 rounded-xl flex items-center justify-center ${v.color}`}>
+                  <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-xl ${v.color}`}>
                     <Icon className="w-3.5 h-3.5" />
                   </div>
-                  <span className="min-w-0 text-sm font-bold text-slate-200">
+                  <span className="min-w-0 text-sm font-black text-slate-100">
                     {v.label}
                   </span>
                 </Link>
@@ -691,22 +732,22 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
         </div>
 
         {/* Footer nav */}
-        <div className="mt-14 flex flex-wrap items-center justify-center gap-6 text-sm text-slate-600">
+        <div className="mt-14 flex flex-wrap items-center justify-center gap-6 text-sm font-bold text-slate-400">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 hover:text-slate-300 transition-colors"
+            className="inline-flex items-center gap-2 transition-colors hover:text-cyan-200"
           >
             <ArrowLeft className="w-3.5 h-3.5" /> Volver a nexID
           </Link>
           <Link
             href="/docs"
-            className="hover:text-slate-300 transition-colors"
+            className="transition-colors hover:text-cyan-200"
           >
             Documentación técnica
           </Link>
           <Link
             href="/?contact=demo#contact-modal"
-            className="hover:text-slate-300 transition-colors"
+            className="transition-colors hover:text-cyan-200"
           >
             Agendar demo
           </Link>

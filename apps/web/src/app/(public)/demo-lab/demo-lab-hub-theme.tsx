@@ -82,7 +82,7 @@ export function DemoLabThemeToggle() {
         suppressHydrationWarning
         type="button"
         aria-label="Toggle theme"
-        className="theme-toggle inline-flex items-center justify-center w-8 h-8 rounded-full border border-white/10 bg-white/5 text-slate-500 transition hover:bg-white/10"
+        className="theme-toggle inline-flex h-11 w-11 min-h-11 min-w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-500 transition hover:bg-white/10 md:h-8 md:w-8 md:min-h-8 md:min-w-8"
       >
         <Moon className="w-3.5 h-3.5" />
       </button>
@@ -96,7 +96,7 @@ export function DemoLabThemeToggle() {
       onClick={handleToggle}
       aria-label={`Switch to ${nextTheme} mode`}
       title={`Switch to ${nextTheme} mode`}
-      className="theme-toggle inline-flex items-center justify-center w-8 h-8 rounded-full border border-white/10 bg-white/5 text-slate-400 transition hover:bg-white/10 hover:text-cyan-300 hover:border-cyan-400/30"
+      className="theme-toggle inline-flex h-11 w-11 min-h-11 min-w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-400 transition hover:border-cyan-400/30 hover:bg-white/10 hover:text-cyan-300 md:h-8 md:w-8 md:min-h-8 md:min-w-8"
     >
       {theme === "dark" ? (
         <Sun className="w-3.5 h-3.5" />
