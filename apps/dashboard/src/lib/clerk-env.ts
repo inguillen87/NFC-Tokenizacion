@@ -2,6 +2,8 @@ function isProductionDeployment() {
   return process.env.VERCEL_ENV === "production";
 }
 
+const DEFAULT_CLERK_PROXY_PATH = "/__clerk";
+
 function normalizeOrigin(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return "";
@@ -35,6 +37,12 @@ export function getClerkAuthorizedParties() {
     ? []
     : ["http://localhost:3000", "http://localhost:3010", "http://127.0.0.1:3000", "http://127.0.0.1:3010"];
   return unique([...explicit, dashboardOrigin, ...localOrigins]);
+}
+
+export function getClerkProxyUrl() {
+  const explicit = process.env.NEXT_PUBLIC_CLERK_PROXY_URL?.trim() || "";
+  if (explicit) return explicit;
+  return isProductionDeployment() ? DEFAULT_CLERK_PROXY_PATH : "";
 }
 
 export function isClerkConfiguredForRuntime() {

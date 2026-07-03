@@ -8,7 +8,7 @@ import { resolveLocale } from "@product/config";
 import { HelpBot } from "@product/ui";
 import { MisconfigurationBanner } from "../components/misconfiguration-banner";
 import { PwaSetup } from "../components/pwa-setup";
-import { getClerkPublishableKey } from "../lib/clerk-env";
+import { getClerkProxyUrl, getClerkPublishableKey } from "../lib/clerk-env";
 
 const extensionConsoleShieldScript = `
 (() => {
@@ -119,6 +119,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const themeCookie = cookieStore.get("theme")?.value;
   const theme = themeCookie === "light" ? "light" : "dark";
   const clerkKey = getClerkPublishableKey();
+  const clerkProxyUrl = getClerkProxyUrl();
 
   return (
     <html lang={locale} suppressHydrationWarning className={theme === "light" ? "theme-light" : undefined} data-theme={theme}>
@@ -127,7 +128,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <MisconfigurationBanner />
         <PwaSetup />
         {clerkKey ? (
-          <ClerkProvider publishableKey={clerkKey}>
+          <ClerkProvider publishableKey={clerkKey} proxyUrl={clerkProxyUrl || undefined}>
             {children}
           </ClerkProvider>
         ) : (

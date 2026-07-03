@@ -17,13 +17,13 @@ export default function SignInPage() {
           <Link href="/login" aria-label="Volver a nexID CRM" className="inline-flex items-center">
             <BrandLockup size={72} variant="ripple" theme="dark" />
           </Link>
-          <p className="mt-8 text-xs font-black uppercase tracking-[0.24em] text-cyan-200">Admin CRM</p>
+          <p className="mt-8 text-xs font-black uppercase tracking-[0.24em] text-cyan-200">Super Admin fundador</p>
           <h1 className="mt-3 max-w-2xl text-4xl font-black leading-tight md:text-6xl">
-            Ingreso seguro para equipos, tenants y operadores.
+            Google verifica identidad. nexID decide el acceso.
           </h1>
           <p className="mt-5 max-w-xl text-base leading-7 text-slate-300">
-            nexID mantiene un IAM operativo para CRM, tenants y empleados. Clerk queda como login externo para el
-            email fundador allowlisted, sin bloquear la consola comercial ni abrir usuarios externos por accidente.
+            El correo fundador entra por Google/Clerk y despues pasa por la allowlist de nexID. Tenants, empleados y
+            demos comerciales siguen separados para no mezclar operaciones enterprise con el portal consumidor.
           </p>
           <div className="mt-8 grid max-w-xl gap-3 sm:grid-cols-2">
             {operationalProfiles.map((profile) => (
@@ -56,9 +56,9 @@ export default function SignInPage() {
         </section>
         <section className="rounded-3xl border border-white/10 bg-slate-950/70 p-4 shadow-[0_30px_100px_rgba(6,182,212,0.16)] backdrop-blur">
           <div className="mb-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Login social opcional</p>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Ingreso Google allowlisted</p>
             <p className="mt-2 text-sm leading-5 text-slate-300">
-              Usa Clerk solo si el email esta allowlisted como Super Admin. La sesion final la emite nexID, no Clerk por si solo.
+              Google prueba que sos el titular del correo. nexID solo crea sesion Super Admin si ese correo esta aprobado.
             </p>
           </div>
           {clerkEnabled ? (

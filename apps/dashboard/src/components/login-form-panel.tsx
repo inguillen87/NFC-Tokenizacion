@@ -216,7 +216,7 @@ export function LoginFormPanel({
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">Super Admin fundador</p>
           <p className="mt-1 text-sm leading-5 text-slate-300">
-            Acceso por Clerk solo para emails allowlisted. Google OAuth queda listo al cargar credenciales custom de Google Cloud.
+            Acceso por Google/Clerk solo para emails allowlisted. La sesion operativa final la emite nexID despues de validar politica.
           </p>
         </div>
         {authNotice ? (
@@ -228,15 +228,15 @@ export function LoginFormPanel({
           <>
             <SignInButton mode="redirect" forceRedirectUrl="/auth/clerk/super-admin" fallbackRedirectUrl="/auth/clerk/super-admin">
               <button type="button" title="Entrar como Super Admin con sesion Clerk validada por allowlist." className="flex w-full items-center justify-center gap-3 rounded-xl border border-cyan-400/35 bg-cyan-400/10 px-4 py-3 text-sm font-bold text-cyan-50 shadow-[0_18px_40px_rgba(6,182,212,0.12)] transition hover:border-cyan-200 hover:bg-cyan-400/20">
-                Entrar con Clerk como Super Admin
+                Entrar con Google como Super Admin
               </button>
             </SignInButton>
             <Link
               href="/sign-in"
-              title="Abrir la pantalla completa de Clerk si el flujo redirect no aparece."
+              title="Abrir la pantalla completa de Google/Clerk si el flujo redirect no aparece."
               className="flex w-full items-center justify-center rounded-xl border border-white/10 bg-slate-950/70 px-4 py-2.5 text-xs font-bold text-slate-200 transition hover:border-cyan-300/35 hover:text-cyan-100"
             >
-              Abrir login Clerk en pantalla completa
+              Abrir login seguro en pantalla completa
             </Link>
           </>
         ) : (

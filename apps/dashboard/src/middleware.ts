@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 import type { NextFetchEvent, NextRequest } from "next/server";
 import { clerkMiddleware } from "@clerk/nextjs/server";
-import { getClerkAuthorizedParties, isClerkConfiguredForRuntime } from "./lib/clerk-env";
+import { getClerkAuthorizedParties, getClerkProxyUrl, isClerkConfiguredForRuntime } from "./lib/clerk-env";
 
 // Clerk provides OAuth/session context; nexID IAM still enforces route access
 // through getDashboardSession() and the admin API proxy.
 const clerkGuard = isClerkConfiguredForRuntime()
-  ? clerkMiddleware({ authorizedParties: getClerkAuthorizedParties() })
+  ? clerkMiddleware({
+      authorizedParties: getClerkAuthorizedParties(),
+      frontendApiProxy: { enabled: true },
+      proxyUrl: getClerkProxyUrl() || undefined,
+    })
   : null;
 
 export default function middleware(req: NextRequest, event: NextFetchEvent) {
