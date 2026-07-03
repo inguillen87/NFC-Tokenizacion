@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import {
   BookOpen,
   Building2,
@@ -67,7 +68,10 @@ export function TenantAccountMenu({
   tenantSlug,
 }: TenantAccountMenuProps) {
   const [open, setOpen] = useState(false);
+  const [panelStyle, setPanelStyle] = useState<CSSProperties>({});
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
   const tenantName = tenantNameFromSlug(tenantSlug);
   const scopedTenant = String(tenantSlug || "").trim().toLowerCase();
   const tenantQuery = scopedTenant ? `?tenant=${encodeURIComponent(scopedTenant)}` : "";
@@ -78,7 +82,9 @@ export function TenantAccountMenu({
   useEffect(() => {
     if (!open) return;
     const handlePointerDown = (event: PointerEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Node;
+      if (menuRef.current?.contains(target) || panelRef.current?.contains(target)) return;
+      setOpen(false);
     };
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
@@ -88,6 +94,30 @@ export function TenantAccountMenu({
     return () => {
       window.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const updatePanelPosition = () => {
+      const rect = triggerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const gutter = 12;
+      const top = Math.min(Math.max(rect.bottom + 10, gutter), window.innerHeight - 96);
+      const right = Math.max(gutter, window.innerWidth - rect.right);
+      setPanelStyle({
+        top,
+        right,
+        width: "min(calc(100vw - 24px), 26rem)",
+        maxHeight: Math.max(280, window.innerHeight - top - gutter),
+      });
+    };
+    updatePanelPosition();
+    window.addEventListener("resize", updatePanelPosition);
+    window.addEventListener("scroll", updatePanelPosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePanelPosition);
+      window.removeEventListener("scroll", updatePanelPosition, true);
     };
   }, [open]);
 
@@ -184,9 +214,67 @@ export function TenantAccountMenu({
     )
   );
 
+  const menuPanel = open ? (
+    <div
+      ref={panelRef}
+      role="menu"
+      data-testid="tenant-account-menu-panel"
+      style={panelStyle}
+      className="fixed z-[10000] overflow-hidden rounded-2xl border border-cyan-200/18 bg-[#07111f]/98 text-slate-100 shadow-[0_34px_120px_rgba(0,0,0,.68)] ring-1 ring-cyan-200/10 backdrop-blur-xl"
+    >
+      <div className="border-b border-white/8 bg-[radial-gradient(circle_at_85%_12%,rgba(34,211,238,.18),transparent_38%),linear-gradient(135deg,rgba(15,23,42,.98),rgba(8,16,31,.98))] p-4">
+        <div className="flex items-start gap-3">
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-cyan-300/25 bg-cyan-400/10 text-sm font-black text-cyan-100">
+            {initialsFor(role)}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Cuenta operativa</p>
+            <h2 className="mt-1 truncate text-base font-black text-white">{accountLabel}</h2>
+            <p className="truncate text-xs text-slate-400">{email || "Cuenta enterprise"}</p>
+          </div>
+        </div>
+        <div className="mt-4 grid grid-cols-3 gap-2 text-[10px] font-bold uppercase tracking-[0.08em]">
+          <span className="rounded-lg border border-emerald-300/25 bg-emerald-400/10 px-2 py-2 text-emerald-100">
+            {setupCompleted === false ? "setup pendiente" : "setup ok"}
+          </span>
+          <span className="rounded-lg border border-cyan-300/25 bg-cyan-400/10 px-2 py-2 text-cyan-100">
+            {mfaVerified ? "mfa ok" : "mfa revisar"}
+          </span>
+          <span className="rounded-lg border border-violet-300/25 bg-violet-400/10 px-2 py-2 text-violet-100">
+            {isTenantMode ? "tenant" : "global"}
+          </span>
+        </div>
+      </div>
+
+      <div className="max-h-[calc(100vh-18rem)] overflow-y-auto p-3">
+        <div className="grid gap-2">
+          {primaryItems.map(renderItem)}
+        </div>
+        <div className="my-3 h-px bg-white/8" />
+        <div className="grid gap-2">
+          {operationsItems.map(renderItem)}
+        </div>
+      </div>
+
+      <div className="border-t border-white/8 bg-slate-950/80 p-3">
+        <form method="post" action="/logout">
+          <button
+            type="submit"
+            data-testid="tenant-account-logout"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm font-black text-rose-100 transition hover:border-rose-200/70 hover:bg-rose-500/18"
+          >
+            <LogOut className="h-4 w-4" />
+            Cerrar sesion segura
+          </button>
+        </form>
+      </div>
+    </div>
+  ) : null;
+
   return (
     <div ref={menuRef} className={`relative ${className}`}>
       <button
+        ref={triggerRef}
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
@@ -205,60 +293,7 @@ export function TenantAccountMenu({
         <ChevronDown className={`h-4 w-4 shrink-0 text-slate-500 transition ${open ? "rotate-180 text-cyan-200" : ""}`} />
       </button>
 
-      {open ? (
-        <div
-          role="menu"
-          data-testid="tenant-account-menu-panel"
-          className="absolute right-0 top-[calc(100%+0.6rem)] z-[160] w-[min(92vw,26rem)] overflow-hidden rounded-2xl border border-cyan-200/18 bg-[#07111f]/98 text-slate-100 shadow-[0_28px_90px_rgba(0,0,0,.55)] backdrop-blur-xl"
-        >
-          <div className="border-b border-white/8 bg-[radial-gradient(circle_at_85%_12%,rgba(34,211,238,.18),transparent_38%),linear-gradient(135deg,rgba(15,23,42,.98),rgba(8,16,31,.98))] p-4">
-            <div className="flex items-start gap-3">
-              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-cyan-300/25 bg-cyan-400/10 text-sm font-black text-cyan-100">
-                {initialsFor(role)}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Cuenta operativa</p>
-                <h2 className="mt-1 truncate text-base font-black text-white">{accountLabel}</h2>
-                <p className="truncate text-xs text-slate-400">{email || "Cuenta enterprise"}</p>
-              </div>
-            </div>
-            <div className="mt-4 grid grid-cols-3 gap-2 text-[10px] font-bold uppercase tracking-[0.08em]">
-              <span className="rounded-lg border border-emerald-300/25 bg-emerald-400/10 px-2 py-2 text-emerald-100">
-                {setupCompleted === false ? "setup pendiente" : "setup ok"}
-              </span>
-              <span className="rounded-lg border border-cyan-300/25 bg-cyan-400/10 px-2 py-2 text-cyan-100">
-                {mfaVerified ? "mfa ok" : "mfa revisar"}
-              </span>
-              <span className="rounded-lg border border-violet-300/25 bg-violet-400/10 px-2 py-2 text-violet-100">
-                {isTenantMode ? "tenant" : "global"}
-              </span>
-            </div>
-          </div>
-
-          <div className="max-h-[min(70vh,36rem)] overflow-y-auto p-3">
-            <div className="grid gap-2">
-              {primaryItems.map(renderItem)}
-            </div>
-            <div className="my-3 h-px bg-white/8" />
-            <div className="grid gap-2">
-              {operationsItems.map(renderItem)}
-            </div>
-          </div>
-
-          <div className="border-t border-white/8 bg-slate-950/80 p-3">
-            <form method="post" action="/logout">
-              <button
-                type="submit"
-                data-testid="tenant-account-logout"
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm font-black text-rose-100 transition hover:border-rose-200/70 hover:bg-rose-500/18"
-              >
-                <LogOut className="h-4 w-4" />
-                Cerrar sesion segura
-              </button>
-            </form>
-          </div>
-        </div>
-      ) : null}
+      {typeof document !== "undefined" && menuPanel ? createPortal(menuPanel, document.body) : null}
     </div>
   );
 }

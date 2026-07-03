@@ -46,6 +46,7 @@ export function ClerkGoogleSuperAdminButton({
 
   return (
     <div className={compact ? "grid gap-2" : "grid gap-3"}>
+      <div id="clerk-captcha" className="empty:hidden" />
       <button
         type="button"
         title="Entrar como Super Admin con Google, Clerk y allowlist server-side de nexID."
