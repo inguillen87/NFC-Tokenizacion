@@ -17,15 +17,16 @@ import { Sun, Moon } from "lucide-react";
 type Theme = "dark" | "light";
 
 function readTheme(): Theme {
-  const attr = document.documentElement.getAttribute("data-theme");
-  if (attr === "dark" || attr === "light") return attr;
-
   try {
     const saved = localStorage.getItem("theme");
     if (saved === "dark" || saved === "light") return saved;
   } catch {
     // SSR / private-browse guard
   }
+
+  const attr = document.documentElement.getAttribute("data-theme");
+  if (attr === "dark" || attr === "light") return attr;
+
   return "dark";
 }
 

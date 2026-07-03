@@ -442,22 +442,22 @@ const HUB_VERTICALS = [
 const HUB_STEPS = [
   {
     icon: Smartphone,
-    label: "1. Tap o QR",
+    label: "1. Toca",
     body: "El producto abre una lectura verificable para cliente, canal o auditor.",
   },
   {
     icon: ShieldCheck,
-    label: "2. Verifica",
+    label: "2. Verificó",
     body: "nexID resuelve autenticidad, estado fisico y politica del tenant.",
   },
   {
     icon: Network,
-    label: "3. Traza",
+    label: "3. Trazó",
     body: "Muestra ruta, hitos, hash-only proof y anchors cuando aplica.",
   },
   {
     icon: ArrowRight,
-    label: "4. Activa",
+    label: "4. Ganó",
     body: "Habilita garantia, reclamo, beneficio, CRM o salida enterprise.",
   },
 ];

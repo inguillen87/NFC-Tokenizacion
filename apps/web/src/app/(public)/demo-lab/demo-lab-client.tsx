@@ -874,10 +874,10 @@ export function DemoLabClient({ locale, initialVertical, initialScenario }: { lo
   return (
     <main className={`demo-lab-shell demo-lab-shell--${viewMode} container-shell py-8 text-slate-100`}>
       {/* Premium Toggle Header */}
-      <div className="demo-lab-mode-bar mb-6 flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-white/10 bg-slate-950/45 p-4 backdrop-blur-md">
+      <div className="demo-lab-mode-bar demo-lab-mode-bar--compact mb-6 flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-white/10 bg-slate-950/45 p-4 backdrop-blur-md">
         <div className="flex items-center gap-3">
           <div className="h-2.5 w-2.5 rounded-full bg-cyan-400 animate-pulse" />
-          <span className="text-xs font-black uppercase tracking-widest text-cyan-300">nexID B2B Admin Console</span>
+          <span className="text-xs font-black uppercase tracking-widest text-cyan-300">nexID Demo Lab</span>
         </div>
         <div className="flex gap-2">
           <button
@@ -1082,6 +1082,28 @@ function DemoLabStudioHero({
     ? ["Toque", "Verificou", "Rastreou", "Ganhou"]
     : ["Toca", "Verificó", "Trazó", "Ganó"];
 
+  const stepGuidance = locale === "en"
+    ? [
+      { label: "Physical signal", title: "A product becomes a verifiable entry point.", body: "The NFC or QR touch opens the passport and starts a private evidence trail." },
+      { label: "Trust decision", title: "nexID resolves whether the product can be trusted.", body: "SUN, UID, tenant policy and risk state become a clear business verdict." },
+      { label: "Operational evidence", title: "The route becomes an auditable map, not a table.", body: "Custody, city, risk and hash-only proof are visible without exposing sensitive data." },
+      { label: "Commercial action", title: "The brand gets the next best action.", body: "Warranty, claim, CRM, loyalty or ownership can be activated from the same tap." },
+    ]
+    : locale === "pt-BR"
+    ? [
+      { label: "Sinal fisico", title: "O produto vira um ponto verificavel.", body: "O toque NFC ou QR abre o passaporte e inicia evidencia privada." },
+      { label: "Decisao de confianca", title: "nexID resolve se o produto e confiavel.", body: "SUN, UID, politica do tenant e risco viram um veredito claro." },
+      { label: "Evidencia operacional", title: "A rota vira um mapa auditavel.", body: "Custodia, cidade, risco e prova hash-only ficam visiveis sem dados sensiveis." },
+      { label: "Acao comercial", title: "A marca recebe a proxima melhor acao.", body: "Garantia, claim, CRM, loyalty ou ownership saem do mesmo toque." },
+    ]
+    : [
+      { label: "Senal fisica", title: "El producto se vuelve un punto verificable.", body: "El toque NFC o QR abre el pasaporte y arranca evidencia privada." },
+      { label: "Decision de confianza", title: "nexID resuelve si el producto es confiable.", body: "SUN, UID, politica del tenant y riesgo se vuelven un veredicto claro." },
+      { label: "Evidencia operativa", title: "La ruta se ve como mapa auditable.", body: "Custodia, ciudad, riesgo y prueba hash-only quedan visibles sin datos sensibles." },
+      { label: "Accion comercial", title: "La marca obtiene la proxima mejor accion.", body: "Garantia, reclamo, CRM, loyalty u ownership salen del mismo tap." },
+    ];
+  const activeStepGuidance = stepGuidance[step];
+
   const scheduleLabel = locale === "en" ? "Schedule demo →" : locale === "pt-BR" ? "Agendar demo →" : "Agendar demo →";
   const backHome = locale === "en" ? "← nexID" : "← nexID";
 
@@ -1100,6 +1122,7 @@ function DemoLabStudioHero({
               key={index}
               type="button"
               aria-current={step === index ? "step" : undefined}
+              aria-pressed={step === index}
               aria-label={`${index + 1}. ${label}`}
               onClick={() => setStep(index as 0 | 1 | 2 | 3)}
               className={`demo-lab-wizard-step-pill inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-full border px-4 text-xs font-black uppercase tracking-wider transition ${
@@ -1122,6 +1145,19 @@ function DemoLabStudioHero({
           </a>
         </div>
       </nav>
+
+      <div className="demo-lab-wizard-brief" aria-live="polite">
+        <div className="demo-lab-wizard-brief__copy">
+          <span>{activeStepGuidance.label}</span>
+          <strong>{activeStepGuidance.title}</strong>
+          <p>{activeStepGuidance.body}</p>
+        </div>
+        <div className="demo-lab-wizard-brief__proof">
+          <span>4 pasos</span>
+          <span>hash-only</span>
+          <span>IOTA / Polygon ready</span>
+        </div>
+      </div>
 
       {/* ── STEP 0: TOCA ─────────────────────────────────────── */}
       {step === 0 && (

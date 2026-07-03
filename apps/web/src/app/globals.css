@@ -46626,3 +46626,252 @@ body .landing-root .landing-hero-section .nexid-hero-atlas-card__stops article:n
     min-height: 0 !important;
   }
 }
+
+/* Demo Lab final enterprise pass: one coherent wizard story, readable hub,
+   and a mobile/tablet layout that feels intentional instead of scroll-heavy. */
+.demo-lab-mode-bar--compact {
+  margin-bottom: 0.9rem !important;
+  border-color: rgba(125, 211, 252, 0.16) !important;
+  background: linear-gradient(135deg, rgba(3, 7, 18, 0.76), rgba(8, 47, 73, 0.34)) !important;
+  box-shadow: 0 1rem 2.6rem rgba(2, 6, 23, 0.22) !important;
+}
+
+.demo-lab-mode-bar--compact .demo-lab-mode-tab {
+  min-height: 2.75rem;
+  border-radius: 999px !important;
+}
+
+.demo-lab-wizard-brief {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.8rem;
+  align-items: center;
+  margin: 0 clamp(0.75rem, 1.6vw, 1.25rem) 0.85rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(125, 211, 252, 0.18);
+  border-radius: 1.25rem;
+  background:
+    linear-gradient(135deg, rgba(8, 47, 73, 0.42), rgba(15, 23, 42, 0.62)),
+    rgba(2, 6, 23, 0.82);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 1rem 2.6rem rgba(2, 6, 23, 0.2);
+}
+
+.demo-lab-wizard-brief__copy {
+  min-width: 0;
+}
+
+.demo-lab-wizard-brief__copy span,
+.demo-lab-wizard-brief__proof span {
+  color: #67e8f9;
+  font-size: 0.68rem;
+  font-weight: 950;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.demo-lab-wizard-brief__copy strong {
+  display: block;
+  margin-top: 0.22rem;
+  color: #f8fafc;
+  font-size: clamp(1.05rem, 2vw, 1.45rem);
+  font-weight: 950;
+  line-height: 1.08;
+}
+
+.demo-lab-wizard-brief__copy p {
+  max-width: 62rem;
+  margin: 0.35rem 0 0;
+  color: #cbd5e1;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.demo-lab-wizard-brief__proof {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
+.demo-lab-wizard-brief__proof span {
+  display: inline-flex;
+  min-height: 2rem;
+  align-items: center;
+  border: 1px solid rgba(125, 211, 252, 0.18);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.72);
+  padding: 0 0.65rem;
+  color: #dbeafe;
+  letter-spacing: 0.08em;
+}
+
+.demo-lab-fullscreen-root .demo-lab-wizard-scene--trazo {
+  grid-template-columns: minmax(0, 1.68fr) minmax(17rem, 0.62fr) !important;
+}
+
+.demo-lab-fullscreen-root .demo-lab-wizard-map-container {
+  min-height: min(38rem, calc(100vh - 16rem)) !important;
+}
+
+.demo-lab-hub-card h3,
+.demo-lab-hub-signal-card strong,
+.demo-lab-hub-pill span {
+  text-wrap: balance;
+}
+
+.demo-lab-hub-card p,
+.demo-lab-hub-signal-card p {
+  max-width: 58ch;
+}
+
+html.theme-light .demo-lab-mode-bar--compact,
+html[data-theme="light"] .demo-lab-mode-bar--compact,
+html.theme-light .demo-lab-wizard-brief,
+html[data-theme="light"] .demo-lab-wizard-brief {
+  border-color: rgba(14, 116, 144, 0.2) !important;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(232, 249, 255, 0.86)) !important;
+  box-shadow: 0 1.1rem 2.8rem rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+}
+
+html.theme-light .demo-lab-mode-bar--compact span,
+html[data-theme="light"] .demo-lab-mode-bar--compact span,
+html.theme-light .demo-lab-wizard-brief__copy strong,
+html[data-theme="light"] .demo-lab-wizard-brief__copy strong {
+  color: #0f172a !important;
+}
+
+html.theme-light .demo-lab-wizard-brief__copy span,
+html.theme-light .demo-lab-wizard-brief__proof span,
+html[data-theme="light"] .demo-lab-wizard-brief__copy span,
+html[data-theme="light"] .demo-lab-wizard-brief__proof span {
+  color: #0e7490 !important;
+}
+
+html.theme-light .demo-lab-wizard-brief__copy p,
+html[data-theme="light"] .demo-lab-wizard-brief__copy p {
+  color: #475569 !important;
+}
+
+html.theme-light .demo-lab-wizard-brief__proof span,
+html[data-theme="light"] .demo-lab-wizard-brief__proof span {
+  border-color: rgba(14, 116, 144, 0.18) !important;
+  background: rgba(255, 255, 255, 0.84) !important;
+}
+
+@media (max-width: 1024px) {
+  .demo-lab-fullscreen-root .demo-lab-wizard-scene--trazo {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .demo-lab-mode-bar--compact {
+    margin: 0 0 0.75rem !important;
+    padding: 0.72rem !important;
+  }
+
+  .demo-lab-mode-bar--compact > div:last-child {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    width: 100% !important;
+  }
+
+  .demo-lab-mode-bar--compact .demo-lab-mode-tab {
+    width: 100% !important;
+  }
+
+  .demo-lab-wizard-brief {
+    grid-template-columns: 1fr;
+    gap: 0.7rem;
+    margin: 0 0.62rem 0.7rem;
+    padding: 0.82rem;
+  }
+
+  .demo-lab-wizard-brief__copy strong {
+    font-size: 1rem;
+  }
+
+  .demo-lab-wizard-brief__copy p {
+    font-size: 0.78rem;
+    line-height: 1.42;
+  }
+
+  .demo-lab-wizard-brief__proof {
+    justify-content: flex-start;
+  }
+
+  .demo-lab-wizard-brief__proof span {
+    min-height: 1.8rem;
+    font-size: 0.56rem;
+    letter-spacing: 0.05em;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-scene {
+    min-height: auto !important;
+    padding-inline: 0.62rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-map-container {
+    min-height: 24rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-events,
+  .demo-lab-fullscreen-root .demo-lab-wizard-trazo-side,
+  .demo-lab-fullscreen-root .demo-lab-wizard-verticals {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-steps {
+    display: flex !important;
+    grid-template-columns: none !important;
+    gap: 0.45rem !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding-bottom: 0.12rem !important;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-steps::-webkit-scrollbar {
+    display: none;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-steps .demo-lab-wizard-step-pill {
+    width: auto !important;
+    min-width: max-content !important;
+    gap: 0.34rem !important;
+    padding: 0 0.68rem !important;
+    scroll-snap-align: start;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-steps .demo-lab-wizard-step-pill span:last-child {
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: nowrap !important;
+    font-size: 0.66rem !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .demo-lab-fullscreen-root .demo-lab-wizard-steps {
+    gap: 0.24rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-steps .demo-lab-wizard-step-pill {
+    gap: 0.2rem !important;
+    padding: 0 0.32rem !important;
+    letter-spacing: 0.025em !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-steps .demo-lab-wizard-step-num {
+    width: 1.05rem !important;
+    height: 1.05rem !important;
+    font-size: 0.52rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-steps .demo-lab-wizard-step-pill span:last-child {
+    font-size: 0.58rem !important;
+    letter-spacing: 0.025em !important;
+  }
+}

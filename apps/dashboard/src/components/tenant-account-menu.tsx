@@ -38,8 +38,8 @@ type TenantAccountMenuProps = {
 const ACCOUNT_MENU_Z_INDEX = 2147483000;
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 const ACCOUNT_MENU_DEFAULT_STYLE: CSSProperties = {
-  position: "absolute",
-  zIndex: 2,
+  position: "fixed",
+  zIndex: ACCOUNT_MENU_Z_INDEX + 2,
   top: 86,
   right: 12,
   width: "min(calc(100vw - 24px), 26rem)",
@@ -209,14 +209,14 @@ export function TenantAccountMenu({
       href: "mailto:soporte@nexid.lat?subject=nexID%20enterprise%20support",
       icon: <LifeBuoy className="h-4 w-4" />,
       label: "Soporte enterprise",
-      meta: "Cuenta, integración, incidentes o preventa",
+      meta: "Cuenta, integracion, incidentes o preventa",
       external: true,
     },
     {
-      href: "/login",
+      href: "/logout",
       icon: <UserCog className="h-4 w-4" />,
       label: "Cambiar cuenta o perfil",
-      meta: "Volver al login enterprise sin tocar el portal consumidor",
+      meta: "Cerrar esta sesion y volver al login enterprise",
     },
   ], [tenantQuery]);
 
@@ -268,7 +268,8 @@ export function TenantAccountMenu({
         type="button"
         aria-label="Cerrar menu de cuenta"
         data-testid="tenant-account-menu-backdrop"
-        className="absolute inset-0 z-[1] cursor-default bg-[#020713]/50 backdrop-blur-[2px]"
+        className="fixed inset-0 cursor-default bg-[#020713]/58 backdrop-blur-[3px]"
+        style={{ zIndex: ACCOUNT_MENU_Z_INDEX + 1 }}
         onClick={() => setOpen(false)}
       />
       <div
@@ -309,7 +310,7 @@ export function TenantAccountMenu({
               window.location.href = isTenantMode ? tenantHref : "/settings";
             }}
           >
-            <span>{isTenantMode ? "Abrir perfil del tenant" : "Abrir configuración global"}</span>
+            <span>{isTenantMode ? "Abrir perfil del tenant" : "Abrir configuracion global"}</span>
             <span aria-hidden="true">-&gt;</span>
           </button>
         </div>
@@ -332,7 +333,7 @@ export function TenantAccountMenu({
               className="flex w-full items-center justify-center gap-2 rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm font-black text-rose-100 transition hover:border-rose-200/70 hover:bg-rose-500/18"
             >
               <LogOut className="h-4 w-4" />
-              Cerrar sesión segura
+              Cerrar sesion segura
             </button>
           </form>
         </div>
@@ -350,7 +351,7 @@ export function TenantAccountMenu({
         aria-controls="tenant-account-menu-panel"
         data-testid="tenant-account-menu-trigger"
         data-account-menu-open={open ? "true" : "false"}
-        title="Abrir cuenta, configuración y logout del workspace"
+        title="Abrir cuenta, configuracion y logout del workspace"
         className="flex min-h-14 w-full items-center gap-3 rounded-xl border border-white/12 bg-slate-950/65 px-3 py-2 text-left shadow-[0_16px_38px_rgba(2,6,23,.22)] transition hover:border-cyan-300/40 hover:bg-cyan-400/10 lg:min-w-[190px]"
         onKeyDown={(event) => {
           if (event.key !== "Escape") return;
