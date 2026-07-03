@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import {
   BookOpen,
@@ -37,6 +37,17 @@ type TenantAccountMenuProps = {
 
 const ACCOUNT_MENU_Z_INDEX = 2147483000;
 const ACCOUNT_MENU_BACKDROP_Z_INDEX = ACCOUNT_MENU_Z_INDEX - 1;
+const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+const ACCOUNT_MENU_DEFAULT_STYLE: CSSProperties = {
+  position: "fixed",
+  zIndex: ACCOUNT_MENU_Z_INDEX,
+  top: 86,
+  right: 12,
+  width: "min(calc(100vw - 24px), 26rem)",
+  maxHeight: "calc(100vh - 104px)",
+  transform: "translateZ(0)",
+  backgroundColor: "#020817",
+};
 
 function tenantNameFromSlug(slug?: string | null) {
   const normalized = String(slug || "").trim().toLowerCase();
@@ -71,7 +82,7 @@ export function TenantAccountMenu({
   tenantSlug,
 }: TenantAccountMenuProps) {
   const [open, setOpen] = useState(false);
-  const [panelStyle, setPanelStyle] = useState<CSSProperties>({});
+  const [panelStyle, setPanelStyle] = useState<CSSProperties>(ACCOUNT_MENU_DEFAULT_STYLE);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -100,24 +111,29 @@ export function TenantAccountMenu({
     };
   }, [open]);
 
+  const updatePanelPosition = useCallback(() => {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (!rect || typeof window === "undefined") {
+      setPanelStyle(ACCOUNT_MENU_DEFAULT_STYLE);
+      return;
+    }
+    const gutter = 12;
+    const top = Math.min(Math.max(rect.bottom + 10, gutter), window.innerHeight - 96);
+    const right = Math.max(gutter, window.innerWidth - rect.right);
+    setPanelStyle({
+      ...ACCOUNT_MENU_DEFAULT_STYLE,
+      top,
+      right,
+      maxHeight: Math.max(280, window.innerHeight - top - gutter),
+    });
+  }, []);
+
+  useIsomorphicLayoutEffect(() => {
+    if (open) updatePanelPosition();
+  }, [open, updatePanelPosition]);
+
   useEffect(() => {
     if (!open) return;
-    const updatePanelPosition = () => {
-      const rect = triggerRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const gutter = 12;
-      const top = Math.min(Math.max(rect.bottom + 10, gutter), window.innerHeight - 96);
-      const right = Math.max(gutter, window.innerWidth - rect.right);
-      setPanelStyle({
-        position: "fixed",
-        zIndex: ACCOUNT_MENU_Z_INDEX,
-        top,
-        right,
-        width: "min(calc(100vw - 24px), 26rem)",
-        maxHeight: Math.max(280, window.innerHeight - top - gutter),
-        transform: "translateZ(0)",
-      });
-    };
     updatePanelPosition();
     window.addEventListener("resize", updatePanelPosition);
     window.addEventListener("scroll", updatePanelPosition, true);
@@ -125,7 +141,7 @@ export function TenantAccountMenu({
       window.removeEventListener("resize", updatePanelPosition);
       window.removeEventListener("scroll", updatePanelPosition, true);
     };
-  }, [open]);
+  }, [open, updatePanelPosition]);
 
   const primaryItems = useMemo<AccountMenuItem[]>(() => [
     {
@@ -235,9 +251,9 @@ export function TenantAccountMenu({
         role="menu"
         data-testid="tenant-account-menu-panel"
         style={panelStyle}
-        className="overflow-hidden rounded-2xl border border-cyan-200/24 bg-[#07111f] text-slate-100 shadow-[0_34px_140px_rgba(0,0,0,.82)] ring-1 ring-cyan-200/12"
+        className="isolate overflow-hidden rounded-2xl border border-cyan-100/35 bg-slate-950 text-slate-100 shadow-[0_34px_140px_rgba(0,0,0,.88)] ring-1 ring-cyan-200/18"
       >
-        <div className="border-b border-white/8 bg-[radial-gradient(circle_at_85%_12%,rgba(34,211,238,.18),transparent_38%),linear-gradient(135deg,rgba(15,23,42,.98),rgba(8,16,31,.98))] p-4">
+        <div className="border-b border-white/10 bg-[radial-gradient(circle_at_85%_12%,rgba(34,211,238,.2),transparent_40%),linear-gradient(135deg,#0f172a,#07111f)] p-4">
           <div className="flex items-start gap-3">
             <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-cyan-300/25 bg-cyan-400/10 text-sm font-black text-cyan-100">
               {initialsFor(role)}
@@ -271,7 +287,7 @@ export function TenantAccountMenu({
           </div>
         </div>
 
-        <div className="border-t border-white/8 bg-slate-950/80 p-3">
+        <div className="border-t border-white/10 bg-[#020817] p-3">
           <form method="post" action="/logout">
             <button
               type="submit"
@@ -297,7 +313,10 @@ export function TenantAccountMenu({
         data-testid="tenant-account-menu-trigger"
         title="Abrir cuenta, configuracion y logout del workspace"
         className="flex min-h-14 w-full items-center gap-3 rounded-xl border border-white/12 bg-slate-950/65 px-3 py-2 text-left shadow-[0_16px_38px_rgba(2,6,23,.22)] transition hover:border-cyan-300/40 hover:bg-cyan-400/10 lg:min-w-[190px]"
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => {
+          if (!open) updatePanelPosition();
+          setOpen((value) => !value);
+        }}
       >
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-blue-600 text-xs font-black text-white shadow-[0_0_22px_rgba(37,99,235,.35)]">
           {initialsFor(role)}
