@@ -5,11 +5,16 @@ import { getClerkAuthorizedParties, getClerkProxyUrl, isClerkConfiguredForRuntim
 
 // Clerk provides OAuth/session context; nexID IAM still enforces route access
 // through getDashboardSession() and the admin API proxy.
+const clerkProxyUrl = getClerkProxyUrl();
 const clerkGuard = isClerkConfiguredForRuntime()
   ? clerkMiddleware({
       authorizedParties: getClerkAuthorizedParties(),
-      frontendApiProxy: { enabled: true },
-      proxyUrl: getClerkProxyUrl() || undefined,
+      ...(clerkProxyUrl
+        ? {
+            frontendApiProxy: { enabled: true },
+            proxyUrl: clerkProxyUrl,
+          }
+        : {}),
     })
   : null;
 
