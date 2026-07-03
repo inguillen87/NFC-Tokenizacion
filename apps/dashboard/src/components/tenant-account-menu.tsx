@@ -35,6 +35,9 @@ type TenantAccountMenuProps = {
   tenantSlug?: string | null;
 };
 
+const ACCOUNT_MENU_Z_INDEX = 2147483000;
+const ACCOUNT_MENU_BACKDROP_Z_INDEX = ACCOUNT_MENU_Z_INDEX - 1;
+
 function tenantNameFromSlug(slug?: string | null) {
   const normalized = String(slug || "").trim().toLowerCase();
   if (normalized === "demobodega" || normalized === "bodegabalmec" || normalized === "bodega-balmec") return "Bodega Balmec";
@@ -106,10 +109,13 @@ export function TenantAccountMenu({
       const top = Math.min(Math.max(rect.bottom + 10, gutter), window.innerHeight - 96);
       const right = Math.max(gutter, window.innerWidth - rect.right);
       setPanelStyle({
+        position: "fixed",
+        zIndex: ACCOUNT_MENU_Z_INDEX,
         top,
         right,
         width: "min(calc(100vw - 24px), 26rem)",
         maxHeight: Math.max(280, window.innerHeight - top - gutter),
+        transform: "translateZ(0)",
       });
     };
     updatePanelPosition();
@@ -215,60 +221,70 @@ export function TenantAccountMenu({
   );
 
   const menuPanel = open ? (
-    <div
-      ref={panelRef}
-      role="menu"
-      data-testid="tenant-account-menu-panel"
-      style={panelStyle}
-      className="fixed z-[10000] overflow-hidden rounded-2xl border border-cyan-200/18 bg-[#07111f]/98 text-slate-100 shadow-[0_34px_120px_rgba(0,0,0,.68)] ring-1 ring-cyan-200/10 backdrop-blur-xl"
-    >
-      <div className="border-b border-white/8 bg-[radial-gradient(circle_at_85%_12%,rgba(34,211,238,.18),transparent_38%),linear-gradient(135deg,rgba(15,23,42,.98),rgba(8,16,31,.98))] p-4">
-        <div className="flex items-start gap-3">
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-cyan-300/25 bg-cyan-400/10 text-sm font-black text-cyan-100">
-            {initialsFor(role)}
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Cuenta operativa</p>
-            <h2 className="mt-1 truncate text-base font-black text-white">{accountLabel}</h2>
-            <p className="truncate text-xs text-slate-400">{email || "Cuenta enterprise"}</p>
+    <>
+      <button
+        type="button"
+        aria-label="Cerrar menu de cuenta"
+        data-testid="tenant-account-menu-backdrop"
+        style={{ zIndex: ACCOUNT_MENU_BACKDROP_Z_INDEX }}
+        className="fixed inset-0 cursor-default bg-[#020713]/35 backdrop-blur-[1px]"
+        onClick={() => setOpen(false)}
+      />
+      <div
+        ref={panelRef}
+        role="menu"
+        data-testid="tenant-account-menu-panel"
+        style={panelStyle}
+        className="overflow-hidden rounded-2xl border border-cyan-200/24 bg-[#07111f] text-slate-100 shadow-[0_34px_140px_rgba(0,0,0,.82)] ring-1 ring-cyan-200/12"
+      >
+        <div className="border-b border-white/8 bg-[radial-gradient(circle_at_85%_12%,rgba(34,211,238,.18),transparent_38%),linear-gradient(135deg,rgba(15,23,42,.98),rgba(8,16,31,.98))] p-4">
+          <div className="flex items-start gap-3">
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-cyan-300/25 bg-cyan-400/10 text-sm font-black text-cyan-100">
+              {initialsFor(role)}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Cuenta operativa</p>
+              <h2 className="mt-1 truncate text-base font-black text-white">{accountLabel}</h2>
+              <p className="truncate text-xs text-slate-400">{email || "Cuenta enterprise"}</p>
+            </div>
+          </div>
+          <div className="mt-4 grid grid-cols-3 gap-2 text-[10px] font-bold uppercase tracking-[0.08em]">
+            <span className="rounded-lg border border-emerald-300/25 bg-emerald-400/10 px-2 py-2 text-emerald-100">
+              {setupCompleted === false ? "setup pendiente" : "setup ok"}
+            </span>
+            <span className="rounded-lg border border-cyan-300/25 bg-cyan-400/10 px-2 py-2 text-cyan-100">
+              {mfaVerified ? "mfa ok" : "mfa revisar"}
+            </span>
+            <span className="rounded-lg border border-violet-300/25 bg-violet-400/10 px-2 py-2 text-violet-100">
+              {isTenantMode ? "tenant" : "global"}
+            </span>
           </div>
         </div>
-        <div className="mt-4 grid grid-cols-3 gap-2 text-[10px] font-bold uppercase tracking-[0.08em]">
-          <span className="rounded-lg border border-emerald-300/25 bg-emerald-400/10 px-2 py-2 text-emerald-100">
-            {setupCompleted === false ? "setup pendiente" : "setup ok"}
-          </span>
-          <span className="rounded-lg border border-cyan-300/25 bg-cyan-400/10 px-2 py-2 text-cyan-100">
-            {mfaVerified ? "mfa ok" : "mfa revisar"}
-          </span>
-          <span className="rounded-lg border border-violet-300/25 bg-violet-400/10 px-2 py-2 text-violet-100">
-            {isTenantMode ? "tenant" : "global"}
-          </span>
-        </div>
-      </div>
 
-      <div className="max-h-[calc(100vh-18rem)] overflow-y-auto p-3">
-        <div className="grid gap-2">
-          {primaryItems.map(renderItem)}
+        <div className="max-h-[calc(100vh-18rem)] overflow-y-auto p-3">
+          <div className="grid gap-2">
+            {primaryItems.map(renderItem)}
+          </div>
+          <div className="my-3 h-px bg-white/8" />
+          <div className="grid gap-2">
+            {operationsItems.map(renderItem)}
+          </div>
         </div>
-        <div className="my-3 h-px bg-white/8" />
-        <div className="grid gap-2">
-          {operationsItems.map(renderItem)}
-        </div>
-      </div>
 
-      <div className="border-t border-white/8 bg-slate-950/80 p-3">
-        <form method="post" action="/logout">
-          <button
-            type="submit"
-            data-testid="tenant-account-logout"
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm font-black text-rose-100 transition hover:border-rose-200/70 hover:bg-rose-500/18"
-          >
-            <LogOut className="h-4 w-4" />
-            Cerrar sesion segura
-          </button>
-        </form>
+        <div className="border-t border-white/8 bg-slate-950/80 p-3">
+          <form method="post" action="/logout">
+            <button
+              type="submit"
+              data-testid="tenant-account-logout"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm font-black text-rose-100 transition hover:border-rose-200/70 hover:bg-rose-500/18"
+            >
+              <LogOut className="h-4 w-4" />
+              Cerrar sesion segura
+            </button>
+          </form>
+        </div>
       </div>
-    </div>
+    </>
   ) : null;
 
   return (
