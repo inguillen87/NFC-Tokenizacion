@@ -36,11 +36,10 @@ type TenantAccountMenuProps = {
 };
 
 const ACCOUNT_MENU_Z_INDEX = 2147483000;
-const ACCOUNT_MENU_BACKDROP_Z_INDEX = ACCOUNT_MENU_Z_INDEX - 1;
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 const ACCOUNT_MENU_DEFAULT_STYLE: CSSProperties = {
-  position: "fixed",
-  zIndex: ACCOUNT_MENU_Z_INDEX,
+  position: "absolute",
+  zIndex: 2,
   top: 86,
   right: 12,
   width: "min(calc(100vw - 24px), 26rem)",
@@ -105,6 +104,7 @@ export function TenantAccountMenu({
 
   useEffect(() => {
     if (!open) return;
+    document.body.classList.add("nexid-account-menu-open");
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Node;
       if (menuRef.current?.contains(target) || panelRef.current?.contains(target)) return;
@@ -116,6 +116,7 @@ export function TenantAccountMenu({
     window.addEventListener("pointerdown", handlePointerDown);
     window.addEventListener("keydown", handleKeyDown);
     return () => {
+      document.body.classList.remove("nexid-account-menu-open");
       window.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("keydown", handleKeyDown);
     };
@@ -258,13 +259,16 @@ export function TenantAccountMenu({
   );
 
   const menuPanel = open ? (
-    <>
+    <div
+      className="nexid-account-layer fixed inset-0 isolate"
+      data-testid="tenant-account-menu-layer"
+      style={{ zIndex: ACCOUNT_MENU_Z_INDEX }}
+    >
       <button
         type="button"
         aria-label="Cerrar menu de cuenta"
         data-testid="tenant-account-menu-backdrop"
-        style={{ zIndex: ACCOUNT_MENU_BACKDROP_Z_INDEX }}
-        className="fixed inset-0 cursor-default bg-[#020713]/35 backdrop-blur-[1px]"
+        className="absolute inset-0 z-[1] cursor-default bg-[#020713]/50 backdrop-blur-[2px]"
         onClick={() => setOpen(false)}
       />
       <div
@@ -333,7 +337,7 @@ export function TenantAccountMenu({
           </form>
         </div>
       </div>
-    </>
+    </div>
   ) : null;
 
   return (
@@ -345,20 +349,17 @@ export function TenantAccountMenu({
         aria-expanded={open}
         aria-controls="tenant-account-menu-panel"
         data-testid="tenant-account-menu-trigger"
+        data-account-menu-open={open ? "true" : "false"}
         title="Abrir cuenta, configuración y logout del workspace"
         className="flex min-h-14 w-full items-center gap-3 rounded-xl border border-white/12 bg-slate-950/65 px-3 py-2 text-left shadow-[0_16px_38px_rgba(2,6,23,.22)] transition hover:border-cyan-300/40 hover:bg-cyan-400/10 lg:min-w-[190px]"
-        onPointerDown={(event) => {
-          if (event.button !== 0) return;
-          event.preventDefault();
-          toggleMenu();
-        }}
         onKeyDown={(event) => {
-          if (event.key !== "Enter" && event.key !== " ") return;
+          if (event.key !== "Escape") return;
           event.preventDefault();
-          toggleMenu();
+          setOpen(false);
         }}
         onClick={(event) => {
-          if (event.detail === 0) toggleMenu();
+          event.preventDefault();
+          toggleMenu();
         }}
       >
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-blue-600 text-xs font-black text-white shadow-[0_0_22px_rgba(37,99,235,.35)]">

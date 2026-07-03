@@ -1106,3 +1106,31 @@ body.nexid-crm-overlay-active .dashboard-mobile-dock {
 body.nexid-crm-overlay-active .dashboard-main {
   overflow-x: hidden;
 }
+
+/* Enterprise account menu must sit above CRM/map fullscreen layers and right panels. */
+body.nexid-account-menu-open {
+  overflow: hidden;
+}
+
+.nexid-account-layer {
+  pointer-events: none;
+  z-index: 2147483000 !important;
+}
+
+.nexid-account-layer > * {
+  pointer-events: auto;
+}
+
+.nexid-account-layer .tenant-account-panel {
+  z-index: 2 !important;
+  pointer-events: auto;
+}
+
+@media (max-width: 640px) {
+  .nexid-account-layer .tenant-account-panel {
+    left: 0.75rem !important;
+    right: 0.75rem !important;
+    width: auto !important;
+    max-height: calc(100vh - 6rem) !important;
+  }
+}
