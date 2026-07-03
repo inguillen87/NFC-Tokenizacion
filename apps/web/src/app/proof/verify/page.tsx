@@ -217,6 +217,21 @@ const connectionCards = [
   },
 ];
 
+const businessProofPoints = [
+  {
+    title: "Cliente o auditor",
+    body: "Pega un SHA o Raw input y ve si la evidencia existia, sin acceder al dato privado.",
+  },
+  {
+    title: "Empresa",
+    body: "Muestra integridad externa para QA, DPP, custodia o reclamos sin publicar UIDs ni rutas.",
+  },
+  {
+    title: "Inversor o C-level",
+    body: "Entiende en una pantalla que IOTA prueba evidencia y Polygon prueba ownership separado.",
+  },
+];
+
 function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] || "" : value || "";
 }
@@ -365,8 +380,17 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
         .proof-verify-page article {
           background: var(--proof-card-bg) !important;
           border-color: var(--proof-border) !important;
-          box-shadow: var(--proof-shadow);
-          backdrop-filter: blur(18px);
+          backdrop-filter: blur(16px);
+        }
+
+        .proof-verify-page .proof-elevated {
+          box-shadow: var(--proof-shadow) !important;
+        }
+
+        .proof-verify-page .proof-flat,
+        .proof-verify-page .proof-flat [class*="bg-white"] {
+          box-shadow: none !important;
+          backdrop-filter: none !important;
         }
 
         .proof-verify-page [class*="bg-slate-50"],
@@ -422,13 +446,15 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           color: var(--proof-warning) !important;
         }
 
-        .proof-verify-page input {
+        .proof-verify-page input,
+        .proof-verify-page textarea {
           background: var(--proof-soft-bg) !important;
           border-color: var(--proof-border) !important;
           color: var(--proof-title) !important;
         }
 
-        .proof-verify-page input::placeholder {
+        .proof-verify-page input::placeholder,
+        .proof-verify-page textarea::placeholder {
           color: var(--proof-muted);
         }
 
@@ -483,6 +509,38 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           background: #083344 !important;
           color: #ecfeff !important;
         }
+
+        .proof-verify-page details > summary {
+          cursor: pointer;
+          list-style: none;
+        }
+
+        .proof-verify-page details > summary::-webkit-details-marker {
+          display: none;
+        }
+
+        @media (max-width: 640px) {
+          .proof-verify-page {
+            padding-bottom: 6rem;
+          }
+
+          .proof-verify-page .back-link {
+            min-height: 2.75rem;
+            width: 2.75rem;
+            justify-content: center;
+            padding-left: 0;
+            padding-right: 0;
+          }
+
+          .proof-verify-page .back-link span:last-child {
+            display: none;
+          }
+
+          .helpbot-surface,
+          .helpbot-trigger {
+            display: none !important;
+          }
+        }
       `}</style>
       <section className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-5 py-8 sm:px-8 lg:px-10">
         <div className="flex items-center justify-between gap-4">
@@ -520,7 +578,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
             </div>
           </div>
 
-          <form action="/proof/verify" className="rounded-[1.5rem] border border-cyan-100 bg-white/88 p-4 shadow-[0_24px_80px_rgba(15,23,42,0.12)] backdrop-blur">
+          <form action="/proof/verify" className="proof-elevated rounded-[1.5rem] border border-cyan-100 bg-white/88 p-4 shadow-[0_24px_80px_rgba(15,23,42,0.12)] backdrop-blur">
             <div className="grid gap-3">
               <div className="rounded-2xl border border-cyan-100 bg-cyan-50/70 p-4 text-sm leading-6 text-slate-700">
                 <strong className="block text-slate-950">Que pega una empresa en este campo?</strong>
@@ -551,9 +609,18 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           </form>
         </div>
 
+        <section className="grid gap-3 lg:grid-cols-3">
+          {businessProofPoints.map((item) => (
+            <article key={item.title} className="proof-flat rounded-[1.25rem] border border-cyan-200 bg-cyan-50/70 p-4">
+              <p className="text-[0.68rem] font-black uppercase tracking-[0.18em] text-cyan-700">Para {item.title}</p>
+              <p className="mt-2 text-sm leading-6 text-slate-700">{item.body}</p>
+            </article>
+          ))}
+        </section>
+
         <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {proofFlow.map((item) => (
-            <article key={item.label} className="rounded-[1.25rem] border border-slate-200 bg-white/82 p-4 shadow-sm">
+            <article key={item.label} className="proof-flat rounded-[1.25rem] border border-slate-200 bg-white/82 p-4 shadow-sm">
               <p className="text-[0.68rem] font-black uppercase tracking-[0.18em] text-cyan-700">{item.label}</p>
               <h2 className="mt-3 text-lg font-black leading-tight text-slate-950">{item.title}</h2>
               <p className="mt-3 text-sm leading-6 text-slate-600">{item.body}</p>
@@ -562,7 +629,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
         </section>
 
         <section className="grid gap-4 lg:grid-cols-2">
-          <article className="rounded-[1.5rem] border border-slate-200 bg-white/84 p-5 shadow-sm">
+          <article className="proof-elevated rounded-[1.5rem] border border-slate-200 bg-white/84 p-5 shadow-sm">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-700">Polygon ownership layer</p>
@@ -576,18 +643,18 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
               </span>
             </div>
             <dl className="mt-5 grid gap-3">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="proof-flat rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <dt className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-slate-500">Contrato</dt>
                 <dd className="mt-2 break-all font-mono text-xs font-bold text-slate-900">{demoCatalog.testnet?.polygon?.contract_address || "-"}</dd>
                 <div className="mt-3">{explorerLink(demoCatalog.testnet?.polygon?.contract_explorer_url, "Abrir contrato")}</div>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="proof-flat rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <dt className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-slate-500">Owner / minter demo</dt>
                 <dd className="mt-2 break-all font-mono text-xs font-bold text-slate-900">{demoCatalog.testnet?.polygon?.owner_address || "-"}</dd>
                 <div className="mt-3">{explorerLink(demoCatalog.testnet?.polygon?.owner_explorer_url, "Abrir wallet")}</div>
               </div>
               {demoCatalog.testnet?.polygon?.demo_tx_hash ? (
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                <div className="proof-flat rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
                   <dt className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-emerald-800">Mint demo real</dt>
                   <dd className="mt-2 break-all font-mono text-xs font-bold text-emerald-950">{demoCatalog.testnet.polygon.demo_tx_hash}</dd>
                   <div className="mt-3">{explorerLink(demoCatalog.testnet.polygon.demo_tx_explorer_url, "Abrir tx")}</div>
@@ -596,7 +663,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
             </dl>
           </article>
 
-          <article className="rounded-[1.5rem] border border-slate-200 bg-white/84 p-5 shadow-sm">
+          <article className="proof-elevated rounded-[1.5rem] border border-slate-200 bg-white/84 p-5 shadow-sm">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">IOTA proof layer</p>
@@ -610,17 +677,17 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
               </span>
             </div>
             <dl className="mt-5 grid gap-3">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="proof-flat rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <dt className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-slate-500">Deployer testnet</dt>
                 <dd className="mt-2 break-all font-mono text-xs font-bold text-slate-900">{demoCatalog.testnet?.iota?.deployer_address || "-"}</dd>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="proof-flat rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <dt className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-slate-500">Contrato anchor</dt>
                 <dd className="mt-2 break-all font-mono text-xs font-bold text-slate-900">{demoCatalog.testnet?.iota?.contract_address || "Pendiente de deploy cuando haya saldo IOTA testnet."}</dd>
                 <div className="mt-3">{explorerLink(demoCatalog.testnet?.iota?.contract_explorer_url, "Abrir contrato")}</div>
               </div>
               {demoCatalog.testnet?.iota?.demo_tx_hash ? (
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                <div className="proof-flat rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
                   <dt className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-emerald-800">Anchor demo real</dt>
                   <dd className="mt-2 break-all font-mono text-xs font-bold text-emerald-950">{demoCatalog.testnet.iota.demo_tx_hash}</dd>
                   <div className="mt-3">{explorerLink(demoCatalog.testnet.iota.demo_tx_explorer_url, "Abrir tx")}</div>
@@ -634,7 +701,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           </article>
         </section>
 
-        <section className="rounded-[1.5rem] border border-slate-200 bg-white/84 p-5 shadow-sm">
+        <section className="proof-elevated rounded-[1.5rem] border border-slate-200 bg-white/84 p-5 shadow-sm">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Demos publicos verificables</p>
@@ -644,13 +711,13 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
               </p>
             </div>
             <div className="rounded-2xl border border-cyan-100 bg-cyan-50/75 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-cyan-800">
-              IOTA {demoCatalog.testnet?.iota?.mode || "disabled"} · Polygon {demoCatalog.testnet?.polygon?.network || "amoy"}
+              IOTA {demoCatalog.testnet?.iota?.mode || "disabled"} - Polygon {demoCatalog.testnet?.polygon?.network || "amoy"}
             </div>
           </div>
 
           <div className="mt-5 grid gap-4 lg:grid-cols-3">
             {demoCases.length ? demoCases.map((demoCase) => (
-              <article key={demoCase.id} className="rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4 shadow-sm">
+              <article key={demoCase.id} className="proof-flat rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4 shadow-sm">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-cyan-700">{demoCase.vertical}</p>
@@ -688,14 +755,14 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
               </article>
             )) : (
               <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm leading-7 text-slate-600 lg:col-span-3">
-                La API de demos no respondio ahora. El verificador manual sigue funcionando si pegás un hash autorizado.
+                La API de demos no respondio ahora. El verificador manual sigue funcionando si pegas un hash autorizado.
               </div>
             )}
           </div>
         </section>
 
-        <section className="grid gap-5 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
-          <div className="rounded-[1.5rem] border border-slate-200 bg-white/82 p-5 shadow-sm">
+        <section className="grid gap-5 lg:grid-cols-[0.92fr_1.08fr] lg:items-start">
+          <div className="proof-elevated rounded-[1.5rem] border border-slate-200 bg-white/82 p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Resultado</p>
@@ -717,21 +784,21 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
             </div>
 
             <dl className="mt-6 grid gap-3 text-sm">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="proof-flat rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <dt className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">Event hash</dt>
                 <dd className="mt-2 break-all font-mono text-slate-900">{eventHash || "sha256:..."}</dd>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="proof-flat rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <dt className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">Provider</dt>
                   <dd className="mt-2 font-mono text-slate-900">{result?.provider || "-"}</dd>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="proof-flat rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <dt className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">Network</dt>
                   <dd className="mt-2 font-mono text-slate-900">{result?.network || "-"}</dd>
                 </div>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="proof-flat rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <dt className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">Merkle root</dt>
                 <dd className="mt-2 break-all font-mono text-slate-900">{result?.merkle_root || "-"}</dd>
               </div>
@@ -742,23 +809,26 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
               </div>
             ) : null}
             {activeDemo ? (
-              <div className="mt-5 rounded-2xl border border-cyan-200 bg-cyan-50/70 p-4">
+              <div className="proof-flat mt-5 rounded-2xl border border-cyan-200 bg-cyan-50/70 p-4">
                 <p className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-cyan-800">Caso explicado</p>
                 <h3 className="mt-2 text-xl font-black leading-tight text-slate-950">{activeDemo.title}</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-700">{activeDemo.body}</p>
                 <div className="mt-4 grid gap-2">
                   {activeDemo.events.map((event, index) => (
-                    <div key={event.id} className="rounded-2xl border border-cyan-100 bg-white/70 p-3">
+                    <div key={event.id} className="proof-flat rounded-2xl border border-cyan-100 bg-white/70 p-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <strong className="text-sm text-slate-950">{index + 1}. {event.title}</strong>
                         <span className="font-mono text-[0.68rem] font-bold uppercase tracking-[0.08em] text-cyan-800">{event.event_type}</span>
                       </div>
                       <p className="mt-1 text-sm leading-6 text-slate-600">{event.summary}</p>
-                      <p className="mt-2 break-all font-mono text-[0.72rem] font-bold text-slate-800">{event.hash}</p>
+                      <details className="mt-2 rounded-xl border border-cyan-100 bg-cyan-50/40 px-3 py-2">
+                        <summary className="text-[0.68rem] font-black uppercase tracking-[0.12em] text-cyan-800">Ver hash canonico</summary>
+                        <p className="mt-2 break-all font-mono text-[0.72rem] font-bold text-slate-800">{event.hash}</p>
+                      </details>
                     </div>
                   ))}
                 </div>
-                <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                <div className="proof-flat mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <p className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-emerald-800">Recibo publico on-chain</p>
@@ -773,16 +843,16 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                   </div>
                   <p className="mt-3 text-sm leading-6 text-emerald-900">{activeDemo.public_receipt.business_claim}</p>
                   <p className="mt-2 text-sm leading-6 text-emerald-900">{activeDemo.public_receipt.manager_explanation}</p>
-                  <div className="mt-4 rounded-2xl border border-emerald-200 bg-white/70 p-3">
-                    <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-emerald-800">Texto exacto escrito como data de transaccion</p>
+                  <details className="proof-flat mt-4 rounded-2xl border border-emerald-200 bg-white/70 p-3">
+                    <summary className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-emerald-800">Ver texto exacto escrito como data de transaccion</summary>
                     <p className="mt-2 break-all font-mono text-[0.72rem] font-bold leading-5 text-slate-900">{activeDemo.public_receipt.on_chain_memo}</p>
-                  </div>
+                  </details>
                   <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-2xl border border-emerald-200 bg-white/70 p-3">
+                    <div className="proof-flat rounded-2xl border border-emerald-200 bg-white/70 p-3">
                       <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-emerald-800">Hash del memo</p>
                       <p className="mt-2 break-all font-mono text-[0.72rem] font-bold text-slate-900">{activeDemo.public_receipt.receipt_hash}</p>
                     </div>
-                    <div className="rounded-2xl border border-emerald-200 bg-white/70 p-3">
+                    <div className="proof-flat rounded-2xl border border-emerald-200 bg-white/70 p-3">
                       <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-emerald-800">Transaccion memo</p>
                       <p className="mt-2 break-all font-mono text-[0.72rem] font-bold text-slate-900">{shortHash(activeDemo.public_receipt.tx_hash)}</p>
                       {activeDemo.public_receipt.explorer_url ? (
@@ -793,11 +863,11 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                     </div>
                   </div>
                   <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-2xl border border-cyan-200 bg-cyan-50/70 p-3">
+                    <div className="proof-flat rounded-2xl border border-cyan-200 bg-cyan-50/70 p-3">
                       <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan-800">Publico</p>
                       <p className="mt-2 text-sm leading-6 text-slate-700">{activeDemo.public_receipt.public_fields.join(", ")}</p>
                     </div>
-                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3">
+                    <div className="proof-flat rounded-2xl border border-amber-200 bg-amber-50 p-3">
                       <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-amber-800">Privado dentro de nexID</p>
                       <p className="mt-2 text-sm leading-6 text-amber-900">{activeDemo.public_receipt.private_fields.join(", ")}</p>
                     </div>
@@ -808,7 +878,33 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           </div>
 
           <div className="grid gap-5 lg:self-start">
-          <div className="rounded-[1.5rem] border border-slate-200 bg-white/82 p-5 shadow-sm">
+          <div className="proof-elevated rounded-[1.5rem] border border-cyan-200 bg-cyan-50/75 p-5 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Lectura ejecutiva</p>
+            <h2 className="mt-2 text-2xl font-black leading-tight text-slate-950">
+              Que queda probado en menos de un minuto?
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-slate-700">
+              {activeDemo
+                ? `${activeDemo.title}: ${activeDemo.public_receipt.manager_explanation}`
+                : "La empresa pega un hash, ve si esta incluido en un anchor y puede abrir la prueba externa cuando existe tx real."}
+            </p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="proof-flat rounded-2xl border border-cyan-200 bg-white/70 p-3">
+                <strong className="block text-sm text-slate-950">1. Evidencia</strong>
+                <p className="mt-1 text-xs leading-5 text-slate-600">El SHA representa un hecho autorizado.</p>
+              </div>
+              <div className="proof-flat rounded-2xl border border-cyan-200 bg-white/70 p-3">
+                <strong className="block text-sm text-slate-950">2. Inclusion</strong>
+                <p className="mt-1 text-xs leading-5 text-slate-600">El hash aparece dentro del Merkle root.</p>
+              </div>
+              <div className="proof-flat rounded-2xl border border-cyan-200 bg-white/70 p-3">
+                <strong className="block text-sm text-slate-950">3. Privacidad</strong>
+                <p className="mt-1 text-xs leading-5 text-slate-600">No se expone UID, cliente ni manifiesto.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="proof-elevated rounded-[1.5rem] border border-slate-200 bg-white/82 p-5 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Anchors</p>
@@ -819,7 +915,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
 
             <div className="mt-5 grid gap-3">
               {matches.length ? matches.map((match) => (
-                <article key={match.anchor_id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <article key={match.anchor_id} className="proof-flat rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <p className="font-mono text-sm font-bold text-slate-900">{shortHash(match.anchor_id)}</p>
                     <span className={`rounded-full border px-3 py-1 text-[0.68rem] font-black uppercase tracking-[0.1em] ${statusTone(match.status)}`}>{match.status}</span>
@@ -848,7 +944,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
             </div>
           </div>
 
-          <div className="rounded-[1.5rem] border border-cyan-200 bg-cyan-50/75 p-5 shadow-sm">
+          <div className="proof-elevated rounded-[1.5rem] border border-cyan-200 bg-cyan-50/75 p-5 shadow-sm">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Proof Decoder</p>
@@ -860,7 +956,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                 <FileSearch className="mt-1 h-6 w-6 shrink-0 text-cyan-700" />
               </div>
 
-              <form action="/proof/verify" className="mt-4 grid gap-3 rounded-2xl border border-cyan-200 bg-white/72 p-4">
+              <form action="/proof/verify" className="proof-flat mt-4 grid gap-3 rounded-2xl border border-cyan-200 bg-white/72 p-4">
                 {eventHash ? <input type="hidden" name="event_hash" value={eventHash} /> : null}
                 {anchorId ? <input type="hidden" name="anchor_id" value={anchorId} /> : null}
                 <label className="grid gap-2 text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan-800">
@@ -950,25 +1046,6 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                 </div>
               </div>
             </div>
-
-          <div className="rounded-[1.5rem] border border-slate-200 bg-white/82 p-5 shadow-sm">
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Lectura ejecutiva</p>
-            <h2 className="mt-2 text-2xl font-black leading-tight text-slate-950">Que deberia entender un cliente?</h2>
-            <div className="mt-4 grid gap-3">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <strong className="block text-sm text-slate-950">La blockchain no guarda la base privada.</strong>
-                <p className="mt-2 text-sm leading-6 text-slate-600">Guarda un recibo minimo: caso, tipo de recurso, cantidad de eventos, Merkle root y politica hash-only.</p>
-              </div>
-              <div className="rounded-2xl border border-cyan-200 bg-cyan-50/70 p-4">
-                <strong className="block text-sm text-slate-950">nexID conserva la evidencia sensible.</strong>
-                <p className="mt-2 text-sm leading-6 text-slate-700">UID/NFC, cliente, ruta completa, QA interno y contratos quedan protegidos en la plataforma.</p>
-              </div>
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                <strong className="block text-sm text-emerald-950">La auditoria compara dos cosas simples.</strong>
-                <p className="mt-2 text-sm leading-6 text-emerald-900">El hash pegado debe existir en el Merkle root y el memo del explorer debe coincidir con el recibo que muestra nexID.</p>
-              </div>
-            </div>
-          </div>
           </div>
         </section>
 
