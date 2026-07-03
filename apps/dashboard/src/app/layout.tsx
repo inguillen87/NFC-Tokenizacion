@@ -8,6 +8,7 @@ import { resolveLocale } from "@product/config";
 import { HelpBot } from "@product/ui";
 import { MisconfigurationBanner } from "../components/misconfiguration-banner";
 import { PwaSetup } from "../components/pwa-setup";
+import { getClerkPublishableKey } from "../lib/clerk-env";
 
 const extensionConsoleShieldScript = `
 (() => {
@@ -117,7 +118,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const locale = resolveLocale(cookieStore.get("locale")?.value);
   const themeCookie = cookieStore.get("theme")?.value;
   const theme = themeCookie === "light" ? "light" : "dark";
-  const clerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || "";
+  const clerkKey = getClerkPublishableKey();
 
   return (
     <html lang={locale} suppressHydrationWarning className={theme === "light" ? "theme-light" : undefined} data-theme={theme}>

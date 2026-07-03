@@ -2,6 +2,7 @@ import Link from "next/link";
 import { BrandLockup, Card } from "@product/ui";
 import { getDashboardI18n } from "../../lib/locale";
 import { RegisterAccessPanel } from "../../components/register-access-panel";
+import { isClerkConfiguredForRuntime } from "../../lib/clerk-env";
 
 export default async function RegisterPage() {
   const { t } = await getDashboardI18n();
@@ -34,7 +35,7 @@ export default async function RegisterPage() {
               </div>
             </section>
             <section className="rounded-2xl border border-white/10 bg-slate-950/45 p-6">
-              <RegisterAccessPanel submitLabel={t.common.register} clerkEnabled={Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY)} />
+              <RegisterAccessPanel submitLabel={t.common.register} clerkEnabled={isClerkConfiguredForRuntime()} />
               <p className="mt-4 text-xs text-slate-400">
                 ¿Ya tenés cuenta? <Link href="/login" className="text-cyan-300">{t.common.login}</Link>
               </p>

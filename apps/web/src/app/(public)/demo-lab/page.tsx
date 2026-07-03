@@ -530,7 +530,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
                 </Link>
                 {panelKey === "iota-proof" || panelKey === "dual-proof" ? (
                   <Link href="/proof/verify" className="demo-lab-context-strip__doc-link inline-flex h-9 items-center gap-2 rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 text-xs font-bold text-cyan-100">
-                    Abrir Proof Verify
+                    Abrir Proof Verify & Decoder
                     <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 ) : null}
@@ -591,7 +591,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
             href="/proof/verify"
             className="hover:text-slate-300 transition-colors"
           >
-            Proof Verify
+            Proof Verify & Decoder
           </Link>
           <Link
             href="/?contact=demo#contact-modal"

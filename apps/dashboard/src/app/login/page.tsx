@@ -6,7 +6,8 @@ import { dashboardContent } from "../../lib/dashboard-content";
 import { getAccessProfiles } from "../../lib/access-profiles";
 import { LoginFormPanel } from "../../components/login-form-panel";
 import { getDashboardSession } from "../../lib/session";
-import { dashboardOneClickAccessAllowed } from "../../lib/dashboard-access-flags";
+import { dashboardDemoAccessAllowedForRole } from "../../lib/dashboard-access-flags";
+import { isClerkConfiguredForRuntime } from "../../lib/clerk-env";
 
 const visibleRoleCards = [
   {
@@ -31,7 +32,8 @@ export default async function LoginPage() {
   const { t, locale } = await getDashboardI18n();
   const copy = dashboardContent[locale];
   const profiles = getAccessProfiles();
-  const demoLoginAllowed = dashboardOneClickAccessAllowed();
+  const demoLoginAllowed = dashboardDemoAccessAllowedForRole("super-admin");
+  const bodegaDemoAllowed = dashboardDemoAccessAllowedForRole("tenant-admin");
   const session = await getDashboardSession();
   if (session) redirect("/");
 
@@ -95,7 +97,8 @@ export default async function LoginPage() {
               inviteLabel={copy.auth.inviteTitle}
               profiles={profiles}
               demoLoginAllowed={demoLoginAllowed}
-              clerkEnabled={Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY)}
+              bodegaDemoAllowed={bodegaDemoAllowed}
+              clerkEnabled={isClerkConfiguredForRuntime()}
             />
           </div>
         </Card>

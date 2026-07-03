@@ -15,6 +15,7 @@ type Props = {
   inviteLabel: string;
   profiles: AccessProfile[];
   demoLoginAllowed: boolean;
+  bodegaDemoAllowed: boolean;
   clerkEnabled?: boolean;
 };
 
@@ -52,6 +53,7 @@ export function LoginFormPanel({
   inviteLabel,
   profiles,
   demoLoginAllowed,
+  bodegaDemoAllowed,
   clerkEnabled,
 }: Props) {
   const LOGIN_TIMEOUT_MS = 10_000;
@@ -138,26 +140,30 @@ export function LoginFormPanel({
     window.location.assign(`/api/session/demo?role=${encodeURIComponent(demoRole)}`);
   }
 
+  const visibleDemoRoles = DEMO_ROLES.filter((demoRole) =>
+    demoRole.key === "tenant-admin" ? bodegaDemoAllowed : demoLoginAllowed,
+  );
+
   return (
     <div>
-      {demoLoginAllowed ? (
+      {visibleDemoRoles.length > 0 ? (
       <div className="rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-4 shadow-[0_18px_60px_rgba(8,145,178,0.16)]">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">Acceso operativo autorizado</p>
-            <h2 className="mt-2 text-xl font-semibold text-white">Entrar al cockpit</h2>
-            <p className="mt-1 text-sm text-slate-300">Sesion controlada por 12h para operacion, ventas y presentaciones con permisos definidos.</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">Demo enterprise autorizada</p>
+            <h2 className="mt-2 text-xl font-semibold text-white">Entrar a Bodega Balmec</h2>
+            <p className="mt-1 text-sm text-slate-300">Sesion controlada por 12h para ventas y presentaciones. SuperAdmin y empleados quedan bajo credenciales reales.</p>
           </div>
           <span className="rounded-full border border-emerald-300/30 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-100">
             habilitado
           </span>
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          {DEMO_ROLES.map((demoRole) => (
+          {visibleDemoRoles.map((demoRole) => (
             <button suppressHydrationWarning
               key={demoRole.key}
               type="button"
-              disabled={pending || !demoLoginAllowed}
+              disabled={pending}
               onClick={() => void enterDemoRole(demoRole.key)}
               title={demoRole.label}
               className={`rounded-xl border p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${demoRole.tone}`}

@@ -15,10 +15,39 @@ export function dashboardOneClickAccessAllowed() {
   const explicit = readFlag(
     "DASHBOARD_ONE_CLICK_ACCESS",
     "DASHBOARD_ALLOW_DEMO_LOGIN",
-    "ENABLE_PUBLIC_DEMO_SESSION",
   );
   if (explicit !== null) return explicit;
 
+  return false;
+}
+
+export function dashboardSuperAdminDemoAccessAllowed() {
+  const explicit = readFlag(
+    "DASHBOARD_SUPERADMIN_DEMO_ACCESS",
+    "DASHBOARD_ALLOW_SUPERADMIN_DEMO",
+  );
+  return explicit === true;
+}
+
+export function dashboardBodegaDemoAccessAllowed() {
+  const explicit = readFlag(
+    "DASHBOARD_BODEGA_DEMO_ACCESS",
+    "DASHBOARD_ALLOW_BODEGA_DEMO",
+    "ENABLE_BODEGA_BALMEC_DEMO",
+  );
+  if (explicit !== null) return explicit;
+
+  return true;
+}
+
+export function dashboardDemoAccessAllowedForRole(role: string) {
+  const normalizedRole = String(role || "").trim().toLowerCase();
+  if (normalizedRole === "tenant-admin") {
+    return dashboardBodegaDemoAccessAllowed() || dashboardOneClickAccessAllowed();
+  }
+  if (normalizedRole === "super-admin") {
+    return dashboardSuperAdminDemoAccessAllowed();
+  }
   return false;
 }
 

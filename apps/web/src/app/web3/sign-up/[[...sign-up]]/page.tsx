@@ -2,10 +2,7 @@ import { SignUp } from "@clerk/nextjs";
 import Link from "next/link";
 import { BrandLockup } from "@product/ui";
 import { web3ClerkAppearance } from "../../clerk-appearance";
-
-function clerkReady() {
-  return Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && process.env.CLERK_SECRET_KEY);
-}
+import { isClerkConfiguredForRuntime } from "../../../../lib/clerk-env";
 
 export default async function Web3SignUpPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const params = (await searchParams) || {};
@@ -29,7 +26,7 @@ export default async function Web3SignUpPage({ searchParams }: { searchParams?: 
           </p>
         </section>
         <section className="rounded-3xl border border-white/10 bg-slate-950/78 p-4 shadow-[0_30px_100px_rgba(129,140,248,0.16)] backdrop-blur">
-          {clerkReady() ? (
+          {isClerkConfiguredForRuntime() ? (
             <SignUp
               routing="path"
               path="/web3/sign-up"

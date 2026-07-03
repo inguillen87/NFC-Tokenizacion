@@ -9,6 +9,7 @@ import { PwaSetup } from "../components/pwa-setup";
 import { MisconfigurationBanner } from "../components/misconfiguration-banner";
 import { WalletExtensionGuard } from "../components/wallet-extension-guard";
 import { StructuredData } from "../components/structured-data";
+import { getClerkPublishableKey } from "../lib/clerk-env";
 
 const DEFAULT_SITE_URL = "https://nexid.lat";
 
@@ -190,7 +191,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const theme = themeCookie === "light" ? "light" : "dark";
   const socialCopy = getSocialCopy(locale);
   const facebookAppId = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID?.trim();
-  const clerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || "";
+  const clerkKey = getClerkPublishableKey();
   const content = (
     <>
       <MisconfigurationBanner />

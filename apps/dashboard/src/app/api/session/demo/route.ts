@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { DASHBOARD_SESSION_COOKIE, DASHBOARD_SESSION_SNAPSHOT_COOKIE } from "../../../../lib/session";
 import { getAccessProfiles } from "../../../../lib/access-profiles";
+import { dashboardDemoAccessAllowedForRole } from "../../../../lib/dashboard-access-flags";
 
 export const runtime = "nodejs";
 
@@ -13,7 +14,7 @@ function normalizeRole(rawRole: string | null): DemoRole {
 }
 
 function demoAccountForRole(role: DemoRole) {
-  const profile = getAccessProfiles().find((item) => item.role === role);
+  const profile = getAccessProfiles().find((item) => item.role === role && item.available);
   if (profile) {
     return {
       email: profile.email,
@@ -62,6 +63,10 @@ function useSecureCookie(req: Request) {
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const role = normalizeRole(url.searchParams.get("role"));
+  if (!dashboardDemoAccessAllowedForRole(role)) {
+    console.info("[dashboard_login_audit]", JSON.stringify({ event: "direct_operational_login_denied", reason: "role_disabled", role }));
+    return NextResponse.json({ ok: false, reason: "demo access disabled for this role" }, { status: 403 });
+  }
   const account = demoAccountForRole(role);
   const scope = demoTenantScope(role);
   const redirectTo = new URL("/", url.origin);

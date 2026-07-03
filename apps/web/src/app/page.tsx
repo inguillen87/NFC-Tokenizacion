@@ -47,6 +47,7 @@ export default async function HomePage() {
       quickGlossary: "Glossary",
       quickAudiences: "Audience pitch",
       quickDemoLab: "Demo Lab",
+      quickProof: "Proof Verify & Decoder",
       quickInvestor: "Investor snapshot",
       rolloutDocs: "Read rollout docs",
       rolloutPricing: "See rollout pricing",
@@ -97,6 +98,7 @@ export default async function HomePage() {
       quickGlossary: "Glossário",
       quickAudiences: "Pitch por audiência",
       quickDemoLab: "Demo Lab",
+      quickProof: "Proof Verify & Decoder",
       quickInvestor: "Investor snapshot",
       rolloutDocs: "Ver docs de rollout",
       rolloutPricing: "Ver pricing rollout",
@@ -146,6 +148,7 @@ export default async function HomePage() {
       quickGlossary: "Glosario",
       quickAudiences: "Pitch por audiencia",
       quickDemoLab: "Demo Lab",
+      quickProof: "Proof Verify & Decoder",
       quickInvestor: "Investor snapshot",
       rolloutDocs: "Ver docs de rollout",
       rolloutPricing: "Ver pricing rollout",
@@ -191,6 +194,7 @@ export default async function HomePage() {
     { label: "SDK", href: "/sdk" },
     { label: content.nav.docs, href: "/docs" },
     { label: labels.quickDemoLab, href: productExitHref.demoLab },
+    { label: labels.quickProof, href: "/proof/verify" },
     { label: labels.scheduleMeeting, href: meetingHref, external: true },
     { label: labels.quickInvestor, href: productExitHref.investorSnapshot },
     { label: labels.quickAudiences, href: "/audiences" },
@@ -273,6 +277,9 @@ export default async function HomePage() {
             <ProductExitLink kind="demoLab" className="hidden lg:inline-flex">
               <Button variant="secondary">{labels.quickDemoLab}</Button>
             </ProductExitLink>
+            <Link href="/proof/verify" className="hidden xl:inline-flex">
+              <Button variant="secondary">{labels.quickProof}</Button>
+            </Link>
             <Link href="/login?next=/me" className="hidden xl:inline-flex">
               <Button variant="secondary" className="border-purple-500/30 bg-purple-500/10 text-purple-300 hover:bg-purple-500/20">
                 {labels.consumerPortal}

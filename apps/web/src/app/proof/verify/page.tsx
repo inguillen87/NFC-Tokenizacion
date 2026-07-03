@@ -486,14 +486,14 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
       `}</style>
       <section className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-5 py-8 sm:px-8 lg:px-10">
         <div className="flex items-center justify-between gap-4">
-          <BackLink href="/" label="nexID" />
+          <BackLink href="/" label="Volver a nexID" />
           <div className="flex flex-wrap items-center justify-end gap-2">
             <ThemeToggle />
             <Link
               href="/demo-lab?scenario=iota-proof"
               className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-white/80 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-cyan-800 shadow-sm transition hover:border-cyan-300 hover:bg-cyan-50"
             >
-              Demo IOTA <ArrowRight className="h-4 w-4" />
+              Volver a Demo Lab <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
               href="/sdk"
@@ -940,6 +940,14 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                     Abrir memo real en IOTA Explorer <ArrowRight className="h-4 w-4" />
                   </a>
                 ) : null}
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <Link href="/demo-lab?scenario=iota-proof" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-cyan-200 bg-cyan-50/80 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-cyan-900">
+                    Volver a Demo Lab <ArrowRight className="h-4 w-4" />
+                  </Link>
+                  <Link href="/sdk" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-slate-800">
+                    Ver SDK/API <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
               </div>
             </div>
 

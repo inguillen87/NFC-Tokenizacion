@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 import { currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { productUrls } from "@product/config";
+import { isClerkConfiguredForRuntime } from "../../../../../lib/clerk-env";
 
 type ClerkWalletLike = {
   id?: string | null;
@@ -40,7 +41,7 @@ function firstWalletAddress(user: unknown) {
 }
 
 export async function POST(req: Request) {
-  if (!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || !process.env.CLERK_SECRET_KEY) {
+  if (!isClerkConfiguredForRuntime()) {
     return NextResponse.json({ ok: false, error: "clerk_not_configured" }, { status: 503 });
   }
   const user = await currentUser().catch(() => null);

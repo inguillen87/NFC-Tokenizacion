@@ -3,10 +3,7 @@ import Link from "next/link";
 import { BrandLockup } from "@product/ui";
 import { MetamaskPrimaryButton } from "../metamask-primary-button";
 import { web3ClerkAppearance } from "../../clerk-appearance";
-
-function clerkReady() {
-  return Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && process.env.CLERK_SECRET_KEY);
-}
+import { isClerkConfiguredForRuntime } from "../../../../lib/clerk-env";
 
 export default async function Web3SignInPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const params = (await searchParams) || {};
@@ -38,7 +35,7 @@ export default async function Web3SignInPage({ searchParams }: { searchParams?: 
           </div>
         </section>
         <section className="rounded-3xl border border-white/10 bg-slate-950/78 p-4 shadow-[0_30px_100px_rgba(6,182,212,0.16)] backdrop-blur">
-          {clerkReady() ? (
+          {isClerkConfiguredForRuntime() ? (
             <div className="space-y-4">
               <div className="rounded-2xl border border-cyan-300/20 bg-cyan-300/[0.07] p-4">
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200">Accion recomendada</p>

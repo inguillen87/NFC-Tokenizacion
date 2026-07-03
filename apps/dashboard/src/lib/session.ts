@@ -1,7 +1,8 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { UserRole } from "./dashboard-content";
-import { dashboardFallbackSessionAllowed, dashboardOneClickAccessAllowed } from "./dashboard-access-flags";
+import { dashboardDemoAccessAllowedForRole, dashboardFallbackSessionAllowed } from "./dashboard-access-flags";
+import { isClerkConfiguredForRuntime } from "./clerk-env";
 
 export const DASHBOARD_SESSION_COOKIE = "nexid_dashboard_session";
 export const DASHBOARD_SESSION_SNAPSHOT_COOKIE = "nexid_dashboard_session_snapshot";
@@ -108,8 +109,8 @@ export async function getDashboardSession() {
   if (token) {
     const isDemoToken = token.startsWith("demo.");
     if (isDemoToken) {
-      if (!dashboardOneClickAccessAllowed()) return null;
       const demoSession = parseDemoToken(token);
+      if (!demoSession || !dashboardDemoAccessAllowedForRole(demoSession.role)) return null;
       if (demoSession) return demoSession;
       return snapshot || demoFallbackSession();
     }
@@ -129,7 +130,7 @@ export async function getDashboardSession() {
   }
 
   // Clerk auto-sync check on session miss
-  if (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
+  if (isClerkConfiguredForRuntime()) {
     try {
       const { auth, currentUser } = await import("@clerk/nextjs/server");
       const clerkAuth = await auth();

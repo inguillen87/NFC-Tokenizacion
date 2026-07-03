@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { DASHBOARD_SESSION_COOKIE, DASHBOARD_SESSION_SNAPSHOT_COOKIE } from "./session";
 import { getAccessProfiles } from "./access-profiles";
-import { dashboardOneClickAccessAllowed } from "./dashboard-access-flags";
+import { dashboardDemoAccessAllowedForRole, dashboardOneClickAccessAllowed } from "./dashboard-access-flags";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
 const AUTH_UPSTREAM_TIMEOUT_MS = Number(process.env.AUTH_UPSTREAM_TIMEOUT_MS || 8000);
@@ -38,7 +38,7 @@ function demoTenantScope(role: string) {
 }
 
 function demoAccountForRole(role: string) {
-  const profile = getAccessProfiles().find((item) => item.role === role);
+  const profile = getAccessProfiles().find((item) => item.role === role && item.available);
   if (profile) {
     return {
       email: profile.email,
@@ -127,15 +127,16 @@ export async function handleSessionLogin(req: Request) {
   const requestedDemoRole = String(submitted["demoRole"] || "tenant-admin").trim().toLowerCase();
   const demoRole = requestedDemoRole === "super-admin" || requestedDemoRole === "tenant-admin" ? requestedDemoRole : "tenant-admin";
   const canUseDemoLogin = dashboardOneClickAccessAllowed();
+  const canUseRequestedDemoRole = dashboardDemoAccessAllowedForRole(demoRole);
 
   if (wantsDemoLogin) {
-    if (!canUseDemoLogin) {
+    if (!canUseRequestedDemoRole) {
       console.info("[dashboard_login_audit]", JSON.stringify({ event: "operational_login_denied", reason: "disabled", email: submittedEmail || null }));
       return NextResponse.json(
         {
           ok: false,
           reason: "one-click access disabled in this environment",
-          diagnostics: buildDiagnostics({ upstreamReachable: false, upstreamStatus: null, demoLoginAllowed: canUseDemoLogin }),
+          diagnostics: buildDiagnostics({ upstreamReachable: false, upstreamStatus: null, demoLoginAllowed: canUseRequestedDemoRole }),
         },
         { status: 403 },
       );
