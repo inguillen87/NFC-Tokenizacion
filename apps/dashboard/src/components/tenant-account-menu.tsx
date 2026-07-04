@@ -44,10 +44,12 @@ const ACCOUNT_MENU_DEFAULT_STYLE: CSSProperties = {
   top: 12,
   right: 12,
   bottom: 12,
+  left: "auto",
   width: "min(calc(100vw - 24px), 30rem)",
   height: "auto",
   maxHeight: "calc(100dvh - 24px)",
   pointerEvents: "auto",
+  isolation: "isolate",
   transform: "translate3d(0,0,0)",
   backgroundColor: "#020817",
 };
@@ -139,6 +141,7 @@ export function TenantAccountMenu({
       top: isCompact ? 0 : 12,
       right: isCompact ? 0 : 12,
       bottom: isCompact ? 0 : 12,
+      left: isCompact ? 0 : "auto",
       width: isCompact ? "100vw" : "min(calc(100vw - 24px), 30rem)",
       maxHeight: isCompact ? "100dvh" : "calc(100dvh - 24px)",
     });
@@ -266,21 +269,24 @@ export function TenantAccountMenu({
   const menuPanel = open ? (
     <div
       className="nexid-account-layer fixed inset-0 isolate"
+      data-account-menu-portal="body"
       data-testid="tenant-account-menu-layer"
-      style={{ zIndex: ACCOUNT_MENU_Z_INDEX, pointerEvents: "auto" }}
+      style={{ zIndex: ACCOUNT_MENU_Z_INDEX, pointerEvents: "auto", position: "fixed", inset: 0, isolation: "isolate" }}
     >
       <button
         type="button"
         aria-label="Cerrar menu de cuenta"
         data-testid="tenant-account-menu-backdrop"
-        className="fixed inset-0 cursor-default bg-[#020713]/66 backdrop-blur-[4px]"
+        className="fixed inset-0 cursor-default bg-slate-950/80 backdrop-blur-lg"
         style={{ zIndex: ACCOUNT_MENU_Z_INDEX + 1, pointerEvents: "auto" }}
         onClick={() => setOpen(false)}
       />
       <div
         id="tenant-account-menu-panel"
         ref={panelRef}
-        role="menu"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Cuenta operativa nexID"
         data-testid="tenant-account-menu-panel"
         style={panelStyle}
         className="tenant-account-panel isolate flex flex-col overflow-hidden rounded-none border border-cyan-100/35 bg-slate-950 text-slate-100 shadow-[0_34px_140px_rgba(0,0,0,.88)] ring-1 ring-cyan-200/18 sm:rounded-3xl"
@@ -360,7 +366,7 @@ export function TenantAccountMenu({
       <button
         ref={triggerRef}
         type="button"
-        aria-haspopup="menu"
+        aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls="tenant-account-menu-panel"
         data-testid="tenant-account-menu-trigger"

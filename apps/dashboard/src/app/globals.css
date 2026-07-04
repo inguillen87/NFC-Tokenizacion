@@ -1121,6 +1121,7 @@ body.nexid-account-menu-open {
   pointer-events: none;
   z-index: 2147483600 !important;
   transform: translate3d(0, 0, 0) !important;
+  will-change: opacity;
 }
 
 .nexid-account-layer > * {
@@ -1133,12 +1134,18 @@ body.nexid-account-menu-open {
   flex-direction: column !important;
   z-index: 2147483602 !important;
   pointer-events: auto;
+  isolation: isolate !important;
   transform: translate3d(0, 0, 0) !important;
 }
 
 html.nexid-account-menu-open .nexid-crm-shell,
 body.nexid-account-menu-open .nexid-crm-shell {
   z-index: 0 !important;
+  pointer-events: none !important;
+}
+
+html.nexid-account-menu-open .nexid-crm-shell *,
+body.nexid-account-menu-open .nexid-crm-shell * {
   pointer-events: none !important;
 }
 
@@ -1154,6 +1161,26 @@ body.nexid-account-menu-open .nexid-crm-shell footer,
 body.nexid-account-menu-open .nexid-crm-shell [id="live-tap-map"] {
   z-index: 1 !important;
   pointer-events: none !important;
+}
+
+html.nexid-account-menu-open .nexid-crm-shell [id="live-tap-map"],
+html.nexid-account-menu-open .nexid-crm-shell .maplibregl-map,
+html.nexid-account-menu-open .nexid-crm-shell .maplibregl-canvas-container,
+html.nexid-account-menu-open .nexid-crm-shell .maplibregl-control-container,
+body.nexid-account-menu-open .nexid-crm-shell [id="live-tap-map"],
+body.nexid-account-menu-open .nexid-crm-shell .maplibregl-map,
+body.nexid-account-menu-open .nexid-crm-shell .maplibregl-canvas-container,
+body.nexid-account-menu-open .nexid-crm-shell .maplibregl-control-container {
+  z-index: 0 !important;
+  isolation: auto !important;
+  transform: none !important;
+}
+
+html.nexid-account-menu-open .nexid-account-layer,
+html.nexid-account-menu-open .nexid-account-layer *,
+body.nexid-account-menu-open .nexid-account-layer,
+body.nexid-account-menu-open .nexid-account-layer * {
+  pointer-events: auto !important;
 }
 
 @media (max-width: 640px) {

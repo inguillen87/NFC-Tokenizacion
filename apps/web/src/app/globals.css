@@ -45552,6 +45552,10 @@ html[data-theme="light"] .brand-synergy-terminal {
   background: rgba(255, 255, 255, 0.94) !important;
 }
 
+.brand-synergy-terminal {
+  overflow: hidden;
+}
+
 .brand-synergy-terminal-row {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
@@ -45598,6 +45602,56 @@ html[data-theme="light"] .brand-synergy-terminal-row strong,
 html[data-theme="light"] .brand-synergy-terminal-row .text-white,
 html[data-theme="light"] .brand-synergy-terminal-row .text-slate-100 {
   color: #0f172a !important;
+}
+
+.brand-synergy-proof-grid > div,
+.brand-synergy-privacy-note {
+  border: 1px solid rgba(125, 211, 252, 0.14);
+  border-radius: 1rem;
+  background: rgba(15, 23, 42, 0.58);
+  padding: 0.85rem;
+  color: #cbd5e1;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.brand-synergy-proof-grid svg {
+  color: #67e8f9;
+}
+
+.brand-synergy-proof-grid strong {
+  display: block;
+  margin-top: 0.45rem;
+  color: #f8fafc;
+  font-size: 0.78rem;
+  font-weight: 950;
+}
+
+.brand-synergy-proof-grid span {
+  display: block;
+  margin-top: 0.16rem;
+  color: #94a3b8;
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+html.theme-light .brand-synergy-proof-grid > div,
+html[data-theme="light"] .brand-synergy-proof-grid > div,
+html.theme-light .brand-synergy-privacy-note,
+html[data-theme="light"] .brand-synergy-privacy-note {
+  border-color: rgba(14, 116, 144, 0.2) !important;
+  background: rgba(255, 255, 255, 0.86) !important;
+  color: #164e63 !important;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.07) !important;
+}
+
+html.theme-light .brand-synergy-proof-grid strong,
+html[data-theme="light"] .brand-synergy-proof-grid strong {
+  color: #0f172a !important;
+}
+
+html.theme-light .brand-synergy-proof-grid span,
+html[data-theme="light"] .brand-synergy-proof-grid span {
+  color: #475569 !important;
 }
 
 html.theme-light .trust-layer-sim,
@@ -45713,10 +45767,27 @@ html[data-theme="light"] .demo-lab-hub-card svg:last-child {
 
   .brand-synergy-flow {
     align-items: stretch !important;
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    overflow-x: hidden !important;
   }
 
   .brand-synergy-flow__chip {
+    justify-content: flex-start !important;
     white-space: normal !important;
+  }
+
+  .brand-synergy-flow > svg {
+    display: none !important;
+  }
+
+  .brand-synergy-scenario-pill {
+    flex: 1 1 100% !important;
+    justify-content: flex-start !important;
+  }
+
+  .brand-synergy-proof-grid {
+    grid-template-columns: 1fr !important;
   }
 
   .demo-lab-hub-root {

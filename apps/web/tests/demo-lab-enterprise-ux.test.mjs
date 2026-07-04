@@ -65,3 +65,19 @@ test("landing hero stats use real configured fields and no old cost placeholder"
   assert.match(i18n, /Sin app para el comprador/);
   assert.match(i18n, /No buyer app required/);
 });
+
+test("brand synergy simulator is readable, auto-cycles and stays mobile-safe", async () => {
+  const source = await readFile(new URL("../src/components/brand-synergy-simulator.tsx", import.meta.url), "utf8");
+  const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
+
+  assert.doesNotMatch(source, /Ã|Â|â|ð/);
+  assert.match(source, /window\.setInterval\(\(\) => \{/);
+  assert.match(source, /\},\s*4000\)/);
+  assert.match(source, /setIsPaused\(true\)/);
+  assert.match(source, /brand-synergy-proof-grid/);
+  assert.match(source, /hash-only/);
+  assert.match(source, /Consent and PII stay inside nexID/);
+  assert.match(css, /brand-synergy-proof-grid > div/);
+  assert.match(css, /brand-synergy-flow\s*\{[\s\S]*grid-template-columns:\s*1fr/);
+  assert.match(css, /brand-synergy-scenario-pill\s*\{[\s\S]*flex:\s*1 1 100%/);
+});
