@@ -46875,20 +46875,23 @@ html[data-theme="light"] .demo-lab-wizard-brief__proof span {
 /* Demo Lab enterprise closure: prevent mobile CTAs from overflowing and make
    light mode visibly light in the fullscreen scenario, not only in controls. */
 html.theme-light .demo-lab-fullscreen-root,
-html[data-theme="light"] .demo-lab-fullscreen-root {
+html[data-theme="light"] .demo-lab-fullscreen-root,
+.demo-lab-fullscreen-root.demo-lab-fullscreen-root--light {
   background: #f5f9ff !important;
   color: #0f172a !important;
 }
 
 html.theme-light .demo-lab-fullscreen-stage,
-html[data-theme="light"] .demo-lab-fullscreen-stage {
+html[data-theme="light"] .demo-lab-fullscreen-stage,
+.demo-lab-fullscreen-root--light .demo-lab-fullscreen-stage {
   background:
     radial-gradient(circle at 48% 16%, rgba(14, 165, 233, 0.12), transparent 34rem),
     linear-gradient(180deg, #f8fbff 0%, #eef6ff 100%) !important;
 }
 
 html.theme-light .demo-lab-fullscreen-stage .demo-lab-studio,
-html[data-theme="light"] .demo-lab-fullscreen-stage .demo-lab-studio {
+html[data-theme="light"] .demo-lab-fullscreen-stage .demo-lab-studio,
+.demo-lab-fullscreen-root--light .demo-lab-fullscreen-stage .demo-lab-studio {
   border-color: rgba(14, 116, 144, 0.22) !important;
   background:
     radial-gradient(circle at 50% 18%, rgba(45, 212, 191, 0.15), transparent 24rem),
@@ -46896,7 +46899,91 @@ html[data-theme="light"] .demo-lab-fullscreen-stage .demo-lab-studio {
   box-shadow: 0 28px 80px rgba(15, 23, 42, 0.11) !important;
 }
 
+.demo-lab-fullscreen-root--light .demo-lab-infobar,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-nav,
+.demo-lab-fullscreen-root--light .demo-lab-mode-bar--compact,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-brief {
+  border-color: rgba(14, 116, 144, 0.2) !important;
+  background: rgba(248, 252, 255, 0.92) !important;
+  color: #0f172a !important;
+  box-shadow: 0 1rem 2.4rem rgba(15, 23, 42, 0.08) !important;
+}
+
+.demo-lab-fullscreen-root--light .demo-lab-context-strip {
+  border-color: rgba(14, 116, 144, 0.18) !important;
+  background: rgba(255, 255, 255, 0.88) !important;
+  color: #334155 !important;
+}
+
+.demo-lab-fullscreen-root--light .demo-lab-infobar__title,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-brief__copy strong,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-product-name,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-result-status,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-gano-header h2,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-gano-card h3,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-event strong {
+  color: #0f172a !important;
+}
+
+.demo-lab-fullscreen-root--light .demo-lab-context-strip__trigger,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-brief__copy p,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-tagline,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-result-desc,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-gano-card p,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-event span {
+  color: #475569 !important;
+}
+
+.demo-lab-fullscreen-root--light .demo-lab-infobar__eyebrow,
+.demo-lab-fullscreen-root--light .demo-lab-mode-bar--compact span,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-eyebrow,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-brief__copy span,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-brief__proof span {
+  color: #0e7490 !important;
+}
+
+.demo-lab-fullscreen-root--light .demo-lab-infobar__back,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-nav-back,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-step-pill,
+.demo-lab-fullscreen-root--light .demo-lab-mode-tab,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-actions .theme-toggle {
+  border-color: rgba(14, 116, 144, 0.22) !important;
+  background: rgba(255, 255, 255, 0.84) !important;
+  color: #0f5f76 !important;
+}
+
+.demo-lab-fullscreen-root--light .demo-lab-mode-tab.is-active,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-step-pill.is-active {
+  border-color: rgba(14, 116, 144, 0.46) !important;
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.94), rgba(45, 212, 191, 0.94)) !important;
+  color: #04111f !important;
+}
+
+.demo-lab-fullscreen-root--light .demo-lab-wizard-context,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-result-card,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-events,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-trazo-side,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-gano-card,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-event {
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  background: rgba(255, 255, 255, 0.88) !important;
+  color: #0f172a !important;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.08) !important;
+}
+
+.demo-lab-fullscreen-root--light .demo-lab-wizard-brief__proof span {
+  border-color: rgba(14, 116, 144, 0.18) !important;
+  background: rgba(255, 255, 255, 0.86) !important;
+  color: #0f5f76 !important;
+}
+
 @media (max-width: 520px) {
+  .demo-lab-fullscreen-root {
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+
   .demo-lab-fullscreen-root .demo-lab-infobar {
     overflow-x: clip !important;
   }
@@ -46940,10 +47027,19 @@ html[data-theme="light"] .demo-lab-fullscreen-stage .demo-lab-studio {
     text-overflow: ellipsis !important;
   }
 
+  .demo-lab-fullscreen-root .demo-lab-cta-full {
+    display: none !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-cta-short {
+    display: inline !important;
+  }
+
   .demo-lab-fullscreen-root .demo-lab-wizard-nav {
     grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr) !important;
-    width: auto !important;
-    max-width: calc(100vw - 1.24rem) !important;
+    width: calc(100% - 1.24rem) !important;
+    max-width: calc(100% - 1.24rem) !important;
+    box-sizing: border-box !important;
     overflow: hidden !important;
   }
 
@@ -46953,13 +47049,19 @@ html[data-theme="light"] .demo-lab-fullscreen-stage .demo-lab-studio {
   }
 
   .demo-lab-fullscreen-root .demo-lab-wizard-actions > a {
+    width: 100% !important;
+    max-width: 100% !important;
     min-width: 0 !important;
+    padding-inline: 0.48rem !important;
+    justify-content: center !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
   }
 
   .demo-lab-fullscreen-root .demo-lab-wizard-steps {
+    width: 100% !important;
     max-width: 100% !important;
+    min-width: 0 !important;
   }
 
   .demo-lab-fullscreen-root .demo-lab-wizard-scene,
@@ -46969,13 +47071,73 @@ html[data-theme="light"] .demo-lab-fullscreen-stage .demo-lab-studio {
   .demo-lab-fullscreen-root .demo-lab-wizard-events,
   .demo-lab-fullscreen-root .demo-lab-wizard-trazo-side,
   .demo-lab-fullscreen-root .demo-lab-wizard-map-container {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-scene {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-scene > * {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-verticals {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    overflow-x: hidden !important;
+    overflow-y: visible !important;
+    padding-bottom: 0 !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-vertical-btn {
+    width: 100% !important;
     min-width: 0 !important;
     max-width: 100% !important;
   }
 
   .demo-lab-fullscreen-root .demo-lab-wizard-product-name,
   .demo-lab-fullscreen-root .demo-lab-wizard-result-status,
+  .demo-lab-fullscreen-root .demo-lab-wizard-result-desc,
+  .demo-lab-fullscreen-root .demo-lab-wizard-tagline,
+  .demo-lab-fullscreen-root .demo-lab-wizard-brief__copy strong,
+  .demo-lab-fullscreen-root .demo-lab-wizard-brief__copy p,
   .demo-lab-fullscreen-root .demo-lab-wizard-gano-header h2 {
+    max-width: 100% !important;
     overflow-wrap: anywhere !important;
+    white-space: normal !important;
   }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-brief__copy strong {
+    display: block !important;
+    max-width: min(100%, 17rem) !important;
+    font-size: 1.05rem !important;
+    line-height: 1.2 !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-brief__proof span {
+    min-height: 1.75rem !important;
+    padding-inline: 0.58rem !important;
+    font-size: 0.62rem !important;
+  }
+
+  .demo-lab-fullscreen-stage,
+  .demo-lab-fullscreen-stage .demo-lab-studio {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+  }
+}
+
+.demo-lab-cta-short {
+  display: none;
 }

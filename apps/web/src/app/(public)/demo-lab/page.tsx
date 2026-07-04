@@ -472,6 +472,8 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
   const initialScenario = firstParam(
     params.scenario || params.proof || params.layer
   );
+  const requestedTheme = firstParam(params.theme) === "light" ? "light" : "dark";
+  const demoThemeClass = requestedTheme === "light" ? "demo-lab-fullscreen-root--light" : "";
 
   // ── FULL-SCREEN SIMULATOR MODE ───────────────────────────────────────────
   if (initialScenario || initialVertical) {
@@ -480,7 +482,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
     const PanelIcon = panel.icon;
 
     return (
-      <div className="demo-lab-fullscreen-root">
+      <div className={`demo-lab-fullscreen-root ${demoThemeClass}`}>
         {structuredData.map((schema) => (
           <JsonLd key={schema["@type"]} data={schema} />
         ))}
@@ -514,7 +516,8 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
                 href="/?contact=demo#contact-modal"
                 className="demo-lab-infobar__cta inline-flex h-9 items-center gap-2 rounded-full bg-cyan-300 px-4 text-xs font-black uppercase tracking-wider text-slate-950"
               >
-                Agendar demo
+                <span className="demo-lab-cta-full">Agendar demo</span>
+                <span className="demo-lab-cta-short">Demo</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
