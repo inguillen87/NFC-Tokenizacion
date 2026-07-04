@@ -432,12 +432,14 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
 
         .proof-verify-page .proof-elevated {
           box-shadow: var(--proof-shadow) !important;
+          min-width: 0;
         }
 
         .proof-verify-page .proof-flat,
         .proof-verify-page .proof-flat [class*="bg-white"] {
           box-shadow: none !important;
           backdrop-filter: none !important;
+          min-width: 0;
         }
 
         .proof-verify-page [class*="bg-slate-50"],
@@ -564,6 +566,20 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           color: #ecfeff !important;
         }
 
+        .proof-verify-page .proof-secondary-cta {
+          border-color: rgba(103, 232, 249, 0.36) !important;
+          background: rgba(8, 145, 178, 0.18) !important;
+          color: #cffafe !important;
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        }
+
+        html[data-theme="light"] .proof-verify-page .proof-secondary-cta,
+        html.theme-light .proof-verify-page .proof-secondary-cta {
+          border-color: rgba(14, 116, 144, 0.24) !important;
+          background: rgba(255, 255, 255, 0.82) !important;
+          color: #0e7490 !important;
+        }
+
         .proof-verify-page details > summary {
           cursor: pointer;
           list-style: none;
@@ -580,30 +596,33 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
         .proof-verify-page .proof-workstation-grid {
           display: grid;
           gap: 1.25rem;
+          grid-template-columns: minmax(0, 1fr);
+        }
+
+        .proof-verify-page .proof-workstation-grid > *,
+        .proof-verify-page .proof-workstation-sidebar,
+        .proof-verify-page .proof-workstation-grid dl,
+        .proof-verify-page .proof-workstation-grid dd {
+          min-width: 0;
+        }
+
+        .proof-verify-page .proof-workstation-grid dd,
+        .proof-verify-page .proof-workstation-grid p,
+        .proof-verify-page .proof-workstation-grid a,
+        .proof-verify-page .proof-workstation-grid span,
+        .proof-verify-page .proof-workstation-grid strong {
+          overflow-wrap: anywhere;
         }
 
         @media (min-width: 1280px) {
           .proof-verify-page .proof-workstation-grid {
-            grid-template-columns: minmax(0, 1fr) 420px;
+            grid-template-columns: minmax(0, 1fr) minmax(460px, 500px);
             align-items: start;
           }
 
           .proof-verify-page .proof-workstation-sidebar {
             position: sticky;
             top: 1.25rem;
-            max-height: calc(100vh - 2.5rem);
-            overflow: auto;
-            overscroll-behavior: contain;
-            padding-right: 0.2rem;
-          }
-
-          .proof-verify-page .proof-workstation-sidebar::-webkit-scrollbar {
-            width: 0.45rem;
-          }
-
-          .proof-verify-page .proof-workstation-sidebar::-webkit-scrollbar-thumb {
-            border-radius: 999px;
-            background: rgba(34, 211, 238, 0.34);
           }
         }
 
@@ -717,7 +736,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                 <Link href={showcaseDemo ? verifyHrefForDemo(showcaseDemo) : "/demo-lab?scenario=iota-proof"} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-cyan-900">
                   {showcaseDemo ? "Probar verificacion real" : "Abrir demo IOTA"} <FileSearch className="h-4 w-4" />
                 </Link>
-                <Link href={showcaseDemo ? decoderHrefForDemo(showcaseDemo) : "/proof/verify"} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-cyan-200 bg-white/78 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-cyan-900 transition hover:border-cyan-300 hover:bg-cyan-50">
+                <Link href={showcaseDemo ? decoderHrefForDemo(showcaseDemo) : "/proof/verify"} className="proof-secondary-cta inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-cyan-200 bg-white/78 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-cyan-900 transition hover:border-cyan-300 hover:bg-cyan-50">
                   {showcaseDemo ? "Decodificar memo real" : "Usar decoder manual"} <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
@@ -1022,28 +1041,48 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
 
           <div className="proof-workstation-sidebar grid gap-5 xl:self-start">
           <div className="proof-elevated rounded-[1.5rem] border border-cyan-200 bg-cyan-50/75 p-5 shadow-sm">
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Lectura ejecutiva</p>
-            <h2 className="mt-2 text-2xl font-black leading-tight text-slate-950">
-              Que queda probado en menos de un minuto?
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-slate-700">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Lectura ejecutiva</p>
+                <h2 className="mt-2 text-2xl font-black leading-tight text-slate-950">
+                  Que entiende un gerente sin leer blockchain?
+                </h2>
+              </div>
+              <BadgeCheck className="mt-1 h-6 w-6 shrink-0 text-cyan-700" />
+            </div>
+            <p className="mt-3 text-sm leading-6 text-slate-700">
               {activeDemo
                 ? `${activeDemo.title}: ${activeDemo.public_receipt.manager_explanation}`
                 : "La empresa pega un hash, ve si esta incluido en un anchor y puede abrir la prueba externa cuando existe tx real."}
             </p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              <div className="proof-flat rounded-2xl border border-cyan-200 bg-white/70 p-3">
-                <strong className="block text-sm text-slate-950">1. Evidencia</strong>
-                <p className="mt-1 text-xs leading-5 text-slate-600">El SHA representa un hecho autorizado.</p>
+            <div className="mt-4 grid gap-3">
+              <div className="proof-flat rounded-2xl border border-cyan-200 bg-white/70 p-4">
+                <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan-800">1. Hecho probado</p>
+                <strong className="mt-2 block text-base leading-tight text-slate-950">Un evento autorizado existia en ese momento.</strong>
+                <p className="mt-2 text-sm leading-6 text-slate-600">El SHA es la huella de QA, custodia, claim, DPP o checkpoint. Si cambia el evento, cambia el hash.</p>
               </div>
-              <div className="proof-flat rounded-2xl border border-cyan-200 bg-white/70 p-3">
-                <strong className="block text-sm text-slate-950">2. Inclusion</strong>
-                <p className="mt-1 text-xs leading-5 text-slate-600">El hash aparece dentro del Merkle root.</p>
+              <div className="proof-flat rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-emerald-800">2. Evidencia externa</p>
+                <strong className="mt-2 block text-base leading-tight text-emerald-950">IOTA muestra fecha, tx y Merkle root.</strong>
+                <p className="mt-2 text-sm leading-6 text-emerald-900">El explorer prueba que el recibo publico fue escrito. nexID traduce ese Raw input a lenguaje de negocio.</p>
               </div>
-              <div className="proof-flat rounded-2xl border border-cyan-200 bg-white/70 p-3">
-                <strong className="block text-sm text-slate-950">3. Privacidad</strong>
-                <p className="mt-1 text-xs leading-5 text-slate-600">No se expone UID, cliente ni manifiesto.</p>
+              <div className="proof-flat rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-amber-800">3. Datos protegidos</p>
+                <strong className="mt-2 block text-base leading-tight text-amber-950">La prueba no revela clientes, UIDs ni rutas.</strong>
+                <p className="mt-2 text-sm leading-6 text-amber-900">La blockchain no se usa como base publica: solo publica el minimo verificable para auditoria.</p>
               </div>
+            </div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+              {activeDemo?.public_receipt.explorer_url ? (
+                <a href={activeDemo.public_receipt.explorer_url} className="proof-receipt-action-link text-xs font-black uppercase tracking-[0.12em]" target="_blank" rel="noreferrer">
+                  Abrir tx con memo <ArrowRight className="h-4 w-4" />
+                </a>
+              ) : null}
+              {activeDemo ? (
+                <Link href={decoderHrefForDemo(activeDemo)} className="proof-secondary-cta inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]">
+                  Decodificar Raw input <FileSearch className="h-4 w-4" />
+                </Link>
+              ) : null}
             </div>
           </div>
 
