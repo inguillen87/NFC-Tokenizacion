@@ -1116,6 +1116,7 @@ body.nexid-account-menu-open {
   position: fixed !important;
   inset: 0 !important;
   isolation: isolate !important;
+  contain: none !important;
   pointer-events: none;
   z-index: 2147483000 !important;
 }
@@ -1126,8 +1127,14 @@ body.nexid-account-menu-open {
 
 .nexid-account-layer .tenant-account-panel {
   position: fixed !important;
+  display: flex !important;
+  flex-direction: column !important;
   z-index: 2147483002 !important;
   pointer-events: auto;
+}
+
+body.nexid-account-menu-open .nexid-crm-shell {
+  z-index: 0 !important;
 }
 
 body.nexid-account-menu-open .nexid-crm-shell header,
@@ -1140,9 +1147,9 @@ body.nexid-account-menu-open .nexid-crm-shell [id="live-tap-map"] {
 
 @media (max-width: 640px) {
   .nexid-account-layer .tenant-account-panel {
-    left: 0.75rem !important;
-    right: 0.75rem !important;
-    width: auto !important;
-    max-height: calc(100vh - 6rem) !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
   }
 }

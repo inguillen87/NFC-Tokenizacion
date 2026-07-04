@@ -40,12 +40,14 @@ const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : us
 const ACCOUNT_MENU_DEFAULT_STYLE: CSSProperties = {
   position: "fixed",
   zIndex: ACCOUNT_MENU_Z_INDEX + 2,
-  top: 86,
+  top: 12,
   right: 12,
-  width: "min(calc(100vw - 24px), 26rem)",
-  maxHeight: "calc(100vh - 104px)",
+  bottom: 12,
+  width: "min(calc(100vw - 24px), 30rem)",
+  height: "auto",
+  maxHeight: "calc(100dvh - 24px)",
   pointerEvents: "auto",
-  transform: "translateZ(0)",
+  transform: "translate3d(0,0,0)",
   backgroundColor: "#020817",
 };
 
@@ -124,19 +126,18 @@ export function TenantAccountMenu({
   }, [open]);
 
   const updatePanelPosition = useCallback(() => {
-    const rect = triggerRef.current?.getBoundingClientRect();
-    if (!rect || typeof window === "undefined") {
+    if (typeof window === "undefined") {
       setPanelStyle(ACCOUNT_MENU_DEFAULT_STYLE);
       return;
     }
-    const gutter = 12;
-    const top = Math.min(Math.max(rect.bottom + 10, gutter), window.innerHeight - 96);
-    const right = Math.max(gutter, window.innerWidth - rect.right);
+    const isCompact = window.innerWidth < 640;
     setPanelStyle({
       ...ACCOUNT_MENU_DEFAULT_STYLE,
-      top,
-      right,
-      maxHeight: Math.max(280, window.innerHeight - top - gutter),
+      top: isCompact ? 0 : 12,
+      right: isCompact ? 0 : 12,
+      bottom: isCompact ? 0 : 12,
+      width: isCompact ? "100vw" : "min(calc(100vw - 24px), 30rem)",
+      maxHeight: isCompact ? "100dvh" : "calc(100dvh - 24px)",
     });
   }, []);
 
@@ -279,7 +280,7 @@ export function TenantAccountMenu({
         role="menu"
         data-testid="tenant-account-menu-panel"
         style={panelStyle}
-        className="tenant-account-panel isolate overflow-hidden rounded-2xl border border-cyan-100/35 bg-slate-950 text-slate-100 shadow-[0_34px_140px_rgba(0,0,0,.88)] ring-1 ring-cyan-200/18"
+        className="tenant-account-panel isolate flex flex-col overflow-hidden rounded-none border border-cyan-100/35 bg-slate-950 text-slate-100 shadow-[0_34px_140px_rgba(0,0,0,.88)] ring-1 ring-cyan-200/18 sm:rounded-3xl"
       >
         <div className="border-b border-white/10 bg-[radial-gradient(circle_at_85%_12%,rgba(34,211,238,.2),transparent_40%),linear-gradient(135deg,#0f172a,#07111f)] p-4">
           <div className="flex items-start gap-3">
@@ -316,7 +317,7 @@ export function TenantAccountMenu({
           </button>
         </div>
 
-        <div className="max-h-[calc(100vh-18rem)] overflow-y-auto p-3">
+        <div className="min-h-0 flex-1 overflow-y-auto p-3">
           <div className="grid gap-2">
             {primaryItems.map(renderItem)}
           </div>
