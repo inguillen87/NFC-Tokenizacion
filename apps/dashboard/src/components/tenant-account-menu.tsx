@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   UserCog,
   Users,
+  X,
 } from "lucide-react";
 
 type AccountMenuItem = {
@@ -35,7 +36,7 @@ type TenantAccountMenuProps = {
   tenantSlug?: string | null;
 };
 
-const ACCOUNT_MENU_Z_INDEX = 2147483000;
+const ACCOUNT_MENU_Z_INDEX = 2147483600;
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 const ACCOUNT_MENU_DEFAULT_STYLE: CSSProperties = {
   position: "fixed",
@@ -107,6 +108,7 @@ export function TenantAccountMenu({
 
   useEffect(() => {
     if (!open) return;
+    document.documentElement.classList.add("nexid-account-menu-open");
     document.body.classList.add("nexid-account-menu-open");
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Node;
@@ -119,6 +121,7 @@ export function TenantAccountMenu({
     window.addEventListener("pointerdown", handlePointerDown);
     window.addEventListener("keydown", handleKeyDown);
     return () => {
+      document.documentElement.classList.remove("nexid-account-menu-open");
       document.body.classList.remove("nexid-account-menu-open");
       window.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("keydown", handleKeyDown);
@@ -293,6 +296,15 @@ export function TenantAccountMenu({
               <p className="truncate text-xs text-slate-400">{email || "Cuenta enterprise"}</p>
               <p className="mt-2 text-xs leading-5 text-slate-300">{accountRoleDescription}</p>
             </div>
+            <button
+              type="button"
+              aria-label="Cerrar panel de cuenta"
+              data-testid="tenant-account-menu-close"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/10 bg-slate-950/45 text-slate-300 transition hover:border-cyan-200/55 hover:bg-cyan-400/10 hover:text-white"
+              onClick={() => setOpen(false)}
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
           <div className="mt-4 grid grid-cols-3 gap-2 text-[10px] font-bold uppercase tracking-[0.08em]">
             <span className="rounded-lg border border-emerald-300/25 bg-emerald-400/10 px-2 py-2 text-emerald-100">

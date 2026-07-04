@@ -7,7 +7,11 @@ const globalsSource = await readFile(new URL("../src/app/globals.css", import.me
 
 test("tenant account menu renders as a top-level drawer above CRM layers", () => {
   assert.match(menuSource, /createPortal\(menuPanel,\s*document\.body\)/);
-  assert.match(menuSource, /const ACCOUNT_MENU_Z_INDEX = 2147483000/);
+  assert.match(menuSource, /const ACCOUNT_MENU_Z_INDEX = 2147483600/);
+  assert.match(menuSource, /document\.documentElement\.classList\.add\("nexid-account-menu-open"\)/);
+  assert.match(menuSource, /document\.documentElement\.classList\.remove\("nexid-account-menu-open"\)/);
+  assert.match(menuSource, /data-testid="tenant-account-menu-close"/);
+  assert.match(menuSource, /aria-label="Cerrar panel de cuenta"/);
   assert.match(menuSource, /top:\s*12/);
   assert.match(menuSource, /right:\s*12/);
   assert.match(menuSource, /bottom:\s*12/);
@@ -20,9 +24,13 @@ test("tenant account menu renders as a top-level drawer above CRM layers", () =>
 });
 
 test("global CSS prevents dashboard maps from covering account drawer", () => {
-  assert.match(globalsSource, /\.nexid-account-layer\s*\{[\s\S]*z-index:\s*2147483000 !important/);
+  assert.match(globalsSource, /html\.nexid-account-menu-open,\s*body\.nexid-account-menu-open\s*\{[\s\S]*overflow:\s*hidden/);
+  assert.match(globalsSource, /\.nexid-account-layer\s*\{[\s\S]*z-index:\s*2147483600 !important/);
   assert.match(globalsSource, /\.nexid-account-layer \.tenant-account-panel\s*\{[\s\S]*display:\s*flex !important/);
+  assert.match(globalsSource, /\.nexid-account-layer \.tenant-account-panel\s*\{[\s\S]*z-index:\s*2147483602 !important/);
   assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell\s*\{[\s\S]*z-index:\s*0 !important/);
+  assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell\s*\{[\s\S]*pointer-events:\s*none !important/);
+  assert.match(globalsSource, /html\.nexid-account-menu-open \.nexid-crm-shell \[id="live-tap-map"\]/);
   assert.match(globalsSource, /@media \(max-width:\s*640px\)\s*\{[\s\S]*\.nexid-account-layer \.tenant-account-panel\s*\{[\s\S]*inset:\s*0 !important/);
   assert.match(globalsSource, /@media \(max-width:\s*640px\)\s*\{[\s\S]*\.nexid-account-layer \.tenant-account-panel\s*\{[\s\S]*width:\s*100vw !important/);
   assert.match(globalsSource, /@media \(max-width:\s*640px\)\s*\{[\s\S]*\.nexid-account-layer \.tenant-account-panel\s*\{[\s\S]*max-height:\s*100dvh !important/);

@@ -1108,6 +1108,7 @@ body.nexid-crm-overlay-active .dashboard-main {
 }
 
 /* Enterprise account menu must sit above CRM/map fullscreen layers and right panels. */
+html.nexid-account-menu-open,
 body.nexid-account-menu-open {
   overflow: hidden;
 }
@@ -1118,7 +1119,8 @@ body.nexid-account-menu-open {
   isolation: isolate !important;
   contain: none !important;
   pointer-events: none;
-  z-index: 2147483000 !important;
+  z-index: 2147483600 !important;
+  transform: translate3d(0, 0, 0) !important;
 }
 
 .nexid-account-layer > * {
@@ -1129,20 +1131,29 @@ body.nexid-account-menu-open {
   position: fixed !important;
   display: flex !important;
   flex-direction: column !important;
-  z-index: 2147483002 !important;
+  z-index: 2147483602 !important;
   pointer-events: auto;
+  transform: translate3d(0, 0, 0) !important;
 }
 
+html.nexid-account-menu-open .nexid-crm-shell,
 body.nexid-account-menu-open .nexid-crm-shell {
   z-index: 0 !important;
+  pointer-events: none !important;
 }
 
+html.nexid-account-menu-open .nexid-crm-shell header,
+html.nexid-account-menu-open .nexid-crm-shell main,
+html.nexid-account-menu-open .nexid-crm-shell aside,
+html.nexid-account-menu-open .nexid-crm-shell footer,
+html.nexid-account-menu-open .nexid-crm-shell [id="live-tap-map"],
 body.nexid-account-menu-open .nexid-crm-shell header,
 body.nexid-account-menu-open .nexid-crm-shell main,
 body.nexid-account-menu-open .nexid-crm-shell aside,
 body.nexid-account-menu-open .nexid-crm-shell footer,
 body.nexid-account-menu-open .nexid-crm-shell [id="live-tap-map"] {
   z-index: 1 !important;
+  pointer-events: none !important;
 }
 
 @media (max-width: 640px) {
