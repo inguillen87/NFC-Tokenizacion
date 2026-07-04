@@ -12,6 +12,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import type { MouseEvent } from "react";
 import { Sun, Moon } from "lucide-react";
 
 type Theme = "dark" | "light";
@@ -97,6 +98,14 @@ export function DemoLabThemeToggle() {
 
   const nextTheme: Theme = theme === "dark" ? "light" : "dark";
 
+  const onToggle = useCallback((event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    applyTheme(next);
+    syncReturnTo();
+  }, [syncReturnTo, theme]);
+
   // Render a placeholder during SSR / before mount to avoid hydration mismatch
   if (!mounted) {
     return (
@@ -122,6 +131,7 @@ export function DemoLabThemeToggle() {
       <button
         suppressHydrationWarning
         type="submit"
+        onClick={onToggle}
         aria-label={`Switch to ${nextTheme} mode`}
         title={`Switch to ${nextTheme} mode`}
         className="theme-toggle inline-flex h-11 w-11 min-h-11 min-w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-400 transition hover:border-cyan-400/30 hover:bg-white/10 hover:text-cyan-300 md:h-8 md:w-8 md:min-h-8 md:min-w-8"

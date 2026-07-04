@@ -17147,7 +17147,7 @@ html.theme-light .demo-lab-studio-product .demo-lab-cinematic-render--studio .de
 }
 
 .demo-lab-product-scene--open .demo-lab-nfc-state-pill::after {
-  content: "dueÃ±o y beneficios";
+  content: "dueño y beneficios";
   color: rgba(221, 214, 254, 0.78);
   font-size: 0.5rem;
   font-weight: 900;
@@ -46823,33 +46823,29 @@ html[data-theme="light"] .demo-lab-wizard-brief__proof span {
   }
 
   .demo-lab-fullscreen-root .demo-lab-wizard-steps {
-    display: flex !important;
-    grid-template-columns: none !important;
-    gap: 0.45rem !important;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-    padding-bottom: 0.12rem !important;
-    scroll-snap-type: x proximity;
-    scrollbar-width: none;
-  }
-
-  .demo-lab-fullscreen-root .demo-lab-wizard-steps::-webkit-scrollbar {
-    display: none;
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 0.38rem !important;
+    overflow: visible !important;
+    padding-bottom: 0 !important;
+    scrollbar-width: auto;
   }
 
   .demo-lab-fullscreen-root .demo-lab-wizard-steps .demo-lab-wizard-step-pill {
-    width: auto !important;
-    min-width: max-content !important;
-    gap: 0.34rem !important;
-    padding: 0 0.68rem !important;
-    scroll-snap-align: start;
+    width: 100% !important;
+    min-width: 0 !important;
+    gap: 0.24rem !important;
+    padding: 0.22rem 0.2rem !important;
+    scroll-snap-align: none;
   }
 
   .demo-lab-fullscreen-root .demo-lab-wizard-steps .demo-lab-wizard-step-pill span:last-child {
-    overflow: visible !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
     text-overflow: clip !important;
     white-space: nowrap !important;
-    font-size: 0.66rem !important;
+    font-size: 0.6rem !important;
+    letter-spacing: 0 !important;
   }
 }
 
@@ -46873,5 +46869,113 @@ html[data-theme="light"] .demo-lab-wizard-brief__proof span {
   .demo-lab-fullscreen-root .demo-lab-wizard-steps .demo-lab-wizard-step-pill span:last-child {
     font-size: 0.58rem !important;
     letter-spacing: 0.025em !important;
+  }
+}
+
+/* Demo Lab enterprise closure: prevent mobile CTAs from overflowing and make
+   light mode visibly light in the fullscreen scenario, not only in controls. */
+html.theme-light .demo-lab-fullscreen-root,
+html[data-theme="light"] .demo-lab-fullscreen-root {
+  background: #f5f9ff !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .demo-lab-fullscreen-stage,
+html[data-theme="light"] .demo-lab-fullscreen-stage {
+  background:
+    radial-gradient(circle at 48% 16%, rgba(14, 165, 233, 0.12), transparent 34rem),
+    linear-gradient(180deg, #f8fbff 0%, #eef6ff 100%) !important;
+}
+
+html.theme-light .demo-lab-fullscreen-stage .demo-lab-studio,
+html[data-theme="light"] .demo-lab-fullscreen-stage .demo-lab-studio {
+  border-color: rgba(14, 116, 144, 0.22) !important;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(45, 212, 191, 0.15), transparent 24rem),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(239, 246, 255, 0.94)) !important;
+  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.11) !important;
+}
+
+@media (max-width: 520px) {
+  .demo-lab-fullscreen-root .demo-lab-infobar {
+    overflow-x: clip !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-infobar__inner {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    height: auto !important;
+    min-height: 0 !important;
+    gap: 0.52rem !important;
+    padding: 0.62rem 0.75rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-infobar__left,
+  .demo-lab-fullscreen-root .demo-lab-infobar__right {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-infobar__right {
+    display: grid !important;
+    grid-template-columns: 2.65rem minmax(0, 1fr) !important;
+    gap: 0.5rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-infobar__right .theme-toggle {
+    width: 2.65rem !important;
+    min-width: 2.65rem !important;
+    height: 2.65rem !important;
+    min-height: 2.65rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-infobar__cta {
+    width: 100% !important;
+    min-width: 0 !important;
+    justify-content: center !important;
+    padding-inline: 0.55rem !important;
+    font-size: 0.68rem !important;
+    letter-spacing: 0.02em !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-nav {
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr) !important;
+    width: auto !important;
+    max-width: calc(100vw - 1.24rem) !important;
+    overflow: hidden !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-actions {
+    min-width: 0 !important;
+    grid-template-columns: 2.45rem minmax(0, 1fr) !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-actions > a {
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-steps {
+    max-width: 100% !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-scene,
+  .demo-lab-fullscreen-root .demo-lab-wizard-context,
+  .demo-lab-fullscreen-root .demo-lab-wizard-center,
+  .demo-lab-fullscreen-root .demo-lab-wizard-result-card,
+  .demo-lab-fullscreen-root .demo-lab-wizard-events,
+  .demo-lab-fullscreen-root .demo-lab-wizard-trazo-side,
+  .demo-lab-fullscreen-root .demo-lab-wizard-map-container {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-product-name,
+  .demo-lab-fullscreen-root .demo-lab-wizard-result-status,
+  .demo-lab-fullscreen-root .demo-lab-wizard-gano-header h2 {
+    overflow-wrap: anywhere !important;
   }
 }

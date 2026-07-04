@@ -36,6 +36,24 @@ export function HeroSection({ content, stats, locale, initialTheme = "dark" }: {
     : "Sin app para el comprador. Sin explicar cripto. El tap muestra evidencia, origen y próximo paso.";
   const demoCta = isEn ? "Open Product Lab" : isBr ? "Abrir Laboratorio" : "Abrir laboratorio";
   const meetingCta = isEn ? "Schedule meeting" : isBr ? "Agendar reunião" : "Agendar reunión";
+  const heroStats = [
+    {
+      value: stats?.latencyDelta || "P95 < 150ms",
+      label: stats?.latency || (isEn ? "API target latency" : isBr ? "Latencia alvo API" : "Latencia objetivo API"),
+    },
+    {
+      value: "hash-only",
+      label: isEn ? "Public proof without sensitive data" : isBr ? "Prova pública sem dados sensíveis" : "Prueba pública sin datos sensibles",
+    },
+    {
+      value: "NFC + QR",
+      label: isEn ? "No app required for the buyer" : isBr ? "Sem app para o comprador" : "Sin app para el comprador",
+    },
+    {
+      value: "IOTA / Polygon",
+      label: isEn ? "Optional auditable anchor" : isBr ? "Anchor auditavel opcional" : "Anclaje auditable opcional",
+    },
+  ];
   return (
     <section className="landing-hero-section relative overflow-hidden border-b border-white/5 bg-slate-950 pb-8 pt-8 lg:pb-10 lg:pt-10">
       <div className="hero-signal-field absolute inset-0 z-0 pointer-events-none" aria-hidden="true" />
@@ -78,22 +96,12 @@ export function HeroSection({ content, stats, locale, initialTheme = "dark" }: {
           </div>
 
           <div className="mt-12 grid grid-cols-2 gap-4 border-t border-white/10 pt-8 md:grid-cols-4">
-             <div className="text-center">
-                <p className="text-3xl font-bold text-white">{stats.scanSpeed}</p>
-                <p className="mt-1 text-xs text-slate-500 uppercase tracking-widest">{stats.scanSpeedLabel}</p>
-             </div>
-             <div className="text-center">
-                <p className="text-3xl font-bold text-white">{stats.uptime}</p>
-                <p className="mt-1 text-xs text-slate-500 uppercase tracking-widest">{stats.uptimeLabel}</p>
-             </div>
-             <div className="text-center">
-                <p className="text-3xl font-bold text-white">{stats.crypto}</p>
-                <p className="mt-1 text-xs text-slate-500 uppercase tracking-widest">{stats.cryptoLabel}</p>
-             </div>
-             <div className="text-center">
-                <p className="text-3xl font-bold text-white">{stats.global}</p>
-                <p className="mt-1 text-xs text-slate-500 uppercase tracking-widest">{stats.globalLabel}</p>
-             </div>
+             {heroStats.map((item) => (
+               <div key={item.label} className="text-center">
+                  <p className="text-3xl font-bold text-white">{item.value}</p>
+                  <p className="mt-1 text-xs text-slate-500 uppercase tracking-widest">{item.label}</p>
+               </div>
+             ))}
           </div>
 
         </div>

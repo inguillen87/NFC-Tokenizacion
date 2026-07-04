@@ -171,10 +171,10 @@ export const messages: Record<AppLocale, I18nSchema> = {
       heroResellerCta: "Programa reseller",
       stats: {
         latency: "Latencia objetivo API",
-        unitEconomics: "Economía secure",
+        unitEconomics: "Piloto controlado",
         businessModel: "Modelo de negocio",
         latencyDelta: "P95 < 150ms",
-        economicsDelta: "10k botellas × USD 0.02",
+        economicsDelta: "Sin app para el comprador",
         businessDelta: "Hardware + SaaS + identidad",
       },
       sections: {
@@ -346,10 +346,10 @@ export const messages: Record<AppLocale, I18nSchema> = {
       heroResellerCta: "Programa revendedor",
       stats: {
         latency: "Latência alvo API",
-        unitEconomics: "Economia secure",
+        unitEconomics: "Piloto controlado",
         businessModel: "Modelo de negócio",
         latencyDelta: "P95 < 150ms",
-        economicsDelta: "10k garrafas × USD 0.02",
+        economicsDelta: "Sem app para o comprador",
         businessDelta: "Hardware + SaaS + identidade",
       },
       sections: {
@@ -503,10 +503,10 @@ export const messages: Record<AppLocale, I18nSchema> = {
       heroResellerCta: "Reseller program",
       stats: {
         latency: "API latency target",
-        unitEconomics: "Secure unit economics",
+        unitEconomics: "Controlled pilot",
         businessModel: "Business model",
         latencyDelta: "P95 < 150ms",
-        economicsDelta: "10k bottles × USD 0.02",
+        economicsDelta: "No buyer app required",
         businessDelta: "Hardware + SaaS + identity",
       },
       sections: {
