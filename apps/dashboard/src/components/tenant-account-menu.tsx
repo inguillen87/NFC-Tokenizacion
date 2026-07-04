@@ -277,8 +277,8 @@ export function TenantAccountMenu({
         type="button"
         aria-label="Cerrar menu de cuenta"
         data-testid="tenant-account-menu-backdrop"
-        className="fixed inset-0 cursor-default bg-slate-950/80 backdrop-blur-lg"
-        style={{ zIndex: ACCOUNT_MENU_Z_INDEX + 1, pointerEvents: "auto" }}
+        className="fixed inset-0 cursor-default backdrop-blur-lg"
+        style={{ zIndex: ACCOUNT_MENU_Z_INDEX + 1, pointerEvents: "auto", backgroundColor: "rgba(2, 6, 23, 0.8)" }}
         onClick={() => setOpen(false)}
       />
       <div

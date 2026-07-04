@@ -17,7 +17,8 @@ test("tenant account menu renders as a top-level drawer above CRM layers", () =>
   assert.match(menuSource, /role="dialog"/);
   assert.match(menuSource, /aria-modal="true"/);
   assert.match(menuSource, /aria-label="Cuenta operativa nexID"/);
-  assert.match(menuSource, /bg-slate-950\/80/);
+  assert.doesNotMatch(menuSource, /bg-slate-950\/80/);
+  assert.match(menuSource, /backgroundColor:\s*"rgba\(2, 6, 23, 0\.8\)"/);
   assert.match(menuSource, /backdrop-blur-lg/);
   assert.match(menuSource, /top:\s*12/);
   assert.match(menuSource, /right:\s*12/);
