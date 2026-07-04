@@ -9,6 +9,10 @@ test("proof verifier keeps the enterprise decoder readable and non-trapped", asy
   assert.match(page, /Que entiende un gerente sin leer blockchain/);
   assert.match(page, /Decodificar Raw input/);
   assert.match(page, /Abrir tx con memo/);
+  assert.match(page, /Traducir Raw input a negocio/);
+  assert.match(page, /Raw input visible en IOTA Explorer/);
+  assert.match(page, /Mismo contenido decodificado por nexID/);
+  assert.match(page, /Abrir memo real en IOTA Explorer/);
   assert.match(page, /grid-template-columns:\s*minmax\(0,\s*1fr\)/);
   assert.match(page, /proof-workstation-grid\s*>\s*\*/);
   assert.match(page, /min-width:\s*0/);
