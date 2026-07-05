@@ -43,15 +43,15 @@ function authNoticeForCode(code?: string) {
     case "clerk_email_unverified":
       return "Clerk no devolvio un email verificado. Verifica el email en Google/Clerk y reintenta.";
     case "admin_api_key_missing":
-      return "Falta ADMIN_API_KEY en el dashboard; no puedo convertir Google en sesion nexID.";
+      return "Falta ADMIN_API_KEY en el dashboard; no puedo convertir Google en sesión nexID.";
     case "admin_api_key_invalid":
       return "ADMIN_API_KEY del dashboard no coincide con la API. Hay que sincronizar envs en Vercel.";
     case "auth_upstream_unavailable":
-      return "La API de autenticacion no respondio. Reintenta o revisa el deploy de api.nexid.lat.";
+      return "La API de autenticación no respondió. Reintenta o revisa el deploy de api.nexid.lat.";
     case "clerk_super_admin_not_allowed":
       return "Ese Google no esta allowlisted como Super Admin de nexID.";
     case "clerk_sync_failed":
-      return "Clerk autentico, pero nexID no pudo crear la sesion interna.";
+      return "Clerk autenticó, pero nexID no pudo crear la sesión interna.";
     default:
       return "";
   }

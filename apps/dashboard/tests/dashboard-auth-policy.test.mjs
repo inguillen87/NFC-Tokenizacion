@@ -65,6 +65,8 @@ test("login surfaces separate founder Google auth from tenant demo access", () =
 
   assert.doesNotMatch(loginPanel, /DEMO_ROLES/);
   assert.doesNotMatch(loginPanel, /api\/session\/demo\?role=\$\{encodeURIComponent/);
+  assert.match(loginPanel, /demoLogin:\s*true/);
+  assert.match(loginPanel, /demoRole:\s*"tenant-admin"/);
   assert.match(loginPanel, /Super Admin entra por Google\/Clerk/);
   assert.match(loginPanel, /Continuar con Google allowlisted/);
 

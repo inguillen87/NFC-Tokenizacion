@@ -210,7 +210,7 @@ export function TenantAccountMenu({
     {
       href: "/settings",
       icon: <Settings className="h-4 w-4" />,
-      label: "Configuracion del workspace",
+      label: "Configuración del workspace",
       meta: "Tenant, seguridad, datos, integraciones y soporte",
     },
     {
@@ -223,7 +223,7 @@ export function TenantAccountMenu({
       href: canManageUsers ? "/users" : "/settings",
       icon: <Users className="h-4 w-4" />,
       label: canManageUsers ? "Usuarios y permisos" : "Permisos del workspace",
-      meta: canManageUsers ? "Roles, alcance por recurso, reset y MFA" : "Solicitudes, politicas y alcance autorizado",
+      meta: canManageUsers ? "Roles, alcance por recurso, reset y MFA" : "Solicitudes, políticas y alcance autorizado",
     },
     {
       href: "/mfa",
@@ -243,27 +243,27 @@ export function TenantAccountMenu({
     {
       href: `/subscriptions${tenantQuery}`,
       icon: <CreditCard className="h-4 w-4" />,
-      label: "Plan y facturacion",
-      meta: "Plan, renovacion, uso y upgrade path",
+      label: "Plan y facturación",
+      meta: "Plan, renovación, uso y upgrade path",
     },
     {
       href: "/sales-playbook",
       icon: <BookOpen className="h-4 w-4" />,
       label: "Playbook comercial",
-      meta: "Como explicar valor, riesgo y ROI",
+      meta: "Cómo explicar valor, riesgo y ROI",
     },
     {
       href: "mailto:soporte@nexid.lat?subject=nexID%20enterprise%20support",
       icon: <LifeBuoy className="h-4 w-4" />,
       label: "Soporte enterprise",
-      meta: "Cuenta, integracion, incidentes o preventa",
+      meta: "Cuenta, integración, incidentes o preventa",
       external: true,
     },
     {
       href: "/logout",
       icon: <UserCog className="h-4 w-4" />,
       label: "Cambiar cuenta o perfil",
-      meta: "Cerrar esta sesion y volver al login enterprise",
+      meta: "Cerrar esta sesión y volver al login enterprise",
     },
   ], [tenantQuery]);
 
@@ -373,7 +373,7 @@ export function TenantAccountMenu({
               window.location.href = isTenantMode ? tenantHref : "/settings";
             }}
           >
-            <span>{isTenantMode ? "Abrir perfil del tenant" : "Abrir configuracion global"}</span>
+            <span>{isTenantMode ? "Abrir perfil del tenant" : "Abrir configuración global"}</span>
             <span aria-hidden="true">-&gt;</span>
           </button>
         </div>
@@ -396,7 +396,7 @@ export function TenantAccountMenu({
               className="flex w-full items-center justify-center gap-2 rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm font-black text-rose-100 transition hover:border-rose-200/70 hover:bg-rose-500/18"
             >
               <LogOut className="h-4 w-4" />
-              Cerrar sesion segura
+              Cerrar sesión segura
             </button>
           </form>
         </div>
@@ -414,7 +414,7 @@ export function TenantAccountMenu({
         aria-controls="tenant-account-menu-panel"
         data-testid="tenant-account-menu-trigger"
         data-account-menu-open={open ? "true" : "false"}
-        title="Abrir cuenta, configuracion y logout del workspace"
+        title="Abrir cuenta, configuración y logout del workspace"
         className="flex min-h-14 w-full items-center gap-3 rounded-xl border border-white/12 bg-slate-950/65 px-3 py-2 text-left shadow-[0_16px_38px_rgba(2,6,23,.22)] transition hover:border-cyan-300/40 hover:bg-cyan-400/10 lg:min-w-[190px]"
         onKeyDown={(event) => {
           if (event.key !== "Escape") return;

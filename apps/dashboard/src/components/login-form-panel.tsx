@@ -43,6 +43,7 @@ export function LoginFormPanel({
   const [status, setStatus] = useState("");
   const [opsStatus, setOpsStatus] = useState("");
   const [pending, setPending] = useState(false);
+  const [demoPending, setDemoPending] = useState(false);
 
   function formatDiagnostics(input: unknown) {
     if (!input || typeof input !== "object") return "";
@@ -92,7 +93,7 @@ export function LoginFormPanel({
       } else if (res?.status === 502) {
         setStatus("Servicio de autenticación no disponible temporalmente.");
       } else if (res?.status === 403) {
-        setStatus("Acceso denegado por politica y alcance del entorno.");
+        setStatus("Acceso denegado por política y alcance del entorno.");
       } else if (res?.status === 401) {
         setStatus("Credenciales inválidas.");
       } else if (res?.status && res.status >= 500) {
@@ -105,6 +106,29 @@ export function LoginFormPanel({
       setPending(false);
       return;
     }
+    window.location.href = "/";
+  }
+
+  async function startBodegaDemo() {
+    if (demoPending || pending) return;
+    setDemoPending(true);
+    setStatus("");
+    setOpsStatus("");
+
+    const res = await fetch("/api/session/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ demoLogin: true, demoRole: "tenant-admin" }),
+    }).catch(() => null);
+    const data = await res?.json().catch(() => null);
+    if (!res?.ok) {
+      const diagnosticsNote = formatDiagnostics(data?.diagnostics);
+      if (diagnosticsNote) setOpsStatus(diagnosticsNote);
+      setStatus(data?.reason || "No se pudo abrir la demo Bodega Balmec.");
+      setDemoPending(false);
+      return;
+    }
+
     window.location.href = "/";
   }
 
@@ -131,14 +155,16 @@ export function LoginFormPanel({
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
             {bodegaDemoAllowed ? (
-              <Link
-                href="/api/session/demo?role=tenant-admin"
+              <button
+                type="button"
+                onClick={() => void startBodegaDemo()}
+                disabled={demoPending || pending}
                 title="Entrar como Bodega Balmec"
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-cyan-200/40 bg-cyan-300 px-4 py-3 text-sm font-black text-slate-950 shadow-[0_18px_50px_rgba(34,211,238,.22)] transition hover:bg-cyan-200"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-cyan-200/40 bg-cyan-300 px-4 py-3 text-sm font-black text-slate-950 shadow-[0_18px_50px_rgba(34,211,238,.22)] transition hover:bg-cyan-200 disabled:cursor-wait disabled:opacity-70"
               >
-                <span>Entrar como Bodega Balmec</span>
+                <span>{demoPending ? "Abriendo Bodega Balmec..." : "Entrar como Bodega Balmec"}</span>
                 <ArrowRight className="h-4 w-4" />
-              </Link>
+              </button>
             ) : (
               <div className="rounded-xl border border-amber-300/25 bg-amber-400/10 px-3 py-3 text-sm text-amber-100">
                 Demo Bodega Balmec deshabilitada en este entorno.
@@ -160,7 +186,7 @@ export function LoginFormPanel({
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">Super Admin fundador</p>
               <p className="mt-1 text-sm leading-5 text-slate-300">
-                Google prueba identidad. nexID emite sesion Super Admin solo si el email esta en allowlist server-side.
+                Google prueba identidad. nexID emite sesión Super Admin solo si el email está en allowlist server-side.
                 La demo Bodega no otorga permisos globales.
               </p>
             </div>
@@ -232,7 +258,7 @@ export function LoginFormPanel({
 
       {!hasAvailableProfiles ? (
         <p className="mt-3 rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">
-          Los presets solo muestran perfiles habilitados. La password queda server-side y se ingresa manualmente o por Google/Clerk.
+          Los presets solo muestran perfiles habilitados. La contraseña queda server-side y se ingresa manualmente o por Google/Clerk.
         </p>
       ) : null}
 
@@ -266,7 +292,7 @@ export function LoginFormPanel({
           Perfil activo: <span className="text-cyan-200">{profileLabel}</span>
           <span className="ml-2 text-slate-500">({role})</span>
         </div>
-        <Button className="w-full" onClick={() => void submit()} disabled={pending}>
+        <Button className="w-full" onClick={() => void submit()} disabled={pending || demoPending}>
           {loginAction}
         </Button>
         {status ? <p className="rounded-lg border border-rose-300/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">{status}</p> : null}

@@ -22,7 +22,7 @@ export default function SignInPage() {
             Google verifica identidad. nexID decide el acceso.
           </h1>
           <p className="mt-5 max-w-xl text-base leading-7 text-slate-300">
-            El correo fundador entra por Google/Clerk y despues pasa por la allowlist de nexID. Tenants, empleados y
+            El correo fundador entra por Google/Clerk y después pasa por la allowlist de nexID. Tenants, empleados y
             demos comerciales siguen separados para no mezclar operaciones enterprise con el portal consumidor.
           </p>
           <div className="mt-8 grid max-w-xl gap-3 sm:grid-cols-2">
@@ -64,7 +64,7 @@ export default function SignInPage() {
           <div className="mb-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Ingreso Google allowlisted</p>
             <p className="mt-2 text-sm leading-5 text-slate-300">
-              Google prueba que sos el titular del correo. nexID solo crea sesion Super Admin si ese correo esta aprobado.
+              Google prueba que sos el titular del correo. nexID solo crea sesión Super Admin si ese correo está aprobado.
             </p>
           </div>
           {clerkEnabled ? (
@@ -91,7 +91,7 @@ export default function SignInPage() {
             </div>
           ) : (
             <div className="rounded-2xl border border-amber-300/25 bg-amber-500/10 p-5 text-sm leading-6 text-amber-100">
-              Clerk no esta habilitado con claves live en este entorno. Usa Bodega Balmec demo o credenciales enterprise desde la pantalla principal.
+              Clerk no está habilitado con claves live en este entorno. Usa Bodega Balmec demo o credenciales enterprise desde la pantalla principal.
               <Link href="/login" className="mt-4 inline-flex w-full justify-center rounded-xl border border-amber-200/30 bg-amber-200/10 px-4 py-3 font-bold text-amber-50">
                 Volver a login enterprise
               </Link>
