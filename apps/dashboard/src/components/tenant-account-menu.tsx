@@ -38,6 +38,7 @@ type TenantAccountMenuProps = {
 };
 
 const ACCOUNT_MENU_Z_INDEX = 2147483630;
+const ACCOUNT_MENU_PORTAL_ROOT_ID = "nexid-account-menu-root";
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 const ACCOUNT_MENU_CRITICAL_CSS = `
 html.nexid-account-menu-open,
@@ -144,6 +145,59 @@ const ACCOUNT_MENU_DEFAULT_STYLE: CSSProperties = {
   boxShadow: "-36px 0 120px rgba(0,0,0,0.74)",
 };
 
+function getAccountMenuPortalRoot() {
+  if (typeof document === "undefined") return null;
+  let root = document.getElementById(ACCOUNT_MENU_PORTAL_ROOT_ID);
+  if (!root) {
+    root = document.createElement("div");
+    root.id = ACCOUNT_MENU_PORTAL_ROOT_ID;
+    root.setAttribute("data-account-menu-root", "true");
+    document.body.appendChild(root);
+  }
+  root.style.setProperty("position", "fixed", "important");
+  root.style.setProperty("inset", "0", "important");
+  root.style.setProperty("z-index", String(ACCOUNT_MENU_Z_INDEX), "important");
+  root.style.setProperty("pointer-events", "none", "important");
+  root.style.setProperty("isolation", "isolate", "important");
+  root.style.setProperty("contain", "none", "important");
+  return root;
+}
+
+function setCrmShellSuppression(value: boolean) {
+  if (typeof document === "undefined") return;
+  document.querySelectorAll<HTMLElement>(".nexid-crm-shell").forEach((node) => {
+    if (value) {
+      node.setAttribute("data-account-menu-suppressed", "true");
+      node.setAttribute("aria-hidden", "true");
+      node.style.setProperty("pointer-events", "none", "important");
+      node.style.setProperty("z-index", "0", "important");
+      node.style.setProperty("filter", "saturate(0.78) brightness(0.48) blur(0.5px)", "important");
+      node.style.setProperty("transform", "none", "important");
+      node.style.setProperty("contain", "none", "important");
+      try {
+        (node as HTMLElement & { inert?: boolean }).inert = true;
+      } catch {
+        // Older browser surfaces may not expose inert; CSS still suppresses the CRM shell.
+      }
+      return;
+    }
+
+    if (node.getAttribute("data-account-menu-suppressed") !== "true") return;
+    node.removeAttribute("data-account-menu-suppressed");
+    node.removeAttribute("aria-hidden");
+    node.style.removeProperty("pointer-events");
+    node.style.removeProperty("z-index");
+    node.style.removeProperty("filter");
+    node.style.removeProperty("transform");
+    node.style.removeProperty("contain");
+    try {
+      (node as HTMLElement & { inert?: boolean }).inert = false;
+    } catch {
+      // No-op fallback for browser surfaces without inert.
+    }
+  });
+}
+
 function tenantNameFromSlug(slug?: string | null) {
   const normalized = String(slug || "").trim().toLowerCase();
   if (normalized === "demobodega" || normalized === "bodegabalmec" || normalized === "bodega-balmec") return "Bodega Balmec";
@@ -187,6 +241,7 @@ export function TenantAccountMenu({
   tenantSlug,
 }: TenantAccountMenuProps) {
   const [open, setOpen] = useState(false);
+  const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null);
   const [panelStyle, setPanelStyle] = useState<CSSProperties>(ACCOUNT_MENU_DEFAULT_STYLE);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -205,6 +260,8 @@ export function TenantAccountMenu({
   const setDocumentMenuState = useCallback((value: boolean) => {
     document.documentElement.classList.toggle("nexid-account-menu-open", value);
     document.body.classList.toggle("nexid-account-menu-open", value);
+    document.body.toggleAttribute("data-account-menu-open", value);
+    setCrmShellSuppression(value);
   }, []);
 
   const closeMenu = useCallback(() => {
@@ -212,6 +269,10 @@ export function TenantAccountMenu({
     setOpen(false);
     window.requestAnimationFrame(() => triggerRef.current?.focus());
   }, [setDocumentMenuState]);
+
+  useIsomorphicLayoutEffect(() => {
+    setPortalRoot(getAccountMenuPortalRoot());
+  }, []);
 
   useIsomorphicLayoutEffect(() => {
     if (!open) return;
@@ -511,7 +572,7 @@ export function TenantAccountMenu({
         <ChevronDown className={`h-4 w-4 shrink-0 text-slate-500 transition ${open ? "rotate-180 text-cyan-200" : ""}`} />
       </button>
 
-      {typeof document !== "undefined" && menuPanel ? createPortal(menuPanel, document.body) : null}
+      {typeof document !== "undefined" && menuPanel ? createPortal(menuPanel, portalRoot || document.body) : null}
     </div>
   );
 }

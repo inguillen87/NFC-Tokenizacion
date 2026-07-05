@@ -661,10 +661,6 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           display: none;
         }
 
-        .proof-verify-page .proof-workstation-sidebar {
-          position: relative;
-        }
-
         .proof-verify-page .proof-workstation-grid {
           display: grid;
           gap: 1.25rem;
@@ -686,15 +682,40 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           overflow-wrap: anywhere;
         }
 
-        @media (min-width: 1280px) {
-          .proof-verify-page .proof-workstation-grid {
-            grid-template-columns: minmax(0, 1fr) minmax(480px, 540px);
+        .proof-verify-page .proof-workstation-sidebar {
+          display: grid;
+          gap: 1.25rem;
+          min-width: 0;
+        }
+
+        .proof-verify-page .proof-decoder-panel,
+        .proof-verify-page .proof-manager-panel {
+          min-width: 0;
+        }
+
+        .proof-verify-page .proof-decoder-translation-grid,
+        .proof-verify-page .proof-manager-explain-grid {
+          display: grid;
+          gap: 0.75rem;
+        }
+
+        @media (min-width: 1024px) {
+          .proof-verify-page .proof-workstation-sidebar {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
             align-items: start;
           }
 
-          .proof-verify-page .proof-workstation-sidebar {
-            position: sticky;
-            top: 1.25rem;
+          .proof-verify-page .proof-decoder-panel,
+          .proof-verify-page .proof-manager-panel {
+            grid-column: 1 / -1;
+          }
+
+          .proof-verify-page .proof-decoder-translation-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          .proof-verify-page .proof-manager-explain-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
           }
         }
 
@@ -1155,7 +1176,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           </div>
 
           <div className="proof-workstation-sidebar grid gap-5 xl:self-start">
-          <div className="proof-elevated rounded-[1.5rem] border border-cyan-200 bg-cyan-50/75 p-5 shadow-sm">
+          <div className="proof-decoder-panel proof-elevated rounded-[1.5rem] border border-cyan-200 bg-cyan-50/75 p-5 shadow-sm">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Lectura ejecutiva</p>
@@ -1288,7 +1309,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
               <div className="mt-4 grid gap-3">
                 <div className="proof-flat rounded-2xl border border-cyan-200 bg-white/75 p-4">
                   <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan-800">Explorer Decoder para C-level</p>
-                  <div className="mt-3 grid gap-3">
+                  <div className="proof-decoder-translation-grid mt-3">
                     <div className="rounded-2xl border border-cyan-200 bg-cyan-50/70 p-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <strong className="text-sm text-slate-950">Raw input = memo publico</strong>
@@ -1373,10 +1394,10 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
               </div>
             </div>
 
-          <div className="proof-elevated rounded-[1.5rem] border border-emerald-200 bg-emerald-50/75 p-5 shadow-sm">
+          <div className="proof-manager-panel proof-elevated rounded-[1.5rem] border border-emerald-200 bg-emerald-50/75 p-5 shadow-sm">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-800">Como se lo explicas a gerencia</p>
             <h2 className="mt-2 text-2xl font-black leading-tight text-slate-950">El explorer prueba fecha y red. nexID prueba contexto.</h2>
-            <div className="mt-4 grid gap-3">
+            <div className="proof-manager-explain-grid mt-4">
               <div className="proof-flat rounded-2xl border border-emerald-200 bg-white/70 p-4">
                 <strong className="block text-sm text-emerald-950">Lo publico</strong>
                 <p className="mt-2 text-sm leading-6 text-emerald-900">Caso, tipo de recurso, cantidad de eventos, Merkle root y politica hash-only.</p>

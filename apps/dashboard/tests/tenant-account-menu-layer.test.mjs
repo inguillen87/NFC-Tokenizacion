@@ -8,7 +8,14 @@ const pwaSetupSource = await readFile(new URL("../src/components/pwa-setup.tsx",
 const serviceWorkerSource = await readFile(new URL("../public/sw.js", import.meta.url), "utf8");
 
 test("tenant account menu renders as a top-level drawer above CRM layers", () => {
-  assert.match(menuSource, /createPortal\(menuPanel,\s*document\.body\)/);
+  assert.match(menuSource, /const ACCOUNT_MENU_PORTAL_ROOT_ID = "nexid-account-menu-root"/);
+  assert.match(menuSource, /function getAccountMenuPortalRoot\(\)/);
+  assert.match(menuSource, /root\.setAttribute\("data-account-menu-root", "true"\)/);
+  assert.match(menuSource, /document\.body\.appendChild\(root\)/);
+  assert.match(menuSource, /root\.style\.setProperty\("z-index", String\(ACCOUNT_MENU_Z_INDEX\), "important"\)/);
+  assert.match(menuSource, /root\.style\.setProperty\("pointer-events", "none", "important"\)/);
+  assert.match(menuSource, /setPortalRoot\(getAccountMenuPortalRoot\(\)\)/);
+  assert.match(menuSource, /createPortal\(menuPanel,\s*portalRoot \|\| document\.body\)/);
   assert.match(menuSource, /const ACCOUNT_MENU_Z_INDEX = 2147483630/);
   assert.match(menuSource, /const ACCOUNT_MENU_CRITICAL_CSS = `/);
   assert.doesNotMatch(menuSource, /HTMLDialogElement/);
@@ -30,6 +37,15 @@ test("tenant account menu renders as a top-level drawer above CRM layers", () =>
   assert.match(menuSource, /const setDocumentMenuState = useCallback/);
   assert.match(menuSource, /document\.documentElement\.classList\.toggle\("nexid-account-menu-open", value\)/);
   assert.match(menuSource, /document\.body\.classList\.toggle\("nexid-account-menu-open", value\)/);
+  assert.match(menuSource, /document\.body\.toggleAttribute\("data-account-menu-open", value\)/);
+  assert.match(menuSource, /function setCrmShellSuppression\(value: boolean\)/);
+  assert.match(menuSource, /document\.querySelectorAll<HTMLElement>\("\.nexid-crm-shell"\)/);
+  assert.match(menuSource, /node\.setAttribute\("data-account-menu-suppressed", "true"\)/);
+  assert.match(menuSource, /node\.setAttribute\("aria-hidden", "true"\)/);
+  assert.match(menuSource, /node\.style\.setProperty\("z-index", "0", "important"\)/);
+  assert.match(menuSource, /node\.style\.setProperty\("filter", "saturate\(0\.78\) brightness\(0\.48\) blur\(0\.5px\)", "important"\)/);
+  assert.match(menuSource, /\.inert = true/);
+  assert.match(menuSource, /\.inert = false/);
   assert.match(menuSource, /useIsomorphicLayoutEffect\(\(\) => \{\s*if \(!open\) return;\s*setDocumentMenuState\(true\)/);
   assert.match(menuSource, /data-testid="tenant-account-menu-close"/);
   assert.match(menuSource, /aria-label="Cerrar panel de cuenta"/);
@@ -64,6 +80,9 @@ test("tenant account menu renders as a top-level drawer above CRM layers", () =>
 test("global CSS prevents dashboard maps from covering account drawer", () => {
   assert.match(globalsSource, /html\.nexid-account-menu-open,\s*body\.nexid-account-menu-open\s*\{[\s\S]*overflow:\s*hidden/);
   assert.match(globalsSource, /body\.nexid-crm-overlay-active \.dashboard-sidebar,\s*body\.nexid-crm-overlay-active \.dashboard-header,\s*body\.nexid-crm-overlay-active \.dashboard-mobile-dock\s*\{[\s\S]*display:\s*none !important/);
+  assert.match(globalsSource, /#nexid-account-menu-root\s*\{[\s\S]*z-index:\s*2147483630 !important/);
+  assert.match(globalsSource, /#nexid-account-menu-root\s*\{[\s\S]*pointer-events:\s*none !important/);
+  assert.match(globalsSource, /#nexid-account-menu-root \.nexid-account-layer\s*\{[\s\S]*pointer-events:\s*auto !important/);
   assert.match(globalsSource, /\.nexid-account-layer\s*\{[\s\S]*z-index:\s*2147483630 !important/);
   assert.match(globalsSource, /\.nexid-account-layer\s*\{[\s\S]*display:\s*block !important/);
   assert.match(globalsSource, /\.nexid-account-layer\s*\{[\s\S]*width:\s*100vw !important/);
@@ -86,11 +105,11 @@ test("global CSS prevents dashboard maps from covering account drawer", () => {
   assert.match(globalsSource, /html\.theme-light \.nexid-account-layer \.tenant-account-panel__header \.text-white/);
   assert.match(globalsSource, /\.tenant-account-panel__header \.text-white,[\s\S]*\{[\s\S]*color:\s*#f8fafc !important/);
   assert.match(globalsSource, /html\.theme-light \.nexid-account-layer \.tenant-account-panel__header \.text-slate-400/);
-  assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell\s*\{[\s\S]*pointer-events:\s*none !important/);
-  assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell\s*\{[\s\S]*z-index:\s*0 !important/);
-  assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell\s*\{[\s\S]*filter:\s*saturate\(0\.78\) brightness\(0\.48\) blur\(0\.5px\) !important/);
-  assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell\s*\{[\s\S]*contain:\s*none !important/);
-  assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell\s*\{[\s\S]*user-select:\s*none !important/);
+  assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell,\s*\.nexid-crm-shell\[data-account-menu-suppressed="true"\]\s*\{[\s\S]*pointer-events:\s*none !important/);
+  assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell,\s*\.nexid-crm-shell\[data-account-menu-suppressed="true"\]\s*\{[\s\S]*z-index:\s*0 !important/);
+  assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell,\s*\.nexid-crm-shell\[data-account-menu-suppressed="true"\]\s*\{[\s\S]*filter:\s*saturate\(0\.78\) brightness\(0\.48\) blur\(0\.5px\) !important/);
+  assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell,\s*\.nexid-crm-shell\[data-account-menu-suppressed="true"\]\s*\{[\s\S]*contain:\s*none !important/);
+  assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell,\s*\.nexid-crm-shell\[data-account-menu-suppressed="true"\]\s*\{[\s\S]*user-select:\s*none !important/);
   assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell \*\s*\{[\s\S]*pointer-events:\s*none !important/);
   assert.doesNotMatch(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell\s*\{[\s\S]*opacity:\s*0\.16 !important/);
   assert.doesNotMatch(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell \[class\*="fixed"\]/);
