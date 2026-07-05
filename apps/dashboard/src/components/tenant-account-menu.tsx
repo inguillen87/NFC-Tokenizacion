@@ -100,6 +100,7 @@ export function TenantAccountMenu({
 }: TenantAccountMenuProps) {
   const [open, setOpen] = useState(false);
   const [panelStyle, setPanelStyle] = useState<CSSProperties>(ACCOUNT_MENU_DEFAULT_STYLE);
+  const dialogRef = useRef<HTMLDialogElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -139,6 +140,24 @@ export function TenantAccountMenu({
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [closeMenu, open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    if (!dialog.open) {
+      try {
+        dialog.showModal();
+      } catch {
+        dialog.setAttribute("open", "");
+      }
+    }
+
+    return () => {
+      if (dialog.open) dialog.close();
+    };
+  }, [open]);
 
   const updatePanelPosition = useCallback(() => {
     if (typeof window === "undefined") {
@@ -279,11 +298,17 @@ export function TenantAccountMenu({
   );
 
   const menuPanel = open ? (
-    <div
+    <dialog
+      ref={dialogRef}
       className="nexid-account-layer fixed inset-0 isolate"
       data-account-menu-portal="body"
       data-testid="tenant-account-menu-layer"
+      aria-label="Cuenta operativa nexID"
       style={{ zIndex: ACCOUNT_MENU_Z_INDEX, pointerEvents: "auto", position: "fixed", inset: 0, isolation: "isolate" }}
+      onCancel={(event) => {
+        event.preventDefault();
+        closeMenu();
+      }}
     >
       <button
         type="button"
@@ -297,9 +322,6 @@ export function TenantAccountMenu({
       <div
         id="tenant-account-menu-panel"
         ref={panelRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Cuenta operativa nexID"
         data-account-menu-panel="drawer"
         data-testid="tenant-account-menu-panel"
         style={panelStyle}
@@ -373,7 +395,7 @@ export function TenantAccountMenu({
           </form>
         </div>
       </div>
-    </div>
+    </dialog>
   ) : null;
 
   return (

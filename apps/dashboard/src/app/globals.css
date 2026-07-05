@@ -1116,12 +1116,30 @@ body.nexid-account-menu-open {
 .nexid-account-layer {
   position: fixed !important;
   inset: 0 !important;
+  display: block !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  overflow: visible !important;
+  background: transparent !important;
+  color: inherit !important;
   isolation: isolate !important;
   contain: none !important;
   pointer-events: auto !important;
   z-index: 2147483600 !important;
   transform: translate3d(0, 0, 0) !important;
   will-change: opacity;
+}
+
+dialog.nexid-account-layer::backdrop {
+  background:
+    radial-gradient(circle at 80% 8%, rgba(34, 211, 238, 0.16), transparent 34%),
+    rgba(2, 6, 23, 0.86) !important;
+  backdrop-filter: blur(18px) saturate(1.1);
 }
 
 .nexid-account-layer,
@@ -1192,10 +1210,7 @@ html[data-theme="light"] .nexid-account-layer .tenant-account-panel__header .tex
 
 html.nexid-account-menu-open .nexid-crm-shell,
 body.nexid-account-menu-open .nexid-crm-shell {
-  z-index: 0 !important;
   pointer-events: none !important;
-  opacity: 0.16 !important;
-  filter: blur(2px) saturate(0.55) !important;
   transform: none !important;
   contain: none !important;
 }
@@ -1210,17 +1225,12 @@ html.nexid-account-menu-open .nexid-crm-shell main,
 html.nexid-account-menu-open .nexid-crm-shell aside,
 html.nexid-account-menu-open .nexid-crm-shell footer,
 html.nexid-account-menu-open .nexid-crm-shell [id="live-tap-map"],
-html.nexid-account-menu-open .nexid-crm-shell [class*="z-["],
 body.nexid-account-menu-open .nexid-crm-shell header,
 body.nexid-account-menu-open .nexid-crm-shell main,
 body.nexid-account-menu-open .nexid-crm-shell aside,
 body.nexid-account-menu-open .nexid-crm-shell footer,
-body.nexid-account-menu-open .nexid-crm-shell [id="live-tap-map"],
-body.nexid-account-menu-open .nexid-crm-shell [class*="z-["] {
-  z-index: 1 !important;
+body.nexid-account-menu-open .nexid-crm-shell [id="live-tap-map"] {
   pointer-events: none !important;
-  transform: none !important;
-  contain: none !important;
 }
 
 html.nexid-account-menu-open .nexid-crm-shell [id="live-tap-map"],
@@ -1241,16 +1251,6 @@ html.nexid-account-menu-open .nexid-account-layer *,
 body.nexid-account-menu-open .nexid-account-layer,
 body.nexid-account-menu-open .nexid-account-layer * {
   pointer-events: auto !important;
-}
-
-html.nexid-account-menu-open .nexid-crm-shell [style*="z-index"],
-body.nexid-account-menu-open .nexid-crm-shell [style*="z-index"],
-html.nexid-account-menu-open .nexid-crm-shell [class*="fixed"],
-body.nexid-account-menu-open .nexid-crm-shell [class*="fixed"],
-html.nexid-account-menu-open .nexid-crm-shell [class*="absolute"],
-body.nexid-account-menu-open .nexid-crm-shell [class*="absolute"] {
-  z-index: 1 !important;
-  pointer-events: none !important;
 }
 
 @media (max-width: 640px) {

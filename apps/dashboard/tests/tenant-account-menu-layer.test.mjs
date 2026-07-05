@@ -10,15 +10,18 @@ const serviceWorkerSource = await readFile(new URL("../public/sw.js", import.met
 test("tenant account menu renders as a top-level drawer above CRM layers", () => {
   assert.match(menuSource, /createPortal\(menuPanel,\s*document\.body\)/);
   assert.match(menuSource, /const ACCOUNT_MENU_Z_INDEX = 2147483600/);
+  assert.match(menuSource, /const dialogRef = useRef<HTMLDialogElement \| null>\(null\)/);
+  assert.match(menuSource, /dialog\.showModal\(\)/);
+  assert.match(menuSource, /dialog\.close\(\)/);
+  assert.match(menuSource, /<dialog/);
   assert.match(menuSource, /data-account-menu-portal="body"/);
   assert.match(menuSource, /document\.documentElement\.classList\.add\("nexid-account-menu-open"\)/);
   assert.match(menuSource, /document\.documentElement\.classList\.remove\("nexid-account-menu-open"\)/);
   assert.match(menuSource, /data-testid="tenant-account-menu-close"/);
   assert.match(menuSource, /aria-label="Cerrar panel de cuenta"/);
   assert.match(menuSource, /aria-haspopup="dialog"/);
-  assert.match(menuSource, /role="dialog"/);
-  assert.match(menuSource, /aria-modal="true"/);
   assert.match(menuSource, /aria-label="Cuenta operativa nexID"/);
+  assert.match(menuSource, /onCancel=\{\(event\) => \{/);
   assert.match(menuSource, /data-account-menu-backdrop="true"/);
   assert.match(menuSource, /data-account-menu-panel="drawer"/);
   assert.match(menuSource, /closeButtonRef\.current\?\.focus\(\)/);
@@ -48,6 +51,11 @@ test("tenant account menu renders as a top-level drawer above CRM layers", () =>
 test("global CSS prevents dashboard maps from covering account drawer", () => {
   assert.match(globalsSource, /html\.nexid-account-menu-open,\s*body\.nexid-account-menu-open\s*\{[\s\S]*overflow:\s*hidden/);
   assert.match(globalsSource, /\.nexid-account-layer\s*\{[\s\S]*z-index:\s*2147483600 !important/);
+  assert.match(globalsSource, /\.nexid-account-layer\s*\{[\s\S]*display:\s*block !important/);
+  assert.match(globalsSource, /\.nexid-account-layer\s*\{[\s\S]*width:\s*100vw !important/);
+  assert.match(globalsSource, /\.nexid-account-layer\s*\{[\s\S]*max-width:\s*none !important/);
+  assert.match(globalsSource, /\.nexid-account-layer\s*\{[\s\S]*background:\s*transparent !important/);
+  assert.match(globalsSource, /dialog\.nexid-account-layer::backdrop\s*\{[\s\S]*backdrop-filter:\s*blur\(18px\) saturate\(1\.1\)/);
   assert.match(globalsSource, /\.nexid-account-layer,\s*\.nexid-account-layer > \*,\s*\.nexid-account-layer \[data-account-menu-backdrop="true"\]\s*\{[\s\S]*pointer-events:\s*auto !important/);
   assert.match(globalsSource, /\.nexid-account-layer \[data-account-menu-backdrop="true"\]\s*\{[\s\S]*z-index:\s*2147483601 !important/);
   assert.match(globalsSource, /\.nexid-account-layer \[data-account-menu-backdrop="true"\]\s*\{[\s\S]*backdrop-filter:\s*blur\(18px\) saturate\(1\.1\)/);
@@ -61,16 +69,12 @@ test("global CSS prevents dashboard maps from covering account drawer", () => {
   assert.match(globalsSource, /html\.theme-light \.nexid-account-layer \.tenant-account-panel__header \.text-white/);
   assert.match(globalsSource, /\.tenant-account-panel__header \.text-white,[\s\S]*\{[\s\S]*color:\s*#f8fafc !important/);
   assert.match(globalsSource, /html\.theme-light \.nexid-account-layer \.tenant-account-panel__header \.text-slate-400/);
-  assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell\s*\{[\s\S]*z-index:\s*0 !important/);
   assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell\s*\{[\s\S]*pointer-events:\s*none !important/);
-  assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell\s*\{[\s\S]*opacity:\s*0\.16 !important/);
-  assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell\s*\{[\s\S]*filter:\s*blur\(2px\) saturate\(0\.55\) !important/);
   assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell\s*\{[\s\S]*contain:\s*none !important/);
   assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell \*\s*\{[\s\S]*pointer-events:\s*none !important/);
-  assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell \[class\*="z-\["\]/);
-  assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell \[style\*="z-index"\]/);
-  assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell \[class\*="fixed"\]/);
-  assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell \[class\*="absolute"\]/);
+  assert.doesNotMatch(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell\s*\{[\s\S]*opacity:\s*0\.16 !important/);
+  assert.doesNotMatch(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell \[class\*="fixed"\]/);
+  assert.doesNotMatch(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell \[class\*="absolute"\]/);
   assert.match(globalsSource, /html\.nexid-account-menu-open \.nexid-crm-shell \[id="live-tap-map"\]/);
   assert.match(globalsSource, /html\.nexid-account-menu-open \.nexid-crm-shell \.maplibregl-control-container/);
   assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-account-layer \*/);
