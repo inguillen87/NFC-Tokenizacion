@@ -252,7 +252,7 @@ function utf8ToHex(value: string | null | undefined) {
 function explorerLink(url: string | null | undefined, label: string) {
   if (!url) return null;
   return (
-    <a href={url} className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.1em] text-cyan-800" target="_blank" rel="noreferrer">
+    <a href={url} className="proof-explorer-link inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.1em]" target="_blank" rel="noreferrer">
       {label} <ArrowRight className="h-3.5 w-3.5" />
     </a>
   );
@@ -532,9 +532,43 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
         }
 
         .proof-verify-page .theme-toggle {
+          min-height: 2.75rem;
           border-color: var(--proof-border-strong) !important;
           background: var(--proof-card-bg) !important;
           color: var(--proof-text) !important;
+        }
+
+        .proof-verify-page .proof-topbar {
+          align-items: center;
+        }
+
+        .proof-verify-page .proof-top-actions {
+          min-width: 0;
+        }
+
+        .proof-verify-page .proof-top-cta {
+          min-height: 2.75rem;
+          border-color: var(--proof-border-strong) !important;
+          background: var(--proof-card-bg) !important;
+          color: var(--proof-text) !important;
+        }
+
+        .proof-verify-page .proof-explorer-link {
+          width: 100%;
+          min-height: 2.75rem;
+          border-color: rgba(34, 211, 238, 0.3) !important;
+          background: rgba(2, 6, 23, 0.76) !important;
+          color: #cffafe !important;
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+          text-align: center;
+        }
+
+        html[data-theme="light"] .proof-verify-page .proof-explorer-link,
+        html.theme-light .proof-verify-page .proof-explorer-link {
+          border-color: rgba(14, 116, 144, 0.24) !important;
+          background: #ecfeff !important;
+          color: #075985 !important;
+          box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
         }
 
         .proof-verify-page .proof-receipt-status-chip {
@@ -670,11 +704,54 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           }
 
           .proof-verify-page .back-link {
+            flex: 0 0 2.75rem;
             min-height: 2.75rem;
+            min-width: 2.75rem;
             width: 2.75rem;
             justify-content: center;
             padding-left: 0;
             padding-right: 0;
+          }
+
+          .proof-verify-page .back-link__icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+          }
+
+          .proof-verify-page .proof-topbar {
+            gap: 0.75rem;
+          }
+
+          .proof-verify-page .proof-top-actions {
+            display: grid;
+            flex: 1;
+            grid-template-columns: 2.75rem minmax(0, 1fr);
+            justify-items: stretch;
+          }
+
+          .proof-verify-page .proof-top-actions .theme-toggle {
+            width: 2.75rem;
+            min-width: 2.75rem;
+            overflow: hidden;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+          }
+
+          .proof-verify-page .proof-top-actions .theme-toggle .theme-toggle__glyph {
+            flex: 0 0 auto;
+          }
+
+          .proof-verify-page .proof-top-actions .theme-toggle span:not(.theme-toggle__glyph) {
+            display: none;
+          }
+
+          .proof-verify-page .proof-top-actions .proof-top-cta {
+            width: 100%;
+          }
+
+          .proof-verify-page .proof-top-actions .proof-top-cta--sdk {
+            grid-column: 1 / -1;
           }
 
           .proof-verify-page .back-link span:last-child {
@@ -689,19 +766,19 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
         }
       `}</style>
       <section className="mx-auto flex w-full max-w-[1540px] flex-col gap-10 px-5 py-8 sm:px-8 lg:px-10">
-        <div className="flex items-center justify-between gap-4">
+        <div className="proof-topbar flex items-center justify-between gap-4">
           <BackLink href="/" label="Volver a nexID" />
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="proof-top-actions flex flex-wrap items-center justify-end gap-2">
             <ThemeToggle />
             <Link
               href="/demo-lab?scenario=iota-proof"
-              className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-white/80 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-cyan-800 shadow-sm transition hover:border-cyan-300 hover:bg-cyan-50"
+              className="proof-top-cta inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-xs font-black uppercase tracking-[0.12em] shadow-sm transition hover:border-cyan-300 hover:bg-cyan-50"
             >
               Volver a Demo Lab <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
               href="/sdk"
-              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+              className="proof-top-cta proof-top-cta--sdk inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-xs font-black uppercase tracking-[0.12em] shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
             >
               SDK/API
             </Link>
@@ -1151,7 +1228,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                     </div>
                   </div>
                   {match.explorer_url ? (
-                    <a href={match.explorer_url} className="mt-4 inline-flex items-center gap-2 text-sm font-black text-cyan-800" target="_blank" rel="noreferrer">
+                    <a href={match.explorer_url} className="proof-explorer-link mt-4 inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.1em]" target="_blank" rel="noreferrer">
                       Abrir explorer <ArrowRight className="h-4 w-4" />
                     </a>
                   ) : null}
