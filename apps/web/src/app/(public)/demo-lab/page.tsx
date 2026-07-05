@@ -369,6 +369,50 @@ const HUB_SCENARIOS = [
     title: "Experiencia Core (QR / GS1)",
     body: "Flujo completo de producto: origen, autenticidad, portal y fidelización del cliente.",
   },
+  {
+    id: "nfc-424",
+    icon: ShieldCheck,
+    color: "from-cyan-400 to-sky-500",
+    border: "hover:border-cyan-400/50",
+    shadow: "hover:shadow-cyan-500/20",
+    accent: "bg-cyan-500/30 text-cyan-100",
+    accentGlow: "group-hover:shadow-cyan-500/20",
+    title: "NFC 424 DNA",
+    body: "Tap criptografico para validar objeto fisico, bloquear replay y habilitar garantia, reward o soporte solo si el item es autentico.",
+  },
+  {
+    id: "dual-proof",
+    icon: FileText,
+    color: "from-teal-300 to-indigo-500",
+    border: "hover:border-teal-300/50",
+    shadow: "hover:shadow-teal-500/20",
+    accent: "bg-teal-500/24 text-teal-100",
+    accentGlow: "group-hover:shadow-teal-500/20",
+    title: "DPP / Dual Proof",
+    body: "Historia enterprise completa: identidad de producto, ownership opcional y evidencia hash-only para compliance o auditoria externa.",
+  },
+  {
+    id: "sensor-evidence",
+    icon: Cpu,
+    color: "from-lime-300 to-emerald-500",
+    border: "hover:border-lime-300/50",
+    shadow: "hover:shadow-lime-500/20",
+    accent: "bg-lime-500/24 text-lime-100",
+    accentGlow: "group-hover:shadow-lime-500/20",
+    title: "Sensor / UHF / IoT",
+    body: "Convierte pallets, cajas, temperatura y eventos industriales en hitos auditables sin exponer streams ni datos operativos sensibles.",
+  },
+  {
+    id: "authorized-network",
+    icon: Database,
+    color: "from-slate-300 to-cyan-500",
+    border: "hover:border-slate-300/50",
+    shadow: "hover:shadow-cyan-500/16",
+    accent: "bg-slate-500/24 text-slate-100",
+    accentGlow: "group-hover:shadow-slate-500/20",
+    title: "Red Autorizada",
+    body: "Controla impresores, integradores, resellers y proveedores para que cada emision o auditoria respete roles, tenant y politica.",
+  },
 ];
 
 const HUB_VERTICALS = [
@@ -668,7 +712,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
       </div>
 
       {/* Top nav bar */}
-      <nav className="demo-lab-hub-nav sticky top-0 z-50 grid min-h-[3.75rem] grid-cols-[auto_minmax(0,1fr)] items-start justify-between gap-3 border-b border-white/[0.06] bg-[#03070f]/90 px-4 py-2 backdrop-blur-xl md:flex md:items-center">
+      <nav className="demo-lab-hub-nav demo-lab-hub-nav--mobile-safe sticky top-0 z-50 grid min-h-[3.75rem] grid-cols-1 items-start justify-between gap-3 border-b border-white/[0.06] bg-[#03070f]/90 px-4 py-2 backdrop-blur-xl sm:grid-cols-[auto_minmax(0,1fr)] md:flex md:items-center">
         <Link
           href="/"
           className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 text-xs font-black text-slate-300 transition-colors hover:border-cyan-300/40 hover:text-cyan-200"
@@ -802,7 +846,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
           <p className="mb-4 text-xs font-black uppercase tracking-[0.22em] text-slate-400">
             Capas de confianza
           </p>
-          <div className="demo-lab-hub-card-grid grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="demo-lab-hub-card-grid grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {HUB_SCENARIOS.map((s) => {
               const Icon = s.icon;
               return (

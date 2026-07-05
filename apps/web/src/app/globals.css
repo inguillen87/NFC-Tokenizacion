@@ -49282,3 +49282,168 @@ html[data-theme="light"] .docs-mobile-trust-rail__arrow {
     display: none !important;
   }
 }
+
+/* Demo Lab enterprise discovery and mobile CRM closure. */
+.demo-lab-hub-root {
+  overflow-x: clip !important;
+  overflow-y: visible !important;
+}
+
+.demo-lab-hub-card-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.demo-lab-hub-card {
+  min-height: 11.75rem;
+}
+
+.demo-lab-crm-tabs {
+  max-width: 100%;
+  overflow-x: auto;
+  padding-bottom: 0.2rem;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+}
+
+.demo-lab-crm-tabs button {
+  flex: 0 0 auto;
+  min-height: 44px;
+  scroll-snap-align: start;
+}
+
+.demo-lab-crm-table-wrap {
+  max-width: 100%;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+}
+
+.demo-lab-crm-table {
+  min-width: 760px;
+}
+
+.demo-lab-fullscreen-root--light .demo-lab-trust-context,
+.demo-lab-fullscreen-root--light .demo-lab-trust-switcher,
+.demo-lab-fullscreen-root--light .demo-lab-trust-scenario,
+.demo-lab-fullscreen-root--light .demo-lab-trust-scenarios__head {
+  border-color: rgba(14, 116, 144, 0.18) !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  color: #0f172a !important;
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08) !important;
+}
+
+.demo-lab-fullscreen-root--light .demo-lab-trust-context strong,
+.demo-lab-fullscreen-root--light .demo-lab-trust-scenario strong,
+.demo-lab-fullscreen-root--light .demo-lab-trust-switcher strong {
+  color: #0f172a !important;
+}
+
+.demo-lab-fullscreen-root--light .demo-lab-trust-context p,
+.demo-lab-fullscreen-root--light .demo-lab-trust-scenario p,
+.demo-lab-fullscreen-root--light .demo-lab-trust-switcher p {
+  color: #334155 !important;
+}
+
+.demo-lab-fullscreen-root--light .demo-lab-trust-scenario.is-active {
+  border-color: rgba(8, 145, 178, 0.42) !important;
+  background: linear-gradient(135deg, rgba(236, 254, 255, 0.98), rgba(240, 253, 250, 0.92)) !important;
+}
+
+@media (min-width: 640px) {
+  .demo-lab-hub-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .demo-lab-hub-card-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1024px) and (min-width: 761px) {
+  .demo-lab-fullscreen-root .demo-lab-infobar {
+    position: relative !important;
+    top: auto !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-context-strip {
+    display: none !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-nav {
+    top: 0.75rem !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .demo-lab-trust-scenarios--wizard .demo-lab-trust-scenarios__grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .demo-lab-hub-root .demo-lab-hub-nav.demo-lab-hub-nav--mobile-safe {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    align-items: stretch !important;
+    gap: 0.58rem !important;
+    padding: 0.62rem !important;
+  }
+
+  .demo-lab-hub-root .demo-lab-hub-nav.demo-lab-hub-nav--mobile-safe > a[href="/"] {
+    justify-self: start !important;
+  }
+
+  .demo-lab-hub-root .demo-lab-hub-nav.demo-lab-hub-nav--mobile-safe > div {
+    grid-column: 1 !important;
+    grid-template-columns: 2.65rem minmax(0, 1fr) !important;
+    display: grid !important;
+    justify-content: stretch !important;
+    justify-self: stretch !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .demo-lab-hub-root .demo-lab-hub-nav.demo-lab-hub-nav--mobile-safe a[href="/proof/verify"] {
+    min-width: 0 !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+    padding-inline: 0.7rem !important;
+  }
+
+  .demo-lab-hub-root .demo-lab-hub-nav.demo-lab-hub-nav--mobile-safe a[href="/?contact=demo#contact-modal"] {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .demo-lab-toast-stack {
+    right: 1rem !important;
+    bottom: 1rem !important;
+    left: 1rem !important;
+    width: auto !important;
+    max-width: none !important;
+  }
+
+  .demo-lab-crm-ledger {
+    border-radius: 1.2rem !important;
+    padding: 0.82rem !important;
+  }
+
+  .demo-lab-crm-tabs {
+    margin-inline: -0.12rem;
+  }
+
+  .demo-lab-crm-tabs button {
+    max-width: 13rem;
+    padding-inline: 0.85rem !important;
+    white-space: nowrap;
+  }
+
+  .demo-lab-crm-table {
+    min-width: 720px;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-steps .demo-lab-wizard-step-pill span:last-child {
+    font-size: 0.66rem !important;
+  }
+}

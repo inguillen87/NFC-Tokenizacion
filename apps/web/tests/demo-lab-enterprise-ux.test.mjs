@@ -98,6 +98,7 @@ test("demo lab fullscreen mobile keeps CTAs inside viewport and light mode visib
 test("demo lab hub keeps C-level contrast across cards, filters and theme controls", async () => {
   const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
   const page = await readFile(new URL("../src/app/(public)/demo-lab/page.tsx", import.meta.url), "utf8");
+  const client = await readFile(new URL("../src/app/(public)/demo-lab/demo-lab-client.tsx", import.meta.url), "utf8");
 
   assert.match(css, /Demo Lab hub C-level contrast closure/);
   assert.match(page, /demo-lab-hub-root--light/);
@@ -125,6 +126,22 @@ test("demo lab hub keeps C-level contrast across cards, filters and theme contro
   assert.match(page, /href="\/proof\/verify"/);
   assert.match(page, /href:\s*"\/demo-lab\?scenario=qr-gs1"/);
   assert.match(page, /href:\s*"\/demo-lab\?scenario=polygon-ownership"/);
+  assert.match(page, /demo-lab-hub-nav--mobile-safe/);
+  assert.match(page, /grid-cols-1[\s\S]*sm:grid-cols-\[auto_minmax\(0,1fr\)\]/);
+  assert.match(page, /demo-lab-hub-card-grid grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4/);
+  assert.match(page, /id:\s*"nfc-424"/);
+  assert.match(page, /id:\s*"dual-proof"/);
+  assert.match(page, /id:\s*"sensor-evidence"/);
+  assert.match(page, /id:\s*"authorized-network"/);
+  assert.match(page, /NFC 424 DNA/);
+  assert.match(page, /DPP \/ Dual Proof/);
+  assert.match(page, /Sensor \/ UHF \/ IoT/);
+  assert.match(page, /Red Autorizada/);
+  assert.match(client, /demo-lab-toast-stack/);
+  assert.match(client, /demo-lab-crm-ledger/);
+  assert.match(client, /demo-lab-crm-tabs/);
+  assert.match(client, /demo-lab-crm-table-wrap/);
+  assert.match(client, /demo-lab-crm-table/);
   assert.match(css, /\.demo-lab-hub-root--light\s*\{[\s\S]*color:\s*#0f172a !important/);
   assert.match(css, /\.demo-lab-hub-root \.demo-lab-hub-card__icon,[\s\S]*color:\s*#bae6fd !important/);
   assert.match(css, /\.demo-lab-hub-root--light \.demo-lab-hub-card__icon,[\s\S]*color:\s*#075985 !important/);
@@ -155,6 +172,19 @@ test("demo lab hub keeps C-level contrast across cards, filters and theme contro
   assert.match(css, /html\.theme-light \.demo-lab-hub-proof-stack__head,[\s\S]*\.demo-lab-hub-root--light \.demo-lab-hub-proof-stack__card/);
   assert.match(css, /html\.theme-light \.demo-lab-hub-proof-stack__head strong,[\s\S]*\.demo-lab-hub-root--light \.demo-lab-hub-proof-stack__card strong/);
   assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*\.demo-lab-hub-proof-stack\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+  assert.match(css, /Demo Lab enterprise discovery and mobile CRM closure/);
+  assert.match(css, /\.demo-lab-hub-card-grid\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+  assert.match(css, /@media \(min-width:\s*640px\)[\s\S]*\.demo-lab-hub-card-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /@media \(min-width:\s*1024px\)[\s\S]*\.demo-lab-hub-card-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /\.demo-lab-crm-tabs\s*\{[\s\S]*scroll-snap-type:\s*x proximity/);
+  assert.match(css, /\.demo-lab-crm-table\s*\{[\s\S]*min-width:\s*760px/);
+  assert.match(css, /@media \(max-width:\s*520px\)[\s\S]*\.demo-lab-hub-root \.demo-lab-hub-nav\.demo-lab-hub-nav--mobile-safe\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) !important/);
+  assert.match(css, /@media \(max-width:\s*520px\)[\s\S]*\.demo-lab-hub-root \.demo-lab-hub-nav\.demo-lab-hub-nav--mobile-safe > div\s*\{[\s\S]*grid-column:\s*1 !important/);
+  assert.match(css, /@media \(max-width:\s*520px\)[\s\S]*\.demo-lab-hub-root \.demo-lab-hub-nav\.demo-lab-hub-nav--mobile-safe a\[href="\/proof\/verify"\]\s*\{[\s\S]*overflow:\s*hidden !important/);
+  assert.match(css, /@media \(max-width:\s*520px\)[\s\S]*\.demo-lab-toast-stack\s*\{[\s\S]*left:\s*1rem !important/);
+  assert.match(css, /\.demo-lab-fullscreen-root--light \.demo-lab-trust-context/);
+  assert.match(css, /@media \(max-width:\s*1024px\) and \(min-width:\s*761px\)[\s\S]*\.demo-lab-fullscreen-root \.demo-lab-infobar\s*\{[\s\S]*position:\s*relative !important/);
+  assert.match(css, /@media \(max-width:\s*640px\)[\s\S]*\.demo-lab-trust-scenarios--wizard \.demo-lab-trust-scenarios__grid\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) !important/);
 });
 
 test("demo lab trust scenario deep links open contextual wizard proof layers", async () => {

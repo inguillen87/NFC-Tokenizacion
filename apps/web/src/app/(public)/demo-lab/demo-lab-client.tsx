@@ -1230,7 +1230,7 @@ export function DemoLabClient({ locale, initialVertical, initialScenario }: { lo
       />
 
       {/* Floating Toast Notification Center */}
-      <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-3 max-w-sm w-full pointer-events-none">
+      <div className="demo-lab-toast-stack fixed bottom-5 right-5 z-50 flex flex-col gap-3 max-w-sm w-full pointer-events-none">
         <style>{`
           @keyframes slideInRight {
             from {
@@ -4200,9 +4200,9 @@ function DemoCrmDashboard({
       )}
 
       {/* Ledger Section (Tables) */}
-      <div className="rounded-3xl border border-white/10 bg-slate-950/60 p-5 shadow-xl">
+      <div className="demo-lab-crm-ledger rounded-3xl border border-white/10 bg-slate-950/60 p-5 shadow-xl">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-4">
-          <div className="flex gap-2">
+          <div className="demo-lab-crm-tabs flex gap-2">
             {(["leads", "tickets", "orders", "taps"] as const).map((tab) => (
               <button
                 key={tab}
@@ -4235,10 +4235,10 @@ function DemoCrmDashboard({
           </div>
         </div>
 
-        <div className="mt-4 overflow-x-auto">
+        <div className="demo-lab-crm-table-wrap mt-4 overflow-x-auto">
           {/* LEADS TABLE */}
           {activeTab === "leads" && (
-            <table className="w-full text-left text-xs border-collapse">
+            <table className="demo-lab-crm-table w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-white/10 text-slate-400 uppercase font-black tracking-wider">
                   <th className="py-3 px-4">Compañía / Nombre</th>
@@ -4309,7 +4309,7 @@ function DemoCrmDashboard({
 
           {/* TICKETS (SECURITY INCIDENTS) TABLE */}
           {activeTab === "tickets" && (
-            <table className="w-full text-left text-xs border-collapse">
+            <table className="demo-lab-crm-table w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-white/10 text-slate-400 uppercase font-black tracking-wider">
                   <th className="py-3 px-4">Incidencia / Mensaje</th>
@@ -4366,7 +4366,7 @@ function DemoCrmDashboard({
 
           {/* ORDER REQUESTS TABLE */}
           {activeTab === "orders" && (
-            <table className="w-full text-left text-xs border-collapse">
+            <table className="demo-lab-crm-table w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-white/10 text-slate-400 uppercase font-black tracking-wider">
                   <th className="py-3 px-4">Cliente / Compañía</th>
@@ -4426,7 +4426,7 @@ function DemoCrmDashboard({
 
           {/* ALL SCANS HISTORIAL TABLE */}
           {activeTab === "taps" && (
-            <table className="w-full text-left text-xs border-collapse">
+            <table className="demo-lab-crm-table w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-white/10 text-slate-400 uppercase font-black tracking-wider">
                   <th className="py-3 px-4">Ubicación</th>
