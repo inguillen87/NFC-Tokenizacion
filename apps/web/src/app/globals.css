@@ -49012,3 +49012,171 @@ html[data-theme="light"] .demo-lab-fullscreen-stage .demo-lab-studio,
     box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08) !important;
   }
 }
+
+/* SDK mobile first-viewport pass: keep the platform proof visible before the
+   page turns into a long text stack. */
+@media (max-width: 760px) {
+  .sdk-page-shell > .container-shell {
+    padding-inline: clamp(0.72rem, 3.6vw, 1rem) !important;
+    row-gap: 1.35rem !important;
+  }
+
+  .sdk-premium-hero {
+    gap: 0.9rem !important;
+    padding: 0.95rem !important;
+    border-radius: 1.15rem !important;
+  }
+
+  .sdk-premium-copy {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.82rem !important;
+  }
+
+  .sdk-hero-eyebrow {
+    font-size: 0.58rem !important;
+    line-height: 1.25 !important;
+    letter-spacing: 0.18em !important;
+  }
+
+  .sdk-premium-copy h1 {
+    max-inline-size: 100% !important;
+    font-size: clamp(1.95rem, 8.3vw, 2.28rem) !important;
+    line-height: 1.04 !important;
+    text-wrap: balance !important;
+  }
+
+  .sdk-premium-copy > p:not(.sdk-hero-eyebrow) {
+    max-inline-size: 100% !important;
+    font-size: 0.92rem !important;
+    line-height: 1.42 !important;
+  }
+
+  .sdk-hero-actions {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 0.52rem !important;
+  }
+
+  .sdk-hero-actions a,
+  .sdk-hero-actions button {
+    min-height: 2.8rem !important;
+    border-radius: 0.95rem !important;
+    font-size: 0.84rem !important;
+    line-height: 1.1 !important;
+    padding: 0.68rem 0.82rem !important;
+  }
+
+  .sdk-trust-rail {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.55rem !important;
+    margin-top: 0.08rem !important;
+  }
+
+  .sdk-trust-rail div {
+    min-height: 0 !important;
+    border: 1px solid rgba(103, 232, 249, 0.2) !important;
+    border-radius: 0.85rem !important;
+    background: rgba(2, 8, 23, 0.64) !important;
+    padding: 0.62rem !important;
+  }
+
+  html.theme-light .sdk-trust-rail div,
+  html[data-theme="light"] .sdk-trust-rail div {
+    border-color: rgba(14, 116, 144, 0.16) !important;
+    background: rgba(255, 255, 255, 0.66) !important;
+  }
+
+  .sdk-trust-rail svg {
+    width: 1rem !important;
+    height: 1rem !important;
+  }
+
+  .sdk-trust-rail strong {
+    margin-top: 0.36rem !important;
+    font-size: 0.78rem !important;
+    line-height: 1.12 !important;
+  }
+
+  .sdk-trust-rail span {
+    display: -webkit-box !important;
+    margin-top: 0.3rem !important;
+    overflow: hidden !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 2 !important;
+    font-size: 0.66rem !important;
+    line-height: 1.25 !important;
+  }
+
+  .sdk-proof-hero-system .sdk-global-hero-globe {
+    min-height: clamp(17.5rem, 70vw, 22rem) !important;
+  }
+
+  .sdk-proof-live-card {
+    grid-template-columns: minmax(6.2rem, 0.86fr) minmax(0, 1fr) !important;
+    gap: 0.48rem !important;
+    margin-top: 0.55rem !important;
+    padding: 0.52rem !important;
+  }
+
+  .sdk-proof-product-shot {
+    min-height: 8.4rem !important;
+  }
+
+  .sdk-proof-product-shot span {
+    padding: 0.32rem 0.38rem !important;
+    font-size: 0.5rem !important;
+    letter-spacing: 0.08em !important;
+  }
+
+  .sdk-proof-phone {
+    border-radius: 0.85rem !important;
+    padding: 0.58rem !important;
+  }
+
+  .sdk-proof-phone strong {
+    font-size: 0.86rem !important;
+  }
+
+  .sdk-proof-phone p {
+    margin-top: 0.32rem !important;
+    font-size: 0.76rem !important;
+    line-height: 1.18 !important;
+  }
+
+  .sdk-proof-phone small {
+    display: none !important;
+  }
+
+  .sdk-hero-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .sdk-hero-actions a:first-child {
+    grid-column: 1 / -1 !important;
+  }
+
+  .sdk-hero-actions a:nth-child(n + 2) button {
+    min-height: 2.6rem !important;
+    padding-inline: 0.48rem !important;
+    font-size: 0.72rem !important;
+  }
+
+  .sdk-hero-actions a:nth-child(n + 2) svg {
+    display: none !important;
+  }
+
+  .sdk-trust-rail div {
+    min-height: 4.2rem !important;
+    padding: 0.52rem !important;
+  }
+
+  .sdk-trust-rail strong {
+    font-size: 0.72rem !important;
+  }
+
+  .sdk-trust-rail span {
+    display: none !important;
+  }
+}

@@ -56,3 +56,21 @@ test("pricing mobile comparison is readable without horizontal table scrolling",
   assert.match(css, /\.nexid-pricing-mobile-compare__card div\s*\{[\s\S]*grid-template-columns:\s*minmax\(5\.8rem,\s*0\.42fr\) minmax\(0,\s*1fr\)/);
   assert.match(css, /html\.theme-light \.nexid-pricing-mobile-compare__card dd[\s\S]*color:\s*#475569 !important/);
 });
+
+test("sdk mobile hero surfaces the proof system before becoming a long text stack", async () => {
+  const sdk = await readFile(new URL("../src/app/sdk/page.tsx", import.meta.url), "utf8");
+  const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
+
+  assert.match(sdk, /id="sdk-proof-hero"/);
+  assert.match(sdk, /className="sdk-premium-hero"/);
+  assert.match(sdk, /Proof Verify & Decoder/);
+  assert.match(css, /SDK mobile first-viewport pass/);
+  assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*\.sdk-premium-copy[\s\S]*display:\s*flex !important/);
+  assert.match(css, /\.sdk-premium-copy h1\s*\{[\s\S]*font-size:\s*clamp\(1\.95rem,\s*8\.3vw,\s*2\.28rem\) !important/);
+  assert.match(css, /\.sdk-trust-rail\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\) !important/);
+  assert.match(css, /\.sdk-trust-rail div\s*\{[\s\S]*background:\s*rgba\(2,\s*8,\s*23,\s*0\.64\) !important/);
+  assert.match(css, /html\.theme-light \.sdk-trust-rail div,[\s\S]*background:\s*rgba\(255,\s*255,\s*255,\s*0\.66\) !important/);
+  assert.match(css, /\.sdk-proof-hero-system \.sdk-global-hero-globe\s*\{[\s\S]*min-height:\s*clamp\(17\.5rem,\s*70vw,\s*22rem\) !important/);
+  assert.match(css, /\.sdk-proof-live-card\s*\{[\s\S]*grid-template-columns:\s*minmax\(6\.2rem,\s*0\.86fr\) minmax\(0,\s*1fr\) !important/);
+  assert.match(css, /\.sdk-proof-phone small\s*\{[\s\S]*display:\s*none !important/);
+});
