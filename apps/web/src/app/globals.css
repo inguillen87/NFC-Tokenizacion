@@ -44509,6 +44509,104 @@ html[data-theme="light"] .offline-phone-screen .text-slate-200 {
   font-weight: 800;
 }
 
+.demo-lab-wizard-proof-decoder {
+  display: grid;
+  gap: 0.85rem;
+  border: 1px solid rgba(103, 232, 249, 0.16);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(45, 212, 191, 0.16), transparent 45%),
+    linear-gradient(180deg, rgba(8, 47, 73, 0.72), rgba(2, 8, 23, 0.74));
+  padding: clamp(0.9rem, 1.6vw, 1.15rem);
+}
+
+.demo-lab-wizard-proof-decoder__head {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.demo-lab-wizard-proof-decoder__head span,
+.demo-lab-wizard-proof-card span,
+.demo-lab-wizard-proof-card small,
+.demo-lab-wizard-gano-card small {
+  font-size: 0.64rem;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.demo-lab-wizard-proof-decoder__head span,
+.demo-lab-wizard-proof-card span {
+  color: #67e8f9;
+}
+
+.demo-lab-wizard-proof-decoder__head strong {
+  color: #f8fafc;
+  font-size: clamp(1rem, 1.5vw, 1.2rem);
+  font-weight: 950;
+  letter-spacing: 0;
+}
+
+.demo-lab-wizard-proof-decoder__head p {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.demo-lab-wizard-proof-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.demo-lab-wizard-proof-card {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 0;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 16px;
+  background: rgba(2, 8, 23, 0.52);
+  padding: 0.78rem;
+}
+
+.demo-lab-wizard-proof-card strong {
+  color: #f8fafc;
+  font-size: 0.86rem;
+  font-weight: 950;
+  line-height: 1.2;
+}
+
+.demo-lab-wizard-proof-card p {
+  margin: 0;
+  color: #a8bdd8;
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.demo-lab-wizard-proof-card small,
+.demo-lab-wizard-gano-card small {
+  color: #6ee7b7;
+  line-height: 1.35;
+}
+
+.demo-lab-wizard-proof-link {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border: 1px solid rgba(103, 232, 249, 0.35);
+  border-radius: 999px;
+  background: rgba(34, 211, 238, 0.12);
+  color: #67e8f9;
+  font-size: 0.75rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
 .demo-lab-wizard-next-btn,
 .demo-lab-wizard-primary-cta {
   margin-top: 1rem;
@@ -44556,6 +44654,7 @@ html[data-theme="light"] .offline-phone-screen .text-slate-200 {
 }
 
 .demo-lab-wizard-map-container {
+  position: relative;
   min-height: 32rem;
   overflow: hidden;
   border: 1px solid rgba(148, 163, 184, 0.16);
@@ -44563,8 +44662,69 @@ html[data-theme="light"] .offline-phone-screen .text-slate-200 {
   background: rgba(2, 6, 23, 0.62);
 }
 
+.demo-lab-wizard-map-proof-strip {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  left: 0.85rem;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.45rem 0.7rem;
+  align-items: center;
+  border: 1px solid rgba(103, 232, 249, 0.2);
+  border-radius: 18px;
+  background: rgba(2, 8, 23, 0.78);
+  padding: 0.7rem 0.8rem;
+  box-shadow: 0 18px 44px rgba(2, 6, 23, 0.32);
+  backdrop-filter: blur(16px);
+}
+
+.demo-lab-wizard-map-proof-strip span {
+  grid-column: 1 / -1;
+  color: #67e8f9;
+  font-size: 0.62rem;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.demo-lab-wizard-map-proof-strip strong {
+  min-width: 0;
+  color: #f8fafc;
+  font-size: 0.78rem;
+  font-weight: 850;
+  line-height: 1.35;
+}
+
+.demo-lab-wizard-map-proof-strip a {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  border: 1px solid rgba(103, 232, 249, 0.32);
+  border-radius: 999px;
+  background: rgba(34, 211, 238, 0.14);
+  padding: 0 0.7rem;
+  color: #67e8f9;
+  font-size: 0.64rem;
+  font-weight: 950;
+  text-decoration: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
 .demo-lab-wizard-gano-header {
   max-width: 52rem;
+}
+
+.demo-lab-wizard-gano-lede {
+  max-width: 48rem;
+  margin: 0.85rem 0 0;
+  color: #cbd5e1;
+  font-size: clamp(0.95rem, 1.35vw, 1.08rem);
+  line-height: 1.6;
 }
 
 .demo-lab-wizard-gano-grid {
@@ -44575,7 +44735,21 @@ html[data-theme="light"] .offline-phone-screen .text-slate-200 {
 }
 
 .demo-lab-wizard-gano-card {
+  display: grid;
+  align-content: start;
+  gap: 0.35rem;
   padding: 1rem;
+}
+
+.demo-lab-wizard-gano-icon span {
+  max-width: 4rem;
+  color: #99f6e4;
+  font-size: 0.62rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  line-height: 1.05;
+  text-align: center;
+  text-transform: uppercase;
 }
 
 .demo-lab-wizard-gano-card h3 {
@@ -44583,6 +44757,15 @@ html[data-theme="light"] .offline-phone-screen .text-slate-200 {
   color: #f8fafc;
   font-size: 1rem;
   font-weight: 900;
+}
+
+.demo-lab-wizard-gano-card p {
+  margin: 0;
+}
+
+.demo-lab-wizard-gano-card small {
+  align-self: end;
+  margin-top: 0.35rem;
 }
 
 .demo-lab-wizard-gano-cta {
@@ -45377,11 +45560,15 @@ html.theme-light .demo-lab-wizard-result-card,
 html.theme-light .demo-lab-wizard-events,
 html.theme-light .demo-lab-wizard-trazo-side,
 html.theme-light .demo-lab-wizard-gano-card,
+html.theme-light .demo-lab-wizard-proof-decoder,
+html.theme-light .demo-lab-wizard-proof-card,
 html[data-theme="light"] .demo-lab-wizard-context,
 html[data-theme="light"] .demo-lab-wizard-result-card,
 html[data-theme="light"] .demo-lab-wizard-events,
 html[data-theme="light"] .demo-lab-wizard-trazo-side,
-html[data-theme="light"] .demo-lab-wizard-gano-card {
+html[data-theme="light"] .demo-lab-wizard-gano-card,
+html[data-theme="light"] .demo-lab-wizard-proof-decoder,
+html[data-theme="light"] .demo-lab-wizard-proof-card {
   border-color: rgba(148, 163, 184, 0.28) !important;
   background: rgba(255, 255, 255, 0.88) !important;
   color: #0f172a !important;
@@ -45393,23 +45580,70 @@ html.theme-light .demo-lab-wizard-result-status,
 html.theme-light .demo-lab-wizard-gano-header h2,
 html.theme-light .demo-lab-wizard-gano-card h3,
 html.theme-light .demo-lab-wizard-event strong,
+html.theme-light .demo-lab-wizard-proof-decoder__head strong,
+html.theme-light .demo-lab-wizard-proof-card strong,
 html[data-theme="light"] .demo-lab-wizard-product-name,
 html[data-theme="light"] .demo-lab-wizard-result-status,
 html[data-theme="light"] .demo-lab-wizard-gano-header h2,
 html[data-theme="light"] .demo-lab-wizard-gano-card h3,
-html[data-theme="light"] .demo-lab-wizard-event strong {
+html[data-theme="light"] .demo-lab-wizard-event strong,
+html[data-theme="light"] .demo-lab-wizard-proof-decoder__head strong,
+html[data-theme="light"] .demo-lab-wizard-proof-card strong {
   color: #0f172a !important;
 }
 
 html.theme-light .demo-lab-wizard-tagline,
 html.theme-light .demo-lab-wizard-result-desc,
 html.theme-light .demo-lab-wizard-gano-card p,
+html.theme-light .demo-lab-wizard-gano-lede,
 html.theme-light .demo-lab-wizard-event span,
+html.theme-light .demo-lab-wizard-proof-decoder__head p,
+html.theme-light .demo-lab-wizard-proof-card p,
 html[data-theme="light"] .demo-lab-wizard-tagline,
 html[data-theme="light"] .demo-lab-wizard-result-desc,
 html[data-theme="light"] .demo-lab-wizard-gano-card p,
-html[data-theme="light"] .demo-lab-wizard-event span {
+html[data-theme="light"] .demo-lab-wizard-gano-lede,
+html[data-theme="light"] .demo-lab-wizard-event span,
+html[data-theme="light"] .demo-lab-wizard-proof-decoder__head p,
+html[data-theme="light"] .demo-lab-wizard-proof-card p {
   color: #475569 !important;
+}
+
+html.theme-light .demo-lab-wizard-proof-decoder__head span,
+html.theme-light .demo-lab-wizard-proof-card span,
+html.theme-light .demo-lab-wizard-proof-card small,
+html.theme-light .demo-lab-wizard-gano-card small,
+html[data-theme="light"] .demo-lab-wizard-proof-decoder__head span,
+html[data-theme="light"] .demo-lab-wizard-proof-card span,
+html[data-theme="light"] .demo-lab-wizard-proof-card small,
+html[data-theme="light"] .demo-lab-wizard-gano-card small {
+  color: #047857 !important;
+}
+
+html.theme-light .demo-lab-wizard-proof-link,
+html[data-theme="light"] .demo-lab-wizard-proof-link {
+  border-color: rgba(14, 116, 144, 0.28) !important;
+  background: rgba(236, 254, 255, 0.92) !important;
+  color: #075985 !important;
+}
+
+html.theme-light .demo-lab-wizard-map-proof-strip,
+html[data-theme="light"] .demo-lab-wizard-map-proof-strip {
+  border-color: rgba(14, 116, 144, 0.22) !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.1) !important;
+}
+
+html.theme-light .demo-lab-wizard-map-proof-strip strong,
+html[data-theme="light"] .demo-lab-wizard-map-proof-strip strong {
+  color: #0f172a !important;
+}
+
+html.theme-light .demo-lab-wizard-map-proof-strip span,
+html.theme-light .demo-lab-wizard-map-proof-strip a,
+html[data-theme="light"] .demo-lab-wizard-map-proof-strip span,
+html[data-theme="light"] .demo-lab-wizard-map-proof-strip a {
+  color: #075985 !important;
 }
 
 html.theme-light .demo-lab-wizard-event small,
@@ -45832,7 +46066,9 @@ html[data-theme="light"] .landing-hero-section .nexid-hero-atlas-card .hero-trus
   .demo-lab-wizard-result-card,
   .demo-lab-wizard-events,
   .demo-lab-wizard-trazo-side,
-  .demo-lab-wizard-gano-card {
+  .demo-lab-wizard-gano-card,
+  .demo-lab-wizard-proof-decoder,
+  .demo-lab-wizard-proof-card {
     padding: 1rem !important;
   }
 
@@ -47587,6 +47823,34 @@ html[data-theme="light"] .demo-lab-hub-executive-path__card em,
     min-height: 24rem !important;
   }
 
+  .demo-lab-fullscreen-root .demo-lab-wizard-map-proof-strip {
+    top: 0.62rem !important;
+    right: 0.62rem !important;
+    left: 0.62rem !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 0.35rem !important;
+    padding: 0.58rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-map-proof-strip span {
+    font-size: 0.54rem !important;
+    letter-spacing: 0.08em !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-map-proof-strip strong {
+    font-size: 0.68rem !important;
+    line-height: 1.25 !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-map-proof-strip a {
+    width: 100% !important;
+    min-height: 32px !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-proof-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
   .demo-lab-fullscreen-root .demo-lab-wizard-events,
   .demo-lab-fullscreen-root .demo-lab-wizard-trazo-side,
   .demo-lab-fullscreen-root .demo-lab-wizard-verticals {
@@ -47693,7 +47957,9 @@ html[data-theme="light"] .demo-lab-fullscreen-stage .demo-lab-studio,
 .demo-lab-fullscreen-root--light .demo-lab-wizard-result-status,
 .demo-lab-fullscreen-root--light .demo-lab-wizard-gano-header h2,
 .demo-lab-fullscreen-root--light .demo-lab-wizard-gano-card h3,
-.demo-lab-fullscreen-root--light .demo-lab-wizard-event strong {
+.demo-lab-fullscreen-root--light .demo-lab-wizard-event strong,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-proof-decoder__head strong,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-proof-card strong {
   color: #0f172a !important;
 }
 
@@ -47702,7 +47968,10 @@ html[data-theme="light"] .demo-lab-fullscreen-stage .demo-lab-studio,
 .demo-lab-fullscreen-root--light .demo-lab-wizard-tagline,
 .demo-lab-fullscreen-root--light .demo-lab-wizard-result-desc,
 .demo-lab-fullscreen-root--light .demo-lab-wizard-gano-card p,
-.demo-lab-fullscreen-root--light .demo-lab-wizard-event span {
+.demo-lab-fullscreen-root--light .demo-lab-wizard-gano-lede,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-event span,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-proof-decoder__head p,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-proof-card p {
   color: #475569 !important;
 }
 
@@ -47736,7 +48005,9 @@ html[data-theme="light"] .demo-lab-fullscreen-stage .demo-lab-studio,
 .demo-lab-fullscreen-root--light .demo-lab-wizard-events,
 .demo-lab-fullscreen-root--light .demo-lab-wizard-trazo-side,
 .demo-lab-fullscreen-root--light .demo-lab-wizard-gano-card,
-.demo-lab-fullscreen-root--light .demo-lab-wizard-event {
+.demo-lab-fullscreen-root--light .demo-lab-wizard-event,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-proof-decoder,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-proof-card {
   border-color: rgba(148, 163, 184, 0.28) !important;
   background: rgba(255, 255, 255, 0.88) !important;
   color: #0f172a !important;
@@ -47747,6 +48018,34 @@ html[data-theme="light"] .demo-lab-fullscreen-stage .demo-lab-studio,
   border-color: rgba(14, 116, 144, 0.18) !important;
   background: rgba(255, 255, 255, 0.86) !important;
   color: #0f5f76 !important;
+}
+
+.demo-lab-fullscreen-root--light .demo-lab-wizard-proof-decoder__head span,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-proof-card span,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-proof-card small,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-gano-card small {
+  color: #047857 !important;
+}
+
+.demo-lab-fullscreen-root--light .demo-lab-wizard-proof-link {
+  border-color: rgba(14, 116, 144, 0.28) !important;
+  background: rgba(236, 254, 255, 0.92) !important;
+  color: #075985 !important;
+}
+
+.demo-lab-fullscreen-root--light .demo-lab-wizard-map-proof-strip {
+  border-color: rgba(14, 116, 144, 0.22) !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.1) !important;
+}
+
+.demo-lab-fullscreen-root--light .demo-lab-wizard-map-proof-strip strong {
+  color: #0f172a !important;
+}
+
+.demo-lab-fullscreen-root--light .demo-lab-wizard-map-proof-strip span,
+.demo-lab-fullscreen-root--light .demo-lab-wizard-map-proof-strip a {
+  color: #075985 !important;
 }
 
 @media (max-width: 520px) {
@@ -47842,7 +48141,9 @@ html[data-theme="light"] .demo-lab-fullscreen-stage .demo-lab-studio,
   .demo-lab-fullscreen-root .demo-lab-wizard-result-card,
   .demo-lab-fullscreen-root .demo-lab-wizard-events,
   .demo-lab-fullscreen-root .demo-lab-wizard-trazo-side,
-  .demo-lab-fullscreen-root .demo-lab-wizard-map-container {
+  .demo-lab-fullscreen-root .demo-lab-wizard-map-container,
+  .demo-lab-fullscreen-root .demo-lab-wizard-proof-decoder,
+  .demo-lab-fullscreen-root .demo-lab-wizard-proof-card {
     width: 100% !important;
     min-width: 0 !important;
     max-width: 100% !important;
@@ -47907,6 +48208,123 @@ html[data-theme="light"] .demo-lab-fullscreen-stage .demo-lab-studio,
     max-width: 100% !important;
     box-sizing: border-box !important;
     overflow-x: hidden !important;
+  }
+}
+
+/* Demo Lab mobile cockpit: keep the actual wizard outcome in the first viewport. */
+@media (max-width: 520px) {
+  .demo-lab-fullscreen-root .demo-lab-context-strip {
+    display: none !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-shell {
+    padding-top: 0.55rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-mode-bar--compact {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 0.42rem !important;
+    margin: 0 0 0.55rem !important;
+    padding: 0.52rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-mode-bar--compact > div:first-child {
+    display: none !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-mode-bar--compact > div:last-child {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.38rem !important;
+    width: 100% !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-mode-tab {
+    min-height: 2.45rem !important;
+    justify-content: center !important;
+    padding: 0.28rem 0.35rem !important;
+    font-size: 0.62rem !important;
+    letter-spacing: 0.02em !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-mode-tab span:first-child {
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-nav {
+    top: 0.45rem !important;
+    margin: 0.45rem 0.62rem !important;
+    gap: 0.45rem !important;
+    padding: 0.5rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-brief {
+    margin: 0 0.62rem 0.5rem !important;
+    padding: 0.66rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-trust-switcher {
+    margin: 0.45rem 0.62rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-trust-switcher > summary {
+    min-height: 40px !important;
+    padding: 0.58rem 0.7rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-gano-header h2 {
+    font-size: clamp(1.55rem, 7vw, 2rem) !important;
+    line-height: 1 !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-gano-lede {
+    display: -webkit-box !important;
+    margin-top: 0.55rem !important;
+    overflow: hidden !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 2 !important;
+    font-size: 0.78rem !important;
+    line-height: 1.35 !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-gano-grid {
+    gap: 0.62rem !important;
+    margin-top: 0.72rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-gano-card {
+    gap: 0.24rem !important;
+    padding: 0.82rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-gano-icon {
+    width: 3.35rem !important;
+    height: 3.35rem !important;
+    border-radius: 16px !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-gano-icon span {
+    font-size: 0.55rem !important;
+    letter-spacing: 0.04em !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-gano-card h3 {
+    margin-top: 0.55rem !important;
+    font-size: 0.95rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-gano-card p {
+    font-size: 0.78rem !important;
+    line-height: 1.38 !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-gano-card small {
+    font-size: 0.58rem !important;
+    letter-spacing: 0.06em !important;
   }
 }
 

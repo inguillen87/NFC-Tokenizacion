@@ -65,6 +65,12 @@ test("demo lab fullscreen mobile keeps CTAs inside viewport and light mode visib
   assert.match(page, /demo-lab-cta-short/);
   assert.match(client, /demo-lab-cta-full/);
   assert.match(client, /demo-lab-cta-short/);
+  assert.match(css, /Demo Lab mobile cockpit/);
+  assert.match(css, /@media \(max-width:\s*520px\)[\s\S]*\.demo-lab-fullscreen-root \.demo-lab-context-strip\s*\{[\s\S]*display:\s*none !important/);
+  assert.match(css, /@media \(max-width:\s*520px\)[\s\S]*\.demo-lab-fullscreen-root \.demo-lab-mode-bar--compact > div:last-child\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /@media \(max-width:\s*520px\)[\s\S]*\.demo-lab-fullscreen-root \.demo-lab-shell\s*\{[\s\S]*padding-top:\s*0\.55rem/);
+  assert.match(css, /@media \(max-width:\s*520px\)[\s\S]*\.demo-lab-fullscreen-root \.demo-lab-wizard-gano-lede\s*\{[\s\S]*-webkit-line-clamp:\s*2/);
+  assert.match(css, /@media \(max-width:\s*520px\)[\s\S]*\.demo-lab-fullscreen-root \.demo-lab-wizard-gano-grid\s*\{[\s\S]*margin-top:\s*0\.72rem/);
 });
 
 test("demo lab hub keeps C-level contrast across cards, filters and theme controls", async () => {
@@ -145,6 +151,38 @@ test("demo lab trust scenario deep links open contextual wizard proof layers", a
   assert.match(css, /html\.theme-light \.demo-lab-trust-context__step strong,[\s\S]*html\[data-theme="light"\] \.demo-lab-trust-context__outcome strong/);
   assert.match(css, /@media \(max-width:\s*640px\)[\s\S]*\.demo-lab-trust-context__primary,[\s\S]*width:\s*100%/);
   assert.match(css, /@media \(max-width:\s*640px\)[\s\S]*\.demo-lab-trust-context__step\s*\{[\s\S]*grid-template-columns:\s*1\.8rem minmax\(0,\s*1fr\)/);
+});
+
+test("demo lab wizard explains proof and business outcome for enterprise buyers", async () => {
+  const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
+  const client = await readFile(new URL("../src/app/(public)/demo-lab/demo-lab-client.tsx", import.meta.url), "utf8");
+
+  assert.match(client, /const traceProofCards = locale === "en"/);
+  assert.match(client, /const executiveOutcomeCards = locale === "en"/);
+  assert.match(client, /What this map proves/);
+  assert.match(client, /Recibo publico hash-only/);
+  assert.match(client, /Board-ready outcome from one verified tap/);
+  assert.match(client, /Resultado ejecutivo de un tap verificado/);
+  assert.match(client, /nexID keeps private data, IOTA can anchor audit receipts, and Polygon is reserved/);
+  assert.match(client, /href=\{DEMO_PUBLIC_PROOF_URL\}/);
+  assert.match(client, /demo-lab-wizard-proof-decoder/);
+  assert.match(client, /demo-lab-wizard-proof-grid/);
+  assert.match(client, /demo-lab-wizard-map-proof-strip/);
+  assert.match(client, /Mapa para personas\. Recibo hash para auditoria\. Datos privados quedan en nexID/);
+  assert.match(client, /demo-lab-wizard-gano-lede/);
+  assert.match(client, /executiveOutcomeCards\.map/);
+  assert.match(css, /\.demo-lab-wizard-proof-decoder\s*\{[\s\S]*grid/);
+  assert.match(css, /\.demo-lab-wizard-proof-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /\.demo-lab-wizard-proof-link\s*\{[\s\S]*min-height:\s*44px/);
+  assert.match(css, /\.demo-lab-wizard-map-container\s*\{[\s\S]*position:\s*relative/);
+  assert.match(css, /\.demo-lab-wizard-map-proof-strip\s*\{[\s\S]*position:\s*absolute/);
+  assert.match(css, /html\.theme-light \.demo-lab-wizard-proof-decoder,[\s\S]*html\[data-theme="light"\] \.demo-lab-wizard-proof-card/);
+  assert.match(css, /html\.theme-light \.demo-lab-wizard-map-proof-strip,[\s\S]*html\[data-theme="light"\] \.demo-lab-wizard-map-proof-strip/);
+  assert.match(css, /\.demo-lab-fullscreen-root--light \.demo-lab-wizard-proof-decoder,[\s\S]*\.demo-lab-fullscreen-root--light \.demo-lab-wizard-proof-card/);
+  assert.match(css, /\.demo-lab-fullscreen-root--light \.demo-lab-wizard-map-proof-strip/);
+  assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*\.demo-lab-fullscreen-root \.demo-lab-wizard-proof-grid\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+  assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*\.demo-lab-fullscreen-root \.demo-lab-wizard-map-proof-strip\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+  assert.match(css, /@media \(max-width:\s*520px\)[\s\S]*\.demo-lab-fullscreen-root \.demo-lab-wizard-proof-decoder/);
 });
 
 test("landing hero stats use real configured fields and no old cost placeholder", async () => {

@@ -56,6 +56,7 @@ test("tenant account menu renders as a top-level drawer above CRM layers", () =>
 
 test("global CSS prevents dashboard maps from covering account drawer", () => {
   assert.match(globalsSource, /html\.nexid-account-menu-open,\s*body\.nexid-account-menu-open\s*\{[\s\S]*overflow:\s*hidden/);
+  assert.match(globalsSource, /body\.nexid-crm-overlay-active \.dashboard-sidebar,\s*body\.nexid-crm-overlay-active \.dashboard-header,\s*body\.nexid-crm-overlay-active \.dashboard-mobile-dock\s*\{[\s\S]*display:\s*none !important/);
   assert.match(globalsSource, /\.nexid-account-layer\s*\{[\s\S]*z-index:\s*2147483600 !important/);
   assert.match(globalsSource, /\.nexid-account-layer\s*\{[\s\S]*display:\s*block !important/);
   assert.match(globalsSource, /\.nexid-account-layer\s*\{[\s\S]*width:\s*100vw !important/);

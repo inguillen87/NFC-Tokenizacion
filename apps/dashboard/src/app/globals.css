@@ -1099,6 +1099,7 @@ body.nexid-crm-overlay-active {
 }
 
 body.nexid-crm-overlay-active .dashboard-sidebar,
+body.nexid-crm-overlay-active .dashboard-header,
 body.nexid-crm-overlay-active .dashboard-mobile-dock {
   display: none !important;
 }

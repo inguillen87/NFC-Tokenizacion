@@ -1371,6 +1371,63 @@ function DemoLabStudioHero({
       { label: "Accion comercial", title: "La marca obtiene la proxima mejor accion.", body: "Garantia, reclamo, CRM, loyalty u ownership salen del mismo tap." },
     ];
   const activeStepGuidance = stepGuidance[step];
+  const traceProofCards = locale === "en"
+    ? [
+      { label: "nexID", title: "Business verdict", body: "UID, batch, tenant policy and risk become one decision before benefits open.", proof: "Private rules stay inside nexID" },
+      { label: "IOTA", title: "Public hash-only receipt", body: "A Merkle root or memo can prove inclusion without exposing customers, routes or keys.", proof: "Explorer proves time and payload" },
+      { label: "Polygon", title: "Approved ownership", body: "Ownership or premium certificate only appears after buyer claim and tenant approval.", proof: "No mint on replay or anonymous claim" },
+      { label: "API", title: "Operational action", body: "CRM, recall, warranty, loyalty or webhook receive a usable result from the same tap.", proof: "Enterprise systems can act" },
+    ]
+    : locale === "pt-BR"
+    ? [
+      { label: "nexID", title: "Veredito de negocio", body: "UID, lote, politica do tenant e risco viram uma decisao antes dos beneficios.", proof: "Regras privadas ficam no nexID" },
+      { label: "IOTA", title: "Recibo publico hash-only", body: "Merkle root ou memo prova inclusao sem expor clientes, rotas ou chaves.", proof: "Explorer prova tempo e payload" },
+      { label: "Polygon", title: "Ownership aprovado", body: "Certificado ou ownership aparece so depois de claim do comprador e aprovacao.", proof: "Sem mint em replay ou claim anonimo" },
+      { label: "API", title: "Acao operacional", body: "CRM, recall, garantia, loyalty ou webhook recebem um resultado acionavel.", proof: "Sistemas enterprise podem agir" },
+    ]
+    : [
+      { label: "nexID", title: "Veredicto de negocio", body: "UID, lote, politica del tenant y riesgo se vuelven una decision antes de abrir beneficios.", proof: "Reglas privadas quedan en nexID" },
+      { label: "IOTA", title: "Recibo publico hash-only", body: "Merkle root o memo prueba inclusion sin exponer clientes, rutas privadas ni llaves.", proof: "Explorer prueba tiempo y payload" },
+      { label: "Polygon", title: "Ownership aprobado", body: "Certificado u ownership aparece solo despues de claim del comprador y aprobacion.", proof: "Sin mint en replay o claim anonimo" },
+      { label: "API", title: "Accion operativa", body: "CRM, recall, garantia, loyalty o webhook reciben un resultado accionable.", proof: "Sistemas enterprise pueden actuar" },
+    ];
+  const executiveOutcomeCards = locale === "en"
+    ? [
+      { metric: "Fraud", title: "Block copied URLs", body: "Replay, tamper and invalid channels stop before claims, store actions or certificates.", proof: "Risk policy applied" },
+      { metric: "Channel", title: "See real demand", body: "Valid taps create city, campaign and stock signals without assuming personal identity.", proof: "CRM signal ready" },
+      { metric: "Compliance", title: "Audit without data leak", body: "Hash-only evidence can be checked by auditors while private operations stay private.", proof: "DPP-ready proof" },
+      { metric: "Revenue", title: "Open post-sale paths", body: "Warranty, ownership, loyalty and partner offers start from a verified product event.", proof: "Next action ready" },
+    ]
+    : locale === "pt-BR"
+    ? [
+      { metric: "Fraude", title: "Bloqueia URLs copiadas", body: "Replay, tamper e canal invalido param antes de claims, loja ou certificados.", proof: "Politica de risco aplicada" },
+      { metric: "Canal", title: "Mostra demanda real", body: "Taps validos criam sinais de cidade, campanha e estoque sem assumir identidade pessoal.", proof: "Sinal CRM pronto" },
+      { metric: "Compliance", title: "Audita sem vazar dados", body: "Evidencia hash-only pode ser checada por auditores mantendo operacao privada.", proof: "Prova DPP-ready" },
+      { metric: "Receita", title: "Abre pos-venda", body: "Garantia, ownership, loyalty e ofertas de parceiros saem de evento verificado.", proof: "Proxima acao pronta" },
+    ]
+    : [
+      { metric: "Fraude", title: "Bloquea URLs copiadas", body: "Replay, tamper y canal invalido frenan antes de claims, tienda o certificados.", proof: "Politica de riesgo aplicada" },
+      { metric: "Canal", title: "Muestra demanda real", body: "Taps validos crean senales de ciudad, campana y stock sin asumir identidad personal.", proof: "Senal CRM lista" },
+      { metric: "Compliance", title: "Audita sin filtrar datos", body: "Evidencia hash-only puede ser revisada por auditores sin exponer la operacion privada.", proof: "Prueba DPP-ready" },
+      { metric: "Revenue", title: "Abre postventa", body: "Garantia, ownership, loyalty y ofertas de partners salen de un evento verificado.", proof: "Proxima accion lista" },
+    ];
+  const proofDecoderTitle = locale === "en" ? "What this map proves" : locale === "pt-BR" ? "O que este mapa prova" : "Que prueba este mapa";
+  const proofDecoderBody = locale === "en"
+    ? "The visible trace is a business explanation. The cryptographic evidence is hash-only: nexID keeps private data, IOTA can anchor audit receipts, and Polygon is reserved for ownership or certificates."
+    : locale === "pt-BR"
+    ? "A rota visivel e uma explicacao de negocio. A evidencia criptografica e hash-only: nexID guarda dados privados, IOTA pode ancorar recibos e Polygon fica para ownership ou certificados."
+    : "La ruta visible es una explicacion de negocio. La evidencia criptografica es hash-only: nexID guarda datos privados, IOTA puede anclar recibos y Polygon queda para ownership o certificados.";
+  const outcomeHeader = locale === "en"
+    ? "Board-ready outcome from one verified tap"
+    : locale === "pt-BR"
+    ? "Resultado executivo de um toque verificado"
+    : "Resultado ejecutivo de un tap verificado";
+  const outcomeSubhead = locale === "en"
+    ? "This is the part a buyer, auditor or investor needs to understand: product trust becomes operational control and commercial action, not just a pretty certificate."
+    : locale === "pt-BR"
+    ? "Isto e o que comprador, auditor ou investidor precisa entender: confianca do produto vira controle operacional e acao comercial."
+    : "Esto es lo que un comprador, auditor o inversor necesita entender: la confianza del producto se convierte en control operativo y accion comercial.";
+  const proofVerifierCta = locale === "en" ? "Open public Proof Verify" : locale === "pt-BR" ? "Abrir Proof Verify publico" : "Abrir Proof Verify publico";
 
   const scheduleLabel = locale === "en" ? "Schedule demo →" : locale === "pt-BR" ? "Agendar demo →" : "Agendar demo →";
   const backHome = locale === "en" ? "← nexID" : "← nexID";
@@ -1428,14 +1485,13 @@ function DemoLabStudioHero({
         </div>
       </div>
 
-      {trustContext ? <DemoTrustScenarioContextCard context={trustContext} /> : null}
-
       <details className="demo-lab-trust-switcher" open={!activeTrustScenario}>
         <summary>
           <span>{locale === "en" ? "Switch trust layer" : locale === "pt-BR" ? "Trocar camada de confianca" : "Cambiar capa de confianza"}</span>
           <strong>{activeTrustScenario ? trustContext?.title : locale === "en" ? "Choose IOTA, Polygon, NFC, offline or DPP" : "Elegir IOTA, Polygon, NFC, offline o DPP"}</strong>
           <ChevronRight className="h-4 w-4" />
         </summary>
+        {trustContext ? <DemoTrustScenarioContextCard context={trustContext} /> : null}
         <DemoTrustScenarioRail
           txt={txt}
           locale={locale}
@@ -1570,9 +1626,38 @@ function DemoLabStudioHero({
               routeKm={routeKm}
               labels={txt.controls}
             />
+            <div className="demo-lab-wizard-map-proof-strip">
+              <span>{locale === "en" ? "HASH-ONLY PUBLIC PROOF" : locale === "pt-BR" ? "PROVA PUBLICA HASH-ONLY" : "PRUEBA PUBLICA HASH-ONLY"}</span>
+              <strong>{locale === "en" ? "Map for people. Hash receipt for auditors. Private data stays in nexID." : locale === "pt-BR" ? "Mapa para pessoas. Recibo hash para auditoria. Dados privados ficam no nexID." : "Mapa para personas. Recibo hash para auditoria. Datos privados quedan en nexID."}</strong>
+              <Link href={DEMO_PUBLIC_PROOF_URL}>
+                Proof Verify
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
           </div>
           <div className="demo-lab-wizard-trazo-side grid max-h-[68vh] gap-3 overflow-y-auto rounded-3xl border border-white/10 bg-slate-900/65 p-5 shadow-inner">
             <p className="demo-lab-wizard-eyebrow text-xs font-black uppercase tracking-[0.16em] text-cyan-300">ÚLTIMOS TAPS EN VIVO</p>
+            <div className="demo-lab-wizard-proof-decoder">
+              <div className="demo-lab-wizard-proof-decoder__head">
+                <span>{locale === "en" ? "EXECUTIVE DECODER" : locale === "pt-BR" ? "DECODER EXECUTIVO" : "DECODIFICADOR EJECUTIVO"}</span>
+                <strong>{proofDecoderTitle}</strong>
+                <p>{proofDecoderBody}</p>
+              </div>
+              <div className="demo-lab-wizard-proof-grid">
+                {traceProofCards.map((card) => (
+                  <article key={card.label} className="demo-lab-wizard-proof-card">
+                    <span>{card.label}</span>
+                    <strong>{card.title}</strong>
+                    <p>{card.body}</p>
+                    <small>{card.proof}</small>
+                  </article>
+                ))}
+              </div>
+              <Link href={DEMO_PUBLIC_PROOF_URL} className="demo-lab-wizard-proof-link">
+                {proofVerifierCta}
+                <ChevronRight className="h-4 w-4" />
+              </Link>
+            </div>
             {liveEvents.length === 0 ? (
               <div className="demo-lab-wizard-event demo-lab-wizard-event--autenticado rounded-2xl border border-emerald-300/25 bg-emerald-500/10 p-3 text-xs">
                 <strong>AUTENTICADO</strong>
@@ -1611,35 +1696,16 @@ function DemoLabStudioHero({
         <div className="demo-lab-wizard-scene demo-lab-wizard-scene--gano grid min-h-[calc(100vh-12rem)] content-center gap-5 p-3">
           <div className="demo-lab-wizard-gano-header max-w-4xl">
             <p className="demo-lab-wizard-eyebrow text-xs font-black uppercase tracking-[0.16em] text-cyan-300">{locale === "en" ? "BRAND OUTCOME" : "RESULTADO PARA LA MARCA"}</p>
-            <h2 className="mt-2 text-3xl font-black leading-none text-white md:text-5xl">{locale === "en" ? "What the brand gained from this tap" : locale === "pt-BR" ? "O que a marca ganhou com esse toque" : "Qué ganó la marca con este toque"}</h2>
+            <h2 className="mt-2 text-3xl font-black leading-none text-white md:text-5xl">{outcomeHeader}</h2>
+            <p className="demo-lab-wizard-gano-lede">{outcomeSubhead}</p>
           </div>
           <div className="demo-lab-wizard-gano-grid grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {[
-              {
-                icon: <ShieldCheck size={32} />,
-                title: locale === "en" ? "Full profile" : "Ficha completa",
-                body: locale === "en" ? "Product, route and verifiable proof in 1 tap." : "Producto, ruta y prueba verificable en 1 toque.",
-              },
-              {
-                icon: <Smartphone size={32} />,
-                title: locale === "en" ? "Consumer view" : "Vista consumidor",
-                body: locale === "en" ? "NFC portal + loyalty + contextual store." : "Portal NFC + loyalty + tienda contextual.",
-              },
-              {
-                icon: <BadgeCheck size={32} />,
-                title: locale === "en" ? "NFT / certificate" : "NFT / certificado",
-                body: locale === "en" ? "Polygon: ownership request with approval policy." : "Polygon: solicitud de propiedad con aprobación.",
-              },
-              {
-                icon: <UserRound size={32} />,
-                title: locale === "en" ? "Claim ownership" : "Reclamar propiedad",
-                body: locale === "en" ? "Login, brand, and verified holder." : "Ingreso, marca y titular verificado.",
-              },
-            ].map((card, i) => (
-              <div key={i} className="demo-lab-wizard-gano-card rounded-3xl border border-white/10 bg-slate-900/65 p-5 shadow-inner">
-                <div className="demo-lab-wizard-gano-icon grid h-14 w-14 place-items-center rounded-2xl bg-cyan-500/10 text-cyan-200">{card.icon}</div>
+            {executiveOutcomeCards.map((card) => (
+              <div key={card.metric} className="demo-lab-wizard-gano-card rounded-3xl border border-white/10 bg-slate-900/65 p-5 shadow-inner">
+                <div className="demo-lab-wizard-gano-icon grid h-14 w-14 place-items-center rounded-2xl bg-cyan-500/10 text-cyan-200"><span>{card.metric}</span></div>
                 <h3 className="mt-4 text-lg font-black text-white">{card.title}</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-400">{card.body}</p>
+                <small>{card.proof}</small>
               </div>
             ))}
           </div>
