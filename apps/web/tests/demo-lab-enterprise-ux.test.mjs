@@ -40,7 +40,9 @@ test("demo lab fullscreen mobile keeps CTAs inside viewport and light mode visib
   const client = await readFile(new URL("../src/app/(public)/demo-lab/demo-lab-client.tsx", import.meta.url), "utf8");
 
   assert.match(css, /Demo Lab enterprise closure/);
-  assert.match(page, /const requestedTheme = firstParam\(params\.theme\) === "light"/);
+  assert.match(page, /const requestedThemeParam = firstParam\(params\.theme\)/);
+  assert.match(page, /const cookieTheme = \(await cookies\(\)\)\.get\("theme"\)\?\.value/);
+  assert.match(page, /requestedThemeParam === "light" \|\| requestedThemeParam === "dark"/);
   assert.match(page, /demo-lab-fullscreen-root--light/);
   assert.match(css, /html\.theme-light \.demo-lab-fullscreen-stage[\s\S]*#f8fbff/);
   assert.match(css, /demo-lab-fullscreen-root--light \.demo-lab-fullscreen-stage[\s\S]*#f8fbff/);
@@ -84,10 +86,22 @@ test("demo lab hub keeps C-level contrast across cards, filters and theme contro
   assert.match(page, /demo-lab-hub-card-grid/);
   assert.match(page, /demo-lab-hub-vertical-grid/);
   assert.match(page, /HUB_EXECUTIVE_PATHS/);
+  assert.match(page, /HUB_PROOF_STACK/);
   assert.match(page, /demo-lab-hub-executive-path/);
+  assert.match(page, /demo-lab-hub-proof-stack/);
   assert.match(page, /Ruta enterprise/);
   assert.match(page, /IOTA \/ hash-only/);
   assert.match(page, /Polygon ready/);
+  assert.match(page, /API \/ webhooks/);
+  assert.match(page, /href:\s*"\/sdk"/);
+  assert.match(page, /CRM, recall, garantia, loyalty o webhook/);
+  assert.match(page, /volvés al Hub desde la barra superior/);
+  assert.match(page, /const cookieTheme = \(await cookies\(\)\)\.get\("theme"\)\?\.value/);
+  assert.match(page, /La demo separa negocio, privacidad y blockchain/);
+  assert.match(page, /nexID opera la identidad del producto/);
+  assert.match(page, /Recibo publico hash-only/);
+  assert.match(page, /Propiedad, garantia y reventa/);
+  assert.match(page, /Conexion con ERP, CRM y portal/);
   assert.match(page, /href="\/proof\/verify"/);
   assert.match(page, /href:\s*"\/demo-lab\?scenario=qr-gs1"/);
   assert.match(page, /href:\s*"\/demo-lab\?scenario=polygon-ownership"/);
@@ -104,11 +118,23 @@ test("demo lab hub keeps C-level contrast across cards, filters and theme contro
   assert.match(css, /html\.theme-light \.demo-lab-hub-root \.theme-toggle,[\s\S]*color:\s*#075985 !important/);
   assert.match(css, /\.demo-lab-hub-root--light \.theme-toggle,[\s\S]*color:\s*#075985 !important/);
   assert.match(css, /Demo Lab hub enterprise path/);
-  assert.match(css, /\.demo-lab-hub-executive-path\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*0\.9fr\)\s*minmax\(0,\s*1\.35fr\)/);
-  assert.match(css, /\.demo-lab-hub-executive-path__grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /\.demo-lab-hub-title-gradient\s*\{[\s\S]*background-image:\s*linear-gradient\(90deg,\s*#22d3ee,\s*#f8fafc/);
+  assert.match(css, /html\.theme-light \.demo-lab-hub-title-gradient,[\s\S]*\.demo-lab-hub-root--light \.demo-lab-hub-title-gradient/);
+  assert.match(css, /\.demo-lab-hub-root a:focus-visible,[\s\S]*outline:\s*3px solid rgba\(103,\s*232,\s*249,\s*0\.9\)/);
+  assert.match(css, /\.demo-lab-hub-executive-path\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*0\.82fr\)\s*minmax\(0,\s*1\.48fr\)/);
+  assert.match(css, /\.demo-lab-hub-executive-path__grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /\.demo-lab-hub-executive-path__note\s*\{[\s\S]*background:\s*rgba\(8,\s*145,\s*178,\s*0\.12\)/);
   assert.match(css, /html\.theme-light \.demo-lab-hub-executive-path,[\s\S]*\.demo-lab-hub-root--light \.demo-lab-hub-executive-path/);
   assert.match(css, /html\.theme-light \.demo-lab-hub-executive-path__card,[\s\S]*\.demo-lab-hub-root--light \.demo-lab-hub-executive-path__card/);
+  assert.match(css, /html\.theme-light \.demo-lab-hub-executive-path__note,[\s\S]*\.demo-lab-hub-root--light \.demo-lab-hub-executive-path__note/);
+  assert.match(css, /\.demo-lab-hub-root--light \[class~="text-cyan-100"\],[\s\S]*\.demo-lab-hub-root--light \[class~="text-cyan-400"\]/);
   assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*\.demo-lab-hub-executive-path\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+  assert.match(css, /\.demo-lab-hub-proof-stack\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*0\.86fr\)\s*minmax\(0,\s*1\.24fr\)/);
+  assert.match(css, /\.demo-lab-hub-proof-stack__grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /html\.theme-light \.demo-lab-hub-proof-stack,[\s\S]*\.demo-lab-hub-root--light \.demo-lab-hub-proof-stack/);
+  assert.match(css, /html\.theme-light \.demo-lab-hub-proof-stack__head,[\s\S]*\.demo-lab-hub-root--light \.demo-lab-hub-proof-stack__card/);
+  assert.match(css, /html\.theme-light \.demo-lab-hub-proof-stack__head strong,[\s\S]*\.demo-lab-hub-root--light \.demo-lab-hub-proof-stack__card strong/);
+  assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*\.demo-lab-hub-proof-stack\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
 });
 
 test("demo lab trust scenario deep links open contextual wizard proof layers", async () => {

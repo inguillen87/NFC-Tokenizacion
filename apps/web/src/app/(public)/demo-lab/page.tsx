@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { getWebI18n } from "../../../lib/locale";
 import { JsonLd } from "../../../components/json-ld";
 import { DemoLabClient } from "./demo-lab-client";
@@ -22,7 +23,7 @@ import {
   CloudOff,
   FileText,
   Info,
-  X,
+  Database,
 } from "lucide-react";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -487,6 +488,41 @@ const HUB_EXECUTIVE_PATHS = [
     href: "/demo-lab?scenario=polygon-ownership",
     cta: "Ver ownership",
   },
+  {
+    icon: Database,
+    eyebrow: "API / webhooks",
+    title: "Conecta el resultado",
+    body: "CRM, recall, garantia, loyalty o webhook reciben una decision lista para operar.",
+    href: "/sdk",
+    cta: "Ver SDK/API",
+  },
+];
+
+const HUB_PROOF_STACK = [
+  {
+    label: "nexID Core",
+    title: "Dato privado + reglas de negocio",
+    body: "UID, tenant, lote, permisos, estado del producto, CRM y documentos sensibles quedan bajo control de la empresa.",
+    status: "Privado",
+  },
+  {
+    label: "IOTA",
+    title: "Recibo publico hash-only",
+    body: "Publica hashes o Merkle roots para auditoria externa cuando hay que probar que una evidencia existia y no cambio.",
+    status: "Audit-ready",
+  },
+  {
+    label: "Polygon",
+    title: "Propiedad, garantia y reventa",
+    body: "Se usa cuando el comprador reclama ownership, certificado NFT, garantia transferible o beneficio comercial verificable.",
+    status: "Opcional",
+  },
+  {
+    label: "API / SDK",
+    title: "Conexion con ERP, CRM y portal",
+    body: "El mismo flujo entra por QR, NFC, app de campo o API; cada canal recibe una salida clara para operar.",
+    status: "Integrable",
+  },
 ];
 
 export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
@@ -499,7 +535,14 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
   const initialScenario = firstParam(
     params.scenario || params.proof || params.layer
   );
-  const requestedTheme = firstParam(params.theme) === "light" ? "light" : "dark";
+  const requestedThemeParam = firstParam(params.theme);
+  const cookieTheme = (await cookies()).get("theme")?.value;
+  const requestedTheme =
+    requestedThemeParam === "light" || requestedThemeParam === "dark"
+      ? requestedThemeParam
+      : cookieTheme === "light"
+        ? "light"
+        : "dark";
   const demoThemeClass = requestedTheme === "light" ? "demo-lab-fullscreen-root--light" : "";
 
   // ── FULL-SCREEN SIMULATOR MODE ───────────────────────────────────────────
@@ -668,7 +711,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
             nexID Platform
           </p>
           <h1 className="mb-5 text-4xl font-extrabold tracking-tight md:text-6xl">
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-white to-violet-400">
+            <span className="demo-lab-hub-title-gradient text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-white to-violet-400">
               Demo Lab
             </span>
           </h1>
@@ -684,8 +727,11 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
             <strong>De producto fisico a prueba verificable en tres clicks.</strong>
             <p>
               Pensado para ventas, inversores y equipos C-level: primero se entiende el flujo,
-              despues se valida el hash y finalmente se ve donde entran IOTA y Polygon.
+              despues se valida el hash y finalmente se ve donde entran IOTA, Polygon y API.
             </p>
+            <small className="demo-lab-hub-executive-path__note">
+              Abrís una demo, volvés al Hub desde la barra superior y podés saltar a Docs, SDK o Proof Verify.
+            </small>
           </div>
           <div className="demo-lab-hub-executive-path__grid">
             {HUB_EXECUTIVE_PATHS.map((item) => {
@@ -705,6 +751,32 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
                 </Link>
               );
             })}
+          </div>
+        </section>
+
+        <section className="demo-lab-hub-proof-stack mb-10" aria-label="Capas de prueba nexID">
+          <div className="demo-lab-hub-proof-stack__head">
+            <div className="demo-lab-hub-proof-stack__icon">
+              <Database className="h-4 w-4" />
+            </div>
+            <div>
+              <span>Que se prueba realmente</span>
+              <strong>La demo separa negocio, privacidad y blockchain.</strong>
+              <p>
+                Para un cliente no tecnico: nexID opera la identidad del producto, IOTA demuestra evidencia publica
+                hash-only y Polygon aparece solo cuando hay propiedad, garantia o reventa que certificar.
+              </p>
+            </div>
+          </div>
+          <div className="demo-lab-hub-proof-stack__grid">
+            {HUB_PROOF_STACK.map((item) => (
+              <article key={item.label} className="demo-lab-hub-proof-stack__card">
+                <span>{item.label}</span>
+                <strong>{item.title}</strong>
+                <p>{item.body}</p>
+                <em>{item.status}</em>
+              </article>
+            ))}
           </div>
         </section>
 
