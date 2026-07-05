@@ -1,4 +1,4 @@
-const CACHE_NAME = "nexid-dash-v1";
+const CACHE_NAME = "nexid-dash-v2";
 const APP_SHELL = [
   "/",
   "/manifest.webmanifest",
@@ -57,8 +57,8 @@ self.addEventListener("fetch", (event) => {
             <body>
               <main>
                 <h1>Control Center offline</h1>
-                <p>El centro de operaciones de nexID requiere conexión de red activa para sincronizar los lotes y la telemetría en vivo.</p>
-                <a href="/">Reintentar conexión</a>
+                <p>El centro de operaciones de nexID requiere conexion de red activa para sincronizar los lotes y la telemetria en vivo.</p>
+                <a href="/">Reintentar conexion</a>
               </main>
             </body>
           </html>`,
@@ -69,12 +69,18 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (request.destination === "script") {
-    event.respondWith(fetchWithTimeout(request));
+  if (request.destination === "script" || request.destination === "style") {
+    event.respondWith(
+      fetchWithTimeout(request).then((response) => {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+        return response;
+      }).catch(() => caches.match(request)),
+    );
     return;
   }
 
-  if (request.destination === "image" || request.destination === "style" || request.destination === "font") {
+  if (request.destination === "image" || request.destination === "font") {
     event.respondWith(
       caches.match(request).then((cached) => {
         if (cached) {

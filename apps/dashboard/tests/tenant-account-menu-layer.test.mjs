@@ -4,6 +4,7 @@ import test from "node:test";
 
 const menuSource = await readFile(new URL("../src/components/tenant-account-menu.tsx", import.meta.url), "utf8");
 const globalsSource = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
+const serviceWorkerSource = await readFile(new URL("../public/sw.js", import.meta.url), "utf8");
 
 test("tenant account menu renders as a top-level drawer above CRM layers", () => {
   assert.match(menuSource, /createPortal\(menuPanel,\s*document\.body\)/);
@@ -65,4 +66,13 @@ test("global CSS prevents dashboard maps from covering account drawer", () => {
   assert.match(globalsSource, /@media \(max-width:\s*640px\)\s*\{[\s\S]*\.nexid-account-layer \.tenant-account-panel\s*\{[\s\S]*width:\s*100vw !important/);
   assert.match(globalsSource, /@media \(max-width:\s*640px\)\s*\{[\s\S]*\.nexid-account-layer \.tenant-account-panel\s*\{[\s\S]*height:\s*100dvh !important/);
   assert.match(globalsSource, /@media \(max-width:\s*640px\)\s*\{[\s\S]*\.nexid-account-layer \.tenant-account-panel\s*\{[\s\S]*max-height:\s*100dvh !important/);
+});
+
+test("dashboard service worker refreshes shell styles before falling back to cache", () => {
+  assert.match(serviceWorkerSource, /const CACHE_NAME = "nexid-dash-v2"/);
+  assert.match(serviceWorkerSource, /request\.destination === "script" \|\| request\.destination === "style"/);
+  assert.match(serviceWorkerSource, /fetchWithTimeout\(request\)\.then\(\(response\) => \{/);
+  assert.match(serviceWorkerSource, /cache\.put\(request,\s*copy\)/);
+  assert.match(serviceWorkerSource, /\.catch\(\(\) => caches\.match\(request\)\)/);
+  assert.doesNotMatch(serviceWorkerSource, /request\.destination === "image" \|\| request\.destination === "style" \|\| request\.destination === "font"/);
 });
