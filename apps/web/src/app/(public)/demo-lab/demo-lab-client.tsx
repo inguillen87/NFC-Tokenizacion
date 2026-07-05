@@ -13,6 +13,7 @@ import type { VectorMapPoint, VectorMapRoute } from "@product/ui";
 
 type Role = "ceo" | "operator" | "buyer";
 type Beat = 0 | 1 | 2 | 3;
+type DemoWizardStep = 0 | 1 | 2 | 3;
 type Vertical =
   | "wine"
   | "seeds"
@@ -153,6 +154,132 @@ function getScenarioStart(value?: string | null): { key: DemoTrustScenarioKey | 
   return { key: null, beat: 1, vertical: "wine" };
 }
 
+function getTrustScenarioInitialStep(key: DemoTrustScenarioKey | null): DemoWizardStep {
+  if (key === "iota-proof" || key === "sensor-evidence" || key === "dual-proof") return 2;
+  if (key === "polygon-ownership") return 3;
+  if (key === "nfc-424" || key === "offline-verifier") return 1;
+  return 0;
+}
+
+type DemoTrustScenarioContext = {
+  tone: DemoTrustScenarioKey;
+  eyebrow: string;
+  title: string;
+  body: string;
+  publicProof: string;
+  privateData: string;
+  primaryHref: string;
+  primaryLabel: string;
+  secondaryHref: string;
+  secondaryLabel: string;
+};
+
+function getTrustScenarioContext(key: DemoTrustScenarioKey | null, locale: AppLocale): DemoTrustScenarioContext | null {
+  if (!key) return null;
+  const isEn = locale === "en";
+  const isBr = locale === "pt-BR";
+  const copyByKey: Record<DemoTrustScenarioKey, DemoTrustScenarioContext> = {
+    "qr-gs1": {
+      tone: key,
+      eyebrow: isEn ? "Identity layer" : isBr ? "Camada de identidade" : "Capa de identidad",
+      title: isEn ? "QR / GS1 starts the product passport without forcing an app." : "QR / GS1 abre el pasaporte de producto sin obligar a instalar una app.",
+      body: isEn ? "Useful for fast rollout: product data, batch, links, recall and consumer entry point. It is not crypto-auth by itself, so nexID can add NFC or proof layers when risk grows." : "Sirve para rollout rapido: datos de producto, lote, links, recall y entrada del consumidor. No es cripto-autenticacion por si solo; nexID suma NFC o proof cuando el riesgo sube.",
+      publicProof: isEn ? "Visible: GS1 link, product data, lot and resolver policy." : "Publico: link GS1, datos de producto, lote y politica de resolucion.",
+      privateData: isEn ? "Private: CRM identity, commercial terms and tenant rules." : "Privado: identidad CRM, terminos comerciales y reglas del tenant.",
+      primaryHref: "/demo-lab?scenario=qr-gs1",
+      primaryLabel: isEn ? "Replay QR/GS1 demo" : "Reproducir demo QR/GS1",
+      secondaryHref: "/docs#trust-layers",
+      secondaryLabel: isEn ? "Read trust layers" : "Leer capas de confianza",
+    },
+    "nfc-424": {
+      tone: key,
+      eyebrow: isEn ? "Cryptographic touch" : "Toque criptografico",
+      title: isEn ? "NFC 424 validates the physical object before any claim." : "NFC 424 valida el objeto fisico antes de cualquier reclamo.",
+      body: isEn ? "The demo explains why SUN, UID and tenant policy come before ownership, rewards or warranty. The buyer sees a verdict, not raw cryptography." : "La demo explica por que SUN, UID y politica del tenant vienen antes de ownership, rewards o garantia. El comprador ve un veredicto, no criptografia cruda.",
+      publicProof: isEn ? "Visible: verdict, physical state and masked UID." : "Publico: veredicto, estado fisico y UID enmascarado.",
+      privateData: isEn ? "Private: secret material, replay controls and tenant KMS." : "Privado: secretos, controles replay y KMS del tenant.",
+      primaryHref: "/demo-lab?scenario=nfc-424",
+      primaryLabel: isEn ? "Replay NFC demo" : "Reproducir demo NFC",
+      secondaryHref: "/docs#trust-layers",
+      secondaryLabel: isEn ? "Read NFC layer" : "Leer capa NFC",
+    },
+    "offline-verifier": {
+      tone: key,
+      eyebrow: isEn ? "Field mode" : "Modo campo",
+      title: isEn ? "Offline verification keeps the workflow running without signal." : "La verificacion offline mantiene el flujo vivo sin senal.",
+      body: isEn ? "Perfect for warehouses, rural operations, wineries and mines: the device validates locally, queues evidence and syncs later with the official verdict." : "Ideal para depositos, campo, cavas y minas: el dispositivo valida localmente, encola evidencia y sincroniza despues con el veredicto oficial.",
+      publicProof: isEn ? "Visible: provisional pass, queue count and sync status." : "Publico: pase provisional, cola y estado de sync.",
+      privateData: isEn ? "Private: permission bundle, operator identity and internal QA." : "Privado: bundle de permisos, operador y QA interno.",
+      primaryHref: "/demo-lab?scenario=offline-verifier",
+      primaryLabel: isEn ? "Replay offline demo" : "Reproducir demo offline",
+      secondaryHref: "/docs#trust-layers",
+      secondaryLabel: isEn ? "Read offline architecture" : "Leer arquitectura offline",
+    },
+    "polygon-ownership": {
+      tone: key,
+      eyebrow: isEn ? "Ownership layer" : "Capa ownership",
+      title: isEn ? "Polygon is the ownership certificate, not the first authenticity check." : "Polygon es el certificado de propiedad, no la primera verificacion de autenticidad.",
+      body: isEn ? "The deep link opens the business outcome because ownership only makes sense after a fresh tap, buyer validation and tenant approval. This is how a C-level audience sees warranty, resale and club value." : "El deep link abre el resultado comercial porque ownership solo tiene sentido despues de tap fresco, comprador validado y aprobacion del tenant. Asi un C-level entiende garantia, reventa y club.",
+      publicProof: isEn ? "Visible: certificate request, token/tx when approved, public owner status." : "Publico: solicitud de certificado, token/tx al aprobarse y estado de owner.",
+      privateData: isEn ? "Private: buyer identity, invoice, warranty policy and CRM segment." : "Privado: identidad del comprador, factura, politica de garantia y segmento CRM.",
+      primaryHref: "/docs#trust-layers",
+      primaryLabel: isEn ? "Read Polygon policy" : "Leer politica Polygon",
+      secondaryHref: "/?contact=demo#contact-modal",
+      secondaryLabel: isEn ? "Design ownership pilot" : "Disenar piloto ownership",
+    },
+    "iota-proof": {
+      tone: key,
+      eyebrow: isEn ? "Audit proof layer" : "Capa de auditoria",
+      title: isEn ? "IOTA proves logistics evidence without publishing private operations." : "IOTA prueba evidencia logistica sin publicar operaciones privadas.",
+      body: isEn ? "The deep link opens the traceability step because this layer is about custody, Merkle roots and public verification. It connects directly with Proof Verify so an auditor can test a hash." : "El deep link abre trazabilidad porque esta capa trata custodia, Merkle roots y verificacion publica. Conecta directo con Proof Verify para que un auditor pruebe un hash.",
+      publicProof: isEn ? "Visible: event hash, Merkle root, tx/explorer and inclusion status." : "Publico: hash de evento, Merkle root, tx/explorer y estado de inclusion.",
+      privateData: isEn ? "Private: customer, route manifest, QA docs and commercial contract." : "Privado: cliente, manifiesto de ruta, QA interno y contrato comercial.",
+      primaryHref: DEMO_PUBLIC_PROOF_URL,
+      primaryLabel: isEn ? "Open Proof Verify demo" : "Abrir Proof Verify demo",
+      secondaryHref: "/docs#trust-layers",
+      secondaryLabel: isEn ? "Read IOTA layer" : "Leer capa IOTA",
+    },
+    "dual-proof": {
+      tone: key,
+      eyebrow: isEn ? "DPP-ready stack" : "Stack DPP-ready",
+      title: isEn ? "DPP combines identity, ownership and industrial audit proof." : "DPP combina identidad, ownership y auditoria industrial.",
+      body: isEn ? "Use this when the buyer asks for a serious enterprise story: QR/GS1 and NFC for the object, Polygon for ownership, IOTA for audit evidence." : "Usalo cuando el comprador pide una historia enterprise seria: QR/GS1 y NFC para el objeto, Polygon para ownership, IOTA para evidencia auditada.",
+      publicProof: isEn ? "Visible: passport, proof hash, owner status and compliance trail." : "Publico: pasaporte, proof hash, owner status y camino compliance.",
+      privateData: isEn ? "Private: PII, tenant policy, supplier docs and pricing terms." : "Privado: PII, politica tenant, docs de proveedor y precios.",
+      primaryHref: DEMO_PUBLIC_PROOF_URL,
+      primaryLabel: isEn ? "Verify public proof" : "Verificar prueba publica",
+      secondaryHref: "/docs#trust-layers",
+      secondaryLabel: isEn ? "Read DPP model" : "Leer modelo DPP",
+    },
+    "sensor-evidence": {
+      tone: key,
+      eyebrow: isEn ? "Industrial evidence" : "Evidencia industrial",
+      title: isEn ? "Sensor evidence turns pallets, boxes and conditions into audit facts." : "La evidencia de sensores convierte pallets, cajas y condiciones en hechos auditables.",
+      body: isEn ? "The buyer sees a clean verdict while operations keeps UHF, IoT, temperature and custody details in a controlled proof trail." : "El comprador ve un veredicto simple mientras operaciones conserva UHF, IoT, temperatura y custodia en un trail controlado.",
+      publicProof: isEn ? "Visible: milestone hash, risk state and proof receipt." : "Publico: hash del hito, estado de riesgo y recibo proof.",
+      privateData: isEn ? "Private: sensor stream, lane economics and warehouse data." : "Privado: stream sensor, costos de ruta y datos de deposito.",
+      primaryHref: DEMO_PUBLIC_PROOF_URL,
+      primaryLabel: isEn ? "Open proof receipt" : "Abrir recibo proof",
+      secondaryHref: "/docs#trust-layers",
+      secondaryLabel: isEn ? "Read sensor flow" : "Leer flujo sensor",
+    },
+    "authorized-network": {
+      tone: key,
+      eyebrow: isEn ? "Supplier network" : "Red autorizada",
+      title: isEn ? "Authorized partners operate without receiving raw infrastructure secrets." : "Los partners autorizados operan sin recibir secretos crudos de infraestructura.",
+      body: isEn ? "This scenario is for resellers, printers, integrators and suppliers: they encode and audit within role boundaries while nexID protects tenant keys and policy." : "Este escenario es para resellers, imprentas, integradores y proveedores: codifican y auditan por rol mientras nexID protege claves y politica del tenant.",
+      publicProof: isEn ? "Visible: partner role, batch status and audit receipt." : "Publico: rol del partner, estado del batch y recibo auditado.",
+      privateData: isEn ? "Private: API keys, KMS material, billing and tenant contracts." : "Privado: API keys, material KMS, facturacion y contratos tenant.",
+      primaryHref: "/docs#trust-layers",
+      primaryLabel: isEn ? "Read access model" : "Leer modelo de acceso",
+      secondaryHref: "/?contact=demo#contact-modal",
+      secondaryLabel: isEn ? "Plan partner pilot" : "Planear piloto partner",
+    },
+  };
+
+  return copyByKey[key];
+}
+
 function verticalTo3DIndustry(vertical: Vertical): string {
   if (vertical === "wine") return "bodegas";
   if (vertical === "bottle") return "botellas";
@@ -278,6 +405,7 @@ const LOCATIONS = {
 type DemoLocation = (typeof LOCATIONS)[keyof typeof LOCATIONS];
 
 const STABLE_DEMO_TIME = "2026-05-01T00:00:00.000Z";
+const DEMO_PUBLIC_PROOF_URL = "/proof/verify?event_hash=sha256%3A0ea0478b694f01a5a76eda955a78c74701786b3d13ac241e6f6cfc3363938320&anchor_id=33333333-3333-4333-8333-333333333333";
 
 const copy: Record<AppLocale, {
   heroEyebrow: string;
@@ -938,7 +1066,10 @@ export function DemoLabClient({ locale, initialVertical, initialScenario }: { lo
             latestEvent={latestEvent}
             simulating={simulating}
             activeTrustScenario={trustScenario}
-            onVertical={setVertical}
+            onVertical={(nextVertical) => {
+              setTrustScenario(null);
+              setVertical(nextVertical);
+            }}
             onBeat={setBeat}
             onTrustScenario={selectTrustScenario}
             onPassport={() => setModalView("mobile")}
@@ -1074,7 +1205,12 @@ function DemoLabStudioHero({
   onReplay: () => void;
 }) {
   const verticalList = DEMO_VERTICAL_ORDER;
-  const [step, setStep] = useState<0 | 1 | 2 | 3>(0);
+  const [step, setStep] = useState<DemoWizardStep>(() => getTrustScenarioInitialStep(activeTrustScenario));
+  const trustContext = useMemo(() => getTrustScenarioContext(activeTrustScenario, locale), [activeTrustScenario, locale]);
+
+  useEffect(() => {
+    setStep(getTrustScenarioInitialStep(activeTrustScenario));
+  }, [activeTrustScenario]);
 
   const stepLabels = locale === "en"
     ? ["Tap", "Verified", "Traced", "Won"]
@@ -1159,6 +1295,23 @@ function DemoLabStudioHero({
           <span>IOTA / Polygon ready</span>
         </div>
       </div>
+
+      {trustContext ? <DemoTrustScenarioContextCard context={trustContext} /> : null}
+
+      <details className="demo-lab-trust-switcher" open={!activeTrustScenario}>
+        <summary>
+          <span>{locale === "en" ? "Switch trust layer" : locale === "pt-BR" ? "Trocar camada de confianca" : "Cambiar capa de confianza"}</span>
+          <strong>{activeTrustScenario ? trustContext?.title : locale === "en" ? "Choose IOTA, Polygon, NFC, offline or DPP" : "Elegir IOTA, Polygon, NFC, offline o DPP"}</strong>
+          <ChevronRight className="h-4 w-4" />
+        </summary>
+        <DemoTrustScenarioRail
+          txt={txt}
+          locale={locale}
+          active={activeTrustScenario}
+          onSelect={onTrustScenario}
+          variant="wizard"
+        />
+      </details>
 
       {/* ── STEP 0: TOCA ─────────────────────────────────────── */}
       {step === 0 && (
@@ -1378,16 +1531,49 @@ function DemoLabStudioHero({
   );
 }
 
+function DemoTrustScenarioContextCard({ context }: { context: DemoTrustScenarioContext }) {
+  return (
+    <article className={`demo-lab-trust-context demo-lab-trust-context--${context.tone}`}>
+      <div className="demo-lab-trust-context__copy">
+        <span>{context.eyebrow}</span>
+        <h3>{context.title}</h3>
+        <p>{context.body}</p>
+      </div>
+      <div className="demo-lab-trust-context__proofs">
+        <div>
+          <span>Publico verificable</span>
+          <strong>{context.publicProof}</strong>
+        </div>
+        <div>
+          <span>Privado en nexID</span>
+          <strong>{context.privateData}</strong>
+        </div>
+      </div>
+      <div className="demo-lab-trust-context__actions">
+        <Link href={context.primaryHref} className="demo-lab-trust-context__primary">
+          {context.primaryLabel}
+          <ChevronRight className="h-4 w-4" />
+        </Link>
+        <Link href={context.secondaryHref} className="demo-lab-trust-context__secondary">
+          {context.secondaryLabel}
+        </Link>
+      </div>
+    </article>
+  );
+}
+
 function DemoTrustScenarioRail({
   txt,
   locale,
   active,
   onSelect,
+  variant = "default",
 }: {
   txt: DemoCopy;
   locale: AppLocale;
   active: DemoTrustScenarioKey | null;
   onSelect: (scenario: DemoTrustScenarioKey) => void;
+  variant?: "default" | "wizard";
 }) {
   const labels = locale === "en"
     ? {
@@ -1432,7 +1618,7 @@ function DemoTrustScenarioRail({
   ];
 
   return (
-    <div className="demo-lab-trust-scenarios">
+    <div className={`demo-lab-trust-scenarios ${variant === "wizard" ? "demo-lab-trust-scenarios--wizard" : ""}`}>
       <div className="demo-lab-trust-scenarios__head">
         <span>{labels.eyebrow}</span>
         <strong>{labels.title}</strong>

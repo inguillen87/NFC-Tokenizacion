@@ -12,6 +12,18 @@ test("demo lab theme toggle changes theme client-side before falling back to SSR
   assert.match(source, /applyTheme\(next\)/);
 });
 
+test("web pwa fallback stays production-gated and mobile-safe", async () => {
+  const setup = await readFile(new URL("../src/components/pwa-setup.tsx", import.meta.url), "utf8");
+  const sw = await readFile(new URL("../public/sw.js", import.meta.url), "utf8");
+
+  assert.match(setup, /process\.env\.NEXT_PUBLIC_ENABLE_PWA === "true"/);
+  assert.match(setup, /process\.env\.NODE_ENV === "production"/);
+  assert.match(sw, /\*\{box-sizing:border-box\}/);
+  assert.match(sw, /overflow-x:hidden/);
+  assert.match(sw, /width:min\(34rem,100%\)/);
+  assert.match(sw, /font-size:clamp\(1\.75rem,9vw,2\.5rem\)/);
+});
+
 test("demo lab mobile wizard shows four steps without horizontal scrolling", async () => {
   const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
 
@@ -77,6 +89,30 @@ test("demo lab hub keeps C-level contrast across cards, filters and theme contro
   assert.match(css, /\.demo-lab-hub-root \.theme-toggle,[\s\S]*\.demo-lab-hub-nav a\[href="\/proof\/verify"\]/);
   assert.match(css, /html\.theme-light \.demo-lab-hub-root \.theme-toggle,[\s\S]*color:\s*#075985 !important/);
   assert.match(css, /\.demo-lab-hub-root--light \.theme-toggle,[\s\S]*color:\s*#075985 !important/);
+});
+
+test("demo lab trust scenario deep links open contextual wizard proof layers", async () => {
+  const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
+  const client = await readFile(new URL("../src/app/(public)/demo-lab/demo-lab-client.tsx", import.meta.url), "utf8");
+
+  assert.match(client, /type DemoWizardStep = 0 \| 1 \| 2 \| 3/);
+  assert.match(client, /const DEMO_PUBLIC_PROOF_URL = "\/proof\/verify\?event_hash=/);
+  assert.match(client, /function getTrustScenarioInitialStep\(key: DemoTrustScenarioKey \| null\): DemoWizardStep/);
+  assert.match(client, /key === "iota-proof" \|\| key === "sensor-evidence" \|\| key === "dual-proof"\) return 2/);
+  assert.match(client, /key === "polygon-ownership"\) return 3/);
+  assert.match(client, /DemoTrustScenarioContextCard/);
+  assert.match(client, /demo-lab-trust-context/);
+  assert.match(client, /demo-lab-trust-switcher/);
+  assert.match(client, /<DemoTrustScenarioRail[\s\S]*variant="wizard"/);
+  assert.match(client, /window\.history\.replaceState\(null, "", href\)/);
+  assert.match(client, /setTrustScenario\(null\)/);
+  assert.match(client, /IOTA prueba evidencia logistica/);
+  assert.match(client, /Polygon es el certificado de propiedad/);
+  assert.match(css, /\.demo-lab-trust-context\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1\.15fr\)\s*minmax\(18rem,\s*0\.85fr\)/);
+  assert.match(css, /\.demo-lab-trust-switcher > summary\s*\{[\s\S]*min-height:\s*44px/);
+  assert.match(css, /\.demo-lab-trust-scenarios--wizard \.demo-lab-trust-scenario\s*\{[\s\S]*min-height:\s*124px/);
+  assert.match(css, /html\.theme-light \.demo-lab-trust-context,[\s\S]*html\[data-theme="light"\] \.demo-lab-trust-switcher/);
+  assert.match(css, /@media \(max-width:\s*640px\)[\s\S]*\.demo-lab-trust-context__primary,[\s\S]*width:\s*100%/);
 });
 
 test("landing hero stats use real configured fields and no old cost placeholder", async () => {

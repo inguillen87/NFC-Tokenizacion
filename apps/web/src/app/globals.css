@@ -31650,6 +31650,262 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
   }
 }
 
+.demo-lab-trust-context {
+  margin: 0 12px 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(18rem, 0.85fr);
+  gap: 14px;
+  align-items: stretch;
+  border: 1px solid rgba(34, 211, 238, 0.18);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(34, 211, 238, 0.13), transparent 34%),
+    linear-gradient(135deg, rgba(8, 47, 73, 0.74), rgba(15, 23, 42, 0.82));
+  padding: 16px;
+  box-shadow: 0 20px 70px rgba(8, 47, 73, 0.16);
+}
+
+.demo-lab-trust-context__copy {
+  min-width: 0;
+}
+
+.demo-lab-trust-context__copy span,
+.demo-lab-trust-context__proofs span {
+  display: block;
+  color: #67e8f9;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.demo-lab-trust-context__copy h3 {
+  margin: 0.35rem 0 0;
+  color: #f8fafc;
+  font-size: clamp(1rem, 2vw, 1.35rem);
+  line-height: 1.15;
+  letter-spacing: 0;
+}
+
+.demo-lab-trust-context__copy p {
+  margin: 0.65rem 0 0;
+  max-width: 68ch;
+  color: #cbd5e1;
+  font-size: 0.88rem;
+  line-height: 1.65;
+}
+
+.demo-lab-trust-context__proofs {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.demo-lab-trust-context__proofs div {
+  min-width: 0;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 18px;
+  background: rgba(2, 6, 23, 0.44);
+  padding: 12px;
+}
+
+.demo-lab-trust-context__proofs strong {
+  display: block;
+  margin-top: 0.45rem;
+  color: #f8fafc;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.demo-lab-trust-context__actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.demo-lab-trust-context__primary,
+.demo-lab-trust-context__secondary {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 999px;
+  padding: 0.72rem 1rem;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+
+.demo-lab-trust-context__primary {
+  border: 1px solid rgba(103, 232, 249, 0.45);
+  background: linear-gradient(135deg, #67e8f9, #2dd4bf);
+  color: #020617;
+  box-shadow: 0 16px 42px rgba(34, 211, 238, 0.2);
+}
+
+.demo-lab-trust-context__secondary {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  color: #cffafe;
+}
+
+.demo-lab-trust-switcher {
+  margin: 0 12px 12px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 22px;
+  background: rgba(2, 6, 23, 0.44);
+}
+
+.demo-lab-trust-switcher > summary {
+  display: grid;
+  min-height: 44px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  cursor: pointer;
+  list-style: none;
+  padding: 12px 14px;
+}
+
+.demo-lab-trust-switcher > summary::-webkit-details-marker {
+  display: none;
+}
+
+.demo-lab-trust-switcher > summary span {
+  color: #67e8f9;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.demo-lab-trust-switcher > summary strong {
+  min-width: 0;
+  color: #f8fafc;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.demo-lab-trust-switcher > summary svg {
+  color: #67e8f9;
+  transition: transform 0.2s ease;
+}
+
+.demo-lab-trust-switcher[open] > summary svg {
+  transform: rotate(90deg);
+}
+
+.demo-lab-trust-scenarios--wizard {
+  margin-top: 0;
+  border: 0;
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 0;
+  background: transparent;
+  padding: 12px;
+}
+
+.demo-lab-trust-scenarios--wizard .demo-lab-trust-scenarios__grid {
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+
+.demo-lab-trust-scenarios--wizard .demo-lab-trust-scenario {
+  min-height: 124px;
+  padding: 12px;
+}
+
+.demo-lab-trust-scenarios--wizard .demo-lab-trust-scenario p {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+html.theme-light .demo-lab-trust-context,
+html[data-theme="light"] .demo-lab-trust-context,
+html.theme-light .demo-lab-trust-switcher,
+html[data-theme="light"] .demo-lab-trust-switcher {
+  border-color: rgba(14, 116, 144, 0.2) !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(14, 165, 233, 0.1), transparent 34%),
+    rgba(255, 255, 255, 0.88) !important;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.08) !important;
+}
+
+html.theme-light .demo-lab-trust-context__copy h3,
+html[data-theme="light"] .demo-lab-trust-context__copy h3,
+html.theme-light .demo-lab-trust-context__proofs strong,
+html[data-theme="light"] .demo-lab-trust-context__proofs strong,
+html.theme-light .demo-lab-trust-switcher > summary strong,
+html[data-theme="light"] .demo-lab-trust-switcher > summary strong {
+  color: #0f172a !important;
+}
+
+html.theme-light .demo-lab-trust-context__copy p,
+html[data-theme="light"] .demo-lab-trust-context__copy p {
+  color: #334155 !important;
+}
+
+html.theme-light .demo-lab-trust-context__proofs div,
+html[data-theme="light"] .demo-lab-trust-context__proofs div {
+  border-color: rgba(14, 116, 144, 0.16) !important;
+  background: rgba(236, 254, 255, 0.7) !important;
+}
+
+html.theme-light .demo-lab-trust-context__secondary,
+html[data-theme="light"] .demo-lab-trust-context__secondary {
+  border-color: rgba(14, 116, 144, 0.2) !important;
+  background: rgba(255, 255, 255, 0.82) !important;
+  color: #075985 !important;
+}
+
+@media (max-width: 980px) {
+  .demo-lab-trust-context {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .demo-lab-trust-context {
+    margin-inline: 10px;
+    padding: 13px;
+  }
+
+  .demo-lab-trust-context__proofs {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .demo-lab-trust-context__actions,
+  .demo-lab-trust-context__primary,
+  .demo-lab-trust-context__secondary {
+    width: 100%;
+  }
+
+  .demo-lab-trust-switcher {
+    margin-inline: 10px;
+  }
+
+  .demo-lab-trust-switcher > summary {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .demo-lab-trust-switcher > summary span {
+    grid-column: 1 / -1;
+  }
+
+  .demo-lab-trust-switcher > summary strong {
+    white-space: normal;
+  }
+}
+
 /* Product-proof final responsive overrides.
    These intentionally outrank earlier atlas rules that used fixed column mins. */
 .landing-hero-section

@@ -49,8 +49,10 @@ self.addEventListener("fetch", (event) => {
               <meta name="viewport" content="width=device-width, initial-scale=1" />
               <title>nexID offline</title>
               <style>
-                body{margin:0;min-height:100vh;display:grid;place-items:center;background:#070b14;color:#e5f9ff;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
-                main{max-width:34rem;padding:2rem;border:1px solid rgba(103,232,249,.22);border-radius:1.5rem;background:rgba(15,23,42,.82)}
+                *{box-sizing:border-box}
+                body{margin:0;min-height:100vh;display:grid;place-items:center;overflow-x:hidden;padding:1rem;background:#070b14;color:#e5f9ff;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+                main{width:min(34rem,100%);padding:clamp(1.25rem,6vw,2rem);border:1px solid rgba(103,232,249,.22);border-radius:1.5rem;background:rgba(15,23,42,.82)}
+                h1{margin:0;font-size:clamp(1.75rem,9vw,2.5rem);line-height:1.05}
                 p{line-height:1.6;color:#b8c7d9}
                 a{color:#67e8f9;font-weight:800}
               </style>
