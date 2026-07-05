@@ -2,12 +2,11 @@ import { SignIn } from "@clerk/nextjs";
 import Link from "next/link";
 import { BrandLockup } from "@product/ui";
 import { ClerkGoogleSuperAdminButton } from "../../../components/clerk-google-super-admin-button";
-import { getAccessProfiles } from "../../../lib/access-profiles";
 import { dashboardDemoAccessAllowedForRole } from "../../../lib/dashboard-access-flags";
 import { isClerkConfiguredForRuntime } from "../../../lib/clerk-env";
 
 export default function SignInPage() {
-  const operationalProfiles = getAccessProfiles().filter((profile) => profile.key === "super-admin" || profile.key === "tenant-admin");
+  const bodegaDemoAllowed = dashboardDemoAccessAllowedForRole("tenant-admin");
   const clerkEnabled = isClerkConfiguredForRuntime();
 
   return (
@@ -27,26 +26,32 @@ export default function SignInPage() {
             demos comerciales siguen separados para no mezclar operaciones enterprise con el portal consumidor.
           </p>
           <div className="mt-8 grid max-w-xl gap-3 sm:grid-cols-2">
-            {operationalProfiles.map((profile) => (
-              dashboardDemoAccessAllowedForRole(profile.role) ? (
-                <Link
-                  key={profile.key}
-                  href={`/api/session/demo?role=${encodeURIComponent(profile.role)}`}
-                  title={`Entrar como ${profile.label}`}
-                  className="rounded-2xl border border-cyan-300/25 bg-cyan-400/10 p-4 text-left transition hover:border-cyan-200/70 hover:bg-cyan-400/15"
-                >
-                  <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Acceso demo</p>
-                  <h2 className="mt-2 text-lg font-black text-white">{profile.label}</h2>
-                  <p className="mt-2 text-sm leading-5 text-slate-300">{profile.note}</p>
-                </Link>
-              ) : (
-                <div key={profile.key} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-left opacity-80">
-                  <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Credenciales requeridas</p>
-                  <h2 className="mt-2 text-lg font-black text-white">{profile.label}</h2>
-                  <p className="mt-2 text-sm leading-5 text-slate-400">{profile.note}</p>
-                </div>
-              )
-            ))}
+            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-left">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Fundador allowlisted</p>
+              <h2 className="mt-2 text-lg font-black text-white">Super Admin nexID</h2>
+              <p className="mt-2 text-sm leading-5 text-slate-300">
+                Solo Google/Clerk + allowlist server-side puede abrir permisos globales.
+              </p>
+            </div>
+            {bodegaDemoAllowed ? (
+              <Link
+                href="/api/session/demo?role=tenant-admin"
+                title="Entrar como Bodega Balmec"
+                className="rounded-2xl border border-cyan-300/25 bg-cyan-400/10 p-4 text-left transition hover:border-cyan-200/70 hover:bg-cyan-400/15"
+              >
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Demo comercial 12h</p>
+                <h2 className="mt-2 text-lg font-black text-white">Bodega Balmec</h2>
+                <p className="mt-2 text-sm leading-5 text-slate-300">
+                  Tenant completo para mostrar CRM, mapa vivo, proof y marketplace sin permisos globales.
+                </p>
+              </Link>
+            ) : (
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-left opacity-80">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Demo deshabilitada</p>
+                <h2 className="mt-2 text-lg font-black text-white">Bodega Balmec</h2>
+                <p className="mt-2 text-sm leading-5 text-slate-400">Este entorno requiere credenciales de tenant.</p>
+              </div>
+            )}
           </div>
           <Link
             href="/login"

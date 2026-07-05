@@ -22,7 +22,6 @@ function demoAccountForRole(role: DemoRole) {
       permissions: profile.permissions,
     };
   }
-  if (role === "super-admin") return { email: "guillen.marce@gmail.com", label: "Super Admin", permissions: ["*"] };
   return { email: "demobodega@nexid.lat", label: "Admin tenant Bodega Balmec", permissions: ["tenant:*", "batches:*", "tags:*", "events:*", "analytics:*", "crm:*", "marketplace:*", "rewards:*", "employees:*"] };
 }
 
@@ -63,6 +62,13 @@ function useSecureCookie(req: Request) {
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const role = normalizeRole(url.searchParams.get("role"));
+  if (role === "super-admin") {
+    console.info("[dashboard_login_audit]", JSON.stringify({ event: "direct_operational_login_denied", reason: "superadmin_requires_clerk", role }));
+    return NextResponse.json(
+      { ok: false, code: "superadmin_requires_clerk", reason: "Super Admin requires Google/Clerk allowlist access." },
+      { status: 403 },
+    );
+  }
   if (!dashboardDemoAccessAllowedForRole(role)) {
     console.info("[dashboard_login_audit]", JSON.stringify({ event: "direct_operational_login_denied", reason: "role_disabled", role }));
     return NextResponse.json({ ok: false, reason: "demo access disabled for this role" }, { status: 403 });

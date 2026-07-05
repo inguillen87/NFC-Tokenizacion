@@ -22,11 +22,9 @@ export function dashboardOneClickAccessAllowed() {
 }
 
 export function dashboardSuperAdminDemoAccessAllowed() {
-  const explicit = readFlag(
-    "DASHBOARD_SUPERADMIN_DEMO_ACCESS",
-    "DASHBOARD_ALLOW_SUPERADMIN_DEMO",
-  );
-  return explicit === true;
+  // Super Admin is never a one-click/demo role. Founder access must pass through
+  // Clerk/Google, then the API-side allowlist, before nexID issues a session.
+  return false;
 }
 
 export function dashboardBodegaDemoAccessAllowed() {

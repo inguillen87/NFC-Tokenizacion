@@ -61,7 +61,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const { t, locale } = await getDashboardI18n();
   const copy = dashboardContent[locale];
   const profiles = getPublicAccessProfiles();
-  const demoLoginAllowed = dashboardDemoAccessAllowedForRole("super-admin");
+  const credentialProfiles = profiles.filter((profile) => profile.role !== "super-admin");
   const bodegaDemoAllowed = dashboardDemoAccessAllowedForRole("tenant-admin");
   const params = searchParams ? await searchParams : {};
   const authNotice = authNoticeForCode(firstParam(params.auth_error));
@@ -126,8 +126,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               registerLabel={t.common.register}
               forgotLabel={t.dashboard.forgotPassword}
               inviteLabel={copy.auth.inviteTitle}
-              profiles={profiles}
-              demoLoginAllowed={demoLoginAllowed}
+              profiles={credentialProfiles}
               bodegaDemoAllowed={bodegaDemoAllowed}
               clerkEnabled={isClerkConfiguredForRuntime()}
               authNotice={authNotice}

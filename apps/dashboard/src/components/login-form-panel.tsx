@@ -15,36 +15,10 @@ type Props = {
   forgotLabel: string;
   inviteLabel: string;
   profiles: PublicAccessProfile[];
-  demoLoginAllowed: boolean;
   bodegaDemoAllowed: boolean;
   clerkEnabled?: boolean;
   authNotice?: string;
 };
-
-type DemoRole = "super-admin" | "tenant-admin";
-
-const DEMO_ROLES: Array<{
-  key: DemoRole;
-  title: string;
-  label: string;
-  description: string;
-  tone: string;
-}> = [
-  {
-    key: "super-admin",
-    title: "Super Admin",
-    label: "Entrar como SuperAdmin",
-    description: "Tenants, CRM, analíticas, seguridad y operaciones globales.",
-    tone: "border-emerald-300/30 bg-emerald-500/10 text-emerald-100 hover:border-emerald-300/50 hover:bg-emerald-500/15",
-  },
-  {
-    key: "tenant-admin",
-    title: "Bodega Balmec",
-    label: "Entrar como Bodega Balmec",
-    description: "Lotes, tags reales, taps, portal de cliente y marketplace.",
-    tone: "border-cyan-300/30 bg-cyan-500/10 text-cyan-100 hover:border-cyan-300/50 hover:bg-cyan-500/15",
-  },
-];
 
 export function LoginFormPanel({
   emailPlaceholder,
@@ -54,7 +28,6 @@ export function LoginFormPanel({
   forgotLabel,
   inviteLabel,
   profiles,
-  demoLoginAllowed,
   bodegaDemoAllowed,
   clerkEnabled,
   authNotice,
@@ -64,8 +37,8 @@ export function LoginFormPanel({
   const hasAvailableProfiles = profiles.some((profile) => profile.available);
   const [email, setEmail] = useState(firstAvailable?.email || "");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState(firstAvailable?.role || "super-admin");
-  const [profileLabel, setProfileLabel] = useState(firstAvailable?.label || "Super Admin");
+  const [role, setRole] = useState(firstAvailable?.role || "tenant-admin");
+  const [profileLabel, setProfileLabel] = useState(firstAvailable?.label || "Perfil operativo");
   const [mfaCode, setMfaCode] = useState("");
   const [status, setStatus] = useState("");
   const [opsStatus, setOpsStatus] = useState("");
@@ -135,12 +108,6 @@ export function LoginFormPanel({
     window.location.href = "/";
   }
 
-  const visibleDemoRoles = DEMO_ROLES.filter((demoRole) =>
-    demoRole.key === "tenant-admin" ? bodegaDemoAllowed : demoLoginAllowed,
-  );
-  const bodegaDemoRole = visibleDemoRoles.find((demoRole) => demoRole.key === "tenant-admin");
-  const secondaryDemoRoles = visibleDemoRoles.filter((demoRole) => demoRole.key !== "tenant-admin");
-
   return (
     <div>
       <div className="grid gap-3">
@@ -158,18 +125,18 @@ export function LoginFormPanel({
                 </p>
               </div>
             </div>
-            <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${bodegaDemoRole ? "border-emerald-300/30 bg-emerald-400/10 text-emerald-100" : "border-amber-300/30 bg-amber-400/10 text-amber-100"}`}>
-              {bodegaDemoRole ? "habilitado 12h" : "requiere env"}
+            <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${bodegaDemoAllowed ? "border-emerald-300/30 bg-emerald-400/10 text-emerald-100" : "border-amber-300/30 bg-amber-400/10 text-amber-100"}`}>
+              {bodegaDemoAllowed ? "habilitado 12h" : "requiere env"}
             </span>
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
-            {bodegaDemoRole ? (
+            {bodegaDemoAllowed ? (
               <Link
                 href="/api/session/demo?role=tenant-admin"
-                title={bodegaDemoRole.label}
+                title="Entrar como Bodega Balmec"
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-cyan-200/40 bg-cyan-300 px-4 py-3 text-sm font-black text-slate-950 shadow-[0_18px_50px_rgba(34,211,238,.22)] transition hover:bg-cyan-200"
               >
-                <span>{bodegaDemoRole.label}</span>
+                <span>Entrar como Bodega Balmec</span>
                 <ArrowRight className="h-4 w-4" />
               </Link>
             ) : (
@@ -183,21 +150,6 @@ export function LoginFormPanel({
               <span className="rounded-lg border border-white/10 bg-white/5 px-2 py-2">CRM</span>
             </div>
           </div>
-          {secondaryDemoRoles.length ? (
-            <div className="mt-3 grid gap-2">
-              {secondaryDemoRoles.map((demoRole) => (
-                <Link
-                  key={demoRole.key}
-                  href={`/api/session/demo?role=${encodeURIComponent(demoRole.key)}`}
-                  title={demoRole.label}
-                  className={`rounded-xl border p-3 text-left transition ${demoRole.tone}`}
-                >
-                  <p className="text-sm font-semibold">{demoRole.title}</p>
-                  <p className="mt-1 text-xs opacity-80">{demoRole.description}</p>
-                </Link>
-              ))}
-            </div>
-          ) : null}
         </div>
 
         <div className="grid gap-3 rounded-2xl border border-cyan-300/20 bg-slate-950/60 p-4">
@@ -208,7 +160,8 @@ export function LoginFormPanel({
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">Super Admin fundador</p>
               <p className="mt-1 text-sm leading-5 text-slate-300">
-                Google prueba identidad. nexID emite sesión Super Admin solo si el email está en allowlist server-side.
+                Google prueba identidad. nexID emite sesion Super Admin solo si el email esta en allowlist server-side.
+                La demo Bodega no otorga permisos globales.
               </p>
             </div>
           </div>
@@ -219,7 +172,7 @@ export function LoginFormPanel({
           ) : null}
           {clerkEnabled ? (
             <>
-              <ClerkGoogleSuperAdminButton />
+              <ClerkGoogleSuperAdminButton label="Continuar con Google allowlisted" />
               <Link
                 href="/sign-in"
                 title="Abrir la pantalla completa de Google/Clerk si el flujo redirect no aparece."
@@ -239,8 +192,8 @@ export function LoginFormPanel({
       <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Credenciales enterprise</p>
-            <p className="mt-1 text-xs text-slate-400">Para empleados y tenants reales: email, password y MFA si corresponde.</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Credenciales de tenant y equipo</p>
+            <p className="mt-1 text-xs text-slate-400">Para empleados, operadores y admins de empresa. Super Admin entra por Google/Clerk.</p>
           </div>
           <span
             className={`rounded-full border px-3 py-1 text-xs font-semibold ${
