@@ -77,3 +77,17 @@ test("login surfaces separate founder Google auth from tenant demo access", () =
   assert.match(demoRoute, /superadmin_requires_clerk/);
   assert.doesNotMatch(demoRoute, /permissions:\s*\["\*"\]/);
 });
+
+test("dashboard auth keeps the actionable login first on mobile", () => {
+  const loginPage = readFileSync(new URL("../src/app/login/page.tsx", import.meta.url), "utf8");
+  const globalStyles = readFileSync(new URL("../src/app/globals.css", import.meta.url), "utf8");
+
+  assert.match(loginPage, /min-h-dvh items-start/);
+  assert.match(loginPage, /dashboard-auth-intro order-2/);
+  assert.match(loginPage, /md:order-1/);
+  assert.match(loginPage, /className="order-1 md:order-2"/);
+
+  assert.match(globalStyles, /body:has\(\.dashboard-auth-surface\) \.helpbot-trigger/);
+  assert.match(globalStyles, /body:has\(\.dashboard-auth-surface\) \.helpbot-panel/);
+  assert.match(globalStyles, /display:\s*none !important/);
+});

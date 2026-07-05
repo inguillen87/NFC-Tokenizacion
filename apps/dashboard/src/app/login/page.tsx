@@ -73,10 +73,10 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.09)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.09)_1px,transparent_1px),radial-gradient(circle_at_78%_15%,rgba(6,182,212,.18),transparent_34%)] [background-size:32px_32px,32px_32px,auto]" />
       <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_22%_18%,rgba(45,212,191,0.22),transparent_34%),radial-gradient(circle_at_70%_12%,rgba(129,140,248,0.20),transparent_38%)]" />
 
-      <div className="container-shell relative z-10 grid min-h-screen place-items-center py-10">
-        <Card className="dashboard-auth-card w-full max-w-6xl p-3 md:p-10">
-          <div className="grid gap-10 md:grid-cols-[1.08fr_1fr]">
-            <div className="dashboard-auth-intro rounded-2xl border border-white/10 bg-slate-950/40 p-6">
+      <div className="container-shell relative z-10 grid min-h-dvh items-start py-4 sm:py-6 md:place-items-center md:py-10">
+        <Card className="dashboard-auth-card w-full max-w-6xl p-3 sm:p-4 md:p-10">
+          <div className="grid gap-5 md:grid-cols-[1.08fr_1fr] md:gap-10">
+            <div className="dashboard-auth-intro order-2 rounded-2xl border border-white/10 bg-slate-950/40 p-4 md:order-1 md:p-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <Link href="/" aria-label="nexID home" className="inline-flex items-center">
                   <BrandLockup size={64} variant="ripple" theme="dark" className="brand-surface-auth" />
@@ -119,18 +119,20 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               </div>
             </div>
 
-            <LoginFormPanel
-              emailPlaceholder={t.web.auth.emailPlaceholder}
-              passwordPlaceholder={t.web.auth.passwordPlaceholder}
-              loginAction={copy.auth.loginAction}
-              registerLabel={t.common.register}
-              forgotLabel={t.dashboard.forgotPassword}
-              inviteLabel={copy.auth.inviteTitle}
-              profiles={credentialProfiles}
-              bodegaDemoAllowed={bodegaDemoAllowed}
-              clerkEnabled={isClerkConfiguredForRuntime()}
-              authNotice={authNotice}
-            />
+            <div className="order-1 md:order-2">
+              <LoginFormPanel
+                emailPlaceholder={t.web.auth.emailPlaceholder}
+                passwordPlaceholder={t.web.auth.passwordPlaceholder}
+                loginAction={copy.auth.loginAction}
+                registerLabel={t.common.register}
+                forgotLabel={t.dashboard.forgotPassword}
+                inviteLabel={copy.auth.inviteTitle}
+                profiles={credentialProfiles}
+                bodegaDemoAllowed={bodegaDemoAllowed}
+                clerkEnabled={isClerkConfiguredForRuntime()}
+                authNotice={authNotice}
+              />
+            </div>
           </div>
         </Card>
       </div>

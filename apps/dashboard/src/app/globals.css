@@ -923,6 +923,12 @@ html.theme-light .dashboard-auth-surface .ui-btn--primary {
   color: #083344 !important;
 }
 
+body:has(.dashboard-auth-surface) .helpbot-hint,
+body:has(.dashboard-auth-surface) .helpbot-trigger,
+body:has(.dashboard-auth-surface) .helpbot-panel {
+  display: none !important;
+}
+
 html.theme-light .admin-notification-bell__badge {
   border-color: #ffffff;
 }
