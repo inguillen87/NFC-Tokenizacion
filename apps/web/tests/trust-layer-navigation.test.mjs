@@ -41,3 +41,18 @@ test("home quick navigation exposes Proof Verify on desktop, footer and mobile",
   assert.match(page, />Proof<\/Link>/);
   assert.doesNotMatch(page, /grid-cols-4 items-center gap-2 rounded-2xl border border-white\/10 bg-slate-950\/85/);
 });
+
+test("pricing mobile comparison is readable without horizontal table scrolling", async () => {
+  const pricing = await readFile(new URL("../src/app/pricing/page.tsx", import.meta.url), "utf8");
+  const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
+
+  assert.match(pricing, /nexid-pricing-mobile-compare/);
+  assert.match(pricing, /aria-label="Feature comparison mobile"/);
+  assert.match(pricing, /<dt>\{tierName\}<\/dt>/);
+  assert.match(pricing, /<dd>\{value\}<\/dd>/);
+  assert.match(pricing, /nexid-pricing-compare[^"]*hidden[^"]*md:block/);
+  assert.match(css, /Pricing mobile clarity pass/);
+  assert.match(css, /html\.theme-light \.nexid-pricing-page \.nexid-pricing-back[\s\S]*color:\s*#334155 !important/);
+  assert.match(css, /\.nexid-pricing-mobile-compare__card div\s*\{[\s\S]*grid-template-columns:\s*minmax\(5\.8rem,\s*0\.42fr\) minmax\(0,\s*1fr\)/);
+  assert.match(css, /html\.theme-light \.nexid-pricing-mobile-compare__card dd[\s\S]*color:\s*#475569 !important/);
+});

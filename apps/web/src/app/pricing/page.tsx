@@ -258,7 +258,27 @@ export default async function PricingPage() {
           ))}
         </section>
 
-        <section className="nexid-pricing-compare mt-5 max-w-full overflow-x-auto rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60" aria-label="Feature comparison">
+        <section className="nexid-pricing-mobile-compare mt-5 grid gap-3 md:hidden" aria-label="Feature comparison mobile">
+          {copy.compare.map(([feature, starter, pro, enterprise]) => (
+            <article key={feature} className="nexid-pricing-mobile-compare__card">
+              <h2>{feature}</h2>
+              <dl>
+                {[
+                  [copy.tiers[0].name, starter],
+                  [copy.tiers[1].name, pro],
+                  [copy.tiers[2].name, enterprise],
+                ].map(([tierName, value]) => (
+                  <div key={`${feature}-${tierName}`}>
+                    <dt>{tierName}</dt>
+                    <dd>{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </article>
+          ))}
+        </section>
+
+        <section className="nexid-pricing-compare mt-5 hidden max-w-full overflow-x-auto rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60 md:block" aria-label="Feature comparison">
           <table className="w-full min-w-[620px] border-collapse md:min-w-[760px]">
             <thead>
               <tr>
