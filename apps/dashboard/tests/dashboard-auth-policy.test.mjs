@@ -61,6 +61,7 @@ test("login surfaces separate founder Google auth from tenant demo access", () =
   const signInPage = readFileSync(new URL("../src/app/sign-in/[[...sign-in]]/page.tsx", import.meta.url), "utf8");
   const demoRoute = readFileSync(new URL("../src/app/api/session/demo/route.ts", import.meta.url), "utf8");
   const logoutRoute = readFileSync(new URL("../src/app/logout/route.ts", import.meta.url), "utf8");
+  const settingsPage = readFileSync(new URL("../src/app/(app)/settings/page.tsx", import.meta.url), "utf8");
 
   assert.match(loginPage, /profile\.role !== "super-admin"/);
   assert.doesNotMatch(loginPage, /demoLoginAllowed/);
@@ -89,6 +90,10 @@ test("login surfaces separate founder Google auth from tenant demo access", () =
   assert.match(logoutRoute, /response\.headers\.set\("Cache-Control", "no-store"\)/);
   assert.match(logoutRoute, /response\.cookies\.delete\(DASHBOARD_SESSION_COOKIE\)/);
   assert.match(logoutRoute, /response\.cookies\.delete\(DASHBOARD_SESSION_SNAPSHOT_COOKIE\)/);
+
+  assert.match(settingsPage, /const isClerkSuperAdminSession = session\.role === "super-admin" && !session\.mfaVerified/);
+  assert.match(settingsPage, /SSO Google\/Clerk/);
+  assert.match(settingsPage, /sessionSecurityLabel/);
 });
 
 test("dashboard auth keeps the actionable login first on mobile", () => {

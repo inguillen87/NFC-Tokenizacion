@@ -79,11 +79,15 @@ test("tenant account menu renders as a top-level drawer above CRM layers", () =>
   assert.match(menuSource, /className="min-h-0 flex-1 overflow-y-auto p-3"/);
   assert.match(menuSource, /permissions = \[\]/);
   assert.match(menuSource, /const canManageUsers = role === "super-admin"/);
+  assert.match(menuSource, /const isClerkSsoSession = role === "super-admin" && Boolean\(clerkEnabled\)/);
+  assert.match(menuSource, /const accountSecurityOk = Boolean\(mfaVerified\) \|\| isClerkSsoSession/);
   assert.match(menuSource, /data-testid="tenant-account-session-summary"/);
   assert.match(menuSource, /data-testid="tenant-account-primary-action"/);
   assert.match(menuSource, /const hasWildcardAccess = permissions\.includes\("\*"\)/);
   assert.match(menuSource, /role === "super-admin" \|\| mode === "global" \? "Acceso global" : "Tenant completo"/);
   assert.match(menuSource, /const nextAction = setupCompleted === false && role === "tenant-admin"/);
+  assert.match(menuSource, /: !accountSecurityOk/);
+  assert.match(menuSource, /isClerkSsoSession \? "sso ok" : mfaVerified \? "mfa ok" : "mfa revisar"/);
   assert.match(menuSource, /label: isTenantMode \? `Perfil \$\{tenantName\}` : "Directorio de tenants"/);
   assert.doesNotMatch(menuSource, /label: isTenantMode \? "Perfil Bodega Balmec"/);
   assert.match(menuSource, /href: canManageUsers \? "\/users" : "\/settings"/);

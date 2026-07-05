@@ -23,6 +23,12 @@ export default async function SettingsPage() {
   const tenantQuery = tenantSlug ? `?tenant=${encodeURIComponent(tenantSlug)}` : "";
   const tenantHref = tenantSlug ? `/tenants/${encodeURIComponent(tenantSlug)}` : "/tenants";
   const tenantName = tenantNameFromSlug(tenantSlug);
+  const isClerkSuperAdminSession = session.role === "super-admin" && !session.mfaVerified;
+  const sessionSecurityLabel = isClerkSuperAdminSession
+    ? "SSO Google/Clerk"
+    : session.mfaVerified
+      ? "MFA verificado"
+      : "MFA pendiente";
 
   const tiles: SettingsTile[] = [
     {
@@ -93,8 +99,8 @@ export default async function SettingsPage() {
               <p className="mt-2 text-sm font-bold text-white">{tenantSlug || "global"}</p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
-              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">MFA</p>
-              <p className="mt-2 text-sm font-bold text-white">{session.mfaVerified ? "verificado" : "pendiente"}</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Seguridad</p>
+              <p className="mt-2 text-sm font-bold text-white">{sessionSecurityLabel}</p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
               <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Setup</p>

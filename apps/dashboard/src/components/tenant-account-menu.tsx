@@ -367,13 +367,15 @@ export function TenantAccountMenu({
   const isTenantMode = mode === "tenant";
   const accountRoleDescription = roleDescription(role, mode);
   const canManageUsers = role === "super-admin" || permissions.includes("*") || permissions.includes("users:manage") || permissions.includes("employees:*");
+  const isClerkSsoSession = role === "super-admin" && Boolean(clerkEnabled);
+  const accountSecurityOk = Boolean(mfaVerified) || isClerkSsoSession;
   const hasWildcardAccess = permissions.includes("*");
   const normalizedPermissions = hasWildcardAccess
     ? [role === "super-admin" || mode === "global" ? "Acceso global" : "Tenant completo"]
     : permissions.length ? permissions.slice(0, 3) : ["Scope operativo"];
   const nextAction = setupCompleted === false && role === "tenant-admin"
     ? { href: "/onboarding", label: "Completar setup del tenant", meta: "Datos, equipo e integraciones base" }
-    : !mfaVerified
+    : !accountSecurityOk
       ? { href: "/mfa", label: "Revisar MFA y seguridad", meta: "Segundo factor antes de escalar permisos" }
       : isTenantMode
         ? { href: tenantHref, label: "Abrir perfil del tenant", meta: "Plan, vertical, health y playbook del workspace" }
@@ -638,7 +640,7 @@ export function TenantAccountMenu({
               {setupCompleted === false ? "setup pendiente" : "setup ok"}
             </span>
             <span className="rounded-lg border border-cyan-300/25 bg-cyan-400/10 px-2 py-2 text-cyan-100">
-              {mfaVerified ? "mfa ok" : "mfa revisar"}
+              {isClerkSsoSession ? "sso ok" : mfaVerified ? "mfa ok" : "mfa revisar"}
             </span>
             <span className="rounded-lg border border-violet-300/25 bg-violet-400/10 px-2 py-2 text-violet-100">
               {isTenantMode ? "tenant" : "global"}
