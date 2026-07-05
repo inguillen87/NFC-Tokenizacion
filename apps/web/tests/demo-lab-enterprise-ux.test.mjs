@@ -96,23 +96,41 @@ test("demo lab trust scenario deep links open contextual wizard proof layers", a
   const client = await readFile(new URL("../src/app/(public)/demo-lab/demo-lab-client.tsx", import.meta.url), "utf8");
 
   assert.match(client, /type DemoWizardStep = 0 \| 1 \| 2 \| 3/);
+  assert.match(client, /type DemoTrustScenarioStep = \{/);
+  assert.match(client, /type DemoTrustScenarioLabels = \{/);
+  assert.match(client, /labels: DemoTrustScenarioLabels/);
+  assert.match(client, /decisionPath: DemoTrustScenarioStep\[\]/);
+  assert.match(client, /businessOutcome: string/);
   assert.match(client, /const DEMO_PUBLIC_PROOF_URL = "\/proof\/verify\?event_hash=/);
   assert.match(client, /function getTrustScenarioInitialStep\(key: DemoTrustScenarioKey \| null\): DemoWizardStep/);
   assert.match(client, /key === "iota-proof" \|\| key === "sensor-evidence" \|\| key === "dual-proof"\) return 2/);
   assert.match(client, /key === "polygon-ownership"\) return 3/);
   assert.match(client, /DemoTrustScenarioContextCard/);
   assert.match(client, /demo-lab-trust-context/);
+  assert.match(client, /demo-lab-trust-context__decision/);
+  assert.match(client, /demo-lab-trust-context__steps/);
+  assert.match(client, /demo-lab-trust-context__outcome/);
   assert.match(client, /demo-lab-trust-switcher/);
   assert.match(client, /<DemoTrustScenarioRail[\s\S]*variant="wizard"/);
   assert.match(client, /window\.history\.replaceState\(null, "", href\)/);
   assert.match(client, /setTrustScenario\(null\)/);
   assert.match(client, /IOTA prueba evidencia logistica/);
+  assert.match(client, /Evento canonico/);
   assert.match(client, /Polygon es el certificado de propiedad/);
+  assert.match(client, /Owner record/);
+  assert.match(client, /context\.labels\.publicProof/);
+  assert.match(client, /context\.labels\.businessOutcome/);
+  assert.doesNotMatch(client, /<span>Publico verificable<\/span>/);
   assert.match(css, /\.demo-lab-trust-context\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1\.15fr\)\s*minmax\(18rem,\s*0\.85fr\)/);
+  assert.match(css, /\.demo-lab-trust-context__decision,[\s\S]*\.demo-lab-trust-context__outcome\s*\{[\s\S]*border:\s*1px solid rgba\(103,\s*232,\s*249,\s*0\.16\)/);
+  assert.match(css, /\.demo-lab-trust-context__step\s*\{[\s\S]*grid-template-columns:\s*2rem minmax\(0,\s*1fr\)/);
+  assert.match(css, /\.demo-lab-trust-context__outcome\s*\{[\s\S]*radial-gradient\(circle at 100% 0%/);
   assert.match(css, /\.demo-lab-trust-switcher > summary\s*\{[\s\S]*min-height:\s*44px/);
   assert.match(css, /\.demo-lab-trust-scenarios--wizard \.demo-lab-trust-scenario\s*\{[\s\S]*min-height:\s*124px/);
   assert.match(css, /html\.theme-light \.demo-lab-trust-context,[\s\S]*html\[data-theme="light"\] \.demo-lab-trust-switcher/);
+  assert.match(css, /html\.theme-light \.demo-lab-trust-context__step strong,[\s\S]*html\[data-theme="light"\] \.demo-lab-trust-context__outcome strong/);
   assert.match(css, /@media \(max-width:\s*640px\)[\s\S]*\.demo-lab-trust-context__primary,[\s\S]*width:\s*100%/);
+  assert.match(css, /@media \(max-width:\s*640px\)[\s\S]*\.demo-lab-trust-context__step\s*\{[\s\S]*grid-template-columns:\s*1\.8rem minmax\(0,\s*1fr\)/);
 });
 
 test("landing hero stats use real configured fields and no old cost placeholder", async () => {

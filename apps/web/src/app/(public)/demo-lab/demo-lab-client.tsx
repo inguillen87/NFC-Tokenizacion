@@ -166,19 +166,55 @@ type DemoTrustScenarioContext = {
   eyebrow: string;
   title: string;
   body: string;
+  labels: DemoTrustScenarioLabels;
   publicProof: string;
   privateData: string;
+  decisionPath: DemoTrustScenarioStep[];
+  businessOutcome: string;
   primaryHref: string;
   primaryLabel: string;
   secondaryHref: string;
   secondaryLabel: string;
 };
 
+type DemoTrustScenarioStep = {
+  label: string;
+  body: string;
+};
+
+type DemoTrustScenarioLabels = {
+  publicProof: string;
+  privateData: string;
+  decisionPath: string;
+  businessOutcome: string;
+};
+
 function getTrustScenarioContext(key: DemoTrustScenarioKey | null, locale: AppLocale): DemoTrustScenarioContext | null {
   if (!key) return null;
   const isEn = locale === "en";
   const isBr = locale === "pt-BR";
-  const copyByKey: Record<DemoTrustScenarioKey, DemoTrustScenarioContext> = {
+  const labels: DemoTrustScenarioLabels = isEn
+    ? {
+      publicProof: "Public proof",
+      privateData: "Private in nexID",
+      decisionPath: "Decision path",
+      businessOutcome: "Business outcome",
+    }
+    : isBr
+    ? {
+      publicProof: "Prova publica",
+      privateData: "Privado no nexID",
+      decisionPath: "Como se decide",
+      businessOutcome: "Decisao habilitada",
+    }
+    : {
+      publicProof: "Publico verificable",
+      privateData: "Privado en nexID",
+      decisionPath: "Como se decide",
+      businessOutcome: "Decision habilitada",
+    };
+
+  const copyByKey: Record<DemoTrustScenarioKey, Omit<DemoTrustScenarioContext, "labels">> = {
     "qr-gs1": {
       tone: key,
       eyebrow: isEn ? "Identity layer" : isBr ? "Camada de identidade" : "Capa de identidad",
@@ -186,6 +222,18 @@ function getTrustScenarioContext(key: DemoTrustScenarioKey | null, locale: AppLo
       body: isEn ? "Useful for fast rollout: product data, batch, links, recall and consumer entry point. It is not crypto-auth by itself, so nexID can add NFC or proof layers when risk grows." : "Sirve para rollout rapido: datos de producto, lote, links, recall y entrada del consumidor. No es cripto-autenticacion por si solo; nexID suma NFC o proof cuando el riesgo sube.",
       publicProof: isEn ? "Visible: GS1 link, product data, lot and resolver policy." : "Publico: link GS1, datos de producto, lote y politica de resolucion.",
       privateData: isEn ? "Private: CRM identity, commercial terms and tenant rules." : "Privado: identidad CRM, terminos comerciales y reglas del tenant.",
+      decisionPath: isEn
+        ? [
+          { label: "Identity", body: "Open the passport, lot and resolver." },
+          { label: "Risk", body: "Escalate to NFC or proof when abuse appears." },
+          { label: "Channel", body: "Route support, recall, rewards or CRM." },
+        ]
+        : [
+          { label: "Identidad", body: "Abre pasaporte, lote y resolver." },
+          { label: "Riesgo", body: "Escala a NFC o proof cuando aparece abuso." },
+          { label: "Canal", body: "Deriva soporte, recall, rewards o CRM." },
+        ],
+      businessOutcome: isEn ? "Fast rollout with a clear path to stronger layers." : "Rollout rapido con camino claro a capas mas fuertes.",
       primaryHref: "/demo-lab?scenario=qr-gs1",
       primaryLabel: isEn ? "Replay QR/GS1 demo" : "Reproducir demo QR/GS1",
       secondaryHref: "/docs#trust-layers",
@@ -198,6 +246,18 @@ function getTrustScenarioContext(key: DemoTrustScenarioKey | null, locale: AppLo
       body: isEn ? "The demo explains why SUN, UID and tenant policy come before ownership, rewards or warranty. The buyer sees a verdict, not raw cryptography." : "La demo explica por que SUN, UID y politica del tenant vienen antes de ownership, rewards o garantia. El comprador ve un veredicto, no criptografia cruda.",
       publicProof: isEn ? "Visible: verdict, physical state and masked UID." : "Publico: veredicto, estado fisico y UID enmascarado.",
       privateData: isEn ? "Private: secret material, replay controls and tenant KMS." : "Privado: secretos, controles replay y KMS del tenant.",
+      decisionPath: isEn
+        ? [
+          { label: "Fresh tap", body: "Read SUN/UID from the real item." },
+          { label: "Tenant policy", body: "Check replay, channel and batch rules." },
+          { label: "Verdict", body: "Only then unlock claim, reward or support." },
+        ]
+        : [
+          { label: "Tap fresco", body: "Lee SUN/UID desde el objeto real." },
+          { label: "Politica tenant", body: "Evalua replay, canal y reglas de lote." },
+          { label: "Veredicto", body: "Recien ahi habilita claim, reward o soporte." },
+        ],
+      businessOutcome: isEn ? "Blocks copy/replay before warranty, claim or reward activation." : "Bloquea copia o replay antes de activar garantia, reclamo o reward.",
       primaryHref: "/demo-lab?scenario=nfc-424",
       primaryLabel: isEn ? "Replay NFC demo" : "Reproducir demo NFC",
       secondaryHref: "/docs#trust-layers",
@@ -210,6 +270,18 @@ function getTrustScenarioContext(key: DemoTrustScenarioKey | null, locale: AppLo
       body: isEn ? "Perfect for warehouses, rural operations, wineries and mines: the device validates locally, queues evidence and syncs later with the official verdict." : "Ideal para depositos, campo, cavas y minas: el dispositivo valida localmente, encola evidencia y sincroniza despues con el veredicto oficial.",
       publicProof: isEn ? "Visible: provisional pass, queue count and sync status." : "Publico: pase provisional, cola y estado de sync.",
       privateData: isEn ? "Private: permission bundle, operator identity and internal QA." : "Privado: bundle de permisos, operador y QA interno.",
+      decisionPath: isEn
+        ? [
+          { label: "Bundle", body: "Load authorized products and rules." },
+          { label: "Local check", body: "Validate in the field without internet." },
+          { label: "Sync", body: "Publish the official verdict when signal returns." },
+        ]
+        : [
+          { label: "Bundle", body: "Carga productos autorizados y reglas." },
+          { label: "Check local", body: "Valida en campo sin internet." },
+          { label: "Sync", body: "Emite veredicto oficial al recuperar senal." },
+        ],
+      businessOutcome: isEn ? "Operations keep moving when warehouses, farms or mines lose signal." : "La operacion sigue viva cuando deposito, campo o mina pierden senal.",
       primaryHref: "/demo-lab?scenario=offline-verifier",
       primaryLabel: isEn ? "Replay offline demo" : "Reproducir demo offline",
       secondaryHref: "/docs#trust-layers",
@@ -222,6 +294,18 @@ function getTrustScenarioContext(key: DemoTrustScenarioKey | null, locale: AppLo
       body: isEn ? "The deep link opens the business outcome because ownership only makes sense after a fresh tap, buyer validation and tenant approval. This is how a C-level audience sees warranty, resale and club value." : "El deep link abre el resultado comercial porque ownership solo tiene sentido despues de tap fresco, comprador validado y aprobacion del tenant. Asi un C-level entiende garantia, reventa y club.",
       publicProof: isEn ? "Visible: certificate request, token/tx when approved, public owner status." : "Publico: solicitud de certificado, token/tx al aprobarse y estado de owner.",
       privateData: isEn ? "Private: buyer identity, invoice, warranty policy and CRM segment." : "Privado: identidad del comprador, factura, politica de garantia y segmento CRM.",
+      decisionPath: isEn
+        ? [
+          { label: "Authentic item", body: "Require QR/NFC validation first." },
+          { label: "Approved buyer", body: "Apply warranty, invoice and tenant policy." },
+          { label: "Owner record", body: "Issue or display the Polygon certificate." },
+        ]
+        : [
+          { label: "Objeto autentico", body: "Exige validacion QR/NFC primero." },
+          { label: "Comprador aprobado", body: "Aplica garantia, factura y politica tenant." },
+          { label: "Owner record", body: "Emite o muestra certificado Polygon." },
+        ],
+      businessOutcome: isEn ? "Resale, warranty and loyalty become gated by real product proof." : "Reventa, garantia y loyalty quedan atados a prueba real de producto.",
       primaryHref: "/docs#trust-layers",
       primaryLabel: isEn ? "Read Polygon policy" : "Leer politica Polygon",
       secondaryHref: "/?contact=demo#contact-modal",
@@ -234,6 +318,18 @@ function getTrustScenarioContext(key: DemoTrustScenarioKey | null, locale: AppLo
       body: isEn ? "The deep link opens the traceability step because this layer is about custody, Merkle roots and public verification. It connects directly with Proof Verify so an auditor can test a hash." : "El deep link abre trazabilidad porque esta capa trata custodia, Merkle roots y verificacion publica. Conecta directo con Proof Verify para que un auditor pruebe un hash.",
       publicProof: isEn ? "Visible: event hash, Merkle root, tx/explorer and inclusion status." : "Publico: hash de evento, Merkle root, tx/explorer y estado de inclusion.",
       privateData: isEn ? "Private: customer, route manifest, QA docs and commercial contract." : "Privado: cliente, manifiesto de ruta, QA interno y contrato comercial.",
+      decisionPath: isEn
+        ? [
+          { label: "Canonical event", body: "Hash the custody or QA fact." },
+          { label: "Merkle root", body: "Group many events into one public anchor." },
+          { label: "Verify", body: "Let any auditor test inclusion in Proof Verify." },
+        ]
+        : [
+          { label: "Evento canonico", body: "Hashea custodia o hecho QA." },
+          { label: "Merkle root", body: "Agrupa muchos eventos en un anchor publico." },
+          { label: "Verificar", body: "Permite a cualquiera probar inclusion en Proof Verify." },
+        ],
+      businessOutcome: isEn ? "Auditors get proof of existence while clients and routes stay private." : "Auditores prueban existencia sin ver clientes, rutas ni documentos privados.",
       primaryHref: DEMO_PUBLIC_PROOF_URL,
       primaryLabel: isEn ? "Open Proof Verify demo" : "Abrir Proof Verify demo",
       secondaryHref: "/docs#trust-layers",
@@ -246,6 +342,18 @@ function getTrustScenarioContext(key: DemoTrustScenarioKey | null, locale: AppLo
       body: isEn ? "Use this when the buyer asks for a serious enterprise story: QR/GS1 and NFC for the object, Polygon for ownership, IOTA for audit evidence." : "Usalo cuando el comprador pide una historia enterprise seria: QR/GS1 y NFC para el objeto, Polygon para ownership, IOTA para evidencia auditada.",
       publicProof: isEn ? "Visible: passport, proof hash, owner status and compliance trail." : "Publico: pasaporte, proof hash, owner status y camino compliance.",
       privateData: isEn ? "Private: PII, tenant policy, supplier docs and pricing terms." : "Privado: PII, politica tenant, docs de proveedor y precios.",
+      decisionPath: isEn
+        ? [
+          { label: "Object", body: "QR/GS1 plus NFC prove the physical item." },
+          { label: "Owner", body: "Polygon represents approved ownership." },
+          { label: "Audit", body: "IOTA anchors hash-only evidence." },
+        ]
+        : [
+          { label: "Objeto", body: "QR/GS1 mas NFC prueban el item fisico." },
+          { label: "Owner", body: "Polygon representa ownership aprobado." },
+          { label: "Auditoria", body: "IOTA ancla evidencia hash-only." },
+        ],
+      businessOutcome: isEn ? "A serious DPP story without mixing PII, ownership and audit data." : "Historia DPP seria sin mezclar PII, ownership y datos de auditoria.",
       primaryHref: DEMO_PUBLIC_PROOF_URL,
       primaryLabel: isEn ? "Verify public proof" : "Verificar prueba publica",
       secondaryHref: "/docs#trust-layers",
@@ -258,6 +366,18 @@ function getTrustScenarioContext(key: DemoTrustScenarioKey | null, locale: AppLo
       body: isEn ? "The buyer sees a clean verdict while operations keeps UHF, IoT, temperature and custody details in a controlled proof trail." : "El comprador ve un veredicto simple mientras operaciones conserva UHF, IoT, temperatura y custodia en un trail controlado.",
       publicProof: isEn ? "Visible: milestone hash, risk state and proof receipt." : "Publico: hash del hito, estado de riesgo y recibo proof.",
       privateData: isEn ? "Private: sensor stream, lane economics and warehouse data." : "Privado: stream sensor, costos de ruta y datos de deposito.",
+      decisionPath: isEn
+        ? [
+          { label: "Measure", body: "Capture sensor, pallet or UHF events." },
+          { label: "Anchor", body: "Publish only the milestone hash." },
+          { label: "Act", body: "Flag risk before receiving or settlement." },
+        ]
+        : [
+          { label: "Medir", body: "Captura eventos de sensor, pallet o UHF." },
+          { label: "Anclar", body: "Publica solo el hash del hito." },
+          { label: "Actuar", body: "Marca riesgo antes de recibir o liquidar." },
+        ],
+      businessOutcome: isEn ? "Industrial traceability becomes auditable without exposing operations." : "La trazabilidad industrial queda auditable sin exponer operacion.",
       primaryHref: DEMO_PUBLIC_PROOF_URL,
       primaryLabel: isEn ? "Open proof receipt" : "Abrir recibo proof",
       secondaryHref: "/docs#trust-layers",
@@ -270,6 +390,18 @@ function getTrustScenarioContext(key: DemoTrustScenarioKey | null, locale: AppLo
       body: isEn ? "This scenario is for resellers, printers, integrators and suppliers: they encode and audit within role boundaries while nexID protects tenant keys and policy." : "Este escenario es para resellers, imprentas, integradores y proveedores: codifican y auditan por rol mientras nexID protege claves y politica del tenant.",
       publicProof: isEn ? "Visible: partner role, batch status and audit receipt." : "Publico: rol del partner, estado del batch y recibo auditado.",
       privateData: isEn ? "Private: API keys, KMS material, billing and tenant contracts." : "Privado: API keys, material KMS, facturacion y contratos tenant.",
+      decisionPath: isEn
+        ? [
+          { label: "Role", body: "Define what each partner can encode." },
+          { label: "Batch", body: "Operate under tenant policy and limits." },
+          { label: "Audit", body: "Leave a proof trail without exposing secrets." },
+        ]
+        : [
+          { label: "Rol", body: "Define que puede codificar cada partner." },
+          { label: "Batch", body: "Opera bajo politica y limites del tenant." },
+          { label: "Auditoria", body: "Deja prueba sin exponer secretos." },
+        ],
+      businessOutcome: isEn ? "Supplier scale without handing out raw keys, contracts or tenant data." : "Escala de proveedores sin entregar keys, contratos ni datos tenant.",
       primaryHref: "/docs#trust-layers",
       primaryLabel: isEn ? "Read access model" : "Leer modelo de acceso",
       secondaryHref: "/?contact=demo#contact-modal",
@@ -277,7 +409,7 @@ function getTrustScenarioContext(key: DemoTrustScenarioKey | null, locale: AppLo
     },
   };
 
-  return copyByKey[key];
+  return { ...copyByKey[key], labels };
 }
 
 function verticalTo3DIndustry(vertical: Vertical): string {
@@ -1541,13 +1673,31 @@ function DemoTrustScenarioContextCard({ context }: { context: DemoTrustScenarioC
       </div>
       <div className="demo-lab-trust-context__proofs">
         <div>
-          <span>Publico verificable</span>
+          <span>{context.labels.publicProof}</span>
           <strong>{context.publicProof}</strong>
         </div>
         <div>
-          <span>Privado en nexID</span>
+          <span>{context.labels.privateData}</span>
           <strong>{context.privateData}</strong>
         </div>
+      </div>
+      <div className="demo-lab-trust-context__decision">
+        <span>{context.labels.decisionPath}</span>
+        <ol className="demo-lab-trust-context__steps">
+          {context.decisionPath.map((step, index) => (
+            <li className="demo-lab-trust-context__step" key={`${step.label}-${index}`}>
+              <b>{index + 1}</b>
+              <span>
+                <strong>{step.label}</strong>
+                <small>{step.body}</small>
+              </span>
+            </li>
+          ))}
+        </ol>
+      </div>
+      <div className="demo-lab-trust-context__outcome">
+        <span>{context.labels.businessOutcome}</span>
+        <strong>{context.businessOutcome}</strong>
       </div>
       <div className="demo-lab-trust-context__actions">
         <Link href={context.primaryHref} className="demo-lab-trust-context__primary">
