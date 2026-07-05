@@ -30,6 +30,21 @@ test("web pwa fallback stays production-gated and mobile-safe", async () => {
   assert.match(sw, /font-size:clamp\(1\.75rem,9vw,2\.5rem\)/);
 });
 
+test("landing mobile header stays compact and touch safe", async () => {
+  const page = await readFile(new URL("../src/app/page.tsx", import.meta.url), "utf8");
+  const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
+
+  assert.match(page, /site-header mobile-optimized-header/);
+  assert.match(css, /Landing mobile header compact pass/);
+  assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*\.site-header\.mobile-optimized-header \.header-main-row\s*\{[\s\S]*height:\s*3\.55rem !important/);
+  assert.match(css, /\.site-header\.mobile-optimized-header \.site-brand-lockup\s*\{[\s\S]*transform:\s*scale\(0\.84\)/);
+  assert.match(css, /\.site-header\.mobile-optimized-header \.mobile-nav-toggle\s*\{[\s\S]*min-height:\s*2\.65rem !important/);
+  assert.match(css, /\.site-header\.mobile-optimized-header \.header-actions > a\.inline-flex \.ui-btn\s*\{[\s\S]*min-height:\s*2\.65rem !important/);
+  assert.match(css, /html\.theme-light \.site-header\.mobile-optimized-header \.header-actions > a\.inline-flex \.ui-btn,[\s\S]*color:\s*#0f172a !important/);
+  assert.match(css, /Final landing header guard[\s\S]*\.site-header\.mobile-optimized-header \.header-actions > a\.inline-flex \.ui-btn\.ui-btn--secondary[\s\S]*color:\s*#0f172a !important/);
+  assert.match(css, /@media \(max-width:\s*380px\)[\s\S]*\.site-header\.mobile-optimized-header \.site-brand-lockup\s*\{[\s\S]*transform:\s*scale\(0\.78\)/);
+});
+
 test("demo lab mobile wizard shows four steps without horizontal scrolling", async () => {
   const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
 

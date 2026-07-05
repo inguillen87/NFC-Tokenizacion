@@ -2956,6 +2956,69 @@ html.theme-light .mobile-nav-sheet .text-slate-400 {
   width: 100%;
 }
 
+/* Landing mobile header compact pass: keep navigation available without
+   stealing enterprise content height on long product sections. */
+@media (max-width: 760px) {
+  .site-header.mobile-optimized-header {
+    top: 0;
+    z-index: 70;
+  }
+
+  .site-header.mobile-optimized-header .header-main-row {
+    height: 3.55rem !important;
+    min-height: 3.55rem !important;
+    gap: 0.45rem !important;
+    padding-inline: 0.75rem !important;
+  }
+
+  .site-header.mobile-optimized-header .site-brand-lockup {
+    min-width: clamp(8.6rem, 42vw, 10.25rem) !important;
+    gap: 0.55rem !important;
+    transform: scale(0.84);
+    transform-origin: left center;
+  }
+
+  .site-header.mobile-optimized-header .site-brand-lockup .brand-wordmark-svg {
+    width: clamp(5.9rem, 25vw, 7.1rem) !important;
+  }
+
+  .site-header.mobile-optimized-header .header-actions {
+    gap: 0.42rem !important;
+  }
+
+  .site-header.mobile-optimized-header .mobile-nav-toggle {
+    min-height: 2.65rem !important;
+    min-width: 2.65rem !important;
+    border-radius: 0.9rem !important;
+  }
+
+  .site-header.mobile-optimized-header .header-actions > a.inline-flex .ui-btn {
+    min-height: 2.65rem !important;
+    border-radius: 0.9rem !important;
+    padding: 0.65rem 0.85rem !important;
+    font-size: 0.82rem !important;
+  }
+
+  html.theme-light .site-header.mobile-optimized-header .header-actions > a.inline-flex .ui-btn,
+  html[data-theme="light"] .site-header.mobile-optimized-header .header-actions > a.inline-flex .ui-btn {
+    border-color: rgba(14, 116, 144, 0.22) !important;
+    background: rgba(255, 255, 255, 0.92) !important;
+    color: #0f172a !important;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08) !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .site-header.mobile-optimized-header .site-brand-lockup {
+    min-width: 7.75rem !important;
+    transform: scale(0.78);
+  }
+
+  .site-header.mobile-optimized-header .header-actions > a.inline-flex .ui-btn {
+    padding-inline: 0.72rem !important;
+  }
+}
+
 @media (display-mode: standalone) {
   .site-header {
     padding-top: max(4px, env(safe-area-inset-top));
@@ -48834,4 +48897,16 @@ html[data-theme="light"] .demo-lab-fullscreen-stage .demo-lab-studio,
 
 .demo-lab-cta-short {
   display: none;
+}
+
+/* Final landing header guard: this must stay after broad light-mode utility
+   sweeps so the mobile login button remains readable on white chrome. */
+@media (max-width: 760px) {
+  html.theme-light body .landing-root .site-header.mobile-optimized-header .header-actions > a.inline-flex .ui-btn.ui-btn--secondary,
+  html[data-theme="light"] body .landing-root .site-header.mobile-optimized-header .header-actions > a.inline-flex .ui-btn.ui-btn--secondary {
+    border-color: rgba(14, 116, 144, 0.24) !important;
+    background: rgba(255, 255, 255, 0.94) !important;
+    color: #0f172a !important;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08) !important;
+  }
 }
