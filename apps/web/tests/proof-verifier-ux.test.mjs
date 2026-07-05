@@ -17,6 +17,7 @@ test("proof verifier keeps the enterprise decoder readable and non-trapped", asy
   assert.match(page, /Abrir memo real en IOTA Explorer/);
   assert.match(page, /proof-decoder-code/);
   assert.match(page, /proof-field-details/);
+  assert.match(page, /proof-nav-cta/);
   assert.match(page, /max-w-\[1540px\]/);
   assert.match(page, /grid-template-columns:\s*minmax\(0,\s*1fr\)/);
   assert.match(page, /proof-workstation-grid\s*>\s*\*/);

@@ -591,6 +591,33 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           color: #0e7490 !important;
         }
 
+        .proof-verify-page .proof-nav-cta {
+          border-color: rgba(103, 232, 249, 0.42) !important;
+          background: rgba(8, 145, 178, 0.2) !important;
+          color: #e0f2fe !important;
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        }
+
+        .proof-verify-page .proof-nav-cta--neutral {
+          border-color: rgba(148, 163, 184, 0.38) !important;
+          background: rgba(15, 23, 42, 0.48) !important;
+          color: #f8fafc !important;
+        }
+
+        html[data-theme="light"] .proof-verify-page .proof-nav-cta,
+        html.theme-light .proof-verify-page .proof-nav-cta {
+          border-color: rgba(14, 116, 144, 0.34) !important;
+          background: #ecfeff !important;
+          color: #075985 !important;
+        }
+
+        html[data-theme="light"] .proof-verify-page .proof-nav-cta--neutral,
+        html.theme-light .proof-verify-page .proof-nav-cta--neutral {
+          border-color: rgba(15, 23, 42, 0.16) !important;
+          background: #f8fafc !important;
+          color: #0f172a !important;
+        }
+
         .proof-verify-page details > summary {
           cursor: pointer;
           list-style: none;
@@ -1259,10 +1286,10 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                   </a>
                 ) : null}
                 <div className="grid gap-2 sm:grid-cols-2">
-                  <Link href="/demo-lab?scenario=iota-proof" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-cyan-200 bg-cyan-50/80 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-cyan-900">
+                  <Link href="/demo-lab?scenario=iota-proof" className="proof-nav-cta inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]">
                     Volver a Demo Lab <ArrowRight className="h-4 w-4" />
                   </Link>
-                  <Link href="/sdk" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-slate-800">
+                  <Link href="/sdk" className="proof-nav-cta proof-nav-cta--neutral inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]">
                     Ver SDK/API <ArrowRight className="h-4 w-4" />
                   </Link>
                 </div>
