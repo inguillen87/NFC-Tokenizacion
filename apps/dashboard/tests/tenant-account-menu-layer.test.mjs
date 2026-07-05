@@ -9,7 +9,8 @@ const serviceWorkerSource = await readFile(new URL("../public/sw.js", import.met
 
 test("tenant account menu renders as a top-level drawer above CRM layers", () => {
   assert.match(menuSource, /createPortal\(menuPanel,\s*document\.body\)/);
-  assert.match(menuSource, /const ACCOUNT_MENU_Z_INDEX = 2147483600/);
+  assert.match(menuSource, /const ACCOUNT_MENU_Z_INDEX = 2147483630/);
+  assert.match(menuSource, /const ACCOUNT_MENU_CRITICAL_CSS = `/);
   assert.doesNotMatch(menuSource, /HTMLDialogElement/);
   assert.doesNotMatch(menuSource, /dialog\.showModal\(\)/);
   assert.doesNotMatch(menuSource, /dialog\.close\(\)/);
@@ -17,6 +18,10 @@ test("tenant account menu renders as a top-level drawer above CRM layers", () =>
   assert.match(menuSource, /role="dialog"/);
   assert.match(menuSource, /aria-modal="true"/);
   assert.match(menuSource, /data-account-menu-portal="body"/);
+  assert.match(menuSource, /data-account-menu-version="drawer-v3"/);
+  assert.match(menuSource, /data-account-menu-critical-style="true"/);
+  assert.match(menuSource, /data-testid="tenant-account-menu-critical-style"/);
+  assert.match(menuSource, /dangerouslySetInnerHTML=\{\{ __html: ACCOUNT_MENU_CRITICAL_CSS \}\}/);
   assert.match(menuSource, /const ACCOUNT_LAYER_STYLE: CSSProperties = \{/);
   assert.match(menuSource, /width:\s*"100vw"/);
   assert.match(menuSource, /height:\s*"100dvh"/);
@@ -59,7 +64,7 @@ test("tenant account menu renders as a top-level drawer above CRM layers", () =>
 test("global CSS prevents dashboard maps from covering account drawer", () => {
   assert.match(globalsSource, /html\.nexid-account-menu-open,\s*body\.nexid-account-menu-open\s*\{[\s\S]*overflow:\s*hidden/);
   assert.match(globalsSource, /body\.nexid-crm-overlay-active \.dashboard-sidebar,\s*body\.nexid-crm-overlay-active \.dashboard-header,\s*body\.nexid-crm-overlay-active \.dashboard-mobile-dock\s*\{[\s\S]*display:\s*none !important/);
-  assert.match(globalsSource, /\.nexid-account-layer\s*\{[\s\S]*z-index:\s*2147483600 !important/);
+  assert.match(globalsSource, /\.nexid-account-layer\s*\{[\s\S]*z-index:\s*2147483630 !important/);
   assert.match(globalsSource, /\.nexid-account-layer\s*\{[\s\S]*display:\s*block !important/);
   assert.match(globalsSource, /\.nexid-account-layer\s*\{[\s\S]*width:\s*100vw !important/);
   assert.match(globalsSource, /\.nexid-account-layer\s*\{[\s\S]*max-width:\s*none !important/);
@@ -67,11 +72,11 @@ test("global CSS prevents dashboard maps from covering account drawer", () => {
   assert.match(globalsSource, /\.nexid-account-layer\s*\{[\s\S]*overscroll-behavior:\s*contain !important/);
   assert.doesNotMatch(globalsSource, /dialog\.nexid-account-layer::backdrop/);
   assert.match(globalsSource, /\.nexid-account-layer,\s*\.nexid-account-layer > \*,\s*\.nexid-account-layer \[data-account-menu-backdrop="true"\]\s*\{[\s\S]*pointer-events:\s*auto !important/);
-  assert.match(globalsSource, /\.nexid-account-layer \[data-account-menu-backdrop="true"\]\s*\{[\s\S]*z-index:\s*2147483601 !important/);
+  assert.match(globalsSource, /\.nexid-account-layer \[data-account-menu-backdrop="true"\]\s*\{[\s\S]*z-index:\s*2147483631 !important/);
   assert.match(globalsSource, /\.nexid-account-layer \[data-account-menu-backdrop="true"\]\s*\{[\s\S]*backdrop-filter:\s*blur\(18px\) saturate\(1\.1\)/);
   assert.match(globalsSource, /\.nexid-account-layer \[data-account-menu-backdrop="true"\]\s*\{[\s\S]*touch-action:\s*none/);
   assert.match(globalsSource, /\.nexid-account-layer \.tenant-account-panel\s*\{[\s\S]*display:\s*flex !important/);
-  assert.match(globalsSource, /\.nexid-account-layer \.tenant-account-panel\s*\{[\s\S]*z-index:\s*2147483602 !important/);
+  assert.match(globalsSource, /\.nexid-account-layer \.tenant-account-panel\s*\{[\s\S]*z-index:\s*2147483632 !important/);
   assert.match(globalsSource, /\.nexid-account-layer \.tenant-account-panel\s*\{[\s\S]*width:\s*min\(100vw, 32rem\) !important/);
   assert.match(globalsSource, /\.nexid-account-layer \.tenant-account-panel\s*\{[\s\S]*height:\s*100dvh !important/);
   assert.match(globalsSource, /\.nexid-account-layer \.tenant-account-panel\s*\{[\s\S]*touch-action:\s*auto/);

@@ -37,8 +37,77 @@ type TenantAccountMenuProps = {
   tenantSlug?: string | null;
 };
 
-const ACCOUNT_MENU_Z_INDEX = 2147483600;
+const ACCOUNT_MENU_Z_INDEX = 2147483630;
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+const ACCOUNT_MENU_CRITICAL_CSS = `
+html.nexid-account-menu-open,
+body.nexid-account-menu-open {
+  overflow: hidden !important;
+}
+.nexid-account-layer {
+  position: fixed !important;
+  inset: 0 !important;
+  display: block !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  max-width: none !important;
+  max-height: none !important;
+  overflow: visible !important;
+  isolation: isolate !important;
+  contain: none !important;
+  pointer-events: auto !important;
+  z-index: 2147483630 !important;
+  transform: translate3d(0, 0, 0) !important;
+  overscroll-behavior: contain !important;
+}
+.nexid-account-layer [data-account-menu-backdrop="true"] {
+  position: fixed !important;
+  inset: 0 !important;
+  pointer-events: auto !important;
+  z-index: 2147483631 !important;
+}
+.nexid-account-layer .tenant-account-panel {
+  position: fixed !important;
+  inset-block: 0 !important;
+  right: 0 !important;
+  left: auto !important;
+  width: min(100vw, 32rem) !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  pointer-events: auto !important;
+  isolation: isolate !important;
+  z-index: 2147483632 !important;
+}
+body.nexid-account-menu-open .nexid-crm-shell,
+html.nexid-account-menu-open .nexid-crm-shell {
+  pointer-events: none !important;
+  z-index: 0 !important;
+  filter: saturate(0.78) brightness(0.48) blur(0.5px) !important;
+  transform: none !important;
+  contain: none !important;
+  user-select: none !important;
+}
+body.nexid-account-menu-open .nexid-crm-shell *,
+html.nexid-account-menu-open .nexid-crm-shell * {
+  pointer-events: none !important;
+}
+body.nexid-account-menu-open .nexid-account-layer,
+body.nexid-account-menu-open .nexid-account-layer *,
+html.nexid-account-menu-open .nexid-account-layer,
+html.nexid-account-menu-open .nexid-account-layer * {
+  pointer-events: auto !important;
+}
+@media (max-width: 640px) {
+  .nexid-account-layer .tenant-account-panel {
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+  }
+}
+`;
 const ACCOUNT_LAYER_STYLE: CSSProperties = {
   position: "fixed",
   zIndex: ACCOUNT_MENU_Z_INDEX,
@@ -312,10 +381,16 @@ export function TenantAccountMenu({
       aria-modal="true"
       className="nexid-account-layer fixed inset-0 isolate"
       data-account-menu-portal="body"
+      data-account-menu-version="drawer-v3"
       data-testid="tenant-account-menu-layer"
       aria-label="Cuenta operativa nexID"
       style={ACCOUNT_LAYER_STYLE}
     >
+      <style
+        data-account-menu-critical-style="true"
+        data-testid="tenant-account-menu-critical-style"
+        dangerouslySetInnerHTML={{ __html: ACCOUNT_MENU_CRITICAL_CSS }}
+      />
       <button
         type="button"
         aria-label="Cerrar menu de cuenta"
