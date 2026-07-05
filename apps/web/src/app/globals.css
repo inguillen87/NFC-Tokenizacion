@@ -46840,6 +46840,150 @@ html[data-theme="light"] .brand-synergy-simulator button.brand-synergy-scenario-
   box-shadow: 0 14px 28px rgba(79, 70, 229, 0.18) !important;
 }
 
+/* Brand synergy executive pass: remove nested-card heaviness, keep the live
+   terminal stable while the demo advances, and make mobile controls obvious. */
+.landing-brand-synergy-shell {
+  overflow: visible !important;
+  border-color: rgba(103, 232, 249, 0.18) !important;
+  background:
+    linear-gradient(135deg, rgba(8, 47, 73, 0.18), rgba(15, 23, 42, 0.1) 42%, rgba(88, 28, 135, 0.16)) !important;
+  box-shadow: 0 26px 70px rgba(2, 6, 23, 0.18) !important;
+}
+
+html.theme-light .landing-brand-synergy-shell,
+html[data-theme="light"] .landing-brand-synergy-shell {
+  border-color: rgba(14, 116, 144, 0.16) !important;
+  background:
+    linear-gradient(135deg, rgba(236, 254, 255, 0.96), rgba(255, 255, 255, 0.98) 48%, rgba(245, 243, 255, 0.96)) !important;
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.1) !important;
+}
+
+.brand-synergy-simulator {
+  transform: translateZ(0);
+}
+
+.brand-synergy-scenario-pill {
+  min-height: 2.75rem;
+  transform: none !important;
+}
+
+.brand-synergy-scenario-pill.is-active {
+  outline: 1px solid rgba(255, 255, 255, 0.2);
+  outline-offset: -2px;
+}
+
+.brand-synergy-primary-cta,
+.brand-synergy-secondary-cta {
+  min-height: 2.9rem;
+  justify-content: center;
+  text-align: center;
+}
+
+.brand-synergy-terminal__chrome {
+  min-height: 3.1rem;
+}
+
+.brand-synergy-terminal__rows {
+  display: grid;
+  gap: 0.75rem;
+  align-content: start;
+}
+
+.brand-synergy-terminal-row {
+  min-height: 4.25rem;
+  transition:
+    opacity 220ms ease,
+    filter 220ms ease,
+    border-color 220ms ease,
+    background 220ms ease;
+}
+
+.brand-synergy-terminal-row[data-visible="false"] {
+  opacity: 0.68;
+  filter: saturate(0.66);
+}
+
+.brand-synergy-terminal-row[data-visible="true"] {
+  opacity: 1;
+  filter: none;
+}
+
+html.theme-light .brand-synergy-terminal__chrome,
+html[data-theme="light"] .brand-synergy-terminal__chrome {
+  border-color: rgba(14, 116, 144, 0.14) !important;
+  background: linear-gradient(135deg, rgba(248, 250, 252, 0.96), rgba(236, 254, 255, 0.88)) !important;
+}
+
+html.theme-light .brand-synergy-primary-cta,
+html[data-theme="light"] .brand-synergy-primary-cta {
+  border: 1px solid rgba(14, 116, 144, 0.28) !important;
+  color: #06111f !important;
+  box-shadow: 0 16px 30px rgba(14, 116, 144, 0.18) !important;
+}
+
+html.theme-light .brand-synergy-secondary-cta,
+html[data-theme="light"] .brand-synergy-secondary-cta {
+  border-color: rgba(14, 116, 144, 0.22) !important;
+  background: rgba(255, 255, 255, 0.86) !important;
+  color: #0f172a !important;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.07) !important;
+}
+
+@media (max-width: 760px) {
+  .landing-brand-synergy-shell {
+    margin-inline: max(-0.55rem, -2vw) !important;
+    padding: 0.5rem !important;
+    border-radius: 1.35rem !important;
+  }
+
+  .brand-synergy-simulator {
+    border-radius: 1.1rem !important;
+  }
+
+  .brand-synergy-primary-cta,
+  .brand-synergy-secondary-cta {
+    width: 100%;
+    min-height: 44px;
+    padding-inline: 0.85rem !important;
+    white-space: normal;
+  }
+
+  .brand-synergy-live-panel__metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 0.45rem !important;
+  }
+
+  .brand-synergy-live-panel__metrics > div {
+    border-radius: 0.85rem !important;
+    padding: 0.65rem 0.55rem !important;
+  }
+
+  .brand-synergy-live-panel__metrics span {
+    font-size: 0.56rem !important;
+    letter-spacing: 0.08em !important;
+  }
+
+  .brand-synergy-live-panel__metrics strong {
+    font-size: 0.82rem !important;
+  }
+
+  .brand-synergy-terminal__chrome {
+    align-items: flex-start !important;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+
+  .brand-synergy-terminal__rows {
+    gap: 0.55rem;
+    padding: 0.75rem !important;
+  }
+
+  .brand-synergy-terminal-row {
+    min-height: 3.85rem;
+    padding: 0.75rem !important;
+  }
+}
+
 /* Final atlas label pass: readable place names in white mode without heavy bold bleed. */
 html.theme-light .hero-trust-atlas__city-label,
 html[data-theme="light"] .hero-trust-atlas__city-label {

@@ -230,21 +230,35 @@ test("landing hero stats use real configured fields and no old cost placeholder"
 
 test("brand synergy simulator is readable, auto-cycles and stays mobile-safe", async () => {
   const source = await readFile(new URL("../src/components/brand-synergy-simulator.tsx", import.meta.url), "utf8");
+  const page = await readFile(new URL("../src/app/page.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
 
   assert.doesNotMatch(source, /Ã|Â|â|ð/);
   assert.match(source, /window\.setInterval\(\(\) => \{/);
   assert.match(source, /\},\s*4000\)/);
   assert.match(source, /setIsPaused\(true\)/);
+  assert.doesNotMatch(source, /scale-105/);
+  assert.match(source, /function rowState\(requiredStep: number\)/);
+  assert.match(source, /data-visible/);
   assert.match(source, /brand-synergy-proof-grid/);
   assert.match(source, /brand-synergy-live-panel/);
+  assert.match(source, /brand-synergy-primary-cta/);
+  assert.match(source, /brand-synergy-secondary-cta/);
+  assert.match(source, /brand-synergy-terminal__rows/);
   assert.match(source, /brand-synergy-outcome-grid/);
   assert.match(source, /hash-only/);
   assert.match(source, /Consent and PII stay inside nexID/);
+  assert.match(page, /landing-brand-synergy-shell relative rounded-\[2rem\]/);
+  assert.doesNotMatch(page, /landing-brand-synergy-shell[^\n]+overflow-hidden/);
   assert.match(css, /brand-synergy-proof-grid > div/);
+  assert.match(css, /html\.theme-light \.landing-brand-synergy-shell/);
   assert.match(css, /brand-synergy-live-panel\s*\{/);
+  assert.match(css, /brand-synergy-primary-cta,[\s\S]*brand-synergy-secondary-cta\s*\{[\s\S]*min-height:\s*2\.9rem/);
+  assert.match(css, /brand-synergy-terminal__rows\s*\{[\s\S]*display:\s*grid/);
+  assert.match(css, /brand-synergy-terminal-row\[data-visible="false"\]/);
   assert.match(css, /brand-synergy-outcome-grid > article/);
   assert.match(css, /html\.theme-light \.brand-synergy-live-panel/);
+  assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*\.brand-synergy-live-panel__metrics\s*\{[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(css, /brand-synergy-flow\s*\{[\s\S]*grid-template-columns:\s*1fr/);
   assert.match(css, /brand-synergy-scenario-pill\s*\{[\s\S]*flex:\s*1 1 100%/);
   assert.match(css, /brand-synergy-outcome-grid\s*\{[\s\S]*grid-template-columns:\s*1fr/);

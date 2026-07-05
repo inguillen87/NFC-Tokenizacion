@@ -219,6 +219,10 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
     setStep(0);
   }
 
+  function rowState(requiredStep: number) {
+    return { "data-visible": step >= requiredStep ? "true" : "false" };
+  }
+
   return (
     <div
       className="brand-synergy-simulator relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900/90 to-slate-950/90 p-8 shadow-2xl backdrop-blur-xl md:p-10"
@@ -276,7 +280,7 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
                     aria-pressed={isActive}
                     className={`brand-synergy-scenario-pill ${isActive ? "is-active" : ""} flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold transition-all duration-300 ${
                       isActive
-                        ? `${scenario.activeBg} ${scenario.activeBorder} scale-105 text-white shadow-lg`
+                        ? `${scenario.activeBg} ${scenario.activeBorder} text-white shadow-lg`
                         : "border-white/10 bg-slate-900/60 text-slate-400 hover:border-white/20 hover:text-white"
                     }`}
                   >
@@ -328,13 +332,13 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
           <div className="mt-8 flex flex-wrap gap-3">
             <a
               href="/login?next=/me"
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 px-5 py-3 text-sm font-black uppercase tracking-wider text-slate-950 shadow-lg transition-all hover:-translate-y-0.5 hover:from-cyan-400 hover:to-teal-400 hover:shadow-cyan-500/30"
+              className="brand-synergy-primary-cta inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 px-5 py-3 text-sm font-black uppercase tracking-wider text-slate-950 shadow-lg transition-all hover:-translate-y-0.5 hover:from-cyan-400 hover:to-teal-400 hover:shadow-cyan-500/30"
             >
               {copy.portal} <ArrowRight className="h-4 w-4" />
             </a>
             <a
               href="/demo-lab"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-5 py-3 text-sm font-bold uppercase tracking-wider text-slate-300 transition hover:bg-white/5"
+              className="brand-synergy-secondary-cta inline-flex items-center gap-2 rounded-xl border border-white/10 px-5 py-3 text-sm font-bold uppercase tracking-wider text-slate-300 transition hover:bg-white/5"
             >
               {copy.lab}
             </a>
@@ -363,41 +367,44 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
           </div>
 
           <div className="brand-synergy-terminal rounded-2xl border border-white/10 bg-white/[0.03] shadow-xl" aria-live="polite">
-          <div className="flex items-center justify-between border-b border-white/10 bg-slate-900/60 px-4 py-3">
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-purple-500" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-purple-300">{copy.terminalTitle}</span>
-            </div>
-            <span className="flex items-center gap-1 text-[9px] uppercase tracking-widest text-slate-500">
-              <Activity className="h-3 w-3 text-cyan-400" />
-              {copy.channel}
-            </span>
-          </div>
-
-          <div className="space-y-3 p-4 font-mono text-[11.5px] text-slate-300">
-            <div className="brand-synergy-terminal-row brand-synergy-terminal-row--tap rounded-xl border border-white/10 bg-slate-900 p-3">
-              <p className="mb-2 text-[9px] uppercase tracking-wider text-slate-500">{copy.physicalTap}</p>
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-bold text-slate-100">{activeScenario.scannedProduct}</p>
-                  <p className="mt-0.5 text-[10px] text-slate-500">{activeScenario.scannedBatch}</p>
-                </div>
-                <Smartphone className="h-5 w-5 shrink-0 text-purple-400" />
+            <div className="brand-synergy-terminal__chrome flex items-center justify-between border-b border-white/10 bg-slate-900/60 px-4 py-3">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-purple-500" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-purple-300">{copy.terminalTitle}</span>
               </div>
+              <span className="flex items-center gap-1 text-[9px] uppercase tracking-widest text-slate-500">
+                <Activity className="h-3 w-3 text-cyan-400" />
+                {copy.channel}
+              </span>
             </div>
 
-            {step >= 1 && (
-              <div className="brand-synergy-terminal-row brand-synergy-terminal-row--auth rounded-xl border border-emerald-500/30 bg-emerald-950/40 p-3">
+            <div className="brand-synergy-terminal__rows p-4 font-mono text-[11.5px] text-slate-300">
+              <div className="brand-synergy-terminal-row brand-synergy-terminal-row--tap rounded-xl border border-white/10 bg-slate-900 p-3" data-visible="true">
+                <p className="mb-2 text-[9px] uppercase tracking-wider text-slate-500">{copy.physicalTap}</p>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-bold text-slate-100">{activeScenario.scannedProduct}</p>
+                    <p className="mt-0.5 text-[10px] text-slate-500">{activeScenario.scannedBatch}</p>
+                  </div>
+                  <Smartphone className="h-5 w-5 shrink-0 text-purple-400" />
+                </div>
+              </div>
+
+              <div
+                className="brand-synergy-terminal-row brand-synergy-terminal-row--auth rounded-xl border border-emerald-500/30 bg-emerald-950/40 p-3"
+                {...rowState(1)}
+              >
                 <p className="mb-2 text-[9px] uppercase tracking-wider text-slate-500">{copy.authenticity}</p>
                 <div className="flex items-center gap-2 text-emerald-300">
                   <ShieldCheck className="h-4 w-4 shrink-0" />
                   <span className="text-xs">{copy.verified}</span>
                 </div>
               </div>
-            )}
 
-            {step >= 2 && (
-              <div className="brand-synergy-terminal-row brand-synergy-terminal-row--query rounded-xl border border-cyan-500/20 bg-cyan-950/30 p-3">
+              <div
+                className="brand-synergy-terminal-row brand-synergy-terminal-row--query rounded-xl border border-cyan-500/20 bg-cyan-950/30 p-3"
+                {...rowState(2)}
+              >
                 <p className="mb-2 text-[9px] uppercase tracking-wider text-slate-500">{copy.query}</p>
                 <p className="flex items-center gap-1.5 text-xs text-cyan-300">
                   <Navigation className="h-3 w-3 text-cyan-400" />
@@ -407,10 +414,11 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
                   {copy.category}: {activeScenario.industry}
                 </p>
               </div>
-            )}
 
-            {step >= 3 && (
-              <div className="brand-synergy-terminal-row brand-synergy-terminal-row--voucher relative overflow-hidden rounded-xl border border-purple-500/40 bg-purple-950/40 p-3">
+              <div
+                className="brand-synergy-terminal-row brand-synergy-terminal-row--voucher relative overflow-hidden rounded-xl border border-purple-500/40 bg-purple-950/40 p-3"
+                {...rowState(3)}
+              >
                 <div className="absolute bottom-1 right-1 opacity-10">
                   <Zap className="h-16 w-16 text-purple-400" />
                 </div>
@@ -428,12 +436,11 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
                   </span>
                 </div>
               </div>
-            )}
 
-            <div className="brand-synergy-privacy-note rounded-xl border border-cyan-400/20 bg-cyan-400/10 p-3 text-xs leading-5 text-cyan-100">
-              {copy.privacy}
+              <div className="brand-synergy-privacy-note rounded-xl border border-cyan-400/20 bg-cyan-400/10 p-3 text-xs leading-5 text-cyan-100">
+                {copy.privacy}
+              </div>
             </div>
-          </div>
           </div>
         </div>
       </div>
