@@ -12,8 +12,12 @@ test("tenant account menu renders as a top-level drawer above CRM layers", () =>
   assert.match(menuSource, /function getAccountMenuPortalRoot\(\)/);
   assert.match(menuSource, /root\.setAttribute\("data-account-menu-root", "true"\)/);
   assert.match(menuSource, /document\.body\.appendChild\(root\)/);
+  assert.match(menuSource, /root\.parentElement !== document\.body \|\| root !== document\.body\.lastElementChild/);
   assert.match(menuSource, /root\.style\.setProperty\("z-index", String\(ACCOUNT_MENU_Z_INDEX\), "important"\)/);
   assert.match(menuSource, /root\.style\.setProperty\("pointer-events", "none", "important"\)/);
+  assert.match(menuSource, /root\.toggleAttribute\("data-account-menu-active", value\)/);
+  assert.match(menuSource, /root\.style\.setProperty\("pointer-events", value \? "auto" : "none", "important"\)/);
+  assert.match(menuSource, /setPortalRoot\(root\)/);
   assert.match(menuSource, /setPortalRoot\(getAccountMenuPortalRoot\(\)\)/);
   assert.match(menuSource, /createPortal\(menuPanel,\s*portalRoot \|\| document\.body\)/);
   assert.match(menuSource, /const ACCOUNT_MENU_Z_INDEX = 2147483630/);
@@ -98,6 +102,10 @@ test("global CSS prevents dashboard maps from covering account drawer", () => {
   assert.match(globalsSource, /body\.nexid-crm-overlay-active \.dashboard-sidebar,\s*body\.nexid-crm-overlay-active \.dashboard-header,\s*body\.nexid-crm-overlay-active \.dashboard-mobile-dock\s*\{[\s\S]*display:\s*none !important/);
   assert.match(globalsSource, /#nexid-account-menu-root\s*\{[\s\S]*z-index:\s*2147483630 !important/);
   assert.match(globalsSource, /#nexid-account-menu-root\s*\{[\s\S]*pointer-events:\s*none !important/);
+  assert.match(globalsSource, /#nexid-account-menu-root\[data-account-menu-active="true"\]/);
+  assert.match(globalsSource, /html\.nexid-account-menu-open #nexid-account-menu-root/);
+  assert.match(globalsSource, /body\.nexid-account-menu-open #nexid-account-menu-root/);
+  assert.match(globalsSource, /#nexid-account-menu-root\[data-account-menu-active="true"\],[\s\S]*body\.nexid-account-menu-open #nexid-account-menu-root\s*\{[\s\S]*pointer-events:\s*auto !important/);
   assert.match(globalsSource, /#nexid-account-menu-root \.nexid-account-layer\s*\{[\s\S]*pointer-events:\s*auto !important/);
   assert.match(globalsSource, /\.nexid-account-layer\s*\{[\s\S]*z-index:\s*2147483630 !important/);
   assert.match(globalsSource, /\.nexid-account-layer\s*\{[\s\S]*display:\s*block !important/);

@@ -1129,6 +1129,14 @@ body.nexid-account-menu-open {
   contain: none !important;
 }
 
+#nexid-account-menu-root[data-account-menu-active="true"],
+html.nexid-account-menu-open #nexid-account-menu-root,
+body.nexid-account-menu-open #nexid-account-menu-root {
+  display: block !important;
+  pointer-events: auto !important;
+  z-index: 2147483630 !important;
+}
+
 #nexid-account-menu-root .nexid-account-layer {
   pointer-events: auto !important;
 }

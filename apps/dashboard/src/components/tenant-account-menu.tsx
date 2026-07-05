@@ -153,6 +153,8 @@ function getAccountMenuPortalRoot() {
     root = document.createElement("div");
     root.id = ACCOUNT_MENU_PORTAL_ROOT_ID;
     root.setAttribute("data-account-menu-root", "true");
+  }
+  if (root.parentElement !== document.body || root !== document.body.lastElementChild) {
     document.body.appendChild(root);
   }
   root.style.setProperty("position", "fixed", "important");
@@ -323,6 +325,12 @@ export function TenantAccountMenu({
         : { href: "/settings", label: "Abrir configuracion global", meta: "Seguridad, tenants, integraciones y soporte" };
 
   const setDocumentMenuState = useCallback((value: boolean) => {
+    const root = getAccountMenuPortalRoot();
+    if (root) {
+      root.toggleAttribute("data-account-menu-active", value);
+      root.style.setProperty("pointer-events", value ? "auto" : "none", "important");
+      setPortalRoot(root);
+    }
     document.documentElement.classList.toggle("nexid-account-menu-open", value);
     document.body.classList.toggle("nexid-account-menu-open", value);
     document.body.toggleAttribute("data-account-menu-open", value);
