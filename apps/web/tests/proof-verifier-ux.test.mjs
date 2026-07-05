@@ -9,7 +9,7 @@ test("proof verifier keeps the enterprise decoder readable and non-trapped", asy
   assert.match(page, /proof-secondary-cta/);
   assert.match(page, /Que entiende un gerente sin leer blockchain/);
   assert.match(page, /Decodificar Raw input/);
-  assert.match(page, /Abrir tx con memo/);
+  assert.match(page, /Abrir memo tx en IOTA Explorer/);
   assert.match(page, /Traducir Raw input a negocio/);
   assert.match(page, /Explorer Decoder para C-level/);
   assert.match(page, /Raw input = memo publico/);
@@ -31,12 +31,19 @@ test("proof verifier keeps the enterprise decoder readable and non-trapped", asy
   assert.match(page, /grid-template-columns:\s*minmax\(0,\s*1fr\)/);
   assert.match(page, /proof-workstation-grid\s*>\s*\*/);
   assert.match(page, /min-width:\s*0/);
+  assert.match(page, /proof-workstation-result-panel/);
+  assert.match(page, /@media \(min-width:\s*1180px\)/);
+  assert.match(page, /grid-template-columns:\s*minmax\(0,\s*0\.94fr\) minmax\(24rem,\s*0\.76fr\)/);
+  assert.match(page, /proof-workstation-result-panel,[\s\S]*proof-workstation-sidebar[\s\S]*align-self:\s*start/);
   assert.match(page, /proof-decoder-panel/);
   assert.match(page, /proof-manager-panel/);
   assert.match(page, /proof-decoder-translation-grid/);
   assert.match(page, /proof-manager-explain-grid/);
   assert.match(page, /grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(page, /grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(page, /Abrir anchor tx/);
+  assert.match(page, /Abrir memo tx en IOTA Explorer/);
+  assert.match(page, /Abrir memo tx y copiar Raw input/);
   assert.match(backLink, /aria-label=\{label\}/);
   assert.match(backLink, /ArrowLeft/);
   assert.doesNotMatch(backLink, /\{"<-"\}/);

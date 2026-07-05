@@ -719,6 +719,28 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           }
         }
 
+        @media (min-width: 1180px) {
+          .proof-verify-page .proof-workstation-grid {
+            grid-template-columns: minmax(0, 0.94fr) minmax(24rem, 0.76fr);
+            align-items: start;
+            gap: 1.5rem;
+          }
+
+          .proof-verify-page .proof-workstation-sidebar {
+            grid-template-columns: minmax(0, 1fr);
+          }
+
+          .proof-verify-page .proof-decoder-panel,
+          .proof-verify-page .proof-manager-panel {
+            grid-column: auto;
+          }
+
+          .proof-verify-page .proof-workstation-result-panel,
+          .proof-verify-page .proof-workstation-sidebar {
+            align-self: start;
+          }
+        }
+
         @media (max-width: 640px) {
           .proof-verify-page {
             padding-bottom: 6rem;
@@ -988,7 +1010,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                 <div className="proof-flat rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
                   <dt className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-emerald-800">Anchor demo real</dt>
                   <dd className="mt-2 break-all font-mono text-xs font-bold text-emerald-950">{demoCatalog.testnet.iota.demo_tx_hash}</dd>
-                  <div className="mt-3">{explorerLink(demoCatalog.testnet.iota.demo_tx_explorer_url, "Abrir tx")}</div>
+                  <div className="mt-3">{explorerLink(demoCatalog.testnet.iota.demo_tx_explorer_url, "Abrir anchor tx")}</div>
                 </div>
               ) : (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
@@ -1034,7 +1056,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                   <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3">
                     <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-emerald-800">IOTA anchor confirmado</p>
                     <p className="mt-2 break-all font-mono text-[0.72rem] font-bold text-emerald-950">{shortHash(demoCase.tx_hash)}</p>
-                    <div className="mt-2">{explorerLink(demoCase.explorer_url, "Abrir tx")}</div>
+                    <div className="mt-2">{explorerLink(demoCase.explorer_url, "Abrir anchor tx")}</div>
                   </div>
                 ) : null}
                 {demoCase.public_receipt?.tx_hash ? (
@@ -1060,7 +1082,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
         </section>
 
         <section className="proof-workstation-grid">
-          <div className="proof-elevated rounded-[1.5rem] border border-slate-200 bg-white/82 p-5 shadow-sm">
+          <div className="proof-workstation-result-panel proof-elevated rounded-[1.5rem] border border-slate-200 bg-white/82 p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Resultado</p>
@@ -1155,7 +1177,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                       <p className="mt-2 break-all font-mono text-[0.72rem] font-bold text-slate-900">{shortHash(activeDemo.public_receipt.tx_hash)}</p>
                       {activeDemo.public_receipt.explorer_url ? (
                         <a href={activeDemo.public_receipt.explorer_url} className="proof-receipt-action-link mt-3 text-xs font-black uppercase tracking-[0.12em]" target="_blank" rel="noreferrer">
-                          Abrir memo en explorer <ArrowRight className="h-4 w-4" />
+                          Abrir memo real en IOTA Explorer <ArrowRight className="h-4 w-4" />
                         </a>
                       ) : null}
                     </div>
@@ -1211,7 +1233,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
             <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
               {activeDemo?.public_receipt.explorer_url ? (
                 <a href={activeDemo.public_receipt.explorer_url} className="proof-receipt-action-link text-xs font-black uppercase tracking-[0.12em]" target="_blank" rel="noreferrer">
-                  Abrir tx con memo <ArrowRight className="h-4 w-4" />
+                  Abrir memo tx en IOTA Explorer <ArrowRight className="h-4 w-4" />
                 </a>
               ) : null}
               {activeDemo ? (
@@ -1361,7 +1383,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
 
                 <div className="grid gap-2 sm:grid-cols-3">
                   {[
-                    { title: "1. Explorer", body: "Abrir tx y copiar Raw input." },
+                    { title: "1. Explorer", body: "Abrir memo tx y copiar Raw input." },
                     { title: "2. Decoder", body: "nexID traduce hex a contexto." },
                     { title: "3. SHA", body: "Verificar inclusion exacta." },
                   ].map((step) => (
