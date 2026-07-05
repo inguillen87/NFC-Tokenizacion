@@ -20,6 +20,7 @@ test("tenant account menu renders as a top-level drawer above CRM layers", () =>
   assert.doesNotMatch(menuSource, /bg-slate-950\/80/);
   assert.match(menuSource, /backgroundColor:\s*"rgba\(2, 6, 23, 0\.8\)"/);
   assert.match(menuSource, /backdrop-blur-lg/);
+  assert.match(menuSource, /tenant-account-panel__header/);
   assert.match(menuSource, /top:\s*12/);
   assert.match(menuSource, /right:\s*12/);
   assert.match(menuSource, /bottom:\s*12/);
@@ -38,6 +39,11 @@ test("global CSS prevents dashboard maps from covering account drawer", () => {
   assert.match(globalsSource, /\.nexid-account-layer\s*\{[\s\S]*z-index:\s*2147483600 !important/);
   assert.match(globalsSource, /\.nexid-account-layer \.tenant-account-panel\s*\{[\s\S]*display:\s*flex !important/);
   assert.match(globalsSource, /\.nexid-account-layer \.tenant-account-panel\s*\{[\s\S]*z-index:\s*2147483602 !important/);
+  assert.match(globalsSource, /html\.theme-light \.nexid-account-layer \.tenant-account-panel__header/);
+  assert.match(globalsSource, /\.nexid-account-layer \.tenant-account-panel__header,[\s\S]*\{[\s\S]*color:\s*#f8fafc !important/);
+  assert.match(globalsSource, /html\.theme-light \.nexid-account-layer \.tenant-account-panel__header \.text-white/);
+  assert.match(globalsSource, /\.tenant-account-panel__header \.text-white,[\s\S]*\{[\s\S]*color:\s*#f8fafc !important/);
+  assert.match(globalsSource, /html\.theme-light \.nexid-account-layer \.tenant-account-panel__header \.text-slate-400/);
   assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell\s*\{[\s\S]*z-index:\s*0 !important/);
   assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell\s*\{[\s\S]*pointer-events:\s*none !important/);
   assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell \*\s*\{[\s\S]*pointer-events:\s*none !important/);
