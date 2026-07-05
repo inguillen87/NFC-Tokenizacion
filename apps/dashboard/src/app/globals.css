@@ -1164,6 +1164,23 @@ body.nexid-account-menu-open #nexid-account-menu-root {
   will-change: opacity;
 }
 
+.nexid-account-dialog {
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: inherit !important;
+  max-width: none !important;
+  max-height: none !important;
+}
+
+.nexid-account-dialog::backdrop {
+  background:
+    radial-gradient(circle at 80% 8%, rgba(34, 211, 238, 0.16), transparent 34%),
+    rgba(2, 6, 23, 0.9) !important;
+  backdrop-filter: blur(18px) saturate(1.1);
+}
+
 .nexid-account-layer,
 .nexid-account-layer > *,
 .nexid-account-layer [data-account-menu-backdrop="true"] {
@@ -1197,6 +1214,44 @@ body.nexid-account-menu-open #nexid-account-menu-root {
   transform: translate3d(0, 0, 0) !important;
   touch-action: auto;
   box-shadow: -36px 0 120px rgba(0, 0, 0, 0.74) !important;
+}
+
+.nexid-account-layer .tenant-account-panel,
+html.theme-light .nexid-account-layer .tenant-account-panel,
+html[data-theme="light"] .nexid-account-layer .tenant-account-panel {
+  background:
+    radial-gradient(circle at 88% 6%, rgba(34, 211, 238, 0.13), transparent 35%),
+    linear-gradient(180deg, #08111f 0%, #020817 48%, #020817 100%) !important;
+  color: #f8fafc !important;
+}
+
+html.theme-light .nexid-account-layer .tenant-account-panel [class*="bg-slate-950"],
+html.theme-light .nexid-account-layer .tenant-account-panel [class*="bg-slate-900"],
+html.theme-light .nexid-account-layer .tenant-account-panel [class*="bg-white/"],
+html[data-theme="light"] .nexid-account-layer .tenant-account-panel [class*="bg-slate-950"],
+html[data-theme="light"] .nexid-account-layer .tenant-account-panel [class*="bg-slate-900"],
+html[data-theme="light"] .nexid-account-layer .tenant-account-panel [class*="bg-white/"] {
+  background: rgba(15, 23, 42, 0.62) !important;
+  border-color: rgba(148, 163, 184, 0.2) !important;
+  color: #f8fafc !important;
+}
+
+html.theme-light .nexid-account-layer .tenant-account-panel .text-white,
+html.theme-light .nexid-account-layer .tenant-account-panel .text-slate-100,
+html.theme-light .nexid-account-layer .tenant-account-panel .text-slate-200,
+html[data-theme="light"] .nexid-account-layer .tenant-account-panel .text-white,
+html[data-theme="light"] .nexid-account-layer .tenant-account-panel .text-slate-100,
+html[data-theme="light"] .nexid-account-layer .tenant-account-panel .text-slate-200 {
+  color: #f8fafc !important;
+}
+
+html.theme-light .nexid-account-layer .tenant-account-panel .text-slate-300,
+html.theme-light .nexid-account-layer .tenant-account-panel .text-slate-400,
+html.theme-light .nexid-account-layer .tenant-account-panel .text-slate-500,
+html[data-theme="light"] .nexid-account-layer .tenant-account-panel .text-slate-300,
+html[data-theme="light"] .nexid-account-layer .tenant-account-panel .text-slate-400,
+html[data-theme="light"] .nexid-account-layer .tenant-account-panel .text-slate-500 {
+  color: #cbd5e1 !important;
 }
 
 .nexid-account-layer .tenant-account-panel__header,
@@ -1238,6 +1293,8 @@ body.nexid-account-menu-open .nexid-crm-shell,
   pointer-events: none !important;
   z-index: 0 !important;
   filter: saturate(0.78) brightness(0.48) blur(0.5px) !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
   transform: none !important;
   contain: none !important;
   user-select: none !important;

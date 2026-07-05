@@ -62,6 +62,21 @@ body.nexid-account-menu-open {
   transform: translate3d(0, 0, 0) !important;
   overscroll-behavior: contain !important;
 }
+.nexid-account-dialog {
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: inherit !important;
+  max-width: none !important;
+  max-height: none !important;
+}
+.nexid-account-dialog::backdrop {
+  background:
+    radial-gradient(circle at 80% 8%, rgba(34, 211, 238, 0.16), transparent 34%),
+    rgba(2, 6, 23, 0.9) !important;
+  backdrop-filter: blur(18px) saturate(1.1);
+}
 .nexid-account-layer [data-account-menu-backdrop="true"] {
   position: fixed !important;
   inset: 0 !important;
@@ -82,11 +97,47 @@ body.nexid-account-menu-open {
   isolation: isolate !important;
   z-index: 2147483632 !important;
 }
+.nexid-account-layer .tenant-account-panel,
+html.theme-light .nexid-account-layer .tenant-account-panel,
+html[data-theme="light"] .nexid-account-layer .tenant-account-panel {
+  background:
+    radial-gradient(circle at 88% 6%, rgba(34, 211, 238, 0.13), transparent 35%),
+    linear-gradient(180deg, #08111f 0%, #020817 48%, #020817 100%) !important;
+  color: #f8fafc !important;
+}
+html.theme-light .nexid-account-layer .tenant-account-panel [class*="bg-slate-950"],
+html.theme-light .nexid-account-layer .tenant-account-panel [class*="bg-slate-900"],
+html.theme-light .nexid-account-layer .tenant-account-panel [class*="bg-white/"],
+html[data-theme="light"] .nexid-account-layer .tenant-account-panel [class*="bg-slate-950"],
+html[data-theme="light"] .nexid-account-layer .tenant-account-panel [class*="bg-slate-900"],
+html[data-theme="light"] .nexid-account-layer .tenant-account-panel [class*="bg-white/"] {
+  background: rgba(15, 23, 42, 0.62) !important;
+  border-color: rgba(148, 163, 184, 0.2) !important;
+  color: #f8fafc !important;
+}
+html.theme-light .nexid-account-layer .tenant-account-panel .text-white,
+html.theme-light .nexid-account-layer .tenant-account-panel .text-slate-100,
+html.theme-light .nexid-account-layer .tenant-account-panel .text-slate-200,
+html[data-theme="light"] .nexid-account-layer .tenant-account-panel .text-white,
+html[data-theme="light"] .nexid-account-layer .tenant-account-panel .text-slate-100,
+html[data-theme="light"] .nexid-account-layer .tenant-account-panel .text-slate-200 {
+  color: #f8fafc !important;
+}
+html.theme-light .nexid-account-layer .tenant-account-panel .text-slate-300,
+html.theme-light .nexid-account-layer .tenant-account-panel .text-slate-400,
+html.theme-light .nexid-account-layer .tenant-account-panel .text-slate-500,
+html[data-theme="light"] .nexid-account-layer .tenant-account-panel .text-slate-300,
+html[data-theme="light"] .nexid-account-layer .tenant-account-panel .text-slate-400,
+html[data-theme="light"] .nexid-account-layer .tenant-account-panel .text-slate-500 {
+  color: #cbd5e1 !important;
+}
 body.nexid-account-menu-open .nexid-crm-shell,
 html.nexid-account-menu-open .nexid-crm-shell {
   pointer-events: none !important;
   z-index: 0 !important;
   filter: saturate(0.78) brightness(0.48) blur(0.5px) !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
   transform: none !important;
   contain: none !important;
   user-select: none !important;
@@ -175,6 +226,8 @@ function setCrmShellSuppression(value: boolean) {
       node.style.setProperty("pointer-events", "none", "important");
       node.style.setProperty("z-index", "0", "important");
       node.style.setProperty("filter", "saturate(0.78) brightness(0.48) blur(0.5px)", "important");
+      node.style.setProperty("opacity", "0", "important");
+      node.style.setProperty("visibility", "hidden", "important");
       node.style.setProperty("transform", "none", "important");
       node.style.setProperty("contain", "none", "important");
       try {
@@ -191,6 +244,8 @@ function setCrmShellSuppression(value: boolean) {
     node.style.removeProperty("pointer-events");
     node.style.removeProperty("z-index");
     node.style.removeProperty("filter");
+    node.style.removeProperty("opacity");
+    node.style.removeProperty("visibility");
     node.style.removeProperty("transform");
     node.style.removeProperty("contain");
     try {
@@ -301,7 +356,7 @@ export function TenantAccountMenu({
   const [panelStyle, setPanelStyle] = useState<CSSProperties>(ACCOUNT_MENU_DEFAULT_STYLE);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const layerRef = useRef<HTMLDivElement | null>(null);
+  const layerRef = useRef<HTMLDialogElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const tenantName = tenantNameFromSlug(tenantSlug);
@@ -350,6 +405,21 @@ export function TenantAccountMenu({
   useIsomorphicLayoutEffect(() => {
     if (!open) return;
     setDocumentMenuState(true);
+    const dialog = layerRef.current;
+    const handleCancel = (event: Event) => {
+      event.preventDefault();
+      closeMenu();
+    };
+    dialog?.addEventListener("cancel", handleCancel);
+    if (dialog && typeof dialog.showModal === "function" && !dialog.open) {
+      try {
+        dialog.showModal();
+      } catch {
+        dialog.setAttribute("open", "");
+      }
+    } else if (dialog && !dialog.open) {
+      dialog.setAttribute("open", "");
+    }
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Node;
       if (menuRef.current?.contains(target) || panelRef.current?.contains(target)) return;
@@ -361,6 +431,10 @@ export function TenantAccountMenu({
     window.addEventListener("pointerdown", handlePointerDown);
     window.addEventListener("keydown", handleKeyDown);
     return () => {
+      dialog?.removeEventListener("cancel", handleCancel);
+      if (dialog?.open) {
+        dialog.close();
+      }
       setDocumentMenuState(false);
       window.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("keydown", handleKeyDown);
@@ -503,13 +577,14 @@ export function TenantAccountMenu({
   );
 
   const menuPanel = open ? (
-    <div
+    <dialog
       ref={layerRef}
       role="dialog"
       aria-modal="true"
-      className="nexid-account-layer fixed inset-0 isolate"
+      className="nexid-account-dialog nexid-account-layer fixed inset-0 isolate"
       data-account-menu-portal="body"
-      data-account-menu-version="drawer-v3"
+      data-account-menu-version="drawer-v4"
+      data-account-menu-top-layer="dialog"
       data-testid="tenant-account-menu-layer"
       aria-label="Cuenta operativa nexID"
       style={ACCOUNT_LAYER_STYLE}
@@ -616,7 +691,7 @@ export function TenantAccountMenu({
           )}
         </div>
       </div>
-    </div>
+    </dialog>
   ) : null;
 
   return (

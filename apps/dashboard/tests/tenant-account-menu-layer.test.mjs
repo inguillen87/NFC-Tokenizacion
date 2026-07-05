@@ -22,14 +22,15 @@ test("tenant account menu renders as a top-level drawer above CRM layers", () =>
   assert.match(menuSource, /createPortal\(menuPanel,\s*portalRoot \|\| document\.body\)/);
   assert.match(menuSource, /const ACCOUNT_MENU_Z_INDEX = 2147483630/);
   assert.match(menuSource, /const ACCOUNT_MENU_CRITICAL_CSS = `/);
-  assert.doesNotMatch(menuSource, /HTMLDialogElement/);
-  assert.doesNotMatch(menuSource, /dialog\.showModal\(\)/);
-  assert.doesNotMatch(menuSource, /dialog\.close\(\)/);
-  assert.doesNotMatch(menuSource, /<dialog/);
+  assert.match(menuSource, /useRef<HTMLDialogElement \| null>/);
+  assert.match(menuSource, /dialog\.showModal\(\)/);
+  assert.match(menuSource, /dialog\.close\(\)/);
+  assert.match(menuSource, /<dialog/);
   assert.match(menuSource, /role="dialog"/);
   assert.match(menuSource, /aria-modal="true"/);
   assert.match(menuSource, /data-account-menu-portal="body"/);
-  assert.match(menuSource, /data-account-menu-version="drawer-v3"/);
+  assert.match(menuSource, /data-account-menu-version="drawer-v4"/);
+  assert.match(menuSource, /data-account-menu-top-layer="dialog"/);
   assert.match(menuSource, /data-account-menu-critical-style="true"/);
   assert.match(menuSource, /data-testid="tenant-account-menu-critical-style"/);
   assert.match(menuSource, /dangerouslySetInnerHTML=\{\{ __html: ACCOUNT_MENU_CRITICAL_CSS \}\}/);
@@ -48,6 +49,8 @@ test("tenant account menu renders as a top-level drawer above CRM layers", () =>
   assert.match(menuSource, /node\.setAttribute\("aria-hidden", "true"\)/);
   assert.match(menuSource, /node\.style\.setProperty\("z-index", "0", "important"\)/);
   assert.match(menuSource, /node\.style\.setProperty\("filter", "saturate\(0\.78\) brightness\(0\.48\) blur\(0\.5px\)", "important"\)/);
+  assert.match(menuSource, /node\.style\.setProperty\("opacity", "0", "important"\)/);
+  assert.match(menuSource, /node\.style\.setProperty\("visibility", "hidden", "important"\)/);
   assert.match(menuSource, /\.inert = true/);
   assert.match(menuSource, /\.inert = false/);
   assert.match(menuSource, /useIsomorphicLayoutEffect\(\(\) => \{\s*if \(!open\) return;\s*setDocumentMenuState\(true\)/);
@@ -113,7 +116,8 @@ test("global CSS prevents dashboard maps from covering account drawer", () => {
   assert.match(globalsSource, /\.nexid-account-layer\s*\{[\s\S]*max-width:\s*none !important/);
   assert.match(globalsSource, /\.nexid-account-layer\s*\{[\s\S]*background:\s*transparent !important/);
   assert.match(globalsSource, /\.nexid-account-layer\s*\{[\s\S]*overscroll-behavior:\s*contain !important/);
-  assert.doesNotMatch(globalsSource, /dialog\.nexid-account-layer::backdrop/);
+  assert.match(globalsSource, /\.nexid-account-dialog\s*\{[\s\S]*max-width:\s*none !important/);
+  assert.match(globalsSource, /\.nexid-account-dialog::backdrop\s*\{[\s\S]*backdrop-filter:\s*blur\(18px\) saturate\(1\.1\)/);
   assert.match(globalsSource, /\.nexid-account-layer,\s*\.nexid-account-layer > \*,\s*\.nexid-account-layer \[data-account-menu-backdrop="true"\]\s*\{[\s\S]*pointer-events:\s*auto !important/);
   assert.match(globalsSource, /\.nexid-account-layer \[data-account-menu-backdrop="true"\]\s*\{[\s\S]*z-index:\s*2147483631 !important/);
   assert.match(globalsSource, /\.nexid-account-layer \[data-account-menu-backdrop="true"\]\s*\{[\s\S]*backdrop-filter:\s*blur\(18px\) saturate\(1\.1\)/);
@@ -124,6 +128,9 @@ test("global CSS prevents dashboard maps from covering account drawer", () => {
   assert.match(globalsSource, /\.nexid-account-layer \.tenant-account-panel\s*\{[\s\S]*height:\s*100dvh !important/);
   assert.match(globalsSource, /\.nexid-account-layer \.tenant-account-panel\s*\{[\s\S]*touch-action:\s*auto/);
   assert.match(globalsSource, /\.nexid-account-layer \.tenant-account-panel\s*\{[\s\S]*box-shadow:\s*-36px 0 120px/);
+  assert.match(globalsSource, /html\.theme-light \.nexid-account-layer \.tenant-account-panel,\s*html\[data-theme="light"\] \.nexid-account-layer \.tenant-account-panel\s*\{[\s\S]*#020817/);
+  assert.match(globalsSource, /html\.theme-light \.nexid-account-layer \.tenant-account-panel \[class\*="bg-slate-950"\]/);
+  assert.match(globalsSource, /html\.theme-light \.nexid-account-layer \.tenant-account-panel \.text-slate-400/);
   assert.match(globalsSource, /html\.theme-light \.nexid-account-layer \.tenant-account-panel__header/);
   assert.match(globalsSource, /\.nexid-account-layer \.tenant-account-panel__header,[\s\S]*\{[\s\S]*color:\s*#f8fafc !important/);
   assert.match(globalsSource, /html\.theme-light \.nexid-account-layer \.tenant-account-panel__header \.text-white/);
@@ -132,6 +139,8 @@ test("global CSS prevents dashboard maps from covering account drawer", () => {
   assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell,\s*\.nexid-crm-shell\[data-account-menu-suppressed="true"\]\s*\{[\s\S]*pointer-events:\s*none !important/);
   assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell,\s*\.nexid-crm-shell\[data-account-menu-suppressed="true"\]\s*\{[\s\S]*z-index:\s*0 !important/);
   assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell,\s*\.nexid-crm-shell\[data-account-menu-suppressed="true"\]\s*\{[\s\S]*filter:\s*saturate\(0\.78\) brightness\(0\.48\) blur\(0\.5px\) !important/);
+  assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell,\s*\.nexid-crm-shell\[data-account-menu-suppressed="true"\]\s*\{[\s\S]*opacity:\s*0 !important/);
+  assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell,\s*\.nexid-crm-shell\[data-account-menu-suppressed="true"\]\s*\{[\s\S]*visibility:\s*hidden !important/);
   assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell,\s*\.nexid-crm-shell\[data-account-menu-suppressed="true"\]\s*\{[\s\S]*contain:\s*none !important/);
   assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell,\s*\.nexid-crm-shell\[data-account-menu-suppressed="true"\]\s*\{[\s\S]*user-select:\s*none !important/);
   assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell \*\s*\{[\s\S]*pointer-events:\s*none !important/);
