@@ -54,6 +54,31 @@ test("demo lab fullscreen mobile keeps CTAs inside viewport and light mode visib
   assert.match(client, /demo-lab-cta-short/);
 });
 
+test("demo lab hub keeps C-level contrast across cards, filters and theme controls", async () => {
+  const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
+  const page = await readFile(new URL("../src/app/(public)/demo-lab/page.tsx", import.meta.url), "utf8");
+
+  assert.match(css, /Demo Lab hub C-level contrast closure/);
+  assert.match(page, /demo-lab-hub-root--light/);
+  assert.match(page, /demo-lab-hub-card__icon/);
+  assert.match(page, /demo-lab-hub-pill__icon/);
+  assert.match(page, /demo-lab-hub-card-grid/);
+  assert.match(page, /demo-lab-hub-vertical-grid/);
+  assert.match(page, /href="\/proof\/verify"/);
+  assert.match(css, /\.demo-lab-hub-root--light\s*\{[\s\S]*color:\s*#0f172a !important/);
+  assert.match(css, /\.demo-lab-hub-root \.demo-lab-hub-card__icon,[\s\S]*color:\s*#bae6fd !important/);
+  assert.match(css, /\.demo-lab-hub-root--light \.demo-lab-hub-card__icon,[\s\S]*color:\s*#075985 !important/);
+  assert.match(css, /\.demo-lab-hub-root \.demo-lab-hub-card h3,[\s\S]*color:\s*#f8fafc !important/);
+  assert.match(css, /\.demo-lab-hub-root \.demo-lab-hub-card p,[\s\S]*color:\s*#dbeafe !important/);
+  assert.match(css, /html\.theme-light \.demo-lab-hub-root \.demo-lab-hub-card h3,[\s\S]*color:\s*#0f172a !important/);
+  assert.match(css, /\.demo-lab-hub-root--light \.demo-lab-hub-card h3,[\s\S]*color:\s*#0f172a !important/);
+  assert.match(css, /html\.theme-light \.demo-lab-hub-root \.demo-lab-hub-card p,[\s\S]*color:\s*#334155 !important/);
+  assert.match(css, /\.demo-lab-hub-root--light \.demo-lab-hub-card p,[\s\S]*color:\s*#334155 !important/);
+  assert.match(css, /\.demo-lab-hub-root \.theme-toggle,[\s\S]*\.demo-lab-hub-nav a\[href="\/proof\/verify"\]/);
+  assert.match(css, /html\.theme-light \.demo-lab-hub-root \.theme-toggle,[\s\S]*color:\s*#075985 !important/);
+  assert.match(css, /\.demo-lab-hub-root--light \.theme-toggle,[\s\S]*color:\s*#075985 !important/);
+});
+
 test("landing hero stats use real configured fields and no old cost placeholder", async () => {
   const hero = await readFile(new URL("../src/components/landing-sections.tsx", import.meta.url), "utf8");
   const i18n = await readFile(new URL("../../../packages/config/src/i18n.ts", import.meta.url), "utf8");

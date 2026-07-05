@@ -1118,24 +1118,43 @@ body.nexid-account-menu-open {
   inset: 0 !important;
   isolation: isolate !important;
   contain: none !important;
-  pointer-events: none;
+  pointer-events: auto !important;
   z-index: 2147483600 !important;
   transform: translate3d(0, 0, 0) !important;
   will-change: opacity;
 }
 
-.nexid-account-layer > * {
-  pointer-events: auto;
+.nexid-account-layer,
+.nexid-account-layer > *,
+.nexid-account-layer [data-account-menu-backdrop="true"] {
+  pointer-events: auto !important;
+}
+
+.nexid-account-layer [data-account-menu-backdrop="true"] {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2147483601 !important;
+  background:
+    radial-gradient(circle at 80% 8%, rgba(34, 211, 238, 0.16), transparent 34%),
+    rgba(2, 6, 23, 0.86) !important;
+  backdrop-filter: blur(18px) saturate(1.1);
 }
 
 .nexid-account-layer .tenant-account-panel {
   position: fixed !important;
+  inset-block: 0 !important;
+  right: 0 !important;
+  left: auto !important;
+  width: min(100vw, 32rem) !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
   display: flex !important;
   flex-direction: column !important;
   z-index: 2147483602 !important;
   pointer-events: auto;
   isolation: isolate !important;
   transform: translate3d(0, 0, 0) !important;
+  box-shadow: -36px 0 120px rgba(0, 0, 0, 0.74) !important;
 }
 
 .nexid-account-layer .tenant-account-panel__header,
@@ -1187,11 +1206,13 @@ html.nexid-account-menu-open .nexid-crm-shell main,
 html.nexid-account-menu-open .nexid-crm-shell aside,
 html.nexid-account-menu-open .nexid-crm-shell footer,
 html.nexid-account-menu-open .nexid-crm-shell [id="live-tap-map"],
+html.nexid-account-menu-open .nexid-crm-shell [class*="z-["],
 body.nexid-account-menu-open .nexid-crm-shell header,
 body.nexid-account-menu-open .nexid-crm-shell main,
 body.nexid-account-menu-open .nexid-crm-shell aside,
 body.nexid-account-menu-open .nexid-crm-shell footer,
-body.nexid-account-menu-open .nexid-crm-shell [id="live-tap-map"] {
+body.nexid-account-menu-open .nexid-crm-shell [id="live-tap-map"],
+body.nexid-account-menu-open .nexid-crm-shell [class*="z-["] {
   z-index: 1 !important;
   pointer-events: none !important;
 }
@@ -1220,6 +1241,7 @@ body.nexid-account-menu-open .nexid-account-layer * {
   .nexid-account-layer .tenant-account-panel {
     inset: 0 !important;
     width: 100vw !important;
+    height: 100dvh !important;
     max-height: 100dvh !important;
     border-radius: 0 !important;
   }

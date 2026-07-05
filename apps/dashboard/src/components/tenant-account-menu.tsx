@@ -41,17 +41,18 @@ const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : us
 const ACCOUNT_MENU_DEFAULT_STYLE: CSSProperties = {
   position: "fixed",
   zIndex: ACCOUNT_MENU_Z_INDEX + 2,
-  top: 12,
-  right: 12,
-  bottom: 12,
+  top: 0,
+  right: 0,
+  bottom: 0,
   left: "auto",
-  width: "min(calc(100vw - 24px), 30rem)",
-  height: "auto",
-  maxHeight: "calc(100dvh - 24px)",
+  width: "min(100vw, 32rem)",
+  height: "100dvh",
+  maxHeight: "100dvh",
   pointerEvents: "auto",
   isolation: "isolate",
   transform: "translate3d(0,0,0)",
   backgroundColor: "#020817",
+  boxShadow: "-36px 0 120px rgba(0,0,0,0.74)",
 };
 
 function tenantNameFromSlug(slug?: string | null) {
@@ -100,6 +101,7 @@ export function TenantAccountMenu({
   const menuRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const tenantName = tenantNameFromSlug(tenantSlug);
   const scopedTenant = String(tenantSlug || "").trim().toLowerCase();
   const tenantQuery = scopedTenant ? `?tenant=${encodeURIComponent(scopedTenant)}` : "";
@@ -108,6 +110,11 @@ export function TenantAccountMenu({
   const isTenantMode = mode === "tenant";
   const accountRoleDescription = roleDescription(role, mode);
 
+  const closeMenu = useCallback(() => {
+    setOpen(false);
+    window.requestAnimationFrame(() => triggerRef.current?.focus());
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     document.documentElement.classList.add("nexid-account-menu-open");
@@ -115,10 +122,10 @@ export function TenantAccountMenu({
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Node;
       if (menuRef.current?.contains(target) || panelRef.current?.contains(target)) return;
-      setOpen(false);
+      closeMenu();
     };
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") closeMenu();
     };
     window.addEventListener("pointerdown", handlePointerDown);
     window.addEventListener("keydown", handleKeyDown);
@@ -128,7 +135,7 @@ export function TenantAccountMenu({
       window.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [open]);
+  }, [closeMenu, open]);
 
   const updatePanelPosition = useCallback(() => {
     if (typeof window === "undefined") {
@@ -138,12 +145,13 @@ export function TenantAccountMenu({
     const isCompact = window.innerWidth < 640;
     setPanelStyle({
       ...ACCOUNT_MENU_DEFAULT_STYLE,
-      top: isCompact ? 0 : 12,
-      right: isCompact ? 0 : 12,
-      bottom: isCompact ? 0 : 12,
+      top: 0,
+      right: 0,
+      bottom: 0,
       left: isCompact ? 0 : "auto",
-      width: isCompact ? "100vw" : "min(calc(100vw - 24px), 30rem)",
-      maxHeight: isCompact ? "100dvh" : "calc(100dvh - 24px)",
+      width: isCompact ? "100vw" : "min(100vw, 32rem)",
+      height: "100dvh",
+      maxHeight: "100dvh",
     });
   }, []);
 
@@ -158,6 +166,7 @@ export function TenantAccountMenu({
 
   useEffect(() => {
     if (!open) return;
+    closeButtonRef.current?.focus();
     updatePanelPosition();
     window.addEventListener("resize", updatePanelPosition);
     window.addEventListener("scroll", updatePanelPosition, true);
@@ -276,10 +285,11 @@ export function TenantAccountMenu({
       <button
         type="button"
         aria-label="Cerrar menu de cuenta"
+        data-account-menu-backdrop="true"
         data-testid="tenant-account-menu-backdrop"
-        className="fixed inset-0 cursor-default backdrop-blur-lg"
-        style={{ zIndex: ACCOUNT_MENU_Z_INDEX + 1, pointerEvents: "auto", backgroundColor: "rgba(2, 6, 23, 0.8)" }}
-        onClick={() => setOpen(false)}
+        className="tenant-account-backdrop fixed inset-0 cursor-default backdrop-blur-xl"
+        style={{ zIndex: ACCOUNT_MENU_Z_INDEX + 1, pointerEvents: "auto", backgroundColor: "rgba(2, 6, 23, 0.86)" }}
+        onClick={closeMenu}
       />
       <div
         id="tenant-account-menu-panel"
@@ -287,9 +297,10 @@ export function TenantAccountMenu({
         role="dialog"
         aria-modal="true"
         aria-label="Cuenta operativa nexID"
+        data-account-menu-panel="drawer"
         data-testid="tenant-account-menu-panel"
         style={panelStyle}
-        className="tenant-account-panel isolate flex flex-col overflow-hidden rounded-none border border-cyan-100/35 bg-slate-950 text-slate-100 shadow-[0_34px_140px_rgba(0,0,0,.88)] ring-1 ring-cyan-200/18 sm:rounded-3xl"
+        className="tenant-account-panel isolate flex flex-col overflow-hidden rounded-none border-l border-cyan-100/35 bg-slate-950 text-slate-100 shadow-[0_34px_140px_rgba(0,0,0,.88)] ring-1 ring-cyan-200/18"
       >
         <div className="tenant-account-panel__header border-b border-white/10 bg-[radial-gradient(circle_at_85%_12%,rgba(34,211,238,.2),transparent_40%),linear-gradient(135deg,#0f172a,#07111f)] p-4">
           <div className="flex items-start gap-3">
@@ -303,11 +314,12 @@ export function TenantAccountMenu({
               <p className="mt-2 text-xs leading-5 text-slate-300">{accountRoleDescription}</p>
             </div>
             <button
+              ref={closeButtonRef}
               type="button"
               aria-label="Cerrar panel de cuenta"
               data-testid="tenant-account-menu-close"
               className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/10 bg-slate-950/45 text-slate-300 transition hover:border-cyan-200/55 hover:bg-cyan-400/10 hover:text-white"
-              onClick={() => setOpen(false)}
+              onClick={closeMenu}
             >
               <X className="h-4 w-4" />
             </button>
@@ -376,7 +388,7 @@ export function TenantAccountMenu({
         onKeyDown={(event) => {
           if (event.key !== "Escape") return;
           event.preventDefault();
-          setOpen(false);
+          closeMenu();
         }}
         onClick={(event) => {
           event.preventDefault();

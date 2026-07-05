@@ -585,8 +585,10 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
   }
 
   // ── HUB MODE ────────────────────────────────────────────────────────────
+  const hubThemeClass = requestedTheme === "light" ? "demo-lab-hub-root--light" : "";
+
   return (
-    <div className="demo-lab-hub-root min-h-screen bg-[#03070f] text-white font-sans relative overflow-hidden">
+    <div className={`demo-lab-hub-root ${hubThemeClass} min-h-screen bg-[#03070f] text-white font-sans relative overflow-hidden`}>
       {structuredData.map((schema) => (
         <JsonLd key={schema["@type"]} data={schema} />
       ))}
@@ -686,7 +688,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
                   />
                   <div className="flex items-start gap-4">
                     <div
-                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl shadow-lg transition-all duration-200 ${s.accentGlow} ${s.accent}`}
+                      className={`demo-lab-hub-card__icon flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl shadow-lg transition-all duration-200 ${s.accentGlow} ${s.accent}`}
                     >
                       <Icon className="w-5 h-5" />
                     </div>
@@ -722,7 +724,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
                   href={`/demo-lab?vertical=${v.vertical}`}
                   className={`demo-lab-hub-pill group flex min-h-14 items-center gap-2.5 rounded-2xl border bg-slate-950/58 px-4 py-3 transition-all duration-200 hover:border-cyan-300/32 hover:bg-slate-900/82 ${v.color}`}
                 >
-                  <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-xl ${v.color}`}>
+                  <div className={`demo-lab-hub-pill__icon flex h-7 w-7 shrink-0 items-center justify-center rounded-xl ${v.color}`}>
                     <Icon className="w-3.5 h-3.5" />
                   </div>
                   <span className="min-w-0 text-sm font-black text-slate-100">

@@ -46829,6 +46829,140 @@ html[data-theme="light"] .demo-lab-wizard-brief__proof span {
   background: rgba(255, 255, 255, 0.84) !important;
 }
 
+/* Demo Lab hub C-level contrast closure: cards, filters and nav must stay readable in both themes. */
+.demo-lab-hub-root .demo-lab-hub-card,
+.demo-lab-hub-root .demo-lab-hub-signal-card,
+.demo-lab-hub-root .demo-lab-hub-pill {
+  border-color: rgba(125, 211, 252, 0.22) !important;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.9), rgba(2, 6, 23, 0.78)) !important;
+}
+
+.demo-lab-hub-root .demo-lab-hub-card__icon,
+.demo-lab-hub-root .demo-lab-hub-pill__icon {
+  border: 1px solid rgba(125, 211, 252, 0.22) !important;
+  background: rgba(8, 145, 178, 0.16) !important;
+  color: #bae6fd !important;
+  box-shadow: 0 14px 28px rgba(8, 145, 178, 0.16) !important;
+}
+
+.demo-lab-hub-root .demo-lab-hub-card h3,
+.demo-lab-hub-root .demo-lab-hub-signal-card strong,
+.demo-lab-hub-root .demo-lab-hub-pill span {
+  color: #f8fafc !important;
+  text-shadow: 0 1px 18px rgba(34, 211, 238, 0.12);
+}
+
+.demo-lab-hub-root .demo-lab-hub-card p,
+.demo-lab-hub-root .demo-lab-hub-signal-card p {
+  color: #dbeafe !important;
+}
+
+.demo-lab-hub-root .demo-lab-hub-nav {
+  border-color: rgba(125, 211, 252, 0.14) !important;
+  background: rgba(3, 7, 18, 0.94) !important;
+}
+
+.demo-lab-hub-root .theme-toggle,
+.demo-lab-hub-nav a[href="/proof/verify"] {
+  border-color: rgba(103, 232, 249, 0.38) !important;
+  background: rgba(8, 145, 178, 0.18) !important;
+  color: #e0f2fe !important;
+}
+
+.demo-lab-hub-nav a[href="/proof/verify"] svg,
+.demo-lab-hub-root .theme-toggle svg {
+  color: currentColor !important;
+}
+
+.demo-lab-hub-root--light {
+  background:
+    radial-gradient(circle at 18% 0%, rgba(34, 211, 238, 0.12), transparent 34%),
+    linear-gradient(180deg, #f8fbff, #edf6ff 62%, #f8fbff) !important;
+  color: #0f172a !important;
+}
+
+.demo-lab-hub-root--light .text-white {
+  color: #0f172a !important;
+}
+
+.demo-lab-hub-root--light [class~="text-slate-300"],
+.demo-lab-hub-root--light [class~="text-slate-400"],
+.demo-lab-hub-root--light [class~="text-slate-500"] {
+  color: #334155 !important;
+}
+
+html.theme-light .demo-lab-hub-root .demo-lab-hub-card,
+html[data-theme="light"] .demo-lab-hub-root .demo-lab-hub-card,
+.demo-lab-hub-root--light .demo-lab-hub-card,
+html.theme-light .demo-lab-hub-root .demo-lab-hub-signal-card,
+html[data-theme="light"] .demo-lab-hub-root .demo-lab-hub-signal-card,
+.demo-lab-hub-root--light .demo-lab-hub-signal-card,
+html.theme-light .demo-lab-hub-root .demo-lab-hub-pill,
+html[data-theme="light"] .demo-lab-hub-root .demo-lab-hub-pill,
+.demo-lab-hub-root--light .demo-lab-hub-pill {
+  border-color: rgba(14, 116, 144, 0.24) !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.84) !important;
+}
+
+html.theme-light .demo-lab-hub-root .demo-lab-hub-card__icon,
+html[data-theme="light"] .demo-lab-hub-root .demo-lab-hub-card__icon,
+.demo-lab-hub-root--light .demo-lab-hub-card__icon,
+html.theme-light .demo-lab-hub-root .demo-lab-hub-pill__icon,
+html[data-theme="light"] .demo-lab-hub-root .demo-lab-hub-pill__icon,
+.demo-lab-hub-root--light .demo-lab-hub-pill__icon {
+  border-color: rgba(14, 116, 144, 0.24) !important;
+  background: #e0f2fe !important;
+  color: #075985 !important;
+  box-shadow: 0 12px 24px rgba(14, 116, 144, 0.12) !important;
+}
+
+html.theme-light .demo-lab-hub-root .demo-lab-hub-card h3,
+html[data-theme="light"] .demo-lab-hub-root .demo-lab-hub-card h3,
+.demo-lab-hub-root--light .demo-lab-hub-card h3,
+html.theme-light .demo-lab-hub-root .demo-lab-hub-signal-card strong,
+html[data-theme="light"] .demo-lab-hub-root .demo-lab-hub-signal-card strong,
+.demo-lab-hub-root--light .demo-lab-hub-signal-card strong,
+html.theme-light .demo-lab-hub-root .demo-lab-hub-pill span,
+html[data-theme="light"] .demo-lab-hub-root .demo-lab-hub-pill span,
+.demo-lab-hub-root--light .demo-lab-hub-pill span {
+  color: #0f172a !important;
+  text-shadow: none;
+}
+
+html.theme-light .demo-lab-hub-root .demo-lab-hub-card p,
+html[data-theme="light"] .demo-lab-hub-root .demo-lab-hub-card p,
+.demo-lab-hub-root--light .demo-lab-hub-card p,
+html.theme-light .demo-lab-hub-root .demo-lab-hub-signal-card p,
+html[data-theme="light"] .demo-lab-hub-root .demo-lab-hub-signal-card p,
+.demo-lab-hub-root--light .demo-lab-hub-signal-card p,
+html.theme-light .demo-lab-hub-root [class~="text-slate-300"],
+html[data-theme="light"] .demo-lab-hub-root [class~="text-slate-300"],
+.demo-lab-hub-root--light [class~="text-slate-300"],
+html.theme-light .demo-lab-hub-root [class~="text-slate-400"],
+html[data-theme="light"] .demo-lab-hub-root [class~="text-slate-400"],
+.demo-lab-hub-root--light [class~="text-slate-400"] {
+  color: #334155 !important;
+}
+
+html.theme-light .demo-lab-hub-root .demo-lab-hub-nav,
+html[data-theme="light"] .demo-lab-hub-root .demo-lab-hub-nav,
+.demo-lab-hub-root--light .demo-lab-hub-nav {
+  border-color: rgba(14, 116, 144, 0.18) !important;
+  background: rgba(248, 251, 255, 0.94) !important;
+}
+
+html.theme-light .demo-lab-hub-root .theme-toggle,
+html[data-theme="light"] .demo-lab-hub-root .theme-toggle,
+.demo-lab-hub-root--light .theme-toggle,
+html.theme-light .demo-lab-hub-nav a[href="/proof/verify"],
+html[data-theme="light"] .demo-lab-hub-nav a[href="/proof/verify"],
+.demo-lab-hub-root--light .demo-lab-hub-nav a[href="/proof/verify"] {
+  border-color: rgba(14, 116, 144, 0.28) !important;
+  background: #ecfeff !important;
+  color: #075985 !important;
+}
+
 @media (max-width: 1024px) {
   .demo-lab-fullscreen-root .demo-lab-wizard-scene--trazo {
     grid-template-columns: minmax(0, 1fr) !important;
