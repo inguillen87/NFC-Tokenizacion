@@ -31,10 +31,23 @@ function readTheme(): Theme {
   return "dark";
 }
 
+function syncDemoLabRootTheme(theme: Theme) {
+  if (typeof document === "undefined") return;
+
+  document.querySelectorAll<HTMLElement>(".demo-lab-hub-root").forEach((node) => {
+    node.classList.toggle("demo-lab-hub-root--light", theme === "light");
+  });
+
+  document.querySelectorAll<HTMLElement>(".demo-lab-fullscreen-root").forEach((node) => {
+    node.classList.toggle("demo-lab-fullscreen-root--light", theme === "light");
+  });
+}
+
 function applyTheme(theme: Theme) {
   document.documentElement.setAttribute("data-theme", theme);
   document.documentElement.classList.toggle("theme-light", theme === "light");
   document.documentElement.style.colorScheme = theme;
+  syncDemoLabRootTheme(theme);
   try {
     localStorage.setItem("theme", theme);
     document.cookie = `theme=${theme}; path=/; max-age=31536000; SameSite=Lax`;

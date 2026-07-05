@@ -27,7 +27,8 @@
     --shadow-panel: 0 24px 70px rgba(0, 0, 0, 0.32);
   }
 
-  html.theme-light {
+  html.theme-light,
+  html[data-theme="light"] {
     --background: #f5f8ff;
     --foreground: #020617;
     --brand-wordmark-main: #0f172a;

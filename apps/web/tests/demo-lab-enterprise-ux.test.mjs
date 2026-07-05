@@ -6,8 +6,13 @@ test("demo lab theme toggle changes theme client-side before falling back to SSR
   const source = await readFile(new URL("../src/app/(public)/demo-lab/demo-lab-hub-theme.tsx", import.meta.url), "utf8");
 
   assert.match(source, /function applyTheme\(theme: Theme\)/);
+  assert.match(source, /function syncDemoLabRootTheme\(theme: Theme\)/);
   assert.match(source, /localStorage\.getItem\("theme"\)/);
   assert.match(source, /localStorage\.setItem\("theme", theme\)/);
+  assert.match(source, /querySelectorAll<HTMLElement>\("\.demo-lab-hub-root"\)/);
+  assert.match(source, /querySelectorAll<HTMLElement>\("\.demo-lab-fullscreen-root"\)/);
+  assert.match(source, /classList\.toggle\("demo-lab-hub-root--light", theme === "light"\)/);
+  assert.match(source, /classList\.toggle\("demo-lab-fullscreen-root--light", theme === "light"\)/);
   assert.match(source, /onClick=\{onToggle\}/);
   assert.match(source, /event\.preventDefault\(\)/);
   assert.match(source, /applyTheme\(next\)/);
