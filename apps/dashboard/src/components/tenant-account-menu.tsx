@@ -56,6 +56,7 @@ const ACCOUNT_LAYER_STYLE: CSSProperties = {
   background: "transparent",
   color: "inherit",
   transform: "translate3d(0,0,0)",
+  overscrollBehavior: "contain",
 };
 const ACCOUNT_MENU_DEFAULT_STYLE: CSSProperties = {
   position: "fixed",
@@ -118,9 +119,9 @@ export function TenantAccountMenu({
 }: TenantAccountMenuProps) {
   const [open, setOpen] = useState(false);
   const [panelStyle, setPanelStyle] = useState<CSSProperties>(ACCOUNT_MENU_DEFAULT_STYLE);
-  const dialogRef = useRef<HTMLDialogElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const layerRef = useRef<HTMLDivElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const tenantName = tenantNameFromSlug(tenantSlug);
@@ -162,24 +163,6 @@ export function TenantAccountMenu({
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [closeMenu, open, setDocumentMenuState]);
-
-  useIsomorphicLayoutEffect(() => {
-    if (!open) return;
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-
-    if (!dialog.open) {
-      try {
-        dialog.showModal();
-      } catch {
-        dialog.setAttribute("open", "");
-      }
-    }
-
-    return () => {
-      if (dialog.open) dialog.close();
-    };
-  }, [open]);
 
   const updatePanelPosition = useCallback(() => {
     if (typeof window === "undefined") {
@@ -323,17 +306,15 @@ export function TenantAccountMenu({
   );
 
   const menuPanel = open ? (
-    <dialog
-      ref={dialogRef}
+    <div
+      ref={layerRef}
+      role="dialog"
+      aria-modal="true"
       className="nexid-account-layer fixed inset-0 isolate"
       data-account-menu-portal="body"
       data-testid="tenant-account-menu-layer"
       aria-label="Cuenta operativa nexID"
       style={ACCOUNT_LAYER_STYLE}
-      onCancel={(event) => {
-        event.preventDefault();
-        closeMenu();
-      }}
     >
       <button
         type="button"
@@ -420,7 +401,7 @@ export function TenantAccountMenu({
           </form>
         </div>
       </div>
-    </dialog>
+    </div>
   ) : null;
 
   return (

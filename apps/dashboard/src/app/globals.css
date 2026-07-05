@@ -1133,14 +1133,8 @@ body.nexid-account-menu-open {
   pointer-events: auto !important;
   z-index: 2147483600 !important;
   transform: translate3d(0, 0, 0) !important;
+  overscroll-behavior: contain !important;
   will-change: opacity;
-}
-
-dialog.nexid-account-layer::backdrop {
-  background:
-    radial-gradient(circle at 80% 8%, rgba(34, 211, 238, 0.16), transparent 34%),
-    rgba(2, 6, 23, 0.86) !important;
-  backdrop-filter: blur(18px) saturate(1.1);
 }
 
 .nexid-account-layer,
@@ -1157,6 +1151,7 @@ dialog.nexid-account-layer::backdrop {
     radial-gradient(circle at 80% 8%, rgba(34, 211, 238, 0.16), transparent 34%),
     rgba(2, 6, 23, 0.86) !important;
   backdrop-filter: blur(18px) saturate(1.1);
+  touch-action: none;
 }
 
 .nexid-account-layer .tenant-account-panel {
@@ -1173,6 +1168,7 @@ dialog.nexid-account-layer::backdrop {
   pointer-events: auto;
   isolation: isolate !important;
   transform: translate3d(0, 0, 0) !important;
+  touch-action: auto;
   box-shadow: -36px 0 120px rgba(0, 0, 0, 0.74) !important;
 }
 
