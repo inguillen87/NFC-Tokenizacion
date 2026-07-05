@@ -57,6 +57,7 @@ test("bodega tenant demo stays available by default and can be disabled per envi
 test("login surfaces separate founder Google auth from tenant demo access", () => {
   const loginPage = readFileSync(new URL("../src/app/login/page.tsx", import.meta.url), "utf8");
   const loginPanel = readFileSync(new URL("../src/components/login-form-panel.tsx", import.meta.url), "utf8");
+  const googleButton = readFileSync(new URL("../src/components/clerk-google-super-admin-button.tsx", import.meta.url), "utf8");
   const signInPage = readFileSync(new URL("../src/app/sign-in/[[...sign-in]]/page.tsx", import.meta.url), "utf8");
   const demoRoute = readFileSync(new URL("../src/app/api/session/demo/route.ts", import.meta.url), "utf8");
 
@@ -69,6 +70,9 @@ test("login surfaces separate founder Google auth from tenant demo access", () =
   assert.match(loginPanel, /demoRole:\s*"tenant-admin"/);
   assert.match(loginPanel, /Super Admin entra por Google\/Clerk/);
   assert.match(loginPanel, /Continuar con Google allowlisted/);
+
+  assert.match(googleButton, /already signed in/);
+  assert.match(googleButton, /window\.location\.href = "\/auth\/clerk\/super-admin"/);
 
   assert.doesNotMatch(signInPage, /getAccessProfiles/);
   assert.doesNotMatch(signInPage, /profile\.role/);

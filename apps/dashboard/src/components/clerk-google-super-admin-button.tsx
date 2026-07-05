@@ -16,6 +16,11 @@ function getErrorMessage(error: unknown) {
   return first?.longMessage || first?.message || "No se pudo iniciar Google OAuth. Revisa que Google este habilitado en Clerk.";
 }
 
+function isAlreadySignedIn(error: unknown) {
+  const message = getErrorMessage(error).toLowerCase();
+  return message.includes("already signed in") || message.includes("ya iniciaste sesion") || message.includes("ya estas conectado");
+}
+
 export function ClerkGoogleSuperAdminButton({
   className,
   label = "Entrar con Google como Super Admin",
@@ -39,6 +44,10 @@ export function ClerkGoogleSuperAdminButton({
         continueSignIn: true,
       });
     } catch (err) {
+      if (isAlreadySignedIn(err)) {
+        window.location.href = "/auth/clerk/super-admin";
+        return;
+      }
       setPending(false);
       setError(getErrorMessage(err));
     }
