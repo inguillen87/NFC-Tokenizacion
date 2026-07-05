@@ -49013,6 +49013,108 @@ html[data-theme="light"] .demo-lab-fullscreen-stage .demo-lab-studio,
   }
 }
 
+/* Docs mobile trust rail: keep Proof/IOTA/Polygon/Demo Lab reachable before
+   buyers hit the long technical sections. */
+.docs-mobile-trust-rail {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.62rem;
+  min-width: 0;
+}
+
+.docs-mobile-trust-rail__item {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr) auto;
+  gap: 0.55rem;
+  align-items: center;
+  min-width: 0;
+  min-height: 4.55rem;
+  border: 1px solid rgba(103, 232, 249, 0.18);
+  border-radius: 1rem;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(34, 211, 238, 0.16), transparent 42%),
+    rgba(2, 8, 23, 0.74);
+  padding: 0.68rem;
+  color: #f8fafc !important;
+  text-decoration: none;
+  box-shadow: 0 16px 42px rgba(2, 6, 23, 0.18);
+}
+
+.docs-mobile-trust-rail__icon {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border: 1px solid rgba(103, 232, 249, 0.22);
+  border-radius: 0.75rem;
+  background: rgba(8, 145, 178, 0.14);
+  color: #67e8f9;
+}
+
+.docs-mobile-trust-rail__copy {
+  min-width: 0;
+}
+
+.docs-mobile-trust-rail__copy strong,
+.docs-mobile-trust-rail__copy small {
+  display: block;
+  min-width: 0;
+}
+
+.docs-mobile-trust-rail__copy strong {
+  color: inherit;
+  font-size: 0.76rem;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  line-height: 1.12;
+  text-transform: uppercase;
+}
+
+.docs-mobile-trust-rail__copy small {
+  margin-top: 0.22rem;
+  color: #cbd5e1;
+  font-size: 0.64rem;
+  font-weight: 750;
+  line-height: 1.22;
+}
+
+.docs-mobile-trust-rail__arrow {
+  color: #67e8f9;
+}
+
+html.theme-light .docs-mobile-trust-rail__item,
+html[data-theme="light"] .docs-mobile-trust-rail__item {
+  border-color: rgba(14, 116, 144, 0.17) !important;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(34, 211, 238, 0.13), transparent 42%),
+    rgba(255, 255, 255, 0.88) !important;
+  color: #0f172a !important;
+  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.09) !important;
+}
+
+html.theme-light .docs-mobile-trust-rail__icon,
+html[data-theme="light"] .docs-mobile-trust-rail__icon {
+  border-color: rgba(14, 116, 144, 0.2) !important;
+  background: rgba(207, 250, 254, 0.72) !important;
+  color: #0e7490 !important;
+}
+
+html.theme-light .docs-mobile-trust-rail__copy small,
+html[data-theme="light"] .docs-mobile-trust-rail__copy small {
+  color: #475569 !important;
+}
+
+html.theme-light .docs-mobile-trust-rail__arrow,
+html[data-theme="light"] .docs-mobile-trust-rail__arrow {
+  color: #0e7490 !important;
+}
+
+@media (max-width: 380px) {
+  .docs-mobile-trust-rail {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* SDK mobile first-viewport pass: keep the platform proof visible before the
    page turns into a long text stack. */
 @media (max-width: 760px) {

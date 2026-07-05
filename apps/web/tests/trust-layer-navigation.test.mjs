@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 
 test("docs trust layer notes are actionable links to proof and scenario demos", async () => {
   const page = await readFile(new URL("../src/app/docs/page.tsx", import.meta.url), "utf8");
+  const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
 
   assert.match(page, /const trustLayerDocLinks/);
   assert.match(page, /"iota-proof-audit-layer\.md": \{ href: "\/proof\/verify"/);
@@ -13,6 +14,15 @@ test("docs trust layer notes are actionable links to proof and scenario demos", 
   assert.match(page, /href="\/proof\/verify"/);
   assert.match(page, /href="\/demo-lab\?scenario=iota-proof"/);
   assert.match(page, /href="\/demo-lab\?scenario=polygon-ownership"/);
+  assert.match(page, /docs-mobile-trust-rail/);
+  assert.match(page, /Verify a public hash/);
+  assert.match(page, /Audit hash-only evidence/);
+  assert.match(page, /Ownership and resale flow/);
+  assert.match(page, /Run the guided pilot/);
+  assert.match(css, /Docs mobile trust rail/);
+  assert.match(css, /\.docs-mobile-trust-rail\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /\.docs-mobile-trust-rail__item\s*\{[\s\S]*grid-template-columns:\s*2rem minmax\(0,\s*1fr\) auto/);
+  assert.match(css, /html\.theme-light \.docs-mobile-trust-rail__item,[\s\S]*rgba\(255,\s*255,\s*255,\s*0\.88\)/);
   assert.doesNotMatch(page, /cursor-default rounded-full border border-white\/10 bg-slate-900/);
 });
 

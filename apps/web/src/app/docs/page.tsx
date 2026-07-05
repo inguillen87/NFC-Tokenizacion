@@ -642,6 +642,27 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
 export default async function DocsPage() {
   const { locale } = await getWebI18n();
   const copy = docsCopy[locale];
+  const mobileTrustRail =
+    locale === "en"
+      ? [
+          { label: "Proof", detail: "Verify a public hash", href: "/proof/verify", Icon: ShieldCheck },
+          { label: "IOTA", detail: "Audit hash-only evidence", href: "/demo-lab?scenario=iota-proof", Icon: Network },
+          { label: "Polygon", detail: "Ownership and resale flow", href: "/demo-lab?scenario=polygon-ownership", Icon: Hexagon },
+          { label: "Demo Lab", detail: "Run the guided pilot", href: "/demo-lab", Icon: Rocket },
+        ]
+      : locale === "pt-BR"
+        ? [
+            { label: "Proof", detail: "Verificar hash publico", href: "/proof/verify", Icon: ShieldCheck },
+            { label: "IOTA", detail: "Evidencia auditavel hash-only", href: "/demo-lab?scenario=iota-proof", Icon: Network },
+            { label: "Polygon", detail: "Ownership e revenda", href: "/demo-lab?scenario=polygon-ownership", Icon: Hexagon },
+            { label: "Demo Lab", detail: "Rodar piloto guiado", href: "/demo-lab", Icon: Rocket },
+          ]
+        : [
+            { label: "Proof", detail: "Verificar hash publico", href: "/proof/verify", Icon: ShieldCheck },
+            { label: "IOTA", detail: "Evidencia auditada hash-only", href: "/demo-lab?scenario=iota-proof", Icon: Network },
+            { label: "Polygon", detail: "Propiedad y reventa", href: "/demo-lab?scenario=polygon-ownership", Icon: Hexagon },
+            { label: "Demo Lab", detail: "Probar piloto guiado", href: "/demo-lab", Icon: Rocket },
+          ];
   const trustLayerFaq =
     locale === "en"
       ? {
@@ -830,6 +851,24 @@ export default async function DocsPage() {
           {copy.description}
         </p>
       </header>
+
+      <nav className="docs-mobile-trust-rail md:hidden" aria-label={locale === "en" ? "Trust layer quick actions" : "Accesos rapidos de confianza"}>
+        {mobileTrustRail.map((item) => {
+          const Icon = item.Icon;
+          return (
+            <Link key={item.href} href={item.href} className="docs-mobile-trust-rail__item">
+              <span className="docs-mobile-trust-rail__icon">
+                <Icon className="h-4 w-4" />
+              </span>
+              <span className="docs-mobile-trust-rail__copy">
+                <strong>{item.label}</strong>
+                <small>{item.detail}</small>
+              </span>
+              <ArrowRight className="docs-mobile-trust-rail__arrow h-4 w-4" />
+            </Link>
+          );
+        })}
+      </nav>
 
       <Card className="public-clarity-card w-full min-w-0 max-w-full overflow-hidden p-4 sm:p-6">
         <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
