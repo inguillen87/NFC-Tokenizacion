@@ -4,6 +4,7 @@ import test from "node:test";
 
 const menuSource = await readFile(new URL("../src/components/tenant-account-menu.tsx", import.meta.url), "utf8");
 const globalsSource = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
+const pwaSetupSource = await readFile(new URL("../src/components/pwa-setup.tsx", import.meta.url), "utf8");
 const serviceWorkerSource = await readFile(new URL("../public/sw.js", import.meta.url), "utf8");
 
 test("tenant account menu renders as a top-level drawer above CRM layers", () => {
@@ -37,6 +38,11 @@ test("tenant account menu renders as a top-level drawer above CRM layers", () =>
   assert.match(menuSource, /maxHeight:\s*"100dvh"/);
   assert.match(menuSource, /className="tenant-account-panel isolate flex flex-col overflow-hidden/);
   assert.match(menuSource, /className="min-h-0 flex-1 overflow-y-auto p-3"/);
+  assert.match(menuSource, /permissions = \[\]/);
+  assert.match(menuSource, /const canManageUsers = role === "super-admin"/);
+  assert.match(menuSource, /label: isTenantMode \? `Perfil \$\{tenantName\}` : "Directorio de tenants"/);
+  assert.doesNotMatch(menuSource, /label: isTenantMode \? "Perfil Bodega Balmec"/);
+  assert.match(menuSource, /href: canManageUsers \? "\/users" : "\/settings"/);
 });
 
 test("global CSS prevents dashboard maps from covering account drawer", () => {
@@ -57,8 +63,14 @@ test("global CSS prevents dashboard maps from covering account drawer", () => {
   assert.match(globalsSource, /html\.theme-light \.nexid-account-layer \.tenant-account-panel__header \.text-slate-400/);
   assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell\s*\{[\s\S]*z-index:\s*0 !important/);
   assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell\s*\{[\s\S]*pointer-events:\s*none !important/);
+  assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell\s*\{[\s\S]*opacity:\s*0\.16 !important/);
+  assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell\s*\{[\s\S]*filter:\s*blur\(2px\) saturate\(0\.55\) !important/);
+  assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell\s*\{[\s\S]*contain:\s*none !important/);
   assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell \*\s*\{[\s\S]*pointer-events:\s*none !important/);
   assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell \[class\*="z-\["\]/);
+  assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell \[style\*="z-index"\]/);
+  assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell \[class\*="fixed"\]/);
+  assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell \[class\*="absolute"\]/);
   assert.match(globalsSource, /html\.nexid-account-menu-open \.nexid-crm-shell \[id="live-tap-map"\]/);
   assert.match(globalsSource, /html\.nexid-account-menu-open \.nexid-crm-shell \.maplibregl-control-container/);
   assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-account-layer \*/);
@@ -66,6 +78,13 @@ test("global CSS prevents dashboard maps from covering account drawer", () => {
   assert.match(globalsSource, /@media \(max-width:\s*640px\)\s*\{[\s\S]*\.nexid-account-layer \.tenant-account-panel\s*\{[\s\S]*width:\s*100vw !important/);
   assert.match(globalsSource, /@media \(max-width:\s*640px\)\s*\{[\s\S]*\.nexid-account-layer \.tenant-account-panel\s*\{[\s\S]*height:\s*100dvh !important/);
   assert.match(globalsSource, /@media \(max-width:\s*640px\)\s*\{[\s\S]*\.nexid-account-layer \.tenant-account-panel\s*\{[\s\S]*max-height:\s*100dvh !important/);
+});
+
+test("dashboard PWA registration is opt-in so stale admin CSS cannot mask fixes", () => {
+  assert.match(pwaSetupSource, /process\.env\.NODE_ENV === "production" && process\.env\.NEXT_PUBLIC_ENABLE_PWA === "true"/);
+  assert.match(pwaSetupSource, /navigator\.serviceWorker\.getRegistrations\(\)/);
+  assert.match(pwaSetupSource, /registration\.unregister\(\)/);
+  assert.doesNotMatch(pwaSetupSource, /NEXT_PUBLIC_ENABLE_PWA !== "false"/);
 });
 
 test("dashboard service worker refreshes shell styles before falling back to cache", () => {

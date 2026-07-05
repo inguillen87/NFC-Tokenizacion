@@ -8,6 +8,7 @@ import { dashboardContent } from "../lib/dashboard-content";
 import { productUrls } from "@product/config";
 import { AudienceModeProvider, useAudienceMode } from "./audience-mode";
 import { AdminNotificationBell } from "./admin-notification-bell";
+import { TenantAccountMenu } from "./tenant-account-menu";
 import { motion } from "framer-motion";
 import {
   Compass,
@@ -104,6 +105,9 @@ export function DashboardShellInner({
   currentEmail,
   currentLabel,
   currentPermissions = [],
+  currentTenantSlug,
+  currentMfaVerified,
+  currentSetupCompleted,
 }: {
   children: React.ReactNode;
   title: string;
@@ -117,11 +121,13 @@ export function DashboardShellInner({
   currentEmail: string;
   currentLabel: string;
   currentPermissions?: string[];
+  currentTenantSlug?: string | null;
+  currentMfaVerified?: boolean | null;
+  currentSetupCompleted?: boolean | null;
 }) {
   const pathname = usePathname();
   const router = useRouter();
   const [query, setQuery] = useState("");
-  const [loggingOut, setLoggingOut] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const { mode, setMode } = useAudienceMode();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -172,14 +178,6 @@ export function DashboardShellInner({
   const isDemoMode = currentLabel.toLowerCase().includes("demo") || currentEmail.includes("demo");
   const canShowSandboxTools = isDemoMode && currentRole !== "tenant-admin";
   const canAccessDemoLab = currentPermissions.includes("demo:run") || currentRole === "super-admin" || isDemoMode;
-  const handleLogout = async () => {
-    if (loggingOut) return;
-    if (!window.confirm("Queres salir ahora?")) return;
-    setLoggingOut(true);
-    await fetch("/logout", { method: "POST", cache: "no-store" }).catch(() => null);
-    router.replace("/login");
-    router.refresh();
-  };
 
   const quick = { faq: "FAQ", stack: "Tech Stack", glossary: "Glossary", docs: "Docs" };
   const publicMobile = `${productUrls.web}/sun/simulate`;
@@ -512,16 +510,17 @@ export function DashboardShellInner({
               <div className="hidden h-6 w-px bg-white/10 mx-1 sm:block" />
               <LocaleSwitcher value={locale} options={[...locales]} />
               <SharedThemeToggle />
-              <button
-                type="button"
-                onClick={handleLogout}
-                disabled={loggingOut}
-                className="rounded-lg border border-rose-500/20 hover:bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-300 transition-colors"
-                aria-label="Cerrar sesión del panel admin"
-                title="Cerrar sesión del panel admin"
-              >
-                 {loggingOut ? "Saliendo..." : shell.logout}
-              </button>
+              <TenantAccountMenu
+                className="w-full sm:w-auto"
+                email={currentEmail}
+                label={currentLabel}
+                mfaVerified={currentMfaVerified}
+                mode={currentRole === "super-admin" ? "global" : "tenant"}
+                permissions={currentPermissions}
+                role={currentRole}
+                setupCompleted={currentSetupCompleted}
+                tenantSlug={currentTenantSlug}
+              />
             </div>
           </div>
           {canShowSandboxTools ? (

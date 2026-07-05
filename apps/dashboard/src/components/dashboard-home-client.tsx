@@ -137,6 +137,7 @@ export default function DashboardHomeClient({
                 email: session.email,
                 label: session.label,
                 mfaVerified: session.mfaVerified,
+                permissions: session.permissions,
                 role: session.role,
                 setupCompleted: session.setupCompleted,
                 tenantSlug: session.tenantSlug,

@@ -555,6 +555,7 @@ export function ExecutiveRealtimeCrm({
     email?: string | null;
     label?: string | null;
     mfaVerified?: boolean | null;
+    permissions?: string[];
     role: string;
     setupCompleted?: boolean | null;
     tenantSlug?: string | null;
@@ -914,6 +915,7 @@ export function ExecutiveRealtimeCrm({
             label={account.label}
             mfaVerified={account.mfaVerified}
             mode={mode}
+            permissions={account.permissions}
             role={account.role}
             setupCompleted={account.setupCompleted}
             tenantSlug={account.tenantSlug || tenantScope}

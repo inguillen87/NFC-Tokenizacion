@@ -8,7 +8,7 @@ export function PwaSetup() {
       return;
     }
 
-    const pwaEnabled = process.env.NEXT_PUBLIC_ENABLE_PWA !== "false";
+    const pwaEnabled = process.env.NODE_ENV === "production" && process.env.NEXT_PUBLIC_ENABLE_PWA === "true";
 
     if (!pwaEnabled) {
       void navigator.serviceWorker.getRegistrations().then((registrations) => {

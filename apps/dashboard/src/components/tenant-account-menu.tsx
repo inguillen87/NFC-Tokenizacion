@@ -31,6 +31,7 @@ type TenantAccountMenuProps = {
   label?: string | null;
   mfaVerified?: boolean | null;
   mode: "tenant" | "global";
+  permissions?: string[];
   role: string;
   setupCompleted?: boolean | null;
   tenantSlug?: string | null;
@@ -92,6 +93,7 @@ export function TenantAccountMenu({
   label,
   mfaVerified,
   mode,
+  permissions = [],
   role,
   setupCompleted,
   tenantSlug,
@@ -109,6 +111,7 @@ export function TenantAccountMenu({
   const accountLabel = label || tenantName;
   const isTenantMode = mode === "tenant";
   const accountRoleDescription = roleDescription(role, mode);
+  const canManageUsers = role === "super-admin" || permissions.includes("*") || permissions.includes("users:manage") || permissions.includes("employees:*");
 
   const closeMenu = useCallback(() => {
     setOpen(false);
@@ -186,14 +189,14 @@ export function TenantAccountMenu({
     {
       href: tenantHref,
       icon: <Building2 className="h-4 w-4" />,
-      label: isTenantMode ? "Perfil Bodega Balmec" : "Directorio de tenants",
+      label: isTenantMode ? `Perfil ${tenantName}` : "Directorio de tenants",
       meta: isTenantMode ? "Plan, vertical, health y playbook del tenant" : "Cuentas, planes, regiones y health global",
     },
     {
-      href: "/users",
+      href: canManageUsers ? "/users" : "/settings",
       icon: <Users className="h-4 w-4" />,
-      label: "Usuarios y permisos",
-      meta: "Roles, alcance por recurso, reset y MFA",
+      label: canManageUsers ? "Usuarios y permisos" : "Permisos del workspace",
+      meta: canManageUsers ? "Roles, alcance por recurso, reset y MFA" : "Solicitudes, politicas y alcance autorizado",
     },
     {
       href: "/mfa",
@@ -201,7 +204,7 @@ export function TenantAccountMenu({
       label: "Seguridad y MFA",
       meta: "Segundo factor y controles de acceso",
     },
-  ], [isTenantMode, tenantHref]);
+  ], [canManageUsers, isTenantMode, tenantHref, tenantName]);
 
   const operationsItems = useMemo<AccountMenuItem[]>(() => [
     {

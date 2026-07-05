@@ -1194,6 +1194,10 @@ html.nexid-account-menu-open .nexid-crm-shell,
 body.nexid-account-menu-open .nexid-crm-shell {
   z-index: 0 !important;
   pointer-events: none !important;
+  opacity: 0.16 !important;
+  filter: blur(2px) saturate(0.55) !important;
+  transform: none !important;
+  contain: none !important;
 }
 
 html.nexid-account-menu-open .nexid-crm-shell *,
@@ -1215,6 +1219,8 @@ body.nexid-account-menu-open .nexid-crm-shell [id="live-tap-map"],
 body.nexid-account-menu-open .nexid-crm-shell [class*="z-["] {
   z-index: 1 !important;
   pointer-events: none !important;
+  transform: none !important;
+  contain: none !important;
 }
 
 html.nexid-account-menu-open .nexid-crm-shell [id="live-tap-map"],
@@ -1235,6 +1241,16 @@ html.nexid-account-menu-open .nexid-account-layer *,
 body.nexid-account-menu-open .nexid-account-layer,
 body.nexid-account-menu-open .nexid-account-layer * {
   pointer-events: auto !important;
+}
+
+html.nexid-account-menu-open .nexid-crm-shell [style*="z-index"],
+body.nexid-account-menu-open .nexid-crm-shell [style*="z-index"],
+html.nexid-account-menu-open .nexid-crm-shell [class*="fixed"],
+body.nexid-account-menu-open .nexid-crm-shell [class*="fixed"],
+html.nexid-account-menu-open .nexid-crm-shell [class*="absolute"],
+body.nexid-account-menu-open .nexid-crm-shell [class*="absolute"] {
+  z-index: 1 !important;
+  pointer-events: none !important;
 }
 
 @media (max-width: 640px) {
