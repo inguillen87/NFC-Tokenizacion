@@ -232,9 +232,15 @@ test("brand synergy simulator is readable, auto-cycles and stays mobile-safe", a
   assert.match(source, /\},\s*4000\)/);
   assert.match(source, /setIsPaused\(true\)/);
   assert.match(source, /brand-synergy-proof-grid/);
+  assert.match(source, /brand-synergy-live-panel/);
+  assert.match(source, /brand-synergy-outcome-grid/);
   assert.match(source, /hash-only/);
   assert.match(source, /Consent and PII stay inside nexID/);
   assert.match(css, /brand-synergy-proof-grid > div/);
+  assert.match(css, /brand-synergy-live-panel\s*\{/);
+  assert.match(css, /brand-synergy-outcome-grid > article/);
+  assert.match(css, /html\.theme-light \.brand-synergy-live-panel/);
   assert.match(css, /brand-synergy-flow\s*\{[\s\S]*grid-template-columns:\s*1fr/);
   assert.match(css, /brand-synergy-scenario-pill\s*\{[\s\S]*flex:\s*1 1 100%/);
+  assert.match(css, /brand-synergy-outcome-grid\s*\{[\s\S]*grid-template-columns:\s*1fr/);
 });

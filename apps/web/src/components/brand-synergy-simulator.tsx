@@ -33,6 +33,10 @@ interface Scenario {
   partnerBenefitDesc: string;
   feeText: string;
   conversionEst: string;
+  crmSignal: string;
+  policyGate: string;
+  businessResult: string;
+  proofMode: string;
 }
 
 export function BrandSynergySimulator({ locale }: { locale: string }) {
@@ -72,6 +76,34 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
     verified: isEn ? "SUN verified: OK - Risk score: 0.01" : isBr ? "SUN verificado: OK - Risco: 0.01" : "SUN verificado: OK - Riesgo: 0.01",
     matching: isEn ? "Matching eligible partner offers..." : isBr ? "Buscando ofertas elegiveis..." : "Buscando ofertas elegibles...",
     category: isEn ? "Category" : isBr ? "Categoria" : "Categoria",
+    boardTitle: isEn ? "Enterprise activation board" : isBr ? "Painel enterprise de ativacao" : "Tablero enterprise de activacion",
+    boardSubtitle: isEn
+      ? "What the team can operate after one trusted tap."
+      : isBr
+        ? "O que a equipe pode operar depois de um tap confiavel."
+        : "Lo que el equipo puede operar despues de un tap confiable.",
+    signalLabel: isEn ? "CRM signal" : isBr ? "Sinal CRM" : "Senal CRM",
+    policyLabel: isEn ? "Policy gate" : isBr ? "Regra de politica" : "Regla de politica",
+    resultLabel: isEn ? "Business result" : isBr ? "Resultado de negocio" : "Resultado comercial",
+    proofLabel: isEn ? "Public proof" : isBr ? "Prova publica" : "Prueba publica",
+    proofVerifiedTitle: isEn ? "Verified" : isBr ? "Verificado" : "Verificado",
+    proofVerifiedBody: isEn ? "SUN + product policy" : isBr ? "SUN + politica do produto" : "SUN + politica de producto",
+    proofPrivateTitle: isEn ? "Private" : isBr ? "Privado" : "Privado",
+    proofPrivateBody: isEn
+      ? "Consent and PII stay inside nexID"
+      : isBr
+        ? "Consentimento e PII ficam dentro de nexID"
+        : "Consentimiento y PII quedan dentro de nexID",
+    proofActionTitle: isEn ? "Actionable" : isBr ? "Acionavel" : "Accionable",
+    proofActionBody: isEn
+      ? "CRM signal, voucher or claim"
+      : isBr
+        ? "Sinal CRM, voucher ou claim"
+        : "Senal CRM, voucher o reclamo",
+    metricMatchLabel: isEn ? "Match" : isBr ? "Match" : "Match",
+    metricRiskLabel: isEn ? "Risk" : isBr ? "Risco" : "Riesgo",
+    metricDataLabel: isEn ? "Data" : isBr ? "Dados" : "Datos",
+    privateDataLabel: isEn ? "private" : isBr ? "privado" : "privado",
     privacy: isEn
       ? "Public proof stays hash-only. Customer identity, route detail and contracts remain private inside nexID."
       : isBr
@@ -99,6 +131,10 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
             : "Permite regresar al hotel con seguridad despues de la degustacion.",
         feeText: isEn ? "Eligibility + consent" : isBr ? "Elegibilidade + consentimento" : "Elegibilidad + consentimiento",
         conversionEst: "94%",
+        crmSignal: isEn ? "High-value tourist, verified tasting" : isBr ? "Turista VIP, degustacao verificada" : "Turista VIP, cata verificada",
+        policyGate: isEn ? "Same-day tap + consent + route safety" : isBr ? "Tap no dia + consentimento + rota segura" : "Tap del dia + consentimiento + ruta segura",
+        businessResult: isEn ? "Transfer benefit and partner revenue share" : isBr ? "Beneficio de traslado e receita compartilhada" : "Beneficio de traslado e ingreso compartido",
+        proofMode: isEn ? "Hash-only + consent token" : isBr ? "Hash-only + token de consentimento" : "Hash-only + token de consentimiento",
       },
       {
         id: "festivals-food",
@@ -118,6 +154,10 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
             : "Habilitada solo para asistentes verificados dentro del predio.",
         feeText: isEn ? "Access proof + audience match" : isBr ? "Prova de acesso + audiencia" : "Prueba de acceso + audiencia",
         conversionEst: "97%",
+        crmSignal: isEn ? "Verified attendee inside venue" : isBr ? "Assistente verificado no evento" : "Asistente verificado en el predio",
+        policyGate: isEn ? "Wristband valid + location window" : isBr ? "Pulseira valida + janela de localizacao" : "Pulsera valida + ventana de ubicacion",
+        businessResult: isEn ? "On-site redemption and sponsor attribution" : isBr ? "Canje no local e atribuicao ao patrocinador" : "Canje en predio y atribucion al sponsor",
+        proofMode: isEn ? "Access proof + hash-only" : isBr ? "Prova de acesso + hash-only" : "Prueba de acceso + hash-only",
       },
       {
         id: "sneakers-club",
@@ -137,6 +177,10 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
             : "La titularidad verificada actua como senal de membresia privada.",
         feeText: isEn ? "Revenue share + fraud gate" : isBr ? "Receita compartilhada + antifraude" : "Revenue share + antifraude",
         conversionEst: "89%",
+        crmSignal: isEn ? "Owner verified, resale-safe profile" : isBr ? "Dono verificado, perfil seguro para revenda" : "Dueno verificado, perfil seguro para reventa",
+        policyGate: isEn ? "Fresh tap + ownership + risk gate" : isBr ? "Tap fresco + titularidade + risco" : "Tap fresco + titularidad + riesgo",
+        businessResult: isEn ? "VIP club access and resale trust" : isBr ? "Acesso VIP e confianca para revenda" : "Acceso VIP y confianza para reventa",
+        proofMode: isEn ? "Ownership proof + private CRM" : isBr ? "Prova de titularidade + CRM privado" : "Prueba de propiedad + CRM privado",
       },
     ],
     [isBr, isEn]
@@ -185,8 +229,8 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(168,85,247,0.18),transparent_55%),radial-gradient(ellipse_at_bottom_left,rgba(34,211,238,0.10),transparent_50%)]" />
 
-      <div className="relative grid items-start gap-10 lg:grid-cols-[1.05fr_0.95fr]">
-        <div>
+      <div className="brand-synergy-command-grid relative grid items-start gap-10 lg:grid-cols-[1.02fr_0.98fr]">
+        <div className="brand-synergy-narrative">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-purple-400/30 bg-purple-400/10 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-purple-300">
             <Network className="h-3 w-3" />
             {copy.badge}
@@ -247,19 +291,38 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
           <div className="brand-synergy-proof-grid mt-6 grid gap-2 sm:grid-cols-3">
             <div>
               <ShieldCheck className="h-4 w-4" />
-              <strong>Verified</strong>
-              <span>SUN + product policy</span>
+              <strong>{copy.proofVerifiedTitle}</strong>
+              <span>{copy.proofVerifiedBody}</span>
             </div>
             <div>
               <LockKeyhole className="h-4 w-4" />
-              <strong>Private</strong>
-              <span>Consent and PII stay inside nexID</span>
+              <strong>{copy.proofPrivateTitle}</strong>
+              <span>{copy.proofPrivateBody}</span>
             </div>
             <div>
               <DatabaseZap className="h-4 w-4" />
-              <strong>Actionable</strong>
-              <span>CRM signal, voucher or claim</span>
+              <strong>{copy.proofActionTitle}</strong>
+              <span>{copy.proofActionBody}</span>
             </div>
+          </div>
+
+          <div className="brand-synergy-outcome-grid mt-6 grid gap-3 sm:grid-cols-2">
+            <article>
+              <span>{copy.signalLabel}</span>
+              <strong>{activeScenario.crmSignal}</strong>
+            </article>
+            <article>
+              <span>{copy.policyLabel}</span>
+              <strong>{activeScenario.policyGate}</strong>
+            </article>
+            <article>
+              <span>{copy.resultLabel}</span>
+              <strong>{activeScenario.businessResult}</strong>
+            </article>
+            <article>
+              <span>{copy.proofLabel}</span>
+              <strong>{activeScenario.proofMode}</strong>
+            </article>
           </div>
 
           <div className="mt-8 flex flex-wrap gap-3">
@@ -278,7 +341,28 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
           </div>
         </div>
 
-        <div className="brand-synergy-terminal rounded-2xl border border-white/10 bg-white/[0.03] shadow-xl" aria-live="polite">
+        <div className="brand-synergy-live-panel">
+          <div className="brand-synergy-live-panel__head">
+            <span>{copy.boardTitle}</span>
+            <strong>{copy.boardSubtitle}</strong>
+          </div>
+
+          <div className="brand-synergy-live-panel__metrics">
+            <div>
+              <span>{copy.metricMatchLabel}</span>
+              <strong>{activeScenario.conversionEst}</strong>
+            </div>
+            <div>
+              <span>{copy.metricRiskLabel}</span>
+              <strong>0.01</strong>
+            </div>
+            <div>
+              <span>{copy.metricDataLabel}</span>
+              <strong>{copy.privateDataLabel}</strong>
+            </div>
+          </div>
+
+          <div className="brand-synergy-terminal rounded-2xl border border-white/10 bg-white/[0.03] shadow-xl" aria-live="polite">
           <div className="flex items-center justify-between border-b border-white/10 bg-slate-900/60 px-4 py-3">
             <div className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-purple-500" />
@@ -349,6 +433,7 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
             <div className="brand-synergy-privacy-note rounded-xl border border-cyan-400/20 bg-cyan-400/10 p-3 text-xs leading-5 text-cyan-100">
               {copy.privacy}
             </div>
+          </div>
           </div>
         </div>
       </div>

@@ -46106,6 +46106,80 @@ html[data-theme="light"] .brand-synergy-simulator {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38);
 }
 
+.brand-synergy-command-grid,
+.brand-synergy-narrative,
+.brand-synergy-live-panel {
+  min-width: 0;
+}
+
+.brand-synergy-live-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  border: 1px solid rgba(125, 211, 252, 0.14);
+  border-radius: 1.4rem;
+  background:
+    radial-gradient(circle at 16% 14%, rgba(34, 211, 238, 0.1), transparent 34%),
+    linear-gradient(145deg, rgba(2, 6, 23, 0.84), rgba(15, 23, 42, 0.68));
+  padding: 1rem;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 24px 54px rgba(2, 6, 23, 0.24);
+}
+
+.brand-synergy-live-panel__head {
+  display: grid;
+  gap: 0.28rem;
+}
+
+.brand-synergy-live-panel__head span,
+.brand-synergy-outcome-grid > article span,
+.brand-synergy-live-panel__metrics span {
+  color: #67e8f9;
+  font-size: 0.66rem;
+  font-weight: 950;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.brand-synergy-live-panel__head strong {
+  color: #f8fafc;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.brand-synergy-live-panel__metrics {
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.brand-synergy-live-panel__metrics > div,
+.brand-synergy-outcome-grid > article {
+  min-width: 0;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 1rem;
+  background: rgba(15, 23, 42, 0.66);
+  padding: 0.85rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.brand-synergy-live-panel__metrics strong,
+.brand-synergy-outcome-grid > article strong {
+  display: block;
+  margin-top: 0.34rem;
+  color: #f8fafc;
+  font-size: 0.9rem;
+  font-weight: 950;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.brand-synergy-outcome-grid > article {
+  background:
+    linear-gradient(145deg, rgba(8, 47, 73, 0.42), rgba(15, 23, 42, 0.7));
+}
+
 html.theme-light .brand-synergy-flow,
 html[data-theme="light"] .brand-synergy-flow {
   flex-wrap: wrap !important;
@@ -46161,8 +46235,45 @@ html[data-theme="light"] .brand-synergy-terminal {
   background: rgba(255, 255, 255, 0.94) !important;
 }
 
+html.theme-light .brand-synergy-live-panel,
+html[data-theme="light"] .brand-synergy-live-panel {
+  border-color: rgba(14, 116, 144, 0.18) !important;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(14, 165, 233, 0.1), transparent 36%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(240, 249, 255, 0.88)) !important;
+  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.08) !important;
+}
+
+html.theme-light .brand-synergy-live-panel__head span,
+html.theme-light .brand-synergy-outcome-grid > article span,
+html.theme-light .brand-synergy-live-panel__metrics span,
+html[data-theme="light"] .brand-synergy-live-panel__head span,
+html[data-theme="light"] .brand-synergy-outcome-grid > article span,
+html[data-theme="light"] .brand-synergy-live-panel__metrics span {
+  color: #0e7490 !important;
+}
+
+html.theme-light .brand-synergy-live-panel__head strong,
+html.theme-light .brand-synergy-live-panel__metrics strong,
+html.theme-light .brand-synergy-outcome-grid > article strong,
+html[data-theme="light"] .brand-synergy-live-panel__head strong,
+html[data-theme="light"] .brand-synergy-live-panel__metrics strong,
+html[data-theme="light"] .brand-synergy-outcome-grid > article strong {
+  color: #0f172a !important;
+}
+
+html.theme-light .brand-synergy-live-panel__metrics > div,
+html.theme-light .brand-synergy-outcome-grid > article,
+html[data-theme="light"] .brand-synergy-live-panel__metrics > div,
+html[data-theme="light"] .brand-synergy-outcome-grid > article {
+  border-color: rgba(14, 116, 144, 0.18) !important;
+  background: rgba(255, 255, 255, 0.88) !important;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06) !important;
+}
+
 .brand-synergy-terminal {
   overflow: hidden;
+  min-width: 0;
 }
 
 .brand-synergy-terminal-row {
@@ -46372,6 +46483,21 @@ html[data-theme="light"] .demo-lab-hub-card svg:last-child {
 
   .brand-synergy-simulator {
     padding: 1rem !important;
+  }
+
+  .brand-synergy-command-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1.15rem !important;
+  }
+
+  .brand-synergy-live-panel {
+    border-radius: 1.1rem !important;
+    padding: 0.8rem !important;
+  }
+
+  .brand-synergy-live-panel__metrics,
+  .brand-synergy-outcome-grid {
+    grid-template-columns: 1fr !important;
   }
 
   .brand-synergy-flow {
