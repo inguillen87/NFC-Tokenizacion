@@ -436,8 +436,24 @@ export function EnterpriseTrustLayersSection({ locale }: { locale: string }) {
                 : item.title.includes("NFC")
                   ? "authenticity"
                   : "identity";
+            const href = item.title === "IOTA"
+              ? "/proof/verify"
+              : item.title === "Polygon"
+                ? "/demo-lab?scenario=polygon-ownership"
+                : item.title.includes("Offline")
+                  ? "/demo-lab?scenario=offline-verifier"
+                  : item.title.includes("NFC")
+                    ? "/demo-lab?scenario=qr-gs1"
+                    : item.title.includes("QR")
+                      ? "/demo-lab?scenario=qr-gs1"
+                      : "/docs#trust-layers";
             return (
-              <article key={item.title} tabIndex={0} className={`enterprise-trust-layer-card enterprise-trust-layer-card--${tone} ${isWide ? "md:col-span-2" : ""}`}>
+              <Link
+                key={item.title}
+                href={href}
+                aria-label={`${item.title}: ${locale === "en" ? "open related proof experience" : "abrir experiencia relacionada"}`}
+                className={`enterprise-trust-layer-card enterprise-trust-layer-card--${tone} ${isWide ? "md:col-span-2" : ""}`}
+              >
                 <div>
                   <span><Icon className="h-4 w-4" /></span>
                   <em>{item.meta}</em>
@@ -445,7 +461,10 @@ export function EnterpriseTrustLayersSection({ locale }: { locale: string }) {
                 <h3>{item.title}</h3>
                 <p>{item.body}</p>
                 <TrustLayerMiniSimulation title={item.title} tone={tone} locale={locale} />
-              </article>
+                <span className="mt-4 inline-flex items-center gap-1 text-xs font-black uppercase tracking-[0.12em] text-cyan-200">
+                  {locale === "en" ? "Try it" : "Probar"} <span aria-hidden="true">-&gt;</span>
+                </span>
+              </Link>
             );
           })}
         </div>

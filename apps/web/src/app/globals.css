@@ -30704,6 +30704,7 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
 }
 
 .enterprise-trust-layer-card {
+  display: block;
   min-width: 0;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
@@ -30711,6 +30712,7 @@ html.theme-light .demo-lab-premium-scene__ribbon span {
   padding: 1rem;
   position: relative;
   overflow: hidden;
+  text-decoration: none;
   transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
 }
 

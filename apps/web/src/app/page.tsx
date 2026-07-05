@@ -19,7 +19,7 @@ import { CommercialContactModal } from "../components/commercial-contact-modal";
 import { ProductExitLink } from "../components/product-exit-link";
 import { productUrls, schedulingUrls } from "@product/config";
 import { productExitHref } from "../components/product-exit-link";
-import { ArrowRight, Download, ExternalLink, ShieldCheck, BookOpen, BadgeDollarSign, Layers3, Smartphone, Zap } from "lucide-react";
+import { ArrowRight, Download, ExternalLink, ShieldCheck, BookOpen, BadgeDollarSign, Layers3, Smartphone, Zap, FileCheck2 } from "lucide-react";
 
 const afipDataFiscalHref = "https://qr.afip.gob.ar/?qr=-F2blnmFe6pmSP-chYnylQ,,";
 const mipymeCertificateHref = "/certificados/certificado-mipyme-intellitech.pdf";
@@ -352,6 +352,23 @@ export default async function HomePage() {
             </Link>
           </div>
 
+          {/* Card 3: Proof Verify */}
+          <div className="nexid-quick-hub-card group rounded-2xl border border-white/10 bg-slate-900/40 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-cyan-500/30 hover:bg-slate-900/60">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-300">
+              <FileCheck2 className="h-5 w-5" />
+            </span>
+            <h3 className="mt-4 text-base font-bold text-white">Proof Verify</h3>
+            <p className="mt-2 text-xs leading-5 text-slate-400">
+              {locale === "en"
+                ? "Public hash-only verifier for auditors, investors and customers. Check evidence without exposing private product data."
+                : "Verificador publico hash-only para auditores, inversores y clientes. Comprueba evidencia sin exponer datos privados del producto."
+              }
+            </p>
+            <Link href="/proof/verify" className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-cyan-300 group-hover:text-cyan-200">
+              {locale === "en" ? "Verify evidence" : "Verificar evidencia"} <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+
           {/* Card 3: Pricing & ROI */}
           <div className="nexid-quick-hub-card group rounded-2xl border border-white/10 bg-slate-900/40 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-amber-500/30 hover:bg-slate-900/60">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-300">
@@ -435,6 +452,7 @@ export default async function HomePage() {
           <p className="text-sm site-muted">nexID ayuda a marcas y organizaciones a verificar evidencia de autenticidad, contar la historia del producto y activar garantía, beneficios, certificado digital y postventa desde un toque NFC o QR.</p>
           <div className="flex flex-wrap gap-2">
             <Link href="/docs" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">Arquitectura</Link>
+            <Link href="/proof/verify" className="rounded-lg border border-cyan-300/40 px-3 py-2 text-xs text-cyan-300">Proof Verify</Link>
             <Link href="/sdk" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">SDK</Link>
             <Link href="/pricing" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">Pricing</Link>
             <Link href="/?contact=demo#contact-modal" className="rounded-lg border border-cyan-300/40 px-3 py-2 text-xs text-cyan-300">Demo</Link>
@@ -489,8 +507,9 @@ export default async function HomePage() {
       </footer>
 
       <div className="px-3 py-4 pb-[calc(max(env(safe-area-inset-bottom),0px)+1rem)] md:hidden">
-        <div className="mx-auto grid max-w-md grid-cols-4 items-center gap-2 rounded-2xl border border-white/10 bg-slate-950/85 p-2 shadow-[0_18px_50px_rgba(2,8,23,0.45)] backdrop-blur-xl">
+        <div className="mx-auto grid max-w-md grid-cols-5 items-center gap-2 rounded-2xl border border-white/10 bg-slate-950/85 p-2 shadow-[0_18px_50px_rgba(2,8,23,0.45)] backdrop-blur-xl">
           <Link href="/docs" className="flex min-h-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 px-2 py-2 text-center text-xs font-medium text-slate-100">{labels.mobileCtaDocs}</Link>
+          <Link href="/proof/verify" className="flex min-h-11 items-center justify-center rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-2 py-2 text-center text-xs font-semibold text-cyan-100">Proof</Link>
           <Link href="/?contact=demo#contact-modal" className="flex min-h-11 items-center justify-center gap-1 rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-2 py-2 text-xs font-medium text-cyan-100">{labels.mobileCtaDemo}<ArrowRight className="h-4 w-4" /></Link>
           <a href={meetingHref} target="_blank" rel="noreferrer" className="flex min-h-11 items-center justify-center rounded-xl border border-violet-300/30 bg-violet-500/15 px-2 py-2 text-center text-xs font-semibold text-violet-100">{labels.mobileCtaMeeting}</a>
           <a href={loginHref} className="flex min-h-11 items-center justify-center rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-2 py-2 text-center text-xs font-semibold text-emerald-100">{labels.mobileCtaLogin}</a>

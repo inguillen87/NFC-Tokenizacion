@@ -88,6 +88,16 @@ type DocsCopy = {
   openLab: string;
 };
 
+const trustLayerDocLinks: Record<string, { href: string; label: string }> = {
+  "blockchain-architecture.md": { href: "/docs#trust-layers", label: "Architecture" },
+  "offline-nfc-validation.md": { href: "/demo-lab?scenario=offline-verifier", label: "Offline demo" },
+  "offline-verifier-architecture.md": { href: "/demo-lab?scenario=offline-verifier", label: "Verifier flow" },
+  "polygon-ownership-layer.md": { href: "/demo-lab?scenario=polygon-ownership", label: "Polygon demo" },
+  "iota-proof-audit-layer.md": { href: "/proof/verify", label: "Proof verifier" },
+  "enterprise-trust-faq.md": { href: "/docs#trust-layers", label: "FAQ" },
+  "dpp-event-model.md": { href: "/demo-lab?scenario=dual-proof", label: "DPP demo" },
+};
+
 const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
   "es-AR": {
     eyebrow: "Guia comercial + producto",
@@ -1092,6 +1102,29 @@ export default async function DocsPage() {
             <h3 className="text-2xl font-black text-white">
               {copy.trustOpsTitle}
             </h3>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <Link
+                href="/proof/verify"
+                className="inline-flex min-h-10 items-center gap-2 rounded-full border border-cyan-300/35 bg-cyan-400/10 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-400/15"
+              >
+                {locale === "en" ? "Open Proof Verify" : locale === "pt-BR" ? "Abrir Proof Verify" : "Abrir Proof Verify"}
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+              <Link
+                href="/demo-lab?scenario=iota-proof"
+                className="inline-flex min-h-10 items-center gap-2 rounded-full border border-indigo-300/30 bg-indigo-400/10 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-indigo-100 transition hover:border-indigo-200/70 hover:bg-indigo-400/15"
+              >
+                {locale === "en" ? "Run IOTA proof demo" : locale === "pt-BR" ? "Demo prova IOTA" : "Demo prueba IOTA"}
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+              <Link
+                href="/demo-lab?scenario=polygon-ownership"
+                className="inline-flex min-h-10 items-center gap-2 rounded-full border border-purple-300/30 bg-purple-400/10 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-purple-100 transition hover:border-purple-200/70 hover:bg-purple-400/15"
+              >
+                {locale === "en" ? "Run Polygon ownership" : locale === "pt-BR" ? "Demo ownership Polygon" : "Demo ownership Polygon"}
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
           </div>
 
           <div className="relative z-10 grid gap-6 md:grid-cols-3">
@@ -1158,14 +1191,22 @@ export default async function DocsPage() {
               {trustLayerFaq.docsNote}
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
-              {trustLayerFaq.docs.map((item) => (
-                <span
-                  key={item}
-                  className="cursor-default rounded-full border border-white/10 bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:border-cyan-500/30 hover:text-cyan-300"
-                >
-                  {item}
-                </span>
-              ))}
+              {trustLayerFaq.docs.map((item) => {
+                const target = trustLayerDocLinks[item] || { href: "/docs#trust-layers", label: "Docs" };
+                return (
+                  <Link
+                    key={item}
+                    href={target.href}
+                    className="inline-flex min-h-9 items-center gap-2 rounded-full border border-white/10 bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:border-cyan-500/40 hover:text-cyan-200"
+                    title={`${item} -> ${target.label}`}
+                  >
+                    <span>{item}</span>
+                    <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-cyan-200">
+                      {target.label}
+                    </span>
+                  </Link>
+                );
+              })}
             </div>
           </div>
         </div>
