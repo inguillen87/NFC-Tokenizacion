@@ -15,6 +15,7 @@ import { messages, productUrls } from "@product/config";
 import { resolveEventLocalTime } from "@product/core";
 import DashboardHomeClient from "../../components/dashboard-home-client";
 import { type OpsCommandStep, type OpsCommandTenantRow } from "../../components/ops-command-center";
+import { isClerkConfiguredForRuntime } from "../../lib/clerk-env";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
 const FALLBACK_KPIS = {
@@ -487,6 +488,7 @@ export default async function DashboardHome() {
       activeTags={activeTags}
       plannedTags={plannedTags}
       mintedTokens={mintedTokens}
+      clerkEnabled={isClerkConfiguredForRuntime()}
     />
   );
 }

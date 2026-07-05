@@ -21,10 +21,19 @@ test("app layout passes real session status into account drawer", () => {
   assert.match(layoutSource, /currentTenantSlug=\{session\.tenantSlug\}/);
   assert.match(layoutSource, /currentMfaVerified=\{session\.mfaVerified\}/);
   assert.match(layoutSource, /currentSetupCompleted=\{session\.setupCompleted\}/);
+  assert.match(layoutSource, /import \{ isClerkConfiguredForRuntime \} from "\.\.\/\.\.\/lib\/clerk-env"/);
+  assert.match(layoutSource, /clerkEnabled=\{isClerkConfiguredForRuntime\(\)\}/);
+  assert.match(shellSource, /clerkEnabled\?: boolean/);
+  assert.match(shellSource, /clerkEnabled=\{clerkEnabled\}/);
 });
 
 test("fullscreen CRM account menu receives same permissions contract", () => {
   assert.match(homeClientSource, /permissions:\s*session\.permissions/);
+  assert.match(homeClientSource, /clerkEnabled\?: boolean/);
+  assert.match(homeClientSource, /clerkEnabled\s*\}\s*: DashboardHomeClientProps/);
+  assert.match(homeClientSource, /clerkEnabled,\s*\}\}/);
   assert.match(crmSource, /permissions\?: string\[\]/);
+  assert.match(crmSource, /clerkEnabled\?: boolean/);
   assert.match(crmSource, /permissions=\{account\.permissions\}/);
+  assert.match(crmSource, /clerkEnabled=\{account\.clerkEnabled\}/);
 });

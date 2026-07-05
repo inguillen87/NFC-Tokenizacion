@@ -4,6 +4,7 @@ import { DashboardShell } from "../../components/dashboard-shell";
 import { requireDashboardSession } from "../../lib/session";
 import { SessionHeartbeat } from "../../components/session-heartbeat";
 import { OnboardingSetupWizard } from "../../components/onboarding-setup-wizard";
+import { isClerkConfiguredForRuntime } from "../../lib/clerk-env";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { locale, locales, t } = await getDashboardI18n();
@@ -26,6 +27,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       currentTenantSlug={session.tenantSlug}
       currentMfaVerified={session.mfaVerified}
       currentSetupCompleted={session.setupCompleted}
+      clerkEnabled={isClerkConfiguredForRuntime()}
     >
       <>
         <SessionHeartbeat />

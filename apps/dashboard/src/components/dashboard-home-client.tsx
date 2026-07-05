@@ -47,6 +47,7 @@ interface DashboardHomeClientProps {
   activeTags: number;
   plannedTags: number;
   mintedTokens: number;
+  clerkEnabled?: boolean;
 }
 
 function displayBatchId(value: unknown) {
@@ -79,7 +80,8 @@ export default function DashboardHomeClient({
   importedTags,
   activeTags,
   plannedTags,
-  mintedTokens
+  mintedTokens,
+  clerkEnabled
 }: DashboardHomeClientProps) {
   const [activeTab, setActiveTab] = useState<DashboardTab>("summary");
 
@@ -141,6 +143,7 @@ export default function DashboardHomeClient({
                 role: session.role,
                 setupCompleted: session.setupCompleted,
                 tenantSlug: session.tenantSlug,
+                clerkEnabled,
               }}
               initialEvents={initialRealtimeEvents}
               tenantScope={tenantScope}

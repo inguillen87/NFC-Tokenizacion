@@ -559,6 +559,7 @@ export function ExecutiveRealtimeCrm({
     role: string;
     setupCompleted?: boolean | null;
     tenantSlug?: string | null;
+    clerkEnabled?: boolean;
   };
   initialEvents: TenantTapRealtimeEvent[];
   tenantScope: string;
@@ -919,6 +920,7 @@ export function ExecutiveRealtimeCrm({
             role={account.role}
             setupCompleted={account.setupCompleted}
             tenantSlug={account.tenantSlug || tenantScope}
+            clerkEnabled={account.clerkEnabled}
           />
         </div>
       </header>

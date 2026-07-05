@@ -60,6 +60,7 @@ test("login surfaces separate founder Google auth from tenant demo access", () =
   const googleButton = readFileSync(new URL("../src/components/clerk-google-super-admin-button.tsx", import.meta.url), "utf8");
   const signInPage = readFileSync(new URL("../src/app/sign-in/[[...sign-in]]/page.tsx", import.meta.url), "utf8");
   const demoRoute = readFileSync(new URL("../src/app/api/session/demo/route.ts", import.meta.url), "utf8");
+  const logoutRoute = readFileSync(new URL("../src/app/logout/route.ts", import.meta.url), "utf8");
 
   assert.match(loginPage, /profile\.role !== "super-admin"/);
   assert.doesNotMatch(loginPage, /demoLoginAllowed/);
@@ -70,6 +71,8 @@ test("login surfaces separate founder Google auth from tenant demo access", () =
   assert.match(loginPanel, /demoRole:\s*"tenant-admin"/);
   assert.match(loginPanel, /Super Admin entra por Google\/Clerk/);
   assert.match(loginPanel, /Continuar con Google allowlisted/);
+  assert.match(loginPage, /firstParam\(params\.logged_out\) === "1"/);
+  assert.match(loginPage, /Sesion cerrada\. Podes entrar con Bodega Balmec o con Google allowlisted\./);
 
   assert.match(googleButton, /already signed in/);
   assert.match(googleButton, /window\.location\.href = "\/auth\/clerk\/super-admin"/);
@@ -80,6 +83,12 @@ test("login surfaces separate founder Google auth from tenant demo access", () =
 
   assert.match(demoRoute, /superadmin_requires_clerk/);
   assert.doesNotMatch(demoRoute, /permissions:\s*\["\*"\]/);
+
+  assert.match(logoutRoute, /loginUrl\.searchParams\.set\("logged_out", "1"\)/);
+  assert.match(logoutRoute, /NextResponse\.redirect\(loginUrl, 303\)/);
+  assert.match(logoutRoute, /response\.headers\.set\("Cache-Control", "no-store"\)/);
+  assert.match(logoutRoute, /response\.cookies\.delete\(DASHBOARD_SESSION_COOKIE\)/);
+  assert.match(logoutRoute, /response\.cookies\.delete\(DASHBOARD_SESSION_SNAPSHOT_COOKIE\)/);
 });
 
 test("dashboard auth keeps the actionable login first on mobile", () => {

@@ -72,9 +72,25 @@ test("tenant account menu renders as a top-level drawer above CRM layers", () =>
   assert.match(menuSource, /className="min-h-0 flex-1 overflow-y-auto p-3"/);
   assert.match(menuSource, /permissions = \[\]/);
   assert.match(menuSource, /const canManageUsers = role === "super-admin"/);
+  assert.match(menuSource, /data-testid="tenant-account-session-summary"/);
+  assert.match(menuSource, /data-testid="tenant-account-primary-action"/);
+  assert.match(menuSource, /const hasWildcardAccess = permissions\.includes\("\*"\)/);
+  assert.match(menuSource, /role === "super-admin" \|\| mode === "global" \? "Acceso global" : "Tenant completo"/);
+  assert.match(menuSource, /const nextAction = setupCompleted === false && role === "tenant-admin"/);
   assert.match(menuSource, /label: isTenantMode \? `Perfil \$\{tenantName\}` : "Directorio de tenants"/);
   assert.doesNotMatch(menuSource, /label: isTenantMode \? "Perfil Bodega Balmec"/);
   assert.match(menuSource, /href: canManageUsers \? "\/users" : "\/settings"/);
+});
+
+test("tenant account menu closes nexID and Clerk sessions when OAuth is active", () => {
+  assert.match(menuSource, /import \{ useClerk \} from "@clerk\/nextjs"/);
+  assert.match(menuSource, /function ClerkSecureLogoutButton/);
+  assert.match(menuSource, /const \{ signOut \} = useClerk\(\)/);
+  assert.match(menuSource, /await fetch\("\/logout", \{ method: "POST", cache: "no-store" \}\)/);
+  assert.match(menuSource, /await signOut\(\{ redirectUrl: "\/login\?logged_out=1" \}\)/);
+  assert.match(menuSource, /function SecureLogoutButton\(\{ clerkEnabled, onStart \}/);
+  assert.match(menuSource, /if \(clerkEnabled\) return <ClerkSecureLogoutButton onStart=\{onStart\} \/>/);
+  assert.match(menuSource, /<SecureLogoutButton clerkEnabled=\{clerkEnabled\} onStart=\{\(\) => setDocumentMenuState\(false\)\} \/>/);
 });
 
 test("global CSS prevents dashboard maps from covering account drawer", () => {

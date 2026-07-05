@@ -9,7 +9,10 @@ async function endDashboardSession(req: Request, revokeUpstream: boolean) {
   if (revokeUpstream && token && !token.startsWith("demo.")) {
     await fetch(`${API_BASE}/auth/session`, { method: "DELETE", headers: { authorization: `Bearer ${token}` }, cache: "no-store" }).catch(() => null);
   }
-  const response = NextResponse.redirect(new URL("/login", req.url));
+  const loginUrl = new URL("/login", req.url);
+  loginUrl.searchParams.set("logged_out", "1");
+  const response = NextResponse.redirect(loginUrl, 303);
+  response.headers.set("Cache-Control", "no-store");
   response.cookies.delete(DASHBOARD_SESSION_COOKIE);
   response.cookies.delete(DASHBOARD_SESSION_SNAPSHOT_COOKIE);
   return response;

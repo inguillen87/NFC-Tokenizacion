@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useClerk } from "@clerk/nextjs";
 import {
   BookOpen,
   Building2,
@@ -12,7 +13,6 @@ import {
   LogOut,
   Settings,
   ShieldCheck,
-  UserCog,
   Users,
   X,
 } from "lucide-react";
@@ -35,6 +35,7 @@ type TenantAccountMenuProps = {
   role: string;
   setupCompleted?: boolean | null;
   tenantSlug?: string | null;
+  clerkEnabled?: boolean;
 };
 
 const ACCOUNT_MENU_Z_INDEX = 2147483630;
@@ -229,8 +230,61 @@ function initialsFor(role: string) {
   return "NX";
 }
 
+function LocalSecureLogoutButton() {
+  return (
+    <form method="post" action="/logout">
+      <button
+        type="submit"
+        data-testid="tenant-account-logout"
+        className="flex w-full items-center justify-center gap-2 rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm font-black text-rose-100 transition hover:border-rose-200/70 hover:bg-rose-500/18"
+      >
+        <LogOut className="h-4 w-4" />
+        Cerrar sesion segura
+      </button>
+    </form>
+  );
+}
+
+function ClerkSecureLogoutButton({ onStart }: { onStart?: () => void }) {
+  const { signOut } = useClerk();
+  const [pending, setPending] = useState(false);
+
+  async function handleLogout() {
+    if (pending) return;
+    setPending(true);
+    onStart?.();
+
+    await fetch("/logout", { method: "POST", cache: "no-store" }).catch(() => null);
+
+    try {
+      await signOut({ redirectUrl: "/login?logged_out=1" });
+    } catch {
+      window.location.href = "/login?logged_out=1";
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      data-testid="tenant-account-logout"
+      className="flex w-full items-center justify-center gap-2 rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm font-black text-rose-100 transition hover:border-rose-200/70 hover:bg-rose-500/18 disabled:cursor-wait disabled:opacity-70"
+      disabled={pending}
+      onClick={() => void handleLogout()}
+    >
+      <LogOut className="h-4 w-4" />
+      {pending ? "Cerrando sesion..." : "Cerrar sesion segura"}
+    </button>
+  );
+}
+
+function SecureLogoutButton({ clerkEnabled, onStart }: { clerkEnabled?: boolean; onStart?: () => void }) {
+  if (clerkEnabled) return <ClerkSecureLogoutButton onStart={onStart} />;
+  return <LocalSecureLogoutButton />;
+}
+
 export function TenantAccountMenu({
   className = "",
+  clerkEnabled,
   email,
   label,
   mfaVerified,
@@ -256,6 +310,17 @@ export function TenantAccountMenu({
   const isTenantMode = mode === "tenant";
   const accountRoleDescription = roleDescription(role, mode);
   const canManageUsers = role === "super-admin" || permissions.includes("*") || permissions.includes("users:manage") || permissions.includes("employees:*");
+  const hasWildcardAccess = permissions.includes("*");
+  const normalizedPermissions = hasWildcardAccess
+    ? [role === "super-admin" || mode === "global" ? "Acceso global" : "Tenant completo"]
+    : permissions.length ? permissions.slice(0, 3) : ["Scope operativo"];
+  const nextAction = setupCompleted === false && role === "tenant-admin"
+    ? { href: "/onboarding", label: "Completar setup del tenant", meta: "Datos, equipo e integraciones base" }
+    : !mfaVerified
+      ? { href: "/mfa", label: "Revisar MFA y seguridad", meta: "Segundo factor antes de escalar permisos" }
+      : isTenantMode
+        ? { href: tenantHref, label: "Abrir perfil del tenant", meta: "Plan, vertical, health y playbook del workspace" }
+        : { href: "/settings", label: "Abrir configuracion global", meta: "Seguridad, tenants, integraciones y soporte" };
 
   const setDocumentMenuState = useCallback((value: boolean) => {
     document.documentElement.classList.toggle("nexid-account-menu-open", value);
@@ -389,12 +454,6 @@ export function TenantAccountMenu({
       meta: "Cuenta, integración, incidentes o preventa",
       external: true,
     },
-    {
-      href: "/logout",
-      icon: <UserCog className="h-4 w-4" />,
-      label: "Cambiar cuenta o perfil",
-      meta: "Cerrar esta sesión y volver al login enterprise",
-    },
   ], [tenantQuery]);
 
   const itemContent = (item: AccountMenuItem) => (
@@ -410,7 +469,7 @@ export function TenantAccountMenu({
   );
 
   const renderItem = (item: AccountMenuItem) => (
-    item.external ? (
+    item.href === "/logout" ? null : item.external ? (
       <a
         key={item.label}
         href={item.href}
@@ -502,14 +561,31 @@ export function TenantAccountMenu({
               {isTenantMode ? "tenant" : "global"}
             </span>
           </div>
+          <div
+            data-testid="tenant-account-session-summary"
+            className="mt-3 grid gap-2 rounded-2xl border border-white/10 bg-slate-950/50 p-3 text-xs text-slate-300 sm:grid-cols-2"
+          >
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Permisos</p>
+              <p className="mt-1 truncate font-semibold text-white">{normalizedPermissions.join(" / ")}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Sesion</p>
+              <p className="mt-1 font-semibold text-white">{clerkEnabled ? "Clerk + nexID" : "nexID local"}</p>
+            </div>
+          </div>
           <button
             type="button"
+            data-testid="tenant-account-primary-action"
             className="mt-4 flex w-full items-center justify-between gap-3 rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-3 py-3 text-left text-sm font-black text-cyan-50 transition hover:border-cyan-200/70 hover:bg-cyan-400/20"
             onClick={() => {
-              window.location.href = isTenantMode ? tenantHref : "/settings";
+              window.location.href = nextAction.href;
             }}
           >
-            <span>{isTenantMode ? "Abrir perfil del tenant" : "Abrir configuración global"}</span>
+            <span className="min-w-0">
+              <span className="block">{nextAction.label}</span>
+              <span className="mt-0.5 block text-xs font-semibold normal-case text-cyan-100/75">{nextAction.meta}</span>
+            </span>
             <span aria-hidden="true">-&gt;</span>
           </button>
         </div>
@@ -525,16 +601,11 @@ export function TenantAccountMenu({
         </div>
 
         <div className="border-t border-white/10 bg-[#020817] p-3">
-          <form method="post" action="/logout">
-            <button
-              type="submit"
-              data-testid="tenant-account-logout"
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm font-black text-rose-100 transition hover:border-rose-200/70 hover:bg-rose-500/18"
-            >
-              <LogOut className="h-4 w-4" />
-              Cerrar sesión segura
-            </button>
-          </form>
+          {clerkEnabled ? (
+            <SecureLogoutButton clerkEnabled={clerkEnabled} onStart={() => setDocumentMenuState(false)} />
+          ) : (
+            <SecureLogoutButton clerkEnabled={false} />
+          )}
         </div>
       </div>
     </div>

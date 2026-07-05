@@ -108,6 +108,7 @@ export function DashboardShellInner({
   currentTenantSlug,
   currentMfaVerified,
   currentSetupCompleted,
+  clerkEnabled,
 }: {
   children: React.ReactNode;
   title: string;
@@ -124,6 +125,7 @@ export function DashboardShellInner({
   currentTenantSlug?: string | null;
   currentMfaVerified?: boolean | null;
   currentSetupCompleted?: boolean | null;
+  clerkEnabled?: boolean;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -520,6 +522,7 @@ export function DashboardShellInner({
                 role={currentRole}
                 setupCompleted={currentSetupCompleted}
                 tenantSlug={currentTenantSlug}
+                clerkEnabled={clerkEnabled}
               />
             </div>
           </div>
