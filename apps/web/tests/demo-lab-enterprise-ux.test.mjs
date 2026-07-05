@@ -6,6 +6,7 @@ test("demo lab theme toggle changes theme client-side before falling back to SSR
   const source = await readFile(new URL("../src/app/(public)/demo-lab/demo-lab-hub-theme.tsx", import.meta.url), "utf8");
 
   assert.match(source, /function applyTheme\(theme: Theme\)/);
+  assert.match(source, /localStorage\.getItem\("theme"\)/);
   assert.match(source, /localStorage\.setItem\("theme", theme\)/);
   assert.match(source, /onClick=\{onToggle\}/);
   assert.match(source, /event\.preventDefault\(\)/);
@@ -76,7 +77,14 @@ test("demo lab hub keeps C-level contrast across cards, filters and theme contro
   assert.match(page, /demo-lab-hub-pill__icon/);
   assert.match(page, /demo-lab-hub-card-grid/);
   assert.match(page, /demo-lab-hub-vertical-grid/);
+  assert.match(page, /HUB_EXECUTIVE_PATHS/);
+  assert.match(page, /demo-lab-hub-executive-path/);
+  assert.match(page, /Ruta enterprise/);
+  assert.match(page, /IOTA \/ hash-only/);
+  assert.match(page, /Polygon ready/);
   assert.match(page, /href="\/proof\/verify"/);
+  assert.match(page, /href:\s*"\/demo-lab\?scenario=qr-gs1"/);
+  assert.match(page, /href:\s*"\/demo-lab\?scenario=polygon-ownership"/);
   assert.match(css, /\.demo-lab-hub-root--light\s*\{[\s\S]*color:\s*#0f172a !important/);
   assert.match(css, /\.demo-lab-hub-root \.demo-lab-hub-card__icon,[\s\S]*color:\s*#bae6fd !important/);
   assert.match(css, /\.demo-lab-hub-root--light \.demo-lab-hub-card__icon,[\s\S]*color:\s*#075985 !important/);
@@ -89,6 +97,12 @@ test("demo lab hub keeps C-level contrast across cards, filters and theme contro
   assert.match(css, /\.demo-lab-hub-root \.theme-toggle,[\s\S]*\.demo-lab-hub-nav a\[href="\/proof\/verify"\]/);
   assert.match(css, /html\.theme-light \.demo-lab-hub-root \.theme-toggle,[\s\S]*color:\s*#075985 !important/);
   assert.match(css, /\.demo-lab-hub-root--light \.theme-toggle,[\s\S]*color:\s*#075985 !important/);
+  assert.match(css, /Demo Lab hub enterprise path/);
+  assert.match(css, /\.demo-lab-hub-executive-path\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*0\.9fr\)\s*minmax\(0,\s*1\.35fr\)/);
+  assert.match(css, /\.demo-lab-hub-executive-path__grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /html\.theme-light \.demo-lab-hub-executive-path,[\s\S]*\.demo-lab-hub-root--light \.demo-lab-hub-executive-path/);
+  assert.match(css, /html\.theme-light \.demo-lab-hub-executive-path__card,[\s\S]*\.demo-lab-hub-root--light \.demo-lab-hub-executive-path__card/);
+  assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*\.demo-lab-hub-executive-path\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
 });
 
 test("demo lab trust scenario deep links open contextual wizard proof layers", async () => {

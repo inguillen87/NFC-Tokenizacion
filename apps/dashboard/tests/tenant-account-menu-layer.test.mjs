@@ -15,8 +15,14 @@ test("tenant account menu renders as a top-level drawer above CRM layers", () =>
   assert.match(menuSource, /dialog\.close\(\)/);
   assert.match(menuSource, /<dialog/);
   assert.match(menuSource, /data-account-menu-portal="body"/);
-  assert.match(menuSource, /document\.documentElement\.classList\.add\("nexid-account-menu-open"\)/);
-  assert.match(menuSource, /document\.documentElement\.classList\.remove\("nexid-account-menu-open"\)/);
+  assert.match(menuSource, /const ACCOUNT_LAYER_STYLE: CSSProperties = \{/);
+  assert.match(menuSource, /width:\s*"100vw"/);
+  assert.match(menuSource, /height:\s*"100dvh"/);
+  assert.match(menuSource, /maxWidth:\s*"none"/);
+  assert.match(menuSource, /const setDocumentMenuState = useCallback/);
+  assert.match(menuSource, /document\.documentElement\.classList\.toggle\("nexid-account-menu-open", value\)/);
+  assert.match(menuSource, /document\.body\.classList\.toggle\("nexid-account-menu-open", value\)/);
+  assert.match(menuSource, /useIsomorphicLayoutEffect\(\(\) => \{\s*if \(!open\) return;\s*setDocumentMenuState\(true\)/);
   assert.match(menuSource, /data-testid="tenant-account-menu-close"/);
   assert.match(menuSource, /aria-label="Cerrar panel de cuenta"/);
   assert.match(menuSource, /aria-haspopup="dialog"/);
@@ -70,7 +76,10 @@ test("global CSS prevents dashboard maps from covering account drawer", () => {
   assert.match(globalsSource, /\.tenant-account-panel__header \.text-white,[\s\S]*\{[\s\S]*color:\s*#f8fafc !important/);
   assert.match(globalsSource, /html\.theme-light \.nexid-account-layer \.tenant-account-panel__header \.text-slate-400/);
   assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell\s*\{[\s\S]*pointer-events:\s*none !important/);
+  assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell\s*\{[\s\S]*z-index:\s*0 !important/);
+  assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell\s*\{[\s\S]*filter:\s*saturate\(0\.78\) brightness\(0\.48\) blur\(0\.5px\) !important/);
   assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell\s*\{[\s\S]*contain:\s*none !important/);
+  assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell\s*\{[\s\S]*user-select:\s*none !important/);
   assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell \*\s*\{[\s\S]*pointer-events:\s*none !important/);
   assert.doesNotMatch(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell\s*\{[\s\S]*opacity:\s*0\.16 !important/);
   assert.doesNotMatch(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell \[class\*="fixed"\]/);

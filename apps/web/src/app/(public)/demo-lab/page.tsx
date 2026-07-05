@@ -462,6 +462,33 @@ const HUB_STEPS = [
   },
 ];
 
+const HUB_EXECUTIVE_PATHS = [
+  {
+    icon: Smartphone,
+    eyebrow: "Demo en 60s",
+    title: "Proba el flujo completo",
+    body: "Toca, verifica, traza y activa un resultado comercial sin perderte en pantallas tecnicas.",
+    href: "/demo-lab?scenario=qr-gs1",
+    cta: "Abrir wizard",
+  },
+  {
+    icon: Network,
+    eyebrow: "IOTA / hash-only",
+    title: "Verifica evidencia publica",
+    body: "Un auditor pega un hash y comprueba inclusion sin ver clientes, rutas ni documentos privados.",
+    href: "/proof/verify",
+    cta: "Abrir Proof Verify",
+  },
+  {
+    icon: Box,
+    eyebrow: "Polygon ready",
+    title: "Muestra ownership y garantia",
+    body: "Despues del tap autentico, el cliente reclama propiedad, garantia o reventa certificada.",
+    href: "/demo-lab?scenario=polygon-ownership",
+    cta: "Ver ownership",
+  },
+];
+
 export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
   const { locale } = await getWebI18n();
   const structuredData = demoLabStructuredData(locale);
@@ -650,6 +677,36 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
             experiencia completa end-to-end.
           </p>
         </div>
+
+        <section className="demo-lab-hub-executive-path mb-10" aria-label="Ruta ejecutiva Demo Lab">
+          <div className="demo-lab-hub-executive-path__copy">
+            <span>Ruta enterprise</span>
+            <strong>De producto fisico a prueba verificable en tres clicks.</strong>
+            <p>
+              Pensado para ventas, inversores y equipos C-level: primero se entiende el flujo,
+              despues se valida el hash y finalmente se ve donde entran IOTA y Polygon.
+            </p>
+          </div>
+          <div className="demo-lab-hub-executive-path__grid">
+            {HUB_EXECUTIVE_PATHS.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link key={item.href} href={item.href} className="demo-lab-hub-executive-path__card">
+                  <span className="demo-lab-hub-executive-path__icon">
+                    <Icon className="h-4 w-4" />
+                  </span>
+                  <span className="demo-lab-hub-executive-path__eyebrow">{item.eyebrow}</span>
+                  <strong>{item.title}</strong>
+                  <p>{item.body}</p>
+                  <em>
+                    {item.cta}
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </em>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
 
         <div className="demo-lab-hub-signal-grid mb-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {HUB_STEPS.map((step) => {

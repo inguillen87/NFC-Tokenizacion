@@ -39,6 +39,24 @@ type TenantAccountMenuProps = {
 
 const ACCOUNT_MENU_Z_INDEX = 2147483600;
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+const ACCOUNT_LAYER_STYLE: CSSProperties = {
+  position: "fixed",
+  zIndex: ACCOUNT_MENU_Z_INDEX,
+  inset: 0,
+  width: "100vw",
+  height: "100dvh",
+  maxWidth: "none",
+  maxHeight: "none",
+  margin: 0,
+  padding: 0,
+  border: 0,
+  overflow: "visible",
+  pointerEvents: "auto",
+  isolation: "isolate",
+  background: "transparent",
+  color: "inherit",
+  transform: "translate3d(0,0,0)",
+};
 const ACCOUNT_MENU_DEFAULT_STYLE: CSSProperties = {
   position: "fixed",
   zIndex: ACCOUNT_MENU_Z_INDEX + 2,
@@ -114,15 +132,20 @@ export function TenantAccountMenu({
   const accountRoleDescription = roleDescription(role, mode);
   const canManageUsers = role === "super-admin" || permissions.includes("*") || permissions.includes("users:manage") || permissions.includes("employees:*");
 
-  const closeMenu = useCallback(() => {
-    setOpen(false);
-    window.requestAnimationFrame(() => triggerRef.current?.focus());
+  const setDocumentMenuState = useCallback((value: boolean) => {
+    document.documentElement.classList.toggle("nexid-account-menu-open", value);
+    document.body.classList.toggle("nexid-account-menu-open", value);
   }, []);
 
-  useEffect(() => {
+  const closeMenu = useCallback(() => {
+    setDocumentMenuState(false);
+    setOpen(false);
+    window.requestAnimationFrame(() => triggerRef.current?.focus());
+  }, [setDocumentMenuState]);
+
+  useIsomorphicLayoutEffect(() => {
     if (!open) return;
-    document.documentElement.classList.add("nexid-account-menu-open");
-    document.body.classList.add("nexid-account-menu-open");
+    setDocumentMenuState(true);
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Node;
       if (menuRef.current?.contains(target) || panelRef.current?.contains(target)) return;
@@ -134,14 +157,13 @@ export function TenantAccountMenu({
     window.addEventListener("pointerdown", handlePointerDown);
     window.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.documentElement.classList.remove("nexid-account-menu-open");
-      document.body.classList.remove("nexid-account-menu-open");
+      setDocumentMenuState(false);
       window.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [closeMenu, open]);
+  }, [closeMenu, open, setDocumentMenuState]);
 
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     if (!open) return;
     const dialog = dialogRef.current;
     if (!dialog) return;
@@ -178,9 +200,12 @@ export function TenantAccountMenu({
   }, []);
 
   const toggleMenu = useCallback(() => {
-    if (!open) updatePanelPosition();
+    if (!open) {
+      setDocumentMenuState(true);
+      updatePanelPosition();
+    }
     setOpen((value) => !value);
-  }, [open, updatePanelPosition]);
+  }, [open, setDocumentMenuState, updatePanelPosition]);
 
   useIsomorphicLayoutEffect(() => {
     if (open) updatePanelPosition();
@@ -304,7 +329,7 @@ export function TenantAccountMenu({
       data-account-menu-portal="body"
       data-testid="tenant-account-menu-layer"
       aria-label="Cuenta operativa nexID"
-      style={{ zIndex: ACCOUNT_MENU_Z_INDEX, pointerEvents: "auto", position: "fixed", inset: 0, isolation: "isolate" }}
+      style={ACCOUNT_LAYER_STYLE}
       onCancel={(event) => {
         event.preventDefault();
         closeMenu();

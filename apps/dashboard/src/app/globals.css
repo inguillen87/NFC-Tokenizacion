@@ -1211,8 +1211,11 @@ html[data-theme="light"] .nexid-account-layer .tenant-account-panel__header .tex
 html.nexid-account-menu-open .nexid-crm-shell,
 body.nexid-account-menu-open .nexid-crm-shell {
   pointer-events: none !important;
+  z-index: 0 !important;
+  filter: saturate(0.78) brightness(0.48) blur(0.5px) !important;
   transform: none !important;
   contain: none !important;
+  user-select: none !important;
 }
 
 html.nexid-account-menu-open .nexid-crm-shell *,
