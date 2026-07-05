@@ -509,6 +509,17 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           word-break: break-all;
         }
 
+        .proof-verify-page .proof-decoder-code {
+          max-height: 8.5rem;
+          overflow: auto;
+          overflow-wrap: anywhere;
+          word-break: break-all;
+        }
+
+        .proof-verify-page .proof-field-details[open] .proof-field-details-icon {
+          transform: rotate(90deg);
+        }
+
         .proof-verify-page input::placeholder,
         .proof-verify-page textarea::placeholder {
           color: var(--proof-muted);
@@ -616,7 +627,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
 
         @media (min-width: 1280px) {
           .proof-verify-page .proof-workstation-grid {
-            grid-template-columns: minmax(0, 1fr) minmax(460px, 500px);
+            grid-template-columns: minmax(0, 1fr) minmax(480px, 540px);
             align-items: start;
           }
 
@@ -650,7 +661,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           }
         }
       `}</style>
-      <section className="mx-auto flex w-full max-w-7xl flex-col gap-10 px-5 py-8 sm:px-8 lg:px-10">
+      <section className="mx-auto flex w-full max-w-[1540px] flex-col gap-10 px-5 py-8 sm:px-8 lg:px-10">
         <div className="flex items-center justify-between gap-4">
           <BackLink href="/" label="Volver a nexID" />
           <div className="flex flex-wrap items-center justify-end gap-2">
@@ -1171,40 +1182,63 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
               ) : null}
 
               <div className="mt-4 grid gap-3">
-                <div className="rounded-2xl border border-cyan-200 bg-white/75 p-4">
-                  <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan-800">Raw input visible en IOTA Explorer</p>
-                  <p className="mt-2 max-h-32 overflow-auto break-all rounded-xl border border-slate-200 bg-slate-50 p-3 font-mono text-[0.72rem] font-bold leading-5 text-slate-900">
-                    {decodedProof?.raw_input_hex || activeReceiptMemoHex || "Pegue un Raw input para ver el hex aca."}
-                  </p>
-                </div>
+                <div className="proof-flat rounded-2xl border border-cyan-200 bg-white/75 p-4">
+                  <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan-800">Explorer Decoder para C-level</p>
+                  <div className="mt-3 grid gap-3">
+                    <div className="rounded-2xl border border-cyan-200 bg-cyan-50/70 p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <strong className="text-sm text-slate-950">Raw input = memo publico</strong>
+                        <span className="rounded-full border border-cyan-200 bg-white/70 px-2 py-1 text-[0.62rem] font-black uppercase tracking-[0.12em] text-cyan-800">IOTA Explorer</span>
+                      </div>
+                      <p className="mt-2 text-sm leading-6 text-slate-700">
+                        Esto es lo que se copia del explorer. Se ve como hex, pero representa el recibo publico escrito en la transaccion.
+                      </p>
+                      <p className="proof-decoder-code mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3 font-mono text-[0.72rem] font-bold leading-5 text-slate-900">
+                        {decodedProof?.raw_input_hex || activeReceiptMemoHex || "Pegue un Raw input para ver el hex aca."}
+                      </p>
+                    </div>
 
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                  <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-emerald-800">Mismo contenido decodificado por nexID</p>
-                  <p className="mt-2 break-all font-mono text-[0.72rem] font-bold leading-5 text-emerald-950">
-                    {decodedProof?.decoded_memo || activeDemo?.public_receipt.on_chain_memo || "El texto legible aparece despues de decodificar."}
-                  </p>
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <strong className="text-sm text-emerald-950">nexID lo traduce a negocio</strong>
+                        <span className="rounded-full border border-emerald-200 bg-white/70 px-2 py-1 text-[0.62rem] font-black uppercase tracking-[0.12em] text-emerald-800">legible</span>
+                      </div>
+                      <p className="mt-2 text-sm leading-6 text-emerald-900">
+                        Mismo contenido, sin hex: caso, vertical, recurso, cantidad de eventos, Merkle root y politica de privacidad.
+                      </p>
+                      <p className="proof-decoder-code mt-2 rounded-xl border border-emerald-200 bg-white/70 p-3 font-mono text-[0.72rem] font-bold leading-5 text-emerald-950">
+                        {decodedProof?.decoded_memo || activeDemo?.public_receipt.on_chain_memo || "El texto legible aparece despues de decodificar."}
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
                 {decodedProof?.ok && decodedProof.field_explanations?.length ? (
-                  <div className="grid gap-2">
-                    {decodedProof.field_explanations.map((field) => (
-                      <div key={field.key} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                        <div className="flex flex-wrap items-start justify-between gap-2">
-                          <strong className="text-sm text-slate-950">{field.label}</strong>
-                          <span className="font-mono text-[0.68rem] font-bold text-cyan-800">{field.key}</span>
+                  <details className="proof-field-details proof-flat rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                    <summary className="flex items-center justify-between gap-3 text-sm font-black text-slate-950">
+                      <span>Ver campos decodificados para auditoria</span>
+                      <ArrowRight className="proof-field-details-icon h-4 w-4 shrink-0 text-cyan-700 transition" />
+                    </summary>
+                    <div className="mt-3 grid gap-2">
+                      {decodedProof.field_explanations.map((field) => (
+                        <div key={field.key} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <strong className="text-sm text-slate-950">{field.label}</strong>
+                            <span className="font-mono text-[0.68rem] font-bold text-cyan-800">{field.key}</span>
+                          </div>
+                          <p className="mt-1 break-all font-mono text-[0.72rem] font-bold text-slate-900">{field.value}</p>
+                          <p className="mt-2 text-sm leading-6 text-slate-600">{field.meaning}</p>
                         </div>
-                        <p className="mt-1 break-all font-mono text-[0.72rem] font-bold text-slate-900">{field.value}</p>
-                        <p className="mt-2 text-sm leading-6 text-slate-600">{field.meaning}</p>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  </details>
                 ) : null}
 
                 <div className="grid gap-2 sm:grid-cols-3">
                   {[
-                    { title: "1. Abrir tx", body: "Desde IOTA Explorer" },
-                    { title: "2. Copiar Raw input", body: "Show details -> Hex" },
-                    { title: "3. Traducir", body: "nexID lo explica" },
+                    { title: "1. Explorer", body: "Abrir tx y copiar Raw input." },
+                    { title: "2. Decoder", body: "nexID traduce hex a contexto." },
+                    { title: "3. SHA", body: "Verificar inclusion exacta." },
                   ].map((step) => (
                     <div key={step.title} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
                       <p className="text-[0.68rem] font-black uppercase tracking-[0.12em] text-slate-700">{step.title}</p>
