@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowLeft, CreditCard, ExternalLink, KeyRound, Settings, Users } from "lucide-react";
 import { Card, SectionHeading } from "@product/ui";
 import { TENANT_DIRECTORY } from "../../../../lib/tenant-directory";
 import { productUrls } from "@product/config";
@@ -9,11 +10,11 @@ function tenantPlaybook(vertical: string) {
     return {
       productLabel: "Wine Trust Passport",
       readiness: "Etiquetado premium + postventa + anti-replay",
-      kpis: { batches: "2 activos", tags: "10 físicas piloto", scans: "240/30d", incidents: "1 alerta replay" },
+      kpis: { batches: "2 activos", tags: "10 fisicas piloto", scans: "240/30d", incidents: "1 alerta replay" },
       nextActions: [
         "Cerrar onboarding lote proveedor con import + activate.",
         "Activar ownership/warranty para CTA post-scan.",
-        "Habilitar panel ejecutivo de riesgo por región.",
+        "Habilitar panel ejecutivo de riesgo por region.",
       ],
     };
   }
@@ -23,7 +24,7 @@ function tenantPlaybook(vertical: string) {
       readiness: "Ticketing seguro + antifraude de accesos",
       kpis: { batches: "1 activo", tags: "500 credenciales", scans: "1.2k/30d", incidents: "3 intentos clonados" },
       nextActions: [
-        "Integrar validador con operación de ingreso.",
+        "Integrar validador con operacion de ingreso.",
         "Monitorear replay/tamper en picos de evento.",
         "Activar dashboard de turnstile por venue.",
       ],
@@ -32,11 +33,11 @@ function tenantPlaybook(vertical: string) {
   return {
     productLabel: "Secure Product Passport",
     readiness: "Trazabilidad + autenticidad + soporte comercial",
-    kpis: { batches: "1 activo", tags: "200 unidades", scans: "680/30d", incidents: "0 críticas" },
+    kpis: { batches: "1 activo", tags: "200 unidades", scans: "680/30d", incidents: "0 criticas" },
     nextActions: [
-      "Consolidar lotes y política de reorden.",
-      "Activar módulos de warranty/provenance.",
-      "Definir playbook de expansión por canal.",
+      "Consolidar lotes y politica de reorden.",
+      "Activar modulos de warranty/provenance.",
+      "Definir playbook de expansion por canal.",
     ],
   };
 }
@@ -49,7 +50,13 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ s
     return (
       <main className="space-y-6">
         <SectionHeading eyebrow="Tenants" title={slug} description="Cuenta no encontrada en el directorio demo." />
-        <Card className="p-6 text-sm text-rose-200">Tenant no encontrado. Volvé a la lista y elegí una cuenta disponible.</Card>
+        <Card className="p-6 text-sm text-rose-200">
+          <p>Tenant no encontrado. Volve a la lista y elegi una cuenta disponible.</p>
+          <Link href="/tenants" className="mt-4 inline-flex items-center gap-2 rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-2 font-bold text-rose-100">
+            <ArrowLeft className="h-4 w-4" />
+            Volver a tenants
+          </Link>
+        </Card>
       </main>
     );
   }
@@ -59,7 +66,39 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ s
 
   return (
     <main className="space-y-8">
-      <SectionHeading eyebrow="Tenant overview" title={tenant.tenant} description="Vista navegable de cuenta enterprise: estado operativo, comercial y próximos pasos." />
+      <SectionHeading eyebrow="Tenant overview" title={tenant.tenant} description="Vista navegable de cuenta enterprise: estado operativo, comercial y proximos pasos." />
+
+      <Card className="p-4" data-testid="tenant-detail-admin-actions">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Administracion de cuenta</p>
+            <p className="mt-1 text-sm text-slate-400">Acciones directas del tenant sin volver a buscar dentro del CRM.</p>
+          </div>
+          <div className="flex flex-wrap gap-2 text-sm">
+            <Link href="/settings" className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-cyan-300/25 bg-cyan-400/10 px-3 py-2 font-bold text-cyan-100 transition hover:border-cyan-200/60">
+              <Settings className="h-4 w-4" />
+              Configuracion
+            </Link>
+            <Link href="/users" className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-3 py-2 font-bold text-emerald-100 transition hover:border-emerald-200/60">
+              <Users className="h-4 w-4" />
+              Usuarios
+            </Link>
+            <Link href={`/api-keys?tenant=${tenant.slug}`} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-violet-300/25 bg-violet-500/10 px-3 py-2 font-bold text-violet-100 transition hover:border-violet-200/60">
+              <KeyRound className="h-4 w-4" />
+              API
+            </Link>
+            <Link href={`/subscriptions?tenant=${tenant.slug}`} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-amber-300/25 bg-amber-500/10 px-3 py-2 font-bold text-amber-100 transition hover:border-amber-200/60">
+              <CreditCard className="h-4 w-4" />
+              Plan
+            </Link>
+            <Link href="/tenants" className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/10 bg-slate-950/55 px-3 py-2 font-bold text-slate-100 transition hover:border-cyan-300/40">
+              <ArrowLeft className="h-4 w-4" />
+              Tenants
+            </Link>
+          </div>
+        </div>
+      </Card>
+
       <div className="grid gap-6 xl:grid-cols-3">
         <Card className="p-5 xl:col-span-2">
           <h2 className="text-base font-semibold text-white">Resumen de cuenta</h2>
@@ -78,7 +117,10 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ s
             <Link href="/batches/supplier" className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-cyan-100">Create supplier batch</Link>
             <Link href={`/batches?tenant=${tenant.slug}`} className="rounded-lg border border-white/15 px-3 py-2 text-slate-100">Import manifest / activate</Link>
             <Link href={`/demo-lab?tenant=${tenant.slug}`} className="rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-violet-100">Open demo lab</Link>
-            <a href={publicMobile} className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-emerald-100" target="_blank" rel="noreferrer">Open public mobile preview</a>
+            <a href={publicMobile} className="inline-flex items-center gap-2 rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-emerald-100" target="_blank" rel="noreferrer">
+              Open public mobile preview
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
             <Link href={`/leads-tickets?tenant=${tenant.slug}`} className="rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-amber-100">Lead / opportunities</Link>
           </div>
         </Card>
@@ -88,7 +130,7 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ s
         <Card className="p-4 text-xs text-slate-300"><p className="text-slate-400">Product line</p><p className="mt-1 text-sm font-semibold text-white">{playbook.productLabel}</p></Card>
         <Card className="p-4 text-xs text-slate-300"><p className="text-slate-400">Batches</p><p className="mt-1 text-sm font-semibold text-white">{playbook.kpis.batches}</p></Card>
         <Card className="p-4 text-xs text-slate-300"><p className="text-slate-400">Tags / inventory</p><p className="mt-1 text-sm font-semibold text-white">{playbook.kpis.tags}</p></Card>
-        <Card className="p-4 text-xs text-slate-300"><p className="text-slate-400">Scans / incidents</p><p className="mt-1 text-sm font-semibold text-white">{playbook.kpis.scans} · {playbook.kpis.incidents}</p></Card>
+        <Card className="p-4 text-xs text-slate-300"><p className="text-slate-400">Scans / incidents</p><p className="mt-1 text-sm font-semibold text-white">{playbook.kpis.scans} - {playbook.kpis.incidents}</p></Card>
       </div>
 
       <div className="grid gap-3 md:grid-cols-4">
@@ -106,18 +148,18 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ s
         <Card className="p-5 text-sm text-slate-300">
           <h3 className="font-semibold text-white">Operational modules</h3>
           <ul className="mt-3 list-disc space-y-2 pl-5">
-            <li>Batches y tags para emisión y lifecycle.</li>
-            <li>Events para auditoría, excepción y cumplimiento.</li>
-            <li>Manifests para trazabilidad de programación proveedor.</li>
-            <li>Webhooks para integración externa ERP/CRM.</li>
+            <li>Batches y tags para emision y lifecycle.</li>
+            <li>Events para auditoria, excepcion y cumplimiento.</li>
+            <li>Manifests para trazabilidad de programacion proveedor.</li>
+            <li>Webhooks para integracion externa ERP/CRM.</li>
           </ul>
         </Card>
         <Card className="p-5 text-sm text-slate-300">
           <h3 className="font-semibold text-white">Commercial modules</h3>
           <ul className="mt-3 list-disc space-y-2 pl-5">
             <li>Leads y oportunidades generadas por CTA de demo.</li>
-            <li>Planes y expansión por país/canal.</li>
-            <li>Reseller context (si aplica) y soporte de cuenta.</li>
+            <li>Planes y expansion por pais/canal.</li>
+            <li>Reseller context si aplica y soporte de cuenta.</li>
             <li>Ownership / warranty / provenance / tokenization-ready.</li>
           </ul>
         </Card>
