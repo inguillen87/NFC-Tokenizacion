@@ -1123,10 +1123,12 @@ body.nexid-account-menu-open {
 #nexid-account-menu-root {
   position: fixed !important;
   inset: 0 !important;
-  z-index: 2147483640 !important;
+  z-index: 2147483644 !important;
   pointer-events: none !important;
   isolation: isolate !important;
   contain: none !important;
+  width: 100vw !important;
+  height: 100dvh !important;
 }
 
 #nexid-account-menu-root[data-account-menu-active="true"],
@@ -1134,7 +1136,7 @@ html.nexid-account-menu-open #nexid-account-menu-root,
 body.nexid-account-menu-open #nexid-account-menu-root {
   display: block !important;
   pointer-events: auto !important;
-  z-index: 2147483640 !important;
+  z-index: 2147483644 !important;
 }
 
 #nexid-account-menu-root .nexid-account-layer {
@@ -1158,7 +1160,7 @@ body.nexid-account-menu-open #nexid-account-menu-root {
   isolation: isolate !important;
   contain: none !important;
   pointer-events: auto !important;
-  z-index: 2147483640 !important;
+  z-index: 2147483644 !important;
   transform: translate3d(0, 0, 0) !important;
   overscroll-behavior: contain !important;
   will-change: opacity;
@@ -1183,7 +1185,7 @@ body.nexid-account-menu-open #nexid-account-menu-root {
 .nexid-account-layer [data-account-menu-backdrop="true"] {
   position: fixed !important;
   inset: 0 !important;
-  z-index: 2147483641 !important;
+  z-index: 2147483645 !important;
   background:
     radial-gradient(circle at 80% 8%, rgba(34, 211, 238, 0.16), transparent 34%),
     rgba(2, 6, 23, 0.86) !important;
@@ -1201,7 +1203,7 @@ body.nexid-account-menu-open #nexid-account-menu-root {
   max-height: 100dvh !important;
   display: flex !important;
   flex-direction: column !important;
-  z-index: 2147483642 !important;
+  z-index: 2147483646 !important;
   pointer-events: auto;
   isolation: isolate !important;
   transform: translate3d(0, 0, 0) !important;
@@ -1291,6 +1293,19 @@ body.nexid-account-menu-open .nexid-crm-shell,
   transform: none !important;
   contain: none !important;
   user-select: none !important;
+}
+
+html.nexid-account-menu-open .dashboard-shell-root,
+body.nexid-account-menu-open .dashboard-shell-root,
+html.nexid-account-menu-open .dashboard-header,
+body.nexid-account-menu-open .dashboard-header,
+html.nexid-account-menu-open .dashboard-sidebar,
+body.nexid-account-menu-open .dashboard-sidebar,
+html.nexid-account-menu-open .dashboard-mobile-dock,
+body.nexid-account-menu-open .dashboard-mobile-dock {
+  pointer-events: none !important;
+  z-index: 0 !important;
+  contain: none !important;
 }
 
 html.nexid-account-menu-open .nexid-crm-shell *,

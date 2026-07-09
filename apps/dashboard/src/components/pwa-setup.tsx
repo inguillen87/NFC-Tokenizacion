@@ -12,8 +12,12 @@ export function PwaSetup() {
 
     if (!pwaEnabled) {
       void navigator.serviceWorker.getRegistrations().then((registrations) => {
-        registrations.forEach((registration) => {
-          void registration.unregister();
+        if (!registrations.length) return;
+        void Promise.all(registrations.map((registration) => registration.unregister())).then(() => {
+          const reloadKey = "nexid-dashboard-sw-cleared-v3";
+          if (sessionStorage.getItem(reloadKey) === "1") return;
+          sessionStorage.setItem(reloadKey, "1");
+          window.location.reload();
         });
       });
       return;

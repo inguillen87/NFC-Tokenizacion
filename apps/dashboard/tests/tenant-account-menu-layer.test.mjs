@@ -10,21 +10,29 @@ const serviceWorkerSource = await readFile(new URL("../public/sw.js", import.met
 test("tenant account menu renders as a top-level drawer above CRM layers", () => {
   assert.match(menuSource, /const ACCOUNT_MENU_PORTAL_ROOT_ID = "nexid-account-menu-root"/);
   assert.match(menuSource, /function getAccountMenuPortalRoot\(\)/);
+  assert.match(menuSource, /function promoteAccountMenuPortalRoot\(root: HTMLElement\)/);
   assert.match(menuSource, /root\.setAttribute\("data-account-menu-root", "true"\)/);
   assert.match(menuSource, /document\.body\.appendChild\(root\)/);
   assert.match(menuSource, /root\.parentElement !== document\.body \|\| root !== document\.body\.lastElementChild/);
   assert.match(menuSource, /root\.style\.setProperty\("z-index", String\(ACCOUNT_MENU_Z_INDEX\), "important"\)/);
   assert.match(menuSource, /root\.style\.setProperty\("pointer-events", "none", "important"\)/);
+  assert.match(menuSource, /root\.style\.setProperty\("width", "100vw", "important"\)/);
+  assert.match(menuSource, /root\.style\.setProperty\("height", "100dvh", "important"\)/);
   assert.match(menuSource, /root\.toggleAttribute\("data-account-menu-active", value\)/);
   assert.match(menuSource, /root\.style\.setProperty\("pointer-events", value \? "auto" : "none", "important"\)/);
   assert.match(menuSource, /setPortalRoot\(root\)/);
+  assert.match(menuSource, /window\.requestAnimationFrame\(\(\) => \{/);
+  assert.match(menuSource, /const promotedRoot = getAccountMenuPortalRoot\(\)/);
   assert.match(menuSource, /setPortalRoot\(getAccountMenuPortalRoot\(\)\)/);
   assert.match(menuSource, /createPortal\(menuPanel,\s*portalRoot \|\| document\.body\)/);
-  assert.match(menuSource, /const ACCOUNT_MENU_Z_INDEX = 2147483640/);
+  assert.match(menuSource, /const ACCOUNT_MENU_Z_INDEX = 2147483644/);
+  assert.match(menuSource, /const ACCOUNT_MENU_BACKDROP_Z_INDEX = ACCOUNT_MENU_Z_INDEX \+ 1/);
+  assert.match(menuSource, /const ACCOUNT_MENU_PANEL_Z_INDEX = ACCOUNT_MENU_Z_INDEX \+ 2/);
+  assert.match(menuSource, /const ACCOUNT_MENU_VERSION = "drawer-v6"/);
   assert.match(menuSource, /const ACCOUNT_MENU_CRITICAL_CSS = `/);
-  assert.match(menuSource, /z-index:\s*2147483640 !important/);
-  assert.match(menuSource, /z-index:\s*2147483641 !important/);
-  assert.match(menuSource, /z-index:\s*2147483642 !important/);
+  assert.match(menuSource, /z-index:\s*\$\{ACCOUNT_MENU_Z_INDEX\} !important/);
+  assert.match(menuSource, /z-index:\s*\$\{ACCOUNT_MENU_BACKDROP_Z_INDEX\} !important/);
+  assert.match(menuSource, /z-index:\s*\$\{ACCOUNT_MENU_PANEL_Z_INDEX\} !important/);
   assert.doesNotMatch(menuSource, /z-index:\s*2147483630 !important/);
   assert.doesNotMatch(menuSource, /z-index:\s*2147483631 !important/);
   assert.doesNotMatch(menuSource, /z-index:\s*2147483632 !important/);
@@ -35,7 +43,7 @@ test("tenant account menu renders as a top-level drawer above CRM layers", () =>
   assert.match(menuSource, /role="dialog"/);
   assert.match(menuSource, /aria-modal="true"/);
   assert.match(menuSource, /data-account-menu-portal="body"/);
-  assert.match(menuSource, /data-account-menu-version="drawer-v5"/);
+  assert.match(menuSource, /data-account-menu-version=\{ACCOUNT_MENU_VERSION\}/);
   assert.match(menuSource, /data-account-menu-top-layer="portal"/);
   assert.match(menuSource, /data-account-menu-critical-style="true"/);
   assert.match(menuSource, /data-testid="tenant-account-menu-critical-style"/);
@@ -49,6 +57,7 @@ test("tenant account menu renders as a top-level drawer above CRM layers", () =>
   assert.match(menuSource, /document\.documentElement\.classList\.toggle\("nexid-account-menu-open", value\)/);
   assert.match(menuSource, /document\.body\.classList\.toggle\("nexid-account-menu-open", value\)/);
   assert.match(menuSource, /document\.body\.toggleAttribute\("data-account-menu-open", value\)/);
+  assert.match(menuSource, /body\.nexid-account-menu-open \.dashboard-shell-root/);
   assert.match(menuSource, /function setCrmShellSuppression\(value: boolean\)/);
   assert.match(menuSource, /document\.querySelectorAll<HTMLElement>\("\.nexid-crm-shell"\)/);
   assert.match(menuSource, /node\.setAttribute\("data-account-menu-suppressed", "true"\)/);
@@ -113,14 +122,16 @@ test("tenant account menu closes nexID and Clerk sessions when OAuth is active",
 test("global CSS prevents dashboard maps from covering account drawer", () => {
   assert.match(globalsSource, /html\.nexid-account-menu-open,\s*body\.nexid-account-menu-open\s*\{[\s\S]*overflow:\s*hidden/);
   assert.match(globalsSource, /body\.nexid-crm-overlay-active \.dashboard-sidebar,\s*body\.nexid-crm-overlay-active \.dashboard-header,\s*body\.nexid-crm-overlay-active \.dashboard-mobile-dock\s*\{[\s\S]*display:\s*none !important/);
-  assert.match(globalsSource, /#nexid-account-menu-root\s*\{[\s\S]*z-index:\s*2147483640 !important/);
+  assert.match(globalsSource, /#nexid-account-menu-root\s*\{[\s\S]*z-index:\s*2147483644 !important/);
   assert.match(globalsSource, /#nexid-account-menu-root\s*\{[\s\S]*pointer-events:\s*none !important/);
+  assert.match(globalsSource, /#nexid-account-menu-root\s*\{[\s\S]*width:\s*100vw !important/);
+  assert.match(globalsSource, /#nexid-account-menu-root\s*\{[\s\S]*height:\s*100dvh !important/);
   assert.match(globalsSource, /#nexid-account-menu-root\[data-account-menu-active="true"\]/);
   assert.match(globalsSource, /html\.nexid-account-menu-open #nexid-account-menu-root/);
   assert.match(globalsSource, /body\.nexid-account-menu-open #nexid-account-menu-root/);
   assert.match(globalsSource, /#nexid-account-menu-root\[data-account-menu-active="true"\],[\s\S]*body\.nexid-account-menu-open #nexid-account-menu-root\s*\{[\s\S]*pointer-events:\s*auto !important/);
   assert.match(globalsSource, /#nexid-account-menu-root \.nexid-account-layer\s*\{[\s\S]*pointer-events:\s*auto !important/);
-  assert.match(globalsSource, /\.nexid-account-layer\s*\{[\s\S]*z-index:\s*2147483640 !important/);
+  assert.match(globalsSource, /\.nexid-account-layer\s*\{[\s\S]*z-index:\s*2147483644 !important/);
   assert.match(globalsSource, /\.nexid-account-layer\s*\{[\s\S]*display:\s*grid !important/);
   assert.match(globalsSource, /\.nexid-account-layer\s*\{[\s\S]*width:\s*100vw !important/);
   assert.match(globalsSource, /\.nexid-account-layer\s*\{[\s\S]*max-width:\s*none !important/);
@@ -129,11 +140,11 @@ test("global CSS prevents dashboard maps from covering account drawer", () => {
   assert.match(globalsSource, /\.nexid-account-dialog\s*\{[\s\S]*max-width:\s*none !important/);
   assert.doesNotMatch(globalsSource, /\.nexid-account-dialog::backdrop/);
   assert.match(globalsSource, /\.nexid-account-layer,\s*\.nexid-account-layer > \*,\s*\.nexid-account-layer \[data-account-menu-backdrop="true"\]\s*\{[\s\S]*pointer-events:\s*auto !important/);
-  assert.match(globalsSource, /\.nexid-account-layer \[data-account-menu-backdrop="true"\]\s*\{[\s\S]*z-index:\s*2147483641 !important/);
+  assert.match(globalsSource, /\.nexid-account-layer \[data-account-menu-backdrop="true"\]\s*\{[\s\S]*z-index:\s*2147483645 !important/);
   assert.match(globalsSource, /\.nexid-account-layer \[data-account-menu-backdrop="true"\]\s*\{[\s\S]*backdrop-filter:\s*blur\(18px\) saturate\(1\.1\)/);
   assert.match(globalsSource, /\.nexid-account-layer \[data-account-menu-backdrop="true"\]\s*\{[\s\S]*touch-action:\s*none/);
   assert.match(globalsSource, /\.nexid-account-layer \.tenant-account-panel\s*\{[\s\S]*display:\s*flex !important/);
-  assert.match(globalsSource, /\.nexid-account-layer \.tenant-account-panel\s*\{[\s\S]*z-index:\s*2147483642 !important/);
+  assert.match(globalsSource, /\.nexid-account-layer \.tenant-account-panel\s*\{[\s\S]*z-index:\s*2147483646 !important/);
   assert.match(globalsSource, /\.nexid-account-layer \.tenant-account-panel\s*\{[\s\S]*width:\s*min\(100vw, 32rem\) !important/);
   assert.match(globalsSource, /\.nexid-account-layer \.tenant-account-panel\s*\{[\s\S]*height:\s*100dvh !important/);
   assert.match(globalsSource, /\.nexid-account-layer \.tenant-account-panel\s*\{[\s\S]*touch-action:\s*auto/);
@@ -153,6 +164,10 @@ test("global CSS prevents dashboard maps from covering account drawer", () => {
   assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell,\s*\.nexid-crm-shell\[data-account-menu-suppressed="true"\]\s*\{[\s\S]*visibility:\s*hidden !important/);
   assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell,\s*\.nexid-crm-shell\[data-account-menu-suppressed="true"\]\s*\{[\s\S]*contain:\s*none !important/);
   assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell,\s*\.nexid-crm-shell\[data-account-menu-suppressed="true"\]\s*\{[\s\S]*user-select:\s*none !important/);
+  assert.match(globalsSource, /html\.nexid-account-menu-open \.dashboard-shell-root,\s*body\.nexid-account-menu-open \.dashboard-shell-root/);
+  assert.match(globalsSource, /html\.nexid-account-menu-open \.dashboard-header,\s*body\.nexid-account-menu-open \.dashboard-header/);
+  assert.match(globalsSource, /html\.nexid-account-menu-open \.dashboard-sidebar,\s*body\.nexid-account-menu-open \.dashboard-sidebar/);
+  assert.match(globalsSource, /html\.nexid-account-menu-open \.dashboard-mobile-dock,\s*body\.nexid-account-menu-open \.dashboard-mobile-dock/);
   assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell \*\s*\{[\s\S]*pointer-events:\s*none !important/);
   assert.doesNotMatch(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell\s*\{[\s\S]*opacity:\s*0\.16 !important/);
   assert.doesNotMatch(globalsSource, /body\.nexid-account-menu-open \.nexid-crm-shell \[class\*="fixed"\]/);
@@ -170,11 +185,13 @@ test("dashboard PWA registration is opt-in so stale admin CSS cannot mask fixes"
   assert.match(pwaSetupSource, /process\.env\.NODE_ENV === "production" && process\.env\.NEXT_PUBLIC_ENABLE_PWA === "true"/);
   assert.match(pwaSetupSource, /navigator\.serviceWorker\.getRegistrations\(\)/);
   assert.match(pwaSetupSource, /registration\.unregister\(\)/);
+  assert.match(pwaSetupSource, /nexid-dashboard-sw-cleared-v3/);
+  assert.match(pwaSetupSource, /window\.location\.reload\(\)/);
   assert.doesNotMatch(pwaSetupSource, /NEXT_PUBLIC_ENABLE_PWA !== "false"/);
 });
 
 test("dashboard service worker refreshes shell styles before falling back to cache", () => {
-  assert.match(serviceWorkerSource, /const CACHE_NAME = "nexid-dash-v2"/);
+  assert.match(serviceWorkerSource, /const CACHE_NAME = "nexid-dash-v3"/);
   assert.match(serviceWorkerSource, /request\.destination === "script" \|\| request\.destination === "style"/);
   assert.match(serviceWorkerSource, /fetchWithTimeout\(request\)\.then\(\(response\) => \{/);
   assert.match(serviceWorkerSource, /cache\.put\(request,\s*copy\)/);
