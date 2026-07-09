@@ -513,7 +513,7 @@ export function DashboardShellInner({
               <LocaleSwitcher value={locale} options={[...locales]} />
               <SharedThemeToggle />
               <TenantAccountMenu
-                className="w-full sm:w-auto"
+                className="dashboard-shell-account-menu w-full sm:w-auto"
                 email={currentEmail}
                 label={currentLabel}
                 mfaVerified={currentMfaVerified}
@@ -521,6 +521,7 @@ export function DashboardShellInner({
                 permissions={currentPermissions}
                 role={currentRole}
                 setupCompleted={currentSetupCompleted}
+                surface="dashboard"
                 tenantSlug={currentTenantSlug}
                 clerkEnabled={clerkEnabled}
               />

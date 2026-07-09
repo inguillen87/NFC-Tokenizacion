@@ -911,7 +911,7 @@ export function ExecutiveRealtimeCrm({
           <span className="flex items-center gap-2" title={`Horario operativo del tenant: ${consoleTimezone}`}><Clock className="h-4 w-4 text-slate-500" /> {clock}<span className="hidden text-[10px] uppercase tracking-[0.08em] text-slate-500 xl:inline">{consoleTimezoneLabel}</span></span>
           <span className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-slate-500" /> {todayLabel}</span>
           <TenantAccountMenu
-            className="w-full sm:w-auto"
+            className="nexid-crm-account-menu w-full sm:w-auto"
             email={account.email}
             label={account.label}
             mfaVerified={account.mfaVerified}
@@ -919,6 +919,7 @@ export function ExecutiveRealtimeCrm({
             permissions={account.permissions}
             role={account.role}
             setupCompleted={account.setupCompleted}
+            surface="crm"
             tenantSlug={account.tenantSlug || tenantScope}
             clerkEnabled={account.clerkEnabled}
           />

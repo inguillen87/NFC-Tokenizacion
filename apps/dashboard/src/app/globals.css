@@ -1114,6 +1114,22 @@ body.nexid-crm-overlay-active .dashboard-main {
   overflow-x: hidden;
 }
 
+.dashboard-shell-root:has(.nexid-crm-shell) .dashboard-header .dashboard-shell-account-menu {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+.nexid-crm-shell .nexid-crm-account-menu {
+  position: relative;
+  z-index: 980 !important;
+}
+
+.nexid-crm-shell .nexid-crm-account-menu [data-testid="tenant-account-menu-trigger"] {
+  position: relative;
+  z-index: 981 !important;
+}
+
 /* Enterprise account menu must sit above CRM/map fullscreen layers and right panels. */
 html.nexid-account-menu-open,
 body.nexid-account-menu-open {

@@ -12,6 +12,8 @@ test("dashboard shell exposes enterprise account drawer instead of bare logout",
   assert.match(shellSource, /<TenantAccountMenu[\s\S]*email=\{currentEmail\}/);
   assert.match(shellSource, /<TenantAccountMenu[\s\S]*label=\{currentLabel\}/);
   assert.match(shellSource, /<TenantAccountMenu[\s\S]*permissions=\{currentPermissions\}/);
+  assert.match(shellSource, /className="dashboard-shell-account-menu w-full sm:w-auto"/);
+  assert.match(shellSource, /surface="dashboard"/);
   assert.match(shellSource, /<TenantAccountMenu[\s\S]*tenantSlug=\{currentTenantSlug\}/);
   assert.doesNotMatch(shellSource, /onClick=\{handleLogout\}/);
   assert.doesNotMatch(shellSource, /const \[loggingOut, setLoggingOut\]/);
@@ -34,6 +36,8 @@ test("fullscreen CRM account menu receives same permissions contract", () => {
   assert.match(homeClientSource, /clerkEnabled,\s*\}\}/);
   assert.match(crmSource, /permissions\?: string\[\]/);
   assert.match(crmSource, /clerkEnabled\?: boolean/);
+  assert.match(crmSource, /className="nexid-crm-account-menu w-full sm:w-auto"/);
   assert.match(crmSource, /permissions=\{account\.permissions\}/);
+  assert.match(crmSource, /surface="crm"/);
   assert.match(crmSource, /clerkEnabled=\{account\.clerkEnabled\}/);
 });

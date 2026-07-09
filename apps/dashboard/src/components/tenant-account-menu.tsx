@@ -35,6 +35,7 @@ type TenantAccountMenuProps = {
   permissions?: string[];
   role: string;
   setupCompleted?: boolean | null;
+  surface?: "dashboard" | "crm";
   tenantSlug?: string | null;
   clerkEnabled?: boolean;
 };
@@ -388,6 +389,7 @@ export function TenantAccountMenu({
   permissions = [],
   role,
   setupCompleted,
+  surface = "dashboard",
   tenantSlug,
 }: TenantAccountMenuProps) {
   const [open, setOpen] = useState(false);
@@ -412,6 +414,36 @@ export function TenantAccountMenu({
   const normalizedPermissions = hasWildcardAccess
     ? [role === "super-admin" || mode === "global" ? "Acceso global" : "Tenant completo"]
     : permissions.length ? permissions.slice(0, 3) : ["Scope operativo"];
+  const workspaceStatus = setupCompleted === false
+    ? "Setup pendiente"
+    : accountSecurityOk
+      ? "Operativo"
+      : "Seguridad pendiente";
+  const workspacePlan = isTenantMode ? "Enterprise" : "Platform";
+  const workspaceScope = isTenantMode ? tenantName : "Todos los tenants";
+  const workspaceRegion = isTenantMode ? "AR / LATAM" : "Global";
+  const workspaceInsights = [
+    {
+      label: "Workspace",
+      value: workspaceScope,
+      detail: isTenantMode ? "Datos, usuarios y CRM aislados por tenant." : "Vista global para operar red y cuentas.",
+    },
+    {
+      label: "Seguridad",
+      value: isClerkSsoSession ? "Google SSO" : mfaVerified ? "MFA activo" : "MFA pendiente",
+      detail: accountSecurityOk ? "Sesion autorizada para operacion enterprise." : "Conviene reforzar acceso antes de escalar.",
+    },
+    {
+      label: "Plan",
+      value: workspacePlan,
+      detail: isTenantMode ? "Proof, CRM, marketplace e integraciones." : "Tenants, billing, IAM y soporte global.",
+    },
+    {
+      label: "Region",
+      value: workspaceRegion,
+      detail: isTenantMode ? "Demo comercial con datos no sensibles." : "Control multi-region y partners.",
+    },
+  ];
   const nextAction = setupCompleted === false && role === "tenant-admin"
     ? { href: "/onboarding", label: "Completar setup del tenant", meta: "Datos, equipo e integraciones base" }
     : !accountSecurityOk
@@ -640,6 +672,7 @@ export function TenantAccountMenu({
         className="nexid-account-layer isolate"
         data-account-menu-portal="body"
         data-account-menu-version={ACCOUNT_MENU_VERSION}
+        data-account-menu-source={surface}
         data-account-menu-top-layer="portal"
         data-testid="tenant-account-menu-layer"
         aria-label="Cuenta operativa nexID"
@@ -693,7 +726,7 @@ export function TenantAccountMenu({
           </div>
           <div
             data-testid="tenant-account-session-summary"
-            className="mt-3 grid gap-2 rounded-2xl border border-white/10 bg-slate-950/50 p-3 text-xs text-slate-300 sm:grid-cols-2"
+            className="mt-3 grid grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-slate-950/50 p-3 text-xs text-slate-300"
           >
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Permisos</p>
@@ -702,6 +735,33 @@ export function TenantAccountMenu({
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Sesion</p>
               <p className="mt-1 font-semibold text-white">{clerkEnabled ? "Clerk + nexID" : "nexID local"}</p>
+            </div>
+          </div>
+          <div
+            data-testid="tenant-account-workspace-command-center"
+            className="mt-3 rounded-2xl border border-cyan-300/18 bg-[radial-gradient(circle_at_10%_0%,rgba(34,211,238,.16),transparent_34%),linear-gradient(145deg,rgba(8,47,73,.52),rgba(15,23,42,.68))] p-3"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Command center</p>
+                <p className="mt-1 text-sm font-black text-white">Cuenta lista para operar SaaS</p>
+              </div>
+              <span className={`rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.08em] ${
+                accountSecurityOk && setupCompleted !== false
+                  ? "border-emerald-300/30 bg-emerald-400/10 text-emerald-100"
+                  : "border-amber-300/30 bg-amber-400/10 text-amber-100"
+              }`}>
+                {workspaceStatus}
+              </span>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {workspaceInsights.map((item) => (
+                <div key={item.label} className="rounded-xl border border-white/10 bg-slate-950/45 p-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{item.label}</p>
+                  <p className="mt-1 truncate text-sm font-black text-white">{item.value}</p>
+                  <p className="mt-1 text-[11px] leading-4 text-slate-400">{item.detail}</p>
+                </div>
+              ))}
             </div>
           </div>
           <button
@@ -745,7 +805,11 @@ export function TenantAccountMenu({
   ) : null;
 
   return (
-    <div ref={menuRef} className={`relative z-[720] ${className}`}>
+    <div
+      ref={menuRef}
+      data-account-menu-surface={surface}
+      className={`relative z-[720] ${className}`}
+    >
       <button
         ref={triggerRef}
         type="button"
@@ -753,6 +817,7 @@ export function TenantAccountMenu({
         aria-expanded={open}
         aria-controls="tenant-account-menu-panel"
         data-testid="tenant-account-menu-trigger"
+        data-account-menu-trigger-surface={surface}
         data-account-menu-open={open ? "true" : "false"}
         title="Abrir cuenta, configuración y logout del workspace"
         className="flex min-h-14 w-full items-center gap-3 rounded-xl border border-white/12 bg-slate-950/65 px-3 py-2 text-left shadow-[0_16px_38px_rgba(2,6,23,.22)] transition hover:border-cyan-300/40 hover:bg-cyan-400/10 lg:min-w-[190px]"
