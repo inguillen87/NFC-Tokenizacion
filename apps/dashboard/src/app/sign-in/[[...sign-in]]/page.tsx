@@ -1,6 +1,7 @@
 import { SignIn } from "@clerk/nextjs";
 import Link from "next/link";
 import { BrandLockup } from "@product/ui";
+import { CheckCircle2, CircleAlert } from "lucide-react";
 import { ClerkGoogleSuperAdminButton } from "../../../components/clerk-google-super-admin-button";
 import { dashboardDemoAccessAllowedForRole } from "../../../lib/dashboard-access-flags";
 import { isClerkConfiguredForRuntime } from "../../../lib/clerk-env";
@@ -10,7 +11,7 @@ export default function SignInPage() {
   const clerkEnabled = isClerkConfiguredForRuntime();
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-slate-950 text-white">
+    <main data-testid="sign-in-superadmin-page" className="relative min-h-screen overflow-hidden bg-slate-950 text-white">
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.08)_1px,transparent_1px),radial-gradient(circle_at_74%_18%,rgba(6,182,212,.22),transparent_34%)] [background-size:32px_32px,32px_32px,auto]" />
       <div className="relative z-10 mx-auto grid min-h-screen w-full max-w-6xl items-center gap-8 px-5 py-10 lg:grid-cols-[1fr_440px]">
         <section>
@@ -25,6 +26,22 @@ export default function SignInPage() {
             El correo fundador entra por Google/Clerk y después pasa por la allowlist de nexID. Tenants, empleados y
             demos comerciales siguen separados para no mezclar operaciones enterprise con el portal consumidor.
           </p>
+          <div data-testid="sign-in-auth-status" className="mt-6 grid max-w-xl gap-3 sm:grid-cols-2">
+            <div className={`rounded-2xl border p-4 ${clerkEnabled ? "border-emerald-300/20 bg-emerald-400/10" : "border-amber-300/25 bg-amber-400/10"}`}>
+              <div className="flex items-center gap-2">
+                {clerkEnabled ? <CheckCircle2 className="h-4 w-4 text-emerald-200" /> : <CircleAlert className="h-4 w-4 text-amber-200" />}
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-300">Google/Clerk</p>
+              </div>
+              <p className="mt-2 text-sm font-black text-white">{clerkEnabled ? "OAuth live en este deploy" : "OAuth pendiente de env live"}</p>
+            </div>
+            <div className={`rounded-2xl border p-4 ${bodegaDemoAllowed ? "border-cyan-300/20 bg-cyan-400/10" : "border-amber-300/25 bg-amber-400/10"}`}>
+              <div className="flex items-center gap-2">
+                {bodegaDemoAllowed ? <CheckCircle2 className="h-4 w-4 text-cyan-200" /> : <CircleAlert className="h-4 w-4 text-amber-200" />}
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-300">Demo Bodega</p>
+              </div>
+              <p className="mt-2 text-sm font-black text-white">{bodegaDemoAllowed ? "Tenant comercial disponible" : "Tenant demo deshabilitado"}</p>
+            </div>
+          </div>
           <div className="mt-8 grid max-w-xl gap-3 sm:grid-cols-2">
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-left">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Fundador allowlisted</p>
@@ -36,6 +53,7 @@ export default function SignInPage() {
             {bodegaDemoAllowed ? (
               <Link
                 href="/api/session/demo?role=tenant-admin"
+                data-testid="sign-in-bodega-demo-link"
                 title="Entrar como Bodega Balmec"
                 className="rounded-2xl border border-cyan-300/25 bg-cyan-400/10 p-4 text-left transition hover:border-cyan-200/70 hover:bg-cyan-400/15"
               >
@@ -68,7 +86,7 @@ export default function SignInPage() {
             </p>
           </div>
           {clerkEnabled ? (
-            <div className="grid gap-4">
+            <div data-testid="sign-in-clerk-live-panel" className="grid gap-4">
               <ClerkGoogleSuperAdminButton
                 label="Continuar con Google allowlisted"
                 className="flex w-full items-center justify-center gap-3 rounded-2xl border border-cyan-300/45 bg-cyan-400 px-5 py-4 text-sm font-black text-slate-950 shadow-[0_22px_55px_rgba(34,211,238,0.22)] transition hover:bg-cyan-300 disabled:cursor-wait disabled:opacity-70"
@@ -90,7 +108,7 @@ export default function SignInPage() {
               </div>
             </div>
           ) : (
-            <div className="rounded-2xl border border-amber-300/25 bg-amber-500/10 p-5 text-sm leading-6 text-amber-100">
+            <div data-testid="sign-in-clerk-disabled-panel" className="rounded-2xl border border-amber-300/25 bg-amber-500/10 p-5 text-sm leading-6 text-amber-100">
               Clerk no está habilitado con claves live en este entorno. Usa Bodega Balmec demo o credenciales enterprise desde la pantalla principal.
               <Link href="/login" className="mt-4 inline-flex w-full justify-center rounded-xl border border-amber-200/30 bg-amber-200/10 px-4 py-3 font-bold text-amber-50">
                 Volver a login enterprise

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@product/ui";
-import { ArrowRight, Building2, KeyRound, LockKeyhole, ShieldCheck, UserCheck } from "lucide-react";
+import { ArrowRight, Building2, CheckCircle2, CircleAlert, KeyRound, LockKeyhole, ShieldCheck, UserCheck } from "lucide-react";
 import type { PublicAccessProfile } from "../lib/access-profiles";
 import { ClerkGoogleSuperAdminButton } from "./clerk-google-super-admin-button";
 
@@ -43,7 +43,26 @@ export function LoginFormPanel({
   const [status, setStatus] = useState("");
   const [opsStatus, setOpsStatus] = useState("");
   const [pending, setPending] = useState(false);
-  const [demoPending, setDemoPending] = useState(false);
+  const accessPaths = [
+    {
+      label: "Demo tenant",
+      value: bodegaDemoAllowed ? "Lista para mostrar" : "Pendiente",
+      detail: "Bodega Balmec abre CRM, mapa vivo, proof, marketplace y campañas sin permisos globales.",
+      ok: bodegaDemoAllowed,
+    },
+    {
+      label: "Super Admin",
+      value: clerkEnabled ? "Google live" : "Setup pendiente",
+      detail: "Solo el email fundador allowlisted puede convertir Google en sesión global nexID.",
+      ok: Boolean(clerkEnabled),
+    },
+    {
+      label: "Equipo operativo",
+      value: hasAvailableProfiles ? "Credenciales activas" : "Manual",
+      detail: "Admins y empleados entran con cuentas tenant; no usan el portal consumidor.",
+      ok: hasAvailableProfiles,
+    },
+  ];
 
   function formatDiagnostics(input: unknown) {
     if (!input || typeof input !== "object") return "";
@@ -109,33 +128,33 @@ export function LoginFormPanel({
     window.location.href = "/";
   }
 
-  async function startBodegaDemo() {
-    if (demoPending || pending) return;
-    setDemoPending(true);
-    setStatus("");
-    setOpsStatus("");
-
-    const res = await fetch("/api/session/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ demoLogin: true, demoRole: "tenant-admin" }),
-    }).catch(() => null);
-    const data = await res?.json().catch(() => null);
-    if (!res?.ok) {
-      const diagnosticsNote = formatDiagnostics(data?.diagnostics);
-      if (diagnosticsNote) setOpsStatus(diagnosticsNote);
-      setStatus(data?.reason || "No se pudo abrir la demo Bodega Balmec.");
-      setDemoPending(false);
-      return;
-    }
-
-    window.location.href = "/";
-  }
-
   return (
-    <div>
+    <div data-testid="login-enterprise-access-panel">
+      <div data-testid="login-access-status" className="mb-3 grid gap-2 sm:grid-cols-3">
+        {accessPaths.map((item) => (
+          <div
+            key={item.label}
+            className={`rounded-2xl border px-3 py-3 ${
+              item.ok
+                ? "border-emerald-300/20 bg-emerald-400/10"
+                : "border-amber-300/24 bg-amber-400/10"
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              {item.ok ? (
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-200" />
+              ) : (
+                <CircleAlert className="h-4 w-4 shrink-0 text-amber-200" />
+              )}
+              <p className="min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-slate-300">{item.label}</p>
+            </div>
+            <p className="mt-2 text-sm font-black text-white">{item.value}</p>
+            <p className="mt-1 text-[11px] leading-4 text-slate-400">{item.detail}</p>
+          </div>
+        ))}
+      </div>
       <div className="grid gap-3">
-        <div className="rounded-2xl border border-cyan-300/25 bg-[radial-gradient(circle_at_14%_0%,rgba(34,211,238,.18),transparent_34%),linear-gradient(145deg,rgba(8,47,73,.74),rgba(15,23,42,.84))] p-4 shadow-[0_20px_70px_rgba(8,145,178,0.18)]">
+        <div data-testid="login-bodega-demo-card" className="rounded-2xl border border-cyan-300/25 bg-[radial-gradient(circle_at_14%_0%,rgba(34,211,238,.18),transparent_34%),linear-gradient(145deg,rgba(8,47,73,.74),rgba(15,23,42,.84))] p-4 shadow-[0_20px_70px_rgba(8,145,178,0.18)]">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex min-w-0 items-start gap-3">
               <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-cyan-200/30 bg-cyan-300/10 text-cyan-100">
@@ -155,16 +174,15 @@ export function LoginFormPanel({
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
             {bodegaDemoAllowed ? (
-              <button
-                type="button"
-                onClick={() => void startBodegaDemo()}
-                disabled={demoPending || pending}
+              <Link
+                href="/api/session/demo?role=tenant-admin"
+                data-testid="login-bodega-demo-button"
                 title="Entrar como Bodega Balmec"
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-cyan-200/40 bg-cyan-300 px-4 py-3 text-sm font-black text-slate-950 shadow-[0_18px_50px_rgba(34,211,238,.22)] transition hover:bg-cyan-200 disabled:cursor-wait disabled:opacity-70"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-cyan-200/40 bg-cyan-300 px-4 py-3 text-sm font-black text-slate-950 shadow-[0_18px_50px_rgba(34,211,238,.22)] transition hover:bg-cyan-200"
               >
-                <span>{demoPending ? "Abriendo Bodega Balmec..." : "Entrar como Bodega Balmec"}</span>
+                <span>Entrar como Bodega Balmec</span>
                 <ArrowRight className="h-4 w-4" />
-              </button>
+              </Link>
             ) : (
               <div className="rounded-xl border border-amber-300/25 bg-amber-400/10 px-3 py-3 text-sm text-amber-100">
                 Demo Bodega Balmec deshabilitada en este entorno.
@@ -178,7 +196,7 @@ export function LoginFormPanel({
           </div>
         </div>
 
-        <div className="grid gap-3 rounded-2xl border border-cyan-300/20 bg-slate-950/60 p-4">
+        <div data-testid="login-superadmin-google-card" className="grid gap-3 rounded-2xl border border-cyan-300/20 bg-slate-950/60 p-4">
           <div className="flex items-start gap-3">
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-cyan-300/20 bg-cyan-400/10 text-cyan-200">
               <ShieldCheck className="h-5 w-5" />
@@ -208,14 +226,14 @@ export function LoginFormPanel({
               </Link>
             </>
           ) : (
-            <p className="rounded-xl border border-amber-300/30 bg-amber-400/10 px-3 py-2 text-xs leading-5 text-amber-100">
+            <p data-testid="login-clerk-config-warning" className="rounded-xl border border-amber-300/30 bg-amber-400/10 px-3 py-2 text-xs leading-5 text-amber-100">
               Google/Clerk todavía no está activo en este entorno: faltan claves Clerk live o no están asociadas a este deploy.
             </p>
           )}
         </div>
       </div>
 
-      <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+      <div data-testid="login-credentials-panel" className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Credenciales de tenant y equipo</p>
@@ -292,11 +310,11 @@ export function LoginFormPanel({
           Perfil activo: <span className="text-cyan-200">{profileLabel}</span>
           <span className="ml-2 text-slate-500">({role})</span>
         </div>
-        <Button className="w-full" onClick={() => void submit()} disabled={pending || demoPending}>
+        <Button className="w-full" onClick={() => void submit()} disabled={pending}>
           {loginAction}
         </Button>
-        {status ? <p className="rounded-lg border border-rose-300/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">{status}</p> : null}
-        {opsStatus ? <p className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">{opsStatus}</p> : null}
+        {status ? <p aria-live="polite" className="rounded-lg border border-rose-300/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">{status}</p> : null}
+        {opsStatus ? <p aria-live="polite" className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">{opsStatus}</p> : null}
       </div>
 
       <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">

@@ -68,8 +68,13 @@ test("login surfaces separate founder Google auth from tenant demo access", () =
 
   assert.doesNotMatch(loginPanel, /DEMO_ROLES/);
   assert.doesNotMatch(loginPanel, /api\/session\/demo\?role=\$\{encodeURIComponent/);
-  assert.match(loginPanel, /demoLogin:\s*true/);
-  assert.match(loginPanel, /demoRole:\s*"tenant-admin"/);
+  assert.doesNotMatch(loginPanel, /demoLogin:\s*true/);
+  assert.doesNotMatch(loginPanel, /startBodegaDemo/);
+  assert.match(loginPanel, /href="\/api\/session\/demo\?role=tenant-admin"/);
+  assert.match(loginPanel, /data-testid="login-access-status"/);
+  assert.match(loginPanel, /data-testid="login-bodega-demo-button"/);
+  assert.match(loginPanel, /data-testid="login-superadmin-google-card"/);
+  assert.match(loginPanel, /data-testid="login-credentials-panel"/);
   assert.match(loginPanel, /Super Admin entra por Google\/Clerk/);
   assert.match(loginPanel, /Continuar con Google allowlisted/);
   assert.match(loginPage, /firstParam\(params\.logged_out\) === "1"/);
@@ -80,6 +85,9 @@ test("login surfaces separate founder Google auth from tenant demo access", () =
 
   assert.doesNotMatch(signInPage, /getAccessProfiles/);
   assert.doesNotMatch(signInPage, /profile\.role/);
+  assert.match(signInPage, /data-testid="sign-in-superadmin-page"/);
+  assert.match(signInPage, /data-testid="sign-in-auth-status"/);
+  assert.match(signInPage, /data-testid="sign-in-bodega-demo-link"/);
   assert.match(signInPage, /\/api\/session\/demo\?role=tenant-admin/);
 
   assert.match(demoRoute, /superadmin_requires_clerk/);
