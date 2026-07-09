@@ -1204,7 +1204,10 @@ export function DemoLabClient({ locale, initialVertical, initialScenario }: { lo
             }}
             onBeat={setBeat}
             onTrustScenario={selectTrustScenario}
+            onProduct={() => setModalView("product")}
             onPassport={() => setModalView("mobile")}
+            onNft={() => setModalView("nft")}
+            onClaim={() => setModalView("claim")}
             onValid={() => void simulate("valid")}
             onOpen={() => void simulate("tamper")}
             onReplay={() => void simulate("replay")}
@@ -1309,7 +1312,10 @@ function DemoLabStudioHero({
   onVertical,
   onBeat,
   onTrustScenario,
+  onProduct,
   onPassport,
+  onNft,
+  onClaim,
   onValid,
   onOpen,
   onReplay,
@@ -1331,7 +1337,10 @@ function DemoLabStudioHero({
   onVertical: (vertical: Vertical) => void;
   onBeat: (beat: Beat) => void;
   onTrustScenario: (scenario: DemoTrustScenarioKey) => void;
+  onProduct: () => void;
   onPassport: () => void;
+  onNft: () => void;
+  onClaim: () => void;
   onValid: () => void;
   onOpen: () => void;
   onReplay: () => void;
@@ -1341,8 +1350,53 @@ function DemoLabStudioHero({
   const trustContext = useMemo(() => getTrustScenarioContext(activeTrustScenario, locale), [activeTrustScenario, locale]);
 
   useEffect(() => {
-    setStep(getTrustScenarioInitialStep(activeTrustScenario));
-  }, [activeTrustScenario]);
+    const nextStep = getTrustScenarioInitialStep(activeTrustScenario);
+    setStep(nextStep);
+    onBeat(nextStep === 0 ? 0 : 1);
+  }, [activeTrustScenario, onBeat]);
+
+  function goToStep(nextStep: DemoWizardStep) {
+    setStep(nextStep);
+    scrollWizardSceneIntoView();
+    if (nextStep === 0) {
+      onBeat(0);
+      return;
+    }
+    if (beat === 0) {
+      onBeat(1);
+      if (nextStep === 1) onValid();
+    }
+  }
+
+  function runValidFlow(nextStep: DemoWizardStep = 1) {
+    onValid();
+    onBeat(1);
+    window.setTimeout(() => {
+      setStep(nextStep);
+      scrollWizardSceneIntoView();
+    }, 800);
+  }
+
+  function runRiskFlow(mode: "replay" | "tamper") {
+    if (mode === "replay") {
+      onReplay();
+      onBeat(2);
+    } else {
+      onOpen();
+      onBeat(3);
+    }
+    setStep(1);
+    scrollWizardSceneIntoView();
+  }
+
+  function scrollWizardSceneIntoView() {
+    window.setTimeout(() => {
+      document.querySelector(".demo-lab-wizard-scene")?.scrollIntoView({
+        block: "start",
+        behavior: "smooth",
+      });
+    }, 40);
+  }
 
   const stepLabels = locale === "en"
     ? ["Tap", "Verified", "Traced", "Won"]
@@ -1449,7 +1503,7 @@ function DemoLabStudioHero({
               aria-current={step === index ? "step" : undefined}
               aria-pressed={step === index}
               aria-label={`${index + 1}. ${label}`}
-              onClick={() => setStep(index as 0 | 1 | 2 | 3)}
+              onClick={() => goToStep(index as DemoWizardStep)}
               className={`demo-lab-wizard-step-pill inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-full border px-4 text-xs font-black uppercase tracking-wider transition ${
                 step === index
                   ? "is-active border-cyan-300 bg-cyan-300 text-slate-950 shadow-lg shadow-cyan-500/20"
@@ -1526,10 +1580,7 @@ function DemoLabStudioHero({
               suppressHydrationWarning
               type="button"
               disabled={simulating}
-              onClick={() => {
-                onValid();
-                setTimeout(() => setStep(1), 800);
-              }}
+              onClick={() => runValidFlow(1)}
               className="demo-lab-wizard-tap-btn relative grid h-44 w-44 place-items-center overflow-hidden rounded-full border border-cyan-300/40 bg-cyan-500/15 font-black uppercase text-cyan-50 shadow-[0_0_70px_rgba(6,182,212,0.25)]"
             >
               <span className="demo-lab-wizard-tap-ring absolute inset-5 rounded-full border border-cyan-200/30 animate-ping" />
@@ -1578,7 +1629,7 @@ function DemoLabStudioHero({
             <button
               suppressHydrationWarning
               type="button"
-              onClick={() => setStep(2)}
+              onClick={() => goToStep(2)}
               className="demo-lab-wizard-next-btn mt-5 inline-flex h-11 items-center justify-center rounded-full border border-cyan-300 bg-cyan-300 px-5 text-xs font-black uppercase tracking-wider text-slate-950"
             >
               {locale === "en" ? "See traceability → Traced" : locale === "pt-BR" ? "Ver rastreabilidade → Rastreou" : "Ver trazabilidad → Trazó"}
@@ -1682,7 +1733,7 @@ function DemoLabStudioHero({
             <button
               suppressHydrationWarning
               type="button"
-              onClick={() => setStep(3)}
+              onClick={() => goToStep(3)}
               className="demo-lab-wizard-next-btn mt-3 inline-flex h-11 items-center justify-center rounded-full border border-cyan-300 bg-cyan-300 px-5 text-xs font-black uppercase tracking-wider text-slate-950"
             >
               {locale === "en" ? "See business outcome → Won" : locale === "pt-BR" ? "Ver resultado comercial → Ganhou" : "Ver resultado comercial → Ganó"}
@@ -1698,6 +1749,46 @@ function DemoLabStudioHero({
             <p className="demo-lab-wizard-eyebrow text-xs font-black uppercase tracking-[0.16em] text-cyan-300">{locale === "en" ? "BRAND OUTCOME" : "RESULTADO PARA LA MARCA"}</p>
             <h2 className="mt-2 text-3xl font-black leading-none text-white md:text-5xl">{outcomeHeader}</h2>
             <p className="demo-lab-wizard-gano-lede">{outcomeSubhead}</p>
+          </div>
+          <div className="demo-lab-wizard-outcome-console" aria-label="Acciones del resultado Demo Lab">
+            <div className="demo-lab-wizard-outcome-console__copy">
+              <span>{locale === "en" ? "CONNECTED EXPERIENCE" : locale === "pt-BR" ? "EXPERIENCIA CONECTADA" : "EXPERIENCIA CONECTADA"}</span>
+              <strong>{scenario.stateLabel}</strong>
+              <p>{locale === "en" ? "Open the buyer phone, the product file, ownership claim or public hash proof from the same verified event." : locale === "pt-BR" ? "Abra celular do comprador, ficha do produto, claim de ownership ou prova publica a partir do mesmo evento." : "Abrir celular del comprador, ficha del producto, reclamo de ownership o prueba publica desde el mismo evento verificado."}</p>
+            </div>
+            <div className="demo-lab-wizard-outcome-console__actions">
+              <button suppressHydrationWarning type="button" onClick={onPassport}>
+                <Smartphone className="h-4 w-4" />
+                <span>{locale === "en" ? "Buyer phone" : locale === "pt-BR" ? "Celular comprador" : "Celular comprador"}</span>
+              </button>
+              <button suppressHydrationWarning type="button" onClick={onProduct}>
+                <PackageCheck className="h-4 w-4" />
+                <span>{locale === "en" ? "Product file" : locale === "pt-BR" ? "Ficha produto" : "Ficha producto"}</span>
+              </button>
+              <button suppressHydrationWarning type="button" onClick={onNft}>
+                <BadgeCheck className="h-4 w-4" />
+                <span>Polygon NFT</span>
+              </button>
+              <button suppressHydrationWarning type="button" onClick={onClaim}>
+                <UserRound className="h-4 w-4" />
+                <span>{locale === "en" ? "Claim owner" : locale === "pt-BR" ? "Reclamar dono" : "Reclamar dueno"}</span>
+              </button>
+              <Link href={DEMO_PUBLIC_PROOF_URL}>
+                <ShieldCheck className="h-4 w-4" />
+                <span>Proof Verify</span>
+              </Link>
+            </div>
+            <div className="demo-lab-wizard-outcome-console__checks">
+              <button suppressHydrationWarning type="button" disabled={simulating} onClick={() => runValidFlow(3)}>
+                {locale === "en" ? "Fresh valid tap" : locale === "pt-BR" ? "Toque valido fresco" : "Tap valido fresco"}
+              </button>
+              <button suppressHydrationWarning type="button" disabled={simulating} onClick={() => runRiskFlow("replay")}>
+                {locale === "en" ? "Blocked copied URL" : locale === "pt-BR" ? "URL copiada bloqueada" : "URL copiada bloqueada"}
+              </button>
+              <button suppressHydrationWarning type="button" disabled={simulating} onClick={() => runRiskFlow("tamper")}>
+                {locale === "en" ? "Opened seal" : locale === "pt-BR" ? "Lacre aberto" : "Sello abierto"}
+              </button>
+            </div>
           </div>
           <div className="demo-lab-wizard-gano-grid grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {executiveOutcomeCards.map((card) => (
@@ -1716,7 +1807,7 @@ function DemoLabStudioHero({
             <button
               suppressHydrationWarning
               type="button"
-              onClick={() => setStep(0)}
+              onClick={() => goToStep(0)}
               className="demo-lab-wizard-secondary-cta inline-flex h-11 items-center justify-center rounded-full border border-white/10 bg-white/5 px-5 text-xs font-black uppercase tracking-wider text-slate-200"
             >
               {locale === "en" ? "Try another vertical" : locale === "pt-BR" ? "Testar outra vertical" : "Probar otra vertical"}
