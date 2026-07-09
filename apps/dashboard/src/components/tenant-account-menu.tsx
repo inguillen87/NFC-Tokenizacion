@@ -43,12 +43,18 @@ const ACCOUNT_MENU_Z_INDEX = 2147483644;
 const ACCOUNT_MENU_BACKDROP_Z_INDEX = ACCOUNT_MENU_Z_INDEX + 1;
 const ACCOUNT_MENU_PANEL_Z_INDEX = ACCOUNT_MENU_Z_INDEX + 2;
 const ACCOUNT_MENU_PORTAL_ROOT_ID = "nexid-account-menu-root";
-const ACCOUNT_MENU_VERSION = "drawer-v6";
+const ACCOUNT_MENU_VERSION = "drawer-v7";
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 const ACCOUNT_MENU_CRITICAL_CSS = `
 html.nexid-account-menu-open,
 body.nexid-account-menu-open {
   overflow: hidden !important;
+}
+body.nexid-account-menu-open > :not(#nexid-account-menu-root):not(script):not(style),
+html.nexid-account-menu-open body > :not(#nexid-account-menu-root):not(script):not(style) {
+  visibility: hidden !important;
+  pointer-events: none !important;
+  user-select: none !important;
 }
 #nexid-account-menu-root {
   position: fixed !important;

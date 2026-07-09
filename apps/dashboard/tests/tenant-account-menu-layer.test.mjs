@@ -28,8 +28,12 @@ test("tenant account menu renders as a top-level drawer above CRM layers", () =>
   assert.match(menuSource, /const ACCOUNT_MENU_Z_INDEX = 2147483644/);
   assert.match(menuSource, /const ACCOUNT_MENU_BACKDROP_Z_INDEX = ACCOUNT_MENU_Z_INDEX \+ 1/);
   assert.match(menuSource, /const ACCOUNT_MENU_PANEL_Z_INDEX = ACCOUNT_MENU_Z_INDEX \+ 2/);
-  assert.match(menuSource, /const ACCOUNT_MENU_VERSION = "drawer-v6"/);
+  assert.match(menuSource, /const ACCOUNT_MENU_VERSION = "drawer-v7"/);
   assert.match(menuSource, /const ACCOUNT_MENU_CRITICAL_CSS = `/);
+  assert.match(menuSource, /body\.nexid-account-menu-open > :not\(#nexid-account-menu-root\):not\(script\):not\(style\)/);
+  assert.match(menuSource, /html\.nexid-account-menu-open body > :not\(#nexid-account-menu-root\):not\(script\):not\(style\)/);
+  assert.match(menuSource, /visibility:\s*hidden !important/);
+  assert.match(menuSource, /user-select:\s*none !important/);
   assert.match(menuSource, /z-index:\s*\$\{ACCOUNT_MENU_Z_INDEX\} !important/);
   assert.match(menuSource, /z-index:\s*\$\{ACCOUNT_MENU_BACKDROP_Z_INDEX\} !important/);
   assert.match(menuSource, /z-index:\s*\$\{ACCOUNT_MENU_PANEL_Z_INDEX\} !important/);
@@ -121,6 +125,9 @@ test("tenant account menu closes nexID and Clerk sessions when OAuth is active",
 
 test("global CSS prevents dashboard maps from covering account drawer", () => {
   assert.match(globalsSource, /html\.nexid-account-menu-open,\s*body\.nexid-account-menu-open\s*\{[\s\S]*overflow:\s*hidden/);
+  assert.match(globalsSource, /body\.nexid-account-menu-open > :not\(#nexid-account-menu-root\):not\(script\):not\(style\)/);
+  assert.match(globalsSource, /html\.nexid-account-menu-open body > :not\(#nexid-account-menu-root\):not\(script\):not\(style\)/);
+  assert.match(globalsSource, /body\.nexid-account-menu-open > :not\(#nexid-account-menu-root\):not\(script\):not\(style\),[\s\S]*user-select:\s*none !important/);
   assert.match(globalsSource, /body\.nexid-crm-overlay-active \.dashboard-sidebar,\s*body\.nexid-crm-overlay-active \.dashboard-header,\s*body\.nexid-crm-overlay-active \.dashboard-mobile-dock\s*\{[\s\S]*display:\s*none !important/);
   assert.match(globalsSource, /#nexid-account-menu-root\s*\{[\s\S]*z-index:\s*2147483644 !important/);
   assert.match(globalsSource, /#nexid-account-menu-root\s*\{[\s\S]*pointer-events:\s*none !important/);
