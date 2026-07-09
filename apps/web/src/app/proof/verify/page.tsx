@@ -232,6 +232,36 @@ const businessProofPoints = [
   },
 ];
 
+const PROOF_API_FALLBACK_URL = "https://api.nexid.lat";
+
+function proofApiBases() {
+  return Array.from(
+    new Set(
+      [productUrls.api, PROOF_API_FALLBACK_URL]
+        .map((url) => String(url || "").replace(/\/$/, ""))
+        .filter(Boolean),
+    ),
+  );
+}
+
+async function fetchProofApiJson<T>(path: string): Promise<{ data: T | null; ok: boolean; status: number } | null> {
+  let lastResult: { data: T | null; ok: boolean; status: number } | null = null;
+
+  for (const baseUrl of proofApiBases()) {
+    try {
+      const response = await fetch(`${baseUrl}${path}`, { cache: "no-store" });
+      const data = await response.json().catch(() => null) as T | null;
+      const result = { data, ok: response.ok, status: response.status };
+      if (data && response.ok) return result;
+      lastResult = result;
+    } catch {
+      lastResult = { data: null, ok: false, status: 0 };
+    }
+  }
+
+  return lastResult;
+}
+
 function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] || "" : value || "";
 }
@@ -287,39 +317,30 @@ async function verifyProof(eventHash: string, anchorId: string): Promise<VerifyR
   if (!eventHash) return null;
   const params = new URLSearchParams({ event_hash: eventHash });
   if (anchorId) params.set("anchor_id", anchorId);
-  try {
-    const response = await fetch(`${productUrls.api}/public/proof/verify?${params.toString()}`, { cache: "no-store" });
-    const data = await response.json().catch(() => null) as VerifyResponse | null;
-    if (!data) return { ok: false, reason: `proof_verifier_http_${response.status}` };
-    if (!response.ok && !data.reason) return { ...data, ok: false, reason: `proof_verifier_http_${response.status}` };
-    return data;
-  } catch {
+  const response = await fetchProofApiJson<VerifyResponse>(`/public/proof/verify?${params.toString()}`);
+  if (!response) {
     return { ok: false, reason: "proof_verifier_unavailable" };
   }
+  if (!response.data) return { ok: false, reason: response.status ? `proof_verifier_http_${response.status}` : "proof_verifier_unavailable" };
+  if (!response.ok && !response.data.reason) return { ...response.data, ok: false, reason: `proof_verifier_http_${response.status}` };
+  return response.data;
 }
 
 async function loadDemoCases(): Promise<DemoCasesResponse> {
-  try {
-    const response = await fetch(`${productUrls.api}/public/proof/demo-cases`, { cache: "no-store" });
-    const data = await response.json().catch(() => null) as DemoCasesResponse | null;
-    if (!data || !response.ok) return { ok: false, cases: [] };
-    return data;
-  } catch {
-    return { ok: false, cases: [] };
-  }
+  const response = await fetchProofApiJson<DemoCasesResponse>("/public/proof/demo-cases");
+  if (!response?.data || !response.ok) return { ok: false, cases: [] };
+  return response.data;
 }
 
 async function decodeProofInput(input: string): Promise<DecodeResponse | null> {
   if (!input) return null;
   const params = new URLSearchParams({ input });
-  try {
-    const response = await fetch(`${productUrls.api}/public/proof/decode?${params.toString()}`, { cache: "no-store" });
-    const data = await response.json().catch(() => null) as DecodeResponse | null;
-    if (!data) return { ok: false, reason: `proof_decode_http_${response.status}` };
-    return data;
-  } catch {
+  const response = await fetchProofApiJson<DecodeResponse>(`/public/proof/decode?${params.toString()}`);
+  if (!response) {
     return { ok: false, reason: "proof_decode_unavailable", message: "Proof Decoder API unavailable." };
   }
+  if (!response.data) return { ok: false, reason: response.status ? `proof_decode_http_${response.status}` : "proof_decode_unavailable" };
+  return response.data;
 }
 
 export default async function ProofVerifierPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
@@ -338,10 +359,11 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
     demoCase.events.some((event) => event.hash.toLowerCase() === eventHash.toLowerCase()),
   ) || null;
   const showcaseDemo = activeDemo || demoCases.find((demoCase) => demoCase.tx_hash && demoCase.public_receipt?.tx_hash) || demoCases[0] || null;
+  const guidedDemo = activeDemo || showcaseDemo;
   const confirmedIotaAnchors = demoCases.filter((demoCase) => Boolean(demoCase.tx_hash)).length;
   const confirmedMemoReceipts = demoCases.filter((demoCase) => Boolean(demoCase.public_receipt?.tx_hash)).length;
   const liveTestnetReady = confirmedIotaAnchors > 0 || Boolean(demoCatalog.testnet?.iota?.contract_address || demoCatalog.testnet?.polygon?.demo_tx_hash);
-  const activeReceiptMemoHex = activeDemo ? utf8ToHex(activeDemo.public_receipt.on_chain_memo) : "";
+  const activeReceiptMemoHex = guidedDemo ? utf8ToHex(guidedDemo.public_receipt.on_chain_memo) : "";
   const decoderInput = requestedDecoderInput || activeReceiptMemoHex;
   const decodedProof = decoderInput ? await decodeProofInput(decoderInput) : null;
   const liveProofMetrics = [
@@ -661,10 +683,45 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           display: none;
         }
 
+        .proof-verify-page .proof-shell > * {
+          order: 10;
+        }
+
+        .proof-verify-page .proof-topbar {
+          order: 0;
+        }
+
+        .proof-verify-page .proof-hero-grid {
+          order: 1;
+        }
+
+        .proof-verify-page .proof-fast-path {
+          order: 2;
+        }
+
         .proof-verify-page .proof-workstation-grid {
           display: grid;
           gap: 1.25rem;
           grid-template-columns: minmax(0, 1fr);
+          order: 3;
+        }
+
+        .proof-verify-page .proof-fast-path-card {
+          min-width: 0;
+          overflow: hidden;
+        }
+
+        .proof-verify-page .proof-fast-path-card p,
+        .proof-verify-page .proof-fast-path-card strong,
+        .proof-verify-page .proof-fast-path-card a {
+          overflow-wrap: anywhere;
+        }
+
+        .proof-verify-page .proof-fast-path-card__headline {
+          display: -webkit-box;
+          -webkit-box-orient: vertical;
+          -webkit-line-clamp: 2;
+          overflow: hidden;
         }
 
         .proof-verify-page .proof-workstation-grid > *,
@@ -746,6 +803,23 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
             padding-bottom: 6rem;
           }
 
+          .proof-verify-page .proof-shell {
+            gap: 1.5rem;
+            padding-top: 1.25rem;
+          }
+
+          .proof-verify-page .proof-hero-grid {
+            gap: 1.25rem;
+          }
+
+          .proof-verify-page .proof-fast-path {
+            padding: 1rem;
+          }
+
+          .proof-verify-page .proof-fast-path-card {
+            padding: 0.875rem;
+          }
+
           .proof-verify-page .back-link {
             flex: 0 0 2.75rem;
             min-height: 2.75rem;
@@ -808,7 +882,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           }
         }
       `}</style>
-      <section className="mx-auto flex w-full max-w-[1540px] flex-col gap-10 px-5 py-8 sm:px-8 lg:px-10">
+      <section className="proof-shell mx-auto flex w-full max-w-[1540px] flex-col gap-6 px-5 py-8 sm:gap-10 sm:px-8 lg:px-10">
         <div className="proof-topbar flex items-center justify-between gap-4">
           <BackLink href="/" label="Volver a nexID" />
           <div className="proof-top-actions flex flex-wrap items-center justify-end gap-2">
@@ -828,20 +902,30 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           </div>
         </div>
 
-        <div className="grid gap-8 lg:grid-cols-[1.02fr_0.98fr] lg:items-end">
-          <div className="space-y-6">
+        <div className="proof-hero-grid grid gap-5 lg:grid-cols-[1.02fr_0.98fr] lg:items-end lg:gap-8">
+          <div className="space-y-4 sm:space-y-6">
             <div className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-white/75 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-cyan-800 shadow-sm">
               <ShieldCheck className="h-4 w-4" />
               Public proof verifier
             </div>
             <div className="space-y-4">
-              <h1 className="max-w-3xl text-5xl font-black leading-[0.96] tracking-normal text-slate-950 sm:text-6xl">
+              <h1 className="max-w-3xl text-4xl font-black leading-[0.98] tracking-normal text-slate-950 sm:text-6xl">
                 Prueba publica para evidencia privada.
               </h1>
-              <p className="max-w-2xl text-lg leading-8 text-slate-600">
+              <p className="max-w-2xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">
                 Proof Verify permite que un cliente, auditor o inversor compruebe que una evidencia existia y no fue cambiada, sin ver el dato sensible que genero esa evidencia.
               </p>
             </div>
+            {guidedDemo ? (
+              <div className="proof-mobile-demo-actions grid gap-2 sm:grid-cols-2 lg:hidden">
+                <Link href={verifyHrefForDemo(guidedDemo)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-white shadow-lg shadow-cyan-900/10">
+                  Probar SHA demo <FileSearch className="h-4 w-4" />
+                </Link>
+                <Link href={decoderHrefForDemo(guidedDemo)} className="proof-secondary-cta inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]">
+                  Leer memo real <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            ) : null}
           </div>
 
           <form action="/proof/verify" className="proof-elevated rounded-[1.5rem] border border-cyan-100 bg-white/88 p-4 shadow-[0_24px_80px_rgba(15,23,42,0.12)] backdrop-blur">
@@ -874,6 +958,52 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
             </div>
           </form>
         </div>
+
+        {guidedDemo ? (
+          <section className="proof-fast-path proof-elevated rounded-[1.5rem] border border-cyan-200 bg-white/84 p-4 shadow-sm sm:p-5">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Arranque guiado</p>
+                <h2 className="mt-2 text-2xl font-black leading-tight text-slate-950">Proba un proof completo sin saber blockchain.</h2>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+                  Elegi un caso, verificá su SHA y abrí el decoder del Raw input. La pantalla separa lo que prueba nexID, lo que ancla IOTA y lo que queda para Polygon ownership.
+                </p>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2 lg:min-w-[24rem]">
+                <Link href={verifyHrefForDemo(guidedDemo)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-cyan-900">
+                  Verificar SHA demo <FileSearch className="h-4 w-4" />
+                </Link>
+                <Link href={decoderHrefForDemo(guidedDemo)} className="proof-secondary-cta inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]">
+                  Decodificar memo <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+            <div className="mt-4 grid gap-3 lg:grid-cols-3">
+              {demoCases.slice(0, 3).map((demoCase) => (
+                <article key={demoCase.id} className="proof-fast-path-card rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan-700">{demoCase.vertical}</p>
+                      <strong className="mt-2 block text-base leading-tight text-slate-950">{demoCase.title}</strong>
+                    </div>
+                    <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2 py-1 text-[0.62rem] font-black uppercase tracking-[0.1em] text-cyan-800">
+                      {demoCase.events.length} eventos
+                    </span>
+                  </div>
+                  <p className="proof-fast-path-card__headline mt-2 text-sm leading-6 text-slate-600">{demoCase.headline}</p>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                    <Link href={verifyHrefForDemo(demoCase)} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-[0.68rem] font-black uppercase tracking-[0.1em] text-cyan-900">
+                      Ver SHA
+                    </Link>
+                    <Link href={decoderHrefForDemo(demoCase)} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[0.68rem] font-black uppercase tracking-[0.1em] text-emerald-900">
+                      Leer memo
+                    </Link>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <section className="proof-elevated rounded-[1.6rem] border border-cyan-200 bg-white/84 p-4 shadow-sm sm:p-5">
           <div className="grid gap-5 xl:grid-cols-[0.78fr_1.22fr] xl:items-stretch">
@@ -1128,13 +1258,22 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                 El demo publico verifico con el anchor testnet disponible. El registry privado no respondio en este intento, por eso no se muestran anchors internos.
               </div>
             ) : null}
-            {activeDemo ? (
+            {guidedDemo ? (
               <div className="proof-flat mt-5 rounded-2xl border border-cyan-200 bg-cyan-50/70 p-4">
-                <p className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-cyan-800">Caso explicado</p>
-                <h3 className="mt-2 text-xl font-black leading-tight text-slate-950">{activeDemo.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-700">{activeDemo.body}</p>
+                <p className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-cyan-800">{activeDemo ? "Caso explicado" : "Caso demo sugerido"}</p>
+                <h3 className="mt-2 text-xl font-black leading-tight text-slate-950">{guidedDemo.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-700">
+                  {activeDemo
+                    ? guidedDemo.body
+                    : `${guidedDemo.body} Usa este ejemplo para ver la cadena completa: hash canonico, Merkle root, memo publico y datos privados protegidos.`}
+                </p>
+                {!eventHash ? (
+                  <Link href={verifyHrefForDemo(guidedDemo)} className="proof-secondary-cta mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]">
+                    Cargar SHA de este caso <FileSearch className="h-4 w-4" />
+                  </Link>
+                ) : null}
                 <div className="mt-4 grid gap-2">
-                  {activeDemo.events.map((event, index) => (
+                  {guidedDemo.events.map((event, index) => (
                     <div key={event.id} className="proof-flat rounded-2xl border border-cyan-100 bg-white/70 p-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <strong className="text-sm text-slate-950">{index + 1}. {event.title}</strong>
@@ -1152,31 +1291,31 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <p className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-emerald-800">Recibo publico on-chain</p>
-                      <h4 className="mt-2 text-lg font-black leading-tight text-emerald-950">{activeDemo.public_receipt.title}</h4>
+                      <h4 className="mt-2 text-lg font-black leading-tight text-emerald-950">{guidedDemo.public_receipt.title}</h4>
                     </div>
-                    {activeDemo.public_receipt.tx_hash ? (
+                    {guidedDemo.public_receipt.tx_hash ? (
                       <span className="proof-receipt-status-chip rounded-full px-3 py-1.5 text-[0.68rem] font-black uppercase tracking-[0.1em]">
                         <BadgeCheck className="h-3.5 w-3.5 shrink-0" />
                         Memo publico confirmado
                       </span>
                     ) : null}
                   </div>
-                  <p className="mt-3 text-sm leading-6 text-emerald-900">{activeDemo.public_receipt.business_claim}</p>
-                  <p className="mt-2 text-sm leading-6 text-emerald-900">{activeDemo.public_receipt.manager_explanation}</p>
+                  <p className="mt-3 text-sm leading-6 text-emerald-900">{guidedDemo.public_receipt.business_claim}</p>
+                  <p className="mt-2 text-sm leading-6 text-emerald-900">{guidedDemo.public_receipt.manager_explanation}</p>
                   <details className="proof-flat mt-4 rounded-2xl border border-emerald-200 bg-white/70 p-3">
                     <summary className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-emerald-800">Ver texto exacto escrito como data de transaccion</summary>
-                    <p className="mt-2 break-all font-mono text-[0.72rem] font-bold leading-5 text-slate-900">{activeDemo.public_receipt.on_chain_memo}</p>
+                    <p className="mt-2 break-all font-mono text-[0.72rem] font-bold leading-5 text-slate-900">{guidedDemo.public_receipt.on_chain_memo}</p>
                   </details>
                   <div className="mt-3 grid gap-3 sm:grid-cols-2">
                     <div className="proof-flat rounded-2xl border border-emerald-200 bg-white/70 p-3">
                       <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-emerald-800">Hash del memo</p>
-                      <p className="mt-2 break-all font-mono text-[0.72rem] font-bold text-slate-900">{activeDemo.public_receipt.receipt_hash}</p>
+                      <p className="mt-2 break-all font-mono text-[0.72rem] font-bold text-slate-900">{guidedDemo.public_receipt.receipt_hash}</p>
                     </div>
                     <div className="proof-flat rounded-2xl border border-emerald-200 bg-white/70 p-3">
                       <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-emerald-800">Transaccion memo</p>
-                      <p className="mt-2 break-all font-mono text-[0.72rem] font-bold text-slate-900">{shortHash(activeDemo.public_receipt.tx_hash)}</p>
-                      {activeDemo.public_receipt.explorer_url ? (
-                        <a href={activeDemo.public_receipt.explorer_url} className="proof-receipt-action-link mt-3 text-xs font-black uppercase tracking-[0.12em]" target="_blank" rel="noreferrer">
+                      <p className="mt-2 break-all font-mono text-[0.72rem] font-bold text-slate-900">{shortHash(guidedDemo.public_receipt.tx_hash)}</p>
+                      {guidedDemo.public_receipt.explorer_url ? (
+                        <a href={guidedDemo.public_receipt.explorer_url} className="proof-receipt-action-link mt-3 text-xs font-black uppercase tracking-[0.12em]" target="_blank" rel="noreferrer">
                           Abrir memo real en IOTA Explorer <ArrowRight className="h-4 w-4" />
                         </a>
                       ) : null}
@@ -1185,11 +1324,11 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                   <div className="mt-3 grid gap-3 sm:grid-cols-2">
                     <div className="proof-flat rounded-2xl border border-cyan-200 bg-cyan-50/70 p-3">
                       <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan-800">Publico</p>
-                      <p className="mt-2 text-sm leading-6 text-slate-700">{activeDemo.public_receipt.public_fields.join(", ")}</p>
+                      <p className="mt-2 text-sm leading-6 text-slate-700">{guidedDemo.public_receipt.public_fields.join(", ")}</p>
                     </div>
                     <div className="proof-flat rounded-2xl border border-amber-200 bg-amber-50 p-3">
                       <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-amber-800">Privado dentro de nexID</p>
-                      <p className="mt-2 text-sm leading-6 text-amber-900">{activeDemo.public_receipt.private_fields.join(", ")}</p>
+                      <p className="mt-2 text-sm leading-6 text-amber-900">{guidedDemo.public_receipt.private_fields.join(", ")}</p>
                     </div>
                   </div>
                 </div>
@@ -1209,8 +1348,8 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
               <BadgeCheck className="mt-1 h-6 w-6 shrink-0 text-cyan-700" />
             </div>
             <p className="mt-3 text-sm leading-6 text-slate-700">
-              {activeDemo
-                ? `${activeDemo.title}: ${activeDemo.public_receipt.manager_explanation}`
+              {guidedDemo
+                ? `${guidedDemo.title}: ${guidedDemo.public_receipt.manager_explanation}`
                 : "La empresa pega un hash, ve si esta incluido en un anchor y puede abrir la prueba externa cuando existe tx real."}
             </p>
             <div className="mt-4 grid gap-3">
@@ -1231,13 +1370,13 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
               </div>
             </div>
             <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
-              {activeDemo?.public_receipt.explorer_url ? (
-                <a href={activeDemo.public_receipt.explorer_url} className="proof-receipt-action-link text-xs font-black uppercase tracking-[0.12em]" target="_blank" rel="noreferrer">
+              {guidedDemo?.public_receipt.explorer_url ? (
+                <a href={guidedDemo.public_receipt.explorer_url} className="proof-receipt-action-link text-xs font-black uppercase tracking-[0.12em]" target="_blank" rel="noreferrer">
                   Abrir memo tx en IOTA Explorer <ArrowRight className="h-4 w-4" />
                 </a>
               ) : null}
-              {activeDemo ? (
-                <Link href={decoderHrefForDemo(activeDemo)} className="proof-secondary-cta inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]">
+              {guidedDemo ? (
+                <Link href={decoderHrefForDemo(guidedDemo)} className="proof-secondary-cta inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]">
                   Decodificar Raw input <FileSearch className="h-4 w-4" />
                 </Link>
               ) : null}
@@ -1354,7 +1493,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                         Mismo contenido, sin hex: caso, vertical, recurso, cantidad de eventos, Merkle root y politica de privacidad.
                       </p>
                       <p className="proof-decoder-code mt-2 rounded-xl border border-emerald-200 bg-white/70 p-3 font-mono text-[0.72rem] font-bold leading-5 text-emerald-950">
-                        {decodedProof?.decoded_memo || activeDemo?.public_receipt.on_chain_memo || "El texto legible aparece despues de decodificar."}
+                        {decodedProof?.decoded_memo || guidedDemo?.public_receipt.on_chain_memo || "El texto legible aparece despues de decodificar."}
                       </p>
                     </div>
                   </div>
@@ -1400,8 +1539,8 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                   </Link>
                 ) : null}
 
-                {activeDemo?.public_receipt.explorer_url ? (
-                  <a href={activeDemo.public_receipt.explorer_url} className="proof-receipt-action-link text-xs font-black uppercase tracking-[0.12em]" target="_blank" rel="noreferrer">
+                {guidedDemo?.public_receipt.explorer_url ? (
+                  <a href={guidedDemo.public_receipt.explorer_url} className="proof-receipt-action-link text-xs font-black uppercase tracking-[0.12em]" target="_blank" rel="noreferrer">
                     Abrir memo real en IOTA Explorer <ArrowRight className="h-4 w-4" />
                   </a>
                 ) : null}
