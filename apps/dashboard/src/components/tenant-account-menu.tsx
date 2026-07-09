@@ -43,7 +43,7 @@ const ACCOUNT_MENU_Z_INDEX = 2147483644;
 const ACCOUNT_MENU_BACKDROP_Z_INDEX = ACCOUNT_MENU_Z_INDEX + 1;
 const ACCOUNT_MENU_PANEL_Z_INDEX = ACCOUNT_MENU_Z_INDEX + 2;
 const ACCOUNT_MENU_PORTAL_ROOT_ID = "nexid-account-menu-root";
-const ACCOUNT_MENU_VERSION = "drawer-v7";
+const ACCOUNT_MENU_VERSION = "drawer-v9-fixed-portal";
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 const ACCOUNT_MENU_CRITICAL_CSS = `
 html.nexid-account-menu-open,
@@ -73,43 +73,42 @@ body.nexid-account-menu-open #nexid-account-menu-root {
 }
 .nexid-account-layer {
   position: fixed !important;
-  inset: 0 !important;
-  display: grid !important;
-  width: 100vw !important;
-  height: 100dvh !important;
-  max-width: none !important;
-  max-height: none !important;
-  overflow: visible !important;
-  isolation: isolate !important;
-  contain: none !important;
-  pointer-events: auto !important;
-  z-index: ${ACCOUNT_MENU_Z_INDEX} !important;
-  transform: translate3d(0, 0, 0) !important;
-  overscroll-behavior: contain !important;
-}
-.nexid-account-dialog {
-  margin: 0 !important;
-  padding: 0 !important;
-  border: 0 !important;
-  background: transparent !important;
-  color: inherit !important;
-  max-width: none !important;
-  max-height: none !important;
-}
-.nexid-account-layer [data-account-menu-backdrop="true"] {
-  position: fixed !important;
-  inset: 0 !important;
-  pointer-events: auto !important;
-  z-index: ${ACCOUNT_MENU_BACKDROP_Z_INDEX} !important;
-}
-.nexid-account-layer .tenant-account-panel {
-  position: fixed !important;
   inset-block: 0 !important;
   right: 0 !important;
   left: auto !important;
+  display: flex !important;
   width: min(100vw, 32rem) !important;
   height: 100dvh !important;
+  max-width: min(100vw, 32rem) !important;
   max-height: 100dvh !important;
+  overflow: hidden !important;
+  isolation: isolate !important;
+  contain: none !important;
+  pointer-events: auto !important;
+  z-index: ${ACCOUNT_MENU_PANEL_Z_INDEX} !important;
+  overscroll-behavior: contain !important;
+  background:
+    radial-gradient(circle at 88% 6%, rgba(34, 211, 238, 0.13), transparent 35%),
+    linear-gradient(180deg, #08111f 0%, #020817 48%, #020817 100%) !important;
+  color: inherit !important;
+  box-shadow: -36px 0 120px rgba(0, 0, 0, 0.74) !important;
+}
+.nexid-account-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: ${ACCOUNT_MENU_BACKDROP_Z_INDEX} !important;
+  background:
+    radial-gradient(circle at 80% 8%, rgba(34, 211, 238, 0.16), transparent 34%),
+    rgba(2, 6, 23, 0.86) !important;
+  pointer-events: auto !important;
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+.nexid-account-layer .tenant-account-panel {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
   display: flex !important;
   flex-direction: column !important;
   pointer-events: auto !important;
@@ -184,34 +183,16 @@ html.nexid-account-menu-open .nexid-account-layer * {
   pointer-events: auto !important;
 }
 @media (max-width: 640px) {
-  .nexid-account-layer .tenant-account-panel {
+  .nexid-account-layer {
     inset: 0 !important;
     width: 100vw !important;
     height: 100dvh !important;
+    max-width: 100vw !important;
     max-height: 100dvh !important;
   }
 }
 `;
 const ACCOUNT_LAYER_STYLE: CSSProperties = {
-  position: "fixed",
-  zIndex: ACCOUNT_MENU_Z_INDEX,
-  inset: 0,
-  width: "100vw",
-  height: "100dvh",
-  maxWidth: "none",
-  maxHeight: "none",
-  margin: 0,
-  padding: 0,
-  border: 0,
-  overflow: "visible",
-  pointerEvents: "auto",
-  isolation: "isolate",
-  background: "transparent",
-  color: "inherit",
-  transform: "translate3d(0,0,0)",
-  overscrollBehavior: "contain",
-};
-const ACCOUNT_MENU_DEFAULT_STYLE: CSSProperties = {
   position: "fixed",
   zIndex: ACCOUNT_MENU_PANEL_Z_INDEX,
   top: 0,
@@ -220,12 +201,32 @@ const ACCOUNT_MENU_DEFAULT_STYLE: CSSProperties = {
   left: "auto",
   width: "min(100vw, 32rem)",
   height: "100dvh",
+  maxWidth: "min(100vw, 32rem)",
   maxHeight: "100dvh",
+  margin: "0 0 0 auto",
+  padding: 0,
+  border: 0,
+  overflow: "hidden",
   pointerEvents: "auto",
   isolation: "isolate",
-  transform: "translate3d(0,0,0)",
   backgroundColor: "#020817",
+  color: "inherit",
+  overscrollBehavior: "contain",
   boxShadow: "-36px 0 120px rgba(0,0,0,0.74)",
+};
+const ACCOUNT_MENU_DEFAULT_STYLE: CSSProperties = {
+  position: "relative",
+  zIndex: ACCOUNT_MENU_PANEL_Z_INDEX,
+  top: 0,
+  right: 0,
+  bottom: 0,
+  left: 0,
+  width: "100%",
+  height: "100%",
+  maxHeight: "100%",
+  pointerEvents: "auto",
+  isolation: "isolate",
+  backgroundColor: "transparent",
 };
 
 function promoteAccountMenuPortalRoot(root: HTMLElement) {
@@ -477,15 +478,31 @@ export function TenantAccountMenu({
       return;
     }
     const isCompact = window.innerWidth < 640;
-    setPanelStyle({
+    const layerStyle = isCompact
+      ? {
+          ...ACCOUNT_LAYER_STYLE,
+          inset: 0,
+          left: 0,
+          width: "100vw",
+          maxWidth: "100vw",
+        }
+      : ACCOUNT_LAYER_STYLE;
+    const contentStyle = {
       ...ACCOUNT_MENU_DEFAULT_STYLE,
-      top: 0,
-      right: 0,
-      bottom: 0,
-      left: isCompact ? 0 : "auto",
-      width: isCompact ? "100vw" : "min(100vw, 32rem)",
-      height: "100dvh",
-      maxHeight: "100dvh",
+      width: "100%",
+      height: "100%",
+      maxHeight: "100%",
+    };
+    if (layerRef.current) {
+      Object.entries(layerStyle).forEach(([key, value]) => {
+        if (value == null) return;
+        const cssKey = key.replace(/[A-Z]/g, (match) => `-${match.toLowerCase()}`);
+        layerRef.current?.style.setProperty(cssKey, String(value), "important");
+      });
+    }
+    setPanelStyle({
+      ...contentStyle,
+      left: 0,
     });
   }, []);
 
@@ -607,31 +624,31 @@ export function TenantAccountMenu({
   );
 
   const menuPanel = open ? (
-    <div
-      ref={layerRef}
-      role="dialog"
-      aria-modal="true"
-      className="nexid-account-dialog nexid-account-layer fixed inset-0 isolate"
-      data-account-menu-portal="body"
-      data-account-menu-version={ACCOUNT_MENU_VERSION}
-      data-account-menu-top-layer="portal"
-      data-testid="tenant-account-menu-layer"
-      aria-label="Cuenta operativa nexID"
-      style={ACCOUNT_LAYER_STYLE}
-    >
+    <>
+      <button
+        type="button"
+        aria-label="Cerrar panel de cuenta"
+        data-account-menu-backdrop="true"
+        data-testid="tenant-account-menu-backdrop"
+        className="nexid-account-backdrop"
+        onClick={closeMenu}
+      />
+      <div
+        ref={layerRef}
+        role="dialog"
+        aria-modal="true"
+        className="nexid-account-layer isolate"
+        data-account-menu-portal="body"
+        data-account-menu-version={ACCOUNT_MENU_VERSION}
+        data-account-menu-top-layer="portal"
+        data-testid="tenant-account-menu-layer"
+        aria-label="Cuenta operativa nexID"
+        style={ACCOUNT_LAYER_STYLE}
+      >
       <style
         data-account-menu-critical-style="true"
         data-testid="tenant-account-menu-critical-style"
         dangerouslySetInnerHTML={{ __html: ACCOUNT_MENU_CRITICAL_CSS }}
-      />
-      <button
-        type="button"
-        aria-label="Cerrar menu de cuenta"
-        data-account-menu-backdrop="true"
-        data-testid="tenant-account-menu-backdrop"
-        className="tenant-account-backdrop fixed inset-0 cursor-default backdrop-blur-xl"
-        style={{ zIndex: ACCOUNT_MENU_BACKDROP_Z_INDEX, pointerEvents: "auto", backgroundColor: "rgba(2, 6, 23, 0.86)" }}
-        onClick={closeMenu}
       />
       <div
         id="tenant-account-menu-panel"
@@ -724,6 +741,7 @@ export function TenantAccountMenu({
         </div>
       </div>
     </div>
+    </>
   ) : null;
 
   return (

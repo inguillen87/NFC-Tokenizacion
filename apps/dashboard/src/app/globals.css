@@ -1152,68 +1152,59 @@ body.nexid-account-menu-open #nexid-account-menu-root {
 
 .nexid-account-layer {
   position: fixed !important;
-  inset: 0 !important;
-  display: grid !important;
-  width: 100vw !important;
+  inset-block: 0 !important;
+  right: 0 !important;
+  left: auto !important;
+  display: flex !important;
+  width: min(100vw, 32rem) !important;
   height: 100dvh !important;
-  max-width: none !important;
-  max-height: none !important;
-  margin: 0 !important;
+  max-width: min(100vw, 32rem) !important;
+  max-height: 100dvh !important;
+  margin: 0 0 0 auto !important;
   padding: 0 !important;
   border: 0 !important;
-  overflow: visible !important;
-  background: transparent !important;
+  overflow: hidden !important;
+  background:
+    radial-gradient(circle at 88% 6%, rgba(34, 211, 238, 0.13), transparent 35%),
+    linear-gradient(180deg, #08111f 0%, #020817 48%, #020817 100%) !important;
   color: inherit !important;
   isolation: isolate !important;
   contain: none !important;
   pointer-events: auto !important;
-  z-index: 2147483644 !important;
-  transform: translate3d(0, 0, 0) !important;
+  z-index: 2147483646 !important;
   overscroll-behavior: contain !important;
-  will-change: opacity;
+  box-shadow: -36px 0 120px rgba(0, 0, 0, 0.74) !important;
 }
 
-.nexid-account-dialog {
-  margin: 0 !important;
-  padding: 0 !important;
-  border: 0 !important;
-  background: transparent !important;
-  color: inherit !important;
-  max-width: none !important;
-  max-height: none !important;
-}
-
-.nexid-account-layer,
-.nexid-account-layer > *,
-.nexid-account-layer [data-account-menu-backdrop="true"] {
-  pointer-events: auto !important;
-}
-
-.nexid-account-layer [data-account-menu-backdrop="true"] {
+.nexid-account-backdrop {
   position: fixed !important;
   inset: 0 !important;
   z-index: 2147483645 !important;
   background:
     radial-gradient(circle at 80% 8%, rgba(34, 211, 238, 0.16), transparent 34%),
     rgba(2, 6, 23, 0.86) !important;
-  backdrop-filter: blur(18px) saturate(1.1);
-  touch-action: none;
+  pointer-events: auto !important;
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.nexid-account-layer,
+.nexid-account-layer > * {
+  pointer-events: auto !important;
 }
 
 .nexid-account-layer .tenant-account-panel {
-  position: fixed !important;
-  inset-block: 0 !important;
-  right: 0 !important;
-  left: auto !important;
-  width: min(100vw, 32rem) !important;
-  height: 100dvh !important;
-  max-height: 100dvh !important;
+  position: relative !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
   display: flex !important;
   flex-direction: column !important;
   z-index: 2147483646 !important;
   pointer-events: auto;
   isolation: isolate !important;
-  transform: translate3d(0, 0, 0) !important;
   touch-action: auto;
   box-shadow: -36px 0 120px rgba(0, 0, 0, 0.74) !important;
 }
@@ -1354,11 +1345,19 @@ body.nexid-account-menu-open .nexid-account-layer * {
 }
 
 @media (max-width: 640px) {
-  .nexid-account-layer .tenant-account-panel {
+  .nexid-account-layer {
     inset: 0 !important;
     width: 100vw !important;
+    max-width: 100vw !important;
     height: 100dvh !important;
     max-height: 100dvh !important;
+    border-radius: 0 !important;
+  }
+
+  .nexid-account-layer .tenant-account-panel {
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
     border-radius: 0 !important;
   }
 }
