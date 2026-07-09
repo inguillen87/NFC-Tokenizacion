@@ -8,6 +8,7 @@ import {
   Building2,
   ChevronDown,
   CreditCard,
+  ArrowRight,
   KeyRound,
   LifeBuoy,
   LogOut,
@@ -38,7 +39,7 @@ type TenantAccountMenuProps = {
   clerkEnabled?: boolean;
 };
 
-const ACCOUNT_MENU_Z_INDEX = 2147483630;
+const ACCOUNT_MENU_Z_INDEX = 2147483640;
 const ACCOUNT_MENU_PORTAL_ROOT_ID = "nexid-account-menu-root";
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 const ACCOUNT_MENU_CRITICAL_CSS = `
@@ -49,7 +50,7 @@ body.nexid-account-menu-open {
 .nexid-account-layer {
   position: fixed !important;
   inset: 0 !important;
-  display: block !important;
+  display: grid !important;
   width: 100vw !important;
   height: 100dvh !important;
   max-width: none !important;
@@ -58,7 +59,7 @@ body.nexid-account-menu-open {
   isolation: isolate !important;
   contain: none !important;
   pointer-events: auto !important;
-  z-index: 2147483630 !important;
+  z-index: 2147483640 !important;
   transform: translate3d(0, 0, 0) !important;
   overscroll-behavior: contain !important;
 }
@@ -71,17 +72,11 @@ body.nexid-account-menu-open {
   max-width: none !important;
   max-height: none !important;
 }
-.nexid-account-dialog::backdrop {
-  background:
-    radial-gradient(circle at 80% 8%, rgba(34, 211, 238, 0.16), transparent 34%),
-    rgba(2, 6, 23, 0.9) !important;
-  backdrop-filter: blur(18px) saturate(1.1);
-}
 .nexid-account-layer [data-account-menu-backdrop="true"] {
   position: fixed !important;
   inset: 0 !important;
   pointer-events: auto !important;
-  z-index: 2147483631 !important;
+  z-index: 2147483641 !important;
 }
 .nexid-account-layer .tenant-account-panel {
   position: fixed !important;
@@ -95,7 +90,7 @@ body.nexid-account-menu-open {
   flex-direction: column !important;
   pointer-events: auto !important;
   isolation: isolate !important;
-  z-index: 2147483632 !important;
+  z-index: 2147483642 !important;
 }
 .nexid-account-layer .tenant-account-panel,
 html.theme-light .nexid-account-layer .tenant-account-panel,
@@ -356,7 +351,7 @@ export function TenantAccountMenu({
   const [panelStyle, setPanelStyle] = useState<CSSProperties>(ACCOUNT_MENU_DEFAULT_STYLE);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const layerRef = useRef<HTMLDialogElement | null>(null);
+  const layerRef = useRef<HTMLDivElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const tenantName = tenantNameFromSlug(tenantSlug);
@@ -407,21 +402,6 @@ export function TenantAccountMenu({
   useIsomorphicLayoutEffect(() => {
     if (!open) return;
     setDocumentMenuState(true);
-    const dialog = layerRef.current;
-    const handleCancel = (event: Event) => {
-      event.preventDefault();
-      closeMenu();
-    };
-    dialog?.addEventListener("cancel", handleCancel);
-    if (dialog && typeof dialog.showModal === "function" && !dialog.open) {
-      try {
-        dialog.showModal();
-      } catch {
-        dialog.setAttribute("open", "");
-      }
-    } else if (dialog && !dialog.open) {
-      dialog.setAttribute("open", "");
-    }
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Node;
       if (menuRef.current?.contains(target) || panelRef.current?.contains(target)) return;
@@ -433,10 +413,6 @@ export function TenantAccountMenu({
     window.addEventListener("pointerdown", handlePointerDown);
     window.addEventListener("keydown", handleKeyDown);
     return () => {
-      dialog?.removeEventListener("cancel", handleCancel);
-      if (dialog?.open) {
-        dialog.close();
-      }
       setDocumentMenuState(false);
       window.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("keydown", handleKeyDown);
@@ -579,14 +555,14 @@ export function TenantAccountMenu({
   );
 
   const menuPanel = open ? (
-    <dialog
+    <div
       ref={layerRef}
       role="dialog"
       aria-modal="true"
       className="nexid-account-dialog nexid-account-layer fixed inset-0 isolate"
       data-account-menu-portal="body"
-      data-account-menu-version="drawer-v4"
-      data-account-menu-top-layer="dialog"
+      data-account-menu-version="drawer-v5"
+      data-account-menu-top-layer="portal"
       data-testid="tenant-account-menu-layer"
       aria-label="Cuenta operativa nexID"
       style={ACCOUNT_LAYER_STYLE}
@@ -620,7 +596,7 @@ export function TenantAccountMenu({
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Cuenta operativa</p>
-              <h2 className="mt-1 truncate text-base font-black text-white">{accountLabel}</h2>
+              <h2 className="mt-1 text-base font-black leading-5 text-white">{accountLabel}</h2>
               <p className="truncate text-xs text-slate-400">{email || "Cuenta enterprise"}</p>
               <p className="mt-2 text-xs leading-5 text-slate-300">{accountRoleDescription}</p>
             </div>
@@ -671,7 +647,9 @@ export function TenantAccountMenu({
               <span className="block">{nextAction.label}</span>
               <span className="mt-0.5 block text-xs font-semibold normal-case text-cyan-100/75">{nextAction.meta}</span>
             </span>
-            <span aria-hidden="true">-&gt;</span>
+            <span aria-hidden="true" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-cyan-200/20 bg-cyan-300/10">
+              <ArrowRight className="h-4 w-4" />
+            </span>
           </button>
         </div>
 
@@ -693,7 +671,7 @@ export function TenantAccountMenu({
           )}
         </div>
       </div>
-    </dialog>
+    </div>
   ) : null;
 
   return (

@@ -9,6 +9,7 @@ export type TenantDirectoryItem = {
 };
 
 export const TENANT_DIRECTORY: TenantDirectoryItem[] = [
+  { tenant: "Bodega Balmec", slug: "demobodega", plan: "enterprise", status: "active", region: "AR", vertical: "Wine", health: "Enterprise demo live" },
   { tenant: "Bodega Andes", slug: "bodega-andes", plan: "secure", status: "active", region: "AR", vertical: "Wine", health: "Stable rollout" },
   { tenant: "Cosmetica Norte", slug: "cosmetica-norte", plan: "enterprise", status: "active", region: "BR", vertical: "Beauty", health: "Growing channels" },
   { tenant: "Pharma Delta", slug: "pharma-delta", plan: "secure", status: "risk", region: "CL", vertical: "Pharma", health: "Compliance follow-up" },

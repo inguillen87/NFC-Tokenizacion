@@ -1123,7 +1123,7 @@ body.nexid-account-menu-open {
 #nexid-account-menu-root {
   position: fixed !important;
   inset: 0 !important;
-  z-index: 2147483630 !important;
+  z-index: 2147483640 !important;
   pointer-events: none !important;
   isolation: isolate !important;
   contain: none !important;
@@ -1134,7 +1134,7 @@ html.nexid-account-menu-open #nexid-account-menu-root,
 body.nexid-account-menu-open #nexid-account-menu-root {
   display: block !important;
   pointer-events: auto !important;
-  z-index: 2147483630 !important;
+  z-index: 2147483640 !important;
 }
 
 #nexid-account-menu-root .nexid-account-layer {
@@ -1144,7 +1144,7 @@ body.nexid-account-menu-open #nexid-account-menu-root {
 .nexid-account-layer {
   position: fixed !important;
   inset: 0 !important;
-  display: block !important;
+  display: grid !important;
   width: 100vw !important;
   height: 100dvh !important;
   max-width: none !important;
@@ -1158,7 +1158,7 @@ body.nexid-account-menu-open #nexid-account-menu-root {
   isolation: isolate !important;
   contain: none !important;
   pointer-events: auto !important;
-  z-index: 2147483630 !important;
+  z-index: 2147483640 !important;
   transform: translate3d(0, 0, 0) !important;
   overscroll-behavior: contain !important;
   will-change: opacity;
@@ -1174,13 +1174,6 @@ body.nexid-account-menu-open #nexid-account-menu-root {
   max-height: none !important;
 }
 
-.nexid-account-dialog::backdrop {
-  background:
-    radial-gradient(circle at 80% 8%, rgba(34, 211, 238, 0.16), transparent 34%),
-    rgba(2, 6, 23, 0.9) !important;
-  backdrop-filter: blur(18px) saturate(1.1);
-}
-
 .nexid-account-layer,
 .nexid-account-layer > *,
 .nexid-account-layer [data-account-menu-backdrop="true"] {
@@ -1190,7 +1183,7 @@ body.nexid-account-menu-open #nexid-account-menu-root {
 .nexid-account-layer [data-account-menu-backdrop="true"] {
   position: fixed !important;
   inset: 0 !important;
-  z-index: 2147483631 !important;
+  z-index: 2147483641 !important;
   background:
     radial-gradient(circle at 80% 8%, rgba(34, 211, 238, 0.16), transparent 34%),
     rgba(2, 6, 23, 0.86) !important;
@@ -1208,7 +1201,7 @@ body.nexid-account-menu-open #nexid-account-menu-root {
   max-height: 100dvh !important;
   display: flex !important;
   flex-direction: column !important;
-  z-index: 2147483632 !important;
+  z-index: 2147483642 !important;
   pointer-events: auto;
   isolation: isolate !important;
   transform: translate3d(0, 0, 0) !important;
