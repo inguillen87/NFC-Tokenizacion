@@ -24,7 +24,7 @@ import {
   Footprints,
   GlassWater,
 } from "lucide-react";
-import { BrandLockup, Button, Card, type VectorMapPoint, type VectorMapRoute } from "@product/ui";
+import { BrandLockup, Button, Card, ThemeToggle, type VectorMapPoint, type VectorMapRoute } from "@product/ui";
 import { HeroTrustAtlasSvg } from "../../components/hero-scene";
 import {
   platformTrustedBy,
@@ -142,6 +142,9 @@ function SdkTopNav() {
         <Link href="/?contact=sales#contact-modal" className="sdk-mobile-primary-action" aria-label="Solicitar acceso al SDK nexID">
           Solicitar acceso <ArrowRight className="h-3.5 w-3.5" />
         </Link>
+        <div className="sdk-theme-toggle" aria-label="Cambiar tema SDK">
+          <ThemeToggle />
+        </div>
         <div className="sdk-nav-actions">
           <span className="sdk-api-status"><i /> API Status</span>
           <Link href="https://app.nexid.lat/login">

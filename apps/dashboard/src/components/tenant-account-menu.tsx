@@ -288,6 +288,15 @@ function getAccountMenuPortalRoot() {
   return root;
 }
 
+function setActiveDataAttribute(element: Element, name: string, value: boolean) {
+  if (value) {
+    element.setAttribute(name, "true");
+    return;
+  }
+
+  element.removeAttribute(name);
+}
+
 function setCrmShellSuppression(value: boolean) {
   if (typeof document === "undefined") return;
   document.querySelectorAll<HTMLElement>(".nexid-crm-shell").forEach((node) => {
@@ -488,13 +497,13 @@ export function TenantAccountMenu({
   const setDocumentMenuState = useCallback((value: boolean) => {
     const root = getAccountMenuPortalRoot();
     if (root) {
-      root.toggleAttribute("data-account-menu-active", value);
+      setActiveDataAttribute(root, "data-account-menu-active", value);
       root.style.setProperty("pointer-events", value ? "auto" : "none", "important");
       if (value) {
         window.requestAnimationFrame(() => {
           const promotedRoot = getAccountMenuPortalRoot();
           if (!promotedRoot) return;
-          promotedRoot.toggleAttribute("data-account-menu-active", true);
+          setActiveDataAttribute(promotedRoot, "data-account-menu-active", true);
           promotedRoot.style.setProperty("pointer-events", "auto", "important");
           setPortalRoot(promotedRoot);
         });
@@ -503,7 +512,7 @@ export function TenantAccountMenu({
     }
     document.documentElement.classList.toggle("nexid-account-menu-open", value);
     document.body.classList.toggle("nexid-account-menu-open", value);
-    document.body.toggleAttribute("data-account-menu-open", value);
+    setActiveDataAttribute(document.body, "data-account-menu-open", value);
     setCrmShellSuppression(value);
   }, []);
 

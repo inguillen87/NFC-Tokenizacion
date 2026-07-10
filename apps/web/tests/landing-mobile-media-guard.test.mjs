@@ -2,6 +2,17 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
+test("legacy public landing route redirects to the canonical home landing", async () => {
+  const legacy = await readFile(new URL("../src/app/(public)/landing/page.tsx", import.meta.url), "utf8");
+
+  assert.match(legacy, /from "next\/navigation"/);
+  assert.match(legacy, /function buildCanonicalLandingHref/);
+  assert.match(legacy, /redirect\(buildCanonicalLandingHref\(params\)\)/);
+  assert.match(legacy, /query\.append\(key, entry\)/);
+  assert.doesNotMatch(legacy, /bg-neutral-950/);
+  assert.doesNotMatch(legacy, /Tus productos/);
+});
+
 test("landing mobile media guard wins after hero closures", async () => {
   const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
 

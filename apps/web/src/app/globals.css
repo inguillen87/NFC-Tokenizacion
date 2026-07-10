@@ -4230,6 +4230,18 @@ html.theme-light .animate-card-shift:hover {
   gap: 0.75rem;
 }
 
+.sdk-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sdk-theme-toggle .theme-toggle {
+  min-height: 2.55rem;
+  padding-inline: 0.82rem;
+  white-space: nowrap;
+}
+
 .sdk-api-status {
   gap: 0.48rem;
   color: #e2e8f0;
@@ -46914,6 +46926,97 @@ html[data-theme="light"] .docs-code-toolbar button[class~="bg-cyan-300"] {
   }
 }
 
+/* Public platform sweep: canonical landing, SDK theme control and readable
+   mobile proof rail. This block intentionally wins over older screenshot-era
+   mobile patches below without changing the component contract. */
+.sdk-theme-toggle .theme-toggle span:not(.theme-toggle__glyph) {
+  max-width: 3.6rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+html.theme-light .sdk-theme-toggle .theme-toggle,
+html[data-theme="light"] .sdk-theme-toggle .theme-toggle {
+  border-color: rgba(14, 116, 144, 0.22) !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  color: #0f172a !important;
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08) !important;
+}
+
+@media (max-width: 900px) {
+  .sdk-theme-toggle {
+    margin-left: auto;
+  }
+
+  .sdk-theme-toggle .theme-toggle {
+    min-height: 2.35rem !important;
+    padding: 0.42rem 0.68rem !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .sdk-top-nav-inner {
+    display: grid !important;
+    grid-template-columns: auto minmax(0, 1fr) auto !important;
+    align-items: center !important;
+  }
+
+  .sdk-brand-link {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    min-width: 0 !important;
+  }
+
+  .sdk-theme-toggle {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    align-self: center !important;
+    justify-self: end !important;
+    margin-left: 0 !important;
+  }
+
+  .sdk-theme-toggle .theme-toggle {
+    min-width: 2.45rem !important;
+    border-radius: 999px !important;
+  }
+
+  .sdk-theme-toggle .theme-toggle span:not(.theme-toggle__glyph) {
+    display: none !important;
+  }
+
+  .sdk-mobile-primary-action {
+    grid-column: 3 !important;
+    grid-row: 1 !important;
+    align-self: center !important;
+    margin-left: 0.45rem !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .sdk-top-nav-inner {
+    gap: 0.48rem !important;
+    padding-inline: 0.68rem !important;
+  }
+
+  .sdk-brand-link svg,
+  .sdk-brand-link img {
+    max-width: 2.65rem !important;
+  }
+
+  .sdk-theme-toggle .theme-toggle {
+    width: 2.38rem !important;
+    min-width: 2.38rem !important;
+    padding-inline: 0 !important;
+  }
+
+  .sdk-mobile-primary-action {
+    max-width: min(9.4rem, 42vw) !important;
+    min-height: 2.38rem !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+}
+
 html.theme-light .nexid-quick-hub-card,
 html[data-theme="light"] .nexid-quick-hub-card {
   border-color: rgba(14, 116, 144, 0.16) !important;
@@ -49658,6 +49761,50 @@ html[data-theme="light"] .docs-mobile-trust-rail__arrow {
 
   .sdk-trust-rail span {
     display: none !important;
+  }
+}
+
+/* SDK final clarity pass: keep business proof readable on phones after the
+   older first-viewport compression rules above. */
+@media (max-width: 760px) {
+  .sdk-trust-rail span {
+    display: -webkit-box !important;
+    margin-top: 0.26rem !important;
+    overflow: hidden !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 2 !important;
+    color: #9fb1c9 !important;
+    font-size: 0.62rem !important;
+    line-height: 1.22 !important;
+  }
+
+  html.theme-light .sdk-trust-rail span,
+  html[data-theme="light"] .sdk-trust-rail span {
+    color: #475569 !important;
+  }
+
+  .sdk-trust-rail div {
+    min-height: 5.35rem !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .sdk-trust-rail {
+    gap: 0.48rem !important;
+  }
+
+  .sdk-trust-rail div {
+    min-height: 5.2rem !important;
+    padding: 0.5rem !important;
+  }
+
+  .sdk-trust-rail strong {
+    font-size: 0.68rem !important;
+  }
+
+  .sdk-trust-rail span {
+    font-size: 0.58rem !important;
+    line-height: 1.18 !important;
   }
 }
 

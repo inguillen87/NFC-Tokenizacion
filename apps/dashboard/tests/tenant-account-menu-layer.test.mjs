@@ -18,11 +18,15 @@ test("tenant account menu renders as a top-level drawer above CRM layers", () =>
   assert.match(menuSource, /root\.style\.setProperty\("pointer-events", "none", "important"\)/);
   assert.match(menuSource, /root\.style\.setProperty\("width", "100vw", "important"\)/);
   assert.match(menuSource, /root\.style\.setProperty\("height", "100dvh", "important"\)/);
-  assert.match(menuSource, /root\.toggleAttribute\("data-account-menu-active", value\)/);
+  assert.match(menuSource, /function setActiveDataAttribute\(element: Element, name: string, value: boolean\)/);
+  assert.match(menuSource, /element\.setAttribute\(name, "true"\)/);
+  assert.match(menuSource, /element\.removeAttribute\(name\)/);
+  assert.match(menuSource, /setActiveDataAttribute\(root, "data-account-menu-active", value\)/);
   assert.match(menuSource, /root\.style\.setProperty\("pointer-events", value \? "auto" : "none", "important"\)/);
   assert.match(menuSource, /setPortalRoot\(root\)/);
   assert.match(menuSource, /window\.requestAnimationFrame\(\(\) => \{/);
   assert.match(menuSource, /const promotedRoot = getAccountMenuPortalRoot\(\)/);
+  assert.match(menuSource, /setActiveDataAttribute\(promotedRoot, "data-account-menu-active", true\)/);
   assert.match(menuSource, /setPortalRoot\(getAccountMenuPortalRoot\(\)\)/);
   assert.match(menuSource, /const activePortalRoot = typeof document !== "undefined" \? \(portalRoot \|\| getAccountMenuPortalRoot\(\)\) : null/);
   assert.match(menuSource, /createPortal\(menuPanel,\s*activePortalRoot\)/);
@@ -73,7 +77,8 @@ test("tenant account menu renders as a top-level drawer above CRM layers", () =>
   assert.match(menuSource, /prepareMenuPortalRoot\(\)/);
   assert.match(menuSource, /document\.documentElement\.classList\.toggle\("nexid-account-menu-open", value\)/);
   assert.match(menuSource, /document\.body\.classList\.toggle\("nexid-account-menu-open", value\)/);
-  assert.match(menuSource, /document\.body\.toggleAttribute\("data-account-menu-open", value\)/);
+  assert.match(menuSource, /setActiveDataAttribute\(document\.body, "data-account-menu-open", value\)/);
+  assert.doesNotMatch(menuSource, /toggleAttribute\("data-account-menu-active", value\)/);
   assert.match(menuSource, /body\.nexid-account-menu-open \.dashboard-shell-root/);
   assert.match(menuSource, /function setCrmShellSuppression\(value: boolean\)/);
   assert.match(menuSource, /document\.querySelectorAll<HTMLElement>\("\.nexid-crm-shell"\)/);
