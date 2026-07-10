@@ -27,6 +27,7 @@ async function endDashboardSession(req: Request, revokeUpstream: boolean) {
   loginUrl.searchParams.set("logged_out", "1");
   const response = NextResponse.redirect(loginUrl, 303);
   response.headers.set("Cache-Control", "no-store");
+  response.headers.set("Clear-Site-Data", "\"cookies\", \"storage\"");
   response.cookies.delete(DASHBOARD_SESSION_COOKIE);
   response.cookies.delete(DASHBOARD_SESSION_SNAPSHOT_COOKIE);
   response.cookies.set(DASHBOARD_CLERK_AUTOSYNC_BLOCK_COOKIE, "1", {
