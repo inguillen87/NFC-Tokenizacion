@@ -1,7 +1,7 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { isClerkConfiguredForRuntime } from "../../../../lib/clerk-env";
-import { DASHBOARD_SESSION_COOKIE, DASHBOARD_SESSION_SNAPSHOT_COOKIE, type DashboardSession } from "../../../../lib/session";
+import { DASHBOARD_CLERK_AUTOSYNC_BLOCK_COOKIE, DASHBOARD_SESSION_COOKIE, DASHBOARD_SESSION_SNAPSHOT_COOKIE, type DashboardSession } from "../../../../lib/session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -129,5 +129,6 @@ export async function GET(req: Request) {
     path: "/",
     maxAge: 60 * 60 * 12,
   });
+  response.cookies.delete(DASHBOARD_CLERK_AUTOSYNC_BLOCK_COOKIE);
   return response;
 }

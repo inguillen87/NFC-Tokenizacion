@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { DASHBOARD_SESSION_COOKIE, DASHBOARD_SESSION_SNAPSHOT_COOKIE } from "./session";
+import { DASHBOARD_CLERK_AUTOSYNC_BLOCK_COOKIE, DASHBOARD_SESSION_COOKIE, DASHBOARD_SESSION_SNAPSHOT_COOKIE } from "./session";
 import { getAccessProfiles } from "./access-profiles";
 import { dashboardDemoAccessAllowedForRole, dashboardOneClickAccessAllowed } from "./dashboard-access-flags";
 
@@ -148,6 +148,7 @@ function buildProfileLoginResponse(req: Request, accessProfile: NonNullable<Retu
     path: "/",
     maxAge: 60 * 60 * 12,
   });
+  response.cookies.delete(DASHBOARD_CLERK_AUTOSYNC_BLOCK_COOKIE);
   console.info("[dashboard_login_audit]", JSON.stringify({ event: "profile_login_ok", email: accessProfile.email, role: accessProfile.role }));
   return response;
 }
@@ -215,6 +216,7 @@ export async function handleSessionLogin(req: Request) {
       path: "/",
       maxAge: 60 * 60 * 12,
     });
+    response.cookies.delete(DASHBOARD_CLERK_AUTOSYNC_BLOCK_COOKIE);
     console.info("[dashboard_login_audit]", JSON.stringify({ event: "operational_login_ok", email: demoAccount.email, role: demoRole }));
     return response;
   }
@@ -276,6 +278,7 @@ export async function handleSessionLogin(req: Request) {
     path: "/",
     maxAge: 60 * 60 * 12,
   });
+  response.cookies.delete(DASHBOARD_CLERK_AUTOSYNC_BLOCK_COOKIE);
   console.info("[dashboard_login_audit]", JSON.stringify({ event: "upstream_login_ok", email: String(data.email || submittedEmail || ""), role: String(data.role || "viewer") }));
   return response;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useClerk } from "@clerk/nextjs";
+import { useAuth, useClerk } from "@clerk/nextjs";
 import { LogOut } from "lucide-react";
 
 type SecureDashboardLogoutButtonProps = {
@@ -40,6 +40,7 @@ function ClerkDashboardLogoutButton({
   testId = "dashboard-secure-logout",
 }: SecureDashboardLogoutButtonProps) {
   const { signOut } = useClerk();
+  const { isLoaded, isSignedIn } = useAuth();
   const [pending, setPending] = useState(false);
 
   async function handleLogout() {
@@ -50,13 +51,15 @@ function ClerkDashboardLogoutButton({
     await fetch("/logout", { method: "POST", cache: "no-store" }).catch(() => null);
 
     try {
-      await Promise.race([
-        signOut({ redirectUrl: LOGOUT_REDIRECT }),
-        new Promise((resolve) => window.setTimeout(resolve, 1500)),
-      ]);
+      if (isLoaded && isSignedIn) {
+        await Promise.race([
+          signOut({ redirectUrl: LOGOUT_REDIRECT }),
+          new Promise((resolve) => window.setTimeout(resolve, 8000)),
+        ]);
+      }
     } catch {
-      // Local dashboard sessions are already cleared above; Clerk may be absent
-      // for demo tenant access, so the final redirect cannot depend on signOut.
+      // Local dashboard sessions are already cleared above; the final redirect
+      // keeps demo and partially-loaded Clerk states from leaving the UI stuck.
     }
     window.location.href = LOGOUT_REDIRECT;
   }

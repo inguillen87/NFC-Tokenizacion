@@ -6,6 +6,7 @@ import { isClerkConfiguredForRuntime } from "./clerk-env";
 
 export const DASHBOARD_SESSION_COOKIE = "nexid_dashboard_session";
 export const DASHBOARD_SESSION_SNAPSHOT_COOKIE = "nexid_dashboard_session_snapshot";
+export const DASHBOARD_CLERK_AUTOSYNC_BLOCK_COOKIE = "nexid_dashboard_clerk_autosync_block";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
 
 export type DashboardSession = {
@@ -105,6 +106,7 @@ export async function getDashboardSession() {
   const cookieStore = await cookies();
   const token = cookieStore.get(DASHBOARD_SESSION_COOKIE)?.value;
   const snapshot = parseSnapshot(cookieStore.get(DASHBOARD_SESSION_SNAPSHOT_COOKIE)?.value);
+  const clerkAutoSyncBlocked = cookieStore.get(DASHBOARD_CLERK_AUTOSYNC_BLOCK_COOKIE)?.value === "1";
 
   if (token) {
     const isDemoToken = token.startsWith("demo.");
@@ -130,7 +132,7 @@ export async function getDashboardSession() {
   }
 
   // Clerk auto-sync check on session miss
-  if (isClerkConfiguredForRuntime()) {
+  if (!clerkAutoSyncBlocked && isClerkConfiguredForRuntime()) {
     try {
       const { auth, currentUser } = await import("@clerk/nextjs/server");
       const clerkAuth = await auth();
