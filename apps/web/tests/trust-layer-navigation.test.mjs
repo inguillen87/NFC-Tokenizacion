@@ -59,13 +59,36 @@ test("landing trust layer cards open related proof experiences", async () => {
 
 test("home quick navigation exposes Proof Verify on desktop, footer and mobile", async () => {
   const page = await readFile(new URL("../src/app/page.tsx", import.meta.url), "utf8");
+  const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
+  const hubCtas = page.match(/nexid-quick-hub-card__cta/g) ?? [];
 
   assert.match(page, /Proof Verify/);
   assert.match(page, /href="\/proof\/verify"/);
+  assert.match(page, /aria-label=\{labels\.quickProof\}/);
+  assert.match(page, />Proof<\/Button>/);
   assert.match(page, /Verificar evidencia/);
   assert.match(page, /grid-cols-5/);
   assert.match(page, />Proof<\/Link>/);
+  assert.equal(hubCtas.length, 7);
+  assert.match(page, /nexid-quick-hub-card__cta[^"]*min-h-11[^"]*w-full/);
+  assert.match(css, /\.nexid-quick-hub-card__cta\s*\{[\s\S]*min-height:\s*44px/);
+  assert.match(css, /html\.theme-light \.nexid-quick-hub-card \.nexid-quick-hub-card__cta,[\s\S]*background:\s*rgba\(236,\s*254,\s*255,\s*0\.74\) !important/);
   assert.doesNotMatch(page, /grid-cols-4 items-center gap-2 rounded-2xl border border-white\/10 bg-slate-950\/85/);
+  assert.doesNotMatch(page, /mt-4 inline-flex items-center gap-1 text-xs font-bold/);
+});
+
+test("docs code console wraps long environment and hash lines on mobile", async () => {
+  const consoleComponent = await readFile(new URL("../src/app/docs/docs-integration-console.tsx", import.meta.url), "utf8");
+  const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
+
+  assert.match(consoleComponent, /className="docs-code-pre/);
+  assert.match(consoleComponent, /className="docs-code-line"/);
+  assert.match(consoleComponent, /className="docs-code-line-content"/);
+  assert.doesNotMatch(consoleComponent, /min-w-\[680px\]/);
+  assert.match(css, /\.docs-code-pre\s*\{[\s\S]*min-width:\s*680px/);
+  assert.match(css, /@media \(max-width:\s*640px\)[\s\S]*\.docs-code-pane\s*\{[\s\S]*overflow-x:\s*hidden !important/);
+  assert.match(css, /@media \(max-width:\s*640px\)[\s\S]*\.docs-code-pre\s*\{[\s\S]*min-width:\s*0 !important[\s\S]*white-space:\s*pre-wrap[\s\S]*overflow-wrap:\s*anywhere/);
+  assert.match(css, /\.docs-code-line-content,[\s\S]*\.docs-code-line-content span\s*\{[\s\S]*word-break:\s*break-word/);
 });
 
 test("pricing mobile comparison is readable without horizontal table scrolling", async () => {

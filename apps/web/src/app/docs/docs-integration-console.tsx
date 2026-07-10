@@ -269,12 +269,12 @@ export function DocsIntegrationConsole({ locale }: { locale: Locale }) {
             </div>
 
             <div className="docs-code-pane min-w-0 overflow-x-auto bg-slate-950">
-              <pre className="min-w-[680px] p-4 text-[11.5px] leading-6 sm:p-5">
-                <code>
+              <pre className="docs-code-pre p-4 text-[11.5px] leading-6 sm:p-5">
+                <code className="docs-code-block">
                   {renderedCode.map((line, index) => (
-                    <span key={`${activeSnippet}-${index}`} className="block">
-                      <span className="mr-4 inline-block w-6 select-none text-right text-slate-600">{index + 1}</span>
-                      {highlightedLine(line, activeSnippet)}
+                    <span key={`${activeSnippet}-${index}`} className="docs-code-line">
+                      <span className="docs-code-line-number select-none text-right text-slate-600">{index + 1}</span>
+                      <span className="docs-code-line-content">{highlightedLine(line, activeSnippet)}</span>
                     </span>
                   ))}
                 </code>

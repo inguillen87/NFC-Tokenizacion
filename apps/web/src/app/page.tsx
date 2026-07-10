@@ -277,8 +277,8 @@ export default async function HomePage() {
             <ProductExitLink kind="demoLab" className="hidden lg:inline-flex">
               <Button variant="secondary">{labels.quickDemoLab}</Button>
             </ProductExitLink>
-            <Link href="/proof/verify" className="hidden xl:inline-flex">
-              <Button variant="secondary">{labels.quickProof}</Button>
+            <Link href="/proof/verify" className="hidden xl:inline-flex" aria-label={labels.quickProof}>
+              <Button variant="secondary">Proof</Button>
             </Link>
             <Link href="/login?next=/me" className="hidden xl:inline-flex">
               <Button variant="secondary" className="border-purple-500/30 bg-purple-500/10 text-purple-300 hover:bg-purple-500/20">
@@ -330,8 +330,8 @@ export default async function HomePage() {
                 : "Simulá escaneos físicos de chips, señales de riesgo por ubicación de lectura, logs de auditoría y tamper en tiempo real."
               }
             </p>
-            <Link href="/demo-lab" className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-cyan-300 group-hover:text-cyan-200">
-              {locale === "en" ? "Open Sandbox" : "Abrir Sandbox"} <ArrowRight className="h-3 w-3" />
+            <Link href="/demo-lab" className="nexid-quick-hub-card__cta mt-5 inline-flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-cyan-300/20 bg-cyan-400/10 px-3.5 py-2.5 text-sm font-black text-cyan-200 transition group-hover:border-cyan-300/45 group-hover:bg-cyan-300/15 group-hover:text-cyan-100">
+              <span>{locale === "en" ? "Open Sandbox" : "Abrir Sandbox"}</span> <ArrowRight className="h-4 w-4 shrink-0" />
             </Link>
           </div>
 
@@ -347,8 +347,8 @@ export default async function HomePage() {
                 : "Guías de desarrollo paso a paso, formato de manifiestos operativos de lotes y referencia técnica de API."
               }
             </p>
-            <Link href="/docs" className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-emerald-300 group-hover:text-emerald-200">
-              {locale === "en" ? "Read Docs" : "Ver Documentos"} <ArrowRight className="h-3 w-3" />
+            <Link href="/docs" className="nexid-quick-hub-card__cta mt-5 inline-flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-emerald-300/20 bg-emerald-400/10 px-3.5 py-2.5 text-sm font-black text-emerald-200 transition group-hover:border-emerald-300/45 group-hover:bg-emerald-300/15 group-hover:text-emerald-100">
+              <span>{locale === "en" ? "Read Docs" : "Ver Documentos"}</span> <ArrowRight className="h-4 w-4 shrink-0" />
             </Link>
           </div>
 
@@ -364,8 +364,8 @@ export default async function HomePage() {
                 : "Verificador publico hash-only para auditores, inversores y clientes. Comprueba evidencia sin exponer datos privados del producto."
               }
             </p>
-            <Link href="/proof/verify" className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-cyan-300 group-hover:text-cyan-200">
-              {locale === "en" ? "Verify evidence" : "Verificar evidencia"} <ArrowRight className="h-3 w-3" />
+            <Link href="/proof/verify" className="nexid-quick-hub-card__cta mt-5 inline-flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-cyan-300/20 bg-cyan-400/10 px-3.5 py-2.5 text-sm font-black text-cyan-200 transition group-hover:border-cyan-300/45 group-hover:bg-cyan-300/15 group-hover:text-cyan-100">
+              <span>{locale === "en" ? "Verify evidence" : "Verificar evidencia"}</span> <ArrowRight className="h-4 w-4 shrink-0" />
             </Link>
           </div>
 
@@ -381,8 +381,8 @@ export default async function HomePage() {
                 : "Estimá costos de hardware/setup, licencias mensuales de SaaS y calculadora de retorno de inversión por sector."
               }
             </p>
-            <Link href="/pricing" className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-amber-300 group-hover:text-amber-200">
-              {locale === "en" ? "Calculate Costs" : "Calcular Costos"} <ArrowRight className="h-3 w-3" />
+            <Link href="/pricing" className="nexid-quick-hub-card__cta mt-5 inline-flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-amber-300/20 bg-amber-400/10 px-3.5 py-2.5 text-sm font-black text-amber-200 transition group-hover:border-amber-300/45 group-hover:bg-amber-300/15 group-hover:text-amber-100">
+              <span>{locale === "en" ? "Calculate Costs" : "Calcular Costos"}</span> <ArrowRight className="h-4 w-4 shrink-0" />
             </Link>
           </div>
 
@@ -398,8 +398,8 @@ export default async function HomePage() {
                 : "Portal público de validación criptográfica SUN/SDM para constatar procedencia y firmas físicas."
               }
             </p>
-            <Link href="/sun" className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-blue-300 group-hover:text-blue-200">
-              {locale === "en" ? "Verify Tag" : "Validar Tag"} <ArrowRight className="h-3 w-3" />
+            <Link href="/sun" className="nexid-quick-hub-card__cta mt-5 inline-flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-blue-300/20 bg-blue-400/10 px-3.5 py-2.5 text-sm font-black text-blue-200 transition group-hover:border-blue-300/45 group-hover:bg-blue-300/15 group-hover:text-blue-100">
+              <span>{locale === "en" ? "Verify Tag" : "Validar Tag"}</span> <ArrowRight className="h-4 w-4 shrink-0" />
             </Link>
           </div>
 
@@ -415,8 +415,8 @@ export default async function HomePage() {
                 : "El hogar digital de activos del comprador: pasaportes reclamados, certificados de procedencia y P2P trades."
               }
             </p>
-            <Link href="/login?next=/me" className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-purple-300 group-hover:text-purple-200">
-              {locale === "en" ? "Open Wallet" : "Ver Billetera"} <ArrowRight className="h-3 w-3" />
+            <Link href="/login?next=/me" className="nexid-quick-hub-card__cta mt-5 inline-flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-purple-300/20 bg-purple-400/10 px-3.5 py-2.5 text-sm font-black text-purple-200 transition group-hover:border-purple-300/45 group-hover:bg-purple-300/15 group-hover:text-purple-100">
+              <span>{locale === "en" ? "Open Wallet" : "Ver Billetera"}</span> <ArrowRight className="h-4 w-4 shrink-0" />
             </Link>
           </div>
 
@@ -432,8 +432,8 @@ export default async function HomePage() {
                 : "Glosario de conceptos físicos/digitales y pitch comercial adaptado para marcas o resellers."
               }
             </p>
-            <Link href="/glossary" className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-pink-300 group-hover:text-pink-200">
-              {locale === "en" ? "View Glossary" : "Ver Glosario"} <ArrowRight className="h-3 w-3" />
+            <Link href="/glossary" className="nexid-quick-hub-card__cta mt-5 inline-flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-pink-300/20 bg-pink-400/10 px-3.5 py-2.5 text-sm font-black text-pink-200 transition group-hover:border-pink-300/45 group-hover:bg-pink-300/15 group-hover:text-pink-100">
+              <span>{locale === "en" ? "View Glossary" : "Ver Glosario"}</span> <ArrowRight className="h-4 w-4 shrink-0" />
             </Link>
           </div>
         </div>
