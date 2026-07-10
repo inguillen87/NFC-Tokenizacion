@@ -188,9 +188,11 @@ export default async function HomePage() {
 
   const loginHref = `${process.env.NEXT_PUBLIC_APP_URL || productUrls.app}/login`;
   const meetingHref = schedulingUrls.meeting;
+  const brandSynergyLabel = locale === "en" ? "Brand AI" : locale === "pt-BR" ? "Sinergias IA" : "Sinergias IA";
 
   const mobileNavItems = [
     { label: content.nav.product, href: "/" },
+    { label: brandSynergyLabel, href: "#brand-synergy" },
     { label: "Portal Consumidor Demo", href: "/login?next=/me" },
     { label: content.nav.pricing, href: "/pricing" },
     { label: content.nav.reseller, href: "/resellers" },
@@ -301,7 +303,7 @@ export default async function HomePage() {
       <EnterpriseTrustLayersSection locale={locale} />
       <OfflineFieldOperationsSection locale={locale} />
       {/* nexID Cognitive AI & Brand Synergy Section */}
-      <section className="container-shell my-16">
+      <section id="brand-synergy" className="container-shell my-16 scroll-mt-24">
         <div className="landing-brand-synergy-shell relative rounded-[2rem] border border-cyan-300/20 bg-slate-950/20 p-2 shadow-xl sm:p-3 md:p-4">
           <BrandSynergySimulator locale={locale} />
         </div>

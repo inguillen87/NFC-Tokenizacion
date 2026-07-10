@@ -88,14 +88,14 @@ type DocsCopy = {
   openLab: string;
 };
 
-const trustLayerDocLinks: Record<string, { href: string; label: string }> = {
-  "blockchain-architecture.md": { href: "/docs#trust-layers", label: "Architecture" },
-  "offline-nfc-validation.md": { href: "/demo-lab?scenario=offline-verifier", label: "Offline demo" },
-  "offline-verifier-architecture.md": { href: "/demo-lab?scenario=offline-verifier", label: "Verifier flow" },
-  "polygon-ownership-layer.md": { href: "/demo-lab?scenario=polygon-ownership", label: "Polygon demo" },
-  "iota-proof-audit-layer.md": { href: "/proof/verify", label: "Proof verifier" },
-  "enterprise-trust-faq.md": { href: "/docs#trust-layers", label: "FAQ" },
-  "dpp-event-model.md": { href: "/demo-lab?scenario=dual-proof", label: "DPP demo" },
+const trustLayerDocLinks: Record<string, { href: string; label: string; display: string }> = {
+  "blockchain-architecture.md": { href: "/docs#trust-layers", label: "Architecture", display: "Trust architecture" },
+  "offline-nfc-validation.md": { href: "/demo-lab?scenario=offline-verifier", label: "Offline demo", display: "Offline validation" },
+  "offline-verifier-architecture.md": { href: "/demo-lab?scenario=offline-verifier", label: "Verifier flow", display: "Offline verifier" },
+  "polygon-ownership-layer.md": { href: "/demo-lab?scenario=polygon-ownership", label: "Polygon demo", display: "Ownership Polygon" },
+  "iota-proof-audit-layer.md": { href: "/proof/verify", label: "Proof verifier", display: "Proof IOTA" },
+  "enterprise-trust-faq.md": { href: "/docs#trust-layers", label: "FAQ", display: "Enterprise FAQ" },
+  "dpp-event-model.md": { href: "/demo-lab?scenario=dual-proof", label: "DPP demo", display: "DPP event model" },
 };
 
 const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
@@ -1231,7 +1231,7 @@ export default async function DocsPage() {
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               {trustLayerFaq.docs.map((item) => {
-                const target = trustLayerDocLinks[item] || { href: "/docs#trust-layers", label: "Docs" };
+                const target = trustLayerDocLinks[item] || { href: "/docs#trust-layers", label: "Docs", display: "Trust docs" };
                 return (
                   <Link
                     key={item}
@@ -1239,7 +1239,7 @@ export default async function DocsPage() {
                     className="inline-flex min-h-9 items-center gap-2 rounded-full border border-white/10 bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:border-cyan-500/40 hover:text-cyan-200"
                     title={`${item} -> ${target.label}`}
                   >
-                    <span>{item}</span>
+                    <span>{target.display}</span>
                     <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-cyan-200">
                       {target.label}
                     </span>

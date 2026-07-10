@@ -9,6 +9,11 @@ test("docs trust layer notes are actionable links to proof and scenario demos", 
   assert.match(page, /const trustLayerDocLinks/);
   assert.match(page, /"iota-proof-audit-layer\.md": \{ href: "\/proof\/verify"/);
   assert.match(page, /"polygon-ownership-layer\.md": \{ href: "\/demo-lab\?scenario=polygon-ownership"/);
+  assert.match(page, /display: "Proof IOTA"/);
+  assert.match(page, /display: "Ownership Polygon"/);
+  assert.match(page, /display: "DPP event model"/);
+  assert.match(page, /<span>\{target\.display\}<\/span>/);
+  assert.doesNotMatch(page, /<span>\{item\}<\/span>/);
   assert.match(page, /"offline-verifier-architecture\.md": \{ href: "\/demo-lab\?scenario=offline-verifier"/);
   assert.match(page, /"dpp-event-model\.md": \{ href: "\/demo-lab\?scenario=dual-proof"/);
   assert.match(page, /href="\/proof\/verify"/);
@@ -66,6 +71,9 @@ test("home quick navigation exposes Proof Verify on desktop, footer and mobile",
   assert.match(page, /href="\/proof\/verify"/);
   assert.match(page, /aria-label=\{labels\.quickProof\}/);
   assert.match(page, />Proof<\/Button>/);
+  assert.match(page, /const brandSynergyLabel = locale === "en" \? "Brand AI"/);
+  assert.match(page, /\{ label: brandSynergyLabel, href: "#brand-synergy" \}/);
+  assert.match(page, /<section id="brand-synergy" className="container-shell my-16 scroll-mt-24">/);
   assert.match(page, /Verificar evidencia/);
   assert.match(page, />Proof<\/Link>/);
   assert.match(page, /landing-mobile-action-dock/);
