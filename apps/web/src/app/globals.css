@@ -47743,6 +47743,155 @@ body .landing-root .landing-hero-section .nexid-hero-atlas-card__stops article:n
   }
 }
 
+/* Landing mobile media containment closure: keep atlas and video inside touch viewports. */
+@media (max-width: 720px) {
+  body .landing-root,
+  body .landing-root .landing-hero-section,
+  body .landing-root .landing-hero-section .container-shell,
+  body .landing-root .landing-hero-section .hero-demo-shell,
+  body .landing-root .landing-hero-section .hero-scene,
+  body .landing-root .landing-hero-section .nexid-hero-board,
+  body .landing-root .landing-hero-section .nexid-hero-atlas-card,
+  body .landing-root .landing-hero-section .nexid-hero-product-card,
+  body .landing-root .landing-hero-section .nexid-hero-phone-panel,
+  body .landing-root .institutional-video-panel--landing,
+  body .landing-root .institutional-video-panel--landing .institutional-video-copy,
+  body .landing-root .institutional-video-panel--landing .institutional-video-device,
+  body .landing-root .institutional-video-panel--landing .institutional-video-frame {
+    box-sizing: border-box !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  body .landing-root .landing-hero-section,
+  body .landing-root .landing-hero-section .container-shell,
+  body .landing-root .landing-hero-section .hero-demo-shell,
+  body .landing-root .landing-hero-section .hero-scene,
+  body .landing-root .landing-hero-section .nexid-hero-board {
+    overflow-x: hidden !important;
+    overflow-x: clip !important;
+  }
+
+  body .landing-root .landing-hero-section .hero-demo-shell,
+  body .landing-root .landing-hero-section .nexid-hero-board {
+    width: 100% !important;
+  }
+
+  body .landing-root .landing-hero-section .nexid-hero-board {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 0.82rem !important;
+  }
+
+  body .landing-root .landing-hero-section .nexid-hero-atlas-card {
+    border-radius: 1.08rem !important;
+    contain: layout paint !important;
+  }
+
+  body .landing-root .landing-hero-section .nexid-hero-atlas-card__map {
+    contain: layout paint !important;
+    height: clamp(13.75rem, 58vw, 16.75rem) !important;
+    min-height: clamp(13.75rem, 58vw, 16.75rem) !important;
+    margin: 0.62rem 0.58rem 0 !important;
+    max-width: none !important;
+    overflow: hidden !important;
+    touch-action: pan-y !important;
+    width: auto !important;
+  }
+
+  body .landing-root .landing-hero-section .nexid-hero-atlas-card__viewport {
+    inset: 0 !important;
+    transform: scale(var(--nexid-hero-atlas-zoom, 1)) !important;
+    transform-origin: 50% 50% !important;
+  }
+
+  body .landing-root .landing-hero-section .nexid-hero-atlas-card__viewport[data-zoom-level="1"] {
+    transform: scale(1.04) !important;
+  }
+
+  body .landing-root .landing-hero-section .nexid-hero-atlas-card__viewport[data-zoom-level="2"] {
+    transform: scale(1.08) !important;
+  }
+
+  body .landing-root .landing-hero-section .nexid-hero-atlas-card__viewport > .hero-trust-atlas,
+  body .landing-root .landing-hero-section .nexid-hero-atlas-card .hero-trust-atlas {
+    inset: 0.18rem 0.2rem !important;
+    width: calc(100% - 0.4rem) !important;
+    height: calc(100% - 0.36rem) !important;
+  }
+
+  body .landing-root .landing-hero-section .nexid-hero-atlas-card__map-controls {
+    top: 0.52rem !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: 0.52rem !important;
+    transform: none !important;
+  }
+
+  body .landing-root .landing-hero-section .nexid-hero-atlas-card__map-controls button {
+    width: 2.15rem !important;
+    height: 2.15rem !important;
+  }
+
+  body .landing-root .landing-hero-section .nexid-hero-atlas-card__ops {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    margin: 0.58rem 0.58rem 0 !important;
+  }
+
+  body .landing-root .landing-hero-section .nexid-hero-product-card__media {
+    contain: layout paint !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  body .landing-root .landing-hero-section .nexid-hero-product-card__photo,
+  body .landing-root .landing-hero-section .nexid-hero-product-card__photo.nexid-premium-image--dark,
+  body .landing-root .landing-hero-section .nexid-hero-product-card__photo.nexid-premium-image--light {
+    left: 0 !important;
+    max-width: 100% !important;
+    right: 0 !important;
+    transform: none !important;
+    width: 100% !important;
+  }
+
+  body .landing-root .institutional-video-panel--landing {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 1rem !important;
+    overflow: hidden !important;
+    padding: clamp(0.86rem, 3.5vw, 1.15rem) !important;
+    width: 100% !important;
+  }
+
+  body .landing-root .institutional-video-panel--landing .institutional-video-device {
+    overflow: hidden !important;
+    width: 100% !important;
+  }
+
+  body .landing-root .institutional-video-panel--landing .institutional-video-frame {
+    aspect-ratio: 16 / 9 !important;
+    min-height: clamp(10.5rem, 50vw, 13.5rem) !important;
+    max-height: 15rem !important;
+    overflow: hidden !important;
+    width: 100% !important;
+  }
+
+  body .landing-root .institutional-video-panel--landing .institutional-video-media,
+  body .landing-root .institutional-video-panel--landing .institutional-video-frame video,
+  body .landing-root .institutional-video-panel--landing .institutional-video-light-preview {
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  body .landing-root .institutional-video-panel--landing .institutional-video-watermark {
+    right: 0.65rem !important;
+    max-width: calc(100% - 1.3rem) !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+}
+
 /* Demo Lab final enterprise pass: one coherent wizard story, readable hub,
    and a mobile/tablet layout that feels intentional instead of scroll-heavy. */
 .demo-lab-mode-bar--compact {
