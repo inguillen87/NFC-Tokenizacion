@@ -47379,6 +47379,116 @@ html[data-theme="light"] .brand-synergy-secondary-cta {
   }
 }
 
+/* Trust layers mobile executive pass: keep the premium proof demos, turn the
+   rest into a compact decision map instead of a long wall of cards. */
+@media (max-width: 560px) {
+  .enterprise-trust-layers__shell {
+    border-radius: 1.1rem !important;
+    padding: 0.85rem !important;
+  }
+
+  .enterprise-trust-layers__head {
+    gap: 0.9rem !important;
+  }
+
+  .enterprise-trust-layers__head h2 {
+    font-size: clamp(1.78rem, 8.8vw, 2.25rem) !important;
+    line-height: 1.02 !important;
+  }
+
+  .enterprise-trust-layers__head span {
+    font-size: 0.86rem !important;
+    line-height: 1.58 !important;
+  }
+
+  .enterprise-trust-layers__head a {
+    width: 100% !important;
+  }
+
+  .enterprise-trust-layers__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.55rem !important;
+    margin-top: 1rem !important;
+  }
+
+  .enterprise-trust-layer-card {
+    border-radius: 0.85rem !important;
+    padding: 0.76rem !important;
+  }
+
+  .enterprise-trust-layer-card > div {
+    min-height: 1.95rem !important;
+  }
+
+  .enterprise-trust-layer-card > div > span {
+    height: 2rem !important;
+    width: 2rem !important;
+  }
+
+  .enterprise-trust-layer-card em {
+    font-size: 0.58rem !important;
+    letter-spacing: 0.08em !important;
+  }
+
+  .enterprise-trust-layer-card h3 {
+    margin-top: 0.56rem !important;
+    font-size: 0.92rem !important;
+    line-height: 1.12 !important;
+  }
+
+  .enterprise-trust-layer-card p {
+    margin-top: 0.38rem !important;
+    font-size: 0.72rem !important;
+    line-height: 1.42 !important;
+  }
+
+  .enterprise-trust-layer-card--phase {
+    min-height: 6.4rem !important;
+  }
+
+  .enterprise-trust-layer-card--phase p {
+    display: none !important;
+  }
+
+  .enterprise-trust-layer-card--capability {
+    grid-column: 1 / -1 !important;
+  }
+
+  .enterprise-trust-layer-card--capability:not(.enterprise-trust-layer-card--mobile-sim) .trust-layer-sim {
+    display: none !important;
+  }
+
+  .enterprise-trust-layer-card--capability .mt-4 {
+    margin-top: 0.65rem !important;
+  }
+
+  .enterprise-trust-layer-card--mobile-sim .trust-layer-sim {
+    margin-top: 0.62rem !important;
+    min-height: 3.65rem !important;
+    padding: 0.54rem !important;
+  }
+
+  .enterprise-trust-layer-card--mobile-sim .trust-layer-sim--nfc {
+    grid-template-columns: minmax(2.8rem, 0.58fr) minmax(0, 1fr) !important;
+  }
+
+  .enterprise-trust-layer-card--mobile-sim .trust-layer-sim--polygon .trust-layer-sim__step {
+    min-height: 2.28rem !important;
+    padding: 0.44rem !important;
+  }
+
+  .enterprise-trust-layer-card--mobile-sim .trust-layer-sim--iota span {
+    padding-top: 1.9rem !important;
+  }
+
+  .enterprise-trust-layers__note {
+    margin-top: 0.62rem !important;
+    padding: 0.72rem !important;
+    font-size: 0.7rem !important;
+    line-height: 1.42 !important;
+  }
+}
+
 /* Final atlas label pass: readable place names in white mode without heavy bold bleed. */
 html.theme-light .hero-trust-atlas__city-label,
 html[data-theme="light"] .hero-trust-atlas__city-label {

@@ -416,7 +416,7 @@ export function EnterpriseTrustLayersSection({ locale }: { locale: string }) {
 
         <div className="enterprise-trust-layers__grid">
           {copy.paths.map((item, i) => (
-            <article key={item.label} className="enterprise-trust-layer-card enterprise-trust-layer-card--identity md:col-span-2">
+            <article key={item.label} className="enterprise-trust-layer-card enterprise-trust-layer-card--phase enterprise-trust-layer-card--identity md:col-span-2">
               <div>
                 <span><PackageCheck className="h-4 w-4" /></span>
                 <em>{locale === "en" ? `Phase ${i + 1}` : `Fase ${i + 1}`}</em>
@@ -436,6 +436,7 @@ export function EnterpriseTrustLayersSection({ locale }: { locale: string }) {
                 : item.title.includes("NFC")
                   ? "authenticity"
                   : "identity";
+            const keepMobileSimulation = item.title.includes("NFC") || item.title === "Polygon" || item.title === "IOTA";
             const href = item.title === "IOTA"
               ? "/proof/verify"
               : item.title === "Polygon"
@@ -452,7 +453,7 @@ export function EnterpriseTrustLayersSection({ locale }: { locale: string }) {
                 key={item.title}
                 href={href}
                 aria-label={`${item.title}: ${locale === "en" ? "open related proof experience" : "abrir experiencia relacionada"}`}
-                className={`enterprise-trust-layer-card enterprise-trust-layer-card--${tone} ${isWide ? "md:col-span-2" : ""}`}
+                className={`enterprise-trust-layer-card enterprise-trust-layer-card--capability enterprise-trust-layer-card--${tone} ${keepMobileSimulation ? "enterprise-trust-layer-card--mobile-sim" : ""} ${isWide ? "md:col-span-2" : ""}`}
               >
                 <div>
                   <span><Icon className="h-4 w-4" /></span>

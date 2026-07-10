@@ -37,8 +37,16 @@ test("landing trust layer cards open related proof experiences", async () => {
   assert.match(sections, /\? "\/demo-lab\?scenario=qr-gs1"/);
   assert.match(sections, /aria-label=\{`\$\{item\.title\}: /);
   assert.match(sections, /TrustLayerMiniSimulation/);
+  assert.match(sections, /enterprise-trust-layer-card--phase/);
+  assert.match(sections, /enterprise-trust-layer-card--capability/);
+  assert.match(sections, /enterprise-trust-layer-card--mobile-sim/);
+  assert.match(sections, /const keepMobileSimulation = item\.title\.includes\("NFC"\) \|\| item\.title === "Polygon" \|\| item\.title === "IOTA"/);
   assert.match(css, /\.enterprise-trust-layer-card\s*\{[\s\S]*display:\s*block/);
   assert.match(css, /\.enterprise-trust-layer-card\s*\{[\s\S]*text-decoration:\s*none/);
+  assert.match(css, /Trust layers mobile executive pass/);
+  assert.match(css, /@media \(max-width:\s*560px\)[\s\S]*\.enterprise-trust-layers__grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /\.enterprise-trust-layer-card--phase p\s*\{[\s\S]*display:\s*none/);
+  assert.match(css, /\.enterprise-trust-layer-card--capability:not\(\.enterprise-trust-layer-card--mobile-sim\) \.trust-layer-sim\s*\{[\s\S]*display:\s*none/);
 });
 
 test("home quick navigation exposes Proof Verify on desktop, footer and mobile", async () => {
