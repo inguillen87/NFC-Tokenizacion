@@ -21,7 +21,7 @@ const clerkGuard = isClerkConfiguredForRuntime()
   ? clerkMiddleware((_auth, req: NextRequest) => landingMiddleware(req))
   : null;
 
-export default function middleware(req: NextRequest, event: Parameters<NonNullable<typeof clerkGuard>>[1]) {
+export function proxy(req: NextRequest, event: Parameters<NonNullable<typeof clerkGuard>>[1]) {
   const host = req.headers.get("host") || "";
   const isLocalHost = /^(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i.test(host);
   if (isLocalHost && req.method === "GET" && req.nextUrl.pathname === "/") {

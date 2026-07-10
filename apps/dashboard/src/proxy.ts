@@ -18,7 +18,7 @@ const clerkGuard = isClerkConfiguredForRuntime()
     })
   : null;
 
-export default function middleware(req: NextRequest, event: NextFetchEvent) {
+export function proxy(req: NextRequest, event: NextFetchEvent) {
   return clerkGuard ? clerkGuard(req, event) : NextResponse.next();
 }
 
