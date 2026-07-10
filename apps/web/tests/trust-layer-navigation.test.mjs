@@ -14,6 +14,10 @@ test("docs trust layer notes are actionable links to proof and scenario demos", 
   assert.match(page, /href="\/proof\/verify"/);
   assert.match(page, /href="\/demo-lab\?scenario=iota-proof"/);
   assert.match(page, /href="\/demo-lab\?scenario=polygon-ownership"/);
+  assert.match(page, /docs-trust-layer-actions/);
+  assert.match(page, /docs-trust-layer-action--proof/);
+  assert.match(page, /docs-trust-layer-action--iota/);
+  assert.match(page, /docs-trust-layer-action--polygon/);
   assert.match(page, /docs-mobile-trust-rail/);
   assert.match(page, /Verify a public hash/);
   assert.match(page, /Audit hash-only evidence/);
@@ -23,6 +27,10 @@ test("docs trust layer notes are actionable links to proof and scenario demos", 
   assert.match(css, /\.docs-mobile-trust-rail\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(css, /\.docs-mobile-trust-rail__item\s*\{[\s\S]*grid-template-columns:\s*2rem minmax\(0,\s*1fr\) auto/);
   assert.match(css, /html\.theme-light \.docs-mobile-trust-rail__item,[\s\S]*rgba\(255,\s*255,\s*255,\s*0\.88\)/);
+  assert.match(css, /Docs trust-layer CTA contrast/);
+  assert.match(css, /html\.theme-light \.docs-trust-layer-action--iota[\s\S]*color:\s*#3730a3 !important/);
+  assert.match(css, /html\.theme-light \.docs-trust-layer-action--polygon[\s\S]*color:\s*#6b21a8 !important/);
+  assert.match(css, /@media \(max-width:\s*520px\)[\s\S]*\.docs-trust-layer-actions\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
   assert.doesNotMatch(page, /cursor-default rounded-full border border-white\/10 bg-slate-900/);
 });
 

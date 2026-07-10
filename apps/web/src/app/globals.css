@@ -49833,6 +49833,55 @@ html[data-theme="light"] .docs-mobile-trust-rail__arrow {
   }
 }
 
+/* Docs trust-layer CTA contrast: semantic buttons beat utility color overrides
+   in light mode, where indigo/purple-100 looked disabled. */
+.docs-trust-layer-actions {
+  align-items: stretch;
+}
+
+.docs-trust-layer-action {
+  justify-content: center;
+  text-align: center;
+  white-space: normal;
+}
+
+html.theme-light .docs-trust-layer-action,
+html[data-theme="light"] .docs-trust-layer-action {
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08) !important;
+}
+
+html.theme-light .docs-trust-layer-action--proof,
+html[data-theme="light"] .docs-trust-layer-action--proof {
+  border-color: rgba(14, 116, 144, 0.32) !important;
+  background: rgba(207, 250, 254, 0.78) !important;
+  color: #0e7490 !important;
+}
+
+html.theme-light .docs-trust-layer-action--iota,
+html[data-theme="light"] .docs-trust-layer-action--iota {
+  border-color: rgba(79, 70, 229, 0.28) !important;
+  background: rgba(238, 242, 255, 0.92) !important;
+  color: #3730a3 !important;
+}
+
+html.theme-light .docs-trust-layer-action--polygon,
+html[data-theme="light"] .docs-trust-layer-action--polygon {
+  border-color: rgba(126, 34, 206, 0.28) !important;
+  background: rgba(250, 245, 255, 0.94) !important;
+  color: #6b21a8 !important;
+}
+
+@media (max-width: 520px) {
+  .docs-trust-layer-actions {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .docs-trust-layer-action {
+    width: 100%;
+  }
+}
+
 /* SDK mobile first-viewport pass: keep the platform proof visible before the
    page turns into a long text stack. */
 @media (max-width: 760px) {

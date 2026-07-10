@@ -1141,24 +1141,24 @@ export default async function DocsPage() {
             <h3 className="text-2xl font-black text-white">
               {copy.trustOpsTitle}
             </h3>
-            <div className="mt-5 flex flex-wrap gap-2">
+            <div className="docs-trust-layer-actions mt-5 flex flex-wrap gap-2">
               <Link
                 href="/proof/verify"
-                className="inline-flex min-h-10 items-center gap-2 rounded-full border border-cyan-300/35 bg-cyan-400/10 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-400/15"
+                className="docs-trust-layer-action docs-trust-layer-action--proof inline-flex min-h-10 items-center gap-2 rounded-full border border-cyan-300/35 bg-cyan-400/10 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-400/15"
               >
                 {locale === "en" ? "Open Proof Verify" : locale === "pt-BR" ? "Abrir Proof Verify" : "Abrir Proof Verify"}
                 <ArrowRight className="h-3.5 w-3.5" />
               </Link>
               <Link
                 href="/demo-lab?scenario=iota-proof"
-                className="inline-flex min-h-10 items-center gap-2 rounded-full border border-indigo-300/30 bg-indigo-400/10 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-indigo-100 transition hover:border-indigo-200/70 hover:bg-indigo-400/15"
+                className="docs-trust-layer-action docs-trust-layer-action--iota inline-flex min-h-10 items-center gap-2 rounded-full border border-indigo-300/30 bg-indigo-400/10 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-indigo-100 transition hover:border-indigo-200/70 hover:bg-indigo-400/15"
               >
                 {locale === "en" ? "Run IOTA proof demo" : locale === "pt-BR" ? "Demo prova IOTA" : "Demo prueba IOTA"}
                 <ArrowRight className="h-3.5 w-3.5" />
               </Link>
               <Link
                 href="/demo-lab?scenario=polygon-ownership"
-                className="inline-flex min-h-10 items-center gap-2 rounded-full border border-purple-300/30 bg-purple-400/10 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-purple-100 transition hover:border-purple-200/70 hover:bg-purple-400/15"
+                className="docs-trust-layer-action docs-trust-layer-action--polygon inline-flex min-h-10 items-center gap-2 rounded-full border border-purple-300/30 bg-purple-400/10 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-purple-100 transition hover:border-purple-200/70 hover:bg-purple-400/15"
               >
                 {locale === "en" ? "Run Polygon ownership" : locale === "pt-BR" ? "Demo ownership Polygon" : "Demo ownership Polygon"}
                 <ArrowRight className="h-3.5 w-3.5" />
