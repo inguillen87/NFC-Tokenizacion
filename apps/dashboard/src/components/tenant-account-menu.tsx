@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { createPortal, flushSync } from "react-dom";
-import { useClerk } from "@clerk/nextjs";
 import {
   BookOpen,
   Building2,
@@ -11,12 +10,12 @@ import {
   ArrowRight,
   KeyRound,
   LifeBuoy,
-  LogOut,
   Settings,
   ShieldCheck,
   Users,
   X,
 } from "lucide-react";
+import { SecureDashboardLogoutButton } from "./secure-dashboard-logout-button";
 
 type AccountMenuItem = {
   href: string;
@@ -454,58 +453,6 @@ function initialsFor(role: string) {
   return "NX";
 }
 
-function LocalSecureLogoutButton() {
-  return (
-    <form method="post" action="/logout">
-      <button
-        type="submit"
-        data-testid="tenant-account-logout"
-        className="flex w-full items-center justify-center gap-2 rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm font-black text-rose-100 transition hover:border-rose-200/70 hover:bg-rose-500/18"
-      >
-        <LogOut className="h-4 w-4" />
-        Cerrar sesion segura
-      </button>
-    </form>
-  );
-}
-
-function ClerkSecureLogoutButton({ onStart }: { onStart?: () => void }) {
-  const { signOut } = useClerk();
-  const [pending, setPending] = useState(false);
-
-  async function handleLogout() {
-    if (pending) return;
-    setPending(true);
-    onStart?.();
-
-    await fetch("/logout", { method: "POST", cache: "no-store" }).catch(() => null);
-
-    try {
-      await signOut({ redirectUrl: "/login?logged_out=1" });
-    } catch {
-      window.location.href = "/login?logged_out=1";
-    }
-  }
-
-  return (
-    <button
-      type="button"
-      data-testid="tenant-account-logout"
-      className="flex w-full items-center justify-center gap-2 rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm font-black text-rose-100 transition hover:border-rose-200/70 hover:bg-rose-500/18 disabled:cursor-wait disabled:opacity-70"
-      disabled={pending}
-      onClick={() => void handleLogout()}
-    >
-      <LogOut className="h-4 w-4" />
-      {pending ? "Cerrando sesion..." : "Cerrar sesion segura"}
-    </button>
-  );
-}
-
-function SecureLogoutButton({ clerkEnabled, onStart }: { clerkEnabled?: boolean; onStart?: () => void }) {
-  if (clerkEnabled) return <ClerkSecureLogoutButton onStart={onStart} />;
-  return <LocalSecureLogoutButton />;
-}
-
 export function TenantAccountMenu({
   className = "",
   clerkEnabled,
@@ -540,7 +487,8 @@ export function TenantAccountMenu({
   const accountRoleDescription = roleDescription(role, mode);
   const canManageUsers = role === "super-admin" || permissions.includes("*") || permissions.includes("users:manage") || permissions.includes("employees:*");
   const isClerkSsoSession = role === "super-admin" && Boolean(clerkEnabled);
-  const accountSecurityOk = Boolean(mfaVerified) || isClerkSsoSession;
+  const identityVerified = Boolean(mfaVerified) || isClerkSsoSession;
+  const accountSecurityOk = Boolean(mfaVerified);
   const hasWildcardAccess = permissions.includes("*");
   const normalizedPermissions = hasWildcardAccess
     ? [role === "super-admin" || mode === "global" ? "Acceso global" : "Tenant completo"]
@@ -561,8 +509,12 @@ export function TenantAccountMenu({
     },
     {
       label: "Seguridad",
-      value: isClerkSsoSession ? "Google SSO" : mfaVerified ? "MFA activo" : "MFA pendiente",
-      detail: accountSecurityOk ? "Sesion autorizada para operacion enterprise." : "Conviene reforzar acceso antes de escalar.",
+      value: mfaVerified ? "MFA activo" : isClerkSsoSession ? "Google SSO" : "MFA pendiente",
+      detail: accountSecurityOk
+        ? "Sesion autorizada con segundo factor nexID."
+        : identityVerified
+          ? "Identidad Google verificada; MFA nexID queda separado."
+          : "Conviene reforzar acceso antes de escalar.",
     },
     {
       label: "Plan",
@@ -982,7 +934,7 @@ export function TenantAccountMenu({
                 {setupCompleted === false ? "setup pendiente" : "setup ok"}
               </span>
               <span className="rounded-lg border border-cyan-300/25 bg-cyan-400/10 px-2 py-2 text-cyan-100">
-                {isClerkSsoSession ? "sso ok" : mfaVerified ? "mfa ok" : "mfa revisar"}
+                {mfaVerified ? "mfa ok" : isClerkSsoSession ? "sso google" : "mfa revisar"}
               </span>
               <span className="rounded-lg border border-violet-300/25 bg-violet-400/10 px-2 py-2 text-violet-100">
                 {isTenantMode ? "tenant" : "global"}
@@ -1057,11 +1009,11 @@ export function TenantAccountMenu({
           </div>
 
           <div className="border-t border-white/10 bg-[#020817] p-3">
-            {clerkEnabled ? (
-              <SecureLogoutButton clerkEnabled={clerkEnabled} onStart={() => setDocumentMenuState(false)} />
-            ) : (
-              <SecureLogoutButton clerkEnabled={false} />
-            )}
+            <SecureDashboardLogoutButton
+              clerkEnabled={clerkEnabled}
+              onStart={() => setDocumentMenuState(false)}
+              testId="tenant-account-logout"
+            />
           </div>
         </div>
       </div>

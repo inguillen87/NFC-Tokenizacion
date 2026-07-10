@@ -62,6 +62,10 @@ test("login surfaces separate founder Google auth from tenant demo access", () =
   const demoRoute = readFileSync(new URL("../src/app/api/session/demo/route.ts", import.meta.url), "utf8");
   const logoutRoute = readFileSync(new URL("../src/app/logout/route.ts", import.meta.url), "utf8");
   const settingsPage = readFileSync(new URL("../src/app/(app)/settings/page.tsx", import.meta.url), "utf8");
+  const sessionLoginRoute = readFileSync(new URL("../src/lib/session-login-route.ts", import.meta.url), "utf8");
+  const secureLogoutButton = readFileSync(new URL("../src/components/secure-dashboard-logout-button.tsx", import.meta.url), "utf8");
+  const accountMenu = readFileSync(new URL("../src/components/tenant-account-menu.tsx", import.meta.url), "utf8");
+  const superadminPage = readFileSync(new URL("../src/app/(app)/superadmin-network/page.tsx", import.meta.url), "utf8");
 
   assert.match(loginPage, /profile\.role !== "super-admin"/);
   assert.doesNotMatch(loginPage, /demoLoginAllowed/);
@@ -100,8 +104,27 @@ test("login surfaces separate founder Google auth from tenant demo access", () =
   assert.match(logoutRoute, /response\.cookies\.delete\(DASHBOARD_SESSION_SNAPSHOT_COOKIE\)/);
 
   assert.match(settingsPage, /const isClerkSuperAdminSession = session\.role === "super-admin" && !session\.mfaVerified/);
-  assert.match(settingsPage, /SSO Google\/Clerk/);
+  assert.match(settingsPage, /SSO Google, MFA pendiente/);
   assert.match(settingsPage, /sessionSecurityLabel/);
+  assert.match(settingsPage, /SecureDashboardLogoutButton/);
+  assert.doesNotMatch(settingsPage, /href="\/logout"/);
+  assert.doesNotMatch(settingsPage, /method="post" action="\/logout"/);
+
+  assert.match(secureLogoutButton, /useClerk/);
+  assert.match(secureLogoutButton, /await fetch\("\/logout", \{ method: "POST", cache: "no-store" \}\)/);
+  assert.match(secureLogoutButton, /await signOut\(\{ redirectUrl: "\/login\?logged_out=1" \}\)/);
+  assert.match(accountMenu, /SecureDashboardLogoutButton/);
+
+  assert.match(sessionLoginRoute, /accessProfile\?\.role === "super-admin"/);
+  assert.match(sessionLoginRoute, /profile_login_denied/);
+  assert.match(sessionLoginRoute, /superadmin_requires_clerk/);
+
+  assert.match(superadminPage, /if \(session\.role !== "super-admin"\)/);
+  assert.match(superadminPage, /data-testid="superadmin-network-access-denied"/);
+  assert.ok(
+    superadminPage.indexOf('if (session.role !== "super-admin")') < superadminPage.indexOf("Promise.all"),
+    "superadmin-network must deny tenant sessions before admin fetches",
+  );
 });
 
 test("dashboard auth keeps the actionable login first on mobile", () => {

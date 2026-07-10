@@ -163,6 +163,20 @@ export async function handleSessionLogin(req: Request) {
   const demoRole = requestedDemoRole === "super-admin" || requestedDemoRole === "tenant-admin" ? requestedDemoRole : "tenant-admin";
   const canUseDemoLogin = dashboardOneClickAccessAllowed();
   const canUseRequestedDemoRole = dashboardDemoAccessAllowedForRole(demoRole);
+  const accessProfile = findAccessProfile(submittedEmail, submittedPassword);
+
+  if (accessProfile?.role === "super-admin") {
+    console.info("[dashboard_login_audit]", JSON.stringify({ event: "profile_login_denied", reason: "superadmin_requires_clerk", email: submittedEmail || null }));
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "superadmin_requires_clerk",
+        reason: "Super Admin requires Google/Clerk allowlist access.",
+        diagnostics: buildDiagnostics({ upstreamReachable: false, upstreamStatus: null, demoLoginAllowed: false }),
+      },
+      { status: 403 },
+    );
+  }
 
   if (wantsDemoLogin) {
     if (!canUseRequestedDemoRole) {
@@ -216,7 +230,6 @@ export async function handleSessionLogin(req: Request) {
   }).catch(() => null);
   clearTimeout(timeout);
 
-  const accessProfile = findAccessProfile(submittedEmail, submittedPassword);
   const unreachableDiagnostics = buildDiagnostics({ upstreamReachable: false, upstreamStatus: null, demoLoginAllowed: canUseDemoLogin });
   if (!upstream) {
     if (accessProfile && localProfileFallbackAllowed()) {

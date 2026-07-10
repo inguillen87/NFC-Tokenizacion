@@ -7,11 +7,12 @@ import {
   CreditCard,
   KeyRound,
   LifeBuoy,
-  LogOut,
   ShieldCheck,
   Users,
 } from "lucide-react";
 import { Badge, Card, SectionHeading } from "@product/ui";
+import { SecureDashboardLogoutButton } from "../../../components/secure-dashboard-logout-button";
+import { isClerkConfiguredForRuntime } from "../../../lib/clerk-env";
 import { requireDashboardSession } from "../../../lib/session";
 
 type SettingsTile = {
@@ -59,11 +60,13 @@ export default async function SettingsPage() {
   const tenantHref = tenantSlug ? `/tenants/${encodeURIComponent(tenantSlug)}` : "/tenants";
   const tenantName = tenantNameFromSlug(tenantSlug);
   const isClerkSuperAdminSession = session.role === "super-admin" && !session.mfaVerified;
+  const clerkEnabled = isClerkConfiguredForRuntime();
   const sessionSecurityLabel = isClerkSuperAdminSession
-    ? "SSO Google/Clerk"
+    ? "SSO Google, MFA pendiente"
     : session.mfaVerified
       ? "MFA verificado"
       : "MFA pendiente";
+  const securityBadgeTone = session.mfaVerified ? "green" : "amber";
   const canManageUsers = session.role === "super-admin"
     || session.permissions.includes("*")
     || session.permissions.includes("users:manage")
@@ -73,7 +76,7 @@ export default async function SettingsPage() {
 
   const primaryAction = session.setupCompleted === false && session.role === "tenant-admin"
     ? { href: "/onboarding", label: "Completar setup", meta: "Datos base, equipo e integraciones iniciales" }
-    : !session.mfaVerified && !isClerkSuperAdminSession
+    : !session.mfaVerified
       ? { href: "/mfa", label: "Reforzar seguridad", meta: "Activar segundo factor antes de escalar permisos" }
       : { href: tenantHref, label: "Abrir workspace", meta: "Perfil, plan, health y acciones del tenant" };
 
@@ -102,7 +105,7 @@ export default async function SettingsPage() {
       eyebrow: "Security",
       body: "Segundo factor, postura de sesion y preparacion para acceso enterprise real.",
       proof: sessionSecurityLabel,
-      tone: session.mfaVerified || isClerkSuperAdminSession ? "green" : "amber",
+      tone: session.mfaVerified ? "green" : "amber",
       icon: <ShieldCheck className="h-5 w-5" />,
     },
     {
@@ -153,7 +156,7 @@ export default async function SettingsPage() {
               </div>
               <div className="flex flex-wrap gap-2">
                 <Badge tone={session.role === "super-admin" ? "amber" : "cyan"}>{roleLabel(session.role)}</Badge>
-                <Badge tone={session.mfaVerified || isClerkSuperAdminSession ? "green" : "amber"}>{sessionSecurityLabel}</Badge>
+                <Badge tone={securityBadgeTone}>{sessionSecurityLabel}</Badge>
               </div>
             </div>
 
@@ -203,7 +206,7 @@ export default async function SettingsPage() {
                 </p>
                 <p className="flex items-center justify-between gap-3 text-slate-300">
                   <span>Sesion</span>
-                  <b className="text-white">{isClerkSuperAdminSession ? "Clerk SSO" : "nexID session"}</b>
+                  <b className="text-white">{isClerkSuperAdminSession ? "Google SSO + nexID" : "nexID session"}</b>
                 </p>
                 <p className="flex items-center justify-between gap-3 text-slate-300">
                   <span>Perfil</span>
@@ -229,13 +232,13 @@ export default async function SettingsPage() {
               Volver al dashboard
               <ArrowRight className="h-4 w-4" />
             </Link>
-            <Link
-              href="/logout"
-              className="flex min-h-12 items-center justify-between rounded-xl border border-cyan-300/25 bg-cyan-400/10 px-4 py-3 font-bold text-cyan-100 transition hover:border-cyan-200/60 hover:bg-cyan-400/16"
-            >
-              Cambiar cuenta o perfil
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+            <SecureDashboardLogoutButton
+              clerkEnabled={clerkEnabled}
+              label="Cambiar cuenta o perfil"
+              pendingLabel="Cerrando cuenta..."
+              testId="settings-change-account"
+              className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-cyan-300/25 bg-cyan-400/10 px-4 py-3 font-bold text-cyan-100 transition hover:border-cyan-200/60 hover:bg-cyan-400/16 disabled:cursor-wait disabled:opacity-70"
+            />
             <Link
               href={tenantHref}
               className="flex min-h-12 items-center justify-between rounded-xl border border-white/10 bg-slate-950/55 px-4 py-3 font-bold text-slate-100 transition hover:border-cyan-300/40 hover:text-cyan-100"
@@ -245,15 +248,12 @@ export default async function SettingsPage() {
             </Link>
           </div>
 
-          <form method="post" action="/logout" className="mt-5">
-            <button
-              data-testid="settings-logout"
-              className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm font-black text-rose-100 transition hover:border-rose-200/70 hover:bg-rose-500/18"
-            >
-              <LogOut className="h-4 w-4" />
-              Cerrar sesion segura
-            </button>
-          </form>
+          <div className="mt-5">
+            <SecureDashboardLogoutButton
+              clerkEnabled={clerkEnabled}
+              testId="settings-logout"
+            />
+          </div>
         </Card>
       </section>
 

@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const menuSource = await readFile(new URL("../src/components/tenant-account-menu.tsx", import.meta.url), "utf8");
+const secureLogoutSource = await readFile(new URL("../src/components/secure-dashboard-logout-button.tsx", import.meta.url), "utf8");
 const globalsSource = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
 const pwaSetupSource = await readFile(new URL("../src/components/pwa-setup.tsx", import.meta.url), "utf8");
 const serviceWorkerSource = await readFile(new URL("../public/sw.js", import.meta.url), "utf8");
@@ -153,7 +154,8 @@ test("tenant account menu renders as a top-level drawer above CRM layers", () =>
   assert.match(menuSource, /permissions = \[\]/);
   assert.match(menuSource, /const canManageUsers = role === "super-admin"/);
   assert.match(menuSource, /const isClerkSsoSession = role === "super-admin" && Boolean\(clerkEnabled\)/);
-  assert.match(menuSource, /const accountSecurityOk = Boolean\(mfaVerified\) \|\| isClerkSsoSession/);
+  assert.match(menuSource, /const identityVerified = Boolean\(mfaVerified\) \|\| isClerkSsoSession/);
+  assert.match(menuSource, /const accountSecurityOk = Boolean\(mfaVerified\)/);
   assert.match(menuSource, /data-testid="tenant-account-session-summary"/);
   assert.match(menuSource, /data-testid="tenant-account-workspace-command-center"/);
   assert.match(menuSource, /const workspaceInsights = \[/);
@@ -168,21 +170,23 @@ test("tenant account menu renders as a top-level drawer above CRM layers", () =>
   assert.match(menuSource, /role === "super-admin" \|\| mode === "global" \? "Acceso global" : "Tenant completo"/);
   assert.match(menuSource, /const nextAction = setupCompleted === false && role === "tenant-admin"/);
   assert.match(menuSource, /: !accountSecurityOk/);
-  assert.match(menuSource, /isClerkSsoSession \? "sso ok" : mfaVerified \? "mfa ok" : "mfa revisar"/);
+  assert.match(menuSource, /mfaVerified \? "mfa ok" : isClerkSsoSession \? "sso google" : "mfa revisar"/);
   assert.match(menuSource, /label: isTenantMode \? `Perfil \$\{tenantName\}` : "Directorio de tenants"/);
   assert.doesNotMatch(menuSource, /label: isTenantMode \? "Perfil Bodega Balmec"/);
   assert.match(menuSource, /href: canManageUsers \? "\/users" : "\/settings"/);
 });
 
 test("tenant account menu closes nexID and Clerk sessions when OAuth is active", () => {
-  assert.match(menuSource, /import \{ useClerk \} from "@clerk\/nextjs"/);
-  assert.match(menuSource, /function ClerkSecureLogoutButton/);
-  assert.match(menuSource, /const \{ signOut \} = useClerk\(\)/);
-  assert.match(menuSource, /await fetch\("\/logout", \{ method: "POST", cache: "no-store" \}\)/);
-  assert.match(menuSource, /await signOut\(\{ redirectUrl: "\/login\?logged_out=1" \}\)/);
-  assert.match(menuSource, /function SecureLogoutButton\(\{ clerkEnabled, onStart \}/);
-  assert.match(menuSource, /if \(clerkEnabled\) return <ClerkSecureLogoutButton onStart=\{onStart\} \/>/);
-  assert.match(menuSource, /<SecureLogoutButton clerkEnabled=\{clerkEnabled\} onStart=\{\(\) => setDocumentMenuState\(false\)\} \/>/);
+  assert.match(menuSource, /import \{ SecureDashboardLogoutButton \} from "\.\/secure-dashboard-logout-button"/);
+  assert.match(menuSource, /<SecureDashboardLogoutButton/);
+  assert.match(menuSource, /testId="tenant-account-logout"/);
+  assert.match(menuSource, /onStart=\{\(\) => setDocumentMenuState\(false\)\}/);
+  assert.match(secureLogoutSource, /import \{ useClerk \} from "@clerk\/nextjs"/);
+  assert.match(secureLogoutSource, /function ClerkDashboardLogoutButton/);
+  assert.match(secureLogoutSource, /const \{ signOut \} = useClerk\(\)/);
+  assert.match(secureLogoutSource, /await fetch\("\/logout", \{ method: "POST", cache: "no-store" \}\)/);
+  assert.match(secureLogoutSource, /await signOut\(\{ redirectUrl: "\/login\?logged_out=1" \}\)/);
+  assert.match(secureLogoutSource, /if \(props\.clerkEnabled\) return <ClerkDashboardLogoutButton \{\.\.\.props\} \/>/);
 });
 
 test("global CSS prevents dashboard maps from covering account drawer", () => {

@@ -60,20 +60,63 @@ function riskScore(scans: number, duplicates: number, tamper: number) {
 
 export default async function SuperadminConsumerNetworkPage() {
   const session = await requireDashboardSession();
+  if (session.role !== "super-admin") {
+    return (
+      <main className="space-y-6" data-testid="superadmin-network-access-denied">
+        <SectionHeading
+          eyebrow="Superadmin network"
+          title="Acceso global protegido"
+          description="Esta consola opera todos los tenants, billing, IAM y red comercial. Bodega Balmec y otros tenants mantienen su propio workspace sin permisos globales."
+        />
+        <Card className="overflow-hidden p-0">
+          <div className="border-b border-white/10 bg-[radial-gradient(circle_at_82%_0%,rgba(251,191,36,.18),transparent_34%),linear-gradient(135deg,rgba(15,23,42,.98),rgba(2,8,23,.94))] p-5">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-200">Scope actual</p>
+                <h2 className="mt-2 text-2xl font-black text-white">{session.label || "Tenant workspace"}</h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
+                  Tu sesion puede operar su tenant, proof, CRM, tags y campanas. No puede consultar la red completa ni datos cross-tenant.
+                </p>
+              </div>
+              <StatusChip label="requiere super admin" tone="warn" />
+            </div>
+          </div>
+          <div className="grid gap-3 p-5 md:grid-cols-3">
+            <Link
+              href="/"
+              className="rounded-2xl border border-cyan-300/20 bg-cyan-500/10 px-4 py-3 text-sm font-black text-cyan-100 transition hover:bg-cyan-500/20"
+            >
+              Volver al dashboard tenant
+            </Link>
+            <Link
+              href="/settings"
+              className="rounded-2xl border border-white/10 bg-slate-950/55 px-4 py-3 text-sm font-black text-slate-100 transition hover:border-cyan-300/40 hover:text-cyan-100"
+            >
+              Revisar cuenta y permisos
+            </Link>
+            <Link
+              href="/auth/clerk/super-admin"
+              className="rounded-2xl border border-amber-300/25 bg-amber-400/10 px-4 py-3 text-sm font-black text-amber-100 transition hover:border-amber-200/60 hover:bg-amber-400/16"
+            >
+              Entrar como Super Admin
+            </Link>
+          </div>
+        </Card>
+      </main>
+    );
+  }
+
   const origin = await getServerOrigin();
   const cookie = (await headers()).get("cookie") || "";
-  const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : "";
-  const query = tenantScope ? `?tenant=${encodeURIComponent(tenantScope)}` : "";
-  const assetQuery = tenantScope ? `?tenant=${encodeURIComponent(tenantScope)}&limit=80` : "?limit=80";
   const [tenants, batches, tagsPayload, experiencesPayload, productAssetsPayload] = await Promise.all([
     fetchJson<TenantRow[]>(origin, "/api/admin/tenants?withStats=1", [], cookie),
-    fetchJson<BatchRow[]>(origin, `/api/admin/batches${query}`, [], cookie),
-    fetchJson<TagsPayload>(origin, `/api/admin/tags${query ? `${query}&` : "?"}limit=100`, { rows: [], totals: {} }, cookie),
-    fetchJson<ExperiencesPayload>(origin, `/api/admin/consumer-experiences${query}`, { items: [], moderation: {} }, cookie),
-    fetchJson<ProductAssetsPayload>(origin, `/api/admin/product-assets${assetQuery}`, { items: [] }, cookie),
+    fetchJson<BatchRow[]>(origin, "/api/admin/batches", [], cookie),
+    fetchJson<TagsPayload>(origin, "/api/admin/tags?limit=100", { rows: [], totals: {} }, cookie),
+    fetchJson<ExperiencesPayload>(origin, "/api/admin/consumer-experiences", { items: [], moderation: {} }, cookie),
+    fetchJson<ProductAssetsPayload>(origin, "/api/admin/product-assets?limit=80", { items: [] }, cookie),
   ]);
 
-  const scopedTenants = tenantScope ? tenants.filter((row) => String(row.slug || row.tenant_slug || "").toLowerCase() === tenantScope) : tenants;
+  const scopedTenants = tenants;
   const totals = tagsPayload.totals || {};
   const tagRows = tagsPayload.rows || [];
   const experiences = experiencesPayload.items || [];
@@ -99,7 +142,7 @@ export default async function SuperadminConsumerNetworkPage() {
 
   const batchByTenant = new Map<string, { batches: number; tags: number }>();
   for (const row of batches) {
-    const slug = String(row.tenant_slug || row.tenant_id || tenantScope || "tenant").toLowerCase();
+    const slug = String(row.tenant_slug || row.tenant_id || "tenant").toLowerCase();
     const current = batchByTenant.get(slug) || { batches: 0, tags: 0 };
     current.batches += 1;
     current.tags += numberFrom(row.active_tags || row.quantity || row.qty || row.requested_quantity);
@@ -173,9 +216,9 @@ export default async function SuperadminConsumerNetworkPage() {
       <BlockchainHsmHealth />
 
       <OpsCommandCenter
-        mode={session.role === "tenant-admin" ? "tenant" : "global"}
+        mode="global"
         metrics={[
-          { label: "Tenants", value: String(scopedTenants.length), detail: tenantScope ? `Scope ${tenantScope}` : "Marcas conectadas a la red", tone: scopedTenants.length ? "good" : "warn" },
+          { label: "Tenants", value: String(scopedTenants.length), detail: "Marcas conectadas a la red", tone: scopedTenants.length ? "good" : "warn" },
           { label: "Tags activos", value: activeTags.toLocaleString("es-AR"), detail: `${totalTags.toLocaleString("es-AR")} tags en inventario`, tone: activeTags > 0 ? "good" : "warn" },
           { label: "Batches premium", value: String(secureBatches), detail: "NTAG424 DNA / TT declarados", tone: secureBatches > 0 ? "good" : "warn" },
           { label: "Assets reales", value: String(productAssets.length), detail: `${readyAssets} listos - score ${averageAssetScore}/100`, tone: readyAssets > 0 ? "good" : productAssets.length ? "warn" : "risk" },
