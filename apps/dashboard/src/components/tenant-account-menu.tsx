@@ -44,7 +44,7 @@ const ACCOUNT_MENU_Z_INDEX = 2147483647;
 const ACCOUNT_MENU_BACKDROP_Z_INDEX = ACCOUNT_MENU_Z_INDEX - 1;
 const ACCOUNT_MENU_PANEL_Z_INDEX = ACCOUNT_MENU_Z_INDEX;
 const ACCOUNT_MENU_PORTAL_ROOT_ID = "nexid-account-menu-root";
-const ACCOUNT_MENU_VERSION = "drawer-v12-top-layer-hardening";
+const ACCOUNT_MENU_VERSION = "drawer-v13-native-top-layer";
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 const ACCOUNT_MENU_CRITICAL_CSS = `
 html.nexid-account-menu-open,
@@ -53,9 +53,29 @@ body.nexid-account-menu-open {
 }
 body.nexid-account-menu-open > :not(#nexid-account-menu-root):not(script):not(style),
 html.nexid-account-menu-open body > :not(#nexid-account-menu-root):not(script):not(style) {
-  visibility: hidden !important;
   pointer-events: none !important;
   user-select: none !important;
+}
+.nexid-account-dialog {
+  position: fixed !important;
+  inset: 0 !important;
+  display: block !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: inherit !important;
+  overflow: hidden !important;
+  z-index: ${ACCOUNT_MENU_Z_INDEX} !important;
+}
+.nexid-account-dialog::backdrop {
+  background:
+    radial-gradient(circle at 82% 8%, rgba(34, 211, 238, 0.18), transparent 34%),
+    rgba(2, 6, 23, 0.88) !important;
 }
 #nexid-account-menu-root {
   position: fixed !important;
@@ -175,12 +195,10 @@ html[data-theme="light"] .nexid-account-layer .tenant-account-panel .text-slate-
 }
 body.nexid-account-menu-open .nexid-crm-shell,
 html.nexid-account-menu-open .nexid-crm-shell {
-  display: none !important;
   pointer-events: none !important;
   z-index: 0 !important;
-  filter: saturate(0.78) brightness(0.48) blur(0.5px) !important;
-  opacity: 0 !important;
-  visibility: hidden !important;
+  filter: saturate(0.72) brightness(0.44) blur(0.5px) !important;
+  opacity: 0.28 !important;
   transform: none !important;
   contain: none !important;
   user-select: none !important;
@@ -241,6 +259,22 @@ const ACCOUNT_LAYER_STYLE: CSSProperties = {
   color: "inherit",
   overscrollBehavior: "contain",
   boxShadow: "-36px 0 120px rgba(0,0,0,0.74)",
+};
+const ACCOUNT_DIALOG_STYLE: CSSProperties = {
+  position: "fixed",
+  zIndex: ACCOUNT_MENU_Z_INDEX,
+  inset: 0,
+  width: "100vw",
+  height: "100dvh",
+  maxWidth: "none",
+  maxHeight: "none",
+  margin: 0,
+  padding: 0,
+  border: 0,
+  overflow: "hidden",
+  pointerEvents: "auto",
+  backgroundColor: "transparent",
+  color: "inherit",
 };
 const ACCOUNT_MENU_DEFAULT_STYLE: CSSProperties = {
   position: "relative",
@@ -303,12 +337,10 @@ function setCrmShellSuppression(value: boolean) {
     if (value) {
       node.setAttribute("data-account-menu-suppressed", "true");
       node.setAttribute("aria-hidden", "true");
-      node.style.setProperty("display", "none", "important");
       node.style.setProperty("pointer-events", "none", "important");
       node.style.setProperty("z-index", "0", "important");
-      node.style.setProperty("filter", "saturate(0.78) brightness(0.48) blur(0.5px)", "important");
-      node.style.setProperty("opacity", "0", "important");
-      node.style.setProperty("visibility", "hidden", "important");
+      node.style.setProperty("filter", "saturate(0.72) brightness(0.44) blur(0.5px)", "important");
+      node.style.setProperty("opacity", "0.28", "important");
       node.style.setProperty("transform", "none", "important");
       node.style.setProperty("contain", "none", "important");
       try {
@@ -322,12 +354,10 @@ function setCrmShellSuppression(value: boolean) {
     if (node.getAttribute("data-account-menu-suppressed") !== "true") return;
     node.removeAttribute("data-account-menu-suppressed");
     node.removeAttribute("aria-hidden");
-    node.style.removeProperty("display");
     node.style.removeProperty("pointer-events");
     node.style.removeProperty("z-index");
     node.style.removeProperty("filter");
     node.style.removeProperty("opacity");
-    node.style.removeProperty("visibility");
     node.style.removeProperty("transform");
     node.style.removeProperty("contain");
     try {
@@ -439,8 +469,10 @@ export function TenantAccountMenu({
   const [panelStyle, setPanelStyle] = useState<CSSProperties>(ACCOUNT_MENU_DEFAULT_STYLE);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const dialogRef = useRef<HTMLDialogElement | null>(null);
   const layerRef = useRef<HTMLDivElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const contextRef = useRef<HTMLDivElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const tenantName = tenantNameFromSlug(tenantSlug);
   const scopedTenant = String(tenantSlug || "").trim().toLowerCase();
@@ -531,7 +563,12 @@ export function TenantAccountMenu({
     setDocumentMenuState(true);
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Node;
-      if (menuRef.current?.contains(target) || panelRef.current?.contains(target)) return;
+      if (
+        menuRef.current?.contains(target)
+        || panelRef.current?.contains(target)
+        || contextRef.current?.contains(target)
+        || layerRef.current?.contains(target)
+      ) return;
       closeMenu();
     };
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -596,6 +633,29 @@ export function TenantAccountMenu({
   useIsomorphicLayoutEffect(() => {
     if (open) updatePanelPosition();
   }, [open, updatePanelPosition]);
+
+  useIsomorphicLayoutEffect(() => {
+    if (!open) return;
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    try {
+      if (typeof dialog.showModal === "function" && !dialog.open) {
+        dialog.showModal();
+      } else if (!dialog.open) {
+        dialog.setAttribute("open", "");
+      }
+    } catch {
+      dialog.setAttribute("open", "");
+    }
+    return () => {
+      if (!dialog.open) return;
+      try {
+        dialog.close();
+      } catch {
+        dialog.removeAttribute("open");
+      }
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -704,150 +764,45 @@ export function TenantAccountMenu({
 
   const menuPanel = open ? (
     <>
-      <button
-        type="button"
-        aria-label="Cerrar panel de cuenta"
-        data-account-menu-backdrop="true"
-        data-testid="tenant-account-menu-backdrop"
-        className="nexid-account-backdrop"
-        onClick={closeMenu}
-      />
-      <div
-        className="nexid-account-context hidden xl:block"
-        data-testid="tenant-account-menu-context"
-        aria-label="Resumen del workspace activo"
-      >
-        <div className="rounded-[2rem] border border-cyan-200/18 bg-[radial-gradient(circle_at_10%_0%,rgba(34,211,238,.18),transparent_32%),linear-gradient(135deg,rgba(8,17,31,.94),rgba(2,8,23,.9))] p-6 text-slate-100 shadow-[0_30px_120px_rgba(0,0,0,.62)] ring-1 ring-white/8">
-          <div className="flex items-start justify-between gap-5">
-            <div className="min-w-0">
-              <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-200">Workspace activo</p>
-              <h2 className="mt-3 text-4xl font-black leading-tight tracking-[-0.03em] text-white">{tenantName}</h2>
-              <p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">{accountRoleDescription}</p>
-            </div>
-            <span className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-black uppercase tracking-[0.1em] ${
-              accountSecurityOk && setupCompleted !== false
-                ? "border-emerald-300/30 bg-emerald-400/10 text-emerald-100"
-                : "border-amber-300/30 bg-amber-400/10 text-amber-100"
-            }`}>
-              {workspaceStatus}
-            </span>
-          </div>
-
-          <div className="mt-6 grid gap-3 md:grid-cols-2">
-            {workspaceInsights.map((item) => (
-              <div key={item.label} className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
-                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">{item.label}</p>
-                <p className="mt-2 truncate text-lg font-black text-white">{item.value}</p>
-                <p className="mt-1 text-xs leading-5 text-slate-400">{item.detail}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-6 rounded-2xl border border-cyan-300/18 bg-cyan-400/8 p-4">
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Accesos SaaS</p>
-            <div className="mt-3 grid gap-2">
-              {[nextAction, ...primaryItems.slice(0, 2)].map((item) => (
-                <button
-                  key={`${item.href}-${item.label}`}
-                  type="button"
-                  className="group flex min-h-12 items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2 text-left transition hover:border-cyan-300/45 hover:bg-cyan-400/10"
-                  onClick={() => {
-                    window.location.href = item.href;
-                  }}
-                >
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-black text-white">{item.label}</span>
-                    <span className="mt-0.5 block truncate text-xs text-slate-400">{item.meta}</span>
-                  </span>
-                  <ArrowRight className="h-4 w-4 shrink-0 text-cyan-200 transition group-hover:translate-x-0.5" />
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-      <div
-        ref={layerRef}
-        role="dialog"
-        aria-modal="true"
-        className="nexid-account-layer isolate"
-        data-account-menu-portal="body"
-        data-account-menu-version={ACCOUNT_MENU_VERSION}
-        data-account-menu-source={surface}
-        data-account-menu-top-layer="portal"
-        data-testid="tenant-account-menu-layer"
-        aria-label="Cuenta operativa nexID"
-        style={ACCOUNT_LAYER_STYLE}
-      >
       <style
         data-account-menu-critical-style="true"
         data-testid="tenant-account-menu-critical-style"
         dangerouslySetInnerHTML={{ __html: ACCOUNT_MENU_CRITICAL_CSS }}
       />
-      <div
-        id="tenant-account-menu-panel"
-        ref={panelRef}
-        data-account-menu-panel="drawer"
-        data-testid="tenant-account-menu-panel"
-        style={panelStyle}
-        className="tenant-account-panel isolate flex flex-col overflow-hidden rounded-none border-l border-cyan-100/35 bg-slate-950 text-slate-100 shadow-[0_34px_140px_rgba(0,0,0,.88)] ring-1 ring-cyan-200/18"
+      <dialog
+        ref={dialogRef}
+        className="nexid-account-dialog"
+        data-account-menu-dialog="native"
+        data-testid="tenant-account-menu-dialog"
+        aria-label="Cuenta operativa nexID"
+        style={ACCOUNT_DIALOG_STYLE}
+        onCancel={(event) => {
+          event.preventDefault();
+          closeMenu();
+        }}
       >
-        <div className="tenant-account-panel__header border-b border-white/10 bg-[radial-gradient(circle_at_85%_12%,rgba(34,211,238,.2),transparent_40%),linear-gradient(135deg,#0f172a,#07111f)] p-4">
-          <div className="flex items-start gap-3">
-            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-cyan-300/25 bg-cyan-400/10 text-sm font-black text-cyan-100">
-              {initialsFor(role)}
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Cuenta operativa</p>
-              <h2 className="mt-1 text-base font-black leading-5 text-white">{accountLabel}</h2>
-              <p className="truncate text-xs text-slate-400">{email || "Cuenta enterprise"}</p>
-              <p className="mt-2 text-xs leading-5 text-slate-300">{accountRoleDescription}</p>
-            </div>
-            <button
-              ref={closeButtonRef}
-              type="button"
-              aria-label="Cerrar panel de cuenta"
-              data-testid="tenant-account-menu-close"
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/10 bg-slate-950/45 text-slate-300 transition hover:border-cyan-200/55 hover:bg-cyan-400/10 hover:text-white"
-              onClick={closeMenu}
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-          <div className="mt-4 grid grid-cols-3 gap-2 text-[10px] font-bold uppercase tracking-[0.08em]">
-            <span className="rounded-lg border border-emerald-300/25 bg-emerald-400/10 px-2 py-2 text-emerald-100">
-              {setupCompleted === false ? "setup pendiente" : "setup ok"}
-            </span>
-            <span className="rounded-lg border border-cyan-300/25 bg-cyan-400/10 px-2 py-2 text-cyan-100">
-              {isClerkSsoSession ? "sso ok" : mfaVerified ? "mfa ok" : "mfa revisar"}
-            </span>
-            <span className="rounded-lg border border-violet-300/25 bg-violet-400/10 px-2 py-2 text-violet-100">
-              {isTenantMode ? "tenant" : "global"}
-            </span>
-          </div>
-          <div
-            data-testid="tenant-account-session-summary"
-            className="mt-3 grid grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-slate-950/50 p-3 text-xs text-slate-300"
-          >
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Permisos</p>
-              <p className="mt-1 truncate font-semibold text-white">{normalizedPermissions.join(" / ")}</p>
-            </div>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Sesion</p>
-              <p className="mt-1 font-semibold text-white">{clerkEnabled ? "Clerk + nexID" : "nexID local"}</p>
-            </div>
-          </div>
-          <div
-            data-testid="tenant-account-workspace-command-center"
-            className="mt-3 rounded-2xl border border-cyan-300/18 bg-[radial-gradient(circle_at_10%_0%,rgba(34,211,238,.16),transparent_34%),linear-gradient(145deg,rgba(8,47,73,.52),rgba(15,23,42,.68))] p-3"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Command center</p>
-                <p className="mt-1 text-sm font-black text-white">Cuenta lista para operar SaaS</p>
+        <button
+          type="button"
+          aria-label="Cerrar panel de cuenta"
+          data-account-menu-backdrop="true"
+          data-testid="tenant-account-menu-backdrop"
+          className="nexid-account-backdrop"
+          onClick={closeMenu}
+        />
+        <div
+          ref={contextRef}
+          className="nexid-account-context hidden xl:block"
+          data-testid="tenant-account-menu-context"
+          aria-label="Resumen del workspace activo"
+        >
+          <div className="rounded-[2rem] border border-cyan-200/18 bg-[radial-gradient(circle_at_10%_0%,rgba(34,211,238,.18),transparent_32%),linear-gradient(135deg,rgba(8,17,31,.94),rgba(2,8,23,.9))] p-6 text-slate-100 shadow-[0_30px_120px_rgba(0,0,0,.62)] ring-1 ring-white/8">
+            <div className="flex items-start justify-between gap-5">
+              <div className="min-w-0">
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-200">Workspace activo</p>
+                <h2 className="mt-3 text-4xl font-black leading-tight tracking-[-0.03em] text-white">{tenantName}</h2>
+                <p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">{accountRoleDescription}</p>
               </div>
-              <span className={`rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.08em] ${
+              <span className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-black uppercase tracking-[0.1em] ${
                 accountSecurityOk && setupCompleted !== false
                   ? "border-emerald-300/30 bg-emerald-400/10 text-emerald-100"
                   : "border-amber-300/30 bg-amber-400/10 text-amber-100"
@@ -855,53 +810,171 @@ export function TenantAccountMenu({
                 {workspaceStatus}
               </span>
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-2">
+
+            <div className="mt-6 grid gap-3 md:grid-cols-2">
               {workspaceInsights.map((item) => (
-                <div key={item.label} className="rounded-xl border border-white/10 bg-slate-950/45 p-3">
-                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{item.label}</p>
-                  <p className="mt-1 truncate text-sm font-black text-white">{item.value}</p>
-                  <p className="mt-1 text-[11px] leading-4 text-slate-400">{item.detail}</p>
+                <div key={item.label} className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
+                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">{item.label}</p>
+                  <p className="mt-2 truncate text-lg font-black text-white">{item.value}</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-400">{item.detail}</p>
                 </div>
               ))}
             </div>
-          </div>
-          <button
-            type="button"
-            data-testid="tenant-account-primary-action"
-            className="mt-4 flex w-full items-center justify-between gap-3 rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-3 py-3 text-left text-sm font-black text-cyan-50 transition hover:border-cyan-200/70 hover:bg-cyan-400/20"
-            onClick={() => {
-              window.location.href = nextAction.href;
-            }}
-          >
-            <span className="min-w-0">
-              <span className="block">{nextAction.label}</span>
-              <span className="mt-0.5 block text-xs font-semibold normal-case text-cyan-100/75">{nextAction.meta}</span>
-            </span>
-            <span aria-hidden="true" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-cyan-200/20 bg-cyan-300/10">
-              <ArrowRight className="h-4 w-4" />
-            </span>
-          </button>
-        </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-3">
-          <div className="grid gap-2">
-            {primaryItems.map(renderItem)}
-          </div>
-          <div className="my-3 h-px bg-white/8" />
-          <div className="grid gap-2">
-            {operationsItems.map(renderItem)}
+            <div className="mt-6 rounded-2xl border border-cyan-300/18 bg-cyan-400/8 p-4">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Accesos SaaS</p>
+              <div className="mt-3 grid gap-2">
+                {[nextAction, ...primaryItems.slice(0, 2)].map((item) => (
+                  <button
+                    key={`${item.href}-${item.label}`}
+                    type="button"
+                    className="group flex min-h-12 items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2 text-left transition hover:border-cyan-300/45 hover:bg-cyan-400/10"
+                    onClick={() => {
+                      window.location.href = item.href;
+                    }}
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-black text-white">{item.label}</span>
+                      <span className="mt-0.5 block truncate text-xs text-slate-400">{item.meta}</span>
+                    </span>
+                    <ArrowRight className="h-4 w-4 shrink-0 text-cyan-200 transition group-hover:translate-x-0.5" />
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
+        <div
+          ref={layerRef}
+          role="document"
+          className="nexid-account-layer isolate"
+          data-account-menu-portal="body"
+          data-account-menu-version={ACCOUNT_MENU_VERSION}
+          data-account-menu-source={surface}
+          data-account-menu-top-layer="native-dialog"
+          data-testid="tenant-account-menu-layer"
+          aria-label="Cuenta operativa nexID"
+          style={ACCOUNT_LAYER_STYLE}
+        >
+        <div
+          id="tenant-account-menu-panel"
+          ref={panelRef}
+          data-account-menu-panel="drawer"
+          data-testid="tenant-account-menu-panel"
+          style={panelStyle}
+          className="tenant-account-panel isolate flex flex-col overflow-hidden rounded-none border-l border-cyan-100/35 bg-slate-950 text-slate-100 shadow-[0_34px_140px_rgba(0,0,0,.88)] ring-1 ring-cyan-200/18"
+        >
+          <div className="tenant-account-panel__header border-b border-white/10 bg-[radial-gradient(circle_at_85%_12%,rgba(34,211,238,.2),transparent_40%),linear-gradient(135deg,#0f172a,#07111f)] p-4">
+            <div className="flex items-start gap-3">
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-cyan-300/25 bg-cyan-400/10 text-sm font-black text-cyan-100">
+                {initialsFor(role)}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Cuenta operativa</p>
+                <h2 className="mt-1 text-base font-black leading-5 text-white">{accountLabel}</h2>
+                <p className="truncate text-xs text-slate-400">{email || "Cuenta enterprise"}</p>
+                <p className="mt-2 text-xs leading-5 text-slate-300">{accountRoleDescription}</p>
+              </div>
+              <button
+                ref={closeButtonRef}
+                type="button"
+                aria-label="Cerrar panel de cuenta"
+                data-testid="tenant-account-menu-close"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/10 bg-slate-950/45 text-slate-300 transition hover:border-cyan-200/55 hover:bg-cyan-400/10 hover:text-white"
+                onClick={closeMenu}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="mt-4 grid grid-cols-3 gap-2 text-[10px] font-bold uppercase tracking-[0.08em]">
+              <span className="rounded-lg border border-emerald-300/25 bg-emerald-400/10 px-2 py-2 text-emerald-100">
+                {setupCompleted === false ? "setup pendiente" : "setup ok"}
+              </span>
+              <span className="rounded-lg border border-cyan-300/25 bg-cyan-400/10 px-2 py-2 text-cyan-100">
+                {isClerkSsoSession ? "sso ok" : mfaVerified ? "mfa ok" : "mfa revisar"}
+              </span>
+              <span className="rounded-lg border border-violet-300/25 bg-violet-400/10 px-2 py-2 text-violet-100">
+                {isTenantMode ? "tenant" : "global"}
+              </span>
+            </div>
+            <div
+              data-testid="tenant-account-session-summary"
+              className="mt-3 grid grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-slate-950/50 p-3 text-xs text-slate-300"
+            >
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Permisos</p>
+                <p className="mt-1 truncate font-semibold text-white">{normalizedPermissions.join(" / ")}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Sesion</p>
+                <p className="mt-1 font-semibold text-white">{clerkEnabled ? "Clerk + nexID" : "nexID local"}</p>
+              </div>
+            </div>
+            <div
+              data-testid="tenant-account-workspace-command-center"
+              className="mt-3 rounded-2xl border border-cyan-300/18 bg-[radial-gradient(circle_at_10%_0%,rgba(34,211,238,.16),transparent_34%),linear-gradient(145deg,rgba(8,47,73,.52),rgba(15,23,42,.68))] p-3"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Command center</p>
+                  <p className="mt-1 text-sm font-black text-white">Cuenta lista para operar SaaS</p>
+                </div>
+                <span className={`rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.08em] ${
+                  accountSecurityOk && setupCompleted !== false
+                    ? "border-emerald-300/30 bg-emerald-400/10 text-emerald-100"
+                    : "border-amber-300/30 bg-amber-400/10 text-amber-100"
+                }`}>
+                  {workspaceStatus}
+                </span>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {workspaceInsights.map((item) => (
+                  <div key={item.label} className="rounded-xl border border-white/10 bg-slate-950/45 p-3">
+                    <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{item.label}</p>
+                    <p className="mt-1 truncate text-sm font-black text-white">{item.value}</p>
+                    <p className="mt-1 text-[11px] leading-4 text-slate-400">{item.detail}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <button
+              type="button"
+              data-testid="tenant-account-primary-action"
+              className="mt-4 flex w-full items-center justify-between gap-3 rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-3 py-3 text-left text-sm font-black text-cyan-50 transition hover:border-cyan-200/70 hover:bg-cyan-400/20"
+              onClick={() => {
+                window.location.href = nextAction.href;
+              }}
+            >
+              <span className="min-w-0">
+                <span className="block">{nextAction.label}</span>
+                <span className="mt-0.5 block text-xs font-semibold normal-case text-cyan-100/75">{nextAction.meta}</span>
+              </span>
+              <span aria-hidden="true" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-cyan-200/20 bg-cyan-300/10">
+                <ArrowRight className="h-4 w-4" />
+              </span>
+            </button>
+          </div>
 
-        <div className="border-t border-white/10 bg-[#020817] p-3">
-          {clerkEnabled ? (
-            <SecureLogoutButton clerkEnabled={clerkEnabled} onStart={() => setDocumentMenuState(false)} />
-          ) : (
-            <SecureLogoutButton clerkEnabled={false} />
-          )}
+          <div className="min-h-0 flex-1 overflow-y-auto p-3">
+            <div className="grid gap-2">
+              {primaryItems.map(renderItem)}
+            </div>
+            <div className="my-3 h-px bg-white/8" />
+            <div className="grid gap-2">
+              {operationsItems.map(renderItem)}
+            </div>
+          </div>
+
+          <div className="border-t border-white/10 bg-[#020817] p-3">
+            {clerkEnabled ? (
+              <SecureLogoutButton clerkEnabled={clerkEnabled} onStart={() => setDocumentMenuState(false)} />
+            ) : (
+              <SecureLogoutButton clerkEnabled={false} />
+            )}
+          </div>
         </div>
       </div>
-    </div>
+      </dialog>
     </>
   ) : null;
   const activePortalRoot = typeof document !== "undefined" ? (portalRoot || getAccountMenuPortalRoot()) : null;

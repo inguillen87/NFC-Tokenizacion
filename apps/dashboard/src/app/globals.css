@@ -1143,9 +1143,31 @@ body.nexid-account-menu-open {
 
 body.nexid-account-menu-open > :not(#nexid-account-menu-root):not(script):not(style),
 html.nexid-account-menu-open body > :not(#nexid-account-menu-root):not(script):not(style) {
-  visibility: hidden !important;
   pointer-events: none !important;
   user-select: none !important;
+}
+
+.nexid-account-dialog {
+  position: fixed !important;
+  inset: 0 !important;
+  display: block !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: inherit !important;
+  overflow: hidden !important;
+  z-index: 2147483647 !important;
+}
+
+.nexid-account-dialog::backdrop {
+  background:
+    radial-gradient(circle at 82% 8%, rgba(34, 211, 238, 0.18), transparent 34%),
+    rgba(2, 6, 23, 0.88) !important;
 }
 
 #nexid-account-menu-root {
@@ -1329,12 +1351,10 @@ html[data-theme="light"] .nexid-account-layer .tenant-account-panel__header .tex
 html.nexid-account-menu-open .nexid-crm-shell,
 body.nexid-account-menu-open .nexid-crm-shell,
 .nexid-crm-shell[data-account-menu-suppressed="true"] {
-  display: none !important;
   pointer-events: none !important;
   z-index: 0 !important;
-  filter: saturate(0.78) brightness(0.48) blur(0.5px) !important;
-  opacity: 0 !important;
-  visibility: hidden !important;
+  filter: saturate(0.72) brightness(0.44) blur(0.5px) !important;
+  opacity: 0.28 !important;
   transform: none !important;
   contain: none !important;
   user-select: none !important;
