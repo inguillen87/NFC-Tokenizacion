@@ -8,8 +8,11 @@ import {
   ChevronDown,
   CreditCard,
   ArrowRight,
+  FileSearch,
+  FlaskConical,
   KeyRound,
   LifeBuoy,
+  Network,
   Settings,
   ShieldCheck,
   Users,
@@ -750,7 +753,7 @@ export function TenantAccountMenu({
     {
       href: "/settings",
       icon: <Settings className="h-4 w-4" />,
-      label: "Configuración del workspace",
+      label: "Configuracion del workspace",
       meta: "Tenant, seguridad, datos, integraciones y soporte",
     },
     {
@@ -763,7 +766,7 @@ export function TenantAccountMenu({
       href: canManageUsers ? "/users" : "/settings",
       icon: <Users className="h-4 w-4" />,
       label: canManageUsers ? "Usuarios y permisos" : "Permisos del workspace",
-      meta: canManageUsers ? "Roles, alcance por recurso, reset y MFA" : "Solicitudes, políticas y alcance autorizado",
+      meta: canManageUsers ? "Roles, alcance por recurso, reset y MFA" : "Solicitudes, politicas y alcance autorizado",
     },
     {
       href: "/mfa",
@@ -775,6 +778,24 @@ export function TenantAccountMenu({
 
   const operationsItems = useMemo<AccountMenuItem[]>(() => [
     {
+      href: "/proof",
+      icon: <FileSearch className="h-4 w-4" />,
+      label: "Proof, IOTA y anchors",
+      meta: "Hashes, Merkle roots, decoder y recibos publicos",
+    },
+    {
+      href: "/demo-lab",
+      icon: <FlaskConical className="h-4 w-4" />,
+      label: "Demo Lab enterprise",
+      meta: "Secure Delivery, pharma, agro y ventas guiadas",
+    },
+    {
+      href: "/tokenization",
+      icon: <Network className="h-4 w-4" />,
+      label: "Polygon ownership",
+      meta: "Claims, certificados, warranty y ownership transferible",
+    },
+    {
       href: `/api-keys${tenantQuery}`,
       icon: <KeyRound className="h-4 w-4" />,
       label: "API keys y webhooks",
@@ -783,20 +804,20 @@ export function TenantAccountMenu({
     {
       href: `/subscriptions${tenantQuery}`,
       icon: <CreditCard className="h-4 w-4" />,
-      label: "Plan y facturación",
-      meta: "Plan, renovación, uso y upgrade path",
+      label: "Plan y facturacion",
+      meta: "Plan, renovacion, uso y upgrade path",
     },
     {
       href: "/sales-playbook",
       icon: <BookOpen className="h-4 w-4" />,
       label: "Playbook comercial",
-      meta: "Cómo explicar valor, riesgo y ROI",
+      meta: "Como explicar valor, riesgo y ROI",
     },
     {
       href: "mailto:soporte@nexid.lat?subject=nexID%20enterprise%20support",
       icon: <LifeBuoy className="h-4 w-4" />,
       label: "Soporte enterprise",
-      meta: "Cuenta, integración, incidentes o preventa",
+      meta: "Cuenta, integracion, incidentes o preventa",
       external: true,
     },
   ], [tenantQuery]);
@@ -1072,7 +1093,7 @@ export function TenantAccountMenu({
         data-account-menu-compact={surface === "dashboard" ? "true" : undefined}
         data-account-menu-trigger-surface={surface}
         data-account-menu-open={open ? "true" : "false"}
-        title="Abrir cuenta, configuración y logout del workspace"
+        title="Abrir cuenta, configuracion y logout del workspace"
         className="flex min-h-14 w-full items-center gap-3 overflow-hidden rounded-xl border border-white/12 bg-slate-950/65 px-3 py-2 text-left shadow-[0_16px_38px_rgba(2,6,23,.22)] transition hover:border-cyan-300/40 hover:bg-cyan-400/10 lg:min-w-[190px]"
         onKeyDown={(event) => {
           if (event.key !== "Escape") return;

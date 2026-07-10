@@ -5,9 +5,13 @@ import {
   Building2,
   CheckCircle2,
   CreditCard,
+  FileSearch,
+  FlaskConical,
   KeyRound,
   LifeBuoy,
+  Network,
   ShieldCheck,
+  Terminal,
   Users,
 } from "lucide-react";
 import { Badge, Card, SectionHeading } from "@product/ui";
@@ -81,6 +85,42 @@ export default async function SettingsPage() {
       : { href: tenantHref, label: "Abrir workspace", meta: "Perfil, plan, health y acciones del tenant" };
 
   const tiles: SettingsTile[] = [
+    {
+      href: "/proof",
+      label: "Proof, IOTA y anchors",
+      eyebrow: "Trust layer",
+      body: "Verificador de hashes, Merkle roots, decoder para explorer y recibos publicos hash-only.",
+      proof: "Auditoria externa sin exponer UIDs, rutas ni datos privados.",
+      tone: "green",
+      icon: <FileSearch className="h-5 w-5" />,
+    },
+    {
+      href: "/tokenization",
+      label: "Polygon ownership",
+      eyebrow: "Ownership",
+      body: "Certificados, claims, garantia transferible y propiedad separados de la prueba IOTA.",
+      proof: "Polygon no reemplaza proof: prueba derechos y ownership.",
+      tone: "violet",
+      icon: <Network className="h-5 w-5" />,
+    },
+    {
+      href: "/demo-lab",
+      label: "Demo Lab enterprise",
+      eyebrow: "Sales demo",
+      body: "Secure Delivery, pharma, agro, proof verifier y mobile flows para explicar valor en vivo.",
+      proof: "Ruta comercial para clientes, inversores y C-level.",
+      tone: "cyan",
+      icon: <FlaskConical className="h-5 w-5" />,
+    },
+    {
+      href: "/sdk-vision",
+      label: "SDK/API integration",
+      eyebrow: "Developers",
+      body: "Guia para conectar taps, ERP, CRM, POS, webhooks, mobile verifier y backend privado.",
+      proof: "Camino tecnico desde demo a integracion real.",
+      tone: "amber",
+      icon: <Terminal className="h-5 w-5" />,
+    },
     {
       href: tenantHref,
       label: tenantSlug ? `Perfil ${tenantName}` : "Directorio de tenants",
@@ -244,6 +284,20 @@ export default async function SettingsPage() {
               className="flex min-h-12 items-center justify-between rounded-xl border border-white/10 bg-slate-950/55 px-4 py-3 font-bold text-slate-100 transition hover:border-cyan-300/40 hover:text-cyan-100"
             >
               Ver workspace asociado
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link
+              href="/proof"
+              className="flex min-h-12 items-center justify-between rounded-xl border border-white/10 bg-slate-950/55 px-4 py-3 font-bold text-slate-100 transition hover:border-emerald-300/40 hover:text-emerald-100"
+            >
+              Abrir Proof Verifier
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link
+              href="/demo-lab"
+              className="flex min-h-12 items-center justify-between rounded-xl border border-white/10 bg-slate-950/55 px-4 py-3 font-bold text-slate-100 transition hover:border-cyan-300/40 hover:text-cyan-100"
+            >
+              Abrir Demo Lab
               <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
