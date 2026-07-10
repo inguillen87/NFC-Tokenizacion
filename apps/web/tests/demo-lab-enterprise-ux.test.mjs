@@ -365,7 +365,11 @@ test("brand synergy simulator is readable, auto-cycles and stays mobile-safe", a
   assert.match(css, /brand-synergy-outcome-grid > article/);
   assert.match(css, /html\.theme-light \.brand-synergy-live-panel/);
   assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*\.brand-synergy-live-panel__metrics\s*\{[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
-  assert.match(css, /brand-synergy-flow\s*\{[\s\S]*grid-template-columns:\s*1fr/);
+  assert.match(css, /brand-synergy-flow\s*\{[\s\S]*grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /brand-synergy-proof-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /brand-synergy-proof-grid span\s*\{[\s\S]*display:\s*none/);
   assert.match(css, /brand-synergy-scenario-pill\s*\{[\s\S]*flex:\s*1 1 100%/);
-  assert.match(css, /brand-synergy-outcome-grid\s*\{[\s\S]*grid-template-columns:\s*1fr/);
+  assert.match(css, /brand-synergy-outcome-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /brand-synergy-terminal__chrome\s*\{[\s\S]*flex-direction:\s*row !important/);
+  assert.match(css, /@media \(max-width:\s*360px\)[\s\S]*\.brand-synergy-outcome-grid\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
 });
