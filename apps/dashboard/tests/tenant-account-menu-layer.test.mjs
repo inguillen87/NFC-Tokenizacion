@@ -11,7 +11,7 @@ const serviceWorkerSource = await readFile(new URL("../public/sw.js", import.met
 test("tenant account menu uses a native top-layer dialog above CRM/map layers", () => {
   assert.match(menuSource, /const ACCOUNT_MENU_PORTAL_ROOT_ID = "nexid-account-menu-root"/);
   assert.match(menuSource, /const ACCOUNT_MENU_Z_INDEX = 2147483647/);
-  assert.match(menuSource, /const ACCOUNT_MENU_VERSION = "drawer-v19-modal-top-layer"/);
+  assert.match(menuSource, /const ACCOUNT_MENU_VERSION = "drawer-v20-modal-scrim"/);
   assert.match(menuSource, /function showAccountMenuDialog\(dialog\?: HTMLDialogElement \| null\)/);
   assert.match(menuSource, /dialog\.matches\(":modal"\)/);
   assert.match(menuSource, /dialog\.setAttribute\("data-account-menu-modal-state", "native-modal"\)/);
@@ -26,10 +26,16 @@ test("tenant account menu uses a native top-layer dialog above CRM/map layers", 
   assert.match(menuSource, /root\.style\.setProperty\("width", "100vw", "important"\)/);
   assert.match(menuSource, /root\.style\.setProperty\("height", "100dvh", "important"\)/);
   assert.match(menuSource, /const ACCOUNT_OVERLAY_STYLE: CSSProperties = \{/);
+  assert.match(menuSource, /const ACCOUNT_BACKDROP_STYLE: CSSProperties = \{/);
   assert.match(menuSource, /className="nexid-account-dialog nexid-account-overlay"/);
   assert.match(menuSource, /<dialog[\s\S]*ref=\{dialogRef\}/);
+  assert.match(menuSource, /className="nexid-account-scrim"/);
+  assert.match(menuSource, /data-testid="tenant-account-menu-scrim"/);
+  assert.match(menuSource, /style=\{ACCOUNT_BACKDROP_STYLE\}/);
   assert.match(menuSource, /dialog\.showModal\(\)/);
   assert.match(menuSource, /dialog\.close\(\)/);
+  assert.match(menuSource, /dialog\.style\.setProperty\("z-index", String\(ACCOUNT_MENU_Z_INDEX\), "important"\)/);
+  assert.match(menuSource, /dialog\.style\.setProperty\(\s*"background",/);
   assert.match(menuSource, /data-account-menu-dialog="native-top-layer"/);
   assert.match(menuSource, /data-testid="tenant-account-menu-dialog"/);
   assert.match(menuSource, /role="dialog"/);
@@ -60,10 +66,13 @@ test("global CSS keeps the account overlay visually above the dashboard", () => 
   assert.match(globalsSource, /#nexid-account-menu-root\[data-account-menu-active="true"\]/);
   assert.match(globalsSource, /\.nexid-account-dialog,\s*\.nexid-account-overlay\s*\{[\s\S]*max-width:\s*none !important/);
   assert.match(globalsSource, /\.nexid-account-dialog::backdrop\s*\{[\s\S]*backdrop-filter:\s*blur\(2px\) saturate\(0\.72\) !important/);
+  assert.match(globalsSource, /\.nexid-account-scrim,\s*\.nexid-account-backdrop\s*\{[\s\S]*z-index:\s*2147483646 !important/);
+  assert.match(globalsSource, /\.nexid-account-scrim,\s*\.nexid-account-backdrop\s*\{[\s\S]*backdrop-filter:\s*blur\(8px\) saturate\(0\.66\) !important/);
+  assert.match(globalsSource, /\.nexid-account-scrim,\s*\.nexid-account-backdrop\s*\{[\s\S]*rgba\(2, 6, 23, 0\.96\)/);
   assert.match(globalsSource, /\.nexid-account-overlay\s*\{[\s\S]*position:\s*fixed !important/);
   assert.match(globalsSource, /\.nexid-account-overlay\s*\{[\s\S]*rgba\(2, 6, 23, 0\.98\) !important/);
   assert.match(globalsSource, /\.nexid-account-layer\s*\{[\s\S]*z-index:\s*2147483647 !important/);
-  assert.match(globalsSource, /\.nexid-account-backdrop\s*\{[\s\S]*z-index:\s*2147483646 !important/);
+  assert.match(globalsSource, /\.nexid-account-scrim,\s*\.nexid-account-backdrop\s*\{[\s\S]*z-index:\s*2147483646 !important/);
   assert.match(globalsSource, /html\.nexid-account-menu-open \.nexid-crm-shell,\s*body\.nexid-account-menu-open \.nexid-crm-shell,\s*\.nexid-crm-shell\[data-account-menu-suppressed="true"\]\s*\{[\s\S]*visibility:\s*hidden !important/);
   assert.match(globalsSource, /html\.nexid-account-menu-open \.nexid-crm-shell,\s*body\.nexid-account-menu-open \.nexid-crm-shell,\s*\.nexid-crm-shell\[data-account-menu-suppressed="true"\]\s*\{[\s\S]*opacity:\s*0 !important/);
   assert.match(globalsSource, /html\.nexid-account-menu-open \.nexid-crm-shell \[id="live-tap-map"\]/);
@@ -82,7 +91,8 @@ test("account drawer exposes expected SaaS account actions and secure logout", (
   assert.match(menuSource, /<SecureDashboardLogoutButton/);
   assert.match(menuSource, /testId="tenant-account-logout"/);
   assert.match(secureLogoutSource, /await fetch\("\/logout", \{ method: "POST", cache: "no-store" \}\)/);
-  assert.match(secureLogoutSource, /await signOut\(\{ redirectUrl: "\/login\?logged_out=1" \}\)/);
+  assert.match(secureLogoutSource, /const LOGOUT_REDIRECT = "\/login\?logged_out=1"/);
+  assert.match(secureLogoutSource, /signOut\(\{ redirectUrl: LOGOUT_REDIRECT \}\)/);
 });
 
 test("dashboard PWA registration is opt-in so stale admin CSS cannot mask fixes", () => {

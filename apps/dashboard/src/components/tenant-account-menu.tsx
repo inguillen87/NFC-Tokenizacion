@@ -46,7 +46,7 @@ const ACCOUNT_MENU_Z_INDEX = 2147483647;
 const ACCOUNT_MENU_BACKDROP_Z_INDEX = ACCOUNT_MENU_Z_INDEX - 1;
 const ACCOUNT_MENU_PANEL_Z_INDEX = ACCOUNT_MENU_Z_INDEX;
 const ACCOUNT_MENU_PORTAL_ROOT_ID = "nexid-account-menu-root";
-const ACCOUNT_MENU_VERSION = "drawer-v19-modal-top-layer";
+const ACCOUNT_MENU_VERSION = "drawer-v20-modal-scrim";
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 const ACCOUNT_MENU_CRITICAL_CSS = `
 html.nexid-account-menu-open,
@@ -88,6 +88,20 @@ html.nexid-account-menu-open body > :not(#nexid-account-menu-root):not(script):n
     radial-gradient(circle at 82% 8%, rgba(34, 211, 238, 0.12), transparent 34%),
     rgba(2, 6, 23, 0.82) !important;
   backdrop-filter: blur(2px) saturate(0.72) !important;
+}
+.nexid-account-scrim,
+.nexid-account-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: ${ACCOUNT_MENU_BACKDROP_Z_INDEX} !important;
+  background:
+    radial-gradient(circle at 78% 8%, rgba(34, 211, 238, 0.18), transparent 34%),
+    linear-gradient(90deg, rgba(2, 6, 23, 0.96), rgba(2, 8, 23, 0.92) 52%, rgba(2, 6, 23, 0.98)) !important;
+  backdrop-filter: blur(8px) saturate(0.66) !important;
+  pointer-events: auto !important;
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
 }
 .nexid-account-dialog:not([open]) {
   display: none !important;
@@ -139,16 +153,6 @@ body.nexid-account-menu-open #nexid-account-menu-root {
     linear-gradient(180deg, #08111f 0%, #020817 48%, #020817 100%) !important;
   color: inherit !important;
   box-shadow: -44px 0 140px rgba(0, 0, 0, 0.82) !important;
-}
-.nexid-account-backdrop {
-  position: fixed !important;
-  inset: 0 !important;
-  z-index: ${ACCOUNT_MENU_BACKDROP_Z_INDEX} !important;
-  background: transparent !important;
-  pointer-events: auto !important;
-  border: 0 !important;
-  padding: 0 !important;
-  margin: 0 !important;
 }
 .nexid-account-context {
   position: fixed !important;
@@ -289,6 +293,20 @@ const ACCOUNT_OVERLAY_STYLE: CSSProperties = {
   color: "inherit",
   isolation: "isolate",
 };
+const ACCOUNT_BACKDROP_STYLE: CSSProperties = {
+  position: "fixed",
+  zIndex: ACCOUNT_MENU_BACKDROP_Z_INDEX,
+  inset: 0,
+  width: "100vw",
+  height: "100dvh",
+  border: 0,
+  margin: 0,
+  padding: 0,
+  pointerEvents: "auto",
+  background:
+    "radial-gradient(circle at 78% 8%, rgba(34,211,238,.18), transparent 34%), linear-gradient(90deg, rgba(2,6,23,.96), rgba(2,8,23,.92) 52%, rgba(2,6,23,.98))",
+  backdropFilter: "blur(8px) saturate(0.66)",
+};
 const ACCOUNT_MENU_DEFAULT_STYLE: CSSProperties = {
   position: "relative",
   zIndex: ACCOUNT_MENU_PANEL_Z_INDEX,
@@ -427,6 +445,25 @@ function forceAccountMenuModalLayer(
   dialog?: HTMLDialogElement | null,
 ) {
   showAccountMenuDialog(dialog);
+  if (dialog) {
+    dialog.style.setProperty("position", "fixed", "important");
+    dialog.style.setProperty("inset", "0", "important");
+    dialog.style.setProperty("z-index", String(ACCOUNT_MENU_Z_INDEX), "important");
+    dialog.style.setProperty("width", "100vw", "important");
+    dialog.style.setProperty("height", "100dvh", "important");
+    dialog.style.setProperty("max-width", "none", "important");
+    dialog.style.setProperty("max-height", "none", "important");
+    dialog.style.setProperty("display", "block", "important");
+    dialog.style.setProperty("visibility", "visible", "important");
+    dialog.style.setProperty("opacity", "1", "important");
+    dialog.style.setProperty("pointer-events", "auto", "important");
+    dialog.style.setProperty("isolation", "isolate", "important");
+    dialog.style.setProperty(
+      "background",
+      "radial-gradient(circle at 82% 8%, rgba(34, 211, 238, 0.2), transparent 34%), rgba(2, 6, 23, 0.98)",
+      "important",
+    );
+  }
   if (root) {
     promoteAccountMenuPortalRoot(root);
     setActiveDataAttribute(root, "data-account-menu-active", true);
@@ -878,12 +915,19 @@ export function TenantAccountMenu({
           closeMenu();
         }}
       >
+        <div
+          aria-hidden="true"
+          className="nexid-account-scrim"
+          data-testid="tenant-account-menu-scrim"
+          style={ACCOUNT_BACKDROP_STYLE}
+        />
         <button
           type="button"
           aria-label="Cerrar panel de cuenta"
           data-account-menu-backdrop="true"
           data-testid="tenant-account-menu-backdrop"
           className="nexid-account-backdrop"
+          style={ACCOUNT_BACKDROP_STYLE}
           onClick={closeMenu}
         />
         <div
