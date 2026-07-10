@@ -53,6 +53,7 @@ export default function SignInPage() {
             {bodegaDemoAllowed ? (
               <Link
                 href="/api/session/demo?role=tenant-admin"
+                prefetch={false}
                 data-testid="sign-in-bodega-demo-link"
                 title="Entrar como Bodega Balmec"
                 className="rounded-2xl border border-cyan-300/25 bg-cyan-400/10 p-4 text-left transition hover:border-cyan-200/70 hover:bg-cyan-400/15"

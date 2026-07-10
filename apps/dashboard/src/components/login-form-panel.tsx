@@ -176,6 +176,7 @@ export function LoginFormPanel({
             {bodegaDemoAllowed ? (
               <Link
                 href="/api/session/demo?role=tenant-admin"
+                prefetch={false}
                 data-testid="login-bodega-demo-button"
                 title="Entrar como Bodega Balmec"
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-cyan-200/40 bg-cyan-300 px-4 py-3 text-sm font-black text-slate-950 shadow-[0_18px_50px_rgba(34,211,238,.22)] transition hover:bg-cyan-200"

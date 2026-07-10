@@ -59,8 +59,21 @@ function useSecureCookie(req: Request) {
   return process.env.NODE_ENV === "production";
 }
 
+function isNavigationPrefetch(req: Request, url: URL) {
+  return (
+    url.searchParams.has("_rsc") ||
+    req.headers.get("next-router-prefetch") === "1" ||
+    req.headers.get("purpose")?.toLowerCase() === "prefetch" ||
+    req.headers.get("sec-purpose")?.toLowerCase() === "prefetch"
+  );
+}
+
 export async function GET(req: Request) {
   const url = new URL(req.url);
+  if (isNavigationPrefetch(req, url)) {
+    console.info("[dashboard_login_audit]", JSON.stringify({ event: "demo_login_prefetch_ignored" }));
+    return new NextResponse(null, { status: 204 });
+  }
   const role = normalizeRole(url.searchParams.get("role"));
   if (role === "super-admin") {
     console.info("[dashboard_login_audit]", JSON.stringify({ event: "direct_operational_login_denied", reason: "superadmin_requires_clerk", role }));
