@@ -134,9 +134,10 @@ export function DemoLabThemeToggle({ initialTheme = "dark", initialReturnTo = "/
         <button
           suppressHydrationWarning
           type="submit"
+          data-demo-lab-theme-toggle
           aria-label={initialNextTheme === "light" ? "Activar modo claro" : "Activar modo oscuro"}
           title={initialNextTheme === "light" ? "Activar modo claro" : "Activar modo oscuro"}
-          className="theme-toggle inline-flex h-11 w-11 min-h-11 min-w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-500 transition hover:bg-white/10 md:h-8 md:w-8 md:min-h-8 md:min-w-8"
+          className="demo-lab-theme-toggle theme-toggle inline-flex h-11 w-11 min-h-11 min-w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-500 transition hover:bg-white/10 md:h-8 md:w-8 md:min-h-8 md:min-w-8"
         >
           {initialTheme === "dark" ? (
             <Sun className="w-3.5 h-3.5" />
@@ -155,10 +156,11 @@ export function DemoLabThemeToggle({ initialTheme = "dark", initialReturnTo = "/
       <button
         suppressHydrationWarning
         type="submit"
+        data-demo-lab-theme-toggle
         onClick={onToggle}
         aria-label={nextTheme === "light" ? "Activar modo claro" : "Activar modo oscuro"}
         title={nextTheme === "light" ? "Activar modo claro" : "Activar modo oscuro"}
-        className="theme-toggle inline-flex h-11 w-11 min-h-11 min-w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-400 transition hover:border-cyan-400/30 hover:bg-white/10 hover:text-cyan-300 md:h-8 md:w-8 md:min-h-8 md:min-w-8"
+        className="demo-lab-theme-toggle theme-toggle inline-flex h-11 w-11 min-h-11 min-w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-400 transition hover:border-cyan-400/30 hover:bg-white/10 hover:text-cyan-300 md:h-8 md:w-8 md:min-h-8 md:min-w-8"
       >
         {theme === "dark" ? (
           <Sun className="w-3.5 h-3.5" />

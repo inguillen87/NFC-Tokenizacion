@@ -9,9 +9,11 @@ const serviceWorkerSource = await readFile(new URL("../public/sw.js", import.met
 
 test("tenant account menu renders as a top-level drawer above CRM layers", () => {
   assert.match(menuSource, /const ACCOUNT_MENU_PORTAL_ROOT_ID = "nexid-account-menu-root"/);
+  assert.match(menuSource, /import \{ createPortal, flushSync \} from "react-dom"/);
   assert.match(menuSource, /function getAccountMenuPortalRoot\(\)/);
   assert.match(menuSource, /function promoteAccountMenuPortalRoot\(root: HTMLElement\)/);
   assert.match(menuSource, /root\.setAttribute\("data-account-menu-root", "true"\)/);
+  assert.match(menuSource, /root\.setAttribute\("data-account-menu-version", ACCOUNT_MENU_VERSION\)/);
   assert.match(menuSource, /document\.body\.appendChild\(root\)/);
   assert.match(menuSource, /root\.parentElement !== document\.body \|\| root !== document\.body\.lastElementChild/);
   assert.match(menuSource, /root\.style\.setProperty\("z-index", String\(ACCOUNT_MENU_Z_INDEX\), "important"\)/);
@@ -34,7 +36,7 @@ test("tenant account menu renders as a top-level drawer above CRM layers", () =>
   assert.match(menuSource, /const ACCOUNT_MENU_Z_INDEX = 2147483647/);
   assert.match(menuSource, /const ACCOUNT_MENU_BACKDROP_Z_INDEX = ACCOUNT_MENU_Z_INDEX - 1/);
   assert.match(menuSource, /const ACCOUNT_MENU_PANEL_Z_INDEX = ACCOUNT_MENU_Z_INDEX/);
-  assert.match(menuSource, /const ACCOUNT_MENU_VERSION = "drawer-v14-command-center-top-layer"/);
+  assert.match(menuSource, /const ACCOUNT_MENU_VERSION = "drawer-v15-sync-top-layer"/);
   assert.match(menuSource, /const ACCOUNT_MENU_CRITICAL_CSS = `/);
   assert.match(menuSource, /body\.nexid-account-menu-open > :not\(#nexid-account-menu-root\):not\(script\):not\(style\)/);
   assert.match(menuSource, /html\.nexid-account-menu-open body > :not\(#nexid-account-menu-root\):not\(script\):not\(style\)/);
@@ -78,6 +80,8 @@ test("tenant account menu renders as a top-level drawer above CRM layers", () =>
   assert.match(menuSource, /const openRef = useRef\(open\)/);
   assert.match(menuSource, /const lastActivationRef = useRef\(0\)/);
   assert.match(menuSource, /const openMenu = useCallback/);
+  assert.match(menuSource, /const root = getAccountMenuPortalRoot\(\)/);
+  assert.match(menuSource, /flushSync\(\(\) => \{/);
   assert.match(menuSource, /const prepareMenuPortalRoot = useCallback/);
   assert.match(menuSource, /const activateMenu = useCallback/);
   assert.match(menuSource, /now - lastActivationRef\.current < 220/);

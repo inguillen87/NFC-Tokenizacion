@@ -439,6 +439,8 @@ const HUB_SCENARIOS = [
   },
 ];
 
+const HUB_QUICK_LAUNCH_SCENARIOS = HUB_SCENARIOS.slice(0, 4);
+
 const HUB_VERTICALS = [
   {
     vertical: "seeds",
@@ -795,6 +797,34 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
             experiencia completa end-to-end.
           </p>
         </div>
+
+        <section className="demo-lab-hub-quick-launch mb-8" aria-label="Abrir una prueba viva de Demo Lab">
+          <div className="demo-lab-hub-quick-launch__head">
+            <span>Pruebas vivas</span>
+            <strong>Entrar directo sin recorrer todo el hub.</strong>
+            <p>Para ventas, inversores o C-level: elegi una capa, tocala y volve al hub cuando quieras.</p>
+          </div>
+          <div className="demo-lab-hub-quick-launch__grid">
+            {HUB_QUICK_LAUNCH_SCENARIOS.map((s, index) => {
+              const Icon = s.icon;
+              return (
+                <Link
+                  key={s.id}
+                  href={`/demo-lab?scenario=${s.id}`}
+                  className={`demo-lab-hub-quick-launch__card group ${s.border} ${s.shadow}`}
+                  aria-label={`Abrir prueba rapida ${s.title}`}
+                >
+                  <span className="demo-lab-hub-quick-launch__step">{String(index + 1).padStart(2, "0")}</span>
+                  <span className={`demo-lab-hub-quick-launch__icon bg-gradient-to-br ${s.color}`}>
+                    <Icon className="h-4 w-4" />
+                  </span>
+                  <strong>{s.title}</strong>
+                  <small>Probar ahora <ArrowRight className="h-3.5 w-3.5" /></small>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
 
         <section className="demo-lab-hub-executive-path mb-10" aria-label="Ruta ejecutiva Demo Lab">
           <div className="demo-lab-hub-executive-path__copy">

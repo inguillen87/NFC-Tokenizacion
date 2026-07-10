@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import { useClerk } from "@clerk/nextjs";
 import {
   BookOpen,
@@ -44,7 +44,7 @@ const ACCOUNT_MENU_Z_INDEX = 2147483647;
 const ACCOUNT_MENU_BACKDROP_Z_INDEX = ACCOUNT_MENU_Z_INDEX - 1;
 const ACCOUNT_MENU_PANEL_Z_INDEX = ACCOUNT_MENU_Z_INDEX;
 const ACCOUNT_MENU_PORTAL_ROOT_ID = "nexid-account-menu-root";
-const ACCOUNT_MENU_VERSION = "drawer-v14-command-center-top-layer";
+const ACCOUNT_MENU_VERSION = "drawer-v15-sync-top-layer";
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 const ACCOUNT_MENU_CRITICAL_CSS = `
 html.nexid-account-menu-open,
@@ -295,6 +295,8 @@ function promoteAccountMenuPortalRoot(root: HTMLElement) {
   if (root.parentElement !== document.body || root !== document.body.lastElementChild) {
     document.body.appendChild(root);
   }
+  root.setAttribute("data-account-menu-root", "true");
+  root.setAttribute("data-account-menu-version", ACCOUNT_MENU_VERSION);
   root.style.setProperty("position", "fixed", "important");
   root.style.setProperty("inset", "0", "important");
   root.style.setProperty("z-index", String(ACCOUNT_MENU_Z_INDEX), "important");
@@ -626,11 +628,23 @@ export function TenantAccountMenu({
 
   const openMenu = useCallback(() => {
     if (openRef.current) return;
+    const root = getAccountMenuPortalRoot();
+    if (!root) return;
     openRef.current = true;
-    setPortalRoot(getAccountMenuPortalRoot());
     setDocumentMenuState(true);
     updatePanelPosition();
-    setOpen(true);
+    flushSync(() => {
+      setPortalRoot(root);
+      setOpen(true);
+    });
+    window.requestAnimationFrame(() => {
+      const promotedRoot = getAccountMenuPortalRoot();
+      if (!promotedRoot || !openRef.current) return;
+      setActiveDataAttribute(promotedRoot, "data-account-menu-active", true);
+      promotedRoot.style.setProperty("pointer-events", "auto", "important");
+      setCrmShellSuppression(true);
+      updatePanelPosition();
+    });
   }, [setDocumentMenuState, updatePanelPosition]);
 
   const toggleMenu = useCallback(() => {

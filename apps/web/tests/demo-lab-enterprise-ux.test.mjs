@@ -126,6 +126,7 @@ test("demo lab hub keeps C-level contrast across cards, filters and theme contro
   const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
   const page = await readFile(new URL("../src/app/(public)/demo-lab/page.tsx", import.meta.url), "utf8");
   const client = await readFile(new URL("../src/app/(public)/demo-lab/demo-lab-client.tsx", import.meta.url), "utf8");
+  const theme = await readFile(new URL("../src/app/(public)/demo-lab/demo-lab-hub-theme.tsx", import.meta.url), "utf8");
 
   assert.match(css, /Demo Lab hub C-level contrast closure/);
   assert.match(page, /demo-lab-hub-root--light/);
@@ -140,6 +141,11 @@ test("demo lab hub keeps C-level contrast across cards, filters and theme contro
   assert.match(page, /demo-lab-hub-vertical-grid/);
   assert.match(page, /HUB_EXECUTIVE_PATHS/);
   assert.match(page, /HUB_PROOF_STACK/);
+  assert.match(page, /HUB_QUICK_LAUNCH_SCENARIOS/);
+  assert.match(page, /demo-lab-hub-quick-launch/);
+  assert.match(page, /Pruebas vivas/);
+  assert.match(page, /Entrar directo sin recorrer todo el hub/);
+  assert.match(page, /Abrir prueba rapida/);
   assert.match(page, /demo-lab-hub-executive-path/);
   assert.match(page, /demo-lab-hub-proof-stack/);
   assert.match(page, /Ruta enterprise/);
@@ -182,7 +188,14 @@ test("demo lab hub keeps C-level contrast across cards, filters and theme contro
   assert.match(client, /initialTheme\?: DemoLabTheme/);
   assert.match(client, /initialReturnTo\?: string/);
   assert.match(client, /<DemoLabThemeToggle initialTheme=\{initialTheme\} initialReturnTo=\{initialReturnTo\} \/>/);
+  assert.match(theme, /data-demo-lab-theme-toggle/);
+  assert.match(theme, /className="demo-lab-theme-toggle theme-toggle/);
   assert.match(css, /Demo Lab hub command-center polish/);
+  assert.match(css, /\.demo-lab-hub-quick-launch__grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /\.demo-lab-hub-quick-launch__card strong\s*\{[\s\S]*-webkit-line-clamp:\s*2/);
+  assert.match(css, /html\.theme-light \.demo-lab-hub-quick-launch__card,[\s\S]*\.demo-lab-hub-root--light \.demo-lab-hub-quick-launch__card/);
+  assert.match(css, /@media \(max-width:\s*520px\)[\s\S]*\.demo-lab-hub-quick-launch__grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /body:has\(\.demo-lab-hub-root\) \.helpbot-trigger/);
   assert.match(css, /\.demo-lab-hub-section-label\s*\{[\s\S]*color:\s*#bae6fd !important/);
   assert.match(css, /\.demo-lab-hub-section-label::before\s*\{[\s\S]*box-shadow:\s*0 0 0 0\.28rem rgba\(8,\s*145,\s*178,\s*0\.12\)/);
   assert.match(css, /\.demo-lab-hub-root \.demo-lab-hub-card::after\s*\{[\s\S]*opacity:\s*0/);
