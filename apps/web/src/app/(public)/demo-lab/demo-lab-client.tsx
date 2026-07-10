@@ -14,6 +14,7 @@ import type { VectorMapPoint, VectorMapRoute } from "@product/ui";
 type Role = "ceo" | "operator" | "buyer";
 type Beat = 0 | 1 | 2 | 3;
 type DemoWizardStep = 0 | 1 | 2 | 3;
+type DemoLabTheme = "dark" | "light";
 type Vertical =
   | "wine"
   | "seeds"
@@ -878,7 +879,19 @@ async function readDemoSummary(): Promise<DemoSummary> {
   return data as DemoSummary;
 }
 
-export function DemoLabClient({ locale, initialVertical, initialScenario }: { locale: AppLocale; initialVertical?: string; initialScenario?: string }) {
+export function DemoLabClient({
+  locale,
+  initialVertical,
+  initialScenario,
+  initialTheme = "dark",
+  initialReturnTo = "/demo-lab",
+}: {
+  locale: AppLocale;
+  initialVertical?: string;
+  initialScenario?: string;
+  initialTheme?: DemoLabTheme;
+  initialReturnTo?: string;
+}) {
   const txt = copy[locale] || copy["es-AR"];
   const scenarioStart = useMemo(() => getScenarioStart(initialScenario), [initialScenario]);
   const [viewMode, setViewMode] = useState<"simulator" | "crm">("simulator");
@@ -1198,6 +1211,8 @@ export function DemoLabClient({ locale, initialVertical, initialScenario }: { lo
             latestEvent={latestEvent}
             simulating={simulating}
             activeTrustScenario={trustScenario}
+            initialTheme={initialTheme}
+            initialReturnTo={initialReturnTo}
             onVertical={(nextVertical) => {
               setTrustScenario(null);
               setVertical(nextVertical);
@@ -1309,6 +1324,8 @@ function DemoLabStudioHero({
   latestEvent,
   simulating,
   activeTrustScenario,
+  initialTheme,
+  initialReturnTo,
   onVertical,
   onBeat,
   onTrustScenario,
@@ -1334,6 +1351,8 @@ function DemoLabStudioHero({
   latestEvent?: DemoEvent;
   simulating: boolean;
   activeTrustScenario: DemoTrustScenarioKey | null;
+  initialTheme: DemoLabTheme;
+  initialReturnTo: string;
   onVertical: (vertical: Vertical) => void;
   onBeat: (beat: Beat) => void;
   onTrustScenario: (scenario: DemoTrustScenarioKey) => void;
@@ -1518,7 +1537,7 @@ function DemoLabStudioHero({
           ))}
         </div>
         <div className="demo-lab-wizard-actions">
-          <DemoLabThemeToggle />
+          <DemoLabThemeToggle initialTheme={initialTheme} initialReturnTo={initialReturnTo} />
           <a href="/?contact=demo#contact-modal" className="demo-lab-wizard-step-pill demo-lab-wizard-cta is-active inline-flex h-10 shrink-0 items-center justify-center rounded-full border border-cyan-300 bg-cyan-300 px-4 text-xs font-black uppercase tracking-wider text-slate-950 shadow-lg shadow-cyan-500/20">
             <span className="demo-lab-cta-full">{scheduleLabel}</span>
             <span className="demo-lab-cta-short">Demo</span>

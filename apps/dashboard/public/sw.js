@@ -1,4 +1,4 @@
-const CACHE_NAME = "nexid-dash-v3";
+const CACHE_NAME = "nexid-dash-v4";
 const APP_SHELL = [
   "/",
   "/manifest.webmanifest",

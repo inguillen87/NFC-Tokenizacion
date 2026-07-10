@@ -17,7 +17,12 @@ import { Sun, Moon } from "lucide-react";
 
 type Theme = "dark" | "light";
 
-function readTheme(): Theme {
+type DemoLabThemeToggleProps = {
+  initialTheme?: Theme;
+  initialReturnTo?: string;
+};
+
+function readTheme(fallback: Theme = "dark"): Theme {
   try {
     const saved = localStorage.getItem("theme");
     if (saved === "dark" || saved === "light") return saved;
@@ -28,7 +33,7 @@ function readTheme(): Theme {
   const attr = document.documentElement.getAttribute("data-theme");
   if (attr === "dark" || attr === "light") return attr;
 
-  return "dark";
+  return fallback;
 }
 
 function syncDemoLabRootTheme(theme: Theme) {
@@ -62,10 +67,10 @@ function applyTheme(theme: Theme) {
  * applies it to <html>, and listens for cross-tab storage events so the hub
  * stays in sync when the user toggles theme on the landing page in another tab.
  */
-export function DemoLabThemeToggle() {
-  const [theme, setTheme] = useState<Theme>("dark");
+export function DemoLabThemeToggle({ initialTheme = "dark", initialReturnTo = "/demo-lab" }: DemoLabThemeToggleProps) {
+  const [theme, setTheme] = useState<Theme>(initialTheme);
   const [mounted, setMounted] = useState(false);
-  const [returnTo, setReturnTo] = useState("/demo-lab");
+  const [returnTo, setReturnTo] = useState(initialReturnTo);
 
   const syncReturnTo = useCallback(() => {
     try {
@@ -73,12 +78,12 @@ export function DemoLabThemeToggle() {
       url.searchParams.delete("theme");
       setReturnTo(`${url.pathname}${url.search}${url.hash}`);
     } catch {
-      setReturnTo("/demo-lab");
+      setReturnTo(initialReturnTo);
     }
-  }, []);
+  }, [initialReturnTo]);
 
   useEffect(() => {
-    let initial = readTheme();
+    let initial = readTheme(initialTheme);
     try {
       const url = new URL(window.location.href);
       const requested = url.searchParams.get("theme");
@@ -107,9 +112,10 @@ export function DemoLabThemeToggle() {
 
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
-  }, [syncReturnTo]);
+  }, [initialTheme, syncReturnTo]);
 
   const nextTheme: Theme = theme === "dark" ? "light" : "dark";
+  const initialNextTheme: Theme = initialTheme === "dark" ? "light" : "dark";
 
   const onToggle = useCallback((event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
@@ -123,15 +129,20 @@ export function DemoLabThemeToggle() {
   if (!mounted) {
     return (
       <form action="/api/theme" method="get" className="m-0 inline-flex">
-        <input type="hidden" name="theme" value="light" />
-        <input type="hidden" name="returnTo" value={returnTo} />
+        <input type="hidden" name="theme" value={initialNextTheme} />
+        <input type="hidden" name="returnTo" value={initialReturnTo} />
         <button
           suppressHydrationWarning
           type="submit"
-          aria-label="Toggle theme"
+          aria-label={initialNextTheme === "light" ? "Activar modo claro" : "Activar modo oscuro"}
+          title={initialNextTheme === "light" ? "Activar modo claro" : "Activar modo oscuro"}
           className="theme-toggle inline-flex h-11 w-11 min-h-11 min-w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-500 transition hover:bg-white/10 md:h-8 md:w-8 md:min-h-8 md:min-w-8"
         >
-          <Moon className="w-3.5 h-3.5" />
+          {initialTheme === "dark" ? (
+            <Sun className="w-3.5 h-3.5" />
+          ) : (
+            <Moon className="w-3.5 h-3.5" />
+          )}
         </button>
       </form>
     );
@@ -145,8 +156,8 @@ export function DemoLabThemeToggle() {
         suppressHydrationWarning
         type="submit"
         onClick={onToggle}
-        aria-label={`Switch to ${nextTheme} mode`}
-        title={`Switch to ${nextTheme} mode`}
+        aria-label={nextTheme === "light" ? "Activar modo claro" : "Activar modo oscuro"}
+        title={nextTheme === "light" ? "Activar modo claro" : "Activar modo oscuro"}
         className="theme-toggle inline-flex h-11 w-11 min-h-11 min-w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-400 transition hover:border-cyan-400/30 hover:bg-white/10 hover:text-cyan-300 md:h-8 md:w-8 md:min-h-8 md:min-w-8"
       >
         {theme === "dark" ? (

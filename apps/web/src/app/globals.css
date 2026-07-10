@@ -49150,6 +49150,235 @@ html[data-theme="light"] .demo-lab-fullscreen-stage .demo-lab-studio,
   display: none;
 }
 
+/* Demo Lab hub command-center polish: explicit labels, tap targets and footer
+   links so the hub remains legible after broad light-mode utility sweeps. */
+.demo-lab-hub-section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: #bae6fd !important;
+  text-shadow: 0 1px 18px rgba(34, 211, 238, 0.18);
+}
+
+.demo-lab-hub-section-label::before {
+  content: "";
+  width: 0.55rem;
+  height: 0.55rem;
+  border: 1px solid rgba(103, 232, 249, 0.62);
+  border-radius: 999px;
+  background: rgba(34, 211, 238, 0.26);
+  box-shadow: 0 0 0 0.28rem rgba(8, 145, 178, 0.12);
+}
+
+.demo-lab-hub-root .demo-lab-hub-card {
+  isolation: isolate;
+  min-width: 0;
+  box-shadow: 0 1.25rem 3.2rem rgba(2, 6, 23, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.045) !important;
+}
+
+.demo-lab-hub-root .demo-lab-hub-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.demo-lab-hub-root .demo-lab-hub-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(34, 211, 238, 0.18), transparent 36%),
+    linear-gradient(135deg, rgba(8, 145, 178, 0.18), rgba(99, 102, 241, 0.1));
+  transition: opacity 0.18s ease;
+}
+
+.demo-lab-hub-root .demo-lab-hub-card:hover::after,
+.demo-lab-hub-root .demo-lab-hub-card:focus-visible::after {
+  opacity: 1;
+}
+
+.demo-lab-hub-card__cta {
+  width: fit-content;
+  min-height: 2rem;
+  align-items: center;
+  border: 1px solid rgba(103, 232, 249, 0.22);
+  border-radius: 999px;
+  background: rgba(8, 145, 178, 0.12);
+  padding: 0 0.7rem;
+  color: #cffafe !important;
+}
+
+.demo-lab-hub-root .demo-lab-hub-pill {
+  min-width: 0;
+  min-height: 3.75rem;
+  box-shadow: 0 0.95rem 2.2rem rgba(2, 6, 23, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+}
+
+.demo-lab-hub-root .demo-lab-hub-pill span {
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.demo-lab-hub-footer-links {
+  gap: 0.75rem !important;
+}
+
+.demo-lab-hub-footer-link {
+  min-height: 2.75rem;
+  align-items: center;
+  border: 1px solid rgba(125, 211, 252, 0.16);
+  border-radius: 999px;
+  background: rgba(2, 6, 23, 0.42);
+  padding: 0 0.95rem;
+  color: #cbd5e1 !important;
+  text-decoration: none;
+}
+
+.demo-lab-hub-footer-link:hover,
+.demo-lab-hub-footer-link:focus-visible {
+  border-color: rgba(103, 232, 249, 0.42);
+  background: rgba(8, 145, 178, 0.16);
+  color: #e0f2fe !important;
+}
+
+html.theme-light .demo-lab-hub-section-label,
+html[data-theme="light"] .demo-lab-hub-section-label,
+.demo-lab-hub-root--light .demo-lab-hub-section-label {
+  color: #0e7490 !important;
+  text-shadow: none;
+}
+
+html.theme-light .demo-lab-hub-section-label::before,
+html[data-theme="light"] .demo-lab-hub-section-label::before,
+.demo-lab-hub-root--light .demo-lab-hub-section-label::before {
+  border-color: rgba(14, 116, 144, 0.38);
+  background: rgba(14, 165, 233, 0.2);
+  box-shadow: 0 0 0 0.28rem rgba(14, 165, 233, 0.08);
+}
+
+html.theme-light .demo-lab-hub-root .demo-lab-hub-card,
+html[data-theme="light"] .demo-lab-hub-root .demo-lab-hub-card,
+.demo-lab-hub-root--light .demo-lab-hub-card {
+  box-shadow: 0 1.1rem 2.8rem rgba(15, 23, 42, 0.09), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+}
+
+html.theme-light .demo-lab-hub-root .demo-lab-hub-card::after,
+html[data-theme="light"] .demo-lab-hub-root .demo-lab-hub-card::after,
+.demo-lab-hub-root--light .demo-lab-hub-card::after {
+  background:
+    radial-gradient(circle at 18% 0%, rgba(14, 165, 233, 0.12), transparent 36%),
+    linear-gradient(135deg, rgba(236, 254, 255, 0.72), rgba(237, 233, 254, 0.52));
+}
+
+html.theme-light .demo-lab-hub-card__cta,
+html[data-theme="light"] .demo-lab-hub-card__cta,
+.demo-lab-hub-root--light .demo-lab-hub-card__cta {
+  border-color: rgba(14, 116, 144, 0.22);
+  background: #ecfeff;
+  color: #075985 !important;
+}
+
+html.theme-light .demo-lab-hub-root .demo-lab-hub-pill,
+html[data-theme="light"] .demo-lab-hub-root .demo-lab-hub-pill,
+.demo-lab-hub-root--light .demo-lab-hub-pill {
+  box-shadow: 0 0.95rem 2.2rem rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.88) !important;
+}
+
+html.theme-light .demo-lab-hub-footer-link,
+html[data-theme="light"] .demo-lab-hub-footer-link,
+.demo-lab-hub-root--light .demo-lab-hub-footer-link {
+  border-color: rgba(14, 116, 144, 0.2);
+  background: rgba(255, 255, 255, 0.84);
+  color: #0f5f76 !important;
+  box-shadow: 0 0.75rem 1.8rem rgba(15, 23, 42, 0.07);
+}
+
+html.theme-light .demo-lab-hub-footer-link:hover,
+html.theme-light .demo-lab-hub-footer-link:focus-visible,
+html[data-theme="light"] .demo-lab-hub-footer-link:hover,
+html[data-theme="light"] .demo-lab-hub-footer-link:focus-visible,
+.demo-lab-hub-root--light .demo-lab-hub-footer-link:hover,
+.demo-lab-hub-root--light .demo-lab-hub-footer-link:focus-visible {
+  border-color: rgba(14, 116, 144, 0.36);
+  background: #ecfeff;
+  color: #0f172a !important;
+}
+
+html.theme-light .demo-lab-hub-executive-path__copy span,
+html.theme-light .demo-lab-hub-executive-path__eyebrow,
+html.theme-light .demo-lab-hub-proof-stack__head span,
+html.theme-light .demo-lab-hub-proof-stack__card span,
+html[data-theme="light"] .demo-lab-hub-executive-path__copy span,
+html[data-theme="light"] .demo-lab-hub-executive-path__eyebrow,
+html[data-theme="light"] .demo-lab-hub-proof-stack__head span,
+html[data-theme="light"] .demo-lab-hub-proof-stack__card span,
+.demo-lab-hub-root--light .demo-lab-hub-executive-path__copy span,
+.demo-lab-hub-root--light .demo-lab-hub-executive-path__eyebrow,
+.demo-lab-hub-root--light .demo-lab-hub-proof-stack__head span,
+.demo-lab-hub-root--light .demo-lab-hub-proof-stack__card span {
+  color: #0e7490 !important;
+}
+
+.demo-lab-fullscreen-root--light .demo-lab-infobar__context-pill,
+.demo-lab-fullscreen-root--light .demo-lab-context-strip__doc-link {
+  border-color: rgba(14, 116, 144, 0.22) !important;
+  background: rgba(255, 255, 255, 0.84) !important;
+  color: #0f5f76 !important;
+}
+
+.demo-lab-fullscreen-root--light .demo-lab-context-strip__card-label {
+  color: #0f172a !important;
+}
+
+.demo-lab-fullscreen-root--light .demo-lab-context-strip__card-text {
+  color: #475569 !important;
+}
+
+@media (max-width: 760px) {
+  .demo-lab-fullscreen-root .demo-lab-context-strip {
+    display: none !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .demo-lab-hub-section-label {
+    width: 100%;
+    justify-content: flex-start;
+    letter-spacing: 0.16em !important;
+  }
+
+  .demo-lab-hub-root .demo-lab-hub-card {
+    min-height: 0 !important;
+    padding: 1rem !important;
+  }
+
+  .demo-lab-hub-card__cta {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .demo-lab-hub-footer-links {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    width: 100%;
+  }
+
+  .demo-lab-hub-footer-link {
+    justify-content: center;
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .demo-lab-hub-root .demo-lab-hub-card::after,
+  .demo-lab-hub-root .demo-lab-hub-card,
+  .demo-lab-hub-root .demo-lab-hub-pill {
+    transition: none !important;
+  }
+}
+
 /* Final landing header guard: this must stay after broad light-mode utility
    sweeps so the mobile login button remains readable on white chrome. */
 @media (max-width: 760px) {

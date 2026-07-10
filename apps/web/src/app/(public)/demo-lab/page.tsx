@@ -60,6 +60,20 @@ function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
+function buildDemoLabReturnTo(params: Record<string, string | string[] | undefined>) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (key === "theme" || value === undefined) return;
+    if (Array.isArray(value)) {
+      value.forEach((item) => query.append(key, item));
+      return;
+    }
+    query.set(key, value);
+  });
+  const search = query.toString();
+  return search ? `/demo-lab?${search}` : "/demo-lab";
+}
+
 function demoLabStructuredData(locale: string) {
   const isEn = locale === "en";
   const isBr = locale === "pt-BR";
@@ -587,6 +601,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
       : cookieTheme === "light"
         ? "light"
         : "dark";
+  const demoLabReturnTo = buildDemoLabReturnTo(params);
   const demoThemeClass = requestedTheme === "light" ? "demo-lab-fullscreen-root--light" : "";
 
   // ── FULL-SCREEN SIMULATOR MODE ───────────────────────────────────────────
@@ -625,7 +640,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
                 <Smartphone className="w-3 h-3" />
                 {panel.subtitle}
               </span>
-              <DemoLabThemeToggle />
+              <DemoLabThemeToggle initialTheme={requestedTheme} initialReturnTo={demoLabReturnTo} />
               <Link
                 href="/?contact=demo#contact-modal"
                 className="demo-lab-infobar__cta inline-flex h-9 items-center gap-2 rounded-full bg-cyan-300 px-4 text-xs font-black uppercase tracking-wider text-slate-950"
@@ -692,6 +707,8 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
             locale={locale}
             initialVertical={initialVertical}
             initialScenario={initialScenario}
+            initialTheme={requestedTheme}
+            initialReturnTo={demoLabReturnTo}
           />
         </div>
       </div>
@@ -726,7 +743,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
           </span>
           <span className="hidden h-4 w-px bg-white/10 md:inline" />
           {/* Theme toggle — reads localStorage "theme" key on mount */}
-          <DemoLabThemeToggle />
+          <DemoLabThemeToggle initialTheme={requestedTheme} initialReturnTo={demoLabReturnTo} />
           <Link
             href="/proof/verify"
             className="inline-flex min-h-10 items-center justify-self-end rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 text-xs font-black text-cyan-100 transition-colors hover:border-cyan-200/50 hover:bg-cyan-300/16 md:gap-2"
@@ -843,7 +860,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
 
         {/* Scenarios Grid */}
         <div className="mb-12">
-          <p className="mb-4 text-xs font-black uppercase tracking-[0.22em] text-slate-400">
+          <p className="demo-lab-hub-section-label mb-4 text-xs font-black uppercase tracking-[0.22em] text-slate-400">
             Capas de confianza
           </p>
           <div className="demo-lab-hub-card-grid grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -854,6 +871,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
                   key={s.id}
                   href={`/demo-lab?scenario=${s.id}`}
                   className={`demo-lab-hub-card group relative flex min-h-[10.5rem] flex-col justify-between gap-4 overflow-hidden rounded-2xl border border-white/[0.1] bg-slate-950/70 p-5 backdrop-blur-md transition-all duration-300 hover:border-cyan-300/40 hover:bg-slate-900/88 ${s.border} ${s.shadow}`}
+                  aria-label={`Abrir demo ${s.title}`}
                 >
                   {/* Left accent bar — subtle at rest, vivid on hover */}
                   <div
@@ -874,7 +892,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
                       </p>
                     </div>
                   </div>
-                  <span className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-cyan-200">
+                  <span className="demo-lab-hub-card__cta inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-cyan-200">
                     Abrir demo <ArrowRight className="h-3.5 w-3.5" />
                   </span>
                 </Link>
@@ -885,7 +903,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
 
         {/* Verticals Grid */}
         <div>
-          <p className="mb-4 text-xs font-black uppercase tracking-[0.22em] text-slate-400">
+          <p className="demo-lab-hub-section-label mb-4 text-xs font-black uppercase tracking-[0.22em] text-slate-400">
             Por industria
           </p>
           <div className="demo-lab-hub-vertical-grid grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -910,22 +928,22 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
         </div>
 
         {/* Footer nav */}
-        <div className="mt-14 flex flex-wrap items-center justify-center gap-6 text-sm font-bold text-slate-400">
+        <div className="demo-lab-hub-footer-links mt-14 flex flex-wrap items-center justify-center gap-6 text-sm font-bold text-slate-400">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 transition-colors hover:text-cyan-200"
+            className="demo-lab-hub-footer-link inline-flex items-center gap-2 transition-colors hover:text-cyan-200"
           >
             <ArrowLeft className="w-3.5 h-3.5" /> Volver a nexID
           </Link>
           <Link
             href="/docs"
-            className="transition-colors hover:text-cyan-200"
+            className="demo-lab-hub-footer-link transition-colors hover:text-cyan-200"
           >
             Documentación técnica
           </Link>
           <Link
             href="/?contact=demo#contact-modal"
-            className="transition-colors hover:text-cyan-200"
+            className="demo-lab-hub-footer-link transition-colors hover:text-cyan-200"
           >
             Agendar demo
           </Link>

@@ -30,7 +30,7 @@ test("tenant account menu renders as a top-level drawer above CRM layers", () =>
   assert.match(menuSource, /const ACCOUNT_MENU_Z_INDEX = 2147483647/);
   assert.match(menuSource, /const ACCOUNT_MENU_BACKDROP_Z_INDEX = ACCOUNT_MENU_Z_INDEX - 1/);
   assert.match(menuSource, /const ACCOUNT_MENU_PANEL_Z_INDEX = ACCOUNT_MENU_Z_INDEX/);
-  assert.match(menuSource, /const ACCOUNT_MENU_VERSION = "drawer-v11-command-hub"/);
+  assert.match(menuSource, /const ACCOUNT_MENU_VERSION = "drawer-v12-top-layer-hardening"/);
   assert.match(menuSource, /const ACCOUNT_MENU_CRITICAL_CSS = `/);
   assert.match(menuSource, /body\.nexid-account-menu-open > :not\(#nexid-account-menu-root\):not\(script\):not\(style\)/);
   assert.match(menuSource, /html\.nexid-account-menu-open body > :not\(#nexid-account-menu-root\):not\(script\):not\(style\)/);
@@ -68,6 +68,9 @@ test("tenant account menu renders as a top-level drawer above CRM layers", () =>
   assert.match(menuSource, /maxWidth:\s*"min\(100vw, 32rem\)"/);
   assert.match(menuSource, /overscrollBehavior:\s*"contain"/);
   assert.match(menuSource, /const setDocumentMenuState = useCallback/);
+  assert.match(menuSource, /const prepareMenuPortalRoot = useCallback/);
+  assert.match(menuSource, /onPointerDownCapture=\{\(\) => \{/);
+  assert.match(menuSource, /prepareMenuPortalRoot\(\)/);
   assert.match(menuSource, /document\.documentElement\.classList\.toggle\("nexid-account-menu-open", value\)/);
   assert.match(menuSource, /document\.body\.classList\.toggle\("nexid-account-menu-open", value\)/);
   assert.match(menuSource, /document\.body\.toggleAttribute\("data-account-menu-open", value\)/);
@@ -238,13 +241,13 @@ test("dashboard PWA registration is opt-in so stale admin CSS cannot mask fixes"
   assert.match(pwaSetupSource, /process\.env\.NODE_ENV === "production" && process\.env\.NEXT_PUBLIC_ENABLE_PWA === "true"/);
   assert.match(pwaSetupSource, /navigator\.serviceWorker\.getRegistrations\(\)/);
   assert.match(pwaSetupSource, /registration\.unregister\(\)/);
-  assert.match(pwaSetupSource, /nexid-dashboard-sw-cleared-v3/);
+  assert.match(pwaSetupSource, /nexid-dashboard-sw-cleared-v4/);
   assert.match(pwaSetupSource, /window\.location\.reload\(\)/);
   assert.doesNotMatch(pwaSetupSource, /NEXT_PUBLIC_ENABLE_PWA !== "false"/);
 });
 
 test("dashboard service worker refreshes shell styles before falling back to cache", () => {
-  assert.match(serviceWorkerSource, /const CACHE_NAME = "nexid-dash-v3"/);
+  assert.match(serviceWorkerSource, /const CACHE_NAME = "nexid-dash-v4"/);
   assert.match(serviceWorkerSource, /request\.destination === "script" \|\| request\.destination === "style"/);
   assert.match(serviceWorkerSource, /fetchWithTimeout\(request\)\.then\(\(response\) => \{/);
   assert.match(serviceWorkerSource, /cache\.put\(request,\s*copy\)/);
