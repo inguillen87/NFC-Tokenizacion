@@ -73,7 +73,12 @@ test("demo lab fullscreen mobile keeps CTAs inside viewport and light mode visib
 
   assert.match(css, /Demo Lab enterprise closure/);
   assert.match(page, /const requestedThemeParam = firstParam\(params\.theme\)/);
-  assert.match(page, /const cookieTheme = \(await cookies\(\)\)\.get\("theme"\)\?\.value/);
+  assert.match(page, /function resolveDemoLabLocale\(value: string \| string\[\] \| undefined\)/);
+  assert.match(page, /resolveDemoLabLocale\(params\.locale \|\| params\.lang\)/);
+  assert.match(page, /resolveDemoLabLocale\(cookieStore\.get\("locale"\)\?\.value\)/);
+  assert.match(page, /"es-AR"/);
+  assert.match(page, /const cookieStore = await cookies\(\)/);
+  assert.match(page, /const cookieTheme = cookieStore\.get\("theme"\)\?\.value/);
   assert.match(page, /function buildDemoLabReturnTo\(params: Record<string, string \| string\[\] \| undefined>\)/);
   assert.match(page, /if \(key === "theme" \|\| value === undefined\) return/);
   assert.match(page, /const demoLabReturnTo = buildDemoLabReturnTo\(params\)/);
@@ -144,7 +149,7 @@ test("demo lab hub keeps C-level contrast across cards, filters and theme contro
   assert.match(page, /href:\s*"\/sdk"/);
   assert.match(page, /CRM, recall, garantia, loyalty o webhook/);
   assert.match(page, /volvés al Hub desde la barra superior/);
-  assert.match(page, /const cookieTheme = \(await cookies\(\)\)\.get\("theme"\)\?\.value/);
+  assert.match(page, /const cookieTheme = cookieStore\.get\("theme"\)\?\.value/);
   assert.match(page, /La demo separa negocio, privacidad y blockchain/);
   assert.match(page, /nexID opera la identidad del producto/);
   assert.match(page, /Recibo publico hash-only/);

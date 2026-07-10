@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
+import type { AppLocale } from "@product/config";
 import { getWebI18n } from "../../../lib/locale";
 import { JsonLd } from "../../../components/json-ld";
 import { DemoLabClient } from "./demo-lab-client";
@@ -58,6 +59,15 @@ type DemoLabPageProps = {
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
+}
+
+function resolveDemoLabLocale(value: string | string[] | undefined): AppLocale | null {
+  const raw = firstParam(value)?.trim().toLowerCase();
+  if (!raw) return null;
+  if (raw === "en") return "en";
+  if (raw === "pt" || raw === "pt-br") return "pt-BR";
+  if (raw === "es" || raw === "es-ar") return "es-AR";
+  return null;
 }
 
 function buildDemoLabReturnTo(params: Record<string, string | string[] | undefined>) {
@@ -584,9 +594,13 @@ const HUB_PROOF_STACK = [
 ];
 
 export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
-  const { locale } = await getWebI18n();
-  const structuredData = demoLabStructuredData(locale);
   const params = searchParams ? await searchParams : {};
+  const cookieStore = await cookies();
+  const locale =
+    resolveDemoLabLocale(params.locale || params.lang) ??
+    resolveDemoLabLocale(cookieStore.get("locale")?.value) ??
+    "es-AR";
+  const structuredData = demoLabStructuredData(locale);
   const initialVertical = firstParam(
     params.vertical || params.rubro || params.industry || params.useCase
   );
@@ -594,7 +608,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
     params.scenario || params.proof || params.layer
   );
   const requestedThemeParam = firstParam(params.theme);
-  const cookieTheme = (await cookies()).get("theme")?.value;
+  const cookieTheme = cookieStore.get("theme")?.value;
   const requestedTheme =
     requestedThemeParam === "light" || requestedThemeParam === "dark"
       ? requestedThemeParam
