@@ -232,6 +232,212 @@ const businessProofPoints = [
   },
 ];
 
+const FALLBACK_PUBLIC_PROOF_DEMO_CASES: DemoCase[] = [
+  {
+    id: "secure-delivery",
+    title: "Secure Delivery",
+    vertical: "logistica-premium",
+    headline: "Entrega fisica con sello, custodia y receptor verificable.",
+    body: "Caso de logistica premium: sello aplicado, transferencia de custodia y recepcion se prueban sin publicar manifiesto, cliente ni direccion.",
+    primary_event_hash: "sha256:fd056fe8caf73243fec9c83075f2a693311cbcb5af81264c6ad0bf4388d2089d",
+    anchor_id: "11111111-1111-4111-8111-111111111111",
+    provider: "iota",
+    network: "iota-evm-testnet-ready",
+    status: "demo_ready",
+    merkle_root: "sha256:f27117194b62885a39abda2e5dcb1dc70b3d31eb887acc56b7ba1439be674917",
+    resource_type: "secure_delivery_pack",
+    resource_id: "SDL-AR-2026-0007",
+    anchored_at: "2026-07-02T22:59:35-03:00",
+    explorer_url: null,
+    tx_hash: null,
+    public_receipt: {
+      title: "Secure Delivery public proof receipt",
+      business_claim: "Demuestra custodia y entrega verificable para un activo fisico sin exponer manifiesto ni destinatario.",
+      manager_explanation: "Para ventas y compliance: el tercero comprueba que los hitos existian y que el recibo publico usa privacy=hash-only.",
+      on_chain_memo: "nexID-proof-v1|case=secure-delivery|vertical=logistica-premium|resource=secure_delivery_pack:SDL-AR-2026-0007|events=3|root=sha256:f27117194b62885a39abda2e5dcb1dc70b3d31eb887acc56b7ba1439be674917|privacy=hash-only",
+      receipt_hash: "sha256:5f3d043787078d92611be1219039ca859afa08a413d3a3ac0f15e3007f38ad16",
+      tx_hash: null,
+      explorer_url: null,
+      public_fields: ["case", "vertical", "resource class", "event count", "Merkle root", "privacy policy"],
+      private_fields: ["UID/NFC secret material", "recipient identity", "route manifest", "delivery address", "commercial contract data"],
+    },
+    events: [
+      {
+        id: "seal_applied",
+        title: "Sello aplicado",
+        event_type: "SEAL_APPLIED",
+        hash: "sha256:fd056fe8caf73243fec9c83075f2a693311cbcb5af81264c6ad0bf4388d2089d",
+        summary: "El paquete queda asociado a un sello NFC/QR autorizado antes de salir.",
+      },
+      {
+        id: "custody_transfer",
+        title: "Custodia transferida",
+        event_type: "CUSTODY_TRANSFER",
+        hash: "sha256:a1981863bbd87e9e7f0871f048437a982a6efa4ffc3551904184ebd3dd6bb1ec",
+        summary: "El cambio de responsable queda registrado como hito verificable.",
+      },
+      {
+        id: "recipient_verified",
+        title: "Receptor verificado",
+        event_type: "RECIPIENT_VERIFIED",
+        hash: "sha256:c46e3a8c5fce125d4b52f084c1f761fe1f93b3bf93d4176386003144f3ae94bf",
+        summary: "La entrega se cierra sin publicar identidad privada del receptor.",
+      },
+    ],
+    proof_layers: [
+      { layer: "nexID", purpose: "Eventos, policies y datos privados permanecen en el tenant.", status: "activo" },
+      { layer: "IOTA", purpose: "Public proof hash-only para auditoria externa.", status: "testnet-ready" },
+      { layer: "Polygon", purpose: "Certificado o ownership opcional si el activo lo requiere.", status: "opcional" },
+    ],
+  },
+  {
+    id: "pharma-cold-chain",
+    title: "Pharma Cold Chain",
+    vertical: "pharma-regulado",
+    headline: "Lote regulado con QA, cadena de frio y revision de tamper.",
+    body: "Caso pharma: un lote puede mostrar evidencia publica de QA y frio sin revelar pacientes, rutas internas ni documentos de calidad.",
+    primary_event_hash: "sha256:46da892d32fdb4cca3fbf47fcb1a635a8ebd5580d47c023152af770ac9be7eb5",
+    anchor_id: "22222222-2222-4222-8222-222222222222",
+    provider: "iota",
+    network: "iota-evm-testnet-ready",
+    status: "demo_ready",
+    merkle_root: "sha256:1e22212d42fc7a553cd08c8e7e8f4fcf5b76b74e461dcf967ed934c230b016c7",
+    resource_type: "pharma_batch",
+    resource_id: "PHR-LOT-2026-0142",
+    anchored_at: "2026-07-02T22:59:35-03:00",
+    explorer_url: null,
+    tx_hash: null,
+    public_receipt: {
+      title: "Pharma Cold Chain public proof receipt",
+      business_claim: "Demuestra QA, frio y tamper review para un lote regulado sin publicar datos clinicos ni documentos internos.",
+      manager_explanation: "Para un comprador enterprise: el hash prueba integridad externa; nexID conserva los datos sensibles y el expediente completo.",
+      on_chain_memo: "nexID-proof-v1|case=pharma-cold-chain|vertical=pharma-regulado|resource=pharma_batch:PHR-LOT-2026-0142|events=3|root=sha256:1e22212d42fc7a553cd08c8e7e8f4fcf5b76b74e461dcf967ed934c230b016c7|privacy=hash-only",
+      receipt_hash: "sha256:a866ca593d0e90ea805203730a86c63a1eddd5290d67a4989451f717c38cee03",
+      tx_hash: null,
+      explorer_url: null,
+      public_fields: ["case", "vertical", "batch class", "event count", "Merkle root", "privacy policy"],
+      private_fields: ["patient identity", "internal QA documents", "route manifest", "temperature raw stream", "commercial contract data"],
+    },
+    events: [
+      {
+        id: "qa_batch_release",
+        title: "QA de lote liberado",
+        event_type: "QA_BATCH_RELEASE",
+        hash: "sha256:46da892d32fdb4cca3fbf47fcb1a635a8ebd5580d47c023152af770ac9be7eb5",
+        summary: "El lote queda habilitado por calidad sin publicar el expediente interno.",
+      },
+      {
+        id: "cold_chain_checkpoint",
+        title: "Checkpoint de frio",
+        event_type: "COLD_CHAIN_CHECKPOINT",
+        hash: "sha256:1e3e1a4f15024a7f029c474e7848208c954b467e6989071864fe1504eb9e100d",
+        summary: "La cadena de frio queda incluida como hito de evidencia.",
+      },
+      {
+        id: "tamper_review",
+        title: "Revision tamper",
+        event_type: "TAMPER_REVIEW",
+        hash: "sha256:92fdd6fc4a58cbd646c1f54ada796b6c052079d9a32c2a854a3afa2a4b1d2a89",
+        summary: "El estado de apertura o integridad queda auditado sin exponer datos operativos.",
+      },
+    ],
+    proof_layers: [
+      { layer: "nexID", purpose: "Conserva lote, QA, permisos y documentacion sensible.", status: "activo" },
+      { layer: "IOTA", purpose: "Public proof hash-only para auditoria de calidad.", status: "testnet-ready" },
+      { layer: "Polygon", purpose: "Certificado transferible opcional para garantia o ownership.", status: "opcional" },
+    ],
+  },
+  {
+    id: "agro-stewardship",
+    title: "Agro Stewardship",
+    vertical: "agro-quimico",
+    headline: "Origen, canal autorizado, escaneo de campo y politica de reclamo.",
+    body: "Ejemplo agro enterprise: lote, canal, stewardship y reclamo se entienden sin nombrar clientes ni publicar datos operativos sensibles.",
+    primary_event_hash: "sha256:0ea0478b694f01a5a76eda955a78c74701786b3d13ac241e6f6cfc3363938320",
+    anchor_id: "33333333-3333-4333-8333-333333333333",
+    provider: "iota",
+    network: "iota-evm-testnet-ready",
+    status: "demo_ready",
+    merkle_root: "sha256:5387aaf504ca3b0a6cab83a3af0bfa158f36b04ab2a3558c94907337fc7c7369",
+    resource_type: "agro_input_batch",
+    resource_id: "AGR-STW-2026-0031",
+    anchored_at: "2026-07-02T22:59:35-03:00",
+    explorer_url: null,
+    tx_hash: null,
+    public_receipt: {
+      title: "Agro Stewardship public proof receipt",
+      business_claim: "Demuestra origen, canal autorizado, escaneo de campo y politica de reclamo para un insumo agricola.",
+      manager_explanation: "Para canal y compliance: prueba stewardship y trazabilidad de uso responsable sin exponer clientes, lotes comerciales reales ni ubicaciones sensibles.",
+      on_chain_memo: "nexID-proof-v1|case=agro-stewardship|vertical=agro-quimico|resource=agro_input_batch:AGR-STW-2026-0031|events=3|root=sha256:5387aaf504ca3b0a6cab83a3af0bfa158f36b04ab2a3558c94907337fc7c7369|privacy=hash-only",
+      receipt_hash: "sha256:5395e58f92df05c6b36f48c67833fed53f12fe60870978b2665c73c5e29d2129",
+      tx_hash: null,
+      explorer_url: null,
+      public_fields: ["case", "vertical", "resource class", "event count", "Merkle root", "privacy policy"],
+      private_fields: ["customer identity", "field coordinates", "commercial route", "internal claim notes", "channel contract data"],
+    },
+    events: [
+      {
+        id: "origin_attested",
+        title: "Origen atestado",
+        event_type: "ORIGIN_ATTESTED",
+        hash: "sha256:0ea0478b694f01a5a76eda955a78c74701786b3d13ac241e6f6cfc3363938320",
+        summary: "El lote se emite con canal y politica de uso responsable.",
+      },
+      {
+        id: "field_scan",
+        title: "Escaneo de campo",
+        event_type: "FIELD_SCAN",
+        hash: "sha256:72ed2d884d008e430617c7a1ed43b63b6f10cfcee3490e9468b91b0192a6954f",
+        summary: "El verificador offline valida producto en zona de baja conectividad.",
+      },
+      {
+        id: "claim_policy_opened",
+        title: "Reclamo habilitado",
+        event_type: "CLAIM_POLICY_OPENED",
+        hash: "sha256:bca3f082a5839daf37249285a92c92fa297d640bbd8fe48a239ab6a284214310",
+        summary: "Si hay tamper o canal invalido, queda abierto el camino de reclamo.",
+      },
+    ],
+    proof_layers: [
+      { layer: "nexID", purpose: "Reglas de canal, UID, lote y datos sensibles quedan privados.", status: "activo" },
+      { layer: "IOTA", purpose: "Public proof hash-only para stewardship y auditoria.", status: "testnet-ready" },
+      { layer: "Polygon", purpose: "Certificado o claim transferible opcional.", status: "opcional" },
+    ],
+  },
+];
+
+const FALLBACK_PUBLIC_PROOF_DEMO_RESPONSE: DemoCasesResponse = {
+  ok: false,
+  cases: FALLBACK_PUBLIC_PROOF_DEMO_CASES,
+  testnet: {
+    iota: {
+      mode: "fallback",
+      network: "iota-evm-testnet-ready",
+      rpc_configured: false,
+      contract_configured: false,
+      signer_configured: false,
+      deployer_address: null,
+      contract_address: null,
+      contract_explorer_url: null,
+      demo_tx_hash: null,
+      demo_tx_explorer_url: null,
+      demo_txs: {},
+    },
+    polygon: {
+      network: "amoy",
+      rpc_configured: false,
+      contract_configured: false,
+      signer_configured: false,
+      contract_address: null,
+      owner_address: null,
+      contract_explorer_url: null,
+      owner_explorer_url: null,
+      demo_tx_hash: null,
+      demo_tx_explorer_url: null,
+    },
+  },
+};
+
 const PROOF_API_FALLBACK_URL = "https://api.nexid.lat";
 
 function proofApiBases() {
@@ -277,6 +483,198 @@ function utf8ToHex(value: string | null | undefined) {
   if (!text) return "-";
   const bytes = new TextEncoder().encode(text);
   return `0x${Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+}
+
+function isHexRawInput(value: string) {
+  const normalized = value.trim();
+  return /^0x[0-9a-f]+$/i.test(normalized) && normalized.length % 2 === 0;
+}
+
+function hexToUtf8(value: string) {
+  const hex = value.replace(/^0x/i, "");
+  const bytes = hex.match(/.{1,2}/g)?.map((pair) => Number.parseInt(pair, 16)) || [];
+  if (bytes.some((byte) => Number.isNaN(byte))) return "";
+  return new TextDecoder().decode(new Uint8Array(bytes)).replace(/\0/g, "").trim();
+}
+
+function slugToLabel(value: string) {
+  return value
+    .split(/[-_]+/g)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function parseProofMemoFields(memo: string) {
+  const parts = memo.split("|").map((part) => part.trim()).filter(Boolean);
+  const protocol = parts.shift() || "";
+  const fields: Record<string, string> = {};
+  for (const part of parts) {
+    const separatorIndex = part.indexOf("=");
+    if (separatorIndex <= 0) continue;
+    const key = part.slice(0, separatorIndex).trim();
+    const value = part.slice(separatorIndex + 1).trim();
+    if (key && value) fields[key] = value;
+  }
+  return { protocol, fields };
+}
+
+function findFallbackDemoCase(fields: Record<string, string>) {
+  return FALLBACK_PUBLIC_PROOF_DEMO_CASES.find((demoCase) => demoCase.id === fields.case)
+    || FALLBACK_PUBLIC_PROOF_DEMO_CASES.find((demoCase) => demoCase.merkle_root === fields.root)
+    || null;
+}
+
+function explainProofMemoField(key: string, value: string): DecodedProofField {
+  if (key === "case") {
+    return {
+      key,
+      label: "Caso de negocio",
+      value,
+      meaning: `Identifica el flujo que genero el recibo publico: ${slugToLabel(value)}.`,
+    };
+  }
+  if (key === "vertical") {
+    return {
+      key,
+      label: "Vertical",
+      value,
+      meaning: `Ubica la prueba en una industria o unidad de negocio: ${slugToLabel(value)}.`,
+    };
+  }
+  if (key === "resource") {
+    const [resourceType, resourceId] = value.split(":");
+    return {
+      key,
+      label: "Recurso auditado",
+      value,
+      meaning: `Clase ${resourceType || "desconocida"} con referencia publica ${resourceId || "sin id publico"}. No revela UID/NFC secreto ni cliente final.`,
+    };
+  }
+  if (key === "events") {
+    return {
+      key,
+      label: "Eventos incluidos",
+      value,
+      meaning: `Cantidad de hitos de negocio incluidos en el Merkle root: ${value}.`,
+    };
+  }
+  if (key === "root") {
+    return {
+      key,
+      label: "Merkle root",
+      value,
+      meaning: "Huella criptografica que resume los hashes de eventos. Si un hash cambia, este root deja de coincidir.",
+    };
+  }
+  if (key === "privacy") {
+    return {
+      key,
+      label: "Politica de privacidad",
+      value,
+      meaning: value === "hash-only"
+        ? "Solo se publica evidencia minima. Los datos sensibles quedan dentro de nexID."
+        : "Define que parte de la evidencia es publica y que parte queda privada.",
+    };
+  }
+  return {
+    key,
+    label: slugToLabel(key),
+    value,
+    meaning: "Campo publico del recibo. Su interpretacion depende de la politica del tenant.",
+  };
+}
+
+function proofBusinessMeaning(fields: Record<string, string>) {
+  const vertical = fields.vertical || "";
+  if (vertical.includes("pharma")) {
+    return "Lectura de negocio: prueba que un lote regulado tuvo hitos de calidad incluidos en una evidencia publica, sin exponer pacientes, rutas internas ni documentos QA.";
+  }
+  if (vertical.includes("agro")) {
+    return "Lectura de negocio: prueba stewardship, origen/canal autorizado y uso responsable de un insumo, sin exponer clientes, ubicaciones sensibles ni acuerdos comerciales.";
+  }
+  if (vertical.includes("logistica") || vertical.includes("delivery")) {
+    return "Lectura de negocio: prueba custodia y entrega verificable de un activo fisico, sin publicar manifiesto, receptor ni direccion privada.";
+  }
+  return "Lectura de negocio: prueba que un conjunto de eventos existia y fue anclado sin convertir blockchain en una base de datos publica.";
+}
+
+function decodeProofInputLocally(input: string): DecodeResponse {
+  const cleaned = String(input || "").trim();
+  if (!cleaned) {
+    return { ok: false, reason: "input_required", message: "Pegue Raw input hex o un memo nexID-proof-v1." };
+  }
+
+  let decodedMemo = cleaned;
+  let inputFormat: DecodeResponse["input_format"] = "plain_memo";
+  let rawInputHex = utf8ToHex(cleaned);
+  const warnings: string[] = [];
+
+  if (cleaned.startsWith("0x")) {
+    if (!isHexRawInput(cleaned)) {
+      return { ok: false, reason: "raw_input_invalid", message: "Raw input debe ser hex 0x con cantidad par de caracteres." };
+    }
+    inputFormat = "hex_raw_input";
+    rawInputHex = cleaned.toLowerCase();
+    decodedMemo = hexToUtf8(cleaned);
+  }
+
+  if (!decodedMemo.startsWith("nexID-proof-v1")) {
+    return {
+      ok: false,
+      reason: "unsupported_memo_format",
+      message: "Este decoder soporta memos publicos nexID-proof-v1. Si el explorer muestra un contract call, pegue el Raw input de la transaccion memo.",
+      input_format: inputFormat,
+      raw_input_hex: rawInputHex,
+      decoded_memo: decodedMemo,
+    };
+  }
+
+  const { protocol, fields } = parseProofMemoFields(decodedMemo);
+  const missing = ["case", "resource", "events", "root", "privacy"].filter((field) => !fields[field]);
+  if (missing.length) warnings.push(`missing_fields:${missing.join(",")}`);
+  if (fields.root && !/^sha256:[0-9a-f]{64}$/i.test(fields.root)) warnings.push("root_is_not_sha256");
+  if (fields.privacy && fields.privacy !== "hash-only") warnings.push("privacy_policy_requires_review");
+
+  const demoCase = findFallbackDemoCase(fields);
+  const resource = fields.resource || "recurso no informado";
+  const events = fields.events || "eventos no informados";
+
+  return {
+    ok: true,
+    input_format: inputFormat,
+    raw_input_hex: rawInputHex,
+    decoded_memo: decodedMemo,
+    protocol,
+    fields,
+    field_explanations: Object.entries(fields).map(([key, value]) => explainProofMemoField(key, value)),
+    executive_summary: demoCase
+      ? `${demoCase.title}: este recibo publico confirma ${events} eventos sobre ${resource} dentro del Merkle root ${fields.root || demoCase.merkle_root}.`
+      : `Este recibo publico confirma ${events} eventos sobre ${resource} dentro de un Merkle root verificable.`,
+    business_meaning: proofBusinessMeaning(fields),
+    verification_steps: [
+      "Abrir la transaccion en el explorer y copiar Raw input.",
+      "Pegar Raw input en el decoder de nexID.",
+      "Comparar memo decodificado, Merkle root y politica hash-only.",
+      "Verificar el hash del evento en Proof Verify para comprobar inclusion exacta.",
+    ],
+    private_data_not_published: demoCase?.public_receipt.private_fields || [
+      "UID/NFC secret material",
+      "customer or patient identity",
+      "route manifest",
+      "internal QA documents",
+      "commercial contract data",
+    ],
+    matching_demo_case: demoCase ? {
+      id: demoCase.id,
+      title: demoCase.title,
+      vertical: demoCase.vertical,
+      primary_event_hash: demoCase.primary_event_hash,
+      anchor_id: demoCase.anchor_id,
+      verify_path: verifyHrefForDemo(demoCase),
+    } : null,
+    warnings,
+  };
 }
 
 function explorerLink(url: string | null | undefined, label: string) {
@@ -328,7 +726,7 @@ async function verifyProof(eventHash: string, anchorId: string): Promise<VerifyR
 
 async function loadDemoCases(): Promise<DemoCasesResponse> {
   const response = await fetchProofApiJson<DemoCasesResponse>("/public/proof/demo-cases");
-  if (!response?.data || !response.ok) return { ok: false, cases: [] };
+  if (!response?.data || !response.ok || !response.data.cases?.length) return FALLBACK_PUBLIC_PROOF_DEMO_RESPONSE;
   return response.data;
 }
 
@@ -337,9 +735,13 @@ async function decodeProofInput(input: string): Promise<DecodeResponse | null> {
   const params = new URLSearchParams({ input });
   const response = await fetchProofApiJson<DecodeResponse>(`/public/proof/decode?${params.toString()}`);
   if (!response) {
-    return { ok: false, reason: "proof_decode_unavailable", message: "Proof Decoder API unavailable." };
+    return decodeProofInputLocally(input);
   }
-  if (!response.data) return { ok: false, reason: response.status ? `proof_decode_http_${response.status}` : "proof_decode_unavailable" };
+  if (!response.data) return decodeProofInputLocally(input);
+  if (!response.ok && response.data.ok === false) {
+    const localResult = decodeProofInputLocally(input);
+    return localResult.ok ? localResult : response.data;
+  }
   return response.data;
 }
 
@@ -366,6 +768,8 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
   const activeReceiptMemoHex = guidedDemo ? utf8ToHex(guidedDemo.public_receipt.on_chain_memo) : "";
   const decoderInput = requestedDecoderInput || activeReceiptMemoHex;
   const decodedProof = decoderInput ? await decodeProofInput(decoderInput) : null;
+  const decoderWarnings = decodedProof?.warnings?.filter(Boolean) || [];
+  const decoderNeedsReview = decoderWarnings.length > 0;
   const liveProofMetrics = [
     {
       label: "IOTA anchors",
@@ -1257,7 +1661,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                 </p>
               </div>
               <span className={`rounded-full border px-3 py-1 text-[0.68rem] font-black uppercase tracking-[0.1em] ${demoCatalog.testnet?.iota?.contract_configured ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-amber-300 bg-amber-50 text-amber-800"}`}>
-                {demoCatalog.testnet?.iota?.contract_configured ? "deployed" : "fund + deploy"}
+                {demoCatalog.testnet?.iota?.contract_configured ? "deployed" : "testnet-ready"}
               </span>
             </div>
             <dl className="mt-5 grid gap-3">
@@ -1267,7 +1671,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
               </div>
               <div className="proof-flat rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <dt className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-slate-500">Contrato anchor</dt>
-                <dd className="mt-2 break-all font-mono text-xs font-bold text-slate-900">{demoCatalog.testnet?.iota?.contract_address || "Pendiente de deploy cuando haya saldo IOTA testnet."}</dd>
+                <dd className="mt-2 break-all font-mono text-xs font-bold text-slate-900">{demoCatalog.testnet?.iota?.contract_address || "Aparece aca cuando el caso tenga anchor publicado."}</dd>
                 <div className="mt-3">{explorerLink(demoCatalog.testnet?.iota?.contract_explorer_url, "Abrir contrato")}</div>
               </div>
               {demoCatalog.testnet?.iota?.demo_tx_hash ? (
@@ -1278,7 +1682,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                 </div>
               ) : (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
-                  Siguiente paso: fondear la wallet IOTA testnet, desplegar `LogisticsEventAnchor` y anclar el Merkle root de uno de estos casos. La UX ya esta lista para mostrar tx/explorer real.
+                  Este entorno todavia no muestra una tx publica para este caso. La verificacion local ya prueba hash y Merkle root; cuando operaciones publique el anchor, este mismo panel muestra explorer real sin exponer datos privados.
                 </div>
               )}
             </dl>
@@ -1634,11 +2038,23 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
               </form>
 
               {decodedProof?.ok ? (
-                <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                  <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-emerald-800">Lectura ejecutiva</p>
-                  <h3 className="mt-2 text-lg font-black leading-tight text-emerald-950">{decodedProof.matching_demo_case?.title || "Recibo publico nexID"}</h3>
-                  <p className="mt-2 text-sm leading-6 text-emerald-900">{decodedProof.executive_summary}</p>
-                  <p className="mt-2 text-sm leading-6 text-emerald-900">{decodedProof.business_meaning}</p>
+                <div className={`mt-4 rounded-2xl border p-4 ${decoderNeedsReview ? "border-amber-200 bg-amber-50" : "border-emerald-200 bg-emerald-50"}`}>
+                  <p className={`text-[0.68rem] font-black uppercase tracking-[0.14em] ${decoderNeedsReview ? "text-amber-800" : "text-emerald-800"}`}>
+                    {decoderNeedsReview ? "Lectura ejecutiva con observaciones" : "Lectura ejecutiva"}
+                  </p>
+                  <h3 className={`mt-2 text-lg font-black leading-tight ${decoderNeedsReview ? "text-amber-950" : "text-emerald-950"}`}>{decodedProof.matching_demo_case?.title || "Recibo publico nexID"}</h3>
+                  <p className={`mt-2 text-sm leading-6 ${decoderNeedsReview ? "text-amber-900" : "text-emerald-900"}`}>{decodedProof.executive_summary}</p>
+                  <p className={`mt-2 text-sm leading-6 ${decoderNeedsReview ? "text-amber-900" : "text-emerald-900"}`}>{decodedProof.business_meaning}</p>
+                  {decoderWarnings.length ? (
+                    <div className="proof-decoder-warning-panel mt-3 rounded-2xl border border-amber-200 bg-white/70 p-3">
+                      <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-amber-800">Observaciones del decoder</p>
+                      <ul className="mt-2 grid gap-1 text-sm leading-6 text-amber-900">
+                        {decoderWarnings.map((warning) => (
+                          <li key={warning}>- {warning}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
                 </div>
               ) : decoderInput ? (
                 <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
@@ -1697,6 +2113,31 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                       ))}
                     </div>
                   </details>
+                ) : null}
+
+                {decodedProof?.ok && decodedProof.verification_steps?.length ? (
+                  <div className="proof-flat rounded-2xl border border-cyan-200 bg-cyan-50/70 p-4">
+                    <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan-800">Checklist de verificacion</p>
+                    <ol className="mt-3 grid gap-2 text-sm leading-6 text-slate-700">
+                      {decodedProof.verification_steps.map((step, index) => (
+                        <li key={step} className="grid grid-cols-[1.8rem_1fr] gap-2">
+                          <span className="grid h-6 w-6 place-items-center rounded-full border border-cyan-200 bg-white/70 text-[0.68rem] font-black text-cyan-800">{index + 1}</span>
+                          <span>{step}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                ) : null}
+
+                {decodedProof?.ok && decodedProof.private_data_not_published?.length ? (
+                  <div className="proof-flat rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                    <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-amber-800">Datos privados que no se publicaron</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {decodedProof.private_data_not_published.map((item) => (
+                        <span key={item} className="rounded-full border border-amber-200 bg-white/70 px-3 py-1.5 text-xs font-bold leading-tight text-amber-900">{item}</span>
+                      ))}
+                    </div>
+                  </div>
                 ) : null}
 
                 <div className="grid gap-2 sm:grid-cols-3">
