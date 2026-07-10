@@ -6,17 +6,30 @@ const shellSource = await readFile(new URL("../src/components/dashboard-shell.ts
 const layoutSource = await readFile(new URL("../src/app/(app)/layout.tsx", import.meta.url), "utf8");
 const homeClientSource = await readFile(new URL("../src/components/dashboard-home-client.tsx", import.meta.url), "utf8");
 const crmSource = await readFile(new URL("../src/components/executive-realtime-crm.tsx", import.meta.url), "utf8");
+const globalsSource = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
 
 test("dashboard shell exposes enterprise account drawer instead of bare logout", () => {
   assert.match(shellSource, /import \{ TenantAccountMenu \} from "\.\/tenant-account-menu"/);
   assert.match(shellSource, /<TenantAccountMenu[\s\S]*email=\{currentEmail\}/);
   assert.match(shellSource, /<TenantAccountMenu[\s\S]*label=\{currentLabel\}/);
   assert.match(shellSource, /<TenantAccountMenu[\s\S]*permissions=\{currentPermissions\}/);
-  assert.match(shellSource, /className="dashboard-shell-account-menu w-full sm:w-auto"/);
+  assert.match(shellSource, /className="dashboard-shell-account-menu shrink-0 sm:w-auto"/);
+  assert.doesNotMatch(shellSource, /className="dashboard-shell-account-menu w-full sm:w-auto"/);
   assert.match(shellSource, /surface="dashboard"/);
   assert.match(shellSource, /<TenantAccountMenu[\s\S]*tenantSlug=\{currentTenantSlug\}/);
   assert.doesNotMatch(shellSource, /onClick=\{handleLogout\}/);
   assert.doesNotMatch(shellSource, /const \[loggingOut, setLoggingOut\]/);
+});
+
+test("dashboard account trigger stays compact in mobile header", () => {
+  assert.match(globalsSource, /\.dashboard-header \.dashboard-shell-account-menu\s*\{[\s\S]*flex:\s*0 1 auto/);
+  assert.match(globalsSource, /@media \(max-width:\s*640px\)\s*\{[\s\S]*\.dashboard-header \.dashboard-shell-account-menu\s*\{[\s\S]*width:\s*auto !important/);
+  assert.match(globalsSource, /@media \(max-width:\s*640px\)\s*\{[\s\S]*\.dashboard-header \.dashboard-shell-account-menu \[data-testid="tenant-account-menu-trigger"\]\s*\{[\s\S]*border-radius:\s*999px !important/);
+  assert.match(globalsSource, /@media \(max-width:\s*640px\)\s*\{[\s\S]*\.dashboard-header \.dashboard-shell-account-menu \[data-testid="tenant-account-menu-trigger"\]\s*\{[\s\S]*height:\s*2\.875rem !important/);
+  assert.match(globalsSource, /@media \(max-width:\s*640px\)\s*\{[\s\S]*\.dashboard-header \.dashboard-shell-account-menu \[data-testid="tenant-account-menu-trigger"\]\s*\{[\s\S]*max-height:\s*2\.875rem !important/);
+  assert.match(globalsSource, /@media \(max-width:\s*640px\)\s*\{[\s\S]*\.dashboard-header \.dashboard-shell-account-menu \[data-testid="tenant-account-menu-trigger"\]\s*\{[\s\S]*max-width:\s*15\.5rem !important/);
+  assert.match(globalsSource, /@media \(max-width:\s*640px\)\s*\{[\s\S]*\.dashboard-header \.dashboard-shell-account-menu \[data-testid="tenant-account-menu-trigger"\] > span:first-child\s*\{[\s\S]*width:\s*2rem !important/);
+  assert.match(globalsSource, /@media \(max-width:\s*640px\)\s*\{[\s\S]*\.dashboard-header \.dashboard-shell-account-menu \[data-account-menu-compact="true"\] > span:nth-child\(2\) span\s*\{[\s\S]*display:\s*none !important/);
 });
 
 test("app layout passes real session status into account drawer", () => {

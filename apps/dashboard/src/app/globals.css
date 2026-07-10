@@ -1130,6 +1130,11 @@ body.nexid-crm-overlay-active .dashboard-main {
   z-index: 981 !important;
 }
 
+.dashboard-header .dashboard-shell-account-menu {
+  flex: 0 1 auto;
+  max-width: min(100%, 18rem);
+}
+
 /* Enterprise account menu must sit above CRM/map fullscreen layers and right panels. */
 html.nexid-account-menu-open,
 body.nexid-account-menu-open {
@@ -1387,6 +1392,62 @@ body.nexid-account-menu-open .nexid-account-layer * {
 }
 
 @media (max-width: 640px) {
+  .dashboard-header .dashboard-shell-account-menu {
+    width: auto !important;
+    max-width: min(100%, 15.5rem) !important;
+    margin-left: auto;
+  }
+
+  .dashboard-header .dashboard-shell-account-menu [data-testid="tenant-account-menu-trigger"] {
+    width: auto !important;
+    height: 2.875rem !important;
+    min-height: 2.75rem !important;
+    max-height: 2.875rem !important;
+    max-width: 15.5rem !important;
+    gap: 0.625rem !important;
+    align-self: center !important;
+    border-radius: 999px !important;
+    flex-wrap: nowrap !important;
+    overflow: hidden !important;
+    padding: 0.5rem 0.65rem !important;
+  }
+
+  .dashboard-header .dashboard-shell-account-menu [data-testid="tenant-account-menu-trigger"] > span:first-child {
+    width: 2rem !important;
+    height: 2rem !important;
+    font-size: 0.68rem !important;
+  }
+
+  .dashboard-header .dashboard-shell-account-menu [data-testid="tenant-account-menu-trigger"] > span:nth-child(2) {
+    max-width: 8.5rem !important;
+  }
+
+  .dashboard-header .dashboard-shell-account-menu [data-testid="tenant-account-menu-trigger"] b {
+    font-size: 0.76rem !important;
+    line-height: 0.95rem !important;
+  }
+
+  .dashboard-header .dashboard-shell-account-menu [data-testid="tenant-account-menu-trigger"] span span {
+    font-size: 0.68rem !important;
+    line-height: 0.85rem !important;
+  }
+
+  .dashboard-header .dashboard-shell-account-menu [data-account-menu-compact="true"] {
+    height: 2.875rem !important;
+    min-height: 2.875rem !important;
+    max-height: 2.875rem !important;
+  }
+
+  .dashboard-header .dashboard-shell-account-menu [data-account-menu-compact="true"] > span:nth-child(2) {
+    display: block !important;
+    min-width: 0 !important;
+    white-space: nowrap !important;
+  }
+
+  .dashboard-header .dashboard-shell-account-menu [data-account-menu-compact="true"] > span:nth-child(2) span {
+    display: none !important;
+  }
+
   .nexid-account-context {
     display: none !important;
   }

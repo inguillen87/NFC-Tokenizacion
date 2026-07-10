@@ -919,10 +919,11 @@ export function TenantAccountMenu({
         aria-expanded={open}
         aria-controls="tenant-account-menu-panel"
         data-testid="tenant-account-menu-trigger"
+        data-account-menu-compact={surface === "dashboard" ? "true" : undefined}
         data-account-menu-trigger-surface={surface}
         data-account-menu-open={open ? "true" : "false"}
         title="Abrir cuenta, configuración y logout del workspace"
-        className="flex min-h-14 w-full items-center gap-3 rounded-xl border border-white/12 bg-slate-950/65 px-3 py-2 text-left shadow-[0_16px_38px_rgba(2,6,23,.22)] transition hover:border-cyan-300/40 hover:bg-cyan-400/10 lg:min-w-[190px]"
+        className="flex min-h-14 w-full items-center gap-3 overflow-hidden rounded-xl border border-white/12 bg-slate-950/65 px-3 py-2 text-left shadow-[0_16px_38px_rgba(2,6,23,.22)] transition hover:border-cyan-300/40 hover:bg-cyan-400/10 lg:min-w-[190px]"
         onKeyDown={(event) => {
           if (event.key !== "Escape") return;
           event.preventDefault();

@@ -1,45 +1,148 @@
 import Link from "next/link";
-import { ArrowLeft, CreditCard, ExternalLink, KeyRound, Settings, Users } from "lucide-react";
-import { Card, SectionHeading } from "@product/ui";
+import {
+  ArrowLeft,
+  ArrowRight,
+  BadgeCheck,
+  BarChart3,
+  Building2,
+  CreditCard,
+  ExternalLink,
+  Globe2,
+  KeyRound,
+  PackageCheck,
+  RadioTower,
+  Settings,
+  ShieldCheck,
+  Smartphone,
+  Target,
+  Users,
+} from "lucide-react";
+import { Badge, Card, SectionHeading } from "@product/ui";
 import { TENANT_DIRECTORY } from "../../../../lib/tenant-directory";
 import { productUrls } from "@product/config";
 
-function tenantPlaybook(vertical: string) {
+type TenantKpis = {
+  batches: string;
+  tags: string;
+  scans: string;
+  incidents: string;
+};
+
+type TenantPlaybook = {
+  productLabel: string;
+  readiness: string;
+  boardSignal: string;
+  kpis: TenantKpis;
+  nextActions: string[];
+};
+
+const statusTone = {
+  active: "green",
+  risk: "amber",
+  pending: "cyan",
+} as const;
+
+function tenantPlaybook(vertical: string): TenantPlaybook {
   const key = vertical.toLowerCase();
   if (key.includes("wine")) {
     return {
       productLabel: "Wine Trust Passport",
-      readiness: "Etiquetado premium + postventa + anti-replay",
-      kpis: { batches: "2 activos", tags: "10 fisicas piloto", scans: "240/30d", incidents: "1 alerta replay" },
+      readiness: "Etiquetado premium, postventa verificable y defensa anti-replay.",
+      boardSignal: "Listo para reunion comercial: producto real, prueba movil y salida hash-only.",
+      kpis: { batches: "2 activos", tags: "10 fisicas piloto", scans: "240/30d", incidents: "1 replay aislado" },
       nextActions: [
-        "Cerrar onboarding lote proveedor con import + activate.",
-        "Activar ownership/warranty para CTA post-scan.",
-        "Habilitar panel ejecutivo de riesgo por region.",
+        "Cerrar onboarding de lote proveedor con import y activacion.",
+        "Activar ownership, warranty y CTA post-scan para compradores.",
+        "Presentar panel ejecutivo de riesgo por region y canal.",
+      ],
+    };
+  }
+  if (key.includes("pharma")) {
+    return {
+      productLabel: "Cold Chain Proof",
+      readiness: "Lote serializado, custodia, QA y verificacion de campo.",
+      boardSignal: "Preparado para compliance: eventos minimos, privacidad por diseno y auditoria.",
+      kpis: { batches: "1 regulado", tags: "200 unidades", scans: "680/30d", incidents: "0 criticas" },
+      nextActions: [
+        "Vincular QA de lote y temperatura como evento hash-only.",
+        "Separar datos privados del paciente de la evidencia publica.",
+        "Conectar webhooks ERP y auditoria de recalls.",
       ],
     };
   }
   if (key.includes("events")) {
     return {
       productLabel: "Event Access Shield",
-      readiness: "Ticketing seguro + antifraude de accesos",
-      kpis: { batches: "1 activo", tags: "500 credenciales", scans: "1.2k/30d", incidents: "3 intentos clonados" },
+      readiness: "Ticketing seguro, antifraude de accesos y control de venue.",
+      boardSignal: "Piloto accionable: validacion, replay, turnstile y leads del evento.",
+      kpis: { batches: "1 activo", tags: "500 credenciales", scans: "1.2k/30d", incidents: "3 clones" },
       nextActions: [
         "Integrar validador con operacion de ingreso.",
         "Monitorear replay/tamper en picos de evento.",
-        "Activar dashboard de turnstile por venue.",
+        "Activar dashboard por venue y campanas post-evento.",
       ],
     };
   }
   return {
     productLabel: "Secure Product Passport",
-    readiness: "Trazabilidad + autenticidad + soporte comercial",
+    readiness: "Trazabilidad, autenticidad y soporte comercial conectado.",
+    boardSignal: "Cuenta lista para escalar por canal, producto y region.",
     kpis: { batches: "1 activo", tags: "200 unidades", scans: "680/30d", incidents: "0 criticas" },
     nextActions: [
       "Consolidar lotes y politica de reorden.",
-      "Activar modulos de warranty/provenance.",
+      "Activar modulos de warranty, provenance y tokenizacion.",
       "Definir playbook de expansion por canal.",
     ],
   };
+}
+
+function metricCards(tenant: (typeof TENANT_DIRECTORY)[number], playbook: TenantPlaybook) {
+  return [
+    { label: "Producto", value: playbook.productLabel, detail: tenant.vertical, icon: <PackageCheck className="h-4 w-4" /> },
+    { label: "Lotes", value: playbook.kpis.batches, detail: "emision y lifecycle", icon: <BadgeCheck className="h-4 w-4" /> },
+    { label: "Tags", value: playbook.kpis.tags, detail: "inventario piloto", icon: <RadioTower className="h-4 w-4" /> },
+    { label: "Lecturas", value: playbook.kpis.scans, detail: playbook.kpis.incidents, icon: <BarChart3 className="h-4 w-4" /> },
+  ];
+}
+
+function proofLayers(tenantSlug: string) {
+  return [
+    {
+      label: "nexID Core",
+      body: "Identidad de producto, reglas de canal, CRM y permisos del tenant.",
+      href: `/events?tenant=${tenantSlug}`,
+      icon: <ShieldCheck className="h-4 w-4" />,
+      tone: "cyan",
+    },
+    {
+      label: "IOTA proof",
+      body: "Evidencia publica hash-only para hitos de custodia o QA.",
+      href: "/proof/anchor",
+      icon: <RadioTower className="h-4 w-4" />,
+      tone: "green",
+    },
+    {
+      label: "Polygon ownership",
+      body: "Capa opcional para reclamo, garantia o certificado transferible.",
+      href: `/tokenization?tenant=${tenantSlug}`,
+      icon: <Globe2 className="h-4 w-4" />,
+      tone: "violet",
+    },
+    {
+      label: "SDK / API",
+      body: "Keys, webhooks y salida publica conectada a apps externas.",
+      href: `/api-keys?tenant=${tenantSlug}`,
+      icon: <KeyRound className="h-4 w-4" />,
+      tone: "amber",
+    },
+  ];
+}
+
+function toneClass(tone: string) {
+  if (tone === "green") return "border-emerald-300/25 bg-emerald-500/10 text-emerald-100";
+  if (tone === "amber") return "border-amber-300/25 bg-amber-500/10 text-amber-100";
+  if (tone === "violet") return "border-violet-300/25 bg-violet-500/10 text-violet-100";
+  return "border-cyan-300/25 bg-cyan-500/10 text-cyan-100";
 }
 
 export default async function TenantDetailPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -61,118 +164,186 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ s
     );
   }
 
+  const tenantParam = encodeURIComponent(tenant.slug);
   const publicMobile = `${productUrls.web}/demo-lab/mobile/${tenant.slug}/demo-item-001?pack=wine-secure&demoMode=consumer_tap`;
   const playbook = tenantPlaybook(tenant.vertical);
+  const metrics = metricCards(tenant, playbook);
+  const layers = proofLayers(tenantParam);
+
+  const accountActions = [
+    { href: "/settings", label: "Configuracion", icon: <Settings className="h-4 w-4" />, tone: "cyan" },
+    { href: "/users", label: "Usuarios", icon: <Users className="h-4 w-4" />, tone: "green" },
+    { href: `/api-keys?tenant=${tenantParam}`, label: "API", icon: <KeyRound className="h-4 w-4" />, tone: "violet" },
+    { href: `/subscriptions?tenant=${tenantParam}`, label: "Plan", icon: <CreditCard className="h-4 w-4" />, tone: "amber" },
+  ];
+
+  const operationalLinks = [
+    { href: `/batches?tenant=${tenantParam}`, label: "Lotes", body: "Emision, import y activacion." },
+    { href: `/tags?tenant=${tenantParam}`, label: "Tags", body: "NFC/QR, inventario y estado." },
+    { href: `/events?tenant=${tenantParam}`, label: "Eventos", body: "Lecturas, riesgo y auditoria." },
+    { href: `/analytics?tenant=${tenantParam}`, label: "Health operativo", body: "KPI, riesgo y tendencias." },
+    { href: `/leads-tickets?tenant=${tenantParam}`, label: "Leads y tickets", body: "CRM, soporte y oportunidades." },
+    { href: `/demo-lab?tenant=${tenantParam}`, label: "Demo Lab", body: "Experiencia publica y comercial." },
+  ];
 
   return (
-    <main className="space-y-8">
-      <SectionHeading eyebrow="Tenant overview" title={tenant.tenant} description="Vista navegable de cuenta enterprise: estado operativo, comercial y proximos pasos." />
+    <main className="space-y-8" data-testid="tenant-detail-enterprise-profile">
+      <SectionHeading
+        eyebrow="Tenant account cockpit"
+        title={tenant.tenant}
+        description="Vista ejecutiva y operativa de la cuenta: plan, salud, evidencia, integraciones y siguientes acciones en un solo lugar."
+      />
 
-      <Card className="p-4" data-testid="tenant-detail-admin-actions">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Administracion de cuenta</p>
-            <p className="mt-1 text-sm text-slate-400">Acciones directas del tenant sin volver a buscar dentro del CRM.</p>
+      <section className="overflow-hidden rounded-[2rem] border border-cyan-300/20 bg-[radial-gradient(circle_at_85%_0%,rgba(34,211,238,.18),transparent_38%),linear-gradient(135deg,rgba(15,23,42,.98),rgba(2,8,23,.96))] shadow-[0_28px_90px_rgba(2,6,23,.38)]">
+        <div className="grid gap-0 xl:grid-cols-[1.1fr_.9fr]">
+          <div className="p-5 md:p-7">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-200">Cuenta enterprise</p>
+                <h2 className="mt-3 text-3xl font-black leading-tight text-white md:text-5xl">{tenant.tenant}</h2>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">{playbook.boardSignal}</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Badge tone={statusTone[tenant.status]}>{tenant.status}</Badge>
+                <Badge tone="cyan">{tenant.plan}</Badge>
+                <Badge tone="violet">{tenant.region}</Badge>
+              </div>
+            </div>
+
+            <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {metrics.map((metric) => (
+                <div key={metric.label} className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{metric.label}</p>
+                    <span className="text-cyan-200">{metric.icon}</span>
+                  </div>
+                  <p className="mt-2 text-base font-black text-white">{metric.value}</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-400">{metric.detail}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 grid gap-3 md:grid-cols-2" data-testid="tenant-detail-admin-actions">
+              <div className="rounded-2xl border border-cyan-300/20 bg-cyan-400/10 p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Administracion de cuenta</p>
+                <p className="mt-2 text-sm leading-6 text-slate-300">
+                  Acciones directas del tenant sin volver a buscar dentro del CRM.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2 text-sm">
+                  {accountActions.map((item) => (
+                    <Link
+                      key={item.label}
+                      href={item.href}
+                      className={`inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 py-2 font-bold transition hover:border-cyan-200/60 ${toneClass(item.tone)}`}
+                    >
+                      {item.icon}
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Navegacion</p>
+                <p className="mt-2 text-sm leading-6 text-slate-300">
+                  Volve a la cartera o abrile al cliente una prueba publica mobile.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2 text-sm">
+                  <Link href="/tenants" className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/10 bg-slate-950/55 px-3 py-2 font-bold text-slate-100 transition hover:border-cyan-300/40">
+                    <ArrowLeft className="h-4 w-4" />
+                    Volver a tenants
+                  </Link>
+                  <a href={publicMobile} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-3 py-2 font-bold text-emerald-100 transition hover:border-emerald-200/60" target="_blank" rel="noreferrer">
+                    <Smartphone className="h-4 w-4" />
+                    Preview mobile
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-2 text-sm">
-            <Link href="/settings" className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-cyan-300/25 bg-cyan-400/10 px-3 py-2 font-bold text-cyan-100 transition hover:border-cyan-200/60">
-              <Settings className="h-4 w-4" />
-              Configuracion
-            </Link>
-            <Link href="/users" className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-3 py-2 font-bold text-emerald-100 transition hover:border-emerald-200/60">
-              <Users className="h-4 w-4" />
-              Usuarios
-            </Link>
-            <Link href={`/api-keys?tenant=${tenant.slug}`} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-violet-300/25 bg-violet-500/10 px-3 py-2 font-bold text-violet-100 transition hover:border-violet-200/60">
-              <KeyRound className="h-4 w-4" />
-              API
-            </Link>
-            <Link href={`/subscriptions?tenant=${tenant.slug}`} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-amber-300/25 bg-amber-500/10 px-3 py-2 font-bold text-amber-100 transition hover:border-amber-200/60">
-              <CreditCard className="h-4 w-4" />
-              Plan
-            </Link>
-            <Link href="/tenants" className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/10 bg-slate-950/55 px-3 py-2 font-bold text-slate-100 transition hover:border-cyan-300/40">
-              <ArrowLeft className="h-4 w-4" />
-              Tenants
-            </Link>
-          </div>
+
+          <aside className="border-t border-white/10 bg-slate-950/38 p-5 md:p-7 xl:border-l xl:border-t-0">
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-200">Playbook ejecutivo</p>
+            <h3 className="mt-3 text-2xl font-black text-white">{playbook.productLabel}</h3>
+            <p className="mt-3 text-sm leading-6 text-slate-300">{playbook.readiness}</p>
+
+            <div className="mt-5 rounded-2xl border border-emerald-300/20 bg-emerald-400/10 p-4">
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-200">Siguiente paso recomendado</p>
+              <p className="mt-2 text-sm font-bold text-white">{playbook.nextActions[0]}</p>
+              <Link href={`/batches?tenant=${tenantParam}`} className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-3 py-2 text-sm font-black text-emerald-100 transition hover:border-emerald-200/60">
+                Abrir lotes
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+
+            <ol className="mt-5 grid gap-2 text-sm text-slate-300">
+              {playbook.nextActions.map((item, index) => (
+                <li key={item} className="flex gap-3 rounded-xl border border-white/10 bg-slate-950/55 p-3">
+                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-cyan-300/10 text-xs font-black text-cyan-100">{index + 1}</span>
+                  <span className="leading-5">{item}</span>
+                </li>
+              ))}
+            </ol>
+          </aside>
         </div>
-      </Card>
+      </section>
 
-      <div className="grid gap-6 xl:grid-cols-3">
-        <Card className="p-5 xl:col-span-2">
-          <h2 className="text-base font-semibold text-white">Resumen de cuenta</h2>
-          <dl className="mt-3 grid gap-3 text-sm text-slate-300 md:grid-cols-2">
-            <div><dt className="text-slate-400">Slug</dt><dd className="text-white">{tenant.slug}</dd></div>
-            <div><dt className="text-slate-400">Plan</dt><dd className="text-white">{tenant.plan}</dd></div>
-            <div><dt className="text-slate-400">Region</dt><dd className="text-white">{tenant.region}</dd></div>
-            <div><dt className="text-slate-400">Vertical</dt><dd className="text-white">{tenant.vertical}</dd></div>
-            <div><dt className="text-slate-400">Operational health</dt><dd className="text-white">{tenant.health}</dd></div>
-            <div><dt className="text-slate-400">Status</dt><dd className="text-white">{tenant.status}</dd></div>
+      <section className="grid gap-4 xl:grid-cols-[.95fr_1.05fr]">
+        <Card className="p-5">
+          <div className="flex items-start gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-cyan-300/25 bg-cyan-400/10 text-cyan-100">
+              <Building2 className="h-5 w-5" />
+            </span>
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Resumen de cuenta</p>
+              <h3 className="mt-1 text-xl font-black text-white">Datos que entiende ventas, operaciones y soporte</h3>
+            </div>
+          </div>
+          <dl className="mt-5 grid gap-3 text-sm text-slate-300 sm:grid-cols-2">
+            <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4"><dt className="text-slate-400">Slug</dt><dd className="mt-1 break-all font-bold text-white">{tenant.slug}</dd></div>
+            <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4"><dt className="text-slate-400">Vertical</dt><dd className="mt-1 font-bold text-white">{tenant.vertical}</dd></div>
+            <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4"><dt className="text-slate-400">Health</dt><dd className="mt-1 font-bold text-white">{tenant.health}</dd></div>
+            <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4"><dt className="text-slate-400">Region / plan</dt><dd className="mt-1 font-bold text-white">{tenant.region} / {tenant.plan}</dd></div>
           </dl>
         </Card>
-        <Card className="p-5">
-          <h2 className="text-base font-semibold text-white">Quick CTA</h2>
-          <div className="mt-3 grid gap-2 text-xs">
-            <Link href="/batches/supplier" className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-cyan-100">Create supplier batch</Link>
-            <Link href={`/batches?tenant=${tenant.slug}`} className="rounded-lg border border-white/15 px-3 py-2 text-slate-100">Import manifest / activate</Link>
-            <Link href={`/demo-lab?tenant=${tenant.slug}`} className="rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-violet-100">Open demo lab</Link>
-            <a href={publicMobile} className="inline-flex items-center gap-2 rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-emerald-100" target="_blank" rel="noreferrer">
-              Open public mobile preview
-              <ExternalLink className="h-3.5 w-3.5" />
-            </a>
-            <Link href={`/leads-tickets?tenant=${tenant.slug}`} className="rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-amber-100">Lead / opportunities</Link>
+
+        <Card className="p-5" data-testid="tenant-proof-layer-grid">
+          <div className="flex items-start gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-violet-300/25 bg-violet-500/10 text-violet-100">
+              <Target className="h-5 w-5" />
+            </span>
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-200">Capas de confianza</p>
+              <h3 className="mt-1 text-xl font-black text-white">Que se prueba en nexID, IOTA, Polygon y API</h3>
+            </div>
+          </div>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            {layers.map((layer) => (
+              <Link key={layer.label} href={layer.href} className={`group rounded-2xl border p-4 transition hover:-translate-y-0.5 ${toneClass(layer.tone)}`}>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-slate-950/45">{layer.icon}</span>
+                  <ArrowRight className="h-4 w-4 opacity-70 transition group-hover:translate-x-0.5" />
+                </div>
+                <p className="mt-3 font-black text-white">{layer.label}</p>
+                <p className="mt-1 text-xs leading-5 text-slate-300">{layer.body}</p>
+              </Link>
+            ))}
           </div>
         </Card>
-      </div>
+      </section>
 
-      <div className="grid gap-3 md:grid-cols-4">
-        <Card className="p-4 text-xs text-slate-300"><p className="text-slate-400">Product line</p><p className="mt-1 text-sm font-semibold text-white">{playbook.productLabel}</p></Card>
-        <Card className="p-4 text-xs text-slate-300"><p className="text-slate-400">Batches</p><p className="mt-1 text-sm font-semibold text-white">{playbook.kpis.batches}</p></Card>
-        <Card className="p-4 text-xs text-slate-300"><p className="text-slate-400">Tags / inventory</p><p className="mt-1 text-sm font-semibold text-white">{playbook.kpis.tags}</p></Card>
-        <Card className="p-4 text-xs text-slate-300"><p className="text-slate-400">Scans / incidents</p><p className="mt-1 text-sm font-semibold text-white">{playbook.kpis.scans} - {playbook.kpis.incidents}</p></Card>
-      </div>
-
-      <div className="grid gap-3 md:grid-cols-4">
-        <Link href={`/batches?tenant=${tenant.slug}`} className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-xs text-slate-200">Batches</Link>
-        <Link href={`/tags?tenant=${tenant.slug}`} className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-xs text-slate-200">Tags</Link>
-        <Link href={`/events?tenant=${tenant.slug}`} className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-xs text-slate-200">Events</Link>
-        <Link href={`/subscriptions?tenant=${tenant.slug}`} className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-xs text-slate-200">Plan / billing</Link>
-        <Link href={`/analytics?tenant=${tenant.slug}`} className="rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-4 text-xs text-cyan-100">Operational health</Link>
-        <Link href={`/leads-tickets?tenant=${tenant.slug}`} className="rounded-2xl border border-amber-300/20 bg-amber-500/10 p-4 text-xs text-amber-100">Leads / opportunities</Link>
-        <Link href={`/api-keys?tenant=${tenant.slug}`} className="rounded-2xl border border-violet-300/20 bg-violet-500/10 p-4 text-xs text-violet-100">Webhooks / keys</Link>
-        <Link href={`/demo?tenant=${tenant.slug}`} className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-4 text-xs text-emerald-100">Manifests / demo ops</Link>
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-2">
-        <Card className="p-5 text-sm text-slate-300">
-          <h3 className="font-semibold text-white">Operational modules</h3>
-          <ul className="mt-3 list-disc space-y-2 pl-5">
-            <li>Batches y tags para emision y lifecycle.</li>
-            <li>Events para auditoria, excepcion y cumplimiento.</li>
-            <li>Manifests para trazabilidad de programacion proveedor.</li>
-            <li>Webhooks para integracion externa ERP/CRM.</li>
-          </ul>
-        </Card>
-        <Card className="p-5 text-sm text-slate-300">
-          <h3 className="font-semibold text-white">Commercial modules</h3>
-          <ul className="mt-3 list-disc space-y-2 pl-5">
-            <li>Leads y oportunidades generadas por CTA de demo.</li>
-            <li>Planes y expansion por pais/canal.</li>
-            <li>Reseller context si aplica y soporte de cuenta.</li>
-            <li>Ownership / warranty / provenance / tokenization-ready.</li>
-          </ul>
-        </Card>
-      </div>
-      <Card className="p-5 text-sm text-slate-300">
-        <h3 className="font-semibold text-white">Next 30/90 day actions</h3>
-        <p className="mt-1 text-xs text-slate-400">{playbook.readiness}</p>
-        <ol className="mt-3 list-decimal space-y-2 pl-5">
-          {playbook.nextActions.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ol>
-      </Card>
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3" data-testid="tenant-operational-links">
+        {operationalLinks.map((item) => (
+          <Link key={item.label} href={item.href} className="group rounded-2xl border border-white/10 bg-slate-900/70 p-4 transition hover:-translate-y-0.5 hover:border-cyan-300/35 hover:bg-cyan-500/10">
+            <div className="flex items-center justify-between gap-3">
+              <p className="font-black text-white">{item.label}</p>
+              <ArrowRight className="h-4 w-4 text-cyan-200 opacity-70 transition group-hover:translate-x-0.5" />
+            </div>
+            <p className="mt-2 text-xs leading-5 text-slate-400">{item.body}</p>
+          </Link>
+        ))}
+      </section>
     </main>
   );
 }

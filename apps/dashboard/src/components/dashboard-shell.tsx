@@ -513,7 +513,7 @@ export function DashboardShellInner({
               <LocaleSwitcher value={locale} options={[...locales]} />
               <SharedThemeToggle />
               <TenantAccountMenu
-                className="dashboard-shell-account-menu w-full sm:w-auto"
+                className="dashboard-shell-account-menu shrink-0 sm:w-auto"
                 email={currentEmail}
                 label={currentLabel}
                 mfaVerified={currentMfaVerified}

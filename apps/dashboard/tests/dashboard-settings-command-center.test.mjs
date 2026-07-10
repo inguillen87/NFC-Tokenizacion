@@ -32,12 +32,26 @@ test("settings page keeps tenant-scoped operational links", () => {
 });
 
 test("tenant detail page exposes account administration without hiding it in the CRM", () => {
+  assert.match(tenantDetailSource, /data-testid="tenant-detail-enterprise-profile"/);
   assert.match(tenantDetailSource, /data-testid="tenant-detail-admin-actions"/);
   assert.match(tenantDetailSource, /Administracion de cuenta/);
-  assert.match(tenantDetailSource, /href="\/settings"/);
-  assert.match(tenantDetailSource, /href="\/users"/);
-  assert.match(tenantDetailSource, /`\/api-keys\?tenant=\$\{tenant\.slug\}`/);
-  assert.match(tenantDetailSource, /`\/subscriptions\?tenant=\$\{tenant\.slug\}`/);
+  assert.match(tenantDetailSource, /Tenant account cockpit/);
+  assert.match(tenantDetailSource, /Playbook ejecutivo/);
+  assert.match(tenantDetailSource, /data-testid="tenant-proof-layer-grid"/);
+  assert.match(tenantDetailSource, /Que se prueba en nexID, IOTA, Polygon y API/);
+  assert.match(tenantDetailSource, /nexID Core/);
+  assert.match(tenantDetailSource, /IOTA proof/);
+  assert.match(tenantDetailSource, /Polygon ownership/);
+  assert.match(tenantDetailSource, /SDK \/ API/);
+  assert.match(tenantDetailSource, /href: "\/settings"/);
+  assert.match(tenantDetailSource, /href: "\/users"/);
+  assert.match(tenantDetailSource, /const tenantParam = encodeURIComponent\(tenant\.slug\)/);
+  assert.match(tenantDetailSource, /`\/api-keys\?tenant=\$\{tenantParam\}`/);
+  assert.match(tenantDetailSource, /`\/subscriptions\?tenant=\$\{tenantParam\}`/);
   assert.match(tenantDetailSource, /href="\/tenants"/);
   assert.match(tenantDetailSource, /Volver a tenants/);
+  assert.match(tenantDetailSource, /data-testid="tenant-operational-links"/);
+  assert.doesNotMatch(tenantDetailSource, /Quick CTA/);
+  assert.doesNotMatch(tenantDetailSource, /Create supplier batch/);
+  assert.doesNotMatch(tenantDetailSource, /Lead \/ opportunities/);
 });
