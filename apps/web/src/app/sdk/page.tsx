@@ -128,8 +128,8 @@ function SdkTopNav() {
     <header className="sdk-top-nav">
       <div className="sdk-top-nav-inner">
         <Link href="/" aria-label="nexID home" className="sdk-brand-link">
-          <BrandLockup size={48} variant="ripple" theme="dark" />
-          <span>SDK & APIs</span>
+          <BrandLockup size={48} variant="ripple" theme="dark" className="sdk-brand-lockup" />
+          <span className="sdk-brand-badge">SDK & APIs</span>
         </Link>
         <nav className="sdk-desktop-nav" aria-label="SDK navigation">
           <Link href="/docs">Docs</Link>

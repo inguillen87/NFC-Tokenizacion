@@ -4206,7 +4206,7 @@ html.theme-light .animate-card-shift:hover {
   gap: 0.75rem;
 }
 
-.sdk-brand-link span {
+.sdk-brand-link > .sdk-brand-badge {
   border: 1px solid rgba(34, 211, 238, 0.4);
   border-radius: 999px;
   padding: 0.32rem 0.72rem;
@@ -4897,7 +4897,7 @@ html.theme-light .animate-card-shift:hover {
     padding: 0 0.9rem;
   }
 
-  .sdk-brand-link span,
+  .sdk-brand-link > .sdk-brand-badge,
   .sdk-api-status,
   .sdk-nav-actions {
     display: none;
@@ -34858,6 +34858,20 @@ html.theme-light .sdk-trust-rail span {
   color: #475569 !important;
 }
 
+html.theme-light .sdk-hero-actions .ui-btn--secondary,
+html[data-theme="light"] .sdk-hero-actions .ui-btn--secondary {
+  border-color: rgba(14, 116, 144, 0.22) !important;
+  background: rgba(255, 255, 255, 0.84) !important;
+  color: #0f172a !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08) !important;
+}
+
+html.theme-light .sdk-hero-actions .ui-btn--secondary:hover,
+html[data-theme="light"] .sdk-hero-actions .ui-btn--secondary:hover {
+  border-color: rgba(14, 116, 144, 0.38) !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+}
+
 html.theme-light .sdk-trust-rail strong {
   color: #0f172a !important;
 }
@@ -44835,6 +44849,10 @@ html[data-theme="light"] .offline-phone-screen .text-slate-200 {
   font-weight: 900;
 }
 
+.sdk-brand-lockup {
+  flex: 0 0 auto;
+}
+
 .demo-lab-wizard-gano-card p {
   margin: 0;
 }
@@ -46964,7 +46982,32 @@ html[data-theme="light"] .sdk-theme-toggle .theme-toggle {
   .sdk-brand-link {
     grid-column: 1 !important;
     grid-row: 1 !important;
+    min-width: 7.45rem !important;
+    max-width: 8.7rem !important;
+    gap: 0.52rem !important;
+    overflow: visible !important;
+  }
+
+  .sdk-brand-link .sdk-brand-lockup {
+    gap: 0.42rem !important;
     min-width: 0 !important;
+  }
+
+  .sdk-brand-link .brand-mark {
+    display: inline-flex !important;
+    flex: 0 0 2.45rem !important;
+    width: 2.45rem !important;
+    height: 2.45rem !important;
+    border-radius: 0.9rem !important;
+  }
+
+  .sdk-brand-link .brand-wordmark-svg {
+    display: block !important;
+    flex: 0 0 5.35rem !important;
+    width: 5.35rem !important;
+    min-width: 5.35rem !important;
+    max-width: 5.35rem !important;
+    height: auto !important;
   }
 
   .sdk-theme-toggle {
@@ -46998,9 +47041,23 @@ html[data-theme="light"] .sdk-theme-toggle .theme-toggle {
     padding-inline: 0.68rem !important;
   }
 
-  .sdk-brand-link svg,
-  .sdk-brand-link img {
-    max-width: 2.65rem !important;
+  .sdk-brand-link {
+    min-width: 6.75rem !important;
+    max-width: 7.5rem !important;
+  }
+
+  .sdk-brand-link .brand-mark {
+    flex-basis: 2.22rem !important;
+    width: 2.22rem !important;
+    height: 2.22rem !important;
+    border-radius: 0.78rem !important;
+  }
+
+  .sdk-brand-link .brand-wordmark-svg {
+    flex-basis: 4.85rem !important;
+    width: 4.85rem !important;
+    min-width: 4.85rem !important;
+    max-width: 4.85rem !important;
   }
 
   .sdk-theme-toggle .theme-toggle {

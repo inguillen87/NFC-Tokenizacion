@@ -96,6 +96,8 @@ test("sdk mobile hero surfaces the proof system before becoming a long text stac
   assert.match(sdk, /Proof Verify & Decoder/);
   assert.match(sdk, /ThemeToggle/);
   assert.match(sdk, /className="sdk-theme-toggle"/);
+  assert.match(sdk, /className="sdk-brand-lockup"/);
+  assert.match(sdk, /className="sdk-brand-badge"/);
   assert.match(css, /SDK mobile first-viewport pass/);
   assert.match(css, /SDK final clarity pass/);
   assert.match(css, /Public platform sweep: canonical landing, SDK theme control and readable/);
@@ -106,6 +108,11 @@ test("sdk mobile hero surfaces the proof system before becoming a long text stac
   assert.match(css, /html\.theme-light \.sdk-trust-rail div,[\s\S]*background:\s*rgba\(255,\s*255,\s*255,\s*0\.66\) !important/);
   assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*\.sdk-trust-rail span\s*\{[\s\S]*display:\s*-webkit-box !important/);
   assert.match(css, /html\.theme-light \.sdk-trust-rail span,[\s\S]*color:\s*#475569 !important/);
+  assert.match(css, /\.sdk-brand-link > \.sdk-brand-badge\s*\{[\s\S]*border:\s*1px solid rgba\(34,\s*211,\s*238,\s*0\.4\)/);
+  assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*\.sdk-brand-link \.brand-mark\s*\{[\s\S]*display:\s*inline-flex !important/);
+  assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*\.sdk-brand-link \.brand-wordmark-svg\s*\{[\s\S]*width:\s*5\.35rem !important/);
+  assert.match(css, /html\.theme-light \.sdk-hero-actions \.ui-btn--secondary,[\s\S]*color:\s*#0f172a !important/);
+  assert.doesNotMatch(css, /\.sdk-brand-link span,[\s\S]*\.sdk-api-status/);
   assert.match(css, /\.sdk-theme-toggle \.theme-toggle span:not\(\.theme-toggle__glyph\)\s*\{[\s\S]*text-overflow:\s*ellipsis/);
   assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*\.sdk-theme-toggle\s*\{[\s\S]*grid-column:\s*2 !important/);
   assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*\.sdk-mobile-primary-action\s*\{[\s\S]*grid-row:\s*1 !important/);
