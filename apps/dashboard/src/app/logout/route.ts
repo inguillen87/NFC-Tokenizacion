@@ -25,7 +25,14 @@ async function endDashboardSession(req: Request, revokeUpstream: boolean) {
   }
   const loginUrl = new URL("/login", req.url);
   loginUrl.searchParams.set("logged_out", "1");
-  const response = NextResponse.redirect(loginUrl, 303);
+  const redirectPath = `${loginUrl.pathname}${loginUrl.search}`;
+  const response = new NextResponse(
+    `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${redirectPath}"></head><body><script>location.replace(${JSON.stringify(redirectPath)});</script></body></html>`,
+    {
+      status: 200,
+      headers: { "Content-Type": "text/html; charset=utf-8" },
+    },
+  );
   response.headers.set("Cache-Control", "no-store");
   response.headers.set("Clear-Site-Data", "\"cookies\", \"storage\"");
   response.cookies.delete(DASHBOARD_SESSION_COOKIE);
