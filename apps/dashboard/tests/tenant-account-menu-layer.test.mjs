@@ -8,10 +8,10 @@ const globalsSource = await readFile(new URL("../src/app/globals.css", import.me
 const pwaSetupSource = await readFile(new URL("../src/components/pwa-setup.tsx", import.meta.url), "utf8");
 const serviceWorkerSource = await readFile(new URL("../public/sw.js", import.meta.url), "utf8");
 
-test("tenant account menu uses a fixed body portal overlay above CRM/map layers", () => {
+test("tenant account menu uses a native top-layer dialog above CRM/map layers", () => {
   assert.match(menuSource, /const ACCOUNT_MENU_PORTAL_ROOT_ID = "nexid-account-menu-root"/);
   assert.match(menuSource, /const ACCOUNT_MENU_Z_INDEX = 2147483647/);
-  assert.match(menuSource, /const ACCOUNT_MENU_VERSION = "drawer-v17-fixed-portal-overlay"/);
+  assert.match(menuSource, /const ACCOUNT_MENU_VERSION = "drawer-v18-native-dialog-top-layer"/);
   assert.match(menuSource, /import \{ createPortal, flushSync \} from "react-dom"/);
   assert.match(menuSource, /function getAccountMenuPortalRoot\(\)/);
   assert.match(menuSource, /function promoteAccountMenuPortalRoot\(root: HTMLElement\)/);
@@ -22,16 +22,17 @@ test("tenant account menu uses a fixed body portal overlay above CRM/map layers"
   assert.match(menuSource, /root\.style\.setProperty\("width", "100vw", "important"\)/);
   assert.match(menuSource, /root\.style\.setProperty\("height", "100dvh", "important"\)/);
   assert.match(menuSource, /const ACCOUNT_OVERLAY_STYLE: CSSProperties = \{/);
-  assert.match(menuSource, /className="nexid-account-overlay"/);
-  assert.match(menuSource, /data-account-menu-dialog="fixed-portal"/);
+  assert.match(menuSource, /className="nexid-account-dialog nexid-account-overlay"/);
+  assert.match(menuSource, /<dialog[\s\S]*ref=\{dialogRef\}/);
+  assert.match(menuSource, /dialog\.showModal\(\)/);
+  assert.match(menuSource, /dialog\.close\(\)/);
+  assert.match(menuSource, /data-account-menu-dialog="native-top-layer"/);
   assert.match(menuSource, /data-testid="tenant-account-menu-dialog"/);
   assert.match(menuSource, /role="dialog"/);
   assert.match(menuSource, /aria-modal="true"/);
-  assert.match(menuSource, /data-account-menu-top-layer="fixed-portal"/);
+  assert.match(menuSource, /data-account-menu-top-layer="native-dialog"/);
   assert.match(menuSource, /createPortal\(menuPanel,\s*activePortalRoot\)/);
-  assert.doesNotMatch(menuSource, /<dialog/);
-  assert.doesNotMatch(menuSource, /showModal\(\)/);
-  assert.doesNotMatch(menuSource, /native-top-layer/);
+  assert.doesNotMatch(menuSource, /drawer-v17-fixed-portal-overlay/);
 });
 
 test("tenant account menu suppresses the CRM shell while the account drawer is open", () => {
@@ -53,6 +54,8 @@ test("global CSS keeps the account overlay visually above the dashboard", () => 
   assert.match(globalsSource, /html\.nexid-account-menu-open,\s*body\.nexid-account-menu-open\s*\{[\s\S]*overflow:\s*hidden/);
   assert.match(globalsSource, /#nexid-account-menu-root\s*\{[\s\S]*z-index:\s*2147483647 !important/);
   assert.match(globalsSource, /#nexid-account-menu-root\[data-account-menu-active="true"\]/);
+  assert.match(globalsSource, /\.nexid-account-dialog,\s*\.nexid-account-overlay\s*\{[\s\S]*max-width:\s*none !important/);
+  assert.match(globalsSource, /\.nexid-account-dialog::backdrop\s*\{[\s\S]*backdrop-filter:\s*blur\(2px\) saturate\(0\.72\) !important/);
   assert.match(globalsSource, /\.nexid-account-overlay\s*\{[\s\S]*position:\s*fixed !important/);
   assert.match(globalsSource, /\.nexid-account-overlay\s*\{[\s\S]*rgba\(2, 6, 23, 0\.98\) !important/);
   assert.match(globalsSource, /\.nexid-account-layer\s*\{[\s\S]*z-index:\s*2147483647 !important/);
@@ -60,7 +63,7 @@ test("global CSS keeps the account overlay visually above the dashboard", () => 
   assert.match(globalsSource, /html\.nexid-account-menu-open \.nexid-crm-shell,\s*body\.nexid-account-menu-open \.nexid-crm-shell,\s*\.nexid-crm-shell\[data-account-menu-suppressed="true"\]\s*\{[\s\S]*visibility:\s*hidden !important/);
   assert.match(globalsSource, /html\.nexid-account-menu-open \.nexid-crm-shell,\s*body\.nexid-account-menu-open \.nexid-crm-shell,\s*\.nexid-crm-shell\[data-account-menu-suppressed="true"\]\s*\{[\s\S]*opacity:\s*0 !important/);
   assert.match(globalsSource, /html\.nexid-account-menu-open \.nexid-crm-shell \[id="live-tap-map"\]/);
-  assert.doesNotMatch(globalsSource, /\.nexid-account-dialog/);
+  assert.match(globalsSource, /\.nexid-account-dialog:not\(\[open\]\)\s*\{[\s\S]*display:\s*none !important/);
 });
 
 test("account drawer exposes expected SaaS account actions and secure logout", () => {

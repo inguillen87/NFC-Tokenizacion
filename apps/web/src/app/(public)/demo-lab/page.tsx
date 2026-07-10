@@ -662,7 +662,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
                 className="demo-lab-infobar__cta inline-flex h-9 items-center gap-2 rounded-full bg-cyan-300 px-4 text-xs font-black uppercase tracking-wider text-slate-950"
               >
                 <span className="demo-lab-cta-full">Agendar demo</span>
-                <span className="demo-lab-cta-short">Demo</span>
+                <span className="demo-lab-cta-short">Agendar</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>

@@ -1540,7 +1540,7 @@ function DemoLabStudioHero({
           <DemoLabThemeToggle initialTheme={initialTheme} initialReturnTo={initialReturnTo} />
           <a href="/?contact=demo#contact-modal" className="demo-lab-wizard-step-pill demo-lab-wizard-cta is-active inline-flex h-10 shrink-0 items-center justify-center rounded-full border border-cyan-300 bg-cyan-300 px-4 text-xs font-black uppercase tracking-wider text-slate-950 shadow-lg shadow-cyan-500/20">
             <span className="demo-lab-cta-full">{scheduleLabel}</span>
-            <span className="demo-lab-cta-short">Demo</span>
+            <span className="demo-lab-cta-short">Agendar</span>
           </a>
         </div>
       </nav>

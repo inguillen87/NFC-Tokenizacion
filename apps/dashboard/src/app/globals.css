@@ -1147,13 +1147,17 @@ html.nexid-account-menu-open body > :not(#nexid-account-menu-root):not(script):n
   user-select: none !important;
 }
 
+.nexid-account-dialog,
 .nexid-account-overlay {
   position: fixed !important;
   inset: 0 !important;
   width: 100vw !important;
   height: 100dvh !important;
+  max-width: none !important;
+  max-height: none !important;
   margin: 0 !important;
   padding: 0 !important;
+  border: 0 !important;
   display: block !important;
   background:
     radial-gradient(circle at 82% 8%, rgba(34, 211, 238, 0.2), transparent 34%),
@@ -1167,6 +1171,17 @@ html.nexid-account-menu-open body > :not(#nexid-account-menu-root):not(script):n
   isolation: isolate !important;
   contain: none !important;
   z-index: 2147483647 !important;
+}
+
+.nexid-account-dialog::backdrop {
+  background:
+    radial-gradient(circle at 82% 8%, rgba(34, 211, 238, 0.12), transparent 34%),
+    rgba(2, 6, 23, 0.82) !important;
+  backdrop-filter: blur(2px) saturate(0.72) !important;
+}
+
+.nexid-account-dialog:not([open]) {
+  display: none !important;
 }
 
 #nexid-account-menu-root {

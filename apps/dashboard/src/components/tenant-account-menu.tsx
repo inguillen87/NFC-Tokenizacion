@@ -43,7 +43,7 @@ const ACCOUNT_MENU_Z_INDEX = 2147483647;
 const ACCOUNT_MENU_BACKDROP_Z_INDEX = ACCOUNT_MENU_Z_INDEX - 1;
 const ACCOUNT_MENU_PANEL_Z_INDEX = ACCOUNT_MENU_Z_INDEX;
 const ACCOUNT_MENU_PORTAL_ROOT_ID = "nexid-account-menu-root";
-const ACCOUNT_MENU_VERSION = "drawer-v17-fixed-portal-overlay";
+const ACCOUNT_MENU_VERSION = "drawer-v18-native-dialog-top-layer";
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 const ACCOUNT_MENU_CRITICAL_CSS = `
 html.nexid-account-menu-open,
@@ -55,13 +55,17 @@ html.nexid-account-menu-open body > :not(#nexid-account-menu-root):not(script):n
   pointer-events: none !important;
   user-select: none !important;
 }
+.nexid-account-dialog,
 .nexid-account-overlay {
   position: fixed !important;
   inset: 0 !important;
   width: 100vw !important;
   height: 100dvh !important;
+  max-width: none !important;
+  max-height: none !important;
   margin: 0 !important;
   padding: 0 !important;
+  border: 0 !important;
   display: block !important;
   background:
     radial-gradient(circle at 82% 8%, rgba(34, 211, 238, 0.2), transparent 34%),
@@ -75,6 +79,15 @@ html.nexid-account-menu-open body > :not(#nexid-account-menu-root):not(script):n
   isolation: isolate !important;
   contain: none !important;
   z-index: ${ACCOUNT_MENU_Z_INDEX} !important;
+}
+.nexid-account-dialog::backdrop {
+  background:
+    radial-gradient(circle at 82% 8%, rgba(34, 211, 238, 0.12), transparent 34%),
+    rgba(2, 6, 23, 0.82) !important;
+  backdrop-filter: blur(2px) saturate(0.72) !important;
+}
+.nexid-account-dialog:not([open]) {
+  display: none !important;
 }
 #nexid-account-menu-root {
   position: fixed !important;
@@ -443,6 +456,7 @@ export function TenantAccountMenu({
   const [panelStyle, setPanelStyle] = useState<CSSProperties>(ACCOUNT_MENU_DEFAULT_STYLE);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const dialogRef = useRef<HTMLDialogElement | null>(null);
   const layerRef = useRef<HTMLDivElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const contextRef = useRef<HTMLDivElement | null>(null);
@@ -530,6 +544,14 @@ export function TenantAccountMenu({
   }, []);
 
   const closeMenu = useCallback(() => {
+    const dialog = dialogRef.current;
+    if (dialog?.open) {
+      try {
+        dialog.close();
+      } catch {
+        dialog.removeAttribute("open");
+      }
+    }
     setDocumentMenuState(false);
     openRef.current = false;
     setOpen(false);
@@ -547,6 +569,15 @@ export function TenantAccountMenu({
   useIsomorphicLayoutEffect(() => {
     if (!open) return;
     setDocumentMenuState(true);
+    const dialog = dialogRef.current;
+    if (dialog && !dialog.open) {
+      try {
+        dialog.showModal();
+      } catch {
+        dialog.setAttribute("open", "");
+      }
+    }
+    forceAccountMenuModalLayer(portalRoot || getAccountMenuPortalRoot(), layerRef.current, panelRef.current);
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Node;
       if (
@@ -563,6 +594,14 @@ export function TenantAccountMenu({
     window.addEventListener("pointerdown", handlePointerDown);
     window.addEventListener("keydown", handleKeyDown);
     return () => {
+      const activeDialog = dialogRef.current;
+      if (activeDialog?.open) {
+        try {
+          activeDialog.close();
+        } catch {
+          activeDialog.removeAttribute("open");
+        }
+      }
       setDocumentMenuState(false);
       window.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("keydown", handleKeyDown);
@@ -767,11 +806,16 @@ export function TenantAccountMenu({
         data-testid="tenant-account-menu-critical-style"
         dangerouslySetInnerHTML={{ __html: ACCOUNT_MENU_CRITICAL_CSS }}
       />
-      <div
-        className="nexid-account-overlay"
-        data-account-menu-dialog="fixed-portal"
+      <dialog
+        ref={dialogRef}
+        className="nexid-account-dialog nexid-account-overlay"
+        data-account-menu-dialog="native-top-layer"
         data-testid="tenant-account-menu-dialog"
         style={ACCOUNT_OVERLAY_STYLE}
+        onCancel={(event) => {
+          event.preventDefault();
+          closeMenu();
+        }}
       >
         <button
           type="button"
@@ -844,7 +888,7 @@ export function TenantAccountMenu({
           data-account-menu-portal="body"
           data-account-menu-version={ACCOUNT_MENU_VERSION}
           data-account-menu-source={surface}
-          data-account-menu-top-layer="fixed-portal"
+          data-account-menu-top-layer="native-dialog"
           data-testid="tenant-account-menu-layer"
           aria-label="Cuenta operativa nexID"
           style={ACCOUNT_LAYER_STYLE}
@@ -967,7 +1011,7 @@ export function TenantAccountMenu({
           </div>
         </div>
       </div>
-      </div>
+      </dialog>
     </>
   ) : null;
   const activePortalRoot = typeof document !== "undefined" ? (portalRoot || getAccountMenuPortalRoot()) : null;

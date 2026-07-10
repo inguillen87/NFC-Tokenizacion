@@ -305,6 +305,7 @@ test("demo lab trust scenario deep links open contextual wizard proof layers", a
 
 test("demo lab wizard explains proof and business outcome for enterprise buyers", async () => {
   const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
+  const page = await readFile(new URL("../src/app/(public)/demo-lab/page.tsx", import.meta.url), "utf8");
   const client = await readFile(new URL("../src/app/(public)/demo-lab/demo-lab-client.tsx", import.meta.url), "utf8");
 
   assert.match(client, /const traceProofCards = locale === "en"/);
@@ -315,6 +316,8 @@ test("demo lab wizard explains proof and business outcome for enterprise buyers"
   assert.match(client, /Resultado ejecutivo de un tap verificado/);
   assert.match(client, /nexID keeps private data, IOTA can anchor audit receipts, and Polygon is reserved/);
   assert.match(client, /href=\{DEMO_PUBLIC_PROOF_URL\}/);
+  assert.match(page, /<span className="demo-lab-cta-short">Agendar<\/span>/);
+  assert.match(client, /<span className="demo-lab-cta-short">Agendar<\/span>/);
   assert.match(client, /demo-lab-wizard-proof-decoder/);
   assert.match(client, /demo-lab-wizard-proof-grid/);
   assert.match(client, /demo-lab-wizard-map-proof-strip/);
@@ -324,6 +327,8 @@ test("demo lab wizard explains proof and business outcome for enterprise buyers"
   assert.match(css, /\.demo-lab-wizard-proof-decoder\s*\{[\s\S]*grid/);
   assert.match(css, /\.demo-lab-wizard-proof-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(css, /\.demo-lab-wizard-proof-link\s*\{[\s\S]*min-height:\s*44px/);
+  assert.match(css, /\.demo-lab-wizard-proof-link\s*\{[\s\S]*min-width:\s*44px/);
+  assert.match(css, /\.demo-lab-wizard-proof-link\s*\{[\s\S]*padding:\s*0\.72rem 1rem/);
   assert.match(css, /\.demo-lab-wizard-map-container\s*\{[\s\S]*position:\s*relative/);
   assert.match(css, /\.demo-lab-wizard-map-proof-strip\s*\{[\s\S]*position:\s*absolute/);
   assert.match(css, /html\.theme-light \.demo-lab-wizard-proof-decoder,[\s\S]*html\[data-theme="light"\] \.demo-lab-wizard-proof-card/);

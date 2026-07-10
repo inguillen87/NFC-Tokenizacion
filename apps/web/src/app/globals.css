@@ -44689,9 +44689,11 @@ html[data-theme="light"] .offline-phone-screen .text-slate-200 {
 .demo-lab-wizard-proof-link {
   display: inline-flex;
   min-height: 44px;
+  min-width: 44px;
   align-items: center;
   justify-content: center;
   gap: 0.35rem;
+  padding: 0.72rem 1rem;
   border: 1px solid rgba(103, 232, 249, 0.35);
   border-radius: 999px;
   background: rgba(34, 211, 238, 0.12);
@@ -44699,7 +44701,10 @@ html[data-theme="light"] .offline-phone-screen .text-slate-200 {
   font-size: 0.75rem;
   font-weight: 950;
   letter-spacing: 0.08em;
+  line-height: 1;
   text-decoration: none;
+  text-align: center;
+  touch-action: manipulation;
   text-transform: uppercase;
 }
 
