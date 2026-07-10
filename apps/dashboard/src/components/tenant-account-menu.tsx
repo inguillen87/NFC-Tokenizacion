@@ -43,7 +43,7 @@ const ACCOUNT_MENU_Z_INDEX = 2147483647;
 const ACCOUNT_MENU_BACKDROP_Z_INDEX = ACCOUNT_MENU_Z_INDEX - 1;
 const ACCOUNT_MENU_PANEL_Z_INDEX = ACCOUNT_MENU_Z_INDEX;
 const ACCOUNT_MENU_PORTAL_ROOT_ID = "nexid-account-menu-root";
-const ACCOUNT_MENU_VERSION = "drawer-v18-native-dialog-top-layer";
+const ACCOUNT_MENU_VERSION = "drawer-v19-modal-top-layer";
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 const ACCOUNT_MENU_CRITICAL_CSS = `
 html.nexid-account-menu-open,
@@ -343,6 +343,41 @@ function setActiveDataAttribute(element: Element, name: string, value: boolean) 
   element.removeAttribute(name);
 }
 
+function isNativeModalDialog(dialog: HTMLDialogElement) {
+  try {
+    return dialog.matches(":modal");
+  } catch {
+    return dialog.open;
+  }
+}
+
+function showAccountMenuDialog(dialog?: HTMLDialogElement | null) {
+  if (!dialog) return;
+
+  const nativeModal = isNativeModalDialog(dialog);
+  if (dialog.open && !nativeModal) {
+    try {
+      dialog.close();
+    } catch {
+      dialog.removeAttribute("open");
+    }
+  }
+
+  if (!dialog.open) {
+    try {
+      dialog.showModal();
+      dialog.setAttribute("data-account-menu-modal-state", "native-modal");
+      return;
+    } catch {
+      dialog.setAttribute("open", "");
+      dialog.setAttribute("data-account-menu-modal-state", "open-fallback");
+      return;
+    }
+  }
+
+  dialog.setAttribute("data-account-menu-modal-state", nativeModal ? "native-modal" : "open-fallback");
+}
+
 function setCrmShellSuppression(value: boolean) {
   if (typeof document === "undefined") return;
   document.querySelectorAll<HTMLElement>(".nexid-crm-shell").forEach((node) => {
@@ -386,7 +421,9 @@ function forceAccountMenuModalLayer(
   root: HTMLElement | null,
   layer?: HTMLElement | null,
   panel?: HTMLElement | null,
+  dialog?: HTMLDialogElement | null,
 ) {
+  showAccountMenuDialog(dialog);
   if (root) {
     promoteAccountMenuPortalRoot(root);
     setActiveDataAttribute(root, "data-account-menu-active", true);
@@ -520,6 +557,40 @@ export function TenantAccountMenu({
         ? { href: tenantHref, label: "Abrir perfil del tenant", meta: "Plan, vertical, health y playbook del workspace" }
         : { href: "/settings", label: "Abrir configuracion global", meta: "Seguridad, tenants, integraciones y soporte" };
 
+  const updatePanelPosition = useCallback(() => {
+    if (typeof window === "undefined") {
+      setPanelStyle(ACCOUNT_MENU_DEFAULT_STYLE);
+      return;
+    }
+    const isCompact = window.innerWidth < 640;
+    const layerStyle = isCompact
+      ? {
+          ...ACCOUNT_LAYER_STYLE,
+          inset: 0,
+          left: 0,
+          width: "100vw",
+          maxWidth: "100vw",
+        }
+      : ACCOUNT_LAYER_STYLE;
+    const contentStyle = {
+      ...ACCOUNT_MENU_DEFAULT_STYLE,
+      width: "100%",
+      height: "100%",
+      maxHeight: "100%",
+    };
+    if (layerRef.current) {
+      Object.entries(layerStyle).forEach(([key, value]) => {
+        if (value == null) return;
+        const cssKey = key.replace(/[A-Z]/g, (match) => `-${match.toLowerCase()}`);
+        layerRef.current?.style.setProperty(cssKey, String(value), "important");
+      });
+    }
+    setPanelStyle({
+      ...contentStyle,
+      left: 0,
+    });
+  }, []);
+
   const setDocumentMenuState = useCallback((value: boolean) => {
     const root = getAccountMenuPortalRoot();
     if (root) {
@@ -529,9 +600,10 @@ export function TenantAccountMenu({
       else root.removeAttribute("data-account-menu-modal-ready");
       if (value) {
         window.requestAnimationFrame(() => {
+          if (!openRef.current) return;
           const promotedRoot = getAccountMenuPortalRoot();
           if (!promotedRoot) return;
-          forceAccountMenuModalLayer(promotedRoot, layerRef.current, panelRef.current);
+          forceAccountMenuModalLayer(promotedRoot, layerRef.current, panelRef.current, dialogRef.current);
           setPortalRoot(promotedRoot);
         });
       }
@@ -569,15 +641,7 @@ export function TenantAccountMenu({
   useIsomorphicLayoutEffect(() => {
     if (!open) return;
     setDocumentMenuState(true);
-    const dialog = dialogRef.current;
-    if (dialog && !dialog.open) {
-      try {
-        dialog.showModal();
-      } catch {
-        dialog.setAttribute("open", "");
-      }
-    }
-    forceAccountMenuModalLayer(portalRoot || getAccountMenuPortalRoot(), layerRef.current, panelRef.current);
+    forceAccountMenuModalLayer(portalRoot || getAccountMenuPortalRoot(), layerRef.current, panelRef.current, dialogRef.current);
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Node;
       if (
@@ -591,9 +655,19 @@ export function TenantAccountMenu({
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") closeMenu();
     };
+    const reinforceModalLayer = () => {
+      if (!openRef.current) return;
+      const promotedRoot = getAccountMenuPortalRoot();
+      forceAccountMenuModalLayer(promotedRoot, layerRef.current, panelRef.current, dialogRef.current);
+      updatePanelPosition();
+    };
+    const reinforceAnimationFrame = window.requestAnimationFrame(reinforceModalLayer);
+    const reinforceInterval = window.setInterval(reinforceModalLayer, 350);
     window.addEventListener("pointerdown", handlePointerDown);
     window.addEventListener("keydown", handleKeyDown);
     return () => {
+      window.cancelAnimationFrame(reinforceAnimationFrame);
+      window.clearInterval(reinforceInterval);
       const activeDialog = dialogRef.current;
       if (activeDialog?.open) {
         try {
@@ -606,41 +680,7 @@ export function TenantAccountMenu({
       window.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [closeMenu, open, setDocumentMenuState]);
-
-  const updatePanelPosition = useCallback(() => {
-    if (typeof window === "undefined") {
-      setPanelStyle(ACCOUNT_MENU_DEFAULT_STYLE);
-      return;
-    }
-    const isCompact = window.innerWidth < 640;
-    const layerStyle = isCompact
-      ? {
-          ...ACCOUNT_LAYER_STYLE,
-          inset: 0,
-          left: 0,
-          width: "100vw",
-          maxWidth: "100vw",
-        }
-      : ACCOUNT_LAYER_STYLE;
-    const contentStyle = {
-      ...ACCOUNT_MENU_DEFAULT_STYLE,
-      width: "100%",
-      height: "100%",
-      maxHeight: "100%",
-    };
-    if (layerRef.current) {
-      Object.entries(layerStyle).forEach(([key, value]) => {
-        if (value == null) return;
-        const cssKey = key.replace(/[A-Z]/g, (match) => `-${match.toLowerCase()}`);
-        layerRef.current?.style.setProperty(cssKey, String(value), "important");
-      });
-    }
-    setPanelStyle({
-      ...contentStyle,
-      left: 0,
-    });
-  }, []);
+  }, [closeMenu, open, setDocumentMenuState, updatePanelPosition]);
 
   const openMenu = useCallback(() => {
     if (openRef.current) return;
@@ -653,17 +693,17 @@ export function TenantAccountMenu({
       setPortalRoot(root);
       setOpen(true);
     });
-    forceAccountMenuModalLayer(root, layerRef.current, panelRef.current);
+    forceAccountMenuModalLayer(root, layerRef.current, panelRef.current, dialogRef.current);
     window.requestAnimationFrame(() => {
       const promotedRoot = getAccountMenuPortalRoot();
       if (!promotedRoot || !openRef.current) return;
-      forceAccountMenuModalLayer(promotedRoot, layerRef.current, panelRef.current);
+      forceAccountMenuModalLayer(promotedRoot, layerRef.current, panelRef.current, dialogRef.current);
       updatePanelPosition();
     });
     window.setTimeout(() => {
       if (!openRef.current) return;
       const promotedRoot = getAccountMenuPortalRoot();
-      forceAccountMenuModalLayer(promotedRoot, layerRef.current, panelRef.current);
+      forceAccountMenuModalLayer(promotedRoot, layerRef.current, panelRef.current, dialogRef.current);
       updatePanelPosition();
     }, 0);
   }, [setDocumentMenuState, updatePanelPosition]);

@@ -14,7 +14,7 @@ export function PwaSetup() {
       void navigator.serviceWorker.getRegistrations().then((registrations) => {
         if (!registrations.length) return;
         void Promise.all(registrations.map((registration) => registration.unregister())).then(() => {
-          const reloadKey = "nexid-dashboard-sw-cleared-v5";
+          const reloadKey = "nexid-dashboard-sw-cleared-v6";
           if (sessionStorage.getItem(reloadKey) === "1") return;
           sessionStorage.setItem(reloadKey, "1");
           window.location.reload();

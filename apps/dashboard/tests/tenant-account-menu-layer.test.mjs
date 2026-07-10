@@ -11,7 +11,11 @@ const serviceWorkerSource = await readFile(new URL("../public/sw.js", import.met
 test("tenant account menu uses a native top-layer dialog above CRM/map layers", () => {
   assert.match(menuSource, /const ACCOUNT_MENU_PORTAL_ROOT_ID = "nexid-account-menu-root"/);
   assert.match(menuSource, /const ACCOUNT_MENU_Z_INDEX = 2147483647/);
-  assert.match(menuSource, /const ACCOUNT_MENU_VERSION = "drawer-v18-native-dialog-top-layer"/);
+  assert.match(menuSource, /const ACCOUNT_MENU_VERSION = "drawer-v19-modal-top-layer"/);
+  assert.match(menuSource, /function showAccountMenuDialog\(dialog\?: HTMLDialogElement \| null\)/);
+  assert.match(menuSource, /dialog\.matches\(":modal"\)/);
+  assert.match(menuSource, /dialog\.setAttribute\("data-account-menu-modal-state", "native-modal"\)/);
+  assert.match(menuSource, /window\.setInterval\(reinforceModalLayer,\s*350\)/);
   assert.match(menuSource, /import \{ createPortal, flushSync \} from "react-dom"/);
   assert.match(menuSource, /function getAccountMenuPortalRoot\(\)/);
   assert.match(menuSource, /function promoteAccountMenuPortalRoot\(root: HTMLElement\)/);
@@ -85,13 +89,13 @@ test("dashboard PWA registration is opt-in so stale admin CSS cannot mask fixes"
   assert.match(pwaSetupSource, /process\.env\.NODE_ENV === "production" && process\.env\.NEXT_PUBLIC_ENABLE_PWA === "true"/);
   assert.match(pwaSetupSource, /navigator\.serviceWorker\.getRegistrations\(\)/);
   assert.match(pwaSetupSource, /registration\.unregister\(\)/);
-  assert.match(pwaSetupSource, /nexid-dashboard-sw-cleared-v5/);
+  assert.match(pwaSetupSource, /nexid-dashboard-sw-cleared-v6/);
   assert.match(pwaSetupSource, /window\.location\.reload\(\)/);
   assert.doesNotMatch(pwaSetupSource, /NEXT_PUBLIC_ENABLE_PWA !== "false"/);
 });
 
 test("dashboard service worker refreshes shell styles before falling back to cache", () => {
-  assert.match(serviceWorkerSource, /const CACHE_NAME = "nexid-dash-v5"/);
+  assert.match(serviceWorkerSource, /const CACHE_NAME = "nexid-dash-v6"/);
   assert.match(serviceWorkerSource, /request\.destination === "script" \|\| request\.destination === "style"/);
   assert.match(serviceWorkerSource, /fetchWithTimeout\(request\)\.then\(\(response\) => \{/);
   assert.match(serviceWorkerSource, /cache\.put\(request,\s*copy\)/);
