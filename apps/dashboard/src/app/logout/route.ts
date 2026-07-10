@@ -29,8 +29,6 @@ async function endDashboardSession(req: Request, revokeUpstream: boolean) {
   response.headers.set("Cache-Control", "no-store");
   response.cookies.delete(DASHBOARD_SESSION_COOKIE);
   response.cookies.delete(DASHBOARD_SESSION_SNAPSHOT_COOKIE);
-  appendExpiredCookieVariants(response, DASHBOARD_SESSION_COOKIE, req);
-  appendExpiredCookieVariants(response, DASHBOARD_SESSION_SNAPSHOT_COOKIE, req);
   response.cookies.set(DASHBOARD_CLERK_AUTOSYNC_BLOCK_COOKIE, "1", {
     httpOnly: true,
     sameSite: "lax",
@@ -38,6 +36,8 @@ async function endDashboardSession(req: Request, revokeUpstream: boolean) {
     path: "/",
     maxAge: 60 * 5,
   });
+  appendExpiredCookieVariants(response, DASHBOARD_SESSION_COOKIE, req);
+  appendExpiredCookieVariants(response, DASHBOARD_SESSION_SNAPSHOT_COOKIE, req);
   return response;
 }
 
