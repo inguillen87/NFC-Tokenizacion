@@ -15,6 +15,7 @@ type SecureDashboardLogoutButtonProps = {
 
 const DEFAULT_CLASS_NAME =
   "flex w-full items-center justify-center gap-2 rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm font-black text-rose-100 transition hover:border-rose-200/70 hover:bg-rose-500/18 disabled:cursor-wait disabled:opacity-70";
+const LOGOUT_REDIRECT = "/login?logged_out=1";
 
 function LocalDashboardLogoutButton({
   className = DEFAULT_CLASS_NAME,
@@ -49,10 +50,15 @@ function ClerkDashboardLogoutButton({
     await fetch("/logout", { method: "POST", cache: "no-store" }).catch(() => null);
 
     try {
-      await signOut({ redirectUrl: "/login?logged_out=1" });
+      await Promise.race([
+        signOut({ redirectUrl: LOGOUT_REDIRECT }),
+        new Promise((resolve) => window.setTimeout(resolve, 1500)),
+      ]);
     } catch {
-      window.location.href = "/login?logged_out=1";
+      // Local dashboard sessions are already cleared above; Clerk may be absent
+      // for demo tenant access, so the final redirect cannot depend on signOut.
     }
+    window.location.href = LOGOUT_REDIRECT;
   }
 
   return (
