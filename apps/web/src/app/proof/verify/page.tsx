@@ -826,6 +826,50 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
       tone: "proof-console-card--info",
     },
   ];
+  const executiveReadout = [
+    {
+      label: "Veredicto",
+      value: !eventHash ? "Demo lista" : included ? "Evidencia incluida" : "No confirmada",
+      body: !eventHash
+        ? "Arranca con un caso demo y muestra la cadena completa en menos de un minuto."
+        : included
+          ? "El SHA existe dentro de un anchor. Sirve como recibo de auditoria sin abrir datos privados."
+          : "El hash no prueba inclusion todavia. Hay que revisar copia, estado de anchor o politica de publicacion.",
+    },
+    {
+      label: "Red publica",
+      value: externalExplorerUrl ? "IOTA testnet" : "API/registry",
+      body: externalExplorerUrl
+        ? "Hay una transaccion externa para validar fecha, red y Raw input."
+        : "La experiencia queda lista para mostrar explorer cuando operaciones publique el anchor.",
+    },
+    {
+      label: "Privacidad",
+      value: decodedProof?.fields?.privacy === "hash-only" ? "Hash-only" : "Datos protegidos",
+      body: "Se prueba integridad sin publicar UID secreto, cliente, manifiesto, QA interno ni contrato.",
+    },
+    {
+      label: "Proxima accion",
+      value: externalExplorerUrl ? "Abrir tx" : "Cargar demo",
+      body: externalExplorerUrl
+        ? "Abrir IOTA Explorer, copiar Raw input y pasarlo por el decoder de nexID."
+        : "Usar Demo Lab o SDK/API para generar el proof antes de enseñar el explorer.",
+    },
+  ];
+  const explorerProofPath = [
+    {
+      title: "1. Transaccion",
+      body: "El boton abre la tx real del recibo publico en IOTA Explorer.",
+    },
+    {
+      title: "2. Raw input",
+      body: "En Transaction details, el campo Raw input contiene el memo como hex.",
+    },
+    {
+      title: "3. Decoder nexID",
+      body: "Pegando ese hex aca, la pantalla traduce el memo a lenguaje de negocio.",
+    },
+  ];
 
   return (
     <main className="proof-verify-page min-h-screen text-slate-950">
@@ -1185,6 +1229,22 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           gap: 0.75rem;
         }
 
+        .proof-verify-page .proof-exec-readout-grid {
+          display: grid;
+          gap: 0.75rem;
+        }
+
+        .proof-verify-page .proof-exec-readout-card {
+          border: 1px solid var(--proof-border);
+          background: var(--proof-soft-bg);
+          min-width: 0;
+        }
+
+        .proof-verify-page .proof-explorer-proof-path {
+          display: grid;
+          gap: 0.6rem;
+        }
+
         .proof-verify-page .proof-exec-step {
           display: grid;
           grid-template-columns: auto minmax(0, 1fr);
@@ -1290,6 +1350,10 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
         }
 
         @media (min-width: 1024px) {
+          .proof-verify-page .proof-exec-readout-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
           .proof-verify-page .proof-workstation-sidebar {
             grid-template-columns: repeat(2, minmax(0, 1fr));
             align-items: stretch;
@@ -1871,7 +1935,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                     {guidedDemo.public_receipt.tx_hash ? (
                       <span className="proof-receipt-status-chip rounded-full px-3 py-1.5 text-[0.68rem] font-black uppercase tracking-[0.1em]">
                         <BadgeCheck className="h-3.5 w-3.5 shrink-0" />
-                        Memo publico confirmado
+                        Memo en Raw input confirmado
                       </span>
                     ) : null}
                   </div>
@@ -1891,7 +1955,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                       <p className="mt-2 break-all font-mono text-[0.72rem] font-bold text-slate-900">{shortHash(guidedDemo.public_receipt.tx_hash)}</p>
                       {guidedDemo.public_receipt.explorer_url ? (
                         <a href={guidedDemo.public_receipt.explorer_url} className="proof-receipt-action-link mt-3 text-xs font-black uppercase tracking-[0.12em]" target="_blank" rel="noreferrer">
-                          Abrir memo real en IOTA Explorer <ArrowRight className="h-4 w-4" />
+                          Abrir tx con memo en IOTA Explorer <ArrowRight className="h-4 w-4" />
                         </a>
                       ) : null}
                     </div>
@@ -1925,6 +1989,15 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
             <p className="mt-3 text-sm leading-6 text-slate-700">
               Resume el proof en tres ideas: que hecho queda probado, donde se ve la evidencia externa y que datos siguen privados dentro de nexID.
             </p>
+            <div className="proof-exec-readout-grid mt-4">
+              {executiveReadout.map((item) => (
+                <div key={item.label} className="proof-exec-readout-card rounded-2xl p-3">
+                  <p className="text-[0.64rem] font-black uppercase tracking-[0.14em] text-cyan-700">{item.label}</p>
+                  <strong className="mt-2 block text-base leading-tight text-slate-950">{item.value}</strong>
+                  <p className="mt-2 text-xs font-bold leading-5 text-slate-600">{item.body}</p>
+                </div>
+              ))}
+            </div>
             <div className="proof-exec-steps mt-4">
               {[
                 {
@@ -1955,7 +2028,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
             <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
               {guidedDemo?.public_receipt.explorer_url ? (
                 <a href={guidedDemo.public_receipt.explorer_url} className="proof-receipt-action-link text-xs font-black uppercase tracking-[0.12em]" target="_blank" rel="noreferrer">
-                  Abrir memo tx en IOTA Explorer <ArrowRight className="h-4 w-4" />
+                  Abrir tx donde esta el memo <ArrowRight className="h-4 w-4" />
                 </a>
               ) : null}
               {guidedDemo ? (
@@ -1963,6 +2036,20 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                   Decodificar Raw input <FileSearch className="h-4 w-4" />
                 </Link>
               ) : null}
+            </div>
+            <div className="proof-flat mt-4 rounded-2xl border border-cyan-200 bg-cyan-50/70 p-4">
+              <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan-800">Donde esta el memo en la blockchain?</p>
+              <p className="mt-2 text-sm leading-6 text-slate-700">
+                En IOTA EVM no aparece como una frase grande en la cabecera. Esta dentro de <span className="font-mono font-black">Transaction details - Raw input</span>. El explorer muestra bytes; nexID los traduce.
+              </p>
+              <div className="proof-explorer-proof-path mt-3">
+                {explorerProofPath.map((step) => (
+                  <div key={step.title} className="rounded-2xl border border-cyan-200 bg-white/70 p-3">
+                    <strong className="block text-sm text-slate-950">{step.title}</strong>
+                    <p className="mt-1 text-xs font-bold leading-5 text-slate-600">{step.body}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -2161,7 +2248,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
 
                 {guidedDemo?.public_receipt.explorer_url ? (
                   <a href={guidedDemo.public_receipt.explorer_url} className="proof-receipt-action-link text-xs font-black uppercase tracking-[0.12em]" target="_blank" rel="noreferrer">
-                    Abrir memo real en IOTA Explorer <ArrowRight className="h-4 w-4" />
+                    Abrir tx con memo real <ArrowRight className="h-4 w-4" />
                   </a>
                 ) : null}
                 <div className="grid gap-2 sm:grid-cols-2">
