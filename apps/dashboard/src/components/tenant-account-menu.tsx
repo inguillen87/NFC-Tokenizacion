@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useClerk } from "@clerk/nextjs";
 import {
@@ -44,7 +44,7 @@ const ACCOUNT_MENU_Z_INDEX = 2147483647;
 const ACCOUNT_MENU_BACKDROP_Z_INDEX = ACCOUNT_MENU_Z_INDEX - 1;
 const ACCOUNT_MENU_PANEL_Z_INDEX = ACCOUNT_MENU_Z_INDEX;
 const ACCOUNT_MENU_PORTAL_ROOT_ID = "nexid-account-menu-root";
-const ACCOUNT_MENU_VERSION = "drawer-v13-native-top-layer";
+const ACCOUNT_MENU_VERSION = "drawer-v14-command-center-top-layer";
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 const ACCOUNT_MENU_CRITICAL_CSS = `
 html.nexid-account-menu-open,
@@ -74,8 +74,8 @@ html.nexid-account-menu-open body > :not(#nexid-account-menu-root):not(script):n
 }
 .nexid-account-dialog::backdrop {
   background:
-    radial-gradient(circle at 82% 8%, rgba(34, 211, 238, 0.18), transparent 34%),
-    rgba(2, 6, 23, 0.88) !important;
+    radial-gradient(circle at 82% 8%, rgba(34, 211, 238, 0.2), transparent 34%),
+    rgba(2, 6, 23, 0.94) !important;
 }
 #nexid-account-menu-root {
   position: fixed !important;
@@ -106,9 +106,9 @@ body.nexid-account-menu-open #nexid-account-menu-root {
   right: 0 !important;
   left: auto !important;
   display: flex !important;
-  width: min(100vw, 32rem) !important;
+  width: min(100vw, 38rem) !important;
   height: 100dvh !important;
-  max-width: min(100vw, 32rem) !important;
+  max-width: min(100vw, 38rem) !important;
   max-height: 100dvh !important;
   overflow: hidden !important;
   isolation: isolate !important;
@@ -120,18 +120,18 @@ body.nexid-account-menu-open #nexid-account-menu-root {
   z-index: ${ACCOUNT_MENU_PANEL_Z_INDEX} !important;
   overscroll-behavior: contain !important;
   background:
-    radial-gradient(circle at 88% 6%, rgba(34, 211, 238, 0.13), transparent 35%),
+    radial-gradient(circle at 88% 6%, rgba(34, 211, 238, 0.16), transparent 35%),
     linear-gradient(180deg, #08111f 0%, #020817 48%, #020817 100%) !important;
   color: inherit !important;
-  box-shadow: -36px 0 120px rgba(0, 0, 0, 0.74) !important;
+  box-shadow: -44px 0 140px rgba(0, 0, 0, 0.82) !important;
 }
 .nexid-account-backdrop {
   position: fixed !important;
   inset: 0 !important;
   z-index: ${ACCOUNT_MENU_BACKDROP_Z_INDEX} !important;
   background:
-    radial-gradient(circle at 80% 8%, rgba(34, 211, 238, 0.16), transparent 34%),
-    rgba(2, 6, 23, 0.86) !important;
+    radial-gradient(circle at 80% 8%, rgba(34, 211, 238, 0.18), transparent 34%),
+    rgba(2, 6, 23, 0.92) !important;
   pointer-events: auto !important;
   border: 0 !important;
   padding: 0 !important;
@@ -142,8 +142,8 @@ body.nexid-account-menu-open #nexid-account-menu-root {
   left: clamp(1.25rem, 6vw, 7rem) !important;
   top: 50% !important;
   z-index: ${ACCOUNT_MENU_PANEL_Z_INDEX} !important;
-  width: min(46rem, calc(100vw - 36rem - 6vw)) !important;
-  max-width: 46rem !important;
+  width: min(44rem, calc(100vw - 42rem - 6vw)) !important;
+  max-width: 44rem !important;
   transform: translateY(-50%) !important;
   pointer-events: auto !important;
   visibility: visible !important;
@@ -163,7 +163,7 @@ body.nexid-account-menu-open #nexid-account-menu-root {
 html.theme-light .nexid-account-layer .tenant-account-panel,
 html[data-theme="light"] .nexid-account-layer .tenant-account-panel {
   background:
-    radial-gradient(circle at 88% 6%, rgba(34, 211, 238, 0.13), transparent 35%),
+    radial-gradient(circle at 88% 6%, rgba(34, 211, 238, 0.16), transparent 35%),
     linear-gradient(180deg, #08111f 0%, #020817 48%, #020817 100%) !important;
   color: #f8fafc !important;
 }
@@ -197,8 +197,8 @@ body.nexid-account-menu-open .nexid-crm-shell,
 html.nexid-account-menu-open .nexid-crm-shell {
   pointer-events: none !important;
   z-index: 0 !important;
-  filter: saturate(0.72) brightness(0.44) blur(0.5px) !important;
-  opacity: 0.28 !important;
+  filter: saturate(0.6) brightness(0.28) blur(1px) !important;
+  opacity: 0.12 !important;
   transform: none !important;
   contain: none !important;
   user-select: none !important;
@@ -245,9 +245,9 @@ const ACCOUNT_LAYER_STYLE: CSSProperties = {
   right: 0,
   bottom: 0,
   left: "auto",
-  width: "min(100vw, 32rem)",
+  width: "min(100vw, 38rem)",
   height: "100dvh",
-  maxWidth: "min(100vw, 32rem)",
+  maxWidth: "min(100vw, 38rem)",
   maxHeight: "100dvh",
   margin: "0 0 0 auto",
   padding: 0,
@@ -258,7 +258,7 @@ const ACCOUNT_LAYER_STYLE: CSSProperties = {
   backgroundColor: "#020817",
   color: "inherit",
   overscrollBehavior: "contain",
-  boxShadow: "-36px 0 120px rgba(0,0,0,0.74)",
+  boxShadow: "-44px 0 140px rgba(0,0,0,0.82)",
 };
 const ACCOUNT_DIALOG_STYLE: CSSProperties = {
   position: "fixed",
@@ -339,8 +339,8 @@ function setCrmShellSuppression(value: boolean) {
       node.setAttribute("aria-hidden", "true");
       node.style.setProperty("pointer-events", "none", "important");
       node.style.setProperty("z-index", "0", "important");
-      node.style.setProperty("filter", "saturate(0.72) brightness(0.44) blur(0.5px)", "important");
-      node.style.setProperty("opacity", "0.28", "important");
+      node.style.setProperty("filter", "saturate(0.6) brightness(0.28) blur(1px)", "important");
+      node.style.setProperty("opacity", "0.12", "important");
       node.style.setProperty("transform", "none", "important");
       node.style.setProperty("contain", "none", "important");
       try {
@@ -474,6 +474,8 @@ export function TenantAccountMenu({
   const panelRef = useRef<HTMLDivElement | null>(null);
   const contextRef = useRef<HTMLDivElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const openRef = useRef(open);
+  const lastActivationRef = useRef(0);
   const tenantName = tenantNameFromSlug(tenantSlug);
   const scopedTenant = String(tenantSlug || "").trim().toLowerCase();
   const tenantQuery = scopedTenant ? `?tenant=${encodeURIComponent(scopedTenant)}` : "";
@@ -550,9 +552,14 @@ export function TenantAccountMenu({
 
   const closeMenu = useCallback(() => {
     setDocumentMenuState(false);
+    openRef.current = false;
     setOpen(false);
     window.requestAnimationFrame(() => triggerRef.current?.focus());
   }, [setDocumentMenuState]);
+
+  useEffect(() => {
+    openRef.current = open;
+  }, [open]);
 
   useIsomorphicLayoutEffect(() => {
     setPortalRoot(getAccountMenuPortalRoot());
@@ -617,18 +624,36 @@ export function TenantAccountMenu({
     });
   }, []);
 
+  const openMenu = useCallback(() => {
+    if (openRef.current) return;
+    openRef.current = true;
+    setPortalRoot(getAccountMenuPortalRoot());
+    setDocumentMenuState(true);
+    updatePanelPosition();
+    setOpen(true);
+  }, [setDocumentMenuState, updatePanelPosition]);
+
   const toggleMenu = useCallback(() => {
-    if (!open) {
-      setDocumentMenuState(true);
-      updatePanelPosition();
+    if (openRef.current) {
+      closeMenu();
+      return;
     }
-    setOpen((value) => !value);
-  }, [open, setDocumentMenuState, updatePanelPosition]);
+    openMenu();
+  }, [closeMenu, openMenu]);
+
+  const activateMenu = useCallback((event: ReactMouseEvent<HTMLButtonElement> | ReactPointerEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const now = Date.now();
+    if (now - lastActivationRef.current < 220) return;
+    lastActivationRef.current = now;
+    toggleMenu();
+  }, [toggleMenu]);
 
   const prepareMenuPortalRoot = useCallback(() => {
-    if (open) return;
+    if (openRef.current) return;
     setPortalRoot(getAccountMenuPortalRoot());
-  }, [open]);
+  }, []);
 
   useIsomorphicLayoutEffect(() => {
     if (open) updatePanelPosition();
@@ -1005,9 +1030,16 @@ export function TenantAccountMenu({
         onPointerDownCapture={() => {
           prepareMenuPortalRoot();
         }}
+        onPointerUp={(event) => {
+          if (event.pointerType === "mouse") return;
+          activateMenu(event);
+        }}
+        onMouseDown={(event) => {
+          if (event.button !== 0) return;
+          activateMenu(event);
+        }}
         onClick={(event) => {
-          event.preventDefault();
-          toggleMenu();
+          activateMenu(event);
         }}
       >
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-blue-600 text-xs font-black text-white shadow-[0_0_22px_rgba(37,99,235,.35)]">

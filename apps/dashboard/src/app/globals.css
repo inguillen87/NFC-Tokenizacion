@@ -1166,8 +1166,8 @@ html.nexid-account-menu-open body > :not(#nexid-account-menu-root):not(script):n
 
 .nexid-account-dialog::backdrop {
   background:
-    radial-gradient(circle at 82% 8%, rgba(34, 211, 238, 0.18), transparent 34%),
-    rgba(2, 6, 23, 0.88) !important;
+    radial-gradient(circle at 82% 8%, rgba(34, 211, 238, 0.2), transparent 34%),
+    rgba(2, 6, 23, 0.94) !important;
 }
 
 #nexid-account-menu-root {
@@ -1208,16 +1208,16 @@ body.nexid-account-menu-open #nexid-account-menu-root {
   right: 0 !important;
   left: auto !important;
   display: flex !important;
-  width: min(100vw, 32rem) !important;
+  width: min(100vw, 38rem) !important;
   height: 100dvh !important;
-  max-width: min(100vw, 32rem) !important;
+  max-width: min(100vw, 38rem) !important;
   max-height: 100dvh !important;
   margin: 0 0 0 auto !important;
   padding: 0 !important;
   border: 0 !important;
   overflow: hidden !important;
   background:
-    radial-gradient(circle at 88% 6%, rgba(34, 211, 238, 0.13), transparent 35%),
+    radial-gradient(circle at 88% 6%, rgba(34, 211, 238, 0.16), transparent 35%),
     linear-gradient(180deg, #08111f 0%, #020817 48%, #020817 100%) !important;
   color: inherit !important;
   isolation: isolate !important;
@@ -1228,7 +1228,7 @@ body.nexid-account-menu-open #nexid-account-menu-root {
   transform: none !important;
   z-index: 2147483647 !important;
   overscroll-behavior: contain !important;
-  box-shadow: -36px 0 120px rgba(0, 0, 0, 0.74) !important;
+  box-shadow: -44px 0 140px rgba(0, 0, 0, 0.82) !important;
 }
 
 .nexid-account-backdrop {
@@ -1236,8 +1236,8 @@ body.nexid-account-menu-open #nexid-account-menu-root {
   inset: 0 !important;
   z-index: 2147483646 !important;
   background:
-    radial-gradient(circle at 80% 8%, rgba(34, 211, 238, 0.16), transparent 34%),
-    rgba(2, 6, 23, 0.86) !important;
+    radial-gradient(circle at 80% 8%, rgba(34, 211, 238, 0.18), transparent 34%),
+    rgba(2, 6, 23, 0.92) !important;
   pointer-events: auto !important;
   border: 0 !important;
   padding: 0 !important;
@@ -1249,8 +1249,8 @@ body.nexid-account-menu-open #nexid-account-menu-root {
   left: clamp(1.25rem, 6vw, 7rem) !important;
   top: 50% !important;
   z-index: 2147483647 !important;
-  width: min(46rem, calc(100vw - 36rem - 6vw)) !important;
-  max-width: 46rem !important;
+  width: min(44rem, calc(100vw - 42rem - 6vw)) !important;
+  max-width: 44rem !important;
   transform: translateY(-50%) !important;
   pointer-events: auto !important;
   visibility: visible !important;
@@ -1274,14 +1274,14 @@ body.nexid-account-menu-open #nexid-account-menu-root {
   pointer-events: auto;
   isolation: isolate !important;
   touch-action: auto;
-  box-shadow: -36px 0 120px rgba(0, 0, 0, 0.74) !important;
+  box-shadow: -44px 0 140px rgba(0, 0, 0, 0.82) !important;
 }
 
 .nexid-account-layer .tenant-account-panel,
 html.theme-light .nexid-account-layer .tenant-account-panel,
 html[data-theme="light"] .nexid-account-layer .tenant-account-panel {
   background:
-    radial-gradient(circle at 88% 6%, rgba(34, 211, 238, 0.13), transparent 35%),
+    radial-gradient(circle at 88% 6%, rgba(34, 211, 238, 0.16), transparent 35%),
     linear-gradient(180deg, #08111f 0%, #020817 48%, #020817 100%) !important;
   color: #f8fafc !important;
 }
@@ -1353,8 +1353,8 @@ body.nexid-account-menu-open .nexid-crm-shell,
 .nexid-crm-shell[data-account-menu-suppressed="true"] {
   pointer-events: none !important;
   z-index: 0 !important;
-  filter: saturate(0.72) brightness(0.44) blur(0.5px) !important;
-  opacity: 0.28 !important;
+  filter: saturate(0.6) brightness(0.28) blur(1px) !important;
+  opacity: 0.12 !important;
   transform: none !important;
   contain: none !important;
   user-select: none !important;
