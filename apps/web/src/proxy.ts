@@ -5,12 +5,20 @@ import { isClerkConfiguredForRuntime } from "./lib/clerk-env";
 
 function landingMiddleware(req: NextRequest) {
   const host = req.headers.get("host") || "";
+  const pathname = req.nextUrl.pathname;
+  const shouldCanonicalizeWww = host.toLowerCase() === "www.nexid.lat";
+  const shouldCanonicalizeLanding = pathname === "/landing" || pathname === "/landing/";
 
-  // Canonicalize www -> apex to avoid redirect loops across domain aliases.
-  if (host.toLowerCase() === "www.nexid.lat") {
+  // Canonicalize www -> apex and legacy /landing -> / before rendering.
+  if (shouldCanonicalizeWww || shouldCanonicalizeLanding) {
     const url = req.nextUrl.clone();
-    url.host = "nexid.lat";
-    url.protocol = "https:";
+    if (shouldCanonicalizeWww) {
+      url.host = "nexid.lat";
+      url.protocol = "https:";
+    }
+    if (shouldCanonicalizeLanding) {
+      url.pathname = "/";
+    }
     return NextResponse.redirect(url, 308);
   }
 

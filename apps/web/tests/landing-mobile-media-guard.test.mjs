@@ -4,11 +4,15 @@ import { readFile } from "node:fs/promises";
 
 test("legacy public landing route redirects to the canonical home landing", async () => {
   const legacy = await readFile(new URL("../src/app/(public)/landing/page.tsx", import.meta.url), "utf8");
+  const proxy = await readFile(new URL("../src/proxy.ts", import.meta.url), "utf8");
 
   assert.match(legacy, /from "next\/navigation"/);
   assert.match(legacy, /function buildCanonicalLandingHref/);
   assert.match(legacy, /redirect\(buildCanonicalLandingHref\(params\)\)/);
   assert.match(legacy, /query\.append\(key, entry\)/);
+  assert.match(proxy, /shouldCanonicalizeLanding = pathname === "\/landing" \|\| pathname === "\/landing\/"/);
+  assert.match(proxy, /url\.pathname = "\/"/);
+  assert.match(proxy, /NextResponse\.redirect\(url, 308\)/);
   assert.doesNotMatch(legacy, /bg-neutral-950/);
   assert.doesNotMatch(legacy, /Tus productos/);
 });
