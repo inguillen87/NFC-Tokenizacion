@@ -40,11 +40,11 @@ type TenantAccountMenuProps = {
   clerkEnabled?: boolean;
 };
 
-const ACCOUNT_MENU_Z_INDEX = 2147483644;
-const ACCOUNT_MENU_BACKDROP_Z_INDEX = ACCOUNT_MENU_Z_INDEX + 1;
-const ACCOUNT_MENU_PANEL_Z_INDEX = ACCOUNT_MENU_Z_INDEX + 2;
+const ACCOUNT_MENU_Z_INDEX = 2147483647;
+const ACCOUNT_MENU_BACKDROP_Z_INDEX = ACCOUNT_MENU_Z_INDEX - 1;
+const ACCOUNT_MENU_PANEL_Z_INDEX = ACCOUNT_MENU_Z_INDEX;
 const ACCOUNT_MENU_PORTAL_ROOT_ID = "nexid-account-menu-root";
-const ACCOUNT_MENU_VERSION = "drawer-v9-fixed-portal";
+const ACCOUNT_MENU_VERSION = "drawer-v10-root-locked";
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 const ACCOUNT_MENU_CRITICAL_CSS = `
 html.nexid-account-menu-open,
@@ -61,6 +61,10 @@ html.nexid-account-menu-open body > :not(#nexid-account-menu-root):not(script):n
   position: fixed !important;
   inset: 0 !important;
   z-index: ${ACCOUNT_MENU_Z_INDEX} !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  transform: none !important;
   pointer-events: none !important;
   isolation: isolate !important;
   contain: none !important;
@@ -71,6 +75,10 @@ body.nexid-account-menu-open #nexid-account-menu-root {
   display: block !important;
   pointer-events: auto !important;
   z-index: ${ACCOUNT_MENU_Z_INDEX} !important;
+}
+#nexid-account-menu-root,
+#nexid-account-menu-root * {
+  visibility: visible !important;
 }
 .nexid-account-layer {
   position: fixed !important;
@@ -86,6 +94,9 @@ body.nexid-account-menu-open #nexid-account-menu-root {
   isolation: isolate !important;
   contain: none !important;
   pointer-events: auto !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  transform: none !important;
   z-index: ${ACCOUNT_MENU_PANEL_Z_INDEX} !important;
   overscroll-behavior: contain !important;
   background:
@@ -152,6 +163,7 @@ html[data-theme="light"] .nexid-account-layer .tenant-account-panel .text-slate-
 }
 body.nexid-account-menu-open .nexid-crm-shell,
 html.nexid-account-menu-open .nexid-crm-shell {
+  display: none !important;
   pointer-events: none !important;
   z-index: 0 !important;
   filter: saturate(0.78) brightness(0.48) blur(0.5px) !important;
@@ -237,6 +249,10 @@ function promoteAccountMenuPortalRoot(root: HTMLElement) {
   root.style.setProperty("position", "fixed", "important");
   root.style.setProperty("inset", "0", "important");
   root.style.setProperty("z-index", String(ACCOUNT_MENU_Z_INDEX), "important");
+  root.style.setProperty("display", "block", "important");
+  root.style.setProperty("visibility", "visible", "important");
+  root.style.setProperty("opacity", "1", "important");
+  root.style.setProperty("transform", "none", "important");
   root.style.setProperty("pointer-events", "none", "important");
   root.style.setProperty("isolation", "isolate", "important");
   root.style.setProperty("contain", "none", "important");
@@ -263,6 +279,7 @@ function setCrmShellSuppression(value: boolean) {
     if (value) {
       node.setAttribute("data-account-menu-suppressed", "true");
       node.setAttribute("aria-hidden", "true");
+      node.style.setProperty("display", "none", "important");
       node.style.setProperty("pointer-events", "none", "important");
       node.style.setProperty("z-index", "0", "important");
       node.style.setProperty("filter", "saturate(0.78) brightness(0.48) blur(0.5px)", "important");
@@ -281,6 +298,7 @@ function setCrmShellSuppression(value: boolean) {
     if (node.getAttribute("data-account-menu-suppressed") !== "true") return;
     node.removeAttribute("data-account-menu-suppressed");
     node.removeAttribute("aria-hidden");
+    node.style.removeProperty("display");
     node.style.removeProperty("pointer-events");
     node.style.removeProperty("z-index");
     node.style.removeProperty("filter");
@@ -803,6 +821,7 @@ export function TenantAccountMenu({
     </div>
     </>
   ) : null;
+  const activePortalRoot = typeof document !== "undefined" ? (portalRoot || getAccountMenuPortalRoot()) : null;
 
   return (
     <div
@@ -841,7 +860,7 @@ export function TenantAccountMenu({
         <ChevronDown className={`h-4 w-4 shrink-0 text-slate-500 transition ${open ? "rotate-180 text-cyan-200" : ""}`} />
       </button>
 
-      {typeof document !== "undefined" && menuPanel ? createPortal(menuPanel, portalRoot || document.body) : null}
+      {activePortalRoot && menuPanel ? createPortal(menuPanel, activePortalRoot) : null}
     </div>
   );
 }

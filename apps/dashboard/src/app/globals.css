@@ -1146,7 +1146,11 @@ html.nexid-account-menu-open body > :not(#nexid-account-menu-root):not(script):n
 #nexid-account-menu-root {
   position: fixed !important;
   inset: 0 !important;
-  z-index: 2147483644 !important;
+  z-index: 2147483647 !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  transform: none !important;
   pointer-events: none !important;
   isolation: isolate !important;
   contain: none !important;
@@ -1159,7 +1163,12 @@ html.nexid-account-menu-open #nexid-account-menu-root,
 body.nexid-account-menu-open #nexid-account-menu-root {
   display: block !important;
   pointer-events: auto !important;
-  z-index: 2147483644 !important;
+  z-index: 2147483647 !important;
+}
+
+#nexid-account-menu-root,
+#nexid-account-menu-root * {
+  visibility: visible !important;
 }
 
 #nexid-account-menu-root .nexid-account-layer {
@@ -1187,7 +1196,10 @@ body.nexid-account-menu-open #nexid-account-menu-root {
   isolation: isolate !important;
   contain: none !important;
   pointer-events: auto !important;
-  z-index: 2147483646 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  transform: none !important;
+  z-index: 2147483647 !important;
   overscroll-behavior: contain !important;
   box-shadow: -36px 0 120px rgba(0, 0, 0, 0.74) !important;
 }
@@ -1195,7 +1207,7 @@ body.nexid-account-menu-open #nexid-account-menu-root {
 .nexid-account-backdrop {
   position: fixed !important;
   inset: 0 !important;
-  z-index: 2147483645 !important;
+  z-index: 2147483646 !important;
   background:
     radial-gradient(circle at 80% 8%, rgba(34, 211, 238, 0.16), transparent 34%),
     rgba(2, 6, 23, 0.86) !important;
@@ -1218,7 +1230,7 @@ body.nexid-account-menu-open #nexid-account-menu-root {
   max-height: 100% !important;
   display: flex !important;
   flex-direction: column !important;
-  z-index: 2147483646 !important;
+  z-index: 2147483647 !important;
   pointer-events: auto;
   isolation: isolate !important;
   touch-action: auto;
@@ -1299,6 +1311,7 @@ html[data-theme="light"] .nexid-account-layer .tenant-account-panel__header .tex
 html.nexid-account-menu-open .nexid-crm-shell,
 body.nexid-account-menu-open .nexid-crm-shell,
 .nexid-crm-shell[data-account-menu-suppressed="true"] {
+  display: none !important;
   pointer-events: none !important;
   z-index: 0 !important;
   filter: saturate(0.78) brightness(0.48) blur(0.5px) !important;
