@@ -104,7 +104,7 @@ test("login surfaces separate founder Google auth from tenant demo access", () =
   assert.match(logoutRoute, /response\.cookies\.delete\(DASHBOARD_SESSION_SNAPSHOT_COOKIE\)/);
 
   assert.match(settingsPage, /const isClerkSuperAdminSession = session\.role === "super-admin" && !session\.mfaVerified/);
-  assert.match(settingsPage, /SSO Google, MFA pendiente/);
+  assert.match(settingsPage, /SSO Google\/Clerk, MFA pendiente/);
   assert.match(settingsPage, /sessionSecurityLabel/);
   assert.match(settingsPage, /SecureDashboardLogoutButton/);
   assert.doesNotMatch(settingsPage, /href="\/logout"/);

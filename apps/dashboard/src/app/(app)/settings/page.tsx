@@ -62,7 +62,7 @@ export default async function SettingsPage() {
   const isClerkSuperAdminSession = session.role === "super-admin" && !session.mfaVerified;
   const clerkEnabled = isClerkConfiguredForRuntime();
   const sessionSecurityLabel = isClerkSuperAdminSession
-    ? "SSO Google, MFA pendiente"
+    ? "SSO Google/Clerk, MFA pendiente"
     : session.mfaVerified
       ? "MFA verificado"
       : "MFA pendiente";

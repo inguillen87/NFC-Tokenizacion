@@ -4,6 +4,7 @@ import test from "node:test";
 
 const settingsSource = await readFile(new URL("../src/app/(app)/settings/page.tsx", import.meta.url), "utf8");
 const tenantDetailSource = await readFile(new URL("../src/app/(app)/tenants/[slug]/page.tsx", import.meta.url), "utf8");
+const secureLogoutSource = await readFile(new URL("../src/components/secure-dashboard-logout-button.tsx", import.meta.url), "utf8");
 
 test("settings page is an enterprise account command center", () => {
   assert.match(settingsSource, /data-testid="settings-command-center"/);
@@ -14,11 +15,13 @@ test("settings page is an enterprise account command center", () => {
   assert.match(settingsSource, /data-testid="settings-session-actions"/);
   assert.match(settingsSource, /Volver al dashboard/);
   assert.match(settingsSource, /Cambiar cuenta o perfil/);
-  assert.match(settingsSource, /href="\/logout"/);
   assert.doesNotMatch(settingsSource, /href="\/login"/);
-  assert.match(settingsSource, /method="post" action="\/logout"/);
-  assert.match(settingsSource, /data-testid="settings-logout"/);
-  assert.match(settingsSource, /Cerrar sesion segura/);
+  assert.match(settingsSource, /<SecureDashboardLogoutButton/);
+  assert.match(settingsSource, /testId="settings-change-account"/);
+  assert.match(settingsSource, /testId="settings-logout"/);
+  assert.match(secureLogoutSource, /method="post" action="\/logout"/);
+  assert.match(secureLogoutSource, /await fetch\("\/logout", \{ method: "POST", cache: "no-store" \}\)/);
+  assert.match(secureLogoutSource, /Cerrar sesion segura/);
 });
 
 test("settings page keeps tenant-scoped operational links", () => {

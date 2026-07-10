@@ -1147,33 +1147,25 @@ html.nexid-account-menu-open body > :not(#nexid-account-menu-root):not(script):n
   user-select: none !important;
 }
 
-.nexid-account-dialog {
+.nexid-account-overlay {
   position: fixed !important;
   inset: 0 !important;
-  display: block !important;
   width: 100vw !important;
   height: 100dvh !important;
-  max-width: none !important;
-  max-height: none !important;
   margin: 0 !important;
   padding: 0 !important;
-  border: 0 !important;
-  background: transparent !important;
-  color: inherit !important;
-  overflow: hidden !important;
-  z-index: 2147483647 !important;
-}
-
-.nexid-account-dialog::backdrop {
+  display: block !important;
   background:
     radial-gradient(circle at 82% 8%, rgba(34, 211, 238, 0.2), transparent 34%),
     rgba(2, 6, 23, 0.98) !important;
-}
-
-.nexid-account-dialog[data-account-menu-modal-state] {
+  color: inherit !important;
+  overflow: hidden !important;
   pointer-events: auto !important;
   visibility: visible !important;
   opacity: 1 !important;
+  transform: none !important;
+  isolation: isolate !important;
+  contain: none !important;
   z-index: 2147483647 !important;
 }
 
@@ -1243,9 +1235,7 @@ body.nexid-account-menu-open #nexid-account-menu-root {
   position: fixed !important;
   inset: 0 !important;
   z-index: 2147483646 !important;
-  background:
-    radial-gradient(circle at 80% 8%, rgba(34, 211, 238, 0.18), transparent 34%),
-    rgba(2, 6, 23, 0.98) !important;
+  background: transparent !important;
   pointer-events: auto !important;
   border: 0 !important;
   padding: 0 !important;
@@ -1361,8 +1351,9 @@ body.nexid-account-menu-open .nexid-crm-shell,
 .nexid-crm-shell[data-account-menu-suppressed="true"] {
   pointer-events: none !important;
   z-index: 0 !important;
-  filter: saturate(0.6) brightness(0.28) blur(1px) !important;
-  opacity: 0.12 !important;
+  filter: saturate(0.5) brightness(0.16) blur(1px) !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
   transform: none !important;
   contain: none !important;
   user-select: none !important;
