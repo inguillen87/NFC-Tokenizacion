@@ -1,7 +1,7 @@
 import { Card, SectionHeading, Badge } from "@product/ui";
 import { schedulingUrls } from "@product/config";
 import Link from "next/link";
-import { BadgeCheck, CloudOff, Cpu, Fingerprint, KeyRound, Network, PackageCheck, QrCode, RadioTower, RotateCcw, ShieldCheck, Smartphone } from "lucide-react";
+import { ArrowRight, BadgeCheck, CloudOff, Cpu, Fingerprint, KeyRound, Network, PackageCheck, QrCode, RadioTower, RotateCcw, ShieldCheck, Smartphone } from "lucide-react";
 import { HeroScene } from "./hero-scene";
 import { InstitutionalVideoPanel } from "./institutional-video-panel";
 import { PremiumTraceabilityGlobe } from "./premium-traceability-globe";
@@ -16,6 +16,7 @@ export function HeroSection({ content, stats, locale, initialTheme = "dark" }: {
   const heroSubtitle = hero?.subtitle || hero?.body || "";
   const primaryCta = hero?.cta?.primary || hero?.primary || "Empezar";
   const secondaryCta = hero?.cta?.secondary || hero?.secondary || "Contacto";
+  const mobileDocsCta = "Docs / API";
 
   const trustBadge = isEn ? "Enterprise Trusted" : isBr ? "Confiabilidade Corporativa" : "Confianza para empresas";
   const demoEyebrow = isEn ? "Interactive product experience" : isBr ? "Experiencia interativa do produto" : "Experiencia guiada de producto";
@@ -71,6 +72,23 @@ export function HeroSection({ content, stats, locale, initialTheme = "dark" }: {
           <p className="hero-subtitle mx-auto mt-5 max-w-xl text-sm leading-6 text-slate-400">
             {heroSubtitle}
           </p>
+          <div className="landing-mobile-hero-actions mt-5 grid gap-2 sm:hidden">
+            <Link href="/?contact=demo#contact-modal" className="landing-mobile-hero-actions__primary">
+              <span>{primaryCta}</span>
+              <ArrowRight className="h-4 w-4 shrink-0" />
+            </Link>
+            <div className="grid grid-cols-2 gap-2">
+              <Link href="/proof/verify" className="landing-mobile-hero-actions__secondary">
+                Proof
+              </Link>
+              <Link href="/pricing" className="landing-mobile-hero-actions__secondary">
+                {isEn ? "Pricing" : isBr ? "Precos" : "Planes"}
+              </Link>
+            </div>
+            <Link href="/docs" className="landing-mobile-hero-actions__muted">
+              {mobileDocsCta}
+            </Link>
+          </div>
         </div>
 
         <div className="hero-demo-shell mx-auto mt-16 md:mt-24 max-w-7xl text-left relative z-20">

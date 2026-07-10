@@ -67,14 +67,40 @@ test("home quick navigation exposes Proof Verify on desktop, footer and mobile",
   assert.match(page, /aria-label=\{labels\.quickProof\}/);
   assert.match(page, />Proof<\/Button>/);
   assert.match(page, /Verificar evidencia/);
-  assert.match(page, /grid-cols-5/);
   assert.match(page, />Proof<\/Link>/);
+  assert.match(page, /landing-mobile-action-dock/);
+  assert.match(page, /labels\.mobileCtaPricing/);
+  assert.match(page, /href="\/pricing" className="landing-mobile-action-dock__link"/);
   assert.equal(hubCtas.length, 7);
   assert.match(page, /nexid-quick-hub-card__cta[^"]*min-h-11[^"]*w-full/);
   assert.match(css, /\.nexid-quick-hub-card__cta\s*\{[\s\S]*min-height:\s*44px/);
   assert.match(css, /html\.theme-light \.nexid-quick-hub-card \.nexid-quick-hub-card__cta,[\s\S]*background:\s*rgba\(236,\s*254,\s*255,\s*0\.74\) !important/);
+  assert.match(css, /\.landing-mobile-action-dock\s*\{[\s\S]*position:\s*fixed/);
+  assert.match(css, /\.landing-mobile-action-dock__inner\s*\{[\s\S]*grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /body:has\(\.landing-mobile-action-dock\) \.sales-widget-root,[\s\S]*bottom:\s*calc\(5\.95rem \+ env\(safe-area-inset-bottom\)\) !important/);
   assert.doesNotMatch(page, /grid-cols-4 items-center gap-2 rounded-2xl border border-white\/10 bg-slate-950\/85/);
   assert.doesNotMatch(page, /mt-4 inline-flex items-center gap-1 text-xs font-bold/);
+  assert.doesNotMatch(page, /pb-\[calc\(max\(env\(safe-area-inset-bottom\),0px\)\+1rem\)\]/);
+});
+
+test("landing mobile hero exposes business actions before the heavy product scene", async () => {
+  const sections = await readFile(new URL("../src/components/landing-sections.tsx", import.meta.url), "utf8");
+  const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
+
+  const mobileActionsIndex = sections.indexOf("landing-mobile-hero-actions");
+  const heroSceneIndex = sections.indexOf("<HeroScene");
+
+  assert.ok(mobileActionsIndex > -1, "expected mobile hero actions");
+  assert.ok(heroSceneIndex > -1, "expected hero scene");
+  assert.ok(mobileActionsIndex < heroSceneIndex, "mobile actions should appear before the heavy hero scene");
+  assert.match(sections, /href="\/proof\/verify" className="landing-mobile-hero-actions__secondary"/);
+  assert.match(sections, /href="\/pricing" className="landing-mobile-hero-actions__secondary"/);
+  assert.match(sections, /href="\/docs" className="landing-mobile-hero-actions__muted"/);
+  assert.match(sections, /const mobileDocsCta = "Docs \/ API"/);
+  assert.match(sections, /\{mobileDocsCta\}/);
+  assert.match(css, /\.landing-mobile-hero-actions a\s*\{[\s\S]*min-height:\s*44px/);
+  assert.match(css, /\.landing-mobile-hero-actions__primary\s*\{[\s\S]*background:\s*linear-gradient\(135deg,\s*#22d3ee,\s*#14b8a6\)/);
+  assert.match(css, /html\.theme-light \.landing-mobile-hero-actions__secondary,[\s\S]*color:\s*#0f172a !important/);
 });
 
 test("docs code console wraps long environment and hash lines on mobile", async () => {

@@ -53,6 +53,7 @@ export default async function HomePage() {
       rolloutPricing: "See rollout pricing",
       mobileCtaDemo: "Book demo",
       mobileCtaDocs: "Docs",
+      mobileCtaPricing: "Pricing",
       mobileCtaLogin: "Sign in",
       mobileCtaMeeting: "Meeting",
       scheduleMeeting: "Schedule meeting",
@@ -104,6 +105,7 @@ export default async function HomePage() {
       rolloutPricing: "Ver pricing rollout",
       mobileCtaDemo: "Agendar demo",
       mobileCtaDocs: "Docs",
+      mobileCtaPricing: "Precos",
       mobileCtaLogin: "Entrar",
       mobileCtaMeeting: "Reuniao",
       scheduleMeeting: "Agendar reuniao",
@@ -154,6 +156,7 @@ export default async function HomePage() {
       rolloutPricing: "Ver pricing rollout",
       mobileCtaDemo: "Agendar demo",
       mobileCtaDocs: "Docs",
+      mobileCtaPricing: "Planes",
       mobileCtaLogin: "Ingresar",
       mobileCtaMeeting: "Reunion",
       scheduleMeeting: "Agendar reunion",
@@ -506,13 +509,16 @@ export default async function HomePage() {
         </div>
       </footer>
 
-      <div className="px-3 py-4 pb-[calc(max(env(safe-area-inset-bottom),0px)+1rem)] md:hidden">
-        <div className="mx-auto grid max-w-md grid-cols-5 items-center gap-2 rounded-2xl border border-white/10 bg-slate-950/85 p-2 shadow-[0_18px_50px_rgba(2,8,23,0.45)] backdrop-blur-xl">
-          <Link href="/docs" className="flex min-h-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 px-2 py-2 text-center text-xs font-medium text-slate-100">{labels.mobileCtaDocs}</Link>
-          <Link href="/proof/verify" className="flex min-h-11 items-center justify-center rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-2 py-2 text-center text-xs font-semibold text-cyan-100">Proof</Link>
-          <Link href="/?contact=demo#contact-modal" className="flex min-h-11 items-center justify-center gap-1 rounded-xl border border-cyan-300/30 bg-cyan-500/15 px-2 py-2 text-xs font-medium text-cyan-100">{labels.mobileCtaDemo}<ArrowRight className="h-4 w-4" /></Link>
-          <a href={meetingHref} target="_blank" rel="noreferrer" className="flex min-h-11 items-center justify-center rounded-xl border border-violet-300/30 bg-violet-500/15 px-2 py-2 text-center text-xs font-semibold text-violet-100">{labels.mobileCtaMeeting}</a>
-          <a href={loginHref} className="flex min-h-11 items-center justify-center rounded-xl border border-emerald-300/30 bg-emerald-500/15 px-2 py-2 text-center text-xs font-semibold text-emerald-100">{labels.mobileCtaLogin}</a>
+      <div className="landing-mobile-action-dock md:hidden" aria-label="Mobile quick actions">
+        <div className="landing-mobile-action-dock__inner">
+          <Link href="/docs" className="landing-mobile-action-dock__link">{labels.mobileCtaDocs}</Link>
+          <Link href="/proof/verify" className="landing-mobile-action-dock__link landing-mobile-action-dock__link--proof">Proof</Link>
+          <Link href="/?contact=demo#contact-modal" className="landing-mobile-action-dock__link landing-mobile-action-dock__link--primary">
+            <span>Demo</span>
+            <ArrowRight className="h-3.5 w-3.5 shrink-0" />
+          </Link>
+          <Link href="/pricing" className="landing-mobile-action-dock__link">{labels.mobileCtaPricing}</Link>
+          <a href={loginHref} className="landing-mobile-action-dock__link landing-mobile-action-dock__link--login">{labels.mobileCtaLogin}</a>
         </div>
       </div>
       <PwaInstallPrompt />
