@@ -64,6 +64,10 @@ test("proof verifier keeps the enterprise decoder readable and non-trapped", asy
   assert.match(page, /min-width:\s*0/);
   assert.match(page, /proof-workstation-result-panel/);
   assert.match(page, /proof-executive-panel/);
+  assert.match(page, /proof-result-status-chip/);
+  assert.match(page, /\.proof-result-status-chip\s*\{[\s\S]*flex-shrink:\s*0/);
+  assert.match(page, /\.proof-result-status-chip\s*\{[\s\S]*min-width:\s*6\.25rem/);
+  assert.match(page, /\.proof-result-status-chip\s*\{[\s\S]*white-space:\s*nowrap/);
   assert.match(page, /@media \(min-width:\s*1180px\)/);
   assert.match(page, /grid-template-columns:\s*minmax\(0,\s*0\.88fr\) minmax\(28rem,\s*1\.12fr\)/);
   assert.match(page, /proof-workstation-result-panel,[\s\S]*proof-workstation-sidebar[\s\S]*align-self:\s*start/);

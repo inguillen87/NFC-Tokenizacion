@@ -642,6 +642,15 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           color: #064e3b !important;
         }
 
+        .proof-verify-page .proof-result-status-chip {
+          flex-shrink: 0;
+          min-width: 6.25rem;
+          justify-content: center;
+          white-space: nowrap;
+          text-align: center;
+          line-height: 1;
+        }
+
         .proof-verify-page .proof-receipt-action-link {
           display: inline-flex;
           align-items: center;
@@ -1389,7 +1398,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                       : "No se encontro inclusion para este hash. Puede ser un hash mal copiado, un evento no anclado o una prueba pendiente."}
                 </p>
               </div>
-              <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-black uppercase tracking-[0.1em] ${included ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-slate-300 bg-slate-100 text-slate-600"}`}>
+              <span className={`proof-result-status-chip inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-black uppercase tracking-[0.1em] ${included ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-slate-300 bg-slate-100 text-slate-600"}`}>
                 <BadgeCheck className="h-4 w-4" />
                 {eventHash ? (included ? "valid" : "not found") : "ready"}
               </span>
