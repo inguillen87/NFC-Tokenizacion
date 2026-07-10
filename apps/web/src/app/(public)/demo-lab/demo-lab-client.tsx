@@ -4100,6 +4100,30 @@ function DemoCrmDashboard({
     setTimeout(() => setActionMessage(null), 5000);
   };
 
+  const getLeadStatusClass = (status: string) => {
+    if (status === "new" || status === "Nuevo") return "is-info";
+    if (status === "contacted" || status === "Contactado") return "is-warning";
+    return "is-success";
+  };
+
+  const getTicketStatusClass = (status: string) => {
+    if (status === "open" || status === "Abierto") return "is-danger";
+    if (status === "resolved" || status === "Resuelto") return "is-success";
+    return "is-muted";
+  };
+
+  const getOrderStatusClass = (status: string) => {
+    if (status === "new" || status === "Nuevo" || status === "pending") return "is-warning";
+    if (status === "approved" || status === "Aprobado") return "is-success";
+    return "is-info";
+  };
+
+  const getTapStatusClass = (result?: string) => {
+    if (result === "AUTHENTICATED" || result === "VERIFIED" || result === "OK") return "is-success";
+    if (result === "REPLAY_FAIL" || result === "SUSPICIOUS" || result === "FAIL") return "is-danger";
+    return "is-muted";
+  };
+
   return (
     <div className="space-y-6">
       {/* KPI Stats Grid */}
@@ -4293,11 +4317,17 @@ function DemoCrmDashboard({
       {/* Ledger Section (Tables) */}
       <div className="demo-lab-crm-ledger rounded-3xl border border-white/10 bg-slate-950/60 p-5 shadow-xl">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-4">
-          <div className="demo-lab-crm-tabs flex gap-2">
+          <div className="demo-lab-crm-ledger-head">
+            <p className="demo-lab-crm-ledger-eyebrow">Operacion comercial conectada</p>
+            <h3 className="demo-lab-crm-ledger-title">CRM live desde cada tap verificado</h3>
+          </div>
+          <div className="demo-lab-crm-tabs flex gap-2" role="tablist" aria-label="Vistas del CRM Demo Lab">
             {(["leads", "tickets", "orders", "taps"] as const).map((tab) => (
               <button
                 key={tab}
                 type="button"
+                role="tab"
+                aria-selected={activeTab === tab}
                 onClick={() => setActiveTab(tab)}
                 className={`rounded-xl px-4 py-2 text-xs font-black uppercase tracking-wider transition ${
                   activeTab === tab
@@ -4329,6 +4359,37 @@ function DemoCrmDashboard({
         <div className="demo-lab-crm-table-wrap mt-4 overflow-x-auto">
           {/* LEADS TABLE */}
           {activeTab === "leads" && (
+            <>
+            <div className="demo-lab-crm-mobile-cards" aria-label="Leads listos para mobile">
+              {recentLeads.length === 0 ? (
+                <DemoCrmMobileEmpty message="No hay leads activos todavia. Simula un tap valido o abre el portal para generar una senal comercial." />
+              ) : (
+                recentLeads.map((lead) => {
+                  const statusOverride = localLeadsStatus[lead.id] || lead.status;
+                  return (
+                    <article key={lead.id} className="demo-lab-crm-mobile-card">
+                      <div className="demo-lab-crm-mobile-card__head">
+                        <span>Lead CRM</span>
+                        <b className={`demo-lab-crm-status ${getLeadStatusClass(statusOverride)}`}>{statusOverride}</b>
+                      </div>
+                      <strong>{lead.company || "S/D"}</strong>
+                      <p>{lead.name || lead.contact}</p>
+                      <dl>
+                        <div><dt>Contacto</dt><dd>{lead.email || lead.phone || lead.contact}</dd></div>
+                        <div><dt>Rubro</dt><dd>{lead.vertical || "General"}</dd></div>
+                        <div><dt>Volumen</dt><dd>{lead.volume ? `${lead.volume.toLocaleString(locale)} tags` : "S/D"}</dd></div>
+                        <div><dt>Origen</dt><dd>{lead.source}</dd></div>
+                        <div><dt>Fecha</dt><dd>{formatTime(lead.created_at)}</dd></div>
+                      </dl>
+                      <div className="demo-lab-crm-mobile-card__actions">
+                        <button type="button" onClick={() => handleLeadAction(lead.id, "Contactado")} disabled={statusOverride === "Contactado"}>Contactar</button>
+                        <button type="button" onClick={() => handleLeadAction(lead.id, "Calificado")} disabled={statusOverride === "Calificado"}>Calificar</button>
+                      </div>
+                    </article>
+                  );
+                })
+              )}
+            </div>
             <table className="demo-lab-crm-table w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-white/10 text-slate-400 uppercase font-black tracking-wider">
@@ -4396,10 +4457,39 @@ function DemoCrmDashboard({
                 )}
               </tbody>
             </table>
+            </>
           )}
 
           {/* TICKETS (SECURITY INCIDENTS) TABLE */}
           {activeTab === "tickets" && (
+            <>
+            <div className="demo-lab-crm-mobile-cards" aria-label="Incidentes de seguridad para mobile">
+              {recentTickets.length === 0 ? (
+                <DemoCrmMobileEmpty message="No hay incidentes abiertos. Simula copia o tamper para ver como el equipo resuelve una alerta." />
+              ) : (
+                recentTickets.map((ticket) => {
+                  const statusOverride = localTicketsStatus[ticket.id] || ticket.status;
+                  return (
+                    <article key={ticket.id} className="demo-lab-crm-mobile-card">
+                      <div className="demo-lab-crm-mobile-card__head">
+                        <span>Incidente</span>
+                        <b className={`demo-lab-crm-status ${getTicketStatusClass(statusOverride)}`}>{statusOverride}</b>
+                      </div>
+                      <strong>{ticket.title}</strong>
+                      <p>{ticket.detail || "Sin detalles"}</p>
+                      <dl>
+                        <div><dt>Contacto</dt><dd>{ticket.contact}</dd></div>
+                        <div><dt>Canal</dt><dd>{ticket.source}</dd></div>
+                        <div><dt>Reporte</dt><dd>{formatTime(ticket.created_at)}</dd></div>
+                      </dl>
+                      <div className="demo-lab-crm-mobile-card__actions">
+                        <button type="button" onClick={() => handleTicketAction(ticket.id, "Resuelto")} disabled={statusOverride === "Resuelto" || statusOverride === "resolved"}>Resolver</button>
+                      </div>
+                    </article>
+                  );
+                })
+              )}
+            </div>
             <table className="demo-lab-crm-table w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-white/10 text-slate-400 uppercase font-black tracking-wider">
@@ -4453,10 +4543,40 @@ function DemoCrmDashboard({
                 )}
               </tbody>
             </table>
+            </>
           )}
 
           {/* ORDER REQUESTS TABLE */}
           {activeTab === "orders" && (
+            <>
+            <div className="demo-lab-crm-mobile-cards" aria-label="Ordenes comerciales para mobile">
+              {recentOrders.length === 0 ? (
+                <DemoCrmMobileEmpty message="No hay ordenes activas. Cuando un cliente pide tags, hardware o rollout, aparece aca con accion directa." />
+              ) : (
+                recentOrders.map((order) => {
+                  const statusOverride = localOrdersStatus[order.id] || order.status;
+                  return (
+                    <article key={order.id} className="demo-lab-crm-mobile-card">
+                      <div className="demo-lab-crm-mobile-card__head">
+                        <span>Orden comercial</span>
+                        <b className={`demo-lab-crm-status ${getOrderStatusClass(statusOverride)}`}>{statusOverride}</b>
+                      </div>
+                      <strong>{order.company || "S/D"}</strong>
+                      <p>{order.contact}</p>
+                      <dl>
+                        <div><dt>Tipo tag</dt><dd>{order.tag_type || "NTAG 424 DNA"}</dd></div>
+                        <div><dt>Cantidad</dt><dd>{order.volume ? `${order.volume.toLocaleString(locale)} unidades` : "S/D"}</dd></div>
+                        <div><dt>Origen</dt><dd>{order.source}</dd></div>
+                        <div><dt>Solicitud</dt><dd>{formatTime(order.created_at)}</dd></div>
+                      </dl>
+                      <div className="demo-lab-crm-mobile-card__actions">
+                        <button type="button" onClick={() => handleOrderAction(order.id, "Aprobado")} disabled={statusOverride === "Aprobado" || statusOverride === "approved"}>Aprobar despacho</button>
+                      </div>
+                    </article>
+                  );
+                })
+              )}
+            </div>
             <table className="demo-lab-crm-table w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-white/10 text-slate-400 uppercase font-black tracking-wider">
@@ -4513,10 +4633,33 @@ function DemoCrmDashboard({
                 )}
               </tbody>
             </table>
+            </>
           )}
 
           {/* ALL SCANS HISTORIAL TABLE */}
           {activeTab === "taps" && (
+            <>
+            <div className="demo-lab-crm-mobile-cards" aria-label="Escaneos verificados para mobile">
+              {liveEvents.length === 0 ? (
+                <DemoCrmMobileEmpty message="No hay escaneos historicos registrados. Simula un tap para ver el trail operativo." />
+              ) : (
+                liveEvents.map((event) => (
+                  <article key={event.id || `${event.created_at}-${event.uidMasked}`} className="demo-lab-crm-mobile-card">
+                    <div className="demo-lab-crm-mobile-card__head">
+                      <span>Tap verificado</span>
+                      <b className={`demo-lab-crm-status ${getTapStatusClass(event.result)}`}>{event.result || "N/A"}</b>
+                    </div>
+                    <strong>{event.city || "Sin dato"}</strong>
+                    <p>{event.product_name || activeVertical?.product || "Lote General"}</p>
+                    <dl>
+                      <div><dt>Pais</dt><dd>{event.country_code || "N/A"}</dd></div>
+                      <div><dt>UID</dt><dd>{event.uidMasked || "UID-NA"}</dd></div>
+                      <div><dt>Fecha</dt><dd>{formatTime(event.created_at || "")}</dd></div>
+                    </dl>
+                  </article>
+                ))
+              )}
+            </div>
             <table className="demo-lab-crm-table w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-white/10 text-slate-400 uppercase font-black tracking-wider">
@@ -4561,9 +4704,19 @@ function DemoCrmDashboard({
                 )}
               </tbody>
             </table>
+            </>
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function DemoCrmMobileEmpty({ message }: { message: string }) {
+  return (
+    <div className="demo-lab-crm-mobile-empty">
+      <span>Sin registros</span>
+      <p>{message}</p>
     </div>
   );
 }

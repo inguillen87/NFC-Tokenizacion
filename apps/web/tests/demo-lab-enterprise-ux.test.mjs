@@ -142,6 +142,11 @@ test("demo lab hub keeps C-level contrast across cards, filters and theme contro
   assert.match(client, /demo-lab-crm-tabs/);
   assert.match(client, /demo-lab-crm-table-wrap/);
   assert.match(client, /demo-lab-crm-table/);
+  assert.match(client, /demo-lab-crm-ledger-title/);
+  assert.match(client, /demo-lab-crm-mobile-cards/);
+  assert.match(client, /demo-lab-crm-mobile-card/);
+  assert.match(client, /DemoCrmMobileEmpty/);
+  assert.match(client, /getLeadStatusClass/);
   assert.match(css, /\.demo-lab-hub-root--light\s*\{[\s\S]*color:\s*#0f172a !important/);
   assert.match(css, /\.demo-lab-hub-root \.demo-lab-hub-card__icon,[\s\S]*color:\s*#bae6fd !important/);
   assert.match(css, /\.demo-lab-hub-root--light \.demo-lab-hub-card__icon,[\s\S]*color:\s*#075985 !important/);
@@ -178,6 +183,16 @@ test("demo lab hub keeps C-level contrast across cards, filters and theme contro
   assert.match(css, /@media \(min-width:\s*1024px\)[\s\S]*\.demo-lab-hub-card-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(css, /\.demo-lab-crm-tabs\s*\{[\s\S]*scroll-snap-type:\s*x proximity/);
   assert.match(css, /\.demo-lab-crm-table\s*\{[\s\S]*min-width:\s*760px/);
+  assert.match(css, /\.demo-lab-crm-mobile-cards\s*\{[\s\S]*display:\s*none/);
+  assert.match(css, /\.demo-lab-crm-mobile-card,[\s\S]*\.demo-lab-crm-mobile-empty\s*\{[\s\S]*border:\s*1px solid rgba\(125,\s*211,\s*252,\s*0\.18\)/);
+  assert.match(css, /\.demo-lab-crm-status\.is-danger\s*\{[\s\S]*rgba\(244,\s*63,\s*94,\s*0\.12\)/);
+  assert.match(css, /html\.theme-light \.demo-lab-crm-mobile-card,[\s\S]*\.demo-lab-fullscreen-root--light \.demo-lab-crm-mobile-empty/);
+  assert.match(css, /@media \(max-width:\s*640px\)[\s\S]*\.demo-lab-crm-table-wrap\s*\{[\s\S]*overflow-x:\s*visible !important/);
+  assert.match(css, /@media \(max-width:\s*640px\)[\s\S]*\.demo-lab-crm-tabs\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\) !important/);
+  assert.match(css, /@media \(max-width:\s*640px\)[\s\S]*\.demo-lab-crm-tabs button\s*\{[\s\S]*white-space:\s*normal !important/);
+  assert.match(css, /@media \(max-width:\s*640px\)[\s\S]*\.demo-lab-crm-table\s*\{[\s\S]*display:\s*none !important/);
+  assert.match(css, /@media \(max-width:\s*640px\)[\s\S]*\.demo-lab-crm-mobile-cards\s*\{[\s\S]*display:\s*grid !important/);
+  assert.match(css, /@media \(max-width:\s*520px\)[\s\S]*\.demo-lab-crm-mobile-card__actions\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) !important/);
   assert.match(css, /@media \(max-width:\s*520px\)[\s\S]*\.demo-lab-hub-root \.demo-lab-hub-nav\.demo-lab-hub-nav--mobile-safe\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) !important/);
   assert.match(css, /@media \(max-width:\s*520px\)[\s\S]*\.demo-lab-hub-root \.demo-lab-hub-nav\.demo-lab-hub-nav--mobile-safe > div\s*\{[\s\S]*grid-column:\s*1 !important/);
   assert.match(css, /@media \(max-width:\s*520px\)[\s\S]*\.demo-lab-hub-root \.demo-lab-hub-nav\.demo-lab-hub-nav--mobile-safe a\[href="\/proof\/verify"\]\s*\{[\s\S]*overflow:\s*hidden !important/);
