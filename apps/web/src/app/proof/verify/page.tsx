@@ -392,6 +392,36 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
       live: Boolean(demoCatalog.testnet?.polygon?.demo_tx_hash),
     },
   ];
+  const externalExplorerUrl = matches.find((match) => Boolean(match.explorer_url))?.explorer_url
+    || guidedDemo?.public_receipt?.explorer_url
+    || demoCatalog.testnet?.iota?.demo_tx_explorer_url
+    || "";
+  const proofConsoleCards = [
+    {
+      label: "1. Decision",
+      title: !eventHash ? "Listo para probar" : included ? "Evidencia valida" : "Revisar hash",
+      body: !eventHash
+        ? "Carga un caso demo o pega un SHA. La pantalla devuelve un veredicto entendible antes de mostrar detalles tecnicos."
+        : included
+          ? "Este hash aparece dentro de un anchor verificable. Es una prueba apta para auditoria, ventas o compliance."
+          : "No hay inclusion confirmada para este hash. Puede estar mal copiado, no anclado o pendiente de publicar.",
+      tone: included ? "proof-console-card--success" : eventHash ? "proof-console-card--warning" : "proof-console-card--neutral",
+    },
+    {
+      label: "2. Prueba externa",
+      title: externalExplorerUrl ? "Explorer disponible" : "Explorer pendiente",
+      body: externalExplorerUrl
+        ? "Abrir el explorer permite ver la tx testnet real. nexID agrega la capa de lectura: que significa el Raw input para negocio."
+        : "El verificador puede operar con registry local/API y queda preparado para mostrar explorer cuando el anchor tenga tx.",
+      tone: externalExplorerUrl ? "proof-console-card--success" : "proof-console-card--neutral",
+    },
+    {
+      label: "3. Privacidad",
+      title: "Hash-only por diseno",
+      body: "La empresa demuestra integridad sin publicar UIDs, clientes, rutas, manifiestos, lotes sensibles ni contratos comerciales.",
+      tone: "proof-console-card--info",
+    },
+  ];
 
   return (
     <main className="proof-verify-page min-h-screen text-slate-950">
@@ -699,11 +729,76 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           order: 2;
         }
 
+        .proof-verify-page .proof-verification-console {
+          order: 3;
+          overflow: hidden;
+        }
+
+        .proof-verify-page .proof-console-grid {
+          display: grid;
+          gap: 0.9rem;
+          min-width: 0;
+        }
+
+        .proof-verify-page .proof-console-card {
+          min-width: 0;
+          border: 1px solid var(--proof-border);
+          background: var(--proof-soft-bg);
+          box-shadow: none !important;
+        }
+
+        .proof-verify-page .proof-console-card--success {
+          border-color: rgba(52, 211, 153, 0.34) !important;
+          background: var(--proof-emerald-bg) !important;
+        }
+
+        .proof-verify-page .proof-console-card--warning {
+          border-color: rgba(251, 191, 36, 0.36) !important;
+          background: var(--proof-amber-bg) !important;
+        }
+
+        .proof-verify-page .proof-console-card--info {
+          border-color: var(--proof-border-strong) !important;
+          background: var(--proof-cyan-bg) !important;
+        }
+
+        .proof-verify-page .proof-console-card--neutral {
+          border-color: var(--proof-border) !important;
+          background: var(--proof-soft-bg) !important;
+        }
+
+        .proof-verify-page .proof-exec-steps {
+          display: grid;
+          gap: 0.75rem;
+        }
+
+        .proof-verify-page .proof-exec-step {
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr);
+          gap: 0.75rem;
+          align-items: start;
+          border: 1px solid var(--proof-border);
+          background: var(--proof-card-bg);
+        }
+
+        .proof-verify-page .proof-exec-step__badge {
+          display: grid;
+          height: 2rem;
+          width: 2rem;
+          place-items: center;
+          border-radius: 999px;
+          border: 1px solid var(--proof-border-strong);
+          background: rgba(34, 211, 238, 0.12);
+          color: var(--proof-accent);
+          font-size: 0.68rem;
+          font-weight: 900;
+        }
+
         .proof-verify-page .proof-workstation-grid {
           display: grid;
           gap: 1.25rem;
           grid-template-columns: minmax(0, 1fr);
-          order: 3;
+          order: 4;
         }
 
         .proof-verify-page .proof-fast-path-card {
@@ -722,6 +817,30 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           -webkit-box-orient: vertical;
           -webkit-line-clamp: 2;
           overflow: hidden;
+        }
+
+        .proof-verify-page .proof-fast-path-card a {
+          border-color: rgba(103, 232, 249, 0.38) !important;
+          background: rgba(8, 145, 178, 0.22) !important;
+          color: #e0f2fe !important;
+        }
+
+        .proof-verify-page .proof-fast-path-card a[href*="decode_input"] {
+          border-color: rgba(52, 211, 153, 0.36) !important;
+          background: rgba(16, 185, 129, 0.18) !important;
+          color: #dcfce7 !important;
+        }
+
+        html[data-theme="light"] .proof-verify-page .proof-fast-path-card a,
+        html.theme-light .proof-verify-page .proof-fast-path-card a {
+          background: #ecfeff !important;
+          color: #075985 !important;
+        }
+
+        html[data-theme="light"] .proof-verify-page .proof-fast-path-card a[href*="decode_input"],
+        html.theme-light .proof-verify-page .proof-fast-path-card a[href*="decode_input"] {
+          background: #ecfdf5 !important;
+          color: #065f46 !important;
         }
 
         .proof-verify-page .proof-workstation-grid > *,
@@ -745,6 +864,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           min-width: 0;
         }
 
+        .proof-verify-page .proof-executive-panel,
         .proof-verify-page .proof-decoder-panel,
         .proof-verify-page .proof-manager-panel {
           min-width: 0;
@@ -759,7 +879,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
         @media (min-width: 1024px) {
           .proof-verify-page .proof-workstation-sidebar {
             grid-template-columns: repeat(2, minmax(0, 1fr));
-            align-items: start;
+            align-items: stretch;
           }
 
           .proof-verify-page .proof-decoder-panel,
@@ -777,19 +897,24 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
         }
 
         @media (min-width: 1180px) {
+          .proof-verify-page .proof-console-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+          }
+
           .proof-verify-page .proof-workstation-grid {
-            grid-template-columns: minmax(0, 0.94fr) minmax(24rem, 0.76fr);
+            grid-template-columns: minmax(0, 0.88fr) minmax(28rem, 1.12fr);
             align-items: start;
             gap: 1.5rem;
           }
 
           .proof-verify-page .proof-workstation-sidebar {
-            grid-template-columns: minmax(0, 1fr);
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            align-items: stretch;
           }
 
           .proof-verify-page .proof-decoder-panel,
           .proof-verify-page .proof-manager-panel {
-            grid-column: auto;
+            grid-column: 1 / -1;
           }
 
           .proof-verify-page .proof-workstation-result-panel,
@@ -1211,6 +1336,43 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           </div>
         </section>
 
+        <section className="proof-verification-console proof-elevated rounded-[1.6rem] border border-cyan-200 bg-white/84 p-5 shadow-sm">
+          <div className="grid gap-5 xl:grid-cols-[0.78fr_1.22fr] xl:items-end">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Consola de verificacion publica</p>
+              <h2 className="mt-2 text-3xl font-black leading-tight text-slate-950">Un veredicto legible antes del detalle tecnico.</h2>
+              <p className="mt-3 text-sm leading-6 text-slate-600">
+                Pensado para un gerente, auditor o inversor: primero muestra si la evidencia existe, despues abre la prueba externa y finalmente explica que datos nunca se publican.
+              </p>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2 xl:justify-end">
+              {guidedDemo ? (
+                <Link href={verifyHrefForDemo(guidedDemo)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-cyan-900">
+                  Probar caso demo <FileSearch className="h-4 w-4" />
+                </Link>
+              ) : null}
+              {externalExplorerUrl ? (
+                <a href={externalExplorerUrl} className="proof-receipt-action-link text-xs font-black uppercase tracking-[0.12em]" target="_blank" rel="noreferrer">
+                  Abrir explorer real <ArrowRight className="h-4 w-4" />
+                </a>
+              ) : (
+                <Link href="/demo-lab?scenario=iota-proof" className="proof-secondary-cta inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]">
+                  Ir a Demo Lab <ArrowRight className="h-4 w-4" />
+                </Link>
+              )}
+            </div>
+          </div>
+          <div className="proof-console-grid mt-5">
+            {proofConsoleCards.map((card) => (
+              <article key={card.label} className={`proof-console-card rounded-2xl p-4 ${card.tone}`}>
+                <p className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-cyan-700">{card.label}</p>
+                <h3 className="mt-2 text-xl font-black leading-tight text-slate-950">{card.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{card.body}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
         <section className="proof-workstation-grid">
           <div className="proof-workstation-result-panel proof-elevated rounded-[1.5rem] border border-slate-200 bg-white/82 p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
@@ -1337,7 +1499,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           </div>
 
           <div className="proof-workstation-sidebar grid gap-5 xl:self-start">
-          <div className="proof-decoder-panel proof-elevated rounded-[1.5rem] border border-cyan-200 bg-cyan-50/75 p-5 shadow-sm">
+          <div className="proof-executive-panel proof-elevated rounded-[1.5rem] border border-cyan-200 bg-cyan-50/75 p-5 shadow-sm">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Lectura ejecutiva</p>
@@ -1348,26 +1510,34 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
               <BadgeCheck className="mt-1 h-6 w-6 shrink-0 text-cyan-700" />
             </div>
             <p className="mt-3 text-sm leading-6 text-slate-700">
-              {guidedDemo
-                ? `${guidedDemo.title}: ${guidedDemo.public_receipt.manager_explanation}`
-                : "La empresa pega un hash, ve si esta incluido en un anchor y puede abrir la prueba externa cuando existe tx real."}
+              Resume el proof en tres ideas: que hecho queda probado, donde se ve la evidencia externa y que datos siguen privados dentro de nexID.
             </p>
-            <div className="mt-4 grid gap-3">
-              <div className="proof-flat rounded-2xl border border-cyan-200 bg-white/70 p-4">
-                <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan-800">1. Hecho probado</p>
-                <strong className="mt-2 block text-base leading-tight text-slate-950">Un evento autorizado existia en ese momento.</strong>
-                <p className="mt-2 text-sm leading-6 text-slate-600">El SHA es la huella de QA, custodia, claim, DPP o checkpoint. Si cambia el evento, cambia el hash.</p>
-              </div>
-              <div className="proof-flat rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-emerald-800">2. Evidencia externa</p>
-                <strong className="mt-2 block text-base leading-tight text-emerald-950">IOTA muestra fecha, tx y Merkle root.</strong>
-                <p className="mt-2 text-sm leading-6 text-emerald-900">El explorer prueba que el recibo publico fue escrito. nexID traduce ese Raw input a lenguaje de negocio.</p>
-              </div>
-              <div className="proof-flat rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-amber-800">3. Datos protegidos</p>
-                <strong className="mt-2 block text-base leading-tight text-amber-950">La prueba no revela clientes, UIDs ni rutas.</strong>
-                <p className="mt-2 text-sm leading-6 text-amber-900">La blockchain no se usa como base publica: solo publica el minimo verificable para auditoria.</p>
-              </div>
+            <div className="proof-exec-steps mt-4">
+              {[
+                {
+                  badge: "01",
+                  title: "Evento autorizado",
+                  body: "Hash de QA, custodia, claim o DPP. Si cambia el evento, cambia el SHA.",
+                },
+                {
+                  badge: "02",
+                  title: "Prueba externa",
+                  body: "IOTA muestra tx y Merkle root. nexID traduce el Raw input a negocio.",
+                },
+                {
+                  badge: "03",
+                  title: "Datos protegidos",
+                  body: "No se publican UIDs, rutas, clientes ni contratos comerciales.",
+                },
+              ].map((step) => (
+                <div key={step.badge} className="proof-exec-step rounded-2xl p-3">
+                  <span className="proof-exec-step__badge">{step.badge}</span>
+                  <div>
+                    <strong className="block text-sm leading-tight text-slate-950">{step.title}</strong>
+                    <p className="mt-1 text-sm leading-6 text-slate-600">{step.body}</p>
+                  </div>
+                </div>
+              ))}
             </div>
             <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
               {guidedDemo?.public_receipt.explorer_url ? (
@@ -1423,7 +1593,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
             </div>
           </div>
 
-          <div className="proof-elevated rounded-[1.5rem] border border-cyan-200 bg-cyan-50/75 p-5 shadow-sm">
+          <div className="proof-decoder-panel proof-elevated rounded-[1.5rem] border border-cyan-200 bg-cyan-50/75 p-5 shadow-sm">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Proof Decoder</p>
