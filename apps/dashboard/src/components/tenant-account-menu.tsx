@@ -44,7 +44,7 @@ const ACCOUNT_MENU_Z_INDEX = 2147483647;
 const ACCOUNT_MENU_BACKDROP_Z_INDEX = ACCOUNT_MENU_Z_INDEX - 1;
 const ACCOUNT_MENU_PANEL_Z_INDEX = ACCOUNT_MENU_Z_INDEX;
 const ACCOUNT_MENU_PORTAL_ROOT_ID = "nexid-account-menu-root";
-const ACCOUNT_MENU_VERSION = "drawer-v10-root-locked";
+const ACCOUNT_MENU_VERSION = "drawer-v11-command-hub";
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 const ACCOUNT_MENU_CRITICAL_CSS = `
 html.nexid-account-menu-open,
@@ -116,6 +116,18 @@ body.nexid-account-menu-open #nexid-account-menu-root {
   border: 0 !important;
   padding: 0 !important;
   margin: 0 !important;
+}
+.nexid-account-context {
+  position: fixed !important;
+  left: clamp(1.25rem, 6vw, 7rem) !important;
+  top: 50% !important;
+  z-index: ${ACCOUNT_MENU_PANEL_Z_INDEX} !important;
+  width: min(46rem, calc(100vw - 36rem - 6vw)) !important;
+  max-width: 46rem !important;
+  transform: translateY(-50%) !important;
+  pointer-events: auto !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 .nexid-account-layer .tenant-account-panel {
   width: 100% !important;
@@ -196,6 +208,9 @@ html.nexid-account-menu-open .nexid-account-layer * {
   pointer-events: auto !important;
 }
 @media (max-width: 640px) {
+  .nexid-account-context {
+    display: none !important;
+  }
   .nexid-account-layer {
     inset: 0 !important;
     width: 100vw !important;
@@ -683,6 +698,60 @@ export function TenantAccountMenu({
         className="nexid-account-backdrop"
         onClick={closeMenu}
       />
+      <div
+        className="nexid-account-context hidden xl:block"
+        data-testid="tenant-account-menu-context"
+        aria-label="Resumen del workspace activo"
+      >
+        <div className="rounded-[2rem] border border-cyan-200/18 bg-[radial-gradient(circle_at_10%_0%,rgba(34,211,238,.18),transparent_32%),linear-gradient(135deg,rgba(8,17,31,.94),rgba(2,8,23,.9))] p-6 text-slate-100 shadow-[0_30px_120px_rgba(0,0,0,.62)] ring-1 ring-white/8">
+          <div className="flex items-start justify-between gap-5">
+            <div className="min-w-0">
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-200">Workspace activo</p>
+              <h2 className="mt-3 text-4xl font-black leading-tight tracking-[-0.03em] text-white">{tenantName}</h2>
+              <p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">{accountRoleDescription}</p>
+            </div>
+            <span className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-black uppercase tracking-[0.1em] ${
+              accountSecurityOk && setupCompleted !== false
+                ? "border-emerald-300/30 bg-emerald-400/10 text-emerald-100"
+                : "border-amber-300/30 bg-amber-400/10 text-amber-100"
+            }`}>
+              {workspaceStatus}
+            </span>
+          </div>
+
+          <div className="mt-6 grid gap-3 md:grid-cols-2">
+            {workspaceInsights.map((item) => (
+              <div key={item.label} className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">{item.label}</p>
+                <p className="mt-2 truncate text-lg font-black text-white">{item.value}</p>
+                <p className="mt-1 text-xs leading-5 text-slate-400">{item.detail}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-6 rounded-2xl border border-cyan-300/18 bg-cyan-400/8 p-4">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Accesos SaaS</p>
+            <div className="mt-3 grid gap-2">
+              {[nextAction, ...primaryItems.slice(0, 2)].map((item) => (
+                <button
+                  key={`${item.href}-${item.label}`}
+                  type="button"
+                  className="group flex min-h-12 items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2 text-left transition hover:border-cyan-300/45 hover:bg-cyan-400/10"
+                  onClick={() => {
+                    window.location.href = item.href;
+                  }}
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-black text-white">{item.label}</span>
+                    <span className="mt-0.5 block truncate text-xs text-slate-400">{item.meta}</span>
+                  </span>
+                  <ArrowRight className="h-4 w-4 shrink-0 text-cyan-200 transition group-hover:translate-x-0.5" />
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
       <div
         ref={layerRef}
         role="dialog"

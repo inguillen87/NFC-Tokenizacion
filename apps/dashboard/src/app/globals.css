@@ -1217,6 +1217,19 @@ body.nexid-account-menu-open #nexid-account-menu-root {
   margin: 0 !important;
 }
 
+.nexid-account-context {
+  position: fixed !important;
+  left: clamp(1.25rem, 6vw, 7rem) !important;
+  top: 50% !important;
+  z-index: 2147483647 !important;
+  width: min(46rem, calc(100vw - 36rem - 6vw)) !important;
+  max-width: 46rem !important;
+  transform: translateY(-50%) !important;
+  pointer-events: auto !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
 .nexid-account-layer,
 .nexid-account-layer > * {
   pointer-events: auto !important;
@@ -1374,6 +1387,10 @@ body.nexid-account-menu-open .nexid-account-layer * {
 }
 
 @media (max-width: 640px) {
+  .nexid-account-context {
+    display: none !important;
+  }
+
   .nexid-account-layer {
     inset: 0 !important;
     width: 100vw !important;

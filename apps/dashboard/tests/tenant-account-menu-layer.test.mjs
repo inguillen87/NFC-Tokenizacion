@@ -30,7 +30,7 @@ test("tenant account menu renders as a top-level drawer above CRM layers", () =>
   assert.match(menuSource, /const ACCOUNT_MENU_Z_INDEX = 2147483647/);
   assert.match(menuSource, /const ACCOUNT_MENU_BACKDROP_Z_INDEX = ACCOUNT_MENU_Z_INDEX - 1/);
   assert.match(menuSource, /const ACCOUNT_MENU_PANEL_Z_INDEX = ACCOUNT_MENU_Z_INDEX/);
-  assert.match(menuSource, /const ACCOUNT_MENU_VERSION = "drawer-v10-root-locked"/);
+  assert.match(menuSource, /const ACCOUNT_MENU_VERSION = "drawer-v11-command-hub"/);
   assert.match(menuSource, /const ACCOUNT_MENU_CRITICAL_CSS = `/);
   assert.match(menuSource, /body\.nexid-account-menu-open > :not\(#nexid-account-menu-root\):not\(script\):not\(style\)/);
   assert.match(menuSource, /html\.nexid-account-menu-open body > :not\(#nexid-account-menu-root\):not\(script\):not\(style\)/);
@@ -57,6 +57,10 @@ test("tenant account menu renders as a top-level drawer above CRM layers", () =>
   assert.match(menuSource, /data-account-menu-backdrop="true"/);
   assert.match(menuSource, /data-testid="tenant-account-menu-backdrop"/);
   assert.match(menuSource, /className="nexid-account-backdrop"/);
+  assert.match(menuSource, /data-testid="tenant-account-menu-context"/);
+  assert.match(menuSource, /Workspace activo/);
+  assert.match(menuSource, /Accesos SaaS/);
+  assert.match(menuSource, /\[nextAction, \.\.\.primaryItems\.slice\(0, 2\)\]/);
   assert.doesNotMatch(menuSource, /onCancel=\{\(event\) => \{/);
   assert.match(menuSource, /const ACCOUNT_LAYER_STYLE: CSSProperties = \{/);
   assert.match(menuSource, /width:\s*"min\(100vw, 32rem\)"/);
@@ -183,6 +187,10 @@ test("global CSS prevents dashboard maps from covering account drawer", () => {
   assert.match(globalsSource, /\.nexid-account-backdrop\s*\{[\s\S]*rgba\(2, 6, 23, 0\.86\) !important/);
   assert.doesNotMatch(globalsSource, /\.nexid-account-backdrop\s*\{[\s\S]*backdrop-filter:\s*blur\(18px\) saturate\(1\.1\)/);
   assert.match(globalsSource, /\.nexid-account-backdrop\s*\{[\s\S]*pointer-events:\s*auto !important/);
+  assert.match(globalsSource, /\.nexid-account-context\s*\{[\s\S]*z-index:\s*2147483647 !important/);
+  assert.match(globalsSource, /\.nexid-account-context\s*\{[\s\S]*width:\s*min\(46rem, calc\(100vw - 36rem - 6vw\)\) !important/);
+  assert.match(globalsSource, /\.nexid-account-context\s*\{[\s\S]*pointer-events:\s*auto !important/);
+  assert.match(globalsSource, /\.nexid-account-context\s*\{[\s\S]*visibility:\s*visible !important/);
   assert.match(globalsSource, /\.nexid-account-layer,\s*\.nexid-account-layer > \*\s*\{[\s\S]*pointer-events:\s*auto !important/);
   assert.doesNotMatch(globalsSource, /nexid-account-dialog::backdrop/);
   assert.match(globalsSource, /\.nexid-account-layer \.tenant-account-panel\s*\{[\s\S]*display:\s*flex !important/);
@@ -220,6 +228,7 @@ test("global CSS prevents dashboard maps from covering account drawer", () => {
   assert.match(globalsSource, /html\.nexid-account-menu-open \.nexid-crm-shell \.maplibregl-control-container/);
   assert.match(globalsSource, /body\.nexid-account-menu-open \.nexid-account-layer \*/);
   assert.match(globalsSource, /@media \(max-width:\s*640px\)\s*\{[\s\S]*\.nexid-account-layer\s*\{[\s\S]*inset:\s*0 !important/);
+  assert.match(globalsSource, /@media \(max-width:\s*640px\)\s*\{[\s\S]*\.nexid-account-context\s*\{[\s\S]*display:\s*none !important/);
   assert.match(globalsSource, /@media \(max-width:\s*640px\)\s*\{[\s\S]*\.nexid-account-layer\s*\{[\s\S]*width:\s*100vw !important/);
   assert.match(globalsSource, /@media \(max-width:\s*640px\)\s*\{[\s\S]*\.nexid-account-layer\s*\{[\s\S]*max-width:\s*100vw !important/);
   assert.match(globalsSource, /@media \(max-width:\s*640px\)\s*\{[\s\S]*\.nexid-account-layer \.tenant-account-panel\s*\{[\s\S]*height:\s*100% !important/);
