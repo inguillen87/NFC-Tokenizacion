@@ -2,7 +2,6 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { UserRole } from "./dashboard-content";
 import { dashboardDemoAccessAllowedForRole, dashboardFallbackSessionAllowed } from "./dashboard-access-flags";
-import { isClerkConfiguredForRuntime } from "./clerk-env";
 
 export const DASHBOARD_SESSION_COOKIE = "nexid_dashboard_session";
 export const DASHBOARD_SESSION_SNAPSHOT_COOKIE = "nexid_dashboard_session_snapshot";
@@ -106,7 +105,6 @@ export async function getDashboardSession() {
   const cookieStore = await cookies();
   const token = cookieStore.get(DASHBOARD_SESSION_COOKIE)?.value;
   const snapshot = parseSnapshot(cookieStore.get(DASHBOARD_SESSION_SNAPSHOT_COOKIE)?.value);
-  const clerkAutoSyncBlocked = cookieStore.get(DASHBOARD_CLERK_AUTOSYNC_BLOCK_COOKIE)?.value === "1";
 
   if (token) {
     const isDemoToken = token.startsWith("demo.");
@@ -129,70 +127,6 @@ export async function getDashboardSession() {
       }
     }
     if (snapshot) return snapshot;
-  }
-
-  // Clerk auto-sync check on session miss
-  if (!clerkAutoSyncBlocked && isClerkConfiguredForRuntime()) {
-    try {
-      const { auth, currentUser } = await import("@clerk/nextjs/server");
-      const clerkAuth = await auth();
-      if (clerkAuth.userId) {
-        const clerkUser = await currentUser();
-        if (clerkUser) {
-          const email = clerkUser.emailAddresses[0]?.emailAddress;
-          const fullName = clerkUser.fullName || `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim();
-          const externalUserId = clerkUser.id;
-
-          const syncRes = await fetch(`${API_BASE}/auth/clerk-sync`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${process.env.ADMIN_API_KEY || ""}`,
-            },
-            body: JSON.stringify({ email, fullName, externalUserId }),
-          }).catch(() => null);
-
-          if (syncRes && syncRes.ok) {
-            const syncData = await syncRes.json().catch(() => null) as { ok?: boolean; email?: string; role?: string; label?: string; permissions?: string[]; sessionToken?: string; expiresAt?: string; tenantId?: string; tenantSlug?: string; profile?: { metadata?: { setup_completed?: boolean } } } | null;
-            if (syncData?.ok && syncData.sessionToken) {
-              const setupCompleted = syncData.profile?.metadata?.setup_completed !== false;
-              const sessionPayload: DashboardSession = {
-                id: syncData.sessionToken.split(".")[0],
-                email: syncData.email || email,
-                role: (syncData.role || "tenant-admin") as any,
-                tenantId: syncData.tenantId || null,
-                tenantSlug: syncData.tenantSlug || null,
-                label: syncData.label || fullName,
-                permissions: syncData.permissions || [],
-                mfaVerified: false,
-                setupCompleted,
-                expiresAt: syncData.expiresAt,
-              };
-
-              cookieStore.set(DASHBOARD_SESSION_COOKIE, syncData.sessionToken, {
-                httpOnly: true,
-                sameSite: "lax",
-                secure: process.env.NODE_ENV === "production",
-                path: "/",
-                maxAge: 60 * 60 * 12,
-              });
-
-              cookieStore.set(DASHBOARD_SESSION_SNAPSHOT_COOKIE, Buffer.from(JSON.stringify(sessionPayload)).toString("base64url"), {
-                httpOnly: true,
-                sameSite: "lax",
-                secure: process.env.NODE_ENV === "production",
-                path: "/",
-                maxAge: 60 * 60 * 12,
-              });
-
-              return sessionPayload;
-            }
-          }
-        }
-      }
-    } catch (err) {
-      console.error("Clerk session resolution failed:", err);
-    }
   }
 
   if (dashboardFallbackSessionAllowed()) return demoFallbackSession();
