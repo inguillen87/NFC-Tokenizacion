@@ -9,6 +9,14 @@ function useSecureCookie(req: Request) {
   return process.env.NODE_ENV === "production";
 }
 
+function appendExpiredCookieVariants(response: NextResponse, name: string, req: Request) {
+  const secure = useSecureCookie(req) ? "; Secure" : "";
+  const base = `${name}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; HttpOnly; SameSite=Lax${secure}`;
+  response.headers.append("Set-Cookie", base);
+  response.headers.append("Set-Cookie", `${base}; Domain=.nexid.lat`);
+  response.headers.append("Set-Cookie", `${base}; Domain=app.nexid.lat`);
+}
+
 async function endDashboardSession(req: Request, revokeUpstream: boolean) {
   const cookie = req.headers.get("cookie") || "";
   const token = cookie.split(/;\s*/).find((item) => item.startsWith(`${DASHBOARD_SESSION_COOKIE}=`))?.split("=")[1] || "";
@@ -21,6 +29,8 @@ async function endDashboardSession(req: Request, revokeUpstream: boolean) {
   response.headers.set("Cache-Control", "no-store");
   response.cookies.delete(DASHBOARD_SESSION_COOKIE);
   response.cookies.delete(DASHBOARD_SESSION_SNAPSHOT_COOKIE);
+  appendExpiredCookieVariants(response, DASHBOARD_SESSION_COOKIE, req);
+  appendExpiredCookieVariants(response, DASHBOARD_SESSION_SNAPSHOT_COOKIE, req);
   response.cookies.set(DASHBOARD_CLERK_AUTOSYNC_BLOCK_COOKIE, "1", {
     httpOnly: true,
     sameSite: "lax",
