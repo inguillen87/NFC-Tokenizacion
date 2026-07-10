@@ -44,7 +44,7 @@ const ACCOUNT_MENU_Z_INDEX = 2147483647;
 const ACCOUNT_MENU_BACKDROP_Z_INDEX = ACCOUNT_MENU_Z_INDEX - 1;
 const ACCOUNT_MENU_PANEL_Z_INDEX = ACCOUNT_MENU_Z_INDEX;
 const ACCOUNT_MENU_PORTAL_ROOT_ID = "nexid-account-menu-root";
-const ACCOUNT_MENU_VERSION = "drawer-v15-sync-top-layer";
+const ACCOUNT_MENU_VERSION = "drawer-v16-immediate-modal-layer";
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 const ACCOUNT_MENU_CRITICAL_CSS = `
 html.nexid-account-menu-open,
@@ -75,7 +75,7 @@ html.nexid-account-menu-open body > :not(#nexid-account-menu-root):not(script):n
 .nexid-account-dialog::backdrop {
   background:
     radial-gradient(circle at 82% 8%, rgba(34, 211, 238, 0.2), transparent 34%),
-    rgba(2, 6, 23, 0.94) !important;
+    rgba(2, 6, 23, 0.98) !important;
 }
 #nexid-account-menu-root {
   position: fixed !important;
@@ -131,7 +131,7 @@ body.nexid-account-menu-open #nexid-account-menu-root {
   z-index: ${ACCOUNT_MENU_BACKDROP_Z_INDEX} !important;
   background:
     radial-gradient(circle at 80% 8%, rgba(34, 211, 238, 0.18), transparent 34%),
-    rgba(2, 6, 23, 0.92) !important;
+    rgba(2, 6, 23, 0.98) !important;
   pointer-events: auto !important;
   border: 0 !important;
   padding: 0 !important;
@@ -370,6 +370,59 @@ function setCrmShellSuppression(value: boolean) {
   });
 }
 
+function activateAccountMenuDialog(dialog: HTMLDialogElement | null) {
+  if (!dialog) return false;
+  dialog.style.setProperty("position", "fixed", "important");
+  dialog.style.setProperty("inset", "0", "important");
+  dialog.style.setProperty("display", "block", "important");
+  dialog.style.setProperty("width", "100vw", "important");
+  dialog.style.setProperty("height", "100dvh", "important");
+  dialog.style.setProperty("z-index", String(ACCOUNT_MENU_Z_INDEX), "important");
+  dialog.style.setProperty("overflow", "hidden", "important");
+  dialog.style.setProperty("background", "transparent", "important");
+
+  try {
+    if (typeof dialog.showModal === "function") {
+      if (!dialog.open) dialog.showModal();
+      dialog.setAttribute("data-account-menu-modal-state", "native-top-layer");
+      return true;
+    }
+  } catch {
+    // Fall through to a fixed-position dialog. It remains inside the body portal root.
+  }
+
+  if (!dialog.open) dialog.setAttribute("open", "");
+  dialog.setAttribute("data-account-menu-modal-state", "fixed-fallback");
+  return false;
+}
+
+function forceAccountMenuModalLayer(
+  root: HTMLElement | null,
+  dialog?: HTMLDialogElement | null,
+  layer?: HTMLElement | null,
+  panel?: HTMLElement | null,
+) {
+  if (root) {
+    promoteAccountMenuPortalRoot(root);
+    setActiveDataAttribute(root, "data-account-menu-active", true);
+    root.setAttribute("data-account-menu-modal-ready", "true");
+    root.style.setProperty("pointer-events", "auto", "important");
+    root.style.setProperty("z-index", String(ACCOUNT_MENU_Z_INDEX), "important");
+  }
+  if (dialog) activateAccountMenuDialog(dialog);
+  [layer, panel].forEach((node) => {
+    if (!node) return;
+    node.style.setProperty("position", node === layer ? "fixed" : "relative", "important");
+    node.style.setProperty("z-index", String(ACCOUNT_MENU_PANEL_Z_INDEX), "important");
+    node.style.setProperty("visibility", "visible", "important");
+    node.style.setProperty("opacity", "1", "important");
+    node.style.setProperty("pointer-events", "auto", "important");
+    node.style.setProperty("transform", "none", "important");
+    node.style.setProperty("contain", "none", "important");
+  });
+  setCrmShellSuppression(true);
+}
+
 function tenantNameFromSlug(slug?: string | null) {
   const normalized = String(slug || "").trim().toLowerCase();
   if (normalized === "demobodega" || normalized === "bodegabalmec" || normalized === "bodega-balmec") return "Bodega Balmec";
@@ -535,12 +588,13 @@ export function TenantAccountMenu({
     if (root) {
       setActiveDataAttribute(root, "data-account-menu-active", value);
       root.style.setProperty("pointer-events", value ? "auto" : "none", "important");
+      if (value) root.setAttribute("data-account-menu-modal-ready", "true");
+      else root.removeAttribute("data-account-menu-modal-ready");
       if (value) {
         window.requestAnimationFrame(() => {
           const promotedRoot = getAccountMenuPortalRoot();
           if (!promotedRoot) return;
-          setActiveDataAttribute(promotedRoot, "data-account-menu-active", true);
-          promotedRoot.style.setProperty("pointer-events", "auto", "important");
+          forceAccountMenuModalLayer(promotedRoot, dialogRef.current, layerRef.current, panelRef.current);
           setPortalRoot(promotedRoot);
         });
       }
@@ -561,7 +615,7 @@ export function TenantAccountMenu({
 
   useEffect(() => {
     openRef.current = open;
-  }, [open]);
+  }, [open, portalRoot]);
 
   useIsomorphicLayoutEffect(() => {
     setPortalRoot(getAccountMenuPortalRoot());
@@ -637,14 +691,19 @@ export function TenantAccountMenu({
       setPortalRoot(root);
       setOpen(true);
     });
+    forceAccountMenuModalLayer(root, dialogRef.current || root.querySelector<HTMLDialogElement>("[data-testid='tenant-account-menu-dialog']"), layerRef.current, panelRef.current);
     window.requestAnimationFrame(() => {
       const promotedRoot = getAccountMenuPortalRoot();
       if (!promotedRoot || !openRef.current) return;
-      setActiveDataAttribute(promotedRoot, "data-account-menu-active", true);
-      promotedRoot.style.setProperty("pointer-events", "auto", "important");
-      setCrmShellSuppression(true);
+      forceAccountMenuModalLayer(promotedRoot, dialogRef.current, layerRef.current, panelRef.current);
       updatePanelPosition();
     });
+    window.setTimeout(() => {
+      if (!openRef.current) return;
+      const promotedRoot = getAccountMenuPortalRoot();
+      forceAccountMenuModalLayer(promotedRoot, dialogRef.current, layerRef.current, panelRef.current);
+      updatePanelPosition();
+    }, 0);
   }, [setDocumentMenuState, updatePanelPosition]);
 
   const toggleMenu = useCallback(() => {
@@ -677,15 +736,8 @@ export function TenantAccountMenu({
     if (!open) return;
     const dialog = dialogRef.current;
     if (!dialog) return;
-    try {
-      if (typeof dialog.showModal === "function" && !dialog.open) {
-        dialog.showModal();
-      } else if (!dialog.open) {
-        dialog.setAttribute("open", "");
-      }
-    } catch {
-      dialog.setAttribute("open", "");
-    }
+    activateAccountMenuDialog(dialog);
+    forceAccountMenuModalLayer(portalRoot || getAccountMenuPortalRoot(), dialog, layerRef.current, panelRef.current);
     return () => {
       if (!dialog.open) return;
       try {
