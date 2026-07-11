@@ -121,6 +121,9 @@ export async function POST(req: Request) {
           ORDER BY created_at ASC
         `;
     events = rows as EvidenceEventRow[];
+    if (events.length !== new Set(eventIds).size) {
+      return json({ ok: false, reason: "evidence_event_not_found" }, 404);
+    }
   } else {
     const resourceType = safeString(body.resource_type || body.resourceType);
     const resourceId = safeString(body.resource_id || body.resourceId);
@@ -144,15 +147,25 @@ export async function POST(req: Request) {
   }
 
   if (!events.length) return json({ ok: false, reason: "no_evidence_events_found" }, 404);
+  const resourceKeys = new Set(events.map((event) => `${event.resource_type}\u0000${event.resource_id}`));
+  if (resourceKeys.size !== 1) {
+    return json({
+      ok: false,
+      reason: "mixed_resource_events",
+      message: "An evidence receipt can only group events from the same resource.",
+    }, 400);
+  }
+  const resourceType = events[0].resource_type;
+  const resourceId = events[0].resource_id;
   const eventHashes = events.map((event) => String(event.payload_hash));
   const merkleRoot = buildMerkleRoot(eventHashes);
   const anchorRows = await sql/*sql*/`
     INSERT INTO evidence_anchors (
-      tenant_id, provider, network, anchor_type, merkle_root, event_count, event_hashes_json,
-      status, anchored_at
+      tenant_id, provider, network, anchor_type, resource_type, resource_id, merkle_root,
+      event_count, event_hashes_json, status, anchored_at
     ) VALUES (
-      ${tenantId}, ${provider}, ${network}, 'merkle_root', ${merkleRoot}, ${events.length},
-      ${JSON.stringify(eventHashes)}::jsonb, 'local', now()
+      ${tenantId}, ${provider}, ${network}, 'merkle_root', ${resourceType}, ${resourceId},
+      ${merkleRoot}, ${events.length}, ${JSON.stringify(eventHashes)}::jsonb, 'local', now()
     )
     RETURNING *
   `;
@@ -167,6 +180,8 @@ export async function POST(req: Request) {
     afterData: {
       provider,
       network,
+      resource_type: resourceType,
+      resource_id: resourceId,
       event_count: events.length,
       merkle_root: merkleRoot,
       event_types: Array.from(new Set(events.map((event) => event.event_type))),
@@ -181,6 +196,8 @@ export async function POST(req: Request) {
       id: anchor.id,
       provider,
       network,
+      resource_type: resourceType,
+      resource_id: resourceId,
       merkle_root: merkleRoot,
       event_count: events.length,
       status: anchor.status,

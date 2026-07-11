@@ -373,7 +373,6 @@ export async function ensureSupplierOpsSchema() {
             network = ${provider.network},
             rpc_url_env_name = ${provider.rpcEnv},
             chain_id = ${provider.chainId},
-            enabled = ${provider.enabled},
             purpose = ${provider.purpose},
             metadata_json = COALESCE(metadata_json, '{}'::jsonb) || ${metadataJson}::jsonb,
             updated_at = now()

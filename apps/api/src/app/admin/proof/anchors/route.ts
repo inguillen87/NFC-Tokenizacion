@@ -116,6 +116,27 @@ export async function POST(req: Request) {
     return json({ ok: false, reason: "tenant_required" }, 400);
   }
   const tenantId = tenantScope.tenantId;
+
+  const providerRows = await sql/*sql*/`
+    SELECT code, network, enabled
+    FROM ledger_providers
+    WHERE code = ${provider} AND network = ${network}
+    LIMIT 1
+  `;
+  const ledgerProvider = providerRows[0];
+  if (!ledgerProvider) {
+    return json({ ok: false, reason: "ledger_provider_not_configured", provider, network }, 404);
+  }
+  if (!ledgerProvider.enabled) {
+    return json({ ok: false, reason: "ledger_provider_disabled", provider, network }, 409);
+  }
+  if (provider === "polygon") {
+    return json({
+      ok: false,
+      reason: "polygon_ownership_route_required",
+      message: "Polygon ownership is managed through tokenization, not the evidence anchor route.",
+    }, 409);
+  }
   const resourceType = safeString(body.resourceType || body.resource_type);
   const resourceId = safeString(body.resourceId || body.resource_id);
   const eventIds = Array.isArray(body.event_ids)
@@ -151,48 +172,43 @@ export async function POST(req: Request) {
   let errorMessage: string | null = null;
   let warning: string | null = null;
 
-  if (provider === "polygon") {
-    status = "disabled";
-    warning = "Polygon ownership remains separate. Evidence anchors are IOTA/local by policy unless a Polygon proof adapter is explicitly configured.";
+  const mode = normalizeIotaMode();
+  if (mode === "disabled") {
+    return json({ ok: false, reason: "ledger_provider_runtime_disabled", provider, network }, 409);
+  } else if (mode === "mock") {
+    if (String(process.env.NODE_ENV || "").toLowerCase() === "production") {
+      return json({ ok: false, reason: "mock_provider_forbidden_in_production", provider, network }, 409);
+    }
+    txHash = `mock-iota-${Date.now().toString(36)}`;
+    status = "submitted";
+    warning = "Mock IOTA proof for local demo only. This is not legal or commercial evidence.";
+  } else if (mode === "iota_notarization_sdk_later") {
+    return json({ ok: false, reason: "external_anchor_adapter_not_enabled", provider, network }, 501);
   } else {
-    const mode = normalizeIotaMode();
-    if (mode === "disabled") {
-      status = "disabled";
-      warning = "IOTA_PROVIDER_MODE=disabled; no transaction was attempted.";
-    } else if (mode === "mock") {
-      txHash = `mock-iota-${Date.now().toString(36)}`;
-      status = "submitted";
-      warning = "Mock IOTA proof for local demo only. This is not legal or commercial evidence.";
-    } else if (mode === "iota_notarization_sdk_later") {
-      status = "disabled";
-      warning = "IOTA notarization toolkit adapter is not configured yet.";
+    const rpcUrl = process.env.IOTA_EVM_RPC_URL;
+    const privateKey = process.env.IOTA_EVM_PRIVATE_KEY;
+    const contractAddress = process.env.IOTA_EVM_ANCHOR_CONTRACT;
+    const explorerBaseUrl = process.env.IOTA_EXPLORER_BASE_URL || "";
+    if (!privateKey || !contractAddress || !rpcUrl) {
+      return json({ ok: false, reason: "iota_evm_config_missing", provider, network }, 503);
     } else {
-      const rpcUrl = process.env.IOTA_EVM_RPC_URL;
-      const privateKey = process.env.IOTA_EVM_PRIVATE_KEY;
-      const contractAddress = process.env.IOTA_EVM_ANCHOR_CONTRACT;
-      const explorerBaseUrl = process.env.IOTA_EXPLORER_BASE_URL || "";
-      if (!privateKey || !contractAddress || !rpcUrl) {
+      try {
+        const provider = new ethers.JsonRpcProvider(rpcUrl);
+        const wallet = new ethers.Wallet(privateKey, provider);
+        const abi = [
+          "function anchorRoot(bytes32 merkleRoot, string calldata tenantIdHash, string calldata resourceType, string calldata resourceId, uint256 eventCount) external",
+        ];
+
+        const contract = new ethers.Contract(contractAddress, abi, wallet);
+        const tx = await contract.anchorRoot(`0x${stripShaPrefix(merkleRoot)}`, tenantHash(tenantId), resourceType, resourceId, eventHashes.length);
+        const receipt = await tx.wait();
+
+        txHash = receipt.hash;
+        explorerUrl = explorerBaseUrl ? `${explorerBaseUrl.replace(/\/$/, "")}/tx/${txHash}` : null;
+        status = "confirmed";
+      } catch (err: any) {
         status = "failed";
-        errorMessage = "iota_evm_config_missing";
-      } else {
-        try {
-          const provider = new ethers.JsonRpcProvider(rpcUrl);
-          const wallet = new ethers.Wallet(privateKey, provider);
-          const abi = [
-            "function anchorRoot(bytes32 merkleRoot, string calldata tenantIdHash, string calldata resourceType, string calldata resourceId, uint256 eventCount) external",
-          ];
-
-          const contract = new ethers.Contract(contractAddress, abi, wallet);
-          const tx = await contract.anchorRoot(`0x${stripShaPrefix(merkleRoot)}`, tenantHash(tenantId), resourceType, resourceId, eventHashes.length);
-          const receipt = await tx.wait();
-
-          txHash = receipt.hash;
-          explorerUrl = explorerBaseUrl ? `${explorerBaseUrl.replace(/\/$/, "")}/tx/${txHash}` : null;
-          status = "confirmed";
-        } catch (err: any) {
-          status = "failed";
-          errorMessage = String(err?.message || "iota_anchor_failed").slice(0, 300);
-        }
+        errorMessage = String(err?.message || "iota_anchor_failed").slice(0, 300);
       }
     }
   }
@@ -230,9 +246,9 @@ export async function POST(req: Request) {
   });
 
   return json({
-    ok: true,
+    ok: status !== "failed",
     anchor,
     event_hashes: eventHashes,
     warning,
-  }, 201);
+  }, status === "failed" ? 502 : 201);
 }

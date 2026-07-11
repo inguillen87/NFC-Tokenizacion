@@ -117,7 +117,7 @@ function proofLayers(tenantSlug: string) {
     {
       label: "IOTA proof",
       body: "Evidencia publica hash-only para hitos de custodia o QA.",
-      href: "/proof/anchor",
+      href: `/proof/anchor?tenant=${tenantSlug}`,
       icon: <RadioTower className="h-4 w-4" />,
       tone: "green",
     },

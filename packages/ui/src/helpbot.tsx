@@ -249,7 +249,7 @@ export function HelpBot({ locale = "es-AR", mode = "sales", className }: Props) 
   return (
     <div className={className}>
       {!open ? (
-        <div className="helpbot-hint fixed bottom-[calc(4.8rem+env(safe-area-inset-bottom))] right-4 z-[91] max-w-[220px] rounded-lg border border-cyan-300/30 bg-slate-950/95 px-3 py-2 text-[11px] text-cyan-100 shadow-[0_0_20px_rgba(34,211,238,.2)] sm:right-5 lg:hidden">
+        <div className="helpbot-hint fixed bottom-[calc(4.8rem+env(safe-area-inset-bottom))] right-4 z-[91] hidden max-w-[220px] rounded-lg border border-cyan-300/30 bg-slate-950/95 px-3 py-2 text-[11px] text-cyan-100 shadow-[0_0_20px_rgba(34,211,238,.2)] sm:right-5 md:block lg:hidden">
           {t.hints[hintIndex]}
         </div>
       ) : null}

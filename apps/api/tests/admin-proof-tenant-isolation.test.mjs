@@ -79,6 +79,7 @@ test("proof routes reject unresolved tenant scope before global reads or writes"
   const events = await readFile(new URL("../src/app/admin/proof/events/route.ts", import.meta.url), "utf8");
   const localAnchor = await readFile(new URL("../src/app/admin/proof/anchor/route.ts", import.meta.url), "utf8");
   const providers = await readFile(new URL("../src/app/admin/proof/providers/route.ts", import.meta.url), "utf8");
+  const schema = await readFile(new URL("../src/lib/supplier-ops-schema.ts", import.meta.url), "utf8");
 
   for (const source of [anchors, events, localAnchor]) {
     assert.match(source, /resolveAdminProofTenantScope/);
@@ -89,9 +90,16 @@ test("proof routes reject unresolved tenant scope before global reads or writes"
   assert.match(events, /export async function GET/);
   assert.match(events, /WHERE tenant_id = \$\{tenantScope\.tenantId\}::uuid/);
   assert.match(anchors, /eventHashesFromIds\(eventIds, tenantId\)/);
+  assert.match(anchors, /FROM ledger_providers/);
+  assert.match(anchors, /ledger_provider_disabled/);
+  assert.match(anchors, /polygon_ownership_route_required/);
+  assert.match(anchors, /mock_provider_forbidden_in_production/);
   assert.match(anchors, /proof_anchor_external_created/);
   assert.match(anchors, /tx_hash: txHash/);
   assert.match(localAnchor, /WHERE tenant_id = \$\{tenantId\}::uuid/);
+  assert.match(localAnchor, /mixed_resource_events/);
+  assert.match(localAnchor, /resource_type, resource_id, merkle_root/);
+  assert.match(localAnchor, /evidence_event_not_found/);
   assert.match(anchors, /tenant_required/);
   assert.match(events, /tenant_required/);
   assert.match(localAnchor, /tenant_required/);
@@ -100,4 +108,8 @@ test("proof routes reject unresolved tenant scope before global reads or writes"
   assert.match(providers, /write_enabled/);
   assert.match(providers, /policy_disabled/);
   assert.doesNotMatch(providers, /status:\s*["']active["']/);
+  assert.doesNotMatch(
+    schema,
+    /UPDATE ledger_providers[\s\S]*?enabled = \$\{provider\.enabled\}[\s\S]*?WHERE code = \$\{provider\.code\}/,
+  );
 });

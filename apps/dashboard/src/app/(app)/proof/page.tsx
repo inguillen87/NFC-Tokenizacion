@@ -14,9 +14,11 @@ import {
   Hash,
   Link2,
   Network,
+  PlusCircle,
   ShieldCheck,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { dashboardPermissionMatches } from "../../../lib/permission-policy";
 import { requireDashboardSession } from "../../../lib/session";
 import { getServerOrigin } from "../../../lib/server-origin";
 import styles from "./page.module.css";
@@ -352,7 +354,7 @@ function EmptyState({ children }: { children: string }) {
 }
 
 export default async function ProofPage() {
-  await requireDashboardSession("proof:read");
+  const session = await requireDashboardSession("proof:read");
   const origin = await getServerOrigin();
   const cookie = (await headers()).get("cookie") || "";
 
@@ -430,6 +432,12 @@ export default async function ProofPage() {
   const polygonCertificateHref = safeHttpUrl(
     polygonReference?.certificate_url || polygonReference?.ownership_certificate_url,
   );
+  const canWriteProof = !session.isDemo && (
+    session.role === "super-admin" || dashboardPermissionMatches(session.permissions, "proof:write")
+  );
+  const composerHref = session.tenantSlug
+    ? `/proof/anchor?tenant=${encodeURIComponent(session.tenantSlug)}`
+    : "/proof/anchor";
 
   return (
     <main className={styles.page} data-testid="proof-trust-operations">
@@ -443,7 +451,12 @@ export default async function ProofPage() {
           </p>
         </div>
         <nav className={styles.actions} aria-label="Acciones de Trust Operations">
-          <a className={`${styles.action} ${styles.primaryAction}`} href={PUBLIC_VERIFY_URL} target="_blank" rel="noreferrer">
+          {canWriteProof ? (
+            <Link className={`${styles.action} ${styles.primaryAction}`} href={composerHref}>
+              <PlusCircle aria-hidden="true" /> Registrar evidencia
+            </Link>
+          ) : null}
+          <a className={canWriteProof ? styles.action : `${styles.action} ${styles.primaryAction}`} href={PUBLIC_VERIFY_URL} target="_blank" rel="noreferrer">
             <FileCheck2 aria-hidden="true" /> Verificador publico <ArrowUpRight aria-hidden="true" />
           </a>
           <a className={styles.action} href={PUBLIC_OWNERSHIP_URL} target="_blank" rel="noreferrer">
