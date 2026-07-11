@@ -51959,9 +51959,9 @@ html[data-theme="light"] .demo-lab-crm-mobile-card__actions button,
 
   .demo-lab-fullscreen-root .demo-lab-wizard-center .demo-lab-premium-scene {
     width: 100% !important;
-    height: 21rem !important;
-    min-height: 21rem !important;
-    max-height: 21rem !important;
+    height: 20rem !important;
+    min-height: 20rem !important;
+    max-height: 20rem !important;
     overflow: hidden !important;
   }
 

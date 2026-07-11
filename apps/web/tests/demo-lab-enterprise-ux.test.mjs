@@ -90,6 +90,7 @@ test("demo lab mobile journey uses native page scroll and a compact product sele
   assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*\.demo-lab-fullscreen-root \.demo-lab-wizard-center \.demo-lab-premium-scene\s*\{[\s\S]*height:\s*22rem !important/);
   assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*\.demo-lab-fullscreen-root \.demo-lab-wizard-tap-btn\s*\{[\s\S]*height:\s*3\.5rem !important/);
   assert.match(css, /@media \(max-width:\s*1024px\)[\s\S]*\.demo-lab-fullscreen-stage \.demo-lab-studio,[\s\S]*overflow:\s*visible !important/);
+  assert.match(css, /@media \(min-width:\s*761px\) and \(max-width:\s*1024px\)[\s\S]*\.demo-lab-fullscreen-root \.demo-lab-wizard-center \.demo-lab-premium-scene\s*\{[\s\S]*height:\s*20rem !important/);
 });
 
 test("demo lab fullscreen mobile keeps CTAs inside viewport and light mode visible", async () => {
