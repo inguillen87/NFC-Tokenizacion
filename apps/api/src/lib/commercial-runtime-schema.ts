@@ -288,7 +288,7 @@ export async function ensureCarrierProfileSchema() {
         CREATE TABLE IF NOT EXISTS carrier_profiles (
           code text PRIMARY KEY,
           label text NOT NULL,
-          family text NOT NULL CHECK (family IN ('qr', 'gs1', 'nfc')),
+          family text NOT NULL CHECK (family IN ('qr', 'gs1', 'nfc', 'rfid', 'iot')),
           security_level integer NOT NULL DEFAULT 1,
           cost_band text NOT NULL DEFAULT 'entry',
           estimated_unit_cost_usd_min numeric(10,4),
