@@ -29,8 +29,8 @@ function readTheme(): Theme {
   return serverTheme === "light" || serverTheme === "dark" ? serverTheme : "dark";
 }
 
-export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>("dark");
+export function ThemeToggle({ initialTheme = "dark" }: { initialTheme?: Theme }) {
+  const [theme, setTheme] = useState<Theme>(initialTheme);
 
   useEffect(() => {
     const initial = readTheme();

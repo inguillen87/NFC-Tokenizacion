@@ -14,12 +14,12 @@ export function LocaleSwitcher({ value, options }: { value: string; options: str
   const searchParams = useSearchParams();
 
   return (
-    <label suppressHydrationWarning className="locale-switcher inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200">
+    <label suppressHydrationWarning className="locale-switcher inline-flex min-h-11 items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-0 text-xs font-semibold text-slate-200">
       <span aria-hidden className="locale-switcher__icon">ID</span>
       <select
         suppressHydrationWarning
         value={value}
-        className="bg-transparent pr-1 text-xs font-semibold"
+        className="min-h-11 bg-transparent pr-1 text-xs font-semibold"
         aria-label="Seleccionar idioma"
         onChange={(event) => {
           const next = event.target.value;

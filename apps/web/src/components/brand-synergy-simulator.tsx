@@ -39,6 +39,8 @@ interface Scenario {
   proofMode: string;
 }
 
+type MobilePane = "business" | "activation";
+
 export function BrandSynergySimulator({ locale }: { locale: string }) {
   const isEn = locale === "en";
   const isBr = locale === "pt-BR";
@@ -67,8 +69,8 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
     select: isEn ? "Select scenario" : isBr ? "Selecionar cenario" : "Seleccionar escenario",
     portal: isEn ? "Simulate portal and wallet" : isBr ? "Simular portal e wallet" : "Simular portal y wallet",
     lab: isEn ? "Open Demo Lab" : isBr ? "Abrir Demo Lab" : "Abrir Demo Lab",
-    terminalTitle: isEn ? "Partner matching live" : isBr ? "Matching de parceiro ao vivo" : "Matching de partner en vivo",
-    channel: isEn ? "Policy channel" : isBr ? "Canal de politica" : "Canal de politica",
+    terminalTitle: isEn ? "Guided partner matching" : isBr ? "Matching guiado de parceiro" : "Matching guiado de partner",
+    channel: isEn ? "Scenario simulation" : isBr ? "Simulacao de cenario" : "Simulacion de escenario",
     physicalTap: isEn ? "1 - Physical tap detected" : isBr ? "1 - Tap fisico detectado" : "1 - Tap fisico detectado",
     authenticity: isEn ? "2 - Authenticity check" : isBr ? "2 - Checagem de autenticidade" : "2 - Chequeo de autenticidad",
     query: isEn ? "3 - Business policy query" : isBr ? "3 - Consulta de politica comercial" : "3 - Consulta de politica comercial",
@@ -76,7 +78,7 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
     verified: isEn ? "SUN verified: OK - Risk score: 0.01" : isBr ? "SUN verificado: OK - Risco: 0.01" : "SUN verificado: OK - Riesgo: 0.01",
     matching: isEn ? "Matching eligible partner offers..." : isBr ? "Buscando ofertas elegiveis..." : "Buscando ofertas elegibles...",
     category: isEn ? "Category" : isBr ? "Categoria" : "Categoria",
-    boardTitle: isEn ? "Enterprise activation board" : isBr ? "Painel enterprise de ativacao" : "Tablero enterprise de activacion",
+    boardTitle: isEn ? "Enterprise activation demo" : isBr ? "Demo enterprise de ativacao" : "Demo enterprise de activacion",
     boardSubtitle: isEn
       ? "What the team can operate after one trusted tap."
       : isBr
@@ -100,10 +102,13 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
       : isBr
         ? "Sinal CRM, voucher ou claim"
         : "Senal CRM, voucher o reclamo",
-    metricMatchLabel: isEn ? "Match" : isBr ? "Match" : "Match",
+    metricMatchLabel: isEn ? "Estimated match" : isBr ? "Match estimado" : "Match estimado",
     metricRiskLabel: isEn ? "Risk" : isBr ? "Risco" : "Riesgo",
     metricDataLabel: isEn ? "Data" : isBr ? "Dados" : "Datos",
     privateDataLabel: isEn ? "private" : isBr ? "privado" : "privado",
+    mobileViewLabel: isEn ? "Simulator view" : isBr ? "Vista do simulador" : "Vista del simulador",
+    businessView: isEn ? "Decision" : isBr ? "Decisao" : "Decision",
+    activationView: isEn ? "Activation" : isBr ? "Ativacao" : "Activacion",
     privacy: isEn
       ? "Public proof stays hash-only. Customer identity, route detail and contracts remain private inside nexID."
       : isBr
@@ -189,19 +194,29 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
   const [activeId, setActiveId] = useState(scenarios[0].id);
   const [step, setStep] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [mobilePane, setMobilePane] = useState<MobilePane>("business");
   const activeScenario = scenarios.find((scenario) => scenario.id === activeId) || scenarios[0];
 
   useEffect(() => {
     setStep(0);
+  }, [activeId]);
+
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setStep(3);
+      return;
+    }
+    if (isPaused) return;
+
     const interval = window.setInterval(() => {
       setStep((previous) => (previous < 3 ? previous + 1 : previous));
     }, 950);
 
     return () => window.clearInterval(interval);
-  }, [activeId]);
+  }, [activeId, isPaused]);
 
   useEffect(() => {
-    if (isPaused) return;
+    if (isPaused || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     const interval = window.setInterval(() => {
       setActiveId((currentId) => {
@@ -267,8 +282,8 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
             </span>
           </div>
 
-          <div className="mt-6 flex flex-col gap-2">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">{copy.select}</p>
+          <div className="brand-synergy-scenario-picker mt-6 flex flex-col gap-2">
+            <p className="brand-synergy-scenario-picker__label text-[10px] font-semibold uppercase tracking-widest text-slate-500">{copy.select}</p>
             <div className="flex flex-wrap gap-2.5">
               {scenarios.map((scenario) => {
                 const isActive = scenario.id === activeId;
@@ -292,60 +307,81 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
             </div>
           </div>
 
-          <div className="brand-synergy-proof-grid mt-6 grid gap-2 sm:grid-cols-3">
-            <div>
-              <ShieldCheck className="h-4 w-4" />
-              <strong>{copy.proofVerifiedTitle}</strong>
-              <span>{copy.proofVerifiedBody}</span>
-            </div>
-            <div>
-              <LockKeyhole className="h-4 w-4" />
-              <strong>{copy.proofPrivateTitle}</strong>
-              <span>{copy.proofPrivateBody}</span>
-            </div>
-            <div>
-              <DatabaseZap className="h-4 w-4" />
-              <strong>{copy.proofActionTitle}</strong>
-              <span>{copy.proofActionBody}</span>
-            </div>
+          <div className="brand-synergy-mobile-view-switch" role="group" aria-label={copy.mobileViewLabel}>
+            <button
+              type="button"
+              aria-pressed={mobilePane === "business"}
+              onClick={() => setMobilePane("business")}
+            >
+              <Handshake className="h-4 w-4" />
+              {copy.businessView}
+            </button>
+            <button
+              type="button"
+              aria-pressed={mobilePane === "activation"}
+              onClick={() => setMobilePane("activation")}
+            >
+              <Activity className="h-4 w-4" />
+              {copy.activationView}
+            </button>
           </div>
 
-          <div className="brand-synergy-outcome-grid mt-6 grid gap-3 sm:grid-cols-2">
-            <article>
-              <span>{copy.signalLabel}</span>
-              <strong>{activeScenario.crmSignal}</strong>
-            </article>
-            <article>
-              <span>{copy.policyLabel}</span>
-              <strong>{activeScenario.policyGate}</strong>
-            </article>
-            <article>
-              <span>{copy.resultLabel}</span>
-              <strong>{activeScenario.businessResult}</strong>
-            </article>
-            <article>
-              <span>{copy.proofLabel}</span>
-              <strong>{activeScenario.proofMode}</strong>
-            </article>
-          </div>
+          <div className="brand-synergy-business-pane" data-mobile-active={mobilePane === "business" ? "true" : "false"}>
+            <div className="brand-synergy-proof-grid mt-6 grid gap-2 sm:grid-cols-3">
+              <div>
+                <ShieldCheck className="h-4 w-4" />
+                <strong>{copy.proofVerifiedTitle}</strong>
+                <span>{copy.proofVerifiedBody}</span>
+              </div>
+              <div>
+                <LockKeyhole className="h-4 w-4" />
+                <strong>{copy.proofPrivateTitle}</strong>
+                <span>{copy.proofPrivateBody}</span>
+              </div>
+              <div>
+                <DatabaseZap className="h-4 w-4" />
+                <strong>{copy.proofActionTitle}</strong>
+                <span>{copy.proofActionBody}</span>
+              </div>
+            </div>
 
-          <div className="mt-8 flex flex-wrap gap-3">
-            <a
-              href="/login?next=/me"
-              className="brand-synergy-primary-cta inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 px-5 py-3 text-sm font-black uppercase tracking-wider text-slate-950 shadow-lg transition-all hover:-translate-y-0.5 hover:from-cyan-400 hover:to-teal-400 hover:shadow-cyan-500/30"
-            >
-              {copy.portal} <ArrowRight className="h-4 w-4" />
-            </a>
-            <a
-              href="/demo-lab"
-              className="brand-synergy-secondary-cta inline-flex items-center gap-2 rounded-xl border border-white/10 px-5 py-3 text-sm font-bold uppercase tracking-wider text-slate-300 transition hover:bg-white/5"
-            >
-              {copy.lab}
-            </a>
+            <div className="brand-synergy-outcome-grid mt-6 grid gap-3 sm:grid-cols-2">
+              <article>
+                <span>{copy.signalLabel}</span>
+                <strong>{activeScenario.crmSignal}</strong>
+              </article>
+              <article>
+                <span>{copy.policyLabel}</span>
+                <strong>{activeScenario.policyGate}</strong>
+              </article>
+              <article>
+                <span>{copy.resultLabel}</span>
+                <strong>{activeScenario.businessResult}</strong>
+              </article>
+              <article>
+                <span>{copy.proofLabel}</span>
+                <strong>{activeScenario.proofMode}</strong>
+              </article>
+            </div>
+
+            <div className="mt-8 flex flex-wrap gap-3">
+              <a
+                href="/login?next=/me"
+                className="brand-synergy-primary-cta inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 px-5 py-3 text-sm font-black uppercase tracking-wider text-slate-950 shadow-lg transition-all hover:-translate-y-0.5 hover:from-cyan-400 hover:to-teal-400 hover:shadow-cyan-500/30"
+              >
+                {copy.portal} <ArrowRight className="h-4 w-4" />
+              </a>
+              <a
+                href="/demo-lab"
+                className="brand-synergy-secondary-cta inline-flex items-center gap-2 rounded-xl border border-white/10 px-5 py-3 text-sm font-bold uppercase tracking-wider text-slate-300 transition hover:bg-white/5"
+              >
+                {copy.lab}
+              </a>
+            </div>
           </div>
         </div>
 
-        <div className="brand-synergy-live-panel">
+        <div className="brand-synergy-live-panel" data-mobile-active={mobilePane === "activation" ? "true" : "false"}>
           <div className="brand-synergy-live-panel__head">
             <span>{copy.boardTitle}</span>
             <strong>{copy.boardSubtitle}</strong>
@@ -366,7 +402,12 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
             </div>
           </div>
 
-          <div className="brand-synergy-terminal rounded-2xl border border-white/10 bg-white/[0.03] shadow-xl" aria-live="polite">
+          <div
+            className="brand-synergy-terminal rounded-2xl border border-white/10 bg-white/[0.03] shadow-xl"
+            role="region"
+            aria-label={copy.boardTitle}
+            aria-live="off"
+          >
             <div className="brand-synergy-terminal__chrome flex items-center justify-between border-b border-white/10 bg-slate-900/60 px-4 py-3">
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-purple-500" />

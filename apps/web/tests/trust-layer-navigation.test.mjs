@@ -73,7 +73,7 @@ test("home quick navigation exposes Proof Verify on desktop, footer and mobile",
   assert.match(page, />Proof<\/Button>/);
   assert.match(page, /const brandSynergyLabel = locale === "en" \? "Brand AI"/);
   assert.match(page, /\{ label: brandSynergyLabel, href: "#brand-synergy" \}/);
-  assert.match(page, /<section id="brand-synergy" className="container-shell my-16 scroll-mt-24">/);
+  assert.match(page, /<section id="brand-synergy" className="landing-brand-synergy-band my-16 scroll-mt-24">/);
   assert.match(page, /Verificar evidencia/);
   assert.match(page, />Proof<\/Link>/);
   assert.match(page, /landing-mobile-action-dock/);

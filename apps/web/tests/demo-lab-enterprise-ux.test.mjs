@@ -42,19 +42,31 @@ test("web pwa fallback stays production-gated and mobile-safe", async () => {
   assert.match(sw, /font-size:clamp\(1\.75rem,9vw,2\.5rem\)/);
 });
 
-test("landing mobile header stays compact and touch safe", async () => {
+test("landing header stays compact, touch safe and overflow-free through laptop widths", async () => {
   const page = await readFile(new URL("../src/app/page.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
+  const mobileNav = await readFile(new URL("../src/components/mobile-nav-sheet.tsx", import.meta.url), "utf8");
 
   assert.match(page, /site-header mobile-optimized-header/);
   assert.match(css, /Landing mobile header compact pass/);
   assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*\.site-header\.mobile-optimized-header \.header-main-row\s*\{[\s\S]*height:\s*3\.55rem !important/);
   assert.match(css, /\.site-header\.mobile-optimized-header \.site-brand-lockup\s*\{[\s\S]*transform:\s*scale\(0\.84\)/);
-  assert.match(css, /\.site-header\.mobile-optimized-header \.mobile-nav-toggle\s*\{[\s\S]*min-height:\s*2\.65rem !important/);
-  assert.match(css, /\.site-header\.mobile-optimized-header \.header-actions > a\.inline-flex \.ui-btn\s*\{[\s\S]*min-height:\s*2\.65rem !important/);
+  assert.match(css, /\.site-header\.mobile-optimized-header \.mobile-nav-toggle\s*\{[^}]*min-height:\s*2\.75rem !important/s);
+  assert.match(css, /\.site-header\.mobile-optimized-header \.header-actions > a\.inline-flex \.ui-btn\s*\{[^}]*min-height:\s*2\.75rem !important/s);
   assert.match(css, /html\.theme-light \.site-header\.mobile-optimized-header \.header-actions > a\.inline-flex \.ui-btn,[\s\S]*color:\s*#0f172a !important/);
   assert.match(css, /Final landing header guard[\s\S]*\.site-header\.mobile-optimized-header \.header-actions > a\.inline-flex \.ui-btn\.ui-btn--secondary[\s\S]*color:\s*#0f172a !important/);
   assert.match(css, /@media \(max-width:\s*380px\)[\s\S]*\.site-header\.mobile-optimized-header \.site-brand-lockup\s*\{[\s\S]*transform:\s*scale\(0\.78\)/);
+  assert.match(page, /hidden gap-6 text-sm 2xl:flex site-nav/);
+  assert.match(mobileNav, /window\.innerWidth >= 1536/);
+  assert.match(mobileNav, /mobile-nav-overlay[^"\n]*2xl:hidden/);
+  assert.match(mobileNav, /mobile-nav-toggle[^"\n]*2xl:hidden/);
+  assert.match(mobileNav, /sm:w-\[28rem\][^"\n]*sm:max-w-\[calc\(100vw-1\.5rem\)\]/);
+  assert.match(mobileNav, /role="dialog"/);
+  assert.match(mobileNav, /aria-modal="true"/);
+  assert.match(mobileNav, /appRoot\?\.setAttribute\("inert", ""\)/);
+  assert.match(mobileNav, /closeButtonRef\.current\?\.focus\(\)/);
+  assert.match(mobileNav, /shouldRestoreFocusRef\.current = true/);
+  assert.match(mobileNav, /triggerRef\.current\?\.focus\(\)/);
 });
 
 test("demo lab mobile wizard shows four steps without horizontal scrolling", async () => {
@@ -400,7 +412,8 @@ test("brand synergy simulator is readable, auto-cycles and stays mobile-safe", a
   assert.match(source, /brand-synergy-outcome-grid/);
   assert.match(source, /hash-only/);
   assert.match(source, /Consent and PII stay inside nexID/);
-  assert.match(page, /landing-brand-synergy-shell relative rounded-\[2rem\]/);
+  assert.match(page, /landing-brand-synergy-band my-16 scroll-mt-24/);
+  assert.match(page, /landing-brand-synergy-shell container-shell/);
   assert.doesNotMatch(page, /landing-brand-synergy-shell[^\n]+overflow-hidden/);
   assert.match(css, /brand-synergy-proof-grid > div/);
   assert.match(css, /html\.theme-light \.landing-brand-synergy-shell/);

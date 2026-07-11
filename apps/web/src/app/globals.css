@@ -3141,13 +3141,13 @@ html[data-theme="light"] .landing-mobile-action-dock__link--primary {
   }
 
   .site-header.mobile-optimized-header .mobile-nav-toggle {
-    min-height: 2.65rem !important;
-    min-width: 2.65rem !important;
+    min-height: 2.75rem !important;
+    min-width: 2.75rem !important;
     border-radius: 0.9rem !important;
   }
 
   .site-header.mobile-optimized-header .header-actions > a.inline-flex .ui-btn {
-    min-height: 2.65rem !important;
+    min-height: 2.75rem !important;
     border-radius: 0.9rem !important;
     padding: 0.65rem 0.85rem !important;
     font-size: 0.82rem !important;
@@ -47404,26 +47404,59 @@ html[data-theme="light"] .brand-synergy-simulator button.brand-synergy-scenario-
   box-shadow: 0 14px 28px rgba(79, 70, 229, 0.18) !important;
 }
 
-/* Brand synergy executive pass: remove nested-card heaviness, keep the live
-   terminal stable while the demo advances, and make mobile controls obvious. */
+/* Brand synergy v3: full-width product band, accessible controls and a compact
+   mobile decision flow instead of another long stack of nested cards. */
 .landing-brand-synergy-shell {
+  position: relative;
   overflow: visible !important;
-  border-color: rgba(103, 232, 249, 0.18) !important;
-  background:
-    linear-gradient(135deg, rgba(8, 47, 73, 0.18), rgba(15, 23, 42, 0.1) 42%, rgba(88, 28, 135, 0.16)) !important;
-  box-shadow: 0 26px 70px rgba(2, 6, 23, 0.18) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  padding-block: clamp(3.5rem, 7vw, 6rem) !important;
+  box-shadow: none !important;
+}
+
+.landing-brand-synergy-band {
+  border-block: 1px solid rgba(103, 232, 249, 0.16);
+  background: #07111f;
 }
 
 html.theme-light .landing-brand-synergy-shell,
 html[data-theme="light"] .landing-brand-synergy-shell {
-  border-color: rgba(14, 116, 144, 0.16) !important;
-  background:
-    linear-gradient(135deg, rgba(236, 254, 255, 0.96), rgba(255, 255, 255, 0.98) 48%, rgba(245, 243, 255, 0.96)) !important;
-  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.1) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html.theme-light .landing-brand-synergy-band,
+html[data-theme="light"] .landing-brand-synergy-band {
+  border-color: rgba(14, 116, 144, 0.16);
+  background: #eef5f8;
 }
 
 .brand-synergy-simulator {
   transform: translateZ(0);
+  overflow: visible !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+html.theme-light .brand-synergy-simulator,
+html[data-theme="light"] .brand-synergy-simulator {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.brand-synergy-simulator > .pointer-events-none.absolute {
+  display: none !important;
+}
+
+.brand-synergy-mobile-view-switch {
+  display: none;
 }
 
 .brand-synergy-scenario-pill {
@@ -47432,8 +47465,20 @@ html[data-theme="light"] .landing-brand-synergy-shell {
 }
 
 .brand-synergy-scenario-pill.is-active {
+  border-color: #67e8f9 !important;
+  background: linear-gradient(135deg, #155e75, #0f766e) !important;
+  color: #ffffff !important;
   outline: 1px solid rgba(255, 255, 255, 0.2);
   outline-offset: -2px;
+  box-shadow: 0 14px 30px rgba(8, 47, 73, 0.28) !important;
+}
+
+html.theme-light .brand-synergy-simulator button.brand-synergy-scenario-pill.is-active,
+html[data-theme="light"] .brand-synergy-simulator button.brand-synergy-scenario-pill.is-active {
+  border-color: #0e7490 !important;
+  background: linear-gradient(135deg, #155e75, #0f766e) !important;
+  color: #ffffff !important;
+  box-shadow: 0 14px 30px rgba(8, 47, 73, 0.2) !important;
 }
 
 .brand-synergy-primary-cta,
@@ -47463,8 +47508,8 @@ html[data-theme="light"] .landing-brand-synergy-shell {
 }
 
 .brand-synergy-terminal-row[data-visible="false"] {
-  opacity: 0.68;
-  filter: saturate(0.66);
+  opacity: 0.82;
+  filter: saturate(0.78);
 }
 
 .brand-synergy-terminal-row[data-visible="true"] {
@@ -47476,6 +47521,18 @@ html.theme-light .brand-synergy-terminal__chrome,
 html[data-theme="light"] .brand-synergy-terminal__chrome {
   border-color: rgba(14, 116, 144, 0.14) !important;
   background: linear-gradient(135deg, rgba(248, 250, 252, 0.96), rgba(236, 254, 255, 0.88)) !important;
+}
+
+html.theme-light .brand-synergy-terminal-row[data-visible="false"],
+html[data-theme="light"] .brand-synergy-terminal-row[data-visible="false"] {
+  opacity: 0.9;
+  filter: saturate(0.9);
+}
+
+.brand-synergy-terminal-row > p:first-child {
+  font-size: 0.75rem !important;
+  line-height: 1.3 !important;
+  letter-spacing: 0.08em !important;
 }
 
 html.theme-light .brand-synergy-primary-cta,
@@ -47495,14 +47552,14 @@ html[data-theme="light"] .brand-synergy-secondary-cta {
 
 @media (max-width: 760px) {
   .landing-brand-synergy-shell {
-    margin-inline: max(-0.55rem, -2vw) !important;
-    padding: 0.5rem !important;
-    border-radius: 1.35rem !important;
+    margin-inline: auto !important;
+    padding-block: 2.75rem 5.5rem !important;
+    border-radius: 0 !important;
   }
 
   .brand-synergy-simulator {
-    padding: 1rem !important;
-    border-radius: 1.1rem !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
   }
 
   .brand-synergy-command-grid {
@@ -47518,6 +47575,79 @@ html[data-theme="light"] .brand-synergy-secondary-cta {
     line-height: 1.62 !important;
   }
 
+  .brand-synergy-scenario-picker__label {
+    color: #94a3b8 !important;
+    font-size: 0.7rem !important;
+    letter-spacing: 0.1em !important;
+  }
+
+  html.theme-light .brand-synergy-scenario-picker__label,
+  html[data-theme="light"] .brand-synergy-scenario-picker__label {
+    color: #475569 !important;
+  }
+
+  .brand-synergy-mobile-view-switch {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.35rem;
+    margin-top: 1rem;
+    border: 1px solid rgba(103, 232, 249, 0.18);
+    border-radius: 0.95rem;
+    background: rgba(15, 23, 42, 0.72);
+    padding: 0.3rem;
+  }
+
+  .brand-synergy-mobile-view-switch button {
+    display: inline-flex;
+    min-width: 0;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    border: 1px solid transparent !important;
+    border-radius: 0.7rem;
+    background: transparent !important;
+    color: #cbd5e1 !important;
+    font-size: 0.72rem;
+    font-weight: 900;
+  }
+
+  .brand-synergy-mobile-view-switch button[aria-pressed="true"] {
+    border-color: #67e8f9 !important;
+    background: #155e75 !important;
+    color: #ffffff !important;
+    box-shadow: 0 10px 22px rgba(8, 47, 73, 0.22) !important;
+  }
+
+  .brand-synergy-mobile-view-switch button:focus-visible {
+    outline: 3px solid #22d3ee !important;
+    outline-offset: 2px !important;
+  }
+
+  html.theme-light .brand-synergy-mobile-view-switch,
+  html[data-theme="light"] .brand-synergy-mobile-view-switch {
+    border-color: rgba(14, 116, 144, 0.2);
+    background: rgba(255, 255, 255, 0.82);
+  }
+
+  html.theme-light .brand-synergy-mobile-view-switch button,
+  html[data-theme="light"] .brand-synergy-mobile-view-switch button {
+    background: transparent !important;
+    color: #334155 !important;
+  }
+
+  html.theme-light .brand-synergy-mobile-view-switch button[aria-pressed="true"],
+  html[data-theme="light"] .brand-synergy-mobile-view-switch button[aria-pressed="true"] {
+    border-color: #0e7490 !important;
+    background: #155e75 !important;
+    color: #ffffff !important;
+  }
+
+  .brand-synergy-business-pane[data-mobile-active="false"],
+  .brand-synergy-live-panel[data-mobile-active="false"] {
+    display: none !important;
+  }
+
   .brand-synergy-flow {
     grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
     gap: 0.45rem !important;
@@ -47530,6 +47660,8 @@ html[data-theme="light"] .brand-synergy-secondary-cta {
     justify-content: center !important;
     min-height: 3rem !important;
     padding: 0.48rem 0.3rem !important;
+    font-size: 0.72rem !important;
+    line-height: 1.2 !important;
     text-align: center !important;
     white-space: normal !important;
   }
@@ -47547,8 +47679,8 @@ html[data-theme="light"] .brand-synergy-secondary-cta {
   }
 
   .brand-synergy-proof-grid strong {
-    font-size: 0.68rem !important;
-    line-height: 1.12 !important;
+    font-size: 0.74rem !important;
+    line-height: 1.2 !important;
   }
 
   .brand-synergy-proof-grid span {
@@ -47567,13 +47699,13 @@ html[data-theme="light"] .brand-synergy-secondary-cta {
   }
 
   .brand-synergy-outcome-grid > article span {
-    font-size: 0.56rem !important;
+    font-size: 0.75rem !important;
     letter-spacing: 0.08em !important;
   }
 
   .brand-synergy-outcome-grid > article strong {
-    font-size: 0.74rem !important;
-    line-height: 1.22 !important;
+    font-size: 0.8rem !important;
+    line-height: 1.3 !important;
   }
 
   .brand-synergy-primary-cta,
@@ -47595,7 +47727,7 @@ html[data-theme="light"] .brand-synergy-secondary-cta {
   }
 
   .brand-synergy-live-panel__metrics span {
-    font-size: 0.56rem !important;
+    font-size: 0.75rem !important;
     letter-spacing: 0.08em !important;
   }
 
@@ -47613,7 +47745,7 @@ html[data-theme="light"] .brand-synergy-secondary-cta {
   }
 
   .brand-synergy-live-panel__head span {
-    font-size: 0.58rem !important;
+    font-size: 0.75rem !important;
     letter-spacing: 0.1em !important;
   }
 
@@ -47653,6 +47785,11 @@ html[data-theme="light"] .brand-synergy-secondary-cta {
     margin-bottom: 0.2rem !important;
   }
 
+  .brand-synergy-terminal-row > p:first-child {
+    font-size: 0.75rem !important;
+    line-height: 1.3 !important;
+  }
+
   .brand-synergy-terminal-row .text-sm {
     font-size: 0.76rem !important;
     line-height: 1.2 !important;
@@ -47672,6 +47809,16 @@ html[data-theme="light"] .brand-synergy-secondary-cta {
 
   .brand-synergy-outcome-grid {
     grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-synergy-simulator,
+  .brand-synergy-simulator *,
+  .brand-synergy-terminal-row {
+    scroll-behavior: auto !important;
+    animation: none !important;
+    transition-duration: 0.01ms !important;
   }
 }
 

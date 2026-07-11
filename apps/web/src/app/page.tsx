@@ -250,7 +250,7 @@ export default async function HomePage() {
             <BrandLockup size={52} variant="ripple" theme="dark" className="site-brand-lockup" />
           </Link>
 
-          <nav className="hidden gap-6 text-sm xl:flex site-nav">
+          <nav className="hidden gap-6 text-sm 2xl:flex site-nav">
             <Link href="/">{content.nav.product}</Link>
             <Link href="/pricing">{content.nav.pricing}</Link>
             <Link href="/resellers">{content.nav.reseller}</Link>
@@ -269,23 +269,24 @@ export default async function HomePage() {
               meetingLabel={labels.scheduleMeeting}
               locale={locale}
               locales={[...locales]}
+              initialTheme={initialTheme}
             />
             <div className="hidden lg:inline-flex">
               <LocaleSwitcher value={locale} options={[...locales]} />
             </div>
             <div className="hidden lg:inline-flex">
-              <ThemeToggle />
+              <ThemeToggle initialTheme={initialTheme} />
             </div>
-            <a href={meetingHref} target="_blank" rel="noreferrer" className="hidden xl:inline-flex">
+            <a href={meetingHref} target="_blank" rel="noreferrer" className="hidden 2xl:inline-flex">
               <Button variant="secondary">{labels.scheduleMeeting}</Button>
             </a>
             <ProductExitLink kind="demoLab" className="hidden lg:inline-flex">
               <Button variant="secondary">{labels.quickDemoLab}</Button>
             </ProductExitLink>
-            <Link href="/proof/verify" className="hidden xl:inline-flex" aria-label={labels.quickProof}>
+            <Link href="/proof/verify" className="hidden 2xl:inline-flex" aria-label={labels.quickProof}>
               <Button variant="secondary">Proof</Button>
             </Link>
-            <Link href="/login?next=/me" className="hidden xl:inline-flex">
+            <Link href="/login?next=/me" className="hidden 2xl:inline-flex">
               <Button variant="secondary" className="border-purple-500/30 bg-purple-500/10 text-purple-300 hover:bg-purple-500/20">
                 {labels.consumerPortal}
               </Button>
@@ -303,8 +304,8 @@ export default async function HomePage() {
       <EnterpriseTrustLayersSection locale={locale} />
       <OfflineFieldOperationsSection locale={locale} />
       {/* nexID Cognitive AI & Brand Synergy Section */}
-      <section id="brand-synergy" className="container-shell my-16 scroll-mt-24">
-        <div className="landing-brand-synergy-shell relative rounded-[2rem] border border-cyan-300/20 bg-slate-950/20 p-2 shadow-xl sm:p-3 md:p-4">
+      <section id="brand-synergy" className="landing-brand-synergy-band my-16 scroll-mt-24">
+        <div className="landing-brand-synergy-shell container-shell">
           <BrandSynergySimulator locale={locale} />
         </div>
       </section>
