@@ -90,6 +90,29 @@ export async function ensureConsumerAuthSchema() {
       `;
 
       await sql/*sql*/`
+        CREATE TABLE IF NOT EXISTS consumer_wallet_challenges (
+          id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+          consumer_id uuid NOT NULL REFERENCES consumers(id) ON DELETE CASCADE,
+          wallet_address text NOT NULL,
+          chain_id text NOT NULL,
+          wallet_network text NOT NULL,
+          wallet_provider text NOT NULL DEFAULT 'wallet_evm',
+          message text NOT NULL,
+          message_hash text NOT NULL,
+          signature_hash text,
+          expires_at timestamptz NOT NULL,
+          used_at timestamptz,
+          attempt_count integer NOT NULL DEFAULT 0,
+          max_attempts integer NOT NULL DEFAULT 5,
+          user_agent_hash text,
+          ip_hash text,
+          created_at timestamptz NOT NULL DEFAULT now()
+        )
+      `;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_consumer_wallet_challenges_active ON consumer_wallet_challenges(consumer_id, created_at DESC) WHERE used_at IS NULL`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_consumer_wallet_challenges_expiry ON consumer_wallet_challenges(expires_at) WHERE used_at IS NULL`;
+
+      await sql/*sql*/`
         CREATE TABLE IF NOT EXISTS consumer_sessions (
           id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
           consumer_id uuid NOT NULL REFERENCES consumers(id) ON DELETE CASCADE,

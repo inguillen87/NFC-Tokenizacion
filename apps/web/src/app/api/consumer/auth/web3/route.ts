@@ -33,7 +33,10 @@ function firstWalletAddress(user: unknown) {
   const web3Wallets = Array.isArray((user as { web3Wallets?: unknown[] } | null)?.web3Wallets)
     ? ((user as { web3Wallets: ClerkWalletLike[] }).web3Wallets)
     : [];
-  const wallet = web3Wallets.find((item) => item.web3Wallet || item.walletAddress || item.identifier);
+  const wallet = web3Wallets.find((item) => (
+    item.verification?.status === "verified"
+    && (item.web3Wallet || item.walletAddress || item.identifier)
+  ));
   return {
     address: String(wallet?.web3Wallet || wallet?.walletAddress || wallet?.identifier || "").trim(),
     provider: String(wallet?.verification?.strategy || "clerk_web3_metamask").trim(),
@@ -71,6 +74,7 @@ export async function POST(req: Request) {
       walletAddress: wallet.address,
       chainId,
       provider: wallet.provider,
+      walletVerificationSource: wallet.address ? "clerk_verified_web3" : null,
     }),
   }).catch((error) => {
     const message = error instanceof Error ? error.message : "api_unavailable";

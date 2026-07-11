@@ -138,7 +138,7 @@ function requestedPrivilegedPolicy(body: Record<string, unknown>) {
 
 function verifiedConsumerWallet(consumer: Record<string, unknown> | null) {
   const wallet = sanitizeText(consumer?.wallet_address, 180);
-  if (!wallet || !consumer?.wallet_verified_at || !isAddress(wallet)) return null;
+  if (!wallet || !consumer?.wallet_verified_at || consumer?.wallet_control_verified !== true || !isAddress(wallet)) return null;
   return wallet;
 }
 

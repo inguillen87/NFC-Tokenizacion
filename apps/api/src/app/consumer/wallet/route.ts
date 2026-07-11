@@ -30,6 +30,8 @@ export async function GET(req: Request) {
       chainId: consumer.wallet_chain_id || null,
       network: consumer.wallet_network || null,
       verifiedAt: consumer.wallet_verified_at || null,
+      controlVerified: consumer.wallet_control_verified === true,
+      verificationMethod: consumer.wallet_control_verified === true ? "signed_wallet_identity" : null,
     },
   });
 }

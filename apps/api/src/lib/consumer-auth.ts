@@ -374,7 +374,16 @@ export async function getConsumerFromRequest(req: Request) {
   let rows;
   try {
     rows = await sql/*sql*/`
-      SELECT c.*
+      SELECT c.*,
+             EXISTS (
+               SELECT 1
+               FROM consumer_identities wi
+               WHERE wi.consumer_id = c.id
+                 AND wi.provider = 'web3_wallet'
+                 AND wi.verified_at IS NOT NULL
+                 AND c.wallet_address IS NOT NULL
+                 AND lower(wi.provider_subject) = lower(c.wallet_address)
+             ) AS wallet_control_verified
       FROM consumer_sessions s
       JOIN consumers c ON c.id = s.consumer_id
       WHERE s.session_token_hash = ${sha(token)}

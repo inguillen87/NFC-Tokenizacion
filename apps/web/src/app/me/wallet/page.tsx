@@ -26,6 +26,8 @@ type WalletPayload = {
     chainId?: string | null;
     network?: string | null;
     verifiedAt?: string | null;
+    controlVerified?: boolean;
+    verificationMethod?: string | null;
   };
 };
 

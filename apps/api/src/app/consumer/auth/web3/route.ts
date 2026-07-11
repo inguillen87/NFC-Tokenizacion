@@ -66,13 +66,49 @@ export async function POST(req: Request) {
   const normalizedWallet = walletAddress && isAddress(walletAddress) ? walletAddress.toLowerCase() : "";
   const chainId = cleanText(body.chainId, 24);
   const provider = cleanText(body.provider || "clerk_web3_metamask", 60);
+  const walletVerificationSource = cleanText(body.walletVerificationSource, 60);
   const walletVerifiedAt = normalizedWallet ? new Date().toISOString() : null;
 
   if (!externalUserId) return json({ ok: false, error: "clerk_user_required" }, 400);
   if (!email && !phone && !normalizedWallet) return json({ ok: false, error: "consumer_identity_required" }, 400);
+  if (normalizedWallet && walletVerificationSource !== "clerk_verified_web3") {
+    return json({ ok: false, error: "verified_clerk_wallet_required" }, 400);
+  }
+
+  const linkedIdentityRows = await sql/*sql*/`
+    SELECT DISTINCT consumer_id
+    FROM consumer_identities
+    WHERE (provider = 'clerk_web3' AND provider_subject = ${externalUserId})
+       OR (
+         ${normalizedWallet} <> ''
+         AND provider = 'web3_wallet'
+         AND lower(provider_subject) = ${normalizedWallet}
+       )
+  `;
+  const linkedConsumerIds = [...new Set(linkedIdentityRows.map((row) => String(row.consumer_id)))];
+  if (linkedConsumerIds.length > 1) {
+    return json({ ok: false, error: "web3_identity_conflict" }, 409);
+  }
+  const linkedConsumerId = linkedConsumerIds[0] || null;
 
   let rows;
-  if (email) {
+  if (linkedConsumerId) {
+    rows = await sql/*sql*/`
+      UPDATE consumers
+      SET email = COALESCE(consumers.email, ${email || null}),
+          phone = COALESCE(consumers.phone, ${phone || null}),
+          display_name = COALESCE(consumers.display_name, ${displayName || null}),
+          wallet_address = COALESCE(NULLIF(${normalizedWallet}, ''), consumers.wallet_address),
+          wallet_chain_id = COALESCE(NULLIF(${chainId}, ''), consumers.wallet_chain_id),
+          wallet_network = COALESCE(NULLIF(${provider}, ''), consumers.wallet_network),
+          wallet_verified_at = CASE WHEN ${normalizedWallet} <> '' THEN now() ELSE consumers.wallet_verified_at END,
+          status = CASE WHEN ${normalizedWallet} <> '' THEN 'verified'::consumer_status ELSE consumers.status END,
+          last_login_at = now(),
+          updated_at = now()
+      WHERE id = ${linkedConsumerId}
+      RETURNING *
+    `;
+  } else if (email) {
     rows = await sql/*sql*/`
       INSERT INTO consumers (email, phone, display_name, wallet_address, wallet_chain_id, wallet_network, wallet_verified_at, status, preferred_locale, last_login_at)
       VALUES (
@@ -155,20 +191,26 @@ export async function POST(req: Request) {
   }
 
   const consumer = rows[0];
-  await sql/*sql*/`
+  const clerkIdentityRows = await sql/*sql*/`
     INSERT INTO consumer_identities (consumer_id, provider, provider_subject, verified_at)
     VALUES (${consumer.id}, 'clerk_web3', ${externalUserId}, now())
     ON CONFLICT (provider, provider_subject)
-    DO UPDATE SET consumer_id = EXCLUDED.consumer_id, verified_at = now(), updated_at = now()
+    DO UPDATE SET verified_at = now(), updated_at = now()
+    WHERE consumer_identities.consumer_id = EXCLUDED.consumer_id
+    RETURNING consumer_id
   `;
+  if (!clerkIdentityRows[0]) return json({ ok: false, error: "clerk_web3_identity_conflict" }, 409);
 
   if (normalizedWallet) {
-    await sql/*sql*/`
+    const walletIdentityRows = await sql/*sql*/`
       INSERT INTO consumer_identities (consumer_id, provider, provider_subject, verified_at)
       VALUES (${consumer.id}, 'web3_wallet', ${normalizedWallet}, now())
       ON CONFLICT (provider, provider_subject)
-      DO UPDATE SET consumer_id = EXCLUDED.consumer_id, verified_at = now(), updated_at = now()
+      DO UPDATE SET verified_at = now(), updated_at = now()
+      WHERE consumer_identities.consumer_id = EXCLUDED.consumer_id
+      RETURNING consumer_id
     `;
+    if (!walletIdentityRows[0]) return json({ ok: false, error: "wallet_already_linked_to_another_account" }, 409);
   }
 
   const sessionToken = await createConsumerSession(String(consumer.id), req);

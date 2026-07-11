@@ -40,7 +40,8 @@ export async function POST(req: Request) {
 
   // A consumer wallet or the configured managed-custody wallet is required.
   // Never invent a recipient address for a completed marketplace order.
-  const buyerWallet = String(buyer.wallet_address || process.env.POLYGON_DEFAULT_RECIPIENT || "").trim();
+  const verifiedBuyerWallet = buyer.wallet_control_verified === true ? buyer.wallet_address : null;
+  const buyerWallet = String(verifiedBuyerWallet || process.env.POLYGON_DEFAULT_RECIPIENT || "").trim();
   if (!buyerWallet) {
     return json({ ok: false, error: "buyer_wallet_not_configured" }, 503);
   }
@@ -79,6 +80,7 @@ export async function POST(req: Request) {
     email: buyer.email,
     phone: buyer.phone,
     buyer_wallet: buyerWallet,
+    buyer_wallet_control_verified: Boolean(verifiedBuyerWallet),
     seller_id: offer.seller_consumer_id,
   });
   const sourceContextJson = JSON.stringify({
