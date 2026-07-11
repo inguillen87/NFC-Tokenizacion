@@ -105,7 +105,7 @@ export function HeroSection({ content, stats, locale, initialTheme = "dark" }: {
             <a href={schedulingUrls.meeting} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-6 py-3.5 text-sm font-semibold text-emerald-100 transition-all hover:bg-emerald-500/20">
               {meetingCta}
             </a>
-            <Link href="/login?next=/me" className="inline-flex items-center justify-center rounded-xl border border-purple-500/35 bg-purple-500/10 px-6 py-3.5 text-sm font-bold text-purple-300 transition-all hover:scale-105 hover:bg-purple-500/20">
+            <Link href="/login?next=/me" className="landing-consumer-portal-cta inline-flex items-center justify-center rounded-xl border border-purple-500/35 bg-purple-500/10 px-6 py-3.5 text-sm font-bold text-purple-300 transition-all hover:scale-105 hover:bg-purple-500/20">
               {isEn ? "Consumer Portal (Passport)" : isBr ? "Portal do Consumidor" : "Portal Consumidor (Passport/NFT)"}
             </Link>
             <Link href="/docs" className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-slate-900/50 backdrop-blur-md px-6 py-3.5 text-sm font-semibold text-white transition-all hover:bg-white/10">
@@ -610,7 +610,7 @@ export function OfflineFieldOperationsSection({ locale }: { locale: string }) {
             <Link href="/docs#offline-verifier-architecture" className="inline-flex h-12 items-center justify-center rounded-xl bg-cyan-500 px-6 text-sm font-bold text-slate-950 transition-transform hover:scale-105 hover:bg-cyan-400">
               {copy.docs}
             </Link>
-            <Link href="/demo-lab?scenario=offline-verifier" className="inline-flex h-12 items-center justify-center rounded-xl border border-slate-300 dark:border-white/10 bg-white dark:bg-white/5 px-6 text-sm font-bold text-slate-900 dark:text-white transition-colors hover:bg-slate-50 dark:hover:bg-white/10">
+            <Link href="/demo-lab?scenario=offline-verifier" className="landing-offline-demo-cta inline-flex h-12 items-center justify-center rounded-xl border border-slate-300 dark:border-white/10 bg-white dark:bg-white/5 px-6 text-sm font-bold text-slate-900 dark:text-white transition-colors hover:bg-slate-50 dark:hover:bg-white/10">
               {copy.demo}
             </Link>
           </div>

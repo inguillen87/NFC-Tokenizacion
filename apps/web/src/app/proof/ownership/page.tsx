@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { ThemeToggle } from "@product/ui";
 import { productUrls } from "@product/config";
+import styles from "./ownership.module.css";
 
 export const dynamic = "force-dynamic";
 
@@ -145,21 +146,28 @@ export default async function PolygonOwnershipPage() {
   const essentialTotal = checks.filter((check) => check.id !== "source").length;
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#edf5fb] text-slate-950 dark:bg-[#06101f] dark:text-slate-100">
-      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl dark:border-white/10 dark:bg-[#06101f]/92">
-        <div className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
-          <Link href="/demo-lab?scenario=polygon-ownership" className="inline-flex min-h-11 items-center gap-2 text-sm font-black text-slate-700 dark:text-slate-200">
-            <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Demo Lab
+    <main className={styles.page}>
+      <header className={`${styles.header} sticky top-0 z-40 border-b backdrop-blur-xl`}>
+        <div className={`${styles.headerInner} mx-auto min-h-16 max-w-7xl items-center gap-3 px-4 sm:px-6`}>
+          <Link
+            href="/demo-lab?scenario=polygon-ownership"
+            aria-label="Volver a Demo Lab"
+            className={`${styles.backLink} inline-flex min-h-11 items-center gap-2 text-sm font-black`}
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            <span className={styles.backLabel}>Demo Lab</span>
           </Link>
-          <div className="min-w-0 text-center">
-            <b className="block truncate text-sm font-black">nexID Ownership</b>
-            <span className="block text-[10px] font-black uppercase text-violet-700 dark:text-violet-300">certificado publico</span>
+          <div className={`${styles.brand} min-w-0 text-center`}>
+            <b className={`${styles.brandTitle} block truncate text-sm font-black`}>nexID Ownership</b>
+            <span className={`${styles.brandEyebrow} block text-[10px] font-black uppercase`}>certificado publico</span>
           </div>
-          <ThemeToggle />
+          <div className={styles.themeControl}>
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 
-      <section className="border-b border-slate-200 bg-white dark:border-white/10 dark:bg-[#081426]">
+      <section className={`${styles.surfaceBand} border-b`}>
         <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1.05fr_.95fr] lg:items-center lg:py-14">
           <div>
             <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-[11px] font-black uppercase ${status.className}`}>
@@ -180,9 +188,9 @@ export default async function PolygonOwnershipPage() {
             </div>
           </div>
 
-          <div className="relative min-h-[360px] overflow-hidden rounded-lg border border-slate-200 bg-[#dcecf5] dark:border-white/10 dark:bg-[#0b1d31]">
+          <div className={`${styles.mediaFrame} relative min-h-[360px] overflow-hidden rounded-lg border`}>
             <img src="/demo/wine-secure/real-malbec-bottle-pexels.jpg" alt="Producto premium usado en el piloto de ownership" className="absolute inset-0 h-full w-full object-cover" />
-            <div className="absolute inset-x-0 bottom-0 bg-[#06101f]/92 p-5 text-white backdrop-blur-md">
+            <div className={`${styles.mediaOverlay} absolute inset-x-0 bottom-0 p-5 backdrop-blur-md`}>
               <div className="flex items-end justify-between gap-4">
                 <div>
                   <p className="text-[10px] font-black uppercase text-cyan-300">Fixture de emision</p>
@@ -218,7 +226,7 @@ export default async function PolygonOwnershipPage() {
         </div>
       </section>
 
-      <section className="border-y border-slate-200 bg-white dark:border-white/10 dark:bg-[#081426]">
+      <section className={`${styles.surfaceBand} border-y`}>
         <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
           <p className="text-xs font-black uppercase text-cyan-700 dark:text-cyan-300">Tres capas, tres responsabilidades</p>
           <h2 className="mt-2 text-3xl font-black">Que esta probando cada sistema</h2>
@@ -298,7 +306,7 @@ export default async function PolygonOwnershipPage() {
         </aside>
       </section>
 
-      <section className="border-y border-slate-200 bg-white text-slate-950 dark:border-white/10 dark:bg-[#030a14] dark:text-white">
+      <section className={`${styles.deepBand} border-y`}>
         <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
           <p className="text-xs font-black uppercase text-emerald-700 dark:text-emerald-300">De este fixture a buyer ownership</p>
           <h2 className="mt-2 text-3xl font-black">La cadena completa, sin confundir custodia con propiedad</h2>
@@ -339,7 +347,7 @@ export default async function PolygonOwnershipPage() {
         </article>
       </section>
 
-      <footer className="border-t border-slate-200 bg-white dark:border-white/10 dark:bg-[#081426]">
+      <footer className={`${styles.footer} border-t`}>
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div>
             <p className="text-xs font-black uppercase text-violet-700 dark:text-violet-300">Siguiente paso</p>

@@ -899,6 +899,7 @@ export function DemoLabClient({
   const [vertical, setVertical] = useState<Vertical>(() => initialVertical ? normalizeDemoVertical(initialVertical) : scenarioStart.vertical);
   const [beat, setBeat] = useState<Beat>(scenarioStart.beat);
   const [trustScenario, setTrustScenario] = useState<DemoTrustScenarioKey | null>(scenarioStart.key);
+  const [wizardStep, setWizardStep] = useState<DemoWizardStep>(() => getTrustScenarioInitialStep(scenarioStart.key));
   const [running, setRunning] = useState(false);
   const [summary, setSummary] = useState<DemoSummary | null>(null);
   const [status, setStatus] = useState(txt.controls.syncing);
@@ -964,6 +965,7 @@ export function DemoLabClient({
     setVertical(scenarioStart.vertical);
     setBeat(scenarioStart.beat);
     setTrustScenario(scenarioStart.key);
+    setWizardStep(getTrustScenarioInitialStep(scenarioStart.key));
   }, [initialVertical, scenarioStart.beat, scenarioStart.key, scenarioStart.vertical]);
 
   function selectTrustScenario(key: DemoTrustScenarioKey) {
@@ -971,6 +973,7 @@ export function DemoLabClient({
     setTrustScenario(key);
     setVertical(next.vertical);
     setBeat(next.beat);
+    setWizardStep(getTrustScenarioInitialStep(key));
   }
 
   useEffect(() => {
@@ -1010,20 +1013,6 @@ export function DemoLabClient({
   useEffect(() => {
     setActionMessage(null);
   }, [beat, vertical]);
-
-  useEffect(() => {
-    if (!modalView) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setModalView(null);
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, [modalView]);
 
   const activeBeat = txt.beats[beat];
   const activeRole = txt.roles[role];
@@ -1210,11 +1199,13 @@ export function DemoLabClient({
             liveEvents={liveEvents}
             latestEvent={latestEvent}
             simulating={simulating}
+            step={wizardStep}
             activeTrustScenario={trustScenario}
             initialTheme={initialTheme}
             initialReturnTo={initialReturnTo}
             onVertical={setVertical}
             onBeat={setBeat}
+            onStep={setWizardStep}
             onTrustScenario={selectTrustScenario}
             onProduct={() => setModalView("product")}
             onPassport={() => setModalView("mobile")}
@@ -1320,11 +1311,13 @@ function DemoLabStudioHero({
   liveEvents,
   latestEvent,
   simulating,
+  step,
   activeTrustScenario,
   initialTheme,
   initialReturnTo,
   onVertical,
   onBeat,
+  onStep,
   onTrustScenario,
   onProduct,
   onPassport,
@@ -1347,11 +1340,13 @@ function DemoLabStudioHero({
   liveEvents: DemoEvent[];
   latestEvent?: DemoEvent;
   simulating: boolean;
+  step: DemoWizardStep;
   activeTrustScenario: DemoTrustScenarioKey | null;
   initialTheme: DemoLabTheme;
   initialReturnTo: string;
   onVertical: (vertical: Vertical) => void;
   onBeat: (beat: Beat) => void;
+  onStep: (step: DemoWizardStep) => void;
   onTrustScenario: (scenario: DemoTrustScenarioKey) => void;
   onProduct: () => void;
   onPassport: () => void;
@@ -1362,17 +1357,12 @@ function DemoLabStudioHero({
   onReplay: () => void;
 }) {
   const verticalList = DEMO_VERTICAL_ORDER;
-  const [step, setStep] = useState<DemoWizardStep>(() => getTrustScenarioInitialStep(activeTrustScenario));
   const trustContext = useMemo(() => getTrustScenarioContext(activeTrustScenario, locale), [activeTrustScenario, locale]);
-
-  useEffect(() => {
-    const nextStep = getTrustScenarioInitialStep(activeTrustScenario);
-    setStep(nextStep);
-    onBeat(nextStep === 0 ? 0 : 1);
-  }, [activeTrustScenario, onBeat]);
+  const studioRef = useRef<HTMLElement>(null);
+  const wizardNavRef = useRef<HTMLElement>(null);
 
   function goToStep(nextStep: DemoWizardStep) {
-    setStep(nextStep);
+    onStep(nextStep);
     scrollWizardSceneIntoView();
     if (nextStep === 0) {
       onBeat(0);
@@ -1388,7 +1378,7 @@ function DemoLabStudioHero({
     onValid();
     onBeat(1);
     window.setTimeout(() => {
-      setStep(nextStep);
+      onStep(nextStep);
       scrollWizardSceneIntoView();
     }, 800);
   }
@@ -1401,15 +1391,18 @@ function DemoLabStudioHero({
       onOpen();
       onBeat(3);
     }
-    setStep(1);
+    onStep(1);
     scrollWizardSceneIntoView();
   }
 
   function scrollWizardSceneIntoView() {
     window.setTimeout(() => {
-      const scene = document.querySelector<HTMLElement>(".demo-lab-wizard-scene");
-      if (!scene) return;
-      const stickyOffset = window.matchMedia("(max-width: 760px)").matches ? 132 : 24;
+      const scene = studioRef.current?.querySelector<HTMLElement>(".demo-lab-wizard-scene");
+      const wizardNav = wizardNavRef.current;
+      if (!scene || !wizardNav) return;
+      const computedTop = Number.parseFloat(window.getComputedStyle(wizardNav).top);
+      const stickyTop = Number.isFinite(computedTop) ? computedTop : 0;
+      const stickyOffset = stickyTop + wizardNav.getBoundingClientRect().height + 12;
       window.scrollTo({
         top: Math.max(0, window.scrollY + scene.getBoundingClientRect().top - stickyOffset),
         behavior: "smooth",
@@ -1506,10 +1499,10 @@ function DemoLabStudioHero({
   const backHome = locale === "en" ? "← nexID" : "← nexID";
 
   return (
-    <section className={`demo-lab-studio demo-lab-studio--${vertical} demo-lab-studio--${scenario.tone} relative min-h-[calc(100vh-7rem)] overflow-hidden rounded-[28px] border border-cyan-300/15 bg-gradient-to-br from-slate-950 via-slate-950 to-cyan-950/30 shadow-2xl`}>
+    <section ref={studioRef} className={`demo-lab-studio demo-lab-studio--${vertical} demo-lab-studio--${scenario.tone} relative min-h-[calc(100vh-7rem)] overflow-hidden rounded-[28px] border border-cyan-300/15 bg-gradient-to-br from-slate-950 via-slate-950 to-cyan-950/30 shadow-2xl`}>
 
       {/* ── WIZARD NAV BAR ─────────────────────────────────────── */}
-      <nav className="demo-lab-wizard-nav sticky top-3 z-20 m-3 flex flex-col gap-2 rounded-2xl border border-slate-700/70 bg-slate-950/80 p-2 backdrop-blur md:flex-row md:items-center md:justify-between" aria-label="Demo Lab wizard">
+      <nav ref={wizardNavRef} className="demo-lab-wizard-nav sticky top-3 z-20 m-3 flex flex-col gap-2 rounded-2xl border border-slate-700/70 bg-slate-950/80 p-2 backdrop-blur md:flex-row md:items-center md:justify-between" aria-label="Demo Lab wizard">
         <Link href="/" className="demo-lab-wizard-nav-back inline-flex h-10 shrink-0 items-center justify-center rounded-full border border-white/10 px-4 text-xs font-black uppercase tracking-wider text-slate-300">
           {backHome}
         </Link>
@@ -1730,55 +1723,57 @@ function DemoLabStudioHero({
               </Link>
             </div>
           </div>
-          <div className="demo-lab-wizard-trazo-side grid max-h-[68vh] gap-3 overflow-y-auto rounded-3xl border border-white/10 bg-slate-900/65 p-5 shadow-inner">
-            <p className="demo-lab-wizard-eyebrow text-xs font-black uppercase tracking-[0.16em] text-cyan-300">ÚLTIMOS TAPS EN VIVO</p>
-            <div className="demo-lab-wizard-proof-decoder">
-              <div className="demo-lab-wizard-proof-decoder__head">
-                <span>{locale === "en" ? "EXECUTIVE DECODER" : locale === "pt-BR" ? "DECODER EXECUTIVO" : "DECODIFICADOR EJECUTIVO"}</span>
-                <strong>{proofDecoderTitle}</strong>
-                <p>{proofDecoderBody}</p>
+          <div className="demo-lab-wizard-trazo-column grid min-h-0 gap-3 lg:h-[68vh] lg:grid-rows-[minmax(0,1fr)_auto]">
+            <div className="demo-lab-wizard-trazo-side grid min-h-0 max-h-[68vh] gap-3 overflow-y-auto rounded-3xl border border-white/10 bg-slate-900/65 p-5 shadow-inner">
+              <p className="demo-lab-wizard-eyebrow text-xs font-black uppercase tracking-[0.16em] text-cyan-300">ÚLTIMOS TAPS EN VIVO</p>
+              <div className="demo-lab-wizard-proof-decoder">
+                <div className="demo-lab-wizard-proof-decoder__head">
+                  <span>{locale === "en" ? "EXECUTIVE DECODER" : locale === "pt-BR" ? "DECODER EXECUTIVO" : "DECODIFICADOR EJECUTIVO"}</span>
+                  <strong>{proofDecoderTitle}</strong>
+                  <p>{proofDecoderBody}</p>
+                </div>
+                <div className="demo-lab-wizard-proof-grid">
+                  {traceProofCards.map((card) => (
+                    <article key={card.label} className="demo-lab-wizard-proof-card">
+                      <span>{card.label}</span>
+                      <strong>{card.title}</strong>
+                      <p>{card.body}</p>
+                      <small>{card.proof}</small>
+                    </article>
+                  ))}
+                </div>
+                <Link href={DEMO_PUBLIC_PROOF_URL} className="demo-lab-wizard-proof-link">
+                  {proofVerifierCta}
+                  <ChevronRight className="h-4 w-4" />
+                </Link>
               </div>
-              <div className="demo-lab-wizard-proof-grid">
-                {traceProofCards.map((card) => (
-                  <article key={card.label} className="demo-lab-wizard-proof-card">
-                    <span>{card.label}</span>
-                    <strong>{card.title}</strong>
-                    <p>{card.body}</p>
-                    <small>{card.proof}</small>
-                  </article>
-                ))}
-              </div>
-              <Link href={DEMO_PUBLIC_PROOF_URL} className="demo-lab-wizard-proof-link">
-                {proofVerifierCta}
-                <ChevronRight className="h-4 w-4" />
-              </Link>
+              {liveEvents.length === 0 ? (
+                <div className="demo-lab-wizard-event demo-lab-wizard-event--autenticado rounded-2xl border border-emerald-300/25 bg-emerald-500/10 p-3 text-xs">
+                  <strong>AUTENTICADO</strong>
+                  <span>{destination.city}, {destination.countryCode}</span>
+                  <small>SIM-DEMO · en vivo</small>
+                </div>
+              ) : liveEvents.slice(0, 6).map((ev, i) => (
+                <div
+                  key={i}
+                  className={`demo-lab-wizard-event rounded-2xl border bg-white/5 p-3 text-xs demo-lab-wizard-event--${
+                    /AUTH_OK|VALID|AUTENTICADO/i.test(ev.result || "") ? "autenticado"
+                    : /REPLAY|DUPLICATE|COPIA/i.test(ev.result || "") ? "invalido"
+                    : /TAMPER|OPEN|ABIERTO/i.test(ev.result || "") ? "bloqueado"
+                    : "autenticado"
+                  }`}
+                >
+                  <strong>{formatEventResult(ev.result)}</strong>
+                  <span>{ev.city || destination.city}, {ev.country_code || ""}</span>
+                  <small>{ev.uidMasked || "UID-n/a"} · {ev.created_at ? new Date(ev.created_at).toLocaleTimeString(locale) : "en vivo"}</small>
+                </div>
+              ))}
             </div>
-            {liveEvents.length === 0 ? (
-              <div className="demo-lab-wizard-event demo-lab-wizard-event--autenticado rounded-2xl border border-emerald-300/25 bg-emerald-500/10 p-3 text-xs">
-                <strong>AUTENTICADO</strong>
-                <span>{destination.city}, {destination.countryCode}</span>
-                <small>SIM-DEMO · en vivo</small>
-              </div>
-            ) : liveEvents.slice(0, 6).map((ev, i) => (
-              <div
-                key={i}
-                className={`demo-lab-wizard-event rounded-2xl border bg-white/5 p-3 text-xs demo-lab-wizard-event--${
-                  /AUTH_OK|VALID|AUTENTICADO/i.test(ev.result || "") ? "autenticado"
-                  : /REPLAY|DUPLICATE|COPIA/i.test(ev.result || "") ? "invalido"
-                  : /TAMPER|OPEN|ABIERTO/i.test(ev.result || "") ? "bloqueado"
-                  : "autenticado"
-                }`}
-              >
-                <strong>{formatEventResult(ev.result)}</strong>
-                <span>{ev.city || destination.city}, {ev.country_code || ""}</span>
-                <small>{ev.uidMasked || "UID-n/a"} · {ev.created_at ? new Date(ev.created_at).toLocaleTimeString(locale) : "en vivo"}</small>
-              </div>
-            ))}
             <button
               suppressHydrationWarning
               type="button"
               onClick={() => goToStep(3)}
-              className="demo-lab-wizard-next-btn mt-3 inline-flex h-11 items-center justify-center rounded-full border border-cyan-300 bg-cyan-300 px-5 text-xs font-black uppercase tracking-wider text-slate-950"
+              className="demo-lab-wizard-trazo-cta demo-lab-wizard-next-btn inline-flex h-11 w-full items-center justify-center rounded-full border border-cyan-300 bg-cyan-300 px-5 text-xs font-black uppercase tracking-wider text-slate-950"
             >
               {locale === "en" ? "See business outcome → Won" : locale === "pt-BR" ? "Ver resultado comercial → Ganhou" : "Ver resultado comercial → Ganó"}
             </button>
@@ -3566,6 +3561,15 @@ function DemoFlowRail({ scenario, beat, onOpen }: { scenario: DemoScenario; beat
   );
 }
 
+const DEMO_MODAL_FOCUSABLE_SELECTOR = [
+  "a[href]",
+  "button:not([disabled]):not([tabindex='-1'])",
+  "input:not([disabled]):not([tabindex='-1'])",
+  "select:not([disabled]):not([tabindex='-1'])",
+  "textarea:not([disabled]):not([tabindex='-1'])",
+  "[tabindex]:not([tabindex='-1'])",
+].join(",");
+
 function DemoFlowModal({
   view,
   txt,
@@ -3597,22 +3601,63 @@ function DemoFlowModal({
   onClose: () => void;
   onOpen: (view: DemoModalView) => void;
 }) {
-  useEffect(() => {
-    if (!view || typeof document === "undefined") return;
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+  const isOpen = view !== null;
+  onCloseRef.current = onClose;
 
+  useEffect(() => {
+    if (!isOpen || typeof document === "undefined") return;
+
+    restoreFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    const focusFrame = window.requestAnimationFrame(() => closeButtonRef.current?.focus());
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+      if (event.key !== "Tab") return;
+
+      const dialog = dialogRef.current;
+      if (!dialog) return;
+      const focusableElements = Array.from(
+        dialog.querySelectorAll<HTMLElement>(DEMO_MODAL_FOCUSABLE_SELECTOR)
+      ).filter((element) => element.tabIndex >= 0 && element.getAttribute("aria-hidden") !== "true");
+      const firstFocusable = focusableElements[0];
+      const lastFocusable = focusableElements[focusableElements.length - 1];
+
+      if (!firstFocusable || !lastFocusable) {
+        event.preventDefault();
+        closeButtonRef.current?.focus();
+        return;
+      }
+
+      const activeElement = document.activeElement;
+      if (event.shiftKey && (activeElement === firstFocusable || !dialog.contains(activeElement))) {
+        event.preventDefault();
+        lastFocusable.focus();
+      } else if (!event.shiftKey && (activeElement === lastFocusable || !dialog.contains(activeElement))) {
+        event.preventDefault();
+        firstFocusable.focus();
+      }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
     return () => {
+      window.cancelAnimationFrame(focusFrame);
       document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("keydown", handleKeyDown);
+      const restoreTarget = restoreFocusRef.current;
+      restoreFocusRef.current = null;
+      if (restoreTarget?.isConnected) restoreTarget.focus();
     };
-  }, [view, onClose]);
+  }, [isOpen]);
 
   if (!view) return null;
 
@@ -3626,16 +3671,23 @@ function DemoFlowModal({
         : "Como el consumidor pasa de validar a asociar el producto en el portal.";
 
   return (
-    <div className="demo-lab-modal-backdrop" role="dialog" aria-modal="true" aria-label={title}>
-      <button suppressHydrationWarning type="button" className="demo-lab-modal-scrim" aria-label="Cerrar modal" onClick={onClose} />
+    <div
+      ref={dialogRef}
+      className="demo-lab-modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="demo-lab-modal-title"
+      aria-describedby="demo-lab-modal-description"
+    >
+      <div className="demo-lab-modal-scrim" aria-hidden="true" onClick={onClose} />
       <section className="demo-lab-modal-panel">
         <div className="demo-lab-modal-header">
           <div>
             <p>Flujo integrado</p>
-            <h2>{title}</h2>
-            <span>{subtitle}</span>
+            <h2 id="demo-lab-modal-title">{title}</h2>
+            <span id="demo-lab-modal-description">{subtitle}</span>
           </div>
-          <button suppressHydrationWarning type="button" onClick={onClose}>Cerrar</button>
+          <button ref={closeButtonRef} suppressHydrationWarning type="button" onClick={onClose}>Cerrar</button>
         </div>
         <div className="demo-lab-modal-tabs">
           <button suppressHydrationWarning type="button" onClick={() => onOpen("product")} className={view === "product" ? "active" : ""}>Ficha</button>
@@ -4171,8 +4223,8 @@ function DemoCrmDashboard({
   return (
     <div className="space-y-6">
       {/* KPI Stats Grid */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4 shadow-xl">
+      <div className="demo-lab-crm-kpis grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="demo-lab-crm-kpi demo-lab-crm-kpi--cyan rounded-2xl border border-white/10 bg-slate-950/60 p-4 shadow-xl">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-400">Total Etiquetas</span>
             <Fingerprint className="h-4 w-4 text-cyan-400" />
@@ -4183,7 +4235,7 @@ function DemoCrmDashboard({
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4 shadow-xl">
+        <div className="demo-lab-crm-kpi demo-lab-crm-kpi--emerald rounded-2xl border border-white/10 bg-slate-950/60 p-4 shadow-xl">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-400">Leads en CRM</span>
             <UserRound className="h-4 w-4 text-emerald-400" />
@@ -4192,7 +4244,7 @@ function DemoCrmDashboard({
           <span className="text-[10px] font-medium text-slate-400">Contactos calificados</span>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4 shadow-xl">
+        <div className="demo-lab-crm-kpi demo-lab-crm-kpi--rose rounded-2xl border border-white/10 bg-slate-950/60 p-4 shadow-xl">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-400">Alertas de Fraude</span>
             <AlertTriangle className="h-4 w-4 text-rose-400" />
@@ -4201,7 +4253,7 @@ function DemoCrmDashboard({
           <span className="text-[10px] font-medium text-slate-400">Incidencias de seguridad</span>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4 shadow-xl">
+        <div className="demo-lab-crm-kpi demo-lab-crm-kpi--amber rounded-2xl border border-white/10 bg-slate-950/60 p-4 shadow-xl">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-400">Órdenes Activas</span>
             <ShoppingCart className="h-4 w-4 text-amber-400" />
@@ -4210,7 +4262,7 @@ function DemoCrmDashboard({
           <span className="text-[10px] font-medium text-slate-400">Solicitudes de hardware</span>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4 shadow-xl">
+        <div className="demo-lab-crm-kpi demo-lab-crm-kpi--violet rounded-2xl border border-white/10 bg-slate-950/60 p-4 shadow-xl">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-400">Escaneos Totales</span>
             <Check className="h-4 w-4 text-violet-400" />
@@ -4223,7 +4275,7 @@ function DemoCrmDashboard({
       {/* Main Grid: Map & Controls / Streams */}
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Map panel (Span 2) */}
-        <div className="lg:col-span-2 rounded-3xl border border-white/10 bg-slate-950/60 p-5 shadow-xl">
+        <div className="demo-lab-crm-map-panel lg:col-span-2 rounded-3xl border border-white/10 bg-slate-950/60 p-5 shadow-xl">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-sm font-black uppercase tracking-wider text-cyan-300">Mapa Operativo en Tiempo Real</h3>
@@ -4243,14 +4295,14 @@ function DemoCrmDashboard({
         </div>
 
         {/* Action matrix / Live Log */}
-        <div className="rounded-3xl border border-white/10 bg-slate-950/60 p-5 shadow-xl flex flex-col justify-between">
+        <div className="demo-lab-crm-monitor-panel rounded-3xl border border-white/10 bg-slate-950/60 p-5 shadow-xl flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-black uppercase tracking-wider text-cyan-300">Monitoreo de Eventos</h3>
               <button 
                 type="button" 
                 onClick={() => void refreshSummary()}
-                className="flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-bold text-slate-300 hover:text-white"
+                className="demo-lab-crm-refresh flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-bold text-slate-300 hover:text-white"
               >
                 <RefreshCw className="h-3 w-3" />
                 Refrescar
@@ -4260,7 +4312,7 @@ function DemoCrmDashboard({
             <p className="mt-2 text-xs text-slate-400">Transacciones y verificaciones criptográficas activas</p>
 
             {/* Consola de Simulación Rápida */}
-            <div className="mt-4 mb-2 rounded-2xl border border-white/10 bg-slate-900/60 p-4 shadow-inner">
+            <div className="demo-lab-crm-simulator mt-4 mb-2 rounded-2xl border border-white/10 bg-slate-900/60 p-4 shadow-inner">
               <h4 className="text-[10px] font-black uppercase tracking-wider text-cyan-300 mb-2.5 flex items-center gap-1.5">
                 <Cpu className="h-3.5 w-3.5 text-cyan-400 animate-pulse" />
                 Consola de Simulación Rápida
@@ -4270,7 +4322,7 @@ function DemoCrmDashboard({
                   type="button"
                   disabled={simulating}
                   onClick={() => void simulate("valid")}
-                  className="flex flex-col items-center justify-center rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 px-2 py-2.5 text-center transition disabled:opacity-55"
+                  className="demo-lab-crm-sim-button demo-lab-crm-sim-button--valid flex flex-col items-center justify-center rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 px-2 py-2.5 text-center transition disabled:opacity-55"
                 >
                   <span className="text-[11px] font-black text-emerald-400">✓ Válido</span>
                   <span className="text-[8px] text-slate-400 font-mono mt-0.5">Zúrich</span>
@@ -4280,7 +4332,7 @@ function DemoCrmDashboard({
                   type="button"
                   disabled={simulating}
                   onClick={() => void simulate("replay")}
-                  className="flex flex-col items-center justify-center rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 px-2 py-2.5 text-center transition disabled:opacity-55"
+                  className="demo-lab-crm-sim-button demo-lab-crm-sim-button--replay flex flex-col items-center justify-center rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 px-2 py-2.5 text-center transition disabled:opacity-55"
                 >
                   <span className="text-[11px] font-black text-rose-400">⚠ Copia</span>
                   <span className="text-[8px] text-slate-400 font-mono mt-0.5">Replay</span>
@@ -4290,7 +4342,7 @@ function DemoCrmDashboard({
                   type="button"
                   disabled={simulating}
                   onClick={() => void simulate("tamper")}
-                  className="flex flex-col items-center justify-center rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 px-2 py-2.5 text-center transition disabled:opacity-55"
+                  className="demo-lab-crm-sim-button demo-lab-crm-sim-button--tamper flex flex-col items-center justify-center rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 px-2 py-2.5 text-center transition disabled:opacity-55"
                 >
                   <span className="text-[11px] font-black text-amber-400">✕ Abierto</span>
                   <span className="text-[8px] text-slate-400 font-mono mt-0.5">Tamper</span>
@@ -4343,7 +4395,7 @@ function DemoCrmDashboard({
             </div>
           </div>
 
-          <div className="mt-4 rounded-xl border border-white/5 bg-black/20 p-3 text-center">
+          <div className="demo-lab-crm-security-note mt-4 rounded-xl border border-white/5 bg-black/20 p-3 text-center">
             <span className="text-[10px] text-slate-500 font-mono">
               Consola Operativa Segura · TLS 1.3 · Proof registry opcional
             </span>
@@ -4388,7 +4440,7 @@ function DemoCrmDashboard({
           </div>
 
           <div className="flex items-center gap-3">
-            <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
+            <label className="demo-lab-crm-auto-refresh flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
               <input 
                 type="checkbox" 
                 checked={autoRefresh} 

@@ -632,7 +632,10 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
           <JsonLd key={schema["@type"]} data={schema} />
         ))}
         {/* ── Top infobar ─────────────────────────────────────────────────── */}
-        <header className="demo-lab-infobar sticky top-0 z-40 border-b border-white/10 bg-slate-950/90 px-4 py-3 text-slate-100 backdrop-blur-xl">
+        <header
+          className="demo-lab-infobar z-40 border-b border-white/10 bg-slate-950/90 px-4 py-3 text-slate-100 backdrop-blur-xl"
+          style={{ position: "relative", top: "auto" }}
+        >
           <div className="demo-lab-infobar__inner mx-auto flex max-w-7xl flex-col gap-3 md:flex-row md:items-center md:justify-between">
             {/* Left: back + title */}
             <div className="demo-lab-infobar__left flex min-w-0 items-center gap-3">

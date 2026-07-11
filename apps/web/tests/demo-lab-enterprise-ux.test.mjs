@@ -81,6 +81,7 @@ test("demo lab mobile wizard shows four steps without horizontal scrolling", asy
 test("demo lab mobile journey uses native page scroll and a compact product selector", async () => {
   const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
   const client = await readFile(new URL("../src/app/(public)/demo-lab/demo-lab-client.tsx", import.meta.url), "utf8");
+  const page = await readFile(new URL("../src/app/(public)/demo-lab/page.tsx", import.meta.url), "utf8");
 
   assert.match(client, /className="demo-lab-mobile-product-switcher"/);
   assert.match(client, /id="demo-lab-mobile-product"/);
@@ -90,19 +91,69 @@ test("demo lab mobile journey uses native page scroll and a compact product sele
   assert.match(client, /onVertical=\{setVertical\}/);
   assert.doesNotMatch(client, /setTrustScenario\(null\)/);
   assert.match(client, /window\.scrollTo\(\{/);
-  assert.match(client, /stickyOffset = window\.matchMedia\("\(max-width: 760px\)"\)\.matches \? 132 : 24/);
+  assert.match(client, /const wizardNavRef = useRef<HTMLElement>\(null\)/);
+  assert.match(client, /window\.getComputedStyle\(wizardNav\)\.top/);
+  assert.match(client, /wizardNav\.getBoundingClientRect\(\)\.height/);
+  assert.doesNotMatch(client, /stickyOffset = window\.matchMedia/);
   assert.doesNotMatch(client, /querySelector\("\.demo-lab-wizard-scene"\)\?\.scrollIntoView/);
+  assert.match(page, /style=\{\{ position: "relative", top: "auto" \}\}/);
 
   assert.match(css, /Demo Lab mobile journey v2/);
   assert.match(css, /\.demo-lab-mobile-product-switcher\s*\{[\s\S]*display:\s*none/);
   assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*\.demo-lab-mobile-product-switcher\s*\{[\s\S]*display:\s*grid !important/);
-  assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*\.demo-lab-fullscreen-root \.demo-lab-wizard-nav\s*\{[\s\S]*top:\s*4rem !important/);
+  const singleStickyNavigation = css.slice(css.lastIndexOf("Demo Lab keeps one sticky navigation on narrow screens."));
+  assert.match(singleStickyNavigation, /\.demo-lab-fullscreen-root \.demo-lab-infobar\s*\{[\s\S]*position:\s*relative !important[\s\S]*top:\s*auto !important/);
+  assert.match(singleStickyNavigation, /\.demo-lab-fullscreen-root \.demo-lab-wizard-nav\s*\{[\s\S]*top:\s*0\.75rem !important/);
   assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*\.demo-lab-fullscreen-root \.demo-lab-wizard-nav-back,[\s\S]*\.demo-lab-fullscreen-root \.demo-lab-wizard-actions\s*\{[\s\S]*display:\s*none !important/);
   assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*\.demo-lab-fullscreen-root \.demo-lab-wizard-scene--toca > \.demo-lab-wizard-context,[\s\S]*\.demo-lab-fullscreen-root \.demo-lab-wizard-scene--toca > \.demo-lab-wizard-verticals\s*\{[\s\S]*display:\s*none !important/);
   assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*\.demo-lab-fullscreen-root \.demo-lab-wizard-center \.demo-lab-premium-scene\s*\{[\s\S]*height:\s*22rem !important/);
   assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*\.demo-lab-fullscreen-root \.demo-lab-wizard-tap-btn\s*\{[\s\S]*height:\s*3\.5rem !important/);
   assert.match(css, /@media \(max-width:\s*1024px\)[\s\S]*\.demo-lab-fullscreen-stage \.demo-lab-studio,[\s\S]*overflow:\s*visible !important/);
   assert.match(css, /@media \(min-width:\s*761px\) and \(max-width:\s*1024px\)[\s\S]*\.demo-lab-fullscreen-root \.demo-lab-wizard-center \.demo-lab-premium-scene\s*\{[\s\S]*height:\s*20rem !important/);
+});
+
+test("demo lab preserves the wizard step across simulator and CRM switches", async () => {
+  const client = await readFile(new URL("../src/app/(public)/demo-lab/demo-lab-client.tsx", import.meta.url), "utf8");
+
+  assert.match(client, /const \[wizardStep, setWizardStep\] = useState<DemoWizardStep>/);
+  assert.match(client, /<DemoLabStudioHero[\s\S]*step=\{wizardStep\}[\s\S]*onStep=\{setWizardStep\}/);
+  assert.match(client, /step: DemoWizardStep;/);
+  assert.match(client, /onStep: \(step: DemoWizardStep\) => void;/);
+  assert.match(client, /setWizardStep\(getTrustScenarioInitialStep\(key\)\)/);
+  assert.doesNotMatch(client, /const \[step, setStep\] = useState<DemoWizardStep>/);
+});
+
+test("demo lab keeps the Won CTA outside the trace panel's internal scroll", async () => {
+  const client = await readFile(new URL("../src/app/(public)/demo-lab/demo-lab-client.tsx", import.meta.url), "utf8");
+  const traceStep = client.slice(
+    client.indexOf("{/* ── STEP 2: TRAZÓ"),
+    client.indexOf("{/* ── STEP 3: GANÓ")
+  );
+
+  assert.match(traceStep, /demo-lab-wizard-trazo-column[^"\n]*lg:grid-rows-\[minmax\(0,1fr\)_auto\]/);
+  assert.match(traceStep, /demo-lab-wizard-trazo-side[^"\n]*overflow-y-auto/);
+  assert.match(traceStep, /\)\)}\s*<\/div>\s*<button[\s\S]*demo-lab-wizard-trazo-cta/);
+  assert.match(traceStep, /onClick=\{\(\) => goToStep\(3\)\}/);
+});
+
+test("demo lab modal has one scroll lock and a complete keyboard focus contract", async () => {
+  const client = await readFile(new URL("../src/app/(public)/demo-lab/demo-lab-client.tsx", import.meta.url), "utf8");
+
+  assert.equal((client.match(/document\.body\.style\.overflow = "hidden"/g) ?? []).length, 1);
+  assert.equal((client.match(/document\.body\.style\.overflow = previousOverflow/g) ?? []).length, 1);
+  assert.match(client, /const dialogRef = useRef<HTMLDivElement>\(null\)/);
+  assert.match(client, /const closeButtonRef = useRef<HTMLButtonElement>\(null\)/);
+  assert.match(client, /restoreFocusRef\.current = document\.activeElement instanceof HTMLElement/);
+  assert.match(client, /closeButtonRef\.current\?\.focus\(\)/);
+  assert.match(client, /event\.key !== "Tab"/);
+  assert.match(client, /firstFocusable\.focus\(\)/);
+  assert.match(client, /lastFocusable\.focus\(\)/);
+  assert.match(client, /if \(restoreTarget\?\.isConnected\) restoreTarget\.focus\(\)/);
+  assert.match(client, /event\.key === "Escape"/);
+  assert.match(client, /aria-labelledby="demo-lab-modal-title"/);
+  assert.match(client, /aria-describedby="demo-lab-modal-description"/);
+  assert.match(client, /<div className="demo-lab-modal-scrim" aria-hidden="true" onClick=\{onClose\} \/>/);
+  assert.doesNotMatch(client, /<button[^>]+className="demo-lab-modal-scrim"/);
 });
 
 test("demo lab fullscreen mobile keeps CTAs inside viewport and light mode visible", async () => {

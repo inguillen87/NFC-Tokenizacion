@@ -10,7 +10,7 @@ test("proof verifier keeps the enterprise decoder readable and non-trapped", asy
   assert.match(page, /proof-secondary-cta/);
   assert.match(page, /Que entiende un gerente sin leer blockchain/);
   assert.match(page, /Decodificar Raw input/);
-  assert.match(page, /Abrir tx donde esta el memo/);
+  assert.match(page, /Abrir receipt tx donde esta el memo/);
   assert.match(page, /Abrir tx con memo en IOTA Explorer/);
   assert.match(page, /Traducir Raw input a negocio/);
   assert.match(page, /Explorer Decoder para C-level/);
@@ -54,7 +54,7 @@ test("proof verifier keeps the enterprise decoder readable and non-trapped", asy
   assert.match(page, /proof-console-card--success/);
   assert.match(page, /proof-console-card--warning/);
   assert.match(page, /proof-console-card--info/);
-  assert.match(page, /Abrir explorer real/);
+  assert.match(page, /Abrir receipt tx con Raw input/);
   assert.match(page, /proof-mobile-demo-actions/);
   assert.match(page, /Probar SHA demo/);
   assert.match(page, /Leer memo real/);
@@ -127,7 +127,7 @@ test("proof verifier keeps the enterprise decoder readable and non-trapped", asy
   assert.match(page, /grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(page, /grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(page, /Abrir anchor tx/);
-  assert.match(page, /Abrir tx donde esta el memo/);
+  assert.match(page, /Abrir receipt tx donde esta el memo/);
   assert.match(page, /Abrir memo tx y copiar Raw input/);
   assert.match(page, /Este entorno todavia no muestra una tx publica/);
   assert.match(backLink, /aria-label=\{label\}/);
@@ -142,4 +142,45 @@ test("proof verifier keeps the enterprise decoder readable and non-trapped", asy
   assert.doesNotMatch(page, /fondear la wallet/);
   assert.doesNotMatch(page, /fund \+ deploy/);
   assert.doesNotMatch(page, /Pendiente de deploy/);
+});
+
+test("executive IOTA explorer actions keep receipt data separate from the anchor call", async () => {
+  const page = await readFile(new URL("../src/app/proof/verify/page.tsx", import.meta.url), "utf8");
+
+  const declaration = (name) => {
+    const match = page.match(new RegExp(`const ${name} = ([\\s\\S]*?);`));
+    assert.ok(match, `missing ${name} declaration`);
+    return match[1];
+  };
+
+  const decodedReceiptExpression = declaration("decodedReceiptExplorerUrl");
+  const receiptExpression = declaration("receiptExplorerUrl");
+  const anchorExpression = declaration("anchorExplorerUrl");
+
+  assert.match(page, /const decodedReceiptMatchesQuery = Boolean\(/);
+  assert.match(page, /decodedDemoCase\.primary_event_hash\.toLowerCase\(\) === eventHash\.toLowerCase\(\)/);
+  assert.match(page, /decodedDemoCase\.anchor_id\.toLowerCase\(\) === anchorId\.toLowerCase\(\)/);
+  assert.match(decodedReceiptExpression, /decodedReceiptMatchesQuery/);
+  assert.match(decodedReceiptExpression, /decodedProof\?\.publication_explorer_url/);
+  assert.match(receiptExpression, /decodedReceiptExplorerUrl/);
+  assert.match(receiptExpression, /guidedDemo\?\.public_receipt\?\.explorer_url/);
+  assert.doesNotMatch(receiptExpression, /matches\.find|guidedDemo\?\.explorer_url/);
+  assert.match(anchorExpression, /matches\.find/);
+  assert.match(anchorExpression, /guidedDemo\?\.explorer_url/);
+  assert.doesNotMatch(anchorExpression, /public_receipt|publication_explorer_url/);
+
+  const consoleStart = page.indexOf('<section className="proof-verification-console');
+  const consoleEnd = page.indexOf('<section id="proof-result"', consoleStart);
+  assert.ok(consoleStart >= 0 && consoleEnd > consoleStart, "verification console should be present");
+  const executiveConsole = page.slice(consoleStart, consoleEnd);
+
+  assert.match(executiveConsole, /data-proof-explorer="receipt" href=\{receiptExplorerUrl\}/);
+  assert.match(executiveConsole, /Abrir receipt tx con Raw input/);
+  assert.match(executiveConsole, /data-proof-explorer="anchor" href=\{separateAnchorExplorerUrl\}/);
+  assert.match(executiveConsole, /Abrir anchor tx \(Merkle root\)/);
+  assert.doesNotMatch(executiveConsole, /data-proof-explorer="receipt" href=\{(?:anchorExplorerUrl|separateAnchorExplorerUrl)\}/);
+  assert.match(page, /no se presenta como memo legible/);
+  assert.match(page, /no el contract call del anchor/);
+  assert.match(page, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
+  assert.doesNotMatch(page, /const externalExplorerUrl/);
 });

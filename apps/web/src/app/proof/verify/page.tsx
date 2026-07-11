@@ -852,9 +852,35 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
       live: Boolean(demoCatalog.testnet?.polygon?.demo_tx_hash),
     },
   ];
-  const externalExplorerUrl = matches.find((match) => Boolean(match.explorer_url))?.explorer_url
-    || guidedDemo?.public_receipt?.explorer_url
+  const decodedDemoCase = decodedProof?.matching_demo_case;
+  const decodedReceiptMatchesQuery = Boolean(
+    decodedProof?.publication_explorer_url
+      && (
+        (!eventHash && !anchorId)
+        || (
+          decodedDemoCase
+          && (!eventHash || decodedDemoCase.primary_event_hash.toLowerCase() === eventHash.toLowerCase())
+          && (!anchorId || decodedDemoCase.anchor_id.toLowerCase() === anchorId.toLowerCase())
+        )
+      ),
+  );
+  const guidedDemoMatchesQuery = Boolean(
+    guidedDemo
+      && (!eventHash || guidedDemo.events.some((event) => event.hash.toLowerCase() === eventHash.toLowerCase()))
+      && (!anchorId || guidedDemo.anchor_id.toLowerCase() === anchorId.toLowerCase()),
+  );
+  const decodedReceiptExplorerUrl = decodedReceiptMatchesQuery
+    ? decodedProof?.publication_explorer_url || ""
+    : "";
+  const receiptExplorerUrl = decodedReceiptExplorerUrl
+    || (guidedDemoMatchesQuery ? guidedDemo?.public_receipt?.explorer_url : "")
     || "";
+  const anchorExplorerUrl = matches.find((match) => Boolean(match.explorer_url))?.explorer_url
+    || (guidedDemoMatchesQuery ? guidedDemo?.explorer_url : "")
+    || "";
+  const separateAnchorExplorerUrl = anchorExplorerUrl && anchorExplorerUrl !== receiptExplorerUrl
+    ? anchorExplorerUrl
+    : "";
   const resultHeadline = !eventHash
     ? "Listo para probar"
     : invalidInput
@@ -918,15 +944,23 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
       tone: resultTone,
     },
     {
-      label: "2. Prueba externa",
-      title: externalExplorerUrl ? "Explorer disponible" : "Explorer pendiente",
-      body: externalExplorerUrl
-        ? "Abrir el explorer permite ver la tx testnet real. nexID agrega la capa de lectura: que significa el Raw input para negocio."
-        : "El verificador puede operar con registry local/API y queda preparado para mostrar explorer cuando el anchor tenga tx.",
-      tone: externalExplorerUrl ? "proof-console-card--success" : "proof-console-card--neutral",
+      label: "2. Recibo legible",
+      title: receiptExplorerUrl ? "Receipt tx disponible" : "Receipt tx pendiente",
+      body: receiptExplorerUrl
+        ? "Este enlace abre la transaccion de recibo cuyo Raw input contiene el memo publico decodificable."
+        : "El verificador puede operar con registry local/API, pero no promete Raw input hasta tener una receipt tx publicada.",
+      tone: receiptExplorerUrl ? "proof-console-card--success" : "proof-console-card--neutral",
     },
     {
-      label: "3. Privacidad",
+      label: "3. Anchor tecnico",
+      title: anchorExplorerUrl ? "Anchor tx disponible" : "Anchor tx pendiente",
+      body: anchorExplorerUrl
+        ? "La transaccion del anchor prueba la publicacion del Merkle root o contract call. Es separada del receipt y no se presenta como memo legible."
+        : "El anchor tecnico aparecera cuando el Merkle root tenga una transaccion externa asociada.",
+      tone: anchorExplorerUrl ? "proof-console-card--info" : "proof-console-card--neutral",
+    },
+    {
+      label: "4. Privacidad",
       title: "Hash-only por diseno",
       body: "La empresa demuestra integridad sin publicar UIDs, clientes, rutas, manifiestos, lotes sensibles ni contratos comerciales.",
       tone: "proof-console-card--info",
@@ -940,10 +974,10 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
     },
     {
       label: "Red publica",
-      value: externalExplorerUrl ? (demoFixture ? "IOTA testnet demo" : "Red publica") : "API/registry",
-      body: externalExplorerUrl
-        ? "Hay una transaccion externa para validar fecha, red y Raw input."
-        : "La experiencia queda lista para mostrar explorer cuando operaciones publique el anchor.",
+      value: receiptExplorerUrl ? (demoFixture ? "IOTA testnet demo" : "Receipt publico") : "API/registry",
+      body: receiptExplorerUrl
+        ? "La receipt tx permite validar fecha, red y el Raw input que contiene el memo."
+        : "La pantalla no atribuye un memo legible a la transaccion tecnica del anchor.",
     },
     {
       label: "Privacidad",
@@ -952,20 +986,27 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
     },
     {
       label: "Proxima accion",
-      value: externalExplorerUrl ? "Abrir tx" : "Cargar demo",
-      body: externalExplorerUrl
-        ? "Abrir IOTA Explorer, copiar Raw input y pasarlo por el decoder de nexID."
-        : "Usar Demo Lab o SDK/API para generar el proof antes de enseñar el explorer.",
+      value: receiptExplorerUrl ? "Abrir receipt tx" : "Cargar demo",
+      body: receiptExplorerUrl
+        ? "Abrir la receipt tx en IOTA Explorer, copiar Raw input y pasarlo por el decoder de nexID."
+        : "Usar Demo Lab o SDK/API para generar el receipt antes de enseñar un Raw input.",
+    },
+    {
+      label: "Anchor",
+      value: anchorExplorerUrl ? "Merkle root publicado" : "Pendiente",
+      body: anchorExplorerUrl
+        ? "El anchor tiene su propio explorer para auditar el Merkle root; no es el enlace del memo."
+        : "Todavia no hay una transaccion tecnica de anchor asociada a este resultado.",
     },
   ];
   const explorerProofPath = [
     {
       title: "1. Transaccion",
-      body: "El boton abre la tx real del recibo publico en IOTA Explorer.",
+      body: "El boton Receipt tx abre la transaccion real del recibo publico en IOTA Explorer, no el contract call del anchor.",
     },
     {
       title: "2. Raw input",
-      body: "En Transaction details, el campo Raw input contiene el memo como hex.",
+      body: "Dentro de esa receipt tx, Transaction details - Raw input contiene el memo como hex.",
     },
     {
       title: "3. Decoder nexID",
@@ -1526,7 +1567,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
 
         @media (min-width: 1180px) {
           .proof-verify-page .proof-console-grid {
-            grid-template-columns: repeat(3, minmax(0, 1fr));
+            grid-template-columns: repeat(4, minmax(0, 1fr));
           }
 
           .proof-verify-page .proof-workstation-grid {
@@ -2019,15 +2060,20 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                   Probar caso demo <FileSearch className="h-4 w-4" />
                 </Link>
               ) : null}
-              {externalExplorerUrl ? (
-                <a href={externalExplorerUrl} className="proof-receipt-action-link text-xs font-black uppercase tracking-[0.12em]" target="_blank" rel="noreferrer">
-                  Abrir explorer real <ArrowRight className="h-4 w-4" />
+              {receiptExplorerUrl ? (
+                <a data-proof-explorer="receipt" href={receiptExplorerUrl} className="proof-receipt-action-link text-xs font-black uppercase tracking-[0.12em]" target="_blank" rel="noreferrer">
+                  Abrir receipt tx con Raw input <ArrowRight className="h-4 w-4" />
                 </a>
               ) : (
                 <Link href="/demo-lab?scenario=iota-proof" className="proof-secondary-cta inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]">
                   Ir a Demo Lab <ArrowRight className="h-4 w-4" />
                 </Link>
               )}
+              {separateAnchorExplorerUrl ? (
+                <a data-proof-explorer="anchor" href={separateAnchorExplorerUrl} className="proof-explorer-link inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]" target="_blank" rel="noreferrer">
+                  Abrir anchor tx (Merkle root) <ArrowRight className="h-4 w-4" />
+                </a>
+              ) : null}
             </div>
           </div>
           <div className="proof-console-grid mt-5">
@@ -2238,15 +2284,20 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
             </div>
             </details>
             <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
-              {guidedDemo?.public_receipt.explorer_url ? (
-                <a href={guidedDemo.public_receipt.explorer_url} className="proof-receipt-action-link text-xs font-black uppercase tracking-[0.12em]" target="_blank" rel="noreferrer">
-                  Abrir tx donde esta el memo <ArrowRight className="h-4 w-4" />
+              {receiptExplorerUrl ? (
+                <a data-proof-explorer="receipt" href={receiptExplorerUrl} className="proof-receipt-action-link text-xs font-black uppercase tracking-[0.12em]" target="_blank" rel="noreferrer">
+                  Abrir receipt tx donde esta el memo <ArrowRight className="h-4 w-4" />
                 </a>
               ) : null}
               {guidedDemo ? (
                 <Link href={decoderHrefForDemo(guidedDemo)} className="proof-secondary-cta inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]">
                   Decodificar Raw input <FileSearch className="h-4 w-4" />
                 </Link>
+              ) : null}
+              {separateAnchorExplorerUrl ? (
+                <a data-proof-explorer="anchor" href={separateAnchorExplorerUrl} className="proof-explorer-link inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]" target="_blank" rel="noreferrer">
+                  Abrir anchor tx sin memo <ArrowRight className="h-4 w-4" />
+                </a>
               ) : null}
             </div>
             <details className="proof-explorer-guide proof-flat mt-4 rounded-2xl border border-cyan-200 bg-cyan-50/70 p-3" open={Boolean(requestedDecoderInput)}>
@@ -2297,8 +2348,8 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                     </div>
                   </div>
                   {match.explorer_url ? (
-                    <a href={match.explorer_url} className="proof-explorer-link mt-4 inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.1em]" target="_blank" rel="noreferrer">
-                      Abrir explorer <ArrowRight className="h-4 w-4" />
+                    <a data-proof-explorer="anchor" href={match.explorer_url} className="proof-explorer-link mt-4 inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.1em]" target="_blank" rel="noreferrer">
+                      Abrir anchor tx (Merkle root) <ArrowRight className="h-4 w-4" />
                     </a>
                   ) : null}
                 </article>

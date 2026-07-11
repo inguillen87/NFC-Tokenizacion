@@ -463,8 +463,8 @@ export default async function HomePage() {
             <Link href="/pricing" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">Pricing</Link>
             <Link href="/?contact=demo#contact-modal" className="rounded-lg border border-cyan-300/40 px-3 py-2 text-xs text-cyan-300">Demo</Link>
             <a href="mailto:info@nexid.lat" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">info@nexid.lat</a>
-            <a href="https://api.whatsapp.com/send?phone=5492613168608" target="_blank" rel="noreferrer" className="rounded-lg border border-green-500/40 px-3 py-2 text-xs text-green-400">WhatsApp AR</a>
-            <a href="https://api.whatsapp.com/send?phone=56988689095" target="_blank" rel="noreferrer" className="rounded-lg border border-green-500/40 px-3 py-2 text-xs text-green-400">WhatsApp CL</a>
+            <a href="https://api.whatsapp.com/send?phone=5492613168608" target="_blank" rel="noreferrer" className="site-footer-whatsapp-link rounded-lg border border-green-500/40 px-3 py-2 text-xs text-green-400">WhatsApp AR</a>
+            <a href="https://api.whatsapp.com/send?phone=56988689095" target="_blank" rel="noreferrer" className="site-footer-whatsapp-link rounded-lg border border-green-500/40 px-3 py-2 text-xs text-green-400">WhatsApp CL</a>
             <a href={meetingHref} target="_blank" rel="noreferrer" className="rounded-lg border border-emerald-300/40 px-3 py-2 text-xs text-emerald-300">{labels.scheduleMeeting}</a>
           </div>
         </div>
@@ -474,7 +474,7 @@ export default async function HomePage() {
             href={afipDataFiscalHref}
             target="_F960AFIPInfo"
             rel="noopener noreferrer"
-            className="group rounded-2xl border border-slate-200 bg-white/90 p-4 text-left text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-100 dark:hover:border-cyan-300/50"
+            className="site-footer-data-card group rounded-2xl border border-slate-200 bg-white/90 p-4 text-left text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-100 dark:hover:border-cyan-300/50"
           >
             <div className="flex items-start justify-between gap-3">
               <div>
