@@ -59,7 +59,7 @@ export function getAccessProfiles(): AccessProfile[] {
       emailEnv: ["TENANT_ADMIN_EMAIL", "BODEGA_ADMIN_EMAIL", "NEXT_PUBLIC_TENANT_ADMIN_EMAIL"],
       passwordEnv: ["TENANT_ADMIN_PASSWORD", "BODEGA_ADMIN_PASSWORD"],
       note: "Administrador operativo del tenant: lotes, tags, taps, marketplace, rewards y empleados.",
-      permissions: ["tenant:*", "batches:*", "tags:*", "events:*", "analytics:*", "crm:*", "marketplace:*", "rewards:*", "employees:*"],
+      permissions: ["tenant:*", "batches:*", "tags:*", "events:*", "proof:*", "analytics:*", "crm:*", "marketplace:*", "rewards:*", "employees:*"],
     }),
     profile({
       key: "tenant-ops",
@@ -68,7 +68,7 @@ export function getAccessProfiles(): AccessProfile[] {
       emailEnv: ["TENANT_OPS_EMAIL", "NEXT_PUBLIC_TENANT_OPS_EMAIL"],
       passwordEnv: ["TENANT_OPS_PASSWORD"],
       note: "Puede operar lotes, tags, taps, validación en tienda y alertas sin tocar facturación ni seguridad global.",
-      permissions: ["batches:read", "batches:write", "tags:read", "tags:write", "events:read", "analytics:read", "rewards:validate"],
+      permissions: ["batches:read", "batches:write", "tags:read", "tags:write", "events:read", "proof:read", "analytics:read", "rewards:validate"],
     }),
     profile({
       key: "tenant-growth",

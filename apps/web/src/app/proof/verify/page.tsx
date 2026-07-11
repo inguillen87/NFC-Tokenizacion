@@ -175,6 +175,24 @@ export const metadata: Metadata = {
   description: "Verificador publico hash-only para anchors, Merkle roots y evidencia DPP, QA y logistica en nexID.",
 };
 
+const ENTERPRISE_PROOF_CONSOLE_URL = `${productUrls.app}/proof`;
+const DEMO_LAB_PROOF_HANDOFF_SCENARIOS: ReadonlySet<string> = new Set([
+  "hub",
+  "qr-gs1",
+  "nfc-424",
+  "offline-verifier",
+  "polygon-ownership",
+  "iota-proof",
+  "dual-proof",
+  "sensor-evidence",
+  "authorized-network",
+]);
+
+type ProofHandoffContext = {
+  scenario: string;
+  returnTo: string;
+};
+
 const proofFlow = [
   {
     label: "1. Evento",
@@ -217,10 +235,11 @@ const connectionCards = [
     cta: "Ver SDK",
   },
   {
-    title: "Dashboard enterprise",
-    body: "Operaciones decide que eventos se anclan: manifests, QA, entregas, claims o reportes DPP.",
-    href: "/docs#trust-layers",
-    cta: "Ver arquitectura",
+    title: "Consola privada enterprise",
+    body: "Operaciones gestiona anchors, estados y evidencia autorizada sin exponer datos sensibles en la vista publica.",
+    href: ENTERPRISE_PROOF_CONSOLE_URL,
+    cta: "Abrir consola de Proof",
+    external: true,
   },
   {
     title: "IOTA / Polygon",
@@ -480,6 +499,44 @@ function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] || "" : value || "";
 }
 
+function resolveProofHandoff(
+  params: Record<string, string | string[] | undefined>,
+  requestedLayer: string,
+): ProofHandoffContext {
+  const requestedScenario = first(params.scenario).trim().toLowerCase();
+  const layerScenario = requestedLayer === "polygon"
+    ? "polygon-ownership"
+    : requestedLayer === "iota"
+      ? "iota-proof"
+      : "hub";
+  const scenario = DEMO_LAB_PROOF_HANDOFF_SCENARIOS.has(requestedScenario)
+    ? requestedScenario
+    : layerScenario;
+  const expectedReturnTo = scenario === "hub"
+    ? "/demo-lab"
+    : `/demo-lab?scenario=${encodeURIComponent(scenario)}`;
+  const requestedReturnTo = first(params.return_to).trim();
+
+  return {
+    scenario,
+    returnTo: requestedReturnTo === expectedReturnTo
+      ? requestedReturnTo
+      : expectedReturnTo,
+  };
+}
+
+function appendProofHandoff(query: URLSearchParams, handoff?: ProofHandoffContext) {
+  if (!handoff) return query;
+  query.set("scenario", handoff.scenario);
+  query.set("return_to", handoff.returnTo);
+  return query;
+}
+
+function proofPageHref(query: URLSearchParams, target?: string) {
+  const search = query.toString();
+  return `/proof/verify${search ? `?${search}` : ""}${target ? `#${target}` : ""}`;
+}
+
 function shortHash(value: string | null | undefined) {
   const text = String(value || "");
   if (text.length <= 24) return text || "-";
@@ -708,21 +765,38 @@ function explorerLink(url: string | null | undefined, label: string) {
   );
 }
 
-function verifyHrefForDemo(demoCase: DemoCase) {
-  const params = new URLSearchParams({
-    event_hash: demoCase.primary_event_hash,
-    anchor_id: demoCase.anchor_id,
-  });
-  return `/proof/verify?${params.toString()}#proof-result`;
+function verifyHrefForIdentity(
+  eventHash: string,
+  anchorId: string,
+  handoff?: ProofHandoffContext,
+) {
+  const params = appendProofHandoff(new URLSearchParams({
+    event_hash: eventHash,
+    anchor_id: anchorId,
+  }), handoff);
+  return proofPageHref(params, "proof-result");
 }
 
-function decoderHrefForDemo(demoCase: DemoCase) {
-  const params = new URLSearchParams({
+function verifyHrefForDemo(demoCase: DemoCase, handoff?: ProofHandoffContext) {
+  return verifyHrefForIdentity(
+    demoCase.primary_event_hash,
+    demoCase.anchor_id,
+    handoff,
+  );
+}
+
+function decoderHrefForDemo(demoCase: DemoCase, handoff?: ProofHandoffContext) {
+  const params = appendProofHandoff(new URLSearchParams({
     event_hash: demoCase.primary_event_hash,
     anchor_id: demoCase.anchor_id,
     decode_input: utf8ToHex(demoCase.public_receipt.on_chain_memo),
-  });
-  return `/proof/verify?${params.toString()}#proof-decoder`;
+  }), handoff);
+  return proofPageHref(params, "proof-decoder");
+}
+
+function proofLayerHref(layer: "iota" | "polygon", target: string, handoff: ProofHandoffContext) {
+  const params = appendProofHandoff(new URLSearchParams({ layer }), handoff);
+  return proofPageHref(params, target);
 }
 
 function statusTone(status: string | null | undefined) {
@@ -784,9 +858,12 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
   const anchorId = first(params.anchor_id || params.anchorId).trim();
   const requestedDecoderInput = first(params.decode_input || params.raw_input || params.rawInput || params.memo || params.data).trim();
   const requestedLayer = first(params.layer || params.network).trim().toLowerCase();
-  const demoLabBackHref = requestedLayer === "polygon"
-    ? "/demo-lab?scenario=polygon-ownership"
-    : "/demo-lab?scenario=iota-proof";
+  const proofHandoff = resolveProofHandoff(params, requestedLayer);
+  const demoLabBackHref = proofHandoff.returnTo;
+  const demoLabBackLabel = proofHandoff.scenario === "hub"
+    ? "Volver al Demo Lab"
+    : "Volver al escenario";
+  const proofVerifierHref = proofPageHref(appendProofHandoff(new URLSearchParams(), proofHandoff));
   const architectureRequested = requestedLayer === "polygon" || requestedLayer === "iota";
   const focusTargetId = requestedDecoderInput
     ? "proof-decoder"
@@ -1016,7 +1093,11 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
 
   return (
     <main className="proof-verify-page min-h-screen text-slate-950">
-      <ProofFocusTarget targetId={focusTargetId} />
+      <ProofFocusTarget
+        targetId={focusTargetId}
+        returnHref={demoLabBackHref}
+        returnLabel={demoLabBackLabel}
+      />
       <style>{`
         .proof-verify-page {
           --proof-page-bg:
@@ -1216,6 +1297,19 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           border-color: var(--proof-border-strong) !important;
           background: var(--proof-card-bg) !important;
           color: var(--proof-text) !important;
+        }
+
+        .proof-verify-page .proof-top-cta--enterprise {
+          border-color: rgba(52, 211, 153, 0.42) !important;
+          background: rgba(16, 185, 129, 0.16) !important;
+          color: #d1fae5 !important;
+        }
+
+        html[data-theme="light"] .proof-verify-page .proof-top-cta--enterprise,
+        html.theme-light .proof-verify-page .proof-top-cta--enterprise {
+          border-color: rgba(5, 150, 105, 0.28) !important;
+          background: #ecfdf5 !important;
+          color: #065f46 !important;
         }
 
         .proof-verify-page .proof-explorer-link {
@@ -1597,6 +1691,11 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
             padding-bottom: 6rem;
           }
 
+          .proof-verify-page .proof-decoder-code {
+            max-height: none;
+            overflow: visible;
+          }
+
           .proof-verify-page .proof-shell {
             gap: 1.5rem;
             padding-top: 1.25rem;
@@ -1661,6 +1760,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
             width: 100%;
           }
 
+          .proof-verify-page .proof-top-actions .proof-top-cta--enterprise,
           .proof-verify-page .proof-top-actions .proof-top-cta--sdk {
             grid-column: 1 / -1;
           }
@@ -1685,8 +1785,16 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
               href={demoLabBackHref}
               className="proof-top-cta inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-xs font-black uppercase tracking-[0.12em] shadow-sm transition hover:border-cyan-300 hover:bg-cyan-50"
             >
-              Volver a Demo Lab <ArrowRight className="h-4 w-4" />
+              {demoLabBackLabel} <ArrowRight className="h-4 w-4" />
             </Link>
+            <a
+              href={ENTERPRISE_PROOF_CONSOLE_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="proof-top-cta proof-top-cta--enterprise inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-xs font-black uppercase tracking-[0.12em] shadow-sm transition"
+            >
+              Consola privada <ExternalLink className="h-4 w-4" />
+            </a>
             <Link
               href="/sdk"
               className="proof-top-cta proof-top-cta--sdk inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-xs font-black uppercase tracking-[0.12em] shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
@@ -1712,10 +1820,10 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
             </div>
             {showcaseDemo ? (
               <div className="proof-mobile-demo-actions grid gap-2 sm:grid-cols-2 lg:hidden">
-                <Link href={verifyHrefForDemo(showcaseDemo)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-white shadow-lg shadow-cyan-900/10">
+                <Link href={verifyHrefForDemo(showcaseDemo, proofHandoff)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-white shadow-lg shadow-cyan-900/10">
                   Probar SHA demo <FileSearch className="h-4 w-4" />
                 </Link>
-                <Link href={decoderHrefForDemo(showcaseDemo)} className="proof-secondary-cta inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]">
+                <Link href={decoderHrefForDemo(showcaseDemo, proofHandoff)} className="proof-secondary-cta inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]">
                   Leer memo real <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
@@ -1723,6 +1831,8 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           </div>
 
           <form action="/proof/verify#proof-result" className="proof-elevated rounded-[1.5rem] border border-cyan-100 bg-white/88 p-4 shadow-[0_24px_80px_rgba(15,23,42,0.12)] backdrop-blur">
+            <input type="hidden" name="scenario" value={proofHandoff.scenario} />
+            <input type="hidden" name="return_to" value={demoLabBackHref} />
             <div className="grid gap-3">
               <div className="rounded-2xl border border-cyan-100 bg-cyan-50/70 p-4 text-sm leading-6 text-slate-700">
                 <strong className="block text-slate-950">Que pega una empresa en este campo?</strong>
@@ -1764,13 +1874,13 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                 </p>
               </div>
               <div className="proof-fast-path-actions grid gap-2 sm:grid-cols-3 lg:min-w-[34rem]">
-                <Link href={verifyHrefForDemo(showcaseDemo)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-cyan-900">
+                <Link href={verifyHrefForDemo(showcaseDemo, proofHandoff)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-cyan-900">
                   Verificar SHA demo <FileSearch className="h-4 w-4" />
                 </Link>
-                <Link href={decoderHrefForDemo(showcaseDemo)} className="proof-secondary-cta inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]">
+                <Link href={decoderHrefForDemo(showcaseDemo, proofHandoff)} className="proof-secondary-cta inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]">
                   Decodificar memo <ArrowRight className="h-4 w-4" />
                 </Link>
-                <Link href="/proof/verify?layer=polygon#polygon-ownership" className="proof-secondary-cta inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]">
+                <Link href={proofLayerHref("polygon", "polygon-ownership", proofHandoff)} className="proof-secondary-cta inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]">
                   Ver mint Amoy <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
@@ -1803,10 +1913,10 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                   </div>
                   <p className="proof-fast-path-card__headline mt-2 text-sm leading-6 text-slate-600">{demoCase.headline}</p>
                   <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-                    <Link href={verifyHrefForDemo(demoCase)} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-[0.68rem] font-black uppercase tracking-[0.1em] text-cyan-900">
+                    <Link href={verifyHrefForDemo(demoCase, proofHandoff)} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-[0.68rem] font-black uppercase tracking-[0.1em] text-cyan-900">
                       Ver SHA
                     </Link>
-                    <Link href={decoderHrefForDemo(demoCase)} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[0.68rem] font-black uppercase tracking-[0.1em] text-emerald-900">
+                    <Link href={decoderHrefForDemo(demoCase, proofHandoff)} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[0.68rem] font-black uppercase tracking-[0.1em] text-emerald-900">
                       Leer memo
                     </Link>
                   </div>
@@ -1843,10 +1953,10 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                 Esta pantalla conecta Demo Lab, API, IOTA y Polygon: nexID genera el evento privado, publica solo evidencia hash-only y deja que un tercero lo verifique sin acceder a datos sensibles.
               </p>
               <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
-                <Link href={showcaseDemo ? verifyHrefForDemo(showcaseDemo) : "/demo-lab?scenario=iota-proof"} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-cyan-900">
+                <Link href={showcaseDemo ? verifyHrefForDemo(showcaseDemo, proofHandoff) : "/demo-lab?scenario=iota-proof"} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-cyan-900">
                   {showcaseDemo ? "Probar verificacion real" : "Abrir demo IOTA"} <FileSearch className="h-4 w-4" />
                 </Link>
-                <Link href={showcaseDemo ? decoderHrefForDemo(showcaseDemo) : "/proof/verify"} className="proof-secondary-cta inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-cyan-200 bg-white/78 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-cyan-900 transition hover:border-cyan-300 hover:bg-cyan-50">
+                <Link href={showcaseDemo ? decoderHrefForDemo(showcaseDemo, proofHandoff) : proofVerifierHref} className="proof-secondary-cta inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-cyan-200 bg-white/78 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-cyan-900 transition hover:border-cyan-300 hover:bg-cyan-50">
                   {showcaseDemo ? "Decodificar memo real" : "Usar decoder manual"} <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
@@ -2029,7 +2139,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                   </div>
                 ) : null}
                 <Link
-                  href={verifyHrefForDemo(demoCase)}
+                  href={verifyHrefForDemo(demoCase, proofHandoff)}
                   className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-cyan-900"
                 >
                   Verificar este SHA <FileSearch className="h-4 w-4" />
@@ -2056,7 +2166,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
             </div>
             <div className="grid gap-2 sm:grid-cols-2 xl:justify-end">
               {guidedDemo ? (
-                <Link href={verifyHrefForDemo(guidedDemo)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-cyan-900">
+                <Link href={verifyHrefForDemo(guidedDemo, proofHandoff)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-cyan-900">
                   Probar caso demo <FileSearch className="h-4 w-4" />
                 </Link>
               ) : null}
@@ -2138,7 +2248,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                   ))}
                 </div>
                 {showcaseDemo ? (
-                  <Link href={verifyHrefForDemo(showcaseDemo)} className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-white">
+                  <Link href={verifyHrefForDemo(showcaseDemo, proofHandoff)} className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-white">
                     Probar con {showcaseDemo.title} <ArrowRight className="h-4 w-4" />
                   </Link>
                 ) : null}
@@ -2159,7 +2269,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                     : `${guidedDemo.body} Usa este ejemplo para ver la cadena completa: hash canonico, Merkle root, memo publico y datos privados protegidos.`}
                 </p>
                 {!eventHash ? (
-                  <Link href={verifyHrefForDemo(guidedDemo)} className="proof-secondary-cta mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]">
+                  <Link href={verifyHrefForDemo(guidedDemo, proofHandoff)} className="proof-secondary-cta mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]">
                     Cargar SHA de este caso <FileSearch className="h-4 w-4" />
                   </Link>
                 ) : null}
@@ -2290,7 +2400,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                 </a>
               ) : null}
               {guidedDemo ? (
-                <Link href={decoderHrefForDemo(guidedDemo)} className="proof-secondary-cta inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]">
+                <Link href={decoderHrefForDemo(guidedDemo, proofHandoff)} className="proof-secondary-cta inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]">
                   Decodificar Raw input <FileSearch className="h-4 w-4" />
                 </Link>
               ) : null}
@@ -2375,6 +2485,8 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                 </p>
 
               <form action="/proof/verify#proof-decoder" className="proof-flat mt-4 grid gap-3 rounded-2xl border border-cyan-200 bg-white/72 p-4">
+                <input type="hidden" name="scenario" value={proofHandoff.scenario} />
+                <input type="hidden" name="return_to" value={demoLabBackHref} />
                 {eventHash ? <input type="hidden" name="event_hash" value={eventHash} /> : null}
                 {anchorId ? <input type="hidden" name="anchor_id" value={anchorId} /> : null}
                 <label className="grid gap-2 text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan-800">
@@ -2510,7 +2622,14 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                 </div>
 
                 {decodedProof?.matching_demo_case ? (
-                  <Link href={decodedProof.matching_demo_case.verify_path} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-emerald-900">
+                  <Link
+                    href={verifyHrefForIdentity(
+                      decodedProof.matching_demo_case.primary_event_hash,
+                      decodedProof.matching_demo_case.anchor_id,
+                      proofHandoff,
+                    )}
+                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-emerald-900"
+                  >
                     Verificar SHA del caso <ArrowRight className="h-4 w-4" />
                   </Link>
                 ) : null}
@@ -2528,7 +2647,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                 ) : null}
                 <div className="grid gap-2 sm:grid-cols-2">
                   <Link href={demoLabBackHref} className="proof-nav-cta inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]">
-                    Volver a Demo Lab <ArrowRight className="h-4 w-4" />
+                    {demoLabBackLabel} <ArrowRight className="h-4 w-4" />
                   </Link>
                   <Link href="/sdk" className="proof-nav-cta proof-nav-cta--neutral inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]">
                     Ver SDK/API <ArrowRight className="h-4 w-4" />
@@ -2605,11 +2724,20 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
             </div>
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               {connectionCards.map((card) => (
-                <Link key={card.title} href={card.href} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-cyan-200 hover:bg-cyan-50/60">
+                <Link
+                  key={card.title}
+                  href={card.href}
+                  target={card.external ? "_blank" : undefined}
+                  rel={card.external ? "noreferrer" : undefined}
+                  className="rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-cyan-200 hover:bg-cyan-50/60"
+                >
                   <strong className="block text-sm text-slate-950">{card.title}</strong>
                   <span className="mt-2 block text-sm leading-6 text-slate-600">{card.body}</span>
                   <span className="mt-3 inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.12em] text-cyan-800">
-                    {card.cta} <ArrowRight className="h-3.5 w-3.5" />
+                    {card.cta}
+                    {card.external
+                      ? <ExternalLink className="h-3.5 w-3.5" />
+                      : <ArrowRight className="h-3.5 w-3.5" />}
                   </span>
                 </Link>
               ))}

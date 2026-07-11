@@ -1,4 +1,5 @@
 import { evaluateAdminAccess, normalizeScope, resolveAdminTenantScope } from "./admin-auth-policy";
+import { permissionMatches } from "./permission-matcher.js";
 export type AdminScope = "super_admin" | "security_operator" | "tenant_admin" | "reseller" | "readonly_demo";
 
 function resolveScope(req: Request): AdminScope | null {
@@ -30,4 +31,16 @@ export function checkAdmin(req: Request, requiredScopes: AdminScope[] = ["super_
   });
   if (verdict.ok) return null;
   return new Response(verdict.status === 403 ? "Forbidden" : "Unauthorized", { status: verdict.status });
+}
+
+export function checkAdminPermission(req: Request, requiredPermission: string): Response | null {
+  const scope = resolveScope(req);
+  // A trusted unscoped ADMIN_API_KEY remains the legacy super-admin path.
+  if (!scope || scope === "super_admin") return null;
+  const permissions = String(req.headers.get("x-nexid-permissions") || "")
+    .split(",")
+    .map((permission) => permission.trim())
+    .filter(Boolean);
+  if (permissionMatches(permissions, requiredPermission)) return null;
+  return new Response("Forbidden", { status: 403 });
 }

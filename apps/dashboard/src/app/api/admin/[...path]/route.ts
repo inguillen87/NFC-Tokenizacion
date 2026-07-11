@@ -5,6 +5,7 @@ import { productUrls } from "@product/config";
 import { aggregateTenantMetrics } from "@product/core";
 import { getDashboardSession } from "../../../../lib/session";
 import { canReadonlyDemoAccess, resolveAdminProxyPolicy } from "../../../../lib/admin-proxy-policy";
+import { dashboardPermissionMatches, requiredPermissionForAdminResource } from "../../../../lib/permission-policy";
 import {
   aggregateDemoGeoPoints,
   demoRuntimeSummary,
@@ -110,6 +111,11 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
   const tenantFilter = (url.searchParams.get("tenant") || "").trim().toLowerCase();
   const demoTenant = resolveDemoTenant(tenantFilter);
   const demoBatch = demoBatchFor(demoTenant.slug);
+  const demoProofHashes = [
+    `sha256:${"1".repeat(64)}`,
+    `sha256:${"2".repeat(64)}`,
+    `sha256:${"3".repeat(64)}`,
+  ];
   const parseUidRows = (raw: unknown) => {
     const text = String(raw || "").replace(/^\uFEFF/, "").trim();
     if (!text) return [] as string[];
@@ -660,6 +666,55 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
       dataSource: "demo",
     });
   }
+  if (method === "GET" && normalized === "proof/events") {
+    return NextResponse.json({
+      ok: true,
+      events: [
+        { id: "demo-proof-event-001", resource_type: "wine_batch", resource_id: demoBatch.bid, event_type: "origin_attested", payload_hash: demoProofHashes[0], created_at: new Date(Date.now() - 55 * 60 * 1000).toISOString() },
+        { id: "demo-proof-event-002", resource_type: "wine_batch", resource_id: demoBatch.bid, event_type: "qa_release", payload_hash: demoProofHashes[1], created_at: new Date(Date.now() - 35 * 60 * 1000).toISOString() },
+        { id: "demo-proof-event-003", resource_type: "wine_batch", resource_id: demoBatch.bid, event_type: "first_valid_tap", payload_hash: demoProofHashes[2], created_at: new Date(Date.now() - 12 * 60 * 1000).toISOString() },
+      ],
+      demoMode: true,
+      dataSource: "demo",
+    });
+  }
+  if (method === "GET" && normalized === "proof/anchors") {
+    return NextResponse.json({
+      ok: true,
+      anchors: [
+        {
+          id: "demo-anchor-local-001",
+          provider: "none",
+          network: "local",
+          anchor_type: "merkle_root",
+          resource_type: "wine_batch",
+          resource_id: demoBatch.bid,
+          merkle_root: `sha256:${"a".repeat(64)}`,
+          event_hashes_json: demoProofHashes,
+          tx_hash: null,
+          explorer_url: null,
+          status: "local",
+          anchored_at: new Date(Date.now() - 8 * 60 * 1000).toISOString(),
+          created_at: new Date(Date.now() - 8 * 60 * 1000).toISOString(),
+          event_count: demoProofHashes.length,
+        },
+      ],
+      demoMode: true,
+      dataSource: "demo",
+    });
+  }
+  if (method === "GET" && normalized === "proof/providers") {
+    return NextResponse.json({
+      ok: true,
+      providers: [
+        { id: "none", name: "Local proof", network: "local", capability: "tenant_evidence", policy_enabled: true, runtime_status: "ready", write_enabled: true, configured: { rpc: false, contract: false, signer: false }, mode: "local_registry" },
+        { id: "iota", name: "IOTA EVM Testnet", network: "testnet", capability: "hash_only_integrity", policy_enabled: false, runtime_status: "policy_disabled", write_enabled: false, configured: { rpc: false, contract: false, signer: false }, mode: "public_testnet_reference" },
+        { id: "polygon", name: "Polygon Amoy", network: "amoy", capability: "ownership", policy_enabled: false, runtime_status: "policy_disabled", write_enabled: false, configured: { rpc: false, contract: false, signer: false }, mode: "public_testnet_reference" },
+      ],
+      demoMode: true,
+      dataSource: "demo",
+    });
+  }
   if (method === "GET" && normalized === "tokenization/requests") {
     return NextResponse.json({
       ok: true,
@@ -930,6 +985,20 @@ async function forward(req: Request, path: string[]) {
     return NextResponse.json(
       { ok: false, reason: "Dashboard session required for admin proxy access." },
       { status: 401 },
+    );
+  }
+
+  const requiredPermission = requiredPermissionForAdminResource(req.method, normalizedPath);
+  if (
+    requiredPermission
+    && dashboardSession
+    && dashboardSession.role !== "super-admin"
+    && !dashboardPermissionMatches(dashboardSession.permissions, requiredPermission)
+  ) {
+    console.info("[admin_proxy_access_denied]", JSON.stringify({ reason: "permission_required", requiredPermission, method: req.method, path: normalizedPath }));
+    return NextResponse.json(
+      { ok: false, reason: `${requiredPermission} permission required.` },
+      { status: 403 },
     );
   }
 

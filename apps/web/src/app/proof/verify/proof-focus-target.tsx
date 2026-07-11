@@ -1,8 +1,20 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 
-export function ProofFocusTarget({ targetId }: { targetId: string }) {
+type ProofFocusTargetProps = {
+  targetId: string;
+  returnHref: string;
+  returnLabel: string;
+};
+
+export function ProofFocusTarget({
+  targetId,
+  returnHref,
+  returnLabel,
+}: ProofFocusTargetProps) {
   useEffect(() => {
     if (!targetId) return;
 
@@ -22,5 +34,14 @@ export function ProofFocusTarget({ targetId }: { targetId: string }) {
     };
   }, [targetId]);
 
-  return null;
+  if (!targetId) return null;
+
+  return (
+    <nav className="proof-focus-return" aria-label="Continuidad de Proof Verify">
+      <Link href={returnHref} className="proof-focus-return__link">
+        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        <span>{returnLabel}</span>
+      </Link>
+    </nav>
+  );
 }

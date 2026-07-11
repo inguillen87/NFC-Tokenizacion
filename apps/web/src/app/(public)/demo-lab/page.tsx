@@ -61,6 +61,32 @@ function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
+const PROOF_VERIFY_HANDOFF_SCENARIOS: ReadonlySet<string> = new Set([
+  "qr-gs1",
+  "nfc-424",
+  "offline-verifier",
+  "polygon-ownership",
+  "iota-proof",
+  "dual-proof",
+  "sensor-evidence",
+  "authorized-network",
+]);
+
+function buildProofVerifierHandoffHref(scenario?: string) {
+  const requestedScenario = String(scenario || "").trim().toLowerCase();
+  const safeScenario = PROOF_VERIFY_HANDOFF_SCENARIOS.has(requestedScenario)
+    ? requestedScenario
+    : "hub";
+  const returnTo = safeScenario === "hub"
+    ? "/demo-lab"
+    : `/demo-lab?scenario=${encodeURIComponent(safeScenario)}`;
+  const query = new URLSearchParams({
+    scenario: safeScenario,
+    return_to: returnTo,
+  });
+  return `/proof/verify?${query.toString()}`;
+}
+
 function resolveDemoLabLocale(value: string | string[] | undefined): AppLocale | null {
   const raw = firstParam(value)?.trim().toLowerCase();
   if (!raw) return null;
@@ -547,7 +573,7 @@ const HUB_EXECUTIVE_PATHS = [
     eyebrow: "IOTA / hash-only",
     title: "Verifica evidencia publica",
     body: "Un auditor pega un hash y comprueba inclusion sin ver clientes, rutas ni documentos privados.",
-    href: "/proof/verify",
+    href: buildProofVerifierHandoffHref(),
     cta: "Abrir Proof Verify",
   },
   {
@@ -618,6 +644,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
         ? "light"
         : "dark";
   const demoLabReturnTo = buildDemoLabReturnTo(params);
+  const proofVerifierHref = buildProofVerifierHandoffHref(initialScenario);
   const demoThemeClass = requestedTheme === "light" ? "demo-lab-fullscreen-root--light" : "";
 
   // ── FULL-SCREEN SIMULATOR MODE ───────────────────────────────────────────
@@ -703,7 +730,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
                   <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
                 {panelKey === "iota-proof" || panelKey === "dual-proof" ? (
-                  <Link href="/proof/verify" className="demo-lab-context-strip__doc-link inline-flex h-9 items-center gap-2 rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 text-xs font-bold text-cyan-100">
+                  <Link href={proofVerifierHref} className="demo-lab-context-strip__doc-link inline-flex h-9 items-center gap-2 rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 text-xs font-bold text-cyan-100">
                     Abrir Proof Verify & Decoder
                     <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
@@ -764,7 +791,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
           {/* Theme toggle — reads localStorage "theme" key on mount */}
           <DemoLabThemeToggle initialTheme={requestedTheme} initialReturnTo={demoLabReturnTo} />
           <Link
-            href="/proof/verify"
+            href={proofVerifierHref}
             className="inline-flex min-h-10 items-center justify-self-end rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 text-xs font-black text-cyan-100 transition-colors hover:border-cyan-200/50 hover:bg-cyan-300/16 md:gap-2"
           >
             <ShieldCheck className="h-3.5 w-3.5" />

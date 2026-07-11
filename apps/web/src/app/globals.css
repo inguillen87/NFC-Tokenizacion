@@ -48356,7 +48356,7 @@ html[data-theme="light"] .demo-lab-hub-signal-card__icon {
     z-index: 2;
   }
 
-  .demo-lab-hub-nav a[href="/proof/verify"] {
+  .demo-lab-hub-nav a[href^="/proof/verify"] {
     grid-column: 2 !important;
     justify-self: end !important;
     min-width: 0 !important;
@@ -48917,13 +48917,13 @@ html[data-theme="light"] .demo-lab-wizard-brief__proof span {
 }
 
 .demo-lab-hub-root .theme-toggle,
-.demo-lab-hub-nav a[href="/proof/verify"] {
+.demo-lab-hub-nav a[href^="/proof/verify"] {
   border-color: rgba(103, 232, 249, 0.38) !important;
   background: rgba(8, 145, 178, 0.18) !important;
   color: #e0f2fe !important;
 }
 
-.demo-lab-hub-nav a[href="/proof/verify"] svg,
+.demo-lab-hub-nav a[href^="/proof/verify"] svg,
 .demo-lab-hub-root .theme-toggle svg {
   color: currentColor !important;
 }
@@ -49282,9 +49282,9 @@ html[data-theme="light"] .demo-lab-hub-root .demo-lab-hub-nav,
 html.theme-light .demo-lab-hub-root .theme-toggle,
 html[data-theme="light"] .demo-lab-hub-root .theme-toggle,
 .demo-lab-hub-root--light .theme-toggle,
-html.theme-light .demo-lab-hub-nav a[href="/proof/verify"],
-html[data-theme="light"] .demo-lab-hub-nav a[href="/proof/verify"],
-.demo-lab-hub-root--light .demo-lab-hub-nav a[href="/proof/verify"] {
+html.theme-light .demo-lab-hub-nav a[href^="/proof/verify"],
+html[data-theme="light"] .demo-lab-hub-nav a[href^="/proof/verify"],
+.demo-lab-hub-root--light .demo-lab-hub-nav a[href^="/proof/verify"] {
   border-color: rgba(14, 116, 144, 0.28) !important;
   background: #ecfeff !important;
   color: #075985 !important;
@@ -50396,7 +50396,8 @@ html[data-theme="light"] .demo-lab-hub-proof-stack__card span,
   }
 
   .demo-lab-hub-quick-launch__card {
-    min-height: 7.2rem;
+    min-height: 8.55rem;
+    grid-template-rows: 2.05rem minmax(3rem, auto) minmax(1.85rem, auto);
     border-radius: 1rem;
     padding: 0.82rem;
   }
@@ -50408,7 +50409,12 @@ html[data-theme="light"] .demo-lab-hub-proof-stack__card span,
   }
 
   .demo-lab-hub-quick-launch__card strong {
-    min-height: 2.05rem;
+    display: block;
+    min-width: 0;
+    min-height: 3rem;
+    overflow: visible;
+    -webkit-box-orient: initial;
+    -webkit-line-clamp: unset;
     font-size: 0.78rem;
     line-height: 1.15;
   }
@@ -51308,6 +51314,64 @@ html[data-theme="light"] .demo-lab-crm-mobile-card__actions button,
   }
 }
 
+.proof-focus-return {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .proof-focus-return {
+    position: fixed;
+    z-index: 80;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    justify-content: center;
+    border-top: 1px solid rgba(103, 232, 249, 0.24);
+    background: rgba(2, 6, 23, 0.94);
+    padding: 0.65rem max(1rem, env(safe-area-inset-right)) calc(0.65rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+    backdrop-filter: blur(18px);
+  }
+
+  .proof-focus-return__link {
+    display: inline-flex;
+    width: 100%;
+    max-width: 24rem;
+    min-width: 0;
+    min-height: 3rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border: 1px solid rgba(103, 232, 249, 0.42);
+    border-radius: 999px;
+    background: rgba(8, 145, 178, 0.2);
+    padding: 0.7rem 1rem;
+    color: #e0f2fe;
+    font-size: 0.75rem;
+    font-weight: 900;
+    line-height: 1.2;
+    text-align: center;
+  }
+
+  .proof-focus-return__link:focus-visible {
+    outline: 3px solid #67e8f9;
+    outline-offset: 2px;
+  }
+
+  html.theme-light .proof-focus-return,
+  html[data-theme="light"] .proof-focus-return {
+    border-top-color: rgba(14, 116, 144, 0.2);
+    background: rgba(248, 250, 252, 0.96);
+  }
+
+  html.theme-light .proof-focus-return__link,
+  html[data-theme="light"] .proof-focus-return__link {
+    border-color: rgba(14, 116, 144, 0.32);
+    background: #ecfeff;
+    color: #075985;
+  }
+}
+
 @media (max-width: 640px) {
   .demo-lab-trust-scenarios--wizard .demo-lab-trust-scenarios__grid {
     grid-template-columns: minmax(0, 1fr) !important;
@@ -51387,7 +51451,7 @@ html[data-theme="light"] .demo-lab-crm-mobile-card__actions button,
     max-width: none !important;
   }
 
-  .demo-lab-hub-root .demo-lab-hub-nav.demo-lab-hub-nav--mobile-safe a[href="/proof/verify"] {
+  .demo-lab-hub-root .demo-lab-hub-nav.demo-lab-hub-nav--mobile-safe a[href^="/proof/verify"] {
     min-width: 0 !important;
     justify-content: center !important;
     overflow: hidden !important;

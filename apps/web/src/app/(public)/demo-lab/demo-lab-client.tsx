@@ -190,7 +190,11 @@ type DemoTrustScenarioLabels = {
   businessOutcome: string;
 };
 
-function getTrustScenarioContext(key: DemoTrustScenarioKey | null, locale: AppLocale): DemoTrustScenarioContext | null {
+function getTrustScenarioContext(
+  key: DemoTrustScenarioKey | null,
+  locale: AppLocale,
+  proofVerifierHref: string,
+): DemoTrustScenarioContext | null {
   if (!key) return null;
   const isEn = locale === "en";
   const isBr = locale === "pt-BR";
@@ -331,7 +335,7 @@ function getTrustScenarioContext(key: DemoTrustScenarioKey | null, locale: AppLo
           { label: "Verificar", body: "Permite a cualquiera probar inclusion en Proof Verify." },
         ],
       businessOutcome: isEn ? "Auditors get proof of existence while clients and routes stay private." : "Auditores prueban existencia sin ver clientes, rutas ni documentos privados.",
-      primaryHref: DEMO_PUBLIC_PROOF_URL,
+      primaryHref: proofVerifierHref,
       primaryLabel: isEn ? "Open Proof Verify demo" : "Abrir Proof Verify demo",
       secondaryHref: "/docs#trust-layers",
       secondaryLabel: isEn ? "Read IOTA layer" : "Leer capa IOTA",
@@ -355,7 +359,7 @@ function getTrustScenarioContext(key: DemoTrustScenarioKey | null, locale: AppLo
           { label: "Auditoria", body: "IOTA ancla evidencia hash-only." },
         ],
       businessOutcome: isEn ? "A serious DPP story without mixing PII, ownership and audit data." : "Historia DPP seria sin mezclar PII, ownership y datos de auditoria.",
-      primaryHref: DEMO_PUBLIC_PROOF_URL,
+      primaryHref: proofVerifierHref,
       primaryLabel: isEn ? "Verify public proof" : "Verificar prueba publica",
       secondaryHref: "/docs#trust-layers",
       secondaryLabel: isEn ? "Read DPP model" : "Leer modelo DPP",
@@ -379,7 +383,7 @@ function getTrustScenarioContext(key: DemoTrustScenarioKey | null, locale: AppLo
           { label: "Actuar", body: "Marca riesgo antes de recibir o liquidar." },
         ],
       businessOutcome: isEn ? "Industrial traceability becomes auditable without exposing operations." : "La trazabilidad industrial queda auditable sin exponer operacion.",
-      primaryHref: DEMO_PUBLIC_PROOF_URL,
+      primaryHref: proofVerifierHref,
       primaryLabel: isEn ? "Open proof receipt" : "Abrir recibo proof",
       secondaryHref: "/docs#trust-layers",
       secondaryLabel: isEn ? "Read sensor flow" : "Leer flujo sensor",
@@ -538,7 +542,22 @@ const LOCATIONS = {
 type DemoLocation = (typeof LOCATIONS)[keyof typeof LOCATIONS];
 
 const STABLE_DEMO_TIME = "2026-05-01T00:00:00.000Z";
-const DEMO_PUBLIC_PROOF_URL = "/proof/verify?event_hash=sha256%3A0ea0478b694f01a5a76eda955a78c74701786b3d13ac241e6f6cfc3363938320&anchor_id=33333333-3333-4333-8333-333333333333";
+const DEMO_PUBLIC_PROOF_EVENT_HASH = "sha256:0ea0478b694f01a5a76eda955a78c74701786b3d13ac241e6f6cfc3363938320";
+const DEMO_PUBLIC_PROOF_ANCHOR_ID = "33333333-3333-4333-8333-333333333333";
+
+function buildDemoPublicProofHref(scenario: DemoTrustScenarioKey | null) {
+  const safeScenario = scenario || "hub";
+  const returnTo = scenario
+    ? `/demo-lab?scenario=${encodeURIComponent(scenario)}`
+    : "/demo-lab";
+  const query = new URLSearchParams({
+    event_hash: DEMO_PUBLIC_PROOF_EVENT_HASH,
+    anchor_id: DEMO_PUBLIC_PROOF_ANCHOR_ID,
+    scenario: safeScenario,
+    return_to: returnTo,
+  });
+  return `/proof/verify?${query.toString()}`;
+}
 
 const copy: Record<AppLocale, {
   heroEyebrow: string;
@@ -1357,7 +1376,14 @@ function DemoLabStudioHero({
   onReplay: () => void;
 }) {
   const verticalList = DEMO_VERTICAL_ORDER;
-  const trustContext = useMemo(() => getTrustScenarioContext(activeTrustScenario, locale), [activeTrustScenario, locale]);
+  const proofVerifierHref = useMemo(
+    () => buildDemoPublicProofHref(activeTrustScenario),
+    [activeTrustScenario],
+  );
+  const trustContext = useMemo(
+    () => getTrustScenarioContext(activeTrustScenario, locale, proofVerifierHref),
+    [activeTrustScenario, locale, proofVerifierHref],
+  );
   const studioRef = useRef<HTMLElement>(null);
   const wizardNavRef = useRef<HTMLElement>(null);
 
@@ -1717,7 +1743,7 @@ function DemoLabStudioHero({
             <div className="demo-lab-wizard-map-proof-strip">
               <span>{locale === "en" ? "HASH-ONLY PUBLIC PROOF" : locale === "pt-BR" ? "PROVA PUBLICA HASH-ONLY" : "PRUEBA PUBLICA HASH-ONLY"}</span>
               <strong>{locale === "en" ? "Map for people. Hash receipt for auditors. Private data stays in nexID." : locale === "pt-BR" ? "Mapa para pessoas. Recibo hash para auditoria. Dados privados ficam no nexID." : "Mapa para personas. Recibo hash para auditoria. Datos privados quedan en nexID."}</strong>
-              <Link href={DEMO_PUBLIC_PROOF_URL}>
+              <Link href={proofVerifierHref}>
                 Proof Verify
                 <ChevronRight className="h-3.5 w-3.5" />
               </Link>
@@ -1742,7 +1768,7 @@ function DemoLabStudioHero({
                     </article>
                   ))}
                 </div>
-                <Link href={DEMO_PUBLIC_PROOF_URL} className="demo-lab-wizard-proof-link">
+                <Link href={proofVerifierHref} className="demo-lab-wizard-proof-link">
                   {proofVerifierCta}
                   <ChevronRight className="h-4 w-4" />
                 </Link>
@@ -1812,7 +1838,7 @@ function DemoLabStudioHero({
                 <UserRound className="h-4 w-4" />
                 <span>{locale === "en" ? "Claim owner" : locale === "pt-BR" ? "Reclamar dono" : "Reclamar dueno"}</span>
               </button>
-              <Link href={DEMO_PUBLIC_PROOF_URL}>
+              <Link href={proofVerifierHref}>
                 <ShieldCheck className="h-4 w-4" />
                 <span>Proof Verify</span>
               </Link>

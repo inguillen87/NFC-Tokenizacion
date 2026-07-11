@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { UserRole } from "./dashboard-content";
 import { dashboardDemoAccessAllowedForRole, dashboardFallbackSessionAllowed } from "./dashboard-access-flags";
+import { dashboardPermissionMatches } from "./permission-policy";
 
 export const DASHBOARD_SESSION_COOKIE = "nexid_dashboard_session";
 export const DASHBOARD_SESSION_SNAPSHOT_COOKIE = "nexid_dashboard_session_snapshot";
@@ -72,23 +73,6 @@ function parseDemoToken(token: string): DashboardSession | null {
   }
 }
 
-function permissionMatches(granted: string[], requested?: string | null) {
-  const current = String(requested || "").trim();
-  if (!current) return true;
-
-  for (const rawGrant of Array.isArray(granted) ? granted : []) {
-    const grant = String(rawGrant || "").trim();
-    if (!grant) continue;
-    if (grant === "*" || grant === current) return true;
-    if (grant.endsWith(":*")) {
-      const scope = grant.slice(0, -2);
-      if (current === scope || current.startsWith(`${scope}:`)) return true;
-    }
-  }
-
-  return false;
-}
-
 export async function getDashboardSession() {
   const cookieStore = await cookies();
   const token = cookieStore.get(DASHBOARD_SESSION_COOKIE)?.value;
@@ -121,6 +105,6 @@ export async function getDashboardSession() {
 export async function requireDashboardSession(permission?: string) {
   const session = await getDashboardSession();
   if (!session) redirect("/login");
-  if (permission && session.role !== "super-admin" && !permissionMatches(session.permissions, permission)) redirect("/");
+  if (permission && session.role !== "super-admin" && !dashboardPermissionMatches(session.permissions, permission)) redirect("/");
   return session;
 }

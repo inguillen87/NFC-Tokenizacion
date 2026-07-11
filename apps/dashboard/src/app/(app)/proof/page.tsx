@@ -1,203 +1,749 @@
+import { productUrls, withPath } from "@product/config";
 import Link from "next/link";
 import { headers } from "next/headers";
-import { Terminal, ShieldCheck, Cpu, Activity, Zap, Server } from "lucide-react";
+import {
+  Activity,
+  ArrowUpRight,
+  BadgeCheck,
+  Boxes,
+  CircleAlert,
+  Database,
+  ExternalLink,
+  FileCheck2,
+  Fingerprint,
+  Hash,
+  Link2,
+  Network,
+  ShieldCheck,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { requireDashboardSession } from "../../../lib/session";
 import { getServerOrigin } from "../../../lib/server-origin";
+import styles from "./page.module.css";
 
-async function getAnchors(origin: string, cookie: string) {
+const PUBLIC_VERIFY_URL = withPath(productUrls.web, "/proof/verify");
+const PUBLIC_OWNERSHIP_URL = withPath(productUrls.web, "/proof/ownership");
+const PUBLIC_DEMO_LAB_URL = withPath(productUrls.web, "/demo-lab");
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+type DataMode = "production" | "demo" | "unavailable";
+
+type FetchResult<T> = {
+  ok: boolean;
+  value: T;
+  mode: DataMode;
+};
+
+type ProofAnchor = {
+  id?: string | null;
+  provider?: string | null;
+  network?: string | null;
+  resource_type?: string | null;
+  resource_id?: string | null;
+  merkle_root?: string | null;
+  event_count?: number | string | null;
+  event_hashes_json?: unknown;
+  event_hashes?: unknown;
+  event_hash?: string | null;
+  first_event_hash?: string | null;
+  tx_hash?: string | null;
+  explorer_url?: string | null;
+  status?: string | null;
+  anchored_at?: string | null;
+  created_at?: string | null;
+};
+
+type ProofEvent = {
+  id?: string | null;
+  anchor_id?: string | null;
+  resource_type?: string | null;
+  resource_id?: string | null;
+  event_type?: string | null;
+  payload_hash?: string | null;
+  event_hash?: string | null;
+  hash?: string | null;
+  created_at?: string | null;
+};
+
+type TokenizationRequest = {
+  network?: string | null;
+  tx_hash?: string | null;
+};
+
+type PublicProofReceipt = {
+  tx_hash?: string | null;
+  explorer_url?: string | null;
+  certificate_url?: string | null;
+};
+
+type PublicProofCase = {
+  id?: string | null;
+  title?: string | null;
+  vertical?: string | null;
+  provider?: string | null;
+  network?: string | null;
+  status?: string | null;
+  resource_type?: string | null;
+  resource_id?: string | null;
+  primary_event_hash?: string | null;
+  anchor_id?: string | null;
+  tx_hash?: string | null;
+  explorer_url?: string | null;
+  certificate_url?: string | null;
+  public_receipt?: PublicProofReceipt | null;
+};
+
+type IotaTestnetReference = {
+  network?: string | null;
+  contract_address?: string | null;
+  contract_explorer_url?: string | null;
+  demo_tx_hash?: string | null;
+  demo_tx_explorer_url?: string | null;
+};
+
+type PolygonTestnetReference = {
+  network?: string | null;
+  contract_address?: string | null;
+  contract_explorer_url?: string | null;
+  demo_tx_hash?: string | null;
+  demo_tx_explorer_url?: string | null;
+  demo_token_id?: string | null;
+  ownership_certificate_url?: string | null;
+  certificate_url?: string | null;
+};
+
+type PublicProofPayload = {
+  ok?: boolean;
+  cases?: PublicProofCase[];
+  testnet?: {
+    iota?: IotaTestnetReference | null;
+    polygon?: PolygonTestnetReference | null;
+  } | null;
+};
+
+type PrivateDataState = "production" | "demo" | "partial" | "unavailable";
+type StatusTone = "success" | "pending" | "danger" | "neutral";
+
+const dateFormatter = new Intl.DateTimeFormat("es-AR", {
+  dateStyle: "medium",
+  timeStyle: "short",
+  timeZone: "UTC",
+});
+
+function unavailable<T>(value: T): FetchResult<T> {
+  return { ok: false, value, mode: "unavailable" };
+}
+
+async function fetchDashboardPayload<T extends { ok?: boolean }>(
+  url: string,
+  cookie: string,
+  fallback: T,
+): Promise<FetchResult<T>> {
   try {
-    const response = await fetch(`${origin}/api/admin/proof/anchors`, {
+    const response = await fetch(url, {
       headers: cookie ? { cookie } : undefined,
       cache: "no-store",
     });
-    if (!response.ok) return [];
-    const payload = await response.json();
-    return payload.anchors || [];
+    if (!response.ok) return unavailable(fallback);
+    const value = await response.json() as T;
+    if (!value || value.ok !== true) return unavailable(fallback);
+    return {
+      ok: true,
+      value,
+      mode: response.headers.get("x-nexid-data-mode") === "demo" ? "demo" : "production",
+    };
   } catch {
-    return [];
+    return unavailable(fallback);
   }
+}
+
+async function getAnchors(origin: string, cookie: string) {
+  return fetchDashboardPayload(
+    `${origin}/api/admin/proof/anchors`,
+    cookie,
+    { ok: false, anchors: [] as ProofAnchor[] },
+  );
+}
+
+async function getEvents(origin: string, cookie: string) {
+  return fetchDashboardPayload(
+    `${origin}/api/admin/proof/events?limit=60`,
+    cookie,
+    { ok: false, events: [] as ProofEvent[] },
+  );
+}
+
+async function getTokenizationRequests(origin: string, cookie: string) {
+  return fetchDashboardPayload(
+    `${origin}/api/admin/tokenization/requests?limit=80`,
+    cookie,
+    { ok: false, rows: [] as TokenizationRequest[] },
+  );
+}
+
+async function getPublicProofCases(): Promise<FetchResult<PublicProofPayload>> {
+  const apiOrigin = String(productUrls.api || "").replace(/\/$/, "");
+  const fallback: PublicProofPayload = { ok: false, cases: [], testnet: {} };
+  if (!apiOrigin) return unavailable(fallback);
+
+  try {
+    const response = await fetch(`${apiOrigin}/public/proof/demo-cases`, { cache: "no-store" });
+    if (!response.ok) return unavailable(fallback);
+    const value = await response.json() as PublicProofPayload;
+    if (!value || value.ok !== true) return unavailable(fallback);
+    return { ok: true, value, mode: "production" };
+  } catch {
+    return unavailable(fallback);
+  }
+}
+
+function readText(value: unknown) {
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" || typeof value === "bigint") return String(value);
+  return "";
+}
+
+function normalize(value: unknown) {
+  return readText(value).toLowerCase();
+}
+
+function readCount(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? Math.floor(parsed) : null;
+}
+
+function formatCount(value: number | null) {
+  return value === null ? "-" : value.toLocaleString("es-AR");
+}
+
+function formatTimestamp(value: unknown) {
+  const raw = readText(value);
+  if (!raw) return "-";
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return "-";
+  return `${dateFormatter.format(date)} UTC`;
+}
+
+function shortHash(value: unknown, start = 14, end = 10) {
+  const hash = readText(value);
+  if (!hash) return "-";
+  if (hash.length <= start + end + 3) return hash;
+  return `${hash.slice(0, start)}...${hash.slice(-end)}`;
+}
+
+function safeHttpUrl(value: unknown): string | null {
+  const raw = readText(value);
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+function hashList(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map(readText).filter(Boolean);
+  const raw = readText(value);
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? parsed.map(readText).filter(Boolean) : [];
+  } catch {
+    return raw.toLowerCase().startsWith("sha256:") ? [raw] : [];
+  }
+}
+
+function eventHash(event: ProofEvent) {
+  return readText(event.payload_hash || event.event_hash || event.hash);
+}
+
+function firstEventHash(anchor: ProofAnchor, events: ProofEvent[]) {
+  const direct = [
+    ...hashList(anchor.event_hashes_json),
+    ...hashList(anchor.event_hashes),
+    readText(anchor.first_event_hash),
+    readText(anchor.event_hash),
+  ].find(Boolean);
+  if (direct) return direct;
+
+  const anchorId = readText(anchor.id);
+  if (!anchorId) return "";
+  const matchingEvent = events.find((event) => readText(event.anchor_id) === anchorId);
+  return matchingEvent ? eventHash(matchingEvent) : "";
+}
+
+function publicVerifyHref(hash: string, anchorId: string) {
+  if (!hash) return null;
+  const params = new URLSearchParams({ event_hash: hash });
+  if (UUID_PATTERN.test(anchorId)) params.set("anchor_id", anchorId);
+  return `${PUBLIC_VERIFY_URL}?${params.toString()}`;
+}
+
+function statusPresentation(value: unknown): { label: string; tone: StatusTone } {
+  const status = normalize(value);
+  if (status === "confirmed" || status === "completed" || status === "succeeded") {
+    return { label: "Confirmado", tone: "success" };
+  }
+  if (status === "failed" || status === "error" || status === "rejected") {
+    return { label: "Fallido", tone: "danger" };
+  }
+  if (status === "submitted" || status === "pending" || status === "processing") {
+    return { label: status === "submitted" ? "Enviado" : "Pendiente", tone: "pending" };
+  }
+  return { label: readText(value) || "No informado", tone: "neutral" };
+}
+
+function sourceLabel(result: FetchResult<unknown>) {
+  if (!result.ok) return "no disponible";
+  return result.mode === "demo" ? "sandbox" : "tenant";
+}
+
+function privateDataState(results: Array<FetchResult<unknown>>): PrivateDataState {
+  if (results.some((result) => result.mode === "demo")) return "demo";
+  const available = results.filter((result) => result.ok).length;
+  if (available === results.length) return "production";
+  return available > 0 ? "partial" : "unavailable";
+}
+
+function privateStateLabel(state: PrivateDataState) {
+  if (state === "demo") return "Sandbox BFF";
+  if (state === "partial") return "Lectura parcial";
+  if (state === "unavailable") return "Datos no disponibles";
+  return "Datos del tenant";
+}
+
+function isOwnershipTransaction(row: TokenizationRequest) {
+  const network = normalize(row.network);
+  return Boolean(readText(row.tx_hash)) && (network.includes("polygon") || network.includes("amoy"));
+}
+
+function isRealIotaReference(demoCase: PublicProofCase) {
+  if (normalize(demoCase.provider) !== "iota") return false;
+  const anchorTx = Boolean(readText(demoCase.tx_hash) && safeHttpUrl(demoCase.explorer_url));
+  const receiptTx = Boolean(readText(demoCase.public_receipt?.tx_hash) && safeHttpUrl(demoCase.public_receipt?.explorer_url));
+  return anchorTx || receiptTx || Boolean(safeHttpUrl(demoCase.certificate_url || demoCase.public_receipt?.certificate_url));
+}
+
+function resourceLabel(resourceType: unknown, resourceId: unknown) {
+  const type = readText(resourceType);
+  const id = readText(resourceId);
+  return {
+    type: type || "Recurso no informado",
+    id: id || "Sin identificador",
+  };
+}
+
+type Metric = {
+  label: string;
+  value: number | null;
+  detail: string;
+  icon: LucideIcon;
+};
+
+function EmptyState({ children }: { children: string }) {
+  return (
+    <div className={styles.emptyState} role="status">
+      <CircleAlert aria-hidden="true" />
+      <span>{children}</span>
+    </div>
+  );
 }
 
 export default async function ProofPage() {
   await requireDashboardSession("proof:read");
   const origin = await getServerOrigin();
   const cookie = (await headers()).get("cookie") || "";
-  const anchors = await getAnchors(origin, cookie);
+
+  const eventsPromise = getEvents(origin, cookie);
+  const tokenizationPromise = getTokenizationRequests(origin, cookie);
+  const publicProofPromise = getPublicProofCases();
+  const anchorsResult = await getAnchors(origin, cookie);
+  const [eventsResult, tokenizationResult, publicProofResult] = await Promise.all([
+    eventsPromise,
+    tokenizationPromise,
+    publicProofPromise,
+  ]);
+
+  const anchors = anchorsResult.ok && Array.isArray(anchorsResult.value.anchors)
+    ? anchorsResult.value.anchors
+    : [];
+  const events = eventsResult.ok && Array.isArray(eventsResult.value.events)
+    ? eventsResult.value.events
+    : [];
+  const tokenizationRows = tokenizationResult.ok && Array.isArray(tokenizationResult.value.rows)
+    ? tokenizationResult.value.rows
+    : [];
+  const publicCases = publicProofResult.ok && Array.isArray(publicProofResult.value.cases)
+    ? publicProofResult.value.cases
+    : [];
+
+  const confirmedAnchors = anchors.filter((anchor) => normalize(anchor.status) === "confirmed").length;
+  const includedEventCount = anchors.reduce((total, anchor) => total + (readCount(anchor.event_count) || 0), 0);
+  const ownershipTxCount = tokenizationRows.filter(isOwnershipTransaction).length;
+  const privateResults: Array<FetchResult<unknown>> = [anchorsResult, eventsResult, tokenizationResult];
+  const tenantState = privateDataState(privateResults);
+
+  const metrics: Metric[] = [
+    {
+      label: "Anchors registrados",
+      value: anchorsResult.ok ? anchors.length : null,
+      detail: anchorsResult.ok ? "Total devuelto por el BFF" : "No disponible",
+      icon: Database,
+    },
+    {
+      label: "Anchors confirmados",
+      value: anchorsResult.ok ? confirmedAnchors : null,
+      detail: anchorsResult.ok ? "Estado confirmado" : "No disponible",
+      icon: BadgeCheck,
+    },
+    {
+      label: "Eventos recientes",
+      value: eventsResult.ok ? events.length : null,
+      detail: eventsResult.ok ? "Ventana BFF de hasta 60" : "No disponible",
+      icon: Activity,
+    },
+    {
+      label: "Eventos incluidos",
+      value: anchorsResult.ok ? includedEventCount : null,
+      detail: anchorsResult.ok ? "Suma de event_count" : "No disponible",
+      icon: Hash,
+    },
+    {
+      label: "Ownership tx",
+      value: tokenizationResult.ok ? ownershipTxCount : null,
+      detail: tokenizationResult.ok ? "Polygon con tx_hash" : "No disponible",
+      icon: Fingerprint,
+    },
+  ];
+
+  const anchorsToDisplay = anchors.slice(0, 20);
+  const eventsToDisplay = events.slice(0, 12);
+  const realIotaCases = publicCases.filter(isRealIotaReference);
+  const iotaReference = publicProofResult.value.testnet?.iota || null;
+  const polygonReference = publicProofResult.value.testnet?.polygon || null;
+  const iotaContractHref = safeHttpUrl(iotaReference?.contract_explorer_url);
+  const iotaDemoTxHref = safeHttpUrl(iotaReference?.demo_tx_explorer_url);
+  const polygonContractHref = safeHttpUrl(polygonReference?.contract_explorer_url);
+  const polygonTxHref = safeHttpUrl(polygonReference?.demo_tx_explorer_url);
+  const polygonCertificateHref = safeHttpUrl(
+    polygonReference?.certificate_url || polygonReference?.ownership_certificate_url,
+  );
 
   return (
-    <main className="min-h-screen bg-black text-emerald-500 font-mono p-4 sm:p-6 lg:p-8 relative overflow-hidden">
-      {/* Background Cyberpunk Elements */}
-      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,rgba(16,185,129,0.08)_0%,transparent_80%)]" />
-      <div className="absolute top-0 left-0 w-full h-[1px] bg-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,1)] animate-pulse" />
-      <div className="absolute inset-0 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5 mix-blend-overlay" />
-      
-      <div className="max-w-7xl mx-auto relative z-10">
-        {/* Header */}
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-emerald-500/30 pb-6 mb-8 gap-6">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-emerald-950/40 rounded-xl border border-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.2)]">
-              <Activity className="h-8 w-8 text-emerald-400 animate-pulse drop-shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-            </div>
-            <div>
-              <h1 className="text-3xl sm:text-4xl font-black text-emerald-400 tracking-tighter uppercase drop-shadow-[0_0_10px_rgba(52,211,153,0.8)]">
-                Nexus Command Center
-              </h1>
-              <div className="flex items-center gap-2 mt-2">
-                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping shadow-[0_0_5px_rgba(52,211,153,1)]" />
-                <p className="text-emerald-600 text-xs uppercase tracking-widest font-bold">
-                  Live Hash Validation Stream :: SYS.ONLINE
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex gap-4 text-xs font-bold w-full md:w-auto">
-            <div className="flex-1 md:flex-none bg-emerald-950/40 border border-emerald-500/30 px-4 py-2 rounded flex flex-col items-start md:items-end shadow-inner">
-              <span className="text-emerald-700 uppercase">Network</span>
-              <span className="text-emerald-400 flex items-center gap-1.5 drop-shadow-[0_0_5px_rgba(52,211,153,0.8)] text-sm">
-                <Zap className="h-3.5 w-3.5 text-emerald-300" /> IOTA EVM
-              </span>
-            </div>
-            <div className="flex-1 md:flex-none bg-emerald-950/40 border border-emerald-500/30 px-4 py-2 rounded flex flex-col items-start md:items-end shadow-inner">
-              <span className="text-emerald-700 uppercase">Status</span>
-              <span className="text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.8)] text-sm flex items-center gap-1.5">
-                 <ShieldCheck className="h-3.5 w-3.5" /> SECURE
-              </span>
-            </div>
-          </div>
-        </header>
-
-        {/* Grid of panels */}
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-          
-          {/* Main Terminal Feed */}
-          <div className="xl:col-span-3 bg-black/80 border border-emerald-500/20 rounded-xl shadow-inner flex flex-col relative overflow-hidden h-[70vh] min-h-[600px]">
-            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
-            
-            <div className="bg-emerald-950/40 px-5 py-3 border-b border-emerald-500/20 flex items-center justify-between z-10 backdrop-blur-sm">
-              <div className="flex items-center gap-3">
-                <Terminal className="h-4 w-4 text-emerald-400" />
-                <span className="text-xs uppercase text-emerald-400 tracking-widest font-black text-shadow-sm">Anchors.Log</span>
-              </div>
-              <div className="text-[10px] text-emerald-600 font-bold bg-emerald-950/80 px-2 py-1 rounded border border-emerald-500/20">
-                TOTAL_RECORDS: {anchors.length}
-              </div>
-            </div>
-            
-            <div className="p-4 sm:p-6 space-y-4 overflow-y-auto scrollbar-thin scrollbar-thumb-emerald-700 scrollbar-track-transparent flex-1 z-10">
-              {anchors.length === 0 ? (
-                <div className="text-emerald-700 animate-pulse text-sm font-bold flex items-center gap-3">
-                  <span className="w-1.5 h-4 bg-emerald-600 inline-block animate-ping" />
-                  AWAITING INCOMING HASHES...
-                </div>
-              ) : (
-                anchors.map((anchor: any, idx: number) => (
-                  <div key={anchor.id || idx} className="group flex flex-col bg-emerald-950/20 hover:bg-emerald-900/40 border border-emerald-500/10 hover:border-emerald-500/40 transition-colors p-4 rounded-lg relative">
-                    {/* Decorative cyber corner */}
-                    <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-emerald-500/30 group-hover:border-emerald-400 rounded-br-lg transition-colors" />
-                    <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-emerald-500/30 group-hover:border-emerald-400 rounded-tl-lg transition-colors" />
-                    
-                    <div className="flex flex-wrap justify-between items-start gap-2 mb-3">
-                      <span className="text-xs sm:text-sm text-emerald-600 font-bold tracking-wider flex items-center gap-2">
-                        <span className="text-emerald-800">[</span>
-                        {new Date(anchor.created_at || Date.now()).toISOString()}
-                        <span className="text-emerald-800">]</span>
-                      </span>
-                      <span className="text-[10px] sm:text-xs bg-emerald-500/10 text-emerald-300 px-2 py-1 rounded uppercase border border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.1)] font-bold">
-                        {anchor.network || "UNKNOWN"}
-                      </span>
-                    </div>
-                    
-                    <div className="flex flex-col gap-1.5 mb-4">
-                      <span className="text-[10px] text-emerald-700 uppercase font-bold tracking-widest flex items-center gap-2">
-                        Merkle Root
-                      </span>
-                      <span className="text-sm sm:text-base md:text-lg text-emerald-400 break-all font-black drop-shadow-[0_0_5px_rgba(52,211,153,0.5)] group-hover:text-emerald-200 group-hover:drop-shadow-[0_0_12px_rgba(52,211,153,0.9)] transition-all">
-                        <span className="text-emerald-700 mr-2 group-hover:text-emerald-500">&gt;</span>
-                        {anchor.merkle_root || "0x0000000000000000000000000000000000000000000000000000000000000000"}
-                      </span>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-4 text-xs text-emerald-600 border-t border-emerald-500/10 pt-3 group-hover:border-emerald-500/30 transition-colors">
-                      <div className="flex items-center gap-1.5 bg-black/40 px-2 py-1 rounded">
-                        <Server className="h-3 w-3 text-emerald-500" />
-                        <span className="font-bold">{anchor.provider || "SYSTEM"}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 bg-black/40 px-2 py-1 rounded">
-                        <Cpu className="h-3 w-3 text-emerald-500" />
-                        <span className="font-bold">{anchor.resource_type || "batch"}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 bg-black/40 px-2 py-1 rounded text-emerald-500">
-                        <span className="font-bold tracking-widest text-[10px]">EVT_COUNT:</span>
-                        <span className="font-black text-emerald-400">{anchor.event_count || 0}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-            
-            {/* Fade effect at bottom */}
-            <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-black to-transparent pointer-events-none z-20" />
-          </div>
-
-          {/* Side Panel */}
-          <div className="space-y-6">
-            <div className="bg-emerald-950/20 border border-emerald-500/30 rounded-xl p-6 relative overflow-hidden group shadow-inner">
-              <div className="absolute -right-4 -top-4 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl group-hover:bg-emerald-500/10 transition-all pointer-events-none" />
-              <h3 className="text-emerald-400 font-black uppercase tracking-widest text-sm flex items-center gap-2 mb-6 border-b border-emerald-500/20 pb-3">
-                <ShieldCheck className="h-4 w-4" /> System Integrity
-              </h3>
-              
-              <div className="space-y-5">
-                <div>
-                  <div className="flex justify-between text-xs mb-2">
-                    <span className="text-emerald-600 font-bold tracking-wider">IOTA L2 Sync</span>
-                    <span className="text-emerald-400 font-black drop-shadow-[0_0_5px_rgba(52,211,153,0.8)]">100%</span>
-                  </div>
-                  <div className="h-1.5 bg-emerald-950/80 w-full rounded-full overflow-hidden border border-emerald-900/50">
-                    <div className="h-full bg-emerald-400 w-full shadow-[0_0_10px_rgba(16,185,129,0.8)]" />
-                  </div>
-                </div>
-                
-                <div>
-                  <div className="flex justify-between text-xs mb-2">
-                    <span className="text-emerald-600 font-bold tracking-wider">Polygon Bridge</span>
-                    <span className="text-emerald-400 font-black drop-shadow-[0_0_5px_rgba(52,211,153,0.8)] animate-pulse">98%</span>
-                  </div>
-                  <div className="h-1.5 bg-emerald-950/80 w-full rounded-full overflow-hidden border border-emerald-900/50">
-                    <div className="h-full bg-emerald-500 w-[98%] shadow-[0_0_10px_rgba(16,185,129,0.8)]" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-8 p-3 bg-red-950/20 border border-red-500/20 rounded">
-                <div className="text-[10px] text-red-400/80 uppercase leading-relaxed font-bold tracking-wider">
-                  <span className="text-red-500 block mb-1">! WARNING</span>
-                  IOTA EVM Testnet is actively prototyping. Data streams are volatile. Do not deploy commercial assertions without consensus override.
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-black/60 border border-emerald-500/30 rounded-xl p-6 shadow-inner relative overflow-hidden">
-               <div className="absolute bottom-0 right-0 w-16 h-16 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 pointer-events-none" />
-               <h3 className="text-emerald-400 font-black uppercase tracking-widest text-sm mb-5 flex items-center gap-2">
-                <Terminal className="h-4 w-4" /> Quick Commands
-              </h3>
-              <div className="space-y-3">
-                <Link href="/tokenization" className="block w-full text-left px-4 py-3 bg-emerald-950/30 border border-emerald-500/20 hover:border-emerald-400 hover:bg-emerald-900/40 text-emerald-400 text-xs uppercase tracking-widest transition-all group font-bold shadow-[0_0_10px_rgba(16,185,129,0.05)] rounded">
-                  <span className="text-emerald-700 mr-2 group-hover:text-emerald-300 transition-colors">&gt;</span> Initialize Tokenization
-                </Link>
-                <Link href="/proof/anchor" className="block w-full text-left px-4 py-3 bg-emerald-950/30 border border-emerald-500/20 hover:border-emerald-400 hover:bg-emerald-900/40 text-emerald-400 text-xs uppercase tracking-widest transition-all group font-bold shadow-[0_0_10px_rgba(16,185,129,0.05)] rounded relative overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-emerald-500/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                  <span className="text-emerald-700 mr-2 group-hover:text-emerald-300 transition-colors">&gt;</span> Manual Anchor Tool
-                </Link>
-              </div>
-            </div>
-          </div>
-          
+    <main className={styles.page} data-testid="proof-trust-operations">
+      <header className={styles.pageHeader}>
+        <div className={styles.headerCopy}>
+          <span className={styles.eyebrow}><ShieldCheck aria-hidden="true" /> Trust Operations</span>
+          <h1>Consola de evidencia y ownership</h1>
+          <p>
+            Evidencia operativa del tenant, referencias publicas de testnet y responsabilidad de cada red,
+            sin combinar fuentes ni asumir disponibilidad.
+          </p>
         </div>
-      </div>
+        <nav className={styles.actions} aria-label="Acciones de Trust Operations">
+          <a className={`${styles.action} ${styles.primaryAction}`} href={PUBLIC_VERIFY_URL} target="_blank" rel="noreferrer">
+            <FileCheck2 aria-hidden="true" /> Verificador publico <ArrowUpRight aria-hidden="true" />
+          </a>
+          <a className={styles.action} href={PUBLIC_OWNERSHIP_URL} target="_blank" rel="noreferrer">
+            <Fingerprint aria-hidden="true" /> Ownership <ArrowUpRight aria-hidden="true" />
+          </a>
+          <Link className={styles.action} href="/tokenization">
+            <Boxes aria-hidden="true" /> Tokenization
+          </Link>
+          <a className={styles.action} href={PUBLIC_DEMO_LAB_URL} target="_blank" rel="noreferrer">
+            <ExternalLink aria-hidden="true" /> Demo Lab
+          </a>
+        </nav>
+      </header>
+
+      <section className={styles.section} data-testid="proof-private-tenant" aria-labelledby="private-proof-title">
+        <div className={styles.sectionHeader}>
+          <div>
+            <span className={styles.sectionNumber}>01</span>
+            <h2 id="private-proof-title">Evidencia privada del tenant</h2>
+            <p>Lecturas autenticadas por BFF. Los casos publicos de referencia no participan de estas metricas.</p>
+          </div>
+          <span className={styles.modeBadge} data-mode={tenantState}>{privateStateLabel(tenantState)}</span>
+        </div>
+
+        <div className={styles.sourceList} aria-label="Estado de las fuentes tenant">
+          <span>Anchors: {sourceLabel(anchorsResult)}</span>
+          <span>Eventos: {sourceLabel(eventsResult)}</span>
+          <span>Ownership: {sourceLabel(tokenizationResult)}</span>
+        </div>
+
+        <div className={styles.metrics} aria-label="Metricas calculadas del tenant">
+          {metrics.map((metric) => {
+            const Icon = metric.icon;
+            return (
+              <article className={styles.metric} key={metric.label}>
+                <div className={styles.metricLabel}><Icon aria-hidden="true" /><span>{metric.label}</span></div>
+                <strong>{formatCount(metric.value)}</strong>
+                <small>{metric.detail}</small>
+              </article>
+            );
+          })}
+        </div>
+
+        <div className={styles.privateGrid}>
+          <div className={styles.collection}>
+            <div className={styles.collectionHeader}>
+              <div>
+                <h3>Anchors recientes</h3>
+                <p>Status, recurso, inclusion y salida verificable.</p>
+              </div>
+              {anchorsResult.ok && anchors.length > anchorsToDisplay.length ? (
+                <span>Mostrando {anchorsToDisplay.length} de {anchors.length}</span>
+              ) : null}
+            </div>
+
+            {!anchorsResult.ok ? (
+              <EmptyState>Anchors no disponibles.</EmptyState>
+            ) : anchorsToDisplay.length === 0 ? (
+              <EmptyState>No hay anchors para este tenant.</EmptyState>
+            ) : (
+              <div className={styles.anchorList}>
+                {anchorsToDisplay.map((anchor, index) => {
+                  const anchorId = readText(anchor.id);
+                  const root = readText(anchor.merkle_root);
+                  const firstHash = firstEventHash(anchor, events);
+                  const verifyHref = anchorsResult.mode === "demo"
+                    ? null
+                    : publicVerifyHref(firstHash, anchorId);
+                  const explorerHref = safeHttpUrl(anchor.explorer_url);
+                  const resource = resourceLabel(anchor.resource_type, anchor.resource_id);
+                  const status = statusPresentation(anchor.status);
+                  const eventCount = readCount(anchor.event_count);
+                  const timestamp = readText(anchor.anchored_at || anchor.created_at);
+
+                  return (
+                    <article className={styles.anchor} key={anchorId || `${resource.id}-${index}`}>
+                      <div className={styles.anchorTop}>
+                        <div className={styles.resource}>
+                          <span>{resource.type}</span>
+                          <h4>{resource.id}</h4>
+                        </div>
+                        <span className={styles.statusBadge} data-tone={status.tone}>{status.label}</span>
+                      </div>
+                      <dl className={styles.anchorFacts}>
+                        <div>
+                          <dt>Eventos incluidos</dt>
+                          <dd>{formatCount(eventCount)}</dd>
+                        </div>
+                        <div>
+                          <dt>Fecha</dt>
+                          <dd><time dateTime={timestamp || undefined}>{formatTimestamp(timestamp)}</time></dd>
+                        </div>
+                        <div>
+                          <dt>Red</dt>
+                          <dd>{readText(anchor.network) || readText(anchor.provider) || "-"}</dd>
+                        </div>
+                        <div className={styles.rootFact}>
+                          <dt>Merkle root</dt>
+                          <dd><code title={root || undefined}>{shortHash(root)}</code></dd>
+                        </div>
+                      </dl>
+                      <div className={styles.rowActions}>
+                        {explorerHref ? (
+                          <a href={explorerHref} target="_blank" rel="noreferrer">
+                            Explorer <ArrowUpRight aria-hidden="true" />
+                          </a>
+                        ) : null}
+                        {verifyHref ? (
+                          <a href={verifyHref} target="_blank" rel="noreferrer">
+                            Verificar hash <FileCheck2 aria-hidden="true" />
+                          </a>
+                        ) : null}
+                        {!explorerHref && !verifyHref ? (
+                          <span>{anchorsResult.mode === "demo" ? "Sandbox local, no publicado" : "Sin enlace externo disponible"}</span>
+                        ) : null}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className={styles.collection}>
+            <div className={styles.collectionHeader}>
+              <div>
+                <h3>Eventos recientes</h3>
+                <p>Identidad del evento y hash canonico.</p>
+              </div>
+              {eventsResult.ok && events.length > eventsToDisplay.length ? (
+                <span>Ultimos {eventsToDisplay.length} de {events.length}</span>
+              ) : null}
+            </div>
+
+            {!eventsResult.ok ? (
+              <EmptyState>Eventos no disponibles.</EmptyState>
+            ) : eventsToDisplay.length === 0 ? (
+              <EmptyState>No hay eventos recientes.</EmptyState>
+            ) : (
+              <div className={styles.eventList}>
+                {eventsToDisplay.map((event, index) => {
+                  const hash = eventHash(event);
+                  const resource = resourceLabel(event.resource_type, event.resource_id);
+                  const timestamp = readText(event.created_at);
+                  return (
+                    <article className={styles.event} key={readText(event.id) || `${hash}-${index}`}>
+                      <div className={styles.eventHeading}>
+                        <div>
+                          <span>{readText(event.event_type) || "Evento"}</span>
+                          <h4>{resource.id}</h4>
+                        </div>
+                        <time dateTime={timestamp || undefined}>{formatTimestamp(timestamp)}</time>
+                      </div>
+                      <p>{resource.type}</p>
+                      <code title={hash || undefined}><Hash aria-hidden="true" /> {shortHash(hash, 16, 12)}</code>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.section} data-testid="proof-public-testnet" aria-labelledby="public-proof-title">
+        <div className={styles.sectionHeader}>
+          <div>
+            <span className={styles.sectionNumber}>02</span>
+            <h2 id="public-proof-title">Testnet publico de referencia</h2>
+            <p>Datos obtenidos desde la API publica. Son referencias verificables y nunca se suman al tenant.</p>
+          </div>
+          <span className={styles.modeBadge} data-mode={publicProofResult.ok ? "production" : "unavailable"}>
+            {publicProofResult.ok ? "API publica" : "No disponible"}
+          </span>
+        </div>
+
+        {!publicProofResult.ok ? (
+          <EmptyState>La referencia publica de testnet no esta disponible.</EmptyState>
+        ) : (
+          <div className={styles.publicContent}>
+            <div className={styles.testnetSummary}>
+              <article data-network="iota">
+                <div><Network aria-hidden="true" /><span>IOTA testnet</span></div>
+                <strong>{readText(iotaReference?.network) || "Red no informada"}</strong>
+                <p>{iotaDemoTxHref ? "Transaccion publica disponible" : "Transaccion de referencia no disponible"}</p>
+                <div className={styles.rowActions}>
+                  {iotaContractHref ? <a href={iotaContractHref} target="_blank" rel="noreferrer">Contrato <ArrowUpRight aria-hidden="true" /></a> : null}
+                  {iotaDemoTxHref ? <a href={iotaDemoTxHref} target="_blank" rel="noreferrer">Transaccion <ArrowUpRight aria-hidden="true" /></a> : null}
+                </div>
+              </article>
+              <article data-network="polygon" data-testid="public-polygon-reference">
+                <div><Fingerprint aria-hidden="true" /><span>Polygon testnet</span></div>
+                <strong>{readText(polygonReference?.network) || "Red no informada"}</strong>
+                <p>
+                  {readText(polygonReference?.demo_token_id)
+                    ? `Token ${readText(polygonReference?.demo_token_id)}`
+                    : polygonTxHref ? "Transaccion de ownership disponible" : "Transaccion de ownership no disponible"}
+                </p>
+                <div className={styles.rowActions}>
+                  {polygonContractHref ? <a href={polygonContractHref} target="_blank" rel="noreferrer">Contrato <ArrowUpRight aria-hidden="true" /></a> : null}
+                  {polygonTxHref ? <a href={polygonTxHref} target="_blank" rel="noreferrer">Transaccion <ArrowUpRight aria-hidden="true" /></a> : null}
+                  {polygonCertificateHref ? <a href={polygonCertificateHref} target="_blank" rel="noreferrer">Certificado <FileCheck2 aria-hidden="true" /></a> : null}
+                </div>
+              </article>
+            </div>
+
+            <div className={styles.collectionHeader}>
+              <div>
+                <h3>Casos IOTA con evidencia externa</h3>
+                <p>Solo se muestran casos con transaccion, explorer o certificado devuelto por la API.</p>
+              </div>
+              <span>{realIotaCases.length} referencias</span>
+            </div>
+
+            {realIotaCases.length === 0 ? (
+              <EmptyState>La API no devolvio casos IOTA con una salida externa verificable.</EmptyState>
+            ) : (
+              <div className={styles.publicCases}>
+                {realIotaCases.map((demoCase, index) => {
+                  const anchorId = readText(demoCase.anchor_id);
+                  const hash = readText(demoCase.primary_event_hash);
+                  const verifyHref = publicVerifyHref(hash, anchorId);
+                  const txHref = safeHttpUrl(demoCase.explorer_url);
+                  const receiptHref = safeHttpUrl(demoCase.public_receipt?.explorer_url);
+                  const certificateHref = safeHttpUrl(demoCase.certificate_url || demoCase.public_receipt?.certificate_url);
+                  const resource = resourceLabel(demoCase.resource_type, demoCase.resource_id);
+
+                  return (
+                    <article className={styles.publicCase} key={readText(demoCase.id) || `${anchorId}-${index}`}>
+                      <div className={styles.publicCaseHeading}>
+                        <div>
+                          <span>{readText(demoCase.vertical) || "Caso de referencia"}</span>
+                          <h3>{readText(demoCase.title) || resource.id}</h3>
+                        </div>
+                        <span>{readText(demoCase.network) || "IOTA testnet"}</span>
+                      </div>
+                      <dl>
+                        <div><dt>Recurso</dt><dd>{resource.type} / {resource.id}</dd></div>
+                        <div><dt>Event hash</dt><dd><code title={hash || undefined}>{shortHash(hash, 16, 12)}</code></dd></div>
+                        <div><dt>Anchor ID</dt><dd><code title={anchorId || undefined}>{shortHash(anchorId, 12, 8)}</code></dd></div>
+                      </dl>
+                      <div className={styles.rowActions}>
+                        {txHref ? <a href={txHref} target="_blank" rel="noreferrer">Tx IOTA <ArrowUpRight aria-hidden="true" /></a> : null}
+                        {receiptHref ? <a href={receiptHref} target="_blank" rel="noreferrer">Receipt <ArrowUpRight aria-hidden="true" /></a> : null}
+                        {certificateHref ? <a href={certificateHref} target="_blank" rel="noreferrer">Certificado <FileCheck2 aria-hidden="true" /></a> : null}
+                        {verifyHref ? <a href={verifyHref} target="_blank" rel="noreferrer">Verificar <FileCheck2 aria-hidden="true" /></a> : null}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+
+      <section className={styles.section} data-testid="proof-trust-layers" aria-labelledby="trust-layers-title">
+        <div className={styles.sectionHeader}>
+          <div>
+            <span className={styles.sectionNumber}>03</span>
+            <h2 id="trust-layers-title">IOTA integridad hash-only vs Polygon ownership</h2>
+            <p>Las dos redes resuelven responsabilidades distintas; una no reemplaza a la otra.</p>
+          </div>
+        </div>
+
+        <div className={styles.layerGrid}>
+          <article className={styles.layer} data-layer="iota">
+            <div className={styles.layerIcon}><Link2 aria-hidden="true" /></div>
+            <div>
+              <span>IOTA</span>
+              <h3>Integridad hash-only</h3>
+              <p>Publica hashes, Merkle roots y referencias de transaccion. No publica el payload privado ni representa ownership.</p>
+              <dl>
+                <div><dt>Prueba</dt><dd>Existencia e integridad de evidencia</dd></div>
+                <div><dt>Dato publico</dt><dd>Hash, root y referencia de red</dd></div>
+                <div><dt>Red</dt><dd>{publicProofResult.ok ? readText(iotaReference?.network) || "No informada" : "No disponible"}</dd></div>
+              </dl>
+            </div>
+          </article>
+
+          <article className={styles.layer} data-layer="polygon">
+            <div className={styles.layerIcon}><Fingerprint aria-hidden="true" /></div>
+            <div>
+              <span>Polygon</span>
+              <h3>Ownership y certificado</h3>
+              <p>Registra mint o transferencia y habilita un certificado verificable. No sustituye el historial operativo del tenant.</p>
+              <dl>
+                <div><dt>Prueba</dt><dd>Ownership, garantia o activo tokenizado</dd></div>
+                <div><dt>Dato publico</dt><dd>Tx, contrato y token cuando aplica</dd></div>
+                <div><dt>Red</dt><dd>{publicProofResult.ok ? readText(polygonReference?.network) || "No informada" : "No disponible"}</dd></div>
+              </dl>
+            </div>
+          </article>
+        </div>
+
+        <div className={styles.privacyNote}>
+          <ShieldCheck aria-hidden="true" />
+          <p>La evidencia publica se limita a referencias criptograficas y de red. La evidencia privada permanece en el alcance autenticado del tenant.</p>
+        </div>
+      </section>
     </main>
   );
 }

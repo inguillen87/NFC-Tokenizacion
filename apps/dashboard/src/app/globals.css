@@ -762,6 +762,15 @@ html.theme-light .demo-mode-banner {
   .min-w-0.flex-1 {
     padding-bottom: 5.25rem;
   }
+
+  .helpbot-trigger {
+    bottom: calc(5.25rem + env(safe-area-inset-bottom)) !important;
+  }
+
+  .helpbot-hint,
+  .helpbot-panel {
+    bottom: calc(9rem + env(safe-area-inset-bottom)) !important;
+  }
 }
 
 html.theme-light .dashboard-mobile-dock {

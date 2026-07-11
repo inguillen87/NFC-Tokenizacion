@@ -3,9 +3,11 @@ export const dynamic = "force-dynamic";
 
 import { createHash } from "node:crypto";
 import { ethers } from "ethers";
-import { checkAdmin, getAdminTenantScope } from "../../../../lib/auth";
+import { checkAdmin, checkAdminPermission } from "../../../../lib/auth";
+import { resolveAdminProofTenantScope } from "../../../../lib/admin-proof-tenant-scope";
 import { json } from "../../../../lib/http";
 import { sql } from "../../../../lib/db";
+import { logAuditEvent } from "../../../../lib/audit-logger";
 import { ensureSupplierOpsSchema } from "../../../../lib/supplier-ops-schema";
 import { buildMerkleRoot, isSha256Hash } from "../../../../lib/proof-layer";
 
@@ -40,18 +42,6 @@ function normalizeEventHashes(value: unknown) {
   return value.map(safeString).filter(Boolean);
 }
 
-async function resolveTenantId(req: Request, body: Record<string, unknown>, queryTenant = "") {
-  const { forcedTenantSlug } = getAdminTenantScope(req);
-  const requestedTenant = forcedTenantSlug
-    || queryTenant
-    || safeString(body.tenant_id || body.tenantId || body.tenant_slug || body.tenantSlug || body.tenant);
-  if (!requestedTenant) return null;
-  const rows = /^[0-9a-f-]{36}$/i.test(requestedTenant)
-    ? await sql/*sql*/`SELECT id::text AS id FROM tenants WHERE id = ${requestedTenant}::uuid LIMIT 1`
-    : await sql/*sql*/`SELECT id::text AS id FROM tenants WHERE slug = ${requestedTenant.toLowerCase()} LIMIT 1`;
-  return rows[0]?.id ? String(rows[0].id) : null;
-}
-
 async function eventHashesFromIds(eventIds: string[], tenantId: string | null) {
   if (!eventIds.length) return [];
   const rows = tenantId
@@ -74,22 +64,17 @@ async function eventHashesFromIds(eventIds: string[], tenantId: string | null) {
 export async function GET(req: Request) {
   const auth = checkAdmin(req, ["super_admin", "tenant_admin"]);
   if (auth) return auth;
+  const permission = checkAdminPermission(req, "proof:read");
+  if (permission) return permission;
   await ensureSupplierOpsSchema();
 
-  const { forcedTenantSlug } = getAdminTenantScope(req);
   const url = new URL(req.url);
   const requestedTenant = url.searchParams.get("tenant") || "";
-  
-  let tenantId: string | null = null;
-  if (forcedTenantSlug) {
-    const rows = await sql/*sql*/`SELECT id FROM tenants WHERE slug = ${forcedTenantSlug} LIMIT 1`;
-    tenantId = rows[0]?.id || null;
-  } else if (requestedTenant) {
-    const rows = /^[0-9a-f-]{36}$/i.test(requestedTenant)
-      ? await sql/*sql*/`SELECT id FROM tenants WHERE id = ${requestedTenant}::uuid LIMIT 1`
-      : await sql/*sql*/`SELECT id FROM tenants WHERE slug = ${requestedTenant.toLowerCase()} LIMIT 1`;
-    tenantId = rows[0]?.id || null;
+  const tenantScope = await resolveAdminProofTenantScope(req, requestedTenant);
+  if (tenantScope.requested && !tenantScope.found) {
+    return json({ ok: false, reason: "tenant_not_found", anchors: [] }, 404);
   }
+  const tenantId = tenantScope.tenantId;
 
   const rows = tenantId
     ? await sql/*sql*/`
@@ -115,12 +100,22 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const auth = checkAdmin(req, ["super_admin", "tenant_admin"]);
   if (auth) return auth;
+  const permission = checkAdminPermission(req, "proof:write");
+  if (permission) return permission;
   await ensureSupplierOpsSchema();
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const provider = normalizeProvider(body.provider);
   const network = safeString(body.network) || (provider === "iota" ? "testnet" : "amoy");
-  const tenantId = await resolveTenantId(req, body);
+  const requestedTenant = safeString(body.tenant_id || body.tenantId || body.tenant_slug || body.tenantSlug || body.tenant);
+  const tenantScope = await resolveAdminProofTenantScope(req, requestedTenant);
+  if (tenantScope.requested && !tenantScope.found) {
+    return json({ ok: false, reason: "tenant_not_found" }, 404);
+  }
+  if (!tenantScope.requested) {
+    return json({ ok: false, reason: "tenant_required" }, 400);
+  }
+  const tenantId = tenantScope.tenantId;
   const resourceType = safeString(body.resourceType || body.resource_type);
   const resourceId = safeString(body.resourceId || body.resource_id);
   const eventIds = Array.isArray(body.event_ids)
@@ -212,10 +207,31 @@ export async function POST(req: Request) {
     )
     RETURNING *
   `;
+  const anchor = anchorRows[0];
+
+  await logAuditEvent({
+    actorId: null,
+    tenantId,
+    action: "proof_anchor_external_created",
+    resourceType: "evidence_anchor",
+    resourceId: String(anchor.id),
+    afterData: {
+      provider,
+      network,
+      resource_type: resourceType,
+      resource_id: resourceId,
+      merkle_root: merkleRoot,
+      event_count: eventHashes.length,
+      status,
+      tx_hash: txHash,
+    },
+    userAgent: req.headers.get("user-agent"),
+    requestId: req.headers.get("x-request-id"),
+  });
 
   return json({
     ok: true,
-    anchor: anchorRows[0],
+    anchor,
     event_hashes: eventHashes,
     warning,
   }, 201);

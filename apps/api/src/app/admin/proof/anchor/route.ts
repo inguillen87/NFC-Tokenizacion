@@ -1,7 +1,8 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminTenantScope } from "../../../../lib/auth";
+import { checkAdmin, checkAdminPermission } from "../../../../lib/auth";
+import { resolveAdminProofTenantScope } from "../../../../lib/admin-proof-tenant-scope";
 import { json } from "../../../../lib/http";
 import { sql } from "../../../../lib/db";
 import { logAuditEvent } from "../../../../lib/audit-logger";
@@ -20,27 +21,23 @@ function safeString(value: unknown) {
   return String(value || "").trim();
 }
 
-async function resolveTenant(req: Request, body: Record<string, unknown>) {
-  const { forcedTenantSlug } = getAdminTenantScope(req);
-  const requested = safeString(body.tenant_id || body.tenantId || body.tenant_slug || body.tenantSlug || body.tenant);
-  if (forcedTenantSlug) {
-    const rows = await sql/*sql*/`SELECT id, slug FROM tenants WHERE slug = ${forcedTenantSlug} LIMIT 1`;
-    return rows[0] || null;
-  }
-  if (!requested) return null;
-  const rows = /^[0-9a-f-]{36}$/i.test(requested)
-    ? await sql/*sql*/`SELECT id, slug FROM tenants WHERE id = ${requested}::uuid LIMIT 1`
-    : await sql/*sql*/`SELECT id, slug FROM tenants WHERE slug = ${requested.toLowerCase()} LIMIT 1`;
-  return rows[0] || null;
-}
-
 export async function POST(req: Request) {
   const auth = checkAdmin(req, ["super_admin", "tenant_admin"]);
   if (auth) return auth;
+  const permission = checkAdminPermission(req, "proof:write");
+  if (permission) return permission;
   await ensureSupplierOpsSchema();
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
-  const tenant = await resolveTenant(req, body);
+  const requestedTenant = safeString(body.tenant_id || body.tenantId || body.tenant_slug || body.tenantSlug || body.tenant);
+  const tenantScope = await resolveAdminProofTenantScope(req, requestedTenant);
+  if (tenantScope.requested && !tenantScope.found) {
+    return json({ ok: false, reason: "tenant_not_found" }, 404);
+  }
+  if (!tenantScope.requested) {
+    return json({ ok: false, reason: "tenant_required" }, 400);
+  }
+  const tenantId = tenantScope.tenantId;
   const provider = safeString(body.provider || "none").toLowerCase();
   const network = safeString(body.network || (provider === "none" ? "local" : "testnet")).toLowerCase();
 
@@ -94,7 +91,7 @@ export async function POST(req: Request) {
         return json({ ok: false, reason: "proof_payload_sensitive_key_rejected", key: forbiddenKey }, 400);
       }
       const payloadHash = hashEvidencePayload({
-        tenantId: tenant?.id ? String(tenant.id) : null,
+        tenantId,
         resourceType,
         resourceId,
         eventType,
@@ -102,7 +99,7 @@ export async function POST(req: Request) {
       });
       const rows = await sql/*sql*/`
         INSERT INTO evidence_events (tenant_id, resource_type, resource_id, event_type, payload_json, payload_hash)
-        VALUES (${tenant?.id || null}, ${resourceType}, ${resourceId}, ${eventType}, ${JSON.stringify(payload)}::jsonb, ${payloadHash})
+        VALUES (${tenantId}, ${resourceType}, ${resourceId}, ${eventType}, ${JSON.stringify(payload)}::jsonb, ${payloadHash})
         ON CONFLICT (payload_hash) DO UPDATE SET payload_hash = EXCLUDED.payload_hash
         RETURNING id, payload_hash, resource_type, resource_id, event_type
       `;
@@ -110,11 +107,11 @@ export async function POST(req: Request) {
     }
     events = inserted;
   } else if (eventIds.length) {
-    const rows = tenant?.id
+    const rows = tenantId
       ? await sql/*sql*/`
           SELECT id, payload_hash, resource_type, resource_id, event_type
           FROM evidence_events
-          WHERE tenant_id = ${tenant.id} AND id = ANY(${eventIds}::uuid[])
+          WHERE tenant_id = ${tenantId}::uuid AND id = ANY(${eventIds}::uuid[])
           ORDER BY created_at ASC
         `
       : await sql/*sql*/`
@@ -130,11 +127,11 @@ export async function POST(req: Request) {
     if (!resourceType || !resourceId) {
       return json({ ok: false, reason: "events_or_resource_required" }, 400);
     }
-    const rows = tenant?.id
+    const rows = tenantId
       ? await sql/*sql*/`
           SELECT id, payload_hash, resource_type, resource_id, event_type
           FROM evidence_events
-          WHERE tenant_id = ${tenant.id} AND resource_type = ${resourceType} AND resource_id = ${resourceId}
+          WHERE tenant_id = ${tenantId}::uuid AND resource_type = ${resourceType} AND resource_id = ${resourceId}
           ORDER BY created_at ASC
         `
       : await sql/*sql*/`
@@ -154,7 +151,7 @@ export async function POST(req: Request) {
       tenant_id, provider, network, anchor_type, merkle_root, event_count, event_hashes_json,
       status, anchored_at
     ) VALUES (
-      ${tenant?.id || null}, ${provider}, ${network}, 'merkle_root', ${merkleRoot}, ${events.length},
+      ${tenantId}, ${provider}, ${network}, 'merkle_root', ${merkleRoot}, ${events.length},
       ${JSON.stringify(eventHashes)}::jsonb, 'local', now()
     )
     RETURNING *
@@ -163,7 +160,7 @@ export async function POST(req: Request) {
 
   await logAuditEvent({
     actorId: null,
-    tenantId: tenant?.id ? String(tenant.id) : null,
+    tenantId,
     action: "proof_anchor_created",
     resourceType: "evidence_anchor",
     resourceId: String(anchor.id),

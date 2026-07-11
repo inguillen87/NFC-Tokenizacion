@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { dashboardContent } from "../lib/dashboard-content";
+import { dashboardPermissionMatches } from "../lib/permission-policy";
 import { productUrls } from "@product/config";
 import { AudienceModeProvider, useAudienceMode } from "./audience-mode";
 import { AdminNotificationBell } from "./admin-notification-bell";
@@ -149,6 +150,7 @@ export function DashboardShellInner({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  const canReadProof = currentRole === "super-admin" || dashboardPermissionMatches(currentPermissions, "proof:read");
   const items = [
     { href: "/", label: nav.overview },
     { href: "/batches", label: nav.batches },
@@ -160,7 +162,7 @@ export function DashboardShellInner({
     { href: "/tokenization", label: "Tokenization" },
     { href: "/analytics", label: nav.analytics },
     { href: "/leads-tickets", label: nav.leadsTickets },
-  ];
+  ].filter((item) => item.href !== "/proof" || canReadProof);
 
   if (currentRole === "super-admin") {
     items.unshift({ href: "/tenants", label: nav.tenants });
@@ -220,7 +222,10 @@ export function DashboardShellInner({
     { href: "/users", label: "IAM Users" },
     { href: "/mfa", label: "MFA Security" },
     { href: "/sdk-vision", label: nav.sdkVision },
-  ].filter((entry) => (entry as { role?: string }).role ? currentRole === (entry as { role?: string }).role : true);
+  ].filter((entry) => {
+    if (entry.href === "/proof" && !canReadProof) return false;
+    return (entry as { role?: string }).role ? currentRole === (entry as { role?: string }).role : true;
+  });
 
   const filteredLinks = normalizedQuery
     ? searchableLinks.filter((entry) => entry.label.toLowerCase().includes(normalizedQuery) || entry.href.toLowerCase().includes(normalizedQuery))
@@ -239,7 +244,7 @@ export function DashboardShellInner({
     { href: "/analytics", label: nav.analytics, icon: BarChart3 },
     { href: "/leads-tickets", label: nav.leadsTickets, icon: LifeBuoy },
     { href: "/sdk-vision", label: nav.sdkVision, icon: Terminal },
-  ];
+  ].filter((item) => item.href !== "/proof" || canReadProof);
 
   if (currentRole === "super-admin" || currentRole === "reseller") {
     coreOpsItems.unshift({ href: "/tenants", label: nav.tenants, icon: Compass });

@@ -1,7 +1,8 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminTenantScope } from "../../../../lib/auth";
+import { checkAdmin, checkAdminPermission } from "../../../../lib/auth";
+import { resolveAdminProofTenantScope } from "../../../../lib/admin-proof-tenant-scope";
 import { json } from "../../../../lib/http";
 import { sql } from "../../../../lib/db";
 import { logAuditEvent } from "../../../../lib/audit-logger";
@@ -12,26 +13,62 @@ function safeString(value: unknown) {
   return String(value || "").trim();
 }
 
+export async function GET(req: Request) {
+  const auth = checkAdmin(req, ["super_admin", "tenant_admin"]);
+  if (auth) return auth;
+  const permission = checkAdminPermission(req, "proof:read");
+  if (permission) return permission;
+  await ensureSupplierOpsSchema();
+
+  const url = new URL(req.url);
+  const requestedTenant = safeString(url.searchParams.get("tenant"));
+  const tenantScope = await resolveAdminProofTenantScope(req, requestedTenant);
+  if (tenantScope.requested && !tenantScope.found) {
+    return json({ ok: false, reason: "tenant_not_found", events: [] }, 404);
+  }
+
+  const limit = Math.min(Math.max(Number(url.searchParams.get("limit") || 60), 1), 200);
+  const resourceType = safeString(url.searchParams.get("resource_type"));
+  const resourceId = safeString(url.searchParams.get("resource_id"));
+  const rows = tenantScope.tenantId
+    ? await sql/*sql*/`
+        SELECT id, resource_type, resource_id, event_type, payload_hash, created_at
+        FROM evidence_events
+        WHERE tenant_id = ${tenantScope.tenantId}::uuid
+          AND (${resourceType || null}::text IS NULL OR resource_type = ${resourceType})
+          AND (${resourceId || null}::text IS NULL OR resource_id = ${resourceId})
+        ORDER BY created_at DESC
+        LIMIT ${limit}
+      `
+    : await sql/*sql*/`
+        SELECT id, resource_type, resource_id, event_type, payload_hash, created_at
+        FROM evidence_events
+        WHERE (${resourceType || null}::text IS NULL OR resource_type = ${resourceType})
+          AND (${resourceId || null}::text IS NULL OR resource_id = ${resourceId})
+        ORDER BY created_at DESC
+        LIMIT ${limit}
+      `;
+
+  return json({ ok: true, events: rows });
+}
+
 export async function POST(req: Request) {
   const auth = checkAdmin(req, ["super_admin", "tenant_admin"]);
   if (auth) return auth;
+  const permission = checkAdminPermission(req, "proof:write");
+  if (permission) return permission;
   await ensureSupplierOpsSchema();
 
-  const { forcedTenantSlug } = getAdminTenantScope(req);
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
-  
-  let tenantId: string | null = null;
   const requestedTenant = safeString(body.tenant_id || body.tenant_slug || body.tenantId || body.tenant);
-  
-  if (forcedTenantSlug) {
-    const rows = await sql/*sql*/`SELECT id FROM tenants WHERE slug = ${forcedTenantSlug} LIMIT 1`;
-    tenantId = rows[0]?.id || null;
-  } else if (requestedTenant) {
-    const rows = /^[0-9a-f-]{36}$/i.test(requestedTenant)
-      ? await sql/*sql*/`SELECT id FROM tenants WHERE id = ${requestedTenant}::uuid LIMIT 1`
-      : await sql/*sql*/`SELECT id FROM tenants WHERE slug = ${requestedTenant.toLowerCase()} LIMIT 1`;
-    tenantId = rows[0]?.id || null;
+  const tenantScope = await resolveAdminProofTenantScope(req, requestedTenant);
+  if (tenantScope.requested && !tenantScope.found) {
+    return json({ ok: false, reason: "tenant_not_found" }, 404);
   }
+  if (!tenantScope.requested) {
+    return json({ ok: false, reason: "tenant_required" }, 400);
+  }
+  const tenantId = tenantScope.tenantId;
 
   const resourceType = safeString(body.resource_type || body.resourceType);
   const resourceId = safeString(body.resource_id || body.resourceId);

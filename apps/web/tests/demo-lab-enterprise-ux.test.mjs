@@ -251,7 +251,7 @@ test("demo lab hub keeps C-level contrast across cards, filters and theme contro
   assert.match(page, /Recibo publico hash-only/);
   assert.match(page, /Propiedad, garantia y reventa/);
   assert.match(page, /Conexion con ERP, CRM y portal/);
-  assert.match(page, /href="\/proof\/verify"/);
+  assert.match(page, /href=\{proofVerifierHref\}/);
   assert.match(page, /href:\s*"\/demo-lab\?scenario=qr-gs1"/);
   assert.match(page, /href:\s*"\/demo-lab\?scenario=polygon-ownership"/);
   assert.match(page, /demo-lab-hub-nav--mobile-safe/);
@@ -305,7 +305,7 @@ test("demo lab hub keeps C-level contrast across cards, filters and theme contro
   assert.match(css, /\.demo-lab-hub-root--light \.demo-lab-hub-card h3,[\s\S]*color:\s*#0f172a !important/);
   assert.match(css, /html\.theme-light \.demo-lab-hub-root \.demo-lab-hub-card p,[\s\S]*color:\s*#334155 !important/);
   assert.match(css, /\.demo-lab-hub-root--light \.demo-lab-hub-card p,[\s\S]*color:\s*#334155 !important/);
-  assert.match(css, /\.demo-lab-hub-root \.theme-toggle,[\s\S]*\.demo-lab-hub-nav a\[href="\/proof\/verify"\]/);
+  assert.match(css, /\.demo-lab-hub-root \.theme-toggle,[\s\S]*\.demo-lab-hub-nav a\[href\^="\/proof\/verify"\]/);
   assert.match(css, /html\.theme-light \.demo-lab-hub-root \.theme-toggle,[\s\S]*color:\s*#075985 !important/);
   assert.match(css, /\.demo-lab-hub-root--light \.theme-toggle,[\s\S]*color:\s*#075985 !important/);
   assert.match(css, /Demo Lab hub enterprise path/);
@@ -344,7 +344,7 @@ test("demo lab hub keeps C-level contrast across cards, filters and theme contro
   assert.match(css, /@media \(max-width:\s*520px\)[\s\S]*\.demo-lab-crm-mobile-card__actions\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) !important/);
   assert.match(css, /@media \(max-width:\s*520px\)[\s\S]*\.demo-lab-hub-root \.demo-lab-hub-nav\.demo-lab-hub-nav--mobile-safe\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) !important/);
   assert.match(css, /@media \(max-width:\s*520px\)[\s\S]*\.demo-lab-hub-root \.demo-lab-hub-nav\.demo-lab-hub-nav--mobile-safe > div\s*\{[\s\S]*grid-column:\s*1 !important/);
-  assert.match(css, /@media \(max-width:\s*520px\)[\s\S]*\.demo-lab-hub-root \.demo-lab-hub-nav\.demo-lab-hub-nav--mobile-safe a\[href="\/proof\/verify"\]\s*\{[\s\S]*overflow:\s*hidden !important/);
+  assert.match(css, /@media \(max-width:\s*520px\)[\s\S]*\.demo-lab-hub-root \.demo-lab-hub-nav\.demo-lab-hub-nav--mobile-safe a\[href\^="\/proof\/verify"\]\s*\{[\s\S]*overflow:\s*hidden !important/);
   assert.match(css, /@media \(max-width:\s*520px\)[\s\S]*\.demo-lab-toast-stack\s*\{[\s\S]*left:\s*1rem !important/);
   assert.match(css, /\.demo-lab-fullscreen-root--light \.demo-lab-trust-context/);
   assert.match(css, /@media \(max-width:\s*1024px\) and \(min-width:\s*761px\)[\s\S]*\.demo-lab-fullscreen-root \.demo-lab-infobar\s*\{[\s\S]*position:\s*relative !important/);
@@ -361,7 +361,8 @@ test("demo lab trust scenario deep links open contextual wizard proof layers", a
   assert.match(client, /labels: DemoTrustScenarioLabels/);
   assert.match(client, /decisionPath: DemoTrustScenarioStep\[\]/);
   assert.match(client, /businessOutcome: string/);
-  assert.match(client, /const DEMO_PUBLIC_PROOF_URL = "\/proof\/verify\?event_hash=/);
+  assert.match(client, /const DEMO_PUBLIC_PROOF_EVENT_HASH = "sha256:/);
+  assert.match(client, /function buildDemoPublicProofHref\(scenario: DemoTrustScenarioKey \| null\)/);
   assert.match(client, /function getTrustScenarioInitialStep\(key: DemoTrustScenarioKey \| null\): DemoWizardStep/);
   assert.match(client, /key === "iota-proof" \|\| key === "sensor-evidence" \|\| key === "dual-proof"\) return 2/);
   assert.match(client, /key === "polygon-ownership"\) return 3/);
@@ -408,7 +409,7 @@ test("demo lab wizard explains proof and business outcome for enterprise buyers"
   assert.match(client, /Board-ready outcome from one verified tap/);
   assert.match(client, /Resultado ejecutivo de un tap verificado/);
   assert.match(client, /nexID keeps private data, IOTA can anchor audit receipts, and Polygon is reserved/);
-  assert.match(client, /href=\{DEMO_PUBLIC_PROOF_URL\}/);
+  assert.match(client, /href=\{proofVerifierHref\}/);
   assert.match(page, /<span className="demo-lab-cta-short">Agendar<\/span>/);
   assert.match(client, /<span className="demo-lab-cta-short">Agendar<\/span>/);
   assert.match(client, /demo-lab-wizard-proof-decoder/);
