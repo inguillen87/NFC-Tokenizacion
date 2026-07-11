@@ -297,13 +297,47 @@ export async function transferBlockchainToken(input: {
   `;
   const request = rows[0];
   if (!request) {
-    return { ok: true, simulated: true, tx_hash: `0x${randomBytes(32).toString("hex")}`, token_id: "simulated" };
+    if (tokenizationMode === "polygon") {
+      return {
+        ok: false,
+        simulated: false,
+        state: "failed" as const,
+        tx_hash: null,
+        token_id: null,
+        reason: "polygon_tokenization_record_not_found",
+      };
+    }
+    return {
+      ok: true,
+      simulated: true,
+      state: "simulated" as const,
+      tx_hash: `0x${randomBytes(32).toString("hex")}`,
+      token_id: "simulated",
+      custody: "simulated" as const,
+    };
   }
 
   const network = request.network || "polygon-amoy";
   const tokenId = request.token_id;
   if (!tokenId) {
-    return { ok: true, simulated: true, tx_hash: `0x${randomBytes(32).toString("hex")}`, token_id: "simulated" };
+    if (tokenizationMode === "polygon") {
+      return {
+        ok: false,
+        simulated: false,
+        state: "failed" as const,
+        tx_hash: null,
+        token_id: null,
+        reason: "polygon_token_id_missing",
+      };
+    }
+    return {
+      ok: true,
+      simulated: true,
+      state: "simulated" as const,
+      tx_hash: `0x${randomBytes(32).toString("hex")}`,
+      token_id: "simulated",
+      custody: "simulated" as const,
+    };
   }
 
   if (tokenizationMode !== "polygon") {
@@ -312,56 +346,156 @@ export async function transferBlockchainToken(input: {
     return {
       ok: true,
       simulated: true,
+      state: "simulated" as const,
       tx_hash: txHash,
       token_id: tokenId,
+      custody: "simulated" as const,
     };
   }
 
-  // Real Polygon transfer using private key
+  if (!String(network).toLowerCase().startsWith("polygon")) {
+    return {
+      ok: false,
+      simulated: false,
+      state: "failed" as const,
+      tx_hash: null,
+      token_id: String(tokenId),
+      reason: "polygon_network_mismatch",
+    };
+  }
+
+  // Polygon mode is fail-closed: a missing signer or failed receipt is never
+  // converted into a demo success.
   const rpcUrl = String(process.env.POLYGON_RPC_URL || "").trim();
   const privateKey = normalizePrivateKey(String(process.env.POLYGON_MINTER_PRIVATE_KEY || ""));
   const contractAddress = String(process.env.POLYGON_CONTRACT_ADDRESS || "").trim();
+  const managedRecipient = String(process.env.POLYGON_DEFAULT_RECIPIENT || "").trim();
 
   if (!rpcUrl || !privateKey || !contractAddress) {
-    const txHash = `0x${createHash("sha256").update(`${request.id}:${input.toWallet}:${Date.now()}`).digest("hex")}`;
-    return { ok: true, simulated: true, tx_hash: txHash, token_id: tokenId };
+    return {
+      ok: false,
+      simulated: false,
+      state: "failed" as const,
+      tx_hash: null,
+      token_id: String(tokenId),
+      reason: "polygon_transfer_signer_unavailable",
+    };
   }
 
   try {
     const { ethers } = await import("ethers");
+    if (!ethers.isAddress(contractAddress)) throw new Error("invalid_polygon_contract");
+    if (!ethers.isAddress(input.toWallet)) throw new Error("invalid_polygon_recipient");
+    if (input.fromWallet && !ethers.isAddress(input.fromWallet)) throw new Error("invalid_polygon_sender");
+
     const provider = new ethers.JsonRpcProvider(rpcUrl);
     const wallet = new ethers.Wallet(privateKey, provider);
 
     const TRANSFER_ABI = [
       "function safeTransferFrom(address from, address to, uint256 tokenId) external",
-      "function ownerOf(uint256 tokenId) external view returns (address)"
+      "function ownerOf(uint256 tokenId) external view returns (address)",
+      "function getApproved(uint256 tokenId) external view returns (address)",
+      "function isApprovedForAll(address owner, address operator) external view returns (bool)",
+      "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)",
     ];
     const contract = new ethers.Contract(contractAddress, TRANSFER_ABI, wallet);
 
-    const owner = await contract.ownerOf(tokenId);
-    const minterAddress = wallet.address;
+    const ownerBefore = String(await contract.ownerOf(tokenId));
+    const destination = ethers.getAddress(input.toWallet);
+    const normalizedOwner = ethers.getAddress(ownerBefore);
+    const custody = managedRecipient && ethers.isAddress(managedRecipient) && destination === ethers.getAddress(managedRecipient)
+      ? "platform_managed" as const
+      : "buyer_wallet" as const;
 
-    let tx;
-    if (owner.toLowerCase() === minterAddress.toLowerCase()) {
-      tx = await contract.safeTransferFrom(minterAddress, input.toWallet, tokenId);
-    } else {
-      tx = await contract.safeTransferFrom(owner, input.toWallet, tokenId);
+    if (input.fromWallet && normalizedOwner !== ethers.getAddress(input.fromWallet)) {
+      return {
+        ok: false,
+        simulated: false,
+        state: "failed" as const,
+        tx_hash: null,
+        token_id: String(tokenId),
+        owner_before: normalizedOwner,
+        reason: "polygon_owner_mismatch",
+      };
     }
 
+    if (normalizedOwner === destination) {
+      return {
+        ok: true,
+        simulated: false,
+        state: custody === "platform_managed" ? "custody_unchanged" as const : "already_transferred" as const,
+        tx_hash: null,
+        token_id: String(tokenId),
+        owner_before: normalizedOwner,
+        owner_after: normalizedOwner,
+        custody,
+      };
+    }
+
+    const signer = ethers.getAddress(wallet.address);
+    const [approved, approvedForAll] = await Promise.all([
+      contract.getApproved(tokenId),
+      contract.isApprovedForAll(normalizedOwner, signer),
+    ]);
+    const signerAuthorized = normalizedOwner === signer
+      || ethers.getAddress(String(approved)) === signer
+      || Boolean(approvedForAll);
+    if (!signerAuthorized) {
+      return {
+        ok: false,
+        simulated: false,
+        state: "failed" as const,
+        tx_hash: null,
+        token_id: String(tokenId),
+        owner_before: normalizedOwner,
+        reason: "polygon_signer_not_authorized",
+      };
+    }
+
+    const tx = await contract.safeTransferFrom(normalizedOwner, destination, tokenId);
     const receipt = await tx.wait();
+    if (!receipt || receipt.status !== 1) throw new Error("polygon_transfer_receipt_failed");
+
+    const transferEventMatches = receipt.logs.some((log: { topics: readonly string[]; data: string }) => {
+      try {
+        const parsed = contract.interface.parseLog({ topics: [...log.topics], data: log.data });
+        return Boolean(
+          parsed
+          && parsed.name === "Transfer"
+          && ethers.getAddress(String(parsed.args.from)) === normalizedOwner
+          && ethers.getAddress(String(parsed.args.to)) === destination
+          && String(parsed.args.tokenId) === String(tokenId)
+        );
+      } catch {
+        return false;
+      }
+    });
+    if (!transferEventMatches) throw new Error("polygon_transfer_event_mismatch");
+
+    const ownerAfter = ethers.getAddress(String(await contract.ownerOf(tokenId)));
+    if (ownerAfter !== destination) throw new Error("polygon_transfer_owner_not_updated");
 
     return {
       ok: true,
       simulated: false,
+      state: "confirmed" as const,
       tx_hash: tx.hash,
-      token_id: tokenId,
-      block_number: receipt?.blockNumber || null,
+      token_id: String(tokenId),
+      block_number: receipt.blockNumber,
+      owner_before: normalizedOwner,
+      owner_after: ownerAfter,
+      custody,
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "polygon_transfer_failed";
     console.error("[polygon_transfer_error]", msg);
-    // Fallback to simulated for seamless demo experience if Web3 network fails
-    const txHash = `0x${createHash("sha256").update(`${request.id}:${input.toWallet}:${Date.now()}`).digest("hex")}`;
-    return { ok: true, simulated: true, tx_hash: txHash, token_id: tokenId, error: msg };
+    return {
+      ok: false,
+      simulated: false,
+      state: "failed" as const,
+      tx_hash: null,
+      token_id: String(tokenId),
+      reason: "polygon_transfer_not_confirmed",
+    };
   }
 }

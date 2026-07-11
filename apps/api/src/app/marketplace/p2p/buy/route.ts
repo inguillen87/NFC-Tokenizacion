@@ -38,14 +38,19 @@ export async function POST(req: Request) {
   const feeAmount = resalePrice * feeRate;
   const currency = offer.resale_currency || "USD";
 
-  // Get buyer's wallet address or default to managed platform wallet for demo
-  const buyerWallet = buyer.wallet_address || process.env.POLYGON_DEFAULT_RECIPIENT || "0x742d35Cc6634C0532925a3b844Bc454e4438f44e";
+  // A consumer wallet or the configured managed-custody wallet is required.
+  // Never invent a recipient address for a completed marketplace order.
+  const buyerWallet = String(buyer.wallet_address || process.env.POLYGON_DEFAULT_RECIPIENT || "").trim();
+  if (!buyerWallet) {
+    return json({ ok: false, error: "buyer_wallet_not_configured" }, 503);
+  }
 
   // 2.5. Fetch seller's ownership details to preserve database links (batch_id, event_id, tag_id)
   const sellerRows = await sql/*sql*/`
     SELECT id, batch_id, tag_id, event_id
     FROM consumer_product_ownerships
     WHERE consumer_id = ${offer.seller_consumer_id}
+      AND tenant_id = ${offer.tenant_id}
       AND UPPER(uid_hex) = UPPER(${offer.resale_uid_hex})
       AND status = 'claimed'
     LIMIT 1
@@ -55,52 +60,96 @@ export async function POST(req: Request) {
     return json({ ok: false, error: "seller_ownership_not_found" }, 404);
   }
 
-  let txResult;
+  // Confirm the ledger state before changing ownership records. In Polygon
+  // mode this call fails closed; it cannot fall back to a simulated success.
+  const txResult = await transferBlockchainToken({
+    uidHex: offer.resale_uid_hex,
+    toWallet: buyerWallet,
+  });
+  if (!txResult.ok) {
+    return json({
+      ok: false,
+      error: "blockchain_transfer_not_confirmed",
+      reason: "reason" in txResult ? txResult.reason : "polygon_transfer_not_confirmed",
+      retryable: true,
+    }, 502);
+  }
+
+  const contactJson = JSON.stringify({
+    email: buyer.email,
+    phone: buyer.phone,
+    buyer_wallet: buyerWallet,
+    seller_id: offer.seller_consumer_id,
+  });
+  const sourceContextJson = JSON.stringify({
+    source: "marketplace_p2p_checkout",
+    platform_fee_pct: 2.5,
+    blockchain: {
+      state: txResult.state,
+      simulated: txResult.simulated,
+      tx_hash: txResult.tx_hash,
+      token_id: txResult.token_id,
+      block_number: "block_number" in txResult ? txResult.block_number || null : null,
+      custody: "custody" in txResult ? txResult.custody || null : null,
+      owner_before: "owner_before" in txResult ? txResult.owner_before || null : null,
+      owner_after: "owner_after" in txResult ? txResult.owner_after || null : null,
+    },
+  });
+
   try {
-    // 3. Perform ownership update sequentially
-    // Deactivate seller's ownership (status = 'revoked')
-    await sql/*sql*/`
-      UPDATE consumer_product_ownerships
-      SET status = 'revoked', updated_at = now()
-      WHERE id = ${sellerClaim.id}
-    `;
-
-    // Create new ownership for buyer matching schema constraints
-    await sql/*sql*/`
-      INSERT INTO consumer_product_ownerships (
-        consumer_id,
-        tenant_id,
-        batch_id,
-        tag_id,
-        uid_hex,
-        event_id,
-        status,
-        source,
-        claimed_at,
-        updated_at
-      ) VALUES (
-        ${buyer.id},
-        ${offer.tenant_id},
-        ${sellerClaim.batch_id},
-        ${sellerClaim.tag_id},
-        ${offer.resale_uid_hex},
-        ${sellerClaim.event_id},
-        'claimed',
-        'marketplace',
-        now(),
-        now()
+    // One statement keeps seller revocation, buyer ownership, offer completion
+    // and the order receipt atomic. A retry can reconcile a confirmed chain
+    // transfer without leaving a half-written marketplace state.
+    const purchaseRows = await sql/*sql*/`
+      WITH eligible_offer AS (
+        SELECT id
+        FROM marketplace_offers
+        WHERE id = ${offer.id}
+          AND status = 'active'
+        FOR UPDATE
+      ),
+      revoked_ownership AS (
+        UPDATE consumer_product_ownerships
+        SET status = 'revoked', updated_at = now()
+        WHERE id = ${sellerClaim.id}
+          AND status = 'claimed'
+          AND EXISTS (SELECT 1 FROM eligible_offer)
+        RETURNING id
+      ),
+      buyer_ownership AS (
+        INSERT INTO consumer_product_ownerships (
+          consumer_id,
+          tenant_id,
+          batch_id,
+          tag_id,
+          uid_hex,
+          event_id,
+          status,
+          source,
+          claimed_at,
+          updated_at
+        )
+        SELECT
+          ${buyer.id},
+          ${offer.tenant_id},
+          ${sellerClaim.batch_id},
+          ${sellerClaim.tag_id},
+          ${offer.resale_uid_hex},
+          ${sellerClaim.event_id},
+          'claimed',
+          'marketplace',
+          now(),
+          now()
+        FROM revoked_ownership
+        RETURNING id
+      ),
+      completed_offer AS (
+        UPDATE marketplace_offers
+        SET status = 'completed', updated_at = now()
+        WHERE id IN (SELECT id FROM eligible_offer)
+          AND EXISTS (SELECT 1 FROM buyer_ownership)
+        RETURNING id
       )
-    `;
-
-    // Complete the offer listing status
-    await sql/*sql*/`
-      UPDATE marketplace_offers
-      SET status = 'completed', updated_at = now()
-      WHERE id = ${offer.id}
-    `;
-
-    // Log the purchase order request
-    await sql/*sql*/`
       INSERT INTO marketplace_order_requests (
         consumer_id,
         tenant_id,
@@ -114,7 +163,8 @@ export async function POST(req: Request) {
         fee_currency,
         source_uid_hex,
         source_context_json
-      ) VALUES (
+      )
+      SELECT
         ${buyer.id},
         ${offer.tenant_id},
         ${offer.marketplace_product_id},
@@ -122,28 +172,41 @@ export async function POST(req: Request) {
         'completed',
         1,
         'P2P Secondary Resale Purchase',
-        ${JSON.stringify({ email: buyer.email, phone: buyer.phone, buyer_wallet: buyerWallet, seller_id: offer.seller_consumer_id })}::jsonb,
+        ${contactJson}::jsonb,
         ${feeAmount},
         ${currency},
         ${offer.resale_uid_hex},
-        ${JSON.stringify({ source: "marketplace_p2p_checkout", platform_fee_pct: 2.5 })}::jsonb
-      )
+        ${sourceContextJson}::jsonb
+      FROM completed_offer
+      RETURNING id
     `;
-
-    // 4. Trigger the blockchain token transfer
-    txResult = await transferBlockchainToken({
-      uidHex: offer.resale_uid_hex,
-      toWallet: buyerWallet,
-    });
-
+    if (!purchaseRows[0]) {
+      return json({
+        ok: false,
+        error: "offer_state_changed",
+        reconciliationRequired: !txResult.simulated && ["confirmed", "already_transferred"].includes(txResult.state),
+        txHash: txResult.tx_hash,
+      }, 409);
+    }
   } catch (error) {
-    const message = error instanceof Error ? error.message : "p2p_checkout_failed";
-    return json({ ok: false, error: message }, 500);
+    console.error("[p2p_checkout_persistence_error]", error instanceof Error ? error.message : "unknown");
+    return json({
+      ok: false,
+      error: "p2p_checkout_persistence_failed",
+      reconciliationRequired: !txResult.simulated && ["confirmed", "already_transferred"].includes(txResult.state),
+      txHash: txResult.tx_hash,
+    }, 500);
   }
 
   return json({
     ok: true,
-    message: "Secondary market purchase completed successfully.",
+    message: txResult.state === "confirmed"
+      ? "Secondary purchase and Polygon transfer confirmed."
+      : txResult.state === "already_transferred"
+        ? "Polygon ownership was already confirmed; the purchase record was reconciled."
+        : txResult.state === "custody_unchanged"
+          ? "Secondary purchase completed under nexID managed custody."
+          : "Secondary purchase completed in simulation mode.",
     platformFee: {
       amount: feeAmount,
       currency,
@@ -151,10 +214,14 @@ export async function POST(req: Request) {
     },
     blockchainTransfer: {
       success: txResult.ok,
+      state: txResult.state,
       simulated: txResult.simulated,
       txHash: txResult.tx_hash,
       tokenId: txResult.token_id,
-      error: txResult.error || null,
+      blockNumber: "block_number" in txResult ? txResult.block_number || null : null,
+      custody: "custody" in txResult ? txResult.custody || null : null,
+      ownerBefore: "owner_before" in txResult ? txResult.owner_before || null : null,
+      ownerAfter: "owner_after" in txResult ? txResult.owner_after || null : null,
     }
   }, 200);
 }

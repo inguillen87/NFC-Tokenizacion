@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev -p 3003",
     "prebuild": "npm run prisma:generate",
-    "build": "node scripts/sanitize-route-tree.mjs && npm run test:routes && npm run test:rewards && next build",
+    "build": "node scripts/sanitize-route-tree.mjs && npm run test:routes && npm run test:rewards && npm run test:polygon-transfer && next build",
     "start": "next start -p 3003",
     "db:new": "node scripts/db-new-migration.mjs",
     "db:migrate": "node scripts/db-apply.mjs",
@@ -36,6 +36,7 @@
     "test:routes": "node scripts/sanitize-route-tree.mjs && node --test tests/app-route-slug-conflicts.test.mjs",
     "test:demo-corpus": "node --test tests/demo-corpus-smoke.test.mjs",
     "test:proof-demos": "node --import tsx --test tests/public-proof-demo-cases.test.mjs tests/public-polygon-ownership.test.mjs",
+    "test:polygon-transfer": "node --test tests/polygon-transfer-integrity.test.mjs",
     "demo:smoke": "node scripts/demo-smoke.mjs",
     "bootstrap:saas": "node scripts/bootstrap-saas.mjs"
   },
