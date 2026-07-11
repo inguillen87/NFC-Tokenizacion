@@ -327,7 +327,8 @@ test("demo lab trust scenario deep links open contextual wizard proof layers", a
   assert.match(client, /IOTA prueba evidencia logistica/);
   assert.match(client, /Evento canonico/);
   assert.match(client, /Polygon registra ownership despues de verificar el producto/);
-  assert.match(client, /Abrir prueba real en Amoy/);
+  assert.match(client, /Abrir certificado ownership/);
+  assert.match(client, /primaryHref: "\/proof\/ownership"/);
   assert.match(client, /Owner record/);
   assert.match(client, /context\.labels\.publicProof/);
   assert.match(client, /context\.labels\.businessOutcome/);

@@ -4,6 +4,7 @@ export type SunFreshHandoffPayload = {
   purpose: "sun_fresh_handoff";
   bid: string;
   eventId: string;
+  uid: string;
   diagnosticId: number;
   traceId: string;
   iat: number;
@@ -13,6 +14,7 @@ export type SunFreshHandoffPayload = {
 type FreshExpected = {
   bid?: string | null;
   eventId?: string | number | null;
+  uid?: string | null;
   diagnosticId?: string | number | null;
   traceId?: string | null;
 };
@@ -49,18 +51,25 @@ function clean(value: unknown) {
   return String(value || "").trim();
 }
 
-export function createSunFreshHandoffToken(input: Omit<SunFreshHandoffPayload, "purpose" | "iat"> & { iat?: number }) {
+function eventBoundUid(eventId: unknown) {
+  return `EVENT-${clean(eventId)}`.toUpperCase();
+}
+
+type SunFreshHandoffInput = Omit<SunFreshHandoffPayload, "purpose" | "iat" | "uid"> & { iat?: number };
+
+export function createSunFreshHandoffToken(input: SunFreshHandoffInput) {
   const now = Math.floor(Date.now() / 1000);
   const payload: SunFreshHandoffPayload = {
     purpose: "sun_fresh_handoff",
     bid: clean(input.bid),
     eventId: clean(input.eventId),
+    uid: eventBoundUid(input.eventId),
     diagnosticId: Number(input.diagnosticId),
     traceId: clean(input.traceId),
     iat: Number(input.iat || now),
     exp: Number(input.exp),
   };
-  if (!payload.bid || !payload.eventId || !payload.traceId || !Number.isFinite(payload.diagnosticId) || payload.diagnosticId <= 0) {
+  if (!payload.bid || !payload.eventId || !payload.uid || !payload.traceId || !Number.isFinite(payload.diagnosticId) || payload.diagnosticId <= 0) {
     throw new Error("invalid sun fresh handoff payload");
   }
   if (!Number.isFinite(payload.exp) || payload.exp <= now) {
@@ -87,10 +96,16 @@ export function verifySunFreshHandoffToken(token: string | null | undefined, exp
     const payload = decode(body);
     const now = Math.floor(Date.now() / 1000);
     if (payload.purpose !== "sun_fresh_handoff") return { ok: false as const, reason: "fresh_token_wrong_purpose" };
-    if (!payload.bid || !payload.eventId || !payload.traceId || !payload.exp) return { ok: false as const, reason: "fresh_token_incomplete" };
+    if (!payload.bid || !payload.eventId || !payload.uid || !payload.traceId || !payload.exp) {
+      return { ok: false as const, reason: "fresh_token_incomplete" };
+    }
+    if (payload.uid !== eventBoundUid(payload.eventId)) {
+      return { ok: false as const, reason: "fresh_token_uid_not_event_bound" };
+    }
     if (payload.exp < now) return { ok: false as const, reason: "fresh_token_expired" };
     if (expected.bid && payload.bid !== clean(expected.bid)) return { ok: false as const, reason: "fresh_token_bid_mismatch" };
     if (expected.eventId && payload.eventId !== clean(expected.eventId)) return { ok: false as const, reason: "fresh_token_event_mismatch" };
+    if (expected.uid && payload.uid !== clean(expected.uid).toUpperCase()) return { ok: false as const, reason: "fresh_token_uid_mismatch" };
     if (expected.traceId && payload.traceId !== clean(expected.traceId)) return { ok: false as const, reason: "fresh_token_trace_mismatch" };
     if (expected.diagnosticId && payload.diagnosticId !== Number(expected.diagnosticId)) {
       return { ok: false as const, reason: "fresh_token_snapshot_mismatch" };

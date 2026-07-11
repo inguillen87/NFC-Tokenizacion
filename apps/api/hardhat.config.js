@@ -1,4 +1,5 @@
 import hardhatEthers from "@nomicfoundation/hardhat-ethers";
+import hardhatVerify from "@nomicfoundation/hardhat-verify";
 
 const amoyRpcUrl = process.env.POLYGON_RPC_URL || "";
 const privateKey = (process.env.POLYGON_MINTER_PRIVATE_KEY || "").trim();
@@ -26,7 +27,7 @@ if (iotaEvmTestnetRpcUrl) {
 
 /** @type {import("hardhat/config").HardhatUserConfig} */
 const config = {
-  plugins: [hardhatEthers],
+  plugins: [hardhatEthers, hardhatVerify],
   solidity: {
     version: "0.8.24",
     settings: {

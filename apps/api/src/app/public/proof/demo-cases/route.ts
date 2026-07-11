@@ -35,6 +35,9 @@ export async function GET() {
   const polygonContract = clean(process.env.POLYGON_CONTRACT_ADDRESS) || "0x673CAE3D79f825bba9cfb2096184c295A5C9Eb4C";
   const polygonOwner = clean(process.env.POLYGON_MINTER_ADDRESS || process.env.POLYGON_DEPLOY_OWNER) || "0x644c5D77a34182Db01257bC4C469B01850bc6B2d";
   const polygonDemoTx = clean(process.env.PUBLIC_PROOF_DEMO_POLYGON_TX_HASH || process.env.POLYGON_DEMO_TX_HASH);
+  const polygonDemoTokenId = clean(process.env.PUBLIC_PROOF_DEMO_POLYGON_TOKEN_ID);
+  const polygonApiBaseUrl = (clean(process.env.NEXT_PUBLIC_API_URL || process.env.API_BASE_URL) || "https://api.nexid.lat").replace(/\/$/, "");
+  const polygonMetadataUrl = `${polygonApiBaseUrl}/public/polygon/metadata/ownership-v2`;
   const iotaExplorerBaseUrl = clean(process.env.IOTA_EXPLORER_BASE_URL) || "https://explorer.evm.testnet.iota.cafe";
   const iotaContract = clean(process.env.IOTA_EVM_ANCHOR_CONTRACT);
   const cases = PUBLIC_PROOF_DEMO_CASES.map((demoCase) => {
@@ -91,6 +94,9 @@ export async function GET() {
         owner_explorer_url: explorerUrl(polygonExplorerBaseUrl, "address", polygonOwner),
         demo_tx_hash: polygonDemoTx || null,
         demo_tx_explorer_url: explorerUrl(polygonExplorerBaseUrl, "tx", polygonDemoTx),
+        demo_token_id: polygonDemoTokenId || null,
+        metadata_url: polygonMetadataUrl,
+        ownership_certificate_url: "https://nexid.lat/proof/ownership",
       },
     },
     privacy: "Demo hashes are generated from canonical non-sensitive demo events. No customer, route manifest, UID or private key is exposed.",

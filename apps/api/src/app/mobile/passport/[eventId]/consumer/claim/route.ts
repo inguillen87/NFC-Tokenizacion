@@ -5,7 +5,19 @@ import { getConsumerFromRequest } from "../../../../../../lib/consumer-auth";
 import { claimOwnershipForConsumer } from "../../../../../../lib/consumer-portal-service";
 import { getTapEvent } from "../../../../../../lib/loyalty-service";
 import { matchesOwnershipTenant } from "../../../../../../lib/ownership-policy";
+import { requireSunFreshHandoff } from "../../../../../../lib/sun-fresh-handoff";
 import { ensureConsumerPortalSchema } from "../../../../../../lib/commercial-runtime-schema";
+
+const FRESH_OWNERSHIP_REQUIRED = "fresh_physical_tap_required_for_ownership";
+
+function freshOwnershipForbidden(freshTokenStatus: string) {
+  return json({
+    ok: false,
+    error: FRESH_OWNERSHIP_REQUIRED,
+    reason: FRESH_OWNERSHIP_REQUIRED,
+    fresh_token_status: freshTokenStatus,
+  }, 403);
+}
 
 export async function POST(req: Request, { params }: { params: Promise<{ eventId: string }> }) {
   await ensureConsumerPortalSchema();
@@ -35,6 +47,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
   })) {
     return json({ ok: false, error: "tenant_mismatch" }, 403);
   }
+  const expectedEventId = String(event.id || eventId).trim();
+  const expectedBid = String(body.bid || event.bid || "").trim();
+  if (!expectedBid) return freshOwnershipForbidden("fresh_token_bid_missing");
+  const fresh = requireSunFreshHandoff(req, body as Record<string, unknown>, { eventId: expectedEventId, bid: expectedBid });
+  if (!fresh.ok) return freshOwnershipForbidden(fresh.reason);
   const claimed = await claimOwnershipForConsumer({
     consumerId: consumer.id,
     eventId,

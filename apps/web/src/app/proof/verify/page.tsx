@@ -5,6 +5,7 @@ import {
   BadgeCheck,
   ClipboardCheck,
   Database,
+  ExternalLink,
   FileSearch,
   Layers,
   LockKeyhole,
@@ -125,6 +126,9 @@ type DemoCasesResponse = {
       owner_explorer_url?: string | null;
       demo_tx_hash?: string | null;
       demo_tx_explorer_url?: string | null;
+      demo_token_id?: string | null;
+      metadata_url?: string | null;
+      ownership_certificate_url?: string | null;
     };
   };
 };
@@ -221,8 +225,8 @@ const connectionCards = [
   {
     title: "IOTA / Polygon",
     body: "IOTA sirve como proof/auditoria opcional. Polygon queda separado para ownership, certificados y warranty transfer.",
-    href: "/docs#trust-layers",
-    cta: "Separar capas",
+    href: "/proof/ownership",
+    cta: "Abrir certificado Polygon",
   },
 ];
 
@@ -780,6 +784,9 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
   const anchorId = first(params.anchor_id || params.anchorId).trim();
   const requestedDecoderInput = first(params.decode_input || params.raw_input || params.rawInput || params.memo || params.data).trim();
   const requestedLayer = first(params.layer || params.network).trim().toLowerCase();
+  const demoLabBackHref = requestedLayer === "polygon"
+    ? "/demo-lab?scenario=polygon-ownership"
+    : "/demo-lab?scenario=iota-proof";
   const architectureRequested = requestedLayer === "polygon" || requestedLayer === "iota";
   const focusTargetId = requestedDecoderInput
     ? "proof-decoder"
@@ -1634,7 +1641,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           <div className="proof-top-actions flex flex-wrap items-center justify-end gap-2">
             <ThemeToggle />
             <Link
-              href="/demo-lab?scenario=iota-proof"
+              href={demoLabBackHref}
               className="proof-top-cta inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-xs font-black uppercase tracking-[0.12em] shadow-sm transition hover:border-cyan-300 hover:bg-cyan-50"
             >
               Volver a Demo Lab <ArrowRight className="h-4 w-4" />
@@ -1859,7 +1866,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-700">Polygon ownership layer</p>
                 <h2 className="mt-2 text-2xl font-black leading-tight text-slate-950">Contrato real NXDT en Amoy.</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  Esta capa registra un mint demo para propiedad, garantia o reclamo comercial. El certificado publico completo requiere metadata resoluble y contrato verificado; el mint testnet no reemplaza esos controles.
+                  Esta capa registra ownership despues de la validacion nexID. El certificado dedicado consulta mint, owner y metadata en vivo; el source code del contrato se informa por separado y nunca se confunde el NFT con la autenticidad fisica.
                 </p>
               </div>
               <span className={`rounded-full border px-3 py-1 text-[0.68rem] font-black uppercase tracking-[0.1em] ${demoCatalog.testnet?.polygon?.contract_address ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-slate-300 bg-slate-100 text-slate-600"}`}>
@@ -1884,6 +1891,16 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                   <div className="mt-3">{explorerLink(demoCatalog.testnet.polygon.demo_tx_explorer_url, "Abrir tx")}</div>
                 </div>
               ) : null}
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Link href="/proof/ownership" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-violet-700 px-4 text-xs font-black uppercase tracking-[0.1em] text-white transition hover:bg-violet-800">
+                  Abrir certificado legible <ArrowRight className="h-4 w-4" />
+                </Link>
+                {demoCatalog.testnet?.polygon?.metadata_url ? (
+                  <a href={demoCatalog.testnet.polygon.metadata_url} target="_blank" rel="noreferrer" className="proof-nav-cta inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 text-xs font-black uppercase tracking-[0.1em]">
+                    Ver metadata HTTPS <ExternalLink className="h-4 w-4" />
+                  </a>
+                ) : null}
+              </div>
             </dl>
           </article>
 
@@ -2459,7 +2476,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                   </a>
                 ) : null}
                 <div className="grid gap-2 sm:grid-cols-2">
-                  <Link href="/demo-lab?scenario=iota-proof" className="proof-nav-cta inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]">
+                  <Link href={demoLabBackHref} className="proof-nav-cta inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]">
                     Volver a Demo Lab <ArrowRight className="h-4 w-4" />
                   </Link>
                   <Link href="/sdk" className="proof-nav-cta proof-nav-cta--neutral inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]">

@@ -11,12 +11,19 @@ type CertificateTimelineItem = { eventId?: string; result?: string | null; city?
 
 type CertificatePayload = {
   ok?: boolean;
-    certificate?: {
+  certificate?: {
     id?: string;
     publicUrl?: string;
     links?: { certificateUrl?: string | null; walletUrl?: string | null; marketplaceUrl?: string | null; explorerUrl?: string | null };
     status?: string;
     statusLabel?: string;
+    verification?: {
+      state?: "authentic_intact" | "authentic_opened" | "replay_blocked" | "tamper_review" | "not_verified";
+      authentic?: boolean;
+      actionEligible?: boolean;
+      resultCode?: string;
+      explainer?: string;
+    };
     product?: {
       name?: string | null;
       brand?: string | null;
@@ -31,7 +38,7 @@ type CertificatePayload = {
     tap?: { eventId?: string; result?: string | null; reason?: string | null; at?: string | null; city?: string | null; country?: string | null; scans?: number | string | null };
     origin?: { label?: string | null; lat?: string | number | null; lng?: string | number | null };
     identity?: { uidMasked?: string | null; bid?: string | null; carrier?: string | null };
-    ownership?: { status?: string | null; claimed?: boolean; claimedAt?: string | null; ownerLabel?: string | null };
+    ownership?: { status?: string | null; claimed?: boolean; actionEligible?: boolean; recordScope?: string; onChainOwnerVerified?: boolean; claimedAt?: string | null; ownerLabel?: string | null };
     tokenization?: { status?: string | null; network?: string | null; txHash?: string | null; tokenId?: string | null; anchorHash?: string | null; processedAt?: string | null; explorerUrl?: string | null };
     trust?: { score?: number | string | null; factors?: CertificateFactor[] };
     timeline?: CertificateTimelineItem[];
@@ -161,6 +168,12 @@ export default async function PublicCertificatePage({ params }: { params: Promis
   const marketplaceHref = tenantSlug ? `/me/marketplace?tenant=${encodeURIComponent(tenantSlug)}` : "/me/marketplace";
   const permanentUrl = cert.links?.certificateUrl || cert.publicUrl || `https://nexid.lat/certificado/${encodeURIComponent(String(tap.eventId || eventId))}`;
   const blockchainState = blockchainExplainer(token);
+  const authentic = cert.verification?.authentic === true;
+  const statusTone = authentic
+    ? "border-emerald-300/25 bg-emerald-500/10 text-emerald-100"
+    : cert.verification?.state === "replay_blocked"
+      ? "border-rose-300/30 bg-rose-500/15 text-rose-100"
+      : "border-amber-300/30 bg-amber-500/15 text-amber-100";
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#070b14] text-slate-100">
@@ -174,8 +187,8 @@ export default async function PublicCertificatePage({ params }: { params: Promis
               <small className="block text-[10px] uppercase tracking-[0.18em] text-cyan-200">certificado publico</small>
             </span>
           </Link>
-          <span className="max-w-full rounded-full border border-emerald-300/25 bg-emerald-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-100">
-            {cert.statusLabel || "Producto autentico"}
+          <span className={`max-w-full rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${statusTone}`}>
+            {cert.statusLabel || "Estado no confirmado"}
           </span>
         </header>
 
@@ -187,16 +200,20 @@ export default async function PublicCertificatePage({ params }: { params: Promis
                 {product.name || "Producto verificado"}
               </h1>
               <p className="mt-3 max-w-full break-words text-sm leading-6 text-slate-300 [overflow-wrap:anywhere] sm:text-base sm:leading-7">
-                <span className="block">{product.brand || tenant.name || "Marca verificada"} confirma autenticidad y origen.</span>
-                <span className="block">Propiedad + NFT visibles. Certificado compartible.</span>
+                <span className="block">
+                  {authentic
+                    ? `${product.brand || tenant.name || "La marca"} confirma el evento fisico en nexID.`
+                    : "Este evento no confirma autenticidad y no habilita ownership."}
+                </span>
+                <span className="block">{cert.verification?.explainer || "Polygon registra ownership solo despues de la validacion nexID."}</span>
               </p>
 
               <div className="mt-6 grid gap-3 sm:grid-cols-4">
                 {[
                   [ShieldCheck, "Autenticidad", String(tap.result || "verificado").toUpperCase()],
                   [Fingerprint, "UID", cert.identity?.uidMasked || "Protegido"],
-                  [BadgeCheck, "Ownership", ownership.claimed ? "Verificado" : "Reclamable"],
-                  [WalletCards, "NFT", chainLabel(token.status)],
+                  [BadgeCheck, "Ownership", ownership.claimed ? "Claim nexID" : authentic ? "Reclamable" : "Bloqueado"],
+                  [WalletCards, "NFT", authentic ? chainLabel(token.status) : "No habilitado"],
                 ].map(([Icon, label, value]) => {
                   const ItemIcon = Icon as typeof ShieldCheck;
                   return (
@@ -276,7 +293,7 @@ export default async function PublicCertificatePage({ params }: { params: Promis
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-200">Link permanente</p>
               <h2 className="mt-2 text-xl font-black text-white">Certificado digital compartible</h2>
               <p className="mt-2 text-sm leading-6 text-emerald-50/80">
-                Este link prueba autenticidad, ownership, estado NFT y evidencia del producto sin exponer el UID completo.
+                Este link comparte el veredicto nexID, el estado de ownership y la evidencia Polygon disponible sin exponer el UID completo.
               </p>
               <a href={permanentUrl} className="mt-3 block break-all rounded-2xl border border-white/10 bg-slate-950/60 p-3 text-xs font-semibold text-cyan-100">
                 {permanentUrl}
@@ -311,7 +328,7 @@ export default async function PublicCertificatePage({ params }: { params: Promis
                 {[
                   ["Origen", cert.origin?.label || "Origen registrado", "La marca cargo lote, producto y reglas antes del canal."],
                   ["Tap", `${tap.city || "Ciudad"}${tap.country ? `, ${tap.country}` : ""}`, fmtDate(tap.at)],
-                  ["Dueño", ownership.ownerLabel || "Estado de ownership disponible", ownership.claimedAt ? fmtDate(ownership.claimedAt) : "Validacion por email/celular + tap fresco."],
+                  ["Claim", ownership.ownerLabel || "Estado de ownership disponible", ownership.claimedAt ? `${fmtDate(ownership.claimedAt)} - registro off-chain; no prueba ownerOf.` : "Validacion por email/celular + tap fresco."],
                   ["Blockchain", token.tokenId ? `Token ${token.tokenId}` : chainLabel(token.status), token.processedAt ? fmtDate(token.processedAt) : "Se muestra tx/hash cuando el tenant ancla en Polygon."],
                 ].map(([label, title, body]) => (
                   <li key={label} className="grid grid-cols-[auto_1fr] gap-3">

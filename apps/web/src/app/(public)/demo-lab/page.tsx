@@ -172,10 +172,10 @@ const PANEL_CONTENT: Record<
     title: "Propiedad Digital (Polygon)",
     subtitle: "El comprador inicia ownership con un mint testnet verificable",
     context:
-      "Cuando el comprador toca el producto, puede solicitar ownership en Polygon despues de validar autenticidad y politica tenant. El demo muestra un mint testnet real; el certificado publico completo requiere metadata resoluble y contrato verificado.",
+      "Cuando el comprador toca el producto, puede solicitar ownership en Polygon despues de validar autenticidad y politica tenant. El demo conecta con un certificado publico que consulta owner, mint y metadata HTTPS en vivo.",
     value:
       "Cada ownership aprobado puede habilitar garantia, reventa y club sin exponer identidad ni factura on-chain. La transaccion prueba el mint; nexID conserva contexto, permisos y datos privados.",
-    doc: { label: "Ver arquitectura Polygon", href: "/docs#trust-layers" },
+    doc: { label: "Abrir certificado Polygon", href: "/proof/ownership" },
   },
   "iota-proof": {
     icon: Network,

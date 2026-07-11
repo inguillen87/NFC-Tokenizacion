@@ -292,23 +292,23 @@ function getTrustScenarioContext(key: DemoTrustScenarioKey | null, locale: AppLo
       tone: key,
       eyebrow: isEn ? "Ownership layer" : "Capa ownership",
       title: isEn ? "Polygon records ownership after product verification." : "Polygon registra ownership despues de verificar el producto.",
-      body: isEn ? "This flow shows policy plus a confirmed testnet mint. A complete public certificate also requires resolvable metadata and a verified contract; nexID does not confuse the mint with the first authenticity check." : "Este flujo muestra la politica y un mint testnet confirmado. Un certificado publico completo tambien requiere metadata resoluble y contrato verificado; nexID no confunde el mint con la primera validacion de autenticidad.",
+      body: isEn ? "This flow shows the policy plus a confirmed testnet mint. The public certificate reads the owner, mint and HTTPS metadata live; nexID still keeps physical authenticity separate from the NFT." : "Este flujo muestra la politica y un mint testnet confirmado. El certificado publico lee owner, mint y metadata HTTPS en vivo; nexID mantiene la autenticidad fisica separada del NFT.",
       publicProof: isEn ? "Visible: request, confirmed testnet mint/tx and owner status when approved." : "Publico: solicitud, mint/tx testnet confirmado y estado de owner al aprobarse.",
       privateData: isEn ? "Private: buyer identity, invoice, warranty policy and CRM segment." : "Privado: identidad del comprador, factura, politica de garantia y segmento CRM.",
       decisionPath: isEn
         ? [
           { label: "Authentic item", body: "Require QR/NFC validation first." },
           { label: "Approved buyer", body: "Apply warranty, invoice and tenant policy." },
-          { label: "Owner record", body: "Issue the mint; expose a certificate only when metadata and contract are verifiable." },
+          { label: "Owner record", body: "Issue the mint and expose a certificate with live owner, metadata and transaction checks." },
         ]
         : [
           { label: "Objeto autentico", body: "Exige validacion QR/NFC primero." },
           { label: "Comprador aprobado", body: "Aplica garantia, factura y politica tenant." },
-          { label: "Owner record", body: "Emite el mint; muestra certificado solo con metadata y contrato verificables." },
+          { label: "Owner record", body: "Emite el mint y muestra certificado con owner, metadata y transaccion comprobados en vivo." },
         ],
       businessOutcome: isEn ? "Resale, warranty and loyalty become gated by real product proof." : "Reventa, garantia y loyalty quedan atados a prueba real de producto.",
-      primaryHref: "/proof/verify?layer=polygon#polygon-ownership",
-      primaryLabel: isEn ? "Open real Amoy proof" : "Abrir prueba real en Amoy",
+      primaryHref: "/proof/ownership",
+      primaryLabel: isEn ? "Open ownership certificate" : "Abrir certificado ownership",
       secondaryHref: "/?contact=demo#contact-modal",
       secondaryLabel: isEn ? "Design ownership pilot" : "Disenar piloto ownership",
     },

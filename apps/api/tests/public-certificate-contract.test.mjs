@@ -11,6 +11,13 @@ test("public certificate route exposes certificate without owner PII", async () 
   assert.match(source, /explorerUrl/);
   assert.match(source, /assets: assetProfile/);
   assert.match(source, /readProductAssetMedia/);
+  assert.match(source, /isClaimableOwnershipResult/);
+  assert.match(source, /replay_blocked/);
+  assert.match(source, /Autenticidad no confirmada/);
+  assert.match(source, /recordScope: "nexid_off_chain"/);
+  assert.match(source, /onChainOwnerVerified: false/);
+  assert.doesNotMatch(source, /owner_verified/);
+  assert.doesNotMatch(source, /tokenStatus === "simulated"/);
   assert.doesNotMatch(source, /consumer_email|phone_number|contact_value|otp_code/i);
 });
 

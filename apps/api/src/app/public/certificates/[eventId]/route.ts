@@ -8,6 +8,7 @@ import { ensureSunTenantProfilesSchema } from "../../../../lib/sun-tenant-profil
 import { ensureTokenizationRequestsSchema } from "../../../../lib/tokenization-schema";
 import { normalizeTokenizationStatus } from "../../../../lib/tokenization-status";
 import { buildProductAssetProfile, readProductAssetMedia } from "../../../../lib/product-asset-profile";
+import { isClaimableOwnershipResult } from "../../../../lib/ownership-policy";
 
 function cleanId(value: unknown) {
   return String(value || "").trim();
@@ -172,6 +173,24 @@ export async function GET(_req: Request, { params }: { params: Promise<{ eventId
   const tokenStatus = normalizeTokenizationStatus(row.tokenization_status);
   const txUrl = explorerUrl(row.tokenization_network, row.tokenization_tx_hash);
   const claimed = String(row.ownership_status || "").toLowerCase() === "claimed";
+  const resultCode = String(row.result || "").toUpperCase();
+  const authentic = isClaimableOwnershipResult(resultCode);
+  const replayBlocked = resultCode === "REPLAY_SUSPECT" || resultCode === "DUPLICATE";
+  const tamperReview = resultCode.includes("TAMPER") && !authentic;
+  const verificationState = authentic
+    ? (resultCode.includes("OPENED") ? "authentic_opened" : "authentic_intact")
+    : replayBlocked
+      ? "replay_blocked"
+      : tamperReview
+        ? "tamper_review"
+        : "not_verified";
+  const statusLabel = authentic
+    ? (claimed ? "Claim registrado en nexID" : resultCode.includes("OPENED") ? "Autentico - abierto" : "Producto autentico")
+    : replayBlocked
+      ? "Replay bloqueado"
+      : tamperReview
+        ? "Requiere revision de tamper"
+        : "Autenticidad no confirmada";
 
   const timelineRows = row.batch_id && row.uid_hex ? await sql/*sql*/`
     SELECT id, result, city, country_code, created_at
@@ -191,8 +210,19 @@ export async function GET(_req: Request, { params }: { params: Promise<{ eventId
       marketplaceUrl: `${publicWebBase()}/me/marketplace${row.tenant_slug ? `?tenant=${encodeURIComponent(String(row.tenant_slug))}` : ""}`,
       explorerUrl: txUrl,
     },
-    status: claimed ? "owner_verified" : "product_verified",
-    statusLabel: claimed ? "Dueno verificado" : "Producto autentico",
+    status: authentic ? (claimed ? "claim_recorded" : "product_verified") : verificationState,
+    statusLabel,
+    verification: {
+      state: verificationState,
+      authentic,
+      actionEligible: authentic,
+      resultCode: resultCode || "UNKNOWN",
+      explainer: authentic
+        ? "nexID valido el evento fisico. Polygon, si aparece, registra ownership; no reemplaza esta validacion."
+        : replayBlocked
+          ? "El evento fue bloqueado por replay. No habilita ownership, garantia ni certificado de autenticidad."
+          : "Este evento no alcanza el umbral de autenticidad y no habilita acciones de ownership.",
+    },
     product: {
       name: productName,
       brand: brandName,
@@ -231,8 +261,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ eventId
     ownership: {
       status: row.ownership_status || "not_claimed",
       claimed,
+      actionEligible: authentic,
+      recordScope: "nexid_off_chain",
+      onChainOwnerVerified: false,
       claimedAt: row.ownership_claimed_at || null,
-      ownerLabel: claimed ? "Consumidor verificado por nexID" : "Disponible para reclamar con tap fresco",
+      ownerLabel: claimed
+        ? "Claim de consumidor registrado en nexID"
+        : authentic
+          ? "Disponible para reclamar con tap fresco"
+          : "Ownership bloqueado para este evento",
     },
     tokenization: {
       status: tokenStatus,
@@ -244,12 +281,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ eventId
       explorerUrl: txUrl,
     },
     trust: {
-      score: claimed ? 96 : tokenStatus === "anchored" ? 93 : 88,
+      score: !authentic ? (replayBlocked ? 18 : tamperReview ? 32 : 24) : claimed ? 96 : tokenStatus === "anchored" ? 93 : 88,
       factors: [
-        { label: "Chip verificado", ok: Boolean(row.uid_hex) },
+        { label: "Evento autentico", ok: authentic },
+        { label: "Identidad de chip disponible", ok: Boolean(row.uid_hex) },
         { label: "Tenant y lote registrados", ok: Boolean(row.tenant_slug && row.bid) },
-        { label: "Ownership validado", ok: claimed },
-        { label: "Blockchain visible", ok: Boolean(txUrl || row.tokenization_token_id || tokenStatus === "simulated") },
+        { label: "Claim de consumidor registrado", ok: authentic && claimed },
+        { label: "Blockchain confirmado", ok: Boolean(authentic && txUrl && row.tokenization_token_id && tokenStatus === "anchored") },
       ],
     },
     timeline: timelineRows.map((item) => ({

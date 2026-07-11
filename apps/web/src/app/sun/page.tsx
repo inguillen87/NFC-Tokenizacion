@@ -378,7 +378,7 @@ function sunFallbackResult(params: Record<string, string | string[] | undefined>
       wineryCoordinates: { lat: -33.2095, lng: -69.1211 },
     },
     tapContext: { city: "Buenos Aires", country: "AR", lat: -34.6037, lng: -58.3816 },
-    tokenization: { status: "sandbox_ready", network: "Polygon Amoy", txHash: "0xBALMEC", tokenId: "NX-BALMEC-0424" },
+    tokenization: { status: "sandbox_ready", network: "Polygon Amoy", txHash: null, tokenId: null },
     tag_tamper: { available: true, status: "opened", raw: "4F4F" },
     cta: { claimOwnership: true, registerWarranty: true, provenance: true, tokenize: true },
     troubleshooting: [],

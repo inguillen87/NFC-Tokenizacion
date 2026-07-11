@@ -30,6 +30,11 @@ function buildPublicAssetId(chipUidHash: string) {
   return `nx-${digest.slice(0, 24)}`;
 }
 
+function buildTokenMetadataUrl(publicAssetId: string) {
+  const configuredBase = String(process.env.TOKENIZATION_METADATA_BASE_URL || "https://api.nexid.lat/public/polygon/assets").trim().replace(/\/$/, "");
+  return `${configuredBase}/${encodeURIComponent(publicAssetId)}`;
+}
+
 async function runExternalExecutor(payload: Record<string, unknown>) {
   const url = (process.env.TOKENIZATION_EXECUTOR_URL || "").trim();
   if (!url) return null;
@@ -192,7 +197,7 @@ export async function anchorTokenizationRequest(input: AnchorInput) {
   try {
     const chipUidHash = buildChipUidHash(existing.uid_hex);
     const publicAssetId = buildPublicAssetId(chipUidHash);
-    const tokenUri = `ipfs://${(process.env.TOKENIZATION_METADATA_CID_PREFIX || "nexid-metadata")}/${existing.bid}/${publicAssetId}.json`;
+    const tokenUri = buildTokenMetadataUrl(publicAssetId);
     const assetRef = `${existing.bid}:${publicAssetId}`;
     const externalInput = {
       request_id: existing.id,

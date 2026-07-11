@@ -68,9 +68,19 @@ async function main() {
   }
   if (balance === 0n) throw new Error(`polygon_wallet_has_no_POL:${wallet.address}`);
 
-  const chipUidHash = `sha256:${createHash("sha256").update("nexid-public-proof-demo:polygon-ownership:v1").digest("hex")}`;
-  const tokenUri = `${env.get("TOKENIZATION_METADATA_CID_PREFIX") || "ipfs://nexid-metadata"}/public-proof/polygon-ownership-v1.json`;
-  const assetRef = "public-proof-demo:polygon-ownership-v1";
+  const certificateVersion = "v2";
+  const metadataBaseUrl = (env.get("PUBLIC_POLYGON_METADATA_BASE_URL") || "https://api.nexid.lat/public/polygon/metadata").replace(/\/$/, "");
+  const tokenUri = `${metadataBaseUrl}/ownership-${certificateVersion}`;
+  const assetRef = `public-proof-demo:polygon-ownership-${certificateVersion}`;
+  const issuanceRecord = JSON.stringify({
+    schema: "nexid-platform-custody-issuance-v2",
+    environment: "polygon-amoy-testnet",
+    recipient: recipient.toLowerCase(),
+    token_uri: tokenUri,
+    asset_ref: assetRef,
+    privacy: "hash-only",
+  });
+  const chipUidHash = `sha256:${createHash("sha256").update(issuanceRecord).digest("hex")}`;
   const existingTokenId = await contract.tokenByChipHash(chipUidHash);
 
   if (BigInt(String(existingTokenId || "0")) > 0n) {

@@ -60,10 +60,12 @@ function safeBuildShare(bid: string, uid: string) {
 }
 
 function resolveShareUid(uid: string, eventId: string) {
-  const normalizedUid = clean(uid).toUpperCase();
-  if (/^[0-9A-F]{8,20}$/.test(normalizedUid)) return normalizedUid;
   const normalizedEventId = clean(eventId);
-  return /^\d+$/.test(normalizedEventId) ? `EVENT-${normalizedEventId}` : "";
+  if (normalizedEventId) {
+    return /^[1-9]\d*$/.test(normalizedEventId) ? `EVENT-${normalizedEventId}` : "";
+  }
+  const normalizedUid = clean(uid).toUpperCase();
+  return /^[0-9A-F]{8,20}$/.test(normalizedUid) ? normalizedUid : "";
 }
 
 async function forward(req: Request, action: string, method: "GET" | "POST", bid: string, uid: string, eventId: string, trace: string, payload?: Record<string, unknown>) {

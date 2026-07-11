@@ -110,7 +110,7 @@ test("proof verifier keeps the enterprise decoder readable and non-trapped", asy
   assert.match(page, /#proof-decoder/);
   assert.match(page, /proof-architecture-disclosure/);
   assert.match(page, /architectureRequested/);
-  assert.match(page, /layer=polygon#polygon-ownership/);
+  assert.match(page, /\/proof\/ownership/);
   assert.match(page, /ProofFocusTarget/);
   assert.match(page, /tabIndex=\{-1\}/);
   assert.match(focusTarget, /scrollIntoView/);
