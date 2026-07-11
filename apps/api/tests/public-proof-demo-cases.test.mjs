@@ -4,7 +4,12 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const source = readFileSync(fileURLToPath(new URL("../src/lib/public-proof-demos.ts", import.meta.url)), "utf8");
+const decoderSource = readFileSync(fileURLToPath(new URL("../src/lib/public-proof-decoder.ts", import.meta.url)), "utf8");
+const verifyRouteSource = readFileSync(fileURLToPath(new URL("../src/app/public/proof/verify/route.ts", import.meta.url)), "utf8");
+const anchorRouteSource = readFileSync(fileURLToPath(new URL("../src/app/public/proof/[anchorId]/route.ts", import.meta.url)), "utf8");
+const schemaSource = readFileSync(fileURLToPath(new URL("../src/lib/supplier-ops-schema.ts", import.meta.url)), "utf8");
 const { buildPublicProofDemoCases } = await import("../scripts/public-proof-demo-fixtures.mjs");
+const { decodePublicProofInput } = await import("../src/lib/public-proof-decoder.ts");
 
 const PUBLIC_PROOF_DEMO_CASES = buildPublicProofDemoCases();
 const hashToCaseId = new Map(PUBLIC_PROOF_DEMO_CASES.flatMap((demoCase) =>
@@ -50,4 +55,65 @@ test("public proof source keeps demo lookup helpers wired for the verify route",
   assert.match(source, /tenantId:\s*"public-demo"/);
   assert.match(source, /public_receipt/);
   assert.match(source, /hashPublicText\(onChainMemo\)/);
+});
+
+test("proof decoder distinguishes a verified fixture receipt from parsed-only text", () => {
+  const demoCase = PUBLIC_PROOF_DEMO_CASES[0];
+  const envKey = "PUBLIC_PROOF_RECEIPT_IOTA_TX_HASH_SECURE_DELIVERY";
+  const previousTx = process.env[envKey];
+
+  try {
+    delete process.env[envKey];
+    const matchedOnly = decodePublicProofInput(demoCase.public_receipt.on_chain_memo);
+    assert.equal(matchedOnly.receipt_matched, true);
+    assert.equal(matchedOnly.receipt_verified, false);
+    assert.equal(matchedOnly.verification_status, "matched_demo_receipt");
+    assert.ok(matchedOnly.warnings?.includes("receipt_publication_unavailable"));
+
+    process.env[envKey] = `0x${"ab".repeat(32)}`;
+    const exact = decodePublicProofInput(demoCase.public_receipt.on_chain_memo);
+    assert.equal(exact.ok, true);
+    assert.equal(exact.receipt_matched, true);
+    assert.equal(exact.receipt_verified, true);
+    assert.equal(exact.verification_status, "verified_demo_receipt");
+    assert.equal(exact.matching_demo_case?.id, demoCase.id);
+    assert.match(exact.publication_explorer_url || "", /\/tx\/0x/);
+    assert.equal(exact.warnings?.includes("receipt_not_verified"), false);
+
+    const forgedMemo = demoCase.public_receipt.on_chain_memo.replace("events=3", "events=999");
+    const forged = decodePublicProofInput(forgedMemo);
+    assert.equal(forged.ok, true);
+    assert.equal(forged.receipt_matched, false);
+    assert.equal(forged.receipt_verified, false);
+    assert.equal(forged.verification_status, "parsed_only");
+    assert.equal(forged.matching_demo_case, null);
+    assert.ok(forged.warnings?.includes("demo_receipt_mismatch"));
+    assert.ok(forged.warnings?.includes("receipt_not_verified"));
+    assert.match(forged.executive_summary || "", /no confirma/i);
+  } finally {
+    if (previousTx === undefined) delete process.env[envKey];
+    else process.env[envKey] = previousTx;
+  }
+});
+
+test("proof verifier queries indexed event hashes and exposes honest trust states", () => {
+  assert.match(verifyRouteSource, /event_hashes_json\s+@>/);
+  assert.doesNotMatch(verifyRouteSource, /LIMIT\s+250/);
+  assert.match(verifyRouteSource, /externally_confirmed:\s*externallyConfirmed/);
+  assert.match(verifyRouteSource, /valid:\s*externallyConfirmed/);
+  assert.match(verifyRouteSource, /evidence_level:\s*evidenceLevel/);
+  assert.match(verifyRouteSource, /testnet_fixture/);
+  assert.match(schemaSource, /idx_evidence_anchors_event_hashes_gin/);
+});
+
+test("public anchor route rejects malformed ids before querying the database", () => {
+  assert.match(anchorRouteSource, /anchor_id_invalid/);
+  assert.match(anchorRouteSource, /anchor_registry_unavailable/);
+  assert.match(anchorRouteSource, /anchor_id_invalid[\s\S]*await ensureSupplierOpsSchema/);
+});
+
+test("decoder implementation requires an exact receipt match", () => {
+  assert.match(decoderSource, /public_receipt\.on_chain_memo === decodedMemo/);
+  assert.match(decoderSource, /verification_status:\s*receiptVerified \? "verified_demo_receipt" : demoCase \? "matched_demo_receipt" : "parsed_only"/);
+  assert.match(decoderSource, /receipt_publication_unavailable/);
 });

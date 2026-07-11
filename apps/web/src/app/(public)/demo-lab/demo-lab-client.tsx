@@ -291,24 +291,24 @@ function getTrustScenarioContext(key: DemoTrustScenarioKey | null, locale: AppLo
     "polygon-ownership": {
       tone: key,
       eyebrow: isEn ? "Ownership layer" : "Capa ownership",
-      title: isEn ? "Polygon is the ownership certificate, not the first authenticity check." : "Polygon es el certificado de propiedad, no la primera verificacion de autenticidad.",
-      body: isEn ? "The deep link opens the business outcome because ownership only makes sense after a fresh tap, buyer validation and tenant approval. This is how a C-level audience sees warranty, resale and club value." : "El deep link abre el resultado comercial porque ownership solo tiene sentido despues de tap fresco, comprador validado y aprobacion del tenant. Asi un C-level entiende garantia, reventa y club.",
-      publicProof: isEn ? "Visible: certificate request, token/tx when approved, public owner status." : "Publico: solicitud de certificado, token/tx al aprobarse y estado de owner.",
+      title: isEn ? "Polygon records ownership after product verification." : "Polygon registra ownership despues de verificar el producto.",
+      body: isEn ? "This flow shows policy plus a confirmed testnet mint. A complete public certificate also requires resolvable metadata and a verified contract; nexID does not confuse the mint with the first authenticity check." : "Este flujo muestra la politica y un mint testnet confirmado. Un certificado publico completo tambien requiere metadata resoluble y contrato verificado; nexID no confunde el mint con la primera validacion de autenticidad.",
+      publicProof: isEn ? "Visible: request, confirmed testnet mint/tx and owner status when approved." : "Publico: solicitud, mint/tx testnet confirmado y estado de owner al aprobarse.",
       privateData: isEn ? "Private: buyer identity, invoice, warranty policy and CRM segment." : "Privado: identidad del comprador, factura, politica de garantia y segmento CRM.",
       decisionPath: isEn
         ? [
           { label: "Authentic item", body: "Require QR/NFC validation first." },
           { label: "Approved buyer", body: "Apply warranty, invoice and tenant policy." },
-          { label: "Owner record", body: "Issue or display the Polygon certificate." },
+          { label: "Owner record", body: "Issue the mint; expose a certificate only when metadata and contract are verifiable." },
         ]
         : [
           { label: "Objeto autentico", body: "Exige validacion QR/NFC primero." },
           { label: "Comprador aprobado", body: "Aplica garantia, factura y politica tenant." },
-          { label: "Owner record", body: "Emite o muestra certificado Polygon." },
+          { label: "Owner record", body: "Emite el mint; muestra certificado solo con metadata y contrato verificables." },
         ],
       businessOutcome: isEn ? "Resale, warranty and loyalty become gated by real product proof." : "Reventa, garantia y loyalty quedan atados a prueba real de producto.",
-      primaryHref: "/docs#trust-layers",
-      primaryLabel: isEn ? "Read Polygon policy" : "Leer politica Polygon",
+      primaryHref: "/proof/verify?layer=polygon#polygon-ownership",
+      primaryLabel: isEn ? "Open real Amoy proof" : "Abrir prueba real en Amoy",
       secondaryHref: "/?contact=demo#contact-modal",
       secondaryLabel: isEn ? "Design ownership pilot" : "Disenar piloto ownership",
     },

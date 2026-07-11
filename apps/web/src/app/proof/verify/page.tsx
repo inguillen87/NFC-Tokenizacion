@@ -14,6 +14,7 @@ import {
 import { ThemeToggle } from "@product/ui";
 import { productUrls } from "@product/config";
 import { BackLink } from "../../../components/back-link";
+import { ProofFocusTarget } from "./proof-focus-target";
 
 type VerifyMatch = {
   anchor_id: string;
@@ -74,6 +75,9 @@ type VerifyResponse = {
   ok: boolean;
   valid?: boolean;
   included?: boolean;
+  externally_confirmed?: boolean;
+  verification_state?: "confirmed" | "submitted" | "local" | "failed" | "not_included" | "unavailable" | "invalid";
+  evidence_level?: "testnet_fixture" | "external_anchor" | "registry_only" | "none";
   demo?: boolean;
   event_hash?: string;
   provider?: string | null;
@@ -134,6 +138,11 @@ type DecodedProofField = {
 
 type DecodeResponse = {
   ok: boolean;
+  receipt_matched?: boolean;
+  receipt_verified?: boolean;
+  verification_status?: "verified_demo_receipt" | "matched_demo_receipt" | "parsed_only";
+  publication_tx_hash?: string | null;
+  publication_explorer_url?: string | null;
   reason?: string;
   message?: string;
   input_format?: "hex_raw_input" | "plain_memo";
@@ -441,13 +450,8 @@ const FALLBACK_PUBLIC_PROOF_DEMO_RESPONSE: DemoCasesResponse = {
 const PROOF_API_FALLBACK_URL = "https://api.nexid.lat";
 
 function proofApiBases() {
-  return Array.from(
-    new Set(
-      [productUrls.api, PROOF_API_FALLBACK_URL]
-        .map((url) => String(url || "").replace(/\/$/, ""))
-        .filter(Boolean),
-    ),
-  );
+  const configuredApiUrl = String(productUrls.api || "").replace(/\/$/, "").trim();
+  return [configuredApiUrl || PROOF_API_FALLBACK_URL];
 }
 
 async function fetchProofApiJson<T>(path: string): Promise<{ data: T | null; ok: boolean; status: number } | null> {
@@ -636,22 +640,36 @@ function decodeProofInputLocally(input: string): DecodeResponse {
   if (fields.root && !/^sha256:[0-9a-f]{64}$/i.test(fields.root)) warnings.push("root_is_not_sha256");
   if (fields.privacy && fields.privacy !== "hash-only") warnings.push("privacy_policy_requires_review");
 
-  const demoCase = findFallbackDemoCase(fields);
+  const demoCandidate = findFallbackDemoCase(fields);
+  const demoCase = demoCandidate?.public_receipt.on_chain_memo === decodedMemo ? demoCandidate : null;
+  const receiptVerified = Boolean(demoCase?.public_receipt.tx_hash && demoCase.public_receipt.explorer_url);
+  if (demoCandidate && !demoCase) warnings.push("demo_receipt_mismatch");
+  if (demoCase && !receiptVerified) warnings.push("receipt_publication_unavailable");
+  if (!receiptVerified) warnings.push("receipt_not_verified");
   const resource = fields.resource || "recurso no informado";
   const events = fields.events || "eventos no informados";
 
   return {
     ok: true,
+    receipt_matched: Boolean(demoCase),
+    receipt_verified: receiptVerified,
+    verification_status: receiptVerified ? "verified_demo_receipt" : demoCase ? "matched_demo_receipt" : "parsed_only",
+    publication_tx_hash: demoCase?.public_receipt.tx_hash || null,
+    publication_explorer_url: demoCase?.public_receipt.explorer_url || null,
     input_format: inputFormat,
     raw_input_hex: rawInputHex,
     decoded_memo: decodedMemo,
     protocol,
     fields,
     field_explanations: Object.entries(fields).map(([key, value]) => explainProofMemoField(key, value)),
-    executive_summary: demoCase
-      ? `${demoCase.title}: este recibo publico confirma ${events} eventos sobre ${resource} dentro del Merkle root ${fields.root || demoCase.merkle_root}.`
-      : `Este recibo publico confirma ${events} eventos sobre ${resource} dentro de un Merkle root verificable.`,
-    business_meaning: proofBusinessMeaning(fields),
+    executive_summary: receiptVerified
+      ? `${demoCase?.title}: el memo coincide exactamente y tiene una transaccion publica configurada para ${events} eventos sobre ${resource}.`
+      : demoCase
+        ? `${demoCase.title}: el memo coincide con el recibo esperado, pero falta una transaccion publica configurada para confirmar su publicacion.`
+        : `Memo parseado: declara ${events} eventos sobre ${resource}, pero el texto por si solo no confirma que haya sido publicado on-chain.`,
+    business_meaning: receiptVerified
+      ? proofBusinessMeaning(fields)
+      : "Lectura del contenido declarado. Para convertirlo en evidencia hay que comprobar la transaccion, el Raw input y la inclusion del SHA.",
     verification_steps: [
       "Abrir la transaccion en el explorer y copiar Raw input.",
       "Pegar Raw input en el decoder de nexID.",
@@ -691,7 +709,7 @@ function verifyHrefForDemo(demoCase: DemoCase) {
     event_hash: demoCase.primary_event_hash,
     anchor_id: demoCase.anchor_id,
   });
-  return `/proof/verify?${params.toString()}`;
+  return `/proof/verify?${params.toString()}#proof-result`;
 }
 
 function decoderHrefForDemo(demoCase: DemoCase) {
@@ -700,15 +718,26 @@ function decoderHrefForDemo(demoCase: DemoCase) {
     anchor_id: demoCase.anchor_id,
     decode_input: utf8ToHex(demoCase.public_receipt.on_chain_memo),
   });
-  return `/proof/verify?${params.toString()}`;
+  return `/proof/verify?${params.toString()}#proof-decoder`;
 }
 
 function statusTone(status: string | null | undefined) {
   const normalized = String(status || "").toLowerCase();
-  if (["confirmed", "submitted", "local"].includes(normalized)) return "border-emerald-300/50 bg-emerald-50 text-emerald-800";
-  if (["demo_ready"].includes(normalized)) return "border-cyan-300/60 bg-cyan-50 text-cyan-800";
+  if (normalized === "confirmed") return "border-emerald-300/50 bg-emerald-50 text-emerald-800";
+  if (["submitted", "demo_ready"].includes(normalized)) return "border-cyan-300/60 bg-cyan-50 text-cyan-800";
+  if (normalized === "local") return "border-amber-300/60 bg-amber-50 text-amber-800";
   if (["failed"].includes(normalized)) return "border-rose-300/60 bg-rose-50 text-rose-800";
   return "border-slate-300 bg-slate-100 text-slate-700";
+}
+
+function decoderWarningLabel(warning: string) {
+  if (warning === "receipt_not_verified") return "El memo se pudo leer, pero su publicacion on-chain no fue verificada por este decoder.";
+  if (warning === "receipt_publication_unavailable") return "El memo coincide con un recibo demo conocido, pero falta la tx publica para confirmar que fue publicado.";
+  if (warning === "demo_receipt_mismatch") return "El caso o Merkle root se parece a un demo conocido, pero el memo no coincide exactamente con el recibo publicado.";
+  if (warning === "root_is_not_sha256") return "El Merkle root no tiene formato sha256 valido.";
+  if (warning === "privacy_policy_requires_review") return "La politica declarada no es hash-only y requiere revision.";
+  if (warning.startsWith("missing_fields:")) return `Faltan campos obligatorios: ${warning.slice("missing_fields:".length)}.`;
+  return warning;
 }
 
 async function verifyProof(eventHash: string, anchorId: string): Promise<VerifyResponse | null> {
@@ -750,26 +779,46 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
   const eventHash = first(params.event_hash || params.eventHash || params.hash).trim();
   const anchorId = first(params.anchor_id || params.anchorId).trim();
   const requestedDecoderInput = first(params.decode_input || params.raw_input || params.rawInput || params.memo || params.data).trim();
+  const requestedLayer = first(params.layer || params.network).trim().toLowerCase();
+  const architectureRequested = requestedLayer === "polygon" || requestedLayer === "iota";
+  const focusTargetId = requestedDecoderInput
+    ? "proof-decoder"
+    : eventHash
+      ? "proof-result"
+      : requestedLayer === "polygon"
+        ? "polygon-ownership"
+        : requestedLayer === "iota"
+          ? "iota-proof"
+          : "";
   const [result, demoCatalog] = await Promise.all([
     verifyProof(eventHash, anchorId),
     loadDemoCases(),
   ]);
   const matches = result?.matches || [];
-  const included = Boolean(result?.included || result?.valid);
+  const included = Boolean(result?.included);
+  const externallyConfirmed = Boolean(result?.externally_confirmed || result?.valid);
+  const verificationState = result?.verification_state
+    || (!eventHash ? "not_included" : result?.ok === false ? "unavailable" : included ? "local" : "not_included");
+  const invalidInput = result?.reason === "event_hash_invalid" || result?.reason === "event_hash_required" || result?.reason === "anchor_id_invalid";
+  const registryUnavailable = verificationState === "unavailable" || result?.reason === "private_anchor_registry_unavailable";
+  const resultIsDemoFixture = Boolean(result?.demo || result?.evidence_level === "testnet_fixture");
   const demoCases = demoCatalog.cases || [];
   const activeDemo = result?.demo_case || demoCases.find((demoCase) =>
     demoCase.events.some((event) => event.hash.toLowerCase() === eventHash.toLowerCase()),
   ) || null;
+  const demoFixture = Boolean(resultIsDemoFixture || activeDemo);
   const showcaseDemo = activeDemo || demoCases.find((demoCase) => demoCase.tx_hash && demoCase.public_receipt?.tx_hash) || demoCases[0] || null;
-  const guidedDemo = activeDemo || showcaseDemo;
+  const guidedDemo = activeDemo;
   const confirmedIotaAnchors = demoCases.filter((demoCase) => Boolean(demoCase.tx_hash)).length;
   const confirmedMemoReceipts = demoCases.filter((demoCase) => Boolean(demoCase.public_receipt?.tx_hash)).length;
   const liveTestnetReady = confirmedIotaAnchors > 0 || Boolean(demoCatalog.testnet?.iota?.contract_address || demoCatalog.testnet?.polygon?.demo_tx_hash);
   const activeReceiptMemoHex = guidedDemo ? utf8ToHex(guidedDemo.public_receipt.on_chain_memo) : "";
-  const decoderInput = requestedDecoderInput || activeReceiptMemoHex;
+  const decoderInput = requestedDecoderInput;
   const decodedProof = decoderInput ? await decodeProofInput(decoderInput) : null;
   const decoderWarnings = decodedProof?.warnings?.filter(Boolean) || [];
-  const decoderNeedsReview = decoderWarnings.length > 0;
+  const decoderReceiptMatched = Boolean(decodedProof?.receipt_matched);
+  const decoderReceiptVerified = Boolean(decodedProof?.receipt_verified);
+  const decoderNeedsReview = !decoderReceiptVerified || decoderWarnings.length > 0;
   const liveProofMetrics = [
     {
       label: "IOTA anchors",
@@ -798,18 +847,68 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
   ];
   const externalExplorerUrl = matches.find((match) => Boolean(match.explorer_url))?.explorer_url
     || guidedDemo?.public_receipt?.explorer_url
-    || demoCatalog.testnet?.iota?.demo_tx_explorer_url
     || "";
+  const resultHeadline = !eventHash
+    ? "Listo para probar"
+    : invalidInput
+      ? "Hash o anchor invalido"
+      : registryUnavailable
+        ? "Registro temporalmente no disponible"
+        : externallyConfirmed
+          ? demoFixture
+            ? "Fixture testnet confirmado"
+            : "Anclaje externo confirmado"
+          : included
+            ? verificationState === "failed"
+              ? "Anchor fallido"
+              : verificationState === "submitted"
+                ? "Anchor enviado, aun no confirmado"
+                : "Incluido en registro local"
+            : "Evidencia no incluida";
+  const resultExplanation = !eventHash
+    ? "Carga un caso demo o pega un SHA. La pantalla devuelve un veredicto entendible antes de mostrar detalles tecnicos."
+    : invalidInput
+      ? "El valor no tiene el formato esperado. Usa sha256 seguido de 64 caracteres hexadecimales y un UUID solo si quieres limitar la busqueda a un anchor."
+      : registryUnavailable
+        ? "No se pudo consultar el registro en este intento. Esto no equivale a no inclusion; vuelve a intentar antes de tomar una decision."
+        : externallyConfirmed
+          ? demoFixture
+            ? "La transaccion testnet y el memo del caso demo existen. Prueban que el fixture fue publicado, no que una operacion privada de cliente haya ocurrido."
+            : "El SHA esta incluido en un anchor con transaccion externa confirmada."
+          : included
+            ? "El SHA aparece en el registro, pero todavia no tiene confirmacion externa suficiente para presentarlo como prueba publica final."
+            : "No se encontro inclusion para este SHA en el registro consultado.";
+  const resultTone = externallyConfirmed
+    ? "proof-console-card--success"
+    : invalidInput || registryUnavailable || verificationState === "failed"
+      ? "proof-console-card--warning"
+      : included || eventHash
+        ? "proof-console-card--info"
+        : "proof-console-card--neutral";
+  const resultChipLabel = !eventHash
+    ? "ready"
+    : invalidInput
+      ? "invalid"
+      : registryUnavailable
+        ? "unavailable"
+        : externallyConfirmed
+          ? demoFixture ? "testnet demo" : "confirmed"
+          : included
+            ? verificationState
+            : "not included";
+  const resultChipClass = externallyConfirmed
+    ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+    : invalidInput || registryUnavailable || verificationState === "failed"
+      ? "border-amber-300 bg-amber-50 text-amber-800"
+      : included
+        ? "border-cyan-300 bg-cyan-50 text-cyan-800"
+        : "border-slate-300 bg-slate-100 text-slate-600";
   const proofConsoleCards = [
     {
       label: "1. Decision",
-      title: !eventHash ? "Listo para probar" : included ? "Evidencia valida" : "Revisar hash",
-      body: !eventHash
-        ? "Carga un caso demo o pega un SHA. La pantalla devuelve un veredicto entendible antes de mostrar detalles tecnicos."
-        : included
-          ? "Este hash aparece dentro de un anchor verificable. Es una prueba apta para auditoria, ventas o compliance."
-          : "No hay inclusion confirmada para este hash. Puede estar mal copiado, no anclado o pendiente de publicar.",
-      tone: included ? "proof-console-card--success" : eventHash ? "proof-console-card--warning" : "proof-console-card--neutral",
+      title: resultHeadline,
+      body: resultExplanation,
+      tone: resultTone,
     },
     {
       label: "2. Prueba externa",
@@ -829,16 +928,12 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
   const executiveReadout = [
     {
       label: "Veredicto",
-      value: !eventHash ? "Demo lista" : included ? "Evidencia incluida" : "No confirmada",
-      body: !eventHash
-        ? "Arranca con un caso demo y muestra la cadena completa en menos de un minuto."
-        : included
-          ? "El SHA existe dentro de un anchor. Sirve como recibo de auditoria sin abrir datos privados."
-          : "El hash no prueba inclusion todavia. Hay que revisar copia, estado de anchor o politica de publicacion.",
+      value: !eventHash ? "Demo lista" : resultHeadline,
+      body: !eventHash ? "Arranca con un caso demo y muestra la cadena completa en menos de un minuto." : resultExplanation,
     },
     {
       label: "Red publica",
-      value: externalExplorerUrl ? "IOTA testnet" : "API/registry",
+      value: externalExplorerUrl ? (demoFixture ? "IOTA testnet demo" : "Red publica") : "API/registry",
       body: externalExplorerUrl
         ? "Hay una transaccion externa para validar fecha, red y Raw input."
         : "La experiencia queda lista para mostrar explorer cuando operaciones publique el anchor.",
@@ -873,6 +968,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
 
   return (
     <main className="proof-verify-page min-h-screen text-slate-950">
+      <ProofFocusTarget targetId={focusTargetId} />
       <style>{`
         .proof-verify-page {
           --proof-page-bg:
@@ -981,6 +1077,18 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           color: var(--proof-accent) !important;
         }
 
+        .proof-verify-page [class*="text-violet-700"],
+        .proof-verify-page [class*="text-violet-800"] {
+          color: #c4b5fd !important;
+        }
+
+        html[data-theme="light"] .proof-verify-page [class*="text-violet-700"],
+        html[data-theme="light"] .proof-verify-page [class*="text-violet-800"],
+        html.theme-light .proof-verify-page [class*="text-violet-700"],
+        html.theme-light .proof-verify-page [class*="text-violet-800"] {
+          color: #6d28d9 !important;
+        }
+
         .proof-verify-page [class*="text-emerald-950"],
         .proof-verify-page [class*="text-emerald-900"],
         .proof-verify-page [class*="text-emerald-800"],
@@ -1000,6 +1108,15 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           background: var(--proof-soft-bg) !important;
           border-color: var(--proof-border) !important;
           color: var(--proof-title) !important;
+        }
+
+        .proof-verify-page :where(a, button, input, textarea, summary):focus-visible {
+          outline: 3px solid var(--proof-accent) !important;
+          outline-offset: 3px !important;
+        }
+
+        .proof-verify-page :where(#proof-result, #proof-decoder, #polygon-ownership, #iota-proof):focus {
+          outline: none;
         }
 
         .proof-verify-page .proof-decoder-input {
@@ -1170,6 +1287,28 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           display: none;
         }
 
+        .proof-verify-page .proof-disclosure-summary__icon {
+          transition: transform 180ms ease;
+        }
+
+        .proof-verify-page details[open] > .proof-disclosure-summary .proof-disclosure-summary__icon {
+          transform: rotate(90deg);
+        }
+
+        .proof-verify-page .proof-architecture-disclosure,
+        .proof-verify-page .proof-anchors-panel,
+        .proof-verify-page .proof-decoder-panel,
+        .proof-verify-page .proof-manager-panel,
+        .proof-verify-page .proof-executive-method,
+        .proof-verify-page .proof-explorer-guide {
+          overflow: clip;
+        }
+
+        .proof-verify-page .proof-architecture-content > section,
+        .proof-verify-page .proof-architecture-content > article {
+          min-width: 0;
+        }
+
         .proof-verify-page .proof-shell > * {
           order: 10;
         }
@@ -1186,8 +1325,12 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           order: 2;
         }
 
-        .proof-verify-page .proof-verification-console {
+        .proof-verify-page .proof-architecture-disclosure {
           order: 3;
+        }
+
+        .proof-verify-page .proof-verification-console {
+          order: 4;
           overflow: hidden;
         }
 
@@ -1232,6 +1375,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
         .proof-verify-page .proof-exec-readout-grid {
           display: grid;
           gap: 0.75rem;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
         .proof-verify-page .proof-exec-readout-card {
@@ -1271,7 +1415,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           display: grid;
           gap: 1.25rem;
           grid-template-columns: minmax(0, 1fr);
-          order: 4;
+          order: 5;
         }
 
         .proof-verify-page .proof-fast-path-card {
@@ -1518,19 +1662,19 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                 Proof Verify permite que un cliente, auditor o inversor compruebe que una evidencia existia y no fue cambiada, sin ver el dato sensible que genero esa evidencia.
               </p>
             </div>
-            {guidedDemo ? (
+            {showcaseDemo ? (
               <div className="proof-mobile-demo-actions grid gap-2 sm:grid-cols-2 lg:hidden">
-                <Link href={verifyHrefForDemo(guidedDemo)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-white shadow-lg shadow-cyan-900/10">
+                <Link href={verifyHrefForDemo(showcaseDemo)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-white shadow-lg shadow-cyan-900/10">
                   Probar SHA demo <FileSearch className="h-4 w-4" />
                 </Link>
-                <Link href={decoderHrefForDemo(guidedDemo)} className="proof-secondary-cta inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]">
+                <Link href={decoderHrefForDemo(showcaseDemo)} className="proof-secondary-cta inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]">
                   Leer memo real <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
             ) : null}
           </div>
 
-          <form action="/proof/verify" className="proof-elevated rounded-[1.5rem] border border-cyan-100 bg-white/88 p-4 shadow-[0_24px_80px_rgba(15,23,42,0.12)] backdrop-blur">
+          <form action="/proof/verify#proof-result" className="proof-elevated rounded-[1.5rem] border border-cyan-100 bg-white/88 p-4 shadow-[0_24px_80px_rgba(15,23,42,0.12)] backdrop-blur">
             <div className="grid gap-3">
               <div className="rounded-2xl border border-cyan-100 bg-cyan-50/70 p-4 text-sm leading-6 text-slate-700">
                 <strong className="block text-slate-950">Que pega una empresa en este campo?</strong>
@@ -1561,7 +1705,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           </form>
         </div>
 
-        {guidedDemo ? (
+        {showcaseDemo ? (
           <section className="proof-fast-path proof-elevated rounded-[1.5rem] border border-cyan-200 bg-white/84 p-4 shadow-sm sm:p-5">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
@@ -1571,13 +1715,30 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                   Elegi un caso, verificá su SHA y abrí el decoder del Raw input. La pantalla separa lo que prueba nexID, lo que ancla IOTA y lo que queda para Polygon ownership.
                 </p>
               </div>
-              <div className="grid gap-2 sm:grid-cols-2 lg:min-w-[24rem]">
-                <Link href={verifyHrefForDemo(guidedDemo)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-cyan-900">
+              <div className="proof-fast-path-actions grid gap-2 sm:grid-cols-3 lg:min-w-[34rem]">
+                <Link href={verifyHrefForDemo(showcaseDemo)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-cyan-900">
                   Verificar SHA demo <FileSearch className="h-4 w-4" />
                 </Link>
-                <Link href={decoderHrefForDemo(guidedDemo)} className="proof-secondary-cta inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]">
+                <Link href={decoderHrefForDemo(showcaseDemo)} className="proof-secondary-cta inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]">
                   Decodificar memo <ArrowRight className="h-4 w-4" />
                 </Link>
+                <Link href="/proof/verify?layer=polygon#polygon-ownership" className="proof-secondary-cta inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]">
+                  Ver mint Amoy <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+            <div className="proof-live-ribbon mt-4 grid gap-2 sm:grid-cols-3">
+              <div className="rounded-xl border border-emerald-300/40 bg-emerald-400/10 px-3 py-2.5">
+                <span className="block text-[0.62rem] font-black uppercase tracking-[0.12em] text-emerald-700">IOTA testnet</span>
+                <strong className="mt-1 block text-sm text-slate-950">{confirmedIotaAnchors} anchors reales</strong>
+              </div>
+              <div className="rounded-xl border border-cyan-300/40 bg-cyan-400/10 px-3 py-2.5">
+                <span className="block text-[0.62rem] font-black uppercase tracking-[0.12em] text-cyan-700">Memo publico</span>
+                <strong className="mt-1 block text-sm text-slate-950">{confirmedMemoReceipts} recibos decodificables</strong>
+              </div>
+              <div className="rounded-xl border border-violet-300/40 bg-violet-400/10 px-3 py-2.5">
+                <span className="block text-[0.62rem] font-black uppercase tracking-[0.12em] text-violet-700">Polygon Amoy</span>
+                <strong className="mt-1 block text-sm text-slate-950">{demoCatalog.testnet?.polygon?.demo_tx_hash ? "Mint testnet confirmado" : "Ownership listo"}</strong>
               </div>
             </div>
             <div className="mt-4 grid gap-3 lg:grid-cols-3">
@@ -1607,6 +1768,17 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           </section>
         ) : null}
 
+        <details className="proof-architecture-disclosure proof-elevated rounded-[1.5rem] border border-cyan-200 bg-white/84 p-4 shadow-sm sm:p-5" open={architectureRequested}>
+          <summary className="proof-disclosure-summary flex min-h-12 cursor-pointer items-center justify-between gap-4 rounded-2xl px-1 text-left">
+            <span>
+              <span className="block text-[0.68rem] font-black uppercase tracking-[0.16em] text-cyan-700">Arquitectura y redes</span>
+              <strong className="mt-1 block text-lg leading-tight text-slate-950">Ver contratos, flujo Merkle y demos tecnicas</strong>
+            </span>
+            <span aria-hidden="true" className="proof-disclosure-summary__icon grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-cyan-200 bg-cyan-50 text-cyan-800">
+              <ArrowRight className="h-4 w-4" />
+            </span>
+          </summary>
+          <div className="proof-architecture-content mt-5 grid gap-6">
         <section className="proof-elevated rounded-[1.6rem] border border-cyan-200 bg-white/84 p-4 shadow-sm sm:p-5">
           <div className="grid gap-5 xl:grid-cols-[0.78fr_1.22fr] xl:items-stretch">
             <div className="rounded-[1.35rem] border border-cyan-200 bg-cyan-50/70 p-5">
@@ -1680,14 +1852,14 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           ))}
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-2">
-          <article className="proof-elevated rounded-[1.5rem] border border-slate-200 bg-white/84 p-5 shadow-sm">
-            <div className="flex items-start justify-between gap-4">
+        <section id="trust-networks" className="grid scroll-mt-24 gap-4 lg:grid-cols-2">
+          <article id="polygon-ownership" tabIndex={-1} className="proof-elevated scroll-mt-24 rounded-[1.5rem] border border-slate-200 bg-white/84 p-5 shadow-sm">
+            <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-700">Polygon ownership layer</p>
                 <h2 className="mt-2 text-2xl font-black leading-tight text-slate-950">Contrato real NXDT en Amoy.</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  Esta capa prueba propiedad, warranty transferible o reclamo comercial. No se mezcla con la evidencia privada: es el certificado publico del activo.
+                  Esta capa registra un mint demo para propiedad, garantia o reclamo comercial. El certificado publico completo requiere metadata resoluble y contrato verificado; el mint testnet no reemplaza esos controles.
                 </p>
               </div>
               <span className={`rounded-full border px-3 py-1 text-[0.68rem] font-black uppercase tracking-[0.1em] ${demoCatalog.testnet?.polygon?.contract_address ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-slate-300 bg-slate-100 text-slate-600"}`}>
@@ -1715,8 +1887,8 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
             </dl>
           </article>
 
-          <article className="proof-elevated rounded-[1.5rem] border border-slate-200 bg-white/84 p-5 shadow-sm">
-            <div className="flex items-start justify-between gap-4">
+          <article id="iota-proof" tabIndex={-1} className="proof-elevated scroll-mt-24 rounded-[1.5rem] border border-slate-200 bg-white/84 p-5 shadow-sm">
+            <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">IOTA proof layer</p>
                 <h2 className="mt-2 text-2xl font-black leading-tight text-slate-950">Merkle root para auditoria publica.</h2>
@@ -1812,6 +1984,8 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
             )}
           </div>
         </section>
+          </div>
+        </details>
 
         <section className="proof-verification-console proof-elevated rounded-[1.6rem] border border-cyan-200 bg-white/84 p-5 shadow-sm">
           <div className="grid gap-5 xl:grid-cols-[0.78fr_1.22fr] xl:items-end">
@@ -1850,28 +2024,21 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           </div>
         </section>
 
-        <section className="proof-workstation-grid">
+        <section id="proof-result" aria-live="polite" tabIndex={-1} className="proof-workstation-grid scroll-mt-24">
           <div className="proof-workstation-result-panel proof-elevated rounded-[1.5rem] border border-slate-200 bg-white/82 p-5 shadow-sm">
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Resultado</p>
-                <h2 className="mt-2 text-2xl font-black text-slate-950">
-                  {!eventHash ? "Esperando hash" : included ? "Evidencia incluida" : "Sin inclusion verificada"}
-                </h2>
-                <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">
-                  {!eventHash
-                    ? "Pegando un hash se consulta el registry publico de anchors. La prueba responde inclusion, no revela el evento privado."
-                    : included
-                      ? "El hash existe dentro de uno o mas anchors. Si hay explorer_url, tambien se puede abrir la prueba externa."
-                      : "No se encontro inclusion para este hash. Puede ser un hash mal copiado, un evento no anclado o una prueba pendiente."}
-                </p>
+                <h2 className="mt-2 text-2xl font-black text-slate-950">{resultHeadline}</h2>
+                <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">{resultExplanation}</p>
               </div>
-              <span className={`proof-result-status-chip inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-black uppercase tracking-[0.1em] ${included ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-slate-300 bg-slate-100 text-slate-600"}`}>
+              <span className={`proof-result-status-chip inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-black uppercase tracking-[0.1em] ${resultChipClass}`}>
                 <BadgeCheck className="h-4 w-4" />
-                {eventHash ? (included ? "valid" : "not found") : "ready"}
+                {resultChipLabel}
               </span>
             </div>
 
+            {eventHash ? (
             <dl className="mt-6 grid gap-3 text-sm">
               <div className="proof-flat rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <dt className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">Event hash</dt>
@@ -1892,6 +2059,28 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                 <dd className="mt-2 break-all font-mono text-slate-900">{result?.merkle_root || "-"}</dd>
               </div>
             </dl>
+            ) : (
+              <div className="proof-start-state mt-5 rounded-2xl border border-cyan-200 bg-cyan-50/70 p-4">
+                <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan-800">Como empezar</p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  {[
+                    ["1", "Elegi un caso"],
+                    ["2", "Verifica el SHA"],
+                    ["3", "Abri la prueba real"],
+                  ].map(([step, label]) => (
+                    <div key={step} className="proof-flat rounded-xl border border-cyan-200 bg-white/70 px-3 py-3">
+                      <span className="text-[0.62rem] font-black uppercase tracking-[0.12em] text-cyan-700">Paso {step}</span>
+                      <strong className="mt-1 block text-sm text-slate-950">{label}</strong>
+                    </div>
+                  ))}
+                </div>
+                {showcaseDemo ? (
+                  <Link href={verifyHrefForDemo(showcaseDemo)} className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-white">
+                    Probar con {showcaseDemo.title} <ArrowRight className="h-4 w-4" />
+                  </Link>
+                ) : null}
+              </div>
+            )}
             {result?.registry_warning ? (
               <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
                 El demo publico verifico con el anchor testnet disponible. El registry privado no respondio en este intento, por eso no se muestran anchors internos.
@@ -1899,7 +2088,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
             ) : null}
             {guidedDemo ? (
               <div className="proof-flat mt-5 rounded-2xl border border-cyan-200 bg-cyan-50/70 p-4">
-                <p className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-cyan-800">{activeDemo ? "Caso explicado" : "Caso demo sugerido"}</p>
+                <p className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-cyan-800">{demoFixture ? "Fixture testnet explicado" : activeDemo ? "Caso explicado" : "Caso demo sugerido"}</p>
                 <h3 className="mt-2 text-xl font-black leading-tight text-slate-950">{guidedDemo.title}</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-700">
                   {activeDemo
@@ -1998,7 +2187,12 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                 </div>
               ))}
             </div>
-            <div className="proof-exec-steps mt-4">
+            <details className="proof-executive-method proof-flat mt-4 rounded-2xl border border-cyan-200 bg-white/70 p-3">
+              <summary className="proof-disclosure-summary flex min-h-11 cursor-pointer items-center justify-between gap-3 text-sm font-black text-slate-950">
+                <span>Como se construye la prueba</span>
+                <ArrowRight className="proof-disclosure-summary__icon h-4 w-4 shrink-0 text-cyan-700" />
+              </summary>
+            <div className="proof-exec-steps mt-3">
               {[
                 {
                   badge: "01",
@@ -2025,6 +2219,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                 </div>
               ))}
             </div>
+            </details>
             <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
               {guidedDemo?.public_receipt.explorer_url ? (
                 <a href={guidedDemo.public_receipt.explorer_url} className="proof-receipt-action-link text-xs font-black uppercase tracking-[0.12em]" target="_blank" rel="noreferrer">
@@ -2037,8 +2232,11 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                 </Link>
               ) : null}
             </div>
-            <div className="proof-flat mt-4 rounded-2xl border border-cyan-200 bg-cyan-50/70 p-4">
-              <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan-800">Donde esta el memo en la blockchain?</p>
+            <details className="proof-explorer-guide proof-flat mt-4 rounded-2xl border border-cyan-200 bg-cyan-50/70 p-3" open={Boolean(requestedDecoderInput)}>
+              <summary className="proof-disclosure-summary flex min-h-11 cursor-pointer items-center justify-between gap-3 text-sm font-black text-slate-950">
+                <span>Donde esta el memo en la blockchain?</span>
+                <ArrowRight className="proof-disclosure-summary__icon h-4 w-4 shrink-0 text-cyan-700" />
+              </summary>
               <p className="mt-2 text-sm leading-6 text-slate-700">
                 En IOTA EVM no aparece como una frase grande en la cabecera. Esta dentro de <span className="font-mono font-black">Transaction details - Raw input</span>. El explorer muestra bytes; nexID los traduce.
               </p>
@@ -2050,19 +2248,21 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                   </div>
                 ))}
               </div>
-            </div>
+            </details>
           </div>
 
-          <div className="proof-elevated rounded-[1.5rem] border border-slate-200 bg-white/82 p-5 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
+          <details className="proof-anchors-panel proof-elevated rounded-[1.5rem] border border-slate-200 bg-white/82 p-4 shadow-sm" open={Boolean(eventHash && matches.length)}>
+            <summary className="proof-disclosure-summary flex min-h-12 cursor-pointer items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Anchors</p>
                 <h2 className="mt-2 text-2xl font-black text-slate-950">{matches.length} coincidencias</h2>
               </div>
-              <Network className="h-6 w-6 text-cyan-700" />
-            </div>
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-cyan-200 bg-cyan-50 text-cyan-700">
+                <Network className="h-5 w-5" />
+              </span>
+            </summary>
 
-            <div className="mt-5 grid gap-3">
+            <div className="mt-4 grid gap-3">
               {matches.length ? matches.map((match) => (
                 <article key={match.anchor_id} className="proof-flat rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
@@ -2091,21 +2291,22 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                 </div>
               )}
             </div>
-          </div>
+          </details>
 
-          <div className="proof-decoder-panel proof-elevated rounded-[1.5rem] border border-cyan-200 bg-cyan-50/75 p-5 shadow-sm">
-              <div className="flex items-start justify-between gap-4">
+          <details id="proof-decoder" tabIndex={-1} className="proof-decoder-panel proof-elevated scroll-mt-24 rounded-[1.5rem] border border-cyan-200 bg-cyan-50/75 p-4 shadow-sm" open={Boolean(requestedDecoderInput)}>
+              <summary className="proof-disclosure-summary flex min-h-12 cursor-pointer items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Proof Decoder</p>
                   <h2 className="mt-2 text-2xl font-black leading-tight text-slate-950">Traducir Raw input a negocio.</h2>
-                  <p className="mt-2 text-sm leading-6 text-slate-700">
-                    En IOTA EVM el memo queda dentro del campo <span className="font-mono font-black">Raw input</span>. El explorer lo muestra como hex; nexID lo decodifica como texto UTF-8 y lo explica para gerencia, auditoria o ventas.
-                  </p>
                 </div>
                 <FileSearch className="mt-1 h-6 w-6 shrink-0 text-cyan-700" />
-              </div>
+              </summary>
+              <div className="proof-disclosure-body mt-4">
+                <p className="text-sm leading-6 text-slate-700">
+                  En IOTA EVM el memo queda dentro del campo <span className="font-mono font-black">Raw input</span>. El explorer lo muestra como hex; nexID lo decodifica como texto UTF-8 y lo explica para gerencia, auditoria o ventas.
+                </p>
 
-              <form action="/proof/verify" className="proof-flat mt-4 grid gap-3 rounded-2xl border border-cyan-200 bg-white/72 p-4">
+              <form action="/proof/verify#proof-decoder" className="proof-flat mt-4 grid gap-3 rounded-2xl border border-cyan-200 bg-white/72 p-4">
                 {eventHash ? <input type="hidden" name="event_hash" value={eventHash} /> : null}
                 {anchorId ? <input type="hidden" name="anchor_id" value={anchorId} /> : null}
                 <label className="grid gap-2 text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan-800">
@@ -2127,9 +2328,9 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
               {decodedProof?.ok ? (
                 <div className={`mt-4 rounded-2xl border p-4 ${decoderNeedsReview ? "border-amber-200 bg-amber-50" : "border-emerald-200 bg-emerald-50"}`}>
                   <p className={`text-[0.68rem] font-black uppercase tracking-[0.14em] ${decoderNeedsReview ? "text-amber-800" : "text-emerald-800"}`}>
-                    {decoderNeedsReview ? "Lectura ejecutiva con observaciones" : "Lectura ejecutiva"}
+                    {decoderReceiptVerified ? "Recibo demo + tx verificados" : decoderReceiptMatched ? "Recibo conocido, tx no disponible" : "Memo parseado, origen no verificado"}
                   </p>
-                  <h3 className={`mt-2 text-lg font-black leading-tight ${decoderNeedsReview ? "text-amber-950" : "text-emerald-950"}`}>{decodedProof.matching_demo_case?.title || "Recibo publico nexID"}</h3>
+                  <h3 className={`mt-2 text-lg font-black leading-tight ${decoderNeedsReview ? "text-amber-950" : "text-emerald-950"}`}>{decodedProof.matching_demo_case?.title || "Contenido nexID-proof-v1"}</h3>
                   <p className={`mt-2 text-sm leading-6 ${decoderNeedsReview ? "text-amber-900" : "text-emerald-900"}`}>{decodedProof.executive_summary}</p>
                   <p className={`mt-2 text-sm leading-6 ${decoderNeedsReview ? "text-amber-900" : "text-emerald-900"}`}>{decodedProof.business_meaning}</p>
                   {decoderWarnings.length ? (
@@ -2137,7 +2338,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                       <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-amber-800">Observaciones del decoder</p>
                       <ul className="mt-2 grid gap-1 text-sm leading-6 text-amber-900">
                         {decoderWarnings.map((warning) => (
-                          <li key={warning}>- {warning}</li>
+                          <li key={warning}>- {decoderWarningLabel(warning)}</li>
                         ))}
                       </ul>
                     </div>
@@ -2246,6 +2447,12 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                   </Link>
                 ) : null}
 
+                {decodedProof?.publication_explorer_url ? (
+                  <a href={decodedProof.publication_explorer_url} className="proof-receipt-action-link text-xs font-black uppercase tracking-[0.12em]" target="_blank" rel="noreferrer">
+                    Abrir tx verificada del recibo <ArrowRight className="h-4 w-4" />
+                  </a>
+                ) : null}
+
                 {guidedDemo?.public_receipt.explorer_url ? (
                   <a href={guidedDemo.public_receipt.explorer_url} className="proof-receipt-action-link text-xs font-black uppercase tracking-[0.12em]" target="_blank" rel="noreferrer">
                     Abrir tx con memo real <ArrowRight className="h-4 w-4" />
@@ -2260,11 +2467,17 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                   </Link>
                 </div>
               </div>
-            </div>
+              </div>
+            </details>
 
-          <div className="proof-manager-panel proof-elevated rounded-[1.5rem] border border-emerald-200 bg-emerald-50/75 p-5 shadow-sm">
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-800">Como se lo explicas a gerencia</p>
-            <h2 className="mt-2 text-2xl font-black leading-tight text-slate-950">El explorer prueba fecha y red. nexID prueba contexto.</h2>
+          <details className="proof-manager-panel proof-elevated rounded-[1.5rem] border border-emerald-200 bg-emerald-50/75 p-4 shadow-sm">
+            <summary className="proof-disclosure-summary flex min-h-12 cursor-pointer items-center justify-between gap-4">
+              <span>
+                <span className="block text-xs font-black uppercase tracking-[0.18em] text-emerald-800">Como se lo explicas a gerencia</span>
+                <strong className="mt-2 block text-xl leading-tight text-slate-950">El explorer prueba fecha y red. nexID prueba contexto.</strong>
+              </span>
+              <ArrowRight className="proof-disclosure-summary__icon h-5 w-5 shrink-0 text-emerald-700" />
+            </summary>
             <div className="proof-manager-explain-grid mt-4">
               <div className="proof-flat rounded-2xl border border-emerald-200 bg-white/70 p-4">
                 <strong className="block text-sm text-emerald-950">Lo publico</strong>
@@ -2279,7 +2492,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                 <p className="mt-2 text-sm leading-6 text-slate-700">Auditoria externa sin convertir blockchain en base de datos publica. Sirve para ventas, compliance, DPP, QA y reclamos.</p>
               </div>
             </div>
-          </div>
+          </details>
           </div>
         </section>
 

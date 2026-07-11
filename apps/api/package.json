@@ -34,7 +34,7 @@
     "test:sun": "node --test tests/sun-*.test.mjs",
     "test:routes": "node scripts/sanitize-route-tree.mjs && node --test tests/app-route-slug-conflicts.test.mjs",
     "test:demo-corpus": "node --test tests/demo-corpus-smoke.test.mjs",
-    "test:proof-demos": "node --test tests/public-proof-demo-cases.test.mjs",
+    "test:proof-demos": "node --import tsx --test tests/public-proof-demo-cases.test.mjs",
     "demo:smoke": "node scripts/demo-smoke.mjs",
     "bootstrap:saas": "node scripts/bootstrap-saas.mjs"
   },
@@ -64,6 +64,7 @@
     "hardhat": "^3.9.0",
     "pg": "^8.22.0",
     "prisma": "^5.22.0",
+    "tsx": "^4.22.4",
     "typescript": "^5.6.3"
   },
   "engines": {

@@ -170,11 +170,11 @@ const PANEL_CONTENT: Record<
     color: "text-violet-400",
     gradientFrom: "from-violet-500/20",
     title: "Propiedad Digital (Polygon)",
-    subtitle: "El comprador reclama el producto como suyo con certificado NFT",
+    subtitle: "El comprador inicia ownership con un mint testnet verificable",
     context:
-      "Cuando el comprador toca el producto, puede reclamar su propiedad digital en Polygon. Esto crea un gemelo digital único vinculado al producto físico: activa garantía transferible, beneficios de club exclusivos y la posibilidad de revender con certificado verificado.",
+      "Cuando el comprador toca el producto, puede solicitar ownership en Polygon despues de validar autenticidad y politica tenant. El demo muestra un mint testnet real; el certificado publico completo requiere metadata resoluble y contrato verificado.",
     value:
-      "Cada reventa queda registrada y verificada. Eliminá el fraude de garantía y construí una relación directa y permanente con el dueño real del producto, no solo con el primer comprador.",
+      "Cada ownership aprobado puede habilitar garantia, reventa y club sin exponer identidad ni factura on-chain. La transaccion prueba el mint; nexID conserva contexto, permisos y datos privados.",
     doc: { label: "Ver arquitectura Polygon", href: "/docs#trust-layers" },
   },
   "iota-proof": {
@@ -358,7 +358,7 @@ const HUB_SCENARIOS = [
     accent: "bg-violet-500/30 text-violet-200",
     accentGlow: "group-hover:shadow-violet-500/20",
     title: "Propiedad Digital (Polygon)",
-    body: "El comprador reclama propiedad, activa garantía digital transferible y puede revender con certificado NFT verificado.",
+    body: "El comprador inicia ownership y ve un mint testnet confirmado. El certificado completo exige metadata y contrato verificables.",
   },
   {
     id: "iota-proof",

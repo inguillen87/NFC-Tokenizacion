@@ -9,6 +9,11 @@ export type PublicProofDecodedField = {
 
 export type PublicProofDecodeResult = {
   ok: boolean;
+  receipt_matched?: boolean;
+  receipt_verified?: boolean;
+  verification_status?: "verified_demo_receipt" | "matched_demo_receipt" | "parsed_only";
+  publication_tx_hash?: string | null;
+  publication_explorer_url?: string | null;
   reason?: string;
   message?: string;
   input_format?: "hex_raw_input" | "plain_memo";
@@ -34,6 +39,27 @@ export type PublicProofDecodeResult = {
 
 function cleanInput(value: unknown) {
   return String(value || "").trim();
+}
+
+function cleanEnv(value: unknown) {
+  const text = cleanInput(value);
+  if (!text || text === "\"\"" || text === "''") return "";
+  return text.replace(/^['"]|['"]$/g, "").trim();
+}
+
+function envKeySuffix(value: string) {
+  return value.trim().toUpperCase().replace(/[^A-Z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+}
+
+function demoReceiptTxFor(caseId: string) {
+  return cleanEnv(process.env[`PUBLIC_PROOF_RECEIPT_IOTA_TX_HASH_${envKeySuffix(caseId)}`])
+    || cleanEnv(process.env.PUBLIC_PROOF_RECEIPT_IOTA_TX_HASH);
+}
+
+function receiptExplorerUrl(txHash: string) {
+  if (!txHash) return null;
+  const baseUrl = cleanEnv(process.env.IOTA_EXPLORER_BASE_URL) || "https://explorer.evm.testnet.iota.cafe";
+  return `${baseUrl.replace(/\/$/, "")}/tx/${txHash}`;
 }
 
 function isHexRawInput(value: string) {
@@ -190,16 +216,31 @@ export function decodePublicProofInput(input: unknown): PublicProofDecodeResult 
     warnings.push("privacy_policy_requires_review");
   }
 
-  const demoCase = (fields.case ? findPublicProofDemoCaseById(fields.case) : null)
+  const demoCandidate = (fields.case ? findPublicProofDemoCaseById(fields.case) : null)
     || (fields.root ? findPublicProofDemoCaseByMerkleRoot(fields.root) : null);
+  const demoCase = demoCandidate?.public_receipt.on_chain_memo === decodedMemo ? demoCandidate : null;
+  const publicationTxHash = demoCase ? demoReceiptTxFor(demoCase.id) : "";
+  const receiptVerified = Boolean(demoCase && publicationTxHash);
+  if (demoCandidate && !demoCase) {
+    warnings.push("demo_receipt_mismatch");
+  }
+  if (demoCase && !receiptVerified) warnings.push("receipt_publication_unavailable");
+  if (!receiptVerified) warnings.push("receipt_not_verified");
   const resource = fields.resource || "recurso no informado";
   const events = fields.events || "eventos no informados";
-  const executiveSummary = demoCase
-    ? `${demoCase.title}: este recibo publico confirma ${events} eventos sobre ${resource} dentro del Merkle root ${fields.root || demoCase.merkle_root}.`
-    : `Este recibo publico confirma ${events} eventos sobre ${resource} dentro de un Merkle root verificable.`;
+  const executiveSummary = receiptVerified
+    ? `${demoCase?.title}: el memo coincide exactamente y tiene una transaccion publica configurada para ${events} eventos sobre ${resource}.`
+    : demoCase
+      ? `${demoCase.title}: el memo coincide con el recibo esperado, pero falta una transaccion publica configurada para confirmar su publicacion.`
+      : `Memo parseado: declara ${events} eventos sobre ${resource}, pero el texto por si solo no confirma que haya sido publicado on-chain.`;
 
   return {
     ok: true,
+    receipt_matched: Boolean(demoCase),
+    receipt_verified: receiptVerified,
+    verification_status: receiptVerified ? "verified_demo_receipt" : demoCase ? "matched_demo_receipt" : "parsed_only",
+    publication_tx_hash: publicationTxHash || null,
+    publication_explorer_url: receiptExplorerUrl(publicationTxHash),
     input_format: inputFormat,
     raw_input_hex: rawInputHex,
     decoded_memo: decodedMemo,
@@ -207,7 +248,9 @@ export function decodePublicProofInput(input: unknown): PublicProofDecodeResult 
     fields,
     field_explanations: Object.entries(fields).map(([key, value]) => explainField(key, value)),
     executive_summary: executiveSummary,
-    business_meaning: businessMeaning(fields),
+    business_meaning: receiptVerified
+      ? businessMeaning(fields)
+      : "Lectura del contenido declarado. Para convertirlo en evidencia hay que comprobar la transaccion, el Raw input y la inclusion del SHA.",
     verification_steps: [
       "Abrir la transaccion en el explorer y copiar Raw input.",
       "Pegar Raw input en el decoder de nexID.",

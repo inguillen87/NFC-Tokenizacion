@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 
 test("proof verifier keeps the enterprise decoder readable and non-trapped", async () => {
   const page = await readFile(new URL("../src/app/proof/verify/page.tsx", import.meta.url), "utf8");
+  const focusTarget = await readFile(new URL("../src/app/proof/verify/proof-focus-target.tsx", import.meta.url), "utf8");
   const backLink = await readFile(new URL("../src/components/back-link.tsx", import.meta.url), "utf8");
 
   assert.match(page, /proof-secondary-cta/);
@@ -41,7 +42,9 @@ test("proof verifier keeps the enterprise decoder readable and non-trapped", asy
   assert.match(page, /parseProofMemoFields/);
   assert.match(page, /findFallbackDemoCase/);
   assert.match(page, /localResult\.ok \? localResult : response\.data/);
-  assert.match(page, /const guidedDemo = activeDemo \|\| showcaseDemo/);
+  assert.match(page, /const guidedDemo = activeDemo/);
+  assert.match(page, /const decoderInput = requestedDecoderInput/);
+  assert.match(page, /return \[configuredApiUrl \|\| PROOF_API_FALLBACK_URL\]/);
   assert.match(page, /proof-shell/);
   assert.match(page, /proof-hero-grid/);
   assert.match(page, /proof-fast-path/);
@@ -76,8 +79,9 @@ test("proof verifier keeps the enterprise decoder readable and non-trapped", asy
   assert.match(page, /order:\s*10/);
   assert.match(page, /\.proof-hero-grid\s*\{[\s\S]*order:\s*1/);
   assert.match(page, /\.proof-fast-path\s*\{[\s\S]*order:\s*2/);
-  assert.match(page, /\.proof-verification-console\s*\{[\s\S]*order:\s*3/);
-  assert.match(page, /\.proof-workstation-grid\s*\{[\s\S]*order:\s*4/);
+  assert.match(page, /\.proof-architecture-disclosure\s*\{[\s\S]*order:\s*3/);
+  assert.match(page, /\.proof-verification-console\s*\{[\s\S]*order:\s*4/);
+  assert.match(page, /\.proof-workstation-grid\s*\{[\s\S]*order:\s*5/);
   assert.match(page, /\.proof-fast-path-card__headline\s*\{[\s\S]*-webkit-line-clamp:\s*2/);
   assert.match(page, /proof-workstation-grid\s*>\s*\*/);
   assert.match(page, /min-width:\s*0/);
@@ -93,7 +97,24 @@ test("proof verifier keeps the enterprise decoder readable and non-trapped", asy
   assert.match(page, /proof-decoder-panel/);
   assert.match(page, /decoderWarnings/);
   assert.match(page, /decoderNeedsReview/);
-  assert.match(page, /Lectura ejecutiva con observaciones/);
+  assert.match(page, /Memo parseado, origen no verificado/);
+  assert.match(page, /Recibo demo \+ tx verificados/);
+  assert.match(page, /Recibo conocido, tx no disponible/);
+  assert.match(page, /receipt_publication_unavailable/);
+  assert.match(page, /receipt_verified/);
+  assert.match(page, /verification_status/);
+  assert.match(page, /Fixture testnet confirmado/);
+  assert.match(page, /Anclaje externo confirmado/);
+  assert.match(page, /Anchor enviado, aun no confirmado/);
+  assert.match(page, /#proof-result/);
+  assert.match(page, /#proof-decoder/);
+  assert.match(page, /proof-architecture-disclosure/);
+  assert.match(page, /architectureRequested/);
+  assert.match(page, /layer=polygon#polygon-ownership/);
+  assert.match(page, /ProofFocusTarget/);
+  assert.match(page, /tabIndex=\{-1\}/);
+  assert.match(focusTarget, /scrollIntoView/);
+  assert.match(focusTarget, /focus\(\{ preventScroll: true \}\)/);
   assert.match(page, /proof-decoder-warning-panel/);
   assert.match(page, /Observaciones del decoder/);
   assert.match(page, /verification_steps/);

@@ -38,10 +38,10 @@ function txExplorerUrl(baseUrl: string, txHash: string) {
 }
 
 async function verifyPublicProof(eventHash: string, anchorId = "") {
-  if (!eventHash) return json({ ok: false, reason: "event_hash_required" }, 400);
-  if (!isSha256Hash(eventHash)) return json({ ok: false, reason: "event_hash_invalid" }, 400);
+  if (!eventHash) return json({ ok: false, reason: "event_hash_required", verification_state: "invalid", evidence_level: "none" }, 400);
+  if (!isSha256Hash(eventHash)) return json({ ok: false, reason: "event_hash_invalid", verification_state: "invalid", evidence_level: "none" }, 400);
   if (anchorId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(anchorId)) {
-    return json({ ok: false, reason: "anchor_id_invalid", message: "anchor_id must be a UUID." }, 400);
+    return json({ ok: false, reason: "anchor_id_invalid", message: "anchor_id must be a UUID.", verification_state: "invalid", evidence_level: "none" }, 400);
   }
 
   const demoCase = findPublicProofDemoCaseByHash(eventHash);
@@ -79,8 +79,9 @@ async function verifyPublicProof(eventHash: string, anchorId = "") {
       : await sql/*sql*/`
           SELECT id, provider, network, merkle_root, event_hashes_json, tx_hash, explorer_url, status, anchored_at, created_at
           FROM evidence_anchors
+          WHERE event_hashes_json @> ${JSON.stringify([eventHash])}::jsonb
           ORDER BY created_at DESC
-          LIMIT 250
+          LIMIT 50
         `;
     matches = rows
       .filter((anchor) => verifyHashInAnchor(eventHash, Array.isArray(anchor.event_hashes_json) ? anchor.event_hashes_json : []))
@@ -102,14 +103,37 @@ async function verifyPublicProof(eventHash: string, anchorId = "") {
         valid: false,
         included: false,
         reason: registryWarning,
+        verification_state: "unavailable",
+        evidence_level: "none",
         event_hash: eventHash,
         privacy: "Verification is hash-only; no raw product, customer or business data is exposed.",
       }, 503);
     }
   }
 
-  const effectiveMatches = matches.length ? matches : demoMatches;
+  const effectiveMatches = Array.from(
+    new Map([...matches, ...demoMatches].map((match) => [String(match.anchor_id), match])).values(),
+  );
   const included = effectiveMatches.length > 0;
+  const externallyConfirmed = effectiveMatches.some((match) => String(match.status || "").toLowerCase() === "confirmed" && Boolean(match.tx_hash));
+  const statuses = new Set(effectiveMatches.map((match) => String(match.status || "").toLowerCase()));
+  const verificationState = !included
+    ? "not_included"
+    : externallyConfirmed
+      ? "confirmed"
+      : statuses.has("failed")
+        ? "failed"
+        : statuses.has("submitted")
+          ? "submitted"
+          : "local";
+  const usesDemoFixture = Boolean(demoCase && included);
+  const evidenceLevel = usesDemoFixture
+    ? "testnet_fixture"
+    : externallyConfirmed
+      ? "external_anchor"
+      : included
+        ? "registry_only"
+        : "none";
   const firstMatch = effectiveMatches[0] || null;
   const effectiveDemoCase = demoMatches.length && demoCase
     ? {
@@ -127,9 +151,12 @@ async function verifyPublicProof(eventHash: string, anchorId = "") {
     : null;
   return json({
     ok: true,
-    valid: included,
+    valid: externallyConfirmed,
     included,
-    demo: matches.length === 0 && demoMatches.length > 0,
+    externally_confirmed: externallyConfirmed,
+    verification_state: verificationState,
+    evidence_level: evidenceLevel,
+    demo: usesDemoFixture,
     event_hash: eventHash,
     provider: firstMatch?.provider || null,
     network: firstMatch?.network || null,

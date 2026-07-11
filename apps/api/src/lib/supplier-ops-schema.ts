@@ -352,6 +352,7 @@ export async function ensureSupplierOpsSchema() {
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_evidence_events_resource ON evidence_events(resource_type, resource_id, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_evidence_events_tenant_created ON evidence_events(tenant_id, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_evidence_anchors_tenant_created ON evidence_anchors(tenant_id, created_at DESC)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_evidence_anchors_event_hashes_gin ON evidence_anchors USING gin (event_hashes_json jsonb_ops)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_offline_verifier_devices_tenant ON offline_verifier_devices(tenant_id, status, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_offline_verifier_bundles_device ON offline_verifier_bundles(device_id, status, expires_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_offline_scan_events_bundle ON offline_scan_events(bundle_id, received_at DESC)`;
