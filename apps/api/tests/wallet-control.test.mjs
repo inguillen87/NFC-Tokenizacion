@@ -76,3 +76,15 @@ test("Clerk Web3 bridge cannot reassign an existing wallet identity", async () =
   assert.match(route, /wallet_already_linked_to_another_account/);
   assert.doesNotMatch(route, /DO UPDATE SET consumer_id = EXCLUDED\.consumer_id/);
 });
+
+test("migration runner applies multi-statement files transactionally and refuses an unknown baseline", async () => {
+  const runner = await readFile(new URL("../scripts/db-apply.mjs", import.meta.url), "utf8");
+
+  assert.match(runner, /import pg from "pg"/);
+  assert.match(runner, /argumentValue\("--only"\)/);
+  assert.match(runner, /Existing schema has no migration history/);
+  assert.match(runner, /pg_advisory_xact_lock/);
+  assert.match(runner, /await client\.query\(body\)/);
+  assert.match(runner, /await client\.query\("ROLLBACK"\)/);
+  assert.doesNotMatch(runner, /@neondatabase\/serverless/);
+});
