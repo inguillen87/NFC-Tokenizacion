@@ -351,7 +351,7 @@ export function MetamaskSandboxCard({
   }, [autoConnect, autoConnectAttempted, isControlVerified, pending, verifyWalletControl]);
 
   return (
-    <section className="overflow-hidden rounded-3xl border border-cyan-300/20 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.16),transparent_34%),linear-gradient(135deg,rgba(2,6,23,0.98),rgba(15,23,42,0.92))] shadow-[0_28px_90px_rgba(0,0,0,0.42)]">
+    <section className="consumer-wallet-control overflow-hidden rounded-3xl border border-cyan-300/20 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.16),transparent_34%),linear-gradient(135deg,rgba(2,6,23,0.98),rgba(15,23,42,0.92))] shadow-[0_28px_90px_rgba(0,0,0,0.42)]">
       <div className="border-b border-white/10 p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">

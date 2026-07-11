@@ -9793,6 +9793,72 @@ html.theme-light .consumer-portal-root .text-slate-500 {
   color: #475569 !important;
 }
 
+html.theme-light .consumer-wallet-control,
+html[data-theme="light"] .consumer-wallet-control {
+  background:
+    radial-gradient(circle at top left, rgba(34, 211, 238, 0.16), transparent 34%),
+    linear-gradient(135deg, rgba(2, 6, 23, 0.98), rgba(15, 23, 42, 0.94)) !important;
+  border-color: rgba(103, 232, 249, 0.24) !important;
+  color: #f8fafc !important;
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.22) !important;
+}
+
+html.theme-light .consumer-portal-root .consumer-wallet-control .text-white,
+html.theme-light .consumer-portal-root .consumer-wallet-control .text-slate-100,
+html.theme-light .consumer-portal-root .consumer-wallet-control .text-slate-200,
+html[data-theme="light"] .consumer-portal-root .consumer-wallet-control .text-white,
+html[data-theme="light"] .consumer-portal-root .consumer-wallet-control .text-slate-100,
+html[data-theme="light"] .consumer-portal-root .consumer-wallet-control .text-slate-200 {
+  color: #f8fafc !important;
+}
+
+html.theme-light .consumer-portal-root .consumer-wallet-control .text-slate-300,
+html.theme-light .consumer-portal-root .consumer-wallet-control .text-slate-400,
+html.theme-light .consumer-portal-root .consumer-wallet-control .text-slate-500,
+html[data-theme="light"] .consumer-portal-root .consumer-wallet-control .text-slate-300,
+html[data-theme="light"] .consumer-portal-root .consumer-wallet-control .text-slate-400,
+html[data-theme="light"] .consumer-portal-root .consumer-wallet-control .text-slate-500 {
+  color: #cbd5e1 !important;
+}
+
+html.theme-light .consumer-portal-root .consumer-wallet-control .text-cyan-100,
+html.theme-light .consumer-portal-root .consumer-wallet-control .text-cyan-200,
+html[data-theme="light"] .consumer-portal-root .consumer-wallet-control .text-cyan-100,
+html[data-theme="light"] .consumer-portal-root .consumer-wallet-control .text-cyan-200 {
+  color: #a5f3fc !important;
+}
+
+html.theme-light .consumer-portal-root .consumer-wallet-control .text-emerald-50\/80,
+html.theme-light .consumer-portal-root .consumer-wallet-control .text-emerald-100,
+html.theme-light .consumer-portal-root .consumer-wallet-control .text-emerald-200,
+html[data-theme="light"] .consumer-portal-root .consumer-wallet-control .text-emerald-50\/80,
+html[data-theme="light"] .consumer-portal-root .consumer-wallet-control .text-emerald-100,
+html[data-theme="light"] .consumer-portal-root .consumer-wallet-control .text-emerald-200 {
+  color: #a7f3d0 !important;
+}
+
+html.theme-light .consumer-portal-root .consumer-wallet-control .text-violet-200,
+html[data-theme="light"] .consumer-portal-root .consumer-wallet-control .text-violet-200 {
+  color: #ddd6fe !important;
+}
+
+html.theme-light .consumer-portal-root .consumer-wallet-control .text-orange-200,
+html[data-theme="light"] .consumer-portal-root .consumer-wallet-control .text-orange-200 {
+  color: #fed7aa !important;
+}
+
+html.theme-light .consumer-portal-root .consumer-wallet-control .bg-slate-900,
+html.theme-light .consumer-portal-root .consumer-wallet-control .bg-slate-950\/55,
+html.theme-light .consumer-portal-root .consumer-wallet-control .bg-slate-950\/60,
+html.theme-light .consumer-portal-root .consumer-wallet-control .bg-slate-950\/65,
+html[data-theme="light"] .consumer-portal-root .consumer-wallet-control .bg-slate-900,
+html[data-theme="light"] .consumer-portal-root .consumer-wallet-control .bg-slate-950\/55,
+html[data-theme="light"] .consumer-portal-root .consumer-wallet-control .bg-slate-950\/60,
+html[data-theme="light"] .consumer-portal-root .consumer-wallet-control .bg-slate-950\/65 {
+  background-color: rgba(2, 6, 23, 0.72) !important;
+  border-color: rgba(148, 163, 184, 0.22) !important;
+}
+
 html.theme-light .consumer-portal-root input,
 html.theme-light .consumer-portal-root select,
 html.theme-light .consumer-portal-root textarea {

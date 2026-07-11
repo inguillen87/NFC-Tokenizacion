@@ -5,6 +5,7 @@ import { readFile } from "node:fs/promises";
 test("wallet UX separates detected, presentation and control-verified states", async () => {
   const card = await readFile(new URL("../src/app/me/wallet/metamask-sandbox-card.tsx", import.meta.url), "utf8");
   const page = await readFile(new URL("../src/app/me/wallet/page.tsx", import.meta.url), "utf8");
+  const globals = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
 
   assert.match(card, /window\.phantom\?\.ethereum/);
   assert.match(card, /method: "personal_sign"/);
@@ -16,6 +17,10 @@ test("wallet UX separates detected, presentation and control-verified states", a
   assert.match(card, /no se guarda, no prueba control/);
   assert.doesNotMatch(card, /persistWallet/);
   assert.match(page, /<div className="space-y-6">\s*<MetamaskSandboxCard[\s\S]*?<div className="grid gap-6 lg:grid-cols-\[minmax\(0,1fr\)_340px\]">/);
+  assert.match(card, /consumer-wallet-control/);
+  assert.match(globals, /html\[data-theme="light"\] \.consumer-wallet-control/);
+  assert.match(globals, /consumer-wallet-control \.text-white/);
+  assert.match(globals, /consumer-wallet-control \.bg-slate-950\\\/55/);
 });
 
 test("consumer wallet proxies preserve the signed API boundary", async () => {
