@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev -p 3003",
+    "prebuild": "npm run prisma:generate",
     "build": "node scripts/sanitize-route-tree.mjs && npm run test:routes && npm run test:rewards && next build",
     "start": "next start -p 3003",
     "db:new": "node scripts/db-new-migration.mjs",
