@@ -1213,10 +1213,7 @@ export function DemoLabClient({
             activeTrustScenario={trustScenario}
             initialTheme={initialTheme}
             initialReturnTo={initialReturnTo}
-            onVertical={(nextVertical) => {
-              setTrustScenario(null);
-              setVertical(nextVertical);
-            }}
+            onVertical={setVertical}
             onBeat={setBeat}
             onTrustScenario={selectTrustScenario}
             onProduct={() => setModalView("product")}
@@ -1410,8 +1407,11 @@ function DemoLabStudioHero({
 
   function scrollWizardSceneIntoView() {
     window.setTimeout(() => {
-      document.querySelector(".demo-lab-wizard-scene")?.scrollIntoView({
-        block: "start",
+      const scene = document.querySelector<HTMLElement>(".demo-lab-wizard-scene");
+      if (!scene) return;
+      const stickyOffset = window.matchMedia("(max-width: 760px)").matches ? 132 : 24;
+      window.scrollTo({
+        top: Math.max(0, window.scrollY + scene.getBoundingClientRect().top - stickyOffset),
         behavior: "smooth",
       });
     }, 40);
@@ -1573,6 +1573,31 @@ function DemoLabStudioHero({
           variant="wizard"
         />
       </details>
+
+      <section
+        className="demo-lab-mobile-product-switcher"
+        aria-label={locale === "en" ? "Choose demo product" : locale === "pt-BR" ? "Escolher produto da demo" : "Elegir producto de la demo"}
+      >
+        <div className="demo-lab-mobile-product-switcher__copy">
+          <span>{locale === "en" ? "ACTIVE PRODUCT" : locale === "pt-BR" ? "PRODUTO ATIVO" : "PRODUCTO ACTIVO"}</span>
+          <strong>{activeVertical.product}</strong>
+          <small>{txt.verticals[vertical].label} · {activeVertical.profile}</small>
+        </div>
+        <label className="demo-lab-mobile-product-select" htmlFor="demo-lab-mobile-product">
+          <PackageCheck className="h-4 w-4" aria-hidden="true" />
+          <select
+            id="demo-lab-mobile-product"
+            aria-label={locale === "en" ? "Demo product" : locale === "pt-BR" ? "Produto da demo" : "Producto de la demo"}
+            value={vertical}
+            onChange={(event) => onVertical(event.currentTarget.value as Vertical)}
+          >
+            {verticalList.map((item) => (
+              <option key={item} value={item}>{txt.verticals[item].label}</option>
+            ))}
+          </select>
+          <ChevronRight className="h-4 w-4" aria-hidden="true" />
+        </label>
+      </section>
 
       {/* ── STEP 0: TOCA ─────────────────────────────────────── */}
       {step === 0 && (

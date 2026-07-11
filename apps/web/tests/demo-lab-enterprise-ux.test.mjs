@@ -66,6 +66,32 @@ test("demo lab mobile wizard shows four steps without horizontal scrolling", asy
   assert.doesNotMatch(css, /dueÃ|dueÃƒ|Ã±o/);
 });
 
+test("demo lab mobile journey uses native page scroll and a compact product selector", async () => {
+  const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
+  const client = await readFile(new URL("../src/app/(public)/demo-lab/demo-lab-client.tsx", import.meta.url), "utf8");
+
+  assert.match(client, /className="demo-lab-mobile-product-switcher"/);
+  assert.match(client, /id="demo-lab-mobile-product"/);
+  assert.match(client, /aria-label=\{locale === "en" \? "Demo product"/);
+  assert.match(client, /value=\{vertical\}/);
+  assert.match(client, /onVertical\(event\.currentTarget\.value as Vertical\)/);
+  assert.match(client, /onVertical=\{setVertical\}/);
+  assert.doesNotMatch(client, /setTrustScenario\(null\)/);
+  assert.match(client, /window\.scrollTo\(\{/);
+  assert.match(client, /stickyOffset = window\.matchMedia\("\(max-width: 760px\)"\)\.matches \? 132 : 24/);
+  assert.doesNotMatch(client, /querySelector\("\.demo-lab-wizard-scene"\)\?\.scrollIntoView/);
+
+  assert.match(css, /Demo Lab mobile journey v2/);
+  assert.match(css, /\.demo-lab-mobile-product-switcher\s*\{[\s\S]*display:\s*none/);
+  assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*\.demo-lab-mobile-product-switcher\s*\{[\s\S]*display:\s*grid !important/);
+  assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*\.demo-lab-fullscreen-root \.demo-lab-wizard-nav\s*\{[\s\S]*top:\s*4rem !important/);
+  assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*\.demo-lab-fullscreen-root \.demo-lab-wizard-nav-back,[\s\S]*\.demo-lab-fullscreen-root \.demo-lab-wizard-actions\s*\{[\s\S]*display:\s*none !important/);
+  assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*\.demo-lab-fullscreen-root \.demo-lab-wizard-scene--toca > \.demo-lab-wizard-context,[\s\S]*\.demo-lab-fullscreen-root \.demo-lab-wizard-scene--toca > \.demo-lab-wizard-verticals\s*\{[\s\S]*display:\s*none !important/);
+  assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*\.demo-lab-fullscreen-root \.demo-lab-wizard-center \.demo-lab-premium-scene\s*\{[\s\S]*height:\s*22rem !important/);
+  assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*\.demo-lab-fullscreen-root \.demo-lab-wizard-tap-btn\s*\{[\s\S]*height:\s*3\.5rem !important/);
+  assert.match(css, /@media \(max-width:\s*1024px\)[\s\S]*\.demo-lab-fullscreen-stage \.demo-lab-studio,[\s\S]*overflow:\s*visible !important/);
+});
+
 test("demo lab fullscreen mobile keeps CTAs inside viewport and light mode visible", async () => {
   const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
   const page = await readFile(new URL("../src/app/(public)/demo-lab/page.tsx", import.meta.url), "utf8");
@@ -283,7 +309,8 @@ test("demo lab trust scenario deep links open contextual wizard proof layers", a
   assert.match(client, /demo-lab-trust-switcher/);
   assert.match(client, /<DemoTrustScenarioRail[\s\S]*variant="wizard"/);
   assert.match(client, /window\.history\.replaceState\(null, "", href\)/);
-  assert.match(client, /setTrustScenario\(null\)/);
+  assert.doesNotMatch(client, /setTrustScenario\(null\)/);
+  assert.match(client, /onVertical=\{setVertical\}/);
   assert.match(client, /IOTA prueba evidencia logistica/);
   assert.match(client, /Evento canonico/);
   assert.match(client, /Polygon es el certificado de propiedad/);

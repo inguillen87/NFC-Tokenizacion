@@ -51232,3 +51232,792 @@ html[data-theme="light"] .demo-lab-crm-mobile-card__actions button,
     font-size: 0.6rem !important;
   }
 }
+
+/* Demo Lab mobile journey v2: one navigation layer, native page scroll and a
+   compact product-first interaction instead of a nested desktop cockpit. */
+.demo-lab-mobile-product-switcher {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .demo-lab-fullscreen-stage,
+  .demo-lab-fullscreen-stage .demo-lab-studio,
+  .demo-lab-fullscreen-root .demo-lab-wizard-scene,
+  .demo-lab-fullscreen-root .demo-lab-wizard-center,
+  .demo-lab-fullscreen-root .demo-lab-wizard-events,
+  .demo-lab-fullscreen-root .demo-lab-wizard-trazo-side {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-verticals {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding-bottom: 0 !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-vertical-btn {
+    min-width: 0 !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .demo-lab-fullscreen-root {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-infobar {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 80 !important;
+    min-height: 4rem !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-infobar__inner {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    width: 100% !important;
+    min-height: 4rem !important;
+    padding: 0.5rem 0.75rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-infobar__left {
+    display: grid !important;
+    grid-template-columns: 2.75rem minmax(0, 1fr) !important;
+    align-items: center !important;
+    gap: 0.55rem !important;
+    width: auto !important;
+    min-width: 0 !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-infobar__back {
+    width: 2.75rem !important;
+    min-width: 2.75rem !important;
+    height: 2.75rem !important;
+    min-height: 2.75rem !important;
+    justify-content: center !important;
+    padding: 0 !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-infobar__back span,
+  .demo-lab-fullscreen-root .demo-lab-infobar__divider,
+  .demo-lab-fullscreen-root .demo-lab-infobar__icon,
+  .demo-lab-fullscreen-root .demo-lab-infobar__eyebrow,
+  .demo-lab-fullscreen-root .demo-lab-infobar__context-pill {
+    display: none !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-infobar__title-block,
+  .demo-lab-fullscreen-root .demo-lab-infobar__title {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-infobar__title {
+    overflow: hidden !important;
+    font-size: 0.78rem !important;
+    line-height: 1.15 !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-infobar__right {
+    display: grid !important;
+    grid-template-columns: 2.75rem auto !important;
+    align-items: center !important;
+    gap: 0.42rem !important;
+    width: auto !important;
+    min-width: 0 !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-infobar__right .theme-toggle {
+    width: 2.75rem !important;
+    min-width: 2.75rem !important;
+    height: 2.75rem !important;
+    min-height: 2.75rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-infobar__cta {
+    width: auto !important;
+    min-width: 5.2rem !important;
+    height: 2.75rem !important;
+    min-height: 2.75rem !important;
+    justify-content: center !important;
+    padding-inline: 0.65rem !important;
+    font-size: 0.65rem !important;
+    letter-spacing: 0 !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-shell {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0.55rem 0 2.25rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-mode-bar--compact {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 0 !important;
+    width: calc(100% - 1.5rem) !important;
+    margin: 0 auto 0.5rem !important;
+    padding: 0.28rem !important;
+    border-radius: 0.95rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-mode-bar--compact > div:first-child {
+    display: none !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-mode-bar--compact > div:last-child {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.3rem !important;
+    width: 100% !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-mode-tab {
+    width: 100% !important;
+    min-height: 2.75rem !important;
+    justify-content: center !important;
+    padding: 0.35rem 0.48rem !important;
+    font-size: 0.65rem !important;
+    line-height: 1.12 !important;
+    letter-spacing: 0 !important;
+    white-space: normal !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-nav {
+    position: sticky !important;
+    top: 4rem !important;
+    z-index: 60 !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    width: calc(100% - 1.5rem) !important;
+    max-width: calc(100% - 1.5rem) !important;
+    min-height: 3.35rem !important;
+    margin: 0 auto 0.5rem !important;
+    padding: 0.28rem !important;
+    border-radius: 0.95rem !important;
+    overflow: visible !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-nav-back,
+  .demo-lab-fullscreen-root .demo-lab-wizard-actions {
+    display: none !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-steps {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 0.28rem !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    overflow: visible !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-steps .demo-lab-wizard-step-pill {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 2.75rem !important;
+    justify-content: center !important;
+    gap: 0 !important;
+    border-radius: 0.72rem !important;
+    padding: 0.3rem 0.2rem !important;
+    letter-spacing: 0 !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-step-num {
+    display: none !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-steps .demo-lab-wizard-step-pill span:last-child {
+    overflow: visible !important;
+    font-size: 0.64rem !important;
+    line-height: 1 !important;
+    letter-spacing: 0 !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-brief {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    width: calc(100% - 1.5rem) !important;
+    margin: 0 auto 0.5rem !important;
+    padding: 0.72rem 0.78rem !important;
+    border-radius: 1rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-brief__copy strong {
+    max-width: none !important;
+    margin-top: 0.2rem !important;
+    font-size: 0.98rem !important;
+    line-height: 1.16 !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-brief__copy p {
+    display: -webkit-box !important;
+    margin-top: 0.28rem !important;
+    overflow: hidden !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 2 !important;
+    font-size: 0.74rem !important;
+    line-height: 1.35 !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-brief__proof {
+    display: none !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-trust-switcher {
+    width: calc(100% - 1.5rem) !important;
+    margin: 0 auto 0.5rem !important;
+    border-radius: 1rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-trust-switcher > summary {
+    min-height: 2.75rem !important;
+    padding: 0.55rem 0.7rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-trust-switcher > summary strong {
+    overflow: hidden !important;
+    font-size: 0.75rem !important;
+    line-height: 1.2 !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .demo-lab-mobile-product-switcher {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(9.5rem, 0.92fr) !important;
+    align-items: center !important;
+    gap: 0.65rem !important;
+    width: calc(100% - 1.5rem) !important;
+    margin: 0 auto 0.5rem !important;
+    border: 1px solid rgba(103, 232, 249, 0.18) !important;
+    border-radius: 1rem !important;
+    background: rgba(15, 23, 42, 0.76) !important;
+    padding: 0.62rem 0.68rem !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  }
+
+  .demo-lab-mobile-product-switcher__copy {
+    min-width: 0 !important;
+  }
+
+  .demo-lab-mobile-product-switcher__copy span {
+    display: block !important;
+    color: #67e8f9 !important;
+    font-size: 0.58rem !important;
+    font-weight: 950 !important;
+    letter-spacing: 0.14em !important;
+  }
+
+  .demo-lab-mobile-product-switcher__copy strong,
+  .demo-lab-mobile-product-switcher__copy small {
+    display: block !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .demo-lab-mobile-product-switcher__copy strong {
+    margin-top: 0.2rem !important;
+    color: #f8fafc !important;
+    font-size: 1rem !important;
+    font-weight: 950 !important;
+    line-height: 1.12 !important;
+  }
+
+  .demo-lab-mobile-product-switcher__copy small {
+    display: none !important;
+  }
+
+  .demo-lab-mobile-product-select {
+    display: grid !important;
+    grid-template-columns: 1.1rem minmax(0, 1fr) 1rem !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    min-height: 2.75rem !important;
+    border: 1px solid rgba(103, 232, 249, 0.24) !important;
+    border-radius: 0.78rem !important;
+    background: rgba(8, 145, 178, 0.14) !important;
+    color: #cffafe !important;
+    padding: 0 0.7rem !important;
+  }
+
+  .demo-lab-mobile-product-select select {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 2.75rem !important;
+    min-width: 0 !important;
+    border: 0 !important;
+    outline: 0 !important;
+    background: transparent !important;
+    color: inherit !important;
+    font: inherit !important;
+    font-size: 0.78rem !important;
+    font-weight: 900 !important;
+  }
+
+  .demo-lab-mobile-product-select option {
+    background: #0f172a !important;
+    color: #f8fafc !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-scene {
+    min-height: 0 !important;
+    align-content: start !important;
+    gap: 0.7rem !important;
+    padding: 0.15rem 0.75rem 0.75rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-scene--toca > .demo-lab-wizard-context,
+  .demo-lab-fullscreen-root .demo-lab-wizard-scene--toca > .demo-lab-wizard-verticals {
+    display: none !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-center {
+    gap: 0.62rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-center .demo-lab-premium-scene {
+    width: 100% !important;
+    height: 22rem !important;
+    min-height: 22rem !important;
+    max-height: 22rem !important;
+    overflow: hidden !important;
+    border-radius: 1.15rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-center .demo-lab-premium-scene__media,
+  .demo-lab-fullscreen-root .demo-lab-wizard-center .demo-lab-premium-scene--studio .demo-lab-premium-scene__media,
+  .demo-lab-fullscreen-root .demo-lab-wizard-center .demo-lab-premium-scene--crop-square .demo-lab-premium-scene__media,
+  .demo-lab-fullscreen-root .demo-lab-wizard-center .demo-lab-premium-scene--crop-portrait .demo-lab-premium-scene__media {
+    top: 0.8rem !important;
+    left: 50% !important;
+    width: min(78%, 15.6rem) !important;
+    max-width: 15.6rem !important;
+    transform: translateX(-50%) rotateZ(-1deg) !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-center .demo-lab-premium-scene--crop-portrait .demo-lab-premium-scene__media {
+    width: min(65%, 12.8rem) !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-center .demo-lab-premium-scene__phone,
+  .demo-lab-fullscreen-root .demo-lab-wizard-center .demo-lab-premium-scene--studio .demo-lab-premium-scene__phone {
+    top: 6.2rem !important;
+    right: 0.45rem !important;
+    width: 6.1rem !important;
+    min-width: 6.1rem !important;
+    min-height: 9.65rem !important;
+    padding: 1.55rem 0.42rem 0.48rem !important;
+    border-width: 0.18rem !important;
+    border-radius: 0.9rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-center .demo-lab-premium-scene__phone i {
+    width: 2rem !important;
+    height: 2rem !important;
+    border-width: 0.32rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-center .demo-lab-premium-scene__phone strong {
+    font-size: 0.7rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-center .demo-lab-premium-scene__phone small {
+    font-size: 0.48rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-center .demo-lab-premium-scene__phone em {
+    padding: 0.38rem 0.2rem !important;
+    font-size: 0.44rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-center .demo-lab-premium-scene__tag-card,
+  .demo-lab-fullscreen-root .demo-lab-wizard-center .demo-lab-premium-scene__proof,
+  .demo-lab-fullscreen-root .demo-lab-wizard-center .demo-lab-premium-scene__ribbon {
+    display: none !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-tap-btn {
+    display: inline-flex !important;
+    width: 100% !important;
+    max-width: 24rem !important;
+    height: 3.5rem !important;
+    min-height: 3.5rem !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.65rem !important;
+    border-radius: 1rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-tap-ring {
+    display: none !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-tap-btn svg {
+    width: 1.4rem !important;
+    height: 1.4rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-tap-btn span:last-child {
+    font-size: 0.76rem !important;
+    letter-spacing: 0.06em !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-result-card,
+  .demo-lab-fullscreen-root .demo-lab-wizard-map-container {
+    min-height: 0 !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-result-card,
+  .demo-lab-fullscreen-root .demo-lab-wizard-events,
+  .demo-lab-fullscreen-root .demo-lab-wizard-trazo-side {
+    padding: 1rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-result-icon {
+    width: 3.5rem !important;
+    height: 3.5rem !important;
+    border-radius: 1rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-result-icon svg {
+    width: 2.5rem !important;
+    height: 2.5rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-result-status {
+    font-size: clamp(2rem, 10vw, 2.75rem) !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-next-btn,
+  .demo-lab-fullscreen-root .demo-lab-wizard-primary-cta,
+  .demo-lab-fullscreen-root .demo-lab-wizard-secondary-cta {
+    min-height: 2.75rem !important;
+  }
+
+  html.theme-light .demo-lab-mobile-product-switcher,
+  html[data-theme="light"] .demo-lab-mobile-product-switcher,
+  .demo-lab-fullscreen-root--light .demo-lab-mobile-product-switcher {
+    border-color: rgba(14, 116, 144, 0.2) !important;
+    background: rgba(255, 255, 255, 0.92) !important;
+    box-shadow: 0 1rem 2.5rem rgba(15, 23, 42, 0.08) !important;
+  }
+
+  html.theme-light .demo-lab-mobile-product-switcher__copy strong,
+  html[data-theme="light"] .demo-lab-mobile-product-switcher__copy strong,
+  .demo-lab-fullscreen-root--light .demo-lab-mobile-product-switcher__copy strong {
+    color: #0f172a !important;
+  }
+
+  html.theme-light .demo-lab-mobile-product-switcher__copy small,
+  html[data-theme="light"] .demo-lab-mobile-product-switcher__copy small,
+  .demo-lab-fullscreen-root--light .demo-lab-mobile-product-switcher__copy small {
+    color: #475569 !important;
+  }
+
+  html.theme-light .demo-lab-mobile-product-select,
+  html[data-theme="light"] .demo-lab-mobile-product-select,
+  .demo-lab-fullscreen-root--light .demo-lab-mobile-product-select {
+    border-color: rgba(14, 116, 144, 0.26) !important;
+    background: rgba(236, 254, 255, 0.94) !important;
+    color: #075985 !important;
+  }
+
+  html.theme-light .demo-lab-mobile-product-select option,
+  html[data-theme="light"] .demo-lab-mobile-product-select option,
+  .demo-lab-fullscreen-root--light .demo-lab-mobile-product-select option {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .demo-lab-fullscreen-root .demo-lab-infobar__inner {
+    padding-inline: 0.55rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-infobar__left {
+    grid-template-columns: 2.75rem minmax(0, 1fr) !important;
+    gap: 0.38rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-infobar__cta {
+    min-width: 4.8rem !important;
+    padding-inline: 0.48rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-infobar__cta svg {
+    display: none !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-steps .demo-lab-wizard-step-pill span:last-child {
+    font-size: 0.6rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-center .demo-lab-premium-scene {
+    height: 18rem !important;
+    min-height: 18rem !important;
+    max-height: 18rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-brief {
+    padding: 0.58rem 0.68rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-brief__copy strong {
+    font-size: 0.9rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-brief__copy p {
+    font-size: 0.7rem !important;
+    line-height: 1.28 !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-trust-switcher > summary {
+    min-height: 2.75rem !important;
+    padding-block: 0.38rem !important;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1024px) {
+  .demo-lab-fullscreen-root .demo-lab-infobar__back,
+  .demo-lab-fullscreen-root .demo-lab-infobar__cta,
+  .demo-lab-fullscreen-root .demo-lab-infobar__right .theme-toggle,
+  .demo-lab-fullscreen-root .demo-lab-mode-tab {
+    min-height: 2.75rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-infobar__right .theme-toggle {
+    width: 2.75rem !important;
+    min-width: 2.75rem !important;
+    height: 2.75rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-mode-tab {
+    display: inline-flex !important;
+    align-items: center !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-nav {
+    top: 0.75rem !important;
+    z-index: 60 !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    min-height: 3.4rem !important;
+    padding: 0.3rem !important;
+    overflow: visible !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-nav-back,
+  .demo-lab-fullscreen-root .demo-lab-wizard-actions {
+    display: none !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-steps {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 0.42rem !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    overflow: visible !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-steps .demo-lab-wizard-step-pill {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 2.75rem !important;
+    justify-content: center !important;
+    padding-inline: 0.45rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-brief {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 0.8rem !important;
+    padding: 0.78rem 0.9rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-brief__copy strong {
+    font-size: 1.05rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-brief__copy p {
+    margin-top: 0.3rem !important;
+    font-size: 0.78rem !important;
+    line-height: 1.35 !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-brief__proof {
+    align-content: center !important;
+  }
+
+  .demo-lab-mobile-product-switcher {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(13rem, 0.72fr) !important;
+    align-items: center !important;
+    gap: 0.8rem !important;
+    margin: 0.7rem 1rem !important;
+    border: 1px solid rgba(103, 232, 249, 0.18) !important;
+    border-radius: 1rem !important;
+    background: rgba(15, 23, 42, 0.76) !important;
+    padding: 0.72rem 0.82rem !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  }
+
+  .demo-lab-mobile-product-switcher__copy span {
+    display: block !important;
+    color: #67e8f9 !important;
+    font-size: 0.6rem !important;
+    font-weight: 950 !important;
+    letter-spacing: 0.14em !important;
+  }
+
+  .demo-lab-mobile-product-switcher__copy strong,
+  .demo-lab-mobile-product-switcher__copy small {
+    display: block !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .demo-lab-mobile-product-switcher__copy strong {
+    margin-top: 0.2rem !important;
+    color: #f8fafc !important;
+    font-size: 1.05rem !important;
+    font-weight: 950 !important;
+  }
+
+  .demo-lab-mobile-product-switcher__copy small {
+    margin-top: 0.16rem !important;
+    color: #94a3b8 !important;
+    font-size: 0.72rem !important;
+  }
+
+  .demo-lab-mobile-product-select {
+    display: grid !important;
+    grid-template-columns: 1.1rem minmax(0, 1fr) 1rem !important;
+    align-items: center !important;
+    gap: 0.55rem !important;
+    min-height: 2.75rem !important;
+    border: 1px solid rgba(103, 232, 249, 0.24) !important;
+    border-radius: 0.78rem !important;
+    background: rgba(8, 145, 178, 0.14) !important;
+    color: #cffafe !important;
+    padding: 0 0.75rem !important;
+  }
+
+  .demo-lab-mobile-product-select select {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 2.75rem !important;
+    border: 0 !important;
+    outline: 0 !important;
+    background: transparent !important;
+    color: inherit !important;
+    font: inherit !important;
+    font-size: 0.8rem !important;
+    font-weight: 900 !important;
+  }
+
+  .demo-lab-mobile-product-select option {
+    background: #0f172a !important;
+    color: #f8fafc !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-scene {
+    min-height: 0 !important;
+    align-content: start !important;
+    padding: 0.2rem 1rem 1rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-scene--toca > .demo-lab-wizard-context,
+  .demo-lab-fullscreen-root .demo-lab-wizard-scene--toca > .demo-lab-wizard-verticals {
+    display: none !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-center {
+    gap: 0.75rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-center .demo-lab-premium-scene {
+    width: 100% !important;
+    height: 21rem !important;
+    min-height: 21rem !important;
+    max-height: 21rem !important;
+    overflow: hidden !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-tap-btn {
+    display: inline-flex !important;
+    width: 100% !important;
+    max-width: 30rem !important;
+    height: 3.5rem !important;
+    min-height: 3.5rem !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.7rem !important;
+    border-radius: 1rem !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-tap-ring {
+    display: none !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-wizard-tap-btn svg {
+    width: 1.5rem !important;
+    height: 1.5rem !important;
+  }
+
+  html.theme-light .demo-lab-mobile-product-switcher,
+  html[data-theme="light"] .demo-lab-mobile-product-switcher,
+  .demo-lab-fullscreen-root--light .demo-lab-mobile-product-switcher {
+    border-color: rgba(14, 116, 144, 0.2) !important;
+    background: rgba(255, 255, 255, 0.92) !important;
+    box-shadow: 0 1rem 2.5rem rgba(15, 23, 42, 0.08) !important;
+  }
+
+  html.theme-light .demo-lab-mobile-product-switcher__copy strong,
+  html[data-theme="light"] .demo-lab-mobile-product-switcher__copy strong,
+  .demo-lab-fullscreen-root--light .demo-lab-mobile-product-switcher__copy strong {
+    color: #0f172a !important;
+  }
+
+  html.theme-light .demo-lab-mobile-product-switcher__copy small,
+  html[data-theme="light"] .demo-lab-mobile-product-switcher__copy small,
+  .demo-lab-fullscreen-root--light .demo-lab-mobile-product-switcher__copy small {
+    color: #475569 !important;
+  }
+
+  html.theme-light .demo-lab-mobile-product-select,
+  html[data-theme="light"] .demo-lab-mobile-product-select,
+  .demo-lab-fullscreen-root--light .demo-lab-mobile-product-select {
+    border-color: rgba(14, 116, 144, 0.26) !important;
+    background: rgba(236, 254, 255, 0.94) !important;
+    color: #075985 !important;
+  }
+
+  html.theme-light .demo-lab-mobile-product-select option,
+  html[data-theme="light"] .demo-lab-mobile-product-select option,
+  .demo-lab-fullscreen-root--light .demo-lab-mobile-product-select option {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+}
