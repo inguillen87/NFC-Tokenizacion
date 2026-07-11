@@ -1,0 +1,358 @@
+.setupPanel {
+  --setup-bg: rgba(8, 17, 31, 0.9);
+  --setup-soft: rgba(15, 23, 42, 0.66);
+  --setup-border: rgba(148, 163, 184, 0.2);
+  --setup-text: #f8fafc;
+  --setup-muted: #cbd5e1;
+  --setup-cyan: #67e8f9;
+  --setup-green: #6ee7b7;
+  overflow: hidden;
+  border: 1px solid rgba(34, 211, 238, 0.28);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 5% 0%, rgba(34, 211, 238, 0.13), transparent 34%),
+    var(--setup-bg);
+  color: var(--setup-text);
+}
+
+.setupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--setup-border);
+}
+
+.eyebrow {
+  color: var(--setup-cyan);
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.13em;
+}
+
+.setupHeader h2,
+.setupPanel > div h2 {
+  margin: 0.45rem 0 0;
+  font-size: 1.35rem;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+.setupHeader p,
+.setupPanel > div p {
+  max-width: 48rem;
+  margin: 0.5rem 0 0;
+  color: var(--setup-muted);
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+
+.stepCounter {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+}
+
+.stepCounter span {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  border: 1px solid var(--setup-border);
+  border-radius: 50%;
+  color: var(--setup-muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.stepCounter span[data-active="true"] {
+  border-color: rgba(34, 211, 238, 0.4);
+  background: rgba(34, 211, 238, 0.1);
+  color: var(--setup-cyan);
+}
+
+.stepCounter i {
+  width: 2rem;
+  height: 1px;
+  background: var(--setup-border);
+}
+
+.verticalStep,
+.detailsStep {
+  padding: 1.5rem;
+}
+
+.stepIntro {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+}
+
+.stepIntro > span {
+  color: var(--setup-cyan);
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.stepIntro h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.stepIntro p {
+  margin: 0.25rem 0 0;
+  color: var(--setup-muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.verticalGrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin-top: 1.15rem;
+}
+
+.verticalOption {
+  display: grid;
+  grid-template-columns: 1.5rem minmax(0, 1fr);
+  align-items: start;
+  gap: 0.65rem;
+  min-height: 7rem;
+  border: 1px solid var(--setup-border);
+  border-radius: 6px;
+  background: var(--setup-soft);
+  color: var(--setup-text);
+  padding: 0.9rem;
+  text-align: left;
+}
+
+.verticalOption[data-selected="true"] {
+  border-color: rgba(34, 211, 238, 0.48);
+  background: rgba(34, 211, 238, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.12);
+}
+
+.verticalOption > svg {
+  width: 1.2rem;
+  height: 1.2rem;
+  color: var(--setup-cyan);
+}
+
+.verticalOption > svg:last-child {
+  grid-column: 1 / -1;
+  justify-self: end;
+  color: var(--setup-green);
+}
+
+.verticalOption strong,
+.verticalOption small {
+  display: block;
+}
+
+.verticalOption strong {
+  font-size: 0.76rem;
+}
+
+.verticalOption small {
+  margin-top: 0.35rem;
+  color: var(--setup-muted);
+  font-size: 0.66rem;
+  line-height: 1.45;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+  margin-top: 1.15rem;
+}
+
+.formGrid label {
+  min-width: 0;
+}
+
+.formGrid label > span {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--setup-muted);
+  font-size: 0.67rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.formGrid label > span svg {
+  width: 0.9rem;
+  height: 0.9rem;
+  color: var(--setup-cyan);
+}
+
+.formGrid input {
+  width: 100%;
+  min-height: 2.75rem;
+  margin-top: 0.4rem;
+  border: 1px solid var(--setup-border);
+  border-radius: 6px;
+  background: rgba(2, 6, 23, 0.58);
+  color: var(--setup-text);
+  padding: 0.65rem 0.8rem;
+  font-size: 0.82rem;
+}
+
+.formGrid input:focus-visible,
+.verticalOption:focus-visible,
+.primaryButton:focus-visible,
+.secondaryButton:focus-visible {
+  outline: 3px solid rgba(34, 211, 238, 0.35);
+  outline-offset: 2px;
+}
+
+.wideField {
+  grid-column: 1 / -1;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--setup-border);
+}
+
+.primaryButton,
+.secondaryButton {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 6px;
+  padding: 0.65rem 1rem;
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
+.primaryButton {
+  border: 0;
+  background: linear-gradient(100deg, #22d3ee, #14b8a6);
+  color: #04111d;
+}
+
+.secondaryButton {
+  border: 1px solid var(--setup-border);
+  background: transparent;
+  color: var(--setup-muted);
+}
+
+.primaryButton svg,
+.secondaryButton svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.error {
+  margin: 1rem 0 0;
+  border-left: 3px solid #fb7185;
+  background: rgba(244, 63, 94, 0.09);
+  color: #fecdd3;
+  padding: 0.75rem 0.9rem;
+  font-size: 0.76rem;
+}
+
+.spinner {
+  animation: spin 0.8s linear infinite;
+}
+
+.successIcon {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  flex: 0 0 3rem;
+  place-items: center;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--setup-green);
+  margin: 1.5rem 0 1.5rem 1.5rem;
+}
+
+.successIcon + div {
+  padding: 1.5rem;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+:global(html.theme-light) .setupPanel,
+:global(html[data-theme="light"]) .setupPanel {
+  --setup-bg: rgba(248, 251, 255, 0.96);
+  --setup-soft: rgba(226, 232, 240, 0.58);
+  --setup-border: rgba(15, 23, 42, 0.15);
+  --setup-text: #0f172a;
+  --setup-muted: #334155;
+  --setup-cyan: #0e7490;
+  --setup-green: #047857;
+  background:
+    radial-gradient(circle at 5% 0%, rgba(14, 165, 233, 0.12), transparent 34%),
+    var(--setup-bg);
+}
+
+:global(html.theme-light) .formGrid input,
+:global(html[data-theme="light"]) .formGrid input {
+  background: rgba(255, 255, 255, 0.92);
+}
+
+:global(html.theme-light) .error,
+:global(html[data-theme="light"]) .error {
+  border-left-color: #be123c;
+  background: rgba(190, 18, 60, 0.08);
+  color: #9f1239;
+}
+
+@media (max-width: 1020px) {
+  .verticalGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .setupHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .verticalGrid,
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .wideField {
+    grid-column: auto;
+  }
+
+  .verticalOption {
+    min-height: 0;
+  }
+
+  .actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .primaryButton,
+  .secondaryButton {
+    width: 100%;
+  }
+}

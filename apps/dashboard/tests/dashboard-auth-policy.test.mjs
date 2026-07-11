@@ -98,8 +98,11 @@ test("login surfaces separate founder Google auth from tenant demo access", () =
   assert.doesNotMatch(demoRoute, /permissions:\s*\["\*"\]/);
 
   assert.match(logoutRoute, /loginUrl\.searchParams\.set\("logged_out", "1"\)/);
-  assert.match(logoutRoute, /NextResponse\.redirect\(loginUrl, 303\)/);
+  assert.match(logoutRoute, /const redirectPath = `\$\{loginUrl\.pathname\}\$\{loginUrl\.search\}`/);
+  assert.match(logoutRoute, /status: 200/);
+  assert.match(logoutRoute, /location\.replace/);
   assert.match(logoutRoute, /response\.headers\.set\("Cache-Control", "no-store"\)/);
+  assert.match(logoutRoute, /response\.headers\.set\("Clear-Site-Data", "\\"cookies\\", \\"storage\\""\)/);
   assert.match(logoutRoute, /response\.cookies\.delete\(DASHBOARD_SESSION_COOKIE\)/);
   assert.match(logoutRoute, /response\.cookies\.delete\(DASHBOARD_SESSION_SNAPSHOT_COOKIE\)/);
 
@@ -112,7 +115,9 @@ test("login surfaces separate founder Google auth from tenant demo access", () =
 
   assert.match(secureLogoutButton, /useClerk/);
   assert.match(secureLogoutButton, /await fetch\("\/logout", \{ method: "POST", cache: "no-store" \}\)/);
-  assert.match(secureLogoutButton, /await signOut\(\{ redirectUrl: "\/login\?logged_out=1" \}\)/);
+  assert.match(secureLogoutButton, /const LOGOUT_REDIRECT = "\/login\?logged_out=1"/);
+  assert.match(secureLogoutButton, /signOut\(\{ redirectUrl: LOGOUT_REDIRECT \}\)/);
+  assert.match(secureLogoutButton, /window\.location\.href = LOGOUT_REDIRECT/);
   assert.match(accountMenu, /SecureDashboardLogoutButton/);
 
   assert.match(sessionLoginRoute, /accessProfile\?\.role === "super-admin"/);

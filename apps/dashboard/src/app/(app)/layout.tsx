@@ -3,7 +3,6 @@ import { dashboardContent } from "../../lib/dashboard-content";
 import { DashboardShell } from "../../components/dashboard-shell";
 import { requireDashboardSession } from "../../lib/session";
 import { SessionHeartbeat } from "../../components/session-heartbeat";
-import { OnboardingSetupWizard } from "../../components/onboarding-setup-wizard";
 import { isClerkConfiguredForRuntime } from "../../lib/clerk-env";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -32,9 +31,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <>
         <SessionHeartbeat />
         {children}
-        {session.setupCompleted === false && session.role === "tenant-admin" && (
-          <OnboardingSetupWizard session={session} />
-        )}
       </>
     </DashboardShell>
   );

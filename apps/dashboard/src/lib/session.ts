@@ -21,6 +21,7 @@ export type DashboardSession = {
   rotatedCookieValue?: string | null;
   expiresAt?: string;
   setupCompleted?: boolean;
+  isDemo?: boolean;
 };
 
 function demoFallbackSession(): DashboardSession {
@@ -34,6 +35,7 @@ function demoFallbackSession(): DashboardSession {
     permissions: ["*"],
     mfaVerified: true,
     setupCompleted: true,
+    isDemo: true,
   };
 }
 
@@ -63,22 +65,8 @@ function parseDemoToken(token: string): DashboardSession | null {
       permissions: ["*"],
       mfaVerified: true,
       setupCompleted: true,
+      isDemo: true,
     };
-  } catch {
-    return null;
-  }
-}
-
-function parseSnapshot(raw?: string): DashboardSession | null {
-  if (!raw) return null;
-  try {
-    const payload = JSON.parse(Buffer.from(raw, "base64url").toString("utf8")) as DashboardSession & { expiresAt?: string };
-    if (!payload?.email || !payload?.role || !payload?.id) return null;
-    if (payload.expiresAt) {
-      const expMs = Date.parse(payload.expiresAt);
-      if (!Number.isNaN(expMs) && expMs < Date.now()) return null;
-    }
-    return payload;
   } catch {
     return null;
   }
@@ -104,15 +92,13 @@ function permissionMatches(granted: string[], requested?: string | null) {
 export async function getDashboardSession() {
   const cookieStore = await cookies();
   const token = cookieStore.get(DASHBOARD_SESSION_COOKIE)?.value;
-  const snapshot = parseSnapshot(cookieStore.get(DASHBOARD_SESSION_SNAPSHOT_COOKIE)?.value);
 
   if (token) {
     const isDemoToken = token.startsWith("demo.");
     if (isDemoToken) {
       const demoSession = parseDemoToken(token);
       if (!demoSession || !dashboardDemoAccessAllowedForRole(demoSession.role)) return null;
-      if (demoSession) return demoSession;
-      return snapshot || demoFallbackSession();
+      return demoSession;
     }
 
     const res = await fetch(`${API_BASE}/auth/session`, {
@@ -126,7 +112,6 @@ export async function getDashboardSession() {
         return data.session;
       }
     }
-    if (snapshot) return snapshot;
   }
 
   if (dashboardFallbackSessionAllowed()) return demoFallbackSession();

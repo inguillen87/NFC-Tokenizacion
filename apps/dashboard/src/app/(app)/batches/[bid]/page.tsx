@@ -1,10 +1,11 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { Card, SectionHeading } from "@product/ui";
 import { productUrls } from "@product/config";
 import { BatchSunValidator } from "../../../../components/batch-sun-validator";
+import { getServerOrigin } from "../../../../lib/server-origin";
+import { requireDashboardSession } from "../../../../lib/session";
 import { BatchConfigFormClient } from "./batch-config-form-client";
-
-const API_BASE = productUrls.api;
 
 type UnitSample = {
   uid_hex?: string | null;
@@ -73,15 +74,21 @@ function objectEntries(value: unknown) {
   return Object.entries(value as Record<string, unknown>).filter(([, entry]) => String(entry ?? "").trim() !== "");
 }
 
-async function getBatch(bid: string): Promise<BatchSummary | null> {
+async function getBatch(origin: string, bid: string, cookie: string, tenantScope: string): Promise<BatchSummary | null> {
   try {
-    const response = await fetch(`${API_BASE}/admin/batches/${encodeURIComponent(bid)}/summary`, {
-      headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
+    const response = await fetch(`${origin}/api/admin/batches/${encodeURIComponent(bid)}/summary`, {
+      headers: cookie ? { cookie } : undefined,
       cache: "no-store",
     });
     if (!response.ok) return null;
     const payload = (await response.json()) as { batch?: BatchSummary };
-    return payload.batch || null;
+    const batch = payload.batch || null;
+    if (!batch) return null;
+
+    const normalizedTenantScope = tenantScope.trim().toLowerCase();
+    const batchTenantSlug = String(batch.tenant_slug || "").trim().toLowerCase();
+    if (normalizedTenantScope && batchTenantSlug !== normalizedTenantScope) return null;
+    return batch;
   } catch {
     return null;
   }
@@ -114,8 +121,13 @@ function Metric({ label, value, detail, tone = "neutral" }: { label: string; val
 }
 
 export default async function BatchDetailPage({ params }: { params: Promise<{ bid: string }> }) {
+  const session = await requireDashboardSession("batches:read");
   const { bid } = await params;
-  const batch = await getBatch(bid);
+  const origin = await getServerOrigin();
+  const cookie = (await headers()).get("cookie") || "";
+  const isTenantScoped = session.role === "tenant-admin" || session.role === "reseller";
+  const tenantScope = isTenantScoped ? String(session.tenantSlug || "").trim().toLowerCase() : "";
+  const batch = isTenantScoped && !tenantScope ? null : await getBatch(origin, bid, cookie, tenantScope);
   const product = batch?.product_identity || {};
   const unit = batch?.unit_metadata || {};
   const samples = Array.isArray(unit.samples) ? unit.samples : [];

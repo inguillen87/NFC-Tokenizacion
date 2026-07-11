@@ -1,7 +1,9 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin } from "../../../../lib/auth";
+import { checkAdmin, getAdminTenantScope } from "../../../../lib/auth";
+import { effectiveTenantFilter } from "../../../../lib/admin-tenant-filter";
+import { isTokenizationRequestInTenantScope } from "../../../../lib/admin-tokenization-scope";
 import { json } from "../../../../lib/http";
 import { sql } from "../../../../lib/db";
 import { anchorTokenizationRequest } from "../../../../lib/tokenization-engine";
@@ -16,8 +18,12 @@ export async function GET(req: Request): Promise<Response> {
   if (auth) return auth;
 
   const { searchParams } = new URL(req.url);
+  const { forcedTenantSlug } = getAdminTenantScope(req);
   const limit = Math.min(Math.max(Number(searchParams.get("limit") || 100), 1), 500);
-  const tenant = clean(searchParams.get("tenant"));
+  const tenant = effectiveTenantFilter({
+    forcedTenantSlug,
+    requestedTenantSlug: searchParams.get("tenant"),
+  });
   const status = clean(searchParams.get("status"));
 
   try {
@@ -93,6 +99,7 @@ export async function POST(req: Request): Promise<Response> {
   const auth = checkAdmin(req);
   if (auth) return auth;
 
+  const { forcedTenantSlug } = getAdminTenantScope(req);
   const body = await req.json().catch(() => ({})) as Record<string, unknown>;
   const requestId = clean(body.request_id || body.id);
   const network = clean(body.network) || "polygon-amoy";
@@ -101,6 +108,9 @@ export async function POST(req: Request): Promise<Response> {
   if (!requestId) return json({ ok: false, reason: "request_id required" }, 400);
 
   await ensureTokenizationRequestsSchema();
+  const requestInScope = await isTokenizationRequestInTenantScope({ requestId, forcedTenantSlug });
+  if (!requestInScope) return json({ ok: false, reason: "request not found" }, 404);
+
   const result = await anchorTokenizationRequest({
     requestId,
     network,

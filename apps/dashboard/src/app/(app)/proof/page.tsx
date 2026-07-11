@@ -1,14 +1,13 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { Terminal, ShieldCheck, Cpu, Activity, Zap, Server } from "lucide-react";
-import { productUrls } from "@product/config";
 import { requireDashboardSession } from "../../../lib/session";
+import { getServerOrigin } from "../../../lib/server-origin";
 
-const API_BASE = productUrls.api;
-
-async function getAnchors() {
+async function getAnchors(origin: string, cookie: string) {
   try {
-    const response = await fetch(`${API_BASE}/admin/proof/anchors`, {
-      headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
+    const response = await fetch(`${origin}/api/admin/proof/anchors`, {
+      headers: cookie ? { cookie } : undefined,
       cache: "no-store",
     });
     if (!response.ok) return [];
@@ -21,7 +20,9 @@ async function getAnchors() {
 
 export default async function ProofPage() {
   await requireDashboardSession("proof:read");
-  const anchors = await getAnchors();
+  const origin = await getServerOrigin();
+  const cookie = (await headers()).get("cookie") || "";
+  const anchors = await getAnchors(origin, cookie);
 
   return (
     <main className="min-h-screen bg-black text-emerald-500 font-mono p-4 sm:p-6 lg:p-8 relative overflow-hidden">

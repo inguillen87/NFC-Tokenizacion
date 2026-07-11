@@ -1,108 +1,177 @@
-import Link from "next/link";
 import { SectionHeading } from "@product/ui";
-import { BadgeCheck, Boxes, ClipboardCheck, ImagePlus, Store, WandSparkles } from "lucide-react";
+import { headers } from "next/headers";
+import { OnboardingSetupWizard } from "../../../components/onboarding-setup-wizard";
+import { PilotLaunchpad, type PilotSnapshot } from "../../../components/pilot-launchpad";
 import { SupplierLegacyIntakeBlocked } from "../../../components/supplier-legacy-intake-blocked";
 import { requireDashboardSession } from "../../../lib/session";
 
-const rolloutSteps = [
-  {
-    title: "Recibi la caja de tags",
-    body: "QR, NTAG215 o NTAG 424 DNA TT llegan con lote, carrier y cantidad esperada.",
-    Icon: Boxes,
-  },
-  {
-    title: "Cargo manifest + fotos",
-    body: "CSV con UIDs, producto, lote, foto real, etiqueta frontal, tag aplicado y modelo 3D opcional.",
-    Icon: ImagePlus,
-  },
-  {
-    title: "Valido antes de pegar",
-    body: "El sistema revisa duplicados, carrier, politica SUN, assets y preparacion de passport.",
-    Icon: ClipboardCheck,
-  },
-  {
-    title: "Producto listo para vender",
-    body: "El tap abre autenticidad, origen, club, garantia, marketplace y certificado cuando corresponda.",
-    Icon: Store,
-  },
-];
+type FetchResult<T> = {
+  ok: boolean;
+  value: T;
+  source: "production" | "demo" | "unavailable";
+};
+
+type ProductAssetItem = {
+  profile?: {
+    assetScore?: number | null;
+    primaryImageUrl?: string | null;
+    labelImageUrl?: string | null;
+  } | null;
+};
+
+type SupplierOrder = {
+  planned_quantity?: number | null;
+  manifests_imported?: number | null;
+  qa_passed?: number | null;
+};
+
+type ProofAnchor = {
+  status?: string | null;
+  provider?: string | null;
+};
+
+type TokenizationRequest = {
+  status?: string | null;
+  network?: string | null;
+  tx_hash?: string | null;
+  token_id?: string | null;
+};
+
+type DashboardRequestContext = {
+  origin: string;
+  cookie: string;
+};
+
+async function getDashboardRequestContext(): Promise<DashboardRequestContext> {
+  const requestHeaders = await headers();
+  const forwardedHost = requestHeaders.get("x-forwarded-host") || requestHeaders.get("host") || "app.nexid.lat";
+  const forwardedProto = requestHeaders.get("x-forwarded-proto") || (process.env.NODE_ENV === "production" ? "https" : "http");
+  return {
+    origin: `${forwardedProto}://${forwardedHost}`,
+    cookie: requestHeaders.get("cookie") || "",
+  };
+}
+
+function withTenant(origin: string, path: string, tenantScope: string, extra: Record<string, string> = {}) {
+  const url = new URL(`/api/admin${path}`, origin);
+  if (tenantScope) url.searchParams.set("tenant", tenantScope);
+  for (const [key, value] of Object.entries(extra)) url.searchParams.set(key, value);
+  return url.toString();
+}
+
+async function fetchJson<T>(url: string, fallback: T, context: DashboardRequestContext): Promise<FetchResult<T>> {
+  try {
+    const response = await fetch(url, {
+      headers: context.cookie ? { cookie: context.cookie } : undefined,
+      cache: "no-store",
+    });
+    if (!response.ok) return { ok: false, value: fallback, source: "unavailable" };
+    const value = await response.json() as T & { ok?: boolean; demoMode?: boolean; dataSource?: string };
+    if (value && typeof value === "object" && !Array.isArray(value) && value.ok === false) {
+      return { ok: false, value: fallback, source: "unavailable" };
+    }
+    const source = response.headers.get("x-nexid-data-mode") === "demo" || value?.demoMode || value?.dataSource === "demo"
+      ? "demo"
+      : "production";
+    return { ok: true, value, source };
+  } catch {
+    return { ok: false, value: fallback, source: "unavailable" };
+  }
+}
+
+function numberFrom(value: unknown) {
+  const parsed = Number(value || 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function normalizedStatus(value: unknown) {
+  return String(value || "").trim().toLowerCase();
+}
+
+async function getPilotSnapshot(
+  tenantScope: string,
+  setupCompleted: boolean | undefined,
+  context: DashboardRequestContext,
+): Promise<PilotSnapshot> {
+  const [batchesResult, assetsResult, ordersResult, anchorsResult, tokenizationResult] = await Promise.all([
+    fetchJson<Array<Record<string, unknown>>>(withTenant(context.origin, "/batches", tenantScope), [], context),
+    fetchJson<{ items?: ProductAssetItem[] }>(withTenant(context.origin, "/product-assets", tenantScope, { limit: "80" }), { items: [] }, context),
+    fetchJson<{ orders?: SupplierOrder[] }>(withTenant(context.origin, "/supplier-orders", tenantScope), { orders: [] }, context),
+    fetchJson<{ anchors?: ProofAnchor[] }>(withTenant(context.origin, "/proof/anchors", tenantScope), { anchors: [] }, context),
+    fetchJson<{ rows?: TokenizationRequest[] }>(withTenant(context.origin, "/tokenization/requests", tenantScope, { limit: "80" }), { rows: [] }, context),
+  ]);
+
+  const batches = Array.isArray(batchesResult.value) ? batchesResult.value : [];
+  const assets = Array.isArray(assetsResult.value.items) ? assetsResult.value.items : [];
+  const orders = Array.isArray(ordersResult.value.orders) ? ordersResult.value.orders : [];
+  const anchors = Array.isArray(anchorsResult.value.anchors) ? anchorsResult.value.anchors : [];
+  const tokenization = Array.isArray(tokenizationResult.value.rows) ? tokenizationResult.value.rows : [];
+
+  const plannedTags = batches.reduce((sum, row) => sum + numberFrom(row.requested_quantity || row.expected_quantity || row.quantity || row.qty), 0);
+  const importedTags = batches.reduce((sum, row) => sum + numberFrom(row.imported_tags || row.quantity || row.qty), 0);
+  const activeTags = batches.reduce((sum, row) => sum + numberFrom(row.active_tags), 0);
+  const secureBatches = batches.filter((row) => normalizedStatus(row.carrier_profile_code || row.carrier_label).includes("424")).length;
+  const assetScores = assets.map((item) => numberFrom(item.profile?.assetScore)).filter((score) => score > 0);
+  const readyAssets = assets.filter((item) => {
+    const score = numberFrom(item.profile?.assetScore);
+    return score >= 80 || Boolean(item.profile?.primaryImageUrl && item.profile?.labelImageUrl);
+  }).length;
+  const confirmedAnchors = anchors.filter((anchor) => normalizedStatus(anchor.status) === "confirmed").length;
+  const tokenizedAssets = tokenization.filter((request) => {
+    const status = normalizedStatus(request.status);
+    return Boolean(request.tx_hash || request.token_id) || ["confirmed", "minted", "anchored", "completed", "succeeded"].includes(status);
+  }).length;
+  const availableSources = [batchesResult, assetsResult, ordersResult, anchorsResult, tokenizationResult].filter((result) => result.ok).length;
+  const hasDemoSource = [batchesResult, assetsResult, ordersResult, anchorsResult, tokenizationResult].some((result) => result.source === "demo");
+
+  return {
+    tenantScope,
+    setupComplete: setupCompleted === true,
+    dataState: hasDemoSource ? "demo" : availableSources === 5 ? "live" : availableSources > 0 ? "partial" : "unavailable",
+    availableSources,
+    batchesAvailable: batchesResult.ok,
+    assetsAvailable: assetsResult.ok,
+    ordersAvailable: ordersResult.ok,
+    anchorsAvailable: anchorsResult.ok,
+    tokenizationAvailable: tokenizationResult.ok,
+    batchCount: batches.length,
+    secureBatches,
+    supplierManagedBatches: batches.filter((row) => Boolean(row.supplier_order_id || row.has_meta_key || row.has_file_key)).length,
+    supplierOrderCount: orders.length,
+    supplierPlannedUnits: orders.reduce((sum, order) => sum + numberFrom(order.planned_quantity), 0),
+    importedManifests: orders.reduce((sum, order) => sum + numberFrom(order.manifests_imported), 0),
+    qaPassed: orders.reduce((sum, order) => sum + numberFrom(order.qa_passed), 0),
+    plannedTags,
+    importedTags,
+    activeTags,
+    assetProfiles: assets.length,
+    readyAssets,
+    averageAssetScore: assetScores.length
+      ? Math.round(assetScores.reduce((sum, score) => sum + score, 0) / assetScores.length)
+      : 0,
+    proofAnchorCount: anchors.length,
+    confirmedAnchors,
+    tokenizationRequestCount: tokenization.length,
+    tokenizedAssets,
+  };
+}
 
 export default async function OnboardingPage() {
   const session = await requireDashboardSession();
   const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : "";
+  const requestContext = await getDashboardRequestContext();
+  const snapshot = await getPilotSnapshot(tenantScope, session.setupCompleted, requestContext);
   const isTenantAdmin = session.role === "tenant-admin";
-
-  const onboardingTitle = isTenantAdmin ? "Tenant Batch Onboarding" : "Supplier Batch Onboarding";
-  const onboardingDescription = isTenantAdmin
-    ? "Flujo operativo del tenant para recibir tags, cargar productos reales, validar lote y dejar todo listo para gondola."
-    : "Flujo guiado para que reseller, auditor o administrador pasen de una caja de tags a productos pegados, probados y vendiendo.";
 
   return (
     <main className="space-y-6">
       <SectionHeading
-        eyebrow="Onboarding"
-        title={onboardingTitle}
-        description={onboardingDescription}
+        eyebrow="Pilot launchpad"
+        title={isTenantAdmin ? "Puesta en marcha del tenant" : "Puesta en marcha multi-tenant"}
+        description="Un recorrido operativo con evidencia real: configura el workspace, prepara el lote, carga identidad visual, valida un tap y abre la salida verificable."
       />
-      <section className="rounded-2xl border border-white/10 bg-slate-900/60 p-4 text-sm text-slate-300">
-        Scope actual: <b className="text-white">{tenantScope ? `tenant ${tenantScope}` : "global / multi-tenant"}</b>.
-      </section>
-      <section className="dashboard-hero-panel dashboard-hero-panel--cyan rounded-3xl border border-cyan-300/20 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.16),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.9),rgba(2,6,23,0.96))] p-5 sm:p-6">
-        <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-100">
-              <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
-              operacion para gente no tecnica
-            </div>
-            <h2 className="mt-4 max-w-3xl text-3xl font-black tracking-tight text-white sm:text-4xl">
-              De tags recibidos a producto premium verificable, sin depender de un tecnico.
-            </h2>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
-              La persona que opera el lote ve que falta, que esta bloqueado y cual es el proximo paso:
-              cargar manifest, asociar fotos reales, validar tags, probar un tap y publicar el producto.
-            </p>
-            <div className="mt-5 flex flex-wrap gap-2">
-              <Link href="/batches" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-4 py-2 text-xs font-black text-cyan-100">
-                Ver batches
-              </Link>
-              <Link href="/tokenization" className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-4 py-2 text-xs font-black text-emerald-100">
-                Banco de assets
-              </Link>
-              {!isTenantAdmin ? (
-                <Link href="/demo-lab" className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-xs font-black text-slate-100">
-                  Abrir demo lab
-                </Link>
-              ) : null}
-            </div>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {rolloutSteps.map(({ title, body, Icon }, index) => (
-              <article key={title} className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <Icon className="h-5 w-5 text-cyan-200" aria-hidden="true" />
-                  <span className="rounded-full border border-cyan-300/25 bg-cyan-500/10 px-2 py-1 text-[10px] font-black text-cyan-100">
-                    0{index + 1}
-                  </span>
-                </div>
-                <h3 className="mt-3 text-sm font-black text-white">{title}</h3>
-                <p className="mt-2 text-xs leading-5 text-slate-400">{body}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-      <section className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-5">
-        <div className="flex flex-wrap items-start gap-3">
-          <WandSparkles className="mt-0.5 h-5 w-5 text-emerald-200" aria-hidden="true" />
-          <div>
-            <p className="text-sm font-black text-white">Regla premium del rollout</p>
-            <p className="mt-1 max-w-4xl text-sm leading-6 text-slate-300">
-              No publicamos un lote solo porque existe el UID. Cada producto debe tener identidad visual, carrier correcto,
-              reglas de reclamo, prueba de tap y un camino claro para passport, club, marketplace y NFT opcional.
-            </p>
-          </div>
-        </div>
-      </section>
+      {isTenantAdmin && session.setupCompleted === false ? <OnboardingSetupWizard session={session} /> : null}
+      <PilotLaunchpad snapshot={snapshot} role={session.role} />
       <SupplierLegacyIntakeBlocked context="onboarding" />
     </main>
   );

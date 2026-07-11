@@ -1,32 +1,42 @@
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { Card, SectionHeading } from "@product/ui";
-import { productUrls } from "@product/config";
 import { DataTable } from "../../../../components/data-table";
 import { getDashboardI18n } from "../../../../lib/locale";
+import { getServerOrigin } from "../../../../lib/server-origin";
 import { requireDashboardSession } from "../../../../lib/session";
 import { ExportPackForm } from "./export-form";
 
-const API_BASE = productUrls.api;
+async function getOrderDetails(origin: string, orderId: string, cookie: string, tenantScope: string) {
+  try {
+    const response = await fetch(`${origin}/api/admin/supplier-orders`, {
+      headers: cookie ? { cookie } : undefined,
+      cache: "no-store",
+    });
+    if (!response.ok) return null;
+    const payload = await response.json();
+    const order = payload.orders?.find((item: any) => item.id === orderId) || null;
+    if (!order) return null;
 
-async function getOrderDetails(orderId: string, tenantScope = "") {
-  const query = tenantScope ? `?tenant=${encodeURIComponent(tenantScope)}` : "";
-  const response = await fetch(`${API_BASE}/admin/supplier-orders${query}`, {
-    headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
-    cache: "no-store",
-  });
-  if (!response.ok) return null;
-  const payload = await response.json();
-  return payload.orders?.find((o: any) => o.id === orderId) || null;
+    const orderTenantSlug = String(order.tenant_slug || "").trim().toLowerCase();
+    if (tenantScope && orderTenantSlug !== tenantScope) return null;
+    return order;
+  } catch {
+    return null;
+  }
 }
 
 export default async function SupplierOrderDetailPage({ params }: { params: Promise<{ orderId: string }> }) {
+  const session = await requireDashboardSession("supplier_orders:read");
   const { orderId } = await params;
   const { locale } = await getDashboardI18n();
-  const session = await requireDashboardSession("supplier_orders:read");
-  const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : "";
+  const origin = await getServerOrigin();
+  const cookie = (await headers()).get("cookie") || "";
+  const isTenantScoped = session.role === "tenant-admin" || session.role === "reseller";
+  const tenantScope = isTenantScoped ? String(session.tenantSlug || "").trim().toLowerCase() : "";
 
-  const order = await getOrderDetails(orderId, tenantScope);
+  const order = isTenantScoped && !tenantScope ? null : await getOrderDetails(origin, orderId, cookie, tenantScope);
   if (!order) {
     return (
       <main className="space-y-8">
@@ -48,16 +58,19 @@ export default async function SupplierOrderDetailPage({ params }: { params: Prom
 
   const exportAction = async (formData: FormData) => {
     "use server";
+    await requireDashboardSession("supplier_orders:read");
     const password = formData.get("password") as string;
-    
-    const res = await fetch(`${API_BASE}/admin/supplier-orders/${orderId}/export-pack`, {
+    const actionOrigin = await getServerOrigin();
+    const actionCookie = (await headers()).get("cookie") || "";
+
+    const res = await fetch(`${actionOrigin}/api/admin/supplier-orders/${encodeURIComponent(orderId)}/export-pack`, {
       method: "POST",
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}`,
-        "X-NexID-Actor": session.userId || "",
+        ...(actionCookie ? { cookie: actionCookie } : {}),
       },
       body: JSON.stringify({ password }),
+      cache: "no-store",
     });
 
     const data = await res.json();

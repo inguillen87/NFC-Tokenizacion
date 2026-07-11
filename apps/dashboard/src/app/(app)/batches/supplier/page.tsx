@@ -15,7 +15,7 @@ export default async function SupplierBatchPage() {
         description="Flujo seguro para crear pedidos industriales, registrar sub-batches de proveedor, importar manifiestos auditables y validar URLs SUN antes de activar el rollout."
       />
 
-      <div id="supplier-order-console">
+      <div id="supplier-order-console" className="scroll-mt-52 md:scroll-mt-24">
         <SupplierOrderConsole
           currentRole={session.role}
           currentPermissions={session.permissions}

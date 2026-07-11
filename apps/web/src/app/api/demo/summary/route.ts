@@ -85,6 +85,148 @@ function safePublicEvent(row: unknown) {
   };
 }
 
+function safeCount(value: unknown) {
+  const count = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(count) && count > 0 ? Math.floor(count) : 0;
+}
+
+function demoRecordCount(value: unknown) {
+  return Array.isArray(value) ? Math.min(value.length, 20) : 0;
+}
+
+function demoOrdinal(index: number) {
+  return String(index + 1).padStart(2, "0");
+}
+
+function demoTimestamp(generatedAt: string, minutesAgo: number) {
+  return new Date(Date.parse(generatedAt) - minutesAgo * 60_000).toISOString();
+}
+
+const DEMO_LEAD_TEMPLATES = [
+  {
+    name: "Equipo de compras demo",
+    company: "Bodega Demo Andina",
+    country: "Argentina",
+    vertical: "wine",
+    role_interest: "buyer",
+    estimated_volume: "1,000-5,000",
+    tag_type: "NTAG 424 DNA",
+    volume: 2500,
+    status: "new",
+  },
+  {
+    name: "Equipo de marca demo",
+    company: "Cosmetica Demo Sur",
+    country: "Chile",
+    vertical: "cosmetics",
+    role_interest: "brand",
+    estimated_volume: "5,000-10,000",
+    tag_type: "NTAG 424 DNA TT",
+    volume: 6000,
+    status: "contacted",
+  },
+  {
+    name: "Equipo de operaciones demo",
+    company: "Agro Demo Regional",
+    country: "Uruguay",
+    vertical: "agro",
+    role_interest: "operations",
+    estimated_volume: "10,000+",
+    tag_type: "QR + NFC UID",
+    volume: 12000,
+    status: "qualified",
+  },
+] as const;
+
+const DEMO_TICKET_TEMPLATES = [
+  {
+    title: "Alerta demo de lectura duplicada",
+    detail: "Incidente simulado para mostrar el flujo de revision antifraude.",
+    status: "open",
+  },
+  {
+    title: "Alerta demo de sello abierto",
+    detail: "Evento simulado de tamper pendiente de validacion operativa.",
+    status: "pending",
+  },
+  {
+    title: "Alerta demo resuelta",
+    detail: "Caso simulado cerrado con evidencia de trazabilidad.",
+    status: "resolved",
+  },
+] as const;
+
+const DEMO_ORDER_TEMPLATES = [
+  { company: "Distribuidor Demo Andino", tag_type: "NTAG 424 DNA", volume: 2500, status: "pending" },
+  { company: "Integrador Demo Regional", tag_type: "NTAG 424 DNA TT", volume: 5000, status: "approved" },
+  { company: "Imprenta Demo Asociada", tag_type: "QR + NFC UID", volume: 10000, status: "new" },
+] as const;
+
+function demoLeads(count: number, generatedAt: string) {
+  return Array.from({ length: count }, (_, index) => {
+    const template = DEMO_LEAD_TEMPLATES[index % DEMO_LEAD_TEMPLATES.length];
+    return {
+      id: `demo-lead-${index + 1}`,
+      locale: "es-AR",
+      contact: `Contacto demo ${demoOrdinal(index)}`,
+      name: template.name,
+      email: null,
+      phone: null,
+      company: template.company,
+      country: template.country,
+      vertical: template.vertical,
+      role_interest: template.role_interest,
+      estimated_volume: template.estimated_volume,
+      tag_type: template.tag_type,
+      volume: template.volume,
+      source: "demo-lab",
+      status: template.status,
+      message: "Consulta simulada para la demostracion comercial.",
+      notes: null,
+      assigned_to: null,
+      created_at: demoTimestamp(generatedAt, 8 + index * 7),
+    };
+  });
+}
+
+function demoTickets(count: number, generatedAt: string) {
+  return Array.from({ length: count }, (_, index) => {
+    const template = DEMO_TICKET_TEMPLATES[index % DEMO_TICKET_TEMPLATES.length];
+    return {
+      id: `demo-ticket-${index + 1}`,
+      locale: "es-AR",
+      contact: `Cuenta demo ${demoOrdinal(index)}`,
+      title: template.title,
+      detail: template.detail,
+      status: template.status,
+      source: "demo-lab",
+      assigned_to: null,
+      created_at: demoTimestamp(generatedAt, 12 + index * 9),
+      updated_at: demoTimestamp(generatedAt, 6 + index * 9),
+    };
+  });
+}
+
+function demoOrders(count: number, generatedAt: string) {
+  return Array.from({ length: count }, (_, index) => {
+    const template = DEMO_ORDER_TEMPLATES[index % DEMO_ORDER_TEMPLATES.length];
+    return {
+      id: `demo-order-${index + 1}`,
+      locale: "es-AR",
+      contact: `Canal demo ${demoOrdinal(index)}`,
+      company: template.company,
+      tag_type: template.tag_type,
+      volume: template.volume,
+      notes: "Solicitud simulada para la demostracion operativa.",
+      status: template.status,
+      source: "demo-lab",
+      assigned_to: null,
+      created_at: demoTimestamp(generatedAt, 18 + index * 11),
+      updated_at: demoTimestamp(generatedAt, 10 + index * 11),
+    };
+  });
+}
+
 function emptyDemoSummary(reason: string) {
   return NextResponse.json({
     ok: true,
@@ -143,15 +285,29 @@ export async function GET() {
   } catch {
     return publicProofFallback();
   }
-  const data = await response.json().catch(() => ({ ok: false, reason: "invalid json" }));
-  if (!response.ok || data?.ok === false) {
+  const payload = await response.json().catch(() => null);
+  if (!response.ok || !payload || typeof payload !== "object" || (payload as Record<string, unknown>).ok === false) {
     return publicProofFallback();
   }
 
+  const data = payload as Record<string, unknown>;
+  const crm = data.crm && typeof data.crm === "object" ? data.crm as Record<string, unknown> : {};
+  const generatedAt = new Date().toISOString();
   const events = Array.isArray(data.events) ? data.events.map(safeEvent).filter(Boolean) : [];
   return NextResponse.json({
-    ...data,
+    ok: true,
+    exists: data.exists !== false,
+    source: "internal-demo-sanitized",
+    tagCount: safeCount(data.tagCount),
+    crm: {
+      leads: safeCount(crm.leads),
+      tickets: safeCount(crm.tickets),
+      orders: safeCount(crm.orders),
+    },
+    recentLeads: demoLeads(demoRecordCount(data.recentLeads), generatedAt),
+    recentTickets: demoTickets(demoRecordCount(data.recentTickets), generatedAt),
+    recentOrders: demoOrders(demoRecordCount(data.recentOrders), generatedAt),
     events,
-    generatedAt: new Date().toISOString(),
+    generatedAt,
   });
 }

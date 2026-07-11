@@ -923,7 +923,7 @@ async function forward(req: Request, path: string[]) {
     requireScopedAdminAuth,
   });
   const dashboardSession = await getDashboardSession().catch(() => null);
-  const scopedRole = dashboardSession?.role ? dashboardRoleToScope(dashboardSession.role) : null;
+  const scopedRole = demoSession ? "readonly_demo" : dashboardSession?.role ? dashboardRoleToScope(dashboardSession.role) : null;
   const allowDemoFallbackForRequest = policy.allowDemoFallback || scopedRole === "readonly_demo" || (demoSession && !isProduction);
 
   if (isProduction && !scopedRole) {
@@ -939,6 +939,11 @@ async function forward(req: Request, path: string[]) {
       { ok: false, reason: "readonly_demo scope only allows GET access to demo-safe admin resources." },
       { status: 403 },
     );
+  }
+
+  if (scopedRole === "readonly_demo") {
+    console.info("[admin_proxy_demo_sandbox]", JSON.stringify({ method: req.method, path: normalizedPath }));
+    return markDemoData(demoAdminResponse(req.method, path, body || "", req.url));
   }
 
   if (!isProduction && forceSandbox && normalizedPath.startsWith("logistics/")) {
