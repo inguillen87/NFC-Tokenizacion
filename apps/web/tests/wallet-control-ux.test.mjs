@@ -18,7 +18,9 @@ test("wallet UX separates detected, presentation and control-verified states", a
   assert.doesNotMatch(card, /persistWallet/);
   assert.match(page, /<div className="space-y-6">\s*<MetamaskSandboxCard[\s\S]*?<div className="grid gap-6 lg:grid-cols-\[minmax\(0,1fr\)_340px\]">/);
   assert.match(card, /consumer-wallet-control/);
+  assert.match(page, /consumer-passport-collection/);
   assert.match(globals, /html\[data-theme="light"\] \.consumer-wallet-control/);
+  assert.match(globals, /html\[data-theme="light"\] \.consumer-passport-collection/);
   assert.match(globals, /consumer-wallet-control \.text-white/);
   assert.match(globals, /consumer-wallet-control \.bg-slate-950\\\/55/);
 });

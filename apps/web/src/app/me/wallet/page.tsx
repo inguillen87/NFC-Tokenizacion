@@ -74,7 +74,7 @@ export default async function WalletLedgerPage({ searchParams }: { searchParams?
          <div className="space-y-6">
             
             {/* Collector Banner with deep wine/burgundy and gold accents */}
-            <section className="rounded-3xl border border-amber-500/25 bg-[radial-gradient(circle_at_top_left,rgba(153,27,27,0.3),transparent_40%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(2,6,23,0.98))] p-6 shadow-2xl relative overflow-hidden">
+            <section className="consumer-passport-collection rounded-3xl border border-amber-500/25 bg-[radial-gradient(circle_at_top_left,rgba(153,27,27,0.3),transparent_40%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(2,6,23,0.98))] p-6 shadow-2xl relative overflow-hidden">
               <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-amber-500/5 blur-2xl" />
               
               <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
