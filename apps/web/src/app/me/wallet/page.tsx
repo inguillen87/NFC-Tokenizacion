@@ -65,7 +65,10 @@ export default async function WalletLedgerPage({ searchParams }: { searchParams?
       title="Pasaporte Criptográfico & Wallet"
       subtitle="Colecciona y administra los certificados de autenticidad NFT de tus botellas y canjea tus puntos por preventas exclusivas."
     >
-      <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+      <div className="space-y-6">
+        <MetamaskSandboxCard initialWallet={wallet?.blockchainWallet} autoConnect={shouldAutoConnectMetaMask} />
+
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
          
          {/* Left Column: Passport & Certificates */}
          <div className="space-y-6">
@@ -145,9 +148,6 @@ export default async function WalletLedgerPage({ searchParams }: { searchParams?
          {/* Right Column: Faucet / Metamask / Sandbox & Tenant Points */}
          <div className="space-y-6">
             
-            {/* Wallet Integration box */}
-            <MetamaskSandboxCard initialWallet={wallet?.blockchainWallet} autoConnect={shouldAutoConnectMetaMask} />
-
             {/* Tenant Wallets/Points summary */}
             <div className="rounded-3xl border border-white/10 bg-slate-950/65 p-5">
               <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">Mis Puntos por Marca</h3>
@@ -201,6 +201,7 @@ export default async function WalletLedgerPage({ searchParams }: { searchParams?
 
          </div>
 
+        </div>
       </div>
     </PortalShell>
   );
