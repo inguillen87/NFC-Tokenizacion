@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal, flushSync } from "react-dom";
 import {
   BookOpen,
@@ -46,7 +46,7 @@ const ACCOUNT_MENU_Z_INDEX = 2147483647;
 const ACCOUNT_MENU_BACKDROP_Z_INDEX = ACCOUNT_MENU_Z_INDEX - 1;
 const ACCOUNT_MENU_PANEL_Z_INDEX = ACCOUNT_MENU_Z_INDEX;
 const ACCOUNT_MENU_PORTAL_ROOT_ID = "nexid-account-menu-root";
-const ACCOUNT_MENU_VERSION = "drawer-v20-modal-scrim";
+const ACCOUNT_MENU_VERSION = "drawer-v21-mobile-dialog";
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 const ACCOUNT_MENU_CRITICAL_CSS = `
 html.nexid-account-menu-open,
@@ -176,6 +176,13 @@ body.nexid-account-menu-open #nexid-account-menu-root {
   isolation: isolate !important;
   z-index: ${ACCOUNT_MENU_PANEL_Z_INDEX} !important;
 }
+.nexid-account-layer .tenant-account-panel__scroll {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+  touch-action: pan-y !important;
+  -webkit-overflow-scrolling: touch;
+}
 .nexid-account-layer .tenant-account-panel,
 html.theme-light .nexid-account-layer .tenant-account-panel,
 html[data-theme="light"] .nexid-account-layer .tenant-account-panel {
@@ -253,6 +260,12 @@ html.nexid-account-menu-open .nexid-account-layer * {
     height: 100dvh !important;
     max-width: 100vw !important;
     max-height: 100dvh !important;
+  }
+  .nexid-account-layer .tenant-account-panel__header {
+    padding: 0.75rem !important;
+  }
+  .nexid-account-layer .tenant-account-role-description {
+    display: none !important;
   }
 }
 `;
@@ -538,8 +551,8 @@ export function TenantAccountMenu({
   const panelRef = useRef<HTMLDivElement | null>(null);
   const contextRef = useRef<HTMLDivElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const shouldRestoreFocusRef = useRef(false);
   const openRef = useRef(open);
-  const lastActivationRef = useRef(0);
   const tenantName = tenantNameFromSlug(tenantSlug);
   const scopedTenant = String(tenantSlug || "").trim().toLowerCase();
   const tenantQuery = scopedTenant ? `?tenant=${encodeURIComponent(scopedTenant)}` : "";
@@ -667,12 +680,23 @@ export function TenantAccountMenu({
     setDocumentMenuState(false);
     openRef.current = false;
     setOpen(false);
-    window.requestAnimationFrame(() => triggerRef.current?.focus());
   }, [setDocumentMenuState]);
 
   useEffect(() => {
     openRef.current = open;
   }, [open, portalRoot]);
+
+  useEffect(() => {
+    if (open) {
+      shouldRestoreFocusRef.current = true;
+      return;
+    }
+    if (!shouldRestoreFocusRef.current) return;
+
+    shouldRestoreFocusRef.current = false;
+    const focusTimer = window.setTimeout(() => triggerRef.current?.focus(), 0);
+    return () => window.clearTimeout(focusTimer);
+  }, [open]);
 
   useIsomorphicLayoutEffect(() => {
     setPortalRoot(getAccountMenuPortalRoot());
@@ -755,15 +779,6 @@ export function TenantAccountMenu({
     }
     openMenu();
   }, [closeMenu, openMenu]);
-
-  const activateMenu = useCallback((event: ReactMouseEvent<HTMLButtonElement> | ReactPointerEvent<HTMLButtonElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    const now = Date.now();
-    if (now - lastActivationRef.current < 220) return;
-    lastActivationRef.current = now;
-    toggleMenu();
-  }, [toggleMenu]);
 
   const prepareMenuPortalRoot = useCallback(() => {
     if (openRef.current) return;
@@ -907,6 +922,7 @@ export function TenantAccountMenu({
       <dialog
         ref={dialogRef}
         className="nexid-account-dialog nexid-account-overlay"
+        aria-labelledby="tenant-account-menu-title"
         data-account-menu-dialog="native-top-layer"
         data-testid="tenant-account-menu-dialog"
         style={ACCOUNT_OVERLAY_STYLE}
@@ -917,13 +933,6 @@ export function TenantAccountMenu({
       >
         <div
           aria-hidden="true"
-          className="nexid-account-scrim"
-          data-testid="tenant-account-menu-scrim"
-          style={ACCOUNT_BACKDROP_STYLE}
-        />
-        <button
-          type="button"
-          aria-label="Cerrar panel de cuenta"
           data-account-menu-backdrop="true"
           data-testid="tenant-account-menu-backdrop"
           className="nexid-account-backdrop"
@@ -934,7 +943,7 @@ export function TenantAccountMenu({
           ref={contextRef}
           className="nexid-account-context hidden xl:block"
           data-testid="tenant-account-menu-context"
-          aria-label="Resumen del workspace activo"
+          aria-hidden="true"
         >
           <div className="rounded-[2rem] border border-cyan-200/18 bg-[radial-gradient(circle_at_10%_0%,rgba(34,211,238,.18),transparent_32%),linear-gradient(135deg,rgba(8,17,31,.94),rgba(2,8,23,.9))] p-6 text-slate-100 shadow-[0_30px_120px_rgba(0,0,0,.62)] ring-1 ring-white/8">
             <div className="flex items-start justify-between gap-5">
@@ -966,20 +975,16 @@ export function TenantAccountMenu({
               <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Accesos SaaS</p>
               <div className="mt-3 grid gap-2">
                 {[nextAction, ...primaryItems.slice(0, 2)].map((item) => (
-                  <button
+                  <div
                     key={`${item.href}-${item.label}`}
-                    type="button"
                     className="group flex min-h-12 items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2 text-left transition hover:border-cyan-300/45 hover:bg-cyan-400/10"
-                    onClick={() => {
-                      window.location.href = item.href;
-                    }}
                   >
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-black text-white">{item.label}</span>
                       <span className="mt-0.5 block truncate text-xs text-slate-400">{item.meta}</span>
                     </span>
                     <ArrowRight className="h-4 w-4 shrink-0 text-cyan-200 transition group-hover:translate-x-0.5" />
-                  </button>
+                  </div>
                 ))}
               </div>
             </div>
@@ -987,15 +992,12 @@ export function TenantAccountMenu({
         </div>
         <div
           ref={layerRef}
-          role="dialog"
-          aria-modal="true"
           className="nexid-account-layer isolate"
           data-account-menu-portal="body"
           data-account-menu-version={ACCOUNT_MENU_VERSION}
           data-account-menu-source={surface}
           data-account-menu-top-layer="native-dialog"
           data-testid="tenant-account-menu-layer"
-          aria-label="Cuenta operativa nexID"
           style={ACCOUNT_LAYER_STYLE}
         >
         <div
@@ -1013,22 +1015,29 @@ export function TenantAccountMenu({
               </span>
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Cuenta operativa</p>
-                <h2 className="mt-1 text-base font-black leading-5 text-white">{accountLabel}</h2>
+                <h2 id="tenant-account-menu-title" className="mt-1 text-base font-black leading-5 text-white">{accountLabel}</h2>
                 <p className="truncate text-xs text-slate-400">{email || "Cuenta enterprise"}</p>
-                <p className="mt-2 text-xs leading-5 text-slate-300">{accountRoleDescription}</p>
+                <p className="tenant-account-role-description mt-2 text-xs leading-5 text-slate-300">{accountRoleDescription}</p>
               </div>
               <button
                 ref={closeButtonRef}
                 type="button"
                 aria-label="Cerrar panel de cuenta"
                 data-testid="tenant-account-menu-close"
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/10 bg-slate-950/45 text-slate-300 transition hover:border-cyan-200/55 hover:bg-cyan-400/10 hover:text-white"
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/10 bg-slate-950/45 text-slate-300 transition hover:border-cyan-200/55 hover:bg-cyan-400/10 hover:text-white"
                 onClick={closeMenu}
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="mt-4 grid grid-cols-3 gap-2 text-[10px] font-bold uppercase tracking-[0.08em]">
+          </div>
+
+          <div
+            data-testid="tenant-account-menu-scroll"
+            className="tenant-account-panel__scroll min-h-0 flex-1 overflow-y-auto overscroll-contain"
+          >
+            <div className="tenant-account-panel__summary border-b border-white/10 p-3">
+            <div className="grid grid-cols-3 gap-2 text-[10px] font-bold uppercase tracking-[0.08em]">
               <span className="rounded-lg border border-emerald-300/25 bg-emerald-400/10 px-2 py-2 text-emerald-100">
                 {setupCompleted === false ? "setup pendiente" : "setup ok"}
               </span>
@@ -1095,9 +1104,9 @@ export function TenantAccountMenu({
                 <ArrowRight className="h-4 w-4" />
               </span>
             </button>
-          </div>
+            </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto p-3">
+          <div className="tenant-account-panel__navigation p-3">
             <div className="grid gap-2">
               {primaryItems.map(renderItem)}
             </div>
@@ -1106,8 +1115,9 @@ export function TenantAccountMenu({
               {operationsItems.map(renderItem)}
             </div>
           </div>
+          </div>
 
-          <div className="border-t border-white/10 bg-[#020817] p-3">
+          <div className="tenant-account-panel__footer border-t border-white/10 bg-[#020817] p-3">
             <SecureDashboardLogoutButton
               clerkEnabled={clerkEnabled}
               onStart={() => setDocumentMenuState(false)}
@@ -1134,7 +1144,7 @@ export function TenantAccountMenu({
         aria-expanded={open}
         aria-controls="tenant-account-menu-panel"
         data-testid="tenant-account-menu-trigger"
-        data-account-menu-compact={surface === "dashboard" ? "true" : undefined}
+        data-account-menu-compact="true"
         data-account-menu-trigger-surface={surface}
         data-account-menu-open={open ? "true" : "false"}
         title="Abrir cuenta, configuracion y logout del workspace"
@@ -1147,17 +1157,7 @@ export function TenantAccountMenu({
         onPointerDownCapture={() => {
           prepareMenuPortalRoot();
         }}
-        onPointerUp={(event) => {
-          if (event.pointerType === "mouse") return;
-          activateMenu(event);
-        }}
-        onMouseDown={(event) => {
-          if (event.button !== 0) return;
-          activateMenu(event);
-        }}
-        onClick={(event) => {
-          activateMenu(event);
-        }}
+        onClick={toggleMenu}
       >
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-blue-600 text-xs font-black text-white shadow-[0_0_22px_rgba(37,99,235,.35)]">
           {initialsFor(role)}

@@ -1294,6 +1294,14 @@ body.nexid-account-menu-open #nexid-account-menu-root {
   box-shadow: -44px 0 140px rgba(0, 0, 0, 0.82) !important;
 }
 
+.nexid-account-layer .tenant-account-panel__scroll {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+  touch-action: pan-y !important;
+  -webkit-overflow-scrolling: touch;
+}
+
 .nexid-account-layer .tenant-account-panel,
 html.theme-light .nexid-account-layer .tenant-account-panel,
 html[data-theme="light"] .nexid-account-layer .tenant-account-panel {
@@ -1436,6 +1444,43 @@ body.nexid-account-menu-open .nexid-account-layer * {
     margin-left: auto;
   }
 
+  .nexid-crm-account-menu {
+    width: auto !important;
+    max-width: min(100%, 15.5rem) !important;
+    margin-left: auto !important;
+  }
+
+  .nexid-crm-account-menu [data-testid="tenant-account-menu-trigger"] {
+    width: auto !important;
+    height: 2.875rem !important;
+    min-height: 2.75rem !important;
+    max-height: 2.875rem !important;
+    max-width: 15.5rem !important;
+    gap: 0.625rem !important;
+    align-self: center !important;
+    border-radius: 999px !important;
+    flex-wrap: nowrap !important;
+    overflow: hidden !important;
+    padding: 0.5rem 0.65rem !important;
+  }
+
+  .nexid-crm-account-menu [data-testid="tenant-account-menu-trigger"] > span:first-child {
+    width: 2rem !important;
+    height: 2rem !important;
+    font-size: 0.68rem !important;
+  }
+
+  .nexid-crm-account-menu [data-account-menu-compact="true"] > span:nth-child(2) {
+    display: block !important;
+    min-width: 0 !important;
+    max-width: 8.5rem !important;
+    white-space: nowrap !important;
+  }
+
+  .nexid-crm-account-menu [data-account-menu-compact="true"] > span:nth-child(2) span {
+    display: none !important;
+  }
+
   .dashboard-header .dashboard-shell-account-menu [data-testid="tenant-account-menu-trigger"] {
     width: auto !important;
     height: 2.875rem !important;
@@ -1504,5 +1549,17 @@ body.nexid-account-menu-open .nexid-account-layer * {
     height: 100% !important;
     max-height: 100% !important;
     border-radius: 0 !important;
+  }
+
+  .nexid-account-layer .tenant-account-panel__header {
+    padding: 0.75rem !important;
+  }
+
+  .nexid-account-layer .tenant-account-role-description {
+    display: none !important;
+  }
+
+  .nexid-account-layer .tenant-account-panel__footer {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom)) !important;
   }
 }

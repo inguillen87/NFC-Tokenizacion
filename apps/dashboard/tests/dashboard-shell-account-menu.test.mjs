@@ -30,6 +30,9 @@ test("dashboard account trigger stays compact in mobile header", () => {
   assert.match(globalsSource, /@media \(max-width:\s*640px\)\s*\{[\s\S]*\.dashboard-header \.dashboard-shell-account-menu \[data-testid="tenant-account-menu-trigger"\]\s*\{[\s\S]*max-width:\s*15\.5rem !important/);
   assert.match(globalsSource, /@media \(max-width:\s*640px\)\s*\{[\s\S]*\.dashboard-header \.dashboard-shell-account-menu \[data-testid="tenant-account-menu-trigger"\] > span:first-child\s*\{[\s\S]*width:\s*2rem !important/);
   assert.match(globalsSource, /@media \(max-width:\s*640px\)\s*\{[\s\S]*\.dashboard-header \.dashboard-shell-account-menu \[data-account-menu-compact="true"\] > span:nth-child\(2\) span\s*\{[\s\S]*display:\s*none !important/);
+  assert.match(globalsSource, /@media \(max-width:\s*640px\)\s*\{[\s\S]*\.nexid-crm-account-menu\s*\{[\s\S]*max-width:\s*min\(100%, 15\.5rem\) !important/);
+  assert.match(globalsSource, /\.nexid-crm-account-menu \[data-testid="tenant-account-menu-trigger"\]\s*\{[^}]*height:\s*2\.875rem !important/s);
+  assert.match(globalsSource, /\.nexid-crm-account-menu \[data-account-menu-compact="true"\] > span:nth-child\(2\) span\s*\{[^}]*display:\s*none !important/s);
 });
 
 test("app layout passes real session status into account drawer", () => {

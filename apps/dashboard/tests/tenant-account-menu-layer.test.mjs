@@ -11,7 +11,7 @@ const serviceWorkerSource = await readFile(new URL("../public/sw.js", import.met
 test("tenant account menu uses a native top-layer dialog above CRM/map layers", () => {
   assert.match(menuSource, /const ACCOUNT_MENU_PORTAL_ROOT_ID = "nexid-account-menu-root"/);
   assert.match(menuSource, /const ACCOUNT_MENU_Z_INDEX = 2147483647/);
-  assert.match(menuSource, /const ACCOUNT_MENU_VERSION = "drawer-v20-modal-scrim"/);
+  assert.match(menuSource, /const ACCOUNT_MENU_VERSION = "drawer-v21-mobile-dialog"/);
   assert.match(menuSource, /function showAccountMenuDialog\(dialog\?: HTMLDialogElement \| null\)/);
   assert.match(menuSource, /dialog\.matches\(":modal"\)/);
   assert.match(menuSource, /dialog\.setAttribute\("data-account-menu-modal-state", "native-modal"\)/);
@@ -29,20 +29,38 @@ test("tenant account menu uses a native top-layer dialog above CRM/map layers", 
   assert.match(menuSource, /const ACCOUNT_BACKDROP_STYLE: CSSProperties = \{/);
   assert.match(menuSource, /className="nexid-account-dialog nexid-account-overlay"/);
   assert.match(menuSource, /<dialog[\s\S]*ref=\{dialogRef\}/);
-  assert.match(menuSource, /className="nexid-account-scrim"/);
-  assert.match(menuSource, /data-testid="tenant-account-menu-scrim"/);
   assert.match(menuSource, /style=\{ACCOUNT_BACKDROP_STYLE\}/);
+  assert.match(menuSource, /<div[\s\S]*data-account-menu-backdrop="true"[\s\S]*data-testid="tenant-account-menu-backdrop"/);
+  assert.doesNotMatch(menuSource, /<button[\s\S]{0,240}data-testid="tenant-account-menu-backdrop"/);
   assert.match(menuSource, /dialog\.showModal\(\)/);
   assert.match(menuSource, /dialog\.close\(\)/);
   assert.match(menuSource, /dialog\.style\.setProperty\("z-index", String\(ACCOUNT_MENU_Z_INDEX\), "important"\)/);
   assert.match(menuSource, /dialog\.style\.setProperty\(\s*"background",/);
   assert.match(menuSource, /data-account-menu-dialog="native-top-layer"/);
   assert.match(menuSource, /data-testid="tenant-account-menu-dialog"/);
-  assert.match(menuSource, /role="dialog"/);
-  assert.match(menuSource, /aria-modal="true"/);
+  assert.match(menuSource, /<dialog[\s\S]*aria-labelledby="tenant-account-menu-title"/);
+  assert.match(menuSource, /id="tenant-account-menu-title"/);
+  assert.doesNotMatch(menuSource, /ref=\{layerRef\}[\s\S]{0,220}aria-modal="true"/);
   assert.match(menuSource, /data-account-menu-top-layer="native-dialog"/);
   assert.match(menuSource, /createPortal\(menuPanel,\s*activePortalRoot\)/);
   assert.doesNotMatch(menuSource, /drawer-v17-fixed-portal-overlay/);
+});
+
+test("account drawer keeps one mobile scroll region, a visible logout and deterministic focus", () => {
+  assert.match(menuSource, /data-testid="tenant-account-menu-scroll"/);
+  assert.match(menuSource, /tenant-account-panel__scroll min-h-0 flex-1 overflow-y-auto overscroll-contain/);
+  assert.match(menuSource, /tenant-account-panel__footer/);
+  assert.match(menuSource, /className="grid h-11 w-11/);
+  assert.match(menuSource, /shouldRestoreFocusRef\.current = true/);
+  assert.match(menuSource, /window\.setTimeout\(\(\) => triggerRef\.current\?\.focus\(\), 0\)/);
+  assert.match(menuSource, /data-account-menu-compact="true"/);
+  assert.match(menuSource, /onPointerDownCapture=\{\(\) => \{[\s\S]*prepareMenuPortalRoot\(\)/);
+  assert.match(menuSource, /onClick=\{toggleMenu\}/);
+  assert.doesNotMatch(menuSource, /lastActivationRef/);
+  assert.doesNotMatch(menuSource, /onMouseDown=/);
+  assert.doesNotMatch(menuSource, /onPointerUp=/);
+  assert.match(globalsSource, /\.nexid-account-layer \.tenant-account-panel__scroll\s*\{[^}]*overflow-y:\s*auto !important[^}]*touch-action:\s*pan-y !important/s);
+  assert.match(globalsSource, /@media \(max-width:\s*640px\)[\s\S]*\.nexid-account-layer \.tenant-account-role-description\s*\{[^}]*display:\s*none !important/s);
 });
 
 test("tenant account menu suppresses the CRM shell while the account drawer is open", () => {
