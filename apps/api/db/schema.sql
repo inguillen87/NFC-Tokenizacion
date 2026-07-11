@@ -405,7 +405,7 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN
-  CREATE TYPE evidence_anchor_status AS ENUM ('pending', 'submitted', 'confirmed', 'failed', 'disabled');
+  CREATE TYPE evidence_anchor_status AS ENUM ('pending', 'submitted', 'confirmed', 'failed', 'disabled', 'local');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE TABLE IF NOT EXISTS supplier_orders (
@@ -528,7 +528,7 @@ CREATE TABLE IF NOT EXISTS evidence_anchors (
   resource_type text,
   resource_id text,
   event_count integer NOT NULL,
-  event_hashes text[] NOT NULL,
+  event_hashes text[],
   merkle_root text NOT NULL,
   tx_hash text,
   explorer_url text,

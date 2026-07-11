@@ -80,6 +80,9 @@ test("proof routes reject unresolved tenant scope before global reads or writes"
   const localAnchor = await readFile(new URL("../src/app/admin/proof/anchor/route.ts", import.meta.url), "utf8");
   const providers = await readFile(new URL("../src/app/admin/proof/providers/route.ts", import.meta.url), "utf8");
   const schema = await readFile(new URL("../src/lib/supplier-ops-schema.ts", import.meta.url), "utf8");
+  const databaseSchema = await readFile(new URL("../db/schema.sql", import.meta.url), "utf8");
+  const localStatusMigration = await readFile(new URL("../db/migrations/20260711221000_0047_evidence_anchor_local_status.sql", import.meta.url), "utf8");
+  const legacyHashesMigration = await readFile(new URL("../db/migrations/20260711222000_0048_evidence_anchor_legacy_hashes_nullable.sql", import.meta.url), "utf8");
 
   for (const source of [anchors, events, localAnchor]) {
     assert.match(source, /resolveAdminProofTenantScope/);
@@ -100,6 +103,10 @@ test("proof routes reject unresolved tenant scope before global reads or writes"
   assert.match(localAnchor, /mixed_resource_events/);
   assert.match(localAnchor, /resource_type, resource_id, merkle_root/);
   assert.match(localAnchor, /evidence_event_not_found/);
+  assert.match(databaseSchema, /evidence_anchor_status AS ENUM \([^)]*'local'/);
+  assert.match(databaseSchema, /event_hashes text\[\],/);
+  assert.match(localStatusMigration, /ADD VALUE IF NOT EXISTS 'local'/);
+  assert.match(legacyHashesMigration, /ALTER COLUMN event_hashes DROP NOT NULL/);
   assert.match(anchors, /tenant_required/);
   assert.match(events, /tenant_required/);
   assert.match(localAnchor, /tenant_required/);
