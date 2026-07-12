@@ -1,4 +1,4 @@
-const CACHE_NAME = "nexid-dash-v6";
+const CACHE_NAME = "nexid-dash-v7";
 const APP_SHELL = [
   "/",
   "/manifest.webmanifest",
@@ -19,15 +19,22 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
+    Promise.all([
+      caches.keys().then((keys) =>
+        Promise.all(
         keys
           .filter((key) => key !== CACHE_NAME)
           .map((key) => caches.delete(key)),
+        ),
       ),
-    ),
+      self.clients.claim(),
+      self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+        clients.forEach((client) => {
+          client.postMessage({ type: "NEXID_DASHBOARD_RUNTIME_UPDATED", version: CACHE_NAME });
+        });
+      }),
+    ]),
   );
-  self.clients.claim();
 });
 
 self.addEventListener("fetch", (event) => {

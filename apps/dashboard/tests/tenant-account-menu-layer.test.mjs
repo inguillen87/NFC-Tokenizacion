@@ -5,6 +5,7 @@ import test from "node:test";
 const menuSource = await readFile(new URL("../src/components/tenant-account-menu.tsx", import.meta.url), "utf8");
 const secureLogoutSource = await readFile(new URL("../src/components/secure-dashboard-logout-button.tsx", import.meta.url), "utf8");
 const globalsSource = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
+const layoutSource = await readFile(new URL("../src/app/layout.tsx", import.meta.url), "utf8");
 const pwaSetupSource = await readFile(new URL("../src/components/pwa-setup.tsx", import.meta.url), "utf8");
 const serviceWorkerSource = await readFile(new URL("../public/sw.js", import.meta.url), "utf8");
 
@@ -61,6 +62,8 @@ test("account drawer keeps one mobile scroll region, a visible logout and determ
   assert.doesNotMatch(menuSource, /onPointerUp=/);
   assert.match(globalsSource, /\.nexid-account-layer \.tenant-account-panel__scroll\s*\{[^}]*overflow-y:\s*auto !important[^}]*touch-action:\s*pan-y !important/s);
   assert.match(globalsSource, /@media \(max-width:\s*640px\)[\s\S]*\.nexid-account-layer \.tenant-account-role-description\s*\{[^}]*display:\s*none !important/s);
+  assert.doesNotMatch(globalsSource, /\.min-w-0\.flex-1\s*\{[^}]*padding-bottom:\s*5\.25rem/s);
+  assert.match(globalsSource, /@media \(max-width:\s*1024px\)[\s\S]*\.dashboard-main\s*\{[^}]*padding-bottom:\s*5\.25rem/s);
 });
 
 test("tenant account menu suppresses the CRM shell while the account drawer is open", () => {
@@ -115,17 +118,31 @@ test("account drawer exposes expected SaaS account actions and secure logout", (
   assert.match(secureLogoutSource, /signOut\(\{ redirectUrl: LOGOUT_REDIRECT \}\)/);
 });
 
-test("dashboard PWA registration is opt-in so stale admin CSS cannot mask fixes", () => {
+test("dashboard clears stale PWA runtime before old admin CSS can mask fixes", () => {
+  assert.match(layoutSource, /const staleDashboardRuntimeCleanupScript = `/);
+  assert.match(layoutSource, /nexid-dashboard-runtime-cleared-v7/);
+  assert.match(layoutSource, /cacheKeys\.filter\(\(key\) => key\.startsWith\(dashboardCachePrefix\)\)/);
+  assert.match(layoutSource, /registrations\.map\(\(registration\) => registration\.unregister\(\)/);
+  assert.match(layoutSource, /dashboardCacheKeys\.map\(\(key\) => caches\.delete\(key\)/);
+  assert.match(layoutSource, /process\.env\.NEXT_PUBLIC_ENABLE_PWA !== "true"/);
+  assert.match(layoutSource, /data-nexid-runtime-cleanup="v7"/);
   assert.match(pwaSetupSource, /process\.env\.NODE_ENV === "production" && process\.env\.NEXT_PUBLIC_ENABLE_PWA === "true"/);
   assert.match(pwaSetupSource, /navigator\.serviceWorker\.getRegistrations\(\)/);
   assert.match(pwaSetupSource, /registration\.unregister\(\)/);
-  assert.match(pwaSetupSource, /nexid-dashboard-sw-cleared-v6/);
+  assert.match(pwaSetupSource, /DASHBOARD_CACHE_PREFIX = "nexid-dash-"/);
+  assert.match(pwaSetupSource, /caches\.delete\(key\)/);
+  assert.match(pwaSetupSource, /DASHBOARD_RUNTIME_VERSION = "v7"/);
   assert.match(pwaSetupSource, /window\.location\.reload\(\)/);
+  assert.match(pwaSetupSource, /updateViaCache: "none"/);
+  assert.match(pwaSetupSource, /registration\.update\(\)/);
+  assert.match(pwaSetupSource, /NEXID_DASHBOARD_RUNTIME_UPDATED/);
   assert.doesNotMatch(pwaSetupSource, /NEXT_PUBLIC_ENABLE_PWA !== "false"/);
 });
 
 test("dashboard service worker refreshes shell styles before falling back to cache", () => {
-  assert.match(serviceWorkerSource, /const CACHE_NAME = "nexid-dash-v6"/);
+  assert.match(serviceWorkerSource, /const CACHE_NAME = "nexid-dash-v7"/);
+  assert.match(serviceWorkerSource, /self\.clients\.matchAll\(\{ type: "window", includeUncontrolled: true \}\)/);
+  assert.match(serviceWorkerSource, /client\.postMessage\(\{ type: "NEXID_DASHBOARD_RUNTIME_UPDATED", version: CACHE_NAME \}\)/);
   assert.match(serviceWorkerSource, /request\.destination === "script" \|\| request\.destination === "style"/);
   assert.match(serviceWorkerSource, /fetchWithTimeout\(request\)\.then\(\(response\) => \{/);
   assert.match(serviceWorkerSource, /cache\.put\(request,\s*copy\)/);

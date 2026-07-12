@@ -61,6 +61,35 @@ const extensionConsoleShieldScript = `
 })();
 `;
 
+const staleDashboardRuntimeCleanupScript = `
+(() => {
+  if (!("serviceWorker" in navigator) || window.__nexidDashboardRuntimeCleanup) return;
+  window.__nexidDashboardRuntimeCleanup = true;
+
+  const reloadKey = "nexid-dashboard-runtime-cleared-v7";
+  const dashboardCachePrefix = "nexid-dash-";
+  const registrationsPromise = navigator.serviceWorker.getRegistrations().catch(() => []);
+  const cacheKeysPromise = "caches" in window ? caches.keys().catch(() => []) : Promise.resolve([]);
+
+  Promise.all([registrationsPromise, cacheKeysPromise]).then(async ([registrations, cacheKeys]) => {
+    const dashboardCacheKeys = cacheKeys.filter((key) => key.startsWith(dashboardCachePrefix));
+    const hadLegacyRuntime = registrations.length > 0 || dashboardCacheKeys.length > 0;
+    if (!hadLegacyRuntime) return;
+
+    await Promise.all([
+      ...registrations.map((registration) => registration.unregister().catch(() => false)),
+      ...dashboardCacheKeys.map((key) => caches.delete(key).catch(() => false)),
+    ]);
+
+    if (sessionStorage.getItem(reloadKey) === "1") return;
+    sessionStorage.setItem(reloadKey, "1");
+    window.location.reload();
+  }).catch(() => {
+    // Cache cleanup must never block the dashboard.
+  });
+})();
+`;
+
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
@@ -125,6 +154,9 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     <html lang={locale} suppressHydrationWarning className={theme === "light" ? "theme-light" : undefined} data-theme={theme}>
       <body suppressHydrationWarning>
         {process.env.NODE_ENV !== "production" ? <script dangerouslySetInnerHTML={{ __html: extensionConsoleShieldScript }} /> : null}
+        {process.env.NEXT_PUBLIC_ENABLE_PWA !== "true" ? (
+          <script data-nexid-runtime-cleanup="v7" dangerouslySetInnerHTML={{ __html: staleDashboardRuntimeCleanupScript }} />
+        ) : null}
         <MisconfigurationBanner />
         <PwaSetup />
         {clerkKey ? (
