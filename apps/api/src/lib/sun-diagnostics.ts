@@ -1,5 +1,6 @@
 import { sql } from './db';
 import { verifySunFreshHandoffToken } from './sun-fresh-handoff';
+import { createPublicCertificateShareToken } from './public-certificate-share';
 
 export type SunDiagnosticTool = 'sun_scan' | 'inspect' | 'compare_tamper' | 'compare_tamper_samples';
 
@@ -617,6 +618,16 @@ export async function getSunDiagnosticSnapshot(id: string | number, traceId: str
   const snapshotContract = fresh.ok
     ? markFreshHandoffContract(contract, { id: diagnosticId, traceId: traceIdValue, createdAt, expiresAt: freshExpiresAt })
     : markHistoricalSnapshotContract(contract, { id: diagnosticId, traceId: traceIdValue, createdAt });
+  const publicContract = withContractSummaryFields(snapshotContract);
+  if (tokenizationEventId) {
+    try {
+      publicContract.certificate = {
+        shareToken: createPublicCertificateShareToken(tokenizationEventId),
+      };
+    } catch {
+      // Production certificates fail closed if a signing secret is unavailable.
+    }
+  }
 
   return {
     ok: true,
@@ -624,6 +635,6 @@ export async function getSunDiagnosticSnapshot(id: string | number, traceId: str
     trace_id: traceIdValue,
     created_at: createdAt,
     snapshot_access: fresh.ok ? "fresh_handoff" : "historical",
-    contract: withContractSummaryFields(snapshotContract),
+    contract: publicContract,
   };
 }

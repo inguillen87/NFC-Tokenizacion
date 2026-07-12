@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 import { randomUUID } from "node:crypto";
-import { Pool } from "@neondatabase/serverless";
+import { Pool, type PoolClient } from "@neondatabase/serverless";
 
 type RealtimeEventPayload = {
   id?: string | number;
@@ -51,7 +51,9 @@ type BusStore = {
   started: boolean;
   startPromise: Promise<void> | null;
   pool: Pool | null;
+  listenerClient: PoolClient | null;
   publishPool: Pool | null;
+  reconnectTimer: ReturnType<typeof setTimeout> | null;
 };
 
 function getStore(): BusStore {
@@ -59,7 +61,15 @@ function getStore(): BusStore {
   if (!scope[BUS_KEY]) {
     const emitter = new EventEmitter();
     emitter.setMaxListeners(400);
-    scope[BUS_KEY] = { emitter, started: false, startPromise: null, pool: null, publishPool: null };
+    scope[BUS_KEY] = {
+      emitter,
+      started: false,
+      startPromise: null,
+      pool: null,
+      listenerClient: null,
+      publishPool: null,
+      reconnectTimer: null,
+    };
   }
   return scope[BUS_KEY]!;
 }
@@ -78,6 +88,57 @@ function safeParse(data: string): { source?: string; payload?: RealtimeEventPayl
   }
 }
 
+function schedulePgListenerReconnect() {
+  const store = getStore();
+  if (
+    store.reconnectTimer
+    || !distributedEnabled()
+    || store.emitter.listenerCount("event") === 0
+  ) return;
+
+  store.reconnectTimer = setTimeout(() => {
+    store.reconnectTimer = null;
+    void startPgListener();
+  }, 1_000);
+  store.reconnectTimer.unref?.();
+}
+
+function resetPgListener(pool: Pool, client: PoolClient | null, reconnect: boolean) {
+  const store = getStore();
+  if (store.pool !== pool) return;
+
+  store.started = false;
+  store.pool = null;
+  store.listenerClient = null;
+  try {
+    client?.release(true);
+  } catch {
+    // The socket may already be closed.
+  }
+  void pool.end().catch(() => null);
+  if (reconnect) schedulePgListenerReconnect();
+}
+
+function stopPgListener() {
+  const store = getStore();
+  if (store.reconnectTimer) {
+    clearTimeout(store.reconnectTimer);
+    store.reconnectTimer = null;
+  }
+  const pool = store.pool;
+  const client = store.listenerClient;
+  store.started = false;
+  store.pool = null;
+  store.listenerClient = null;
+  if (!pool) return;
+  try {
+    client?.release(true);
+  } catch {
+    // The socket may already be closed.
+  }
+  void pool.end().catch(() => null);
+}
+
 async function startPgListener() {
   const store = getStore();
   if (store.started || store.startPromise || !distributedEnabled()) return;
@@ -87,7 +148,12 @@ async function startPgListener() {
     if (!url) return;
     const pool = new Pool({ connectionString: url, max: 1 });
     store.pool = pool;
+    pool.on("error", () => resetPgListener(pool, store.listenerClient, true));
     const client = await pool.connect();
+    store.listenerClient = client;
+    const onDisconnect = () => resetPgListener(pool, client, true);
+    client.on("error", onDisconnect);
+    client.on("end", onDisconnect);
     client.on("notification", (msg) => {
       if (msg.channel !== CHANNEL || !msg.payload) return;
       const envelope = safeParse(msg.payload);
@@ -97,9 +163,20 @@ async function startPgListener() {
     });
     await client.query(`LISTEN "${CHANNEL}"`);
     store.started = true;
+    if (store.emitter.listenerCount("event") === 0) stopPgListener();
   })().catch(() => {
+    const pool = store.pool;
+    const client = store.listenerClient;
     store.started = false;
     store.pool = null;
+    store.listenerClient = null;
+    try {
+      client?.release(true);
+    } catch {
+      // The socket may already be closed.
+    }
+    if (pool) void pool.end().catch(() => null);
+    schedulePgListenerReconnect();
   }).finally(() => {
     store.startPromise = null;
   });
@@ -112,8 +189,20 @@ function publishDistributed(payload: RealtimeEventPayload) {
   const envelope = JSON.stringify({ source: INSTANCE_ID, payload });
   // notify through postgres to reach all running instances without polling
   const store = getStore();
-  store.publishPool = store.publishPool || new Pool({ connectionString: process.env.DATABASE_URL!, max: 1 });
-  void store.publishPool.query("SELECT pg_notify($1, $2)", [CHANNEL, envelope]).catch(() => null);
+  if (!store.publishPool) {
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL!, max: 1 });
+    pool.on("error", () => {
+      if (store.publishPool !== pool) return;
+      store.publishPool = null;
+      void pool.end().catch(() => null);
+    });
+    store.publishPool = pool;
+  }
+  const pool = store.publishPool;
+  void pool.query("SELECT pg_notify($1, $2)", [CHANNEL, envelope]).catch(() => {
+    if (store.publishPool === pool) store.publishPool = null;
+    void pool.end().catch(() => null);
+  });
 }
 
 export function publishRealtimeEvent(payload: RealtimeEventPayload) {
@@ -126,5 +215,8 @@ export function onRealtimeEvent(listener: (payload: RealtimeEventPayload) => voi
   const emitter = getStore().emitter;
   void startPgListener();
   emitter.on("event", listener);
-  return () => emitter.off("event", listener);
+  return () => {
+    emitter.off("event", listener);
+    if (emitter.listenerCount("event") === 0) stopPgListener();
+  };
 }

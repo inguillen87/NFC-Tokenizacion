@@ -18,6 +18,7 @@ import { ensureCarrierProfileSchema } from '../../lib/commercial-runtime-schema'
 import { getRequestMeta } from '../../lib/request-meta';
 import { hitSunRateLimit } from '../../lib/sun-rate-limit-store';
 import { createSunFreshHandoffToken } from '../../lib/sun-fresh-handoff';
+import { createPublicCertificateShareToken } from '../../lib/public-certificate-share';
 import { eventShareUid } from '../../lib/public-cta-target';
 import { recordTapEvent } from '../../lib/tap-event-service';
 import { resolveEventLocalTime } from '@product/core';
@@ -2871,6 +2872,19 @@ export async function GET(req: Request): Promise<Response> {
     createdAt: new Date().toISOString(),
   }));
   if (diagnosticId) (contract as Record<string, unknown>).diagnostic_id = diagnosticId;
+  if (eventId) {
+    try {
+      const certificateShareToken = createPublicCertificateShareToken(eventId);
+      const certificateUrl = new URL(`/certificado/${encodeURIComponent(String(eventId))}`, webBaseUrl(url));
+      certificateUrl.searchParams.set("share", certificateShareToken);
+      (contract as Record<string, unknown>).certificate = {
+        shareToken: certificateShareToken,
+        url: certificateUrl.toString(),
+      };
+    } catch {
+      // Production certificates fail closed if a signing secret is unavailable.
+    }
+  }
 
   if (wantsHtml(req, url)) {
     const freshHandoffToken = diagnosticId && contract.tapSecurity?.freshTap && !contract.tapSecurity?.replayDetected && eventId

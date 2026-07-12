@@ -11,6 +11,7 @@ function maskUid(uidHex: string | null | undefined) {
 
 export async function GET() {
   const windowStart = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const publicDemoTenantSlug = String(process.env.PUBLIC_DEMO_TENANT_SLUG || "demobodega").trim().toLowerCase();
 
   const metricsRows = await sql/*sql*/`
     SELECT
@@ -22,9 +23,11 @@ export async function GET() {
       ) AS valid_rate,
       COUNT(*) FILTER (WHERE UPPER(COALESCE(e.result, '')) IN ('REPLAY_SUSPECT', 'DUPLICATE', 'TAMPER', 'TAMPERED', 'INVALID', 'REVOKED', 'BROKEN'))::int AS risk_blocked,
       COUNT(DISTINCT COALESCE(NULLIF(e.country_code, ''), 'UNK')) FILTER (WHERE e.created_at >= ${windowStart})::int AS active_regions,
-      COUNT(*) FILTER (WHERE LOWER(COALESCE(e.source, 'real')) = 'demo')::int AS demo_events,
-      COUNT(*) FILTER (WHERE LOWER(COALESCE(e.source, 'real')) <> 'demo')::int AS prod_events
+      COUNT(*)::int AS demo_events
     FROM events e
+    JOIN tenants t ON t.id = e.tenant_id
+    WHERE LOWER(COALESCE(e.source, '')) = 'demo'
+      AND LOWER(t.slug) = ${publicDemoTenantSlug}
   `;
 
   const latestRows = await sql/*sql*/`
@@ -36,16 +39,16 @@ export async function GET() {
       e.uid_hex,
       COALESCE(t.slug, 'tenant') AS tenant_slug
     FROM events e
-    LEFT JOIN tenants t ON t.id = e.tenant_id
+    JOIN tenants t ON t.id = e.tenant_id
+    WHERE LOWER(COALESCE(e.source, '')) = 'demo'
+      AND LOWER(t.slug) = ${publicDemoTenantSlug}
     ORDER BY e.created_at DESC
     LIMIT 12
   `;
 
   const metrics = metricsRows[0] || {};
   const validRate = Number(metrics.valid_rate || 0);
-  const prodEvents = Number(metrics.prod_events || 0);
-  const demoEvents = Number(metrics.demo_events || 0);
-  const demoMode = process.env.DEMO_MODE === "true" || (prodEvents === 0 && demoEvents > 0);
+  const demoMode = true;
 
   const latestPublicEvents = latestRows.map((row: Record<string, unknown>) => ({
     occurredAt: String(row.created_at || ""),
@@ -64,6 +67,7 @@ export async function GET() {
     activeRegions: Number(metrics.active_regions || 0),
     latestPublicEvents,
     demoMode,
+    scope: "public-demo-only",
     generatedAt: new Date().toISOString(),
   };
 

@@ -77,8 +77,13 @@ function blockchainExplainer(token?: NonNullable<CertificatePayload["certificate
   return "Disponible: el tenant puede habilitar mint despues del claim de ownership.";
 }
 
-async function fetchCertificate(eventId: string): Promise<CertificatePayload | null> {
-  const res = await fetch(`${productUrls.api}/public/certificates/${encodeURIComponent(eventId)}`, { next: { revalidate: 20 } }).catch(() => null);
+function firstParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? String(value[0] || "").trim() : String(value || "").trim();
+}
+
+async function fetchCertificate(eventId: string, shareToken: string): Promise<CertificatePayload | null> {
+  const query = shareToken ? `?share=${encodeURIComponent(shareToken)}` : "";
+  const res = await fetch(`${productUrls.api}/public/certificates/${encodeURIComponent(eventId)}${query}`, { cache: "no-store" }).catch(() => null);
   if (!res || !res.ok) return null;
   return res.json().catch(() => null);
 }
@@ -91,9 +96,17 @@ export async function generateMetadata({ params }: { params: Promise<{ eventId: 
   };
 }
 
-export default async function PublicCertificatePage({ params }: { params: Promise<{ eventId: string }> }) {
+export default async function PublicCertificatePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ eventId: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { eventId } = await params;
-  const payload = await fetchCertificate(eventId);
+  const query = await searchParams;
+  const shareToken = firstParam(query.share);
+  const payload = await fetchCertificate(eventId, shareToken);
   const cert = payload?.certificate;
 
   if (!cert) {
@@ -171,7 +184,9 @@ export default async function PublicCertificatePage({ params }: { params: Promis
   const marketplaceHref = actionEligible
     ? cert.links?.marketplaceUrl || (tenantSlug ? `/me/marketplace?tenant=${encodeURIComponent(tenantSlug)}` : "/me/marketplace")
     : null;
-  const permanentUrl = cert.links?.certificateUrl || cert.publicUrl || `https://nexid.lat/certificado/${encodeURIComponent(String(tap.eventId || eventId))}`;
+  const permanentUrl = cert.links?.certificateUrl
+    || cert.publicUrl
+    || `https://nexid.lat/certificado/${encodeURIComponent(String(tap.eventId || eventId))}${shareToken ? `?share=${encodeURIComponent(shareToken)}` : ""}`;
   const blockchainState = blockchainExplainer(token);
   const authentic = cert.verification?.authentic === true;
   const statusTone = authentic

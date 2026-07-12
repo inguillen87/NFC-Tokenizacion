@@ -9,6 +9,10 @@ import { ensureTokenizationRequestsSchema } from "../../../../lib/tokenization-s
 import { normalizeTokenizationStatus } from "../../../../lib/tokenization-status";
 import { buildProductAssetProfile, readProductAssetMedia } from "../../../../lib/product-asset-profile";
 import { isClaimableOwnershipResult } from "../../../../lib/ownership-policy";
+import {
+  createPublicCertificateShareToken,
+  verifyPublicCertificateShareToken,
+} from "../../../../lib/public-certificate-share";
 
 function cleanId(value: unknown) {
   return String(value || "").trim();
@@ -55,16 +59,18 @@ function explorerUrl(network: unknown, txHash: unknown) {
   return null;
 }
 
-export async function GET(_req: Request, { params }: { params: Promise<{ eventId: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ eventId: string }> }) {
+  const { eventId: rawEventId } = await params;
+  const eventId = cleanId(rawEventId);
+  if (!/^\d+$/.test(eventId)) return json({ ok: false, error: "invalid_event_id" }, 400);
+  const shareToken = new URL(req.url).searchParams.get("share");
+  const signedAccess = verifyPublicCertificateShareToken(eventId, shareToken);
+
   await Promise.all([
     ensureConsumerPortalSchema(),
     ensureSunTenantProfilesSchema(),
     ensureTokenizationRequestsSchema(),
   ]);
-
-  const { eventId: rawEventId } = await params;
-  const eventId = cleanId(rawEventId);
-  if (!/^\d+$/.test(eventId)) return json({ ok: false, error: "invalid_event_id" }, 400);
 
   const rows = await sql/*sql*/`
     SELECT
@@ -138,6 +144,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ eventId
       LIMIT 1
     ) tok ON TRUE
     WHERE e.id = ${eventId}
+      AND (LOWER(COALESCE(e.source, '')) = 'demo' OR ${signedAccess})
     LIMIT 1
   `;
 
@@ -178,6 +185,14 @@ export async function GET(_req: Request, { params }: { params: Promise<{ eventId
   const authentic = isClaimableOwnershipResult(resultCode);
   const replayBlocked = resultCode === "REPLAY_SUSPECT" || resultCode === "DUPLICATE";
   const tamperReview = resultCode.includes("TAMPER") && !authentic;
+  const issuedShareToken = (() => {
+    try {
+      return createPublicCertificateShareToken(eventId);
+    } catch {
+      return null;
+    }
+  })();
+  const certificateUrl = `${publicWebBase()}/certificado/${row.event_id}${issuedShareToken ? `?share=${encodeURIComponent(issuedShareToken)}` : ""}`;
   const verificationState = authentic
     ? (resultCode.includes("OPENED") ? "authentic_opened" : "authentic_intact")
     : replayBlocked
@@ -204,9 +219,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ eventId
 
   const certificate = {
     id: `NX-CERT-${row.event_id}`,
-    publicUrl: `${publicWebBase()}/certificado/${row.event_id}`,
+    publicUrl: certificateUrl,
     links: {
-      certificateUrl: `${publicWebBase()}/certificado/${row.event_id}`,
+      certificateUrl,
       walletUrl: authentic ? `${publicWebBase()}/me/wallet?tenant=${encodeURIComponent(String(row.tenant_slug || ""))}&eventId=${encodeURIComponent(String(row.event_id))}` : null,
       marketplaceUrl: authentic ? `${publicWebBase()}/me/marketplace${row.tenant_slug ? `?tenant=${encodeURIComponent(String(row.tenant_slug))}` : ""}` : null,
       explorerUrl: authentic ? txUrl : null,
@@ -303,6 +318,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ eventId
   return json(
     { ok: true, certificate },
     200,
-    { "cache-control": "public, max-age=20, stale-while-revalidate=120" },
+    { "cache-control": signedAccess ? "private, no-store" : "public, max-age=20, stale-while-revalidate=120" },
   );
 }

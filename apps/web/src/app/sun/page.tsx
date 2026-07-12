@@ -92,6 +92,7 @@ type SunCarrierFields = {
 type SunContract = {
   ok?: boolean;
   eventId?: string | null;
+  certificate?: { shareToken?: string | null; url?: string | null };
   status?: SunCarrierFields & {
     code?: string;
     label?: string;
@@ -933,7 +934,10 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const walletHref = withTapQuery("/me/wallet", "wallet");
   const rewardsHref = localizeHref(result.cta?.rewardsUrl) || withTapQuery("/me/rewards", "rewards");
   const tapMarketplaceHref = localizeHref(result.cta?.marketplaceUrl) || withTapQuery(marketplaceHref, "marketplace");
-  const certificateHref = !isQrScan && /^\d+$/.test(eventId) ? `/certificado/${encodeURIComponent(eventId)}` : "";
+  const certificateShareToken = String(result.certificate?.shareToken || "").trim();
+  const certificateHref = !isQrScan && /^\d+$/.test(eventId)
+    ? `/certificado/${encodeURIComponent(eventId)}${certificateShareToken ? `?share=${encodeURIComponent(certificateShareToken)}` : ""}`
+    : "";
   const blockedTapReason = isQrScan
     ? "QR informativo: podes leer, consultar al sommelier o dejar contacto. Garantia, wallet, NFT y propiedad requieren compra validada o NFC seguro."
     : isFreshCommercialTap
