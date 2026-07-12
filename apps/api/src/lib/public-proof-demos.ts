@@ -361,6 +361,11 @@ export function findPublicProofDemoCaseById(id: string) {
   return PUBLIC_PROOF_DEMO_CASES.find((demoCase) => demoCase.id === normalized) || null;
 }
 
+export function findPublicProofDemoCaseByAnchorId(anchorId: string) {
+  const normalized = anchorId.trim().toLowerCase();
+  return PUBLIC_PROOF_DEMO_CASES.find((demoCase) => demoCase.anchor_id.toLowerCase() === normalized) || null;
+}
+
 export function findPublicProofDemoCaseByMerkleRoot(merkleRoot: string) {
   const normalized = merkleRoot.trim().toLowerCase();
   return PUBLIC_PROOF_DEMO_CASES.find((demoCase) => demoCase.merkle_root.toLowerCase() === normalized) || null;

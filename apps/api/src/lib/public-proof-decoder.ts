@@ -1,4 +1,5 @@
 import { findPublicProofDemoCaseById, findPublicProofDemoCaseByMerkleRoot } from "./public-proof-demos";
+import { publicProofIotaExplorerUrl, publicProofIotaReceiptTx } from "./public-proof-runtime";
 
 export type PublicProofDecodedField = {
   key: string;
@@ -11,6 +12,7 @@ export type PublicProofDecodeResult = {
   ok: boolean;
   receipt_matched?: boolean;
   receipt_verified?: boolean;
+  publication_configured?: boolean;
   verification_status?: "verified_demo_receipt" | "matched_demo_receipt" | "parsed_only";
   publication_tx_hash?: string | null;
   publication_explorer_url?: string | null;
@@ -39,27 +41,6 @@ export type PublicProofDecodeResult = {
 
 function cleanInput(value: unknown) {
   return String(value || "").trim();
-}
-
-function cleanEnv(value: unknown) {
-  const text = cleanInput(value);
-  if (!text || text === "\"\"" || text === "''") return "";
-  return text.replace(/^['"]|['"]$/g, "").trim();
-}
-
-function envKeySuffix(value: string) {
-  return value.trim().toUpperCase().replace(/[^A-Z0-9]+/g, "_").replace(/^_+|_+$/g, "");
-}
-
-function demoReceiptTxFor(caseId: string) {
-  return cleanEnv(process.env[`PUBLIC_PROOF_RECEIPT_IOTA_TX_HASH_${envKeySuffix(caseId)}`])
-    || cleanEnv(process.env.PUBLIC_PROOF_RECEIPT_IOTA_TX_HASH);
-}
-
-function receiptExplorerUrl(txHash: string) {
-  if (!txHash) return null;
-  const baseUrl = cleanEnv(process.env.IOTA_EXPLORER_BASE_URL) || "https://explorer.evm.testnet.iota.cafe";
-  return `${baseUrl.replace(/\/$/, "")}/tx/${txHash}`;
 }
 
 function isHexRawInput(value: string) {
@@ -158,7 +139,7 @@ function explainField(key: string, value: string): PublicProofDecodedField {
   };
 }
 
-function businessMeaning(fields: Record<string, string>) {
+export function publicProofBusinessMeaning(fields: Record<string, string>) {
   const vertical = fields.vertical || "";
   if (vertical.includes("pharma")) {
     return "Lectura de negocio: prueba que un lote regulado tuvo hitos de calidad incluidos en una evidencia publica, sin exponer pacientes, rutas internas ni documentos QA.";
@@ -219,28 +200,31 @@ export function decodePublicProofInput(input: unknown): PublicProofDecodeResult 
   const demoCandidate = (fields.case ? findPublicProofDemoCaseById(fields.case) : null)
     || (fields.root ? findPublicProofDemoCaseByMerkleRoot(fields.root) : null);
   const demoCase = demoCandidate?.public_receipt.on_chain_memo === decodedMemo ? demoCandidate : null;
-  const publicationTxHash = demoCase ? demoReceiptTxFor(demoCase.id) : "";
-  const receiptVerified = Boolean(demoCase && publicationTxHash);
+  const publicationTxHash = demoCase ? publicProofIotaReceiptTx(demoCase.id) : "";
+  const publicationConfigured = Boolean(demoCase && publicationTxHash);
+  const receiptVerified = false;
   if (demoCandidate && !demoCase) {
     warnings.push("demo_receipt_mismatch");
   }
-  if (demoCase && !receiptVerified) warnings.push("receipt_publication_unavailable");
-  if (!receiptVerified) warnings.push("receipt_not_verified");
+  if (demoCase && !publicationConfigured) warnings.push("receipt_publication_unavailable");
+  if (demoCase && publicationConfigured) warnings.push("receipt_network_check_required");
+  warnings.push("receipt_not_verified");
   const resource = fields.resource || "recurso no informado";
   const events = fields.events || "eventos no informados";
-  const executiveSummary = receiptVerified
-    ? `${demoCase?.title}: el memo coincide exactamente y tiene una transaccion publica configurada para ${events} eventos sobre ${resource}.`
-    : demoCase
-      ? `${demoCase.title}: el memo coincide con el recibo esperado, pero falta una transaccion publica configurada para confirmar su publicacion.`
+  const executiveSummary = demoCase
+    ? publicationConfigured
+      ? `${demoCase.title}: el memo coincide con el recibo esperado y tiene una transaccion configurada; falta comprobar receipt y Raw input por RPC.`
+      : `${demoCase.title}: el memo coincide con el recibo esperado, pero falta una transaccion publica configurada para confirmar su publicacion.`
       : `Memo parseado: declara ${events} eventos sobre ${resource}, pero el texto por si solo no confirma que haya sido publicado on-chain.`;
 
   return {
     ok: true,
     receipt_matched: Boolean(demoCase),
     receipt_verified: receiptVerified,
-    verification_status: receiptVerified ? "verified_demo_receipt" : demoCase ? "matched_demo_receipt" : "parsed_only",
+    publication_configured: publicationConfigured,
+    verification_status: demoCase ? "matched_demo_receipt" : "parsed_only",
     publication_tx_hash: publicationTxHash || null,
-    publication_explorer_url: receiptExplorerUrl(publicationTxHash),
+    publication_explorer_url: publicProofIotaExplorerUrl(publicationTxHash),
     input_format: inputFormat,
     raw_input_hex: rawInputHex,
     decoded_memo: decodedMemo,
@@ -248,9 +232,7 @@ export function decodePublicProofInput(input: unknown): PublicProofDecodeResult 
     fields,
     field_explanations: Object.entries(fields).map(([key, value]) => explainField(key, value)),
     executive_summary: executiveSummary,
-    business_meaning: receiptVerified
-      ? businessMeaning(fields)
-      : "Lectura del contenido declarado. Para convertirlo en evidencia hay que comprobar la transaccion, el Raw input y la inclusion del SHA.",
+    business_meaning: "Lectura del contenido declarado. Para convertirlo en evidencia hay que comprobar la transaccion, el Raw input y la inclusion del SHA.",
     verification_steps: [
       "Abrir la transaccion en el explorer y copiar Raw input.",
       "Pegar Raw input en el decoder de nexID.",

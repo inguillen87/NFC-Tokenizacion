@@ -33,6 +33,37 @@ test("public testnet references come from productUrls.api and stay outside tenan
   assert.doesNotMatch(proofSource.slice(metricsStart, metricsEnd), /publicCases|realIotaCases|publicProofResult/);
 });
 
+test("public IOTA case admission requires RPC network verification", () => {
+  const helperStart = proofSource.indexOf("function isRealIotaReference");
+  const helperEnd = proofSource.indexOf("function resourceLabel", helperStart);
+  assert.ok(helperStart >= 0 && helperEnd > helperStart, "IOTA reference filter must exist");
+  const iotaReferenceFilter = proofSource.slice(helperStart, helperEnd);
+
+  assert.match(iotaReferenceFilter, /network_verification\?\.anchor\?\.verified\s*===\s*true/);
+  assert.match(iotaReferenceFilter, /network_verification\?\.receipt\?\.verified\s*===\s*true/);
+  assert.match(iotaReferenceFilter, /return anchorTx \|\| receiptTx;/);
+  assert.doesNotMatch(iotaReferenceFilter, /certificate_url|\.status|tx_hash\)\s*;/);
+});
+
+test("public IOTA confirmation copy uses RPC fields", () => {
+  const iotaSummaryStart = proofSource.indexOf('<article data-network="iota">');
+  const iotaSummaryEnd = proofSource.indexOf('<article data-network="polygon"', iotaSummaryStart);
+  assert.ok(iotaSummaryStart >= 0 && iotaSummaryEnd > iotaSummaryStart, "IOTA testnet summary must exist");
+  const iotaSummary = proofSource.slice(iotaSummaryStart, iotaSummaryEnd);
+
+  assert.match(iotaSummary, /iotaReference\?\.rpc_verified\s*\?\s*"Anchors y memos confirmados por RPC"/);
+  assert.match(iotaSummary, /iotaDemoTxHref\s*\?\s*"Transaccion configurada, verificacion pendiente"/);
+  assert.doesNotMatch(iotaSummary, /iotaDemoTxHref\s*\?\s*"[^"]*confirmad/i);
+
+  const publicCasesStart = proofSource.indexOf("{realIotaCases.map");
+  const publicCasesEnd = proofSource.indexOf("</section>", publicCasesStart);
+  assert.ok(publicCasesStart >= 0 && publicCasesEnd > publicCasesStart, "IOTA public case list must exist");
+  const publicCaseList = proofSource.slice(publicCasesStart, publicCasesEnd);
+
+  assert.match(publicCaseList, /demoCase\.network_verification\?\.anchor\?\.verified\s*\?\s*"RPC confirmado"/);
+  assert.doesNotMatch(publicCaseList, /demoCase\.(?:status|tx_hash)[^?]*\?\s*"RPC confirmado"/);
+});
+
 test("hash-only verification remains available when anchor_id is absent", () => {
   assert.match(proofSource, /if \(!hash\) return null/);
   assert.doesNotMatch(proofSource, /if \(!hash \|\| !anchorId\) return null/);

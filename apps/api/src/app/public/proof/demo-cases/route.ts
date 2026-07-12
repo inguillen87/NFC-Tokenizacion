@@ -3,6 +3,16 @@ export const dynamic = "force-dynamic";
 
 import { json } from "../../../../lib/http";
 import { PUBLIC_PROOF_DEMO_CASES } from "../../../../lib/public-proof-demos";
+import {
+  iotaAnchorTenantHash,
+  verifyIotaAnchorPublication,
+  verifyIotaMemoPublication,
+} from "../../../../lib/iota-evm-proof";
+import {
+  publicProofIotaAnchorTx,
+  publicProofIotaExplorerUrl,
+  publicProofIotaReceiptTx,
+} from "../../../../lib/public-proof-runtime";
 
 function clean(value: unknown) {
   const text = String(value || "").trim();
@@ -15,19 +25,10 @@ function explorerUrl(baseUrl: string, kind: "address" | "tx", value: string) {
   return `${baseUrl.replace(/\/$/, "")}/${kind}/${value}`;
 }
 
-function envKeySuffix(value: string) {
-  return value.trim().toUpperCase().replace(/[^A-Z0-9]+/g, "_").replace(/^_+|_+$/g, "");
-}
-
-function iotaDemoTxFor(caseId: string) {
-  return clean(process.env[`PUBLIC_PROOF_DEMO_IOTA_TX_HASH_${envKeySuffix(caseId)}`])
-    || clean(process.env.PUBLIC_PROOF_DEMO_IOTA_TX_HASH)
-    || clean(process.env.IOTA_DEMO_TX_HASH);
-}
-
-function iotaReceiptTxFor(caseId: string) {
-  return clean(process.env[`PUBLIC_PROOF_RECEIPT_IOTA_TX_HASH_${envKeySuffix(caseId)}`])
-    || clean(process.env.PUBLIC_PROOF_RECEIPT_IOTA_TX_HASH);
+function publicNetworkProof(value: Record<string, unknown> | null) {
+  if (!value) return null;
+  const { input_hex: _inputHex, decoded_memo: _decodedMemo, ...proof } = value;
+  return proof;
 }
 
 export async function GET() {
@@ -40,23 +41,45 @@ export async function GET() {
   const polygonMetadataUrl = `${polygonApiBaseUrl}/public/polygon/metadata/ownership-v2`;
   const iotaExplorerBaseUrl = clean(process.env.IOTA_EXPLORER_BASE_URL) || "https://explorer.evm.testnet.iota.cafe";
   const iotaContract = clean(process.env.IOTA_EVM_ANCHOR_CONTRACT);
-  const cases = PUBLIC_PROOF_DEMO_CASES.map((demoCase) => {
-    const txHash = iotaDemoTxFor(demoCase.id);
-    const receiptTxHash = iotaReceiptTxFor(demoCase.id);
+  const cases = await Promise.all(PUBLIC_PROOF_DEMO_CASES.map(async (demoCase) => {
+    const txHash = publicProofIotaAnchorTx(demoCase.id);
+    const receiptTxHash = publicProofIotaReceiptTx(demoCase.id);
+    const [anchorVerification, receiptVerification] = await Promise.all([
+      txHash
+        ? verifyIotaAnchorPublication({
+            txHash,
+            merkleRoot: demoCase.merkle_root,
+            tenantIdHash: iotaAnchorTenantHash("public-demo"),
+            resourceType: demoCase.resource_type,
+            resourceId: demoCase.resource_id,
+            eventCount: demoCase.events.length,
+          })
+        : Promise.resolve(null),
+      receiptTxHash
+        ? verifyIotaMemoPublication(receiptTxHash, demoCase.public_receipt.on_chain_memo)
+        : Promise.resolve(null),
+    ]);
     return {
       ...demoCase,
       tx_hash: txHash || demoCase.tx_hash,
-      explorer_url: explorerUrl(iotaExplorerBaseUrl, "tx", txHash) || demoCase.explorer_url,
-      status: txHash ? "confirmed" : demoCase.status,
+      explorer_url: publicProofIotaExplorerUrl(txHash) || demoCase.explorer_url,
+      status: anchorVerification?.verified ? "confirmed" : txHash ? "configured" : demoCase.status,
       network: txHash ? "iota-evm-testnet" : demoCase.network,
+      network_verification: {
+        anchor: publicNetworkProof(anchorVerification),
+        receipt: publicNetworkProof(receiptVerification),
+      },
       public_receipt: {
         ...demoCase.public_receipt,
         tx_hash: receiptTxHash || null,
-        explorer_url: explorerUrl(iotaExplorerBaseUrl, "tx", receiptTxHash),
+        explorer_url: publicProofIotaExplorerUrl(receiptTxHash),
+        status: receiptVerification?.verified ? "confirmed" : receiptTxHash ? "configured" : "unavailable",
       },
     };
-  });
+  }));
   const iotaDemoTx = cases.find((demoCase) => demoCase.tx_hash)?.tx_hash || "";
+  const verifiedAnchorCount = cases.filter((demoCase) => demoCase.network_verification.anchor?.verified === true).length;
+  const verifiedReceiptCount = cases.filter((demoCase) => demoCase.network_verification.receipt?.verified === true).length;
 
   return json({
     ok: true,
@@ -71,6 +94,9 @@ export async function GET() {
         deployer_address: clean(process.env.IOTA_EVM_DEPLOYER_ADDRESS) || null,
         contract_address: iotaContract || null,
         contract_explorer_url: explorerUrl(iotaExplorerBaseUrl, "address", iotaContract),
+        rpc_verified: verifiedAnchorCount === cases.length && verifiedReceiptCount === cases.length,
+        verified_anchor_count: verifiedAnchorCount,
+        verified_receipt_count: verifiedReceiptCount,
         demo_tx_hash: iotaDemoTx || null,
         demo_tx_explorer_url: explorerUrl(iotaExplorerBaseUrl, "tx", iotaDemoTx),
         demo_txs: Object.fromEntries(cases.map((demoCase) => [
@@ -100,5 +126,5 @@ export async function GET() {
       },
     },
     privacy: "Demo hashes are generated from canonical non-sensitive demo events. No customer, route manifest, UID or private key is exposed.",
-  });
+  }, 200, { "cache-control": "public, s-maxage=60, stale-while-revalidate=300" });
 }

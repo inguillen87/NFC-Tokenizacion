@@ -53,6 +53,10 @@ type DemoCase = {
   anchored_at: string;
   explorer_url: string | null;
   tx_hash: string | null;
+  network_verification?: {
+    anchor?: { verified?: boolean; checked?: boolean; confirmations?: number | null; reason?: string | null } | null;
+    receipt?: { verified?: boolean; checked?: boolean; confirmations?: number | null; memo_matches?: boolean; reason?: string | null } | null;
+  };
   public_receipt: {
     title: string;
     business_claim: string;
@@ -61,6 +65,7 @@ type DemoCase = {
     receipt_hash: string;
     tx_hash: string | null;
     explorer_url: string | null;
+    status?: string;
     public_fields: string[];
     private_fields: string[];
   };
@@ -78,7 +83,7 @@ type VerifyResponse = {
   included?: boolean;
   externally_confirmed?: boolean;
   verification_state?: "confirmed" | "submitted" | "local" | "failed" | "not_included" | "unavailable" | "invalid";
-  evidence_level?: "testnet_fixture" | "external_anchor" | "registry_only" | "none";
+  evidence_level?: "testnet_rpc" | "testnet_fixture" | "external_anchor" | "registry_only" | "none";
   demo?: boolean;
   event_hash?: string;
   provider?: string | null;
@@ -88,6 +93,10 @@ type VerifyResponse = {
   explorer_url?: string | null;
   matches?: VerifyMatch[];
   demo_case?: DemoCase | null;
+  network_verification?: {
+    anchor?: { verified?: boolean; checked?: boolean; confirmations?: number | null; reason?: string | null } | null;
+    receipt?: { verified?: boolean; checked?: boolean; confirmations?: number | null; memo_matches?: boolean; reason?: string | null } | null;
+  } | null;
   reason?: string;
   registry_warning?: string | null;
   privacy?: string;
@@ -114,6 +123,9 @@ type DemoCasesResponse = {
         receipt_tx_hash?: string | null;
         receipt_explorer_url?: string | null;
       }>;
+      rpc_verified?: boolean;
+      verified_anchor_count?: number;
+      verified_receipt_count?: number;
     };
     polygon?: {
       network?: string;
@@ -144,9 +156,11 @@ type DecodeResponse = {
   ok: boolean;
   receipt_matched?: boolean;
   receipt_verified?: boolean;
+  publication_configured?: boolean;
   verification_status?: "verified_demo_receipt" | "matched_demo_receipt" | "parsed_only";
   publication_tx_hash?: string | null;
   publication_explorer_url?: string | null;
+  network_verification?: { verified?: boolean; checked?: boolean; confirmations?: number | null; memo_matches?: boolean; reason?: string | null } | null;
   reason?: string;
   message?: string;
   input_format?: "hex_raw_input" | "plain_memo";
@@ -650,20 +664,6 @@ function explainProofMemoField(key: string, value: string): DecodedProofField {
   };
 }
 
-function proofBusinessMeaning(fields: Record<string, string>) {
-  const vertical = fields.vertical || "";
-  if (vertical.includes("pharma")) {
-    return "Lectura de negocio: prueba que un lote regulado tuvo hitos de calidad incluidos en una evidencia publica, sin exponer pacientes, rutas internas ni documentos QA.";
-  }
-  if (vertical.includes("agro")) {
-    return "Lectura de negocio: prueba stewardship, origen/canal autorizado y uso responsable de un insumo, sin exponer clientes, ubicaciones sensibles ni acuerdos comerciales.";
-  }
-  if (vertical.includes("logistica") || vertical.includes("delivery")) {
-    return "Lectura de negocio: prueba custodia y entrega verificable de un activo fisico, sin publicar manifiesto, receptor ni direccion privada.";
-  }
-  return "Lectura de negocio: prueba que un conjunto de eventos existia y fue anclado sin convertir blockchain en una base de datos publica.";
-}
-
 function decodeProofInputLocally(input: string): DecodeResponse {
   const cleaned = String(input || "").trim();
   if (!cleaned) {
@@ -703,10 +703,12 @@ function decodeProofInputLocally(input: string): DecodeResponse {
 
   const demoCandidate = findFallbackDemoCase(fields);
   const demoCase = demoCandidate?.public_receipt.on_chain_memo === decodedMemo ? demoCandidate : null;
-  const receiptVerified = Boolean(demoCase?.public_receipt.tx_hash && demoCase.public_receipt.explorer_url);
+  const publicationConfigured = Boolean(demoCase?.public_receipt.tx_hash && demoCase.public_receipt.explorer_url);
+  const receiptVerified = false;
   if (demoCandidate && !demoCase) warnings.push("demo_receipt_mismatch");
-  if (demoCase && !receiptVerified) warnings.push("receipt_publication_unavailable");
-  if (!receiptVerified) warnings.push("receipt_not_verified");
+  if (demoCase && !publicationConfigured) warnings.push("receipt_publication_unavailable");
+  if (demoCase && publicationConfigured) warnings.push("receipt_network_check_required");
+  warnings.push("receipt_not_verified");
   const resource = fields.resource || "recurso no informado";
   const events = fields.events || "eventos no informados";
 
@@ -714,7 +716,8 @@ function decodeProofInputLocally(input: string): DecodeResponse {
     ok: true,
     receipt_matched: Boolean(demoCase),
     receipt_verified: receiptVerified,
-    verification_status: receiptVerified ? "verified_demo_receipt" : demoCase ? "matched_demo_receipt" : "parsed_only",
+    publication_configured: publicationConfigured,
+    verification_status: demoCase ? "matched_demo_receipt" : "parsed_only",
     publication_tx_hash: demoCase?.public_receipt.tx_hash || null,
     publication_explorer_url: demoCase?.public_receipt.explorer_url || null,
     input_format: inputFormat,
@@ -723,14 +726,12 @@ function decodeProofInputLocally(input: string): DecodeResponse {
     protocol,
     fields,
     field_explanations: Object.entries(fields).map(([key, value]) => explainProofMemoField(key, value)),
-    executive_summary: receiptVerified
-      ? `${demoCase?.title}: el memo coincide exactamente y tiene una transaccion publica configurada para ${events} eventos sobre ${resource}.`
-      : demoCase
-        ? `${demoCase.title}: el memo coincide con el recibo esperado, pero falta una transaccion publica configurada para confirmar su publicacion.`
+    executive_summary: demoCase
+      ? publicationConfigured
+        ? `${demoCase.title}: el memo coincide y la transaccion esta configurada, pero la API no esta disponible para verificar receipt y Raw input por RPC.`
+        : `${demoCase.title}: el memo coincide con el recibo esperado, pero falta una transaccion publica configurada para confirmar su publicacion.`
         : `Memo parseado: declara ${events} eventos sobre ${resource}, pero el texto por si solo no confirma que haya sido publicado on-chain.`,
-    business_meaning: receiptVerified
-      ? proofBusinessMeaning(fields)
-      : "Lectura del contenido declarado. Para convertirlo en evidencia hay que comprobar la transaccion, el Raw input y la inclusion del SHA.",
+    business_meaning: "Lectura del contenido declarado. Para convertirlo en evidencia hay que comprobar la transaccion, el Raw input y la inclusion del SHA.",
     verification_steps: [
       "Abrir la transaccion en el explorer y copiar Raw input.",
       "Pegar Raw input en el decoder de nexID.",
@@ -880,12 +881,17 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
   ]);
   const matches = result?.matches || [];
   const included = Boolean(result?.included);
-  const externallyConfirmed = Boolean(result?.externally_confirmed || result?.valid);
   const verificationState = result?.verification_state
     || (!eventHash ? "not_included" : result?.ok === false ? "unavailable" : included ? "local" : "not_included");
   const invalidInput = result?.reason === "event_hash_invalid" || result?.reason === "event_hash_required" || result?.reason === "anchor_id_invalid";
   const registryUnavailable = verificationState === "unavailable" || result?.reason === "private_anchor_registry_unavailable";
-  const resultIsDemoFixture = Boolean(result?.demo || result?.evidence_level === "testnet_fixture");
+  const resultIsDemoFixture = Boolean(result?.demo || result?.evidence_level === "testnet_fixture" || result?.evidence_level === "testnet_rpc");
+  const registryExternallyConfirmed = !resultIsDemoFixture
+    && result?.verification_state === "confirmed"
+    && result?.externally_confirmed === true;
+  const externallyConfirmed = resultIsDemoFixture
+    ? result?.network_verification?.anchor?.verified === true
+    : registryExternallyConfirmed;
   const demoCases = demoCatalog.cases || [];
   const activeDemo = result?.demo_case || demoCases.find((demoCase) =>
     demoCase.events.some((event) => event.hash.toLowerCase() === eventHash.toLowerCase()),
@@ -893,15 +899,17 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
   const demoFixture = Boolean(resultIsDemoFixture || activeDemo);
   const showcaseDemo = activeDemo || demoCases.find((demoCase) => demoCase.tx_hash && demoCase.public_receipt?.tx_hash) || demoCases[0] || null;
   const guidedDemo = activeDemo;
-  const confirmedIotaAnchors = demoCases.filter((demoCase) => Boolean(demoCase.tx_hash)).length;
-  const confirmedMemoReceipts = demoCases.filter((demoCase) => Boolean(demoCase.public_receipt?.tx_hash)).length;
-  const liveTestnetReady = confirmedIotaAnchors > 0 || Boolean(demoCatalog.testnet?.iota?.contract_address || demoCatalog.testnet?.polygon?.demo_tx_hash);
+  const confirmedIotaAnchors = demoCases.filter((demoCase) => demoCase.network_verification?.anchor?.verified === true).length;
+  const confirmedMemoReceipts = demoCases.filter((demoCase) => demoCase.network_verification?.receipt?.verified === true).length;
+  const liveTestnetReady = confirmedIotaAnchors > 0
+    || demoCatalog.testnet?.iota?.rpc_verified === true
+    || Boolean(demoCatalog.testnet?.polygon?.demo_tx_hash);
   const activeReceiptMemoHex = guidedDemo ? utf8ToHex(guidedDemo.public_receipt.on_chain_memo) : "";
   const decoderInput = requestedDecoderInput;
   const decodedProof = decoderInput ? await decodeProofInput(decoderInput) : null;
   const decoderWarnings = decodedProof?.warnings?.filter(Boolean) || [];
   const decoderReceiptMatched = Boolean(decodedProof?.receipt_matched);
-  const decoderReceiptVerified = Boolean(decodedProof?.receipt_verified);
+  const decoderReceiptVerified = decodedProof?.network_verification?.verified === true;
   const decoderNeedsReview = !decoderReceiptVerified || decoderWarnings.length > 0;
   const liveProofMetrics = [
     {
@@ -2064,8 +2072,8 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                   Esta capa prueba que un evento existia sin mostrar el evento. Es ideal para DPP, QA, cadena de custodia y auditoria externa.
                 </p>
               </div>
-              <span className={`rounded-full border px-3 py-1 text-[0.68rem] font-black uppercase tracking-[0.1em] ${demoCatalog.testnet?.iota?.contract_configured ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-amber-300 bg-amber-50 text-amber-800"}`}>
-                {demoCatalog.testnet?.iota?.contract_configured ? "deployed" : "testnet-ready"}
+              <span className={`rounded-full border px-3 py-1 text-[0.68rem] font-black uppercase tracking-[0.1em] ${demoCatalog.testnet?.iota?.rpc_verified ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-amber-300 bg-amber-50 text-amber-800"}`}>
+                {demoCatalog.testnet?.iota?.rpc_verified ? "RPC verified" : demoCatalog.testnet?.iota?.contract_configured ? "deployed / checking" : "testnet-ready"}
               </span>
             </div>
             <dl className="mt-5 grid gap-3">
@@ -2080,7 +2088,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
               </div>
               {demoCatalog.testnet?.iota?.demo_tx_hash ? (
                 <div className="proof-flat rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                  <dt className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-emerald-800">Anchor demo real</dt>
+                  <dt className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-emerald-800">{demoCatalog.testnet?.iota?.rpc_verified ? "Anchor RPC confirmado" : "Anchor configurado"}</dt>
                   <dd className="mt-2 break-all font-mono text-xs font-bold text-emerald-950">{demoCatalog.testnet.iota.demo_tx_hash}</dd>
                   <div className="mt-3">{explorerLink(demoCatalog.testnet.iota.demo_tx_explorer_url, "Abrir anchor tx")}</div>
                 </div>
@@ -2126,14 +2134,14 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                 </div>
                 {demoCase.tx_hash ? (
                   <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3">
-                    <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-emerald-800">IOTA anchor confirmado</p>
+                    <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-emerald-800">{demoCase.network_verification?.anchor?.verified ? "IOTA anchor RPC confirmado" : "IOTA anchor configurado"}</p>
                     <p className="mt-2 break-all font-mono text-[0.72rem] font-bold text-emerald-950">{shortHash(demoCase.tx_hash)}</p>
                     <div className="mt-2">{explorerLink(demoCase.explorer_url, "Abrir anchor tx")}</div>
                   </div>
                 ) : null}
                 {demoCase.public_receipt?.tx_hash ? (
                   <div className="mt-3 rounded-2xl border border-cyan-200 bg-cyan-50 p-3">
-                    <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan-800">Memo publico en IOTA</p>
+                    <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan-800">{demoCase.network_verification?.receipt?.verified ? "Memo RPC confirmado en IOTA" : "Memo configurado en IOTA"}</p>
                     <p className="mt-2 text-xs leading-5 text-slate-700">{demoCase.public_receipt.business_claim}</p>
                     <div className="mt-2">{explorerLink(demoCase.public_receipt.explorer_url, "Abrir memo tx")}</div>
                   </div>
@@ -2294,7 +2302,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                       <p className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-emerald-800">Recibo publico on-chain</p>
                       <h4 className="mt-2 text-lg font-black leading-tight text-emerald-950">{guidedDemo.public_receipt.title}</h4>
                     </div>
-                    {guidedDemo.public_receipt.tx_hash ? (
+                    {guidedDemo.network_verification?.receipt?.verified === true ? (
                       <span className="proof-receipt-status-chip rounded-full px-3 py-1.5 text-[0.68rem] font-black uppercase tracking-[0.1em]">
                         <BadgeCheck className="h-3.5 w-3.5 shrink-0" />
                         Memo en Raw input confirmado
@@ -2634,15 +2642,21 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                   </Link>
                 ) : null}
 
-                {decodedProof?.publication_explorer_url ? (
+                {decoderReceiptVerified && decodedProof?.publication_explorer_url ? (
                   <a href={decodedProof.publication_explorer_url} className="proof-receipt-action-link text-xs font-black uppercase tracking-[0.12em]" target="_blank" rel="noreferrer">
                     Abrir tx verificada del recibo <ArrowRight className="h-4 w-4" />
                   </a>
                 ) : null}
 
+                {!decoderReceiptVerified && decodedProof?.publication_explorer_url ? (
+                  <a href={decodedProof.publication_explorer_url} className="proof-receipt-action-link text-xs font-black uppercase tracking-[0.12em]" target="_blank" rel="noreferrer">
+                    Inspeccionar tx configurada <ArrowRight className="h-4 w-4" />
+                  </a>
+                ) : null}
+
                 {guidedDemo?.public_receipt.explorer_url ? (
                   <a href={guidedDemo.public_receipt.explorer_url} className="proof-receipt-action-link text-xs font-black uppercase tracking-[0.12em]" target="_blank" rel="noreferrer">
-                    Abrir tx con memo real <ArrowRight className="h-4 w-4" />
+                    {guidedDemo.network_verification?.receipt?.verified === true ? "Abrir tx con memo real, RPC confirmado" : "Inspeccionar memo configurado"} <ArrowRight className="h-4 w-4" />
                   </a>
                 ) : null}
                 <div className="grid gap-2 sm:grid-cols-2">

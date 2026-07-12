@@ -144,6 +144,51 @@ test("proof verifier keeps the enterprise decoder readable and non-trapped", asy
   assert.doesNotMatch(page, /Pendiente de deploy/);
 });
 
+test("IOTA proof verdict requires anchor RPC verification", async () => {
+  const page = await readFile(new URL("../src/app/proof/verify/page.tsx", import.meta.url), "utf8");
+  const declaration = page.match(/const externallyConfirmed = ([\s\S]*?);/);
+  assert.ok(declaration, "missing externallyConfirmed declaration");
+  const externallyConfirmedExpression = declaration[1];
+  assert.match(externallyConfirmedExpression, /result\?\.network_verification\?\.anchor\?\.verified\s*===\s*true/);
+  assert.doesNotMatch(externallyConfirmedExpression, /result\?\.(?:valid|externally_confirmed)/);
+});
+
+test("IOTA decoder verdict requires receipt RPC verification", async () => {
+  const page = await readFile(new URL("../src/app/proof/verify/page.tsx", import.meta.url), "utf8");
+  const declaration = page.match(/const decoderReceiptVerified = ([\s\S]*?);/);
+  assert.ok(declaration, "missing decoderReceiptVerified declaration");
+  const decoderReceiptVerifiedExpression = declaration[1];
+  assert.match(decoderReceiptVerifiedExpression, /decodedProof\?\.network_verification\?\.verified\s*===\s*true/);
+  assert.doesNotMatch(decoderReceiptVerifiedExpression, /decodedProof\?\.receipt_verified/);
+});
+
+test("IOTA receipt confirmation badge requires receipt RPC verification", async () => {
+  const page = await readFile(new URL("../src/app/proof/verify/page.tsx", import.meta.url), "utf8");
+  const guidedReceiptChip = page.match(
+    /\{([^{}\n]+)\?\s*\(\s*<span className="proof-receipt-status-chip[\s\S]{0,400}?Memo en Raw input confirmado[\s\S]{0,200}?<\/span>/,
+  );
+  assert.ok(guidedReceiptChip, "guided receipt confirmation badge must exist");
+  assert.match(guidedReceiptChip[1], /guidedDemo\.network_verification\?\.receipt\?\.verified\s*===\s*true/);
+  assert.doesNotMatch(guidedReceiptChip[1], /guidedDemo\.public_receipt\.tx_hash/);
+});
+
+test("IOTA verified receipt CTA requires receipt RPC verification", async () => {
+  const page = await readFile(new URL("../src/app/proof/verify/page.tsx", import.meta.url), "utf8");
+  const verifiedReceiptLink = page.match(
+    /\{([^{}\n]+)\?\s*\(\s*<a href=\{decodedProof\.publication_explorer_url\}[\s\S]{0,400}?Abrir tx verificada del recibo/,
+  );
+  assert.ok(verifiedReceiptLink, "verified receipt CTA must exist");
+  assert.match(verifiedReceiptLink[1], /(?:decoderReceiptVerified|decodedProof\?\.network_verification\?\.verified\s*===\s*true)/);
+  assert.match(verifiedReceiptLink[1], /decodedProof\?\.publication_explorer_url/);
+});
+
+test("IOTA overview confirmation labels use RPC fields", async () => {
+  const page = await readFile(new URL("../src/app/proof/verify/page.tsx", import.meta.url), "utf8");
+  assert.match(page, /demoCatalog\.testnet\?\.iota\?\.rpc_verified\s*\?\s*"RPC verified"/);
+  assert.match(page, /demoCase\.network_verification\?\.anchor\?\.verified\s*\?\s*"IOTA anchor RPC confirmado"/);
+  assert.match(page, /demoCase\.network_verification\?\.receipt\?\.verified\s*\?\s*"Memo RPC confirmado en IOTA"/);
+});
+
 test("executive IOTA explorer actions keep receipt data separate from the anchor call", async () => {
   const page = await readFile(new URL("../src/app/proof/verify/page.tsx", import.meta.url), "utf8");
 

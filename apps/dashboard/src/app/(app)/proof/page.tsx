@@ -76,6 +76,7 @@ type PublicProofReceipt = {
   tx_hash?: string | null;
   explorer_url?: string | null;
   certificate_url?: string | null;
+  status?: string | null;
 };
 
 type PublicProofCase = {
@@ -92,6 +93,10 @@ type PublicProofCase = {
   tx_hash?: string | null;
   explorer_url?: string | null;
   certificate_url?: string | null;
+  network_verification?: {
+    anchor?: { verified?: boolean; checked?: boolean; confirmations?: number | null; reason?: string | null } | null;
+    receipt?: { verified?: boolean; checked?: boolean; confirmations?: number | null; memo_matches?: boolean; reason?: string | null } | null;
+  } | null;
   public_receipt?: PublicProofReceipt | null;
 };
 
@@ -101,6 +106,9 @@ type IotaTestnetReference = {
   contract_explorer_url?: string | null;
   demo_tx_hash?: string | null;
   demo_tx_explorer_url?: string | null;
+  rpc_verified?: boolean;
+  verified_anchor_count?: number | null;
+  verified_receipt_count?: number | null;
 };
 
 type PolygonTestnetReference = {
@@ -323,9 +331,11 @@ function isOwnershipTransaction(row: TokenizationRequest) {
 
 function isRealIotaReference(demoCase: PublicProofCase) {
   if (normalize(demoCase.provider) !== "iota") return false;
-  const anchorTx = Boolean(readText(demoCase.tx_hash) && safeHttpUrl(demoCase.explorer_url));
-  const receiptTx = Boolean(readText(demoCase.public_receipt?.tx_hash) && safeHttpUrl(demoCase.public_receipt?.explorer_url));
-  return anchorTx || receiptTx || Boolean(safeHttpUrl(demoCase.certificate_url || demoCase.public_receipt?.certificate_url));
+  const anchorTx = demoCase.network_verification?.anchor?.verified === true
+    && Boolean(readText(demoCase.tx_hash) && safeHttpUrl(demoCase.explorer_url));
+  const receiptTx = demoCase.network_verification?.receipt?.verified === true
+    && Boolean(readText(demoCase.public_receipt?.tx_hash) && safeHttpUrl(demoCase.public_receipt?.explorer_url));
+  return anchorTx || receiptTx;
 }
 
 function resourceLabel(resourceType: unknown, resourceId: unknown) {
@@ -641,7 +651,7 @@ export default async function ProofPage() {
               <article data-network="iota">
                 <div><Network aria-hidden="true" /><span>IOTA testnet</span></div>
                 <strong>{readText(iotaReference?.network) || "Red no informada"}</strong>
-                <p>{iotaDemoTxHref ? "Transaccion publica disponible" : "Transaccion de referencia no disponible"}</p>
+                <p>{iotaReference?.rpc_verified ? "Anchors y memos confirmados por RPC" : iotaDemoTxHref ? "Transaccion configurada, verificacion pendiente" : "Transaccion de referencia no disponible"}</p>
                 <div className={styles.rowActions}>
                   {iotaContractHref ? <a href={iotaContractHref} target="_blank" rel="noreferrer">Contrato <ArrowUpRight aria-hidden="true" /></a> : null}
                   {iotaDemoTxHref ? <a href={iotaDemoTxHref} target="_blank" rel="noreferrer">Transaccion <ArrowUpRight aria-hidden="true" /></a> : null}
@@ -666,7 +676,7 @@ export default async function ProofPage() {
             <div className={styles.collectionHeader}>
               <div>
                 <h3>Casos IOTA con evidencia externa</h3>
-                <p>Solo se muestran casos con transaccion, explorer o certificado devuelto por la API.</p>
+                <p>Solo se muestran casos cuyo receipt y contenido fueron confirmados contra IOTA RPC.</p>
               </div>
               <span>{realIotaCases.length} referencias</span>
             </div>
@@ -691,7 +701,7 @@ export default async function ProofPage() {
                           <span>{readText(demoCase.vertical) || "Caso de referencia"}</span>
                           <h3>{readText(demoCase.title) || resource.id}</h3>
                         </div>
-                        <span>{readText(demoCase.network) || "IOTA testnet"}</span>
+                        <span>{demoCase.network_verification?.anchor?.verified ? "RPC confirmado" : readText(demoCase.network) || "IOTA testnet"}</span>
                       </div>
                       <dl>
                         <div><dt>Recurso</dt><dd>{resource.type} / {resource.id}</dd></div>

@@ -6,35 +6,39 @@ import { sql } from "../../../../lib/db";
 import { ensureSupplierOpsSchema } from "../../../../lib/supplier-ops-schema";
 import { isSha256Hash, verifyHashInAnchor } from "../../../../lib/proof-layer";
 import { findPublicProofDemoCaseByHash } from "../../../../lib/public-proof-demos";
+import {
+  iotaAnchorTenantHash,
+  verifyIotaAnchorPublication,
+  verifyIotaMemoPublication,
+} from "../../../../lib/iota-evm-proof";
+import {
+  publicProofIotaAnchorTx,
+  publicProofIotaExplorerUrl,
+  publicProofIotaReceiptTx,
+} from "../../../../lib/public-proof-runtime";
 
 function readText(value: unknown) {
   return String(value || "").trim();
 }
 
-function cleanEnv(value: unknown) {
-  const text = String(value || "").trim();
-  if (!text || text === "\"\"" || text === "''") return "";
-  return text.replace(/^['"]|['"]$/g, "").trim();
-}
+type ProofMatch = {
+  anchor_id: string;
+  provider: string;
+  network: string;
+  merkle_root: string;
+  tx_hash: string | null;
+  explorer_url: string | null;
+  status: string;
+  anchored_at: unknown;
+  demo_fixture: boolean;
+  network_verified?: boolean;
+  network_verification?: Record<string, unknown> | null;
+};
 
-function envKeySuffix(value: string) {
-  return value.trim().toUpperCase().replace(/[^A-Z0-9]+/g, "_").replace(/^_+|_+$/g, "");
-}
-
-function demoIotaTxFor(caseId: string) {
-  return cleanEnv(process.env[`PUBLIC_PROOF_DEMO_IOTA_TX_HASH_${envKeySuffix(caseId)}`])
-    || cleanEnv(process.env.PUBLIC_PROOF_DEMO_IOTA_TX_HASH)
-    || cleanEnv(process.env.IOTA_DEMO_TX_HASH);
-}
-
-function demoReceiptTxFor(caseId: string) {
-  return cleanEnv(process.env[`PUBLIC_PROOF_RECEIPT_IOTA_TX_HASH_${envKeySuffix(caseId)}`])
-    || cleanEnv(process.env.PUBLIC_PROOF_RECEIPT_IOTA_TX_HASH);
-}
-
-function txExplorerUrl(baseUrl: string, txHash: string) {
-  if (!baseUrl || !txHash) return null;
-  return `${baseUrl.replace(/\/$/, "")}/tx/${txHash}`;
+function publicNetworkProof(value: Record<string, unknown> | null) {
+  if (!value) return null;
+  const { input_hex: _inputHex, decoded_memo: _decodedMemo, ...proof } = value;
+  return proof;
 }
 
 async function verifyPublicProof(eventHash: string, anchorId = "") {
@@ -45,14 +49,29 @@ async function verifyPublicProof(eventHash: string, anchorId = "") {
   }
 
   const demoCase = findPublicProofDemoCaseByHash(eventHash);
-  const demoTxHash = demoCase ? demoIotaTxFor(demoCase.id) : "";
-  const receiptTxHash = demoCase ? demoReceiptTxFor(demoCase.id) : "";
-  const iotaExplorerBaseUrl = cleanEnv(process.env.IOTA_EXPLORER_BASE_URL) || "https://explorer.evm.testnet.iota.cafe";
-  const demoExplorerUrl = demoTxHash
-    ? txExplorerUrl(iotaExplorerBaseUrl, demoTxHash)
-    : null;
-  const receiptExplorerUrl = receiptTxHash ? txExplorerUrl(iotaExplorerBaseUrl, receiptTxHash) : null;
-  const demoMatches = demoCase && (!anchorId || anchorId.toLowerCase() === demoCase.anchor_id.toLowerCase())
+  const demoTxHash = demoCase ? publicProofIotaAnchorTx(demoCase.id) : "";
+  const receiptTxHash = demoCase ? publicProofIotaReceiptTx(demoCase.id) : "";
+  const demoExplorerUrl = publicProofIotaExplorerUrl(demoTxHash);
+  const receiptExplorerUrl = publicProofIotaExplorerUrl(receiptTxHash);
+  const [demoAnchorVerification, demoReceiptVerification] = demoCase
+    ? await Promise.all([
+        demoTxHash
+          ? verifyIotaAnchorPublication({
+              txHash: demoTxHash,
+              merkleRoot: demoCase.merkle_root,
+              tenantIdHash: iotaAnchorTenantHash("public-demo"),
+              resourceType: demoCase.resource_type,
+              resourceId: demoCase.resource_id,
+              eventCount: demoCase.events.length,
+            })
+          : Promise.resolve(null),
+        receiptTxHash
+          ? verifyIotaMemoPublication(receiptTxHash, demoCase.public_receipt.on_chain_memo)
+          : Promise.resolve(null),
+      ])
+    : [null, null];
+  const demoNetworkVerified = Boolean(demoAnchorVerification?.verified && demoReceiptVerification?.verified);
+  const demoMatches: ProofMatch[] = demoCase && (!anchorId || anchorId.toLowerCase() === demoCase.anchor_id.toLowerCase())
     ? [{
         anchor_id: demoCase.anchor_id,
         provider: demoCase.provider,
@@ -60,11 +79,14 @@ async function verifyPublicProof(eventHash: string, anchorId = "") {
         merkle_root: demoCase.merkle_root,
         tx_hash: demoTxHash || demoCase.tx_hash,
         explorer_url: demoExplorerUrl || demoCase.explorer_url,
-        status: demoTxHash ? "confirmed" : demoCase.status,
+        status: demoNetworkVerified ? "confirmed" : demoTxHash ? "configured" : demoCase.status,
         anchored_at: demoCase.anchored_at,
+        demo_fixture: true,
+        network_verified: demoNetworkVerified,
+        network_verification: publicNetworkProof(demoAnchorVerification),
       }]
     : [];
-  let matches: typeof demoMatches = [];
+  let matches: ProofMatch[] = [];
   let registryWarning: string | null = null;
 
   try {
@@ -94,6 +116,7 @@ async function verifyPublicProof(eventHash: string, anchorId = "") {
         explorer_url: anchor.explorer_url || null,
         status: anchor.status,
         anchored_at: anchor.anchored_at || anchor.created_at,
+        demo_fixture: false,
       }));
   } catch {
     registryWarning = "private_anchor_registry_unavailable";
@@ -115,7 +138,10 @@ async function verifyPublicProof(eventHash: string, anchorId = "") {
     new Map([...matches, ...demoMatches].map((match) => [String(match.anchor_id), match])).values(),
   );
   const included = effectiveMatches.length > 0;
-  const externallyConfirmed = effectiveMatches.some((match) => String(match.status || "").toLowerCase() === "confirmed" && Boolean(match.tx_hash));
+  const externallyConfirmed = effectiveMatches.some((match) => (
+    match.network_verified === true
+    || (!match.demo_fixture && String(match.status || "").toLowerCase() === "confirmed" && Boolean(match.tx_hash))
+  ));
   const statuses = new Set(effectiveMatches.map((match) => String(match.status || "").toLowerCase()));
   const verificationState = !included
     ? "not_included"
@@ -128,7 +154,7 @@ async function verifyPublicProof(eventHash: string, anchorId = "") {
           : "local";
   const usesDemoFixture = Boolean(demoCase && included);
   const evidenceLevel = usesDemoFixture
-    ? "testnet_fixture"
+    ? demoNetworkVerified ? "testnet_rpc" : "testnet_fixture"
     : externallyConfirmed
       ? "external_anchor"
       : included
@@ -140,12 +166,17 @@ async function verifyPublicProof(eventHash: string, anchorId = "") {
         ...demoCase,
         tx_hash: demoTxHash || demoCase.tx_hash,
         explorer_url: demoExplorerUrl || demoCase.explorer_url,
-        status: demoTxHash ? "confirmed" : demoCase.status,
+        status: demoNetworkVerified ? "confirmed" : demoTxHash ? "configured" : demoCase.status,
         network: demoTxHash ? "iota-evm-testnet" : demoCase.network,
+        network_verification: {
+          anchor: publicNetworkProof(demoAnchorVerification),
+          receipt: publicNetworkProof(demoReceiptVerification),
+        },
         public_receipt: {
           ...demoCase.public_receipt,
           tx_hash: receiptTxHash || null,
           explorer_url: receiptExplorerUrl,
+          status: demoReceiptVerification?.verified ? "confirmed" : receiptTxHash ? "configured" : "unavailable",
         },
       }
     : null;
@@ -165,6 +196,10 @@ async function verifyPublicProof(eventHash: string, anchorId = "") {
     explorer_url: firstMatch?.explorer_url || null,
     matches: effectiveMatches,
     demo_case: effectiveDemoCase,
+    network_verification: usesDemoFixture ? {
+      anchor: publicNetworkProof(demoAnchorVerification),
+      receipt: publicNetworkProof(demoReceiptVerification),
+    } : null,
     registry_warning: registryWarning,
     privacy: "Verification is hash-only; no raw product, customer or business data is exposed.",
   });

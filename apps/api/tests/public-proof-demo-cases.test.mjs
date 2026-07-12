@@ -57,7 +57,7 @@ test("public proof source keeps demo lookup helpers wired for the verify route",
   assert.match(source, /hashPublicText\(onChainMemo\)/);
 });
 
-test("proof decoder distinguishes a verified fixture receipt from parsed-only text", () => {
+test("proof decoder distinguishes an exact demo receipt match from parsed-only text", () => {
   const demoCase = PUBLIC_PROOF_DEMO_CASES[0];
   const envKey = "PUBLIC_PROOF_RECEIPT_IOTA_TX_HASH_SECURE_DELIVERY";
   const previousTx = process.env[envKey];
@@ -74,11 +74,13 @@ test("proof decoder distinguishes a verified fixture receipt from parsed-only te
     const exact = decodePublicProofInput(demoCase.public_receipt.on_chain_memo);
     assert.equal(exact.ok, true);
     assert.equal(exact.receipt_matched, true);
-    assert.equal(exact.receipt_verified, true);
-    assert.equal(exact.verification_status, "verified_demo_receipt");
+    assert.equal(exact.receipt_verified, false);
+    assert.equal(exact.publication_configured, true);
+    assert.equal(exact.verification_status, "matched_demo_receipt");
     assert.equal(exact.matching_demo_case?.id, demoCase.id);
     assert.match(exact.publication_explorer_url || "", /\/tx\/0x/);
-    assert.equal(exact.warnings?.includes("receipt_not_verified"), false);
+    assert.equal(exact.warnings?.includes("receipt_network_check_required"), true);
+    assert.equal(exact.warnings?.includes("receipt_not_verified"), true);
 
     const forgedMemo = demoCase.public_receipt.on_chain_memo.replace("events=3", "events=999");
     const forged = decodePublicProofInput(forgedMemo);
@@ -103,6 +105,8 @@ test("proof verifier queries indexed event hashes and exposes honest trust state
   assert.match(verifyRouteSource, /valid:\s*externallyConfirmed/);
   assert.match(verifyRouteSource, /evidence_level:\s*evidenceLevel/);
   assert.match(verifyRouteSource, /testnet_fixture/);
+  assert.match(verifyRouteSource, /testnet_rpc/);
+  assert.match(verifyRouteSource, /network_verified:\s*demoNetworkVerified/);
   assert.match(schemaSource, /idx_evidence_anchors_event_hashes_gin/);
 });
 
@@ -110,10 +114,13 @@ test("public anchor route rejects malformed ids before querying the database", (
   assert.match(anchorRouteSource, /anchor_id_invalid/);
   assert.match(anchorRouteSource, /anchor_registry_unavailable/);
   assert.match(anchorRouteSource, /anchor_id_invalid[\s\S]*await ensureSupplierOpsSchema/);
+  assert.match(anchorRouteSource, /findPublicProofDemoCaseByAnchorId/);
+  assert.match(anchorRouteSource, /evidence_level: networkVerified \? "testnet_rpc" : "testnet_fixture"/);
 });
 
 test("decoder implementation requires an exact receipt match", () => {
   assert.match(decoderSource, /public_receipt\.on_chain_memo === decodedMemo/);
-  assert.match(decoderSource, /verification_status:\s*receiptVerified \? "verified_demo_receipt" : demoCase \? "matched_demo_receipt" : "parsed_only"/);
-  assert.match(decoderSource, /receipt_publication_unavailable/);
+  assert.match(decoderSource, /publication_configured: publicationConfigured/);
+  assert.match(decoderSource, /verification_status: demoCase \? "matched_demo_receipt" : "parsed_only"/);
+  assert.match(decoderSource, /receipt_network_check_required/);
 });
