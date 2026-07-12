@@ -132,6 +132,7 @@ export function HeroThreeStage({ active, product, className, state = "idle", onA
   const onReadyRef = useRef(onReady);
   const onActionRef = useRef(onAction);
   const stateRef = useRef<ProductInteractionState>(state);
+  const requestRenderRef = useRef<(() => void) | null>(null);
   const shortProduct = product.length > 24 ? `${product.slice(0, 22)}...` : product;
   const tone = tones[active];
 
@@ -145,6 +146,7 @@ export function HeroThreeStage({ active, product, className, state = "idle", onA
 
   useEffect(() => {
     stateRef.current = state;
+    requestRenderRef.current?.();
   }, [state]);
 
   useEffect(() => {
@@ -184,8 +186,9 @@ export function HeroThreeStage({ active, product, className, state = "idle", onA
     const cinematicRig = createCinematicRig(toneForScene, active);
     scene.add(cinematicRig);
 
-    let frameId = 0;
+    let frameId: number | null = null;
     let readySent = false;
+    let disposed = false;
     let dragging = false;
     let lastX = 0;
     let lastY = 0;
@@ -201,7 +204,13 @@ export function HeroThreeStage({ active, product, className, state = "idle", onA
     let localState: ProductInteractionState = stateRef.current;
     let lastExternalState: ProductInteractionState = stateRef.current;
     let manualHoldUntil = 0;
-    const clock = new THREE.Clock();
+    let animationElapsed = 0;
+    let lastFrameTime: number | null = null;
+    let documentVisible = !document.hidden;
+    let inViewport = true;
+    const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let reducedMotion = reducedMotionQuery.matches;
+    let renderStableFrame: (() => void) | null = null;
 
     const resize = () => {
       const width = Math.max(1, mount.clientWidth);
@@ -209,6 +218,7 @@ export function HeroThreeStage({ active, product, className, state = "idle", onA
       renderer.setSize(width, height, false);
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
+      if (documentVisible && inViewport) renderStableFrame?.();
     };
 
     const resizeObserver = new ResizeObserver(resize);
@@ -236,6 +246,7 @@ export function HeroThreeStage({ active, product, className, state = "idle", onA
       manualHoldUntil = performance.now() + 2800;
       targetRotationY += dx * 0.014;
       targetRotationX = clamp(targetRotationX + dy * 0.0045, -0.35, 0.24);
+      requestRenderRef.current?.();
     };
 
     const handlePointerUp = (event: PointerEvent) => {
@@ -247,6 +258,7 @@ export function HeroThreeStage({ active, product, className, state = "idle", onA
         stateRef.current = localState;
         manualHoldUntil = performance.now() + 2600;
         onActionRef.current?.(localState);
+        requestRenderRef.current?.();
       }
     };
 
@@ -254,6 +266,7 @@ export function HeroThreeStage({ active, product, className, state = "idle", onA
       event.preventDefault();
       targetZoom = clamp(targetZoom + (event.deltaY > 0 ? -0.08 : 0.08), 0.62, 1.2);
       manualHoldUntil = performance.now() + 2200;
+      requestRenderRef.current?.();
     };
 
     mount.addEventListener("pointerdown", handlePointerDown);
@@ -262,8 +275,9 @@ export function HeroThreeStage({ active, product, className, state = "idle", onA
     window.addEventListener("pointerup", handlePointerUp);
     window.addEventListener("pointercancel", handlePointerUp);
 
-    const render = () => {
-      const elapsed = clock.getElapsedTime();
+    const shouldAnimate = () => !reducedMotion && documentVisible && inViewport;
+
+    const renderScene = (elapsed: number, animate: boolean) => {
       const externalState = stateRef.current;
       if (externalState !== lastExternalState) {
         localState = externalState;
@@ -271,18 +285,22 @@ export function HeroThreeStage({ active, product, className, state = "idle", onA
       }
       const targetOpen = externalState === "opened" || localState === "opened" ? 1 : 0;
       const targetBlocked = externalState === "blocked" || localState === "blocked" ? 1 : 0;
-      openProgress += (targetOpen - openProgress) * 0.09;
-      blockedProgress += (targetBlocked - blockedProgress) * 0.12;
-      zoom += (targetZoom - zoom) * 0.08;
-      if (!dragging && performance.now() > manualHoldUntil) {
+      openProgress = animate ? openProgress + (targetOpen - openProgress) * 0.09 : targetOpen;
+      blockedProgress = animate ? blockedProgress + (targetBlocked - blockedProgress) * 0.12 : targetBlocked;
+      zoom = animate ? zoom + (targetZoom - zoom) * 0.08 : targetZoom;
+      if (animate && !dragging && performance.now() > manualHoldUntil) {
         const idleRotationY = Math.sin(elapsed * 0.42) * 0.16;
         const idleRotationX = -0.04 + Math.sin(elapsed * 0.38) * 0.028;
         targetRotationY += (idleRotationY - targetRotationY) * 0.018;
         targetRotationX += (idleRotationX - targetRotationX) * 0.03;
       }
-      productGroup.rotation.y += (targetRotationY - productGroup.rotation.y) * 0.13;
-      productGroup.rotation.x += (targetRotationX - productGroup.rotation.x) * 0.1;
-      productGroup.position.y = Math.sin(elapsed * 0.82) * 0.045;
+      productGroup.rotation.y = animate
+        ? productGroup.rotation.y + (targetRotationY - productGroup.rotation.y) * 0.13
+        : targetRotationY;
+      productGroup.rotation.x = animate
+        ? productGroup.rotation.x + (targetRotationX - productGroup.rotation.x) * 0.1
+        : targetRotationX;
+      productGroup.position.y = animate ? Math.sin(elapsed * 0.82) * 0.045 : 0;
       productGroup.scale.setScalar(baseProductScale * zoom);
       applyProductInteraction(productGroup, active, openProgress, blockedProgress, elapsed);
       animateCinematicRig(cinematicRig, elapsed, openProgress, blockedProgress);
@@ -294,12 +312,84 @@ export function HeroThreeStage({ active, product, className, state = "idle", onA
         readySent = true;
         onReadyRef.current?.();
       }
-      frameId = window.requestAnimationFrame(render);
     };
-    render();
+
+    renderStableFrame = () => renderScene(animationElapsed, false);
+
+    const cancelAnimationLoop = () => {
+      if (frameId !== null) window.cancelAnimationFrame(frameId);
+      frameId = null;
+      lastFrameTime = null;
+    };
+
+    const animateFrame = (time: number) => {
+      frameId = null;
+      if (disposed || !shouldAnimate()) return;
+
+      if (lastFrameTime !== null) {
+        const delta = Math.min(Math.max((time - lastFrameTime) / 1000, 0), 0.05);
+        animationElapsed += delta;
+      }
+      lastFrameTime = time;
+      renderScene(animationElapsed, true);
+      if (shouldAnimate()) frameId = window.requestAnimationFrame(animateFrame);
+    };
+
+    const startAnimationLoop = () => {
+      if (disposed || frameId !== null || !shouldAnimate()) return;
+      lastFrameTime = null;
+      frameId = window.requestAnimationFrame(animateFrame);
+    };
+
+    const syncPlayback = () => {
+      if (disposed) return;
+      if (!shouldAnimate()) {
+        cancelAnimationLoop();
+        if (documentVisible && inViewport) renderStableFrame?.();
+        return;
+      }
+
+      renderStableFrame?.();
+      startAnimationLoop();
+    };
+
+    requestRenderRef.current = () => {
+      if (disposed || !documentVisible || !inViewport) return;
+      if (reducedMotion) renderStableFrame?.();
+      else startAnimationLoop();
+    };
+
+    const handleVisibilityChange = () => {
+      documentVisible = !document.hidden;
+      syncPlayback();
+    };
+
+    const handleReducedMotionChange = (event: MediaQueryListEvent) => {
+      reducedMotion = event.matches;
+      syncPlayback();
+    };
+
+    const intersectionObserver = typeof IntersectionObserver === "undefined"
+      ? null
+      : new IntersectionObserver(([entry]) => {
+          inViewport = Boolean(entry?.isIntersecting && entry.intersectionRatio > 0);
+          syncPlayback();
+        }, { threshold: 0 });
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    reducedMotionQuery.addEventListener("change", handleReducedMotionChange);
+    intersectionObserver?.observe(mount);
+
+    renderStableFrame();
+    startAnimationLoop();
 
     return () => {
-      window.cancelAnimationFrame(frameId);
+      disposed = true;
+      cancelAnimationLoop();
+      requestRenderRef.current = null;
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      reducedMotionQuery.removeEventListener("change", handleReducedMotionChange);
+      intersectionObserver?.disconnect();
       resizeObserver.disconnect();
       mount.removeEventListener("pointerdown", handlePointerDown);
       mount.removeEventListener("pointermove", handlePointerMove);
