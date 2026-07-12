@@ -2032,6 +2032,57 @@ const heroRealAssets: Record<Vertical, {
   },
 };
 
+type HeroTheme = "dark" | "light";
+
+function resolveDocumentTheme(fallback: HeroTheme): HeroTheme {
+  if (typeof document === "undefined") return fallback;
+  const root = document.documentElement;
+  return root.classList.contains("theme-light") || root.getAttribute("data-theme") === "light" ? "light" : "dark";
+}
+
+function useHeroTheme(initialTheme: HeroTheme) {
+  const [theme, setTheme] = useState<HeroTheme>(initialTheme);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const syncTheme = () => setTheme(resolveDocumentTheme(initialTheme));
+    syncTheme();
+
+    const observer = new MutationObserver(syncTheme);
+    observer.observe(root, { attributes: true, attributeFilter: ["class", "data-theme"] });
+    return () => observer.disconnect();
+  }, [initialTheme]);
+
+  return theme;
+}
+
+function HeroThemeImage({
+  darkSrc,
+  lightSrc,
+  alt,
+  className,
+  theme,
+  priority = false,
+}: {
+  darkSrc: string;
+  lightSrc: string;
+  alt: string;
+  className: string;
+  theme: HeroTheme;
+  priority?: boolean;
+}) {
+  return (
+    <img
+      className={`${className} nexid-premium-image--${theme}`}
+      src={theme === "light" ? lightSrc : darkSrc}
+      alt={alt}
+      loading={priority ? "eager" : "lazy"}
+      fetchPriority={priority ? "high" : undefined}
+      decoding="async"
+    />
+  );
+}
+
 function HeroPrimeProduct({ active, product }: { active: Vertical; product: string }) {
   const spec = heroPrimeProducts[active];
   const uid = `hero-prime-${active}`;
@@ -2274,7 +2325,7 @@ function HeroPassportPhone({
   return (
     <div className={`hero-passport-phone hero-passport-phone--${active}`} aria-hidden="true">
       <div className="hero-passport-thumb">
-        {asset ? <img src={asset.imageUrl} alt="" loading="eager" /> : <HeroProductVisual active={active} product={data.product} />}
+        {asset ? <img src={asset.imageUrl} alt="" loading="lazy" /> : <HeroProductVisual active={active} product={data.product} />}
       </div>
       <div className="hero-passport-body">
         <span>{txt.phoneLabel}</span>
@@ -2321,7 +2372,7 @@ function HeroProductShowcase({
       <span className="hero-identity-card__eyebrow">{stageCopy.identityTitle}</span>
       <div className="hero-identity-card__media">
         {asset ? (
-          <img className="hero-real-asset" src={asset.imageUrl} alt={asset.alt} loading="eager" />
+          <img className="hero-real-asset" src={asset.imageUrl} alt={asset.alt} loading="lazy" />
         ) : (
           <HeroProductVisual active={active} product={data.product} />
         )}
@@ -2447,12 +2498,14 @@ function EnterpriseHeroProductCard({
   txt,
   detailCopy,
   stageCopy,
+  theme,
 }: {
   active: Vertical;
   data: Scene;
   txt: Pick<(typeof labels)["es-AR"], "realAsset" | "renderFallback" | "labels">;
   detailCopy: (typeof productModalCopy)["es-AR"];
   stageCopy: (typeof heroStageCopy)["es-AR"];
+  theme: HeroTheme;
 }) {
   const asset = heroRealAssets[active];
   const recordRows = [
@@ -2467,8 +2520,14 @@ function EnterpriseHeroProductCard({
       <div className="nexid-hero-product-card__media">
         {asset ? (
           <>
-            <img className="nexid-hero-product-card__photo nexid-premium-image--dark" src={asset.imageUrl} alt={asset.alt} loading="eager" />
-            <img className="nexid-hero-product-card__photo nexid-premium-image--light" src={asset.imageLightUrl} alt={asset.alt} loading="eager" />
+            <HeroThemeImage
+              darkSrc={asset.imageUrl}
+              lightSrc={asset.imageLightUrl}
+              alt={asset.alt}
+              className="nexid-hero-product-card__photo"
+              theme={theme}
+              priority
+            />
             <div className="nexid-hero-product-card__light-render" aria-hidden="true">
               <HeroPrimeProduct active={active} product={data.product} />
             </div>
@@ -2515,6 +2574,7 @@ function EnterpriseHeroPhoneDemo({
   stageCopy,
   originLabel,
   distanceLabel,
+  theme,
 }: {
   active: Vertical;
   data: Scene;
@@ -2526,6 +2586,7 @@ function EnterpriseHeroPhoneDemo({
   stageCopy: (typeof heroStageCopy)["es-AR"];
   originLabel: string;
   distanceLabel: string;
+  theme: HeroTheme;
 }) {
   const asset = heroRealAssets[active];
   const productOrigin = `${data.origin.city}, ${data.origin.country}`;
@@ -2563,8 +2624,13 @@ function EnterpriseHeroPhoneDemo({
             <span>
               {asset ? (
                 <>
-                  <img className="nexid-hero-phone__product-photo nexid-premium-image--dark" src={asset.imageUrl} alt="" loading="lazy" />
-                  <img className="nexid-hero-phone__product-photo nexid-premium-image--light" src={asset.imageLightUrl} alt="" loading="lazy" />
+                  <HeroThemeImage
+                    darkSrc={asset.imageUrl}
+                    lightSrc={asset.imageLightUrl}
+                    alt=""
+                    className="nexid-hero-phone__product-photo"
+                    theme={theme}
+                  />
                   <span className="nexid-hero-phone__product-light" aria-hidden="true">
                     <HeroPrimeProduct active={active} product={data.product} />
                   </span>
@@ -2661,6 +2727,7 @@ function ProductDetailModal({
   commerceRows,
   copy,
   onClose,
+  theme,
 }: {
   active: Vertical;
   data: Scene;
@@ -2670,6 +2737,7 @@ function ProductDetailModal({
   commerceRows: ProductInfoRow[];
   copy: (typeof productModalCopy)["es-AR"];
   onClose: () => void;
+  theme: HeroTheme;
 }) {
   const asset = heroRealAssets[active];
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -2728,8 +2796,13 @@ function ProductDetailModal({
             <div className={`hero-product-modal__asset hero-product-modal__asset--${active}`}>
               {asset ? (
                 <>
-                  <img className="hero-product-modal__asset-photo nexid-premium-image--dark" src={asset.imageUrl} alt={asset.alt} loading="lazy" />
-                  <img className="hero-product-modal__asset-photo nexid-premium-image--light" src={asset.imageLightUrl} alt={asset.alt} loading="lazy" />
+                  <HeroThemeImage
+                    darkSrc={asset.imageUrl}
+                    lightSrc={asset.imageLightUrl}
+                    alt={asset.alt}
+                    className="hero-product-modal__asset-photo"
+                    theme={theme}
+                  />
                   <div className="hero-product-modal__asset-light-render" aria-hidden="true">
                     <HeroPrimeProduct active={active} product={data.product} />
                   </div>
@@ -2787,10 +2860,11 @@ function ProductDetailModal({
   );
 }
 
-export function HeroScene({ locale }: { locale: AppLocale }) {
+export function HeroScene({ locale, initialTheme = "dark" }: { locale: AppLocale; initialTheme?: HeroTheme }) {
   const [selectedVertical, setSelectedVertical] = useState<HeroSelectorKey>("wine");
   const [tapIndex, setTapIndex] = useState(0);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const theme = useHeroTheme(initialTheme);
   const productTriggerRef = useRef<HTMLButtonElement>(null);
   const txt = labels[locale] || labels["es-AR"];
   const modalCopy = productModalCopy[locale] || productModalCopy["es-AR"];
@@ -2849,6 +2923,7 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
               txt={txt}
               detailCopy={modalCopy}
               stageCopy={stageCopy}
+              theme={theme}
             />
             <button
               ref={productTriggerRef}
@@ -2871,6 +2946,7 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
             stageCopy={stageCopy}
             originLabel={txt.labels.origin}
             distanceLabel={routeEvidenceLabelFromLocale(locale)}
+            theme={theme}
           />
         </div>
 
@@ -2895,6 +2971,7 @@ export function HeroScene({ locale }: { locale: AppLocale }) {
               commerceRows={commerceRows}
               copy={modalCopy}
               onClose={closeProductModal}
+              theme={theme}
             />,
             document.body,
           )

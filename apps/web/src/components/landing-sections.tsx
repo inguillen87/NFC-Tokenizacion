@@ -93,7 +93,7 @@ export function HeroSection({ content, stats, locale, initialTheme = "dark" }: {
 
         <div className="hero-demo-shell mx-auto mt-16 md:mt-24 max-w-7xl text-left relative z-20">
 
-          <HeroScene locale={locale as any} />
+          <HeroScene locale={locale as any} initialTheme={initialTheme} />
           <InstitutionalVideoPanel locale={locale} variant="landing" className="mt-5" initialTheme={initialTheme} />
         </div>
 
