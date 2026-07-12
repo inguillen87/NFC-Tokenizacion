@@ -78,6 +78,7 @@ export default function DemoGlobePage() {
               routes={currentRoutes} 
               width={560} 
               height={440} 
+              mode="globe"
               className="border border-white/5 shadow-2xl bg-black/40"
             />
 
