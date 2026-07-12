@@ -103,7 +103,7 @@ test("proof verifier keeps the enterprise decoder readable and non-trapped", asy
   assert.match(page, /receipt_publication_unavailable/);
   assert.match(page, /receipt_verified/);
   assert.match(page, /verification_status/);
-  assert.match(page, /Fixture testnet confirmado/);
+  assert.match(page, /Evidencia testnet verificada por RPC/);
   assert.match(page, /Anclaje externo confirmado/);
   assert.match(page, /Anchor enviado, aun no confirmado/);
   assert.match(page, /#proof-result/);
@@ -184,6 +184,10 @@ test("IOTA verified receipt CTA requires receipt RPC verification", async () => 
 
 test("IOTA overview confirmation labels use RPC fields", async () => {
   const page = await readFile(new URL("../src/app/proof/verify/page.tsx", import.meta.url), "utf8");
+  assert.match(page, /Evidencia testnet verificada por RPC/);
+  assert.match(page, /Receipt confirmado por RPC/);
+  assert.match(page, /Anchor confirmado por RPC/);
+  assert.match(page, /IOTA testnet · RPC verified/);
   assert.match(page, /demoCatalog\.testnet\?\.iota\?\.rpc_verified\s*\?\s*"RPC verified"/);
   assert.match(page, /demoCase\.network_verification\?\.anchor\?\.verified\s*\?\s*"IOTA anchor RPC confirmado"/);
   assert.match(page, /demoCase\.network_verification\?\.receipt\?\.verified\s*\?\s*"Memo RPC confirmado en IOTA"/);
@@ -224,7 +228,7 @@ test("executive IOTA explorer actions keep receipt data separate from the anchor
   assert.match(executiveConsole, /data-proof-explorer="anchor" href=\{separateAnchorExplorerUrl\}/);
   assert.match(executiveConsole, /Abrir anchor tx \(Merkle root\)/);
   assert.doesNotMatch(executiveConsole, /data-proof-explorer="receipt" href=\{(?:anchorExplorerUrl|separateAnchorExplorerUrl)\}/);
-  assert.match(page, /no se presenta como memo legible/);
+  assert.match(page, /anchor sigue separado del memo legible/);
   assert.match(page, /no el contract call del anchor/);
   assert.match(page, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
   assert.doesNotMatch(page, /const externalExplorerUrl/);

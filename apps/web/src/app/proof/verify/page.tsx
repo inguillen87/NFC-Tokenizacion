@@ -891,6 +891,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
     && result?.externally_confirmed === true;
   const externallyConfirmed = resultIsDemoFixture
     ? result?.network_verification?.anchor?.verified === true
+      && result?.network_verification?.receipt?.verified === true
     : registryExternallyConfirmed;
   const demoCases = demoCatalog.cases || [];
   const activeDemo = result?.demo_case || demoCases.find((demoCase) =>
@@ -966,6 +967,12 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
   const separateAnchorExplorerUrl = anchorExplorerUrl && anchorExplorerUrl !== receiptExplorerUrl
     ? anchorExplorerUrl
     : "";
+  const anchorRpcVerified = resultIsDemoFixture
+    ? result?.network_verification?.anchor?.verified === true
+    : externallyConfirmed;
+  const receiptRpcVerified = resultIsDemoFixture
+    ? result?.network_verification?.receipt?.verified === true
+    : decoderReceiptVerified;
   const resultHeadline = !eventHash
     ? "Listo para probar"
     : invalidInput
@@ -974,7 +981,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
         ? "Registro temporalmente no disponible"
         : externallyConfirmed
           ? demoFixture
-            ? "Fixture testnet confirmado"
+            ? "Evidencia testnet verificada por RPC"
             : "Anclaje externo confirmado"
           : included
             ? verificationState === "failed"
@@ -991,7 +998,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
         ? "No se pudo consultar el registro en este intento. Esto no equivale a no inclusion; vuelve a intentar antes de tomar una decision."
         : externallyConfirmed
           ? demoFixture
-            ? "La transaccion testnet y el memo del caso demo existen. Prueban que el fixture fue publicado, no que una operacion privada de cliente haya ocurrido."
+            ? "IOTA RPC confirmo la red, la wallet publicadora, el contrato, el Merkle root y el memo exacto. Esto prueba la publicacion del caso demo, no una operacion privada de cliente."
             : "El SHA esta incluido en un anchor con transaccion externa confirmada."
           : included
             ? "El SHA aparece en el registro, pero todavia no tiene confirmacion externa suficiente para presentarlo como prueba publica final."
@@ -1010,7 +1017,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
       : registryUnavailable
         ? "unavailable"
         : externallyConfirmed
-          ? demoFixture ? "testnet demo" : "confirmed"
+          ? demoFixture ? "RPC verified demo" : "confirmed"
           : included
             ? verificationState
             : "not included";
@@ -1030,19 +1037,27 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
     },
     {
       label: "2. Recibo legible",
-      title: receiptExplorerUrl ? "Receipt tx disponible" : "Receipt tx pendiente",
+      title: receiptExplorerUrl
+        ? receiptRpcVerified ? "Receipt confirmado por RPC" : "Receipt configurado, chequeo pendiente"
+        : "Receipt tx pendiente",
       body: receiptExplorerUrl
-        ? "Este enlace abre la transaccion de recibo cuyo Raw input contiene el memo publico decodificable."
+        ? receiptRpcVerified
+          ? "RPC comprobo que el Raw input coincide exactamente con el memo publico esperado y fue emitido por la wallet nexID configurada."
+          : "La transaccion esta disponible para inspeccion, pero la interfaz no la presenta como prueba final hasta completar el chequeo RPC."
         : "El verificador puede operar con registry local/API, pero no promete Raw input hasta tener una receipt tx publicada.",
-      tone: receiptExplorerUrl ? "proof-console-card--success" : "proof-console-card--neutral",
+      tone: receiptRpcVerified ? "proof-console-card--success" : receiptExplorerUrl ? "proof-console-card--info" : "proof-console-card--neutral",
     },
     {
       label: "3. Anchor tecnico",
-      title: anchorExplorerUrl ? "Anchor tx disponible" : "Anchor tx pendiente",
+      title: anchorExplorerUrl
+        ? anchorRpcVerified ? "Anchor confirmado por RPC" : "Anchor configurado, chequeo pendiente"
+        : "Anchor tx pendiente",
       body: anchorExplorerUrl
-        ? "La transaccion del anchor prueba la publicacion del Merkle root o contract call. Es separada del receipt y no se presenta como memo legible."
+        ? anchorRpcVerified
+          ? "RPC comprobo red, contrato, publisher, tenant hash, Merkle root, recurso y cantidad de eventos. El anchor sigue separado del memo legible."
+          : "La transaccion tecnica esta disponible, pero no se presenta como anchor confirmado hasta comparar su calldata por RPC."
         : "El anchor tecnico aparecera cuando el Merkle root tenga una transaccion externa asociada.",
-      tone: anchorExplorerUrl ? "proof-console-card--info" : "proof-console-card--neutral",
+      tone: anchorRpcVerified ? "proof-console-card--success" : anchorExplorerUrl ? "proof-console-card--info" : "proof-console-card--neutral",
     },
     {
       label: "4. Privacidad",
@@ -1059,9 +1074,15 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
     },
     {
       label: "Red publica",
-      value: receiptExplorerUrl ? (demoFixture ? "IOTA testnet demo" : "Receipt publico") : "API/registry",
+      value: receiptExplorerUrl
+        ? demoFixture
+          ? receiptRpcVerified && anchorRpcVerified ? "IOTA testnet · RPC verified" : "IOTA testnet · checking"
+          : "Receipt publico"
+        : "API/registry",
       body: receiptExplorerUrl
-        ? "La receipt tx permite validar fecha, red y el Raw input que contiene el memo."
+        ? receiptRpcVerified
+          ? "La receipt tx fue consultada por RPC y su Raw input coincide con el memo esperado."
+          : "La receipt tx puede abrirse en explorer, pero sigue separada de un veredicto RPC confirmado."
         : "La pantalla no atribuye un memo legible a la transaccion tecnica del anchor.",
     },
     {
