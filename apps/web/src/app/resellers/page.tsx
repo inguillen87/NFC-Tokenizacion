@@ -1,8 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { BackLink } from "../../components/back-link";
 import { Card, SectionHeading } from "@product/ui";
 import { landingContent } from "../../lib/landing-content";
 import { getWebI18n } from "../../lib/locale";
+import { buildPublicPageMetadata } from "../../lib/public-page-metadata";
 import { ArrowRight, BadgeDollarSign, Briefcase, ClipboardCheck, Globe2, Layers3, ShieldCheck, Sparkles } from "lucide-react";
 
 const labels = {
@@ -120,6 +122,11 @@ const labels = {
 } as const;
 
 const cardIcons = [Globe2, Layers3, ShieldCheck, BadgeDollarSign] as const;
+
+export async function generateMetadata(): Promise<Metadata> {
+  const { locale } = await getWebI18n();
+  return buildPublicPageMetadata("resellers", locale);
+}
 
 export default async function ResellersPage() {
   const { locale } = await getWebI18n();

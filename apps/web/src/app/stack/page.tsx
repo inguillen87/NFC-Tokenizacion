@@ -1,7 +1,9 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Card, SectionHeading } from "@product/ui";
 import { BackLink } from "../../components/back-link";
 import { getWebI18n } from "../../lib/locale";
+import { buildPublicPageMetadata } from "../../lib/public-page-metadata";
 import { ArrowRight, BadgeCheck, Database, Fingerprint, Link2, ShieldCheck, Sparkles } from "lucide-react";
 
 type StackLayer = { name: string; question: string; whatItMeans: string; sellAs: string; icon: "carrier" | "identity" | "trust" | "passport" | "rights" };
@@ -118,6 +120,11 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", StackCopy> = {
     ctaDemo: "View demo",
   },
 };
+
+export async function generateMetadata(): Promise<Metadata> {
+  const { locale } = await getWebI18n();
+  return buildPublicPageMetadata("stack", locale);
+}
 
 export default async function StackPage() {
   const { locale } = await getWebI18n();

@@ -1,7 +1,9 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Card, SectionHeading } from "@product/ui";
 import { BackLink } from "../../components/back-link";
 import { getWebI18n } from "../../lib/locale";
+import { buildPublicPageMetadata } from "../../lib/public-page-metadata";
 import { ArrowRight, Briefcase, Building2, Landmark, Rocket, ShieldCheck, UserRound } from "lucide-react";
 
 type AudienceCard = {
@@ -165,6 +167,11 @@ function resolveHref(audience: AudienceCard["icon"]) {
   if (audience === "reseller") return "/?contact=reseller&intent=reseller_program&vertical=events&volume=25000#contact-modal";
   if (audience === "government") return "/?contact=sales&intent=government_stack&vertical=pharma&volume=10000#contact-modal";
   return "/?contact=demo&intent=customer_demo&vertical=cosmetics&volume=10000#contact-modal";
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const { locale } = await getWebI18n();
+  return buildPublicPageMetadata("audiences", locale);
 }
 
 export default async function AudiencesPage() {

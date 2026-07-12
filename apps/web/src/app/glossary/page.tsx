@@ -1,8 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Card, SectionHeading } from "@product/ui";
 import { BackLink } from "../../components/back-link";
 import { PublicLinkChip } from "../../components/public-link-chip";
 import { getWebI18n } from "../../lib/locale";
+import { buildPublicPageMetadata } from "../../lib/public-page-metadata";
 import {
   ArrowRight,
   BadgeCheck,
@@ -611,6 +613,11 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
     ctaDemo: "View demo",
   },
 };
+
+export async function generateMetadata(): Promise<Metadata> {
+  const { locale } = await getWebI18n();
+  return buildPublicPageMetadata("glossary", locale);
+}
 
 export default async function GlossaryPage() {
   const { locale } = await getWebI18n();
