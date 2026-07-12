@@ -46,7 +46,16 @@ test("public Polygon routes keep metadata and chain verification separate", asyn
   assert.match(service, /DigitalTwinMinted/);
   assert.match(service, /readMetadataDocument/);
   assert.match(service, /wallet_control_verified: false/);
-  assert.match(service, /repo\.sourcify\.dev/);
+  assert.match(service, /sourcify\.dev\/server\/v2\/contract/);
+  assert.match(service, /creationMatch/);
+  assert.match(service, /runtimeMatch/);
+  assert.match(service, /metadata_url_mismatch/);
+  assert.match(service, /tokenUri !== expectedTokenUri/);
+  assert.match(service, /canonicalImage = "https:\/\/nexid\.lat\//);
+  assert.match(service, /POLYGON_CERTIFICATE_CACHE_KEY/);
+  assert.match(service, /5 \* 60_000/);
+  assert.doesNotMatch(service, /knownSourcifyContract/);
+  assert.doesNotMatch(service, /PUBLIC_PROOF_DEMO_POLYGON_SOURCE_VERIFIED/);
   assert.match(service, /does_not_prove_alone/);
   assert.doesNotMatch(service, /POLYGON_MINTER_PRIVATE_KEY/);
 });

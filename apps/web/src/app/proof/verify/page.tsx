@@ -132,15 +132,26 @@ type DemoCasesResponse = {
       rpc_configured?: boolean;
       contract_configured?: boolean;
       signer_configured?: boolean;
+      rpc_verified?: boolean;
+      verification_state?: string | null;
+      evidence_level?: string | null;
+      verified_at?: string | null;
       contract_address?: string | null;
       owner_address?: string | null;
+      owner_custody?: string | null;
+      wallet_control_verified?: boolean;
+      claim_state?: string | null;
       contract_explorer_url?: string | null;
       owner_explorer_url?: string | null;
       demo_tx_hash?: string | null;
       demo_tx_explorer_url?: string | null;
       demo_token_id?: string | null;
       metadata_url?: string | null;
+      metadata_verified?: boolean;
+      mint_events_match?: boolean;
+      source_verified?: boolean;
       ownership_certificate_url?: string | null;
+      certificate_url?: string | null;
     };
   };
 };
@@ -902,9 +913,10 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
   const guidedDemo = activeDemo;
   const confirmedIotaAnchors = demoCases.filter((demoCase) => demoCase.network_verification?.anchor?.verified === true).length;
   const confirmedMemoReceipts = demoCases.filter((demoCase) => demoCase.network_verification?.receipt?.verified === true).length;
+  const polygonRpcVerified = demoCatalog.testnet?.polygon?.rpc_verified === true;
   const liveTestnetReady = confirmedIotaAnchors > 0
     || demoCatalog.testnet?.iota?.rpc_verified === true
-    || Boolean(demoCatalog.testnet?.polygon?.demo_tx_hash);
+    || polygonRpcVerified;
   const activeReceiptMemoHex = guidedDemo ? utf8ToHex(guidedDemo.public_receipt.on_chain_memo) : "";
   const decoderInput = requestedDecoderInput;
   const decodedProof = decoderInput ? await decodeProofInput(decoderInput) : null;
@@ -933,9 +945,11 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
     },
     {
       label: "Polygon ownership",
-      value: demoCatalog.testnet?.polygon?.demo_tx_hash ? "mint" : "ready",
-      body: "NFT/certificado para propiedad, garantia o claim.",
-      live: Boolean(demoCatalog.testnet?.polygon?.demo_tx_hash),
+      value: polygonRpcVerified ? "verified" : "checking",
+      body: polygonRpcVerified
+        ? "Mint, owner y metadata verificados; el piloto sigue bajo custodia nexID."
+        : "Contrato configurado; la UI espera confirmacion RPC antes de afirmar evidencia.",
+      live: polygonRpcVerified,
     },
   ];
   const decodedDemoCase = decodedProof?.matching_demo_case;
@@ -1932,7 +1946,15 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
               </div>
               <div className="rounded-xl border border-violet-300/40 bg-violet-400/10 px-3 py-2.5">
                 <span className="block text-[0.62rem] font-black uppercase tracking-[0.12em] text-violet-700">Polygon Amoy</span>
-                <strong className="mt-1 block text-sm text-slate-950">{demoCatalog.testnet?.polygon?.demo_tx_hash ? "Mint testnet confirmado" : "Ownership listo"}</strong>
+                <strong className="mt-1 block text-sm text-slate-950">
+                  {polygonRpcVerified
+                    ? demoCatalog.testnet?.polygon?.owner_custody === "platform_managed"
+                      ? "Mint RPC verificado · custodia nexID"
+                      : "Mint RPC verificado"
+                    : demoCatalog.testnet?.polygon?.demo_tx_hash
+                      ? "Verificacion RPC pendiente"
+                      : "Sin emision verificada"}
+                </strong>
               </div>
             </div>
             <div className="mt-4 grid gap-3 lg:grid-cols-3">
@@ -2053,11 +2075,11 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-700">Polygon ownership layer</p>
                 <h2 className="mt-2 text-2xl font-black leading-tight text-slate-950">Contrato real NXDT en Amoy.</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  Esta capa registra ownership despues de la validacion nexID. El certificado dedicado consulta mint, owner y metadata en vivo; el source code del contrato se informa por separado y nunca se confunde el NFT con la autenticidad fisica.
+                  Esta capa emite un certificado transferible despues de la validacion nexID. Hoy el token publico demuestra mint, holder, metadata y codigo en testnet; sigue bajo custodia nexID y no se presenta como propiedad del comprador.
                 </p>
               </div>
-              <span className={`rounded-full border px-3 py-1 text-[0.68rem] font-black uppercase tracking-[0.1em] ${demoCatalog.testnet?.polygon?.contract_address ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-slate-300 bg-slate-100 text-slate-600"}`}>
-                {demoCatalog.testnet?.polygon?.contract_address ? "deployed" : "pending"}
+              <span className={`rounded-full border px-3 py-1 text-[0.68rem] font-black uppercase tracking-[0.1em] ${polygonRpcVerified ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-amber-300 bg-amber-50 text-amber-800"}`}>
+                {polygonRpcVerified ? "RPC verified" : demoCatalog.testnet?.polygon?.contract_address ? "checking" : "pending"}
               </span>
             </div>
             <dl className="mt-5 grid gap-3">
@@ -2067,17 +2089,31 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                 <div className="mt-3">{explorerLink(demoCatalog.testnet?.polygon?.contract_explorer_url, "Abrir contrato")}</div>
               </div>
               <div className="proof-flat rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <dt className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-slate-500">Owner / minter demo</dt>
+                <dt className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-slate-500">Titular on-chain actual</dt>
                 <dd className="mt-2 break-all font-mono text-xs font-bold text-slate-900">{demoCatalog.testnet?.polygon?.owner_address || "-"}</dd>
+                <p className="mt-2 text-xs leading-5 text-slate-600">
+                  {demoCatalog.testnet?.polygon?.wallet_control_verified
+                    ? "Control de wallet verificado."
+                    : "Custodia de plataforma: todavia no prueba control de wallet del comprador."}
+                </p>
                 <div className="mt-3">{explorerLink(demoCatalog.testnet?.polygon?.owner_explorer_url, "Abrir wallet")}</div>
               </div>
               {demoCatalog.testnet?.polygon?.demo_tx_hash ? (
-                <div className="proof-flat rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                  <dt className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-emerald-800">Mint demo real</dt>
-                  <dd className="mt-2 break-all font-mono text-xs font-bold text-emerald-950">{demoCatalog.testnet.polygon.demo_tx_hash}</dd>
+                <div className={`proof-flat rounded-2xl border p-4 ${polygonRpcVerified ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}>
+                  <dt className={`text-[0.68rem] font-black uppercase tracking-[0.14em] ${polygonRpcVerified ? "text-emerald-800" : "text-amber-800"}`}>
+                    {polygonRpcVerified ? "Emision testnet verificada por RPC" : "Transaccion configurada; verificacion pendiente"}
+                  </dt>
+                  <dd className={`mt-2 break-all font-mono text-xs font-bold ${polygonRpcVerified ? "text-emerald-950" : "text-amber-950"}`}>{demoCatalog.testnet.polygon.demo_tx_hash}</dd>
                   <div className="mt-3">{explorerLink(demoCatalog.testnet.polygon.demo_tx_explorer_url, "Abrir tx")}</div>
                 </div>
               ) : null}
+              <div className="flex flex-wrap gap-2 text-[0.65rem] font-black uppercase tracking-[0.08em] text-slate-700">
+                <span>Metadata {demoCatalog.testnet?.polygon?.metadata_verified ? "verificada" : "pendiente"}</span>
+                <span aria-hidden="true">·</span>
+                <span>Eventos {demoCatalog.testnet?.polygon?.mint_events_match ? "coinciden" : "pendientes"}</span>
+                <span aria-hidden="true">·</span>
+                <span>Codigo {demoCatalog.testnet?.polygon?.source_verified ? "publicado" : "pendiente"}</span>
+              </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 <Link href="/proof/ownership" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-violet-700 px-4 text-xs font-black uppercase tracking-[0.1em] text-white transition hover:bg-violet-800">
                   Abrir certificado legible <ArrowRight className="h-4 w-4" />

@@ -15,13 +15,16 @@ export const PUBLIC_POLYGON_OWNERSHIP_SLUG = "ownership-v2";
 export const PUBLIC_POLYGON_CHAIN_ID = 80002;
 export const PUBLIC_POLYGON_CONTRACT = "0x673CAE3D79f825bba9cfb2096184c295A5C9Eb4C";
 export const PUBLIC_POLYGON_OWNER = "0x644c5D77a34182Db01257bC4C469B01850bc6B2d";
+const POLYGON_CERTIFICATE_CACHE_KEY = "__nexid_public_polygon_certificate_v2__";
 
 function clean(value: unknown) {
   return String(value || "").trim().replace(/^['"]|['"]$/g, "");
 }
 
-function bool(value: unknown) {
-  return ["1", "true", "yes", "on"].includes(clean(value).toLowerCase());
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
 }
 
 function apiBaseUrl() {
@@ -91,13 +94,13 @@ export function buildPublicPolygonAssetMetadata(assetId: string) {
   };
 }
 
-async function withTimeout<T>(promise: Promise<T>, timeoutMs = 8_000): Promise<T> {
+async function withTimeout<T>(promise: Promise<T>, timeoutMs = 8_000, timeoutReason = "polygon_rpc_timeout"): Promise<T> {
   let timeout: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
       promise,
       new Promise<T>((_, reject) => {
-        timeout = setTimeout(() => reject(new Error("polygon_rpc_timeout")), timeoutMs);
+        timeout = setTimeout(() => reject(new Error(timeoutReason)), timeoutMs);
       }),
     ]);
   } finally {
@@ -105,28 +108,56 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs = 8_000): Promise<T
   }
 }
 
-async function readMetadataDocument(tokenUri: string) {
+async function readMetadataDocument(tokenUri: string, expectedTokenUri: string) {
+  if (tokenUri !== expectedTokenUri) {
+    return {
+      ok: false,
+      status: null,
+      content_type: null,
+      image_ok: false,
+      document: null as Record<string, unknown> | null,
+      image: null,
+      external_url: null,
+      reason: "metadata_url_mismatch",
+    };
+  }
   if (!tokenUri.startsWith("https://")) {
-    return { ok: false, status: null, content_type: null, image_ok: false, document: null as Record<string, unknown> | null, reason: "metadata_not_https" };
+    return {
+      ok: false,
+      status: null,
+      content_type: null,
+      image_ok: false,
+      document: null as Record<string, unknown> | null,
+      image: null,
+      external_url: null,
+      reason: "metadata_not_https",
+    };
   }
   try {
-    const response = await withTimeout(fetch(tokenUri, { cache: "no-store" }), 6_000);
+    const response = await withTimeout(fetch(tokenUri, { cache: "no-store" }), 6_000, "metadata_fetch_timeout");
     const contentType = response.headers.get("content-type");
     const document = response.ok ? await response.json().catch(() => null) as Record<string, unknown> | null : null;
     const image = clean(document?.image);
     const externalUrl = clean(document?.external_url);
-    const imageResponse = image.startsWith("https://")
-      ? await withTimeout(fetch(image, { method: "HEAD", cache: "no-store" }), 6_000).catch(() => null)
+    const expectedImage = clean(buildPublicPolygonMetadata().image);
+    const canonicalImage = "https://nexid.lat/demo/wine-secure/real-malbec-bottle-pexels.jpg";
+    const imageMatches = new Set([expectedImage, canonicalImage]).has(image) && image.startsWith("https://");
+    const imageResponse = imageMatches
+      ? await withTimeout(fetch(image, { method: "HEAD", cache: "no-store" }), 6_000, "metadata_image_timeout").catch(() => null)
       : null;
     return {
       ok: Boolean(response.ok && document && contentType?.toLowerCase().includes("json")),
       status: response.status,
       content_type: contentType,
-      image_ok: Boolean(imageResponse?.ok),
+      image_ok: Boolean(imageMatches && imageResponse?.ok),
       document,
       image,
       external_url: externalUrl,
-      reason: response.ok ? null : `metadata_http_${response.status}`,
+      reason: !response.ok
+        ? `metadata_http_${response.status}`
+        : imageMatches
+          ? null
+          : "metadata_image_url_mismatch",
     };
   } catch (error) {
     return {
@@ -135,21 +166,67 @@ async function readMetadataDocument(tokenUri: string) {
       content_type: null,
       image_ok: false,
       document: null as Record<string, unknown> | null,
+      image: null,
+      external_url: null,
       reason: error instanceof Error ? error.message : "metadata_fetch_failed",
     };
   }
 }
 
-export async function readPublicPolygonOwnershipCertificate() {
+function isVerifiedSourcifyMatch(value: unknown) {
+  return ["match", "exact_match"].includes(clean(value).toLowerCase());
+}
+
+async function readSourcifyVerification(contractAddress: string) {
+  const apiUrl = `https://sourcify.dev/server/v2/contract/${PUBLIC_POLYGON_CHAIN_ID}/${contractAddress}`;
+  const publicUrl = `https://repo.sourcify.dev/${PUBLIC_POLYGON_CHAIN_ID}/${contractAddress}`;
+
+  try {
+    const response = await withTimeout(fetch(apiUrl, {
+      cache: "no-store",
+      headers: { accept: "application/json" },
+    }), 6_000, "sourcify_fetch_timeout");
+    const payload = asRecord(await response.json().catch(() => null));
+    const addressMatches = clean(payload.address).toLowerCase() === contractAddress.toLowerCase();
+    const chainMatches = Number(payload.chainId) === PUBLIC_POLYGON_CHAIN_ID;
+    const creationMatches = isVerifiedSourcifyMatch(payload.creationMatch);
+    const runtimeMatches = isVerifiedSourcifyMatch(payload.runtimeMatch);
+    const overallMatches = isVerifiedSourcifyMatch(payload.match);
+    const ok = response.ok && addressMatches && chainMatches && creationMatches && runtimeMatches && overallMatches;
+
+    return {
+      ok,
+      checked: true,
+      api_url: apiUrl,
+      public_url: publicUrl,
+      verified_at: clean(payload.verifiedAt) || null,
+      match: clean(payload.match) || null,
+      creation_match: clean(payload.creationMatch) || null,
+      runtime_match: clean(payload.runtimeMatch) || null,
+      reason: ok ? null : response.ok ? "sourcify_contract_mismatch" : `sourcify_http_${response.status}`,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      checked: false,
+      api_url: apiUrl,
+      public_url: publicUrl,
+      verified_at: null,
+      match: null,
+      creation_match: null,
+      runtime_match: null,
+      reason: error instanceof Error ? error.message : "sourcify_fetch_failed",
+    };
+  }
+}
+
+async function readPublicPolygonOwnershipCertificateUncached() {
   const rpcUrl = clean(process.env.POLYGON_RPC_URL || "https://polygon-amoy.drpc.org");
   const contractAddress = clean(process.env.POLYGON_CONTRACT_ADDRESS) || PUBLIC_POLYGON_CONTRACT;
   const tokenId = clean(process.env.PUBLIC_PROOF_DEMO_POLYGON_TOKEN_ID) || "19";
   const mintTxHash = clean(process.env.PUBLIC_PROOF_DEMO_POLYGON_TX_HASH);
   const expectedMetadataUrl = publicPolygonMetadataUrl();
   const explorer = explorerBaseUrl();
-  const knownSourcifyContract = contractAddress.toLowerCase() === PUBLIC_POLYGON_CONTRACT.toLowerCase();
-  const sourceVerified = knownSourcifyContract || bool(process.env.PUBLIC_PROOF_DEMO_POLYGON_SOURCE_VERIFIED);
-  const sourceVerificationUrl = `https://repo.sourcify.dev/${PUBLIC_POLYGON_CHAIN_ID}/${contractAddress}`;
 
   const base = {
     schema_version: "nexid-public-ownership-v2",
@@ -176,7 +253,7 @@ export async function readPublicPolygonOwnershipCertificate() {
   const contract = new Contract(contractAddress, POLYGON_OWNERSHIP_ABI, provider);
 
   try {
-    const [network, code, latestBlock, name, symbol, owner, tokenUri, chipUidHash, assetRef, receipt] = await withTimeout(Promise.all([
+    const [network, code, latestBlock, name, symbol, owner, tokenUri, chipUidHash, assetRef, receipt, sourceVerification] = await withTimeout(Promise.all([
       provider.getNetwork(),
       provider.getCode(contractAddress),
       provider.getBlockNumber(),
@@ -187,6 +264,7 @@ export async function readPublicPolygonOwnershipCertificate() {
       contract.chipUidHashByTokenId(tokenId),
       contract.assetRefByTokenId(tokenId),
       mintTxHash ? provider.getTransactionReceipt(mintTxHash) : Promise.resolve(null),
+      readSourcifyVerification(contractAddress),
     ]));
 
     const parsedLogs = (receipt?.logs || []).flatMap((log) => {
@@ -199,7 +277,8 @@ export async function readPublicPolygonOwnershipCertificate() {
     });
     const transferEvent = parsedLogs.find((event) => event.name === "Transfer" && String(event.args.tokenId) === tokenId);
     const mintedEvent = parsedLogs.find((event) => event.name === "DigitalTwinMinted" && String(event.args.tokenId) === tokenId);
-    const metadata = await readMetadataDocument(String(tokenUri));
+    const metadata = await readMetadataDocument(String(tokenUri), expectedMetadataUrl);
+    const sourceVerified = sourceVerification.ok === true;
     const chainMatches = Number(network.chainId) === PUBLIC_POLYGON_CHAIN_ID;
     const contractDeployed = code !== "0x";
     const ownerResolved = isAddress(String(owner));
@@ -217,7 +296,7 @@ export async function readPublicPolygonOwnershipCertificate() {
     const metadataDocumentMatches = Boolean(
       metadata.ok
       && metadata.image_ok
-      && metadata.external_url === `${webBaseUrl()}/proof/ownership`
+      && new Set([`${webBaseUrl()}/proof/ownership`, "https://nexid.lat/proof/ownership"]).has(metadata.external_url || "")
       && clean(metadata.document?.name),
     );
     const confirmations = receipt ? Math.max(0, latestBlock - receipt.blockNumber + 1) : 0;
@@ -268,6 +347,7 @@ export async function readPublicPolygonOwnershipCertificate() {
         external_url: metadata.external_url || null,
         reason: metadata.reason,
       },
+      source_verification: sourceVerification,
       checks: [
         { id: "network", label: "Red Polygon Amoy", ok: chainMatches, detail: chainMatches ? "Chain ID 80002" : `Chain ID ${network.chainId}` },
         { id: "contract", label: "Contrato desplegado", ok: contractDeployed, detail: contractAddress },
@@ -276,7 +356,14 @@ export async function readPublicPolygonOwnershipCertificate() {
         { id: "owner", label: "Owner resuelto on-chain", ok: ownerResolved, detail: String(owner) },
         { id: "metadata", label: "Metadata HTTPS coincide", ok: metadataMatches, detail: String(tokenUri) },
         { id: "metadata_document", label: "JSON, imagen y enlace resuelven", ok: metadataDocumentMatches, detail: metadataDocumentMatches ? "Documento e imagen HTTP 200" : metadata.reason || "Metadata incompleta" },
-        { id: "source", label: "Source code publicado", ok: sourceVerified, detail: sourceVerified ? "Creation + runtime verificados en Sourcify" : "Pendiente de verificacion publica" },
+        {
+          id: "source",
+          label: "Source code publicado",
+          ok: sourceVerified,
+          detail: sourceVerified
+            ? `Creation + runtime verificados en Sourcify${sourceVerification.verified_at ? ` · ${sourceVerification.verified_at}` : ""}`
+            : sourceVerification.reason || "Pendiente de verificacion publica",
+        },
       ],
       links: {
         certificate: `${webBaseUrl()}/proof/ownership`,
@@ -285,7 +372,7 @@ export async function readPublicPolygonOwnershipCertificate() {
         token_explorer: `${explorer}/token/${contractAddress}?a=${tokenId}`,
         owner_explorer: `${explorer}/address/${owner}`,
         transaction_explorer: mintTxHash ? `${explorer}/tx/${mintTxHash}` : null,
-        source_verification: sourceVerified ? sourceVerificationUrl : null,
+        source_verification: sourceVerified ? sourceVerification.public_url : null,
       },
       proof_boundary: {
         proves: [
@@ -316,4 +403,28 @@ export async function readPublicPolygonOwnershipCertificate() {
   } finally {
     provider.destroy();
   }
+}
+
+type PublicPolygonCertificate = Awaited<ReturnType<typeof readPublicPolygonOwnershipCertificateUncached>>;
+type CachedPolygonCertificate = { expiresAt: number; value: Promise<PublicPolygonCertificate> };
+
+function polygonCertificateCache() {
+  const scope = globalThis as typeof globalThis & { [POLYGON_CERTIFICATE_CACHE_KEY]?: CachedPolygonCertificate };
+  return scope;
+}
+
+export function readPublicPolygonOwnershipCertificate(): Promise<PublicPolygonCertificate> {
+  const scope = polygonCertificateCache();
+  const cached = scope[POLYGON_CERTIFICATE_CACHE_KEY];
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+
+  const value = readPublicPolygonOwnershipCertificateUncached();
+  const entry = { expiresAt: Date.now() + 10_000, value };
+  scope[POLYGON_CERTIFICATE_CACHE_KEY] = entry;
+  void value.then((certificate) => {
+    entry.expiresAt = Date.now() + (certificate.verification_state === "confirmed" ? 5 * 60_000 : 10_000);
+  }).catch(() => {
+    if (scope[POLYGON_CERTIFICATE_CACHE_KEY] === entry) delete scope[POLYGON_CERTIFICATE_CACHE_KEY];
+  });
+  return value;
 }

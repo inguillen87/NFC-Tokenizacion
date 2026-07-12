@@ -7,6 +7,7 @@ const source = readFileSync(fileURLToPath(new URL("../src/lib/public-proof-demos
 const decoderSource = readFileSync(fileURLToPath(new URL("../src/lib/public-proof-decoder.ts", import.meta.url)), "utf8");
 const verifyRouteSource = readFileSync(fileURLToPath(new URL("../src/app/public/proof/verify/route.ts", import.meta.url)), "utf8");
 const anchorRouteSource = readFileSync(fileURLToPath(new URL("../src/app/public/proof/[anchorId]/route.ts", import.meta.url)), "utf8");
+const demoCasesRouteSource = readFileSync(fileURLToPath(new URL("../src/app/public/proof/demo-cases/route.ts", import.meta.url)), "utf8");
 const schemaSource = readFileSync(fileURLToPath(new URL("../src/lib/supplier-ops-schema.ts", import.meta.url)), "utf8");
 const { buildPublicProofDemoCases } = await import("../scripts/public-proof-demo-fixtures.mjs");
 const { decodePublicProofInput } = await import("../src/lib/public-proof-decoder.ts");
@@ -123,4 +124,15 @@ test("decoder implementation requires an exact receipt match", () => {
   assert.match(decoderSource, /publication_configured: publicationConfigured/);
   assert.match(decoderSource, /verification_status: demoCase \? "matched_demo_receipt" : "parsed_only"/);
   assert.match(decoderSource, /receipt_network_check_required/);
+});
+
+test("public demo catalog derives Polygon claims from the verified certificate", () => {
+  assert.match(demoCasesRouteSource, /readPublicPolygonOwnershipCertificate/);
+  assert.match(demoCasesRouteSource, /rpc_verified:\s*polygonRpcVerified/);
+  assert.match(demoCasesRouteSource, /verification_state:/);
+  assert.match(demoCasesRouteSource, /wallet_control_verified:/);
+  assert.match(demoCasesRouteSource, /owner_custody:/);
+  assert.match(demoCasesRouteSource, /metadata_verified:/);
+  assert.match(demoCasesRouteSource, /mint_events_match:/);
+  assert.match(demoCasesRouteSource, /source_verified:/);
 });

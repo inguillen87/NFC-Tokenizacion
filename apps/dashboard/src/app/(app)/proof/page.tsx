@@ -68,8 +68,12 @@ type ProofEvent = {
 };
 
 type TokenizationRequest = {
+  status?: string | null;
   network?: string | null;
   tx_hash?: string | null;
+  meta?: {
+    evidence_verified?: boolean;
+  } | null;
 };
 
 type PublicProofReceipt = {
@@ -120,6 +124,15 @@ type PolygonTestnetReference = {
   demo_token_id?: string | null;
   ownership_certificate_url?: string | null;
   certificate_url?: string | null;
+  rpc_verified?: boolean;
+  verification_state?: string | null;
+  evidence_level?: string | null;
+  owner_custody?: string | null;
+  wallet_control_verified?: boolean;
+  claim_state?: string | null;
+  metadata_verified?: boolean;
+  mint_events_match?: boolean;
+  source_verified?: boolean;
 };
 
 type PublicProofPayload = {
@@ -326,7 +339,10 @@ function privateStateLabel(state: PrivateDataState) {
 
 function isOwnershipTransaction(row: TokenizationRequest) {
   const network = normalize(row.network);
-  return Boolean(readText(row.tx_hash)) && (network.includes("polygon") || network.includes("amoy"));
+  return normalize(row.status) === "anchored"
+    && row.meta?.evidence_verified === true
+    && Boolean(readText(row.tx_hash))
+    && (network.includes("polygon") || network.includes("amoy"));
 }
 
 function isRealIotaReference(demoCase: PublicProofCase) {
@@ -425,7 +441,7 @@ export default async function ProofPage() {
     {
       label: "Ownership tx",
       value: tokenizationResult.ok ? ownershipTxCount : null,
-      detail: tokenizationResult.ok ? "Polygon con tx_hash" : "No disponible",
+      detail: tokenizationResult.ok ? "Polygon con evidencia verificada" : "No disponible",
       icon: Fingerprint,
     },
   ];
@@ -442,6 +458,7 @@ export default async function ProofPage() {
   const polygonCertificateHref = safeHttpUrl(
     polygonReference?.certificate_url || polygonReference?.ownership_certificate_url,
   );
+  const polygonRpcVerified = polygonReference?.rpc_verified === true;
   const canWriteProof = !session.isDemo && (
     session.role === "super-admin" || dashboardPermissionMatches(session.permissions, "proof:write")
   );
@@ -661,9 +678,11 @@ export default async function ProofPage() {
                 <div><Fingerprint aria-hidden="true" /><span>Polygon testnet</span></div>
                 <strong>{readText(polygonReference?.network) || "Red no informada"}</strong>
                 <p>
-                  {readText(polygonReference?.demo_token_id)
-                    ? `Token ${readText(polygonReference?.demo_token_id)}`
-                    : polygonTxHref ? "Transaccion de ownership disponible" : "Transaccion de ownership no disponible"}
+                  {polygonRpcVerified
+                    ? `${readText(polygonReference?.demo_token_id) ? `Token ${readText(polygonReference?.demo_token_id)} · ` : ""}RPC verificado · ${polygonReference?.owner_custody === "platform_managed" ? "custodia nexID" : "holder externo"}`
+                    : polygonTxHref
+                      ? "Transaccion configurada; verificacion RPC pendiente"
+                      : "Emision Polygon no disponible"}
                 </p>
                 <div className={styles.rowActions}>
                   {polygonContractHref ? <a href={polygonContractHref} target="_blank" rel="noreferrer">Contrato <ArrowUpRight aria-hidden="true" /></a> : null}
