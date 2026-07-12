@@ -9,8 +9,8 @@ import { SunProductHeroStage, type SunVisualKind } from "./sun-product-hero-stag
 import { TapPrecisionTelemetry } from "./tap-precision-telemetry";
 import { QREngagementSuite } from "./qr-engagement-suite";
 import { productUrls } from "@product/config";
-import { BrandLockup, DeviceSignatureBadge, EmptyState, GlobalOpsMap, KeyValueSpec, LocaleSwitcher, ThemeToggle, TimelineRail } from "@product/ui";
-import type { GlobalOpsPoint, GlobalOpsRoute } from "@product/ui";
+import { BrandLockup, DeviceSignatureBadge, EmptyState, KeyValueSpec, LocaleSwitcher, ThemeToggle, TimelineRail } from "@product/ui";
+import { GlobalOpsMap, type GlobalOpsPoint, type GlobalOpsRoute } from "@product/ui/global-ops-map";
 import { getWebI18n } from "../../lib/locale";
 import { resolveProductAssetProfile, summarizeAssetReadiness } from "../../lib/product-asset-bank";
 

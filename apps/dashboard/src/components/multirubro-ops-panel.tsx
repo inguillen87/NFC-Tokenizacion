@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { OpsPanel, StatusChip, WorldMapRealtime } from "@product/ui";
+import { OpsPanel, StatusChip } from "@product/ui";
+import { WorldMapRealtime } from "@product/ui/world-map-realtime";
 import { VerticalAsset } from "./multirubro-assets";
 import { motion } from "framer-motion";
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, BarChart, Bar, Legend } from "recharts";

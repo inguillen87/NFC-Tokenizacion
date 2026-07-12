@@ -4,7 +4,13 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./globe-3d-map": "./src/globe-3d-map.tsx",
+    "./global-ops-map": "./src/global-ops-map.tsx",
+    "./premium-vector-map": "./src/premium-vector-map.tsx",
+    "./world-map-realtime": "./src/world-map-realtime.tsx",
+    "./world-map-placeholder": "./src/world-map-placeholder.tsx",
+    "./trust-map-source": "./src/trust-map-source.ts"
   },
   "peerDependencies": {
     "react": "^18.2.0"

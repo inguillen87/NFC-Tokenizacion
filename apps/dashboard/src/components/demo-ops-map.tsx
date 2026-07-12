@@ -2,10 +2,11 @@
 
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { EmptyState, type GlobalOpsPoint, type GlobalOpsRoute } from "@product/ui";
+import { EmptyState } from "@product/ui";
+import type { GlobalOpsPoint, GlobalOpsRoute } from "@product/ui/global-ops-map";
 import { ShieldAlert, ShieldCheck, MapPin, RefreshCw } from "lucide-react";
 
-const GlobalOpsMap = dynamic(() => import("@product/ui").then((mod) => mod.GlobalOpsMap), { ssr: false });
+const GlobalOpsMap = dynamic(() => import("@product/ui/global-ops-map").then((mod) => mod.GlobalOpsMap), { ssr: false });
 
 type MapPoint = {
   city: string;

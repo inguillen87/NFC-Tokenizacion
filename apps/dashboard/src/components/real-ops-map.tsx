@@ -2,9 +2,9 @@
 
 import { useMemo } from "react";
 import dynamic from "next/dynamic";
-import type { GlobalOpsPoint } from "@product/ui";
+import type { GlobalOpsPoint } from "@product/ui/global-ops-map";
 
-const GlobalOpsMap = dynamic(() => import("@product/ui").then((mod) => mod.GlobalOpsMap), { ssr: false });
+const GlobalOpsMap = dynamic(() => import("@product/ui/global-ops-map").then((mod) => mod.GlobalOpsMap), { ssr: false });
 
 type MapPoint = {
   city: string;

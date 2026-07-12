@@ -2,7 +2,8 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
-import { PremiumVectorMap, Globe3dMap, type VectorMapPoint, type VectorMapRoute } from "@product/ui";
+import { Globe3dMap } from "@product/ui/globe-3d-map";
+import { PremiumVectorMap, type VectorMapPoint, type VectorMapRoute } from "@product/ui/premium-vector-map";
 import type { ProductInteractionState, ProductKind } from "../../components/hero-three-stage";
 
 const HeroThreeStage = dynamic(() => import("../../components/hero-three-stage").then((mod) => mod.HeroThreeStage), {

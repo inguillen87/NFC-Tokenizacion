@@ -4,10 +4,17 @@ export * from "./badge";
 export * from "./stat-card";
 export * from "./section-heading";
 export * from "./sidebar";
-export * from "./world-map-realtime";
-export * from "./world-map-placeholder";
-export * from "./premium-vector-map";
-export * from "./trust-map-source";
+export type { GlobePoint, GlobeRoute } from "./globe-3d-map";
+export type { GlobalOpsPoint, GlobalOpsRoute } from "./global-ops-map";
+export type {
+  VectorMapEvidenceStep,
+  VectorMapEvidenceTone,
+  VectorMapLedgerItem,
+  VectorMapPoint,
+  VectorMapRoute,
+  VectorMapTone,
+} from "./premium-vector-map";
+export type { TrustMapSourceConfig, TrustMapSourceMode, TrustMapSourceOverrides } from "./trust-map-source";
 export * from "./ops-panel";
 export * from "./status-chip";
 export * from "./empty-state";
@@ -22,6 +29,3 @@ export * from "./brand";
 export * from "./helpbot";
 
 export * from "./theme-toggle";
-
-export * from "./global-ops-map";
-export * from "./globe-3d-map";

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Card, WorldMapRealtime } from "@product/ui";
+import { Card } from "@product/ui";
+import { WorldMapRealtime } from "@product/ui/world-map-realtime";
 import { ProductExitLink } from "./product-exit-link";
 
 type LiveEvent = {

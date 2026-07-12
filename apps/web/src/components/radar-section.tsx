@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Card, SectionHeading, WorldMapRealtime } from "@product/ui";
+import { Card, SectionHeading } from "@product/ui";
+import { WorldMapRealtime } from "@product/ui/world-map-realtime";
 import type { AppLocale } from "@product/config";
 import type { LandingContent } from "../lib/landing-content";
 

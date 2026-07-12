@@ -11,7 +11,7 @@ import { TopProductsTable } from "./charts/top-products-table";
 import { TrustFunnelChart } from "./charts/trust-funnel-chart";
 import { classifyEventAlertSeverity, matchesSeverityFilter } from "../lib/alert-severity";
 
-const GlobalOpsMap = dynamic(() => import("@product/ui").then((mod) => mod.GlobalOpsMap), { ssr: false });
+const GlobalOpsMap = dynamic(() => import("@product/ui/global-ops-map").then((mod) => mod.GlobalOpsMap), { ssr: false });
 
 type AnalyticsPanelsProps = {
   kpis: {
