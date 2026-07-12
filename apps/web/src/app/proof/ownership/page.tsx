@@ -76,13 +76,18 @@ const fallback: OwnershipCertificate = {
   checks: [],
 };
 
+const PUBLIC_PROOF_FETCH_TIMEOUT_MS = 6_000;
+
 function apiBase() {
   return String(productUrls.api || "https://api.nexid.lat").replace(/\/$/, "");
 }
 
 async function loadCertificate(): Promise<OwnershipCertificate> {
   try {
-    const response = await fetch(`${apiBase()}/public/polygon/ownership`, { cache: "no-store" });
+    const response = await fetch(`${apiBase()}/public/polygon/ownership`, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(PUBLIC_PROOF_FETCH_TIMEOUT_MS),
+    });
     const body = await response.json().catch(() => null) as OwnershipCertificate | null;
     return body || fallback;
   } catch {

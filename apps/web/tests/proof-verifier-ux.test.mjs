@@ -29,6 +29,8 @@ test("proof verifier keeps the enterprise decoder readable and non-trapped", asy
   assert.match(page, /proof-field-details/);
   assert.match(page, /proof-nav-cta/);
   assert.match(page, /PROOF_API_FALLBACK_URL = "https:\/\/api\.nexid\.lat"/);
+  assert.match(page, /PUBLIC_PROOF_FETCH_TIMEOUT_MS = 6_000/);
+  assert.match(page, /signal: AbortSignal\.timeout\(PUBLIC_PROOF_FETCH_TIMEOUT_MS\)/);
   assert.match(page, /FALLBACK_PUBLIC_PROOF_DEMO_CASES/);
   assert.match(page, /Secure Delivery public proof receipt/);
   assert.match(page, /Pharma Cold Chain public proof receipt/);
@@ -44,6 +46,9 @@ test("proof verifier keeps the enterprise decoder readable and non-trapped", asy
   assert.match(page, /localResult\.ok \? localResult : response\.data/);
   assert.match(page, /const guidedDemo = activeDemo/);
   assert.match(page, /const decoderInput = requestedDecoderInput/);
+  assert.match(page, /const \[result, demoCatalog, decodedProof\] = await Promise\.all\(\[/);
+  assert.match(page, /decoderInput \? decodeProofInput\(decoderInput\) : Promise\.resolve\(null\)/);
+  assert.doesNotMatch(page, /decoderInput \? await decodeProofInput\(decoderInput\) : null/);
   assert.match(page, /return \[configuredApiUrl \|\| PROOF_API_FALLBACK_URL\]/);
   assert.match(page, /proof-shell/);
   assert.match(page, /proof-hero-grid/);

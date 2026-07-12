@@ -496,6 +496,7 @@ const FALLBACK_PUBLIC_PROOF_DEMO_RESPONSE: DemoCasesResponse = {
 };
 
 const PROOF_API_FALLBACK_URL = "https://api.nexid.lat";
+const PUBLIC_PROOF_FETCH_TIMEOUT_MS = 6_000;
 
 function proofApiBases() {
   const configuredApiUrl = String(productUrls.api || "").replace(/\/$/, "").trim();
@@ -507,7 +508,10 @@ async function fetchProofApiJson<T>(path: string): Promise<{ data: T | null; ok:
 
   for (const baseUrl of proofApiBases()) {
     try {
-      const response = await fetch(`${baseUrl}${path}`, { cache: "no-store" });
+      const response = await fetch(`${baseUrl}${path}`, {
+        cache: "no-store",
+        signal: AbortSignal.timeout(PUBLIC_PROOF_FETCH_TIMEOUT_MS),
+      });
       const data = await response.json().catch(() => null) as T | null;
       const result = { data, ok: response.ok, status: response.status };
       if (data && response.ok) return result;
@@ -886,9 +890,11 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
         : requestedLayer === "iota"
           ? "iota-proof"
           : "";
-  const [result, demoCatalog] = await Promise.all([
+  const decoderInput = requestedDecoderInput;
+  const [result, demoCatalog, decodedProof] = await Promise.all([
     verifyProof(eventHash, anchorId),
     loadDemoCases(),
+    decoderInput ? decodeProofInput(decoderInput) : Promise.resolve(null),
   ]);
   const matches = result?.matches || [];
   const included = Boolean(result?.included);
@@ -918,8 +924,6 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
     || demoCatalog.testnet?.iota?.rpc_verified === true
     || polygonRpcVerified;
   const activeReceiptMemoHex = guidedDemo ? utf8ToHex(guidedDemo.public_receipt.on_chain_memo) : "";
-  const decoderInput = requestedDecoderInput;
-  const decodedProof = decoderInput ? await decodeProofInput(decoderInput) : null;
   const decoderWarnings = decodedProof?.warnings?.filter(Boolean) || [];
   const decoderReceiptMatched = Boolean(decodedProof?.receipt_matched);
   const decoderReceiptVerified = decodedProof?.network_verification?.verified === true;

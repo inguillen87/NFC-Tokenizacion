@@ -28,6 +28,8 @@ test("public Polygon certificate explains proof boundaries and preserves exits",
   ]);
 
   assert.match(page, /\/public\/polygon\/ownership/);
+  assert.match(page, /PUBLIC_PROOF_FETCH_TIMEOUT_MS = 6_000/);
+  assert.match(page, /signal: AbortSignal\.timeout\(PUBLIC_PROOF_FETCH_TIMEOUT_MS\)/);
   assert.match(page, /Emision testnet confirmada/);
   assert.match(page, /custodia de plataforma/);
   assert.match(page, /buyer ownership exige firma de wallet/i);
