@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight, CheckCircle2, ShieldCheck } from "lucide-react";
 import { getWebI18n } from "../../lib/locale";
 import { JsonLd } from "../../components/json-ld";
+import { PricingRoiCalculator } from "../../components/pricing-roi-calculator";
 
 export const metadata: Metadata = {
   title: "Pricing | nexID enterprise product identity",
@@ -235,6 +236,8 @@ export default async function PricingPage() {
             <span className="text-sm leading-6 text-slate-600">{copy.note}</span>
           </div>
         </section>
+
+        <PricingRoiCalculator locale={locale} />
 
         <section className="nexid-pricing-grid grid min-w-0 gap-4 lg:grid-cols-3" aria-label="Pricing tiers">
           {copy.tiers.map((tier) => (

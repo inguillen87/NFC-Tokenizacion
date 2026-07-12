@@ -448,7 +448,7 @@ export default async function HomePage() {
       <CtaSection content={content} locale={locale} />
       <DemoRequestSection locale={locale} />
       <SalesChatWidget locale={locale} />
-      <CommercialContactModal />
+      <CommercialContactModal initialLocale={locale} />
 
       <footer className="site-footer border-t">
         <div className="container-shell grid gap-4 py-10 md:grid-cols-[auto_1fr_auto] md:items-center">
