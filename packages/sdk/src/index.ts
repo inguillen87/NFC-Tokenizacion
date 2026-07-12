@@ -1,4 +1,4 @@
-export type NexIdEnvironment = "sandbox" | "production";
+export type NexIdEnvironment = "production" | "private";
 
 export interface NexIdConfig {
   apiKey: string;
@@ -173,12 +173,24 @@ export class NexIdClient {
   private fetchImpl: typeof fetch;
 
   constructor(config: NexIdConfig) {
+    const browserRuntime = typeof globalThis === "object"
+      && "window" in globalThis
+      && "document" in globalThis;
+    if (browserRuntime) {
+      throw new Error("nexID server SDK cannot run in a browser. Keep NEXID_API_KEY in your backend or BFF.");
+    }
     if (!config.apiKey) throw new Error("nexID SDK requires apiKey");
     if (!config.tenantSlug) throw new Error("nexID SDK requires tenantSlug");
+    const environment = String(config.environment || "production");
+    if (!["production", "private"].includes(environment)) {
+      throw new Error("nexID SDK has no public sandbox endpoint. Use apiBaseUrl only for an approved local or private environment.");
+    }
+    if (environment === "private" && !config.apiBaseUrl) {
+      throw new Error("nexID private environment requires apiBaseUrl");
+    }
     this.apiKey = config.apiKey;
     this.tenantSlug = config.tenantSlug;
-    this.apiBaseUrl = (config.apiBaseUrl
-      || (config.environment === "production" ? "https://api.nexid.lat" : "https://sandbox.api.nexid.lat")).replace(/\/$/, "");
+    this.apiBaseUrl = (config.apiBaseUrl || "https://api.nexid.lat").replace(/\/$/, "");
     this.fetchImpl = config.fetchImpl || fetch;
   }
 

@@ -30,6 +30,17 @@ type DeliveryRow = {
   last_error?: string | null;
 };
 
+const SDK_SCOPE_OPTIONS = [
+  { value: "sdk:verify", label: "Verificar tags", description: "Valida taps NFC y autenticidad." },
+  { value: "sdk:claim", label: "Gestionar claims", description: "Inicia y confirma ownership." },
+  { value: "sdk:products", label: "Leer productos", description: "Consulta datos de producto y lote." },
+  { value: "sdk:events", label: "Reportar eventos", description: "Envia eventos externos al tenant." },
+  { value: "sdk:pos", label: "Activar POS", description: "Registra compras y emite tokens POS." },
+  { value: "sdk:logistics", label: "Operar logistica", description: "Gestiona sellos, custodia y entregas." },
+] as const;
+
+type SdkApiKeyScope = (typeof SDK_SCOPE_OPTIONS)[number]["value"];
+
 function eventList(value: unknown) {
   if (Array.isArray(value)) return value.join(", ");
   if (typeof value === "string") {
@@ -64,6 +75,7 @@ export function SdkAdminConsole({ tenantSlug }: { tenantSlug?: string | null }) 
   const [deliveries, setDeliveries] = useState<DeliveryRow[]>([]);
   const [usage, setUsage] = useState({ monthRequests: 0, avgLatencyMs: 0 });
   const [keyName, setKeyName] = useState("POS + SDK production key");
+  const [selectedScopes, setSelectedScopes] = useState<SdkApiKeyScope[]>([]);
   const [bid, setBid] = useState("DEMO-2026-02");
   const [claimPin, setClaimPin] = useState("");
   const [webhookUrl, setWebhookUrl] = useState("");
@@ -109,6 +121,13 @@ export function SdkAdminConsole({ tenantSlug }: { tenantSlug?: string | null }) 
   const activeKeys = useMemo(() => keys.filter((row) => row.status === "active").length, [keys]);
   const enabledWebhooks = useMemo(() => webhooks.filter((row) => row.enabled).length, [webhooks]);
 
+  function toggleScope(scope: SdkApiKeyScope, checked: boolean) {
+    setSelectedScopes((current) => {
+      if (!checked) return current.filter((item) => item !== scope);
+      return current.includes(scope) ? current : [...current, scope];
+    });
+  }
+
   async function createKey() {
     setMessage("");
     setSecret("");
@@ -116,13 +135,18 @@ export function SdkAdminConsole({ tenantSlug }: { tenantSlug?: string | null }) 
       setMessage("Elegí un tenant antes de crear una API key.");
       return;
     }
+    if (!selectedScopes.length) {
+      setMessage("Selecciona al menos un scope para crear la API key.");
+      return;
+    }
     try {
       const payload = await fetch("/api/admin/sdk/api-keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tenant, name: keyName }),
+        body: JSON.stringify({ tenant, name: keyName, scopes: selectedScopes }),
       }).then(readJson);
       setSecret(String(payload.secret || ""));
+      setSelectedScopes([]);
       setMessage("Key creada. Guardala ahora: el secreto no se vuelve a mostrar.");
       await load();
     } catch (error) {
@@ -227,17 +251,41 @@ export function SdkAdminConsole({ tenantSlug }: { tenantSlug?: string | null }) 
 
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <Card className="p-5">
-          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div className="grid gap-4 md:grid-cols-[1fr_minmax(240px,0.7fr)] md:items-end">
             <div>
               <p className="text-xs uppercase tracking-[0.18em] text-cyan-300">API keys</p>
               <h2 className="mt-2 text-xl font-semibold text-white">Integraciones por tenant</h2>
-              <p className="mt-1 text-sm text-slate-400">Scopes: verify, claim, products, events y POS. Revoca al instante si un partner deja de operar.</p>
+              <p className="mt-1 text-sm text-slate-400">Asigna solo los scopes que necesita cada integracion. Revoca al instante si un partner deja de operar.</p>
             </div>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <input className="min-w-0 rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300" value={keyName} onChange={(event) => setKeyName(event.target.value)} />
-              <Button type="button" onClick={createKey}>Crear key</Button>
-            </div>
+            <label className="block text-sm text-slate-300">
+              Nombre de la key
+              <input className="mt-2 w-full min-w-0 rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300" value={keyName} onChange={(event) => setKeyName(event.target.value)} />
+            </label>
           </div>
+          <fieldset className="mt-5 border-t border-white/10 pt-4">
+            <legend className="px-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Scopes permitidos</legend>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {SDK_SCOPE_OPTIONS.map((scope) => (
+                <label key={scope.value} className="flex min-h-16 cursor-pointer items-start gap-3 rounded-lg border border-white/10 bg-slate-950/70 p-3 transition hover:border-cyan-300/40">
+                  <input
+                    type="checkbox"
+                    className="mt-1 h-4 w-4 shrink-0 accent-cyan-400"
+                    checked={selectedScopes.includes(scope.value)}
+                    onChange={(event) => toggleScope(scope.value, event.target.checked)}
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium text-white">{scope.label}</span>
+                    <span className="mt-1 block text-xs leading-5 text-slate-400">{scope.description}</span>
+                    <span className="mt-1 block break-all font-mono text-[11px] text-cyan-200">{scope.value}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-slate-400">{selectedScopes.length} de {SDK_SCOPE_OPTIONS.length} scopes seleccionados</p>
+              <Button type="button" onClick={createKey} disabled={!tenant || !selectedScopes.length}>Crear key</Button>
+            </div>
+          </fieldset>
           <div className="mt-5 overflow-x-auto">
             <table className="w-full min-w-[680px] text-left text-sm">
               <thead className="text-xs uppercase tracking-[0.14em] text-slate-500">

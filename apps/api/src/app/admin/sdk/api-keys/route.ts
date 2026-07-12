@@ -8,8 +8,7 @@ import { ensureSdkSchema } from "../../../../lib/commercial-runtime-schema";
 import { sql } from "../../../../lib/db";
 import { json } from "../../../../lib/http";
 import { hashSdkApiKey, sdkKeyPrefix } from "../../../../lib/sdk-auth";
-
-const DEFAULT_SCOPES = ["sdk:verify", "sdk:claim", "sdk:products", "sdk:events", "sdk:pos", "sdk:logistics"];
+import { checkSdkApiKeyPermission, parseSdkApiKeyScopes, SDK_API_KEY_SCOPES } from "./policy";
 
 function clean(value: unknown) {
   return String(value || "").trim();
@@ -17,12 +16,6 @@ function clean(value: unknown) {
 
 function forcedTenantSlug(req: Request) {
   return getAdminTenantScope(req).forcedTenantSlug;
-}
-
-function parseScopes(value: unknown) {
-  if (!value) return DEFAULT_SCOPES;
-  if (Array.isArray(value)) return value.map(clean).filter(Boolean);
-  return String(value).split(",").map(clean).filter(Boolean);
 }
 
 function generateSdkKey() {
@@ -44,6 +37,8 @@ async function resolveTenantId(input: { tenant?: string | null; tenantScope?: st
 export async function GET(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
+  const permission = checkSdkApiKeyPermission(req, "read");
+  if (permission) return permission;
   await ensureSdkSchema();
 
   const url = new URL(req.url);
@@ -95,15 +90,26 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
+  const permission = checkSdkApiKeyPermission(req, "write");
+  if (permission) return permission;
   await ensureSdkSchema();
 
   const body = await req.json().catch(() => ({})) as Record<string, unknown>;
+  const scopeResult = parseSdkApiKeyScopes(body.scopes);
+  if (!scopeResult.ok) {
+    return json({
+      ok: false,
+      reason: scopeResult.reason,
+      invalidScopes: scopeResult.invalidScopes,
+      allowedScopes: SDK_API_KEY_SCOPES,
+    }, 400);
+  }
   const tenantScope = forcedTenantSlug(req);
   const tenant = await resolveTenantId({ tenant: clean(body.tenant || body.tenantSlug), tenantScope });
   if (!tenant) return json({ ok: false, reason: "tenant_required_or_not_found" }, 400);
 
   const rawKey = generateSdkKey();
-  const scopes = parseScopes(body.scopes);
+  const scopes = scopeResult.scopes;
   const name = clean(body.name) || "SDK production key";
   const expiresAt = clean(body.expiresAt || body.expires_at) || null;
   const rows = await sql/*sql*/`

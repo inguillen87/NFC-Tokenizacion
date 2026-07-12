@@ -5,6 +5,7 @@ import { checkAdmin, getAdminTenantScope } from "../../../../../lib/auth";
 import { ensureSdkSchema } from "../../../../../lib/commercial-runtime-schema";
 import { sql } from "../../../../../lib/db";
 import { json } from "../../../../../lib/http";
+import { checkSdkApiKeyPermission, parseSdkApiKeyScopes, SDK_API_KEY_SCOPES } from "../policy";
 
 function clean(value: unknown) {
   return String(value || "").trim();
@@ -20,6 +21,8 @@ async function tenantScopeFilter(req: Request) {
 export async function PATCH(req: Request, context: { params: Promise<{ id: string }> }) {
   const auth = checkAdmin(req);
   if (auth) return auth;
+  const permission = checkSdkApiKeyPermission(req, "write");
+  if (permission) return permission;
   await ensureSdkSchema();
 
   const { id } = await context.params;
@@ -28,7 +31,19 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
   if (tenantId === "__missing__") return json({ ok: false, reason: "tenant_not_found" }, 404);
   const status = clean(body.status);
   const name = clean(body.name);
-  const scopes = Array.isArray(body.scopes) ? body.scopes.map(clean).filter(Boolean) : null;
+  let scopes: string[] | null = null;
+  if (Object.prototype.hasOwnProperty.call(body, "scopes")) {
+    const scopeResult = parseSdkApiKeyScopes(body.scopes);
+    if (!scopeResult.ok) {
+      return json({
+        ok: false,
+        reason: scopeResult.reason,
+        invalidScopes: scopeResult.invalidScopes,
+        allowedScopes: SDK_API_KEY_SCOPES,
+      }, 400);
+    }
+    scopes = scopeResult.scopes;
+  }
 
   const rows = await sql/*sql*/`
     UPDATE tenant_api_keys
@@ -48,6 +63,8 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 export async function DELETE(req: Request, context: { params: Promise<{ id: string }> }) {
   const auth = checkAdmin(req);
   if (auth) return auth;
+  const permission = checkSdkApiKeyPermission(req, "write");
+  if (permission) return permission;
   await ensureSdkSchema();
 
   const { id } = await context.params;

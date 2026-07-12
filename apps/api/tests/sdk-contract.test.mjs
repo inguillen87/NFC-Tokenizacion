@@ -18,6 +18,10 @@ const files = {
   apiKeysAdmin: "apps/api/src/app/admin/sdk/api-keys/route.ts",
   claimPolicyAdmin: "apps/api/src/app/admin/sdk/claim-policy/route.ts",
   sdk: "packages/sdk/src/index.ts",
+  sdkPackage: "packages/sdk/package.json",
+  publicSdkPage: "apps/web/src/app/sdk/page.tsx",
+  dashboardSdkPage: "apps/dashboard/src/app/(app)/sdk-vision/page.tsx",
+  dashboardSdkGuide: "apps/dashboard/src/app/(app)/sdk-vision/interactive-guide.tsx",
 };
 
 function read(path) {
@@ -109,13 +113,20 @@ test("admin SDK console can issue keys, set claim policy and dispatch signed web
   assert.match(webhooks, /webhook_deliveries/);
   assert.match(apiKeysAdmin, /generateSdkKey/);
   assert.match(apiKeysAdmin, /hashSdkApiKey/);
-  assert.match(apiKeysAdmin, /DEFAULT_SCOPES = \["sdk:verify", "sdk:claim", "sdk:products", "sdk:events", "sdk:pos", "sdk:logistics"\]/);
+  assert.match(apiKeysAdmin, /parseSdkApiKeyScopes\(body\.scopes\)/);
+  assert.doesNotMatch(apiKeysAdmin, /DEFAULT_SCOPES/);
   assert.match(claimPolicyAdmin, /claimRequiresPos/);
   assert.match(claimPolicyAdmin, /claim_pin_hash/);
 });
 
-test("@nexid/sdk client is typed and maps to the protected gateway", () => {
+test("internal server SDK is typed, private and maps to the protected gateway", () => {
   const sdk = read(files.sdk);
+  const packageConfig = JSON.parse(read(files.sdkPackage));
+  assert.equal(packageConfig.name, "@product/nexid-server-sdk");
+  assert.equal(packageConfig.private, true);
+  assert.match(sdk, /cannot run in a browser/);
+  assert.match(sdk, /https:\/\/api\.nexid\.lat/);
+  assert.doesNotMatch(sdk, /sandbox\.api\.nexid\.lat/);
   assert.match(sdk, /export class NexIdClient/);
   assert.match(sdk, /verifyTap\(params: VerifyTapRequest\)/);
   assert.match(sdk, /claimOwnership\(params: ClaimOwnershipRequest\)/);
@@ -134,4 +145,21 @@ test("@nexid/sdk client is typed and maps to the protected gateway", () => {
   assert.match(sdk, /\/api\/v1\/logistics\/seal-apply/);
   assert.match(sdk, /\/api\/v1\/logistics\/handoff/);
   assert.match(sdk, /\/api\/v1\/logistics\/recipient-verify/);
+});
+
+test("SDK product surfaces publish an honest server-side REST contract", () => {
+  const publicPage = read(files.publicSdkPage);
+  const dashboardPage = read(files.dashboardSdkPage);
+  const dashboardGuide = read(files.dashboardSdkGuide);
+  for (const surface of [publicPage, dashboardPage, dashboardGuide]) {
+    assert.doesNotMatch(surface, /npm (?:i|install) @nexid\/sdk/);
+    assert.doesNotMatch(surface, /Live Demo/);
+    assert.doesNotMatch(surface, /más de un 15%/);
+  }
+  assert.match(publicPage, /https:\/\/api\.nexid\.lat\/api\/v1\/sdk\/verify/);
+  assert.match(publicPage, /La API key nunca viaja al navegador/);
+  assert.doesNotMatch(publicPage, /API Status/);
+  assert.match(dashboardPage, /paquete público todavía no fue publicado por nexID/);
+  assert.match(dashboardGuide, /SIMULACIÓN DE CONTRATO/);
+  assert.match(dashboardGuide, /La API key no aparece en la app del consumidor/);
 });

@@ -159,74 +159,111 @@ export async function POST(req: Request) {
     ? "claimed"
     : "pending_verification";
 
-  const leadRows = await sql/*sql*/`
-    INSERT INTO leads (
-      locale, contact, name, email, phone, company, country, vertical, role_interest, estimated_volume, tag_type,
-      source, status, message, notes, tenant_id, meta
-    ) VALUES (
-      ${clean(body.locale) || "es-AR"},
-      ${contact},
-      ${name || null},
-      ${contact.includes("@") ? contact : clean(body.email) || null},
-      ${!contact.includes("@") ? contact : clean(body.phone || body.whatsapp) || null},
-      ${clean(body.company) || null},
-      ${clean(body.country || gps.country || gps.countryCode) || null},
-      ${clean(body.vertical) || "wine"},
-      ${clean(body.role_interest || body.role) || "ownership_claim"},
-      ${clean(body.estimated_volume) || null},
-      ${carrierProfileCode || null},
-      'sdk_claim',
-      ${claimStatus === "claimed" ? "qualified" : "new"},
-      ${clean(body.message) || "SDK ownership claim request"},
-      ${[
-        `sdk_claim_status=${claimStatus}`,
-        `bid=${bid}`,
-        uidHex ? `uid=${uidHex}` : "",
-        `active_for_claim=${activeForClaim}`,
-        `pin_required=${pinRequired}`,
-        `pos_required=${claimRequiresPos}`,
-        `pos_validated=${posValidated}`,
-        `carrier=${carrierProfileCode || "unknown"}`,
-      ].filter(Boolean).join(" | ")},
-      ${auth.context.tenantId},
-      ${JSON.stringify({ ...meta, gps: { ...gps, lat, lng } })}::jsonb
-    )
-    RETURNING id::text AS id
-  `;
-  const leadId = String((leadRows[0] as { id?: string } | undefined)?.id || "");
-
   const claimRows = await sql/*sql*/`
-    INSERT INTO sdk_claim_requests (
-      tenant_id, api_key_id, lead_id, batch_id, tag_id, bid, uid_hex, contact, name,
-      claim_status, pin_validated, active_for_claim, pos_activation_id, pos_validated, carrier_profile_code, meta
-    ) VALUES (
-      ${auth.context.tenantId},
-      ${auth.context.apiKeyId},
-      ${leadId || null},
-      ${clean(row.batch_id)},
-      ${clean(row.tag_id) || null},
-      ${bid},
-      ${uidHex || null},
-      ${contact},
-      ${name || null},
-      ${claimStatus},
-      ${pinValidated},
-      ${activeForClaim},
-      ${posActivationId || null},
-      ${posValidated},
-      ${carrierProfileCode || null},
-      ${JSON.stringify(meta)}::jsonb
+    WITH claim_ids AS MATERIALIZED (
+      SELECT uuid_generate_v4() AS lead_id, uuid_generate_v4() AS claim_id
+    ),
+    consumed_pos AS (
+      UPDATE sdk_pos_activations activation
+      SET activation_status = 'used',
+          used_at = now(),
+          claim_request_id = claim_ids.claim_id,
+          updated_at = now()
+      FROM claim_ids
+      WHERE ${posToken} <> ''
+        AND activation.id = ${posActivationId || null}
+        AND activation.tenant_id = ${auth.context.tenantId}
+        AND activation.bid = ${bid}
+        AND activation.pos_token_hash = ${hashSdkApiKey(posToken)}
+        AND activation.activation_status = 'active'
+        AND activation.claim_request_id IS NULL
+        AND (activation.expires_at IS NULL OR activation.expires_at > now())
+        AND (${uidHex} = '' OR activation.uid_hex IS NULL OR UPPER(activation.uid_hex) = UPPER(${uidHex}))
+      RETURNING activation.id
+    ),
+    claim_gate AS (
+      SELECT claim_ids.lead_id, claim_ids.claim_id, consumed_pos.id AS pos_activation_id
+      FROM claim_ids
+      LEFT JOIN consumed_pos ON true
+      WHERE ${posToken} = '' OR consumed_pos.id IS NOT NULL
+    ),
+    created_lead AS (
+      INSERT INTO leads (
+        id, locale, contact, name, email, phone, company, country, vertical, role_interest, estimated_volume, tag_type,
+        source, status, message, notes, tenant_id, meta
+      )
+      SELECT
+        claim_gate.lead_id,
+        ${clean(body.locale) || "es-AR"},
+        ${contact},
+        ${name || null},
+        ${contact.includes("@") ? contact : clean(body.email) || null},
+        ${!contact.includes("@") ? contact : clean(body.phone || body.whatsapp) || null},
+        ${clean(body.company) || null},
+        ${clean(body.country || gps.country || gps.countryCode) || null},
+        ${clean(body.vertical) || "wine"},
+        ${clean(body.role_interest || body.role) || "ownership_claim"},
+        ${clean(body.estimated_volume) || null},
+        ${carrierProfileCode || null},
+        'sdk_claim',
+        ${claimStatus === "claimed" ? "qualified" : "new"},
+        ${clean(body.message) || "SDK ownership claim request"},
+        ${[
+          `sdk_claim_status=${claimStatus}`,
+          `bid=${bid}`,
+          uidHex ? `uid=${uidHex}` : "",
+          `active_for_claim=${activeForClaim}`,
+          `pin_required=${pinRequired}`,
+          `pos_required=${claimRequiresPos}`,
+          `pos_validated=${posValidated}`,
+          `carrier=${carrierProfileCode || "unknown"}`,
+        ].filter(Boolean).join(" | ")},
+        ${auth.context.tenantId},
+        ${JSON.stringify({ ...meta, gps: { ...gps, lat, lng } })}::jsonb
+      FROM claim_gate
+      RETURNING id
+    ),
+    created_claim AS (
+      INSERT INTO sdk_claim_requests (
+        id, tenant_id, api_key_id, lead_id, batch_id, tag_id, bid, uid_hex, contact, name,
+        claim_status, pin_validated, active_for_claim, pos_activation_id, pos_validated, carrier_profile_code, meta
+      )
+      SELECT
+        claim_gate.claim_id,
+        ${auth.context.tenantId},
+        ${auth.context.apiKeyId},
+        created_lead.id,
+        ${clean(row.batch_id)},
+        ${clean(row.tag_id) || null},
+        ${bid},
+        ${uidHex || null},
+        ${contact},
+        ${name || null},
+        ${claimStatus},
+        ${pinValidated},
+        ${activeForClaim},
+        claim_gate.pos_activation_id,
+        ${posValidated},
+        ${carrierProfileCode || null},
+        ${JSON.stringify(meta)}::jsonb
+      FROM claim_gate
+      JOIN created_lead ON created_lead.id = claim_gate.lead_id
+      RETURNING id::text AS id, lead_id::text AS lead_id, claim_status
     )
-    RETURNING id::text AS id, claim_status
+    SELECT id, lead_id, claim_status
+    FROM created_claim
   `;
-  const claimId = String((claimRows[0] as { id?: string } | undefined)?.id || "");
-  if (posActivationId) {
-    await sql/*sql*/`
-      UPDATE sdk_pos_activations
-      SET activation_status = 'used', used_at = now(), claim_request_id = ${claimId || null}, updated_at = now()
-      WHERE id = ${posActivationId}
-    `;
+  const persistedClaim = claimRows[0] as { id?: string; lead_id?: string; claim_status?: string } | undefined;
+  if (!persistedClaim && posToken) {
+    await logSdkUsage({ req, context: auth.context, endpoint: "sdk.claim", statusCode: 409, startedAt, reason: "pos_token_invalid_or_consumed", meta: { bid, uidHex: uidHex || null } });
+    return json({ ok: false, reason: "pos_token_invalid_or_consumed", bid, uidHex: uidHex || null, trace_id: auth.context.traceId }, 409);
   }
+  if (!persistedClaim) {
+    await logSdkUsage({ req, context: auth.context, endpoint: "sdk.claim", statusCode: 500, startedAt, reason: "claim_persistence_failed", meta: { bid, uidHex: uidHex || null } });
+    return json({ ok: false, reason: "claim_persistence_failed", trace_id: auth.context.traceId }, 500);
+  }
+  const claimId = String(persistedClaim.id || "");
+  const leadId = String(persistedClaim.lead_id || "");
 
   await dispatchTenantWebhooks({
     tenantId: auth.context.tenantId,

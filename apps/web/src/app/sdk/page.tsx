@@ -38,37 +38,33 @@ export const metadata: Metadata = {
   title: "SDK y APIs - nexID",
   description: "SDK, APIs, webhooks y flujo POS para integrar autenticidad, QR, NFC, GS1 Digital Link y marketplace sin atar a las marcas a proveedores cerrados.",
 };
-const code = `import { NexIdClient } from "@nexid/sdk";
-
-const nexid = new NexIdClient({
-  apiKey: process.env.NEXID_API_KEY!,
-  tenantSlug: "mi-marca",
+const code = `// app/api/nexid/verify/route.ts - ejecutar solo en servidor
+const response = await fetch("https://api.nexid.lat/api/v1/sdk/verify", {
+  method: "POST",
+  headers: {
+    "content-type": "application/json",
+    "x-nexid-api-key": process.env.NEXID_API_KEY!,
+    "x-nexid-tenant-slug": "mi-marca",
+  },
+  body: JSON.stringify({
+    bid: tag.bid,
+    picc_data: tag.picc_data,
+    enc: tag.enc,
+    cmac: tag.cmac,
+  }),
 });
 
-const verification = await nexid.verifyTap({
-  bid: tag.bid,
-  picc_data: tag.picc_data,
-  enc: tag.enc,
-  cmac: tag.cmac,
-});
+if (!response.ok) throw new Error("No se pudo verificar el tap");
+const verification = await response.json();
 
 if (verification.verdict === "VALID") {
-  const pos = await nexid.activatePosPurchase({
-    bid: tag.bid,
-    externalOrderId: order.id,
-  });
-
-  await nexid.claimOwnership({
-    bid: tag.bid,
-    contact: buyer.email,
-    posToken: pos.posToken,
-  });
+  // Continuar en backend: POS token, claim y webhook por politica.
 }`;
 const pillars = [
   {
     icon: Code2,
-    title: "SDK abierto para equipos tecnicos",
-    body: "Un cliente puede integrarnos en su e-commerce, app, ERP o POS sin esperar consultoria externa ni contratos cerrados para cada cambio.",
+    title: "API privada para equipos tecnicos",
+    body: "El backend del cliente conecta e-commerce, ERP o POS con credenciales por tenant y permisos explicitos. La API key nunca viaja al navegador.",
   },
   {
     icon: ShieldCheck,
@@ -77,8 +73,8 @@ const pillars = [
   },
   {
     icon: Webhook,
-    title: "Eventos firmados hacia su stack",
-    body: "Verificaciones, compras, claims, leads y alertas salen por webhooks firmados hacia CRM, data warehouse, Shopify, WooCommerce o soporte.",
+    title: "Webhooks verificables hacia su stack",
+    body: "Con un secreto configurado, verificaciones, claims y alertas llegan firmados al CRM o data warehouse del cliente.",
   },
   {
     icon: Radio,
@@ -103,7 +99,7 @@ const strategy = [
 
 const trustSignals = [
   { label: "Anti-falsificacion", detail: "Criptografia y senales de riesgo del servidor.", Icon: ShieldCheck },
-  { label: "Implementacion rapida", detail: "SDK para web, mobile, POS y ERP.", Icon: Zap },
+  { label: "Implementacion controlada", detail: "API server-side para backend, POS y ERP.", Icon: Zap },
   { label: "Estandares globales", detail: "QR, NFC, UHF y GS1 Digital Link.", Icon: Globe2 },
   { label: "Privacidad por diseno", detail: "Datos minimos y control del usuario.", Icon: KeyRound },
 ];
@@ -139,18 +135,18 @@ function SdkTopNav() {
           <Link href="/resellers">Partners</Link>
           <Link href="/proof/verify">Proof Verify & Decoder</Link>
         </nav>
-        <Link href="/?contact=sales#contact-modal" className="sdk-mobile-primary-action" aria-label="Solicitar acceso al SDK nexID">
+        <Link href="/?contact=sales&intent=sdk_access&source=sdk&return_to=%2Fsdk#contact-modal" className="sdk-mobile-primary-action" aria-label="Solicitar acceso a la API nexID">
           Solicitar acceso <ArrowRight className="h-3.5 w-3.5" />
         </Link>
         <div className="sdk-theme-toggle" aria-label="Cambiar tema SDK">
           <ThemeToggle />
         </div>
         <div className="sdk-nav-actions">
-          <span className="sdk-api-status"><i /> API Status</span>
+          <span className="sdk-api-status">API de produccion</span>
           <Link href="https://app.nexid.lat/login">
             <Button variant="secondary">Iniciar sesion</Button>
           </Link>
-          <Link href="/?contact=sales#contact-modal">
+          <Link href="/?contact=sales&intent=sdk_access&source=sdk&return_to=%2Fsdk#contact-modal">
             <Button>Solicitar acceso</Button>
           </Link>
         </div>
@@ -399,7 +395,7 @@ export default async function SdkPage({ searchParams }: SdkPageProps) {
               <span>mueves y vendes.</span>
             </h1>
             <p>
-              nexID SDK y APIs convierten cualquier producto, empaque, evento o activo fisico en una identidad digital verificable. Arquitectura disenada para integracion rapida, escala progresiva y cambios controlados sin depender de contratos cerrados.
+              Las APIs nexID y el acceso SDK privado convierten cualquier producto, empaque, evento o activo fisico en una identidad digital verificable. La integracion se ejecuta desde el servidor del cliente, con credenciales por tenant y cambios controlados.
             </p>
             <div className="sdk-hero-actions">
               <Link href="/docs">
@@ -466,8 +462,8 @@ export default async function SdkPage({ searchParams }: SdkPageProps) {
 
           <Card className="overflow-hidden p-0">
             <div className="border-b border-white/10 px-5 py-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">Blueprint en 5 lineas</p>
-              <h2 className="mt-2 text-xl font-semibold text-white">Asi deberia sentirse integrar nexID</h2>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">Contrato server-side</p>
+              <h2 className="mt-2 text-xl font-semibold text-white">Una llamada auditable, sin secretos en el navegador</h2>
             </div>
             <pre className="overflow-x-auto bg-slate-950 p-5 text-xs leading-6 text-cyan-50"><code>{code}</code></pre>
           </Card>

@@ -1,6 +1,6 @@
 # nexID SDK, CRM y claim seguro - roadmap sprint a sprint
 
-Ultima actualizacion: 2026-06-19
+Ultima actualizacion: 2026-07-11
 
 ## Principio de producto
 
@@ -18,12 +18,14 @@ Estado: implementado.
 - Webhooks firmados para `sdk.verify`, `sdk.claim.created`, `sdk.claim.claimed`, `sdk.pos.activated` y `sdk.external_event`.
 - Consola dashboard para API keys, claim policy y webhooks.
 
-## Sprint 2 - SDK publico y adopcion barata
+## Sprint 2 - API server-side y adopcion controlada
 
-Estado: implementado base, ampliar con documentacion y ejemplos.
+Estado: contrato base implementado; paquete publico pendiente de nombre y publicacion propios.
 
 - Pagina publica `/sdk` con explicacion business/dev.
-- Cliente `@nexid/sdk` con `verifyTap`, `getProduct`, `activatePosPurchase`, `claimOwnership` y `reportEvent`.
+- REST API de produccion en `https://api.nexid.lat`; credenciales solo en backend, BFF, POS o ERP.
+- Cliente interno `@product/nexid-server-sdk` marcado como privado. No publicar ni recomendar `@nexid/sdk`: ese nombre pertenece a un paquete ajeno.
+- Antes de publicar un paquete se debe controlar el scope npm, compilar artefactos `dist`, versionar semver y documentar soporte server-only.
 - Mensaje comercial: QR y SDK reducen barrera de entrada; NFC criptografico protege casos premium.
 - Mantener precision tecnica: QR no es anti-copia fuerte; sirve para passport, leads, marketplace, analytics y fidelizacion.
 
