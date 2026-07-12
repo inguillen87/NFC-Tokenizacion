@@ -33,13 +33,14 @@ import {
   type PlatformIconKey,
   type PlatformVertical,
 } from "../../lib/platform-verticals";
+import { NEXID_SDK_VERIFY_URL } from "../../lib/sdk-public-contract";
 
 export const metadata: Metadata = {
   title: "SDK y APIs - nexID",
   description: "SDK, APIs, webhooks y flujo POS para integrar autenticidad, QR, NFC, GS1 Digital Link y marketplace sin atar a las marcas a proveedores cerrados.",
 };
 const code = `// app/api/nexid/verify/route.ts - ejecutar solo en servidor
-const response = await fetch("https://api.nexid.lat/api/v1/sdk/verify", {
+const response = await fetch("${NEXID_SDK_VERIFY_URL}", {
   method: "POST",
   headers: {
     "content-type": "application/json",

@@ -2,6 +2,13 @@
 
 import { Check, Clipboard, Code2, ListTree, TerminalSquare } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import {
+  NEXID_SDK_API_BASE,
+  NEXID_SDK_VERIFY_OPTIONAL_FIELDS,
+  NEXID_SDK_VERIFY_REQUIRED_FIELDS,
+  NEXID_SDK_VERIFY_ROUTE,
+  NEXID_SDK_VERIFY_URL,
+} from "../../lib/sdk-public-contract";
 
 type Locale = "es-AR" | "pt-BR" | "en";
 type SnippetId = "curl" | "node" | "python";
@@ -16,60 +23,68 @@ const navItems: Array<{ id: string; label: Record<Locale, string> }> = [
   { id: "actions", label: { "es-AR": "Acciones", "pt-BR": "Acoes", en: "Actions" } },
 ];
 
+const sdkContractItems = [
+  ...NEXID_SDK_VERIFY_REQUIRED_FIELDS,
+  ...NEXID_SDK_VERIFY_OPTIONAL_FIELDS.map((field) => `${field}?`),
+];
+
 const snippets: Record<SnippetId, string> = {
-  curl: `export NEXID_API_BASE="$NEXID_API_BASE"
-export NEXID_VALIDATION_ROUTE="$NEXID_VALIDATION_ROUTE"
+  curl: `export NEXID_API_BASE="${NEXID_SDK_API_BASE}"
+export NEXID_API_KEY="<SERVER_SIDE_API_KEY>"
+export NEXID_TENANT_SLUG="mi-marca"
+export NEXID_BID="NXD-LOTE-001"
+export NEXID_PICC_DATA="<PICC_DATA_HEX>"
+export NEXID_ENC="<ENC_HEX>"
+export NEXID_CMAC="<CMAC_HEX>"
 
-curl -X POST "$NEXID_API_BASE$NEXID_VALIDATION_ROUTE" \\
-  -H "Authorization: Bearer $NEXID_TENANT_TOKEN" \\
+curl -X POST "$NEXID_API_BASE${NEXID_SDK_VERIFY_ROUTE}" \\
+  -H "x-nexid-api-key: $NEXID_API_KEY" \\
+  -H "x-nexid-tenant-slug: $NEXID_TENANT_SLUG" \\
   -H "Content-Type: application/json" \\
-  -d '{
-    "carrier": "ntag424_dna",
-    "uid": "$TAG_UID",
-    "counter": "$SUN_COUNTER",
-    "cmac": "$SUN_CMAC",
-    "batchId": "$BATCH_ID",
-    "channel": "consumer-web"
-  }'`,
-  node: `const baseUrl = process.env.NEXID_API_BASE;
-const route = process.env.NEXID_VALIDATION_ROUTE;
-
-const response = await fetch(\`\${baseUrl}\${route}\`, {
+  --data-binary @- <<JSON
+{
+  "bid": "$NEXID_BID",
+  "picc_data": "$NEXID_PICC_DATA",
+  "enc": "$NEXID_ENC",
+  "cmac": "$NEXID_CMAC"
+}
+JSON`,
+  node: `const response = await fetch("${NEXID_SDK_VERIFY_URL}", {
   method: "POST",
   headers: {
-    Authorization: \`Bearer \${process.env.NEXID_TENANT_TOKEN}\`,
+    "x-nexid-api-key": process.env.NEXID_API_KEY,
+    "x-nexid-tenant-slug": process.env.NEXID_TENANT_SLUG,
     "Content-Type": "application/json",
   },
   body: JSON.stringify({
-    carrier: "ntag424_dna",
-    uid: tag.uid,
-    counter: tag.sunCounter,
-    cmac: tag.sunCmac,
-    batchId: tag.batchId,
-    channel: "consumer-web",
+    bid: tag.bid,
+    picc_data: tag.picc_data,
+    enc: tag.enc,
+    cmac: tag.cmac,
   }),
 });
 
+if (!response.ok) throw new Error("nexID verify failed: " + response.status);
 const verdict = await response.json();`,
   python: `import os
 import requests
 
 response = requests.post(
-    f"{os.environ['NEXID_API_BASE']}{os.environ['NEXID_VALIDATION_ROUTE']}",
+    "${NEXID_SDK_VERIFY_URL}",
     headers={
-        "Authorization": f"Bearer {os.environ['NEXID_TENANT_TOKEN']}",
+        "x-nexid-api-key": os.environ["NEXID_API_KEY"],
+        "x-nexid-tenant-slug": os.environ["NEXID_TENANT_SLUG"],
         "Content-Type": "application/json",
     },
     json={
-        "carrier": "ntag424_dna",
-        "uid": tag["uid"],
-        "counter": tag["sun_counter"],
-        "cmac": tag["sun_cmac"],
-        "batchId": tag["batch_id"],
-        "channel": "consumer-web",
+        "bid": tag["bid"],
+        "picc_data": tag["picc_data"],
+        "enc": tag["enc"],
+        "cmac": tag["cmac"],
     },
 )
 
+response.raise_for_status()
 verdict = response.json()`,
 };
 
@@ -94,9 +109,9 @@ const copyByLocale: Record<
     consoleEyebrow: "Integracion guiada",
     consoleTitle: "Tabs reales para llevar la validacion a un piloto",
     consoleBody:
-      "Los snippets usan variables de entorno porque el endpoint exacto y el token se entregan por tenant. Esto evita publicar rutas privadas y mantiene el contrato copiable.",
+      "Los snippets usan el endpoint canonico y credenciales server-side por tenant. La API key nunca va al navegador y el mismo contrato funciona en backend, POS o ERP.",
     contractTitle: "Contrato minimo que debe llegar al backend",
-    contractItems: ["carrier", "uid", "counter", "cmac", "batchId", "channel"],
+    contractItems: sdkContractItems,
     copied: "Copiado",
     copy: "Copiar",
     note: "La validacion productiva finaliza server-side: replay, politica de tenant, ownership y garantia no viven en el cliente.",
@@ -107,9 +122,9 @@ const copyByLocale: Record<
     consoleEyebrow: "Integracao guiada",
     consoleTitle: "Tabs reais para levar validacao a um piloto",
     consoleBody:
-      "Os snippets usam variaveis de ambiente porque o endpoint exato e o token sao entregues por tenant. Isso evita publicar rotas privadas e mantem o contrato copiavel.",
+      "Os snippets usam o endpoint canonico e credenciais server-side por tenant. A API key nunca vai ao navegador e o mesmo contrato funciona no backend, POS ou ERP.",
     contractTitle: "Contrato minimo que deve chegar ao backend",
-    contractItems: ["carrier", "uid", "counter", "cmac", "batchId", "channel"],
+    contractItems: sdkContractItems,
     copied: "Copiado",
     copy: "Copiar",
     note: "A validacao produtiva termina server-side: replay, politica do tenant, ownership e garantia nao ficam no cliente.",
@@ -120,9 +135,9 @@ const copyByLocale: Record<
     consoleEyebrow: "Guided integration",
     consoleTitle: "Real tabs to move validation into a pilot",
     consoleBody:
-      "Snippets use environment variables because the exact endpoint and token are tenant-scoped. That keeps private routes unpublished while preserving a copyable contract.",
+      "Snippets use the canonical endpoint and tenant-scoped server credentials. The API key never reaches the browser, and the same contract works in a backend, POS or ERP.",
     contractTitle: "Minimum contract received by the backend",
-    contractItems: ["carrier", "uid", "counter", "cmac", "batchId", "channel"],
+    contractItems: sdkContractItems,
     copied: "Copied",
     copy: "Copy",
     note: "Production validation is finalized server-side: replay, tenant policy, ownership and warranty do not live in the client.",

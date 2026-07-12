@@ -20,6 +20,7 @@ const files = {
   sdk: "packages/sdk/src/index.ts",
   sdkPackage: "packages/sdk/package.json",
   publicSdkPage: "apps/web/src/app/sdk/page.tsx",
+  publicSdkContract: "apps/web/src/lib/sdk-public-contract.ts",
   dashboardSdkPage: "apps/dashboard/src/app/(app)/sdk-vision/page.tsx",
   dashboardSdkGuide: "apps/dashboard/src/app/(app)/sdk-vision/interactive-guide.tsx",
 };
@@ -149,6 +150,7 @@ test("internal server SDK is typed, private and maps to the protected gateway", 
 
 test("SDK product surfaces publish an honest server-side REST contract", () => {
   const publicPage = read(files.publicSdkPage);
+  const publicContract = read(files.publicSdkContract);
   const dashboardPage = read(files.dashboardSdkPage);
   const dashboardGuide = read(files.dashboardSdkGuide);
   for (const surface of [publicPage, dashboardPage, dashboardGuide]) {
@@ -156,7 +158,9 @@ test("SDK product surfaces publish an honest server-side REST contract", () => {
     assert.doesNotMatch(surface, /Live Demo/);
     assert.doesNotMatch(surface, /más de un 15%/);
   }
-  assert.match(publicPage, /https:\/\/api\.nexid\.lat\/api\/v1\/sdk\/verify/);
+  assert.match(publicPage, /NEXID_SDK_VERIFY_URL/);
+  assert.match(publicContract, /NEXID_SDK_VERIFY_ROUTE = "\/api\/v1\/sdk\/verify"/);
+  assert.match(publicContract, /NEXID_SDK_VERIFY_REQUIRED_FIELDS = \["bid", "picc_data", "enc", "cmac"\]/);
   assert.match(publicPage, /La API key nunca viaja al navegador/);
   assert.doesNotMatch(publicPage, /API Status/);
   assert.match(dashboardPage, /paquete público todavía no fue publicado por nexID/);
