@@ -1157,6 +1157,14 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           display: none !important;
         }
 
+        @media (max-width: 1023px) {
+          .helpbot-surface,
+          .helpbot-trigger,
+          .helpbot-hint {
+            display: none !important;
+          }
+        }
+
         html[data-theme="light"] .proof-verify-page,
         html.theme-light .proof-verify-page {
           --proof-page-bg:
@@ -1802,11 +1810,6 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
             display: none;
           }
 
-          .helpbot-surface,
-          .helpbot-trigger,
-          .helpbot-hint {
-            display: none !important;
-          }
         }
       `}</style>
       <section className="proof-shell mx-auto flex w-full max-w-[1540px] flex-col gap-6 px-5 py-8 sm:gap-10 sm:px-8 lg:px-10">
