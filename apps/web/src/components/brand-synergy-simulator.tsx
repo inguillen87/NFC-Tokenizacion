@@ -32,7 +32,6 @@ interface Scenario {
   partnerBenefit: string;
   partnerBenefitDesc: string;
   feeText: string;
-  conversionEst: string;
   crmSignal: string;
   policyGate: string;
   businessResult: string;
@@ -69,21 +68,35 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
     select: isEn ? "Select scenario" : isBr ? "Selecionar cenario" : "Seleccionar escenario",
     portal: isEn ? "Simulate portal and wallet" : isBr ? "Simular portal e wallet" : "Simular portal y wallet",
     lab: isEn ? "Open Demo Lab" : isBr ? "Abrir Demo Lab" : "Abrir Demo Lab",
-    terminalTitle: isEn ? "Guided partner matching" : isBr ? "Matching guiado de parceiro" : "Matching guiado de partner",
-    channel: isEn ? "Scenario simulation" : isBr ? "Simulacao de cenario" : "Simulacion de escenario",
+    terminalTitle: isEn ? "Guided offer model" : isBr ? "Modelo guiado de oferta" : "Modelo guiado de oferta",
+    channel: isEn ? "Hypothetical scenario" : isBr ? "Cenario hipotetico" : "Escenario hipotetico",
     physicalTap: isEn ? "1 - Physical tap detected" : isBr ? "1 - Tap fisico detectado" : "1 - Tap fisico detectado",
     authenticity: isEn ? "2 - Authenticity check" : isBr ? "2 - Checagem de autenticidade" : "2 - Chequeo de autenticidad",
     query: isEn ? "3 - Business policy query" : isBr ? "3 - Consulta de politica comercial" : "3 - Consulta de politica comercial",
     voucher: isEn ? "4 - Action unlocked" : isBr ? "4 - Acao habilitada" : "4 - Accion habilitada",
-    verified: isEn ? "SUN verified: OK - Risk score: 0.01" : isBr ? "SUN verificado: OK - Risco: 0.01" : "SUN verificado: OK - Riesgo: 0.01",
-    matching: isEn ? "Matching eligible partner offers..." : isBr ? "Buscando ofertas elegiveis..." : "Buscando ofertas elegibles...",
-    category: isEn ? "Category" : isBr ? "Categoria" : "Categoria",
-    boardTitle: isEn ? "Enterprise activation demo" : isBr ? "Demo enterprise de ativacao" : "Demo enterprise de activacion",
-    boardSubtitle: isEn
-      ? "What the team can operate after one trusted tap."
+    verified: isEn
+      ? "Demo check: SUN response + configured policy"
       : isBr
-        ? "O que a equipe pode operar depois de um tap confiavel."
-        : "Lo que el equipo puede operar despues de un tap confiable.",
+        ? "Cheque demo: resposta SUN + politica configurada"
+        : "Chequeo demo: respuesta SUN + politica configurada",
+    matching: isEn
+      ? "Evaluating a configurable offer under demo rules..."
+      : isBr
+        ? "Avaliando uma oferta configuravel com regras demo..."
+        : "Evaluando una oferta configurable con reglas demo...",
+    category: isEn ? "Category" : isBr ? "Categoria" : "Categoria",
+    boardTitle: isEn ? "Hypothetical activation model" : isBr ? "Modelo hipotetico de ativacao" : "Modelo hipotetico de activacion",
+    boardSubtitle: isEn
+      ? "What a team could operate after a trusted tap."
+      : isBr
+        ? "O que uma equipe poderia operar depois de um tap confiavel."
+        : "Lo que un equipo podria operar despues de un tap confiable.",
+    hypothesisBadge: isEn ? "HYPOTHETICAL SCENARIO" : isBr ? "CENARIO HIPOTETICO" : "ESCENARIO HIPOTETICO",
+    hypothesisNote: isEn
+      ? "Generic brands, benefits and outcomes illustrate a configurable workflow. They are not customers, partners or measured performance."
+      : isBr
+        ? "Marcas, beneficios e resultados genericos ilustram um fluxo configuravel. Nao sao clientes, parceiros nem performance medida."
+        : "Marcas, beneficios y resultados genericos ilustran un flujo configurable. No son clientes, partners ni performance medida.",
     signalLabel: isEn ? "CRM signal" : isBr ? "Sinal CRM" : "Senal CRM",
     policyLabel: isEn ? "Policy gate" : isBr ? "Regra de politica" : "Regla de politica",
     resultLabel: isEn ? "Business result" : isBr ? "Resultado de negocio" : "Resultado comercial",
@@ -102,10 +115,13 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
       : isBr
         ? "Sinal CRM, voucher ou claim"
         : "Senal CRM, voucher o reclamo",
-    metricMatchLabel: isEn ? "Estimated match" : isBr ? "Match estimado" : "Match estimado",
-    metricRiskLabel: isEn ? "Risk" : isBr ? "Risco" : "Riesgo",
+    metricMatchLabel: isEn ? "Scenario basis" : isBr ? "Base do cenario" : "Base del escenario",
+    metricMatchValue: isEn ? "Buyer assumption" : isBr ? "Premissa do comprador" : "Supuesto del comprador",
+    metricRiskLabel: isEn ? "Risk model" : isBr ? "Modelo de risco" : "Modelo de riesgo",
+    metricRiskValue: isEn ? "To validate" : isBr ? "A validar" : "A validar",
     metricDataLabel: isEn ? "Data" : isBr ? "Dados" : "Datos",
     privateDataLabel: isEn ? "private" : isBr ? "privado" : "privado",
+    illustrativeLabel: isEn ? "Illustrative" : isBr ? "Ilustrativo" : "Ilustrativo",
     mobileViewLabel: isEn ? "Simulator view" : isBr ? "Vista do simulador" : "Vista del simulador",
     businessView: isEn ? "Decision" : isBr ? "Decisao" : "Decision",
     activationView: isEn ? "Activation" : isBr ? "Ativacao" : "Activacion",
@@ -125,20 +141,19 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
         icon: <Wine className="h-4 w-4" />,
         activeBg: "bg-gradient-to-r from-purple-600 to-violet-500",
         activeBorder: "border-purple-500",
-        scannedProduct: "Gran Reserva Malbec 2023",
-        scannedBatch: "Batch #BOD-2023-Mendoza",
-        partnerBrand: "Combi VIP Traslados",
-        partnerBenefit: isEn ? "15% off return transfer" : isBr ? "15% OFF no traslado de retorno" : "15% OFF en traslado de retorno",
+        scannedProduct: isEn ? "Premium wine demo lot" : isBr ? "Lote demo de vinho premium" : "Lote demo de vino premium",
+        scannedBatch: "DEMO-WINE-2026-001",
+        partnerBrand: isEn ? "Authorized mobility operator" : isBr ? "Operador de mobilidade autorizado" : "Operador de movilidad autorizado",
+        partnerBenefit: isEn ? "Configurable return transfer" : isBr ? "Traslado de retorno configuravel" : "Traslado de retorno configurable",
         partnerBenefitDesc: isEn
           ? "Safe return to the hotel after a validated tasting."
           : isBr
             ? "Permite voltar ao hotel com seguranca depois da degustacao."
             : "Permite regresar al hotel con seguridad despues de la degustacion.",
         feeText: isEn ? "Eligibility + consent" : isBr ? "Elegibilidade + consentimento" : "Elegibilidad + consentimiento",
-        conversionEst: "94%",
         crmSignal: isEn ? "High-value tourist, verified tasting" : isBr ? "Turista VIP, degustacao verificada" : "Turista VIP, cata verificada",
         policyGate: isEn ? "Same-day tap + consent + route safety" : isBr ? "Tap no dia + consentimento + rota segura" : "Tap del dia + consentimiento + ruta segura",
-        businessResult: isEn ? "Transfer benefit and partner revenue share" : isBr ? "Beneficio de traslado e receita compartilhada" : "Beneficio de traslado e ingreso compartido",
+        businessResult: isEn ? "Configurable benefit and commercial attribution" : isBr ? "Beneficio configuravel e atribuicao comercial" : "Beneficio configurable y atribucion comercial",
         proofMode: isEn ? "Hash-only + consent token" : isBr ? "Hash-only + token de consentimento" : "Hash-only + token de consentimiento",
       },
       {
@@ -148,17 +163,16 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
         icon: <Ticket className="h-4 w-4" />,
         activeBg: "bg-gradient-to-r from-orange-500 to-amber-400",
         activeBorder: "border-orange-500",
-        scannedProduct: "VIP Wristband - Summer Fest",
-        scannedBatch: "Batch #EV-SUMMER-2026",
-        partnerBrand: "Patagonia Beer Gardens",
-        partnerBenefit: isEn ? "Free craft pint" : isBr ? "Pint artesanal liberada" : "Pinta artesanal habilitada",
+        scannedProduct: isEn ? "Serialized event wristband" : isBr ? "Pulseira serializada de evento" : "Pulsera serializada de evento",
+        scannedBatch: "DEMO-EVENT-2026-001",
+        partnerBrand: isEn ? "Participating venue operator" : isBr ? "Operador gastronomico participante" : "Operador gastronomico participante",
+        partnerBenefit: isEn ? "Configurable on-site benefit" : isBr ? "Beneficio configuravel no evento" : "Beneficio configurable en el evento",
         partnerBenefitDesc: isEn
           ? "Unlocked only for verified attendees inside the venue."
           : isBr
             ? "Liberada apenas para assistentes verificados dentro do evento."
             : "Habilitada solo para asistentes verificados dentro del predio.",
         feeText: isEn ? "Access proof + audience match" : isBr ? "Prova de acesso + audiencia" : "Prueba de acceso + audiencia",
-        conversionEst: "97%",
         crmSignal: isEn ? "Verified attendee inside venue" : isBr ? "Assistente verificado no evento" : "Asistente verificado en el predio",
         policyGate: isEn ? "Wristband valid + location window" : isBr ? "Pulseira valida + janela de localizacao" : "Pulsera valida + ventana de ubicacion",
         businessResult: isEn ? "On-site redemption and sponsor attribution" : isBr ? "Canje no local e atribuicao ao patrocinador" : "Canje en predio y atribucion al sponsor",
@@ -171,17 +185,16 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
         icon: <Sparkles className="h-4 w-4" />,
         activeBg: "bg-gradient-to-r from-yellow-500 to-amber-600",
         activeBorder: "border-yellow-500",
-        scannedProduct: "Limited Edition Retro Sneakers",
-        scannedBatch: "Batch #SNK-RETRO-09",
-        partnerBrand: "Club 146 Lounge VIP",
-        partnerBenefit: isEn ? "Direct access + welcome drink" : isBr ? "Acesso direto + drink VIP" : "Acceso directo + trago VIP",
+        scannedProduct: isEn ? "Limited-edition product demo" : isBr ? "Produto demo de edicao limitada" : "Producto demo de edicion limitada",
+        scannedBatch: "DEMO-LUXURY-2026-001",
+        partnerBrand: isEn ? "Participating private club" : isBr ? "Clube privado participante" : "Club privado participante",
+        partnerBenefit: isEn ? "Configurable access benefit" : isBr ? "Beneficio de acesso configuravel" : "Beneficio de acceso configurable",
         partnerBenefitDesc: isEn
           ? "Verified ownership acts as a private membership signal."
           : isBr
             ? "A titularidade verificada atua como sinal de membresia privada."
             : "La titularidad verificada actua como senal de membresia privada.",
         feeText: isEn ? "Revenue share + fraud gate" : isBr ? "Receita compartilhada + antifraude" : "Revenue share + antifraude",
-        conversionEst: "89%",
         crmSignal: isEn ? "Owner verified, resale-safe profile" : isBr ? "Dono verificado, perfil seguro para revenda" : "Dueno verificado, perfil seguro para reventa",
         policyGate: isEn ? "Fresh tap + ownership + risk gate" : isBr ? "Tap fresco + titularidade + risco" : "Tap fresco + titularidad + riesgo",
         businessResult: isEn ? "VIP club access and resale trust" : isBr ? "Acesso VIP e confianca para revenda" : "Acceso VIP y confianza para reventa",
@@ -259,6 +272,10 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
             {copy.title}
           </h2>
           <p className="mt-4 text-sm leading-relaxed text-slate-400">{copy.body}</p>
+          <div className="brand-synergy-hypothesis-note mt-4 rounded-xl border border-amber-300/30 bg-amber-300/10 p-3">
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-200">{copy.hypothesisBadge}</p>
+            <p className="mt-1 text-xs leading-5 text-slate-300">{copy.hypothesisNote}</p>
+          </div>
 
           <div className="brand-synergy-flow mt-6 flex items-center gap-2 overflow-x-auto pb-1 text-[11px] font-bold">
             <span className="brand-synergy-flow__chip brand-synergy-flow__chip--brand inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-slate-800 px-3 py-1.5 text-white whitespace-nowrap">
@@ -390,11 +407,11 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
           <div className="brand-synergy-live-panel__metrics">
             <div>
               <span>{copy.metricMatchLabel}</span>
-              <strong>{activeScenario.conversionEst}</strong>
+              <strong>{copy.metricMatchValue}</strong>
             </div>
             <div>
               <span>{copy.metricRiskLabel}</span>
-              <strong>0.01</strong>
+              <strong>{copy.metricRiskValue}</strong>
             </div>
             <div>
               <span>{copy.metricDataLabel}</span>
@@ -473,7 +490,7 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
                     {activeScenario.feeText}
                   </span>
                   <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 font-bold text-emerald-400">
-                    Est. {activeScenario.conversionEst}
+                    {copy.illustrativeLabel}
                   </span>
                 </div>
               </div>

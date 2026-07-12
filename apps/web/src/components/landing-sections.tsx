@@ -366,7 +366,7 @@ export function EnterpriseTrustLayersSection({ locale }: { locale: string }) {
       ],
       cards: [
         { title: "QR / GS1", body: "Batch tracking, product data and GS1 Digital Link compliance at low cost.", meta: "Identity", icon: QrCode },
-        { title: "NFC 424 DNA", body: "Unique one-time cryptographic signature per tap: impossible to clone or replay.", meta: "Authenticity", icon: Fingerprint },
+        { title: "NFC 424 DNA", body: "Dynamic SUN/SDM response per tap, designed to resist copying and replay when keys, counters and server validation are correctly configured.", meta: "Authenticity", icon: Fingerprint },
         { title: "Offline Verifier", body: "Your phone or reader works in warehouses and remote areas. Syncs to server when back online.", meta: "Field", icon: Cpu },
         { title: "TagTamper", body: "Physical opening evidence: the tag changes state if the package was opened or broken.", meta: "Tamper", icon: ShieldCheck },
         { title: "Polygon", body: "The buyer claims the product as theirs: creates a digital twin, activates a transferable warranty and can resell with a verified certificate.", meta: "Ownership", icon: BadgeCheck },
@@ -387,7 +387,7 @@ export function EnterpriseTrustLayersSection({ locale }: { locale: string }) {
       ],
       cards: [
         { title: "QR / GS1", body: "Identidade visivel, dados do produto, resolver links e entrada low-cost para PMEs.", meta: "Identidade", icon: QrCode },
-        { title: "NFC 424 DNA", body: "Frescor criptografico, anti-copia e verificacao server-side.", meta: "Autenticidade", icon: Fingerprint },
+        { title: "NFC 424 DNA", body: "Resposta SUN/SDM dinamica por tap, projetada para resistir copia e replay quando chaves, contadores e validacao server-side estao configurados corretamente.", meta: "Autenticidade", icon: Fingerprint },
         { title: "Offline Verifier", body: "App ou leitor controlado para zonas rurais e industriais com chaves por device e sync posterior.", meta: "Campo", icon: Cpu },
         { title: "TagTamper", body: "Evidencia fisica de abertura para garrafas, lacres, pharma e embalagens premium.", meta: "Tamper", icon: ShieldCheck },
         { title: "Polygon", body: "O comprador reivindica o produto como seu: cria um gêmeo digital, ativa garantia transferível e pode revender com certificado verificado.", meta: "Propriedade", icon: BadgeCheck },
@@ -407,7 +407,7 @@ export function EnterpriseTrustLayersSection({ locale }: { locale: string }) {
       ],
       cards: [
         { title: "QR / GS1", body: "Identidad visible, datos de producto, resolver links y entrada low-cost para pymes.", meta: "Identidad", icon: QrCode },
-        { title: "NFC 424 DNA", body: "Firma criptográfica única por cada toque: imposible de clonar o copiar.", meta: "Autenticidad", icon: Fingerprint },
+        { title: "NFC 424 DNA", body: "Respuesta SUN/SDM dinamica por tap, disenada para resistir copia y replay cuando claves, contadores y validacion server-side estan configurados correctamente.", meta: "Autenticidad", icon: Fingerprint },
         { title: "Verificador Offline", body: "El celular o lector valida en campo o galpón sin internet. Al conectarse, sincroniza con el servidor.", meta: "Campo", icon: Cpu },
         { title: "Sello Tamper", body: "Evidencia física de apertura: el sello cambia de estado si el envase fue abierto.", meta: "Tamper", icon: ShieldCheck },
         { title: "Polygon", body: "El comprador reclama el producto como suyo: crea un gemelo digital, activa garantía transferible y puede revender con certificado verificado.", meta: "Propiedad", icon: BadgeCheck },

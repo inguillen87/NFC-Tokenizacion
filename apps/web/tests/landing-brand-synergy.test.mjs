@@ -27,8 +27,25 @@ test("brand synergy uses a truthful, reduced-motion-safe mobile decision flow", 
   assert.match(source, /window\.matchMedia\("\(prefers-reduced-motion: reduce\)"\)\.matches/);
   assert.match(source, /if \(isPaused\) return/);
   assert.match(source, /aria-live="off"/);
-  assert.match(source, /Guided partner matching/);
+  assert.match(source, /HYPOTHETICAL SCENARIO/);
+  assert.match(source, /They are not customers, partners or measured performance/);
+  assert.match(source, /Generic brands, benefits and outcomes/);
+  assert.match(source, /Guided offer model/);
   assert.doesNotMatch(source, /Partner matching live/);
+  assert.doesNotMatch(source, /Patagonia Beer Gardens|Combi VIP Traslados|Club 146 Lounge VIP/);
+  assert.doesNotMatch(source, /conversionEst|Risk score: 0\.01|Riesgo: 0\.01|Risco: 0\.01/);
+  assert.doesNotMatch(source, /(?:89|94|97)%/);
+});
+
+test("landing claims qualify technical security and commercial outcomes", async () => {
+  const content = await readFile(new URL("../src/lib/landing-content.ts", import.meta.url), "utf8");
+  const sections = await readFile(new URL("../src/components/landing-sections.tsx", import.meta.url), "utf8");
+
+  assert.doesNotMatch(content, /asegura recompras|sees if the product is real/);
+  assert.doesNotMatch(sections, /impossible to clone or replay|imposible de clonar o copiar/);
+  assert.match(content, /Conversion and repeat purchase are measured in each pilot, not promised/);
+  assert.match(content, /Conversión y recompra se miden en cada piloto; no se prometen/);
+  assert.match(sections, /designed to resist copying and replay when keys, counters and server validation are correctly configured/);
 });
 
 test("brand synergy light mode and mobile controls keep enterprise contrast", async () => {
