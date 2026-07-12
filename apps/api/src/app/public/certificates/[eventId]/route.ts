@@ -128,6 +128,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ eventId
       SELECT status, network, tx_hash, token_id, anchor_hash, processed_at, requested_at
       FROM tokenization_requests tr
       WHERE COALESCE(e.uid_hex, '') <> ''
+        AND tr.tenant_id = e.tenant_id
         AND UPPER(tr.uid_hex) = UPPER(e.uid_hex)
         AND (
           tr.batch_id = e.batch_id
@@ -206,9 +207,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ eventId
     publicUrl: `${publicWebBase()}/certificado/${row.event_id}`,
     links: {
       certificateUrl: `${publicWebBase()}/certificado/${row.event_id}`,
-      walletUrl: `${publicWebBase()}/me/wallet?tenant=${encodeURIComponent(String(row.tenant_slug || ""))}&eventId=${encodeURIComponent(String(row.event_id))}`,
-      marketplaceUrl: `${publicWebBase()}/me/marketplace${row.tenant_slug ? `?tenant=${encodeURIComponent(String(row.tenant_slug))}` : ""}`,
-      explorerUrl: txUrl,
+      walletUrl: authentic ? `${publicWebBase()}/me/wallet?tenant=${encodeURIComponent(String(row.tenant_slug || ""))}&eventId=${encodeURIComponent(String(row.event_id))}` : null,
+      marketplaceUrl: authentic ? `${publicWebBase()}/me/marketplace${row.tenant_slug ? `?tenant=${encodeURIComponent(String(row.tenant_slug))}` : ""}` : null,
+      explorerUrl: authentic ? txUrl : null,
     },
     status: authentic ? (claimed ? "claim_recorded" : "product_verified") : verificationState,
     statusLabel,
@@ -278,7 +279,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ eventId
       tokenId: row.tokenization_token_id || null,
       anchorHash: row.tokenization_anchor_hash || null,
       processedAt: row.tokenization_processed_at || null,
-      explorerUrl: txUrl,
+      explorerUrl: authentic ? txUrl : null,
     },
     trust: {
       score: !authentic ? (replayBlocked ? 18 : tamperReview ? 32 : 24) : claimed ? 96 : tokenStatus === "anchored" ? 93 : 88,

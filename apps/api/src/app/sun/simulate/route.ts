@@ -97,7 +97,11 @@ export async function POST(req: Request): Promise<Response> {
     `)[0];
     tokenization = request || null;
     if (request?.id) {
-      tokenization = await anchorTokenizationRequest({ requestId: String(request.id), processor: "sun_simulation" });
+      tokenization = await anchorTokenizationRequest({
+        requestId: String(request.id),
+        tenantId: String(batch.tenant_id),
+        processor: "sun_simulation",
+      });
     }
   }
 

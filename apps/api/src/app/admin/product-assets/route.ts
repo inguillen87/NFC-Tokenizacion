@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminTenantScope } from "../../../lib/auth";
+import { checkAdmin, checkAdminPermission, getAdminTenantScope } from "../../../lib/auth";
 import { sql } from "../../../lib/db";
 import { json } from "../../../lib/http";
 import { effectiveTenantFilter } from "../../../lib/admin-tenant-filter";
@@ -60,6 +60,8 @@ function readIotMetadata(localeData: unknown) {
 export async function GET(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
+  const permission = checkAdminPermission(req, "tokenization:read");
+  if (permission) return permission;
   await Promise.all([ensureSunTenantProfilesSchema(), ensureCarrierProfileSchema()]);
 
   const url = new URL(req.url);
@@ -160,6 +162,8 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
+  const permission = checkAdminPermission(req, "tokenization:write");
+  if (permission) return permission;
   await Promise.all([ensureSunTenantProfilesSchema(), ensureCarrierProfileSchema()]);
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;

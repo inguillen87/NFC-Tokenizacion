@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { Wallet, JsonRpcProvider, formatEther, isAddress } from "ethers";
-import { checkAdmin } from "../../../../lib/auth";
+import { checkAdmin, checkAdminPermission } from "../../../../lib/auth";
 import { json } from "../../../../lib/http";
 
 const AMOY_CHAIN_ID = 80002n;
@@ -36,8 +36,10 @@ function maskUrl(value: string) {
 export async function GET(req: Request): Promise<Response> {
   const auth = checkAdmin(req);
   if (auth) return auth;
+  const permission = checkAdminPermission(req, "tokenization:read");
+  if (permission) return permission;
 
-  const mode = env("TOKENIZATION_MODE", "simulated").toLowerCase();
+  const mode = env("TOKENIZATION_MODE", "disabled").toLowerCase();
   const polygonMode = mode === "polygon";
   const autoTokenize = boolEnv("SUN_AUTO_TOKENIZE_ON_VALID_TAP");
   const useLocalMinter = boolEnv("TOKENIZATION_USE_LOCAL_MINTER");
@@ -55,9 +57,9 @@ export async function GET(req: Request): Promise<Response> {
   const simulated = Number(process.env.POLYGON_SIM_GAS_AVAILABLE || "0");
 
   const checks = [
-    mode === "polygon" || mode === "simulated"
+    mode === "polygon" || mode === "simulated" || mode === "disabled" || mode === "off"
       ? check("mode", "TOKENIZATION_MODE", "pass", mode)
-      : check("mode", "TOKENIZATION_MODE", "fail", "Use simulated or polygon."),
+      : check("mode", "TOKENIZATION_MODE", "fail", "Use disabled, simulated or polygon."),
     autoTokenize
       ? check("auto_tokenize", "SUN auto tokenization", "pass", "Valid taps can create tokenization requests.")
       : check("auto_tokenize", "SUN auto tokenization", polygonMode ? "fail" : "warn", "Set SUN_AUTO_TOKENIZE_ON_VALID_TAP=true for pilot."),
@@ -76,11 +78,19 @@ export async function GET(req: Request): Promise<Response> {
   let contractDeployed = false;
 
   if (!polygonMode) {
-    checks.push(check("polygon_mode", "Polygon mode", "warn", "Currently simulated. Ready for UX/demo without on-chain tx."));
+    checks.push(check(
+      "polygon_mode",
+      "Polygon mode",
+      "warn",
+      mode === "simulated"
+        ? "Simulation only: no transaction or token is created."
+        : "Tokenization is disabled until an operator explicitly selects simulated or polygon mode.",
+    ));
     const failed = checks.filter((item) => item.status === "fail");
     return json({
       ok: true,
-      ready: failed.length === 0,
+      ready: mode === "simulated" && failed.length === 0,
+      chainReady: false,
       mode,
       network: "polygon-amoy",
       chainId,
@@ -170,6 +180,7 @@ export async function GET(req: Request): Promise<Response> {
   return json({
     ok: true,
     ready: failed.length === 0,
+    chainReady: failed.length === 0,
     mode,
     network: "polygon-amoy",
     chainId,

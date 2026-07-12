@@ -1,9 +1,9 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminTenantScope } from "../../../../lib/auth";
+import { checkAdmin, checkAdminPermission, getAdminTenantScope } from "../../../../lib/auth";
 import { effectiveTenantFilter } from "../../../../lib/admin-tenant-filter";
-import { isTokenizationRequestInTenantScope } from "../../../../lib/admin-tokenization-scope";
+import { resolveTokenizationRequestTenantId } from "../../../../lib/admin-tokenization-scope";
 import { json } from "../../../../lib/http";
 import { sql } from "../../../../lib/db";
 import { anchorTokenizationRequest } from "../../../../lib/tokenization-engine";
@@ -16,6 +16,8 @@ function clean(value: unknown) {
 export async function GET(req: Request): Promise<Response> {
   const auth = checkAdmin(req);
   if (auth) return auth;
+  const permission = checkAdminPermission(req, "tokenization:read");
+  if (permission) return permission;
 
   const { searchParams } = new URL(req.url);
   const { forcedTenantSlug } = getAdminTenantScope(req);
@@ -98,6 +100,8 @@ export async function GET(req: Request): Promise<Response> {
 export async function POST(req: Request): Promise<Response> {
   const auth = checkAdmin(req);
   if (auth) return auth;
+  const permission = checkAdminPermission(req, "tokenization:write");
+  if (permission) return permission;
 
   const { forcedTenantSlug } = getAdminTenantScope(req);
   const body = await req.json().catch(() => ({})) as Record<string, unknown>;
@@ -108,11 +112,12 @@ export async function POST(req: Request): Promise<Response> {
   if (!requestId) return json({ ok: false, reason: "request_id required" }, 400);
 
   await ensureTokenizationRequestsSchema();
-  const requestInScope = await isTokenizationRequestInTenantScope({ requestId, forcedTenantSlug });
-  if (!requestInScope) return json({ ok: false, reason: "request not found" }, 404);
+  const tenantId = await resolveTokenizationRequestTenantId({ requestId, forcedTenantSlug });
+  if (!tenantId) return json({ ok: false, reason: "request not found" }, 404);
 
   const result = await anchorTokenizationRequest({
     requestId,
+    tenantId,
     network,
     issuerWallet,
     processor: "admin_tokenize_endpoint",

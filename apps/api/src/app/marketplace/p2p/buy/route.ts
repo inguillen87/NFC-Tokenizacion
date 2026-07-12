@@ -64,16 +64,19 @@ export async function POST(req: Request) {
   // Confirm the ledger state before changing ownership records. In Polygon
   // mode this call fails closed; it cannot fall back to a simulated success.
   const txResult = await transferBlockchainToken({
+    tenantId: String(offer.tenant_id),
     uidHex: offer.resale_uid_hex,
     toWallet: buyerWallet,
   });
   if (!txResult.ok) {
+    const simulationOnly = txResult.simulated === true || ("reason" in txResult && txResult.reason === "polygon_transfer_requires_live_mode");
     return json({
       ok: false,
-      error: "blockchain_transfer_not_confirmed",
+      error: simulationOnly ? "blockchain_transfer_simulation_only" : "blockchain_transfer_not_confirmed",
       reason: "reason" in txResult ? txResult.reason : "polygon_transfer_not_confirmed",
-      retryable: true,
-    }, 502);
+      retryable: !simulationOnly,
+      nextStep: simulationOnly ? "enable_polygon_live_mode" : "retry_after_chain_recovery",
+    }, simulationOnly ? 409 : 502);
   }
 
   const contactJson = JSON.stringify({
@@ -208,7 +211,7 @@ export async function POST(req: Request) {
         ? "Polygon ownership was already confirmed; the purchase record was reconciled."
         : txResult.state === "custody_unchanged"
           ? "Secondary purchase completed under nexID managed custody."
-          : "Secondary purchase completed in simulation mode.",
+          : "Secondary purchase completed under verified custody.",
     platformFee: {
       amount: feeAmount,
       currency,

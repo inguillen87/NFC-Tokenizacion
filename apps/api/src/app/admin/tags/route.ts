@@ -117,8 +117,9 @@ export async function GET(req: Request) {
       COUNT(*)::int AS total,
       COUNT(*) FILTER (WHERE t.status = 'active')::int AS active_tags,
       COUNT(*) FILTER (WHERE t.status <> 'active')::int AS non_active_tags,
-      COUNT(*) FILTER (WHERE tok.status = 'minted')::int AS minted_tags,
-      COUNT(*) FILTER (WHERE tok.status IS NULL OR tok.status = 'none')::int AS pending_tokenization
+      COUNT(*) FILTER (WHERE tok.status = 'anchored')::int AS minted_tags,
+      COUNT(*) FILTER (WHERE tok.status = 'simulated')::int AS simulated_tokenization,
+      COUNT(*) FILTER (WHERE tok.status IS NULL OR tok.status IN ('none', 'pending', 'processing', 'pending_retry'))::int AS pending_tokenization
     FROM tags t
     JOIN batches b ON b.id = t.batch_id
     JOIN tenants tn ON tn.id = b.tenant_id
@@ -273,7 +274,7 @@ export async function GET(req: Request) {
       offset,
       limit,
     },
-    totals: totalsRows[0] || { total: 0, active_tags: 0, non_active_tags: 0, minted_tags: 0, pending_tokenization: 0 },
+    totals: totalsRows[0] || { total: 0, active_tags: 0, non_active_tags: 0, minted_tags: 0, simulated_tokenization: 0, pending_tokenization: 0 },
     rows: data,
   });
 }

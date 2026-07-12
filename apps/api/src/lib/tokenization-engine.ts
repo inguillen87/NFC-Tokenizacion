@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { sql } from "./db";
@@ -7,6 +7,7 @@ import { ensureTokenizationRequestsSchema } from "./tokenization-schema";
 
 type AnchorInput = {
   requestId: string;
+  tenantId: string;
   network?: string;
   issuerWallet?: string | null;
   processor?: string;
@@ -17,12 +18,17 @@ const POLYGON_MINT_ABI = [
   "function tokenByChipHash(string chipUidHash) external view returns (uint256)",
 ] as const;
 
-function buildSimulatedTxHash(requestId: string, uid: string) {
-  return `0x${createHash("sha256").update(`${requestId}:${uid}:${Date.now()}`).digest("hex")}`;
+export type TokenizationRuntimeMode = "disabled" | "simulated" | "polygon";
+
+export function resolveTokenizationRuntimeMode(value = process.env.TOKENIZATION_MODE): TokenizationRuntimeMode {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === "polygon") return "polygon";
+  if (normalized === "simulated") return "simulated";
+  return "disabled";
 }
 
-function buildTokenId(uid: string) {
-  return createHash("sha1").update(uid).digest("hex").slice(0, 16);
+function buildSimulationRef(requestId: string, uid: string) {
+  return `simulation:${createHash("sha256").update(`${requestId}:${uid}`).digest("hex").slice(0, 32)}`;
 }
 
 function buildPublicAssetId(chipUidHash: string) {
@@ -105,11 +111,19 @@ async function runDirectPolygonMint(payload: Record<string, unknown>) {
 
   const tx = await contract.mintWithChipHash(recipient, chipUidHash, tokenUri, assetRef);
   const receipt = await tx.wait();
-  if (!receipt) throw new Error("polygon_receipt_missing");
+  if (!receipt || receipt.status !== 1) throw new Error("polygon_receipt_failed");
 
   const transferTopic = ethers.id("Transfer(address,address,uint256)");
-  const transferLog = receipt.logs.find((log: { topics?: string[] }) => log.topics?.[0] === transferTopic && log.topics?.[3]);
+  const transferLog = receipt.logs.find((log: { address?: string; topics?: string[] }) => (
+    String(log.address || "").toLowerCase() === contractAddress.toLowerCase()
+    && log.topics?.[0] === transferTopic
+    && log.topics?.[3]
+  ));
   const tokenId = transferLog?.topics?.[3] ? String(BigInt(transferLog.topics[3])) : null;
+  if (!tokenId) throw new Error("polygon_mint_transfer_event_missing");
+
+  const confirmedTokenId = String(await contract.tokenByChipHash(chipUidHash));
+  if (confirmedTokenId !== tokenId) throw new Error("polygon_mint_token_lookup_mismatch");
 
   return {
     ok: true,
@@ -163,14 +177,51 @@ async function runLocalPolygonScript(payload: Record<string, unknown>) {
   });
 }
 
+async function verifyPolygonMintEvidence(input: {
+  chipUidHash: string;
+  txHash?: string | null;
+  tokenId?: string | null;
+}) {
+  const rpcUrl = String(process.env.POLYGON_RPC_URL || "").trim();
+  const contractAddress = String(process.env.POLYGON_CONTRACT_ADDRESS || "").trim();
+  if (!rpcUrl || !contractAddress) throw new Error("polygon_anchor_verification_unavailable");
+
+  const { ethers } = await import("ethers");
+  if (!ethers.isAddress(contractAddress)) throw new Error("invalid_POLYGON_CONTRACT_ADDRESS");
+  const provider = new ethers.JsonRpcProvider(rpcUrl);
+  const network = await provider.getNetwork();
+  if (network.chainId !== 80002n) throw new Error("polygon_anchor_wrong_chain");
+  const bytecode = await provider.getCode(contractAddress);
+  if (!bytecode || bytecode === "0x") throw new Error("polygon_anchor_contract_missing");
+
+  const contract = new ethers.Contract(contractAddress, POLYGON_MINT_ABI, provider);
+  const chainTokenId = String(await contract.tokenByChipHash(input.chipUidHash));
+  if (BigInt(chainTokenId || "0") <= 0n) throw new Error("polygon_anchor_token_not_found");
+  if (input.tokenId && String(input.tokenId) !== chainTokenId) throw new Error("polygon_anchor_token_mismatch");
+
+  if (input.txHash) {
+    const receipt = await provider.getTransactionReceipt(input.txHash);
+    if (!receipt || receipt.status !== 1) throw new Error("polygon_anchor_receipt_not_confirmed");
+    if (String(receipt.to || "").toLowerCase() !== contractAddress.toLowerCase()) {
+      throw new Error("polygon_anchor_contract_mismatch");
+    }
+  }
+
+  return { tokenId: chainTokenId, chainId: String(network.chainId) };
+}
+
 export async function anchorTokenizationRequest(input: AnchorInput) {
   await ensureTokenizationRequestsSchema();
 
-  const tokenizationMode = String(process.env.TOKENIZATION_MODE || "simulated").trim().toLowerCase();
+  const tokenizationMode = resolveTokenizationRuntimeMode();
+  const tenantId = String(input.tenantId || "").trim();
+  if (!tenantId) return { ok: false, reason: "tenant_id_required", status: "blocked" } as const;
+
   const rows = await sql/*sql*/`
-    SELECT id, bid, uid_hex, status, network, issuer_wallet, attempt_count, tx_hash, token_id, anchor_hash, external_ref
+    SELECT id, tenant_id, batch_id, bid, uid_hex, status, network, issuer_wallet, attempt_count, tx_hash, token_id, anchor_hash, external_ref
     FROM tokenization_requests
     WHERE id = ${input.requestId}::uuid
+      AND tenant_id = ${tenantId}::uuid
     LIMIT 1
   `;
   const existing = rows[0];
@@ -190,9 +241,37 @@ export async function anchorTokenizationRequest(input: AnchorInput) {
     } as const;
   }
 
+  if (existing.status === "simulated" && tokenizationMode === "simulated") {
+    return {
+      ok: true,
+      status: "simulated",
+      simulated: true,
+      already_processed: true,
+      request_id: existing.id,
+      simulation_ref: existing.external_ref || buildSimulationRef(existing.id, existing.uid_hex),
+      tx_hash: null,
+      token_id: null,
+      network: "simulation",
+      request: existing,
+    } as const;
+  }
+
   const network = input.network || existing.network || "polygon-amoy";
   const issuerWallet = input.issuerWallet || existing.issuer_wallet || null;
   const processor = input.processor || "tokenization_engine";
+
+  if (tokenizationMode === "disabled") {
+    await sql/*sql*/`
+      UPDATE tokenization_requests
+      SET status = 'blocked',
+          last_error = 'tokenization_disabled',
+          next_attempt_at = NULL,
+          meta = COALESCE(meta, '{}'::jsonb) || ${JSON.stringify({ processor, blocked_at: new Date().toISOString(), tokenization_mode: tokenizationMode })}::jsonb
+      WHERE id = ${existing.id}::uuid
+        AND tenant_id = ${tenantId}::uuid
+    `;
+    return { ok: false, reason: "tokenization_disabled", request_id: existing.id, status: "blocked" } as const;
+  }
 
   try {
     const chipUidHash = buildChipUidHash(existing.uid_hex);
@@ -201,6 +280,7 @@ export async function anchorTokenizationRequest(input: AnchorInput) {
     const assetRef = `${existing.bid}:${publicAssetId}`;
     const externalInput = {
       request_id: existing.id,
+      tenant_id: tenantId,
       bid: existing.bid,
       network,
       issuer_wallet: issuerWallet,
@@ -210,26 +290,70 @@ export async function anchorTokenizationRequest(input: AnchorInput) {
       public_asset_id: publicAssetId,
     };
 
-    let external = null as Record<string, unknown> | null;
-    const polygonMode = tokenizationMode === "polygon";
+    if (tokenizationMode === "simulated") {
+      const simulationRef = buildSimulationRef(existing.id, existing.uid_hex);
+      await sql/*sql*/`
+        UPDATE tokenization_requests
+        SET status = 'simulated',
+            network = 'simulation',
+            issuer_wallet = COALESCE(${issuerWallet}, issuer_wallet),
+            tx_hash = NULL,
+            token_id = NULL,
+            anchor_hash = NULL,
+            external_ref = ${simulationRef},
+            processed_at = now(),
+            next_attempt_at = NULL,
+            last_error = NULL,
+            attempt_count = attempt_count + 1,
+            meta = COALESCE(meta, '{}'::jsonb) || ${JSON.stringify({ processor, simulated_at: new Date().toISOString(), tokenization_mode: tokenizationMode, simulated: true, target_network: network })}::jsonb
+        WHERE id = ${existing.id}::uuid
+          AND tenant_id = ${tenantId}::uuid
+      `;
 
-    if (polygonMode) {
-      const wantsLocalMinter = String(process.env.TOKENIZATION_USE_LOCAL_MINTER || "false").toLowerCase() === "true";
-      if (wantsLocalMinter && !process.env.POLYGON_RPC_URL) {
-        throw new Error("missing_POLYGON_RPC_URL_for_local_minter");
-      }
-      external = await runExternalExecutor(externalInput);
-      const directPolygonMint = !external && network.startsWith("polygon") ? await runDirectPolygonMint(externalInput) : null;
-      const localPolygonMint = !external && !directPolygonMint && network.startsWith("polygon") ? await runLocalPolygonScript(externalInput) : null;
-      external = external || directPolygonMint || localPolygonMint;
-      if (!external?.tx_hash && !external?.token_id) {
-        throw new Error("polygon_anchor_unavailable_configure_local_minter_or_executor");
-      }
+      await sql/*sql*/`
+        INSERT INTO demo_cta_actions (action, bid, uid_hex, payload)
+        VALUES (
+          'ledger_simulated',
+          ${existing.bid},
+          ${existing.uid_hex},
+          ${JSON.stringify({ simulation_ref: simulationRef, target_network: network, issuer_wallet: issuerWallet, simulated: true })}::jsonb
+        )
+      `;
+
+      return {
+        ok: true,
+        status: "simulated",
+        simulated: true,
+        request_id: existing.id,
+        simulation_ref: simulationRef,
+        tx_hash: null,
+        token_id: null,
+        network: "simulation",
+        anchor_hash: null,
+      } as const;
     }
 
-    const txHash = external?.tx_hash ? String(external.tx_hash) : polygonMode ? null : buildSimulatedTxHash(existing.id, existing.uid_hex);
-    const tokenId = external?.token_id ? String(external.token_id) : polygonMode ? null : buildTokenId(existing.uid_hex);
-    const anchorHash = String(external?.anchor_hash || (polygonMode ? txHash || `polygon-token:${tokenId || existing.id}` : `0x${randomBytes(32).toString("hex")}`));
+    if (!String(network).toLowerCase().startsWith("polygon")) {
+      throw new Error("polygon_anchor_network_mismatch");
+    }
+
+    const wantsLocalMinter = String(process.env.TOKENIZATION_USE_LOCAL_MINTER || "false").toLowerCase() === "true";
+    if (wantsLocalMinter && !process.env.POLYGON_RPC_URL) {
+      throw new Error("missing_POLYGON_RPC_URL_for_local_minter");
+    }
+    let external = await runExternalExecutor(externalInput);
+    const directPolygonMint = !external ? await runDirectPolygonMint(externalInput) : null;
+    const localPolygonMint = !external && !directPolygonMint ? await runLocalPolygonScript(externalInput) : null;
+    external = external || directPolygonMint || localPolygonMint;
+    if (!external?.tx_hash && !external?.token_id) {
+      throw new Error("polygon_anchor_unavailable_configure_local_minter_or_executor");
+    }
+
+    const txHash = external?.tx_hash ? String(external.tx_hash) : null;
+    const externalTokenId = external?.token_id ? String(external.token_id) : null;
+    const verified = await verifyPolygonMintEvidence({ chipUidHash, txHash, tokenId: externalTokenId });
+    const tokenId = verified.tokenId;
+    const anchorHash = String(external?.anchor_hash || txHash || `polygon-token:${String(process.env.POLYGON_CONTRACT_ADDRESS || "").trim()}:${tokenId}`);
     const externalRef = external?.external_ref ? String(external.external_ref) : null;
 
     await sql/*sql*/`
@@ -244,8 +368,9 @@ export async function anchorTokenizationRequest(input: AnchorInput) {
           processed_at = now(),
           last_error = NULL,
           attempt_count = attempt_count + 1,
-          meta = COALESCE(meta, '{}'::jsonb) || ${JSON.stringify({ processor, anchored_at: new Date().toISOString(), tokenization_mode: tokenizationMode, simulated: !polygonMode })}::jsonb
+          meta = COALESCE(meta, '{}'::jsonb) || ${JSON.stringify({ processor, anchored_at: new Date().toISOString(), tokenization_mode: tokenizationMode, simulated: false, chain_id: verified.chainId, evidence_verified: true })}::jsonb
       WHERE id = ${existing.id}::uuid
+        AND tenant_id = ${tenantId}::uuid
     `;
 
     await sql/*sql*/`
@@ -254,11 +379,11 @@ export async function anchorTokenizationRequest(input: AnchorInput) {
         'ledger_anchored',
         ${existing.bid},
         ${existing.uid_hex},
-        ${JSON.stringify({ tx_hash: txHash, token_id: tokenId, network, anchor_hash: anchorHash, issuer_wallet: issuerWallet, external_ref: externalRef, simulated: !polygonMode })}::jsonb
+        ${JSON.stringify({ tenant_id: tenantId, tx_hash: txHash, token_id: tokenId, network, anchor_hash: anchorHash, issuer_wallet: issuerWallet, external_ref: externalRef, simulated: false, evidence_verified: true })}::jsonb
       )
     `;
 
-    return { ok: true, status: "anchored", request_id: existing.id, tx_hash: txHash, token_id: tokenId, network, anchor_hash: anchorHash } as const;
+    return { ok: true, status: "anchored", simulated: false, request_id: existing.id, tx_hash: txHash, token_id: tokenId, network, anchor_hash: anchorHash } as const;
   } catch (error) {
     const message = error instanceof Error ? error.message : "tokenization_failed";
     const attempts = Number(existing.attempt_count || 0) + 1;
@@ -274,6 +399,7 @@ export async function anchorTokenizationRequest(input: AnchorInput) {
           next_attempt_at = ${nextAttemptAt}::timestamptz,
           meta = COALESCE(meta, '{}'::jsonb) || ${JSON.stringify({ processor, failed_at: new Date().toISOString() })}::jsonb
       WHERE id = ${existing.id}::uuid
+        AND tenant_id = ${tenantId}::uuid
     `;
 
     return { ok: false, reason: message, request_id: existing.id, status: nextStatus, next_attempt_at: nextAttemptAt } as const;
@@ -281,75 +407,77 @@ export async function anchorTokenizationRequest(input: AnchorInput) {
 }
 
 export async function transferBlockchainToken(input: {
+  tenantId: string;
   uidHex: string;
   fromWallet?: string | null;
   toWallet: string;
 }) {
-  const tokenizationMode = String(process.env.TOKENIZATION_MODE || "simulated").trim().toLowerCase();
+  const tokenizationMode = resolveTokenizationRuntimeMode();
+  const tenantId = String(input.tenantId || "").trim();
+  if (!tenantId) {
+    return {
+      ok: false,
+      simulated: false,
+      state: "failed" as const,
+      tx_hash: null,
+      token_id: null,
+      reason: "tenant_id_required",
+    };
+  }
+  if (tokenizationMode === "disabled") {
+    return {
+      ok: false,
+      simulated: false,
+      state: "failed" as const,
+      tx_hash: null,
+      token_id: null,
+      reason: "tokenization_disabled",
+    };
+  }
+  if (tokenizationMode === "simulated") {
+    return {
+      ok: false,
+      simulated: true,
+      state: "simulated" as const,
+      tx_hash: null,
+      token_id: null,
+      reason: "polygon_transfer_requires_live_mode",
+    };
+  }
 
-  // Find the tokenization request for this uidHex to get the tokenId and network
+  // Ownership records are tenant scoped even when the same physical UID was
+  // reused by a different sandbox or issuer.
   const rows = await sql/*sql*/`
     SELECT id, bid, uid_hex, status, network, token_id, tx_hash, anchor_hash
     FROM tokenization_requests
-    WHERE uid_hex = ${input.uidHex} AND status = 'anchored'
+    WHERE tenant_id = ${tenantId}::uuid
+      AND UPPER(uid_hex) = UPPER(${input.uidHex})
+      AND status = 'anchored'
     ORDER BY requested_at DESC
     LIMIT 1
   `;
   const request = rows[0];
   if (!request) {
-    if (tokenizationMode === "polygon") {
-      return {
-        ok: false,
-        simulated: false,
-        state: "failed" as const,
-        tx_hash: null,
-        token_id: null,
-        reason: "polygon_tokenization_record_not_found",
-      };
-    }
     return {
-      ok: true,
-      simulated: true,
-      state: "simulated" as const,
-      tx_hash: `0x${randomBytes(32).toString("hex")}`,
-      token_id: "simulated",
-      custody: "simulated" as const,
+      ok: false,
+      simulated: false,
+      state: "failed" as const,
+      tx_hash: null,
+      token_id: null,
+      reason: "polygon_tokenization_record_not_found",
     };
   }
 
   const network = request.network || "polygon-amoy";
   const tokenId = request.token_id;
   if (!tokenId) {
-    if (tokenizationMode === "polygon") {
-      return {
-        ok: false,
-        simulated: false,
-        state: "failed" as const,
-        tx_hash: null,
-        token_id: null,
-        reason: "polygon_token_id_missing",
-      };
-    }
     return {
-      ok: true,
-      simulated: true,
-      state: "simulated" as const,
-      tx_hash: `0x${randomBytes(32).toString("hex")}`,
-      token_id: "simulated",
-      custody: "simulated" as const,
-    };
-  }
-
-  if (tokenizationMode !== "polygon") {
-    // Simulated transfer
-    const txHash = `0x${createHash("sha256").update(`${request.id}:${input.toWallet}:${Date.now()}`).digest("hex")}`;
-    return {
-      ok: true,
-      simulated: true,
-      state: "simulated" as const,
-      tx_hash: txHash,
-      token_id: tokenId,
-      custody: "simulated" as const,
+      ok: false,
+      simulated: false,
+      state: "failed" as const,
+      tx_hash: null,
+      token_id: null,
+      reason: "polygon_token_id_missing",
     };
   }
 

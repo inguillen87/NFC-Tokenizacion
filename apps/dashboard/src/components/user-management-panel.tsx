@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button, Card } from "@product/ui";
 
 const ROLES = ["super-admin", "tenant-admin", "reseller", "viewer"] as const;
-const DEFAULT_PERMISSIONS = ["users:manage", "batches:write", "events:read", "analytics:read", "tenants:write"];
+const DEFAULT_PERMISSIONS = ["users:manage", "batches:write", "events:read", "analytics:read", "tokenization:read", "tokenization:write", "tenants:write"];
 
 type UserRow = {
   id: string;

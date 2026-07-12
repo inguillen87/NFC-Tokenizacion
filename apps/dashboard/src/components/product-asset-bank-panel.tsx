@@ -69,7 +69,7 @@ function splitGallery(value: string) {
     .filter(Boolean);
 }
 
-export function ProductAssetBankPanel() {
+export function ProductAssetBankPanel({ canWrite = true }: { canWrite?: boolean }) {
   const [form, setForm] = useState<AssetForm>(initialForm);
   const [items, setItems] = useState<AssetItem[]>([]);
   const [pending, setPending] = useState(false);
@@ -152,18 +152,19 @@ export function ProductAssetBankPanel() {
       </div>
 
       <div className="mt-5 grid gap-3 lg:grid-cols-3">
-        <Field label="Tenant" value={form.tenantSlug} onChange={(value) => patchForm("tenantSlug", value)} placeholder="demobodega" />
-        <Field label="BID / lote" value={form.bid} onChange={(value) => patchForm("bid", value)} placeholder="DEMO-2026-02" />
-        <Field label="UID requerido" value={form.uidHex} onChange={(value) => patchForm("uidHex", value)} placeholder="04A7..." />
-        <Field label="Producto" value={form.productName} onChange={(value) => patchForm("productName", value)} placeholder="Gran Reserva Malbec" />
-        <Field label="Marca" value={form.brandName} onChange={(value) => patchForm("brandName", value)} placeholder="Bodega Demo" />
-        <Field label="Foto producto" value={form.imageUrl} onChange={(value) => patchForm("imageUrl", value)} placeholder="https://cdn.../producto.png" />
-        <Field label="Etiqueta frontal" value={form.labelImageUrl} onChange={(value) => patchForm("labelImageUrl", value)} placeholder="https://cdn.../etiqueta.png" />
-        <Field label="Modelo GLB" value={form.modelUrl} onChange={(value) => patchForm("modelUrl", value)} placeholder="https://cdn.../producto.glb" />
+        <Field disabled={!canWrite} label="Tenant" value={form.tenantSlug} onChange={(value) => patchForm("tenantSlug", value)} placeholder="demobodega" />
+        <Field disabled={!canWrite} label="BID / lote" value={form.bid} onChange={(value) => patchForm("bid", value)} placeholder="DEMO-2026-02" />
+        <Field disabled={!canWrite} label="UID requerido" value={form.uidHex} onChange={(value) => patchForm("uidHex", value)} placeholder="04A7..." />
+        <Field disabled={!canWrite} label="Producto" value={form.productName} onChange={(value) => patchForm("productName", value)} placeholder="Gran Reserva Malbec" />
+        <Field disabled={!canWrite} label="Marca" value={form.brandName} onChange={(value) => patchForm("brandName", value)} placeholder="Bodega Demo" />
+        <Field disabled={!canWrite} label="Foto producto" value={form.imageUrl} onChange={(value) => patchForm("imageUrl", value)} placeholder="https://cdn.../producto.png" />
+        <Field disabled={!canWrite} label="Etiqueta frontal" value={form.labelImageUrl} onChange={(value) => patchForm("labelImageUrl", value)} placeholder="https://cdn.../etiqueta.png" />
+        <Field disabled={!canWrite} label="Modelo GLB" value={form.modelUrl} onChange={(value) => patchForm("modelUrl", value)} placeholder="https://cdn.../producto.glb" />
         <label className="block">
           <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Galeria / tag aplicado</span>
           <textarea
             suppressHydrationWarning
+            disabled={!canWrite}
             className="mt-1 min-h-20 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-500"
             value={form.galleryUrls}
             onChange={(event) => patchForm("galleryUrls", event.target.value)}
@@ -173,7 +174,7 @@ export function ProductAssetBankPanel() {
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <Button disabled={pending || !form.bid.trim() || !form.uidHex.trim()} onClick={() => void saveAsset()}>{pending ? "Guardando..." : "Guardar assets"}</Button>
+        <Button disabled={!canWrite || pending || !form.bid.trim() || !form.uidHex.trim()} onClick={() => void saveAsset()}>{pending ? "Guardando..." : canWrite ? "Guardar assets" : "Solo lectura"}</Button>
         <Button variant="secondary" disabled={pending} onClick={() => void loadAssets()}>Consultar</Button>
       </div>
 
@@ -213,12 +214,13 @@ export function ProductAssetBankPanel() {
   );
 }
 
-function Field({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (value: string) => void; placeholder: string }) {
+function Field({ label, value, onChange, placeholder, disabled = false }: { label: string; value: string; onChange: (value: string) => void; placeholder: string; disabled?: boolean }) {
   return (
     <label className="block">
       <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{label}</span>
       <input
         suppressHydrationWarning
+        disabled={disabled}
         className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white placeholder:text-slate-500"
         value={value}
         onChange={(event) => onChange(event.target.value)}

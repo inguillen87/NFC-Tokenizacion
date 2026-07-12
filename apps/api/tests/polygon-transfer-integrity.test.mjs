@@ -32,7 +32,8 @@ test("P2P checkout confirms the chain before one atomic ownership write", async 
   assert.ok(persistenceIndex > transferIndex);
   assert.match(source, /if \(!txResult\.ok\)/);
   assert.match(source, /blockchain_transfer_not_confirmed/);
-  assert.match(source, /\}, 502\)/);
+  assert.match(source, /simulationOnly \? 409 : 502/);
+  assert.match(source, /blockchain_transfer_simulation_only/);
   assert.match(source, /revoked_ownership AS/);
   assert.match(source, /WITH eligible_offer AS/);
   assert.match(source, /FOR UPDATE/);

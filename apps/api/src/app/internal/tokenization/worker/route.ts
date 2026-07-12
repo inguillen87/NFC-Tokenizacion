@@ -22,15 +22,18 @@ export async function POST(req: Request): Promise<Response> {
   await ensureTokenizationRequestsSchema();
   const rows = await sql/*sql*/`
     WITH picked AS (
-      SELECT id
+      SELECT id, tenant_id
       FROM tokenization_requests
-      WHERE (
-          status IN ('pending', 'failed')
-          AND COALESCE(next_attempt_at, requested_at) <= now()
-        )
-        OR (
-          status = 'processing'
-          AND COALESCE(NULLIF(meta->>'locked_at', '')::timestamptz, next_attempt_at, requested_at) <= now() - interval '10 minutes'
+      WHERE tenant_id IS NOT NULL
+        AND (
+          (
+            status IN ('pending', 'failed')
+            AND COALESCE(next_attempt_at, requested_at) <= now()
+          )
+          OR (
+            status = 'processing'
+            AND COALESCE(NULLIF(meta->>'locked_at', '')::timestamptz, next_attempt_at, requested_at) <= now() - interval '10 minutes'
+          )
         )
       ORDER BY requested_at ASC
       FOR UPDATE SKIP LOCKED
@@ -41,13 +44,18 @@ export async function POST(req: Request): Promise<Response> {
         meta = COALESCE(tr.meta, '{}'::jsonb) || ${JSON.stringify({ locked_by: "internal_worker", locked_at: new Date().toISOString() })}::jsonb
     FROM picked
     WHERE tr.id = picked.id
-    RETURNING tr.id
+    RETURNING tr.id, tr.tenant_id
   `;
 
   const results: Array<Record<string, unknown>> = [];
-  for (const row of rows as Array<{ id: string }>) {
+  for (const row of rows as Array<{ id: string; tenant_id: string | null }>) {
+    if (!row.tenant_id) {
+      results.push({ ok: false, request_id: row.id, reason: "tenant_id_required", status: "blocked" });
+      continue;
+    }
     const result = await anchorTokenizationRequest({
       requestId: row.id,
+      tenantId: String(row.tenant_id),
       processor: "internal_worker",
     });
     results.push(result as unknown as Record<string, unknown>);

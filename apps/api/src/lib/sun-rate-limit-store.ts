@@ -60,3 +60,16 @@ export async function hitSunRateLimit(scope: string, scopeKey: string, windowSec
     throw error;
   }
 }
+
+export async function readSunRateLimit(scope: string, scopeKey: string, windowSeconds: number, maxHits: number): Promise<{ hits: number; limited: boolean }> {
+  await ensureSunRateLimitTable();
+  const rows = await sql/*sql*/`
+    SELECT count(*)::int AS hits
+    FROM sun_rate_limit_events
+    WHERE scope = ${scope}
+      AND scope_key = ${scopeKey}
+      AND created_at >= now() - (${windowSeconds} || ' seconds')::interval
+  `;
+  const hits = Number(rows[0]?.hits || 0);
+  return { hits, limited: hits >= maxHits };
+}

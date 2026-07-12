@@ -61,7 +61,9 @@ export async function GET(req: Request) {
     LEFT JOIN LATERAL (
       SELECT tr.status, tr.network, tr.tx_hash, tr.token_id, tr.processed_at
       FROM tokenization_requests tr
-      WHERE tr.bid = b.bid
+      WHERE tr.tenant_id = cp.tenant_id
+        AND tr.batch_id = b.id
+        AND tr.bid = b.bid
         AND (
           UPPER(tr.uid_hex) = UPPER(COALESCE(ow.uid_hex, cp.product_passport_id, ''))
           OR tr.asset_ref = CONCAT(b.bid, ':', COALESCE(ow.uid_hex, cp.product_passport_id, ''))

@@ -16,7 +16,9 @@ const PRIVILEGED_PUBLIC_POLICIES = new Set<PublicCtaTokenizationPolicy>(["lot_an
 
 type AnchorResult = {
   ok?: boolean;
+  simulated?: boolean;
   status?: string | null;
+  simulation_ref?: string | null;
   tx_hash?: string | null;
   token_id?: string | null;
   reason?: string | null;
@@ -47,31 +49,34 @@ function shouldAutoAnchorPublicTokenization() {
     || String(process.env.PUBLIC_CTA_AUTO_TOKENIZE || "").toLowerCase() === "true";
 }
 
-async function maybeAnchorPublicRequest(requestId: string | undefined, network: string, issuerWallet: string | null) {
+async function maybeAnchorPublicRequest(requestId: string | undefined, tenantId: string, network: string, issuerWallet: string | null) {
   if (!requestId || !shouldAutoAnchorPublicTokenization()) return null;
   return anchorTokenizationRequest({
     requestId,
+    tenantId,
     network,
     issuerWallet,
     processor: "public_cta_tokenize_request",
   });
 }
 
-async function loadTokenizationRequest(requestId: string | undefined) {
+async function loadTokenizationRequest(requestId: string | undefined, tenantId: string) {
   if (!requestId) return null;
   const rows = await sql/*sql*/`
     SELECT id, status, requested_at, network, asset_ref, issuer_wallet, anchor_hash, tx_hash, token_id, last_error, next_attempt_at, attempt_count
     FROM tokenization_requests
     WHERE id = ${requestId}
+      AND tenant_id = ${tenantId}::uuid
     LIMIT 1
   `;
   return (rows[0] || null) as TokenizationRequestRow | null;
 }
 
 function normalizedStatus(request: TokenizationRequestRow | null, anchor: AnchorResult | null) {
-  if (anchor?.ok || request?.tx_hash || request?.token_id || anchor?.tx_hash || anchor?.token_id) return "anchored";
   const status = normalizeTokenizationStatus(anchor?.status || request?.status || "");
-  return status === "none" || status === "simulated" ? "pending" : status;
+  if (status === "simulated" || anchor?.simulated === true) return "simulated";
+  if (status === "anchored" && (request?.tx_hash || request?.token_id || anchor?.tx_hash || anchor?.token_id)) return "anchored";
+  return status === "none" ? "pending" : status;
 }
 
 function tokenizationOutcome(request: TokenizationRequestRow | null, anchor: AnchorResult | null) {
@@ -92,6 +97,33 @@ function tokenizationOutcome(request: TokenizationRequestRow | null, anchor: Anc
       token_id: tokenId,
       next_attempt_at: null,
       explainer: "Producto anclado en Polygon Amoy con UID hasheado y salt privado.",
+    };
+  }
+
+  if (status === "simulated") {
+    return {
+      ok: true,
+      mint_ok: false,
+      tokenization_status: "simulated",
+      tokenization_error: null,
+      tx_hash: null,
+      token_id: null,
+      simulation_ref: anchor?.simulation_ref || null,
+      next_attempt_at: null,
+      explainer: "Simulacion interna completada. No existe transaccion, token ni prueba en Polygon.",
+    };
+  }
+
+  if (status === "blocked") {
+    return {
+      ok: true,
+      mint_ok: false,
+      tokenization_status: "blocked",
+      tokenization_error: error || "tokenization_disabled",
+      tx_hash: null,
+      token_id: null,
+      next_attempt_at: null,
+      explainer: "Solicitud conservada, pero el runtime no autoriza simulacion ni mint on-chain.",
     };
   }
 
@@ -337,7 +369,7 @@ export async function POST(req: Request) {
   const requestedNetworkRaw = sanitizeText(body.ledger_network || "polygon-amoy", 40).toLowerCase();
   const ledgerNetwork = LEDGER_NETWORK_ALLOWED.has(requestedNetworkRaw) ? requestedNetworkRaw : "polygon-amoy";
   const ledger = {
-    ledger_status: sanitizeText(body.ledger_status || "simulated", 32),
+    ledger_status: "pending",
     ledger_network: ledgerNetwork,
     ledger_ref: sanitizeText(body.ledger_ref, 160) || null,
     asset_ref: sanitizeText(body.asset_ref || `${bid}:${uid}`, 180),
@@ -362,9 +394,11 @@ export async function POST(req: Request) {
   const existingRows = await sql/*sql*/`
     SELECT id, status, requested_at, network, asset_ref, issuer_wallet, anchor_hash, tx_hash, token_id, last_error, next_attempt_at
     FROM tokenization_requests
-    WHERE bid = ${bid}
+    WHERE tenant_id = ${tenantId}::uuid
+      AND batch_id = ${batchId}::uuid
+      AND bid = ${bid}
       AND uid_hex = ${uid}
-      AND status IN ('pending', 'processing', 'failed', 'anchored')
+      AND status IN ('pending', 'processing', 'failed', 'anchored', 'simulated', 'blocked')
     ORDER BY requested_at DESC
     LIMIT 1
   `;
@@ -373,8 +407,8 @@ export async function POST(req: Request) {
     const alreadyAnchored = String(existingRequest.status || "") === "anchored";
     const anchor = alreadyAnchored
       ? null
-      : ((await maybeAnchorPublicRequest(String(existingRequest.id || ""), ledger.ledger_network, ledger.issuer_wallet)) as AnchorResult | null);
-    const latestRequest = await loadTokenizationRequest(String(existingRequest.id || ""));
+      : ((await maybeAnchorPublicRequest(String(existingRequest.id || ""), tenantId, ledger.ledger_network, ledger.issuer_wallet)) as AnchorResult | null);
+    const latestRequest = await loadTokenizationRequest(String(existingRequest.id || ""), tenantId);
     const outcome = tokenizationOutcome(latestRequest || existingRequest, anchor);
     return json({
       action: "tokenize_request",
@@ -383,6 +417,10 @@ export async function POST(req: Request) {
         ? "existing request already anchored"
         : outcome.tokenization_status === "anchored"
           ? "existing request anchored"
+          : outcome.tokenization_status === "simulated"
+            ? "existing request simulated without blockchain"
+            : outcome.tokenization_status === "blocked"
+              ? "existing request blocked by runtime policy"
           : outcome.tokenization_status === "failed"
             ? "existing request failed"
             : "existing request queued for retry",
@@ -417,8 +455,8 @@ export async function POST(req: Request) {
     RETURNING id, status, requested_at
   `;
   const tokenizationRequest = reqRows[0];
-  const anchor = (await maybeAnchorPublicRequest(String(tokenizationRequest?.id || ""), ledger.ledger_network, ledger.issuer_wallet)) as AnchorResult | null;
-  const latestRequest = await loadTokenizationRequest(String(tokenizationRequest?.id || ""));
+  const anchor = (await maybeAnchorPublicRequest(String(tokenizationRequest?.id || ""), tenantId, ledger.ledger_network, ledger.issuer_wallet)) as AnchorResult | null;
+  const latestRequest = await loadTokenizationRequest(String(tokenizationRequest?.id || ""), tenantId);
   const outcome = tokenizationOutcome(latestRequest || tokenizationRequest, anchor);
   const saved = await recordDemoCta("tokenize_request", bid, uid, {
     ...withoutCallerAuthorizationFields(body),

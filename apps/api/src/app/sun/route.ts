@@ -2480,15 +2480,31 @@ async function dispatchValidScanWebhook(payload: Record<string, unknown>) {
 async function queueAutoTokenizationForValidTap(params: { bid: string; uid: string; traceId: string; eventId?: number | null }) {
   const enabled = String(process.env.SUN_AUTO_TOKENIZE_ON_VALID_TAP || "false").toLowerCase() === "true";
   if (!enabled) return null;
+  if (!params.eventId) return { ok: false, reason: "event_identity_required", status: "blocked" } as const;
 
   await ensureTokenizationRequestsSchema();
+  const eventIdentity = (await sql/*sql*/`
+    SELECT e.tenant_id, e.batch_id
+    FROM events e
+    JOIN batches b ON b.id = e.batch_id AND b.tenant_id = e.tenant_id
+    WHERE e.id = ${params.eventId}
+      AND b.bid = ${params.bid}
+      AND UPPER(e.uid_hex) = UPPER(${params.uid})
+    LIMIT 1
+  `)[0];
+  if (!eventIdentity?.tenant_id || !eventIdentity?.batch_id) {
+    return { ok: false, reason: "event_identity_mismatch", status: "blocked" } as const;
+  }
+
   const row = (await sql/*sql*/`
     SELECT tr.id, tr.status, tr.network, tr.tx_hash, tr.token_id, tr.anchor_hash, tr.external_ref,
            tr.last_error, tr.next_attempt_at, tr.attempt_count
     FROM tokenization_requests tr
-    WHERE tr.bid = ${params.bid}
+    WHERE tr.tenant_id = ${eventIdentity.tenant_id}::uuid
+      AND tr.batch_id = ${eventIdentity.batch_id}::uuid
+      AND tr.bid = ${params.bid}
       AND tr.uid_hex = ${params.uid}
-      AND tr.status IN ('pending', 'processing', 'anchored', 'failed')
+      AND tr.status IN ('pending', 'processing', 'anchored', 'failed', 'simulated', 'blocked')
     ORDER BY tr.requested_at DESC
     LIMIT 1
   `)[0];
@@ -2505,21 +2521,18 @@ async function queueAutoTokenizationForValidTap(params: { bid: string; uid: stri
       external_ref: row.external_ref || null,
     };
   }
-  if (row?.id) return await anchorTokenizationRequest({ requestId: String(row.id), processor: "sun_auto_tokenization" });
-
-  const batch = (await sql/*sql*/`
-    SELECT b.id, b.tenant_id
-    FROM batches b
-    WHERE b.bid = ${params.bid}
-    LIMIT 1
-  `)[0];
+  if (row?.id) return await anchorTokenizationRequest({
+    requestId: String(row.id),
+    tenantId: String(eventIdentity.tenant_id),
+    processor: "sun_auto_tokenization",
+  });
 
   const inserted = (await sql/*sql*/`
     INSERT INTO tokenization_requests (
       tenant_id, batch_id, bid, uid_hex, status, network, asset_ref, requested_by, next_attempt_at, meta
     ) VALUES (
-      ${batch?.tenant_id || null},
-      ${batch?.id || null},
+      ${eventIdentity.tenant_id},
+      ${eventIdentity.batch_id},
       ${params.bid},
       ${params.uid},
       'pending',
@@ -2533,7 +2546,11 @@ async function queueAutoTokenizationForValidTap(params: { bid: string; uid: stri
   `)[0];
 
   if (!inserted?.id) return null;
-  return await anchorTokenizationRequest({ requestId: String(inserted.id), processor: "sun_auto_tokenization" });
+  return await anchorTokenizationRequest({
+    requestId: String(inserted.id),
+    tenantId: String(eventIdentity.tenant_id),
+    processor: "sun_auto_tokenization",
+  });
 }
 
 export async function GET(req: Request): Promise<Response> {

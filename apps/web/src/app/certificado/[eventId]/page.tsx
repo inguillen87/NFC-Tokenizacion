@@ -164,8 +164,13 @@ export default async function PublicCertificatePage({ params }: { params: Promis
     sku: product.sku,
   });
   const tenantSlug = String(tenant.slug || "");
-  const walletHref = tenantSlug ? `/me/wallet?tenant=${encodeURIComponent(tenantSlug)}&eventId=${encodeURIComponent(String(tap.eventId || eventId))}` : `/me/wallet?eventId=${encodeURIComponent(String(tap.eventId || eventId))}`;
-  const marketplaceHref = tenantSlug ? `/me/marketplace?tenant=${encodeURIComponent(tenantSlug)}` : "/me/marketplace";
+  const actionEligible = cert.verification?.actionEligible === true && ownership.actionEligible !== false;
+  const walletHref = actionEligible
+    ? cert.links?.walletUrl || (tenantSlug ? `/me/wallet?tenant=${encodeURIComponent(tenantSlug)}&eventId=${encodeURIComponent(String(tap.eventId || eventId))}` : `/me/wallet?eventId=${encodeURIComponent(String(tap.eventId || eventId))}`)
+    : null;
+  const marketplaceHref = actionEligible
+    ? cert.links?.marketplaceUrl || (tenantSlug ? `/me/marketplace?tenant=${encodeURIComponent(tenantSlug)}` : "/me/marketplace")
+    : null;
   const permanentUrl = cert.links?.certificateUrl || cert.publicUrl || `https://nexid.lat/certificado/${encodeURIComponent(String(tap.eventId || eventId))}`;
   const blockchainState = blockchainExplainer(token);
   const authentic = cert.verification?.authentic === true;
@@ -268,15 +273,29 @@ export default async function PublicCertificatePage({ params }: { params: Promis
             </section>
 
             <div className="grid max-w-[calc(100vw-2rem)] gap-3 sm:max-w-none sm:grid-cols-3">
-              <Link href={walletHref} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-emerald-300/30 bg-emerald-500/15 px-4 text-sm font-black text-emerald-100 transition hover:bg-emerald-500/25">
-                <WalletCards className="h-4 w-4" aria-hidden="true" />
-                Abrir Wallet
-              </Link>
-              <Link href={marketplaceHref} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-cyan-300/30 bg-cyan-500/15 px-4 text-sm font-black text-cyan-100 transition hover:bg-cyan-500/25">
-                <Store className="h-4 w-4" aria-hidden="true" />
-                Marketplace
-              </Link>
-              {token.explorerUrl ? (
+              {walletHref ? (
+                <Link href={walletHref} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-emerald-300/30 bg-emerald-500/15 px-4 text-sm font-black text-emerald-100 transition hover:bg-emerald-500/25">
+                  <WalletCards className="h-4 w-4" aria-hidden="true" />
+                  Abrir Wallet
+                </Link>
+              ) : (
+                <span className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-rose-300/20 bg-rose-500/10 px-4 text-center text-sm font-black text-rose-100">
+                  <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+                  Wallet bloqueada
+                </span>
+              )}
+              {marketplaceHref ? (
+                <Link href={marketplaceHref} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-cyan-300/30 bg-cyan-500/15 px-4 text-sm font-black text-cyan-100 transition hover:bg-cyan-500/25">
+                  <Store className="h-4 w-4" aria-hidden="true" />
+                  Marketplace
+                </Link>
+              ) : (
+                <span className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-rose-300/20 bg-rose-500/10 px-4 text-center text-sm font-black text-rose-100">
+                  <Store className="h-4 w-4" aria-hidden="true" />
+                  Reventa no habilitada
+                </span>
+              )}
+              {actionEligible && token.explorerUrl ? (
                 <a href={token.explorerUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-violet-300/30 bg-violet-500/15 px-4 text-sm font-black text-violet-100 transition hover:bg-violet-500/25">
                   Polygonscan <ExternalLink className="h-4 w-4" aria-hidden="true" />
                 </a>

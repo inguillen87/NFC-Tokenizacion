@@ -60,6 +60,10 @@ async function migrateTokenizationRequestsSchema() {
     ON tokenization_requests(tenant_id, requested_at DESC)
   `;
   await sql/*sql*/`
+    CREATE INDEX IF NOT EXISTS idx_tokenization_requests_tenant_asset
+    ON tokenization_requests(tenant_id, batch_id, uid_hex, requested_at DESC)
+  `;
+  await sql/*sql*/`
     CREATE INDEX IF NOT EXISTS idx_tokenization_requests_next_attempt
     ON tokenization_requests(status, next_attempt_at, requested_at)
   `;

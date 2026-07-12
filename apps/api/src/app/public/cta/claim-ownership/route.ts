@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { json } from "../../../../lib/http";
 import { requireShareToken } from "../../../../lib/public-cta-auth";
 import { getConsumerFromRequest } from "../../../../lib/consumer-auth";
@@ -9,6 +10,26 @@ import { getTapEvent } from "../../../../lib/loyalty-service";
 import { createAlert } from "../../../../lib/alert-engine";
 import { sql } from "../../../../lib/db";
 import { performReceiptOcr } from "../../../../lib/ocr-service";
+import { getRequestMeta } from "../../../../lib/request-meta";
+import { hitSunRateLimit, readSunRateLimit } from "../../../../lib/sun-rate-limit-store";
+
+const CLAIM_PIN_DEVICE_MAX_ATTEMPTS = 5;
+const CLAIM_PIN_PRODUCT_MAX_ATTEMPTS = 20;
+const CLAIM_PIN_WINDOW_SECONDS = 15 * 60;
+
+function sha256Hex(value: string) {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+function claimPinRateKeys(req: Request, event: Record<string, unknown>) {
+  const meta = getRequestMeta(req);
+  const productIdentity = `${event.tenant_id || "tenant"}:${event.id || "event"}:${event.uid_hex || "uid"}`;
+  const clientIdentity = `${meta.ip || "no-ip"}:${meta.userAgent || "no-ua"}`;
+  return {
+    device: sha256Hex(`${productIdentity}:${clientIdentity}`),
+    product: sha256Hex(productIdentity),
+  };
+}
 
 function getDistanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371; // Radius of the Earth in km
@@ -96,10 +117,27 @@ export async function POST(req: Request) {
       }, 400);
     }
 
+    const rateKeys = claimPinRateKeys(req, event as Record<string, unknown>);
+    let currentRate;
+    try {
+      currentRate = await Promise.all([
+        readSunRateLimit("claim_pin_device", rateKeys.device, CLAIM_PIN_WINDOW_SECONDS, CLAIM_PIN_DEVICE_MAX_ATTEMPTS),
+        readSunRateLimit("claim_pin_product", rateKeys.product, CLAIM_PIN_WINDOW_SECONDS, CLAIM_PIN_PRODUCT_MAX_ATTEMPTS),
+      ]);
+    } catch {
+      return json({ ok: false, reason: "claim_pin_security_unavailable", trace_id: traceId }, 503, { "cache-control": "no-store" });
+    }
+    if (currentRate.some((entry) => entry.limited)) {
+      return json({
+        ok: false,
+        reason: "claim_pin_locked",
+        error: "Demasiados intentos. Espera 15 minutos o solicita asistencia al emisor.",
+        trace_id: traceId,
+        retry_after_seconds: CLAIM_PIN_WINDOW_SECONDS,
+      }, 429, { "cache-control": "no-store", "retry-after": String(CLAIM_PIN_WINDOW_SECONDS) });
+    }
+
     const storedPinHash = tagRow.tag_hash_pin || tagRow.batch_hash_pin || (tagRow.batch_sdm_config as any)?.hash_pin || (tagRow.batch_sdm_config as any)?.claim_pin_hash;
-    const crypto = await import("crypto");
-    const sha256Hex = (val: string) => crypto.createHash("sha256").update(val).digest("hex");
-    
     const candidateHashes = [
       sha256Hex(pin),
       sha256Hex(`${event.tenant_id}:${event.bid}:${event.uid_hex}:${pin}`),
@@ -107,6 +145,22 @@ export async function POST(req: Request) {
     ];
 
     if (!storedPinHash || !candidateHashes.includes(storedPinHash)) {
+      const recorded = await Promise.all([
+        hitSunRateLimit("claim_pin_device", rateKeys.device, CLAIM_PIN_WINDOW_SECONDS, CLAIM_PIN_DEVICE_MAX_ATTEMPTS),
+        hitSunRateLimit("claim_pin_product", rateKeys.product, CLAIM_PIN_WINDOW_SECONDS, CLAIM_PIN_PRODUCT_MAX_ATTEMPTS),
+      ]).catch(() => null);
+      if (!recorded || recorded.some((entry) => entry.unavailable)) {
+        return json({ ok: false, reason: "claim_pin_security_unavailable", trace_id: traceId }, 503, { "cache-control": "no-store" });
+      }
+      if (recorded.some((entry) => entry.limited)) {
+        return json({
+          ok: false,
+          reason: "claim_pin_locked",
+          error: "Demasiados intentos. Espera 15 minutos o solicita asistencia al emisor.",
+          trace_id: traceId,
+          retry_after_seconds: CLAIM_PIN_WINDOW_SECONDS,
+        }, 429, { "cache-control": "no-store", "retry-after": String(CLAIM_PIN_WINDOW_SECONDS) });
+      }
       return json({
         ok: false,
         reason: "invalid_pin",

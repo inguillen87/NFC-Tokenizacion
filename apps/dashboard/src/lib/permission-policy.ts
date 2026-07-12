@@ -29,5 +29,13 @@ export function requiredPermissionForAdminResource(method: string, normalizedPat
   if (normalizedPath === "proof" || normalizedPath.startsWith("proof/")) {
     return String(method || "").toUpperCase() === "GET" ? "proof:read" : "proof:write";
   }
+  if (
+    normalizedPath === "tokenization"
+    || normalizedPath.startsWith("tokenization/")
+    || normalizedPath === "polygon/wallet"
+    || normalizedPath === "product-assets"
+  ) {
+    return String(method || "").toUpperCase() === "GET" ? "tokenization:read" : "tokenization:write";
+  }
   return null;
 }

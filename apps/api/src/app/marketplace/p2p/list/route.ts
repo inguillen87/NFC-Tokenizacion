@@ -41,6 +41,7 @@ export async function POST(req: Request) {
     JOIN batches b ON b.id = t.batch_id
     LEFT JOIN tag_profiles tp ON tp.tag_id = t.id
     WHERE UPPER(t.uid_hex) = UPPER(${uidHex})
+      AND b.tenant_id = ${ownership.tenant_id}::uuid
     LIMIT 1
   `;
   const tagInfo = tagRows[0];
