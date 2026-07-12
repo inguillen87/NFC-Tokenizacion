@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
+import { getImageProps } from "next/image";
 import Link from "next/link";
+import { cookies } from "next/headers";
+import Script from "next/script";
 import {
   ArrowRight,
   Boxes,
@@ -120,7 +123,99 @@ const iconByKey: Record<PlatformIconKey, typeof Sprout> = {
   sneaker: Footprints,
 };
 
-function SdkTopNav() {
+type SdkTheme = "dark" | "light";
+
+type SdkThemeImageProps = {
+  alt: string;
+  className: string;
+  darkSrc: string;
+  lightSrc: string;
+  priority?: boolean;
+  sizes: string;
+  theme: SdkTheme;
+};
+
+const sdkThemeMediaSyncScript = String.raw`
+(() => {
+  const root = document.documentElement;
+
+  const syncThemeImages = () => {
+    const isLight = root.getAttribute("data-theme") === "light" || root.classList.contains("theme-light");
+    const theme = isLight ? "light" : "dark";
+
+    document.querySelectorAll("img[data-sdk-theme-image]").forEach((image) => {
+      const nextSrc = image.getAttribute("data-" + theme + "-src");
+      const nextSrcSet = image.getAttribute("data-" + theme + "-srcset");
+      const nextWidth = image.getAttribute("data-" + theme + "-width");
+      const nextHeight = image.getAttribute("data-" + theme + "-height");
+
+      if (nextSrcSet && image.getAttribute("srcset") !== nextSrcSet) image.setAttribute("srcset", nextSrcSet);
+      if (nextSrc && image.getAttribute("src") !== nextSrc) image.setAttribute("src", nextSrc);
+      if (nextWidth) image.setAttribute("width", nextWidth);
+      if (nextHeight) image.setAttribute("height", nextHeight);
+
+      image.classList.toggle("nexid-premium-image--light", isLight);
+      image.classList.toggle("nexid-premium-image--dark", !isLight);
+    });
+  };
+
+  if (window.__nexidSdkThemeMediaSync) {
+    window.__nexidSdkThemeMediaSync();
+    return;
+  }
+
+  window.__nexidSdkThemeMediaSync = syncThemeImages;
+  syncThemeImages();
+
+  new MutationObserver(syncThemeImages).observe(root, {
+    attributes: true,
+    attributeFilter: ["class", "data-theme"],
+  });
+  window.addEventListener("pageshow", syncThemeImages);
+})();`;
+
+function SdkThemeImage({ alt, className, darkSrc, lightSrc, priority = false, sizes, theme }: SdkThemeImageProps) {
+  const dark = getImageProps({
+    src: darkSrc,
+    alt,
+    width: 1200,
+    height: 1200,
+    sizes,
+    quality: 80,
+    decoding: "async",
+    ...(priority ? { loading: "eager" as const, fetchPriority: "high" as const } : { loading: "lazy" as const }),
+  }).props;
+  const light = getImageProps({
+    src: lightSrc,
+    alt,
+    width: 1280,
+    height: 900,
+    sizes,
+    quality: 80,
+    decoding: "async",
+    ...(priority ? { loading: "eager" as const, fetchPriority: "high" as const } : { loading: "lazy" as const }),
+  }).props;
+  const active = theme === "light" ? light : dark;
+
+  return (
+    <img
+      {...active}
+      suppressHydrationWarning
+      className={`${className} nexid-premium-image--${theme}`}
+      data-sdk-theme-image
+      data-dark-src={dark.src}
+      data-dark-srcset={dark.srcSet}
+      data-dark-width={dark.width}
+      data-dark-height={dark.height}
+      data-light-src={light.src}
+      data-light-srcset={light.srcSet}
+      data-light-width={light.width}
+      data-light-height={light.height}
+    />
+  );
+}
+
+function SdkTopNav({ theme }: { theme: SdkTheme }) {
   return (
     <header className="sdk-top-nav">
       <div className="sdk-top-nav-inner">
@@ -140,7 +235,7 @@ function SdkTopNav() {
           Solicitar acceso <ArrowRight className="h-3.5 w-3.5" />
         </Link>
         <div className="sdk-theme-toggle" aria-label="Cambiar tema SDK">
-          <ThemeToggle />
+          <ThemeToggle initialTheme={theme} />
         </div>
         <div className="sdk-nav-actions">
           <span className="sdk-api-status">API de produccion</span>
@@ -297,7 +392,7 @@ function sdkAtlasForProfile(profile: SdkVerticalProfile): { points: VectorMapPoi
   return { points, routes };
 }
 
-function SdkGlobalHeroScene({ activeVertical }: { activeVertical: PlatformVertical }) {
+function SdkGlobalHeroScene({ activeVertical, theme }: { activeVertical: PlatformVertical; theme: SdkTheme }) {
   const profile = sdkVerticalProfiles[activeVertical.demoVertical] || sdkVerticalProfiles.wine;
   const atlas = sdkAtlasForProfile(profile);
 
@@ -312,8 +407,15 @@ function SdkGlobalHeroScene({ activeVertical }: { activeVertical: PlatformVertic
       </div>
       <div className="sdk-proof-live-card">
         <div className="sdk-proof-product-shot">
-          <img className="nexid-premium-image--dark" src={activeVertical.image} alt={`${activeVertical.title} con nexID`} />
-          <img className="nexid-premium-image--light" src={activeVertical.imageLight} alt={`${activeVertical.title} con nexID`} />
+          <SdkThemeImage
+            alt={`${activeVertical.title} con nexID`}
+            className="sdk-proof-product-image"
+            darkSrc={activeVertical.image}
+            lightSrc={activeVertical.imageLight}
+            priority
+            sizes="(max-width: 760px) 38vw, (max-width: 1100px) 22vw, 14vw"
+            theme={theme}
+          />
           <span>{profile.proof}</span>
         </div>
         <div className="sdk-proof-phone" aria-label="Salida celular SDK nexID">
@@ -341,7 +443,7 @@ function SdkGlobalHeroScene({ activeVertical }: { activeVertical: PlatformVertic
   );
 }
 
-function SdkIndustryShowcase({ activeVertical }: { activeVertical: PlatformVertical }) {
+function SdkIndustryShowcase({ activeVertical, theme }: { activeVertical: PlatformVertical; theme: SdkTheme }) {
   return (
     <section className="sdk-industry-showcase">
       {platformVerticals.map((item) => {
@@ -350,8 +452,14 @@ function SdkIndustryShowcase({ activeVertical }: { activeVertical: PlatformVerti
         return (
           <article key={item.title} className={`sdk-industry-card sdk-industry-card--${item.tone}${isActive ? " is-active" : ""}`}>
             <div className="sdk-industry-image-wrap">
-              <img src={item.image} alt={`${item.title} conectado a nexID`} className="sdk-industry-image nexid-premium-image--dark" />
-              <img src={item.imageLight} alt={`${item.title} conectado a nexID`} className="sdk-industry-image nexid-premium-image--light" />
+              <SdkThemeImage
+                alt={`${item.title} conectado a nexID`}
+                className="sdk-industry-image"
+                darkSrc={item.image}
+                lightSrc={item.imageLight}
+                sizes="(max-width: 760px) 100vw, (max-width: 1380px) 50vw, 17vw"
+                theme={theme}
+              />
               <span>{item.metric}</span>
             </div>
             <div className="sdk-industry-content">
@@ -378,11 +486,16 @@ type SdkPageProps = {
 
 export default async function SdkPage({ searchParams }: SdkPageProps) {
   const params = await searchParams;
+  const cookieStore = await cookies();
+  const theme: SdkTheme = cookieStore.get("theme")?.value === "light" ? "light" : "dark";
   const activeVertical = normalizeSdkVertical(params?.vertical);
 
   return (
     <main className="knowledge-page-surface public-page-shell sdk-page-shell">
-      <SdkTopNav />
+      <Script id="sdk-theme-media-sync" strategy="afterInteractive">
+        {sdkThemeMediaSyncScript}
+      </Script>
+      <SdkTopNav theme={theme} />
 
       <div className="container-shell space-y-10 pb-16">
         <section id="sdk-proof-hero" className="sdk-premium-hero">
@@ -422,10 +535,10 @@ export default async function SdkPage({ searchParams }: SdkPageProps) {
               })}
             </div>
           </div>
-          <SdkGlobalHeroScene activeVertical={activeVertical} />
+          <SdkGlobalHeroScene activeVertical={activeVertical} theme={theme} />
         </section>
 
-        <SdkIndustryShowcase activeVertical={activeVertical} />
+        <SdkIndustryShowcase activeVertical={activeVertical} theme={theme} />
 
         <div className="sdk-trusted-rail">
           <span>Verticales objetivo</span>
