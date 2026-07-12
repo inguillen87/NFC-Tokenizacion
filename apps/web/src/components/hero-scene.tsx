@@ -153,9 +153,9 @@ const heroStageCopy: Record<AppLocale, {
   "es-AR": {
     identityTitle: "PRUEBA DE IDENTIDAD",
     consumerTitle: "TAP FINAL (CONSUMIDOR)",
-    routeTitle: "RUTA VIVA",
-    routeSubtitle: "Trazabilidad en tiempo real",
-    live: "En vivo",
+    routeTitle: "RUTA DEMO VERIFICADA",
+    routeSubtitle: "Recorrido de custodia simulado",
+    live: "Caso completo",
     custodyTitle: "HITOS DE CUSTODIA",
     integrity: "Integridad de ruta",
     verified: "verificada",
@@ -172,9 +172,9 @@ const heroStageCopy: Record<AppLocale, {
   "pt-BR": {
     identityTitle: "PROVA DE IDENTIDADE",
     consumerTitle: "TOQUE FINAL (CONSUMIDOR)",
-    routeTitle: "ROTA VIVA",
-    routeSubtitle: "Rastreabilidade em tempo real",
-    live: "Ao vivo",
+    routeTitle: "ROTA DEMO VERIFICADA",
+    routeSubtitle: "Percurso de custodia simulado",
+    live: "Caso completo",
     custodyTitle: "MARCOS DE CUSTODIA",
     integrity: "Integridade da rota",
     verified: "verificada",
@@ -191,9 +191,9 @@ const heroStageCopy: Record<AppLocale, {
   en: {
     identityTitle: "IDENTITY PROOF",
     consumerTitle: "FINAL TAP (CONSUMER)",
-    routeTitle: "LIVE ROUTE",
-    routeSubtitle: "Real-time traceability",
-    live: "Live",
+    routeTitle: "VERIFIED DEMO ROUTE",
+    routeSubtitle: "Simulated custody journey",
+    live: "Completed case",
     custodyTitle: "CUSTODY MILESTONES",
     integrity: "Route integrity",
     verified: "verified",
@@ -1362,7 +1362,7 @@ export function HeroTrustAtlasSvg({
       <g className="hero-trust-atlas__legend" transform="translate(28 560)">
         <rect width="210" height="40" rx="8" />
         <text x="14" y="17">nexID TRUST ATLAS</text>
-        <text x="14" y="31">live custody + physical tap</text>
+        <text x="14" y="31">demo custody + physical tap</text>
       </g>
     </svg>
   );
@@ -1494,12 +1494,13 @@ function EnterpriseHeroAtlasPanel({
   ];
   const countriesLabel = isEnglish ? "Countries" : isPortuguese ? "Paises" : "Paises";
   const citiesLabel = isEnglish ? "Cities" : isPortuguese ? "Cidades" : "Ciudades";
-  const routeLabel = isEnglish ? "Active route" : isPortuguese ? "Rota ativa" : "Ruta activa";
+  const routeLabel = isEnglish ? "Demo route" : isPortuguese ? "Rota demo" : "Ruta demo";
+  const demoRouteEvidence = isEnglish ? "Audited case" : isPortuguese ? "Caso auditado" : "Caso auditado";
   const custodyLabel = isEnglish ? "Custody" : isPortuguese ? "Custodia" : "Custodia";
   const atlasOps = [
     { id: "countries", label: countriesLabel, value: String(new Set(HERO_ATLAS_CITY_MARKERS.map((city) => city.country)).size) },
     { id: "cities", label: citiesLabel, value: String(HERO_ATLAS_CITY_MARKERS.length) },
-    { id: "route", label: routeLabel, value: routeEvidence },
+    { id: "route", label: routeLabel, value: demoRouteEvidence },
     { id: "custody", label: custodyLabel, value: `${custodyStops.length} ${stageCopy.events.toLowerCase()}` },
   ];
   const atlasZoomLevels = [1, 1.16, 1.32] as const;
@@ -1617,7 +1618,7 @@ function HeroTraceMap({
   txt: Pick<(typeof labels)["es-AR"], "routeTitle" | "originMap" | "tapMap" | "openOriginMap" | "custody">;
 }) {
   void numberLocale;
-  const routeHeadline = txt.routeTitle === "Trust route" ? "Live route" : txt.routeTitle.startsWith("Rota") ? "Rota viva" : "Ruta viva";
+  const routeHeadline = txt.routeTitle === "Trust route" ? "Demo route" : txt.routeTitle.startsWith("Rota") ? "Rota demo" : "Ruta demo";
   const tapCopy = txt.routeTitle === "Trust route" ? "Physical tap" : txt.routeTitle.startsWith("Rota") ? "Toque físico" : "Tap físico";
   const evidenceCopy = routeEvidenceSentenceFromTitle(txt.routeTitle);
   const signedCopy = txt.routeTitle === "Trust route" ? "Signed evidence" : txt.routeTitle.startsWith("Rota") ? "Evidência assinada" : "Evidencia firmada";

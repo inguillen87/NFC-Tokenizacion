@@ -108,7 +108,7 @@ export function HeroSection({ content, stats, locale, initialTheme = "dark" }: {
             <Link href="/login?next=/me" className="landing-consumer-portal-cta inline-flex items-center justify-center rounded-xl border border-purple-500/35 bg-purple-500/10 px-6 py-3.5 text-sm font-bold text-purple-300 transition-all hover:scale-105 hover:bg-purple-500/20">
               {isEn ? "Consumer Portal (Passport)" : isBr ? "Portal do Consumidor" : "Portal Consumidor (Passport/NFT)"}
             </Link>
-            <Link href="/docs" className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-slate-900/50 backdrop-blur-md px-6 py-3.5 text-sm font-semibold text-white transition-all hover:bg-white/10">
+            <Link href="/demo-lab" className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-slate-900/50 backdrop-blur-md px-6 py-3.5 text-sm font-semibold text-white transition-all hover:bg-white/10">
               {secondaryCta}
             </Link>
           </div>
@@ -462,7 +462,7 @@ export function EnterpriseTrustLayersSection({ locale }: { locale: string }) {
                 : item.title.includes("Offline")
                   ? "/demo-lab?scenario=offline-verifier"
                   : item.title.includes("NFC")
-                    ? "/demo-lab?scenario=qr-gs1"
+                    ? "/demo-lab?scenario=nfc-424"
                     : item.title.includes("QR")
                       ? "/demo-lab?scenario=qr-gs1"
                       : "/docs#trust-layers";

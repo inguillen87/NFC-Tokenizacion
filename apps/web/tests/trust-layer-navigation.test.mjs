@@ -47,7 +47,9 @@ test("landing trust layer cards open related proof experiences", async () => {
   assert.match(sections, /\? "\/proof\/verify"/);
   assert.match(sections, /\? "\/demo-lab\?scenario=polygon-ownership"/);
   assert.match(sections, /\? "\/demo-lab\?scenario=offline-verifier"/);
+  assert.match(sections, /item\.title\.includes\("NFC"\)[\s\S]*\? "\/demo-lab\?scenario=nfc-424"/);
   assert.match(sections, /\? "\/demo-lab\?scenario=qr-gs1"/);
+  assert.doesNotMatch(sections, /item\.title\.includes\("NFC"\)[\s\S]{0,80}\? "\/demo-lab\?scenario=qr-gs1"/);
   assert.match(sections, /aria-label=\{`\$\{item\.title\}: /);
   assert.match(sections, /TrustLayerMiniSimulation/);
   assert.match(sections, /enterprise-trust-layer-card--phase/);
@@ -60,6 +62,22 @@ test("landing trust layer cards open related proof experiences", async () => {
   assert.match(css, /@media \(max-width:\s*560px\)[\s\S]*\.enterprise-trust-layers__grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(css, /\.enterprise-trust-layer-card--phase p\s*\{[\s\S]*display:\s*none/);
   assert.match(css, /\.enterprise-trust-layer-card--capability:not\(\.enterprise-trust-layer-card--mobile-sim\) \.trust-layer-sim\s*\{[\s\S]*display:\s*none/);
+});
+
+test("landing hero sends prospects to Demo Lab and labels its fixed route as a demo", async () => {
+  const sections = await readFile(new URL("../src/components/landing-sections.tsx", import.meta.url), "utf8");
+  const hero = await readFile(new URL("../src/components/hero-scene.tsx", import.meta.url), "utf8");
+
+  assert.match(sections, /href="\/demo-lab"[^>]*>[\s\S]*\{secondaryCta\}/);
+  assert.doesNotMatch(sections, /href="\/docs"[^>]*>[\s\S]{0,100}\{secondaryCta\}/);
+  assert.match(hero, /routeTitle: "RUTA DEMO VERIFICADA"/);
+  assert.match(hero, /routeSubtitle: "Recorrido de custodia simulado"/);
+  assert.match(hero, /live: "Caso completo"/);
+  assert.match(hero, /const routeLabel = isEnglish \? "Demo route" : isPortuguese \? "Rota demo" : "Ruta demo"/);
+  assert.match(hero, /const demoRouteEvidence = isEnglish \? "Audited case" : isPortuguese \? "Caso auditado" : "Caso auditado"/);
+  assert.match(hero, /demo custody \+ physical tap/);
+  assert.doesNotMatch(hero, /routeTitle: "RUTA VIVA"/);
+  assert.doesNotMatch(hero, /const routeLabel = isEnglish \? "Active route"/);
 });
 
 test("home quick navigation exposes Proof Verify on desktop, footer and mobile", async () => {
