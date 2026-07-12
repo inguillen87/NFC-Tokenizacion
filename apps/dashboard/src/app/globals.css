@@ -24,6 +24,7 @@ html,
 body {
   background: var(--dash-bg);
   color: var(--dash-text);
+  overflow-x: clip;
 }
 
 body {
