@@ -104,6 +104,9 @@ test("proof verifier keeps the enterprise decoder readable and non-trapped", asy
   assert.match(page, /receipt_verified/);
   assert.match(page, /verification_status/);
   assert.match(page, /Evidencia testnet verificada por RPC/);
+  assert.match(page, /Caso demo explicado/);
+  assert.doesNotMatch(page, /Fixture testnet explicado/);
+  assert.match(page, /\.helpbot-hint\s*\{\s*display:\s*none !important/);
   assert.match(page, /Anclaje externo confirmado/);
   assert.match(page, /Anchor enviado, aun no confirmado/);
   assert.match(page, /#proof-result/);

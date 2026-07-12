@@ -1153,6 +1153,10 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           color: var(--proof-text);
         }
 
+        .helpbot-hint {
+          display: none !important;
+        }
+
         html[data-theme="light"] .proof-verify-page,
         html.theme-light .proof-verify-page {
           --proof-page-bg:
@@ -2290,7 +2294,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
             ) : null}
             {guidedDemo ? (
               <div className="proof-flat mt-5 rounded-2xl border border-cyan-200 bg-cyan-50/70 p-4">
-                <p className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-cyan-800">{demoFixture ? "Fixture testnet explicado" : activeDemo ? "Caso explicado" : "Caso demo sugerido"}</p>
+                <p className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-cyan-800">{demoFixture ? "Caso demo explicado" : activeDemo ? "Caso explicado" : "Caso demo sugerido"}</p>
                 <h3 className="mt-2 text-xl font-black leading-tight text-slate-950">{guidedDemo.title}</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-700">
                   {activeDemo
