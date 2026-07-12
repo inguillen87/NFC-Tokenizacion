@@ -1,7 +1,7 @@
 "use client";
 
-import { Check, Clipboard, Code2, ListTree, TerminalSquare } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { AlertCircle, Check, Clipboard, Code2, ListTree, TerminalSquare } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react";
 import {
   NEXID_SDK_API_BASE,
   NEXID_SDK_VERIFY_OPTIONAL_FIELDS,
@@ -12,14 +12,20 @@ import {
 
 type Locale = "es-AR" | "pt-BR" | "en";
 type SnippetId = "curl" | "node" | "python";
+type CopyStatus =
+  | { kind: "idle" }
+  | { kind: "success" | "error"; snippet: SnippetId };
 
-const navItems: Array<{ id: string; label: Record<Locale, string> }> = [
+const snippetIds: SnippetId[] = ["curl", "node", "python"];
+
+export const docsSectionItems: Array<{ id: string; label: Record<Locale, string> }> = [
   { id: "thesis", label: { "es-AR": "Tesis", "pt-BR": "Tese", en: "Thesis" } },
   { id: "carrier-profiles", label: { "es-AR": "Chips", "pt-BR": "Chips", en: "Chips" } },
   { id: "api", label: { "es-AR": "API", "pt-BR": "API", en: "API" } },
   { id: "rollout", label: { "es-AR": "Rollout", "pt-BR": "Rollout", en: "Rollout" } },
   { id: "trust-layers", label: { "es-AR": "Trust layers", "pt-BR": "Trust layers", en: "Trust layers" } },
   { id: "faq", label: { "es-AR": "FAQ", "pt-BR": "FAQ", en: "FAQ" } },
+  { id: "strategy", label: { "es-AR": "Estrategia", "pt-BR": "Estrategia", en: "Strategy" } },
   { id: "actions", label: { "es-AR": "Acciones", "pt-BR": "Acoes", en: "Actions" } },
 ];
 
@@ -100,6 +106,9 @@ const copyByLocale: Record<
     contractItems: string[];
     copied: string;
     copy: string;
+    copyFailed: string;
+    navAriaLabel: string;
+    tabsAriaLabel: string;
     note: string;
   }
 > = {
@@ -114,6 +123,9 @@ const copyByLocale: Record<
     contractItems: sdkContractItems,
     copied: "Copiado",
     copy: "Copiar",
+    copyFailed: "No se pudo copiar",
+    navAriaLabel: "Secciones de documentacion",
+    tabsAriaLabel: "Ejemplos de integracion",
     note: "La validacion productiva finaliza server-side: replay, politica de tenant, ownership y garantia no viven en el cliente.",
   },
   "pt-BR": {
@@ -127,6 +139,9 @@ const copyByLocale: Record<
     contractItems: sdkContractItems,
     copied: "Copiado",
     copy: "Copiar",
+    copyFailed: "Nao foi possivel copiar",
+    navAriaLabel: "Secoes da documentacao",
+    tabsAriaLabel: "Exemplos de integracao",
     note: "A validacao produtiva termina server-side: replay, politica do tenant, ownership e garantia nao ficam no cliente.",
   },
   en: {
@@ -140,6 +155,9 @@ const copyByLocale: Record<
     contractItems: sdkContractItems,
     copied: "Copied",
     copy: "Copy",
+    copyFailed: "Copy failed",
+    navAriaLabel: "Documentation sections",
+    tabsAriaLabel: "Integration examples",
     note: "Production validation is finalized server-side: replay, tenant policy, ownership and warranty do not live in the client.",
   },
 };
@@ -166,42 +184,89 @@ function highlightedLine(line: string, language: SnippetId) {
   });
 }
 
-export function DocsIntegrationConsole({ locale }: { locale: Locale }) {
+export function DocsSectionNavigation({ locale }: { locale: Locale }) {
   const copy = copyByLocale[locale] || copyByLocale["es-AR"];
-  const [activeSection, setActiveSection] = useState(navItems[0].id);
-  const [activeSnippet, setActiveSnippet] = useState<SnippetId>("curl");
-  const [copiedSnippet, setCopiedSnippet] = useState<SnippetId | null>(null);
-  const renderedCode = useMemo(() => snippets[activeSnippet].split("\n"), [activeSnippet]);
+  const [activeSection, setActiveSection] = useState(docsSectionItems[0].id);
 
   useEffect(() => {
-    const sectionNodes = navItems
+    const sectionNodes = docsSectionItems
       .map((item) => document.getElementById(item.id))
       .filter((node): node is HTMLElement => Boolean(node));
 
     if (!sectionNodes.length) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (visible?.target.id) setActiveSection(visible.target.id);
-      },
-      { rootMargin: "-24% 0px -62% 0px", threshold: [0.08, 0.2, 0.4] }
-    );
+    let frameId = 0;
+    const syncActiveSection = () => {
+      const marker = Math.max(112, window.innerHeight * 0.28);
+      let nextSection = sectionNodes[0].id;
 
-    sectionNodes.forEach((node) => observer.observe(node));
-    return () => observer.disconnect();
+      for (const node of sectionNodes) {
+        if (node.getBoundingClientRect().top <= marker) nextSection = node.id;
+        else break;
+      }
+
+      const lastSection = sectionNodes[sectionNodes.length - 1];
+      if (lastSection.getBoundingClientRect().bottom <= window.innerHeight + 2) {
+        nextSection = lastSection.id;
+      }
+
+      setActiveSection((current) => (current === nextSection ? current : nextSection));
+    };
+    const scheduleSync = () => {
+      window.cancelAnimationFrame(frameId);
+      frameId = window.requestAnimationFrame(syncActiveSection);
+    };
+
+    syncActiveSection();
+    window.addEventListener("scroll", scheduleSync, { passive: true });
+    window.addEventListener("resize", scheduleSync);
+    window.addEventListener("hashchange", scheduleSync);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.removeEventListener("scroll", scheduleSync);
+      window.removeEventListener("resize", scheduleSync);
+      window.removeEventListener("hashchange", scheduleSync);
+    };
   }, []);
 
-  const onCopy = async () => {
-    await navigator.clipboard?.writeText(snippets[activeSnippet]).catch(() => null);
-    setCopiedSnippet(activeSnippet);
-    window.setTimeout(() => setCopiedSnippet(null), 1400);
+  const activeItem = docsSectionItems.find((item) => item.id === activeSection) || docsSectionItems[0];
+  const onMobileSectionChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    const sectionId = event.target.value;
+    const section = document.getElementById(sectionId);
+    setActiveSection(sectionId);
+    window.history.replaceState(null, "", `#${sectionId}`);
+    section?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   return (
-    <section className="docs-integration-console grid w-full min-w-0 gap-4 lg:grid-cols-[minmax(210px,0.55fr)_minmax(0,1.45fr)]">
+    <>
+      <nav
+        className="sticky top-16 z-40 -mx-1 rounded-2xl border border-cyan-300/20 bg-slate-950/95 p-3 shadow-[0_16px_50px_rgba(2,6,23,0.5)] backdrop-blur-xl lg:hidden"
+        aria-label={copy.navAriaLabel}
+      >
+        <label className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3" htmlFor="docs-mobile-section-nav">
+          <span className="grid h-9 w-9 place-items-center rounded-xl border border-cyan-300/20 bg-cyan-400/10 text-cyan-200" aria-hidden="true">
+            <ListTree className="h-4 w-4" />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-[10px] font-black uppercase tracking-[0.14em] text-cyan-300">{copy.navTitle}</span>
+            <select
+              id="docs-mobile-section-nav"
+              value={activeItem.id}
+              onChange={onMobileSectionChange}
+              className="mt-1 min-h-10 w-full rounded-xl border border-white/10 bg-slate-900 px-3 text-sm font-bold text-white outline-none focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/20"
+            >
+              {docsSectionItems.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.label[locale]}
+                </option>
+              ))}
+            </select>
+          </span>
+        </label>
+      </nav>
+
       <aside className="sticky top-20 hidden h-fit rounded-3xl border border-cyan-300/15 bg-slate-950/70 p-4 shadow-[0_18px_80px_rgba(8,47,73,0.24)] backdrop-blur-xl lg:block">
         <div className="mb-4 flex items-start gap-3">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-2xl border border-cyan-300/20 bg-cyan-400/10 text-cyan-200">
@@ -212,13 +277,15 @@ export function DocsIntegrationConsole({ locale }: { locale: Locale }) {
             <p className="mt-1 text-xs leading-5 text-slate-400">{copy.navBody}</p>
           </div>
         </div>
-        <nav className="space-y-1" aria-label="Docs scroll spy">
-          {navItems.map((item) => {
+        <nav className="space-y-1" aria-label={copy.navAriaLabel}>
+          {docsSectionItems.map((item) => {
             const isActive = item.id === activeSection;
             return (
               <a
                 key={item.id}
                 href={`#${item.id}`}
+                aria-current={isActive ? "location" : undefined}
+                onClick={() => setActiveSection(item.id)}
                 className={`flex items-center justify-between rounded-2xl px-3 py-2 text-xs font-bold transition ${
                   isActive
                     ? "border border-cyan-300/30 bg-cyan-400/15 text-cyan-100"
@@ -226,13 +293,71 @@ export function DocsIntegrationConsole({ locale }: { locale: Locale }) {
                 }`}
               >
                 {item.label[locale]}
-                <span className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-cyan-300" : "bg-slate-700"}`} />
+                <span className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-cyan-300" : "bg-slate-700"}`} aria-hidden="true" />
               </a>
             );
           })}
         </nav>
       </aside>
+    </>
+  );
+}
 
+export function DocsIntegrationConsole({ locale }: { locale: Locale }) {
+  const copy = copyByLocale[locale] || copyByLocale["es-AR"];
+  const [activeSnippet, setActiveSnippet] = useState<SnippetId>("curl");
+  const [copyStatus, setCopyStatus] = useState<CopyStatus>({ kind: "idle" });
+  const tabRefs = useRef<Record<SnippetId, HTMLButtonElement | null>>({ curl: null, node: null, python: null });
+  const copyResetTimer = useRef<number | null>(null);
+  const renderedCode = useMemo(() => snippets[activeSnippet].split("\n"), [activeSnippet]);
+
+  useEffect(
+    () => () => {
+      if (copyResetTimer.current) window.clearTimeout(copyResetTimer.current);
+    },
+    []
+  );
+
+  const activateSnippet = (snippet: SnippetId) => {
+    setActiveSnippet(snippet);
+    setCopyStatus({ kind: "idle" });
+  };
+
+  const onTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>, snippet: SnippetId) => {
+    const currentIndex = snippetIds.indexOf(snippet);
+    let nextIndex: number | null = null;
+
+    if (event.key === "ArrowRight") nextIndex = (currentIndex + 1) % snippetIds.length;
+    if (event.key === "ArrowLeft") nextIndex = (currentIndex - 1 + snippetIds.length) % snippetIds.length;
+    if (event.key === "Home") nextIndex = 0;
+    if (event.key === "End") nextIndex = snippetIds.length - 1;
+    if (nextIndex === null) return;
+
+    event.preventDefault();
+    const nextSnippet = snippetIds[nextIndex];
+    activateSnippet(nextSnippet);
+    tabRefs.current[nextSnippet]?.focus();
+  };
+
+  const onCopy = async () => {
+    if (copyResetTimer.current) window.clearTimeout(copyResetTimer.current);
+
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("Clipboard API unavailable");
+      await navigator.clipboard.writeText(snippets[activeSnippet]);
+      setCopyStatus({ kind: "success", snippet: activeSnippet });
+    } catch {
+      setCopyStatus({ kind: "error", snippet: activeSnippet });
+    }
+
+    copyResetTimer.current = window.setTimeout(() => setCopyStatus({ kind: "idle" }), 1800);
+  };
+
+  const statusForActive = copyStatus.kind !== "idle" && copyStatus.snippet === activeSnippet ? copyStatus.kind : "idle";
+  const copyButtonLabel = statusForActive === "success" ? copy.copied : statusForActive === "error" ? copy.copyFailed : copy.copy;
+
+  return (
+    <section className="docs-integration-console w-full min-w-0">
       <div className="docs-integration-console__panel min-w-0 overflow-hidden rounded-3xl border border-white/10 bg-slate-950/75 shadow-[0_20px_90px_rgba(2,6,23,0.42)]">
         <div className="grid gap-0 lg:grid-cols-[0.72fr_1.28fr]">
           <div className="border-b border-white/10 p-5 sm:p-6 lg:border-b-0 lg:border-r">
@@ -257,12 +382,21 @@ export function DocsIntegrationConsole({ locale }: { locale: Locale }) {
 
           <div className="min-w-0">
             <div className="docs-code-toolbar flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-white/[0.03] px-4 py-3">
-              <div className="docs-code-tabs flex rounded-2xl border border-white/10 bg-slate-950 p-1">
-                {(["curl", "node", "python"] as SnippetId[]).map((id) => (
+              <div className="docs-code-tabs flex rounded-2xl border border-white/10 bg-slate-950 p-1" role="tablist" aria-label={copy.tabsAriaLabel}>
+                {snippetIds.map((id) => (
                   <button
                     key={id}
                     type="button"
-                    onClick={() => setActiveSnippet(id)}
+                    id={`docs-code-tab-${id}`}
+                    ref={(node) => {
+                      tabRefs.current[id] = node;
+                    }}
+                    role="tab"
+                    aria-selected={activeSnippet === id}
+                    aria-controls="docs-code-panel"
+                    tabIndex={activeSnippet === id ? 0 : -1}
+                    onClick={() => activateSnippet(id)}
+                    onKeyDown={(event) => onTabKeyDown(event, id)}
                     className={`rounded-xl px-3 py-2 text-xs font-black uppercase tracking-wider transition ${
                       activeSnippet === id
                         ? "bg-cyan-300 text-slate-950 shadow-[0_0_24px_rgba(103,232,249,0.2)]"
@@ -276,14 +410,30 @@ export function DocsIntegrationConsole({ locale }: { locale: Locale }) {
               <button
                 type="button"
                 onClick={onCopy}
+                aria-describedby="docs-copy-status"
                 className="inline-flex items-center gap-2 rounded-xl border border-cyan-300/25 bg-cyan-400/10 px-3 py-2 text-xs font-black uppercase tracking-wider text-cyan-100 transition hover:bg-cyan-300/20"
               >
-                {copiedSnippet === activeSnippet ? <Check className="h-3.5 w-3.5" /> : <Clipboard className="h-3.5 w-3.5" />}
-                {copiedSnippet === activeSnippet ? copy.copied : copy.copy}
+                {statusForActive === "success" ? (
+                  <Check className="h-3.5 w-3.5" />
+                ) : statusForActive === "error" ? (
+                  <AlertCircle className="h-3.5 w-3.5" />
+                ) : (
+                  <Clipboard className="h-3.5 w-3.5" />
+                )}
+                {copyButtonLabel}
               </button>
+              <span id="docs-copy-status" className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+                {statusForActive === "success" ? copy.copied : statusForActive === "error" ? copy.copyFailed : ""}
+              </span>
             </div>
 
-            <div className="docs-code-pane min-w-0 overflow-x-auto bg-slate-950">
+            <div
+              id="docs-code-panel"
+              className="docs-code-pane min-w-0 overflow-x-auto bg-slate-950"
+              role="tabpanel"
+              aria-labelledby={`docs-code-tab-${activeSnippet}`}
+              tabIndex={0}
+            >
               <pre className="docs-code-pre p-4 text-[11.5px] leading-6 sm:p-5">
                 <code className="docs-code-block">
                   {renderedCode.map((line, index) => (

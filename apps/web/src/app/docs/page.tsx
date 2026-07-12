@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { BackLink } from "../../components/back-link";
-import { DocsIntegrationConsole } from "./docs-integration-console";
+import { DocsIntegrationConsole, DocsSectionNavigation } from "./docs-integration-console";
 import { JsonLd } from "../../components/json-ld";
 import { productExitHref } from "../../components/product-exit-link";
 import { PublicLinkChip } from "../../components/public-link-chip";
@@ -899,7 +899,10 @@ export default async function DocsPage() {
         </div>
       </Card>
 
-      <DocsIntegrationConsole locale={locale} />
+      <div className="grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(210px,0.55fr)_minmax(0,1.45fr)]">
+        <DocsSectionNavigation locale={locale} />
+        <div className="min-w-0 space-y-8">
+          <DocsIntegrationConsole locale={locale} />
 
       <div className="space-y-4">
         <div className="space-y-3">
@@ -1377,6 +1380,8 @@ export default async function DocsPage() {
             </Link>
           </div>
         </Card>
+      </div>
+        </div>
       </div>
     </main>
   );
