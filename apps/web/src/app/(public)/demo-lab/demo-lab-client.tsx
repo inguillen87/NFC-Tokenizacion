@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, useRef, type CSSProperties } from "react";
 import { DEMO_TENANT_SLUG } from "@product/config";
 import type { AppLocale } from "@product/config";
-import { ArrowLeft, BadgeCheck, CalendarDays, CheckCircle2, ChevronRight, Fingerprint, MapPin, PackageCheck, ShieldCheck, Smartphone, UserRound, AlertTriangle, ShoppingCart, RefreshCw, Check, Cpu, Network, QrCode, RadioTower } from "lucide-react";
+import { ArrowLeft, BadgeCheck, CalendarDays, CheckCircle2, ChevronRight, Fingerprint, LockKeyhole, MapPin, PackageCheck, ShieldCheck, Smartphone, UserRound, AlertTriangle, ShoppingCart, RefreshCw, Check, Cpu, Network, QrCode, RadioTower } from "lucide-react";
 import { HeroTrustAtlasSvg } from "../../../components/hero-scene";
 import { platformVerticals } from "../../../lib/platform-verticals";
 import { ThreeDProduct } from "../../investor-snapshot/investor-snapshot-client";
@@ -974,6 +974,7 @@ export function DemoLabClient({
   const [beat, setBeat] = useState<Beat>(scenarioStart.beat);
   const [trustScenario, setTrustScenario] = useState<DemoTrustScenarioKey | null>(scenarioStart.key);
   const [wizardStep, setWizardStep] = useState<DemoWizardStep>(() => getTrustScenarioInitialStep(scenarioStart.key));
+  const [wizardMaxStep, setWizardMaxStep] = useState<DemoWizardStep>(() => getTrustScenarioInitialStep(scenarioStart.key));
   const [running, setRunning] = useState(false);
   const [summary, setSummary] = useState<DemoSummary | null>(null);
   const [status, setStatus] = useState(txt.controls.syncing);
@@ -1041,7 +1042,9 @@ export function DemoLabClient({
     setVertical(scenarioStart.vertical);
     setBeat(scenarioStart.beat);
     setTrustScenario(scenarioStart.key);
-    setWizardStep(getTrustScenarioInitialStep(scenarioStart.key));
+    const initialWizardStep = getTrustScenarioInitialStep(scenarioStart.key);
+    setWizardStep(initialWizardStep);
+    setWizardMaxStep(initialWizardStep);
     setSimulationReceipt(null);
   }, [initialVertical, scenarioStart.beat, scenarioStart.key, scenarioStart.vertical]);
 
@@ -1138,14 +1141,13 @@ export function DemoLabClient({
     }
   }
 
-  async function simulate(mode: SimulationMode) {
+  async function simulate(mode: SimulationMode): Promise<boolean> {
     const nextBeat: Beat = mode === "replay" ? 2 : mode === "tamper" ? 3 : 1;
     const nextBeatCopy = txt.beats[nextBeat];
     const nextDestination = LOCATIONS[nextBeatCopy.location];
     const modeLabel = mode === "replay" ? "COPIA" : mode === "tamper" ? "APERTURA" : "TOQUE";
     setSimulating(true);
     setSimulationReceipt(null);
-    setBeat(nextBeat);
     setStatus(`${txt.controls.sendingScan} ${modeLabel.toLowerCase()} - ${nextDestination.city}...`);
     try {
       const response = await fetch("/api/demo/simulate-tap", {
@@ -1156,6 +1158,7 @@ export function DemoLabClient({
       const payload = await response.json().catch(() => ({ ok: false, reason: "invalid json" }));
       if (!response.ok || payload?.ok === false) throw new Error(String(payload?.reason || payload?.payload?.reason || "lectura fallida"));
       if (payload?.degraded) {
+        setBeat(nextBeat);
         setSimulationReceipt({
           mode,
           execution: "visual",
@@ -1168,10 +1171,11 @@ export function DemoLabClient({
         });
         setStatus(`${modeLabel}: ${String(payload.reason || txt.controls.adminKey)}`);
         setActionMessage(mode === "replay" ? "Copia simulada solo en pantalla: reclamo de dueño, puntos y tokenización quedan bloqueados." : mode === "tamper" ? "Sello abierto solo en pantalla: no se persistió un evento y no hubo escritura on-chain." : "Toque válido solo en pantalla: no se persistió un scan y no hubo escritura on-chain.");
-        return;
+        return true;
       }
       const eventId = payload?.payload?.event_id;
       const uidHex = payload?.uidHex;
+      setBeat(nextBeat);
       setSimulationReceipt({
         mode,
         execution: "persisted",
@@ -1185,6 +1189,7 @@ export function DemoLabClient({
       setStatus(`${modeLabel}: ${txt.controls.registeredScan}`);
       setActionMessage(mode === "replay" ? "Copia simulada: reclamo de dueño, puntos y tokenización quedan bloqueados." : mode === "tamper" ? "Sello abierto: se registra evento del producto y queda listo para postventa controlada." : "Toque válido: club, tienda y analítica quedan listos para activar.");
       await refreshSummary();
+      return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : txt.controls.failedScan;
       setSimulationReceipt({
@@ -1198,6 +1203,7 @@ export function DemoLabClient({
         detail: `La escena cambio localmente, pero el request fallo: ${message}`,
       });
       setStatus(message);
+      return false;
     } finally {
       setSimulating(false);
     }
@@ -1229,8 +1235,28 @@ export function DemoLabClient({
     setActionMessage(beat === 2 ? "Club bloqueado por copia. Repetí el toque físico para continuar." : "Club/tienda listo: el consumidor puede asociarse y recibir beneficios de la marca.");
   }
 
+  function handleVerticalChange(nextVertical: Vertical) {
+    setVertical(nextVertical);
+    setBeat(0);
+    setWizardStep(0);
+    setWizardMaxStep(0);
+    setSimulationReceipt(null);
+    setActionMessage(null);
+  }
+
+  function resetWizardFlow() {
+    setBeat(0);
+    setWizardStep(0);
+    setWizardMaxStep(0);
+    setSimulationReceipt(null);
+    setActionMessage(null);
+  }
+
   function startGuidedDemo() {
     setBeat(0);
+    setWizardStep(0);
+    setWizardMaxStep(0);
+    setSimulationReceipt(null);
     setRunning(true);
     setModalView(null);
     setActionMessage("Modo guiado activo: primero mira la etiqueta cerrada, después el toque válido, copia bloqueada y apertura con reclamo/tokenización.");
@@ -1304,17 +1330,20 @@ export function DemoLabClient({
             simulating={simulating}
             simulationReceipt={simulationReceipt}
             step={wizardStep}
+            maxStep={wizardMaxStep}
             activeTrustScenario={trustScenario}
             initialTheme={initialTheme}
             initialReturnTo={initialReturnTo}
-            onVertical={setVertical}
+            onVertical={handleVerticalChange}
             onBeat={setBeat}
             onStep={setWizardStep}
+            onUnlockStep={(nextStep) => setWizardMaxStep((current) => Math.max(current, nextStep) as DemoWizardStep)}
+            onResetFlow={resetWizardFlow}
             onProduct={() => setModalView("product")}
             onClaim={() => setModalView("claim")}
-            onValid={() => void simulate("valid")}
-            onOpen={() => void simulate("tamper")}
-            onReplay={() => void simulate("replay")}
+            onValid={() => simulate("valid")}
+            onOpen={() => simulate("tamper")}
+            onReplay={() => simulate("replay")}
           />
         </>
       )}
@@ -1414,12 +1443,15 @@ function DemoLabStudioHero({
   simulating,
   simulationReceipt,
   step,
+  maxStep,
   activeTrustScenario,
   initialTheme,
   initialReturnTo,
   onVertical,
   onBeat,
   onStep,
+  onUnlockStep,
+  onResetFlow,
   onProduct,
   onClaim,
   onValid,
@@ -1441,17 +1473,20 @@ function DemoLabStudioHero({
   simulating: boolean;
   simulationReceipt: DemoSimulationReceipt | null;
   step: DemoWizardStep;
+  maxStep: DemoWizardStep;
   activeTrustScenario: DemoTrustScenarioKey | null;
   initialTheme: DemoLabTheme;
   initialReturnTo: string;
   onVertical: (vertical: Vertical) => void;
   onBeat: (beat: Beat) => void;
   onStep: (step: DemoWizardStep) => void;
+  onUnlockStep: (step: DemoWizardStep) => void;
+  onResetFlow: () => void;
   onProduct: () => void;
   onClaim: () => void;
-  onValid: () => void;
-  onOpen: () => void;
-  onReplay: () => void;
+  onValid: () => Promise<boolean>;
+  onOpen: () => Promise<boolean>;
+  onReplay: () => Promise<boolean>;
 }) {
   const verticalList = DEMO_VERTICAL_ORDER;
   const proofDestinationHref = useMemo(
@@ -1468,37 +1503,37 @@ function DemoLabStudioHero({
   );
   const studioRef = useRef<HTMLElement>(null);
   const wizardNavRef = useRef<HTMLElement>(null);
+  const hasSuccessfulReceipt = Boolean(simulationReceipt && simulationReceipt.execution !== "failed");
 
-  function goToStep(nextStep: DemoWizardStep) {
+  function navigateToUnlockedStep(nextStep: DemoWizardStep) {
+    if (nextStep > maxStep) return;
     onStep(nextStep);
-    scrollWizardSceneIntoView();
     if (nextStep === 0) {
       onBeat(0);
-      return;
     }
-    if (beat === 0) {
-      onBeat(1);
-      if (nextStep === 1) onValid();
-    }
+    scrollWizardSceneIntoView();
   }
 
-  function runValidFlow(nextStep: DemoWizardStep = 1) {
-    onValid();
+  function unlockAndGo(nextStep: DemoWizardStep) {
+    onUnlockStep(nextStep);
+    onStep(nextStep);
+    scrollWizardSceneIntoView();
+  }
+
+  async function runValidFlow(nextStep: DemoWizardStep = 1) {
+    const completed = await onValid();
+    if (!completed) return;
     onBeat(1);
-    window.setTimeout(() => {
-      onStep(nextStep);
-      scrollWizardSceneIntoView();
-    }, 800);
+    onUnlockStep(nextStep);
+    onStep(nextStep);
+    scrollWizardSceneIntoView();
   }
 
-  function runRiskFlow(mode: "replay" | "tamper") {
-    if (mode === "replay") {
-      onReplay();
-      onBeat(2);
-    } else {
-      onOpen();
-      onBeat(3);
-    }
+  async function runRiskFlow(mode: "replay" | "tamper") {
+    const completed = await (mode === "replay" ? onReplay() : onOpen());
+    if (!completed) return;
+    onBeat(mode === "replay" ? 2 : 3);
+    onUnlockStep(1);
     onStep(1);
     scrollWizardSceneIntoView();
   }
@@ -1626,17 +1661,26 @@ function DemoLabStudioHero({
               type="button"
               aria-current={step === index ? "step" : undefined}
               aria-pressed={step === index}
-              aria-label={`${index + 1}. ${label}`}
-              onClick={() => goToStep(index as DemoWizardStep)}
+              aria-label={`${index + 1}. ${label}${index > maxStep ? locale === "en" ? ", locked" : ", bloqueado" : ""}`}
+              data-locked={index > maxStep ? "true" : "false"}
+              disabled={index > maxStep}
+              title={index > maxStep
+                ? locale === "en" ? "Complete the current step to continue" : locale === "pt-BR" ? "Complete o passo atual para continuar" : "Completa el paso actual para continuar"
+                : undefined}
+              onClick={() => navigateToUnlockedStep(index as DemoWizardStep)}
               className={`demo-lab-wizard-step-pill inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-full border px-4 text-xs font-black uppercase tracking-wider transition ${
                 step === index
                   ? "is-active border-cyan-300 bg-cyan-300 text-slate-950 shadow-lg shadow-cyan-500/20"
+                  : index > maxStep
+                    ? "is-locked cursor-not-allowed border-white/5 bg-slate-950/40 text-slate-600"
                   : step > index
                     ? "is-done border-emerald-300/40 bg-emerald-500/10 text-emerald-200"
                     : "border-white/10 bg-white/5 text-slate-400"
               }`}
             >
-              <span className="demo-lab-wizard-step-num grid h-5 w-5 place-items-center rounded-full bg-white/15 text-[10px]" aria-hidden="true">{index + 1}</span>{" "}
+              <span className="demo-lab-wizard-step-num grid h-5 w-5 place-items-center rounded-full bg-white/15 text-[10px]" aria-hidden="true">
+                {index > maxStep ? <LockKeyhole className="h-3 w-3" /> : index + 1}
+              </span>{" "}
               <span>{label}</span>
             </button>
           ))}
@@ -1732,7 +1776,7 @@ function DemoLabStudioHero({
               suppressHydrationWarning
               type="button"
               disabled={simulating}
-              onClick={() => runValidFlow(1)}
+              onClick={() => void runValidFlow(1)}
               className="demo-lab-wizard-tap-btn relative grid h-44 w-44 place-items-center overflow-hidden rounded-full border border-cyan-300/40 bg-cyan-500/15 font-black uppercase text-cyan-50 shadow-[0_0_70px_rgba(6,182,212,0.25)]"
             >
               <span className="demo-lab-wizard-tap-ring absolute inset-5 rounded-full border border-cyan-200/30 animate-ping" />
@@ -1781,7 +1825,7 @@ function DemoLabStudioHero({
             <button
               suppressHydrationWarning
               type="button"
-              onClick={() => goToStep(2)}
+              onClick={() => unlockAndGo(2)}
               className="demo-lab-wizard-next-btn mt-5 inline-flex h-11 items-center justify-center rounded-full border border-cyan-300 bg-cyan-300 px-5 text-xs font-black uppercase tracking-wider text-slate-950"
             >
               {locale === "en" ? "See traceability → Traced" : locale === "pt-BR" ? "Ver rastreabilidade → Rastreou" : "Ver trazabilidad → Trazó"}
@@ -1887,10 +1931,13 @@ function DemoLabStudioHero({
             <button
               suppressHydrationWarning
               type="button"
-              onClick={() => goToStep(3)}
+              disabled={simulating}
+              onClick={() => hasSuccessfulReceipt ? unlockAndGo(3) : void runValidFlow(3)}
               className="demo-lab-wizard-trazo-cta demo-lab-wizard-next-btn inline-flex h-11 w-full items-center justify-center rounded-full border border-cyan-300 bg-cyan-300 px-5 text-xs font-black uppercase tracking-wider text-slate-950"
             >
-              {locale === "en" ? "See business outcome → Won" : locale === "pt-BR" ? "Ver resultado comercial → Ganhou" : "Ver resultado comercial → Ganó"}
+              {hasSuccessfulReceipt
+                ? locale === "en" ? "See business outcome → Won" : locale === "pt-BR" ? "Ver resultado comercial → Ganhou" : "Ver resultado comercial → Ganó"
+                : locale === "en" ? "Run verified tap → Outcome" : locale === "pt-BR" ? "Executar toque verificado → Resultado" : "Ejecutar tap verificado → Resultado"}
             </button>
           </div>
         </div>
@@ -1929,13 +1976,13 @@ function DemoLabStudioHero({
               </Link>
             </div>
             <div className="demo-lab-wizard-outcome-console__checks">
-              <button suppressHydrationWarning type="button" disabled={simulating} onClick={() => runValidFlow(3)}>
+              <button suppressHydrationWarning type="button" disabled={simulating} onClick={() => void runValidFlow(3)}>
                 {locale === "en" ? "Fresh valid tap" : locale === "pt-BR" ? "Toque valido fresco" : "Tap valido fresco"}
               </button>
-              <button suppressHydrationWarning type="button" disabled={simulating} onClick={() => runRiskFlow("replay")}>
+              <button suppressHydrationWarning type="button" disabled={simulating} onClick={() => void runRiskFlow("replay")}>
                 {locale === "en" ? "Blocked copied URL" : locale === "pt-BR" ? "URL copiada bloqueada" : "URL copiada bloqueada"}
               </button>
-              <button suppressHydrationWarning type="button" disabled={simulating} onClick={() => runRiskFlow("tamper")}>
+              <button suppressHydrationWarning type="button" disabled={simulating} onClick={() => void runRiskFlow("tamper")}>
                 {locale === "en" ? "Opened seal" : locale === "pt-BR" ? "Lacre aberto" : "Sello abierto"}
               </button>
             </div>
@@ -1957,7 +2004,10 @@ function DemoLabStudioHero({
             <button
               suppressHydrationWarning
               type="button"
-              onClick={() => goToStep(0)}
+              onClick={() => {
+                onResetFlow();
+                scrollWizardSceneIntoView();
+              }}
               className="demo-lab-wizard-secondary-cta inline-flex h-11 items-center justify-center rounded-full border border-white/10 bg-white/5 px-5 text-xs font-black uppercase tracking-wider text-slate-200"
             >
               {locale === "en" ? "Try another vertical" : locale === "pt-BR" ? "Testar outra vertical" : "Probar otra vertical"}
@@ -4285,7 +4335,7 @@ function DemoCrmDashboard({
   mapPoints: DemoMapPoint[];
   activeVertical: any;
   refreshSummary: () => void;
-  simulate: (mode: SimulationMode) => Promise<void>;
+  simulate: (mode: SimulationMode) => Promise<boolean>;
   simulating: boolean;
   txt: DemoCopy;
 }) {

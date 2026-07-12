@@ -44636,6 +44636,19 @@ html[data-theme="light"] .offline-phone-screen .text-slate-200 {
   color: #6ee7b7;
 }
 
+.demo-lab-wizard-step-pill.is-locked,
+.demo-lab-wizard-step-pill:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+  filter: saturate(0.45);
+  box-shadow: none;
+}
+
+.demo-lab-wizard-step-pill.is-locked:hover,
+.demo-lab-wizard-step-pill:disabled:hover {
+  transform: none;
+}
+
 .demo-lab-wizard-cta {
   white-space: nowrap;
 }

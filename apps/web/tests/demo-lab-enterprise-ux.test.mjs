@@ -88,7 +88,7 @@ test("demo lab mobile journey uses native page scroll and a compact product sele
   assert.match(client, /aria-label=\{locale === "en" \? "Demo product"/);
   assert.match(client, /value=\{vertical\}/);
   assert.match(client, /onVertical\(event\.currentTarget\.value as Vertical\)/);
-  assert.match(client, /onVertical=\{setVertical\}/);
+  assert.match(client, /onVertical=\{handleVerticalChange\}/);
   assert.doesNotMatch(client, /setTrustScenario\(null\)/);
   assert.match(client, /window\.scrollTo\(\{/);
   assert.match(client, /const wizardNavRef = useRef<HTMLElement>\(null\)/);
@@ -116,11 +116,34 @@ test("demo lab preserves the wizard step across simulator and CRM switches", asy
   const client = await readFile(new URL("../src/app/(public)/demo-lab/demo-lab-client.tsx", import.meta.url), "utf8");
 
   assert.match(client, /const \[wizardStep, setWizardStep\] = useState<DemoWizardStep>/);
-  assert.match(client, /<DemoLabStudioHero[\s\S]*step=\{wizardStep\}[\s\S]*onStep=\{setWizardStep\}/);
+  assert.match(client, /const \[wizardMaxStep, setWizardMaxStep\] = useState<DemoWizardStep>/);
+  assert.match(client, /<DemoLabStudioHero[\s\S]*step=\{wizardStep\}[\s\S]*maxStep=\{wizardMaxStep\}[\s\S]*onStep=\{setWizardStep\}/);
   assert.match(client, /step: DemoWizardStep;/);
+  assert.match(client, /maxStep: DemoWizardStep;/);
   assert.match(client, /onStep: \(step: DemoWizardStep\) => void;/);
-  assert.match(client, /setWizardStep\(getTrustScenarioInitialStep\(scenarioStart\.key\)\)/);
+  assert.match(client, /const initialWizardStep = getTrustScenarioInitialStep\(scenarioStart\.key\)/);
+  assert.match(client, /setWizardStep\(initialWizardStep\)/);
+  assert.match(client, /setWizardMaxStep\(initialWizardStep\)/);
   assert.doesNotMatch(client, /const \[step, setStep\] = useState<DemoWizardStep>/);
+});
+
+test("demo lab unlocks business outcomes only after a completed simulation", async () => {
+  const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
+  const client = await readFile(new URL("../src/app/(public)/demo-lab/demo-lab-client.tsx", import.meta.url), "utf8");
+
+  assert.match(client, /async function simulate\(mode: SimulationMode\): Promise<boolean>/);
+  assert.match(client, /execution: "failed"[\s\S]*return false/);
+  assert.match(client, /const hasSuccessfulReceipt = Boolean\(simulationReceipt && simulationReceipt\.execution !== "failed"\)/);
+  assert.match(client, /if \(nextStep > maxStep\) return/);
+  assert.match(client, /data-locked=\{index > maxStep \? "true" : "false"\}/);
+  assert.match(client, /disabled=\{index > maxStep\}/);
+  assert.match(client, /<LockKeyhole className="h-3 w-3" \/>/);
+  assert.match(client, /const completed = await onValid\(\);[\s\S]*if \(!completed\) return;[\s\S]*onUnlockStep\(nextStep\)/);
+  assert.match(client, /const completed = await \(mode === "replay" \? onReplay\(\) : onOpen\(\)\)/);
+  assert.match(client, /hasSuccessfulReceipt \? unlockAndGo\(3\) : void runValidFlow\(3\)/);
+  assert.doesNotMatch(client, /function runValidFlow[\s\S]{0,500}window\.setTimeout/);
+  assert.match(css, /\.demo-lab-wizard-step-pill\.is-locked,[\s\S]*cursor:\s*not-allowed/);
+  assert.match(css, /\.demo-lab-wizard-step-pill\.is-locked:hover,[\s\S]*transform:\s*none/);
 });
 
 test("demo lab keeps the Won CTA outside the trace panel's internal scroll", async () => {
@@ -133,7 +156,7 @@ test("demo lab keeps the Won CTA outside the trace panel's internal scroll", asy
   assert.match(traceStep, /demo-lab-wizard-trazo-column[^"\n]*lg:grid-rows-\[minmax\(0,1fr\)_auto\]/);
   assert.match(traceStep, /demo-lab-wizard-trazo-side[^"\n]*overflow-y-auto/);
   assert.match(traceStep, /\)\)}\s*<\/div>\s*<button[\s\S]*demo-lab-wizard-trazo-cta/);
-  assert.match(traceStep, /onClick=\{\(\) => goToStep\(3\)\}/);
+  assert.match(traceStep, /onClick=\{\(\) => hasSuccessfulReceipt \? unlockAndGo\(3\) : void runValidFlow\(3\)\}/);
 });
 
 test("demo lab modal has one scroll lock and a complete keyboard focus contract", async () => {
@@ -377,7 +400,7 @@ test("demo lab trust scenario deep links open contextual wizard proof layers", a
   assert.match(client, /const href = `\/demo-lab\?scenario=\$\{item\.key\}`;[\s\S]*<Link[\s\S]*href=\{href\}/);
   assert.doesNotMatch(client, /window\.history\.replaceState\(null, "", href\)/);
   assert.doesNotMatch(client, /setTrustScenario\(null\)/);
-  assert.match(client, /onVertical=\{setVertical\}/);
+  assert.match(client, /onVertical=\{handleVerticalChange\}/);
   assert.match(client, /IOTA prueba evidencia logistica/);
   assert.match(client, /Evento canonico/);
   assert.match(client, /Polygon registra ownership despues de verificar el producto/);
