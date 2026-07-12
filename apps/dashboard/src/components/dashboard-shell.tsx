@@ -38,6 +38,7 @@ import {
   Presentation,
   BookOpen,
   Terminal,
+  FlaskConical,
   Menu,
   X,
 } from "lucide-react";
@@ -151,18 +152,25 @@ export function DashboardShellInner({
   }, []);
 
   const canReadProof = currentRole === "super-admin" || dashboardPermissionMatches(currentPermissions, "proof:read");
+  const isDemoMode = currentLabel.toLowerCase().includes("demo") || currentEmail.includes("demo");
+  const canAccessDemoLab = currentRole === "super-admin" || dashboardPermissionMatches(currentPermissions, "demo:read") || isDemoMode;
   const items = [
     { href: "/", label: nav.overview },
     { href: "/batches", label: nav.batches },
     { href: "/batches/supplier", label: nav.supplierBatches },
     { href: "/logistics", label: nav.logistics },
+    { href: "/demo-lab", label: "Demo Lab" },
     { href: "/proof", label: nav.proof },
     { href: "/tags", label: nav.tags },
     { href: "/events", label: nav.events },
     { href: "/tokenization", label: "Tokenization" },
     { href: "/analytics", label: nav.analytics },
     { href: "/leads-tickets", label: nav.leadsTickets },
-  ].filter((item) => item.href !== "/proof" || canReadProof);
+  ].filter((item) => {
+    if (item.href === "/proof" && !canReadProof) return false;
+    if (item.href === "/demo-lab" && !canAccessDemoLab) return false;
+    return true;
+  });
 
   if (currentRole === "super-admin") {
     items.unshift({ href: "/tenants", label: nav.tenants });
@@ -179,9 +187,7 @@ export function DashboardShellInner({
 
   const role = (currentRole as keyof typeof roles) || "tenant-admin";
   const forbidden = (pathname === "/tenants" && currentRole === "tenant-admin") || (pathname.startsWith("/superadmin") && currentRole !== "super-admin");
-  const isDemoMode = currentLabel.toLowerCase().includes("demo") || currentEmail.includes("demo");
   const canShowSandboxTools = isDemoMode && currentRole !== "tenant-admin";
-  const canAccessDemoLab = currentPermissions.includes("demo:run") || currentRole === "super-admin" || isDemoMode;
 
   const quick = { faq: "FAQ", stack: "Tech Stack", glossary: "Glossary", docs: "Docs" };
   const publicMobile = `${productUrls.web}/sun/simulate`;
@@ -197,12 +203,13 @@ export function DashboardShellInner({
   const mobileQuickLinks = [
     { href: "/", label: nav.overview },
     { href: "/events", label: nav.events },
-    { href: "/batches", label: nav.batches },
+    canAccessDemoLab ? { href: "/demo-lab", label: "Demo" } : { href: "/batches", label: nav.batches },
     { href: "/tokenization", label: "Chain" },
   ];
 
   const searchableLinks = [
     { href: "/onboarding", label: "Onboarding Setup" },
+    ...(canAccessDemoLab ? [{ href: "/demo-lab", label: "Demo Mission Control" }] : []),
     ...items,
     { href: "/batches/supplier", label: nav.supplierBatches },
     { href: "/logistics", label: nav.logistics },
@@ -231,10 +238,21 @@ export function DashboardShellInner({
     ? searchableLinks.filter((entry) => entry.label.toLowerCase().includes(normalizedQuery) || entry.href.toLowerCase().includes(normalizedQuery))
     : [];
 
+  const contextualHeader = pathname.startsWith("/demo-lab")
+    ? { title: "Demo Mission Control", subtitle: "Tenant demo operations" }
+    : pathname.startsWith("/proof")
+      ? { title: "Trust Operations", subtitle: "Evidence and anchors" }
+      : pathname.startsWith("/tokenization")
+        ? { title: "Ownership Operations", subtitle: "Polygon and digital twins" }
+        : pathname.startsWith("/logistics")
+          ? { title: "Secure Delivery", subtitle: "Custody and route control" }
+          : { title, subtitle };
+
   const coreOpsItems = [
     { href: "/onboarding", label: "Onboarding Setup", icon: Compass },
     { href: "/", label: nav.overview, icon: LayoutDashboard },
     { href: "/logistics", label: nav.logistics, icon: Package, badge: "NUEVO" },
+    ...(canAccessDemoLab ? [{ href: "/demo-lab", label: "Demo Mission Control", icon: FlaskConical, badge: "LAB" }] : []),
     { href: "/proof", label: nav.proof, icon: ShieldCheck, badge: "TRUST" },
     { href: "/batches", label: nav.batches, icon: Layers },
     { href: "/batches/supplier", label: nav.supplierBatches, icon: FileCheck2 },
@@ -505,9 +523,9 @@ export function DashboardShellInner({
               <div>
                 <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-400 mb-1">
                    <BrandDot size={6} variant="pulse" theme="dark" />
-                   {subtitle}
+                   {contextualHeader.subtitle}
                 </div>
-                <h1 className="text-xl font-bold text-white tracking-tight">{title}</h1>
+                <h1 className="text-xl font-bold text-white tracking-tight">{contextualHeader.title}</h1>
               </div>
             </div>
             <div className="flex w-full max-w-full flex-wrap items-center justify-start gap-2 sm:w-auto sm:justify-end sm:gap-3">

@@ -1,12 +1,22 @@
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
+import { randomUUID } from "node:crypto";
 import {
   generateDashboardDemoEvents,
   recordDashboardDemoEvent,
   resetDashboardDemoEvents,
   type DashboardDemoEvent,
 } from "../../../../../lib/demo-runtime-state";
+import { getDashboardSession } from "../../../../../lib/session";
+import { dashboardPermissionMatches } from "../../../../../lib/permission-policy";
+import {
+  demoEndpointAllowed,
+  demoPayloadScopeAllowed,
+  demoTenantScopeAllowed,
+  requiredDemoPermission,
+  validDemoResetCommand,
+} from "../../../../../lib/demo-access-policy";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
 const DEMO_FALLBACK_ENABLED = String(process.env.NEXID_ENABLE_DEMO_FALLBACK || process.env.NEXT_PUBLIC_DEMO_MODE || "").toLowerCase() === "true";
@@ -297,9 +307,42 @@ function fallback(path: string[], req: Request, bodyText: string | undefined) {
   return { ok: true, source: "fallback", endpoint, note: "No-op fallback response" };
 }
 
-async function forward(req: Request, path: string[]) {
+async function authorizeDemoRequest(req: Request, path: string[], bodyText?: string) {
+  const session = await getDashboardSession();
+  if (!session) {
+    return { response: NextResponse.json({ ok: false, reason: "authentication_required" }, { status: 401 }) };
+  }
+  if (!demoEndpointAllowed(req.method, path)) {
+    return { response: NextResponse.json({ ok: false, reason: "demo_endpoint_not_allowed" }, { status: 404 }) };
+  }
+  const permission = requiredDemoPermission(req.method, path);
+  if (session.role !== "super-admin" && !dashboardPermissionMatches(session.permissions, permission)) {
+    return { response: NextResponse.json({ ok: false, reason: "permission_denied", permission }, { status: 403 }) };
+  }
+  if (!demoTenantScopeAllowed(session.role, session.tenantSlug)) {
+    return { response: NextResponse.json({ ok: false, reason: "tenant_scope_denied" }, { status: 403 }) };
+  }
+
+  let payload: Record<string, unknown> = {};
+  if (bodyText) {
+    try {
+      payload = JSON.parse(bodyText) as Record<string, unknown>;
+    } catch {
+      return { response: NextResponse.json({ ok: false, reason: "invalid_json" }, { status: 400 }) };
+    }
+    if (!demoPayloadScopeAllowed(payload)) {
+      return { response: NextResponse.json({ ok: false, reason: "demo_scope_denied" }, { status: 403 }) };
+    }
+  }
+  if (path[0] === "reset" && !validDemoResetCommand(payload)) {
+    return { response: NextResponse.json({ ok: false, reason: "reset_confirmation_required" }, { status: 400 }) };
+  }
+  return { session, payload };
+}
+
+async function forward(req: Request, path: string[], bodyText?: string) {
   const target = `${API_BASE}/internal/demo/${path.join("/")}${new URL(req.url).search}`;
-  const body = req.method === "GET" ? undefined : await req.text();
+  const body = req.method === "GET" ? undefined : bodyText;
   const url = new URL(req.url);
   const requestWantsDemoFallback =
     DEMO_FALLBACK_ENABLED ||
@@ -340,10 +383,13 @@ async function forward(req: Request, path: string[]) {
     }
 
     const text = await response.text();
-    return new NextResponse(text, {
+    const proxied = new NextResponse(text, {
       status: response.status,
       headers: { "Content-Type": response.headers.get("content-type") || "application/json" },
     });
+    proxied.headers.set("x-nexid-demo-run", randomUUID());
+    proxied.headers.set("Cache-Control", "no-store");
+    return proxied;
   } catch {
     if (!fallbackAllowed) {
       return failWithoutFallback(502, "Upstream unavailable and demo fallback disabled.");
@@ -357,12 +403,18 @@ async function forward(req: Request, path: string[]) {
 
 export async function POST(req: Request, { params }: { params: Promise<{ path: string[] }> }) {
   const p = await params;
-  return forward(req, p.path || []);
+  const path = p.path || [];
+  const bodyText = await req.text();
+  const authorization = await authorizeDemoRequest(req, path, bodyText);
+  if (authorization.response) return authorization.response;
+  return forward(req, path, bodyText);
 }
 
 export async function GET(req: Request, { params }: { params: Promise<{ path: string[] }> }) {
   const p = await params;
   const path = p.path || [];
+  const authorization = await authorizeDemoRequest(req, path);
+  if (authorization.response) return authorization.response;
   const response = await forward(req, path);
   if (path[0] === "pack-file" && response.headers.get("content-type")?.includes("application/json")) {
     const data = await response.json().catch(() => null) as { content?: string; filename?: string; contentType?: string } | null;

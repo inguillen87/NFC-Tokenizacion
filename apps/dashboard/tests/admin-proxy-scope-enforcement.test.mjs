@@ -2,9 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-test('readonly_demo scope cannot mutate admin endpoints', async () => {
+test('readonly_demo scope only permits allowlisted reads and non-persistent simulations', async () => {
   const src = await readFile(new URL('../src/app/api/admin/[...path]/route.ts', import.meta.url), 'utf8');
-  assert.match(src, /readonly_demo scope only allows GET access/);
+  assert.match(src, /canDemoSandboxAccess\(req\.method, normalizedPath\)/);
+  assert.match(src, /readonly_demo scope only allows demo-safe reads and explicit non-persistent simulations/);
   assert.match(src, /status: 403/);
 });
 

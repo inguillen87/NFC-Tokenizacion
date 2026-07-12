@@ -77,6 +77,8 @@ function buildProofVerifierHandoffHref(scenario?: string) {
   const safeScenario = PROOF_VERIFY_HANDOFF_SCENARIOS.has(requestedScenario)
     ? requestedScenario
     : "hub";
+  if (safeScenario === "polygon-ownership") return "/proof/ownership";
+
   const returnTo = safeScenario === "hub"
     ? "/demo-lab"
     : `/demo-lab?scenario=${encodeURIComponent(safeScenario)}`;
@@ -84,7 +86,12 @@ function buildProofVerifierHandoffHref(scenario?: string) {
     scenario: safeScenario,
     return_to: returnTo,
   });
-  return `/proof/verify?${query.toString()}`;
+  const routesToIota = safeScenario === "iota-proof"
+    || safeScenario === "dual-proof"
+    || safeScenario === "sensor-evidence";
+  if (routesToIota) query.set("layer", "iota");
+
+  return `/proof/verify?${query.toString()}${routesToIota ? "#iota-proof" : ""}`;
 }
 
 function resolveDemoLabLocale(value: string | string[] | undefined): AppLocale | null {
@@ -731,7 +738,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
                 </Link>
                 {panelKey === "iota-proof" || panelKey === "dual-proof" ? (
                   <Link href={proofVerifierHref} className="demo-lab-context-strip__doc-link inline-flex h-9 items-center gap-2 rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 text-xs font-bold text-cyan-100">
-                    Abrir Proof Verify & Decoder
+                    Abrir recibo IOTA y decoder
                     <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 ) : null}

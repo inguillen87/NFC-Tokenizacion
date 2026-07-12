@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Badge, Card, PremiumVectorMap, Globe3dMap, type VectorMapEvidenceStep, type VectorMapLedgerItem, type VectorMapPoint, type VectorMapRoute } from "@product/ui";
+import { Badge, Card, Globe3dMap, type VectorMapEvidenceStep, type VectorMapLedgerItem, type VectorMapPoint, type VectorMapRoute } from "@product/ui";
 
 type DemoMode = "consumer_tap" | "consumer_opened" | "consumer_tamper" | "consumer_duplicate";
 type ConsumerState = "AUTH_PENDING" | "VALID" | "OPENED" | "TAMPER_RISK" | "CLAIMED" | "REPLAY_SUSPECT" | "DELIVERED_CLOSED" | "DELIVERED_OPENED" | "OFFLINE_PENDING";
@@ -10,23 +10,46 @@ type EventItem = { type: string; note: string; at: string };
 type LeadIntent = "request_demo" | "talk_sales" | "become_reseller" | "request_quote" | "tokenization_optional";
 type GeoState = { lat: number; lng: number; accuracy?: number | null; capturedAt: string };
 
-type SeedItem = {
+export type MobileDemoBidSource = "query" | "demo-pack" | "missing";
+
+export type SeedItem = {
+  id?: string | number;
+  itemId?: string;
+  item_id?: string;
   uidHex?: string;
   uid_hex?: string;
+  bid?: string;
+  batchId?: string;
+  batch_id?: string;
   vertical?: string;
   productName?: string;
+  name?: string;
+  display_name?: string;
   sku?: string;
+  serial?: string;
+  rollId?: string;
+  roll_id?: string;
   vintage?: string | number;
   region?: string;
   notes?: string;
   varietal?: string;
+  grapeVarietal?: string;
+  grape_varietal?: string;
   alcohol?: string;
+  alcoholPct?: string | number;
   barrelAging?: string;
+  barrelMonths?: string | number;
+  barrel_months?: string | number;
   serviceTemperature?: string;
+  service_temperature?: string;
   harvestYear?: string | number;
+  harvest_year?: string | number;
   soilHumidity?: string | number;
+  soil_humidity?: string | number;
   vineyardHumidity?: string | number;
+  vineyard_humidity?: string | number;
   temperatureStorage?: string;
+  temperature_storage?: string;
 };
 
 type VerticalTemplate = {
@@ -42,6 +65,8 @@ const MODE_STATE: Record<DemoMode, ConsumerState> = {
   consumer_tamper: "TAMPER_RISK",
   consumer_duplicate: "REPLAY_SUSPECT",
 };
+
+const BID_RE = /^[A-Za-z0-9._:-]{3,120}$/;
 
 const WINERY_HQ = { name: "Bodega demo · Mendoza", lat: -33.0086, lng: -68.7794 };
 
@@ -59,6 +84,18 @@ const STATE_COPY: Record<ConsumerState, { label: string; tone: "green" | "amber"
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+function seedItemUid(item: SeedItem) {
+  return String(item.uidHex || item.uid_hex || "").trim().toUpperCase();
+}
+
+function seedItemSku(item: SeedItem) {
+  return String(item.sku || item.serial || item.rollId || item.roll_id || "").trim();
+}
+
+function seedItemName(item: SeedItem) {
+  return String(item.productName || item.display_name || item.name || "Reserva Demo 2024");
 }
 
 function storeKey(tenant: string, itemId: string, pack: string) {
@@ -88,12 +125,12 @@ const VERTICAL_TEMPLATES: Record<VerticalTemplate["key"], VerticalTemplate> = {
     title: "Wine passport",
     subtitle: "Autenticidad + storytelling enológico + posventa premium.",
     fields: [
-      { label: "Varietal", value: (item) => String(item.varietal || "Malbec") },
+      { label: "Varietal", value: (item) => String(item.varietal || item.grapeVarietal || item.grape_varietal || "Malbec") },
       { label: "Vintage", value: (item) => String(item.vintage || "2024") },
-      { label: "Alcohol", value: (item) => String(item.alcohol || "13.9%") },
-      { label: "Barrel", value: (item) => String(item.barrelAging || "12 months") },
+      { label: "Alcohol", value: (item) => String(item.alcohol || (item.alcoholPct ? `${item.alcoholPct}%` : "13.9%")) },
+      { label: "Barrel", value: (item) => String(item.barrelAging || (item.barrelMonths || item.barrel_months ? `${item.barrelMonths || item.barrel_months} months` : "12 months")) },
       { label: "Region", value: (item) => String(item.region || "Mendoza, AR") },
-      { label: "Service", value: (item) => String(item.serviceTemperature || "16°C") },
+      { label: "Service", value: (item) => String(item.serviceTemperature || item.service_temperature || "16°C") },
     ],
   },
   agro: {
@@ -101,10 +138,10 @@ const VERTICAL_TEMPLATES: Record<VerticalTemplate["key"], VerticalTemplate> = {
     title: "Seed passport",
     subtitle: "Control de origen de semillas + guía agronómica por lote.",
     fields: [
-      { label: "Harvest", value: (item) => String(item.harvestYear || item.vintage || "2026") },
-      { label: "Soil humidity", value: (item) => `${String(item.soilHumidity || "38")}%` },
-      { label: "Field humidity", value: (item) => `${String(item.vineyardHumidity || "55")}%` },
-      { label: "Storage", value: (item) => String(item.temperatureStorage || "15-25°C") },
+      { label: "Harvest", value: (item) => String(item.harvestYear || item.harvest_year || item.vintage || "2026") },
+      { label: "Soil humidity", value: (item) => `${String(item.soilHumidity || item.soil_humidity || "38")}%` },
+      { label: "Field humidity", value: (item) => `${String(item.vineyardHumidity || item.vineyard_humidity || "55")}%` },
+      { label: "Storage", value: (item) => String(item.temperatureStorage || item.temperature_storage || "15-25°C") },
       { label: "Region", value: (item) => String(item.region || "Córdoba, AR") },
       { label: "Notes", value: (item) => String(item.notes || "Dosis y trazabilidad de campaña") },
     ],
@@ -117,8 +154,8 @@ const VERTICAL_TEMPLATES: Record<VerticalTemplate["key"], VerticalTemplate> = {
       { label: "Fragrance family", value: () => "Woody / Floral" },
       { label: "Launch", value: (item) => String(item.vintage || "2026") },
       { label: "Region", value: (item) => String(item.region || "São Paulo, BR") },
-      { label: "Storage", value: (item) => String(item.temperatureStorage || "20°C") },
-      { label: "SKU", value: (item) => String(item.sku || "PF-001") },
+      { label: "Storage", value: (item) => String(item.temperatureStorage || item.temperature_storage || "20°C") },
+      { label: "SKU", value: (item) => seedItemSku(item) || "PF-001" },
       { label: "Notes", value: (item) => String(item.notes || "Edición autenticada") },
     ],
   },
@@ -127,11 +164,11 @@ const VERTICAL_TEMPLATES: Record<VerticalTemplate["key"], VerticalTemplate> = {
     title: "Pharma passport",
     subtitle: "Integridad de empaque + trazabilidad regulatoria por unidad.",
     fields: [
-      { label: "Batch year", value: (item) => String(item.harvestYear || item.vintage || "2026") },
-      { label: "Cold chain", value: (item) => String(item.temperatureStorage || "2-8°C") },
+      { label: "Batch year", value: (item) => String(item.harvestYear || item.harvest_year || item.vintage || "2026") },
+      { label: "Cold chain", value: (item) => String(item.temperatureStorage || item.temperature_storage || "2-8°C") },
       { label: "Region", value: (item) => String(item.region || "Bogotá, CO") },
-      { label: "SKU", value: (item) => String(item.sku || "PH-001") },
-      { label: "Serial UID", value: (item) => String(item.uidHex || item.uid_hex || "-") },
+      { label: "SKU", value: (item) => seedItemSku(item) || "PH-001" },
+      { label: "Serial UID", value: (item) => seedItemUid(item) || "-" },
       { label: "Notes", value: (item) => String(item.notes || "Dispensación segura y recall-ready") },
     ],
   },
@@ -143,16 +180,18 @@ export function MobileDemoClient({
   pack,
   mode,
   locale,
-  seedItems,
+  seedItem,
   bid,
+  bidSource = "missing",
 }: {
   tenant: string;
   itemId: string;
   pack: string;
   mode: DemoMode;
   locale: string;
-  seedItems: SeedItem[];
+  seedItem?: SeedItem;
   bid?: string;
+  bidSource?: MobileDemoBidSource;
 }) {
   const [consumerState, setConsumerState] = useState<ConsumerState>("AUTH_PENDING");
   const [events, setEvents] = useState<EventItem[]>([]);
@@ -169,6 +208,7 @@ export function MobileDemoClient({
   const [leadRole, setLeadRole] = useState("");
   const [leadMessage, setLeadMessage] = useState("");
   const [leadSaved, setLeadSaved] = useState(false);
+  const [leadPending, setLeadPending] = useState(false);
   const [ctaStatus, setCtaStatus] = useState("");
   const [ctaPending, setCtaPending] = useState(false);
   const [scanProgress, setScanProgress] = useState(5);
@@ -177,12 +217,18 @@ export function MobileDemoClient({
   const [geoRequestId, setGeoRequestId] = useState(0);
 
   const contextSyncKeyRef = useRef<string>("");
+  const mainRef = useRef<HTMLElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
   const demoSessionId = useMemo(() => `${tenant}:${itemId}:${pack}`, [itemId, pack, tenant]);
 
   const current = STATE_COPY[consumerState];
-  const effectiveBid = (bid || "").trim();
+  const rawBid = (bid || "").trim();
+  const effectiveBid = BID_RE.test(rawBid) ? rawBid : "";
   const geoRequested = geoRequestId > 0;
-  const activeItem = useMemo(() => seedItems.find((item) => (item.uidHex || item.uid_hex || "").length > 0) || seedItems[0] || {}, [seedItems]);
+  const activeItem = seedItem || {};
+  const activeUid = seedItemUid(activeItem);
+  const activeSku = seedItemSku(activeItem);
   const activeVertical = detectVertical(pack, activeItem);
   const template = VERTICAL_TEMPLATES[activeVertical];
   const stateTimeline: ConsumerState[] = ["AUTH_PENDING", "VALID", "DELIVERED_CLOSED", "DELIVERED_OPENED", "OFFLINE_PENDING", "OPENED", "TAMPER_RISK", "CLAIMED", "REPLAY_SUSPECT"];
@@ -283,13 +329,45 @@ export function MobileDemoClient({
     { id: "events", label: "Eventos", value: String(events.length), tone: "tap" },
     { id: "risk", label: "Riesgo", value: consumerState === "REPLAY_SUSPECT" || consumerState === "TAMPER_RISK" ? "bloqueado" : "controlado", tone: consumerState === "REPLAY_SUSPECT" || consumerState === "TAMPER_RISK" ? "risk" : "loyalty" },
   ], [consumerState, distanceFromWinery, events.length]);
+  const demoBid = bidSource === "demo-pack" || effectiveBid.toUpperCase().startsWith("DEMO-");
+  const bidPresentation = !effectiveBid
+    ? {
+        badge: "MISSING BID",
+        message: "MISSING BID · Ownership, provenance y tokenizacion no estan disponibles.",
+        className: "border-amber-300/30 bg-amber-500/10 text-amber-100",
+      }
+    : demoBid
+      ? {
+          badge: "DEMO PACK",
+          message: "DEMO MODE · BID provisto por el dataset de demostracion.",
+          className: "border-violet-300/30 bg-violet-500/10 text-violet-100",
+        }
+      : {
+          badge: "BID UNVERIFIED",
+          message: "BID PROVIDED · Validacion de servidor pendiente.",
+          className: "border-amber-300/30 bg-amber-500/10 text-amber-100",
+        };
   const ctaBlocked = consumerState === "REPLAY_SUSPECT" || consumerState === "TAMPER_RISK";
   const ctaPendingAuth = consumerState === "AUTH_PENDING";
-  const actionDisabled = ctaBlocked || ctaPendingAuth || ctaPending;
+  const identityMissing = !effectiveBid || !activeUid;
+  const missingIdentityFields = [!effectiveBid ? "BID" : "", !activeUid ? "UID" : ""].filter(Boolean).join(" y ");
+  const actionDisabled = ctaBlocked || ctaPendingAuth || identityMissing || ctaPending;
+  const provenanceDisabled = identityMissing || ctaPending;
   const ctaBlockedReason = ctaBlocked
     ? "Accion bloqueada: la lectura quedo en riesgo y requiere revision backend antes de ownership, garantia o tokenizacion."
-    : "Accion bloqueada: la validacion todavia esta pendiente.";
+    : ctaPendingAuth
+      ? "Accion bloqueada: la validacion todavia esta pendiente."
+      : identityMissing
+        ? `Accion bloqueada: falta ${missingIdentityFields} para identificar el producto.`
+        : "Accion en curso. Espera la respuesta del servidor.";
   const actionDisabledClass = actionDisabled ? "cursor-not-allowed opacity-50" : "";
+  const provenanceDisabledClass = provenanceDisabled ? "cursor-not-allowed opacity-50" : "";
+  const activeDialog = showTokenModal ? "token" : showLeadModal ? "lead" : null;
+
+  function closeDialogs() {
+    setShowTokenModal(false);
+    setShowLeadModal(false);
+  }
 
   useEffect(() => {
     const mapped = MODE_STATE[mode] || "VALID";
@@ -344,6 +422,60 @@ export function MobileDemoClient({
     );
   }, [geoRequestId]);
 
+  useEffect(() => {
+    if (!activeDialog) return;
+
+    const dialog = dialogRef.current;
+    const previousOverflow = document.body.style.overflow;
+    restoreFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    mainRef.current?.setAttribute("inert", "");
+    document.body.style.overflow = "hidden";
+
+    const frame = window.requestAnimationFrame(() => {
+      const autofocusTarget = dialog?.querySelector<HTMLElement>("[data-autofocus]");
+      (autofocusTarget || dialog)?.focus();
+    });
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setShowTokenModal(false);
+        setShowLeadModal(false);
+        return;
+      }
+      if (event.key !== "Tab" || !dialog) return;
+
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+      ));
+      if (!focusable.length) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+
+      const firstFocusable = focusable[0];
+      const lastFocusable = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === firstFocusable) {
+        event.preventDefault();
+        lastFocusable.focus();
+      } else if (!event.shiftKey && document.activeElement === lastFocusable) {
+        event.preventDefault();
+        firstFocusable.focus();
+      }
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+      mainRef.current?.removeAttribute("inert");
+      const restoreTarget = restoreFocusRef.current;
+      if (restoreTarget?.isConnected) restoreTarget.focus();
+    };
+  }, [activeDialog]);
+
   function requestGeoTrace() {
     setGeoError("");
     setGeoRequestId((value) => value + 1);
@@ -351,9 +483,8 @@ export function MobileDemoClient({
 
 
   async function syncSunContext() {
-    const uid = String(activeItem.uidHex || activeItem.uid_hex || "").trim().toUpperCase();
-    if (!effectiveBid || !uid) return;
-    const syncKey = `${effectiveBid}:${uid}:${geoState?.capturedAt || "na"}:${geoError || "ok"}`;
+    if (!effectiveBid || !activeUid) return;
+    const syncKey = `${effectiveBid}:${activeUid}:${consumerState}:${geoState?.capturedAt || "na"}:${geoError || "ok"}`;
     if (contextSyncKeyRef.current === syncKey) return;
     contextSyncKeyRef.current = syncKey;
 
@@ -370,7 +501,7 @@ export function MobileDemoClient({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         bid: effectiveBid,
-        uid,
+        uid: activeUid,
         contextStatus: consumerState,
         scannedAt: new Date().toISOString(),
         geo: geoState
@@ -387,25 +518,26 @@ export function MobileDemoClient({
   }
 
   function pushEvent(type: string, note: string) {
-    const next = [{ type, note, at: nowIso() }, ...events].slice(0, 12);
-    setEvents(next);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(storeKey(tenant, itemId, pack), JSON.stringify(next));
-    }
+    setEvents((currentEvents) => {
+      const next = [{ type, note, at: nowIso() }, ...currentEvents].slice(0, 12);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(storeKey(tenant, itemId, pack), JSON.stringify(next));
+      }
+      return next;
+    });
   }
 
 
   async function postCta(action: "claim-ownership" | "register-warranty" | "tokenize-request") {
-    const uid = String(activeItem.uidHex || activeItem.uid_hex || "").trim().toUpperCase();
     if (ctaBlocked || ctaPendingAuth) throw new Error(ctaBlockedReason);
     if (!effectiveBid) throw new Error("Batch ID missing (add ?bid=... in public demo URL)");
-    if (!uid) throw new Error("UID missing for CTA call");
+    if (!activeUid) throw new Error("UID missing for CTA call");
     const response = await fetch(`/api/public-cta/${action}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         bid: effectiveBid,
-        uid,
+        uid: activeUid,
         tenant,
         itemId,
         pack,
@@ -429,12 +561,11 @@ export function MobileDemoClient({
   }
 
   async function fetchProvenance() {
-    const uid = String(activeItem.uidHex || activeItem.uid_hex || "").trim().toUpperCase();
     if (!effectiveBid) throw new Error("Batch ID missing (add ?bid=... in public demo URL)");
-    if (!uid) throw new Error("UID missing for provenance");
+    if (!activeUid) throw new Error("UID missing for provenance");
     const url = new URL(`/api/public-cta/provenance`, window.location.origin);
     url.searchParams.set("bid", effectiveBid);
-    url.searchParams.set("uid", uid);
+    url.searchParams.set("uid", activeUid);
     const response = await fetch(url.toString(), { method: "GET" });
     const data = await response.json().catch(() => ({ ok: false, reason: "invalid json" }));
     if (!response.ok || data?.ok === false) {
@@ -443,8 +574,31 @@ export function MobileDemoClient({
     return data;
   }
 
+  async function viewProvenance() {
+    if (provenanceDisabled) {
+      setCtaStatus(ctaBlockedReason);
+      return;
+    }
+    setCtaPending(true);
+    try {
+      const data = await fetchProvenance();
+      const total = Array.isArray((data as { actions?: unknown[] }).actions)
+        ? (data as { actions: unknown[] }).actions.length
+        : 0;
+      setCtaStatus(`Provenance consultada: ${total} acciones registradas.`);
+      pushEvent("PROVENANCE_VIEWED", `Provenance consultada: ${total} acciones registradas.`);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "provenance unavailable";
+      setCtaStatus(`Provenance local solamente: ${reason}`);
+      pushEvent("PROVENANCE_VIEWED_LOCAL", `Fallback local: ${reason}`);
+    } finally {
+      setTimelineOpen((value) => !value);
+      setCtaPending(false);
+    }
+  }
+
   async function activateOwnership() {
-    if (ctaBlocked || ctaPendingAuth) {
+    if (actionDisabled) {
       setCtaStatus(ctaBlockedReason);
       pushEvent("OWNERSHIP_BLOCKED", ctaBlockedReason);
       return;
@@ -466,7 +620,7 @@ export function MobileDemoClient({
 
   async function saveWarranty() {
     if (!warrantyName.trim()) return;
-    if (ctaBlocked || ctaPendingAuth) {
+    if (actionDisabled) {
       setCtaStatus(ctaBlockedReason);
       pushEvent("WARRANTY_BLOCKED", ctaBlockedReason);
       return;
@@ -487,23 +641,29 @@ export function MobileDemoClient({
   }
 
   function requestTokenization() {
-    if (ctaBlocked || ctaPendingAuth) {
+    if (actionDisabled) {
       setCtaStatus(ctaBlockedReason);
       pushEvent("TOKENIZATION_BLOCKED", ctaBlockedReason);
       return;
     }
+    setShowLeadModal(false);
     setShowTokenModal(true);
+    setLeadSaved(false);
+    setCtaStatus("");
     setLeadIntent("tokenization_optional");
     pushEvent("TOKENIZATION_GATE_OPENED", "Interés en tokenización capturado (tokenization-ready).");
   }
 
   function openLeadFlow(intent: LeadIntent) {
+    setShowTokenModal(false);
     setLeadIntent(intent);
+    setLeadSaved(false);
+    setCtaStatus("");
     setShowLeadModal(true);
   }
 
   async function saveLeadInterest() {
-    if (!leadEmail.trim()) return;
+    if (!leadEmail.trim() || leadPending) return;
     const payload = {
       name: leadName || "Demo visitor",
       email: leadEmail.trim(),
@@ -513,33 +673,49 @@ export function MobileDemoClient({
       source: "public_mobile_demo",
       interest: leadIntent,
       message: `${leadMessage || "Lead captured from mobile preview CTA"} [tenant=${tenant}] [session=${demoSessionId}] [pack=${pack}] [interest=${leadIntent}]`,
-      notes: `tenant=${tenant} | item=${itemId} | session=${demoSessionId} | bid=${effectiveBid || "missing"} | mode=${effectiveBid.startsWith("DEMO-") ? "demo" : effectiveBid ? "production" : "missing-bid"} | geo=${geoState ? `${geoState.lat.toFixed(5)},${geoState.lng.toFixed(5)}` : "na"} | distance_km=${distanceFromWinery ? distanceFromWinery.toFixed(1) : "na"}`,
+      notes: `tenant=${tenant} | item=${itemId} | session=${demoSessionId} | bid=${effectiveBid || "missing"} | mode=${demoBid ? "demo" : effectiveBid ? "unverified" : "missing-bid"} | geo=${geoState ? `${geoState.lat.toFixed(5)},${geoState.lng.toFixed(5)}` : "na"} | distance_km=${distanceFromWinery ? distanceFromWinery.toFixed(1) : "na"}`,
       vertical: pack,
       created_at: new Date().toISOString(),
     };
+    setLeadPending(true);
+    setLeadSaved(false);
     try {
-      await fetch("/api/leads", {
+      const response = await fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-    } catch {
-      // keep demo resilient even if backend is unavailable
-    } finally {
+      const data = await response.json().catch(() => null) as { ok?: boolean; reason?: string } | null;
+      if (!response.ok || data?.ok === false) {
+        throw new Error(data?.reason || `Lead request failed (${response.status})`);
+      }
+
+      setLeadSaved(true);
+      pushEvent("LEAD_CAPTURED", `${leadIntent} · ${leadEmail.trim()}`);
       if (leadIntent === "tokenization_optional") {
-        if (ctaBlocked || ctaPendingAuth) {
+        if (actionDisabled) {
           pushEvent("TOKENIZATION_BLOCKED", ctaBlockedReason);
+          setCtaStatus(ctaBlockedReason);
         } else {
           try {
             await postCta("tokenize-request");
-            pushEvent("TOKENIZATION_REQUESTED", "Tokenización opcional solicitada y guardada en CTA backend.");
+            pushEvent("TOKENIZATION_REQUESTED", "Tokenizacion opcional solicitada y guardada en CTA backend.");
+            setCtaStatus("Lead y solicitud de tokenizacion confirmados por el servidor.");
           } catch (error) {
-            pushEvent("TOKENIZATION_REQUEST_FAILED", error instanceof Error ? error.message : "CTA unavailable");
+            const reason = error instanceof Error ? error.message : "CTA unavailable";
+            pushEvent("TOKENIZATION_REQUEST_FAILED", reason);
+            setCtaStatus(`Lead guardado; tokenizacion no confirmada: ${reason}`);
           }
         }
+      } else {
+        setCtaStatus("Lead confirmado por el servidor.");
       }
-      setLeadSaved(true);
-      pushEvent("LEAD_CAPTURED", `${leadIntent} · ${leadEmail.trim()}`);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "Lead request unavailable";
+      setCtaStatus(`Lead no confirmado: ${reason}`);
+      pushEvent("LEAD_CAPTURE_FAILED", reason);
+    } finally {
+      setLeadPending(false);
     }
   }
 
@@ -547,16 +723,17 @@ export function MobileDemoClient({
   useEffect(() => {
     if (consumerState === "AUTH_PENDING") return;
     void syncSunContext();
-  }, [consumerState, effectiveBid, activeItem.uidHex, activeItem.uid_hex, geoState?.capturedAt, geoError]);
+  }, [consumerState, effectiveBid, activeUid, geoState, geoError, locale]);
 
   return (
-    <main className="mx-auto max-w-5xl space-y-4 bg-[radial-gradient(circle_at_top,rgba(14,165,233,.10),transparent_38%)] p-4">
+    <>
+    <main ref={mainRef} className="mx-auto max-w-5xl space-y-4 bg-[radial-gradient(circle_at_top,rgba(14,165,233,.10),transparent_38%)] p-4">
       <div className="mx-auto w-full max-w-[430px] rounded-[2.3rem] border border-cyan-300/20 bg-slate-950 p-2.5 shadow-[0_24px_90px_rgba(2,6,23,0.65)]">
         <div className="mx-auto mb-2 h-1.5 w-20 rounded-full bg-slate-700" />
         <div className="space-y-4 rounded-[1.8rem] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(34,211,238,.10),transparent_30%),#020617] p-4">
           <Card className="border border-white/10 bg-slate-950/95 p-4">
-            <p className={`mb-3 rounded-lg border px-2 py-1 text-[11px] ${effectiveBid.startsWith("DEMO-") ? "border-violet-300/30 bg-violet-500/10 text-violet-100" : effectiveBid ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-100" : "border-amber-300/30 bg-amber-500/10 text-amber-100"}`}>
-              {effectiveBid.startsWith("DEMO-") ? "DEMO MODE · Datos simulados para presentación" : effectiveBid ? "PRODUCTION MODE · Flujo con contexto operativo real" : "MISSING BID · Agregá ?bid=... para ejecutar CTAs reales"}
+            <p className={`mb-3 rounded-lg border px-2 py-1 text-[11px] ${bidPresentation.className}`}>
+              {bidPresentation.message}
             </p>
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -567,11 +744,18 @@ export function MobileDemoClient({
               <Badge tone={current.tone}>{current.label}</Badge>
             </div>
             <p className="mt-3 text-xs text-cyan-200">Tenant: {tenant} · Item: {itemId} · Pack: {pack}</p>
-            <p className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-[10px] ${effectiveBid.startsWith("DEMO-") ? "border-violet-300/30 bg-violet-500/10 text-violet-100" : "border-emerald-300/30 bg-emerald-500/10 text-emerald-100"}`}>{effectiveBid ? (effectiveBid.startsWith("DEMO-") ? "DEMO MODE" : "PRODUCTION MODE") : "MISSING BID"}</p>
+            <p className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-[10px] ${bidPresentation.className}`}>{bidPresentation.badge}</p>
             <div className="mt-3 rounded-lg border border-white/10 bg-slate-900/70 p-2">
               <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">NFC scan emulation</p>
-              <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
-                <div className="h-full rounded-full bg-cyan-400 transition-all" style={{ width: `${scanProgress}%` }} />
+              <div
+                className="mt-2 h-2 overflow-hidden rounded-full bg-white/10"
+                role="progressbar"
+                aria-label="Progreso de validacion NFC"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={scanProgress}
+              >
+                <div aria-hidden="true" className="h-full rounded-full bg-cyan-400 transition-all" style={{ width: `${scanProgress}%` }} />
               </div>
               <p className="mt-1 text-[11px] text-slate-300">Backend trust check demo {scanProgress}%</p>
             </div>
@@ -597,30 +781,6 @@ export function MobileDemoClient({
               <button suppressHydrationWarning type="button" className="mt-2 rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-[11px] font-semibold text-cyan-100" onClick={requestGeoTrace}>
                 {geoState ? "Actualizar ubicacion demo" : "Compartir ubicacion para esta demo"}
               </button>
-              <div className="mt-2 overflow-hidden rounded-lg border border-white/10 flex justify-center">
-                <Globe3dMap
-                  points={mobileMapPoints.map((p) => ({
-                    city: p.label,
-                    country: p.sublabel,
-                    lat: p.lat,
-                    lng: p.lng,
-                    scans: p.scans,
-                    risk: p.risk,
-                    vertical: activeVertical
-                  }))}
-                  routes={mobileMapRoutes.map((r) => ({
-                    fromLat: r.fromLat,
-                    fromLng: r.fromLng,
-                    toLat: r.toLat,
-                    toLng: r.toLng,
-                    tone: r.tone === "warn" ? "warn" as const : "info" as const
-                  }))}
-                  width={260}
-                  height={180}
-                  className="border-0 bg-transparent shadow-none"
-                />
-              </div>
-              <p className="mt-1 text-[10px] text-slate-400">Vista rápida del punto de tap sobre mapa para demo comercial.</p>
             </div>
           </Card>
 
@@ -631,7 +791,7 @@ export function MobileDemoClient({
               <p className="text-[10px] uppercase tracking-[0.16em] text-violet-100">Premium product view</p>
               <div className="mt-2 flex items-end justify-between">
                 <div>
-                  <p className="text-lg font-semibold text-white">{activeItem.productName || "Reserva Demo 2024"}</p>
+                  <p className="text-lg font-semibold text-white">{seedItemName(activeItem)}</p>
                   <p className="text-[11px] text-slate-200">Ventana ideal de consumo · 2026-2030</p>
                 </div>
                 <div className="h-16 w-8 rounded-full border border-white/20 bg-white/10 shadow-[inset_0_0_22px_rgba(34,211,238,.35)]" />
@@ -642,14 +802,21 @@ export function MobileDemoClient({
                 <p key={field.label}>{field.label}: <span className="text-white">{field.value(activeItem)}</span></p>
               ))}
             </div>
-            <p className="mt-2 text-slate-400">SKU {activeItem.sku || "wine-secure"} · UID {(activeItem.uidHex || activeItem.uid_hex || "-")}</p>
+            <p className="mt-2 text-slate-400">SKU {activeSku || "-"} · UID {activeUid || "-"}</p>
             <div className="mt-3 rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3">
               <div className="flex items-center justify-between">
                 <p className="text-[11px] uppercase tracking-[0.14em] text-cyan-100">Trust index</p>
                 <p className="text-sm font-semibold text-white">{trustIndex}/100</p>
               </div>
-              <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-900/70">
-                <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-violet-400 to-emerald-300 transition-all" style={{ width: `${trustIndex}%` }} />
+              <div
+                className="mt-2 h-2 overflow-hidden rounded-full bg-slate-900/70"
+                role="progressbar"
+                aria-label="Indice de confianza"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={trustIndex}
+              >
+                <div aria-hidden="true" className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-violet-400 to-emerald-300 transition-all" style={{ width: `${trustIndex}%` }} />
               </div>
               <p className="mt-1 text-[11px] text-cyan-100/90">Listo para demo comercial de alto impacto (marca + seguridad + conversión).</p>
             </div>
@@ -728,33 +895,22 @@ export function MobileDemoClient({
 
           <Card className="p-4 text-xs text-slate-300">
             <h2 className="text-sm font-semibold text-white">Ownership · Warranty · Provenance</h2>
-            {ctaBlocked || ctaPendingAuth ? (
+            {ctaBlocked || ctaPendingAuth || identityMissing ? (
               <p className="mt-2 rounded-lg border border-amber-300/25 bg-amber-500/10 p-2 text-[11px] text-amber-100">{ctaBlockedReason}</p>
             ) : null}
             <div className="mt-2 grid gap-2 md:grid-cols-2">
               <button suppressHydrationWarning type="button" disabled={actionDisabled} className={`rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2.5 text-left text-cyan-100 shadow-[0_0_0_1px_rgba(34,211,238,.08)] ${actionDisabledClass}`} onClick={() => void activateOwnership()}>Activar ownership</button>
               <button suppressHydrationWarning type="button" disabled={actionDisabled} className={`rounded-xl border border-violet-300/30 bg-violet-500/10 px-3 py-2.5 text-left text-violet-100 shadow-[0_0_0_1px_rgba(167,139,250,.10)] ${actionDisabledClass}`} onClick={() => void saveWarranty()}>Registrar garantia</button>
-              <button suppressHydrationWarning type="button" className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-3 py-2.5 text-left text-amber-100 shadow-[0_0_0_1px_rgba(251,191,36,.10)]" onClick={() => void (async () => {
-                try {
-                  const data = await fetchProvenance();
-                  const total = Array.isArray((data as { actions?: unknown[] }).actions) ? (data as { actions: unknown[] }).actions.length : 0;
-                  setCtaStatus(`Provenance consultada: ${total} acciones registradas.`);
-                  pushEvent("PROVENANCE_VIEWED", `Provenance consultada: ${total} acciones registradas.`);
-                } catch (error) {
-                  const reason = error instanceof Error ? error.message : "provenance unavailable";
-                  setCtaStatus(`Provenance fallback local: ${reason}`);
-                  pushEvent("PROVENANCE_VIEWED_LOCAL", `Fallback local: ${reason}`);
-                }
-                setTimelineOpen((value) => !value);
-              })()}>Ver provenance</button>
+              <button suppressHydrationWarning type="button" disabled={provenanceDisabled} className={`rounded-xl border border-amber-300/30 bg-amber-500/10 px-3 py-2.5 text-left text-amber-100 shadow-[0_0_0_1px_rgba(251,191,36,.10)] ${provenanceDisabledClass}`} onClick={() => void viewProvenance()}>Ver provenance</button>
               <button suppressHydrationWarning type="button" disabled={actionDisabled} className={`rounded-xl border border-white/20 bg-white/5 px-3 py-2.5 text-left text-white ${actionDisabledClass}`} onClick={requestTokenization}>Tokenizacion opcional</button>
             </div>
             <div className="mt-3 rounded-lg border border-white/10 bg-slate-900 p-2">
-              <input suppressHydrationWarning value={warrantyName} onChange={(event) => setWarrantyName(event.target.value)} placeholder="Nombre para garantía" className="w-full rounded border border-white/10 bg-slate-950 px-2 py-1 text-white" />
+              <label htmlFor="mobile-demo-warranty-name" className="sr-only">Nombre para garantia</label>
+              <input id="mobile-demo-warranty-name" suppressHydrationWarning value={warrantyName} onChange={(event) => setWarrantyName(event.target.value)} placeholder="Nombre para garantía" className="w-full rounded border border-white/10 bg-slate-950 px-2 py-1 text-white" />
               {warrantySaved ? <p className="mt-2 text-emerald-300">Garantía guardada y vinculada al lifecycle.</p> : null}
-              <p className="mt-2 text-[11px] text-slate-400">Batch: {effectiveBid || "(missing)"} · UID: {activeItem.uidHex || activeItem.uid_hex || "-"}</p>
+              <p className="mt-2 text-[11px] text-slate-400">Batch: {effectiveBid || "(missing)"} · UID: {activeUid || "-"}</p>
               {ctaPending ? <p className="mt-1 text-xs text-cyan-200">Procesando CTA...</p> : null}
-              {ctaStatus ? <p className="mt-1 text-xs text-cyan-100">{ctaStatus}</p> : null}
+              {ctaStatus ? <p className="mt-1 text-xs text-cyan-100" role="status" aria-live="polite">{ctaStatus}</p> : null}
             </div>
           </Card>
 
@@ -788,41 +944,69 @@ export function MobileDemoClient({
         <p className="font-semibold">Investor spotlight</p>
         <p className="mt-1 text-slate-200">Esta demo móvil combina anti-fraude, trazabilidad y conversión comercial en una sola experiencia premium.</p>
       </div>
-
-      {showTokenModal ? (
-        <Card className="mx-auto max-w-[430px] border border-cyan-300/25 bg-slate-950/95 p-4 text-xs text-slate-300">
-          <p className="text-sm font-semibold text-white">Tokenization-ready (feature gate)</p>
-          <p className="mt-1">El backend de emisión on-chain no está activado en este demo público. Capturamos interés comercial y lead para CRM.</p>
-          <input suppressHydrationWarning className="mt-3 w-full rounded border border-white/10 bg-slate-900 px-2 py-1 text-white" placeholder="Email de contacto" value={leadEmail} onChange={(event) => setLeadEmail(event.target.value)} />
-          <div className="mt-3 flex gap-2">
-            <button suppressHydrationWarning type="button" className="rounded border border-cyan-300/40 bg-cyan-500/10 px-3 py-1 text-cyan-100" onClick={saveLeadInterest}>Guardar interés</button>
-            <button suppressHydrationWarning type="button" className="rounded border border-white/20 px-3 py-1 text-white" onClick={() => setShowTokenModal(false)}>Cerrar</button>
-          </div>
-          {leadSaved ? <p className="mt-2 text-emerald-300">Lead capturado para seguimiento comercial.</p> : null}
-        </Card>
-      ) : null}
-
-      {showLeadModal ? (
-        <Card className="mx-auto max-w-[430px] border border-violet-300/25 bg-slate-950/95 p-4 text-xs text-slate-300">
-          <p className="text-sm font-semibold text-white">Lead capture · {leadIntent}</p>
-          <p className="mt-1">Este CTA crea una oportunidad real en CRM-lite (o fallback local si el backend no responde).</p>
-          <div className="mt-3 grid gap-2">
-            <input suppressHydrationWarning className="rounded border border-white/10 bg-slate-900 px-2 py-1 text-white" placeholder="Nombre" value={leadName} onChange={(event) => setLeadName(event.target.value)} />
-            <input suppressHydrationWarning className="rounded border border-white/10 bg-slate-900 px-2 py-1 text-white" placeholder="Email" value={leadEmail} onChange={(event) => setLeadEmail(event.target.value)} />
-            <input suppressHydrationWarning className="rounded border border-white/10 bg-slate-900 px-2 py-1 text-white" placeholder="Compañía" value={leadCompany} onChange={(event) => setLeadCompany(event.target.value)} />
-            <div className="grid grid-cols-2 gap-2">
-              <input suppressHydrationWarning className="rounded border border-white/10 bg-slate-900 px-2 py-1 text-white" placeholder="País" value={leadCountry} onChange={(event) => setLeadCountry(event.target.value)} />
-              <input suppressHydrationWarning className="rounded border border-white/10 bg-slate-900 px-2 py-1 text-white" placeholder="Rol" value={leadRole} onChange={(event) => setLeadRole(event.target.value)} />
-            </div>
-            <textarea suppressHydrationWarning className="min-h-20 rounded border border-white/10 bg-slate-900 px-2 py-1 text-white" placeholder="Mensaje" value={leadMessage} onChange={(event) => setLeadMessage(event.target.value)} />
-          </div>
-          <div className="mt-3 flex gap-2">
-            <button suppressHydrationWarning type="button" className="rounded border border-violet-300/40 bg-violet-500/10 px-3 py-1 text-violet-100" onClick={() => void saveLeadInterest()}>Guardar lead</button>
-            <button suppressHydrationWarning type="button" className="rounded border border-white/20 px-3 py-1 text-white" onClick={() => setShowLeadModal(false)}>Cerrar</button>
-          </div>
-          {leadSaved ? <p className="mt-2 text-emerald-300">Lead guardado.</p> : null}
-        </Card>
-      ) : null}
     </main>
+
+      {activeDialog ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center p-3 sm:items-center sm:p-6">
+          <div className="absolute inset-0 bg-slate-950/80" aria-hidden="true" onClick={closeDialogs} />
+          <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={activeDialog === "token" ? "mobile-token-dialog-title" : "mobile-lead-dialog-title"}
+            aria-describedby={activeDialog === "token" ? "mobile-token-dialog-description" : "mobile-lead-dialog-description"}
+            aria-busy={leadPending}
+            tabIndex={-1}
+            className="relative z-10 max-h-[calc(100dvh-1.5rem)] w-full max-w-[430px] overflow-y-auto outline-none"
+          >
+            {activeDialog === "token" ? (
+              <Card className="border border-cyan-300/25 bg-slate-950 p-4 text-xs text-slate-300 shadow-2xl">
+                <h2 id="mobile-token-dialog-title" className="text-sm font-semibold text-white">Tokenization-ready</h2>
+                <p id="mobile-token-dialog-description" className="mt-1">El lead y la solicitud de tokenizacion se confirman solamente con respuesta exitosa del servidor.</p>
+                <label htmlFor="mobile-token-email" className="sr-only">Email de contacto</label>
+                <input id="mobile-token-email" data-autofocus type="email" autoComplete="email" required suppressHydrationWarning className="mt-3 w-full rounded border border-white/10 bg-slate-900 px-2 py-2 text-white" placeholder="Email de contacto" value={leadEmail} onChange={(event) => setLeadEmail(event.target.value)} />
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button suppressHydrationWarning type="button" disabled={leadPending || !leadEmail.trim()} className="rounded border border-cyan-300/40 bg-cyan-500/10 px-3 py-2 text-cyan-100 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => void saveLeadInterest()}>{leadPending ? "Guardando..." : "Guardar interes"}</button>
+                  <button suppressHydrationWarning type="button" className="rounded border border-white/20 px-3 py-2 text-white" onClick={closeDialogs}>Cerrar</button>
+                </div>
+                {leadSaved ? <p className="mt-2 text-emerald-300" role="status">Lead capturado para seguimiento comercial.</p> : null}
+                {ctaStatus ? <p className="mt-2 text-cyan-100" role="status" aria-live="polite">{ctaStatus}</p> : null}
+              </Card>
+            ) : (
+              <Card className="border border-violet-300/25 bg-slate-950 p-4 text-xs text-slate-300 shadow-2xl">
+                <h2 id="mobile-lead-dialog-title" className="text-sm font-semibold text-white">Lead capture · {leadIntent}</h2>
+                <p id="mobile-lead-dialog-description" className="mt-1">La oportunidad se confirma cuando el servidor acepta el formulario.</p>
+                <div className="mt-3 grid gap-2">
+                  <label htmlFor="mobile-lead-name" className="sr-only">Nombre</label>
+                  <input id="mobile-lead-name" data-autofocus autoComplete="name" suppressHydrationWarning className="rounded border border-white/10 bg-slate-900 px-2 py-2 text-white" placeholder="Nombre" value={leadName} onChange={(event) => setLeadName(event.target.value)} />
+                  <label htmlFor="mobile-lead-email" className="sr-only">Email</label>
+                  <input id="mobile-lead-email" type="email" autoComplete="email" required suppressHydrationWarning className="rounded border border-white/10 bg-slate-900 px-2 py-2 text-white" placeholder="Email" value={leadEmail} onChange={(event) => setLeadEmail(event.target.value)} />
+                  <label htmlFor="mobile-lead-company" className="sr-only">Compania</label>
+                  <input id="mobile-lead-company" autoComplete="organization" suppressHydrationWarning className="rounded border border-white/10 bg-slate-900 px-2 py-2 text-white" placeholder="Compania" value={leadCompany} onChange={(event) => setLeadCompany(event.target.value)} />
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div>
+                      <label htmlFor="mobile-lead-country" className="sr-only">Pais</label>
+                      <input id="mobile-lead-country" autoComplete="country-name" suppressHydrationWarning className="w-full rounded border border-white/10 bg-slate-900 px-2 py-2 text-white" placeholder="Pais" value={leadCountry} onChange={(event) => setLeadCountry(event.target.value)} />
+                    </div>
+                    <div>
+                      <label htmlFor="mobile-lead-role" className="sr-only">Rol</label>
+                      <input id="mobile-lead-role" autoComplete="organization-title" suppressHydrationWarning className="w-full rounded border border-white/10 bg-slate-900 px-2 py-2 text-white" placeholder="Rol" value={leadRole} onChange={(event) => setLeadRole(event.target.value)} />
+                    </div>
+                  </div>
+                  <label htmlFor="mobile-lead-message" className="sr-only">Mensaje</label>
+                  <textarea id="mobile-lead-message" suppressHydrationWarning className="min-h-20 rounded border border-white/10 bg-slate-900 px-2 py-2 text-white" placeholder="Mensaje" value={leadMessage} onChange={(event) => setLeadMessage(event.target.value)} />
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button suppressHydrationWarning type="button" disabled={leadPending || !leadEmail.trim()} className="rounded border border-violet-300/40 bg-violet-500/10 px-3 py-2 text-violet-100 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => void saveLeadInterest()}>{leadPending ? "Guardando..." : "Guardar lead"}</button>
+                  <button suppressHydrationWarning type="button" className="rounded border border-white/20 px-3 py-2 text-white" onClick={closeDialogs}>Cerrar</button>
+                </div>
+                {leadSaved ? <p className="mt-2 text-emerald-300" role="status">Lead guardado.</p> : null}
+                {ctaStatus ? <p className="mt-2 text-cyan-100" role="status" aria-live="polite">{ctaStatus}</p> : null}
+              </Card>
+            )}
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }

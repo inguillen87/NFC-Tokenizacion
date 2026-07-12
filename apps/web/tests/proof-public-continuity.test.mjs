@@ -31,8 +31,9 @@ test("demo lab sends an allowlisted proof origin with an exact internal return",
   assert.match(client, /scenario:\s*safeScenario/);
   assert.match(client, /return_to:\s*returnTo/);
   assert.match(client, /buildDemoPublicProofHref\(activeTrustScenario\)/);
-  assert.match(client, /getTrustScenarioContext\(activeTrustScenario, locale, proofVerifierHref\)/);
-  assert.equal((client.match(/href=\{proofVerifierHref\}/g) ?? []).length, 3);
+  assert.match(client, /const proofDestinationHref = useMemo\([\s\S]*buildDemoPublicProofHref\(activeTrustScenario\)/);
+  assert.match(client, /getTrustScenarioContext\(activeTrustScenario, locale, proofDestinationHref\)/);
+  assert.equal((client.match(/href=\{proofDestinationHref\}/g) ?? []).length, 3);
 });
 
 test("proof verify rejects non-canonical return targets and preserves handoff state", async () => {

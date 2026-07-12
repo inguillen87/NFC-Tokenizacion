@@ -5,17 +5,20 @@ import { checkAdmin } from '../../../../lib/auth';
 import { json } from '../../../../lib/http';
 import { sql } from '../../../../lib/db';
 import { normalizeSeedProducts } from '../../../../lib/demo-pack-normalizer';
+import { requireReservedDemoBatch, validateDemoResourceScopeRequest } from '../../../../lib/demo-resource-scope';
 
 export async function POST(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
 
-  const body = await req.json().catch(() => ({} as any));
-  const bid = String(body.bid || 'DEMO-2026-02');
-  const products = normalizeSeedProducts(body.products ?? body);
+  const body = await req.json().catch(() => ({} as Record<string, unknown>));
+  const requestScope = validateDemoResourceScopeRequest(req, body);
+  if (!requestScope.ok) return json({ ok: false, reason: requestScope.reason }, requestScope.status);
 
-  const batch = (await sql`SELECT id FROM batches WHERE bid=${bid} LIMIT 1`)[0];
-  if (!batch) return json({ ok: false, reason: 'batch not found' }, 404);
+  const batchScope = await requireReservedDemoBatch();
+  if (!batchScope.ok) return json({ ok: false, reason: batchScope.reason }, batchScope.status);
+  const batch = batchScope.batch;
+  const products = normalizeSeedProducts(body.products ?? body);
 
   let updated = 0;
   for (const item of products) {

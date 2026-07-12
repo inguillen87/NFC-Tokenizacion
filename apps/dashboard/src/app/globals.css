@@ -1132,11 +1132,15 @@ body.nexid-crm-overlay-active .dashboard-main {
 .nexid-crm-shell .nexid-crm-account-menu {
   position: relative;
   z-index: 980 !important;
+  isolation: isolate;
+  pointer-events: auto !important;
 }
 
 .nexid-crm-shell .nexid-crm-account-menu [data-testid="tenant-account-menu-trigger"] {
   position: relative;
   z-index: 981 !important;
+  pointer-events: auto !important;
+  touch-action: manipulation;
 }
 
 .dashboard-header .dashboard-shell-account-menu {

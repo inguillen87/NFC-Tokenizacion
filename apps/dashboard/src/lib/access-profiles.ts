@@ -59,7 +59,7 @@ export function getAccessProfiles(): AccessProfile[] {
       emailEnv: ["TENANT_ADMIN_EMAIL", "BODEGA_ADMIN_EMAIL", "NEXT_PUBLIC_TENANT_ADMIN_EMAIL"],
       passwordEnv: ["TENANT_ADMIN_PASSWORD", "BODEGA_ADMIN_PASSWORD"],
       note: "Administrador operativo del tenant: lotes, tags, taps, marketplace, rewards y empleados.",
-      permissions: ["tenant:*", "batches:*", "tags:*", "events:*", "proof:*", "tokenization:*", "analytics:*", "crm:*", "marketplace:*", "rewards:*", "employees:*"],
+      permissions: ["tenant:*", "batches:*", "tags:*", "events:*", "proof:*", "tokenization:*", "analytics:*", "crm:*", "marketplace:*", "rewards:*", "employees:*", "demo:*"],
     }),
     profile({
       key: "tenant-ops",
@@ -68,7 +68,7 @@ export function getAccessProfiles(): AccessProfile[] {
       emailEnv: ["TENANT_OPS_EMAIL", "NEXT_PUBLIC_TENANT_OPS_EMAIL"],
       passwordEnv: ["TENANT_OPS_PASSWORD"],
       note: "Puede operar lotes, tags, taps, validación en tienda y alertas sin tocar facturación ni seguridad global.",
-      permissions: ["batches:read", "batches:write", "tags:read", "tags:write", "events:read", "proof:read", "tokenization:read", "tokenization:write", "analytics:read", "rewards:validate"],
+      permissions: ["batches:read", "batches:write", "tags:read", "tags:write", "events:read", "proof:read", "tokenization:read", "tokenization:write", "analytics:read", "rewards:validate", "demo:read", "demo:run"],
     }),
     profile({
       key: "tenant-growth",
@@ -77,7 +77,7 @@ export function getAccessProfiles(): AccessProfile[] {
       emailEnv: ["TENANT_GROWTH_EMAIL", "NEXT_PUBLIC_TENANT_GROWTH_EMAIL"],
       passwordEnv: ["TENANT_GROWTH_PASSWORD"],
       note: "Puede ver clientes, segmentos, campañas, vouchers y performance comercial del tenant.",
-      permissions: ["events:read", "analytics:read", "crm:read", "campaigns:read", "campaigns:write", "rewards:read", "marketplace:read"],
+      permissions: ["events:read", "analytics:read", "crm:read", "campaigns:read", "campaigns:write", "rewards:read", "marketplace:read", "demo:read"],
     }),
   ];
 }

@@ -16,13 +16,14 @@ export async function GET(req: Request) {
  
   const batch = (await sql`SELECT id, bid, status FROM batches WHERE tenant_id=${tenant.id} AND bid='DEMO-2026-02' LIMIT 1`)[0];
   const tags = await sql`SELECT COUNT(*)::int AS count FROM tags WHERE batch_id=${batch?.id || null}`;
-  const leads = await sql`SELECT COUNT(*)::int AS count FROM leads`;
-  const tickets = await sql`SELECT COUNT(*)::int AS count FROM tickets`;
-  const orders = await sql`SELECT COUNT(*)::int AS count FROM order_requests`;
+  const leads = await sql`SELECT COUNT(*)::int AS count FROM leads WHERE tenant_id=${tenant.id} OR (tenant_id IS NULL AND LOWER(source)='demo-lab')`;
+  const tickets = await sql`SELECT COUNT(*)::int AS count FROM tickets WHERE LOWER(source)='demo-lab'`;
+  const orders = await sql`SELECT COUNT(*)::int AS count FROM order_requests WHERE LOWER(source)='demo-lab'`;
 
   const recentLeads = await sql`
     SELECT id, locale, contact, name, email, phone, company, country, vertical, role_interest, estimated_volume, tag_type, volume, source, status, message, notes, assigned_to, created_at 
     FROM leads 
+    WHERE tenant_id=${tenant.id} OR (tenant_id IS NULL AND LOWER(source)='demo-lab')
     ORDER BY created_at DESC 
     LIMIT 20
   `;
@@ -30,6 +31,7 @@ export async function GET(req: Request) {
   const recentTickets = await sql`
     SELECT id, locale, contact, title, detail, status, source, assigned_to, created_at, updated_at 
     FROM tickets 
+    WHERE LOWER(source)='demo-lab'
     ORDER BY created_at DESC 
     LIMIT 20
   `;
@@ -37,6 +39,7 @@ export async function GET(req: Request) {
   const recentOrders = await sql`
     SELECT id, locale, contact, company, tag_type, volume, notes, status, source, assigned_to, created_at, updated_at 
     FROM order_requests 
+    WHERE LOWER(source)='demo-lab'
     ORDER BY created_at DESC 
     LIMIT 20
   `;
@@ -58,6 +61,7 @@ export async function GET(req: Request) {
     LEFT JOIN tags t ON t.batch_id = e.batch_id AND t.uid_hex = e.uid_hex
     LEFT JOIN tag_profiles tp ON tp.tag_id = t.id
     WHERE e.tenant_id=${tenant.id}
+      AND LOWER(COALESCE(e.source, ''))='demo'
     ORDER BY e.created_at DESC
     LIMIT 20
   `;

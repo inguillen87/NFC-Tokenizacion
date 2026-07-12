@@ -8,9 +8,14 @@ import { sql } from '../../../../lib/db';
 import { decryptKey16 } from '../../../../lib/keys';
 import { generateSunParams } from '../../../../lib/crypto/sdm';
 import { processSunScan } from '../../../../lib/sun-service';
+import {
+  DEMO_BATCH_BID,
+  requireReservedDemoBatch,
+  validateDemoResourceScopeRequest,
+} from '../../../../lib/demo-resource-scope';
 
 const bodySchema = z.object({
-  bid: z.string().min(1),
+  bid: z.literal(DEMO_BATCH_BID),
   uidHex: z.string().min(1).transform((v) => v.toUpperCase()),
   deviceLabel: z.string().default('iPhone 15 Pro - Mendoza'),
   city: z.string().default('Mendoza'),
@@ -24,7 +29,14 @@ export async function POST(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
 
-  const parsed = bodySchema.safeParse(await req.json().catch(() => ({})));
+  const rawBody = await req.json().catch(() => ({} as Record<string, unknown>));
+  const requestScope = validateDemoResourceScopeRequest(req, rawBody);
+  if (!requestScope.ok) return json({ ok: false, reason: requestScope.reason }, requestScope.status);
+
+  const batchScope = await requireReservedDemoBatch();
+  if (!batchScope.ok) return json({ ok: false, reason: batchScope.reason }, batchScope.status);
+
+  const parsed = bodySchema.safeParse({ ...rawBody, bid: requestScope.bid });
   if (!parsed.success) return json({ ok: false, reason: 'invalid payload' }, 400);
   const body = parsed.data;
 
@@ -32,7 +44,8 @@ export async function POST(req: Request) {
     SELECT b.id, b.meta_key_ct, b.file_key_ct, t.last_seen_ctr
     FROM batches b
     LEFT JOIN tags t ON t.batch_id = b.id AND t.uid_hex = ${body.uidHex}
-    WHERE b.bid = ${body.bid}
+    WHERE b.id = ${batchScope.batch.id}
+      AND b.tenant_id = ${batchScope.batch.tenantId}
     LIMIT 1
   `;
   const batch = batchRows[0];
@@ -49,12 +62,12 @@ export async function POST(req: Request) {
   });
 
   const result = await processSunScan({
-    bid: body.bid,
+    bid: DEMO_BATCH_BID,
     piccDataHex: generated.piccDataHex,
     encHex: generated.encHex,
     cmacHex: generated.cmacHex,
     rawQuery: {
-      bid: body.bid,
+      bid: DEMO_BATCH_BID,
       picc_data: generated.piccDataHex,
       enc: generated.encHex,
       cmac: generated.cmacHex,

@@ -119,7 +119,7 @@ test("demo lab preserves the wizard step across simulator and CRM switches", asy
   assert.match(client, /<DemoLabStudioHero[\s\S]*step=\{wizardStep\}[\s\S]*onStep=\{setWizardStep\}/);
   assert.match(client, /step: DemoWizardStep;/);
   assert.match(client, /onStep: \(step: DemoWizardStep\) => void;/);
-  assert.match(client, /setWizardStep\(getTrustScenarioInitialStep\(key\)\)/);
+  assert.match(client, /setWizardStep\(getTrustScenarioInitialStep\(scenarioStart\.key\)\)/);
   assert.doesNotMatch(client, /const \[step, setStep\] = useState<DemoWizardStep>/);
 });
 
@@ -365,7 +365,8 @@ test("demo lab trust scenario deep links open contextual wizard proof layers", a
   assert.match(client, /function buildDemoPublicProofHref\(scenario: DemoTrustScenarioKey \| null\)/);
   assert.match(client, /function getTrustScenarioInitialStep\(key: DemoTrustScenarioKey \| null\): DemoWizardStep/);
   assert.match(client, /key === "iota-proof" \|\| key === "sensor-evidence" \|\| key === "dual-proof"\) return 2/);
-  assert.match(client, /key === "polygon-ownership"\) return 3/);
+  assert.match(client, /key === "polygon-ownership"\) return \{ key, beat: 0, vertical: "luxury" \}/);
+  assert.doesNotMatch(client, /key === "polygon-ownership"\) return 3/);
   assert.match(client, /DemoTrustScenarioContextCard/);
   assert.match(client, /demo-lab-trust-context/);
   assert.match(client, /demo-lab-trust-context__decision/);
@@ -373,7 +374,8 @@ test("demo lab trust scenario deep links open contextual wizard proof layers", a
   assert.match(client, /demo-lab-trust-context__outcome/);
   assert.match(client, /demo-lab-trust-switcher/);
   assert.match(client, /<DemoTrustScenarioRail[\s\S]*variant="wizard"/);
-  assert.match(client, /window\.history\.replaceState\(null, "", href\)/);
+  assert.match(client, /const href = `\/demo-lab\?scenario=\$\{item\.key\}`;[\s\S]*<Link[\s\S]*href=\{href\}/);
+  assert.doesNotMatch(client, /window\.history\.replaceState\(null, "", href\)/);
   assert.doesNotMatch(client, /setTrustScenario\(null\)/);
   assert.match(client, /onVertical=\{setVertical\}/);
   assert.match(client, /IOTA prueba evidencia logistica/);
@@ -397,6 +399,47 @@ test("demo lab trust scenario deep links open contextual wizard proof layers", a
   assert.match(css, /@media \(max-width:\s*640px\)[\s\S]*\.demo-lab-trust-context__step\s*\{[\s\S]*grid-template-columns:\s*1\.8rem minmax\(0,\s*1fr\)/);
 });
 
+test("demo lab keeps scenario headers, execution receipts and proof destinations truthful", async () => {
+  const page = await readFile(new URL("../src/app/(public)/demo-lab/page.tsx", import.meta.url), "utf8");
+  const client = await readFile(new URL("../src/app/(public)/demo-lab/demo-lab-client.tsx", import.meta.url), "utf8");
+
+  assert.match(page, /if \(safeScenario === "polygon-ownership"\) return "\/proof\/ownership"/);
+  assert.match(page, /const routesToIota = safeScenario === "iota-proof"[\s\S]*safeScenario === "sensor-evidence"/);
+  assert.match(page, /if \(routesToIota\) query\.set\("layer", "iota"\)/);
+  assert.match(page, /routesToIota \? "#iota-proof" : ""/);
+  assert.match(page, /Abrir recibo IOTA y decoder/);
+
+  assert.match(client, /if \(scenario === "polygon-ownership"\) return "\/proof\/ownership"/);
+  assert.match(client, /query\.set\("layer", "iota"\)/);
+  assert.match(client, /query\.set\("decode_input", utf8ToHex\(DEMO_PUBLIC_PROOF_MEMO\)\)/);
+  assert.match(client, /#proof-decoder/);
+  assert.match(client, /proofDestinationLabel = activeTrustScenario === "polygon-ownership"/);
+  assert.match(client, /Recibo \/ decoder IOTA/);
+  assert.match(client, /href=\{proofDestinationHref\}/);
+
+  const scenarioRail = client.slice(
+    client.indexOf("function DemoTrustScenarioRail"),
+    client.indexOf("function DemoStudioMiniProduct")
+  );
+  assert.match(scenarioRail, /<Link[\s\S]*href=\{href\}/);
+  assert.doesNotMatch(scenarioRail, /preventDefault|history\.replaceState|onSelect/);
+
+  assert.match(client, /type DemoSimulationReceipt = \{/);
+  assert.match(client, /execution: "visual" \| "persisted" \| "failed"/);
+  assert.match(client, /data-demo-simulation-receipt=\{receipt\.execution\}/);
+  assert.match(client, /data-persisted=\{String\(receipt\.persisted\)\}/);
+  assert.match(client, /data-chain-write=\{String\(receipt\.chainWrite\)\}/);
+  assert.match(client, /execution: "persisted"[\s\S]*persisted: true[\s\S]*chainWrite: false/);
+  assert.match(client, /execution: "visual"[\s\S]*persisted: false[\s\S]*chainWrite: false/);
+  assert.match(client, /Sin escritura on-chain/);
+
+  assert.match(client, /function buildDemoMobileHref\(vertical: Vertical, beat: Beat, locale: AppLocale\)/);
+  assert.match(client, /`\/demo-lab\/mobile\/\$\{encodeURIComponent\(DEMO_TENANT_SLUG\)\}\/demo-item-001\?/);
+  assert.match(client, /const buyerMobileHref = useMemo/);
+  assert.match(client, /<Link href=\{buyerMobileHref\}>[\s\S]*Celular comprador/);
+  assert.doesNotMatch(client, /onPassport=\{\(\) => setModalView\("mobile"\)\}/);
+});
+
 test("demo lab wizard explains proof and business outcome for enterprise buyers", async () => {
   const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
   const page = await readFile(new URL("../src/app/(public)/demo-lab/page.tsx", import.meta.url), "utf8");
@@ -409,7 +452,7 @@ test("demo lab wizard explains proof and business outcome for enterprise buyers"
   assert.match(client, /Board-ready outcome from one verified tap/);
   assert.match(client, /Resultado ejecutivo de un tap verificado/);
   assert.match(client, /nexID keeps private data, IOTA can anchor audit receipts, and Polygon is reserved/);
-  assert.match(client, /href=\{proofVerifierHref\}/);
+  assert.match(client, /href=\{proofDestinationHref\}/);
   assert.match(page, /<span className="demo-lab-cta-short">Agendar<\/span>/);
   assert.match(client, /<span className="demo-lab-cta-short">Agendar<\/span>/);
   assert.match(client, /demo-lab-wizard-proof-decoder/);

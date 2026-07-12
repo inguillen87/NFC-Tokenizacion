@@ -46,7 +46,7 @@ const ACCOUNT_MENU_Z_INDEX = 2147483647;
 const ACCOUNT_MENU_BACKDROP_Z_INDEX = ACCOUNT_MENU_Z_INDEX - 1;
 const ACCOUNT_MENU_PANEL_Z_INDEX = ACCOUNT_MENU_Z_INDEX;
 const ACCOUNT_MENU_PORTAL_ROOT_ID = "nexid-account-menu-root";
-const ACCOUNT_MENU_VERSION = "drawer-v21-mobile-dialog";
+const ACCOUNT_MENU_VERSION = "drawer-v22-isolated-trigger";
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 const ACCOUNT_MENU_CRITICAL_CSS = `
 html.nexid-account-menu-open,
@@ -1154,10 +1154,15 @@ export function TenantAccountMenu({
           event.preventDefault();
           closeMenu();
         }}
-        onPointerDownCapture={() => {
+        onPointerDownCapture={(event) => {
+          event.stopPropagation();
           prepareMenuPortalRoot();
         }}
-        onClick={toggleMenu}
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          toggleMenu();
+        }}
       >
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-blue-600 text-xs font-black text-white shadow-[0_0_22px_rgba(37,99,235,.35)]">
           {initialsFor(role)}

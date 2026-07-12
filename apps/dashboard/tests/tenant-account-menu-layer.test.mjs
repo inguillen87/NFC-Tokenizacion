@@ -11,7 +11,7 @@ const serviceWorkerSource = await readFile(new URL("../public/sw.js", import.met
 test("tenant account menu uses a native top-layer dialog above CRM/map layers", () => {
   assert.match(menuSource, /const ACCOUNT_MENU_PORTAL_ROOT_ID = "nexid-account-menu-root"/);
   assert.match(menuSource, /const ACCOUNT_MENU_Z_INDEX = 2147483647/);
-  assert.match(menuSource, /const ACCOUNT_MENU_VERSION = "drawer-v21-mobile-dialog"/);
+  assert.match(menuSource, /const ACCOUNT_MENU_VERSION = "drawer-v22-isolated-trigger"/);
   assert.match(menuSource, /function showAccountMenuDialog\(dialog\?: HTMLDialogElement \| null\)/);
   assert.match(menuSource, /dialog\.matches\(":modal"\)/);
   assert.match(menuSource, /dialog\.setAttribute\("data-account-menu-modal-state", "native-modal"\)/);
@@ -54,8 +54,8 @@ test("account drawer keeps one mobile scroll region, a visible logout and determ
   assert.match(menuSource, /shouldRestoreFocusRef\.current = true/);
   assert.match(menuSource, /window\.setTimeout\(\(\) => triggerRef\.current\?\.focus\(\), 0\)/);
   assert.match(menuSource, /data-account-menu-compact="true"/);
-  assert.match(menuSource, /onPointerDownCapture=\{\(\) => \{[\s\S]*prepareMenuPortalRoot\(\)/);
-  assert.match(menuSource, /onClick=\{toggleMenu\}/);
+  assert.match(menuSource, /onPointerDownCapture=\{\(event\) => \{[\s\S]*event\.stopPropagation\(\);[\s\S]*prepareMenuPortalRoot\(\)/);
+  assert.match(menuSource, /onClick=\{\(event\) => \{[\s\S]*event\.preventDefault\(\);[\s\S]*event\.stopPropagation\(\);[\s\S]*toggleMenu\(\)/);
   assert.doesNotMatch(menuSource, /lastActivationRef/);
   assert.doesNotMatch(menuSource, /onMouseDown=/);
   assert.doesNotMatch(menuSource, /onPointerUp=/);
@@ -95,6 +95,8 @@ test("global CSS keeps the account overlay visually above the dashboard", () => 
   assert.match(globalsSource, /html\.nexid-account-menu-open \.nexid-crm-shell,\s*body\.nexid-account-menu-open \.nexid-crm-shell,\s*\.nexid-crm-shell\[data-account-menu-suppressed="true"\]\s*\{[\s\S]*opacity:\s*0 !important/);
   assert.match(globalsSource, /html\.nexid-account-menu-open \.nexid-crm-shell \[id="live-tap-map"\]/);
   assert.match(globalsSource, /\.nexid-account-dialog:not\(\[open\]\)\s*\{[\s\S]*display:\s*none !important/);
+  assert.match(globalsSource, /\.nexid-crm-shell \.nexid-crm-account-menu\s*\{[^}]*isolation:\s*isolate;[^}]*pointer-events:\s*auto !important/s);
+  assert.match(globalsSource, /\.nexid-crm-shell \.nexid-crm-account-menu \[data-testid="tenant-account-menu-trigger"\]\s*\{[^}]*touch-action:\s*manipulation/s);
 });
 
 test("account drawer exposes expected SaaS account actions and secure logout", () => {

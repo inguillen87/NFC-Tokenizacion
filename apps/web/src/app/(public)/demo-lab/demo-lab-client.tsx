@@ -31,6 +31,16 @@ type Vertical =
   | "electronics"
   | "textile";
 type SimulationMode = "valid" | "tamper" | "replay";
+type DemoSimulationReceipt = {
+  mode: SimulationMode;
+  execution: "visual" | "persisted" | "failed";
+  source: string;
+  persisted: boolean;
+  chainWrite: false;
+  reference: string | null;
+  timestamp: string;
+  detail: string;
+};
 type DemoAction = "origin" | "tap" | "join" | "warranty" | "tokenize" | "report";
 type DemoModalView = "product" | "mobile" | "nft" | "claim" | null;
 type DemoScenarioTone = "origin" | "ok" | "risk" | "open";
@@ -149,7 +159,7 @@ function getScenarioStart(value?: string | null): { key: DemoTrustScenarioKey | 
   if (key === "iota-proof" || key === "sensor-evidence" || key === "dual-proof") return { key, beat: 1, vertical: key === "sensor-evidence" ? "logistics" : "textile" };
   if (key === "offline-verifier") return { key, beat: 1, vertical: "seeds" };
   if (key === "authorized-network") return { key, beat: 0, vertical: "electronics" };
-  if (key === "polygon-ownership") return { key, beat: 3, vertical: "luxury" };
+  if (key === "polygon-ownership") return { key, beat: 0, vertical: "luxury" };
   if (key === "nfc-424") return { key, beat: 1, vertical: "wine" };
   if (key === "qr-gs1") return { key, beat: 0, vertical: "pharma" };
   return { key: null, beat: 1, vertical: "wine" };
@@ -157,7 +167,6 @@ function getScenarioStart(value?: string | null): { key: DemoTrustScenarioKey | 
 
 function getTrustScenarioInitialStep(key: DemoTrustScenarioKey | null): DemoWizardStep {
   if (key === "iota-proof" || key === "sensor-evidence" || key === "dual-proof") return 2;
-  if (key === "polygon-ownership") return 3;
   if (key === "nfc-424" || key === "offline-verifier") return 1;
   return 0;
 }
@@ -544,8 +553,35 @@ type DemoLocation = (typeof LOCATIONS)[keyof typeof LOCATIONS];
 const STABLE_DEMO_TIME = "2026-05-01T00:00:00.000Z";
 const DEMO_PUBLIC_PROOF_EVENT_HASH = "sha256:0ea0478b694f01a5a76eda955a78c74701786b3d13ac241e6f6cfc3363938320";
 const DEMO_PUBLIC_PROOF_ANCHOR_ID = "33333333-3333-4333-8333-333333333333";
+const DEMO_PUBLIC_PROOF_MEMO = "nexID-proof-v1|case=agro-stewardship|vertical=agro-quimico|resource=agro_input_batch:AGR-STW-2026-0031|events=3|root=sha256:5387aaf504ca3b0a6cab83a3af0bfa158f36b04ab2a3558c94907337fc7c7369|privacy=hash-only";
+const DEMO_MOBILE_PACKS: Record<Vertical, string> = {
+  wine: "wine-secure",
+  seeds: "agro-secure",
+  pharma: "pharma-secure",
+  creamJar: "cosmetics-secure",
+  perfume: "cosmetics-secure",
+  creamTube: "cosmetics-secure",
+  bracelet: "events-basic",
+  ticket: "events-basic",
+  sneaker: "luxury-basic",
+  luxury: "luxury-basic",
+  bottle: "agro-secure",
+  logistics: "agro-secure",
+  electronics: "luxury-basic",
+  textile: "luxury-basic",
+};
+
+function isIotaProofScenario(scenario: DemoTrustScenarioKey | null) {
+  return scenario === "iota-proof" || scenario === "dual-proof" || scenario === "sensor-evidence";
+}
+
+function utf8ToHex(value: string) {
+  return Array.from(new TextEncoder().encode(value), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
 
 function buildDemoPublicProofHref(scenario: DemoTrustScenarioKey | null) {
+  if (scenario === "polygon-ownership") return "/proof/ownership";
+
   const safeScenario = scenario || "hub";
   const returnTo = scenario
     ? `/demo-lab?scenario=${encodeURIComponent(scenario)}`
@@ -556,7 +592,26 @@ function buildDemoPublicProofHref(scenario: DemoTrustScenarioKey | null) {
     scenario: safeScenario,
     return_to: returnTo,
   });
-  return `/proof/verify?${query.toString()}`;
+  if (isIotaProofScenario(scenario)) {
+    query.set("layer", "iota");
+    query.set("decode_input", utf8ToHex(DEMO_PUBLIC_PROOF_MEMO));
+    return `/proof/verify?${query.toString()}#proof-decoder`;
+  }
+  return `/proof/verify?${query.toString()}#proof-result`;
+}
+
+function buildDemoMobileHref(vertical: Vertical, beat: Beat, locale: AppLocale) {
+  const demoMode = beat === 2
+    ? "consumer_duplicate"
+    : beat === 3
+      ? "consumer_opened"
+      : "consumer_tap";
+  const query = new URLSearchParams({
+    pack: DEMO_MOBILE_PACKS[vertical],
+    demoMode,
+    locale,
+  });
+  return `/demo-lab/mobile/${encodeURIComponent(DEMO_TENANT_SLUG)}/demo-item-001?${query.toString()}`;
 }
 
 const copy: Record<AppLocale, {
@@ -925,6 +980,7 @@ export function DemoLabClient({
   const [simulating, setSimulating] = useState(false);
   const [fallbackLastSeen, setFallbackLastSeen] = useState(STABLE_DEMO_TIME);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [simulationReceipt, setSimulationReceipt] = useState<DemoSimulationReceipt | null>(null);
   const [modalView, setModalView] = useState<DemoModalView>(null);
 
   const [toasts, setToasts] = useState<Array<{
@@ -979,21 +1035,15 @@ export function DemoLabClient({
   useEffect(() => {
     if (initialVertical) {
       setVertical(normalizeDemoVertical(initialVertical));
+      setSimulationReceipt(null);
       return;
     }
     setVertical(scenarioStart.vertical);
     setBeat(scenarioStart.beat);
     setTrustScenario(scenarioStart.key);
     setWizardStep(getTrustScenarioInitialStep(scenarioStart.key));
+    setSimulationReceipt(null);
   }, [initialVertical, scenarioStart.beat, scenarioStart.key, scenarioStart.vertical]);
-
-  function selectTrustScenario(key: DemoTrustScenarioKey) {
-    const next = getScenarioStart(key);
-    setTrustScenario(key);
-    setVertical(next.vertical);
-    setBeat(next.beat);
-    setWizardStep(getTrustScenarioInitialStep(key));
-  }
 
   useEffect(() => {
     let alive = true;
@@ -1094,6 +1144,7 @@ export function DemoLabClient({
     const nextDestination = LOCATIONS[nextBeatCopy.location];
     const modeLabel = mode === "replay" ? "COPIA" : mode === "tamper" ? "APERTURA" : "TOQUE";
     setSimulating(true);
+    setSimulationReceipt(null);
     setBeat(nextBeat);
     setStatus(`${txt.controls.sendingScan} ${modeLabel.toLowerCase()} - ${nextDestination.city}...`);
     try {
@@ -1105,15 +1156,48 @@ export function DemoLabClient({
       const payload = await response.json().catch(() => ({ ok: false, reason: "invalid json" }));
       if (!response.ok || payload?.ok === false) throw new Error(String(payload?.reason || payload?.payload?.reason || "lectura fallida"));
       if (payload?.degraded) {
+        setSimulationReceipt({
+          mode,
+          execution: "visual",
+          source: String(payload.source || "visual-demo"),
+          persisted: false,
+          chainWrite: false,
+          reference: null,
+          timestamp: new Date().toISOString(),
+          detail: String(payload.reason || "La simulacion actualizo la experiencia visual sin persistir un scan."),
+        });
         setStatus(`${modeLabel}: ${String(payload.reason || txt.controls.adminKey)}`);
-        setActionMessage(mode === "replay" ? "Copia simulada: reclamo de dueño, puntos y tokenización quedan bloqueados." : mode === "tamper" ? "Sello abierto: se registra evento del producto y queda listo para postventa controlada." : "Toque válido: club, tienda y analítica quedan listos para activar.");
+        setActionMessage(mode === "replay" ? "Copia simulada solo en pantalla: reclamo de dueño, puntos y tokenización quedan bloqueados." : mode === "tamper" ? "Sello abierto solo en pantalla: no se persistió un evento y no hubo escritura on-chain." : "Toque válido solo en pantalla: no se persistió un scan y no hubo escritura on-chain.");
         return;
       }
+      const eventId = payload?.payload?.event_id;
+      const uidHex = payload?.uidHex;
+      setSimulationReceipt({
+        mode,
+        execution: "persisted",
+        source: String(payload?.payload?.source || payload?.source || "demo-scan-api"),
+        persisted: true,
+        chainWrite: false,
+        reference: eventId ? `event:${String(eventId)}` : uidHex ? `uid:${String(uidHex)}` : null,
+        timestamp: new Date().toISOString(),
+        detail: "El endpoint confirmo el scan en nexID. Esta accion no ejecuta mint, transferencia ni anchor on-chain.",
+      });
       setStatus(`${modeLabel}: ${txt.controls.registeredScan}`);
       setActionMessage(mode === "replay" ? "Copia simulada: reclamo de dueño, puntos y tokenización quedan bloqueados." : mode === "tamper" ? "Sello abierto: se registra evento del producto y queda listo para postventa controlada." : "Toque válido: club, tienda y analítica quedan listos para activar.");
       await refreshSummary();
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : txt.controls.failedScan);
+      const message = error instanceof Error ? error.message : txt.controls.failedScan;
+      setSimulationReceipt({
+        mode,
+        execution: "failed",
+        source: "browser/request-error",
+        persisted: false,
+        chainWrite: false,
+        reference: null,
+        timestamp: new Date().toISOString(),
+        detail: `La escena cambio localmente, pero el request fallo: ${message}`,
+      });
+      setStatus(message);
     } finally {
       setSimulating(false);
     }
@@ -1218,6 +1302,7 @@ export function DemoLabClient({
             liveEvents={liveEvents}
             latestEvent={latestEvent}
             simulating={simulating}
+            simulationReceipt={simulationReceipt}
             step={wizardStep}
             activeTrustScenario={trustScenario}
             initialTheme={initialTheme}
@@ -1225,10 +1310,7 @@ export function DemoLabClient({
             onVertical={setVertical}
             onBeat={setBeat}
             onStep={setWizardStep}
-            onTrustScenario={selectTrustScenario}
             onProduct={() => setModalView("product")}
-            onPassport={() => setModalView("mobile")}
-            onNft={() => setModalView("nft")}
             onClaim={() => setModalView("claim")}
             onValid={() => void simulate("valid")}
             onOpen={() => void simulate("tamper")}
@@ -1330,6 +1412,7 @@ function DemoLabStudioHero({
   liveEvents,
   latestEvent,
   simulating,
+  simulationReceipt,
   step,
   activeTrustScenario,
   initialTheme,
@@ -1337,10 +1420,7 @@ function DemoLabStudioHero({
   onVertical,
   onBeat,
   onStep,
-  onTrustScenario,
   onProduct,
-  onPassport,
-  onNft,
   onClaim,
   onValid,
   onOpen,
@@ -1359,6 +1439,7 @@ function DemoLabStudioHero({
   liveEvents: DemoEvent[];
   latestEvent?: DemoEvent;
   simulating: boolean;
+  simulationReceipt: DemoSimulationReceipt | null;
   step: DemoWizardStep;
   activeTrustScenario: DemoTrustScenarioKey | null;
   initialTheme: DemoLabTheme;
@@ -1366,23 +1447,24 @@ function DemoLabStudioHero({
   onVertical: (vertical: Vertical) => void;
   onBeat: (beat: Beat) => void;
   onStep: (step: DemoWizardStep) => void;
-  onTrustScenario: (scenario: DemoTrustScenarioKey) => void;
   onProduct: () => void;
-  onPassport: () => void;
-  onNft: () => void;
   onClaim: () => void;
   onValid: () => void;
   onOpen: () => void;
   onReplay: () => void;
 }) {
   const verticalList = DEMO_VERTICAL_ORDER;
-  const proofVerifierHref = useMemo(
+  const proofDestinationHref = useMemo(
     () => buildDemoPublicProofHref(activeTrustScenario),
     [activeTrustScenario],
   );
   const trustContext = useMemo(
-    () => getTrustScenarioContext(activeTrustScenario, locale, proofVerifierHref),
-    [activeTrustScenario, locale, proofVerifierHref],
+    () => getTrustScenarioContext(activeTrustScenario, locale, proofDestinationHref),
+    [activeTrustScenario, locale, proofDestinationHref],
+  );
+  const buyerMobileHref = useMemo(
+    () => buildDemoMobileHref(vertical, beat, locale),
+    [beat, locale, vertical],
   );
   const studioRef = useRef<HTMLElement>(null);
   const wizardNavRef = useRef<HTMLElement>(null);
@@ -1519,7 +1601,11 @@ function DemoLabStudioHero({
     : locale === "pt-BR"
     ? "Isto e o que comprador, auditor ou investidor precisa entender: confianca do produto vira controle operacional e acao comercial."
     : "Esto es lo que un comprador, auditor o inversor necesita entender: la confianza del producto se convierte en control operativo y accion comercial.";
-  const proofVerifierCta = locale === "en" ? "Open public Proof Verify" : locale === "pt-BR" ? "Abrir Proof Verify publico" : "Abrir Proof Verify publico";
+  const proofDestinationLabel = activeTrustScenario === "polygon-ownership"
+    ? locale === "en" ? "Ownership certificate" : locale === "pt-BR" ? "Certificado ownership" : "Certificado ownership"
+    : isIotaProofScenario(activeTrustScenario)
+      ? locale === "en" ? "IOTA receipt / decoder" : locale === "pt-BR" ? "Recibo / decoder IOTA" : "Recibo / decoder IOTA"
+      : locale === "en" ? "Public Proof Verify" : locale === "pt-BR" ? "Proof Verify publico" : "Proof Verify publico";
 
   const scheduleLabel = locale === "en" ? "Schedule demo →" : locale === "pt-BR" ? "Agendar demo →" : "Agendar demo →";
   const backHome = locale === "en" ? "← nexID" : "← nexID";
@@ -1588,10 +1674,13 @@ function DemoLabStudioHero({
           txt={txt}
           locale={locale}
           active={activeTrustScenario}
-          onSelect={onTrustScenario}
           variant="wizard"
         />
       </details>
+
+      {simulationReceipt ? (
+        <DemoSimulationReceiptCard receipt={simulationReceipt} locale={locale} />
+      ) : null}
 
       <section
         className="demo-lab-mobile-product-switcher"
@@ -1743,8 +1832,8 @@ function DemoLabStudioHero({
             <div className="demo-lab-wizard-map-proof-strip">
               <span>{locale === "en" ? "HASH-ONLY PUBLIC PROOF" : locale === "pt-BR" ? "PROVA PUBLICA HASH-ONLY" : "PRUEBA PUBLICA HASH-ONLY"}</span>
               <strong>{locale === "en" ? "Map for people. Hash receipt for auditors. Private data stays in nexID." : locale === "pt-BR" ? "Mapa para pessoas. Recibo hash para auditoria. Dados privados ficam no nexID." : "Mapa para personas. Recibo hash para auditoria. Datos privados quedan en nexID."}</strong>
-              <Link href={proofVerifierHref}>
-                Proof Verify
+              <Link href={proofDestinationHref}>
+                {proofDestinationLabel}
                 <ChevronRight className="h-3.5 w-3.5" />
               </Link>
             </div>
@@ -1768,8 +1857,8 @@ function DemoLabStudioHero({
                     </article>
                   ))}
                 </div>
-                <Link href={proofVerifierHref} className="demo-lab-wizard-proof-link">
-                  {proofVerifierCta}
+                <Link href={proofDestinationHref} className="demo-lab-wizard-proof-link">
+                  {proofDestinationLabel}
                   <ChevronRight className="h-4 w-4" />
                 </Link>
               </div>
@@ -1822,25 +1911,21 @@ function DemoLabStudioHero({
               <p>{locale === "en" ? "Open the buyer phone, the product file, ownership claim or public hash proof from the same verified event." : locale === "pt-BR" ? "Abra celular do comprador, ficha do produto, claim de ownership ou prova publica a partir do mesmo evento." : "Abrir celular del comprador, ficha del producto, reclamo de ownership o prueba publica desde el mismo evento verificado."}</p>
             </div>
             <div className="demo-lab-wizard-outcome-console__actions">
-              <button suppressHydrationWarning type="button" onClick={onPassport}>
+              <Link href={buyerMobileHref}>
                 <Smartphone className="h-4 w-4" />
                 <span>{locale === "en" ? "Buyer phone" : locale === "pt-BR" ? "Celular comprador" : "Celular comprador"}</span>
-              </button>
+              </Link>
               <button suppressHydrationWarning type="button" onClick={onProduct}>
                 <PackageCheck className="h-4 w-4" />
                 <span>{locale === "en" ? "Product file" : locale === "pt-BR" ? "Ficha produto" : "Ficha producto"}</span>
-              </button>
-              <button suppressHydrationWarning type="button" onClick={onNft}>
-                <BadgeCheck className="h-4 w-4" />
-                <span>Polygon NFT</span>
               </button>
               <button suppressHydrationWarning type="button" onClick={onClaim}>
                 <UserRound className="h-4 w-4" />
                 <span>{locale === "en" ? "Claim owner" : locale === "pt-BR" ? "Reclamar dono" : "Reclamar dueno"}</span>
               </button>
-              <Link href={proofVerifierHref}>
-                <ShieldCheck className="h-4 w-4" />
-                <span>Proof Verify</span>
+              <Link href={proofDestinationHref}>
+                {activeTrustScenario === "polygon-ownership" ? <BadgeCheck className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
+                <span>{proofDestinationLabel}</span>
               </Link>
             </div>
             <div className="demo-lab-wizard-outcome-console__checks">
@@ -1881,6 +1966,66 @@ function DemoLabStudioHero({
         </div>
       )}
 
+    </section>
+  );
+}
+
+function DemoSimulationReceiptCard({
+  receipt,
+  locale,
+}: {
+  receipt: DemoSimulationReceipt;
+  locale: AppLocale;
+}) {
+  const isEn = locale === "en";
+  const isBr = locale === "pt-BR";
+  const executionLabel = receipt.execution === "persisted"
+    ? isEn ? "Persisted scan" : isBr ? "Scan persistido" : "Scan persistido"
+    : receipt.execution === "failed"
+      ? isEn ? "Visual state / request failed" : isBr ? "Estado visual / request falhou" : "Estado visual / request fallido"
+      : isEn ? "Visual simulation" : isBr ? "Simulacao visual" : "Simulacion visual";
+  const modeLabel = receipt.mode === "replay"
+    ? isEn ? "Duplicate replay" : isBr ? "Replay duplicado" : "Replay duplicado"
+    : receipt.mode === "tamper"
+      ? isEn ? "Opened seal" : isBr ? "Lacre aberto" : "Sello abierto"
+      : isEn ? "Fresh valid tap" : isBr ? "Toque valido fresco" : "Tap valido fresco";
+
+  return (
+    <section
+      className="mx-3 mt-3 grid gap-3 rounded-2xl border border-cyan-300/25 bg-slate-950/80 p-4 text-slate-100 shadow-lg shadow-cyan-950/20 md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
+      aria-live="polite"
+      aria-label={isEn ? "Simulation execution receipt" : isBr ? "Recibo de execucao da simulacao" : "Recibo de ejecucion de la simulacion"}
+      data-demo-simulation-receipt={receipt.execution}
+      data-persisted={String(receipt.persisted)}
+      data-chain-write={String(receipt.chainWrite)}
+    >
+      <div className="min-w-0">
+        <span className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">
+          {isEn ? "Execution receipt" : isBr ? "Recibo de execucao" : "Recibo de ejecucion"}
+        </span>
+        <strong className="mt-1 block text-sm text-white">{modeLabel}: {executionLabel}</strong>
+        <p className="mt-1 text-xs leading-5 text-slate-300">{receipt.detail}</p>
+      </div>
+      <dl className="grid min-w-0 grid-cols-2 gap-2 text-[11px] sm:grid-cols-3 md:min-w-[24rem]">
+        <div className="min-w-0 rounded-xl border border-white/10 bg-white/5 p-2">
+          <dt className="font-black uppercase text-slate-400">{isEn ? "Source" : isBr ? "Fonte" : "Fuente"}</dt>
+          <dd className="mt-1 break-all font-mono text-cyan-100">{receipt.source}</dd>
+        </div>
+        <div className="min-w-0 rounded-xl border border-white/10 bg-white/5 p-2">
+          <dt className="font-black uppercase text-slate-400">{isEn ? "Persistence" : "Persistencia"}</dt>
+          <dd className="mt-1 font-bold text-white">{receipt.persisted ? (isEn ? "Yes, nexID" : "Si, nexID") : (isEn ? "No, visual only" : isBr ? "Nao, so visual" : "No, solo visual")}</dd>
+        </div>
+        <div className="col-span-2 min-w-0 rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-2 sm:col-span-1">
+          <dt className="font-black uppercase text-emerald-200">Blockchain</dt>
+          <dd className="mt-1 font-bold text-emerald-100">{isEn ? "No chain write" : isBr ? "Sem escrita on-chain" : "Sin escritura on-chain"}</dd>
+        </div>
+        <div className="col-span-2 min-w-0 text-slate-400 sm:col-span-3">
+          <dd className="flex flex-wrap gap-x-3 gap-y-1">
+            <span>{new Date(receipt.timestamp).toLocaleString(locale)}</span>
+            {receipt.reference ? <span className="break-all font-mono">{receipt.reference}</span> : null}
+          </dd>
+        </div>
+      </dl>
     </section>
   );
 }
@@ -1938,13 +2083,11 @@ function DemoTrustScenarioRail({
   txt,
   locale,
   active,
-  onSelect,
   variant = "default",
 }: {
   txt: DemoCopy;
   locale: AppLocale;
   active: DemoTrustScenarioKey | null;
-  onSelect: (scenario: DemoTrustScenarioKey) => void;
   variant?: "default" | "wizard";
 }) {
   const labels = locale === "en"
@@ -2003,11 +2146,6 @@ function DemoTrustScenarioRail({
             <Link
               key={item.key}
               href={href}
-              onClick={(event) => {
-                event.preventDefault();
-                window.history.replaceState(null, "", href);
-                onSelect(item.key);
-              }}
               className={`demo-lab-trust-scenario demo-lab-trust-scenario--${item.tone} ${active === item.key ? "is-active" : ""}`}
             >
               <Icon size={18} />
