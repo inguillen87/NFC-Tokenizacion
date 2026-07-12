@@ -972,7 +972,7 @@ export function SupplierOrderConsole({
             </div>
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <Field label="Tenant slug" value={tenantSlug} onChange={setTenantSlug} placeholder="bodega-balmec o syngenta-ar" />
+            <Field label="Tenant slug" value={tenantSlug} onChange={setTenantSlug} placeholder="bodega-balmec o agro-enterprise-ar" />
             <Field label="Customer slug" value={customerSlug} onChange={setCustomerSlug} placeholder="opcional, por defecto tenant" />
             <Field label="Order name" value={orderName} onChange={setOrderName} placeholder="SYN-AR-2026-001" />
             <Field label="Base batch ID" value={baseBatchId} onChange={setBaseBatchId} placeholder="SYN-AR-2026-001" />
