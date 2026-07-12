@@ -41,7 +41,7 @@ export default async function TokenizationPage() {
         />
       </section>
 
-      <TokenizationQueuePanel canWrite={canWrite} />
+      <TokenizationQueuePanel canWrite={canWrite} tenantSlug={session.tenantSlug || ""} />
 
       <section className="border-t border-white/10 pt-6">
         <div className="mb-4 flex items-start gap-3">
@@ -54,7 +54,7 @@ export default async function TokenizationPage() {
             <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-400">La imagen, etiqueta, modelo y galería pertenecen al tenant y al UID. No son la prueba criptográfica, pero hacen legible el certificado, la wallet y el marketplace.</p>
           </div>
         </div>
-        <ProductAssetBankPanel canWrite={canWrite} />
+        <ProductAssetBankPanel canWrite={canWrite} tenantSlug={session.tenantSlug || ""} />
       </section>
     </main>
   );

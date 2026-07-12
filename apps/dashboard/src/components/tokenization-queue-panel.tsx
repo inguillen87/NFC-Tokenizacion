@@ -127,7 +127,7 @@ function statusClass(tone: ReturnType<typeof statusDescriptor>["tone"]) {
   return "border-white/10 bg-white/[0.04] text-slate-200";
 }
 
-export function TokenizationQueuePanel({ canWrite = true }: { canWrite?: boolean }) {
+export function TokenizationQueuePanel({ canWrite = true, tenantSlug = "" }: { canWrite?: boolean; tenantSlug?: string }) {
   const [rows, setRows] = useState<TokenizationRow[]>([]);
   const [pending, setPending] = useState(false);
   const [activeRequestId, setActiveRequestId] = useState<string | null>(null);
@@ -140,6 +140,7 @@ export function TokenizationQueuePanel({ canWrite = true }: { canWrite?: boolean
     setPending(true);
     try {
       const query = new URLSearchParams({ limit: "120" });
+      if (tenantSlug) query.set("tenant", tenantSlug);
       if (statusFilter !== "all") query.set("status", statusFilter);
       const response = await fetch(`/api/admin/tokenization/requests?${query.toString()}`, { cache: "no-store" });
       const data = await parseJsonSafe(response);
@@ -154,7 +155,7 @@ export function TokenizationQueuePanel({ canWrite = true }: { canWrite?: boolean
     } finally {
       setPending(false);
     }
-  }, [statusFilter]);
+  }, [statusFilter, tenantSlug]);
 
   const loadReadiness = useCallback(async () => {
     try {
@@ -180,10 +181,10 @@ export function TokenizationQueuePanel({ canWrite = true }: { canWrite?: boolean
       const data = await parseJsonSafe(response);
       setLastResponse(JSON.stringify(data, null, 2));
       if (!response.ok || data?.ok === false) throw new Error(String(data?.reason || "No se pudo procesar la solicitud"));
+      await Promise.all([load(), loadReadiness()]);
       setMessage(data.status === "simulated"
         ? "Simulación completada sin crear transacción ni token."
         : "Recibo Polygon confirmado y asociado al producto.");
-      await Promise.all([load(), loadReadiness()]);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "No se pudo procesar la solicitud");
     } finally {

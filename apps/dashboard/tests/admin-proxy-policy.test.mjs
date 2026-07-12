@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-const { canReadonlyDemoAccess, shouldAllowDemoFallback, resolveAdminProxyPolicy } = await import("../src/lib/admin-proxy-policy.ts");
+const { canDemoSandboxAccess, canReadonlyDemoAccess, shouldAllowDemoFallback, resolveAdminProxyPolicy } = await import("../src/lib/admin-proxy-policy.ts");
 
 test("readonly_demo sin scope permitido en write endpoint -> false", () => {
   assert.equal(canReadonlyDemoAccess("POST", "tenants"), false);
@@ -16,6 +16,12 @@ test("readonly_demo con scope permitido en endpoints demo-safe GET -> true", () 
   assert.equal(canReadonlyDemoAccess("GET", "tags/04A1"), true);
   assert.equal(canReadonlyDemoAccess("GET", "supplier-orders"), true);
   assert.equal(canReadonlyDemoAccess("GET", "proof/anchors"), true);
+});
+
+test("demo sandbox solo permite la simulacion no persistente declarada", () => {
+  assert.equal(canDemoSandboxAccess("POST", "tokenization/requests"), true);
+  assert.equal(canDemoSandboxAccess("POST", "product-assets"), false);
+  assert.equal(canDemoSandboxAccess("POST", "proof/anchor"), false);
 });
 
 test("demo fallback explícitamente habilitado permanece permitido", () => {

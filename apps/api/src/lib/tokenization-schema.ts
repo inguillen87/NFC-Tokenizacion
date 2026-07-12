@@ -47,6 +47,22 @@ async function migrateTokenizationRequestsSchema() {
   await sql/*sql*/`ALTER TABLE tokenization_requests ADD COLUMN IF NOT EXISTS external_ref text`;
   await sql/*sql*/`ALTER TABLE tokenization_requests ADD COLUMN IF NOT EXISTS meta jsonb NOT NULL DEFAULT '{}'::jsonb`;
 
+  // Legacy demo rows used to be stored as anchored with generated hashes.
+  // Normalize them before any public or admin surface can present them as
+  // blockchain evidence.
+  await sql/*sql*/`
+    UPDATE tokenization_requests
+    SET status = 'simulated',
+        network = 'simulation',
+        tx_hash = NULL,
+        token_id = NULL,
+        anchor_hash = NULL,
+        external_ref = COALESCE(NULLIF(external_ref, ''), 'simulation:legacy-normalized'),
+        meta = COALESCE(meta, '{}'::jsonb) || '{"legacy_simulation_normalized":true}'::jsonb
+    WHERE status = 'anchored'
+      AND lower(COALESCE(meta->>'simulated', 'false')) = 'true'
+  `;
+
   await sql/*sql*/`
     CREATE INDEX IF NOT EXISTS idx_tokenization_requests_bid_uid
     ON tokenization_requests(bid, uid_hex, requested_at DESC)

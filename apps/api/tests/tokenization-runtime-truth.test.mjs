@@ -11,6 +11,7 @@ const consumerProductsUrl = new URL("../src/app/consumer/products/route.ts", imp
 const p2pListUrl = new URL("../src/app/marketplace/p2p/list/route.ts", import.meta.url);
 const p2pBuyUrl = new URL("../src/app/marketplace/p2p/buy/route.ts", import.meta.url);
 const claimUrl = new URL("../src/app/public/cta/claim-ownership/route.ts", import.meta.url);
+const schemaUrl = new URL("../src/lib/tokenization-schema.ts", import.meta.url);
 
 test("tokenization defaults fail closed and simulation is explicit", () => {
   assert.equal(resolveTokenizationRuntimeMode(""), "disabled");
@@ -31,6 +32,16 @@ test("simulation never persists a blockchain transaction or anchored status", as
   assert.match(simulationBranch, /'ledger_simulated'/);
   assert.doesNotMatch(simulationBranch, /status = 'anchored'/);
   assert.doesNotMatch(simulationBranch, /0x\$\{/);
+});
+
+test("legacy simulated anchors are normalized before they can be exposed", async () => {
+  const source = await readFile(schemaUrl, "utf8");
+
+  assert.match(source, /WHERE status = 'anchored'/);
+  assert.match(source, /meta->>'simulated'/);
+  assert.match(source, /SET status = 'simulated'/);
+  assert.match(source, /tx_hash = NULL/);
+  assert.match(source, /token_id = NULL/);
 });
 
 test("minting and transfer records are tenant scoped", async () => {
@@ -59,4 +70,3 @@ test("public ownership PIN has a durable lockout boundary", async () => {
   assert.match(source, /retry-after/);
   assert.match(source, /claim_pin_security_unavailable/);
 });
-

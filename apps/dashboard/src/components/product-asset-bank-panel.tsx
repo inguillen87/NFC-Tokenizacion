@@ -69,8 +69,8 @@ function splitGallery(value: string) {
     .filter(Boolean);
 }
 
-export function ProductAssetBankPanel({ canWrite = true }: { canWrite?: boolean }) {
-  const [form, setForm] = useState<AssetForm>(initialForm);
+export function ProductAssetBankPanel({ canWrite = true, tenantSlug = "" }: { canWrite?: boolean; tenantSlug?: string }) {
+  const [form, setForm] = useState<AssetForm>(() => ({ ...initialForm, tenantSlug: tenantSlug || initialForm.tenantSlug }));
   const [items, setItems] = useState<AssetItem[]>([]);
   const [pending, setPending] = useState(false);
   const [status, setStatus] = useState("Banco de assets listo: consulta por tenant/lote o carga fotos/modelos reales.");

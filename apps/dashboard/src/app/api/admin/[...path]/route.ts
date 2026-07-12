@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { productUrls } from "@product/config";
 import { aggregateTenantMetrics } from "@product/core";
 import { getDashboardSession } from "../../../../lib/session";
-import { canReadonlyDemoAccess, resolveAdminProxyPolicy } from "../../../../lib/admin-proxy-policy";
+import { canDemoSandboxAccess, resolveAdminProxyPolicy } from "../../../../lib/admin-proxy-policy";
 import { dashboardPermissionMatches, requiredPermissionForAdminResource } from "../../../../lib/permission-policy";
 import {
   aggregateDemoGeoPoints,
@@ -1006,10 +1006,10 @@ async function forward(req: Request, path: string[]) {
     );
   }
 
-  if (scopedRole === "readonly_demo" && !canReadonlyDemoAccess(req.method, normalizedPath)) {
+  if (scopedRole === "readonly_demo" && !canDemoSandboxAccess(req.method, normalizedPath)) {
     console.info("[admin_proxy_access_denied]", JSON.stringify({ reason: "readonly_demo_mutation_blocked", method: req.method, path: normalizedPath }));
     return NextResponse.json(
-      { ok: false, reason: "readonly_demo scope only allows GET access to demo-safe admin resources." },
+      { ok: false, reason: "readonly_demo scope only allows demo-safe reads and explicit non-persistent simulations." },
       { status: 403 },
     );
   }

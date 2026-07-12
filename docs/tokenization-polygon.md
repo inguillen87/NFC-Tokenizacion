@@ -41,7 +41,8 @@ Activar este flujo:
   - `npm run contracts:deploy:amoy`
   - `npm run tokenization:check`
 - La API ya soporta:
-  - modo demo/sandbox: `TOKENIZATION_MODE=simulated`
+  - modo cerrado por defecto: `TOKENIZATION_MODE=disabled` o `off`
+  - modo demo/sandbox explícito: `TOKENIZATION_MODE=simulated`, sin `tx_hash`, `token_id` ni explorer
   - modo real Polygon: `TOKENIZATION_MODE=polygon`
   - minter local backend: `TOKENIZATION_USE_LOCAL_MINTER=true`
   - executor externo futuro: `TOKENIZATION_EXECUTOR_URL` + `TOKENIZATION_EXECUTOR_SECRET`
@@ -445,7 +446,7 @@ tamper = estado correcto
 5. Confirmar que el passport muestra:
 
 ```txt
-SANDBOX_READY -> solo si esta en modo simulated
+SANDBOX_READY -> solo si esta en modo simulated; es una referencia interna y no blockchain
 POLYGON_PENDING -> si esta en cola
 POLYGON_MINTED / ANCHORED -> si ya hay tx real
 ```

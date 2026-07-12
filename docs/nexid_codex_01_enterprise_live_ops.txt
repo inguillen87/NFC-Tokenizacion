@@ -830,12 +830,15 @@ interface TokenizationService {
 }
 
 Modes:
-1. simulated
-   - always available in demo
+1. disabled
+   - default fail-closed mode
+   - does not create a simulation or a blockchain receipt
+2. simulated
+   - available only when explicitly enabled for demo
    - creates TOKENIZATION_SIMULATED event
-   - returns simulated token id / anchor id
+   - returns an internal simulation reference only; never tx hash, token id or explorer URL
    - visible “simulated” badge in admin only or demo-aware UI
-2. polygon
+3. polygon
    - only when env present
    - creates TOKENIZATION_ANCHORED event
    - stores tx hash/network/token id

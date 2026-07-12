@@ -54,3 +54,8 @@ export function canReadonlyDemoAccess(method: string, normalizedPath: string) {
   if (String(method || "").toUpperCase() !== "GET") return false;
   return READONLY_DEMO_ALLOWED.some((prefix) => normalizedPath === prefix || normalizedPath.startsWith(prefix));
 }
+
+export function canDemoSandboxAccess(method: string, normalizedPath: string) {
+  if (canReadonlyDemoAccess(method, normalizedPath)) return true;
+  return String(method || "").toUpperCase() === "POST" && normalizedPath === "tokenization/requests";
+}
