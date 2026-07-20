@@ -11,6 +11,8 @@ import {
 } from "../../../../lib/iota-evm-proof";
 import {
   publicProofIotaAnchorTx,
+  publicProofIotaContractAddress,
+  publicProofIotaContractVersion,
   publicProofIotaExplorerUrl,
   publicProofIotaReceiptTx,
 } from "../../../../lib/public-proof-runtime";
@@ -42,7 +44,7 @@ export async function GET() {
   const polygonExplorerBaseUrl = clean(process.env.POLYGON_EXPLORER_BASE_URL) || "https://amoy.polygonscan.com";
   const polygonApiBaseUrl = (clean(process.env.NEXT_PUBLIC_API_URL || process.env.API_BASE_URL) || "https://api.nexid.lat").replace(/\/$/, "");
   const iotaExplorerBaseUrl = clean(process.env.IOTA_EXPLORER_BASE_URL) || "https://explorer.evm.testnet.iota.cafe";
-  const iotaContract = clean(process.env.IOTA_EVM_ANCHOR_CONTRACT);
+  const iotaContract = publicProofIotaContractAddress();
   const [cases, polygonCertificateValue] = await Promise.all([
     Promise.all(PUBLIC_PROOF_DEMO_CASES.map(async (demoCase) => {
       const txHash = publicProofIotaAnchorTx(demoCase.id);
@@ -56,6 +58,7 @@ export async function GET() {
               resourceType: demoCase.resource_type,
               resourceId: demoCase.resource_id,
               eventCount: demoCase.events.length,
+              memoHash: demoCase.public_receipt.receipt_hash,
             })
           : Promise.resolve(null),
         receiptTxHash
@@ -118,7 +121,8 @@ export async function GET() {
         mode: process.env.IOTA_PROVIDER_MODE || process.env.IOTA_PROOF_MODE || "disabled",
         network: "iota_evm_testnet",
         rpc_configured: Boolean(process.env.IOTA_EVM_RPC_URL),
-        contract_configured: Boolean(process.env.IOTA_EVM_ANCHOR_CONTRACT),
+        contract_configured: Boolean(iotaContract),
+        contract_version: publicProofIotaContractVersion(),
         signer_configured: Boolean(process.env.IOTA_EVM_PRIVATE_KEY),
         deployer_address: clean(process.env.IOTA_EVM_DEPLOYER_ADDRESS) || null,
         contract_address: iotaContract || null,

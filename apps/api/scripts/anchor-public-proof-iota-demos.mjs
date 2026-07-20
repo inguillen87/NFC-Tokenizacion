@@ -6,7 +6,7 @@ import { buildPublicProofDemoCases } from "./public-proof-demo-fixtures.mjs";
 
 const envPath = resolve(process.cwd(), ".env.local");
 const IOTA_ABI = [
-  "function anchorRoot(bytes32 merkleRoot, string calldata tenantIdHash, string calldata resourceType, string calldata resourceId, uint256 eventCount) external",
+  "function anchorEvidence(bytes32 merkleRoot, bytes32 tenantIdHash, string calldata resourceType, string calldata resourceId, uint64 eventCount, bytes32 memoHash) external returns (bytes32 proofId)",
 ];
 
 function readEnvFile() {
@@ -53,9 +53,9 @@ async function main() {
   const env = readEnvFile();
   const rpcUrl = env.get("IOTA_EVM_RPC_URL") || "https://json-rpc.evm.testnet.iota.cafe";
   const explorerBaseUrl = env.get("IOTA_EXPLORER_BASE_URL") || "https://explorer.evm.testnet.iota.cafe";
-  const contractAddress = env.get("IOTA_EVM_ANCHOR_CONTRACT");
+  const contractAddress = process.env.IOTA_EVM_ANCHOR_CONTRACT_V2 || env.get("IOTA_EVM_ANCHOR_CONTRACT_V2");
   const privateKey = normalizePrivateKey(env.get("IOTA_EVM_PRIVATE_KEY"));
-  if (!contractAddress) throw new Error("missing_IOTA_EVM_ANCHOR_CONTRACT_run_contracts_deploy_iota_testnet_first");
+  if (!contractAddress) throw new Error("missing_IOTA_EVM_ANCHOR_CONTRACT_V2_run_contracts_deploy_iota_testnet_first");
 
   const provider = new JsonRpcProvider(rpcUrl, 1076, { batchMaxCount: 1 });
   const wallet = new Wallet(privateKey, provider);
@@ -67,12 +67,15 @@ async function main() {
   const updates = {
     IOTA_PROVIDER_MODE: "iota_evm_contract",
     IOTA_EVM_DEPLOYER_ADDRESS: wallet.address,
+    IOTA_EVM_ANCHOR_CONTRACT_V2: contractAddress,
+    IOTA_EVM_ANCHOR_CONTRACT_VERSION_V2: "evidence_anchor_v2",
     IOTA_EXPLORER_BASE_URL: explorerBaseUrl,
   };
   const receipts = [];
 
   for (const demoCase of buildPublicProofDemoCases()) {
-    const existing = env.get(`PUBLIC_PROOF_DEMO_IOTA_TX_HASH_${envKeySuffix(demoCase.id)}`);
+    const txEnvKey = `PUBLIC_PROOF_DEMO_IOTA_V2_TX_HASH_${envKeySuffix(demoCase.id)}`;
+    const existing = env.get(txEnvKey);
     if (existing) {
       receipts.push({
         id: demoCase.id,
@@ -82,19 +85,21 @@ async function main() {
       continue;
     }
 
-    const tx = await contract.anchorRoot(
+    const tx = await contract.anchorEvidence(
       `0x${stripShaPrefix(demoCase.merkle_root)}`,
-      tenantIdHash,
+      `0x${tenantIdHash}`,
       demoCase.resource_type,
       demoCase.resource_id,
       demoCase.events.length,
+      `0x${stripShaPrefix(demoCase.public_receipt.receipt_hash)}`,
     );
     const receipt = await tx.wait();
-    updates[`PUBLIC_PROOF_DEMO_IOTA_TX_HASH_${envKeySuffix(demoCase.id)}`] = tx.hash;
+    updates[txEnvKey] = tx.hash;
     receipts.push({
       id: demoCase.id,
       tx_hash: tx.hash,
       merkle_root: demoCase.merkle_root,
+      memo_hash: demoCase.public_receipt.receipt_hash,
       event_count: demoCase.events.length,
       block_number: receipt?.blockNumber || null,
       explorer_url: `${explorerBaseUrl.replace(/\/$/, "")}/tx/${tx.hash}`,

@@ -63,6 +63,7 @@ async function verifyPublicProof(eventHash: string, anchorId = "") {
               resourceType: demoCase.resource_type,
               resourceId: demoCase.resource_id,
               eventCount: demoCase.events.length,
+              memoHash: demoCase.public_receipt.receipt_hash,
             })
           : Promise.resolve(null),
         receiptTxHash

@@ -9,7 +9,8 @@ function envKeySuffix(value: string) {
 }
 
 export function publicProofIotaAnchorTx(caseId: string) {
-  return cleanEnv(process.env[`PUBLIC_PROOF_DEMO_IOTA_TX_HASH_${envKeySuffix(caseId)}`])
+  return cleanEnv(process.env[`PUBLIC_PROOF_DEMO_IOTA_V2_TX_HASH_${envKeySuffix(caseId)}`])
+    || cleanEnv(process.env[`PUBLIC_PROOF_DEMO_IOTA_TX_HASH_${envKeySuffix(caseId)}`])
     || cleanEnv(process.env.PUBLIC_PROOF_DEMO_IOTA_TX_HASH)
     || cleanEnv(process.env.IOTA_DEMO_TX_HASH);
 }
@@ -26,7 +27,13 @@ export function publicProofIotaExplorerUrl(txHash: string) {
 }
 
 export function publicProofIotaContractAddress() {
-  return cleanEnv(process.env.IOTA_EVM_ANCHOR_CONTRACT);
+  return cleanEnv(process.env.IOTA_EVM_ANCHOR_CONTRACT_V2)
+    || cleanEnv(process.env.IOTA_EVM_ANCHOR_CONTRACT);
+}
+
+export function publicProofIotaContractVersion() {
+  return cleanEnv(process.env.IOTA_EVM_ANCHOR_CONTRACT_VERSION_V2)
+    || (cleanEnv(process.env.IOTA_EVM_ANCHOR_CONTRACT_V2) ? "evidence_anchor_v2" : "legacy_v1");
 }
 
 export function publicProofIotaPublisherAddress() {

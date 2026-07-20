@@ -23,6 +23,7 @@
     "tokenization:check": "node scripts/check-tokenization-readiness.mjs",
     "amoy:watch-balance": "node scripts/watch-amoy-balance.mjs",
     "contracts:compile": "hardhat compile",
+    "contracts:test:iota": "hardhat run scripts/test-iota-anchor-v2.mjs",
     "contracts:deploy:amoy": "hardhat run scripts/deploy-nexid-amoy.mjs --network amoy",
     "contracts:deploy:iota-testnet": "hardhat run scripts/deploy-iota-anchor.mjs --network iotaevm-testnet",
     "testnet:wallets": "node scripts/setup-testnet-wallets.mjs",

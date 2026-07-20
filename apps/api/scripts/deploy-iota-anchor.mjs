@@ -8,7 +8,11 @@ async function main() {
   const connection = await network.create();
   const { ethers } = connection;
   const [deployer] = await ethers.getSigners();
-  const contract = await ethers.deployContract("LogisticsEventAnchor", [], deployer);
+  const contract = await ethers.deployContract(
+    "NexidEvidenceAnchor",
+    [deployer.address, deployer.address],
+    deployer,
+  );
   await contract.waitForDeployment();
   const address = await contract.getAddress();
   const deploymentTx = contract.deploymentTransaction();
@@ -18,14 +22,16 @@ async function main() {
   console.log(JSON.stringify({
     ok: true,
     network: connection.networkName,
-    contract: "LogisticsEventAnchor",
+    contract: "NexidEvidenceAnchor",
+    contract_version: "evidence_anchor_v2",
     address,
     deployer: deployer.address,
     tx_hash: txHash,
     explorer_url: txHash ? `${explorerBaseUrl.replace(/\/$/, "")}/tx/${txHash}` : null,
     next_env: {
       IOTA_PROVIDER_MODE: "iota_evm_contract",
-      IOTA_EVM_ANCHOR_CONTRACT: address,
+      IOTA_EVM_ANCHOR_CONTRACT_V2: address,
+      IOTA_EVM_ANCHOR_CONTRACT_VERSION_V2: "evidence_anchor_v2",
       IOTA_EXPLORER_BASE_URL: explorerBaseUrl,
     },
   }, null, 2));

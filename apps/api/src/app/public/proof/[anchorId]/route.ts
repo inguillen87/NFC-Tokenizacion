@@ -38,10 +38,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ anchorI
             txHash,
             merkleRoot: demoCase.merkle_root,
             tenantIdHash: iotaAnchorTenantHash("public-demo"),
-            resourceType: demoCase.resource_type,
-            resourceId: demoCase.resource_id,
-            eventCount: demoCase.events.length,
-          })
+              resourceType: demoCase.resource_type,
+              resourceId: demoCase.resource_id,
+              eventCount: demoCase.events.length,
+              memoHash: demoCase.public_receipt.receipt_hash,
+            })
         : Promise.resolve(null),
       receiptTxHash
         ? verifyIotaMemoPublication(receiptTxHash, demoCase.public_receipt.on_chain_memo)

@@ -21,6 +21,9 @@ const {
 const anchorInterface = new Interface([
   "function anchorRoot(bytes32 merkleRoot, string tenantIdHash, string resourceType, string resourceId, uint256 eventCount)",
 ]);
+const evidenceAnchorInterface = new Interface([
+  "function anchorEvidence(bytes32 merkleRoot, bytes32 tenantIdHash, string resourceType, string resourceId, uint64 eventCount, bytes32 memoHash) returns (bytes32 proofId)",
+]);
 
 test.after(() => {
   if (previousRpc === undefined) delete process.env.IOTA_EVM_RPC_URL;
@@ -56,11 +59,13 @@ test("IOTA anchor calldata is decoded and compared with the expected business pr
   ]);
   const decoded = decodeIotaAnchorInput(input);
   assert.deepEqual(decoded, {
+    contract_version: "legacy_v1",
     merkle_root: root,
     tenant_id_hash: "tenant-hash",
     resource_type: "pharma_batch",
     resource_id: "PHR-LOT-2026-0142",
     event_count: 3,
+    memo_hash: null,
   });
 
   const originalFetch = globalThis.fetch;
@@ -93,6 +98,63 @@ test("IOTA anchor calldata is decoded and compared with the expected business pr
     });
     assert.equal(wrongTenant.verified, false);
     assert.equal(wrongTenant.reason, "iota_anchor_call_mismatch");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("IOTA Evidence Anchor V2 calldata includes the memo hash and exposes a deterministic proof id", async () => {
+  const txHash = `0x${"33".repeat(32)}`;
+  const root = `sha256:${"ab".repeat(32)}`;
+  const tenantHash = "cd".repeat(32);
+  const memoHash = `sha256:${"ef".repeat(32)}`;
+  const input = evidenceAnchorInterface.encodeFunctionData("anchorEvidence", [
+    `0x${"ab".repeat(32)}`,
+    `0x${tenantHash}`,
+    "agro_input_batch",
+    "AGR-STW-2026-0031",
+    3,
+    `0x${"ef".repeat(32)}`,
+  ]);
+  const decoded = decodeIotaAnchorInput(input);
+  assert.deepEqual(decoded, {
+    contract_version: "evidence_anchor_v2",
+    merkle_root: root,
+    tenant_id_hash: tenantHash,
+    resource_type: "agro_input_batch",
+    resource_id: "AGR-STW-2026-0031",
+    event_count: 3,
+    memo_hash: memoHash,
+  });
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = mockRpc(txHash, input);
+  try {
+    const proof = await verifyIotaAnchorPublication({
+      txHash,
+      merkleRoot: root,
+      tenantIdHash: tenantHash,
+      resourceType: "agro_input_batch",
+      resourceId: "AGR-STW-2026-0031",
+      eventCount: 3,
+      memoHash,
+    });
+    assert.equal(proof.verified, true);
+    assert.equal(proof.contract_version, "evidence_anchor_v2");
+    assert.equal(proof.memo_hash_matches, true);
+    assert.match(proof.proof_id, /^0x[0-9a-f]{64}$/);
+
+    const wrongMemo = await verifyIotaAnchorPublication({
+      txHash,
+      merkleRoot: root,
+      tenantIdHash: tenantHash,
+      resourceType: "agro_input_batch",
+      resourceId: "AGR-STW-2026-0031",
+      eventCount: 3,
+      memoHash: `sha256:${"00".repeat(32)}`,
+    });
+    assert.equal(wrongMemo.verified, false);
+    assert.equal(wrongMemo.reason, "iota_anchor_call_mismatch");
   } finally {
     globalThis.fetch = originalFetch;
   }
