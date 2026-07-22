@@ -1,4 +1,4 @@
-import { Contract, JsonRpcProvider, isAddress } from "ethers";
+import { Contract, JsonRpcProvider, getAddress, isAddress, verifyMessage } from "ethers";
 
 const POLYGON_OWNERSHIP_ABI = [
   "function name() view returns (string)",
@@ -15,7 +15,7 @@ export const PUBLIC_POLYGON_OWNERSHIP_SLUG = "ownership-v2";
 export const PUBLIC_POLYGON_CHAIN_ID = 80002;
 export const PUBLIC_POLYGON_CONTRACT = "0x673CAE3D79f825bba9cfb2096184c295A5C9Eb4C";
 export const PUBLIC_POLYGON_OWNER = "0x644c5D77a34182Db01257bC4C469B01850bc6B2d";
-const POLYGON_CERTIFICATE_CACHE_KEY = "__nexid_public_polygon_certificate_v2__";
+const POLYGON_CERTIFICATE_CACHE_KEY = "__nexid_public_polygon_certificate_v3__";
 
 function clean(value: unknown) {
   return String(value || "").trim().replace(/^['"]|['"]$/g, "");
@@ -43,30 +43,52 @@ export function publicPolygonMetadataUrl() {
   return `${apiBaseUrl()}/public/polygon/metadata/${PUBLIC_POLYGON_OWNERSHIP_SLUG}`;
 }
 
+export function buildPublicPolygonWalletProofMessage(input: {
+  contractAddress: string;
+  tokenId: string;
+  ownerAddress: string;
+}) {
+  if (!isAddress(input.contractAddress) || !isAddress(input.ownerAddress) || !/^\d+$/.test(input.tokenId)) {
+    throw new Error("invalid_public_polygon_wallet_proof_input");
+  }
+
+  return [
+    "nexID Polygon Ownership - public wallet-control proof",
+    "",
+    `Network: Polygon Amoy (eip155:${PUBLIC_POLYGON_CHAIN_ID})`,
+    `Contract: ${getAddress(input.contractAddress)}`,
+    `Token ID: ${input.tokenId}`,
+    `Owner wallet: ${getAddress(input.ownerAddress)}`,
+    "Certificate: https://nexid.lat/proof/ownership",
+    "Purpose: Prove control of the wallet holding this public testnet token.",
+    "Authorization: Informational proof only; it cannot authorize a transfer, login or purchase.",
+  ].join("\n");
+}
+
 export function buildPublicPolygonMetadata() {
   return {
-    name: "nexID Testnet Issuance Record - Enterprise Pilot",
-    description: "Public Polygon Amoy issuance record held in nexID platform custody. It demonstrates a resolvable digital twin, mint transaction and privacy-safe product binding; it is not yet a buyer-controlled ownership claim.",
+    name: "nexID Testnet Ownership Certificate - Enterprise Pilot",
+    description: "Public Polygon Amoy certificate for a transferable nexID digital twin. The current owner and any buyer-control proof are resolved live from the chain and the public certificate; private customer and NFC data remain off-chain.",
     image: `${webBaseUrl()}/demo/wine-secure/real-malbec-bottle-pexels.jpg`,
     external_url: `${webBaseUrl()}/proof/ownership`,
     background_color: "06101F",
     attributes: [
-      { trait_type: "Certificate", value: "Testnet issuance record" },
+      { trait_type: "Certificate", value: "Testnet ownership certificate" },
       { trait_type: "Network", value: "Polygon Amoy" },
       { trait_type: "Environment", value: "Testnet" },
       { trait_type: "Physical verification", value: "nexID policy gate" },
       { trait_type: "Privacy", value: "Hash-only public binding" },
-      { trait_type: "Custody", value: "nexID platform pilot wallet" },
+      { trait_type: "Custody", value: "Resolved live from ownerOf" },
       { trait_type: "Transferability", value: "ERC-721" },
     ],
     properties: {
-      schema_version: "nexid-ownership-certificate-v2",
+      schema_version: "nexid-ownership-certificate-v3",
       environment: "testnet",
       chain_id: PUBLIC_POLYGON_CHAIN_ID,
       contract: clean(process.env.POLYGON_CONTRACT_ADDRESS) || PUBLIC_POLYGON_CONTRACT,
-      public_claim: "A testnet NXDT token was issued to a platform-managed pilot wallet with public HTTPS metadata.",
-      does_not_prove_alone: "This record does not prove buyer wallet control or authenticate the physical object by itself. Buyer ownership requires a signed wallet challenge and an on-chain transfer after the nexID NFC/QR policy gate.",
-      public_fields: ["certificate type", "network", "contract", "token owner wallet", "metadata", "mint transaction"],
+      public_claim: "A testnet NXDT token was issued with public HTTPS metadata. Current ownership is determined by ownerOf; buyer control is accepted only when transfer receipt and EIP-191 signer both match that owner.",
+      does_not_prove_alone: "The NFT does not authenticate the physical object by itself. nexID must validate the NFC/QR policy gate before an ownership action, while buyer identity and commercial records remain private.",
+      public_fields: ["certificate type", "network", "contract", "token owner wallet", "metadata", "mint transaction", "ownership transfer", "wallet-control signature"],
       private_fields: ["raw NFC UID or secret", "buyer identity", "invoice", "warranty documents", "CRM segment"],
     },
   };
@@ -225,11 +247,15 @@ async function readPublicPolygonOwnershipCertificateUncached() {
   const contractAddress = clean(process.env.POLYGON_CONTRACT_ADDRESS) || PUBLIC_POLYGON_CONTRACT;
   const tokenId = clean(process.env.PUBLIC_PROOF_DEMO_POLYGON_TOKEN_ID) || "19";
   const mintTxHash = clean(process.env.PUBLIC_PROOF_DEMO_POLYGON_TX_HASH);
+  const buyerAddress = clean(process.env.PUBLIC_PROOF_DEMO_POLYGON_BUYER_ADDRESS);
+  const walletSignature = clean(process.env.PUBLIC_PROOF_DEMO_POLYGON_WALLET_SIGNATURE);
+  const claimTxHash = clean(process.env.PUBLIC_PROOF_DEMO_POLYGON_CLAIM_TX_HASH);
+  const buyerProofConfigured = Boolean(buyerAddress || walletSignature || claimTxHash);
   const expectedMetadataUrl = publicPolygonMetadataUrl();
   const explorer = explorerBaseUrl();
 
   const base = {
-    schema_version: "nexid-public-ownership-v2",
+    schema_version: "nexid-public-ownership-v3",
     certificate_id: `NX-POLYGON-AMOY-${tokenId}`,
     environment: "testnet" as const,
     network: "polygon-amoy",
@@ -237,6 +263,7 @@ async function readPublicPolygonOwnershipCertificateUncached() {
     contract_address: contractAddress,
     token_id: tokenId,
     mint_tx_hash: mintTxHash || null,
+    claim_tx_hash: claimTxHash || null,
     expected_metadata_url: expectedMetadataUrl,
   };
 
@@ -253,7 +280,7 @@ async function readPublicPolygonOwnershipCertificateUncached() {
   const contract = new Contract(contractAddress, POLYGON_OWNERSHIP_ABI, provider);
 
   try {
-    const [network, code, latestBlock, name, symbol, owner, tokenUri, chipUidHash, assetRef, receipt, sourceVerification] = await withTimeout(Promise.all([
+    const [network, code, latestBlock, name, symbol, owner, tokenUri, chipUidHash, assetRef, mintReceipt, claimReceipt, sourceVerification] = await withTimeout(Promise.all([
       provider.getNetwork(),
       provider.getCode(contractAddress),
       provider.getBlockNumber(),
@@ -264,10 +291,11 @@ async function readPublicPolygonOwnershipCertificateUncached() {
       contract.chipUidHashByTokenId(tokenId),
       contract.assetRefByTokenId(tokenId),
       mintTxHash ? provider.getTransactionReceipt(mintTxHash) : Promise.resolve(null),
+      claimTxHash ? provider.getTransactionReceipt(claimTxHash) : Promise.resolve(null),
       readSourcifyVerification(contractAddress),
     ]));
 
-    const parsedLogs = (receipt?.logs || []).flatMap((log) => {
+    const parseLogs = (logs: readonly { topics: readonly string[]; data: string }[]) => logs.flatMap((log) => {
       try {
         const parsed = contract.interface.parseLog({ topics: [...log.topics], data: log.data });
         return parsed ? [parsed] : [];
@@ -275,8 +303,11 @@ async function readPublicPolygonOwnershipCertificateUncached() {
         return [];
       }
     });
-    const transferEvent = parsedLogs.find((event) => event.name === "Transfer" && String(event.args.tokenId) === tokenId);
-    const mintedEvent = parsedLogs.find((event) => event.name === "DigitalTwinMinted" && String(event.args.tokenId) === tokenId);
+    const mintLogs = parseLogs(mintReceipt?.logs || []);
+    const claimLogs = parseLogs(claimReceipt?.logs || []);
+    const mintTransferEvent = mintLogs.find((event) => event.name === "Transfer" && String(event.args.tokenId) === tokenId);
+    const mintedEvent = mintLogs.find((event) => event.name === "DigitalTwinMinted" && String(event.args.tokenId) === tokenId);
+    const claimTransferEvent = claimLogs.find((event) => event.name === "Transfer" && String(event.args.tokenId) === tokenId);
     const metadata = await readMetadataDocument(String(tokenUri), expectedMetadataUrl);
     const sourceVerified = sourceVerification.ok === true;
     const chainMatches = Number(network.chainId) === PUBLIC_POLYGON_CHAIN_ID;
@@ -284,11 +315,11 @@ async function readPublicPolygonOwnershipCertificateUncached() {
     const ownerResolved = isAddress(String(owner));
     const metadataHttps = String(tokenUri).startsWith("https://");
     const metadataMatches = String(tokenUri) === expectedMetadataUrl;
-    const mintConfirmed = Boolean(receipt && receipt.status === 1 && receipt.to?.toLowerCase() === contractAddress.toLowerCase());
+    const mintConfirmed = Boolean(mintReceipt && mintReceipt.status === 1 && mintReceipt.to?.toLowerCase() === contractAddress.toLowerCase());
     const mintEventsMatch = Boolean(
-      transferEvent
+      mintTransferEvent
       && mintedEvent
-      && String(transferEvent.args.to).toLowerCase() === String(mintedEvent.args.to).toLowerCase()
+      && String(mintTransferEvent.args.to).toLowerCase() === String(mintedEvent.args.to).toLowerCase()
       && String(mintedEvent.args.chipUidHash) === String(chipUidHash)
       && String(mintedEvent.args.assetRef) === String(assetRef)
       && String(mintedEvent.args.tokenUri) === String(tokenUri),
@@ -299,9 +330,48 @@ async function readPublicPolygonOwnershipCertificateUncached() {
       && new Set([`${webBaseUrl()}/proof/ownership`, "https://nexid.lat/proof/ownership"]).has(metadata.external_url || "")
       && clean(metadata.document?.name),
     );
-    const confirmations = receipt ? Math.max(0, latestBlock - receipt.blockNumber + 1) : 0;
-    const essentialChecksPass = chainMatches && contractDeployed && ownerResolved && metadataHttps && metadataMatches && metadataDocumentMatches && mintConfirmed && mintEventsMatch;
+    const mintConfirmations = mintReceipt ? Math.max(0, latestBlock - mintReceipt.blockNumber + 1) : 0;
+    const claimConfirmations = claimReceipt ? Math.max(0, latestBlock - claimReceipt.blockNumber + 1) : 0;
     const platformCustody = String(owner).toLowerCase() === PUBLIC_POLYGON_OWNER.toLowerCase();
+    const buyerAddressValid = isAddress(buyerAddress);
+    const currentOwnerMatchesBuyer = buyerAddressValid && String(owner).toLowerCase() === buyerAddress.toLowerCase();
+    const walletProofMessage = buyerAddressValid
+      ? buildPublicPolygonWalletProofMessage({ contractAddress, tokenId, ownerAddress: buyerAddress })
+      : null;
+    let recoveredAddress: string | null = null;
+    if (walletProofMessage && walletSignature) {
+      try {
+        recoveredAddress = getAddress(verifyMessage(walletProofMessage, walletSignature));
+      } catch {
+        recoveredAddress = null;
+      }
+    }
+    const walletSignatureMatches = Boolean(
+      recoveredAddress
+      && currentOwnerMatchesBuyer
+      && recoveredAddress.toLowerCase() === String(owner).toLowerCase(),
+    );
+    const claimConfirmed = Boolean(
+      claimReceipt
+      && claimReceipt.status === 1
+      && claimReceipt.to?.toLowerCase() === contractAddress.toLowerCase(),
+    );
+    const claimEventsMatch = Boolean(
+      claimTransferEvent
+      && String(claimTransferEvent.args.from).toLowerCase() === PUBLIC_POLYGON_OWNER.toLowerCase()
+      && String(claimTransferEvent.args.to).toLowerCase() === String(owner).toLowerCase()
+      && currentOwnerMatchesBuyer,
+    );
+    const buyerControlVerified = claimConfirmed && claimEventsMatch && walletSignatureMatches;
+    const essentialChecksPass = chainMatches
+      && contractDeployed
+      && ownerResolved
+      && metadataHttps
+      && metadataMatches
+      && metadataDocumentMatches
+      && mintConfirmed
+      && mintEventsMatch
+      && (!buyerProofConfigured || buyerControlVerified);
 
     return {
       ...base,
@@ -309,17 +379,21 @@ async function readPublicPolygonOwnershipCertificateUncached() {
       verification_state: essentialChecksPass ? "confirmed" as const : "partial" as const,
       generated_at: new Date().toISOString(),
       product: {
-        name: "Producto premium - issuance pilot",
+        name: "Producto premium - ownership pilot",
         category: "Wine & spirits",
-        certificate_type: "Testnet issuance record",
+        certificate_type: "Testnet ownership certificate",
         asset_ref: String(assetRef),
         physical_binding: "nexID hash-only product binding",
       },
       owner: {
         address: String(owner),
-        label: platformCustody ? "nexID platform custody wallet" : "External current holder",
-        custody: platformCustody ? "platform_managed" : "external_wallet",
-        wallet_control_verified: false,
+        label: buyerControlVerified
+          ? "Buyer-controlled demo wallet"
+          : platformCustody
+            ? "nexID platform custody wallet"
+            : "External current holder",
+        custody: buyerControlVerified ? "buyer_wallet" : platformCustody ? "platform_managed" : "external_wallet",
+        wallet_control_verified: buyerControlVerified,
         explorer_url: `${explorer}/address/${owner}`,
       },
       token: {
@@ -331,11 +405,33 @@ async function readPublicPolygonOwnershipCertificateUncached() {
       },
       mint: {
         tx_hash: mintTxHash || null,
-        block_number: receipt?.blockNumber || null,
-        confirmations,
+        block_number: mintReceipt?.blockNumber || null,
+        confirmations: mintConfirmations,
         status: mintConfirmed ? "confirmed" : mintTxHash ? "not_confirmed" : "not_configured",
         recipient: mintedEvent ? String(mintedEvent.args.to) : null,
         events_match: mintEventsMatch,
+      },
+      claim: {
+        state: buyerControlVerified
+          ? "buyer_controlled"
+          : buyerProofConfigured
+            ? "verification_pending"
+            : "platform_custody_pilot",
+        tx_hash: claimTxHash || null,
+        block_number: claimReceipt?.blockNumber || null,
+        confirmations: claimConfirmations,
+        status: claimConfirmed ? "confirmed" : claimTxHash ? "not_confirmed" : "not_configured",
+        events_match: claimEventsMatch,
+        from: claimTransferEvent ? String(claimTransferEvent.args.from) : null,
+        to: claimTransferEvent ? String(claimTransferEvent.args.to) : null,
+      },
+      wallet_control: {
+        method: "EIP-191",
+        purpose: "Public, informational proof that cannot authorize a transfer, login or purchase.",
+        message: walletProofMessage,
+        signature: walletSignature || null,
+        recovered_address: recoveredAddress,
+        verified: walletSignatureMatches,
       },
       metadata: {
         status: metadata.status,
@@ -351,9 +447,27 @@ async function readPublicPolygonOwnershipCertificateUncached() {
       checks: [
         { id: "network", label: "Red Polygon Amoy", ok: chainMatches, detail: chainMatches ? "Chain ID 80002" : `Chain ID ${network.chainId}` },
         { id: "contract", label: "Contrato desplegado", ok: contractDeployed, detail: contractAddress },
-        { id: "mint", label: "Mint confirmado", ok: mintConfirmed, detail: receipt ? `Bloque ${receipt.blockNumber}` : "Falta recibo configurado" },
+        { id: "mint", label: "Mint confirmado", ok: mintConfirmed, detail: mintReceipt ? `Bloque ${mintReceipt.blockNumber}` : "Falta recibo configurado" },
         { id: "mint_events", label: "Eventos del mint coinciden", ok: mintEventsMatch, detail: mintEventsMatch ? "Transfer + DigitalTwinMinted" : "No coinciden token, recipient, hash, assetRef o URI" },
         { id: "owner", label: "Owner resuelto on-chain", ok: ownerResolved, detail: String(owner) },
+        ...(buyerProofConfigured ? [
+          {
+            id: "claim_transfer",
+            label: "Transferencia de ownership confirmada",
+            ok: claimConfirmed && claimEventsMatch,
+            detail: claimConfirmed && claimEventsMatch
+              ? `Transfer ${PUBLIC_POLYGON_OWNER} -> ${String(owner)}`
+              : "El recibo debe transferir este token desde la custodia piloto a la wallet actual",
+          },
+          {
+            id: "wallet_control",
+            label: "Control de wallet demostrado",
+            ok: walletSignatureMatches,
+            detail: walletSignatureMatches
+              ? `Firma EIP-191 recupera ${recoveredAddress}`
+              : "La firma publica no recupera la wallet que ownerOf devuelve actualmente",
+          },
+        ] : []),
         { id: "metadata", label: "Metadata HTTPS coincide", ok: metadataMatches, detail: String(tokenUri) },
         { id: "metadata_document", label: "JSON, imagen y enlace resuelven", ok: metadataDocumentMatches, detail: metadataDocumentMatches ? "Documento e imagen HTTP 200" : metadata.reason || "Metadata incompleta" },
         {
@@ -372,6 +486,7 @@ async function readPublicPolygonOwnershipCertificateUncached() {
         token_explorer: `${explorer}/token/${contractAddress}?a=${tokenId}`,
         owner_explorer: `${explorer}/address/${owner}`,
         transaction_explorer: mintTxHash ? `${explorer}/tx/${mintTxHash}` : null,
+        claim_transaction_explorer: claimTxHash ? `${explorer}/tx/${claimTxHash}` : null,
         source_verification: sourceVerified ? sourceVerification.public_url : null,
       },
       proof_boundary: {
@@ -379,16 +494,22 @@ async function readPublicPolygonOwnershipCertificateUncached() {
           "The NXDT contract exists on Polygon Amoy.",
           "The configured token, recipient, hash binding, asset reference and URI were emitted by the configured mint transaction.",
           "The current holder wallet, public metadata document and product hash binding can be read independently.",
+          ...(buyerControlVerified ? [
+            "The configured ownership transaction transferred this token from the nexID pilot wallet to the current holder.",
+            "An EIP-191 signature independently recovers the same wallet returned by ownerOf.",
+          ] : []),
         ],
         does_not_prove_alone: [
           "That the physical object is authentic without the prior nexID NFC/QR verification.",
-          "Buyer wallet control or a completed buyer ownership transfer; the current pilot token remains in platform custody.",
+          ...(buyerControlVerified
+            ? ["That the demo wallet represents a real customer or legal title outside this explicit testnet pilot."]
+            : ["Buyer wallet control or a completed buyer ownership transfer; those require a matching transfer receipt and wallet signature."]),
           "The buyer identity, invoice, warranty eligibility or private CRM record.",
           "Mainnet production readiness; this certificate is explicitly a testnet pilot.",
         ],
       },
       privacy: {
-        public: ["contract", "token ID", "owner wallet", "mint transaction", "hash-only binding", "metadata"],
+        public: ["contract", "token ID", "owner wallet", "mint transaction", "ownership transfer", "wallet-control signature", "hash-only binding", "metadata"],
         private: ["raw NFC UID and secret", "buyer identity", "invoice", "warranty documents", "CRM segment"],
       },
     };

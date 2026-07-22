@@ -51,7 +51,25 @@ type OwnershipCertificate = {
   };
   owner?: { address?: string; label?: string; custody?: string; wallet_control_verified?: boolean; explorer_url?: string };
   token?: { name?: string; symbol?: string; token_uri?: string; chip_uid_hash?: string; asset_ref?: string };
-  mint?: { tx_hash?: string | null; block_number?: number | null; confirmations?: number; status?: string };
+  mint?: { tx_hash?: string | null; block_number?: number | null; confirmations?: number; status?: string; events_match?: boolean };
+  claim?: {
+    state?: "buyer_controlled" | "verification_pending" | "platform_custody_pilot";
+    tx_hash?: string | null;
+    block_number?: number | null;
+    confirmations?: number;
+    status?: string;
+    events_match?: boolean;
+    from?: string | null;
+    to?: string | null;
+  };
+  wallet_control?: {
+    method?: string;
+    purpose?: string;
+    message?: string | null;
+    signature?: string | null;
+    recovered_address?: string | null;
+    verified?: boolean;
+  };
   checks?: CertificateCheck[];
   links?: {
     metadata?: string;
@@ -59,6 +77,7 @@ type OwnershipCertificate = {
     token_explorer?: string;
     owner_explorer?: string;
     transaction_explorer?: string | null;
+    claim_transaction_explorer?: string | null;
     source_verification?: string | null;
   };
   proof_boundary?: { proves?: string[]; does_not_prove_alone?: string[] };
@@ -102,7 +121,15 @@ function short(value?: string | null, left = 12, right = 10) {
   return `${text.slice(0, left)}...${text.slice(-right)}`;
 }
 
-function statusCopy(state?: OwnershipCertificate["verification_state"]) {
+function statusCopy(state: OwnershipCertificate["verification_state"], buyerControlled: boolean) {
+  if (state === "confirmed" && buyerControlled) {
+    return {
+      label: "Ownership testnet verificado",
+      title: "La wallet demo controla este token.",
+      body: "Polygon confirma la transferencia desde nexID, ownerOf devuelve la wallet receptora y una firma EIP-191 recupera esa misma direccion. Es una demostracion buyer-controlled real en Amoy, no una identidad comercial ni un titulo legal.",
+      className: "border-emerald-300/40 bg-emerald-500/12 text-emerald-950 dark:text-emerald-100",
+    };
+  }
   if (state === "confirmed") {
     return {
       label: "Emision testnet confirmada",
@@ -143,7 +170,12 @@ function ExternalButton({ href, children, tone = "cyan" }: { href?: string | nul
 
 export default async function PolygonOwnershipPage() {
   const certificate = await loadCertificate();
-  const status = statusCopy(certificate.verification_state);
+  const buyerControlled = certificate.verification_state === "confirmed"
+    && certificate.owner?.wallet_control_verified === true
+    && certificate.claim?.state === "buyer_controlled"
+    && certificate.claim?.events_match === true
+    && certificate.wallet_control?.verified === true;
+  const status = statusCopy(certificate.verification_state, buyerControlled);
   const checks = certificate.checks || [];
   const passed = checks.filter((check) => check.ok).length;
   const sourceCheck = checks.find((check) => check.id === "source");
@@ -180,11 +212,16 @@ export default async function PolygonOwnershipPage() {
               {status.label}
             </div>
             <p className="mt-6 text-xs font-black uppercase text-violet-700 dark:text-violet-300">{certificate.certificate_id || "NX-POLYGON-AMOY"}</p>
-            <h1 className="mt-3 max-w-3xl text-4xl font-black leading-[1.04] sm:text-6xl">Una emision testnet que cualquiera puede comprobar.</h1>
+            <h1 className="mt-3 max-w-3xl text-4xl font-black leading-[1.04] sm:text-6xl">
+              {buyerControlled ? "Propiedad testnet que cualquiera puede comprobar." : "Una emision testnet que cualquiera puede comprobar."}
+            </h1>
             <p className="mt-5 max-w-2xl text-base leading-7 text-slate-600 dark:text-slate-300">
-              nexID demuestra mint, holder y metadata sin publicar identidad, factura ni secretos NFC. Este fixture esta en custodia de la plataforma; buyer ownership exige firma de wallet y transferencia posterior.
+              {buyerControlled
+                ? "nexID demuestra emision, transferencia, holder actual y control de wallet sin publicar identidad, factura ni secretos NFC. La wallet es un fixture comprador aislado y financiado solo para Polygon Amoy."
+                : "nexID demuestra mint, holder y metadata sin publicar identidad, factura ni secretos NFC. Este fixture esta en custodia de la plataforma; buyer ownership exige firma de wallet y transferencia posterior."}
             </p>
             <div className="mt-7 flex flex-col gap-2 sm:flex-row">
+              {buyerControlled ? <ExternalButton href={certificate.links?.claim_transaction_explorer}>Ver transferencia real</ExternalButton> : null}
               <ExternalButton href={certificate.links?.transaction_explorer}>Ver mint real</ExternalButton>
               <ExternalButton href={certificate.links?.token_explorer} tone="violet">Ver token</ExternalButton>
               <Link href="/proof/verify?layer=iota#iota-proof" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-4 text-xs font-black uppercase text-slate-800 dark:border-white/15 dark:bg-white/[0.04] dark:text-slate-100">
@@ -198,7 +235,7 @@ export default async function PolygonOwnershipPage() {
             <div className={`${styles.mediaOverlay} absolute inset-x-0 bottom-0 p-5 backdrop-blur-md`}>
               <div className="flex items-end justify-between gap-4">
                 <div>
-                  <p className="text-[10px] font-black uppercase text-cyan-300">Fixture de emision</p>
+                  <p className="text-[10px] font-black uppercase text-cyan-300">{buyerControlled ? "Fixture buyer-controlled" : "Fixture de emision"}</p>
                   <strong className="mt-1 block text-xl" style={{ color: "#ffffff" }}>{certificate.product?.name || "Producto premium"}</strong>
                   <span className="mt-1 block text-xs" style={{ color: "#cbd5e1" }}>Token #{certificate.token_id || "-"} - {certificate.token?.symbol || "NXDT"}</span>
                 </div>
@@ -223,8 +260,8 @@ export default async function PolygonOwnershipPage() {
                 <span className="text-[10px] font-black uppercase">controles clave</span>
               </div>
               <div className="rounded-lg border border-current/20 bg-white/35 px-4 py-3 dark:bg-black/10">
-                <strong className="block text-2xl">{certificate.mint?.confirmations || 0}</strong>
-                <span className="text-[10px] font-black uppercase">confirmaciones</span>
+                <strong className="block text-2xl">{buyerControlled ? certificate.claim?.confirmations || 0 : certificate.mint?.confirmations || 0}</strong>
+                <span className="text-[10px] font-black uppercase">{buyerControlled ? "confirm. transfer" : "confirmaciones"}</span>
               </div>
             </div>
           </div>
@@ -238,7 +275,7 @@ export default async function PolygonOwnershipPage() {
           <div className="mt-6 grid gap-4 md:grid-cols-3">
             {[
               { Icon: ShieldCheck, label: "nexID", title: "Aporta el contexto del producto", body: "En produccion, un tap fresco, el chip y la politica tenant deben aprobarse antes de habilitar buyer ownership.", tone: "text-cyan-700 dark:text-cyan-300" },
-              { Icon: Network, label: "Polygon", title: "Registra emision y holder", body: "El contrato NXDT muestra mint, token ID, metadata y holder actual. En este piloto el holder es la wallet de custodia nexID.", tone: "text-violet-700 dark:text-violet-300" },
+              { Icon: Network, label: "Polygon", title: buyerControlled ? "Registra transferencia y holder" : "Registra emision y holder", body: buyerControlled ? "El contrato NXDT muestra mint, transferencia y owner actual. El recibo mueve el token desde nexID a una wallet demo compradora." : "El contrato NXDT muestra mint, token ID, metadata y holder actual. En este piloto el holder es la wallet de custodia nexID.", tone: "text-violet-700 dark:text-violet-300" },
               { Icon: LockKeyhole, label: "Privacidad", title: "No publica al comprador", body: "Una wallet es visible; nombre, email, factura, garantia y secretos NFC permanecen dentro de nexID.", tone: "text-emerald-700 dark:text-emerald-300" },
             ].map(({ Icon, label, title, body, tone }) => (
               <article key={label} className="rounded-lg border border-slate-200 bg-slate-50 p-5 dark:border-white/10 dark:bg-white/[0.035]">
@@ -292,8 +329,13 @@ export default async function PolygonOwnershipPage() {
               ["Contrato", short(certificate.contract_address)],
               ["Token", `#${certificate.token_id || "-"} - ${certificate.token?.name || "Nexid Digital Twin"}`],
               ["Owner", short(certificate.owner?.address)],
-              ["Custodia", certificate.owner?.custody === "platform_managed" ? "Wallet administrada por nexID" : "Wallet externa"],
+              ["Custodia", buyerControlled ? "Wallet demo compradora" : certificate.owner?.custody === "platform_managed" ? "Wallet administrada por nexID" : "Wallet externa"],
               ["Mint", short(certificate.mint?.tx_hash)],
+              ...(buyerControlled ? [
+                ["Transferencia", short(certificate.claim?.tx_hash)],
+                ["Firma wallet", `${certificate.wallet_control?.method || "EIP-191"} - verificada`],
+                ["Signer recuperado", short(certificate.wallet_control?.recovered_address)],
+              ] : []),
               ["Metadata", short(certificate.token?.token_uri, 24, 18)],
               ["Binding", short(certificate.token?.chip_uid_hash, 18, 14)],
             ].map(([label, value]) => (
@@ -307,20 +349,29 @@ export default async function PolygonOwnershipPage() {
             <ExternalButton href={certificate.links?.contract_explorer} tone="neutral">Contrato</ExternalButton>
             <ExternalButton href={certificate.links?.metadata} tone="neutral">Metadata</ExternalButton>
             <ExternalButton href={certificate.links?.source_verification} tone="neutral">Source verificado</ExternalButton>
+            {buyerControlled ? <ExternalButton href={certificate.links?.claim_transaction_explorer} tone="neutral">Transferencia</ExternalButton> : null}
           </div>
+          {buyerControlled && certificate.wallet_control?.message ? (
+            <details className="mt-5 border-t border-slate-200 pt-4 dark:border-white/10">
+              <summary className="cursor-pointer text-xs font-black uppercase text-cyan-700 dark:text-cyan-300">Ver mensaje firmado</summary>
+              <p className="mt-3 text-xs leading-5 text-slate-600 dark:text-slate-300">Esta firma solo demuestra control de la wallet del fixture. No autoriza login, compra ni transferencia.</p>
+              <pre className="mt-3 whitespace-pre-wrap break-all font-mono text-[11px] leading-5 text-slate-500 dark:text-slate-400">{certificate.wallet_control.message}</pre>
+              <p className="mt-3 break-all font-mono text-[10px] leading-4 text-slate-500 dark:text-slate-400">{certificate.wallet_control.signature}</p>
+            </details>
+          ) : null}
         </aside>
       </section>
 
       <section className={`${styles.deepBand} border-y`}>
         <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
-          <p className="text-xs font-black uppercase text-emerald-700 dark:text-emerald-300">De este fixture a buyer ownership</p>
-          <h2 className="mt-2 text-3xl font-black">La cadena completa, sin confundir custodia con propiedad</h2>
+          <p className="text-xs font-black uppercase text-emerald-700 dark:text-emerald-300">{buyerControlled ? "Buyer ownership cerrado" : "De este fixture a buyer ownership"}</p>
+          <h2 className="mt-2 text-3xl font-black">{buyerControlled ? "Cuatro evidencias, una conclusion verificable" : "La cadena completa, sin confundir custodia con propiedad"}</h2>
           <div className="mt-7 grid gap-3 md:grid-cols-4">
             {[
               { Icon: Fingerprint, step: "1", title: "Verificar producto", body: "nexID valida NFC/QR, lote y estado." },
-              { Icon: Box, step: "2", title: "Emitir fixture", body: "Estado actual: NXDT en custodia de plataforma." },
-              { Icon: KeyRound, step: "3", title: "Probar wallet", body: "El comprador firma un challenge; aun no ocurre en este fixture." },
-              { Icon: Link2, step: "4", title: "Transferir y certificar", body: "Solo la transferencia confirmada habilita buyer ownership." },
+              { Icon: Box, step: "2", title: "Emitir token", body: buyerControlled ? "NXDT nace en la wallet piloto de nexID." : "Estado actual: NXDT en custodia de plataforma." },
+              { Icon: Link2, step: "3", title: "Transferir ownership", body: buyerControlled ? "Un recibo on-chain mueve el token a la wallet demo compradora." : "Solo la transferencia confirmada habilita buyer ownership." },
+              { Icon: KeyRound, step: "4", title: "Probar control", body: buyerControlled ? "Una firma publica recupera la misma wallet que ownerOf." : "La wallet receptora firma una prueba acotada y no autorizante." },
             ].map(({ Icon, step, title, body }) => (
               <article key={step} className="rounded-lg border border-slate-200 bg-slate-50 p-5 dark:border-white/10 dark:bg-white/[0.04]">
                 <div className="flex items-center justify-between">

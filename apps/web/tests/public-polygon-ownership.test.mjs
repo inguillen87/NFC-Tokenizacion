@@ -30,7 +30,13 @@ test("public Polygon certificate explains proof boundaries and preserves exits",
   assert.match(page, /\/public\/polygon\/ownership/);
   assert.match(page, /PUBLIC_PROOF_FETCH_TIMEOUT_MS = 6_000/);
   assert.match(page, /signal: AbortSignal\.timeout\(PUBLIC_PROOF_FETCH_TIMEOUT_MS\)/);
-  assert.match(page, /Emision testnet confirmada/);
+  assert.match(page, /Ownership testnet verificado/);
+  assert.match(page, /buyerControlled/);
+  assert.match(page, /claim\?\.state === "buyer_controlled"/);
+  assert.match(page, /wallet_control\?\.verified === true/);
+  assert.match(page, /Ver transferencia real/);
+  assert.match(page, /Ver mensaje firmado/);
+  assert.match(page, /No autoriza login, compra ni transferencia/);
   assert.match(page, /custodia de plataforma/);
   assert.match(page, /buyer ownership exige firma de wallet/i);
   assert.match(page, /Aporta el contexto del producto/);

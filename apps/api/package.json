@@ -31,6 +31,8 @@
     "iota:bridge:evm": "node scripts/bridge-iota-l1-to-evm.mjs",
     "iota:publish-proof-receipts": "node scripts/publish-public-proof-receipts-iota.mjs",
     "iota:verify-proof-v2": "node scripts/verify-public-proof-iota-v2.mjs",
+    "polygon:claim-proof-demo": "node --import tsx scripts/claim-public-proof-polygon-demo.mjs",
+    "polygon:verify-proof-demo": "node --import tsx scripts/verify-public-proof-polygon.mjs",
     "bootstrap:tenant": "node scripts/bootstrap-enterprise-tenant.mjs",
     "test:consumer": "node --test tests/consumer-portal-rules.test.mjs",
     "test:rewards": "node --test tests/reward-public-links-security.test.mjs",
