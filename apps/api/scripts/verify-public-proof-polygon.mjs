@@ -13,6 +13,7 @@ import {
   PUBLIC_POLYGON_CONTRACT,
   PUBLIC_POLYGON_OWNER,
   buildPublicPolygonWalletProofMessage,
+  validatePublicPolygonMetadataDocument,
 } from "../src/lib/public-polygon-ownership.ts";
 
 const envPath = resolve(process.cwd(), ".env.local");
@@ -149,8 +150,8 @@ async function main() {
     assert(metadataResponse.ok, `metadata_http_${metadataResponse.status}`);
     assert(clean(metadataResponse.headers.get("content-type")).toLowerCase().includes("json"), "metadata_content_type_not_json");
     const metadata = await metadataResponse.json();
-    assert(metadata?.external_url === "https://nexid.lat/proof/ownership", "metadata_external_url_mismatch");
-    assert(String(metadata?.image || "").startsWith("https://nexid.lat/"), "metadata_image_url_mismatch");
+    const metadataValidation = validatePublicPolygonMetadataDocument(metadata, contractAddress);
+    assert(metadataValidation.ok, metadataValidation.reason || "metadata_semantic_validation_failed");
     const imageResponse = await fetch(metadata.image, { method: "HEAD", signal: AbortSignal.timeout(6_000) });
     assert(imageResponse.ok, `metadata_image_http_${imageResponse.status}`);
 
@@ -178,6 +179,8 @@ async function main() {
       recovered_signer: recoveredSigner,
       wallet_control_verified: true,
       metadata_verified: true,
+      metadata_schema_version: metadataValidation.schema_version,
+      metadata_contract: metadataValidation.contract,
       source_verified: true,
     }, null, 2));
   } finally {

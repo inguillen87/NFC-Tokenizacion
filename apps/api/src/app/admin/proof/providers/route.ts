@@ -14,6 +14,12 @@ function enabled(value: unknown) {
   return ["1", "true", "yes", "on"].includes(clean(value).toLowerCase());
 }
 
+function sameConfiguredAddress(left: unknown, right: unknown) {
+  const first = clean(left).toLowerCase();
+  const second = clean(right).toLowerCase();
+  return Boolean(first && second && first === second);
+}
+
 function runtimeReadiness(code: string) {
   if (code === "none") {
     return {
@@ -29,8 +35,14 @@ function runtimeReadiness(code: string) {
     const rpc = Boolean(clean(process.env.IOTA_EVM_RPC_URL));
     const contract = Boolean(clean(process.env.IOTA_EVM_ANCHOR_CONTRACT));
     const signer = Boolean(clean(process.env.IOTA_EVM_PRIVATE_KEY));
-    const writeEnabled = mode === "iota_evm_contract" && rpc && contract && signer;
-    const runtimeStatus = writeEnabled
+    const v2ContractOnLegacyAdapter = mode === "iota_evm_contract" && sameConfiguredAddress(
+      process.env.IOTA_EVM_ANCHOR_CONTRACT,
+      process.env.IOTA_EVM_ANCHOR_CONTRACT_V2,
+    );
+    const writeEnabled = mode === "iota_evm_contract" && rpc && contract && signer && !v2ContractOnLegacyAdapter;
+    const runtimeStatus = v2ContractOnLegacyAdapter
+      ? "misconfigured"
+      : writeEnabled
       ? "ready"
       : mode === "iota_evm_contract" && rpc && contract
         ? "read_only"
@@ -41,8 +53,10 @@ function runtimeReadiness(code: string) {
       capability: "hash_only_integrity",
       runtime_status: runtimeStatus,
       write_enabled: writeEnabled,
-      configured: { rpc, contract, signer },
+      configured: { rpc, contract, signer, contract_compatible: !v2ContractOnLegacyAdapter },
       mode,
+      adapter: "anchorRoot_v1",
+      configuration_error: v2ContractOnLegacyAdapter ? "iota_v2_contract_requires_v2_runtime_adapter" : null,
     };
   }
 

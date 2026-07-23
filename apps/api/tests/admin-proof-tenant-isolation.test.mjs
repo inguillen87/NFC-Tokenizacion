@@ -97,6 +97,9 @@ test("proof routes reject unresolved tenant scope before global reads or writes"
   assert.match(anchors, /ledger_provider_disabled/);
   assert.match(anchors, /polygon_ownership_route_required/);
   assert.match(anchors, /mock_provider_forbidden_in_production/);
+  assert.match(anchors, /sameConfiguredAddress\(contractAddress, process\.env\.IOTA_EVM_ANCHOR_CONTRACT_V2\)/);
+  assert.match(anchors, /iota_v2_contract_requires_v2_runtime_adapter/);
+  assert.match(anchors, /rpcProvider\.destroy\(\)/);
   assert.match(anchors, /proof_anchor_external_created/);
   assert.match(anchors, /tx_hash: txHash/);
   assert.match(localAnchor, /WHERE tenant_id = \$\{tenantId\}::uuid/);
@@ -113,6 +116,9 @@ test("proof routes reject unresolved tenant scope before global reads or writes"
   assert.match(providers, /FROM ledger_providers/);
   assert.match(providers, /runtime_status/);
   assert.match(providers, /write_enabled/);
+  assert.match(providers, /v2ContractOnLegacyAdapter/);
+  assert.match(providers, /contract_compatible/);
+  assert.match(providers, /iota_v2_contract_requires_v2_runtime_adapter/);
   assert.match(providers, /policy_disabled/);
   assert.doesNotMatch(providers, /status:\s*["']active["']/);
   assert.doesNotMatch(

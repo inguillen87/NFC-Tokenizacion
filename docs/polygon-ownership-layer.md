@@ -123,6 +123,18 @@ La firma que aparece en el certificado es una declaracion publica e informativa.
 
 La clave privada de la wallet demo vive solo en `apps/api/.env.local`, archivo ignorado por Git. Vercel recibe unicamente direccion publica, firma y hash de la transferencia. El fixture esta en Polygon Amoy, no representa identidad de comprador, propiedad legal ni readiness automatico para mainnet.
 
+### Integridad de metadata publica
+
+La metadata del fixture usa una URL HTTPS para compatibilidad con wallets y explorers. El certificado y el verificador independiente validan en cada lectura:
+
+- `schema_version = nexid-ownership-certificate-v3`.
+- `environment = testnet`.
+- `chain_id = 80002`.
+- El mismo contrato que devuelve el token on-chain.
+- URL externa, imagen y limites de prueba esperados por nexID.
+
+Esto detecta metadata equivocada, degradada o servida para otra red/contrato. No convierte HTTPS en almacenamiento inmutable ni content-addressed; una evolucion productiva debe versionar y fijar el contenido con un digest o URI content-addressed cuando el caso contractual lo requiera.
+
 ### Como lo explica un equipo comercial
 
 - **Hecho probado:** el NFT salio de la wallet de nexID y la red indica otra wallet como owner actual.

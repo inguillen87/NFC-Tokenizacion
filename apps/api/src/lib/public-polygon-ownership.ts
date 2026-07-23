@@ -39,6 +39,8 @@ function explorerBaseUrl() {
   return clean(process.env.POLYGON_EXPLORER_BASE_URL || "https://amoy.polygonscan.com").replace(/\/$/, "");
 }
 
+const PUBLIC_POLYGON_METADATA_SCHEMA_VERSION = "nexid-ownership-certificate-v3";
+
 export function publicPolygonMetadataUrl() {
   return `${apiBaseUrl()}/public/polygon/metadata/${PUBLIC_POLYGON_OWNERSHIP_SLUG}`;
 }
@@ -82,7 +84,7 @@ export function buildPublicPolygonMetadata() {
       { trait_type: "Transferability", value: "ERC-721" },
     ],
     properties: {
-      schema_version: "nexid-ownership-certificate-v3",
+      schema_version: PUBLIC_POLYGON_METADATA_SCHEMA_VERSION,
       environment: "testnet",
       chain_id: PUBLIC_POLYGON_CHAIN_ID,
       contract: clean(process.env.POLYGON_CONTRACT_ADDRESS) || PUBLIC_POLYGON_CONTRACT,
@@ -91,6 +93,48 @@ export function buildPublicPolygonMetadata() {
       public_fields: ["certificate type", "network", "contract", "token owner wallet", "metadata", "mint transaction", "ownership transfer", "wallet-control signature"],
       private_fields: ["raw NFC UID or secret", "buyer identity", "invoice", "warranty documents", "CRM segment"],
     },
+  };
+}
+
+export function validatePublicPolygonMetadataDocument(value: unknown, expectedContractAddress: string) {
+  const document = asRecord(value);
+  const properties = asRecord(document.properties);
+  const image = clean(document.image);
+  const externalUrl = clean(document.external_url);
+  const metadataContract = clean(properties.contract);
+  const allowedImages = new Set([
+    `${webBaseUrl()}/demo/wine-secure/real-malbec-bottle-pexels.jpg`,
+    "https://nexid.lat/demo/wine-secure/real-malbec-bottle-pexels.jpg",
+  ]);
+  const allowedExternalUrls = new Set([
+    `${webBaseUrl()}/proof/ownership`,
+    "https://nexid.lat/proof/ownership",
+  ]);
+  const contractMatches = isAddress(metadataContract)
+    && isAddress(expectedContractAddress)
+    && getAddress(metadataContract) === getAddress(expectedContractAddress);
+  const checks = [
+    { id: "name", ok: Boolean(clean(document.name)), reason: "metadata_name_missing" },
+    { id: "description", ok: Boolean(clean(document.description)), reason: "metadata_description_missing" },
+    { id: "image", ok: allowedImages.has(image), reason: "metadata_image_url_mismatch" },
+    { id: "external_url", ok: allowedExternalUrls.has(externalUrl), reason: "metadata_external_url_mismatch" },
+    { id: "schema_version", ok: clean(properties.schema_version) === PUBLIC_POLYGON_METADATA_SCHEMA_VERSION, reason: "metadata_schema_version_mismatch" },
+    { id: "environment", ok: clean(properties.environment) === "testnet", reason: "metadata_environment_mismatch" },
+    { id: "chain_id", ok: Number(properties.chain_id) === PUBLIC_POLYGON_CHAIN_ID, reason: "metadata_chain_id_mismatch" },
+    { id: "contract", ok: contractMatches, reason: "metadata_contract_mismatch" },
+    { id: "public_claim", ok: Boolean(clean(properties.public_claim)), reason: "metadata_public_claim_missing" },
+    { id: "proof_boundary", ok: Boolean(clean(properties.does_not_prove_alone)), reason: "metadata_proof_boundary_missing" },
+  ];
+  const failed = checks.find((check) => !check.ok);
+
+  return {
+    ok: !failed,
+    reason: failed?.reason || null,
+    schema_version: clean(properties.schema_version) || null,
+    environment: clean(properties.environment) || null,
+    chain_id: Number.isFinite(Number(properties.chain_id)) ? Number(properties.chain_id) : null,
+    contract: metadataContract || null,
+    checks,
   };
 }
 
@@ -130,7 +174,7 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs = 8_000, timeoutRea
   }
 }
 
-async function readMetadataDocument(tokenUri: string, expectedTokenUri: string) {
+async function readMetadataDocument(tokenUri: string, expectedTokenUri: string, expectedContractAddress: string) {
   if (tokenUri !== expectedTokenUri) {
     return {
       ok: false,
@@ -140,6 +184,7 @@ async function readMetadataDocument(tokenUri: string, expectedTokenUri: string) 
       document: null as Record<string, unknown> | null,
       image: null,
       external_url: null,
+      validation: null,
       reason: "metadata_url_mismatch",
     };
   }
@@ -152,34 +197,47 @@ async function readMetadataDocument(tokenUri: string, expectedTokenUri: string) 
       document: null as Record<string, unknown> | null,
       image: null,
       external_url: null,
+      validation: null,
       reason: "metadata_not_https",
     };
   }
   try {
     const response = await withTimeout(fetch(tokenUri, { cache: "no-store" }), 6_000, "metadata_fetch_timeout");
     const contentType = response.headers.get("content-type");
-    const document = response.ok ? await response.json().catch(() => null) as Record<string, unknown> | null : null;
+    const rawDocument = response.ok ? await response.json().catch(() => null) : null;
+    const document = rawDocument && typeof rawDocument === "object" && !Array.isArray(rawDocument)
+      ? rawDocument as Record<string, unknown>
+      : null;
     const image = clean(document?.image);
     const externalUrl = clean(document?.external_url);
-    const expectedImage = clean(buildPublicPolygonMetadata().image);
-    const canonicalImage = "https://nexid.lat/demo/wine-secure/real-malbec-bottle-pexels.jpg";
-    const imageMatches = new Set([expectedImage, canonicalImage]).has(image) && image.startsWith("https://");
+    const validation = validatePublicPolygonMetadataDocument(document, expectedContractAddress);
+    const imageMatches = validation.checks.find((check) => check.id === "image")?.ok === true;
     const imageResponse = imageMatches
       ? await withTimeout(fetch(image, { method: "HEAD", cache: "no-store" }), 6_000, "metadata_image_timeout").catch(() => null)
       : null;
+    const jsonContentType = Boolean(contentType?.toLowerCase().includes("json"));
+    const imageOk = Boolean(imageMatches && imageResponse?.ok);
+    const reason = !response.ok
+      ? `metadata_http_${response.status}`
+      : !jsonContentType
+        ? "metadata_content_type_not_json"
+        : !document
+          ? "metadata_document_invalid"
+          : !validation.ok
+            ? validation.reason
+            : !imageOk
+              ? "metadata_image_unreachable"
+              : null;
     return {
-      ok: Boolean(response.ok && document && contentType?.toLowerCase().includes("json")),
+      ok: Boolean(response.ok && document && jsonContentType && validation.ok),
       status: response.status,
       content_type: contentType,
-      image_ok: Boolean(imageMatches && imageResponse?.ok),
+      image_ok: imageOk,
       document,
       image,
       external_url: externalUrl,
-      reason: !response.ok
-        ? `metadata_http_${response.status}`
-        : imageMatches
-          ? null
-          : "metadata_image_url_mismatch",
+      validation,
+      reason,
     };
   } catch {
     return {
@@ -190,6 +248,7 @@ async function readMetadataDocument(tokenUri: string, expectedTokenUri: string) 
       document: null as Record<string, unknown> | null,
       image: null,
       external_url: null,
+      validation: null,
       reason: "metadata_fetch_failed",
     };
   }
@@ -309,7 +368,7 @@ async function readPublicPolygonOwnershipCertificateUncached() {
     const mintTransferEvent = mintLogs.find((event) => event.name === "Transfer" && String(event.args.tokenId) === tokenId);
     const mintedEvent = mintLogs.find((event) => event.name === "DigitalTwinMinted" && String(event.args.tokenId) === tokenId);
     const claimTransferEvent = claimLogs.find((event) => event.name === "Transfer" && String(event.args.tokenId) === tokenId);
-    const metadata = await readMetadataDocument(String(tokenUri), expectedMetadataUrl);
+    const metadata = await readMetadataDocument(String(tokenUri), expectedMetadataUrl, contractAddress);
     const sourceVerified = sourceVerification.ok === true;
     const chainMatches = Number(network.chainId) === PUBLIC_POLYGON_CHAIN_ID;
     const contractDeployed = code !== "0x";
@@ -334,8 +393,6 @@ async function readPublicPolygonOwnershipCertificateUncached() {
     const metadataDocumentMatches = Boolean(
       metadata.ok
       && metadata.image_ok
-      && new Set([`${webBaseUrl()}/proof/ownership`, "https://nexid.lat/proof/ownership"]).has(metadata.external_url || "")
-      && clean(metadata.document?.name),
     );
     const mintConfirmations = mintReceipt ? Math.max(0, latestBlock - mintReceipt.blockNumber + 1) : 0;
     const claimConfirmations = claimReceipt ? Math.max(0, latestBlock - claimReceipt.blockNumber + 1) : 0;
@@ -450,6 +507,8 @@ async function readPublicPolygonOwnershipCertificateUncached() {
         name: clean(metadata.document?.name) || null,
         image: clean(metadata.document?.image) || null,
         external_url: metadata.external_url || null,
+        semantic_validation: metadata.validation,
+        integrity_model: "validated_https_document_not_content_addressed",
         reason: metadata.reason,
       },
       source_verification: sourceVerification,
@@ -478,7 +537,7 @@ async function readPublicPolygonOwnershipCertificateUncached() {
           },
         ] : []),
         { id: "metadata", label: "Metadata HTTPS coincide", ok: metadataMatches, detail: String(tokenUri) },
-        { id: "metadata_document", label: "JSON, imagen y enlace resuelven", ok: metadataDocumentMatches, detail: metadataDocumentMatches ? "Documento e imagen HTTP 200" : metadata.reason || "Metadata incompleta" },
+        { id: "metadata_document", label: "Metadata semantica y recursos coinciden", ok: metadataDocumentMatches, detail: metadataDocumentMatches ? "Schema, red, contrato, entorno, JSON e imagen verificados" : metadata.reason || "Metadata incompleta" },
         {
           id: "source",
           label: "Source code publicado",
@@ -514,6 +573,7 @@ async function readPublicPolygonOwnershipCertificateUncached() {
             ? ["That the demo wallet represents a real customer or legal title outside this explicit testnet pilot."]
             : ["Buyer wallet control or a completed buyer ownership transfer; those require a matching transfer receipt and wallet signature."]),
           "The buyer identity, invoice, warranty eligibility or private CRM record.",
+          "That the HTTPS metadata is immutable or content-addressed; its current semantic fields are validated at read time.",
           "Mainnet production readiness; this certificate is explicitly a testnet pilot.",
         ],
       },

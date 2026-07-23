@@ -18,6 +18,12 @@ function safeString(value: unknown) {
   return String(value || "").trim();
 }
 
+function sameConfiguredAddress(left: unknown, right: unknown) {
+  const first = safeString(left).toLowerCase();
+  const second = safeString(right).toLowerCase();
+  return Boolean(first && second && first === second);
+}
+
 function normalizeProvider(value: unknown): AnchorProvider {
   const provider = safeString(value || "iota").toLowerCase();
   return provider === "polygon" ? "polygon" : "iota";
@@ -189,23 +195,37 @@ export async function POST(req: Request) {
     const privateKey = process.env.IOTA_EVM_PRIVATE_KEY;
     const contractAddress = process.env.IOTA_EVM_ANCHOR_CONTRACT;
     const explorerBaseUrl = process.env.IOTA_EXPLORER_BASE_URL || "";
+    if (sameConfiguredAddress(contractAddress, process.env.IOTA_EVM_ANCHOR_CONTRACT_V2)) {
+      return json({
+        ok: false,
+        reason: "iota_v2_contract_requires_v2_runtime_adapter",
+        provider,
+        network,
+        expected_adapter: "anchorRoot_v1",
+        configured_contract: "anchorEvidence_v2",
+      }, 503);
+    }
     if (!privateKey || !contractAddress || !rpcUrl) {
       return json({ ok: false, reason: "iota_evm_config_missing", provider, network }, 503);
     } else {
       try {
-        const provider = new ethers.JsonRpcProvider(rpcUrl);
-        const wallet = new ethers.Wallet(privateKey, provider);
+        const rpcProvider = new ethers.JsonRpcProvider(rpcUrl);
+        const wallet = new ethers.Wallet(privateKey, rpcProvider);
         const abi = [
           "function anchorRoot(bytes32 merkleRoot, string calldata tenantIdHash, string calldata resourceType, string calldata resourceId, uint256 eventCount) external",
         ];
 
         const contract = new ethers.Contract(contractAddress, abi, wallet);
-        const tx = await contract.anchorRoot(`0x${stripShaPrefix(merkleRoot)}`, tenantHash(tenantId), resourceType, resourceId, eventHashes.length);
-        const receipt = await tx.wait();
+        try {
+          const tx = await contract.anchorRoot(`0x${stripShaPrefix(merkleRoot)}`, tenantHash(tenantId), resourceType, resourceId, eventHashes.length);
+          const receipt = await tx.wait();
 
-        txHash = receipt.hash;
-        explorerUrl = explorerBaseUrl ? `${explorerBaseUrl.replace(/\/$/, "")}/tx/${txHash}` : null;
-        status = "confirmed";
+          txHash = receipt.hash;
+          explorerUrl = explorerBaseUrl ? `${explorerBaseUrl.replace(/\/$/, "")}/tx/${txHash}` : null;
+          status = "confirmed";
+        } finally {
+          rpcProvider.destroy();
+        }
       } catch (err: any) {
         status = "failed";
         errorMessage = String(err?.message || "iota_anchor_failed").slice(0, 300);

@@ -8,6 +8,7 @@ import {
   buildPublicPolygonAssetMetadata,
   buildPublicPolygonMetadata,
   buildPublicPolygonWalletProofMessage,
+  validatePublicPolygonMetadataDocument,
 } from "../src/lib/public-polygon-ownership.ts";
 
 test("Polygon ownership metadata is public, resolvable and explicit about testnet", () => {
@@ -59,6 +60,30 @@ test("generic Polygon asset metadata uses only the salted public asset id", () =
   assert.doesNotMatch(JSON.stringify(metadata), /uid_hex|buyer_email|private.?key/i);
 });
 
+test("public Polygon metadata is semantically bound to schema, testnet, chain and contract", () => {
+  const metadata = buildPublicPolygonMetadata();
+  const valid = validatePublicPolygonMetadataDocument(metadata, PUBLIC_POLYGON_CONTRACT);
+
+  assert.equal(valid.ok, true);
+  assert.equal(valid.reason, null);
+  assert.equal(valid.schema_version, "nexid-ownership-certificate-v3");
+  assert.equal(valid.chain_id, PUBLIC_POLYGON_CHAIN_ID);
+  assert.equal(valid.contract, PUBLIC_POLYGON_CONTRACT);
+
+  for (const [field, value, reason] of [
+    ["schema_version", "nexid-ownership-certificate-v2", "metadata_schema_version_mismatch"],
+    ["environment", "mainnet", "metadata_environment_mismatch"],
+    ["chain_id", 137, "metadata_chain_id_mismatch"],
+    ["contract", "0x0000000000000000000000000000000000000001", "metadata_contract_mismatch"],
+  ]) {
+    const candidate = structuredClone(metadata);
+    candidate.properties[field] = value;
+    const result = validatePublicPolygonMetadataDocument(candidate, PUBLIC_POLYGON_CONTRACT);
+    assert.equal(result.ok, false, `${field} mismatch must fail closed`);
+    assert.equal(result.reason, reason);
+  }
+});
+
 test("public Polygon routes keep metadata and chain verification separate", async () => {
   const metadataRoute = await readFile(new URL("../src/app/public/polygon/metadata/[slug]/route.ts", import.meta.url), "utf8");
   const ownershipRoute = await readFile(new URL("../src/app/public/polygon/ownership/route.ts", import.meta.url), "utf8");
@@ -91,7 +116,9 @@ test("public Polygon routes keep metadata and chain verification separate", asyn
   assert.match(service, /runtimeMatch/);
   assert.match(service, /metadata_url_mismatch/);
   assert.match(service, /tokenUri !== expectedTokenUri/);
-  assert.match(service, /canonicalImage = "https:\/\/nexid\.lat\//);
+  assert.match(service, /validatePublicPolygonMetadataDocument/);
+  assert.match(service, /metadata_contract_mismatch/);
+  assert.match(service, /validated_https_document_not_content_addressed/);
   assert.match(service, /POLYGON_CERTIFICATE_CACHE_KEY/);
   assert.match(service, /5 \* 60_000/);
   assert.doesNotMatch(service, /knownSourcifyContract/);
@@ -106,6 +133,8 @@ test("public Polygon routes keep metadata and chain verification separate", asyn
   assert.match(verifier, /unexpected_mint_transfer_count/);
   assert.match(verifier, /mint_transfer_origin_not_zero_address/);
   assert.match(verifier, /sourcify_creation_mismatch/);
+  assert.match(verifier, /metadataValidation\.ok/);
+  assert.match(verifier, /metadata_schema_version/);
   assert.match(claimScript, /claim_transfer_contract_mismatch/);
   assert.match(claimScript, /claim_transfer_submitter_mismatch/);
 });
@@ -118,4 +147,22 @@ test("IOTA proof documentation describes the live V2 fixture without obsolete ne
   assert.match(docs, /0xde7284812D0c81080Cc7B2f60d6D9769343Aa2B0/);
   assert.match(docs, /no afirma que IOTA sea gratis/i);
   assert.doesNotMatch(docs, /Feelless Transactions|Stardust framework/i);
+});
+
+test("proof layer runbook separates runtime writers from public read-only fixtures", async () => {
+  const runbook = await readFile(new URL("../../../docs/proof-layer-runbook.md", import.meta.url), "utf8");
+
+  assert.match(runbook, /IOTA_PROVIDER_MODE/);
+  assert.match(runbook, /IOTA_EVM_ANCHOR_CONTRACT=/);
+  assert.match(runbook, /adapter runtime actual invoca `anchorRoot/);
+  assert.match(runbook, /IOTA_EVM_ANCHOR_CONTRACT_V2/);
+  assert.match(runbook, /contrato V2 expone `anchorEvidence/);
+  assert.match(runbook, /no habilita por si solo nuevas escrituras/i);
+  assert.match(runbook, /mock.*prohibido.*NODE_ENV=production/is);
+  assert.match(runbook, /polygon:verify-proof-demo/);
+  assert.match(runbook, /iota:verify-proof-v2/);
+  assert.match(runbook, /metadata semanticamente ligada a schema, entorno, chain ID y contrato/i);
+  assert.match(runbook, /HTTPS no es content-addressed/i);
+  assert.match(runbook, /PII, UID NFC crudo, secretos SUN\/KMS/i);
+  assert.doesNotMatch(runbook, /IOTA (es|is) (gratis|free)/i);
 });
