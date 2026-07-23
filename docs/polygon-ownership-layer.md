@@ -102,6 +102,35 @@ Para piloto puede usarse una wallet minter dedicada con gas testnet. Para produc
 | `failed` | Error verificable; no vender como mint exitoso |
 | `revoked` | Certificado marcado como revocado si el contrato/modelo lo permite |
 
+## Demo publica buyer-controlled en Amoy
+
+La demostracion publica de nexID cierra el recorrido completo sin presentar una wallet de prueba como un cliente real:
+
+1. nexID emite un NXDT con metadata HTTPS sanitizada.
+2. Una transaccion `Transfer` mueve el token desde la wallet piloto de plataforma a una wallet demo compradora aislada.
+3. `ownerOf(tokenId)` debe devolver esa wallet receptora.
+4. La wallet receptora firma un mensaje EIP-191 ligado a `chainId`, contrato, token, owner y URL canonica del certificado.
+5. La API acepta `buyer_controlled` solo si recibo, evento `Transfer`, `ownerOf` y signer recuperado coinciden.
+
+Superficies publicas:
+
+- Certificado legible: `https://nexid.lat/proof/ownership`
+- Evidencia JSON: `https://api.nexid.lat/public/polygon/ownership`
+- Catalogo combinado Polygon/IOTA: `https://api.nexid.lat/public/proof/demo-cases`
+- Verificador operativo: `npm run polygon:verify-proof-demo --workspace=api`
+
+La firma que aparece en el certificado es una declaracion publica e informativa. El mensaje dice expresamente que no autoriza login, compra ni transferencia. Para una operacion real, el portal usa un challenge efimero, de un solo uso y con expiracion; una firma estatica nunca debe reutilizarse como sesion o autorizacion.
+
+La clave privada de la wallet demo vive solo en `apps/api/.env.local`, archivo ignorado por Git. Vercel recibe unicamente direccion publica, firma y hash de la transferencia. El fixture esta en Polygon Amoy, no representa identidad de comprador, propiedad legal ni readiness automatico para mainnet.
+
+### Como lo explica un equipo comercial
+
+- **Hecho probado:** el NFT salio de la wallet de nexID y la red indica otra wallet como owner actual.
+- **Control probado:** una firma publica recupera exactamente la wallet que `ownerOf` devuelve.
+- **Privacidad preservada:** identidad, factura, garantia, UID NFC y datos CRM no aparecen en Polygon.
+- **Limite honesto:** el NFT no autentica por si solo el objeto fisico; esa decision depende del tap NFC/QR y la policy nexID anterior al claim.
+- **Paso a produccion:** reemplazar wallets demo por onboarding de comprador, challenge de un solo uso, policy tenant, custodia/KMS y condiciones legales del cliente.
+
 ## Controles enterprise
 
 - Separar owner, minter y operator.
