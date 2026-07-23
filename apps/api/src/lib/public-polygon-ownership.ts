@@ -1,4 +1,4 @@
-import { Contract, JsonRpcProvider, getAddress, isAddress, verifyMessage } from "ethers";
+import { Contract, JsonRpcProvider, ZeroAddress, getAddress, isAddress, verifyMessage } from "ethers";
 
 const POLYGON_OWNERSHIP_ABI = [
   "function name() view returns (string)",
@@ -181,7 +181,7 @@ async function readMetadataDocument(tokenUri: string, expectedTokenUri: string) 
           ? null
           : "metadata_image_url_mismatch",
     };
-  } catch (error) {
+  } catch {
     return {
       ok: false,
       status: null,
@@ -190,7 +190,7 @@ async function readMetadataDocument(tokenUri: string, expectedTokenUri: string) 
       document: null as Record<string, unknown> | null,
       image: null,
       external_url: null,
-      reason: error instanceof Error ? error.message : "metadata_fetch_failed",
+      reason: "metadata_fetch_failed",
     };
   }
 }
@@ -227,7 +227,7 @@ async function readSourcifyVerification(contractAddress: string) {
       runtime_match: clean(payload.runtimeMatch) || null,
       reason: ok ? null : response.ok ? "sourcify_contract_mismatch" : `sourcify_http_${response.status}`,
     };
-  } catch (error) {
+  } catch {
     return {
       ok: false,
       checked: false,
@@ -237,7 +237,7 @@ async function readSourcifyVerification(contractAddress: string) {
       match: null,
       creation_match: null,
       runtime_match: null,
-      reason: error instanceof Error ? error.message : "sourcify_fetch_failed",
+      reason: "sourcify_fetch_failed",
     };
   }
 }
@@ -295,7 +295,8 @@ async function readPublicPolygonOwnershipCertificateUncached() {
       readSourcifyVerification(contractAddress),
     ]));
 
-    const parseLogs = (logs: readonly { topics: readonly string[]; data: string }[]) => logs.flatMap((log) => {
+    const parseLogs = (logs: readonly { address: string; topics: readonly string[]; data: string }[]) => logs.flatMap((log) => {
+      if (log.address.toLowerCase() !== contractAddress.toLowerCase()) return [];
       try {
         const parsed = contract.interface.parseLog({ topics: [...log.topics], data: log.data });
         return parsed ? [parsed] : [];
@@ -315,10 +316,16 @@ async function readPublicPolygonOwnershipCertificateUncached() {
     const ownerResolved = isAddress(String(owner));
     const metadataHttps = String(tokenUri).startsWith("https://");
     const metadataMatches = String(tokenUri) === expectedMetadataUrl;
-    const mintConfirmed = Boolean(mintReceipt && mintReceipt.status === 1 && mintReceipt.to?.toLowerCase() === contractAddress.toLowerCase());
+    const mintConfirmed = Boolean(
+      mintReceipt
+      && mintReceipt.status === 1
+      && mintReceipt.to?.toLowerCase() === contractAddress.toLowerCase()
+      && mintReceipt.from.toLowerCase() === PUBLIC_POLYGON_OWNER.toLowerCase(),
+    );
     const mintEventsMatch = Boolean(
       mintTransferEvent
       && mintedEvent
+      && String(mintTransferEvent.args.from).toLowerCase() === ZeroAddress.toLowerCase()
       && String(mintTransferEvent.args.to).toLowerCase() === String(mintedEvent.args.to).toLowerCase()
       && String(mintedEvent.args.chipUidHash) === String(chipUidHash)
       && String(mintedEvent.args.assetRef) === String(assetRef)
@@ -354,7 +361,8 @@ async function readPublicPolygonOwnershipCertificateUncached() {
     const claimConfirmed = Boolean(
       claimReceipt
       && claimReceipt.status === 1
-      && claimReceipt.to?.toLowerCase() === contractAddress.toLowerCase(),
+      && claimReceipt.to?.toLowerCase() === contractAddress.toLowerCase()
+      && claimReceipt.from.toLowerCase() === PUBLIC_POLYGON_OWNER.toLowerCase(),
     );
     const claimEventsMatch = Boolean(
       claimTransferEvent
@@ -427,6 +435,7 @@ async function readPublicPolygonOwnershipCertificateUncached() {
       },
       wallet_control: {
         method: "EIP-191",
+        freshness: "archival_static_demo",
         purpose: "Public, informational proof that cannot authorize a transfer, login or purchase.",
         message: walletProofMessage,
         signature: walletSignature || null,
@@ -461,11 +470,11 @@ async function readPublicPolygonOwnershipCertificateUncached() {
           },
           {
             id: "wallet_control",
-            label: "Control de wallet demostrado",
+            label: "Firma archivada de wallet coincide",
             ok: walletSignatureMatches,
             detail: walletSignatureMatches
-              ? `Firma EIP-191 recupera ${recoveredAddress}`
-              : "La firma publica no recupera la wallet que ownerOf devuelve actualmente",
+              ? `Firma EIP-191 archivada recupera ${recoveredAddress}`
+              : "La firma publica archivada no recupera la wallet que ownerOf devuelve actualmente",
           },
         ] : []),
         { id: "metadata", label: "Metadata HTTPS coincide", ok: metadataMatches, detail: String(tokenUri) },
@@ -513,12 +522,12 @@ async function readPublicPolygonOwnershipCertificateUncached() {
         private: ["raw NFC UID and secret", "buyer identity", "invoice", "warranty documents", "CRM segment"],
       },
     };
-  } catch (error) {
+  } catch {
     return {
       ...base,
       ok: false,
       verification_state: "unavailable" as const,
-      reason: error instanceof Error ? error.message : "polygon_certificate_unavailable",
+      reason: "polygon_certificate_unavailable",
       generated_at: new Date().toISOString(),
     };
   } finally {

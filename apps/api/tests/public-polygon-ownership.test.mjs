@@ -64,6 +64,8 @@ test("public Polygon routes keep metadata and chain verification separate", asyn
   const ownershipRoute = await readFile(new URL("../src/app/public/polygon/ownership/route.ts", import.meta.url), "utf8");
   const assetRoute = await readFile(new URL("../src/app/public/polygon/assets/[assetId]/route.ts", import.meta.url), "utf8");
   const service = await readFile(new URL("../src/lib/public-polygon-ownership.ts", import.meta.url), "utf8");
+  const verifier = await readFile(new URL("../scripts/verify-public-proof-polygon.mjs", import.meta.url), "utf8");
+  const claimScript = await readFile(new URL("../scripts/claim-public-proof-polygon-demo.mjs", import.meta.url), "utf8");
 
   assert.match(metadataRoute, /buildPublicPolygonMetadata/);
   assert.match(ownershipRoute, /readPublicPolygonOwnershipCertificate/);
@@ -78,6 +80,11 @@ test("public Polygon routes keep metadata and chain verification separate", asyn
   assert.match(service, /PUBLIC_PROOF_DEMO_POLYGON_WALLET_SIGNATURE/);
   assert.match(service, /claimEventsMatch/);
   assert.match(service, /buyerControlVerified/);
+  assert.match(service, /freshness: "archival_static_demo"/);
+  assert.match(service, /log\.address\.toLowerCase\(\) !== contractAddress\.toLowerCase\(\)/);
+  assert.match(service, /mintReceipt\.from\.toLowerCase\(\) === PUBLIC_POLYGON_OWNER\.toLowerCase\(\)/);
+  assert.match(service, /claimReceipt\.from\.toLowerCase\(\) === PUBLIC_POLYGON_OWNER\.toLowerCase\(\)/);
+  assert.match(service, /mintTransferEvent\.args\.from[\s\S]*ZeroAddress/);
   assert.match(service, /wallet_control_verified: buyerControlVerified/);
   assert.match(service, /sourcify\.dev\/server\/v2\/contract/);
   assert.match(service, /creationMatch/);
@@ -90,6 +97,25 @@ test("public Polygon routes keep metadata and chain verification separate", asyn
   assert.doesNotMatch(service, /knownSourcifyContract/);
   assert.doesNotMatch(service, /PUBLIC_PROOF_DEMO_POLYGON_SOURCE_VERIFIED/);
   assert.match(service, /does_not_prove_alone/);
+  assert.doesNotMatch(service, /reason: error instanceof Error \? error\.message/);
   assert.doesNotMatch(service, /POLYGON_MINTER_PRIVATE_KEY/);
   assert.doesNotMatch(service, /PUBLIC_PROOF_DEMO_POLYGON_BUYER_PRIVATE_KEY/);
+  assert.doesNotMatch(verifier, /readPublicPolygonOwnershipCertificate/);
+  assert.match(verifier, /verifier: "independent-rpc-v1"/);
+  assert.match(verifier, /log\.address/);
+  assert.match(verifier, /unexpected_mint_transfer_count/);
+  assert.match(verifier, /mint_transfer_origin_not_zero_address/);
+  assert.match(verifier, /sourcify_creation_mismatch/);
+  assert.match(claimScript, /claim_transfer_contract_mismatch/);
+  assert.match(claimScript, /claim_transfer_submitter_mismatch/);
+});
+
+test("IOTA proof documentation describes the live V2 fixture without obsolete network claims", async () => {
+  const docs = await readFile(new URL("../../../docs/iota-proof-layer.md", import.meta.url), "utf8");
+
+  assert.match(docs, /IOTA EVM Testnet \(chain ID 1076\)/);
+  assert.match(docs, /NexidEvidenceAnchor` V2/);
+  assert.match(docs, /0xde7284812D0c81080Cc7B2f60d6D9769343Aa2B0/);
+  assert.match(docs, /no afirma que IOTA sea gratis/i);
+  assert.doesNotMatch(docs, /Feelless Transactions|Stardust framework/i);
 });

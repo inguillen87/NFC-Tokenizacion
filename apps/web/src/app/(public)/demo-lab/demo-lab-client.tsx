@@ -1579,7 +1579,13 @@ function DemoLabStudioHero({
       { label: "Evidencia operativa", title: "La ruta se ve como mapa auditable.", body: "Custodia, ciudad, riesgo y prueba hash-only quedan visibles sin datos sensibles." },
       { label: "Accion comercial", title: "La marca obtiene la proxima mejor accion.", body: "Garantia, reclamo, CRM, loyalty u ownership salen del mismo tap." },
     ];
-  const activeStepGuidance = stepGuidance[step];
+  const activeStepGuidance = activeTrustScenario === "polygon-ownership" && step === 2
+    ? locale === "en"
+      ? { label: "Ownership evidence", title: "The map explains the journey; Polygon proves the current holder.", body: "The transfer, ownerOf result and wallet signature are public. Buyer identity, invoice and NFC secrets stay inside nexID." }
+      : locale === "pt-BR"
+        ? { label: "Evidencia de ownership", title: "O mapa explica a jornada; Polygon prova o titular atual.", body: "Transferencia, ownerOf e assinatura da wallet sao publicos. Identidade, nota e segredos NFC ficam no nexID." }
+        : { label: "Evidencia de ownership", title: "El mapa explica el recorrido; Polygon prueba el titular actual.", body: "Transferencia, ownerOf y firma de wallet son publicos. Identidad, factura y secretos NFC quedan en nexID." }
+    : stepGuidance[step];
   const traceProofCards = locale === "en"
     ? [
       { label: "nexID", title: "Business verdict", body: "UID, batch, tenant policy and risk become one decision before benefits open.", proof: "Private rules stay inside nexID" },
@@ -1620,12 +1626,20 @@ function DemoLabStudioHero({
       { metric: "Compliance", title: "Audita sin filtrar datos", body: "Evidencia hash-only puede ser revisada por auditores sin exponer la operacion privada.", proof: "Prueba DPP-ready" },
       { metric: "Revenue", title: "Abre postventa", body: "Garantia, ownership, loyalty y ofertas de partners salen de un evento verificado.", proof: "Proxima accion lista" },
     ];
-  const proofDecoderTitle = locale === "en" ? "What this map proves" : locale === "pt-BR" ? "O que este mapa prova" : "Que prueba este mapa";
-  const proofDecoderBody = locale === "en"
-    ? "The visible trace is a business explanation. The cryptographic evidence is hash-only: nexID keeps private data, IOTA can anchor audit receipts, and Polygon is reserved for ownership or certificates."
-    : locale === "pt-BR"
-    ? "A rota visivel e uma explicacao de negocio. A evidencia criptografica e hash-only: nexID guarda dados privados, IOTA pode ancorar recibos e Polygon fica para ownership ou certificados."
-    : "La ruta visible es una explicacion de negocio. La evidencia criptografica es hash-only: nexID guarda datos privados, IOTA puede anclar recibos y Polygon queda para ownership o certificados.";
+  const proofDecoderTitle = activeTrustScenario === "polygon-ownership"
+    ? locale === "en" ? "What this ownership certificate proves" : locale === "pt-BR" ? "O que este certificado de ownership prova" : "Que prueba este certificado de ownership"
+    : locale === "en" ? "What this map proves" : locale === "pt-BR" ? "O que este mapa prova" : "Que prueba este mapa";
+  const proofDecoderBody = activeTrustScenario === "polygon-ownership"
+    ? locale === "en"
+      ? "Polygon proves the current token holder and control of that wallet. nexID keeps buyer identity, invoice and NFC secrets private; the NFT does not authenticate the physical object by itself."
+      : locale === "pt-BR"
+        ? "Polygon prova o titular atual do token e o controle dessa wallet. nexID mantem identidade, nota e segredos NFC privados; o NFT nao autentica sozinho o objeto fisico."
+        : "Polygon prueba el titular actual del token y el control de esa wallet. nexID mantiene identidad, factura y secretos NFC privados; el NFT no autentica por si solo el objeto fisico."
+    : locale === "en"
+      ? "The visible trace is a business explanation. The cryptographic evidence is hash-only: nexID keeps private data, IOTA can anchor audit receipts, and Polygon is reserved for ownership or certificates."
+      : locale === "pt-BR"
+        ? "A rota visivel e uma explicacao de negocio. A evidencia criptografica e hash-only: nexID guarda dados privados, IOTA pode ancorar recibos e Polygon fica para ownership ou certificados."
+        : "La ruta visible es una explicacion de negocio. La evidencia criptografica es hash-only: nexID guarda datos privados, IOTA puede anclar recibos e Polygon queda para ownership o certificados.";
   const outcomeHeader = locale === "en"
     ? "Board-ready outcome from one verified tap"
     : locale === "pt-BR"
@@ -1641,6 +1655,18 @@ function DemoLabStudioHero({
     : isIotaProofScenario(activeTrustScenario)
       ? locale === "en" ? "IOTA receipt / decoder" : locale === "pt-BR" ? "Recibo / decoder IOTA" : "Recibo / decoder IOTA"
       : locale === "en" ? "Public Proof Verify" : locale === "pt-BR" ? "Proof Verify publico" : "Proof Verify publico";
+  const mapProofEyebrow = activeTrustScenario === "polygon-ownership"
+    ? locale === "en" ? "PUBLIC OWNERSHIP PROOF" : locale === "pt-BR" ? "PROVA PUBLICA DE OWNERSHIP" : "PRUEBA PUBLICA DE OWNERSHIP"
+    : activeTrustScenario === "dual-proof"
+      ? locale === "en" ? "DUAL-LAYER PUBLIC PROOF" : locale === "pt-BR" ? "PROVA PUBLICA EM DUAS CAMADAS" : "PRUEBA PUBLICA DE DOS CAPAS"
+      : isIotaProofScenario(activeTrustScenario)
+        ? locale === "en" ? "HASH-ONLY PUBLIC PROOF" : locale === "pt-BR" ? "PROVA PUBLICA HASH-ONLY" : "PRUEBA PUBLICA HASH-ONLY"
+        : locale === "en" ? "PUBLIC PRODUCT PROOF" : locale === "pt-BR" ? "PROVA PUBLICA DO PRODUTO" : "PRUEBA PUBLICA DEL PRODUCTO";
+  const mapProofSummary = activeTrustScenario === "polygon-ownership"
+    ? locale === "en" ? "Map for people. Transfer and wallet control for buyers. Private identity stays in nexID." : locale === "pt-BR" ? "Mapa para pessoas. Transferencia e controle da wallet para compradores. Identidade privada fica no nexID." : "Mapa para personas. Transferencia y control de wallet para compradores. La identidad privada queda en nexID."
+    : activeTrustScenario === "dual-proof"
+      ? locale === "en" ? "IOTA audits evidence. Polygon proves approved ownership. Private data stays in nexID." : locale === "pt-BR" ? "IOTA audita evidencia. Polygon prova ownership aprovado. Dados privados ficam no nexID." : "IOTA audita evidencia. Polygon prueba ownership aprobado. Los datos privados quedan en nexID."
+      : locale === "en" ? "Map for people. Hash receipt for auditors. Private data stays in nexID." : locale === "pt-BR" ? "Mapa para pessoas. Recibo hash para auditoria. Dados privados ficam no nexID." : "Mapa para personas. Recibo hash para auditoria. Datos privados quedan en nexID.";
 
   const scheduleLabel = locale === "en" ? "Schedule demo →" : locale === "pt-BR" ? "Agendar demo →" : "Agendar demo →";
   const backHome = locale === "en" ? "← nexID" : "← nexID";
@@ -1874,8 +1900,8 @@ function DemoLabStudioHero({
               labels={txt.controls}
             />
             <div className="demo-lab-wizard-map-proof-strip">
-              <span>{locale === "en" ? "HASH-ONLY PUBLIC PROOF" : locale === "pt-BR" ? "PROVA PUBLICA HASH-ONLY" : "PRUEBA PUBLICA HASH-ONLY"}</span>
-              <strong>{locale === "en" ? "Map for people. Hash receipt for auditors. Private data stays in nexID." : locale === "pt-BR" ? "Mapa para pessoas. Recibo hash para auditoria. Dados privados ficam no nexID." : "Mapa para personas. Recibo hash para auditoria. Datos privados quedan en nexID."}</strong>
+              <span>{mapProofEyebrow}</span>
+              <strong>{mapProofSummary}</strong>
               <Link href={proofDestinationHref}>
                 {proofDestinationLabel}
                 <ChevronRight className="h-3.5 w-3.5" />

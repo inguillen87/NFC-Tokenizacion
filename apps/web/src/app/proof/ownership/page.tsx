@@ -64,6 +64,7 @@ type OwnershipCertificate = {
   };
   wallet_control?: {
     method?: string;
+    freshness?: string;
     purpose?: string;
     message?: string | null;
     signature?: string | null;
@@ -126,7 +127,7 @@ function statusCopy(state: OwnershipCertificate["verification_state"], buyerCont
     return {
       label: "Ownership testnet verificado",
       title: "La wallet demo controla este token.",
-      body: "Polygon confirma la transferencia desde nexID, ownerOf devuelve la wallet receptora y una firma EIP-191 recupera esa misma direccion. Es una demostracion buyer-controlled real en Amoy, no una identidad comercial ni un titulo legal.",
+      body: "Polygon confirma la transferencia desde nexID, ownerOf devuelve la wallet receptora y una firma EIP-191 archivada recupera esa misma direccion. Es una demostracion buyer-controlled real en Amoy, no una prueba de presencia actual, identidad comercial ni titulo legal.",
       className: "border-emerald-300/40 bg-emerald-500/12 text-emerald-950 dark:text-emerald-100",
     };
   }
@@ -333,7 +334,7 @@ export default async function PolygonOwnershipPage() {
               ["Mint", short(certificate.mint?.tx_hash)],
               ...(buyerControlled ? [
                 ["Transferencia", short(certificate.claim?.tx_hash)],
-                ["Firma wallet", `${certificate.wallet_control?.method || "EIP-191"} - verificada`],
+                ["Firma wallet", `${certificate.wallet_control?.method || "EIP-191"} - archivada y verificada`],
                 ["Signer recuperado", short(certificate.wallet_control?.recovered_address)],
               ] : []),
               ["Metadata", short(certificate.token?.token_uri, 24, 18)],
@@ -354,7 +355,7 @@ export default async function PolygonOwnershipPage() {
           {buyerControlled && certificate.wallet_control?.message ? (
             <details className="mt-5 border-t border-slate-200 pt-4 dark:border-white/10">
               <summary className="cursor-pointer text-xs font-black uppercase text-cyan-700 dark:text-cyan-300">Ver mensaje firmado</summary>
-              <p className="mt-3 text-xs leading-5 text-slate-600 dark:text-slate-300">Esta firma solo demuestra control de la wallet del fixture. No autoriza login, compra ni transferencia.</p>
+              <p className="mt-3 text-xs leading-5 text-slate-600 dark:text-slate-300">Esta firma archivada demuestra que la wallet del fixture firmo el mensaje. No prueba presencia actual. No autoriza login, compra ni transferencia.</p>
               <pre className="mt-3 whitespace-pre-wrap break-all font-mono text-[11px] leading-5 text-slate-500 dark:text-slate-400">{certificate.wallet_control.message}</pre>
               <p className="mt-3 break-all font-mono text-[10px] leading-4 text-slate-500 dark:text-slate-400">{certificate.wallet_control.signature}</p>
             </details>
@@ -371,7 +372,7 @@ export default async function PolygonOwnershipPage() {
               { Icon: Fingerprint, step: "1", title: "Verificar producto", body: "nexID valida NFC/QR, lote y estado." },
               { Icon: Box, step: "2", title: "Emitir token", body: buyerControlled ? "NXDT nace en la wallet piloto de nexID." : "Estado actual: NXDT en custodia de plataforma." },
               { Icon: Link2, step: "3", title: "Transferir ownership", body: buyerControlled ? "Un recibo on-chain mueve el token a la wallet demo compradora." : "Solo la transferencia confirmada habilita buyer ownership." },
-              { Icon: KeyRound, step: "4", title: "Probar control", body: buyerControlled ? "Una firma publica recupera la misma wallet que ownerOf." : "La wallet receptora firma una prueba acotada y no autorizante." },
+              { Icon: KeyRound, step: "4", title: "Comprobar firma", body: buyerControlled ? "Una firma archivada recupera la misma wallet que ownerOf; una operacion real exige challenge fresco." : "La wallet receptora firma una prueba acotada y no autorizante." },
             ].map(({ Icon, step, title, body }) => (
               <article key={step} className="rounded-lg border border-slate-200 bg-slate-50 p-5 dark:border-white/10 dark:bg-white/[0.04]">
                 <div className="flex items-center justify-between">

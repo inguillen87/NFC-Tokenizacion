@@ -437,6 +437,9 @@ test("demo lab keeps scenario headers, execution receipts and proof destinations
   assert.match(client, /query\.set\("decode_input", utf8ToHex\(DEMO_PUBLIC_PROOF_MEMO\)\)/);
   assert.match(client, /#proof-decoder/);
   assert.match(client, /proofDestinationLabel = activeTrustScenario === "polygon-ownership"/);
+  assert.match(client, /mapProofEyebrow = activeTrustScenario === "polygon-ownership"/);
+  assert.match(client, /PRUEBA PUBLICA DE OWNERSHIP/);
+  assert.match(client, /Polygon prueba el titular actual del token y el control de esa wallet/);
   assert.match(client, /Recibo \/ decoder IOTA/);
   assert.match(client, /href=\{proofDestinationHref\}/);
 

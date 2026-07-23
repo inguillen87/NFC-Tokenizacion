@@ -58,11 +58,12 @@ function normalizePrivateKey(raw, label) {
 
 function findTransfer(contract, receipt, tokenId) {
   for (const log of receipt?.logs || []) {
+    if (String(log.address).toLowerCase() !== String(contract.target).toLowerCase()) continue;
     try {
       const parsed = contract.interface.parseLog({ topics: [...log.topics], data: log.data });
       if (parsed?.name === "Transfer" && String(parsed.args.tokenId) === tokenId) return parsed;
     } catch {
-      // Ignore logs emitted by unrelated contracts in the same receipt.
+      // Ignore malformed logs emitted by the expected contract.
     }
   }
   return null;
@@ -144,6 +145,8 @@ async function main() {
   }
 
   if (!claimTxHash || !claimReceipt || claimReceipt.status !== 1) throw new Error("claim_transfer_receipt_not_confirmed");
+  if (String(claimReceipt.to).toLowerCase() !== contractAddress.toLowerCase()) throw new Error("claim_transfer_contract_mismatch");
+  if (String(claimReceipt.from).toLowerCase() !== platformWallet.address.toLowerCase()) throw new Error("claim_transfer_submitter_mismatch");
   const transferEvent = findTransfer(contract, claimReceipt, tokenId);
   if (!transferEvent) throw new Error("claim_transfer_event_missing");
   if (getAddress(transferEvent.args.from) !== getAddress(platformWallet.address)) throw new Error("claim_transfer_sender_mismatch");
