@@ -45,6 +45,10 @@ Superficies publicas:
 
 ## Escritura y produccion
 
-La API de produccion puede verificar en modo read-only sin alojar una clave IOTA. Para publicar anchors nuevos, el signer debe vivir en un executor aislado con KMS/HSM o custodia enterprise, allowlist de tenants, rate limits, auditoria y monitoreo de nonce/gas.
+El writer nativo V2 usa `anchorEvidence(...)`; nuevas escrituras ya no pasan por el adapter legacy `anchorRoot(...)`. La API calcula y persiste `proofId`, `memoHash`, contrato, chain, publisher, miembros, idempotencia e intentos antes de publicar. El executor devuelve el `tx_hash` apenas se transmite y un worker separado confirma receipt, calldata, evento, storage y profundidad de bloque. Un retry con la misma clave de idempotencia reutiliza el anchor y no crea otra transaccion.
+
+La API de produccion no aloja una clave IOTA. La firma vive en el executor y la private key local se rechaza en produccion. El modo `private_key` del executor sigue siendo una etapa de testnet/piloto: para mainnet debe reemplazarse por KMS/HSM o custodia enterprise, con allowlist de tenants, limites, auditoria y monitoreo de nonce/gas.
+
+La migracion se divide deliberadamente en dos migraciones transaccionales: `0050` agrega el estado `reconciling` cuando el bootstrap usa enum y `0051` crea la persistencia V2. PostgreSQL exige que un nuevo valor enum quede confirmado antes de usarlo en predicados de indices o DML.
 
 Antes de pasar a mainnet se requiere desplegar un contrato nuevo controlado por roles de produccion, verificar su source, rotar wallets demo y definir retencion, SLA, jurisdiccion y politica de evidencia con cada cliente.

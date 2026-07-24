@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin } from "../../../lib/auth";
+import { checkAdmin, getAdminTenantAccess } from "../../../lib/auth";
 import { sql } from "../../../lib/db";
 import { json } from "../../../lib/http";
 import { addBucket, normalizeBrowser, normalizeDeviceType, normalizeOs, normalizeTimezone, parseAnalyticsFilters, toSortedBuckets } from "../../../lib/analytics";
@@ -135,7 +135,9 @@ export async function GET(req: Request) {
   if (auth) return auth;
 
   const { searchParams } = new URL(req.url);
-  const { tenant, source, range, rangeSql, country } = parseAnalyticsFilters(searchParams);
+  const { tenant: requestedTenant, source: requestedSource, range, rangeSql, country } = parseAnalyticsFilters(searchParams);
+  const { effectiveTenantSlug: tenant } = getAdminTenantAccess(req, requestedTenant);
+  const source = requestedSource || (tenant ? "real" : "");
   await ensureAnalyticsEventsSchema();
 
   const [overviewRows, trendRows, batchRows, geoRows, deviceRows, journeyRows] = await Promise.all([

@@ -1,7 +1,8 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin } from "../../../../lib/auth";
+import { checkAdmin, getAdminTenantAccess } from "../../../../lib/auth";
+import { areAdminSunBidsInTenantScope } from "../../../../lib/admin-sun-tenant-scope";
 import { json } from "../../../../lib/http";
 import { processSunScan } from "../../../../lib/sun-service";
 
@@ -38,18 +39,24 @@ function byteMap(hexList: string[]) {
 export async function POST(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
+  const { forcedTenantSlug } = getAdminTenantAccess(req);
 
   const body = (await req.json().catch(() => ({}))) as Body;
   const closedUrls = Array.isArray(body.closed_urls) ? body.closed_urls.filter(Boolean) : [];
   const openedUrls = Array.isArray(body.opened_urls) ? body.opened_urls.filter(Boolean) : [];
   if (!closedUrls.length || !openedUrls.length) return json({ ok: false, reason: "closed_urls and opened_urls required" }, 400);
 
-  const inspectMany = async (urls: string[], label: string) => Promise.all(urls.map(async (url, index) => {
-    const parsed = parseSunUrl(url);
-    return processSunScan({ ...parsed, context: { source: "imported", deviceLabel: `admin_compare_samples_${label}_${index}`, meta: { comparedFrom: "admin.sun.compare_tamper_samples" } } });
+  const closedInputs = closedUrls.map(parseSunUrl);
+  const openedInputs = openedUrls.map(parseSunUrl);
+  if (!await areAdminSunBidsInTenantScope({ bids: [...closedInputs, ...openedInputs].map((input) => input.bid), forcedTenantSlug })) {
+    return json({ ok: false, reason: "sun_resource_not_found" }, 404);
+  }
+
+  const inspectMany = async (inputs: ParsedSun[], label: string) => Promise.all(inputs.map(async (parsed, index) => {
+    return processSunScan({ ...parsed, sideEffectMode: "dry_run", context: { source: "imported", deviceLabel: `admin_compare_samples_${label}_${index}`, meta: { comparedFrom: "admin.sun.compare_tamper_samples" } } });
   }));
 
-  const [closedResults, openedResults] = await Promise.all([inspectMany(closedUrls, "closed"), inspectMany(openedUrls, "opened")]);
+  const [closedResults, openedResults] = await Promise.all([inspectMany(closedInputs, "closed"), inspectMany(openedInputs, "opened")]);
   const closedBodies = closedResults.map((entry) => entry.body as Record<string, unknown>);
   const openedBodies = openedResults.map((entry) => entry.body as Record<string, unknown>);
 

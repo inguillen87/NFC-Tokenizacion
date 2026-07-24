@@ -1,0 +1,11 @@
+flowchart LR
+  U["Dashboard user"] --> P1["Patched server pages"]
+  U --> BFF["Dashboard admin BFF"]
+  P1 -->|"explicit tenant or deny"| API["Admin API routes"]
+  BFF -->|"role and tenant headers"| API
+  API --> H1["Patched route-local guards"]
+  H1 --> DB[("Shared PostgreSQL")]
+  S["Revalidated session"] --> P1
+  S --> BFF
+  classDef control fill:#123b2a,stroke:#55d98a,color:#fff;
+  class P1,H1,S control;

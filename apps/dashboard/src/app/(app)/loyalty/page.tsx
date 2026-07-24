@@ -2,15 +2,12 @@ import { SectionHeading } from "@product/ui";
 import { DataTable } from "../../../components/data-table";
 import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
+import { requireDashboardSession } from "../../../lib/session";
+import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../lib/admin-page-access";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
-
-async function adminGet(path: string) {
+async function adminGet(context: AdminPageContext, path: string) {
   try {
-    const response = await fetch(`${API_BASE}${path}`, {
-      headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
-      cache: "no-store",
-    });
+    const response = await fetchAdminPage(context, path);
 
     if (!response.ok) return [];
     return response.json();
@@ -19,22 +16,19 @@ async function adminGet(path: string) {
   }
 }
 
-import { requireDashboardSession } from "../../../lib/session";
-
 export default async function LoyaltyPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const query = searchParams ? await searchParams : {};
-  const tenantFilter = String(query.tenant || "").trim().toLowerCase();
-
   const { locale } = await getDashboardI18n();
   const copy = dashboardContent[locale];
   const session = await requireDashboardSession();
   const isSuperadmin = session.role === "super-admin";
-  const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : tenantFilter;
+  const adminContext = await createAdminPageContext(session, query.tenant);
+  const tenantScope = adminContext.tenantSlug;
 
   const [portfolio, rewardsResponse, overview] = await Promise.all([
-    isSuperadmin ? adminGet("/superadmin/loyalty/portfolio").then((r) => r.portfolio || []) : [],
-    adminGet(`/admin/loyalty/rewards?tenant=${tenantScope}`).then((r) => r.rewards || []),
-    adminGet(`/admin/loyalty/overview?tenant=${tenantScope}`),
+    isSuperadmin ? adminGet(adminContext, "/superadmin/loyalty/portfolio").then((r) => r.portfolio || []) : [],
+    adminGet(adminContext, "/admin/loyalty/rewards").then((r) => r.rewards || []),
+    adminGet(adminContext, "/admin/loyalty/overview"),
   ]);
 
   return (

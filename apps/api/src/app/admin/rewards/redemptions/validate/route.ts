@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin } from "../../../../../lib/auth";
+import { checkAdmin, getAdminTenantAccess } from "../../../../../lib/auth";
 import { sql } from "../../../../../lib/db";
 import { ensureConsumerPortalSchema } from "../../../../../lib/commercial-runtime-schema";
 import { json } from "../../../../../lib/http";
@@ -52,7 +52,7 @@ function formatClaim(row: Record<string, any>) {
   };
 }
 
-async function getClaim(code: string) {
+async function getClaim(code: string, forcedTenantSlug = "") {
   const rows = await sql/*sql*/`
     SELECT
       c.*,
@@ -69,6 +69,7 @@ async function getClaim(code: string) {
     JOIN consumers con ON con.id = c.consumer_id
     JOIN tenants t ON t.id = c.tenant_id
     WHERE c.redemption_code = ${code}
+      AND (${forcedTenantSlug} = '' OR t.slug = ${forcedTenantSlug})
     LIMIT 1
   `;
   return rows[0] || null;
@@ -77,6 +78,7 @@ async function getClaim(code: string) {
 export async function POST(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
+  const { forcedTenantSlug } = getAdminTenantAccess(req);
   await ensureConsumerPortalSchema();
 
   const payload = await req.json().catch(() => ({}));
@@ -87,7 +89,7 @@ export async function POST(req: Request) {
 
   if (!code) return json({ ok: false, reason: "redemption_code_required" }, 400);
 
-  const claim = await getClaim(code);
+  const claim = await getClaim(code, forcedTenantSlug);
   if (!claim) return json({ ok: false, reason: "redemption_not_found" }, 404);
 
   const formatted = formatClaim(claim);
@@ -116,9 +118,19 @@ export async function POST(req: Request) {
           })}::jsonb,
           updated_at = now()
       WHERE id = ${claim.id}
+        AND status = 'claimed'
+        AND (${forcedTenantSlug} = '' OR tenant_id = (SELECT id FROM tenants WHERE slug = ${forcedTenantSlug} LIMIT 1))
       RETURNING *
     `;
-    const updated = await getClaim(String(rows[0]?.redemption_code || code));
+    if (!rows[0]) {
+      const current = await getClaim(code, forcedTenantSlug);
+      return json({
+        ok: false,
+        reason: current ? "redemption_already_processed" : "redemption_not_found",
+        redemption: current ? formatClaim(current) : undefined,
+      }, current ? 409 : 404);
+    }
+    const updated = await getClaim(String(rows[0].redemption_code || code), forcedTenantSlug);
     return json({ ok: true, action: "redeemed", redemption: formatClaim(updated || rows[0]) });
   }
 

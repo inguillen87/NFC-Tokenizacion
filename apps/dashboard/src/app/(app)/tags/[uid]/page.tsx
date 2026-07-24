@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { Card, SectionHeading, StatusChip } from "@product/ui";
 import { requireDashboardSession } from "../../../../lib/session";
-import { getServerOrigin } from "../../../../lib/server-origin";
-import { headers } from "next/headers";
+import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../../lib/admin-page-access";
 
 type PassportResponse = {
   ok: boolean;
@@ -34,13 +33,10 @@ function formatDate(value: string | null | undefined) {
   return Number.isNaN(d.getTime()) ? "-" : d.toLocaleString("es-AR", { dateStyle: "medium", timeStyle: "short" });
 }
 
-async function getPassport(origin: string, uid: string, params: URLSearchParams, cookie?: string) {
+async function getPassport(context: AdminPageContext, uid: string, params: URLSearchParams) {
   const query = params.toString() ? `?${params.toString()}` : "";
   try {
-    const response = await fetch(`${origin}/api/admin/tags/${encodeURIComponent(uid)}/passport${query}`, {
-      cache: "no-store",
-      headers: cookie ? { cookie } : undefined,
-    });
+    const response = await fetchAdminPage(context, `tags/${encodeURIComponent(uid)}/passport${query}`);
     if (!response.ok) return null;
     return await response.json() as PassportResponse;
   } catch {
@@ -50,13 +46,12 @@ async function getPassport(origin: string, uid: string, params: URLSearchParams,
 
 export default async function TagPassportPage({ params, searchParams }: { params: Promise<{ uid: string }>; searchParams: Promise<Record<string, string | undefined>> }) {
   const session = await requireDashboardSession();
-  const origin = await getServerOrigin();
-  const cookie = (await headers()).get("cookie") || "";
   const resolvedParams = await params;
   const query = await searchParams;
   const uid = decodeURIComponent(resolvedParams.uid || "").toUpperCase();
-  const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : String(query.tenant || "");
-  const source = session.role === "tenant-admin" ? "real" : String(query.source || "all");
+  const adminContext = await createAdminPageContext(session, query.tenant);
+  const tenantScope = adminContext.tenantSlug;
+  const source = adminContext.canSelectTenant ? String(query.source || "all") : "real";
   const range = String(query.range || "30d");
   const country = String(query.country || "");
 
@@ -66,7 +61,7 @@ export default async function TagPassportPage({ params, searchParams }: { params
   apiParams.set("range", range);
   if (country) apiParams.set("country", country.toUpperCase());
 
-  const data = await getPassport(origin, uid, apiParams, cookie);
+  const data = await getPassport(adminContext, uid, apiParams);
   const passport = data?.passport;
   const timeline = data?.timeline || [];
   const suspiciousCount = timeline.filter((event) => event.result !== "ok").length;

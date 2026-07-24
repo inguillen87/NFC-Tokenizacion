@@ -6,7 +6,7 @@ import { json } from '../../../../lib/http';
 import { listSunDiagnostics } from '../../../../lib/sun-diagnostics';
 
 export async function GET(req: Request) {
-  const auth = checkAdmin(req);
+  const auth = checkAdmin(req, ["super_admin"]);
   if (auth) return auth;
 
   const { searchParams } = new URL(req.url);

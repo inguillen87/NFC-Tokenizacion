@@ -1,6 +1,6 @@
 # nexID tokenization executor
 
-Small backend-only service that receives tokenization jobs from the main API and signs Polygon Amoy mints outside `api.nexid.lat`.
+Small backend-only service that receives tokenization jobs from the main API, signs Polygon Amoy mints, and publishes IOTA Evidence Anchor V2 receipts outside `api.nexid.lat`.
 
 ## Why it exists
 
@@ -10,6 +10,12 @@ Flow:
 
 ```txt
 SUN tap -> API validation -> tokenization request -> executor -> Polygon Amoy tx -> tx_hash returned to API
+```
+
+The IOTA proof flow uses a separate secret and endpoint:
+
+```txt
+Evidence events -> API reserves proofId -> executor /anchor-evidence -> IOTA tx hash -> API reconciler verifies receipt, calldata, event and storage
 ```
 
 ## Local Amoy pilot
@@ -56,3 +62,30 @@ For premium production, keep the same HTTP contract but replace the signer inter
 - No private key in Vercel API.
 
 The main API already supports this via `TOKENIZATION_EXECUTOR_URL` and `TOKENIZATION_EXECUTOR_SECRET`.
+
+## IOTA Evidence Anchor V2
+
+Configure the executor:
+
+```txt
+IOTA_PROOF_EXECUTOR_SECRET=<dedicated random secret>
+IOTA_EXECUTOR_SIGNER_MODE=private_key
+IOTA_EVM_RPC_URL=https://json-rpc.evm.testnet.iota.cafe
+IOTA_EVM_EXPECTED_CHAIN_ID=1076
+IOTA_EVM_ANCHOR_CONTRACT_V2=<NexidEvidenceAnchor V2>
+IOTA_EVM_PRIVATE_KEY=<dedicated authorized publisher testnet key>
+```
+
+Configure the API without an IOTA private key:
+
+```txt
+IOTA_PROVIDER_MODE=iota_evm_contract_v2
+IOTA_EVM_RPC_URL=https://json-rpc.evm.testnet.iota.cafe
+IOTA_EVM_EXPECTED_CHAIN_ID=1076
+IOTA_EVM_ANCHOR_CONTRACT_V2=<same contract>
+IOTA_PROOF_EXECUTOR_URL=https://<private-executor>/anchor-evidence
+IOTA_PROOF_EXECUTOR_SECRET=<same dedicated secret>
+INTERNAL_PROOF_ANCHOR_KEY=<separate worker secret>
+```
+
+The executor validates chain ID, contract bytecode/version, publisher authorization and the contract-computed `proofId` before broadcast. It returns `202 submitted` immediately after broadcast so the API can persist `tx_hash` before waiting for confirmations. The API worker then verifies the receipt, exact calldata, `EvidenceAnchored` event and contract storage. New writes are V2-only; `IOTA_EVM_ANCHOR_CONTRACT` remains read-only for historical V1 proofs.

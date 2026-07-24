@@ -1,7 +1,8 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin } from "../../../../lib/auth";
+import { checkAdmin, getAdminTenantAccess } from "../../../../lib/auth";
+import { areAdminSunBidsInTenantScope, isAdminSunDiagnosticInTenantScope } from "../../../../lib/admin-sun-tenant-scope";
 import { sql } from "../../../../lib/db";
 import { json } from "../../../../lib/http";
 import {
@@ -45,6 +46,7 @@ function payloadFromDiagnosticRequest(requestJson: unknown, fallbackBid: string)
 export async function POST(req: Request) {
   const auth = checkAdmin(req, ["super_admin", "tenant_admin"]);
   if (auth) return auth;
+  const { forcedTenantSlug } = getAdminTenantAccess(req);
 
   const body = (await req.json().catch(() => ({}))) as RegisterPayloadBody;
   const uidHex = normalizeSunHex(body.uidHex);
@@ -56,6 +58,9 @@ export async function POST(req: Request) {
 
   let diagnostic: Record<string, unknown> | null = null;
   if (diagnosticId) {
+    if (!await isAdminSunDiagnosticInTenantScope({ diagnosticId, forcedTenantSlug })) {
+      return json({ ok: false, reason: "diagnostic_not_found" }, 404);
+    }
     const rows = await sql/*sql*/`
       SELECT id, bid, request_json
       FROM sun_diagnostics
@@ -68,6 +73,9 @@ export async function POST(req: Request) {
 
   const bid = requestedBid || readString(diagnostic?.bid);
   if (!bid) return json({ ok: false, reason: "batch_required" }, 400);
+  if (!await areAdminSunBidsInTenantScope({ bids: [bid], forcedTenantSlug })) {
+    return json({ ok: false, reason: "batch_not_found" }, 404);
+  }
 
   const batchRows = await sql/*sql*/`
     SELECT b.id, b.tenant_id, b.bid, b.status, b.created_at, t.slug AS tenant_slug
@@ -115,6 +123,9 @@ export async function POST(req: Request) {
       reason: "complete_sun_payload_required",
       need: ["bid", "picc_data", "enc", "cmac"],
     }, 400);
+  }
+  if (payload.bid !== bid || !await areAdminSunBidsInTenantScope({ bids: [payload.bid], forcedTenantSlug })) {
+    return json({ ok: false, reason: "payload_bid_mismatch" }, 400);
   }
 
   const hashes = buildSunPayloadHashes({

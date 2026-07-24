@@ -16,6 +16,7 @@ export type AuthUser = {
   id: string;
   email: string;
   label: string;
+  admin_status: "invited" | "pending_activation" | "active" | "disabled";
   role: UserRole;
   tenant_id: string | null;
   password_hash: string;
@@ -160,17 +161,21 @@ export async function getAuthUserByEmail(sql: Sql, email: string): Promise<AuthU
       u.id,
       u.email,
       COALESCE(u.full_name, split_part(u.email, '@', 1)) AS label,
+      u.admin_status,
       pc.password_hash,
       COALESCE(m.role::text, 'viewer') AS role,
       m.tenant_id,
-      COALESCE(json_agg(DISTINCT rp.resource || ':' || rp.action) FILTER (WHERE rp.id IS NOT NULL), '[]'::json) AS permissions,
+      COALESCE(json_agg(DISTINCT CASE
+        WHEN rp.resource = '*' AND rp.action = '*' THEN '*'
+        ELSE rp.resource || ':' || rp.action
+      END) FILTER (WHERE rp.id IS NOT NULL AND rp.effect = 'allow'), '[]'::json) AS permissions,
       EXISTS (SELECT 1 FROM user_mfa_factors umf WHERE umf.user_id = u.id) AS mfa_enabled
     FROM users u
     LEFT JOIN password_credentials pc ON pc.user_id = u.id
     LEFT JOIN memberships m ON m.user_id = u.id
     LEFT JOIN resource_permissions rp ON rp.user_id = u.id
     WHERE lower(u.email) = ${email}
-    GROUP BY u.id, u.email, u.full_name, pc.password_hash, m.role, m.tenant_id
+    GROUP BY u.id, u.email, u.full_name, u.admin_status, pc.password_hash, m.role, m.tenant_id
     ORDER BY CASE m.role
       WHEN 'super_admin' THEN 1
       WHEN 'tenant_admin' THEN 2
@@ -221,9 +226,25 @@ export async function resolveSession(sql: Sql, cookieValue: string | undefined |
   if (!isUuidString(parsed.sessionId)) return null;
   await ensureEnterpriseIamSchema();
   const rows = await sql/*sql*/`
-    SELECT s.id, s.user_id, s.session_token_hash, s.role::text AS role, s.tenant_id, s.permissions, s.mfa_verified, s.expires_at, s.last_seen_at, s.revoked_at,
+    SELECT s.id, s.user_id, s.session_token_hash, s.role::text AS role, s.tenant_id, s.mfa_verified, s.expires_at, s.last_seen_at, s.revoked_at,
       tn.slug AS tenant_slug,
-      u.email, COALESCE(u.full_name, split_part(u.email, '@', 1)) AS label,
+      u.email, u.admin_status, COALESCE(u.full_name, split_part(u.email, '@', 1)) AS label,
+      EXISTS (
+        SELECT 1
+        FROM memberships current_membership
+        WHERE current_membership.user_id = s.user_id
+          AND current_membership.role = s.role
+          AND current_membership.tenant_id IS NOT DISTINCT FROM s.tenant_id
+      ) AS membership_current,
+      COALESCE((
+        SELECT json_agg(DISTINCT CASE
+          WHEN current_permission.resource = '*' AND current_permission.action = '*' THEN '*'
+          ELSE current_permission.resource || ':' || current_permission.action
+        END)
+        FROM resource_permissions current_permission
+        WHERE current_permission.user_id = s.user_id
+          AND current_permission.effect = 'allow'
+      ), '[]'::json) AS current_permissions,
       COALESCE((tsp.metadata->>'setup_completed')::boolean, true) AS setup_completed
     FROM auth_sessions s
     JOIN users u ON u.id = s.user_id
@@ -237,6 +258,14 @@ export async function resolveSession(sql: Sql, cookieValue: string | undefined |
   if (!safeCompare(sha256(parsed.secret), String(session.session_token_hash))) return null;
   const now = Date.now();
   if (new Date(session.expires_at).getTime() <= now) return null;
+  if (!isSessionPrincipalCurrent(session)) {
+    await sql/*sql*/`
+      UPDATE auth_sessions
+      SET revoked_at = now(), last_seen_at = now()
+      WHERE id = ${parsed.sessionId}::uuid AND revoked_at IS NULL
+    `;
+    return null;
+  }
   const idleMs = now - new Date(session.last_seen_at).getTime();
   let rotatedCookieValue: string | null = null;
   if (idleMs > SESSION_IDLE_MS / 2) {
@@ -258,12 +287,17 @@ export async function resolveSession(sql: Sql, cookieValue: string | undefined |
     role: normalizeRole(String(session.role)),
     tenantId: session.tenant_id ? String(session.tenant_id) : null,
     tenantSlug: session.tenant_slug ? String(session.tenant_slug) : null,
-    permissions: parsePermissions(session.permissions),
+    permissions: parsePermissions(session.current_permissions),
     mfaVerified: Boolean(session.mfa_verified),
     rotatedCookieValue,
     expiresAt: String(session.expires_at),
     setupCompleted: Boolean(session.setup_completed),
   };
+}
+
+export function isSessionPrincipalCurrent(session: { admin_status?: unknown; membership_current?: unknown }) {
+  return String(session.admin_status || '').trim().toLowerCase() === 'active'
+    && session.membership_current === true;
 }
 
 export async function revokeSession(sql: Sql, cookieValue: string | undefined | null) {

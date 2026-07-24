@@ -29,7 +29,7 @@ export async function GET(req: Request) {
 
   const rows = tenant
     ? await sql/*sql*/`
-      SELECT wd.id, tn.slug AS tenant_slug, we.url, wd.event_name, wd.status_code, wd.ok, wd.attempt_count, wd.last_error, wd.created_at, wd.delivered_at
+      SELECT wd.id, tn.slug AS tenant_slug, wd.endpoint_url AS url, wd.event_id, wd.event_name, wd.status, wd.status_code, wd.ok, wd.attempt_count, wd.next_attempt_at, wd.last_attempt_at, wd.last_error, wd.created_at, wd.delivered_at
       FROM webhook_deliveries wd
       JOIN webhook_endpoints we ON we.id = wd.endpoint_id
       JOIN tenants tn ON tn.id = we.tenant_id
@@ -38,7 +38,7 @@ export async function GET(req: Request) {
       LIMIT ${limit}
     `
     : await sql/*sql*/`
-      SELECT wd.id, tn.slug AS tenant_slug, we.url, wd.event_name, wd.status_code, wd.ok, wd.attempt_count, wd.last_error, wd.created_at, wd.delivered_at
+      SELECT wd.id, tn.slug AS tenant_slug, wd.endpoint_url AS url, wd.event_id, wd.event_name, wd.status, wd.status_code, wd.ok, wd.attempt_count, wd.next_attempt_at, wd.last_attempt_at, wd.last_error, wd.created_at, wd.delivered_at
       FROM webhook_deliveries wd
       JOIN webhook_endpoints we ON we.id = wd.endpoint_id
       JOIN tenants tn ON tn.id = we.tenant_id

@@ -1,7 +1,7 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-import { checkAdmin, getAdminTenantScope, type AdminScope } from '../../../../lib/auth';
+import { checkAdmin, getAdminTenantAccess, type AdminScope } from '../../../../lib/auth';
 import { json } from '../../../../lib/http';
 import { sql } from '../../../../lib/db';
 import { encryptKey16 } from '../../../../lib/keys';
@@ -77,7 +77,9 @@ export async function POST(req: Request) {
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const mode = firstString(body.mode).toLowerCase();
-  const tenantSlug = firstString(body.tenant_slug, body.tenant, body.tenantId, body.tenant_id);
+  const requestedTenantSlug = firstString(body.tenant_slug, body.tenant, body.tenantId, body.tenant_id);
+  const adminTenantAccess = getAdminTenantAccess(req, requestedTenantSlug);
+  const { effectiveTenantSlug: tenantSlug } = adminTenantAccess;
   const bid = firstString(body.bid, body.batch_id, body.batchId);
   if (!tenantSlug || !bid) return json({ ok: false, reason: 'tenant_slug and bid required' }, 400);
   if (!mode) return json({ ok: false, reason: 'mode required', allowed: ['supplier', 'internal'] }, 400);
@@ -89,9 +91,8 @@ export async function POST(req: Request) {
       message: 'Use /admin/supplier-orders. Supplier batches require server-side key generation, encrypted one-time supplier packs, immutable manifests and QA gates.',
     }, 410);
   }
-  const adminTenantScope = getAdminTenantScope(req);
   const permissionGrants = parsePermissionHeader(req.headers.get('x-nexid-permissions'));
-  if (!canRegisterInternalBatch(adminTenantScope.scope, permissionGrants)) {
+  if (!canRegisterInternalBatch(adminTenantAccess.scope, permissionGrants)) {
     return json({
       ok: false,
       reason: 'internal_batch_registration_forbidden',

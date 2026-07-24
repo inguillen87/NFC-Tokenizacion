@@ -1,4 +1,4 @@
-import { evaluateAdminAccess, normalizeScope, resolveAdminTenantScope } from "./admin-auth-policy";
+import { evaluateAdminAccess, normalizeScope, resolveAdminTenantAccess, resolveAdminTenantScope } from "./admin-auth-policy";
 import { permissionMatches } from "./permission-matcher.js";
 export type AdminScope = "super_admin" | "security_operator" | "tenant_admin" | "reseller" | "readonly_demo";
 
@@ -31,6 +31,15 @@ export function checkAdmin(req: Request, requiredScopes: AdminScope[] = ["super_
   });
   if (verdict.ok) return null;
   return new Response(verdict.status === 403 ? "Forbidden" : "Unauthorized", { status: verdict.status });
+}
+
+export function getAdminTenantAccess(req: Request, requestedTenantSlug?: string | null) {
+  return resolveAdminTenantAccess(
+    req.headers.get("x-nexid-admin-scope"),
+    req.headers.get("x-dashboard-role"),
+    req.headers.get("x-nexid-tenant-slug"),
+    requestedTenantSlug,
+  );
 }
 
 export function checkAdminPermission(req: Request, requiredPermission: string): Response | null {

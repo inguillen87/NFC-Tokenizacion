@@ -1,9 +1,11 @@
 import { Card } from "@product/ui";
 import { requireDashboardSession } from "../../../lib/session";
+import { requireDashboardTenantScope } from "../../../lib/admin-page-access";
 import { UserManagementPanel } from "../../../components/user-management-panel";
 
 export default async function UsersPage() {
-  await requireDashboardSession("users:manage");
+  const session = await requireDashboardSession("users:manage");
+  requireDashboardTenantScope(session);
   return (
     <div className="space-y-6">
       <Card className="p-6">

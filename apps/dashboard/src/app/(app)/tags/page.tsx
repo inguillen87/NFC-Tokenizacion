@@ -5,8 +5,7 @@ import { dashboardContent } from "../../../lib/dashboard-content";
 import { readDemoDataMetaFromResponse, type DemoDataMeta } from "../../../lib/demo-data-mode";
 import { getDashboardI18n } from "../../../lib/locale";
 import { requireDashboardSession } from "../../../lib/session";
-import { getServerOrigin } from "../../../lib/server-origin";
-import { headers } from "next/headers";
+import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../lib/admin-page-access";
 
 type TagRow = {
   uidHex: string;
@@ -30,13 +29,10 @@ type TagsResponse = {
   };
 };
 
-async function getTags(origin: string, params: URLSearchParams, cookie?: string): Promise<{ data: TagsResponse; meta: DemoDataMeta }> {
+async function getTags(context: AdminPageContext, params: URLSearchParams): Promise<{ data: TagsResponse; meta: DemoDataMeta }> {
   const query = params.toString() ? `?${params.toString()}` : "";
   try {
-    const response = await fetch(`${origin}/api/admin/tags${query}`, {
-      cache: "no-store",
-      headers: cookie ? { cookie } : undefined,
-    });
+    const response = await fetchAdminPage(context, `tags${query}`);
     const meta = readDemoDataMetaFromResponse(response);
     if (!response.ok) return { data: { rows: [] }, meta };
     const data = await response.json() as TagsResponse;
@@ -65,11 +61,10 @@ function pageParams(query: Record<string, string | undefined>, nextPage: number)
 export default async function TagsPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const { locale } = await getDashboardI18n();
   const session = await requireDashboardSession();
-  const origin = await getServerOrigin();
   const query = await searchParams;
-  const cookie = (await headers()).get("cookie") || "";
-  const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : String(query.tenant || "");
-  const source = session.role === "tenant-admin" ? "real" : (query.source || "all");
+  const adminContext = await createAdminPageContext(session, query.tenant);
+  const tenantScope = adminContext.tenantSlug;
+  const source = adminContext.canSelectTenant ? (query.source || "all") : "real";
   const range = (query.range || "30d") as "24h" | "7d" | "30d";
   const country = query.country || "";
   const text = (query.q || "").toLowerCase().trim();
@@ -86,7 +81,7 @@ export default async function TagsPage({ searchParams }: { searchParams: Promise
   params.set("limit", String(pageSize));
   params.set("offset", String(offset));
 
-  const data = await getTags(origin, params, cookie);
+  const data = await getTags(adminContext, params);
   const rows = data.data.rows;
   const totals = data.data.totals || {};
   const totalRows = Number(totals.total || 0);
@@ -116,7 +111,7 @@ export default async function TagsPage({ searchParams }: { searchParams: Promise
           <select suppressHydrationWarning name="range" defaultValue={range} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200">
             <option value="24h">24h</option><option value="7d">7d</option><option value="30d">30d</option>
           </select>
-          {session.role !== "tenant-admin" ? (
+          {adminContext.canSelectTenant ? (
             <select suppressHydrationWarning name="source" defaultValue={source} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200">
               <option value="all">all</option>
               <option value="real">real</option>
@@ -125,7 +120,7 @@ export default async function TagsPage({ searchParams }: { searchParams: Promise
           ) : (
             <input suppressHydrationWarning type="hidden" name="source" value="real" />
           )}
-          {session.role !== "tenant-admin" ? <input suppressHydrationWarning name="tenant" defaultValue={tenantScope} placeholder="tenant slug" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" /> : <input suppressHydrationWarning type="hidden" name="tenant" value={tenantScope} />}
+          {adminContext.canSelectTenant ? <input suppressHydrationWarning name="tenant" defaultValue={tenantScope} placeholder="tenant slug" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" /> : <input suppressHydrationWarning type="hidden" name="tenant" value={tenantScope} />}
           <input suppressHydrationWarning name="country" defaultValue={country} placeholder="country (AR, BR...)" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" />
           <input suppressHydrationWarning type="hidden" name="page" value="1" />
           <button suppressHydrationWarning className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-100" type="submit">Aplicar filtros</button>

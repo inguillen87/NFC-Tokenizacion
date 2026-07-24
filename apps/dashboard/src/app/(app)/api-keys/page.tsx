@@ -3,13 +3,14 @@ import { ModuleAudienceHero } from "../../../components/module-audience-hero";
 import { SdkAdminConsole } from "../../../components/sdk-admin-console";
 import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
-import { getDashboardSession } from "../../../lib/session";
+import { requireDashboardSession } from "../../../lib/session";
+import { requireDashboardTenantScope } from "../../../lib/admin-page-access";
 
 export default async function ApiKeysPage() {
   const { locale } = await getDashboardI18n();
   const copy = dashboardContent[locale];
-  const session = await getDashboardSession();
-  const tenantSlug = session?.tenantSlug || "";
+  const session = await requireDashboardSession();
+  const tenantSlug = requireDashboardTenantScope(session).tenantSlug;
 
   return (
     <main className="space-y-8">

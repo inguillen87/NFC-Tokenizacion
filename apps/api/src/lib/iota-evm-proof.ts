@@ -1,5 +1,9 @@
-import { createHash } from "node:crypto";
-import { AbiCoder, Interface, getAddress, keccak256, toUtf8Bytes, toUtf8String } from "ethers";
+import { Interface, getAddress, toUtf8String } from "ethers";
+import {
+  computeIotaEvidenceProofId,
+  iotaAnchorTenantHash,
+  normalizeIotaSha256,
+} from "./iota-evidence-writer";
 import {
   publicProofIotaContractAddress,
   publicProofIotaPublisherAddress,
@@ -13,7 +17,6 @@ const IOTA_LEGACY_ANCHOR_INTERFACE = new Interface([
 const IOTA_EVIDENCE_ANCHOR_INTERFACE = new Interface([
   "function anchorEvidence(bytes32 merkleRoot, bytes32 tenantIdHash, string resourceType, string resourceId, uint64 eventCount, bytes32 memoHash) returns (bytes32 proofId)",
 ]);
-const IOTA_EVIDENCE_PROOF_DOMAIN = keccak256(toUtf8Bytes("nexid.evidence.anchor.v2"));
 const CACHE_KEY = "__nexid_iota_evm_tx_cache_v1__";
 
 type RpcTransaction = {
@@ -256,11 +259,10 @@ export function decodeIotaAnchorInput(input: unknown): IotaAnchorCall | null {
 }
 
 function normalizeSha256Digest(value: unknown) {
-  const normalized = String(value || "").trim().replace(/^(?:sha256:|0x)/i, "").toLowerCase();
-  return /^[0-9a-f]{64}$/.test(normalized) ? normalized : null;
+  return normalizeIotaSha256(value)?.slice("sha256:".length) || null;
 }
 
-function computeIotaEvidenceProofId(input: {
+function proofIdFromDecodedCall(input: {
   chainId: number | null;
   contractAddress: string | null;
   decoded: IotaAnchorCall | null;
@@ -274,25 +276,19 @@ function computeIotaEvidenceProofId(input: {
   const tenantIdHash = normalizeSha256Digest(input.decoded.tenant_id_hash);
   const memoHash = normalizeSha256Digest(input.decoded.memo_hash);
   if (!merkleRoot || !tenantIdHash || !memoHash) return null;
-  return keccak256(AbiCoder.defaultAbiCoder().encode(
-    ["bytes32", "uint256", "address", "bytes32", "bytes32", "bytes32", "bytes32", "uint64", "bytes32"],
-    [
-      IOTA_EVIDENCE_PROOF_DOMAIN,
-      input.chainId,
-      input.contractAddress,
-      `0x${merkleRoot}`,
-      `0x${tenantIdHash}`,
-      keccak256(toUtf8Bytes(input.decoded.resource_type)),
-      keccak256(toUtf8Bytes(input.decoded.resource_id)),
-      input.decoded.event_count,
-      `0x${memoHash}`,
-    ],
-  ));
+  return computeIotaEvidenceProofId({
+    chainId: input.chainId,
+    contractAddress: input.contractAddress,
+    merkleRoot: `sha256:${merkleRoot}`,
+    tenantIdHash: `sha256:${tenantIdHash}`,
+    resourceType: input.decoded.resource_type,
+    resourceId: input.decoded.resource_id,
+    eventCount: input.decoded.event_count,
+    memoHash: `sha256:${memoHash}`,
+  });
 }
 
-export function iotaAnchorTenantHash(tenantId: string) {
-  return createHash("sha256").update(String(tenantId || ""), "utf8").digest("hex");
-}
+export { computeIotaEvidenceProofId, iotaAnchorTenantHash };
 
 export function decodeIotaMemoInput(input: unknown) {
   const value = String(input || "").trim();
@@ -312,11 +308,13 @@ export async function verifyIotaAnchorPublication(input: {
   resourceId: string;
   eventCount: number;
   memoHash?: string;
+  contractAddress?: string;
+  publisherAddress?: string;
 }) {
   const transaction = await readIotaEvmTransaction(input.txHash);
   const decoded = decodeIotaAnchorInput(transaction.input_hex);
-  const configuredContract = normalizeAddress(publicProofIotaContractAddress());
-  const configuredPublisher = normalizeAddress(publicProofIotaPublisherAddress());
+  const configuredContract = normalizeAddress(input.contractAddress || publicProofIotaContractAddress());
+  const configuredPublisher = normalizeAddress(input.publisherAddress || publicProofIotaPublisherAddress());
   const expected = {
     merkle_root: String(input.merkleRoot || "").toLowerCase(),
     tenant_id_hash: String(input.tenantIdHash || "").replace(/^(?:sha256:|0x)/i, "").toLowerCase(),
@@ -342,7 +340,7 @@ export async function verifyIotaAnchorPublication(input: {
   const contractMatches = Boolean(configuredContract && transaction.to === configuredContract);
   const publisherMatches = Boolean(configuredPublisher && transaction.from === configuredPublisher);
   const verified = transaction.verified && callMatches && contractMatches && publisherMatches;
-  const proofId = computeIotaEvidenceProofId({
+  const proofId = proofIdFromDecodedCall({
     chainId: transaction.chain_id,
     contractAddress: transaction.to,
     decoded,

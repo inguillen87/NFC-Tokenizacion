@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin } from "../../../lib/auth";
+import { checkAdmin, getAdminTenantAccess } from "../../../lib/auth";
 import { sql } from "../../../lib/db";
 import { json } from "../../../lib/http";
 import { aggregateTenantMetrics } from "@product/core";
@@ -11,7 +11,8 @@ export async function GET(req: Request) {
   if (auth) return auth;
 
   const { searchParams } = new URL(req.url);
-  const tenant = searchParams.get("tenant") || "";
+  const requestedTenant = searchParams.get("tenant");
+  const { effectiveTenantSlug: tenant } = getAdminTenantAccess(req, requestedTenant);
 
   const rows = tenant
     ? await sql/*sql*/`

@@ -1,0 +1,10 @@
+flowchart LR
+  U["Dashboard user"] --> BFF["Admin BFF"]
+  BFF --> API["Admin API"]
+  API --> PDP["External policy decision service"]
+  PDP -->|"decision plus obligations"| API
+  API --> PEP["Tenant-aware enforcement layer"]
+  PEP --> DB[("Shared PostgreSQL or tenant stores")]
+  IDP["IAM and organization directory"] --> PDP
+  classDef control fill:#123b2a,stroke:#55d98a,color:#fff;
+  class PDP,PEP,IDP control;

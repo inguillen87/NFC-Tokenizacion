@@ -1,6 +1,5 @@
 import { productUrls, withPath } from "@product/config";
 import Link from "next/link";
-import { headers } from "next/headers";
 import {
   Activity,
   ArrowUpRight,
@@ -20,7 +19,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { dashboardPermissionMatches } from "../../../lib/permission-policy";
 import { requireDashboardSession } from "../../../lib/session";
-import { getServerOrigin } from "../../../lib/server-origin";
+import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../lib/admin-page-access";
 import styles from "./page.module.css";
 
 const PUBLIC_VERIFY_URL = withPath(productUrls.web, "/proof/verify");
@@ -51,6 +50,9 @@ type ProofAnchor = {
   tx_hash?: string | null;
   explorer_url?: string | null;
   status?: string | null;
+  proof_id?: string | null;
+  memo_hash?: string | null;
+  confirmations?: number | string | null;
   anchored_at?: string | null;
   created_at?: string | null;
 };
@@ -158,15 +160,12 @@ function unavailable<T>(value: T): FetchResult<T> {
 }
 
 async function fetchDashboardPayload<T extends { ok?: boolean }>(
-  url: string,
-  cookie: string,
+  context: AdminPageContext,
+  path: string,
   fallback: T,
 ): Promise<FetchResult<T>> {
   try {
-    const response = await fetch(url, {
-      headers: cookie ? { cookie } : undefined,
-      cache: "no-store",
-    });
+    const response = await fetchAdminPage(context, path);
     if (!response.ok) return unavailable(fallback);
     const value = await response.json() as T;
     if (!value || value.ok !== true) return unavailable(fallback);
@@ -180,26 +179,26 @@ async function fetchDashboardPayload<T extends { ok?: boolean }>(
   }
 }
 
-async function getAnchors(origin: string, cookie: string) {
+async function getAnchors(context: AdminPageContext) {
   return fetchDashboardPayload(
-    `${origin}/api/admin/proof/anchors`,
-    cookie,
+    context,
+    "proof/anchors",
     { ok: false, anchors: [] as ProofAnchor[] },
   );
 }
 
-async function getEvents(origin: string, cookie: string) {
+async function getEvents(context: AdminPageContext) {
   return fetchDashboardPayload(
-    `${origin}/api/admin/proof/events?limit=60`,
-    cookie,
+    context,
+    "proof/events?limit=60",
     { ok: false, events: [] as ProofEvent[] },
   );
 }
 
-async function getTokenizationRequests(origin: string, cookie: string) {
+async function getTokenizationRequests(context: AdminPageContext) {
   return fetchDashboardPayload(
-    `${origin}/api/admin/tokenization/requests?limit=80`,
-    cookie,
+    context,
+    "tokenization/requests?limit=80",
     { ok: false, rows: [] as TokenizationRequest[] },
   );
 }
@@ -381,13 +380,12 @@ function EmptyState({ children }: { children: string }) {
 
 export default async function ProofPage() {
   const session = await requireDashboardSession("proof:read");
-  const origin = await getServerOrigin();
-  const cookie = (await headers()).get("cookie") || "";
+  const adminContext = await createAdminPageContext(session);
 
-  const eventsPromise = getEvents(origin, cookie);
-  const tokenizationPromise = getTokenizationRequests(origin, cookie);
+  const eventsPromise = getEvents(adminContext);
+  const tokenizationPromise = getTokenizationRequests(adminContext);
   const publicProofPromise = getPublicProofCases();
-  const anchorsResult = await getAnchors(origin, cookie);
+  const anchorsResult = await getAnchors(adminContext);
   const [eventsResult, tokenizationResult, publicProofResult] = await Promise.all([
     eventsPromise,
     tokenizationPromise,
@@ -584,6 +582,18 @@ export default async function ProofPage() {
                           <dt>Merkle root</dt>
                           <dd><code title={root || undefined}>{shortHash(root)}</code></dd>
                         </div>
+                        {readText(anchor.proof_id) ? (
+                          <div className={styles.rootFact}>
+                            <dt>Proof ID V2</dt>
+                            <dd><code title={readText(anchor.proof_id)}>{shortHash(readText(anchor.proof_id))}</code></dd>
+                          </div>
+                        ) : null}
+                        {readText(anchor.memo_hash) ? (
+                          <div className={styles.rootFact}>
+                            <dt>Memo hash</dt>
+                            <dd><code title={readText(anchor.memo_hash)}>{shortHash(readText(anchor.memo_hash))}</code></dd>
+                          </div>
+                        ) : null}
                       </dl>
                       <div className={styles.rowActions}>
                         {explorerHref ? (

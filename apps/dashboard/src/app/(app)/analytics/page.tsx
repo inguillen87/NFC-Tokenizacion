@@ -5,9 +5,7 @@ import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
 import { readDemoDataMetaFromResponse, type DemoDataMeta } from "../../../lib/demo-data-mode";
 import { requireDashboardSession } from "../../../lib/session";
-import { getServerOrigin } from "../../../lib/server-origin";
-
-import { headers } from "next/headers";
+import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../lib/admin-page-access";
 
 type AnalyticsPayload = {
   scope?: {
@@ -81,31 +79,23 @@ const FALLBACK_KPIS = {
 };
 
 async function getAnalytics({
-  origin,
-  tenantScope = "",
+  context,
   source = "all",
   range = "30d",
   country = "",
-  cookie = "",
 }: {
-  origin: string;
-  tenantScope?: string;
+  context: AdminPageContext;
   source?: "real" | "demo" | "imported" | "all";
   range?: "24h" | "7d" | "30d";
   country?: string;
-  cookie?: string;
 }): Promise<{ data: AnalyticsPayload | null; meta: DemoDataMeta }> {
   try {
     const queryParams = new URLSearchParams();
-    if (tenantScope) queryParams.set("tenant", tenantScope);
     if (source && source !== "all") queryParams.set("source", source);
     if (range) queryParams.set("range", range);
     if (country) queryParams.set("country", country.toUpperCase());
     const query = queryParams.toString() ? `?${queryParams.toString()}` : "";
-    const response = await fetch(`${origin}/api/admin/analytics${query}`, {
-      cache: "no-store",
-      headers: cookie ? { cookie } : undefined,
-    });
+    const response = await fetchAdminPage(context, `analytics${query}`);
     const meta = readDemoDataMetaFromResponse(response);
     if (!response.ok) return { data: null, meta };
     return { data: await response.json(), meta };
@@ -118,19 +108,18 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
   const { locale } = await getDashboardI18n();
   const session = await requireDashboardSession();
   const query = await searchParams;
-  const tenantScope = session.role === "tenant-admin" ? (session.tenantSlug || "") : String(query.tenant || "");
-  const isTenantAdmin = session.role === "tenant-admin";
+  const adminContext = await createAdminPageContext(session, query.tenant);
+  const tenantScope = adminContext.tenantSlug;
+  const isTenantAdmin = !adminContext.canSelectTenant;
   const source = isTenantAdmin ? "real" : ((query.source || "all") as "real" | "demo" | "imported" | "all");
   const range = (query.range || "30d") as "24h" | "7d" | "30d";
   const country = (query.country || "").trim();
-  const origin = await getServerOrigin();
-  const cookie = (await headers()).get("cookie") || "";
 
   const fallbackLocale = "es-AR" as const;
   const copy = dashboardContent[locale] || dashboardContent[fallbackLocale];
   const translation = messages[locale] ?? messages[fallbackLocale];
   const kpis = translation?.dashboard?.kpis || FALLBACK_KPIS;
-  const analyticsData = await getAnalytics({ origin, tenantScope, source, range, country, cookie });
+  const analyticsData = await getAnalytics({ context: adminContext, source, range, country });
   const mapMode = isTenantAdmin ? "tenant" : "global";
 
   return (
@@ -152,7 +141,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
             <option value="7d">7d</option>
             <option value="30d">30d</option>
           </select>
-          {session.role !== "tenant-admin" ? (
+          {adminContext.canSelectTenant ? (
             <select suppressHydrationWarning name="source" defaultValue={source} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200">
               <option value="all">all</option>
               <option value="real">real</option>
@@ -162,7 +151,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
           ) : (
             <input suppressHydrationWarning type="hidden" name="source" value="real" />
           )}
-          {session.role !== "tenant-admin" ? (
+          {adminContext.canSelectTenant ? (
             <input suppressHydrationWarning name="tenant" defaultValue={tenantScope} placeholder="tenant slug" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" />
           ) : (
             <input suppressHydrationWarning type="hidden" name="tenant" value={tenantScope} />

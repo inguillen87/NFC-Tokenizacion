@@ -8,13 +8,14 @@ const dashboardStyles = await readFile(new URL("../src/app/globals.css", import.
 
 test("Trust Operations reads private tenant contracts through the authenticated BFF", () => {
   assert.match(proofSource, /await requireDashboardSession\("proof:read"\)/);
-  assert.match(proofSource, /headers: cookie \? \{ cookie \} : undefined/);
-  assert.match(proofSource, /\/api\/admin\/proof\/anchors/);
-  assert.match(proofSource, /\/api\/admin\/proof\/events\?limit=60/);
-  assert.match(proofSource, /\/api\/admin\/tokenization\/requests\?limit=80/);
+  assert.match(proofSource, /await createAdminPageContext\(session\)/);
+  assert.match(proofSource, /fetchAdminPage\(context, path\)/);
+  assert.match(proofSource, /"proof\/anchors"/);
+  assert.match(proofSource, /"proof\/events\?limit=60"/);
+  assert.match(proofSource, /"tokenization\/requests\?limit=80"/);
   assert.match(proofSource, /response\.headers\.get\("x-nexid-data-mode"\) === "demo"/);
   assert.match(proofSource, /value\.ok !== true/);
-  assert.doesNotMatch(proofSource, /process\.env\.ADMIN_API_KEY|fetch\(`\$\{apiOrigin\}\/admin\//);
+  assert.doesNotMatch(proofSource, /process\.env\.ADMIN_API_KEY|getServerOrigin|headers\(\)/);
 });
 
 test("public testnet references come from productUrls.api and stay outside tenant metrics", () => {

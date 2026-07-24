@@ -90,6 +90,7 @@ export async function POST(req: Request) {
   await dispatchTenantWebhooks({
     tenantId: auth.context.tenantId,
     eventName: "sdk.external_event",
+    idempotencyKey: eventId,
     payload: { eventId, eventType, bid: bid || null, uidHex: uidHex || null, source: clean(body.source) || "sdk", traceId: auth.context.traceId },
   }).catch(() => null);
   await logSdkUsage({ req, context: auth.context, endpoint: "sdk.events", statusCode: 201, startedAt, meta: { eventId, eventType, bid: bid || null } });

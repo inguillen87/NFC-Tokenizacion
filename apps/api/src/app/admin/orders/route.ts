@@ -7,7 +7,7 @@ import { json } from "../../../lib/http";
 import { ensureOrderRequestsSchema } from "../../../lib/commercial-runtime-schema";
 
 export async function GET(req: Request) {
-  const auth = checkAdmin(req);
+  const auth = checkAdmin(req, ["super_admin"]);
   if (auth) return auth;
   await ensureOrderRequestsSchema();
   const rows = await sql/*sql*/`SELECT * FROM order_requests ORDER BY created_at DESC LIMIT 300`;

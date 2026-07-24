@@ -1,15 +1,10 @@
 import { requireDashboardSession } from "../../../../lib/session";
-import { getServerOrigin } from "../../../../lib/server-origin";
-import { headers } from "next/headers";
+import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../../lib/admin-page-access";
 import RewardsClient from "./rewards-client";
 
-async function getRewards(origin: string, tenantScope: string, cookie?: string) {
+async function getRewards(context: AdminPageContext) {
   try {
-    const query = tenantScope ? `?tenant=${encodeURIComponent(tenantScope)}` : "";
-    const response = await fetch(`${origin}/api/admin/loyalty/rewards${query}`, {
-      cache: "no-store",
-      headers: cookie ? { cookie } : undefined,
-    });
+    const response = await fetchAdminPage(context, "loyalty/rewards");
     if (!response.ok) return [];
     const data = await response.json();
     return data.rewards || [];
@@ -63,13 +58,11 @@ const PRESETS = [
 export default async function RewardsPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const query = searchParams ? await searchParams : {};
   const session = await requireDashboardSession();
-  const requestedTenant = typeof query.tenant === "string" ? query.tenant : "";
-  const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : requestedTenant;
-  const origin = await getServerOrigin();
-  const cookie = (await headers()).get("cookie") || "";
+  const adminContext = await createAdminPageContext(session, query.tenant);
+  const tenantScope = adminContext.tenantSlug;
 
-  const fetchedRewards = await getRewards(origin, tenantScope, cookie);
-  const rewards = fetchedRewards.length ? fetchedRewards : PRESETS;
+  const fetchedRewards = await getRewards(adminContext);
+  const rewards = fetchedRewards.length ? fetchedRewards : session.isDemo ? PRESETS : [];
 
   return (
     <RewardsClient initialRewards={rewards} tenantScope={tenantScope} />

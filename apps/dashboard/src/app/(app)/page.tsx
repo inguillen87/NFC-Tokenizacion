@@ -16,8 +16,8 @@ import { resolveEventLocalTime } from "@product/core";
 import DashboardHomeClient from "../../components/dashboard-home-client";
 import { type OpsCommandStep, type OpsCommandTenantRow } from "../../components/ops-command-center";
 import { isClerkConfiguredForRuntime } from "../../lib/clerk-env";
+import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../lib/admin-page-access";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
 const FALLBACK_KPIS = {
   scans: "Scans",
   validInvalid: "Valid / Invalid",
@@ -162,17 +162,15 @@ function emptyAnalyticsData(tenant = "unknown", reason = "Analytics upstream una
   };
 }
 
-async function getAnalyticsData(tenantScope = "") {
+async function getAnalyticsData(context: AdminPageContext) {
+  const tenantScope = context.tenantSlug;
   try {
     const query = new URLSearchParams({ range: "30d" });
     if (tenantScope) {
       query.set("tenant", tenantScope);
       query.set("source", "real");
     }
-    const response = await fetch(`${API_BASE}/admin/analytics?${query.toString()}`, {
-      headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
-      cache: "no-store",
-    });
+    const response = await fetchAdminPage(context, `analytics?${query.toString()}`);
     if (!response.ok) return tenantScope ? emptyAnalyticsData(tenantScope, `Admin upstream error (${response.status})`) : demoAnalyticsData();
     const payload = await response.json().catch(() => null);
     return payload?.kpis ? payload : tenantScope ? emptyAnalyticsData(tenantScope, "Invalid analytics payload") : demoAnalyticsData();
@@ -181,14 +179,12 @@ async function getAnalyticsData(tenantScope = "") {
   }
 }
 
-async function getOverviewRows(tenantScope = "") {
+async function getOverviewRows(context: AdminPageContext) {
+  const tenantScope = context.tenantSlug;
   try {
     const query = new URLSearchParams({ withStats: "1" });
     if (tenantScope) query.set("tenant", tenantScope);
-    const response = await fetch(`${API_BASE}/admin/tenants?${query.toString()}`, {
-      headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
-      cache: "no-store",
-    });
+    const response = await fetchAdminPage(context, `tenants?${query.toString()}`);
     if (!response.ok) return tenantScope ? [] : demoOverviewRows() as Array<Record<string, unknown>>;
     return response.json();
   } catch {
@@ -196,17 +192,15 @@ async function getOverviewRows(tenantScope = "") {
   }
 }
 
-async function getLiveEvents(tenantScope = "") {
+async function getLiveEvents(context: AdminPageContext) {
+  const tenantScope = context.tenantSlug;
   try {
     const query = new URLSearchParams({ limit: "18" });
     if (tenantScope) {
       query.set("tenant", tenantScope);
       query.set("source", "real");
     }
-    const response = await fetch(`${API_BASE}/admin/events?${query.toString()}`, {
-      headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
-      cache: "no-store",
-    });
+    const response = await fetchAdminPage(context, `events?${query.toString()}`);
     if (!response.ok) return tenantScope ? [] : demoLiveEventRows() as Array<Record<string, unknown>>;
     const payload = await response.json().catch(() => null) as { rows?: Array<Record<string, unknown>> } | Array<Record<string, unknown>> | null;
     if (!payload) return tenantScope ? [] : demoLiveEventRows() as Array<Record<string, unknown>>;
@@ -217,14 +211,12 @@ async function getLiveEvents(tenantScope = "") {
   }
 }
 
-async function getTokenizationRows(tenantScope = "") {
+async function getTokenizationRows(context: AdminPageContext) {
+  const tenantScope = context.tenantSlug;
   try {
     const query = new URLSearchParams({ limit: "30" });
     if (tenantScope) query.set("tenant", tenantScope);
-    const response = await fetch(`${API_BASE}/admin/tokenization/requests?${query.toString()}`, {
-      headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
-      cache: "no-store",
-    });
+    const response = await fetchAdminPage(context, `tokenization/requests?${query.toString()}`);
     if (!response.ok) return tenantScope ? [] : demoTokenizationRows() as Array<Record<string, unknown>>;
     const payload = await response.json().catch(() => ({})) as { rows?: Array<Record<string, unknown>> };
     return payload.rows || (tenantScope ? [] : demoTokenizationRows() as Array<Record<string, unknown>>);
@@ -233,13 +225,10 @@ async function getTokenizationRows(tenantScope = "") {
   }
 }
 
-async function getBatchRows(tenantScope = "") {
+async function getBatchRows(context: AdminPageContext) {
+  const tenantScope = context.tenantSlug;
   try {
-    const query = tenantScope ? `?tenant=${encodeURIComponent(tenantScope)}` : "";
-    const response = await fetch(`${API_BASE}/admin/batches${query}`, {
-      headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
-      cache: "no-store",
-    });
+    const response = await fetchAdminPage(context, "batches");
     if (!response.ok) return tenantScope ? [] : demoBatchRows() as Array<Record<string, unknown>>;
     const payload = await response.json().catch(() => []) as Array<Record<string, unknown>>;
     return Array.isArray(payload) ? payload : tenantScope ? [] : demoBatchRows() as Array<Record<string, unknown>>;
@@ -307,15 +296,16 @@ export default async function DashboardHome() {
   const copy = dashboardContent[locale] || dashboardContent[fallbackLocale];
   const publicMobileBase = `${productUrls.web}/demo-lab/mobile`;
   const session = await requireDashboardSession();
-  const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : "";
-  const isTenantAdmin = session.role === "tenant-admin";
+  const adminContext = await createAdminPageContext(session);
+  const tenantScope = adminContext.tenantSlug;
+  const isTenantAdmin = !adminContext.canSelectTenant;
 
   const [overviewRawResult, liveEventsResult, tokenizationRowsResult, batchRowsResult, analyticsDataResult] = await Promise.all([
-    getOverviewRows(tenantScope),
-    getLiveEvents(tenantScope),
-    getTokenizationRows(tenantScope),
-    getBatchRows(tenantScope),
-    getAnalyticsData(tenantScope),
+    getOverviewRows(adminContext),
+    getLiveEvents(adminContext),
+    getTokenizationRows(adminContext),
+    getBatchRows(adminContext),
+    getAnalyticsData(adminContext),
   ]);
 
   const overviewRaw = overviewRawResult as Array<Record<string, unknown>>;

@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin } from "../../../../../lib/auth";
+import { checkAdmin, getAdminTenantAccess } from "../../../../../lib/auth";
 import { normalizeBrowser, normalizeDeviceType, normalizeOs, normalizeTimezone, parseAnalyticsFilters } from "../../../../../lib/analytics";
 import { sql } from "../../../../../lib/db";
 import { json } from "../../../../../lib/http";
@@ -15,7 +15,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ uid: str
   if (!uidHex) return json({ ok: false, reason: "uid required" }, 400);
 
   const { searchParams } = new URL(req.url);
-  const { tenant, source, range, rangeSql, country } = parseAnalyticsFilters(searchParams);
+  const { tenant: requestedTenant, source: requestedSource, range, rangeSql, country } = parseAnalyticsFilters(searchParams);
+  const { effectiveTenantSlug: tenant } = getAdminTenantAccess(req, requestedTenant);
+  const source = requestedSource || (tenant ? "real" : "");
 
   const profileRows = await sql/*sql*/`
     SELECT

@@ -3,8 +3,7 @@ import { Card, SectionHeading, StatusChip } from "@product/ui";
 import { OpsCommandCenter, type OpsCommandStep, type OpsCommandTenantRow } from "../../../components/ops-command-center";
 import { BlockchainHsmHealth } from "../../../components/blockchain-hsm-health";
 import { requireDashboardSession } from "../../../lib/session";
-import { getServerOrigin } from "../../../lib/server-origin";
-import { headers } from "next/headers";
+import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../lib/admin-page-access";
 
 type TenantRow = Record<string, unknown>;
 type BatchRow = Record<string, unknown>;
@@ -27,12 +26,9 @@ type ProductAssetsPayload = {
   }>;
 };
 
-async function fetchJson<T>(origin: string, path: string, fallback: T, cookie?: string): Promise<T> {
+async function fetchJson<T>(context: AdminPageContext, path: string, fallback: T): Promise<T> {
   try {
-    const response = await fetch(`${origin}${path}`, {
-      cache: "no-store",
-      headers: cookie ? { cookie } : undefined,
-    });
+    const response = await fetchAdminPage(context, path);
     if (!response.ok) return fallback;
     return await response.json() as T;
   } catch {
@@ -106,14 +102,13 @@ export default async function SuperadminConsumerNetworkPage() {
     );
   }
 
-  const origin = await getServerOrigin();
-  const cookie = (await headers()).get("cookie") || "";
+  const adminContext = await createAdminPageContext(session);
   const [tenants, batches, tagsPayload, experiencesPayload, productAssetsPayload] = await Promise.all([
-    fetchJson<TenantRow[]>(origin, "/api/admin/tenants?withStats=1", [], cookie),
-    fetchJson<BatchRow[]>(origin, "/api/admin/batches", [], cookie),
-    fetchJson<TagsPayload>(origin, "/api/admin/tags?limit=100", { rows: [], totals: {} }, cookie),
-    fetchJson<ExperiencesPayload>(origin, "/api/admin/consumer-experiences", { items: [], moderation: {} }, cookie),
-    fetchJson<ProductAssetsPayload>(origin, "/api/admin/product-assets?limit=80", { items: [] }, cookie),
+    fetchJson<TenantRow[]>(adminContext, "/api/admin/tenants?withStats=1", []),
+    fetchJson<BatchRow[]>(adminContext, "/api/admin/batches", []),
+    fetchJson<TagsPayload>(adminContext, "/api/admin/tags?limit=100", { rows: [], totals: {} }),
+    fetchJson<ExperiencesPayload>(adminContext, "/api/admin/consumer-experiences", { items: [], moderation: {} }),
+    fetchJson<ProductAssetsPayload>(adminContext, "/api/admin/product-assets?limit=80", { items: [] }),
   ]);
 
   const scopedTenants = tenants;

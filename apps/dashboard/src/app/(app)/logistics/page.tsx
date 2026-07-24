@@ -1,19 +1,13 @@
 import Link from "next/link";
 import { SectionHeading } from "@product/ui";
 import { ShieldAlert, PackageCheck, Package, ShieldCheck, Navigation, Truck, MapPin, Zap, Activity } from "lucide-react";
-import { productUrls } from "@product/config";
 import { requireDashboardSession } from "../../../lib/session";
+import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../lib/admin-page-access";
 import { SecureDeliveryOpsConsole } from "../../../components/secure-delivery-ops-console";
 
-const API_BASE = productUrls.api;
-
-async function getLogisticsStats(tenantScope = "") {
+async function getLogisticsStats(context: AdminPageContext) {
   try {
-    const query = tenantScope ? `?tenant=${encodeURIComponent(tenantScope)}` : "";
-    const response = await fetch(`${API_BASE}/admin/logistics/shipments${query}`, {
-      headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
-      cache: "no-store",
-    });
+    const response = await fetchAdminPage(context, "logistics/shipments");
     if (!response.ok) return { total: 0, in_transit: 0, delivered: 0, alerts: 0 };
     const payload = await response.json();
     return payload.stats;
@@ -24,9 +18,10 @@ async function getLogisticsStats(tenantScope = "") {
 
 export default async function LogisticsHubPage() {
   const session = await requireDashboardSession("logistics:read");
-  const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : "";
+  const adminContext = await createAdminPageContext(session);
+  const tenantScope = adminContext.tenantSlug;
 
-  const stats = await getLogisticsStats(tenantScope);
+  const stats = await getLogisticsStats(adminContext);
 
   return (
     <main className="space-y-8 pb-12">

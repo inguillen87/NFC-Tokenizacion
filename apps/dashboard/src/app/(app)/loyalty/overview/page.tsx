@@ -1,15 +1,11 @@
 import { requireDashboardSession } from "../../../../lib/session";
-import { getServerOrigin } from "../../../../lib/server-origin";
-import { headers } from "next/headers";
+import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../../lib/admin-page-access";
 import { Card, SectionHeading } from "@product/ui";
 import Link from "next/link";
 
-async function adminGet(origin: string, path: string, cookie?: string) {
+async function adminGet(context: AdminPageContext, path: string) {
   try {
-    const response = await fetch(`${origin}/api/admin/${path.replace(/^\/?admin\//, "")}`, {
-      cache: "no-store",
-      headers: cookie ? { cookie } : undefined,
-    });
+    const response = await fetchAdminPage(context, path);
     if (!response.ok) return null;
     return response.json();
   } catch {
@@ -20,16 +16,13 @@ async function adminGet(origin: string, path: string, cookie?: string) {
 export default async function LoyaltyOverviewPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const query = searchParams ? await searchParams : {};
   const session = await requireDashboardSession();
-  const requestedTenant = typeof query.tenant === "string" ? query.tenant : "";
-  const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : requestedTenant;
-  const tenantQuery = tenantScope ? `?tenant=${encodeURIComponent(tenantScope)}` : "";
-  const origin = await getServerOrigin();
-  const cookie = (await headers()).get("cookie") || "";
+  const adminContext = await createAdminPageContext(session, query.tenant);
+  const tenantScope = adminContext.tenantSlug;
 
   const [loyaltyOverview, consumerOverview, rewardsRaw] = await Promise.all([
-    adminGet(origin, `/admin/loyalty/overview${tenantQuery}`, cookie),
-    adminGet(origin, `/admin/consumer-network/overview${tenantQuery}`, cookie),
-    adminGet(origin, `/admin/loyalty/rewards${tenantQuery}`, cookie),
+    adminGet(adminContext, "/admin/loyalty/overview"),
+    adminGet(adminContext, "/admin/consumer-network/overview"),
+    adminGet(adminContext, "/admin/loyalty/rewards"),
   ]);
 
   const overview = loyaltyOverview || { active_programs: 0, total_members: 0, points_issued: 0, points_redeemed: 0 };

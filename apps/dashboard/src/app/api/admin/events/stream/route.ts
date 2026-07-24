@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { randomUUID } from "node:crypto";
 import { getDashboardSession } from "../../../../../lib/session";
 import { getDashboardDemoEvents, toDemoRealtimeEvent } from "../../../../../lib/demo-runtime-state";
+import { DashboardTenantScopeError, resolveDashboardTenantScope } from "../../../../../lib/dashboard-tenant-scope-policy";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
 
@@ -71,7 +72,6 @@ export async function GET(request: Request) {
   const limit = Math.min(Math.max(Number(incoming.searchParams.get("limit") || 8), 1), 50);
   const forceSandbox = ["1", "true", "sandbox"].includes(String(incoming.searchParams.get("sandbox") || incoming.searchParams.get("demoFallback") || "").toLowerCase());
   const requestedTenant = String(incoming.searchParams.get("tenant") || "").trim().toLowerCase();
-  incoming.searchParams.forEach((value, key) => upstream.searchParams.set(key, value));
 
   const token = String(process.env.ADMIN_API_KEY || "").trim();
   const requireScopedAdminAuth = String(process.env.REQUIRE_SCOPED_ADMIN_AUTH || "").toLowerCase() === "true";
@@ -87,7 +87,22 @@ export async function GET(request: Request) {
           : "";
   const isProduction = String(process.env.NODE_ENV || "").toLowerCase() === "production";
 
-  const tenant = requestedTenant || String(session?.tenantSlug || "").trim().toLowerCase();
+  if (isProduction && !session) return fallbackStream("Dashboard session required", requestId, limit);
+
+  let tenant = requestedTenant;
+  if (session) {
+    try {
+      tenant = resolveDashboardTenantScope(session, requestedTenant).tenantSlug;
+    } catch (error) {
+      if (error instanceof DashboardTenantScopeError) {
+        return fallbackStream(error.code, requestId, limit);
+      }
+      throw error;
+    }
+  }
+  incoming.searchParams.forEach((value, key) => upstream.searchParams.set(key, value));
+  upstream.searchParams.delete("tenant");
+  if (tenant) upstream.searchParams.set("tenant", tenant);
 
   if (forceSandbox && (!isProduction || Boolean(scopedRole)) && scopedRole !== "tenant_admin") {
     return fallbackStream("dashboard demo sandbox stream", requestId, limit, { includeDemoRows: true, tenant });

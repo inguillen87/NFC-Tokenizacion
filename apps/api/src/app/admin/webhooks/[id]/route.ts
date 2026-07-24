@@ -5,6 +5,7 @@ import { checkAdmin, getAdminTenantScope } from "../../../../lib/auth";
 import { ensureSdkSchema } from "../../../../lib/commercial-runtime-schema";
 import { sql } from "../../../../lib/db";
 import { json } from "../../../../lib/http";
+import { normalizeWebhookUrl, resolveWebhookDestination, safeWebhookError } from "../../../../lib/webhook-egress";
 
 function clean(value: unknown) {
   return String(value || "").trim();
@@ -27,10 +28,30 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
   const tenantId = await tenantScopeId(req);
   if (tenantId === "__missing__") return json({ error: "tenant not found" }, 404);
   const name = clean(body?.name);
-  const url = clean(body?.url);
+  const rawUrl = clean(body?.url);
   const signingSecret = clean(body?.signingSecret || body?.signing_secret);
   const enabled = body?.enabled;
   const events = Array.isArray(body?.events) ? body.events.map(clean).filter(Boolean) : null;
+
+  const currentRows = await sql/*sql*/`
+    SELECT url, enabled
+    FROM webhook_endpoints
+    WHERE id = ${id}
+      AND (${tenantId}::text IS NULL OR tenant_id::text = ${tenantId})
+    LIMIT 1
+  `;
+  const current = currentRows[0] as { url?: string; enabled?: boolean } | undefined;
+  if (!current) return json({ error: "webhook not found" }, 404);
+
+  let url = "";
+  try {
+    url = rawUrl ? normalizeWebhookUrl(rawUrl).toString() : "";
+    const effectiveUrl = url || String(current.url || "");
+    const effectiveEnabled = typeof enabled === "boolean" ? enabled : Boolean(current.enabled);
+    if (effectiveEnabled) await resolveWebhookDestination(effectiveUrl);
+  } catch (error) {
+    return json({ error: "invalid webhook URL", reason: safeWebhookError(error).code }, 400);
+  }
 
   const rows = await sql/*sql*/`
     UPDATE webhook_endpoints

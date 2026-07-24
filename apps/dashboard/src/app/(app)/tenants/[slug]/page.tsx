@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import {
   ArrowLeft,
   ArrowRight,
@@ -20,6 +21,8 @@ import {
 import { Badge, Card, SectionHeading } from "@product/ui";
 import { TENANT_DIRECTORY } from "../../../../lib/tenant-directory";
 import { productUrls } from "@product/config";
+import { requireDashboardSession } from "../../../../lib/session";
+import { requireDashboardTenantScope } from "../../../../lib/admin-page-access";
 
 type TenantKpis = {
   batches: string;
@@ -147,6 +150,9 @@ function toneClass(tone: string) {
 
 export default async function TenantDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  const session = await requireDashboardSession();
+  const scope = requireDashboardTenantScope(session, slug);
+  if (!scope.canSelectTenant && scope.tenantSlug !== slug.trim().toLowerCase()) notFound();
   const tenant = TENANT_DIRECTORY.find((item) => item.slug === slug);
 
   if (!tenant) {

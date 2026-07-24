@@ -51,6 +51,9 @@ type AnchorReceipt = {
   resource_id?: string | null;
   merkle_root?: string | null;
   status?: string | null;
+  proof_id?: string | null;
+  memo_hash?: string | null;
+  confirmations?: number | null;
   tx_hash?: string | null;
   explorer_url?: string | null;
   anchored_at?: string | null;
@@ -113,6 +116,8 @@ function errorMessage(payload: Record<string, unknown>, fallback: string) {
     proof_payload_sensitive_key_rejected: "El payload contiene un campo sensible. Usa solo referencias no confidenciales.",
     tenant_not_found: "No se encontro el tenant indicado.",
     tenant_required: "Selecciona un tenant antes de registrar evidencia.",
+    public_resource_id_required: "Define una referencia publica seudonima antes de publicar en IOTA.",
+    direct_event_hashes_forbidden: "En produccion IOTA solo acepta eventos registrados y tenant-scoped.",
     readonly_demo_mutation_blocked: "El sandbox es de solo lectura. Ingresa con una cuenta operativa para emitir un recibo.",
   };
   return known[reason] || reason || fallback;
@@ -140,7 +145,7 @@ function toLocalDateTimeInput(value: string) {
 }
 
 export function ProofAnchorComposer({ canWrite, defaultOccurredAt, initialTenantSlug, isDemo, role }: Props) {
-  const tenantLocked = role === "tenant-admin" && Boolean(initialTenantSlug);
+  const tenantLocked = role !== "super-admin" && Boolean(initialTenantSlug);
   const [tenantSlug, setTenantSlug] = useState(initialTenantSlug || "");
   const [tenants, setTenants] = useState<TenantOption[]>([]);
   const [providers, setProviders] = useState<ProviderReadiness[]>([]);
@@ -148,6 +153,7 @@ export function ProofAnchorComposer({ canWrite, defaultOccurredAt, initialTenant
   const [selectedProvider, setSelectedProvider] = useState<ProviderCode>("none");
   const [resourceType, setResourceType] = useState("batch");
   const [resourceId, setResourceId] = useState("");
+  const [publicResourceId, setPublicResourceId] = useState("");
   const [eventType, setEventType] = useState("origin_attested");
   const [evidenceStatus, setEvidenceStatus] = useState("verified");
   const [locationCode, setLocationCode] = useState("");
@@ -214,6 +220,7 @@ export function ProofAnchorComposer({ canWrite, defaultOccurredAt, initialTenant
   const writable = canWrite && !isDemo;
   const canSubmit = writable
     && Boolean(tenantSlug.trim() && resourceId.trim() && occurredAt)
+    && (selectedProvider !== "iota" || Boolean(publicResourceId.trim()))
     && Boolean(selectedProviderRow?.write_enabled)
     && !pending;
 
@@ -250,13 +257,17 @@ export function ProofAnchorComposer({ canWrite, defaultOccurredAt, initialTenant
       const anchorPath = selectedProvider === "none" ? "/api/admin/proof/anchor" : "/api/admin/proof/anchors";
       const anchorResponse = await fetch(anchorPath, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          ...(selectedProvider === "iota" ? { "idempotency-key": `proof-event:${eventId}` } : {}),
+        },
         body: JSON.stringify({
           tenant: tenantSlug.trim(),
           provider: selectedProvider,
           network: selectedProviderRow?.network || (selectedProvider === "none" ? "local" : "testnet"),
           resource_type: resourceType,
           resource_id: resourceId.trim(),
+          ...(selectedProvider === "iota" ? { public_resource_id: publicResourceId.trim() } : {}),
           event_ids: [eventId],
         }),
       });
@@ -269,7 +280,12 @@ export function ProofAnchorComposer({ canWrite, defaultOccurredAt, initialTenant
         payloadHash,
         anchor: (anchorPayload.anchor || {}) as AnchorReceipt,
       });
-      setPhase("Recibo emitido y listo para verificacion.");
+      const anchorStatus = readText((anchorPayload.anchor as Record<string, unknown> | undefined)?.status).toLowerCase();
+      setPhase(anchorStatus === "confirmed"
+        ? "Recibo confirmado por IOTA y listo para verificacion independiente."
+        : ["pending", "submitted", "reconciling"].includes(anchorStatus)
+          ? "Solicitud persistida; la transaccion esta enviada o en reconciliacion. Aun no esta confirmada."
+          : "Recibo local emitido y listo para verificacion.");
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "No se pudo completar la operacion.");
       setPhase(eventId ? "Evento registrado; recibo pendiente." : "Operacion detenida.");
@@ -357,6 +373,13 @@ export function ProofAnchorComposer({ canWrite, defaultOccurredAt, initialTenant
                 <input disabled={!formInteractive} onChange={(event) => setResourceId(event.target.value)} placeholder="Ej. LOTE-MZA-2026-0031" required value={resourceId} />
                 <small>Usa un ID interno no sensible; no incluyas nombres de pacientes, clientes ni secretos.</small>
               </label>
+              {selectedProvider === "iota" ? (
+                <label className={`${styles.field} ${styles.fullField}`}>
+                  <span>Referencia publica IOTA</span>
+                  <input disabled={!formInteractive} maxLength={128} onChange={(event) => setPublicResourceId(event.target.value)} placeholder="Ej. nx-lot-8d2f04c1" required value={publicResourceId} />
+                  <small>Se publica on-chain. Usa una referencia seudonima estable; nunca copies un ID interno, PII o un secreto.</small>
+                </label>
+              ) : null}
               <label className={`${styles.field} ${styles.fullField}`}>
                 <span>Hecho operativo</span>
                 <select disabled={!formInteractive} onChange={(event) => setEventType(event.target.value)} value={eventType}>
@@ -457,6 +480,7 @@ export function ProofAnchorComposer({ canWrite, defaultOccurredAt, initialTenant
           <dl className={styles.previewFacts}>
             <div><dt>Tenant</dt><dd>{tenantSlug || "Pendiente"}</dd></div>
             <div><dt>Recurso</dt><dd>{resourceType} / {resourceId || "Pendiente"}</dd></div>
+            {selectedProvider === "iota" ? <div><dt>Referencia publica</dt><dd>{publicResourceId || "Pendiente"}</dd></div> : null}
             <div><dt>Evento</dt><dd>{eventType}</dd></div>
             <div><dt>Destino</dt><dd>{selectedProviderRow?.name || "Consultando politica"}</dd></div>
           </dl>
@@ -466,7 +490,7 @@ export function ProofAnchorComposer({ canWrite, defaultOccurredAt, initialTenant
           </div>
           <div className={styles.visibilityGrid}>
             <div><LockKeyhole aria-hidden="true" /><span><strong>Permanece privado</strong><small>Payload, documentos, clientes y datos operativos.</small></span></div>
-            <div><Link2 aria-hidden="true" /><span><strong>Puede ser publico</strong><small>Hash, Merkle root, estado de inclusion y tx si existe.</small></span></div>
+            <div><Link2 aria-hidden="true" /><span><strong>Puede ser publico</strong><small>Hash, Merkle root, referencia IOTA, proofId y tx si existe.</small></span></div>
           </div>
 
           <div className={styles.liveStatus} aria-live="polite">
@@ -476,12 +500,15 @@ export function ProofAnchorComposer({ canWrite, defaultOccurredAt, initialTenant
 
           {result ? (
             <section className={styles.receipt} aria-labelledby="receipt-title">
-              <div className={styles.receiptHeading}><BadgeCheck aria-hidden="true" /><div><span>Recibo emitido</span><h2 id="receipt-title">Evidencia incluida</h2></div></div>
+              <div className={styles.receiptHeading}><BadgeCheck aria-hidden="true" /><div><span>Recibo persistido</span><h2 id="receipt-title">Evidencia {readText(result.anchor.status) === "confirmed" ? "confirmada" : "en proceso"}</h2></div></div>
               <dl>
                 <div><dt>Event hash</dt><dd><code title={result.payloadHash}>{shortHash(result.payloadHash)}</code></dd></div>
                 <div><dt>Merkle root</dt><dd><code title={readText(result.anchor.merkle_root)}>{shortHash(readText(result.anchor.merkle_root))}</code></dd></div>
                 <div><dt>Anchor ID</dt><dd><code>{readText(result.anchor.id)}</code></dd></div>
                 <div><dt>Estado</dt><dd>{readText(result.anchor.status) || "local"}</dd></div>
+                {result.anchor.proof_id ? <div><dt>Proof ID</dt><dd><code title={result.anchor.proof_id}>{shortHash(result.anchor.proof_id)}</code></dd></div> : null}
+                {result.anchor.memo_hash ? <div><dt>Memo hash</dt><dd><code title={result.anchor.memo_hash}>{shortHash(result.anchor.memo_hash)}</code></dd></div> : null}
+                {typeof result.anchor.confirmations === "number" ? <div><dt>Confirmaciones</dt><dd>{result.anchor.confirmations}</dd></div> : null}
               </dl>
               <div className={styles.receiptActions}>
                 <a href={verifyHref} rel="noreferrer" target="_blank"><FileCheck2 aria-hidden="true" /> Verificar prueba <ExternalLink aria-hidden="true" /></a>

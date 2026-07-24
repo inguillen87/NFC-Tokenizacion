@@ -4,8 +4,7 @@ import { ModuleAudienceHero } from "../../../components/module-audience-hero";
 import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
 import { requireDashboardSession } from "../../../lib/session";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
+import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../lib/admin-page-access";
 
 type EventRow = {
   id: number;
@@ -21,14 +20,10 @@ type EventRow = {
   device: { label: string; os: string; browser: string; deviceType: string; timezone: string; mobile: boolean };
 };
 
-async function getLiveEvents(params: URLSearchParams): Promise<EventRow[]> {
-  if (!(process.env.ADMIN_API_KEY || "").trim()) return [];
+async function getLiveEvents(context: AdminPageContext, params: URLSearchParams): Promise<EventRow[]> {
   try {
     const query = params.toString() ? `?${params.toString()}` : "";
-    const response = await fetch(`${API_BASE}/admin/events${query}`, {
-      headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
-      cache: "no-store",
-    });
+    const response = await fetchAdminPage(context, `events${query}`);
     if (!response.ok) return [];
     const data = await response.json().catch(() => ({ rows: [] }));
     return Array.isArray(data?.rows) ? (data.rows as EventRow[]) : [];
@@ -41,9 +36,11 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
   const { locale } = await getDashboardI18n();
   const session = await requireDashboardSession();
   const query = await searchParams;
-  const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : String(query.tenant || "");
-  const isTenantAdmin = session.role === "tenant-admin";
-  const source = isTenantAdmin ? "real" : String(query.source || "all");
+  const adminContext = await createAdminPageContext(session, query.tenant);
+  const tenantScope = adminContext.tenantSlug;
+  const isTenantBound = !adminContext.canSelectTenant;
+  const isTenantAdmin = isTenantBound;
+  const source = isTenantBound ? "real" : String(query.source || "all");
   const range = String(query.range || "30d");
 
   const params = new URLSearchParams();
@@ -56,7 +53,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
   params.set("limit", "250");
 
   const copy = dashboardContent[locale];
-  const liveRows = await getLiveEvents(params);
+  const liveRows = await getLiveEvents(adminContext, params);
   const validCount = liveRows.filter((item) => item.result === "VALID").length;
   const riskCount = liveRows.filter((item) => item.result !== "VALID").length;
 

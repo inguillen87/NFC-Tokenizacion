@@ -1,18 +1,12 @@
 import Link from "next/link";
 import { Card, SectionHeading } from "@product/ui";
-import { productUrls } from "@product/config";
 import { DataTable } from "../../../../components/data-table";
 import { requireDashboardSession } from "../../../../lib/session";
+import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../../lib/admin-page-access";
 
-const API_BASE = productUrls.api;
-
-async function getShipments(tenantScope = "") {
+async function getShipments(context: AdminPageContext) {
   try {
-    const query = tenantScope ? `?tenant=${encodeURIComponent(tenantScope)}` : "";
-    const response = await fetch(`${API_BASE}/admin/logistics/shipments${query}`, {
-      headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
-      cache: "no-store",
-    });
+    const response = await fetchAdminPage(context, "logistics/shipments");
     if (!response.ok) return [];
     const payload = await response.json();
     return payload.shipments || [];
@@ -23,9 +17,9 @@ async function getShipments(tenantScope = "") {
 
 export default async function ShipmentsPage() {
   const session = await requireDashboardSession("logistics:read");
-  const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : "";
+  const adminContext = await createAdminPageContext(session);
 
-  const shipments = await getShipments(tenantScope);
+  const shipments = await getShipments(adminContext);
 
   const rows = shipments.map((row: any) => ({
     id: row.id,

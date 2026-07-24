@@ -1,11 +1,23 @@
 #!/usr/bin/env node
 import http from "node:http";
-import { createHash } from "node:crypto";
-import { Contract, JsonRpcProvider, Wallet, formatEther, isAddress } from "ethers";
+import { createHash, timingSafeEqual } from "node:crypto";
+import { pathToFileURL } from "node:url";
+import { Contract, JsonRpcProvider, Wallet, formatEther, getAddress, isAddress } from "ethers";
 
-const abi = [
+const polygonAbi = [
   "function mintWithChipHash(address to, string chipUidHash, string tokenUri, string assetRef) external returns (uint256)",
 ];
+
+const iotaEvidenceAbi = [
+  "function SCHEMA_VERSION() view returns (uint16)",
+  "function authorizedPublishers(address publisher) view returns (bool)",
+  "function computeProofId(bytes32 merkleRoot, bytes32 tenantIdHash, string resourceType, string resourceId, uint64 eventCount, bytes32 memoHash) view returns (bytes32)",
+  "function anchorEvidence(bytes32 merkleRoot, bytes32 tenantIdHash, string resourceType, string resourceId, uint64 eventCount, bytes32 memoHash) returns (bytes32 proofId)",
+  "function isAnchored(bytes32 proofId) view returns (bool)",
+  "function evidenceRecord(bytes32 proofId) view returns (bytes32 merkleRoot, bytes32 tenantIdHash, bytes32 memoHash, address publisher, uint64 eventCount, uint64 anchoredAt)",
+];
+
+let iotaPublishQueue = Promise.resolve();
 
 function env(name, fallback = "") {
   return String(process.env[name] || fallback).trim();
@@ -42,12 +54,19 @@ function readJson(req) {
   });
 }
 
-function authOk(req) {
-  const expected = env("TOKENIZATION_EXECUTOR_SECRET");
+function secretMatches(provided, expected) {
+  const left = Buffer.from(String(provided || ""), "utf8");
+  const right = Buffer.from(String(expected || ""), "utf8");
+  return left.length === right.length && left.length > 0 && timingSafeEqual(left, right);
+}
+
+function authOk(req, secretName, headerName) {
+  const expected = env(secretName);
   if (!expected) return false;
-  const headerSecret = String(req.headers["x-tokenization-secret"] || "");
+  const headerSecret = String(req.headers[headerName] || "");
   const auth = String(req.headers.authorization || "");
-  return headerSecret === expected || auth === `Bearer ${expected}`;
+  return secretMatches(headerSecret, expected)
+    || (auth.startsWith("Bearer ") && secretMatches(auth.slice(7), expected));
 }
 
 function required(name, value) {
@@ -75,6 +94,15 @@ async function health() {
   const privateKey = env("POLYGON_MINTER_PRIVATE_KEY");
   const configuredMinterAddress = env("POLYGON_MINTER_ADDRESS");
   const live = env("EXECUTOR_HEALTH_LIVE", "false").toLowerCase() === "true";
+  const iotaRpcUrl = env("IOTA_EVM_RPC_URL");
+  const iotaContractAddress = env("IOTA_EVM_ANCHOR_CONTRACT_V2");
+  const iotaPrivateKey = env("IOTA_EVM_PRIVATE_KEY");
+  let iotaPublisherAddress = null;
+  try {
+    if (iotaPrivateKey) iotaPublisherAddress = new Wallet(iotaPrivateKey).address;
+  } catch {
+    iotaPublisherAddress = null;
+  }
 
   let minterAddress = null;
   let minterBalancePol = null;
@@ -117,6 +145,13 @@ async function health() {
       balancePol: minterBalancePol,
     },
     defaultRecipient: defaultRecipient || null,
+    iotaEvidenceV2: {
+      rpcConfigured: Boolean(iotaRpcUrl),
+      contractAddress: isAddress(iotaContractAddress) ? getAddress(iotaContractAddress) : null,
+      publisherAddress: iotaPublisherAddress,
+      signerConfigured: Boolean(iotaPrivateKey && iotaPublisherAddress),
+      executorSecretConfigured: Boolean(env("IOTA_PROOF_EXECUTOR_SECRET")),
+    },
     kmsReady: signerMode === "kms",
     note: signerMode === "kms" ? "KMS adapter must be wired by provider-specific signer." : "Private-key executor is for Amoy pilot only.",
   };
@@ -144,7 +179,7 @@ async function mint(body) {
 
   const provider = new JsonRpcProvider(rpcUrl);
   const wallet = new Wallet(privateKey, provider);
-  const contract = new Contract(contractAddress, abi, wallet);
+  const contract = new Contract(contractAddress, polygonAbi, wallet);
   const tx = await contract.mintWithChipHash(recipient, chipUidHash, tokenUri, assetRef);
   const receipt = await tx.wait();
 
@@ -160,6 +195,127 @@ async function mint(body) {
   };
 }
 
+function sha256Bytes32(value, field) {
+  const normalized = String(value || "").trim().replace(/^(?:sha256:|0x)/i, "").toLowerCase();
+  if (!/^[0-9a-f]{64}$/.test(normalized)) throw new Error(`${field}_invalid`);
+  return `0x${normalized}`;
+}
+
+function sameAddress(left, right) {
+  try {
+    return getAddress(String(left || "")) === getAddress(String(right || ""));
+  } catch {
+    return false;
+  }
+}
+
+function evidenceRecordMatches(record, input) {
+  return sha256Bytes32(record.merkleRoot ?? record[0], "record_merkle_root") === input.merkleRoot
+    && sha256Bytes32(record.tenantIdHash ?? record[1], "record_tenant_id_hash") === input.tenantIdHash
+    && sha256Bytes32(record.memoHash ?? record[2], "record_memo_hash") === input.memoHash
+    && Number(record.eventCount ?? record[4]) === input.eventCount;
+}
+
+async function anchorIotaEvidenceUnlocked(body) {
+  const signerMode = env("IOTA_EXECUTOR_SIGNER_MODE", env("EXECUTOR_SIGNER_MODE", "private_key")).toLowerCase();
+  if (signerMode !== "private_key") throw new Error("executor_signer_mode_not_available_for_iota");
+
+  const rpcUrl = required("IOTA_EVM_RPC_URL", env("IOTA_EVM_RPC_URL"));
+  const privateKey = required("IOTA_EVM_PRIVATE_KEY", env("IOTA_EVM_PRIVATE_KEY"));
+  const contractAddress = required("IOTA_EVM_ANCHOR_CONTRACT_V2", env("IOTA_EVM_ANCHOR_CONTRACT_V2"));
+  const expectedChainId = Number(env("IOTA_EVM_EXPECTED_CHAIN_ID", "1076"));
+  if (!Number.isSafeInteger(expectedChainId) || expectedChainId <= 0) throw new Error("iota_expected_chain_id_invalid");
+  if (!isAddress(contractAddress)) throw new Error("invalid_IOTA_EVM_ANCHOR_CONTRACT_V2");
+  if (body.contract_address && !sameAddress(body.contract_address, contractAddress)) {
+    throw new Error("iota_executor_contract_mismatch");
+  }
+
+  const resourceType = String(required("resource_type", body.resource_type)).trim();
+  const publicResourceId = String(required("public_resource_id", body.public_resource_id)).trim();
+  const eventCount = Number(body.event_count);
+  if (!Number.isSafeInteger(eventCount) || eventCount <= 0) throw new Error("event_count_invalid");
+  if (Buffer.byteLength(resourceType, "utf8") > 64) throw new Error("resource_type_too_long");
+  if (Buffer.byteLength(publicResourceId, "utf8") > 128) throw new Error("public_resource_id_too_long");
+  if (/\p{C}/u.test(resourceType) || /\p{C}/u.test(publicResourceId)) {
+    throw new Error("public_resource_control_character_forbidden");
+  }
+  const merkleRoot = sha256Bytes32(body.merkle_root, "merkle_root");
+  const tenantIdHash = sha256Bytes32(body.tenant_id_hash, "tenant_id_hash");
+  const memoHash = sha256Bytes32(body.memo_hash, "memo_hash");
+  const expectedProofId = String(required("proof_id", body.proof_id)).trim().toLowerCase();
+  if (!/^0x[0-9a-f]{64}$/.test(expectedProofId)) throw new Error("proof_id_invalid");
+  if (body.chain_id && Number(body.chain_id) !== expectedChainId) throw new Error("iota_executor_chain_mismatch");
+
+  const provider = new JsonRpcProvider(rpcUrl, expectedChainId, { batchMaxCount: 1 });
+  try {
+    const network = await provider.getNetwork();
+    if (Number(network.chainId) !== expectedChainId) throw new Error("iota_chain_id_mismatch");
+    const bytecode = await provider.getCode(contractAddress);
+    if (!bytecode || bytecode === "0x") throw new Error("iota_v2_contract_not_deployed");
+    const wallet = new Wallet(privateKey, provider);
+    const contract = new Contract(contractAddress, iotaEvidenceAbi, wallet);
+    if (Number(await contract.SCHEMA_VERSION()) !== 2) throw new Error("iota_contract_schema_version_mismatch");
+    if (!await contract.authorizedPublishers(wallet.address)) throw new Error("iota_publisher_not_authorized");
+
+    const argumentsV2 = [merkleRoot, tenantIdHash, resourceType, publicResourceId, eventCount, memoHash];
+    const contractProofId = String(await contract.computeProofId(...argumentsV2)).toLowerCase();
+    if (contractProofId !== expectedProofId) throw new Error("iota_executor_proof_id_mismatch");
+    const prepared = { merkleRoot, tenantIdHash, memoHash, eventCount };
+    if (await contract.isAnchored(expectedProofId)) {
+      const record = await contract.evidenceRecord(expectedProofId);
+      if (!evidenceRecordMatches(record, prepared)) throw new Error("iota_anchor_storage_mismatch");
+      return {
+        ok: true,
+        state: "confirmed",
+        already_anchored: true,
+        proof_id: expectedProofId,
+        chain_id: expectedChainId,
+        contract_address: getAddress(contractAddress),
+        publisher_address: getAddress(String(record.publisher ?? record[3])),
+        tx_hash: null,
+        nonce: null,
+        block_number: null,
+        block_hash: null,
+        confirmations: 0,
+        anchored_at: Number(record.anchoredAt ?? record[5]),
+        request_id: body.request_id || null,
+      };
+    }
+
+    const tx = await contract.anchorEvidence(...argumentsV2);
+    return {
+      ok: true,
+      state: "submitted",
+      already_anchored: false,
+      proof_id: expectedProofId,
+      chain_id: expectedChainId,
+      contract_address: getAddress(contractAddress),
+      publisher_address: getAddress(wallet.address),
+      tx_hash: tx.hash,
+      nonce: Number(tx.nonce),
+      block_number: null,
+      block_hash: null,
+      confirmations: 0,
+      anchored_at: null,
+      request_id: body.request_id || null,
+    };
+  } finally {
+    provider.destroy();
+  }
+}
+
+async function anchorIotaEvidence(body) {
+  const operation = () => anchorIotaEvidenceUnlocked(body);
+  const pending = iotaPublishQueue.then(operation, operation);
+  iotaPublishQueue = pending.then(() => undefined, () => undefined);
+  return pending;
+}
+
+function safeErrorReason(error) {
+  const reason = error instanceof Error ? error.message : "executor_failed";
+  return /^[a-zA-Z0-9_]{3,120}$/.test(reason) ? reason : "executor_failed";
+}
+
 async function handler(req, res) {
   const url = new URL(req.url || "/", "http://localhost");
   try {
@@ -167,21 +323,34 @@ async function handler(req, res) {
       return json(res, 200, await health());
     }
     if (req.method === "POST" && ["/", "/mint", "/tokenize"].includes(url.pathname)) {
-      if (!authOk(req)) return json(res, 401, { ok: false, reason: "unauthorized_executor" });
+      if (!authOk(req, "TOKENIZATION_EXECUTOR_SECRET", "x-tokenization-secret")) {
+        return json(res, 401, { ok: false, reason: "unauthorized_executor" });
+      }
       const body = await readJson(req);
       return json(res, 200, await mint(body));
     }
+    if (req.method === "POST" && ["/anchor-evidence", "/iota/evidence-v2"].includes(url.pathname)) {
+      if (!authOk(req, "IOTA_PROOF_EXECUTOR_SECRET", "x-iota-proof-secret")) {
+        return json(res, 401, { ok: false, reason: "unauthorized_executor" });
+      }
+      const body = await readJson(req);
+      const result = await anchorIotaEvidence(body);
+      return json(res, result.state === "submitted" ? 202 : 200, result);
+    }
     return json(res, 404, { ok: false, reason: "not_found" });
   } catch (error) {
-    return json(res, 400, { ok: false, reason: error instanceof Error ? error.message : "executor_failed" });
+    return json(res, 400, { ok: false, reason: safeErrorReason(error) });
   }
 }
 
 const port = Number(env("PORT", "3010"));
-const server = http.createServer((req, res) => {
-  void handler(req, res);
-});
+export { anchorIotaEvidence, handler, secretMatches, sha256Bytes32 };
 
-server.listen(port, () => {
-  console.log(JSON.stringify({ ok: true, service: "nexid-tokenization-executor", port }));
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const server = http.createServer((req, res) => {
+    void handler(req, res);
+  });
+  server.listen(port, () => {
+    console.log(JSON.stringify({ ok: true, service: "nexid-tokenization-executor", port }));
+  });
+}

@@ -29,7 +29,7 @@ async function main() {
     tx_hash: txHash,
     explorer_url: txHash ? `${explorerBaseUrl.replace(/\/$/, "")}/tx/${txHash}` : null,
     next_env: {
-      IOTA_PROVIDER_MODE: "iota_evm_contract",
+      IOTA_PROVIDER_MODE: "iota_evm_contract_v2",
       IOTA_EVM_ANCHOR_CONTRACT_V2: address,
       IOTA_EVM_ANCHOR_CONTRACT_VERSION_V2: "evidence_anchor_v2",
       IOTA_EXPLORER_BASE_URL: explorerBaseUrl,

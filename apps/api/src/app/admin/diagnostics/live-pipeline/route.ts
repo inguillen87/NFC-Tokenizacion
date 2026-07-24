@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin } from "../../../../lib/auth";
+import { checkAdmin, getAdminTenantAccess } from "../../../../lib/auth";
 import { sql } from "../../../../lib/db";
 import { randomUUID } from "node:crypto";
 
@@ -13,7 +13,8 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const requestId = req.headers.get("x-request-id") || req.headers.get("x-nexid-request-id") || randomUUID();
-  const tenant = String(searchParams.get("tenant") || "").trim().toLowerCase();
+  const requestedTenant = searchParams.get("tenant");
+  const { effectiveTenantSlug: tenant } = getAdminTenantAccess(req, requestedTenant);
 
   const eventRows = tenant
     ? await sql/*sql*/`
@@ -79,7 +80,14 @@ export async function GET(req: Request) {
             COUNT(a.id)::int AS total,
             MAX(a.created_at)::text AS latest
           FROM sun_scan_attempts a
-          WHERE (${tenant} = '' OR (${tenant} = 'demobodega' AND a.bid ILIKE 'DEMO-%'))
+          WHERE a.bid IN (
+            SELECT b.bid
+            FROM batches b
+            JOIN tenants t ON t.id = b.tenant_id
+            GROUP BY b.bid
+            HAVING COUNT(*) = 1
+              AND COUNT(*) FILTER (WHERE t.slug = ${tenant}) = 1
+          )
         `
       : await sql/*sql*/`
           SELECT COUNT(id)::int AS total, MAX(created_at)::text AS latest

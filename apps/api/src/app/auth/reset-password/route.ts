@@ -15,23 +15,75 @@ export async function POST(req: Request) {
   const meta = getRequestMeta(req);
   await ensureEnterpriseIamSchema();
   const rows = await sql/*sql*/`
-    SELECT prt.user_id, u.email, COALESCE(m.role::text, 'viewer') AS role
-    FROM password_reset_tokens prt
-    JOIN users u ON u.id = prt.user_id
-    LEFT JOIN memberships m ON m.user_id = u.id
-    WHERE prt.token_hash = ${sha256(token)}
-      AND prt.consumed_at IS NULL
-      AND prt.expires_at > now()
-    ORDER BY CASE m.role WHEN 'super_admin' THEN 1 WHEN 'tenant_admin' THEN 2 WHEN 'reseller' THEN 3 WHEN 'viewer' THEN 4 ELSE 9 END
-    LIMIT 1
+    WITH consumed_token AS MATERIALIZED (
+      UPDATE password_reset_tokens token_row
+      SET consumed_at = now()
+      WHERE token_row.token_hash = ${sha256(token)}
+        AND token_row.consumed_at IS NULL
+        AND token_row.expires_at > now()
+      RETURNING token_row.id, token_row.user_id
+    ),
+    credential_write AS (
+      INSERT INTO password_credentials (user_id, password_hash)
+      SELECT user_id, ${hashPassword(password)}
+      FROM consumed_token
+      ON CONFLICT (user_id)
+      DO UPDATE SET password_hash = EXCLUDED.password_hash, updated_at = now()
+      RETURNING user_id
+    ),
+    user_activation AS (
+      UPDATE users user_row
+      SET admin_status = 'active'::admin_user_status, updated_at = now()
+      FROM consumed_token
+      WHERE user_row.id = consumed_token.user_id
+      RETURNING user_row.id
+    ),
+    other_tokens_consumed AS (
+      UPDATE password_reset_tokens other_token
+      SET consumed_at = now()
+      FROM consumed_token
+      WHERE other_token.user_id = consumed_token.user_id
+        AND other_token.id <> consumed_token.id
+        AND other_token.consumed_at IS NULL
+      RETURNING other_token.id
+    ),
+    invites_consumed AS (
+      UPDATE user_invites invite
+      SET consumed_at = now(), updated_at = now()
+      FROM consumed_token
+      JOIN users invited_user ON invited_user.id = consumed_token.user_id
+      WHERE lower(invite.email) = lower(invited_user.email)
+        AND invite.consumed_at IS NULL
+      RETURNING invite.id
+    ),
+    revoked_sessions AS (
+      UPDATE auth_sessions session
+      SET revoked_at = now(), last_seen_at = now()
+      FROM consumed_token
+      WHERE session.user_id = consumed_token.user_id
+        AND session.revoked_at IS NULL
+      RETURNING session.id
+    )
+    SELECT consumed_token.user_id, user_row.email,
+      COALESCE((
+        SELECT membership.role::text
+        FROM memberships membership
+        WHERE membership.user_id = consumed_token.user_id
+        ORDER BY CASE membership.role
+          WHEN 'super_admin' THEN 1 WHEN 'tenant_admin' THEN 2 WHEN 'reseller' THEN 3 WHEN 'viewer' THEN 4 ELSE 9
+        END
+        LIMIT 1
+      ), 'viewer') AS role,
+      (SELECT count(*) FROM credential_write) AS credential_count,
+      (SELECT count(*) FROM user_activation) AS activation_count,
+      (SELECT count(*) FROM other_tokens_consumed) AS consumed_token_count,
+      (SELECT count(*) FROM invites_consumed) AS consumed_invite_count,
+      (SELECT count(*) FROM revoked_sessions) AS revoked_session_count
+    FROM consumed_token
+    JOIN users user_row ON user_row.id = consumed_token.user_id
   `;
   const row = rows[0];
   if (!row) return json({ ok: false, reason: 'invalid or expired token' }, 400);
-  await sql`UPDATE password_credentials SET password_hash = ${hashPassword(password)}, updated_at = now() WHERE user_id = ${row.user_id}::uuid`;
-  await sql`UPDATE password_reset_tokens SET consumed_at = now() WHERE user_id = ${row.user_id}::uuid AND consumed_at IS NULL`;
-  await sql`UPDATE user_invites SET consumed_at = now() WHERE email = ${String(row.email)} AND consumed_at IS NULL`;
-  await sql`UPDATE users SET admin_status = 'active'::admin_user_status WHERE id = ${row.user_id}::uuid`;
-  await sql`UPDATE auth_sessions SET revoked_at = now() WHERE user_id = ${row.user_id}::uuid AND revoked_at IS NULL`;
   await auditAuthEvent(sql as any, { email: String(row.email), eventName: 'password_reset_completed', ok: true, role: String(row.role), ...meta }).catch(() => null);
   return json({ ok: true });
 }

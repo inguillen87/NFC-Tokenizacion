@@ -1,0 +1,352 @@
+{
+  "documentType": "codex-security.hardening-analysis",
+  "schemaVersion": "1.0",
+  "analysisId": "hardening_20260723_nexid_enterprise_control_plane",
+  "sourceEvidence": {
+    "kind": "document_collection",
+    "label": "nexID base revision, active sprint source, migrations, and focused security regressions",
+    "collectionSha256": "fad4be805ffecf11cb3bdd2fd7ed3e7185c98a5d0614a26dea80134f8949696b",
+    "artifactCount": 18,
+    "sourceDrift": "present",
+    "targetRevision": "ec7e7e79f0ffd4872f1e2e8ecda110bc34e8efd0"
+  },
+  "assessment": {
+    "outcome": "opportunities_identified",
+    "summary": "The evidence supports an owned tenant-authority boundary and a reusable durable external-effect lifecycle; tactical IAM, dashboard, IOTA, and webhook fixes remain necessary during migration."
+  },
+  "constraints": {
+    "profile": "balanced",
+    "changeHorizons": [
+      "incremental",
+      "medium_term",
+      "foundational"
+    ],
+    "nonNegotiables": [
+      "Non-super administrative principals never receive global tenant scope.",
+      "A durable intent exists before a privileged external effect.",
+      "No production web workload holds an exportable blockchain signer key.",
+      "Existing tactical isolation and verification guards remain during migration."
+    ],
+    "assumptions": [
+      "The Next.js and PostgreSQL monorepo remains the near-term control plane.",
+      "No measured authorization, queue throughput, latency, memory, RPO, or RTO budget was supplied.",
+      "The active sprint diff is not deployed and its database migrations have not been applied."
+    ]
+  },
+  "opportunities": [
+    {
+      "opportunityId": "centralize-tenant-authority",
+      "title": "Centralize tenant authority",
+      "summary": "Make global versus tenant authority a typed, current, and repository-owned decision instead of a page and route convention.",
+      "diagnosis": "Root credentials, session snapshots, tenant headers, role branches, and route-local SQL historically interpreted authority independently, allowing successful authentication to outlive or widen the intended tenant decision.",
+      "evidence": [
+        {
+          "claimType": "observed",
+          "sourceKind": "source",
+          "evidenceId": "E001",
+          "path": "apps/api/src/lib/admin-user-management.ts",
+          "claim": "IAM mutations require create-only identity handling and atomic tenant ownership checks to prevent cross-tenant account takeover."
+        },
+        {
+          "claimType": "observed",
+          "sourceKind": "source",
+          "evidenceId": "E002",
+          "path": "apps/api/src/lib/auth.ts",
+          "claim": "Privileged session use must revalidate current user, membership, and permission state rather than trust stale snapshots."
+        },
+        {
+          "claimType": "observed",
+          "sourceKind": "source",
+          "evidenceId": "E003",
+          "path": "apps/dashboard/src/lib/dashboard-tenant-scope-policy.ts",
+          "claim": "Dashboard feature pages needed one policy that reserves global scope for super-admin and binds every other role to the session tenant."
+        },
+        {
+          "claimType": "inferred",
+          "sourceKind": "coverage",
+          "evidenceId": "E004",
+          "path": "apps/api/tests/admin-resource-tenant-isolation.test.mjs",
+          "claim": "The repeated forced-scope regression matrix indicates a structural control-ownership problem, not one isolated missing predicate."
+        }
+      ],
+      "desiredInvariants": [
+        "Only a current super-admin principal can obtain global administrative scope.",
+        "Every other administrative principal has one current, non-empty tenant before upstream access.",
+        "Status, membership, role, and permissions are current at privileged use time.",
+        "Resource ownership and mutation remain atomic inside the database boundary.",
+        "Tenant repositories cannot be called without an explicit tenant principal."
+      ],
+      "proposalPath": "proposals/centralize-tenant-authority.md",
+      "options": [
+        {
+          "optionId": "local-guards",
+          "title": "Strengthened local guards",
+          "kind": "baseline",
+          "summary": "Keep the current architecture and close each demonstrated page, route, session, and mutation path locally.",
+          "diagramPaths": {
+            "before": "diagrams/centralize-tenant-authority-before.mmd",
+            "after": "diagrams/centralize-tenant-authority-local-guards-after.mmd"
+          },
+          "evidenceCoverage": [
+            { "evidenceId": "E001", "effect": "addresses", "tacticalFixRequired": true, "rationale": "Create-only and row-locked ownership CTEs are the direct fix." },
+            { "evidenceId": "E002", "effect": "addresses", "tacticalFixRequired": true, "rationale": "Current entitlement checks close the demonstrated stale-session path." },
+            { "evidenceId": "E003", "effect": "addresses", "tacticalFixRequired": true, "rationale": "BFF-only pages and a central dashboard scope helper remove the ambient root path." },
+            { "evidenceId": "E004", "effect": "mitigates", "tacticalFixRequired": true, "rationale": "Focused guards close known routes but future callers can repeat the class." }
+          ],
+          "tradeoffs": [
+            { "dimension": "security", "direction": "improves", "confidence": "high", "basis": "source-derived", "assessment": "Known IAM and tenant-scope paths fail closed, although the invariant can drift at new call sites.", "validationPlan": "Run the full role-by-resource override matrix and static page credential gate." },
+            { "dimension": "performance", "direction": "neutral", "confidence": "medium", "basis": "source-derived", "assessment": "No network hop is added; current-IAM checks add bounded database work.", "validationPlan": "Measure authorization p50, p95, p99 and connection use at realistic concurrency." },
+            { "dimension": "memory", "direction": "neutral", "confidence": "high", "basis": "source-derived", "assessment": "Guards retain only bounded principal and query values.", "validationPlan": "Compare process RSS under the authorization load test." },
+            { "dimension": "reliability", "direction": "improves", "confidence": "medium", "basis": "source-derived", "assessment": "Revoked access stops promptly, but route-local failure behavior remains heterogeneous.", "validationPlan": "Fail the IAM dependency and verify consistent fail-closed behavior and timeouts." },
+            { "dimension": "operability", "direction": "neutral", "confidence": "medium", "basis": "source-derived", "assessment": "No service is added, but many regression gates remain necessary.", "validationPlan": "Track guard ownership, denial reasons, and route coverage in CI." },
+            { "dimension": "migration", "direction": "improves", "confidence": "high", "basis": "source-derived", "assessment": "The fixes preserve existing APIs and can ship incrementally.", "validationPlan": "Run compatibility suites for legitimate tenant and super-admin workflows." }
+          ],
+          "residualRisks": [
+            "A new page or SQL caller can omit the local guard.",
+            "Background jobs and super-admin service principals remain separately governed."
+          ],
+          "implementationReadiness": {
+            "affectedComponents": ["apps/api/src/lib/auth.ts", "apps/api/src/app/admin", "apps/dashboard/src/app/(app)", "apps/dashboard/src/app/api/admin"],
+            "workPackages": ["Preserve the tactical IAM and dashboard patches.", "Keep static and role-matrix regression gates mandatory."],
+            "acceptanceCriteria": ["No non-super role can force or receive another tenant or global scope.", "IAM ownership races cannot mutate a foreign identity."],
+            "migrationNotes": ["Ship before structural migration because it is direct containment."],
+            "rollback": "Revert only an individual compatibility regression; do not restore ambient root credentials or permissive ownership behavior."
+          }
+        },
+        {
+          "optionId": "owned-boundary",
+          "title": "One owned tenant-authority boundary",
+          "kind": "structural",
+          "summary": "Resolve one typed current principal and require it at BFF, application-service, and tenant-repository boundaries.",
+          "diagramPaths": {
+            "before": "diagrams/centralize-tenant-authority-before.mmd",
+            "after": "diagrams/centralize-tenant-authority-owned-boundary-after.mmd"
+          },
+          "evidenceCoverage": [
+            { "evidenceId": "E001", "effect": "addresses", "tacticalFixRequired": true, "rationale": "Owned resource resolution reduces recurrence; atomic mutations remain required." },
+            { "evidenceId": "E002", "effect": "addresses", "tacticalFixRequired": true, "rationale": "The final principal is constructed from current entitlements." },
+            { "evidenceId": "E003", "effect": "addresses", "tacticalFixRequired": true, "rationale": "The BFF becomes the only feature-page transport for privileged data." },
+            { "evidenceId": "E004", "effect": "addresses", "tacticalFixRequired": true, "rationale": "Repository signatures make missing tenant scope explicit and exceptional." }
+          ],
+          "tradeoffs": [
+            { "dimension": "security", "direction": "improves", "confidence": "high", "basis": "source-derived", "assessment": "The authority decision stays explicit across layers and unscoped tenant access becomes difficult to express.", "validationPlan": "Add contract tests for typed principals and reject unscoped repository calls statically." },
+            { "dimension": "performance", "direction": "neutral", "confidence": "medium", "basis": "hypothetical", "assessment": "In-process policy avoids a network hop, while current entitlement resolution still costs database work.", "validationPlan": "Benchmark against the local-guard baseline before setting release thresholds." },
+            { "dimension": "memory", "direction": "neutral", "confidence": "medium", "basis": "hypothetical", "assessment": "Typed principals are small; any entitlement cache must be bounded and versioned.", "validationPlan": "Measure cache cardinality and RSS, including tenant churn." },
+            { "dimension": "reliability", "direction": "improves", "confidence": "medium", "basis": "source-derived", "assessment": "One owned failure policy replaces route-specific widening, but the BFF and resolver become critical paths.", "validationPlan": "Exercise database/cache outage, timeout, and break-glass scenarios." },
+            { "dimension": "operability", "direction": "improves", "confidence": "medium", "basis": "source-derived", "assessment": "Central decisions support consistent denial telemetry and fewer enforcement owners.", "validationPlan": "Verify actor, tenant, action, resource, policy version, and outcome metrics." },
+            { "dimension": "migration", "direction": "regresses", "confidence": "high", "basis": "source-derived", "assessment": "Direct SQL and direct API callers must move behind typed services or repositories.", "validationPlan": "Inventory callers and migrate highest-risk domains with dual-decision logging." }
+          ],
+          "residualRisks": [
+            "Raw SQL outside the repository boundary can bypass the type system.",
+            "Super-admin abuse, database operators, and background service principals remain privileged."
+          ],
+          "implementationReadiness": {
+            "affectedComponents": ["apps/api/src/lib/auth.ts", "apps/api/src/lib/iam.ts", "apps/api/src/app/admin", "apps/dashboard/src/app/api/admin", "apps/dashboard/src/lib"],
+            "workPackages": ["Define GlobalPrincipal and TenantPrincipal.", "Build scoped repositories and explicit global interfaces.", "Migrate high-risk domains and add policy telemetry."],
+            "acceptanceCriteria": ["Tenant repositories require TenantPrincipal.", "Only a current super-admin can construct GlobalPrincipal.", "Legacy and central policy never grant on disagreement."],
+            "migrationNotes": ["Preserve local guards until every caller is migrated."],
+            "rollback": "Roll back one repository adapter while retaining BFF-only transport and tactical guards."
+          }
+        },
+        {
+          "optionId": "external-policy-service",
+          "title": "External policy decision service",
+          "kind": "foundational",
+          "summary": "Move versioned authorization decisions to a dedicated policy service while keeping local enforcement and tenant predicates.",
+          "diagramPaths": {
+            "before": "diagrams/centralize-tenant-authority-before.mmd",
+            "after": "diagrams/centralize-tenant-authority-policy-service-after.mmd"
+          },
+          "evidenceCoverage": [
+            { "evidenceId": "E001", "effect": "mitigates", "tacticalFixRequired": true, "rationale": "Central policy helps ownership decisions; database atomicity remains local." },
+            { "evidenceId": "E002", "effect": "addresses", "tacticalFixRequired": true, "rationale": "Current identity inputs and invalidation remain prerequisites." },
+            { "evidenceId": "E003", "effect": "mitigates", "tacticalFixRequired": true, "rationale": "The transport must still remove ambient root credentials." },
+            { "evidenceId": "E004", "effect": "mitigates", "tacticalFixRequired": true, "rationale": "Local enforcement points must still bind the decision to final resources." }
+          ],
+          "tradeoffs": [
+            { "dimension": "security", "direction": "improves", "confidence": "medium", "basis": "hypothetical", "assessment": "Cross-service policy can converge, but decision centralization does not enforce database predicates by itself.", "validationPlan": "Run policy/resource drift and obligation-enforcement tests." },
+            { "dimension": "performance", "direction": "regresses", "confidence": "high", "basis": "hypothetical", "assessment": "A network decision or cache enters each privileged request.", "validationPlan": "Measure uncached and cached p50, p95, p99 under outage and load." },
+            { "dimension": "memory", "direction": "regresses", "confidence": "medium", "basis": "hypothetical", "assessment": "Policy bundles, decision caches, and a service process consume additional bounded resources.", "validationPlan": "Measure service and enforcement-point RSS across policy versions." },
+            { "dimension": "reliability", "direction": "regresses", "confidence": "high", "basis": "hypothetical", "assessment": "PDP outage, cache staleness, and policy/application drift create new failure modes.", "validationPlan": "Chaos-test fail-closed behavior, emergency policy, and version skew." },
+            { "dimension": "operability", "direction": "regresses", "confidence": "high", "basis": "hypothetical", "assessment": "Independent policy deployment, SLOs, promotion, and incident response become mandatory.", "validationPlan": "Rehearse policy rollback, break-glass, and decision-log investigation." },
+            { "dimension": "migration", "direction": "regresses", "confidence": "high", "basis": "source-derived", "assessment": "The application still needs the owned enforcement boundary plus dual-run policy migration.", "validationPlan": "Shadow decisions and require zero grant mismatches before cutover." }
+          ],
+          "residualRisks": [
+            "A correct policy decision can still be applied to the wrong resource.",
+            "Availability and policy-version drift become security dependencies."
+          ],
+          "implementationReadiness": {
+            "affectedComponents": ["authorization policy service", "API enforcement points", "dashboard BFF", "decision telemetry"],
+            "workPackages": ["First implement the owned boundary.", "Define policy schema and obligations.", "Dual-run and canary the PDP."],
+            "acceptanceCriteria": ["Policy outage fails closed within a bounded timeout.", "Decision and enforcement resource identities match.", "Rollback restores the last verified policy without widening access."],
+            "migrationNotes": ["Prefer only after multiple independently deployed control planes need the same policy."],
+            "rollback": "Pin the last verified bundle or fall back to the owned in-process policy without removing local enforcement."
+          }
+        }
+      ],
+      "recommendedOptionId": "owned-boundary",
+      "recommendation": "Use the owned boundary under the current monorepo constraints, while preserving the completed local guards throughout migration."
+    },
+    {
+      "opportunityId": "durable-external-effects",
+      "title": "Make privileged external effects durable and capability-scoped",
+      "summary": "Give blockchain publication, tenant webhook egress, and critical audit a common durable-intent, leased-attempt, and independently verified lifecycle.",
+      "diagnosis": "Inline chain, network, and audit effects historically had different crash windows and ambient capabilities even though all require precommitted identity, bounded retries, reconciliation, and explicit confirmation semantics.",
+      "evidence": [
+        {
+          "claimType": "observed",
+          "sourceKind": "source",
+          "evidenceId": "E005",
+          "path": "apps/api/src/lib/iota-evidence-reconciler.ts",
+          "claim": "IOTA V2 now demonstrates deterministic proof identity, durable attempts, broadcast identity persistence, and independent chain reconciliation."
+        },
+        {
+          "claimType": "observed",
+          "sourceKind": "source",
+          "evidenceId": "E006",
+          "path": "apps/api/src/lib/webhook-egress.ts",
+          "claim": "Tenant-controlled webhook destinations require DNS-complete address policy, pinned TLS egress, response bounds, leases, retries, and dead letters."
+        },
+        {
+          "claimType": "observed",
+          "sourceKind": "source",
+          "evidenceId": "E007",
+          "path": "apps/api/src/lib/audit-logger.ts",
+          "claim": "The current audit helper catches database failure, so privileged business success can exist without durable audit evidence."
+        },
+        {
+          "claimType": "inferred",
+          "sourceKind": "source",
+          "evidenceId": "E008",
+          "path": "apps/api/db/schema.sql",
+          "claim": "Domain-specific attempt, delivery, and audit tables make staged convergence possible without a platform rewrite."
+        }
+      ],
+      "desiredInvariants": [
+        "A deterministic identity or idempotency key exists before every privileged external effect.",
+        "Durable intent commits before broadcast, egress, or irreversible mutation.",
+        "A crash after remote acceptance can reconcile without blind duplication.",
+        "Workers use atomic leases, bounded backoff, terminal states, and tenant/provider limits.",
+        "Signer, unrestricted egress, and immutable audit are separate capabilities.",
+        "Confirmation is independently verified and never inferred from mutable local status alone."
+      ],
+      "proposalPath": "proposals/durable-external-effects.md",
+      "options": [
+        {
+          "optionId": "local-state-machines",
+          "title": "Hardened feature-local state machines",
+          "kind": "baseline",
+          "summary": "Keep domain tables and workers while enforcing the same idempotency, lease, retry, verification, and capability rules in each domain.",
+          "diagramPaths": {
+            "before": "diagrams/durable-external-effects-before.mmd",
+            "after": "diagrams/durable-external-effects-local-state-machines-after.mmd"
+          },
+          "evidenceCoverage": [
+            { "evidenceId": "E005", "effect": "addresses", "tacticalFixRequired": true, "rationale": "The V2 writer and reconciler are the direct chain fix." },
+            { "evidenceId": "E006", "effect": "addresses", "tacticalFixRequired": true, "rationale": "The outbox worker and DNS-pinned egress close the demonstrated SSRF and inline-delivery path." },
+            { "evidenceId": "E007", "effect": "mitigates", "tacticalFixRequired": true, "rationale": "Critical action policy still needs transactional or outbox-backed audit." },
+            { "evidenceId": "E008", "effect": "addresses", "tacticalFixRequired": false, "rationale": "Existing domain persistence is reused rather than replaced." }
+          ],
+          "tradeoffs": [
+            { "dimension": "security", "direction": "improves", "confidence": "high", "basis": "source-derived", "assessment": "Known chain and webhook boundaries gain durable identity and scoped capabilities, while audit remains a declared follow-up.", "validationPlan": "Repeat crash-window, SSRF, receipt, calldata, event, storage, and confirmation tests." },
+            { "dimension": "performance", "direction": "improves", "confidence": "medium", "basis": "source-derived", "assessment": "SDK and admin requests stop waiting on tenant egress or chain finality; workers add database work off-path.", "validationPlan": "Measure request latency, queue age, DB connections, and worker throughput." },
+            { "dimension": "memory", "direction": "neutral", "confidence": "medium", "basis": "source-derived", "assessment": "Leased batches and bounded responses cap per-worker memory, while queued rows consume durable storage.", "validationPlan": "Measure worker RSS and table growth at 1x and 10x pilot volume." },
+            { "dimension": "reliability", "direction": "improves", "confidence": "high", "basis": "source-derived", "assessment": "Effects recover after process failure and preserve terminal evidence instead of disappearing with a request.", "validationPlan": "Inject failures before and after broadcast, remote response, and local acknowledgement." },
+            { "dimension": "operability", "direction": "regresses", "confidence": "medium", "basis": "source-derived", "assessment": "Schedulers, secrets, queue-age alerts, DLQ review, and reconciliation runbooks become mandatory.", "validationPlan": "Rehearse worker outage, stale-lease recovery, and DLQ triage." },
+            { "dimension": "migration", "direction": "improves", "confidence": "high", "basis": "source-derived", "assessment": "Each domain can canary independently using its existing schema and kill switch.", "validationPlan": "Deploy disabled workers, reconcile pending rows, and canary one tenant/provider." }
+          ],
+          "residualRisks": [
+            "Retry and lease primitives can drift between domains.",
+            "The private-key executor is not enterprise key custody.",
+            "Critical audit is still best-effort until explicitly migrated."
+          ],
+          "implementationReadiness": {
+            "affectedComponents": ["apps/api/src/lib/iota-evidence-writer.ts", "apps/api/src/lib/iota-evidence-reconciler.ts", "apps/executor", "apps/api/src/lib/sdk-webhooks.ts", "apps/api/src/lib/webhook-egress.ts", "apps/api/src/lib/audit-logger.ts"],
+            "workPackages": ["Preserve IOTA V2 reconciliation.", "Deploy webhook worker and egress policy.", "Classify and migrate critical audit actions."],
+            "acceptanceCriteria": ["One logical effect survives every tested crash window.", "No prohibited webhook destination opens a socket.", "Database status alone never claims external confirmation."],
+            "migrationNotes": ["Historical IOTA V1 remains read-only; old failed webhooks enter dead-letter rather than surprise replay."],
+            "rollback": "Disable workers while retaining queued intent and evidence; never delete or mark pending effects successful."
+          }
+        },
+        {
+          "optionId": "shared-outbox",
+          "title": "Shared transactional outbox and capability adapters",
+          "kind": "structural",
+          "summary": "Standardize intent, lease, retry, terminal evidence, and metrics while leaving domain adapters responsible for confirmation semantics.",
+          "diagramPaths": {
+            "before": "diagrams/durable-external-effects-before.mmd",
+            "after": "diagrams/durable-external-effects-shared-outbox-after.mmd"
+          },
+          "evidenceCoverage": [
+            { "evidenceId": "E005", "effect": "addresses", "tacticalFixRequired": true, "rationale": "IOTA exact verification remains domain-specific while intent lifecycle is standardized." },
+            { "evidenceId": "E006", "effect": "addresses", "tacticalFixRequired": true, "rationale": "Egress validation stays mandatory inside the webhook adapter." },
+            { "evidenceId": "E007", "effect": "addresses", "tacticalFixRequired": true, "rationale": "Critical audit intent can commit transactionally with the business mutation." },
+            { "evidenceId": "E008", "effect": "addresses", "tacticalFixRequired": false, "rationale": "Domain tables can dual-write digests during staged migration." }
+          ],
+          "tradeoffs": [
+            { "dimension": "security", "direction": "improves", "confidence": "medium", "basis": "source-derived", "assessment": "One lifecycle reduces recurrence, but adapters must keep strict domain validation and least-privilege capabilities.", "validationPlan": "Use conformance tests plus domain-specific SSRF and chain verification suites." },
+            { "dimension": "performance", "direction": "neutral", "confidence": "low", "basis": "hypothetical", "assessment": "Shared polling can batch efficiently or create one hot queue depending on indexes and fairness.", "validationPlan": "Load-test queue scans, locks, tenant fairness, and adapter saturation." },
+            { "dimension": "memory", "direction": "neutral", "confidence": "medium", "basis": "hypothetical", "assessment": "Bounded leases keep worker memory stable; generic payloads can increase durable storage.", "validationPlan": "Measure payload size, retention, partition growth, and worker RSS." },
+            { "dimension": "reliability", "direction": "improves", "confidence": "medium", "basis": "hypothetical", "assessment": "Unified leases and telemetry simplify recovery, but a shared queue can couple noisy tenants or adapters.", "validationPlan": "Test per-tenant/provider quotas, poison messages, and adapter isolation." },
+            { "dimension": "operability", "direction": "improves", "confidence": "medium", "basis": "hypothetical", "assessment": "Queue age, attempts, DLQ, and reconciliation metrics become consistent across integrations.", "validationPlan": "Run incident drills using the shared dashboard and runbook." },
+            { "dimension": "migration", "direction": "regresses", "confidence": "high", "basis": "source-derived", "assessment": "Each domain needs shadow dual-write and terminal-state comparison before cutover.", "validationPlan": "Require digest and terminal-state parity without double-sending." }
+          ],
+          "residualRisks": [
+            "A shared queue can become a cross-domain availability dependency.",
+            "Sensitive payload retention and tenant fairness require explicit policy."
+          ],
+          "implementationReadiness": {
+            "affectedComponents": ["shared outbox schema", "worker lease library", "IOTA adapter", "webhook adapter", "audit adapter", "operational metrics"],
+            "workPackages": ["Define generic intent and adapter contract.", "Dual-write digests in shadow mode.", "Add quotas, retention, and adapter kill switches."],
+            "acceptanceCriteria": ["Domain and shared terminal states remain equivalent in shadow mode.", "No adapter can use another adapter's capability.", "Noisy tenants remain bounded."],
+            "migrationNotes": ["Cut one adapter at a time and preserve domain evidence tables during validation."],
+            "rollback": "Stop shared consumption and resume the domain worker from preserved intent without replaying confirmed effects."
+          }
+        },
+        {
+          "optionId": "isolated-services",
+          "title": "Isolated publication, egress, and audit services",
+          "kind": "isolation",
+          "summary": "Run signer, network egress, and immutable audit capabilities under separate service identities and infrastructure controls.",
+          "diagramPaths": {
+            "before": "diagrams/durable-external-effects-before.mmd",
+            "after": "diagrams/durable-external-effects-isolated-services-after.mmd"
+          },
+          "evidenceCoverage": [
+            { "evidenceId": "E005", "effect": "addresses", "tacticalFixRequired": true, "rationale": "Non-exportable signer custody narrows chain-key authority; exact V2 verification remains required." },
+            { "evidenceId": "E006", "effect": "addresses", "tacticalFixRequired": true, "rationale": "A network-restricted egress service contains SSRF impact; destination validation remains required." },
+            { "evidenceId": "E007", "effect": "addresses", "tacticalFixRequired": true, "rationale": "An append-only external sink survives application database compromise." },
+            { "evidenceId": "E008", "effect": "mitigates", "tacticalFixRequired": false, "rationale": "Existing persistence feeds queues and services during migration." }
+          ],
+          "tradeoffs": [
+            { "dimension": "security", "direction": "improves", "confidence": "medium", "basis": "hypothetical", "assessment": "Service identities, KMS, network policy, and WORM storage sharply reduce ambient capability in feature code.", "validationPlan": "Test identity policy, denied cross-capability calls, key extraction resistance, and immutable retention." },
+            { "dimension": "performance", "direction": "regresses", "confidence": "high", "basis": "hypothetical", "assessment": "Queue and service hops add latency and throughput limits to effect processing.", "validationPlan": "Measure end-to-end queue-to-confirmation latency under peak fanout." },
+            { "dimension": "memory", "direction": "regresses", "confidence": "high", "basis": "hypothetical", "assessment": "Separate runtimes and queues add baseline process and buffering overhead.", "validationPlan": "Measure per-service RSS, autoscaling floor, and queue buffer growth." },
+            { "dimension": "reliability", "direction": "neutral", "confidence": "low", "basis": "hypothetical", "assessment": "Failure isolation improves, while more services, identities, and queues expand the outage surface.", "validationPlan": "Run regional, queue, KMS, DNS, and sink outage drills with recovery objectives." },
+            { "dimension": "operability", "direction": "regresses", "confidence": "high", "basis": "hypothetical", "assessment": "Each capability needs deployment, on-call, SLO, rotation, replay, and disaster-recovery ownership.", "validationPlan": "Require owner, runbook, alerts, restore drill, and access review before production." },
+            { "dimension": "migration", "direction": "regresses", "confidence": "high", "basis": "hypothetical", "assessment": "Service contracts, identities, network policy, KMS integration, and queue replay require staged cutover.", "validationPlan": "Canary one capability and region, rehearse rollback, then expand." }
+          ],
+          "residualRisks": [
+            "KMS policy abuse and queue operator access can still authorize harmful effects.",
+            "More infrastructure can reduce availability without disciplined ownership and drills."
+          ],
+          "implementationReadiness": {
+            "affectedComponents": ["KMS/HSM signer service", "restricted egress service", "immutable audit sink", "queues", "service identity and network policy"],
+            "workPackages": ["Select custody and regional operating model.", "Define capability-specific service contracts.", "Build replay, rotation, and disaster-recovery controls."],
+            "acceptanceCriteria": ["Web workloads cannot export or invoke raw signer keys.", "Egress can reach only approved public destinations.", "Critical audit evidence survives application database compromise."],
+            "migrationNotes": ["Adopt first for mainnet key custody, restricted egress, and regulated audit rather than extracting every adapter."],
+            "rollback": "Pause queue consumption and restore the last verified local adapter only if its capability boundary remains acceptable for the environment."
+          }
+        }
+      ],
+      "recommendedOptionId": "shared-outbox",
+      "recommendation": "Complete the feature-local containment already in the sprint, then converge on a shared outbox; isolate signer, egress, and audit capabilities when mainnet, regulated data, or measured scale justifies the operational cost."
+    }
+  ],
+  "openQuestions": [
+    "Are reseller principals single-tenant or organization-scoped with an explicit tenant allowlist?",
+    "Which privileged actions must fail closed when durable audit evidence is unavailable?",
+    "What throughput, latency, queue-age, RPO, and RTO objectives apply to the first enterprise pilot?",
+    "Which KMS/HSM, egress, and immutable-audit operating model is approved for mainnet and regulated workloads?"
+  ]
+}

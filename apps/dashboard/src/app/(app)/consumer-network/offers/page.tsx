@@ -1,4 +1,5 @@
 import { requireDashboardSession } from "../../../../lib/session";
+import { requireDashboardTenantScope } from "../../../../lib/admin-page-access";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
 
@@ -53,11 +54,10 @@ const PRESETS: MarketplaceOffer[] = [
 export default async function TenantOffersPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const query = searchParams ? await searchParams : {};
   const session = await requireDashboardSession();
-  const requestedTenant = typeof query.tenant === "string" ? query.tenant : "";
-  const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : requestedTenant;
+  const tenantScope = requireDashboardTenantScope(session, query.tenant).tenantSlug;
 
   const fetchedOffers = await getOffers(tenantScope);
-  const rawOffers = fetchedOffers.length ? fetchedOffers : PRESETS;
+  const rawOffers = fetchedOffers.length ? fetchedOffers : session.isDemo ? PRESETS : [];
   const offers = tenantScope
     ? rawOffers.filter((offer) => String(offer.tenant_slug || "").toLowerCase() === tenantScope.toLowerCase())
     : rawOffers;

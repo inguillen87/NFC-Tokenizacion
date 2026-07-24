@@ -2,24 +2,12 @@ import { SectionHeading } from "@product/ui";
 import { DataTable } from "../../../components/data-table";
 import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
-
-async function adminGet(path: string) {
-  try {
-    const response = await fetch(`${API_BASE}${path}`, {
-      headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
-      cache: "no-store",
-    });
-
-    if (!response.ok) return [];
-    return response.json();
-  } catch {
-    return [];
-  }
-}
+import { requireDashboardSession } from "../../../lib/session";
+import { createAdminPageContext } from "../../../lib/admin-page-access";
 
 export default async function ExperiencesPage() {
+  const session = await requireDashboardSession();
+  await createAdminPageContext(session);
   const { locale } = await getDashboardI18n();
   const copy = dashboardContent[locale];
 

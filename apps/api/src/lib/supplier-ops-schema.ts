@@ -194,6 +194,7 @@ export async function ensureSupplierOpsSchema() {
           anchor_type text NOT NULL DEFAULT 'merkle_root',
           resource_type text,
           resource_id text,
+          public_resource_id text,
           merkle_root text NOT NULL,
           event_count integer NOT NULL,
           event_hashes_json jsonb NOT NULL DEFAULT '[]'::jsonb,
@@ -202,7 +203,65 @@ export async function ensureSupplierOpsSchema() {
           status text NOT NULL DEFAULT 'local',
           anchored_at timestamptz,
           error_message text,
-          created_at timestamptz NOT NULL DEFAULT now()
+          contract_version text,
+          chain_id bigint,
+          contract_address text,
+          publisher_address text,
+          tenant_id_hash text,
+          canonicalization_version text,
+          merkle_algorithm text,
+          memo_hash text,
+          memo_json jsonb NOT NULL DEFAULT '{}'::jsonb,
+          proof_id text,
+          idempotency_key text,
+          block_number bigint,
+          block_hash text,
+          confirmations integer NOT NULL DEFAULT 0,
+          attempt_count integer NOT NULL DEFAULT 0,
+          error_code text,
+          submitted_at timestamptz,
+          confirmed_at timestamptz,
+          last_checked_at timestamptz,
+          next_attempt_at timestamptz,
+          created_at timestamptz NOT NULL DEFAULT now(),
+          updated_at timestamptz NOT NULL DEFAULT now()
+        )
+      `;
+
+      await sql/*sql*/`
+        CREATE TABLE IF NOT EXISTS evidence_anchor_members (
+          id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+          anchor_id uuid NOT NULL REFERENCES evidence_anchors(id) ON DELETE CASCADE,
+          event_id uuid REFERENCES evidence_events(id) ON DELETE RESTRICT,
+          event_hash text NOT NULL,
+          leaf_index integer NOT NULL CHECK (leaf_index >= 0),
+          created_at timestamptz NOT NULL DEFAULT now(),
+          UNIQUE (anchor_id, leaf_index),
+          UNIQUE (anchor_id, event_hash)
+        )
+      `;
+
+      await sql/*sql*/`
+        CREATE TABLE IF NOT EXISTS evidence_anchor_attempts (
+          id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+          anchor_id uuid NOT NULL REFERENCES evidence_anchors(id) ON DELETE CASCADE,
+          attempt_no integer NOT NULL CHECK (attempt_no > 0),
+          chain_id bigint NOT NULL,
+          contract_address text NOT NULL,
+          signer_address text,
+          nonce bigint,
+          tx_hash text,
+          status text NOT NULL DEFAULT 'pending',
+          receipt_status text,
+          block_number bigint,
+          block_hash text,
+          error_code text,
+          error_detail_sanitized text,
+          submitted_at timestamptz,
+          checked_at timestamptz,
+          created_at timestamptz NOT NULL DEFAULT now(),
+          updated_at timestamptz NOT NULL DEFAULT now(),
+          UNIQUE (anchor_id, attempt_no)
         )
       `;
 
@@ -277,9 +336,31 @@ export async function ensureSupplierOpsSchema() {
       await sql/*sql*/`ALTER TABLE supplier_sub_batches ADD COLUMN IF NOT EXISTS batch_id uuid`;
       await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS resource_type text`;
       await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS resource_id text`;
+      await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS public_resource_id text`;
       await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS event_hashes_json jsonb NOT NULL DEFAULT '[]'::jsonb`;
       await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS tenant_id uuid`;
       await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT now()`;
+      await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS contract_version text`;
+      await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS chain_id bigint`;
+      await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS contract_address text`;
+      await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS publisher_address text`;
+      await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS tenant_id_hash text`;
+      await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS canonicalization_version text`;
+      await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS merkle_algorithm text`;
+      await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS memo_hash text`;
+      await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS memo_json jsonb NOT NULL DEFAULT '{}'::jsonb`;
+      await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS proof_id text`;
+      await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS idempotency_key text`;
+      await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS block_number bigint`;
+      await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS block_hash text`;
+      await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS confirmations integer NOT NULL DEFAULT 0`;
+      await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS attempt_count integer NOT NULL DEFAULT 0`;
+      await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS error_code text`;
+      await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS submitted_at timestamptz`;
+      await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS confirmed_at timestamptz`;
+      await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS last_checked_at timestamptz`;
+      await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS next_attempt_at timestamptz`;
+      await sql/*sql*/`ALTER TABLE evidence_anchors ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now()`;
       await sql/*sql*/`ALTER TABLE evidence_events ADD COLUMN IF NOT EXISTS tenant_id uuid`;
       await sql/*sql*/`ALTER TABLE evidence_events ADD COLUMN IF NOT EXISTS resource_type text NOT NULL DEFAULT 'legacy'`;
       await sql/*sql*/`ALTER TABLE evidence_events ADD COLUMN IF NOT EXISTS resource_id text NOT NULL DEFAULT 'legacy'`;
@@ -353,6 +434,13 @@ export async function ensureSupplierOpsSchema() {
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_evidence_events_tenant_created ON evidence_events(tenant_id, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_evidence_anchors_tenant_created ON evidence_anchors(tenant_id, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_evidence_anchors_event_hashes_gin ON evidence_anchors USING gin (event_hashes_json jsonb_ops)`;
+      await sql/*sql*/`CREATE UNIQUE INDEX IF NOT EXISTS uq_evidence_anchors_iota_proof_id ON evidence_anchors (lower(proof_id)) WHERE provider = 'iota' AND proof_id IS NOT NULL`;
+      await sql/*sql*/`CREATE UNIQUE INDEX IF NOT EXISTS uq_evidence_anchors_idempotency_key ON evidence_anchors (lower(idempotency_key)) WHERE idempotency_key IS NOT NULL`;
+      await sql/*sql*/`CREATE UNIQUE INDEX IF NOT EXISTS uq_evidence_anchors_tx_hash ON evidence_anchors (lower(tx_hash)) WHERE tx_hash IS NOT NULL`;
+      await sql/*sql*/`CREATE UNIQUE INDEX IF NOT EXISTS uq_evidence_anchor_attempts_tx_hash ON evidence_anchor_attempts (lower(tx_hash)) WHERE tx_hash IS NOT NULL`;
+      await sql/*sql*/`CREATE UNIQUE INDEX IF NOT EXISTS uq_evidence_anchor_attempts_signer_nonce ON evidence_anchor_attempts (chain_id, lower(signer_address), nonce) WHERE signer_address IS NOT NULL AND nonce IS NOT NULL`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_evidence_anchors_reconciliation ON evidence_anchors (status, next_attempt_at, updated_at) WHERE provider = 'iota' AND status IN ('pending', 'submitted', 'reconciling')`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_evidence_anchor_members_event ON evidence_anchor_members (event_id, anchor_id) WHERE event_id IS NOT NULL`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_offline_verifier_devices_tenant ON offline_verifier_devices(tenant_id, status, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_offline_verifier_bundles_device ON offline_verifier_bundles(device_id, status, expires_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_offline_scan_events_bundle ON offline_scan_events(bundle_id, received_at DESC)`;

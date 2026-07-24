@@ -146,6 +146,7 @@ export async function POST(req: Request) {
   await dispatchTenantWebhooks({
     tenantId: auth.context.tenantId,
     eventName: "sdk.pos.activated",
+    idempotencyKey: activationId,
     payload: {
       activationId,
       bid,

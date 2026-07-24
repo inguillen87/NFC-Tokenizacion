@@ -5,6 +5,7 @@ import { ModuleAudienceHero } from "../../../components/module-audience-hero";
 import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
 import { requireDashboardSession } from "../../../lib/session";
+import { requireDashboardTenantScope } from "../../../lib/admin-page-access";
 import { TENANT_DIRECTORY, type TenantDirectoryItem } from "../../../lib/tenant-directory";
 
 type PlanKey = TenantDirectoryItem["plan"];
@@ -152,8 +153,7 @@ export default async function SubscriptionsPage({
   const session = await requireDashboardSession();
   const query = searchParams ? await searchParams : {};
   const requestedTenant = normalizeTenantParam(query.tenant);
-  const sessionTenant = String(session.tenantSlug || "").trim().toLowerCase();
-  const scopedTenant = session.role === "tenant-admin" ? sessionTenant : requestedTenant;
+  const scopedTenant = requireDashboardTenantScope(session, requestedTenant).tenantSlug;
   const accounts = buildSubscriptionAccounts();
   const visibleAccounts = scopedTenant ? accounts.filter((account) => account.slug === scopedTenant) : accounts;
   const primaryAccount = visibleAccounts[0] || accounts[0];

@@ -4,14 +4,25 @@ import { sql } from '../../../../../lib/db';
 import { json } from '../../../../../lib/http';
 import { createResetToken, sha256 } from '../../../../../lib/iam';
 import { requireApiSession } from '../../../../../lib/auth-guard';
+import { isUuidString } from '../../../../../lib/iam';
+import { isProductionSecretExposureAllowed } from '../../../../../lib/admin-user-management-policy';
+import { createManagedAdminPasswordReset } from '../../../../../lib/admin-user-management';
 
 export async function POST(req: Request, { params }: { params: Promise<{ userId: string }> }) {
-  const { error } = await requireApiSession(req, 'users:manage');
-  if (error) return error;
+  const { error, session } = await requireApiSession(req, 'users:manage');
+  if (error || !session) return error;
   const { userId } = await params;
+  if (!isUuidString(userId)) return json({ ok: false, reason: 'invalid_user_id' }, 400);
   const token = createResetToken();
-  await sql`UPDATE password_reset_tokens SET consumed_at = now() WHERE user_id = ${userId}::uuid AND consumed_at IS NULL`;
-  await sql`INSERT INTO password_reset_tokens (user_id, token_hash, expires_at, meta) VALUES (${userId}::uuid, ${sha256(token)}, now() + interval '30 minutes', '{"source":"admin"}'::jsonb)`;
-  const exposeResetToken = String(process.env.DEV_EXPOSE_RESET_TOKEN || '').toLowerCase() === 'true';
+  const managedUserId = await createManagedAdminPasswordReset(sql as any, {
+    targetUserId: userId,
+    actorIsSuperAdmin: session.role === 'super-admin',
+    actorTenantId: session.tenantId,
+    tokenHash: sha256(token),
+    ttlMinutes: 30,
+  });
+  if (!managedUserId) return json({ ok: false, reason: 'managed_user_out_of_scope' }, 403);
+
+  const exposeResetToken = isProductionSecretExposureAllowed(process.env.NODE_ENV, process.env.DEV_EXPOSE_RESET_TOKEN, process.env.VERCEL_ENV);
   return json({ ok: true, resetToken: exposeResetToken ? token : undefined });
 }

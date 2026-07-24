@@ -1,26 +1,22 @@
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
 import Link from "next/link";
 import { Card, SectionHeading } from "@product/ui";
 import { DataTable } from "../../../../components/data-table";
 import { getDashboardI18n } from "../../../../lib/locale";
-import { getServerOrigin } from "../../../../lib/server-origin";
 import { requireDashboardSession } from "../../../../lib/session";
+import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../../lib/admin-page-access";
 import { ExportPackForm } from "./export-form";
 
-async function getOrderDetails(origin: string, orderId: string, cookie: string, tenantScope: string) {
+async function getOrderDetails(context: AdminPageContext, orderId: string) {
   try {
-    const response = await fetch(`${origin}/api/admin/supplier-orders`, {
-      headers: cookie ? { cookie } : undefined,
-      cache: "no-store",
-    });
+    const response = await fetchAdminPage(context, "supplier-orders");
     if (!response.ok) return null;
     const payload = await response.json();
     const order = payload.orders?.find((item: any) => item.id === orderId) || null;
     if (!order) return null;
 
     const orderTenantSlug = String(order.tenant_slug || "").trim().toLowerCase();
-    if (tenantScope && orderTenantSlug !== tenantScope) return null;
+    if (context.tenantSlug && orderTenantSlug !== context.tenantSlug) return null;
     return order;
   } catch {
     return null;
@@ -31,12 +27,9 @@ export default async function SupplierOrderDetailPage({ params }: { params: Prom
   const session = await requireDashboardSession("supplier_orders:read");
   const { orderId } = await params;
   const { locale } = await getDashboardI18n();
-  const origin = await getServerOrigin();
-  const cookie = (await headers()).get("cookie") || "";
-  const isTenantScoped = session.role === "tenant-admin" || session.role === "reseller";
-  const tenantScope = isTenantScoped ? String(session.tenantSlug || "").trim().toLowerCase() : "";
+  const adminContext = await createAdminPageContext(session);
 
-  const order = isTenantScoped && !tenantScope ? null : await getOrderDetails(origin, orderId, cookie, tenantScope);
+  const order = await getOrderDetails(adminContext, orderId);
   if (!order) {
     return (
       <main className="space-y-8">
@@ -58,16 +51,14 @@ export default async function SupplierOrderDetailPage({ params }: { params: Prom
 
   const exportAction = async (formData: FormData) => {
     "use server";
-    await requireDashboardSession("supplier_orders:read");
+    const actionSession = await requireDashboardSession("supplier_orders:read");
+    const actionContext = await createAdminPageContext(actionSession);
     const password = formData.get("password") as string;
-    const actionOrigin = await getServerOrigin();
-    const actionCookie = (await headers()).get("cookie") || "";
 
-    const res = await fetch(`${actionOrigin}/api/admin/supplier-orders/${encodeURIComponent(orderId)}/export-pack`, {
+    const res = await fetchAdminPage(actionContext, `supplier-orders/${encodeURIComponent(orderId)}/export-pack`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(actionCookie ? { cookie: actionCookie } : {}),
       },
       body: JSON.stringify({ password }),
       cache: "no-store",

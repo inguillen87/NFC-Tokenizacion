@@ -2,16 +2,12 @@ import { Card, SectionHeading } from "@product/ui";
 import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
 import { requireDashboardSession } from "../../../lib/session";
+import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../lib/admin-page-access";
 import LeadsTicketsClient from "./leads-tickets-client";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
-
-async function adminGet(path: string) {
+async function adminGet(context: AdminPageContext, path: string) {
   try {
-    const response = await fetch(`${API_BASE}${path}`, {
-      headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
-      cache: "no-store",
-    });
+    const response = await fetchAdminPage(context, path);
 
     if (!response.ok) return [];
     return response.json();
@@ -37,17 +33,19 @@ export default async function LeadsTicketsPage({
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const query = searchParams ? await searchParams : {};
-  const tenantFilter = String(query.tenant || "").trim().toLowerCase();
+  const requestedTenant = String(query.tenant || "").trim().toLowerCase();
   const sessionFilter = String(query.session || "").trim().toLowerCase();
   const { locale } = await getDashboardI18n();
   const session = await requireDashboardSession();
-  const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : "";
+  const adminContext = await createAdminPageContext(session, requestedTenant);
+  const tenantScope = adminContext.tenantSlug;
+  const tenantFilter = adminContext.canSelectTenant ? requestedTenant : tenantScope;
   const copy = dashboardContent[locale];
 
   const [leads, tickets, orders] = await Promise.all([
-    adminGet("/admin/leads"),
-    adminGet("/admin/tickets"),
-    adminGet("/admin/consumer-portal/order-requests"),
+    adminGet(adminContext, "/admin/leads"),
+    adminGet(adminContext, "/admin/tickets"),
+    adminGet(adminContext, "/admin/consumer-portal/order-requests"),
   ]);
 
   const leadsArray = Array.isArray(leads) ? (leads as any[]) : [];

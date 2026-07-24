@@ -570,22 +570,52 @@ export async function ensureSdkSchema() {
         CREATE TABLE IF NOT EXISTS webhook_deliveries (
           id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
           endpoint_id uuid NOT NULL REFERENCES webhook_endpoints(id) ON DELETE CASCADE,
+          endpoint_url text NOT NULL,
+          event_id text NOT NULL,
           event_name text NOT NULL,
           payload jsonb NOT NULL DEFAULT '{}'::jsonb,
+          status text NOT NULL DEFAULT 'pending',
           status_code integer,
           ok boolean NOT NULL DEFAULT false,
           attempt_count integer NOT NULL DEFAULT 0,
+          next_attempt_at timestamptz DEFAULT now(),
+          last_attempt_at timestamptz,
+          locked_at timestamptz,
+          lock_token text,
           last_error text,
           created_at timestamptz NOT NULL DEFAULT now(),
-          delivered_at timestamptz
+          delivered_at timestamptz,
+          UNIQUE (endpoint_id, event_id)
         )
       `);
+      await sql/*sql*/`ALTER TABLE webhook_deliveries ADD COLUMN IF NOT EXISTS endpoint_url text`;
+      await sql/*sql*/`ALTER TABLE webhook_deliveries ADD COLUMN IF NOT EXISTS event_id text`;
       await sql/*sql*/`ALTER TABLE webhook_deliveries ADD COLUMN IF NOT EXISTS payload jsonb NOT NULL DEFAULT '{}'::jsonb`;
+      await sql/*sql*/`ALTER TABLE webhook_deliveries ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'pending'`;
       await sql/*sql*/`ALTER TABLE webhook_deliveries ADD COLUMN IF NOT EXISTS status_code integer`;
       await sql/*sql*/`ALTER TABLE webhook_deliveries ADD COLUMN IF NOT EXISTS ok boolean NOT NULL DEFAULT false`;
       await sql/*sql*/`ALTER TABLE webhook_deliveries ADD COLUMN IF NOT EXISTS attempt_count integer NOT NULL DEFAULT 0`;
+      await sql/*sql*/`ALTER TABLE webhook_deliveries ADD COLUMN IF NOT EXISTS next_attempt_at timestamptz`;
+      await sql/*sql*/`ALTER TABLE webhook_deliveries ADD COLUMN IF NOT EXISTS last_attempt_at timestamptz`;
+      await sql/*sql*/`ALTER TABLE webhook_deliveries ADD COLUMN IF NOT EXISTS locked_at timestamptz`;
+      await sql/*sql*/`ALTER TABLE webhook_deliveries ADD COLUMN IF NOT EXISTS lock_token text`;
       await sql/*sql*/`ALTER TABLE webhook_deliveries ADD COLUMN IF NOT EXISTS last_error text`;
       await sql/*sql*/`ALTER TABLE webhook_deliveries ADD COLUMN IF NOT EXISTS delivered_at timestamptz`;
+      await sql/*sql*/`
+        UPDATE webhook_deliveries wd
+        SET endpoint_url = we.url
+        FROM webhook_endpoints we
+        WHERE wd.endpoint_id = we.id
+          AND NULLIF(wd.endpoint_url, '') IS NULL
+      `;
+      await sql/*sql*/`
+        UPDATE webhook_deliveries
+        SET event_id = COALESCE(NULLIF(payload->>'id', ''), 'legacy:' || id::text),
+            status = CASE WHEN ok THEN 'delivered' ELSE 'dead_letter' END
+        WHERE NULLIF(event_id, '') IS NULL
+      `;
+      await sql/*sql*/`CREATE UNIQUE INDEX IF NOT EXISTS uq_webhook_deliveries_endpoint_event ON webhook_deliveries(endpoint_id, event_id)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_due ON webhook_deliveries(status, next_attempt_at, created_at) WHERE status IN ('pending', 'retry_scheduled', 'processing')`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_endpoint_created ON webhook_deliveries(endpoint_id, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_event_created ON webhook_deliveries(event_name, created_at DESC)`;
     }, () => {
@@ -818,6 +848,24 @@ export async function ensureEnterpriseIamSchema() {
         )
       `;
 
+      await sql/*sql*/`
+        CREATE TABLE IF NOT EXISTS admin_login_attempt_buckets (
+          bucket_kind text NOT NULL,
+          bucket_key text NOT NULL,
+          window_started_at timestamptz NOT NULL DEFAULT now(),
+          attempt_count integer NOT NULL DEFAULT 0,
+          blocked_until timestamptz,
+          updated_at timestamptz NOT NULL DEFAULT now(),
+          PRIMARY KEY (bucket_kind, bucket_key),
+          CONSTRAINT admin_login_attempt_buckets_kind_check
+            CHECK (bucket_kind IN ('source', 'source_subject')),
+          CONSTRAINT admin_login_attempt_buckets_key_check
+            CHECK (bucket_key ~ '^[0-9a-f]{64}$'),
+          CONSTRAINT admin_login_attempt_buckets_count_check
+            CHECK (attempt_count >= 0)
+        )
+      `;
+
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_memberships_user ON memberships(user_id)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_memberships_tenant ON memberships(tenant_id)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_auth_sessions_user ON auth_sessions(user_id, created_at DESC)`;
@@ -827,6 +875,8 @@ export async function ensureEnterpriseIamSchema() {
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_access_requests_status_created ON access_requests(status, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_resource_permissions_user ON resource_permissions(user_id, resource)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_user_auth_events_email_created ON user_auth_events(email, created_at DESC)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_admin_login_attempt_buckets_updated ON admin_login_attempt_buckets(updated_at)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_admin_login_attempt_buckets_blocked ON admin_login_attempt_buckets(blocked_until) WHERE blocked_until IS NOT NULL`;
     }, () => {
       enterpriseIamSchemaReady = null;
     });

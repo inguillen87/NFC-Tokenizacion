@@ -2,9 +2,8 @@ import Link from "next/link";
 import { Badge, Card, SectionHeading } from "@product/ui";
 import { VerifiedExperiencesPanel } from "../../../../components/verified-experiences-panel";
 import { requireDashboardSession } from "../../../../lib/session";
-import { getServerOrigin } from "../../../../lib/server-origin";
+import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../../lib/admin-page-access";
 import type { VerifiedExperienceItem } from "../../../../components/verified-experiences-panel";
-import { headers } from "next/headers";
 
 const clubControls = [
   {
@@ -62,12 +61,9 @@ type AdminExperiencesPayload = {
   };
 };
 
-async function adminGet(origin: string, path: string, cookie?: string) {
+async function adminGet(context: AdminPageContext, path: string) {
   try {
-    const response = await fetch(`${origin}/api/admin/${path.replace(/^\/?admin\//, "")}`, {
-      cache: "no-store",
-      headers: cookie ? { cookie } : undefined,
-    });
+    const response = await fetchAdminPage(context, path);
     if (!response.ok) return null;
     return response.json();
   } catch {
@@ -86,12 +82,8 @@ function statusCopy(status?: string | null) {
 export default async function ExperiencesPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const query = searchParams ? await searchParams : {};
   const session = await requireDashboardSession();
-  const requestedTenant = typeof query.tenant === "string" ? query.tenant : "";
-  const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : requestedTenant;
-  const origin = await getServerOrigin();
-  const cookie = (await headers()).get("cookie") || "";
-  const tenantQuery = tenantScope ? `?tenant=${encodeURIComponent(tenantScope)}&limit=50` : "?limit=50";
-  const experiencesRaw = (await adminGet(origin, `/admin/consumer-experiences${tenantQuery}`, cookie)) as AdminExperiencesPayload | null;
+  const adminContext = await createAdminPageContext(session, query.tenant);
+  const experiencesRaw = (await adminGet(adminContext, "/admin/consumer-experiences?limit=50")) as AdminExperiencesPayload | null;
   const experiences = Array.isArray(experiencesRaw?.items) ? experiencesRaw.items : [];
   const pendingReviews = experiences.length
     ? experiences.slice(0, 8).map((review) => ({

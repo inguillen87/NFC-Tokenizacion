@@ -1,13 +1,14 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-import { checkAdmin } from "../../../../lib/auth";
+import { checkAdmin, getAdminTenantAccess } from "../../../../lib/auth";
 import { json } from "../../../../lib/http";
 import { sql } from "../../../../lib/db";
 
 export async function GET(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
-  const tenant = new URL(req.url).searchParams.get('tenant') || '';
+  const requestedTenant = new URL(req.url).searchParams.get('tenant');
+  const { effectiveTenantSlug: tenant } = getAdminTenantAccess(req, requestedTenant);
   if (!tenant) return json({ ok: false, error: 'tenant_required' }, 400);
   const rows = await sql/*sql*/`
     SELECT

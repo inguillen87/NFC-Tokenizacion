@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin } from "../../../../lib/auth";
+import { checkAdmin, getAdminTenantAccess } from "../../../../lib/auth";
 import { json } from "../../../../lib/http";
 import { sql } from "../../../../lib/db";
 
@@ -22,7 +22,16 @@ export async function POST(req: Request) {
   const bid = String(body.batch_id || "").trim();
   if (!uidHex || !bid) return json({ ok: false, reason: "uid_hex and batch_id required" }, 400);
 
-  const batchRows = await sql/*sql*/`SELECT id FROM batches WHERE bid = ${bid} LIMIT 1`;
+  const { forcedTenantSlug } = getAdminTenantAccess(req);
+  const batchRows = forcedTenantSlug
+    ? await sql/*sql*/`
+      SELECT b.id
+      FROM batches b
+      JOIN tenants t ON t.id = b.tenant_id
+      WHERE b.bid = ${bid} AND t.slug = ${forcedTenantSlug}
+      LIMIT 1
+    `
+    : await sql/*sql*/`SELECT id FROM batches WHERE bid = ${bid} LIMIT 1`;
   const batch = batchRows[0];
   if (!batch) return json({ ok: false, reason: "batch not found" }, 404);
 

@@ -1,19 +1,13 @@
 import Link from "next/link";
 import { Card, SectionHeading } from "@product/ui";
-import { productUrls } from "@product/config";
 import { DataTable } from "../../../components/data-table";
 import { getDashboardI18n } from "../../../lib/locale";
 import { requireDashboardSession } from "../../../lib/session";
+import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../lib/admin-page-access";
 
-const API_BASE = productUrls.api;
-
-async function getSupplierOrders(tenantScope = "") {
+async function getSupplierOrders(context: AdminPageContext) {
   try {
-    const query = tenantScope ? `?tenant=${encodeURIComponent(tenantScope)}` : "";
-    const response = await fetch(`${API_BASE}/admin/supplier-orders${query}`, {
-      headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
-      cache: "no-store",
-    });
+    const response = await fetchAdminPage(context, "supplier-orders");
     if (!response.ok) return [];
     const payload = await response.json();
     return payload.orders || [];
@@ -25,10 +19,9 @@ async function getSupplierOrders(tenantScope = "") {
 export default async function SupplierOrdersPage() {
   const { locale } = await getDashboardI18n();
   const session = await requireDashboardSession("supplier_orders:read");
-  const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : "";
-  const isTenantAdmin = session.role === "tenant-admin";
+  const adminContext = await createAdminPageContext(session);
 
-  const orders = await getSupplierOrders(tenantScope);
+  const orders = await getSupplierOrders(adminContext);
 
   const rows = orders.map((row: any) => ({
     id: row.id,

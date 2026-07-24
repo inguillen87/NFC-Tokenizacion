@@ -14,7 +14,7 @@ test("subscriptions page is tenant-aware instead of a flat demo table", () => {
   assert.match(tenantDirectorySource, /slug: "demobodega"/);
   assert.match(pageSource, /searchParams\?: Promise<Record<string, string \| string\[\] \| undefined>>/);
   assert.match(pageSource, /const requestedTenant = normalizeTenantParam\(query\.tenant\)/);
-  assert.match(pageSource, /const scopedTenant = session\.role === "tenant-admin" \? sessionTenant : requestedTenant/);
+  assert.match(pageSource, /const scopedTenant = requireDashboardTenantScope\(session, requestedTenant\)\.tenantSlug/);
   assert.match(pageSource, /const visibleAccounts = scopedTenant \? accounts\.filter\(\(account\) => account\.slug === scopedTenant\) : accounts/);
   assert.doesNotMatch(pageSource, /const rows = \[\s*\{ tenant: "Bodega Andes"/);
 });

@@ -1,17 +1,15 @@
 import { SectionHeading } from "@product/ui";
+import { notFound } from "next/navigation";
 import { DataTable } from "../../../components/data-table";
 import { ModuleAudienceHero } from "../../../components/module-audience-hero";
 import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
+import { requireDashboardSession } from "../../../lib/session";
+import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../lib/admin-page-access";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
-
-async function adminGet(path: string) {
+async function adminGet(context: AdminPageContext, path: string) {
   try {
-    const response = await fetch(`${API_BASE}${path}`, {
-      headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
-      cache: "no-store",
-    });
+    const response = await fetchAdminPage(context, path);
 
     if (!response.ok) return [];
     return response.json();
@@ -21,13 +19,16 @@ async function adminGet(path: string) {
 }
 
 export default async function ResellersPage() {
+  const session = await requireDashboardSession();
+  if (session.role !== "super-admin") notFound();
+  const adminContext = await createAdminPageContext(session);
   const { locale } = await getDashboardI18n();
   const copy = dashboardContent[locale];
 
   const [leads, tickets, orders] = await Promise.all([
-    adminGet("/admin/leads"),
-    adminGet("/admin/tickets"),
-    adminGet("/admin/orders"),
+    adminGet(adminContext, "/admin/leads"),
+    adminGet(adminContext, "/admin/tickets"),
+    adminGet(adminContext, "/admin/orders"),
   ]);
 
   return (

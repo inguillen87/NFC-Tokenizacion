@@ -55,6 +55,14 @@ export type ScanContext = {
   requestId?: string;
 };
 
+export type SunScanSideEffectMode = "persist" | "dry_run";
+
+export function shouldPersistSunScanState(mode: unknown) {
+  // Omitted preserves the production scan contract. Once a caller opts into
+  // this control, only the exact persist value may enable state mutations.
+  return mode === undefined || mode === "persist";
+}
+
 type TamperState = "opened" | "tamper" | "closed" | null;
 type TTStatusProductState =
   | "VALID_CLOSED"
@@ -310,16 +318,23 @@ export async function processSunScan(input: {
   cmacHex: string;
   rawQuery?: Record<string, string>;
   context?: ScanContext;
+  sideEffectMode?: SunScanSideEffectMode;
 }) {
+  const persistScanState = shouldPersistSunScanState(input.sideEffectMode);
   const scanHashes = buildSunPayloadHashes(input);
   const requestId = input.context?.requestId || randomUUID();
   input.context = { ...input.context, requestId };
   let replayOriginalEventId: number | null = null;
 
+  async function sunStateSql(strings: TemplateStringsArray, ...values: unknown[]) {
+    if (!persistScanState) return [];
+    return sql(strings, ...values);
+  }
+
   async function getManualTamperOverride(uidHex: string | null) {
     if (!uidHex) return null;
     try {
-      await sql/*sql*/`
+      await sunStateSql/*sql*/`
         CREATE TABLE IF NOT EXISTS tag_manual_tamper_overrides (
           id bigserial PRIMARY KEY,
           batch_id uuid NOT NULL,
@@ -345,7 +360,7 @@ export async function processSunScan(input: {
   }
   async function logUnassignedAttempt(reason: string) {
     try {
-      await sql/*sql*/`
+      await sunStateSql/*sql*/`
         CREATE TABLE IF NOT EXISTS sun_scan_attempts (
           id bigserial PRIMARY KEY,
           bid text NOT NULL,
@@ -363,7 +378,7 @@ export async function processSunScan(input: {
           created_at timestamptz NOT NULL DEFAULT now()
         )
       `;
-      await sql/*sql*/`
+      await sunStateSql/*sql*/`
         INSERT INTO sun_scan_attempts (
           bid, result, reason, ip, user_agent, geo_city, geo_country, geo_lat, geo_lng, source, raw_query, meta
         ) VALUES (
@@ -396,6 +411,7 @@ export async function processSunScan(input: {
     reasonValue: string | null;
     hasGeoValue: boolean;
   }): Promise<number | null> {
+    if (!persistScanState) return null;
     if (!batch) return null;
     const normalizedResult = String(payload.resultValue || "").toUpperCase();
     const isReplay = normalizedResult === 'REPLAY_SUSPECT';
@@ -509,6 +525,7 @@ export async function processSunScan(input: {
           bid: input.bid,
           result: "SUN_BATCH_DUPLICATE_CONFIG",
           status: 409,
+          side_effect_mode: persistScanState ? "persist" : "dry_run",
           duplicate_batches: duplicateBatches,
           batch_sdm_config: null,
         },
@@ -599,7 +616,7 @@ export async function processSunScan(input: {
       if (res.ok && typeof tag?.last_seen_ctr === 'number' && resolvedCtr != null && resolvedCtr <= tag.last_seen_ctr) replaySuspect = true;
       const tagId = tag?.id || registeredPayloadMatch?.tagId || null;
       if (tagId) {
-        await sql/*sql*/`
+        await sunStateSql/*sql*/`
           UPDATE tags
           SET scan_count = scan_count + 1,
               first_seen_at = COALESCE(first_seen_at, now()),
@@ -611,7 +628,7 @@ export async function processSunScan(input: {
           WHERE id = ${tagId}
         `;
       } else {
-        await sql/*sql*/`
+        await sunStateSql/*sql*/`
           UPDATE tags
           SET scan_count = scan_count + 1,
               first_seen_at = COALESCE(first_seen_at, now()),
@@ -833,6 +850,7 @@ export async function processSunScan(input: {
     bid: input.bid,
     result,
     status: responseStatus,
+    side_effect_mode: persistScanState ? "persist" : "dry_run",
     sensitive_redacted: true,
     redacted_fields: PUBLIC_SUN_REDACTED_FIELDS,
     crypto_error_reason: cryptoErrorReason || null,
@@ -867,6 +885,7 @@ export async function processSunScan(input: {
       ok: publicOk,
       request_id: requestId,
       result,
+      side_effect_mode: persistScanState ? "persist" : "dry_run",
       tenant_id: batch.tenant_id,
       tenant_slug: (batch as { tenant_slug?: string }).tenant_slug || undefined,
       tenant_name: (batch as { tenant_name?: string }).tenant_name || undefined,

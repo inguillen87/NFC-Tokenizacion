@@ -1,12 +1,16 @@
 import { Card, SectionHeading } from "@product/ui";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { DataTable } from "../../../components/data-table";
 import { ModuleAudienceHero } from "../../../components/module-audience-hero";
 import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
 import { TENANT_DIRECTORY } from "../../../lib/tenant-directory";
+import { requireDashboardSession } from "../../../lib/session";
 
 export default async function TenantsPage() {
+  const session = await requireDashboardSession();
+  if (session.role !== "super-admin") notFound();
   const { locale } = await getDashboardI18n();
   const copy = dashboardContent[locale];
 

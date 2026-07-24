@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Card, SectionHeading } from "@product/ui";
-import { productUrls } from "@product/config";
 import { BatchSunValidator } from "../../../components/batch-sun-validator";
 import { DataTable } from "../../../components/data-table";
 import { ModuleAudienceHero } from "../../../components/module-audience-hero";
@@ -9,8 +8,7 @@ import { QuickOnboardingPanel } from "../../../components/quick-onboarding-panel
 import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
 import { requireDashboardSession } from "../../../lib/session";
-
-const API_BASE = productUrls.api;
+import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../lib/admin-page-access";
 
 const rolloutSteps = [
   {
@@ -63,13 +61,9 @@ const carrierLadder = [
   },
 ];
 
-async function getBatchRows(tenantScope = ""): Promise<Array<Record<string, unknown>>> {
+async function getBatchRows(context: AdminPageContext): Promise<Array<Record<string, unknown>>> {
   try {
-    const query = tenantScope ? `?tenant=${encodeURIComponent(tenantScope)}` : "";
-    const response = await fetch(`${API_BASE}/admin/batches${query}`, {
-      headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
-      cache: "no-store",
-    });
+    const response = await fetchAdminPage(context, "batches");
     if (!response.ok) return [] as Array<Record<string, unknown>>;
     return response.json();
   } catch {
@@ -99,13 +93,9 @@ type ProductAssetItem = {
   } | null;
 };
 
-async function getAssetRows(tenantScope = ""): Promise<ProductAssetItem[]> {
+async function getAssetRows(context: AdminPageContext): Promise<ProductAssetItem[]> {
   try {
-    const query = tenantScope ? `?tenant=${encodeURIComponent(tenantScope)}&limit=60` : "?limit=60";
-    const response = await fetch(`${API_BASE}/admin/product-assets${query}`, {
-      headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
-      cache: "no-store",
-    });
+    const response = await fetchAdminPage(context, "product-assets?limit=60");
     if (!response.ok) return [];
     const payload = await response.json() as { items?: ProductAssetItem[] };
     return Array.isArray(payload.items) ? payload.items : [];
@@ -114,15 +104,21 @@ async function getAssetRows(tenantScope = ""): Promise<ProductAssetItem[]> {
   }
 }
 
-export default async function BatchesPage() {
+export default async function BatchesPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const query = searchParams ? await searchParams : {};
   const { locale } = await getDashboardI18n();
   const session = await requireDashboardSession("batches:read");
-  const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : "";
+  const adminContext = await createAdminPageContext(session, query.tenant);
+  const tenantScope = adminContext.tenantSlug;
   const isTenantAdmin = session.role === "tenant-admin";
   const copy = dashboardContent[locale];
   const [batchRows, assetRows] = await Promise.all([
-    getBatchRows(tenantScope),
-    getAssetRows(tenantScope),
+    getBatchRows(adminContext),
+    getAssetRows(adminContext),
   ]);
   const plannedTags = batchRows.reduce((sum, row) => sum + Number(row.requested_quantity || row.qty || row.quantity || 0), 0);
   const importedTags = batchRows.reduce((sum, row) => sum + Number(row.imported_tags || row.quantity || row.qty || 0), 0);

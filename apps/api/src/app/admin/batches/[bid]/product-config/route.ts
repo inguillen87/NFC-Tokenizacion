@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin } from "../../../../../lib/auth";
+import { checkAdmin, getAdminTenantAccess } from "../../../../../lib/auth";
 import { json } from "../../../../../lib/http";
 import { sql } from "../../../../../lib/db";
 
@@ -40,12 +40,21 @@ export async function PATCH(req: Request, context: { params: Promise<{ bid: stri
   const body = (await req.json().catch(() => ({}))) as ProductConfigBody;
   if (!bid) return json({ ok: false, reason: "bid required" }, 400);
 
-  const batches = await sql/*sql*/`
-    SELECT id, status, created_at, sdm_config
-    FROM batches
-    WHERE bid = ${bid}
-    ORDER BY created_at ASC, id ASC
-  `;
+  const { forcedTenantSlug } = getAdminTenantAccess(req);
+  const batches = forcedTenantSlug
+    ? await sql/*sql*/`
+      SELECT b.id, b.status, b.created_at, b.sdm_config
+      FROM batches b
+      JOIN tenants t ON t.id = b.tenant_id
+      WHERE b.bid = ${bid} AND t.slug = ${forcedTenantSlug}
+      ORDER BY b.created_at ASC, b.id ASC
+    `
+    : await sql/*sql*/`
+      SELECT id, status, created_at, sdm_config
+      FROM batches
+      WHERE bid = ${bid}
+      ORDER BY created_at ASC, id ASC
+    `;
   if (!batches[0]) return json({ ok: false, reason: "batch not found" }, 404);
   if (batches.length > 1) {
     return json({

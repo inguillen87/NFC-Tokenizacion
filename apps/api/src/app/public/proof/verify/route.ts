@@ -94,21 +94,54 @@ async function verifyPublicProof(eventHash: string, anchorId = "") {
     await ensureSupplierOpsSchema();
     const rows = anchorId
       ? await sql/*sql*/`
-          SELECT id, provider, network, merkle_root, event_hashes_json, tx_hash, explorer_url, status, anchored_at, created_at
+          SELECT id, provider, network, merkle_root, event_hashes_json, tx_hash, explorer_url, status, anchored_at, created_at,
+                 resource_type, resource_id, public_resource_id, event_count, tenant_id_hash, memo_hash,
+                 proof_id, contract_version, chain_id, contract_address, publisher_address
           FROM evidence_anchors
           WHERE id = ${anchorId}::uuid
           LIMIT 1
         `
       : await sql/*sql*/`
-          SELECT id, provider, network, merkle_root, event_hashes_json, tx_hash, explorer_url, status, anchored_at, created_at
+          SELECT id, provider, network, merkle_root, event_hashes_json, tx_hash, explorer_url, status, anchored_at, created_at,
+                 resource_type, resource_id, public_resource_id, event_count, tenant_id_hash, memo_hash,
+                 proof_id, contract_version, chain_id, contract_address, publisher_address
           FROM evidence_anchors
           WHERE event_hashes_json @> ${JSON.stringify([eventHash])}::jsonb
           ORDER BY created_at DESC
           LIMIT 50
         `;
-    matches = rows
-      .filter((anchor) => verifyHashInAnchor(eventHash, Array.isArray(anchor.event_hashes_json) ? anchor.event_hashes_json : []))
-      .map((anchor) => ({
+    const includedRows = rows.filter((anchor) => (
+      verifyHashInAnchor(eventHash, Array.isArray(anchor.event_hashes_json) ? anchor.event_hashes_json : [])
+    ));
+    matches = await Promise.all(includedRows.map(async (anchor) => {
+      let networkVerification: Record<string, unknown> | null = null;
+      if (anchor.provider === "iota" && anchor.tx_hash) {
+        try {
+          const verification = await verifyIotaAnchorPublication({
+            txHash: anchor.tx_hash,
+            merkleRoot: anchor.merkle_root,
+            tenantIdHash: anchor.tenant_id_hash,
+            resourceType: anchor.resource_type,
+            resourceId: anchor.public_resource_id || anchor.resource_id,
+            eventCount: Number(anchor.event_count),
+            memoHash: anchor.memo_hash || undefined,
+            contractAddress: anchor.contract_address || undefined,
+            publisherAddress: anchor.publisher_address || undefined,
+          });
+          const proofIdMatches = !anchor.proof_id
+            || String(verification.proof_id || "").toLowerCase() === String(anchor.proof_id).toLowerCase();
+          const chainMatches = !anchor.chain_id || Number(verification.chain_id) === Number(anchor.chain_id);
+          networkVerification = publicNetworkProof({
+            ...verification,
+            verified: Boolean(verification.verified && proofIdMatches && chainMatches),
+            proof_id_matches: proofIdMatches,
+            persisted_chain_matches: chainMatches,
+          });
+        } catch {
+          networkVerification = { verified: false, reason: "iota_rpc_verification_unavailable" };
+        }
+      }
+      return {
         anchor_id: anchor.id,
         provider: anchor.provider,
         network: anchor.network,
@@ -118,7 +151,10 @@ async function verifyPublicProof(eventHash: string, anchorId = "") {
         status: anchor.status,
         anchored_at: anchor.anchored_at || anchor.created_at,
         demo_fixture: false,
-      }));
+        network_verified: networkVerification?.verified === true,
+        network_verification: networkVerification,
+      };
+    }));
   } catch {
     registryWarning = "private_anchor_registry_unavailable";
     if (!demoMatches.length) {
@@ -141,7 +177,6 @@ async function verifyPublicProof(eventHash: string, anchorId = "") {
   const included = effectiveMatches.length > 0;
   const externallyConfirmed = effectiveMatches.some((match) => (
     match.network_verified === true
-    || (!match.demo_fixture && String(match.status || "").toLowerCase() === "confirmed" && Boolean(match.tx_hash))
   ));
   const statuses = new Set(effectiveMatches.map((match) => String(match.status || "").toLowerCase()));
   const verificationState = !included

@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin } from "../../../lib/auth";
+import { checkAdmin, getAdminTenantAccess } from "../../../lib/auth";
 import { sql } from "../../../lib/db";
 import { json } from "../../../lib/http";
 import { publishRealtimeEvent } from "../../../lib/realtime-events";
@@ -21,7 +21,8 @@ export async function GET(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
   const { searchParams } = new URL(req.url);
-  const tenant = clean(searchParams.get("tenant"));
+  const requestedTenant = clean(searchParams.get("tenant"));
+  const { effectiveTenantSlug: tenant } = getAdminTenantAccess(req, requestedTenant);
   await ensureLeadsSchema();
   let rows;
   try {
@@ -37,8 +38,10 @@ export async function GET(req: Request) {
     if (!isMissingRelation(error)) throw error;
     await ensureLeadsSchema();
     rows = await sql/*sql*/`
-      SELECT l.*, NULL::text AS tenant_slug, NULL::text AS tenant_name
+      SELECT l.*, tn.slug AS tenant_slug, tn.name AS tenant_name
       FROM leads l
+      LEFT JOIN tenants tn ON tn.id = l.tenant_id
+      WHERE (${tenant} = '' OR tn.slug = ${tenant})
       ORDER BY l.created_at DESC
       LIMIT 500
     `;

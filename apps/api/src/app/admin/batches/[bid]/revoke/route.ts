@@ -2,7 +2,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 import { sql } from "../../../../../lib/db";
-import { checkAdmin } from "../../../../../lib/auth";
+import { checkAdmin, getAdminTenantAccess } from "../../../../../lib/auth";
 import { json } from "../../../../../lib/http";
 
 export async function POST(req: Request, { params }: { params: Promise<{ bid: string }> }) {
@@ -10,12 +10,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
   if (auth) return auth;
 
   const { bid } = await params;
-  const batches = await sql/*sql*/`
-    SELECT id, status, created_at
-    FROM batches
-    WHERE bid = ${bid}
-    ORDER BY created_at ASC, id ASC
-  `;
+  const { forcedTenantSlug } = getAdminTenantAccess(req);
+  const batches = forcedTenantSlug
+    ? await sql/*sql*/`
+      SELECT b.id, b.status, b.created_at
+      FROM batches b
+      JOIN tenants t ON t.id = b.tenant_id
+      WHERE b.bid = ${bid} AND t.slug = ${forcedTenantSlug}
+      ORDER BY b.created_at ASC, b.id ASC
+    `
+    : await sql/*sql*/`
+      SELECT id, status, created_at
+      FROM batches
+      WHERE bid = ${bid}
+      ORDER BY created_at ASC, id ASC
+    `;
   if (!batches[0]) return json({ ok: false, reason: "batch not found" }, 404);
   if (batches.length > 1) {
     return json({

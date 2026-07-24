@@ -1,0 +1,9 @@
+flowchart LR
+  R["API request"] --> A1["IOTA adapter"]
+  R --> A2["Webhook dispatcher"]
+  R --> A3["Audit logger"]
+  A1 -->|"sign or broadcast inline"| CHAIN["Public chain"]
+  A2 -->|"fetch tenant URL inline"| NET["Public or private network"]
+  A3 -->|"best effort insert"| DB[("PostgreSQL")]
+  classDef risk fill:#5b1b1b,stroke:#ff6b6b,color:#fff;
+  class A1,A2,A3 risk;

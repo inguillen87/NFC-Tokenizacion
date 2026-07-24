@@ -1,0 +1,9 @@
+flowchart LR
+  R["API request"] --> DB[("Durable intent and attempts")]
+  DB --> IOTA["IOTA executor and reconciler"]
+  DB --> WH["Webhook validator and retry worker"]
+  DB --> AUD["Audit insert with critical fail policy"]
+  IOTA --> CHAIN["Public chain"]
+  WH --> NET["Validated public endpoint"]
+  classDef control fill:#123b2a,stroke:#55d98a,color:#fff;
+  class DB,IOTA,WH,AUD control;

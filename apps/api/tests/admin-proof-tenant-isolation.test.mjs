@@ -83,6 +83,7 @@ test("proof routes reject unresolved tenant scope before global reads or writes"
   const databaseSchema = await readFile(new URL("../db/schema.sql", import.meta.url), "utf8");
   const localStatusMigration = await readFile(new URL("../db/migrations/20260711221000_0047_evidence_anchor_local_status.sql", import.meta.url), "utf8");
   const legacyHashesMigration = await readFile(new URL("../db/migrations/20260711222000_0048_evidence_anchor_legacy_hashes_nullable.sql", import.meta.url), "utf8");
+  const iotaV2Migration = await readFile(new URL("../db/migrations/20260723193500_0051_iota_evidence_anchor_v2_writer.sql", import.meta.url), "utf8");
 
   for (const source of [anchors, events, localAnchor]) {
     assert.match(source, /resolveAdminProofTenantScope/);
@@ -92,16 +93,17 @@ test("proof routes reject unresolved tenant scope before global reads or writes"
   }
   assert.match(events, /export async function GET/);
   assert.match(events, /WHERE tenant_id = \$\{tenantScope\.tenantId\}::uuid/);
-  assert.match(anchors, /eventHashesFromIds\(eventIds, tenantId\)/);
+  assert.match(anchors, /eventRowsFromIds\(eventIds, tenantId\)/);
   assert.match(anchors, /FROM ledger_providers/);
   assert.match(anchors, /ledger_provider_disabled/);
   assert.match(anchors, /polygon_ownership_route_required/);
   assert.match(anchors, /mock_provider_forbidden_in_production/);
-  assert.match(anchors, /sameConfiguredAddress\(contractAddress, process\.env\.IOTA_EVM_ANCHOR_CONTRACT_V2\)/);
-  assert.match(anchors, /iota_v2_contract_requires_v2_runtime_adapter/);
-  assert.match(anchors, /rpcProvider\.destroy\(\)/);
-  assert.match(anchors, /proof_anchor_external_created/);
-  assert.match(anchors, /tx_hash: txHash/);
+  assert.match(anchors, /inspectIotaEvidenceTarget/);
+  assert.match(anchors, /processIotaEvidenceAnchor/);
+  assert.match(anchors, /proof_anchor_iota_v2_created/);
+  assert.match(anchors, /proof_id: target\.proofId/);
+  assert.match(anchors, /memo_hash: prepared\.memoHash/);
+  assert.doesNotMatch(anchors, /anchorRoot/);
   assert.match(localAnchor, /WHERE tenant_id = \$\{tenantId\}::uuid/);
   assert.match(localAnchor, /mixed_resource_events/);
   assert.match(localAnchor, /resource_type, resource_id, merkle_root/);
@@ -110,15 +112,17 @@ test("proof routes reject unresolved tenant scope before global reads or writes"
   assert.match(databaseSchema, /event_hashes text\[\],/);
   assert.match(localStatusMigration, /ADD VALUE IF NOT EXISTS 'local'/);
   assert.match(legacyHashesMigration, /ALTER COLUMN event_hashes DROP NOT NULL/);
+  assert.match(iotaV2Migration, /proof_id/);
+  assert.match(iotaV2Migration, /memo_hash/);
   assert.match(anchors, /tenant_required/);
   assert.match(events, /tenant_required/);
   assert.match(localAnchor, /tenant_required/);
   assert.match(providers, /FROM ledger_providers/);
   assert.match(providers, /runtime_status/);
   assert.match(providers, /write_enabled/);
-  assert.match(providers, /v2ContractOnLegacyAdapter/);
+  assert.match(providers, /anchorEvidence_v2/);
   assert.match(providers, /contract_compatible/);
-  assert.match(providers, /iota_v2_contract_requires_v2_runtime_adapter/);
+  assert.match(providers, /iota_v2_runtime_config_incomplete/);
   assert.match(providers, /policy_disabled/);
   assert.doesNotMatch(providers, /status:\s*["']active["']/);
   assert.doesNotMatch(

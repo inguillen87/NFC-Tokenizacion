@@ -7,6 +7,10 @@ import { getDashboardSession } from "../../../../lib/session";
 import { canDemoSandboxAccess, resolveAdminProxyPolicy } from "../../../../lib/admin-proxy-policy";
 import { dashboardPermissionMatches, requiredPermissionForAdminResource } from "../../../../lib/permission-policy";
 import {
+  DashboardTenantScopeError,
+  resolveDashboardTenantScope,
+} from "../../../../lib/dashboard-tenant-scope-policy";
+import {
   aggregateDemoGeoPoints,
   demoRuntimeSummary,
   getDashboardDemoEvents,
@@ -967,7 +971,6 @@ async function forward(req: Request, path: string[]) {
   const forceSandbox = ["1", "true", "sandbox"].includes(String(reqUrl.searchParams.get("sandbox") || reqUrl.searchParams.get("demoFallback") || "").toLowerCase());
   reqUrl.searchParams.delete("sandbox");
   reqUrl.searchParams.delete("demoFallback");
-  const target = `${API_BASE}/admin/${path.join("/")}${reqUrl.search}`;
   const body = req.method === "GET" ? undefined : await req.text();
   const hasAdminKey = Boolean((process.env.ADMIN_API_KEY || "").trim());
   const requireScopedAdminAuth = String(process.env.REQUIRE_SCOPED_ADMIN_AUTH || "").toLowerCase() === "true";
@@ -984,6 +987,28 @@ async function forward(req: Request, path: string[]) {
   const dashboardSession = await getDashboardSession().catch(() => null);
   const scopedRole = demoSession ? "readonly_demo" : dashboardSession?.role ? dashboardRoleToScope(dashboardSession.role) : null;
   const allowDemoFallbackForRequest = policy.allowDemoFallback || scopedRole === "readonly_demo" || (demoSession && !isProduction);
+
+  if (dashboardSession) {
+    try {
+      const tenantScope = resolveDashboardTenantScope(dashboardSession, reqUrl.searchParams.get("tenant"));
+      if (tenantScope.tenantSlug) reqUrl.searchParams.set("tenant", tenantScope.tenantSlug);
+      else reqUrl.searchParams.delete("tenant");
+    } catch (error) {
+      if (error instanceof DashboardTenantScopeError) {
+        console.info("[admin_proxy_access_denied]", JSON.stringify({ reason: error.code, method: req.method, path: normalizedPath }));
+        return NextResponse.json({ ok: false, reason: error.code }, { status: 403 });
+      }
+      throw error;
+    }
+  }
+
+  const superadminUpstream = normalizedPath.startsWith("superadmin/");
+  if (superadminUpstream && dashboardSession?.role !== "super-admin") {
+    return NextResponse.json({ ok: false, reason: "super_admin_required" }, { status: 403 });
+  }
+  const target = superadminUpstream
+    ? `${API_BASE}/${path.join("/")}${reqUrl.search}`
+    : `${API_BASE}/admin/${path.join("/")}${reqUrl.search}`;
 
   if (isProduction && !scopedRole) {
     return NextResponse.json(

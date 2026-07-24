@@ -5,6 +5,7 @@ import { checkAdmin, checkAdminPermission } from "../../../../lib/auth";
 import { sql } from "../../../../lib/db";
 import { json } from "../../../../lib/http";
 import { ensureSupplierOpsSchema } from "../../../../lib/supplier-ops-schema";
+import { resolveIotaEvidenceRuntimeConfig } from "../../../../lib/iota-evidence-writer";
 
 function clean(value: unknown) {
   return String(value || "").trim();
@@ -12,12 +13,6 @@ function clean(value: unknown) {
 
 function enabled(value: unknown) {
   return ["1", "true", "yes", "on"].includes(clean(value).toLowerCase());
-}
-
-function sameConfiguredAddress(left: unknown, right: unknown) {
-  const first = clean(left).toLowerCase();
-  const second = clean(right).toLowerCase();
-  return Boolean(first && second && first === second);
 }
 
 function runtimeReadiness(code: string) {
@@ -31,33 +26,57 @@ function runtimeReadiness(code: string) {
   }
 
   if (code === "iota") {
-    const mode = clean(process.env.IOTA_PROVIDER_MODE || process.env.IOTA_PROOF_MODE || "disabled").toLowerCase();
-    const rpc = Boolean(clean(process.env.IOTA_EVM_RPC_URL));
-    const contract = Boolean(clean(process.env.IOTA_EVM_ANCHOR_CONTRACT));
-    const signer = Boolean(clean(process.env.IOTA_EVM_PRIVATE_KEY));
-    const v2ContractOnLegacyAdapter = mode === "iota_evm_contract" && sameConfiguredAddress(
-      process.env.IOTA_EVM_ANCHOR_CONTRACT,
-      process.env.IOTA_EVM_ANCHOR_CONTRACT_V2,
-    );
-    const writeEnabled = mode === "iota_evm_contract" && rpc && contract && signer && !v2ContractOnLegacyAdapter;
-    const runtimeStatus = v2ContractOnLegacyAdapter
-      ? "misconfigured"
-      : writeEnabled
-      ? "ready"
-      : mode === "iota_evm_contract" && rpc && contract
-        ? "read_only"
-        : mode === "disabled"
+    try {
+      const config = resolveIotaEvidenceRuntimeConfig();
+      const rpc = Boolean(config.rpcUrl);
+      const contract = Boolean(config.contractAddress);
+      const executor = Boolean(config.executorUrl && config.executorSecret);
+      const localSigner = Boolean(config.allowLocalSigner && config.localPrivateKey);
+      const signer = executor || localSigner;
+      const mockAllowed = config.mode === "mock" && clean(process.env.NODE_ENV).toLowerCase() !== "production";
+      const writeEnabled = mockAllowed
+        ? contract
+        : config.mode === "iota_evm_contract_v2" && rpc && contract && signer;
+      const runtimeStatus = writeEnabled
+        ? "ready"
+        : config.mode === "disabled"
           ? "disabled"
-          : "misconfigured";
-    return {
-      capability: "hash_only_integrity",
-      runtime_status: runtimeStatus,
-      write_enabled: writeEnabled,
-      configured: { rpc, contract, signer, contract_compatible: !v2ContractOnLegacyAdapter },
-      mode,
-      adapter: "anchorRoot_v1",
-      configuration_error: v2ContractOnLegacyAdapter ? "iota_v2_contract_requires_v2_runtime_adapter" : null,
-    };
+          : rpc && contract
+            ? "read_only"
+            : "misconfigured";
+      return {
+        capability: "hash_only_integrity",
+        runtime_status: runtimeStatus,
+        write_enabled: writeEnabled,
+        configured: {
+          rpc,
+          contract,
+          signer,
+          executor,
+          local_signer: localSigner,
+          legacy_v1_read_only_contract: Boolean(clean(process.env.IOTA_EVM_ANCHOR_CONTRACT)),
+          contract_compatible: contract,
+        },
+        mode: config.mode,
+        configured_mode: config.configuredMode,
+        adapter: "anchorEvidence_v2",
+        contract_version: "evidence_anchor_v2",
+        custody: executor ? "isolated_executor" : localSigner ? "local_development_only" : "read_only",
+        deprecated_mode_alias: config.configuredMode === "iota_evm_contract",
+        configuration_error: runtimeStatus === "misconfigured" ? "iota_v2_runtime_config_incomplete" : null,
+      };
+    } catch {
+      return {
+        capability: "hash_only_integrity",
+        runtime_status: "misconfigured",
+        write_enabled: false,
+        configured: { rpc: false, contract: false, signer: false, contract_compatible: false },
+        mode: "invalid",
+        adapter: "anchorEvidence_v2",
+        contract_version: "evidence_anchor_v2",
+        configuration_error: "iota_v2_runtime_config_invalid",
+      };
+    }
   }
 
   if (code === "polygon") {

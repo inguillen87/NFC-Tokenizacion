@@ -1,0 +1,9 @@
+flowchart LR
+  U["Dashboard user"] --> BFF["Only admin BFF entry"]
+  BFF --> PDP["Owned tenant and permission policy"]
+  PDP -->|"scoped principal"| API["Admin application services"]
+  API --> REPO["Tenant-scoped repositories"]
+  REPO --> DB[("Shared PostgreSQL")]
+  IDP["Current IAM state"] --> PDP
+  classDef control fill:#123b2a,stroke:#55d98a,color:#fff;
+  class BFF,PDP,REPO,IDP control;

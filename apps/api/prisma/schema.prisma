@@ -259,24 +259,86 @@ model ProofEvent {
 }
 
 model EvidenceAnchor {
-  id           String    @id @default(uuid())
-  tenantId     String
-  provider     String // "polygon" | "iota"
-  network      String
-  anchorType   String // "single" | "merkle_batch"
-  resourceType String?
-  resourceId   String?
-  eventCount   Int
-  eventHashes  String[] // String array supported in PG
-  merkleRoot   String
-  txHash       String?
-  explorerUrl  String?
-  status       String // "pending" | "submitted" | "confirmed" | "failed" | "disabled"
-  anchoredAt   DateTime?
-  errorMessage String?
-  createdBy    String?
-  createdAt    DateTime  @default(now())
-  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id                      String    @id @default(uuid())
+  tenantId                String
+  provider                String // "polygon" | "iota"
+  network                 String
+  anchorType              String // "single" | "merkle_batch"
+  resourceType            String?
+  resourceId              String?
+  publicResourceId        String?
+  eventCount              Int
+  eventHashes             String[] // legacy projection; eventHashesJson is runtime truth
+  eventHashesJson         Json      @default("[]")
+  merkleRoot              String
+  txHash                  String?
+  explorerUrl             String?
+  status                  String // "pending" | "submitted" | "reconciling" | "confirmed" | "failed" | "disabled"
+  anchoredAt              DateTime?
+  errorMessage            String?
+  contractVersion         String?
+  chainId                 BigInt?
+  contractAddress         String?
+  publisherAddress        String?
+  tenantIdHash            String?
+  canonicalizationVersion String?
+  merkleAlgorithm         String?
+  memoHash                String?
+  memoJson                Json      @default("{}")
+  proofId                 String?
+  idempotencyKey          String?
+  blockNumber             BigInt?
+  blockHash               String?
+  confirmations           Int       @default(0)
+  attemptCount            Int       @default(0)
+  errorCode               String?
+  submittedAt             DateTime?
+  confirmedAt             DateTime?
+  lastCheckedAt           DateTime?
+  nextAttemptAt           DateTime?
+  createdBy               String?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  tenant                  Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  members                 EvidenceAnchorMember[]
+  attempts                EvidenceAnchorAttempt[]
+}
+
+model EvidenceAnchorMember {
+  id        String         @id @default(uuid())
+  anchorId  String
+  eventId   String?
+  eventHash String
+  leafIndex Int
+  createdAt DateTime       @default(now())
+  anchor    EvidenceAnchor @relation(fields: [anchorId], references: [id], onDelete: Cascade)
+
+  @@unique([anchorId, leafIndex])
+  @@unique([anchorId, eventHash])
+}
+
+model EvidenceAnchorAttempt {
+  id                   String         @id @default(uuid())
+  anchorId             String
+  attemptNo            Int
+  chainId              BigInt
+  contractAddress      String
+  signerAddress        String?
+  nonce                BigInt?
+  txHash               String?
+  status               String         @default("pending")
+  receiptStatus        String?
+  blockNumber          BigInt?
+  blockHash            String?
+  errorCode            String?
+  errorDetailSanitized String?
+  submittedAt          DateTime?
+  checkedAt            DateTime?
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  anchor               EvidenceAnchor @relation(fields: [anchorId], references: [id], onDelete: Cascade)
+
+  @@unique([anchorId, attemptNo])
 }
 
 model OwnershipRecord {

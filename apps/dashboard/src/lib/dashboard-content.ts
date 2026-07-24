@@ -103,7 +103,7 @@ type DashboardContent = {
 export const roleAccess: Record<UserRole, Array<keyof DashboardContent["nav"]>> = {
   "super-admin": ["overview", "tenants", "batches", "tags", "analytics", "events", "resellers", "leadsTickets", "loyalty", "subscriptions", "apiKeys", "sdkVision"],
   "tenant-admin": ["overview", "batches", "tags", "analytics", "events", "leadsTickets", "loyalty", "experiences", "campaigns", "subscriptions", "apiKeys", "sdkVision"],
-  reseller: ["overview", "batches", "analytics", "events", "resellers", "loyalty", "subscriptions", "sdkVision"],
+  reseller: ["overview", "batches", "analytics", "events", "loyalty", "subscriptions", "sdkVision"],
   viewer: ["overview", "analytics", "events", "sdkVision"],
 };
 

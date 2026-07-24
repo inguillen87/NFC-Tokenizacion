@@ -1,0 +1,11 @@
+flowchart LR
+  U["Dashboard user"] --> P1["Server pages"]
+  U --> BFF["Dashboard admin BFF"]
+  P1 -->|"ambient ADMIN_API_KEY"| API["Admin API routes"]
+  BFF -->|"role and tenant headers"| API
+  API --> H1["Route-local auth and scope helpers"]
+  H1 --> DB[("Shared PostgreSQL")]
+  S["Session snapshot"] --> P1
+  S --> BFF
+  classDef risk fill:#5b1b1b,stroke:#ff6b6b,color:#fff;
+  class P1,H1,S risk;

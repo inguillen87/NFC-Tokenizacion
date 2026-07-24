@@ -52,3 +52,19 @@ export function resolveAdminTenantScope(scopeHeader: string | null | undefined, 
   const forcedTenantSlug = (scope === "tenant_admin" || scope === "reseller") && tenantSlug ? tenantSlug : "";
   return { scope, tenantSlug, forcedTenantSlug };
 }
+
+export function resolveAdminTenantAccess(
+  scopeHeader: string | null | undefined,
+  roleHeader: string | null | undefined,
+  tenantSlugHeader: string | null | undefined,
+  requestedTenantSlug?: string | null,
+) {
+  const scope = resolveAdminTenantScope(scopeHeader, roleHeader, tenantSlugHeader);
+  const requestedTenant = String(requestedTenantSlug || "").trim().toLowerCase();
+  return {
+    ...scope,
+    tenantBound: Boolean(scope.forcedTenantSlug),
+    requestedTenantSlug: requestedTenant,
+    effectiveTenantSlug: scope.forcedTenantSlug || requestedTenant,
+  };
+}

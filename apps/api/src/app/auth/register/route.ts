@@ -4,6 +4,7 @@ import { sql } from '../../../lib/db';
 import { json } from '../../../lib/http';
 import { createResetToken, sha256 } from '../../../lib/iam';
 import { ensureEnterpriseIamSchema } from '../../../lib/commercial-runtime-schema';
+import { isProductionRuntime } from '../../../lib/admin-user-management-policy';
 
 export async function POST(req: Request) {
   await ensureEnterpriseIamSchema();
@@ -22,15 +23,38 @@ export async function POST(req: Request) {
     return json({ ok: true, mode: 'request_access', message: 'access request submitted' });
   }
 
-  const userId = (await sql`INSERT INTO users (email, full_name, admin_status)
-    VALUES (${email}, ${fullName}, 'pending_activation'::admin_user_status)
-    ON CONFLICT (email) DO UPDATE SET full_name = COALESCE(EXCLUDED.full_name, users.full_name), admin_status = 'pending_activation'::admin_user_status
-    RETURNING id`)[0]?.id;
-
   const token = createResetToken();
-  await sql`UPDATE password_reset_tokens SET consumed_at = now() WHERE user_id = ${userId}::uuid AND consumed_at IS NULL`;
-  await sql`INSERT INTO password_reset_tokens (user_id, token_hash, expires_at, meta)
-    VALUES (${userId}::uuid, ${sha256(token)}, now() + interval '30 minutes', ${JSON.stringify({ source: 'self_register', email })}::jsonb)`;
+  const createdRows = await sql/*sql*/`
+    WITH existing_user AS MATERIALIZED (
+      SELECT id
+      FROM users
+      WHERE lower(email) = ${email}
+      ORDER BY created_at ASC
+      LIMIT 1
+      FOR UPDATE
+    ),
+    new_user AS (
+      INSERT INTO users (email, full_name, admin_status)
+      SELECT ${email}, ${fullName}, 'pending_activation'::admin_user_status
+      WHERE NOT EXISTS (SELECT 1 FROM existing_user)
+      ON CONFLICT (email) DO NOTHING
+      RETURNING id
+    ),
+    new_reset_token AS (
+      INSERT INTO password_reset_tokens (user_id, token_hash, expires_at, meta)
+      SELECT id, ${sha256(token)}, now() + interval '30 minutes',
+        ${JSON.stringify({ source: 'self_register', email })}::jsonb
+      FROM new_user
+      RETURNING id
+    )
+    SELECT new_user.id, (SELECT count(*) FROM new_reset_token) AS reset_count
+    FROM new_user
+  `;
+  const userId = createdRows[0]?.id ? String(createdRows[0].id) : null;
 
-  return json({ ok: true, mode: 'pending_activation', activationToken: process.env.NODE_ENV === 'production' ? undefined : token });
+  return json({
+    ok: true,
+    mode: 'pending_activation',
+    activationToken: userId && !isProductionRuntime(process.env.NODE_ENV, process.env.VERCEL_ENV) ? token : undefined,
+  });
 }

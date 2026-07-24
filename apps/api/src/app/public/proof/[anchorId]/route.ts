@@ -89,6 +89,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ anchorI
         ea.provider,
         ea.network,
         ea.anchor_type,
+        ea.resource_type,
+        ea.resource_id,
+        ea.public_resource_id,
         ea.merkle_root,
         ea.event_count,
         ea.event_hashes_json,
@@ -97,20 +100,54 @@ export async function GET(_req: Request, { params }: { params: Promise<{ anchorI
         ea.status,
         ea.anchored_at,
         ea.created_at,
-        t.slug AS tenant_slug
+        ea.proof_id,
+        ea.memo_hash,
+        ea.tenant_id_hash,
+        ea.contract_version,
+        ea.chain_id,
+        ea.contract_address,
+        ea.publisher_address
       FROM evidence_anchors ea
-      LEFT JOIN tenants t ON t.id = ea.tenant_id
       WHERE ea.id = ${anchorId}::uuid
       LIMIT 1
     `;
     const anchor = rows[0];
     if (!anchor) return json({ ok: false, reason: "anchor_not_found" }, 404);
 
+    let networkVerification: Record<string, unknown> | null = null;
+    if (anchor.provider === "iota" && anchor.tx_hash) {
+      try {
+        const verification = await verifyIotaAnchorPublication({
+          txHash: anchor.tx_hash,
+          merkleRoot: anchor.merkle_root,
+          tenantIdHash: anchor.tenant_id_hash,
+          resourceType: anchor.resource_type,
+          resourceId: anchor.public_resource_id || anchor.resource_id,
+          eventCount: Number(anchor.event_count),
+          memoHash: anchor.memo_hash || undefined,
+          contractAddress: anchor.contract_address || undefined,
+          publisherAddress: anchor.publisher_address || undefined,
+        });
+        const proofIdMatches = !anchor.proof_id
+          || String(verification.proof_id || "").toLowerCase() === String(anchor.proof_id).toLowerCase();
+        const chainMatches = !anchor.chain_id || Number(verification.chain_id) === Number(anchor.chain_id);
+        networkVerification = publicNetworkProof({
+          ...verification,
+          verified: Boolean(verification.verified && proofIdMatches && chainMatches),
+          proof_id_matches: proofIdMatches,
+          persisted_chain_matches: chainMatches,
+        });
+      } catch {
+        networkVerification = { verified: false, reason: "iota_rpc_verification_unavailable" };
+      }
+    }
+    const networkVerified = networkVerification?.verified === true;
+
     return json({
       ok: true,
+      valid: networkVerified,
       anchor: {
         id: anchor.id,
-        tenant_slug: anchor.tenant_slug || null,
         provider: anchor.provider,
         network: anchor.network,
         anchor_type: anchor.anchor_type,
@@ -121,6 +158,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ anchorI
         explorer_url: anchor.explorer_url || null,
         status: anchor.status,
         anchored_at: anchor.anchored_at || anchor.created_at,
+        proof_id: anchor.proof_id || null,
+        memo_hash: anchor.memo_hash || null,
+        contract_version: anchor.contract_version || null,
+        chain_id: anchor.chain_id || null,
+        evidence_level: networkVerified ? "external_anchor" : "registry_only",
+        network_verified: networkVerified,
+        network_verification: networkVerification,
       },
       privacy: "Only hashes are public. Raw events, customer data and tenant internals stay in nexID.",
     });

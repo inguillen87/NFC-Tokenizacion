@@ -1,7 +1,8 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin } from "../../../../lib/auth";
+import { checkAdmin, getAdminTenantAccess } from "../../../../lib/auth";
+import { areAdminSunBidsInTenantScope } from "../../../../lib/admin-sun-tenant-scope";
 import { json } from "../../../../lib/http";
 import { processSunScan } from "../../../../lib/sun-service";
 
@@ -203,6 +204,7 @@ function buildValidationDecision(body: Record<string, unknown>, status: number):
 export async function POST(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
+  const { forcedTenantSlug } = getAdminTenantAccess(req);
 
   const body = (await req.json().catch(() => ({}))) as ValidateBody;
   const rawUrl = String(body.url || body.sampleUrl || "").trim();
@@ -248,12 +250,16 @@ export async function POST(req: Request) {
       operator_note: validationDecision.note,
     }, 400);
   }
+  if (!await areAdminSunBidsInTenantScope({ bids: [bid], forcedTenantSlug })) {
+    return json({ ok: false, reason: "sun_resource_not_found" }, 404);
+  }
 
   const result = await processSunScan({
     bid,
     piccDataHex: picc_data,
     encHex: enc,
     cmacHex: cmac,
+    sideEffectMode: "dry_run",
     rawQuery: Object.fromEntries(parsed.searchParams.entries()),
     context: {
       source: "imported",

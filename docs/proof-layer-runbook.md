@@ -21,25 +21,42 @@ Este runbook cubre la operacion de las capas Polygon ownership e IOTA proof de n
 | Modo | Uso | Resultado esperado |
 | --- | --- | --- |
 | `disabled` | Default seguro | La lectura sigue disponible; una escritura responde `ledger_provider_runtime_disabled` |
-| `mock` | Desarrollo local | Genera referencia `mock-iota-*`; esta prohibido cuando `NODE_ENV=production` |
-| `iota_evm_contract` | Adapter EVM configurado | Exige RPC, contrato runtime y signer; confirma la transaccion antes de guardar `confirmed` |
+| `mock` | Desarrollo local | Reserva el anchor y lo deja `submitted` sin evidencia publica; esta prohibido cuando `NODE_ENV=production` |
+| `iota_evm_contract_v2` | Writer V2 nativo | Persiste identidad e idempotencia antes de publicar, delega la firma y reconcilia receipt, calldata, evento y storage |
 | `iota_notarization_sdk_later` | Reserva de arquitectura | Responde `external_anchor_adapter_not_enabled`; no simula soporte |
 
-Variables del adapter runtime actual:
+Variables de la API:
 
 ```txt
 IOTA_PROVIDER_MODE=disabled
 IOTA_EVM_RPC_URL=
-IOTA_EVM_ANCHOR_CONTRACT=
-IOTA_EVM_PRIVATE_KEY=
+IOTA_EVM_EXPECTED_CHAIN_ID=1076
+IOTA_EVM_MIN_CONFIRMATIONS=1
+IOTA_EVM_ANCHOR_CONTRACT_V2=
+IOTA_PROOF_EXECUTOR_URL=
+IOTA_PROOF_EXECUTOR_SECRET=
+INTERNAL_PROOF_ANCHOR_KEY=
 IOTA_EXPLORER_BASE_URL=
 ```
 
-El adapter runtime actual invoca `anchorRoot(...)`. No se debe copiar la direccion V2 publica dentro de `IOTA_EVM_ANCHOR_CONTRACT`: el contrato V2 expone `anchorEvidence(...)` y requiere otro calldata. El endpoint de providers marca esa combinacion como `misconfigured` y el endpoint de escritura la rechaza antes de crear un provider RPC o firmar una transaccion.
+El writer de nuevas evidencias es V2-only e invoca `anchorEvidence(...)`. `IOTA_EVM_ANCHOR_CONTRACT` queda reservado para verificar historicos V1 y nunca habilita nuevas escrituras. En produccion la API ignora cualquier private key local; el publisher se configura en el executor aislado. `IOTA_ALLOW_LOCAL_SIGNER=true` existe solo para desarrollo no productivo y no es una configuracion aceptable de release.
 
-### Fixture publico IOTA V2 read-only
+Variables del executor:
 
-El fixture V2 es una prueba publica separada del writer runtime. Puede verificarse sin alojar una private key:
+```txt
+IOTA_PROOF_EXECUTOR_SECRET=
+IOTA_EXECUTOR_SIGNER_MODE=private_key
+IOTA_EVM_RPC_URL=
+IOTA_EVM_EXPECTED_CHAIN_ID=1076
+IOTA_EVM_ANCHOR_CONTRACT_V2=
+IOTA_EVM_PRIVATE_KEY=
+```
+
+`private_key` es un modo de testnet/piloto. El target enterprise sigue siendo un signer no exportable en KMS/HSM o custodia administrada con aprobacion dual y rotacion documentada.
+
+### Fixture publico IOTA V2
+
+El fixture V2 puede verificarse sin alojar una private key y usa el mismo contrato/calldata que el writer nativo:
 
 ```txt
 IOTA_EVM_RPC_URL=https://json-rpc.evm.testnet.iota.cafe
@@ -47,7 +64,7 @@ IOTA_EVM_ANCHOR_CONTRACT_V2=0xde7284812D0c81080Cc7B2f60d6D9769343Aa2B0
 IOTA_EVM_DEPLOYER_ADDRESS=0x2f320d2B0D8AE483637D8f5509480228509165cB
 ```
 
-`npm run iota:verify-proof-v2 --workspace=api` comprueba chain ID, publisher autorizado, transaccion, receipt, calldata, `proofId` y registro del contrato para los tres casos publicos. `IOTA_EVM_ANCHOR_CONTRACT_V2` no habilita por si solo nuevas escrituras desde el dashboard.
+`npm run iota:verify-proof-v2 --workspace=api` comprueba chain ID, publisher autorizado, transaccion, receipt, calldata, `EvidenceAnchored`, `proofId` y registro del contrato para los tres casos publicos. La direccion V2 por si sola no habilita escrituras: tambien se requieren modo explicito, executor autenticado y policy de ledger aprobada para el tenant.
 
 ### Polygon ownership
 
@@ -109,11 +126,14 @@ Los comandos live deben fallar si RPC, chain, contrato, recibo, eventos, owner, 
 ### Crear evidencia IOTA desde admin
 
 1. Autenticar un admin con permiso `proof:write` y tenant scope valido.
-2. Enviar hashes de eventos o IDs que el backend pueda resolver; nunca payloads privados on-chain.
-3. Comparar cualquier `merkle_root` solicitado con el root recalculado por la API.
-4. En modo externo, esperar receipt exitoso antes de considerar el anchor confirmado.
-5. Guardar `tx_hash`, explorer, estado, root, cantidad de eventos y auditoria interna.
-6. Verificar la inclusion por `POST /public/proof/verify` con `event_hash` y, si corresponde, `anchor_id`.
+2. Enviar `event_ids` tenant-scoped y un `public_resource_id` pseudonimo. Los hashes directos estan deshabilitados en produccion por default.
+3. Enviar `Idempotency-Key`; un retry HTTP debe devolver el mismo anchor y nunca otra transaccion.
+4. La API valida que todos los eventos pertenezcan al mismo tenant/recurso, ordena por `created_at,id`, calcula Merkle root, `memoHash` y `proofId`, y persiste el anchor antes de tocar la red.
+5. El executor valida chain, bytecode, version de contrato, publisher y `proofId`; devuelve `202 submitted` apenas obtiene `tx_hash`.
+6. El worker autenticado llama `POST /internal/proof/anchors/worker`, toma filas con `FOR UPDATE SKIP LOCKED` y reconcilia receipt, calldata exacto, evento, storage y confirmaciones.
+7. Solo despues de esa reconciliacion el estado pasa a `confirmed`. Verificar luego por `POST /public/proof/verify` con `event_hash` y `anchor_id`.
+
+Estados esperados: `pending` (reservado), `reconciling` (lease de worker), `submitted` (tx conocida), `confirmed` (prueba RPC completa) y `failed` (error terminal o presupuesto de reintentos agotado). Una fila `confirmed` en base de datos nunca alcanza por si sola para mostrar evidencia publica validada.
 
 ### Verificar ownership Polygon
 
@@ -132,7 +152,9 @@ Los comandos live deben fallar si RPC, chain, contrato, recibo, eventos, owner, 
 | RPC timeout o DNS | `unavailable` / `read_only` | Probar RPC secundario aprobado, revisar status page y no alterar el ultimo estado confirmado |
 | Chain ID inesperado | Falla cerrada | Bloquear escritura/veredicto y corregir endpoint |
 | Contrato sin bytecode | Falla cerrada | Revisar red/direccion; no hacer fallback a mock |
-| Receipt ausente o revertido | `submitted` o `failed` | Reconciliar por tx hash y nonce; no reemitir sin idempotencia |
+| Receipt ausente | `submitted` | Reconciliar por tx hash; no reemitir mientras la transaccion pueda seguir pendiente |
+| Receipt revertido o calldata/evento/storage distinto | `failed` | Bloquear confirmacion, preservar intento y escalar; nunca maquillar con otra tx |
+| Worker no avanza | `pending` / `submitted` vencidos | Revisar scheduler, secreto interno y backlog; ejecutar un canary con limite bajo |
 | Merkle root no coincide | Rechazo 400 | Corregir corpus/canonicalizacion; no anclar el root recibido |
 | Metadata Polygon no coincide | Certificado `partial` | Corregir documento/config; no mostrar ownership verificado |
 | Source no verificado | Check pendiente | Publicar/verificar source; no ocultar el control |
@@ -143,10 +165,11 @@ Los comandos live deben fallar si RPC, chain, contrato, recibo, eventos, owner, 
 ## Reintentos e idempotencia
 
 - No enviar otra transaccion mientras el nonce anterior siga pendiente sin reconciliacion.
-- Identificar cada operacion por tenant, resource, root/event digest y version de canonicalizacion.
+- Identificar cada operacion por `proofId` deterministico e `Idempotency-Key` tenant-scoped.
 - Una tx confirmada se reconcilia; no se reminta ni se reancla para ocultar un error de lectura.
 - Un evento corregido genera compensacion/revocacion o una nueva version; no se borra evidencia anterior.
 - Mantener colas separadas para Polygon ownership e IOTA evidence.
+- Conservar `evidence_anchor_attempts` y `evidence_anchor_members`: son la trazabilidad entre el corpus privado, el intento de publicacion y la prueba publica.
 
 ## Rotacion y recuperacion de signer
 

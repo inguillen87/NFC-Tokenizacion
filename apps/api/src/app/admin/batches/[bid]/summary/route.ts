@@ -1,7 +1,7 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-import { checkAdmin } from '../../../../../lib/auth';
+import { checkAdmin, getAdminTenantAccess } from '../../../../../lib/auth';
 import { json } from '../../../../../lib/http';
 import { sql } from '../../../../../lib/db';
 import { ensureCarrierProfileSchema } from '../../../../../lib/commercial-runtime-schema';
@@ -11,13 +11,22 @@ export async function GET(req: Request, { params }: { params: Promise<{ bid: str
   if (auth) return auth;
 
   const { bid } = await params;
+  const { forcedTenantSlug } = getAdminTenantAccess(req);
   await ensureCarrierProfileSchema();
-  const matchingRows = await sql`
-    SELECT id, status, created_at
-    FROM batches
-    WHERE bid = ${bid}
-    ORDER BY created_at ASC, id ASC
-  `;
+  const matchingRows = forcedTenantSlug
+    ? await sql`
+      SELECT b.id, b.status, b.created_at
+      FROM batches b
+      JOIN tenants t ON t.id = b.tenant_id
+      WHERE b.bid = ${bid} AND t.slug = ${forcedTenantSlug}
+      ORDER BY b.created_at ASC, b.id ASC
+    `
+    : await sql`
+      SELECT id, status, created_at
+      FROM batches
+      WHERE bid = ${bid}
+      ORDER BY created_at ASC, id ASC
+    `;
   if (matchingRows.length > 1) {
     return json({
       ok: false,
@@ -103,7 +112,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ bid: str
     LEFT JOIN carrier_profiles cp ON cp.code = COALESCE(b.carrier_profile_code, NULLIF(b.sdm_config->>'carrier_profile_code', ''))
     LEFT JOIN tags ON tags.batch_id = b.id
     LEFT JOIN tag_profiles tp ON tp.tag_id = tags.id
-    WHERE b.bid = ${bid}
+    WHERE b.id = ${matchingRows[0].id}
     GROUP BY b.id, b.sdm_config, t.slug, t.name, cp.code, cp.label, cp.security_level, cp.capabilities, cp.admin_copy, cp.consumer_copy, cp.cost_band
     LIMIT 1
   `;

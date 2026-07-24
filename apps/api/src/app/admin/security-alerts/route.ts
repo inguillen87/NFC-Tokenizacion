@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin } from "../../../lib/auth";
+import { checkAdmin, getAdminTenantAccess } from "../../../lib/auth";
 import { json } from "../../../lib/http";
 import { sql } from "../../../lib/db";
 
@@ -10,7 +10,8 @@ export async function GET(req: Request): Promise<Response> {
   if (auth) return auth;
 
   const { searchParams } = new URL(req.url);
-  const tenant = String(searchParams.get("tenant") || "").trim().toLowerCase();
+  const requestedTenant = searchParams.get("tenant");
+  const { effectiveTenantSlug: tenant } = getAdminTenantAccess(req, requestedTenant);
   const range = Number(searchParams.get("hours") || 24);
   const windowHours = Math.min(Math.max(range, 1), 168);
 

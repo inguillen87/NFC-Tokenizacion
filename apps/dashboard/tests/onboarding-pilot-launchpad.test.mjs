@@ -14,13 +14,13 @@ const guardrailStyles = await readFile(new URL("../src/components/supplier-legac
 const supplierPageSource = await readFile(new URL("../src/app/(app)/batches/supplier/page.tsx", import.meta.url), "utf8");
 
 test("onboarding derives readiness from real tenant-scoped operational sources", () => {
-  assert.match(pageSource, /withTenant\(context\.origin, "\/batches", tenantScope\)/);
-  assert.match(pageSource, /withTenant\(context\.origin, "\/product-assets", tenantScope/);
-  assert.match(pageSource, /withTenant\(context\.origin, "\/supplier-orders", tenantScope\)/);
-  assert.match(pageSource, /withTenant\(context\.origin, "\/proof\/anchors", tenantScope\)/);
-  assert.match(pageSource, /withTenant\(context\.origin, "\/tokenization\/requests", tenantScope/);
-  assert.match(pageSource, /session\.role === "tenant-admin" \? String\(session\.tenantSlug \|\| ""\) : ""/);
-  assert.match(pageSource, /headers: context\.cookie \? \{ cookie: context\.cookie \} : undefined/);
+  assert.match(pageSource, /fetchJson<Array<Record<string, unknown>>>\("batches", \[\], context\)/);
+  assert.match(pageSource, /fetchJson<\{ items\?: ProductAssetItem\[\] \}>\("product-assets\?limit=80"/);
+  assert.match(pageSource, /fetchJson<\{ orders\?: SupplierOrder\[\] \}>\("supplier-orders"/);
+  assert.match(pageSource, /fetchJson<\{ anchors\?: ProofAnchor\[\] \}>\("proof\/anchors"/);
+  assert.match(pageSource, /fetchJson<\{ rows\?: TokenizationRequest\[\] \}>\("tokenization\/requests\?limit=80"/);
+  assert.match(pageSource, /const requestContext = await createAdminPageContext\(session\)/);
+  assert.match(pageSource, /const response = await fetchAdminPage\(context, path\)/);
   assert.match(pageSource, /response\.headers\.get\("x-nexid-data-mode"\) === "demo"/);
   assert.match(pageSource, /value\.ok === false/);
   assert.match(pageSource, /setupComplete: setupCompleted === true/);

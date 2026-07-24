@@ -1,15 +1,11 @@
 import { SectionHeading } from "@product/ui";
 import { DataTable } from "../../../../components/data-table";
 import { requireDashboardSession } from "../../../../lib/session";
-import { getServerOrigin } from "../../../../lib/server-origin";
-import { headers } from "next/headers";
+import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../../lib/admin-page-access";
 
-async function adminGet(origin: string, path: string, cookie?: string) {
+async function adminGet(context: AdminPageContext, path: string) {
   try {
-    const response = await fetch(`${origin}/api/admin/${path.replace(/^\/?admin\//, "")}`, {
-      cache: "no-store",
-      headers: cookie ? { cookie } : undefined,
-    });
+    const response = await fetchAdminPage(context, path);
     if (!response.ok) return null;
     return response.json();
   } catch {
@@ -38,17 +34,13 @@ function pct(value: unknown) {
 export default async function PortalUsuariosOverviewPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const query = searchParams ? await searchParams : {};
   const session = await requireDashboardSession();
-  const requestedTenant = typeof query.tenant === "string" ? query.tenant : "";
-  const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : requestedTenant;
-  const tenantQuery = tenantScope ? `?tenant=${encodeURIComponent(tenantScope)}` : "";
-  const origin = await getServerOrigin();
-  const cookie = (await headers()).get("cookie") || "";
+  const adminContext = await createAdminPageContext(session, query.tenant);
 
   const [overviewRaw, membersRaw, productsRaw, tapsRaw] = await Promise.all([
-    adminGet(origin, `/admin/consumer-network/overview${tenantQuery}`, cookie),
-    adminGet(origin, `/admin/consumer-network/members${tenantQuery}`, cookie),
-    adminGet(origin, `/admin/consumer-network/products${tenantQuery}`, cookie),
-    adminGet(origin, `/admin/consumer-network/taps${tenantQuery}`, cookie),
+    adminGet(adminContext, "/admin/consumer-network/overview"),
+    adminGet(adminContext, "/admin/consumer-network/members"),
+    adminGet(adminContext, "/admin/consumer-network/products"),
+    adminGet(adminContext, "/admin/consumer-network/taps"),
   ]);
 
   const overviewPayload = (overviewRaw || {}) as OverviewPayload;

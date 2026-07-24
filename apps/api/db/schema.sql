@@ -405,7 +405,7 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN
-  CREATE TYPE evidence_anchor_status AS ENUM ('pending', 'submitted', 'confirmed', 'failed', 'disabled', 'local');
+  CREATE TYPE evidence_anchor_status AS ENUM ('pending', 'submitted', 'reconciling', 'confirmed', 'failed', 'disabled', 'local');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE TABLE IF NOT EXISTS supplier_orders (
@@ -502,7 +502,7 @@ CREATE TABLE IF NOT EXISTS ledger_providers (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS proof_events (
+CREATE TABLE IF NOT EXISTS evidence_events (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   event_type text NOT NULL,
@@ -512,7 +512,7 @@ CREATE TABLE IF NOT EXISTS proof_events (
   tag_id text,
   product_id text,
   payload_json jsonb NOT NULL,
-  payload_hash text NOT NULL,
+  payload_hash text NOT NULL UNIQUE,
   hash_algorithm text NOT NULL DEFAULT 'sha256',
   provider_preference text NOT NULL DEFAULT 'none',
   status proof_event_status NOT NULL DEFAULT 'pending',
@@ -527,17 +527,91 @@ CREATE TABLE IF NOT EXISTS evidence_anchors (
   anchor_type text NOT NULL,
   resource_type text,
   resource_id text,
+  public_resource_id text,
   event_count integer NOT NULL,
   event_hashes text[],
+  event_hashes_json jsonb NOT NULL DEFAULT '[]'::jsonb,
   merkle_root text NOT NULL,
   tx_hash text,
   explorer_url text,
   status evidence_anchor_status NOT NULL DEFAULT 'pending',
   anchored_at timestamptz,
   error_message text,
+  contract_version text,
+  chain_id bigint,
+  contract_address text,
+  publisher_address text,
+  tenant_id_hash text,
+  canonicalization_version text,
+  merkle_algorithm text,
+  memo_hash text,
+  memo_json jsonb NOT NULL DEFAULT '{}'::jsonb,
+  proof_id text,
+  idempotency_key text,
+  block_number bigint,
+  block_hash text,
+  confirmations integer NOT NULL DEFAULT 0,
+  attempt_count integer NOT NULL DEFAULT 0,
+  error_code text,
+  submitted_at timestamptz,
+  confirmed_at timestamptz,
+  last_checked_at timestamptz,
+  next_attempt_at timestamptz,
   created_by text,
-  created_at timestamptz NOT NULL DEFAULT now()
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS evidence_anchor_members (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  anchor_id uuid NOT NULL REFERENCES evidence_anchors(id) ON DELETE CASCADE,
+  event_id uuid REFERENCES evidence_events(id) ON DELETE RESTRICT,
+  event_hash text NOT NULL,
+  leaf_index integer NOT NULL CHECK (leaf_index >= 0),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (anchor_id, leaf_index),
+  UNIQUE (anchor_id, event_hash)
+);
+
+CREATE TABLE IF NOT EXISTS evidence_anchor_attempts (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  anchor_id uuid NOT NULL REFERENCES evidence_anchors(id) ON DELETE CASCADE,
+  attempt_no integer NOT NULL CHECK (attempt_no > 0),
+  chain_id bigint NOT NULL,
+  contract_address text NOT NULL,
+  signer_address text,
+  nonce bigint,
+  tx_hash text,
+  status text NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending', 'submitted', 'confirmed', 'reconciling', 'failed')),
+  receipt_status text,
+  block_number bigint,
+  block_hash text,
+  error_code text,
+  error_detail_sanitized text,
+  submitted_at timestamptz,
+  checked_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (anchor_id, attempt_no)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_evidence_anchors_iota_proof_id
+  ON evidence_anchors (lower(proof_id)) WHERE provider = 'iota' AND proof_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_evidence_anchors_idempotency_key
+  ON evidence_anchors (lower(idempotency_key)) WHERE idempotency_key IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_evidence_anchors_tx_hash
+  ON evidence_anchors (lower(tx_hash)) WHERE tx_hash IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_evidence_anchor_attempts_tx_hash
+  ON evidence_anchor_attempts (lower(tx_hash)) WHERE tx_hash IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_evidence_anchor_attempts_signer_nonce
+  ON evidence_anchor_attempts (chain_id, lower(signer_address), nonce)
+  WHERE signer_address IS NOT NULL AND nonce IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_evidence_anchors_reconciliation
+  ON evidence_anchors (status, next_attempt_at, updated_at)
+  WHERE provider = 'iota' AND status IN ('pending', 'submitted', 'reconciling');
+CREATE INDEX IF NOT EXISTS idx_evidence_anchor_members_event
+  ON evidence_anchor_members (event_id, anchor_id) WHERE event_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS ownership_records (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -561,7 +635,7 @@ CREATE INDEX IF NOT EXISTS idx_supplier_sub_batches_tenant ON supplier_sub_batch
 CREATE INDEX IF NOT EXISTS idx_supplier_sub_batches_order ON supplier_sub_batches(supplier_order_id);
 CREATE INDEX IF NOT EXISTS idx_vault_artifacts_tenant ON vault_artifacts(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_vault_artifacts_order ON vault_artifacts(supplier_order_id);
-CREATE INDEX IF NOT EXISTS idx_proof_events_tenant ON proof_events(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_evidence_events_tenant ON evidence_events(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_evidence_anchors_tenant ON evidence_anchors(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_ownership_records_tenant ON ownership_records(tenant_id);
 -- SECURE DELIVERY SCHEMA
@@ -664,3 +738,27 @@ CREATE TABLE IF NOT EXISTS delivery_claims (
 CREATE INDEX IF NOT EXISTS idx_shipments_tenant ON shipments(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_seal_inventory_tenant ON seal_inventory(tenant_id, status);
 CREATE INDEX IF NOT EXISTS idx_custody_events_shipment ON custody_events(shipment_id, created_at DESC);
+
+-- Distributed admin-login abuse guard. Identifiers are HMACs; no email or IP
+-- address is persisted in this enforcement table.
+CREATE TABLE IF NOT EXISTS admin_login_attempt_buckets (
+  bucket_kind text NOT NULL,
+  bucket_key text NOT NULL,
+  window_started_at timestamptz NOT NULL DEFAULT now(),
+  attempt_count integer NOT NULL DEFAULT 0,
+  blocked_until timestamptz,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (bucket_kind, bucket_key),
+  CONSTRAINT admin_login_attempt_buckets_kind_check
+    CHECK (bucket_kind IN ('source', 'source_subject')),
+  CONSTRAINT admin_login_attempt_buckets_key_check
+    CHECK (bucket_key ~ '^[0-9a-f]{64}$'),
+  CONSTRAINT admin_login_attempt_buckets_count_check
+    CHECK (attempt_count >= 0)
+);
+
+CREATE INDEX IF NOT EXISTS idx_admin_login_attempt_buckets_updated
+  ON admin_login_attempt_buckets (updated_at);
+CREATE INDEX IF NOT EXISTS idx_admin_login_attempt_buckets_blocked
+  ON admin_login_attempt_buckets (blocked_until)
+  WHERE blocked_until IS NOT NULL;

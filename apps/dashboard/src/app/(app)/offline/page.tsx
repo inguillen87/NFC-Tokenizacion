@@ -1,25 +1,12 @@
 import { requireDashboardSession } from "../../../lib/session";
+import { createAdminPageContext } from "../../../lib/admin-page-access";
 
 export const dynamic = "force-dynamic";
 
-async function getOfflineEvents(tenantId: string) {
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
-  const query = new URLSearchParams({ limit: "100" });
-  if (tenantId) query.set("tenant", tenantId);
-  const response = await fetch(`${API_BASE}/admin/offline-verifier/sync?${query.toString()}`, {
-    headers: { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` },
-    cache: "no-store",
-  });
-  if (!response.ok) return [];
-  const payload = await response.json().catch(() => null);
-  return payload?.events || [];
-}
-
 export default async function OfflineDashboardPage() {
   const session = await requireDashboardSession();
-  const tenantId = session.tenantId || "";
-  
-  const events = tenantId ? await getOfflineEvents(tenantId) : [];
+  const adminContext = await createAdminPageContext(session);
+  const events: Array<Record<string, unknown>> = [];
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
@@ -27,6 +14,13 @@ export default async function OfflineDashboardPage() {
       <p className="text-muted-foreground mb-8">
         Review offline scans and verification events that have been synced to the backend.
       </p>
+
+      <div className="mb-6 rounded-lg border border-amber-300/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+        Historial no disponible para <b>{adminContext.tenantSlug || "scope global"}</b>: el contrato actual expone
+        <code className="mx-1 rounded bg-slate-950/60 px-1.5 py-0.5">POST /admin/offline-verifier/sync</code>
+        como mutaciÃ³n de sincronizaciÃ³n, no como lectura. Esta vista no ejecuta esa mutaciÃ³n al renderizar; requiere
+        un endpoint GET de historial tenant-scoped.
+      </div>
 
       {events.length === 0 ? (
         <div className="bg-card border rounded-lg p-8 text-center text-muted-foreground">

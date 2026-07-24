@@ -5,8 +5,13 @@ import { json } from '../../../../lib/http';
 import { createResetToken, sha256 } from '../../../../lib/iam';
 import { requireApiSession } from '../../../../lib/auth-guard';
 import { ensureEnterpriseIamSchema } from '../../../../lib/commercial-runtime-schema';
+import { isProductionRuntime, isProductionSecretExposureAllowed, resolveAdminUserDelegation } from '../../../../lib/admin-user-management-policy';
+import { createManagedAdminInvite } from '../../../../lib/admin-user-management';
 
-const INVITE_TTL_MINUTES = Number(process.env.ADMIN_INVITE_TTL_MINUTES || 60 * 24 * 3);
+const configuredInviteTtlMinutes = Number(process.env.ADMIN_INVITE_TTL_MINUTES || 60 * 24 * 3);
+const INVITE_TTL_MINUTES = Number.isFinite(configuredInviteTtlMinutes) && configuredInviteTtlMinutes > 0
+  ? Math.min(configuredInviteTtlMinutes, 60 * 24 * 30)
+  : 60 * 24 * 3;
 
 export async function POST(req: Request) {
   const { error, session } = await requireApiSession(req, 'users:manage');
@@ -16,56 +21,55 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({})) as { email?: string; role?: string; tenantSlug?: string | null; permissions?: string[]; fullName?: string };
   const email = String(body.email || '').trim().toLowerCase();
   const fullName = String(body.fullName || '').trim() || null;
-  let role = String(body.role || 'viewer').replace('-', '_');
-  if (!email) return json({ ok: false, reason: 'email required' }, 400);
-
-  if (session.role !== 'super-admin') {
-    if (role === 'super_admin') {
-      role = 'tenant_admin';
-    }
+  if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return json({ ok: false, reason: 'valid email required' }, 400);
   }
 
-  let tenantId = null;
+  const requestedPermissions = Array.isArray(body.permissions) && body.permissions.length
+    ? body.permissions
+    : ['events:read', 'analytics:read'];
+  const delegation = resolveAdminUserDelegation(session, body.role || 'viewer', requestedPermissions);
+  if (!delegation.ok) {
+    return json({ ok: false, reason: delegation.reason }, delegation.status);
+  }
+
+  let tenantId: string | null = null;
   if (session.role === 'super-admin') {
     const tenantSlug = body.tenantSlug ? String(body.tenantSlug).trim().toLowerCase() : null;
-    tenantId = tenantSlug ? (await sql`SELECT id FROM tenants WHERE slug = ${tenantSlug} LIMIT 1`)[0]?.id || null : null;
+    if (delegation.role === 'super_admin') {
+      if (tenantSlug) return json({ ok: false, reason: 'super_admin_must_be_global' }, 400);
+    } else {
+      if (!tenantSlug) return json({ ok: false, reason: 'tenant_required' }, 400);
+      tenantId = (await sql`SELECT id FROM tenants WHERE slug = ${tenantSlug} LIMIT 1`)[0]?.id || null;
+      if (!tenantId) return json({ ok: false, reason: 'tenant_not_found' }, 404);
+    }
   } else {
     tenantId = session.tenantId;
   }
 
-  const permissions = Array.isArray(body.permissions) && body.permissions.length
-    ? body.permissions.map((item) => String(item))
-    : ['events:read', 'analytics:read'];
-
-  const userRows = await sql`INSERT INTO users (email, full_name, admin_status)
-    VALUES (${email}, ${fullName}, 'invited'::admin_user_status)
-    ON CONFLICT (email) DO UPDATE SET full_name = COALESCE(EXCLUDED.full_name, users.full_name), admin_status = 'invited'::admin_user_status
-    RETURNING id`;
-  const userId = userRows[0]?.id;
-  if (!userId) return json({ ok: false, reason: 'failed to create invite user' }, 500);
-
-  await sql`DELETE FROM memberships WHERE user_id = ${userId}::uuid`;
-  await sql`INSERT INTO memberships (user_id, tenant_id, role) VALUES (${userId}::uuid, ${tenantId}::uuid, ${role}::membership_role)`;
-
-  await sql`DELETE FROM resource_permissions WHERE user_id = ${userId}::uuid`;
-  for (const entry of permissions) {
-    const [resource, action] = entry.split(':');
-    if (resource && action) await sql`INSERT INTO resource_permissions (user_id, resource, action) VALUES (${userId}::uuid, ${resource}, ${action}) ON CONFLICT DO NOTHING`;
-  }
-
   const token = createResetToken();
-  await sql`UPDATE user_invites SET consumed_at = now() WHERE email = ${email} AND consumed_at IS NULL`;
-  await sql`INSERT INTO user_invites (email, role, tenant_id, permissions, invited_by, token_hash, expires_at)
-    VALUES (${email}, ${role}::membership_role, ${tenantId}::uuid, ${JSON.stringify(permissions)}::jsonb, ${session.userId || null}::uuid, ${sha256(token)}, now() + (${INVITE_TTL_MINUTES} * interval '1 minute'))`;
+  const userId = await createManagedAdminInvite(sql as any, {
+    email,
+    fullName,
+    tenantId,
+    role: delegation.role,
+    permissions: delegation.permissions,
+    invitedBy: session.userId || null,
+    tokenHash: sha256(token),
+    ttlMinutes: INVITE_TTL_MINUTES,
+  });
+  if (!userId) return json({ ok: false, reason: 'user_already_exists' }, 409);
 
-  await sql`UPDATE password_reset_tokens SET consumed_at = now() WHERE user_id = ${userId}::uuid AND consumed_at IS NULL`;
-  await sql`INSERT INTO password_reset_tokens (user_id, token_hash, expires_at, meta)
-    VALUES (${userId}::uuid, ${sha256(token)}, now() + (${INVITE_TTL_MINUTES} * interval '1 minute'), ${JSON.stringify({ source: 'invite', email })}::jsonb)`;
-
-  const allowDevLink = String(process.env.DEV_EXPOSE_ACTIVATION_LINK || '').toLowerCase() === 'true';
+  const allowDevLink = isProductionSecretExposureAllowed(process.env.NODE_ENV, process.env.DEV_EXPOSE_ACTIVATION_LINK, process.env.VERCEL_ENV);
   const activationLink = allowDevLink
     ? `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_DASHBOARD_URL || 'http://localhost:3002'}/reset-password?token=${encodeURIComponent(token)}`
     : undefined;
 
-  return json({ ok: true, inviteExpiresInMinutes: INVITE_TTL_MINUTES, activationToken: process.env.NODE_ENV === 'production' ? undefined : token, activationLink });
+  return json({
+    ok: true,
+    userId,
+    inviteExpiresInMinutes: INVITE_TTL_MINUTES,
+    activationToken: isProductionRuntime(process.env.NODE_ENV, process.env.VERCEL_ENV) ? undefined : token,
+    activationLink,
+  });
 }

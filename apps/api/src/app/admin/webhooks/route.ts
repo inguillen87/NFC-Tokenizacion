@@ -5,6 +5,7 @@ import { checkAdmin, getAdminTenantScope } from "../../../lib/auth";
 import { ensureSdkSchema } from "../../../lib/commercial-runtime-schema";
 import { sql } from "../../../lib/db";
 import { json } from "../../../lib/http";
+import { normalizeWebhookUrl, resolveWebhookDestination, safeWebhookError } from "../../../lib/webhook-egress";
 
 function clean(value: unknown) {
   return String(value || "").trim();
@@ -58,13 +59,21 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const tenant = await resolveTenant(req, body?.tenant || body?.tenantSlug);
   const name = clean(body?.name) || "SDK webhook";
-  const url = clean(body?.url);
+  const rawUrl = clean(body?.url);
   const signingSecret = clean(body?.signingSecret || body?.signing_secret);
   const events = Array.isArray(body?.events) ? body.events.map(clean).filter(Boolean) : ["sdk.verify", "sdk.claim.created", "sdk.external_event", "sdk.pos.activated"];
   const enabled = Boolean(body?.enabled);
 
-  if (!tenant || !url) {
+  if (!tenant || !rawUrl) {
     return json({ error: "tenant and url are required" }, 400);
+  }
+
+  let url: string;
+  try {
+    url = normalizeWebhookUrl(rawUrl).toString();
+    if (enabled) await resolveWebhookDestination(url);
+  } catch (error) {
+    return json({ error: "invalid webhook URL", reason: safeWebhookError(error).code }, 400);
   }
 
   const rows = await sql/*sql*/`

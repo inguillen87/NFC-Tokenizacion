@@ -1,5 +1,6 @@
 import { dashboardPermissionMatches } from "../../../../lib/permission-policy";
 import { requireDashboardSession } from "../../../../lib/session";
+import { requireDashboardTenantScope } from "../../../../lib/admin-page-access";
 import { ProofAnchorComposer } from "./proof-anchor-composer";
 
 type PageProps = {
@@ -14,6 +15,7 @@ export default async function AnchorPage({ searchParams }: PageProps) {
   const session = await requireDashboardSession("proof:read");
   const params = searchParams ? await searchParams : {};
   const requestedTenant = firstValue(params.tenant).trim().toLowerCase();
+  const tenantScope = requireDashboardTenantScope(session, requestedTenant);
   const canWrite = session.role === "super-admin"
     || dashboardPermissionMatches(session.permissions, "proof:write");
 
@@ -21,7 +23,7 @@ export default async function AnchorPage({ searchParams }: PageProps) {
     <ProofAnchorComposer
       canWrite={canWrite}
       defaultOccurredAt={new Date().toISOString()}
-      initialTenantSlug={session.tenantSlug || requestedTenant}
+      initialTenantSlug={tenantScope.tenantSlug}
       isDemo={Boolean(session.isDemo)}
       role={session.role}
     />

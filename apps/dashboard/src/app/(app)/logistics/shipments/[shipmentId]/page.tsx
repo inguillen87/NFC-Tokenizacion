@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { Card, SectionHeading, StatusChip } from "@product/ui";
 import { AlertTriangle, Boxes, CheckCircle2, Fingerprint, MapPin, PackageCheck, ShieldCheck, Truck } from "lucide-react";
-import { headers } from "next/headers";
 import { requireDashboardSession } from "../../../../../lib/session";
-import { getServerOrigin } from "../../../../../lib/server-origin";
+import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../../../lib/admin-page-access";
 import { SecureDeliveryClaimForm } from "../../../../../components/secure-delivery-claim-form";
 
 type ShipmentDetailResponse = {
@@ -31,16 +30,12 @@ function statusTone(status: string) {
   return "warn" as const;
 }
 
-async function getShipmentDetail(origin: string, shipmentId: string, cookie: string, tenantScope: string, sandbox: boolean) {
+async function getShipmentDetail(context: AdminPageContext, shipmentId: string, sandbox: boolean) {
   const params = new URLSearchParams();
-  if (tenantScope) params.set("tenant", tenantScope);
   if (sandbox) params.set("sandbox", "1");
   const query = params.toString() ? `?${params.toString()}` : "";
   try {
-    const response = await fetch(`${origin}/api/admin/logistics/shipments/${encodeURIComponent(shipmentId)}${query}`, {
-      cache: "no-store",
-      headers: cookie ? { cookie } : undefined,
-    });
+    const response = await fetchAdminPage(context, `logistics/shipments/${encodeURIComponent(shipmentId)}${query}`);
     if (!response.ok) return null;
     return await response.json() as ShipmentDetailResponse;
   } catch {
@@ -60,12 +55,10 @@ function MetricCard({ label, value, icon: Icon }: { label: string; value: string
 
 export default async function ShipmentDetailPage({ params, searchParams }: { params: Promise<{ shipmentId: string }>; searchParams: Promise<Record<string, string | undefined>> }) {
   const session = await requireDashboardSession("logistics:read");
-  const origin = await getServerOrigin();
-  const cookie = (await headers()).get("cookie") || "";
   const { shipmentId } = await params;
   const query = await searchParams;
-  const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : String(query.tenant || "");
-  const data = await getShipmentDetail(origin, decodeURIComponent(shipmentId || ""), cookie, tenantScope, query.sandbox === "1");
+  const adminContext = await createAdminPageContext(session, query.tenant);
+  const data = await getShipmentDetail(adminContext, decodeURIComponent(shipmentId || ""), query.sandbox === "1");
 
   const shipment = data?.shipment;
   const items = data?.items || [];

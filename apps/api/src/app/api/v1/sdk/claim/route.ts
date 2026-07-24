@@ -268,12 +268,14 @@ export async function POST(req: Request) {
   await dispatchTenantWebhooks({
     tenantId: auth.context.tenantId,
     eventName: "sdk.claim.created",
+    idempotencyKey: claimId,
     payload: { claimId, leadId, status: claimStatus, bid, uidHex: uidHex || null, posValidated, pinValidated, traceId: auth.context.traceId },
   }).catch(() => null);
   if (claimStatus === "claimed") {
     await dispatchTenantWebhooks({
       tenantId: auth.context.tenantId,
       eventName: "sdk.claim.claimed",
+      idempotencyKey: claimId,
       payload: { claimId, leadId, bid, uidHex: uidHex || null, posActivationId: posActivationId || null, traceId: auth.context.traceId },
     }).catch(() => null);
   }

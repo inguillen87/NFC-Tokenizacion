@@ -17,17 +17,15 @@ function assertOrder(source, startMarker, firstMarker, secondMarker) {
 
 test("tenant-sensitive pages read through the authenticated dashboard BFF", () => {
   for (const source of [proofSource, batchSource, supplierOrderSource]) {
-    assert.match(source, /getServerOrigin/);
-    assert.match(source, /headers\(\)\)\.get\("cookie"\)/);
+    assert.match(source, /createAdminPageContext/);
+    assert.match(source, /fetchAdminPage/);
     assert.doesNotMatch(source, /process\.env\.ADMIN_API_KEY|\$\{API_BASE\}\/admin/);
+    assert.doesNotMatch(source, /getServerOrigin|headers\(\)/);
   }
 
-  assert.match(proofSource, /\/api\/admin\/proof\/anchors/);
-  assert.match(batchSource, /\/api\/admin\/batches\/\$\{encodeURIComponent\(bid\)\}\/summary/);
-  assert.match(supplierOrderSource, /\/api\/admin\/supplier-orders/);
-  assert.match(proofSource, /headers: cookie \? \{ cookie \} : undefined/);
-  assert.match(batchSource, /headers: cookie \? \{ cookie \} : undefined/);
-  assert.match(supplierOrderSource, /headers: cookie \? \{ cookie \} : undefined/);
+  assert.match(proofSource, /"proof\/anchors"/);
+  assert.match(batchSource, /`batches\/\$\{encodeURIComponent\(bid\)\}\/summary`/);
+  assert.match(supplierOrderSource, /fetchAdminPage\(context, "supplier-orders"\)/);
 });
 
 test("each page requires its dashboard session before starting its read", () => {
@@ -37,17 +35,17 @@ test("each page requires its dashboard session before starting its read", () => 
 });
 
 test("batch and supplier detail payloads fail closed when tenant scope does not match", () => {
-  assert.match(batchSource, /session\.role === "tenant-admin" \|\| session\.role === "reseller"/);
+  assert.match(batchSource, /const adminContext = await createAdminPageContext\(session\)/);
   assert.match(batchSource, /batchTenantSlug !== normalizedTenantScope/);
-  assert.match(batchSource, /isTenantScoped && !tenantScope \? null : await getBatch/);
+  assert.match(batchSource, /const batch = await getBatch\(adminContext, bid\)/);
 
-  assert.match(supplierOrderSource, /session\.role === "tenant-admin" \|\| session\.role === "reseller"/);
-  assert.match(supplierOrderSource, /orderTenantSlug !== tenantScope/);
-  assert.match(supplierOrderSource, /isTenantScoped && !tenantScope \? null : await getOrderDetails/);
+  assert.match(supplierOrderSource, /const adminContext = await createAdminPageContext\(session\)/);
+  assert.match(supplierOrderSource, /orderTenantSlug !== context\.tenantSlug/);
+  assert.match(supplierOrderSource, /const order = await getOrderDetails\(adminContext, orderId\)/);
 });
 
 test("supplier export revalidates session and uses the same scoped BFF", () => {
-  assertOrder(supplierOrderSource, '"use server"', 'await requireDashboardSession("supplier_orders:read")', "await fetch(`${actionOrigin}/api/admin/supplier-orders/");
-  assert.match(supplierOrderSource, /\.\.\.\(actionCookie \? \{ cookie: actionCookie \} : \{\}\)/);
+  assertOrder(supplierOrderSource, '"use server"', 'await requireDashboardSession("supplier_orders:read")', "await fetchAdminPage(actionContext");
+  assert.match(supplierOrderSource, /await createAdminPageContext\(actionSession\)/);
   assert.doesNotMatch(supplierOrderSource, /X-NexID-Actor|Authorization:/);
 });

@@ -60,7 +60,7 @@ async function loadNotificationData() {
 }
 
 export async function GET(req: Request) {
-  const auth = checkAdmin(req);
+  const auth = checkAdmin(req, ["super_admin"]);
   if (auth) return auth;
   await ensureOpsSchemas();
 

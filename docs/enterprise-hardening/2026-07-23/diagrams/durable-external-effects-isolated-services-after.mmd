@@ -1,0 +1,11 @@
+flowchart LR
+  R["Application API"] --> Q["Authenticated durable queue"]
+  Q --> IS["Chain publication service"]
+  Q --> ES["Restricted egress service"]
+  Q --> AS["Audit evidence service"]
+  IS --> CHAIN["Public chain"]
+  ES --> NET["Public endpoints only"]
+  AS --> WORM["External WORM storage"]
+  KMS["KMS or HSM"] --> IS
+  classDef control fill:#123b2a,stroke:#55d98a,color:#fff;
+  class Q,IS,ES,AS,KMS control;

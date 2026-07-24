@@ -1,9 +1,9 @@
 import { SectionHeading } from "@product/ui";
-import { headers } from "next/headers";
 import { OnboardingSetupWizard } from "../../../components/onboarding-setup-wizard";
 import { PilotLaunchpad, type PilotSnapshot } from "../../../components/pilot-launchpad";
 import { SupplierLegacyIntakeBlocked } from "../../../components/supplier-legacy-intake-blocked";
 import { requireDashboardSession } from "../../../lib/session";
+import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../lib/admin-page-access";
 
 type FetchResult<T> = {
   ok: boolean;
@@ -37,34 +37,9 @@ type TokenizationRequest = {
   token_id?: string | null;
 };
 
-type DashboardRequestContext = {
-  origin: string;
-  cookie: string;
-};
-
-async function getDashboardRequestContext(): Promise<DashboardRequestContext> {
-  const requestHeaders = await headers();
-  const forwardedHost = requestHeaders.get("x-forwarded-host") || requestHeaders.get("host") || "app.nexid.lat";
-  const forwardedProto = requestHeaders.get("x-forwarded-proto") || (process.env.NODE_ENV === "production" ? "https" : "http");
-  return {
-    origin: `${forwardedProto}://${forwardedHost}`,
-    cookie: requestHeaders.get("cookie") || "",
-  };
-}
-
-function withTenant(origin: string, path: string, tenantScope: string, extra: Record<string, string> = {}) {
-  const url = new URL(`/api/admin${path}`, origin);
-  if (tenantScope) url.searchParams.set("tenant", tenantScope);
-  for (const [key, value] of Object.entries(extra)) url.searchParams.set(key, value);
-  return url.toString();
-}
-
-async function fetchJson<T>(url: string, fallback: T, context: DashboardRequestContext): Promise<FetchResult<T>> {
+async function fetchJson<T>(path: string, fallback: T, context: AdminPageContext): Promise<FetchResult<T>> {
   try {
-    const response = await fetch(url, {
-      headers: context.cookie ? { cookie: context.cookie } : undefined,
-      cache: "no-store",
-    });
+    const response = await fetchAdminPage(context, path);
     if (!response.ok) return { ok: false, value: fallback, source: "unavailable" };
     const value = await response.json() as T & { ok?: boolean; demoMode?: boolean; dataSource?: string };
     if (value && typeof value === "object" && !Array.isArray(value) && value.ok === false) {
@@ -89,16 +64,16 @@ function normalizedStatus(value: unknown) {
 }
 
 async function getPilotSnapshot(
-  tenantScope: string,
+  context: AdminPageContext,
   setupCompleted: boolean | undefined,
-  context: DashboardRequestContext,
 ): Promise<PilotSnapshot> {
+  const tenantScope = context.tenantSlug;
   const [batchesResult, assetsResult, ordersResult, anchorsResult, tokenizationResult] = await Promise.all([
-    fetchJson<Array<Record<string, unknown>>>(withTenant(context.origin, "/batches", tenantScope), [], context),
-    fetchJson<{ items?: ProductAssetItem[] }>(withTenant(context.origin, "/product-assets", tenantScope, { limit: "80" }), { items: [] }, context),
-    fetchJson<{ orders?: SupplierOrder[] }>(withTenant(context.origin, "/supplier-orders", tenantScope), { orders: [] }, context),
-    fetchJson<{ anchors?: ProofAnchor[] }>(withTenant(context.origin, "/proof/anchors", tenantScope), { anchors: [] }, context),
-    fetchJson<{ rows?: TokenizationRequest[] }>(withTenant(context.origin, "/tokenization/requests", tenantScope, { limit: "80" }), { rows: [] }, context),
+    fetchJson<Array<Record<string, unknown>>>("batches", [], context),
+    fetchJson<{ items?: ProductAssetItem[] }>("product-assets?limit=80", { items: [] }, context),
+    fetchJson<{ orders?: SupplierOrder[] }>("supplier-orders", { orders: [] }, context),
+    fetchJson<{ anchors?: ProofAnchor[] }>("proof/anchors", { anchors: [] }, context),
+    fetchJson<{ rows?: TokenizationRequest[] }>("tokenization/requests?limit=80", { rows: [] }, context),
   ]);
 
   const batches = Array.isArray(batchesResult.value) ? batchesResult.value : [];
@@ -158,16 +133,16 @@ async function getPilotSnapshot(
 
 export default async function OnboardingPage() {
   const session = await requireDashboardSession();
-  const tenantScope = session.role === "tenant-admin" ? String(session.tenantSlug || "") : "";
-  const requestContext = await getDashboardRequestContext();
-  const snapshot = await getPilotSnapshot(tenantScope, session.setupCompleted, requestContext);
+  const requestContext = await createAdminPageContext(session);
+  const snapshot = await getPilotSnapshot(requestContext, session.setupCompleted);
   const isTenantAdmin = session.role === "tenant-admin";
+  const isTenantBound = !requestContext.canSelectTenant;
 
   return (
     <main className="space-y-6">
       <SectionHeading
         eyebrow="Pilot launchpad"
-        title={isTenantAdmin ? "Puesta en marcha del tenant" : "Puesta en marcha multi-tenant"}
+        title={isTenantBound ? "Puesta en marcha del tenant" : "Puesta en marcha multi-tenant"}
         description="Un recorrido operativo con evidencia real: configura el workspace, prepara el lote, carga identidad visual, valida un tap y abre la salida verificable."
       />
       {isTenantAdmin && session.setupCompleted === false ? <OnboardingSetupWizard session={session} /> : null}

@@ -1,7 +1,8 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin } from "../../../../lib/auth";
+import { checkAdmin, getAdminTenantAccess } from "../../../../lib/auth";
+import { areAdminSunBidsInTenantScope } from "../../../../lib/admin-sun-tenant-scope";
 import { json } from "../../../../lib/http";
 import { processSunScan } from "../../../../lib/sun-service";
 import { insertSunDiagnostic } from "../../../../lib/sun-diagnostics";
@@ -22,6 +23,7 @@ function bytesTable(hex: string) {
 export async function POST(req: Request) {
   const auth = checkAdmin(req);
   if (auth) return auth;
+  const { forcedTenantSlug } = getAdminTenantAccess(req);
 
   const body = (await req.json().catch(() => ({}))) as InspectBody;
   const traceId = `sun_${Date.now().toString(36)}_inspect`;
@@ -43,12 +45,16 @@ export async function POST(req: Request) {
   if (!bid || !piccDataHex || !encHex || !cmacHex) {
     return json({ ok: false, reason: "missing sun params", need: ["bid", "picc_data", "enc", "cmac"] }, 400);
   }
+  if (!await areAdminSunBidsInTenantScope({ bids: [bid], forcedTenantSlug })) {
+    return json({ ok: false, reason: "sun_resource_not_found" }, 404);
+  }
 
   const result = await processSunScan({
     bid,
     piccDataHex,
     encHex,
     cmacHex,
+    sideEffectMode: "dry_run",
     rawQuery: Object.fromEntries(parsed.searchParams.entries()),
     context: {
       source: "imported",

@@ -93,6 +93,7 @@ export async function POST(req: Request) {
   await dispatchTenantWebhooks({
     tenantId: auth.context.tenantId,
     eventName: "sdk.verify",
+    idempotencyKey: responseBody.eventId || auth.context.traceId,
     payload: { ...responseBody, eventId: responseBody.eventId, traceId: auth.context.traceId },
   }).catch(() => null);
   await logSdkUsage({ req, context: auth.context, endpoint: "sdk.verify", statusCode: result.status, startedAt, reason: responseBody.reason, meta: { bid, verdict: responseBody.verdict } });

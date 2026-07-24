@@ -65,7 +65,7 @@ async function main() {
   const contract = new Contract(contractAddress, IOTA_ABI, wallet);
   const tenantIdHash = createHash("sha256").update("public-demo", "utf8").digest("hex");
   const updates = {
-    IOTA_PROVIDER_MODE: "iota_evm_contract",
+    IOTA_PROVIDER_MODE: "iota_evm_contract_v2",
     IOTA_EVM_DEPLOYER_ADDRESS: wallet.address,
     IOTA_EVM_ANCHOR_CONTRACT_V2: contractAddress,
     IOTA_EVM_ANCHOR_CONTRACT_VERSION_V2: "evidence_anchor_v2",
