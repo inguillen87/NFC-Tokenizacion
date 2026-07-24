@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 import { json } from "../../../../lib/http";
 import { sql } from "../../../../lib/db";
 import { ensureSupplierOpsSchema } from "../../../../lib/supplier-ops-schema";
-import { isSha256Hash, verifyHashInAnchor } from "../../../../lib/proof-layer";
+import { canonicalSha256Hash, isSha256Hash, verifyHashInMerkleAnchor } from "../../../../lib/proof-layer";
 import { findPublicProofDemoCaseByHash } from "../../../../lib/public-proof-demos";
 import {
   iotaAnchorTenantHash,
@@ -37,18 +37,31 @@ type ProofMatch = {
 
 function publicNetworkProof(value: Record<string, unknown> | null) {
   if (!value) return null;
-  const { input_hex: _inputHex, decoded_memo: _decodedMemo, ...proof } = value;
+  const {
+    input_hex: _inputHex,
+    decoded_memo: _decodedMemo,
+    decoded_call: _decodedCall,
+    ...proof
+  } = value;
   return proof;
 }
 
 async function verifyPublicProof(eventHash: string, anchorId = "") {
   if (!eventHash) return json({ ok: false, reason: "event_hash_required", verification_state: "invalid", evidence_level: "none" }, 400);
   if (!isSha256Hash(eventHash)) return json({ ok: false, reason: "event_hash_invalid", verification_state: "invalid", evidence_level: "none" }, 400);
+  const canonicalEventHash = canonicalSha256Hash(eventHash);
+  if (!canonicalEventHash) return json({ ok: false, reason: "event_hash_invalid", verification_state: "invalid", evidence_level: "none" }, 400);
   if (anchorId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(anchorId)) {
     return json({ ok: false, reason: "anchor_id_invalid", message: "anchor_id must be a UUID.", verification_state: "invalid", evidence_level: "none" }, 400);
   }
 
-  const demoCase = findPublicProofDemoCaseByHash(eventHash);
+  const demoCase = findPublicProofDemoCaseByHash(canonicalEventHash);
+  const demoMembership = demoCase ? verifyHashInMerkleAnchor({
+    eventHash: canonicalEventHash,
+    eventHashes: demoCase.events.map((event) => event.hash),
+    eventCount: demoCase.events.length,
+    merkleRoot: demoCase.merkle_root,
+  }) : null;
   const demoTxHash = demoCase ? publicProofIotaAnchorTx(demoCase.id) : "";
   const receiptTxHash = demoCase ? publicProofIotaReceiptTx(demoCase.id) : "";
   const demoExplorerUrl = publicProofIotaExplorerUrl(demoTxHash);
@@ -72,7 +85,7 @@ async function verifyPublicProof(eventHash: string, anchorId = "") {
       ])
     : [null, null];
   const demoNetworkVerified = Boolean(demoAnchorVerification?.verified && demoReceiptVerification?.verified);
-  const demoMatches: ProofMatch[] = demoCase && (!anchorId || anchorId.toLowerCase() === demoCase.anchor_id.toLowerCase())
+  const demoMatches: ProofMatch[] = demoCase && demoMembership?.included && (!anchorId || anchorId.toLowerCase() === demoCase.anchor_id.toLowerCase())
     ? [{
         anchor_id: demoCase.anchor_id,
         provider: demoCase.provider,
@@ -106,13 +119,16 @@ async function verifyPublicProof(eventHash: string, anchorId = "") {
                  resource_type, resource_id, public_resource_id, event_count, tenant_id_hash, memo_hash,
                  proof_id, contract_version, chain_id, contract_address, publisher_address
           FROM evidence_anchors
-          WHERE event_hashes_json @> ${JSON.stringify([eventHash])}::jsonb
+          WHERE event_hashes_json @> ${JSON.stringify([canonicalEventHash])}::jsonb
           ORDER BY created_at DESC
-          LIMIT 50
+          LIMIT 8
         `;
-    const includedRows = rows.filter((anchor) => (
-      verifyHashInAnchor(eventHash, Array.isArray(anchor.event_hashes_json) ? anchor.event_hashes_json : [])
-    ));
+    const includedRows = rows.filter((anchor) => verifyHashInMerkleAnchor({
+      eventHash: canonicalEventHash,
+      eventHashes: anchor.event_hashes_json,
+      eventCount: anchor.event_count,
+      merkleRoot: anchor.merkle_root,
+    }).included);
     matches = await Promise.all(includedRows.map(async (anchor) => {
       let networkVerification: Record<string, unknown> | null = null;
       if (anchor.provider === "iota" && anchor.tx_hash) {
@@ -125,17 +141,38 @@ async function verifyPublicProof(eventHash: string, anchorId = "") {
             resourceId: anchor.public_resource_id || anchor.resource_id,
             eventCount: Number(anchor.event_count),
             memoHash: anchor.memo_hash || undefined,
-            contractAddress: anchor.contract_address || undefined,
-            publisherAddress: anchor.publisher_address || undefined,
           });
-          const proofIdMatches = !anchor.proof_id
-            || String(verification.proof_id || "").toLowerCase() === String(anchor.proof_id).toLowerCase();
-          const chainMatches = !anchor.chain_id || Number(verification.chain_id) === Number(anchor.chain_id);
+          const isV2 = verification.contract_version === "evidence_anchor_v2";
+          const proofIdMatches = isV2
+            ? Boolean(anchor.proof_id) && String(verification.proof_id || "").toLowerCase() === String(anchor.proof_id).toLowerCase()
+            : !anchor.proof_id;
+          const chainMatches = isV2
+            ? Number.isSafeInteger(Number(anchor.chain_id)) && Number(verification.chain_id) === Number(anchor.chain_id)
+            : !anchor.chain_id || Number(verification.chain_id) === Number(anchor.chain_id);
+          const persistedContractMatches = !isV2 || (
+            Boolean(anchor.contract_address)
+            && String(verification.to || "").toLowerCase() === String(anchor.contract_address).toLowerCase()
+          );
+          const persistedPublisherMatches = !isV2 || (
+            Boolean(anchor.publisher_address)
+            && String(verification.from || "").toLowerCase() === String(anchor.publisher_address).toLowerCase()
+          );
+          const contractVersionMatches = !isV2 || anchor.contract_version === "evidence_anchor_v2";
           networkVerification = publicNetworkProof({
             ...verification,
-            verified: Boolean(verification.verified && proofIdMatches && chainMatches),
+            verified: Boolean(
+              verification.verified
+              && proofIdMatches
+              && chainMatches
+              && persistedContractMatches
+              && persistedPublisherMatches
+              && contractVersionMatches
+            ),
             proof_id_matches: proofIdMatches,
             persisted_chain_matches: chainMatches,
+            persisted_contract_matches: persistedContractMatches,
+            persisted_publisher_matches: persistedPublisherMatches,
+            persisted_contract_version_matches: contractVersionMatches,
           });
         } catch {
           networkVerification = { verified: false, reason: "iota_rpc_verification_unavailable" };
@@ -165,7 +202,7 @@ async function verifyPublicProof(eventHash: string, anchorId = "") {
         reason: registryWarning,
         verification_state: "unavailable",
         evidence_level: "none",
-        event_hash: eventHash,
+        event_hash: canonicalEventHash,
         privacy: "Verification is hash-only; no raw product, customer or business data is exposed.",
       }, 503);
     }
@@ -188,7 +225,7 @@ async function verifyPublicProof(eventHash: string, anchorId = "") {
         : statuses.has("submitted")
           ? "submitted"
           : "local";
-  const usesDemoFixture = Boolean(demoCase && included);
+  const usesDemoFixture = demoMatches.length > 0;
   const evidenceLevel = usesDemoFixture
     ? demoNetworkVerified ? "testnet_rpc" : "testnet_fixture"
     : externallyConfirmed
@@ -224,7 +261,7 @@ async function verifyPublicProof(eventHash: string, anchorId = "") {
     verification_state: verificationState,
     evidence_level: evidenceLevel,
     demo: usesDemoFixture,
-    event_hash: eventHash,
+    event_hash: canonicalEventHash,
     provider: firstMatch?.provider || null,
     network: firstMatch?.network || null,
     merkle_root: firstMatch?.merkle_root || null,

@@ -6,6 +6,7 @@ import { ensureSdkSchema } from "../../../lib/commercial-runtime-schema";
 import { sql } from "../../../lib/db";
 import { json } from "../../../lib/http";
 import { normalizeWebhookUrl, resolveWebhookDestination, safeWebhookError } from "../../../lib/webhook-egress";
+import { webhookSigningSecretIssue } from "../../../lib/webhook-signing";
 
 function clean(value: unknown) {
   return String(value || "").trim();
@@ -71,9 +72,34 @@ export async function POST(req: Request) {
   let url: string;
   try {
     url = normalizeWebhookUrl(rawUrl).toString();
-    if (enabled) await resolveWebhookDestination(url);
   } catch (error) {
     return json({ error: "invalid webhook URL", reason: safeWebhookError(error).code }, 400);
+  }
+
+  let effectiveSigningSecret = signingSecret;
+  if (enabled && !effectiveSigningSecret) {
+    const existingRows = await sql/*sql*/`
+      SELECT signing_secret
+      FROM webhook_endpoints
+      WHERE tenant_id = ${tenant.id}
+        AND url = ${url}
+      LIMIT 1
+    `;
+    effectiveSigningSecret = String(existingRows[0]?.signing_secret || "");
+  }
+  const secretIssue = enabled
+    ? webhookSigningSecretIssue(effectiveSigningSecret, { required: true })
+    : webhookSigningSecretIssue(signingSecret, { required: false });
+  if (secretIssue) {
+    return json({ error: "invalid webhook signing secret", reason: secretIssue }, 400);
+  }
+
+  if (enabled) {
+    try {
+      await resolveWebhookDestination(url);
+    } catch (error) {
+      return json({ error: "invalid webhook URL", reason: safeWebhookError(error).code }, 400);
+    }
   }
 
   const rows = await sql/*sql*/`

@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nexid-iota-executor
+  labels:
+    app.kubernetes.io/name: nexid-iota-executor
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nexid-iota-executor
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nexid-iota-executor
+    spec:
+      serviceAccountName: nexid-iota-executor
+      containers:
+        - name: executor
+          image: registry.example.com/nexid/executor:REPLACE_WITH_IMMUTABLE_DIGEST
+          ports:
+            - name: http
+              containerPort: 3010
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: IOTA_EXECUTOR_SIGNER_MODE
+              value: kms
+            - name: IOTA_EVM_RPC_URL
+              valueFrom:
+                secretKeyRef: { name: nexid-iota-runtime, key: rpc-url }
+            - name: IOTA_EVM_ANCHOR_CONTRACT_V2
+              valueFrom:
+                secretKeyRef: { name: nexid-iota-runtime, key: contract-address }
+            - name: IOTA_KMS_SIGNER_URL
+              valueFrom:
+                secretKeyRef: { name: nexid-iota-runtime, key: kms-signer-url }
+            - name: IOTA_KMS_SIGNER_ALLOWED_HOSTS
+              valueFrom:
+                secretKeyRef: { name: nexid-iota-runtime, key: kms-allowed-hosts }
+            - name: IOTA_KMS_KEY_ID
+              valueFrom:
+                secretKeyRef: { name: nexid-iota-runtime, key: kms-key-id }
+            - name: IOTA_KMS_SIGNER_TOKEN
+              valueFrom:
+                secretKeyRef: { name: nexid-iota-runtime, key: kms-signer-token }
+            - name: IOTA_KMS_PUBLISHER_ADDRESS
+              valueFrom:
+                secretKeyRef: { name: nexid-iota-runtime, key: publisher-address }
+            - name: IOTA_PROOF_EXECUTOR_SECRET
+              valueFrom:
+                secretKeyRef: { name: nexid-iota-runtime, key: executor-secret }
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef: { name: nexid-iota-runtime, key: database-url }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          readinessProbe:
+            httpGet: { path: /ready, port: http }
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nexid-iota-executor
+spec:
+  selector:
+    app.kubernetes.io/name: nexid-iota-executor
+  ports:
+    - name: http
+      port: 3010
+      targetPort: http

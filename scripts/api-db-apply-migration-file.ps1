@@ -1,6 +1,7 @@
 param(
   [string]$Migration = "20260502211500_0028_strict_tenant_manifest_onboarding.sql",
-  [string]$DatabaseUrl
+  [string]$DatabaseUrl,
+  [switch]$StagingApproved
 )
 
 $ErrorActionPreference = "Stop"
@@ -27,8 +28,23 @@ function Read-DatabaseUrl {
   }
 }
 
+$v2Migrations = @(
+  "20260723193000_0050_evidence_anchor_reconciling_status.sql",
+  "20260723193500_0051_iota_evidence_anchor_v2_writer.sql",
+  "20260723194500_0052_webhook_delivery_outbox.sql",
+  "20260723200500_0053_admin_login_abuse_guard.sql",
+  "20260723213000_0054_iota_executor_publications.sql"
+)
+if ($v2Migrations -contains $Migration) {
+  if (-not $StagingApproved -and $env:STAGING_MIGRATION_APPROVED -ne "YES") {
+    throw "V2 staging migration requires -StagingApproved or STAGING_MIGRATION_APPROVED=YES"
+  }
+  if ($env:NODE_ENV -eq "production") { throw "Refusing V2 migration against production environment" }
+}
+
 $dbUrl = Read-DatabaseUrl
 if (-not $dbUrl) { throw "DATABASE_URL vacio" }
+if ($v2Migrations -contains $Migration -and $dbUrl -match "production|prod[-_.]") { throw "Refusing V2 migration against production-looking database" }
 
 $repo = Split-Path -Parent $PSScriptRoot
 $apiDir = Join-Path $repo "apps\api"

@@ -6,6 +6,7 @@ import { ensureSdkSchema } from "../../../../lib/commercial-runtime-schema";
 import { sql } from "../../../../lib/db";
 import { json } from "../../../../lib/http";
 import { normalizeWebhookUrl, resolveWebhookDestination, safeWebhookError } from "../../../../lib/webhook-egress";
+import { webhookSigningSecretIssue } from "../../../../lib/webhook-signing";
 
 function clean(value: unknown) {
   return String(value || "").trim();
@@ -34,20 +35,28 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
   const events = Array.isArray(body?.events) ? body.events.map(clean).filter(Boolean) : null;
 
   const currentRows = await sql/*sql*/`
-    SELECT url, enabled
+    SELECT url, enabled, signing_secret
     FROM webhook_endpoints
     WHERE id = ${id}
       AND (${tenantId}::text IS NULL OR tenant_id::text = ${tenantId})
     LIMIT 1
   `;
-  const current = currentRows[0] as { url?: string; enabled?: boolean } | undefined;
+  const current = currentRows[0] as { url?: string; enabled?: boolean; signing_secret?: string | null } | undefined;
   if (!current) return json({ error: "webhook not found" }, 404);
+
+  const effectiveEnabled = typeof enabled === "boolean" ? enabled : Boolean(current.enabled);
+  const effectiveSigningSecret = signingSecret || String(current.signing_secret || "");
+  const secretIssue = effectiveEnabled
+    ? webhookSigningSecretIssue(effectiveSigningSecret, { required: true })
+    : webhookSigningSecretIssue(signingSecret, { required: false });
+  if (secretIssue) {
+    return json({ error: "invalid webhook signing secret", reason: secretIssue }, 400);
+  }
 
   let url = "";
   try {
     url = rawUrl ? normalizeWebhookUrl(rawUrl).toString() : "";
     const effectiveUrl = url || String(current.url || "");
-    const effectiveEnabled = typeof enabled === "boolean" ? enabled : Boolean(current.enabled);
     if (effectiveEnabled) await resolveWebhookDestination(effectiveUrl);
   } catch (error) {
     return json({ error: "invalid webhook URL", reason: safeWebhookError(error).code }, 400);

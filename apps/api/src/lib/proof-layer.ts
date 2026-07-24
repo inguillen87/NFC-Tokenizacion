@@ -81,6 +81,13 @@ function stripShaPrefix(value: string) {
   return value.replace(/^sha256:/i, "").trim().toLowerCase();
 }
 
+const CANONICAL_SHA256_PATTERN = /^sha256:[0-9a-f]{64}$/;
+
+export function canonicalSha256Hash(value: unknown) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return /^sha256:[0-9a-f]{64}$/.test(normalized) ? normalized : null;
+}
+
 export function isSha256Hash(value: unknown) {
   return /^sha256:[0-9a-f]{64}$/i.test(String(value || "").trim());
 }
@@ -121,4 +128,47 @@ export function buildMerkleRoot(eventHashes: string[]) {
 export function verifyHashInAnchor(eventHash: string, anchorHashes: string[]) {
   const normalized = stripShaPrefix(eventHash);
   return anchorHashes.map(stripShaPrefix).includes(normalized);
+}
+
+/**
+ * A persisted member list is evidence only when it is the complete, canonical
+ * preimage of the committed Merkle root. Merely finding a hash in JSON is not
+ * an inclusion proof.
+ */
+export function verifyHashInMerkleAnchor(input: {
+  eventHash: unknown;
+  eventHashes: unknown;
+  eventCount: unknown;
+  merkleRoot: unknown;
+}) {
+  const eventHash = canonicalSha256Hash(input.eventHash);
+  const merkleRoot = String(input.merkleRoot || "");
+  if (!eventHash) return { valid: false, included: false, reason: "event_hash_invalid" } as const;
+  if (!Array.isArray(input.eventHashes) || input.eventHashes.length === 0 || input.eventHashes.length > 5_000) {
+    return { valid: false, included: false, reason: "anchor_member_list_invalid" } as const;
+  }
+  if (!input.eventHashes.every((value) => typeof value === "string" && CANONICAL_SHA256_PATTERN.test(value))) {
+    return { valid: false, included: false, reason: "anchor_member_hash_invalid" } as const;
+  }
+  const eventHashes = input.eventHashes as string[];
+  if (new Set(eventHashes).size !== eventHashes.length) {
+    return { valid: false, included: false, reason: "anchor_member_duplicate" } as const;
+  }
+  const eventCount = Number(input.eventCount);
+  if (!Number.isSafeInteger(eventCount) || eventCount !== eventHashes.length) {
+    return { valid: false, included: false, reason: "anchor_event_count_mismatch" } as const;
+  }
+  if (!CANONICAL_SHA256_PATTERN.test(merkleRoot)) {
+    return { valid: false, included: false, reason: "anchor_merkle_root_invalid" } as const;
+  }
+  const calculatedMerkleRoot = buildMerkleRoot(eventHashes);
+  if (calculatedMerkleRoot !== merkleRoot) {
+    return { valid: false, included: false, reason: "anchor_merkle_root_mismatch" } as const;
+  }
+  return {
+    valid: true,
+    included: eventHashes.includes(eventHash),
+    reason: eventHashes.includes(eventHash) ? null : "event_hash_not_in_anchor",
+    calculatedMerkleRoot,
+  } as const;
 }

@@ -1,11 +1,14 @@
 import { Interface, getAddress, toUtf8String } from "ethers";
 import {
   computeIotaEvidenceProofId,
+  inspectIotaEvidenceTarget,
+  inspectIotaEvidenceTransaction,
   iotaAnchorTenantHash,
   normalizeIotaSha256,
+  resolveIotaEvidenceRuntimeConfig,
+  type PreparedIotaEvidence,
 } from "./iota-evidence-writer";
 import {
-  publicProofIotaContractAddress,
   publicProofIotaPublisherAddress,
   publicProofIotaRpcUrl,
 } from "./public-proof-runtime";
@@ -18,6 +21,9 @@ const IOTA_EVIDENCE_ANCHOR_INTERFACE = new Interface([
   "function anchorEvidence(bytes32 merkleRoot, bytes32 tenantIdHash, string resourceType, string resourceId, uint64 eventCount, bytes32 memoHash) returns (bytes32 proofId)",
 ]);
 const CACHE_KEY = "__nexid_iota_evm_tx_cache_v1__";
+const RPC_GATE_KEY = "__nexid_iota_evm_rpc_gate_v1__";
+const MAX_TRANSACTION_CACHE_ENTRIES = 256;
+const MAX_CONCURRENT_RPC_VERIFICATIONS = 4;
 
 type RpcTransaction = {
   hash?: string;
@@ -71,6 +77,38 @@ function txCache() {
   const scope = globalThis as typeof globalThis & { [CACHE_KEY]?: Map<string, CachedTransaction> };
   scope[CACHE_KEY] ||= new Map<string, CachedTransaction>();
   return scope[CACHE_KEY];
+}
+
+function pruneTransactionCache(cache: Map<string, CachedTransaction>) {
+  const now = Date.now();
+  for (const [key, entry] of cache) {
+    if (entry.expiresAt <= now) cache.delete(key);
+  }
+  while (cache.size >= MAX_TRANSACTION_CACHE_ENTRIES) {
+    const oldest = cache.keys().next().value;
+    if (!oldest) break;
+    cache.delete(oldest);
+  }
+}
+
+async function withIotaRpcSlot<T>(operation: () => Promise<T>) {
+  type RpcGate = { active: number; waiters: Array<() => void> };
+  const scope = globalThis as typeof globalThis & { [RPC_GATE_KEY]?: RpcGate };
+  scope[RPC_GATE_KEY] ||= { active: 0, waiters: [] };
+  const gate = scope[RPC_GATE_KEY];
+  let inheritedSlot = false;
+  if (gate.active >= MAX_CONCURRENT_RPC_VERIFICATIONS) {
+    await new Promise<void>((resolve) => gate.waiters.push(resolve));
+    inheritedSlot = true;
+  }
+  if (!inheritedSlot) gate.active += 1;
+  try {
+    return await operation();
+  } finally {
+    const next = gate.waiters.shift();
+    if (next) next();
+    else gate.active -= 1;
+  }
 }
 
 function parseHexNumber(value: unknown) {
@@ -216,8 +254,13 @@ export async function readIotaEvmTransaction(txHash: string) {
 
   const cache = txCache();
   const cached = cache.get(normalized);
-  if (cached && cached.expiresAt > Date.now()) return cached.value;
-  const value = readIotaEvmTransactionUncached(normalized);
+  if (cached && cached.expiresAt > Date.now()) {
+    cache.delete(normalized);
+    cache.set(normalized, cached);
+    return cached.value;
+  }
+  pruneTransactionCache(cache);
+  const value = withIotaRpcSlot(() => readIotaEvmTransactionUncached(normalized));
   const entry = { expiresAt: Date.now() + 10_000, value };
   cache.set(normalized, entry);
   void value.then((proof) => {
@@ -308,13 +351,9 @@ export async function verifyIotaAnchorPublication(input: {
   resourceId: string;
   eventCount: number;
   memoHash?: string;
-  contractAddress?: string;
-  publisherAddress?: string;
 }) {
   const transaction = await readIotaEvmTransaction(input.txHash);
   const decoded = decodeIotaAnchorInput(transaction.input_hex);
-  const configuredContract = normalizeAddress(input.contractAddress || publicProofIotaContractAddress());
-  const configuredPublisher = normalizeAddress(input.publisherAddress || publicProofIotaPublisherAddress());
   const expected = {
     merkle_root: String(input.merkleRoot || "").toLowerCase(),
     tenant_id_hash: String(input.tenantIdHash || "").replace(/^(?:sha256:|0x)/i, "").toLowerCase(),
@@ -337,14 +376,92 @@ export async function verifyIotaAnchorPublication(input: {
     && decoded.event_count === expected.event_count
     && memoHashMatches
   );
+
+  if (decoded?.contract_version === "evidence_anchor_v2") {
+    try {
+      const config = resolveIotaEvidenceRuntimeConfig(process.env);
+      if (!config.contractAddress) throw new Error("iota_v2_contract_missing");
+      const tenantIdHash = normalizeSha256Digest(input.tenantIdHash);
+      const merkleRoot = normalizeIotaSha256(input.merkleRoot);
+      const memoHash = normalizeIotaSha256(input.memoHash);
+      if (!tenantIdHash || !merkleRoot || !memoHash || !callMatches) {
+        throw new Error("iota_anchor_call_mismatch");
+      }
+      const prepared = {
+        tenantIdHash,
+        resourceType: String(input.resourceType || ""),
+        publicResourceId: String(input.resourceId || ""),
+        eventHashes: [],
+        eventCount: Number(input.eventCount),
+        merkleRoot,
+        canonicalizationVersion: "public-verification-v1",
+        memo: {},
+        memoHash,
+      } satisfies PreparedIotaEvidence;
+      const target = await withIotaRpcSlot(() => inspectIotaEvidenceTarget(prepared, config));
+      const chainCheck = await withIotaRpcSlot(() => inspectIotaEvidenceTransaction(
+        prepared,
+        target,
+        config,
+        { txHash: input.txHash },
+      ));
+      const contractMatches = Boolean(transaction.to && transaction.to === normalizeAddress(config.contractAddress));
+      const publisherMatches = Boolean(
+        chainCheck.publisherAddress
+        && target.publisherAddress
+        && normalizeAddress(chainCheck.publisherAddress) === normalizeAddress(target.publisherAddress),
+      );
+      const verified = target.alreadyAnchored
+        && chainCheck.state === "confirmed"
+        && contractMatches
+        && publisherMatches;
+
+      return {
+        ...transaction,
+        chain_id: target.chainId,
+        confirmations: chainCheck.confirmations,
+        from: chainCheck.publisherAddress,
+        to: target.contractAddress,
+        verified,
+        reason: verified ? null : chainCheck.errorCode || "iota_anchor_unconfirmed",
+        expected_call_matches: callMatches,
+        memo_hash_matches: memoHashMatches,
+        contract_matches: contractMatches,
+        publisher_matches: publisherMatches,
+        contract_version: decoded.contract_version,
+        proof_id: target.proofId,
+        contract_schema_verified: true,
+        evidence_event_verified: true,
+        evidence_storage_verified: target.alreadyAnchored,
+        decoded_call: decoded,
+      };
+    } catch {
+      return {
+        ...transaction,
+        verified: false,
+        reason: callMatches ? "iota_v2_verification_failed" : "iota_anchor_call_mismatch",
+        expected_call_matches: callMatches,
+        memo_hash_matches: memoHashMatches,
+        contract_matches: false,
+        publisher_matches: false,
+        contract_version: decoded.contract_version,
+        proof_id: null,
+        contract_schema_verified: false,
+        evidence_event_verified: false,
+        evidence_storage_verified: false,
+        decoded_call: decoded,
+      };
+    }
+  }
+
+  const configuredContract = normalizeAddress(process.env.IOTA_EVM_ANCHOR_CONTRACT);
+  const configuredPublisher = normalizeAddress(publicProofIotaPublisherAddress());
   const contractMatches = Boolean(configuredContract && transaction.to === configuredContract);
   const publisherMatches = Boolean(configuredPublisher && transaction.from === configuredPublisher);
-  const verified = transaction.verified && callMatches && contractMatches && publisherMatches;
-  const proofId = proofIdFromDecodedCall({
-    chainId: transaction.chain_id,
-    contractAddress: transaction.to,
-    decoded,
-  });
+  const minimumConfirmations = Math.min(Math.max(Number(process.env.IOTA_EVM_MIN_CONFIRMATIONS) || 1, 1), 100);
+  const confirmationsMatch = Number(transaction.confirmations || 0) >= minimumConfirmations;
+  const verified = transaction.verified && callMatches && contractMatches && publisherMatches && confirmationsMatch;
+  const proofId = proofIdFromDecodedCall({ chainId: transaction.chain_id, contractAddress: transaction.to, decoded });
 
   return {
     ...transaction,
@@ -363,6 +480,7 @@ export async function verifyIotaAnchorPublication(input: {
     memo_hash_matches: memoHashMatches,
     contract_matches: contractMatches,
     publisher_matches: publisherMatches,
+    confirmations_match: confirmationsMatch,
     contract_version: decoded?.contract_version || null,
     proof_id: proofId,
     decoded_call: decoded,

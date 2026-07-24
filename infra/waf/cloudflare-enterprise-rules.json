@@ -1,0 +1,34 @@
+{
+  "provider": "cloudflare",
+  "version": 1,
+  "scope": "api-staging-and-production",
+  "bodyLimitBytes": 131072,
+  "rules": [
+    {
+      "name": "block-oversized-json",
+      "kind": "custom_rule",
+      "expression": "http.request.method in {\"POST\" \"PUT\" \"PATCH\"} and (starts_with(http.request.uri.path, \"/auth/\") or starts_with(http.request.uri.path, \"/admin/\") or starts_with(http.request.uri.path, \"/api/v1/\") or starts_with(http.request.uri.path, \"/public/proof\")) and http.request.body.size gt 131072",
+      "action": "block",
+      "status": 413
+    },
+    {
+      "name": "protect-proof-writes",
+      "kind": "rate_limit",
+      "expression": "http.request.method in {\"POST\" \"PUT\" \"PATCH\"} and http.request.uri.path contains \"proof\"",
+      "threshold": 60,
+      "periodSeconds": 60,
+      "characteristics": ["ip.src", "cf.colo.id"],
+      "action": "block"
+    },
+    {
+      "name": "protect-auth",
+      "kind": "rate_limit",
+      "expression": "http.request.method eq \"POST\" and http.request.uri.path in {\"/auth/login\" \"/auth/forgot-password\" \"/auth/reset-password\" \"/auth/register\" \"/consumer/auth/start\" \"/consumer/auth/verify\"}",
+      "threshold": 20,
+      "periodSeconds": 60,
+      "characteristics": ["ip.src", "cf.colo.id"],
+      "action": "block"
+    }
+  ],
+  "warning": "Application authorization and distributed tenant/subject limits remain authoritative. Never use browser challenges on SDK, API, or webhook machine traffic. Validate the exact Cloudflare Rulesets API schema before paid-plan deployment."
+}

@@ -253,6 +253,7 @@ async function markConfirmed(input: {
   blockHash: string | null;
   confirmations: number;
   anchoredAt: number | null;
+  clearTransaction?: boolean;
 }) {
   if (input.attemptId) {
     await sql/*sql*/`
@@ -274,6 +275,8 @@ async function markConfirmed(input: {
     UPDATE evidence_anchors
     SET status = 'confirmed',
         publisher_address = COALESCE(${input.publisherAddress}, publisher_address),
+        tx_hash = CASE WHEN ${Boolean(input.clearTransaction)} THEN NULL ELSE tx_hash END,
+        explorer_url = CASE WHEN ${Boolean(input.clearTransaction)} THEN NULL ELSE explorer_url END,
         block_number = COALESCE(${input.blockNumber}, block_number),
         block_hash = COALESCE(${input.blockHash}, block_hash),
         confirmations = GREATEST(confirmations, ${input.confirmations}),
@@ -371,7 +374,11 @@ async function latestAttempt(anchorId: string, txHash?: string | null) {
   return rows[0] as { id: string; attempt_no: number } | undefined;
 }
 
-async function verifyKnownTransaction(anchor: AnchorRow, prepared: PreparedIotaEvidence, target: Awaited<ReturnType<typeof inspectIotaEvidenceTarget>>) {
+async function verifyKnownTransaction(
+  anchor: AnchorRow,
+  prepared: PreparedIotaEvidence,
+  target: Awaited<ReturnType<typeof inspectIotaEvidenceTarget>>,
+) {
   if (!anchor.tx_hash) return null;
   const config = resolveIotaEvidenceRuntimeConfig();
   const check = await inspectIotaEvidenceTransaction(prepared, target, config, {
@@ -382,7 +389,24 @@ async function verifyKnownTransaction(anchor: AnchorRow, prepared: PreparedIotaE
   if (check.state === "confirmed") {
     await markConfirmed({ anchorId: anchor.id, attemptId: attempt?.id, ...check });
   } else if (check.state === "failed") {
-    await markFailed({ anchorId: anchor.id, attemptId: attempt?.id, errorCode: check.errorCode || "iota_receipt_reverted" });
+    if (target.alreadyAnchored) {
+      // A broadcast can revert after another attempt has already committed the
+      // same proof on-chain. Keep the failed attempt as evidence, but do not
+      // let its stale tx_hash hide the independently observed anchor.
+      await markFailed({ anchorId: anchor.id, attemptId: attempt?.id, errorCode: check.errorCode || "iota_receipt_reverted" });
+      await markConfirmed({
+        anchorId: anchor.id,
+        attemptId: null,
+        publisherAddress: target.publisherAddress,
+        blockNumber: null,
+        blockHash: null,
+        confirmations: config.minConfirmations,
+        anchoredAt: target.anchoredAt,
+        clearTransaction: true,
+      });
+    } else {
+      await markFailed({ anchorId: anchor.id, attemptId: attempt?.id, errorCode: check.errorCode || "iota_receipt_reverted" });
+    }
   } else {
     await markWaiting({
       anchorId: anchor.id,

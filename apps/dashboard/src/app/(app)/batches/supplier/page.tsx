@@ -34,7 +34,7 @@ export default async function SupplierBatchPage() {
               </p>
             </div>
             <span className="rounded-full border border-emerald-300/25 bg-emerald-500/10 px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-emerald-100">
-              Enterprise-ready
+              Pilot controls · staging pending
             </span>
           </div>
           <div className="mt-5 grid gap-3 md:grid-cols-3">

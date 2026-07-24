@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 import { json } from "../../../../lib/http";
 import { sql } from "../../../../lib/db";
 import { ensureSupplierOpsSchema } from "../../../../lib/supplier-ops-schema";
+import { verifyHashInMerkleAnchor } from "../../../../lib/proof-layer";
 import { findPublicProofDemoCaseByAnchorId } from "../../../../lib/public-proof-demos";
 import {
   iotaAnchorTenantHash,
@@ -18,7 +19,7 @@ import {
 
 function publicNetworkProof(value: Record<string, unknown> | null) {
   if (!value) return null;
-  const { input_hex: _inputHex, ...proof } = value;
+  const { input_hex: _inputHex, decoded_call: _decodedCall, decoded_memo: _decodedMemo, ...proof } = value;
   return proof;
 }
 
@@ -114,8 +115,16 @@ export async function GET(_req: Request, { params }: { params: Promise<{ anchorI
     const anchor = rows[0];
     if (!anchor) return json({ ok: false, reason: "anchor_not_found" }, 404);
 
+    const persistedHashes = Array.isArray(anchor.event_hashes_json) ? anchor.event_hashes_json : [];
+    const membership = verifyHashInMerkleAnchor({
+      eventHash: persistedHashes[0],
+      eventHashes: persistedHashes,
+      eventCount: anchor.event_count,
+      merkleRoot: anchor.merkle_root,
+    });
+
     let networkVerification: Record<string, unknown> | null = null;
-    if (anchor.provider === "iota" && anchor.tx_hash) {
+    if (membership.valid && anchor.provider === "iota" && anchor.tx_hash) {
       try {
         const verification = await verifyIotaAnchorPublication({
           txHash: anchor.tx_hash,
@@ -125,23 +134,44 @@ export async function GET(_req: Request, { params }: { params: Promise<{ anchorI
           resourceId: anchor.public_resource_id || anchor.resource_id,
           eventCount: Number(anchor.event_count),
           memoHash: anchor.memo_hash || undefined,
-          contractAddress: anchor.contract_address || undefined,
-          publisherAddress: anchor.publisher_address || undefined,
         });
-        const proofIdMatches = !anchor.proof_id
-          || String(verification.proof_id || "").toLowerCase() === String(anchor.proof_id).toLowerCase();
-        const chainMatches = !anchor.chain_id || Number(verification.chain_id) === Number(anchor.chain_id);
+        const isV2 = verification.contract_version === "evidence_anchor_v2";
+        const proofIdMatches = isV2
+          ? Boolean(anchor.proof_id) && String(verification.proof_id || "").toLowerCase() === String(anchor.proof_id).toLowerCase()
+          : !anchor.proof_id;
+        const chainMatches = isV2
+          ? Number.isSafeInteger(Number(anchor.chain_id)) && Number(verification.chain_id) === Number(anchor.chain_id)
+          : !anchor.chain_id || Number(verification.chain_id) === Number(anchor.chain_id);
+        const persistedContractMatches = !isV2 || (
+          Boolean(anchor.contract_address)
+          && String(verification.to || "").toLowerCase() === String(anchor.contract_address).toLowerCase()
+        );
+        const persistedPublisherMatches = !isV2 || (
+          Boolean(anchor.publisher_address)
+          && String(verification.from || "").toLowerCase() === String(anchor.publisher_address).toLowerCase()
+        );
+        const contractVersionMatches = !isV2 || anchor.contract_version === "evidence_anchor_v2";
         networkVerification = publicNetworkProof({
           ...verification,
-          verified: Boolean(verification.verified && proofIdMatches && chainMatches),
+          verified: Boolean(
+            verification.verified
+            && proofIdMatches
+            && chainMatches
+            && persistedContractMatches
+            && persistedPublisherMatches
+            && contractVersionMatches
+          ),
           proof_id_matches: proofIdMatches,
           persisted_chain_matches: chainMatches,
+          persisted_contract_matches: persistedContractMatches,
+          persisted_publisher_matches: persistedPublisherMatches,
+          persisted_contract_version_matches: contractVersionMatches,
         });
       } catch {
         networkVerification = { verified: false, reason: "iota_rpc_verification_unavailable" };
       }
     }
-    const networkVerified = networkVerification?.verified === true;
+    const networkVerified = membership.valid && networkVerification?.verified === true;
 
     return json({
       ok: true,
@@ -154,6 +184,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ anchorI
         merkle_root: anchor.merkle_root,
         event_count: anchor.event_count,
         event_hashes: anchor.event_hashes_json || [],
+        membership_integrity: membership.valid,
         tx_hash: anchor.tx_hash || null,
         explorer_url: anchor.explorer_url || null,
         status: anchor.status,

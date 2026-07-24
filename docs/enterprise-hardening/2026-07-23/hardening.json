@@ -5,8 +5,8 @@
   "sourceEvidence": {
     "kind": "document_collection",
     "label": "nexID base revision, active sprint source, migrations, and focused security regressions",
-    "collectionSha256": "fad4be805ffecf11cb3bdd2fd7ed3e7185c98a5d0614a26dea80134f8949696b",
-    "artifactCount": 18,
+    "collectionSha256": "7eff422ec1998f593946ce3f205b2d6947a3135b5eeede2e453105c4f3cd40b3",
+    "artifactCount": 20,
     "sourceDrift": "present",
     "targetRevision": "ec7e7e79f0ffd4872f1e2e8ecda110bc34e8efd0"
   },

@@ -43,8 +43,8 @@
     "test:proof": "node --import tsx --test tests/iota-evm-proof.test.mjs tests/iota-evidence-writer.test.mjs tests/iota-anchor-v2-runtime.test.mjs tests/admin-proof-tenant-isolation.test.mjs tests/supplier-ops-proof-layer.test.mjs",
     "test:polygon-transfer": "node --import tsx --test tests/polygon-transfer-integrity.test.mjs tests/tokenization-runtime-truth.test.mjs tests/admin-tokenization-tenant-isolation.test.mjs",
     "test:wallet-control": "node --import tsx --test tests/wallet-control.test.mjs tests/public-certificate-contract.test.mjs",
-    "test:webhooks": "node --import tsx --test tests/webhook-security.test.mjs tests/webhook-outbox-contract.test.mjs",
-    "test:auth-security": "node --import tsx --test tests/login-abuse-guard.test.mjs tests/admin-user-management-security.test.mjs",
+    "test:webhooks": "node --import tsx --test tests/webhook-security.test.mjs tests/webhook-signature.test.mjs tests/webhook-outbox-contract.test.mjs",
+    "test:auth-security": "node --import tsx --test tests/login-abuse-guard.test.mjs tests/admin-user-management-security.test.mjs tests/production-security-boundaries.test.mjs",
     "demo:smoke": "node scripts/demo-smoke.mjs",
     "bootstrap:saas": "node scripts/bootstrap-saas.mjs"
   },

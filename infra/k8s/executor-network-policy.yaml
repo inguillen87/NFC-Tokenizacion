@@ -1,0 +1,42 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: nexid-iota-executor
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: nexid-iota-executor
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: nexid-api
+      ports:
+        - protocol: TCP
+          port: 3010
+  egress:
+    # Replace this in the environment overlay when PostgreSQL is managed
+    # outside the cluster (for example Neon). Never broaden to 0.0.0.0/0;
+    # use the provider's fixed egress CIDRs or a cloud firewall identity.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: nexid-platform
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: nexid-kms
+      ports:
+        - protocol: TCP
+          port: 443
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # RPC egress must be restricted further by the cloud CNI/FQDN policy;
+    # Kubernetes NetworkPolicy cannot safely express public FQDN allowlists.

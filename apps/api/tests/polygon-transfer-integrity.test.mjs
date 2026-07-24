@@ -11,6 +11,8 @@ test("Polygon transfers fail closed and verify the resulting owner", async () =>
   assert.match(source, /polygon_tokenization_record_not_found/);
   assert.match(source, /polygon_token_id_missing/);
   assert.match(source, /polygon_transfer_signer_unavailable/);
+  assert.match(source, /polygon_exportable_signer_forbidden_in_production_use_executor/);
+  assert.match(source, /isProductionRuntime\(\)/);
   assert.match(source, /polygon_signer_not_authorized/);
   assert.match(source, /receipt\.status !== 1/);
   assert.match(source, /polygon_transfer_event_mismatch/);

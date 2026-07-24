@@ -47,11 +47,14 @@ POLYGON_CONTRACT_ADDRESS=...
 POLYGON_DEFAULT_RECIPIENT=...
 ```
 
-The API sends `chip_uid_hash`, `token_uri` and `asset_ref`. The executor does not need `K_META`, `K_FILE`, `KMS_MASTER_KEY_HEX`, or the raw UID for normal operation.
+The API sends `chip_uid_hash`, `token_uri` and `asset_ref`. The executor does not need `K_META`, `K_FILE`, `KMS_MASTER_KEY_HEX`, or the raw UID for normal operation. `KMS_MASTER_KEY_HEX` is the API's batch/NFC encryption key and must never be configured as `IOTA_KMS_KEY_ID`; blockchain signing uses a separate non-exportable secp256k1 key behind the remote signer.
 
 ## Production direction
 
-For the Amoy pilot, `EXECUTOR_SIGNER_MODE=private_key` is enough if the wallet is dedicated and only has testnet gas.
+For the Amoy/IOTA testnet pilot, `EXECUTOR_SIGNER_MODE=private_key` is enough
+if the wallet is dedicated, held only in the executor's secret store, and has
+testnet gas. This is explicitly not HSM/KMS custody and is not allowed for
+production customer assets; see `docs/enterprise-hardening/2026-07-24/cost-and-custody-stages.md`.
 
 For premium production, keep the same HTTP contract but replace the signer internals with provider KMS/HSM:
 

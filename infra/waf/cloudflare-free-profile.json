@@ -1,0 +1,65 @@
+{
+  "provider": "cloudflare",
+  "version": 2,
+  "scope": "nexid-lat-production-edge",
+  "plan": "free",
+  "zone": "nexid.lat",
+  "deployment": {
+    "enforced": true,
+    "verifiedAt": "2026-07-24T00:00:00-03:00",
+    "changeOwner": "nexid-platform"
+  },
+  "edgeSettings": {
+    "dnssec": {
+      "enabled": true,
+      "keyTag": 2371,
+      "algorithm": 13,
+      "digestType": 2
+    },
+    "sslMode": "full_strict",
+    "alwaysUseHttps": true,
+    "minimumTlsVersion": "1.2",
+    "tls13": true,
+    "botFightMode": false,
+    "botFightModeRationale": "The Free-plan control cannot be skipped for machine clients and may challenge SDK or webhook traffic."
+  },
+  "customRules": [
+    {
+      "name": "Nexid - block secret and SCM probes",
+      "expression": "(http.request.uri.path in {\"/.env\" \"/.git\" \"/server-status\" \"/wp-admin\" \"/wp-login.php\" \"/phpinfo.php\"}) or starts_with(http.request.uri.path, \"/.git/\") or starts_with(http.request.uri.path, \"/.env.\") or starts_with(http.request.uri.path, \"/.svn/\") or starts_with(http.request.uri.path, \"/.hg/\")",
+      "action": "block",
+      "status": 403,
+      "enabled": true
+    }
+  ],
+  "rateLimitingRules": [
+    {
+      "name": "Nexid - auth abuse guard",
+      "expression": "(http.request.method eq \"POST\" and http.request.uri.path in {\"/auth/login\" \"/auth/forgot-password\" \"/auth/reset-password\" \"/auth/register\" \"/consumer/auth/start\" \"/consumer/auth/verify\"})",
+      "characteristics": ["ip.src"],
+      "threshold": 10,
+      "periodSeconds": 10,
+      "mitigationTimeoutSeconds": 10,
+      "action": "block",
+      "enabled": true
+    }
+  ],
+  "verification": {
+    "probeStatusCodes": {
+      "https://nexid.lat/.env": 403,
+      "https://app.nexid.lat/.git/config": 403,
+      "https://api.nexid.lat/server-status": 403
+    },
+    "authBurstStatusCodes": [400, 400, 400, 400, 400, 400, 400, 400, 400, 400, 429, 429]
+  },
+  "applicationControls": {
+    "required": true,
+    "policy": "docs/waf-rate-limit-policy.json",
+    "reason": "Cloudflare Free provides only one coarse IP-based rate rule; tenant and subject limits remain authoritative in the application and distributed store."
+  },
+  "limitations": [
+    "The Free plan exposes five custom rules and one rate limiting rule for this zone.",
+    "Managed Challenge is not used on API, SDK, or webhook routes.",
+    "This profile does not prove that the Vercel origin cannot be reached directly; origin authentication remains a separate promotion gate."
+  ]
+}

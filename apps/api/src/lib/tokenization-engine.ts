@@ -27,6 +27,16 @@ export function resolveTokenizationRuntimeMode(value = process.env.TOKENIZATION_
   return "disabled";
 }
 
+function isProductionRuntime() {
+  return String(process.env.VERCEL_ENV || process.env.NODE_ENV || "").trim().toLowerCase() === "production";
+}
+
+function assertExportablePolygonSignerAllowed() {
+  if (isProductionRuntime()) {
+    throw new Error("polygon_exportable_signer_forbidden_in_production_use_executor");
+  }
+}
+
 function buildSimulationRef(requestId: string, uid: string) {
   return `simulation:${createHash("sha256").update(`${requestId}:${uid}`).digest("hex").slice(0, 32)}`;
 }
@@ -69,6 +79,7 @@ function normalizePrivateKey(raw: string) {
 async function runDirectPolygonMint(payload: Record<string, unknown>) {
   const enabled = String(process.env.TOKENIZATION_USE_LOCAL_MINTER || "false").toLowerCase() === "true";
   if (!enabled) return null;
+  assertExportablePolygonSignerAllowed();
 
   const rpcUrl = String(process.env.POLYGON_RPC_URL || "").trim();
   const privateKey = normalizePrivateKey(String(process.env.POLYGON_MINTER_PRIVATE_KEY || ""));
@@ -140,6 +151,7 @@ async function runDirectPolygonMint(payload: Record<string, unknown>) {
 async function runLocalPolygonScript(payload: Record<string, unknown>) {
   const enabled = String(process.env.TOKENIZATION_USE_LOCAL_MINTER || "false").toLowerCase() === "true";
   if (!enabled) return null;
+  assertExportablePolygonSignerAllowed();
   const chipUidHash = String(payload.chip_uid_hash || "").trim();
   const uid = String(payload.uid_hex || "").trim();
   if (!chipUidHash && !uid) return null;
@@ -338,6 +350,9 @@ export async function anchorTokenizationRequest(input: AnchorInput) {
     }
 
     const wantsLocalMinter = String(process.env.TOKENIZATION_USE_LOCAL_MINTER || "false").toLowerCase() === "true";
+    if (wantsLocalMinter && isProductionRuntime()) {
+      throw new Error("polygon_exportable_signer_forbidden_in_production_use_executor");
+    }
     if (wantsLocalMinter && !process.env.POLYGON_RPC_URL) {
       throw new Error("missing_POLYGON_RPC_URL_for_local_minter");
     }
@@ -498,6 +513,17 @@ export async function transferBlockchainToken(input: {
   const privateKey = normalizePrivateKey(String(process.env.POLYGON_MINTER_PRIVATE_KEY || ""));
   const contractAddress = String(process.env.POLYGON_CONTRACT_ADDRESS || "").trim();
   const managedRecipient = String(process.env.POLYGON_DEFAULT_RECIPIENT || "").trim();
+
+  if (isProductionRuntime()) {
+    return {
+      ok: false,
+      simulated: false,
+      state: "failed" as const,
+      tx_hash: null,
+      token_id: String(tokenId),
+      reason: "polygon_exportable_signer_forbidden_in_production_use_executor",
+    };
+  }
 
   if (!rpcUrl || !privateKey || !contractAddress) {
     return {

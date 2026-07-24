@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "scope": "fleet",
+  "enforcement": "edge-gateway-and-distributed-store",
+  "trustedHeaders": ["CF-Connecting-IP", "X-Request-ID"],
+  "neverTrustFromClient": ["X-Forwarded-For", "X-Real-IP", "X-Tenant-ID"],
+  "bodyLimitBytes": 131072,
+  "classes": {
+    "auth": { "limit": 20, "windowSeconds": 60, "keyDimensions": ["tenant", "subject", "ip"] },
+    "proof_write": { "limit": 60, "windowSeconds": 60, "keyDimensions": ["tenant", "subject", "ip"] },
+    "webhook": { "limit": 120, "windowSeconds": 60, "keyDimensions": ["tenant", "subject", "ip"] },
+    "public": { "limit": 120, "windowSeconds": 60, "keyDimensions": ["tenant", "subject", "ip"] }
+  },
+  "responses": { "status": 429, "retryAfter": true, "noStore": true, "requestId": true },
+  "promotionGate": "Do not call the platform globally enterprise-ready until the edge rules and distributed counters are observed in staging across two instances."
+}

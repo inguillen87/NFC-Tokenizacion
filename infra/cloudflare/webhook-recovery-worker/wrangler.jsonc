@@ -1,0 +1,9 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "nexid-webhook-recovery",
+  "main": "src/index.js",
+  "compatibility_date": "2026-07-24",
+  "workers_dev": false,
+  "triggers": { "crons": ["* * * * *"] },
+  "vars": { "NEXID_API_ORIGIN": "https://api.nexid.lat" }
+}

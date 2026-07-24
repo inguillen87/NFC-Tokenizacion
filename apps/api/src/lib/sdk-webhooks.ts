@@ -1,8 +1,12 @@
-import { createHash, createHmac, randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 import { ensureSdkSchema } from "./commercial-runtime-schema";
 import { sql } from "./db";
 import { deliverWebhookRequest, safeWebhookError } from "./webhook-egress";
+import {
+  createWebhookSignatureHeaders,
+  webhookSigningSecretIssue,
+} from "./webhook-signing";
 
 const RETRY_DELAYS_SECONDS = [60, 300, 1_800, 7_200, 21_600, 86_400, 172_800];
 
@@ -12,6 +16,7 @@ type ClaimedWebhookDelivery = {
   endpoint_url: string;
   endpoint_enabled: boolean;
   signing_secret: string | null;
+  event_id: string;
   event_name: string;
   payload: Record<string, unknown> | string;
   attempt_count: number;
@@ -33,10 +38,6 @@ function parseEvents(value: unknown): string[] {
 
 function endpointMatches(events: string[], eventName: string) {
   return events.includes("*") || events.includes(eventName);
-}
-
-function signature(secret: string, payload: string) {
-  return createHmac("sha256", secret).update(payload, "utf8").digest("hex");
 }
 
 function maxAttempts() {
@@ -171,6 +172,7 @@ export async function claimWebhookDeliveries(limit = 10) {
       wd.endpoint_url,
       we.enabled AS endpoint_enabled,
       we.signing_secret,
+      wd.event_id,
       wd.event_name,
       wd.payload,
       wd.attempt_count,
@@ -202,7 +204,17 @@ export async function processClaimedWebhookDelivery(row: ClaimedWebhookDelivery)
     const payload = deliveryPayload(row.payload);
     const body = JSON.stringify(payload);
     const secret = String(row.signing_secret || "");
-    try {
+    const secretIssue = webhookSigningSecretIssue(secret, { required: true });
+    if (secretIssue) {
+      errorInfo = { code: secretIssue, retryable: false, statusCode: null };
+    } else try {
+      const signatureHeaders = createWebhookSignatureHeaders({
+        secret,
+        keyId: String(row.endpoint_id),
+        deliveryId: id,
+        eventId: String(row.event_id || ""),
+        rawBody: body,
+      });
       const response = await deliverWebhookRequest({
         url: String(row.endpoint_url),
         body,
@@ -211,7 +223,7 @@ export async function processClaimedWebhookDelivery(row: ClaimedWebhookDelivery)
           "user-agent": "nexID-webhooks/2.0",
           "x-nexid-event": String(row.event_name),
           "x-nexid-delivery": id,
-          ...(secret ? { "x-nexid-signature": `sha256=${signature(secret, body)}` } : {}),
+          ...signatureHeaders,
         },
       });
       const updated = await sql/*sql*/`
@@ -231,7 +243,9 @@ export async function processClaimedWebhookDelivery(row: ClaimedWebhookDelivery)
       `;
       return { id, ok: Boolean(updated[0]), status: updated[0] ? "delivered" : "lease_lost", attemptCount };
     } catch (error) {
-      errorInfo = safeWebhookError(error);
+      errorInfo = error instanceof Error && error.name === "WebhookSigningError"
+        ? { code: "invalid_webhook_signature_input", retryable: false, statusCode: null }
+        : safeWebhookError(error);
     }
   }
 

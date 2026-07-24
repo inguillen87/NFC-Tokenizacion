@@ -1,3 +1,120 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
+
+export const NEXID_WEBHOOK_SIGNATURE_VERSION = "v1" as const;
+export const NEXID_WEBHOOK_SIGNATURE_HEADERS = {
+  version: "x-nexid-signature-version",
+  timestamp: "x-nexid-timestamp",
+  keyId: "x-nexid-key-id",
+  deliveryId: "x-nexid-delivery-id",
+  eventId: "x-nexid-event-id",
+  signature: "x-nexid-signature",
+} as const;
+
+export type NexIdWebhookHeaders = Headers | Record<string, string | string[] | undefined>;
+export type NexIdWebhookVerificationResult =
+  | {
+      ok: true;
+      version: typeof NEXID_WEBHOOK_SIGNATURE_VERSION;
+      timestamp: number;
+      keyId: string;
+      deliveryId: string;
+      eventId: string;
+    }
+  | {
+      ok: false;
+      reason:
+        | "invalid_secret"
+        | "missing_header"
+        | "unsupported_version"
+        | "invalid_timestamp"
+        | "timestamp_out_of_tolerance"
+        | "invalid_signature_format"
+        | "signature_mismatch";
+    };
+
+function webhookHeader(headers: NexIdWebhookHeaders, name: string) {
+  if (typeof (headers as Headers).get === "function") {
+    return (headers as Headers).get(name)?.trim() || "";
+  }
+  const record = headers as Record<string, string | string[] | undefined>;
+  const entry = Object.entries(record).find(([key]) => key.toLowerCase() === name);
+  const value = entry?.[1];
+  return (Array.isArray(value) ? value[0] : value || "").trim();
+}
+
+/**
+ * Verifies a nexID webhook against the exact, unparsed HTTP request body.
+ * Parse JSON only after this function returns `{ ok: true }`.
+ */
+export function verifyNexIdWebhookSignature(input: {
+  secret: string;
+  rawBody: string | Uint8Array;
+  headers: NexIdWebhookHeaders;
+  toleranceSeconds?: number;
+  now?: number | Date;
+}): NexIdWebhookVerificationResult {
+  if (Buffer.byteLength(String(input.secret || ""), "utf8") < 32) {
+    return { ok: false, reason: "invalid_secret" };
+  }
+
+  const version = webhookHeader(input.headers, NEXID_WEBHOOK_SIGNATURE_HEADERS.version);
+  const timestampHeader = webhookHeader(input.headers, NEXID_WEBHOOK_SIGNATURE_HEADERS.timestamp);
+  const keyId = webhookHeader(input.headers, NEXID_WEBHOOK_SIGNATURE_HEADERS.keyId);
+  const deliveryId = webhookHeader(input.headers, NEXID_WEBHOOK_SIGNATURE_HEADERS.deliveryId);
+  const eventId = webhookHeader(input.headers, NEXID_WEBHOOK_SIGNATURE_HEADERS.eventId);
+  const signatureHeader = webhookHeader(input.headers, NEXID_WEBHOOK_SIGNATURE_HEADERS.signature);
+  if (!version || !timestampHeader || !keyId || !deliveryId || !eventId || !signatureHeader) {
+    return { ok: false, reason: "missing_header" };
+  }
+  if (version !== NEXID_WEBHOOK_SIGNATURE_VERSION) {
+    return { ok: false, reason: "unsupported_version" };
+  }
+  if (!/^\d{1,12}$/.test(timestampHeader)) {
+    return { ok: false, reason: "invalid_timestamp" };
+  }
+  const timestamp = Number(timestampHeader);
+  if (!Number.isSafeInteger(timestamp) || timestamp <= 0) {
+    return { ok: false, reason: "invalid_timestamp" };
+  }
+  const requestedTolerance = Number(input.toleranceSeconds ?? 300);
+  const toleranceSeconds = Number.isFinite(requestedTolerance)
+    ? Math.min(Math.max(Math.floor(requestedTolerance), 0), 86_400)
+    : 300;
+  const nowValue = input.now instanceof Date ? input.now.getTime() / 1_000 : input.now ?? Date.now() / 1_000;
+  const nowSeconds = Math.floor(nowValue);
+  if (!Number.isFinite(nowSeconds) || Math.abs(nowSeconds - timestamp) > toleranceSeconds) {
+    return { ok: false, reason: "timestamp_out_of_tolerance" };
+  }
+  const match = /^v1=([a-f0-9]{64})$/.exec(signatureHeader);
+  if (!match) return { ok: false, reason: "invalid_signature_format" };
+
+  const rawBodyBytes = typeof input.rawBody === "string"
+    ? Buffer.byteLength(input.rawBody, "utf8")
+    : input.rawBody.byteLength;
+  const prefix = [
+    NEXID_WEBHOOK_SIGNATURE_VERSION,
+    timestampHeader,
+    Buffer.byteLength(deliveryId, "utf8"),
+    deliveryId,
+    Buffer.byteLength(eventId, "utf8"),
+    eventId,
+    rawBodyBytes,
+    "",
+  ].join(".");
+  const expected = createHmac("sha256", input.secret)
+    .update(prefix, "utf8")
+    .update(input.rawBody)
+    .digest();
+  const received = Buffer.from(match[1], "hex");
+  if (received.length !== expected.length || !timingSafeEqual(received, expected)) {
+    return { ok: false, reason: "signature_mismatch" };
+  }
+  return { ok: true, version: NEXID_WEBHOOK_SIGNATURE_VERSION, timestamp, keyId, deliveryId, eventId };
+}
+
+/** Short alias for frameworks that expose a generic webhook verification hook. */
+export const verifyWebhookSignature = verifyNexIdWebhookSignature;
+
 export type NexIdEnvironment = "production" | "private";
 
 export interface NexIdConfig {

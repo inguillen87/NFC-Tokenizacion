@@ -6,16 +6,11 @@ import { sql } from "../../../../lib/db";
 import { ensureTenantMembership } from "../../../../lib/consumer-portal-service";
 import { ensureConsumerAuthSchema } from "../../../../lib/commercial-runtime-schema";
 import { parseConsumerContact } from "../../../../lib/consumer-contact";
+import { canUseConsumerDemoBypass } from "../../../../lib/consumer-demo-policy";
 import { randomBytes, createHash } from "node:crypto";
 
 function sha(value: string) {
   return createHash("sha256").update(value).digest("hex");
-}
-
-function canUseDemoBypass() {
-  const flag = String(process.env.DEMO_MODE || process.env.CONSUMER_AUTH_MODE || "").toLowerCase();
-  const vercelEnv = String(process.env.VERCEL_ENV || "").toLowerCase();
-  return ["1", "true", "yes", "demo"].includes(flag) && process.env.NODE_ENV !== "production" && vercelEnv !== "production";
 }
 
 export async function POST(req: Request) {
@@ -46,10 +41,9 @@ export async function POST(req: Request) {
 
   const normalized = contact.toLowerCase();
   const demoBypassAllowed =
-    canUseDemoBypass() &&
+    canUseConsumerDemoBypass(body) &&
     (normalized === "demo.consumer@nexid.local" || normalized.endsWith(".consumer@nexid.local")) &&
-    code === "000000" &&
-    (body.demoConsumer === true || String(body.consumerMode || "").toLowerCase() === "demo");
+    code === "000000";
 
   if (demoBypassAllowed) {
     await ensureConsumerAuthSchema();

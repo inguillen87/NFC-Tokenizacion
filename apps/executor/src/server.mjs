@@ -3,6 +3,8 @@ import http from "node:http";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { Contract, JsonRpcProvider, Wallet, formatEther, getAddress, isAddress } from "ethers";
+import { markIotaSubmitted, reserveIotaPublish } from "./iota-idempotency.mjs";
+import { kmsConfigured, signWithKms } from "./kms-signer.mjs";
 
 const polygonAbi = [
   "function mintWithChipHash(address to, string chipUidHash, string tokenUri, string assetRef) external returns (uint256)",
@@ -92,17 +94,21 @@ async function health() {
   const contractAddress = env("POLYGON_CONTRACT_ADDRESS");
   const defaultRecipient = env("POLYGON_DEFAULT_RECIPIENT");
   const privateKey = env("POLYGON_MINTER_PRIVATE_KEY");
+  const polygonKms = signerMode === "kms" && kmsConfigured({ url: env("POLYGON_KMS_SIGNER_URL") || env("KMS_SIGNER_URL"), keyId: env("POLYGON_KMS_KEY_ID") || env("KMS_KEY_ID") }) && isAddress(env("POLYGON_KMS_PUBLISHER_ADDRESS"));
   const configuredMinterAddress = env("POLYGON_MINTER_ADDRESS");
   const live = env("EXECUTOR_HEALTH_LIVE", "false").toLowerCase() === "true";
   const iotaRpcUrl = env("IOTA_EVM_RPC_URL");
   const iotaContractAddress = env("IOTA_EVM_ANCHOR_CONTRACT_V2");
   const iotaPrivateKey = env("IOTA_EVM_PRIVATE_KEY");
+  const iotaSignerMode = env("IOTA_EXECUTOR_SIGNER_MODE", env("EXECUTOR_SIGNER_MODE", "private_key")).toLowerCase();
   let iotaPublisherAddress = null;
   try {
-    if (iotaPrivateKey) iotaPublisherAddress = new Wallet(iotaPrivateKey).address;
+    if (iotaSignerMode === "kms") iotaPublisherAddress = env("IOTA_KMS_PUBLISHER_ADDRESS") || null;
+    else if (iotaPrivateKey) iotaPublisherAddress = new Wallet(iotaPrivateKey).address;
   } catch {
     iotaPublisherAddress = null;
   }
+  const iotaKmsReady = iotaSignerMode === "kms" && kmsConfigured() && isAddress(iotaPublisherAddress);
 
   let minterAddress = null;
   let minterBalancePol = null;
@@ -110,7 +116,8 @@ async function health() {
   let contractDeployed = null;
 
   try {
-    if (privateKey) minterAddress = new Wallet(privateKey).address;
+  if (privateKey && signerMode !== "kms") minterAddress = new Wallet(privateKey).address;
+  if (signerMode === "kms" && isAddress(env("POLYGON_KMS_PUBLISHER_ADDRESS"))) minterAddress = getAddress(env("POLYGON_KMS_PUBLISHER_ADDRESS"));
   } catch {
     minterAddress = null;
   }
@@ -141,30 +148,45 @@ async function health() {
       matchesConfigured: configuredMinterAddress && minterAddress
         ? configuredMinterAddress.toLowerCase() === minterAddress.toLowerCase()
         : null,
-      configured: Boolean(privateKey),
+      configured: signerMode === "kms" ? polygonKms : Boolean(privateKey),
       balancePol: minterBalancePol,
     },
     defaultRecipient: defaultRecipient || null,
     iotaEvidenceV2: {
+      signerMode: iotaSignerMode,
       rpcConfigured: Boolean(iotaRpcUrl),
       contractAddress: isAddress(iotaContractAddress) ? getAddress(iotaContractAddress) : null,
       publisherAddress: iotaPublisherAddress,
-      signerConfigured: Boolean(iotaPrivateKey && iotaPublisherAddress),
+      signerConfigured: iotaSignerMode === "kms" ? iotaKmsReady : Boolean(iotaPrivateKey && iotaPublisherAddress),
       executorSecretConfigured: Boolean(env("IOTA_PROOF_EXECUTOR_SECRET")),
     },
-    kmsReady: signerMode === "kms",
-    note: signerMode === "kms" ? "KMS adapter must be wired by provider-specific signer." : "Private-key executor is for Amoy pilot only.",
+    kmsReady: iotaKmsReady || polygonKms,
+    note: iotaSignerMode === "kms" ? "Remote KMS/HSM signer configured; private key is not loaded by executor." : "Private-key executor is for Amoy pilot only.",
   };
+}
+
+function readiness() {
+  const signerMode = env("IOTA_EXECUTOR_SIGNER_MODE", env("EXECUTOR_SIGNER_MODE", "private_key")).toLowerCase();
+  const checks = {
+    rpc: Boolean(env("IOTA_EVM_RPC_URL")),
+    contract: isAddress(env("IOTA_EVM_ANCHOR_CONTRACT_V2")),
+    durable_store: Boolean(env("DATABASE_URL") || env("POSTGRES_URL")),
+    signer: signerMode === "kms"
+      ? kmsConfigured() && Boolean(env("IOTA_KMS_PUBLISHER_ADDRESS"))
+      : Boolean(env("IOTA_EVM_PRIVATE_KEY")),
+  };
+  const ok = Object.values(checks).every(Boolean);
+  return { ok, service: "nexid-tokenization-executor", signer_mode: signerMode, checks };
 }
 
 async function mint(body) {
   const signerMode = env("EXECUTOR_SIGNER_MODE", "private_key").toLowerCase();
-  if (signerMode !== "private_key") {
+  if (signerMode !== "private_key" && signerMode !== "kms") {
     throw new Error("executor_signer_mode_not_available_for_mint");
   }
 
   const rpcUrl = required("POLYGON_RPC_URL", env("POLYGON_RPC_URL"));
-  const privateKey = required("POLYGON_MINTER_PRIVATE_KEY", env("POLYGON_MINTER_PRIVATE_KEY"));
+  const privateKey = signerMode === "private_key" ? required("POLYGON_MINTER_PRIVATE_KEY", env("POLYGON_MINTER_PRIVATE_KEY")) : null;
   const contractAddress = required("POLYGON_CONTRACT_ADDRESS", env("POLYGON_CONTRACT_ADDRESS"));
   const uidHex = String(body.uid_hex || "").trim();
   const chipUidHash = String(body.chip_uid_hash || (uidHex ? hashUid(uidHex) : ""));
@@ -178,9 +200,29 @@ async function mint(body) {
   if (!isAddress(recipient)) throw new Error("invalid_recipient");
 
   const provider = new JsonRpcProvider(rpcUrl);
-  const wallet = new Wallet(privateKey, provider);
-  const contract = new Contract(contractAddress, polygonAbi, wallet);
-  const tx = await contract.mintWithChipHash(recipient, chipUidHash, tokenUri, assetRef);
+  const publisherAddress = signerMode === "kms"
+    ? required("POLYGON_KMS_PUBLISHER_ADDRESS", env("POLYGON_KMS_PUBLISHER_ADDRESS"))
+    : new Wallet(privateKey).address;
+  if (!isAddress(publisherAddress)) throw new Error("invalid_POLYGON_KMS_PUBLISHER_ADDRESS");
+  let tx;
+  if (signerMode === "private_key") {
+    tx = await new Contract(contractAddress, polygonAbi, new Wallet(privateKey, provider))
+      .mintWithChipHash(recipient, chipUidHash, tokenUri, assetRef);
+  } else {
+    const readContract = new Contract(contractAddress, polygonAbi, provider);
+    if (!kmsConfigured({ url: env("POLYGON_KMS_SIGNER_URL") || env("KMS_SIGNER_URL"), keyId: env("POLYGON_KMS_KEY_ID") || env("KMS_KEY_ID") })) {
+      throw new Error("polygon_kms_not_configured");
+    }
+    const unsigned = await readContract.mintWithChipHash.populateTransaction(recipient, chipUidHash, tokenUri, assetRef);
+    const nonce = await provider.getTransactionCount(publisherAddress, "pending");
+    const feeData = await provider.getFeeData();
+    const gasLimit = await readContract.mintWithChipHash.estimateGas(recipient, chipUidHash, tokenUri, assetRef, { from: publisherAddress });
+    const dynamic = feeData.maxFeePerGas !== null && feeData.maxPriorityFeePerGas !== null;
+    if (!dynamic && feeData.gasPrice === null) throw new Error("polygon_fee_data_unavailable");
+    const transaction = dynamic ? { type: 2, to: contractAddress, data: unsigned.data, nonce, value: "0", gas_limit: gasLimit.toString(), chain_id: (await provider.getNetwork()).chainId.toString(), max_fee_per_gas: feeData.maxFeePerGas.toString(), max_priority_fee_per_gas: feeData.maxPriorityFeePerGas.toString() } : { type: 0, to: contractAddress, data: unsigned.data, nonce, value: "0", gas_limit: gasLimit.toString(), chain_id: (await provider.getNetwork()).chainId.toString(), gas_price: feeData.gasPrice.toString() };
+    const signed = await signWithKms({ chainId: transaction.chain_id, expectedSignerAddress: publisherAddress, transaction }, { url: env("POLYGON_KMS_SIGNER_URL") || env("KMS_SIGNER_URL"), keyId: env("POLYGON_KMS_KEY_ID") || env("KMS_KEY_ID"), bearer: env("POLYGON_KMS_SIGNER_TOKEN") || env("KMS_SIGNER_TOKEN"), allowedHosts: env("POLYGON_KMS_SIGNER_ALLOWED_HOSTS") || env("KMS_SIGNER_ALLOWED_HOSTS") });
+    tx = await provider.broadcastTransaction(signed.signedTransaction);
+  }
   const receipt = await tx.wait();
 
   return {
@@ -218,10 +260,10 @@ function evidenceRecordMatches(record, input) {
 
 async function anchorIotaEvidenceUnlocked(body) {
   const signerMode = env("IOTA_EXECUTOR_SIGNER_MODE", env("EXECUTOR_SIGNER_MODE", "private_key")).toLowerCase();
-  if (signerMode !== "private_key") throw new Error("executor_signer_mode_not_available_for_iota");
+  if (signerMode !== "private_key" && signerMode !== "kms") throw new Error("executor_signer_mode_not_available_for_iota");
 
   const rpcUrl = required("IOTA_EVM_RPC_URL", env("IOTA_EVM_RPC_URL"));
-  const privateKey = required("IOTA_EVM_PRIVATE_KEY", env("IOTA_EVM_PRIVATE_KEY"));
+  const privateKey = signerMode === "private_key" ? required("IOTA_EVM_PRIVATE_KEY", env("IOTA_EVM_PRIVATE_KEY")) : null;
   const contractAddress = required("IOTA_EVM_ANCHOR_CONTRACT_V2", env("IOTA_EVM_ANCHOR_CONTRACT_V2"));
   const expectedChainId = Number(env("IOTA_EVM_EXPECTED_CHAIN_ID", "1076"));
   if (!Number.isSafeInteger(expectedChainId) || expectedChainId <= 0) throw new Error("iota_expected_chain_id_invalid");
@@ -252,17 +294,18 @@ async function anchorIotaEvidenceUnlocked(body) {
     if (Number(network.chainId) !== expectedChainId) throw new Error("iota_chain_id_mismatch");
     const bytecode = await provider.getCode(contractAddress);
     if (!bytecode || bytecode === "0x") throw new Error("iota_v2_contract_not_deployed");
-    const wallet = new Wallet(privateKey, provider);
-    const contract = new Contract(contractAddress, iotaEvidenceAbi, wallet);
-    if (Number(await contract.SCHEMA_VERSION()) !== 2) throw new Error("iota_contract_schema_version_mismatch");
-    if (!await contract.authorizedPublishers(wallet.address)) throw new Error("iota_publisher_not_authorized");
+    const wallet = privateKey ? new Wallet(privateKey, provider) : null;
+    const readContract = new Contract(contractAddress, iotaEvidenceAbi, provider);
+    const publisherAddress = wallet ? wallet.address : required("IOTA_KMS_PUBLISHER_ADDRESS", env("IOTA_KMS_PUBLISHER_ADDRESS"));
+    if (Number(await readContract.SCHEMA_VERSION()) !== 2) throw new Error("iota_contract_schema_version_mismatch");
+    if (!await readContract.authorizedPublishers(publisherAddress)) throw new Error("iota_publisher_not_authorized");
 
     const argumentsV2 = [merkleRoot, tenantIdHash, resourceType, publicResourceId, eventCount, memoHash];
-    const contractProofId = String(await contract.computeProofId(...argumentsV2)).toLowerCase();
+    const contractProofId = String(await readContract.computeProofId(...argumentsV2)).toLowerCase();
     if (contractProofId !== expectedProofId) throw new Error("iota_executor_proof_id_mismatch");
     const prepared = { merkleRoot, tenantIdHash, memoHash, eventCount };
-    if (await contract.isAnchored(expectedProofId)) {
-      const record = await contract.evidenceRecord(expectedProofId);
+    if (await readContract.isAnchored(expectedProofId)) {
+      const record = await readContract.evidenceRecord(expectedProofId);
       if (!evidenceRecordMatches(record, prepared)) throw new Error("iota_anchor_storage_mismatch");
       return {
         ok: true,
@@ -282,7 +325,44 @@ async function anchorIotaEvidenceUnlocked(body) {
       };
     }
 
-    const tx = await contract.anchorEvidence(...argumentsV2);
+    let tx;
+    if (wallet) {
+      tx = await new Contract(contractAddress, iotaEvidenceAbi, wallet).anchorEvidence(...argumentsV2);
+    } else {
+      const unsigned = await readContract.anchorEvidence.populateTransaction(...argumentsV2);
+      const nonce = await provider.getTransactionCount(publisherAddress, "pending");
+      const feeData = await provider.getFeeData();
+      const gasLimit = await readContract.anchorEvidence.estimateGas(...argumentsV2, { from: publisherAddress });
+      const dynamicFeesAvailable = feeData.maxFeePerGas !== null && feeData.maxPriorityFeePerGas !== null;
+      if (!dynamicFeesAvailable && feeData.gasPrice === null) throw new Error("iota_fee_data_unavailable");
+      const transaction = dynamicFeesAvailable ? {
+        type: 2,
+        to: contractAddress,
+        data: unsigned.data,
+        nonce,
+        value: "0",
+        gas_limit: gasLimit.toString(),
+        chain_id: expectedChainId,
+        max_fee_per_gas: feeData.maxFeePerGas.toString(),
+        max_priority_fee_per_gas: feeData.maxPriorityFeePerGas.toString(),
+      } : {
+        type: 0,
+        to: contractAddress,
+        data: unsigned.data,
+        nonce,
+        value: "0",
+        gas_limit: gasLimit.toString(),
+        chain_id: expectedChainId,
+        gas_price: feeData.gasPrice.toString(),
+      };
+      const signed = await signWithKms({
+        chainId: expectedChainId,
+        expectedSignerAddress: publisherAddress,
+        transaction,
+      });
+      if (!sameAddress(signed.signerAddress, publisherAddress)) throw new Error("kms_signer_address_mismatch");
+      tx = await provider.broadcastTransaction(signed.signedTransaction);
+    }
     return {
       ok: true,
       state: "submitted",
@@ -290,7 +370,7 @@ async function anchorIotaEvidenceUnlocked(body) {
       proof_id: expectedProofId,
       chain_id: expectedChainId,
       contract_address: getAddress(contractAddress),
-      publisher_address: getAddress(wallet.address),
+      publisher_address: getAddress(publisherAddress),
       tx_hash: tx.hash,
       nonce: Number(tx.nonce),
       block_number: null,
@@ -305,10 +385,21 @@ async function anchorIotaEvidenceUnlocked(body) {
 }
 
 async function anchorIotaEvidence(body) {
+  const proofId = String(body.proof_id || "").trim().toLowerCase();
+  if (!/^0x[0-9a-f]{64}$/.test(proofId)) throw new Error("proof_id_invalid");
+  const reservation = await reserveIotaPublish({
+    proofId,
+    requestId: body.request_id || null,
+    payload: { ...body, request_id: undefined },
+  });
+  if (reservation.replay) return reservation.response;
+  if (reservation.busy) throw new Error("iota_publish_in_progress");
   const operation = () => anchorIotaEvidenceUnlocked(body);
   const pending = iotaPublishQueue.then(operation, operation);
   iotaPublishQueue = pending.then(() => undefined, () => undefined);
-  return pending;
+  const result = await pending;
+  if (reservation.durable && result.state === "submitted") await markIotaSubmitted(proofId, result);
+  return result;
 }
 
 function safeErrorReason(error) {
@@ -319,6 +410,10 @@ function safeErrorReason(error) {
 async function handler(req, res) {
   const url = new URL(req.url || "/", "http://localhost");
   try {
+    if (req.method === "GET" && url.pathname === "/ready") {
+      const result = readiness();
+      return json(res, result.ok ? 200 : 503, result);
+    }
     if (req.method === "GET" && ["/", "/health"].includes(url.pathname)) {
       return json(res, 200, await health());
     }

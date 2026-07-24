@@ -23,6 +23,7 @@ const {
   hashEvidencePayload,
   isSha256Hash,
   verifyHashInAnchor,
+  verifyHashInMerkleAnchor,
 } = await import("../src/lib/proof-layer.ts");
 const { parseTagManifest } = await import("../src/lib/tag-manifest.ts");
 
@@ -308,4 +309,41 @@ test("proof layer builds a verifiable Merkle root without exposing raw events", 
   assert.equal(findForbiddenProofPayloadKey({ uid_hex: "04AABBCCDD1090" }), "uid_hex");
   assert.equal(findForbiddenProofPayloadKey({ nested: { K_META_BATCH: "A".repeat(32) } }), "K_META_BATCH");
   assert.equal(findForbiddenProofPayloadKey({ bid: "SYN-AR-2026-001-A", content_hash: eventA }), null);
+});
+
+test("public membership rejects an injected or incomplete persisted member list", () => {
+  const eventA = `sha256:${"11".repeat(32)}`;
+  const eventB = `sha256:${"22".repeat(32)}`;
+  const injected = `sha256:${"33".repeat(32)}`;
+  const merkleRoot = buildMerkleRoot([eventA, eventB]);
+
+  assert.deepEqual(verifyHashInMerkleAnchor({
+    eventHash: eventA,
+    eventHashes: [eventA, eventB],
+    eventCount: 2,
+    merkleRoot,
+  }), {
+    valid: true,
+    included: true,
+    reason: null,
+    calculatedMerkleRoot: merkleRoot,
+  });
+  assert.equal(verifyHashInMerkleAnchor({
+    eventHash: injected,
+    eventHashes: [eventA, eventB, injected],
+    eventCount: 3,
+    merkleRoot,
+  }).reason, "anchor_merkle_root_mismatch");
+  assert.equal(verifyHashInMerkleAnchor({
+    eventHash: eventA,
+    eventHashes: [eventA, eventB],
+    eventCount: 99,
+    merkleRoot,
+  }).reason, "anchor_event_count_mismatch");
+  assert.equal(verifyHashInMerkleAnchor({
+    eventHash: eventA,
+    eventHashes: [eventA, eventB.toUpperCase()],
+    eventCount: 2,
+    merkleRoot,
+  }).reason, "anchor_member_hash_invalid");
 });

@@ -32,7 +32,15 @@
     "executor:check": "npm run check --workspace=executor",
     "qa:static": "node scripts/qa-static.mjs",
     "pilot:check": "node scripts/pilot-check.mjs",
-    "pilot:check:full": "node scripts/pilot-check.mjs --full"
+    "pilot:check:full": "node scripts/pilot-check.mjs --full",
+    "gate:postgres:staging": "node scripts/staging-postgres-smoke.mjs",
+    "gate:migrations:preflight": "node scripts/staging-migration-preflight.mjs",
+    "gate:migrations:dry-run": "node scripts/staging-migration-dry-run.mjs",
+    "check:migrations:safety": "node scripts/check-migration-safety.mjs",
+    "apply:staging:v2": "node scripts/apply-staging-v2-migrations.mjs",
+    "check:waf:policy": "node scripts/validate-waf-policy.mjs",
+    "gate:iota:readonly": "node scripts/iota-v2-readonly-smoke.mjs",
+    "gate:enterprise": "node scripts/enterprise-gates.mjs"
   },
   "packageManager": "npm@10.9.0",
   "devDependencies": {

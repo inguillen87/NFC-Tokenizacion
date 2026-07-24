@@ -6,9 +6,11 @@ const contractAddress = "0x1111111111111111111111111111111111111111";
 const walletAddress = "0x2222222222222222222222222222222222222222";
 const previousRpc = process.env.IOTA_EVM_RPC_URL;
 const previousContract = process.env.IOTA_EVM_ANCHOR_CONTRACT;
+const previousV2Contract = process.env.IOTA_EVM_ANCHOR_CONTRACT_V2;
 const previousPublisher = process.env.IOTA_EVM_DEPLOYER_ADDRESS;
 process.env.IOTA_EVM_RPC_URL = "https://rpc.test.invalid";
 process.env.IOTA_EVM_ANCHOR_CONTRACT = contractAddress;
+process.env.IOTA_EVM_ANCHOR_CONTRACT_V2 = contractAddress;
 process.env.IOTA_EVM_DEPLOYER_ADDRESS = walletAddress;
 
 const {
@@ -30,6 +32,8 @@ test.after(() => {
   else process.env.IOTA_EVM_RPC_URL = previousRpc;
   if (previousContract === undefined) delete process.env.IOTA_EVM_ANCHOR_CONTRACT;
   else process.env.IOTA_EVM_ANCHOR_CONTRACT = previousContract;
+  if (previousV2Contract === undefined) delete process.env.IOTA_EVM_ANCHOR_CONTRACT_V2;
+  else process.env.IOTA_EVM_ANCHOR_CONTRACT_V2 = previousV2Contract;
   if (previousPublisher === undefined) delete process.env.IOTA_EVM_DEPLOYER_ADDRESS;
   else process.env.IOTA_EVM_DEPLOYER_ADDRESS = previousPublisher;
 });
@@ -103,7 +107,7 @@ test("IOTA anchor calldata is decoded and compared with the expected business pr
   }
 });
 
-test("IOTA Evidence Anchor V2 calldata includes the memo hash and exposes a deterministic proof id", async () => {
+test("IOTA Evidence Anchor V2 rejects a successful receipt without contract schema, event and storage proof", async () => {
   const txHash = `0x${"33".repeat(32)}`;
   const root = `sha256:${"ab".repeat(32)}`;
   const tenantHash = "cd".repeat(32);
@@ -130,7 +134,7 @@ test("IOTA Evidence Anchor V2 calldata includes the memo hash and exposes a dete
   const originalFetch = globalThis.fetch;
   globalThis.fetch = mockRpc(txHash, input);
   try {
-    const proof = await verifyIotaAnchorPublication({
+    const receiptOnly = await verifyIotaAnchorPublication({
       txHash,
       merkleRoot: root,
       tenantIdHash: tenantHash,
@@ -139,10 +143,10 @@ test("IOTA Evidence Anchor V2 calldata includes the memo hash and exposes a dete
       eventCount: 3,
       memoHash,
     });
-    assert.equal(proof.verified, true);
-    assert.equal(proof.contract_version, "evidence_anchor_v2");
-    assert.equal(proof.memo_hash_matches, true);
-    assert.match(proof.proof_id, /^0x[0-9a-f]{64}$/);
+    assert.equal(receiptOnly.verified, false);
+    assert.equal(receiptOnly.contract_schema_verified, false);
+    assert.equal(receiptOnly.evidence_event_verified, false);
+    assert.equal(receiptOnly.evidence_storage_verified, false);
 
     const wrongMemo = await verifyIotaAnchorPublication({
       txHash,

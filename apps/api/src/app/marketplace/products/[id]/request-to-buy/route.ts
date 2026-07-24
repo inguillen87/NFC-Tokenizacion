@@ -5,19 +5,12 @@ import { json } from "../../../../../lib/http";
 import { getConsumerFromRequest } from "../../../../../lib/consumer-auth";
 import { sql } from "../../../../../lib/db";
 import { ensureConsumerPortalSchema, ensureOrderRequestsSchema } from "../../../../../lib/commercial-runtime-schema";
+import { canUseConsumerDemoBypass } from "../../../../../lib/consumer-demo-policy";
 import { evaluateMarketplaceCheckoutAccess, parseRequestToBuyPayload } from "../../../../../lib/marketplace-policy";
 import { awardPoints, getActiveProgram, getOrCreateMember } from "../../../../../lib/loyalty-service";
 
-function demoConsumerEnabled(payload: Record<string, unknown>, productId: string) {
-  const explicit = payload?.demoConsumer === true || payload?.consumerMode === "demo";
-  const envDemo = String(process.env.DEMO_MODE || "").toLowerCase() === "true"
-    || String(process.env.CONSUMER_AUTH_MODE || "").toLowerCase() === "demo";
-  const demoProduct = productId.startsWith("demo-");
-  return explicit && (envDemo || demoProduct);
-}
-
-async function getOrCreateDemoConsumer(payload: Record<string, unknown>, productId: string) {
-  if (!demoConsumerEnabled(payload, productId)) return null;
+async function getOrCreateDemoConsumer(payload: Record<string, unknown>) {
+  if (!canUseConsumerDemoBypass(payload)) return null;
   const email = String(payload.demoConsumerEmail || "demo.consumer@nexid.local").trim().toLowerCase();
   const rows = await sql/*sql*/`
     INSERT INTO consumers (email, phone, display_name, status, preferred_locale, last_login_at)
@@ -129,7 +122,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   await Promise.all([ensureConsumerPortalSchema(), ensureOrderRequestsSchema()]);
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const { id } = await params;
-  const consumer = (await getConsumerFromRequest(req)) || (await getOrCreateDemoConsumer(body, id));
+  const consumer = (await getConsumerFromRequest(req)) || (await getOrCreateDemoConsumer(body));
   if (!consumer) return json({ ok: false, error: "unauthorized" }, 401);
 
   const parsed = parseRequestToBuyPayload(body);
@@ -191,7 +184,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       ) AS latest_verified_tap_event_id
   `;
   const access = accessRows[0] || {};
-  const demoOverride = demoConsumerEnabled(body, id);
+  const demoOverride = canUseConsumerDemoBypass(body);
   const publicNetworkCheckout = String(process.env.MARKETPLACE_PUBLIC_REQUEST_TO_BUY || "").toLowerCase() === "true";
   const checkoutAccess = evaluateMarketplaceCheckoutAccess({
     activeMembership: access.active_membership === true,

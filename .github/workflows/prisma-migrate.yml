@@ -1,12 +1,57 @@
-name: prisma-migrate
+name: prisma-migrate-production
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
+    inputs:
+      change_reference:
+        description: "Approved release, ticket or migration reference"
+        required: true
+        type: string
+      confirmation:
+        description: "Type MIGRATE_PRODUCTION to authorize the production migration"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prisma-migrate-production
+  cancel-in-progress: false
 
 jobs:
-  migrate:
+  validate_request:
+    name: Validate production migration request
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require main and explicit confirmation
+        env:
+          CHANGE_REFERENCE: ${{ inputs.change_reference }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "Production migrations must be dispatched from main (received $GITHUB_REF)." >&2
+            exit 1
+          fi
+          if [ "$CONFIRMATION" != "MIGRATE_PRODUCTION" ]; then
+            echo "Confirmation must exactly match MIGRATE_PRODUCTION." >&2
+            exit 1
+          fi
+          if ! printf '%s' "$CHANGE_REFERENCE" | grep -q '[^[:space:]]'; then
+            echo "An approved change reference is required." >&2
+            exit 1
+          fi
+          printf 'Production migration requested for commit `%s`.\nChange reference: `%s`.\n' "$GITHUB_SHA" "$CHANGE_REFERENCE" >> "$GITHUB_STEP_SUMMARY"
+
+  migrate:
+    name: Approve and migrate production
+    needs: validate_request
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: production
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL || secrets.POSTGRES_PRISMA_URL }}
     steps:
@@ -14,20 +59,20 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm install
-      - name: Check DATABASE_URL availability
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Require production database secret
         run: |
+          set -euo pipefail
           if [ -z "$DATABASE_URL" ]; then
-            echo "DB_URL_PRESENT=false" >> "$GITHUB_ENV"
-            echo "DATABASE_URL secret is not configured; skipping Prisma migrations."
-          else
-            echo "DB_URL_PRESENT=true" >> "$GITHUB_ENV"
+            echo "Neither DATABASE_URL nor POSTGRES_PRISMA_URL is configured in the production environment." >&2
+            exit 1
           fi
 
       - name: Run SQL migrations (production source of truth)
-        if: env.DB_URL_PRESENT == 'true'
         run: npm run db:migrate --workspace=api
 
       - name: Run Prisma migrate deploy (compat)
-        if: env.DB_URL_PRESENT == 'true'
-        run: npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma
+        run: npm run prisma:migrate:deploy --workspace=api

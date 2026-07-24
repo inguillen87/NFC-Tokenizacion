@@ -1,0 +1,50 @@
+name: enterprise staging gates
+
+on:
+  workflow_dispatch:
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    environment: staging
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Validate WAF policy
+        run: npm run check:waf:policy
+      - name: Validate migration safety invariants
+        run: npm run check:migrations:safety
+      - name: Migration preflight and transactional dry-run
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+        run: |
+          npm run gate:migrations:preflight
+          npm run gate:migrations:dry-run
+      - name: PostgreSQL and IOTA read-only gates
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          IOTA_EVM_RPC_URL: ${{ secrets.STAGING_IOTA_EVM_RPC_URL }}
+          IOTA_EVM_ANCHOR_CONTRACT_V2: ${{ secrets.STAGING_IOTA_EVM_ANCHOR_CONTRACT_V2 }}
+          IOTA_KMS_PUBLISHER_ADDRESS: ${{ secrets.STAGING_IOTA_KMS_PUBLISHER_ADDRESS }}
+          IOTA_EVM_EXPECTED_CHAIN_ID: "1076"
+          IOTA_KMS_SIGNER_URL: ${{ secrets.STAGING_IOTA_KMS_SIGNER_URL }}
+          IOTA_KMS_KEY_ID: ${{ secrets.STAGING_IOTA_KMS_KEY_ID }}
+          IOTA_KMS_SIGNER_ALLOWED_HOSTS: ${{ secrets.STAGING_IOTA_KMS_SIGNER_ALLOWED_HOSTS }}
+          IOTA_KMS_SIGNER_TOKEN: ${{ secrets.STAGING_IOTA_KMS_SIGNER_TOKEN }}
+          POLYGON_KMS_SIGNER_URL: ${{ secrets.STAGING_POLYGON_KMS_SIGNER_URL }}
+          POLYGON_KMS_KEY_ID: ${{ secrets.STAGING_POLYGON_KMS_KEY_ID }}
+          POLYGON_KMS_SIGNER_ALLOWED_HOSTS: ${{ secrets.STAGING_POLYGON_KMS_SIGNER_ALLOWED_HOSTS }}
+          POLYGON_KMS_PUBLISHER_ADDRESS: ${{ secrets.STAGING_POLYGON_KMS_PUBLISHER_ADDRESS }}
+          POLYGON_KMS_SIGNER_TOKEN: ${{ secrets.STAGING_POLYGON_KMS_SIGNER_TOKEN }}
+        run: npm run gate:enterprise
+      - name: Core regression suites
+        run: |
+          npm run test:proof --workspace=api
+          npm test --workspace=executor
+          node --test infra/cloudflare/webhook-recovery-worker/test/index.test.mjs
