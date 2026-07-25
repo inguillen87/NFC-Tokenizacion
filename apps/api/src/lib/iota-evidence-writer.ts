@@ -32,6 +32,17 @@ export const IOTA_EVIDENCE_ABI = [
 const IOTA_EVIDENCE_INTERFACE = new Interface(IOTA_EVIDENCE_ABI);
 const IOTA_EVIDENCE_PROOF_DOMAIN = keccak256(toUtf8Bytes("nexid.evidence.anchor.v2"));
 const SHA256_PATTERN = /^(?:sha256:|0x)?([0-9a-f]{64})$/i;
+const IOTA_EXECUTOR_DEFAULT_TIMEOUT_MS = 60_000;
+const IOTA_EXECUTOR_MIN_TIMEOUT_MS = 100;
+const IOTA_EXECUTOR_MAX_TIMEOUT_MS = 120_000;
+const IOTA_EXECUTOR_MAX_RESPONSE_BYTES = 64 * 1024;
+
+class IotaExecutorClientError extends Error {
+  constructor(code: string) {
+    super(code);
+    this.name = "IotaExecutorClientError";
+  }
+}
 
 export type IotaEvidenceRuntimeMode = "disabled" | "mock" | "iota_evm_contract_v2";
 
@@ -42,8 +53,10 @@ export type IotaEvidenceRuntimeConfig = {
   contractAddress: string;
   expectedChainId: number;
   minConfirmations: number;
+  production: boolean;
   executorUrl: string;
   executorSecret: string;
+  executorTimeoutMs: number;
   localPrivateKey: string;
   allowLocalSigner: boolean;
   explorerBaseUrl: string;
@@ -99,6 +112,7 @@ type PublishHooks = {
     publisherAddress: string;
     nonce: number | null;
   }) => Promise<void> | void;
+  fetchImpl?: typeof fetch;
 };
 
 function text(value: unknown) {
@@ -147,12 +161,25 @@ function normalizeRpcUrl(value: unknown) {
   return url.toString();
 }
 
-function normalizeExecutorUrl(value: unknown) {
+function normalizeExecutorUrl(value: unknown, production: boolean) {
   const raw = text(value);
   if (!raw) return "";
-  const url = new URL(raw);
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new IotaExecutorClientError("iota_executor_url_invalid");
+  }
+  if (url.username || url.password || url.hash) {
+    throw new IotaExecutorClientError("iota_executor_url_invalid");
+  }
   const localHttp = url.protocol === "http:" && ["localhost", "127.0.0.1", "::1"].includes(url.hostname);
-  if (url.protocol !== "https:" && !localHttp) throw new Error("iota_executor_url_invalid");
+  if (production && url.protocol !== "https:") {
+    throw new IotaExecutorClientError("iota_executor_https_required_in_production");
+  }
+  if (url.protocol !== "https:" && !localHttp) {
+    throw new IotaExecutorClientError("iota_executor_url_invalid");
+  }
   return url.toString();
 }
 
@@ -172,8 +199,9 @@ export function resolveIotaEvidenceRuntimeConfig(
       ? "iota_evm_contract_v2"
       : "disabled";
   const nodeEnvironment = text(source.NODE_ENV).toLowerCase();
+  const production = nodeEnvironment === "production";
   const allowLocalSigner = enabled(source.IOTA_ALLOW_LOCAL_SIGNER)
-    && nodeEnvironment !== "production";
+    && !production;
 
   return {
     mode,
@@ -182,8 +210,15 @@ export function resolveIotaEvidenceRuntimeConfig(
     contractAddress: canonicalContractAddress(source.IOTA_EVM_ANCHOR_CONTRACT_V2),
     expectedChainId: boundedInteger(source.IOTA_EVM_EXPECTED_CHAIN_ID, 1076, 1, Number.MAX_SAFE_INTEGER),
     minConfirmations: boundedInteger(source.IOTA_EVM_MIN_CONFIRMATIONS, 1, 1, 100),
-    executorUrl: normalizeExecutorUrl(source.IOTA_PROOF_EXECUTOR_URL),
+    production,
+    executorUrl: normalizeExecutorUrl(source.IOTA_PROOF_EXECUTOR_URL, production),
     executorSecret: text(source.IOTA_PROOF_EXECUTOR_SECRET),
+    executorTimeoutMs: boundedInteger(
+      source.IOTA_PROOF_EXECUTOR_TIMEOUT_MS,
+      IOTA_EXECUTOR_DEFAULT_TIMEOUT_MS,
+      IOTA_EXECUTOR_MIN_TIMEOUT_MS,
+      IOTA_EXECUTOR_MAX_TIMEOUT_MS,
+    ),
     localPrivateKey: normalizePrivateKey(source.IOTA_EVM_PRIVATE_KEY),
     allowLocalSigner,
     explorerBaseUrl: text(source.IOTA_EXPLORER_BASE_URL).replace(/\/$/, ""),
@@ -481,6 +516,189 @@ function executorPayload(prepared: PreparedIotaEvidence, target: IotaEvidenceTar
   };
 }
 
+async function waitForExecutorStep<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) throw new IotaExecutorClientError("iota_executor_request_timeout");
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => {
+      cleanup();
+      reject(new IotaExecutorClientError("iota_executor_request_timeout"));
+    };
+    const cleanup = () => signal.removeEventListener("abort", onAbort);
+    signal.addEventListener("abort", onAbort, { once: true });
+    promise.then(
+      (value) => {
+        cleanup();
+        resolve(value);
+      },
+      (error) => {
+        cleanup();
+        reject(error);
+      },
+    );
+  });
+}
+
+async function readBoundedExecutorJson(response: Response, signal: AbortSignal) {
+  const contentType = text(response.headers.get("content-type")).split(";", 1)[0].trim().toLowerCase();
+  if (contentType !== "application/json" && !contentType.endsWith("+json")) {
+    throw new IotaExecutorClientError("iota_executor_content_type_invalid");
+  }
+
+  const contentLength = response.headers.get("content-length");
+  if (contentLength && /^\d+$/.test(contentLength.trim())
+    && Number(contentLength) > IOTA_EXECUTOR_MAX_RESPONSE_BYTES) {
+    throw new IotaExecutorClientError("iota_executor_response_too_large");
+  }
+  if (!response.body) throw new IotaExecutorClientError("iota_executor_response_empty");
+
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  try {
+    while (true) {
+      const { done, value } = await waitForExecutorStep(reader.read(), signal);
+      if (done) break;
+      if (!value) continue;
+      totalBytes += value.byteLength;
+      if (totalBytes > IOTA_EXECUTOR_MAX_RESPONSE_BYTES) {
+        void reader.cancel().catch(() => undefined);
+        throw new IotaExecutorClientError("iota_executor_response_too_large");
+      }
+      chunks.push(value);
+    }
+  } catch (error) {
+    if (error instanceof IotaExecutorClientError) throw error;
+    throw new IotaExecutorClientError("iota_executor_response_read_failed");
+  } finally {
+    try {
+      reader.releaseLock();
+    } catch {
+      // A synthetic or non-compliant stream may keep a read pending after abort.
+    }
+  }
+
+  const bytes = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+  } catch {
+    throw new IotaExecutorClientError("iota_executor_json_invalid");
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new IotaExecutorClientError("iota_executor_response_invalid");
+  }
+  return parsed as Record<string, unknown>;
+}
+
+function strictOptionalSafeInteger(
+  value: unknown,
+  field: string,
+  options: { required?: boolean; min?: number } = {},
+) {
+  if (value === null || value === undefined) {
+    if (options.required) throw new IotaExecutorClientError(`iota_executor_${field}_invalid`);
+    return null;
+  }
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < (options.min ?? 0)) {
+    throw new IotaExecutorClientError(`iota_executor_${field}_invalid`);
+  }
+  return value;
+}
+
+function validateExecutorSubmission(
+  result: Record<string, unknown>,
+  target: IotaEvidenceTarget,
+): IotaEvidenceSubmission {
+  if (result.ok !== true) throw new IotaExecutorClientError("iota_executor_response_unsuccessful");
+  if (result.state !== "submitted" && result.state !== "confirmed") {
+    throw new IotaExecutorClientError("iota_executor_state_invalid");
+  }
+
+  const proofId = typeof result.proof_id === "string" ? result.proof_id.trim().toLowerCase() : "";
+  if (!/^0x[0-9a-f]{64}$/.test(proofId)) {
+    throw new IotaExecutorClientError("iota_executor_proof_id_invalid");
+  }
+  if (proofId !== target.proofId.toLowerCase()) {
+    throw new IotaExecutorClientError("iota_executor_proof_id_mismatch");
+  }
+  if (typeof result.chain_id !== "number" || !Number.isSafeInteger(result.chain_id) || result.chain_id <= 0) {
+    throw new IotaExecutorClientError("iota_executor_chain_id_invalid");
+  }
+  if (result.chain_id !== target.chainId) throw new IotaExecutorClientError("iota_executor_chain_mismatch");
+
+  const contractAddress = canonicalContractAddress(result.contract_address);
+  if (!contractAddress) throw new IotaExecutorClientError("iota_executor_contract_invalid");
+  if (!sameAddress(contractAddress, target.contractAddress)) {
+    throw new IotaExecutorClientError("iota_executor_contract_mismatch");
+  }
+  const publisherAddress = canonicalContractAddress(result.publisher_address);
+  if (!publisherAddress) throw new IotaExecutorClientError("iota_executor_publisher_invalid");
+  if (typeof result.already_anchored !== "boolean") {
+    throw new IotaExecutorClientError("iota_executor_already_anchored_invalid");
+  }
+
+  const confirmations = strictOptionalSafeInteger(result.confirmations, "confirmations", { required: true });
+  const blockNumber = strictOptionalSafeInteger(result.block_number, "block_number");
+  const anchoredAt = strictOptionalSafeInteger(result.anchored_at, "anchored_at", { min: 1 });
+  const blockHashValue = result.block_hash;
+  const blockHash = blockHashValue === null || blockHashValue === undefined
+    ? null
+    : typeof blockHashValue === "string" && /^0x[0-9a-f]{64}$/i.test(blockHashValue)
+      ? blockHashValue.toLowerCase()
+      : null;
+  if (blockHashValue !== null && blockHashValue !== undefined && blockHash === null) {
+    throw new IotaExecutorClientError("iota_executor_block_hash_invalid");
+  }
+
+  if (result.state === "submitted") {
+    if (result.already_anchored || anchoredAt !== null) {
+      throw new IotaExecutorClientError("iota_executor_state_inconsistent");
+    }
+    if (typeof result.tx_hash !== "string" || !/^0x[0-9a-f]{64}$/i.test(result.tx_hash)) {
+      throw new IotaExecutorClientError("iota_executor_tx_hash_invalid");
+    }
+    const nonce = strictOptionalSafeInteger(result.nonce, "nonce", { required: true });
+    return {
+      proofId: target.proofId,
+      txHash: result.tx_hash.toLowerCase(),
+      publisherAddress,
+      nonce,
+      blockNumber,
+      blockHash,
+      confirmations: confirmations!,
+      anchoredAt: null,
+      alreadyAnchored: false,
+    };
+  }
+
+  if (!result.already_anchored || anchoredAt === null) {
+    throw new IotaExecutorClientError("iota_executor_state_inconsistent");
+  }
+  if (result.tx_hash !== null && result.tx_hash !== undefined) {
+    throw new IotaExecutorClientError("iota_executor_tx_hash_invalid");
+  }
+  if (result.nonce !== null && result.nonce !== undefined) {
+    throw new IotaExecutorClientError("iota_executor_nonce_invalid");
+  }
+  return {
+    proofId: target.proofId,
+    txHash: null,
+    publisherAddress,
+    nonce: null,
+    blockNumber,
+    blockHash,
+    confirmations: confirmations!,
+    anchoredAt,
+    alreadyAnchored: true,
+  };
+}
+
 async function publishWithExecutor(
   prepared: PreparedIotaEvidence,
   target: IotaEvidenceTarget,
@@ -488,51 +706,44 @@ async function publishWithExecutor(
   requestId: string,
   hooks: PublishHooks,
 ): Promise<IotaEvidenceSubmission> {
-  if (!config.executorSecret) throw new Error("iota_executor_secret_missing");
-  const response = await fetch(config.executorUrl, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-iota-proof-secret": config.executorSecret,
-      "idempotency-key": target.proofId,
-    },
-    body: JSON.stringify(executorPayload(prepared, target, requestId)),
-    cache: "no-store",
-    signal: AbortSignal.timeout(60_000),
-  });
-  const result = await response.json().catch(() => null) as Record<string, unknown> | null;
-  if (!response.ok || result?.ok !== true) {
-    throw new Error(response.status === 409 ? "iota_executor_conflict" : `iota_executor_http_${response.status}`);
+  if (!config.executorSecret) throw new IotaExecutorClientError("iota_executor_secret_missing");
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), config.executorTimeoutMs);
+  let submission: IotaEvidenceSubmission;
+  try {
+    const response = await waitForExecutorStep((hooks.fetchImpl || fetch)(config.executorUrl, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-iota-proof-secret": config.executorSecret,
+        "idempotency-key": target.proofId,
+      },
+      body: JSON.stringify(executorPayload(prepared, target, requestId)),
+      cache: "no-store",
+      redirect: "error",
+      signal: controller.signal,
+    }), controller.signal);
+    if (!response.ok) {
+      throw new IotaExecutorClientError(
+        response.status === 409 ? "iota_executor_conflict" : `iota_executor_http_${response.status}`,
+      );
+    }
+    submission = validateExecutorSubmission(await readBoundedExecutorJson(response, controller.signal), target);
+  } catch (error) {
+    if (controller.signal.aborted) throw new IotaExecutorClientError("iota_executor_request_timeout");
+    if (error instanceof IotaExecutorClientError) throw error;
+    throw new IotaExecutorClientError("iota_executor_request_failed");
+  } finally {
+    clearTimeout(timeout);
   }
-  if (text(result.proof_id).toLowerCase() !== target.proofId.toLowerCase()) {
-    throw new Error("iota_executor_proof_id_mismatch");
-  }
-  if (!sameAddress(result.contract_address, target.contractAddress)) {
-    throw new Error("iota_executor_contract_mismatch");
-  }
-  if (Number(result.chain_id) !== target.chainId) throw new Error("iota_executor_chain_mismatch");
-  const txHash = text(result.tx_hash) || null;
-  const publisherAddress = canonicalContractAddress(result.publisher_address);
-  if (!publisherAddress) throw new Error("iota_executor_publisher_invalid");
-  if (txHash && !/^0x[0-9a-f]{64}$/i.test(txHash)) throw new Error("iota_executor_tx_hash_invalid");
-  if (txHash) {
+  if (submission.txHash) {
     await hooks.onSubmitted?.({
-      txHash,
-      publisherAddress,
-      nonce: asSafeNumber(result.nonce),
+      txHash: submission.txHash,
+      publisherAddress: submission.publisherAddress,
+      nonce: submission.nonce,
     });
   }
-  return {
-    proofId: target.proofId,
-    txHash,
-    publisherAddress,
-    nonce: asSafeNumber(result.nonce),
-    blockNumber: asSafeNumber(result.block_number),
-    blockHash: /^0x[0-9a-f]{64}$/i.test(text(result.block_hash)) ? text(result.block_hash).toLowerCase() : null,
-    confirmations: asSafeNumber(result.confirmations) || 0,
-    anchoredAt: asSafeNumber(result.anchored_at),
-    alreadyAnchored: Boolean(result.already_anchored),
-  };
+  return submission;
 }
 
 async function publishWithLocalSigner(
@@ -623,6 +834,12 @@ export async function publishIotaEvidence(
       anchoredAt: target.anchoredAt,
       alreadyAnchored: true,
     } satisfies IotaEvidenceSubmission;
+  }
+  if (config.production && !config.executorUrl) {
+    throw new IotaExecutorClientError("iota_executor_required_in_production");
+  }
+  if (config.production && !config.executorSecret) {
+    throw new IotaExecutorClientError("iota_executor_secret_required_in_production");
   }
   if (config.executorUrl) return publishWithExecutor(prepared, target, config, requestId, hooks);
   return publishWithLocalSigner(prepared, target, config, hooks);

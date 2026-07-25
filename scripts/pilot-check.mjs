@@ -13,7 +13,7 @@ const checks = [
   { name: "API typecheck", cmd: npxCmd, args: ["tsc", "-p", "apps/api/tsconfig.json", "--noEmit", "--incremental", "false"] },
   { name: "Web typecheck", cmd: npxCmd, args: ["tsc", "-p", "apps/web/tsconfig.json", "--noEmit", "--incremental", "false"] },
   { name: "Dashboard typecheck", cmd: npmCmd, args: ["run", "typecheck:dashboard"] },
-  { name: "API critical tests", cmd: nodeCmd, args: ["--test", "apps/api/tests/sun-*.test.mjs", "apps/api/tests/ttstatus-decode.test.mjs", "apps/api/tests/ownership-flow-policy.test.mjs", "apps/api/tests/consumer-claim-e2e-smoke.test.mjs", "apps/api/tests/consumer-portal-rules.test.mjs", "apps/api/tests/marketplace-rules.test.mjs", "apps/api/tests/consumer-auth-fallback.test.mjs"] },
+  { name: "API critical tests", cmd: nodeCmd, args: ["--import", "tsx", "--test", "apps/api/tests/sun-*.test.mjs", "apps/api/tests/ttstatus-decode.test.mjs", "apps/api/tests/ownership-flow-policy.test.mjs", "apps/api/tests/consumer-claim-e2e-smoke.test.mjs", "apps/api/tests/consumer-portal-rules.test.mjs", "apps/api/tests/marketplace-rules.test.mjs", "apps/api/tests/consumer-auth-fallback.test.mjs"] },
   { name: "Web tests", cmd: npmCmd, args: ["test", "--workspace=web"] },
   { name: "Dashboard tests", cmd: nodeCmd, args: ["--test", "apps/dashboard/tests/*.test.mjs"] },
   { name: "Tokenization readiness", cmd: npmCmd, args: ["run", "tokenization:check", "--workspace=api"] },

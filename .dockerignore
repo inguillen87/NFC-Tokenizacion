@@ -1,0 +1,15 @@
+# Runtime image context for the Nexid executor.
+# Tests and build tooling are available to Cloud Build but never copied into
+# or sent as part of the production image context.
+**
+
+!.dockerignore
+!package.json
+!package-lock.json
+
+!apps
+!apps/executor
+!apps/executor/package.json
+!apps/executor/Dockerfile
+!apps/executor/src
+!apps/executor/src/**

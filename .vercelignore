@@ -6,6 +6,7 @@ apps/*/.next
 apps/*/.vercel
 apps/*/.env
 apps/*/.env.*
+!apps/*/.env.example
 .turbo
 coverage
 test-results

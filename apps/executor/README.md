@@ -40,8 +40,15 @@ TOKENIZATION_UID_SALT=<same salt as executor>
 The executor keeps:
 
 ```txt
+EXECUTOR_CAPABILITIES=polygon
+EXECUTOR_SIGNER_MODE=kms_wrapped
+NEXID_KMS_ENVIRONMENT=staging
+KMS_DECRYPT_TIMEOUT_MS=10000
 POLYGON_RPC_URL=...
-POLYGON_MINTER_PRIVATE_KEY=...
+POLYGON_EXPECTED_CHAIN_ID=80002
+POLYGON_KMS_WRAP_KEY_RESOURCE=projects/.../cryptoKeys/polygon-wallet-wrap-pilot
+POLYGON_KMS_WRAPPED_PRIVATE_KEY=<base64 ciphertext>
+POLYGON_KMS_PUBLISHER_ADDRESS=...
 POLYGON_MINTER_ADDRESS=...
 POLYGON_CONTRACT_ADDRESS=...
 POLYGON_DEFAULT_RECIPIENT=...
@@ -51,12 +58,43 @@ The API sends `chip_uid_hash`, `token_uri` and `asset_ref`. The executor does no
 
 ## Production direction
 
-For the Amoy/IOTA testnet pilot, `EXECUTOR_SIGNER_MODE=private_key` is enough
-if the wallet is dedicated, held only in the executor's secret store, and has
-testnet gas. This is explicitly not HSM/KMS custody and is not allowed for
-production customer assets; see `docs/enterprise-hardening/2026-07-24/cost-and-custody-stages.md`.
+For the Amoy/IOTA testnet pilot, `kms_wrapped` uses separate Google Cloud KMS
+software envelope keys. The deployed service receives ciphertext, its service
+account can only decrypt the corresponding key, and plaintext exists only in
+memory while signing. The KMS request includes CRC32C for ciphertext and AAD,
+the response CRC32C is verified before the key is parsed, and decrypt calls use
+the bounded `KMS_DECRYPT_TIMEOUT_MS` deadline. This is real KMS envelope
+encryption, not non-exportable HSM signing.
 
-For premium production, keep the same HTTP contract but replace the signer internals with provider KMS/HSM:
+`POLYGON_EXPECTED_CHAIN_ID` is checked against the live RPC before any signing
+or KMS decrypt. `EXECUTOR_CAPABILITIES` scopes readiness and routes per chain;
+when omitted both routes remain available for backwards compatibility. A
+Polygon-only Cloud Run revision should set `EXECUTOR_CAPABILITIES=polygon`, so
+missing IOTA configuration does not make `/ready` fail. `/ready` returns
+per-chain results under `chains` and fails unless every declared capability is
+fully configured.
+
+Polygon minting is idempotent at the executor boundary. Before loading a
+signer, the executor reads `tokenByChipHash`; an existing token is accepted only
+when `chipUidHashByTokenId`, current `ownerOf`, `tokenURI`, and
+`assetRefByTokenId` exactly match the request. An exact replay returns canonical
+contract/token evidence without another KMS decrypt, signature, or transaction.
+Any mismatch fails closed. A broadcast/receipt error triggers the same exact
+reconciliation once, which recovers transactions that landed despite an
+ambiguous RPC response. Mints are serialized per process to avoid local nonce
+reuse; the contract's `ChipAlreadyBound` rule remains the cross-instance
+uniqueness boundary.
+
+The server binds `0.0.0.0` for Cloud Run. On `SIGTERM` or `SIGINT` it enters
+drain mode, rejects new application requests with `503 executor_draining`, and
+waits for in-flight HTTP work via `server.close()` without forcing
+`process.exit()`.
+
+`private_key` remains a development-only compatibility mode. It is not allowed
+for production customer assets; see
+`docs/enterprise-hardening/2026-07-24/cost-and-custody-stages.md`.
+
+For premium production, keep the same HTTP contract but replace the signer internals with direct provider KMS/HSM or custody signing:
 
 - AWS KMS secp256k1 key or a custody provider.
 - GCP/Azure/HSM equivalent if secp256k1 signing is available.

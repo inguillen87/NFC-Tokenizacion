@@ -1,0 +1,261 @@
+{
+  "surface": "report",
+  "manifest": {
+    "version": 1,
+    "surface": "report",
+    "title": "Nexid custody cost decision",
+    "description": "Cost model for securing Polygon and IOTA signing keys for 200,000 NFC tags.",
+    "generatedAt": "2026-07-24T23:30:00-03:00",
+    "cards": [
+      {
+        "id": "batched_kms_card",
+        "description": "Two software KMS keys and 80 signatures for 40 batches anchored on two chains.",
+        "dataset": "custody_options",
+        "sourceId": "kms_batched_model",
+        "filter": { "option": "Google KMS Software" },
+        "metrics": [
+          { "label": "Monthly custody", "field": "monthly_total_usd", "format": "currency" }
+        ]
+      },
+      {
+        "id": "batched_hsm_card",
+        "description": "Two AWS KMS secp256k1 keys and 80 asymmetric signatures, backed by AWS managed HSMs.",
+        "dataset": "custody_options",
+        "sourceId": "kms_batched_model",
+        "filter": { "option": "AWS KMS" },
+        "metrics": [
+          { "label": "Monthly custody", "field": "monthly_total_usd", "format": "currency" }
+        ]
+      }
+    ],
+    "charts": [
+      {
+        "id": "custody_cost_chart",
+        "title": "Monthly managed key custody cost",
+        "subtitle": "Two secp256k1 keys and 80 signatures; USD per month, excluding compute and blockchain gas.",
+        "type": "bar",
+        "dataset": "custody_options",
+        "sourceId": "kms_batched_model",
+        "valueFormat": "currency",
+        "encodings": {
+          "x": { "field": "option", "type": "nominal", "label": "Custody option" },
+          "y": { "field": "monthly_total_usd", "type": "quantitative", "label": "USD/month" },
+          "tooltip": [
+            { "field": "key_cost_usd", "type": "quantitative", "label": "Key versions", "format": "currency" },
+            { "field": "operation_cost_usd", "type": "quantitative", "label": "Signing operations", "format": "currency" },
+            { "field": "protection", "type": "nominal", "label": "Protection" }
+          ]
+        }
+      }
+    ],
+    "tables": [
+      {
+        "id": "scenario_table",
+        "title": "KMS and HSM sensitivity",
+        "subtitle": "Two keys; costs scale with signing operations, not NFC tag count itself.",
+        "dataset": "scenario_costs",
+        "sourceId": "kms_scenario_model",
+        "defaultSort": { "field": "signing_operations", "direction": "asc" },
+        "columns": [
+          { "field": "scenario", "label": "Scenario", "type": "text" },
+          { "field": "signing_operations", "label": "Signatures", "format": "number" },
+          { "field": "software_kms_usd", "label": "Software KMS", "format": "currency" },
+          { "field": "aws_kms_usd", "label": "AWS KMS HSM", "format": "currency" },
+          { "field": "hsm_usd", "label": "Google HSM", "format": "currency" }
+        ]
+      },
+      {
+        "id": "tenant_scaling_table",
+        "title": "Fixed custody cost as Nexid adds dedicated tenant keys",
+        "subtitle": "Two active secp256k1 key versions per enterprise tenant; signing-operation charges excluded because fixed key cost dominates.",
+        "dataset": "tenant_scaling",
+        "sourceId": "key_count_model",
+        "defaultSort": { "field": "enterprise_tenants", "direction": "asc" },
+        "columns": [
+          { "field": "scenario", "label": "Isolation model", "type": "text" },
+          { "field": "enterprise_tenants", "label": "Tenants", "format": "number" },
+          { "field": "active_keys", "label": "Active keys", "format": "number" },
+          { "field": "software_fixed_usd", "label": "Software KMS", "format": "currency" },
+          { "field": "aws_fixed_usd", "label": "AWS KMS HSM", "format": "currency" },
+          { "field": "hsm_fixed_usd", "label": "Google HSM", "format": "currency" }
+        ]
+      },
+      {
+        "id": "polygon_table",
+        "title": "Polygon gas sensitivity",
+        "subtitle": "Snapshot estimate using 393.154 gwei max fee and POL at USD 0.071723; actual gas can vary.",
+        "dataset": "polygon_costs",
+        "sourceId": "polygon_gas_model",
+        "defaultSort": { "field": "transactions", "direction": "asc" },
+        "columns": [
+          { "field": "scenario", "label": "Scenario", "type": "text" },
+          { "field": "transactions", "label": "Transactions", "format": "number" },
+          { "field": "gas_units", "label": "Gas/transaction", "format": "number" },
+          { "field": "estimated_usd", "label": "Estimated gas", "format": "currency" }
+        ]
+      }
+    ],
+    "sources": [
+      { "id": "google_kms_pricing", "label": "Google Cloud KMS pricing", "path": "https://cloud.google.com/kms/pricing" },
+      { "id": "google_kms_algorithms", "label": "Google Cloud KMS algorithms", "path": "https://docs.cloud.google.com/kms/docs/algorithms" },
+      { "id": "aws_kms_pricing", "label": "AWS KMS pricing", "path": "https://aws.amazon.com/kms/pricing/" },
+      { "id": "aws_kms_key_specs", "label": "AWS KMS asymmetric key specifications", "path": "https://docs.aws.amazon.com/kms/latest/developerguide/symm-asymm-choose-key-spec.html" },
+      { "id": "azure_key_vault_pricing", "label": "Azure Key Vault pricing", "path": "https://azure.microsoft.com/en-us/pricing/details/key-vault/" },
+      { "id": "hashicorp_transit", "label": "HashiCorp Vault Transit key types", "path": "https://developer.hashicorp.com/vault/docs/secrets/transit" },
+      { "id": "hashicorp_starter_eol", "label": "HCP Vault Starter end of life", "path": "https://support.hashicorp.com/hc/en-us/articles/36950769223187-HCP-Vault-Dedicated-Starter-SKU-End-Of-Life" },
+      { "id": "polygon_cost_model", "label": "Polygon gas cost snapshot", "path": "https://gasstation.polygon.technology/v2" },
+      { "id": "kms_batched_model", "label": "Nexid batched custody model" },
+      { "id": "kms_scenario_model", "label": "Nexid signing-frequency model" },
+      { "id": "key_count_model", "label": "Nexid tenant key-isolation model" },
+      { "id": "polygon_gas_model", "label": "Nexid Polygon gas model", "path": "https://gasstation.polygon.technology/v2" }
+    ],
+    "blocks": [
+      { "id": "title", "type": "markdown", "body": "# Nexid custody cost decision" },
+      {
+        "id": "executive_summary",
+        "type": "markdown",
+        "body": "## Executive Summary\n\n- **HSM is not mandatory for pilots or early staging, but it is already affordable for production.** Two secp256k1 keys cost about USD 0.12/month with Google software KMS, USD 2/month with AWS KMS hardware-backed custody, or USD 5/month with Google Cloud HSM.\n- **AWS KMS is the lowest-cost managed HSM option verified for this use case.** If Nexid standardizes the executor on Google Cloud, paying roughly USD 3/month more is still preferable to adding cloud sprawl solely to save pennies.\n- **Batching protects margin.** The target architecture groups 200,000 tags into 40 lots of 5,000. Eighty signatures would anchor every lot on two chains; however, the current repository only batches IOTA, while Polygon remains one mint transaction per token.\n- **Do not select Vault Community as the blockchain signer.** Its native Transit engine does not list secp256k1, and the former HCP Vault Starter SKU is no longer available."
+      },
+      {
+        "id": "cost_takeaway",
+        "type": "markdown",
+        "body": "## Key custody is affordable at Nexid's expected volume\n\nWith one Polygon key and one IOTA key, modeled monthly custody at 80 signatures is USD 0.12024 for Google software KMS, USD 2.0012 for AWS KMS, USD 5.0012 for Google Cloud HSM, and USD 10.0012 for Azure Key Vault Premium HSM. Operation charges are effectively immaterial at this volume.\n\n**Implication:** Nexid does not need a dedicated single-tenant HSM. AWS KMS or Google multi-tenant Cloud HSM already provide managed, non-exportable, hardware-backed custody at a startup-compatible price."
+      },
+      { "id": "custody_metrics", "type": "metric-strip", "cardIds": ["batched_kms_card", "batched_hsm_card"] },
+      { "id": "custody_chart", "type": "chart", "chartId": "custody_cost_chart" },
+      {
+        "id": "frequency_takeaway",
+        "type": "markdown",
+        "body": "## Signing frequency—not tag count—drives KMS cost\n\nThe target manufacturing flow anchors one Merkle root per 5,000-tag lot on each chain. Forty lots produce only 80 signatures. Even the intentionally inefficient extreme of one signature per tag on both chains models to roughly USD 1.32/month with Google software KMS, USD 8 with AWS KMS, USD 11 with Google Cloud HSM, or USD 16 with Azure Premium HSM.\n\n**Implication:** KMS cannot realistically consume the gross margin at this scale. The design decision that matters is whether Nexid performs individual blockchain transactions or batch anchors."
+      },
+      { "id": "scenario_table_block", "type": "table", "tableId": "scenario_table" },
+      {
+        "id": "tenant_scaling_takeaway",
+        "type": "markdown",
+        "body": "## Dedicated keys per enterprise customer remain commercially manageable\n\nA shared pair of platform keys is cheapest but creates a cross-tenant blast radius. A stronger production design assigns one Polygon key and one IOTA key to each enterprise tenant. At current list prices, that is about USD 0.12 per tenant/month with Google software KMS, USD 2 with AWS KMS, or USD 5 with Google Cloud HSM before negligible low-volume signing charges. One hundred dedicated enterprise tenants would therefore have roughly USD 12, USD 200, or USD 500 in fixed monthly custody cost.\n\n**Implication:** do not create one cloud key per tag or per batch. Price dedicated HSM custody into enterprise plans as a USD 10–25/month security feature per tenant, preserving isolation and margin."
+      },
+      { "id": "tenant_scaling_table_block", "type": "table", "tableId": "tenant_scaling_table" },
+      {
+        "id": "gas_takeaway",
+        "type": "markdown",
+        "sourceId": "polygon_cost_model",
+        "body": "## Polygon transactions are the meaningful variable cost\n\nUsing the current snapshot price and max-fee recommendation, 40 batch anchors model to about USD 0.11–0.28 in Polygon gas at 100k–250k gas units each. Two hundred thousand individual transactions model to roughly USD 564–1,410 under the same snapshot. These are scenario estimates, not a guaranteed invoice.\n\n**Implication:** issue cryptographic batch proofs at manufacture, then create or transfer individual on-chain assets only when a product is claimed, activated, or changes owner."
+      },
+      { "id": "polygon_table_block", "type": "table", "tableId": "polygon_table" },
+      {
+        "id": "vault_takeaway",
+        "type": "markdown",
+        "body": "## Vault Community does not solve the EVM signing requirement cleanly\n\nVault Community is free software and useful for general secrets, encryption, rotation and audit workflows. However, the official Transit key-type list includes NIST P-256/P-384/P-521 and Ed25519, but not secp256k1—the curve required by Polygon and IOTA EVM. Storing a raw blockchain private key in Vault KV would still expose it to the signing runtime and would not be equivalent to non-exportable KMS/HSM custody. The managed Starter offer cited in older material reached end of life in August 2025.\n\n**Implication:** self-hosting Vault adds server, backup, patching, unseal and availability work without giving Nexid a cheaper native secp256k1 signer."
+      },
+      {
+        "id": "implementation_reality",
+        "type": "markdown",
+        "body": "## What exists in Nexid today\n\nThe executor already supports a provider-neutral remote signer contract and validates the signed EVM transaction before broadcasting it. Terraform declares two Google secp256k1 keys, but the actual Google KMS adapter that calls `asymmetricSign`, converts DER `r/s`, normalizes low-S and derives EVM recovery parity is not implemented yet. IOTA Merkle batching is implemented with a 5,000-event maximum; Polygon batch anchoring is not, and the SDK claim route does not yet trigger a true asynchronous lazy mint.\n\n**Implication:** there is no migration cost worth protecting yet. Choose the execution cloud deliberately, implement one real KMS adapter end to end, and never claim HSM protection while using Vercel variables, R2, Vault KV or an offline disk as the online signer."
+      },
+      {
+        "id": "recommendations",
+        "type": "markdown",
+        "body": "## Recommended next steps\n\n1. Use dedicated testnet keys in executor-only secrets for demos; make no KMS or HSM claim.\n2. Keep the signer interface provider-neutral. If Nexid has not committed the executor to GCP, select AWS KMS for production HSM custody at about USD 2/month per tenant key pair; otherwise use Google Cloud HSM at about USD 5/month and avoid multi-cloud overhead.\n3. Implement and test the chosen KMS adapter with real EVM transactions before mainnet.\n4. Anchor one Merkle root per 5,000-event manufacturing lot on IOTA; add a Polygon evidence-root contract only if customers require dual-chain batch proof.\n5. Move Polygon minting to an idempotent outbox and mint or transfer only after claim, activation or ownership events.\n6. Add a distributed nonce manager, explicit publisher-key rotation runbook, billing alerts at USD 10, USD 25 and USD 50, and cost-per-tenant reporting."
+      },
+      {
+        "id": "questions",
+        "type": "markdown",
+        "body": "## Further questions\n\n- Does every physical tag require an on-chain token at manufacture, or is a verifiable batch proof plus lazy mint acceptable?\n- What percentage of the 200,000 products is expected to be claimed or transferred monthly?\n- Which customer contracts explicitly require FIPS Level 3 HSM rather than managed software KMS?"
+      },
+      {
+        "id": "caveats",
+        "type": "markdown",
+        "body": "## Caveats and assumptions\n\nThe cost scenario assumes two active keys, 200,000 total tags, 5,000 tags per lot and one target anchor per lot per chain. Today only the IOTA batch anchor exists in the repository; Polygon would require a new evidence-root contract or per-item lazy mint. Polygon gas uses a point-in-time max-fee recommendation and POL price; both fluctuate, and actual contract gas must be measured on mainnet before quoting customers. IOTA mainnet transaction fees, RPC plans, signer compute, logs, taxes and support are excluded. Do not assume any provider's promotional credit or free tier applies to production asymmetric signatures; treat credits as temporary onboarding help, not unit economics."
+      }
+    ]
+  },
+  "snapshot": {
+    "version": 1,
+    "generatedAt": "2026-07-24T23:30:00-03:00",
+    "status": "ready",
+    "datasets": {
+      "custody_options": [
+        { "option": "Google KMS Software", "key_cost_usd": 0.12, "signing_operations": 80, "operation_cost_usd": 0.00024, "monthly_total_usd": 0.12024, "protection": "FIPS Level 1 software", "native_secp256k1": true },
+        { "option": "AWS KMS", "key_cost_usd": 2.0, "signing_operations": 80, "operation_cost_usd": 0.0012, "monthly_total_usd": 2.0012, "protection": "FIPS Level 3 managed HSM", "native_secp256k1": true },
+        { "option": "Google Cloud HSM", "key_cost_usd": 5.0, "signing_operations": 80, "operation_cost_usd": 0.0012, "monthly_total_usd": 5.0012, "protection": "FIPS Level 3 multi-tenant HSM", "native_secp256k1": true },
+        { "option": "Azure Key Vault Software", "key_cost_usd": 0.0, "signing_operations": 80, "operation_cost_usd": 0.0012, "monthly_total_usd": 0.0012, "protection": "FIPS Level 1 software", "native_secp256k1": true },
+        { "option": "Azure Key Vault Premium HSM", "key_cost_usd": 10.0, "signing_operations": 80, "operation_cost_usd": 0.0012, "monthly_total_usd": 10.0012, "protection": "FIPS Level 3 platform HSM", "native_secp256k1": true }
+      ],
+      "scenario_costs": [
+        { "scenario": "40 lots × 2 chains", "signing_operations": 80, "software_kms_usd": 0.12024, "aws_kms_usd": 2.0012, "hsm_usd": 5.0012 },
+        { "scenario": "200k tags × 1 chain", "signing_operations": 200000, "software_kms_usd": 0.72, "aws_kms_usd": 5.0, "hsm_usd": 8.0 },
+        { "scenario": "200k tags × 2 chains", "signing_operations": 400000, "software_kms_usd": 1.32, "aws_kms_usd": 8.0, "hsm_usd": 11.0 }
+      ],
+      "tenant_scaling": [
+        { "scenario": "Shared platform pair", "enterprise_tenants": 1, "active_keys": 2, "software_fixed_usd": 0.12, "aws_fixed_usd": 2.0, "hsm_fixed_usd": 5.0 },
+        { "scenario": "Dedicated pair per tenant", "enterprise_tenants": 10, "active_keys": 20, "software_fixed_usd": 1.2, "aws_fixed_usd": 20.0, "hsm_fixed_usd": 50.0 },
+        { "scenario": "Dedicated pair per tenant", "enterprise_tenants": 100, "active_keys": 200, "software_fixed_usd": 12.0, "aws_fixed_usd": 200.0, "hsm_fixed_usd": 500.0 }
+      ],
+      "polygon_costs": [
+        { "scenario": "40 batch anchors, low gas", "transactions": 40, "gas_units": 100000, "max_fee_gwei": 393.154178717, "pol_usd": 0.071723, "estimated_usd": 0.1127927886 },
+        { "scenario": "40 batch anchors, high gas", "transactions": 40, "gas_units": 250000, "max_fee_gwei": 393.154178717, "pol_usd": 0.071723, "estimated_usd": 0.2819819716 },
+        { "scenario": "200k individual, low gas", "transactions": 200000, "gas_units": 100000, "max_fee_gwei": 393.154178717, "pol_usd": 0.071723, "estimated_usd": 563.9639432024 },
+        { "scenario": "200k individual, high gas", "transactions": 200000, "gas_units": 250000, "max_fee_gwei": 393.154178717, "pol_usd": 0.071723, "estimated_usd": 1409.909858006 }
+      ]
+    },
+    "accessIssues": []
+  },
+  "sources": [
+    { "id": "google_kms_pricing", "query": { "engine": "web", "description": "Official Google Cloud KMS pricing effective March 17, 2025.", "url": "https://cloud.google.com/kms/pricing", "executed_at": "2026-07-24T23:20:00-03:00" } },
+    { "id": "google_kms_algorithms", "query": { "engine": "web", "description": "Official supported algorithms and protection levels, including secp256k1.", "url": "https://docs.cloud.google.com/kms/docs/algorithms", "executed_at": "2026-07-24T23:20:00-03:00" } },
+    { "id": "aws_kms_pricing", "query": { "engine": "web", "description": "Official AWS KMS pricing for key storage and asymmetric operations.", "url": "https://aws.amazon.com/kms/pricing/", "executed_at": "2026-07-24T23:35:00-03:00" } },
+    { "id": "aws_kms_key_specs", "query": { "engine": "web", "description": "Official AWS KMS key specifications including ECC_SECG_P256K1.", "url": "https://docs.aws.amazon.com/kms/latest/developerguide/symm-asymm-choose-key-spec.html", "executed_at": "2026-07-24T23:35:00-03:00" } },
+    { "id": "azure_key_vault_pricing", "query": { "engine": "web", "description": "Official Azure Key Vault pricing for software and Premium HSM-protected keys.", "url": "https://azure.microsoft.com/en-us/pricing/details/key-vault/", "executed_at": "2026-07-24T23:35:00-03:00" } },
+    { "id": "hashicorp_transit", "query": { "engine": "web", "description": "Official Vault Transit supported key types.", "url": "https://developer.hashicorp.com/vault/docs/secrets/transit", "executed_at": "2026-07-24T23:20:00-03:00" } },
+    { "id": "hashicorp_starter_eol", "query": { "engine": "web", "description": "HashiCorp notice that HCP Vault Dedicated Starter stopped being available on August 15, 2025.", "url": "https://support.hashicorp.com/hc/en-us/articles/36950769223187-HCP-Vault-Dedicated-Starter-SKU-End-Of-Life", "executed_at": "2026-07-24T23:20:00-03:00" } },
+    { "id": "polygon_cost_model", "query": { "engine": "calculation", "description": "transactions × gas units × max fee gwei × 1e-9 × POL/USD; gas snapshot from Polygon Gas Station and POL/USD market snapshot.", "url": "https://gasstation.polygon.technology/v2", "executed_at": "2026-07-24T23:22:00-03:00", "language": "javascript" } },
+    {
+      "id": "kms_batched_model",
+      "query": {
+        "id": "nexid-kms-batched-v1",
+        "engine": "duckdb",
+        "sql": "WITH assumptions(key_count, signing_operations) AS (VALUES (2, 80)), pricing(option, key_monthly_usd, ops_per_10000_usd, protection, native_secp256k1) AS (VALUES ('Google KMS Software', 0.06, 0.03, 'FIPS Level 1 software', TRUE), ('AWS KMS', 1.00, 0.15, 'FIPS Level 3 managed HSM', TRUE), ('Google Cloud HSM', 2.50, 0.15, 'FIPS Level 3 multi-tenant HSM', TRUE), ('Azure Key Vault Software', 0.00, 0.15, 'FIPS Level 1 software', TRUE), ('Azure Key Vault Premium HSM', 5.00, 0.15, 'FIPS Level 3 platform HSM', TRUE)) SELECT option, key_count * key_monthly_usd AS key_cost_usd, signing_operations, signing_operations / 10000.0 * ops_per_10000_usd AS operation_cost_usd, key_count * key_monthly_usd + signing_operations / 10000.0 * ops_per_10000_usd AS monthly_total_usd, protection, native_secp256k1 FROM assumptions CROSS JOIN pricing",
+        "description": "Applies official Google, AWS, and Azure per-key and per-10,000-operation list prices to two active secp256k1 keys and 80 monthly signatures.",
+        "filters": ["key_count = 2", "signing_operations = 80"],
+        "metric_definitions": { "monthly_total_usd": "key_count * key_monthly_usd + signing_operations / 10000 * ops_per_10000_usd" },
+        "executed_at": "2026-07-24T23:30:00-03:00"
+      }
+    },
+    {
+      "id": "kms_scenario_model",
+      "query": {
+        "id": "nexid-kms-scenarios-v1",
+        "engine": "duckdb",
+        "sql": "WITH scenarios(scenario, signing_operations) AS (VALUES ('40 lots × 2 chains', 80), ('200k tags × 1 chain', 200000), ('200k tags × 2 chains', 400000)) SELECT scenario, signing_operations, 2 * 0.06 + signing_operations / 10000.0 * 0.03 AS software_kms_usd, 2 * 1.00 + signing_operations / 10000.0 * 0.15 AS aws_kms_usd, 2 * 2.50 + signing_operations / 10000.0 * 0.15 AS hsm_usd FROM scenarios",
+        "description": "Compares two-key Google software KMS, AWS KMS, and Google multi-tenant HSM costs as monthly signature count grows.",
+        "filters": ["two active keys", "80, 200000, and 400000 signing-operation scenarios"],
+        "metric_definitions": { "software_kms_usd": "2 * 0.06 + operations / 10000 * 0.03", "aws_kms_usd": "2 * 1.00 + operations / 10000 * 0.15", "hsm_usd": "2 * 2.50 + operations / 10000 * 0.15" },
+        "executed_at": "2026-07-24T23:30:00-03:00"
+      }
+    },
+    {
+      "id": "key_count_model",
+      "query": {
+        "id": "nexid-tenant-key-scaling-v1",
+        "engine": "duckdb",
+        "sql": "WITH scenarios(scenario, enterprise_tenants) AS (VALUES ('Shared platform pair', 1), ('Dedicated pair per tenant', 10), ('Dedicated pair per tenant', 100)) SELECT scenario, enterprise_tenants, enterprise_tenants * 2 AS active_keys, enterprise_tenants * 2 * 0.06 AS software_fixed_usd, enterprise_tenants * 2 * 1.00 AS aws_fixed_usd, enterprise_tenants * 2 * 2.50 AS hsm_fixed_usd FROM scenarios",
+        "description": "Models fixed monthly key-version cost for two active chain-signing keys per enterprise tenant.",
+        "filters": ["two active keys per tenant", "signing operation charges excluded"],
+        "metric_definitions": { "software_fixed_usd": "tenant_count * 2 * 0.06", "aws_fixed_usd": "tenant_count * 2 * 1.00", "hsm_fixed_usd": "tenant_count * 2 * 2.50" },
+        "executed_at": "2026-07-24T23:30:00-03:00"
+      }
+    },
+    {
+      "id": "polygon_gas_model",
+      "query": {
+        "id": "nexid-polygon-gas-v1",
+        "engine": "duckdb",
+        "sql": "WITH scenarios(scenario, transactions, gas_units) AS (VALUES ('40 batch anchors, low gas', 40, 100000), ('40 batch anchors, high gas', 40, 250000), ('200k individual, low gas', 200000, 100000), ('200k individual, high gas', 200000, 250000)), assumptions(max_fee_gwei, pol_usd) AS (VALUES (393.154178717, 0.071723)) SELECT scenario, transactions, gas_units, max_fee_gwei, pol_usd, transactions * gas_units * max_fee_gwei * 1e-9 * pol_usd AS estimated_usd FROM scenarios CROSS JOIN assumptions",
+        "description": "Estimates Polygon gas using a point-in-time Gas Station max-fee recommendation and POL/USD market snapshot.",
+        "filters": ["max_fee_gwei = 393.154178717", "pol_usd = 0.071723"],
+        "metric_definitions": { "estimated_usd": "transactions * gas_units * max_fee_gwei * 1e-9 * pol_usd" },
+        "executed_at": "2026-07-24T23:30:00-03:00"
+      }
+    }
+  ]
+}

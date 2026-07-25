@@ -17,6 +17,18 @@ if (!fileArg) {
 const migrationsDir = path.join(process.cwd(), "db", "migrations");
 const file = path.basename(fileArg);
 const fullPath = path.join(migrationsDir, file);
+const stagedV2Migrations = new Set([
+  "20260723193000_0050_evidence_anchor_reconciling_status.sql",
+  "20260723193500_0051_iota_evidence_anchor_v2_writer.sql",
+  "20260723194500_0052_webhook_delivery_outbox.sql",
+  "20260723200500_0053_admin_login_abuse_guard.sql",
+  "20260723213000_0054_iota_executor_publications.sql",
+  "20260724213000_0055_iota_executor_durable_broadcast.sql",
+]);
+
+if (stagedV2Migrations.has(file)) {
+  throw new Error("IOTA V2 migrations require the allowlisted transactional staging runner");
+}
 
 if (!fs.existsSync(fullPath)) {
   console.error(`Migration not found: ${fullPath}`);

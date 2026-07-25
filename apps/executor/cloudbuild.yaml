@@ -1,0 +1,38 @@
+steps:
+  - name: node:24.15.0-bookworm-slim@sha256:4e6b70dd6cbfc88c8157ba19aa3d9f9cce6ba4703576d55459e45efcbc9c5f5d
+    id: executor-install
+    entrypoint: npm
+    args:
+      - ci
+      - --ignore-scripts
+      - --workspace=executor
+      - --no-audit
+      - --no-fund
+  - name: node:24.15.0-bookworm-slim@sha256:4e6b70dd6cbfc88c8157ba19aa3d9f9cce6ba4703576d55459e45efcbc9c5f5d
+    id: executor-check
+    entrypoint: npm
+    args:
+      - run
+      - check
+      - --workspace=executor
+  - name: node:24.15.0-bookworm-slim@sha256:4e6b70dd6cbfc88c8157ba19aa3d9f9cce6ba4703576d55459e45efcbc9c5f5d
+    id: executor-tests
+    entrypoint: npm
+    args:
+      - test
+      - --workspace=executor
+  - name: gcr.io/cloud-builders/docker
+    id: executor-image
+    args:
+      - build
+      - --file
+      - apps/executor/Dockerfile
+      - --tag
+      - ${_IMAGE}
+      - .
+images:
+  - ${_IMAGE}
+serviceAccount: projects/$PROJECT_ID/serviceAccounts/nexid-cloud-build-stg@nexid-security-staging.iam.gserviceaccount.com
+timeout: 600s
+options:
+  logging: CLOUD_LOGGING_ONLY

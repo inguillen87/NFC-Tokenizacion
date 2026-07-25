@@ -84,6 +84,8 @@ test("migration runner applies multi-statement files transactionally and refuses
   assert.match(runner, /argumentValue\("--only"\)/);
   assert.match(runner, /Existing schema has no migration history/);
   assert.match(runner, /pg_advisory_xact_lock/);
+  assert.match(runner, /containsExplicitTransactionControl/);
+  assert.match(runner, /runner can atomically apply and ledger the migration/);
   assert.match(runner, /await client\.query\(body\)/);
   assert.match(runner, /await client\.query\("ROLLBACK"\)/);
   assert.doesNotMatch(runner, /@neondatabase\/serverless/);

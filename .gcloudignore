@@ -1,0 +1,21 @@
+# Cloud Build context for the Nexid executor image.
+# Deny by default so local credentials, documentation, and user artifacts
+# cannot be uploaded accidentally.
+**
+
+!.gcloudignore
+!.dockerignore
+!package.json
+!package-lock.json
+
+!apps
+!apps/executor
+!apps/executor/package.json
+!apps/executor/Dockerfile
+!apps/executor/cloudbuild.yaml
+!apps/executor/scripts
+!apps/executor/scripts/wrap-wallet-with-kms.mjs
+!apps/executor/src
+!apps/executor/src/**
+!apps/executor/tests
+!apps/executor/tests/**

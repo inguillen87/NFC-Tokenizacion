@@ -13,6 +13,10 @@ function argumentValue(name) {
   return index >= 0 ? String(process.argv[index + 1] || "").trim() : "";
 }
 
+function containsExplicitTransactionControl(sql) {
+  return /^\s*(?:BEGIN(?:\s+(?:WORK|TRANSACTION))?|START\s+TRANSACTION|COMMIT(?:\s+(?:WORK|TRANSACTION))?|ROLLBACK(?:\s+(?:WORK|TRANSACTION))?)\s*;\s*$/im.test(sql);
+}
+
 const migrationsDir = path.join(process.cwd(), "db", "migrations");
 const files = fs.readdirSync(migrationsDir).filter((file) => file.endsWith(".sql")).sort();
 const only = argumentValue("--only");
@@ -35,6 +39,17 @@ try {
   const appliedRows = await client.query("SELECT id FROM schema_migrations");
   const applied = new Set(appliedRows.rows.map((row) => String(row.id)));
 
+  if (!only && applied.size > 0) {
+    const highestAppliedIndex = Math.max(...files.map((file, index) => applied.has(file) ? index : -1));
+    const historicalGaps = files.slice(0, highestAppliedIndex + 1).filter((file) => !applied.has(file));
+    if (historicalGaps.length) {
+      throw new Error(
+        `Migration ledger has ${historicalGaps.length} historical gap(s). `
+        + "Refusing an unscoped replay; reconcile the ledger or use an approved --only migration."
+      );
+    }
+  }
+
   if (!only && applied.size === 0) {
     const existingSchema = await client.query(`
       SELECT
@@ -53,9 +68,17 @@ try {
   const pending = (only ? [only] : files).filter((file) => !applied.has(file));
   for (const file of pending) {
     const body = fs.readFileSync(path.join(migrationsDir, file), "utf8");
+    if (containsExplicitTransactionControl(body)) {
+      throw new Error(
+        `Migration ${file} contains explicit transaction control. `
+        + "Remove BEGIN/COMMIT/ROLLBACK so the runner can atomically apply and ledger the migration."
+      );
+    }
     console.log(`Applying ${file}...`);
     await client.query("BEGIN");
     try {
+      await client.query("SET LOCAL lock_timeout = '5s'");
+      await client.query("SET LOCAL statement_timeout = '60s'");
       await client.query("SELECT pg_advisory_xact_lock(487421337)");
       const concurrent = await client.query("SELECT 1 FROM schema_migrations WHERE id = $1", [file]);
       if (!concurrent.rowCount) {

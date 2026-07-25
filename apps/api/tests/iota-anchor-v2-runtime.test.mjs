@@ -51,12 +51,16 @@ test("V2 persistence includes proof identity, attempts, members and reconciliati
 test("staging migration gates preserve the PostgreSQL enum transaction boundary", async () => {
   const dryRun = await readFile(new URL("../../../scripts/staging-migration-dry-run.mjs", import.meta.url), "utf8");
   const apply = await readFile(new URL("../../../scripts/apply-staging-v2-migrations.mjs", import.meta.url), "utf8");
+  const safety = await readFile(new URL("../../../scripts/check-migration-safety.mjs", import.meta.url), "utf8");
+  const durableMigration = await source("../db/migrations/20260724213000_0055_iota_executor_durable_broadcast.sql");
   const runbook = await readFile(new URL("../../../docs/staging-migration-runbook.md", import.meta.url), "utf8");
   assert.ok(dryRun.indexOf("20260723193000_0050_evidence_anchor_reconciling_status.sql") < dryRun.indexOf("20260723193500_0051_iota_evidence_anchor_v2_writer.sql"));
   assert.ok(runbook.indexOf("20260723193000_0050_evidence_anchor_reconciling_status.sql") < runbook.indexOf("20260723193500_0051_iota_evidence_anchor_v2_writer.sql"));
   assert.match(dryRun, /ENUM_VALUE_REQUIRES_COMMITTED_0050/);
   assert.match(apply, /STAGING_MIGRATION_APPROVED/);
   assert.match(apply, /production_migration_blocked/);
+  assert.match(safety, /runner_owns_transaction_boundary/);
+  assert.doesNotMatch(durableMigration, /^\s*(?:BEGIN|COMMIT|ROLLBACK)\s*;\s*$/im);
   assert.match(runbook, /ROLLBACK/);
 });
 

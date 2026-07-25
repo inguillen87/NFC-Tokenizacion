@@ -165,6 +165,7 @@ test("executor response persists broadcast identity before reconciliation", asyn
     return new Response(JSON.stringify({
       ok: true,
       state: "submitted",
+      already_anchored: false,
       proof_id: proofId,
       chain_id: 1076,
       contract_address: contractAddress,
@@ -186,4 +187,3 @@ test("executor response persists broadcast identity before reconciliation", asyn
     globalThis.fetch = originalFetch;
   }
 });
-

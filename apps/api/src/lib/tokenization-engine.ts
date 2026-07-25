@@ -13,9 +13,32 @@ type AnchorInput = {
   processor?: string;
 };
 
+type ExecutorClientOptions = {
+  source?: NodeJS.ProcessEnv;
+  fetchImpl?: typeof fetch;
+  timeoutMs?: number;
+};
+
+const EXECUTOR_DEFAULT_TIMEOUT_MS = 60_000;
+const EXECUTOR_MIN_TIMEOUT_MS = 100;
+const EXECUTOR_MAX_TIMEOUT_MS = 120_000;
+const EXECUTOR_MAX_RESPONSE_BYTES = 64 * 1024;
+const MAX_UINT256 = (1n << 256n) - 1n;
+
+class ExecutorClientError extends Error {
+  constructor(code: string) {
+    super(code);
+    this.name = "ExecutorClientError";
+  }
+}
+
 const POLYGON_MINT_ABI = [
   "function mintWithChipHash(address to, string chipUidHash, string tokenUri, string assetRef) external returns (uint256)",
   "function tokenByChipHash(string chipUidHash) external view returns (uint256)",
+  "function ownerOf(uint256 tokenId) external view returns (address)",
+  "function tokenURI(uint256 tokenId) external view returns (string)",
+  "function chipUidHashByTokenId(uint256 tokenId) external view returns (string)",
+  "function assetRefByTokenId(uint256 tokenId) external view returns (string)",
 ] as const;
 
 export type TokenizationRuntimeMode = "disabled" | "simulated" | "polygon";
@@ -27,8 +50,8 @@ export function resolveTokenizationRuntimeMode(value = process.env.TOKENIZATION_
   return "disabled";
 }
 
-function isProductionRuntime() {
-  return String(process.env.VERCEL_ENV || process.env.NODE_ENV || "").trim().toLowerCase() === "production";
+function isProductionRuntime(source: NodeJS.ProcessEnv = process.env) {
+  return String(source.VERCEL_ENV || source.NODE_ENV || "").trim().toLowerCase() === "production";
 }
 
 function assertExportablePolygonSignerAllowed() {
@@ -51,22 +74,182 @@ function buildTokenMetadataUrl(publicAssetId: string) {
   return `${configuredBase}/${encodeURIComponent(publicAssetId)}`;
 }
 
-async function runExternalExecutor(payload: Record<string, unknown>) {
-  const url = (process.env.TOKENIZATION_EXECUTOR_URL || "").trim();
-  if (!url) return null;
+function boundedExecutorTimeout(value: unknown) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return EXECUTOR_DEFAULT_TIMEOUT_MS;
+  return Math.min(EXECUTOR_MAX_TIMEOUT_MS, Math.max(EXECUTOR_MIN_TIMEOUT_MS, Math.trunc(parsed)));
+}
 
-  const secret = (process.env.TOKENIZATION_EXECUTOR_SECRET || "").trim();
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      ...(secret ? { "x-tokenization-secret": secret } : {}),
-    },
-    body: JSON.stringify(payload),
-    cache: "no-store",
-  });
-  if (!response.ok) throw new Error(`executor_http_${response.status}`);
-  return response.json().catch(() => null) as Promise<Record<string, unknown> | null>;
+function resolveExecutorUrl(raw: string, production: boolean) {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new ExecutorClientError("executor_url_invalid");
+  }
+  if (url.username || url.password || url.hash) throw new ExecutorClientError("executor_url_invalid");
+  if (!new Set(["http:", "https:"]).has(url.protocol)) throw new ExecutorClientError("executor_url_invalid");
+  if (production && url.protocol !== "https:") {
+    throw new ExecutorClientError("executor_https_required_in_production");
+  }
+  return url;
+}
+
+async function readBoundedExecutorJson(response: Response) {
+  const contentType = String(response.headers.get("content-type") || "").split(";", 1)[0].trim().toLowerCase();
+  if (contentType !== "application/json" && !contentType.endsWith("+json")) {
+    throw new ExecutorClientError("executor_content_type_invalid");
+  }
+
+  const declaredLength = Number(response.headers.get("content-length"));
+  if (Number.isFinite(declaredLength) && declaredLength > EXECUTOR_MAX_RESPONSE_BYTES) {
+    throw new ExecutorClientError("executor_response_too_large");
+  }
+  if (!response.body) throw new ExecutorClientError("executor_response_empty");
+
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      totalBytes += value.byteLength;
+      if (totalBytes > EXECUTOR_MAX_RESPONSE_BYTES) {
+        await reader.cancel().catch(() => undefined);
+        throw new ExecutorClientError("executor_response_too_large");
+      }
+      chunks.push(value);
+    }
+  } catch (error) {
+    if (error instanceof ExecutorClientError) throw error;
+    throw new ExecutorClientError("executor_response_read_failed");
+  } finally {
+    reader.releaseLock();
+  }
+
+  const bytes = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  let parsed: unknown;
+  try {
+    const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    parsed = JSON.parse(text);
+  } catch {
+    throw new ExecutorClientError("executor_json_invalid");
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new ExecutorClientError("executor_response_invalid");
+  }
+  return parsed as Record<string, unknown>;
+}
+
+function validateExecutorResponse(result: Record<string, unknown>): Record<string, unknown> {
+  if (result.ok !== true) throw new ExecutorClientError("executor_response_unsuccessful");
+
+  const txHash = result.tx_hash == null ? null : result.tx_hash;
+  if (txHash !== null && (typeof txHash !== "string" || !/^0x[0-9a-f]{64}$/i.test(txHash))) {
+    throw new ExecutorClientError("executor_tx_hash_invalid");
+  }
+
+  const tokenId = result.token_id == null ? null : result.token_id;
+  if (tokenId !== null) {
+    if (typeof tokenId !== "string" || !/^(?:0|[1-9][0-9]*)$/.test(tokenId)) {
+      throw new ExecutorClientError("executor_token_id_invalid");
+    }
+    const numericTokenId = BigInt(tokenId);
+    if (numericTokenId <= 0n || numericTokenId > MAX_UINT256) {
+      throw new ExecutorClientError("executor_token_id_invalid");
+    }
+  }
+
+  if (txHash === null && tokenId === null) throw new ExecutorClientError("executor_evidence_missing");
+  return { ...result, tx_hash: txHash, token_id: tokenId };
+}
+
+function canonicalEvidenceAddress(value: unknown) {
+  const address = String(value || "").trim();
+  return /^0x[0-9a-f]{40}$/i.test(address) ? address.toLowerCase() : null;
+}
+
+export function assertPolygonMintStateMatches(input: {
+  expectedRecipient: string;
+  expectedChipUidHash: string;
+  expectedTokenUri: string;
+  expectedAssetRef: string;
+  actualOwner: unknown;
+  actualChipUidHash: unknown;
+  actualTokenUri: unknown;
+  actualAssetRef: unknown;
+}) {
+  const expectedRecipient = canonicalEvidenceAddress(input.expectedRecipient);
+  if (!expectedRecipient) throw new Error("polygon_anchor_expected_recipient_invalid");
+  const actualOwner = canonicalEvidenceAddress(input.actualOwner);
+  if (!actualOwner) throw new Error("polygon_anchor_owner_invalid");
+  if (actualOwner !== expectedRecipient) throw new Error("polygon_anchor_owner_mismatch");
+  if (String(input.actualChipUidHash) !== input.expectedChipUidHash) {
+    throw new Error("polygon_anchor_chip_hash_mismatch");
+  }
+  if (String(input.actualTokenUri) !== input.expectedTokenUri) {
+    throw new Error("polygon_anchor_token_uri_mismatch");
+  }
+  if (String(input.actualAssetRef) !== input.expectedAssetRef) {
+    throw new Error("polygon_anchor_asset_ref_mismatch");
+  }
+}
+
+function safePolygonAnchorVerificationError(error: unknown) {
+  const code = error instanceof Error ? error.message : "";
+  return /^polygon_anchor_[a-z0-9_]{3,100}$/.test(code)
+    ? new Error(code)
+    : new Error("polygon_anchor_verification_failed");
+}
+
+export async function runExternalExecutor(
+  payload: Record<string, unknown>,
+  options: ExecutorClientOptions = {},
+): Promise<Record<string, unknown> | null> {
+  const source = options.source || process.env;
+  const production = isProductionRuntime(source);
+  const rawUrl = String(source.TOKENIZATION_EXECUTOR_URL || "").trim();
+  if (!rawUrl) {
+    if (production) throw new ExecutorClientError("executor_required_in_production");
+    return null;
+  }
+
+  const url = resolveExecutorUrl(rawUrl, production);
+  const secret = String(source.TOKENIZATION_EXECUTOR_SECRET || "").trim();
+  if (production && !secret) throw new ExecutorClientError("executor_secret_required_in_production");
+
+  const controller = new AbortController();
+  const timeoutMs = boundedExecutorTimeout(options.timeoutMs ?? source.TOKENIZATION_EXECUTOR_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await (options.fetchImpl || fetch)(url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...(secret ? { "x-tokenization-secret": secret } : {}),
+      },
+      body: JSON.stringify(payload),
+      cache: "no-store",
+      redirect: "error",
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new ExecutorClientError(`executor_http_${response.status}`);
+    return validateExecutorResponse(await readBoundedExecutorJson(response));
+  } catch (error) {
+    if (controller.signal.aborted) throw new ExecutorClientError("executor_request_timeout");
+    if (error instanceof ExecutorClientError) throw error;
+    throw new ExecutorClientError("executor_request_failed");
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function normalizePrivateKey(raw: string) {
@@ -98,7 +281,7 @@ async function runDirectPolygonMint(payload: Record<string, unknown>) {
   if (!assetRef) throw new Error("missing_asset_ref_for_direct_minter");
 
   const { ethers } = await import("ethers");
-  if (!ethers.isAddress(contractAddress)) throw new Error("invalid_POLYGON_CONTRACT_ADDRESS");
+  if (!ethers.isAddress(contractAddress)) throw new Error("polygon_anchor_contract_address_invalid");
   if (!ethers.isAddress(recipient)) throw new Error("invalid_polygon_recipient");
 
   const provider = new ethers.JsonRpcProvider(rpcUrl);
@@ -191,6 +374,9 @@ async function runLocalPolygonScript(payload: Record<string, unknown>) {
 
 async function verifyPolygonMintEvidence(input: {
   chipUidHash: string;
+  expectedRecipient: string;
+  expectedTokenUri: string;
+  expectedAssetRef: string;
   txHash?: string | null;
   tokenId?: string | null;
 }) {
@@ -208,8 +394,31 @@ async function verifyPolygonMintEvidence(input: {
 
   const contract = new ethers.Contract(contractAddress, POLYGON_MINT_ABI, provider);
   const chainTokenId = String(await contract.tokenByChipHash(input.chipUidHash));
-  if (BigInt(chainTokenId || "0") <= 0n) throw new Error("polygon_anchor_token_not_found");
+  let numericChainTokenId: bigint;
+  try {
+    numericChainTokenId = BigInt(chainTokenId);
+  } catch {
+    throw new Error("polygon_anchor_token_id_invalid");
+  }
+  if (numericChainTokenId <= 0n) throw new Error("polygon_anchor_token_not_found");
   if (input.tokenId && String(input.tokenId) !== chainTokenId) throw new Error("polygon_anchor_token_mismatch");
+
+  const [actualOwner, actualChipUidHash, actualTokenUri, actualAssetRef] = await Promise.all([
+    contract.ownerOf(chainTokenId),
+    contract.chipUidHashByTokenId(chainTokenId),
+    contract.tokenURI(chainTokenId),
+    contract.assetRefByTokenId(chainTokenId),
+  ]);
+  assertPolygonMintStateMatches({
+    expectedRecipient: input.expectedRecipient,
+    expectedChipUidHash: input.chipUidHash,
+    expectedTokenUri: input.expectedTokenUri,
+    expectedAssetRef: input.expectedAssetRef,
+    actualOwner,
+    actualChipUidHash,
+    actualTokenUri,
+    actualAssetRef,
+  });
 
   if (input.txHash) {
     const receipt = await provider.getTransactionReceipt(input.txHash);
@@ -349,6 +558,12 @@ export async function anchorTokenizationRequest(input: AnchorInput) {
       throw new Error("polygon_anchor_network_mismatch");
     }
 
+    const expectedRecipient = String(issuerWallet || process.env.POLYGON_DEFAULT_RECIPIENT || "").trim();
+    if (!canonicalEvidenceAddress(expectedRecipient)) {
+      throw new Error("polygon_anchor_expected_recipient_invalid");
+    }
+    externalInput.issuer_wallet = expectedRecipient;
+
     const wantsLocalMinter = String(process.env.TOKENIZATION_USE_LOCAL_MINTER || "false").toLowerCase() === "true";
     if (wantsLocalMinter && isProductionRuntime()) {
       throw new Error("polygon_exportable_signer_forbidden_in_production_use_executor");
@@ -356,9 +571,11 @@ export async function anchorTokenizationRequest(input: AnchorInput) {
     if (wantsLocalMinter && !process.env.POLYGON_RPC_URL) {
       throw new Error("missing_POLYGON_RPC_URL_for_local_minter");
     }
+    const productionRuntime = isProductionRuntime();
     let external = await runExternalExecutor(externalInput);
-    const directPolygonMint = !external ? await runDirectPolygonMint(externalInput) : null;
-    const localPolygonMint = !external && !directPolygonMint ? await runLocalPolygonScript(externalInput) : null;
+    if (productionRuntime && !external) throw new Error("executor_required_in_production");
+    const directPolygonMint = !productionRuntime && !external ? await runDirectPolygonMint(externalInput) : null;
+    const localPolygonMint = !productionRuntime && !external && !directPolygonMint ? await runLocalPolygonScript(externalInput) : null;
     external = external || directPolygonMint || localPolygonMint;
     if (!external?.tx_hash && !external?.token_id) {
       throw new Error("polygon_anchor_unavailable_configure_local_minter_or_executor");
@@ -366,7 +583,16 @@ export async function anchorTokenizationRequest(input: AnchorInput) {
 
     const txHash = external?.tx_hash ? String(external.tx_hash) : null;
     const externalTokenId = external?.token_id ? String(external.token_id) : null;
-    const verified = await verifyPolygonMintEvidence({ chipUidHash, txHash, tokenId: externalTokenId });
+    const verified = await verifyPolygonMintEvidence({
+      chipUidHash,
+      expectedRecipient,
+      expectedTokenUri: tokenUri,
+      expectedAssetRef: assetRef,
+      txHash,
+      tokenId: externalTokenId,
+    }).catch((error) => {
+      throw safePolygonAnchorVerificationError(error);
+    });
     const tokenId = verified.tokenId;
     const anchorHash = String(external?.anchor_hash || txHash || `polygon-token:${String(process.env.POLYGON_CONTRACT_ADDRESS || "").trim()}:${tokenId}`);
     const externalRef = external?.external_ref ? String(external.external_ref) : null;

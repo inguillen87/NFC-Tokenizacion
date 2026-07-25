@@ -33,13 +33,11 @@ $v2Migrations = @(
   "20260723193500_0051_iota_evidence_anchor_v2_writer.sql",
   "20260723194500_0052_webhook_delivery_outbox.sql",
   "20260723200500_0053_admin_login_abuse_guard.sql",
-  "20260723213000_0054_iota_executor_publications.sql"
+  "20260723213000_0054_iota_executor_publications.sql",
+  "20260724213000_0055_iota_executor_durable_broadcast.sql"
 )
 if ($v2Migrations -contains $Migration) {
-  if (-not $StagingApproved -and $env:STAGING_MIGRATION_APPROVED -ne "YES") {
-    throw "V2 staging migration requires -StagingApproved or STAGING_MIGRATION_APPROVED=YES"
-  }
-  if ($env:NODE_ENV -eq "production") { throw "Refusing V2 migration against production environment" }
+  throw "IOTA V2 migrations must use npm run apply:staging:v2; the legacy file runner is not atomic with its ledger"
 }
 
 $dbUrl = Read-DatabaseUrl

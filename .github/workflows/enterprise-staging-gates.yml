@@ -2,11 +2,25 @@ name: enterprise staging gates
 
 on:
   workflow_dispatch:
+    inputs:
+      migration_phase:
+        description: "Migration gate phase; no phase applies SQL"
+        required: true
+        default: preflight
+        type: choice
+        options:
+          - preflight
+          - after_0050_dry_run
+          - postcheck
 
 jobs:
   gates:
     runs-on: ubuntu-latest
     environment: staging
+    env:
+      STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+      STAGING_DATABASE_ENDPOINT_ALLOWLIST: ${{ vars.STAGING_DATABASE_ENDPOINT_ALLOWLIST }}
+      STAGING_MIGRATION_EXPECTED_BASELINE_LEDGER: ${{ vars.STAGING_MIGRATION_EXPECTED_BASELINE_LEDGER }}
     permissions:
       contents: read
     steps:
@@ -20,15 +34,18 @@ jobs:
         run: npm run check:waf:policy
       - name: Validate migration safety invariants
         run: npm run check:migrations:safety
-      - name: Migration preflight and transactional dry-run
-        env:
-          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
-        run: |
-          npm run gate:migrations:preflight
-          npm run gate:migrations:dry-run
+      - name: Migration baseline preflight
+        if: inputs.migration_phase == 'preflight'
+        run: npm run gate:migrations:preflight
+      - name: Transactional dry-run after committed 0050
+        if: inputs.migration_phase == 'after_0050_dry_run'
+        run: npm run gate:migrations:dry-run
+      - name: PostgreSQL postcheck after 0050-0055
+        if: inputs.migration_phase == 'postcheck'
+        run: npm run gate:migrations:postcheck
       - name: PostgreSQL and IOTA read-only gates
+        if: inputs.migration_phase == 'postcheck'
         env:
-          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
           IOTA_EVM_RPC_URL: ${{ secrets.STAGING_IOTA_EVM_RPC_URL }}
           IOTA_EVM_ANCHOR_CONTRACT_V2: ${{ secrets.STAGING_IOTA_EVM_ANCHOR_CONTRACT_V2 }}
           IOTA_KMS_PUBLISHER_ADDRESS: ${{ secrets.STAGING_IOTA_KMS_PUBLISHER_ADDRESS }}
@@ -44,6 +61,7 @@ jobs:
           POLYGON_KMS_SIGNER_TOKEN: ${{ secrets.STAGING_POLYGON_KMS_SIGNER_TOKEN }}
         run: npm run gate:enterprise
       - name: Core regression suites
+        if: inputs.migration_phase == 'postcheck'
         run: |
           npm run test:proof --workspace=api
           npm test --workspace=executor
