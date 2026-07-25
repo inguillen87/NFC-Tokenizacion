@@ -484,7 +484,7 @@ function ethersTransactionRequest(intent) {
   return { ...request, gasPrice: BigInt(transaction.gas_price) };
 }
 
-function recoveredIotaSigned(reservation, input, publisherAddress, unsignedData) {
+function validateRecoveredIotaSigned(reservation, input, publisherAddress, unsignedData) {
   let parsed;
   try {
     parsed = Transaction.from(reservation.rawTransaction);
@@ -649,7 +649,7 @@ async function anchorIotaEvidenceUnlocked(input, reservation, dependencies = {})
     };
 
     const persistedSigned = reservation.recover
-      ? recoveredIotaSigned(reservation, input, publisherAddress, unsigned.data)
+      ? validateRecoveredIotaSigned(reservation, input, publisherAddress, unsigned.data)
       : null;
     const durableReservation = persistedSigned ? { ...reservation, ...persistedSigned } : reservation;
     return await runDurableIotaBroadcast({
@@ -779,7 +779,15 @@ function createExecutorServer() {
 }
 
 const port = Number(env("PORT", "3010"));
-export { anchorIotaEvidence, createExecutorServer, handler, mintUnlocked, secretMatches, sha256Bytes32 };
+export {
+  anchorIotaEvidence,
+  createExecutorServer,
+  handler,
+  mintUnlocked,
+  secretMatches,
+  sha256Bytes32,
+  validateRecoveredIotaSigned,
+};
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const runtime = createExecutorServer();

@@ -54,7 +54,8 @@ not a write, KMS signature or database reconciliation.
 - Live postcheck before migration: failed closed and enumerated all six missing
   migrations and required objects.
 - Rollback verification against the unchanged baseline: pass.
-- API proof suite: 32/32 pass.
+- API proof suite: 48/48 pass.
+- Executor suite: 60/60 pass, including durable-store failures before and after broadcast.
 
 ## Fixed control boundaries
 

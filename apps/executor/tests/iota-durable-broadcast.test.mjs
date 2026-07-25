@@ -68,6 +68,18 @@ test("the exact raw transaction is durable before the first broadcast", async ()
   ]);
 });
 
+test("a persistence failure before broadcast makes network submission impossible", async () => {
+  const events = [];
+  const deps = dependencies(events, {
+    async persistSigned(_proofId, _leaseToken, envelope) {
+      events.push(["persist_signed", envelope.rawTransaction]);
+      throw new Error("durable_store_unavailable");
+    },
+  });
+  await assert.rejects(() => runDurableIotaBroadcast(input(), deps), /durable_store_unavailable/);
+  assert.deepEqual(events.map(([event]) => event), ["persist_signed"]);
+});
+
 test("lease recovery rebroadcasts persisted bytes and never invokes the signer", async () => {
   const events = [];
   let signCalls = 0;
@@ -114,6 +126,18 @@ test("an unobserved broadcast failure leaves the row signed for exact retry", as
   });
   await assert.rejects(() => runDurableIotaBroadcast(input(), deps), /rpc_unavailable/);
   assert.deepEqual(events.map(([event]) => event), ["persist_signed", "broadcast", "lookup"]);
+});
+
+test("a crash-window store failure after broadcast cannot create a second signed transaction", async () => {
+  const events = [];
+  const deps = dependencies(events, {
+    async persistBroadcast(_proofId, _leaseToken, hash) {
+      events.push(["persist_broadcast", hash]);
+      throw new Error("durable_store_unavailable");
+    },
+  });
+  await assert.rejects(() => runDurableIotaBroadcast(input(), deps), /durable_store_unavailable/);
+  assert.deepEqual(events.map(([event]) => event), ["persist_signed", "broadcast", "persist_broadcast"]);
 });
 
 test("broadcast hash and nonce mismatches fail closed and cannot be hidden by lookup", async () => {

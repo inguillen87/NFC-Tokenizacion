@@ -71,4 +71,4 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_iota_executor_publications_signer_nonce
 
 CREATE INDEX IF NOT EXISTS idx_iota_executor_publications_lease
   ON iota_executor_publications (status, updated_at)
-  WHERE status IN ('reserved', 'signed');
+  WHERE status IN ('reserved', 'signed', 'broadcast', 'submitted');

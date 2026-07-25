@@ -20,11 +20,41 @@ for (const id of ids) {
   });
 }
 const sql55 = await fs.readFile(path.join(root, ids.at(-1)), "utf8");
+const executor = await fs.readFile(path.resolve(process.cwd(), "apps/executor/src/iota-idempotency.mjs"), "utf8");
+const runner = await fs.readFile(path.resolve(process.cwd(), "apps/api/scripts/db-apply.mjs"), "utf8");
+const legacyRunner = await fs.readFile(path.resolve(process.cwd(), "apps/api/scripts/db-apply-file.mjs"), "utf8");
 const drop = sql55.indexOf("DROP CONSTRAINT IF EXISTS iota_executor_publications_status_check");
 const rewrite = sql55.indexOf("SET status = 'reserved'");
 const hasProtocolCheck = sql55.includes("iota_executor_publications_protocol_v2_required_check");
+const hasSignerNonceGuard = sql55.includes("uq_iota_executor_publications_signer_nonce")
+  && /\(chain_id,\s*lower\(signer_address\),\s*nonce\)/m.test(sql55);
+const executorMatchesDurableStateMachine = /VALUES\s*\([^)]*'reserved'/s.test(executor)
+  && /SET status = 'signed'/m.test(executor)
+  && /SET status = 'broadcast'/m.test(executor)
+  && /SET status = 'submitted'/m.test(executor)
+  && !/VALUES\s*\([^)]*'processing'/s.test(executor)
+  && !/status\s*=\s*'processing'/m.test(executor);
+const runnerIsAtomic = runner.includes("containsExplicitTransactionControl")
+  && runner.includes("historicalGaps")
+  && runner.includes("SET LOCAL lock_timeout")
+  && runner.includes("INSERT INTO schema_migrations");
+const legacyBypassBlocked = legacyRunner.includes("IOTA V2 migrations require the allowlisted transactional staging runner");
 const ok = checks.every((item) => item.bytes > 0)
-  && drop >= 0 && rewrite > drop && hasProtocolCheck
+  && drop >= 0 && rewrite > drop && hasProtocolCheck && hasSignerNonceGuard
+  && executorMatchesDurableStateMachine && runnerIsAtomic && legacyBypassBlocked
   && checks.every((item) => !item.hasExplicitTransactionControl);
-console.log(JSON.stringify({ ok, gate: "migration_safety", migrations: checks, assertions: { status_constraint_dropped_before_rewrite: rewrite > drop, protocol_v2_check: hasProtocolCheck, runner_owns_transaction_boundary: checks.every((item) => !item.hasExplicitTransactionControl) } }));
+console.log(JSON.stringify({
+  ok,
+  gate: "migration_safety",
+  migrations: checks,
+  assertions: {
+    status_constraint_dropped_before_rewrite: rewrite > drop,
+    protocol_v2_check: hasProtocolCheck,
+    signer_nonce_guard: hasSignerNonceGuard,
+    executor_matches_durable_state_machine: executorMatchesDurableStateMachine,
+    runner_owns_transaction_boundary: checks.every((item) => !item.hasExplicitTransactionControl),
+    runner_is_atomic_and_sparse_ledger_safe: runnerIsAtomic,
+    legacy_v2_bypass_blocked: legacyBypassBlocked,
+  },
+}));
 process.exitCode = ok ? 0 : 1;
