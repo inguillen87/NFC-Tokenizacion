@@ -54,6 +54,7 @@ test("staging migration gates preserve the PostgreSQL enum transaction boundary"
   const safety = await readFile(new URL("../../../scripts/check-migration-safety.mjs", import.meta.url), "utf8");
   const gateLibrary = await readFile(new URL("../../../scripts/lib/staging-migration-gate.mjs", import.meta.url), "utf8");
   const durableMigration = await source("../db/migrations/20260724213000_0055_iota_executor_durable_broadcast.sql");
+  const validationMigration = await source("../db/migrations/20260725014500_0056_iota_evidence_constraints_validate.sql");
   const runbook = await readFile(new URL("../../../docs/staging-migration-runbook.md", import.meta.url), "utf8");
   assert.ok(gateLibrary.indexOf("20260723193000_0050_evidence_anchor_reconciling_status.sql") < gateLibrary.indexOf("20260723193500_0051_iota_evidence_anchor_v2_writer.sql"));
   assert.ok(runbook.indexOf("`0050`") < runbook.indexOf("`0051`"));
@@ -65,6 +66,8 @@ test("staging migration gates preserve the PostgreSQL enum transaction boundary"
   assert.match(gateLibrary, /STAGING_DATABASE_ENDPOINT_ALLOWLIST_REQUIRED/);
   assert.match(safety, /runner_owns_transaction_boundary/);
   assert.doesNotMatch(durableMigration, /^\s*(?:BEGIN|COMMIT|ROLLBACK)\s*;\s*$/im);
+  assert.match(validationMigration, /VALIDATE CONSTRAINT evidence_anchors_iota_v2_proof_id_format/);
+  assert.match(validationMigration, /VALIDATE CONSTRAINT evidence_anchors_iota_v2_memo_hash_format/);
   assert.match(runbook, /ROLLBACK/);
 });
 

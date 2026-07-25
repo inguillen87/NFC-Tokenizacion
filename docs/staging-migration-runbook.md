@@ -1,6 +1,6 @@
 # Runbook de migraciones IOTA V2 en staging
 
-Este procedimiento aplica `0050`–`0055` únicamente a una rama Neon de staging
+Este procedimiento aplica `0050`–`0056` únicamente a una rama Neon de staging
 identificada y aprobada. Los gates nunca imprimen usuario, contraseña, host ni
 connection string. La identidad visible se limita a endpoint ID, base, rol,
 versión y fingerprints SHA-256 sin secretos.
@@ -12,7 +12,7 @@ versión y fingerprints SHA-256 sin secretos.
 - `STAGING_MIGRATION_EXPECTED_BASELINE_LEDGER` debe enumerar todo el ledger previo, no sólo la última migración.
 - No ejecutar `npm run db:migrate` sin `--only`: el endpoint auditado tiene un ledger histórico disperso y un replay global es inseguro.
 - El runner es dueño de `BEGIN/COMMIT`; ningún archivo SQL puede incluir control de transacción.
-- `0050` se confirma sola. Recién después se ejecuta el dry-run rollback-only de `0051`–`0055`.
+- `0050` se confirma sola. Recién después se ejecuta el dry-run rollback-only de `0051`–`0056`.
 - Antes de mutar staging debe existir una prueba exitosa en una rama descartable y un snapshot/branch de recuperación de staging.
 - Rollback operativo = restore de Neon. No se ejecutan `DROP TABLE`, `DROP COLUMN` ni una down migration destructiva.
 
@@ -66,11 +66,11 @@ Remove-Item Env:\DATABASE_URL
 npm run gate:migrations:dry-run
 ```
 
-El dry-run ejecuta `0051`–`0055` dentro de una única transacción con advisory
+El dry-run ejecuta `0051`–`0056` dentro de una única transacción con advisory
 lock, `lock_timeout=3s` y `statement_timeout=30s`, y siempre hace `ROLLBACK`.
 Debe devolver fingerprints before/after iguales y `rollback_verified: true`.
 
-Después, aplicar `0051`–`0055` individualmente con `--only`, ejecutar
+Después, aplicar `0051`–`0056` individualmente con `--only`, ejecutar
 `npm run gate:migrations:postcheck`, las suites API/executor y el smoke de dos
 instancias. Guardar el enlace o ID de esa ejecución como evidencia de rehearsal.
 
@@ -96,7 +96,7 @@ npm run apply:staging:v2
 ```
 
 El wrapper vuelve a validar target, allowlist, ledger y fingerprint; aplica
-`0050`, verifica el ledger, ejecuta el dry-run de `0051`–`0055`, aplica cada
+`0050`, verifica el ledger, ejecuta el dry-run de `0051`–`0056`, aplica cada
 archivo con transacción+ledger atómicos y termina con postcheck. Ante cualquier
 fallo se detiene y devuelve `last_completed_migration` y `rollback_required`.
 
@@ -107,15 +107,15 @@ npm run gate:migrations:postcheck
 npm run gate:enterprise
 ```
 
-El gate exige las seis entradas exactas del ledger, todas las tablas/columnas,
+El gate exige las siete entradas exactas del ledger, todas las tablas/columnas,
 constraints, el state machine `reserved → signed → broadcast → submitted →
 confirmed`, los índices de idempotencia y cero filas incompatibles. El SQL
 read-only equivalente para evidencia manual está en
 `apps/api/db/ops/iota-v2-postcheck.sql`.
 
-Las dos constraints `evidence_anchors_iota_v2_*` nacen `NOT VALID`. Staging
-puede quedar funcional, pero `production_ready` seguirá `false` hasta una
-migración forward-only que las valide. No ocultar esa diferencia.
+Las dos constraints `evidence_anchors_iota_v2_*` nacen `NOT VALID` en `0051` y
+`0056` las valida después de comprobar los datos existentes. El postcheck exige
+`production_ready: true`; una constraint pendiente de validación bloquea el gate.
 
 ## 6. Rollback
 
@@ -131,7 +131,7 @@ ya quedó confirmada o falla el postcheck:
 npm run gate:migrations:rollback-verify
 ```
 
-El gate exige el ledger baseline exacto, ausencia total de `0050`–`0055`,
+El gate exige el ledger baseline exacto, ausencia total de `0050`–`0056`,
 ausencia de objetos V2 y coincidencia exacta con
 `STAGING_MIGRATION_PRECHANGE_SCHEMA_FINGERPRINT`. El SQL auxiliar read-only es
 `apps/api/db/ops/iota-v2-rollback-verify.sql`.

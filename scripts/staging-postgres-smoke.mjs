@@ -107,6 +107,7 @@ try {
     && missingColumns.length === 0
     && missingIndexes.length === 0
     && missingConstraints.length === 0
+    && unvalidatedConstraints.length === 0
     && statusConstraintValid
     && enumReconciling
     && incompatibleRows === 0
@@ -123,7 +124,7 @@ try {
     missing_indexes: missingIndexes,
     missing_constraints: missingConstraints,
     unvalidated_constraints: unvalidatedConstraints,
-    production_ready: ok && unvalidatedConstraints.length === 0,
+    production_ready: ok,
     status_constraint_valid: statusConstraintValid,
     enum_reconciling_present: Boolean(enumReconciling),
     incompatible_iota_publication_rows: incompatibleRows,

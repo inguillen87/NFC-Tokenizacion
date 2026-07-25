@@ -97,7 +97,7 @@ try {
   await verifyLedger(expectedLedgerForPhase(baseline, "after_0050"));
 
   // PostgreSQL enum additions must be committed before 0051 can reference the
-  // new value. Only after 0050 is durable can 0051-0055 be rehearsed together.
+  // new value. Only after 0050 is durable can 0051-0056 be rehearsed together.
   if (await run(process.execPath, ["scripts/staging-migration-dry-run.mjs"]) !== 0) {
     throw gateError("MIGRATION_DRY_RUN_FAILED_AFTER_0050");
   }

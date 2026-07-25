@@ -90,6 +90,7 @@ test("executable gates bind preflight, dry-run, postcheck and rollback to safe p
   assert.match(postcheck, /protocol_version/);
   assert.match(postcheck, /uq_iota_executor_publications_signer_nonce/);
   assert.match(postcheck, /production_ready/);
+  assert.match(postcheck, /unvalidatedConstraints\.length === 0/);
   assert.match(rollback, /assertRecordedPrechangeFingerprint/);
   assert.match(rollback, /BEGIN TRANSACTION READ ONLY/);
   assert.match(apply, /STAGING_MIGRATION_BACKUP_REFERENCE/);
@@ -109,6 +110,7 @@ test("runner blocks sparse-ledger replay and owns all transaction controls", asy
   assert.match(legacyRunner, /IOTA V2 migrations require the allowlisted transactional staging runner/);
   assert.match(legacyPowerShell, /IOTA V2 migrations must use npm run apply:staging:v2/);
   assert.match(legacyPowerShell, /20260724213000_0055_iota_executor_durable_broadcast\.sql/);
+  assert.match(legacyPowerShell, /20260725014500_0056_iota_evidence_constraints_validate\.sql/);
 });
 
 test("postcheck and rollback SQL artifacts are read-only", async () => {

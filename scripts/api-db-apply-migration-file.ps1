@@ -34,7 +34,8 @@ $v2Migrations = @(
   "20260723194500_0052_webhook_delivery_outbox.sql",
   "20260723200500_0053_admin_login_abuse_guard.sql",
   "20260723213000_0054_iota_executor_publications.sql",
-  "20260724213000_0055_iota_executor_durable_broadcast.sql"
+  "20260724213000_0055_iota_executor_durable_broadcast.sql",
+  "20260725014500_0056_iota_evidence_constraints_validate.sql"
 )
 if ($v2Migrations -contains $Migration) {
   throw "IOTA V2 migrations must use npm run apply:staging:v2; the legacy file runner is not atomic with its ledger"

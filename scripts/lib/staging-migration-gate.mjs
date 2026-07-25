@@ -11,6 +11,7 @@ export const PLANNED_MIGRATIONS = Object.freeze([
   "20260723200500_0053_admin_login_abuse_guard.sql",
   "20260723213000_0054_iota_executor_publications.sql",
   "20260724213000_0055_iota_executor_durable_broadcast.sql",
+  "20260725014500_0056_iota_evidence_constraints_validate.sql",
 ]);
 
 export const DRY_RUN_MIGRATIONS = Object.freeze(PLANNED_MIGRATIONS.slice(1));
