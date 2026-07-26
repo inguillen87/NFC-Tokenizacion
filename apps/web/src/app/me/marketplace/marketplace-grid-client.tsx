@@ -49,17 +49,17 @@ const paymentMethods: Array<{
   detail: string;
   Icon: typeof CreditCard;
 }> = [
-  { id: "mercadopago", label: "MercadoPago", detail: "Link de pago local AR/UY/CL", Icon: CreditCard },
-  { id: "stripe", label: "Stripe", detail: "Tarjeta internacional", Icon: CreditCard },
-  { id: "metamask", label: "MetaMask / USDC", detail: "Wallet para NFT y ownership", Icon: WalletCards },
-  { id: "transfer", label: "Transferencia", detail: "CBU/alias validado por la marca", Icon: Banknote },
-  { id: "escrow", label: "P2P escrow", detail: "Reserva tipo Binance P2P", Icon: ShieldCheck },
+  { id: "mercadopago", label: "MercadoPago", detail: "Preferencia para seguimiento; no genera un cobro", Icon: CreditCard },
+  { id: "stripe", label: "Stripe", detail: "Preferencia internacional; no genera un cobro", Icon: CreditCard },
+  { id: "metamask", label: "MetaMask / USDC", detail: "Preferencia de wallet; no solicita firma ni mueve fondos", Icon: WalletCards },
+  { id: "transfer", label: "Transferencia", detail: "Preferencia informada a la marca; no valida CBU ni pago", Icon: Banknote },
+  { id: "escrow", label: "P2P escrow", detail: "Solicitud de evaluación; no reserva ni crea escrow", Icon: ShieldCheck },
 ];
 
 const MARKETPLACE_SHOWCASE_SLIDES = [
   {
     title: "Gran Reserva Malbec",
-    kicker: "Drop verificado por tap",
+    kicker: "Drop conectado al tag",
     body: "Botella premium con trazabilidad, club, voucher post-tap y ownership listo para transferir.",
     image: "/images/premium_wine_mendoza_nfc.png",
     tag: "Wine pass",
@@ -139,9 +139,9 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
   }, []);
 
   const stats = useMemo(() => {
-    const available = items.filter((item) => String(item.stock_status || item.status || "available").toLowerCase() !== "out_of_stock").length;
+    const available = items.filter((item) => ["available", "active", "in_stock"].includes(String(item.stock_status || item.status || "").toLowerCase())).length;
     const gated = items.filter((item) => item.age_gate_required).length;
-    const requestable = items.filter((item) => item.request_to_buy_enabled !== false).length;
+    const requestable = items.filter((item) => item.request_to_buy_enabled === true).length;
     const brands = new Set(items.map((item) => String(brandLabel(item)).trim()).filter(Boolean));
     const points = items.filter((item) => Number(item.points_price || 0) > 0).length;
     return { available, gated, requestable, brands: brands.size, points };
@@ -296,13 +296,13 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-300">Marketplace de la marca</p>
-            <h2 className="mt-1 text-2xl font-black tracking-tight text-white">Comprá, reservá o pedí una experiencia desde tu Passport.</h2>
+            <h2 className="mt-1 text-2xl font-black tracking-tight text-white">Enviá una solicitud comercial desde tu Passport.</h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-cyan-50/80">
               El carrito no expone datos internos: cada ítem genera una solicitud comercial trazable con método de pago elegido, Passport, puntos y contexto de tap.
             </p>
           </div>
           <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-100">
-            CRM-ready checkout
+            Request-to-buy · sin cobro
           </span>
         </div>
 
@@ -353,15 +353,15 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
           <div className="relative grid content-between gap-5 border-t border-white/10 p-5 sm:p-7 lg:border-l lg:border-t-0">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Passport commerce</p>
-              <h3 className="mt-2 text-2xl font-black text-white">Marketplace vivo, carrito y leads comerciales desde cada tap.</h3>
+              <h3 className="mt-2 text-2xl font-black text-white">Catálogo reportado y solicitudes comerciales desde cada tap.</h3>
               <p className="mt-3 text-sm leading-6 text-slate-300">
-                El usuario compra, reserva o pide beneficios; la empresa recibe contexto de UID, zona, campaña, canal y método de pago preferido.
+                El usuario solicita contacto o un beneficio; la empresa recibe contexto y un método preferido. Este flujo no cobra, reserva stock ni confirma una compra.
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
               {[
                 ["Carrito", `${cartTotals.units} ítems`],
-                ["Pago", selectedPayment.label],
+                ["Preferencia", selectedPayment.label],
                 ["CRM", "Lead trazable"],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
@@ -438,7 +438,7 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
           <div className="rounded-3xl border border-emerald-300/15 bg-emerald-500/10 p-5 shadow-lg">
             <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-200">Regla comercial</p>
             <p className="mt-2 text-sm leading-6 text-emerald-50/85">
-              Comprar no transfiere ownership automáticamente. El NFT o certificado cambia de dueño solo con pago confirmado, validación de la marca y evidencia del producto.
+              Enviar una solicitud no compra, cobra, reserva ni transfiere ownership. Cualquier cambio exige confirmación posterior de pago, aprobación de la marca y el flujo de ownership correspondiente.
             </p>
           </div>
         </aside>
@@ -446,8 +446,8 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
         <div className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2">
             {filteredItems.map((item, idx) => {
-              const status = String(item.stock_status || item.status || "available");
-              const requestDisabled = status === "out_of_stock" || item.request_to_buy_enabled === false;
+              const status = String(item.stock_status || item.status || "not_reported");
+              const requestDisabled = !["available", "active", "in_stock"].includes(status.toLowerCase()) || item.request_to_buy_enabled !== true;
               const requestAlreadySent = requestedById[item.id] === true;
               const currentKind = itemKind(item, idx);
               const visualClass = productVisualClass(currentKind);
@@ -538,7 +538,7 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
                         suppressHydrationWarning
                         disabled={requestDisabled}
                         onClick={() => addToCart(item)}
-                        title="Agregar este producto al carrito verificado."
+                        title="Agregar este producto al carrito de solicitudes."
                         className="inline-flex items-center justify-center gap-2 rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <ShoppingCart className="h-4 w-4" aria-hidden="true" />
@@ -571,7 +571,7 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
           <div className="sticky top-4 rounded-3xl border border-cyan-300/20 bg-slate-950/85 p-5 shadow-[0_24px_70px_rgba(0,0,0,0.35)] backdrop-blur">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-200">Carrito verificado</p>
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-200">Carrito de solicitudes</p>
                 <h3 className="mt-1 text-xl font-black text-white">{cartTotals.units} ítem{cartTotals.units === 1 ? "" : "s"}</h3>
               </div>
               <div className="grid h-12 w-12 place-items-center rounded-2xl border border-cyan-300/20 bg-cyan-500/10 text-cyan-100">
@@ -647,7 +647,7 @@ export function MarketplaceGridClient({ items }: { items: Listing[] }) {
               className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-cyan-300 px-4 py-3 text-sm font-black text-slate-950 transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <PackageCheck className="h-4 w-4" aria-hidden="true" />
-              {cartBusy ? "Enviando..." : "Enviar carrito al CRM"}
+              {cartBusy ? "Enviando..." : "Enviar solicitudes"}
             </button>
             {cartStatus ? <p className="mt-3 text-xs leading-5 text-cyan-100">{cartStatus}</p> : null}
           </div>

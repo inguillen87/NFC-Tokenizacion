@@ -3,7 +3,6 @@ export const dynamic = 'force-dynamic';
 
 import { json } from '../../lib/http';
 import { processSunScan } from '../../lib/sun-service';
-import { normalizeDemoBodegaSunResult } from '../../lib/sun-demo-bodega-normalizer';
 import { createDemoShareToken } from '../../lib/demo-share';
 import { seedDemoPack } from '../../lib/demo-seed';
 import { sql } from '../../lib/db';
@@ -16,11 +15,12 @@ import { resolveSunTenantProfile } from '../../lib/sun-tenant-profile';
 import { ensureSunTenantProfilesSchema } from '../../lib/sun-tenant-profile-schema';
 import { ensureCarrierProfileSchema } from '../../lib/commercial-runtime-schema';
 import { getRequestMeta } from '../../lib/request-meta';
-import { hitSunRateLimit } from '../../lib/sun-rate-limit-store';
+import { hitSunRateLimit, shouldFailClosedSunRateLimit } from '../../lib/sun-rate-limit-store';
 import { createSunFreshHandoffToken } from '../../lib/sun-fresh-handoff';
 import { createPublicCertificateShareToken } from '../../lib/public-certificate-share';
 import { eventShareUid } from '../../lib/public-cta-target';
 import { recordTapEvent } from '../../lib/tap-event-service';
+import { buildSunSensorEvidence } from '../../lib/sun-sensor-evidence';
 import { resolveEventLocalTime } from '@product/core';
 import crypto from "node:crypto";
 
@@ -28,6 +28,7 @@ const RATE_LIMIT_MAX_IP = Number(process.env.SUN_RATE_LIMIT_IP_PER_MIN || 120);
 const RATE_LIMIT_MAX_BID = Number(process.env.SUN_RATE_LIMIT_BID_PER_MIN || 240);
 const RATE_LIMIT_MAX_UID_CTR = Number(process.env.SUN_RATE_LIMIT_UID_CTR_PER_MIN || 30);
 const BID_RE = /^[A-Za-z0-9._:-]{3,120}$/;
+const TENANT_SLUG_RE = /^[a-z0-9][a-z0-9._-]{1,119}$/;
 const HEX_RE = /^[0-9A-F]+$/i;
 
 const SUN_PIPELINE_TIMEOUT_MS = Number(process.env.SUN_PIPELINE_TIMEOUT_MS || 8000);
@@ -288,12 +289,15 @@ async function safeHitSunRateLimit(scope: string, scopeKey: string, windowSecond
     return await hitSunRateLimit(scope, scopeKey, windowSeconds, maxHits);
   } catch (error) {
     const reason = error instanceof Error ?error.message : "rate_limit_unavailable";
-    console.warn("[sun_rate_limit_unavailable]", JSON.stringify({ scope, scopeKey, reason: sanitizePublicErrorReason(reason) }));
-    return { hits: 0, limited: false, unavailable: true };
+    console.warn("[sun_rate_limit_unavailable]", JSON.stringify({ scope, reason: sanitizePublicErrorReason(reason) }));
+    return { hits: 0, limited: false, retryAfterSeconds: 30, unavailable: true };
   }
 }
 
 function shouldRepairDemoBodegaSun(bid: string, result: SunResult) {
+  const runtime = String(process.env.VERCEL_ENV || process.env.NODE_ENV || "").trim().toLowerCase();
+  const explicitlyEnabled = String(process.env.NEXID_SUN_DEMO_AUTO_SEED || "").trim().toLowerCase() === "true";
+  if (!explicitlyEnabled || runtime === "production") return false;
   if (bid !== DEMO_BODEGA_BID) return false;
   const reason = String(result.body?.reason || "").toLowerCase();
   return result.status === 404 && reason.includes("unknown batch");
@@ -346,9 +350,9 @@ function getSunCopy(locale: SunLocale) {
       ctaWarranty: "Registrar garantia",
       ctaProvenance: "Ver proveniência",
       ctaTokenize: "Tokenização opcional",
-      quality: "Qualidade",
+      quality: "Heurística de política",
       authReplay: "Replay detectado: solicite um novo toque físico antes de titularidade/garantia/tokenização.",
-      authOk: "Autenticação concluída. Você pode continuar com titularidade, garantia, proveniência e tokenização opcional.",
+      authOk: "Mensagem NFC validada. Titularidade, garantia, proveniência e tokenização continuam sujeitas à política e às evidências exigidas.",
       statusReady: "Pronto para executar CTAs seguras.",
       statusReplay: "Replay ativo: ações comerciais bloqueadas até novo toque.",
       timelineEmpty: "Sem eventos ainda. Faça um novo tap para gerar histórico.",
@@ -379,9 +383,9 @@ function getSunCopy(locale: SunLocale) {
       ctaWarranty: "Register warranty",
       ctaProvenance: "View provenance",
       ctaTokenize: "Optional tokenization",
-      quality: "Quality",
+      quality: "Policy heuristic",
       authReplay: "Replay detected: request a fresh physical tap before ownership/warranty/tokenization.",
-      authOk: "Authentication complete. You can continue with ownership, warranty, provenance and optional tokenization.",
+      authOk: "NFC message validated. Ownership, warranty, provenance and tokenization remain subject to policy and required evidence.",
       statusReady: "Ready to execute secure CTAs.",
       statusReplay: "Replay active: commercial actions blocked until a fresh tap.",
       timelineEmpty: "No events yet. Perform a new tap to generate history.",
@@ -411,9 +415,9 @@ function getSunCopy(locale: SunLocale) {
     ctaWarranty: "Registrar garantía",
     ctaProvenance: "Ver proveniencia",
     ctaTokenize: "Tokenización opcional",
-    quality: "Calidad",
+    quality: "Heurística de política",
     authReplay: "Replay detectado: pedí un nuevo tap físico antes de titularidad/garantía/tokenización.",
-    authOk: "Autenticación completada. Podés seguir con titularidad, garantía, proveniencia y tokenización opcional.",
+    authOk: "Mensaje NFC validado. Titularidad, garantía, procedencia y tokenización siguen sujetas a política y evidencia requerida.",
     statusReady: "Listo para ejecutar CTAs seguras.",
     statusReplay: "Replay activo: acciones comerciales bloqueadas hasta nuevo tap.",
     timelineEmpty: "Sin eventos todavía. Hacé un nuevo tap para generar historial.",
@@ -494,32 +498,32 @@ function resolveTrustState(status: string, reason: string, productState?: string
     if (isTamperOpened) {
       return {
         code: 'REPLAY_SUSPECT',
-        label: 'Lectura repetida (Sello abierto)',
-        summary: 'El producto es auténtico, pero su sello ya fue abierto y esta lectura ya fue procesada anteriormente.',
+        label: 'Lectura repetida (TT reporta apertura)',
+        summary: 'El mensaje NFC fue validado, el TT reporta apertura y esta lectura ya fue procesada. Esto no certifica el contenido ni el origen físico.',
         tone: 'warn' as const,
       };
     }
     return { code: 'REPLAY_SUSPECT', label: 'URL reutilizada', summary: 'Este payload ya fue usado. Escaneá físicamente la etiqueta para generar una nueva lectura.', tone: 'warn' as const };
   }
   if (normalizedProductState === "VALID_OPENED" || normalizedStatus === 'OPENED' || normalizedReason.includes('opened')) {
-    return { code: 'OPENED', label: 'Sello abierto', summary: 'Producto auténtico, pero el sello fue abierto.', tone: 'warn' as const };
+    return { code: 'OPENED', label: 'TT reporta apertura', summary: 'Mensaje NFC validado; el estado TT reporta apertura. No certifica el contenido ni el origen físico.', tone: 'warn' as const };
   }
   if (normalizedProductState === "VALID_OPENED_PREVIOUSLY") {
-    return { code: 'OPENED_PREVIOUSLY', label: 'Autenticidad confirmada', summary: 'Autenticidad confirmada. El sello fue abierto anteriormente.', tone: 'warn' as const };
+    return { code: 'OPENED_PREVIOUSLY', label: 'Apertura previa reportada', summary: 'Mensaje NFC validado; el historial TT reporta una apertura anterior.', tone: 'warn' as const };
   }
   if (normalizedProductState === "VALID_MANUAL_OPENED") {
-    return { code: 'MANUAL_OPENED', label: 'Apertura registrada', summary: 'Producto auténtico. Sello marcado como abierto por operador.', tone: 'warn' as const };
+    return { code: 'MANUAL_OPENED', label: 'Apertura declarada', summary: 'Un operador declaró el estado abierto. No es una medición criptográfica del contenido.', tone: 'warn' as const };
   }
   if (normalizedProductState === "VALID_UNKNOWN_TAMPER") {
-    return { code: 'VALID_UNKNOWN_TAMPER', label: 'Autenticidad confirmada', summary: 'Autenticidad confirmada. Estado de apertura no disponible para este lote.', tone: 'good' as const };
+    return { code: 'VALID_UNKNOWN_TAMPER', label: 'Mensaje NFC validado', summary: 'El mensaje NFC fue validado; este lote no aporta estado TT de apertura.', tone: 'good' as const };
   }
   if (normalizedStatus === 'TAMPER_RISK' || normalizedReason.includes('tamper')) {
     return { code: 'TAMPER_RISK', label: 'Riesgo de manipulación', summary: 'Se detectaron señales de posible manipulación.', tone: 'risk' as const };
   }
   if (normalizedProductState === "VALID_CLOSED" || normalizedStatus === 'VALID') {
-    return { code: 'VALID', label: 'Autenticidad confirmada', summary: 'Producto auténtico. Sello intacto.', tone: 'good' as const };
+    return { code: 'VALID', label: 'Mensaje NFC validado', summary: 'El mensaje SUN/CMAC es consistente; cuando aplica, TT reporta cerrado. No certifica contenido, origen, custodia ni propiedad.', tone: 'good' as const };
   }
-  return { code: normalizedStatus || 'INVALID', label: 'Validación no concluyente', summary: 'No fue posible confirmar autenticidad final.', tone: 'warn' as const };
+  return { code: normalizedStatus || 'INVALID', label: 'Validación no concluyente', summary: 'No fue posible validar el mensaje NFC con la evidencia disponible.', tone: 'warn' as const };
 }
 
 function summarizeUserAgent(ua: string) {
@@ -582,7 +586,8 @@ function firstParam(url: URL, keys: string[], fallback = "") {
 }
 
 function parseCoordinate(value: string | null, fallback: number) {
-  const parsed = Number(value || "");
+  if (!value?.trim()) return fallback;
+  const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
@@ -629,9 +634,7 @@ function platformFromUserAgent(ua: string) {
   return "Unknown";
 }
 
-async function resolveQrTenantBatch(url: URL) {
-  const tenantSlug = firstParam(url, ["tenant", "tenantSlug", "tenant_slug"], "demobodega").toLowerCase();
-  const requestedBid = firstParam(url, ["bid", "batch", "batchId"]);
+async function resolveQrTenantBatch(input: { tenantSlug: string; requestedBid: string }) {
   const rows = await sql/*sql*/`
     SELECT
       tn.id::text AS tenant_id,
@@ -641,16 +644,12 @@ async function resolveQrTenantBatch(url: URL) {
       b.bid,
       b.sdm_config
     FROM tenants tn
-    LEFT JOIN LATERAL (
-      SELECT id, bid, sdm_config, created_at
-      FROM batches b
-      WHERE b.tenant_id = tn.id
-        AND b.status = 'active'
-        AND (${requestedBid} = '' OR b.bid = ${requestedBid})
-      ORDER BY CASE WHEN b.bid = ${requestedBid} THEN 0 ELSE 1 END, b.created_at DESC
-      LIMIT 1
-    ) b ON TRUE
-    WHERE tn.slug = ${tenantSlug}
+    INNER JOIN batches b
+      ON b.tenant_id = tn.id
+      AND b.bid = ${input.requestedBid}
+      AND b.status = 'active'
+    WHERE tn.slug = ${input.tenantSlug}
+      AND tn.status = 'active'
     LIMIT 1
   `;
   return rows[0] as {
@@ -724,72 +723,35 @@ async function handleQrScan(input: {
   geoLat: number;
   geoLng: number;
 }) {
-  const requestedProduct = firstParam(input.url, ["product", "productName", "name"], "Gran Reserva Malbec");
-  const requestedWinery = firstParam(input.url, ["winery", "brand"], "Bodega Balmec");
-  const requestedRegion = firstParam(input.url, ["region", "origin"], "Mendoza, Argentina");
-  const browserLat = parseCoordinate(input.url.searchParams.get("lat") || input.url.searchParams.get("gps_lat"), input.geoLat);
-  const browserLng = parseCoordinate(input.url.searchParams.get("lng") || input.url.searchParams.get("gps_lng"), input.geoLng);
-  const hasGeo = Number.isFinite(browserLat) && Number.isFinite(browserLng);
-  const tenantBatch = await resolveQrTenantBatch(input.url).catch(() => undefined);
-  
-  const tenantSlug = String(tenantBatch?.tenant_slug || firstParam(input.url, ["tenant", "tenantSlug", "tenant_slug"], "demobodega")).toLowerCase();
-  const tenantName = String(tenantBatch?.tenant_name || requestedWinery || tenantSlug);
-  
-  let tenantId = tenantBatch?.tenant_id || null;
-  let batchId = tenantBatch?.batch_id || null;
-  let sdmConfig = jsonObject(tenantBatch?.sdm_config);
-  let bid = String(tenantBatch?.bid || firstParam(input.url, ["bid"], ""));
-
-  if (!tenantId) {
-    try {
-      const newTenant = await sql`
-        INSERT INTO tenants (slug, name, status)
-        VALUES (${tenantSlug}, ${tenantName}, 'active')
-        ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
-        RETURNING id::text, slug, name
-      `;
-      if (newTenant[0]) {
-        tenantId = newTenant[0].id;
-      }
-    } catch (e) {
-      console.error("[sun] auto-create tenant failed", e);
-    }
-  }
-
-  if (tenantId && !batchId) {
-    try {
-      const existing = await sql`
-        SELECT id::text, bid, sdm_config
-        FROM batches
-        WHERE tenant_id = ${tenantId} AND bid = 'QR-DEFAULT'
-        LIMIT 1
-      `;
-      if (existing[0]) {
-        batchId = existing[0].id;
-        sdmConfig = jsonObject(existing[0].sdm_config);
-        bid = existing[0].bid;
-      } else {
-        const newBatch = await sql`
-          INSERT INTO batches (tenant_id, bid, status, sdm_config, name)
-          VALUES (${tenantId}, 'QR-DEFAULT', 'active', '{}'::jsonb, 'Default QR Batch')
-          RETURNING id::text, bid, sdm_config
-        `;
-        if (newBatch[0]) {
-          batchId = newBatch[0].id;
-          sdmConfig = jsonObject(newBatch[0].sdm_config);
-          bid = newBatch[0].bid;
-        }
-      }
-    } catch (e) {
-      console.error("[sun] auto-create QR-DEFAULT batch failed", e);
-    }
-  }
-
-  if (!bid) {
-    bid = "QR-DEFAULT";
-  }
-
   const rawQuery = Object.fromEntries(input.url.searchParams.entries());
+  const explicitDemo = input.url.searchParams.get("demo") === "1";
+  const tenantSlug = firstParam(
+    input.url,
+    ["tenant", "tenantSlug", "tenant_slug"],
+    explicitDemo ? "demobodega" : "",
+  ).toLowerCase();
+  const requestedBid = firstParam(
+    input.url,
+    ["bid", "batch", "batchId"],
+    explicitDemo && tenantSlug === "demobodega" ? DEMO_BODEGA_BID : "",
+  );
+  const declaredInput = Object.fromEntries(
+    [
+      ["product", firstParam(input.url, ["product", "productName", "name"])],
+      ["brand", firstParam(input.url, ["winery", "brand"])],
+      ["origin", firstParam(input.url, ["region", "origin"])],
+      ["varietal", firstParam(input.url, ["varietal"])],
+      ["vintage", firstParam(input.url, ["vintage"])],
+    ].filter((entry): entry is [string, string] => Boolean(entry[1])),
+  );
+  const clientLat = parseCoordinate(input.url.searchParams.get("lat") || input.url.searchParams.get("gps_lat"), Number.NaN);
+  const clientLng = parseCoordinate(input.url.searchParams.get("lng") || input.url.searchParams.get("gps_lng"), Number.NaN);
+  const hasClientGeo = Number.isFinite(clientLat) && Number.isFinite(clientLng);
+  const hasEdgeGeo = Number.isFinite(input.geoLat) && Number.isFinite(input.geoLng);
+  const resolvedLat = hasClientGeo ? clientLat : hasEdgeGeo ? input.geoLat : null;
+  const resolvedLng = hasClientGeo ? clientLng : hasEdgeGeo ? input.geoLng : null;
+  const geoPrecision = hasClientGeo ? "browser_rounded" : hasEdgeGeo ? "ip" : "none";
+  const locationSource = hasClientGeo ? "client_reported" : hasEdgeGeo ? "edge_ip_approx" : "none";
   const deviceMeta = {
     userAgent: input.userAgent,
     platform: platformFromUserAgent(input.userAgent),
@@ -798,16 +760,61 @@ async function handleQrScan(input: {
     language: input.req.headers.get("accept-language") || null,
     timezone: firstParam(input.url, ["timezone", "tz"]),
   };
-  const meta = {
+  const baseMeta = {
     trace_id: input.traceId,
     channel: "qr",
     qr: true,
-    product: { name: requestedProduct, winery: requestedWinery, region: requestedRegion },
+    declared_input: declaredInput,
+    geo_evidence: { source: locationSource, verified: false },
     sun_context: { client: deviceMeta },
   };
 
-  const eventId = batchId
-    ? await recordTapEvent({
+  const failQrContext = async (status: 404 | 422, detail: string) => {
+    await logQrAttempt({
+      bid: requestedBid,
+      reason: "qr_context_not_found",
+      ip: input.ip,
+      userAgent: input.userAgent,
+      city: input.geoCity,
+      country: input.geoCountry,
+      lat: resolvedLat,
+      lng: resolvedLng,
+      rawQuery,
+      meta: { ...baseMeta, context_resolution: detail },
+    }).catch(() => null);
+    const response = json({ ok: false, reason: "qr_context_not_found" }, status);
+    response.headers.set("x-nexid-trace-id", input.traceId);
+    response.headers.set("x-request-id", input.traceId);
+    return response;
+  };
+
+  if (!TENANT_SLUG_RE.test(tenantSlug) || !BID_RE.test(requestedBid)) {
+    return failQrContext(422, "missing_or_invalid_tenant_or_batch");
+  }
+
+  const tenantBatch = await resolveQrTenantBatch({ tenantSlug, requestedBid }).catch(() => undefined);
+  if (!tenantBatch?.tenant_id || !tenantBatch.batch_id || !tenantBatch.bid) {
+    return failQrContext(404, "active_tenant_batch_not_found");
+  }
+
+  const tenantId = tenantBatch.tenant_id;
+  const batchId = tenantBatch.batch_id;
+  const bid = tenantBatch.bid;
+  const tenantName = String(tenantBatch.tenant_name || tenantSlug);
+  const sdmConfig = jsonObject(tenantBatch.sdm_config);
+  const configuredProduct = jsonObject(sdmConfig.product);
+  const configuredProductName = String(configuredProduct.name || sdmConfig.product_name || `Batch ${bid}`);
+  const configuredBrand = String(configuredProduct.winery || configuredProduct.brand || sdmConfig.winery || sdmConfig.brand || tenantName);
+  const configuredOrigin = String(configuredProduct.region || configuredProduct.origin || sdmConfig.region || sdmConfig.origin || "").trim() || null;
+  const configuredVertical = String(configuredProduct.vertical || sdmConfig.vertical || "generic");
+  const configuredProductLabel = String(configuredProduct.category || sdmConfig.product_label || "producto");
+  const configuredClubName = String(sdmConfig.club_name || "").trim() || null;
+  const meta = {
+    ...baseMeta,
+    configured_context: { tenant: tenantSlug, bid },
+  };
+
+  const eventId = await recordTapEvent({
       tenantId: tenantId,
       tenantSlug,
       batchId: batchId,
@@ -815,19 +822,19 @@ async function handleQrScan(input: {
       uidHex: firstParam(input.url, ["uid", "uidHex", "uid_hex"]) || null,
       source: "real",
       eventType: "PROVENANCE_VIEWED",
-      verdict: "valid",
-      riskLevel: "low",
+      verdict: "not_registered",
+      riskLevel: "medium",
       cmacOk: null,
       allowlisted: null,
       tagStatus: null,
       userAgent: input.userAgent,
       city: input.geoCity,
       countryCode: input.geoCountry,
-      lat: hasGeo ? browserLat : null,
-      lng: hasGeo ? browserLng : null,
-      geoPrecision: hasGeo ? "ip" : "none",
-      productName: requestedProduct,
-      reason: "qr_scan",
+      lat: resolvedLat,
+      lng: resolvedLng,
+      geoPrecision,
+      productName: configuredProductName,
+      reason: "qr_scan_unverified",
       meta,
       traceId: input.traceId,
       ip: input.ip,
@@ -836,18 +843,18 @@ async function handleQrScan(input: {
       deviceLabel: deviceMeta.platform,
       rawQuery,
     })
-    : null;
+    ;
 
   if (!eventId) {
     await logQrAttempt({
       bid,
-      reason: batchId ? "qr_event_insert_failed" : "qr_batch_not_found",
+      reason: "qr_event_insert_failed",
       ip: input.ip,
       userAgent: input.userAgent,
       city: input.geoCity,
       country: input.geoCountry,
-      lat: hasGeo ? browserLat : null,
-      lng: hasGeo ? browserLng : null,
+      lat: resolvedLat,
+      lng: resolvedLng,
       rawQuery,
       meta,
     }).catch(() => null);
@@ -887,22 +894,22 @@ async function handleQrScan(input: {
       id: tenantId,
       slug: tenantSlug,
       name: tenantName,
-      vertical: String(sdmConfig.vertical || "wine"),
-      productLabel: "vino",
-      clubName: String(sdmConfig.club_name || "Club Bodega Balmec"),
+      vertical: configuredVertical,
+      productLabel: configuredProductLabel,
+      clubName: configuredClubName,
       tokenizationMode: "nfc_only",
     },
     product: {
-      name: requestedProduct,
-      winery: requestedWinery,
-      region: requestedRegion,
-      varietal: firstParam(input.url, ["varietal"], "N/A"),
-      vintage: firstParam(input.url, ["vintage"]),
-      category: "Vino",
-      vertical: "vino",
+      name: configuredProductName,
+      winery: configuredBrand,
+      region: configuredOrigin,
+      varietal: configuredProduct.varietal || sdmConfig.varietal || null,
+      vintage: configuredProduct.vintage || sdmConfig.vintage || null,
+      category: configuredProductLabel,
+      vertical: configuredVertical,
     },
     provenance: {
-      origin: requestedRegion,
+      origin: configuredOrigin,
       firstVerified: { at: null, city: null, country: null },
       lastVerifiedLocation: { at: qrNow, city: input.geoCity, country: input.geoCountry, result: "QR_SCAN" },
       timelineSummary: [{
@@ -911,16 +918,16 @@ async function handleQrScan(input: {
         city: input.geoCity || "Unknown",
         country: input.geoCountry || "--",
         device: `${deviceMeta.platform} - ${deviceMeta.browser}`,
-        lat: hasGeo ? browserLat : null,
-        lng: hasGeo ? browserLng : null,
+        lat: resolvedLat,
+        lng: resolvedLng,
       }],
     },
     tapContext: {
       city: input.geoCity,
       country: input.geoCountry,
-      lat: hasGeo ? browserLat : null,
-      lng: hasGeo ? browserLng : null,
-      locationSource: hasGeo ? "ip_geo" : "none",
+      lat: resolvedLat,
+      lng: resolvedLng,
+      locationSource,
       accuracyM: null,
       ...qrTapTime,
     },
@@ -931,7 +938,7 @@ async function handleQrScan(input: {
     trustSignals: { antiReplay: false, tamperRisk: false, tamperStatus: "not_available", tamperSupported: false, lastEventResult: "QR_SCAN" },
     tapSecurity: { replayDetected: false, freshTap: false, tokenizationEligible: false, policy: "qr_unverified", actionability: "content_and_crm_only", requiresFreshTapForCommercialActions: true },
     troubleshooting: ["Para titularidad, garantia o NFT, toca fisicamente el chip NFC seguro."],
-    technical: { carrierProfileCode: "qr_basic", carrierLabel: "QR / SDK", raw: undefined },
+    technical: { carrierProfileCode: "qr_basic", carrierLabel: "QR / SDK", declaredInput, raw: undefined },
   };
 
   const response = json(contract, 200);
@@ -1160,46 +1167,6 @@ async function getCtaTimelineSummary(bid: string, uid: string | undefined): Prom
     }));
 }
 
-function buildDemoSensorHistory(
-  timeline: TimelineEvent[],
-  fallbackStorage: string | null,
-  barrelMonths: number | null,
-  simulatedTemp?: number | string | null,
-  simulatedHumidity?: number | string | null
-) {
-  const baselineTemp = simulatedTemp != null && !Number.isNaN(Number(simulatedTemp)) ? Number(simulatedTemp) : (Number((fallbackStorage || "").replace(/[^\d.]/g, "")) || 16);
-  const baselineHumidity = simulatedHumidity != null && !Number.isNaN(Number(simulatedHumidity)) ? Number(simulatedHumidity) : 68;
-  const stages = ["cellar", "distribution", "retail", "consumer"];
-  const measuredTimeline = timeline.filter((event) => event.sensorTempC != null || event.sensorHumidity != null);
-  if (measuredTimeline.length) {
-    return measuredTimeline.map((event, index) => {
-      const temperatureC = event.sensorTempC != null ? Number(event.sensorTempC) : baselineTemp;
-      const humidityPct = event.sensorHumidity != null ? Number(event.sensorHumidity) : baselineHumidity;
-      const alert = temperatureC > 24 || temperatureC < 6
-        ? "Temperatura fuera de rango declarado"
-        : humidityPct > 82 || humidityPct < 45
-          ? "Humedad fuera de rango declarado"
-          : null;
-      return {
-        at: event.at,
-        stage: event.stage || stages[Math.min(index, stages.length - 1)],
-        temperatureC,
-        humidityPct,
-        barrelAgeMonths: barrelMonths,
-        alert,
-      };
-    });
-  }
-  return [{
-    at: new Date().toISOString(),
-    stage: "cellar",
-    temperatureC: baselineTemp,
-    humidityPct: baselineHumidity,
-    barrelAgeMonths: barrelMonths,
-    alert: null,
-  }];
-}
-
 function buildPublicContract(params: {
   bid: string;
   uid: string | null;
@@ -1259,12 +1226,11 @@ function buildPublicContract(params: {
     const setupQuery = new URLSearchParams({ tenant: tenantSlug, fromTap: "1", action: "setup-required" });
     if (setupEventId) setupQuery.set("eventId", setupEventId);
     const setupProductName = params.passport?.product_name || params.passport?.sku || `Batch ${params.bid}`;
-    const setupIsAuthentic = ["VALID", "OPENED", "OPENED_PREVIOUSLY", "MANUAL_OPENED", "VALID_UNKNOWN_TAMPER"].includes(trust.code);
+    const setupHasValidTagEvidence = ["VALID", "OPENED", "OPENED_PREVIOUSLY", "MANUAL_OPENED", "VALID_UNKNOWN_TAMPER"].includes(trust.code);
     const setupIsReplay = trust.code === "REPLAY_SUSPECT" || verdictRisk.verdict === "replay_suspect";
-    const setupScore = setupIsReplay ?22 : setupIsAuthentic ?(trust.code === "VALID" ?72 : 64) : 35;
     const setupRiskLevel = setupIsReplay || verdictRisk.verdict === "tampered"
       ?"high"
-      : setupIsAuthentic
+      : setupHasValidTagEvidence
         ?"medium"
         : verdictRisk.riskLevel;
     const setupTapTime = tapTimeContext({
@@ -1416,7 +1382,7 @@ function buildPublicContract(params: {
         accuracyM: null,
         ...setupTapTime,
       },
-      quality: { score: setupScore, tier: setupIsReplay ?"Replay Hold" : setupIsAuthentic ?"Setup Hold" : "Setup Required" },
+      quality: { score: null, tier: null, basis: "unavailable" },
       cta: {
         claimOwnership: false,
         registerWarranty: false,
@@ -1440,7 +1406,7 @@ function buildPublicContract(params: {
       batchId: params.bid,
       tagId: params.uid ?maskIdentityValue(params.uid) : null,
       uidMasked: maskIdentityValue(params.uid || ""),
-      verdict: setupIsAuthentic ?"tenant_setup_required_authentic" : "tenant_setup_required",
+      verdict: setupHasValidTagEvidence ?"tenant_setup_required_valid_tag_evidence" : "tenant_setup_required",
       riskLevel: setupRiskLevel,
       tag_tamper: params.result.tag_tamper || null,
       productName: setupProductName,
@@ -1473,15 +1439,23 @@ function buildPublicContract(params: {
   });
   if (eventId) tapQuery.set("eventId", eventId);
   const wineryLocation = tenantProfile.origin.address || tenantProfile.origin.label || null;
-  const sensorHistory = buildDemoSensorHistory(
-    params.timeline,
-    fallbackStorage,
-    params.passport?.barrel_months || fallbackBarrelMonths,
+  const hasConfiguredSimulation = [
     tenantProfile.product.simulatedTempC,
-    tenantProfile.product.simulatedHumidityPct
-  );
-  const avgTemp = sensorHistory.length ?(sensorHistory.reduce((acc, item) => acc + (item.temperatureC || 0), 0) / sensorHistory.length) : null;
-  const avgHumidity = sensorHistory.length ?(sensorHistory.reduce((acc, item) => acc + (item.humidityPct || 0), 0) / sensorHistory.length) : null;
+    tenantProfile.product.simulatedHumidityPct,
+    tenantProfile.product.simulatedLight,
+    tenantProfile.product.simulatedShock,
+  ].some((value) => value != null && String(value).trim() !== "");
+  const sensorEvidence = buildSunSensorEvidence({
+    timeline: params.timeline,
+    fallbackStorage,
+    barrelMonths: params.passport?.barrel_months || fallbackBarrelMonths,
+    simulatedTempC: tenantProfile.product.simulatedTempC,
+    simulatedHumidityPct: tenantProfile.product.simulatedHumidityPct,
+    simulatedLight: tenantProfile.product.simulatedLight,
+    simulatedShock: tenantProfile.product.simulatedShock,
+    allowSimulation: (params.bid.toUpperCase().startsWith("DEMO-") && tenantSlug === "demobodega") || hasConfiguredSimulation,
+  });
+  const sensorHistory = sensorEvidence.history;
   const timelineLatest = params.timeline[0] || null;
   const timelineOldest = params.timeline[params.timeline.length - 1] || null;
   const ua = summarizeUserAgent(params.tap.userAgent);
@@ -1493,7 +1467,7 @@ function buildPublicContract(params: {
   });
   const isVerifiedOpenedTap = verdictRisk.verdict === "valid_opened"
     || ["OPENED", "OPENED_PREVIOUSLY", "MANUAL_OPENED"].includes(trust.code);
-  const isAuthenticTap = verdictRisk.verdict === "valid" || isVerifiedOpenedTap;
+  const hasValidatedTagMessage = verdictRisk.verdict === "valid" || isVerifiedOpenedTap;
   const rightsPolicy = resolveRightsPolicy({
     verdict: verdictRisk.verdict,
     vertical: tenantProfile.vertical,
@@ -1540,19 +1514,6 @@ function buildPublicContract(params: {
     allowedActions: Array.from(carrierAllowedActions),
     blockedActions: Array.from(carrierBlockedActions),
   };
-  const trustPenalty = trust.code === "VALID"
-    ? 0
-    : isVerifiedOpenedTap
-      ? 8
-      : trust.code === "SUN_PROFILE_MISMATCH"
-        ? 50
-      : trust.code === "REPLAY_SUSPECT"
-        ? 35
-        : trust.code === "TAMPER_RISK"
-          ? 44
-          : 22;
-  const sensorPenalty = sensorHistory.some((item) => item.alert) ? 10 : 0;
-  const qualityScore = Math.max(0, Math.min(100, 92 - trustPenalty - sensorPenalty));
   const compatibilityTokenizationPolicy = actionMatrix.allowedActions.includes("tokenization")
     ? isVerifiedOpenedTap
       ? "verified_opened_tap"
@@ -1695,7 +1656,7 @@ function buildPublicContract(params: {
     },
     tapSecurity: {
       replayDetected: trust.code === "REPLAY_SUSPECT" || verdictRisk.verdict === "replay_suspect",
-      freshTap: isAuthenticTap && verdictRisk.verdict !== "replay_suspect",
+      freshTap: hasValidatedTagMessage && verdictRisk.verdict !== "replay_suspect",
       tokenizationEligible: actionMatrix.allowedActions.includes("tokenization"),
       policy: tokenizationPolicy,
       commercialPolicy: tokenizationPolicy,
@@ -1712,12 +1673,8 @@ function buildPublicContract(params: {
       oakType: tenantProfile.product.oakType || null,
       originLabel: tenantProfile.origin.label,
       originType: tenantProfile.vertical,
-      sensorSnapshot: {
-        cellarTemperature: avgTemp != null ?`${avgTemp.toFixed(1)}°C` : null,
-        humidity: avgHumidity != null ?`${avgHumidity.toFixed(0)}%` : null,
-        lightExposure: tenantProfile.product.simulatedLight || "Low / protected",
-        transitShock: tenantProfile.product.simulatedShock || (sensorHistory.some((item) => item.alert) ? "Potential handling alert detected" : "No critical shocks detected"),
-      },
+      sensorEvidenceKind: sensorEvidence.kind,
+      sensorSnapshot: sensorEvidence.snapshot,
       sensorHistory,
     },
     tapContext: {
@@ -1732,10 +1689,7 @@ function buildPublicContract(params: {
       accuracyM: null,
       ...currentTapTime,
     },
-    quality: {
-      score: qualityScore,
-      tier: qualityScore >= 85 ?"Premium" : qualityScore >= 75 ?"Verified Open" : qualityScore >= 65 ?"Monitored" : "At Risk",
-    },
+    quality: { score: null, tier: null, basis: "unavailable" },
     cta: {
       claimOwnership: actionMatrix.allowedActions.includes("claim"),
       registerWarranty: actionMatrix.allowedActions.includes("warranty"),
@@ -1780,10 +1734,10 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   };
   const labels = locale === "pt-BR"
     ?{
-      manualOpened: "Produto autêntico. Selo marcado como aberto por operador.",
-      opened: "Produto autêntico, mas o selo foi aberto.",
-      openedPreviously: "Autenticidade confirmada. O selo foi aberto anteriormente.",
-      unknownTamper: "Autenticidade confirmada. Estado de abertura indisponível para este lote.",
+      manualOpened: "Estado aberto declarado por operador; não é uma medição criptográfica do conteúdo.",
+      opened: "Mensagem NFC validada; o TT informa abertura.",
+      openedPreviously: "Mensagem NFC validada; o histórico TT informa abertura anterior.",
+      unknownTamper: "Mensagem NFC validada; este lote não fornece estado TT de abertura.",
       commercialState: "Estado comercial",
       risk: "Risco",
       hold: "SUSPENSO",
@@ -1799,11 +1753,12 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
       sensorIntelligence: "Inteligência de sensores",
       geoContext: "Contexto geográfico",
       consumerJourney: "Jornada do consumidor",
-      mapLocalTitle: "Mapa local · rota adega → toque",
-      mapGlobalTitle: "Contexto global · posição do toque",
-      mapLegend: "Origem da adega → ponto de toque",
-      routeSummary: "Resumo da rota",
-      routeDistance: "Distância estimada",
+      mapLocalTitle: "Contexto local · origem declarada e toque informado",
+      mapUnavailable: "Mapa e distância indisponíveis: faltam coordenadas da origem ou do toque.",
+      mapGlobalTitle: "Contexto global · posição informada do toque",
+      mapLegend: "Origem declarada → toque informado (linha ilustrativa)",
+      routeSummary: "Comparação geográfica",
+      routeDistance: "Distância geodésica estimada",
       routeRegion: "Região de leitura",
       actionSubtitle: "Fluxos de consumidor, garantia e rastreabilidade.",
       varietal: "Varietal",
@@ -1829,7 +1784,7 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
       linkRewards: "Promoções e benefícios",
       linkRegister: "Criar conta",
       linkPortal: "Ir para meu portal",
-      tapHelp: "Se o toque estiver verificado, vamos pedir login/registro e associar sua conta automaticamente ao tenant.",
+      tapHelp: "Se a mensagem NFC for validada, pediremos login/registro. Qualquer vínculo, titularidade ou benefício seguirá a política e as evidências exigidas.",
       demoMode: "Modo demo: fallback sem assinatura habilitado para lotes DEMO-*.",
       statusLabel: "Status",
       networkLabel: "Rede",
@@ -1852,10 +1807,10 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
       journey1Desc: "Use seu e-mail/celular para criar sessão segura.",
       journey2Desc: "Conectamos este toque ao produto no seu portal.",
       journey3Desc: "Marketplace, garantia e recompensas ficam ativas.",
-      mapStoryTitle: "Prova viva do percurso",
-      mapStorySubtitle: "Do lote ao toque: cada ponto conta uma evidencia comercial.",
-      mapOriginStep: "Origem certificada",
-      mapTapStep: "Toque verificado",
+      mapStoryTitle: "Contexto geográfico informado",
+      mapStorySubtitle: "Origem declarada e localização informada do toque; a linha visual não prova rota física nem custódia.",
+      mapOriginStep: "Origem declarada",
+      mapTapStep: "Local do toque informado",
       mapTokenStep: "Token / NFT",
       mapOwnerStep: "Conta e beneficios",
       mapLedgerTitle: "Ledger visual",
@@ -1864,10 +1819,10 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
     }
     : locale === "en"
       ?{
-        manualOpened: "Authentic product. Seal flagged as opened by operator.",
-        opened: "Authentic product, but the seal was opened.",
-        openedPreviously: "Authenticity confirmed. The seal was opened previously.",
-        unknownTamper: "Authenticity confirmed. Open-state unavailable for this batch.",
+        manualOpened: "Open state declared by an operator; this is not a cryptographic measurement of the contents.",
+        opened: "NFC message validated; TT reports an open state.",
+        openedPreviously: "NFC message validated; TT history reports a previous opening.",
+        unknownTamper: "NFC message validated; this batch does not provide a TT open state.",
         commercialState: "Commercial state",
         risk: "Risk",
         hold: "HOLD",
@@ -1883,11 +1838,12 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
         sensorIntelligence: "Sensor intelligence",
         geoContext: "Geo context",
         consumerJourney: "Consumer journey",
-        mapLocalTitle: "Local map · winery to tap route",
-        mapGlobalTitle: "Global context · tap position",
-        mapLegend: "Winery origin → tap point",
-        routeSummary: "Route summary",
-        routeDistance: "Estimated distance",
+        mapLocalTitle: "Local context · declared origin and reported tap",
+        mapUnavailable: "Map and distance unavailable: origin or tap coordinates are missing.",
+        mapGlobalTitle: "Global context · reported tap position",
+        mapLegend: "Declared origin → reported tap (illustrative line)",
+        routeSummary: "Geographic comparison",
+        routeDistance: "Estimated geodesic distance",
         routeRegion: "Read region",
         actionSubtitle: "Consumer, warranty and traceability workflows.",
         varietal: "Varietal",
@@ -1913,7 +1869,7 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
         linkRewards: "Promos & rewards",
         linkRegister: "Register",
         linkPortal: "Open portal",
-        tapHelp: "If this tap is verified, we will ask for sign-in/register and auto-link your account to the tenant.",
+        tapHelp: "If the NFC message is validated, we will request sign-in/registration. Any link, ownership or benefit remains subject to policy and required evidence.",
         demoMode: "Demo mode: unsigned fallback enabled for DEMO-* batches.",
         statusLabel: "Status",
         networkLabel: "Network",
@@ -1936,10 +1892,10 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
         journey1Desc: "Use email/phone to create a secure session.",
         journey2Desc: "We connect this tap to your product portal.",
         journey3Desc: "Marketplace, warranty and rewards become active.",
-        mapStoryTitle: "Live proof journey",
-        mapStorySubtitle: "From lot to tap: each point tells commercial evidence.",
-        mapOriginStep: "Certified origin",
-        mapTapStep: "Verified tap",
+        mapStoryTitle: "Reported geographic context",
+        mapStorySubtitle: "Declared origin and reported tap location; the visual line does not prove a physical route or custody.",
+        mapOriginStep: "Declared origin",
+        mapTapStep: "Reported tap location",
         mapTokenStep: "Token / NFT",
         mapOwnerStep: "Account and benefits",
         mapLedgerTitle: "Visual ledger",
@@ -1947,10 +1903,10 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
         mapConsumerSignal: "Consumer signal",
       }
       : {
-        manualOpened: "Producto auténtico. Sello marcado como abierto por operador.",
-        opened: "Producto auténtico, pero el sello fue abierto.",
-        openedPreviously: "Autenticidad confirmada. El sello fue abierto anteriormente.",
-        unknownTamper: "Autenticidad confirmada. Estado de apertura no disponible.",
+        manualOpened: "Estado abierto declarado por un operador; no es una medición criptográfica del contenido.",
+        opened: "Mensaje NFC validado; TT reporta apertura.",
+        openedPreviously: "Mensaje NFC validado; el historial TT reporta una apertura anterior.",
+        unknownTamper: "Mensaje NFC validado; este lote no aporta estado TT de apertura.",
         commercialState: "Estado comercial",
         risk: "Riesgo",
         hold: "PAUSA",
@@ -1966,11 +1922,12 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
         sensorIntelligence: "Inteligencia de sensores",
         geoContext: "Contexto geo",
         consumerJourney: "Recorrido del consumidor",
-        mapLocalTitle: "Mapa local · ruta bodega → tap",
-        mapGlobalTitle: "Contexto global · posición del tap",
-        mapLegend: "Origen bodega → punto de tap",
-        routeSummary: "Resumen de ruta",
-        routeDistance: "Distancia estimada",
+        mapLocalTitle: "Contexto local · origen declarado y tap reportado",
+        mapUnavailable: "Mapa y distancia no disponibles: faltan coordenadas del origen o del tap.",
+        mapGlobalTitle: "Contexto global · posición reportada del tap",
+        mapLegend: "Origen declarado → tap reportado (línea ilustrativa)",
+        routeSummary: "Comparación geográfica",
+        routeDistance: "Distancia geodésica estimada",
         routeRegion: "Región de lectura",
         actionSubtitle: "Flujos de consumidor, garantía y trazabilidad.",
         varietal: "Varietal",
@@ -1996,7 +1953,7 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
         linkRewards: "Promos y beneficios",
         linkRegister: "Registrarme",
         linkPortal: "Ir a mi portal",
-        tapHelp: "Si el tap está verificado, te vamos a pedir login/registro y asociar tu cuenta al tenant automáticamente.",
+        tapHelp: "Si el mensaje NFC se valida, pediremos login/registro. Cualquier vínculo, titularidad o beneficio queda sujeto a política y evidencia requerida.",
         demoMode: "Modo demo: fallback sin firma habilitado para lotes DEMO-*.",
         statusLabel: "Estado",
         networkLabel: "Red",
@@ -2019,10 +1976,10 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
         journey1Desc: "Usá email/celular para crear una sesión segura.",
         journey2Desc: "Conectamos este tap a tu producto en el portal.",
         journey3Desc: "Se activan marketplace, garantía y recompensas.",
-        mapStoryTitle: "Prueba viva del recorrido",
-        mapStorySubtitle: "Del lote al tap: cada punto cuenta una evidencia comercial.",
-        mapOriginStep: "Origen certificado",
-        mapTapStep: "Tap verificado",
+        mapStoryTitle: "Contexto geográfico reportado",
+        mapStorySubtitle: "Origen declarado y ubicación reportada del tap; la línea visual no prueba ruta física ni custodia.",
+        mapOriginStep: "Origen declarado",
+        mapTapStep: "Ubicación del tap reportada",
         mapTokenStep: "Token / NFT",
         mapOwnerStep: "Cuenta y beneficios",
         mapLedgerTitle: "Ledger visual",
@@ -2069,9 +2026,9 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   const authPanelMessage = isRiskBlocked || isSunProfileMismatchState
     ?copy.authReplay
     : isClosedState
-      ?(copy.lang === "en" ?"Authenticity confirmed. Seal intact." : copy.lang === "pt-BR" ?"Autenticidade confirmada. Selo intacto." : "Autenticidad confirmada. Sello intacto.")
+      ?(copy.lang === "en" ?"NFC message validated; TT reports closed when supported. This does not certify physical contents." : copy.lang === "pt-BR" ?"Mensagem NFC validada; TT informa fechado quando suportado. Isso não certifica o conteúdo físico." : "Mensaje NFC validado; TT reporta cerrado cuando aplica. Esto no certifica el contenido físico.")
       : isOpenedState
-        ?(copy.lang === "en" ?"Authentic product. Seal opened." : copy.lang === "pt-BR" ?"Produto autentico. Selo aberto." : "Producto autentico. Sello abierto.")
+        ?(copy.lang === "en" ?"NFC message validated; TT reports open." : copy.lang === "pt-BR" ?"Mensagem NFC validada; TT informa aberto." : "Mensaje NFC validado; TT reporta apertura.")
     : productState === "VALID_MANUAL_OPENED" || statusCode === "MANUAL_OPENED"
       ?labels.manualOpened
       : productState === "VALID_OPENED" || statusCode === "OPENED"
@@ -2110,12 +2067,16 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
     '"': "&quot;",
     "'": "&#39;",
   }[char] || char));
-  const tapLat = contract.tapContext.lat;
-  const tapLng = contract.tapContext.lng;
-  const wineryLat = contract.iot.wineryCoordinates?.lat ?? tapLat ?? -33.0086;
-  const wineryLng = contract.iot.wineryCoordinates?.lng ?? tapLng ?? -68.7794;
-  const destinationLat = tapLat ?? wineryLat;
-  const destinationLng = tapLng ?? wineryLng;
+  const finiteCoordinate = (value: unknown) => typeof value === "number" && Number.isFinite(value) ? value : null;
+  const wineryLat = finiteCoordinate(contract.iot.wineryCoordinates?.lat);
+  const wineryLng = finiteCoordinate(contract.iot.wineryCoordinates?.lng);
+  const tapLat = finiteCoordinate(contract.tapContext.lat);
+  const tapLng = finiteCoordinate(contract.tapContext.lng);
+  const mapAvailable = wineryLat !== null && wineryLng !== null && tapLat !== null && tapLng !== null;
+  const safeWineryLat = wineryLat ?? 0;
+  const safeWineryLng = wineryLng ?? 0;
+  const safeTapLat = tapLat ?? 0;
+  const safeTapLng = tapLng ?? 0;
   const mapWidth = 1000;
   const mapHeight = 460;
   const projectWorld = (lat: number, lng: number) => {
@@ -2127,14 +2088,17 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
     };
   };
   const clampMap = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
-  const wineryPoint = projectWorld(wineryLat, wineryLng);
-  const tapPoint = projectWorld(destinationLat, destinationLng);
+  const wineryPoint = projectWorld(safeWineryLat, safeWineryLng);
+  const tapPoint = projectWorld(safeTapLat, safeTapLng);
   const toRad = (v: number) => v * (Math.PI / 180);
   const earthKm = 6371;
-  const dLat = toRad(destinationLat - wineryLat);
-  const dLng = toRad(destinationLng - wineryLng);
-  const aa = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(wineryLat)) * Math.cos(toRad(destinationLat)) * Math.sin(dLng / 2) ** 2;
-  const routeDistanceKm = Math.round(earthKm * 2 * Math.atan2(Math.sqrt(aa), Math.sqrt(1 - aa)));
+  const dLat = toRad(safeTapLat - safeWineryLat);
+  const dLng = toRad(safeTapLng - safeWineryLng);
+  const aa = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(safeWineryLat)) * Math.cos(toRad(safeTapLat)) * Math.sin(dLng / 2) ** 2;
+  const routeDistanceKm = mapAvailable
+    ? Math.round(earthKm * 2 * Math.atan2(Math.sqrt(aa), Math.sqrt(1 - aa)))
+    : null;
+  const routeDistanceLabel = routeDistanceKm === null ? "N/D" : `${routeDistanceKm} km`;
   const rawRasterTileTemplate = process.env.NEXID_RASTER_TILE_TEMPLATE
     || process.env.NEXT_PUBLIC_NEXID_RASTER_TILE_TEMPLATE
     || "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png";
@@ -2168,7 +2132,7 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   const atlasTileMaxX = Math.ceil((atlasViewX + atlasViewWidth) / atlasTileWidth) + 1;
   const atlasTileMinY = Math.max(0, Math.floor(atlasViewY / atlasTileHeight) - 1);
   const atlasTileMaxY = Math.min(atlasTilesPerAxis - 1, Math.ceil((atlasViewY + atlasViewHeight) / atlasTileHeight) + 1);
-  const buildAtlasTileImages = (tileTemplate: string) => Array.from({ length: Math.max(0, atlasTileMaxY - atlasTileMinY + 1) }, (_, rowIndex) => atlasTileMinY + rowIndex)
+  const buildAtlasTileImages = (tileTemplate: string) => mapAvailable ? Array.from({ length: Math.max(0, atlasTileMaxY - atlasTileMinY + 1) }, (_, rowIndex) => atlasTileMinY + rowIndex)
     .flatMap((tileY) => Array.from({ length: Math.max(0, atlasTileMaxX - atlasTileMinX + 1) }, (_, colIndex) => atlasTileMinX + colIndex)
       .map((tileX) => {
         const wrappedX = ((tileX % atlasTilesPerAxis) + atlasTilesPerAxis) % atlasTilesPerAxis;
@@ -2177,7 +2141,7 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
           .replaceAll("{x}", String(wrappedX))
           .replaceAll("{y}", String(tileY));
         return `<image href="${htmlText(href)}" x="${(tileX * atlasTileWidth).toFixed(2)}" y="${(tileY * atlasTileHeight).toFixed(2)}" width="${atlasTileWidth.toFixed(2)}" height="${atlasTileHeight.toFixed(2)}" preserveAspectRatio="none"/>`;
-      })).join("");
+      })).join("") : "";
   const atlasTileImages = buildAtlasTileImages(rasterTileTemplate);
   const atlasLightTileImages = buildAtlasTileImages(lightRasterTileTemplate);
   const oldestTraceEvent = timeline[timeline.length - 1] || null;
@@ -2220,14 +2184,18 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
     },
   ].map((item) => `<div class="story-step story-${item.cls}" style="border:1px solid rgba(148,163,184,.22);border-radius:12px;padding:9px;${storyStyle(item.cls)}"><span style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#93c5fd">${htmlText(item.label)}</span><b style="display:block;margin-top:3px;font-size:13px;color:#f8fafc">${htmlText(item.value)}</b><small style="display:block;margin-top:4px;color:#9fb5d9;font-size:10px;line-height:1.35">${htmlText(item.detail)}</small></div>`).join("");
   const traceLedgerHtml = [
-    [labels.routeDistance, `${routeDistanceKm} km`],
+    [labels.routeDistance, routeDistanceLabel],
     [labels.events, String(contract.provenance.timelineSummary.length)],
     [labels.statusLabel, contract.status.label],
     [labels.tokenIdLabel, contract.tokenization.tokenId || tokenizationStatusLabel],
   ].map(([label, value]) => `<div class="ledger-item" style="border:1px solid rgba(148,163,184,.22);border-radius:10px;padding:8px;background:rgba(15,23,42,.36)"><span style="display:block;color:#9fb5d9;font-size:10px;text-transform:uppercase;letter-spacing:.08em">${htmlText(label)}</span><b style="display:block;margin-top:3px;font-size:12px;color:#f8fafc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${htmlText(value)}</b></div>`).join("");
-  const routeControlX = (wineryPoint.x + tapPoint.x) / 2;
-  const routeControlY = Math.max(52, Math.min(wineryPoint.y, tapPoint.y) - Math.min(118, Math.max(58, routeDistanceKm / 62)));
-  const atlasRoutePath = `M ${wineryPoint.x.toFixed(2)} ${wineryPoint.y.toFixed(2)} Q ${routeControlX.toFixed(2)} ${routeControlY.toFixed(2)} ${tapPoint.x.toFixed(2)} ${tapPoint.y.toFixed(2)}`;
+  const routeControlX = mapAvailable ? (wineryPoint.x + tapPoint.x) / 2 : 0;
+  const routeControlY = mapAvailable && routeDistanceKm !== null
+    ? Math.max(52, Math.min(wineryPoint.y, tapPoint.y) - Math.min(118, Math.max(58, routeDistanceKm / 62)))
+    : 0;
+  const atlasRoutePath = mapAvailable
+    ? `M ${wineryPoint.x.toFixed(2)} ${wineryPoint.y.toFixed(2)} Q ${routeControlX.toFixed(2)} ${routeControlY.toFixed(2)} ${tapPoint.x.toFixed(2)} ${tapPoint.y.toFixed(2)}`
+    : "";
   const atlasLights = [
     [-34.6, -58.4, 0.74],
     [-33.0, -68.8, 0.86],
@@ -2254,11 +2222,47 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   const atlasTapPanelY = atlasViewY + 52;
   const atlasOriginSafeLabel = htmlText(compactMapLabel(contract.iot.wineryLocation || contract.provenance.origin || labels.origin));
   const atlasTapSafeLabel = htmlText(compactMapLabel([contract.tapContext.city, contract.tapContext.country].filter(Boolean).join(", ") || labels.tapLocation));
-  const atlasSvg = `<svg class="world-route-overlay" viewBox="${atlasViewBox}" aria-hidden="true" data-map-source="${htmlText(mapSourceLabel)}"><defs><linearGradient id="sun-ocean" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="var(--sun-ocean-1,#06243c)"/><stop offset="52%" stop-color="var(--sun-ocean-2,#071827)"/><stop offset="100%" stop-color="var(--sun-ocean-3,#111136)"/></linearGradient><filter id="sun-glow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect width="${mapWidth}" height="${mapHeight}" fill="url(#sun-ocean)"/><g class="atlas-tiles atlas-tiles-dark">${atlasTileImages}</g><g class="atlas-tiles atlas-tiles-light">${atlasLightTileImages}</g><rect width="${mapWidth}" height="${mapHeight}" fill="var(--sun-tile-overlay,rgba(2,6,23,.16))"/><path d="M0 86 H1000 M0 158 H1000 M0 230 H1000 M0 302 H1000 M0 374 H1000 M116 0 V460 M248 0 V460 M500 0 V460 M752 0 V460 M884 0 V460" fill="none" stroke="var(--sun-grid-stroke,rgba(226,232,240,.055))" stroke-width="1" stroke-dasharray="8 14"/><g filter="url(#sun-glow)">${atlasLights}</g><circle cx="${wineryPoint.x.toFixed(2)}" cy="${wineryPoint.y.toFixed(2)}" r="54" fill="rgba(34,211,238,.16)"/><circle cx="${tapPoint.x.toFixed(2)}" cy="${tapPoint.y.toFixed(2)}" r="62" fill="rgba(249,115,22,.16)"/><path d="${atlasRoutePath}" fill="none" stroke="rgba(2,6,23,.82)" stroke-width="12" stroke-linecap="round"/><path d="${atlasRoutePath}" fill="none" stroke="#f97316" stroke-width="4.2" stroke-linecap="round" stroke-dasharray="10 12"><animate attributeName="stroke-dashoffset" values="0;-54" dur="3s" repeatCount="indefinite"/></path><circle r="5.5" fill="#facc15"><animateMotion dur="4.2s" repeatCount="indefinite" path="${atlasRoutePath}"/></circle><circle cx="${wineryPoint.x.toFixed(2)}" cy="${wineryPoint.y.toFixed(2)}" r="9" fill="#22d3ee" stroke="#ecfeff" stroke-width="2.4"/><circle cx="${tapPoint.x.toFixed(2)}" cy="${tapPoint.y.toFixed(2)}" r="10" fill="#f97316" stroke="#fff7ed" stroke-width="2.4"/><g transform="translate(${(atlasViewX + 12).toFixed(2)} ${(atlasViewY + 16).toFixed(2)})"><rect x="0" y="0" width="178" height="28" rx="14" fill="rgba(2,6,23,.74)" stroke="rgba(125,211,252,.32)"/><text x="14" y="18" fill="#cffafe" font-size="11" font-weight="800" letter-spacing="1.4">${htmlText(mapSourceLabel)}</text></g><text x="${(wineryPoint.x + 12).toFixed(2)}" y="${(wineryPoint.y - 13).toFixed(2)}" fill="#e0f2fe" font-size="18" font-weight="800" paint-order="stroke" stroke="rgba(2,6,23,.85)" stroke-width="4">${labels.origin}</text><text x="${(tapPoint.x + 12).toFixed(2)}" y="${(tapPoint.y - 13).toFixed(2)}" fill="#fed7aa" font-size="18" font-weight="800" paint-order="stroke" stroke="rgba(2,6,23,.85)" stroke-width="4">Tap</text><text x="${(atlasViewX + atlasViewWidth - 12).toFixed(2)}" y="${(atlasViewY + atlasViewHeight - 10).toFixed(2)}" text-anchor="end" fill="#cbd5e1" font-size="9" font-weight="700" opacity=".72" paint-order="stroke" stroke="rgba(2,6,23,.8)" stroke-width="3">${htmlText(mapAttribution)}</text></svg>`;
-  const atlasSafePanels = `<g transform="translate(${atlasOriginPanelX.toFixed(2)} ${atlasOriginPanelY.toFixed(2)})"><rect x="0" y="0" width="${atlasPanelWidth.toFixed(2)}" height="42" rx="13" fill="rgba(2,6,23,.82)" stroke="rgba(34,211,238,.34)"/><text x="12" y="16" fill="#67e8f9" font-size="9" font-weight="900" letter-spacing="1.4">${htmlText(labels.origin)}</text><text x="12" y="31" fill="#f8fafc" font-size="13" font-weight="850">${atlasOriginSafeLabel}</text></g><g transform="translate(${atlasTapPanelX.toFixed(2)} ${atlasTapPanelY.toFixed(2)})"><rect x="0" y="0" width="${atlasPanelWidth.toFixed(2)}" height="42" rx="13" fill="rgba(2,6,23,.82)" stroke="rgba(249,115,22,.38)"/><text x="12" y="16" fill="#fed7aa" font-size="9" font-weight="900" letter-spacing="1.4">TAP</text><text x="12" y="31" fill="#f8fafc" font-size="13" font-weight="850">${atlasTapSafeLabel}</text></g>`;
-  const responsiveAtlasSvg = atlasSvg.replace("</svg>", `${atlasSafePanels}</svg>`);
+  const atlasSvg = mapAvailable
+    ? `<svg class="world-route-overlay" viewBox="${atlasViewBox}" aria-hidden="true" data-map-source="${htmlText(mapSourceLabel)}"><defs><linearGradient id="sun-ocean" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="var(--sun-ocean-1,#06243c)"/><stop offset="52%" stop-color="var(--sun-ocean-2,#071827)"/><stop offset="100%" stop-color="var(--sun-ocean-3,#111136)"/></linearGradient><filter id="sun-glow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect width="${mapWidth}" height="${mapHeight}" fill="url(#sun-ocean)"/><g class="atlas-tiles atlas-tiles-dark">${atlasTileImages}</g><g class="atlas-tiles atlas-tiles-light">${atlasLightTileImages}</g><rect width="${mapWidth}" height="${mapHeight}" fill="var(--sun-tile-overlay,rgba(2,6,23,.16))"/><path d="M0 86 H1000 M0 158 H1000 M0 230 H1000 M0 302 H1000 M0 374 H1000 M116 0 V460 M248 0 V460 M500 0 V460 M752 0 V460 M884 0 V460" fill="none" stroke="var(--sun-grid-stroke,rgba(226,232,240,.055))" stroke-width="1" stroke-dasharray="8 14"/><g filter="url(#sun-glow)">${atlasLights}</g><circle cx="${wineryPoint.x.toFixed(2)}" cy="${wineryPoint.y.toFixed(2)}" r="54" fill="rgba(34,211,238,.16)"/><circle cx="${tapPoint.x.toFixed(2)}" cy="${tapPoint.y.toFixed(2)}" r="62" fill="rgba(249,115,22,.16)"/><path d="${atlasRoutePath}" fill="none" stroke="rgba(2,6,23,.82)" stroke-width="12" stroke-linecap="round"/><path d="${atlasRoutePath}" fill="none" stroke="#f97316" stroke-width="4.2" stroke-linecap="round" stroke-dasharray="10 12"><animate attributeName="stroke-dashoffset" values="0;-54" dur="3s" repeatCount="indefinite"/></path><circle r="5.5" fill="#facc15"><animateMotion dur="4.2s" repeatCount="indefinite" path="${atlasRoutePath}"/></circle><circle cx="${wineryPoint.x.toFixed(2)}" cy="${wineryPoint.y.toFixed(2)}" r="9" fill="#22d3ee" stroke="#ecfeff" stroke-width="2.4"/><circle cx="${tapPoint.x.toFixed(2)}" cy="${tapPoint.y.toFixed(2)}" r="10" fill="#f97316" stroke="#fff7ed" stroke-width="2.4"/><g transform="translate(${(atlasViewX + 12).toFixed(2)} ${(atlasViewY + 16).toFixed(2)})"><rect x="0" y="0" width="178" height="28" rx="14" fill="rgba(2,6,23,.74)" stroke="rgba(125,211,252,.32)"/><text x="14" y="18" fill="#cffafe" font-size="11" font-weight="800" letter-spacing="1.4">${htmlText(mapSourceLabel)}</text></g><text x="${(wineryPoint.x + 12).toFixed(2)}" y="${(wineryPoint.y - 13).toFixed(2)}" fill="#e0f2fe" font-size="18" font-weight="800" paint-order="stroke" stroke="rgba(2,6,23,.85)" stroke-width="4">${labels.origin}</text><text x="${(tapPoint.x + 12).toFixed(2)}" y="${(tapPoint.y - 13).toFixed(2)}" fill="#fed7aa" font-size="18" font-weight="800" paint-order="stroke" stroke="rgba(2,6,23,.85)" stroke-width="4">Tap</text><text x="${(atlasViewX + atlasViewWidth - 12).toFixed(2)}" y="${(atlasViewY + atlasViewHeight - 10).toFixed(2)}" text-anchor="end" fill="#cbd5e1" font-size="9" font-weight="700" opacity=".72" paint-order="stroke" stroke="rgba(2,6,23,.8)" stroke-width="3">${htmlText(mapAttribution)}</text></svg>`
+    : "";
+  const atlasSafePanels = mapAvailable
+    ? `<g transform="translate(${atlasOriginPanelX.toFixed(2)} ${atlasOriginPanelY.toFixed(2)})"><rect x="0" y="0" width="${atlasPanelWidth.toFixed(2)}" height="42" rx="13" fill="rgba(2,6,23,.82)" stroke="rgba(34,211,238,.34)"/><text x="12" y="16" fill="#67e8f9" font-size="9" font-weight="900" letter-spacing="1.4">${htmlText(labels.origin)}</text><text x="12" y="31" fill="#f8fafc" font-size="13" font-weight="850">${atlasOriginSafeLabel}</text></g><g transform="translate(${atlasTapPanelX.toFixed(2)} ${atlasTapPanelY.toFixed(2)})"><rect x="0" y="0" width="${atlasPanelWidth.toFixed(2)}" height="42" rx="13" fill="rgba(2,6,23,.82)" stroke="rgba(249,115,22,.38)"/><text x="12" y="16" fill="#fed7aa" font-size="9" font-weight="900" letter-spacing="1.4">TAP</text><text x="12" y="31" fill="#f8fafc" font-size="13" font-weight="850">${atlasTapSafeLabel}</text></g>`
+    : "";
+  const responsiveAtlasSvg = mapAvailable
+    ? atlasSvg.replace("</svg>", `${atlasSafePanels}</svg>`)
+    : `<div style="display:grid;place-items:center;min-height:180px;padding:24px;text-align:center;color:#cbd5e1">${htmlText(labels.mapUnavailable)}</div>`;
+  const reportedQualityScore = typeof contract.quality.score === "number" ? contract.quality.score : null;
+  const reportedQualityTier = typeof contract.quality.tier === "string" ? contract.quality.tier : null;
+  const hasReportedQuality = reportedQualityScore !== null
+    && reportedQualityTier !== null
+    && contract.quality.basis !== "unavailable";
+  const noScoreLabel = copy.lang === "en" ? "no score" : copy.lang === "pt-BR" ? "sem score" : "sin score";
+  const qualitySummary = hasReportedQuality
+    ? `${copy.quality} ${reportedQualityScore}/100 · ${reportedQualityTier}`
+    : `${copy.quality}: N/D · ${noScoreLabel}`;
+  let qualityMeterHtml = hasReportedQuality
+    ? `<div class="risk-meter"><div class="risk-track"><div class="risk-fill" style="width:${reportedQualityScore}%"></div></div></div>`
+    : "";
+  const mapLegendHtml = mapAvailable
+    ? `<div class="world-map-legend"><div class="legend-item"><span class="legend-dot legend-origin"></span><b>${labels.origin}</b><br/>${contract.iot.wineryLocation || "N/A"}</div><div class="legend-item"><span class="legend-dot legend-tap"></span><b>${labels.tapLocation}</b><br/>${contract.tapContext.city || "N/A"}, ${contract.tapContext.country || "N/A"}</div></div>`
+    : "";
+  const routeSummaryText = mapAvailable
+    ? `${contract.iot.wineryLocation || labels.origin} → ${contract.tapContext.city || "-"}, ${contract.tapContext.country || "-"} · ${labels.mapLegend}.`
+    : labels.mapUnavailable;
   const maskedBid = maskIdentityValue(contract.identity.bid);
   const maskedUid = contract.uidMasked;
+  const sensorEvidenceLabel = contract.iot.sensorEvidenceKind === "simulated"
+    ? copy.lang === "en" ? "SIMULATED - NOT MEASURED" : copy.lang === "pt-BR" ? "SIMULADO - NAO MEDIDO" : "SIMULADO - NO MEDIDO"
+    : contract.iot.sensorEvidenceKind === "reported"
+      ? copy.lang === "en" ? "REPORTED - NOT INDEPENDENTLY VERIFIED" : copy.lang === "pt-BR" ? "REPORTADO - NAO VERIFICADO INDEPENDENTEMENTE" : "REPORTADO - NO VERIFICADO INDEPENDIENTEMENTE"
+      : copy.lang === "en" ? "NO SENSOR TELEMETRY" : copy.lang === "pt-BR" ? "SEM TELEMETRIA DE SENSOR" : "SIN TELEMETRIA DE SENSOR";
+  const sensorEvidenceTone = contract.iot.sensorEvidenceKind === "reported" ? "#7dd3fc" : "#fbbf24";
+  const sensorEvidenceExplanation = contract.iot.sensorEvidenceKind === "simulated"
+    ? copy.lang === "en" ? "Illustrative demo values; no sensor measured them." : copy.lang === "pt-BR" ? "Valores ilustrativos de demo; nenhum sensor os mediu." : "Valores ilustrativos de demo; ningun sensor los midio."
+    : contract.iot.sensorEvidenceKind === "reported"
+      ? copy.lang === "en" ? "Values reported in event records; not independently verified by NexID." : copy.lang === "pt-BR" ? "Valores informados nos eventos; nao verificados independentemente pela NexID." : "Valores informados en eventos; no verificados independientemente por NexID."
+      : copy.lang === "en" ? "No measured or reported sensor values are available." : copy.lang === "pt-BR" ? "Nao ha valores de sensores medidos ou reportados." : "No hay valores de sensores medidos ni reportados.";
+  qualityMeterHtml += `<div style="border:1px solid ${sensorEvidenceTone};background:rgba(2,6,23,.35);border-radius:12px;padding:10px;margin:12px 0 0"><b style="display:block;color:${sensorEvidenceTone};font-size:12px;letter-spacing:.04em">${sensorEvidenceLabel}</b><span style="font-size:11px;color:#cbd5e1">${sensorEvidenceExplanation}</span></div>`;
 
   return `<!doctype html><html lang="${copy.lang}"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>NexID Product Passport</title>
   <link rel="icon" href="/favicon.ico" sizes="any" />
@@ -2266,24 +2270,24 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   <link rel="apple-touch-icon" href="/apple-icon" />
   <style>body{margin:0;background:radial-gradient(circle at top,#0b1e47 0%,#020617 58%);color:#e2e8f0;font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}.wrap{max-width:760px;margin:0 auto;padding:18px;padding-bottom:calc(18px + env(safe-area-inset-bottom))}.card{border:1px solid rgba(148,163,184,.22);border-radius:18px;background:linear-gradient(180deg,#0d1834 0%,#0a1228 100%);padding:16px;margin-top:12px;box-shadow:0 12px 36px rgba(2,6,23,.38)}.hero{padding:18px;background:linear-gradient(180deg,#0e1f43 0%,#09162f 100%);border:1px solid rgba(34,211,238,.22)}.hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.trust-sticky{position:sticky;top:8px;z-index:40;border:1px solid rgba(34,211,238,.35);background:rgba(8,16,36,.85);backdrop-filter:blur(8px);padding:10px 12px;border-radius:12px;margin-bottom:10px;font-size:12px;display:flex;align-items:center;justify-content:space-between;gap:8px}.trust-label{display:flex;align-items:center;gap:8px}.trust-dot{width:8px;height:8px;border-radius:999px;display:inline-block}.auth-card{border-color:rgba(34,211,238,.28);box-shadow:0 8px 28px rgba(34,211,238,.08)}.auth-topline{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#7dd3fc;margin-bottom:8px}.brand{display:flex;align-items:center;gap:10px;margin-bottom:8px}.brand-mark{width:36px;height:36px;border-radius:11px;background:linear-gradient(160deg,#05203d,#0b355f);border:1px solid rgba(125,211,252,.35);display:grid;place-items:center;font-weight:800;color:#e0f2fe;position:relative;overflow:hidden}.brand-ni{display:inline-flex;align-items:flex-end;gap:1px}.brand-ni .n-letter{font-size:16px;line-height:1}.brand-ni .i-stack{position:relative;display:inline-block;padding-top:2px}.brand-ni .i-stem{font-size:16px;line-height:1}.brand-ni .i-dot{position:absolute;top:-1px;left:50%;width:4px;height:4px;border-radius:999px;background:#7dd3fc;transform:translate(-50%,-50%);box-shadow:0 0 0 1px rgba(125,211,252,.22)}.brand-ni .i-orbit{position:absolute;top:-1px;left:50%;width:11px;height:7px;border:1px solid rgba(125,211,252,.5);border-radius:999px;transform:translate(-50%,-50%) rotate(-10deg)}.brand-text{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#7dd3fc}.badge{display:inline-block;border-radius:999px;border:1px solid rgba(255,255,255,.25);padding:4px 10px;font-size:11px;font-weight:700;letter-spacing:.04em}.lang-switch{display:flex;gap:6px;margin-top:6px}.lang-switch a{text-decoration:none;font-size:10px;padding:3px 8px;border-radius:999px;border:1px solid rgba(148,163,184,.4);color:#dbeafe}.lang-switch a.active{border-color:#22d3ee;color:#67e8f9;background:rgba(34,211,238,.12)}.hero h1{margin:10px 0 4px;font-size:clamp(1.7rem,6vw,2.1rem);line-height:1.08;letter-spacing:-.015em}.hero-meta{margin-top:6px;color:#b6c8e7;font-size:12px}.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.chip{border:1px solid rgba(148,163,184,.35);border-radius:999px;padding:4px 10px;font-size:11px;color:#cbd5e1;background:rgba(2,6,23,.24)}.chip-soft{background:rgba(34,211,238,.08);border-color:rgba(34,211,238,.35)}.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}.kpi{border:1px solid rgba(148,163,184,.28);border-radius:12px;padding:10px;background:rgba(2,6,23,.45);min-height:72px;display:flex;flex-direction:column;justify-content:center}.kpi b{display:block;font-size:14px}.kpi span{font-size:11px;color:#9fb5d9}.section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid rgba(148,163,184,.2)}.section-head h3{margin:0}.section-tag{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#7dd3fc;border:1px solid rgba(125,211,252,.35);padding:2px 8px;border-radius:999px}.detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}.detail-item{border:1px solid rgba(148,163,184,.2);border-radius:12px;padding:9px 10px;background:rgba(15,23,42,.35)}.detail-item .k{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#93c5fd;margin-bottom:4px}.detail-item .v{font-size:14px;font-weight:700;color:#f8fafc}.world-map-wrap{margin-top:10px;border:1px solid rgba(148,163,184,.28);border-radius:14px;overflow:hidden;background:linear-gradient(180deg,#07142d 0%,#081b38 100%)}.world-map-canvas{position:relative;aspect-ratio:1000/460;background:#0b1e47}.world-map-image{display:block;width:100%;height:100%;object-fit:cover;filter:saturate(1.05) contrast(1.02)}.world-route-overlay{position:absolute;inset:0;width:100%;height:100%;--sun-ocean-1:#06243c;--sun-ocean-2:#071827;--sun-ocean-3:#111136;--sun-tile-overlay:rgba(2,6,23,.16);--sun-grid-stroke:rgba(226,232,240,.055)}.atlas-tiles-light{display:none}.world-map-legend{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px;border-top:1px solid rgba(148,163,184,.22)}.legend-item{font-size:11px;color:#dbeafe;border:1px solid rgba(148,163,184,.28);border-radius:10px;padding:8px;background:rgba(15,23,42,.35)}.legend-dot{display:inline-block;width:8px;height:8px;border-radius:999px;margin-right:6px}.legend-origin{background:#22d3ee}.legend-tap{background:#f97316}.journey-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:10px}.journey-step{border:1px solid rgba(148,163,184,.25);border-radius:12px;padding:8px;background:rgba(15,23,42,.32)}.journey-step b{display:block;font-size:12px;margin-bottom:4px}.journey-step span{font-size:11px;color:#9fb5d9}details{margin-top:10px}button{border:1px solid rgba(148,163,184,.4);border-radius:10px;background:#071229;color:#dbeafe;padding:9px 8px;font-size:12px;font-weight:700;transition:transform .16s ease,background .2s ease,border-color .2s ease,box-shadow .2s ease}button:hover{transform:translateY(-1px);border-color:#38bdf8;background:#0b1f3f;box-shadow:0 8px 20px rgba(56,189,248,.18)}button:active{transform:scale(.98)}button:disabled{opacity:.45;cursor:not-allowed}.actions-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.link-btn{text-decoration:none;border:1px solid rgba(148,163,184,.32);border-radius:10px;padding:9px 8px;font-size:12px;font-weight:700;text-align:center;transition:transform .15s ease,filter .15s ease}.link-btn:hover{transform:translateY(-1px);filter:brightness(1.08)}.subtitle{margin:0;color:#9fb5d9;font-size:13px}.risk-meter{margin-top:12px}.risk-track{height:10px;border-radius:999px;background:rgba(148,163,184,.2);overflow:hidden}.risk-fill{height:100%;background:linear-gradient(90deg,#22c55e,#f59e0b,#ef4444);transition:width .6s ease}.pulse-ok{display:inline-block;animation:pulse 1.6s infinite}@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.45)}70%{box-shadow:0 0 0 12px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}@media (hover:hover){.card{transition:transform .2s ease,box-shadow .2s ease}.card:hover{transform:translateY(-1px);box-shadow:0 14px 34px rgba(2,6,23,.44)}}@media (max-width:720px){.kpis,.detail-grid,.actions-grid,.world-map-legend,.journey-steps{grid-template-columns:1fr}.hero-top{flex-direction:column;align-items:flex-start}.trust-sticky{padding:9px 10px}.trust-label{line-height:1.25}.kpi{min-height:64px}}@media (prefers-color-scheme: light){body{background:linear-gradient(180deg,#f8fafc 0%,#e2e8f0 100%);color:#0f172a}.card{background:#ffffff;border-color:#cbd5e1;box-shadow:0 8px 24px rgba(15,23,42,.08)}.hero{background:linear-gradient(180deg,#f8fbff 0%,#f1f5f9 100%)}.brand-mark{background:linear-gradient(160deg,#dff3ff,#bfdbfe);border-color:#93c5fd;color:#0f172a}.brand-text{color:#0369a1}.subtitle,.hero-meta{color:#334155}.chip{color:#334155;border-color:#cbd5e1;background:#f8fafc}.chip-soft{background:#ecfeff;border-color:#a5f3fc}.kpi{background:#f8fafc;border-color:#cbd5e1}.kpi span{color:#475569}.section-tag{color:#0369a1;border-color:#93c5fd}.detail-item,.journey-step{background:#f8fafc;border-color:#cbd5e1}.detail-item .k{color:#0369a1}.detail-item .v{color:#0f172a}.journey-step span{color:#475569}.world-map-wrap{background:linear-gradient(180deg,#f8fcff 0%,#dff4ff 100%);border-color:#93c5fd}.world-map-canvas{background:#eaf7ff}.world-route-overlay{--sun-ocean-1:#effaff;--sun-ocean-2:#e0f7ff;--sun-ocean-3:#eef4ff;--sun-tile-overlay:rgba(255,255,255,.28);--sun-grid-stroke:rgba(14,116,144,.1)}.atlas-tiles-dark{display:none}.atlas-tiles-light{display:block}.world-map-image{filter:saturate(.9) contrast(.92) brightness(1.08)}.legend-item{background:#f8fafc;border-color:#cbd5e1;color:#0f172a}button{background:#f8fafc;color:#0f172a}.link-btn{border-color:#cbd5e1}.lang-switch a{color:#0f172a;border-color:#cbd5e1}.lang-switch a.active{color:#075985}}@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}</style></head><body><main class="wrap">
   <div class="trust-sticky"><span class="trust-label"><span class="trust-dot" style="background:${authRibbonTone}"></span><b>${copy.authPanel}:</b> <span style="color:${authRibbonTone};font-weight:700">${contract.status.label}</span></span><span class="chip" style="margin-top:0;border-color:${riskTone};color:${riskTone};background:rgba(2,6,23,.36)">${riskLevelLabel}</span></div>
-  <section class="card hero"><div class="hero-top"><div><div class="brand"><span class="brand-mark"><span class="brand-ni"><span class="n-letter">N</span><span class="i-stack"><span class="i-stem">i</span><span class="i-dot"></span><span class="i-orbit"></span></span></span></span><span class="brand-text">NexID Verified Tap</span></div><h1>${copy.title}</h1><p class="subtitle">${contract.status.summary}</p><p class="hero-meta">${labels.heroRoute} · ${labels.eventLabel} #${contract.identity.eventId || 'N/A'}</p><div class="lang-switch"><a href="${langUrl('es-AR')}" class="${locale === 'es-AR' ?'active' : ''}">ES</a><a href="${langUrl('pt-BR')}" class="${locale === 'pt-BR' ?'active' : ''}">PT</a><a href="${langUrl('en')}" class="${locale === 'en' ?'active' : ''}">EN</a></div></div><span class="badge" style="color:${tone};border-color:${tone}">${contract.status.label}</span></div><div class="chips"><span class="chip">BID ${maskedBid}</span><span class="chip">UID ${maskedUid}</span><span class="chip">Tap #${contract.identity.readCounter ?? 'N/A'}</span><span class="chip ${contract.status.code === "VALID" ?"pulse-ok" : ""}">${copy.quality} ${contract.quality.score}/100 · ${contract.quality.tier}</span></div><div class="risk-meter"><div class="risk-track"><div class="risk-fill" style="width:${contract.quality.score}%"></div></div></div><div class="kpis"><div class="kpi"><b>${contract.provenance.timelineSummary.length}</b><span>${labels.events}</span></div><div class="kpi"><b>${tokenizationStatusLabel}</b><span>${labels.tokenization}</span></div><div class="kpi"><b>${contract.tapContext.deviceType || "-"}</b><span>${labels.device}</span></div></div></section>
+  <section class="card hero"><div class="hero-top"><div><div class="brand"><span class="brand-mark"><span class="brand-ni"><span class="n-letter">N</span><span class="i-stack"><span class="i-stem">i</span><span class="i-dot"></span><span class="i-orbit"></span></span></span></span><span class="brand-text">NexID Verified Tap</span></div><h1>${copy.title}</h1><p class="subtitle">${contract.status.summary}</p><p class="hero-meta">${labels.heroRoute} · ${labels.eventLabel} #${contract.identity.eventId || 'N/A'}</p><div class="lang-switch"><a href="${langUrl('es-AR')}" class="${locale === 'es-AR' ?'active' : ''}">ES</a><a href="${langUrl('pt-BR')}" class="${locale === 'pt-BR' ?'active' : ''}">PT</a><a href="${langUrl('en')}" class="${locale === 'en' ?'active' : ''}">EN</a></div></div><span class="badge" style="color:${tone};border-color:${tone}">${contract.status.label}</span></div><div class="chips"><span class="chip">BID ${maskedBid}</span><span class="chip">UID ${maskedUid}</span><span class="chip">Tap #${contract.identity.readCounter ?? 'N/A'}</span><span class="chip ${contract.status.code === "VALID" ?"pulse-ok" : ""}">${qualitySummary}</span></div>${qualityMeterHtml}<div class="kpis"><div class="kpi"><b>${contract.provenance.timelineSummary.length}</b><span>${labels.events}</span></div><div class="kpi"><b>${tokenizationStatusLabel}</b><span>${labels.tokenization}</span></div><div class="kpi"><b>${contract.tapContext.deviceType || "-"}</b><span>${labels.device}</span></div></div></section>
   <section class="card auth-card"><div class="auth-topline">Trust signal</div><h3 style="margin:0 0 6px">${copy.authPanel}</h3><p class="subtitle">${authPanelMessage}</p><div class="chips"><span class="chip">${commercialStateLabel}</span><span class="chip">${riskStateLabel}</span><span class="chip">${labels.dashboardSync}</span></div></section>
   <section class="card"><div class="section-head"><h3>${copy.identityPanel}</h3><span class="section-tag">${labels.wineProfile}</span></div><p><b>${contract.product.name || 'Unprofiled product'}</b></p><p>${contract.product.winery || '-'} · ${contract.product.region || '-'}</p><div class="detail-grid"><div class="detail-item"><span class="k">${labels.varietal}</span><span class="v">${contract.product.varietal || '-'}</span></div><div class="detail-item"><span class="k">${labels.vintage}</span><span class="v">${contract.product.vintage || '-'}</span></div><div class="detail-item"><span class="k">${labels.harvest}</span><span class="v">${contract.product.harvestYear || '-'}</span></div><div class="detail-item"><span class="k">${labels.barrel}</span><span class="v">${contract.product.barrelMonths || '-'} ${labels.months}</span></div><div class="detail-item"><span class="k">${labels.alcohol}</span><span class="v">${contract.product.alcohol || '-'}</span></div><div class="detail-item"><span class="k">${labels.serving}</span><span class="v">${contract.product.serving || '-'}</span></div></div><p style="margin-top:10px">${labels.bottleFormat}: <b>${contract.product.bottle || '-'}</b></p></section>
   <section class="card"><div class="section-head"><h3>${copy.provenancePanel}</h3><span class="section-tag">${labels.traceability}</span></div><p>${labels.origin}: <b>${contract.provenance.origin || contract.iot.wineryLocation || '-'}</b></p><p>${copy.firstVerified}: <b>${contract.provenance.firstVerified.at || 'N/A'} · ${contract.provenance.firstVerified.city || '-'}, ${contract.provenance.firstVerified.country || '-'}</b></p><p>${copy.lastVerified}: <b>${contract.provenance.lastVerifiedLocation.at || 'N/A'} · ${contract.provenance.lastVerifiedLocation.city || '-'}, ${contract.provenance.lastVerifiedLocation.country || '-'}</b></p></section>
   <section class="card"><div class="section-head"><h3>${copy.iotPanel}</h3><span class="section-tag">${labels.sensorIntelligence}</span></div><p>${labels.winery}: <b>${contract.iot.wineryLocation || 'N/A'}</b></p><p>${labels.altitude}: <b>${contract.iot.altitude || '-'}</b> · ${labels.oak}: <b>${contract.iot.oakType || '-'}</b></p><p>${labels.cellarTemp}: <b>${contract.iot.sensorSnapshot.cellarTemperature || '-'}</b> · ${labels.humidity}: <b>${contract.iot.sensorSnapshot.humidity || '-'}</b></p><p>${labels.light}: <b>${contract.iot.sensorSnapshot.lightExposure || '-'}</b> · ${labels.transit}: <b>${contract.iot.sensorSnapshot.transitShock || '-'}</b></p></section>
-  <section class="card"><div class="section-head"><h3>${copy.tapPanel}</h3><span class="section-tag">${labels.geoContext}</span></div><p>${labels.os}: <b>${contract.tapContext.os}</b> · ${labels.browser}: <b>${contract.tapContext.browser}</b> · ${labels.device}: <b>${contract.tapContext.deviceType}</b></p><p>${labels.tapLocation}: <b>${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'}</b>${contract.tapContext.lat != null && contract.tapContext.lng != null ?` · (${contract.tapContext.lat}, ${contract.tapContext.lng})` : ''}</p><div class="detail-grid"><div class="detail-item"><span class="k">${labels.routeDistance}</span><span class="v">${routeDistanceKm} km</span></div><div class="detail-item"><span class="k">${labels.routeRegion}</span><span class="v">${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'}</span></div></div>
-  <div class="world-map-wrap"><div class="world-map-canvas">${responsiveAtlasSvg}</div><div class="world-map-legend"><div class="legend-item"><span class="legend-dot legend-origin"></span><b>${labels.origin}</b><br/>${contract.iot.wineryLocation || "N/A"}</div><div class="legend-item"><span class="legend-dot legend-tap"></span><b>${labels.tapLocation}</b><br/>${contract.tapContext.city || "N/A"}, ${contract.tapContext.country || "N/A"}</div></div></div>
-  <div class="trace-story" style="margin-top:10px;border:1px solid rgba(34,211,238,.22);border-radius:14px;padding:10px;background:linear-gradient(180deg,rgba(8,47,73,.44),rgba(15,23,42,.28))"><div class="trace-story-head" style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px"><div><h4 style="margin:0;font-size:14px">${labels.mapStoryTitle}</h4><p style="margin:2px 0 0;color:#9fb5d9;font-size:11px">${labels.mapStorySubtitle}</p></div><span class="section-tag">${labels.mapLedgerTitle}</span></div><div class="story-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:8px">${traceStoryHtml}</div><div class="ledger-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:8px;margin-top:8px">${traceLedgerHtml}</div><p style="margin:9px 0 0;font-size:11px;color:#a7f3d0">${labels.mapInvestorSignal}: ${contract.provenance.timelineSummary.length} ${labels.events}, ${routeDistanceKm} km, ${htmlText(tokenProof)}. ${labels.mapConsumerSignal}: ${labels.linkPortal} + ${labels.linkRewards}.</p></div>
-  <p style="margin:8px 0 0;font-size:11px;color:#94a3b8">${labels.routeSummary}: ${contract.iot.wineryLocation || labels.origin} → ${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'} · ${labels.mapLegend}.</p></section>
+  <section class="card"><div class="section-head"><h3>${copy.tapPanel}</h3><span class="section-tag">${labels.geoContext}</span></div><p>${labels.os}: <b>${contract.tapContext.os}</b> · ${labels.browser}: <b>${contract.tapContext.browser}</b> · ${labels.device}: <b>${contract.tapContext.deviceType}</b></p><p>${labels.tapLocation}: <b>${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'}</b>${contract.tapContext.lat != null && contract.tapContext.lng != null ?` · (${contract.tapContext.lat}, ${contract.tapContext.lng})` : ''}</p><div class="detail-grid"><div class="detail-item"><span class="k">${labels.routeDistance}</span><span class="v">${routeDistanceLabel}</span></div><div class="detail-item"><span class="k">${labels.routeRegion}</span><span class="v">${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'}</span></div></div>
+  <div class="world-map-wrap"><div class="world-map-canvas">${responsiveAtlasSvg}</div>${mapLegendHtml}</div>
+  <div class="trace-story" style="margin-top:10px;border:1px solid rgba(34,211,238,.22);border-radius:14px;padding:10px;background:linear-gradient(180deg,rgba(8,47,73,.44),rgba(15,23,42,.28))"><div class="trace-story-head" style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px"><div><h4 style="margin:0;font-size:14px">${labels.mapStoryTitle}</h4><p style="margin:2px 0 0;color:#9fb5d9;font-size:11px">${labels.mapStorySubtitle}</p></div><span class="section-tag">${labels.mapLedgerTitle}</span></div><div class="story-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:8px">${traceStoryHtml}</div><div class="ledger-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:8px;margin-top:8px">${traceLedgerHtml}</div><p style="margin:9px 0 0;font-size:11px;color:#a7f3d0">${labels.mapInvestorSignal}: ${contract.provenance.timelineSummary.length} ${labels.events}, ${routeDistanceLabel}, ${htmlText(tokenProof)}. ${labels.mapConsumerSignal}: ${labels.linkPortal} + ${labels.linkRewards}.</p></div>
+  <p style="margin:8px 0 0;font-size:11px;color:#94a3b8">${labels.routeSummary}: ${routeSummaryText}</p></section>
   <section class="card"><h3 style="margin:0 0 6px">${copy.timelinePanel}</h3><ul style="margin:0;padding-left:18px">${timelineHtml}</ul></section>
   <section class="card"><h3 style="margin:0 0 6px">${copy.tokenPanel}</h3><p>${labels.statusLabel}: <b>${contract.tokenization.status}</b> · ${labels.networkLabel}: <b>${contract.tokenization.network || '-'}</b></p><p>${labels.tokenIdLabel}: ${contract.tokenization.tokenId || '-'} · ${labels.txLabel}: ${contract.tokenization.txHash || '-'}</p></section>
   <section class="card">
     <details>
       <summary style="font-weight:700;cursor:pointer;color:#7dd3fc;outline:none">Ver Digital Proofs (Trust Layer)</summary>
       <div style="margin-top:10px;font-size:12px;color:#cbd5e1">
-        <p style="margin:4px 0"><b>Autenticidad Física:</b> ${contract.status.code === 'VALID' || contract.status.code === 'OPENED' ? '<span style="color:#22c55e">Verificada por NXP SUN</span>' : '<span style="color:#ef4444">No confirmada</span>'}</p>
-        <p style="margin:4px 0"><b>Ownership Layer:</b> ${contract.tokenization.status === 'minted' ? '<span style="color:#22c55e">Polygon Amoy (Tokenized)</span>' : 'Local DB (Standard)'}</p>
-        <p style="margin:4px 0"><b>Audit Trail (IOTA):</b> ${contract.identity.eventId ? '<span style="color:#22c55e">Anclado (Logistics Event)</span>' : 'Temporal'}</p>
+        <p style="margin:4px 0"><b>Evidencia digital del tag:</b> ${contract.status.code === 'VALID' || contract.status.code === 'OPENED' ? '<span style="color:#22c55e">Mensaje NXP SUN validado; no certifica el producto físico</span>' : '<span style="color:#ef4444">No validada</span>'}</p>
+        <p style="margin:4px 0"><b>Capa de tokenización:</b> ${contract.tokenization.status === 'minted' && contract.tokenization.txHash ? '<span style="color:#22c55e">Transacción Polygon reportada; ownership sujeto a policy y aprobación</span>' : 'Sin transacción confirmada en esta vista'}</p>
+        <p style="margin:4px 0"><b>Evidencia IOTA:</b> No expuesta por este pasaporte; validar hash, tx y explorer en Chain Lab.</p>
         <p style="margin:4px 0"><b>Ref:</b> ${contract.identity.eventId || '-'}</p>
       </div>
     </details>
@@ -2440,8 +2444,11 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
           if (statusNode) statusNode.textContent = action + ' ' + copy.actionFail + ': ' + reason;
           return;
         }
-        button.textContent = labels.actionDone;
-        if (statusNode) statusNode.textContent = action + ' ' + copy.actionOk;
+        const requestOnly = payload?.outcome === 'request_recorded' || payload?.request_status === 'pending_review';
+        button.textContent = requestOnly ? 'Solicitud recibida' : labels.actionDone;
+        if (statusNode) statusNode.textContent = requestOnly
+          ? action + ': solicitud registrada y pendiente de revision; no confirma garantia ni ticket.'
+          : action + ' ' + copy.actionOk;
         if (action === 'provenance') {
           const timeline = Array.isArray(payload?.timeline) ?payload.timeline : [];
           if (statusNode) statusNode.textContent = labels.provenanceLoaded + ': ' + timeline.length + ' ' + labels.eventsLoaded + '.';
@@ -2582,8 +2589,20 @@ export async function GET(req: Request): Promise<Response> {
     safeHitSunRateLimit('bid', bid || 'unknown', 60, RATE_LIMIT_MAX_BID),
     safeHitSunRateLimit('payload', payloadFingerprint, 60, RATE_LIMIT_MAX_UID_CTR),
   ]);
+  if ([ipRate, bidRate, payloadRate].some((rate) => rate.unavailable) && shouldFailClosedSunRateLimit()) {
+    return json(
+      { ok: false, reason: 'sun_security_temporarily_unavailable' },
+      503,
+      { "cache-control": "no-store", "retry-after": "30", "x-nexid-trace-id": traceId, "x-request-id": traceId },
+    );
+  }
   if (ipRate.limited || bidRate.limited || payloadRate.limited) {
-    return json({ ok: false, reason: 'rate_limited' }, 429, { "x-nexid-trace-id": traceId, "x-request-id": traceId });
+    const retryAfter = Math.max(ipRate.retryAfterSeconds, bidRate.retryAfterSeconds, payloadRate.retryAfterSeconds);
+    return json(
+      { ok: false, reason: 'rate_limited' },
+      429,
+      { "cache-control": "no-store", "retry-after": String(retryAfter), "x-nexid-trace-id": traceId, "x-request-id": traceId },
+    );
   }
   if (isQrScan) {
     return handleQrScan({ req, url, traceId, ip, userAgent: ua, geoCity, geoCountry, geoLat, geoLng });
@@ -2619,7 +2638,7 @@ export async function GET(req: Request): Promise<Response> {
     result = await withTimeout(processSunScan(sunScanInput), SUN_PIPELINE_TIMEOUT_MS, "sun_pipeline");
   } catch (error) {
     const internalReason = error instanceof Error ?error.message : 'sun_processing_error';
-    result = { status: 200, body: { ok: false, reason: sanitizePublicErrorReason(internalReason) } };
+    result = { status: 503, body: { ok: false, reason: sanitizePublicErrorReason(internalReason) } };
     console.error("[sun_scan_error]", JSON.stringify({ traceId, bid, reason: internalReason }));
   }
 
@@ -2656,8 +2675,19 @@ export async function GET(req: Request): Promise<Response> {
   let ctr = typeof result.body.ctr === 'number' ?result.body.ctr : null;
   if (uid && ctr != null) {
     const uidCtrRate = await safeHitSunRateLimit('uid_ctr', `${uid}:${ctr}`, 60, RATE_LIMIT_MAX_UID_CTR);
+    if (uidCtrRate.unavailable && shouldFailClosedSunRateLimit()) {
+      return json(
+        { ok: false, reason: 'sun_security_temporarily_unavailable' },
+        503,
+        { "cache-control": "no-store", "retry-after": "30", "x-nexid-trace-id": traceId, "x-request-id": traceId },
+      );
+    }
     if (uidCtrRate.limited) {
-      return json({ ok: false, reason: 'rate_limited' }, 429, { "x-nexid-trace-id": traceId, "x-request-id": traceId });
+      return json(
+        { ok: false, reason: 'rate_limited' },
+        429,
+        { "cache-control": "no-store", "retry-after": String(uidCtrRate.retryAfterSeconds), "x-nexid-trace-id": traceId, "x-request-id": traceId },
+      );
     }
   }
   const tagPassport = await withTimeout(getPassportSnapshot(bid, uid || undefined), 2500, "sun_passport_snapshot").catch(() => null);
@@ -2665,25 +2695,6 @@ export async function GET(req: Request): Promise<Response> {
     ? null
     : await withTimeout(getBatchSunContext(bid), 2500, "sun_batch_context").catch(() => null);
   const passport = tagPassport || batchContext;
-  const normalizedResult = normalizeDemoBodegaSunResult({
-    bid,
-    result,
-    passport: passport as Record<string, unknown> | null,
-  });
-  if (normalizedResult !== result) {
-    console.warn("[sun_demo_bodega_result_normalized]", JSON.stringify({
-      traceId,
-      bid,
-      previousStatus: result.status,
-      previousResult: result.body.result || null,
-      previousReason: result.body.reason || null,
-      eventId,
-    }));
-    result = normalizedResult as SunResult;
-    uid = result.body.uid || uid;
-    eventId = Number((result.body as { event_id?: number }).event_id || eventId || 0) || null;
-    ctr = typeof result.body.ctr === 'number' ?result.body.ctr : ctr;
-  }
   const timeline = await withTimeout(getTimelineSummary(bid, uid || undefined), 2500, "sun_timeline_summary").catch(() => [] as TimelineEvent[]);
   const ctaTimeline = await withTimeout(getCtaTimelineSummary(bid, uid || undefined), 2500, "sun_cta_timeline").catch(() => [] as TimelineEvent[]);
   const mergedTimeline = [...timeline, ...ctaTimeline]
@@ -2894,6 +2905,8 @@ export async function GET(req: Request): Promise<Response> {
             return createSunFreshHandoffToken({
               bid,
               eventId: String(eventId),
+              uidHex: uid,
+              readCounter: ctr,
               diagnosticId,
               traceId,
               exp: now + 60 * 5,

@@ -37,6 +37,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button, type VectorMapPoint, type VectorMapRoute } from "@product/ui";
 import { HeroTrustAtlasSvg } from "../../components/hero-scene";
 import { platformVerticals } from "../../lib/platform-verticals";
+import {
+  classifyInvestorAiResponse,
+  describeInvestorAiProvenance,
+  shortInvestorAiProvenanceLabel,
+  type InvestorAiProvenance,
+} from "./investor-ai-provenance";
 
 const INVESTOR_NUMBER_LOCALE = "es-AR";
 
@@ -49,28 +55,28 @@ const faqCategories = [
     items: [
       {
         q: "¿El chip NFC nexID encarece el costo unitario por botella y reduce mi margen en líneas de volumen? ¿Realmente lo necesito?",
-        a: "Seamos totalmente directos: sí. En líneas de volumen de gama media o baja, un costo adicional de 1.00 USD por botella (en chip NTAG/TagTamper) destruye el margen comercial. Esta tecnología no es para consumo masivo local. Sin embargo, en tus líneas de exportación y alta gama, no adoptarla es un riesgo existencial: la Unión Europea está implementando el Pasaporte Digital de Productos (DPP bajo la ley ESPR) y EE.UU. endurece la trazabilidad con la FDA FSMA 204. Las bodegas que sigan usando etiquetas de papel tradicionales quedarán fuera del mercado internacional. Ser los innovadores que lideran esta transición en LATAM no es un costo de embalaje: es la llave de entrada obligatoria al mercado de exportación global, permitiéndote además respaldar precio premium con evidencia digital verificable.",
-        ctx: "Ser el primer exportador de tu región en cumplir digitalmente con las normativas de la UE te posiciona como socio estratégico preferente frente a los importadores europeos, quienes prefieren bodegas con trazabilidad de origen digitalizada y auditable."
+        a: "Sí, el tag, la conversión y la integración agregan costo, pero el impacto depende del chip, formato, volumen, línea de empaque y servicio contratado; no existe un costo ni un ROI universal. NFC tampoco es un requisito automático para toda botella o mercado. La aplicabilidad y el calendario de ESPR/DPP en la Unión Europea y de FSMA 204 en Estados Unidos dependen de la categoría, el producto, el rol de la empresa y el destino comercial. La decisión correcta es comparar QR, NFC estándar y NFC seguro por caso de uso, margen y riesgo.",
+        ctx: "Antes de vender cumplimiento regulatorio, la marca debe validar alcance y calendario con asesoría legal o regulatoria. El piloto confirma lectura, packaging, operación y economía unitaria; no sustituye esa evaluación."
       },
       {
         q: "¿Qué pasa si un falsificador inyecta vino barato con una jeringa ultra-fina a través del corcho sin tocar la cápsula ni el chip? ¿El sistema no da un falso positivo de autenticidad?",
-        a: "Es una verdad incómoda: un ataque quirúrgico con micro-jeringa directo al corcho sin alterar la cápsula exterior no puede ser detectado físicamente por un sensor electrónico, ya que el chip no mide la composición química del líquido en tiempo real. Cualquiera que te diga lo contrario te está mintiendo. Sin embargo, nexID neutraliza el fraude a escala comercial: primero, porque rellenar artesanalmente botella por botella con jeringa es económicamente inviable para el crimen organizado a gran escala; segundo, porque el circuito TagTamper detecta cualquier rotura física al girar la cápsula; y tercero, si la botella viaja al mercado gris, nuestras señales de riesgo del backend detectan escaneos anómalos por ciudad aproximada, canal y ventana temporal, alertando a tu equipo de inmediato.",
-        ctx: "La seguridad perfecta no existe, pero nexID eleva tanto la barrera de entrada y el costo para el falsificador que el fraude deja de ser rentable, protegiendo la reputación y la prima de precio de tu marca en mercados internacionales de alta gama."
+        a: "Un chip NFC no mide la composición química del líquido y no puede detectar una alteración que no cambie el circuito o el sello instrumentado. Un diseño TagTamper puede registrar la transición prevista por ese carrier, mientras que el backend puede señalar patrones anómalos si existen eventos suficientes, consentimiento y contexto operativo. Ninguna de esas señales prueba por sí sola el contenido ni garantiza detectar todos los ataques.",
+        ctx: "La seguridad perfecta no existe. El piloto debe validar el carrier sobre el cierre real, la lectura en línea y qué patrones de reutilización o desvío puede detectar la operación antes de comprometer resultados."
       },
       {
         q: "¿La integración del chip en la línea de producción va a ralentizar mi embotellado automatizado o requerir nueva maquinaria costosa?",
-        a: "Cualquier cambio en la línea física de embotellado genera fricción inicial y es incómodo para el equipo de operaciones. Sí, al principio requiere calibración. Pero no es necesario rediseñar tu maquinaria: trabajamos en conjunto con las imprentas de etiquetas para integrar el inlay NFC directamente en la etiqueta autoadhesiva o cápsula antes de que llegue a tu bodega. Esto significa que la botella se etiqueta al mismo ritmo de siempre. La única adición es el arco de lectura/aprovisionamiento al final de la línea para registrar los chips en la base de datos, lo cual se automatiza con nuestros SDKs industriales.",
-        ctx: "Un proceso automatizado y certificado bajo estándares internacionales de trazabilidad digital reduce los tiempos de aduana e inspección en los puertos de destino, ya que la documentación de origen está vinculada criptográficamente al chip."
+        a: "El impacto depende del SKU, el formato del inlay, el adhesivo, la velocidad de línea y los equipos disponibles. La integración puede realizarse con el convertidor de etiquetas, sobre la cápsula o mediante una estación separada de lectura y aprovisionamiento, pero no puede prometerse el mismo ritmo ni ausencia de maquinaria adicional sin una prueba industrial. El piloto mide cadencia, rechazos, posición de antena y controles de calidad antes de definir el diseño final.",
+        ctx: "Vincular documentación y eventos al identificador puede facilitar una inspección cuando la autoridad, el despachante y los sistemas del cliente aceptan esa integración. No implica certificación automática ni garantiza reducir tiempos de aduana."
       },
       {
         q: "¿Qué pasa si los servidores de nexID se caen y el consumidor en Europa escanea la botella y da error? ¿No daña eso la reputación de mi bodega?",
-        a: "Sí, absolutamente. Si un consumidor premium en un restaurante exclusivo escanea el vino y el sistema no responde, la experiencia de marca es un fracaso total. Es un riesgo real en cualquier infraestructura digital. Para evitarlo, nexID debe operar con redundancia geográfica, CDN perimetral y colas de reintento. Si no hay conexión, el consumidor puede ver información pública/cacheada y guardar el escaneo como pendiente, pero la autenticidad criptográfica fuerte se confirma cuando vuelve el backend o mediante un verificador autorizado de operador. No prometemos veredicto final offline en un browser público.",
+        a: "Sí, absolutamente. Si un consumidor premium en un restaurante exclusivo escanea el vino y el sistema no responde, la experiencia de marca es un fracaso total. Es un riesgo real en cualquier infraestructura digital. Para evitarlo, nexID debe operar con redundancia geográfica, CDN perimetral y colas de reintento. Si no hay conexión, el consumidor puede ver información pública/cacheada y guardar el escaneo como pendiente, pero la validación criptográfica fuerte del mensaje se confirma cuando vuelve el backend o mediante un verificador autorizado de operador. No prometemos veredicto final offline en un browser público.",
         ctx: "La resiliencia tecnológica es parte de nuestro acuerdo de nivel de servicio (SLA) para B2B. Ser pioneros en implementar trazabilidad digital de contingencia demuestra el nivel de profesionalismo de tu bodega ante los distribuidores de todo el mundo."
       },
       {
         q: "¿Qué pasa si un falsificador simplemente despega la etiqueta con el chip (sin material VOID) y la pega en una botella falsa? ¿Cómo justifica nexID la inversión en este escenario?",
-        a: "Es una objeción crítica. Si el material no es auto-destructivo (VOID), despegarlo intacto es sumamente difícil: el adhesivo acrílico de alta cohesión sobre vidrio curvo rompe el filamento de aluminio de la antena NFC en el 90% de los intentos, dejando el chip inoperativo. Pero si buscas seguridad física total, ofrecemos como opcional de setup etiquetas con adhesivo destructible de transferencia o tipo 'tatuaje' (VOID Tamper-Evident), que se pueden solicitar fácilmente a proveedores globales. Aunque incrementan levemente el costo unitario, al intentar despegarlas dejan un patrón de residuo físico 'tatuado' en el vidrio que evidencia visualmente la manipulación y destruye la antena. Si optas por tags estándar sin VOID, nexID lo resuelve cruzando señales operativas del backend: comparamos despachos oficiales con lecturas por país, ciudad aproximada y canal de destino, alertando de inmediato ante cualquier desvío de canal o intento de reutilización.",
-        ctx: "La base de datos de exportaciones sincroniza las lecturas de aduana con las del consumidor final en tiempo real. Así, la bodega sabe exactamente qué porcentaje del lote llegó al destino correcto y detecta desvíos de canal sin depender exclusivamente de la seguridad física del envase."
+        a: "Es una objeción crítica. Un inlay estándar puede dañarse al despegarlo, pero no debe asumirse una tasa universal de rotura. Para mayor evidencia física se puede especificar material VOID, destructible o TagTamper según envase, adhesivo y línea. Si se opta por un tag sin esa propiedad, el backend solo aporta señales complementarias —lecturas duplicadas, canal y ubicación aproximada incompatible— que requieren revisión operativa; no reemplaza el control físico.",
+        ctx: "Si el cliente integra despachos y checkpoints de distribuidores, nexID puede comparar esos eventos con taps posteriores y generar indicadores de cobertura o desvío. No existe telemetría continua ni un porcentaje exacto de llegada cuando faltan lecturas, integración de aduana, consentimiento o ubicación suficiente."
       }
     ]
   },
@@ -81,28 +87,28 @@ const faqCategories = [
     items: [
       {
         q: "¿El adhesivo o la antena NFC pueden reaccionar químicamente con mi perfume o crema en caso de micro-fugas, arruinando la fórmula?",
-        a: "Es una preocupación crítica y totalmente válida de los directores de control de calidad. Las fragancias y cosméticos de lujo contienen disolventes y aceites esenciales que pueden degradar adhesivos comunes y provocar la liberación de compuestos químicos no deseados. Por eso, en nexID no pegamos chips genéricos de bajo costo en el interior del envase. Diseñamos inlays externos ultra-delgados que se aplican bajo la etiqueta frontal o en la base exterior del frasco, o bien integrados herméticamente en la tapa plástica o de aleación de aluminio. Además, todos nuestros adhesivos acrílicos son inertes y cumplen con las normativas internacionales de seguridad y la regulación REACH de la Unión Europea.",
-        ctx: "El estricto cumplimiento de la normativa REACH y ANMAT asegura que la incorporación de la tecnología no interfiera con la homologación dermatológica o química de tus productos en ningún país del mundo."
+        a: "La compatibilidad química no se puede asumir. El carrier, adhesivo y encapsulado deben seleccionarse para cada SKU y ubicación, evitando contacto con la fórmula salvo que exista una evaluación específica. Antes de producir, el proveedor debe entregar fichas técnicas y declaraciones aplicables, y el cliente debe validar migración, resistencia a solventes, envejecimiento y proceso de empaque con su equipo de calidad.",
+        ctx: "REACH, ANMAT u otra exigencia depende del material, uso, país y responsabilidad regulatoria. nexID solo debe mostrar una certificación si corresponde al SKU adquirido y existe documentación vigente del proveedor; la homologación final requiere revisión técnica y legal del cliente."
       },
       {
         q: "¿Colocar un microchip NFC no arruinará el diseño visual minimalista e impecable de mis envases de cosmética de lujo?",
-        a: "Un chip visible o un relieve tosco destruye el atractivo visual y la sofisticación que vende la cosmética de lujo. Si colocáramos etiquetas gruesas con chips estándar, tus diseñadores rechazarían el proyecto de inmediato. La respuesta es la invisibilidad: nuestros inlays nexID tienen un grosor de solo 150 micras (más delgado que un cabello humano) y se laminan de forma imperceptible debajo del papel texturado, de algodón o metalizado de tus etiquetas. Para botellas de vidrio serigrafiadas sin etiquetas, inyectamos la antena directamente en la estructura interna de la tapa o el difusor, haciéndola invisible a la vista pero activa al tacto.",
-        ctx: "La elegancia no se negocia. La tecnología nexID actúa como una capa de seguridad y marketing invisible que solo cobra vida cuando el cliente decide interactuar con ella."
+        a: "La integración visual depende del espesor real del inlay y del laminado, la geometría de antena, los materiales cercanos —vidrio, metal o líquido— y el proceso del convertidor. Hay opciones bajo etiqueta, en base o integradas en componentes, pero ninguna solución es universal ni puede declararse invisible sin prototipo. El piloto de packaging debe validar relieve, lectura, durabilidad, montaje y experiencia de tap con el SKU final.",
+        ctx: "El objetivo es minimizar el impacto visual sin sacrificar rendimiento RF ni fabricación. Espesor, posición y antena se confirman con la ficha del carrier, muestras físicas y pruebas sobre el envase definitivo."
       },
       {
         q: "En cosmética, ¿cómo evito que un falsificador compre mis envases vacíos originales, los rellene con producto falso y los revenda con el chip original marcando 'auténtico'?",
-        a: "Esta es la mayor vulnerabilidad en el mercado secundario de perfumes y cremas premium. Si el chip sigue activo, el sistema puede ver un tap válido del identificador aunque el contenido haya sido alterado. nexID aborda este problema con honestidad técnica mediante la tecnología TagTamper: un micro-filamento conductor que recorre el cierre del frasco o el sello del atomizador. En el momento en que el consumidor presiona el atomizador por primera vez o desenrosca la tapa para usar el producto, el filamento físico se rompe mecánicamente. El chip sigue funcionando para marketing, pero el estado cambia permanentemente en nuestra base de datos a 'abierto/consumido'. Si alguien intenta rellenarlo y revenderlo, cualquier escaneo posterior alertará al comprador de que el envase ya fue abierto y requiere revisión.",
-        ctx: "Esto reduce de forma fuerte el mercado negro de rellenado de perfumes de lujo, protege la marca y le da al consumidor una señal clara de que el envase ya fue abierto."
+        a: "Un tap válido identifica el chip, no demuestra que el contenido siga intacto. Un carrier TagTamper correctamente diseñado puede registrar el cambio del circuito previsto al abrir el cierre; no todos los envases ni mecanismos de atomizador admiten la misma solución. El evento debe interpretarse como estado registrado del sello y no como análisis de la fórmula o prueba universal contra rellenado.",
+        ctx: "El piloto debe comprobar dónde instalar el circuito, qué apertura detecta, su tasa de lectura y los falsos positivos. La experiencia puede advertir que el sello figura abierto o requiere revisión, sin afirmar qué contiene el envase."
       },
       {
         q: "¿Cómo justifico la inversión en chips NFC frente a mis accionistas cuando existen alternativas de trazabilidad mucho más económicas como los códigos QR?",
         a: "Si solo buscas marcar una casilla de trazabilidad básica para el mercado local, un código QR estático es más barato. Pero si tu objetivo es exportar y competir globalmente, el QR por sí solo es débil: cualquiera lo puede fotocopiar y duplicar en envases falsos. Además, la Unión Europea avanza hacia Pasaporte Digital de Producto (DPP), con más presión sobre circularidad y cadena de suministro verificable. Con nexID, el envase físico puede convertirse en un portal D2C para garantía, recompra, soporte y evidencia de lote, sumando capas NFC, Polygon o IOTA solo cuando el caso lo justifica.",
-        ctx: "El retorno de la inversión (ROI) no proviene solo de la prevención de la falsificación, sino de la eficiencia regulatoria internacional y de la creación de un nuevo canal digital de ventas recurrentes sin intermediarios."
+        ctx: "El caso de negocio puede incluir fraude, eficiencia operativa y postventa directa, pero el ROI debe calcularse con datos observados del cliente y no como resultado automático del chip."
       },
       {
         q: "En cosméticos, si un falsificador despega la etiqueta del perfume original para pegarla en un frasco clonado, ¿cómo detectamos el fraude si no usamos adhesivos VOID?",
-        a: "Las antenas NFC de papel son frágiles y suelen dañarse al despegar el adhesivo. Si buscás mayor protección física, existen etiquetas VOID o de transferencia de adhesivo con proveedores globales: al intentar despegarlas, la antena y el diseño se fragmentan y reducen la posibilidad de reutilización. Si preferís tags más económicos sin VOID, el motor de riesgo del backend detecta patrones incongruentes, como escaneos duplicados o ubicaciones incompatibles para un mismo chip, y marca el envase como sospechoso.",
-        ctx: "Al contrastar la base de datos de despachos a distribuidores autorizados con país, ciudad aproximada y canal declarado del escaneo, nexID identifica de inmediato la fuga al mercado gris o la reutilización del chip."
+        a: "La resistencia al despegado depende del inlay, el adhesivo, el sustrato y el envase. Un material VOID o destructible puede aportar evidencia física si el proveedor lo certifica y el piloto demuestra el comportamiento esperado. Sin esa propiedad, el backend solo puede puntuar señales como repeticiones, ventanas temporales o ubicaciones aproximadas incompatibles cuando esos datos existen; una alerta requiere revisión humana y no prueba por sí sola reutilización.",
+        ctx: "Con despachos y canales integrados, nexID puede señalar eventos incompatibles con el recorrido esperado. No identifica una fuga de inmediato ni de forma universal: la cobertura depende de checkpoints, calidad de datos, consentimiento, reglas de riesgo y revisión operativa."
       }
     ]
   },
@@ -113,7 +119,7 @@ const faqCategories = [
     items: [
       {
         q: "¿Qué ventaja tiene sobre el código de barras que exige la regulación de medicamentos?",
-        a: "El código de barras es estático y fácilmente duplicable por fotocopiadoras en empaques apócrifos. El microchip nexID genera una firma criptográfica dinámica de un solo uso que se valida contra nuestro servidor seguro en Render/AWS.",
+        a: "El código de barras es estático y puede copiarse en empaques apócrifos. Un chip NFC seguro compatible genera evidencia criptográfica dinámica que el backend de nexID valida en la infraestructura actualmente desplegada sobre Vercel, con datos operativos en Neon.",
         ctx: "Si una red copia el empaque, el servidor detecta firma ausente, inválida o patrones geográficos incompatibles, bloquea beneficios sensibles y eleva el caso para revisión operativa."
       },
       {
@@ -130,7 +136,7 @@ const faqCategories = [
     items: [
       {
         q: "Los códigos QR de las entradas se revenden y duplican. ¿Cómo lo soluciona nexID?",
-        a: "Reemplazamos el QR digital por pulseras o credenciales VIP físicas inteligentes equipadas con chip NFC nexID. Cada ingreso requiere un tap físico que se procesa en milisegundos contra nuestro servidor Render.",
+        a: "Podemos complementar o reemplazar el QR digital con pulseras o credenciales VIP físicas equipadas con NFC. Cada ingreso requiere un tap físico fresco que el backend desplegado en Vercel valida antes de autorizar la acción; la latencia y capacidad objetivo se confirman en el piloto de cada evento.",
         ctx: "Al no exponer la clave criptográfica del chip y exigir tap físico fresco, se reduce fuertemente la entrada duplicada y se bloquean acciones de alto riesgo en eventos VIP y corporativos."
       }
     ]
@@ -147,13 +153,13 @@ const faqCategories = [
       },
       {
         q: "¿Cómo garantizan la seguridad de la base de datos si es centralizada?",
-        a: "La seguridad del sistema no depende solo del servidor, sino de la validación criptográfica SUN/CMAC de cada chip físico compatible. Cada lectura genera evidencia dinámica que el backend verifica con material criptográfico custodiado.",
+        a: "La seguridad del sistema no depende solo del servidor. Un NTAG 424 correctamente provisionado puede emitir mensajes SUN/CMAC dinámicos que el backend valida con material criptográfico custodiado; QR, NTAG215 y tags no provisionados no generan esa evidencia.",
         ctx: "Incluso ante una intrusión en el servidor de base de datos, un atacante no puede generar respuestas SUN/CMAC válidas de chips físicos porque no posee las claves de validación protegidas."
       },
       {
-        q: "¿Cómo escala el modelo SaaS en Render y AWS?",
-        a: "Operamos un modelo de software de alta rentabilidad: margen por volumen en el hardware programado (chips) + suscripción SaaS mensual por el uso del panel CRM, analítica operativa y el motor nexID Cognitive AI Engine.",
-        ctx: "Esto nos da ingresos predecibles y un moat defensivo basado en el software y la integración criptográfica propietaria."
+        q: "¿Cómo escala el modelo SaaS sobre la infraestructura actual?",
+        a: "El runtime verificado hoy usa Vercel para las aplicaciones y APIs, y Neon para los datos operativos. El modelo comercial combina hardware programado, integración por lote y suscripción SaaS por panel, analítica y automatizaciones determinísticas. Capacidad, redundancia adicional y SLA se dimensionan y validan por contrato; no se presentan como multinodo si todavía no fueron probados.",
+        ctx: "El ingreso recurrente y el valor defensivo son una tesis comercial que debe validarse con pilotos, retención y economía unitaria observada."
       }
     ]
   }
@@ -163,9 +169,9 @@ const faqCategories = [
 const slides = [
   {
     title: "1) nexID Thesis",
-    tagline: "Propiedad Digital y Autenticidad Física",
+    tagline: "Propiedad Digital, Evidencia NFC y Controles Físicos",
     bullets: [
-      "nexID convierte productos físicos en activos verificables, trazables y operables.",
+      "nexID conecta referencias físicas declaradas con identidad digital, evidencia de mensajes NFC/QR y flujos gobernados; no declara verificado el objeto solo por el registro.",
       "Arquitectura Híbrida: base de datos segura por defecto para una integración sencilla, con opción de activar tecnología blockchain.",
       "Monetización escalable mediante hardware, integración en fábrica, suscripción mensual y licencias del sistema."
     ]
@@ -176,14 +182,14 @@ const slides = [
     bullets: [
       "Los códigos QR estáticos y hologramas son copiables por cualquier estafador mediante fotos.",
       "Las bodegas y marcas premium pierden el rastro de sus productos tras la venta en vinotecas o exportación.",
-      "El marketing tradicional (email, newsletter) tiene tasas de conversión mediocres (<2% CTR)."
+      "Hipótesis a validar por cliente: comparar CTR, conversión y recompra del canal actual contra el piloto nexID, con fuente, período y baseline documentados."
     ]
   },
   {
     title: "3) La Solución Híbrida",
     tagline: "Servidor en Nube Segura + Propiedad Digital",
     bullets: [
-      "Firma criptográfica dinámica validada contra nuestro servidor en la nube ultra-seguro por defecto.",
+      "Firma criptográfica dinámica validada contra un backend controlado, con políticas de acceso, rate limits y auditoría.",
       "Integración inmediata para marcas tradicionales sin necesidad de lidiar con criptomonedas o costos de transacción de red.",
       "Registro descentralizado opcional para generar certificados digitales de propiedad o evidencia externa cuando aporta valor."
     ]
@@ -192,17 +198,17 @@ const slides = [
     title: "4) Seguridad Criptográfica",
     tagline: "Monitoreo Activo de Claves",
     bullets: [
-      "Cada tap genera una firma dinámica única (SUN) verificable server-side con claves custodiadas en HSM/KMS.",
+      "Solo un NTAG 424 correctamente provisionado genera mensajes SUN/SDM dinámicos por lectura; el backend valida mensaje, contador y política. La separación de claves por batch y el uso de KMS/HSM deben describirse según la configuración realmente desplegada.",
       "Señales de riesgo activas: alerta si el mismo chip aparece en ciudades o canales incompatibles.",
-      "Circuito físico TagTamper: el chip detecta e informa si la cápsula o sello físico ya fue abierto."
+      "TagTamper reporta una transición del circuito TT después de integración y QA correctos; esa señal no prueba por sí sola apertura física, contenido ni causa."
     ]
   },
   {
-    title: "5) nexID Cognitive AI",
-    tagline: "Motor de Optimización de Tono",
+    title: "5) Studio de Contenido nexID",
+    tagline: "Automatización y asistencia de tono",
     bullets: [
       "Reescritura de campañas comerciales en 3 perfiles: Sommelier, Club Privado y Modern Web3.",
-      "Analítica de impacto live: calcula el Prestige Score, Viralidad y la Huella Emocional del texto.",
+      "Analítica de contenido: calcula scores internos de tono y claridad; no los presenta como impacto comercial medido sin telemetría.",
       "Traducción semántica inteligente de palabras planas a jerga enológica y tecnológica premium."
     ]
   },
@@ -219,8 +225,8 @@ const slides = [
     title: "7) Tracción y Modelo B2B",
     tagline: "SaaS Recurrente y Alto Margen",
     bullets: [
-      "Ingresos recurrentes por SaaS de acceso al CRM, mapa operacional, AI Engine y portal VIP.",
-      "Venta del hardware pre-programado en inlays autoadhesivos con margen del 40%.",
+      "Ingresos recurrentes por SaaS de acceso al CRM, mapa operacional, automatizaciones y portal VIP.",
+      "Hipótesis editable del modelo: markup de hardware del 40% antes de descuentos, logística e impuestos; no es un margen observado ni garantizado.",
       "Ecosistema multimercado aplicable a Bodegas, Cosmética, Farmacéutica, Agro y Eventos."
     ]
   },
@@ -245,36 +251,36 @@ const investorAtlasPoints: VectorMapPoint[] = [
 const investorAtlasRoutes: VectorMapRoute[] = [
   { id: "investor-route-latam-miami", fromLat: -34.6037, fromLng: -58.3816, toLat: 25.7617, toLng: -80.1918, label: "LATAM -> Miami", tone: "info", evidence: "Expansion demo" },
   { id: "investor-route-miami-madrid", fromLat: 25.7617, fromLng: -80.1918, toLat: 40.4168, toLng: -3.7038, label: "Miami -> Madrid", tone: "info", evidence: "DPP / SDK" },
-  { id: "investor-route-madrid-zurich", fromLat: 40.4168, fromLng: -3.7038, toLat: 47.3769, toLng: 8.5417, label: "Madrid -> Zurich", tone: "success", evidence: "Tap fisico" },
+  { id: "investor-route-madrid-zurich", fromLat: 40.4168, fromLng: -3.7038, toLat: 47.3769, toLng: 8.5417, label: "Madrid -> Zurich", tone: "success", evidence: "Tap demo reportado" },
 ];
 
 function InvestorMobileOutput() {
   const metrics = [
-    { label: "SUN", value: "OK" },
-    { label: "Claim", value: "Opcional" },
-    { label: "Offline", value: "Pendiente" },
+    { label: "SUN", value: "DEMO" },
+    { label: "Claim", value: "No emitido" },
+    { label: "Offline", value: "Provisional" },
   ];
 
   return (
-    <div className="investor-proof-mobile-card" data-investor-phone="true" aria-label="Salida celular del tap para inversores">
+    <div className="investor-proof-mobile-card" data-investor-phone="true" aria-label="Salida celular simulada para inversores">
       <div className="investor-proof-mobile-shell">
         <div className="investor-proof-mobile-status">
           <Smartphone className="h-4 w-4" />
-          <span>Tap final</span>
+          <span>Escenario demo</span>
           <em>Server-side</em>
         </div>
         <div className="investor-proof-mobile-hero">
           <ShieldCheck className="h-9 w-9" />
           <div>
             <p>Salida celular</p>
-            <strong>Autenticidad validada</strong>
-            <span>Tap fisico + SUN dinamico</span>
+            <strong>Mensaje NFC validado</strong>
+            <span>Escenario demo: SUN dinámico; no autentica el objeto físico</span>
           </div>
         </div>
         <div className="investor-proof-mobile-product">
           <span>N</span>
           <div>
-            <strong>Producto premium</strong>
+            <strong>Producto demo</strong>
             <p>Atlas, riesgo y claim en una vista</p>
           </div>
         </div>
@@ -287,7 +293,7 @@ function InvestorMobileOutput() {
           ))}
         </div>
         <p className="investor-proof-mobile-note">
-          Sin conexion, el consumidor ve datos publicos/cacheados y la verificacion fuerte queda pendiente hasta backend o verificador autorizado.
+          Sin conexion, el consumidor ve datos publicos/cacheados y la validacion fuerte del mensaje queda pendiente hasta backend o verificador autorizado.
         </p>
       </div>
       <div className="investor-proof-mobile-footer">
@@ -662,31 +668,31 @@ export function ThreeDProduct({ active, tapping, labelImageUrl, industry, chipMo
       
       // Tailored Label content based on selected industry
       let title = "N E X I D";
-      let subtitle = "Gran Blend Seleccionado";
-      let detail1 = "ORIGEN: MENDOZA, ARGENTINA";
+      let subtitle = "Producto demo · ficha pendiente";
+      let detail1 = "ORIGEN: DEMO / SIN FUENTE";
       let chipName = chipModel === "tamper" ? "NTAG 424 DNA TT" : chipModel === "dna" ? "NTAG 424 DNA" : "NTAG 215";
       let detail2 = `NFC CHIP: ${chipName}`;
       
       if (industry === "botellas") {
         title = "N E X I D   R E F I L L";
         subtitle = "Envase circular inteligente";
-        detail1 = "ORIGEN: PLANTA / RETORNO";
+        detail1 = "ORIGEN: DEMO / SIN FUENTE";
       } else if (industry === "cosmetica") {
         title = "N E X I D   A U R A";
         subtitle = "Eau de Parfum Premium";
-        detail1 = "ORIGEN: GRASSE / BS. AS.";
+        detail1 = "ORIGEN: DEMO / SIN FUENTE";
       } else if (industry === "agro") {
         title = "N E X I D   A G R O";
-        subtitle = "Semillas Fiscalizadas Lote #4";
-        detail1 = "ORIGEN: PAMPA HÚMEDA, ARG.";
+        subtitle = "Producto agro demo · ficha pendiente";
+        detail1 = "ORIGEN: DEMO / SIN FUENTE";
       } else if (industry === "pharma") {
         title = "N E X I D   P H A R M A";
-        subtitle = "Medicina de Alta Complejidad";
-        detail1 = "ORIGEN: LAB ZURICH / SUIZA";
+        subtitle = "Producto pharma demo · ficha pendiente";
+        detail1 = "ORIGEN: DEMO / SIN FUENTE";
       } else if (industry === "eventos") {
         title = "N E X I D   P A S S";
-        subtitle = "Global Business Summit 2026";
-        detail1 = "LUGAR: PREDIO VIP ACCESOS";
+        subtitle = "Credencial demo · política pendiente";
+        detail1 = "LUGAR: DEMO / SIN FUENTE";
       }
       
       // Text
@@ -961,33 +967,33 @@ export const INDUSTRY_SIM_DETAILS: Record<string, {
   chatPrompts: Array<{ label: string; q: string }>;
 }> = {
   bodegas: {
-    productName: "Gran Blend 2026",
-    location: "Mendoza, Argentina",
-    authText: "Autenticidad de Origen",
-    selloText: "Sello Cerrado Original",
-    nodes: ["MDZ", "BUE", "RTM", "ZRH"],
-    iot: ["🌡️ Temp: 14.2°C", "💧 Hum: 58%", "⚡ Hub validado: OK"],
+    productName: "Producto demo · vino premium",
+    location: "Origen no cargado · DEMO",
+    authText: "Evidencia NFC simulada",
+    selloText: "Estado TT reportado · no físico",
+    nodes: ["ORG", "HUB", "DEST", "TAP"],
+    iot: ["Temp: DEMO / sin fuente", "Hum: DEMO / sin fuente", "Fuente: pendiente"],
     steps: [
-      { title: "1. Viñedo Origen", desc: "Luján de Cuyo, Mendoza · Registrado en Origen" },
-      { title: "2. Logística y Aduana", desc: "Despacho de puerto e ingreso en Zurich" },
-      { title: "3. Sello de Seguridad", desc: "TagTamper Intacto (Original)" }
+      { title: "1. Origen declarado", desc: "Dato demo · cargar ficha aprobada" },
+      { title: "2. Logística reportada", desc: "Sin eventos reales cargados en esta demo" },
+      { title: "3. Señal TT", desc: "Estado demo; no prueba el sello físico" }
     ],
     detailsTitle: "Ficha Enológica",
-    detailsTagline: "🏅 96 pts Suckling",
+    detailsTagline: "DEMO · SIN FUENTE",
     detailsGrid: [
-      { label: "Varietal:", val: "Malbec 100%" },
-      { label: "Crianza:", val: "18m Roble Fr." },
-      { label: "Crítica:", val: "Reserva Premium" },
-      { label: "Servicio:", val: "16°C - 18°C" }
+      { label: "Varietal:", val: "No cargado" },
+      { label: "Crianza:", val: "No cargada" },
+      { label: "Crítica:", val: "Sin fuente" },
+      { label: "Servicio:", val: "Ver ficha aprobada" }
     ],
-    detailsQuote: '"Color rubí, notas a ciruela madura, cacao y vainilla persistentes."',
+    detailsQuote: '"Dato demo no verificado: cargá la ficha enológica aprobada para mostrar varietal, servicio y notas de cata."',
     mintTitle: "Registrar en Blockchain",
     mintDesc: "Generá un certificado de ownership o claim transferible cuando la marca habilita Polygon para esta línea.",
     mintSuccess: "Certificado de ownership generado en modo Polygon demo.",
     reward1Title: "Copa de Degustación",
-    reward1Sub: "Cata en Cava Mendoza",
+    reward1Sub: "Beneficio demo · no habilitado",
     reward2Title: "Tour VIP Bodega",
-    reward2Sub: "15% Off Reservas",
+    reward2Sub: "Beneficio demo · sin convenio",
     marketTitle: "Marketplace Cava VIP",
     marketDesc: "Cava de compra y venta entre coleccionistas",
     tabLabels: ["Sello", "Web3", "Premios", "Cava", "Chat"],
@@ -998,26 +1004,26 @@ export const INDUSTRY_SIM_DETAILS: Record<string, {
     ]
   },
   botellas: {
-    productName: "Envase Refill Premium",
-    location: "Red de retorno y recarga",
-    authText: "Identidad circular verificada",
-    selloText: "Envase listo para retorno",
+    productName: "Envase circular · DEMO",
+    location: "Red no cargada · DEMO",
+    authText: "Evidencia de ciclo simulada",
+    selloText: "Estado operativo no verificado",
     nodes: ["PLT", "DIST", "POS", "RET"],
-    iot: ["Temp: estable", "GS1 resuelto: OK", "Retorno pendiente: NO"],
+    iot: ["Temp: DEMO / sin fuente", "GS1: ejemplo no verificado", "Retorno: sin evento real"],
     steps: [
-      { title: "1. Produccion y serializacion", desc: "Envase asignado a lote fisico con GS1/QR y NFC opcional" },
-      { title: "2. Distribucion y venta", desc: "Canal, punto de venta y deposito retornable quedan vinculados" },
-      { title: "3. Retorno o refill", desc: "El consumidor valida el envase y activa incentivo circular" }
+      { title: "1. Produccion y serializacion", desc: "Flujo demo; requiere manifiesto aprobado" },
+      { title: "2. Distribucion y venta", desc: "Canal demo; requiere eventos del tenant" },
+      { title: "3. Retorno o refill", desc: "Sin operación real ni incentivo habilitado" }
     ],
     detailsTitle: "Ficha de envase",
-    detailsTagline: "Packaging circular con identidad unitaria",
+    detailsTagline: "DEMO · SIN FUENTE",
     detailsGrid: [
-      { label: "Formato:", val: "Botella reutilizable" },
-      { label: "Ciclo:", val: "Refill / retorno" },
-      { label: "Carrier:", val: "GS1 + QR + NFC" },
-      { label: "Estado:", val: "Apto para recarga" }
+      { label: "Formato:", val: "Ejemplo demo" },
+      { label: "Ciclo:", val: "Política no cargada" },
+      { label: "Carrier:", val: "Configuración pendiente" },
+      { label: "Estado:", val: "No verificado" }
     ],
-    detailsQuote: '"El valor no esta en parecer vino: esta en medir retornos, refill, inventario y fidelizacion circular por unidad."',
+    detailsQuote: '"Dato demo no verificado: cargá manifiesto, política y eventos del operador para mostrar el ciclo real."',
     mintTitle: "Registrar evidencia de ciclo",
     mintDesc: "Notariza hitos relevantes del envase cuando aportan valor operativo y deja la trazabilidad diaria en nexID.",
     mintSuccess: "Evidencia de ciclo preparada para auditoria.",
@@ -1035,33 +1041,33 @@ export const INDUSTRY_SIM_DETAILS: Record<string, {
     ]
   },
   cosmetica: {
-    productName: "Elysian Elixir Perfume",
-    location: "Grasse, Francia / Latam",
-    authText: "Autenticidad REACH",
-    selloText: "Fórmula Inalterada",
-    nodes: ["GSE", "PAR", "BUE", "SCL"],
-    iot: ["🌡️ Temp: 18.5°C", "☀️ UV Index: 0.0", "⚡ Sello: Hermético"],
+    productName: "Producto demo · perfumería",
+    location: "Origen no cargado · DEMO",
+    authText: "Evidencia NFC simulada",
+    selloText: "Estado TT reportado · no físico",
+    nodes: ["ORG", "HUB", "DEST", "TAP"],
+    iot: ["Temp: DEMO / sin fuente", "UV: DEMO / sin fuente", "Sello: estado demo"],
     steps: [
-      { title: "1. Esencia Origen", desc: "Flores de Jazmín, Grasse · Lote Acreditado" },
-      { title: "2. Importación y Fraccionado", desc: "Aduana de Buenos Aires e ingreso a planta" },
-      { title: "3. Sello de Apertura", desc: "TagTamper Activo e Intacto" }
+      { title: "1. Origen declarado", desc: "Dato demo · cargar ficha aprobada" },
+      { title: "2. Importación y fraccionado", desc: "Sin eventos reales cargados en esta demo" },
+      { title: "3. Señal de apertura", desc: "Estado TT demo; no prueba contenido o cierre físico" }
     ],
     detailsTitle: "Ficha de Fragancia",
-    detailsTagline: "✨ Extracto de Parfum",
+    detailsTagline: "DEMO · SIN FUENTE",
     detailsGrid: [
-      { label: "Familia:", val: "Floral Oriental" },
-      { label: "Concentración:", val: "30% Aceites Es." },
-      { label: "Nariz:", val: "M. Guerlain" },
-      { label: "Volumen:", val: "100 ml" }
+      { label: "Familia:", val: "No cargada" },
+      { label: "Concentración:", val: "No cargada" },
+      { label: "Formulador:", val: "Sin fuente" },
+      { label: "Volumen:", val: "Ver ficha aprobada" }
     ],
-    detailsQuote: '"Notas de salida de jazmín y azafrán, con fondo de cedro y ámbar gris."',
+    detailsQuote: '"Dato demo no verificado: cargá la ficha aprobada para mostrar composición, origen y notas olfativas."',
     mintTitle: "Certificado de Lujo Opcional",
     mintDesc: "Registrá ownership o certificado premium cuando la marca habilita Polygon para esta colección.",
     mintSuccess: "Certificado premium emitido en modo Polygon demo.",
     reward1Title: "Masterclass de Perfumería",
     reward1Sub: "Acceso digital exclusivo",
     reward2Title: "Muestra Exclusiva",
-    reward2Sub: "Lanzamientos 2027 gratis",
+    reward2Sub: "Beneficio demo · no habilitado",
     marketTitle: "Colección Fragance VIP",
     marketDesc: "Intercambio exclusivo de frascos numerados",
     tabLabels: ["Sello", "Web3", "Regalos", "Club", "Chat"],
@@ -1072,33 +1078,33 @@ export const INDUSTRY_SIM_DETAILS: Record<string, {
     ]
   },
   agro: {
-    productName: "BioGuard Max 500",
-    location: "Lote Fitosanitario",
-    authText: "Autenticidad Agro",
-    selloText: "Fórmula Fitosanitaria Pura",
-    nodes: ["LAB", "ROS", "PER", "SLP"],
-    iot: ["🌡️ Temp: 22.1°C", "📊 Presión: 1.0atm", "⚡ Sello: Sellado"],
+    productName: "Producto demo · agro",
+    location: "Lote no cargado · DEMO",
+    authText: "Evidencia NFC simulada",
+    selloText: "Contenido no verificado",
+    nodes: ["ORG", "HUB", "DEST", "TAP"],
+    iot: ["Temp: DEMO / sin fuente", "Presión: DEMO / sin fuente", "Sello: estado demo"],
     steps: [
-      { title: "1. Síntesis de Lote", desc: "Laboratorio Central de Biotecnología · Certificado" },
-      { title: "2. Despacho a Planta", desc: "Puerto Rosario y despacho a Distribuidor Pergamino" },
-      { title: "3. Integridad de Bidón", desc: "TagTamper intacto sin micro-filtraciones" }
+      { title: "1. Lote declarado", desc: "Dato demo · cargar ficha y documentos aprobados" },
+      { title: "2. Despacho reportado", desc: "Sin eventos reales cargados en esta demo" },
+      { title: "3. Señal TT", desc: "Estado demo; no prueba integridad ni contenido del bidón" }
     ],
     detailsTitle: "Ficha Fitosanitaria",
-    detailsTagline: "🌾 Certificación SENASA",
+    detailsTagline: "DEMO · SIN FUENTE",
     detailsGrid: [
-      { label: "Compuesto:", val: "Bio-Fungicida" },
-      { label: "Pureza:", val: "99.8% Activo" },
-      { label: "Vencimiento:", val: "Diciembre 2028" },
-      { label: "Aplicación:", val: "Foliar Directa" }
+      { label: "Compuesto:", val: "No cargado" },
+      { label: "Pureza:", val: "No cargada" },
+      { label: "Vencimiento:", val: "Ver ficha aprobada" },
+      { label: "Aplicación:", val: "Ver etiqueta aprobada" }
     ],
-    detailsQuote: '"Producto orgánico de amplio espectro para cereales y oleaginosas premium."',
+    detailsQuote: '"Dato demo no verificado: cargá la etiqueta, ficha técnica y fuente regulatoria antes de mostrar composición o uso."',
     mintTitle: "Prueba Fitosanitaria Opcional",
     mintDesc: "Anclá evidencia agregada de trazabilidad o cumplimiento cuando el cliente necesita auditoría externa.",
     mintSuccess: "Resumen verificable del lote preparado para capa de prueba.",
     reward1Title: "Asesoramiento Agrónomo",
-    reward1Sub: "Consulta técnica live",
+    reward1Sub: "Canal demo · no habilitado",
     reward2Title: "Descuento Reabastecimiento",
-    reward2Sub: "10% en tu próximo pedido",
+    reward2Sub: "Beneficio demo · sin convenio",
     marketTitle: "Trazabilidad de Lotes",
     marketDesc: "Trazabilidad de carbono y transferencia de lotes",
     tabLabels: ["Sello", "Web3", "Beneficios", "Lotes", "Chat"],
@@ -1109,31 +1115,31 @@ export const INDUSTRY_SIM_DETAILS: Record<string, {
     ]
   },
   pharma: {
-    productName: "OncoCure Forte 100mg",
-    location: "Cadena de Frío Monitoreada",
-    authText: "Autenticidad FDA / EMA",
-    selloText: "Cadena de Frío Intacta",
-    nodes: ["FRA", "BUE", "HOS", "PAC"],
-    iot: ["🌡️ Temp: 4.8°C (Rango OK)", "💧 Hum: 45%", "❄️ Alerta Frío: Ninguna"],
+    productName: "Producto demo · pharma",
+    location: "Cadena de frío · DEMO",
+    authText: "Evidencia de lote simulada",
+    selloText: "Temperatura y contenido no verificados",
+    nodes: ["ORG", "HUB", "DEST", "TAP"],
+    iot: ["Temp: DEMO / sin fuente", "Hum: DEMO / sin fuente", "Alertas: fuente pendiente"],
     steps: [
-      { title: "1. Síntesis Alemana", desc: "Planta Central Frankfurt · Cripto-Sello Generado" },
-      { title: "2. Arribo Ezeiza", desc: "Ingreso a depósito refrigerado aduanero · Acreditado" },
-      { title: "3. Monitoreo de Sello", desc: "TagTamper intacto y verificado en la app" }
+      { title: "1. Fabricación declarada", desc: "Dato demo · cargar ficha y fuente aprobadas" },
+      { title: "2. Logística reportada", desc: "Sin telemetría ni eventos reales cargados" },
+      { title: "3. Señal TT", desc: "Estado demo; no prueba cadena de frío ni contenido" }
     ],
     detailsTitle: "Ficha del Medicamento",
-    detailsTagline: "🧪 Receta Archivada",
+    detailsTagline: "DEMO · SIN FUENTE",
     detailsGrid: [
-      { label: "Principio A.:", val: "Inmunoterapia" },
-      { label: "Concentración:", val: "100 mg / Vial" },
-      { label: "Temperatura:", val: "2°C - 8°C Const." },
-      { label: "Lote ID:", val: "ON-88392-A" }
+      { label: "Principio A.:", val: "No cargado" },
+      { label: "Concentración:", val: "No cargada" },
+      { label: "Temperatura:", val: "Sin telemetría" },
+      { label: "Lote ID:", val: "Demo · no verificado" }
     ],
-    detailsQuote: '"Medicamento oncológico de alta especialidad. No exponer a la luz directa del sol."',
+    detailsQuote: '"Dato demo no verificado: consultá el prospecto, la ficha técnica y la fuente regulatoria aprobadas."',
     mintTitle: "Pasaporte de Salud Auditable",
     mintDesc: "Prepará un resumen verificable de cadena de frío y lote cuando la política regulatoria lo permite.",
     mintSuccess: "Resumen médico verificable preparado para auditoría.",
     reward1Title: "Soporte al Paciente",
-    reward1Sub: "Línea médica 24/7 VIP",
+    reward1Sub: "Canal demo · no habilitado",
     reward2Title: "Rebaja Deducible",
     reward2Sub: "Verificar con prepaga",
     marketTitle: "Registro de Cadena de Frío",
@@ -1146,33 +1152,33 @@ export const INDUSTRY_SIM_DETAILS: Record<string, {
     ]
   },
   eventos: {
-    productName: "VIP Global Summit 2026",
-    location: "Buenos Aires, Argentina",
-    authText: "Acreditación Digital",
-    selloText: "Pase Activo y Válido",
+    productName: "Credencial demo · evento",
+    location: "Ubicación no cargada · DEMO",
+    authText: "Mensaje NFC simulado",
+    selloText: "Acceso sujeto a política",
     nodes: ["SIST", "PROD", "ENTR", "VIP"],
-    iot: ["⏱️ Hora: 19:30", "📍 Sector: VIP Front Row", "🔑 Acceso: Permitido"],
+    iot: ["Hora: DEMO / sin fuente", "Sector: no cargado", "Acceso: no verificado"],
     steps: [
-      { title: "1. Ticket Generado", desc: "Acreditación digital centralizada nexID" },
-      { title: "2. Envío Credencial", desc: "Asignación de chip NTAG a pulsera física" },
-      { title: "3. Primer Acceso Puerta", desc: "Validado en lector táctil inteligente" }
+      { title: "1. Ticket demo", desc: "Sin ticket real ni identidad asociada" },
+      { title: "2. Credencial demo", desc: "Asignación simulada; requiere manifiesto" },
+      { title: "3. Acceso demo", desc: "Sin evento de puerta ni permiso confirmado" }
     ],
     detailsTitle: "Detalles del Pase",
-    detailsTagline: "🎫 Acceso Full Access",
+    detailsTagline: "DEMO · SIN FUENTE",
     detailsGrid: [
-      { label: "Categoría:", val: "VIP Founders" },
-      { label: "Ubicación:", val: "Fila 1 a 3" },
-      { label: "Catering:", val: "Premium Incluido" },
-      { label: "Beneficios:", val: "Afterparty Pass" }
+      { label: "Categoría:", val: "No cargada" },
+      { label: "Ubicación:", val: "No cargada" },
+      { label: "Catering:", val: "Sin fuente" },
+      { label: "Beneficios:", val: "Política pendiente" }
     ],
-    detailsQuote: '"Válido para todas las conferencias magistrales, workshops y cocktail de networking."',
+    detailsQuote: '"Dato demo no verificado: cargá ticket, agenda, servicios y política aprobados por el organizador."',
     mintTitle: "Coleccionable Digital Opcional",
     mintDesc: "Convertí tu credencial física en un recuerdo digital transferible solo si el evento habilita esa política.",
     mintSuccess: "Coleccionable digital emitido en modo demo.",
     reward1Title: "Acceso Afterparty",
-    reward1Sub: "Cocktail de Cierre VIP",
+    reward1Sub: "Beneficio demo · no habilitado",
     reward2Title: "Preventa Summit 2027",
-    reward2Sub: "50% Off precio Lanzamiento",
+    reward2Sub: "Beneficio demo · sin convenio",
     marketTitle: "Marketplace de Entradas",
     marketDesc: "Canal seguro de transferencia P2P de pases",
     tabLabels: ["Ingreso", "Ticket", "Premios", "Market", "Chat"],
@@ -1211,25 +1217,25 @@ interface RoiCalculatorProps {
   setExportRegion: (v: "latam" | "europe_usa" | "asia" | "grey_market") => void;
 }
 
-const REGION_CITATIONS = {
+const REGION_ASSUMPTIONS = {
   latam: {
-    source: "CAME (Cámara Argentina de la Mediana Empresa)",
-    text: "El comercio ilegal y la falsificación en el Mercosur generan pérdidas del 8.5% anual en valor minorista para marcas de consumo de autor.",
+    source: "Preset de planificación editable",
+    text: "Hipótesis inicial para LATAM. Debe reemplazarse por datos de merma, fraude y desvío observados por el cliente.",
     rate: 6.5
   },
   europe_usa: {
-    source: "OIV (Organización Internacional de la Viña y el Vino)",
-    text: "El fraude en vinos premium y destilados finos en canales de exportación tradicionales oscila históricamente entre el 4% y el 6%.",
+    source: "Preset de planificación editable",
+    text: "Hipótesis inicial para Europa y EE.UU. No representa una tasa sectorial verificada ni una promesa de resultado.",
     rate: 4.2
   },
   asia: {
-    source: "APEC / WIPO (World Intellectual Property Org)",
-    text: "En mercados emergentes de Asia-Pacífico, la adulteración física de envases originales de cosmética y agroquímicos supera el 10% por falta de sellado serializado.",
+    source: "Preset de planificación editable",
+    text: "Hipótesis inicial para Asia-Pacífico. Requiere evidencia del mercado, canal y vertical antes de una decisión comercial.",
     rate: 10.0
   },
   grey_market: {
-    source: "ICC (International Chamber of Commerce)",
-    text: "El mercado gris y los desvíos de carga no autorizados a través de portales de ecommerce informales drenan hasta un 12% del margen de la marca.",
+    source: "Escenario de estrés editable",
+    text: "Hipótesis de alta exposición a desvíos. Se usa para sensibilidad financiera, no como dato observado del cliente.",
     rate: 12.0
   }
 };
@@ -1255,6 +1261,11 @@ export function RoiCalculator({
   setExportRegion
 }: RoiCalculatorProps) {
 
+  const [protectionRate, setProtectionRate] = useState(50);
+  const [engagementRate, setEngagementRate] = useState(15);
+  const protectionFactor = protectionRate / 100;
+  const engagementFactor = engagementRate / 100;
+
   const handleChipModelChange = (model: "tamper" | "dna" | "ntag") => {
     setSelectedChipModel(model);
     let baseCost = 1.00;
@@ -1266,7 +1277,7 @@ export function RoiCalculator({
 
   const handleRegionChange = (region: "latam" | "europe_usa" | "asia" | "grey_market") => {
     setExportRegion(region);
-    setFraudRate(REGION_CITATIONS[region].rate);
+    setFraudRate(REGION_ASSUMPTIONS[region].rate);
   };
 
   // Tiered SaaS Billing calculation (from User Feedback)
@@ -1280,10 +1291,10 @@ export function RoiCalculator({
 
   // Direct B2B calculations
   const grossLoss = volume * retailPrice * (fraudRate / 100);
-  const preventedFraud = grossLoss * 0.98; // 98% efficiency
+  const modeledAvoidedLoss = grossLoss * protectionFactor;
   const nexIdChipsCost = volume * chipCost;
   const totalDirectCost = nexIdChipsCost + nexIdSaaSYearly;
-  const directNetSavings = preventedFraud - totalDirectCost;
+  const directNetSavings = modeledAvoidedLoss - totalDirectCost;
 
   // Reseller B2B2B calculations
   const hardwareCostToReseller = volume * chipCost;
@@ -1297,7 +1308,7 @@ export function RoiCalculator({
   const finalInvestment = isReseller ? hardwareCostToReseller : totalDirectCost;
   const finalNetGain = isReseller ? totalResellerProfit : directNetSavings;
   const roiMultiplier = finalInvestment > 0 ? (finalNetGain / finalInvestment) : 0;
-  const dtcClients = Math.round(volume * 0.35); // 35% scan rate
+  const dtcClients = Math.round(volume * engagementFactor);
 
   const [activeQuestion, setActiveQuestion] = useState("");
   const [aiThinking, setAiThinking] = useState(false);
@@ -1305,7 +1316,7 @@ export function RoiCalculator({
 
   const getAiAnswer = (qId: string) => {
     const regionName = exportRegion === 'latam' ? 'Mendoza / Mercosur' : exportRegion === 'europe_usa' ? 'Europa / EE.UU.' : exportRegion === 'asia' ? 'Asia / Pacífico' : 'Mercado Gris Global';
-    const regionSource = REGION_CITATIONS[exportRegion]?.source || "Fuentes Globales";
+    const regionSource = REGION_ASSUMPTIONS[exportRegion]?.source || "Preset editable";
     
     if (qId.startsWith("custom:")) {
       const userQuestion = qId.substring(7).toLowerCase();
@@ -1324,27 +1335,27 @@ Al incorporar chips NFC seguros con firma criptográfica en el tapón, nexID aso
       
       if (userQuestion.includes("2.87") || userQuestion.includes("ahorra") || userQuestion.includes("perdida") || userQuestion.includes("pérdida") || userQuestion.includes("cómo se calcula") || userQuestion.includes("calcula") || userQuestion.includes("formula") || userQuestion.includes("fórmula")) {
         const lossVal = (retailPrice * (fraudRate / 100)).toFixed(2);
-        const preventedVal = (retailPrice * (fraudRate / 100) * 0.98).toFixed(2);
-        return `El ahorro de $${preventedVal} USD (que se aproxima a $2.87 USD en la configuración que viste en pantalla) por cada chip individual se calcula de forma transparente con la siguiente fórmula:
+        const preventedVal = (retailPrice * (fraudRate / 100) * protectionFactor).toFixed(2);
+        return `La pérdida potencial evitada de $${preventedVal} USD por unidad es el resultado de este escenario editable, no un ahorro observado. Se calcula con la siguiente fórmula:
 
-Ahorro Unitario = Precio del Producto ($${retailPrice}.00 USD) × Tasa de Fraude de la Región (${fraudRate.toFixed(1)}%) × Eficiencia de nexID (98%).
+Pérdida potencial evitada = Precio del Producto ($${retailPrice}.00 USD) × Tasa de Pérdida asumida (${fraudRate.toFixed(1)}%) × Efectividad asumida (${protectionRate.toFixed(0)}%).
 
-Es decir: $${retailPrice}.00 × ${(fraudRate / 100).toFixed(3)} × 0.98 = $${preventedVal} USD.
+Es decir: $${retailPrice}.00 × ${(fraudRate / 100).toFixed(3)} × ${protectionFactor.toFixed(2)} = $${preventedVal} USD.
 
-Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fabricada debido a falsificaciones o mercado gris. Al colocar un chip de $${chipCost.toFixed(2)} USD en el tapón, logras evitar $${preventedVal} USD de esa pérdida de inmediato. Esto significa que recuperas el costo de cada chip ${(chipCost > 0 ? (retailPrice * (fraudRate / 100) * 0.98 / chipCost) : 0).toFixed(1)} veces al vender tu producto. ¡Es una amortización directa e inmediata por botella!`;
+El modelo supone una exposición de $${lossVal} USD por unidad y una pérdida potencial evitada de $${preventedVal} USD. El ratio hipotético frente al costo del chip es ${(chipCost > 0 ? (retailPrice * (fraudRate / 100) * protectionFactor / chipCost) : 0).toFixed(1)}x. Para convertirlo en ROI defendible hay que cargar merma real, grupo de control, tasa de adopción y costos completos del piloto.`;
       }
       
       if (userQuestion.includes("reutili") || userQuestion.includes("nuevo") || userQuestion.includes("lote") || userQuestion.includes("consumible")) {
-        return `Para proteger la autenticidad física de cada botella o envase, nexID asocia criptográficamente un identificador único (UID) a la firma de hardware del chip NFC. Si los chips fueran reutilizables, un falsificador podría extraer el chip de una botella original consumida e insertarlo en una botella rellenada, burlando al sistema. Al usar chips consumibles o TagTamper adheridos al tapón o al sello de seguridad, la apertura cambia el estado físico o invalida el registro seguro, reduciendo fuertemente el rellenado ilegal y el mercado gris. La eficiencia final debe medirse por vertical, carrier, adopción y política de operación.`;
+        return `Para reducir el riesgo de reutilización, nexID valida el mensaje criptográfico asociado al UID del chip NFC. Cuando el carrier y el packaging integran TagTamper correctamente, TT puede reportar un cambio de estado después de la apertura; ese dato sigue siendo evidencia del tag y no certifica por sí solo el contenido, origen o custodia física. El impacto real sobre rellenado y mercado gris debe medirse en cada piloto según vertical, carrier, integración, adopción y política operativa.`;
       }
       
       if (userQuestion.includes("costo") || userQuestion.includes("precio") || userQuestion.includes("invert") || userQuestion.includes("plata") || userQuestion.includes("dinero") || userQuestion.includes("inversión")) {
-        return `Tu inversión anual estimada es de $${finalInvestment.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD (que incluye $${nexIdChipsCost.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD en chips y $${nexIdSaaSYearly.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD de suscripción SaaS). Dado que el precio de venta de tu producto es de $${retailPrice} USD y previenes pérdidas por $${preventedFraud.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD anuales, cada botella que produce tu marca ahorra en promedio $${(retailPrice * (fraudRate / 100) * 0.98).toFixed(2)} USD frente al fraude de la región ${exportRegion === 'latam' ? 'Mendoza / Mercosur' : exportRegion === 'europe_usa' ? 'Europa / EE.UU.' : exportRegion === 'asia' ? 'Asia / Pacífico' : 'Mercado Gris Global'}. El costo del chip se recupera con creces, rindiendo un retorno neto anual de $${finalNetGain.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD.`;
+        return `La inversión anual modelada es de $${finalInvestment.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD (incluye $${nexIdChipsCost.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD en chips y $${nexIdSaaSYearly.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD de suscripción SaaS). Con los supuestos editables actuales, la pérdida potencial evitada sería $${modeledAvoidedLoss.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD anuales y el balance hipotético $${finalNetGain.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD. No es ahorro garantizado: debe contrastarse con datos reales del piloto.`;
       }
       
       if (userQuestion.includes("tiempo") || userQuestion.includes("recuper") || userQuestion.includes("mes") || userQuestion.includes("dia") || userQuestion.includes("amorti")) {
-        const paybackDays = preventedFraud > 0 ? ((nexIdChipsCost / preventedFraud) * 365) : 0;
-        return `El tiempo estimado de recuperación de la inversión de hardware (chips) es de ${paybackDays.toFixed(1)} días de ventas de cada lote. Dado que vendes aproximadamente ${Math.round(volume / 12).toLocaleString(INVESTOR_NUMBER_LOCALE)} unidades al mes, el costo mensual de chips es de $${Math.round(nexIdChipsCost / 12).toLocaleString(INVESTOR_NUMBER_LOCALE)} USD. Con un ahorro preventivo neto de $${Math.round(finalNetGain / 12).toLocaleString(INVESTOR_NUMBER_LOCALE)} USD/mes, la inversión en chips del lote de cada mes se amortiza en los primeros días del ciclo de ventas de ese mismo lote. No es un costo hundido de infraestructura, sino un insumo que se autofinancia de inmediato.`;
+        const paybackDays = modeledAvoidedLoss > 0 ? ((nexIdChipsCost / modeledAvoidedLoss) * 365) : 0;
+        return `El escenario arroja un plazo teórico de ${paybackDays.toFixed(1)} días para cubrir solo el hardware con la pérdida potencial evitada. El costo mensual de chips sería $${Math.round(nexIdChipsCost / 12).toLocaleString(INVESTOR_NUMBER_LOCALE)} USD para unas ${Math.round(volume / 12).toLocaleString(INVESTOR_NUMBER_LOCALE)} unidades mensuales. Este plazo no es una promesa de recuperación: excluye variaciones de adopción, integración, operación y atribución, que deben medirse en el piloto.`;
       }
       
       if (userQuestion.includes("blockchain") || userQuestion.includes("web3") || userQuestion.includes("nft") || userQuestion.includes("seguridad") || userQuestion.includes("seguro") || userQuestion.includes("nube")) {
@@ -1352,32 +1363,31 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
       }
 
       if (userQuestion.includes("ayuda") || userQuestion.includes("como") || userQuestion.includes("plataforma") || userQuestion.includes("que es") || userQuestion.includes("explic")) {
-        return `Esta plataforma ayuda al empresario y a su equipo de ventas a calcular el Retorno de Inversión (ROI) real antes de comprar hardware. Al mover los controles de volumen, precio y tasa de fraude, nuestro sistema calcula instantáneamente el impacto financiero de nexID. Como consultor financiero IA, te recomiendo configurar tu volumen de ventas real y precio minorista para demostrarle a tu directorio cómo cada chip evita pérdidas y genera un canal directo de contacto (DTC) con el 35% de tus compradores.`;
+        return `Esta herramienta construye un escenario financiero hipotético antes de comprar hardware. Configura volumen, precio, pérdida actual, efectividad esperada y adopción post-tap con datos propios. El motor aplica fórmulas determinísticas y transparentes; no usa inteligencia artificial ni convierte los supuestos en resultados reales.`;
       }
       
-      return `Interesante pregunta sobre tu marca. Con tus variables actuales (volumen de ${volume.toLocaleString(INVESTOR_NUMBER_LOCALE)} unidades y precio de $${retailPrice} USD), cada chip de $${chipCost.toFixed(2)} USD te protege de una pérdida de $${(retailPrice * (fraudRate / 100) * 0.98).toFixed(2)} USD por botella. Esto genera un ahorro neto de $${finalNetGain.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD anuales. ¿Deseas que profundicemos en cómo la tasa de fraude del ${fraudRate}% de tu región influye en este resultado o cómo calcular la amortización por lote?`;
+      return `Con las variables actuales, el escenario asigna $${(retailPrice * (fraudRate / 100) * protectionFactor).toFixed(2)} USD de pérdida potencial evitada por unidad y un balance anual hipotético de $${finalNetGain.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD. Son supuestos de planificación, no desempeño observado. Puedes evaluar sensibilidad cambiando pérdida, efectividad y adopción.`;
     }
 
     switch (qId) {
       case "non-reusable":
-        return `Para proteger la autenticidad física de cada botella o envase, nexID asocia criptográficamente un identificador único (UID) a la firma de hardware del chip NFC. Si los chips fueran reutilizables, un falsificador podría extraer el chip de una botella original consumida e insertarlo en una botella rellenada, burlando al sistema. Al usar chips consumibles o TagTamper adheridos al tapón o al sello de seguridad, la apertura cambia el estado físico o invalida el registro seguro, reduciendo fuertemente el rellenado ilegal y el mercado gris. La eficiencia final debe medirse por vertical, carrier, adopción y política de operación.`;
+        return `Para reducir el riesgo de reutilización, nexID valida el mensaje criptográfico asociado al UID del chip NFC. Cuando el carrier y el packaging integran TagTamper correctamente, TT puede reportar un cambio de estado después de la apertura; ese dato sigue siendo evidencia del tag y no certifica por sí solo el contenido, origen o custodia física. El impacto real sobre rellenado y mercado gris debe medirse en cada piloto según vertical, carrier, integración, adopción y política operativa.`;
       
       case "tagtamper-cost":
         const extraInvestment = volume * 1.00;
         const baseInvestment = volume * 0.50;
         const diffCost = extraInvestment - baseInvestment;
-        const additionalLoss = volume * retailPrice * (fraudRate / 100) * 0.38;
-        return `¡Totalmente rentable! Con tus parámetros actuales (Volumen: ${volume.toLocaleString(INVESTOR_NUMBER_LOCALE)} uds, Precio: $${retailPrice} USD, Tasa de Pérdida: ${fraudRate.toFixed(1)}%), el uso de un chip premium como el NTAG 424 DNA TagTamper ($1.00) representa una inversión en chips de $${extraInvestment.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD, mientras que un chip estándar de $0.50 costaría $${baseInvestment.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD. Si bien ahorras $${diffCost.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD en el hardware, al no contar con detección física de apertura, la eficiencia de protección cae drásticamente del 98% a menos del 60%. Esto significa que la marca perdería más de $${additionalLoss.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD anuales debido a fraudes y reventas que el chip básico no puede detectar. El chip TagTamper se paga solo protegiendo tu reputación y evitando fugas de canal.`;
+        return `TagTamper representa una inversión modelada de $${extraInvestment.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD frente a $${baseInvestment.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD para un chip de $0.50: una diferencia de $${diffCost.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD. La detección física de apertura agrega una señal que el chip básico no ofrece, pero su impacto económico no puede inferirse sin medir tipos de fraude, carrier, adhesivo, instalación y tasa de apertura del caso real. La decisión debe salir de un piloto comparativo, no de una efectividad universal.`;
       
       case "payback-period":
         const monthlyChips = Math.round(nexIdChipsCost / 12);
         const monthlyGain = Math.round(finalNetGain / 12);
-        const paybackDays = preventedFraud > 0 ? ((nexIdChipsCost / preventedFraud) * 365) : 0;
-        const coverageRatio = chipCost > 0 ? ((retailPrice * (fraudRate / 100) * 0.98) / chipCost) : 0;
-        return `Dado que los chips son un insumo físico consumible por lote y no un activo fijo, la recuperación del dinero invertido se mide sobre la velocidad de venta y la detención de pérdidas de ese mismo lote. Con tus parámetros, la inversión anual en chips es de $${nexIdChipsCost.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD ($${monthlyChips.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD/mes) y tu ahorro neto anual proyectado es de $${finalNetGain.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD ($${monthlyGain.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD/mes). Esto significa que recuperas la inversión total en chips de cada lote en los primeros ${paybackDays.toFixed(1)} días de ventas de dicho lote. A nivel unitario, cada chip que cuesta $${chipCost.toFixed(2)} USD evita una pérdida estimada de $${(retailPrice * (fraudRate / 100) * 0.98).toFixed(2)} USD. ¡Un ratio de cobertura unitaria de ${coverageRatio.toFixed(1)}x!`;
+        const paybackDays = modeledAvoidedLoss > 0 ? ((nexIdChipsCost / modeledAvoidedLoss) * 365) : 0;
+        const coverageRatio = chipCost > 0 ? ((retailPrice * (fraudRate / 100) * protectionFactor) / chipCost) : 0;
+        return `Los chips son un insumo físico consumible por lote. En este escenario, cuestan $${nexIdChipsCost.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD anuales ($${monthlyChips.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD/mes), el balance hipotético es $${finalNetGain.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD anuales ($${monthlyGain.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD/mes), el plazo teórico es ${paybackDays.toFixed(1)} días y el ratio unitario ${coverageRatio.toFixed(1)}x. Ninguno es retorno observado: dependen de los supuestos editables y deben validarse contra un piloto y costos completos.`;
       
       case "region-influence":
-        return `La región seleccionada (${regionName}) posee una tasa de pérdida/fraude estimada del ${fraudRate.toFixed(1)}% según reportes de ${regionSource}. Con un precio de venta de $${retailPrice} USD por unidad, esto significa que tu marca pierde un promedio de $${(retailPrice * (fraudRate / 100)).toFixed(2)} USD por cada botella producida antes de implementar nexID. En regiones con alta incidencia de falsificación, el retorno de inversión del sistema se dispara a un multiplicador de ${roiMultiplier.toFixed(1)}x. En zonas con menor tasa de fraude, el ROI se mantiene sumamente atractivo porque nexID no solo previene fraude, sino que conecta de manera directa al ${Math.round(volume * 0.35).toLocaleString(INVESTOR_NUMBER_LOCALE)} clientes (35% de lecturas estimadas) a tu canal directo DTC, abriendo nuevas oportunidades de venta recurrente.`;
+        return `La región seleccionada (${regionName}) carga una hipótesis editable de pérdida del ${fraudRate.toFixed(1)}% desde el preset "${regionSource}". A $${retailPrice} USD por unidad, el modelo asigna $${(retailPrice * (fraudRate / 100)).toFixed(2)} USD de exposición potencial por unidad y ${dtcClients.toLocaleString(INVESTOR_NUMBER_LOCALE)} contactos post-tap con una adopción asumida del ${engagementRate.toFixed(0)}%. Reemplaza ambos valores por telemetría y datos financieros del cliente antes de presentar ROI al directorio.`;
       
       default:
         return "";
@@ -1417,10 +1427,10 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
               ⚡ Simulador Financiero B2B
             </div>
             <h2 className="text-2xl lg:text-3xl font-black text-white uppercase tracking-tight leading-none">
-              Ahorro por Pérdidas y Retorno de Inversión (ROI)
+              Escenario de Pérdidas y ROI Hipotético
             </h2>
             <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
-              Descubre cuánto dinero pierde tu marca por fraude y reventa del mercado gris, y cómo la arquitectura híbrida de nexID (Servidor Seguro + Registro Digital) recupera ese margen con un retorno de inversión masivo.
+              Modelá sensibilidad financiera con supuestos editables. Los resultados no son ahorro observado, predicción ni garantía: un piloto debe validar merma, efectividad, adopción y costos reales.
             </p>
           </div>
           
@@ -1481,10 +1491,10 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
                   onChange={(e) => handleRegionChange(e.target.value as any)}
                   className="w-full bg-slate-950 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-cyan-500 transition-colors"
                 >
-                  <option value="europe_usa">Europa / EE.UU. (OIV: ~4.2% fraude)</option>
-                  <option value="latam">Mendoza / Mercosur (CAME: ~6.5% fraude)</option>
-                  <option value="asia">Asia / Pacífico (APEC: ~10% fraude)</option>
-                  <option value="grey_market">Mercado Gris Global (ICC: ~12% desvío)</option>
+                  <option value="europe_usa">Europa / EE.UU. (hipótesis 4.2%)</option>
+                  <option value="latam">Mendoza / Mercosur (hipótesis 6.5%)</option>
+                  <option value="asia">Asia / Pacífico (hipótesis 10%)</option>
+                  <option value="grey_market">Mercado Gris Global (estrés 12%)</option>
                 </select>
               </div>
 
@@ -1559,6 +1569,42 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
                   <span>0.5%</span>
                   <span>20%</span>
                 </div>
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex justify-between items-center text-xs font-bold">
+                  <label htmlFor="investor-protection-rate" className="text-slate-400 uppercase">Efectividad asumida</label>
+                  <span className="text-emerald-400 font-mono text-[10px]">{protectionRate}%</span>
+                </div>
+                <input
+                  id="investor-protection-rate"
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={protectionRate}
+                  onChange={(event) => setProtectionRate(Number(event.target.value))}
+                  className="w-full h-1 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-emerald-400"
+                />
+                <p className="text-[8px] text-slate-500 leading-tight">Hipótesis: porcentaje de la pérdida actual que el piloto podría evitar. No es una eficacia medida de nexID.</p>
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex justify-between items-center text-xs font-bold">
+                  <label htmlFor="investor-engagement-rate" className="text-slate-400 uppercase">Adopción post-tap asumida</label>
+                  <span className="text-cyan-400 font-mono text-[10px]">{engagementRate}%</span>
+                </div>
+                <input
+                  id="investor-engagement-rate"
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={engagementRate}
+                  onChange={(event) => setEngagementRate(Number(event.target.value))}
+                  className="w-full h-1 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                />
+                <p className="text-[8px] text-slate-500 leading-tight">Hipótesis de contactos post-tap. Debe sustituirse por telemetría del piloto.</p>
               </div>
 
               {/* Slider 3: Price */}
@@ -1719,7 +1765,7 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
               <div className="bg-slate-900/30 border border-white/5 rounded-2xl p-5 flex flex-col justify-between h-[310px]">
                 <div>
                   <span className="text-[9px] font-black uppercase text-slate-500 block">
-                    {!isReseller ? "Pérdida vs Ahorro" : "Costo vs Ingresos"}
+                    {!isReseller ? "Costo vs pérdida evitada modelada" : "Costo vs ingresos modelados"}
                   </span>
                   <h4 className="text-xs font-black text-white uppercase mt-1 leading-tight">Mapeo de Capital</h4>
                 </div>
@@ -1761,14 +1807,14 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
                       transition={{ type: "spring", stiffness: 85, damping: 15 }}
                     />
                     <span className="text-[8px] font-black text-slate-500 uppercase mt-2">
-                      {!isReseller ? "Ahorro Neto" : "Ganancia"}
+                      {!isReseller ? "Balance hipotético" : "Ganancia modelada"}
                     </span>
                   </div>
                 </div>
                 
                 <p className="text-[9px] text-slate-400 text-center italic leading-tight">
                   {!isReseller 
-                    ? "*Evita rellenado, copias y fugas al 98%." 
+                    ? `*Escenario con ${protectionRate}% de efectividad asumida; validar en piloto.`
                     : "*SaaS setup ref + comisión de hardware."}
                 </p>
               </div>
@@ -1831,10 +1877,10 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
                     <span className="text-xs font-black text-white font-mono">{dtcClients.toLocaleString(INVESTOR_NUMBER_LOCALE)} /año</span>
                   </div>
                   <div className="w-full bg-slate-950 h-1 rounded overflow-hidden">
-                    <div className="bg-cyan-400 h-full w-[35%]" />
+                    <div className="bg-cyan-400 h-full" style={{ width: `${engagementRate}%` }} />
                   </div>
                   <span className="text-[8px] text-slate-500 block leading-tight">
-                    Tasa de contacto directo post-compra del 35% de lecturas.
+                    Adopción post-tap asumida del {engagementRate}%; requiere telemetría real.
                   </span>
                 </div>
               </div>
@@ -1844,8 +1890,8 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
                 <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full filter blur-[40px] pointer-events-none" />
                 
                 <div>
-                  <span className="text-[9px] font-black uppercase text-slate-500 block">Eficiencia de Inversión</span>
-                  <h4 className="text-xs font-black text-white uppercase mt-1 leading-tight">Multiplicador ROI</h4>
+                  <span className="text-[9px] font-black uppercase text-slate-500 block">Sensibilidad de Inversión</span>
+                  <h4 className="text-xs font-black text-white uppercase mt-1 leading-tight">ROI hipotético</h4>
                 </div>
                 
                 {/* Gold Multiplier Circle */}
@@ -1857,7 +1903,7 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
                     <span className="text-3xl font-black text-white font-mono mt-0.5 tracking-tighter">
                       {roiMultiplier.toFixed(1)}x
                     </span>
-                    <span className="text-[8px] text-emerald-400 font-bold uppercase mt-0.5">Retorno Neto</span>
+                    <span className="text-[8px] text-emerald-400 font-bold uppercase mt-0.5">Escenario hipotético</span>
                   </div>
                 </div>
                 
@@ -1867,7 +1913,7 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
                     <span className="text-slate-200 font-bold">${finalInvestment.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD</span>
                   </div>
                   <div className="flex justify-between items-center text-[9px] text-slate-400 px-1 font-mono">
-                    <span>{!isReseller ? "Ahorro Neto:" : "Ganancia Neta:"}</span>
+                    <span>{!isReseller ? "Balance modelado:" : "Ganancia modelada:"}</span>
                     <span className="text-emerald-400 font-bold">${finalNetGain.toLocaleString(INVESTOR_NUMBER_LOCALE, { maximumFractionDigits: 0 })} USD</span>
                   </div>
                 </div>
@@ -1877,18 +1923,18 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
             {/* Citations Card */}
             <div className="w-full p-4 rounded-2xl border border-cyan-500/20 bg-cyan-500/5 text-slate-300 text-[10px] leading-relaxed flex flex-col md:flex-row gap-3 items-start md:items-center">
               <span className="text-cyan-400 text-xs font-mono font-black shrink-0 border border-cyan-400/30 px-1.5 py-0.5 rounded bg-cyan-400/10">
-                INFO REGIONAL
+                SUPUESTO REGIONAL
               </span>
               <div>
-                <strong className="text-white block uppercase tracking-wide text-[9px]">{REGION_CITATIONS[exportRegion].source}</strong>
-                <span className="text-slate-400 italic">"{REGION_CITATIONS[exportRegion].text}"</span>
+                <strong className="text-white block uppercase tracking-wide text-[9px]">{REGION_ASSUMPTIONS[exportRegion].source}</strong>
+                <span className="text-slate-400 italic">"{REGION_ASSUMPTIONS[exportRegion].text}"</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* ========================================== */}
-        {/* nexID AI Intelligent Diagnostic Report Card */}
+        {/* Deterministic scenario explanation */}
         {/* ========================================== */}
         <div className="mt-8 pt-8 border-t border-white/5 space-y-6 relative">
           <div className="absolute top-0 left-1/4 w-72 h-72 bg-cyan-500/5 rounded-full filter blur-[80px] pointer-events-none" />
@@ -1901,17 +1947,17 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
                 </span>
                 <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
-                  <Bot className="w-4 h-4 text-cyan-400 animate-pulse" /> Diagnóstico Financiero nexID AI
+                  <Bot className="w-4 h-4 text-cyan-400" /> Explicador de Escenario Financiero
                 </h3>
               </div>
               <p className="text-xs lg:text-sm text-slate-300 leading-normal">
-                Estudio predictivo de retorno y amortización de inversión en hardware criptográfico. Actualizado en tiempo real.
+                Fórmulas determinísticas sobre las variables visibles. No es IA, predicción ni asesoramiento financiero.
               </p>
             </div>
             
             <div className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-slate-950/60 px-3 py-1.5 text-xs font-mono text-slate-300">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              Modelo Cognitivo v4.2 Activo
+              <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
+              Modelo editable · sin datos observados
             </div>
           </div>
 
@@ -1934,10 +1980,10 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
                 <div className="bg-slate-950/50 border border-white/10 rounded-xl p-4 shadow-inner">
                   <span className="text-xs lg:text-sm font-bold text-slate-200 uppercase tracking-wide">Ratio de Cobertura Unitario</span>
                   <div className="text-2xl font-black text-emerald-400 font-mono mt-1">
-                    {(chipCost > 0 ? ((retailPrice * (fraudRate / 100) * 0.98) / chipCost) : 0).toFixed(1)}x
+                    {(chipCost > 0 ? ((retailPrice * (fraudRate / 100) * protectionFactor) / chipCost) : 0).toFixed(1)}x
                   </div>
                   <p className="text-xs text-slate-400 mt-1.5 leading-normal">
-                    Cada chip evita en promedio ${(retailPrice * (fraudRate / 100) * 0.98).toFixed(2)} USD de pérdida.
+                    Ratio hipotético con {protectionRate}% de efectividad asumida; no es ahorro observado.
                   </p>
                 </div>
 
@@ -1945,39 +1991,39 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
                 <div className="bg-slate-950/50 border border-white/10 rounded-xl p-4 shadow-inner">
                   <span className="text-xs lg:text-sm font-bold text-slate-200 uppercase tracking-wide">Amortización por Lote</span>
                   <div className="text-2xl font-black text-amber-400 font-mono mt-1">
-                    {preventedFraud > 0 ? ((nexIdChipsCost / preventedFraud) * 365).toFixed(1) : "0"} días
+                    {modeledAvoidedLoss > 0 ? ((nexIdChipsCost / modeledAvoidedLoss) * 365).toFixed(1) : "0"} días
                   </div>
                   <p className="text-xs text-slate-400 mt-1.5 leading-normal">
-                    Tiempo para recuperar la inversión de hardware del lote de producción.
+                    Plazo teórico para cubrir hardware; validar costos y atribución en piloto.
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Col 2: Dynamic AI Insight paragraph */}
+            {/* Col 2: deterministic scenario guidance */}
             <div className="bg-slate-900/40 border border-white/10 rounded-2xl p-5 space-y-4 h-full min-h-[190px] flex flex-col justify-between">
               <div>
                 <span className="text-xs lg:text-sm font-black uppercase text-slate-400 block tracking-wider">Recomendación Estratégica</span>
                 <p className="text-sm lg:text-base text-slate-200 leading-relaxed mt-2.5 font-medium">
                   {fraudRate > 8.0 ? (
-                    `⚠️ La tasa de fraude detectada en ${exportRegion === 'latam' ? 'Mendoza / Mercosur' : exportRegion === 'europe_usa' ? 'Europa / EE.UU.' : exportRegion === 'asia' ? 'Asia / Pacífico' : 'Mercado Gris Global'} (${fraudRate.toFixed(1)}%) representa una fuga crítica de capital. Es imperativo utilizar chips premium NTAG 424 DNA con detección de apertura (TagTamper) para neutralizar desvíos y evitar que botellas rellenadas destruyan la reputación premium de la marca.`
+                    `⚠️ El escenario usa una pérdida alta del ${fraudRate.toFixed(1)}%. Antes de elegir TagTamper, valida esa hipótesis y compara en piloto la señal de apertura, carrier, adhesivo y costo total frente a una alternativa básica.`
                   ) : roiMultiplier > 2.5 ? (
-                    `⚡ Tu modelo de negocio muestra una viabilidad excepcional. Con un ROI proyectado de ${roiMultiplier.toFixed(1)}x, el diferencial entre el costo de chip ($${chipCost.toFixed(2)}) y el precio de venta ($${retailPrice} USD) absorbe holgadamente el gasto operativo. Recomendamos iniciar el piloto comercial de inmediato.`
+                    `⚡ Los supuestos actuales producen un ratio hipotético de ${roiMultiplier.toFixed(1)}x. Usalo para diseñar un piloto con grupo de control y criterios de éxito; no para prometer viabilidad o retorno antes de medir resultados.`
                   ) : (
-                    `📈 Con un multiplicador de retorno de ${roiMultiplier.toFixed(1)}x, la implementación de nexID se justifica plenamente. Además de prevenir pérdidas físicas, la activación de canales de interacción directa con el consumidor (estimamos ${Math.round(volume * 0.35).toLocaleString(INVESTOR_NUMBER_LOCALE)} escaneos anuales) compensará con creces el costo del hardware a través de fidelización y recompra directa.`
+                    `📈 El modelo devuelve ${roiMultiplier.toFixed(1)}x y ${dtcClients.toLocaleString(INVESTOR_NUMBER_LOCALE)} contactos potenciales con ${engagementRate}% de adopción asumida. Probá escenarios conservador, base y exigente antes de definir el piloto.`
                   )}
                 </p>
               </div>
               <div className="text-xs text-cyan-300 font-mono flex items-center gap-1.5 border-t border-white/10 pt-3">
                 <span className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></span>
-                Recomendación adaptada a tus variables financieras actuales.
+                Guía determinística basada solo en las variables visibles.
               </div>
             </div>
 
             {/* Col 3: Interactive Q&A simulator */}
             <div className="bg-slate-900/40 border border-white/10 rounded-2xl p-5 space-y-4 flex flex-col justify-between min-h-[310px]">
               <div>
-                <span className="text-xs lg:text-sm font-black uppercase text-slate-400 block tracking-wider mb-2.5">Preguntas al Asistente IA</span>
+                <span className="text-xs lg:text-sm font-black uppercase text-slate-400 block tracking-wider mb-2.5">Preguntas sobre el modelo</span>
                 
                 {/* Custom Open-ended query input field */}
                 <div className="flex gap-2 mb-3">
@@ -2029,7 +2075,7 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
               <div className="mt-3 p-4 rounded-xl bg-slate-950/80 border border-white/10 min-h-[120px] flex flex-col justify-center">
                 {activeQuestion === "" ? (
                   <p className="text-xs lg:text-sm text-slate-400 italic text-center leading-normal">
-                    Selecciona una pregunta arriba para ver el análisis de la inteligencia artificial.
+                    Selecciona una pregunta para ver cómo se interpretan las fórmulas y supuestos.
                   </p>
                 ) : aiThinking ? (
                   <div className="flex flex-col items-center justify-center space-y-2 py-4">
@@ -2038,7 +2084,7 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
                       <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                       <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                     </div>
-                    <span className="text-[10px] lg:text-xs font-mono text-cyan-400/80 tracking-widest uppercase">AI analizando datos...</span>
+                    <span className="text-[10px] lg:text-xs font-mono text-cyan-400/80 tracking-widest uppercase">Calculando escenario...</span>
                   </div>
                 ) : (
                   <motion.div
@@ -2048,7 +2094,7 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
                     className="space-y-2"
                   >
                     <div className="text-[10px] lg:text-xs font-mono text-cyan-400 uppercase tracking-widest font-black leading-none">
-                      Respuesta nexID AI:
+                      Explicación del modelo:
                     </div>
                     <p className="text-xs lg:text-sm text-slate-200 leading-relaxed font-normal">
                       {getAiAnswer(activeQuestion)}
@@ -2065,12 +2111,28 @@ Antes de nexID, tu marca pierde en promedio $${lossVal} USD por cada botella fab
   );
 }
 
-const DEFAULT_CRM_QUERIES: Record<string, Array<{ id: string; query: string; answer: string; timestamp: string; tag: string; status: "respondido" | "procesando" }>> = {
+type PhoneChatMessage = {
+  sender: "user" | "bot";
+  text: string;
+  provenance?: InvestorAiProvenance;
+};
+
+type CrmQuery = {
+  id: string;
+  query: string;
+  answer: string;
+  timestamp: string;
+  tag: string;
+  status: "respondido" | "procesando";
+  provenance?: InvestorAiProvenance;
+};
+
+const DEFAULT_CRM_QUERIES: Record<string, CrmQuery[]> = {
   bodegas: [
     {
       id: "q-b1",
       query: "Tengo una cena con carne asada y quiero quedar bien. ¿Este blend de Mendoza va bien o me recomiendan el Cabernet Sauvignon de su bodega?",
-      answer: "Sí, este Gran Blend 2026 marida de forma excepcional con carnes rojas a la brasa. Si querés una alternativa más estructurada, nuestro Cabernet Sauvignon Reserva es una excelente opción. Además, por convenio, podés adquirirlo con 15% off en el club.",
+      answer: "Respuesta demo · sin ficha enológica ni convenio verificados. Cargá la ficha aprobada del producto y la política comercial vigente para mostrar maridaje, alternativas o beneficios.",
       timestamp: "19:42:10",
       tag: "Venta Directa",
       status: "respondido"
@@ -2086,7 +2148,7 @@ const DEFAULT_CRM_QUERIES: Record<string, Array<{ id: string; query: string; ans
     {
       id: "q-b3",
       query: "¿Se puede guardar esta botella en cava por más de 8 años o ya está lista para consumo?",
-      answer: "Este lote tiene un potencial de guarda de hasta 10 años en condiciones óptimas (14°C - 16°C, sin luz). Sin embargo, la cosecha actual está en su momento óptimo de maduración para consumo inmediato.",
+      answer: "Respuesta demo · sin ficha enológica verificada. La guarda, temperatura y momento de consumo deben provenir de una ficha aprobada por la bodega; cargá esa fuente antes de recomendarlos.",
       timestamp: "18:02:45",
       tag: "Enología",
       status: "respondido"
@@ -2122,7 +2184,7 @@ const DEFAULT_CRM_QUERIES: Record<string, Array<{ id: string; query: string; ans
     {
       id: "q-c1",
       query: "¿Qué otros productos parecidos recomiendan si tengo piel extremadamente seca y sensible?",
-      answer: "Para piel seca, recomendamos complementar Elysian Elixir con nuestra Crema Facial Hidratante Aura con ácido hialurónico. El escaneo de este frasco te otorga un cupón de 10% de descuento para esa compra.",
+      answer: "Respuesta demo · sin catálogo, ficha dermatológica ni beneficio verificados. Cargá una fuente aprobada por la marca antes de recomendar productos o habilitar cupones; para piel sensible corresponde consulta profesional.",
       timestamp: "19:50:22",
       tag: "Venta Cruzada",
       status: "respondido"
@@ -2174,7 +2236,7 @@ const DEFAULT_CRM_QUERIES: Record<string, Array<{ id: string; query: string; ans
     {
       id: "q-p1",
       query: "Tengo un resfrío fuerte con fiebre. ¿Este medicamento OncoCure es compatible con analgésicos comunes como el paracetamol?",
-      answer: "⚠️ ATENCIÓN: OncoCure es una terapia oncológica de alta especialidad y NO debe usarse para resfríos comunes. Si estás bajo tratamiento con OncoCure, la toma de paracetamol debe ser supervisada por tu médico oncólogo debido a la carga hepática.",
+      answer: "Respuesta demo · sin prospecto ni composición verificados. No uses esta pantalla para decisiones médicas ni combinaciones de fármacos: consultá el prospecto oficial y a un profesional de salud.",
       timestamp: "19:48:19",
       tag: "Médico",
       status: "respondido"
@@ -2200,7 +2262,7 @@ const DEFAULT_CRM_QUERIES: Record<string, Array<{ id: string; query: string; ans
     {
       id: "q-e1",
       query: "¿Este VIP Pass me da acceso a la zona de networking con los speakers principales durante el afterparty de cierre?",
-      answer: "Sí, los pases VIP Founders tienen acceso exclusivo al cocktail de cierre en el sector VIP Lounge, donde podrás realizar networking directo con los oradores y sponsors del Summit.",
+      answer: "Respuesta demo · sin ticket, agenda ni política de acceso verificados. Cargá la fuente aprobada por el organizador antes de confirmar sectores, invitados o servicios.",
       timestamp: "19:51:02",
       tag: "Acceso VIP",
       status: "respondido"
@@ -2208,7 +2270,7 @@ const DEFAULT_CRM_QUERIES: Record<string, Array<{ id: string; query: string; ans
     {
       id: "q-e2",
       query: "¿Tienen convenios de alojamiento o tarifas corporativas con hoteles cercanos para asistentes que viajamos desde el interior?",
-      answer: "Sí, tenemos tarifas preferenciales (15% de descuento) en el Hotel Hilton y el Sheraton Buenos Aires. Podés reclamar tu código de descuento en la pestaña 'Premios' tras verificar tu credencial física.",
+      answer: "Respuesta demo · no hay hoteles, tarifas ni convenios verificados. Cargá el contrato o la fuente aprobada por el organizador antes de publicar alojamiento o descuentos.",
       timestamp: "19:20:40",
       tag: "Logística",
       status: "respondido"
@@ -2216,7 +2278,7 @@ const DEFAULT_CRM_QUERIES: Record<string, Array<{ id: string; query: string; ans
     {
       id: "q-e3",
       query: "¿El catering premium Founders de la tarde incluye opciones libres de gluten (apto celíacos) y opciones veganas?",
-      answer: "Absolutamente. Contamos con una isla exclusiva de catering certificado Sin TACC y opciones veganas gourmet durante todo el evento. Informale a los camareros de tu rango VIP Founders.",
+      answer: "Respuesta demo · sin menú ni certificaciones verificados. Cargá la ficha de catering aprobada por el organizador y confirmá alérgenos directamente con el proveedor.",
       timestamp: "18:44:15",
       tag: "Servicios",
       status: "respondido"
@@ -2291,7 +2353,7 @@ export function InvestorSnapshotClient() {
   const [showAiCustomizer, setShowAiCustomizer] = useState(false);
 
   // Phone Assistant Chat states
-  const [phoneChatMessages, setPhoneChatMessages] = useState<Array<{ sender: "user" | "bot"; text: string }>>([
+  const [phoneChatMessages, setPhoneChatMessages] = useState<PhoneChatMessage[]>([
     { sender: "bot", text: "¡Hola! Soy tu Sommelier AI de Cava. ¿En qué varietal o cata te puedo asesorar hoy?" }
   ]);
   const [phoneChatInput, setPhoneChatInput] = useState("");
@@ -2299,7 +2361,7 @@ export function InvestorSnapshotClient() {
 
   // CRM B2B Real-time Queries states
   const [studioTab, setStudioTab] = useState<"designer" | "crm">("designer");
-  const [crmQueries, setCrmQueries] = useState<Array<{ id: string; query: string; answer: string; timestamp: string; tag: string; status: "respondido" | "procesando" }>>([]);
+  const [crmQueries, setCrmQueries] = useState<CrmQuery[]>([]);
   const [unreadCrmCount, setUnreadCrmCount] = useState(0);
 
   // Mobile responsiveness and PWA state
@@ -2318,6 +2380,9 @@ export function InvestorSnapshotClient() {
   // Hugging Face config states
   const [showHfySettings, setShowHfySettings] = useState(false);
   const [hfTokenInput, setHfTokenInput] = useState("");
+  const [lastAiProvenance, setLastAiProvenance] = useState<InvestorAiProvenance>({ mode: "idle" });
+  const [labelProvenance, setLabelProvenance] = useState<InvestorAiProvenance>({ mode: "idle" });
+  const aiStatus = describeInvestorAiProvenance(lastAiProvenance, Boolean(hfTokenInput.trim()));
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -2378,6 +2443,8 @@ export function InvestorSnapshotClient() {
   }, [selectedIndustry]);
 
   const renderAiStudio = () => {
+    const labelStatus = describeInvestorAiProvenance(labelProvenance, Boolean(hfTokenInput.trim()));
+
     return (
       <div className="flex flex-col h-full justify-between">
         <div className="space-y-3 flex flex-col flex-1 overflow-hidden">
@@ -2478,9 +2545,14 @@ export function InvestorSnapshotClient() {
 
                 {labelGenError && (
                   <p className="text-[7px] text-amber-400 font-semibold italic bg-amber-500/5 p-1.5 rounded border border-amber-500/10 leading-normal">
-                    ⚠️ {labelGenError}. Usando patrón de cava de contingencia.
+                    {labelGenError}. Se usó un patrón determinístico de contingencia.
                   </p>
                 )}
+
+                <div className={`rounded border p-1.5 text-[7px] leading-normal ${labelStatus.tone === "live" ? "border-emerald-500/20 bg-emerald-500/5 text-emerald-300" : labelStatus.tone === "checking" ? "border-cyan-500/20 bg-cyan-500/5 text-cyan-300" : "border-amber-500/20 bg-amber-500/5 text-amber-300"}`}>
+                  <span className="block font-black uppercase tracking-wide">{labelStatus.badge}</span>
+                  <span className="text-slate-400">{labelStatus.detail}</span>
+                </div>
               </div>
 
               <button
@@ -2497,7 +2569,7 @@ export function InvestorSnapshotClient() {
                 ) : (
                   <>
                     <Cpu className="w-3.5 h-3.5" />
-                    <span>Generar Arte AI</span>
+                    <span>Generar diseño</span>
                   </>
                 )}
               </button>
@@ -2543,9 +2615,11 @@ export function InvestorSnapshotClient() {
                           💬 {item.query}
                         </p>
                         <div className="pl-1.5 border-l border-cyan-500/20 text-slate-400 text-[8px] leading-snug space-y-0.5">
-                          <span className="text-cyan-400 font-bold block text-[7px] uppercase tracking-wider">nexID AI Engine:</span>
+                          <span className="text-cyan-400 font-bold block text-[7px] uppercase tracking-wider">
+                            {shortInvestorAiProvenanceLabel(item.provenance)}
+                          </span>
                           {item.status === "procesando" ? (
-                            <span className="text-cyan-400/70 italic animate-pulse block">Procesando respuesta cognitiva...</span>
+                            <span className="text-cyan-400/70 italic animate-pulse block">Verificando proveedor y modelo...</span>
                           ) : (
                             <span className="block">{item.answer}</span>
                           )}
@@ -2570,6 +2644,9 @@ export function InvestorSnapshotClient() {
     if (!promptText.trim()) return;
     setGeneratingLabel(true);
     setLabelGenError(null);
+    const checkingProvenance: InvestorAiProvenance = { mode: "checking" };
+    setLabelProvenance(checkingProvenance);
+    setLastAiProvenance(checkingProvenance);
     triggerNfcBeep();
 
     try {
@@ -2591,11 +2668,23 @@ export function InvestorSnapshotClient() {
       if (!data.imageUrl) {
         throw new Error("No image URL returned from API");
       }
+      const responseProvenance = classifyInvestorAiResponse(data);
+      setLabelProvenance(responseProvenance);
+      setLastAiProvenance(responseProvenance);
+      if (responseProvenance.mode !== "live") {
+        setLabelGenError("El proveedor live no quedó confirmado");
+      }
       setCustomLabelUrl(data.imageUrl);
       triggerSuccessChime();
     } catch (err: any) {
       console.warn("Hugging Face Image Generation failed, falling back to local canvas pattern:", err);
       setLabelGenError(err.message || "Error al conectar con Hugging Face");
+      const localProvenance: InvestorAiProvenance = {
+        mode: "local-fallback",
+        reason: err instanceof Error ? err.message : "label_generation_error",
+      };
+      setLabelProvenance(localProvenance);
+      setLastAiProvenance(localProvenance);
       
       // Local premium Malbec gradient pattern fallback
       setTimeout(() => {
@@ -2630,6 +2719,8 @@ export function InvestorSnapshotClient() {
 
   const handleSaveToken = (val: string) => {
     setHfTokenInput(val);
+    setLastAiProvenance({ mode: "idle" });
+    setLabelProvenance({ mode: "idle" });
     if (typeof window !== "undefined") {
       localStorage.setItem("hf_api_token", val);
     }
@@ -2737,6 +2828,8 @@ export function InvestorSnapshotClient() {
     setPhoneChatMessages(prev => [...prev, userMsg]);
     setPhoneChatInput("");
     setPhoneChatTyping(true);
+    const checkingProvenance: InvestorAiProvenance = { mode: "checking" };
+    setLastAiProvenance(checkingProvenance);
     triggerNfcBeep();
 
     // Create a new CRM query entry in real-time
@@ -2747,10 +2840,11 @@ export function InvestorSnapshotClient() {
     const newCrmEntry = {
       id: newQueryId,
       query: msgText,
-      answer: "Procesando respuesta por Cognitive AI...",
+      answer: "Verificando proveedor y modelo...",
       timestamp: timeStr,
       tag: tag,
-      status: "procesando" as const
+      status: "procesando" as const,
+      provenance: checkingProvenance,
     };
     
     setCrmQueries(prev => [newCrmEntry, ...prev]);
@@ -2772,12 +2866,22 @@ export function InvestorSnapshotClient() {
       
       if (!response.ok) throw new Error("API call failed");
       const data = await response.json();
-      
-      setPhoneChatMessages(prev => [...prev, { sender: "bot", text: data.optimizedText }]);
-      setCrmQueries(prev => prev.map(q => q.id === newQueryId ? { ...q, answer: data.optimizedText, status: "respondido" } : q));
+      if (typeof data.optimizedText !== "string" || !data.optimizedText.trim()) {
+        throw new Error("API response did not include text");
+      }
+      const responseProvenance = classifyInvestorAiResponse(data);
+      setLastAiProvenance(responseProvenance);
+
+      setPhoneChatMessages(prev => [...prev, { sender: "bot", text: data.optimizedText, provenance: responseProvenance }]);
+      setCrmQueries(prev => prev.map(q => q.id === newQueryId ? { ...q, answer: data.optimizedText, status: "respondido", provenance: responseProvenance } : q));
       triggerSuccessChime();
     } catch (err) {
       console.warn("Hugging Face API failed or token not set, using local parser:", err);
+      const localProvenance: InvestorAiProvenance = {
+        mode: "local-fallback",
+        reason: err instanceof Error ? err.message : "chat_provider_error",
+      };
+      setLastAiProvenance(localProvenance);
       
       // Local Industry Chat Fallback
       setTimeout(() => {
@@ -2785,29 +2889,29 @@ export function InvestorSnapshotClient() {
         let reply = "";
         
         if (selectedIndustry === "botellas") {
-          reply = "Como asistente de circularidad nexID, confirmo que este envase tiene identidad de ciclo. Puedo ayudarte con retorno, refill, puntos autorizados o evidencia ESG.";
+          reply = "Respuesta demo · no hay manifiesto, estado de ciclo ni operador verificados. Cargá la ficha y la política aprobadas para consultar retorno, refill, puntos o evidencia ESG.";
           if (q.includes("devolver") || q.includes("retorno") || q.includes("deposito") || q.includes("punto")) {
-            reply = "El retorno se valida contra el envase fisico y la politica del tenant. Si el punto esta autorizado, el sistema puede liberar deposito, cupon o credito.";
+            reply = "Este demo no confirma un retorno ni un punto autorizado. Cargá manifiesto, evento del operador y política vigente antes de liberar depósito, cupón o crédito.";
           } else if (q.includes("refill") || q.includes("recarga") || q.includes("ciclo") || q.includes("sanitizacion")) {
-            reply = "La ficha indica si el envase esta apto para refill, pendiente de sanitizacion o retirado. Esa decision se controla por lote y operador autorizado.";
+            reply = "No hay estado de refill verificado en este demo. Cargá la ficha, la sanitización registrada y la decisión del operador autorizado para mostrarlo.";
           } else if (q.includes("esg") || q.includes("auditoria") || q.includes("evidencia") || q.includes("impacto")) {
-            reply = "nexID registra hitos de retorno, refill, operador y lote. Los eventos relevantes pueden enviarse a una capa de prueba opcional y la operacion diaria queda en nexID.";
+            reply = "Este demo no contiene hitos reales. Con eventos de retorno, refill, operador y lote cargados, nexID puede generar evidencia; cargá la fuente operativa antes de reportarla.";
           }
         } else if (selectedIndustry === "cosmetica") {
-          reply = "Como tu Asistente Aura, la ficha muestra evidencia de autenticidad disponible para Elysian Elixir. ¿Quieres consultar notas olfativas, cuidado o retailers autorizados?";
+          reply = "Respuesta demo · no hay ficha, composición, origen ni retailers verificados. Cargá fuentes aprobadas por la marca antes de responder sobre notas, cuidado o distribución.";
           if (q.includes("nota") || q.includes("aroma") || q.includes("olfativa") || q.includes("olor")) {
-            reply = "Elysian Elixir abre con flores de jazmín y azafrán, corazón de ámbar gris y fondo de madera de cedro. Una concentración premium del 30%.";
+            reply = "Dato demo no verificado. Cargá la ficha de fragancia aprobada por la marca para informar notas olfativas o concentración.";
           } else if (q.includes("cuidado") || q.includes("piel") || q.includes("crema") || q.includes("sensible")) {
             reply = "Puedo mostrar ingredientes, advertencias y documentos cargados por el tenant. Las afirmaciones dermatologicas deben venir de la ficha aprobada de la marca.";
           } else if (q.includes("origen") || q.includes("grasse") || q.includes("donde")) {
-            reply = "La esencia se produce en Grasse, Francia, y se fracciona bajo estrictos estándares en laboratorios locales acreditados.";
+            reply = "El origen no está verificado en este demo. Cargá la ficha de trazabilidad y la fuente aprobada por la marca antes de mostrar procedencia o laboratorios.";
           } else if (q.includes("parecido") || q.includes("crema") || q.includes("otro") || q.includes("rutina") || q.includes("combinar")) {
-            reply = "Para piel extremadamente seca, recomendamos complementar tu rutina con la crema regeneradora Aura del tenant. Si la marca carga retailers autorizados, nexID muestra stock y beneficios por sucursal sin afirmar alianzas no verificadas.";
+            reply = "Este fallback no recomienda productos ni cuidado dermatológico. Cargá catálogo, ficha aprobada y retailers autorizados; para piel sensible corresponde consulta profesional.";
           } else if (q.includes("convenio") || q.includes("distrib") || q.includes("sephora") || q.includes("juleriaque") || q.includes("tienda")) {
             reply = "Los convenios se muestran solo si están cargados y aprobados por contrato. El tenant puede habilitar retailers autorizados, puntos y beneficios por sucursal desde el CRM.";
           }
         } else if (selectedIndustry === "agro") {
-          reply = "Como tu Inspector Tecnico BioGuard, este lote fitosanitario tiene evidencia valida cargada para auditoria. ¿Quieres consultar dosis, origen o canal autorizado?";
+          reply = "Respuesta demo · no hay lote, composición, origen ni canal verificados. Cargá etiqueta, ficha técnica y documentos aprobados antes de responder.";
           if (q.includes("dosis") || q.includes("aplicar") || q.includes("uso") || q.includes("hectarea")) {
             reply = "La dosis debe leerse desde la ficha tecnica aprobada del tenant y ajustarse por cultivo, zona y operador autorizado.";
           } else if (q.includes("origen") || q.includes("lote") || q.includes("rosario")) {
@@ -2817,51 +2921,51 @@ export function InvestorSnapshotClient() {
           } else if (q.includes("lluvia") || q.includes("viento") || q.includes("clima") || q.includes("lavado")) {
             reply = "Las condiciones de lluvia, viento y lavado deben salir de la etiqueta/ficha tecnica cargada por el fabricante o distribuidor autorizado.";
           } else if (q.includes("convenio") || q.includes("cooperativa") || q.includes("pergamino") || q.includes("compras") || q.includes("granel")) {
-            reply = "Las entregas a granel y convenios cooperativos deben cargarse como canales autorizados del tenant. nexID valida lote, zona, stock y condiciones antes de mostrar una oferta al productor.";
+            reply = "Este demo no confirma entregas ni convenios. Cargá contrato, canal, lote, zona, stock y condiciones aprobadas antes de mostrar una oferta al productor.";
           }
         } else if (selectedIndustry === "pharma") {
-          reply = "Como tu Asistente Validante, la ficha muestra evidencia disponible de autenticidad y cadena de frio de OncoCure. ¿Quieres auditar temperatura o lote?";
+          reply = "Respuesta demo · no hay composición, origen, temperatura ni lote verificados. Cargá prospecto, telemetría y fuentes regulatorias aprobadas antes de auditar.";
           if (q.includes("temperatura") || q.includes("frio") || q.includes("grados") || q.includes("cadena")) {
-            reply = "La temperatura histórica se mantuvo constante en 4.8°C (Rango exigido: 2°C a 8°C). No se registran alertas de desviación térmica.";
+            reply = "Dato demo no verificado: no hay telemetría histórica cargada. Incorporá la fuente del sensor y el rango aprobado del producto antes de informar temperatura o alertas.";
           } else if (q.includes("lote") || q.includes("origen") || q.includes("frankfurt")) {
-            reply = "Lote ON-88392-A sintetizado en Frankfurt, Alemania, e ingresado por Ezeiza con habilitación aduanera y certificado del Ministerio de Salud.";
+            reply = "El lote y el origen no están verificados en este demo. Cargá manifiesto, documentos aduaneros y fuente regulatoria aprobada antes de mostrar procedencia.";
           } else if (q.includes("seguridad") || q.includes("fda") || q.includes("ema")) {
-            reply = "Cumple con las normativas FDA/EMA de serialización y sellado inteligente TagTamper contra falsificación de medicamentos de alto costo.";
+            reply = "Este demo no certifica cumplimiento FDA, EMA ni otra norma. Cargá la documentación regulatoria vigente y obtené revisión legal antes de afirmar cumplimiento.";
           } else if (q.includes("resfrio") || q.includes("gripe") || q.includes("tos") || q.includes("tomar") || q.includes("dosis") || q.includes("medico") || q.includes("paracetamol")) {
-            reply = "ALERTA: OncoCure es una inmunoterapia oncologica. No doy indicaciones medicas; consulta a un profesional de salud o el prospecto oficial.";
+            reply = "ALERTA: este producto y su composición son datos demo no verificados. No doy indicaciones médicas; consultá el prospecto oficial y a un profesional de salud.";
           } else if (q.includes("convenio") || q.includes("prepaga") || q.includes("cobertura") || q.includes("osde")) {
             reply = "La cobertura solo se muestra si el tenant o pagador cargo convenios vigentes y reglas aprobadas. nexID puede validar documentacion y estado del lote.";
           }
         } else if (selectedIndustry === "eventos") {
-          reply = "Como tu Coordinador de Accesos, esta credencial presenta evidencia valida para el evento. ¿Quieres consultar accesos o servicios habilitados?";
+          reply = "Respuesta demo · no hay ticket, agenda, accesos ni servicios verificados. Cargá la fuente aprobada por el organizador antes de responder.";
           if (q.includes("acceso") || q.includes("sector") || q.includes("entrar") || q.includes("donde")) {
-            reply = "Tu credencial otorga acceso al Sector VIP Front Row, charlas plenarias y VIP Lounge. Solo debes hacer tap en los molinetes.";
+            reply = "Este demo no confirma sectores ni permisos. Cargá el ticket y la política de acceso aprobada por el organizador antes de habilitar una puerta.";
           } else if (q.includes("catering") || q.includes("comida") || q.includes("bebida")) {
-            reply = "El catering premium Founders está incluido de 12:00 a 18:00, con cocktail y barra libre en el afterparty de cierre.";
+            reply = "No hay catering, horario ni menú verificados en este demo. Cargá la ficha aprobada por el organizador y confirmá alérgenos con el proveedor.";
           } else if (q.includes("agenda") || q.includes("charla") || q.includes("horario")) {
-            reply = "La acreditación inicia a las 09:00. Las charlas principales comienzan a las 10:00 y el cocktail de networking a las 18:30.";
+            reply = "No hay agenda verificada en este demo. Cargá la fuente oficial del organizador antes de informar horarios o actividades.";
           } else if (q.includes("hotel") || q.includes("alojamiento") || q.includes("viaje")) {
-            reply = "Contamos con convenios y tarifas corporativas en el Hotel Hilton y el Sheraton Buenos Aires para todos los asistentes del Summit.";
+            reply = "No hay hoteles, tarifas ni convenios verificados en este demo. Cargá el contrato o la fuente aprobada por el organizador antes de publicarlos.";
           }
         } else {
-          reply = "Como Sommelier AI de nexID, la ficha muestra evidencia de autenticidad disponible para este Gran Blend 2026. ¿Te gustaria saber de su maridaje o notas de cata?";
+          reply = "Respuesta demo · no hay ficha enológica, origen ni notas de cata verificados. Cargá una fuente aprobada por la bodega antes de responder.";
           if (q.includes("maridaje") || q.includes("comida") || q.includes("comer") || q.includes("marida")) {
-            reply = "Este Gran Blend 2026 de Luján de Cuyo marida de forma excepcional con carnes rojas a la brasa, empanadas criollas y quesos duros maduros. Servir a 17°C.";
+            reply = "Dato demo no verificado. Cargá la ficha enológica aprobada por la bodega para informar maridaje o temperatura de servicio.";
           } else if (q.includes("cata") || q.includes("notas") || q.includes("sabor") || q.includes("olor") || q.includes("aroma")) {
-            reply = "En copa presenta un color rojo rubí profundo con reflejos violáceos. En nariz sobresalen notas a ciruelas negras, vainilla y chocolate amargo de la madera.";
+            reply = "Dato demo no verificado. Cargá la nota de cata aprobada por la bodega antes de describir color, aroma o sabor.";
           } else if (q.includes("origen") || q.includes("mendoza") || q.includes("viñedo") || q.includes("donde")) {
-            reply = "Las uvas provienen de un viñedo exclusivo a 1.100 msnm en Luján de Cuyo, Mendoza. La amplitud térmica del desierto aporta frescura y concentración única.";
+            reply = "El origen no está verificado en este demo. Cargá la ficha de trazabilidad y la fuente aprobada por la bodega antes de mostrar viñedo, ubicación o cosecha.";
           } else if (q.includes("blockchain") || q.includes("token") || q.includes("nft") || q.includes("web3")) {
             reply = "La marca puede habilitar un certificado u ownership en Polygon cuando aporta valor. La blockchain no certifica por si sola el contenido fisico: la evidencia operativa sigue en nexID y en el carrier.";
           } else if (q.includes("cena") || q.includes("quedar bien") || q.includes("llevar") || q.includes("impresionar")) {
-            reply = "Para una cena especial, este Gran Blend 2026 es una opción fuerte. Si el tenant carga una red de bodegas autorizadas, nexID puede sugerir alternativas y beneficios aprobados por contrato.";
+            reply = "Este fallback no recomienda una botella sin ficha aprobada. Cargá la ficha enológica y la red comercial autorizada para sugerir opciones o beneficios.";
           } else if (q.includes("convenio") || q.includes("alianza") || q.includes("catena") || q.includes("rutini")) {
             reply = "nexID no afirma alianzas sin contrato cargado. La red de bodegas autorizadas puede configurarse desde el CRM con beneficios, cupos, vigencia y trazabilidad de cada canje.";
           }
         }
         
-        setPhoneChatMessages(prev => [...prev, { sender: "bot", text: reply }]);
-        setCrmQueries(prev => prev.map(q => q.id === newQueryId ? { ...q, answer: reply, status: "respondido" } : q));
+        setPhoneChatMessages(prev => [...prev, { sender: "bot", text: reply, provenance: localProvenance }]);
+        setCrmQueries(prev => prev.map(q => q.id === newQueryId ? { ...q, answer: reply, status: "respondido", provenance: localProvenance } : q));
         triggerSuccessChime();
       }, 1200);
     } finally {
@@ -3051,8 +3155,8 @@ export function InvestorSnapshotClient() {
                 <div className="grid grid-cols-3 gap-4">
                   {[
                     { title: "Arquitectura", value: "Capa Híbrida", desc: "Nube default + Registro Digital" },
-                    { title: "Soporte Nube", value: "AWS / Render", desc: "Redundancia multinodo" },
-                    { title: "Costo por Unidad", value: "Centavos USD", desc: "<1.5% del valor minorista" }
+                    { title: "Runtime verificado", value: "Vercel + Neon", desc: "Apps/APIs + datos operativos" },
+                    { title: "Costo por Unidad", value: "Cotizable", desc: "Depende de tag, volumen y servicio" }
                   ].map((item, idx) => (
                     <div key={idx} className="rounded-2xl border border-white/5 bg-slate-900/10 hover:bg-slate-900/30 p-4 text-center transition duration-200">
                       <span className="text-[9px] uppercase tracking-widest text-slate-500 font-bold block">{item.title}</span>
@@ -3245,12 +3349,12 @@ export function InvestorSnapshotClient() {
                   <span className="text-[10px] font-black text-white uppercase tracking-wider flex items-center gap-1.5">
                     🤗 Configuración Hugging Face API
                   </span>
-                  <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded font-mono ${hfTokenInput ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400"}`}>
-                    {hfTokenInput ? "LLM LIVE CONECTADO" : "HEURÍSTICAS LOCALES"}
+                  <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded font-mono ${aiStatus.tone === "live" ? "bg-emerald-500/10 text-emerald-400" : aiStatus.tone === "checking" ? "bg-cyan-500/10 text-cyan-400" : "bg-amber-500/10 text-amber-400"}`}>
+                    {aiStatus.badge}
                   </span>
                 </div>
                 <p className="text-[9px] text-slate-400 leading-normal">
-                  Pega tu API Token de Hugging Face (gratuito) para habilitar respuestas reales mediante el modelo Qwen en la pestaña AI Chat. Si se deja en blanco, la demo usará heurísticas enológicas locales.
+                  {aiStatus.detail} Un token guardado solo configura la próxima llamada; el estado live exige que la respuesta confirme proveedor, modelo y ausencia de fallback.
                 </p>
                 <div className="flex gap-2">
                   <input
@@ -3420,10 +3524,10 @@ export function InvestorSnapshotClient() {
                             {/* Mini SVG Map */}
                             <div className="w-full h-[75px] rounded-lg bg-slate-950/90 border border-cyan-500/10 relative p-1.5 flex flex-col justify-between overflow-hidden shadow-[inset_0_1px_3px_rgba(0,0,0,0.4)]">
                               <div className="flex justify-between items-center px-1 text-[7.5px] text-slate-500 uppercase font-black tracking-wider z-10">
-                                <span>Trazabilidad de Ruta</span>
+                                  <span>Eventos de ruta declarados</span>
                                 <span className="text-cyan-400 animate-pulse flex items-center gap-1">
                                   <span className="w-1 h-1 rounded-full bg-cyan-400 animate-ping" />
-                                  En Tránsito Live
+                                   Ruta demo · no verificada
                                 </span>
                               </div>
                               <svg className="w-full h-[40px] relative z-10" viewBox="0 0 160 40" preserveAspectRatio="none">
@@ -3765,6 +3869,11 @@ export function InvestorSnapshotClient() {
                                       ? "bg-purple-600/35 border border-purple-500/20 text-white rounded-tr-none" 
                                       : "bg-slate-950/70 border border-white/5 text-amber-300 rounded-tl-none"
                                   }`}>
+                                    {msg.sender === "bot" && (
+                                      <span className="mb-1 block text-[6.5px] font-black uppercase tracking-wide text-cyan-400">
+                                        {shortInvestorAiProvenanceLabel(msg.provenance)}
+                                      </span>
+                                    )}
                                     {msg.text}
                                   </div>
                                 </div>
@@ -3772,7 +3881,7 @@ export function InvestorSnapshotClient() {
                               {phoneChatTyping && (
                                 <div className="flex justify-start">
                                   <div className="rounded-lg p-2 bg-slate-950/70 border border-white/5 text-slate-500 rounded-tl-none animate-pulse">
-                                    {selectedIndustry === "bodegas" ? "Sommelier AI escribiendo..." : selectedIndustry === "botellas" ? "Circularidad AI escribiendo..." : selectedIndustry === "cosmetica" ? "Aura AI escribiendo..." : selectedIndustry === "agro" ? "Inspector AI escribiendo..." : selectedIndustry === "pharma" ? "Validador AI escribiendo..." : "Coordinador AI escribiendo..."}
+                                    Verificando proveedor y modelo...
                                   </div>
                                 </div>
                               )}
@@ -3986,10 +4095,10 @@ export function InvestorSnapshotClient() {
 
               <div className="flex justify-between items-end">
                 <div className="space-y-1">
-                  <span className="text-[8px] text-slate-400 block uppercase">Propietario de Lote</span>
-                  <span className="text-xs text-white font-mono leading-none">04:A5:8C:12:F3:60</span>
+                  <span className="text-[8px] text-slate-400 block uppercase">Cuenta demo</span>
+                  <span className="text-xs text-white font-mono leading-none">DEMO-SIN-OWNER</span>
                 </div>
-                <span className="text-xs font-bold text-amber-400/90 tracking-wider">MENDOZA 2026</span>
+                <span className="text-xs font-bold text-amber-400/90 tracking-wider">ESCENARIO DEMO</span>
               </div>
             </motion.div>
             <span className="text-xs text-slate-500 font-mono">Vista interactiva de la credencial digital del cliente</span>

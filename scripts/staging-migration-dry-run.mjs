@@ -1,15 +1,14 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import {
-  DRY_RUN_MIGRATIONS,
   PLANNED_MIGRATIONS,
   STAGING_MIGRATION_LOCK_ID,
   assertAllowedTarget,
+  assertMigrationProgress,
   assertNoTransactionControl,
-  compareExactLedger,
   createStagingClient,
   expectedBaselineLedger,
-  expectedLedgerForPhase,
+  gateError,
   identifyTarget,
   readLedger,
   relevantSchemaFingerprint,
@@ -22,15 +21,9 @@ let target;
 let failingMigration = null;
 let beforeFingerprint = null;
 let rollbackVerified = false;
+let progress = null;
 
 try {
-  const sqlByFile = new Map();
-  for (const file of DRY_RUN_MIGRATIONS) {
-    const sql = await fs.readFile(path.join(migrationDir, file), "utf8");
-    assertNoTransactionControl(sql, file);
-    sqlByFile.set(file, sql);
-  }
-
   const connection = createStagingClient();
   client = connection.client;
   await client.connect();
@@ -38,10 +31,7 @@ try {
   await client.query("BEGIN TRANSACTION READ ONLY");
   target = await identifyTarget(client, connection.endpointFromHost);
   assertAllowedTarget(target);
-  const beforeLedger = compareExactLedger(
-    await readLedger(client),
-    expectedLedgerForPhase(expectedBaselineLedger(), "dry_run"),
-  );
+  progress = assertMigrationProgress(await readLedger(client), expectedBaselineLedger());
   const enumReconciling = (await client.query(`SELECT EXISTS (
     SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid
     WHERE t.typname = 'evidence_anchor_status' AND e.enumlabel = 'reconciling'
@@ -49,24 +39,32 @@ try {
   beforeFingerprint = await relevantSchemaFingerprint(client);
   await client.query("ROLLBACK");
 
-  if (!beforeLedger.ok) {
-    const error = new Error("MIGRATION_LEDGER_MISMATCH_AFTER_0050");
-    error.reason = "MIGRATION_LEDGER_MISMATCH_AFTER_0050";
-    error.metadata = { ledger: beforeLedger };
-    throw error;
+  if (progress.prefix_length === 0) {
+    throw gateError("ENUM_VALUE_REQUIRES_COMMITTED_0050", {
+      required_first: PLANNED_MIGRATIONS[0],
+      migration_progress: progress,
+    });
   }
   if (!enumReconciling) {
-    const error = new Error("ENUM_VALUE_REQUIRES_COMMITTED_0050");
-    error.reason = "ENUM_VALUE_REQUIRES_COMMITTED_0050";
-    error.metadata = { required_first: PLANNED_MIGRATIONS[0] };
-    throw error;
+    throw gateError("COMMITTED_0050_ENUM_VALUE_MISSING", {
+      required_first: PLANNED_MIGRATIONS[0],
+      migration_progress: progress,
+    });
+  }
+
+  const pendingMigrations = progress.pending_migrations;
+  const sqlByFile = new Map();
+  for (const file of pendingMigrations) {
+    const sql = await fs.readFile(path.join(migrationDir, file), "utf8");
+    assertNoTransactionControl(sql, file);
+    sqlByFile.set(file, sql);
   }
 
   await client.query("BEGIN");
   await client.query("SET LOCAL lock_timeout = '3s'");
   await client.query("SET LOCAL statement_timeout = '30s'");
   await client.query("SELECT pg_advisory_xact_lock($1)", [STAGING_MIGRATION_LOCK_ID]);
-  for (const file of DRY_RUN_MIGRATIONS) {
+  for (const file of pendingMigrations) {
     failingMigration = file;
     await client.query(sqlByFile.get(file));
   }
@@ -75,24 +73,24 @@ try {
 
   await client.query("BEGIN TRANSACTION READ ONLY");
   const afterFingerprint = await relevantSchemaFingerprint(client);
-  const afterLedger = compareExactLedger(
-    await readLedger(client),
-    expectedLedgerForPhase(expectedBaselineLedger(), "dry_run"),
-  );
+  const afterProgress = assertMigrationProgress(await readLedger(client), expectedBaselineLedger());
   await client.query("ROLLBACK");
-  rollbackVerified = beforeFingerprint === afterFingerprint && afterLedger.ok;
+  rollbackVerified = beforeFingerprint === afterFingerprint
+    && afterProgress.prefix_length === progress.prefix_length
+    && afterProgress.pending_migrations.length === progress.pending_migrations.length;
 
   console.log(JSON.stringify({
     ok: rollbackVerified,
     gate: "migration_dry_run",
     target,
     prerequisite: PLANNED_MIGRATIONS[0],
-    applied_in_transaction: DRY_RUN_MIGRATIONS,
+    migration_progress: progress,
+    applied_in_transaction: pendingMigrations,
     persisted: false,
     rollback_verified: rollbackVerified,
     schema_fingerprint_before: beforeFingerprint,
     schema_fingerprint_after: afterFingerprint,
-    ledger: afterLedger,
+    ledger: afterProgress.ledger,
   }));
   process.exitCode = rollbackVerified ? 0 : 1;
 } catch (error) {

@@ -31,7 +31,7 @@ test("settings page keeps tenant-scoped operational links", () => {
   assert.match(settingsSource, /href: `\/subscriptions\$\{tenantQuery\}`/);
   assert.match(settingsSource, /href: canManageUsers \? "\/users" : "\/settings"/);
   assert.match(settingsSource, /sessionSecurityLabel/);
-  assert.match(settingsSource, /SSO Google\/Clerk/);
+  assert.match(settingsSource, /Google\/Clerk SSO verificado/);
 });
 
 test("tenant detail page exposes account administration without hiding it in the CRM", () => {
@@ -41,10 +41,10 @@ test("tenant detail page exposes account administration without hiding it in the
   assert.match(tenantDetailSource, /Tenant account cockpit/);
   assert.match(tenantDetailSource, /Playbook ejecutivo/);
   assert.match(tenantDetailSource, /data-testid="tenant-proof-layer-grid"/);
-  assert.match(tenantDetailSource, /Que se prueba en nexID, IOTA, Polygon y API/);
+  assert.match(tenantDetailSource, /Que evidencia registra nexID, IOTA, Polygon y API/);
   assert.match(tenantDetailSource, /nexID Core/);
   assert.match(tenantDetailSource, /IOTA proof/);
-  assert.match(tenantDetailSource, /Polygon ownership/);
+  assert.match(tenantDetailSource, /Polygon titularidad digital/);
   assert.match(tenantDetailSource, /SDK \/ API/);
   assert.match(tenantDetailSource, /href: "\/settings"/);
   assert.match(tenantDetailSource, /href: "\/users"/);

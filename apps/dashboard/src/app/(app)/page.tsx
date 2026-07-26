@@ -1,15 +1,10 @@
-import { sortRealtimeEvents, type TenantTapRealtimeEvent } from "../../lib/realtime-feed";
+import { classifyRealtimeEventSource, sortRealtimeEvents, type TenantTapRealtimeEvent } from "../../lib/realtime-feed";
 import { dashboardContent } from "../../lib/dashboard-content";
 import { requireDashboardSession } from "../../lib/session";
 import { getDashboardI18n } from "../../lib/locale";
 import {
-  aggregateDemoGeoPoints,
-  demoRuntimeSummary,
   getDashboardDemoEvents,
-  mergeDemoGeoPoints,
-  mergeDemoTrend,
   toDemoAdminEventRow,
-  toDemoFeedRow,
 } from "../../lib/demo-runtime-state";
 import { messages, productUrls } from "@product/config";
 import { resolveEventLocalTime } from "@product/core";
@@ -17,12 +12,23 @@ import DashboardHomeClient from "../../components/dashboard-home-client";
 import { type OpsCommandStep, type OpsCommandTenantRow } from "../../components/ops-command-center";
 import { isClerkConfiguredForRuntime } from "../../lib/clerk-env";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../lib/admin-page-access";
+import { readDemoDataMetaFromResponse } from "../../lib/demo-data-mode";
 
 const FALLBACK_KPIS = {
   scans: "Scans",
   validInvalid: "Valid / Invalid",
   duplicates: "Duplicados",
   tamper: "Tamper alerts",
+};
+
+type HomeRealtimeSource = "production" | "demo" | "seed" | "mixed" | "unavailable";
+type HomeRealtimeAvailability = "ready" | "fallback" | "upstream_error" | "invalid_payload" | "unreachable";
+
+type HomeRealtimeResult = {
+  rows: Array<Record<string, unknown>>;
+  source: HomeRealtimeSource;
+  availability: HomeRealtimeAvailability;
+  detail: string;
 };
 
 function demoOverviewRows() {
@@ -53,187 +59,133 @@ function demoBatchRows() {
   ];
 }
 
-function demoAnalyticsData() {
-  const runtimeEvents = getDashboardDemoEvents(80);
-  const runtimeSummary = demoRuntimeSummary(runtimeEvents);
-  const runtimeGeoPoints = aggregateDemoGeoPoints(runtimeEvents);
-  const now = Date.now();
-  const trendBase = Array.from({ length: 7 }).map((_, index) => {
-    const day = new Date(now - (6 - index) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-    const scans = 70 + index * 12;
-    return { day, scans, duplicates: Math.max(1, Math.floor(scans * 0.05)), tamper: index % 3 === 0 ? 1 : 0 };
-  });
-  const trend = mergeDemoTrend(trendBase, runtimeEvents);
-  const scans = trend.reduce((sum, row) => sum + row.scans, 0);
-  const duplicates = trend.reduce((sum, row) => sum + row.duplicates, 0);
-  const tamper = trend.reduce((sum, row) => sum + row.tamper, 0);
-  const valid = Math.max(scans - duplicates - tamper, 0);
+function fallbackHomeRows(
+  availability: Exclude<HomeRealtimeAvailability, "ready">,
+  detail: string,
+  allowDemoFallback: boolean,
+  demoRows: () => Array<Record<string, unknown>>,
+): HomeRealtimeResult {
   return {
-    kpis: {
-      scans,
-      validRate: Number(((valid / scans) * 100).toFixed(1)),
-      invalidRate: Number((((duplicates + tamper) / scans) * 100).toFixed(1)),
-      duplicates,
-      tamper,
-      activeBatches: 1,
-      activeTenants: 1,
-      geoRegions: 4,
-      resellerPerformance: 88,
-      riskScore: 7.4,
-    },
-    trend,
-    batchStatus: [{ name: "active", value: 3 }, { name: "qa", value: 1 }, { name: "revoked", value: 0 }],
-    geoPoints: mergeDemoGeoPoints([
-      { city: "Mendoza", country: "AR", scans: 218, risk: 3.5, lat: -32.8895, lng: -68.8458 },
-      { city: "San Martin", country: "AR", scans: 54, risk: 1.2, lat: -34.5744, lng: -58.5358 },
-      { city: "Buenos Aires", country: "AR", scans: 133, risk: 5.6, lat: -34.6037, lng: -58.3816 },
-      { city: "Cordoba", country: "AR", scans: 38, risk: 13.8, lat: -31.4201, lng: -64.1888 },
-    ], runtimeGeoPoints),
-    geography: {
-      countries: [
-        { country: "AR", scans: 493, risk: 6.4 },
-      ],
-      cities: [
-        ...runtimeGeoPoints.map((point) => ({
-          city: point.city,
-          country: point.country,
-          lat: point.lat,
-          lng: point.lng,
-          scans: point.scans,
-          risk: point.risk,
-          lastSeen: runtimeEvents.find((event) => event.city === point.city && event.country_code === point.country)?.created_at || new Date(now).toISOString(),
-        })),
-        { city: "Mendoza", country: "AR", lat: -32.8895, lng: -68.8458, scans: 218, risk: 3.5, lastSeen: new Date(now - 12 * 60 * 1000).toISOString() },
-        { city: "San Martin", country: "AR", lat: -34.5744, lng: -58.5358, scans: 54, risk: 1.2, lastSeen: new Date(now - 8 * 60 * 1000).toISOString() },
-        { city: "Buenos Aires", country: "AR", lat: -34.6037, lng: -58.3816, scans: 133, risk: 5.6, lastSeen: new Date(now - 18 * 60 * 1000).toISOString() },
-        { city: "Cordoba", country: "AR", lat: -31.4201, lng: -64.1888, scans: 38, risk: 13.8, lastSeen: new Date(now - 25 * 60 * 1000).toISOString() },
-      ],
-    },
-    devices: {
-      os: [{ label: "iOS", count: 320 }, { label: "Android", count: 228 }],
-      browser: [{ label: "Safari", count: 290 }, { label: "Chrome", count: 250 }],
-      deviceType: [{ label: "mobile", count: 520 }, { label: "desktop", count: 28 }],
-      timezones: [{ label: "America/Argentina/Mendoza", count: 310 }, { label: "America/Argentina/Buenos_Aires", count: 183 }],
-      mobileShare: 94.9,
-    },
-    feed: [
-      ...runtimeEvents.slice(0, 12).map((event) => ({ ...toDemoFeedRow(event), id: 100000 + event.sequence })),
-      { id: 9012, uidHex: "0474856A0B1090", bid: "BALMEC-2026-02", result: "ok", city: "San Martin", country: "AR", device: "Android NFC", createdAt: new Date(now - 8 * 60 * 1000).toISOString() },
-      { id: 9011, uidHex: "0487856A0B1090", bid: "BALMEC-2026-02", result: "replay", city: "Cordoba", country: "AR", device: "Android Pixel 9", createdAt: new Date(now - 25 * 60 * 1000).toISOString() },
-    ],
-    deviceSignals: [
-      { device: "iPhone 15 Pro", scans: 114, countries: 3, validRate: 95.6, risk: 2.9 },
-      { device: "Samsung Galaxy S24", scans: 90, countries: 3, validRate: 88.1, risk: 8.7 },
-    ],
-    products: [
-      { uidHex: "0474856A0B1090", bid: "BALMEC-2026-02", productName: "Cabernet Franc Reserva 2022", winery: "Bodega Balmec", region: "Valle de Uco", vintage: "2022", scanCount: 54, firstSeenAt: new Date(now - 14 * 24 * 60 * 60 * 1000).toISOString(), lastSeenAt: new Date(now - 8 * 60 * 1000).toISOString(), lastVerifiedCity: "San Martin", lastVerifiedCountry: "AR", tokenization: { status: "minted", network: "Polygon", txHash: "0xabc1234f7a9e", tokenId: "8841" } },
-    ],
-    tagJourney: [
-      ...runtimeEvents.slice(0, 8).map((event) => ({
-        uid: event.uid_hex,
-        taps: Math.max(1, runtimeSummary.scans),
-        firstSeenAt: event.created_at,
-        lastSeenAt: event.created_at,
-        origin: { city: "Mendoza", country: "AR", lat: -32.8895, lng: -68.8458 },
-        current: { city: event.city, country: event.country_code, lat: event.lat, lng: event.lng },
-        lastDevice: event.device,
-      })),
-      { uid: "0474856A0B1090", taps: 54, firstSeenAt: new Date(now - 14 * 24 * 60 * 60 * 1000).toISOString(), lastSeenAt: new Date(now - 8 * 60 * 1000).toISOString(), origin: { city: "Valle de Uco", country: "AR", lat: -33.3667, lng: -69.15 }, current: { city: "San Martin", country: "AR", lat: -34.5744, lng: -58.5358 }, lastDevice: "Android NFC" },
-    ],
+    rows: allowDemoFallback ? demoRows() : [],
+    source: allowDemoFallback ? "demo" : "unavailable",
+    availability: allowDemoFallback ? "fallback" : availability,
+    detail,
   };
 }
 
-function emptyAnalyticsData(tenant = "unknown", reason = "Analytics upstream unavailable") {
-  return {
-    ok: false,
-    reason,
-    dataSource: "production",
-    scope: { tenant, source: "unavailable", range: "30d", country: "all" },
-    kpis: { scans: 0, validRate: 0, invalidRate: 0, duplicates: 0, tamper: 0, activeBatches: 0, activeTenants: tenant && tenant !== "unknown" ? 1 : 0, geoRegions: 0, resellerPerformance: 0, riskScore: 0 },
-    trend: [],
-    batchStatus: [],
-    geoPoints: [],
-    geography: { countries: [], cities: [] },
-    devices: { os: [], browser: [], deviceType: [], timezones: [], mobileShare: 0 },
-    feed: [],
-    deviceSignals: [],
-    products: [],
-    tagJourney: [],
-  };
-}
-
-async function getAnalyticsData(context: AdminPageContext) {
-  const tenantScope = context.tenantSlug;
-  try {
-    const query = new URLSearchParams({ range: "30d" });
-    if (tenantScope) {
-      query.set("tenant", tenantScope);
-      query.set("source", "real");
-    }
-    const response = await fetchAdminPage(context, `analytics?${query.toString()}`);
-    if (!response.ok) return tenantScope ? emptyAnalyticsData(tenantScope, `Admin upstream error (${response.status})`) : demoAnalyticsData();
-    const payload = await response.json().catch(() => null);
-    return payload?.kpis ? payload : tenantScope ? emptyAnalyticsData(tenantScope, "Invalid analytics payload") : demoAnalyticsData();
-  } catch {
-    return tenantScope ? emptyAnalyticsData(tenantScope, "Admin upstream unreachable") : demoAnalyticsData();
-  }
-}
-
-async function getOverviewRows(context: AdminPageContext) {
+async function getOverviewRows(context: AdminPageContext, allowDemoFallback: boolean): Promise<HomeRealtimeResult> {
   const tenantScope = context.tenantSlug;
   try {
     const query = new URLSearchParams({ withStats: "1" });
     if (tenantScope) query.set("tenant", tenantScope);
     const response = await fetchAdminPage(context, `tenants?${query.toString()}`);
-    if (!response.ok) return tenantScope ? [] : demoOverviewRows() as Array<Record<string, unknown>>;
-    return response.json();
+    if (!response.ok) return fallbackHomeRows("upstream_error", `Tenant overview upstream error (${response.status})`, allowDemoFallback, demoOverviewRows);
+    const meta = readDemoDataMetaFromResponse(response);
+    const payload = await response.json().catch(() => null);
+    if (!Array.isArray(payload) || (meta.demoMode && !allowDemoFallback)) {
+      return fallbackHomeRows("invalid_payload", "Tenant overview returned an invalid or unauthorized demo payload", allowDemoFallback, demoOverviewRows);
+    }
+    return { rows: payload, source: meta.demoMode ? "demo" : "production", availability: "ready", detail: meta.demoMode ? "Explicit demo tenant overview" : "Production tenant overview confirmed" };
   } catch {
-    return tenantScope ? [] : demoOverviewRows() as Array<Record<string, unknown>>;
+    return fallbackHomeRows("unreachable", "Tenant overview upstream unreachable", allowDemoFallback, demoOverviewRows);
   }
 }
 
-async function getLiveEvents(context: AdminPageContext) {
+function resolveHomeRealtimeSource(
+  rows: Array<Record<string, unknown>>,
+  requestedSource: "production" | "demo",
+): HomeRealtimeSource {
+  if (!rows.length) return requestedSource;
+  const sources = new Set(rows.map((row) => classifyRealtimeEventSource(row.source).eventSource));
+  if (sources.has("seed")) return "seed";
+  const hasDemo = [...sources].some((source) => source === "demo" || source === "demo_simulation");
+  const hasProduction = [...sources].some((source) => source === "real" || source === "imported" || source === "production");
+  if (hasDemo && hasProduction) return "mixed";
+  if (hasDemo) return "demo";
+  if (hasProduction) return "production";
+  return "unavailable";
+}
+
+function fallbackLiveEvents(
+  availability: Exclude<HomeRealtimeAvailability, "ready">,
+  detail: string,
+  includeSeedRows: boolean,
+): HomeRealtimeResult {
+  return {
+    rows: includeSeedRows ? demoLiveEventRows() as Array<Record<string, unknown>> : [],
+    source: includeSeedRows ? "seed" : "unavailable",
+    availability: includeSeedRows ? "fallback" : availability,
+    detail,
+  };
+}
+
+async function getLiveEvents(
+  context: AdminPageContext,
+  requestedSource: "production" | "demo",
+  includeSeedFallback: boolean,
+): Promise<HomeRealtimeResult> {
   const tenantScope = context.tenantSlug;
   try {
-    const query = new URLSearchParams({ limit: "18" });
+    const query = new URLSearchParams({
+      limit: "18",
+      source: requestedSource === "production" ? "real" : "demo",
+    });
     if (tenantScope) {
       query.set("tenant", tenantScope);
-      query.set("source", "real");
     }
     const response = await fetchAdminPage(context, `events?${query.toString()}`);
-    if (!response.ok) return tenantScope ? [] : demoLiveEventRows() as Array<Record<string, unknown>>;
+    if (!response.ok) {
+      return fallbackLiveEvents("upstream_error", `Admin events upstream error (${response.status})`, includeSeedFallback);
+    }
     const payload = await response.json().catch(() => null) as { rows?: Array<Record<string, unknown>> } | Array<Record<string, unknown>> | null;
-    if (!payload) return tenantScope ? [] : demoLiveEventRows() as Array<Record<string, unknown>>;
-    if (Array.isArray(payload)) return payload;
-    return Array.isArray(payload.rows) ? payload.rows : tenantScope ? [] : demoLiveEventRows() as Array<Record<string, unknown>>;
+    if (!payload) return fallbackLiveEvents("invalid_payload", "Admin events returned an invalid payload", includeSeedFallback);
+    const rows = Array.isArray(payload) ? payload : Array.isArray(payload.rows) ? payload.rows : null;
+    if (!rows) return fallbackLiveEvents("invalid_payload", "Admin events returned an invalid payload", includeSeedFallback);
+    const resolvedSource = resolveHomeRealtimeSource(rows, requestedSource);
+    if (requestedSource === "production" && resolvedSource !== "production") {
+      return fallbackLiveEvents("invalid_payload", "Production events returned demo, seed, mixed or unclassified provenance", includeSeedFallback);
+    }
+    return {
+      rows,
+      source: resolvedSource,
+      availability: "ready",
+      detail: requestedSource === "demo" ? "Demo events confirmed by nexID Core" : "Production events confirmed by nexID Core",
+    };
   } catch {
-    return tenantScope ? [] : demoLiveEventRows() as Array<Record<string, unknown>>;
+    return fallbackLiveEvents("unreachable", "Admin events upstream unreachable", includeSeedFallback);
   }
 }
 
-async function getTokenizationRows(context: AdminPageContext) {
+async function getTokenizationRows(context: AdminPageContext, allowDemoFallback: boolean): Promise<HomeRealtimeResult> {
   const tenantScope = context.tenantSlug;
   try {
     const query = new URLSearchParams({ limit: "30" });
     if (tenantScope) query.set("tenant", tenantScope);
     const response = await fetchAdminPage(context, `tokenization/requests?${query.toString()}`);
-    if (!response.ok) return tenantScope ? [] : demoTokenizationRows() as Array<Record<string, unknown>>;
-    const payload = await response.json().catch(() => ({})) as { rows?: Array<Record<string, unknown>> };
-    return payload.rows || (tenantScope ? [] : demoTokenizationRows() as Array<Record<string, unknown>>);
+    if (!response.ok) return fallbackHomeRows("upstream_error", `Tokenization upstream error (${response.status})`, allowDemoFallback, demoTokenizationRows);
+    const meta = readDemoDataMetaFromResponse(response);
+    const payload = await response.json().catch(() => null) as { ok?: boolean; rows?: Array<Record<string, unknown>> } | null;
+    if (payload?.ok === false || !Array.isArray(payload?.rows) || (meta.demoMode && !allowDemoFallback)) {
+      return fallbackHomeRows("invalid_payload", "Tokenization returned an invalid or unauthorized demo payload", allowDemoFallback, demoTokenizationRows);
+    }
+    return { rows: payload.rows, source: meta.demoMode ? "demo" : "production", availability: "ready", detail: meta.demoMode ? "Explicit demo tokenization data" : "Production tokenization data confirmed" };
   } catch {
-    return tenantScope ? [] : demoTokenizationRows() as Array<Record<string, unknown>>;
+    return fallbackHomeRows("unreachable", "Tokenization upstream unreachable", allowDemoFallback, demoTokenizationRows);
   }
 }
 
-async function getBatchRows(context: AdminPageContext) {
-  const tenantScope = context.tenantSlug;
+async function getBatchRows(context: AdminPageContext, allowDemoFallback: boolean): Promise<HomeRealtimeResult> {
   try {
     const response = await fetchAdminPage(context, "batches");
-    if (!response.ok) return tenantScope ? [] : demoBatchRows() as Array<Record<string, unknown>>;
-    const payload = await response.json().catch(() => []) as Array<Record<string, unknown>>;
-    return Array.isArray(payload) ? payload : tenantScope ? [] : demoBatchRows() as Array<Record<string, unknown>>;
+    if (!response.ok) return fallbackHomeRows("upstream_error", `Batches upstream error (${response.status})`, allowDemoFallback, demoBatchRows);
+    const meta = readDemoDataMetaFromResponse(response);
+    const payload = await response.json().catch(() => null) as Array<Record<string, unknown>> | null;
+    if (!Array.isArray(payload) || (meta.demoMode && !allowDemoFallback)) {
+      return fallbackHomeRows("invalid_payload", "Batches returned an invalid or unauthorized demo payload", allowDemoFallback, demoBatchRows);
+    }
+    return { rows: payload, source: meta.demoMode ? "demo" : "production", availability: "ready", detail: meta.demoMode ? "Explicit demo batch data" : "Production batch data confirmed" };
   } catch {
-    return tenantScope ? [] : demoBatchRows() as Array<Record<string, unknown>>;
+    return fallbackHomeRows("unreachable", "Batches upstream unreachable", allowDemoFallback, demoBatchRows);
   }
 }
 
@@ -283,7 +235,7 @@ function toRealtimeEvent(row: Record<string, unknown>): TenantTapRealtimeEvent {
     locationSource: row.location_source ? String(row.location_source) : (location.source ? String(location.source) : null),
     locationAccuracyM: Number.isFinite(accuracy) ? accuracy : null,
     productName: row.product_name ? String(row.product_name) : null,
-    source: String(row.source || "").toLowerCase().includes("demo") ? "demo" : "production",
+    ...classifyRealtimeEventSource(row.source),
   };
 }
 
@@ -299,20 +251,20 @@ export default async function DashboardHome() {
   const adminContext = await createAdminPageContext(session);
   const tenantScope = adminContext.tenantSlug;
   const isTenantAdmin = !adminContext.canSelectTenant;
+  const realtimeStreamSource = session.isDemo ? "demo" : "production";
+  const allowDemoFallback = Boolean(session.isDemo);
 
-  const [overviewRawResult, liveEventsResult, tokenizationRowsResult, batchRowsResult, analyticsDataResult] = await Promise.all([
-    getOverviewRows(adminContext),
-    getLiveEvents(adminContext),
-    getTokenizationRows(adminContext),
-    getBatchRows(adminContext),
-    getAnalyticsData(adminContext),
+  const [overviewRawResult, liveEventsResult, tokenizationRowsResult, batchRowsResult] = await Promise.all([
+    getOverviewRows(adminContext, allowDemoFallback),
+    getLiveEvents(adminContext, realtimeStreamSource, allowDemoFallback),
+    getTokenizationRows(adminContext, allowDemoFallback),
+    getBatchRows(adminContext, allowDemoFallback),
   ]);
 
-  const overviewRaw = overviewRawResult as Array<Record<string, unknown>>;
-  const liveEvents = liveEventsResult as Array<Record<string, unknown>>;
-  const tokenizationRows = tokenizationRowsResult as Array<Record<string, unknown>>;
-  const batchRows = batchRowsResult as Array<Record<string, unknown>>;
-  const analyticsData = analyticsDataResult as any;
+  const overviewRaw = overviewRawResult.rows;
+  const liveEvents = liveEventsResult.rows;
+  const tokenizationRows = tokenizationRowsResult.rows;
+  const batchRows = batchRowsResult.rows;
 
   const labels = locale === "en"
     ? {
@@ -436,14 +388,14 @@ export default async function DashboardHome() {
       owner: "Owner",
     },
     {
-      label: "Tap físico + riesgo",
-      body: "QA operativo confirma taps reales, replay bajo, tamper coherente y mapa de confianza.",
+      label: "Mensaje NFC + riesgo",
+      body: "QA operativo revisa eventos NFC reportados, replay, señales TT/tamper y ubicación declarada; no certifica el producto físico.",
       status: totalScans > 0 && totalDuplicates + totalTamper < Math.max(totalScans * 0.12, 3) ? "ready" : totalScans > 0 ? "working" : "blocked",
       owner: "Seguridad",
     },
     {
       label: "Ownership, NFT y experiencia",
-      body: "Portal, wallet, tokenización y experiencias verificadas quedan como salida comercial del tap.",
+      body: "Portal, wallet, titularidad digital, tokenización y experiencias con evidencia quedan como salida comercial del tap.",
       status: mintedTokens > 0 ? "ready" : "working",
       owner: "Growth",
     },
@@ -458,13 +410,25 @@ export default async function DashboardHome() {
       session={session}
       tenantScope={tenantScope}
       isTenantAdmin={isTenantAdmin}
-      analyticsData={analyticsData}
       kpis={kpis}
       copy={copy}
       labels={labels}
       opsSteps={opsSteps}
       opsTenantRows={opsTenantRows}
       initialRealtimeEvents={initialRealtimeEvents}
+      realtimeStreamSource={realtimeStreamSource}
+      realtimeDataSource={liveEventsResult.source}
+      realtimeAvailability={liveEventsResult.availability}
+      realtimeAvailabilityDetail={liveEventsResult.detail}
+      overviewDataSource={overviewRawResult.source}
+      overviewAvailability={overviewRawResult.availability}
+      overviewAvailabilityDetail={overviewRawResult.detail}
+      batchDataSource={batchRowsResult.source}
+      batchAvailability={batchRowsResult.availability}
+      batchAvailabilityDetail={batchRowsResult.detail}
+      tokenizationDataSource={tokenizationRowsResult.source}
+      tokenizationAvailability={tokenizationRowsResult.availability}
+      tokenizationAvailabilityDetail={tokenizationRowsResult.detail}
       successfulTaps={successfulTaps}
       failedTaps={failedTaps}
       tokenizationByStatus={tokenizationByStatus}

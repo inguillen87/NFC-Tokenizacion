@@ -24,15 +24,15 @@ async function withProcessEnv(overrides, operation) {
   }
 }
 
-async function getExecutorJson(pathname, method = "GET") {
+async function getExecutorJson(pathname, method = "GET", dependencies = {}, headers = {}) {
   return new Promise((resolve) => {
-    const req = new Request(`http://executor.test${pathname}`, { method });
+    const req = new Request(`http://executor.test${pathname}`, { method, headers });
     const response = { status: null, body: null };
     const res = {
       writeHead: (status) => { response.status = status; },
       end: (body) => { response.body = JSON.parse(body); resolve(response); },
     };
-    void handler(req, res);
+    void handler(req, res, dependencies);
   });
 }
 
@@ -206,11 +206,68 @@ test("health reports the IOTA signer mode independently from the Polygon signer"
     assert.equal(response.iotaEvidenceV2.signerMode, "kms");
     assert.equal(response.iotaEvidenceV2.signerConfigured, true);
     assert.equal(response.kmsReady, true);
+    assert.match(response.note, /Configuration alone does not attest KMS protection level/);
+    assert.match(response.note, /HSM backing, or key non-exportability/);
+    assert.doesNotMatch(response.note, /^Remote non-exportable KMS\/HSM signer configured\.$/);
   } finally {
     for (const key of keys) {
       if (previous[key] === undefined) delete process.env[key]; else process.env[key] = previous[key];
     }
   }
+});
+
+test("IOTA-only health never reports Polygon as the active network", async () => {
+  await withProcessEnv({
+    EXECUTOR_CAPABILITIES: "iota",
+    EXECUTOR_SIGNER_MODE: "private_key",
+    IOTA_EXECUTOR_SIGNER_MODE: "kms_wrapped",
+    IOTA_EVM_RPC_URL: "https://json-rpc.evm.testnet.iota.cafe",
+    IOTA_EVM_EXPECTED_CHAIN_ID: "1076",
+    IOTA_EVM_ANCHOR_CONTRACT_V2: "0xde7284812D0c81080Cc7B2f60d6D9769343Aa2B0",
+    NEXID_KMS_ENVIRONMENT: "test",
+    IOTA_KMS_WRAP_KEY_RESOURCE: "projects/nexid1/locations/global/keyRings/test/cryptoKeys/iota",
+    IOTA_KMS_WRAPPED_PRIVATE_KEY: Buffer.alloc(32, 9).toString("base64"),
+    IOTA_KMS_PUBLISHER_ADDRESS: "0x0000000000000000000000000000000000000001",
+  }, async () => {
+    const response = await new Promise((resolve) => {
+      const req = new Request("http://executor.test/health");
+      const res = { writeHead: () => {}, end: (body) => resolve(JSON.parse(body)) };
+      void handler(req, res);
+    });
+
+    assert.deepEqual(response.capabilities, ["iota"]);
+    assert.equal(response.network, "iota-evm-testnet");
+    assert.equal(response.signerMode, "kms_wrapped");
+    assert.equal(response.rpcConfigured, true);
+    assert.equal(response.contract.address, "0xde7284812D0c81080Cc7B2f60d6D9769343Aa2B0");
+    assert.equal(response.minter, null);
+    assert.equal(response.networks.iota.expectedChainId, "1076");
+    assert.equal(response.networks.polygon, undefined);
+  });
+});
+
+test("health labels SOFTWARE-wrapped custody without implying HSM or direct non-exportable signing", async () => {
+  await withProcessEnv({
+    EXECUTOR_SIGNER_MODE: "private_key",
+    IOTA_EXECUTOR_SIGNER_MODE: "kms_wrapped",
+    NEXID_KMS_ENVIRONMENT: "test",
+    IOTA_KMS_WRAP_KEY_RESOURCE: "projects/nexid1/locations/global/keyRings/test/cryptoKeys/iota",
+    IOTA_KMS_WRAPPED_PRIVATE_KEY: Buffer.alloc(32, 7).toString("base64"),
+    IOTA_KMS_PUBLISHER_ADDRESS: "0x0000000000000000000000000000000000000001",
+  }, async () => {
+    const response = await new Promise((resolve) => {
+      const req = new Request("http://executor.test/health");
+      const res = { writeHead: () => {}, end: (body) => resolve(JSON.parse(body)) };
+      void handler(req, res);
+    });
+
+    assert.equal(response.iotaEvidenceV2.signerMode, "kms_wrapped");
+    assert.equal(response.iotaEvidenceV2.signerConfigured, true);
+    assert.equal(response.kmsReady, true);
+    assert.match(response.note, /KMS SOFTWARE-wrapped pilot signer/);
+    assert.match(response.note, /wallet plaintext exists ephemerally in executor memory/);
+    assert.match(response.note, /not HSM or direct non-exportable signing/);
+  });
 });
 
 test("executor readiness fails closed when durable publishing prerequisites are absent", async () => {
@@ -233,10 +290,21 @@ test("executor readiness is scoped to explicitly enabled chain capabilities", as
     POLYGON_EXPECTED_CHAIN_ID: "80002",
     TOKENIZATION_EXECUTOR_SECRET: "test-only-long-executor-secret",
   }, async () => {
-    const response = await getExecutorJson("/ready");
+    const signerAddress = new Wallet(process.env.POLYGON_MINTER_PRIVATE_KEY).address;
+    const response = await getExecutorJson("/ready", "GET", {
+      polygonReadinessProbe: async () => ({
+        chainId: 80002,
+        contractDeployed: true,
+        ownerAddress: "0x0000000000000000000000000000000000000002",
+        minterAllowlisted: true,
+        balanceWei: 1_000_000_000_000_000n,
+      }),
+    });
     assert.equal(response.status, 200);
     assert.deepEqual(response.body.capabilities, ["polygon"]);
     assert.equal(response.body.chains.polygon.ok, true);
+    assert.equal(response.body.chains.polygon.live_verified, true);
+    assert.equal(response.body.chains.polygon.signer.address, signerAddress);
     assert.equal(response.body.chains.iota, undefined);
 
     const disabled = await getExecutorJson("/anchor-evidence", "POST");

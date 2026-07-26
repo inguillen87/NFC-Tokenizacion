@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Badge, Card, StatusChip } from "@product/ui";
 import { AlertTriangle, Bot, ClipboardCheck, Download, Mail, MapPin, MessageCircle, MousePointerClick, Route, Send, ShieldCheck, Sparkles, Sprout, Users } from "lucide-react";
+import { strictCoordinatePair } from "../lib/geo-coordinates";
 import type { TenantTapRealtimeEvent } from "../lib/realtime-feed";
 
 type SegmentTone = "cyan" | "green" | "amber" | "rose" | "violet";
@@ -61,8 +62,8 @@ export function CustomerGrowthCommandCenter({ events, tenantScope, successfulTap
 
   const insights = useMemo(() => {
     const validEvents = events.filter((event) => String(event.verdict || "").toUpperCase() === "VALID");
-    const gpsEvents = events.filter((event) => Number.isFinite(Number(event.lat)) && Number.isFinite(Number(event.lng)));
-    const validGpsEvents = validEvents.filter((event) => Number.isFinite(Number(event.lat)) && Number.isFinite(Number(event.lng)));
+    const gpsEvents = events.filter((event) => strictCoordinatePair(event.lat, event.lng) != null);
+    const validGpsEvents = validEvents.filter((event) => strictCoordinatePair(event.lat, event.lng) != null);
     const riskEvents = events.filter((event) => String(event.riskLevel || "").toLowerCase() !== "low" && String(event.riskLevel || "").trim());
     const uniqueUids = new Set(events.map((event) => event.uidMasked).filter(Boolean));
     const cityCounts = new Map<string, number>();
@@ -99,9 +100,9 @@ export function CustomerGrowthCommandCenter({ events, tenantScope, successfulTap
       icon: MapPin,
     },
     {
-      title: "UIDs con evidencia real",
+      title: "UIDs con eventos reportados",
       audience: insights.unique,
-      detail: "UIDs únicos con tap físico listos para club, puntos o garantía.",
+      detail: "UIDs únicos con eventos NFC; usalos como segmento para evaluar club, puntos o garantía según policy.",
       action: "Abrir portal de usuarios",
       href: "/consumer-network/overview",
       tone: "green" as const,
@@ -149,9 +150,9 @@ export function CustomerGrowthCommandCenter({ events, tenantScope, successfulTap
   const enterpriseGrowthPlays = [
     {
       icon: Sprout,
-      title: "Soporte técnico desde producto real",
-      body: "Después de la lectura válida se abre ficha técnica, EPP, dosificación, soporte y confirmación. No reemplaza sistemas agro: les entrega una señal verificable.",
-      metric: `${formatNumber(insights.valid)} lecturas confiables`,
+      title: "Soporte técnico desde evento NFC",
+      body: "Después de un mensaje NFC válido según policy se abre ficha técnica, EPP, dosificación, soporte y confirmación. No autentica el producto físico ni reemplaza sistemas agro.",
+      metric: `${formatNumber(insights.valid)} mensajes NFC válidos`,
       href: "/loyalty/campaigns?template=agro_soporte",
     },
     {
@@ -181,7 +182,7 @@ export function CustomerGrowthCommandCenter({ events, tenantScope, successfulTap
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-200">Clientes & campañas</p>
-            <h2 className="mt-2 text-2xl font-black tracking-tight text-white sm:text-3xl">Convertir lecturas verificadas en segmentos, beneficios y recompra.</h2>
+            <h2 className="mt-2 text-2xl font-black tracking-tight text-white sm:text-3xl">Convertir mensajes NFC válidos en segmentos, beneficios y recompra.</h2>
             <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-300">
               Esta solapa sirve para decidir qué segmento activar, con qué beneficio, por qué canal y desde qué ciudad. WhatsApp/email siguen siendo alta liviana; wallet y NFT aparecen solo cuando el usuario lo pide.
             </p>
@@ -202,7 +203,7 @@ export function CustomerGrowthCommandCenter({ events, tenantScope, successfulTap
           <div className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-4">
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-100">Tasa válida</p>
             <p className="mt-2 text-3xl font-black text-white">{insights.conversionRate}%</p>
-            <p className="mt-1 text-xs text-emerald-100/80">{formatNumber(insights.valid)} lecturas confiables</p>
+            <p className="mt-1 text-xs text-emerald-100/80">{formatNumber(insights.valid)} mensajes NFC válidos</p>
           </div>
           <div className="rounded-2xl border border-amber-300/20 bg-amber-500/10 p-4">
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-100">GPS útil</p>
@@ -220,7 +221,7 @@ export function CustomerGrowthCommandCenter({ events, tenantScope, successfulTap
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-200">Modo enterprise por vertical</p>
-              <h3 className="mt-1 text-lg font-black text-white">De lectura verificada a campaña útil para cliente, canal y equipo técnico.</h3>
+              <h3 className="mt-1 text-lg font-black text-white">De evidencia NFC validada a campaña útil para cliente, canal y equipo técnico.</h3>
               <p className="mt-1 text-xs leading-5 text-slate-400">
                 Esta capa evita vender un CRM genérico: convierte señales físicas en acciones comerciales, soporte y aprendizaje de mercado.
               </p>

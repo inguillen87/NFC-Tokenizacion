@@ -78,9 +78,9 @@ const PUBLIC_VERIFY_URL = withPath(productUrls.web, "/proof/verify");
 const EVENT_OPTIONS = [
   { value: "origin_attested", label: "Origen atestado", detail: "Declara el origen operativo de un lote o producto." },
   { value: "qa_release", label: "Liberacion de calidad", detail: "Registra que QA aprobo una version o lote." },
-  { value: "custody_checkpoint", label: "Hito de custodia", detail: "Prueba un cambio de control sin publicar datos sensibles." },
+  { value: "custody_checkpoint", label: "Hito de custodia", detail: "Registra evidencia declarada de un cambio de control sin publicar datos sensibles." },
   { value: "field_scan", label: "Escaneo de campo", detail: "Registra una validacion en planta, deposito o campo." },
-  { value: "delivery_confirmed", label: "Entrega confirmada", detail: "Cierra un hito logistico verificable." },
+  { value: "delivery_confirmed", label: "Entrega declarada", detail: "Registra una confirmacion operativa verificable; no prueba la entrega fisica por si sola." },
   { value: "claim_policy_opened", label: "Reclamo habilitado", detail: "Deja evidencia de la regla que habilito un reclamo." },
 ] as const;
 
@@ -309,7 +309,7 @@ export function ProofAnchorComposer({ canWrite, defaultOccurredAt, initialTenant
         <div>
           <Link className={styles.backLink} href="/proof"><ArrowLeft aria-hidden="true" /> Trust Operations</Link>
           <span className={styles.eyebrow}><FileCheck2 aria-hidden="true" /> Evidence Composer</span>
-          <h1>De un hecho operativo a una prueba verificable</h1>
+          <h1>De un registro operativo a evidencia verificable</h1>
           <p>Registra evidencia privada, calcula su SHA-256 canonico y emite un recibo sin publicar el contenido sensible.</p>
         </div>
         <div className={styles.headerFacts} aria-label="Garantias del flujo">
@@ -322,7 +322,7 @@ export function ProofAnchorComposer({ canWrite, defaultOccurredAt, initialTenant
       <ol className={styles.steps} aria-label="Etapas del flujo">
         <li data-active="true"><span>1</span><div><strong>Describe</strong><small>Que paso y sobre que recurso</small></div></li>
         <li><span>2</span><div><strong>Protege</strong><small>SHA-256 y Merkle root</small></div></li>
-        <li><span>3</span><div><strong>Comprueba</strong><small>Recibo y verificador publico</small></div></li>
+        <li><span>3</span><div><strong>Verifica</strong><small>Hash, recibo y referencia publica</small></div></li>
       </ol>
 
       {isDemo ? (

@@ -193,21 +193,21 @@ export function OpsCommandCenter({
     {
       icon: QrCode,
       title: "2. Activar tags",
-      body: "Ver UIDs, estado, producto asociado y tags pendientes o sospechosos.",
+      body: "Ver UIDs, estado reportado, ficha asociada y tags pendientes o sospechosos.",
       href: "/tags",
       cta: "Ver tags",
     },
     {
       icon: ShieldCheck,
       title: "3. QA de campo",
-      body: "Revisar taps reales, replay, tamper, ubicación y dispositivo por UID.",
+      body: "Revisar taps reportados, replay, TT/tamper, ubicación declarada y dispositivo por UID.",
       href: "/events",
       cta: "Auditar eventos",
     },
     {
       icon: BadgeCheck,
       title: "4. Passport",
-      body: "Publicar certificado, ownership, wallet y prueba visible para consumidor.",
+      body: "Publicar certificado, titularidad digital, wallet y evidencia visible para consumidor.",
       href: "/tokenization",
       cta: "Anclar",
     },
@@ -248,7 +248,7 @@ export function OpsCommandCenter({
     {
       icon: Send,
       title: "Uso responsable post-tap",
-      body: "Ficha técnica, uso responsable, soporte, reclamo o beneficio aparecen después de validar el producto real.",
+      body: "Ficha técnica, uso responsable, soporte, reclamo o beneficio aparecen después de validar el mensaje NFC y aplicar la policy; no prueban el producto físico.",
       metric: "contenido + opt-in",
       href: "/loyalty/campaigns",
       cta: "Crear acción",
@@ -403,7 +403,7 @@ export function OpsCommandCenter({
           <div className="grid gap-5 lg:grid-cols-2">
             <div className="rounded-3xl border border-white/10 bg-slate-950/50 p-4">
               <h3 className="text-sm font-black uppercase tracking-[0.16em] text-cyan-200">Embudo de confianza</h3>
-              <p className="mt-1 text-xs text-slate-400">De lote cargado a tap real, ownership y tokenización.</p>
+              <p className="mt-1 text-xs text-slate-400">De lote cargado a evento NFC, titularidad digital y tokenización.</p>
               <div className="mt-4 h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={normalizedFunnel} margin={{ left: 0, right: 8, top: 16, bottom: 0 }}>
@@ -471,7 +471,7 @@ export function OpsCommandCenter({
                       <td className="px-3 py-3">{formatNumber(tenant.scans)}</td>
                       <td className="px-3 py-3">{formatNumber(tenant.batches)}</td>
                       <td className="px-3 py-3">{formatNumber(tenant.tags)}</td>
-                      <td className="px-3 py-3"><StatusChip label={`${tenant.riskScore}/100`} tone={riskTone(tenant.riskScore)} /></td>
+                      <td className="px-3 py-3"><StatusChip label={tenant.scans > 0 ? `${tenant.riskScore}/100` : "sin base"} tone={tenant.scans > 0 ? riskTone(tenant.riskScore) : "warn"} /></td>
                       <td className="px-3 py-3"><StatusChip label={pausedTenants.has(tenant.slug) ? "pausado" : tenant.status} tone={pausedTenants.has(tenant.slug) ? "risk" : tenant.status === "risk" ? "risk" : tenant.status === "pending" ? "warn" : "good"} /></td>
                       <td className="px-3 py-3 text-right">
                         {selectedMode === "global" ? (

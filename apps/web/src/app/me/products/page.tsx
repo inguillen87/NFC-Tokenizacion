@@ -29,7 +29,7 @@ function certificateHref(product: ConsumerPortalProduct) {
 function experienceHref(product: ConsumerPortalProduct) {
   const eventId = String(product.latest_tap_event_id || product.first_tap_event_id || "").trim();
   const tenant = String(product.tenant_slug || "").trim();
-  const productName = String(product.product_name || "Producto verificado").trim();
+  const productName = String(product.product_name || "Producto asociado").trim();
   const query = new URLSearchParams();
   if (tenant) query.set("tenant", tenant);
   if (eventId) query.set("eventId", eventId);
@@ -60,13 +60,13 @@ export default async function ProductsPage({ searchParams }: { searchParams?: Pr
   ];
 
   return (
-    <PortalShell title="Productos Guardados" subtitle="Biblioteca digital verificable de botellas y productos que escaneaste, guardaste o reclamaste en tu cuenta.">
+    <PortalShell title="Productos Guardados" subtitle="Biblioteca de referencias digitales asociadas a tu cuenta. Certificados y ownership no garantizan autenticidad física, procedencia ni custodia.">
       {!products.length ? (
         <section className="rounded-3xl border border-amber-500/20 bg-slate-950/80 p-8 text-center shadow-lg shadow-black/40">
           <PackageCheck className="mx-auto h-12 w-12 text-slate-600 animate-pulse" />
           <h3 className="mt-4 text-base font-black text-white">No hay productos guardados todavía</h3>
           <p className="mt-2 text-xs leading-relaxed text-slate-400 max-w-md mx-auto">
-            Escanea una botella con etiqueta NFC nexID y presiona "Reclamar Dueño" para vincular su pasaporte original a tu cuenta.
+            Leé una etiqueta NFC nexID y solicitá asociar el producto. El ownership requiere identidad, evidencia de compra y política del tenant; un tap por sí solo no registra dueño.
           </p>
         </section>
       ) : (
@@ -181,15 +181,15 @@ export default async function ProductsPage({ searchParams }: { searchParams?: Pr
                           {[
                             { 
                               step: "1", 
-                              title: "Autenticidad", 
-                              desc: "Validación digital de procedencia.", 
+                              title: "Evidencia NFC",
+                              desc: "Mensaje y datos declarados.",
                               active: true, 
                               color: "border-emerald-500/30 bg-emerald-500/5 text-emerald-300" 
                             },
                             { 
                               step: "2", 
                               title: "Ownership", 
-                              desc: isClaimed ? "Propiedad vinculada al Passport." : "Registrar dueño con tap físico.", 
+                              desc: isClaimed ? "Ownership aprobado; no autentica el objeto físico." : "Solicitud sujeta a identidad, compra y política.",
                               active: isClaimed, 
                               color: isClaimed 
                                 ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-300" 
@@ -207,7 +207,7 @@ export default async function ProductsPage({ searchParams }: { searchParams?: Pr
                             { 
                               step: "4", 
                               title: "Wallet Web3", 
-                              desc: hasTokenProof ? "NFT acuñado en Polygon." : "Tokenización lista en red.", 
+                              desc: hasTokenProof ? "NFT con transacción Polygon reportada." : "Sin prueba on-chain confirmada.",
                               active: hasTokenProof, 
                               color: hasTokenProof 
                                 ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-300" 
@@ -237,16 +237,16 @@ export default async function ProductsPage({ searchParams }: { searchParams?: Pr
                       {/* Technical Info & Faucet block */}
                       <div className="mt-5">
                         <div className="grid gap-2 rounded-2xl border border-white/5 bg-slate-900/40 p-4 text-[10px] text-slate-400 sm:grid-cols-3">
-                          <p><span className="block uppercase tracking-wider text-slate-600 font-bold mb-0.5">Primer Escaneo</span>#{product.first_tap_event_id || "n/a"}</p>
+                          <p><span className="block uppercase tracking-wider text-slate-600 font-bold mb-0.5">Primer Evento</span>{product.first_tap_event_id ? `#${product.first_tap_event_id}` : "No reportado"}</p>
                           <p><span className="block uppercase tracking-wider text-slate-600 font-bold mb-0.5">Último Reportado</span>{product.latest_verdict || `#${product.latest_tap_event_id || "n/a"}`} {product.latest_city ? `- ${product.latest_city}` : ""}</p>
-                          <p><span className="block uppercase tracking-wider text-slate-600 font-bold mb-0.5">Siguiente Acción</span>{isClaimed ? "Canjear Beneficios" : "Escanear y Reclamar"}</p>
+                          <p><span className="block uppercase tracking-wider text-slate-600 font-bold mb-0.5">Siguiente Acción</span>{isClaimed ? "Canjear Beneficios" : "Solicitar ownership"}</p>
                         </div>
                         
                         {/* Blockchain Proof Indicator */}
                         <div className="mt-3 rounded-2xl border border-cyan-500/15 bg-cyan-500/5 p-4 text-xs">
                           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div>
-                              <p className="text-[10px] font-black uppercase tracking-wider text-cyan-300">Certificación Criptográfica</p>
+                              <p className="text-[10px] font-black uppercase tracking-wider text-cyan-300">Evidencia Blockchain</p>
                               <p className="mt-0.5 font-bold text-white">
                                 {hasTokenProof 
                                   ? `Acuñado en Polygon Amoy · Token #${product.tokenization_token_id}` 
@@ -258,7 +258,7 @@ export default async function ProductsPage({ searchParams }: { searchParams?: Pr
                             
                             {certificateUrl ? (
                               <Link href={certificateUrl} className="rounded-xl border border-cyan-500/35 bg-cyan-500/10 px-3 py-2 text-[10px] font-black text-cyan-200 hover:bg-cyan-500/20 transition text-center shrink-0">
-                                Ver Firma Digital
+                                Ver Certificado
                               </Link>
                             ) : hasTokenProof ? (
                               <a href={tokenExplorerHref} target="_blank" rel="noreferrer" className="rounded-xl border border-emerald-500/35 bg-emerald-500/10 px-3 py-2 text-[10px] font-black text-emerald-200 hover:bg-emerald-500/20 transition text-center shrink-0">

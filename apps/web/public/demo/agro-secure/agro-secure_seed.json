@@ -2,7 +2,7 @@
   "vertical_slug": "agro-secure",
   "title": "Agro / Input & Traceability (Secure)",
   "recommended_tag": "NTAG424DNA_TT",
-  "narrative": "Authenticate agrochemical or seed products, track distribution lots and expose technical sheets on tap.",
+  "narrative": "Demo tag-message evidence, declared distribution lots and technical sheets for agrochemical or seed references; physical product and contents require separate controls.",
   "why_nfc_over_qr": "Better than QR because field products often suffer relabeling or diluted/grey-market substitution. A secure tag plus API gateway gives supply-chain evidence, scan heatmaps and a tap-to-open technical dossier.",
   "batch_id": "AGRO_SECURE_DEMO_001",
   "locale_defaults": [

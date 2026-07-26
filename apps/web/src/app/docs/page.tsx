@@ -102,15 +102,15 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
   "es-AR": {
     eyebrow: "Guia comercial + producto",
     title:
-      "nexID explicado sin jerga: producto real, confianza y postventa en un solo toque",
+      "nexID explicado sin jerga: evidencia digital y postventa desde un toque",
     description:
-      "No vendemos chips sueltos ni blockchain como moda. Creamos una capa de confianza para que cada producto pueda mostrar evidencia de autenticidad, origen y estado, y habilitar garantías, beneficios, certificados digitales o propiedad digital cuando la política lo permite.",
+      "No vendemos chips sueltos ni blockchain como moda. Validamos mensajes NFC/SUN, mostramos lote y origen declarados, reportamos TT cuando existe y habilitamos garantías, beneficios, certificados o ownership digital cuando la política lo permite. Eso no prueba por sí solo el objeto físico.",
     simpleFlowEyebrow: "Arquitectura simple",
     simpleFlowTitle: "La arquitectura en una frase",
     simpleFlowBody:
-      "Un producto físico recibe una identidad digital; cada toque ejecuta reglas de confianza, cuenta su historia y abre el siguiente paso comercial seguro si corresponde.",
+      "Una referencia de producto declarada se asocia a una identidad digital; cada toque valida el mensaje disponible, muestra evidencia acotada y abre el siguiente paso permitido por política.",
     simpleFlow: [
-      "Producto + lote + fotos reales",
+      "Referencia + lote + imágenes declaradas",
       "NFC o QR seguro",
       "Tap con resultado claro",
       "Pasaporte, garantía, beneficios y certificado",
@@ -118,7 +118,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     pillarsTitle: "Tesis de producto",
     pillars: [
       "Línea BASIC (NTAG215): volumen, UX por toque, activaciones y control operativo.",
-      "Línea SECURE (NTAG 424 DNA): autenticidad fuerte, anti-clone y evidencia verificable. TagTamper agrega estado físico de apertura cuando el circuito está integrado.",
+      "Línea SECURE (NTAG 424 DNA): autenticación criptográfica del mensaje, resistencia a clonación del tag y evidencia verificable. TagTamper reporta estado del circuito cuando está correctamente integrado.",
       "nexID OS: issuance + verification API + dashboard + webhooks + canal reseller/white-label.",
       "Arquitectura marker-agnostic: NFC + QR fallback desde el diseño para escalar adopción.",
     ],
@@ -133,13 +133,13 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       {
         chip: "NTAG 424 DNA",
         bestFor:
-          "Autenticidad fuerte, SUN/SDM, documentos, vouchers seguros, control de canal.",
+          "Mensajes SUN/SDM autenticados, documentos, vouchers seguros y control de canal.",
         avoid: "No venderlo como sensor de temperatura/cold-chain por sí solo.",
       },
       {
         chip: "NTAG 424 DNA TagTamper",
         bestFor:
-          "Integridad física de cierre/sello: wine, cosmética premium, pharma packaging.",
+          "Evidencia de estado del circuito de cierre: wine, cosmética premium y pharma packaging.",
         avoid: "No usarlo donde no importa estado físico del empaque.",
       },
     ],
@@ -185,7 +185,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     packs: [
       "1) Wine Secure (wedge premium de mayor claridad comercial).",
       "2) Events Basic + Events Secure (volumen + moat en el mismo vertical).",
-      "3) Docs & Presence Secure (credenciales, certificados y evidencia física).",
+      "3) Docs & Presence Secure (credenciales, certificados y presencia declarada por evento).",
       "Expansión inmediata: Cosmetics Secure. Expansión regulatoria: exportadores DPP-ready.",
     ],
     rolloutTitle: "Estándar operativo para pilotos y rollouts serios",
@@ -204,16 +204,16 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     ],
     roadmapTitle: "Roadmap técnico (sin sobreprometer)",
     roadmapBullets: [
-      "Hoy: NTAG215 + NTAG 424 DNA; TagTamper cuando el estado físico del sello importa.",
+      "Hoy: NTAG215 + NTAG 424 DNA; TagTamper cuando el estado reportado del circuito aporta valor.",
       "Siguiente fase: middle tier con StatusDetect para casos de estado/sensing battery-free.",
       "Siempre: NFC + QR fallback + data model DPP-ready.",
     ],
     trustOpsTitle: "Cómo funciona cada capa de confianza",
     trustOpsBullets: [
-      "Polygon permite que el comprador reclame el producto como suyo: crea un gemelo digital, activa garantía transferible y habilita la reventa con certificado NFT verificado. No registra cada toque del consumidor.",
+      "Polygon puede registrar un título de ownership digital y el control de una wallet cuando identidad, compra y política fueron aprobadas. La transacción no prueba propiedad, custodia ni autenticidad del objeto físico y no registra cada toque.",
       "IOTA puede anclar evidencia seleccionada de cadena de suministro como hashes o Merkle roots cuando la política de auditoría lo exige. No enviamos datos privados ni cada lectura individual on-chain.",
       "El paquete de operaciones de proveedor entrega los permisos necesarios para encodear chips por sub-lote y canal cifrado. El proveedor nunca recibe acceso al sistema central.",
-      "El verificador offline permite que un celular o lector funcione sin internet en campo, galpón o cava. Al recuperar señal, sincroniza con el servidor y emite el veredicto oficial.",
+      "Un verificador controlado puede validar localmente evidencia del mensaje y mostrar un resultado provisional. Al recuperar señal, el backend confirma replay, política y auditoría; ownership y garantía siguen flujos separados.",
     ],
     actionsTitle: "Siguientes pasos",
     quickJumpTitle: "Explorar rápido",
@@ -225,7 +225,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       },
       {
         q: "¿Qué ve el consumidor final?",
-        a: "Una pantalla simple: resultado de confianza, origen, lote, estado del sello, garantía, beneficios y, si corresponde, certificado digital o propiedad digital.",
+        a: "Una pantalla simple: resultado del mensaje NFC/SUN, origen y lote declarados, TT reportado cuando existe, garantía, beneficios y, si corresponde, certificado u ownership digital.",
       },
       {
         q: "Como se empieza sin hacer un proyecto enorme?",
@@ -233,7 +233,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       },
       {
         q: "¿nexID vende chips NFC?",
-        a: "No. nexID vende infraestructura para emitir, validar y operar identidades físicas verificables usando carriers como NFC y QR.",
+        a: "No. nexID vende infraestructura para emitir y operar identidades digitales asociadas a referencias declaradas, y validar mensajes de carriers NFC o QR.",
       },
       {
         q: "¿Sirve solo para antifraude?",
@@ -241,7 +241,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       },
       {
         q: "¿Tokenización y autenticación son lo mismo?",
-        a: "No. La autenticación prueba el objeto; la tokenización digitaliza derechos sobre ese objeto.",
+        a: "No. La validación criptográfica comprueba el mensaje del tag y sus reglas; la tokenización registra derechos digitales. Ninguna prueba por sí sola el objeto físico.",
       },
       {
         q: "¿Se puede usar con QR?",
@@ -282,15 +282,15 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
   },
   "pt-BR": {
     eyebrow: "Docs comercial + técnica",
-    title: "nexID = infraestrutura de identidade física verificável",
+    title: "nexID = infraestrutura de evidência e identidade digital",
     description:
-      "Não vendemos chips isolados: vendemos emissão, verificação e analytics de eventos físicos.",
+      "Não vendemos chips isolados: validamos mensagens NFC/SUN, organizamos dados declarados e operamos eventos digitais reportados sem afirmar o objeto físico.",
     simpleFlowEyebrow: "Arquitetura simples",
     simpleFlowTitle: "A arquitetura em uma frase",
     simpleFlowBody:
-      "Um produto físico recebe uma identidade digital; cada toque valida se é real, conta sua história e abre o próximo passo comercial seguro.",
+      "Uma referência de produto declarada recebe identidade digital; cada toque valida a mensagem disponível, mostra evidência limitada e abre o próximo passo permitido por política.",
     simpleFlow: [
-      "Produto + lote + fotos reais",
+      "Referência + lote + imagens declaradas",
       "NFC ou QR seguro",
       "Toque com resultado claro",
       "Passaporte, garantia, benefícios e certificado",
@@ -298,7 +298,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     pillarsTitle: "Tese de produto",
     pillars: [
       "Linha BASIC (NTAG215): volume, UX por toque e operação.",
-      "Linha SECURE (NTAG 424 DNA): autenticidade forte e evidência verificável. TagTamper adiciona estado físico de abertura quando o circuito está integrado.",
+      "Linha SECURE (NTAG 424 DNA): autenticação criptográfica da mensagem e evidência verificável. TagTamper informa o estado do circuito quando está corretamente integrado.",
       "nexID OS: issuance + verification API + dashboard + webhooks + canal revenda.",
       "Arquitetura marker-agnostic: NFC + fallback QR para escala.",
     ],
@@ -312,13 +312,13 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       {
         chip: "NTAG 424 DNA",
         bestFor:
-          "Autenticidade forte, SUN/SDM, documentos e vouchers sensíveis.",
+          "Mensagens SUN/SDM autenticadas, documentos e vouchers sensíveis.",
         avoid: "Não vender como sensor de temperatura sozinho.",
       },
       {
         chip: "NTAG 424 DNA TagTamper",
         bestFor:
-          "Selo/fecho com integridade física: vinho, cosméticos premium e pharma.",
+          "Evidência do estado do circuito de selo/fecho: vinho, cosméticos premium e pharma.",
         avoid: "Não usar quando estado físico da embalagem não importa.",
       },
     ],
@@ -382,13 +382,13 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     ],
     roadmapTitle: "Roadmap técnico",
     roadmapBullets: [
-      "Hoje: NTAG215 + NTAG 424 DNA; TagTamper quando o estado físico do lacre importa.",
+      "Hoje: NTAG215 + NTAG 424 DNA; TagTamper quando o estado reportado do circuito agrega valor.",
       "Próxima fase: middle tier com StatusDetect.",
       "Sempre: NFC + fallback QR + modelo DPP-ready.",
     ],
     trustOpsTitle: "Camada de confiança enterprise",
     trustOpsBullets: [
-      "Polygon permite que o comprador reivindique o produto como seu: cria um gêmeo digital, ativa garantia transferível e habilita a revenda com certificado NFT verificado. Não registra cada toque do consumidor.",
+      "Polygon pode registrar um título de ownership digital e o controle de uma wallet quando identidade, compra e política forem aprovadas. A transação não prova propriedade, custódia ou autenticidade do objeto físico e não registra cada toque.",
       "IOTA pode ancorar evidencias selecionadas da cadeia como hashes ou Merkle roots quando a politica de auditoria exige. Nao enviamos dados privados nem cada leitura individual on-chain.",
       "Supplier Encoding Pack entrega chaves de encoding apenas por sub-batch e canal cifrado; fábrica nunca recebe KMS nem database URLs.",
       "Tenant Vault mostra evidência, manifest, QA e hashes; não mostra segredos internos.",
@@ -399,11 +399,11 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     faqItems: [
       {
         q: "Que problema resolve para uma marca premium?",
-        a: "Permite demonstrar que uma unidade e real, saber onde foi validada, reduzir fraude, recuperar dados proprios do consumidor e abrir uma relacao pos-venda depois da compra.",
+        a: "Permite mostrar evidência digital por unidade, registrar onde a leitura foi informada, reduzir risco de fraude e abrir uma relação pós-venda. O impacto deve ser medido no piloto.",
       },
       {
         q: "O que o consumidor final vê?",
-        a: "Uma tela simples: produto autêntico, origem, lote, estado do lacre, garantia, benefícios e, quando fizer sentido, certificado digital ou titularidade digital.",
+        a: "Uma tela simples: resultado da mensagem NFC, dados declarados de origem e lote, estado TT quando disponível, garantia, benefícios e, quando fizer sentido, certificado ou titularidade digital.",
       },
       {
         q: "Como começar sem um projeto enorme?",
@@ -411,7 +411,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       },
       {
         q: "A nexID vende chips NFC?",
-        a: "Não. A nexID vende infraestrutura para emitir, validar e operar identidades físicas verificáveis com NFC e QR.",
+        a: "Não. A nexID fornece infraestrutura para emitir e operar identidades digitais associadas a referências declaradas e validar mensagens de carriers NFC ou QR.",
       },
       {
         q: "Serve só para antifraude?",
@@ -419,7 +419,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       },
       {
         q: "Tokenização e autenticação são iguais?",
-        a: "Não. Autenticação valida o objeto; tokenização digitaliza direitos sobre ele.",
+        a: "Não. A validação criptográfica comprova a mensagem do tag e suas regras; a tokenização registra direitos digitais. Nenhuma delas comprova sozinha o objeto físico.",
       },
       {
         q: "Pode usar com QR?",
@@ -461,15 +461,15 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
   en: {
     eyebrow: "Commercial + product guide",
     title:
-      "nexID without jargon: real products, trust and after-sales in one tap",
+      "nexID without jargon: connected products, evidence and after-sales in one tap",
     description:
-      "We do not sell loose chips or blockchain as a trend. We create a layer for each product to prove authenticity, show origin, activate warranty, benefits, data and a digital certificate.",
+      "We do not sell loose chips or blockchain as a trend. We create a layer that validates tag messages, displays declared product data and activates governed warranty, benefits and digital certificates.",
     simpleFlowEyebrow: "Simple architecture",
     simpleFlowTitle: "Architecture in one sentence",
     simpleFlowBody:
-      "A physical product receives a digital identity; each tap checks if it is real, tells its story and opens the next safe commercial step.",
+      "A declared product reference receives a digital identity; each tap validates the available tag message, displays bounded evidence and opens the next policy-approved step.",
     simpleFlow: [
-      "Product + batch + real photos",
+      "Declared reference + batch + images",
       "Secure NFC or QR",
       "Tap with a clear result",
       "Passport, warranty, benefits and certificate",
@@ -477,7 +477,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     pillarsTitle: "Product thesis",
     pillars: [
       "BASIC line (NTAG215): volume UX and operational control.",
-      "SECURE line (NTAG 424 DNA): strong authenticity and verifiable freshness. TagTamper adds physical open-state evidence when the loop is integrated.",
+      "SECURE line (NTAG 424 DNA): cryptographic message authentication and verifiable tag evidence. TagTamper reports circuit state when correctly integrated.",
       "nexID OS: issuance + verification API + dashboard + webhooks + reseller channel.",
       "Marker-agnostic architecture: NFC + QR fallback from day one.",
     ],
@@ -490,12 +490,12 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       },
       {
         chip: "NTAG 424 DNA",
-        bestFor: "Strong authenticity, SUN/SDM, secure vouchers and docs.",
+        bestFor: "Authenticated SUN/SDM messages, secure vouchers and documents.",
         avoid: "Do not claim native cold-chain sensing.",
       },
       {
         chip: "NTAG 424 DNA TagTamper",
-        bestFor: "Packaging integrity use cases where open/closed matters.",
+        bestFor: "Packaging circuit-state evidence where reported open/closed status matters.",
         avoid:
           "Do not force into rigid credentials where tamper loop adds little value.",
       },
@@ -561,13 +561,13 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     ],
     roadmapTitle: "Technical roadmap",
     roadmapBullets: [
-      "Now: NTAG215 + NTAG 424 DNA; TagTamper where seal state matters.",
+      "Now: NTAG215 + NTAG 424 DNA; TagTamper where reported circuit state adds value.",
       "Next: middle tier with StatusDetect capabilities.",
       "Always: NFC + QR fallback + DPP-ready data model.",
     ],
     trustOpsTitle: "Enterprise trust layer",
     trustOpsBullets: [
-      "Polygon lets the buyer claim the product as theirs: creates a digital twin, activates a transferable warranty and enables resale with a verified NFT certificate. Not used to record every consumer tap.",
+      "Polygon can record a digital ownership title and wallet control after identity, purchase evidence and policy approval. The transaction does not prove physical ownership, custody or authenticity, and it is not used for every tap.",
       "IOTA can anchor selected supply-chain evidence as hashes or Merkle roots when audit policy requires it. We do not put private data or every individual tap on-chain.",
       "Supplier Encoding Pack sends encoding keys only per sub-batch through an encrypted channel; factories never receive KMS or database URLs.",
       "Tenant Vault shows evidence, manifests, QA and hashes; it does not expose internal secrets.",
@@ -578,11 +578,11 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
     faqItems: [
       {
         q: "What problem does this solve for a premium brand?",
-        a: "It proves a unit is real, shows where it is validated, reduces fraud, recovers first-party customer data and opens an after-sales relationship after purchase.",
+        a: "It presents digital evidence per unit, records where a read was reported, reduces fraud risk and opens an after-sales relationship. Impact must be measured in the pilot.",
       },
       {
         q: "What does the end customer see?",
-        a: "A simple screen: authentic product, origin, batch, seal status, warranty, benefits and, when relevant, digital certificate or ownership.",
+        a: "A simple screen: NFC message result, declared origin and batch data, TT state when available, warranty, benefits and, when relevant, a digital certificate or ownership record.",
       },
       {
         q: "How can a company start without a huge project?",
@@ -590,7 +590,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       },
       {
         q: "Does nexID sell NFC chips?",
-        a: "No. nexID delivers infrastructure to issue, verify and operate physical digital identities using NFC and QR carriers.",
+        a: "No. nexID provides infrastructure to issue and operate digital identities associated with declared references, and to validate messages from NFC or QR carriers.",
       },
       {
         q: "Is this only anti-fraud?",
@@ -598,7 +598,7 @@ const docsCopy: Record<"es-AR" | "pt-BR" | "en", DocsCopy> = {
       },
       {
         q: "Are tokenization and authentication the same?",
-        a: "No. Authentication proves the object; tokenization digitizes rights on top of that object.",
+        a: "No. Cryptographic validation checks the tag message and its rules; tokenization records digital rights. Neither proves the physical object by itself.",
       },
       {
         q: "Can it work with QR?",
@@ -698,11 +698,11 @@ export default async function DocsPage() {
             ],
             [
               "Does NTAG 424 DNA work offline?",
-              "The chip can be read and can generate a fresh SUN/SDM response without internet. A normal browser still needs connectivity for the final backend trust verdict; industrial offline validation needs a controlled app or reader with secure keys.",
+              "The chip can generate a fresh SUN/SDM response without internet. A normal browser still needs connectivity for the backend verdict on the message, replay and policy; industrial offline validation needs a controlled app or reader with scoped keys.",
             ],
             [
               "Can we build an offline verifier app or reader?",
-              "Yes, but it must be a controlled verifier with device-scoped, batch-scoped and expiring keys. Do not embed tenant master keys in a consumer app; backend sync still finalizes replay, policy, ownership and warranty.",
+              "Yes, but it must use device-scoped, batch-scoped and expiring keys. Never embed tenant master keys in a consumer app. Its local message result is provisional until backend replay and policy checks; ownership and warranty use separate evidence.",
             ],
             [
               "Is private data stored on-chain?",
@@ -744,11 +744,11 @@ export default async function DocsPage() {
               ],
               [
                 "NTAG 424 DNA funciona offline?",
-                "O chip pode ser lido e gerar uma resposta SUN/SDM fresca sem internet. Um browser comum ainda precisa de conexao para o veredito final do backend; validacao industrial offline exige app ou leitor controlado com chaves seguras.",
+                "O chip pode gerar uma resposta SUN/SDM fresca sem internet. Um browser comum ainda precisa de conexao para o veredito do backend sobre mensagem, replay e politica; validacao industrial offline exige app ou leitor controlado com chaves limitadas.",
               ],
               [
                 "Podemos criar app ou leitor offline?",
-                "Sim, mas precisa ser um verificador controlado com chaves por device, batch e vencimento. Nao colocar master keys do tenant em app consumidor; o backend ainda finaliza replay, politica, ownership e garantia.",
+                "Sim, mas precisa usar chaves por device, batch e vencimento. Nunca colocar master keys do tenant no app consumidor. O resultado local da mensagem e provisório ate replay e politica no backend; ownership e garantia exigem evidencia separada.",
               ],
               [
                 "Dados privados ficam on-chain?",
@@ -789,11 +789,11 @@ export default async function DocsPage() {
               ],
               [
                 "NTAG 424 DNA funciona offline?",
-                "El chip se puede leer y puede generar una respuesta SUN/SDM fresca sin internet. Un navegador comun igual necesita conexion para el veredicto final del backend; la validacion industrial offline exige app o lector controlado con claves seguras.",
+                "El chip puede generar una respuesta SUN/SDM fresca sin internet. Un navegador comun necesita conexion para el veredicto backend del mensaje, replay y politica; la validacion industrial offline exige una app o lector controlado con claves acotadas.",
               ],
               [
                 "Podemos crear app o lector offline?",
-                "Si, pero tiene que ser un verificador controlado con claves por dispositivo, batch y vencimiento. No se meten master keys del tenant en una app consumer; el backend igual finaliza replay, politica, ownership y garantia.",
+                "Si, pero debe usar claves por dispositivo, batch y vencimiento. Nunca se meten master keys del tenant en una app consumer. El resultado local del mensaje es provisional hasta replay y politica en backend; ownership y garantia requieren evidencia separada.",
               ],
               [
                 "Datos privados quedan on-chain?",
@@ -1070,7 +1070,7 @@ export default async function DocsPage() {
                 <strong className="text-cyan-200 block">
                   Webhooks en Tiempo Real
                 </strong>
-                Entrega de eventos de toques, cambios de estado del sello y
+                Entrega de eventos de toques, cambios TT reportados y
                 señales de ubicación consentidas hacia tus sistemas.
               </div>
             </div>

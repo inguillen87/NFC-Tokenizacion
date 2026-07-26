@@ -4,7 +4,7 @@ Esta guia define lenguaje aprobado para explicar las capas de confianza de nexID
 
 ## Posicionamiento base
 
-nexID valida productos fisicos con NFC/QR, registra eventos DPP en su backend y usa capas publicas solo cuando agregan valor verificable.
+nexID valida mensajes NFC criptograficos o reglas QR, los vincula con una identidad digital y datos declarados por la marca, registra eventos DPP en su backend y usa capas publicas solo cuando agregan valor verificable. Esa evidencia no certifica por si sola contenido, origen, condicion ni custodia fisica.
 
 - Polygon: propiedad digital, certificados, NFT, claims y transferencias controladas.
 - IOTA: capa probatoria opcional para hashes, Merkle roots, auditoria, DPP y evidencia logistica.
@@ -12,7 +12,7 @@ nexID valida productos fisicos con NFC/QR, registra eventos DPP en su backend y 
 
 La frase corta:
 
-> nexID separa autenticidad fisica, DPP privado, propiedad digital en Polygon y proof IOTA opcional.
+> nexID separa evidencia NFC/QR, DPP privado, propiedad digital en Polygon y proof IOTA opcional.
 
 ## Copy aprobado
 
@@ -21,7 +21,7 @@ La frase corta:
 - "Los datos sensibles permanecen off-chain; la red publica recibe metadata sanitizada, referencias derivadas o digests."
 - "No escribimos cada tap en blockchain. Los taps se registran en nexID y solo eventos seleccionados se tokenizan o anclan."
 - "Tenant Vault muestra evidencia operativa, manifest, QA y hashes sin exponer secretos internos."
-- "Supplier Encoding Pack entrega claves de encoding solo para el sub-batch autorizado y por canal cifrado; la fabrica no recibe KMS, database URLs ni private keys."
+- "Supplier Encoding Pack entrega claves de encoding solo para el sub-batch autorizado y por canal cifrado; la fabrica no recibe la clave maestra de aplicación, acceso a Google Cloud KMS, database URLs ni private keys."
 - "Offline Verifier permite app o lector controlado para campo sin señal, con claves derivadas por dispositivo y veredicto final al sincronizar."
 
 ## Copy a evitar
@@ -32,7 +32,7 @@ La frase corta:
 - "La blockchain contiene toda la trazabilidad."
 - "El NFT reemplaza automaticamente la propiedad legal."
 - "IOTA emite NFTs o reemplaza la propiedad digital en Polygon."
-- "El proveedor recibe acceso KMS."
+- "El proveedor recibe acceso a la clave maestra de aplicación o a Google Cloud KMS."
 - "Wallet, certificado o claim habilitados sin tap fresco ni policy."
 - "La app consumer contiene la master key."
 - "Usamos la misma master key para todos los tags para que nunca falle."
@@ -42,7 +42,8 @@ La frase corta:
 
 | Claim visible | Estado correcto |
 | --- | --- |
-| Producto autentico | Requiere validacion SUN/SDM o regla QR equivalente |
+| Mensaje del tag validado | Requiere validacion SUN/SDM; una regla QR solo acredita el registro digital definido por el tenant |
+| Producto, origen o custodia fisica confirmados | Requiere evidencia adicional e independiente; un tap no alcanza por si solo |
 | Producto reclamable | Requiere tap fresco, policy y controles de riesgo |
 | Certificado Polygon | Requiere solicitud, tx_hash real y estado confirmado o pendiente explicito |
 | Proof IOTA | Requiere digest/root anclado o estado pendiente/fallido explicito |
@@ -54,11 +55,11 @@ La frase corta:
 
 ### Marca enterprise
 
-"La marca conserva la fuente de verdad en nexID: validacion fisica, eventos DPP, CRM y auditoria. Polygon agrega certificados y propiedad digital cuando hay claim. IOTA puede agregar prueba externa de hashes o Merkle roots para auditoria y logistica."
+"La marca conserva la fuente de verdad digital en nexID: validacion del mensaje NFC/QR, datos declarados, eventos DPP, CRM y auditoria. Polygon agrega certificados y propiedad digital cuando hay claim. IOTA puede agregar prueba externa de hashes o Merkle roots para auditoria y logistica."
 
 ### Proveedor/fabrica
 
-"El proveedor codifica tags con un paquete acotado al sub-batch. Recibe claves de encoding de ese alcance, route template redacted en documentacion publica y formato de manifest. No recibe KMS, base de datos, private keys, tokens admin ni PII."
+"El proveedor codifica tags con un paquete acotado al sub-batch. Recibe claves de encoding de ese alcance, route template redacted en documentacion publica y formato de manifest. No recibe la clave maestra de aplicación, acceso a Google Cloud KMS, base de datos, private keys, tokens admin ni PII."
 
 ### Operador offline
 
@@ -66,7 +67,7 @@ La frase corta:
 
 ### Consumidor final
 
-"El consumidor ve autenticidad, origen, garantia, beneficios y, si aplica, certificado digital. No necesita entender blockchain ni publicar datos personales en redes publicas."
+"El consumidor ve el resultado de la evidencia NFC/QR, el origen declarado, garantia, beneficios y, si aplica, certificado digital. La interfaz explica que el tap no certifica por si solo contenido, origen o custodia fisica. No necesita entender blockchain ni publicar datos personales en redes publicas."
 
 ### Auditor/compliance
 

@@ -25,7 +25,19 @@ type PublicReward = {
   passImageUrl?: string;
   reward?: { title?: string; description?: string };
   tenant?: { name?: string };
-  consumer?: { name?: string; phoneMasked?: string; emailMasked?: string };
+  consumer?: {
+    name?: string;
+    phoneMasked?: string;
+    emailMasked?: string;
+    phoneVerifiedAt?: string;
+    phone_verified_at?: string;
+    phoneStatus?: string;
+    phone_status?: string;
+    emailVerifiedAt?: string;
+    email_verified_at?: string;
+    emailStatus?: string;
+    email_status?: string;
+  };
   staffInstruction?: string;
 };
 
@@ -35,7 +47,7 @@ function cleanToken(value: string) {
 
 function formatDate(value?: string) {
   const date = value ? new Date(value) : null;
-  if (!date || Number.isNaN(date.getTime())) return "48h desde emisión";
+  if (!date || Number.isNaN(date.getTime())) return "Vencimiento no disponible";
   return new Intl.DateTimeFormat("es-AR", {
     timeZone: "America/Argentina/Buenos_Aires",
     dateStyle: "medium",
@@ -48,12 +60,23 @@ function statusView(value?: string) {
   if (status === "redeemed") return { label: "Ya canjeado", className: "border-slate-300/20 bg-slate-400/10 text-slate-200" };
   if (status === "expired") return { label: "Vencido", className: "border-amber-300/25 bg-amber-400/10 text-amber-100" };
   if (status === "cancelled") return { label: "Pausado", className: "border-rose-300/25 bg-rose-400/10 text-rose-100" };
-  return { label: "Listo para validar", className: "border-emerald-300/25 bg-emerald-400/10 text-emerald-100" };
+  if (["active", "issued", "available"].includes(status)) return { label: "Listo para validar", className: "border-emerald-300/25 bg-emerald-400/10 text-emerald-100" };
+  return { label: "Estado no reportado", className: "border-amber-300/25 bg-amber-400/10 text-amber-100" };
 }
 
 function formatCode(value?: string) {
   const digits = String(value || "").replace(/[^\d]/g, "");
-  return digits ? digits.replace(/(\d{4})(?=\d)/g, "$1 ") : "NEXID";
+  return digits ? digits.replace(/(\d{4})(?=\d)/g, "$1 ") : "No disponible";
+}
+
+function hasExplicitContactVerification(consumer: PublicReward["consumer"], channel: "phone" | "email") {
+  if (!consumer) return false;
+  const masked = channel === "phone" ? consumer.phoneMasked : consumer.emailMasked;
+  const verifiedAt = channel === "phone"
+    ? consumer.phoneVerifiedAt || consumer.phone_verified_at
+    : consumer.emailVerifiedAt || consumer.email_verified_at;
+  const status = String(channel === "phone" ? consumer.phoneStatus || consumer.phone_status : consumer.emailStatus || consumer.email_status).toLowerCase();
+  return Boolean(masked && verifiedAt && ["verified", "confirmed", "active"].includes(status));
 }
 
 async function fetchReward(token: string): Promise<PublicReward | null> {
@@ -95,10 +118,15 @@ export default async function StaffRewardValidationPage({ params }: { params: Pr
     );
   }
 
+  const phoneVerified = hasExplicitContactVerification(reward.consumer, "phone");
+  const emailVerified = hasExplicitContactVerification(reward.consumer, "email");
+  const hasVerifiedContact = phoneVerified || emailVerified;
+  const hasCodeAndSeal = Boolean(reward.code && reward.seal);
+
   const checklist = [
-    "Comparar código y sello con el WhatsApp o email del cliente.",
-    "Confirmar teléfono o email enmascarado antes de entregar el beneficio.",
-    "Marcar el canje desde el CRM para evitar reutilización.",
+    { label: hasCodeAndSeal ? "Comparar codigo y sello reportados con el pase presentado." : "BLOQUEADO: codigo o sello no reportado.", ready: hasCodeAndSeal },
+    { label: hasVerifiedContact ? "Canal enmascarado con status y fecha de verificación reportados." : "BLOQUEADO: no hay teléfono o email con verificación explícita reportada.", ready: hasVerifiedContact },
+    { label: "Registrar el canje desde el CRM para evitar reutilización.", ready: false },
   ];
 
   return (
@@ -138,7 +166,7 @@ export default async function StaffRewardValidationPage({ params }: { params: Pr
             <div className="rounded-2xl border border-cyan-300/18 bg-cyan-400/[0.07] p-4">
               <TicketCheck className="h-5 w-5 text-cyan-200" aria-hidden="true" />
               <p className="mt-4 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Beneficio</p>
-              <p className="mt-1 text-sm font-black leading-snug text-white">{reward.reward?.title || "Voucher nexID"}</p>
+              <p className="mt-1 text-sm font-black leading-snug text-white">{reward.reward?.title || "Beneficio no disponible"}</p>
             </div>
             <div className="rounded-2xl border border-emerald-300/18 bg-emerald-400/[0.07] p-4">
               <CalendarClock className="h-5 w-5 text-emerald-200" aria-hidden="true" />
@@ -148,7 +176,7 @@ export default async function StaffRewardValidationPage({ params }: { params: Pr
             <div className="rounded-2xl border border-violet-300/18 bg-violet-400/[0.07] p-4">
               <ShieldCheck className="h-5 w-5 text-violet-200" aria-hidden="true" />
               <p className="mt-4 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Comercio</p>
-              <p className="mt-1 text-sm font-black leading-snug text-white">{reward.tenant?.name || "nexID Partner"}</p>
+              <p className="mt-1 text-sm font-black leading-snug text-white">{reward.tenant?.name || "Comercio no disponible"}</p>
             </div>
           </div>
 
@@ -160,7 +188,7 @@ export default async function StaffRewardValidationPage({ params }: { params: Pr
               </div>
               <div className="text-left md:text-right">
                 <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Sello nexID</p>
-                <p className="mt-2 font-mono text-sm font-black tracking-[0.14em] text-white">{reward.seal || "NEXID"}</p>
+                <p className="mt-2 font-mono text-sm font-black tracking-[0.14em] text-white">{reward.seal || "No disponible"}</p>
               </div>
             </div>
           </div>
@@ -171,15 +199,16 @@ export default async function StaffRewardValidationPage({ params }: { params: Pr
                 <Smartphone className="h-4 w-4" aria-hidden="true" />
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Cliente</p>
               </div>
-              <p className="mt-3 text-sm font-black text-white">{reward.consumer?.name || "Cliente nexID"}</p>
-              <p className="mt-1 text-xs text-slate-400">{reward.consumer?.phoneMasked || "Teléfono verificado"}</p>
+              <p className="mt-3 text-sm font-black text-white">{reward.consumer?.name || "Nombre no disponible"}</p>
+              <p className="mt-1 text-xs text-slate-400">{reward.consumer?.phoneMasked || "Teléfono no disponible"} · {phoneVerified ? "verificado" : "sin verificación reportada"}</p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
               <div className="flex items-center gap-2 text-emerald-200">
                 <LockKeyhole className="h-4 w-4" aria-hidden="true" />
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Privacidad</p>
               </div>
-              <p className="mt-3 text-sm font-black text-white">{reward.consumer?.emailMasked || "Email protegido"}</p>
+              <p className="mt-3 text-sm font-black text-white">{reward.consumer?.emailMasked || "Email no disponible"}</p>
+              <p className="mt-1 text-xs text-slate-400">{emailVerified ? "Email verificado" : "Sin verificación de email reportada"}</p>
               <p className="mt-1 text-xs text-slate-400">No se exponen IDs internos, tenant slug ni datos completos.</p>
             </div>
           </div>
@@ -218,9 +247,9 @@ export default async function StaffRewardValidationPage({ params }: { params: Pr
                 <p className="text-sm font-black text-white">Checklist de canje</p>
                 <div className="mt-3 space-y-2">
                   {checklist.map((item) => (
-                    <div key={item} className="flex items-start gap-2 text-xs font-bold leading-relaxed text-slate-300">
-                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" aria-hidden="true" />
-                      {item}
+                    <div key={item.label} className={`flex items-start gap-2 text-xs font-bold leading-relaxed ${item.ready ? "text-slate-300" : "text-amber-200"}`}>
+                      {item.ready ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" aria-hidden="true" /> : <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" aria-hidden="true" />}
+                      {item.label}
                     </div>
                   ))}
                 </div>

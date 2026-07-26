@@ -542,8 +542,14 @@ export async function processSunScan(input: {
     return { status: 403, body: { ok: false, reason: 'batch revoked' } };
   }
 
-  const kMeta = decryptKey16(batch.meta_key_ct).toString('hex').toUpperCase();
-  const kFile = decryptKey16(batch.file_key_ct).toString('hex').toUpperCase();
+  const envelopeKeyVersion = Number((batch.sdm_config as { key_version?: unknown } | null)?.key_version || 1);
+  const keyContext = {
+    tenantId: String(batch.tenant_id),
+    bid: input.bid,
+    keyVersion: Number.isSafeInteger(envelopeKeyVersion) && envelopeKeyVersion > 0 ? envelopeKeyVersion : 1,
+  };
+  const kMeta = decryptKey16(batch.meta_key_ct, { ...keyContext, role: 'K_META_BATCH' }).toString('hex').toUpperCase();
+  const kFile = decryptKey16(batch.file_key_ct, { ...keyContext, role: 'K_FILE_BATCH' }).toString('hex').toUpperCase();
   const selectedMacInputModes = resolveSelectedMacInputModes((batch as { sdm_config?: unknown }).sdm_config || {});
 
   const res = verifySun({
@@ -912,15 +918,15 @@ export async function processSunScan(input: {
       ttstatus_raw: ttstatusParsed?.raw || undefined,
       ttstatus_reason: ttstatusParsed?.reason || undefined,
       tamper_reason: manualOpened
-        ? "Producto auténtico. Sello marcado como abierto por operador."
+        ? "Estado abierto declarado por operador; no es una medición criptográfica del contenido."
         : resolvedTamperStatus === "UNKNOWN"
-        ? "Authenticity confirmed. Open/closed status is not available for this batch configuration."
+        ? "NFC message validated. Open/closed TT state is not available for this batch configuration."
         : resolvedTamperStatus === "OPENED"
-          ? "Authentic tag, but seal appears opened."
+          ? "NFC message validated; TT reports an open state."
           : resolvedTamperStatus === "INVALID"
-            ? "Authenticity confirmed. TTStatus invalid or not enabled for this batch."
+            ? "NFC message validated. TTStatus is invalid or not enabled for this batch."
           : resolvedTamperStatus === "OPENED_PREVIOUSLY"
-            ? "Authenticity confirmed. The seal was opened previously."
+            ? "NFC message validated; TT history reports a previous opening."
           : undefined,
       tag_tamper: {
         available: decodedTT.available,

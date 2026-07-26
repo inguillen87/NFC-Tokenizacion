@@ -242,6 +242,7 @@ export async function POST(req: Request) {
     for (const subBatch of plan) {
       const keys = generateSupplierBatchKeys();
       const keyMaterial = buildBatchKeyLifecycleRecords({
+        tenantId: String(tenant.id),
         bid: subBatch.bid,
         kMetaHex: keys.kMetaHex,
         kFileHex: keys.kFileHex,

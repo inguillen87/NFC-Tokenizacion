@@ -62,13 +62,21 @@ export function UserManagementPanel() {
 
   async function issueReset(userId: string) {
     const res = await fetch(`/api/iam/users/${userId}/reset-password`, { method: "POST" });
-    const data = await res.json();
-    setStatus(data?.resetToken ? `Reset token: ${data.resetToken}` : "Reset emitido. En producción no se expone el token por respuesta." );
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      setStatus(data?.reason || "No se pudo iniciar el restablecimiento.");
+      return;
+    }
+    const deliveryConfirmed = ["sent", "delivered", "queued"].includes(String(data?.deliveryStatus || "").toLowerCase());
+    setStatus(deliveryConfirmed
+      ? "Restablecimiento solicitado y entrega confirmada por el proveedor."
+      : "Restablecimiento creado, pero esta pantalla no confirmó ninguna entrega. Configurá el proveedor antes de depender de este flujo.");
   }
 
   async function resetMfa(userId: string) {
     const res = await fetch(`/api/iam/users/${userId}/mfa-reset`, { method: "POST" });
-    setStatus(res.ok ? "MFA reseteado y sesiones revocadas." : "No se pudo resetear MFA.");
+    const data = await res.json().catch(() => null);
+    setStatus(res.ok ? "MFA legacy revocado y sesiones invalidadas." : (data?.reason || "No se pudo revocar el MFA legacy."));
     if (res.ok) void load();
   }
 
@@ -78,7 +86,7 @@ export function UserManagementPanel() {
     <div className="grid gap-6 xl:grid-cols-[1.2fr,0.8fr]">
       <Card className="p-6">
         <h2 className="text-lg font-semibold text-white">Usuarios y permisos</h2>
-        <p className="mt-2 text-sm text-slate-400">Ahora podés editar rol, tenant y permisos por recurso desde la UI, además de emitir reset tokens y resetear MFA.</p>
+        <p className="mt-2 text-sm text-slate-400">Editá rol, tenant y permisos por recurso. Los restablecimientos nunca muestran secretos en el navegador y solo confirman entrega cuando el proveedor la reporta.</p>
         <div className="mt-4 space-y-3">
           {users.map((user) => {
             const editor = editors[user.id] || { role: "viewer", tenantSlug: "", permissions: "" };
@@ -88,11 +96,11 @@ export function UserManagementPanel() {
                   <div>
                     <p className="font-medium text-white">{user.label}</p>
                     <p className="text-xs text-cyan-200">{user.email}</p>
-                    <p className="mt-1 text-xs text-slate-400">tenant {user.tenant_slug || 'global'} · MFA {user.mfa_enabled ? 'enabled' : 'off'}</p>
+                    <p className="mt-1 text-xs text-slate-400">tenant {user.tenant_slug || 'global'} · {user.mfa_enabled ? 'MFA legacy detectado' : 'TOTP no habilitado'}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Button className="px-3 py-2 text-xs" onClick={() => issueReset(user.id)}>Emit reset</Button>
-                    <Button className="px-3 py-2 text-xs" onClick={() => resetMfa(user.id)}>Reset MFA</Button>
+                    <Button className="px-3 py-2 text-xs" onClick={() => issueReset(user.id)}>Iniciar restablecimiento</Button>
+                    {user.mfa_enabled ? <Button className="px-3 py-2 text-xs" onClick={() => resetMfa(user.id)}>Revocar MFA legacy</Button> : null}
                   </div>
                 </div>
                 <div className="mt-4 grid gap-3 md:grid-cols-3">

@@ -2,8 +2,8 @@
   "vertical_slug": "cosmetics-secure",
   "title": "Cosmetics / Premium Cream (Secure)",
   "recommended_tag": "NTAG424DNA_TT",
-  "narrative": "Authenticate premium skincare, prove unopened state and unlock digital routine, warranty and CRM onboarding.",
-  "why_nfc_over_qr": "Better than QR because high-margin cosmetics are frequently counterfeited and opened. TagTamper can indicate if the closure or security seal was opened before sale, while the backend can detect duplicate scans and suspicious regions.",
+  "narrative": "Demo NFC/SUN message evidence, reported TT circuit state, declared skincare data, warranty policy and CRM onboarding; it does not prove an unopened package or its contents.",
+  "why_nfc_over_qr": "NTAG 424 DNA TagTamper can add fresh message evidence, replay controls and a reported TT circuit transition when correctly integrated. The backend can flag duplicate messages and reported-geography anomalies, but those signals do not prove physical opening or product authenticity.",
   "batch_id": "COSMETICS_SECURE_DEMO_001",
   "locale_defaults": [
     "es-AR",

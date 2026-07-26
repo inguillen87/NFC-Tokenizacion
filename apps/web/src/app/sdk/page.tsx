@@ -26,6 +26,7 @@ import {
   Shirt,
   Footprints,
   GlassWater,
+  ExternalLink,
 } from "lucide-react";
 import { BrandLockup, Button, Card, ThemeToggle, type VectorMapPoint, type VectorMapRoute } from "@product/ui";
 import { HeroTrustAtlasSvg } from "../../components/hero-scene";
@@ -40,7 +41,7 @@ import { NEXID_SDK_VERIFY_URL } from "../../lib/sdk-public-contract";
 
 export const metadata: Metadata = {
   title: "SDK y APIs - nexID",
-  description: "SDK, APIs, webhooks y flujo POS para integrar autenticidad, QR, NFC, GS1 Digital Link y marketplace sin atar a las marcas a proveedores cerrados.",
+  description: "SDK, APIs, webhooks y flujo POS para validar mensajes NFC/SUN, operar QR y GS1 Digital Link, y activar derechos digitales sin atar a las marcas a proveedores cerrados.",
 };
 const code = `// app/api/nexid/verify/route.ts - ejecutar solo en servidor
 const response = await fetch("${NEXID_SDK_VERIFY_URL}", {
@@ -49,6 +50,7 @@ const response = await fetch("${NEXID_SDK_VERIFY_URL}", {
     "content-type": "application/json",
     "x-nexid-api-key": process.env.NEXID_API_KEY!,
     "x-nexid-tenant-slug": "mi-marca",
+    "Idempotency-Key": crypto.randomUUID(),
   },
   body: JSON.stringify({
     bid: tag.bid,
@@ -73,7 +75,7 @@ const pillars = [
   {
     icon: ShieldCheck,
     title: "Claim seguro, no scan oportunista",
-    body: "Leer una etiqueta en góndola no te hace dueño. El ownership automático exige tag físico seguro, token POS y, si la marca quiere, PIN.",
+    body: "Leer una etiqueta en góndola no te hace dueño. El ownership exige identidad, evidencia de compra, una lectura reciente aceptada y la política del tenant; el mensaje NFC no prueba propiedad física.",
   },
   {
     icon: Webhook,
@@ -91,8 +93,8 @@ const flow = [
   "1. La marca empieza con QR, NFC existente o lote nuevo de tags nexID.",
   "2. El SDK lee producto, passport, marketplace, beneficios y asistente IA.",
   "3. Si hay compra, el POS emite un token nxpos de un solo uso.",
-  "4. El claim usa token POS + PIN opcional + tag físico seguro.",
-  "5. El CRM recibe analytics, mapa, leads y webhooks en tiempo real.",
+  "4. El claim evalúa identidad, token POS, lectura reciente y política antes de registrar ownership digital.",
+  "5. El CRM recibe analytics y mapa por stream cuando está conectado; los webhooks llegan de forma asíncrona con estado de entrega.",
 ];
 
 const strategy = [
@@ -102,10 +104,33 @@ const strategy = [
 ];
 
 const trustSignals = [
-  { label: "Anti-falsificacion", detail: "Criptografia y senales de riesgo del servidor.", Icon: ShieldCheck },
+  { label: "Evidencia y riesgo", detail: "Validacion del mensaje, anti-replay y senales del servidor.", Icon: ShieldCheck },
   { label: "Implementacion controlada", detail: "API server-side para backend, POS y ERP.", Icon: Zap },
   { label: "Estandares globales", detail: "QR, NFC, UHF y GS1 Digital Link.", Icon: Globe2 },
   { label: "Privacidad por diseno", detail: "Datos minimos y control del usuario.", Icon: KeyRound },
+];
+
+const enterpriseContracts = [
+  {
+    label: "Reintentos seguros",
+    detail: "verify, claim, events y POS aceptan Idempotency-Key. El SDK reintenta mutaciones solo cuando esa clave está presente.",
+    Icon: Zap,
+  },
+  {
+    label: "Replay sin duplicados",
+    detail: "La misma operación y el mismo payload recuperan la respuesta guardada; reutilizar la clave con otro payload devuelve HTTP 409.",
+    Icon: ShieldCheck,
+  },
+  {
+    label: "Estado y reconciliación",
+    detail: "Si el resultado queda incierto, el cliente consulta status o solicita reconcile con la misma clave; no inventa una operación nueva.",
+    Icon: Code2,
+  },
+  {
+    label: "Webhooks con rotación",
+    detail: "La firma v2 incluye versión e identificador de clave para rotación controlada, verificación server-side y auditoría de entregas.",
+    Icon: Webhook,
+  },
 ];
 
 const iconByKey: Record<PlatformIconKey, typeof Sprout> = {
@@ -330,7 +355,7 @@ const sdkVerticalProfiles: Record<PlatformDemoVertical, SdkVerticalProfile> = {
     tap: { city: "Singapore", sublabel: "Cliente", lat: 1.3521, lng: 103.8198 },
     verdict: "CERT_READY",
     proof: "NFC + QR + certificado",
-    mobileBody: "Garantia, certificado y reventa se activan solo con prueba fisica y canal valido.",
+    mobileBody: "Garantia, certificado y reventa se activan solo con evidencia de compra, identidad y politica aprobadas.",
   },
   sneaker: {
     origin: { city: "Portland", sublabel: "Drop", lat: 45.5152, lng: -122.6784 },
@@ -386,7 +411,7 @@ function sdkAtlasForProfile(profile: SdkVerticalProfile): { points: VectorMapPoi
   const routes: VectorMapRoute[] = [
     { id: "sdk-route-origin-hub", fromLat: profile.origin.lat, fromLng: profile.origin.lng, toLat: profile.hub.lat, toLng: profile.hub.lng, label: `${profile.origin.city} -> ${profile.hub.city}`, tone: "info", evidence: "Custodia demo" },
     { id: "sdk-route-hub-integration", fromLat: profile.hub.lat, fromLng: profile.hub.lng, toLat: profile.integration.lat, toLng: profile.integration.lng, label: `${profile.hub.city} -> ${profile.integration.city}`, tone: "info", evidence: "SDK / DPP" },
-    { id: "sdk-route-integration-tap", fromLat: profile.integration.lat, fromLng: profile.integration.lng, toLat: profile.tap.lat, toLng: profile.tap.lng, label: `${profile.integration.city} -> ${profile.tap.city}`, tone: "success", evidence: "Tap fisico demo" },
+    { id: "sdk-route-integration-tap", fromLat: profile.integration.lat, fromLng: profile.integration.lng, toLat: profile.tap.lat, toLng: profile.tap.lng, label: `${profile.integration.city} -> ${profile.tap.city}`, tone: "success", evidence: "Tap simulado" },
   ];
 
   return { points, routes };
@@ -500,7 +525,7 @@ export default async function SdkPage({ searchParams }: SdkPageProps) {
       <div className="container-shell space-y-10 pb-16">
         <section id="sdk-proof-hero" className="sdk-premium-hero">
           <div className="sdk-premium-copy">
-            <p className="sdk-hero-eyebrow">Identidad - Autenticidad - Confianza</p>
+            <p className="sdk-hero-eyebrow">Mensaje NFC/SUN - Evidencia - Derechos digitales</p>
             <h1>
               Infraestructura de identidad{" "}
               <br />
@@ -509,12 +534,15 @@ export default async function SdkPage({ searchParams }: SdkPageProps) {
               <span>mueves y vendes.</span>
             </h1>
             <p>
-              Las APIs nexID y el acceso SDK privado convierten cualquier producto, empaque, evento o activo fisico en una identidad digital verificable. La integracion se ejecuta desde el servidor del cliente, con credenciales por tenant y cambios controlados.
+              Las APIs nexID y el acceso SDK privado asocian una referencia declarada de producto, empaque, evento o activo con una identidad digital y evidencia del mensaje NFC/SUN. La integracion se ejecuta desde el servidor del cliente, con credenciales por tenant y cambios controlados; no autentica por si sola el objeto fisico.
             </p>
             <div className="sdk-hero-actions">
               <Link href="/docs">
                 <Button><Code2 className="mr-2 h-4 w-4" />Explorar documentacion</Button>
               </Link>
+              <a href="https://api.nexid.lat/openapi/nexid-sdk-v1.json" target="_blank" rel="noreferrer">
+                <Button variant="secondary"><ExternalLink className="mr-2 h-4 w-4" />OpenAPI v1</Button>
+              </a>
               <Link href={`/demo-lab?vertical=${activeVertical.demoVertical}`}>
                 <Button variant="secondary"><PlayCircle className="mr-2 h-4 w-4" />Ver demo interactiva</Button>
               </Link>
@@ -560,6 +588,28 @@ export default async function SdkPage({ searchParams }: SdkPageProps) {
           })}
         </section>
 
+        <section aria-labelledby="sdk-delivery-contracts" className="space-y-4">
+          <div className="max-w-3xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">Contrato de entrega</p>
+            <h2 id="sdk-delivery-contracts" className="mt-3 text-2xl font-black tracking-tight text-white">Integraciones que se recuperan sin duplicar operaciones</h2>
+            <p className="mt-3 text-sm leading-7 text-slate-300">
+              Los timeouts existen. nexID conserva una identidad de operación durable para que el backend del cliente pueda reintentar, consultar y reconciliar sin convertir una caída de red en dos claims, dos eventos o dos activaciones POS.
+            </p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {enterpriseContracts.map((item) => {
+              const Icon = item.Icon;
+              return (
+                <Card key={item.label} className="p-5">
+                  <Icon className="h-5 w-5 text-cyan-300" />
+                  <h3 className="mt-4 text-base font-semibold text-white">{item.label}</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-300">{item.detail}</p>
+                </Card>
+              );
+            })}
+          </div>
+        </section>
+
         <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
           <Card className="p-6">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">Por que lo construimos</p>
@@ -569,7 +619,7 @@ export default async function SdkPage({ searchParams }: SdkPageProps) {
             </p>
             <div className="mt-5 grid gap-3">
               <div className="rounded-lg border border-white/10 bg-white/5 p-3 text-sm text-slate-200">QR no promete anti-copia criptografica: sirve para passport, leads, marketplace y analytics de bajo costo.</div>
-              <div className="rounded-lg border border-white/10 bg-white/5 p-3 text-sm text-slate-200">NFC seguro y SUN prueban autenticidad fuerte cuando la marca necesita defensa real contra clones.</div>
+              <div className="rounded-lg border border-white/10 bg-white/5 p-3 text-sm text-slate-200">NFC seguro y SUN aportan evidencia criptográfica del tag y controles anti-replay; por sí solos no autentican el producto físico ni eliminan toda clonación.</div>
               <div className="rounded-lg border border-white/10 bg-white/5 p-3 text-sm text-slate-200">POS + PIN separan lectura, compra y propiedad para no regalar ownership al curioso de gondola.</div>
             </div>
           </Card>

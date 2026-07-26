@@ -1,22 +1,24 @@
 # Nexid enterprise key custody and edge architecture
 
-## Separate trust domains
+## Current and target custody boundaries
 
-The existing Vercel `KMS_MASTER_KEY_HEX` remains dedicated to NFC/batch-key encryption. It must not be reused for blockchain transaction signing.
+The existing Vercel `KMS_MASTER_KEY_HEX` remains dedicated to NFC/batch-key envelope encryption. Despite its legacy name, a secret stored as a Vercel environment variable is not by itself a managed KMS or HSM and does not attest non-exportability. It must not be reused for blockchain transaction signing.
 
-Blockchain signing uses a separate non-exportable secp256k1 key in a managed KMS/HSM or institutional custody provider. The API and Vercel workloads submit an authenticated signing intent to the signer service; they never receive the private key. The signer enforces chain ID, contract allowlist, method/value limits, nonce policy, idempotency, and dual-control approval for production key changes.
+The current blockchain pilot mode is `kms_wrapped`: Google Cloud KMS with the `SOFTWARE` protection level unwraps an encrypted wallet inside the isolated executor, and wallet plaintext exists ephemerally in executor memory while a transaction is signed. Ciphertext can be persisted; plaintext must never be logged or returned. This is stronger than storing the wallet plaintext in an application environment variable, but it is not direct KMS signing, a non-exportable workload key or HSM custody.
 
-The production API rejects the legacy exportable Polygon private-key signer. Polygon mint and transfer must use the same durable executor/intention path as IOTA; the local key path remains only for non-production development or an isolated testnet environment.
+The production API rejects the legacy exportable Polygon private-key signer. Polygon minting can use the durable executor/intention path; the local-key path remains limited to non-production development or an isolated testnet environment. ERC-721 transfer is not implemented in the executor and no production caller currently invokes a safe transfer coordinator. Ownership claims therefore remain database records/requests and must never be described as an on-chain transfer. Transfer promotion requires an executor allowlist, caller, durable idempotency, a chain receipt and an `ownerOf` verification.
+
+Target architecture:
 
 ```text
-Vercel API  ->  outbox/idempotency  ->  signer service (KMS/HSM/custody)
-    |                                      |
- PostgreSQL                         IOTA/Polygon RPCs
+Vercel API  ->  outbox/idempotency  ->  executor policy  ->  direct remote signer
+    |                                      |                       |
+ PostgreSQL                   chain/contract allowlists       IOTA/Polygon RPCs
     |
  Cloudflare WAF + rate limits at every public zone
 ```
 
-The first production implementation should use Google Cloud KMS `EC_SIGN_SECP256K1_SHA256` or an equivalent custody product, with a small adapter implementing the existing executor signer protocol. AWS/Azure are valid alternatives only after confirming secp256k1 support and Ethereum-compatible digest/signature semantics in the selected region/service.
+The target signer keeps the secp256k1 private key outside application memory and enforces chain ID, contract/method/value allowlists, nonce policy, idempotency and controlled key rotation. It may use managed KMS, HSM or institutional custody, but Nexid must label it `HSM-backed` or `non-exportable` only after the provider protection level and runtime behavior are independently verified. Google Cloud KMS or another custody product can implement the existing executor signer contract after confirming secp256k1 support and Ethereum-compatible digest/signature semantics for the selected service and region.
 
 ## Cloudflare
 
@@ -38,11 +40,12 @@ Google Cloud KMS is the preferred low-cost signer path once billing is enabled: 
 
 ## Promotion gates
 
-1. Apply database migrations 0050-0054 only to the explicitly approved staging database.
+1. Apply the complete ordered migration set through the latest reviewed migration, currently `0061_supplier_export_artifact_delivery`, only to the explicitly approved database, then run the release preflight and postchecks.
 2. Provision signer key and policy; record public address and key version.
 3. Configure Cloudflare rules and observe in log/simulation mode before blocking.
 4. Run PostgreSQL, IOTA live-read, proof, webhook, and executor readiness gates.
-5. Promote with rollback owner, key-rotation drill, and incident runbook.
+5. Keep Polygon transfer/marketplace settlement disabled until the executor transfer gate above passes.
+6. Promote with rollback owner, key-rotation drill, and incident runbook.
 ## Free/staging boundary
 
 Cloudflare R2 encryption-at-rest and Workers Secrets are suitable for encrypted
@@ -51,3 +54,13 @@ custody boundary for Polygon/IOTA signing keys. Staging uses the declarative
 Google Cloud KMS Software plan in `infra/kms/google-staging`; production can
 promote the same signer contract to HSM protection without changing the
 executor's transaction-intent verification.
+
+## SDK replay-key rotation
+
+SDK response replay uses a separate application-level AES-GCM keyring, not the
+blockchain signer or NFC batch-key hierarchy. Every new envelope carries a key
+ID. On rotation, keep the previous SDK idempotency key configured for at least
+the full seven-day replay TTL plus deployment overlap; the release preflight
+validates the active key and every optional previous-key entry without printing
+their values. Removal before the TTL expires requires an audited rewrap job or
+explicit acceptance that retained operations can no longer be replayed.

@@ -10,7 +10,7 @@ export default async function UsersPage() {
     <div className="space-y-6">
       <Card className="p-6">
         <h1 className="text-2xl font-bold text-white">Enterprise IAM</h1>
-        <p className="mt-2 text-sm text-slate-400">Administrá usuarios, permisos por recurso, reset tokens y MFA desde la UI.</p>
+        <p className="mt-2 text-sm text-slate-400">Administrá usuarios, permisos y restablecimientos. El alta TOTP está bloqueada; sólo puede revocarse MFA legacy detectado.</p>
       </Card>
       <UserManagementPanel />
     </div>

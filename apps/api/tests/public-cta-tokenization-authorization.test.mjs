@@ -183,7 +183,7 @@ test("even a valid signature cannot turn the handoff UID into caller-controlled 
 test("tokenization route uses only resolved policy, exact ownership and trusted recipient", async () => {
   const source = await readFile(tokenizeRouteUrl, "utf8");
 
-  assert.match(source, /requireSunFreshHandoff\(req, body, \{ bid, eventId, uid: target\.shareUid \}\)/);
+  assert.match(source, /consumeSunFreshHandoff\([\s\S]*?req,[\s\S]*?body,[\s\S]*?\{ bid, eventId, uid: target\.shareUid \},[\s\S]*?"public_tokenize_request"/);
   assert.match(source, /const serverPolicy = target\.tokenizationPolicy/);
   assert.match(source, /caller_tokenization_policy_not_authorized/);
   assert.match(source, /caller_tokenization_recipient_not_authorized/);
@@ -207,12 +207,16 @@ test("web proxy signs the event alias before considering caller UID", async () =
   assert.match(source, /return \/\^\[1-9\]\\d\*\$\/\.test\(normalizedEventId\) \? `EVENT-\$\{normalizedEventId\}` : ""/);
 });
 
-test("claim and warranty keep their public event and fresh-tap gates", async () => {
-  for (const routeUrl of [claimRouteUrl, warrantyRouteUrl]) {
+test("claim and warranty keep their public event and one-time fresh-tap gates", async () => {
+  for (const [routeUrl, action] of [
+    [claimRouteUrl, "public_claim_ownership"],
+    [warrantyRouteUrl, "public_register_warranty"],
+  ]) {
     const source = await readFile(routeUrl, "utf8");
     assert.match(source, /resolvePublicCtaTarget\(body\)/);
     assert.match(source, /requireShareToken\(req, bid, target\.shareUid\)/);
-    assert.match(source, /requireSunFreshHandoff\(req, body, \{ bid, eventId \}\)/);
-    assert.match(source, /if \(!eventId \|\| !fresh\.ok\)/);
+    assert.match(source, new RegExp(`consumeSunFreshHandoff\\(req, body, \\{ bid, eventId \\}, "${action}"\\)`));
+    assert.match(source, /if \(!eventId\)/);
+    assert.match(source, /if \(!fresh\.ok\)/);
   }
 });

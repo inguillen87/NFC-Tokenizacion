@@ -1,20 +1,36 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+import { createHash, timingSafeEqual } from "node:crypto";
+
 import { json } from "../../../../lib/http";
 import { sql } from "../../../../lib/db";
 import { anchorTokenizationRequest } from "../../../../lib/tokenization-engine";
 import { ensureTokenizationRequestsSchema } from "../../../../lib/tokenization-schema";
+import { enforceCriticalRateLimit } from "../../../../lib/critical-rate-limit";
+
+function secretMatches(provided: string, expected: string) {
+  if (!provided || !expected) return false;
+  const left = createHash("sha256").update(provided, "utf8").digest();
+  const right = createHash("sha256").update(expected, "utf8").digest();
+  return timingSafeEqual(left, right);
+}
 
 function isAuthorized(req: Request) {
-  const expected = (process.env.INTERNAL_TOKENIZATION_KEY || "").trim();
-  if (!expected) return false;
-  const provided = (req.headers.get("x-internal-tokenization-key") || "").trim();
-  return provided && provided === expected;
+  const expected = String(process.env.INTERNAL_TOKENIZATION_KEY || "").trim();
+  const provided = String(req.headers.get("x-internal-tokenization-key") || "").trim();
+  return Boolean(expected && secretMatches(provided, expected));
 }
 
 export async function POST(req: Request): Promise<Response> {
   if (!isAuthorized(req)) return json({ ok: false, reason: "unauthorized" }, 401);
+  const rateLimited = await enforceCriticalRateLimit(req, {
+    rateClass: "proof_write",
+    tenantId: "platform",
+    subjectId: "internal:tokenization-worker",
+    globalPrincipal: true,
+  });
+  if (rateLimited) return rateLimited;
 
   const body = await req.json().catch(() => ({})) as Record<string, unknown>;
   const limit = Math.min(Math.max(Number(body.limit || 10), 1), 100);

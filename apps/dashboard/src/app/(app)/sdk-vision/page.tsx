@@ -69,9 +69,9 @@ const carriers = [
   },
   {
     icon: PackageCheck,
-    eyebrow: "Autenticidad fuerte",
+    eyebrow: "Evidencia criptográfica",
     title: "NFC criptográfico y tamper",
-    body: "El servidor valida datos dinámicos y políticas anti-replay. La afirmación de autenticidad depende del carrier, la configuración y la lectura recibida.",
+    body: "El servidor valida el mensaje dinámico y las políticas anti-replay. El resultado describe evidencia del tag y estado reportado; no autentica por sí solo el producto físico.",
     verdict: "VERIFICACIÓN CRIPTOGRÁFICA",
   },
 ];

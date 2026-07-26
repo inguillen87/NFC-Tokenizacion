@@ -16,11 +16,14 @@ The reservation is an `INSERT ... ON CONFLICT DO UPDATE` over both keys. Postgre
 Apply migration `20260723200500_0053_admin_login_abuse_guard.sql` before releasing the route and set:
 
 - `LOGIN_RATE_LIMIT_PEPPER`: dedicated random secret, at least 32 characters.
-- `LOGIN_TRUSTED_PROXY_HOPS`: count of nexID-controlled reverse proxies at the right edge of `X-Forwarded-For`.
 
-Production is fail-closed even if `LOGIN_RATE_LIMIT_FAIL_CLOSED=false`: missing/invalid configuration, an untrusted or malformed client-address chain, and rate-limit storage failures return a generic `503` with `Retry-After: 60`. Outside production, `LOGIN_RATE_LIMIT_FAIL_CLOSED` controls that behavior to keep local development possible.
+Production is fail-closed even if `LOGIN_RATE_LIMIT_FAIL_CLOSED=false`: missing/invalid configuration, an untrusted or malformed client address, and rate-limit storage failures return a generic `503` with `Retry-After: 60`. Outside production, `LOGIN_RATE_LIMIT_FAIL_CLOSED` controls that behavior to keep local development possible.
 
-Do not increase `LOGIN_TRUSTED_PROXY_HOPS` speculatively. For a chain `client, proxy-a` behind two controlled proxies, set `2`; the resolver selects the first untrusted hop from the right and ignores attacker-prepended values. The login route never uses `X-Real-IP` as an implicit trust fallback.
+The login route uses the centralized request metadata resolver. It accepts
+Cloudflare's client IP only after the origin-auth proxy has injected its
+internal verification marker, or Vercel's platform-generated forwarding value
+for direct/preview traffic. It never treats caller-controlled `X-Forwarded-For`
+or `X-Real-IP` as a production trust signal.
 
 ## Policy and responses
 
@@ -33,6 +36,6 @@ Operational audit events remain in `user_auth_events`; the HMAC bucket table is 
 ## Rollout check
 
 1. Apply migration `0053` through the normal migration pipeline.
-2. Configure the pepper and verify the actual proxy topology before setting trusted hops.
+2. Configure the pepper and verify the Cloudflare-to-origin authentication boundary.
 3. Run `npm run test:auth-security --workspace=api` and `npx tsc --noEmit -p apps/api/tsconfig.json`.
 4. From a staging source, verify the configured attempt boundary, the `Retry-After` header, cooldown recovery, a valid login reset, and that a forged left-most `X-Forwarded-For` value does not change the selected source.

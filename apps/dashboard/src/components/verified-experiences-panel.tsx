@@ -2,6 +2,8 @@ import Link from "next/link";
 import { Badge, Card } from "@product/ui";
 
 type PanelMode = "overview" | "loyalty" | "marketplace";
+export type ExperienceAvailability = "ready" | "upstream_error" | "unreachable" | "invalid_payload" | "fixture";
+export type ExperienceSource = "production" | "demo" | "unconfirmed" | "unavailable";
 
 export type VerifiedExperienceItem = {
   id?: string;
@@ -29,24 +31,26 @@ type VerifiedExperiencesPanelProps = {
     approved?: number;
     needsBrandResponse?: number;
   };
+  availability?: ExperienceAvailability;
+  source?: ExperienceSource;
 };
 
 const rules = [
-  { step: "01", title: "Tap físico", body: "La persona toca el producto real. Si hay replay o clon, no puede opinar." },
+  { step: "01", title: "Evento NFC", body: "La persona presenta un mensaje NFC asociado. Replay o señales de riesgo bloquean según policy; no prueba el producto físico." },
   { step: "02", title: "Identidad", body: "Email, celular, wallet o cuenta nexID validada antes de publicar." },
   { step: "03", title: "Vínculo", body: "Producto guardado, club activo, ticket, retailer u ownership según política." },
   { step: "04", title: "Review segura", body: "Estrellas, comentario, fotos opcionales, idioma y país aproximado." },
   { step: "05", title: "Marca protegida", body: "Moderación, respuesta de marca, score anti-spam y privacidad." },
 ];
 
-const fallbackExperiences = [
+const exampleExperiences = [
   {
     product: "Gran Reserva Malbec",
     tenant: "Bodega Balmec",
     stars: "5.0",
     location: "Zúrich, CH",
-    badge: "Dueño verificado",
-    quote: "La botella llegó intacta; pude ver origen, apertura y certificado desde el teléfono.",
+    badge: "Ejemplo: titularidad digital confirmada",
+    quote: "Ejemplo de cómo se mostraría una experiencia con evidencia aprobada.",
     trust: 96,
     status: "Aprobada",
   },
@@ -55,8 +59,8 @@ const fallbackExperiences = [
     tenant: "Cosmética Lumina",
     stars: "4.8",
     location: "São Paulo, BR",
-    badge: "Compra validada",
-    quote: "El sello me mostró que era auténtico antes de abrir la caja. La garantía quedó guardada.",
+    badge: "Ejemplo: compra validada",
+    quote: "Ejemplo visual de garantía y estado de sello; no es una review publicada.",
     trust: 91,
     status: "Traducida",
   },
@@ -65,24 +69,24 @@ const fallbackExperiences = [
     tenant: "Arena Passport",
     stars: "4.7",
     location: "Miami, US",
-    badge: "Tap físico confirmado",
-    quote: "Entré al evento con el tap y después vi beneficios del club sin pedir soporte.",
+    badge: "Ejemplo: evento NFC registrado",
+    quote: "Ejemplo visual de ingreso y beneficios; no representa actividad observada.",
     trust: 88,
     status: "Pendiente marca",
   },
 ];
 
-const moderationQueue = [
+const moderationQueueExamples = [
   { item: "Whisky edición limitada", reason: "Foto real pendiente", action: "Solicitar evidencia", tone: "warn" },
   { item: "Perfume colección", reason: "Comentario negativo con compra real", action: "Responder marca", tone: "good" },
   { item: "Entrada corporativa", reason: "Lenguaje detectado", action: "Revisar texto", tone: "risk" },
 ];
 
 const socialProof = [
-  "Marketplace con estrellas verificadas por dueños reales.",
-  "Passport con historia del producto y experiencias de usuarios.",
-  "Club VIP con reputación, países, lotes y feedback por segmento.",
-  "NFT/certificado con eventos verificables, sin exponer comentarios completos fuera del CRM.",
+  "Marketplace capaz de mostrar estrellas cuando la evidencia y moderación están confirmadas.",
+  "Passport preparado para historia del producto y experiencias aprobadas.",
+  "Club VIP configurable por países, lotes y segmentos.",
+  "NFT/certificado opcional para eventos verificables, sin publicar comentarios completos.",
 ];
 
 function readBadges(value: unknown) {
@@ -98,41 +102,70 @@ function readBadges(value: unknown) {
   return [];
 }
 
+function optionalScore(value: number | string | null | undefined, min: number, max: number) {
+  if (value === null || value === undefined || String(value).trim() === "") return null;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return null;
+  return Math.max(min, Math.min(max, parsed));
+}
+
 function normalizeExperience(item: VerifiedExperienceItem) {
   const badges = readBadges(item.verification_badges);
+  const rating = optionalScore(item.rating, 0, 5);
+  const trust = optionalScore(item.trust_score, 0, 100);
   return {
-    product: String(item.product_name || item.product || "Producto verificado"),
-    tenant: String(item.tenant_slug || item.tenant || "tenant"),
-    stars: Number(item.rating || 0) ? Number(item.rating || 0).toFixed(1) : "-",
-    location: [item.city, item.country].filter(Boolean).join(", ") || "ubicación privada",
+    product: String(item.product_name || item.product || "Producto sin nombre reportado"),
+    tenant: String(item.tenant_slug || item.tenant || "Tenant no informado"),
+    stars: rating === null ? "Sin rating" : rating.toFixed(1),
+    location: [item.city, item.country].filter(Boolean).join(", ") || "Ubicación no reportada",
     badge: badges.includes("dueno_verificado")
-      ? "Dueño verificado"
+      ? "Titularidad digital confirmada"
       : badges.includes("tap_fisico_confirmado")
-        ? "Tap físico confirmado"
-        : "Evidencia validada",
-    quote: String(item.body || item.quote || item.title || "Experiencia pendiente de moderación."),
-    trust: Math.max(0, Math.min(100, Number(item.trust_score || 0))),
-    status: String(item.moderation_status || "pending"),
+        ? "Evento NFC registrado"
+        : "Sin badge de verificación",
+    quote: String(item.body || item.quote || item.title || "Sin comentario publicado."),
+    trust,
+    status: String(item.moderation_status || "Estado no informado"),
   };
 }
 
-function buildStats(items: VerifiedExperienceItem[], moderation?: VerifiedExperiencesPanelProps["moderation"]) {
-  if (!items.length) {
+function buildStats(items: VerifiedExperienceItem[], moderation: VerifiedExperiencesPanelProps["moderation"], availability: ExperienceAvailability) {
+  if (availability === "fixture") {
     return [
-      { label: "Módulo listo", value: "Owner-only", detail: "Solo publica quien tiene evidencia real" },
-      { label: "Regla central", value: "Tap + ID", detail: "Tap fresco y contacto validado antes de opinar" },
-      { label: "Moderación", value: "Activa", detail: "La marca aprueba, responde o mantiene privado" },
-      { label: "Privacidad", value: "Hash/DB", detail: "Blockchain para eventos, no comentarios completos" },
+      { label: "Vista", value: "Ejemplo", detail: "Fixture de producto; no es actividad del tenant" },
+      { label: "Regla propuesta", value: "Tap + ID", detail: "Política configurable antes de publicar" },
+      { label: "Moderación", value: "Diseñada", detail: "Capacidad del módulo, no una cola activa" },
+      { label: "Privacidad", value: "Hash/DB", detail: "Arquitectura propuesta para eventos y comentarios" },
     ];
   }
-  const avgRating = items.reduce((acc, item) => acc + Number(item.rating || 0), 0) / items.length;
-  const avgTrust = items.reduce((acc, item) => acc + Number(item.trust_score || 0), 0) / items.length;
+  if (availability !== "ready") {
+    return [
+      { label: "Experiencias", value: "No disponible", detail: "La fuente no confirmó registros ni ceros" },
+      { label: "Promedio", value: "—", detail: "No calculado sin una respuesta válida" },
+      { label: "Moderación", value: "—", detail: "Cola no disponible" },
+      { label: "Idiomas", value: "—", detail: "Fuente no disponible" },
+    ];
+  }
+  if (!items.length) {
+    return [
+      { label: "Experiencias", value: "Sin registros", detail: "La fuente confirmó una lista vacía" },
+      { label: "Promedio", value: "—", detail: "Todavía no hay ratings para calcular" },
+      { label: "Moderación", value: String(moderation?.pending ?? 0), detail: "Cero confirmado por la fuente" },
+      { label: "Idiomas", value: "—", detail: "Todavía no hay experiencias publicadas" },
+    ];
+  }
+  const ratings = items.map((item) => optionalScore(item.rating, 0, 5)).filter((value): value is number => value !== null);
+  const trustScores = items.map((item) => optionalScore(item.trust_score, 0, 100)).filter((value): value is number => value !== null);
+  const avgRating = ratings.length ? ratings.reduce((acc, value) => acc + value, 0) / ratings.length : null;
+  const avgTrust = trustScores.length ? trustScores.reduce((acc, value) => acc + value, 0) / trustScores.length : null;
   const locales = new Set(items.map((item) => String(item.original_locale || "").trim()).filter(Boolean));
+  const statusesAreReported = items.every((item) => typeof item.moderation_status === "string" && item.moderation_status.trim().length > 0);
+  const pendingModeration = moderation?.pending ?? (statusesAreReported ? items.filter((item) => item.moderation_status === "pending").length : null);
   return [
-    { label: "Experiencias verificadas", value: String(items.length), detail: "Solo con tap, contacto u ownership válido" },
-    { label: "Promedio club", value: `${avgRating.toFixed(1)}/5`, detail: `Trust medio ${Math.round(avgTrust)}/100` },
-    { label: "Moderación pendiente", value: String(moderation?.pending ?? items.filter((item) => item.moderation_status === "pending").length), detail: "Nada se publica sin política de marca" },
-    { label: "Idiomas activos", value: String(Math.max(1, locales.size)), detail: "Original + traducción para el país del tap" },
+    { label: "Experiencias con evidencia", value: String(items.length), detail: "Solo con mensaje NFC, identidad o titularidad digital según policy" },
+    { label: "Promedio club", value: avgRating === null ? "—" : `${avgRating.toFixed(1)}/5`, detail: avgTrust === null ? "Trust no informado" : `Trust medio ${Math.round(avgTrust)}/100` },
+    { label: "Moderación pendiente", value: pendingModeration === null ? "—" : String(pendingModeration), detail: pendingModeration === null ? "Estado no informado por la fuente" : "Nada se publica sin política de marca" },
+    { label: "Idiomas activos", value: locales.size ? String(locales.size) : "—", detail: locales.size ? "Locales reportados por la fuente" : "Locale no informado" },
   ];
 }
 
@@ -143,21 +176,41 @@ function toneClass(tone: string) {
   return "border-cyan-300/25 bg-cyan-500/10 text-cyan-100";
 }
 
-export function VerifiedExperiencesPanel({ mode = "overview", items = [], moderation }: VerifiedExperiencesPanelProps) {
+export function VerifiedExperiencesPanel({ mode = "overview", items = [], moderation, availability = "fixture", source = "unavailable" }: VerifiedExperiencesPanelProps) {
   const compact = mode === "marketplace";
-  const stats = buildStats(items, moderation);
-  const experiences = items.length ? items.slice(0, 3).map(normalizeExperience) : fallbackExperiences;
+  const stats = buildStats(items, moderation, availability);
+  const experiences = availability === "ready"
+    ? items.slice(0, 3).map(normalizeExperience)
+    : availability === "fixture"
+      ? exampleExperiences
+      : [];
+  const sourceLabel = availability === "fixture"
+    ? "VISTA EJEMPLO"
+    : source === "production"
+      ? "FUENTE OPERATIVA"
+      : source === "demo"
+        ? "DATOS DEMO"
+        : availability === "ready"
+          ? "FUENTE SIN CONFIRMAR"
+          : "FUENTE NO DISPONIBLE";
+  const heading = availability === "fixture"
+    ? "Cómo se verían experiencias con evidencia"
+    : availability !== "ready"
+      ? "Experiencias no disponibles"
+      : items.length
+        ? "Experiencias registradas con evidencia"
+        : "Fuente confirmada sin experiencias";
 
   return (
     <Card className="overflow-hidden p-0">
       <div className="dashboard-hero-panel dashboard-hero-panel--cyan border-b border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.18),transparent_32%),linear-gradient(135deg,rgba(15,23,42,0.96),rgba(2,6,23,0.98))] p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-200">nexID Club</p>
-            <h2 className="mt-2 text-2xl font-black tracking-tight text-white">Experiencias verificadas por dueños reales</h2>
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-200">nexID Club · {sourceLabel}</p>
+            <h2 className="mt-2 text-2xl font-black tracking-tight text-white">{heading}</h2>
             <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-300">
-              No son reviews abiertas de internet. Cada opinión nace de una prueba: tap fresco, contacto validado, producto guardado,
-              compra u ownership según política del tenant. La marca gana prueba social sin perder control.
+              El contrato exige evidencia, identidad y política del tenant antes de publicar. Esta pantalla distingue registros confirmados,
+              respuestas vacías, fallas de fuente y ejemplos visuales.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -184,7 +237,7 @@ export function VerifiedExperiencesPanel({ mode = "overview", items = [], modera
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-200">Política de publicación</p>
-                <h3 className="mt-1 text-lg font-black text-white">De tap real a experiencia publicada</h3>
+                <h3 className="mt-1 text-lg font-black text-white">De evento NFC a experiencia publicada</h3>
               </div>
               <Link href="/loyalty/experiences" className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-100">
                 Abrir módulo
@@ -215,19 +268,29 @@ export function VerifiedExperiencesPanel({ mode = "overview", items = [], modera
                 <p className="mt-4 text-sm leading-6 text-slate-200">&quot;{experience.quote}&quot;</p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <span className="rounded-full border border-emerald-300/25 bg-emerald-500/10 px-2 py-1 text-[10px] font-bold text-emerald-100">{experience.badge}</span>
-                  <span className="rounded-full border border-cyan-300/25 bg-cyan-500/10 px-2 py-1 text-[10px] font-bold text-cyan-100">Trust {experience.trust}/100</span>
+                  <span className="rounded-full border border-cyan-300/25 bg-cyan-500/10 px-2 py-1 text-[10px] font-bold text-cyan-100">
+                    {experience.trust === null ? "Trust no informado" : `Trust ${experience.trust}/100`}
+                  </span>
                   <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-bold text-slate-300">{experience.status}</span>
                 </div>
               </article>
             ))}
+            {experiences.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-white/15 bg-slate-950/35 p-5 text-sm leading-6 text-slate-300 lg:col-span-3">
+                {availability === "ready"
+                  ? "La fuente confirmó que todavía no hay experiencias para mostrar."
+                  : "No se muestran reviews de ejemplo como si fueran registros del tenant mientras la fuente no está disponible."}
+              </div>
+            ) : null}
           </div>
         </section>
 
         <aside className="space-y-4">
           <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-200">Cola de moderación</p>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-200">Ejemplo de cola de moderación</p>
+            <p className="mt-2 text-xs leading-5 text-slate-400">Fixture de UX; no representa tickets abiertos.</p>
             <div className="mt-4 space-y-3">
-              {moderationQueue.map((item) => (
+              {moderationQueueExamples.map((item) => (
                 <div key={item.item} className={`rounded-2xl border p-3 text-xs ${toneClass(item.tone)}`}>
                   <p className="font-black">{item.item}</p>
                   <p className="mt-1 opacity-80">{item.reason}</p>
@@ -245,7 +308,7 @@ export function VerifiedExperiencesPanel({ mode = "overview", items = [], modera
               ))}
             </div>
             <p className="mt-3 text-xs leading-5 text-violet-100">
-              Contenido editable en base de datos. En blockchain se guarda ownership, hash, estado y eventos relevantes, no el comentario completo.
+              Contenido editable en base de datos. En blockchain puede registrarse titularidad digital, hash, estado y eventos relevantes, no el comentario completo ni propiedad física.
             </p>
           </div>
         </aside>

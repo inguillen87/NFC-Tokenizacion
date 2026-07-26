@@ -14,7 +14,11 @@ const files = {
   logisticsRecipientVerify: "apps/api/src/app/api/v1/logistics/recipient-verify/route.ts",
   products: "apps/api/src/app/api/v1/sdk/products/[bid]/route.ts",
   events: "apps/api/src/app/api/v1/sdk/events/route.ts",
+  idempotency: "apps/api/src/app/api/v1/sdk/_idempotency.ts",
+  idempotencyStatus: "apps/api/src/app/api/v1/sdk/idempotency/status/route.ts",
+  idempotencyMigration: "apps/api/db/migrations/20260726173000_0060_sdk_idempotency_operations.sql",
   webhooks: "apps/api/src/lib/sdk-webhooks.ts",
+  webhookSigning: "apps/api/src/lib/webhook-signing.ts",
   apiKeysAdmin: "apps/api/src/app/admin/sdk/api-keys/route.ts",
   claimPolicyAdmin: "apps/api/src/app/admin/sdk/claim-policy/route.ts",
   sdk: "packages/sdk/src/index.ts",
@@ -42,6 +46,7 @@ test("sdk runtime schema stores API keys by hash and includes activation policy"
   assert.match(schema, /pos_activation_id/);
   assert.match(schema, /pos_validated/);
   assert.match(schema, /CREATE TABLE IF NOT EXISTS sdk_external_events/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS sdk_idempotency_operations/);
   assert.match(schema, /CREATE TABLE IF NOT EXISTS webhook_endpoints/);
   assert.match(schema, /CREATE TABLE IF NOT EXISTS webhook_deliveries/);
 });
@@ -65,10 +70,13 @@ test("sdk protected routes expose verify, POS activation, claim, products and ex
   const posActivate = read(files.posActivate);
   const products = read(files.products);
   const events = read(files.events);
+  const idempotency = read(files.idempotency);
+  const idempotencyStatus = read(files.idempotencyStatus);
+  const idempotencyMigration = read(files.idempotencyMigration);
   assert.match(verify, /authenticateSdkRequest\(req, "sdk:verify"\)/);
   assert.match(verify, /processSunScan/);
   assert.match(verify, /batch_not_found_for_tenant/);
-  assert.match(verify, /dispatchTenantWebhooks/);
+  assert.match(verify, /enqueueSdkWebhookGuaranteed/);
   assert.match(claim, /authenticateSdkRequest\(req, "sdk:claim"\)/);
   assert.match(claim, /pin_required/);
   assert.match(claim, /pos_token_required_or_invalid/);
@@ -83,6 +91,10 @@ test("sdk protected routes expose verify, POS activation, claim, products and ex
   assert.match(events, /authenticateSdkRequest\(req, "sdk:events"\)/);
   assert.match(events, /sdk_external_events/);
   assert.match(events, /sdk\.external_event/);
+  assert.match(idempotencyMigration, /uq_sdk_idempotency_tenant_route_key/);
+  assert.match(idempotency, /idempotency_key_payload_mismatch/);
+  assert.match(idempotency, /aes-256-gcm/);
+  assert.match(idempotencyStatus, /readSdkIdempotencyStatus/);
   for (const route of [verify, claim, posActivate, products, events]) {
     assert.match(route, /logSdkUsage/);
   }
@@ -107,10 +119,12 @@ test("logistics v1 routes use SDK auth and derive tenant from the API key", () =
 
 test("admin SDK console can issue keys, set claim policy and dispatch signed webhooks without leaking secrets", () => {
   const webhooks = read(files.webhooks);
+  const webhookSigning = read(files.webhookSigning);
   const apiKeysAdmin = read(files.apiKeysAdmin);
   const claimPolicyAdmin = read(files.claimPolicyAdmin);
-  assert.match(webhooks, /createHmac\("sha256"/);
-  assert.match(webhooks, /x-nexid-signature/);
+  assert.match(webhooks, /createWebhookSignatureHeaders/);
+  assert.match(webhookSigning, /createHmac\("sha256"/);
+  assert.match(webhookSigning, /x-nexid-signature/);
   assert.match(webhooks, /webhook_deliveries/);
   assert.match(apiKeysAdmin, /generateSdkKey/);
   assert.match(apiKeysAdmin, /hashSdkApiKey/);
@@ -135,6 +149,8 @@ test("internal server SDK is typed, private and maps to the protected gateway", 
   assert.match(sdk, /getProduct\(bid: string\)/);
   assert.match(sdk, /reportEvent\(params: ExternalEventRequest\)/);
   assert.match(sdk, /activatePosPurchase\(params: PosActivationRequest\)/);
+  assert.match(sdk, /getIdempotencyStatus\(/);
+  assert.match(sdk, /reconcileIdempotency\(/);
   assert.match(sdk, /applyDeliverySeal\(params: LogisticsSealApplyRequest\)/);
   assert.match(sdk, /handoffDeliverySeal\(params: LogisticsHandoffRequest\)/);
   assert.match(sdk, /verifyDeliverySeal\(params: LogisticsRecipientVerifyRequest\)/);
@@ -143,6 +159,7 @@ test("internal server SDK is typed, private and maps to the protected gateway", 
   assert.match(sdk, /\/api\/v1\/sdk\/products\/\$\{encodeURIComponent\(bid\)\}/);
   assert.match(sdk, /\/api\/v1\/sdk\/events/);
   assert.match(sdk, /\/api\/v1\/sdk\/pos\/activate/);
+  assert.match(sdk, /\/api\/v1\/sdk\/idempotency\//);
   assert.match(sdk, /\/api\/v1\/logistics\/seal-apply/);
   assert.match(sdk, /\/api\/v1\/logistics\/handoff/);
   assert.match(sdk, /\/api\/v1\/logistics\/recipient-verify/);

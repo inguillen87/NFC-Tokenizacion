@@ -12,7 +12,8 @@ versión y fingerprints SHA-256 sin secretos.
 - `STAGING_MIGRATION_EXPECTED_BASELINE_LEDGER` debe enumerar todo el ledger previo, no sólo la última migración.
 - No ejecutar `npm run db:migrate` sin `--only`: el endpoint auditado tiene un ledger histórico disperso y un replay global es inseguro.
 - El runner es dueño de `BEGIN/COMMIT`; ningún archivo SQL puede incluir control de transacción.
-- `0050` se confirma sola. Recién después se ejecuta el dry-run rollback-only de `0051`–`0056`.
+- El ledger puede estar virgen o contener un prefijo continuo exacto de `0050`–`0056`; cualquier hueco, orden inesperado o migración ajena bloquea la ejecución.
+- Si falta, `0050` se confirma sola. Después se ejecuta un dry-run rollback-only únicamente del sufijo pendiente.
 - Antes de mutar staging debe existir una prueba exitosa en una rama descartable y un snapshot/branch de recuperación de staging.
 - Rollback operativo = restore de Neon. No se ejecutan `DROP TABLE`, `DROP COLUMN` ni una down migration destructiva.
 
@@ -49,15 +50,16 @@ npm run gate:migrations:preflight
 ```
 
 Debe devolver `ok: true`, cuatro tablas baseline presentes, `uuid-ossp`, rol
-owner con `USAGE/CREATE`, cero locks bloqueantes, cero residuos V2 y coincidencia
-exacta del ledger. Guardar `target.target_fingerprint`, `schema_fingerprint` y
+owner con `USAGE/CREATE`, cero locks bloqueantes y un esquema que coincida
+exactamente con el prefijo continuo identificado en `migration_progress`. Guardar `target.target_fingerprint`, `schema_fingerprint` y
 `ledger.sha256`. El `schema_fingerprint` se reutiliza como
 `STAGING_MIGRATION_PRECHANGE_SCHEMA_FINGERPRINT`.
 
 ## 2. Ensayo en una rama descartable
 
 Crear desde el mismo punto de staging una rama Neon descartable. Repetir el
-preflight con el endpoint de esa rama en la allowlist. Aplicar `0050` sola:
+preflight con el endpoint de esa rama en la allowlist. Sólo si
+`migration_progress.prefix_length` es `0`, aplicar `0050` sola:
 
 ```powershell
 $env:DATABASE_URL = $env:STAGING_DATABASE_URL
@@ -66,11 +68,12 @@ Remove-Item Env:\DATABASE_URL
 npm run gate:migrations:dry-run
 ```
 
-El dry-run ejecuta `0051`–`0056` dentro de una única transacción con advisory
+El dry-run ejecuta sólo el sufijo todavía pendiente dentro de una única transacción con advisory
 lock, `lock_timeout=3s` y `statement_timeout=30s`, y siempre hace `ROLLBACK`.
 Debe devolver fingerprints before/after iguales y `rollback_verified: true`.
 
-Después, aplicar `0051`–`0056` individualmente con `--only`, ejecutar
+Después, aplicar individualmente con `--only` únicamente los archivos enumerados
+por `pending_migrations`, ejecutar
 `npm run gate:migrations:postcheck`, las suites API/executor y el smoke de dos
 instancias. Guardar el enlace o ID de esa ejecución como evidencia de rehearsal.
 
@@ -95,9 +98,11 @@ $env:STAGING_MIGRATION_REHEARSAL_EVIDENCE = '<approved-run-id-or-url>'
 npm run apply:staging:v2
 ```
 
-El wrapper vuelve a validar target, allowlist, ledger y fingerprint; aplica
-`0050`, verifica el ledger, ejecuta el dry-run de `0051`–`0056`, aplica cada
-archivo con transacción+ledger atómicos y termina con postcheck. Ante cualquier
+El wrapper vuelve a validar target, allowlist, ledger y fingerprint; identifica
+el prefijo ya aplicado, confirma `0050` sólo si falta, ensaya y aplica únicamente
+el sufijo pendiente con transacción+ledger atómicos y termina con postcheck exacto.
+Si las siete migraciones ya están aplicadas, la operación es idempotente y sólo
+ejecuta gates y postcheck. Ante cualquier
 fallo se detiene y devuelve `last_completed_migration` y `rollback_required`.
 
 ## 5. Postcheck

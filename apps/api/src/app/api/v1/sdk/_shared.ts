@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { getRequestMeta } from "../../../../lib/request-meta";
 
 export function clean(value: unknown) {
   return String(value || "").trim();
@@ -37,8 +38,7 @@ export function readJsonObject(value: unknown) {
 }
 
 export function parseHeaderIp(req: Request) {
-  const forwarded = req.headers.get("x-forwarded-for") || "";
-  return forwarded.split(",")[0]?.trim() || req.headers.get("x-real-ip") || null;
+  return getRequestMeta(req).ip;
 }
 
 export function isSecureOwnershipCarrier(carrierProfileCode: string | null) {
@@ -60,4 +60,3 @@ export function mapSealStatus(value: unknown): "CLOSED" | "OPENED" | "UNKNOWN" {
   if (status === "OPENED" || status === "OPENED_PREVIOUSLY" || status === "MANUAL_OPENED") return "OPENED";
   return "UNKNOWN";
 }
-

@@ -153,11 +153,11 @@ test("proof layer runbook separates runtime writers from public read-only fixtur
   const runbook = await readFile(new URL("../../../docs/proof-layer-runbook.md", import.meta.url), "utf8");
 
   assert.match(runbook, /IOTA_PROVIDER_MODE/);
-  assert.match(runbook, /IOTA_EVM_ANCHOR_CONTRACT=/);
-  assert.match(runbook, /adapter runtime actual invoca `anchorRoot/);
-  assert.match(runbook, /IOTA_EVM_ANCHOR_CONTRACT_V2/);
-  assert.match(runbook, /contrato V2 expone `anchorEvidence/);
-  assert.match(runbook, /no habilita por si solo nuevas escrituras/i);
+  assert.match(runbook, /IOTA_EVM_ANCHOR_CONTRACT_V2=/);
+  assert.match(runbook, /writer de nuevas evidencias es V2-only e invoca `anchorEvidence/i);
+  assert.match(runbook, /`IOTA_EVM_ANCHOR_CONTRACT` queda reservado para verificar hist[oó]ricos V1/i);
+  assert.doesNotMatch(runbook, /adapter runtime actual invoca `anchorRoot/i);
+  assert.match(runbook, /por si sol[oa] no habilita (?:nuevas )?escrituras/i);
   assert.match(runbook, /mock.*prohibido.*NODE_ENV=production/is);
   assert.match(runbook, /polygon:verify-proof-demo/);
   assert.match(runbook, /iota:verify-proof-v2/);

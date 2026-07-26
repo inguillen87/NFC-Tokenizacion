@@ -402,7 +402,7 @@ function routeTitle(route: GlobeRoute, points: GlobePoint[]) {
   const from = closestPoint(points, route.fromLat, route.fromLng);
   const to = closestPoint(points, route.toLat, route.toLng);
   if (from && to) return `${from.city} → ${to.city}`;
-  return "Ruta verificada";
+  return "Conexión reportada";
 }
 
 function routeMeta(route: GlobeRoute, points: GlobePoint[]) {
@@ -412,7 +412,7 @@ function routeMeta(route: GlobeRoute, points: GlobePoint[]) {
   const fromCountry = displayCountryName(inferCountryName(from || ({ city: "", lat: 0, lng: 0 } as GlobePoint)));
   const toCountry = displayCountryName(inferCountryName(to || ({ city: "", lat: 0, lng: 0 } as GlobePoint)));
   if (from && to) return `${from.city}, ${fromCountry} → ${to.city}, ${toCountry} · ${formatKm(distance)}`;
-  return `Origen y destino auditados - ${formatKm(distance)}`;
+  return `Origen y destino reportados - ${formatKm(distance)}`;
 }
 
 function routeDistanceLabel(route?: GlobeRoute) {
@@ -1012,9 +1012,9 @@ export function Globe3dMap({
     const country = displayCountryName(inferCountryName(point));
     const risk = point.risk || point.status === "risk";
     setHoverCard({
-      eyebrow: risk ? "Riesgo operativo" : point.status === "origin" ? "Origen verificado" : "Tap en vivo",
+      eyebrow: risk ? "Riesgo operativo" : point.status === "origin" ? "Origen declarado" : "Evento NFC reportado",
       title: point.city,
-      subtitle: country || "Ubicación verificada",
+      subtitle: country || "Ubicación reportada",
       meta: `${point.scans || 1} taps${risk ? ` · riesgo ${point.risk || 1}` : ""}${point.vertical ? ` · ${point.vertical}` : ""}`,
       tone: pointTone(point),
     });
@@ -1038,8 +1038,8 @@ export function Globe3dMap({
       title: displayCountryName(canonicalCountry) || "País",
       subtitle: displayContinentName(feature.properties?.CONTINENT),
       meta: active
-        ? `${activePoints.length} nodos · ${scans.toLocaleString("es-AR")} taps verificados`
-        : "Sin taps visibles en la ventana actual",
+        ? `${activePoints.length} nodos · ${scans.toLocaleString("es-AR")} eventos NFC reportados`
+        : "Sin eventos NFC visibles en la ventana actual",
       tone: active ? "#34d399" : "#67e8f9",
     });
   }, [activeCountryNames, finitePoints]);
@@ -1051,9 +1051,9 @@ export function Globe3dMap({
     }
 
     setHoverCard({
-      eyebrow: route.tone === "warn" ? "Ruta con alerta" : "Ruta de trazabilidad",
-      title: route.label || "Ruta verificada",
-      subtitle: "Origen, tap físico y evidencia comercial unidos",
+      eyebrow: route.tone === "warn" ? "Conexión con alerta" : "Conexión de eventos",
+      title: route.label || "Conexión reportada",
+      subtitle: "Origen declarado, evento NFC y evidencia comercial; no prueba recorrido físico",
       meta: routeMeta(route, finitePoints),
       tone: route.tone === "warn" ? "#fb7185" : route.tone === "success" ? "#34d399" : "#22d3ee",
     });
@@ -1261,15 +1261,15 @@ export function Globe3dMap({
       >
         <GlobeLoadingBackdrop isLightTheme={isLightTheme} className="opacity-100" />
         <div className="relative z-20 mx-4 max-w-[22rem] rounded-2xl border border-cyan-200/18 bg-slate-950/74 px-4 py-3 text-left text-slate-100 shadow-[0_18px_54px_rgba(0,0,0,.34)] backdrop-blur-xl">
-          <p className="text-[0.58rem] font-black uppercase tracking-[0.2em] text-cyan-200">Ruta verificada</p>
+          <p className="text-[0.58rem] font-black uppercase tracking-[0.2em] text-cyan-200">Conexión reportada</p>
           <strong className="mt-1 block text-base font-black leading-tight text-white">{routeCaption}</strong>
           <span className="mt-1 block text-xs font-bold text-slate-300">
-            {primaryDistance || `${finiteRoutes.length.toLocaleString("es-AR")} rutas`} - ruta compacta segura
+            {primaryDistance || `${finiteRoutes.length.toLocaleString("es-AR")} conexiones`} - vista compacta
           </span>
         </div>
         <div className="absolute bottom-4 left-4 right-4 z-20 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-slate-950/74 px-3 py-2 text-[0.68rem] font-bold text-slate-200 shadow-[0_14px_40px_rgba(0,0,0,.24)] backdrop-blur-xl">
-          <span className="text-cyan-100">{finitePoints.length.toLocaleString("es-AR")} nodos · {finiteRoutes.length.toLocaleString("es-AR")} rutas</span>
-          <span className="text-emerald-200">Ruta verificada</span>
+          <span className="text-cyan-100">{finitePoints.length.toLocaleString("es-AR")} nodos · {finiteRoutes.length.toLocaleString("es-AR")} conexiones</span>
+          <span className="text-emerald-200">Evidencia reportada</span>
         </div>
       </div>
     );
@@ -1328,13 +1328,13 @@ export function Globe3dMap({
           style={compactHud ? undefined : { maxWidth: "min(88%, 24rem)" }}
         >
           <p className="text-[0.56rem] font-black uppercase tracking-[0.18em] text-cyan-200">
-            Ruta trazable
+            Conexión de eventos
           </p>
           <strong className="mt-1 block truncate text-sm font-black leading-tight text-white">
             {routeCaption}
           </strong>
           <span className="mt-1 block truncate text-[0.66rem] font-bold text-slate-300">
-            {primaryDistance || "Distancia auditada"} - {totalScans.toLocaleString("es-AR")} taps visibles
+            {primaryDistance || "Distancia estimada"} - {totalScans.toLocaleString("es-AR")} eventos NFC visibles
           </span>
         </div>
       ) : null}
@@ -1456,17 +1456,17 @@ export function Globe3dMap({
         pathDashLength={(route: any) => route.tone === "warn" ? 0.18 : 0.13}
         pathDashGap={0.035}
         pathDashAnimateTime={(route: any) => route.tone === "warn" ? 1350 : 2100}
-        pathLabel={(route: any) => `<b>${route.label}</b><br/>${route.distance || "Ruta auditada"}`}
+        pathLabel={(route: any) => `<b>${route.label}</b><br/>${route.distance || "Conexión reportada"}`}
         onPathHover={(route: any) => {
           if (!route) {
             setHoverCard(null);
             return;
           }
           setHoverCard({
-            eyebrow: route.tone === "warn" ? "Ruta con alerta" : "Ruta comercial",
+            eyebrow: route.tone === "warn" ? "Conexión con alerta" : "Conexión comercial",
             title: route.label,
-            subtitle: "Trazabilidad de producto, canal y tap",
-            meta: route.distance || "Distancia auditada",
+            subtitle: "Relación visual entre eventos reportados; no prueba recorrido físico",
+            meta: route.distance || "Distancia estimada",
             tone: route.color,
           });
         }}

@@ -1,5 +1,11 @@
 import Link from "next/link";
 import { Card, SectionHeading, StatusChip } from "@product/ui";
+import { EnterpriseOpsState } from "../../../../components/enterprise-ops-state";
+import {
+  adminResourceFailure,
+  readAdminResourceResponse,
+  type AdminResourceReadResult,
+} from "../../../../lib/admin-resource-read";
 import { requireDashboardSession } from "../../../../lib/session";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../../lib/admin-page-access";
 
@@ -33,14 +39,40 @@ function formatDate(value: string | null | undefined) {
   return Number.isNaN(d.getTime()) ? "-" : d.toLocaleString("es-AR", { dateStyle: "medium", timeStyle: "short" });
 }
 
-async function getPassport(context: AdminPageContext, uid: string, params: URLSearchParams) {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function selectPassport(payload: unknown): PassportResponse | null {
+  if (!isRecord(payload) || payload.ok !== true || !isRecord(payload.passport)) return null;
+  const passport = payload.passport;
+  if (
+    !isRecord(passport.identity)
+    || !isRecord(passport.product)
+    || !isRecord(passport.provenance)
+    || !isRecord(passport.provenance.origin)
+    || !isRecord(passport.provenance.firstVerified)
+    || !isRecord(passport.provenance.lastVerified)
+    || !isRecord(passport.tokenization)
+  ) return null;
+  if (payload.timeline !== undefined && !Array.isArray(payload.timeline)) return null;
+  if (Array.isArray(payload.timeline) && payload.timeline.some((event) => (
+    !isRecord(event) || !isRecord(event.location) || !isRecord(event.device)
+  ))) return null;
+  return payload as unknown as PassportResponse;
+}
+
+async function getPassport(
+  context: AdminPageContext,
+  uid: string,
+  params: URLSearchParams,
+): Promise<AdminResourceReadResult<PassportResponse>> {
   const query = params.toString() ? `?${params.toString()}` : "";
   try {
     const response = await fetchAdminPage(context, `tags/${encodeURIComponent(uid)}/passport${query}`);
-    if (!response.ok) return null;
-    return await response.json() as PassportResponse;
+    return await readAdminResourceResponse(response, selectPassport);
   } catch {
-    return null;
+    return adminResourceFailure("unreachable");
   }
 }
 
@@ -60,16 +92,18 @@ export default async function TagPassportPage({ params, searchParams }: { params
   if (source !== "all") apiParams.set("source", source);
   apiParams.set("range", range);
   if (country) apiParams.set("country", country.toUpperCase());
+  const retryHref = `/tags/${encodeURIComponent(uid)}?${apiParams.toString()}`;
 
-  const data = await getPassport(adminContext, uid, apiParams);
+  const passportResult = await getPassport(adminContext, uid, apiParams);
+  const data = passportResult.data;
   const passport = data?.passport;
-  const timeline = data?.timeline || [];
+  const timeline = passportResult.availability === "ready" && data && Array.isArray(data.timeline) ? data.timeline : [];
   const suspiciousCount = timeline.filter((event) => event.result !== "ok").length;
   const uniqueCountries = new Set(timeline.map((event) => event.location.country).filter(Boolean)).size;
 
   return (
     <main className="space-y-6">
-      <SectionHeading eyebrow="Asset passport" title={uid} description="Identidad, provenance, verificaciones y estado de tokenización del activo físico." />
+      <SectionHeading eyebrow="Asset passport" title={uid} description="Identidad declarada, eventos NFC, ubicación reportada y tokenización digital asociada al UID." />
       <div><Link href="/tags" className="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-slate-200 hover:bg-white/5">← Volver a tags</Link></div>
       <Card className="p-4">
         <div className="grid gap-3 text-xs text-slate-300 md:grid-cols-4">
@@ -80,7 +114,27 @@ export default async function TagPassportPage({ params, searchParams }: { params
         </div>
       </Card>
 
-      {!passport ? <Card className="p-5 text-sm text-amber-100">No encontramos passport para este UID en el scope seleccionado.</Card> : (
+      {passportResult.availability === "not_found" ? (
+        <EnterpriseOpsState
+          variant="empty"
+          title="Passport no encontrado en este scope"
+          description="La API confirmó HTTP 404 para este UID y el alcance seleccionado. Revisá el UID, tenant y filtros antes de concluir que falta importarlo."
+          action={<Link href="/tags" className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-100">Volver a tags</Link>}
+          testId="tag-passport-not-found"
+        />
+      ) : passportResult.availability !== "ready" ? (
+        <EnterpriseOpsState
+          variant="error"
+          title="No se pudo cargar el passport"
+          description="La fuente administrativa no entregó un resultado confiable. No mostramos conteos, riesgo ni países como si fueran cero y este estado no significa que el UID no exista."
+          checklist={[
+            `Estado de lectura: ${passportResult.availability}`,
+            passportResult.status ? `Respuesta upstream: HTTP ${passportResult.status}` : "La fuente no respondió",
+          ]}
+          action={<Link href={retryHref} className="rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-2 text-sm font-semibold text-rose-100">Reintentar lectura</Link>}
+          testId="tag-passport-source-unavailable"
+        />
+      ) : !passport ? null : (
         <>
           <Card className="p-5">
             <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Identity & product</h2>
@@ -93,12 +147,13 @@ export default async function TagPassportPage({ params, searchParams }: { params
           </Card>
 
           <Card className="p-5">
-            <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Provenance & verification</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Datos declarados y eventos NFC</h2>
             <div className="mt-3 grid gap-2 text-sm text-slate-200 md:grid-cols-2">
-              <p>Harvest year: <b>{passport.provenance.origin.harvestYear || "-"}</b></p><p>Barrel months: <b>{passport.provenance.origin.barrelMonths ?? "-"}</b></p>
-              <p>Storage temp (°C): <b>{passport.provenance.origin.temperatureStorage ?? "-"}</b></p><p>First verified: <b>{formatDate(passport.provenance.firstVerified.at)} · {passport.provenance.firstVerified.city}, {passport.provenance.firstVerified.country}</b></p>
-              <p>Last verified: <b>{formatDate(passport.provenance.lastVerified.at)} · {passport.provenance.lastVerified.city}, {passport.provenance.lastVerified.country}</b></p><p>Last result / device: <b>{passport.provenance.lastVerified.result} / {passport.provenance.lastVerified.deviceLabel}</b></p>
+              <p>Harvest year declarado: <b>{passport.provenance.origin.harvestYear || "-"}</b></p><p>Barrel months declarados: <b>{passport.provenance.origin.barrelMonths ?? "-"}</b></p>
+              <p>Storage temp reportada (°C): <b>{passport.provenance.origin.temperatureStorage ?? "-"}</b></p><p>Primer evento reportado: <b>{formatDate(passport.provenance.firstVerified.at)} · {passport.provenance.firstVerified.city}, {passport.provenance.firstVerified.country}</b></p>
+              <p>Último evento reportado: <b>{formatDate(passport.provenance.lastVerified.at)} · {passport.provenance.lastVerified.city}, {passport.provenance.lastVerified.country}</b></p><p>Resultado / dispositivo: <b>{passport.provenance.lastVerified.result} / {passport.provenance.lastVerified.deviceLabel}</b></p>
             </div>
+            <p className="mt-3 text-xs text-slate-400">Las ubicaciones provienen del evento o dispositivo reportante; no prueban recorrido, custodia ni presencia física del producto.</p>
           </Card>
 
           <Card className="p-5">
@@ -110,16 +165,16 @@ export default async function TagPassportPage({ params, searchParams }: { params
           </Card>
 
           <Card className="p-5">
-            <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Verification timeline</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Timeline de eventos NFC</h2>
             <div className="mt-3 grid gap-3 md:grid-cols-3">
               <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs text-slate-300">Events in range<br /><b className="text-base text-slate-100">{timeline.length}</b></div>
               <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs text-slate-300">Risk / non-ok events<br /><b className="text-base text-amber-200">{suspiciousCount}</b></div>
-              <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs text-slate-300">Unique countries<br /><b className="text-base text-cyan-200">{uniqueCountries}</b></div>
+              <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs text-slate-300">Países reportados<br /><b className="text-base text-cyan-200">{uniqueCountries}</b></div>
             </div>
             {!timeline.length ? <p className="mt-3 text-sm text-slate-400">Sin eventos todavía.</p> : (
               <div className="mt-3 overflow-x-auto rounded-2xl border border-white/10">
                 <table className="w-full min-w-[1080px] text-left text-xs">
-                  <thead className="border-b border-white/10 bg-slate-950/60 text-slate-400"><tr><th className="px-3 py-2">Fecha</th><th className="px-3 py-2">Resultado</th><th className="px-3 py-2">Ubicación</th><th className="px-3 py-2">Dispositivo</th><th className="px-3 py-2">Source</th><th className="px-3 py-2">Reason</th></tr></thead>
+                  <thead className="border-b border-white/10 bg-slate-950/60 text-slate-400"><tr><th className="px-3 py-2">Fecha</th><th className="px-3 py-2">Resultado</th><th className="px-3 py-2">Ubicación reportada</th><th className="px-3 py-2">Dispositivo</th><th className="px-3 py-2">Source</th><th className="px-3 py-2">Reason</th></tr></thead>
                   <tbody>
                     {timeline.map((event) => (
                       <tr key={event.id} className="border-b border-white/5 text-slate-200">

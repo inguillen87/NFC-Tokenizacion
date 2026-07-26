@@ -3,6 +3,9 @@ import test from "node:test";
 import { Wallet } from "ethers";
 import crc32c from "fast-crc32c";
 import {
+  GOOGLE_KMS_ACCESS_TOKEN_ENV,
+  GOOGLE_KMS_GOVERNANCE_ACCESS_TOKEN_ENV,
+  GOOGLE_KMS_PUBLISHER_ACCESS_TOKEN_ENV,
   kmsWrapAad,
   signWithWrappedKms,
   wrappedKmsConfigured,
@@ -39,7 +42,150 @@ test("wrapped KMS config is domain-bound and fails closed", () => {
     wrappedPrivateKey,
   }), false);
   assert.equal(kmsWrapAad("polygon", "staging").toString("utf8"), "nexid.wallet.wrap.v1|staging|polygon|publisher");
+  assert.equal(kmsWrapAad("polygon", "staging", "governance").toString("utf8"), "nexid.wallet.wrap.v1|staging|polygon|governance");
   assert.notDeepEqual(kmsWrapAad("polygon", "staging"), kmsWrapAad("iota", "staging"));
+});
+
+test("wrapped KMS REST decrypt consumes an ephemeral token and verifies request CRCs", async () => {
+  const accessToken = "ya29.nexid-kms-migration-test-token-123456789";
+  process.env[GOOGLE_KMS_ACCESS_TOKEN_ENV] = accessToken;
+  let request;
+  const plaintext = Buffer.from(privateKey, "utf8");
+  const fetchImpl = async (_url, input) => {
+    request = input;
+    return {
+      ok: true,
+      async text() {
+        return JSON.stringify({
+          plaintext: plaintext.toString("base64"),
+          plaintextCrc32c: String(crc32c.calculate(plaintext)),
+          verifiedCiphertextCrc32c: true,
+          verifiedAdditionalAuthenticatedDataCrc32c: true,
+        });
+      },
+    };
+  };
+  const result = await signWithWrappedKms({
+    chainId: 80002,
+    expectedSignerAddress: wallet.address,
+    transaction,
+  }, {
+    domain: "polygon",
+    environment: "staging",
+    role: "governance",
+    transport: "rest",
+    keyResource,
+    wrappedPrivateKey,
+  }, { fetchImpl });
+
+  assert.equal(result.signerAddress, wallet.address);
+  assert.equal(process.env[GOOGLE_KMS_ACCESS_TOKEN_ENV], undefined);
+  assert.equal(request.headers.Authorization, `Bearer ${accessToken}`);
+  const body = JSON.parse(request.body);
+  assert.equal(body.additionalAuthenticatedData, Buffer.from("nexid.wallet.wrap.v1|staging|polygon|governance").toString("base64"));
+  assert.equal(body.ciphertext, wrappedPrivateKey);
+  assert.equal(body.ciphertextCrc32c, String(crc32c.calculate(Buffer.from(wrappedPrivateKey, "base64"))));
+});
+
+test("REST decrypt accepts Google responses that omit request-verification flags", async () => {
+  const accessToken = "ya29.google-realistic-decrypt-response-token-123";
+  process.env[GOOGLE_KMS_PUBLISHER_ACCESS_TOKEN_ENV] = accessToken;
+  const plaintext = Buffer.from(privateKey, "utf8");
+  const result = await signWithWrappedKms({
+    chainId: 80002,
+    expectedSignerAddress: wallet.address,
+    transaction,
+  }, {
+    domain: "polygon",
+    environment: "staging",
+    role: "publisher",
+    transport: "rest",
+    keyResource,
+    wrappedPrivateKey,
+  }, { fetchImpl: async () => ({
+    ok: true,
+    async text() {
+      return JSON.stringify({
+        plaintext: plaintext.toString("base64"),
+        plaintextCrc32c: String(crc32c.calculate(plaintext)),
+        protectionLevel: "SOFTWARE",
+        usedPrimary: false,
+      });
+    },
+  }) });
+  assert.equal(result.signerAddress, wallet.address);
+});
+
+test("REST decrypt rejects an explicit negative request-verification flag", async () => {
+  process.env[GOOGLE_KMS_PUBLISHER_ACCESS_TOKEN_ENV] = "ya29.google-negative-crc-flag-test-token-123";
+  const plaintext = Buffer.from(privateKey, "utf8");
+  await assert.rejects(() => signWithWrappedKms({
+    chainId: 80002,
+    expectedSignerAddress: wallet.address,
+    transaction,
+  }, {
+    domain: "polygon",
+    environment: "staging",
+    role: "publisher",
+    transport: "rest",
+    keyResource,
+    wrappedPrivateKey,
+  }, { fetchImpl: async () => ({
+    ok: true,
+    async text() {
+      return JSON.stringify({
+        plaintext: plaintext.toString("base64"),
+        plaintextCrc32c: String(crc32c.calculate(plaintext)),
+        verifiedCiphertextCrc32c: false,
+      });
+    },
+  }) }), /kms_rest_request_crc32c_unverified/);
+});
+
+test("REST decrypt keeps governance and publisher OAuth credentials role-scoped", async () => {
+  const governanceToken = "ya29.nexid-governance-role-token-123456789";
+  const publisherToken = "ya29.nexid-publisher-role-token-1234567890";
+  process.env[GOOGLE_KMS_GOVERNANCE_ACCESS_TOKEN_ENV] = governanceToken;
+  process.env[GOOGLE_KMS_PUBLISHER_ACCESS_TOKEN_ENV] = publisherToken;
+  const authorizations = [];
+  const aad = [];
+  const plaintext = Buffer.from(privateKey, "utf8");
+  const fetchImpl = async (_url, input) => {
+    authorizations.push(input.headers.Authorization);
+    aad.push(JSON.parse(input.body).additionalAuthenticatedData);
+    return {
+      ok: true,
+      async text() {
+        return JSON.stringify({
+          plaintext: plaintext.toString("base64"),
+          plaintextCrc32c: String(crc32c.calculate(plaintext)),
+          verifiedCiphertextCrc32c: true,
+          verifiedAdditionalAuthenticatedDataCrc32c: true,
+        });
+      },
+    };
+  };
+  for (const role of ["governance", "publisher"]) {
+    await signWithWrappedKms({
+      chainId: 80002,
+      expectedSignerAddress: wallet.address,
+      transaction,
+    }, {
+      domain: "polygon",
+      environment: "staging",
+      role,
+      transport: "rest",
+      keyResource,
+      wrappedPrivateKey,
+    }, { fetchImpl });
+  }
+  assert.deepEqual(authorizations, [`Bearer ${governanceToken}`, `Bearer ${publisherToken}`]);
+  assert.deepEqual(aad, [
+    Buffer.from("nexid.wallet.wrap.v1|staging|polygon|governance").toString("base64"),
+    Buffer.from("nexid.wallet.wrap.v1|staging|polygon|publisher").toString("base64"),
+  ]);
+  assert.equal(process.env[GOOGLE_KMS_GOVERNANCE_ACCESS_TOKEN_ENV], undefined);
+  assert.equal(process.env[GOOGLE_KMS_PUBLISHER_ACCESS_TOKEN_ENV], undefined);
 });
 
 test("wrapped KMS signer decrypts with AAD and locally verifies the transaction", async () => {

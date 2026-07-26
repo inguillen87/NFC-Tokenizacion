@@ -17,9 +17,12 @@ export type PublicCtaEventIdentity = {
   batch_sdm_config?: unknown;
   sun_profile_vertical?: string | null;
   sun_profile_tokenization_mode?: string | null;
+  sun_profile_claim_policy?: string | null;
   sun_profile_ownership_policy?: unknown;
   sun_profile_metadata?: unknown;
 };
+
+export type PublicCtaWarrantyPolicy = "request_review" | "disabled";
 
 type PublicCtaTargetInput = {
   bid?: unknown;
@@ -135,6 +138,36 @@ export function resolvePublicCtaTokenizationConfig(identity: PublicCtaEventIdent
   };
 }
 
+export function resolvePublicCtaWarrantyConfig(identity: PublicCtaEventIdentity) {
+  const batchConfig = asRecord(identity.batch_sdm_config);
+  const ownershipPolicy = asRecord(identity.sun_profile_ownership_policy);
+  const tenantMetadata = asRecord(identity.sun_profile_metadata);
+  const candidates: Array<{ source: string; value: unknown }> = [
+    { source: "batch.sdm_config.warranty.policy", value: readPath(batchConfig, ["warranty", "policy"]) },
+    { source: "batch.sdm_config.sun.passport.warrantyPolicy", value: readPath(batchConfig, ["sun", "passport", "warrantyPolicy"]) },
+    { source: "batch.sdm_config.sun.warrantyPolicy", value: readPath(batchConfig, ["sun", "warrantyPolicy"]) },
+    { source: "tenant.ownership_policy.warrantyPolicy", value: ownershipPolicy.warrantyPolicy },
+    { source: "tenant.metadata.warranty.policy", value: readPath(tenantMetadata, ["warranty", "policy"]) },
+    { source: "tenant.metadata.warrantyPolicy", value: tenantMetadata.warrantyPolicy },
+  ];
+  for (const candidate of candidates) {
+    const normalized = clean(candidate.value).toLowerCase().replace(/[\s-]+/g, "_");
+    if (["disabled", "off", "none"].includes(normalized)) {
+      return { policy: "disabled" as const, policySource: candidate.source };
+    }
+    if (["request_review", "manual_review", "purchase_review", "consumer_request", "enabled"].includes(normalized)) {
+      return { policy: "request_review" as const, policySource: candidate.source };
+    }
+  }
+
+  // An explicit tenant claim policy is sufficient to accept a warranty review
+  // request, but never to confirm coverage automatically.
+  if (clean(identity.sun_profile_claim_policy)) {
+    return { policy: "request_review" as const, policySource: "tenant.claim_policy" };
+  }
+  return { policy: null, policySource: "unconfigured" };
+}
+
 function configuredRecipient(
   batchConfig: Record<string, unknown>,
   ownershipPolicy: Record<string, unknown>,
@@ -187,6 +220,7 @@ async function loadEventIdentity(eventId: string) {
       b.sdm_config AS batch_sdm_config,
       tsp.vertical AS sun_profile_vertical,
       tsp.tokenization_mode AS sun_profile_tokenization_mode,
+      tsp.claim_policy AS sun_profile_claim_policy,
       tsp.ownership_policy AS sun_profile_ownership_policy,
       tsp.metadata AS sun_profile_metadata
     FROM events e
@@ -231,6 +265,7 @@ export async function resolvePublicCtaTarget(
 
     const canonicalEventId = clean(identity.id) || eventId;
     const tokenizationConfig = resolvePublicCtaTokenizationConfig(identity);
+    const warrantyConfig = resolvePublicCtaWarrantyConfig(identity);
     return {
       ok: true as const,
       bid: eventBid,
@@ -243,6 +278,8 @@ export async function resolvePublicCtaTarget(
       tokenizationPolicy: tokenizationConfig.policy,
       tokenizationPolicySource: tokenizationConfig.policySource,
       configuredRecipient: tokenizationConfig.configuredRecipient,
+      warrantyPolicy: warrantyConfig.policy,
+      warrantyPolicySource: warrantyConfig.policySource,
     };
   }
 
@@ -262,5 +299,7 @@ export async function resolvePublicCtaTarget(
     tokenizationPolicy: "ownership_required" as const,
     tokenizationPolicySource: "safe_default",
     configuredRecipient: null,
+    warrantyPolicy: null,
+    warrantyPolicySource: "unconfigured",
   };
 }

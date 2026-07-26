@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { EmptyState } from "@product/ui";
-import type { GlobalOpsPoint, GlobalOpsRoute } from "@product/ui/global-ops-map";
+import type { GlobalOpsPoint } from "@product/ui/global-ops-map";
 import { ShieldAlert, ShieldCheck, MapPin, RefreshCw } from "lucide-react";
 
 const GlobalOpsMap = dynamic(() => import("@product/ui/global-ops-map").then((mod) => mod.GlobalOpsMap), { ssr: false });
@@ -68,23 +68,10 @@ export function DemoOpsMap({
     risk: point.risk,
     verdict: point.status || (point.risk > 0 ? "RISK" : "VALID"),
     tenantSlug: point.tenantSlug || point.vertical || "demo",
-    lastSeen: point.lastSeen || new Date().toISOString(),
+    lastSeen: point.lastSeen || "",
     uid: point.uid,
     device: point.device,
   })), [filteredPoints]);
-
-  const routes = useMemo<GlobalOpsRoute[]>(() => normalizedPoints.slice(1, 120).map((point, index) => ({
-    id: `demo-route-${index}-${point.id}`,
-    fromLat: normalizedPoints[index]?.lat ?? point.lat,
-    fromLng: normalizedPoints[index]?.lng ?? point.lng,
-    toLat: point.lat,
-    toLng: point.lng,
-    uid: point.uid || point.id,
-    risk: point.risk,
-    taps: point.scans,
-    firstSeenAt: normalizedPoints[index]?.lastSeen ?? point.lastSeen,
-    lastSeenAt: point.lastSeen,
-  })), [normalizedPoints]);
 
   function resetFilters() {
     setEventFilter("all");
@@ -126,7 +113,7 @@ export function DemoOpsMap({
       {!isCompact ? (
       <div className="mt-4 grid gap-2 grid-cols-2 md:grid-cols-4">
         <div className="rounded-xl border border-white/5 bg-slate-900/40 p-3 text-xs">
-          <span className="text-slate-400">Taps Geotrazados</span>
+          <span className="text-slate-400">Lecturas agregadas</span>
           <b className="mt-1 block text-sm font-black text-cyan-300">{totalScans}</b>
         </div>
         <div className="rounded-xl border border-white/5 bg-slate-900/40 p-3 text-xs">
@@ -134,13 +121,13 @@ export function DemoOpsMap({
           <b className="mt-1 block text-sm font-black text-white">{uniqueCities} ciudades</b>
         </div>
         <div className="rounded-xl border border-white/5 bg-slate-900/40 p-3 text-xs">
-          <span className="text-slate-400">Autenticaciones OK</span>
+          <span className="text-slate-400">Zonas sin alertas</span>
           <b className="mt-1 block text-sm font-black text-emerald-400 flex items-center gap-1">
             <ShieldCheck className="h-3.5 w-3.5 inline" /> {cleanCount}
           </b>
         </div>
         <div className="rounded-xl border border-white/5 bg-slate-900/40 p-3 text-xs">
-          <span className="text-slate-400">Alertas de Riesgo</span>
+          <span className="text-slate-400">Zonas con riesgo</span>
           <b className="mt-1 block text-sm font-black text-rose-400 flex items-center gap-1">
             <ShieldAlert className="h-3.5 w-3.5 inline animate-bounce" /> {riskCount}
           </b>
@@ -164,7 +151,7 @@ export function DemoOpsMap({
               onClick={() => setEventFilter("clean")}
               className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${eventFilter === "clean" ? "bg-emerald-500/20 text-emerald-300 font-bold" : "text-slate-400 hover:text-white"}`}
             >
-              Autenticado
+              Sin alerta reportada
             </button>
             <button
               onClick={() => setEventFilter("risk")}
@@ -217,12 +204,12 @@ export function DemoOpsMap({
         ) : (
           <div className={isCompact ? "min-w-0" : "min-w-[560px]"}>
           <GlobalOpsMap
-            title={mode === "demo" ? "Heatmap operativo demo" : mode === "tenant" ? "Heatmap tenant en vivo" : "Heatmap global multi-tenant"}
-            subtitle="Mapa de calor, clusters y rutas punteadas entre eventos de tap."
+            title={mode === "demo" ? "Heatmap operativo demo" : mode === "tenant" ? "Heatmap agregado del tenant" : "Heatmap agregado multi-tenant"}
+            subtitle="Mapa de calor y clusters por ciudad. No infiere recorridos entre puntos agregados."
             mode={mode}
             points={normalizedPoints}
-            routes={routes}
-            playbackEnabled
+            routes={[]}
+            playbackEnabled={false}
             riskOnly={eventFilter === "risk"}
             chrome={isCompact ? "compact" : "full"}
           />
@@ -232,7 +219,7 @@ export function DemoOpsMap({
 
       {!isCompact ? (
       <p className="mt-2 text-[10px] text-slate-500">
-        Ubicación física mapeada: {mode === "demo" ? (scope === "selected" ? `pack:${selectedPack || "activo"}` : "todas las verticales demo") : mode === "tenant" ? `tenant:${selectedPack || "activo"}` : "global"}.
+        Cobertura geografica agregada: {mode === "demo" ? (scope === "selected" ? `pack:${selectedPack || "activo"}` : "todas las verticales demo") : mode === "tenant" ? `tenant:${selectedPack || "activo"}` : "global"}. Los puntos no reconstruyen trayectos.
       </p>
       ) : null}
     </div>

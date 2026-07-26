@@ -123,7 +123,7 @@ export function ProductAssetBankPanel({ canWrite = true, tenantSlug = "" }: { ca
       const data = await parseJsonSafe(response);
       setLastResponse(JSON.stringify(data, null, 2));
       if (!response.ok || data?.ok === false) throw new Error(String(data?.reason || data?.error || "asset_bank_save_failed"));
-      setStatus("Asset bank guardado. El tap, certificado, portal y marketplace pueden mostrar este producto real.");
+      setStatus("Asset bank guardado. El tap, certificado, portal y marketplace pueden mostrar los assets aprobados de este producto.");
       await loadAssets();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "asset_bank_save_failed");
@@ -141,7 +141,7 @@ export function ProductAssetBankPanel({ canWrite = true, tenantSlug = "" }: { ca
     <Card className="p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Banco real de assets</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Banco de assets del tenant</h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
             Carga la foto del producto, etiqueta, tag aplicado y modelo 3D por tenant/lote/UID. Es la fuente visual que usan el tap mobile, el certificado, la wallet y el marketplace.
           </p>
@@ -184,6 +184,10 @@ export function ProductAssetBankPanel({ canWrite = true, tenantSlug = "" }: { ca
         {items.slice(0, 6).map((item, index) => {
           const profile = item.profile || item;
           const imageUrl = profile.primaryImageUrl || item.imageUrl;
+          const rawAssetScore = profile.assetScore;
+          const assetScore = rawAssetScore === null || rawAssetScore === undefined || String(rawAssetScore).trim() === ""
+            ? null
+            : Number(rawAssetScore);
           return (
             <article key={`${item.tenantSlug || profile.tenantSlug || "tenant"}-${item.bid || profile.bid || "bid"}-${item.uidHex || item.uidMasked || index}`} className="rounded-2xl border border-white/10 bg-slate-950/60 p-4 text-xs text-slate-300">
               <div className="flex items-start justify-between gap-3">
@@ -192,7 +196,7 @@ export function ProductAssetBankPanel({ canWrite = true, tenantSlug = "" }: { ca
                   <h3 className="mt-1 text-base font-black text-white">{profile.productName || "Producto sin nombre"}</h3>
                   <p className="mt-1 text-slate-400">{profile.brandName || "Marca"} {item.uidHex || item.uidMasked ? `- UID ${item.uidMasked || item.uidHex}` : ""}</p>
                 </div>
-                <span className="rounded-full border border-cyan-300/25 bg-cyan-500/10 px-2 py-1 text-[10px] font-black text-cyan-100">{profile.assetScore ?? 0}/100</span>
+                <span className="rounded-full border border-cyan-300/25 bg-cyan-500/10 px-2 py-1 text-[10px] font-black text-cyan-100">{assetScore !== null && Number.isFinite(assetScore) ? `${assetScore}/100` : "Sin score"}</span>
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <AssetFlag label="Producto" ready={Boolean(imageUrl)} />

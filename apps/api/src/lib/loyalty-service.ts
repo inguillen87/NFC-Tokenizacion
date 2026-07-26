@@ -11,7 +11,7 @@ const BLOCKED_RESULTS = new Set(["REPLAY_SUSPECT", "INVALID", "NOT_ACTIVE", "NOT
 
 export async function getTapEvent(eventId: string) {
   const rows = await sql/*sql*/`
-    SELECT e.id, e.tenant_id, e.batch_id, e.uid_hex, e.result, e.reason, e.created_at, e.city, e.country_code, e.geo_lat, e.geo_lng, t.slug AS tenant_slug, b.bid
+    SELECT e.id, e.tenant_id, e.batch_id, e.uid_hex, e.sdm_read_ctr, e.result, e.reason, e.created_at, e.city, e.country_code, e.geo_lat, e.geo_lng, t.slug AS tenant_slug, b.bid
     FROM events e
     JOIN tenants t ON t.id = e.tenant_id
     LEFT JOIN batches b ON b.id = e.batch_id
@@ -97,30 +97,65 @@ export async function loyaltyFraudGuard(input: { eventId: string; result: string
 
 export async function awardPoints(input: { tenantId: string; programId: string; memberId: string; tapEventId?: string; delta: number; source: string; idempotencyKey: string; reason?: string; metadata?: Record<string, unknown> }) {
   await ensureLoyaltySchema();
+  const delta = Number(input.delta);
+  if (!Number.isSafeInteger(delta) || delta === 0 || Math.abs(delta) > 1_000_000) {
+    return { awarded: false, duplicate: false, entry: null, error: "invalid_points_delta" as const };
+  }
+  const idempotencyKey = String(input.idempotencyKey || "").trim().slice(0, 240);
+  if (!idempotencyKey) return { awarded: false, duplicate: false, entry: null, error: "idempotency_key_required" as const };
+  const rows = await sql/*sql*/`
+    WITH locked_member AS MATERIALIZED (
+      SELECT id, points_balance
+      FROM loyalty_members
+      WHERE id = ${input.memberId}
+        AND tenant_id = ${input.tenantId}
+        AND program_id = ${input.programId}
+        AND (${delta} >= 0 OR points_balance >= abs(${delta}))
+      FOR UPDATE
+    ),
+    reserved_ledger AS MATERIALIZED (
+      INSERT INTO points_ledger (
+        tenant_id, program_id, member_id, tap_event_id, source, delta,
+        balance_after, idempotency_key, reason, metadata_json
+      )
+      SELECT
+        ${input.tenantId}, ${input.programId}, id, ${input.tapEventId || null},
+        ${input.source}::points_source, ${delta}, 0, ${idempotencyKey},
+        ${input.reason || null}, ${JSON.stringify(input.metadata || {})}::jsonb
+      FROM locked_member
+      ON CONFLICT (idempotency_key) DO NOTHING
+      RETURNING id
+    ),
+    updated_member AS MATERIALIZED (
+      UPDATE loyalty_members member
+      SET points_balance = member.points_balance + ${delta},
+          lifetime_points = member.lifetime_points + CASE WHEN ${delta} > 0 THEN ${delta} ELSE 0 END,
+          updated_at = now()
+      FROM locked_member, reserved_ledger
+      WHERE member.id = locked_member.id
+      RETURNING member.points_balance
+    ),
+    finalized_ledger AS (
+      UPDATE points_ledger ledger
+      SET balance_after = updated_member.points_balance
+      FROM reserved_ledger, updated_member
+      WHERE ledger.id = reserved_ledger.id
+      RETURNING ledger.*
+    )
+    SELECT * FROM finalized_ledger
+  `;
+  if (rows[0]) return { awarded: true, duplicate: false, entry: rows[0] };
   const existing = await sql/*sql*/`
     SELECT id, delta, balance_after
     FROM points_ledger
-    WHERE idempotency_key = ${input.idempotencyKey}
+    WHERE idempotency_key = ${idempotencyKey}
+      AND member_id = ${input.memberId}
+      AND tenant_id = ${input.tenantId}
+      AND program_id = ${input.programId}
     LIMIT 1
   `;
   if (existing[0]) return { awarded: false, duplicate: true, entry: existing[0] };
-
-  const balanceRows = await sql/*sql*/`
-    UPDATE loyalty_members
-    SET
-      points_balance = points_balance + ${input.delta},
-      lifetime_points = lifetime_points + CASE WHEN ${input.delta} > 0 THEN ${input.delta} ELSE 0 END,
-      updated_at = now()
-    WHERE id = ${input.memberId}
-    RETURNING points_balance
-  `;
-  const balanceAfter = Number(balanceRows[0]?.points_balance || 0);
-  const inserted = await sql/*sql*/`
-    INSERT INTO points_ledger (tenant_id, program_id, member_id, tap_event_id, source, delta, balance_after, idempotency_key, reason, metadata_json)
-    VALUES (${input.tenantId}, ${input.programId}, ${input.memberId}, ${input.tapEventId || null}, ${input.source}::points_source, ${input.delta}, ${balanceAfter}, ${input.idempotencyKey}, ${input.reason || null}, ${JSON.stringify(input.metadata || {})}::jsonb)
-    RETURNING *
-  `;
-  return { awarded: true, duplicate: false, entry: inserted[0] };
+  return { awarded: false, duplicate: false, entry: null, error: delta < 0 ? "insufficient_points" as const : "member_not_found" as const };
 }
 
 export async function claimTapPoints(input: { eventId: string; memberKey?: string; consumerId?: string | null; email?: string | null; phone?: string | null; locale?: string }) {
@@ -143,7 +178,7 @@ export async function claimTapPoints(input: { eventId: string; memberKey?: strin
   });
 
   const tap = await evaluateLoyaltyForTap({ eventId: String(event.id), memberId: member.id, event, program });
-  if (!tap.award) return { ok: true, status: 200, awarded: false, reason: tap.reason, member };
+  if (!tap.award) return { ok: true, status: 200, awarded: false, reason: tap.reason, member, memberId: member.id, points: 0 };
 
   const rules = typeof program?.rules_json === "string" ? JSON.parse(program.rules_json || "{}") : (program?.rules_json || {});
   const pointsPerValidTap = Number(rules.pointsPerValidTap || 10);
@@ -170,62 +205,122 @@ export async function redeemReward(input: { eventId: string; memberId: string; r
     return { ok: false, status: 403, error: "tap_blocked" as const };
   }
 
-  const rewardRows = await sql/*sql*/`
-    SELECT r.*, m.points_balance
-    FROM rewards r
-    JOIN loyalty_members m ON m.id = ${input.memberId}
-    WHERE r.id = ${input.rewardId}
-      AND r.tenant_id = ${event.tenant_id}
-      AND r.program_id = m.program_id
-      AND r.status = 'active'
-      AND r.starts_at <= now()
-      AND (r.ends_at IS NULL OR r.ends_at >= now())
-    LIMIT 1
-  `;
-  const reward = rewardRows[0];
-  if (!reward) return { ok: false, status: 404, error: "reward_not_found" as const };
-  if (Number(reward.points_balance || 0) < Number(reward.points_cost || 0)) return { ok: false, status: 409, error: "insufficient_points" as const };
-  if (reward.stock_remaining !== null && Number(reward.stock_remaining) <= 0) return { ok: false, status: 409, error: "out_of_stock" as const };
-
-  const stockRows = await sql/*sql*/`
-    UPDATE rewards
-    SET stock_remaining = CASE
-      WHEN stock_remaining IS NULL THEN NULL
-      WHEN stock_remaining > 0 THEN stock_remaining - 1
-      ELSE stock_remaining
-    END,
-    updated_at = now()
-    WHERE id = ${reward.id}
-      AND (stock_remaining IS NULL OR stock_remaining > 0)
-    RETURNING stock_remaining
-  `;
-  if (reward.stock_remaining !== null && !stockRows[0]) return { ok: false, status: 409, error: "out_of_stock" as const };
-
-  const spendIdem = `redeem:${reward.id}:member:${input.memberId}:event:${event.id}`;
-  const spend = await awardPoints({
-    tenantId: event.tenant_id,
-    programId: reward.program_id,
-    memberId: input.memberId,
-    tapEventId: String(event.id),
-    delta: -Math.abs(Number(reward.points_cost || 0)),
-    source: "REWARD_REDEEMED",
-    idempotencyKey: spendIdem,
-    reason: `Redeem ${reward.code}`,
-    metadata: { rewardId: reward.id, title: reward.title },
-  });
-  if (spend.duplicate) return { ok: false, status: 409, error: "already_redeemed" as const };
-
   const code = `NX-${randomUUID().split("-")[0].toUpperCase()}`;
+  const spendIdem = `redeem:${input.rewardId}:member:${input.memberId}:event:${event.id}`;
   const redemptionRows = await sql/*sql*/`
-    INSERT INTO reward_redemptions (tenant_id, program_id, reward_id, member_id, status, points_spent, redemption_code, metadata_json)
-    VALUES (${event.tenant_id}, ${reward.program_id}, ${reward.id}, ${input.memberId}, 'confirmed', ${Math.abs(Number(reward.points_cost || 0))}, ${code}, ${JSON.stringify({ locale: input.locale || "es-AR" })}::jsonb)
-    RETURNING *
+    WITH locked AS MATERIALIZED (
+      SELECT
+        reward.id AS reward_id,
+        reward.tenant_id,
+        reward.program_id,
+        reward.code,
+        reward.title,
+        reward.points_cost,
+        member.id AS member_id
+      FROM rewards reward
+      JOIN loyalty_members member
+        ON member.id = ${input.memberId}
+       AND member.tenant_id = reward.tenant_id
+       AND member.program_id = reward.program_id
+      WHERE reward.id = ${input.rewardId}
+        AND reward.tenant_id = ${event.tenant_id}
+        AND member.status IN ('enrolled', 'verified')
+        AND member.points_balance >= reward.points_cost
+        AND reward.status = 'active'
+        AND reward.starts_at <= now()
+        AND (reward.ends_at IS NULL OR reward.ends_at >= now())
+        AND (reward.stock_remaining IS NULL OR reward.stock_remaining > 0)
+      FOR UPDATE OF reward, member
+    ),
+    reserved_ledger AS MATERIALIZED (
+      INSERT INTO points_ledger (
+        tenant_id, program_id, member_id, tap_event_id, source, delta,
+        balance_after, idempotency_key, reason, metadata_json
+      )
+      SELECT
+        tenant_id, program_id, member_id, ${String(event.id)}, 'REWARD_REDEEMED'::points_source,
+        -abs(points_cost), 0, ${spendIdem}, 'Authenticated reward redemption',
+        jsonb_build_object('rewardId', reward_id, 'title', title)
+      FROM locked
+      ON CONFLICT (idempotency_key) DO NOTHING
+      RETURNING id
+    ),
+    updated_member AS MATERIALIZED (
+      UPDATE loyalty_members member
+      SET points_balance = member.points_balance - locked.points_cost,
+          updated_at = now()
+      FROM locked, reserved_ledger
+      WHERE member.id = locked.member_id
+        AND member.points_balance >= locked.points_cost
+      RETURNING member.points_balance
+    ),
+    updated_reward AS MATERIALIZED (
+      UPDATE rewards reward
+      SET stock_remaining = CASE WHEN reward.stock_remaining IS NULL THEN NULL ELSE reward.stock_remaining - 1 END,
+          updated_at = now()
+      FROM locked, reserved_ledger
+      WHERE reward.id = locked.reward_id
+        AND (reward.stock_remaining IS NULL OR reward.stock_remaining > 0)
+      RETURNING reward.id
+    ),
+    finalized_ledger AS MATERIALIZED (
+      UPDATE points_ledger ledger
+      SET balance_after = updated_member.points_balance
+      FROM reserved_ledger, updated_member
+      WHERE ledger.id = reserved_ledger.id
+      RETURNING ledger.id
+    ),
+    inserted_redemption AS (
+      INSERT INTO reward_redemptions (
+        tenant_id, program_id, reward_id, member_id, status,
+        points_spent, redemption_code, metadata_json
+      )
+      SELECT
+        locked.tenant_id, locked.program_id, locked.reward_id, locked.member_id,
+        'confirmed', abs(locked.points_cost), ${code},
+        ${JSON.stringify({ locale: input.locale || "es-AR", idempotencyKey: spendIdem })}::jsonb
+      FROM locked, updated_member, updated_reward, finalized_ledger
+      RETURNING *
+    )
+    SELECT * FROM inserted_redemption
   `;
+  if (!redemptionRows[0]) {
+    const existing = await sql/*sql*/`
+      SELECT *
+      FROM reward_redemptions
+      WHERE member_id = ${input.memberId}
+        AND reward_id = ${input.rewardId}
+        AND metadata_json->>'idempotencyKey' = ${spendIdem}
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+    if (existing[0]) return { ok: false, status: 409, error: "already_redeemed" as const, redemption: existing[0] };
+    const eligibility = await sql/*sql*/`
+      SELECT
+        reward.id,
+        member.points_balance,
+        reward.points_cost,
+        reward.stock_remaining
+      FROM rewards reward
+      LEFT JOIN loyalty_members member
+        ON member.id = ${input.memberId}
+       AND member.tenant_id = reward.tenant_id
+       AND member.program_id = reward.program_id
+      WHERE reward.id = ${input.rewardId}
+        AND reward.tenant_id = ${event.tenant_id}
+      LIMIT 1
+    `;
+    const row = eligibility[0];
+    if (!row) return { ok: false, status: 404, error: "reward_not_found" as const };
+    if (Number(row.points_balance || 0) < Number(row.points_cost || 0)) return { ok: false, status: 409, error: "insufficient_points" as const };
+    if (row.stock_remaining !== null && Number(row.stock_remaining) <= 0) return { ok: false, status: 409, error: "out_of_stock" as const };
+    return { ok: false, status: 409, error: "redemption_conflict" as const };
+  }
   return { ok: true, status: 200, redemption: redemptionRows[0] };
 }
 
 
-export async function getLoyaltyMemberById(input: { memberId: string; tenantId?: string | null }) {
+export async function getLoyaltyMemberById(input: { memberId: string; consumerId: string; tenantId?: string | null }) {
   await ensureLoyaltySchema();
   const rows = await sql/*sql*/`
     SELECT m.id, m.tenant_id, m.program_id, m.consumer_id, m.email, m.phone, m.display_name, m.country, m.preferred_locale,
@@ -234,6 +329,7 @@ export async function getLoyaltyMemberById(input: { memberId: string; tenantId?:
     FROM loyalty_members m
     JOIN loyalty_programs p ON p.id = m.program_id
     WHERE m.id = ${input.memberId}
+      AND m.consumer_id = ${input.consumerId}
       AND (${input.tenantId || null}::uuid IS NULL OR m.tenant_id = ${input.tenantId || null}::uuid)
     LIMIT 1
   `;
@@ -242,6 +338,7 @@ export async function getLoyaltyMemberById(input: { memberId: string; tenantId?:
 
 export async function updateLoyaltyMemberPreferences(input: {
   memberId: string;
+  consumerId: string;
   tenantId?: string | null;
   preferredLocale?: string | null;
   displayName?: string | null;
@@ -258,13 +355,14 @@ export async function updateLoyaltyMemberPreferences(input: {
         profile_json = CASE WHEN ${input.profilePatch ? JSON.stringify(input.profilePatch) : null}::jsonb IS NULL THEN profile_json ELSE profile_json || ${input.profilePatch ? JSON.stringify(input.profilePatch) : null}::jsonb END,
         updated_at = now()
     WHERE id = ${input.memberId}
+      AND consumer_id = ${input.consumerId}
       AND (${input.tenantId || null}::uuid IS NULL OR tenant_id = ${input.tenantId || null}::uuid)
     RETURNING *
   `;
   return rows[0] || null;
 }
 
-export async function requestLoyaltyMemberDataDeletion(input: { memberId: string; tenantId?: string | null; reason?: string | null }) {
+export async function requestLoyaltyMemberDataDeletion(input: { memberId: string; consumerId: string; tenantId?: string | null; reason?: string | null }) {
   const rows = await sql/*sql*/`
     UPDATE loyalty_members
     SET status = 'deleted',
@@ -275,6 +373,7 @@ export async function requestLoyaltyMemberDataDeletion(input: { memberId: string
         profile_json = COALESCE(profile_json, '{}'::jsonb) || jsonb_build_object('deletionReason', ${input.reason || null}, 'deletionRequestedAt', now()::text),
         updated_at = now()
     WHERE id = ${input.memberId}
+      AND consumer_id = ${input.consumerId}
       AND (${input.tenantId || null}::uuid IS NULL OR tenant_id = ${input.tenantId || null}::uuid)
     RETURNING id, status, updated_at
   `;

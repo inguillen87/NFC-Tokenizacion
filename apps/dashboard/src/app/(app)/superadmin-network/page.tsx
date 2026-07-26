@@ -193,8 +193,8 @@ export default async function SuperadminConsumerNetworkPage() {
       owner: "Seguridad",
     },
     {
-      label: "Club y experiencias verificadas",
-      body: "La red B2C queda moderada: no hay reviews anonimas que puedan danar marcas premium.",
+      label: "Club y experiencias con evidencia",
+      body: "La red B2C queda moderada: las reviews requieren la evidencia y la identidad definidas por policy.",
       status: approvedExperiences > 0 ? "ready" : pendingExperiences > 0 ? "working" : "working",
       owner: "Growth",
     },
@@ -205,7 +205,7 @@ export default async function SuperadminConsumerNetworkPage() {
       <SectionHeading
         eyebrow="Superadmin network"
         title="Consola global para operar tenants, resellers, auditores y clubes"
-        description="Una vista ejecutiva y operativa para pasar de piloto a rollout: lotes, tags, riesgo, marketplace, experiencias verificadas y tokenizacion."
+        description="Una vista ejecutiva y operativa para pasar de piloto a rollout: lotes, tags, riesgo, marketplace, experiencias con evidencia y tokenizacion."
       />
 
       <BlockchainHsmHealth />
@@ -216,7 +216,7 @@ export default async function SuperadminConsumerNetworkPage() {
           { label: "Tenants", value: String(scopedTenants.length), detail: "Marcas conectadas a la red", tone: scopedTenants.length ? "good" : "warn" },
           { label: "Tags activos", value: activeTags.toLocaleString("es-AR"), detail: `${totalTags.toLocaleString("es-AR")} tags en inventario`, tone: activeTags > 0 ? "good" : "warn" },
           { label: "Batches premium", value: String(secureBatches), detail: "NTAG424 DNA / TT declarados", tone: secureBatches > 0 ? "good" : "warn" },
-          { label: "Assets reales", value: String(productAssets.length), detail: `${readyAssets} listos - score ${averageAssetScore}/100`, tone: readyAssets > 0 ? "good" : productAssets.length ? "warn" : "risk" },
+          { label: "Perfiles visuales", value: String(productAssets.length), detail: assetScores.length ? `${readyAssets} listos - score ${averageAssetScore}/100 sobre ${assetScores.length}` : `${readyAssets} listos - sin scores informados`, tone: readyAssets > 0 ? "good" : productAssets.length ? "warn" : "risk" },
           { label: "Moderacion", value: String(pendingExperiences), detail: "Experiencias pendientes de aprobar", tone: pendingExperiences > 0 ? "warn" : "good" },
         ]}
         steps={steps}
@@ -247,18 +247,20 @@ export default async function SuperadminConsumerNetworkPage() {
             {[
               {
                 title: "Auditar carrier y promesa comercial",
-                body: "Ningun QR comun debe venderse como autenticidad criptografica. NTAG424 DNA/TT debe tener llaves y pretest SUN.",
+                body: "Ningun QR comun debe venderse como evidencia criptografica del mensaje. NTAG424 DNA/TT debe tener llaves y pretest SUN.",
                 tone: secureBatches > 0 ? "good" : "warn",
                 href: "/batches",
               },
               {
                 title: "Completar banco visual de producto",
-                body: `Antes de presentar a cliente premium: ${realPhotoAssets} fotos reales, ${labelAssets} etiquetas y score visual ${averageAssetScore}/100.`,
+                body: assetScores.length
+                  ? `Antes de presentar a cliente premium: ${realPhotoAssets} fotos aportadas, ${labelAssets} etiquetas y score visual ${averageAssetScore}/100 sobre ${assetScores.length} perfiles.`
+                  : `Antes de presentar a cliente premium: ${realPhotoAssets} fotos aportadas, ${labelAssets} etiquetas y ningun score visual informado.`,
                 tone: readyAssets > 0 ? "good" : "warn",
                 href: "/batches",
               },
               {
-                title: "Revisar experiencias verificadas",
+                title: "Revisar experiencias con evidencia",
                 body: "Aprobar solo comentarios con tap fisico, contacto validado y producto guardado/reclamado.",
                 tone: pendingExperiences > 0 ? "warn" : "good",
                 href: "/loyalty/experiences",
@@ -315,7 +317,7 @@ export default async function SuperadminConsumerNetworkPage() {
           {[
             { label: "Registrar supplier batch", href: "/batches/supplier" },
             { label: "Inventario de tags", href: "/tags" },
-            { label: "Experiencias verificadas", href: "/loyalty/experiences" },
+            { label: "Experiencias con evidencia", href: "/loyalty/experiences" },
             { label: "Marketplace premium", href: "/consumer-network/marketplace" },
           ].map((item) => (
             <Link key={item.href} href={item.href} className="rounded-2xl border border-cyan-300/20 bg-cyan-500/10 px-4 py-3 text-sm font-black text-cyan-100 transition hover:bg-cyan-500/20">

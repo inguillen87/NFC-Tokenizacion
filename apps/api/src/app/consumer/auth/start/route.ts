@@ -1,10 +1,15 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const AUTH_RATE_LIMIT_RETRY_AFTER_SECONDS = 10 * 60;
+
 import { json } from "../../../../lib/http";
 import { startConsumerAuth } from "../../../../lib/consumer-auth";
 import { parseConsumerContact } from "../../../../lib/consumer-contact";
 import { sql } from "../../../../lib/db";
+import { getRequestMeta } from "../../../../lib/request-meta";
+import { enforceCriticalRateLimit } from "../../../../lib/critical-rate-limit";
+import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../lib/bounded-request-body";
 
 function normalizePhone(contact: string) {
   const trimmed = contact.trim();
@@ -15,6 +20,7 @@ function normalizePhone(contact: string) {
 
 function startStatus(error: string) {
   if (error === "rate_limited") return 429;
+  if (error === "unavailable") return 503;
   if (error === "email_contact_required" || error === "phone_contact_required") return 422;
   if (
     error === "resend_api_key_missing" ||
@@ -44,28 +50,44 @@ function canExposeDebugCode() {
 }
 
 export async function POST(req: Request) {
-  const body = await req.json().catch(() => ({}));
+  const sourceLimited = await enforceCriticalRateLimit(req, { rateClass: "auth", tenantId: "platform", subjectId: "consumer-auth-start:unauthenticated" });
+  if (sourceLimited) return sourceLimited;
+  let body: Record<string, unknown>;
+  try {
+    body = await readBoundedJsonBody<Record<string, unknown>>(req, 4 * 1024);
+  } catch (error) {
+    const tooLarge = error instanceof RequestBodyTooLargeError;
+    return json({ ok: false, error: tooLarge ? "request_body_too_large" : "invalid_json" }, tooLarge ? 413 : 400);
+  }
   const parsedContact = parseConsumerContact(body);
   if (!parsedContact.ok) {
     return json({ ok: false, error: parsedContact.error }, parsedContact.error === "contact_required" ? 400 : 422);
   }
   const contact = parsedContact.contact;
 
-  // Check if 2FA (both factors) will be used
+  // Both contacts can receive the same challenge. That is redundant delivery,
+  // not multi-factor authentication: only one proof is required.
   const normalized = contact.trim().toLowerCase();
   const isMail = contact.includes("@");
-  let has2fa = false;
+  let hasLinkedChannels = false;
   if (isMail) {
     const rows = await sql`SELECT phone FROM consumers WHERE email = ${normalized} LIMIT 1`;
-    has2fa = !!rows[0]?.phone;
+    hasLinkedChannels = !!rows[0]?.phone;
   } else {
     const phone = normalizePhone(contact);
     const rows = await sql`SELECT email FROM consumers WHERE phone = ${phone} LIMIT 1`;
-    has2fa = !!rows[0]?.email;
+    hasLinkedChannels = !!rows[0]?.email;
   }
 
-  const challenge = await startConsumerAuth(contact, { ip: req.headers.get("x-forwarded-for") });
-  if (!challenge.ok) return json({ ok: false, error: challenge.error }, startStatus(challenge.error));
+  const requestMeta = getRequestMeta(req);
+  const challenge = await startConsumerAuth(contact, { ip: requestMeta.ip });
+  if (!challenge.ok) {
+    const status = startStatus(challenge.error);
+    const headers: Record<string, string> = status === 429
+      ? { "cache-control": "no-store", "retry-after": String(AUTH_RATE_LIMIT_RETRY_AFTER_SECONDS) }
+      : { "cache-control": "no-store" };
+    return json({ ok: false, error: challenge.error }, status, headers);
+  }
 
   const defaultMode = process.env.NODE_ENV === "production" || process.env.VERCEL === "1" ? "smart" : "demo";
   const mode = String(process.env.CONSUMER_AUTH_MODE || defaultMode).toLowerCase();
@@ -74,8 +96,11 @@ export async function POST(req: Request) {
     contact,
     ttlMinutes: challenge.challengeTtlMinutes,
     mode,
-    deliveryChannel: has2fa ? "both" : deliveryChannelFor(contact, mode),
-    twoFactor: has2fa
+    deliveryChannel: hasLinkedChannels ? "email_and_phone_same_challenge" : deliveryChannelFor(contact, mode),
+    multiChannelDelivery: hasLinkedChannels,
+    authenticationFactorsRequired: 1,
+    twoFactor: false,
+    securityModel: "single_factor_otp_with_optional_redundant_delivery",
   } as Record<string, unknown>;
 
   if (canExposeDebugCode()) payload.code = challenge.code;

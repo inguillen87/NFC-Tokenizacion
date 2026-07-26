@@ -2,8 +2,8 @@
   "vertical_slug": "wine-secure",
   "title": "Winery / Bottle Passport (Secure)",
   "recommended_tag": "NTAG424DNA_TT",
-  "narrative": "Tap-to-verify bottle authenticity, cork/capsule integrity, digital passport and premium cellar data.",
-  "why_nfc_over_qr": "Better than QR because the 424 DNA TagTamper provides AES-128 cryptography, SUN authentication and tamper-loop status, so the backend can validate originality and seal integrity instead of trusting a printable image. The tag can also carry a premium product passport and feed reseller/consumer experiences in real time.",
+  "narrative": "Tap to validate the tag's dynamic SUN message, report the integrated TT loop state and open a digital passport with declared cellar data.",
+  "why_nfc_over_qr": "Better than a static QR because NTAG 424 DNA TagTamper provides AES-128 SUN evidence, replay controls and a TT loop state when correctly integrated into the closure. The backend validates the tag message and records the reported state; it does not by itself certify the bottle contents, origin or physical seal integrity.",
   "batch_id": "WINE_SECURE_DEMO_001",
   "locale_defaults": [
     "es-AR",

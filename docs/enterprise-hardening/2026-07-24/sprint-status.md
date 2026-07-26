@@ -1,5 +1,11 @@
 # Nexid enterprise hardening sprint status — 2026-07-24
 
+> **SUPERSEDED - HISTORICAL SNAPSHOT.** This status records the 2026-07-24
+> checkpoint. The blockers, migration counts and provisioning inventory below
+> are preserved as evidence and are no longer the current release status. Use
+> [`enterprise-product-experience-sprint.md`](../2026-07-26/enterprise-product-experience-sprint.md)
+> as the later canonical summary.
+
 ## Delivered in this sprint
 
 - Cloudflare DNSSEC active at registrar and authoritative zone.

@@ -32,13 +32,23 @@ import {
 import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { RealtimeMapLibreMap, type BaseMapLayer } from "./realtime-maplibre-map";
 import { TenantAccountMenu } from "./tenant-account-menu";
+import { EnterpriseOpsState } from "./enterprise-ops-state";
 import { exportToCsv } from "../lib/export-utils";
-import { mergeRealtimeEvents, sortRealtimeEvents, type TenantTapRealtimeEvent } from "../lib/realtime-feed";
+import { strictCoordinatePair } from "../lib/geo-coordinates";
+import {
+  mergeRealtimeEvents,
+  sortRealtimeEvents,
+  type RealtimeAvailability,
+  type RealtimeDataSource,
+  type RealtimeStreamSource,
+  type TenantTapRealtimeEvent,
+} from "../lib/realtime-feed";
 
 type MapMode = "tenant" | "global";
 type CrmSection = "summary" | "infra" | "loyalty";
 type MapView = "heat" | "points" | "nearby";
 type TimeRange = "5m" | "1h" | "24h";
+type RealtimeVerdictBucket = "valid" | "duplicate_replay" | "tamper" | "invalid" | "unknown";
 
 type MarketOpportunity = {
   key: string;
@@ -112,6 +122,26 @@ type CommercialContext = {
   playbooks: Array<{ eyebrow: string; title: string; body: string }>;
 };
 
+function classifyRealtimeVerdict(value?: string | null): RealtimeVerdictBucket {
+  const verdict = String(value || "").trim().toUpperCase();
+  if (["VALID", "TAP_VALID", "CLAIMED", "REDEEMED", "CHECK_IN"].includes(verdict)) return "valid";
+  if (verdict.includes("REPLAY") || verdict.includes("DUPLICATE")) return "duplicate_replay";
+  if (verdict.includes("TAMPER")) return "tamper";
+  if (!verdict || ["UNKNOWN", "NOT_REGISTERED", "NOT_ACTIVE"].includes(verdict)) return "unknown";
+  if (verdict.includes("INVALID") || verdict === "REVOKED" || verdict.startsWith("BLOCKED_")) return "invalid";
+  return "unknown";
+}
+
+function isRealtimeRisk(value?: string | null) {
+  return ["duplicate_replay", "tamper", "invalid"].includes(classifyRealtimeVerdict(value));
+}
+
+function isClientReportedGps(value?: string | null) {
+  const source = String(value || "").trim().toLowerCase();
+  const approximate = source.includes("city") || source.includes("centroid") || source.includes("ip_") || source.includes("synthetic") || source.includes("fallback");
+  return !approximate && source.includes("gps");
+}
+
 const COMMERCIAL_CONTEXTS: Record<CommercialContext["key"], CommercialContext> = {
   wine: {
     key: "wine",
@@ -122,8 +152,8 @@ const COMMERCIAL_CONTEXTS: Record<CommercialContext["key"], CommercialContext> =
     playbooks: [
       {
         eyebrow: "Señal",
-        title: "Unidad verificada",
-        body: "Cada botella, caja o ticket queda unido a NFC/QR, lote, producto, ciudad y momento real de lectura.",
+        title: "Mensaje NFC validado",
+        body: "nexID validó el mensaje NFC/QR y lo relacionó con lote y producto. La ciudad, coordenada y hora son datos reportados por el evento; no prueban la ubicación física de la unidad.",
       },
       {
         eyebrow: "Zona",
@@ -146,8 +176,8 @@ const COMMERCIAL_CONTEXTS: Record<CommercialContext["key"], CommercialContext> =
     playbooks: [
       {
         eyebrow: "Señal",
-        title: "Unidad física verificada",
-        body: "Bolsa, bidón, caja o ticket queda unido a NFC/QR, lote, canal y geografía real del tap.",
+        title: "Identidad NFC validada",
+        body: "nexID validó la identidad o el mensaje NFC/QR asociado al lote y canal. La ubicación mostrada fue reportada por el evento y no certifica el recorrido físico de la unidad.",
       },
       {
         eyebrow: "Zona",
@@ -170,8 +200,8 @@ const COMMERCIAL_CONTEXTS: Record<CommercialContext["key"], CommercialContext> =
     playbooks: [
       {
         eyebrow: "Señal",
-        title: "Producto real",
-        body: "Cada unidad queda unida a NFC/QR, lote, ubicación, evento y contexto de cliente.",
+        title: "Lectura asociada al producto",
+        body: "El evento vincula NFC/QR, lote y producto con el contexto reportado. La ubicación es una señal del dispositivo o una estimación declarada, no una prueba física del producto.",
       },
       {
         eyebrow: "Zona",
@@ -296,19 +326,64 @@ function resolveConsoleTimezone(rows: TenantTapRealtimeEvent[], selectedTenant: 
 
 function timeAgo(value: unknown) {
   const ms = safeDate(value);
-  if (!ms) return "ahora";
+  if (!ms) return "sin actualización";
   const sec = Math.max(1, Math.round((Date.now() - ms) / 1000));
   if (sec < 60) return `hace ${sec}s`;
   if (sec < 3600) return `hace ${Math.round(sec / 60)}m`;
   return `hace ${Math.round(sec / 3600)}h`;
 }
 
+function realtimeSourcePresentation(
+  source: RealtimeDataSource,
+  availability: RealtimeAvailability,
+  detail: string,
+) {
+  if (availability !== "ready") {
+    const isSeed = source === "seed";
+    const isDemo = source === "demo";
+    return {
+      label: isSeed ? "Respaldo seed" : isDemo ? "Demo de respaldo" : "Fuente no confirmada",
+      detail: detail || "La fuente operativa no esta confirmada.",
+      badge: "border-amber-300/30 bg-amber-400/10 text-amber-100",
+    };
+  }
+  if (source === "demo") {
+    return {
+      label: "Demo declarada",
+      detail: "Stream de demostracion aislado de produccion.",
+      badge: "border-violet-300/30 bg-violet-400/10 text-violet-100",
+    };
+  }
+  if (source === "mixed") {
+    return {
+      label: "Fuente mixta",
+      detail: "Vista solicitada con origenes de produccion y demo; no equivale a produccion pura.",
+      badge: "border-amber-300/30 bg-amber-400/10 text-amber-100",
+    };
+  }
+  if (source === "production") {
+    return {
+      label: "Produccion",
+      detail: "Solo eventos canonicos real/imported.",
+      badge: "border-emerald-300/25 bg-emerald-400/10 text-emerald-200",
+    };
+  }
+  return {
+    label: "Fuente no identificada",
+    detail: detail || "El origen del dato no pudo clasificarse.",
+    badge: "border-slate-500/40 bg-slate-700/30 text-slate-200",
+  };
+}
+
 function locationSourceLabel(row: TenantTapRealtimeEvent) {
   const source = String(row.locationSource || "").toLowerCase();
-  if (source === "browser_gps") return row.locationAccuracyM ? `GPS teléfono ${Math.round(row.locationAccuracyM)}m` : "GPS teléfono";
-  if (source === "ip_geo") return "IP aproximada";
-  if (source.includes("error") || source.includes("denied")) return "GPS no autorizado";
-  return Number.isFinite(Number(row.lat)) && Number.isFinite(Number(row.lng)) ? "Coordenada reportada" : "Ciudad estimada";
+  const coordinate = strictCoordinatePair(row.lat, row.lng);
+  if (isClientReportedGps(source)) return coordinate
+    ? (row.locationAccuracyM ? `GPS reportado por cliente (+/-${Math.round(row.locationAccuracyM)}m); no verificacion independiente` : "GPS reportado por cliente; no verificacion independiente")
+    : "GPS reportado sin coordenada valida; no verificacion independiente";
+  if (source === "ip_geo") return coordinate ? "IP aproximada" : "IP sin coordenada válida; ciudad estimada";
+  if (source.includes("error") || source.includes("denied")) return coordinate ? "Coordenada reportada; GPS no autorizado" : "GPS no autorizado; ciudad estimada";
+  return coordinate ? "Coordenada reportada; precisión no informada" : row.city ? "Ciudad estimada; no es GPS" : "Sin ubicación utilizable";
 }
 
 function deviceSummary(row: TenantTapRealtimeEvent) {
@@ -324,6 +399,7 @@ function buildHotspots(rows: TenantTapRealtimeEvent[]) {
     valid: number;
     gps: number;
     risk: number;
+    unknown: number;
     lastUid: string;
     device: string;
     lastSeenMs: number;
@@ -333,8 +409,9 @@ function buildHotspots(rows: TenantTapRealtimeEvent[]) {
     const city = String(row.city || "Unknown");
     const country = String(row.country || "--");
     const key = `${city.toLowerCase()}|${country}`;
-    const valid = String(row.verdict || "").toLowerCase() === "valid";
-    const gps = String(row.locationSource || "").toLowerCase() === "browser_gps";
+    const verdictBucket = classifyRealtimeVerdict(row.verdict);
+    const valid = verdictBucket === "valid";
+    const gps = isClientReportedGps(row.locationSource);
     const lastSeenMs = safeDate(row.occurredAt);
     const current = buckets.get(key) || {
       key,
@@ -344,6 +421,7 @@ function buildHotspots(rows: TenantTapRealtimeEvent[]) {
       valid: 0,
       gps: 0,
       risk: 0,
+      unknown: 0,
       lastUid: String(row.uidMasked || "N/A"),
       device: deviceSummary(row),
       lastSeenMs,
@@ -351,7 +429,8 @@ function buildHotspots(rows: TenantTapRealtimeEvent[]) {
     current.taps += 1;
     if (valid) current.valid += 1;
     if (gps) current.gps += 1;
-    if (!valid) current.risk += 1;
+    if (isRealtimeRisk(row.verdict)) current.risk += 1;
+    if (verdictBucket === "unknown") current.unknown += 1;
     if (lastSeenMs >= current.lastSeenMs) {
       current.lastSeenMs = lastSeenMs;
       current.lastUid = String(row.uidMasked || current.lastUid);
@@ -376,8 +455,13 @@ function buildMarketOpportunities(
     const validRate = hotspot.taps ? (hotspot.valid / hotspot.taps) * 100 : 0;
     const gpsRate = hotspot.taps ? (hotspot.gps / hotspot.taps) * 100 : 0;
     const riskRate = hotspot.taps ? (hotspot.risk / hotspot.taps) * 100 : 0;
-    const crmReady = cityRows.filter((row) => String(row.verdict || "").toLowerCase() === "valid" && Boolean(row.uidMasked)).length;
-    const audience = Math.max(crmReady, Math.round(hotspot.valid * 1.4 + hotspot.gps * 0.8));
+    const crmReady = new Set(
+      cityRows
+        .filter((row) => classifyRealtimeVerdict(row.verdict) === "valid")
+        .map((row) => String(row.uidMasked || "").trim())
+        .filter((uid) => uid && uid !== "N/A"),
+    ).size;
+    const audience = crmReady;
 
     let channel = "WhatsApp + voucher";
     let offer = "15% club post-tap";
@@ -549,6 +633,10 @@ export function ExecutiveRealtimeCrm({
   initialEvents,
   tenantScope,
   mode,
+  streamSource,
+  initialDataSource,
+  initialAvailability,
+  initialAvailabilityDetail,
   onSectionChange,
 }: {
   account: {
@@ -564,11 +652,22 @@ export function ExecutiveRealtimeCrm({
   initialEvents: TenantTapRealtimeEvent[];
   tenantScope: string;
   mode: MapMode;
+  streamSource: RealtimeStreamSource;
+  initialDataSource: RealtimeDataSource;
+  initialAvailability: RealtimeAvailability;
+  initialAvailabilityDetail: string;
   onSectionChange?: (section: CrmSection) => void;
 }) {
   const [events, setEvents] = useState(() => sortRealtimeEvents(initialEvents, 50));
   const [connected, setConnected] = useState(false);
-  const [lastUpdateAt, setLastUpdateAt] = useState(initialEvents[0]?.occurredAt || new Date().toISOString());
+  const [connectionAttempted, setConnectionAttempted] = useState(false);
+  const [streamConfirmed, setStreamConfirmed] = useState(initialAvailability === "ready" && initialEvents.length > 0);
+  const [streamWarning, setStreamWarning] = useState<string | null>(null);
+  const [lastUpdateAt, setLastUpdateAt] = useState<string | null>(initialEvents[0]?.occurredAt || null);
+  const [freshnessNow, setFreshnessNow] = useState(() => Date.now());
+  const [activeDataSource, setActiveDataSource] = useState<RealtimeDataSource>(initialDataSource);
+  const [dataAvailability, setDataAvailability] = useState<RealtimeAvailability>(initialAvailability);
+  const [availabilityDetail, setAvailabilityDetail] = useState(initialAvailabilityDetail);
   const [selectedTenant, setSelectedTenant] = useState("all");
   const [mapView, setMapView] = useState<MapView>("heat");
   const [baseMap, setBaseMap] = useState<BaseMapLayer>("dark");
@@ -601,21 +700,45 @@ export function ExecutiveRealtimeCrm({
   }, []);
 
   useEffect(() => {
+    const timer = window.setInterval(() => setFreshnessNow(Date.now()), 5_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
     const streamUrl = new URL("/api/admin/events/stream", window.location.origin);
     streamUrl.searchParams.set("limit", "50");
-    streamUrl.searchParams.set("range", timeRange);
-    streamUrl.searchParams.set("source", "all");
+    streamUrl.searchParams.set("window", timeRange);
+    streamUrl.searchParams.set("source", streamSource);
     if (tenantScope) streamUrl.searchParams.set("tenant", tenantScope);
 
+    setConnected(false);
+    setConnectionAttempted(false);
+    setStreamConfirmed(false);
+    setStreamWarning(null);
+    setActiveDataSource(initialDataSource);
+    setDataAvailability(initialAvailability);
+    setAvailabilityDetail(initialAvailabilityDetail);
     const source = new EventSource(streamUrl.toString());
-    source.onopen = () => setConnected(true);
-    source.onerror = () => setConnected(false);
+    source.onopen = () => {
+      setConnectionAttempted(true);
+      setConnected(true);
+    };
+    source.onerror = () => {
+      setConnectionAttempted(true);
+      setConnected(false);
+    };
 
     const onSnapshot = (event: MessageEvent<string>) => {
       try {
-        const payload = JSON.parse(event.data) as { rows?: TenantTapRealtimeEvent[] };
+        const payload = JSON.parse(event.data) as { rows?: TenantTapRealtimeEvent[]; source?: string; availability?: string };
         if (!Array.isArray(payload.rows)) return;
-        setEvents((prev) => sortRealtimeEvents([...(payload.rows || []), ...prev], 50));
+        setEvents(sortRealtimeEvents(payload.rows || [], 50));
+        const confirmedSource = String(payload.source || streamSource).toLowerCase();
+        setActiveDataSource(confirmedSource === "all" ? "mixed" : confirmedSource === "demo" ? "demo" : "production");
+        setDataAvailability(payload.availability === "fallback" ? "fallback" : "ready");
+        setAvailabilityDetail(payload.availability === "fallback" ? "Stream operando con datos de respaldo declarados." : "Fuente confirmada por nexID Core.");
+        if (payload.availability !== "fallback") setStreamWarning(null);
+        setStreamConfirmed(true);
         setLastUpdateAt(new Date().toISOString());
       } catch {
         // keep previous state
@@ -629,20 +752,58 @@ export function ExecutiveRealtimeCrm({
         if (incomingId && incomingId === lastEventIdRef.current) return;
         lastEventIdRef.current = incomingId;
         setEvents((prev) => mergeRealtimeEvents(prev, payload, 50));
+        setActiveDataSource(streamSource === "all" ? "mixed" : streamSource);
+        setDataAvailability("ready");
+        setAvailabilityDetail("Evento confirmado por nexID Core.");
+        setStreamWarning(null);
+        setStreamConfirmed(true);
         setLastUpdateAt(new Date().toISOString());
       } catch {
         // keep previous state
       }
     };
 
+    const onHeartbeat = (event: MessageEvent<string>) => {
+      try {
+        const payload = JSON.parse(event.data) as { ts?: number | string };
+        const heartbeatAt = safeDate(payload.ts);
+        setLastUpdateAt(heartbeatAt ? new Date(heartbeatAt).toISOString() : new Date().toISOString());
+        setConnectionAttempted(true);
+        setConnected(true);
+      } catch {
+        setLastUpdateAt(new Date().toISOString());
+      }
+    };
+
+    const onWarning = (event: MessageEvent<string>) => {
+      try {
+        const payload = JSON.parse(event.data) as { reason?: string; source?: string; availability?: string };
+        const hasReason = Boolean(String(payload.reason || "").trim());
+        if (payload.availability === "fallback") setDataAvailability("fallback");
+        else setDataAvailability("upstream_error");
+        if (String(payload.source || "").toLowerCase() === "demo") setActiveDataSource("demo");
+        if (String(payload.source || "").toLowerCase() === "seed") setActiveDataSource("seed");
+        setAvailabilityDetail(String(payload.reason || "Stream realtime degradado"));
+        setStreamWarning(hasReason
+          ? "La fuente en tiempo real informó una degradación; se conserva el último snapshot confirmado."
+          : "El stream opera en modo degradado.");
+      } catch {
+        setStreamWarning("El stream opera en modo degradado.");
+      }
+    };
+
     source.addEventListener("snapshot", onSnapshot as EventListener);
     source.addEventListener("event", onEvent as EventListener);
+    source.addEventListener("heartbeat", onHeartbeat as EventListener);
+    source.addEventListener("warning", onWarning as EventListener);
     return () => {
       source.removeEventListener("snapshot", onSnapshot as EventListener);
       source.removeEventListener("event", onEvent as EventListener);
+      source.removeEventListener("heartbeat", onHeartbeat as EventListener);
+      source.removeEventListener("warning", onWarning as EventListener);
       source.close();
     };
-  }, [tenantScope, timeRange]);
+  }, [initialAvailability, initialAvailabilityDetail, initialDataSource, initialEvents.length, streamSource, tenantScope, timeRange]);
 
   const tenantOptions = useMemo(
     () => [...new Set(events.map((event) => String(event.tenantSlug || "unknown").toLowerCase()))].filter(Boolean).sort(),
@@ -680,23 +841,25 @@ export function ExecutiveRealtimeCrm({
 
   const metrics = useMemo(() => {
     const total = visibleEvents.length;
-    const valid = visibleEvents.filter((event) => String(event.verdict || "").toLowerCase() === "valid").length;
-    const risk = Math.max(0, total - valid);
-    const gps = visibleEvents.filter((event) => String(event.locationSource || "").toLowerCase() === "browser_gps").length;
+    const valid = visibleEvents.filter((event) => classifyRealtimeVerdict(event.verdict) === "valid").length;
+    const risk = visibleEvents.filter((event) => isRealtimeRisk(event.verdict)).length;
+    const unknown = visibleEvents.filter((event) => classifyRealtimeVerdict(event.verdict) === "unknown").length;
+    const gps = visibleEvents.filter((event) => isClientReportedGps(event.locationSource) && strictCoordinatePair(event.lat, event.lng) != null).length;
     const actionable = visibleEvents.filter((event) => {
-      const hasLocation = Number.isFinite(Number(event.lat)) && Number.isFinite(Number(event.lng));
-      return String(event.verdict || "").toLowerCase() === "valid" && hasLocation && Boolean(event.uidMasked);
+      const hasLocation = strictCoordinatePair(event.lat, event.lng) != null;
+      return classifyRealtimeVerdict(event.verdict) === "valid" && hasLocation && Boolean(event.uidMasked);
     }).length;
     const offerReady = buildHotspots(visibleEvents).filter((item) => item.valid > 0).length;
     return {
       total,
       valid,
       risk,
+      unknown,
       gps,
       actionable,
       offerReady,
       validRate: total ? (valid / total) * 100 : 0,
-      fraudRate: total ? (risk / total) * 100 : 0,
+      explicitRiskRate: total ? (risk / total) * 100 : 0,
       gpsCoverage: total ? (gps / total) * 100 : 0,
       leadConversion: total ? (actionable / total) * 100 : 0,
     };
@@ -711,6 +874,7 @@ export function ExecutiveRealtimeCrm({
         taps: 0,
         risk: 0,
         valid: 0,
+        unknown: 0,
       };
     });
     visibleEvents.forEach((event) => {
@@ -720,8 +884,10 @@ export function ExecutiveRealtimeCrm({
       const bucket = 11 - diff;
       if (bucket < 0 || bucket > 11) return;
       buckets[bucket].taps += 1;
-      if (String(event.verdict || "").toLowerCase() === "valid") buckets[bucket].valid += 1;
-      else buckets[bucket].risk += 1;
+      const verdictBucket = classifyRealtimeVerdict(event.verdict);
+      if (verdictBucket === "valid") buckets[bucket].valid += 1;
+      else if (isRealtimeRisk(event.verdict)) buckets[bucket].risk += 1;
+      else buckets[bucket].unknown += 1;
     });
     return buckets;
   }, [consoleTimezone, visibleEvents]);
@@ -735,18 +901,36 @@ export function ExecutiveRealtimeCrm({
   );
   const latestEvent = visibleEvents[0] || null;
   const todayLabel = useMemo(() => formatDateInZone(Date.now(), consoleTimezone), [consoleTimezone]);
+  const lastUpdateMs = safeDate(lastUpdateAt);
+  const streamIsStale = Boolean(connected && streamConfirmed && lastUpdateMs && freshnessNow - lastUpdateMs > 20_000);
+  const sourcePresentation = realtimeSourcePresentation(activeDataSource, dataAvailability, availabilityDetail);
+  const streamHealth = streamWarning || dataAvailability !== "ready"
+    ? { label: "Degradado", detail: streamWarning || sourcePresentation.detail, dot: "bg-amber-300", badge: "border-amber-300/30 bg-amber-400/10 text-amber-100" }
+    : !connected
+      ? connectionAttempted
+        ? { label: "Reconectando", detail: "La conexión se interrumpió; EventSource reintentará automáticamente.", dot: "bg-amber-300", badge: "border-amber-300/30 bg-amber-400/10 text-amber-100" }
+        : { label: "Conectando", detail: "Abriendo el canal de eventos y esperando su primera confirmación.", dot: "bg-cyan-300", badge: "border-cyan-300/30 bg-cyan-400/10 text-cyan-100" }
+      : !streamConfirmed
+        ? { label: "Sincronizando", detail: "Conexión abierta; esperando la primera confirmación de datos.", dot: "bg-cyan-300", badge: "border-cyan-300/30 bg-cyan-400/10 text-cyan-100" }
+        : streamIsStale
+          ? { label: "Desactualizado", detail: "No se recibió heartbeat ni snapshot en los últimos 20 segundos.", dot: "bg-rose-300", badge: "border-rose-300/30 bg-rose-400/10 text-rose-100" }
+          : { label: activeDataSource === "demo" ? "En vivo - demo" : activeDataSource === "mixed" ? "En vivo - fuente mixta" : "En vivo - produccion", detail: `Stream confirmado. ${sourcePresentation.detail}`, dot: "bg-emerald-400", badge: "border-emerald-300/25 bg-emerald-400/10 text-emerald-200" };
+  const streamDataUnconfirmed = Boolean(streamWarning || dataAvailability !== "ready" || !streamConfirmed || streamIsStale);
 
   const alerts = useMemo(() => {
     const rows: Array<{ id: string; tone: "red" | "amber" | "blue"; title: string; detail: string; time: string }> = [];
-    if (metrics.fraudRate > 10) {
-      rows.push({ id: `risk-${hotspots[0]?.key || "operation"}`, tone: "red", title: `Riesgo elevado en ${hotspots[0]?.city || "la operación"}`, detail: `Tasa de riesgo ${formatPercent(metrics.fraudRate)} en la ventana visible`, time: formatShortTimeInZone(Date.now(), consoleTimezone) });
+    if (metrics.explicitRiskRate > 10) {
+      rows.push({ id: `risk-${hotspots[0]?.key || "operation"}`, tone: "red", title: `Riesgo elevado en ${hotspots[0]?.city || "la operación"}`, detail: `Riesgo explícito ${formatPercent(metrics.explicitRiskRate)}: solo replay, tamper o INVALID`, time: formatShortTimeInZone(Date.now(), consoleTimezone) });
     }
     if (metrics.gpsCoverage < 60 && metrics.total > 0) {
       rows.push({ id: `gps-${metrics.total}-${Math.round(metrics.gpsCoverage)}`, tone: "amber", title: "Cobertura GPS baja", detail: `Solo ${formatPercent(metrics.gpsCoverage)} de lecturas con GPS útil`, time: formatShortTimeInZone(Date.now(), consoleTimezone) });
     }
-    visibleEvents.filter((event) => String(event.verdict || "").toLowerCase() !== "valid").slice(0, 3).forEach((event, index) => {
+    visibleEvents.filter((event) => isRealtimeRisk(event.verdict)).slice(0, 3).forEach((event, index) => {
       rows.push({ id: `exception-${String(event.eventId || event.uidMasked || "uid")}-${index}`, tone: "amber", title: `UID con excepción ${event.uidMasked}`, detail: `${event.city || "sin ciudad"} · ${deviceSummary(event)}`, time: timeAgo(event.occurredAt) });
     });
+    if (metrics.unknown > 0) {
+      rows.push({ id: `unknown-${metrics.unknown}`, tone: "blue", title: "Eventos sin clasificar", detail: `${metrics.unknown} eventos UNKNOWN, NOT_REGISTERED, NOT_ACTIVE o no reconocidos; no se cuentan como riesgo.`, time: formatShortTimeInZone(Date.now(), consoleTimezone) });
+    }
     if (metrics.actionable > 0) {
       rows.push({ id: `actionable-${String(latestEvent?.eventId || metrics.actionable)}`, tone: "blue", title: "Pico de actividad listo para CRM", detail: `${metrics.actionable} lecturas válidas tienen ubicación accionable`, time: timeAgo(latestEvent?.occurredAt) });
     }
@@ -839,7 +1023,8 @@ export function ExecutiveRealtimeCrm({
       country: opportunity.country,
       channel: opportunity.channel,
       offer: opportunity.offer,
-      audience: String(opportunity.audience),
+      signal_count: String(opportunity.audience),
+      signal_source: "unique_valid_uid",
     });
     window.location.href = `/loyalty/campaigns?${params.toString()}`;
   };
@@ -863,11 +1048,11 @@ export function ExecutiveRealtimeCrm({
   };
 
   const openStreetView = () => {
-    const target = visibleEvents.find((event) => Number.isFinite(Number(event.lat)) && Number.isFinite(Number(event.lng)));
+    const target = visibleEvents
+      .map((event) => strictCoordinatePair(event.lat, event.lng))
+      .find((coordinate) => coordinate != null);
     if (!target) return;
-    const lat = Number(target.lat);
-    const lng = Number(target.lng);
-    window.open(`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`, "_blank", "noopener,noreferrer");
+    window.open(`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${target.lat},${target.lng}`, "_blank", "noopener,noreferrer");
   };
 
   const railItems = [
@@ -907,7 +1092,8 @@ export function ExecutiveRealtimeCrm({
         </nav>
 
         <div className="ml-0 flex w-full flex-wrap items-center justify-between gap-3 text-xs text-slate-300 lg:ml-auto lg:w-auto lg:flex-nowrap lg:justify-start lg:gap-5">
-          <span className="flex items-center gap-2"><i className={`h-2 w-2 rounded-full ${connected ? "bg-emerald-400" : "bg-amber-300"}`} /> Stream de eventos</span>
+          <span className="flex items-center gap-2" title={streamHealth.detail}><i className={`h-2 w-2 rounded-full ${streamHealth.dot}`} /> Stream: {streamHealth.label}</span>
+          <span data-testid="crm-source-badge" className={`rounded-full border px-2.5 py-1 font-semibold ${sourcePresentation.badge}`} title={sourcePresentation.detail}>Fuente: {sourcePresentation.label}</span>
           <span className="flex items-center gap-2" title={`Horario operativo del tenant: ${consoleTimezone}`}><Clock className="h-4 w-4 text-slate-500" /> {clock}<span className="hidden text-[10px] uppercase tracking-[0.08em] text-slate-500 xl:inline">{consoleTimezoneLabel}</span></span>
           <span className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-slate-500" /> {todayLabel}</span>
           <TenantAccountMenu
@@ -960,13 +1146,13 @@ export function ExecutiveRealtimeCrm({
               <h2 className="text-lg font-bold text-white">Lectura operativa</h2>
               <p className="text-[11px] text-slate-500">Qué pasó, qué es confiable y qué se puede activar ahora.</p>
             </span>
-            <span className="flex items-center gap-2 text-xs text-slate-400"><i className={`h-2 w-2 rounded-full ${connected ? "bg-emerald-400" : "bg-amber-300"}`} /> {connected ? "En vivo" : "Sincronizando"}</span>
+            <span className="flex items-center gap-2 text-xs text-slate-400" title={streamHealth.detail}><i className={`h-2 w-2 rounded-full ${streamHealth.dot}`} /> {streamHealth.label}</span>
           </div>
 
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <MetricCard icon={<Radio className="h-5 w-5" />} label="Lecturas" value={formatNumber(metrics.total)} delta="stream" help="Eventos NFC/QR recibidos para tenant y ventana activos." tone="cyan" data={velocitySeries} />
             <MetricCard icon={<ShieldCheck className="h-5 w-5" />} label="Lecturas válidas" value={formatPercent(metrics.validRate)} delta="VALID" help="Porcentaje de eventos con verdict válido sobre el total visible." tone="green" data={velocitySeries} dataKey="valid" />
-            <MetricCard icon={<ShieldAlert className="h-5 w-5" />} label="Riesgo" value={formatPercent(metrics.fraudRate)} delta={metrics.risk ? "revisar" : "0 alertas"} help="Eventos no válidos; revisar UID, lote y dispositivo antes de campañas." tone="red" data={velocitySeries} dataKey="risk" />
+            <MetricCard icon={<ShieldAlert className="h-5 w-5" />} label="Riesgo explícito" value={formatPercent(metrics.explicitRiskRate)} delta={metrics.risk ? `${metrics.risk} alertas` : "0 alertas"} help={`Solo replay, tamper e INVALID. ${metrics.unknown} eventos sin clasificar se muestran aparte y no se cuentan como riesgo.`} tone="red" data={velocitySeries} dataKey="risk" />
             <MetricCard icon={<MapPin className="h-5 w-5" />} label="Ubicación útil" value={formatPercent(metrics.gpsCoverage)} delta="GPS" help="Eventos con coordenada de teléfono, no solo ciudad o IP aproximada." tone="green" data={velocitySeries} />
             <MetricCard icon={<Users className="h-5 w-5" />} label="Audiencia accionable" value={formatNumber(metrics.actionable)} delta="UID + zona" help="Lecturas válidas con UID y ubicación para segmentar sin asumir identidad." tone="blue" data={velocitySeries} dataKey="valid" />
             <MetricCard icon={<Filter className="h-5 w-5" />} label="Señales listas" value={formatPercent(metrics.leadConversion)} delta="post-tap" help="Share de lecturas que pueden alimentar segmento, beneficio o campaña." tone="green" data={velocitySeries} dataKey="valid" />
@@ -1022,23 +1208,38 @@ export function ExecutiveRealtimeCrm({
           <div className="flex min-h-0 flex-col lg:flex-1">
             <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex items-center gap-3">
-                <h2 className="text-lg font-bold text-white">Mapa vivo por capas</h2>
-                <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-300">Live</span>
+                <h2 className="text-lg font-bold text-white">Mapa de eventos por capas</h2>
+                <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${streamHealth.badge}`} title={streamHealth.detail}>{streamHealth.label}</span>
               </div>
               <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:w-auto sm:flex-wrap">
-                <select size={1} title="Filtrar lecturas por tenant" value={selectedTenant} onChange={(event) => setSelectedTenant(event.target.value)} className="col-span-2 h-9 w-full min-w-0 rounded-lg border border-slate-700 bg-slate-950/80 px-3 text-sm text-white sm:col-span-1 sm:w-auto sm:min-w-[150px]">
+                <select size={1} aria-label="Filtrar lecturas por tenant" title="Filtrar lecturas por tenant" value={selectedTenant} onChange={(event) => setSelectedTenant(event.target.value)} className="col-span-2 h-9 w-full min-w-0 rounded-lg border border-slate-700 bg-slate-950/80 px-3 text-sm text-white sm:col-span-1 sm:w-auto sm:min-w-[150px]">
                   <option value="all">Todos los tenants</option>
                   {tenantOptions.map((tenant) => <option key={tenant} value={tenant}>{tenantDisplayName(tenant)}</option>)}
                 </select>
-                <select size={1} title="Cambiar ventana temporal del mapa y KPIs" value={timeRange} onChange={(event) => setTimeRange(event.target.value as TimeRange)} className="h-9 min-w-0 rounded-lg border border-slate-700 bg-slate-950/80 px-3 text-sm text-white">
+                <select size={1} aria-label="Cambiar ventana temporal del mapa y KPIs" title="Cambiar ventana temporal del mapa y KPIs" value={timeRange} onChange={(event) => setTimeRange(event.target.value as TimeRange)} className="h-9 min-w-0 rounded-lg border border-slate-700 bg-slate-950/80 px-3 text-sm text-white">
                   {TIME_RANGE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
-                <select size={1} title="Cambiar capa base del mapa" value={baseMap} onChange={(event) => setBaseMap(event.target.value as BaseMapLayer)} className="h-9 min-w-0 rounded-lg border border-slate-700 bg-slate-950/80 px-3 text-sm text-white xl:hidden">
+                <select size={1} aria-label="Cambiar capa base del mapa" title="Cambiar capa base del mapa" value={baseMap} onChange={(event) => setBaseMap(event.target.value as BaseMapLayer)} className="h-9 min-w-0 rounded-lg border border-slate-700 bg-slate-950/80 px-3 text-sm text-white xl:hidden">
                   {BASEMAP_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
                 <button type="button" title="Exportar eventos visibles a CSV" onClick={handleExport} className="flex h-9 items-center gap-2 rounded-lg border border-slate-700 bg-slate-950/80 px-4 text-sm text-white hover:border-cyan-300/50"><Download className="h-4 w-4" /> Exportar</button>
               </div>
             </div>
+
+            {(streamDataUnconfirmed || !visibleEvents.length) ? (
+              <div className="mb-3">
+                <EnterpriseOpsState
+                  compact
+                  variant={streamDataUnconfirmed ? "warning" : "empty"}
+                  title={streamDataUnconfirmed ? "Actividad todavía no confirmada" : "Sin eventos en los filtros activos"}
+                  description={streamDataUnconfirmed
+                    ? `${streamHealth.detail} Los indicadores visibles pueden provenir del último snapshot confirmado y no representan un cero operativo.`
+                    : "El stream respondió correctamente, pero no hay lecturas para este tenant y esta ventana temporal."}
+                  checklist={streamDataUnconfirmed ? ["Esperar reconexión o revisar la fuente antes de decidir", `Última actualización: ${timeAgo(lastUpdateAt)}`] : ["Ampliar el rango temporal", "Cambiar tenant o realizar un tap NFC de control"]}
+                  testId="crm-realtime-data-state"
+                />
+              </div>
+            ) : null}
 
             <div id="live-tap-map" ref={mapPanelRef} className={`relative overflow-hidden border border-cyan-100/10 bg-[#061426] shadow-[inset_0_1px_0_rgba(255,255,255,.05)] ${isMapFullscreen ? "fixed inset-0 z-[260] h-screen min-h-screen rounded-none border-cyan-300/25 bg-[#020713] p-2" : "min-h-[520px] rounded-xl sm:min-h-[560px] lg:min-h-0"}`}>
               <div className="absolute left-4 top-4 z-20 grid gap-2">
@@ -1060,6 +1261,7 @@ export function ExecutiveRealtimeCrm({
                       key={option.value}
                       type="button"
                       title={option.title}
+                      aria-pressed={baseMap === option.value}
                       onClick={() => setBaseMap(option.value)}
                       className={`h-7 rounded-md px-2 text-[11px] font-black uppercase tracking-[0.06em] ${baseMap === option.value ? "bg-cyan-300 text-slate-950" : "text-slate-300 hover:bg-white/8 hover:text-white"}`}
                     >
@@ -1093,12 +1295,14 @@ export function ExecutiveRealtimeCrm({
                 <p className="text-sm font-semibold text-white">Últimos eventos visibles</p>
                 <div className="mt-3 space-y-2">
                   {visibleEvents.slice(0, 4).map((event) => {
-                    const valid = String(event.verdict || "").toLowerCase() === "valid";
+                    const verdictBucket = classifyRealtimeVerdict(event.verdict);
+                    const valid = verdictBucket === "valid";
+                    const risk = isRealtimeRisk(event.verdict);
                     return (
                       <div key={String(event.eventId || `${event.uidMasked}-${event.occurredAt}`)} className="rounded-lg border border-white/8 bg-slate-900/70 p-3">
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-[11px] text-slate-500">{formatTimeInZone(event.occurredAt || Date.now(), consoleTimezone)}</p>
-                          <span className={`rounded px-2 py-0.5 text-[10px] font-semibold ${valid ? "bg-emerald-400/10 text-emerald-300" : "bg-amber-400/10 text-amber-300"}`}>{valid ? "Válido" : "Riesgo"}</span>
+                          <span className={`rounded px-2 py-0.5 text-[10px] font-semibold ${valid ? "bg-emerald-400/10 text-emerald-300" : risk ? "bg-rose-400/10 text-rose-300" : "bg-sky-400/10 text-sky-300"}`}>{valid ? "Válido" : risk ? "Riesgo" : "Sin clasificar"}</span>
                         </div>
                         <p className="mt-1 text-sm font-black text-white">UID: {event.uidMasked}</p>
                         <p className="text-xs text-slate-400">{deviceSummary(event)}</p>
@@ -1132,7 +1336,7 @@ export function ExecutiveRealtimeCrm({
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-center">
                     <span className="rounded-lg border border-white/8 bg-slate-950/55 p-2" title="Prioridad heurística calculada con lecturas válidas, GPS, volumen y riesgo."><b className="block text-base text-white">{topOpportunity.score}</b> prioridad</span>
-                    <span className="rounded-lg border border-white/8 bg-slate-950/55 p-2"><b className="block text-base text-white">{topOpportunity.audience}</b> señales</span>
+                    <span className="rounded-lg border border-white/8 bg-slate-950/55 p-2" title="UIDs válidos únicos reportados; no equivale a contactos con consentimiento."><b className="block text-base text-white">{topOpportunity.audience}</b> UIDs válidos</span>
                     <span className="rounded-lg border border-white/8 bg-slate-950/55 p-2"><b className="block text-base text-white">{formatPercent(topOpportunity.validRate)}</b> válido</span>
                   </div>
                 </div>
@@ -1165,7 +1369,7 @@ export function ExecutiveRealtimeCrm({
                       <span className="shrink-0 rounded-full border border-cyan-300/20 bg-cyan-400/10 px-2 py-0.5 text-xs font-bold text-cyan-200" title="Prioridad heurística">P{opportunity.score}</span>
                     </div>
                     <div className="mt-2 grid grid-cols-3 gap-2 text-[11px] text-slate-400">
-                      <span className="rounded-md border border-white/8 bg-slate-900/70 px-2 py-1"><b className="block text-sm text-white">{opportunity.audience}</b> señales CRM</span>
+                      <span className="rounded-md border border-white/8 bg-slate-900/70 px-2 py-1" title="No equivale a una audiencia contactable ni implica opt-in."><b className="block text-sm text-white">{opportunity.audience}</b> UIDs válidos únicos</span>
                       <span className="rounded-md border border-white/8 bg-slate-900/70 px-2 py-1"><b className="block truncate text-sm text-white">{opportunity.channel}</b> canal</span>
                       <span className="rounded-md border border-white/8 bg-slate-900/70 px-2 py-1"><b className="block truncate text-sm text-emerald-200">{opportunity.offer}</b> beneficio</span>
                     </div>
@@ -1211,10 +1415,13 @@ export function ExecutiveRealtimeCrm({
       </main>
 
       <footer className="fixed bottom-0 left-0 right-0 z-20 flex h-9 items-center justify-between gap-3 border-t border-white/8 bg-[#06101d]/95 px-3 text-[11px] text-slate-400 lg:absolute lg:h-8 lg:px-8 lg:text-xs">
-        <span className="flex items-center gap-2"><i className={`h-2 w-2 rounded-full ${connected ? "bg-emerald-400" : "bg-amber-300"}`} /> {connected ? "Conectado al stream en tiempo real" : "Reconectando stream"}</span>
+        <span className="flex items-center gap-2"><i className={`h-2 w-2 rounded-full ${streamHealth.dot}`} /> Stream: {streamHealth.label}</span>
         <span className="hidden sm:inline">Actualizado: {timeAgo(lastUpdateAt)}</span>
-        <span className="hidden md:inline">Fuente: nexID Core · Precisión de ubicación: {latestEvent?.locationAccuracyM ? `±${Math.round(Number(latestEvent.locationAccuracyM))} m` : "según evento"}</span>
+        <span className="hidden md:inline">Fuente: {sourcePresentation.label} · nexID Core · Precisión de ubicación: {latestEvent?.locationAccuracyM ? `±${Math.round(Number(latestEvent.locationAccuracyM))} m` : "según evento"}</span>
       </footer>
+      <p className="sr-only" role="status" aria-live="polite" aria-atomic="true" data-testid="crm-stream-live-region">
+        Estado del stream: {streamHealth.label}. {streamHealth.detail}
+      </p>
     </div>
   );
 }

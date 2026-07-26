@@ -13,6 +13,19 @@ async function adminGet(context: AdminPageContext, path: string) {
   }
 }
 
+function metricText(value: unknown, available: boolean) {
+  return available ? Number(value || 0).toLocaleString("es-AR") : "—";
+}
+
+function rateText(value: unknown, available: boolean) {
+  return available ? `${Number(value || 0)}%` : "—";
+}
+
+function rateWidth(value: unknown, available: boolean) {
+  if (!available) return "0%";
+  return `${Math.max(0, Math.min(100, Number(value || 0)))}%`;
+}
+
 export default async function LoyaltyOverviewPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const query = searchParams ? await searchParams : {};
   const session = await requireDashboardSession();
@@ -25,9 +38,12 @@ export default async function LoyaltyOverviewPage({ searchParams }: { searchPara
     adminGet(adminContext, "/admin/loyalty/rewards"),
   ]);
 
-  const overview = loyaltyOverview || { active_programs: 0, total_members: 0, points_issued: 0, points_redeemed: 0 };
-  const consumer = consumerOverview?.overview || { riskBlockedClaims: 0, tapToRegistrationRate: 0, registrationToMembershipRate: 0 };
-  const rewards = rewardsRaw?.rewards || [];
+  const loyaltyReady = Boolean(loyaltyOverview && typeof loyaltyOverview === "object" && !Array.isArray(loyaltyOverview));
+  const consumerReady = Boolean(consumerOverview?.overview && typeof consumerOverview.overview === "object" && !Array.isArray(consumerOverview.overview));
+  const rewardsReady = Array.isArray(rewardsRaw?.rewards);
+  const overview = loyaltyReady ? loyaltyOverview : {};
+  const consumer = consumerReady ? consumerOverview.overview : {};
+  const rewards = rewardsReady ? rewardsRaw.rewards : [];
 
   return (
     <div className="space-y-6">
@@ -47,26 +63,32 @@ export default async function LoyaltyOverviewPage({ searchParams }: { searchPara
         Scope actual: <b className="text-white">{tenantScope ? `tenant ${tenantScope}` : "global / multi-tenant"}</b>
       </div>
 
+      {!loyaltyReady || !consumerReady || !rewardsReady ? (
+        <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-4 text-xs text-amber-100" role="status">
+          Fuentes parciales: los módulos no disponibles se muestran con “—”; no se convierten en actividad cero ni en tasas estimadas.
+        </div>
+      ) : null}
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <article className="rounded-xl border border-white/10 bg-slate-900/50 p-4">
           <p className="text-xs uppercase tracking-widest text-slate-400">Total Miembros</p>
-          <p className="mt-2 text-3xl font-bold text-white">{Number(overview.total_members).toLocaleString("es-AR")}</p>
-          <p className="mt-1 text-xs text-slate-500">Miembros enrolados en el programa</p>
+          <p className="mt-2 text-3xl font-bold text-white">{metricText(overview.total_members, loyaltyReady)}</p>
+          <p className="mt-1 text-xs text-slate-500">{loyaltyReady ? "Miembros enrolados en el programa" : "Fuente loyalty no disponible"}</p>
         </article>
         <article className="rounded-xl border border-white/10 bg-slate-900/50 p-4">
           <p className="text-xs uppercase tracking-widest text-slate-400">Puntos Emitidos</p>
-          <p className="mt-2 text-3xl font-bold text-white">{Number(overview.points_issued).toLocaleString("es-AR")}</p>
-          <p className="mt-1 text-xs text-slate-500">Otorgados por escaneos válidos</p>
+          <p className="mt-2 text-3xl font-bold text-white">{metricText(overview.points_issued, loyaltyReady)}</p>
+          <p className="mt-1 text-xs text-slate-500">{loyaltyReady ? "Otorgados por mensajes NFC válidos según policy" : "Fuente loyalty no disponible"}</p>
         </article>
         <article className="rounded-xl border border-white/10 bg-slate-900/50 p-4">
           <p className="text-xs uppercase tracking-widest text-slate-400">Puntos Canjeados</p>
-          <p className="mt-2 text-3xl font-bold text-white">{Number(overview.points_redeemed).toLocaleString("es-AR")}</p>
-          <p className="mt-1 text-xs text-emerald-400">Tasa de canje activa</p>
+          <p className="mt-2 text-3xl font-bold text-white">{metricText(overview.points_redeemed, loyaltyReady)}</p>
+          <p className="mt-1 text-xs text-emerald-400">{loyaltyReady ? "Canjes confirmados por la fuente" : "Fuente loyalty no disponible"}</p>
         </article>
         <article className="rounded-xl border border-rose-500/20 bg-rose-950/20 p-4">
           <p className="text-xs uppercase tracking-widest text-rose-400">Reclamos Sospechosos</p>
-          <p className="mt-2 text-3xl font-bold text-rose-100">{Number(consumer.riskBlockedClaims || 0)}</p>
-          <p className="mt-1 text-xs text-rose-300">Reclamos GPS / móvil bloqueados</p>
+          <p className="mt-2 text-3xl font-bold text-rose-100">{metricText(consumer.riskBlockedClaims, consumerReady)}</p>
+          <p className="mt-1 text-xs text-rose-300">{consumerReady ? "Reclamos GPS / móvil bloqueados" : "Fuente consumer no disponible"}</p>
         </article>
       </div>
 
@@ -89,7 +111,7 @@ export default async function LoyaltyOverviewPage({ searchParams }: { searchPara
                  ))}
               </ul>
             ) : (
-              <p className="text-xs text-slate-400">No hay recompensas configuradas todavía.</p>
+              <p className="text-xs text-slate-400">{rewardsReady ? "No hay recompensas configuradas todavía." : "Fuente de recompensas no disponible; no se infiere un catálogo vacío."}</p>
             )}
          </div>
 
@@ -98,29 +120,29 @@ export default async function LoyaltyOverviewPage({ searchParams }: { searchPara
             <div className="space-y-6">
                <div>
                   <div className="flex justify-between text-xs mb-1">
-                     <span className="text-slate-300">Taps Válidos</span>
-                     <span className="font-bold text-white">100%</span>
+                     <span className="text-slate-300">Mensajes NFC válidos (base)</span>
+                     <span className="font-bold text-white">{consumerReady ? "Base" : "—"}</span>
                   </div>
                   <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-                     <div className="h-full bg-cyan-500 w-full"></div>
+                     <div className="h-full bg-cyan-500" style={{ width: consumerReady ? "100%" : "0%" }}></div>
                   </div>
                </div>
                <div>
                   <div className="flex justify-between text-xs mb-1">
                      <span className="text-slate-300">Tasa de Registro (Tap → Registro)</span>
-                     <span className="font-bold text-white">{Number(consumer.tapToRegistrationRate || 0)}%</span>
+                     <span className="font-bold text-white">{rateText(consumer.tapToRegistrationRate, consumerReady)}</span>
                   </div>
                   <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-                     <div className="h-full bg-indigo-500" style={{ width: `${Number(consumer.tapToRegistrationRate || 0)}%` }}></div>
+                     <div className="h-full bg-indigo-500" style={{ width: rateWidth(consumer.tapToRegistrationRate, consumerReady) }}></div>
                   </div>
                </div>
                <div>
                   <div className="flex justify-between text-xs mb-1">
                      <span className="text-slate-300">Tasa de Fidelidad (Registro → Member)</span>
-                     <span className="font-bold text-white">{Number(consumer.registrationToMembershipRate || 0)}%</span>
+                     <span className="font-bold text-white">{rateText(consumer.registrationToMembershipRate, consumerReady)}</span>
                   </div>
                   <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-                     <div className="h-full bg-emerald-500" style={{ width: `${Number(consumer.registrationToMembershipRate || 0)}%` }}></div>
+                     <div className="h-full bg-emerald-500" style={{ width: rateWidth(consumer.registrationToMembershipRate, consumerReady) }}></div>
                   </div>
                </div>
             </div>

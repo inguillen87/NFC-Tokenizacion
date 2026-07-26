@@ -717,8 +717,10 @@ export function GlobalOpsMap({
     {
       id: "token",
       label: "NFT / ownership",
-      value: tokenizedPointCount ? `${tokenizedPointCount} senales` : "ready",
-      detail: selectedPoint?.uid ? `UID ${selectedPoint.uid}` : "UID fisico vinculado a token",
+      value: tokenizedPointCount ? `${tokenizedPointCount} senales` : "sin evidencia",
+      detail: tokenizedPointCount
+        ? (selectedPoint?.uid ? `UID ${selectedPoint.uid}` : "Señal tokenizada registrada")
+        : "No hay señal TOKEN/MINT/CLAIM/NFT en este scope",
       tone: "token",
     },
     {
@@ -922,7 +924,7 @@ export function GlobalOpsMap({
     : firstVisibleRoute
       ? formatDistance(haversineKm(firstVisibleRoute.fromLat, firstVisibleRoute.fromLng, firstVisibleRoute.toLat, firstVisibleRoute.toLng))
       : "n/a";
-  const demoProductName = selectedJourney?.productName || selectedPoint?.productName || visiblePoints.find((point) => point.productName)?.productName || "Producto verificado";
+  const demoProductName = selectedJourney?.productName || selectedPoint?.productName || visiblePoints.find((point) => point.productName)?.productName || "Escenario sin producto confirmado";
   const demoRiskLabel = replayTamper > 0 ? "replay/tamper" : riskyPoints.length ? "riesgo activo" : "ruta limpia";
 
   return (
@@ -930,7 +932,7 @@ export function GlobalOpsMap({
       {!isCompactChrome ? (
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-white">{isDemoMode ? title : `${title} - mapa vivo nexID`}</p>
+          <p className="text-sm font-semibold text-white">{isDemoMode ? title : `${title} - mapa del scope nexID`}</p>
           <p className="text-xs text-slate-400">
             {isDemoMode ? `${subtitle} - ${trustMapSource.badge}` : `${subtitle} (${mode}) - ${mapTheme === "light" ? "mapa claro" : "mapa oscuro"} - ${trustMapSource.badge}.`}
           </p>
@@ -960,19 +962,19 @@ export function GlobalOpsMap({
           <div className="rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3">
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-200">01 origen</p>
             <p className="mt-1 text-sm font-semibold text-white">{originLabel}</p>
-            <p className="mt-1 text-[11px] text-emerald-100/80">Lote, tenant y pasaporte nacen antes de la gondola.</p>
+            <p className="mt-1 text-[11px] text-emerald-100/80">Origen declarado o ilustrativo según la fuente visible del mapa.</p>
           </div>
           <div className="hidden w-10 items-center justify-center text-cyan-200 md:flex">--</div>
           <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3">
-            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">02 tap fisico</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">02 tap simulado</p>
             <p className="mt-1 text-sm font-semibold text-white">{tapLabel}</p>
-            <p className="mt-1 text-[11px] text-cyan-100/80">Lectura fresca, SUN, estado del sello y ubicacion razonable.</p>
+            <p className="mt-1 text-[11px] text-cyan-100/80">Paso ilustrativo: lectura, SUN, TT y ubicación cuentan solo cuando la fuente los aporta.</p>
           </div>
           <div className="hidden w-10 items-center justify-center text-violet-200 md:flex">--</div>
           <div className="rounded-xl border border-violet-300/20 bg-violet-500/10 p-3">
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-violet-200">03 ownership</p>
             <p className="mt-1 text-sm font-semibold text-white">{demoProductName}</p>
-            <p className="mt-1 text-[11px] text-violet-100/80">Claim, wallet/NFT, club, garantia y marketplace.</p>
+            <p className="mt-1 text-[11px] text-violet-100/80">Solicitud sujeta a identidad, compra y política; el tap no transfiere propiedad automáticamente.</p>
           </div>
         </div>
       ) : null}
@@ -1002,9 +1004,9 @@ export function GlobalOpsMap({
         <div className="global-ops-map-stage overflow-hidden rounded-xl border border-white/10 bg-[linear-gradient(90deg,rgba(125,211,252,.055)_1px,transparent_1px),linear-gradient(rgba(125,211,252,.055)_1px,transparent_1px),linear-gradient(160deg,#020617,#0f172a,#111827)] bg-[length:4.5rem_4.5rem,4.5rem_4.5rem,auto]">
           <div className={`global-ops-map-canvas relative ${isCompactChrome ? "h-[26rem]" : isDemoMode ? "h-[24rem] md:h-[31rem]" : "h-[29rem]"}`}>
             <PremiumVectorMap
-              title={isDemoMode ? "Ruta de confianza" : "Mapa operativo premium"}
-              subtitle={isDemoMode ? `${shortOriginLabel} -> ${shortTapLabel} con evidencia SUN y tap fisico.` : "Rutas de confianza, taps y clusters renderizados con motor propio."}
-              caption={isDemoMode ? "Origen, tap, estado del sello, claim de dueño y capa comercial en una sola historia." : "Origen, tap, riesgo y evidencia comercial en una vista limpia de trazabilidad."}
+              title={isDemoMode ? "Escenario geográfico simulado" : "Mapa de eventos reportados"}
+              subtitle={isDemoMode ? `${shortOriginLabel} -> ${shortTapLabel}: origen declarado y tap simulado; la línea no prueba una ruta física.` : "Eventos con coordenadas reportadas y clusters; no representan por sí solos recorrido ni custodia física."}
+              caption={isDemoMode ? "SUN, TT, claim y capa comercial se muestran como una historia demo gobernada por policy." : "Origen declarado, taps reportados, riesgo y evidencia comercial en una vista operativa."}
               points={vectorPoints}
               routes={vectorRoutes}
               selectedPointId={selectedPoint?.id}
@@ -1078,9 +1080,9 @@ export function GlobalOpsMap({
             ) : null}
             {isDemoMode ? (
               <div className="absolute left-3 top-3 max-w-[18rem] rounded-xl border border-cyan-300/20 bg-slate-950/70 p-3 text-xs text-slate-200 shadow-xl backdrop-blur-md">
-                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Mapa vivo del producto</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Mapa narrativo del producto</p>
                 <p className="mt-1 font-semibold text-white">{demoProductName}</p>
-                <p className="mt-1 text-[11px] text-slate-300">La ruta no es decoracion: explica origen, distancia, tap fisico, riesgo y proxima accion.</p>
+                <p className="mt-1 text-[11px] text-slate-300">El escenario relaciona origen declarado, distancia estimada, tap simulado, riesgo y próxima acción; no prueba un recorrido físico.</p>
               </div>
             ) : (
               <div className="global-ops-map-legend absolute right-3 top-3 grid gap-1 rounded-xl border border-white/10 bg-slate-950/80 p-2 text-[10px] text-slate-200 shadow-xl backdrop-blur-md">
@@ -1091,7 +1093,7 @@ export function GlobalOpsMap({
               </div>
             )}
             <div className="global-ops-map-caption absolute inset-x-0 bottom-0 border-t border-white/10 bg-slate-950/75 px-3 py-2 text-[11px] text-slate-300">
-              {isDemoMode ? `Ruta ${originLabel} -> ${tapLabel}. ${demoDistanceLabel} con evidencia fisica y comercial.` : `Rutas origen-tap, senales de riesgo y clusters optimizados (${visibleRoutes.length} rutas renderizadas).`}
+              {isDemoMode ? `Conexión ilustrativa ${originLabel} -> ${tapLabel}. ${demoDistanceLabel} con datos geográficos y comerciales simulados; no prueba desplazamiento físico.` : `Relaciones entre eventos reportados, señales de riesgo y clusters (${visibleRoutes.length} conexiones renderizadas); no prueban recorridos ni custodia física.`}
             </div>
           </div>
         </div>
@@ -1105,24 +1107,24 @@ export function GlobalOpsMap({
               <p className="text-slate-300">Estado: <b>{selectedPoint?.verdict || "VALID"}</b></p>
               {tapPoint ? (
                 <a href={mapLink(tapPoint.lat, tapPoint.lng)} target="_blank" rel="noreferrer" className="mt-3 inline-flex rounded-lg border border-cyan-300/30 bg-cyan-400/10 px-2 py-1 text-[11px] font-semibold text-cyan-100 hover:bg-cyan-400/20">
-                  Abrir ubicacion del tap
+                  Abrir ubicación del tap
                 </a>
               ) : null}
             </div>
             <div className="rounded-lg border border-emerald-300/20 bg-emerald-500/10 p-3">
-              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-emerald-200">Ruta verificada</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-emerald-200">Ruta del escenario</p>
               <div className="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
                 <span className="rounded-lg bg-emerald-400/10 px-2 py-1 text-emerald-100">{shortOriginLabel}</span>
                 <span className="text-slate-500">--</span>
                 <span className="rounded-lg bg-cyan-400/10 px-2 py-1 text-cyan-100">{shortTapLabel}</span>
               </div>
               <p className="mt-3 text-2xl font-black text-white">{demoDistanceLabel}</p>
-              <p className="text-[11px] text-slate-300">Origen, distancia y accion quedan unidos al evento del producto.</p>
+              <p className="text-[11px] text-slate-300">Origen, distancia y acción quedan unidos al evento ilustrativo del producto.</p>
             </div>
             <div className="rounded-lg border border-violet-300/20 bg-violet-500/10 p-3">
-              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-violet-200">Despues del tap</p>
-              <p className="mt-1 text-sm font-semibold text-white">Ownership + NFT + marketplace</p>
-              <p className="mt-2 text-slate-300">El usuario entiende que puede reclamar dueño, crear wallet, guardar NFT, activar garantia, club y reventa.</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-violet-200">Después del tap</p>
+              <p className="mt-1 text-sm font-semibold text-white">Propiedad opcional + certificado + marketplace</p>
+              <p className="mt-2 text-slate-300">El usuario puede iniciar una solicitud de propiedad, vincular una wallet o activar garantía, club y reventa sólo cuando la política y la compra lo permitan.</p>
               <p className="mt-3 rounded-lg border border-white/10 bg-slate-950/50 px-2 py-1 text-[11px] text-slate-200">Riesgo: <b>{demoRiskLabel}</b></p>
             </div>
           </aside>

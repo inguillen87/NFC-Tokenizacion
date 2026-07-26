@@ -1,11 +1,11 @@
 export const useCases = [
   {
     title: "Bodegas y espirituosas",
-    summary: "Autenticidad, lote, experiencia premium y antifraude para exportacion.",
+    summary: "Verificacion del mensaje NFC/SUN, lote y origen declarados, estado TT reportado y experiencia premium para exportacion.",
   },
   {
     title: "Cosmetica y dermo",
-    summary: "Proteccion de marca, serializacion y engagement post-compra.",
+    summary: "Identidad digital, serializacion, estado TT reportado y engagement post-compra.",
   },
   {
     title: "Agencias y white label",

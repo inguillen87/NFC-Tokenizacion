@@ -69,7 +69,7 @@ export default async function ShipmentDetailPage({ params, searchParams }: { par
 
   return (
     <main className="space-y-6">
-      <SectionHeading eyebrow="Secure Delivery" title={shipment?.shipment_code || decodeURIComponent(shipmentId || "")} description="Shipment identity, physical seal evidence, custody timeline, recipient verification and delivery claims." />
+      <SectionHeading eyebrow="Secure Delivery" title={shipment?.shipment_code || decodeURIComponent(shipmentId || "")} description="Shipment identity, reported TT state, recorded handling timeline, recipient checks and delivery claims. Operational records do not prove physical contents or custody by themselves." />
       <div className="flex flex-wrap gap-2">
         <Link href="/logistics" className="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-slate-200 hover:bg-white/5">← Logistics hub</Link>
         <Link href="/logistics/shipments" className="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-slate-200 hover:bg-white/5">All shipments</Link>
@@ -110,8 +110,8 @@ export default async function ShipmentDetailPage({ params, searchParams }: { par
 
           <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
             <Card className="p-5">
-              <h3 className="text-lg font-black text-white">Custody timeline</h3>
-              {!custodyEvents.length ? <p className="mt-3 text-sm text-slate-400">No custody events yet.</p> : (
+              <h3 className="text-lg font-black text-white">Recorded handling timeline</h3>
+              {!custodyEvents.length ? <p className="mt-3 text-sm text-slate-400">No handling events recorded yet.</p> : (
                 <div className="mt-5 space-y-3">
                   {custodyEvents.map((event) => (
                     <div key={event.id} className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">

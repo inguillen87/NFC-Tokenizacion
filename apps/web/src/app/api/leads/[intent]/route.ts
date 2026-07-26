@@ -26,7 +26,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ intent:
 
   const response = await fetch(new URL("/api/leads", req.url), {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", origin: new URL(req.url).origin },
     body: JSON.stringify(payload),
     cache: "no-store",
   }).catch(() => null);

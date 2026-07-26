@@ -97,6 +97,7 @@ export async function POST(req: Request) {
     SELECT
       b.id,
       b.bid,
+      b.tenant_id,
       b.meta_key_ct,
       b.file_key_ct,
       b.sdm_config,
@@ -174,8 +175,14 @@ export async function POST(req: Request) {
   let kMetaHex = "";
   let kFileHex = "";
   try {
-    kMetaHex = decryptKey16(String(batch.meta_key_ct)).toString("hex").toUpperCase();
-    kFileHex = decryptKey16(String(batch.file_key_ct)).toString("hex").toUpperCase();
+    const keyVersion = Number((batch.sdm_config as { key_version?: unknown } | null)?.key_version || 1);
+    const keyContext = {
+      tenantId: String(batch.tenant_id),
+      bid,
+      keyVersion: Number.isSafeInteger(keyVersion) && keyVersion > 0 ? keyVersion : 1,
+    };
+    kMetaHex = decryptKey16(String(batch.meta_key_ct), { ...keyContext, role: "K_META_BATCH" }).toString("hex").toUpperCase();
+    kFileHex = decryptKey16(String(batch.file_key_ct), { ...keyContext, role: "K_FILE_BATCH" }).toString("hex").toUpperCase();
   } catch (error) {
     return json({
       ok: false,

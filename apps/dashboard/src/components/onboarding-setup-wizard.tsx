@@ -41,7 +41,7 @@ const VERTICALS: VerticalInfo[] = [
   {
     key: "wine",
     name: "Bodega y vino",
-    description: "Lotes, sello de seguridad, origen y experiencias para consumidor.",
+    description: "Lotes, controles configurables de TT, origen declarado y experiencias para consumidor.",
     Icon: Wine,
     defaultClub: "Club Terroir",
     defaultProduct: "Gran Reserva",
@@ -53,7 +53,7 @@ const VERTICALS: VerticalInfo[] = [
   {
     key: "pharma",
     name: "Pharma y salud",
-    description: "Cadena de frio, autenticidad de empaque y evidencia regulada.",
+    description: "Cadena de frio reportada, controles de empaque configurables y evidencia regulatoria aportada.",
     Icon: Activity,
     defaultClub: "Pharma Trust Program",
     defaultProduct: "Producto termosensible",
@@ -65,7 +65,7 @@ const VERTICALS: VerticalInfo[] = [
   {
     key: "luxury",
     name: "Lujo y coleccionables",
-    description: "Autenticidad, garantia y propiedad transferible para ediciones limitadas.",
+    description: "Evidencia digital configurable, garantia y titularidad digital transferible segun politica.",
     Icon: Gem,
     defaultClub: "Collectors Club",
     defaultProduct: "Edicion limitada",
@@ -196,7 +196,8 @@ export function OnboardingSetupWizard({ session }: Props) {
           <h2 id="tenant-setup-title">Define el contexto antes de emitir el primer lote.</h2>
           <p>
             Tenant <strong>{session.tenantSlug || "sin scope"}</strong>. Esta configuracion determina politica SUN,
-            claim, manifest, origen y experiencia por defecto.
+            claim, manifest, origen declarado y experiencia por defecto. Gobierna evidencia y controles digitales; no
+            certifica estado, autenticidad ni propiedad fisica.
           </p>
         </div>
         <div className={styles.stepCounter} aria-label={`Paso ${step} de 2`}>

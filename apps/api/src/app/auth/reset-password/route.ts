@@ -6,14 +6,34 @@ import { auditAuthEvent, sha256 } from '../../../lib/iam';
 import { hashPassword } from '../../../lib/password';
 import { getRequestMeta } from '../../../lib/request-meta';
 import { ensureEnterpriseIamSchema } from '../../../lib/commercial-runtime-schema';
+import { enforceCriticalRateLimit } from '../../../lib/critical-rate-limit';
+import { RequestBodyTooLargeError, readBoundedJsonBody } from '../../../lib/bounded-request-body';
 
 export async function POST(req: Request) {
-  const body = await req.json().catch(() => ({})) as { token?: string; password?: string };
-  const token = String(body.token || '').trim();
+  const limited = await enforceCriticalRateLimit(req, { rateClass: 'auth', tenantId: 'platform', subjectId: 'admin-reset-password:unauthenticated' });
+  if (limited) return limited;
+  let body: { token?: string; password?: string };
+  try {
+    body = await readBoundedJsonBody<typeof body>(req, 8 * 1024);
+  } catch (error) {
+    const tooLarge = error instanceof RequestBodyTooLargeError;
+    return json({ ok: false, reason: tooLarge ? 'request_body_too_large' : 'invalid_json' }, tooLarge ? 413 : 400);
+  }
+  const token = String(body.token || '').trim().slice(0, 256);
   const password = String(body.password || '');
-  if (!token || password.length < 8) return json({ ok: false, reason: 'token and strong password required' }, 400);
+  if (!token || password.length < 12 || password.length > 256) return json({ ok: false, reason: 'token and strong password required' }, 400);
   const meta = getRequestMeta(req);
   await ensureEnterpriseIamSchema();
+  const tokenExists = await sql/*sql*/`
+    SELECT id
+    FROM password_reset_tokens
+    WHERE token_hash = ${sha256(token)}
+      AND consumed_at IS NULL
+      AND expires_at > now()
+    LIMIT 1
+  `;
+  if (!tokenExists[0]) return json({ ok: false, reason: 'invalid or expired token' }, 400);
+  const passwordHash = hashPassword(password);
   const rows = await sql/*sql*/`
     WITH consumed_token AS MATERIALIZED (
       UPDATE password_reset_tokens token_row
@@ -25,7 +45,7 @@ export async function POST(req: Request) {
     ),
     credential_write AS (
       INSERT INTO password_credentials (user_id, password_hash)
-      SELECT user_id, ${hashPassword(password)}
+      SELECT user_id, ${passwordHash}
       FROM consumed_token
       ON CONFLICT (user_id)
       DO UPDATE SET password_hash = EXCLUDED.password_hash, updated_at = now()

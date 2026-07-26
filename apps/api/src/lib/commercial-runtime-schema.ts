@@ -457,6 +457,44 @@ export async function ensureSdkSchema() {
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_usage_logs_endpoint_created ON sdk_usage_logs(endpoint, created_at DESC)`;
 
       await tolerateConcurrentSchemaCreate(() => sql/*sql*/`
+        CREATE TABLE IF NOT EXISTS sdk_idempotency_operations (
+          id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+          tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+          api_key_id uuid REFERENCES tenant_api_keys(id) ON DELETE SET NULL,
+          route text NOT NULL,
+          idempotency_key text NOT NULL,
+          request_hash text NOT NULL,
+          state text NOT NULL DEFAULT 'processing',
+          response_status integer,
+          response_headers jsonb NOT NULL DEFAULT '{}'::jsonb,
+          response_body_ciphertext text,
+          resource_id text,
+          operation_committed boolean,
+          reconciliation_status text NOT NULL DEFAULT 'not_requested',
+          reconciliation_details jsonb NOT NULL DEFAULT '{}'::jsonb,
+          reconciled_at timestamptz,
+          trace_id text,
+          error_code text,
+          lease_token text,
+          lease_expires_at timestamptz,
+          created_at timestamptz NOT NULL DEFAULT now(),
+          updated_at timestamptz NOT NULL DEFAULT now(),
+          completed_at timestamptz,
+          expires_at timestamptz NOT NULL DEFAULT (now() + interval '7 days'),
+          UNIQUE (tenant_id, route, idempotency_key)
+        )
+      `);
+      await sql/*sql*/`ALTER TABLE sdk_idempotency_operations ADD COLUMN IF NOT EXISTS reconciliation_status text NOT NULL DEFAULT 'not_requested'`;
+      await sql/*sql*/`ALTER TABLE sdk_idempotency_operations ADD COLUMN IF NOT EXISTS reconciliation_details jsonb NOT NULL DEFAULT '{}'::jsonb`;
+      await sql/*sql*/`ALTER TABLE sdk_idempotency_operations ADD COLUMN IF NOT EXISTS reconciled_at timestamptz`;
+      await sql/*sql*/`CREATE UNIQUE INDEX IF NOT EXISTS uq_sdk_idempotency_tenant_route_key ON sdk_idempotency_operations(tenant_id, route, idempotency_key)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_idempotency_tenant_updated ON sdk_idempotency_operations(tenant_id, updated_at DESC)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_idempotency_processing_lease ON sdk_idempotency_operations(lease_expires_at) WHERE state = 'processing'`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_idempotency_expiry ON sdk_idempotency_operations(expires_at)`;
+      await sql/*sql*/`ALTER TABLE events ADD COLUMN IF NOT EXISTS sdk_idempotency_operation_id uuid REFERENCES sdk_idempotency_operations(id) ON DELETE SET NULL`;
+      await sql/*sql*/`CREATE UNIQUE INDEX IF NOT EXISTS uq_events_sdk_idempotency_operation ON events(sdk_idempotency_operation_id) WHERE sdk_idempotency_operation_id IS NOT NULL`;
+
+      await tolerateConcurrentSchemaCreate(() => sql/*sql*/`
         CREATE TABLE IF NOT EXISTS sdk_pos_activations (
           id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
           tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -482,6 +520,8 @@ export async function ensureSdkSchema() {
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_pos_activations_tenant_created ON sdk_pos_activations(tenant_id, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_pos_activations_bid_uid ON sdk_pos_activations(bid, uid_hex)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_pos_activations_status_expiry ON sdk_pos_activations(activation_status, expires_at)`;
+      await sql/*sql*/`ALTER TABLE sdk_pos_activations ADD COLUMN IF NOT EXISTS idempotency_operation_id uuid REFERENCES sdk_idempotency_operations(id) ON DELETE SET NULL`;
+      await sql/*sql*/`CREATE UNIQUE INDEX IF NOT EXISTS uq_sdk_pos_activations_idempotency_operation ON sdk_pos_activations(idempotency_operation_id) WHERE idempotency_operation_id IS NOT NULL`;
 
       await tolerateConcurrentSchemaCreate(() => sql/*sql*/`
         CREATE TABLE IF NOT EXISTS sdk_claim_requests (
@@ -521,8 +561,10 @@ export async function ensureSdkSchema() {
       await sql/*sql*/`ALTER TABLE sdk_claim_requests ADD COLUMN IF NOT EXISTS token_id text`;
       await sql/*sql*/`ALTER TABLE sdk_claim_requests ADD COLUMN IF NOT EXISTS tx_hash text`;
       await sql/*sql*/`ALTER TABLE sdk_claim_requests ADD COLUMN IF NOT EXISTS meta jsonb NOT NULL DEFAULT '{}'::jsonb`;
+      await sql/*sql*/`ALTER TABLE sdk_claim_requests ADD COLUMN IF NOT EXISTS idempotency_operation_id uuid REFERENCES sdk_idempotency_operations(id) ON DELETE SET NULL`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_claim_requests_tenant_created ON sdk_claim_requests(tenant_id, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_claim_requests_bid_uid ON sdk_claim_requests(bid, uid_hex)`;
+      await sql/*sql*/`CREATE UNIQUE INDEX IF NOT EXISTS uq_sdk_claim_requests_idempotency_operation ON sdk_claim_requests(idempotency_operation_id) WHERE idempotency_operation_id IS NOT NULL`;
 
       await tolerateConcurrentSchemaCreate(() => sql/*sql*/`
         CREATE TABLE IF NOT EXISTS sdk_external_events (
@@ -543,6 +585,8 @@ export async function ensureSdkSchema() {
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_external_events_tenant_created ON sdk_external_events(tenant_id, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_external_events_type_created ON sdk_external_events(event_type, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_external_events_bid_uid ON sdk_external_events(bid, uid_hex)`;
+      await sql/*sql*/`ALTER TABLE sdk_external_events ADD COLUMN IF NOT EXISTS idempotency_operation_id uuid REFERENCES sdk_idempotency_operations(id) ON DELETE SET NULL`;
+      await sql/*sql*/`CREATE UNIQUE INDEX IF NOT EXISTS uq_sdk_external_events_idempotency_operation ON sdk_external_events(idempotency_operation_id) WHERE idempotency_operation_id IS NOT NULL`;
 
       await tolerateConcurrentSchemaCreate(() => sql/*sql*/`
         CREATE TABLE IF NOT EXISTS webhook_endpoints (
@@ -551,6 +595,7 @@ export async function ensureSdkSchema() {
           name text NOT NULL DEFAULT 'Webhook',
           url text NOT NULL,
           signing_secret text,
+          signature_version text NOT NULL DEFAULT 'v2',
           enabled boolean NOT NULL DEFAULT false,
           events jsonb NOT NULL DEFAULT '["sdk.verify","sdk.claim.created","sdk.external_event"]'::jsonb,
           created_at timestamptz NOT NULL DEFAULT now(),
@@ -560,6 +605,13 @@ export async function ensureSdkSchema() {
       `);
       await sql/*sql*/`ALTER TABLE webhook_endpoints ADD COLUMN IF NOT EXISTS name text NOT NULL DEFAULT 'Webhook'`;
       await sql/*sql*/`ALTER TABLE webhook_endpoints ADD COLUMN IF NOT EXISTS signing_secret text`;
+      // Existing endpoints were created before key_id became part of the signed
+      // envelope. Preserve them as v1, while all endpoints created after this
+      // migration inherit the secure v2 default.
+      await sql/*sql*/`ALTER TABLE webhook_endpoints ADD COLUMN IF NOT EXISTS signature_version text NOT NULL DEFAULT 'v1'`;
+      await sql/*sql*/`UPDATE webhook_endpoints SET signature_version = 'v1' WHERE signature_version IS NULL`;
+      await sql/*sql*/`ALTER TABLE webhook_endpoints ALTER COLUMN signature_version SET DEFAULT 'v2'`;
+      await sql/*sql*/`ALTER TABLE webhook_endpoints ALTER COLUMN signature_version SET NOT NULL`;
       await sql/*sql*/`ALTER TABLE webhook_endpoints ADD COLUMN IF NOT EXISTS enabled boolean NOT NULL DEFAULT false`;
       await sql/*sql*/`ALTER TABLE webhook_endpoints ADD COLUMN IF NOT EXISTS events jsonb NOT NULL DEFAULT '["sdk.verify","sdk.claim.created","sdk.external_event"]'::jsonb`;
       await sql/*sql*/`ALTER TABLE webhook_endpoints ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT now()`;
@@ -997,7 +1049,7 @@ export async function ensureConsumerPortalSchema() {
           ownership_id uuid REFERENCES consumer_product_ownerships(id) ON DELETE SET NULL,
           event_id bigint REFERENCES events(id) ON DELETE SET NULL,
           uid_hex text,
-          product_name text NOT NULL DEFAULT 'Producto verificado',
+          product_name text NOT NULL DEFAULT 'Producto asociado',
           rating integer NOT NULL CHECK (rating BETWEEN 1 AND 5),
           title text,
           body text NOT NULL,
@@ -1006,7 +1058,7 @@ export async function ensureConsumerPortalSchema() {
           city text,
           photo_urls_json jsonb NOT NULL DEFAULT '[]'::jsonb,
           verification_badges_json jsonb NOT NULL DEFAULT '[]'::jsonb,
-          trust_score integer NOT NULL DEFAULT 0 CHECK (trust_score BETWEEN 0 AND 100),
+          trust_score integer CHECK (trust_score BETWEEN 0 AND 100),
           moderation_status text NOT NULL DEFAULT 'pending' CHECK (moderation_status IN ('pending', 'approved', 'rejected', 'needs_brand_response', 'private')),
           visibility text NOT NULL DEFAULT 'private' CHECK (visibility IN ('private', 'tenant', 'public')),
           brand_response text,
@@ -1295,10 +1347,10 @@ async function seedBalmecMarketplaceRows() {
   await sql/*sql*/`
     WITH seed(slug, title, description, vertical, category, image_url, price_amount, price_currency, age_gate_required, featured) AS (
       VALUES
-        ('demobodega', 'Gran Reserva Malbec 2022', 'Compra asistida con tap verificado, puntos de club y seguimiento comercial desde CRM. Ownership se transfiere solo con pago y validación de la marca.', 'winery', 'wine', '/images/premium_magnum.png', 19500.00, 'ARS', true, true),
-        ('demobodega', 'Cabernet Franc Reserva 2022', 'Compra asistida con tap verificado. Suma puntos, abre beneficios del club y deja lead comercial sin reclamar ownership automáticamente.', 'winery', 'wine', '/images/premium_magnum.png', 18500.00, 'ARS', true, true),
+        ('demobodega', 'Gran Reserva Malbec 2022', 'Compra asistida después de una lectura NFC cuyo mensaje fue validado. Suma puntos y seguimiento comercial desde CRM. Ownership se transfiere solo con pago y validación de la marca.', 'winery', 'wine', '/images/premium_magnum.png', 19500.00, 'ARS', true, true),
+        ('demobodega', 'Cabernet Franc Reserva 2022', 'Compra asistida después de una lectura NFC cuyo mensaje fue validado. Suma puntos, abre beneficios del club y deja lead comercial sin reclamar ownership automáticamente.', 'winery', 'wine', '/images/premium_magnum.png', 18500.00, 'ARS', true, true),
         ('demobodega', 'Chardonnay de Altura 2023', 'Vino de altura con lote trazable, recomendación gastronómica y venta asistida desde Passport.', 'winery', 'wine', '/images/premium_magnum.png', 16500.00, 'ARS', true, true),
-        ('demobodega', 'Blend de Finca 2021', 'Edición de guarda para clientes verificados, con club, preventa y prueba de autenticidad NFC.', 'winery', 'wine', '/images/premium_magnum.png', 22000.00, 'ARS', true, false),
+        ('demobodega', 'Blend de Finca 2021', 'Edición de guarda con club, preventa y evidencia criptográfica de lectura NFC. Esa evidencia no certifica por sí sola el contenido ni la condición física.', 'winery', 'wine', '/images/premium_magnum.png', 22000.00, 'ARS', true, false),
         ('demobodega', 'Aceite de Oliva Extra Virgen Arbequina', 'Aceite premium con procedencia de finca, lote trazable y cross-sell para visitantes de bodega.', 'gourmet', 'olive_oil', '/images/wine_crate.png', 14500.00, 'ARS', false, true),
         ('demobodega', 'Aceite de Oliva Blend de Finca', 'Blend gourmet para club de clientes, regalo corporativo y campañas post-tap.', 'gourmet', 'olive_oil', '/images/wine_crate.png', 12500.00, 'ARS', false, false),
         ('demobodega', 'Cata privada para dos', 'Experiencia guiada con reserva desde el portal del cliente y seguimiento en CRM de la marca.', 'winery', 'experience', '/images/wine_tasting.png', 32000.00, 'ARS', true, true),
@@ -1352,10 +1404,10 @@ async function seedBalmecMarketplaceRows() {
   await sql/*sql*/`
     WITH seed(slug, title, description, image_url, price_amount, price_currency, age_gate_required, featured) AS (
       VALUES
-        ('demobodega', 'Gran Reserva Malbec 2022', 'Compra asistida con tap verificado, puntos de club y seguimiento comercial desde CRM. Ownership se transfiere solo con pago y validación de la marca.', '/images/premium_magnum.png', 19500.00, 'ARS', true, true),
-        ('demobodega', 'Cabernet Franc Reserva 2022', 'Compra asistida con tap verificado. Suma puntos, abre beneficios del club y deja lead comercial sin reclamar ownership automáticamente.', '/images/premium_magnum.png', 18500.00, 'ARS', true, true),
+        ('demobodega', 'Gran Reserva Malbec 2022', 'Compra asistida después de una lectura NFC cuyo mensaje fue validado. Suma puntos y seguimiento comercial desde CRM. Ownership se transfiere solo con pago y validación de la marca.', '/images/premium_magnum.png', 19500.00, 'ARS', true, true),
+        ('demobodega', 'Cabernet Franc Reserva 2022', 'Compra asistida después de una lectura NFC cuyo mensaje fue validado. Suma puntos, abre beneficios del club y deja lead comercial sin reclamar ownership automáticamente.', '/images/premium_magnum.png', 18500.00, 'ARS', true, true),
         ('demobodega', 'Chardonnay de Altura 2023', 'Vino de altura con lote trazable, recomendación gastronómica y venta asistida desde Passport.', '/images/premium_magnum.png', 16500.00, 'ARS', true, true),
-        ('demobodega', 'Blend de Finca 2021', 'Edición de guarda para clientes verificados, con club, preventa y prueba de autenticidad NFC.', '/images/premium_magnum.png', 22000.00, 'ARS', true, false),
+        ('demobodega', 'Blend de Finca 2021', 'Edición de guarda con club, preventa y evidencia criptográfica de lectura NFC. Esa evidencia no certifica por sí sola el contenido ni la condición física.', '/images/premium_magnum.png', 22000.00, 'ARS', true, false),
         ('demobodega', 'Aceite de Oliva Extra Virgen Arbequina', 'Aceite premium con procedencia de finca, lote trazable y cross-sell para visitantes de bodega.', '/images/wine_crate.png', 14500.00, 'ARS', false, true),
         ('demobodega', 'Aceite de Oliva Blend de Finca', 'Blend gourmet para club de clientes, regalo corporativo y campañas post-tap.', '/images/wine_crate.png', 12500.00, 'ARS', false, false),
         ('demobodega', 'Cata privada para dos', 'Experiencia guiada con reserva desde el portal del cliente y seguimiento en CRM de la marca.', '/images/wine_tasting.png', 32000.00, 'ARS', true, true),

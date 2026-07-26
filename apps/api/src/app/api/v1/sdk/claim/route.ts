@@ -5,8 +5,10 @@ import { ensureSdkSchema } from "../../../../../lib/commercial-runtime-schema";
 import { sql } from "../../../../../lib/db";
 import { json } from "../../../../../lib/http";
 import { authenticateSdkRequest, hashSdkApiKey, logSdkUsage } from "../../../../../lib/sdk-auth";
-import { dispatchTenantWebhooks } from "../../../../../lib/sdk-webhooks";
+import { enqueueSdkWebhookGuaranteed, sdkWebhookOutboxUnavailableBody, SdkWebhookOutboxUnavailableError, type SdkWebhookOutboxReceipt } from "../../../../../lib/sdk-webhook-outbox-guarantee";
 import { asRecord, clean, isSecureOwnershipCarrier, numberOrNull, parseHeaderIp, readJsonObject, sha256Hex } from "../_shared";
+import { enforceSdkAuthenticationRateLimit, enforceSdkRateLimit } from "../../../../../lib/critical-rate-limit";
+import { readSdkMutationBody, runSdkIdempotentMutation, SDK_IDEMPOTENCY_OPERATIONS } from "../_idempotency";
 
 function pinMatches(input: { storedHash: string; pin: string; tenantId: string; bid: string; uidHex: string }) {
   const stored = clean(input.storedHash).toLowerCase();
@@ -23,14 +25,29 @@ function pinMatches(input: { storedHash: string; pin: string; tenantId: string; 
 
 export async function POST(req: Request) {
   const startedAt = Date.now();
+  const authRateLimited = await enforceSdkAuthenticationRateLimit(req);
+  if (authRateLimited) return authRateLimited;
   const auth = await authenticateSdkRequest(req, "sdk:claim");
   if (!auth.ok) {
     await logSdkUsage({ req, endpoint: "sdk.claim", statusCode: auth.response.status, startedAt, reason: "auth_failed" });
     return auth.response;
   }
+  const rateLimited = await enforceSdkRateLimit(req, auth.context);
+  if (rateLimited) return rateLimited;
 
   await ensureSdkSchema();
-  const body = asRecord(await req.json().catch(() => ({})));
+  const parsedBody = await readSdkMutationBody(req, auth.context.traceId);
+  if (!parsedBody.ok) {
+    await logSdkUsage({ req, context: auth.context, endpoint: "sdk.claim", statusCode: parsedBody.response.status, startedAt, reason: "invalid_request_body" });
+    return parsedBody.response;
+  }
+  const body = parsedBody.body;
+  return runSdkIdempotentMutation({
+    req,
+    context: auth.context,
+    route: SDK_IDEMPOTENCY_OPERATIONS.claimOwnership.route,
+    body,
+    execute: async ({ idempotencyOperationId }) => {
   const contact = clean(body.contact || body.email || body.phone || body.whatsapp);
   const name = clean(body.name);
   const bid = clean(body.bid);
@@ -226,7 +243,8 @@ export async function POST(req: Request) {
     created_claim AS (
       INSERT INTO sdk_claim_requests (
         id, tenant_id, api_key_id, lead_id, batch_id, tag_id, bid, uid_hex, contact, name,
-        claim_status, pin_validated, active_for_claim, pos_activation_id, pos_validated, carrier_profile_code, meta
+        claim_status, pin_validated, active_for_claim, pos_activation_id, pos_validated, carrier_profile_code, meta,
+        idempotency_operation_id
       )
       SELECT
         claim_gate.claim_id,
@@ -245,7 +263,8 @@ export async function POST(req: Request) {
         claim_gate.pos_activation_id,
         ${posValidated},
         ${carrierProfileCode || null},
-        ${JSON.stringify(meta)}::jsonb
+        ${JSON.stringify(meta)}::jsonb,
+        ${idempotencyOperationId}::uuid
       FROM claim_gate
       JOIN created_lead ON created_lead.id = claim_gate.lead_id
       RETURNING id::text AS id, lead_id::text AS lead_id, claim_status
@@ -265,19 +284,30 @@ export async function POST(req: Request) {
   const claimId = String(persistedClaim.id || "");
   const leadId = String(persistedClaim.lead_id || "");
 
-  await dispatchTenantWebhooks({
-    tenantId: auth.context.tenantId,
-    eventName: "sdk.claim.created",
-    idempotencyKey: claimId,
-    payload: { claimId, leadId, status: claimStatus, bid, uidHex: uidHex || null, posValidated, pinValidated, traceId: auth.context.traceId },
-  }).catch(() => null);
-  if (claimStatus === "claimed") {
-    await dispatchTenantWebhooks({
+  const webhookOutbox: SdkWebhookOutboxReceipt[] = [];
+  try {
+    webhookOutbox.push(await enqueueSdkWebhookGuaranteed({
       tenantId: auth.context.tenantId,
-      eventName: "sdk.claim.claimed",
+      eventName: "sdk.claim.created",
       idempotencyKey: claimId,
-      payload: { claimId, leadId, bid, uidHex: uidHex || null, posActivationId: posActivationId || null, traceId: auth.context.traceId },
-    }).catch(() => null);
+      payload: { claimId, leadId, status: claimStatus, bid, uidHex: uidHex || null, posValidated, pinValidated, traceId: auth.context.traceId },
+      correlationId: auth.context.traceId,
+      resourceId: claimId,
+    }));
+    if (claimStatus === "claimed") {
+      webhookOutbox.push(await enqueueSdkWebhookGuaranteed({
+        tenantId: auth.context.tenantId,
+        eventName: "sdk.claim.claimed",
+        idempotencyKey: claimId,
+        payload: { claimId, leadId, bid, uidHex: uidHex || null, posActivationId: posActivationId || null, traceId: auth.context.traceId },
+        correlationId: auth.context.traceId,
+        resourceId: claimId,
+      }));
+    }
+  } catch (error) {
+    if (!(error instanceof SdkWebhookOutboxUnavailableError)) throw error;
+    await logSdkUsage({ req, context: auth.context, endpoint: "sdk.claim", statusCode: 503, startedAt, reason: error.code, meta: { bid, claimId, claimStatus } });
+    return json({ ...sdkWebhookOutboxUnavailableBody(error), operation: { claimId, leadId, status: claimStatus, bid }, confirmedWebhookEvents: webhookOutbox }, 503, { "retry-after": "2", "x-nexid-trace-id": auth.context.traceId });
   }
   await logSdkUsage({ req, context: auth.context, endpoint: "sdk.claim", statusCode: 201, startedAt, meta: { bid, uidHex: uidHex || null, claimStatus, posValidated, pinValidated } });
 
@@ -306,5 +336,8 @@ export async function POST(req: Request) {
         : "pending_brand_or_purchase_verification",
     },
     traceId: auth.context.traceId,
+    webhookOutbox,
   }, 201);
+    },
+  });
 }

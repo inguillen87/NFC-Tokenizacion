@@ -144,7 +144,7 @@ const DEMO_SEEDS: DemoSeed[] = [
     id: "pharma-cold-chain",
     title: "Pharma Cold Chain",
     vertical: "Pharma regulado",
-    headline: "Lote sensible con temperatura, tamper y liberacion QA verificable.",
+    headline: "Lote sensible con evidencia digital verificable de temperatura reportada, revision de tamper y liberacion QA declarada.",
     body: "Ejemplo pensado para una empresa pharma enterprise: la auditoria confirma existencia e integridad del evento sin publicar datos de pacientes, rutas privadas ni documentos de calidad.",
     anchor_id: "22222222-2222-4222-8222-222222222222",
     resource_type: "pharma_batch",
@@ -170,7 +170,7 @@ const DEMO_SEEDS: DemoSeed[] = [
         id: "cold-chain-checkpoint",
         title: "Checkpoint frio",
         event_type: "cold_chain_checkpoint",
-        summary: "Sensor o operador confirma que el rango frio se mantuvo.",
+        summary: "Un sensor u operador reporta una medicion dentro del rango declarado en este checkpoint; no prueba continuidad fuera de esa observacion.",
         resource_type: "pharma_batch",
         resource_id: "PHR-LOT-2026-0142",
         payload: {
@@ -185,7 +185,7 @@ const DEMO_SEEDS: DemoSeed[] = [
         id: "tamper-review",
         title: "Tamper revisado",
         event_type: "tamper_review",
-        summary: "El sello llega intacto y queda listo para auditoria o reclamo.",
+        summary: "Un operador reporta y revisa el estado de sello declarado para auditoria o reclamo; el evento no certifica integridad fisica por si solo.",
         resource_type: "pharma_batch",
         resource_id: "PHR-LOT-2026-0142",
         payload: {
@@ -198,7 +198,7 @@ const DEMO_SEEDS: DemoSeed[] = [
       },
     ],
     receipt: {
-      business_claim: "Demuestra que un lote sensible tuvo liberacion QA, control frio y revision de tamper incluidos en un mismo root.",
+      business_claim: "Evidencia que se registraron una liberacion QA, un checkpoint termico reportado y una revision de tamper en el mismo root; no prueba cadena de frio continua ni sello fisico.",
       manager_explanation: "Para calidad/regulatorio: la prueba sirve para auditoria, DPP y reclamos sin publicar pacientes, certificados internos ni rutas privadas.",
     },
     proof_layers: [

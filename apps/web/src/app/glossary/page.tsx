@@ -101,18 +101,18 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
       "Son las expresiones que mejor describen la categoría, el producto y el valor comercial sin encerrar a nexID en una narrativa chica.",
     approved: [
       {
-        term: "Identidad física verificable",
-        def: "Categoría madre: objeto físico + identidad digital + capa de validación operativa.",
+        term: "Identidad digital conectada",
+        def: "Categoría madre: referencia declarada + identidad digital + evidencia del carrier y reglas operativas.",
         label: "Categoría",
       },
       {
         term: "Verify",
-        def: "Prueba autenticidad, estado, validez y señales de riesgo de una unidad o credencial.",
+        def: "Valida el mensaje o la credencial, su estado reportado, vigencia y señales de riesgo; no prueba por sí solo autenticidad física, contenido, origen ni custodia.",
         label: "Capa 1",
       },
       {
         term: "Passport",
-        def: "Gemelo digital con lote, origen, historial, canal, warranty y ownership.",
+        def: "Registro digital con lote y origen declarados, historial de eventos reportados, canal, warranty y ownership digital.",
         label: "Capa 2",
       },
       {
@@ -132,7 +132,7 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
       },
       {
         term: "Secure / NTAG 424 DNA (TagTamper)",
-        def: "Autenticidad fuerte, tamper y evidencia verificable para casos sensibles.",
+        def: "Evidencia criptográfica del mensaje, controles anti-replay y estado TagTamper reportado para casos sensibles; no prueba por sí solo el producto físico.",
         label: "Perfil",
       },
     ],
@@ -143,7 +143,7 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
       {
         term: "Empresa de chips NFC",
         why: "Reduce la categoría a hardware commodity y borra la capa de software, validación y operación.",
-        sayInstead: "Infraestructura para identidades físicas verificables usando NFC + QR.",
+        sayInstead: "Infraestructura para identidades digitales y evidencia de mensajes NFC + QR.",
       },
       {
         term: "Empresa de tokenización de vinos",
@@ -152,18 +152,18 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
       },
       {
         term: "Blockchain-first",
-        why: "Desordena el mensaje principal para B2B, canal y gobierno si el problema central es autenticidad/operación.",
-        sayInstead: "Primero identidad física verificable; después derechos digitales si el caso lo necesita.",
+        why: "Desordena el mensaje principal para B2B, canal y gobierno si el problema central es validación y operación.",
+        sayInstead: "Primero evidencia del carrier y una referencia digital declarada; después derechos digitales si el caso lo necesita.",
       },
       {
         term: "Imposible de clonar",
         why: "Es un claim absoluto, legalmente riesgoso y comercialmente innecesario.",
-        sayInstead: "Diseñado para elevar la confianza y detectar falsificaciones o anomalías.",
+        sayInstead: "Controles anti-replay y detección de anomalías del mensaje según carrier y política.",
       },
       {
         term: "Cold-chain (sin sensor)",
         why: "No prometer sensing si no existe integración real con ese capability.",
-        sayInstead: "Trazabilidad, autenticidad y estado operativo según la integración disponible.",
+        sayInstead: "Eventos de ubicación o temperatura reportados sólo cuando existe el sensor y la integración correspondiente.",
       },
     ],
     canonicalTitle: "Frases canónicas listas para usar",
@@ -171,17 +171,17 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
       "Estas frases sirven como base para hero copy, decks, ventas, introducciones de demo y documentos comerciales.",
     canonical: [
       "Convertimos productos, credenciales y documentos en identidades digitales verificables.",
-      "Antifraude protege la verdad del objeto. Tokenización digitaliza derechos sobre ese objeto.",
-      "Basic para interacción y escala. Secure para prueba y confianza.",
-      "La tokenización no es el inicio: primero identidad física verificable, después derechos digitales.",
+      "Verify valida el mensaje o la credencial y sus reglas. Tokenización registra derechos digitales por separado.",
+      "Basic para interacción y escala. Secure para evidencia de mensaje, anti-replay y TT reportado.",
+      "La tokenización no es el inicio: primero evidencia digital acotada; después derechos digitales bajo política.",
     ],
     replacementsTitle: "Reemplazos rápidos",
     replacementsLead:
       "Cuando un término genera ruido, cambiá la formulación por una que preserve precisión y amplitud comercial.",
     replacements: [
-      { bad: "Vendemos tags NFC", good: "Operamos identidades físicas verificables sobre carriers como NFC y QR." },
+      { bad: "Vendemos tags NFC", good: "Operamos identidades digitales y evidencia de mensajes sobre carriers como NFC y QR." },
       { bad: "Es una activación con chip", good: "Es una experiencia conectada a una plataforma de validación y derechos." },
-      { bad: "Tokenizamos productos", good: "Primero verificamos el objeto y luego digitalizamos derechos sobre él." },
+      { bad: "Tokenizamos productos", good: "Primero validamos el mensaje y la evidencia disponible; luego registramos derechos digitales bajo política." },
       { bad: "Es solo para vino", good: "Ya aplica a vino, eventos, documentos, credenciales, lujo y sector público." },
     ],
     replacementsBadLabel: "Evitá decir",
@@ -194,12 +194,12 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
       {
         surface: "Homepage / hero",
         goal: "Abrir la categoría sin fricción",
-        line: "Presentá a nexID como infraestructura para identidades físicas verificables, no como hardware o tokenización aislada.",
+        line: "Presentá a nexID como infraestructura para identidades digitales y evidencia NFC/QR, no como hardware o tokenización aislada.",
       },
       {
         surface: "Deck comercial",
         goal: "Mostrar claridad de producto",
-        line: "Usá Verify → Passport → Rights para ordenar la conversación y separar autenticidad, datos y derechos digitales.",
+        line: "Usá Verify → Passport → Rights para separar validación del mensaje, datos declarados y derechos digitales.",
       },
       {
         surface: "Canal / reseller",
@@ -282,18 +282,18 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
       "São as expressões que melhor descrevem categoria, produto e valor comercial sem reduzir a nexID a uma narrativa pequena.",
     approved: [
       {
-        term: "Identidade física verificável",
-        def: "Categoria principal: objeto físico + identidade digital + camada de validação.",
+        term: "Identidade digital conectada",
+        def: "Categoria principal: referência declarada + identidade digital + evidência do carrier e regras operacionais.",
         label: "Categoria",
       },
       {
         term: "Verify",
-        def: "Valida autenticidade, estado, validade e sinais de risco.",
+        def: "Valida a mensagem ou credencial, o estado reportado, a vigência e sinais de risco; sozinho não comprova autenticidade física, conteúdo, origem ou custódia.",
         label: "Camada 1",
       },
       {
         term: "Passport",
-        def: "Gêmeo digital com lote, origem, histórico, garantia e ownership.",
+        def: "Registro digital com lote e origem declarados, eventos reportados, garantia e ownership digital.",
         label: "Camada 2",
       },
       {
@@ -313,7 +313,7 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
       },
       {
         term: "Secure / NTAG 424 DNA (TagTamper)",
-        def: "Autenticidade forte e tamper para casos sensíveis.",
+        def: "Evidência criptográfica da mensagem, controles anti-replay e estado TagTamper reportado para casos sensíveis; sozinho não comprova o produto físico.",
         label: "Perfil",
       },
     ],
@@ -324,7 +324,7 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
       {
         term: "Empresa de chips NFC",
         why: "Reduz a categoria para hardware commodity e apaga software, validação e operação.",
-        sayInstead: "Infraestrutura para identidades físicas verificáveis usando NFC + QR.",
+        sayInstead: "Infraestrutura para identidades digitais e evidência de mensagens NFC + QR.",
       },
       {
         term: "Empresa de tokenização de vinhos",
@@ -334,17 +334,17 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
       {
         term: "Blockchain-first",
         why: "Desorganiza a mensagem principal para B2B, canal e governo.",
-        sayInstead: "Primeiro identidade física verificável; depois direitos digitais quando necessário.",
+        sayInstead: "Primeiro evidência do carrier e uma referência digital declarada; depois direitos digitais quando necessário.",
       },
       {
         term: "Impossível de clonar",
         why: "Claim absoluto, arriscado e desnecessário.",
-        sayInstead: "Projetado para aumentar confiança e detectar falsificações ou anomalias.",
+        sayInstead: "Controles anti-replay e detecção de anomalias da mensagem conforme carrier e política.",
       },
       {
         term: "Cold-chain (sem sensor)",
         why: "Não prometer sensing sem integração real.",
-        sayInstead: "Rastreabilidade, autenticidade e estado operacional conforme a integração disponível.",
+        sayInstead: "Eventos de localização ou temperatura reportados somente quando existem sensor e integração correspondentes.",
       },
     ],
     canonicalTitle: "Frases canônicas prontas para uso",
@@ -352,17 +352,17 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
       "Estas frases servem de base para hero copy, decks, vendas, introduções de demo e documentos comerciais.",
     canonical: [
       "Convertimos produtos, credenciais e documentos em identidades digitais verificáveis.",
-      "Antifraude protege a verdade do objeto. Tokenização digitaliza direitos sobre esse objeto.",
-      "Basic para interação e escala. Secure para prova e confiança.",
-      "Tokenização não é o começo: primeiro identidade física verificável, depois direitos digitais.",
+      "Verify valida a mensagem ou credencial e suas regras. Tokenização registra direitos digitais separadamente.",
+      "Basic para interação e escala. Secure para evidência de mensagem, anti-replay e TT reportado.",
+      "Tokenização não é o começo: primeiro evidência digital limitada; depois direitos digitais por política.",
     ],
     replacementsTitle: "Substituições rápidas",
     replacementsLead:
       "Quando um termo gerar ruído, troque por uma formulação mais precisa e comercialmente ampla.",
     replacements: [
-      { bad: "Vendemos tags NFC", good: "Operamos identidades físicas verificáveis sobre carriers como NFC e QR." },
+      { bad: "Vendemos tags NFC", good: "Operamos identidades digitais e evidência de mensagens sobre carriers como NFC e QR." },
       { bad: "É uma ativação com chip", good: "É uma experiência conectada a uma plataforma de validação e direitos." },
-      { bad: "Tokenizamos produtos", good: "Primeiro verificamos o objeto e depois digitalizamos direitos sobre ele." },
+      { bad: "Tokenizamos produtos", good: "Primeiro validamos a mensagem e a evidência disponível; depois registramos direitos digitais por política." },
       { bad: "Serve só para vinho", good: "Também aplica a vinho, eventos, documentos, credenciais, luxo e governo." },
     ],
     replacementsBadLabel: "Evite dizer",
@@ -375,12 +375,12 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
       {
         surface: "Homepage / hero",
         goal: "Abrir a categoria sem fricção",
-        line: "Apresente a nexID como infraestrutura para identidades físicas verificáveis, não como hardware ou tokenização isolada.",
+        line: "Apresente a nexID como infraestrutura para identidades digitais e evidência NFC/QR, não como hardware ou tokenização isolada.",
       },
       {
         surface: "Deck comercial",
         goal: "Mostrar clareza de produto",
-        line: "Use Verify → Passport → Rights para ordenar a conversa e separar autenticidade, dados e direitos digitais.",
+        line: "Use Verify → Passport → Rights para separar validação da mensagem, dados declarados e direitos digitais.",
       },
       {
         surface: "Canal / revenda",
@@ -463,18 +463,18 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
       "These are the strongest ways to describe the category, the product and the commercial value without boxing nexID into a narrow narrative.",
     approved: [
       {
-        term: "Verifiable physical identity",
-        def: "Core category: physical object + digital identity + operational validation layer.",
+        term: "Connected digital identity",
+        def: "Core category: declared reference + digital identity + carrier evidence and operational rules.",
         label: "Category",
       },
       {
         term: "Verify",
-        def: "Proves authenticity, state, validity and risk signals for a unit or credential.",
+        def: "Validates a message or credential, its reported state, validity and risk signals; by itself it does not prove physical authenticity, contents, origin or custody.",
         label: "Layer 1",
       },
       {
         term: "Passport",
-        def: "Digital twin with batch, origin, lifecycle, warranty and ownership.",
+        def: "Digital record with declared batch and origin, reported lifecycle events, warranty and digital ownership.",
         label: "Layer 2",
       },
       {
@@ -494,7 +494,7 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
       },
       {
         term: "Secure / NTAG 424 DNA (TagTamper)",
-        def: "High-trust authenticity and tamper evidence for sensitive use cases.",
+        def: "Cryptographic message evidence, replay controls and reported TagTamper state for sensitive use cases; by itself it does not prove the physical product.",
         label: "Profile",
       },
     ],
@@ -505,7 +505,7 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
       {
         term: "NFC chip company",
         why: "It reduces the category to commodity hardware and hides the software + validation stack.",
-        sayInstead: "Infrastructure for verifiable physical identities using NFC + QR.",
+        sayInstead: "Infrastructure for digital identities and NFC + QR message evidence.",
       },
       {
         term: "Wine tokenization company",
@@ -515,17 +515,17 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
       {
         term: "Blockchain-first",
         why: "It distracts from the core B2B, channel and public-sector value proposition.",
-        sayInstead: "First establish a verifiable physical identity; add digital rights when needed.",
+        sayInstead: "Start with carrier evidence and a declared digital reference; add digital rights when needed.",
       },
       {
         term: "Impossible to clone",
         why: "Absolute claim with legal and commercial downside.",
-        sayInstead: "Designed to raise trust and detect counterfeits or anomalies.",
+        sayInstead: "Replay controls and message-anomaly detection according to the carrier and policy.",
       },
       {
         term: "Cold-chain (without sensor)",
         why: "Do not imply sensing unless a real integration exists.",
-        sayInstead: "Traceability, authenticity and operational state according to the available integration.",
+        sayInstead: "Reported location or temperature events only when the corresponding sensor and integration exist.",
       },
     ],
     canonicalTitle: "Canonical ready-to-use phrases",
@@ -533,17 +533,17 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
       "Use these lines as starting points for hero copy, decks, sales intros, demo intros and commercial docs.",
     canonical: [
       "We turn products, credentials and documents into verifiable digital identities.",
-      "Anti-fraud protects the truth of the object. Tokenization digitizes rights on top of that object.",
-      "Basic for interaction and scale. Secure for proof and trust.",
-      "Tokenization is not step one: first establish a verifiable physical identity, then add digital rights.",
+      "Verify validates the message or credential and its rules. Tokenization records digital rights separately.",
+      "Basic for interaction and scale. Secure for message evidence, replay controls and reported TT.",
+      "Tokenization is not step one: start with bounded digital evidence, then add policy-governed digital rights.",
     ],
     replacementsTitle: "Quick replacements",
     replacementsLead:
       "When wording creates friction, switch to a formulation that is more accurate and commercially scalable.",
     replacements: [
-      { bad: "We sell NFC tags", good: "We operate verifiable physical identities on carriers such as NFC and QR." },
+      { bad: "We sell NFC tags", good: "We operate digital identities and message evidence on carriers such as NFC and QR." },
       { bad: "It is a chip activation", good: "It is an experience connected to a validation and rights platform." },
-      { bad: "We tokenize products", good: "We first verify the object and then digitize rights on top of it." },
+      { bad: "We tokenize products", good: "We first validate the message and available evidence, then record digital rights under policy." },
       { bad: "It is only for wine", good: "It already applies to wine, events, documents, credentials, luxury and public-sector flows." },
     ],
     replacementsBadLabel: "Avoid saying",
@@ -556,12 +556,12 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", GlossaryCopy> = {
       {
         surface: "Homepage / hero",
         goal: "Open the category with low friction",
-        line: "Present nexID as infrastructure for verifiable physical identities, not as hardware or isolated tokenization.",
+        line: "Present nexID as infrastructure for digital identities and NFC/QR evidence, not as hardware or isolated tokenization.",
       },
       {
         surface: "Sales deck",
         goal: "Show product clarity",
-        line: "Use Verify → Passport → Rights to structure the conversation and separate authenticity, data and digital rights.",
+        line: "Use Verify → Passport → Rights to separate message validation, declared data and digital rights.",
       },
       {
         surface: "Channel / reseller",

@@ -133,10 +133,18 @@ export async function ensureSupplierOpsSchema() {
           mime_type text,
           storage_ref text,
           status text NOT NULL DEFAULT 'active',
+          encrypted_payload_base64 text,
+          delivery_status text NOT NULL DEFAULT 'metadata_only' CHECK (delivery_status IN ('metadata_only', 'ready', 'failed')),
+          delivery_attempt_count integer NOT NULL DEFAULT 0,
+          last_delivery_attempt_at timestamptz,
           metadata_json jsonb NOT NULL DEFAULT '{}'::jsonb,
           created_at timestamptz NOT NULL DEFAULT now()
         )
       `;
+      await sql/*sql*/`ALTER TABLE vault_artifacts ADD COLUMN IF NOT EXISTS encrypted_payload_base64 text`;
+      await sql/*sql*/`ALTER TABLE vault_artifacts ADD COLUMN IF NOT EXISTS delivery_status text NOT NULL DEFAULT 'metadata_only'`;
+      await sql/*sql*/`ALTER TABLE vault_artifacts ADD COLUMN IF NOT EXISTS delivery_attempt_count integer NOT NULL DEFAULT 0`;
+      await sql/*sql*/`ALTER TABLE vault_artifacts ADD COLUMN IF NOT EXISTS last_delivery_attempt_at timestamptz`;
 
       await sql/*sql*/`
         CREATE TABLE IF NOT EXISTS supplier_qa_checks (

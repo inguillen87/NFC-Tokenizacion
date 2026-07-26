@@ -20,6 +20,9 @@ function safeEvent(row: unknown) {
   const event = row as Record<string, unknown>;
   const lat = typeof event.lat === "number" ? event.lat : Number(event.lat);
   const lng = typeof event.lng === "number" ? event.lng : Number(event.lng);
+  const coordinateAccuracyM = Number(event.coordinate_accuracy_m ?? event.accuracy_m);
+  const originLat = Number(event.origin_lat);
+  const originLng = Number(event.origin_lng);
   return {
     id: clean(event.id) || `${clean(event.created_at)}-${maskUid(event.uid_hex)}`,
     result: clean(event.result) || "UNKNOWN",
@@ -29,6 +32,13 @@ function safeEvent(row: unknown) {
     country_code: clean(event.country_code) || "UNK",
     lat: Number.isFinite(lat) ? lat : null,
     lng: Number.isFinite(lng) ? lng : null,
+    coordinate_source: clean(event.coordinate_source || event.location_source) || "not_reported",
+    coordinate_accuracy_m: Number.isFinite(coordinateAccuracyM) && coordinateAccuracyM >= 0 ? coordinateAccuracyM : null,
+    origin_lat: Number.isFinite(originLat) ? originLat : null,
+    origin_lng: Number.isFinite(originLng) ? originLng : null,
+    origin_city: clean(event.origin_city),
+    origin_country: clean(event.origin_country),
+    origin_source: clean(event.origin_source),
     product_name: clean(event.product_name),
     sku: clean(event.sku),
     vertical: clean(event.vertical) || "wine",
@@ -79,6 +89,13 @@ function safePublicEvent(row: unknown) {
     country_code: country,
     lat: coords ? coords.lat : null,
     lng: coords ? coords.lng : null,
+    coordinate_source: coords ? "city_centroid" : "not_reported",
+    coordinate_accuracy_m: null,
+    origin_lat: null,
+    origin_lng: null,
+    origin_city: "",
+    origin_country: "",
+    origin_source: "",
     product_name: "",
     sku: "",
     vertical: "wine",
@@ -145,8 +162,8 @@ const DEMO_TICKET_TEMPLATES = [
     status: "open",
   },
   {
-    title: "Alerta demo de sello abierto",
-    detail: "Evento simulado de tamper pendiente de validacion operativa.",
+    title: "Alerta demo: TT reporta abierto",
+    detail: "Señal TT simulada pendiente de revisión operativa; no prueba apertura física.",
     status: "pending",
   },
   {

@@ -106,7 +106,7 @@ test("account drawer exposes expected SaaS account actions and secure logout", (
   assert.match(menuSource, /Configuraci.n del workspace/);
   assert.match(menuSource, /Perfil \$\{tenantName\}/);
   assert.match(menuSource, /Usuarios y permisos/);
-  assert.match(menuSource, /Seguridad y MFA/);
+  assert.match(menuSource, /Seguridad de cuenta/);
   assert.match(menuSource, /API keys y webhooks/);
   assert.match(menuSource, /Plan y facturaci.n/);
   assert.match(menuSource, /Playbook comercial/);

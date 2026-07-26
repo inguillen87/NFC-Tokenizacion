@@ -3,13 +3,21 @@
 import { useMemo, useState, useEffect } from "react";
 import { Sparkles, HelpCircle, Star, Send, Gift, CheckCircle2, Bot, ArrowRight, Brain, Trophy } from "lucide-react";
 import Link from "next/link";
+import { isPostTapPolicyActionAllowed } from "./post-tap-policy";
+import {
+  classifySommelierResponse,
+  safeSommelierGuidance,
+  sommelierProvenanceLabel,
+  type SommelierProvenance,
+} from "../../lib/sommelier-guidance";
 
-type EngagementTab = "sommelier" | "trivia" | "feedback" | "sorteo";
+type EngagementTab = "sommelier" | "trivia" | "feedback" | "contact";
 
 interface ChatMessage {
   id: string;
   sender: "sommelier" | "user";
   text: string;
+  provenance?: SommelierProvenance;
 }
 
 type ClientTriviaQuestion = {
@@ -25,6 +33,7 @@ type TriviaResult = {
   score: number;
   total: number;
   pointsAwarded: number;
+  isLocal?: boolean;
   requiresLogin?: boolean;
   alreadyCompleted?: boolean;
   explanations?: Array<ClientTriviaQuestion & { correct?: boolean; answerIndex?: number; correctIndex?: number }>;
@@ -36,16 +45,18 @@ type QREngagementSuiteProps = {
   tenantSlug?: string | null;
   eventId?: string | null;
   bid?: string | null;
+  allowedActions?: string[];
+  blockedActions?: string[];
 };
 
 function localTrivia(productName: string, wineryName: string): ClientTriviaQuestion[] {
   return [
     {
       id: "local-origin",
-      prompt: `¿Qué confirma mejor la autenticidad de ${productName}?`,
-      options: ["El tap NFC y el lote de la marca", "Una captura reenviada", "Un comentario anónimo", "Un precio escrito a mano"],
+      prompt: `¿Qué evidencia digital frena mejor el replay de ${productName}?`,
+      options: ["Un mensaje SUN fresco validado contra el batch", "Una captura reenviada", "Un comentario anónimo", "Un precio escrito a mano"],
       correctIndex: 0,
-      explanation: "El tap físico une producto, lote, ubicación aproximada y marca en una señal confiable para el cliente y la empresa.",
+      explanation: "Un SUN fresco permite validar el mensaje dinámico asociado al tag y al batch. Por sí solo no certifica contenido físico, origen, compra ni propiedad.",
       insightTag: "origin-literacy",
     },
     {
@@ -72,8 +83,9 @@ function asResultFromLocal(questions: ClientTriviaQuestion[], answers: Record<st
   return {
     score,
     total: questions.length,
-    pointsAwarded: score * 10 + (score >= 2 ? 15 : 0),
-    requiresLogin: true,
+    pointsAwarded: 0,
+    requiresLogin: false,
+    isLocal: true,
     explanations: questions.map((question) => ({
       ...question,
       answerIndex: answers[question.id],
@@ -83,7 +95,15 @@ function asResultFromLocal(questions: ClientTriviaQuestion[], answers: Record<st
   };
 }
 
-export function QREngagementSuite({ wineryName, productName, tenantSlug = "demobodega", eventId = null, bid = null }: QREngagementSuiteProps) {
+export function QREngagementSuite({
+  wineryName,
+  productName,
+  tenantSlug = "demobodega",
+  eventId = null,
+  bid = null,
+  allowedActions = [],
+  blockedActions = [],
+}: QREngagementSuiteProps) {
   const [activeTab, setActiveTab] = useState<EngagementTab>("sommelier");
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -108,11 +128,32 @@ export function QREngagementSuite({ wineryName, productName, tenantSlug = "demob
   const [name, setName] = useState("");
   const [occasion, setOccasion] = useState("regalo");
   const [gender, setGender] = useState("prefiero_no_decir");
-  const [raffleSubmitted, setRaffleSubmitted] = useState(false);
+  const [optInSubmitted, setOptInSubmitted] = useState(false);
   const [submittingLead, setSubmittingLead] = useState(false);
+  const [leadError, setLeadError] = useState<string | null>(null);
 
   const currentQuestion = triviaQuestions[triviaStep] || triviaQuestions[0];
   const selectedAnswer = currentQuestion ? triviaAnswers[currentQuestion.id] ?? null : null;
+  const normalizedAllowedActions = allowedActions.map((action) => String(action).trim().toLowerCase());
+  const normalizedBlockedActions = blockedActions.map((action) => String(action).trim().toLowerCase());
+  const hasEngagementAllowList = normalizedAllowedActions.some((action) => ["lead", "feedback", "sommelier"].includes(action));
+  const engagementActionAllowed = (action: "lead" | "feedback" | "sommelier") => (
+    !normalizedBlockedActions.includes(action)
+    && (!hasEngagementAllowList || normalizedAllowedActions.includes(action))
+  );
+  const canUseRewards = isPostTapPolicyActionAllowed("rewards", allowedActions, blockedActions);
+  const engagementTabs = useMemo(() => [
+    ...(engagementActionAllowed("sommelier") ? [{ id: "sommelier" as const, label: "Sommelier", Icon: Bot, title: "Consultar maridajes, cata, temperatura y recomendaciones" }] : []),
+    ...(canUseRewards ? [{ id: "trivia" as const, label: "Trivia", Icon: HelpCircle, title: "Responder preguntas del producto; los puntos dependen de la política del tenant" }] : []),
+    ...(engagementActionAllowed("feedback") ? [{ id: "feedback" as const, label: "Calificar", Icon: Star, title: "Enviar opinión breve del producto o experiencia" }] : []),
+    ...(engagementActionAllowed("lead") || canUseRewards ? [{ id: "contact" as const, label: "Novedades", Icon: Gift, title: "Autorizar contacto para novedades reales publicadas por la marca" }] : []),
+  ], [canUseRewards, hasEngagementAllowList, normalizedAllowedActions.join("|"), normalizedBlockedActions.join("|")]);
+
+  useEffect(() => {
+    if (!engagementTabs.some((tab) => tab.id === activeTab)) {
+      setActiveTab(engagementTabs[0]?.id || "sommelier");
+    }
+  }, [activeTab, engagementTabs]);
 
   const getDeviceMeta = () => ({
     userAgent: navigator.userAgent,
@@ -145,10 +186,13 @@ export function QREngagementSuite({ wineryName, productName, tenantSlug = "demob
     rating?: number;
     extra?: Record<string, unknown>;
   }, quiet = false) => {
-    if (!quiet) setSubmittingLead(true);
+    if (!quiet) {
+      setSubmittingLead(true);
+      setLeadError(null);
+    }
     try {
       const gps = await getGps();
-      await fetch("/api/leads", {
+      const response = await fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -175,6 +219,14 @@ export function QREngagementSuite({ wineryName, productName, tenantSlug = "demob
           },
         }),
       });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result?.ok !== true) {
+        throw new Error(String(result?.error || result?.reason || "lead_save_failed"));
+      }
+      return true;
+    } catch {
+      if (!quiet) setLeadError("No pudimos guardar la información. Reintentá en unos segundos.");
+      return false;
     } finally {
       if (!quiet) setSubmittingLead(false);
     }
@@ -185,7 +237,8 @@ export function QREngagementSuite({ wineryName, productName, tenantSlug = "demob
       {
         id: "welcome",
         sender: "sommelier",
-        text: `Hola. Soy tu sommelier virtual nexID. Estás viendo "${productName}" de ${wineryName}. Preguntame por temperatura de servicio, maridaje, notas de cata o beneficios del club.`,
+        text: `Hola. Puedo darte orientación general sobre "${productName}" de ${wineryName}. Estos datos identifican la pantalla actual, pero no reemplazan una ficha técnica validada por la marca.`,
+        provenance: { mode: "context" },
       },
     ]);
   }, [productName, wineryName]);
@@ -269,40 +322,31 @@ export function QREngagementSuite({ wineryName, productName, tenantSlug = "demob
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          text: `Vino: ${productName}. Bodega: ${wineryName}. Pregunta del cliente: ${textToSend}`,
+          text: textToSend,
           tone: "sommelier-chat",
+          productContext: { productName, brandName: wineryName },
         }),
       });
 
       if (!res.ok) throw new Error("AI failed");
       const data = await res.json();
       if (!data?.optimizedText) throw new Error("Empty AI response");
+      const provenance = classifySommelierResponse(data);
 
       setMessages((prev) => [...prev, {
         id: Date.now().toString(),
         sender: "sommelier",
         text: data.optimizedText,
+        provenance,
       }]);
     } catch {
-      const clean = textToSend.toLowerCase();
-      let replyText = `Este ${productName} muestra muy buena tipicidad. Te sugiero descorcharlo 15 a 20 minutos antes para abrir aromas y servirlo en copa amplia.`;
-
-      if (clean.includes("maridaje") || clean.includes("comer") || clean.includes("comida") || clean.includes("acompañar")) {
-        replyText = `Para maridar ${productName}, probá carnes asadas, pastas con salsa intensa, vegetales grillados o quesos de pasta dura.`;
-      } else if (clean.includes("temperatura") || clean.includes("servir") || clean.includes("frio") || clean.includes("frío")) {
-        replyText = "Para un tinto reserva, lo ideal suele estar entre 16 °C y 18 °C. Evitá servirlo demasiado caliente para no tapar fruta y taninos.";
-      } else if (clean.includes("cata") || clean.includes("aroma") || clean.includes("sabor")) {
-        replyText = "En copa buscá fruta roja madura, especias suaves y notas de crianza. Si lo dejás respirar, aparece más volumen y persistencia.";
-      } else if (clean.includes("premio") || clean.includes("puntos") || clean.includes("calificacion") || clean.includes("calificación")) {
-        replyText = `nexID puede mostrar premios, reseñas verificadas y trazabilidad del lote cuando la bodega publica esos datos en el pasaporte del producto.`;
-      } else if (clean.includes("regalo") || clean.includes("cena") || clean.includes("evento")) {
-        replyText = `Como regalo o cena especial, ${productName} funciona mejor si lo acompañás con una experiencia: cata, visita, historia del lote y beneficio del club.`;
-      }
+      const replyText = safeSommelierGuidance(textToSend, { productName, brandName: wineryName });
 
       setMessages((prev) => [...prev, {
         id: Date.now().toString(),
         sender: "sommelier",
         text: replyText,
+        provenance: { mode: "local-fallback" },
       }]);
     } finally {
       setIsTyping(false);
@@ -375,12 +419,7 @@ export function QREngagementSuite({ wineryName, productName, tenantSlug = "demob
   return (
     <div className="mt-4 w-full overflow-hidden rounded-2xl border border-amber-500/20 bg-slate-950/70 shadow-xl backdrop-blur-md">
       <div className="flex border-b border-white/5 bg-black/40 text-[10px] md:text-xs">
-        {[
-          { id: "sommelier" as const, label: "Sommelier", Icon: Bot, title: "Consultar maridajes, cata, temperatura y recomendaciones" },
-          { id: "trivia" as const, label: "Trivia", Icon: HelpCircle, title: "Responder preguntas del producto para sumar puntos e insights" },
-          { id: "feedback" as const, label: "Calificar", Icon: Star, title: "Enviar opinión breve del producto o experiencia" },
-          { id: "sorteo" as const, label: "Sorteo", Icon: Gift, title: "Registrarte para beneficios, premios o campañas del tenant" },
-        ].map((tab) => (
+        {engagementTabs.map((tab) => (
           <button
             key={tab.id}
             type="button"
@@ -403,8 +442,8 @@ export function QREngagementSuite({ wineryName, productName, tenantSlug = "demob
         {activeTab === "sommelier" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-slate-400">
-              <span>Asistente enólogo</span>
-              <span className="flex items-center gap-1 text-amber-400"><Sparkles className="h-3 w-3 animate-pulse" /> IA contextual</span>
+              <span>Asistente de orientación enológica</span>
+              <span className="flex items-center gap-1 text-amber-400"><Sparkles className="h-3 w-3" /> Fuente visible por respuesta</span>
             </div>
 
             <div className="h-[200px] space-y-3.5 overflow-y-auto rounded-xl border border-white/5 bg-black/45 p-3 text-xs">
@@ -413,6 +452,11 @@ export function QREngagementSuite({ wineryName, productName, tenantSlug = "demob
                   <div className={`max-w-[85%] rounded-xl px-3.5 py-2.5 leading-relaxed ${
                     msg.sender === "user" ? "bg-amber-500 font-semibold text-slate-950" : "border border-white/5 bg-slate-900 text-slate-200"
                   }`}>
+                    {msg.sender === "sommelier" ? (
+                      <span className="mb-1 block text-[9px] font-black uppercase tracking-wide text-cyan-300">
+                        {sommelierProvenanceLabel(msg.provenance)}
+                      </span>
+                    ) : null}
                     {msg.text}
                   </div>
                 </div>
@@ -510,23 +554,27 @@ export function QREngagementSuite({ wineryName, productName, tenantSlug = "demob
 
                 <div className="mx-auto max-w-sm space-y-3 rounded-xl border border-amber-500/25 bg-amber-500/5 p-4 text-xs">
                   <p className="font-bold leading-relaxed text-slate-200">
-                    {triviaResult?.alreadyCompleted ? "Este tap ya tenía la trivia registrada." : `Sumaste ${triviaResult?.pointsAwarded || 0} puntos de conocimiento.`}
+                    {triviaResult?.isLocal
+                      ? "Resultado educativo local: no se otorgaron puntos ni premios."
+                      : triviaResult?.alreadyCompleted
+                        ? "Este tap ya tenía la trivia registrada."
+                        : `El backend confirmó ${triviaResult?.pointsAwarded || 0} puntos de conocimiento.`}
                   </p>
                   <p className="text-[11px] leading-normal text-slate-400">
                     Tus respuestas ayudan a {wineryName} a entender interés por ciudad, producto y experiencia sin mostrar datos privados.
                   </p>
-                  {triviaResult?.requiresLogin ? (
+                  {!triviaResult?.isLocal && triviaResult?.requiresLogin ? (
                     <Link
                       href="/login?next=/me"
                       className="block w-full rounded-lg bg-gradient-to-r from-amber-500 to-amber-400 py-2.5 text-center text-[11px] font-black uppercase tracking-wider text-slate-950"
                     >
                       Guardar puntos en mi Pasaporte
                     </Link>
-                  ) : (
+                  ) : !triviaResult?.isLocal ? (
                     <div className="rounded-lg border border-emerald-400/25 bg-emerald-400/10 px-3 py-2 text-[11px] font-bold text-emerald-200">
                       Puntos guardados en tu Pasaporte nexID.
                     </div>
-                  )}
+                  ) : null}
                 </div>
 
                 {triviaResult?.explanations?.length ? (
@@ -595,7 +643,7 @@ export function QREngagementSuite({ wineryName, productName, tenantSlug = "demob
                   title="Enviar feedback al CRM"
                   disabled={rating === 0 || submittingLead}
                   onClick={async () => {
-                    await submitLead({
+                    const saved = await submitLead({
                       source: "qr_feedback",
                       contact: "anonymous_qr_feedback",
                       message: comment,
@@ -603,12 +651,13 @@ export function QREngagementSuite({ wineryName, productName, tenantSlug = "demob
                       rating,
                       extra: { comment },
                     });
-                    setFeedbackSubmitted(true);
+                    if (saved) setFeedbackSubmitted(true);
                   }}
                   className="w-full rounded-xl bg-amber-500 py-3 text-xs font-black uppercase tracking-wider text-slate-950 transition hover:bg-amber-400 disabled:opacity-50"
                 >
                   {submittingLead ? "Guardando..." : "Enviar feedback"}
                 </button>
+                {leadError ? <p role="alert" className="text-center text-[11px] text-rose-300">{leadError}</p> : null}
               </div>
             ) : (
               <div className="space-y-4 py-4 text-center">
@@ -637,17 +686,17 @@ export function QREngagementSuite({ wineryName, productName, tenantSlug = "demob
           </div>
         )}
 
-        {activeTab === "sorteo" && (
+        {activeTab === "contact" && (
           <div className="space-y-4">
-            {!raffleSubmitted ? (
+            {!optInSubmitted ? (
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
                   <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-indigo-500/20 bg-indigo-500/10 text-indigo-400">
                     <Gift className="h-5 w-5" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-white">Beneficio del club</h4>
-                    <p className="mt-0.5 text-[11px] text-slate-400">Participá por premios, visitas guiadas o campañas vinculadas a este producto.</p>
+                    <h4 className="text-sm font-bold text-white">Novedades de la marca</h4>
+                    <p className="mt-0.5 text-[11px] text-slate-400">Dejá tus datos sólo para recibir novedades o campañas que la marca publique realmente. Este formulario no promete premios.</p>
                   </div>
                 </div>
 
@@ -667,7 +716,7 @@ export function QREngagementSuite({ wineryName, productName, tenantSlug = "demob
                     WhatsApp o email
                     <input
                       type="text"
-                      title="Contacto para avisarte si ganás o recibís un beneficio"
+                      title="Contacto para recibir novedades autorizadas"
                       placeholder="ej. +549261... o mail@ejemplo.com"
                       value={contact}
                       onChange={(e) => setContact(e.target.value)}
@@ -708,23 +757,24 @@ export function QREngagementSuite({ wineryName, productName, tenantSlug = "demob
 
                 <button
                   type="button"
-                  title="Registrar contacto para beneficio o sorteo"
+                  title="Registrar contacto para novedades de la marca"
                   disabled={!name.trim() || !contact.trim() || submittingLead}
                   onClick={async () => {
-                    await submitLead({
-                      source: "qr_raffle",
+                    const saved = await submitLead({
+                      source: "qr_brand_opt_in",
                       contact,
                       name,
-                      message: `Beneficio QR ${productName}`,
-                      roleInterest: "raffle",
-                      extra: { raffle: "monthly_winery_box" },
+                      message: `Opt-in de novedades para ${productName}`,
+                      roleInterest: "brand_updates",
+                      extra: { optIn: "brand_updates" },
                     });
-                    setRaffleSubmitted(true);
+                    if (saved) setOptInSubmitted(true);
                   }}
                   className="w-full rounded-xl bg-indigo-500 py-3 text-xs font-black uppercase tracking-wider text-slate-950 transition hover:bg-indigo-400 disabled:opacity-50"
                 >
                   {submittingLead ? "Registrando..." : "Registrarme"}
                 </button>
+                {leadError ? <p role="alert" className="text-center text-[11px] text-rose-300">{leadError}</p> : null}
               </div>
             ) : (
               <div className="space-y-4 py-4 text-center">
@@ -732,9 +782,9 @@ export function QREngagementSuite({ wineryName, productName, tenantSlug = "demob
                   <CheckCircle2 className="h-6 w-6" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-white">Ya estás participando</h4>
+                  <h4 className="text-sm font-bold text-white">Contacto guardado</h4>
                   <p className="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-slate-400">
-                    Registramos el contacto <span className="font-mono font-bold text-slate-300">{contact}</span>. La marca puede enviarte beneficios por este canal si corresponde.
+                    Registramos el contacto <span className="font-mono font-bold text-slate-300">{contact}</span>. La marca puede enviarte novedades por este canal según tu consentimiento.
                   </p>
                 </div>
                 <button
@@ -742,11 +792,11 @@ export function QREngagementSuite({ wineryName, productName, tenantSlug = "demob
                   onClick={() => {
                     setContact("");
                     setName("");
-                    setRaffleSubmitted(false);
+                    setOptInSubmitted(false);
                   }}
                   className="text-xs font-bold text-indigo-400 transition hover:text-indigo-300"
                 >
-                  Registrar otro participante
+                  Registrar otro contacto
                 </button>
               </div>
             )}

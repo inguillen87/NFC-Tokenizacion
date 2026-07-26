@@ -9,6 +9,7 @@ import { exportToCsv } from "../lib/export-utils";
 import { Maximize2, Minimize2, Clock, Terminal, Volume2, VolumeX, Activity, Globe, MapPin, Radio, Target } from "lucide-react";
 
 type MapMode = "tenant" | "global";
+type RealtimeVerdictBucket = "valid" | "duplicate_replay" | "tamper" | "invalid" | "unknown";
 
 type Labels = {
   liveFeed: string;
@@ -38,10 +39,32 @@ function cityFallback(city: string, country: string) {
   return KNOWN_CITY_COORDS.find((item) => item.country === normalizedCountry && item.match.test(city)) || null;
 }
 
+function classifyRealtimeVerdict(value?: string | null): RealtimeVerdictBucket {
+  const verdict = String(value || "").trim().toUpperCase();
+  if (["VALID", "TAP_VALID", "CLAIMED", "REDEEMED", "CHECK_IN"].includes(verdict)) return "valid";
+  if (verdict.includes("REPLAY") || verdict.includes("DUPLICATE")) return "duplicate_replay";
+  if (verdict.includes("TAMPER")) return "tamper";
+  if (!verdict || ["UNKNOWN", "NOT_REGISTERED", "NOT_ACTIVE"].includes(verdict)) return "unknown";
+  if (verdict.includes("INVALID") || verdict === "REVOKED" || verdict.startsWith("BLOCKED_")) return "invalid";
+  return "unknown";
+}
+
+function isRealtimeRisk(value?: string | null) {
+  return ["duplicate_replay", "tamper", "invalid"].includes(classifyRealtimeVerdict(value));
+}
+
+function isClientReportedGps(value?: string | null) {
+  const source = String(value || "").trim().toLowerCase();
+  const approximate = source.includes("city") || source.includes("centroid") || source.includes("ip_") || source.includes("synthetic") || source.includes("fallback");
+  return !approximate && source.includes("gps");
+}
+
 function locationSourceLabel(row: TenantTapRealtimeEvent) {
   const source = String(row.locationSource || "").toLowerCase();
-  if (source === "browser_gps") {
-    return row.locationAccuracyM ? `GPS teléfono ${Math.round(row.locationAccuracyM)}m` : "GPS teléfono";
+  if (isClientReportedGps(source)) {
+    return row.locationAccuracyM
+      ? `GPS reportado por cliente (+/-${Math.round(row.locationAccuracyM)}m); no verificacion independiente`
+      : "GPS reportado por cliente; no verificacion independiente";
   }
   if (source === "ip_geo") return "IP aproximada";
   if (source.includes("error") || source.includes("denied")) return "GPS no autorizado";
@@ -63,17 +86,17 @@ function toMapPoint(row: TenantTapRealtimeEvent) {
   const fallback = cityFallback(city, country);
   const lat = Number.isFinite(Number(row.lat)) ? Number(row.lat) : fallback?.lat ?? Number.NaN;
   const lng = Number.isFinite(Number(row.lng)) ? Number(row.lng) : fallback?.lng ?? Number.NaN;
-  const result = String(row.verdict || "valid").toUpperCase();
+  const result = String(row.verdict || "UNKNOWN").toUpperCase();
   return {
     city,
     country,
     lat,
     lng,
     scans: 1,
-    risk: result === "VALID" ? 0 : 1,
+    risk: isRealtimeRisk(result) ? 1 : 0,
     status: result,
     source: String(row.source || "production"),
-    lastSeen: String(row.occurredAt || new Date().toISOString()),
+    lastSeen: String(row.occurredAt || ""),
     tenantSlug: row.tenantSlug || undefined,
     uid: row.uidMasked,
     device: `${deviceSummary(row)} - ${locationSourceLabel(row)}${row.timezoneLabel ? ` - ${row.timezoneLabel}` : ""}`,
@@ -88,6 +111,7 @@ type CityHotspot = {
   country: string;
   taps: number;
   risk: number;
+  unknown: number;
   gps: number;
   lastSeen: string;
   lastSeenMs: number;
@@ -162,6 +186,7 @@ function buildCityHotspots(rows: TenantTapRealtimeEvent[]) {
       country,
       taps: 0,
       risk: 0,
+      unknown: 0,
       gps: 0,
       lastSeen: String(row.occurredAt || ""),
       lastSeenMs,
@@ -169,8 +194,9 @@ function buildCityHotspots(rows: TenantTapRealtimeEvent[]) {
       device: deviceSummary(row),
     };
     current.taps += 1;
-    if (String(row.verdict || "").toLowerCase() !== "valid") current.risk += 1;
-    if (String(row.locationSource || "").toLowerCase() === "browser_gps") current.gps += 1;
+    if (isRealtimeRisk(row.verdict)) current.risk += 1;
+    if (classifyRealtimeVerdict(row.verdict) === "unknown") current.unknown += 1;
+    if (isClientReportedGps(row.locationSource)) current.gps += 1;
     if (lastSeenMs >= current.lastSeenMs) {
       current.lastSeen = String(row.occurredAt || current.lastSeen);
       current.lastSeenMs = lastSeenMs;
@@ -253,31 +279,35 @@ export function RealtimeOpsMonitor({
     setAiAnalyzing(true);
     setTimeout(() => {
       const total = visible.length;
-      const valid = visible.filter((item) => String(item.verdict || "").toLowerCase() === "valid").length;
-      const risk = total - valid;
+      const valid = visible.filter((item) => classifyRealtimeVerdict(item.verdict) === "valid").length;
+      const risk = visible.filter((item) => isRealtimeRisk(item.verdict)).length;
+      const unknown = visible.filter((item) => classifyRealtimeVerdict(item.verdict) === "unknown").length;
       const ratio = total > 0 ? (risk / total) * 100 : 0;
       const uids = new Set(visible.map((item) => item.uidMasked)).size;
       const cities = new Set(visible.map((item) => item.city || "Unknown")).size;
-      const gps = visible.filter((item) => String(item.locationSource || "").toLowerCase() === "browser_gps").length;
+      const gps = visible.filter((item) => isClientReportedGps(item.locationSource)).length;
       const repeatedInterest = uids > 0 ? total / uids : 0;
       const latest = visible[0];
 
-      let diagnosis = "Red limpia: no hay alertas de replay/tamper en el feed visible.";
-      let recommendation = "Convertir el interés: mostrar oferta de club, marketplace y puntos después de cada lectura válida.";
+      let diagnosis = "Evidencia digital sin alertas de replay/tamper en el feed visible.";
+      let recommendation = "Convertir el interés: mostrar oferta de club, marketplace y puntos después de cada mensaje NFC válido.";
 
       if (ratio > 15) {
-        diagnosis = "Riesgo alto: demasiadas lecturas no limpias en la ventana actual.";
+        diagnosis = "Riesgo alto: demasiados resultados replay, tamper o INVALID en la ventana actual.";
         recommendation = "Abrir eventos filtrados por riesgo, revisar UID/lote y bloquear acciones comerciales si el ratio supera 15%.";
+      } else if (unknown > 0) {
+        diagnosis = `${unknown} eventos estan sin clasificar, NOT_REGISTERED o NOT_ACTIVE; requieren revision operativa pero no se cuentan como fraude.`;
+        recommendation = "Revisar registro y activacion de lote/tag sin elevar esos estados a alerta de riesgo.";
       } else if (repeatedInterest > 3) {
         diagnosis = "Interés repetido: los mismos productos se están escaneando varias veces.";
         recommendation = "Ofrecer puntos extra, cata guiada o descuento si el usuario deja contacto voluntario.";
       } else if (gps / Math.max(total, 1) < 0.25) {
-        diagnosis = "Buena autenticidad, pero baja precisión GPS del teléfono.";
+        diagnosis = "Buena calidad de mensajes NFC según la evidencia digital disponible, pero baja cobertura de GPS reportado por cliente.";
         recommendation = "Pedir permiso de ubicación en mobile tap y marcar IP/ciudad como aproximada.";
       }
 
-      setAiReport(`Operación: ${total} lecturas, ${uids} UIDs, ${cities} ciudades, ${gps} con GPS del teléfono.
-Confianza: ${(100 - ratio).toFixed(1)}% de lecturas limpias.
+      setAiReport(`Operación: ${total} lecturas, ${uids} UIDs, ${cities} ciudades, ${gps} con GPS reportado por cliente y ${unknown} sin clasificar/lifecycle.
+Calidad del feed: ${total ? ((valid / total) * 100).toFixed(1) : "0.0"}% de mensajes NFC con veredicto válido; no implica autenticidad física. Riesgo explícito: ${ratio.toFixed(1)}%.
 Diagnóstico: ${diagnosis}
 Acción recomendada: ${recommendation}
 Último evento: ${latest?.uidMasked || "N/A"} - ${latest?.occurredAtLocal || latest?.occurredAt || "sin hora"} - ${latest ? locationSourceLabel(latest) : "sin ubicación"}.`);
@@ -295,7 +325,9 @@ Acción recomendada: ${recommendation}
       Zona_Horaria: e.timezoneLabel || e.timezone || "N/A",
       Fecha_UTC_Auditoria: e.occurredAtUtc || e.occurredAt || "N/A",
       Veredicto: String(e.verdict || "").toUpperCase(),
-      Riesgo: String(e.riskLevel || "").toUpperCase(),
+      Clasificacion_nexID: classifyRealtimeVerdict(e.verdict),
+      Riesgo_Explicito: isRealtimeRisk(e.verdict) ? "SI" : "NO",
+      Riesgo_Reportado_Upstream: String(e.riskLevel || "N/A").toUpperCase(),
       Ciudad: e.city || "Geolocalización pendiente",
       Pais: e.country || "--",
       Latitud: e.lat || "",
@@ -320,7 +352,9 @@ Acción recomendada: ${recommendation}
         { key: "Zona_Horaria", label: "Zona Horaria" },
         { key: "Fecha_UTC_Auditoria", label: "Fecha UTC Auditoría" },
         { key: "Veredicto", label: "Veredicto" },
-        { key: "Riesgo", label: "Nivel de Riesgo" },
+        { key: "Clasificacion_nexID", label: "Clasificacion nexID" },
+        { key: "Riesgo_Explicito", label: "Riesgo explicito" },
+        { key: "Riesgo_Reportado_Upstream", label: "Riesgo reportado upstream" },
         { key: "Ciudad", label: "Ciudad" },
         { key: "Pais", label: "País" },
         { key: "Latitud", label: "Latitud" },
@@ -400,9 +434,10 @@ Acción recomendada: ${recommendation}
               setLastUpdateAt(new Date().toISOString());
 
               // Audio chime
-              const verdict = String(payload.verdict || "").toLowerCase();
+              const verdictBucket = classifyRealtimeVerdict(payload.verdict);
               if (audioEnabledRef.current) {
-                playPing(verdict === "valid" ? "success" : "warning");
+                if (verdictBucket === "valid") playPing("success");
+                else if (isRealtimeRisk(payload.verdict)) playPing("warning");
               }
 
               return incomingId;
@@ -440,17 +475,18 @@ Acción recomendada: ${recommendation}
     [visibleEvents]
   );
   const liveMetrics = useMemo(() => {
-    const valid = visibleEvents.filter((item) => String(item.verdict || "").toLowerCase() === "valid").length;
-    const risk = Math.max(0, visibleEvents.length - valid);
+    const valid = visibleEvents.filter((item) => classifyRealtimeVerdict(item.verdict) === "valid").length;
+    const risk = visibleEvents.filter((item) => isRealtimeRisk(item.verdict)).length;
+    const unknown = visibleEvents.filter((item) => classifyRealtimeVerdict(item.verdict) === "unknown").length;
     const uniqueTags = new Set(visibleEvents.map((item) => String(item.uidMasked || ""))).size;
     const uniqueCities = new Set(visibleEvents.map((item) => String(item.city || "Unknown"))).size;
-    const gps = visibleEvents.filter((item) => String(item.locationSource || "").toLowerCase() === "browser_gps").length;
+    const gps = visibleEvents.filter((item) => isClientReportedGps(item.locationSource)).length;
     const mobile = visibleEvents.filter((item) => String(item.deviceType || "").toLowerCase().includes("mobile")).length;
-    return { valid, risk, uniqueTags, uniqueCities, gps, mobile };
+    return { valid, risk, unknown, uniqueTags, uniqueCities, gps, mobile };
   }, [visibleEvents]);
   const cityHotspots = useMemo(() => buildCityHotspots(visibleEvents), [visibleEvents]);
   const realtimePulse = useMemo(() => {
-    if (!hydrated) return { recentCount: 0, tapsPerMinute: 0, topTenants: [] as Array<{ tenant: string; taps: number; risk: number }> };
+    if (!hydrated) return { recentCount: 0, tapsPerMinute: 0, topTenants: [] as Array<{ tenant: string; taps: number; risk: number; unknown: number }> };
     const now = Date.now();
     const fiveMinutesAgo = now - 5 * 60 * 1000;
     const recent = visibleEvents.filter((event) => {
@@ -458,12 +494,13 @@ Acción recomendada: ${recommendation}
       return Number.isFinite(at) && at >= fiveMinutesAgo;
     });
     const tapsPerMinute = Math.round((recent.length / 5) * 10) / 10;
-    const byTenant = new Map<string, { taps: number; risk: number }>();
+    const byTenant = new Map<string, { taps: number; risk: number; unknown: number }>();
     recent.forEach((event) => {
       const tenant = String(event.tenantSlug || "unknown");
-      const current = byTenant.get(tenant) || { taps: 0, risk: 0 };
+      const current = byTenant.get(tenant) || { taps: 0, risk: 0, unknown: 0 };
       current.taps += 1;
-      if (String(event.verdict || "").toLowerCase() !== "valid") current.risk += 1;
+      if (isRealtimeRisk(event.verdict)) current.risk += 1;
+      if (classifyRealtimeVerdict(event.verdict) === "unknown") current.unknown += 1;
       byTenant.set(tenant, current);
     });
     const topTenants = [...byTenant.entries()]
@@ -520,7 +557,7 @@ Acción recomendada: ${recommendation}
       const bucketIndex = 11 - diff;
       if (bucketIndex < 0 || bucketIndex > 11) return;
       buckets[bucketIndex].taps += 1;
-      if (String(event.verdict || "").toLowerCase() !== "valid") buckets[bucketIndex].risk += 1;
+      if (isRealtimeRisk(event.verdict)) buckets[bucketIndex].risk += 1;
     });
     return buckets;
   }, [visibleEvents, hydrated]);
@@ -531,23 +568,23 @@ Acción recomendada: ${recommendation}
     const mobile = liveMetrics.mobile;
     const actionable = visibleEvents.filter((event) => {
       const hasLocation = Number.isFinite(Number(event.lat)) && Number.isFinite(Number(event.lng));
-      return String(event.verdict || "").toLowerCase() === "valid" && hasLocation && Boolean(event.uidMasked);
+      return classifyRealtimeVerdict(event.verdict) === "valid" && hasLocation && Boolean(event.uidMasked);
     }).length;
     const max = Math.max(taps, 1);
     return [
       { label: "Lecturas", value: taps, tone: "cyan", detail: "eventos del stream" },
       { label: "Válidas", value: valid, tone: "emerald", detail: "aptas para acción" },
-      { label: "Ubicación", value: gps, tone: "amber", detail: "GPS del teléfono" },
+      { label: "Ubicación", value: gps, tone: "amber", detail: "GPS reportado por cliente" },
       { label: "Mobile", value: mobile, tone: "violet", detail: "lecturas desde teléfono" },
       { label: "Señal CRM", value: actionable, tone: "sky", detail: "UID + zona usable" },
     ].map((stage) => ({ ...stage, pct: Math.round((stage.value / max) * 100) }));
   }, [liveMetrics.gps, liveMetrics.mobile, liveMetrics.valid, visibleEvents]);
   const riskEvents = useMemo(
-    () => visibleEvents.filter((event) => String(event.verdict || "").toLowerCase() !== "valid").slice(0, 4),
+    () => visibleEvents.filter((event) => isRealtimeRisk(event.verdict)).slice(0, 4),
     [visibleEvents],
   );
   const latestTap = visibleEvents[0] || null;
-  const fraudRate = visibleEvents.length ? Math.round((liveMetrics.risk / visibleEvents.length) * 1000) / 10 : 0;
+  const explicitRiskRate = visibleEvents.length ? Math.round((liveMetrics.risk / visibleEvents.length) * 1000) / 10 : 0;
   const cleanRate = visibleEvents.length ? (liveMetrics.valid / visibleEvents.length) * 100 : 0;
   const gpsCoverage = visibleEvents.length ? (liveMetrics.gps / visibleEvents.length) * 100 : 0;
   const mobileShare = visibleEvents.length ? (liveMetrics.mobile / visibleEvents.length) * 100 : 0;
@@ -556,14 +593,14 @@ Acción recomendada: ${recommendation}
     if (!visibleEvents.length) {
       return {
         tone: "border-slate-500/20 bg-slate-900/70 text-slate-200",
-        label: "ESPERANDO LECTURAS",
-        action: "Hacer 1 lectura NFC real para abrir eventos, mapa y funnel.",
+        label: "ESPERANDO EVENTOS",
+        action: "Hacé una lectura NFC y confirmá que el evento llegue para abrir mapa y funnel.",
       };
     }
-    if (fraudRate >= 15 || liveMetrics.risk >= 3) {
+    if (explicitRiskRate >= 15 || liveMetrics.risk >= 3) {
       return {
         tone: "border-rose-300/35 bg-rose-500/10 text-rose-100",
-        label: "ALERTA ANTIFRAUDE",
+        label: "ALERTA DE RIESGO NFC",
         action: `Revisar ${hottest?.city || "hotspot principal"} y abrir eventos de riesgo antes de activar promociones.`,
       };
     }
@@ -577,16 +614,16 @@ Acción recomendada: ${recommendation}
     if (realtimePulse.tapsPerMinute >= 1) {
       return {
         tone: "border-emerald-300/35 bg-emerald-500/10 text-emerald-100",
-        label: "ACTIVIDAD EN VIVO",
+        label: "ACTIVIDAD RECIENTE",
         action: `Activar oferta o puntos extra en ${hottest?.city || "la zona con más lecturas"}.`,
       };
     }
     return {
       tone: "border-cyan-300/35 bg-cyan-500/10 text-cyan-100",
-      label: "OPERACIÓN LIMPIA",
-      action: `Convertir lecturas válidas en club, garantía o marketplace desde ${hottest?.city || "el feed activo"}.`,
+      label: "FEED SIN ALERTAS",
+      action: `Convertir mensajes NFC válidos en club, garantía o marketplace desde ${hottest?.city || "el feed activo"}.`,
     };
-  }, [cityHotspots, fraudRate, gpsCoverage, liveMetrics.risk, realtimePulse.tapsPerMinute, visibleEvents.length]);
+  }, [cityHotspots, explicitRiskRate, gpsCoverage, liveMetrics.risk, realtimePulse.tapsPerMinute, visibleEvents.length]);
   const latestImpactEvent = useMemo(() => {
     if (!hydrated) return null;
     const latest = visibleEvents[0];
@@ -597,7 +634,7 @@ Acción recomendada: ${recommendation}
   }, [hydrated, timeStr, visibleEvents]);
 
   function timeAgo(value: unknown) {
-    if (!hydrated) return "en vivo";
+    if (!hydrated) return "reciente";
     const d = new Date(String(value || ""));
     if (Number.isNaN(d.getTime())) return "justo ahora";
     const sec = Math.max(1, Math.round((Date.now() - d.getTime()) / 1000));
@@ -655,9 +692,9 @@ Acción recomendada: ${recommendation}
         
         {latestImpactEvent ? (
           <div className="pointer-events-none absolute left-1/2 top-24 z-20 w-[min(58rem,calc(100vw-2rem))] -translate-x-1/2 animate-pulse rounded-xl border border-cyan-300/40 bg-cyan-950/70 px-5 py-4 text-center shadow-[0_0_38px_rgba(34,211,238,0.28)] backdrop-blur">
-            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-300">Impacto en vivo</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-300">Evento recibido hace menos de 3 s</p>
             <p className="mt-1 text-lg font-black uppercase tracking-[0.08em] text-white">
-              LOTE ACTIVO ESCANEADO EN {String(latestImpactEvent.city || "ZONA SIN RESOLVER")} - UID: {latestImpactEvent.uidMasked || "N/A"}
+              EVENTO NFC EN {String(latestImpactEvent.city || "ZONA SIN RESOLVER")} - UID: {latestImpactEvent.uidMasked || "N/A"} - VEREDICTO: {String(latestImpactEvent.verdict || "UNKNOWN").toUpperCase()}
             </p>
           </div>
         ) : null}
@@ -674,19 +711,23 @@ Acción recomendada: ${recommendation}
           </div>
           <div className="bg-slate-950/60 border border-rose-500/20 rounded-xl p-3 text-center">
             <span className="text-[10px] text-rose-500/80 uppercase tracking-widest">Riesgo</span>
-            <div className="text-2xl font-black text-rose-400 mt-1">{fraudRate}%</div>
+            <div className="text-2xl font-black text-rose-400 mt-1">{visibleEvents.length ? `${explicitRiskRate}%` : "Sin base"}</div>
+          </div>
+          <div className="bg-slate-950/60 border border-amber-500/20 rounded-xl p-3 text-center">
+            <span className="text-[10px] text-amber-400/80 uppercase tracking-widest">Sin clasificar</span>
+            <div className="text-2xl font-black text-amber-200 mt-1">{liveMetrics.unknown}</div>
           </div>
           <div className="bg-slate-950/60 border border-emerald-500/20 rounded-xl p-3 text-center">
-            <span className="text-[10px] text-emerald-400 uppercase tracking-widest">Confianza</span>
-            <div className="text-2xl font-black text-emerald-300 mt-1">{formatPercent(cleanRate)}</div>
+            <span className="text-[10px] text-emerald-400 uppercase tracking-widest">Calidad NFC</span>
+            <div className="text-2xl font-black text-emerald-300 mt-1">{visibleEvents.length ? formatPercent(cleanRate) : "Sin base"}</div>
           </div>
           <div className="bg-slate-950/60 border border-indigo-500/20 rounded-xl p-3 text-center">
-            <span className="text-[10px] text-indigo-400 uppercase tracking-widest">Zonas activas</span>
+            <span className="text-[10px] text-indigo-400 uppercase tracking-widest">Zonas reportadas</span>
             <div className="text-2xl font-black text-indigo-300 mt-1">{liveMetrics.uniqueCities}</div>
           </div>
           <div className="bg-slate-950/60 border border-amber-500/20 rounded-xl p-3 text-center">
-            <span className="text-[10px] text-amber-400 uppercase tracking-widest">GPS Real</span>
-            <div className="text-2xl font-black text-amber-200 mt-1">{formatPercent(gpsCoverage)}</div>
+            <span className="text-[10px] text-amber-400 uppercase tracking-widest">GPS reportado</span>
+            <div className="text-2xl font-black text-amber-200 mt-1">{visibleEvents.length ? formatPercent(gpsCoverage) : "Sin base"}</div>
           </div>
           <div className="bg-slate-950/60 border border-fuchsia-500/20 rounded-xl p-3 text-center">
             <span className="text-[10px] text-fuchsia-400 uppercase tracking-widest">Lecturas recientes (5m)</span>
@@ -751,16 +792,18 @@ Acción recomendada: ${recommendation}
               </div>
               <div className="flex-1 overflow-y-auto space-y-2.5 text-xs">
                 {visibleEvents.map((event) => {
-                  const result = String(event.verdict || "valid").toUpperCase();
-                  const isRisk = result !== "VALID";
+                  const result = String(event.verdict || "UNKNOWN").toUpperCase();
+                  const verdictBucket = classifyRealtimeVerdict(result);
+                  const isRisk = isRealtimeRisk(result);
+                  const isUnknown = verdictBucket === "unknown";
                   const eventId = String(event.eventId || "");
                   const isLatest = latestEventId && eventId === latestEventId;
                   const time = event.occurredAtLocal || new Date(String(event.occurredAt)).toLocaleTimeString("es-AR");
 
                   return (
-                    <div key={eventId} className={`p-2 rounded border transition-all ${isLatest ? 'bg-cyan-950/20 border-cyan-400/50 shadow-[0_0_10px_rgba(6,182,212,0.15)]' : 'bg-slate-900/30 border-white/5'} ${isRisk ? 'border-rose-500/20 bg-rose-950/5' : ''}`}>
+                    <div key={eventId} className={`p-2 rounded border transition-all ${isLatest ? 'bg-cyan-950/20 border-cyan-400/50 shadow-[0_0_10px_rgba(6,182,212,0.15)]' : 'bg-slate-900/30 border-white/5'} ${isRisk ? 'border-rose-500/20 bg-rose-950/5' : isUnknown ? 'border-amber-500/20 bg-amber-950/5' : ''}`}>
                       <div className="flex items-center justify-between mb-1">
-                        <span className={`font-black ${isRisk ? 'text-rose-400' : 'text-emerald-400'}`}>
+                        <span className={`font-black ${isRisk ? 'text-rose-400' : isUnknown ? 'text-amber-300' : 'text-emerald-400'}`}>
                           [{result}] {isLatest ? "NEW_EVENT" : ""}
                         </span>
                         <span className="text-[10px] text-slate-500">{time}</span>
@@ -811,9 +854,10 @@ Acción recomendada: ${recommendation}
                         <p className="font-black text-white">#{index + 1} {hotspot.city}, {hotspot.country}</p>
                         <p className="text-cyan-200">{hotspot.taps} lecturas</p>
                       </div>
-                      <div className="mt-1 grid grid-cols-3 gap-1 text-[10px] text-slate-300">
+                      <div className="mt-1 grid grid-cols-4 gap-1 text-[10px] text-slate-300">
                         <span>GPS {formatPercent(gpsPct)}</span>
                         <span className={riskPct ? "text-rose-300" : "text-emerald-300"}>Riesgo {formatPercent(riskPct)}</span>
+                        <span className="text-amber-200">Sin clasificar {hotspot.unknown}</span>
                         <span className="truncate">UID {hotspot.lastUid}</span>
                       </div>
                     </div>
@@ -843,10 +887,10 @@ Acción recomendada: ${recommendation}
           <div>
             <h2 className="flex items-center gap-2 text-base font-black tracking-[0.02em] text-white">
               <Activity className="h-5 w-5 text-cyan-300" />
-              CRM en vivo
+              CRM de eventos NFC
             </h2>
             <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-400">
-              Lecturas reales, mapa por zona, riesgo y acción comercial post-tap en una sola consola.
+              Eventos de la fuente seleccionada, mapa de ubicaciones reportadas, riesgo y acción comercial post-evento en una sola consola.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2 no-print">
@@ -855,7 +899,7 @@ Acción recomendada: ${recommendation}
               value={selectedTenant}
               onChange={(event) => setSelectedTenant(event.target.value)}
               className="rounded-lg border border-white/15 bg-slate-950 px-3 py-2 text-xs text-slate-100"
-              aria-label="Filtrar tenant del CRM en vivo"
+              aria-label="Filtrar tenant del CRM de eventos NFC"
             >
               <option value="all">Todos los tenants</option>
               {tenantOptions.map((tenant) => (
@@ -903,9 +947,10 @@ Acción recomendada: ${recommendation}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {[
               { label: "Lecturas", value: visibleEvents.length, detail: `${realtimePulse.recentCount} últimos 5m`, tone: "cyan" },
-              { label: "Lecturas válidas", value: formatPercent(cleanRate), detail: `${liveMetrics.valid} VALID`, tone: "emerald" },
-              { label: "Riesgo", value: `${fraudRate}%`, detail: `${liveMetrics.risk} alertas`, tone: liveMetrics.risk ? "rose" : "slate" },
-              { label: "Ubicación útil", value: formatPercent(gpsCoverage), detail: `${liveMetrics.gps} con GPS`, tone: "amber" },
+              { label: "Mensajes NFC válidos", value: visibleEvents.length ? formatPercent(cleanRate) : "Sin base", detail: `${liveMetrics.valid} VALID`, tone: "emerald" },
+              { label: "Riesgo explícito", value: visibleEvents.length ? `${explicitRiskRate}%` : "Sin base", detail: `${liveMetrics.risk} replay/tamper/INVALID`, tone: liveMetrics.risk ? "rose" : "slate" },
+              { label: "Sin clasificar", value: liveMetrics.unknown, detail: "UNKNOWN / registro / activacion", tone: "slate" },
+              { label: "Ubicación reportada", value: visibleEvents.length ? formatPercent(gpsCoverage) : "Sin base", detail: `${liveMetrics.gps} con GPS del cliente`, tone: "amber" },
               { label: "UIDs únicas", value: liveMetrics.uniqueTags, detail: `${liveMetrics.uniqueCities} ciudades`, tone: "violet" },
               { label: "Velocidad", value: realtimePulse.tapsPerMinute, detail: "lecturas por minuto", tone: "sky" },
             ].map((metric) => (
@@ -1005,7 +1050,7 @@ Acción recomendada: ${recommendation}
         <div className="min-w-0 rounded-2xl border border-cyan-300/18 bg-slate-950/70 p-4">
           <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-black uppercase tracking-[0.16em] text-cyan-100">Mapa vivo de lecturas</p>
+              <p className="text-sm font-black uppercase tracking-[0.16em] text-cyan-100">Mapa de eventos reportados</p>
               <p className="mt-1 text-xs text-slate-400">
                 Usa coordenadas del evento y fallback de ciudad solo cuando falta GPS.
               </p>
@@ -1026,16 +1071,17 @@ Acción recomendada: ${recommendation}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-100">Zonas accionables</p>
-              <p className="mt-1 text-xs text-slate-400">Priorizadas por lecturas, GPS útil y riesgo.</p>
+              <p className="mt-1 text-xs text-slate-400">Priorizadas por lecturas, GPS reportado por cliente y riesgo explicito.</p>
             </div>
             <p className="text-[11px] text-slate-500">Top {cityHotspots.length}</p>
           </div>
           <div className="mt-3 overflow-hidden rounded-xl border border-white/10">
-            <div className="grid grid-cols-[1.2fr_.6fr_.65fr_.85fr_1fr] bg-slate-900/80 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+            <div className="grid grid-cols-[1.2fr_.55fr_.6fr_.7fr_.7fr_1fr] bg-slate-900/80 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
               <span>Zona</span>
               <span>Lecturas</span>
               <span>GPS</span>
               <span>Riesgo</span>
+              <span>Sin clasificar</span>
               <span>Siguiente acción</span>
             </div>
             {cityHotspots.map((hotspot) => {
@@ -1043,11 +1089,12 @@ Acción recomendada: ${recommendation}
               const riskPct = hotspot.taps ? (hotspot.risk / hotspot.taps) * 100 : 0;
               const action = riskPct > 0 ? "Auditar UID/lote" : gpsPct >= 50 ? "Activar beneficio local" : "Pedir opt-in GPS";
               return (
-                <div key={hotspot.key} className="grid grid-cols-[1.2fr_.6fr_.65fr_.85fr_1fr] border-t border-white/10 px-3 py-2 text-xs text-slate-200">
+                <div key={hotspot.key} className="grid grid-cols-[1.2fr_.55fr_.6fr_.7fr_.7fr_1fr] border-t border-white/10 px-3 py-2 text-xs text-slate-200">
                   <span className="min-w-0 truncate font-semibold">{hotspot.city}, {hotspot.country}</span>
                   <span>{hotspot.taps}</span>
                   <span>{formatPercent(gpsPct)}</span>
                   <span className={riskPct ? "text-rose-300" : "text-emerald-300"}>{formatPercent(riskPct)}</span>
+                  <span className="text-amber-200">{hotspot.unknown}</span>
                   <span className="truncate text-cyan-200">{action}</span>
                 </div>
               );
@@ -1060,12 +1107,14 @@ Acción recomendada: ${recommendation}
           <p className="text-xs font-black uppercase tracking-[0.16em] text-rose-100">Riesgos y últimos eventos</p>
           <div className="mt-3 space-y-2">
             {(riskEvents.length ? riskEvents : visibleEvents.slice(0, 5)).map((event) => {
-              const result = String(event.verdict || "valid").toUpperCase();
-              const risk = result !== "VALID";
+              const result = String(event.verdict || "UNKNOWN").toUpperCase();
+              const verdictBucket = classifyRealtimeVerdict(result);
+              const risk = isRealtimeRisk(result);
+              const unknown = verdictBucket === "unknown";
               return (
-                <div key={String(event.eventId || `${event.uidMasked}-${event.occurredAt}`)} className={`rounded-xl border px-3 py-2 text-xs ${risk ? "border-rose-300/30 bg-rose-500/10" : "border-white/10 bg-slate-900/55"}`}>
+                <div key={String(event.eventId || `${event.uidMasked}-${event.occurredAt}`)} className={`rounded-xl border px-3 py-2 text-xs ${risk ? "border-rose-300/30 bg-rose-500/10" : unknown ? "border-amber-300/25 bg-amber-500/10" : "border-white/10 bg-slate-900/55"}`}>
                   <div className="flex items-center justify-between gap-2">
-                    <p className={risk ? "font-black text-rose-200" : "font-black text-emerald-200"}>{result}</p>
+                    <p className={risk ? "font-black text-rose-200" : unknown ? "font-black text-amber-200" : "font-black text-emerald-200"}>{result}</p>
                     <p className="text-[10px] text-slate-500">{timeAgo(event.occurredAt)}</p>
                   </div>
                   <p className="mt-1 truncate text-slate-200">{event.uidMasked} - {event.city || "sin ciudad"}, {event.country || "--"}</p>
@@ -1073,7 +1122,7 @@ Acción recomendada: ${recommendation}
                 </div>
               );
             })}
-            {!visibleEvents.length ? <p className="text-sm text-slate-400">Esperando lecturas reales del stream.</p> : null}
+            {!visibleEvents.length ? <p className="text-sm text-slate-400">Esperando eventos del stream.</p> : null}
           </div>
         </div>
       </section>

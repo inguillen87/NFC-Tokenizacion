@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 import { Wallet, JsonRpcProvider, formatEther, isAddress } from "ethers";
 import { checkAdmin, checkAdminPermission } from "../../../../lib/auth";
 import { json } from "../../../../lib/http";
+import { probePolygonExecutorReadiness } from "../../../../lib/polygon-executor-readiness";
 
 const AMOY_CHAIN_ID = 80002n;
 
@@ -76,6 +77,7 @@ export async function GET(req: Request): Promise<Response> {
   let recipientBalancePol: number | null = null;
   let chainId: string | null = null;
   let contractDeployed = false;
+  let executorReadiness: Awaited<ReturnType<typeof probePolygonExecutorReadiness>> | null = null;
 
   if (!polygonMode) {
     checks.push(check(
@@ -97,7 +99,8 @@ export async function GET(req: Request): Promise<Response> {
       autoTokenize,
       useLocalMinter,
       rpc: { configured: Boolean(rpcUrl), url: maskUrl(rpcUrl) },
-      executor: { configured: executorConfigured, url: maskUrl(executorUrl), secretConfigured: Boolean(executorSecret) },
+      verificationLevel: "not_live_verified",
+      executor: { configured: executorConfigured, liveVerified: false, reason: polygonMode ? "not_probed" : "polygon_mode_inactive", url: maskUrl(executorUrl), secretConfigured: Boolean(executorSecret) },
       contract: { address: contractAddress || null, deployed: false },
       minter: { address: null, configuredAddress: configuredMinterAddress || null, configured: Boolean(minterPrivateKey), balancePol: simulated || null },
       recipient: { address: defaultRecipient || null, balancePol: recipientBalancePol },
@@ -135,14 +138,21 @@ export async function GET(req: Request): Promise<Response> {
       checks.push(check("minter_key", "Local minter private key", "fail", "Invalid or missing POLYGON_MINTER_PRIVATE_KEY."));
     }
   } else if (executorConfigured) {
-    checks.push(executorSecret
-      ? check("executor", "External executor", "pass", "Executor URL and secret configured.")
-      : check("executor", "External executor", "fail", "TOKENIZATION_EXECUTOR_SECRET missing."));
+    executorReadiness = await probePolygonExecutorReadiness();
+    if (executorReadiness.liveVerified) {
+      chainId = executorReadiness.chainId;
+      contractDeployed = executorReadiness.contractDeployed;
+      minterAddress = executorReadiness.signerAddress;
+      minterBalancePol = executorReadiness.signerBalancePol;
+      checks.push(check("executor", "External executor", "pass", "Authenticated /ready verified RPC, Amoy 80002, contract bytecode, authorized signer and gas."));
+    } else {
+      checks.push(check("executor", "External executor", "fail", executorReadiness.reason));
+    }
   } else {
     checks.push(check("minter_or_executor", "Minter/executor", "fail", "Enable local minter or configure executor."));
   }
 
-  if (rpcUrl) {
+  if (rpcUrl && useLocalMinter) {
     try {
       const provider = new JsonRpcProvider(rpcUrl);
       const network = await provider.getNetwork();
@@ -177,18 +187,33 @@ export async function GET(req: Request): Promise<Response> {
   }
 
   const failed = checks.filter((item) => item.status === "fail");
+  const executionPathLive = useLocalMinter
+    ? chainId === String(AMOY_CHAIN_ID) && contractDeployed && Boolean(minterAddress) && Number(minterBalancePol || 0) > 0
+    : executorReadiness?.liveVerified === true;
+  const chainReady = failed.length === 0 && executionPathLive;
   return json({
     ok: true,
-    ready: failed.length === 0,
-    chainReady: failed.length === 0,
+    ready: chainReady,
+    chainReady,
+    verificationLevel: chainReady ? "live_verified" : executorConfigured ? "configured_unverified" : "not_live_verified",
     mode,
     network: "polygon-amoy",
     chainId,
     autoTokenize,
     useLocalMinter,
     rpc: { configured: Boolean(rpcUrl), url: maskUrl(rpcUrl) },
-    executor: { configured: executorConfigured, url: maskUrl(executorUrl), secretConfigured: Boolean(executorSecret) },
-    contract: { address: contractAddress || null, deployed: contractDeployed },
+    executor: {
+      configured: executorConfigured,
+      liveVerified: executorReadiness?.liveVerified === true,
+      reason: executorReadiness?.reason || (executorConfigured ? "not_probed" : "executor_not_configured"),
+      url: maskUrl(executorUrl),
+      secretConfigured: Boolean(executorSecret),
+      chainId: executorReadiness?.chainId || null,
+      contractAddress: executorReadiness?.contractAddress || null,
+      signerAddress: executorReadiness?.signerAddress || null,
+      signerAuthorized: executorReadiness?.signerAuthorized === true,
+    },
+    contract: { address: contractAddress || executorReadiness?.contractAddress || null, deployed: contractDeployed },
     minter: { address: minterAddress, configuredAddress: configuredMinterAddress || null, configured: Boolean(minterPrivateKey), balancePol: minterBalancePol },
     recipient: { address: defaultRecipient || null, balancePol: recipientBalancePol },
     metadataPrefix,

@@ -4,12 +4,22 @@ import { getConsumerFromRequest } from "../../../../lib/consumer-auth";
 import { json } from "../../../../lib/http";
 import { sql } from "../../../../lib/db";
 import { ensureConsumerPortalSchema } from "../../../../lib/commercial-runtime-schema";
+import { enforceCriticalRateLimit } from "../../../../lib/critical-rate-limit";
+import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../lib/bounded-request-body";
 
 export async function PATCH(req: Request) {
-  await ensureConsumerPortalSchema();
   const consumer = await getConsumerFromRequest(req);
   if (!consumer) return json({ ok: false, error: "unauthorized" }, 401);
-  const body = await req.json().catch(() => ({}));
+  const limited = await enforceCriticalRateLimit(req, { rateClass: "public_write", tenantId: "consumer", subjectId: `consumer:${consumer.id}:privacy-consent` });
+  if (limited) return limited;
+  let body: Record<string, unknown>;
+  try {
+    body = await readBoundedJsonBody<Record<string, unknown>>(req, 8 * 1024);
+  } catch (error) {
+    const tooLarge = error instanceof RequestBodyTooLargeError;
+    return json({ ok: false, error: tooLarge ? "request_body_too_large" : "invalid_json" }, tooLarge ? 413 : 400);
+  }
+  await ensureConsumerPortalSchema();
   if (!body.tenantId || !body.scope) return json({ ok: false, error: "tenantId_scope_required" }, 400);
   const granted = Boolean(body.granted);
   const rows = await sql/*sql*/`

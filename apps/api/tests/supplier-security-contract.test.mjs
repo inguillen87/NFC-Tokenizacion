@@ -25,20 +25,27 @@ test("supplier export requires operator password and never returns it", () => {
   assert.doesNotMatch(source, /randomBytes\(8\)/);
 });
 
-test("supplier export reserves one-time packs with conditional updates before secret material is built", () => {
+test("supplier export consumes one-time counters only with the persisted encrypted artifact", () => {
   const source = readWorkspaceFile("apps/api/src/app/admin/supplier-orders/[orderId]/export-pack/route.ts");
+  const migration = readWorkspaceFile("apps/api/db/migrations/20260726190000_0061_supplier_export_artifact_delivery.sql");
   const reservationIndex = source.indexOf("reserved_sub_batches AS");
   const decryptIndex = source.indexOf("decryptBatchKeyHex(String");
+  const encryptionIndex = source.indexOf("encryptSupplierZipArchive(zipBuffer");
 
   assert.notEqual(reservationIndex, -1);
-  assert.ok(reservationIndex < decryptIndex);
+  assert.ok(decryptIndex >= 0 && decryptIndex < reservationIndex);
+  assert.ok(encryptionIndex > decryptIndex && encryptionIndex < reservationIndex);
   assert.match(source, /ssb\.key_export_count = 0/);
   assert.match(source, /bk\.export_count = 0/);
-  assert.match(source, /reserved_sub_batches[\s\S]*reserved_keys/);
-  assert.match(source, /reserved_sub_batches[\s\S]*!== rows\.length/);
-  assert.match(source, /reserved_keys[\s\S]*!== rows\.length/);
+  assert.match(source, /reservation_gate AS MATERIALIZED/);
+  assert.match(source, /inserted_artifacts AS/);
+  assert.match(source, /inserted_evidence AS/);
+  assert.match(source, /encrypted_payload_base64/);
+  assert.match(source, /no one-time export counter was consumed/);
   assert.match(source, /UPDATE batch_key_material[\s\S]*exported_by/);
   assert.doesNotMatch(source, /SET export_count = export_count \+ 1[\s\S]*WHERE supplier_sub_batch_id = \$\{row\.supplier_sub_batch_id\}/);
+  assert.match(migration, /encrypted_payload_base64 text/);
+  assert.match(migration, /delivery_status/);
 });
 
 test("supplier order creation writes lifecycle records without returning raw batch keys", () => {
@@ -89,10 +96,11 @@ test("public proof and anchor input stay hash-only", () => {
 
   assert.match(anchorSource, /findForbiddenProofPayloadKey\(payload\)/);
   assert.match(anchorSource, /proof_payload_sensitive_key_rejected/);
-  assert.match(anchorsSource, /event_hashes_required/);
+  assert.match(anchorsSource, /event_ids_required/);
+  assert.match(anchorsSource, /direct_event_hashes_forbidden/);
   assert.match(anchorsSource, /event_hashes_json/);
-  assert.match(anchorsSource, /buildMerkleRoot\(eventHashes\)/);
-  assert.match(anchorsSource, /IOTA_PROVIDER_MODE/);
+  assert.match(anchorsSource, /prepareIotaEvidence/);
+  assert.match(anchorsSource, /resolveIotaEvidenceRuntimeConfig/);
   assert.match(anchorsSource, /mock-iota-/);
   assert.doesNotMatch(anchorsSource, /mock[\s\S]{0,160}status\s*=\s*"confirmed"/);
   assert.doesNotMatch(anchorsSource, /json-rpc\.evm\.testnet\.iotaledger\.net/);

@@ -92,14 +92,14 @@ function otpHtml(contact: string, code: string, ttlMinutes: number, magicToken?:
           <div style="font-size:28px; font-weight:900; letter-spacing:-0.03em; color:#ffffff; margin:0 0 8px;">
             nex<span style="color:#06b6d4; font-weight:800;">ID</span>
           </div>
-          <p style="margin:0; font-size:11px; text-transform:uppercase; letter-spacing:0.25em; color:#67e8f9; font-weight:700;">Global Authenticity Passport</p>
+          <p style="margin:0; font-size:11px; text-transform:uppercase; letter-spacing:0.25em; color:#67e8f9; font-weight:700;">Global Digital Identity Passport</p>
         </div>
         
         <!-- Content body -->
         <div style="padding:40px 32px;">
           <h2 style="margin:0 0 12px; font-size:22px; font-weight:800; color:#ffffff; text-align:center;">¡Te damos la bienvenida!</h2>
           <p style="margin:0 0 24px; font-size:14px; line-height:1.6; color:#94a3b8; text-align:center;">
-            Estás a un paso de acceder a tu pasaporte digital de autenticidad, registrar la propiedad de tus productos premium y sumar puntos de fidelización exclusiva.
+            Estás a un paso de acceder a tu pasaporte de identidad digital, gestionar credenciales vinculadas y solicitar beneficios según las políticas de la marca. Este acceso no autentica por sí solo ningún producto físico.
           </p>
           
           <div style="background-color:#020617; border:1px solid rgba(6,182,212,0.25); border-radius:16px; padding:24px; text-align:center; margin-bottom:28px; box-shadow:inset 0 2px 8px rgba(0,0,0,0.5);">

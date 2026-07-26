@@ -88,6 +88,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ orderId:
 
   return json({
     ok: true,
+    key_custody: {
+      mode: "pilot_application_envelope_encryption",
+      managed_kms: false,
+      hsm_backed: false,
+      secrets_exposed: false,
+    },
     order: {
       id: order.id,
       tenant_slug: order.tenant_slug,

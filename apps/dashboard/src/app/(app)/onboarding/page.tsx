@@ -121,6 +121,7 @@ async function getPilotSnapshot(
     activeTags,
     assetProfiles: assets.length,
     readyAssets,
+    scoredAssetProfiles: assetScores.length,
     averageAssetScore: assetScores.length
       ? Math.round(assetScores.reduce((sum, score) => sum + score, 0) / assetScores.length)
       : 0,
@@ -143,7 +144,7 @@ export default async function OnboardingPage() {
       <SectionHeading
         eyebrow="Pilot launchpad"
         title={isTenantBound ? "Puesta en marcha del tenant" : "Puesta en marcha multi-tenant"}
-        description="Un recorrido operativo con evidencia real: configura el workspace, prepara el lote, carga identidad visual, valida un tap y abre la salida verificable."
+        description="Un recorrido operativo con fuente visible: configurá el workspace, prepará el lote, cargá identidad visual, validá un mensaje NFC y abrí la salida verificable."
       />
       {isTenantAdmin && session.setupCompleted === false ? <OnboardingSetupWizard session={session} /> : null}
       <PilotLaunchpad snapshot={snapshot} role={session.role} />

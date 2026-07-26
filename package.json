@@ -43,6 +43,7 @@
     "apply:staging:v2": "node scripts/apply-staging-v2-migrations.mjs",
     "check:waf:policy": "node scripts/validate-waf-policy.mjs",
     "gate:iota:readonly": "node scripts/iota-v2-readonly-smoke.mjs",
+    "gate:iota:live-canary": "node scripts/iota-staging-live-canary.mjs",
     "gate:enterprise": "node scripts/enterprise-gates.mjs"
   },
   "packageManager": "npm@10.9.0",
@@ -53,6 +54,8 @@
     "sharp": "0.35.3"
   },
   "overrides": {
+    "gcp-metadata": "8.1.2",
+    "google-gax": "5.0.4",
     "postcss": "$postcss",
     "sharp": "$sharp",
     "three": "0.184.0",

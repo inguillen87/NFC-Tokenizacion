@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getDashboardSession } from "../../../lib/session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -6,6 +7,58 @@ export const dynamic = "force-dynamic";
 const HF_CHAT_URL = "https://router.huggingface.co/v1/chat/completions";
 const DEFAULT_CHAT_MODEL = "zai-org/GLM-5.2:together";
 const DEFAULT_FALLBACK_CHAT_MODEL = "google/gemma-4-26B-A4B-it:deepinfra";
+const MAX_BODY_BYTES = 16_384;
+const MAX_TEXT_CHARS = 6_000;
+const RATE_WINDOW_MS = 60_000;
+const RATE_MAX = 12;
+const MAX_RATE_BUCKETS = 4_096;
+const ALLOWED_TONES = new Set(["", "sommelier", "club-privado", "vip-club", "modern-web3", "executive-summary"]);
+const rateBuckets = new Map<string, { count: number; resetAt: number }>();
+
+function sameOrigin(req: Request) {
+  const origin = req.headers.get("origin");
+  if (!origin) return process.env.NODE_ENV !== "production";
+  try {
+    return new URL(origin).origin === new URL(req.url).origin;
+  } catch {
+    return false;
+  }
+}
+
+function consumeRateLimit(key: string, now = Date.now()) {
+  if (!rateBuckets.has(key) && rateBuckets.size >= MAX_RATE_BUCKETS) {
+    for (const [bucketKey, bucket] of rateBuckets) {
+      if (bucket.resetAt <= now) rateBuckets.delete(bucketKey);
+    }
+    while (rateBuckets.size >= MAX_RATE_BUCKETS) {
+      const oldest = rateBuckets.keys().next().value as string | undefined;
+      if (!oldest) break;
+      rateBuckets.delete(oldest);
+    }
+  }
+  const current = rateBuckets.get(key);
+  if (!current || current.resetAt <= now) {
+    rateBuckets.set(key, { count: 1, resetAt: now + RATE_WINDOW_MS });
+    return 0;
+  }
+  if (current.count >= RATE_MAX) return Math.max(1, Math.ceil((current.resetAt - now) / 1_000));
+  current.count += 1;
+  return 0;
+}
+
+async function readBoundedJson(req: Request) {
+  const declared = Number(req.headers.get("content-length") || "0");
+  if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) return { ok: false as const, reason: "payload_too_large" };
+  const raw = await req.text();
+  if (new TextEncoder().encode(raw).byteLength > MAX_BODY_BYTES) return { ok: false as const, reason: "payload_too_large" };
+  try {
+    const body = JSON.parse(raw) as unknown;
+    if (!body || typeof body !== "object" || Array.isArray(body)) return { ok: false as const, reason: "invalid_json" };
+    return { ok: true as const, body: body as Record<string, unknown> };
+  } catch {
+    return { ok: false as const, reason: "invalid_json" };
+  }
+}
 
 function isClubTone(tone?: string) {
   return tone === "club-privado" || tone === "vip-club";
@@ -14,16 +67,16 @@ function isClubTone(tone?: string) {
 function fallbackOptimizedText(text: string, tone?: string) {
   const clean = String(text || "").replace(/\s+/g, " ").trim();
   if (tone === "sommelier") {
-    return `Version premium: ${clean || "vino de bodega"} con origen claro, notas de cata, crianza y una invitacion concreta a la experiencia de marca.`;
+    return `Versión premium: ${clean || "descripción pendiente de datos del producto"}. Conserva únicamente la información declarada; origen, crianza, notas y premios requieren una ficha verificada.`;
   }
   if (isClubTone(tone)) {
     return `Invitacion cuidada: ${clean || "beneficio exclusivo"} con cupos limitados, acceso preferencial y trato directo de la marca.`;
   }
   if (tone === "modern-web3") {
-    return `Producto conectado: ${clean || "botella verificada"} con pasaporte digital, trazabilidad del lote y evidencia tecnica consultable desde el celular.`;
+    return `Experiencia phygital: ${clean || "producto con identidad digital pendiente de contexto"}. Puede vincular un pasaporte y evidencia técnica cuando estén confirmados; no implica autenticidad física ni ownership.`;
   }
   if (tone === "executive-summary") {
-    return `Análisis del Negocio: Con un volumen de ${clean || "taps registrados"}, la bodega experimenta un canal de interacción saludable con alta tasa de lecturas originales. Se recomienda potenciar la fidelización activa ofreciendo beneficios directos en el paso final del escaneo para maximizar el registro en el Pasaporte. Las alertas de riesgo se mantienen en niveles bajos, lo que valida la robustez del sellado.`;
+    return `Resumen determinístico local: ${clean || "no se recibieron KPIs suficientes"}. El proveedor de IA no confirmó un análisis. Revisá los valores del dataset antes de clasificar salud operativa, nivel de riesgo o desempeño, y definí la próxima acción con evidencia del scope activo.`;
   }
   return clean || "Texto premium generado localmente.";
 }
@@ -88,11 +141,13 @@ function tokenBudgetFor(model: string) {
 }
 
 export async function GET() {
+  const session = await getDashboardSession();
+  if (!session) return NextResponse.json({ ok: false, reason: "dashboard_session_required" }, { status: 401 });
   const configured = Boolean(process.env.HF_TOKEN || process.env.HUGGINGFACE_API_KEY);
   return NextResponse.json({
     ok: true,
     provider: "huggingface-router",
-    configured,
+    configured: configured && !session.isDemo,
     defaultModel: process.env.HF_CHAT_MODEL || DEFAULT_CHAT_MODEL,
     fallbackModel: process.env.HF_FALLBACK_CHAT_MODEL || DEFAULT_FALLBACK_CHAT_MODEL,
   });
@@ -101,19 +156,33 @@ export async function GET() {
 export async function POST(req: Request) {
   const startedAt = Date.now();
   try {
-    const { text, tone, customToken, model: reqModel } = await req.json();
+    if (!sameOrigin(req)) return NextResponse.json({ error: "same_origin_required" }, { status: 403 });
+    const session = await getDashboardSession();
+    if (!session) return NextResponse.json({ error: "dashboard_session_required" }, { status: 401 });
+    const retryAfter = consumeRateLimit(session.id);
+    if (retryAfter > 0) {
+      return NextResponse.json({ error: "rate_limited" }, { status: 429, headers: { "retry-after": String(retryAfter) } });
+    }
+    const parsed = await readBoundedJson(req);
+    if (!parsed.ok) return NextResponse.json({ error: parsed.reason }, { status: parsed.reason === "payload_too_large" ? 413 : 400 });
+    const text = String(parsed.body.text || "").trim();
+    const tone = String(parsed.body.tone || "").trim();
 
-    if (!text) {
-      return NextResponse.json({ error: "Text is required" }, { status: 400 });
+    if (!text) return NextResponse.json({ error: "text_required" }, { status: 400 });
+    if (text.length > MAX_TEXT_CHARS) return NextResponse.json({ error: "text_too_long" }, { status: 413 });
+    if (!ALLOWED_TONES.has(tone)) return NextResponse.json({ error: "unsupported_tone" }, { status: 400 });
+
+    if (session.isDemo) {
+      return NextResponse.json({ optimizedText: fallbackOptimizedText(text, tone), fallback: true, reason: "demo_session_local_only" });
     }
 
-    const hfToken = customToken || process.env.HF_TOKEN || process.env.HUGGINGFACE_API_KEY;
+    const hfToken = process.env.HF_TOKEN || process.env.HUGGINGFACE_API_KEY;
     if (!hfToken) {
       console.info("[cognitive_ai]", JSON.stringify({ event: "fallback", reason: "hugging_face_token_missing", tone, durationMs: Date.now() - startedAt }));
       return NextResponse.json({ optimizedText: fallbackOptimizedText(text, tone), fallback: true, reason: "hugging_face_token_missing" });
     }
 
-    const model = reqModel || process.env.HF_CHAT_MODEL || DEFAULT_CHAT_MODEL;
+    const model = process.env.HF_CHAT_MODEL || DEFAULT_CHAT_MODEL;
     const fallbackModel = process.env.HF_FALLBACK_CHAT_MODEL || DEFAULT_FALLBACK_CHAT_MODEL;
     const candidateModels = Array.from(new Set([model, fallbackModel].filter(Boolean)));
 
@@ -130,9 +199,17 @@ export async function POST(req: Request) {
       });
 
       if (!response.ok) {
-        const errText = (await response.text()).slice(0, 600);
+        await response.body?.cancel().catch(() => undefined);
         lastReason = `hugging_face_${response.status}`;
-        console.error("HF Router chat error:", candidateModel, errText);
+        const attemptLog = JSON.stringify({
+          event: "provider_attempt_failed",
+          provider: "huggingface-router",
+          model: candidateModel,
+          status: response.status,
+          retryable: response.status === 429 || response.status >= 500,
+        });
+        if (response.status === 402 || response.status === 429) console.info("[cognitive_ai]", attemptLog);
+        else console.warn("[cognitive_ai]", attemptLog);
         continue;
       }
 
@@ -149,13 +226,13 @@ export async function POST(req: Request) {
       }
 
       console.info("[cognitive_ai]", JSON.stringify({ event: "success", provider: "huggingface-router", model: candidateModel, tone, modelFallback: candidateModel !== model, durationMs: Date.now() - startedAt }));
-      return NextResponse.json({ optimizedText: cleanText, model: candidateModel, modelFallback: candidateModel !== model });
+      return NextResponse.json({ optimizedText: cleanText, provider: "huggingface-router", model: candidateModel, modelFallback: candidateModel !== model, fallback: false });
     }
 
     console.info("[cognitive_ai]", JSON.stringify({ event: "fallback", reason: lastReason, model, tone, durationMs: Date.now() - startedAt }));
     return NextResponse.json({ optimizedText: fallbackOptimizedText(text, tone), fallback: true, reason: lastReason, model });
   } catch (error: any) {
-    console.error("Error in cognitive-ai route:", error);
-    return NextResponse.json({ optimizedText: fallbackOptimizedText("", "sommelier"), fallback: true, reason: error.message || "cognitive_ai_error" });
+    console.warn("[cognitive_ai]", JSON.stringify({ event: "fallback", reason: "route_exception", errorType: error instanceof Error ? error.name : "unknown" }));
+    return NextResponse.json({ optimizedText: fallbackOptimizedText("", "sommelier"), fallback: true, reason: "cognitive_ai_error" });
   }
 }

@@ -17,6 +17,9 @@ import {
   walletControlAuditHash,
   walletNetworkFromChainId,
 } from "../../../../lib/wallet-control";
+import { enforceCriticalRateLimit } from "../../../../lib/critical-rate-limit";
+import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../lib/bounded-request-body";
+import { getRequestMeta } from "../../../../lib/request-meta";
 
 function publicWebOrigin() {
   const configured = String(process.env.NEXT_PUBLIC_WEB_URL || "https://nexid.lat").trim();
@@ -33,11 +36,19 @@ function requestAuditHash(value: string | null) {
 }
 
 export async function POST(req: Request) {
-  await ensureConsumerPortalSchema();
   const consumer = await getConsumerFromRequest(req);
   if (!consumer) return json({ ok: false, error: "unauthorized" }, 401, { "cache-control": "no-store" });
+  const limited = await enforceCriticalRateLimit(req, { rateClass: "auth", tenantId: "consumer", subjectId: `consumer:${consumer.id}:wallet-challenge` });
+  if (limited) return limited;
+  let body: Record<string, unknown>;
+  try {
+    body = await readBoundedJsonBody<Record<string, unknown>>(req, 8 * 1024);
+  } catch (error) {
+    const tooLarge = error instanceof RequestBodyTooLargeError;
+    return json({ ok: false, error: tooLarge ? "request_body_too_large" : "invalid_json" }, tooLarge ? 413 : 400, { "cache-control": "no-store" });
+  }
+  await ensureConsumerPortalSchema();
 
-  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const address = normalizeWalletAddress(body.address || body.walletAddress || body.wallet_address);
   const chainId = normalizeWalletChainId(body.chainId || body.chain_id);
   const provider = normalizeWalletProvider(body.provider);
@@ -105,7 +116,7 @@ export async function POST(req: Request) {
       ${expiresAt.toISOString()}::timestamptz,
       ${WALLET_CONTROL_MAX_ATTEMPTS},
       ${requestAuditHash(req.headers.get("user-agent"))},
-      ${requestAuditHash(req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip"))}
+      ${requestAuditHash(getRequestMeta(req).ip)}
     )
   `;
 

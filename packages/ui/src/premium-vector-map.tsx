@@ -377,11 +377,11 @@ function EnterpriseTrustAtlasScene({
   const originPoint = points.find((point) => toneFor(point) === "origin") || points[0] || null;
   const tapPoint = selectedPoint || points.find((point) => toneFor(point) === "tap") || points[1] || originPoint;
   const activeRoute = routes[0] || null;
-  const originLabel = originPoint?.label || "Origen";
+  const originLabel = originPoint?.label || "Referencia";
   const tapLabel = tapPoint?.label || "Tap";
-  const originSub = originPoint?.sublabel || "lote certificado";
-  const tapSub = tapPoint?.sublabel || "lectura fisica";
-  const distanceLabel = activeRoute?.distanceLabel || subtitle.split("-").pop()?.trim() || "ruta activa";
+  const originSub = originPoint?.sublabel || "referencia reportada";
+  const tapSub = tapPoint?.sublabel || "ubicación reportada";
+  const distanceLabel = activeRoute?.distanceLabel || activeRoute?.label || "relación configurada";
   const routeD = "M 132 456 C 205 340 296 334 350 238 S 414 152 392 202";
   const returnD = "M 102 494 C 198 446 288 464 370 420 C 432 386 468 392 500 428";
   const glow = isLightTheme ? "rgba(14, 165, 233, 0.24)" : "rgba(34, 211, 238, 0.42)";
@@ -499,23 +499,23 @@ function EnterpriseTrustAtlasScene({
 
       <g transform="translate(30 502)">
         <rect width="218" height="76" rx="17" fill={panelFill} stroke="rgba(52,211,153,.28)" />
-        <text x="16" y="24" fill="#86efac" fontSize="9" fontWeight="950" letterSpacing="2.2">ORIGEN</text>
+        <text x="16" y="24" fill="#86efac" fontSize="9" fontWeight="950" letterSpacing="2.2">REFERENCIA</text>
         <text x="16" y="47" fill={text} fontSize="18" fontWeight="950">{originLabel}</text>
         <text x="16" y="64" fill={muted} fontSize="10" fontWeight="700">{originSub}</text>
       </g>
 
       <g transform="translate(286 106)">
         <rect width="206" height="86" rx="17" fill={panelFill} stroke="rgba(34,211,238,.3)" />
-        <text x="16" y="25" fill="#67e8f9" fontSize="9" fontWeight="950" letterSpacing="2.2">TAP FÍSICO</text>
+        <text x="16" y="25" fill="#67e8f9" fontSize="9" fontWeight="950" letterSpacing="2.2">EVENTO REPORTADO</text>
         <text x="16" y="49" fill={text} fontSize="18" fontWeight="950">{tapLabel}</text>
         <text x="16" y="66" fill={muted} fontSize="10" fontWeight="750">{tapSub}</text>
       </g>
 
       <g transform="translate(278 498)">
         <rect width="214" height="80" rx="17" fill={panelFill} stroke="rgba(251,191,36,.24)" />
-        <text x="16" y="25" fill="#fde68a" fontSize="9" fontWeight="950" letterSpacing="2.2">RUTA Y CAPAS</text>
+        <text x="16" y="25" fill="#fde68a" fontSize="9" fontWeight="950" letterSpacing="2.2">RELACIONES Y CAPAS</text>
         <text x="16" y="48" fill={text} fontSize="16" fontWeight="950">{distanceLabel}</text>
-        <text x="16" y="64" fill={muted} fontSize="10" fontWeight="700">{formatMetric(totalEvents || points.length)} taps - {routeCount} ruta - {riskCount} riesgo</text>
+        <text x="16" y="64" fill={muted} fontSize="10" fontWeight="700">{formatMetric(totalEvents || points.length)} eventos - {routeCount} relaciones - {riskCount} riesgo</text>
       </g>
 
       <g transform="translate(36 588)">
@@ -535,8 +535,8 @@ export function PremiumVectorMap({
   routes = [],
   selectedPointId,
   onPointSelect,
-  title = "Mapa vivo",
-  subtitle = "Rutas, taps y evidencia sin ruido cartografico.",
+  title = "Mapa de eventos reportados",
+  subtitle = "Puntos y relaciones explícitas; no infiere autenticaciones ni recorridos físicos.",
   caption,
   className = "",
   heightClassName = "h-[24rem]",
@@ -636,16 +636,16 @@ export function PremiumVectorMap({
           focusedRoute
             ? {
                 id: "route",
-                label: "Ruta de confianza",
-                value: focusedRoute.distanceLabel || focusedRoute.label || "Origen a tap",
-                detail: focusedRoute.evidence || "Movimiento trazado sobre motor vectorial propio",
+                label: "Relación reportada",
+                value: focusedRoute.distanceLabel || focusedRoute.label || "Relación entre eventos",
+                detail: focusedRoute.evidence || "Conexión visual configurada; no demuestra movimiento físico",
                 tone: focusedRoute.tone === "warn" ? "risk" : "origin",
               }
             : {
                 id: "coverage",
                 label: "Cobertura",
-                value: `${routeCount} rutas activas`,
-                detail: "Lecturas y puntos de custodia listos para auditoria",
+                value: `${routeCount} relaciones configuradas`,
+                detail: "Eventos reportados disponibles para auditoría; no prueban custodia ni recorrido",
                 tone: "loyalty",
               },
         ]
@@ -1225,7 +1225,7 @@ export function PremiumVectorMap({
           </div>
           <div className="flex flex-wrap gap-1.5 text-[10px] font-bold uppercase tracking-[0.1em]">
             <span className="rounded-full border border-cyan-300/25 bg-cyan-500/12 px-2 py-1 text-cyan-100">{visiblePoints.length} puntos</span>
-            <span className="rounded-full border border-emerald-300/25 bg-emerald-500/12 px-2 py-1 text-emerald-100">{routeCount} rutas</span>
+            <span className="rounded-full border border-emerald-300/25 bg-emerald-500/12 px-2 py-1 text-emerald-100">{routeCount} relaciones</span>
             <span className="rounded-full border border-rose-300/25 bg-rose-500/12 px-2 py-1 text-rose-100">{riskCount} riesgo</span>
             {tokenCount ? <span className="rounded-full border border-violet-300/25 bg-violet-500/12 px-2 py-1 text-violet-100">{tokenCount} NFT</span> : null}
             <span className="rounded-full border border-violet-300/25 bg-violet-500/12 px-2 py-1 text-violet-100">{trustMapSource.badge}</span>
@@ -1241,7 +1241,7 @@ export function PremiumVectorMap({
           <div className="rounded-xl border border-white/10 bg-slate-950/78 px-3 py-2 text-xs text-slate-200 shadow-xl backdrop-blur-md">
             <p className="font-semibold text-white">{selectedPoint ? `${selectedPoint.label}${selectedPoint.sublabel ? `, ${selectedPoint.sublabel}` : ""}` : "Sin punto seleccionado"}</p>
             <p className="mt-0.5 text-[11px] text-slate-300">
-              {caption || "Mapa propio para trazabilidad, actividad y rutas de confianza."}
+              {caption || "Mapa de eventos y ubicaciones reportadas; las relaciones visuales no prueban recorridos físicos."}
             </p>
           </div>
           {mapStorySteps.length ? (

@@ -1,6 +1,12 @@
 import { createHmac } from "node:crypto";
 
-export const WEBHOOK_SIGNATURE_VERSION = "v1" as const;
+export const WEBHOOK_SIGNATURE_VERSION_V1 = "v1" as const;
+export const WEBHOOK_SIGNATURE_VERSION_V2 = "v2" as const;
+export const WEBHOOK_SIGNATURE_VERSIONS = [WEBHOOK_SIGNATURE_VERSION_V1, WEBHOOK_SIGNATURE_VERSION_V2] as const;
+export type WebhookSignatureVersion = typeof WEBHOOK_SIGNATURE_VERSIONS[number];
+// Backwards-compatible alias for code that explicitly implements the legacy
+// envelope. New endpoints use v2 through createWebhookSignatureHeaders.
+export const WEBHOOK_SIGNATURE_VERSION = WEBHOOK_SIGNATURE_VERSION_V1;
 export const WEBHOOK_SIGNING_SECRET_MIN_BYTES = 32;
 
 export const WEBHOOK_SIGNATURE_HEADERS = {
@@ -24,6 +30,13 @@ export class WebhookSigningError extends Error {
     this.name = "WebhookSigningError";
     this.code = code;
   }
+}
+
+export function normalizeWebhookSignatureVersion(value: unknown): WebhookSignatureVersion | null {
+  const candidate = String(value || "").trim().toLowerCase();
+  return candidate === WEBHOOK_SIGNATURE_VERSION_V1 || candidate === WEBHOOK_SIGNATURE_VERSION_V2
+    ? candidate
+    : null;
 }
 
 export function webhookSigningSecretIssue(
@@ -76,7 +89,7 @@ export function createWebhookSignatureV1(input: {
     ? Buffer.byteLength(input.rawBody, "utf8")
     : input.rawBody.byteLength;
   const prefix = [
-    WEBHOOK_SIGNATURE_VERSION,
+    WEBHOOK_SIGNATURE_VERSION_V1,
     timestamp,
     Buffer.byteLength(deliveryId, "utf8"),
     deliveryId,
@@ -89,7 +102,47 @@ export function createWebhookSignatureV1(input: {
     .update(prefix, "utf8")
     .update(input.rawBody)
     .digest("hex");
-  return `${WEBHOOK_SIGNATURE_VERSION}=${digest}`;
+  return `${WEBHOOK_SIGNATURE_VERSION_V1}=${digest}`;
+}
+
+/**
+ * v2 authenticates the routing key as part of the byte-framed envelope:
+ *   v2.<unix-seconds>.<key-bytes>.<key-id>.<delivery-bytes>.<delivery-id>.<event-bytes>.<event-id>.<body-bytes>.<raw body>
+ */
+export function createWebhookSignatureV2(input: {
+  secret: string;
+  timestamp: number;
+  keyId: string;
+  deliveryId: string;
+  eventId: string;
+  rawBody: string | Uint8Array;
+}) {
+  const secretIssue = webhookSigningSecretIssue(input.secret, { required: true });
+  if (secretIssue) throw new WebhookSigningError(secretIssue);
+  const timestamp = normalizedTimestamp(input.timestamp);
+  const keyId = safeHeaderIdentifier(input.keyId);
+  const deliveryId = safeHeaderIdentifier(input.deliveryId);
+  const eventId = safeHeaderIdentifier(input.eventId);
+  const rawBodyBytes = typeof input.rawBody === "string"
+    ? Buffer.byteLength(input.rawBody, "utf8")
+    : input.rawBody.byteLength;
+  const prefix = [
+    WEBHOOK_SIGNATURE_VERSION_V2,
+    timestamp,
+    Buffer.byteLength(keyId, "utf8"),
+    keyId,
+    Buffer.byteLength(deliveryId, "utf8"),
+    deliveryId,
+    Buffer.byteLength(eventId, "utf8"),
+    eventId,
+    rawBodyBytes,
+    "",
+  ].join(".");
+  const digest = createHmac("sha256", input.secret)
+    .update(prefix, "utf8")
+    .update(input.rawBody)
+    .digest("hex");
+  return `${WEBHOOK_SIGNATURE_VERSION_V2}=${digest}`;
 }
 
 export function createWebhookSignatureHeaders(input: {
@@ -99,24 +152,37 @@ export function createWebhookSignatureHeaders(input: {
   eventId: string;
   rawBody: string | Uint8Array;
   timestamp?: number;
+  version?: WebhookSignatureVersion;
 }) {
   const timestamp = input.timestamp ?? Math.floor(Date.now() / 1_000);
   const timestampHeader = normalizedTimestamp(timestamp);
   const keyId = safeHeaderIdentifier(input.keyId);
   const deliveryId = safeHeaderIdentifier(input.deliveryId);
   const eventId = safeHeaderIdentifier(input.eventId);
-  return {
-    [WEBHOOK_SIGNATURE_HEADERS.version]: WEBHOOK_SIGNATURE_VERSION,
-    [WEBHOOK_SIGNATURE_HEADERS.timestamp]: timestampHeader,
-    [WEBHOOK_SIGNATURE_HEADERS.keyId]: keyId,
-    [WEBHOOK_SIGNATURE_HEADERS.deliveryId]: deliveryId,
-    [WEBHOOK_SIGNATURE_HEADERS.eventId]: eventId,
-    [WEBHOOK_SIGNATURE_HEADERS.signature]: createWebhookSignatureV1({
+  const version = normalizeWebhookSignatureVersion(input.version || WEBHOOK_SIGNATURE_VERSION_V2);
+  if (!version) throw new WebhookSigningError("invalid_webhook_signature_input");
+  const signature = version === WEBHOOK_SIGNATURE_VERSION_V2
+    ? createWebhookSignatureV2({
+      secret: input.secret,
+      timestamp,
+      keyId,
+      deliveryId,
+      eventId,
+      rawBody: input.rawBody,
+    })
+    : createWebhookSignatureV1({
       secret: input.secret,
       timestamp,
       deliveryId,
       eventId,
       rawBody: input.rawBody,
-    }),
+    });
+  return {
+    [WEBHOOK_SIGNATURE_HEADERS.version]: version,
+    [WEBHOOK_SIGNATURE_HEADERS.timestamp]: timestampHeader,
+    [WEBHOOK_SIGNATURE_HEADERS.keyId]: keyId,
+    [WEBHOOK_SIGNATURE_HEADERS.deliveryId]: deliveryId,
+    [WEBHOOK_SIGNATURE_HEADERS.eventId]: eventId,
+    [WEBHOOK_SIGNATURE_HEADERS.signature]: signature,
   };
 }

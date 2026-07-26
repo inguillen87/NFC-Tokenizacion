@@ -58,8 +58,8 @@ test("staging migration gates preserve the PostgreSQL enum transaction boundary"
   const runbook = await readFile(new URL("../../../docs/staging-migration-runbook.md", import.meta.url), "utf8");
   assert.ok(gateLibrary.indexOf("20260723193000_0050_evidence_anchor_reconciling_status.sql") < gateLibrary.indexOf("20260723193500_0051_iota_evidence_anchor_v2_writer.sql"));
   assert.ok(runbook.indexOf("`0050`") < runbook.indexOf("`0051`"));
-  assert.match(dryRun, /DRY_RUN_MIGRATIONS/);
-  assert.match(dryRun, /MIGRATION_LEDGER_MISMATCH_AFTER_0050/);
+  assert.match(dryRun, /pendingMigrations = progress\.pending_migrations/);
+  assert.match(dryRun, /assertMigrationProgress/);
   assert.match(dryRun, /rollbackVerified/);
   assert.match(apply, /STAGING_MIGRATION_APPROVED/);
   assert.match(apply, /NODE_ENV_STAGING_REQUIRED/);

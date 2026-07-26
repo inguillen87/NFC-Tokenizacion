@@ -165,15 +165,6 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
     closed: "00",
     opened: "01",
   });
-  const [pilot, setPilot] = useState({
-    tenantName: "Bodega Andes Pilot",
-    tenantSlug: "bodega-andes-pilot",
-    batchId: "",
-    userEmail: "ops@bodega-andes.com",
-    userPassword: "Nexid!2026",
-    userName: "Ops Bodega Andes",
-  });
-
   const canEdit = role !== "viewer";
   const roleMessage = useMemo(() => copy.roleHint[role], [copy.roleHint, role]);
   const copyActions = useMemo(() => buildCopyActions(lastResponse), [lastResponse]);
@@ -181,8 +172,8 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
   const onboardingSteps = useMemo(() => [
     {
       label: "1) Register supplier batch",
-      done: Boolean(pilot.tenantSlug.trim() && pilot.batchId.trim()),
-      detail: "Tenant + batch + Vault + chip model",
+      done: Boolean(manifest.batchId.trim()),
+      detail: "Complete the tenant, batch, custody and chip profile inside Supplier Order",
     },
     {
       label: "2) Import supplier manifest",
@@ -199,7 +190,7 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
       done: urlValidation.sampleUrl.trim().length > 0,
       detail: "Paste one /sun?... URL to verify trust state",
     },
-  ], [activation.batchId, manifestPreview.unique, pilot.batchId, pilot.tenantSlug, urlValidation.sampleUrl]);
+  ], [activation.batchId, manifest.batchId, manifestPreview.unique, urlValidation.sampleUrl]);
 
   const hints = {
     createTenant: "Creates a new tenant workspace. Use slug lowercase and unique.",
@@ -258,14 +249,6 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
     }
   }
 
-  async function provisionWinePilot() {
-    if (!canEdit) return;
-    setSummary([]);
-    setLastResponse(null);
-    setStatus("El alta profesional de tenant + batch + manifest ahora vive en Supplier batches. Redirigiendo...");
-    window.location.assign("/batches/supplier");
-  }
-
   async function runSupplierFlow() {
     if (!canEdit) return;
     setSummary([]);
@@ -310,22 +293,13 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
 
       <Card className="p-5">
         <h3 className="text-base font-semibold text-white">Alta profesional de tenant y batch</h3>
-        <p className="mt-1 text-xs text-slate-400">El flujo productivo completo se ejecuta desde Supplier batches: perfil SUN, llaves, manifest, activacion y validacion real.</p>
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
-          <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="tenant name" value={pilot.tenantName} onChange={(event) => setPilot((current) => ({ ...current, tenantName: event.target.value }))} />
-          <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="tenant slug" value={pilot.tenantSlug} onChange={(event) => setPilot((current) => ({ ...current, tenantSlug: event.target.value }))} />
-          <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="batch id" value={pilot.batchId} onChange={(event) => setPilot((current) => ({ ...current, batchId: event.target.value }))} />
-          <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="ops user name" value={pilot.userName} onChange={(event) => setPilot((current) => ({ ...current, userName: event.target.value }))} />
-          <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="ops email" value={pilot.userEmail} onChange={(event) => setPilot((current) => ({ ...current, userEmail: event.target.value }))} />
-          <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="temporary password (8+)" value={pilot.userPassword} onChange={(event) => setPilot((current) => ({ ...current, userPassword: event.target.value }))} />
-        </div>
-        <Button
-          className="mt-3"
-          disabled={pending || !canEdit}
-          onClick={() => void provisionWinePilot()}
+        <p className="mt-1 text-xs leading-5 text-slate-400">Esta tarjeta no crea nada ni recopila credenciales. El flujo productivo vive en Supplier batches: perfil SUN, custodia piloto, manifest, activación y validación.</p>
+        <Link
+          href="/batches/supplier#supplier-order-console"
+          className="mt-3 inline-flex min-h-10 items-center rounded-xl border border-cyan-300/35 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-100"
         >
           Abrir Supplier batches
-        </Button>
+        </Link>
       </Card>
 
       <Card className="p-5">

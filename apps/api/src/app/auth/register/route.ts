@@ -5,16 +5,26 @@ import { json } from '../../../lib/http';
 import { createResetToken, sha256 } from '../../../lib/iam';
 import { ensureEnterpriseIamSchema } from '../../../lib/commercial-runtime-schema';
 import { isProductionRuntime } from '../../../lib/admin-user-management-policy';
+import { enforceCriticalRateLimit } from '../../../lib/critical-rate-limit';
+import { RequestBodyTooLargeError, readBoundedJsonBody } from '../../../lib/bounded-request-body';
 
 export async function POST(req: Request) {
+  const limited = await enforceCriticalRateLimit(req, { rateClass: 'auth', tenantId: 'platform', subjectId: 'admin-register:unauthenticated' });
+  if (limited) return limited;
+  let body: { email?: string; fullName?: string; company?: string; tenantSlug?: string; role?: string };
+  try {
+    body = await readBoundedJsonBody<typeof body>(req, 8 * 1024);
+  } catch (error) {
+    const tooLarge = error instanceof RequestBodyTooLargeError;
+    return json({ ok: false, reason: tooLarge ? 'request_body_too_large' : 'invalid_json' }, tooLarge ? 413 : 400);
+  }
   await ensureEnterpriseIamSchema();
-  const body = await req.json().catch(() => ({})) as { email?: string; fullName?: string; company?: string; tenantSlug?: string; role?: string };
   const email = String(body.email || '').trim().toLowerCase();
-  const fullName = String(body.fullName || '').trim() || null;
-  const company = String(body.company || '').trim() || null;
-  const tenantSlug = String(body.tenantSlug || '').trim().toLowerCase() || null;
-  const role = String(body.role || 'tenant_admin').replace('-', '_');
-  if (!email) return json({ ok: false, reason: 'email required' }, 400);
+  const fullName = String(body.fullName || '').trim().slice(0, 120) || null;
+  const company = String(body.company || '').trim().slice(0, 160) || null;
+  const tenantSlug = String(body.tenantSlug || '').trim().toLowerCase().slice(0, 80) || null;
+  const role = ['tenant_admin', 'reseller', 'viewer'].includes(String(body.role || '').replace('-', '_')) ? String(body.role).replace('-', '_') : 'tenant_admin';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ ok: false, reason: 'valid email required' }, 400);
 
   const selfRegistrationEnabled = String(process.env.ENABLE_ADMIN_SELF_REGISTRATION || '').toLowerCase() === 'true';
   if (!selfRegistrationEnabled) {

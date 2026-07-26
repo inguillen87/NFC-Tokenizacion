@@ -7,7 +7,106 @@ const PAYLOAD_HASH_PATTERN = /^sha256:[0-9a-f]{64}$/;
 const RAW_TRANSACTION_PATTERN = /^0x(?:[0-9a-f]{2})+$/i;
 const TX_HASH_PATTERN = /^0x[0-9a-f]{64}$/i;
 const RECOVERABLE_STATES = new Set(["signed", "broadcast", "submitted"]);
+const IOTA_READINESS_CACHE_TTL_MS = 5_000;
+const IOTA_READINESS_QUERY_TIMEOUT_MS = 2_500;
+const IOTA_READINESS_COLUMNS = Object.freeze([
+  "proof_id",
+  "request_id",
+  "status",
+  "payload_json",
+  "response_json",
+  "tx_hash",
+  "nonce",
+  "block_number",
+  "block_hash",
+  "created_at",
+  "updated_at",
+  "protocol_version",
+  "payload_hash",
+  "lease_token",
+  "raw_transaction",
+  "signer_address",
+  "chain_id",
+  "signed_at",
+  "broadcast_at",
+  "submitted_at",
+]);
+const IOTA_READINESS_CONSTRAINTS = Object.freeze([
+  "iota_executor_publications_pkey",
+  "iota_executor_publications_status_check",
+  "iota_executor_publications_protocol_version_check",
+  "iota_executor_publications_payload_hash_check",
+  "iota_executor_publications_raw_transaction_check",
+  "iota_executor_publications_tx_hash_check",
+  "iota_executor_publications_protocol_v2_required_check",
+]);
+const IOTA_READINESS_INDEXES = Object.freeze([
+  "iota_executor_publications_pkey",
+  "uq_iota_executor_publications_request",
+  "idx_iota_executor_publications_status_updated",
+  "uq_iota_executor_publications_tx_hash",
+  "uq_iota_executor_publications_signer_nonce",
+  "idx_iota_executor_publications_lease",
+]);
+const IOTA_READINESS_UNIQUE_INDEXES = Object.freeze([
+  "iota_executor_publications_pkey",
+  "uq_iota_executor_publications_request",
+  "uq_iota_executor_publications_tx_hash",
+  "uq_iota_executor_publications_signer_nonce",
+]);
+const IOTA_READINESS_QUERY = `
+  WITH target AS (
+    SELECT c.oid
+    FROM pg_catalog.pg_class c
+    JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+      AND c.relname = 'iota_executor_publications'
+      AND c.relkind IN ('r', 'p')
+  ), column_check AS (
+    SELECT count(DISTINCT a.attname)::integer AS matched
+    FROM target t
+    JOIN pg_catalog.pg_attribute a ON a.attrelid = t.oid
+    WHERE a.attnum > 0
+      AND NOT a.attisdropped
+      AND a.attname = ANY($1::text[])
+  ), constraint_check AS (
+    SELECT count(DISTINCT c.conname)::integer AS matched
+    FROM target t
+    JOIN pg_catalog.pg_constraint c ON c.conrelid = t.oid
+    WHERE c.convalidated
+      AND c.conname = ANY($3::text[])
+  ), index_check AS (
+    SELECT
+      count(DISTINCT ic.relname)::integer AS matched,
+      bool_and(i.indisvalid AND i.indisready) AS healthy,
+      count(DISTINCT ic.relname) FILTER (
+        WHERE i.indisunique AND ic.relname = ANY($7::text[])
+      )::integer AS unique_matched
+    FROM target t
+    JOIN pg_catalog.pg_index i ON i.indrelid = t.oid
+    JOIN pg_catalog.pg_class ic ON ic.oid = i.indexrelid
+    WHERE ic.relname = ANY($5::text[])
+  )
+  SELECT
+    TRUE AS connected,
+    EXISTS(SELECT 1 FROM target) AS table_present,
+    COALESCE((SELECT matched = $2::integer FROM column_check), FALSE) AS columns_present,
+    COALESCE((SELECT matched = $4::integer FROM constraint_check), FALSE) AS constraints_present,
+    COALESCE((
+      SELECT matched = $6::integer
+        AND healthy
+        AND unique_matched = $8::integer
+      FROM index_check
+    ), FALSE) AS indexes_present,
+    COALESCE((
+      SELECT has_table_privilege(current_user, t.oid, 'SELECT')
+        AND has_table_privilege(current_user, t.oid, 'INSERT')
+        AND has_table_privilege(current_user, t.oid, 'UPDATE')
+      FROM target t
+    ), FALSE) AS privileges_present
+`;
 let pool;
+let readinessCache = { database: null, expiresAt: 0, value: null, pending: null };
 
 function databaseUrl() {
   return String(process.env.DATABASE_URL || process.env.POSTGRES_URL || "").trim();
@@ -17,6 +116,85 @@ function getPool() {
   if (!databaseUrl()) return null;
   if (!pool) pool = new Pool({ connectionString: databaseUrl(), max: 4, idleTimeoutMillis: 30_000, connectionTimeoutMillis: 3_000 });
   return pool;
+}
+
+function unavailableReadiness(reason, overrides = {}) {
+  const checks = {
+    connectivity: false,
+    table: false,
+    columns: false,
+    constraints: false,
+    indexes: false,
+    privileges: false,
+    ...overrides,
+  };
+  return { ok: false, reason, checks };
+}
+
+async function probeIotaDurableStore(database) {
+  try {
+    const result = await database.query({
+      text: IOTA_READINESS_QUERY,
+      values: [
+        IOTA_READINESS_COLUMNS,
+        IOTA_READINESS_COLUMNS.length,
+        IOTA_READINESS_CONSTRAINTS,
+        IOTA_READINESS_CONSTRAINTS.length,
+        IOTA_READINESS_INDEXES,
+        IOTA_READINESS_INDEXES.length,
+        IOTA_READINESS_UNIQUE_INDEXES,
+        IOTA_READINESS_UNIQUE_INDEXES.length,
+      ],
+      query_timeout: IOTA_READINESS_QUERY_TIMEOUT_MS,
+    });
+    const row = result.rows?.[0];
+    if (!row) return unavailableReadiness("database_unavailable");
+    const checks = {
+      connectivity: row.connected === true,
+      table: row.table_present === true,
+      columns: row.columns_present === true,
+      constraints: row.constraints_present === true,
+      indexes: row.indexes_present === true,
+      privileges: row.privileges_present === true,
+    };
+    const ok = Object.values(checks).every(Boolean);
+    return ok ? { ok: true, reason: null, checks } : { ok: false, reason: "database_schema_invalid", checks };
+  } catch {
+    return unavailableReadiness("database_unavailable");
+  }
+}
+
+export async function checkIotaDurableStore(options = {}) {
+  const database = options.database || getPool();
+  if (!database) return unavailableReadiness("database_not_configured");
+  if (options.cache === false) return probeIotaDurableStore(database);
+
+  const now = Number.isFinite(options.now) ? Number(options.now) : Date.now();
+  if (readinessCache.database === database && readinessCache.expiresAt > now) {
+    return readinessCache.pending || readinessCache.value;
+  }
+
+  const pending = probeIotaDurableStore(database);
+  readinessCache = {
+    database,
+    expiresAt: now + IOTA_READINESS_CACHE_TTL_MS,
+    value: null,
+    pending,
+  };
+  const value = await pending;
+  if (readinessCache.pending === pending) {
+    readinessCache = {
+      database,
+      expiresAt: Date.now() + IOTA_READINESS_CACHE_TTL_MS,
+      value,
+      pending: null,
+    };
+  }
+  return value;
+}
+
+export function clearIotaReadinessCache() {
+  readinessCache = { database: null, expiresAt: 0, value: null, pending: null };
 }
 
 function canonicalJson(value) {

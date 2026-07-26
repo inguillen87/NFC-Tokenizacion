@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "node src/server.mjs",
     "start": "node src/server.mjs",
+    "custody:generate:polygon": "node scripts/generate-polygon-custody-wallets-with-kms.mjs",
+    "custody:migrate": "node scripts/migrate-testnet-custody.mjs",
+    "custody:rewrap:iota-governance": "node scripts/rewrap-iota-governance-aad.mjs",
     "check": "node --check src/server.mjs",
     "test": "node --test tests/*.test.mjs",
     "build": "npm run check && npm test"

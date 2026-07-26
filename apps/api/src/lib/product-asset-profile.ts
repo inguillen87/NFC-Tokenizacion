@@ -181,13 +181,13 @@ function verticalLabel(kind: AssetVisualKind) {
 
 function defaultProductName(kind: AssetVisualKind) {
   if (kind === "bracelet") return "Brazalete VIP evento";
-  if (kind === "ticket") return "Entrada verificada";
+  if (kind === "ticket") return "Entrada conectada";
   if (kind === "creamJar") return "Set skincare premium";
   if (kind === "creamTube") return "Set skincare premium";
   if (kind === "perfume") return "Perfume premium";
   if (kind === "seeds") return "Semillas trazables";
-  if (kind === "sneaker") return "Zapatillas autenticadas";
-  if (kind === "apparel") return "Prenda premium autenticada";
+  if (kind === "sneaker") return "Zapatillas con identidad digital";
+  if (kind === "apparel") return "Prenda premium con identidad digital";
   return "Gran Reserva Malbec";
 }
 
@@ -198,24 +198,24 @@ function slotSet(kind: AssetVisualKind, input: ProductAssetInput): ProductAssetS
   const hasGallery = Boolean((input.galleryUrls || []).length);
   const stockAsset = demoStockAssets[kind];
   const productLabel = kind === "wine"
-    ? "Foto botella real"
+    ? "Foto de la botella"
     : kind === "bracelet" || kind === "ticket"
-      ? "Foto acceso real"
+      ? "Foto de la credencial"
       : kind === "seeds"
-        ? "Foto empaque real"
+        ? "Foto del empaque"
         : kind === "sneaker"
-          ? "Foto calzado real"
+          ? "Foto del calzado"
           : kind === "apparel"
-            ? "Foto prenda real"
-        : "Foto producto real";
+            ? "Foto de la prenda"
+        : "Foto del producto";
   const tagDetail = kind === "wine"
     ? "Tag sobre capsula/cuello, listo para cortar al abrir."
     : kind === "bracelet" || kind === "ticket"
       ? "NFC en zona de tap del celular para acceso."
       : kind === "sneaker"
-        ? "NFC en lengueta, plantilla o packaging para autenticidad y recompra."
+        ? "NFC en lengueta, plantilla o packaging para evidencia del tag, cuidado y recompra."
         : kind === "apparel"
-          ? "NFC en etiqueta colgante o interior para autenticidad, cuidado y reventa."
+          ? "NFC en etiqueta colgante o interior para evidencia del tag, cuidado y reventa."
       : kind === "perfume"
         ? "Tag en union tapa/frasco para evidenciar apertura."
         : "Tag en punto de apertura entre tapa y envase.";
@@ -225,10 +225,10 @@ function slotSet(kind: AssetVisualKind, input: ProductAssetInput): ProductAssetS
       id: "product-photo",
       label: productLabel,
       detail: hasImage
-        ? "Foto real del tenant usada en tap, Passport, certificado y marketplace."
+        ? "Foto cargada por el tenant para tap, Passport, certificado y marketplace."
         : stockAsset
-          ? `Foto real de banco visual demo (${stockAsset.sourceLabel}) hasta que el tenant suba su packshot.`
-          : "Demo render hasta que el tenant suba foto real.",
+          ? `Foto de banco visual demo (${stockAsset.sourceLabel}) hasta que el tenant suba su packshot.`
+          : "Render demo hasta que el tenant suba su packshot.",
       status: hasImage ? "ready" : "demo",
       tone: "photo",
       imageUrl: input.imageUrl || stockAsset?.productImageUrl || null,
@@ -236,7 +236,7 @@ function slotSet(kind: AssetVisualKind, input: ProductAssetInput): ProductAssetS
     {
       id: "front-label",
       label: "Etiqueta frontal",
-      detail: hasLabel ? "Etiqueta real cargada para reconocer el producto exacto." : "Pendiente de foto limpia de etiqueta o packshot.",
+      detail: hasLabel ? "Etiqueta cargada para mostrar la referencia visual declarada por el tenant." : "Pendiente de foto limpia de etiqueta o packshot.",
       status: hasLabel ? "ready" : "demo",
       tone: "label",
       imageUrl: input.labelImageUrl || null,
@@ -252,14 +252,14 @@ function slotSet(kind: AssetVisualKind, input: ProductAssetInput): ProductAssetS
     {
       id: "model-3d",
       label: "Modelo 3D / GLB",
-      detail: hasModel ? "Modelo 3D listo para render interactivo por tenant." : "Opcional para experiencias premium con rotacion real.",
+      detail: hasModel ? "Modelo 3D listo para render interactivo por tenant." : "Opcional para experiencias premium con rotacion interactiva.",
       status: hasModel ? "ready" : "missing",
       tone: "model",
     },
     {
       id: "batch-sheet",
       label: "Ficha lote",
-      detail: "SKU, batch, origen, reglas de claim, fotos y politica NFT por tenant.",
+      detail: "SKU, batch, origen declarado, reglas de claim, fotos y politica NFT por tenant.",
       status: "demo",
       tone: "document",
     },
@@ -297,10 +297,10 @@ export function buildProductAssetProfile(input: ProductAssetInput = {}): Product
     modelUrl: input.modelUrl || null,
     galleryUrls,
     assetScore: scoreFor(slots),
-    heroLine: "El tap abre el mismo producto real que carga la marca: foto, etiqueta, tag aplicado, lote y estado SUN.",
-    claimLine: "Ownership solo se habilita con tap fisico fresco, identidad validada, producto correcto y politica del lote.",
-    ownerStory: "El objeto nace con lote y carrier, viaja por canal autorizado y termina en Passport con garantia, beneficios y NFT opcional.",
-    marketplaceLine: "El marketplace muestra el item real con lote, estado SUN, prueba de origen y beneficios habilitados.",
+    heroLine: "El tap abre la referencia digital declarada por la marca: foto, etiqueta, tag aplicado, lote y resultado SUN.",
+    claimLine: "Ownership digital solo se habilita con tap fisico fresco, identidad del comprador, evidencia de compra y politica del lote; no prueba propiedad ni autenticidad fisica.",
+    ownerStory: "La referencia digital se asocia a lote y carrier, registra eventos de canal declarados y puede habilitar Passport, garantia, beneficios y NFT opcional segun politica.",
+    marketplaceLine: "El marketplace muestra la referencia digital con lote, resultado SUN, origen declarado y beneficios habilitados; no certifica el item fisico.",
     uploadChecklist: ["Foto producto", "Etiqueta frontal", "Foto tag aplicado", "Ficha comercial", "Reglas claim/NFT", "Modelo GLB opcional"],
     slots,
   };
@@ -310,5 +310,5 @@ export function summarizeAssetReadiness(profile: ProductAssetProfile) {
   const ready = profile.slots.filter((slot) => slot.status === "ready").length;
   const demo = profile.slots.filter((slot) => slot.status === "demo").length;
   const missing = profile.slots.filter((slot) => slot.status === "missing").length;
-  return `${ready} reales / ${demo} demo / ${missing} pendientes`;
+  return `${ready} cargados / ${demo} demo / ${missing} pendientes`;
 }

@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import { sql } from "./db";
-import { ensureLoyaltySchema } from "./loyalty-schema";
-import { awardPoints, getActiveProgram, getOrCreateMember, getTapEvent } from "./loyalty-service";
+import { getActiveProgram, getTapEvent } from "./loyalty-service";
 import { ensureTenantMembership } from "./consumer-portal-service";
 
 export type TriviaQuestion = {
@@ -46,8 +45,12 @@ function normalizeVertical(value: unknown) {
   return clean.replace(/[^a-z0-9-]/g, "").slice(0, 32) || "other";
 }
 
-function isUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+function isDurableEventId(value: string) {
+  return /^[1-9]\d*$/.test(String(value || "").trim());
+}
+
+function isExplicitPreviewId(value: string) {
+  return /^(?:preview|demo-preview):[a-z0-9._-]{1,80}$/i.test(String(value || "").trim());
 }
 
 function optionSet(correct: string, wrong: string[]) {
@@ -93,9 +96,9 @@ export function buildDefaultTriviaQuestions(context: ProductContext): TriviaQues
     {
       id: "wine-origin-01",
       prompt: `¿Qué dato confirma mejor la historia de ${product}?`,
-      options: optionSet(`Origen verificado por NFC y lote de ${brand}`, ["Una foto reenviada por chat", "Un precio escrito a mano", "Un comentario anónimo sin tap"]),
+      options: optionSet(`Origen declarado por ${brand} y lote asociado al evento NFC`, ["Una foto reenviada por chat", "Un precio escrito a mano", "Un comentario anónimo sin tap"]),
       correctIndex: 0,
-      explanation: "El tap físico vincula producto, lote, ubicación y marca. Eso convierte la experiencia en dato comercial confiable.",
+      explanation: "El evento NFC vincula el mensaje del tag con el lote y el origen declarado por la marca; no prueba por si solo el origen ni el recorrido fisico.",
       insightTag: "wine-origin-literacy",
     },
     {
@@ -254,20 +257,18 @@ async function loadProductContext(eventId: string): Promise<ProductContext | nul
     vertical: normalizeVertical(row.vertical || row.winery || row.tenant_name),
     city: row.city || null,
     country: row.country_code || null,
-    productName: cleanText(row.product_name, cleanText(row.grape_varietal, "Producto verificado")),
+    productName: cleanText(row.product_name, cleanText(row.grape_varietal, "Producto asociado")),
     brandName,
-    region: cleanText(row.region, cleanText(row.city, "origen verificado")),
+    region: cleanText(row.region, cleanText(row.city, "origen informado")),
     varietal: cleanText(row.grape_varietal, "vino premium"),
     vintage: cleanText(row.vintage),
     bid: row.bid || null,
   };
 }
 
-async function ensureQuizForTap(context: ProductContext, program: any) {
-  await ensureLoyaltySchema();
+async function findConfiguredQuizForTap(context: ProductContext, program: any) {
   const code = `posttap-${context.vertical}-${hashShort(`${program.id}:${context.productName}:${context.brandName}:${context.region}`)}`;
-  const questions = buildDefaultTriviaQuestions(context);
-  const existing = (await sql/*sql*/`
+  return (await sql/*sql*/`
     SELECT *
     FROM loyalty_quizzes
     WHERE program_id = ${program.id}
@@ -276,35 +277,6 @@ async function ensureQuizForTap(context: ProductContext, program: any) {
       AND starts_at <= now()
       AND (ends_at IS NULL OR ends_at >= now())
     LIMIT 1
-  `)[0];
-  if (existing) return existing;
-
-  return (await sql/*sql*/`
-    INSERT INTO loyalty_quizzes (
-      tenant_id, program_id, code, title, description, vertical, product_filter_json,
-      questions_json, points_per_correct, completion_bonus, pass_threshold, status
-    )
-    VALUES (
-      ${context.tenantId},
-      ${program.id},
-      ${code},
-      ${`Trivia post-tap ${context.productName}`},
-      ${`Preguntas de conocimiento y preferencia para ${context.brandName}`},
-      ${context.vertical},
-      ${JSON.stringify({ productName: context.productName, brandName: context.brandName, region: context.region, bid: context.bid })}::jsonb,
-      ${JSON.stringify(questions)}::jsonb,
-      10,
-      15,
-      2,
-      'active'
-    )
-    ON CONFLICT (program_id, code)
-    DO UPDATE SET
-      title = EXCLUDED.title,
-      description = EXCLUDED.description,
-      product_filter_json = EXCLUDED.product_filter_json,
-      updated_at = now()
-    RETURNING *
   `)[0];
 }
 
@@ -327,7 +299,9 @@ export async function getTriviaForTap(input: {
   city?: string | null;
   country?: string | null;
 }) {
-  if (!isUuid(input.eventId)) return previewTrivia(input);
+  if (isExplicitPreviewId(input.eventId)) return previewTrivia(input);
+  if (!isDurableEventId(input.eventId)) return { ok: false as const, status: 400, error: "invalid_event_id" as const };
+  if (!input.consumerId) return { ok: false as const, status: 401, error: "consumer_auth_required" as const };
 
   const event = await getTapEvent(input.eventId);
   if (!event) return { ok: false as const, status: 404, error: "event_not_found" as const };
@@ -335,18 +309,18 @@ export async function getTriviaForTap(input: {
   if (!program) return { ok: false as const, status: 404, error: "program_not_found" as const };
   const context = await loadProductContext(String(event.id));
   if (!context) return { ok: false as const, status: 404, error: "context_not_found" as const };
-  const quiz = await ensureQuizForTap(context, program);
-  const member = await getOrCreateMember({
-    tenantId: event.tenant_id,
-    programId: program.id,
-    eventId: String(event.id),
-    memberKey: input.memberKey,
-    consumerId: input.consumerId || null,
-    locale: input.locale || "es-AR",
-    email: input.email || null,
-    phone: input.phone || null,
-    country: event.country_code || null,
-  });
+  const quiz = await findConfiguredQuizForTap(context, program);
+  if (!quiz) return { ok: false as const, status: 404, error: "quiz_not_configured" as const };
+  const member = (await sql/*sql*/`
+    SELECT *
+    FROM loyalty_members
+    WHERE tenant_id = ${event.tenant_id}
+      AND program_id = ${program.id}
+      AND consumer_id = ${input.consumerId}
+      AND status IN ('enrolled', 'verified')
+    LIMIT 1
+  `)[0];
+  if (!member) return { ok: false as const, status: 409, error: "consumer_not_enrolled" as const };
   const attempt = (await sql/*sql*/`
     SELECT id, score, total_questions, points_awarded, status, created_at
     FROM loyalty_quiz_attempts
@@ -395,7 +369,7 @@ export async function submitTriviaForTap(input: {
   city?: string | null;
   country?: string | null;
 }) {
-  if (!isUuid(input.eventId)) {
+  if (isExplicitPreviewId(input.eventId)) {
     const setup = previewTrivia(input);
     const questions = buildDefaultTriviaQuestions(setup.context);
     const scoring = scoreTriviaAnswers(questions, input.answers || []);
@@ -413,6 +387,8 @@ export async function submitTriviaForTap(input: {
       member: setup.member,
     };
   }
+  if (!isDurableEventId(input.eventId)) return { ok: false as const, status: 400, error: "invalid_event_id" as const };
+  if (!input.consumerId) return { ok: false as const, status: 401, error: "consumer_auth_required" as const };
 
   const setup = await getTriviaForTap(input);
   if (!setup.ok) return setup;
@@ -421,122 +397,164 @@ export async function submitTriviaForTap(input: {
   const program = event ? await getActiveProgram(event.tenant_id) : null;
   if (!event || !program) return { ok: false as const, status: 404, error: "event_not_found" as const };
 
-  const member = await getOrCreateMember({
-    tenantId: event.tenant_id,
-    programId: program.id,
-    eventId: String(event.id),
-    memberKey: input.memberKey,
-    consumerId: input.consumerId || null,
-    locale: input.locale || "es-AR",
-    email: input.email || null,
-    phone: input.phone || null,
-    country: event.country_code || null,
-  });
-  const quiz = await ensureQuizForTap(setup.context, program);
-  const questions = questionsFromQuiz(quiz);
-  const idempotencyKey = `quiz:${quiz.id}:event:${event.id}:member:${member.id}`;
-  const existing = (await sql/*sql*/`
-    SELECT id, score, total_questions, points_awarded, status, created_at
-    FROM loyalty_quiz_attempts
-    WHERE idempotency_key = ${idempotencyKey}
+  const member = (await sql/*sql*/`
+    SELECT *
+    FROM loyalty_members
+    WHERE tenant_id = ${event.tenant_id}
+      AND program_id = ${program.id}
+      AND consumer_id = ${input.consumerId}
+      AND status IN ('enrolled', 'verified')
     LIMIT 1
   `)[0];
-  if (existing) {
-    return {
-      ok: true as const,
-      status: 200,
-      duplicateAttempt: true,
-      score: Number(existing.score || 0),
-      total: Number(existing.total_questions || questions.length),
-      pointsAwarded: Number(existing.points_awarded || 0),
-      alreadyCompleted: true,
-      requiresLogin: !input.consumerId,
-      explanations: questions.map(publicTriviaQuestion),
-      member: { id: member.id, pointsBalance: member.points_balance, consumerLinked: Boolean(input.consumerId) },
-    };
-  }
-
+  if (!member) return { ok: false as const, status: 409, error: "consumer_not_enrolled" as const };
+  const quiz = await findConfiguredQuizForTap(setup.context, program);
+  if (!quiz) return { ok: false as const, status: 404, error: "quiz_not_configured" as const };
+  const questions = questionsFromQuiz(quiz);
+  const idempotencyKey = `quiz:${quiz.id}:event:${event.id}:member:${member.id}`;
+  const ledgerIdempotencyKey = `${idempotencyKey}:points`;
   const scoring = scoreTriviaAnswers(questions, input.answers || []);
   const pointsPerCorrect = Number(quiz.points_per_correct || 10);
   const completionBonus = scoring.score >= Number(quiz.pass_threshold || 1) ? Number(quiz.completion_bonus || 0) : 0;
   const pointsToAward = scoring.score * pointsPerCorrect + completionBonus;
-  const award = pointsToAward > 0 ? await awardPoints({
-    tenantId: event.tenant_id,
-    programId: program.id,
-    memberId: member.id,
-    tapEventId: String(event.id),
-    delta: pointsToAward,
-    source: "QUIZ_COMPLETED",
-    idempotencyKey,
-    reason: `Trivia ${quiz.code}`,
-    metadata: {
-      quizId: quiz.id,
-      score: scoring.score,
-      total: scoring.total,
-      city: event.city || null,
-      productName: setup.context.productName,
-      brandName: setup.context.brandName,
-      insightTags: scoring.details.map((detail) => detail.insightTag),
-    },
-  }) : { awarded: false, duplicate: false, entry: null as any };
-
-  if (input.consumerId && pointsToAward > 0 && award.awarded) {
-    await ensureTenantMembership({ consumerId: input.consumerId, tenantId: event.tenant_id, tapEventId: String(event.id), source: "trivia" });
-    await sql/*sql*/`
-      UPDATE tenant_consumer_memberships
-      SET points_balance = points_balance + ${pointsToAward},
-          lifetime_points = lifetime_points + ${pointsToAward},
-          last_activity_at = now(),
-          updated_at = now()
-      WHERE tenant_id = ${event.tenant_id}
+  await ensureTenantMembership({ consumerId: input.consumerId, tenantId: event.tenant_id, tapEventId: String(event.id), source: "trivia" });
+  const awardMetadata = JSON.stringify({
+    quizId: quiz.id,
+    score: scoring.score,
+    total: scoring.total,
+    city: event.city || null,
+    productName: setup.context.productName,
+    brandName: setup.context.brandName,
+    insightTags: scoring.details.map((detail) => detail.insightTag),
+  });
+  const attemptMetadata = JSON.stringify({
+    city: event.city || null,
+    country: event.country_code || null,
+    productName: setup.context.productName,
+    brandName: setup.context.brandName,
+    region: setup.context.region,
+    vertical: setup.context.vertical,
+    pointsPerCorrect,
+    completionBonus,
+  });
+  const atomicRows = await sql/*sql*/`
+    WITH locked_member AS MATERIALIZED (
+      SELECT id, points_balance, lifetime_points
+      FROM loyalty_members
+      WHERE id = ${member.id}
+        AND tenant_id = ${event.tenant_id}
+        AND program_id = ${program.id}
         AND consumer_id = ${input.consumerId}
-    `;
-  }
-
-  const attempt = (await sql/*sql*/`
-    INSERT INTO loyalty_quiz_attempts (
-      tenant_id, program_id, quiz_id, member_id, tap_event_id, consumer_id,
-      score, total_questions, points_awarded, answers_json, status, idempotency_key, metadata_json
+        AND status IN ('enrolled', 'verified')
+      FOR UPDATE
+    ),
+    reserved_attempt AS MATERIALIZED (
+      INSERT INTO loyalty_quiz_attempts (
+        tenant_id, program_id, quiz_id, member_id, tap_event_id, consumer_id,
+        score, total_questions, points_awarded, answers_json, status, idempotency_key, metadata_json
+      )
+      SELECT
+        ${event.tenant_id}, ${program.id}, ${quiz.id}, locked_member.id, ${event.id}, ${input.consumerId},
+        ${scoring.score}, ${scoring.total}, 0, ${JSON.stringify(scoring.details)}::jsonb,
+        'processing', ${idempotencyKey}, ${attemptMetadata}::jsonb
+      FROM locked_member
+      ON CONFLICT (idempotency_key) DO NOTHING
+      RETURNING id
+    ),
+    reserved_ledger AS MATERIALIZED (
+      INSERT INTO points_ledger (
+        tenant_id, program_id, member_id, tap_event_id, source, delta,
+        balance_after, idempotency_key, reason, metadata_json
+      )
+      SELECT
+        ${event.tenant_id}, ${program.id}, locked_member.id, ${event.id},
+        'QUIZ_COMPLETED'::points_source, ${pointsToAward}, 0, ${ledgerIdempotencyKey},
+        ${`Trivia ${quiz.code}`}, ${awardMetadata}::jsonb
+      FROM locked_member, reserved_attempt
+      WHERE ${pointsToAward} > 0
+      ON CONFLICT (idempotency_key) DO NOTHING
+      RETURNING id
+    ),
+    award_gate AS MATERIALIZED (
+      SELECT
+        reserved_attempt.id AS attempt_id,
+        locked_member.id AS member_id,
+        CASE WHEN ${pointsToAward} = 0 OR reserved_ledger.id IS NOT NULL THEN ${pointsToAward} ELSE 0 END AS awarded_points
+      FROM reserved_attempt
+      JOIN locked_member ON true
+      LEFT JOIN reserved_ledger ON true
+      WHERE ${pointsToAward} = 0 OR reserved_ledger.id IS NOT NULL
+    ),
+    updated_member AS MATERIALIZED (
+      UPDATE loyalty_members loyalty_member
+      SET points_balance = loyalty_member.points_balance + award_gate.awarded_points,
+          lifetime_points = loyalty_member.lifetime_points + award_gate.awarded_points,
+          updated_at = now()
+      FROM award_gate
+      WHERE loyalty_member.id = award_gate.member_id
+      RETURNING loyalty_member.id, loyalty_member.points_balance, loyalty_member.lifetime_points, award_gate.attempt_id, award_gate.awarded_points
+    ),
+    finalized_ledger AS MATERIALIZED (
+      UPDATE points_ledger ledger
+      SET balance_after = updated_member.points_balance
+      FROM reserved_ledger, updated_member
+      WHERE ledger.id = reserved_ledger.id
+      RETURNING ledger.id
+    ),
+    projected_membership AS MATERIALIZED (
+      UPDATE tenant_consumer_memberships membership_projection
+      SET points_balance = updated_member.points_balance,
+          lifetime_points = updated_member.lifetime_points,
+          loyalty_program_id = ${program.id},
+          last_tap_event_id = ${event.id},
+          last_activity_at = now(),
+          metadata_json = COALESCE(membership_projection.metadata_json, '{}'::jsonb) || '{"pointsProjectionSource":"loyalty_members"}'::jsonb,
+          updated_at = now()
+      FROM updated_member
+      WHERE membership_projection.tenant_id = ${event.tenant_id}
+        AND membership_projection.consumer_id = ${input.consumerId}
+      RETURNING membership_projection.id
+    ),
+    finalized_attempt AS (
+      UPDATE loyalty_quiz_attempts attempt
+      SET points_awarded = updated_member.awarded_points,
+          status = 'completed'
+      FROM updated_member, projected_membership
+      WHERE attempt.id = updated_member.attempt_id
+      RETURNING attempt.id, attempt.score, attempt.total_questions, attempt.points_awarded, attempt.status, attempt.created_at, updated_member.points_balance
     )
-    VALUES (
-      ${event.tenant_id},
-      ${program.id},
-      ${quiz.id},
-      ${member.id},
-      ${event.id},
-      ${input.consumerId || null},
-      ${scoring.score},
-      ${scoring.total},
-      ${award.awarded ? pointsToAward : 0},
-      ${JSON.stringify(scoring.details)}::jsonb,
-      ${input.consumerId ? "completed" : "pending_auth"},
-      ${idempotencyKey},
-      ${JSON.stringify({
-        city: event.city || null,
-        country: event.country_code || null,
-        productName: setup.context.productName,
-        brandName: setup.context.brandName,
-        region: setup.context.region,
-        vertical: setup.context.vertical,
-        pointsPerCorrect,
-        completionBonus,
-      })}::jsonb
-    )
-    RETURNING id, score, total_questions, points_awarded, status, created_at
+    SELECT * FROM finalized_attempt
+  `;
+  const attempt = atomicRows[0] || (await sql/*sql*/`
+    SELECT attempt.id, attempt.score, attempt.total_questions, attempt.points_awarded, attempt.status, attempt.created_at,
+           loyalty_member.points_balance
+    FROM loyalty_quiz_attempts attempt
+    JOIN loyalty_members loyalty_member ON loyalty_member.id = attempt.member_id
+    WHERE attempt.idempotency_key = ${idempotencyKey}
+      AND attempt.tenant_id = ${event.tenant_id}
+      AND attempt.program_id = ${program.id}
+      AND attempt.member_id = ${member.id}
+      AND attempt.consumer_id = ${input.consumerId}
+    LIMIT 1
   `)[0];
+  if (!attempt || String(attempt.status) !== "completed") {
+    return { ok: false as const, status: 503, error: "quiz_completion_unavailable" as const };
+  }
+  const duplicateAttempt = atomicRows.length === 0;
 
   return {
     ok: true as const,
     status: 200,
     score: scoring.score,
     total: scoring.total,
-    pointsAwarded: award.awarded ? pointsToAward : 0,
+    pointsAwarded: Number(attempt.points_awarded || 0),
+    duplicateAttempt,
+    alreadyCompleted: duplicateAttempt,
     requiresLogin: !input.consumerId,
     attempt,
     explanations: scoring.details,
     member: {
       id: member.id,
-      pointsBalance: Number(member.points_balance || 0) + (award.awarded ? pointsToAward : 0),
+      pointsBalance: Number(attempt.points_balance || 0),
       consumerLinked: Boolean(input.consumerId),
     },
   };

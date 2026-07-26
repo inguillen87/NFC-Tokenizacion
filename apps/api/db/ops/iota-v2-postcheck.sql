@@ -1,4 +1,4 @@
--- Read-only evidence query for the 0050-0055 staging migration.
+-- Read-only evidence query for the 0050-0056 staging migration.
 -- Enforcement (endpoint allowlist, exact ledger and fingerprint) lives in
 -- scripts/staging-postgres-smoke.mjs. This SQL is suitable for Neon SQL Editor
 -- or psql evidence capture and never mutates the database.
@@ -19,7 +19,8 @@ WHERE id IN (
   '20260723194500_0052_webhook_delivery_outbox.sql',
   '20260723200500_0053_admin_login_abuse_guard.sql',
   '20260723213000_0054_iota_executor_publications.sql',
-  '20260724213000_0055_iota_executor_durable_broadcast.sql'
+  '20260724213000_0055_iota_executor_durable_broadcast.sql',
+  '20260725014500_0056_iota_evidence_constraints_validate.sql'
 )
 ORDER BY id;
 

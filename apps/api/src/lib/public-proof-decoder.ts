@@ -142,15 +142,15 @@ function explainField(key: string, value: string): PublicProofDecodedField {
 export function publicProofBusinessMeaning(fields: Record<string, string>) {
   const vertical = fields.vertical || "";
   if (vertical.includes("pharma")) {
-    return "Lectura de negocio: prueba que un lote regulado tuvo hitos de calidad incluidos en una evidencia publica, sin exponer pacientes, rutas internas ni documentos QA.";
+    return "Lectura de negocio: prueba que un memo con hashes de hitos QA fue publicado y conserva integridad criptografica. No prueba que la liberacion, temperatura o condicion fisica declaradas sean verdaderas.";
   }
   if (vertical.includes("agro")) {
-    return "Lectura de negocio: prueba stewardship, origen/canal autorizado y uso responsable de un insumo, sin exponer clientes, ubicaciones sensibles ni acuerdos comerciales.";
+    return "Lectura de negocio: prueba publicacion e integridad del memo con eventos declarados de stewardship. No prueba origen, canal autorizado, uso fisico ni custodia del insumo.";
   }
   if (vertical.includes("logistica") || vertical.includes("delivery")) {
-    return "Lectura de negocio: prueba custodia y entrega verificable de un activo fisico, sin publicar manifiesto, receptor ni direccion privada.";
+    return "Lectura de negocio: prueba publicacion e integridad del memo con eventos logisticos declarados. No prueba custodia, entrega, receptor ni estado fisico del activo.";
   }
-  return "Lectura de negocio: prueba que un conjunto de eventos existia y fue anclado sin convertir la blockchain en una base de datos publica.";
+  return "Lectura de negocio: prueba que un memo con hashes fue publicado y anclado sin convertir la blockchain en una base de datos publica; no prueba la verdad material de los eventos declarados.";
 }
 
 export function decodePublicProofInput(input: unknown): PublicProofDecodeResult {

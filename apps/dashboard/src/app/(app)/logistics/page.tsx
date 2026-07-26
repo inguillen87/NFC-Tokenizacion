@@ -4,15 +4,15 @@ import { ShieldAlert, PackageCheck, Package, ShieldCheck, Navigation, Truck, Map
 import { requireDashboardSession } from "../../../lib/session";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../lib/admin-page-access";
 import { SecureDeliveryOpsConsole } from "../../../components/secure-delivery-ops-console";
+import { describeLogisticsSource, resolveLogisticsStatsPayload } from "../../../lib/logistics-map-truth";
 
 async function getLogisticsStats(context: AdminPageContext) {
   try {
     const response = await fetchAdminPage(context, "logistics/shipments");
-    if (!response.ok) return { total: 0, in_transit: 0, delivered: 0, alerts: 0 };
-    const payload = await response.json();
-    return payload.stats;
+    const payload = await response.json().catch(() => null);
+    return resolveLogisticsStatsPayload(payload, response.ok);
   } catch {
-    return { total: 0, in_transit: 0, delivered: 0, alerts: 0 };
+    return resolveLogisticsStatsPayload(null, false);
   }
 }
 
@@ -21,18 +21,23 @@ export default async function LogisticsHubPage() {
   const adminContext = await createAdminPageContext(session);
   const tenantScope = adminContext.tenantSlug;
 
-  const stats = await getLogisticsStats(adminContext);
+  const statsResult = await getLogisticsStats(adminContext);
+  const stats = statsResult.stats;
+  const sourceCopy = describeLogisticsSource(statsResult.source);
 
   return (
-    <main className="space-y-8 pb-12">
+    <main className="space-y-8 pb-12" data-logistics-source={statsResult.source} data-logistics-availability={statsResult.availability}>
       <SectionHeading 
         eyebrow="Secure Delivery" 
         title="Logistics Hub" 
-        description="Manage premium shipments with tamper-evident NFC tags, cryptographic authenticity, and real-time proof of custody." 
+        description="Manage tenant-scoped shipments, seal assignments and recorded handling events. These records document operator declarations; they do not prove physical custody or contents by themselves. The map below is an illustrative fixture and operational metrics disclose their API source."
       />
       
-      {/* Visual Placeholder for Real-Time Tracking Map */}
+      {/* Illustrative map fixture. It is not derived from shipment coordinates. */}
       <div className="relative w-full h-[400px] rounded-3xl overflow-hidden border border-white/10 bg-slate-950 flex items-center justify-center shadow-2xl">
+        <div className="absolute left-5 top-5 z-20 rounded-full border border-amber-300/30 bg-amber-500/15 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-amber-100">
+          Mapa demo · rutas y marcadores simulados
+        </div>
         {/* Map Background grid/gradient */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:32px_32px]"></div>
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent"></div>
@@ -56,7 +61,7 @@ export default async function LogisticsHubPage() {
           <div className="absolute h-12 w-12 rounded-full bg-cyan-400/20 animate-ping"></div>
           <div className="h-3 w-3 rounded-full bg-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.8)]"></div>
           <div className="absolute -top-8 bg-slate-900/80 backdrop-blur-sm border border-cyan-500/30 text-cyan-400 text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap">
-            HUB-EAST
+            HUB DEMO
           </div>
           <Truck className="absolute -top-3 text-cyan-300 h-4 w-4" />
         </div>
@@ -65,7 +70,7 @@ export default async function LogisticsHubPage() {
           <div className="absolute h-10 w-10 rounded-full bg-emerald-400/20 animate-ping" style={{ animationDelay: '1.5s' }}></div>
           <div className="h-3 w-3 rounded-full bg-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.8)]"></div>
           <div className="absolute -top-8 bg-slate-900/80 backdrop-blur-sm border border-emerald-500/30 text-emerald-400 text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap">
-            DEST-39A
+            DESTINO DEMO
           </div>
           <MapPin className="absolute -top-3 text-emerald-300 h-4 w-4" />
         </div>
@@ -80,7 +85,7 @@ export default async function LogisticsHubPage() {
           <div className="absolute h-14 w-14 rounded-full bg-rose-500/20 animate-ping" style={{ animationDelay: '0.2s' }}></div>
           <div className="h-3.5 w-3.5 rounded-full bg-rose-500 shadow-[0_0_20px_rgba(244,63,94,0.8)]"></div>
           <div className="absolute -top-8 bg-slate-900/80 backdrop-blur-sm border border-rose-500/40 text-rose-400 text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap">
-            ALERT
+            ALERTA DEMO
           </div>
           <ShieldAlert className="absolute -top-4 text-rose-400 h-5 w-5" />
         </div>
@@ -89,23 +94,26 @@ export default async function LogisticsHubPage() {
         <div className="absolute bottom-6 left-6 right-6 md:left-auto md:right-8 md:w-72 rounded-2xl bg-slate-950/70 backdrop-blur-xl border border-white/10 p-5 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
           <div className="flex items-center gap-3 mb-5">
             <div className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500"></span>
             </div>
-            <h3 className="text-sm font-semibold text-white tracking-wide uppercase">Live Network</h3>
+            <div>
+              <h3 className="text-sm font-semibold text-white tracking-wide uppercase">Network preview</h3>
+              <p className="mt-0.5 text-[9px] font-black uppercase tracking-wider text-cyan-200">{sourceCopy.badge}</p>
+            </div>
           </div>
+          <p className="mb-4 text-[10px] leading-4 text-slate-400">{sourceCopy.detail}</p>
           <div className="space-y-4 text-xs font-medium text-slate-300">
             <div className="flex justify-between items-center">
-              <span className="flex items-center gap-2"><Activity className="h-3.5 w-3.5 text-cyan-400" /> Active Nodes</span>
-              <span className="font-mono text-sm text-cyan-100">{stats.in_transit}</span>
+              <span className="flex items-center gap-2"><Activity className="h-3.5 w-3.5 text-cyan-400" /> In-transit records</span>
+              <span className="font-mono text-sm text-cyan-100">{stats?.in_transit ?? "—"}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="flex items-center gap-2"><Zap className="h-3.5 w-3.5 text-emerald-400" /> Secure Handoffs</span>
-              <span className="font-mono text-sm text-emerald-100">{stats.delivered}</span>
+              <span className="flex items-center gap-2"><Zap className="h-3.5 w-3.5 text-emerald-400" /> Delivered records</span>
+              <span className="font-mono text-sm text-emerald-100">{stats?.delivered ?? "—"}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="flex items-center gap-2"><ShieldAlert className="h-3.5 w-3.5 text-rose-400" /> Active Alerts</span>
-              <span className="font-mono text-sm text-rose-100">{stats.alerts}</span>
+              <span className="flex items-center gap-2"><ShieldAlert className="h-3.5 w-3.5 text-rose-400" /> Alert records</span>
+              <span className="font-mono text-sm text-rose-100">{stats?.alerts ?? "—"}</span>
             </div>
           </div>
         </div>
@@ -122,7 +130,7 @@ export default async function LogisticsHubPage() {
             </div>
             <h3 className="font-medium text-sm text-slate-400">Total Shipments</h3>
           </div>
-          <p className="mt-5 text-4xl font-light tracking-tight text-white">{stats.total}</p>
+          <p className="mt-5 text-4xl font-light tracking-tight text-white">{stats?.total ?? "—"}</p>
         </div>
         
         <div className="relative overflow-hidden rounded-2xl bg-slate-900/50 backdrop-blur-md border border-cyan-500/20 p-6 transition-all duration-300 hover:bg-slate-800/80 hover:shadow-[0_0_20px_rgba(34,211,238,0.1)] hover:-translate-y-1 group">
@@ -136,7 +144,7 @@ export default async function LogisticsHubPage() {
             </div>
             <h3 className="font-medium text-sm text-cyan-400/80">In Transit</h3>
           </div>
-          <p className="relative mt-5 text-4xl font-light tracking-tight text-white">{stats.in_transit}</p>
+          <p className="relative mt-5 text-4xl font-light tracking-tight text-white">{stats?.in_transit ?? "—"}</p>
         </div>
 
         <div className="relative overflow-hidden rounded-2xl bg-slate-900/50 backdrop-blur-md border border-emerald-500/20 p-6 transition-all duration-300 hover:bg-slate-800/80 hover:shadow-[0_0_20px_rgba(52,211,153,0.1)] hover:-translate-y-1 group">
@@ -150,7 +158,7 @@ export default async function LogisticsHubPage() {
             </div>
             <h3 className="font-medium text-sm text-emerald-400/80">Delivered Intact</h3>
           </div>
-          <p className="relative mt-5 text-4xl font-light tracking-tight text-white">{stats.delivered}</p>
+          <p className="relative mt-5 text-4xl font-light tracking-tight text-white">{stats?.delivered ?? "—"}</p>
         </div>
 
         <div className="relative overflow-hidden rounded-2xl bg-slate-900/50 backdrop-blur-md border border-rose-500/20 p-6 transition-all duration-300 hover:bg-slate-800/80 hover:shadow-[0_0_20px_rgba(244,63,94,0.15)] hover:-translate-y-1 group">
@@ -164,7 +172,7 @@ export default async function LogisticsHubPage() {
             </div>
             <h3 className="font-medium text-sm text-rose-400/80">Tamper Alerts</h3>
           </div>
-          <p className="relative mt-5 text-4xl font-light tracking-tight text-white">{stats.alerts}</p>
+          <p className="relative mt-5 text-4xl font-light tracking-tight text-white">{stats?.alerts ?? "—"}</p>
         </div>
       </div>
 
@@ -187,7 +195,7 @@ export default async function LogisticsHubPage() {
                 <Navigation className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
               </h3>
               <p className="text-sm text-slate-400 leading-relaxed group-hover:text-slate-300 transition-colors">
-                Track and audit the cryptographic chain of custody for all secure deliveries in real-time.
+                Review tenant shipment records, seal assignments and persisted handling events. Freshness and source remain visible in each operational response.
               </p>
             </div>
           </Link>
@@ -217,7 +225,7 @@ export default async function LogisticsHubPage() {
                 <span className="text-[9px] uppercase tracking-widest bg-emerald-500/20 text-emerald-300 px-2.5 py-1 rounded-full font-bold border border-emerald-500/30">App</span>
               </h3>
               <p className="text-sm text-slate-400 leading-relaxed group-hover:text-slate-300">
-                Create shipments, apply physical seal UIDs, record courier handoff and verify recipient delivery.
+                Create shipments, record seal UID assignments, courier handoffs and recipient checks without treating a scan as proof of package contents.
               </p>
             </div>
           </a>

@@ -18,7 +18,7 @@ export default async function OfflineDashboardPage() {
       <div className="mb-6 rounded-lg border border-amber-300/30 bg-amber-500/10 p-4 text-sm text-amber-100">
         Historial no disponible para <b>{adminContext.tenantSlug || "scope global"}</b>: el contrato actual expone
         <code className="mx-1 rounded bg-slate-950/60 px-1.5 py-0.5">POST /admin/offline-verifier/sync</code>
-        como mutaciÃ³n de sincronizaciÃ³n, no como lectura. Esta vista no ejecuta esa mutaciÃ³n al renderizar; requiere
+        como mutación de sincronización, no como lectura. Esta vista no ejecuta esa mutación al renderizar; requiere
         un endpoint GET de historial tenant-scoped.
       </div>
 

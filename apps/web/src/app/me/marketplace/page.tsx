@@ -36,7 +36,7 @@ function marketplaceBrandName(slug?: string | null) {
 
 function averageRating(items: VerifiedExperience[]) {
   const ratings = items.map((item) => Number(item.rating || 0)).filter((value) => value > 0);
-  if (!ratings.length) return "0.0";
+  if (!ratings.length) return "Sin datos";
   return (ratings.reduce((sum, value) => sum + value, 0) / ratings.length).toFixed(1);
 }
 
@@ -59,9 +59,9 @@ export default async function MarketplacePage({ searchParams }: { searchParams?:
 
   return (
     <PortalShell
-      title="Marketplace verificado"
+      title="Marketplace con evidencia"
       subtitle={contextualTenant
-        ? `Productos, beneficios y reventa de ${tenantDisplayName}, conectados a taps reales.`
+        ? `Productos, beneficios y reventa de ${tenantDisplayName}, conectados a eventos registrados.`
         : "Productos, beneficios y reventa para miembros nexID, sin comprar a ciegas."}
       notificationCount={items.length}
     >
@@ -70,18 +70,18 @@ export default async function MarketplacePage({ searchParams }: { searchParams?:
           <div>
             <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-400">Compra con contexto</p>
             <h2 className="mt-2 text-2xl font-black tracking-tight text-white">
-              Producto, certificado, club y experiencias reales antes de avanzar.
+              Producto, certificado digital, club y experiencias moderadas antes de avanzar.
             </h2>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
-              La marca puede publicar productos, drops, recompra o beneficios. El usuario entiende si el producto es auténtico,
-              de qué lote viene, qué club activa y qué dijeron otros compradores verificados.
+              La marca puede publicar productos, drops, recompra o beneficios. El usuario ve la evidencia digital disponible,
+              el lote y origen declarados, las políticas del club y opiniones con interacción registrada. Eso no certifica autenticidad física ni procedencia.
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
             {[
               ["Catálogo", `${items.length}`, "Productos publicados para este contexto."],
-              ["Reputación", rating, "Estrellas de experiencias verificadas."],
-              ["Prueba social", `${proofCount}`, "Opiniones con tap, contacto o ownership."],
+              ["Reputación", rating, "Estrellas de experiencias moderadas."],
+              ["Interacciones", `${proofCount}`, "Opiniones con evento, contacto u ownership registrado."],
             ].map(([label, value, detail]) => (
               <article key={label} className="rounded-2xl border border-white/5 bg-slate-950/60 p-4">
                 <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{label}</p>
@@ -104,7 +104,7 @@ export default async function MarketplacePage({ searchParams }: { searchParams?:
               <h2 className="mt-1 text-xl font-black text-white">Conecta MetaMask para NFT, reventa y ownership.</h2>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
                 WhatsApp/email siguen resolviendo el alta post-tap. La wallet aparece acá cuando el cliente quiere comprar,
-                transformar un producto premium en NFT, venderlo o transferir propiedad.
+                acuñar una representación digital, venderla o transferir el registro de ownership. La wallet no autentica el objeto físico.
               </p>
             </div>
           </div>
@@ -139,14 +139,14 @@ export default async function MarketplacePage({ searchParams }: { searchParams?:
       )}
 
       <section className="rounded-3xl border border-cyan-300/20 bg-cyan-500/10 p-5">
-        <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Experiencias verificadas</p>
-        <h2 className="mt-2 text-xl font-black text-white">Reviews solo de personas con evidencia real.</h2>
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Experiencias con evidencia</p>
+        <h2 className="mt-2 text-xl font-black text-white">Reviews ligadas a una interacción registrada.</h2>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-cyan-50/82">
-          Para opinar se pide tap físico, producto guardado, contacto validado, ownership o política de compra según la marca.
-          La marca modera y el comprador lee feedback confiable.
+          Para opinar se pide una referencia de evento NFC, producto guardado, contacto validado, ownership o política de compra según la marca.
+          La marca modera el contenido. La reseña no prueba uso, procedencia ni autenticidad física.
         </p>
         <div className="mt-4 grid gap-3 md:grid-cols-3">
-          {["Tap físico confirmado", "Contacto o dueño verificado", "Moderación de marca"].map((item) => (
+          {["Evento NFC asociado", "Contacto u ownership registrado", "Moderación de marca"].map((item) => (
             <div key={item} className="rounded-2xl border border-white/10 bg-slate-950/50 p-4 text-sm font-black text-white">
               {item}
             </div>

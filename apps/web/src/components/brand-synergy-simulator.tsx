@@ -56,10 +56,10 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
         ? "Produtos que verificam, aprendem e ativam negocio."
         : "Productos que verifican, aprenden y activan negocio.",
     body: isEn
-      ? "A tap is not just a certificate. nexID can prove the product, read consent and policy, and route a trusted commercial action without exposing private customer data."
+      ? "A tap is not just a certificate. nexID can validate NFC/SUN message evidence, apply consent and policy, and route an eligible commercial action without exposing private customer data."
       : isBr
-        ? "Um tap nao e apenas um certificado. nexID prova o produto, aplica consentimento e politica, e aciona uma resposta comercial sem expor dados privados."
-        : "Un tap no es solo un certificado. nexID prueba el producto, aplica consentimiento y politica, y dispara una accion comercial sin exponer datos privados.",
+        ? "Um tap nao e apenas um certificado. nexID valida a evidencia da mensagem NFC/SUN, aplica consentimento e politica, e aciona uma resposta comercial elegivel sem expor dados privados."
+        : "Un tap no es solo un certificado. nexID valida la evidencia del mensaje NFC/SUN, aplica consentimiento y politica, y dispara una accion comercial elegible sin exponer datos privados.",
     flow: isEn
       ? ["Product", "Tap", "Policy", "Reward"]
       : isBr
@@ -71,7 +71,7 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
     terminalTitle: isEn ? "Guided offer model" : isBr ? "Modelo guiado de oferta" : "Modelo guiado de oferta",
     channel: isEn ? "Hypothetical scenario" : isBr ? "Cenario hipotetico" : "Escenario hipotetico",
     physicalTap: isEn ? "1 - Physical tap detected" : isBr ? "1 - Tap fisico detectado" : "1 - Tap fisico detectado",
-    authenticity: isEn ? "2 - Authenticity check" : isBr ? "2 - Checagem de autenticidade" : "2 - Chequeo de autenticidad",
+    authenticity: isEn ? "2 - NFC/SUN message evidence check" : isBr ? "2 - Checagem da evidencia da mensagem NFC/SUN" : "2 - Chequeo de evidencia del mensaje NFC/SUN",
     query: isEn ? "3 - Business policy query" : isBr ? "3 - Consulta de politica comercial" : "3 - Consulta de politica comercial",
     voucher: isEn ? "4 - Action unlocked" : isBr ? "4 - Acao habilitada" : "4 - Accion habilitada",
     verified: isEn
@@ -87,10 +87,10 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
     category: isEn ? "Category" : isBr ? "Categoria" : "Categoria",
     boardTitle: isEn ? "Hypothetical activation model" : isBr ? "Modelo hipotetico de ativacao" : "Modelo hipotetico de activacion",
     boardSubtitle: isEn
-      ? "What a team could operate after a trusted tap."
+      ? "What a team could operate after an eligible NFC event."
       : isBr
-        ? "O que uma equipe poderia operar depois de um tap confiavel."
-        : "Lo que un equipo podria operar despues de un tap confiable.",
+        ? "O que uma equipe poderia operar depois de um evento NFC elegivel."
+        : "Lo que un equipo podria operar despues de un evento NFC elegible.",
     hypothesisBadge: isEn ? "HYPOTHETICAL SCENARIO" : isBr ? "CENARIO HIPOTETICO" : "ESCENARIO HIPOTETICO",
     hypothesisNote: isEn
       ? "Generic brands, benefits and outcomes illustrate a configurable workflow. They are not customers, partners or measured performance."
@@ -101,8 +101,8 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
     policyLabel: isEn ? "Policy gate" : isBr ? "Regra de politica" : "Regla de politica",
     resultLabel: isEn ? "Business result" : isBr ? "Resultado de negocio" : "Resultado comercial",
     proofLabel: isEn ? "Public proof" : isBr ? "Prova publica" : "Prueba publica",
-    proofVerifiedTitle: isEn ? "Verified" : isBr ? "Verificado" : "Verificado",
-    proofVerifiedBody: isEn ? "SUN + product policy" : isBr ? "SUN + politica do produto" : "SUN + politica de producto",
+    proofVerifiedTitle: isEn ? "NFC evidence" : isBr ? "Evidencia NFC" : "Evidencia NFC",
+    proofVerifiedBody: isEn ? "SUN message + product policy" : isBr ? "Mensagem SUN + politica do produto" : "Mensaje SUN + politica de producto",
     proofPrivateTitle: isEn ? "Private" : isBr ? "Privado" : "Privado",
     proofPrivateBody: isEn
       ? "Consent and PII stay inside nexID"

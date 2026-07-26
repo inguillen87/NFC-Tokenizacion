@@ -4,6 +4,17 @@ export const dynamic = "force-dynamic";
 import { sql } from "../../../lib/db";
 import { json } from "../../../lib/http";
 import { ensureCrmOpsSchema } from "../../../lib/commercial-runtime-schema";
+import { enforceCriticalRateLimit } from "../../../lib/critical-rate-limit";
+import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../lib/bounded-request-body";
+
+const MAX_ASSISTANT_BODY_BYTES = 32 * 1024;
+const MAX_QUESTION_CHARS = 4_000;
+const MAX_HISTORY_ITEMS = 12;
+const MAX_HISTORY_ITEM_CHARS = 1_000;
+const MAX_HISTORY_TOTAL_CHARS = 8_000;
+const SUPPORTED_LOCALES = new Set(["es-AR", "pt-BR", "en"]);
+const SUPPORTED_MODES = new Set(["assistant", "lead_capture", "realtime_ai"]);
+const HISTORY_ROLES = new Set(["user", "assistant"]);
 
 type Body = {
   locale?: string;
@@ -40,24 +51,37 @@ type OpenAILeadPayload = {
 
 const fallbackByLocale: Record<string, string[]> = {
   "es-AR": [
-    "nexID vende confianza verificable, no chips sueltos: producto fisico, tap NFC, SUN dinamico, pasaporte celular, CRM y acciones post-compra.",
-    "BASIC sirve para activaciones rapidas. SECURE y PREMIUM sirven para autenticidad, antifraude, garantia, reventa y datos accionables.",
+    "nexID conecta identidad digital de producto, evidencia de mensajes NFC, pasaporte movil, CRM y acciones post-compra.",
+    "BASIC sirve para activaciones simples. SECURE y PREMIUM agregan evidencia SUN/SDM, senales contra replay o URLs copiadas y estado TT reportado. Eso no certifica por si solo el producto fisico, su contenido, origen, ruta ni propietario.",
     "Si me pasas volumen, pais, vertical y contacto, dejo el lead listo para cotizacion o reunion privada.",
   ],
   "pt-BR": [
-    "nexID vende confianca verificavel, nao chips soltos: produto fisico, tap NFC, SUN dinamico, passport mobile, CRM e acoes pos-compra.",
-    "BASIC serve para ativacoes rapidas. SECURE e PREMIUM servem para autenticidade, antifraude, garantia, revenda e dados acionaveis.",
+    "nexID conecta identidade digital do produto, evidencia de mensagens NFC, passport mobile, CRM e acoes pos-compra.",
+    "BASIC serve para ativacoes simples. SECURE e PREMIUM adicionam evidencia SUN/SDM, sinais contra replay ou URLs copiadas e estado TT reportado. Isso nao certifica sozinho o produto fisico, o conteudo, a origem, a rota nem o proprietario.",
     "Com volume, pais, vertical e contato eu registro o lead para proposta ou reuniao privada.",
   ],
   en: [
-    "nexID sells verifiable trust, not loose chips: physical product, NFC tap, dynamic SUN, mobile passport, CRM and post-purchase actions.",
-    "BASIC is for fast activations. SECURE and PREMIUM are for authenticity, anti-fraud, warranty, resale and actionable data.",
+    "nexID connects digital product identity, NFC message evidence, mobile passports, CRM and post-purchase actions.",
+    "BASIC supports simple activations. SECURE and PREMIUM add SUN/SDM evidence, replay or copied-URL signals and reported TT state. That does not by itself certify the physical product, contents, origin, route or owner.",
     "Share volume, country, vertical and contact and I can create the quote/private-meeting lead.",
   ],
 };
 
 function clean(value: unknown) {
   return String(value || "").trim();
+}
+
+function limited(value: unknown, maximum: number) {
+  return clean(value).slice(0, maximum);
+}
+
+function validEmail(value: string) {
+  return /^[^\s@]{1,64}@[^\s@]{1,255}$/.test(value) && value.length <= 320;
+}
+
+function validPhone(value: string) {
+  const digits = value.replace(/\D/g, "");
+  return digits.length >= 8 && digits.length <= 15;
 }
 
 function detectIntent(question: string) {
@@ -153,9 +177,9 @@ function buildTagComparisonAnswer(locale: string) {
     return [
       "For nexID, 215 and 424 are not payment codes. They are NFC tag profiles.",
       "NTAG 215: lower-cost NFC for simple identity, event wristbands, serialized assets, basic tap UX and QR/NFC campaigns. Good when the risk is low and the goal is speed.",
-      "NTAG 424 DNA: secure NFC with dynamic SUN/SDM. Each tap generates different cryptographic evidence, so it is the right choice for bottles, cosmetics, luxury goods, warranty, ownership claims, anti-copy and post-purchase actions.",
-      "NTAG 424 DNA TagTamper: premium seal profile. It can detect/open-state policy, so it is the best commercial story for capsules, seals, packaging and high-value products.",
-      "My recommendation: use 215 for low-risk scale and 424 DNA/TT when the brand must prove authenticity, route, owner, warranty or resale value.",
+      "NTAG 424 DNA: secure NFC with dynamic SUN/SDM message evidence and controls against replay or copied URLs. It is useful for bottles, cosmetics, luxury goods, warranty review, ownership workflows and post-purchase actions.",
+      "NTAG 424 DNA TagTamper: adds a configured TT state reported as closed, open or tamper. That signal does not by itself certify the physical seal, contents or product.",
+      "My recommendation: use 215 for low-risk scale and 424 DNA/TT when the brand needs stronger tag-message evidence for warranty or ownership review. Origin, route and physical ownership require additional records, policy and approval.",
     ].join("\n");
   }
 
@@ -163,18 +187,18 @@ function buildTagComparisonAnswer(locale: string) {
     return [
       "Para nexID, 215 e 424 nao sao codigos de pagamento. Sao perfis de tag NFC.",
       "NTAG 215: NFC de menor custo para identidade simples, pulseiras, ativos serializados, tap rapido e campanhas QR/NFC. Serve quando o risco e baixo e a meta e velocidade.",
-      "NTAG 424 DNA: NFC seguro com SUN/SDM dinamico. Cada toque gera evidencia criptografica diferente; e a opcao certa para garrafas, cosmeticos, luxo, garantia, ownership, anti-copia e acoes pos-compra.",
-      "NTAG 424 DNA TagTamper: perfil premium de lacre. Pode trabalhar com estado de abertura, ideal para tampas, selos, embalagens e produtos de alto valor.",
-      "Recomendacao: 215 para escala de baixo risco; 424 DNA/TT quando a marca precisa provar autenticidade, rota, dono, garantia ou valor de revenda.",
+      "NTAG 424 DNA: NFC seguro com evidencia dinamica de mensagem SUN/SDM e controles contra replay ou URLs copiadas. Serve para garantia, revisao de ownership e acoes pos-compra.",
+      "NTAG 424 DNA TagTamper: acrescenta um estado TT configurado e reportado como fechado, aberto ou tamper. Esse sinal nao certifica sozinho o lacre fisico, o conteudo nem o produto.",
+      "Recomendacao: 215 para escala de baixo risco; 424 DNA/TT quando a marca precisa de evidencia mais forte da mensagem do tag para revisar garantia ou ownership. Origem, rota e propriedade fisica exigem registros, politica e aprovacao adicionais.",
     ].join("\n");
   }
 
   return [
     "Para nexID, 215 y 424 no son codigos de pago. Son perfiles de tag NFC.",
     "NTAG 215: NFC de menor costo para identidad simple, brazaletes/eventos, activos serializados, tap rapido y campanas QR/NFC. Sirve cuando el riesgo es bajo y la prioridad es escala.",
-    "NTAG 424 DNA: NFC seguro con SUN/SDM dinamico. Cada tap genera evidencia criptografica distinta; es el perfil correcto para botellas, cosmetica, lujo, garantia, reclamo de dueno, anti-copia y acciones post-compra.",
-    "NTAG 424 DNA TagTamper: perfil premium de sello. Permite una politica vinculada a apertura/manipulacion, ideal para capsulas, sellos, packaging y productos de alto valor.",
-    "Recomendacion: 215 para escala de bajo riesgo; 424 DNA/TT cuando la marca necesita probar autenticidad, ruta, dueno, garantia o valor de reventa.",
+    "NTAG 424 DNA: NFC seguro con evidencia dinamica de mensaje SUN/SDM y controles contra replay o URLs copiadas. Sirve para garantia, revision de ownership y acciones post-compra.",
+    "NTAG 424 DNA TagTamper: agrega un estado TT configurado y reportado como cerrado, abierto o tamper. Esa senal no certifica por si sola el sello fisico, el contenido ni el producto.",
+    "Recomendacion: 215 para escala de bajo riesgo; 424 DNA/TT cuando la marca necesita evidencia mas fuerte del mensaje del tag para revisar garantia u ownership. Origen, ruta y propiedad fisica requieren registros, politica y aprobacion adicionales.",
   ].join("\n");
 }
 
@@ -236,8 +260,9 @@ async function buildOpenAiAnswer({ locale, question, intent, kb }: { locale: str
   const system = [
     "You are the nexID commercial AI for NFC product digitization.",
     "Never answer as a generic payments, banking, crypto or support chatbot.",
-    "The buyer is evaluating NFC/QR tags, product passports, SUN/SDM validation, anti-copy, warranty, CRM, reseller channel or private demo.",
-    "Core domain facts: NTAG213/215 are BASIC low-cost tags for simple serialized taps, events and campaigns. NTAG 424 DNA is SECURE with dynamic SUN/SDM cryptographic tap evidence. NTAG 424 DNA TagTamper is PREMIUM for seals, caps and open-state policy.",
+    "The buyer is evaluating NFC/QR tags, product passports, SUN/SDM message validation, replay or copied-URL signals, warranty, CRM, reseller channel or private demo.",
+    "Core domain facts: NTAG213/215 are BASIC low-cost tags for simple serialized taps, events and campaigns. NTAG 424 DNA is SECURE and provides dynamic SUN/SDM message evidence. NTAG 424 DNA TagTamper adds a configured TT state reported by the tag for policy workflows.",
+    "A tag message, QR scan, reported TT state or blockchain hash does not by itself certify the physical product, seal, contents, origin, route, payment, custody or owner. Those claims require independent records and tenant authorization.",
     "Answer in the requested locale. Be concrete, sales-useful and short. Ask only for missing lead fields.",
     "If there is buying intent, push toward samples, quote or private meeting. Do not invent exact unit prices.",
     "Return JSON with keys: answer, company, country, vertical, tagType, volume, buyingIntent, nextStep.",
@@ -247,6 +272,8 @@ async function buildOpenAiAnswer({ locale, question, intent, kb }: { locale: str
   const fallbacks = [preferredModel, "gpt-5-nano", "gpt-4o-mini"].filter((m, i, arr) => arr.indexOf(m) === i);
 
   for (const model of fallbacks) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12_000);
     try {
       const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
@@ -257,6 +284,7 @@ async function buildOpenAiAnswer({ locale, question, intent, kb }: { locale: str
         body: JSON.stringify({
           model,
           temperature: 0.18,
+          max_completion_tokens: 650,
           messages: [
             { role: "system", content: system },
             { role: "user", content: `Locale: ${locale}\nIntent: ${intent}\nQuestion: ${question}\nKnowledge base:\n${context}` },
@@ -264,6 +292,7 @@ async function buildOpenAiAnswer({ locale, question, intent, kb }: { locale: str
           response_format: { type: "json_object" },
         }),
         cache: "no-store",
+        signal: controller.signal,
       });
 
       if (!response.ok) continue;
@@ -273,6 +302,8 @@ async function buildOpenAiAnswer({ locale, question, intent, kb }: { locale: str
       return JSON.parse(text) as OpenAILeadPayload;
     } catch {
       continue;
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
@@ -332,16 +363,27 @@ async function upsertLeadCompat(params: {
   if (recent[0]?.id) {
     try {
       await updateExtended(recent[0].id);
+      return true;
     } catch {
-      await updateBasic(recent[0].id).catch(() => null);
+      try {
+        await updateBasic(recent[0].id);
+        return true;
+      } catch {
+        return false;
+      }
     }
-    return;
   }
 
   try {
     await insertExtended();
+    return true;
   } catch {
-    await insertBasic().catch(() => null);
+    try {
+      await insertBasic();
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
 
@@ -352,10 +394,15 @@ async function createCommercialTicket(params: {
   detail: string;
   source: string;
 }) {
-  await sql/*sql*/`
-    INSERT INTO tickets (locale, contact, title, detail, status, source)
-    VALUES (${params.locale}, ${params.contact}, ${params.title}, ${params.detail.slice(0, 1200)}, 'open', ${params.source})
-  `.catch(() => null);
+  try {
+    await sql/*sql*/`
+      INSERT INTO tickets (locale, contact, title, detail, status, source)
+      VALUES (${params.locale}, ${params.contact}, ${params.title}, ${params.detail.slice(0, 1200)}, 'open', ${params.source})
+    `;
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function titleForTicket(locale: string, intent: string) {
@@ -365,20 +412,97 @@ function titleForTicket(locale: string, intent: string) {
 }
 
 export async function POST(req: Request) {
-  await ensureCrmOpsSchema();
-  const body: Body = await req.json().catch(() => ({}));
-  const locale = body.locale || "es-AR";
+  const rateLimited = await enforceCriticalRateLimit(req, {
+    rateClass: "ai_expensive",
+    tenantId: "platform",
+    subjectId: "assistant-chat:public",
+  });
+  if (rateLimited) return rateLimited;
+
+  let body: Body;
+  try {
+    body = await readBoundedJsonBody<Body>(req, MAX_ASSISTANT_BODY_BYTES);
+  } catch (error) {
+    const tooLarge = error instanceof RequestBodyTooLargeError;
+    return json({ ok: false, reason: tooLarge ? "request_body_too_large" : "invalid_json" }, tooLarge ? 413 : 400);
+  }
+
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return json({ ok: false, reason: "invalid_request_schema" }, 400);
+  }
+
+  const requestedLocale = clean(body.locale);
+  if (requestedLocale && !SUPPORTED_LOCALES.has(requestedLocale)) {
+    return json({ ok: false, reason: "unsupported_locale", supported: [...SUPPORTED_LOCALES] }, 400);
+  }
+  const locale = requestedLocale || "es-AR";
+  const requestedMode = clean(body.mode);
+  if (requestedMode && !SUPPORTED_MODES.has(requestedMode)) {
+    return json({ ok: false, reason: "unsupported_mode" }, 400);
+  }
+  const mode = requestedMode || "assistant";
+
+  const scalarLimits: Array<[keyof Body, number]> = [
+    ["question", MAX_QUESTION_CHARS],
+    ["message", MAX_QUESTION_CHARS],
+    ["fullName", 120],
+    ["email", 320],
+    ["whatsapp", 32],
+    ["contact", 320],
+    ["tenant", 120],
+    ["role", 40],
+  ];
+  for (const [field, maximum] of scalarLimits) {
+    const value = body[field];
+    if (value !== undefined && value !== null && typeof value !== "string") {
+      return json({ ok: false, reason: "invalid_request_schema", field }, 400);
+    }
+    if (typeof value === "string" && value.trim().length > maximum) {
+      return json({ ok: false, reason: "field_too_large", field }, 413);
+    }
+  }
+
+  if (body.history !== undefined && !Array.isArray(body.history)) {
+    return json({ ok: false, reason: "invalid_history" }, 400);
+  }
+  const rawHistory = body.history || [];
+  if (rawHistory.length > MAX_HISTORY_ITEMS) {
+    return json({ ok: false, reason: "history_too_large" }, 413);
+  }
+  const history: Array<{ role: "user" | "assistant"; text: string }> = [];
+  let historyCharacters = 0;
+  for (const item of rawHistory) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      return json({ ok: false, reason: "invalid_history" }, 400);
+    }
+    const role = clean(item.role);
+    const text = clean(item.text);
+    if (!HISTORY_ROLES.has(role) || !text || text.length > MAX_HISTORY_ITEM_CHARS) {
+      return json({ ok: false, reason: "invalid_history" }, 400);
+    }
+    historyCharacters += text.length;
+    if (historyCharacters > MAX_HISTORY_TOTAL_CHARS) {
+      return json({ ok: false, reason: "history_too_large" }, 413);
+    }
+    history.push({ role: role as "user" | "assistant", text });
+  }
+
   const question = clean(body.question || body.message);
-  const historyText = Array.isArray(body.history) ? body.history.map((m) => clean(m?.text)).join("\n") : "";
+  if (!question) return json({ ok: false, reason: "question_required" }, 400);
+  const historyText = history.map((item) => `${item.role}: ${item.text}`).join("\n");
   const conversationText = `${historyText}\n${question}`;
   const intent = detectIntent(conversationText);
   const extractedFromQuestion = extractLeadData(conversationText);
 
-  const fullName = clean(body.fullName);
-  const email = clean(body.email || extractEmail(conversationText));
-  const whatsapp = clean(body.whatsapp || extractWhatsApp(conversationText));
-  const contact = clean(body.contact || [email, whatsapp, fullName].filter(Boolean).join(" | "));
-  const hasContact = Boolean(email || whatsapp || contact);
+  const fullName = limited(body.fullName, 120);
+  const explicitContact = limited(body.contact, 320);
+  const email = limited(body.email || extractEmail(explicitContact) || extractEmail(conversationText), 320).toLowerCase();
+  const whatsapp = limited(body.whatsapp || extractWhatsApp(explicitContact) || extractWhatsApp(conversationText), 32);
+  if ((body.email && !validEmail(email)) || (body.whatsapp && !validPhone(whatsapp))) {
+    return json({ ok: false, reason: body.email && !validEmail(email) ? "email_invalid" : "whatsapp_invalid" }, 400);
+  }
+  const contact = limited(explicitContact || [email, whatsapp].filter(Boolean).join(" | "), 320);
+  const hasContact = validEmail(email) || validPhone(whatsapp);
   const hasQualifiedLeadData = fullName.length > 2 && hasContact;
 
   const missing: string[] = [];
@@ -390,23 +514,29 @@ export async function POST(req: Request) {
 
   const requiresContact = missing.length > 0 && ["pricing", "reseller", "order", "meeting"].includes(intent);
 
-  const kbRows = await sql/*sql*/`
-    SELECT locale, slug, title, body
-    FROM knowledge_articles
-    WHERE locale = ${locale}
-    ORDER BY updated_at DESC
-    LIMIT 12
-  `.catch(() => [] as Array<Record<string, string>>);
+  const crmReady = await ensureCrmOpsSchema().then(() => true).catch(() => false);
+  const kbRows = crmReady
+    ? await sql/*sql*/`
+        SELECT locale, slug, title, body
+        FROM knowledge_articles
+        WHERE locale = ${locale}
+        ORDER BY updated_at DESC
+        LIMIT 12
+      `.catch(() => [] as Array<Record<string, string>>)
+    : [] as Array<Record<string, string>>;
 
   const selected = kbRows.slice(0, 3);
   const forcedDomainAnswer = intent === "tag_comparison" ? buildTagComparisonAnswer(locale) : "";
   const openAiPayload = forcedDomainAnswer ? null : await buildOpenAiAnswer({ locale, question, intent, kb: selected });
+  const aiVolume = typeof openAiPayload?.volume === "number" && Number.isFinite(openAiPayload.volume)
+    ? Math.max(0, Math.min(Math.trunc(openAiPayload.volume), 10_000_000))
+    : null;
   const extracted: ExtractedLead = {
-    company: openAiPayload?.company || extractedFromQuestion.company,
-    country: openAiPayload?.country || extractedFromQuestion.country,
-    vertical: openAiPayload?.vertical || extractedFromQuestion.vertical,
-    tagType: openAiPayload?.tagType || extractedFromQuestion.tagType,
-    volume: typeof openAiPayload?.volume === "number" ? openAiPayload.volume : extractedFromQuestion.volume,
+    company: limited(openAiPayload?.company || extractedFromQuestion.company, 160) || null,
+    country: limited(openAiPayload?.country || extractedFromQuestion.country, 80) || null,
+    vertical: limited(openAiPayload?.vertical || extractedFromQuestion.vertical, 40) || null,
+    tagType: limited(openAiPayload?.tagType || extractedFromQuestion.tagType, 40) || null,
+    volume: aiVolume ?? extractedFromQuestion.volume,
   };
 
   const leadStatus = openAiPayload?.buyingIntent === "high" || intent === "pricing" || intent === "meeting"
@@ -416,11 +546,15 @@ export async function POST(req: Request) {
       : "new";
 
   const commercialIntent = ["pricing", "reseller", "order", "meeting", "integration", "tag_comparison"].includes(intent);
-  const shouldSaveLead = hasQualifiedLeadData && (body.mode === "lead_capture" || body.mode === "realtime_ai" || commercialIntent || intent === "general");
-  const source = clean(body.mode || "assistant");
+  // `mode` controls presentation only. It is never accepted as write authorization.
+  const shouldSaveLead = hasQualifiedLeadData && commercialIntent;
+  const source = mode;
+  let leadSaved = false;
+  let ticketSaved = false;
+  let orderSaved = false;
 
-  if (shouldSaveLead) {
-    await upsertLeadCompat({
+  if (shouldSaveLead && crmReady) {
+    leadSaved = await upsertLeadCompat({
       locale,
       contact,
       fullName,
@@ -437,7 +571,7 @@ export async function POST(req: Request) {
       question,
     });
 
-    await createCommercialTicket({
+    ticketSaved = await createCommercialTicket({
       locale,
       contact,
       title: titleForTicket(locale, intent),
@@ -456,8 +590,8 @@ export async function POST(req: Request) {
     });
   }
 
-  if (hasContact && intent === "ticket") {
-    await createCommercialTicket({
+  if (hasContact && intent === "ticket" && crmReady) {
+    ticketSaved = await createCommercialTicket({
       locale,
       contact,
       title: "Assistant support request",
@@ -466,14 +600,14 @@ export async function POST(req: Request) {
     });
   }
 
-  if (hasQualifiedLeadData && intent === "order") {
-    await sql/*sql*/`
+  if (hasQualifiedLeadData && intent === "order" && crmReady) {
+    orderSaved = await sql/*sql*/`
       INSERT INTO order_requests (locale, contact, company, tag_type, volume, notes, status, source)
       VALUES (${locale}, ${contact}, ${extracted.company || ""}, ${extracted.tagType || "basic"}, ${extracted.volume || 0}, ${`${fullName ? `name=${fullName}; ` : ""}${question}`.slice(0, 700)}, 'new', ${source})
-    `.catch(() => null);
+    `.then(() => true).catch(() => false);
   }
 
-  const savedAck = shouldSaveLead
+  const savedAck = leadSaved && ticketSaved
     ? locale === "en"
       ? "Lead and ticket saved in CRM. Sales can continue with quote, samples or private meeting."
       : locale === "pt-BR"
@@ -482,14 +616,28 @@ export async function POST(req: Request) {
     : "";
 
   const answer = forcedDomainAnswer || openAiPayload?.answer || buildFallbackAnswer(locale, intent, extracted, missing);
-  const persuasionNextStep = openAiPayload?.nextStep || "";
+  const persuasionNextStep = limited(openAiPayload?.nextStep, 500);
+  const leadWriteRequested = shouldSaveLead;
+  const ticketWriteRequested = shouldSaveLead || (hasContact && intent === "ticket");
+  const orderWriteRequested = hasQualifiedLeadData && intent === "order";
+  const persistenceIncomplete = (leadWriteRequested && !leadSaved)
+    || (ticketWriteRequested && !ticketSaved)
+    || (orderWriteRequested && !orderSaved);
 
   return json({
+    ok: !persistenceIncomplete,
     answer: [answer, savedAck, persuasionNextStep].filter(Boolean).join("\n\n"),
     intent,
     requiresContact,
-    leadSaved: shouldSaveLead,
-    ticketSaved: shouldSaveLead || (hasContact && intent === "ticket"),
+    leadSaved,
+    ticketSaved,
+    orderSaved,
+    persistence: {
+      crm_available: crmReady,
+      requested: leadWriteRequested || ticketWriteRequested || orderWriteRequested,
+      complete: !persistenceIncomplete,
+      reason: persistenceIncomplete ? "crm_write_incomplete" : null,
+    },
     extracted,
     citations: selected.map((item) => ({ title: item.title, slug: item.slug, locale: item.locale })),
     suggested:
@@ -498,5 +646,5 @@ export async function POST(req: Request) {
         : locale === "en"
           ? ["I want a quote for 10k", "I want samples", "I want to become a reseller", "Book a private meeting"]
           : ["Quiero cotizacion 10k", "Quiero muestras", "Quiero ser revendedor", "Quiero reunion privada"],
-  });
+  }, persistenceIncomplete ? 503 : 200);
 }

@@ -12,7 +12,7 @@ export default async function SommelierPage({ searchParams }: { searchParams?: P
   return (
     <PortalShell 
       title="Sommelier Virtual" 
-      subtitle={`Asistente de degustación e inteligencia enológica para tu botella de ${product}.`}
+      subtitle={`Orientación general para ${product}. El nombre indicado no prueba autenticidad ni reemplaza la ficha de la marca.`}
     >
       <SommelierClient productName={product} brandName={brand} />
     </PortalShell>

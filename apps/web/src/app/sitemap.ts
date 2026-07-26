@@ -5,6 +5,7 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://nexid.lat";
 const publicRoutes = [
   { path: "", changeFrequency: "weekly", priority: 1 },
   { path: "/demo-lab", changeFrequency: "weekly", priority: 0.9 },
+  { path: "/demo-lab/chains", changeFrequency: "weekly", priority: 0.88 },
   { path: "/pricing", changeFrequency: "monthly", priority: 0.9 },
   { path: "/sdk", changeFrequency: "weekly", priority: 0.85 },
   { path: "/docs", changeFrequency: "weekly", priority: 0.85 },

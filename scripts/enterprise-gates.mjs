@@ -15,8 +15,10 @@ for (const script of scripts) {
 }
 
 // Configuration gates are intentionally fail-closed. They prove that the
-// deployment is wired for non-exportable blockchain custody and a versioned
-// edge policy; they do not print secret values or call remote mutation APIs.
+// deployment is wired to a separately configured signer contract and a
+// versioned edge policy; configuration alone does not prove HSM protection,
+// non-exportability or live signer health. No secret values or remote mutation
+// APIs are used here.
 const signer = {
   url: Boolean(String(process.env.IOTA_KMS_SIGNER_URL || "").trim()),
   keyId: Boolean(String(process.env.IOTA_KMS_KEY_ID || "").trim()),

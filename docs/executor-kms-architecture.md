@@ -1,5 +1,11 @@
 # nexID executor/KMS architecture
 
+> Estado verificado 2026-07-26: Polygon e IOTA ejecutan en Cloud Run con
+> capacidad separada, autenticacion de aplicacion y signer `kms_wrapped` sobre
+> Google Cloud KMS SOFTWARE. No hay HSM ni firma directa no exportable. Los
+> ejemplos `private_key` de este archivo quedan solo como referencia local
+> historica y no son una configuracion aprobada de produccion.
+
 La capa executor/KMS separa la validacion del tap de la firma blockchain.
 
 ## Concepto
@@ -53,26 +59,36 @@ TOKENIZATION_EXECUTOR_URL=http://localhost:3010/mint
 TOKENIZATION_EXECUTOR_SECRET=<mismo secreto del executor>
 ```
 
-## Configuracion del executor para Amoy
+## Configuracion vigente del executor para Amoy
 
 En `apps/executor`:
 
 ```txt
 PORT=3010
 TOKENIZATION_EXECUTOR_SECRET=<random largo secreto>
-EXECUTOR_SIGNER_MODE=private_key
+EXECUTOR_CAPABILITIES=polygon
+EXECUTOR_SIGNER_MODE=kms_wrapped
+NEXID_KMS_ENVIRONMENT=staging
+POLYGON_KMS_WRAP_KEY_RESOURCE=<recurso KMS SOFTWARE>
+POLYGON_KMS_WRAPPED_PRIVATE_KEY=<ciphertext desde Secret Manager>
 POLYGON_RPC_URL=https://polygon-amoy.g.alchemy.com/v2/<RPC_API_KEY>
-POLYGON_MINTER_PRIVATE_KEY=0xPRIVATE_KEY_DE_NEXID_AMOY_MINTER
 POLYGON_MINTER_ADDRESS=0xADDRESS_PUBLICA_DE_NEXID_AMOY_MINTER
 POLYGON_CONTRACT_ADDRESS=0xCONTRATO
 POLYGON_DEFAULT_RECIPIENT=0xWALLET_RECEPTORA
 ```
 
-Para el piloto Amoy, esta private key queda fuera de la API principal y solo en el executor. Usa gas de testnet sin valor real de produccion. La API manda `chip_uid_hash`; el executor no necesita claves de encoding, master keys ni UID crudo en operacion normal.
+Para el piloto Amoy, el ciphertext queda fuera de la API principal y el
+executor usa Cloud KMS para descifrarlo transitoriamente en memoria. Usa gas de
+testnet sin valor real de produccion. La API manda `chip_uid_hash`; el executor
+no necesita claves de encoding, master keys NFC ni UID crudo en operacion
+normal.
 
 ## KMS real
 
-KMS real significa que el executor tampoco guarda una private key exportable. En vez de eso, llama a un proveedor que firma dentro de infraestructura segura.
+La modalidad objetivo de KMS/HSM significa que el material privado nunca se
+exporta ni aparece descifrado en memoria de aplicacion: el proveedor firma
+dentro del limite criptografico. Esa modalidad objetivo no es la implementacion
+`kms_wrapped` actual.
 
 Opciones:
 

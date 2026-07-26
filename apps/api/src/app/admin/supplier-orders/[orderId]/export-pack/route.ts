@@ -190,73 +190,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
   }
 
   const subBatchIds = rows.map((row) => String(row.supplier_sub_batch_id));
-  const reservationRows = await sql/*sql*/`
-    WITH target AS (
-      SELECT unnest(${subBatchIds}::uuid[]) AS supplier_sub_batch_id
-    ),
-    locked AS MATERIALIZED (
-      SELECT ssb.id AS supplier_sub_batch_id
-      FROM target
-      JOIN supplier_sub_batches ssb ON ssb.id = target.supplier_sub_batch_id
-      JOIN batch_keys bk ON bk.supplier_sub_batch_id = ssb.id
-      WHERE ssb.key_export_count = 0
-        AND bk.export_count = 0
-      FOR UPDATE OF ssb, bk
-    ),
-    readiness AS (
-      SELECT COUNT(*)::int = ${rows.length} AS ok
-      FROM locked
-    ),
-    reserved_sub_batches AS (
-      UPDATE supplier_sub_batches ssb
-      SET key_export_count = key_export_count + 1, key_exported_at = now(), updated_at = now()
-      FROM locked, readiness
-      WHERE readiness.ok
-        AND ssb.id = locked.supplier_sub_batch_id
-      RETURNING ssb.id
-    ),
-    reserved_keys AS (
-      UPDATE batch_keys bk
-      SET export_count = export_count + 1, exported_at = now()
-      FROM locked, readiness
-      WHERE readiness.ok
-        AND bk.supplier_sub_batch_id = locked.supplier_sub_batch_id
-      RETURNING bk.supplier_sub_batch_id
-    )
-    SELECT
-      (SELECT ok FROM readiness) AS ready,
-      (SELECT COUNT(*)::int FROM reserved_sub_batches) AS reserved_sub_batches,
-      (SELECT COUNT(*)::int FROM reserved_keys) AS reserved_keys
-  `;
-  const reservation = reservationRows[0] || {};
-  if (reservation.ready !== true || Number(reservation.reserved_sub_batches || 0) !== rows.length || Number(reservation.reserved_keys || 0) !== rows.length) {
-    return json({
-      ok: false,
-      reason: "supplier_pack_already_exported",
-      message: "Supplier encoding pack export is a one-time atomic reservation. Another request already reserved or exported one of these sub-batches.",
-      requested: rows.length,
-      reserved_sub_batches: Number(reservation.reserved_sub_batches || 0),
-      reserved_keys: Number(reservation.reserved_keys || 0),
-    }, 409);
-  }
-
-  await sql/*sql*/`
-    UPDATE batch_key_material
-    SET export_count = export_count + 1,
-        exported_at = now(),
-        exported_by = ${actor},
-        updated_at = now()
-    WHERE supplier_sub_batch_id = ANY(${subBatchIds}::uuid[])
-      AND status = 'active'
-      AND export_count = 0
-  `;
-
   const packs = [];
   const zipEntries: SupplierZipEntry[] = [];
+  const artifactRecords: Array<Record<string, unknown>> = [];
+  const evidenceRecords: Array<Record<string, unknown>> = [];
 
   for (const row of rows) {
-    const kMetaHex = decryptBatchKeyHex(String(row.meta_key_ct));
-    const kFileHex = decryptBatchKeyHex(String(row.file_key_ct));
+    const kMetaHex = decryptBatchKeyHex(String(row.meta_key_ct), { tenantId: String(order.tenant_id), bid: String(row.bid), role: "K_META_BATCH" });
+    const kFileHex = decryptBatchKeyHex(String(row.file_key_ct), { tenantId: String(order.tenant_id), bid: String(row.bid), role: "K_FILE_BATCH" });
     const urlTemplate = String(row.metadata_json?.url_template || row.sdm_config?.url_template || "");
     const pack = buildSupplierEncodingPack({
       clientSlug: String(order.customer_slug || order.tenant_slug),
@@ -293,15 +234,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       { path: `${row.bid}/${jsonFilename}`, data: jsonBody },
       { path: `${row.bid}/${pdfFilename}`, data: pdfBody },
     );
-    await sql/*sql*/`
-      INSERT INTO vault_artifacts (
-        tenant_id, supplier_order_id, supplier_sub_batch_id, resource_type, resource_id,
-        artifact_type, content_hash, mime_type, metadata_json
-      ) VALUES
-        (${order.tenant_id}, ${order.id}, ${row.supplier_sub_batch_id}, 'supplier_sub_batch', ${row.supplier_sub_batch_id}, 'supplier_pack_txt', ${pack.contentHash}, 'text/plain', ${JSON.stringify({ bid: row.bid, key_fingerprint: row.key_fingerprint })}::jsonb),
-        (${order.tenant_id}, ${order.id}, ${row.supplier_sub_batch_id}, 'supplier_sub_batch', ${row.supplier_sub_batch_id}, 'supplier_pack_json', ${jsonHash}, 'application/json', ${JSON.stringify({ bid: row.bid, key_fingerprint: row.key_fingerprint })}::jsonb),
-        (${order.tenant_id}, ${order.id}, ${row.supplier_sub_batch_id}, 'supplier_sub_batch', ${row.supplier_sub_batch_id}, 'supplier_pack_pdf_summary', ${pdfHash}, 'application/pdf', ${JSON.stringify({ bid: row.bid, key_fingerprint: row.key_fingerprint })}::jsonb)
-    `;
+    for (const [artifactType, contentHash, mimeType] of [
+      ["supplier_pack_txt", pack.contentHash, "text/plain"],
+      ["supplier_pack_json", jsonHash, "application/json"],
+      ["supplier_pack_pdf_summary", pdfHash, "application/pdf"],
+    ] as const) {
+      artifactRecords.push({
+        supplier_sub_batch_id: row.supplier_sub_batch_id,
+        resource_type: "supplier_sub_batch",
+        resource_id: row.supplier_sub_batch_id,
+        artifact_type: artifactType,
+        content_hash: contentHash,
+        mime_type: mimeType,
+        metadata_json: { bid: row.bid, key_fingerprint: row.key_fingerprint },
+      });
+    }
     const eventPayload = {
       supplier_order_id: order.id,
       supplier_sub_batch_id: row.supplier_sub_batch_id,
@@ -319,11 +266,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       eventType: "supplier_pack_exported",
       payload: eventPayload,
     });
-    await sql/*sql*/`
-      INSERT INTO evidence_events (tenant_id, resource_type, resource_id, event_type, payload_json, payload_hash)
-      VALUES (${order.tenant_id}, 'supplier_sub_batch', ${row.supplier_sub_batch_id}, 'supplier_pack_exported', ${JSON.stringify(eventPayload)}::jsonb, ${eventHash})
-      ON CONFLICT (payload_hash) DO NOTHING
-    `;
+    evidenceRecords.push({
+      resource_type: "supplier_sub_batch",
+      resource_id: row.supplier_sub_batch_id,
+      event_type: "supplier_pack_exported",
+      payload_json: eventPayload,
+      payload_hash: eventHash,
+    });
 
     packs.push({
       folder: String(row.bid),
@@ -383,24 +332,164 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
     })),
   });
   const encryptedFilename = `nexid-supplier-pack-${safeFilename(order.customer_slug || order.tenant_slug, "supplier")}-${String(order.id).slice(0, 8)}.zip.enc`;
-  await sql/*sql*/`
-    INSERT INTO vault_artifacts (
-      tenant_id, supplier_order_id, supplier_sub_batch_id, resource_type, resource_id,
-      artifact_type, content_hash, mime_type, metadata_json
-    ) VALUES (
-      ${order.tenant_id}, ${order.id}, ${null}, 'supplier_order', ${order.id},
-      'supplier_pack_zip_encrypted', ${encrypted.envelopeHash}, 'application/vnd.nexid.supplier-pack+json',
-      ${JSON.stringify({
-        filename: encryptedFilename,
-        plaintext_zip_sha256: encrypted.plaintextZipHash,
-        ciphertext_sha256: encrypted.ciphertextHash,
-        envelope_sha256: encrypted.envelopeHash,
-        encryption: encrypted.encryption,
-        password_policy: "operator_generated_not_returned_send_separately",
-        entry_count: archiveEntries.length,
-      })}::jsonb
+  const encryptedEnvelopeBase64 = encrypted.envelopeBuffer.toString("base64");
+  artifactRecords.push({
+    supplier_sub_batch_id: null,
+    resource_type: "supplier_order",
+    resource_id: order.id,
+    artifact_type: "supplier_pack_zip_encrypted",
+    content_hash: encrypted.envelopeHash,
+    mime_type: "application/vnd.nexid.supplier-pack+json",
+    encrypted_payload_base64: encryptedEnvelopeBase64,
+    delivery_status: "ready",
+    metadata_json: {
+      filename: encryptedFilename,
+      requested_bid: requestedBid || null,
+      selected_sub_batch_ids: subBatchIds,
+      plaintext_zip_sha256: encrypted.plaintextZipHash,
+      ciphertext_sha256: encrypted.ciphertextHash,
+      envelope_sha256: encrypted.envelopeHash,
+      encryption: encrypted.encryption,
+      password_policy: "operator_generated_not_returned_send_separately",
+      entry_count: archiveEntries.length,
+    },
+  });
+
+  // The encrypted artifact, audit evidence and all one-time counters commit in
+  // one PostgreSQL statement. Any archive/persistence failure leaves every
+  // export counter at zero, so the operator can retry safely.
+  const persistedRows = await sql/*sql*/`
+    WITH target AS MATERIALIZED (
+      SELECT unnest(${subBatchIds}::uuid[]) AS supplier_sub_batch_id
+    ),
+    locked AS MATERIALIZED (
+      SELECT ssb.id AS supplier_sub_batch_id
+      FROM target
+      JOIN supplier_sub_batches ssb ON ssb.id = target.supplier_sub_batch_id
+      JOIN batch_keys bk ON bk.supplier_sub_batch_id = ssb.id
+      WHERE ssb.key_export_count = 0
+        AND bk.export_count = 0
+      FOR UPDATE OF ssb, bk
+    ),
+    readiness AS MATERIALIZED (
+      SELECT COUNT(*)::int = ${rows.length} AS ok
+      FROM locked
+    ),
+    reserved_sub_batches AS (
+      UPDATE supplier_sub_batches ssb
+      SET key_export_count = key_export_count + 1,
+          key_exported_at = now(),
+          updated_at = now()
+      FROM locked, readiness
+      WHERE readiness.ok
+        AND ssb.id = locked.supplier_sub_batch_id
+      RETURNING ssb.id
+    ),
+    reserved_keys AS (
+      UPDATE batch_keys bk
+      SET export_count = export_count + 1,
+          exported_at = now()
+      FROM locked, readiness
+      WHERE readiness.ok
+        AND bk.supplier_sub_batch_id = locked.supplier_sub_batch_id
+      RETURNING bk.supplier_sub_batch_id
+    ),
+    reserved_material AS (
+      UPDATE batch_key_material material
+      SET export_count = export_count + 1,
+          exported_at = now(),
+          exported_by = ${actor},
+          updated_at = now()
+      FROM locked, readiness
+      WHERE readiness.ok
+        AND material.supplier_sub_batch_id = locked.supplier_sub_batch_id
+        AND material.status = 'active'
+        AND material.export_count = 0
+      RETURNING material.id
+    ),
+    reservation_gate AS MATERIALIZED (
+      SELECT
+        readiness.ok
+          AND (SELECT COUNT(*) FROM reserved_sub_batches) = ${rows.length}
+          AND (SELECT COUNT(*) FROM reserved_keys) = ${rows.length} AS ok,
+        (SELECT COUNT(*)::int FROM reserved_sub_batches) AS reserved_sub_batches,
+        (SELECT COUNT(*)::int FROM reserved_keys) AS reserved_keys,
+        (SELECT COUNT(*)::int FROM reserved_material) AS reserved_material
+      FROM readiness
+    ),
+    artifact_input AS MATERIALIZED (
+      SELECT *
+      FROM jsonb_to_recordset(${JSON.stringify(artifactRecords)}::jsonb) AS artifact(
+        supplier_sub_batch_id uuid,
+        resource_type text,
+        resource_id text,
+        artifact_type text,
+        content_hash text,
+        mime_type text,
+        encrypted_payload_base64 text,
+        delivery_status text,
+        metadata_json jsonb
+      )
+    ),
+    inserted_artifacts AS (
+      INSERT INTO vault_artifacts (
+        tenant_id, supplier_order_id, supplier_sub_batch_id, resource_type, resource_id,
+        artifact_type, content_hash, mime_type, encrypted_payload_base64,
+        delivery_status, delivery_attempt_count, last_delivery_attempt_at, metadata_json
+      )
+      SELECT
+        ${order.tenant_id}, ${order.id}, artifact.supplier_sub_batch_id,
+        artifact.resource_type, artifact.resource_id, artifact.artifact_type,
+        artifact.content_hash, artifact.mime_type, artifact.encrypted_payload_base64,
+        COALESCE(artifact.delivery_status, 'metadata_only'),
+        CASE WHEN artifact.encrypted_payload_base64 IS NULL THEN 0 ELSE 1 END,
+        CASE WHEN artifact.encrypted_payload_base64 IS NULL THEN NULL ELSE now() END,
+        COALESCE(artifact.metadata_json, '{}'::jsonb)
+      FROM artifact_input artifact
+      CROSS JOIN reservation_gate gate
+      WHERE gate.ok
+      RETURNING id
+    ),
+    evidence_input AS MATERIALIZED (
+      SELECT *
+      FROM jsonb_to_recordset(${JSON.stringify(evidenceRecords)}::jsonb) AS evidence(
+        resource_type text,
+        resource_id text,
+        event_type text,
+        payload_json jsonb,
+        payload_hash text
+      )
+    ),
+    inserted_evidence AS (
+      INSERT INTO evidence_events (tenant_id, resource_type, resource_id, event_type, payload_json, payload_hash)
+      SELECT ${order.tenant_id}, evidence.resource_type, evidence.resource_id,
+             evidence.event_type, evidence.payload_json, evidence.payload_hash
+      FROM evidence_input evidence
+      CROSS JOIN reservation_gate gate
+      WHERE gate.ok
+      ON CONFLICT (payload_hash) DO NOTHING
+      RETURNING id
     )
+    SELECT gate.ok AS ready,
+           gate.reserved_sub_batches,
+           gate.reserved_keys,
+           gate.reserved_material,
+           (SELECT COUNT(*)::int FROM inserted_artifacts) AS inserted_artifacts,
+           (SELECT COUNT(*)::int FROM inserted_evidence) AS inserted_evidence
+    FROM reservation_gate gate
   `;
+  const persisted = persistedRows[0] || {};
+  if (persisted.ready !== true || Number(persisted.inserted_artifacts || 0) !== artifactRecords.length) {
+    return json({
+      ok: false,
+      reason: "supplier_pack_export_conflict",
+      message: "The encrypted artifact was not committed, so no one-time export counter was consumed. Retry after checking for a concurrent export.",
+      requested: rows.length,
+      reserved_sub_batches: Number(persisted.reserved_sub_batches || 0),
+      reserved_keys: Number(persisted.reserved_keys || 0),
+      artifact_persisted: false,
+    }, 409);
+  }
 
   await logAuditEvent({
     actorId: null,
@@ -427,6 +516,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
 
   return json({
     ok: true,
+    key_custody: {
+      mode: "pilot_application_envelope_encryption",
+      algorithm: "AES-256-GCM",
+      aad_scope: ["tenant", "bid", "key_role", "key_version", "kek_version"],
+      managed_kms: false,
+      hsm_backed: false,
+      boundary: "The KEK is a versioned application secret in the deployment platform; it is not a managed KMS/HSM key handle.",
+    },
     order: {
       id: order.id,
       tenant_slug: order.tenant_slug,
@@ -438,7 +535,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       filename: encryptedFilename,
       mime_type: "application/vnd.nexid.supplier-pack+json",
       encoding: "base64",
-      base64: encrypted.envelopeBuffer.toString("base64"),
+      base64: encryptedEnvelopeBase64,
       envelope_sha256: encrypted.envelopeHash,
       plaintext_zip_sha256: encrypted.plaintextZipHash,
       ciphertext_sha256: encrypted.ciphertextHash,

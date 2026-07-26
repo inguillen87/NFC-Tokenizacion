@@ -57,24 +57,24 @@ export default function InvestorPitchDeck() {
     {
       id: 0,
       title: "nexID",
-      tagline: "LA REVOLUCIÓN DE LA PROPIEDAD FÍSICA Y EL LUJO INTELIGENTE",
+      tagline: "IDENTIDAD DIGITAL, EVIDENCIA NFC Y EXPERIENCIAS CONECTADAS",
       content: (
         <div className="flex flex-col items-center justify-center text-center h-full space-y-6">
           <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-cyan-400 to-purple-600 flex items-center justify-center text-slate-950 font-black text-3xl shadow-[0_0_40px_rgba(168,85,247,0.3)] animate-pulse">
             N
           </div>
           <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight uppercase">
-            Ecosistema de Autenticidad Física,<br />
+            Ecosistema de Evidencia NFC,<br />
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-purple-400 to-amber-300">
-              Gamificación y Marketing Cognitivo
+              Trazabilidad y Experiencias de Marca
             </span>
           </h1>
           <p className="text-sm text-slate-400 max-w-xl leading-relaxed">
-            Una plataforma Web3 que conecta botellas de alta gama y productos premium con el mundo digital mediante microchips NFC, asegurando procedencia criptográfica y fidelización interactiva.
+            Una plataforma multi-tenant que conecta productos físicos con experiencias digitales mediante NFC y QR, validación SUN server-side y evidencia blockchain opcional según la política de cada cliente.
           </p>
           <div className="flex items-center gap-3 pt-4 no-print">
             <span className="text-[10px] bg-slate-900 border border-white/10 px-3 py-1 rounded-full text-slate-300 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" /> Material de Inversión VIP
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Material de inversión · arquitectura actual
             </span>
           </div>
         </div>
@@ -84,25 +84,25 @@ export default function InvestorPitchDeck() {
     {
       id: 1,
       title: "El Problema de la Industria de Lujo",
-      tagline: "EL 'VACÍO' DESPUÉS DE LA VENTA Y LA PÉRDIDA DE CONTROL",
+      tagline: "EL VACÍO DESPUÉS DE LA VENTA Y LA PÉRDIDA DE VISIBILIDAD",
       content: (
         <div className="grid gap-6 md:grid-cols-3 items-center h-full py-4">
           {[
             {
               title: "Falta de Datos del Comprador",
-              desc: "Una vez que la bodega vende una botella en vinotecas o la exporta a Europa, pierde el rastro por completo. No sabe quién la consume ni puede comunicarse directamente con sus compradores VIP.",
+              desc: "Después de vender por distribuidores, la marca suele perder visibilidad del recorrido y del cliente final. nexID puede abrir un canal directo sólo cuando el consumidor participa y presta el consentimiento correspondiente.",
               icon: Database,
               color: "border-cyan-500/20 bg-cyan-500/5 text-cyan-300"
             },
             {
-              title: "El Fraude de la Falsificación",
-              desc: "El mercado internacional de vinos falsificados mueve miles de millones de dólares. Los códigos QR y sellos tradicionales son fotocopiables, dañando severamente el prestigio de las bodegas premium.",
+              title: "Riesgo de falsificación",
+              desc: "Los códigos QR visibles pueden copiarse. En productos compatibles, SUN dinámico y TagTamper agregan señales server-side contra replay, reutilización del enlace y apertura; no sustituyen controles físicos ni garantizan eliminar el fraude.",
               icon: Lock,
               color: "border-rose-500/20 bg-rose-500/5 text-rose-300"
             },
             {
-              title: "Marketing Frío y Genérico",
-              desc: "Los newsletters masivos y los folletos impresos tienen tasas de respuesta inferiores al 2%. La base de coleccionistas de lujo exige exclusividad y una interacción interactiva premium.",
+              title: "Interacción poco contextual",
+              desc: "Los canales masivos no siempre conservan contexto de producto, lote o momento de consumo. Una experiencia post-tap permite probar mensajes y beneficios segmentados sin presentar conversión estimada como resultado observado.",
               icon: Bot,
               color: "border-amber-500/20 bg-amber-500/5 text-amber-300"
             }
@@ -122,15 +122,15 @@ export default function InvestorPitchDeck() {
     {
       id: 2,
       title: "El Ecosistema nexID",
-      tagline: "INTEGRACIÓN HÍBRIDA DE BASE SQL EN LA NUBE (AWS/RENDER) Y CAPA WEB3 OPCIONAL",
+      tagline: "RUNTIME EN VERCEL, DATOS EN NEON Y EVIDENCIA WEB3 OPCIONAL POR TENANT",
       content: (
         <div className="flex flex-col justify-between h-full py-4 space-y-4">
           <div className="grid gap-4 md:grid-cols-4">
             {[
-              { step: "1. Embotellado Físico", desc: "Se inserta un microchip NFC criptográfico nexID en el cuello de la botella o empaque.", icon: QrCode },
-              { step: "2. Validación y Tap", desc: "El comprador toca el empaque con su celular y valida la procedencia al instante.", icon: Smartphone },
-              { step: "3. Nube SQL Segura", desc: "La firma dinámica se verifica contra la base SQL custodiada en Render/AWS.", icon: ShieldCheck },
-              { step: "4. Web3 Opcional", desc: "Polygon opcional para ownership, certificado o reclamo digital en líneas de alta gama.", icon: Sparkles }
+              { step: "1. Producto serializado", desc: "La marca aplica un NFC o QR asignado al tenant, lote y producto bajo una política de activación definida.", icon: QrCode },
+              { step: "2. Tap y validación", desc: "En chips compatibles, el teléfono envía la prueba SUN al backend; tocar no transfiere propiedad automáticamente.", icon: Smartphone },
+              { step: "3. Vercel + Neon", desc: "La API en Vercel valida SUN server-side y Neon PostgreSQL conserva la operación con alcance por tenant.", icon: ShieldCheck },
+              { step: "4. Evidencia opcional", desc: "Polygon o IOTA se habilitan sólo por tenant y caso de uso. Las demos actuales usan testnet y deben mostrar su recibo público.", icon: Sparkles }
             ].map((item, idx) => (
               <div key={idx} className="rounded-xl border border-white/5 bg-slate-900/30 p-4 text-center relative">
                 <item.icon className="w-6 h-6 text-purple-400 mx-auto mb-2" />
@@ -146,9 +146,9 @@ export default function InvestorPitchDeck() {
           </div>
 
           <div className="rounded-2xl border border-purple-500/20 bg-purple-500/5 p-4 text-xs text-slate-300 leading-relaxed flex items-center gap-4">
-            <span className="p-3 bg-purple-500/20 rounded-xl text-purple-300 font-black">Híbrido: SQL + Web3</span>
+            <span className="p-3 bg-purple-500/20 rounded-xl text-purple-300 font-black">Vercel + Neon</span>
             <p>
-              <strong>Una arquitectura flexible de alta velocidad y máxima compatibilidad:</strong> Registramos firmas dinámicas en bases de datos SQL redundantes por defecto. Polygon se habilita como capa opcional de ownership/certificado cuando la política del tenant y el caso de negocio lo justifican.
+              <strong>Arquitectura actual, sin infraestructura ficticia:</strong> el flujo operativo vive en Vercel y Neon. Blockchain no procesa cada lectura NFC: se usa de forma selectiva para anclajes, certificados o reclamos autorizados, con costos y red configurados por tenant.
             </p>
           </div>
         </div>
@@ -158,22 +158,22 @@ export default function InvestorPitchDeck() {
     {
       id: 3,
       title: "Pilar A: Seguridad Criptográfica",
-      tagline: "PREVENCIÓN ACTIVA DE COPIAS Y ANÁLISIS ANTIFRAUDE",
+      tagline: "SEÑALES SERVER-SIDE PARA REPLAY, APERTURA Y RIESGO OPERATIVO",
       content: (
         <div className="grid gap-6 md:grid-cols-2 items-center h-full py-4">
           <div className="space-y-4">
             {[
               {
                 title: "Firma Dinámica (NFC SUN)",
-                desc: "Cada toque físico en chips compatibles genera una prueba dinámica verificable server-side. Esto reduce fuertemente replay/copia frente a tags básicos o QR fotocopiables."
+                desc: "Cada toque en chips compatibles genera datos SUN dinámicos que el backend verifica con la clave y política del lote. Una respuesta válida aporta evidencia de esa lectura; no demuestra por sí sola propiedad, ubicación ni custodia."
               },
               {
                 title: "Señales de Riesgo por Lectura",
-                desc: "Análisis de ubicación aproximada reportada por el teléfono cuando hay permiso, IP aproximada, canal y patrones de tiempo. El chip NFC no transmite GPS por sí mismo; el backend levanta alerta si un mismo UID aparece en puntos incompatibles."
+                desc: "La plataforma puede evaluar ubicación reportada por el teléfono con permiso, IP aproximada, canal y patrones temporales. El NFC no transmite GPS: cada mapa debe distinguir coordenadas reportadas, aproximadas y simuladas."
               },
               {
                 title: "Detección de Sello Violado",
-                desc: "El circuito del chip se rompe físicamente al descorchar, informando al backend si la botella ya fue abierta anteriormente y reduciendo el riesgo de rellenado."
+                desc: "En carriers TagTamper correctamente instalados, la apertura cambia la señal del tag. El backend interpreta ese estado según configuración; adhesivo, envase y proceso deben validarse en un piloto físico."
               }
             ].map((item, idx) => (
               <div key={idx} className="flex gap-3">
@@ -188,30 +188,30 @@ export default function InvestorPitchDeck() {
 
           <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4 font-mono text-[10px] text-slate-400 space-y-3">
             <div className="flex justify-between items-center text-[9px] bg-slate-900 px-2.5 py-1 rounded text-cyan-300">
-              <span>LEDGER DE SEGURIDAD nexID</span>
-              <span className="animate-pulse">ACTIVO</span>
+              <span>CONTRATO DE EVIDENCIA · EJEMPLO</span>
+              <span>ESPERANDO TAP</span>
             </div>
-            <p>· Firma Criptográfica: <span className="text-emerald-400 font-bold">VERIFICADA (OK)</span></p>
-            <p>· Estado de Sello: <span className="text-emerald-400 font-bold">CERRADO / SIN APERTURA</span></p>
-            <p>· Ubicación evento: <span className="text-white">Teléfono autorizado / IP aproximada</span></p>
-            <p>· Mobile Device: <span className="text-slate-300">iOS 18.2 (iPhone 16 Pro)</span></p>
+            <p>· Firma SUN: <span className="text-amber-300 font-bold">PENDIENTE DE EVIDENCIA</span></p>
+            <p>· Estado de sello: <span className="text-slate-300 font-bold">NO REPORTADO</span></p>
+            <p>· Ubicación del evento: <span className="text-slate-300">SIN COORDENADAS REPORTADAS</span></p>
+            <p>· Dispositivo: <span className="text-slate-300">NO DETECTADO · SIN FINGERPRINT FIJO</span></p>
           </div>
         </div>
       )
     },
-    // Slide 5: Pilar B - Cognitive AI Engine
+    // Slide 5: Pilar B - Campaign assistant
     {
       id: 4,
-      title: "Pilar B: nexID Cognitive AI Engine",
-      tagline: "OPTMIZACIÓN DE MENSAJES Y ANÁLISIS DE IMPACTO DE MARCA",
+      title: "Pilar B: Asistente de Campañas",
+      tagline: "COPILOTO CON PROVEEDOR LIVE CONFIRMADO O FALLBACK DETERMINÍSTICO DECLARADO",
       content: (
         <div className="grid gap-6 md:grid-cols-2 items-center h-full py-4">
           <div className="space-y-3.5">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider">Tres perfiles de reescritura AI</h3>
+            <h3 className="text-sm font-bold text-white uppercase tracking-wider">Tres perfiles de redacción asistida</h3>
             {[
-              { title: "Tono Sommelier", desc: "Traducción a terminología enológica de prestigio (notas aromáticas, taninos, maderas nobles)." },
-              { title: "Tono Club Privado", desc: "Enfocado en triggers de exclusividad, membresías VIP y asignación de cupos." },
-              { title: "Tono Modern Web3", desc: "Mapea el copy al vocabulario criptográfico de tokens, airdrops y gemelos digitales." }
+              { title: "Tono Sommelier", desc: "Propone una versión enológica para revisión humana; no inventa atributos del producto que no estén en el brief." },
+              { title: "Tono Club Privado", desc: "Adapta el mensaje a membresías y cupos informados por la marca, sujeto a aprobación antes del envío." },
+              { title: "Tono Web3 claro", desc: "Explica certificados, reclamos y gemelos digitales sin afirmar escrituras on-chain que no tengan recibo verificable." }
             ].map((item, idx) => (
               <div key={idx} className="p-2.5 rounded-xl border border-white/5 bg-slate-900/30">
                 <strong className="text-xs text-purple-300 font-bold block">{item.title}</strong>
@@ -222,19 +222,19 @@ export default function InvestorPitchDeck() {
 
           <div className="space-y-3">
             <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-3.5 space-y-2">
-              <span className="text-[9px] font-bold text-purple-300 uppercase tracking-wider">Telemetría de Impacto Live</span>
+              <span className="text-[9px] font-bold text-purple-300 uppercase tracking-wider">Escenario ilustrativo · no es telemetría live</span>
               <div className="grid grid-cols-2 gap-2 text-[10px] pt-1">
                 <div className="bg-slate-950/50 p-2 rounded">
                   <span className="text-slate-500 block text-[8px]">PRESTIGIO</span>
-                  <strong className="text-amber-400 text-xs font-mono">92% (Exclusivo VIP)</strong>
+                  <strong className="text-amber-400 text-xs font-mono">92% · hipótesis editable</strong>
                 </div>
                 <div className="bg-slate-950/50 p-2 rounded">
-                  <span className="text-slate-500 block text-[8px]">CTR / ESTIMADOR</span>
-                  <strong className="text-purple-400 text-xs font-mono">28% (Conversión Alta)</strong>
+                  <span className="text-slate-500 block text-[8px]">CTR OBJETIVO</span>
+                  <strong className="text-purple-400 text-xs font-mono">28% · ejemplo, no observado</strong>
                 </div>
               </div>
               <div className="text-[9px] text-slate-400 leading-relaxed pt-1">
-                La IA analiza la huella emocional midiendo los niveles de *Exclusividad*, *Confianza*, *Curiosidad* y *Urgencia* del texto de la campaña antes de enviarlo al consumidor.
+                Estos valores muestran cómo presentar una hipótesis de campaña. Un resultado real requiere entrega, impresiones, clics y atribución. La UI sólo declara un modelo live cuando el backend confirma el proveedor; ante cuota o error, identifica el fallback determinístico.
               </div>
             </div>
           </div>
@@ -252,15 +252,15 @@ export default function InvestorPitchDeck() {
             {[
               {
                 title: "Cava Digital del Coleccionista",
-                desc: "Los clientes visualizan sus botellas registradas en 3D en su portal, incentivando la compra para completar la colección digital."
+                desc: "Los clientes pueden visualizar productos reclamados en su portal cuando la política de la marca aprueba el claim. El tap inicial no crea propiedad automáticamente."
               },
               {
                 title: "Categorías Metálicas de Estatus",
-                desc: "Aumentando escaneos se sube de Starter a Plata, Platino y Oro, desbloqueando credenciales exclusivas y catas con el enólogo."
+                desc: "La marca puede configurar niveles y beneficios. Sus reglas, elegibilidad y costos deben publicarse; el deck no asume que más taps equivalen a mayor estatus."
               },
               {
-                title: "Sommelier AI & Gobernanza Activa",
-                desc: "Chat interactivo de servicio y maridaje. Votos reales sobre la uva del próximo blend, diseños de etiquetas y eventos VIP."
+                title: "Asistente y participación opcional",
+                desc: "El tenant puede habilitar chat de servicio o encuestas. Una votación sólo se presenta como real cuando existe campaña publicada, participantes y resultados persistidos."
               }
             ].map((item, idx) => (
               <div key={idx} className="flex gap-3">
@@ -275,14 +275,14 @@ export default function InvestorPitchDeck() {
 
           <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4 text-center space-y-3">
             <span className="text-[8px] bg-amber-500/10 border border-amber-500/25 px-2.5 py-0.5 rounded font-black text-amber-300 uppercase">
-              Gobernanza VIP Activa
+              Ejemplo de encuesta · datos simulados
             </span>
-            <h4 className="text-xs font-bold text-white">Votación en Curso: Diseño de Etiqueta Cosecha 2026</h4>
+            <h4 className="text-xs font-bold text-white">Hipótesis: diseño de etiqueta para una campaña piloto</h4>
             <div className="space-y-1.5 text-[10px] text-left pt-1">
               <div>
                 <div className="flex justify-between mb-0.5">
-                  <span className="text-slate-300">Opción A (Clásico Grabado)</span>
-                  <span className="text-amber-400 font-bold">58%</span>
+                  <span className="text-slate-300">Opción A (clásico grabado)</span>
+                  <span className="text-amber-400 font-bold">58% ejemplo</span>
                 </div>
                 <div className="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden">
                   <div className="bg-amber-400 h-full rounded-full" style={{ width: "58%" }} />
@@ -290,8 +290,8 @@ export default function InvestorPitchDeck() {
               </div>
               <div>
                 <div className="flex justify-between mb-0.5">
-                  <span className="text-slate-300">Opción B (Minimalista Vanguardista)</span>
-                  <span className="text-slate-500 font-bold">42%</span>
+                  <span className="text-slate-300">Opción B (minimalista)</span>
+                  <span className="text-slate-500 font-bold">42% ejemplo</span>
                 </div>
                 <div className="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden">
                   <div className="bg-slate-700 h-full rounded-full" style={{ width: "42%" }} />
@@ -302,31 +302,31 @@ export default function InvestorPitchDeck() {
         </div>
       )
     },
-    // Slide 7: Commercial Traction & Business Opportunity
+    // Slide 7: Commercial capabilities and pilot metrics
     {
       id: 6,
-      title: "Tracción y Oportunidad de Negocio",
-      tagline: "VALOR COMERCIAL DISRUPTIVO PARA LAS BODEGAS",
+      title: "Capacidades y Métricas de Piloto",
+      tagline: "RESULTADOS A MEDIR; NO SE PRESENTAN COMO TRACCIÓN OBSERVADA",
       content: (
         <div className="grid gap-6 md:grid-cols-3 items-center h-full py-4 text-center">
           {[
             {
               title: "Datos Directos de Mercado",
-              desc: "Las bodegas finalmente saben quién es su cliente final en el extranjero, obteniendo demografía y hábitos sin depender del distribuidor.",
-              metric: "DTC",
-              label: "Datos propios"
+              desc: "Con consentimiento, la marca puede abrir un canal directo y medir opt-in, activación y recurrencia. Sin opt-in no se infiere identidad ni demografía del comprador.",
+              metric: "Opt-in",
+              label: "KPI a validar"
             },
             {
               title: "Control en Exportación",
-              desc: "Monitoreo activo del mercado gris y reventa. Evidencia del lote y canal en aduana para proteger el valor comercial.",
+              desc: "Las lecturas pueden generar señales por replay, apertura, canal o geografía reportada. Su precisión y respuesta operativa deben medirse con casos etiquetados.",
               metric: "Alertas",
-              label: "Fraude monitoreado"
+              label: "Precisión a medir"
             },
             {
               title: "Recurrencia e Ingresos",
-              desc: "Membresías recurrentes y mercado integrado (Marketplace). Los taps físicos generan compras secundarias directas a la bodega.",
-              metric: "Canal",
-              label: "Venta directa habilitada"
+              desc: "El post-tap puede conducir a membresías, garantía o marketplace cuando el tenant lo habilita. Conversión e ingreso incremental requieren atribución del piloto.",
+              metric: "Conversión",
+              label: "Hipótesis comercial"
             }
           ].map((item, idx) => (
             <div key={idx} className="rounded-2xl border border-white/5 bg-slate-900/40 p-5 space-y-3 h-full flex flex-col justify-between">
@@ -343,26 +343,26 @@ export default function InvestorPitchDeck() {
         </div>
       )
     },
-    // Slide 8: Live Demo & Next Steps
+    // Slide 8: Guided demo & next steps
     {
       id: 7,
-      title: "Demostración en Vivo y Próximos Pasos",
-      tagline: "EXPERIMENTÁ EL MOTOR COGNITIVO nexID AHORA MISMO",
+      title: "Demostración Guiada y Próximos Pasos",
+      tagline: "CADA ESTADO DISTINGUE PREVIEW, REGISTRO Y EVIDENCIA VERIFICADA",
       content: (
         <div className="flex flex-col items-center justify-center text-center h-full space-y-6">
           <h2 className="text-2xl font-black text-white uppercase tracking-tight">
-            Listo para la demostración práctica
+            Listo para recorrer la prueba de punta a punta
           </h2>
           <p className="text-xs text-slate-300 max-w-lg leading-relaxed">
-            A continuación, usaremos una botella de cata real equipada con chip NFC nexID, un teléfono móvil inteligente para reclamar la propiedad, y la notebook del administrador para ver el ledger criptográfico en tiempo real.
+            Con un sample físico disponible se puede ejecutar el tap SUN y revisar su respuesta server-side. Sin sample, la interfaz permanece rotulada como preview. El reclamo de propiedad requiere política, identidad y aprobación; blockchain sólo se confirma con recibo público de testnet.
           </p>
 
           <div className="grid gap-3 grid-cols-2 sm:grid-cols-4 max-w-2xl w-full pt-2">
             {[
-              { title: "NFC Smart Tag", step: "Apunta el teléfono" },
-              { title: "Consumer App", step: "Reclamar Dueño" },
-              { title: "Bodega CRM", step: "IA Campaign Telemetry" },
-              { title: "Polygon opcional", step: "Solicitud / certificado" }
+              { title: "NFC / QR", step: "Tap físico o preview rotulado" },
+              { title: "Consumer App", step: "Solicitar claim" },
+              { title: "Bodega CRM", step: "Revisar fuente y evidencia" },
+              { title: "Polygon / IOTA", step: "Testnet opcional por tenant" }
             ].map((item, idx) => (
               <div key={idx} className="rounded-xl border border-white/5 bg-slate-950 p-3 text-center">
                 <span className="text-[8px] uppercase text-slate-500 font-bold block">Fase {idx + 1}</span>
@@ -373,7 +373,7 @@ export default function InvestorPitchDeck() {
           </div>
 
           <p className="text-[10px] text-slate-500 font-mono pt-4">
-            nexID Inc. · info@nexid.lat · nexID Cognitive AI Vision Suite 2026
+            nexID · info@nexid.lat · Arquitectura y estados verificables · 2026
           </p>
         </div>
       )

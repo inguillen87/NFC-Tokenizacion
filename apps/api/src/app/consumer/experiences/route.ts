@@ -5,6 +5,8 @@ import { getConsumerFromRequest } from "../../../lib/consumer-auth";
 import { ensureConsumerPortalSchema } from "../../../lib/commercial-runtime-schema";
 import { sql } from "../../../lib/db";
 import { json } from "../../../lib/http";
+import { enforceCriticalRateLimit } from "../../../lib/critical-rate-limit";
+import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../lib/bounded-request-body";
 
 type ConsumerSession = {
   id: string;
@@ -13,6 +15,7 @@ type ConsumerSession = {
 };
 
 const MAX_PHOTO_DATA_URL_CHARS = 2_800_000;
+const MAX_EXPERIENCE_BODY_BYTES = 8 * 1024 * 1024;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function cleanText(value: unknown, max = 280) {
@@ -74,17 +77,6 @@ function readJsonArray(value: unknown) {
   return [];
 }
 
-function buildTrustScore(input: { hasOwnership: boolean; verdict?: unknown; riskLevel?: unknown; consumer: ConsumerSession }) {
-  const verdict = String(input.verdict || "").toUpperCase();
-  const risk = String(input.riskLevel || "").toLowerCase();
-  let score = 58;
-  if (input.hasOwnership) score += 22;
-  if (verdict.includes("VALID") || verdict === "OPENED") score += 12;
-  if (risk === "low" || !risk) score += 6;
-  if (input.consumer.email || input.consumer.phone) score += 8;
-  return Math.max(0, Math.min(100, score));
-}
-
 export async function GET(req: Request) {
   await ensureConsumerPortalSchema();
   const consumer = (await getConsumerFromRequest(req)) as ConsumerSession | null;
@@ -131,6 +123,8 @@ export async function GET(req: Request) {
     items: rewardRows,
     verifiedExperiences: experienceRows.map((row) => ({
       ...row,
+      trust_score: null,
+      trust_score_status: "not_computed",
       photo_urls: readJsonArray(row.photo_urls_json),
       verification_badges: readJsonArray(row.verification_badges_json),
     })),
@@ -138,15 +132,22 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  await ensureConsumerPortalSchema();
   const consumer = (await getConsumerFromRequest(req)) as ConsumerSession | null;
   if (!consumer) return json({ ok: false, error: "unauthorized" }, 401);
+  const limited = await enforceCriticalRateLimit(req, {
+    rateClass: "public_write",
+    tenantId: "consumer",
+    subjectId: `consumer:${consumer.id}:experience`,
+  });
+  if (limited) return limited;
+  await ensureConsumerPortalSchema();
 
   let body: Record<string, unknown>;
   try {
-    body = (await req.json()) as Record<string, unknown>;
-  } catch {
-    return json({ ok: false, error: "invalid_json" }, 400);
+    body = await readBoundedJsonBody<Record<string, unknown>>(req, MAX_EXPERIENCE_BODY_BYTES);
+  } catch (error) {
+    const tooLarge = error instanceof RequestBodyTooLargeError;
+    return json({ ok: false, error: tooLarge ? "request_body_too_large" : "invalid_json" }, tooLarge ? 413 : 400);
   }
 
   const rating = cleanRating(body.rating);
@@ -172,7 +173,7 @@ export async function POST(req: Request) {
           COALESCE(e.result, o.trust_snapshot->>'result') AS verdict,
           COALESCE(e.city, o.trust_snapshot->>'city') AS city,
           COALESCE(e.country_code, o.trust_snapshot->>'country') AS country,
-          COALESCE(tp.product_name, e.product_name, tp.sku, 'Producto verificado') AS product_name,
+          COALESCE(tp.product_name, e.product_name, tp.sku, 'Producto asociado') AS product_name,
           t.slug AS tenant_slug,
           'ownership' AS evidence_type
         FROM consumer_product_ownerships o
@@ -194,7 +195,7 @@ export async function POST(req: Request) {
           h.verdict,
           h.city,
           h.country,
-          COALESCE(tp.product_name, e.product_name, tp.sku, 'Producto verificado') AS product_name,
+          COALESCE(tp.product_name, e.product_name, tp.sku, 'Producto asociado') AS product_name,
           t.slug AS tenant_slug,
           'tap' AS evidence_type,
           h.risk_level
@@ -217,18 +218,24 @@ export async function POST(req: Request) {
   }
 
   const hasOwnership = Boolean(evidence.ownership_id) && String(evidence.status || "") === "claimed";
-  const trustScore = buildTrustScore({
-    hasOwnership,
-    verdict: evidence.verdict,
-    riskLevel: evidence.risk_level,
-    consumer,
-  });
   const badges = [
-    "tap_fisico_confirmado",
-    "contacto_validado",
-    hasOwnership ? "dueno_verificado" : "producto_guardado",
+    "nfc_event_linked",
+    "consumer_session_authenticated",
+    hasOwnership ? "digital_ownership_record_claimed" : "digital_ownership_not_claimed",
   ];
-  if (photoUrls.length) badges.push("foto_de_uso_real");
+  if (photoUrls.length) badges.push("consumer_supplied_photo");
+  const normalizedVerdict = String(evidence.verdict || "").trim().toUpperCase();
+  const validatedNfcVerdicts = new Set(["VALID", "VALID_CLOSED", "VALID_UNKNOWN_TAMPER", "OPENED", "OPENED_PREVIOUSLY"]);
+  const evidenceCompleteness = {
+    nfc_event_linked: Boolean(evidence.event_id),
+    nfc_message_validated: validatedNfcVerdicts.has(normalizedVerdict),
+    digital_ownership_record_claimed: hasOwnership,
+    consumer_session_authenticated: true,
+    consumer_supplied_photo: photoUrls.length > 0,
+    physical_product_authenticity_confirmed: false,
+    physical_custody_confirmed: false,
+    photo_content_verified: false,
+  };
 
   const existingRows = evidence.ownership_id
     ? await sql/*sql*/`
@@ -243,7 +250,9 @@ export async function POST(req: Request) {
   const payload = {
     source: evidence.evidence_type,
     tenant_slug: evidence.tenant_slug,
-    review_policy: "verified_experience_v1",
+    review_policy: "evidence_scoped_experience_v2",
+    evidence_completeness: evidenceCompleteness,
+    trust_score_status: "not_computed",
   };
 
   const rows = existingRows[0]?.id
@@ -258,7 +267,7 @@ export async function POST(req: Request) {
           city = ${evidence.city || null},
           photo_urls_json = ${JSON.stringify(photoUrls)}::jsonb,
           verification_badges_json = ${JSON.stringify(badges)}::jsonb,
-          trust_score = ${trustScore},
+          trust_score = NULL,
           moderation_status = 'pending',
           visibility = 'private',
           metadata_json = ${JSON.stringify(payload)}::jsonb,
@@ -292,7 +301,7 @@ export async function POST(req: Request) {
           ${evidence.ownership_id || null},
           ${evidence.event_id || null},
           ${evidence.uid_hex || null},
-          ${evidence.product_name || "Producto verificado"},
+          ${evidence.product_name || "Producto asociado"},
           ${rating},
           ${title || null},
           ${reviewBody},
@@ -301,7 +310,7 @@ export async function POST(req: Request) {
           ${evidence.city || null},
           ${JSON.stringify(photoUrls)}::jsonb,
           ${JSON.stringify(badges)}::jsonb,
-          ${trustScore},
+          NULL,
           'pending',
           'private',
           ${JSON.stringify(payload)}::jsonb
@@ -314,6 +323,9 @@ export async function POST(req: Request) {
     ok: true,
     item: {
       ...item,
+      trust_score: null,
+      trust_score_status: "not_computed",
+      evidence_completeness: evidenceCompleteness,
       photo_urls: readJsonArray(item.photo_urls_json),
       verification_badges: readJsonArray(item.verification_badges_json),
     },

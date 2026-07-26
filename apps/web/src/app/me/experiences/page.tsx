@@ -14,7 +14,8 @@ type VerifiedExperience = {
   body?: string | null;
   city?: string | null;
   country?: string | null;
-  trust_score?: number;
+  trust_score?: number | null;
+  trust_score_status?: string;
   moderation_status?: string;
   visibility?: string;
   verification_badges?: string[];
@@ -30,11 +31,11 @@ function statusCopy(status?: string) {
 
 function badgeCopy(value: string) {
   const map: Record<string, string> = {
-    tap_fisico_confirmado: "Tap físico",
+    tap_fisico_confirmado: "Evento NFC asociado",
     contacto_validado: "Contacto validado",
-    dueno_verificado: "Dueño verificado",
+    dueno_verificado: "Ownership registrado",
     producto_guardado: "Producto guardado",
-    foto_de_uso_real: "Foto real",
+    foto_de_uso_real: "Foto aportada",
   };
   return map[value] || value.replace(/_/g, " ");
 }
@@ -51,7 +52,7 @@ export default async function ConsumerExperiencesPage({ searchParams }: { search
   return (
     <PortalShell
       title="Mis Experiencias & Reseñas"
-      subtitle="Opiniones, check-ins y feedback autenticados: prueba social real de procedencia y uso, libre de reseñas anónimas manipuladas."
+      subtitle="Opiniones, check-ins y feedback con evidencia de interacción y moderación. No prueban uso, procedencia ni autenticidad física del producto."
     >
       <div className="space-y-6">
         
@@ -62,16 +63,16 @@ export default async function ConsumerExperiencesPage({ searchParams }: { search
         <section className="rounded-3xl border border-emerald-500/20 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.18),transparent_32%),linear-gradient(135deg,#0a0a0c,#131316)] p-6 shadow-2xl">
           <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-wider text-emerald-300">Reseñas con Evidencia Criptográfica</p>
-              <h2 className="mt-3 text-xl font-black text-white tracking-tight leading-none">Tu opinión cuenta con respaldo original</h2>
+              <p className="text-[10px] font-black uppercase tracking-wider text-emerald-300">Reseñas con Evidencia de Interacción</p>
+              <h2 className="mt-3 text-xl font-black text-white tracking-tight leading-none">Tu opinión queda ligada a una interacción registrada</h2>
               <p className="mt-2 text-xs leading-relaxed text-slate-400">
-                Para garantizar la integridad del club, no se permiten reseñas anónimas. Cada opinión publicada exige un escaneo NFC de la botella, contacto validado o propiedad activa registrada en tu Pasaporte.
+                Cada opinión publicada exige una referencia de evento NFC, contacto validado o un registro de ownership en el Passport. Esa evidencia reduce anonimato, pero no demuestra uso, procedencia ni condición física.
               </p>
             </div>
             <div className="grid gap-2.5 sm:grid-cols-2">
               {[
-                { title: "Evidencia de Uso", detail: "Tap físico o propiedad confirmada en tu Wallet.", Icon: ShieldCheck },
-                { title: "Comunidad VIP", detail: "Opiniones confiables por lote, añada y origen.", Icon: Sparkles },
+                { title: "Evidencia de Interacción", detail: "Evento NFC, contacto o ownership registrado.", Icon: ShieldCheck },
+                { title: "Comunidad Moderada", detail: "Opiniones asociadas a producto y lote declarados.", Icon: Sparkles },
               ].map(({ title, detail, Icon }) => (
                 <div key={title} className="rounded-2xl border border-white/5 bg-slate-950/60 p-4">
                   <Icon className="h-4.5 w-4.5 text-emerald-300" aria-hidden="true" />
@@ -97,12 +98,16 @@ export default async function ConsumerExperiencesPage({ searchParams }: { search
           
           {verifiedExperiences.length ? (
             <div className="grid gap-4 lg:grid-cols-2">
-              {verifiedExperiences.map((experience) => (
+              {verifiedExperiences.map((experience) => {
+                const hasTrustScore = experience.trust_score_status !== "not_computed"
+                  && typeof experience.trust_score === "number"
+                  && Number.isFinite(experience.trust_score);
+                return (
                 <article key={experience.id || `${experience.product_name}-${experience.created_at}`} className="rounded-2xl border border-white/5 bg-slate-950/60 p-5 transition duration-300 hover:border-white/10 hover:shadow-lg">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <span className="text-[8px] font-black uppercase tracking-wider text-cyan-300 font-mono">{experience.tenant_slug || "tenant"}</span>
-                      <h4 className="mt-1 text-sm font-black text-white truncate leading-snug">{experience.product_name || "Producto Verificado"}</h4>
+                      <h4 className="mt-1 text-sm font-black text-white truncate leading-snug">{experience.product_name || "Producto asociado"}</h4>
                       <p className="mt-1 text-[10px] text-slate-400 flex items-center gap-1">
                         {[experience.city, experience.country].filter(Boolean).join(", ") || "Ubicación privada"}
                       </p>
@@ -120,21 +125,24 @@ export default async function ConsumerExperiencesPage({ searchParams }: { search
                   
                   {/* Badges block */}
                   <div className="mt-4 flex flex-wrap gap-1.5">
-                    <span className="rounded-full border border-cyan-400/20 bg-cyan-400/5 px-2 py-0.5 text-[9px] font-medium text-cyan-300">Trust Score {Number(experience.trust_score || 0)}/100</span>
+                    <span className="rounded-full border border-cyan-400/20 bg-cyan-400/5 px-2 py-0.5 text-[9px] font-medium text-cyan-300">
+                      {hasTrustScore ? `Trust Score ${experience.trust_score}/100` : "Trust Score no calculado"}
+                    </span>
                     <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[9px] font-medium text-slate-300">{statusCopy(experience.moderation_status)}</span>
                     {(experience.verification_badges || []).slice(0, 4).map((badge) => (
                       <span key={badge} className="rounded-full border border-emerald-400/20 bg-emerald-400/5 px-2 py-0.5 text-[9px] font-medium text-emerald-300">{badgeCopy(badge)}</span>
                     ))}
                   </div>
                 </article>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="rounded-3xl border border-dashed border-cyan-500/20 bg-cyan-500/5 p-6 text-center">
               <MessageSquareText className="mx-auto h-8 w-8 text-slate-600 animate-pulse" aria-hidden="true" />
-              <p className="mt-3 text-xs font-black text-white">Todavía no dejaste experiencias verificadas</p>
+              <p className="mt-3 text-xs font-black text-white">Todavía no dejaste experiencias con evidencia</p>
               <p className="mt-1 text-[10px] leading-relaxed text-slate-500 max-w-sm mx-auto">
-                Registra la propiedad de un producto, valida tu contacto y deja una opinión para sumar puntos de reputación en el viñedo.
+                Asociá una interacción elegible, validá tu contacto y dejá una opinión sujeta a moderación.
               </p>
             </div>
           )}

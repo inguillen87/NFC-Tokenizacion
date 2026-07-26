@@ -7,11 +7,12 @@ export function TapClientExperience({ result }: { result: any }) {
   const [activeTab, setActiveTab] = useState<"passport" | "loyalty" | "history">("passport");
 
   const isValid = result.status?.tone === "good";
-  const trustScore = result.identity?.trustScore ?? 100;
+  const trustScoreValue = Number(result.identity?.trustScore);
+  const trustScore = Number.isFinite(trustScoreValue) ? trustScoreValue : null;
   const isReplay = result.status?.code === "REPLAY_SUSPECT";
   const isTamper = result.status?.tone === "risk" && !isReplay;
 
-  const statusLabel = isValid ? "AUTÉNTICO" : isReplay ? "REPLAY SUSPECT" : "ALERTA DE SEGURIDAD";
+  const statusLabel = isValid ? "LECTURA NFC VÁLIDA" : isReplay ? "REPLAY SUSPECT" : "ALERTA DE SEGURIDAD";
   const tone = isValid ? "valid" : isReplay ? "replay" : "risk";
   const toneStyles = {
     valid: {
@@ -71,7 +72,7 @@ export function TapClientExperience({ result }: { result: any }) {
                   transition={{ delay: 0.3 }}
                   className={`absolute -bottom-2 -right-2 px-2 py-0.5 rounded-full border text-[10px] font-bold shadow-xl ${toneStyles.badge} z-20`}
                >
-                  Score: {trustScore}
+                  Score técnico: {trustScore ?? "N/D"}
                </motion.div>
             </div>
 
@@ -124,15 +125,15 @@ export function TapClientExperience({ result }: { result: any }) {
                      <div className="space-y-3">
                         <div className="flex justify-between border-b border-white/5 pb-2">
                            <span className="text-xs text-slate-500">Cosecha</span>
-                           <span className="text-xs font-semibold text-slate-200">2022</span>
+                           <span className="text-xs font-semibold text-slate-200">{result.product?.vintage || "No informado"}</span>
                         </div>
                         <div className="flex justify-between border-b border-white/5 pb-2">
                            <span className="text-xs text-slate-500">Crianza</span>
-                           <span className="text-xs font-semibold text-slate-200">12 Meses en Roble</span>
+                           <span className="text-xs font-semibold text-slate-200">{result.product?.aging || "No informado"}</span>
                         </div>
                         <div className="flex justify-between">
                            <span className="text-xs text-slate-500">Enólogo</span>
-                           <span className="text-xs font-semibold text-slate-200">A. Vigil</span>
+                           <span className="text-xs font-semibold text-slate-200">{result.product?.winemaker || "No informado"}</span>
                         </div>
                      </div>
                   </div>
@@ -141,7 +142,7 @@ export function TapClientExperience({ result }: { result: any }) {
                      <div className="rounded-2xl border border-cyan-500/20 bg-gradient-to-br from-cyan-900/20 to-transparent p-5 text-center shadow-lg relative overflow-hidden group hover:border-cyan-500/40 transition-colors">
                         <div className="absolute inset-0 bg-cyan-500/5 group-hover:bg-cyan-500/10 transition-colors" />
                         <div className="relative z-10">
-                            <h3 className="text-sm font-bold text-white mb-2">Comprador verificado</h3>
+                            <h3 className="text-sm font-bold text-white mb-2">Validación de compra</h3>
                             <p className="text-[11px] text-cyan-200/70 mb-4 leading-relaxed">Verifica contacto y comprobante antes de activar garantia, beneficios o propiedad. Leer el QR o tocar la etiqueta no transfiere ownership automaticamente.</p>
                            <a href="/me" className="block w-full py-3.5 rounded-xl bg-white text-slate-900 text-sm font-bold shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-transform hover:scale-[1.02] active:scale-95">
                                Verificar compra
@@ -182,7 +183,7 @@ export function TapClientExperience({ result }: { result: any }) {
                            <div className="w-8 h-8 rounded bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 shrink-0 mt-0.5">
                               <span className="text-emerald-400 font-bold text-xs">+10</span>
                            </div>
-                           <p className="text-xs text-slate-300 leading-relaxed">Ganá 10 puntos registrando este producto auténtico a tu cuenta.</p>
+                           <p className="text-xs text-slate-300 leading-relaxed">Ganá 10 puntos cuando la marca confirme que esta lectura y tu cuenta cumplen la política del programa.</p>
                         </div>
                         <div className="flex items-start gap-3 bg-slate-950/50 p-3 rounded-xl border border-white/5">
                            <div className="w-8 h-8 rounded bg-violet-500/10 flex items-center justify-center border border-violet-500/20 shrink-0 mt-0.5">
@@ -215,8 +216,8 @@ export function TapClientExperience({ result }: { result: any }) {
                         <div className="relative">
                            <div className={`absolute -left-[20px] top-1 w-3 h-3 rounded-full border-2 border-slate-900 ${toneStyles.dot}`} />
                            <p className="text-[10px] text-slate-500 font-mono mb-0.5">Ahora</p>
-                           <p className="text-xs font-bold text-white">Escaneo Actual</p>
-                           <p className="text-[11px] text-slate-400 mt-1">Verificación en vivo. {isValid ? "Resultado seguro." : "Riesgo detectado."}</p>
+                           <p className="text-xs font-bold text-white">Lectura actual</p>
+                           <p className="text-[11px] text-slate-400 mt-1">Resultado técnico reportado. {isValid ? "Mensaje NFC validado; no certifica el contenido físico." : "Señal de riesgo detectada."}</p>
                         </div>
                         <div className="relative opacity-60">
                            <div className="absolute -left-[20px] top-1 w-3 h-3 rounded-full border-2 border-slate-900 bg-slate-600" />

@@ -1,0 +1,38 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import test from "node:test";
+
+const content = await readFile(new URL("../src/lib/landing-content.ts", import.meta.url), "utf8");
+const sections = await readFile(new URL("../src/components/landing-sections.tsx", import.meta.url), "utf8");
+const proofSection = await readFile(new URL("../src/components/landing-proof-section.tsx", import.meta.url), "utf8");
+
+test("landing content scopes tap validation to NFC/SUN evidence in ES, EN and PT", () => {
+  assert.match(content, /El tap valida el mensaje NFC\/SUN y la política configurada; por sí solo no prueba autenticidad física, contenido, origen, sello ni custodia/);
+  assert.match(content, /O toque valida a mensagem NFC\/SUN e a política configurada; sozinho não comprova autenticidade física, conteúdo, origem, lacre ou custódia/);
+  assert.match(content, /A tap validates the NFC\/SUN message and configured policy; by itself it does not prove physical authenticity, contents, origin, seal or custody/);
+  assert.match(content, /Mensaje válido/);
+  assert.match(content, /Mensagem válida/);
+  assert.match(content, /Valid message/);
+  assert.doesNotMatch(content, /state: "Autêntico"|state: "Authentic"|title: "nexID valida el producto"/);
+});
+
+test("landing sections separate tag, TT and declared data from physical proof", () => {
+  assert.match(sections, /A tap alone does not prove physical authenticity, contents, origin, seal or custody/);
+  assert.match(sections, /O toque sozinho não comprova autenticidade física, conteúdo, origem, lacre ou custódia/);
+  assert.match(sections, /El tap solo no prueba autenticidad física, contenido, origen, sello ni custodia/);
+  assert.match(sections, /no autenticidad física/);
+  assert.match(sections, /TT reportado/);
+  assert.match(sections, /not proof of physical contents/);
+
+  assert.doesNotMatch(sections, /Know if it is real|Saiba se e real|Every validation can prove authenticity|cada unidade prova que e real/i);
+  assert.doesNotMatch(sections, /valida (?:los|os) productos en el campo|AUTH_OK \/ OPENED|AUTENTICO \/ ABIERTO/i);
+  assert.doesNotMatch(sections, /Strong cryptographic authenticity|Autenticidad criptográfica fuerte|physical opened\/closed seal/i);
+});
+
+test("landing proof labels demoMode as guided simulation and reserves live copy for operational data", () => {
+  assert.match(proofSection, /eyebrow=\{proof\.demoMode \? "Prueba guiada" : "Prueba en vivo"\}/);
+  assert.match(proofSection, /title=\{proof\.demoMode \? "Escenario simulado de validación" : "Prueba operativa en tiempo real"\}/);
+  assert.match(proofSection, /no representan actividad productiva/);
+  assert.match(proofSection, /reportados por la fuente operativa/);
+  assert.doesNotMatch(proofSection, /eyebrow="Prueba en vivo"|title="Prueba operativa en tiempo real"/);
+});

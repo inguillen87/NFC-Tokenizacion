@@ -16,7 +16,7 @@ const labels = {
     jumpTitle: "Explorar programa reseller",
     commercialEyebrow: "Canal comercial",
     commercialTitle: "Un canal para vender confianza, comunidad y datos propios",
-    commercialBody: "El partner puede ofrecer a sus clientes una experiencia completa: producto autentico, historia visible, garantia, club, marketplace y experiencias verificadas.",
+    commercialBody: "El partner puede ofrecer una experiencia completa: evidencia NFC, historia declarada, garantía, club, marketplace y experiencias gobernadas por policy.",
     commercialCards: [
       "Agencias y estudios: convierten packaging y lanzamientos en experiencias digitales.",
       "Distribuidores y retailers: validan producto, comprador y canal con reglas claras.",

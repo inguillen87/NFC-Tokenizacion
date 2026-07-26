@@ -15,6 +15,10 @@ type GeoPoint = {
   status?: string;
   source?: string;
   lastSeen?: string;
+  chainCapability?: boolean;
+  chainProvider?: string;
+  chainStatus?: string;
+  chainTxHash?: string;
 };
 
 type TimeWindowMode = "5m" | "1h" | "24h" | "all";
@@ -22,9 +26,9 @@ type MapMode = "classic" | "network";
 type MapRoute = { fromLat: number; fromLng: number; toLat: number; toLng: number; label?: string; tone?: "info" | "warn" };
 
 function parseEventTime(value?: string) {
-  if (!value) return Date.now();
+  if (!value) return null;
   const parsed = Date.parse(value);
-  return Number.isNaN(parsed) ? Date.now() : parsed;
+  return Number.isNaN(parsed) ? null : parsed;
 }
 
 function compactDateTime(value?: string) {
@@ -35,8 +39,8 @@ function compactDateTime(value?: string) {
 }
 
 export function WorldMapRealtime({
-  title = "Global scan footprint",
-  subtitle = "Mapa operativo real de autenticaciones, riesgo y cobertura multi-tenant.",
+  title = "Cobertura de eventos reportados",
+  subtitle = "Mapa de lecturas reportadas, señales de riesgo y cobertura multi-tenant; no certifica recorridos físicos.",
   points = [],
   routes = [],
   onPointSelect,
@@ -51,7 +55,7 @@ export function WorldMapRealtime({
   routes?: MapRoute[];
   initialExpanded?: boolean;
 }) {
-  const [timeWindowMode, setTimeWindowMode] = useState<TimeWindowMode>("24h");
+  const [timeWindowMode, setTimeWindowMode] = useState<TimeWindowMode>("all");
   const [expanded, setExpanded] = useState(initialExpanded);
   const [mapMode, setMapMode] = useState<MapMode>("network");
   const [riskOnly, setRiskOnly] = useState(false);
@@ -75,7 +79,11 @@ export function WorldMapRealtime({
       : 0;
 
   const windowedPoints = useMemo(
-    () => points.filter((point) => (timeWindowMode === "all" ? true : parseEventTime(point.lastSeen) >= cutoffMs)),
+    () => points.filter((point) => {
+      if (timeWindowMode === "all") return true;
+      const eventTime = parseEventTime(point.lastSeen);
+      return eventTime !== null && eventTime >= cutoffMs;
+    }),
     [points, timeWindowMode, cutoffMs]
   );
 
@@ -95,29 +103,16 @@ export function WorldMapRealtime({
   const activePoint = rankedPoints[activeIndex] || null;
   const totalScans = rankedPoints.reduce((acc, point) => acc + (point.scans || 0), 0);
   const riskSignals = rankedPoints.reduce((acc, point) => acc + (point.risk || 0), 0);
-  const visibleRoutes = useMemo<MapRoute[]>(() => {
-    if (routes.length) return routes.slice(0, 16);
-    const fromRanking = rankedPoints.slice(0, 8).flatMap((point, index, arr) => {
-      if (index === arr.length - 1) return [];
-      return [{
-        fromLat: point.lat,
-        fromLng: point.lng,
-        toLat: arr[index + 1].lat,
-        toLng: arr[index + 1].lng,
-        tone: (point.risk || arr[index + 1].risk) ? "warn" as const : "info" as const,
-      }];
-    });
-    return fromRanking;
-  }, [rankedPoints, routes]);
+  const visibleRoutes = useMemo<MapRoute[]>(() => routes.slice(0, 16), [routes]);
   const vectorPoints = useMemo<VectorMapPoint[]>(() => rankedPoints.slice(0, 30).map((point, index) => ({
     id: `${point.city}-${point.country || "xx"}-${point.lat.toFixed(4)}-${point.lng.toFixed(4)}-${index}`,
     label: point.city,
     sublabel: point.country,
     lat: point.lat,
     lng: point.lng,
-    scans: point.scans || 1,
-    risk: point.risk || 0,
-    tone: (point.risk || 0) > 0 ? "risk" : point.status === "opened" ? "token" : index === activeIndex ? "tap" : "hub",
+    scans: point.scans ?? 0,
+    risk: point.risk ?? 0,
+    tone: (point.risk ?? 0) > 0 ? "risk" : index === activeIndex ? "tap" : "hub",
   })), [activeIndex, rankedPoints]);
   const vectorRoutes = useMemo<VectorMapRoute[]>(() => visibleRoutes.map((route, index) => ({
     id: `world-route-${index}-${route.fromLat}-${route.toLng}`,
@@ -128,29 +123,42 @@ export function WorldMapRealtime({
     label: route.label,
     tone: route.tone === "warn" ? "warn" : "info",
   })), [visibleRoutes]);
-  const tokenizedSignals = rankedPoints.filter((point) => /TOKEN|MINT|NFT|CLAIM/i.test(`${point.status || ""} ${point.source || ""}`)).length;
+  const confirmedChainSignals = rankedPoints.filter((point) =>
+    /CONFIRMED|FINALIZED/i.test(point.chainStatus || "")
+    && Boolean(point.chainProvider?.trim())
+    && Boolean(point.chainTxHash?.trim())
+  ).length;
+  const chainCapabilitySignals = rankedPoints.filter((point) => point.chainCapability === true).length;
   const mapEvidenceSteps = useMemo<VectorMapEvidenceStep[]>(() => {
     const firstPoint = rankedPoints[rankedPoints.length - 1] || activePoint;
     return [
       {
         id: "origin",
-        label: "Origen / lote",
+        label: "Referencia inicial",
         value: firstPoint ? `${firstPoint.city}, ${firstPoint.country || "--"}` : "sin origen",
-        detail: firstPoint?.vertical || "Primer nodo de trazabilidad disponible",
+        detail: firstPoint?.vertical || "Primer punto reportado disponible; no implica origen físico",
         tone: "origin",
       },
       {
         id: "tap",
-        label: "Ultimo tap",
+        label: "Evento seleccionado",
         value: activePoint ? `${activePoint.city}, ${activePoint.country || "--"}` : "sin tap",
         detail: activePoint ? `${activePoint.scans || 0} lecturas · ${compactDateTime(activePoint.lastSeen)}` : "Esperando actividad",
         tone: activePoint && (activePoint.risk || 0) > 0 ? "risk" : "tap",
       },
       {
         id: "token",
-        label: "Token / NFT",
-        value: tokenizedSignals ? `${tokenizedSignals} evidencias` : "listo para emitir",
-        detail: "Vincula UID fisico, ownership y prueba on-chain",
+        label: "Prueba blockchain",
+        value: confirmedChainSignals
+          ? `${confirmedChainSignals} confirmadas`
+          : chainCapabilitySignals
+            ? "capacidad declarada"
+            : "sin evidencia",
+        detail: confirmedChainSignals
+          ? "Confirmada solo cuando el evento incluye provider y hash de transacción"
+          : chainCapabilitySignals
+            ? "Capacidad reportada; no equivale a una transacción confirmada"
+            : "No se reportó provider, hash ni estado finalizado",
         tone: "token",
       },
       {
@@ -161,12 +169,18 @@ export function WorldMapRealtime({
         tone: riskSignals > 0 ? "risk" : "loyalty",
       },
     ];
-  }, [activePoint, rankedPoints, riskSignals, tokenizedSignals, totalScans]);
+  }, [activePoint, chainCapabilitySignals, confirmedChainSignals, rankedPoints, riskSignals, totalScans]);
   const mapLedgerItems = useMemo<VectorMapLedgerItem[]>(() => [
-    { id: "routes", label: "Rutas", value: String(visibleRoutes.length), detail: "trazadas en vivo", tone: "origin" },
+    { id: "routes", label: "Relaciones", value: String(visibleRoutes.length), detail: "configuradas explícitamente; no son recorridos físicos", tone: "origin" },
     { id: "risk", label: "Riesgo", value: String(riskSignals), detail: "tamper/replay", tone: riskSignals > 0 ? "risk" : "loyalty" },
-    { id: "nft", label: "NFT", value: tokenizedSignals ? "detectado" : "sandbox ready", detail: "ownership", tone: "token" },
-  ], [riskSignals, tokenizedSignals, visibleRoutes.length]);
+    {
+      id: "chain",
+      label: "Blockchain",
+      value: confirmedChainSignals ? `${confirmedChainSignals} confirmadas` : "no confirmada",
+      detail: confirmedChainSignals ? "provider + hash + estado finalizado" : "sin evidencia transaccional suficiente",
+      tone: "token",
+    },
+  ], [confirmedChainSignals, riskSignals, visibleRoutes.length]);
   const selectedVectorPointId = vectorPoints[activeIndex]?.id || vectorPoints[0]?.id;
   const emptyStateText = riskOnly
     ? "No hay hubs con señales de riesgo para la ventana seleccionada. Desactivá Risk-only o ampliá la ventana temporal."
@@ -180,7 +194,7 @@ export function WorldMapRealtime({
           <div className="mt-1 text-xs text-slate-400">{subtitle}</div>
         </div>
         <div className="flex flex-wrap gap-2 text-[11px]">
-          <div className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-cyan-100">stream online</div>
+          <div className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-cyan-100">eventos reportados</div>
           <div className="rounded-lg border border-white/15 bg-white/5 px-2 py-1 text-slate-300">{hydrated ? new Date(now).toLocaleTimeString("es-AR") : "--:--:--"}</div>
           <div className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-2 py-1 text-emerald-100">{totalScans.toLocaleString()} scans</div>
           <div className="rounded-lg border border-rose-300/30 bg-rose-500/10 px-2 py-1 text-rose-100">{riskSignals.toLocaleString()} risk</div>
@@ -197,7 +211,7 @@ export function WorldMapRealtime({
           {expanded ? "Compact view" : "Expand map"}
         </button>
         <button suppressHydrationWarning type="button" onClick={() => setMapMode((prev) => (prev === "classic" ? "network" : "classic"))} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-cyan-100">
-          {mapMode === "classic" ? "Vista: calor" : "Vista: rutas"}
+          {mapMode === "classic" ? "Vista: calor" : "Vista: relaciones"}
         </button>
         <button suppressHydrationWarning type="button" onClick={() => setRiskOnly((prev) => !prev)} className={`rounded-lg border px-3 py-1 ${riskOnly ? "border-rose-300/35 bg-rose-500/15 text-rose-100" : "border-white/15 bg-white/5 text-slate-300"}`}>
           {riskOnly ? "Risk-only: on" : "Risk-only: off"}
@@ -207,9 +221,9 @@ export function WorldMapRealtime({
       {activePoint ? (
         <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_18rem]">
           <PremiumVectorMap
-            title={mapMode === "classic" ? "Mapa vivo operativo" : "Ruta de trazabilidad"}
-            subtitle="Motor propio: rutas, riesgo y hubs sin iframe ni API paga."
-            caption="Autenticaciones, tamper, duplicados y hubs comerciales en vivo."
+            title={mapMode === "classic" ? "Mapa de eventos reportados" : "Relaciones de trazabilidad reportadas"}
+            subtitle="Motor propio: puntos, relaciones configuradas y riesgo sin inferir movimiento físico."
+            caption="Lecturas, tamper, duplicados y ubicaciones reportadas por los eventos visibles."
             points={vectorPoints}
             routes={vectorRoutes}
             selectedPointId={selectedVectorPointId}
@@ -230,7 +244,7 @@ export function WorldMapRealtime({
               <p className="text-[11px] font-black uppercase tracking-[0.14em] text-cyan-200">Historia del mapa</p>
               <p className="mt-1 font-semibold text-white">{activePoint.city}, {activePoint.country || "--"}</p>
               <p className="mt-1 text-[11px] text-slate-300">
-                {activePoint.scans || 0} lecturas, {riskSignals} señales de riesgo y {visibleRoutes.length} rutas listas para explicar origen, token, ownership y acciones comerciales.
+                {activePoint.scans || 0} lecturas, {riskSignals} señales de riesgo y {visibleRoutes.length} relaciones explícitas. Las líneas visuales no prueban un recorrido físico.
               </p>
             </div>
             {rankedPoints.slice(0, 30).map((point, index) => (

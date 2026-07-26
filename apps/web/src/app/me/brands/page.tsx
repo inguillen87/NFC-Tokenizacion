@@ -55,13 +55,14 @@ export default async function BrandsPage() {
   
   const engagement = buildBrandEngagement({ brands, products, taps, listings });
   const notifications = flattenBrandNotifications(engagement);
-  const totalPoints = engagement.reduce((sum, item) => sum + item.points, 0);
+  const reportedPointBalances = engagement.map((item) => item.points).filter((value): value is number => value !== null);
+  const totalPoints = reportedPointBalances.length ? reportedPointBalances.reduce((sum, value) => sum + value, 0) : null;
   const totalPromos = engagement.reduce((sum, item) => sum + item.activePromoCount, 0);
   const totalClaimed = engagement.reduce((sum, item) => sum + item.claimedCount, 0);
   
-  const overviewMetrics: Array<{ label: string; value: number; Icon: LucideIcon; color: string }> = [
+  const overviewMetrics: Array<{ label: string; value: number | string; Icon: LucideIcon; color: string }> = [
     { label: "Mis Clubes", value: engagement.length, Icon: Sparkles, color: "text-amber-400" },
-    { label: "Puntos Totales", value: totalPoints, Icon: Trophy, color: "text-amber-300" },
+    { label: "Puntos reportados", value: totalPoints ?? "N/D", Icon: Trophy, color: "text-amber-300" },
     { label: "Botellas", value: totalClaimed, Icon: PackageCheck, color: "text-emerald-400" },
     { label: "Drops Habilitados", value: totalPromos, Icon: Gift, color: "text-cyan-400" },
   ];
@@ -147,7 +148,7 @@ export default async function BrandsPage() {
           {/* Brands List */}
           <section className="grid gap-6">
             {engagement.map((item) => {
-              const theme = tierVisualTheme(item.tier);
+              const theme = tierVisualTheme(item.tier || "");
               return (
                 <article key={item.key} className={`overflow-hidden rounded-3xl border ${theme.border} bg-slate-950/70 p-5 transition duration-300 hover:border-white/10`}>
                   <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
@@ -171,7 +172,7 @@ export default async function BrandsPage() {
                             <span className="text-[8px] uppercase tracking-wider text-slate-400 block font-bold">Nivel</span>
                             <span className="text-xs font-black text-white flex items-center gap-1 mt-0.5">
                               <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
-                              {item.tier}
+                              {item.tier || "N/D"}
                             </span>
                           </div>
                         </div>
@@ -179,11 +180,11 @@ export default async function BrandsPage() {
                         {/* Progression bar */}
                         <div className="mt-6">
                           <div className="flex items-center justify-between gap-3 text-[10px] font-bold">
-                            <span className="text-slate-400">Progreso a {item.nextMilestone}</span>
-                            <span className="text-white">{item.progress}%</span>
+                            <span className="text-slate-400">{item.nextMilestone ? `Progreso a ${item.nextMilestone}` : "Progreso no reportado"}</span>
+                            <span className="text-white">{item.progress === null ? "N/D" : `${item.progress}%`}</span>
                           </div>
                           <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-slate-900 border border-white/5">
-                            <div className={`h-full rounded-full bg-gradient-to-r ${theme.gradient} transition-all duration-1000`} style={{ width: `${item.progress}%` }} />
+                            <div className={`h-full rounded-full bg-gradient-to-r ${theme.gradient} transition-all duration-1000`} style={{ width: `${item.progress || 0}%` }} />
                           </div>
                         </div>
 

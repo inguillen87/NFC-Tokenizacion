@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { isSecurePostTapActionAllowed, type SecurePostTapActionKey } from "./post-tap-policy";
+import { selectSunTruthCopy, SUN_DEMO_COPY } from "./sun-truth-copy";
 
 type TapState = "valid" | "opened" | "blocked";
 type RightsPolicy = {
@@ -12,9 +14,9 @@ type RightsPolicy = {
   consumerCopy?: string | null;
   recommendedNextStep?: string | null;
 };
-type Props = { bid: string; uid?: string; eventId?: string; freshToken?: string; canExecute?: boolean; tapState?: TapState; rightsPolicy?: RightsPolicy };
+type Props = { bid: string; uid?: string; eventId?: string; freshToken?: string; canExecute?: boolean; tapState?: TapState; rightsPolicy?: RightsPolicy; allowedActions?: string[]; blockedActions?: string[]; isDemoPreview?: boolean };
 type ActionState = "idle" | "loading" | "success" | "error";
-type ActionKey = "claimOwnership" | "registerWarranty" | "provenance" | "tokenization" | "report";
+type ActionKey = SecurePostTapActionKey;
 type CallResponse = {
   ok?: boolean;
   reason?: string;
@@ -24,7 +26,14 @@ type CallResponse = {
   deliveryChannel?: string;
   ttlMinutes?: number;
   next_step?: string;
+  status?: string | null;
+  request_status?: string | null;
+  provenance?: string | { mode?: string | null; status?: string | null } | null;
+  warranty?: { status?: string | null } | null;
+  ticket?: { id?: string | number | null; status?: string | null } | null;
   consumer?: Record<string, unknown>;
+  ownership?: { status?: string | null } | null;
+  ownership_status?: string | null;
   anchor?: { ok?: boolean; status?: string; tx_hash?: string | null; token_id?: string | null; reason?: string | null; next_attempt_at?: string | null } | null;
   tokenization_request?: { status?: string | null; tx_hash?: string | null; token_id?: string | null; next_attempt_at?: string | null; last_error?: string | null } | null;
   mint_ok?: boolean;
@@ -37,6 +46,16 @@ type CallResponse = {
   _httpStatus?: number;
   _httpOk?: boolean;
   _traceId?: string | null;
+};
+type ReceiptOcrUiState = {
+  mode: "live_confirmed" | "demo_mock" | "unavailable";
+  confirmed: boolean;
+  provider: string | null;
+  model: string | null;
+  score: number;
+  extractionReady: boolean;
+  authorizationConfirmed: boolean;
+  message: string;
 };
 type LastRequest = { path: string; method: "POST" | "GET"; actionKey: ActionKey };
 type ProvenanceResponse = {
@@ -137,7 +156,7 @@ async function getClientMetadata() {
   };
 }
 
-export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canExecute = true, tapState = "valid", rightsPolicy }: Props) {
+export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canExecute = true, tapState = "valid", rightsPolicy, allowedActions = [], blockedActions = [], isDemoPreview = false }: Props) {
   const [status, setStatus] = useState<string>("");
   const [pending, setPending] = useState(false);
   const [actionStates, setActionStates] = useState<Record<ActionKey, ActionState>>({
@@ -176,7 +195,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
   const [receiptTime, setReceiptTime] = useState("");
   const [receiptPrice, setReceiptPrice] = useState("");
   const [ocrLoading, setOcrLoading] = useState(false);
-  const [ocrConfidence, setOcrConfidence] = useState<number | null>(null);
+  const [ocrVerification, setOcrVerification] = useState<ReceiptOcrUiState | null>(null);
   const [securityPin, setSecurityPin] = useState("");
   const emailInputRef = useRef<HTMLInputElement | null>(null);
   const tokenModalRef = useRef<HTMLDivElement | null>(null);
@@ -193,55 +212,76 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
   const tokenPolicy = String(rightsPolicy?.tokenizationPolicy || "").toLowerCase();
   const claimMode = String(rightsPolicy?.claimMode || "").toLowerCase();
   const policySummary = rightsPolicy?.consumerCopy || "";
-  const ownerClaimScore = canExecute ? (claimAuthStarted ? 82 : tapState === "opened" ? 74 : 68) : 28;
-  const ownerClaimTone = canExecute ? "text-emerald-100 border-emerald-300/30 bg-emerald-500/10" : "text-amber-100 border-amber-300/30 bg-amber-500/10";
+  const policyAllowsAction = (actionKey: ActionKey) => isSecurePostTapActionAllowed(
+    actionKey,
+    allowedActions,
+    blockedActions,
+  );
+  const canStartClaim = canExecute && policyAllowsAction("claimOwnership");
+  const ownerClaimState = !canStartClaim
+    ? "Protegido"
+    : isAuthenticated
+      ? "Canal confirmado"
+      : claimAuthStarted
+        ? "Código enviado"
+        : "Listo para iniciar";
+  const ownerClaimTone = canStartClaim ? "text-emerald-100 border-emerald-300/30 bg-emerald-500/10" : "text-amber-100 border-amber-300/30 bg-amber-500/10";
   const ownerClaimSteps = [
-    { label: "Tap fisico fresco", state: canExecute ? "OK" : "Requerido" },
+    {
+      label: selectSunTruthCopy(isDemoPreview, SUN_DEMO_COPY.claimTapLabel, "Evidencia NFC fresca"),
+      state: selectSunTruthCopy(isDemoPreview, SUN_DEMO_COPY.claimTapState, canExecute ? "OK" : "Requerido"),
+    },
+    { label: "Política del lote", state: policyAllowsAction("claimOwnership") ? "Habilitada" : "No habilitada" },
     { label: "Email o celular", state: claimAuthStarted ? "Codigo enviado" : "Pendiente" },
     { label: "Ticket / POS", state: claimMode.includes("purchase") || claimMode.includes("review") ? "Revisable" : "Opcional" },
-    { label: "NFT / wallet", state: "Despues de validar compra" },
   ];
   const primaryCtaLabel = !canExecute
-    ? "Necesito un nuevo tap fisico"
-    : claimAuthStarted
-      ? "Confirmar codigo"
-      : "Activar comprador verificado";
+    ? "Necesito una nueva lectura NFC"
+    : !policyAllowsAction("claimOwnership")
+      ? "Registro de comprador no habilitado"
+      : claimAuthStarted
+        ? "Confirmar codigo"
+        : "Iniciar validacion de compra";
   const primaryCtaHelp = !canExecute
     ? "Por seguridad, este link solo muestra la prueba. Para garantia, wallet o tokenizacion, toca la etiqueta otra vez."
-    : "Validamos contacto y prueba de compra antes de activar garantia, wallet, NFT o marketplace.";
+    : !policyAllowsAction("claimOwnership")
+      ? "La politica de este producto no permite claim publico. Usa solamente las opciones habilitadas abajo."
+      : "Confirmamos el canal de contacto y revisamos la prueba de compra antes de activar garantia, wallet, NFT o marketplace.";
   const tokenSubtitle = tokenPolicy === "issuer_transfer"
     ? "Tokenizacion por transferencia del issuer: requiere prueba documental antes del mint."
     : tokenPolicy === "lot_anchor"
-      ? "Ancla de lote: tokeniza trazabilidad y lifecycle sin prometer ownership individual."
+      ? "Ancla de lote: solicita registrar evidencia declarada del lifecycle sin prometer origen fisico ni ownership individual."
       : tokenPolicy === "manual_review"
         ? "Solicitud a revision: el tenant aprueba antes de mintear en Polygon."
-        : "Disponible despues de validar comprador: UID hasheado, salt privado y proof Polygon.";
-  const gatedCopy = tapState === "blocked"
-    ? "Propiedad, garantia y tokenizacion quedan protegidas hasta tener un tap fisico valido y fresco."
+        : "Solicitud disponible despues de validar comprador: UID hasheado, salt privado y confirmacion Polygon solo si existe receipt real.";
+  const realGatedCopy = tapState === "blocked"
+    ? "Propiedad, garantia y tokenizacion quedan bloqueadas hasta que el backend valide evidencia NFC reciente; eso no prueba el producto fisico."
     : policySummary || (tapState === "opened"
-      ? "Sello abierto verificado: se habilitan garantia, provenance y tokenizacion segun politica de marca."
-      : "Tap fresco verificado: listo para ficha publica y opciones de comprador verificadas.");
-  const tokenModalCopy = tokenPolicy === "issuer_transfer"
+      ? "El tag reporto TT abierto. Su significado fisico depende de la integracion al packaging; las acciones siguen la politica de la marca."
+      : "Mensaje SUN reciente validado por el backend. La ficha queda disponible; compra, propiedad y beneficios requieren validaciones separadas.");
+  const gatedCopy = selectSunTruthCopy(isDemoPreview, SUN_DEMO_COPY.gatedActions, realGatedCopy);
+  const realTokenModalCopy = tokenPolicy === "issuer_transfer"
     ? "El token se solicita como transferencia del issuer: no se mintea propiedad publica sin prueba de compra o autorizacion."
     : tokenPolicy === "lot_anchor"
-      ? "El token ancla un lote, origen y lifecycle. No convierte automaticamente cada unidad fisica en propiedad individual."
+      ? "Una transaccion on-chain confirmada puede registrar hashes de eventos declarados del lote; no prueba por si sola origen fisico, recorrido ni ownership individual."
       : tokenPolicy === "manual_review"
         ? "La solicitud queda en revision comercial antes de mintear. Es ideal para pharma, cosmetica o casos con riesgo regulatorio."
         : tapState === "opened"
-    ? "El token ancla la apertura verificada, propiedad y provenance sin exponer el UID crudo."
-    : "El token ancla propiedad, provenance y garantia sin exponer el UID crudo.";
+    ? "Una transaccion confirmada puede registrar el estado TT reportado y claims aprobados de propiedad o provenance; no prueba por si sola una apertura fisica ni el contenido."
+    : "Una transaccion confirmada puede registrar claims aprobados de propiedad, provenance o garantia; no prueba por si sola custodia ni contenido fisico.";
+  const tokenModalCopy = selectSunTruthCopy(isDemoPreview, SUN_DEMO_COPY.tokenModal, realTokenModalCopy);
   const actionMeta: Record<string, { title: string; subtitle: string; icon: string; path: string; method: "POST" | "GET"; tone: string }> = {
     claimOwnership: {
       title: "Validar comprador",
-      subtitle: "Valida identidad y prueba de compra antes de activar propiedad o garantia.",
+      subtitle: "Confirma el canal de contacto y revisa la prueba de compra antes de aprobar propiedad o garantia.",
       icon: "BUY",
       path: "/api/public-cta/claim-ownership",
       method: "POST",
       tone: "border-indigo-300/40 bg-indigo-500/10 text-indigo-100 transition hover:bg-indigo-500/20",
     },
     registerWarranty: {
-      title: "Registrar garantia",
-      subtitle: "Activa cobertura, postventa y fecha de apertura o compra.",
+      title: "Solicitar revisión de garantía",
+      subtitle: "Registra una solicitud para revisión de cobertura, postventa y fecha declarada de compra.",
       icon: "WAR",
       path: "/api/public-cta/register-warranty",
       method: "POST",
@@ -249,7 +289,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     },
     provenance: {
       title: "Ver provenance",
-      subtitle: "Consulta origen, ruta, eventos del tenant y prueba tecnica.",
+      subtitle: "Consulta origen y ruta declarados, eventos del tenant y evidencia tecnica.",
       icon: "PRO",
       path: "/api/public-cta/provenance",
       method: "GET",
@@ -257,7 +297,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     },
     report: {
       title: "Reportar problema",
-      subtitle: "Crea un ticket si el tap, replay o sello parecen inconsistentes.",
+      subtitle: "Envía un reporte si el tap, replay o estado TT parecen inconsistentes; el equipo confirma luego si abre un ticket.",
       icon: "RPT",
       path: "/api/public-cta/report-problem",
       method: "POST",
@@ -265,11 +305,11 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     }
   };
   const successCopy: Record<ActionKey, string> = {
-    claimOwnership: "Comprador verificado y registro asociado al tenant.",
-    registerWarranty: "Garantia registrada para postventa y lifecycle.",
+    claimOwnership: "Registro de comprador aprobado y asociado al tenant.",
+    registerWarranty: "Solicitud de garantía registrada · pendiente de revisión.",
     provenance: "Provenance consultada correctamente.",
-    tokenization: "Tokenizacion registrada: si Polygon no confirma en el acto queda en reintento operativo.",
-    report: "Ticket creado para revisar el tap.",
+    tokenization: "Solicitud de tokenizacion registrada. No hay NFT confirmado hasta recibir tx, receipt y token ID verificables.",
+    report: "Reporte recibido · todavía no es un ticket confirmado.",
   };
 
   function tokenizationStatus(data: CallResponse) {
@@ -299,7 +339,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     if (status === "pending_retry" || (status === "failed" && hasSavedRequest)) {
       return {
         ok: true,
-        message: data.explainer || `Solicitud protegida guardada. Polygon Amoy queda en reintento operativo${nextAttempt ? ` para ${nextAttempt}` : ""}; no se pierde el tap.`,
+        message: data.explainer || `Solicitud protegida guardada. Polygon Amoy queda pendiente de procesamiento o reconciliacion${nextAttempt ? ` a partir de ${nextAttempt}` : ""}; todavia no hay NFT confirmado.`,
       };
     }
 
@@ -316,8 +356,8 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
       return {
         ok: hasSavedRequest,
         message: hasSavedRequest
-          ? `Solicitud protegida guardada. El anclaje queda en reintento operativo${nextAttempt ? ` para ${nextAttempt}` : ""}.`
-          : `No se pudo guardar la solicitud de tokenizacion: ${tokenizationError(data) || "reintento operativo requerido"}.`,
+          ? `Solicitud protegida guardada. El anclaje queda pendiente de procesamiento o reconciliacion${nextAttempt ? ` a partir de ${nextAttempt}` : ""}; no se confirma automaticamente desde esta pantalla.`
+          : `No se pudo guardar la solicitud de tokenizacion: ${tokenizationError(data) || "procesamiento operativo requerido"}.`,
       };
     }
 
@@ -333,7 +373,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     if (status === "pending" || status === "processing") {
       return {
         ok: true,
-        message: `Solicitud en cola para Polygon Amoy${nextAttempt ? `; proximo intento ${nextAttempt}` : ""}.`,
+        message: `Solicitud en cola para Polygon Amoy${nextAttempt ? `; elegible para revision a partir de ${nextAttempt}` : ""}. Estar en cola no confirma mint ni garantiza ejecucion automatica.`,
       };
     }
 
@@ -349,17 +389,48 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
   }
 
   function successMessageFor(actionKey: ActionKey, data: CallResponse) {
+    if (actionKey === "claimOwnership") {
+      const ownershipStatus = String(data.ownership_status || data.ownership?.status || "").toLowerCase();
+      return ownershipStatus === "claimed"
+        ? successCopy.claimOwnership
+        : "Solicitud de comprador registrada. La propiedad y la garantia esperan el estado aprobado del backend.";
+    }
+    const provenance = typeof data.provenance === "string"
+      ? data.provenance
+      : data.provenance?.status || data.provenance?.mode || "";
+    const responseStatus = String(
+      data.request_status
+      || data.status
+      || data.warranty?.status
+      || data.ticket?.status
+      || provenance,
+    ).toLowerCase();
+    const confirmedStatuses = new Set(["approved", "active", "confirmed", "completed", "ticket_open", "open"]);
+    if (actionKey === "registerWarranty") {
+      return confirmedStatuses.has(responseStatus)
+        ? "Garantía confirmada por el backend para postventa."
+        : successCopy.registerWarranty;
+    }
+    if (actionKey === "report") {
+      const hasConfirmedTicket = Boolean(data.ticket?.id) && confirmedStatuses.has(responseStatus);
+      return hasConfirmedTicket
+        ? "Ticket confirmado por el backend para revisar el tap."
+        : successCopy.report;
+    }
     if (actionKey !== "tokenization") return successCopy[actionKey];
     return tokenizationUiResult(data).message;
   }
 
   function renderStateBadge(actionKey: ActionKey) {
     const state = actionStates[actionKey];
+    if (!policyAllowsAction(actionKey) && state === "idle") {
+      return <span className="rounded-full border border-slate-400/30 bg-slate-500/10 px-2 py-0.5 text-[10px] text-slate-200">No habilitada</span>;
+    }
     if (!canExecute && SECURITY_GATED_ACTIONS.has(actionKey) && state === "idle") {
       return <span className="rounded-full border border-amber-300/35 bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-100">Requiere tap</span>;
     }
     if (state === "loading") return <span className="rounded-full border border-cyan-300/40 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-100">Procesando...</span>;
-    if (state === "success") return <span className="rounded-full border border-emerald-300/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-100">Hecho</span>;
+    if (state === "success") return <span className="rounded-full border border-emerald-300/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-100">Recibido</span>;
     if (state === "error") return <span className="rounded-full border border-rose-300/40 bg-rose-500/10 px-2 py-0.5 text-[10px] text-rose-100">Error</span>;
     return <span className="rounded-full border border-white/20 bg-white/5 px-2 py-0.5 text-[10px] text-slate-300">Disponible</span>;
   }
@@ -373,7 +444,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
   }
 
   function isActionDisabled(actionKey: ActionKey) {
-    return pending || (!canExecute && SECURITY_GATED_ACTIONS.has(actionKey));
+    return pending || !policyAllowsAction(actionKey) || (!canExecute && SECURITY_GATED_ACTIONS.has(actionKey));
   }
 
   function basePayload(extra?: Record<string, unknown>) {
@@ -453,13 +524,13 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     if (data.error) return data.error;
     const reason = String(data.reason || "").toLowerCase();
     if (reason.includes("consumer_auth_required")) {
-      return "Para activar comprador o crear NFT necesitamos validar email o celular. El producto queda visible, pero no se asocia a nadie sin identidad verificada.";
+      return "Para iniciar la validacion de compra o solicitar un NFT necesitamos confirmar un email o celular. El producto queda visible, pero no se asocia a nadie solo por confirmar ese canal.";
     }
     if (reason.includes("ownership_claim_required")) {
-      return "Primero valida comprador con prueba de compra. Despues se habilita la solicitud NFT y la conexion de wallet.";
+      return "Primero completa la validacion de compra segun la politica de la marca. Despues se habilita la solicitud NFT y la conexion de wallet.";
     }
     if (reason.includes("fresh") || reason.includes("physical") || reason.includes("expired")) {
-      return "Para propiedad, garantia o tokenizacion necesitamos un tap fisico nuevo. Volve a tocar la etiqueta NFC.";
+      return "Para propiedad, garantia o tokenizacion necesitamos evidencia NFC reciente validada por el backend. Volve a leer la etiqueta NFC.";
     }
     if (reason.includes("share") || reason.includes("token")) {
       return "Acción no disponible en este enlace. Abrí el SUN desde un link firmado o escaneá nuevamente.";
@@ -472,6 +543,10 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
 
   const trigger = async (path: string, method: "POST" | "GET", actionKey: ActionKey) => {
     if (actionStates[actionKey] === "loading") return;
+    if (!policyAllowsAction(actionKey)) {
+      setActionError("La politica de este producto no habilita esta accion. Revisa las opciones disponibles para este lote.");
+      return;
+    }
     if (!canExecute && SECURITY_GATED_ACTIONS.has(actionKey)) {
       setActionError("Este tap no habilita propiedad, garantia ni tokenizacion. Escanea nuevamente la etiqueta fisica.");
       setActionStates((current) => ({ ...current, [actionKey]: "error" }));
@@ -533,7 +608,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
   function getButtonLabel(idleLabel: string, actionKey: ActionKey) {
     const state = actionStates[actionKey];
     if (state === "loading") return "Procesando...";
-    if (state === "success") return "Hecho";
+    if (state === "success") return "Recibido";
     if (state === "error") return "Error";
     return idleLabel;
   }
@@ -601,10 +676,10 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
       setClaimAuthMode(String(data.mode || "otp"));
       const channel = String(data.deliveryChannel || (claimContactLooksEmail ? "email" : "sms"));
       setClaimAuthMessage(channel === "email"
-          ? "Codigo enviado por email. Ingresalo para continuar como comprador verificado."
+          ? "Codigo enviado por email. Ingresalo para confirmar el canal y continuar con la validacion de compra."
           : channel === "whatsapp"
-            ? "Codigo enviado por WhatsApp. Ingresalo para continuar como comprador verificado."
-            : "Codigo enviado por SMS. Ingresalo para continuar como comprador verificado.");
+            ? "Codigo enviado por WhatsApp. Ingresalo para confirmar el canal y continuar con la validacion de compra."
+            : "Codigo enviado por SMS. Ingresalo para confirmar el canal y continuar con la validacion de compra.");
     } catch (error) {
       setClaimAuthError(normalizeClaimAuthError(error));
     } finally {
@@ -636,7 +711,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
       }
       
       setShowReceiptForm(true);
-      setLastActionMessage("Identidad verificada. Subi tu comprobante de compra para completar comprador verificado.");
+      setLastActionMessage("Canal de contacto confirmado. Subi tu comprobante para continuar con la validacion de compra.");
     } catch (error) {
       setClaimAuthError(normalizeClaimAuthError(error));
     } finally {
@@ -650,8 +725,12 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
   }
 
   function handlePrimaryClaimAction() {
-    if (!canExecute) {
-      setActionError("Para activar comprador, garantia o propiedad necesitamos un tap fisico nuevo desde la etiqueta NFC.");
+    if (!canStartClaim) {
+      if (canExecute && !policyAllowsAction("claimOwnership")) {
+        setActionError("La politica de este producto no permite un claim publico. Usa una opcion habilitada para el lote.");
+        return;
+      }
+      setActionError("Para activar comprador, garantia o propiedad necesitamos una nueva lectura NFC validada por el backend.");
       return;
     }
     if (claimAuthStarted) {
@@ -678,7 +757,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
           <div className="space-y-3">
             <div className="flex items-center justify-between border-b border-white/10 pb-2">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Comprador verificado</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Validacion de compra</p>
                 <h3 className="text-sm font-black text-white">Comprobante de Compra (Ticket/Factura)</h3>
               </div>
               <button
@@ -692,9 +771,9 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
             </div>
             
             <p className="text-[11px] text-slate-300">
-              Para validar que compraste el producto antes de habilitar garantia, propiedad o tokenizacion NFT, subi tu ticket y completa los datos.
+              Para revisar la evidencia de compra antes de habilitar garantia, propiedad o tokenizacion NFT, subi tu ticket y completa los datos.
               <span className="block mt-1 text-[10px] text-cyan-300/90 font-medium">
-                🔒 Tu ubicación GPS y número de contacto actúan como llaves de seguridad cruzadas. Esto ayuda a la marca a auditar desvíos y proteger el canal oficial contra el mercado gris.
+                La ubicacion GPS y el canal de contacto son señales auxiliares de auditoria. No prueban identidad, compra ni ubicacion fisica del producto por si solos.
               </span>
             </p>
 
@@ -712,7 +791,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
                       if (file) {
                         setReceiptFileName(file.name);
                         setOcrLoading(true);
-                        setOcrConfidence(null);
+                        setOcrVerification(null);
                         const reader = new FileReader();
                         reader.onload = async (evt) => {
                           if (evt.target?.result) {
@@ -733,16 +812,67 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
                                 }),
                               });
 
-                              if (response.ok) {
-                                const data = await response.json();
-                                if (data.ok && data.ocr) {
-                                  const ocr = data.ocr;
+                              const data = await response.json().catch(() => ({}));
+                              if (data.ocr) {
+                                const ocr = data.ocr as Record<string, any>;
+                                const provenance = ocr.provenance && typeof ocr.provenance === "object"
+                                  ? ocr.provenance as Record<string, any>
+                                  : {};
+                                const mode = ["live_confirmed", "demo_mock", "unavailable"].includes(String(provenance.mode))
+                                  ? String(provenance.mode) as ReceiptOcrUiState["mode"]
+                                  : "unavailable";
+                                const score = Number.isFinite(Number(ocr.compliance_score)) ? Number(ocr.compliance_score) : 0;
+                                const extractionReady = Boolean(
+                                  response.ok
+                                  && data.ok
+                                  && mode === "live_confirmed"
+                                  && provenance.confirmed === true
+                                  && provenance.provider
+                                  && provenance.model,
+                                );
+                                const purchaseAuthorization = data.purchase_authorization && typeof data.purchase_authorization === "object"
+                                  ? data.purchase_authorization as Record<string, any>
+                                  : {};
+                                const authorizationConfirmed = Boolean(
+                                  response.ok
+                                  && data.ok
+                                  && ["approved", "confirmed"].includes(String(purchaseAuthorization.status).toLowerCase())
+                                  && ["signed_pos", "tenant_manual_approval"].includes(String(purchaseAuthorization.source).toLowerCase()),
+                                );
+                                const message = extractionReady
+                                  ? `Datos extraídos por ${String(provenance.provider)} con ${String(provenance.model)}. Revisalos: OCR no valida pago, producto ni titularidad.`
+                                  : mode === "demo_mock"
+                                    ? "Extracción simulada de demo. No valida el comprobante ni habilita propiedad."
+                                    : mode === "live_confirmed"
+                                      ? String(data.error || "El OCR respondió, pero los datos requieren revisión manual.")
+                                      : String(data.error || "No se completó la extracción OCR. Reintentá o solicitá revisión manual.");
+                                setOcrVerification({
+                                  mode,
+                                  confirmed: provenance.confirmed === true,
+                                  provider: typeof provenance.provider === "string" ? provenance.provider : null,
+                                  model: typeof provenance.model === "string" ? provenance.model : null,
+                                  score,
+                                  extractionReady,
+                                  authorizationConfirmed,
+                                  message,
+                                });
+                                if (extractionReady) {
                                   if (ocr.establishment) setReceiptEstablishment(ocr.establishment);
                                   if (ocr.date) setReceiptDate(ocr.date);
                                   if (ocr.time) setReceiptTime(ocr.time);
                                   if (ocr.price) setReceiptPrice(String(ocr.price));
-                                  setOcrConfidence(ocr.compliance_score);
                                 }
+                              } else {
+                                setOcrVerification({
+                                  mode: "unavailable",
+                                  confirmed: false,
+                                  provider: null,
+                                  model: null,
+                                  score: 0,
+                                  extractionReady: false,
+                                  authorizationConfirmed: false,
+                                  message: String(data.error || "No se pudo extraer el comprobante. Reintentá o solicitá revisión manual."),
+                                });
                               }
                             } catch (err) {
                               console.warn("[OCR] Error de escaneo IA:", err);
@@ -767,21 +897,22 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
                         <img src={receiptFileData} className="w-8 h-8 object-cover rounded border border-white/10" alt="Preview" />
                         <span className="text-[10px] font-mono text-emerald-300 max-w-[120px] truncate">{receiptFileName}</span>
                       </div>
-                      {ocrConfidence !== null && (
+                      {ocrVerification && (
                         <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md border ${
-                          ocrConfidence >= 75 
-                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_8px_rgba(16,185,129,0.12)]" 
-                            : ocrConfidence >= 45 
-                            ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
-                            : "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                          ocrVerification.extractionReady
+                            ? "bg-cyan-500/10 text-cyan-300 border-cyan-500/20 shadow-[0_0_8px_rgba(34,211,238,0.12)]"
+                            : "bg-amber-500/10 text-amber-300 border-amber-500/20"
                         }`}>
-                          {ocrConfidence >= 75 
-                            ? `✓ Verificado (IA: ${ocrConfidence}%)` 
-                            : ocrConfidence >= 45 
-                            ? `⚠ Verificación parcial (${ocrConfidence}%)`
-                            : `✗ Confianza baja (${ocrConfidence}%)`}
+                          {ocrVerification.extractionReady
+                            ? `Datos extraídos por OCR (score de lectura ${ocrVerification.score}%)`
+                            : ocrVerification.mode === "demo_mock"
+                              ? "Extracción demo simulada · no habilita propiedad"
+                              : "Revisión manual requerida"}
                         </span>
                       )}
+                      {ocrVerification ? (
+                        <span className="max-w-[240px] text-center text-[9px] leading-4 text-slate-400">{ocrVerification.message}</span>
+                      ) : null}
                     </div>
                   ) : (
                     <>
@@ -844,7 +975,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
                 <input
                   type="text"
                   disabled
-                  value={consumerData?.phone || consumerData?.email || "WhatsApp/Mail verificado"}
+                  value={consumerData?.phone || consumerData?.email || "Canal de contacto confirmado"}
                   className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-xs text-slate-400 outline-none font-mono"
                 />
               </div>
@@ -853,13 +984,17 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
             <button
               suppressHydrationWarning
               type="button"
-              disabled={pending || !receiptEstablishment.trim() || !receiptDate || !receiptPrice || !receiptFileData}
+              disabled={pending || !ocrVerification?.authorizationConfirmed || !receiptEstablishment.trim() || !receiptDate || !receiptPrice || !receiptFileData}
               onClick={() => void trigger("/api/public-cta/claim-ownership", "POST", "claimOwnership")}
               className="mt-3 w-full rounded-xl border border-emerald-300/35 bg-emerald-400 px-4 py-3 text-xs font-black text-slate-950 shadow-[0_16px_40px_rgba(16,185,129,0.22)] hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50 transition"
             >
-              {pending ? "Procesando validacion..." : "Confirmar compra y activar beneficios"}
+              {pending ? "Procesando autorizacion..." : ocrVerification?.authorizationConfirmed ? "Enviar autorización y activar beneficios" : "Esperando aprobación tenant / POS firmado"}
             </button>
-            {!receiptFileData || !receiptEstablishment.trim() || !receiptDate || !receiptPrice ? (
+            {!ocrVerification?.authorizationConfirmed ? (
+              <p className="text-[10px] text-amber-300 text-center">
+                * OCR solo extrae campos y un score de lectura. No valida pago, producto ni titularidad: la propiedad sigue bloqueada hasta recibir aprobación manual del tenant o un comprobante POS firmado.
+              </p>
+            ) : !receiptFileData || !receiptEstablishment.trim() || !receiptDate || !receiptPrice ? (
               <p className="text-[10px] text-amber-300 text-center">
                 * Para mayor seguridad, todos los campos y la foto del ticket son obligatorios.
               </p>
@@ -872,12 +1007,12 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] opacity-80">Tu producto, tu cuenta</p>
                 <h3 className="mt-1 text-sm font-black text-white">Alta segura de comprador</h3>
                 <p className="mt-1 text-[11px] leading-5 opacity-85">
-                  El tap físico prueba acceso al producto. Contacto verificado y comprobante de compra habilitan garantia, beneficios o propiedad segun politica de la marca.
+                  {selectSunTruthCopy(isDemoPreview, SUN_DEMO_COPY.claimIntro, "El tap fisico demuestra acceso al tag en ese instante. El canal de contacto confirmado y el comprobante se evaluan por separado antes de habilitar garantia, beneficios o propiedad segun la politica de la marca.")}
                 </p>
               </div>
               <div className="shrink-0 rounded-xl border border-white/15 bg-slate-950/50 px-3 py-2 text-right">
-                <span className="block text-[10px] uppercase tracking-[0.12em] opacity-70">seguridad</span>
-                <strong className="text-lg text-white">{isAuthenticated ? 92 : ownerClaimScore}</strong>
+                <span className="block text-[10px] uppercase tracking-[0.12em] opacity-70">Estado</span>
+                <strong className="text-xs text-white">{ownerClaimState}</strong>
               </div>
             </div>
             <div className="mt-3 grid gap-2 sm:grid-cols-4">
@@ -886,7 +1021,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
                   <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-300">{step.label}</p>
                   <span className="mt-1 block text-[11px] font-bold text-white">
                     {step.label.includes("celular") && isAuthenticated
-                      ? "Verificado"
+                      ? "Canal confirmado"
                       : step.label.includes("Ticket") && showReceiptForm
                       ? "En carga"
                       : step.state}
@@ -897,7 +1032,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
             <button
               suppressHydrationWarning
               type="button"
-              disabled={pending || claimAuthLoading || (claimAuthStarted && !isClaimCodeValid)}
+              disabled={!canStartClaim || pending || claimAuthLoading || (claimAuthStarted && !isClaimCodeValid)}
               onClick={handlePrimaryClaimAction}
               className="sun-primary-claim-button mt-3 w-full rounded-xl border border-emerald-300/35 bg-emerald-400 px-4 py-3 text-sm font-black text-slate-950 shadow-[0_16px_40px_rgba(16,185,129,0.22)] transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
             >
@@ -908,13 +1043,14 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
         )}
       </div>
 
-      <details className="sun-advanced-actions rounded-2xl border border-white/10 bg-slate-950/45 p-3 text-xs">
+      <details open={!policyAllowsAction("claimOwnership") && policyAllowsAction("registerWarranty")} className="sun-advanced-actions rounded-2xl border border-white/10 bg-slate-950/45 p-3 text-xs">
         <summary className="cursor-pointer text-sm font-black text-slate-100">Opciones avanzadas para marca, garantia y NFT</summary>
         <div className="mt-3 grid gap-2 md:grid-cols-2">
         {(Object.keys(actionMeta) as Array<Exclude<ActionKey, "tokenization">>).map((key) => {
           const item = actionMeta[key];
           return (
             <button suppressHydrationWarning
+              id={key === "registerWarranty" ? "warranty-action" : undefined}
               key={key}
               disabled={isActionDisabled(key)}
               onClick={() => void trigger(item.path, item.method, key)}
@@ -935,7 +1071,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
           className={`sun-public-cta-card rounded-xl border border-emerald-300/40 bg-emerald-500/10 px-3 py-3 text-left text-emerald-100 transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60 ${cardStateClass("tokenization")}`}
         >
           <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-semibold"><span className="sun-public-cta-code">NFT</span> Crear NFT / token{actionStates.tokenization === "loading" ? <span className="ml-1 inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-200" /> : null}</p>
+            <p className="text-sm font-semibold"><span className="sun-public-cta-code">NFT</span> Solicitar NFT / token{actionStates.tokenization === "loading" ? <span className="ml-1 inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-200" /> : null}</p>
             {renderStateBadge("tokenization")}
           </div>
           <p className="mt-1 text-[11px] text-emerald-50/80">{tokenSubtitle}</p>
@@ -951,10 +1087,10 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
         <div className="rounded-2xl border border-cyan-300/25 bg-slate-950/80 p-3 text-xs text-slate-200">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Alta de comprador verificado</p>
-              <h3 className="mt-1 text-sm font-black text-white">Valida tu WhatsApp o Email</h3>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Validacion de compra</p>
+              <h3 className="mt-1 text-sm font-black text-white">Confirma tu WhatsApp o Email</h3>
               <p className="mt-1 text-[11px] leading-5 text-slate-300">
-                Al verificar tu numero o correo, continuamos el alta de comprador. La botella no se asocia a propiedad sin comprobante o politica de marca.
+                El codigo solo confirma el canal de contacto. La botella no se asocia a una cuenta ni propiedad sin comprobante aprobado y politica de marca.
               </p>
             </div>
             <button suppressHydrationWarning type="button" onClick={() => setClaimAuthOpen(false)} className="rounded-lg border border-white/15 px-2 py-1 text-[11px] text-slate-200">
@@ -1015,12 +1151,12 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
       ) : null}
       {showTokenModal ? (
         <div ref={tokenModalRef} role="dialog" aria-modal="true" aria-labelledby="sun-token-modal-title" className="rounded-xl border border-emerald-300/30 bg-slate-950/90 p-3 text-xs text-slate-200">
-          <p id="sun-token-modal-title" className="font-semibold text-emerald-100">Blockchain-ready · tokenización opcional</p>
+          <p id="sun-token-modal-title" className="font-semibold text-emerald-100">Blockchain opcional · sujeta a confirmacion</p>
           <p className="mt-1 text-slate-300">{tokenModalCopy}</p>
           <ul className="mt-2 list-disc pl-4 text-[11px] text-slate-300">
-            <li>Uso enterprise: provenance anclable, warranty ledger y transferencia de propiedad validada.</li>
+            <li>Uso enterprise: registros declarados de provenance o garantia y solicitudes de transferencia sujetas a politica, evidencia y confirmacion on-chain.</li>
             <li>Infra opcional: smart contracts / blockchain solo cuando hay ROI claro.</li>
-            <li>Se mantiene el core: autenticidad, trazabilidad y anti-fraude.</li>
+            <li>Core digital: validacion de mensajes NFC, trazabilidad declarada y señales anti-replay o de riesgo.</li>
           </ul>
           <input suppressHydrationWarning
             ref={emailInputRef}

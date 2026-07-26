@@ -4,8 +4,14 @@ import crc32c from "fast-crc32c";
 import { validateSignedTransaction } from "./kms-signer.mjs";
 
 const SUPPORTED_DOMAINS = new Set(["polygon", "iota"]);
+const SUPPORTED_ROLES = new Set(["publisher", "governance"]);
 const DEFAULT_CHAIN_IDS = Object.freeze({ polygon: 80002, iota: 1076 });
 const DEFAULT_DECRYPT_TIMEOUT_MS = 10_000;
+const MAX_REST_RESPONSE_BYTES = 128 * 1024;
+const ACCESS_TOKEN = /^[A-Za-z0-9._~+/-]+=*$/;
+export const GOOGLE_KMS_ACCESS_TOKEN_ENV = "NEXID_GCP_KMS_ACCESS_TOKEN";
+export const GOOGLE_KMS_GOVERNANCE_ACCESS_TOKEN_ENV = "NEXID_GCP_KMS_GOVERNANCE_ACCESS_TOKEN";
+export const GOOGLE_KMS_PUBLISHER_ACCESS_TOKEN_ENV = "NEXID_GCP_KMS_PUBLISHER_ACCESS_TOKEN";
 let sharedClient;
 
 function env(name) {
@@ -24,6 +30,18 @@ function normalizeEnvironment(value) {
     throw new Error("kms_wrap_environment_invalid");
   }
   return environment;
+}
+
+function normalizeRole(value) {
+  const role = String(value || "publisher").trim().toLowerCase();
+  if (!SUPPORTED_ROLES.has(role)) throw new Error("kms_wrap_role_invalid");
+  return role;
+}
+
+function normalizeTransport(value) {
+  const transport = String(value || "client").trim().toLowerCase();
+  if (transport !== "client" && transport !== "rest") throw new Error("kms_decrypt_transport_invalid");
+  return transport;
 }
 
 function prefixFor(domain) {
@@ -109,10 +127,11 @@ function transactionRequest(input) {
   return { ...base, gasPrice: BigInt(transaction.gas_price ?? transaction.gasPrice) };
 }
 
-export function kmsWrapAad(domainValue, environmentValue) {
+export function kmsWrapAad(domainValue, environmentValue, roleValue = "publisher") {
   const domain = normalizeDomain(domainValue);
   const environment = normalizeEnvironment(environmentValue);
-  return Buffer.from(`nexid.wallet.wrap.v1|${environment}|${domain}|publisher`, "utf8");
+  const role = normalizeRole(roleValue);
+  return Buffer.from(`nexid.wallet.wrap.v1|${environment}|${domain}|${role}`, "utf8");
 }
 
 function resolveConfig(domainValue, options = {}) {
@@ -122,6 +141,8 @@ function resolveConfig(domainValue, options = {}) {
   return {
     domain,
     environment,
+    role: normalizeRole(options.role),
+    transport: normalizeTransport(options.transport),
     keyResource: normalizeKeyResource(options.keyResource || env(`${prefix}_KMS_WRAP_KEY_RESOURCE`)),
     ciphertext: decodeCiphertext(options.wrappedPrivateKey || env(`${prefix}_KMS_WRAPPED_PRIVATE_KEY`)),
     expectedChainId: expectedChainIdFor(domain, options),
@@ -144,28 +165,136 @@ function clientFor(dependencies = {}) {
   return sharedClient;
 }
 
+function takeRestAccessToken(role, dependencies = {}) {
+  if (typeof dependencies.getAccessToken === "function") {
+    const supplied = dependencies.getAccessToken(role);
+    const token = String(supplied || "");
+    if (token.length < 20 || token.length > 4096 || !ACCESS_TOKEN.test(token)) {
+      throw new Error("kms_access_token_invalid");
+    }
+    return token;
+  }
+  const roleEnvName = role === "governance"
+    ? GOOGLE_KMS_GOVERNANCE_ACCESS_TOKEN_ENV
+    : GOOGLE_KMS_PUBLISHER_ACCESS_TOKEN_ENV;
+  const roleValue = process.env[roleEnvName];
+  delete process.env[roleEnvName];
+  const value = roleValue || process.env[GOOGLE_KMS_ACCESS_TOKEN_ENV];
+  if (!roleValue) delete process.env[GOOGLE_KMS_ACCESS_TOKEN_ENV];
+  const token = String(value || "");
+  if (token.length < 20 || token.length > 4096 || !ACCESS_TOKEN.test(token)) {
+    throw new Error("kms_access_token_invalid");
+  }
+  return token;
+}
+
+async function decryptWithRest(config, additionalAuthenticatedData, dependencies = {}) {
+  let accessToken = takeRestAccessToken(config.role, dependencies);
+  let timer;
+  try {
+    const fetchImpl = dependencies.fetchImpl || globalThis.fetch;
+    if (typeof fetchImpl !== "function") throw new Error("kms_rest_fetch_unavailable");
+    const controller = new AbortController();
+    timer = setTimeout(() => controller.abort(), config.decryptTimeoutMs);
+    let response;
+    try {
+      response = await fetchImpl(`https://cloudkms.googleapis.com/v1/${config.keyResource}:decrypt`, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ciphertext: config.ciphertext.toString("base64"),
+          ciphertextCrc32c: String(crc32c.calculate(config.ciphertext)),
+          additionalAuthenticatedData: additionalAuthenticatedData.toString("base64"),
+          additionalAuthenticatedDataCrc32c: String(crc32c.calculate(additionalAuthenticatedData)),
+        }),
+        redirect: "error",
+        signal: controller.signal,
+      });
+    } catch {
+      throw new Error("kms_rest_decrypt_failed");
+    } finally {
+      accessToken = "";
+    }
+    if (response?.ok !== true) throw new Error("kms_rest_http_failed");
+    let serialized;
+    try {
+      serialized = await response.text();
+    } catch {
+      throw new Error("kms_rest_response_invalid");
+    }
+    if (!serialized || Buffer.byteLength(serialized, "utf8") > MAX_REST_RESPONSE_BYTES) {
+      throw new Error("kms_rest_response_invalid");
+    }
+    let body;
+    try {
+      body = JSON.parse(serialized);
+    } catch {
+      throw new Error("kms_rest_response_invalid");
+    }
+    if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error("kms_rest_response_invalid");
+    if ((body.verifiedCiphertextCrc32c !== undefined && body.verifiedCiphertextCrc32c !== true)
+      || (body.verifiedAdditionalAuthenticatedDataCrc32c !== undefined
+        && body.verifiedAdditionalAuthenticatedDataCrc32c !== true)) {
+      throw new Error("kms_rest_request_crc32c_unverified");
+    }
+    const encoded = String(body.plaintext || "");
+    if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(encoded)) {
+      throw new Error("kms_rest_plaintext_invalid");
+    }
+    return {
+      plaintext: Buffer.from(encoded, "base64"),
+      plaintextCrc32c: body.plaintextCrc32c,
+    };
+  } finally {
+    if (timer) clearTimeout(timer);
+    accessToken = "";
+  }
+}
+
+export async function withDecryptedWrappedKmsPrivateKey(options = {}, dependencies = {}, callback) {
+  if (typeof callback !== "function") throw new Error("kms_plaintext_callback_required");
+  const config = resolveConfig(options.domain, options);
+  const additionalAuthenticatedData = kmsWrapAad(config.domain, config.environment, config.role);
+  const response = config.transport === "rest"
+    ? await decryptWithRest(config, additionalAuthenticatedData, dependencies)
+    : await clientFor(dependencies).decrypt({
+      name: config.keyResource,
+      ciphertext: config.ciphertext,
+      ciphertextCrc32c: { value: crc32c.calculate(config.ciphertext) },
+      additionalAuthenticatedData,
+      additionalAuthenticatedDataCrc32c: { value: crc32c.calculate(additionalAuthenticatedData) },
+    }, { timeout: config.decryptTimeoutMs }).then(([value]) => value);
+  const plaintext = Buffer.isBuffer(response?.plaintext)
+    ? response.plaintext
+    : Buffer.from(response?.plaintext || []);
+  try {
+    const responseChecksumField = response?.plaintextCrc32c;
+    const responseChecksum = Number(
+      responseChecksumField && typeof responseChecksumField === "object"
+        ? responseChecksumField.value
+        : responseChecksumField,
+    );
+    if (!Number.isSafeInteger(responseChecksum) || crc32c.calculate(plaintext) !== responseChecksum) {
+      throw new Error("kms_plaintext_crc32c_mismatch");
+    }
+    normalizePrivateKey(plaintext.toString("utf8"));
+    return await callback(plaintext, config);
+  } finally {
+    plaintext.fill(0);
+  }
+}
+
 export async function signWithWrappedKms(input, options = {}, dependencies = {}) {
   const config = resolveConfig(options.domain, options);
   const expectedSignerAddress = String(input?.expectedSignerAddress || "").trim();
   if (!isAddress(expectedSignerAddress)) throw new Error("kms_expected_signer_invalid");
   assertExpectedChain(input, config.expectedChainId);
 
-  const additionalAuthenticatedData = kmsWrapAad(config.domain, config.environment);
-  const [response] = await clientFor(dependencies).decrypt({
-    name: config.keyResource,
-    ciphertext: config.ciphertext,
-    ciphertextCrc32c: { value: crc32c.calculate(config.ciphertext) },
-    additionalAuthenticatedData,
-    additionalAuthenticatedDataCrc32c: { value: crc32c.calculate(additionalAuthenticatedData) },
-  }, { timeout: config.decryptTimeoutMs });
-  const plaintext = Buffer.isBuffer(response?.plaintext)
-    ? response.plaintext
-    : Buffer.from(response?.plaintext || []);
-  try {
-    const responseChecksum = Number(response?.plaintextCrc32c?.value);
-    if (!Number.isSafeInteger(responseChecksum) || crc32c.calculate(plaintext) !== responseChecksum) {
-      throw new Error("kms_plaintext_crc32c_mismatch");
-    }
+  return withDecryptedWrappedKmsPrivateKey(options, dependencies, async (plaintext) => {
     const privateKey = normalizePrivateKey(plaintext.toString("utf8"));
     const wallet = new Wallet(privateKey);
     if (getAddress(wallet.address) !== getAddress(expectedSignerAddress)) {
@@ -173,7 +302,5 @@ export async function signWithWrappedKms(input, options = {}, dependencies = {})
     }
     const signedTransaction = await wallet.signTransaction(transactionRequest(input));
     return validateSignedTransaction(signedTransaction, input);
-  } finally {
-    plaintext.fill(0);
-  }
+  });
 }

@@ -33,7 +33,9 @@ test("EIP-191 challenge proves control without sending a transaction", async () 
 
   assert.equal(verifyWalletControlSignature({ message, signature: ownerSignature, address: owner.address }), true);
   assert.equal(verifyWalletControlSignature({ message, signature: attackerSignature, address: owner.address }), false);
-  assert.match(message, /Signing is free and does not send a blockchain transaction/);
+  assert.match(message, /This signature only links the wallet/);
+  assert.match(message, /does not authorize a purchase, NFT transfer or blockchain transaction/);
+  assert.doesNotMatch(message, /transfer authorization/i);
   assert.match(message, /Purpose: Link this wallet to a nexID Passport/);
 });
 
@@ -73,7 +75,10 @@ test("Clerk Web3 bridge cannot reassign an existing wallet identity", async () =
 
   assert.match(route, /walletVerificationSource !== "clerk_verified_web3"/);
   assert.match(route, /web3_identity_conflict/);
-  assert.match(route, /wallet_already_linked_to_another_account/);
+  assert.match(route, /wallet_account_link_required/);
+  assert.match(route, /WHERE consumer_identities\.consumer_id = EXCLUDED\.consumer_id/);
+  assert.match(route, /created_session AS MATERIALIZED/);
+  assert.doesNotMatch(route, /body\.email|body\.phone/);
   assert.doesNotMatch(route, /DO UPDATE SET consumer_id = EXCLUDED\.consumer_id/);
 });
 

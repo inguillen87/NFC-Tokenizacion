@@ -162,10 +162,10 @@ export const messages: Record<AppLocale, I18nSchema> = {
     },
     web: {
       navProduct: "Producto",
-      heroBadge: "NFC Authentication + Digital Identity",
-      heroTitle: "Autenticación NFC, antifraude y producto digital para marcas globales.",
+      heroBadge: "NFC Verification + Digital Identity",
+      heroTitle: "Verificación de mensajes NFC, controles antifraude e identidad digital para marcas globales.",
       heroBody:
-        "Plataforma SaaS multi-tenant para programas con NTAG215 y NTAG 424 DNA TagTamper, con validación segura, trazabilidad y capa premium de identidad/tokenización.",
+        "Plataforma SaaS multi-tenant para programas con NTAG215 y NTAG 424 DNA TagTamper: valida mensajes SUN, aporta evidencia criptográfica del tag y muestra el estado TT reportado. Estas señales no prueban por sí solas autenticidad, contenido, origen, condición ni custodia del producto físico.",
       heroPrimaryCta: "Solicitar demo",
       heroSecondaryCta: "Ver precios",
       heroResellerCta: "Programa reseller",
@@ -179,7 +179,7 @@ export const messages: Record<AppLocale, I18nSchema> = {
       },
       sections: {
         architectureEyebrow: "Arquitectura",
-        architectureTitle: "Gateway de autenticación, tags codificados y capa de identidad digital",
+        architectureTitle: "Gateway de verificación NFC, tags codificados y capa de identidad digital",
         architectureDescription:
           "Diseño enterprise para vino, cosmética, pharma y eventos, con observabilidad antifraude y despliegues multi-país.",
         useCasesEyebrow: "Casos de uso",
@@ -200,16 +200,16 @@ export const messages: Record<AppLocale, I18nSchema> = {
       },
       rails: [
         {
-          title: "Authentication gateway",
-          body: "Validación SUN, detección de duplicados, alertas de tamper y control de eventos en tiempo real.",
+          title: "NFC evidence gateway",
+          body: "Verificación de mensajes SUN, detección de duplicados o replays, estado TagTamper reportado y eventos con fuente identificada.",
         },
         {
           title: "Encoded tags",
-          body: "NTAG215 para campañas y NTAG 424 DNA TagTamper para autenticación de producto de alta seguridad.",
+          body: "NTAG215 para interacción y NTAG 424 DNA TagTamper para evidencia criptográfica, anti-replay y estado TT reportado; el tag no autentica por sí solo el producto físico.",
         },
         {
           title: "Identity layer",
-          body: "Capa premium tokenization-ready para ownership, historial de producto y servicios postventa.",
+          body: "Capa premium tokenization-ready para ownership digital, datos de producto declarados, eventos reportados y servicios postventa.",
         },
       ],
       resellerCards: [
@@ -231,7 +231,7 @@ export const messages: Record<AppLocale, I18nSchema> = {
       ],
       auth: {
         loginTitle: "Acceso cliente",
-        loginBody: "Entrá al panel de autenticación enterprise.",
+        loginBody: "Entrá al panel operativo enterprise.",
         registerTitle: "Solicitud de acceso",
         registerBody: "Onboarding para marcas, resellers y partners internacionales.",
         companyPlaceholder: "Empresa",
@@ -240,7 +240,7 @@ export const messages: Record<AppLocale, I18nSchema> = {
       },
     },
     dashboard: {
-      title: "Control de autenticación",
+      title: "Control de verificación NFC",
       subtitle: "Operación enterprise multi-tenant",
       overview: "Resumen",
       batches: "Lotes",
@@ -254,11 +254,11 @@ export const messages: Record<AppLocale, I18nSchema> = {
       roleBasedOps: "Operaciones por rol",
       overviewDescription: "KPIs de escaneo, fraude y estado de lotes para operación ejecutiva.",
       analyticsTitle: "Inteligencia de escaneos",
-      analyticsDescription: "Scans, válidos/inválidos, duplicados, tamper y huella geográfica.",
+      analyticsDescription: "Lecturas, mensajes válidos/inválidos, duplicados o replays, TT reportado y ubicaciones con fuente.",
       batchLifecycleTitle: "Ciclo de vida de lote",
       batchLifecycleDescription: "Crear lote, importar manifest, activar tags y revocar por riesgo.",
       eventsTitle: "Flujo de eventos de seguridad",
-      eventsDescription: "Trazabilidad de lecturas con foco en duplicados, replay y tamper.",
+      eventsDescription: "Trazabilidad de lecturas reportadas con foco en duplicados, replay y estado TT.",
       resellersTitle: "Gestión de canal white-label",
       resellersDescription: "Control de partners, subclientes y performance comercial por región.",
       tenantsTitle: "Gestión de tenants",
@@ -271,8 +271,8 @@ export const messages: Record<AppLocale, I18nSchema> = {
       apiKeysDescription: "Emisión, rotación y revocación de claves por tenant o reseller.",
       auth: {
         loginBody: "Portal seguro para super admin, tenant admin, reseller y viewer.",
-        registerBody: "Creá tu organización y plan inicial para operar lotes y autenticación.",
-        forgotBody: "Te enviamos un link para recuperar acceso.",
+        registerBody: "Creá tu organización y plan inicial para operar lotes y verificación NFC.",
+        forgotBody: "Si el proveedor de entrega esta configurado, enviaremos un enlace de recuperacion al canal confirmado.",
       },
       forms: {
         roleHeading: "UX por rol",
@@ -310,13 +310,13 @@ export const messages: Record<AppLocale, I18nSchema> = {
       },
       kpis: {
         scans: "Scans",
-        validInvalid: "Válidos / inválidos",
+        validInvalid: "Válidos / INVALID explícitos",
         duplicates: "Duplicados",
         tamper: "Tamper alerts",
-        scansDelta: "+12.4% (7d)",
-        validInvalidDelta: "98.8% / 1.2%",
-        duplicatesDelta: "-8.3%",
-        tamperDelta: "+4 incidentes",
+        scansDelta: "Comparativo N/D",
+        validInvalidDelta: "Clases independientes; pueden no sumar 100%",
+        duplicatesDelta: "Comparativo N/D",
+        tamperDelta: "Comparativo N/D",
         trendTitle: "Tendencia de seguridad",
         statusTitle: "Estado de lotes",
       },
@@ -337,10 +337,10 @@ export const messages: Record<AppLocale, I18nSchema> = {
     },
     web: {
       navProduct: "Produto",
-      heroBadge: "NFC Authentication + Digital Identity",
-      heroTitle: "Autenticação NFC, antifraude e produto digital para marcas globais.",
+      heroBadge: "NFC Verification + Digital Identity",
+      heroTitle: "Verificação de mensagens NFC, controles antifraude e identidade digital para marcas globais.",
       heroBody:
-        "Plataforma SaaS multi-tenant para NTAG215 e NTAG 424 DNA TagTamper com validação segura, rastreabilidade e camada premium de identidade/tokenização.",
+        "Plataforma SaaS multi-tenant para programas com NTAG215 e NTAG 424 DNA TagTamper: valida mensagens SUN, fornece evidência criptográfica do tag e mostra o estado TT reportado. Esses sinais não comprovam sozinhos autenticidade, conteúdo, origem, condição ou custódia do produto físico.",
       heroPrimaryCta: "Solicitar demo",
       heroSecondaryCta: "Ver preços",
       heroResellerCta: "Programa revendedor",
@@ -354,7 +354,7 @@ export const messages: Record<AppLocale, I18nSchema> = {
       },
       sections: {
         architectureEyebrow: "Arquitetura",
-        architectureTitle: "Gateway de autenticação, tags codificadas e camada de identidade digital",
+        architectureTitle: "Gateway de verificação NFC, tags codificadas e camada de identidade digital",
         architectureDescription:
           "Design enterprise para vinho, cosméticos, pharma e eventos, com observabilidade antifraude.",
         useCasesEyebrow: "Casos de uso",
@@ -371,9 +371,9 @@ export const messages: Record<AppLocale, I18nSchema> = {
         docsDescription: "Rotas em produção e fluxo técnico recomendado.",
       },
       rails: [
-        { title: "Authentication gateway", body: "Validação SUN, detecção de duplicatas, alertas tamper e eventos em tempo real." },
-        { title: "Encoded tags", body: "NTAG215 para campanhas e NTAG 424 DNA TagTamper para autenticação de alta segurança." },
-        { title: "Identity layer", body: "Camada premium pronta para tokenização de ownership e histórico do produto." },
+        { title: "NFC evidence gateway", body: "Verificação de mensagens SUN, detecção de duplicatas ou replays, estado TagTamper reportado e eventos com fonte identificada." },
+        { title: "Encoded tags", body: "NTAG215 para interação e NTAG 424 DNA TagTamper para evidência criptográfica, anti-replay e estado TT reportado; o tag sozinho não autentica o produto físico." },
+        { title: "Identity layer", body: "Camada premium pronta para tokenização de ownership digital, dados declarados do produto e eventos reportados." },
       ],
       resellerCards: [
         { title: "Co-branded SaaS", body: "Operação compartilhada com marca do parceiro." },
@@ -388,7 +388,7 @@ export const messages: Record<AppLocale, I18nSchema> = {
       ],
       auth: {
         loginTitle: "Acesso do cliente",
-        loginBody: "Entre no painel de autenticação enterprise.",
+        loginBody: "Entre no painel operacional enterprise.",
         registerTitle: "Solicitação de acesso",
         registerBody: "Onboarding para marcas, revendedores e parceiros.",
         companyPlaceholder: "Empresa",
@@ -397,7 +397,7 @@ export const messages: Record<AppLocale, I18nSchema> = {
       },
     },
     dashboard: {
-      title: "Controle de autenticação",
+      title: "Controle de verificação NFC",
       subtitle: "Operação enterprise multi-tenant",
       overview: "Visão geral",
       batches: "Lotes",
@@ -411,11 +411,11 @@ export const messages: Record<AppLocale, I18nSchema> = {
       roleBasedOps: "Operações por papel",
       overviewDescription: "KPIs de leitura, fraude e status de lotes para operação executiva.",
       analyticsTitle: "Inteligência de leituras",
-      analyticsDescription: "Scans, válidos/inválidos, duplicatas, tamper e geografia.",
+      analyticsDescription: "Leituras, mensagens válidas/inválidas, duplicatas ou replays, TT reportado e localizações com fonte.",
       batchLifecycleTitle: "Ciclo de vida do lote",
       batchLifecycleDescription: "Criar lote, importar manifest, ativar tags e revogar.",
       eventsTitle: "Fluxo de eventos de segurança",
-      eventsDescription: "Rastreabilidade de leituras com foco em replay e tamper.",
+      eventsDescription: "Rastreabilidade de leituras reportadas com foco em replay e estado TT.",
       resellersTitle: "Gestão de canal white-label",
       resellersDescription: "Controle de parceiros e subclientes por região.",
       tenantsTitle: "Gestão de tenants",
@@ -429,7 +429,7 @@ export const messages: Record<AppLocale, I18nSchema> = {
       auth: {
         loginBody: "Portal seguro para super admin, tenant admin, reseller e viewer.",
         registerBody: "Crie sua organização e plano inicial.",
-        forgotBody: "Enviaremos um link para recuperar o acesso.",
+        forgotBody: "Se o provedor de entrega estiver configurado, enviaremos um link de recuperacao ao canal confirmado.",
       },
       forms: {
         roleHeading: "UX por papel",
@@ -467,13 +467,13 @@ export const messages: Record<AppLocale, I18nSchema> = {
       },
       kpis: {
         scans: "Scans",
-        validInvalid: "Válidos / inválidos",
+        validInvalid: "Válidos / INVALID explícitos",
         duplicates: "Duplicatas",
         tamper: "Tamper alerts",
-        scansDelta: "+12.4% (7d)",
-        validInvalidDelta: "98.8% / 1.2%",
-        duplicatesDelta: "-8.3%",
-        tamperDelta: "+4 incidentes",
+        scansDelta: "Comparativo N/D",
+        validInvalidDelta: "Classes independentes; podem nao somar 100%",
+        duplicatesDelta: "Comparativo N/D",
+        tamperDelta: "Comparativo N/D",
         trendTitle: "Tendência de segurança",
         statusTitle: "Status dos lotes",
       },
@@ -494,10 +494,10 @@ export const messages: Record<AppLocale, I18nSchema> = {
     },
     web: {
       navProduct: "Product",
-      heroBadge: "NFC Authentication + Digital Identity",
-      heroTitle: "NFC authentication, anti-fraud and digital product identity for global brands.",
+      heroBadge: "NFC Verification + Digital Identity",
+      heroTitle: "NFC message verification, anti-fraud controls and digital product identity for global brands.",
       heroBody:
-        "Multi-tenant SaaS for NTAG215 and NTAG 424 DNA TagTamper programs with secure verification, traceability and a premium tokenization-ready identity layer.",
+        "Multi-tenant SaaS for NTAG215 and NTAG 424 DNA TagTamper programs: it validates SUN messages, provides cryptographic tag evidence and displays reported TT state. These signals do not by themselves prove the physical product's authenticity, contents, origin, condition or custody.",
       heroPrimaryCta: "Request demo",
       heroSecondaryCta: "View pricing",
       heroResellerCta: "Reseller program",
@@ -511,7 +511,7 @@ export const messages: Record<AppLocale, I18nSchema> = {
       },
       sections: {
         architectureEyebrow: "Architecture",
-        architectureTitle: "Authentication gateway, encoded tags and digital identity layer",
+        architectureTitle: "NFC verification gateway, encoded tags and digital identity layer",
         architectureDescription:
           "Enterprise design for wine, cosmetics, pharma and events with anti-fraud observability.",
         useCasesEyebrow: "Use cases",
@@ -528,9 +528,9 @@ export const messages: Record<AppLocale, I18nSchema> = {
         docsDescription: "Production endpoints and recommended onboarding flow.",
       },
       rails: [
-        { title: "Authentication gateway", body: "SUN validation, duplicate detection, tamper alerts and real-time events." },
-        { title: "Encoded tags", body: "NTAG215 for campaigns and NTAG 424 DNA TagTamper for high-security authentication." },
-        { title: "Identity layer", body: "Premium tokenization-ready layer for ownership and lifecycle services." },
+        { title: "NFC evidence gateway", body: "SUN message verification, duplicate or replay detection, reported TagTamper state and events with an identified source." },
+        { title: "Encoded tags", body: "NTAG215 for interaction and NTAG 424 DNA TagTamper for cryptographic evidence, anti-replay controls and reported TT state; the tag alone does not authenticate the physical product." },
+        { title: "Identity layer", body: "Premium tokenization-ready layer for digital ownership, declared product data, reported events and lifecycle services." },
       ],
       resellerCards: [
         { title: "Co-branded SaaS", body: "Shared operations with partner branding for fast market entry." },
@@ -545,7 +545,7 @@ export const messages: Record<AppLocale, I18nSchema> = {
       ],
       auth: {
         loginTitle: "Client access",
-        loginBody: "Sign in to the enterprise authentication workspace.",
+        loginBody: "Sign in to the enterprise operations workspace.",
         registerTitle: "Request access",
         registerBody: "Onboarding for brands, resellers and international partners.",
         companyPlaceholder: "Company",
@@ -554,7 +554,7 @@ export const messages: Record<AppLocale, I18nSchema> = {
       },
     },
     dashboard: {
-      title: "Authentication control",
+      title: "NFC verification control",
       subtitle: "Enterprise multi-tenant operations",
       overview: "Overview",
       batches: "Batches",
@@ -568,11 +568,11 @@ export const messages: Record<AppLocale, I18nSchema> = {
       roleBasedOps: "Role-based operations",
       overviewDescription: "Scan, fraud and batch KPIs for executive operations.",
       analyticsTitle: "Scan intelligence",
-      analyticsDescription: "Scans, valid/invalid, duplicates, tamper and geo footprint.",
+      analyticsDescription: "Reads, valid/invalid messages, duplicates or replays, reported TT state and sourced locations.",
       batchLifecycleTitle: "Batch lifecycle",
       batchLifecycleDescription: "Create batch, import manifest, activate tags and revoke compromised lots.",
       eventsTitle: "Security event stream",
-      eventsDescription: "Traceability feed focused on duplicates, replay and tamper.",
+      eventsDescription: "Reported-read traceability focused on duplicates, replay and TT state.",
       resellersTitle: "White-label channel management",
       resellersDescription: "Manage partners, sub-tenants and regional growth performance.",
       tenantsTitle: "Tenant management",
@@ -586,7 +586,7 @@ export const messages: Record<AppLocale, I18nSchema> = {
       auth: {
         loginBody: "Secure portal for super admin, tenant admin, reseller and viewer.",
         registerBody: "Create your organization and initial operating plan.",
-        forgotBody: "We will email a secure reset link.",
+        forgotBody: "If a delivery provider is configured, we will send a recovery link through the confirmed channel.",
       },
       forms: {
         roleHeading: "Role UX",
@@ -624,13 +624,13 @@ export const messages: Record<AppLocale, I18nSchema> = {
       },
       kpis: {
         scans: "Scans",
-        validInvalid: "Valid / Invalid",
+        validInvalid: "Valid / explicit INVALID",
         duplicates: "Duplicates",
         tamper: "Tamper alerts",
-        scansDelta: "+12.4% (7d)",
-        validInvalidDelta: "98.8% / 1.2%",
-        duplicatesDelta: "-8.3%",
-        tamperDelta: "+4 incidents",
+        scansDelta: "Comparison N/A",
+        validInvalidDelta: "Independent classes; may not total 100%",
+        duplicatesDelta: "Comparison N/A",
+        tamperDelta: "Comparison N/A",
         trendTitle: "Security trend",
         statusTitle: "Batch status",
       },

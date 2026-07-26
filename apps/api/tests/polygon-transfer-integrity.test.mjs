@@ -27,25 +27,13 @@ test("Polygon transfers fail closed and verify the resulting owner", async () =>
   assert.doesNotMatch(polygonCatch, /simulated: true/);
 });
 
-test("P2P checkout confirms the chain before one atomic ownership write", async () => {
+test("P2P checkout is fail-closed until a durable chain settlement coordinator exists", async () => {
   const source = await readFile(checkoutUrl, "utf8");
-  const transferIndex = source.indexOf("const txResult = await transferBlockchainToken");
-  const persistenceIndex = source.indexOf("WITH eligible_offer AS");
 
-  assert.ok(transferIndex >= 0);
-  assert.ok(persistenceIndex > transferIndex);
-  assert.match(source, /if \(!txResult\.ok\)/);
-  assert.match(source, /blockchain_transfer_not_confirmed/);
-  assert.match(source, /simulationOnly \? 409 : 502/);
-  assert.match(source, /blockchain_transfer_simulation_only/);
-  assert.match(source, /revoked_ownership AS/);
-  assert.match(source, /WITH eligible_offer AS/);
-  assert.match(source, /FOR UPDATE/);
-  assert.match(source, /buyer_ownership AS/);
-  assert.match(source, /completed_offer AS/);
-  assert.match(source, /FROM completed_offer\s+RETURNING id/);
-  assert.match(source, /reconciliationRequired/);
-  assert.match(source, /custody_unchanged/);
-  assert.match(source, /already_transferred/);
-  assert.doesNotMatch(source, /0x742d35Cc6634C0532925a3b844Bc454e4438f44e/);
+  assert.match(source, /p2p_settlement_unavailable/);
+  assert.match(source, /feature_disabled/);
+  assert.match(source, /chain_transfer_status: "not_executed"/);
+  assert.match(source, /custody_unchanged: true/);
+  assert.doesNotMatch(source, /transferBlockchainToken/);
+  assert.doesNotMatch(source, /UPDATE consumer_product_ownerships|INSERT INTO consumer_product_ownerships/);
 });

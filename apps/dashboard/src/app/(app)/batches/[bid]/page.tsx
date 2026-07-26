@@ -2,6 +2,12 @@ import Link from "next/link";
 import { Card, SectionHeading } from "@product/ui";
 import { productUrls } from "@product/config";
 import { BatchSunValidator } from "../../../../components/batch-sun-validator";
+import { EnterpriseOpsState } from "../../../../components/enterprise-ops-state";
+import {
+  adminResourceFailure,
+  readAdminResourceResponse,
+  type AdminResourceReadResult,
+} from "../../../../lib/admin-resource-read";
 import { requireDashboardSession } from "../../../../lib/session";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../../lib/admin-page-access";
 import { BatchConfigFormClient } from "./batch-config-form-client";
@@ -73,20 +79,29 @@ function objectEntries(value: unknown) {
   return Object.entries(value as Record<string, unknown>).filter(([, entry]) => String(entry ?? "").trim() !== "");
 }
 
-async function getBatch(context: AdminPageContext, bid: string): Promise<BatchSummary | null> {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function selectBatch(payload: unknown): BatchSummary | null {
+  if (!isRecord(payload) || payload.ok !== true || !isRecord(payload.batch)) return null;
+  return payload.batch as BatchSummary;
+}
+
+async function getBatch(context: AdminPageContext, bid: string): Promise<AdminResourceReadResult<BatchSummary>> {
   try {
     const response = await fetchAdminPage(context, `batches/${encodeURIComponent(bid)}/summary`);
-    if (!response.ok) return null;
-    const payload = (await response.json()) as { batch?: BatchSummary };
-    const batch = payload.batch || null;
-    if (!batch) return null;
+    const result = await readAdminResourceResponse(response, selectBatch);
+    if (result.availability !== "ready") return result;
 
     const normalizedTenantScope = context.tenantSlug;
-    const batchTenantSlug = String(batch.tenant_slug || "").trim().toLowerCase();
-    if (normalizedTenantScope && batchTenantSlug !== normalizedTenantScope) return null;
-    return batch;
+    const batchTenantSlug = String(result.data.tenant_slug || "").trim().toLowerCase();
+    if (normalizedTenantScope && batchTenantSlug !== normalizedTenantScope) {
+      return adminResourceFailure("scope_mismatch", result.status);
+    }
+    return result;
   } catch {
-    return null;
+    return adminResourceFailure("unreachable");
   }
 }
 
@@ -121,20 +136,21 @@ export default async function BatchDetailPage({ params }: { params: Promise<{ bi
   const { bid } = await params;
   const adminContext = await createAdminPageContext(session);
   const batch = await getBatch(adminContext, bid);
-  const product = batch?.product_identity || {};
-  const unit = batch?.unit_metadata || {};
+  const batchData = batch.data;
+  const product = batchData?.product_identity || {};
+  const unit = batchData?.unit_metadata || {};
   const samples = Array.isArray(unit.samples) ? unit.samples : [];
-  const manifests = Array.isArray(batch?.manifests) ? batch?.manifests || [] : [];
-  const tenantSlug = text(batch?.tenant_slug, "tenant");
+  const manifests = Array.isArray(batchData?.manifests) ? batchData?.manifests || [] : [];
+  const tenantSlug = text(batchData?.tenant_slug, "tenant");
   const firstUid = samples[0]?.uid_hex || "";
   const publicMobile = firstUid
-    ? `${productUrls.web}/demo-lab/mobile/${encodeURIComponent(tenantSlug)}/${encodeURIComponent(String(firstUid))}?pack=${encodeURIComponent(text(product.sku || batch?.sku, "batch"))}&bid=${encodeURIComponent(bid)}&demoMode=consumer_tap`
+    ? `${productUrls.web}/demo-lab/mobile/${encodeURIComponent(tenantSlug)}/${encodeURIComponent(String(firstUid))}?pack=${encodeURIComponent(text(product.sku || batchData?.sku, "batch"))}&bid=${encodeURIComponent(bid)}&demoMode=consumer_tap`
     : "";
-  const carrierAdminCopy = formatCarrierAdminCopy(batch?.carrier_admin_copy);
-  const imported = numberValue(batch?.imported_tags);
-  const active = numberValue(batch?.active_tags);
+  const carrierAdminCopy = formatCarrierAdminCopy(batchData?.carrier_admin_copy);
+  const imported = numberValue(batchData?.imported_tags);
+  const active = numberValue(batchData?.active_tags);
   const overrides = numberValue(unit.unit_product_overrides);
-  const sdmConfig = (batch?.sdm_config && typeof batch.sdm_config === "object") ? (batch.sdm_config as Record<string, any>) : {};
+  const sdmConfig = (batchData?.sdm_config && typeof batchData.sdm_config === "object") ? (batchData.sdm_config as Record<string, any>) : {};
   const sunProduct = sdmConfig.sun?.product || {};
   const sunOrigin = sdmConfig.sun?.origin || {};
   const sunTelemetry = sdmConfig.sun?.telemetry || {};
@@ -171,9 +187,27 @@ export default async function BatchDetailPage({ params }: { params: Promise<{ bi
         title={bid}
         description="Separacion operativa: la ficha del lote define el producto; el manifest define UID, seriales, sensores y excepciones por unidad."
       />
-      {!batch ? (
-        <Card className="p-6 text-sm text-rose-200">Batch no encontrado. Revisa el BID exacto o registra el lote desde supplier flow.</Card>
-      ) : (
+      {batch.availability === "not_found" ? (
+        <EnterpriseOpsState
+          variant="empty"
+          title="Batch no encontrado en este scope"
+          description="La API confirmó HTTP 404 para este BID y el alcance actual. Revisá el identificador o el tenant antes de registrar un lote nuevo."
+          action={<Link href="/batches" className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-100">Volver a batches</Link>}
+          testId="batch-detail-not-found"
+        />
+      ) : batch.availability !== "ready" ? (
+        <EnterpriseOpsState
+          variant="error"
+          title="No se pudo cargar el batch"
+          description="La fuente administrativa no entregó un resultado confiable. Este estado no significa que el BID no exista ni representa métricas en cero."
+          checklist={[
+            `Estado de lectura: ${batch.availability}`,
+            batch.status ? `Respuesta upstream: HTTP ${batch.status}` : "La fuente no respondió",
+          ]}
+          action={<Link href={`/batches/${encodeURIComponent(bid)}`} className="rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-2 text-sm font-semibold text-rose-100">Reintentar lectura</Link>}
+          testId="batch-detail-source-unavailable"
+        />
+      ) : !batchData ? null : (
         <>
           <div className="grid gap-3 md:grid-cols-4">
             <Metric label="Tenant" value={tenantSlug} detail="Scope comercial del lote." tone="neutral" />
@@ -187,7 +221,7 @@ export default async function BatchDetailPage({ params }: { params: Promise<{ bi
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Ficha de lote / producto</p>
-                  <h2 className="mt-2 text-2xl font-black text-white">{text(product.product_name || batch.product_name, "Producto pendiente")}</h2>
+                  <h2 className="mt-2 text-2xl font-black text-white">{text(product.product_name || batchData.product_name, "Producto pendiente")}</h2>
                   <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
                     Esta ficha aplica a todos los UIDs del batch. Un UID solo cambia producto si existe un override explicito y auditado.
                   </p>
@@ -195,7 +229,7 @@ export default async function BatchDetailPage({ params }: { params: Promise<{ bi
                 <span className="rounded-full border border-emerald-300/25 bg-emerald-500/10 px-3 py-1 text-xs font-black text-emerald-100">source: batch</span>
               </div>
               <dl className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                <Fact label="SKU" value={product.sku || batch.sku} />
+                <Fact label="SKU" value={product.sku || batchData.sku} />
                 <Fact label="Bodega / marca" value={product.winery} />
                 <Fact label="Region" value={product.region} />
                 <Fact label="Varietal" value={product.grape_varietal} />
@@ -218,14 +252,14 @@ export default async function BatchDetailPage({ params }: { params: Promise<{ bi
 
             <Card className="p-6">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-200">Seguridad del lote</p>
-              <h2 className="mt-2 text-xl font-black text-white">{text(batch.carrier_label || batch.carrier_profile_code, "Carrier pendiente")}</h2>
+              <h2 className="mt-2 text-xl font-black text-white">{text(batchData.carrier_label || batchData.carrier_profile_code, "Carrier pendiente")}</h2>
               <dl className="mt-5 space-y-4">
-                <Fact label="Status" value={batch.status} />
-                <Fact label="Security level" value={batch.carrier_security_level ? `L${text(batch.carrier_security_level)}` : ""} />
-                <Fact label="Profile" value={batch.batch_profile || "custom"} />
-                <Fact label="Chip model" value={batch.chip_model || batch.type} />
-                <Fact label="Cantidad planificada" value={formatNumber(batch.requested_quantity)} />
-                <Fact label="Keys cargadas" value={batch.has_meta_key || batch.has_file_key ? "si" : "pendiente"} />
+                <Fact label="Status" value={batchData.status} />
+                <Fact label="Security level" value={batchData.carrier_security_level ? `L${text(batchData.carrier_security_level)}` : ""} />
+                <Fact label="Profile" value={batchData.batch_profile || "custom"} />
+                <Fact label="Chip model" value={batchData.chip_model || batchData.type} />
+                <Fact label="Cantidad planificada" value={formatNumber(batchData.requested_quantity)} />
+                <Fact label="Keys cargadas" value={batchData.has_meta_key || batchData.has_file_key ? "si" : "pendiente"} />
               </dl>
               {carrierAdminCopy ? (
                 <div className="mt-5 rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-4 text-xs leading-5 text-cyan-100">

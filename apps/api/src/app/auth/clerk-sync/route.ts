@@ -8,6 +8,8 @@ import { getRequestMeta } from '../../../lib/request-meta';
 import { ensureEnterpriseIamSchema } from '../../../lib/commercial-runtime-schema';
 import { ensureSunTenantProfilesSchema } from '../../../lib/sun-tenant-profile-schema';
 import { isClerkSuperAdminEmailAllowed, redactAllowlistForLogs } from '../../../lib/clerk-super-admin-allowlist';
+import { RequestBodyTooLargeError, readBoundedJsonBody } from '../../../lib/bounded-request-body';
+import { enforceCriticalRateLimit } from '../../../lib/critical-rate-limit';
 
 export async function POST(req: Request) {
   const authHeader = req.headers.get("authorization") || "";
@@ -18,9 +20,16 @@ export async function POST(req: Request) {
     return json({ ok: false, reason: "unauthorized" }, 401);
   }
 
-  const body = await req.json().catch(() => ({})) as { email?: string; fullName?: string; externalUserId?: string; };
-  const rawEmail = String(body.email || '').trim().toLowerCase();
-  const fullName = String(body.fullName || '').trim();
+  const limited = await enforceCriticalRateLimit(req, { rateClass: 'auth', tenantId: 'platform', subjectId: 'clerk-sync:authenticated' });
+  if (limited) return limited;
+  let body: { email?: string; fullName?: string; externalUserId?: string; };
+  try {
+    body = await readBoundedJsonBody<typeof body>(req, 8 * 1024);
+  } catch (error) {
+    return json({ ok: false, reason: error instanceof RequestBodyTooLargeError ? 'request_body_too_large' : 'invalid_json' }, error instanceof RequestBodyTooLargeError ? 413 : 400);
+  }
+  const rawEmail = String(body.email || '').trim().toLowerCase().slice(0, 320);
+  const fullName = String(body.fullName || '').trim().slice(0, 160);
 
   if (!rawEmail) {
     return json({ ok: false, reason: "email is required" }, 400);

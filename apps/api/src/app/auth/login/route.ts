@@ -5,18 +5,19 @@ import { sql } from '../../../lib/db';
 import { json } from '../../../lib/http';
 import { ensurePresetUser } from '../../../lib/auth-presets';
 import { verifyPassword } from '../../../lib/password';
-import { auditAuthEvent, createSession, getAuthUserByEmail, normalizeRole, verifyTotpCode } from '../../../lib/iam';
+import { auditAuthEvent, createSession, getAuthUserByEmail, normalizeRole } from '../../../lib/iam';
 import {
   clearSuccessfulLoginAttempt,
   getLoginRateLimitPolicy,
   LoginAbuseGuardUnavailableError,
   type LoginAttemptReservation,
   reserveLoginAttempt,
-  resolveTrustedLoginClientIp,
   shouldFailClosedLoginAbuseGuard,
 } from '../../../lib/login-abuse-guard';
 import { getRequestMeta } from '../../../lib/request-meta';
 import { ensureEnterpriseIamSchema } from '../../../lib/commercial-runtime-schema';
+import { RequestBodyTooLargeError, readBoundedJsonBody } from '../../../lib/bounded-request-body';
+import { enforceCriticalRateLimit } from '../../../lib/critical-rate-limit';
 
 const INVALID_PASSWORD_SENTINEL = 'scrypt$00000000000000000000000000000000$feb0ef155fa035f44af6bf3567ee67a88ced9da502be1a21ec55cecf894c19ccf26ac795c308a966e37ad4db6d37faafad93012b830c0b1819f3646edf611973';
 
@@ -83,10 +84,25 @@ async function clearAbuseGuardAfterSuccess(
 }
 
 export async function POST(req: Request) {
-  const body = await req.json().catch(() => ({})) as { email?: string; password?: string; mfaCode?: string; };
+  const endpointLimit = await enforceCriticalRateLimit(req, {
+    rateClass: 'auth',
+    tenantId: 'platform',
+    subjectId: 'admin-login:unauthenticated',
+  });
+  if (endpointLimit) return endpointLimit;
+  let body: { email?: string; password?: string; mfaCode?: string; };
+  try {
+    body = await readBoundedJsonBody<typeof body>(req, 8 * 1024);
+  } catch (error) {
+    return json(
+      { ok: false, reason: error instanceof RequestBodyTooLargeError ? 'request_body_too_large' : 'invalid_json' },
+      error instanceof RequestBodyTooLargeError ? 413 : 400,
+      { 'cache-control': 'no-store' },
+    );
+  }
   const email = normalizeLoginEmail(String(body.email || ''));
-  const password = String(body.password || '').trim();
-  const mfaCode = String(body.mfaCode || '').trim();
+  const password = String(body.password || '').slice(0, 256);
+  const mfaCode = String(body.mfaCode || '').replace(/\D/g, '').slice(0, 8);
   if (!email || !password) return json({ ok: false, reason: 'credentials required' }, 400, { 'cache-control': 'no-store' });
 
   const requestMeta = getRequestMeta(req);
@@ -95,7 +111,7 @@ export async function POST(req: Request) {
   let reservation: LoginAttemptReservation | null = null;
   try {
     const policy = getLoginRateLimitPolicy();
-    const clientIp = resolveTrustedLoginClientIp(req, policy);
+    const clientIp = requestMeta.ip;
     if (!clientIp) throw new LoginAbuseGuardUnavailableError('login_trusted_client_ip_unavailable');
     meta.ip = clientIp;
 
@@ -176,13 +192,19 @@ export async function POST(req: Request) {
   }
 
   if (user.mfa_enabled) {
-    const factor = await sql`SELECT secret FROM user_mfa_factors WHERE user_id = ${user.id}::uuid LIMIT 1`;
-    const secret = factor[0]?.secret ? String(factor[0].secret) : '';
-    if (!secret || !verifyTotpCode(secret, mfaCode)) {
-      await auditAuthEvent(sql as any, { email, eventName: 'mfa_challenge_failed', ok: false, role: user.role, ...meta, meta: { source: 'dashboard' } }).catch(() => null);
-      return json({ ok: false, reason: 'mfa required', mfaRequired: true }, 401, authHeaders(meta.traceId));
-    }
-    await sql`UPDATE user_mfa_factors SET last_verified_at = now(), updated_at = now() WHERE user_id = ${user.id}::uuid`;
+    await auditAuthEvent(sql as any, {
+      email,
+      eventName: 'mfa_login_unavailable',
+      ok: false,
+      role: user.role,
+      ...meta,
+      meta: { source: 'dashboard', reason: 'legacy_plaintext_factor_disabled' },
+    }).catch(() => null);
+    return json(
+      { ok: false, reason: 'mfa_login_temporarily_unavailable', mfaRequired: true },
+      503,
+      authHeaders(meta.traceId, { 'retry-after': '86400' }),
+    );
   }
 
   if (!await clearAbuseGuardAfterSuccess(reservation, failClosed, meta.traceId)) {

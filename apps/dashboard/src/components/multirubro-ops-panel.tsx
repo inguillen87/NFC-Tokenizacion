@@ -13,8 +13,21 @@ type AnalyticsPayload = {
   ok?: boolean;
   reason?: string;
   kpis?: { scans?: number; validRate?: number };
-  geoPoints?: Array<{ city: string; country?: string; scans?: number; risk?: number; lat: number; lng: number }> ;
-  trend?: Array<{ day: string; scans: number; duplicates: number; tamper: number }>;
+  geoPoints?: Array<{
+    city: string;
+    country?: string;
+    scans?: number;
+    risk?: number;
+    lat: number;
+    lng: number;
+    coordinateSource?: string | null;
+    coordinate_source?: string | null;
+    locationSource?: string | null;
+    location_source?: string | null;
+    locationAccuracyM?: number | null;
+    location_accuracy_m?: number | null;
+  }>;
+  trend?: Array<{ day: string; scans: number; duplicates: number; tamper: number; invalid?: number; unknown?: number }>;
 };
 
 type SecurityPayload = {
@@ -68,6 +81,9 @@ type StreamEventPayload = {
   country_code?: string;
   lat?: number | string | null;
   lng?: number | string | null;
+  coordinate_source?: string | null;
+  location_source?: string | null;
+  location_accuracy_m?: number | string | null;
   created_at?: string;
   stream_sent_at?: string;
   stream_latency_ms?: number | null;
@@ -97,6 +113,41 @@ const METADATA_TEMPLATES = [
   { vertical: "Semillas", fields: ["Certificado origen", "Fecha vencimiento", "Tratamiento fitosanitario"] },
 ];
 
+type EventVerdictBucket = "valid" | "duplicate_replay" | "tamper" | "invalid" | "unknown";
+type LocationFilter = "all" | "precise" | "approximate" | "unreported";
+
+function classifyEventVerdict(resultValue?: string, reasonValue?: string): EventVerdictBucket {
+  const result = String(resultValue || "").trim().toUpperCase();
+  const reason = String(reasonValue || "").trim().toLowerCase();
+  if (["VALID", "TAP_VALID", "CLAIMED", "REDEEMED", "CHECK_IN"].includes(result)) return "valid";
+  if (result.includes("REPLAY") || result.includes("DUPLICATE") || reason.includes("replay") || reason.includes("duplicate")) return "duplicate_replay";
+  if (result.includes("TAMPER") || reason.includes("tamper")) return "tamper";
+  if (!result || ["UNKNOWN", "NOT_REGISTERED", "NOT_ACTIVE"].includes(result) || reason.includes("not_registered") || reason.includes("not_active")) return "unknown";
+  return "invalid";
+}
+
+function normalizeLocationSource(value?: string | null) {
+  return String(value || "unreported").trim().toLowerCase() || "unreported";
+}
+
+function classifyLocationSource(sourceValue?: string | null): Exclude<LocationFilter, "all"> {
+  const source = normalizeLocationSource(sourceValue);
+  const explicitlyApproximate = source.includes("city") || source.includes("centroid") || source.includes("ip_") || source.includes("synthetic") || source.includes("fallback");
+  if (!explicitlyApproximate && source.includes("gps")) return "precise";
+  if (explicitlyApproximate) return "approximate";
+  return "unreported";
+}
+
+function locationEvidenceLabel(sourceValue?: string | null, accuracyValue?: number | string | null) {
+  const source = normalizeLocationSource(sourceValue);
+  const accuracy = Number(accuracyValue);
+  const accuracyLabel = Number.isFinite(accuracy) && accuracy >= 0 ? ` (+/-${Math.round(accuracy)} m reportados)` : "";
+  const precision = classifyLocationSource(source);
+  if (precision === "precise") return `GPS reportado por cliente; no verificacion independiente: ${source}${accuracyLabel}`;
+  if (precision === "approximate") return `Ubicacion aproximada: ${source}${accuracyLabel}`;
+  return "Coordenada sin fuente de precision reportada";
+}
+
 export function MultirubroOpsPanel() {
   const [analytics, setAnalytics] = useState<AnalyticsPayload | null>(null);
   const [security, setSecurity] = useState<SecurityPayload | null>(null);
@@ -121,6 +172,7 @@ export function MultirubroOpsPanel() {
   const [alerts, setAlerts] = useState<AlertCenterItem[]>([]);
   const [alertSeverityFilter, setAlertSeverityFilter] = useState<string>("");
   const [alertTypeFilter, setAlertTypeFilter] = useState<string>("");
+  const [locationFilter, setLocationFilter] = useState<LocationFilter>("all");
 
   function isLocalDashboardRuntime() {
     if (typeof window === "undefined") return false;
@@ -167,10 +219,12 @@ export function MultirubroOpsPanel() {
     const lng = Number(payload.lng);
     const hasGeo = Number.isFinite(lat) && Number.isFinite(lng);
     const createdAt = payload.created_at || new Date().toISOString();
-    const result = String(payload.result || "").toUpperCase();
-    const isValid = ["VALID", "TAP_VALID", "CLAIMED", "REDEEMED", "CHECK_IN"].includes(result);
-    const isReplay = String(payload.reason || "").toLowerCase().includes("replay");
-    const isInvalidLike = !isValid;
+    const verdictBucket = classifyEventVerdict(payload.result, payload.reason);
+    const isValid = verdictBucket === "valid";
+    const isReplay = verdictBucket === "duplicate_replay";
+    const isRisk = ["duplicate_replay", "tamper", "invalid"].includes(verdictBucket);
+    const locationSource = normalizeLocationSource(payload.coordinate_source || payload.location_source);
+    const locationAccuracyM = Number(payload.location_accuracy_m);
 
     setAnalytics((prev) => {
       if (!prev) return prev;
@@ -180,31 +234,51 @@ export function MultirubroOpsPanel() {
       const nextValidCount = previousValidCount + (isValid ? 1 : 0);
       const nextValidRate = scans > 0 ? Number(((nextValidCount / scans) * 100).toFixed(1)) : previousValidRate;
 
-      const trend = [...(prev.trend || [])];
+      const trend = (prev.trend || []).map((row) => ({ ...row }));
       const day = createdAt.slice(0, 10);
+      const increments = {
+        duplicates: verdictBucket === "duplicate_replay" ? 1 : 0,
+        tamper: verdictBucket === "tamper" ? 1 : 0,
+        invalid: verdictBucket === "invalid" ? 1 : 0,
+        unknown: verdictBucket === "unknown" ? 1 : 0,
+      };
       if (trend.length) {
         const last = trend[trend.length - 1];
         if (last.day === day) {
           last.scans += 1;
-          if (isInvalidLike) last.duplicates += 1;
-          if (String(payload.reason || "").toLowerCase().includes("tamper")) last.tamper += 1;
+          last.duplicates += increments.duplicates;
+          last.tamper += increments.tamper;
+          last.invalid = Number(last.invalid || 0) + increments.invalid;
+          last.unknown = Number(last.unknown || 0) + increments.unknown;
         } else {
-          trend.push({ day, scans: 1, duplicates: isInvalidLike ? 1 : 0, tamper: String(payload.reason || "").toLowerCase().includes("tamper") ? 1 : 0 });
+          trend.push({ day, scans: 1, ...increments });
         }
       } else {
-        trend.push({ day, scans: 1, duplicates: isInvalidLike ? 1 : 0, tamper: String(payload.reason || "").toLowerCase().includes("tamper") ? 1 : 0 });
+        trend.push({ day, scans: 1, ...increments });
       }
 
       const geoPoints = [...(prev.geoPoints || [])];
       if (hasGeo) {
         const city = String(payload.city || "Unknown");
         const country = String(payload.country_code || "--");
-        const existing = geoPoints.find((point) => point.city === city && (point.country || "--") === country);
+        const existing = geoPoints.find((point) => {
+          const pointSource = normalizeLocationSource(point.coordinateSource || point.coordinate_source || point.locationSource || point.location_source);
+          return point.city === city && (point.country || "--") === country && pointSource === locationSource;
+        });
         if (existing) {
           existing.scans = Number(existing.scans || 0) + 1;
-          if (isInvalidLike) existing.risk = Number(existing.risk || 0) + 1;
+          if (isRisk) existing.risk = Number(existing.risk || 0) + 1;
         } else {
-          geoPoints.unshift({ city, country, scans: 1, risk: isInvalidLike ? 1 : 0, lat, lng });
+          geoPoints.unshift({
+            city,
+            country,
+            scans: 1,
+            risk: isRisk ? 1 : 0,
+            lat,
+            lng,
+            coordinateSource: locationSource,
+            locationAccuracyM: Number.isFinite(locationAccuracyM) && locationAccuracyM >= 0 ? locationAccuracyM : null,
+          });
         }
       }
 
@@ -422,17 +496,28 @@ export function MultirubroOpsPanel() {
 
   const tapsTotal = Number(analytics?.kpis?.scans || 0);
   const validRate = Number(analytics?.kpis?.validRate || 0);
-  const originals = Math.round((validRate / 100) * tapsTotal);
-  const clones = Math.max(0, tapsTotal - originals);
-  const points = (analytics?.geoPoints || []).map((point) => ({
-    city: point.city,
-    country: point.country || "--",
-    lat: point.lat,
-    lng: point.lng,
-    scans: point.scans || 1,
-    risk: point.risk || 0,
-    status: (point.risk || 0) > 0 ? "RISK" : "AUTH_OK",
-  }));
+  const validMessages = tapsTotal > 0 ? Math.round((validRate / 100) * tapsTotal) : null;
+  const messagesWithAlerts = validMessages === null ? null : Math.max(0, tapsTotal - validMessages);
+  const points = (analytics?.geoPoints || []).map((point) => {
+    const coordinateSource = normalizeLocationSource(point.coordinateSource || point.coordinate_source || point.locationSource || point.location_source);
+    const locationAccuracyM = point.locationAccuracyM ?? point.location_accuracy_m ?? null;
+    return {
+      city: point.city,
+      country: point.country || "--",
+      lat: point.lat,
+      lng: point.lng,
+      scans: point.scans ?? 0,
+      risk: point.risk ?? 0,
+      status: (point.risk ?? 0) > 0 ? "RISK" : "REPORTED",
+      source: locationEvidenceLabel(coordinateSource, locationAccuracyM),
+      precision: classifyLocationSource(coordinateSource),
+    };
+  });
+  const locationSummary = points.reduce((summary, point) => {
+    summary[point.precision] += 1;
+    return summary;
+  }, { precise: 0, approximate: 0, unreported: 0 });
+  const visiblePoints = locationFilter === "all" ? points : points.filter((point) => point.precision === locationFilter);
   const pendingMint = useMemo(
     () => (tokenization?.rows || []).find((row) => String(row.status || "").toLowerCase() === "pending"),
     [tokenization?.rows]
@@ -517,8 +602,8 @@ export function MultirubroOpsPanel() {
     if (typeof window === "undefined") return;
     const summaryRows = [
       ["Taps totales", String(tapsTotal)],
-      ["Originales", String(originals)],
-      ["Clones", String(clones)],
+      ["Mensajes NFC válidos", validMessages === null ? "Sin base" : String(validMessages)],
+      ["Mensajes con alerta", messagesWithAlerts === null ? "Sin base" : String(messagesWithAlerts)],
       ["Gas wallet (POL)", walletGasPol.toFixed(3)],
       ["Security alerts", String(Number(security?.summary?.repeatedInvalidUid || 0) + Number(security?.summary?.geoVelocityAlerts || 0))],
       ["Reporte generado", new Date().toLocaleString("es-AR")],
@@ -564,24 +649,26 @@ export function MultirubroOpsPanel() {
     const q = botQuestion.toLowerCase();
     const replay = Number(security?.summary?.repeatedInvalidUid || 0);
     const geo = Number(security?.summary?.geoVelocityAlerts || 0);
-    const riskRate = tapsTotal ? (((replay + geo) / tapsTotal) * 100).toFixed(1) : "0.0";
+    const riskRate = tapsTotal ? (((replay + geo) / tapsTotal) * 100).toFixed(1) : null;
     const ts = lastSyncAt ? new Date(lastSyncAt).toLocaleString("es-AR") : "sin sync";
     if (q.includes("riesgo")) {
-      setBotAnswer(`Riesgo actual ${riskRate}% (replay:${replay}, geo-alerts:${geo}). Frescura: ${ts}. Siguiente paso: revisar Events filtrando REPLAY_SUSPECT y abrir ticket crítico si supera 5%.`);
+      setBotAnswer(riskRate === null
+        ? `Riesgo sin base: no hay taps confirmados en la ventana. Frescura: ${ts}. Hacé una lectura y revisá la fuente antes de tomar decisiones.`
+        : `Riesgo actual ${riskRate}% (replay:${replay}, geo-alerts:${geo}). Frescura: ${ts}. Siguiente paso: revisar Events filtrando REPLAY_SUSPECT y abrir ticket crítico si supera 5%.`);
       return;
     }
     if (q.includes("replay")) {
       setBotAnswer(`Se detectaron ${replay} replays en la ventana. Recomendado: validar sample URLs y ejecutar simulate-tap para confirmar pipeline de detección.`);
       return;
     }
-    setBotAnswer(`Scope tenant/demo. Última sync: ${ts}. KPI clave: scans ${tapsTotal}, validRate ${validRate}%.`);
+    setBotAnswer(`Scope tenant/demo. Última sync: ${ts}. KPI clave: scans ${tapsTotal}, validRate ${tapsTotal > 0 ? `${validRate}%` : "sin base"}.`);
   }
 
   return (
     <OpsPanel title="Nexid Dashboard · Multirubro" subtitle="Business Intelligence para Vinos, Cosmética, Documentos y Semillas (dark premium + data refresh).">
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="grid gap-3 md:grid-cols-4">
         <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-slate-200">Taps totales<br /><b className="text-cyan-200">{tapsTotal}</b></div>
-        <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-slate-200">Originales vs Clones<br /><b className="text-emerald-200">{originals}</b> / <b className="text-rose-200">{clones}</b></div>
+        <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-slate-200">Mensajes NFC válidos / con alerta<br /><b className="text-emerald-200">{validMessages ?? "Sin base"}</b> / <b className="text-rose-200">{messagesWithAlerts ?? "Sin base"}</b></div>
         <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-slate-200">Gas wallet Polygon<br /><b className="text-amber-200">{walletGasPol.toFixed(3)} POL</b></div>
         <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-sm text-slate-200">Security alerts<br /><b className="text-rose-200">{Number(security?.summary?.repeatedInvalidUid || 0) + Number(security?.summary?.geoVelocityAlerts || 0)}</b></div>
       </motion.div>
@@ -601,7 +688,7 @@ export function MultirubroOpsPanel() {
       </div>
       {warnings.length ? (
         <div className="mt-3 rounded-xl border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-          <p className="font-semibold">Operación degradada (datos reales incompletos)</p>
+          <p className="font-semibold">Operación degradada (fuentes operativas incompletas)</p>
           <ul className="mt-1 list-disc pl-4">
             {warnings.slice(0, 3).map((warning) => <li key={warning}>{warning}</li>)}
           </ul>
@@ -609,7 +696,32 @@ export function MultirubroOpsPanel() {
       ) : null}
 
       <div className="mt-4">
-        <WorldMapRealtime title="Heatmap de taps en tiempo real" subtitle="Mercados grises, zonas de fraude y expansión comercial por geolocalización." points={points} initialExpanded />
+        <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px]" aria-label="Filtro por fuente de ubicacion">
+          {([
+            ["all", `Todas (${points.length})`],
+            ["precise", `GPS reportado (${locationSummary.precise})`],
+            ["approximate", `Aproximadas (${locationSummary.approximate})`],
+            ["unreported", `Fuente no reportada (${locationSummary.unreported})`],
+          ] as Array<[LocationFilter, string]>).map(([value, label]) => (
+            <button
+              suppressHydrationWarning
+              key={value}
+              type="button"
+              onClick={() => setLocationFilter(value)}
+              className={`rounded-lg border px-3 py-1 ${locationFilter === value ? "border-cyan-300/40 bg-cyan-500/15 text-cyan-100" : "border-white/10 bg-white/5 text-slate-300"}`}
+            >
+              {label}
+            </button>
+          ))}
+          <span className="text-slate-400">City centroid e IP son aproximados; solo browser_gps/device_gps se muestran como GPS.</span>
+        </div>
+        <WorldMapRealtime
+          title={streamState === "connected" ? "Heatmap de eventos NFC · stream conectado" : "Heatmap de eventos NFC reportados"}
+          subtitle={`Fuente ${demoDataMode ? "demo" : "API operativa"} · stream ${streamState}. Se conserva coordinate_source y precision reportada; un centroide de ciudad no se presenta como GPS y no prueba una ruta física.`}
+          points={visiblePoints}
+          metadataRows={(point) => [{ label: "Fuente de ubicacion", value: point.source || "No reportada" }]}
+          initialExpanded
+        />
       </div>
       <div className="mt-3 rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3 text-xs text-cyan-100">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -619,12 +731,12 @@ export function MultirubroOpsPanel() {
               Emula tags y lotes para ver cambios en KPI, mapa, feed realtime, riesgos, tokenizacion y resumen operativo.
             </p>
           </div>
-          <StatusChip label={points.length ? `${points.length} hubs activos` : "sin hubs"} tone={points.length ? "good" : "warn"} />
+          <StatusChip label={visiblePoints.length ? `${visiblePoints.length} hubs reportados` : "sin hubs"} tone={visiblePoints.length ? "good" : "warn"} />
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
           <button suppressHydrationWarning onClick={() => void runDemoAction('/api/internal/demo/seed', 'Seed demo ejecutada correctamente.')} disabled={busy} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100 disabled:opacity-60">Seed demo</button>
           <button suppressHydrationWarning onClick={() => void runDemoAction('/api/internal/demo/generate-live-scans', 'Scans demo generados.')} disabled={busy} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100 disabled:opacity-60">Generar taps vivos</button>
-          <button suppressHydrationWarning onClick={() => void runDemoAction('/api/internal/demo/simulate-tap', 'Tap simulado correctamente.')} disabled={busy} className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-100 disabled:opacity-60">Emular tap fisico</button>
+          <button suppressHydrationWarning onClick={() => void runDemoAction('/api/internal/demo/simulate-tap', 'Evento NFC simulado correctamente.')} disabled={busy} className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-100 disabled:opacity-60">Emular evento NFC</button>
         </div>
         {demoActionStatus ? <p className="mt-2 text-[11px] text-cyan-100">{demoActionStatus}</p> : null}
       </div>
@@ -632,7 +744,7 @@ export function MultirubroOpsPanel() {
 
       <div className="mt-4 grid gap-4 xl:grid-cols-2">
         <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3">
-          <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Scans vs duplicados (trend)</p>
+          <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Scans vs replay / duplicados (trend)</p>
           <div className="mt-2 h-48">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={analytics?.trend || []}>
@@ -648,7 +760,7 @@ export function MultirubroOpsPanel() {
           </div>
         </div>
         <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3">
-          <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Tamper / duplicados por día</p>
+          <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Veredictos de riesgo por dia</p>
           <div className="mt-2 h-48">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={analytics?.trend || []}>
@@ -659,6 +771,8 @@ export function MultirubroOpsPanel() {
                 <Legend />
                 <Bar dataKey="duplicates" fill="#f59e0b" radius={[4,4,0,0]} />
                 <Bar dataKey="tamper" fill="#ef4444" radius={[4,4,0,0]} />
+                <Bar dataKey="invalid" fill="#a855f7" radius={[4,4,0,0]} />
+                <Bar dataKey="unknown" fill="#64748b" radius={[4,4,0,0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

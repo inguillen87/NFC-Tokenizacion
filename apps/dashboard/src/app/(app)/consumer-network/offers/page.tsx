@@ -32,7 +32,7 @@ const PRESETS: MarketplaceOffer[] = [
   {
     id: "off-1",
     title: "Malbec con 220 puntos de club",
-    description: "Beneficio para clientes con tap verificado y contacto autorizado.",
+    description: "Beneficio para clientes con evento NFC elegible y contacto autorizado.",
     status: "active",
     type: "points_boost",
     visibility: "verified_tappers",

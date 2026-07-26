@@ -35,13 +35,13 @@ En codigo:
   - verifica CMAC.
   - descifra payload SDM.
 
-Esto es la capa de autenticidad fisica. Es la fuente de verdad.
+Esto valida el mensaje criptografico del tag y registra evidencia digital del evento. Es fuente de verdad sobre esa validacion y los datos del backend, no sobre el contenido, origen, condicion o custodia fisica por si solos.
 
 ## 2. Que significa KMS aca
 
-La master key de backend vive solo en variables de entorno privadas o en KMS. Conceptualmente es una envoltura tipo KMS: las keys de lote no quedan planas en DB.
+Actualmente la master key NFC de backend vive como secreto privado de entorno en Vercel y envuelve las claves de lote almacenadas en DB. `KMS_MASTER_KEY_HEX` es un nombre historico: ese almacenamiento no es por si mismo un KMS gestionado, HSM ni evidencia de no exportabilidad.
 
-Mas adelante se puede migrar esa master key a un KMS real/cloud, pero la separacion logica ya esta:
+La separacion logica permite migrar el secreto envolvente a un KMS cloud sin cambiar el contrato de datos:
 
 ```txt
 DB guarda ciphertext
@@ -86,10 +86,11 @@ La cadena no recibe todos los taps. Los eventos DPP completos quedan en backend;
 
 | Capa | Secreto | Para que sirve | Donde vive |
 | --- | --- | --- | --- |
-| SUN validation | Backend master key | Descifrar claves de encoding y validar tags | API backend |
+| SUN validation actual | Backend envelope key en secreto Vercel | Descifrar claves de encoding y validar mensajes de tags | API backend; no es HSM/KMS gestionado |
 | Per batch | Claves de encoding cifradas | Validar CMAC/SDM de cada lote | DB cifrada + API |
 | Blockchain pilot | `POLYGON_MINTER_PRIVATE_KEY` | Firmar mint Polygon Amoy | Executor o API local minter |
-| Blockchain premium | KMS/HSM/custody signer | Firmar tx sin private key exportable | Executor/KMS |
+| Blockchain pilot `kms_wrapped` | Wallet cifrada por Google Cloud KMS `SOFTWARE` | El executor la desenvuelve y firma con plaintext efimero en memoria | Executor; no es firma directa ni HSM |
+| Blockchain target | Direct KMS/HSM/custody signer verificado | Firmar sin exponer la private key al workload | Executor + signer remoto |
 
 ## 5. Arquitectura recomendada para nexID
 

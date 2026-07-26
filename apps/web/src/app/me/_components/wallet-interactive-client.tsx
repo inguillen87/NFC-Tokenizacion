@@ -30,12 +30,13 @@ function shortAddress(value: string) {
 }
 
 export function WalletInteractiveClient({ initialProducts, selectedTenant }: WalletInteractiveClientProps) {
-  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const transferDemoEnabled = process.env.NEXT_PUBLIC_WALLET_TRANSFER_DEMO_ENABLED === "true";
+  const [products] = useState<Product[]>(initialProducts);
   const [filter, setFilter] = useState<"all" | "claimed" | "blockchain">("all");
   const [search, setSearch] = useState("");
   const [transferringUid, setTransferringUid] = useState<string | null>(null);
   const [recipientAddress, setRecipientAddress] = useState("");
-  const [recentTransfers, setRecentTransfers] = useState<Array<{ id: string; name: string; to: string; time: string; txHash: string }>>([]);
+  const [recentTransfers, setRecentTransfers] = useState<Array<{ id: string; name: string; to: string; time: string }>>([]);
   const [transferNotice, setTransferNotice] = useState<TransferNotice | null>(null);
 
   const hasOnChainProof = (product: Product) => {
@@ -50,28 +51,22 @@ export function WalletInteractiveClient({ initialProducts, selectedTenant }: Wal
   };
 
   const handleTransfer = (bid: string, productName: string) => {
+    if (!transferDemoEnabled) {
+      setTransferNotice({ type: "error", text: "Transferencia deshabilitada: falta integrar firma de wallet, envío y receipt confirmado por el backend." });
+      return;
+    }
     const normalizedRecipient = recipientAddress.trim();
     if (!/^0x[a-fA-F0-9]{40}$/.test(normalizedRecipient)) {
       setTransferNotice({ type: "error", text: "Ingresa una direccion 0x valida para preparar la transferencia." });
       return;
     }
 
-    const txHash = `0x${Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join("")}`;
-
-    setProducts((prev) =>
-      prev.map((product) =>
-        product.bid === bid || product.batch === bid
-          ? { ...product, ownership_record_status: "transferred", ownership_status: "transferred" }
-          : product
-      )
-    );
     setRecentTransfers((prev) => [
       {
-        id: `tx-${Math.random().toString(36).substring(2, 8)}`,
+        id: `sim-${Date.now()}`,
         name: productName,
         to: normalizedRecipient,
-        time: "Hace unos segundos",
-        txHash,
+        time: "Simulado ahora",
       },
       ...prev,
     ]);
@@ -79,7 +74,7 @@ export function WalletInteractiveClient({ initialProducts, selectedTenant }: Wal
     setRecipientAddress("");
     setTransferNotice({
       type: "success",
-      text: `Solicitud P2P preparada en Polygon Amoy. Hash demo: ${txHash.slice(0, 16)}...`,
+      text: "Simulación local completada. No se firmó, envió ni confirmó una transacción y el ownership real no cambió.",
     });
   };
 
@@ -98,6 +93,11 @@ export function WalletInteractiveClient({ initialProducts, selectedTenant }: Wal
 
   return (
     <div className="space-y-6">
+      <div role="status" className={`rounded-2xl border p-3 text-xs leading-5 ${transferDemoEnabled ? "border-amber-300/30 bg-amber-500/10 text-amber-100" : "border-slate-700 bg-slate-900/60 text-slate-300"}`}>
+        {transferDemoEnabled
+          ? "DEMO DE TRANSFERENCIA · solo simula la UX. No firma, envía ni confirma transacciones y no genera hashes o links de explorador."
+          : "Transferencias deshabilitadas hasta integrar firma de wallet y receipt confirmado por el backend. Los links Polygonscan solo se muestran para hashes reales reportados."}
+      </div>
       <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-5 shadow-lg">
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div>
@@ -105,7 +105,7 @@ export function WalletInteractiveClient({ initialProducts, selectedTenant }: Wal
               {selectedTenant ? `${selectedTenant} ownership` : "nexID ownership"}
             </p>
             <h3 className="mt-1 text-sm font-black text-white">Certificados digitales y NFTs</h3>
-            <p className="text-xs text-slate-400">Administra, filtra y prepara transferencias de productos autenticados.</p>
+            <p className="text-xs text-slate-400">Administra, filtra y prepara transferencias de certificados y registros de ownership digital; no del objeto físico.</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -152,7 +152,7 @@ export function WalletInteractiveClient({ initialProducts, selectedTenant }: Wal
           >
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
             <div>
-              <p className="font-black">{transferNotice.type === "success" ? "Operacion preparada" : "Revisa la direccion"}</p>
+              <p className="font-black">{transferNotice.type === "success" ? "Simulacion completada" : "Revisa la direccion"}</p>
               <p className="mt-0.5 text-slate-300">{transferNotice.text}</p>
             </div>
           </div>
@@ -172,8 +172,7 @@ export function WalletInteractiveClient({ initialProducts, selectedTenant }: Wal
               const txHash = String(product.tokenization_tx_hash || "");
               const explorerHref = isOnChain ? `https://amoy.polygonscan.com/tx/${encodeURIComponent(txHash)}` : "";
               const certificateUrl = certificateHref(product);
-              const isBottle = !product.product_name?.toLowerCase().includes("crate") && !product.product_name?.toLowerCase().includes("caja");
-              const thumbnailImg = isBottle ? "/images/premium_magnum.png" : "/images/wine_crate.png";
+              const thumbnailImg = product.imageUrl || product.image_url || product.photoUrl || product.photo_url || "";
 
               return (
                 <div
@@ -186,17 +185,17 @@ export function WalletInteractiveClient({ initialProducts, selectedTenant }: Wal
                 >
                   <div className="flex gap-4">
                     <div className="flex h-20 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-black/40 p-1">
-                      <img
+                      {thumbnailImg ? <img
                         src={thumbnailImg}
-                        alt={product.product_name || "Producto autentico"}
+                        alt={product.product_name || "Producto asociado"}
                         className="h-16 w-auto object-contain drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)]"
-                      />
+                      /> : <span className="text-[9px] text-slate-500">Imagen no reportada</span>}
                     </div>
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
                         <span className="rounded-full border border-amber-400/20 bg-amber-400/5 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-amber-300">
-                          {product.brand_name || "nexID Partner"}
+                          {product.brand_name || "Marca no reportada"}
                         </span>
                         <span
                           className={`rounded-full border px-2 py-0.5 text-[8px] font-black uppercase tracking-wider ${
@@ -213,7 +212,7 @@ export function WalletInteractiveClient({ initialProducts, selectedTenant }: Wal
                         </span>
                       </div>
 
-                      <h4 className="mt-1 truncate text-xs font-black leading-snug text-white">{product.product_name || "Producto autentico"}</h4>
+                      <h4 className="mt-1 truncate text-xs font-black leading-snug text-white">{product.product_name || "Producto asociado"}</h4>
                       <p className="mt-0.5 font-mono text-[10px] text-slate-500">Lote: {bid}</p>
                     </div>
                   </div>
@@ -238,7 +237,7 @@ export function WalletInteractiveClient({ initialProducts, selectedTenant }: Wal
                       ) : null}
                     </div>
 
-                    {isClaimed && !isTransferred ? (
+                    {isClaimed && !isTransferred && transferDemoEnabled ? (
                       <div>
                         {transferringUid === bid ? (
                           <div className="mt-2 flex w-full flex-col gap-2">
@@ -279,7 +278,7 @@ export function WalletInteractiveClient({ initialProducts, selectedTenant }: Wal
                             }}
                             className="flex items-center gap-1 rounded-lg border border-amber-500/35 bg-amber-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-wider text-amber-200 transition hover:bg-amber-500/25"
                           >
-                            Transferir P2P <Send className="h-2.5 w-2.5" aria-hidden="true" />
+                            Simular transferencia <Send className="h-2.5 w-2.5" aria-hidden="true" />
                           </button>
                         )}
                       </div>
@@ -308,15 +307,8 @@ export function WalletInteractiveClient({ initialProducts, selectedTenant }: Wal
                   </p>
                 </div>
                 <div className="shrink-0 sm:text-right">
-                  <span className="block font-bold uppercase text-amber-400">Preparado</span>
-                  <a
-                    href={`https://amoy.polygonscan.com/tx/${transfer.txHash}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-0.5 flex items-center gap-1 font-mono text-slate-500 hover:text-slate-300 sm:justify-end"
-                  >
-                    Hash: {transfer.txHash.slice(0, 10)}... <ExternalLink className="h-2.5 w-2.5" aria-hidden="true" />
-                  </a>
+                  <span className="block font-bold uppercase text-amber-400">Simulado · sin receipt</span>
+                  <span className="mt-0.5 block text-slate-500">{transfer.time}</span>
                 </div>
               </div>
             ))}

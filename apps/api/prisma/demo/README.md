@@ -33,7 +33,7 @@ This bundle contains reusable demo packs so the platform can prove value before 
 
 ## Positioning notes
 - NTAG215 packs are for low-cost, high-UX scenarios (events, campaigns, invites, lightweight traceability)
-- NTAG424DNA TagTamper packs are for anti-fraud, authenticity, premium traceability and tamper status
+- NTAG424DNA TagTamper packs are for dynamic cryptographic tag evidence, anti-replay, premium traceability and reported TT state
 
 ## Important
 The packs are demos. The real flow should later accept the actual supplier manifest for production tags.
@@ -52,24 +52,24 @@ The packs are demos. The real flow should later accept the actual supplier manif
 - Recommended tag: `NTAG424DNA_TT`
 - Manifest: `wine-secure_manifest.csv`
 - Seed: `wine-secure_seed.json`
-- Narrative: Tap-to-verify bottle authenticity, cork/capsule integrity, digital passport and premium cellar data.
-- Why NFC over QR: Better than QR because the 424 DNA TagTamper provides AES-128 cryptography, SUN authentication and tamper-loop status, so the backend can validate originality and seal integrity instead of trusting a printable image. The tag can also carry a premium product passport and feed reseller/consumer experiences in real time.
+- Narrative: Tap to validate the tag's dynamic SUN message, report the integrated TT loop state and open a digital passport with declared cellar data.
+- Why NFC over QR: Better than a static QR because NTAG 424 DNA TagTamper provides AES-128 SUN evidence, replay controls and a TT loop state when correctly integrated into the closure. The backend validates the tag message and records the reported state; it does not by itself certify the bottle contents, origin or physical seal integrity.
 
 ## Cosmetics / Premium Cream (Secure)
 - Folder: `cosmetics-secure`
 - Recommended tag: `NTAG424DNA_TT`
 - Manifest: `cosmetics-secure_manifest.csv`
 - Seed: `cosmetics-secure_seed.json`
-- Narrative: Authenticate premium skincare, prove unopened state and unlock digital routine, warranty and CRM onboarding.
-- Why NFC over QR: Better than QR because high-margin cosmetics are frequently counterfeited and opened. TagTamper can indicate if the closure or security seal was opened before sale, while the backend can detect duplicate scans and suspicious regions.
+- Narrative: Validate cryptographic tag evidence, report the integrated TT/open state and unlock a digital routine, warranty flow and CRM onboarding.
+- Why NFC over QR: Better than a static QR because NTAG 424 DNA TagTamper adds dynamic SUN evidence, replay controls and a TT state when physically integrated into the closure. The reported state is a security signal, not standalone proof of contents, origin or an unopened product.
 
-## Pharma / Cold Chain & Authenticity (Secure)
+## Pharma / Cold Chain Evidence (Secure)
 - Folder: `pharma-secure`
 - Recommended tag: `NTAG424DNA_TT`
 - Manifest: `pharma-secure_manifest.csv`
 - Seed: `pharma-secure_seed.json`
-- Narrative: Authenticate medicine packs, prove chain-of-custody and support patient-facing verification with anti-diversion signals.
-- Why NFC over QR: Better than QR/photo/email because regulated products need stronger provenance. NFC provides a physical identity layer on the pack; 424 DNA adds cryptographic checks, controlled redirects and event logging for every scan.
+- Narrative: Validate cryptographic tag messages, associate declared lot data and record authorized handoffs for patient-facing anti-diversion signals.
+- Why NFC over QR: Better than a static QR because NTAG 424 DNA adds dynamic SUN checks, replay controls, controlled redirects and scan-event logging. These signals strengthen the digital record but do not by themselves prove medicine contents, cold-chain conditions or physical custody.
 
 ## Agro / Input & Traceability (Secure)
 - Folder: `agro-secure`

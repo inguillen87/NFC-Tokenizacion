@@ -1,6 +1,8 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const AUTH_RATE_LIMIT_RETRY_AFTER_SECONDS = 10 * 60;
+
 import { sessionCookieHeader, verifyConsumerAuth, verifyConsumerAuthToken } from "../../../../lib/consumer-auth";
 import { sql } from "../../../../lib/db";
 import { ensureTenantMembership } from "../../../../lib/consumer-portal-service";
@@ -8,20 +10,40 @@ import { ensureConsumerAuthSchema } from "../../../../lib/commercial-runtime-sch
 import { parseConsumerContact } from "../../../../lib/consumer-contact";
 import { canUseConsumerDemoBypass } from "../../../../lib/consumer-demo-policy";
 import { randomBytes, createHash } from "node:crypto";
+import { getRequestMeta } from "../../../../lib/request-meta";
+import { enforceCriticalRateLimit } from "../../../../lib/critical-rate-limit";
+import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../lib/bounded-request-body";
 
 function sha(value: string) {
   return createHash("sha256").update(value).digest("hex");
 }
 
+function authErrorResponse(error: string) {
+  const status = error === "rate_limited" ? 429 : error === "locked" ? 423 : error === "expired" ? 410 : error === "unavailable" ? 503 : 401;
+  const headers: Record<string, string> = {
+    "cache-control": "no-store",
+    "content-type": "application/json; charset=utf-8",
+  };
+  if (status === 429) headers["retry-after"] = String(AUTH_RATE_LIMIT_RETRY_AFTER_SECONDS);
+  if (status === 503) headers["retry-after"] = "30";
+  return new Response(JSON.stringify({ ok: false, error }), { status, headers });
+}
+
 export async function POST(req: Request) {
-  const body = await req.json().catch(() => ({}));
+  const sourceLimited = await enforceCriticalRateLimit(req, { rateClass: "auth", tenantId: "platform", subjectId: "consumer-auth-verify:unauthenticated" });
+  if (sourceLimited) return sourceLimited;
+  let body: Record<string, unknown>;
+  try {
+    body = await readBoundedJsonBody<Record<string, unknown>>(req, 4 * 1024);
+  } catch (error) {
+    const tooLarge = error instanceof RequestBodyTooLargeError;
+    return new Response(JSON.stringify({ ok: false, error: tooLarge ? "request_body_too_large" : "invalid_json" }), { status: tooLarge ? 413 : 400, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
+  }
+  const requestMeta = getRequestMeta(req);
   const magicToken = String(body.token || body.t || body.magicToken || "").trim();
   if (magicToken) {
-    const verified = await verifyConsumerAuthToken(magicToken, { userAgent: req.headers.get("user-agent"), ip: req.headers.get("x-forwarded-for") });
-    if (!verified.ok) {
-      const status = verified.error === "rate_limited" ? 429 : verified.error === "locked" ? 423 : verified.error === "expired" ? 410 : verified.error === "unavailable" ? 503 : 401;
-      return new Response(JSON.stringify({ ok: false, error: verified.error }), { status });
-    }
+    const verified = await verifyConsumerAuthToken(magicToken, { userAgent: requestMeta.userAgent, ip: requestMeta.ip });
+    if (!verified.ok) return authErrorResponse(verified.error);
     return new Response(JSON.stringify({ ok: true, consumer: verified.consumer }, null, 2), {
       status: 200,
       headers: {
@@ -74,8 +96,8 @@ export async function POST(req: Request) {
         ${consumer.id},
         ${sha(sessionToken)},
         now() + interval '30 days',
-        ${req.headers.get("user-agent") ? sha(String(req.headers.get("user-agent"))) : null},
-        ${req.headers.get("x-forwarded-for") ? sha(String(req.headers.get("x-forwarded-for"))) : null}
+        ${requestMeta.userAgent ? sha(requestMeta.userAgent) : null},
+        ${requestMeta.ip ? sha(requestMeta.ip) : null}
       )
     `;
     return new Response(JSON.stringify({ ok: true, consumer, demo: true }, null, 2), {
@@ -87,11 +109,8 @@ export async function POST(req: Request) {
     });
   }
 
-  const verified = await verifyConsumerAuth(contact, code, { userAgent: req.headers.get("user-agent"), ip: req.headers.get("x-forwarded-for") });
-  if (!verified.ok) {
-    const status = verified.error === "rate_limited" ? 429 : verified.error === "locked" ? 423 : verified.error === "expired" ? 410 : verified.error === "unavailable" ? 503 : 401;
-    return new Response(JSON.stringify({ ok: false, error: verified.error }), { status });
-  }
+  const verified = await verifyConsumerAuth(contact, code, { userAgent: requestMeta.userAgent, ip: requestMeta.ip });
+  if (!verified.ok) return authErrorResponse(verified.error);
 
   return new Response(JSON.stringify({ ok: true, consumer: verified.consumer }, null, 2), {
     status: 200,

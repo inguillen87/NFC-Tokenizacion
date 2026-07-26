@@ -34,7 +34,7 @@ export function SecurityPanel({ initialConsumer }: { initialConsumer: Consumer |
 
   const hasEmail = !!consumer?.email;
   const hasPhone = !!consumer?.phone;
-  const isVerified2FA = consumer?.status === "verified";
+  const hasBothLinkedChannels = hasEmail && hasPhone;
   const missingType = !hasEmail ? "email" : !hasPhone ? "phone" : null;
   const lockedChannel: ConsumerContactDraft["channel"] = missingType === "email" ? "email" : "whatsapp";
   const effectiveContactDraft = useMemo(
@@ -105,7 +105,7 @@ export function SecurityPanel({ initialConsumer }: { initialConsumer: Consumer |
     }
     setLoading(true);
     setErrorMsg("");
-    setStatusMsg("Verificando código y aplicando bono de puntos...");
+    setStatusMsg("Verificando código y asociando el canal...");
 
     const res = await fetch("/api/consumer/associate/verify", {
       method: "POST",
@@ -132,7 +132,7 @@ export function SecurityPanel({ initialConsumer }: { initialConsumer: Consumer |
 
     setConsumer(data.consumer);
     setStep("input");
-    setStatusMsg("Asociación de doble factor exitosa. Redirigiendo...");
+    setStatusMsg("Canal de contacto asociado. Redirigiendo...");
     window.location.href = "/me";
   }
 
@@ -142,15 +142,15 @@ export function SecurityPanel({ initialConsumer }: { initialConsumer: Consumer |
         <ArrowLeft className="h-4 w-4" /> Volver al Pasaporte
       </Link>
 
-      {isVerified2FA ? (
+      {hasBothLinkedChannels ? (
         <div className="space-y-4 rounded-3xl border border-emerald-500/25 bg-[linear-gradient(135deg,rgba(16,185,129,0.06)_0%,rgba(4,120,87,0.02)_100%)] p-6 text-center shadow-xl">
           <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 shadow-inner">
             <CheckCircle2 className="h-8 w-8" />
           </div>
           <div className="space-y-1">
-            <h2 className="text-xl font-black tracking-tight text-white">Doble factor activo</h2>
+            <h2 className="text-xl font-black tracking-tight text-white">Canales de contacto vinculados</h2>
             <p className="mx-auto max-w-sm text-xs leading-relaxed text-slate-400">
-              Tu Pasaporte cuenta con un nivel superior de seguridad. Vas a recibir códigos de autenticación en ambos canales.
+              El backend reporta email y WhatsApp asociados a esta cuenta. Un código único puede enviarse a los canales configurados y cualquiera puede validarlo; esto mejora entrega y recuperación, pero no es MFA secuencial.
             </p>
           </div>
 
@@ -164,8 +164,8 @@ export function SecurityPanel({ initialConsumer }: { initialConsumer: Consumer |
               <span className="font-mono text-slate-200">{consumer.phone}</span>
             </div>
             <div className="flex items-center justify-between bg-emerald-500/5 p-3.5">
-              <span className="flex items-center gap-2 font-bold text-emerald-400"><Sparkles className="h-4 w-4" /> Bono 2FA</span>
-              <span className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-black uppercase text-emerald-300">Cargado (+100 pts)</span>
+              <span className="flex items-center gap-2 font-bold text-emerald-400"><Sparkles className="h-4 w-4" /> Beneficio de asociación</span>
+              <span className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-black uppercase text-emerald-300">Consultar saldo</span>
             </div>
           </div>
         </div>
@@ -176,8 +176,8 @@ export function SecurityPanel({ initialConsumer }: { initialConsumer: Consumer |
               <Lock className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-sm font-black tracking-tight text-white">Activar doble factor</h3>
-              <p className="text-[11px] text-slate-400">Verificá tu segundo canal para proteger tu cuenta y ganar +100 puntos.</p>
+              <h3 className="text-sm font-black tracking-tight text-white">Vincular canal de contacto</h3>
+              <p className="text-[11px] text-slate-400">Verificá el canal faltante para mejorar entrega y recuperación. No activa MFA por sí solo.</p>
             </div>
           </div>
 
@@ -191,7 +191,7 @@ export function SecurityPanel({ initialConsumer }: { initialConsumer: Consumer |
                   draft={effectiveContactDraft}
                   onChange={setContactDraft}
                   disabled={loading}
-                  idPrefix="security-2fa"
+                  idPrefix="security-contact"
                   channelLocked={lockedChannel}
                 />
               </div>
@@ -235,7 +235,7 @@ export function SecurityPanel({ initialConsumer }: { initialConsumer: Consumer |
                   onClick={() => void verifyAssociation()}
                   className="flex-1 rounded-xl bg-emerald-500 py-3 text-xs font-black uppercase tracking-wider text-slate-950 transition hover:bg-emerald-400 disabled:opacity-60"
                 >
-                  Verificar y activar
+                  Verificar y vincular
                 </button>
               </div>
             </div>

@@ -26,20 +26,20 @@ const publicPageConfig: Record<PublicPageKey, PublicPageConfig> = {
       "es-AR": {
         title: "Soluciones de identidad de producto por audiencia | nexID",
         description:
-          "Explorá cómo nexID conecta autenticación, trazabilidad, pasaportes digitales y derechos de producto para marcas, integradores, sector público y clientes finales.",
-        imageAlt: "Recorrido nexID desde el producto físico y la verificación NFC hasta el pasaporte digital.",
+          "Explorá cómo nexID conecta validación de mensajes NFC/SUN, datos declarados, pasaportes y derechos digitales para marcas, integradores, sector público y clientes finales.",
+        imageAlt: "Recorrido nexID desde el mensaje NFC/SUN y los datos declarados hasta el pasaporte digital.",
       },
       "pt-BR": {
         title: "Soluções de identidade de produto por público | nexID",
         description:
-          "Veja como a nexID conecta autenticação, rastreabilidade, passaportes digitais e direitos de produto para marcas, integradores, setor público e consumidores.",
-        imageAlt: "Jornada nexID do produto físico e da verificação NFC ao passaporte digital.",
+          "Veja como a nexID conecta validação de mensagens NFC/SUN, dados declarados, passaportes e direitos digitais para marcas, integradores, setor público e consumidores.",
+        imageAlt: "Jornada nexID da mensagem NFC/SUN e dos dados declarados ao passaporte digital.",
       },
       en: {
         title: "Product identity solutions by audience | nexID",
         description:
-          "See how nexID connects authentication, traceability, digital product passports and product rights for brands, integrators, public sector teams and end customers.",
-        imageAlt: "The nexID journey from a physical product and NFC verification to its digital passport.",
+          "See how nexID connects NFC/SUN message validation, declared data, digital passports and digital rights for brands, integrators, public sector teams and end customers.",
+        imageAlt: "The nexID journey from NFC/SUN message evidence and declared data to a digital passport.",
       },
     },
   },
@@ -49,20 +49,20 @@ const publicPageConfig: Record<PublicPageKey, PublicPageConfig> = {
       "es-AR": {
         title: "Glosario de identidad de producto | nexID",
         description:
-          "Guía de lenguaje para explicar autenticación, NFC, pasaportes digitales, trazabilidad y tokenización con claridad en ventas, demos y documentación.",
-        imageAlt: "Referencia visual nexID para autenticación de productos físicos y pasaportes digitales.",
+          "Guía de lenguaje para explicar evidencia NFC/SUN, pasaportes digitales, trazabilidad declarada y tokenización con claridad en ventas, demos y documentación.",
+        imageAlt: "Referencia visual nexID para evidencia NFC/SUN y pasaportes digitales.",
       },
       "pt-BR": {
         title: "Glossário de identidade de produto | nexID",
         description:
-          "Guia de linguagem para explicar autenticação, NFC, passaportes digitais, rastreabilidade e tokenização com clareza em vendas, demos e documentação.",
-        imageAlt: "Referência visual nexID para autenticação de produtos físicos e passaportes digitais.",
+          "Guia de linguagem para explicar evidência NFC/SUN, passaportes digitais, rastreabilidade declarada e tokenização em vendas, demos e documentação.",
+        imageAlt: "Referência visual nexID para evidência NFC/SUN e passaportes digitais.",
       },
       en: {
         title: "Product identity glossary | nexID",
         description:
-          "A practical language guide for explaining authentication, NFC, digital product passports, traceability and tokenization across sales, demos and documentation.",
-        imageAlt: "A nexID visual reference for physical product authentication and digital passports.",
+          "A practical language guide for explaining NFC/SUN evidence, digital passports, declared traceability and tokenization across sales, demos and documentation.",
+        imageAlt: "A nexID visual reference for NFC/SUN evidence and digital passports.",
       },
     },
   },
@@ -73,19 +73,19 @@ const publicPageConfig: Record<PublicPageKey, PublicPageConfig> = {
         title: "Programa reseller e integradores | nexID",
         description:
           "Conocé el programa de canal nexID para agencias, distribuidores e integradores: identidad de producto, despliegue white-label y operación recurrente.",
-        imageAlt: "Experiencia de canal nexID que conecta productos físicos, verificación NFC y relación con clientes.",
+        imageAlt: "Experiencia de canal nexID que conecta mensajes NFC/SUN, referencias declaradas y relación con clientes.",
       },
       "pt-BR": {
         title: "Programa para revendedores e integradores | nexID",
         description:
           "Conheça o programa de canais nexID para agências, distribuidores e integradores: identidade de produto, implantação white-label e operação recorrente.",
-        imageAlt: "Experiência de canal nexID conectando produtos físicos, verificação NFC e relacionamento com clientes.",
+        imageAlt: "Experiência de canal nexID conectando mensagens NFC/SUN, referências declaradas e relacionamento com clientes.",
       },
       en: {
         title: "Reseller and integrator program | nexID",
         description:
           "Explore the nexID channel program for agencies, distributors and integrators: product identity, white-label rollout and recurring operations.",
-        imageAlt: "The nexID channel experience connecting physical products, NFC verification and customer engagement.",
+        imageAlt: "The nexID channel experience connecting NFC/SUN messages, declared references and customer engagement.",
       },
     },
   },
@@ -96,19 +96,19 @@ const publicPageConfig: Record<PublicPageKey, PublicPageConfig> = {
         title: "Stack de identidad y confianza de producto | nexID",
         description:
           "Entendé cómo NFC o QR, identidad por unidad, validación, pasaporte digital y derechos programables se conectan en la arquitectura nexID.",
-        imageAlt: "Stack de confianza nexID desde el contacto NFC hasta la verificación y el pasaporte digital.",
+        imageAlt: "Stack nexID desde la validación del mensaje NFC/SUN hasta el pasaporte y los derechos digitales.",
       },
       "pt-BR": {
         title: "Stack de identidade e confiança do produto | nexID",
         description:
           "Entenda como NFC ou QR, identidade por unidade, validação, passaporte digital e direitos programáveis se conectam na arquitetura nexID.",
-        imageAlt: "Stack de confiança nexID do contato NFC à verificação e ao passaporte digital.",
+        imageAlt: "Stack nexID da validação da mensagem NFC/SUN ao passaporte e aos direitos digitais.",
       },
       en: {
         title: "Product identity and trust stack | nexID",
         description:
           "Understand how NFC or QR, unit identity, validation, digital product passports and programmable rights connect in the nexID architecture.",
-        imageAlt: "The nexID trust stack from NFC interaction to product verification and a digital passport.",
+        imageAlt: "The nexID stack from NFC/SUN message validation to a digital passport and digital rights.",
       },
     },
   },

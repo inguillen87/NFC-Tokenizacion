@@ -173,7 +173,7 @@ export function MetamaskSandboxCard({
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState(
     initialWallet?.address && initialWallet.controlVerified
-      ? "Control de wallet verificado. Ownership, transferencias y marketplace pueden usar esta dirección."
+      ? "Control de wallet verificado. Los registros de ownership digital, transferencias y marketplace pueden usar esta dirección."
       : initialWallet?.address
         ? "La wallet guardada necesita una firma nueva para volver a probar control."
       : "Web3 es opcional: conectalo solo para ownership, NFT, marketplace o transferencias."
@@ -298,7 +298,7 @@ export function MetamaskSandboxCard({
       const confirmedAddress = connectPayload.wallet.address || nextAddress;
       setAddress(confirmedAddress);
       setVerifiedAddress(confirmedAddress);
-      setMessage(`Control verificado para ${connectPayload.wallet.addressMasked || shortAddress(confirmedAddress)}. Ya puede recibir ownership y transferencias.`);
+      setMessage(`Control verificado para ${connectPayload.wallet.addressMasked || shortAddress(confirmedAddress)}. Ya puede recibir registros de ownership digital y transferencias.`);
     } catch (error) {
       setVerifiedAddress("");
       setMessage(walletErrorMessage(error, "No se pudo verificar el control de la wallet."));
@@ -341,7 +341,7 @@ export function MetamaskSandboxCard({
     setAddress(sandboxAddress);
     setChainId(POLYGON_AMOY.chainId);
     setVerifiedAddress("");
-    setMessage("Presentación local activa. Esta dirección no se guarda, no prueba control y no puede recibir ownership real.");
+    setMessage("Presentación local activa. Esta dirección no se guarda, no prueba control y no puede recibir ownership digital persistido.");
   }
 
   useEffect(() => {
@@ -361,8 +361,8 @@ export function MetamaskSandboxCard({
             </p>
             <h3 className="mt-2 text-lg font-black text-white">Wallet y ownership digital</h3>
             <p className="mt-2 max-w-xl text-xs leading-5 text-slate-300">
-              Email y WhatsApp siguen siendo el alta liviana post-tap. Una wallet EVM se firma solo cuando querés reclamar
-              propiedad, tokenizar un producto premium, venderlo o transferirlo.
+              Email y WhatsApp siguen siendo el alta liviana post-tap. Una wallet EVM se firma solo cuando querés solicitar
+              ownership digital, crear su representación digital, publicarla o transferir ese registro. La firma no prueba el objeto físico.
             </p>
           </div>
           <span className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${
@@ -479,7 +479,7 @@ export function MetamaskSandboxCard({
                 <p className="text-sm font-black text-white">Modo presentación sin fricción</p>
                 <p className="mt-1 text-xs leading-5 text-emerald-50/80">
                   Para reuniones, la wallet de prueba muestra el flujo sin extensión. Vive solo en esta pantalla: nunca se
-                  guarda, no prueba control y no puede recibir un NFT o una transferencia real.
+                  guarda, no prueba control y no puede recibir un NFT o una transferencia persistida.
                 </p>
               </div>
             </div>

@@ -8,6 +8,7 @@ import { sql } from "../../../../lib/db";
 import { logAuditEvent } from "../../../../lib/audit-logger";
 import { ensureSupplierOpsSchema } from "../../../../lib/supplier-ops-schema";
 import { buildMerkleRoot, findForbiddenProofPayloadKey, hashEvidencePayload } from "../../../../lib/proof-layer";
+import { adminCriticalRateLimitIdentity, enforceCriticalRateLimit } from "../../../../lib/critical-rate-limit";
 
 type EvidenceEventRow = {
   id: string;
@@ -26,6 +27,11 @@ export async function POST(req: Request) {
   if (auth) return auth;
   const permission = checkAdminPermission(req, "proof:write");
   if (permission) return permission;
+  const rateLimited = await enforceCriticalRateLimit(req, {
+    rateClass: "proof_write",
+    ...adminCriticalRateLimitIdentity(req),
+  });
+  if (rateLimited) return rateLimited;
   await ensureSupplierOpsSchema();
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;

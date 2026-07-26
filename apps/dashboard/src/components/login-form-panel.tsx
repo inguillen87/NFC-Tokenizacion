@@ -39,7 +39,6 @@ export function LoginFormPanel({
   const [password, setPassword] = useState("");
   const [role, setRole] = useState(firstAvailable?.role || "tenant-admin");
   const [profileLabel, setProfileLabel] = useState(firstAvailable?.label || "Perfil operativo");
-  const [mfaCode, setMfaCode] = useState("");
   const [status, setStatus] = useState("");
   const [opsStatus, setOpsStatus] = useState("");
   const [pending, setPending] = useState(false);
@@ -47,7 +46,7 @@ export function LoginFormPanel({
     {
       label: "Demo tenant",
       value: bodegaDemoAllowed ? "Lista para mostrar" : "Pendiente",
-      detail: "Bodega Balmec abre CRM, mapa vivo, proof, marketplace y campañas sin permisos globales.",
+      detail: "Bodega Balmec abre CRM, mapa de eventos reportados, proof, marketplace y campañas sin permisos globales.",
       ok: bodegaDemoAllowed,
     },
     {
@@ -83,7 +82,6 @@ export function LoginFormPanel({
     setPassword("");
     setRole(profile.role);
     setProfileLabel(profile.label);
-    setMfaCode("");
     setStatus("");
     setOpsStatus("");
   }
@@ -99,7 +97,7 @@ export function LoginFormPanel({
     const res = await fetch("/api/session/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: loginEmail, password: loginPassword, mfaCode }),
+      body: JSON.stringify({ email: loginEmail, password: loginPassword }),
       signal: controller.signal,
     }).catch(() => null);
     clearTimeout(timeout);
@@ -107,9 +105,7 @@ export function LoginFormPanel({
     if (!res?.ok) {
       const diagnosticsNote = formatDiagnostics(data?.diagnostics);
       if (diagnosticsNote) setOpsStatus(diagnosticsNote);
-      if (data?.mfaRequired) {
-        setStatus("Ingresa tu código MFA de 6 dígitos para continuar.");
-      } else if (res?.status === 502) {
+      if (res?.status === 502) {
         setStatus("Servicio de autenticación no disponible temporalmente.");
       } else if (res?.status === 403) {
         setStatus("Acceso denegado por política y alcance del entorno.");
@@ -164,7 +160,7 @@ export function LoginFormPanel({
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">Demo comercial autorizada</p>
                 <h2 className="mt-1 text-xl font-black text-white">Bodega Balmec</h2>
                 <p className="mt-1 text-sm leading-5 text-slate-300">
-                  Entrada directa para mostrar el tenant completo: CRM, mapa vivo, tags, campañas, proof y marketplace sin tocar Super Admin.
+                  Entrada directa para mostrar el tenant completo: CRM, mapa de eventos reportados, tags, campañas, proof y marketplace sin tocar Super Admin.
                 </p>
               </div>
             </div>
@@ -301,12 +297,9 @@ export function LoginFormPanel({
           value={password}
           onChange={(event) => setPassword(event.target.value)}
         />
-        <input suppressHydrationWarning
-          className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-none"
-          placeholder="MFA / TOTP code (optional)"
-          value={mfaCode}
-          onChange={(event) => setMfaCode(event.target.value)}
-        />
+        <p className="rounded-xl border border-amber-300/20 bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-100">
+          TOTP nexID está temporalmente bloqueado. Super Admin usa Google/Clerk allowlisted; las cuentas tenant usan sesión y permisos nexID.
+        </p>
         <div className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-300">
           Perfil activo: <span className="text-cyan-200">{profileLabel}</span>
           <span className="ml-2 text-slate-500">({role})</span>

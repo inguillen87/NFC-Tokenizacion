@@ -6,6 +6,8 @@ import { sql } from "../../../../lib/db";
 import { json } from "../../../../lib/http";
 import { ensureConsumerPortalSchema } from "../../../../lib/commercial-runtime-schema";
 import { verifyWalletControlSignature, walletControlAuditHash } from "../../../../lib/wallet-control";
+import { enforceCriticalRateLimit } from "../../../../lib/critical-rate-limit";
+import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../lib/bounded-request-body";
 
 function cleanText(value: unknown, max = 220) {
   return String(value || "").trim().slice(0, max);
@@ -16,11 +18,19 @@ function maskAddress(address: string) {
 }
 
 export async function POST(req: Request) {
-  await ensureConsumerPortalSchema();
   const consumer = await getConsumerFromRequest(req);
   if (!consumer) return json({ ok: false, error: "unauthorized" }, 401);
+  const limited = await enforceCriticalRateLimit(req, { rateClass: "auth", tenantId: "consumer", subjectId: `consumer:${consumer.id}:wallet-connect` });
+  if (limited) return limited;
+  let body: Record<string, unknown>;
+  try {
+    body = await readBoundedJsonBody<Record<string, unknown>>(req, 8 * 1024);
+  } catch (error) {
+    const tooLarge = error instanceof RequestBodyTooLargeError;
+    return json({ ok: false, error: tooLarge ? "request_body_too_large" : "invalid_json" }, tooLarge ? 413 : 400, { "cache-control": "no-store" });
+  }
+  await ensureConsumerPortalSchema();
 
-  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const challengeId = cleanText(body.challengeId || body.challenge_id, 80);
   const signature = cleanText(body.signature, 220);
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(challengeId)) {

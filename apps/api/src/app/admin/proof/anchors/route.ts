@@ -17,6 +17,7 @@ import {
   resolveIotaEvidenceRuntimeConfig,
 } from "../../../../lib/iota-evidence-writer";
 import { processIotaEvidenceAnchor } from "../../../../lib/iota-evidence-reconciler";
+import { adminCriticalRateLimitIdentity, enforceCriticalRateLimit } from "../../../../lib/critical-rate-limit";
 
 type AnchorProvider = "iota" | "polygon";
 
@@ -145,6 +146,11 @@ export async function POST(req: Request) {
   if (auth) return auth;
   const permission = checkAdminPermission(req, "proof:write");
   if (permission) return permission;
+  const rateLimited = await enforceCriticalRateLimit(req, {
+    rateClass: "proof_write",
+    ...adminCriticalRateLimitIdentity(req),
+  });
+  if (rateLimited) return rateLimited;
   await ensureSupplierOpsSchema();
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;

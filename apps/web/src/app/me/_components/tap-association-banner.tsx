@@ -28,7 +28,7 @@ function parseBoolean(value: string | null) {
 
 function maskId(value: string | null) {
   const text = String(value || "");
-  if (text.length <= 8) return text || "tap verificado";
+  if (text.length <= 8) return text || "evento NFC";
   return `${text.slice(0, 4)}...${text.slice(-4)}`;
 }
 
@@ -39,7 +39,7 @@ function summarizeAssociation(results: AssociationResult[]) {
   if (unauthorized) return "La sesión no quedó activa. Validá tu email o celular para terminar la asociación.";
   if (success.includes("claim")) return "Producto asociado, titularidad registrada y beneficios habilitados.";
   if (success.includes("save") || success.includes("join")) return "Producto guardado y club habilitado. Titularidad o tokenización pueden requerir validación del comercio.";
-  if (blocked.length) return "El tap fue verificado, pero las acciones comerciales quedaron protegidas por política de seguridad.";
+  if (blocked.length) return "El mensaje NFC fue validado, pero las acciones comerciales quedaron protegidas por política de seguridad.";
   return "No se pudo completar la asociación. Reintentá desde un tap físico fresco.";
 }
 
@@ -96,7 +96,7 @@ export function TapAssociationBanner() {
       setSessionState(active ? "active" : "none");
       setStatus(active
         ? "Hay una sesión activa en este navegador. Para una presentación limpia, reiniciá y pedí un código nuevo."
-        : "Validá WhatsApp, celular o email para asociar este tap a tu Passport.");
+        : "Validá WhatsApp, celular o email para asociar este evento NFC a tu Passport.");
     });
     return () => {
       cancelled = true;
@@ -139,7 +139,7 @@ export function TapAssociationBanner() {
   async function continueWithCurrentSession() {
     if (!eventId || pending) return;
     setPending(true);
-    setStatus("Asociando este tap verificado con la sesión actual...");
+    setStatus("Asociando el evento con mensaje NFC validado a la sesión actual...");
     try {
       const ready = await hasConsumerSession();
       if (!ready) {
@@ -202,7 +202,7 @@ export function TapAssociationBanner() {
       }
       setCode("");
       setStep("code");
-      setStatus("Código enviado. Validá para asociar el tap, guardar el producto y habilitar beneficios.");
+      setStatus("Código enviado. Validá para asociar el evento NFC, guardar el producto y habilitar beneficios.");
     } finally {
       setPending(false);
     }
@@ -215,7 +215,7 @@ export function TapAssociationBanner() {
       return;
     }
     setPending(true);
-    setStatus("Verificando identidad y asociando el tap...");
+    setStatus("Verificando identidad y asociando el evento NFC...");
     try {
       const verify = await fetch("/api/consumer/auth/verify", {
         method: "POST",
@@ -240,13 +240,13 @@ export function TapAssociationBanner() {
 
   return (
     <section className="rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-4">
-      <p className="text-[11px] uppercase tracking-[0.16em] text-cyan-200">Tap físico verificado</p>
+      <p className="text-[11px] uppercase tracking-[0.16em] text-cyan-200">Mensaje NFC validado</p>
       <h2 className="mt-1 text-lg font-semibold text-white">Activá tu Passport antes de recibir beneficios</h2>
       <p className="mt-1 text-sm text-cyan-50/90">
-        Evento seguro: <span className="font-mono">{maskId(eventId)}</span>
+        Evidencia digital: <span className="font-mono">{maskId(eventId)}</span>
       </p>
       <p className="mt-2 text-sm text-slate-200">
-        nexID no emite voucher, ownership ni claim antes de validar identidad. Usá WhatsApp, celular o email para que el flujo sea auditable.
+        La validación del mensaje no autentica por sí sola el producto físico. nexID no emite voucher, ownership ni claim antes de validar identidad. Usá WhatsApp, celular o email para que el flujo sea auditable.
       </p>
 
       {step !== "done" ? (

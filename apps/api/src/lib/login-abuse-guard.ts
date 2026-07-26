@@ -1,5 +1,4 @@
 import { createHmac } from "crypto";
-import { isIP } from "net";
 
 type Sql = (strings: TemplateStringsArray, ...values: unknown[]) => Promise<any[]>;
 type Env = Record<string, string | undefined>;
@@ -17,7 +16,6 @@ export type LoginRateLimitPolicy = {
   sourceMaxAttempts: number;
   blockSeconds: number;
   retentionSeconds: number;
-  trustedProxyHops: number;
   failClosed: boolean;
   pepper: string;
 };
@@ -98,7 +96,6 @@ export function getLoginRateLimitPolicy(env: Env = process.env): LoginRateLimitP
     3_600,
     31 * 24 * 60 * 60,
   );
-  const trustedProxyHops = readInteger(env, "LOGIN_TRUSTED_PROXY_HOPS", 0, 0, 10);
   const pepper = String(env.LOGIN_RATE_LIMIT_PEPPER || "").trim() || (isProduction ? "" : NON_PRODUCTION_PEPPER);
 
   if (sourceMaxAttempts < subjectSourceMaxAttempts) {
@@ -110,47 +107,15 @@ export function getLoginRateLimitPolicy(env: Env = process.env): LoginRateLimitP
   if (isProduction && pepper.length < 32) {
     throw new LoginAbuseGuardUnavailableError("login_rate_limit_pepper_required");
   }
-  if (isProduction && trustedProxyHops < 1) {
-    throw new LoginAbuseGuardUnavailableError("login_trusted_proxy_hops_required");
-  }
-
   return {
     windowSeconds,
     subjectSourceMaxAttempts,
     sourceMaxAttempts,
     blockSeconds,
     retentionSeconds,
-    trustedProxyHops,
     failClosed: shouldFailClosedLoginAbuseGuard(env),
     pepper,
   };
-}
-
-function normalizeForwardedIp(value: string) {
-  const candidate = value.trim();
-  if (!candidate) return null;
-  if (isIP(candidate)) return candidate;
-
-  const bracketed = candidate.match(/^\[([^\]]+)](?::\d{1,5})?$/);
-  if (bracketed && isIP(bracketed[1])) return bracketed[1];
-
-  const ipv4WithPort = candidate.match(/^([^:]+):(\d{1,5})$/);
-  if (ipv4WithPort && isIP(ipv4WithPort[1]) === 4) return ipv4WithPort[1];
-  return null;
-}
-
-export function resolveTrustedLoginClientIp(req: Request, policy: Pick<LoginRateLimitPolicy, "trustedProxyHops">) {
-  if (policy.trustedProxyHops < 1) return null;
-
-  const forwardedFor = String(req.headers.get("x-forwarded-for") || "").trim();
-  if (!forwardedFor) return null;
-  const chain = forwardedFor.split(",").map((entry) => entry.trim()).filter(Boolean);
-  if (chain.length === 0 || chain.length > 32) return null;
-
-  // X-Forwarded-For is ordered client -> nearest upstream proxy. Only entries
-  // to the right of this index are trusted; attacker-prepended entries stay left.
-  const clientIndex = Math.max(0, chain.length - policy.trustedProxyHops);
-  return normalizeForwardedIp(chain[clientIndex]);
 }
 
 function bucketKey(pepper: string, scope: "source" | "source_subject", parts: string[]) {

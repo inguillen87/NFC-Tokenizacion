@@ -65,12 +65,14 @@ export default async function SettingsPage() {
   const tenantName = tenantNameFromSlug(tenantSlug);
   const isClerkSuperAdminSession = session.role === "super-admin" && !session.mfaVerified;
   const clerkEnabled = isClerkConfiguredForRuntime();
-  const sessionSecurityLabel = isClerkSuperAdminSession
-    ? "SSO Google/Clerk, MFA pendiente"
-    : session.mfaVerified
-      ? "MFA verificado"
-      : "MFA pendiente";
-  const securityBadgeTone = session.mfaVerified ? "green" : "amber";
+  const sessionSecurityLabel = session.isDemo
+    ? "Sesión demo; no prueba MFA"
+    : isClerkSuperAdminSession
+      ? "Google/Clerk SSO verificado; TOTP nexID no disponible"
+      : session.mfaVerified
+        ? "MFA legacy reportado; migración requerida"
+        : "TOTP nexID no disponible";
+  const securityBadgeTone = isClerkSuperAdminSession ? "green" : "amber";
   const canManageUsers = session.role === "super-admin"
     || session.permissions.includes("*")
     || session.permissions.includes("users:manage")
@@ -80,9 +82,7 @@ export default async function SettingsPage() {
 
   const primaryAction = session.setupCompleted === false && session.role === "tenant-admin"
     ? { href: "/onboarding", label: "Completar setup", meta: "Datos base, equipo e integraciones iniciales" }
-    : !session.mfaVerified
-      ? { href: "/mfa", label: "Reforzar seguridad", meta: "Activar segundo factor antes de escalar permisos" }
-      : { href: tenantHref, label: "Abrir workspace", meta: "Perfil, plan, health y acciones del tenant" };
+    : { href: tenantHref, label: "Abrir workspace", meta: "Perfil, alcance y acciones del tenant" };
 
   const tiles: SettingsTile[] = [
     {
@@ -98,8 +98,8 @@ export default async function SettingsPage() {
       href: "/tokenization",
       label: "Polygon ownership",
       eyebrow: "Ownership",
-      body: "Certificados, claims, garantia transferible y propiedad separados de la prueba IOTA.",
-      proof: "Polygon no reemplaza proof: prueba derechos y ownership.",
+      body: "Certificados, claims y titularidad digital segun policy, separados de la prueba IOTA.",
+      proof: "Polygon registra derechos digitales declarados; no prueba propiedad ni custodia fisica.",
       tone: "violet",
       icon: <Network className="h-5 w-5" />,
     },
@@ -125,8 +125,8 @@ export default async function SettingsPage() {
       href: tenantHref,
       label: tenantSlug ? `Perfil ${tenantName}` : "Directorio de tenants",
       eyebrow: "Workspace",
-      body: "Plan, vertical, region, health operativo, quick actions y playbook de expansion.",
-      proof: tenantSlug ? "La cuenta abre directo en su contexto." : "Superadmin ve cartera completa.",
+      body: "Perfil, vertical, región, quick actions y playbook ilustrativo de expansión.",
+      proof: tenantSlug ? "La cuenta abre en su contexto; el directorio marca sus fixtures." : "El directorio actual es ilustrativo, no una cartera real.",
       tone: "cyan",
       icon: <Building2 className="h-5 w-5" />,
     },
@@ -134,18 +134,18 @@ export default async function SettingsPage() {
       href: canManageUsers ? "/users" : "/settings",
       label: canManageUsers ? "Usuarios y permisos" : "Permisos del workspace",
       eyebrow: "IAM",
-      body: "Alta, roles, permisos por recurso, reset de acceso y control de MFA.",
-      proof: canManageUsers ? "Gestionable desde consola." : "Solicitudes visibles sin exponer IAM.",
+      body: "Alta, roles, permisos por recurso, reset de acceso y revocación de MFA legacy.",
+      proof: canManageUsers ? "TOTP nuevo permanece bloqueado hasta completar el flujo seguro." : "Solicitudes visibles sin exponer IAM.",
       tone: "green",
       icon: <Users className="h-5 w-5" />,
     },
     {
       href: "/mfa",
-      label: "Seguridad y MFA",
+      label: "Seguridad de cuenta",
       eyebrow: "Security",
-      body: "Segundo factor, postura de sesion y preparacion para acceso enterprise real.",
+      body: "Estado de sesión, SSO y límites actuales. TOTP nexID está fail-closed y no puede habilitarse desde la UI.",
       proof: sessionSecurityLabel,
-      tone: session.mfaVerified ? "green" : "amber",
+      tone: securityBadgeTone,
       icon: <ShieldCheck className="h-5 w-5" />,
     },
     {
@@ -159,10 +159,10 @@ export default async function SettingsPage() {
     },
     {
       href: `/subscriptions${tenantQuery}`,
-      label: "Plan y facturacion",
-      eyebrow: "Revenue",
-      body: "Plan contratado, renovacion, uso, upgrade path y alcance comercial del tenant.",
-      proof: "MRR, renovacion y expansion en una vista.",
+      label: "Simulador de plan",
+      eyebrow: "Pricing model",
+      body: "Escenarios ilustrativos de precio, uso, renovación y upgrade hasta conectar billing real.",
+      proof: "No representa MRR, contratos ni renovaciones confirmadas.",
       tone: "cyan",
       icon: <CreditCard className="h-5 w-5" />,
     },

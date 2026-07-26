@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { GeoJSONSource, Map as MapLibreMap, MapLayerMouseEvent, Popup } from "maplibre-gl";
+import { resolveEventMapCoordinate, type MapCoordinatePrecision } from "../lib/geo-coordinates";
 import type { TenantTapRealtimeEvent } from "../lib/realtime-feed";
 
 type MapMode = "tenant" | "global";
@@ -31,6 +32,10 @@ type TapFeature = {
     occurredAt: string;
     weight: number;
     localTaps: number;
+    locationAccuracyM: number | null;
+    locationLabel: string;
+    locationPrecision: MapCoordinatePrecision;
+    locationSource: string;
   };
   geometry: {
     type: "Point";
@@ -42,15 +47,6 @@ type TapFeatureCollection = {
   type: "FeatureCollection";
   features: TapFeature[];
 };
-
-const FALLBACK_COORDS: Array<{ match: RegExp; country: string; lat: number; lng: number }> = [
-  { match: /san\s*martin|buenos\s*aires|caba/i, country: "AR", lat: -34.6037, lng: -58.3816 },
-  { match: /mendoza|valle\s+de\s+uco|tunuyan|tupungato|lujan/i, country: "AR", lat: -32.8895, lng: -68.8458 },
-  { match: /cordoba/i, country: "AR", lat: -31.4201, lng: -64.1888 },
-  { match: /rosario/i, country: "AR", lat: -32.9442, lng: -60.6505 },
-  { match: /neuquen/i, country: "AR", lat: -38.9516, lng: -68.0591 },
-  { match: /mar\s*del\s*plata/i, country: "AR", lat: -38.0055, lng: -57.5426 },
-];
 
 const MAP_STYLE = {
   version: 8,
@@ -118,27 +114,6 @@ function escapeHtml(value: unknown) {
     .replaceAll("'", "&#039;");
 }
 
-function hashString(value: string) {
-  let hash = 0;
-  for (let index = 0; index < value.length; index += 1) {
-    hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
-  }
-  return hash;
-}
-
-function fallbackCoordinate(city: string, country: string) {
-  const normalizedCountry = country.toUpperCase();
-  return FALLBACK_COORDS.find((item) => item.country === normalizedCountry && item.match.test(city)) || null;
-}
-
-function jitter(lng: number, lat: number, seed: string, fallbackUsed: boolean): [number, number] {
-  if (!fallbackUsed) return [lng, lat];
-  const hash = hashString(seed);
-  const lngDelta = (((hash % 100) / 100) - 0.5) * 0.18;
-  const latDelta = ((((hash >> 8) % 100) / 100) - 0.5) * 0.18;
-  return [lng + lngDelta, lat + latDelta];
-}
-
 function deviceSummary(row: TenantTapRealtimeEvent) {
   return [row.deviceLabel, row.deviceOs, row.deviceType].map((item) => String(item || "").trim()).filter(Boolean).join(" / ") || "Dispositivo sin clasificar";
 }
@@ -146,16 +121,19 @@ function deviceSummary(row: TenantTapRealtimeEvent) {
 function eventToFeature(row: TenantTapRealtimeEvent, index: number): TapFeature | null {
   const city = String(row.city || "Unknown");
   const country = String(row.country || "--");
-  const fallback = fallbackCoordinate(city, country);
-  const hasRealCoords = Number.isFinite(Number(row.lat)) && Number.isFinite(Number(row.lng));
-  const lat = hasRealCoords ? Number(row.lat) : fallback?.lat;
-  const lng = hasRealCoords ? Number(row.lng) : fallback?.lng;
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-
   const verdict = String(row.verdict || "VALID").toUpperCase();
   const risk = verdict === "VALID" ? 0 : 1;
   const seed = String(row.eventId || row.uidMasked || row.occurredAt || index);
-  const coordinates = jitter(Number(lng), Number(lat), seed, !hasRealCoords);
+  const coordinate = resolveEventMapCoordinate({
+    lat: row.lat,
+    lng: row.lng,
+    city,
+    country,
+    locationSource: row.locationSource,
+    locationAccuracyM: row.locationAccuracyM,
+    seed,
+  });
+  if (!coordinate) return null;
 
   return {
     type: "Feature",
@@ -171,10 +149,14 @@ function eventToFeature(row: TenantTapRealtimeEvent, index: number): TapFeature 
       occurredAt: String(row.occurredAt || ""),
       weight: risk ? 1.5 : 1,
       localTaps: 1,
+      locationAccuracyM: coordinate.accuracyM,
+      locationLabel: coordinate.label,
+      locationPrecision: coordinate.precision,
+      locationSource: coordinate.source,
     },
     geometry: {
       type: "Point",
-      coordinates,
+      coordinates: [coordinate.lng, coordinate.lat],
     },
   };
 }
@@ -405,7 +387,10 @@ export function RealtimeMapLibreMap({
   const mapRef = useRef<MapLibreMap | null>(null);
   const maplibreRef = useRef<typeof import("maplibre-gl") | null>(null);
   const popupRef = useRef<Popup | null>(null);
+  const mapTitleId = useId();
+  const mapSummaryId = useId();
   const [loaded, setLoaded] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
   const [themeBaseMap, setThemeBaseMap] = useState<BaseMapLayer>("dark");
 
   const geojson = useMemo(() => buildGeojson(events), [events]);
@@ -413,6 +398,11 @@ export function RealtimeMapLibreMap({
     () => geojson.features.map((feature) => `${feature.properties.eventId}:${feature.geometry.coordinates.join(",")}`).join("|"),
     [geojson],
   );
+  const precisionSummary = useMemo(() => geojson.features.reduce((summary, feature) => {
+    summary[feature.properties.locationPrecision] += 1;
+    return summary;
+  }, { reported: 0, approximate: 0, synthetic: 0 } as Record<MapCoordinatePrecision, number>), [geojson]);
+  const textualHotspots = hotspots.slice(0, 5);
 
   useEffect(() => {
     setThemeBaseMap(defaultBaseMapLayer());
@@ -427,6 +417,7 @@ export function RealtimeMapLibreMap({
     let cleanupAnimation: (() => void) | null = null;
 
     const boot = async () => {
+      setMapError(null);
       const maplibre = await import("maplibre-gl");
       if (cancelled || !containerRef.current || mapRef.current) return;
 
@@ -450,16 +441,18 @@ export function RealtimeMapLibreMap({
         setLayerVisibility(map, mapView);
         setBasemapLayer(map, baseMap || defaultBaseMapLayer());
         fitData(maplibre, map, geojson, zoom);
-        let frame = 0;
-        const animatePulse = () => {
-          const wave = (Math.sin((performance.now() / 900) * Math.PI) + 1) / 2;
-          if (map.getLayer("tap-pulse")) {
-            map.setPaintProperty("tap-pulse", "circle-stroke-opacity", 0.12 + wave * 0.28);
-          }
+        if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+          let frame = 0;
+          const animatePulse = () => {
+            const wave = (Math.sin((performance.now() / 900) * Math.PI) + 1) / 2;
+            if (map.getLayer("tap-pulse")) {
+              map.setPaintProperty("tap-pulse", "circle-stroke-opacity", 0.12 + wave * 0.28);
+            }
+            frame = requestAnimationFrame(animatePulse);
+          };
           frame = requestAnimationFrame(animatePulse);
-        };
-        frame = requestAnimationFrame(animatePulse);
-        cleanupAnimation = () => cancelAnimationFrame(frame);
+          cleanupAnimation = () => cancelAnimationFrame(frame);
+        }
         setLoaded(true);
       });
 
@@ -486,6 +479,8 @@ export function RealtimeMapLibreMap({
               <b>${escapeHtml(props.uid)}</b>
               <span>${escapeHtml(props.city)}, ${escapeHtml(props.country)}</span>
               <small>${escapeHtml(props.verdict)} / ${escapeHtml(props.device)}</small>
+              <small>${escapeHtml(props.locationLabel)}</small>
+              <small>Fuente de ubicación: ${escapeHtml(props.locationSource)}</small>
               <small>${escapeHtml(props.localTaps)} taps en la zona</small>
             </div>
           `)
@@ -504,7 +499,12 @@ export function RealtimeMapLibreMap({
       }
     };
 
-    void boot();
+    void boot().catch(() => {
+      if (!cancelled) {
+        setLoaded(false);
+        setMapError("No se pudo iniciar el motor geográfico en este dispositivo.");
+      }
+    });
     return () => {
       cancelled = true;
       cleanupResize?.();
@@ -550,20 +550,62 @@ export function RealtimeMapLibreMap({
       data-map-view={mapView}
       data-base-map={baseMap || themeBaseMap}
       data-zoom={zoom.toFixed(2)}
+      aria-labelledby={mapTitleId}
+      aria-describedby={mapSummaryId}
       className="nexid-realtime-map relative h-full min-h-[300px] overflow-hidden rounded-xl border border-white/8 bg-[#061322] shadow-[inset_0_1px_0_rgba(255,255,255,.04)]"
+      role="region"
     >
+      <h3 id={mapTitleId} className="sr-only">Mapa operativo de lecturas con precisión geográfica declarada</h3>
       <div ref={containerRef} className="h-full w-full" />
-      <div className="nexid-map-status pointer-events-none absolute left-16 top-20 max-w-[calc(100%-5rem)] rounded-lg border border-white/10 bg-slate-950/72 px-3 py-2 text-xs text-slate-300 shadow-xl backdrop-blur sm:top-16 lg:top-20">
-        <b className="text-cyan-200">{events.length}</b> taps / {hotspots.length} hotspots / {mode === "tenant" ? "tenant" : "global"}
+      <div id={mapSummaryId} className="nexid-map-status pointer-events-none absolute left-16 top-20 max-w-[calc(100%-5rem)] rounded-lg border border-white/10 bg-slate-950/72 px-3 py-2 text-xs text-slate-300 shadow-xl backdrop-blur sm:top-16 lg:top-20">
+        <b className="text-cyan-200">{geojson.features.length}</b> ubicaciones mapeables / {hotspots.length} zonas / {mode === "tenant" ? "tenant" : "global"}
+        <span className="mt-1 block text-[10px] text-slate-400">
+          {precisionSummary.reported} GPS/reportadas · {precisionSummary.approximate} aproximadas · {precisionSummary.synthetic} sintéticas por centro urbano
+        </span>
       </div>
-      {!geojson.features.length ? (
-        <div className="absolute inset-0 grid place-items-center bg-slate-950/55 text-center text-sm text-slate-300">
+      {!loaded && !mapError ? (
+        <div className="absolute inset-0 grid place-items-center bg-slate-950/70 text-center text-sm text-slate-300" role="status" aria-busy="true">
           <div>
-            <b className="block text-white">Sin taps geolocalizados en esta ventana</b>
-            Cambia tenant o rango temporal para poblar el mapa.
+            <span className="mx-auto mb-3 block h-7 w-7 animate-spin rounded-full border-2 border-cyan-300/25 border-t-cyan-300 motion-reduce:animate-none" aria-hidden="true" />
+            <b className="block text-white">Preparando mapa operativo</b>
+            Cargando capas, controles y eventos geográficos.
           </div>
         </div>
       ) : null}
+      {mapError ? (
+        <div className="absolute inset-0 grid place-items-center bg-slate-950/90 p-6 text-center text-sm text-slate-300" role="alert">
+          <div className="max-w-md">
+            <b className="block text-rose-200">Mapa visual no disponible</b>
+            <span className="mt-1 block">{mapError} El resumen textual conserva las zonas disponibles y explicita su nivel de precisión.</span>
+          </div>
+        </div>
+      ) : null}
+      {loaded && !mapError && !geojson.features.length ? (
+        <div className="absolute inset-0 grid place-items-center bg-slate-950/55 text-center text-sm text-slate-300">
+          <div>
+            <b className="block text-white">Sin ubicaciones utilizables en esta ventana</b>
+            Cambia tenant o rango temporal, o realiza un tap con ciudad/GPS informado.
+          </div>
+        </div>
+      ) : null}
+      <details className="absolute bottom-8 right-3 z-10 max-w-[min(22rem,calc(100%-1.5rem))] rounded-lg border border-white/10 bg-slate-950/85 text-xs text-slate-300 shadow-xl backdrop-blur">
+        <summary className="cursor-pointer px-3 py-2 font-black text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300">
+          Resumen textual del mapa
+        </summary>
+        <div className="border-t border-white/10 px-3 py-2">
+          {textualHotspots.length ? (
+            <ol className="space-y-1.5">
+              {textualHotspots.map((hotspot) => (
+                <li key={hotspot.key}>
+                  <b className="text-white">{hotspot.city}, {hotspot.country}</b>: {hotspot.taps} taps, {hotspot.valid} válidos, {hotspot.risk} con riesgo. Resumen por zona; no implica GPS exacto.
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p>No hay zonas agregadas para los filtros activos.</p>
+          )}
+        </div>
+      </details>
     </div>
   );
 }

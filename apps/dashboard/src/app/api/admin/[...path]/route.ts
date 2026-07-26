@@ -21,6 +21,7 @@ import {
 } from "../../../../lib/demo-runtime-state";
 
 const API_BASE = productUrls.api;
+const MAX_ADMIN_PROXY_BODY_BYTES = 512 * 1024;
 const DEFAULT_DEMO_TENANT = { slug: "demo-sandbox", name: "Demo Sandbox" };
 const DEMO_TENANT_NAMES: Record<string, string> = {
   "demo-sandbox": "Demo Sandbox",
@@ -106,6 +107,64 @@ function safeParseJson(text: string) {
   } catch {
     return null;
   }
+}
+
+async function readBoundedAdminProxyBody(req: Request) {
+  if (req.method === "GET" || req.method === "HEAD") {
+    return { ok: true as const, body: undefined };
+  }
+
+  const declared = Number(req.headers.get("content-length") || "0");
+  if (Number.isFinite(declared) && declared > MAX_ADMIN_PROXY_BODY_BYTES) {
+    return {
+      ok: false as const,
+      response: NextResponse.json(
+        { ok: false, reason: "admin_proxy_request_too_large" },
+        { status: 413, headers: { "cache-control": "no-store" } },
+      ),
+    };
+  }
+
+  const reader = req.body?.getReader();
+  if (!reader) return { ok: true as const, body: undefined };
+
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      total += value.byteLength;
+      if (total > MAX_ADMIN_PROXY_BODY_BYTES) {
+        await reader.cancel("admin_proxy_request_too_large").catch(() => undefined);
+        return {
+          ok: false as const,
+          response: NextResponse.json(
+            { ok: false, reason: "admin_proxy_request_too_large" },
+            { status: 413, headers: { "cache-control": "no-store" } },
+          ),
+        };
+      }
+      chunks.push(value);
+    }
+  } catch {
+    return {
+      ok: false as const,
+      response: NextResponse.json(
+        { ok: false, reason: "admin_proxy_body_read_failed" },
+        { status: 400, headers: { "cache-control": "no-store" } },
+      ),
+    };
+  }
+
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return { ok: true as const, body: total ? new TextDecoder().decode(bytes) : undefined };
 }
 
 function demoAdminResponse(method: string, path: string[], body: string, reqUrl?: string) {
@@ -250,7 +309,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
     const scans = mergedTrend.reduce((acc, row) => acc + row.scans, 0);
     const duplicates = mergedTrend.reduce((acc, row) => acc + row.duplicates, 0);
     const tamper = mergedTrend.reduce((acc, row) => acc + row.tamper, 0);
-    const invalid = duplicates + tamper;
+    const invalid = 0;
     const valid = Math.max(scans - invalid, 0);
     const metrics = aggregateTenantMetrics({
       counts: { scans, valid, invalid, duplicates, tamper, revoked: 0 },
@@ -288,9 +347,10 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
         activeBatches: 4,
         activeTenants: 1,
         geoRegions: mergedGeoPoints.length,
-        resellerPerformance: 88,
+        resellerPerformance: null,
         riskScore: Number(metrics.riskScore.toFixed(1)),
       },
+      billing: { resellerMrrAmount: null, currency: "USD", source: null, period: null },
       geography: {
         countries: [
           { country: "AR", scans: 463, risk: 4.9 },
@@ -324,6 +384,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
           taps: 41 + runtimeSummary.scans,
           firstSeenAt: new Date(now - 14 * 24 * 60 * 60 * 1000).toISOString(),
           lastSeenAt: latestRuntimeEvent?.created_at || new Date(now - 9 * 60 * 1000).toISOString(),
+          originSource: "product_passport_declared",
           origin: { city: "Mendoza", country: "AR", lat: -32.8895, lng: -68.8458 },
           current: latestRuntimeEvent
             ? { city: latestRuntimeEvent.city, country: latestRuntimeEvent.country_code, lat: latestRuntimeEvent.lat, lng: latestRuntimeEvent.lng }
@@ -849,7 +910,7 @@ function demoAdminResponse(method: string, path: string[], body: string, reqUrl?
           createdAt: new Date(Date.now() - 9 * 60 * 1000).toISOString(),
           result: "ok",
           reason: "sun_ok",
-          source: "real",
+          source: "demo",
           location: { city: "Buenos Aires", country: "AR", lat: -34.6037, lng: -58.3816 },
           device: { label: "iPhone 15 Pro", os: "iOS", browser: "Safari", deviceType: "mobile", timezone: "America/Argentina/Buenos_Aires" },
         },
@@ -971,7 +1032,6 @@ async function forward(req: Request, path: string[]) {
   const forceSandbox = ["1", "true", "sandbox"].includes(String(reqUrl.searchParams.get("sandbox") || reqUrl.searchParams.get("demoFallback") || "").toLowerCase());
   reqUrl.searchParams.delete("sandbox");
   reqUrl.searchParams.delete("demoFallback");
-  const body = req.method === "GET" ? undefined : await req.text();
   const hasAdminKey = Boolean((process.env.ADMIN_API_KEY || "").trim());
   const requireScopedAdminAuth = String(process.env.REQUIRE_SCOPED_ADMIN_AUTH || "").toLowerCase() === "true";
   const demoSession = isDemoSession(req);
@@ -1039,6 +1099,10 @@ async function forward(req: Request, path: string[]) {
     );
   }
 
+  const bodyResult = await readBoundedAdminProxyBody(req);
+  if (!bodyResult.ok) return bodyResult.response;
+  const body = bodyResult.body;
+
   if (scopedRole === "readonly_demo") {
     console.info("[admin_proxy_demo_sandbox]", JSON.stringify({ method: req.method, path: normalizedPath }));
     return markDemoData(demoAdminResponse(req.method, path, body || "", req.url));
@@ -1055,7 +1119,8 @@ async function forward(req: Request, path: string[]) {
         ok: false,
         reason,
         scope: { source: "unavailable", tenant: "unknown", range: "24h", country: "all" },
-        kpis: { scans: 0, validRate: 0, invalidRate: 0, duplicates: 0, tamper: 0, activeBatches: 0, activeTenants: 0, geoRegions: 0, resellerPerformance: 0 },
+        kpis: { scans: 0, validRate: 0, invalidRate: 0, duplicates: 0, tamper: 0, activeBatches: 0, activeTenants: 0, geoRegions: 0, resellerPerformance: null },
+        billing: { resellerMrrAmount: null, currency: "USD", source: null, period: null },
         geography: { countries: [], cities: [] },
         devices: { os: [], browser: [], deviceType: [], timezones: [], mobileShare: 0 },
         feed: [],

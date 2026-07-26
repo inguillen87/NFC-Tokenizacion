@@ -1,0 +1,16 @@
+{
+  "$comment": "Rule fragment only. Merge it into the existing zone-level http_request_late_transform ruleset; never replace the complete ruleset. Replace the fail-closed placeholder at deployment time and never commit the real secret.",
+  "ref": "nexid_api_origin_auth",
+  "description": "nexID - overwrite origin credential for every api.nexid.lat request",
+  "expression": "(http.host eq \"api.nexid.lat\")",
+  "action": "rewrite",
+  "action_parameters": {
+    "headers": {
+      "x-nexid-edge-auth": {
+        "operation": "set",
+        "value": "__SET_AT_DEPLOY_TIME__"
+      }
+    }
+  },
+  "enabled": true
+}

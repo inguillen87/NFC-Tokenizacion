@@ -7,7 +7,7 @@ WORKDIR /srv/nexid
 
 COPY package.json package-lock.json ./
 COPY apps/executor/package.json apps/executor/package.json
-RUN npm ci --omit=dev --workspace=executor \
+RUN npm ci --ignore-scripts --omit=dev --workspace=executor \
     && npm cache clean --force
 
 COPY apps/executor/src apps/executor/src

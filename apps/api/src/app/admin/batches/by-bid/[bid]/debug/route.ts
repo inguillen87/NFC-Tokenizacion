@@ -8,10 +8,10 @@ import { json } from "../../../../../../lib/http";
 import { decryptKey16 } from "../../../../../../lib/keys";
 import { summarizeBatchSdmConfig } from "../../../../../../lib/sun-service";
 
-function fingerprintFromCiphertext(ct: unknown) {
+function fingerprintFromCiphertext(ct: unknown, context: { tenantId: string; bid: string; role: "K_META_BATCH" | "K_FILE_BATCH"; keyVersion: number }) {
   if (!ct) return null;
   try {
-    const hex = decryptKey16(String(ct)).toString("hex").toUpperCase();
+    const hex = decryptKey16(String(ct), context).toString("hex").toUpperCase();
     return createHash("sha256").update(Buffer.from(hex, "hex")).digest("hex").slice(0, 16).toUpperCase();
   } catch {
     return "KMS_DECRYPT_FAILED";
@@ -51,7 +51,14 @@ export async function GET(req: Request, context: { params: Promise<{ bid: string
 
   if (!rows.length) return json({ ok: false, reason: "batch not found", bid, batches: [] }, 404);
 
-  const batches = rows.map((row) => ({
+  const batches = rows.map((row) => {
+    const keyVersion = Number((row.sdm_config as { key_version?: unknown } | null)?.key_version || 1);
+    const keyContext = {
+      tenantId: String(row.tenant_id),
+      bid: String(row.bid),
+      keyVersion: Number.isSafeInteger(keyVersion) && keyVersion > 0 ? keyVersion : 1,
+    };
+    return ({
     id: row.id,
     bid: row.bid,
     tenant_id: row.tenant_id,
@@ -64,11 +71,12 @@ export async function GET(req: Request, context: { params: Promise<{ bid: string
     active_tag_count: Number(row.active_tag_count || 0),
     keys_present: Boolean(row.meta_key_ct && row.file_key_ct),
     key_fingerprints: {
-      k_meta_sha256_prefix: fingerprintFromCiphertext(row.meta_key_ct),
-      k_file_sha256_prefix: fingerprintFromCiphertext(row.file_key_ct),
+      k_meta_sha256_prefix: fingerprintFromCiphertext(row.meta_key_ct, { ...keyContext, role: "K_META_BATCH" }),
+      k_file_sha256_prefix: fingerprintFromCiphertext(row.file_key_ct, { ...keyContext, role: "K_FILE_BATCH" }),
     },
     batch_sdm_config: summarizeBatchSdmConfig(row.sdm_config),
-  }));
+    });
+  });
   const duplicate = batches.length > 1;
 
   return json({

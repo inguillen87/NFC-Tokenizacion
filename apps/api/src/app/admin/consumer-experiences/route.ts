@@ -33,8 +33,14 @@ function readJsonArray(value: unknown) {
 }
 
 function formatExperience(row: Record<string, unknown>) {
+  const metadata = row.metadata_json && typeof row.metadata_json === "object"
+    ? row.metadata_json as Record<string, unknown>
+    : {};
+  const trustScoreStatus = String(metadata.trust_score_status || "").trim() || (row.trust_score == null ? "not_computed" : "computed");
   return {
     ...row,
+    trust_score: trustScoreStatus === "computed" ? row.trust_score : null,
+    trust_score_status: trustScoreStatus,
     photo_urls: readJsonArray(row.photo_urls_json),
     verification_badges: readJsonArray(row.verification_badges_json),
   };
@@ -65,6 +71,7 @@ export async function GET(req: Request) {
       e.photo_urls_json,
       e.verification_badges_json,
       e.trust_score,
+      e.metadata_json,
       e.moderation_status,
       e.visibility,
       e.brand_response,
@@ -147,6 +154,7 @@ export async function PATCH(req: Request) {
       e.photo_urls_json,
       e.verification_badges_json,
       e.trust_score,
+      e.metadata_json,
       e.moderation_status,
       e.visibility,
       e.brand_response,

@@ -3,11 +3,13 @@ export const dynamic = "force-dynamic";
 
 import { json } from "../../../../../lib/http";
 import { getLoyaltyMemberById } from "../../../../../lib/loyalty-service";
+import { getConsumerFromRequest } from "../../../../../lib/consumer-auth";
 
 export async function GET(req: Request, { params }: { params: Promise<{ memberId: string }> }) {
   const { memberId } = await params;
-  const tenantId = new URL(req.url).searchParams.get("tenant");
-  const member = await getLoyaltyMemberById({ memberId, tenantId });
+  const consumer = await getConsumerFromRequest(req);
+  if (!consumer) return json({ ok: false, error: "unauthorized" }, 401);
+  const member = await getLoyaltyMemberById({ memberId, consumerId: consumer.id });
   if (!member) return json({ ok: false, error: "member_not_found" }, 404);
 
   return json({

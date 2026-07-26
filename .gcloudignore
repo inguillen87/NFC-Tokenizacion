@@ -14,6 +14,10 @@
 !apps/executor/Dockerfile
 !apps/executor/cloudbuild.yaml
 !apps/executor/scripts
+!apps/executor/scripts/generate-wallet-with-kms.mjs
+!apps/executor/scripts/generate-polygon-custody-wallets-with-kms.mjs
+!apps/executor/scripts/migrate-testnet-custody.mjs
+!apps/executor/scripts/rewrap-iota-governance-aad.mjs
 !apps/executor/scripts/wrap-wallet-with-kms.mjs
 !apps/executor/src
 !apps/executor/src/**

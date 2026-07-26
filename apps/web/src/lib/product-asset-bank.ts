@@ -123,13 +123,13 @@ function verticalLabel(kind: AssetVisualKind) {
 
 function defaultProductName(kind: AssetVisualKind) {
   if (kind === "bracelet") return "Brazalete de evento";
-  if (kind === "ticket") return "Entrada verificada";
+  if (kind === "ticket") return "Entrada con identidad digital";
   if (kind === "creamJar") return "Set dermocosmetico premium";
   if (kind === "creamTube") return "Set skincare premium";
   if (kind === "perfume") return "Perfume premium";
   if (kind === "seeds") return "Semillas trazables";
-  if (kind === "sneaker") return "Zapatillas autenticadas";
-  if (kind === "apparel") return "Prenda premium autenticada";
+  if (kind === "sneaker") return "Zapatillas con identidad digital";
+  if (kind === "apparel") return "Prenda premium con identidad digital";
   return "Gran Reserva Malbec";
 }
 
@@ -140,24 +140,24 @@ function slotSet(kind: AssetVisualKind, input: ProductAssetInput): ProductAssetS
   const hasGallery = Boolean((input.galleryUrls || []).length);
   const stockAsset = demoStockAssets[kind];
   const productLabel = kind === "wine"
-    ? "Foto botella real"
+    ? "Foto de botella declarada"
     : kind === "bracelet" || kind === "ticket"
-      ? "Foto acceso real"
+      ? "Foto de acceso declarada"
       : kind === "seeds"
-        ? "Foto empaque real"
+        ? "Foto de empaque declarada"
         : kind === "sneaker"
-          ? "Foto calzado real"
+          ? "Foto de calzado declarada"
           : kind === "apparel"
-            ? "Foto prenda real"
-        : "Foto producto real";
+            ? "Foto de prenda declarada"
+        : "Foto de producto declarada";
   const tagDetail = kind === "wine"
     ? "Tag sobre capsula/cuello, listo para cortar al abrir."
     : kind === "bracelet" || kind === "ticket"
       ? "NFC en zona de tap del celular para acceso."
       : kind === "sneaker"
-        ? "NFC en lengueta, plantilla o packaging para autenticidad y recompra."
+        ? "NFC en lengueta, plantilla o packaging para identidad digital y recompra."
         : kind === "apparel"
-          ? "NFC en etiqueta colgante o interior para autenticidad, cuidado y reventa."
+          ? "NFC en etiqueta colgante o interior para identidad digital, cuidado y reventa."
       : kind === "perfume"
         ? "Tag en union tapa/frasco para evidenciar apertura."
         : "Tag en punto de apertura entre tapa y envase.";
@@ -167,10 +167,10 @@ function slotSet(kind: AssetVisualKind, input: ProductAssetInput): ProductAssetS
       id: "product-photo",
       label: productLabel,
       detail: hasImage
-        ? "Foto real del tenant usada en tap, Passport, certificado y marketplace."
+        ? "Imagen cargada por el tenant para tap, Passport, certificado y marketplace; nexID no valida por sí sola el objeto fotografiado."
         : stockAsset
-          ? `Foto real de banco visual demo (${stockAsset.sourceLabel}) hasta que el tenant suba su packshot.`
-          : "Demo render hasta que el tenant suba foto real.",
+          ? `Imagen de banco visual para demo (${stockAsset.sourceLabel}); no representa el producto del tenant.`
+          : "Render de demo hasta que el tenant cargue una imagen declarada.",
       status: hasImage ? "ready" : "demo",
       tone: "photo",
       imageUrl: input.imageUrl || stockAsset?.productImageUrl || null,
@@ -178,7 +178,7 @@ function slotSet(kind: AssetVisualKind, input: ProductAssetInput): ProductAssetS
     {
       id: "front-label",
       label: "Etiqueta frontal",
-      detail: hasLabel ? "Etiqueta real cargada para reconocer el producto exacto." : "Pendiente de foto limpia de etiqueta o packshot.",
+      detail: hasLabel ? "Imagen de etiqueta cargada por el tenant para identificar su referencia declarada." : "Pendiente de imagen de etiqueta o packshot declarados.",
       status: hasLabel ? "ready" : "demo",
       tone: "label",
       imageUrl: input.labelImageUrl || null,
@@ -239,10 +239,10 @@ export function resolveProductAssetProfile(input: ProductAssetInput = {}): Produ
     modelUrl: input.modelUrl || null,
     galleryUrls,
     assetScore: scoreFor(slots),
-    heroLine: "El tap abre el mismo producto real que carga la marca: foto, etiqueta, tag aplicado, lote y estado SUN.",
-    claimLine: "Ownership solo se habilita con tap fisico fresco, identidad validada, producto correcto y politica del lote.",
-    ownerStory: "El objeto nace con lote y carrier, viaja por canal autorizado y termina en Passport con garantia, beneficios y NFT opcional.",
-    marketplaceLine: "El marketplace muestra el item real con lote, estado SUN, prueba de origen y beneficios habilitados.",
+    heroLine: "El tap abre la referencia digital cargada por la marca: foto declarada, etiqueta, identificador del tag, lote y resultado SUN.",
+    claimLine: "El ownership digital solo se solicita con una lectura fresca, identidad de usuario validada y política del lote; no transfiere propiedad física por sí mismo.",
+    ownerStory: "La marca declara lote y carrier; el Passport reúne eventos de canal reportados, garantía, beneficios y un NFT opcional de derechos digitales.",
+    marketplaceLine: "El marketplace muestra la referencia digital del ítem con lote y origen declarados, resultado SUN y beneficios; no certifica por sí solo el objeto físico.",
     uploadChecklist: ["Foto producto", "Etiqueta frontal", "Foto tag aplicado", "Ficha comercial", "Reglas claim/NFT", "Modelo GLB opcional"],
     slots,
   };
@@ -252,5 +252,5 @@ export function summarizeAssetReadiness(profile: ProductAssetProfile) {
   const ready = profile.slots.filter((slot) => slot.status === "ready").length;
   const demo = profile.slots.filter((slot) => slot.status === "demo").length;
   const missing = profile.slots.filter((slot) => slot.status === "missing").length;
-  return `${ready} reales / ${demo} demo / ${missing} pendientes`;
+  return `${ready} cargados / ${demo} demo / ${missing} pendientes`;
 }

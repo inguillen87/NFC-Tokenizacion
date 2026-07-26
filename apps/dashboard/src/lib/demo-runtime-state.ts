@@ -175,8 +175,31 @@ export function toDemoAdminEventRow(event: DashboardDemoEvent) {
 }
 
 export function toDemoRealtimeEvent(event: DashboardDemoEvent) {
+  const uid = String(event.uid_hex || "").toUpperCase();
+  const occurredAt = String(event.created_at || new Date().toISOString());
   return {
-    ...toDemoAdminEventRow(event),
+    eventId: event.id,
+    tenantId: null,
+    tenantSlug: event.tenant_slug,
+    batchId: event.bid,
+    tagId: null,
+    uidMasked: uid ? `${uid.slice(0, 4)}****${uid.slice(-2)}` : "N/A",
+    occurredAt,
+    occurredAtUtc: occurredAt,
+    occurredAtLocal: occurredAt,
+    timezone: "UTC",
+    timezoneLabel: "UTC",
+    timezoneOffset: "+00:00",
+    verdict: event.result === "VALID" || event.result === "CLAIMED" ? "valid" : event.result.toLowerCase(),
+    riskLevel: event.risk >= 80 ? "high" : event.risk >= 40 ? "medium" : "none",
+    city: event.city,
+    country: event.country_code,
+    lat: event.lat,
+    lng: event.lng,
+    deviceLabel: event.device,
+    productName: event.product_name,
+    source: "demo" as const,
+    eventSource: "demo",
     stream_sent_at: new Date().toISOString(),
     stream_latency_ms: Math.max(8, Math.min(180, 20 + event.sequence * 3)),
     origin_trace_id: event.id,

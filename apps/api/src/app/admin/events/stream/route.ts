@@ -7,7 +7,13 @@ import { sql } from "../../../../lib/db";
 import { onRealtimeEvent } from "../../../../lib/realtime-events";
 import { randomUUID } from "node:crypto";
 import { normalizeTenantTapRealtimeEvent } from "@product/core";
-import { allowRealtimeEventForScope } from "../../../../lib/realtime-stream-filter";
+import {
+  REALTIME_EVENT_SOURCE_FILTERS,
+  allowRealtimeEventForScope,
+  allowRealtimeEventForSource,
+  parseRealtimeEventSourceFilter,
+  type RealtimeEventSourceFilter,
+} from "../../../../lib/realtime-stream-filter";
 
 type EventRow = Record<string, unknown>;
 type RealtimeAlertPayload = {
@@ -64,7 +70,11 @@ async function ensureEventLocationContextSchema() {
   return eventLocationContextSchemaReady;
 }
 
-async function fetchRows(search: URLSearchParams, forcedTenantSlug = ""): Promise<EventRow[]> {
+async function fetchRows(
+  search: URLSearchParams,
+  forcedTenantSlug = "",
+  sourceFilter: RealtimeEventSourceFilter = "all",
+): Promise<EventRow[]> {
   await ensureEventLocationContextSchema().catch(() => null);
   const limit = Math.max(1, Math.min(200, Number(search.get("limit") || 40)));
   const tenant = (forcedTenantSlug || String(search.get("tenant") || "")).trim().toLowerCase();
@@ -105,6 +115,11 @@ async function fetchRows(search: URLSearchParams, forcedTenantSlug = ""): Promis
         LEFT JOIN batches b ON b.id = e.batch_id
         LEFT JOIN tenants t ON t.id = COALESCE(b.tenant_id, e.tenant_id)
         WHERE t.slug = ${tenant}
+          AND (
+            ${sourceFilter} = 'all'
+            OR (${sourceFilter} = 'production' AND LOWER(COALESCE(e.source, '')) IN ('real', 'imported'))
+            OR (${sourceFilter} IN ('demo', 'real', 'imported') AND LOWER(COALESCE(e.source, '')) = ${sourceFilter})
+          )
           AND (${verdict} = '' OR UPPER(e.result) = ${verdict})
           AND (
             ${risk} = ''
@@ -153,7 +168,12 @@ async function fetchRows(search: URLSearchParams, forcedTenantSlug = ""): Promis
         FROM events e
         LEFT JOIN batches b ON b.id = e.batch_id
         LEFT JOIN tenants t ON t.id = COALESCE(b.tenant_id, e.tenant_id)
-        WHERE (${verdict} = '' OR UPPER(e.result) = ${verdict})
+        WHERE (
+            ${sourceFilter} = 'all'
+            OR (${sourceFilter} = 'production' AND LOWER(COALESCE(e.source, '')) IN ('real', 'imported'))
+            OR (${sourceFilter} IN ('demo', 'real', 'imported') AND LOWER(COALESCE(e.source, '')) = ${sourceFilter})
+          )
+          AND (${verdict} = '' OR UPPER(e.result) = ${verdict})
           AND (
             ${risk} = ''
             OR (
@@ -178,6 +198,17 @@ export async function GET(req: Request): Promise<Response> {
   const { scope, forcedTenantSlug } = getAdminTenantScope(req);
 
   const { searchParams } = new URL(req.url);
+  const sourceFilter = parseRealtimeEventSourceFilter(searchParams.get("source"));
+  if (!sourceFilter) {
+    return new Response(JSON.stringify({
+      ok: false,
+      reason: "invalid_source_filter",
+      allowed: REALTIME_EVENT_SOURCE_FILTERS,
+    }), {
+      status: 400,
+      headers: { "content-type": "application/json; charset=utf-8" },
+    });
+  }
   const requestId = req.headers.get("x-request-id") || req.headers.get("x-nexid-request-id") || randomUUID();
   const encoder = new TextEncoder();
   if ((scope === "tenant_admin" || scope === "reseller") && forcedTenantSlug) {
@@ -186,7 +217,7 @@ export async function GET(req: Request): Promise<Response> {
       return new Response(JSON.stringify({ ok: false, reason: "forbidden_tenant_scope" }), { status: 403, headers: { "content-type": "application/json" } });
     }
   }
-  console.info("[admin_sse_access]", JSON.stringify({ requestId, scope: scope || "none", forcedTenantSlug: forcedTenantSlug || null }));
+  console.info("[admin_sse_access]", JSON.stringify({ requestId, scope: scope || "none", forcedTenantSlug: forcedTenantSlug || null, sourceFilter }));
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -214,9 +245,9 @@ export async function GET(req: Request): Promise<Response> {
       };
 
       try {
-        send("connected", { id: `connected-${Date.now()}`, stream_request_id: requestId, ts: new Date().toISOString() });
-        const snapshotRows = await fetchRows(searchParams, forcedTenantSlug);
-        send("snapshot", { id: `snapshot-${Date.now()}`, stream_request_id: requestId, rows: snapshotRows.map((row) => normalizeTenantTapRealtimeEvent(row)) });
+        send("connected", { id: `connected-${Date.now()}`, stream_request_id: requestId, source: sourceFilter, availability: "ready", ts: new Date().toISOString() });
+        const snapshotRows = await fetchRows(searchParams, forcedTenantSlug, sourceFilter);
+        send("snapshot", { id: `snapshot-${Date.now()}`, stream_request_id: requestId, source: sourceFilter, availability: "ready", rows: snapshotRows.map((row) => normalizeTenantTapRealtimeEvent(row)) });
       } catch {
         send("warning", { id: `warning-${Date.now()}`, stream_request_id: requestId, reason: "snapshot_unavailable" });
       }
@@ -224,6 +255,9 @@ export async function GET(req: Request): Promise<Response> {
       const unsubscribe = onRealtimeEvent((payload) => {
         const rawPayload = payload as Record<string, unknown>;
         if (isSecurityAlertPayload(rawPayload)) {
+          // Alerts do not yet carry the source of their originating tap. Keep them
+          // on explicit mixed streams only instead of guessing demo/production.
+          if (sourceFilter !== "all") return;
           if (!allowRealtimeEventForScope({
             scope,
             forcedTenantSlug,
@@ -245,6 +279,7 @@ export async function GET(req: Request): Promise<Response> {
           return;
         }
 
+        if (!allowRealtimeEventForSource(sourceFilter, rawPayload.source)) return;
         const normalized = normalizeTenantTapRealtimeEvent(rawPayload);
         if (!allowRealtimeEventForScope({
           scope,

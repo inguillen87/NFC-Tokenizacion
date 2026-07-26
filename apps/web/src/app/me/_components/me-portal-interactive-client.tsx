@@ -62,9 +62,9 @@ type MePortalInteractiveClientProps = {
   products: Product[];
   taps: Tap[];
   brands: Brand[];
-  passportReadiness: number;
-  featuredAsset: any;
-  featuredAssetReadiness: string;
+  passportReadiness: number | null;
+  featuredAsset: any | null;
+  featuredAssetReadiness: string | null;
 };
 
 type TabType = "passport" | "nfts" | "trades" | "drops";
@@ -78,16 +78,12 @@ export function MePortalInteractiveClient({
   featuredAsset,
   featuredAssetReadiness,
 }: MePortalInteractiveClientProps) {
+  const commerceDemoEnabled = process.env.NEXT_PUBLIC_ME_PORTAL_COMMERCE_DEMO_ENABLED === "true";
   const [activeTab, setActiveTab] = useState<TabType>("passport");
   const [dropsCategory, setDropsCategory] = useState<"scanned" | "synergy">("scanned");
   const [p2pPrice, setP2pPrice] = useState<Record<string, string>>({});
   const [listedProducts, setListedProducts] = useState<Record<string, number>>({});
-  const [trades, setTrades] = useState<Array<{ id: string; assetName: string; type: "claim" | "mint" | "list" | "sell" | "buy" | "transfer"; from: string; to: string; price?: string; at: string; txHash?: string }>>([
-    { id: "tx-001", assetName: "Gran Reserva Malbec 2022", type: "mint", from: "0x0000...0000", to: "Tu Billetera", at: "Hace 2 horas", txHash: "0x51c9d2f...39b1" },
-    { id: "tx-002", assetName: "Gran Reserva Malbec 2022", type: "claim", from: "Bodega del Valle", to: "Tu Cuenta", at: "Hace 2 horas", txHash: "0x34a1b02...c55d" },
-    { id: "tx-003", assetName: "Reserva Cabernet 2021", type: "buy", from: "0x8f2d...b38e", to: "Tu Billetera", price: "2,500 pts + 45 USD", at: "Ayer", txHash: "0xae10c43...4490" },
-    { id: "tx-004", assetName: "Chardonnay de Altura 2023", type: "transfer", from: "Tu Billetera", to: "0x3ddf...45a1", at: "Hace 3 días", txHash: "0x9d3ef84...212a" },
-  ]);
+  const [trades, setTrades] = useState<Array<{ id: string; assetName: string; type: "claim" | "mint" | "list" | "sell" | "buy" | "transfer"; from: string; to: string; price?: string; at: string }>>([]);
 
   // Web3 Checkout & MetaMask Simulation States
   const [checkoutDrop, setCheckoutDrop] = useState<any | null>(null);
@@ -95,19 +91,19 @@ export function MePortalInteractiveClient({
   const [isWeb3Connecting, setIsWeb3Connecting] = useState(false);
   const [isWeb3Paying, setIsWeb3Paying] = useState(false);
   const [web3Address, setWeb3Address] = useState("");
+  const [web3Error, setWeb3Error] = useState("");
   const [txSuccess, setTxSuccess] = useState(false);
-  const [activeTxHash, setActiveTxHash] = useState("");
 
   const stats = me?.stats || {};
   const activeMemberships = brands.filter((item) => String(item.status || "").toLowerCase() === "active").length;
-  const verifiedProducts = products.filter((item) => String(item.ownership_record_status || item.ownership_status || "").toLowerCase() === "claimed").length;
+  const claimedProducts = products.filter((item) => String(item.ownership_record_status || item.ownership_status || "").toLowerCase() === "claimed").length;
   const latestTaps = taps.slice(0, 5);
-  const consumerName = String(me?.consumer?.display_name || "").trim() || String(me?.consumer?.email || "Coleccionista Premium");
+  const consumerName = String(me?.consumer?.display_name || "").trim() || String(me?.consumer?.email || "Nombre no reportado");
 
   const journey = [
-    { title: "Tap Físico", desc: "Lectura NFC segura desde el celular sobre el producto.", icon: Compass },
-    { title: "Verificación", desc: "Validación digital de autenticidad en tiempo real.", icon: ShieldCheck },
-    { title: "Ownership", desc: "Propiedad digital registrada en tu Pasaporte.", icon: Award },
+    { title: "Lectura NFC", desc: "El celular envía el mensaje y la referencia del evento.", icon: Compass },
+    { title: "Mensaje Validado", desc: "SUN/NFC valida evidencia digital, no el objeto físico.", icon: ShieldCheck },
+    { title: "Solicitar Ownership", desc: "Requiere identidad, compra y política del tenant.", icon: Award },
     { title: "Marketplace", desc: "Canje de beneficios, preventas y drops premium.", icon: Sparkles },
   ];
 
@@ -122,10 +118,12 @@ export function MePortalInteractiveClient({
     { id: "syn-3", name: "Zapatillas Urban Limited Edition (NFC Chip)", winery: "NexID Wearables", price: "8,000 pts", cashPrice: "$220 USDT", stock: "12 pares", img: "/images/sneaker.png", label: "Indumentaria Partner", rawPriceUsd: 220 },
   ];
 
-  const currentDrops = dropsCategory === "scanned" ? scannedDrops : synergyDrops;
+  const currentDrops = commerceDemoEnabled ? (dropsCategory === "scanned" ? scannedDrops : synergyDrops) : [];
 
   const connectMetaMask = async () => {
+    if (!commerceDemoEnabled) return;
     setIsWeb3Connecting(true);
+    setWeb3Error("");
     try {
       if (typeof window !== "undefined" && window.ethereum) {
         const accounts: any = await window.ethereum.request({ method: "eth_requestAccounts" });
@@ -133,17 +131,19 @@ export function MePortalInteractiveClient({
           setWeb3Address(accounts[0]);
         }
       } else {
-        setWeb3Address("0x71C7656EC7ab88b098defB751B7401B5f6d8976F");
+        setWeb3Error("No se detectó una wallet EVM. La demo no inventa una dirección de respaldo.");
       }
     } catch (e) {
       console.error(e);
-      setWeb3Address("0x71C7656EC7ab88b098defB751B7401B5f6d8976F");
+      setWeb3Address("");
+      setWeb3Error("La wallet no autorizó la conexión. No se creó ninguna operación.");
     } finally {
       setIsWeb3Connecting(false);
     }
   };
 
   const handleCheckoutPayment = async () => {
+    if (!commerceDemoEnabled) return;
     if (paymentMethod === "usdt" && !web3Address) {
       alert("Por favor conecta tu MetaMask primero.");
       return;
@@ -152,20 +152,17 @@ export function MePortalInteractiveClient({
     setIsWeb3Paying(true);
     try {
       await new Promise((resolve) => setTimeout(resolve, 2000));
-      const generatedHash = "0x" + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
-      setActiveTxHash(generatedHash);
       setTxSuccess(true);
 
       setTrades((prev) => [
         {
-          id: `tx-${Math.random().toString(36).substring(2, 6)}`,
+          id: `sim-${Date.now()}`,
           assetName: checkoutDrop.name,
           type: "buy",
           from: paymentMethod === "usdt" ? web3Address.slice(0, 8) + "..." : "Tus Puntos",
-          to: "nexID Escrow (Fee: 1.5%)",
-          price: paymentMethod === "usdt" ? `${checkoutDrop.cashPrice} (+1.5% Fee)` : checkoutDrop.price,
-          at: "Ahora mismo",
-          txHash: generatedHash,
+          to: "Escenario local sin escrow",
+          price: paymentMethod === "usdt" ? `${checkoutDrop.cashPrice} (hipótesis)` : `${checkoutDrop.price} (hipótesis)`,
+          at: "Simulado ahora",
         },
         ...prev,
       ]);
@@ -177,17 +174,18 @@ export function MePortalInteractiveClient({
   };
 
   const handleListForSale = (uid: string, productName: string) => {
+    if (!commerceDemoEnabled) return;
     const price = p2pPrice[uid] || "3,500 pts";
     setListedProducts((prev) => ({ ...prev, [uid]: Number(price.replace(/[^\d]/g, "")) || 3500 }));
     setTrades((prev) => [
       {
-        id: `tx-${Math.random().toString(36).substring(2, 6)}`,
+        id: `sim-${Date.now()}`,
         assetName: productName,
         type: "list",
         from: "Tu Billetera",
-        to: "P2P Marketplace",
+        to: "Escenario P2P local",
         price,
-        at: "Ahora mismo",
+        at: "Simulado ahora",
       },
       ...prev,
     ]);
@@ -228,6 +226,12 @@ export function MePortalInteractiveClient({
         })}
       </div>
 
+      <div role="status" className={`rounded-2xl border p-3 text-xs leading-5 ${commerceDemoEnabled ? "border-amber-300/30 bg-amber-500/10 text-amber-100" : "border-slate-700 bg-slate-900/60 text-slate-300"}`}>
+        {commerceDemoEnabled
+          ? "DEMO COMERCIO SIMULADO · catálogo, precios, movimientos y checkout ficticios. Ninguna acción crea pagos, escrow, listings o transacciones on-chain."
+          : "Comercio demo deshabilitado. Trades y drops solo aparecen con datos reales del backend; no se generan productos, wallets ni transacciones de relleno."}
+      </div>
+
       {/* Tab Contents: PASSPORT (Dashboard View) */}
       {activeTab === "passport" && (
         <div className="space-y-6">
@@ -239,7 +243,7 @@ export function MePortalInteractiveClient({
               
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-400">nexID GLOBAL AUTHENTICITY PASSPORT</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-400">nexID GLOBAL DIGITAL PASSPORT</p>
                   <div className="mt-4 flex items-center gap-2">
                     <h2 className="text-2xl font-black text-white tracking-tight">{consumerName}</h2>
                     <UserCheck className="h-5 w-5 text-amber-400" />
@@ -258,15 +262,15 @@ export function MePortalInteractiveClient({
               <div className="mt-8 rounded-2xl border border-white/5 bg-black/40 p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">Nivel de Pasaporte</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">Checklist de preparación</p>
                     <p className="mt-1 text-xs text-amber-200">
-                      {passportReadiness >= 80 ? "Coleccionista Platino" : passportReadiness >= 50 ? "Coleccionista Oro" : "Starter"}
+                      {passportReadiness === null ? "Sin datos suficientes" : "Cuenta, identidad, productos, ownership y membresía"}
                     </p>
                   </div>
-                  <span className="text-2xl font-black tracking-tight text-white">{passportReadiness}%</span>
+                  <span className="text-2xl font-black tracking-tight text-white">{passportReadiness === null ? "N/D" : `${passportReadiness}%`}</span>
                 </div>
                 <div className="mt-3.5 h-2 w-full overflow-hidden rounded-full bg-slate-800">
-                  <div className="h-full rounded-full bg-gradient-to-r from-amber-600 to-amber-400 transition-all duration-1000" style={{ width: `${passportReadiness}%` }} />
+                  <div className="h-full rounded-full bg-gradient-to-r from-amber-600 to-amber-400 transition-all duration-1000" style={{ width: `${passportReadiness || 0}%` }} />
                 </div>
               </div>
               
@@ -279,7 +283,7 @@ export function MePortalInteractiveClient({
                 <div>
                   <span className="block text-[9px] uppercase tracking-wider text-slate-500">Estatus de Cuenta</span>
                   {me?.consumer?.status === "verified" ? (
-                    <span className="text-emerald-400 font-bold">2FA VERIFICADA</span>
+                    <span className="text-emerald-400 font-bold">CUENTA VALIDADA</span>
                   ) : (
                     <span className="text-amber-400 font-bold">REGISTRADA (Simple)</span>
                   )}
@@ -288,35 +292,43 @@ export function MePortalInteractiveClient({
             </section>
 
             {/* Right: Featured Product Showcase */}
-            <section className="relative overflow-hidden rounded-3xl border border-emerald-300/10 bg-slate-950/80 p-5 shadow-xl">
+            {featuredAsset ? <section className="relative overflow-hidden rounded-3xl border border-emerald-300/10 bg-slate-950/80 p-5 shadow-xl">
               <div className="grid gap-4 sm:grid-cols-[1.3fr_0.7fr]">
                 <div className="flex flex-col justify-between">
                   <div>
                     <span className="rounded-full border border-emerald-300/25 bg-emerald-500/10 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-[0.16em] text-emerald-300">
-                      Último Destacado Reclamado
+                      Último producto reportado
                     </span>
                     <h3 className="mt-3 text-xl font-black text-white tracking-tight leading-tight">{featuredAsset.productName}</h3>
-                    <p className="mt-1 text-xs text-slate-400">Original de {featuredAsset.brandName}</p>
+                    <p className="mt-1 text-xs text-slate-400">Asociado a {featuredAsset.brandName}</p>
                     <p className="mt-3 text-[11px] leading-relaxed text-slate-300">
-                      Firma digital y procedencia de bodega activa. El activo está anclado de forma criptográfica y segura a tu identidad.
+                      El Passport vincula evidencia digital y un registro de ownership a tu cuenta. No garantiza autenticidad física, procedencia ni control del objeto.
                     </p>
                   </div>
                   
                   <div className="mt-4 flex flex-wrap gap-1.5 text-[10px]">
                     <span className="rounded-full border border-white/5 bg-white/5 px-2 py-0.5 text-slate-300">{featuredAsset.batchLabel}</span>
-                    <span className="rounded-full border border-emerald-400/20 bg-emerald-400/5 px-2 py-0.5 text-emerald-300 font-medium">{featuredAssetReadiness}</span>
+                    <span className="rounded-full border border-emerald-400/20 bg-emerald-400/5 px-2 py-0.5 text-emerald-300 font-medium">{featuredAssetReadiness || "Preparación no reportada"}</span>
                   </div>
                 </div>
                 
                 <div className="relative min-h-36 flex items-center justify-center rounded-2xl border border-white/5 bg-[linear-gradient(135deg,#0a0a0c,#161619)] p-2 group overflow-hidden">
                   <img
-                    src={featuredAsset.primaryImageUrl || "/images/premium_magnum.png"}
+                    src={featuredAsset.primaryImageUrl}
                     alt={featuredAsset.productName}
                     className="h-32 w-auto object-contain transition duration-500 group-hover:scale-110 drop-shadow-[0_10px_20px_rgba(0,0,0,0.6)]"
                   />
                 </div>
               </div>
-            </section>
+            </section> : (
+              <section className="grid min-h-64 place-items-center rounded-3xl border border-dashed border-slate-700 bg-slate-950/60 p-6 text-center">
+                <div>
+                  <PackageCheck className="mx-auto h-8 w-8 text-slate-600" />
+                  <h3 className="mt-3 text-sm font-black text-white">Todavía no hay productos reportados</h3>
+                  <p className="mt-1 text-xs leading-5 text-slate-400">Cuando el backend devuelva un producto asociado, su identidad digital y estado real aparecerán acá. No mostramos un producto de ejemplo como si fuera tuyo.</p>
+                </div>
+              </section>
+            )}
           </div>
 
           <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
@@ -324,7 +336,7 @@ export function MePortalInteractiveClient({
               {/* Metrics Grid */}
               <section className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-5">
                 {[
-                  ["Vinos Verificados", String(verifiedProducts), "border-emerald-500/10 bg-emerald-500/5 text-emerald-300"],
+                  ["Ownership Registrado", String(claimedProducts), "border-emerald-500/10 bg-emerald-500/5 text-emerald-300"],
                   ["Escaneos Taps", String(stats.taps || 0), "border-cyan-500/10 bg-cyan-500/5 text-cyan-300"],
                   ["Clubes Activos", String(activeMemberships), "border-amber-500/10 bg-amber-500/5 text-amber-300"],
                   ["Total Guardados", String(stats.products || 0), "border-violet-500/10 bg-violet-500/5 text-violet-300"],
@@ -342,8 +354,8 @@ export function MePortalInteractiveClient({
                 <article className="rounded-3xl border border-white/10 bg-slate-950/70 p-5 shadow-lg">
                   <div className="flex items-center justify-between pb-3 border-b border-white/5">
                     <div>
-                      <h3 className="text-sm font-black text-white">Últimos Taps Físicos</h3>
-                      <p className="text-[11px] text-slate-400">Verdicts de escaneos de seguridad.</p>
+                      <h3 className="text-sm font-black text-white">Últimos Eventos NFC</h3>
+                      <p className="text-[11px] text-slate-400">Resultados digitales reportados por el backend.</p>
                     </div>
                   </div>
                   <div className="mt-4 space-y-3">
@@ -352,16 +364,17 @@ export function MePortalInteractiveClient({
                         <div className="flex items-center gap-2.5">
                           <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
                           <div>
-                            <p className="text-xs font-black text-white">{String(tap.verdict || "VALID").toUpperCase()}</p>
+                            <p className="text-xs font-black text-white">{String(tap.verdict || "SIN DATO").toUpperCase()}</p>
                             <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
                               <MapPin className="h-2.5 w-2.5 text-slate-500" />
-                              {tap.city || "Valle de Uco"}, {tap.country || "AR"}
+                              {[tap.city, tap.country].filter(Boolean).join(", ") || "Ubicación no reportada"}
                             </p>
                           </div>
                         </div>
-                        <span className="text-[10px] font-mono text-slate-300 font-bold">{tap.tenant_slug || "demobodega"}</span>
+                        <span className="text-[10px] font-mono text-slate-300 font-bold">{tap.tenant_slug || "tenant no reportado"}</span>
                       </div>
                     ))}
+                    {latestTaps.length === 0 ? <p className="rounded-2xl border border-dashed border-slate-700 p-4 text-xs text-slate-400">No hay eventos NFC reportados.</p> : null}
                   </div>
                 </article>
 
@@ -369,21 +382,22 @@ export function MePortalInteractiveClient({
                   <div className="flex items-center justify-between pb-3 border-b border-white/5">
                     <div>
                       <h3 className="text-sm font-black text-white">Colección Reciente</h3>
-                      <p className="text-[11px] text-slate-400">Botellas cargadas a tu nombre.</p>
+                      <p className="text-[11px] text-slate-400">Productos que el backend asoció a tu cuenta.</p>
                     </div>
                   </div>
                   <div className="mt-4 space-y-3">
                     {products.slice(0, 4).map((product, idx) => (
                       <div key={idx} className="rounded-2xl border border-white/5 bg-slate-900/30 p-3 flex items-center justify-between gap-3">
                         <div>
-                          <p className="text-xs font-black text-white truncate max-w-40">{product.product_name || "Vino Premium"}</p>
-                          <p className="text-[10px] text-slate-400 mt-0.5">{product.brand_name || "Bodega Balmec"}</p>
+                          <p className="text-xs font-black text-white truncate max-w-40">{product.product_name || "Producto no reportado"}</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">{product.brand_name || "Marca no reportada"}</p>
                         </div>
-                        <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-emerald-300">
-                          {product.ownership_status || "Reclamado"}
+                        <span className="rounded-full border border-slate-600 bg-slate-800/60 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-slate-300">
+                          {product.ownership_record_status || product.ownership_status || "Ownership no reportado"}
                         </span>
                       </div>
                     ))}
+                    {products.length === 0 ? <p className="rounded-2xl border border-dashed border-slate-700 p-4 text-xs text-slate-400">No hay productos asociados a esta cuenta.</p> : null}
                   </div>
                 </article>
               </div>
@@ -421,8 +435,8 @@ export function MePortalInteractiveClient({
         <div className="space-y-6">
           <div className="flex items-center justify-between pb-3 border-b border-white/10">
             <div>
-              <h2 className="text-lg font-black text-white">Mi Bodega Digital (NFTs & Activos)</h2>
-              <p className="text-xs text-slate-400">Títulos criptográficos de autenticidad emitidos en Polygon y Polygon Amoy.</p>
+              <h2 className="text-lg font-black text-white">Mi Bodega Digital (NFTs & Registros)</h2>
+              <p className="text-xs text-slate-400">Registros digitales Polygon cuando existe una transacción; no autentican el producto físico ni su procedencia.</p>
             </div>
             <Link href="/me/wallet" className="rounded-xl border border-amber-500/35 bg-amber-500/10 px-4 py-2 text-xs font-bold text-amber-200 hover:bg-amber-500/20 transition">
               Administrar Billetera Web3
@@ -431,8 +445,7 @@ export function MePortalInteractiveClient({
 
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {products.map((product, idx) => {
-              const isBottle = !product.product_name?.toLowerCase().includes("crate") && !product.product_name?.toLowerCase().includes("caja");
-              const thumbnailImg = isBottle ? "/images/premium_magnum.png" : "/images/wine_crate.png";
+              const thumbnailImg = product.imageUrl || product.image_url || product.photoUrl || product.photo_url || "";
               const isClaimed = String(product.ownership_record_status || product.ownership_status || "").toLowerCase() === "claimed";
               const txHash = product.tokenization_tx_hash;
               const hasOnChain = txHash && !txHash.includes("DEMO");
@@ -445,13 +458,13 @@ export function MePortalInteractiveClient({
 
                   {/* Thumbnail */}
                   <div className="h-44 w-full rounded-2xl border border-white/5 bg-[linear-gradient(135deg,#0a0a0c,#161619)] p-4 flex items-center justify-center relative overflow-hidden">
-                    <img
+                    {thumbnailImg ? <img
                       src={thumbnailImg}
-                      alt={product.product_name}
+                      alt={product.product_name || "Producto reportado"}
                       className="h-36 w-auto object-contain transition duration-500 group-hover:scale-105 drop-shadow-[0_8px_16px_rgba(0,0,0,0.6)]"
-                    />
+                    /> : <span className="text-[10px] text-slate-500">Imagen no reportada</span>}
                     <span className="absolute bottom-2 right-2 rounded bg-black/85 px-2 py-0.5 text-[8px] font-mono text-slate-500 border border-white/5">
-                      {product.sku || "NFC NTAG424"}
+                      {product.sku || "SKU no reportado"}
                     </span>
                   </div>
 
@@ -459,7 +472,7 @@ export function MePortalInteractiveClient({
                   <div className="mt-4 flex-1">
                     <div className="flex items-center justify-between gap-1.5">
                       <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-amber-300 border border-amber-500/10">
-                        {product.brand_name || "Bodega Balmec"}
+                        {product.brand_name || "Marca no reportada"}
                       </span>
                       {hasOnChain && (
                         <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-violet-400 border border-violet-500/10">
@@ -467,15 +480,15 @@ export function MePortalInteractiveClient({
                         </span>
                       )}
                     </div>
-                    <h3 className="mt-2 text-sm font-black text-white leading-snug group-hover:text-amber-200 transition">{product.product_name || "Vino Auténtico"}</h3>
-                    <p className="text-[10px] text-slate-500 mt-1 font-mono">Lote: {product.bid || "N/A"}</p>
+                    <h3 className="mt-2 text-sm font-black text-white leading-snug group-hover:text-amber-200 transition">{product.product_name || "Producto asociado"}</h3>
+                    <p className="text-[10px] text-slate-500 mt-1 font-mono">Lote: {product.bid || "No reportado"}</p>
                   </div>
 
                   {/* Actions / Public Cert */}
                   <div className="mt-4 pt-3 border-t border-white/5 space-y-2">
                     <div className="flex items-center justify-between text-[10px]">
                       <span className="text-slate-500">Estado:</span>
-                      <span className="text-emerald-400 font-bold uppercase">{isClaimed ? "Propietario" : "Registrado"}</span>
+                      <span className="text-emerald-400 font-bold uppercase">{isClaimed ? "Ownership registrado" : "Registro disponible"}</span>
                     </div>
 
                     <div className="grid gap-1.5">
@@ -493,11 +506,11 @@ export function MePortalInteractiveClient({
                       )}
 
                       {/* Selling / Marketplace Simulator */}
-                      {isClaimed && (
+                      {isClaimed && commerceDemoEnabled && (
                         <div className="pt-2">
                           {isListed ? (
                             <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/25 p-2 text-center text-[10px] font-bold text-emerald-300">
-                              Publicado P2P por {listedProducts[product.bid || ""]} pts
+                              Publicación demo por {listedProducts[product.bid || ""]} pts · sin listing real
                             </div>
                           ) : (
                             <div className="flex gap-1.5">
@@ -510,10 +523,10 @@ export function MePortalInteractiveClient({
                                 className="w-2/3 bg-slate-900 border border-white/10 rounded-xl px-2.5 py-1.5 text-[10px] text-white focus:outline-none focus:border-amber-400"
                               />
                               <button
-                                onClick={() => handleListForSale(product.bid || "", product.product_name || "Vino")}
+                                onClick={() => handleListForSale(product.bid || "", product.product_name || "Producto sin nombre reportado")}
                                 className="w-1/3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 px-2 py-1.5 text-[9px] font-black transition uppercase tracking-wider"
                               >
-                                Vender
+                                Simular publicación
                               </button>
                             </div>
                           )}
@@ -524,6 +537,7 @@ export function MePortalInteractiveClient({
                 </div>
               );
             })}
+            {products.length === 0 ? <p className="rounded-2xl border border-dashed border-slate-700 p-5 text-sm text-slate-400">No hay productos ni registros Polygon reportados por el backend.</p> : null}
           </div>
         </div>
       )}
@@ -532,9 +546,9 @@ export function MePortalInteractiveClient({
       {activeTab === "trades" && (
         <div className="space-y-6">
           <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-5">
-            <h2 className="text-lg font-black text-white">Libro de Transacciones Criptográficas</h2>
+            <h2 className="text-lg font-black text-white">Simulación Local de Movimientos</h2>
             <p className="text-xs text-slate-400 mt-1">
-              Registro auditado de claims de propiedad, acuñaciones de tokens NFT, y ofertas de intercambio en el mercado secundario.
+              {commerceDemoEnabled ? "Escenario visual de acciones iniciadas con CTA Simular. No es un ledger público ni prueba transacciones, ownership o pagos reales." : "Demo deshabilitada. Los movimientos aparecerán cuando exista un origen real del backend."}
             </p>
 
             <div className="mt-6 space-y-4">
@@ -568,14 +582,10 @@ export function MePortalInteractiveClient({
                       {trade.type}
                     </span>
                     <span className="text-[9px] font-mono text-slate-400 mt-1">{trade.at}</span>
-                    {trade.txHash && (
-                      <a href={`https://amoy.polygonscan.com/tx/${trade.txHash}`} target="_blank" rel="noreferrer" className="text-[9px] font-mono text-amber-400 hover:text-amber-300 flex items-center gap-1 mt-1">
-                        Tx Hash: {trade.txHash.slice(0, 10)}... <ExternalLink className="h-2.5 w-2.5" />
-                      </a>
-                    )}
                   </div>
                 </div>
               ))}
+              {trades.length === 0 ? <p className="rounded-2xl border border-dashed border-slate-700 p-5 text-xs text-slate-400">No hay movimientos reportados ni simulados.</p> : null}
             </div>
           </div>
         </div>
@@ -586,12 +596,12 @@ export function MePortalInteractiveClient({
         <div className="space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/10">
             <div>
-              <h2 className="text-lg font-black text-white">Drops de Bodega & Preventas</h2>
-              <p className="text-xs text-slate-400">Canjea tus puntos acumulados por botellas físicas exclusivas o beneficios cruzados de la red de marcas.</p>
+              <h2 className="text-lg font-black text-white">Drops y preventas</h2>
+              <p className="text-xs text-slate-400">{commerceDemoEnabled ? "Catálogo ficticio para simular la UX. Precios, stock y disponibilidad no son ofertas reales." : "No hay catálogo real reportado por el backend."}</p>
             </div>
             <div className="rounded-xl border border-white/10 bg-slate-900/30 px-3 py-1.5 flex items-center gap-1.5">
               <Coins className="h-4 w-4 text-amber-300" />
-              <span className="text-xs font-black text-white">{stats.unread ? 2500 : 0} pts</span>
+              <span className="text-xs font-black text-white">Consultar saldo en Wallet</span>
             </div>
           </div>
 
@@ -601,7 +611,7 @@ export function MePortalInteractiveClient({
             <div>
               <strong className="text-white">¡Club nexID de Sinergia de Marcas Aliadas!</strong>
               <p className="mt-0.5">
-                Al escanear etiquetas de productos verificados de la red nexID, accedes a un club de beneficios cruzados. Las marcas aliadas comparten preventas exclusivas, eventos VIP y lanzamientos especiales que se complementan entre sí, recompensando tu fidelidad de una forma integral.
+                Al interactuar con productos conectados de la red nexID, podés acceder a beneficios según la política de cada marca. La lectura NFC registra evidencia digital; no certifica autenticidad física ni habilita beneficios por sí sola.
               </p>
             </div>
           </div>
@@ -626,7 +636,7 @@ export function MePortalInteractiveClient({
                   : "text-slate-400 hover:text-white"
               }`}
             >
-              Sinergia nexID (Recomendación IA)
+              Sinergia nexID (Demo)
             </button>
           </div>
 
@@ -677,18 +687,19 @@ export function MePortalInteractiveClient({
                           : "bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950"
                       }`}
                     >
-                      Comprar Drop
+                      Simular checkout
                     </button>
                   </div>
                 </div>
               </div>
             ))}
+            {currentDrops.length === 0 ? <p className="rounded-2xl border border-dashed border-slate-700 p-5 text-sm text-slate-400">Demo deshabilitada y sin drops reales reportados.</p> : null}
           </div>
         </div>
       )}
 
       {/* Glassmorphic Web3 Checkout Modal with MetaMask & nexID Synergy Fee */}
-      {checkoutDrop && (
+      {commerceDemoEnabled && checkoutDrop && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in">
           <div className="relative max-w-md w-full bg-[linear-gradient(135deg,#0f0f12_0%,#1a191d_100%)] border border-amber-500/20 p-6 rounded-3xl text-white shadow-2xl">
             
@@ -706,6 +717,7 @@ export function MePortalInteractiveClient({
               <>
                 <h3 className="text-base font-black tracking-tight text-white pr-8">{checkoutDrop.name}</h3>
                 <p className="text-[11px] text-slate-400 mt-1">{checkoutDrop.winery} · {checkoutDrop.label}</p>
+                <p className="mt-2 rounded-lg border border-amber-300/25 bg-amber-500/10 p-2 text-[10px] font-bold text-amber-100">SIMULACIÓN: no se cobrará, reservará stock ni creará escrow o transacción.</p>
 
                 {/* Payment Method Selector */}
                 <div className="mt-5 grid grid-cols-2 bg-slate-900/60 p-1 rounded-xl border border-white/5">
@@ -739,7 +751,7 @@ export function MePortalInteractiveClient({
                   {paymentMethod === "points" ? (
                     <div className="space-y-2 text-xs">
                       <div className="flex justify-between text-slate-400">
-                        <span>Tus Puntos Disponibles:</span>
+                        <span>Puntos demo disponibles:</span>
                         <strong className="text-white">2,500 pts</strong>
                       </div>
                       <div className="flex justify-between text-slate-400">
@@ -751,7 +763,7 @@ export function MePortalInteractiveClient({
                         <p className="text-[10px] text-red-400 font-bold">Puntos insuficientes. Prueba con el método de pago USDT.</p>
                       ) : (
                         <div className="flex justify-between text-white font-bold">
-                          <span>Saldo Final Est.:</span>
+                        <span>Saldo demo estimado:</span>
                           <span>{(2500 - Number(checkoutDrop.price.replace(/[^\d]/g, ""))).toLocaleString()} pts</span>
                         </div>
                       )}
@@ -759,12 +771,12 @@ export function MePortalInteractiveClient({
                   ) : (
                     <div className="space-y-2 text-xs">
                       <div className="flex justify-between text-slate-400">
-                        <span>Precio Neto:</span>
+                        <span>Precio ficticio:</span>
                         <strong className="text-white">{checkoutDrop.rawPriceUsd} USDT</strong>
                       </div>
                       <div className="flex justify-between text-slate-400 items-center">
                         <span className="flex items-center gap-1">
-                          Protocol fee de Sinergia (1.5%):
+                          Fee hipotético (1.5%):
                           <span title="Fee cobrado por nexID para sostener la red de beneficios cruzados.">
                             <HelpCircle className="h-3.5 w-3.5 text-slate-500" />
                           </span>
@@ -772,12 +784,12 @@ export function MePortalInteractiveClient({
                         <strong className="text-cyan-400">{(checkoutDrop.rawPriceUsd * 0.015).toFixed(2)} USDT</strong>
                       </div>
                       <div className="flex justify-between text-slate-400">
-                        <span>Gas de Red (Est. Polygon):</span>
+                        <span>Gas ilustrativo (no cotizado):</span>
                         <strong className="text-slate-300">0.15 POL</strong>
                       </div>
                       <div className="h-px bg-white/5 my-2" />
                       <div className="flex justify-between text-white font-bold text-sm">
-                        <span>Total a pagar:</span>
+                        <span>Total ficticio:</span>
                         <span className="text-cyan-300">{(checkoutDrop.rawPriceUsd * 1.015 + 0.15).toFixed(2)} USDT</span>
                       </div>
 
@@ -797,6 +809,7 @@ export function MePortalInteractiveClient({
                             {isWeb3Connecting ? "Abriendo MetaMask..." : "Conectar MetaMask 🦊"}
                           </button>
                         )}
+                        {web3Error ? <p className="mt-2 text-[10px] text-rose-300">{web3Error}</p> : null}
                       </div>
                     </div>
                   )}
@@ -820,7 +833,7 @@ export function MePortalInteractiveClient({
                         : "bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300"
                     }`}
                   >
-                    {isWeb3Paying ? "Procesando pago..." : paymentMethod === "usdt" ? "Confirmar en MetaMask" : "Canjear Puntos"}
+                    {isWeb3Paying ? "Simulando..." : paymentMethod === "usdt" ? "Simular con wallet detectada" : "Simular canje"}
                   </button>
                 </div>
               </>
@@ -831,8 +844,8 @@ export function MePortalInteractiveClient({
                   ✓
                 </div>
                 <div>
-                  <h4 className="text-base font-black text-white">¡Canje / Compra Exitosa!</h4>
-                  <p className="text-[11px] text-slate-400 mt-1">Tu orden de despacho ha sido registrada en el escrow inteligente de nexID.</p>
+                  <h4 className="text-base font-black text-white">Simulación completada</h4>
+                  <p className="text-[11px] text-slate-400 mt-1">No se creó una compra, orden, pago, reserva, escrow ni transacción on-chain.</p>
                 </div>
 
                 <div className="rounded-2xl bg-black/40 border border-white/5 p-4 text-[10px] space-y-2 text-left">
@@ -846,20 +859,13 @@ export function MePortalInteractiveClient({
                   </div>
                   {paymentMethod === "usdt" && (
                     <div className="flex justify-between">
-                      <span className="text-slate-500">Synergy Fee (1.5%):</span>
+                      <span className="text-slate-500">Fee simulado (1.5%):</span>
                       <strong className="text-cyan-400">{(checkoutDrop.rawPriceUsd * 0.015).toFixed(2)} USDT</strong>
                     </div>
                   )}
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Hash de Red:</span>
-                    <a
-                      href={`https://amoy.polygonscan.com/tx/${activeTxHash}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-amber-400 hover:text-white font-mono flex items-center gap-0.5"
-                    >
-                      {activeTxHash.slice(0, 12)}... <ExternalLink className="h-2.5 w-2.5" />
-                    </a>
+                      <span className="text-slate-500">Recibo de red:</span>
+                      <strong className="text-slate-300">No generado</strong>
                   </div>
                 </div>
 

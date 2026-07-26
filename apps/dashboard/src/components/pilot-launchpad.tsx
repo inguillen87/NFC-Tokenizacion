@@ -38,6 +38,7 @@ export type PilotSnapshot = {
   activeTags: number;
   assetProfiles: number;
   readyAssets: number;
+  scoredAssetProfiles: number;
   averageAssetScore: number;
   proofAnchorCount: number;
   confirmedAnchors: number;
@@ -138,21 +139,21 @@ function buildStages(snapshot: PilotSnapshot): PilotStage[] {
       key: "identity",
       number: "03",
       title: "Cargar manifest e identidad visual",
-      summary: "UIDs, producto, seriales y fotos reales se validan antes de publicar el passport.",
+      summary: "UIDs, ficha declarada, seriales y assets aprobados se revisan antes de publicar el passport.",
       status: statuses[2],
       href: demoSandbox || snapshot.importedTags > 0 ? "/tokenization" : "/batches/supplier#supplier-order-console",
       action: demoSandbox ? "Explorar identidad y assets" : snapshot.importedTags > 0 ? "Completar assets" : "Importar manifest",
       evidence: [
         { label: "UID importados", value: metricValue(snapshot.importedTags, snapshot.batchesAvailable) },
         { label: "Assets listos (ventana)", value: snapshot.assetsAvailable ? `${formatNumber(snapshot.readyAssets)}/${formatNumber(snapshot.assetProfiles)}` : "—" },
-        { label: "Score visual", value: snapshot.assetsAvailable ? `${snapshot.averageAssetScore}/100` : "—" },
+        { label: "Score visual", value: snapshot.assetsAvailable && snapshot.scoredAssetProfiles > 0 ? `${snapshot.averageAssetScore}/100` : "Sin base" },
       ],
     },
     {
       key: "validation",
       number: "04",
       title: "Validar muestra fisica",
-      summary: "QA, tap real, SUN y anti-replay demuestran que el lote funciona antes del despliegue masivo.",
+      summary: "QA, tap reportado, SUN y anti-replay verifican el flujo técnico del lote antes del despliegue masivo.",
       status: statuses[3],
       href: "/batches",
       action: demoSandbox ? "Explorar validacion fisica" : validationReady ? "Revisar validaciones" : "Probar lote y tap",
@@ -166,7 +167,7 @@ function buildStages(snapshot: PilotSnapshot): PilotStage[] {
       key: "proof",
       number: "05",
       title: "Abrir prueba y salida comercial",
-      summary: "IOTA prueba evidencia; Polygon prueba ownership cuando aplica. El cliente ve una experiencia simple, no hashes sueltos.",
+      summary: "IOTA verifica integridad de evidencia; Polygon registra titularidad digital cuando aplica. Ninguna capa prueba propiedad física.",
       status: statuses[4],
       href: demoSandbox || proofReady ? "/proof" : "/tokenization",
       action: demoSandbox ? "Explorar centro de Proof" : proofReady ? "Abrir centro de Proof" : "Preparar evidencia",
@@ -252,8 +253,8 @@ export function PilotLaunchpad({ snapshot, role }: { snapshot: PilotSnapshot; ro
         </div>
         <div>
           <span>Identidad visual</span>
-          <strong>{snapshot.assetsAvailable ? `${snapshot.averageAssetScore}/100` : "—"}</strong>
-          <small>{snapshot.assetsAvailable ? `${formatNumber(snapshot.readyAssets)} perfiles listos en ventana (max. 80)` : "fuente de assets no disponible"}</small>
+          <strong>{snapshot.assetsAvailable && snapshot.scoredAssetProfiles > 0 ? `${snapshot.averageAssetScore}/100` : "—"}</strong>
+          <small>{snapshot.assetsAvailable ? snapshot.scoredAssetProfiles > 0 ? `${formatNumber(snapshot.readyAssets)} perfiles listos; ${formatNumber(snapshot.scoredAssetProfiles)} con score en ventana` : "sin perfiles con score informado" : "fuente de assets no disponible"}</small>
         </div>
         <div>
           <span>Prueba IOTA</span>
@@ -263,7 +264,7 @@ export function PilotLaunchpad({ snapshot, role }: { snapshot: PilotSnapshot; ro
         <div>
           <span>Ownership Polygon</span>
           <strong>{metricValue(snapshot.tokenizedAssets, snapshot.tokenizationAvailable)}</strong>
-          <small>{snapshot.tokenizationAvailable ? "activos con transaccion en ventana (max. 80)" : "fuente de tokenizacion no disponible"}</small>
+          <small>{snapshot.tokenizationAvailable ? "activos con transaccion de titularidad digital en ventana (max. 80)" : "fuente de tokenizacion no disponible"}</small>
         </div>
       </div>
 

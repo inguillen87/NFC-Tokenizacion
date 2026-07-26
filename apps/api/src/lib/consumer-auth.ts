@@ -1,36 +1,37 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomInt } from "node:crypto";
+import { isIP } from "node:net";
 import { sql } from "./db";
 import { resolveConsumerOtpProvider } from "./consumer-auth-provider";
 import { ensureConsumerAuthSchema } from "./commercial-runtime-schema";
+import { hitSunRateLimit, shouldFailClosedSunRateLimit } from "./sun-rate-limit-store";
 
 const SESSION_COOKIE = "nexid_consumer_session";
 const OTP_TTL_MINUTES = Number(process.env.OTP_TTL_MINUTES || 10);
 const OTP_MAX_ATTEMPTS = Number(process.env.OTP_MAX_ATTEMPTS || 5);
 const OTP_LOCKOUT_MINUTES = 15;
 
-const startRate = new Map<string, { count: number; resetAt: number }>();
-const verifyRate = new Map<string, { count: number; resetAt: number }>();
 const DEMO_CONSUMER_EMAIL = "demo.consumer@nexid.local";
 
 function sha(value: string) {
   return createHash("sha256").update(value).digest("hex");
 }
 function pickIp(raw: string | null | undefined) {
-  const first = String(raw || "").split(",")[0]?.trim();
-  return first || "unknown";
+  const candidate = String(raw || "").split(",")[0]?.trim();
+  return candidate && isIP(candidate) ? candidate : "unknown";
 }
 
-function consumeRate(map: Map<string, { count: number; resetAt: number }>, key: string, max: number, windowMs: number) {
-  const now = Date.now();
-  const current = map.get(key);
-  if (!current || current.resetAt <= now) {
-    map.set(key, { count: 1, resetAt: now + windowMs });
-    return true;
+async function consumeAuthRate(scope: string, key: string, maxHits: number) {
+  try {
+    const result = await hitSunRateLimit(scope, key, 10 * 60, maxHits);
+    if (result.unavailable) return shouldFailClosedSunRateLimit() ? "unavailable" as const : "allowed" as const;
+    return result.limited ? "limited" as const : "allowed" as const;
+  } catch (error) {
+    audit("consumer_auth_rate_limit_unavailable", {
+      scope,
+      reason: error instanceof Error ? error.message : "rate_limit_unavailable",
+    });
+    return shouldFailClosedSunRateLimit() ? "unavailable" as const : "allowed" as const;
   }
-  if (current.count >= max) return false;
-  current.count += 1;
-  map.set(key, current);
-  return true;
 }
 
 function normalizePhone(contact: string) {
@@ -223,14 +224,20 @@ export async function startConsumerAuth(contact: string, meta?: { ip?: string | 
   await ensureConsumerAuthSchema();
   const ip = pickIp(meta?.ip);
   const normalizedContact = normalizeContact(contact);
-  const allowedContact = consumeRate(startRate, `contact:${normalizedContact}`, 5, 10 * 60 * 1000);
-  const allowedIp = consumeRate(startRate, `ip:${ip}`, 20, 10 * 60 * 1000);
-  if (!allowedContact || !allowedIp) {
+  const [contactRate, ipRate] = await Promise.all([
+    consumeAuthRate("consumer_auth_start_contact", normalizedContact, 5),
+    consumeAuthRate("consumer_auth_start_ip", ip, 20),
+  ]);
+  if (contactRate === "unavailable" || ipRate === "unavailable") {
+    audit("consumer_auth_start_unavailable", { contact: normalizedContact, ip });
+    return { ok: false as const, error: "unavailable" };
+  }
+  if (contactRate === "limited" || ipRate === "limited") {
     audit("consumer_auth_start_rate_limited", { contact: normalizedContact, ip });
     return { ok: false as const, error: "rate_limited" };
   }
 
-  const code = String(Math.floor(100000 + Math.random() * 900000));
+  const code = String(randomInt(100000, 1_000_000));
   const magicToken = createMagicToken();
   const magicTokenHash = sha(magicToken);
   const expiresMinutes = Number.isFinite(OTP_TTL_MINUTES) && OTP_TTL_MINUTES > 0 ? OTP_TTL_MINUTES : 10;
@@ -276,9 +283,15 @@ export async function verifyConsumerAuth(contact: string, code: string, meta?: {
   await ensureConsumerAuthSchema();
   const ip = pickIp(meta?.ip);
   const normalizedContact = normalizeContact(contact);
-  const allowedContact = consumeRate(verifyRate, `contact:${normalizedContact}`, 15, 10 * 60 * 1000);
-  const allowedIp = consumeRate(verifyRate, `ip:${ip}`, 40, 10 * 60 * 1000);
-  if (!allowedContact || !allowedIp) {
+  const [contactRate, ipRate] = await Promise.all([
+    consumeAuthRate("consumer_auth_verify_contact", normalizedContact, 15),
+    consumeAuthRate("consumer_auth_verify_ip", ip, 40),
+  ]);
+  if (contactRate === "unavailable" || ipRate === "unavailable") {
+    audit("consumer_auth_verify_fail", { contact: normalizedContact, ip, reason: "unavailable" });
+    return { ok: false as const, error: "unavailable" };
+  }
+  if (contactRate === "limited" || ipRate === "limited") {
     audit("consumer_auth_verify_fail", { contact: normalizedContact, ip, reason: "rate_limited" });
     return { ok: false as const, error: "rate_limited" };
   }
@@ -301,10 +314,20 @@ export async function verifyConsumerAuth(contact: string, code: string, meta?: {
   }
 
   if (String(challenge.code_hash) !== sha(code)) {
-    const attempts = Number(challenge.attempts || 0) + 1;
     const maxAttempts = Number(challenge.max_attempts || OTP_MAX_ATTEMPTS);
-    const lockedUntil = attempts >= maxAttempts ? new Date(Date.now() + OTP_LOCKOUT_MINUTES * 60 * 1000).toISOString() : null;
-    await sql/*sql*/`UPDATE consumer_auth_challenges SET attempts = ${attempts}, locked_until = ${lockedUntil} WHERE id = ${challenge.id}`;
+    const attemptRows = await sql/*sql*/`
+      UPDATE consumer_auth_challenges
+      SET attempts = attempts + 1,
+          locked_until = CASE
+            WHEN attempts + 1 >= ${maxAttempts}
+              THEN now() + (${OTP_LOCKOUT_MINUTES} || ' minutes')::interval
+            ELSE locked_until
+          END
+      WHERE id = ${challenge.id}
+        AND used_at IS NULL
+      RETURNING attempts, locked_until
+    `;
+    const attempts = Number(attemptRows[0]?.attempts || maxAttempts);
     audit("consumer_auth_verify_fail", { contact: normalizedContact, ip, reason: attempts >= maxAttempts ? "locked" : "invalid_code" });
     return { ok: false as const, error: attempts >= maxAttempts ? "locked" : "invalid_code" };
   }
@@ -337,8 +360,12 @@ export async function verifyConsumerAuthToken(token: string, meta?: { userAgent?
   const ip = pickIp(meta?.ip);
   if (!safeToken) return { ok: false as const, error: "invalid_code" };
 
-  const allowedIp = consumeRate(verifyRate, `magic-ip:${ip}`, 50, 10 * 60 * 1000);
-  if (!allowedIp) {
+  const ipRate = await consumeAuthRate("consumer_auth_magic_ip", ip, 50);
+  if (ipRate === "unavailable") {
+    audit("consumer_auth_token_verify_fail", { ip, reason: "unavailable" });
+    return { ok: false as const, error: "unavailable" };
+  }
+  if (ipRate === "limited") {
     audit("consumer_auth_token_verify_fail", { ip, reason: "rate_limited" });
     return { ok: false as const, error: "rate_limited" };
   }

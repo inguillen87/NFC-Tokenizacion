@@ -141,8 +141,8 @@ export function ConsumerLoginPanel({ nextPath }: { nextPath: string }) {
       return;
     }
     setStep("verify");
-    setStatus(payload.twoFactor
-      ? "Doble factor activo. Enviamos el código por los canales configurados de tu cuenta."
+    setStatus(payload.deliveryChannel === "both"
+      ? "Enviamos el mismo código a los canales configurados de tu cuenta. Podés validarlo desde cualquiera; esto no constituye MFA secuencial."
       : isTapReturn
         ? "Código enviado. Al validar volvemos al producto; cualquier claim queda sujeto a compra validada o POS/PIN."
         : "Código enviado. Ingresá el código recibido para entrar a tu Pasaporte.");

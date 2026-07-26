@@ -12,7 +12,7 @@ const faqByLocale: Record<Props["locale"], { title: string; lead: string; items:
     items: [
       {
         q: "¿Qué recibe una persona después de tocar el producto?",
-        a: "Una respuesta simple: si el producto es auténtico, de dónde viene, qué lote tiene y cuál es el siguiente paso disponible: garantía, beneficio, certificado, portal o reclamo de dueño.",
+        a: "Una respuesta simple sobre el mensaje NFC/QR, el lote y origen declarados, la evidencia disponible y el siguiente paso permitido. No certifica por sí sola autenticidad física, contenido o procedencia.",
       },
       {
         q: "Esto obliga al cliente a entender blockchain o NFT?",
@@ -48,7 +48,7 @@ const faqByLocale: Record<Props["locale"], { title: string; lead: string; items:
       },
       {
         q: "¿Esto escala a volúmenes enterprise?",
-        a: "Sí. El modelo operativo es el mismo: batch governance, import controlado, activación y observabilidad antifraude.",
+        a: "La arquitectura está diseñada para batch governance, import controlado, activación y observabilidad de riesgo. Capacidad, latencia y SLA se validan por piloto y pruebas de carga antes de comprometer volumen productivo.",
       },
     ],
   },
@@ -58,7 +58,7 @@ const faqByLocale: Record<Props["locale"], { title: string; lead: string; items:
     items: [
       {
         q: "O que a pessoa recebe depois de tocar o produto?",
-        a: "Uma resposta simples: se o produto e autentico, de onde veio, qual lote possui e qual e o proximo passo: garantia, beneficio, certificado, portal ou claim de dono.",
+        a: "Uma resposta simples sobre a mensagem NFC/QR, lote e origem declarados, evidência disponível e próximo passo permitido. Não certifica, por si só, autenticidade física, conteúdo ou procedência.",
       },
       {
         q: "O cliente precisa entender blockchain ou NFT?",
@@ -94,7 +94,7 @@ const faqByLocale: Record<Props["locale"], { title: string; lead: string; items:
       },
       {
         q: "Isso escala para nível enterprise?",
-        a: "Sim. O modelo operacional permanece: governança de lote, importação controlada, ativação e observabilidade antifraude.",
+        a: "A arquitetura foi desenhada para governança de lote, importação controlada, ativação e observabilidade de risco. Capacidade, latência e SLA são validados por piloto e testes de carga antes de assumir volume produtivo.",
       },
     ],
   },
@@ -104,7 +104,7 @@ const faqByLocale: Record<Props["locale"], { title: string; lead: string; items:
     items: [
       {
         q: "What does a person receive after tapping the product?",
-        a: "A simple answer: whether the product is authentic, where it came from, which batch it belongs to and the next available step: warranty, benefit, certificate, portal or ownership claim.",
+        a: "A simple answer about the NFC/QR message, declared batch and origin, available evidence and the next permitted step. It does not by itself certify physical authenticity, contents or provenance.",
       },
       {
         q: "Does the customer need to understand blockchain or NFTs?",
@@ -140,7 +140,7 @@ const faqByLocale: Record<Props["locale"], { title: string; lead: string; items:
       },
       {
         q: "Does this scale to enterprise volume?",
-        a: "Yes. The operating model stays the same: batch governance, controlled import, activation and anti-fraud observability.",
+        a: "The architecture is designed for batch governance, controlled import, activation and risk observability. Capacity, latency and SLA are validated through pilots and load tests before committing production volume.",
       },
     ],
   },

@@ -86,12 +86,12 @@ export const CARRIER_PROFILES: CarrierProfile[] = [
     consumerCopy: {
       headline: "Experiencia digital por QR",
       body: "Abre contenido, promociones, marketplace y analitica de escaneos con muy bajo costo.",
-      disclaimer: "No prueba autenticidad criptografica: un QR puede copiarse con una foto.",
+      disclaimer: "No aporta evidencia criptografica dinamica ni anti-replay: una foto puede repetir la misma URL.",
     },
     adminCopy: {
       positioning: "Entrada comercial para clientes chicos o campanas rapidas.",
       bestFor: "Menus, landing pages, promos, leads, clubes y trazabilidad declarada.",
-      avoid: "No usar como anti-fraude premium ni como prueba unica de ownership.",
+      avoid: "No usar como evidencia criptografica ni como prueba unica de ownership o del producto fisico.",
     },
     defaultPolicy: {
       requiresFreshTap: false,
@@ -116,7 +116,7 @@ export const CARRIER_PROFILES: CarrierProfile[] = [
     consumerCopy: {
       headline: "Pasaporte retail con GS1",
       body: "Conecta GTIN, lote, serie, vencimiento y contenido web compatible con retail/exportacion.",
-      disclaimer: "Es trazabilidad estandarizada, no una prueba criptografica anti-clon.",
+      disclaimer: "Es trazabilidad estandarizada, no evidencia criptografica dinamica ni control anti-replay.",
     },
     adminCopy: {
       positioning: "Escalon profesional para retail y exportacion antes de pasar a NFC seguro.",
@@ -176,7 +176,7 @@ export const CARRIER_PROFILES: CarrierProfile[] = [
     consumerCopy: {
       headline: "NFC para eventos y activaciones",
       body: "Sirve para pulseras, credenciales, tickets y productos donde importa velocidad y serializacion.",
-      disclaimer: "Controla UID/reglas server-side, pero no es anti-clon premium.",
+      disclaimer: "Controla UID y reglas server-side, pero no aporta evidencia criptografica dinamica ni autentica el producto fisico.",
     },
     adminCopy: {
       positioning: "Muy buen punto medio para eventos, credenciales y marcas con validacion frecuente.",
@@ -243,12 +243,12 @@ export const CARRIER_PROFILES: CarrierProfile[] = [
     allowedActions: ["cryptographic_auth", "anti_replay", "ownership_after_purchase", "warranty", "tokenization_request", "marketplace", "loyalty"],
     blockedActions: ["tamper_physical_state"],
     consumerCopy: {
-      headline: "Autenticidad criptografica",
-      body: "Cada tap genera una prueba dinamica SUN/SDM para detectar replay, copias y URLs reutilizadas.",
+      headline: "Mensaje NFC criptografico",
+      body: "Cada tap aporta evidencia dinamica SUN/SDM para detectar replay, copias y URLs reutilizadas.",
       disclaimer: "No detecta apertura fisica si no usa TagTamper TT.",
     },
     adminCopy: {
-      positioning: "Linea segura para autenticidad real y tokenizacion controlada.",
+      positioning: "Linea segura para validar el mensaje NFC y habilitar tokenizacion controlada.",
       bestFor: "Productos premium donde clonacion, reventa o garantia requieren prueba fuerte.",
       avoid: "No prometer sello abierto/cerrado sin hardware TT.",
     },
@@ -283,9 +283,9 @@ export const CARRIER_PROFILES: CarrierProfile[] = [
     allowedActions: ["cryptographic_auth", "anti_replay", "tamper_state", "ownership_after_purchase", "warranty", "tokenization_request", "marketplace", "loyalty"],
     blockedActions: ["claim_without_fresh_tap", "tokenize_without_purchase_policy"],
     consumerCopy: {
-      headline: "Autenticidad + sello fisico",
-      body: "Valida criptografia y estado del sello: cerrado, abierto o tamper para productos premium.",
-      disclaimer: "Ownership y tokenizacion requieren tap fresco y politica comercial del tenant.",
+      headline: "Mensaje NFC + estado TT reportado",
+      body: "Valida evidencia SUN/SDM y registra el estado TT reportado: cerrado, abierto o tamper.",
+      disclaimer: "No certifica por si solo el contenido ni la condicion fisica; ownership y tokenizacion requieren tap fresco y politica del tenant.",
     },
     adminCopy: {
       positioning: "Capa premium para confianza, lifecycle y evidencia de apertura.",
@@ -315,12 +315,12 @@ export const CARRIER_PROFILES: CarrierProfile[] = [
     consumerCopy: {
       headline: "Trazabilidad logística UHF",
       body: "Identifica cajas, pallets y movimientos de depósito con lectura masiva y eventos operativos.",
-      disclaimer: "UHF aporta trazabilidad de cadena; no reemplaza una prueba SUN/SDM anti-clon.",
+      disclaimer: "UHF aporta eventos logisticos reportados; no reemplaza evidencia dinamica SUN/SDM ni prueba envio o custodia fisica.",
     },
     adminCopy: {
       positioning: "Capa operativa para logística, agro y retail de alto volumen.",
       bestFor: "Pallets, cajas, inventario, recepción, despacho y auditoría de canal.",
-      avoid: "No usar como autenticidad premium visible al consumidor final.",
+      avoid: "No presentar sus lecturas como autenticidad fisica visible al consumidor final.",
     },
     defaultPolicy: {
       requiresFreshTap: false,
@@ -350,7 +350,7 @@ export const CARRIER_PROFILES: CarrierProfile[] = [
     adminCopy: {
       positioning: "Perfil para eventos, ferias, hospitality y activaciones presenciales.",
       bestFor: "Entradas, zonas VIP, beneficios por stand, trivia, canje y CRM post-evento.",
-      avoid: "No vender como prueba anti-clon premium sin 424 DNA.",
+      avoid: "No vender como evidencia criptografica resistente a replay; 424 DNA mejora la resistencia a copias del mensaje, pero no vuelve imposible copiar el soporte fisico.",
     },
     defaultPolicy: {
       requiresFreshTap: true,
@@ -375,7 +375,7 @@ export const CARRIER_PROFILES: CarrierProfile[] = [
     consumerCopy: {
       headline: "Credencial digital de experiencia",
       body: "Une tarjeta física, beneficios y registro operativo para hotel, club o evento.",
-      disclaimer: "Para anti-clon premium se recomienda NTAG 424 DNA.",
+      disclaimer: "Para evidencia dinamica con resistencia a replay se recomienda NTAG 424 DNA; eso no certifica por si solo el soporte fisico.",
     },
     adminCopy: {
       positioning: "Tarjeta de experiencia para membresías, acceso y beneficios.",

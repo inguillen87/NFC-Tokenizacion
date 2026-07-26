@@ -38,32 +38,19 @@ export function RealOpsMap({
     risk: point.risk,
     verdict: point.status || "VALID",
     tenantSlug: point.tenantSlug || scopeLabel,
-    lastSeen: point.lastSeen || new Date().toISOString(),
+    lastSeen: point.lastSeen || "",
     uid: point.uid,
     device: point.device,
   })), [points, scopeLabel]);
 
-  const routes = useMemo(() => normalizedPoints.slice(1, 120).map((point, index) => ({
-    id: `route-${index}-${point.id}`,
-    fromLat: normalizedPoints[index]?.lat ?? point.lat,
-    fromLng: normalizedPoints[index]?.lng ?? point.lng,
-    toLat: point.lat,
-    toLng: point.lng,
-    uid: point.uid || point.id,
-    risk: point.risk,
-    taps: point.scans,
-    firstSeenAt: normalizedPoints[index]?.lastSeen ?? point.lastSeen,
-    lastSeenAt: point.lastSeen,
-  })), [normalizedPoints]);
-
   return (
     <GlobalOpsMap
-      title={scopeLabel.includes("multi") ? "Heatmap global en vivo" : "Heatmap tenant en vivo"}
-      subtitle="Actividad real por ciudad, rutas punteadas entre taps y nodos de riesgo."
+      title={scopeLabel.includes("multi") ? "Actividad geográfica global" : "Actividad geográfica del tenant"}
+      subtitle="Eventos reportados por ciudad o zona. Los puntos independientes no se convierten en una ruta y la ausencia de fecha no se presenta como actividad reciente."
       mode={scopeLabel.includes("multi") ? "global" : "tenant"}
       points={normalizedPoints}
-      routes={routes}
-      playbackEnabled
+      routes={[]}
+      playbackEnabled={false}
     />
   );
 }

@@ -44,7 +44,7 @@ test("legacy simulated anchors are normalized before they can be exposed", async
   assert.match(source, /token_id = NULL/);
 });
 
-test("minting and transfer records are tenant scoped", async () => {
+test("minting and marketplace listing records are tenant scoped while P2P settlement is disabled", async () => {
   const engine = await readFile(engineUrl, "utf8");
   const publicRoute = await readFile(publicRouteUrl, "utf8");
   const certificate = await readFile(certificateRouteUrl, "utf8");
@@ -57,8 +57,11 @@ test("minting and transfer records are tenant scoped", async () => {
   assert.match(publicRoute, /WHERE tenant_id = \$\{tenantId\}::uuid\s+AND batch_id = \$\{batchId\}::uuid/);
   assert.match(certificate, /AND tr\.tenant_id = e\.tenant_id/);
   assert.match(consumerProducts, /WHERE tr\.tenant_id = cp\.tenant_id\s+AND tr\.batch_id = b\.id/);
-  assert.match(p2pList, /AND b\.tenant_id = \$\{ownership\.tenant_id\}::uuid/);
-  assert.match(p2pBuy, /tenantId: String\(offer\.tenant_id\)/);
+  assert.match(p2pList, /JOIN batches batch ON batch\.id = tag\.batch_id AND batch\.tenant_id = ownership\.tenant_id/);
+  assert.match(p2pList, /WHERE tenant_id = \$\{evidence\.tenant_id\}/);
+  assert.match(p2pBuy, /p2p_settlement_unavailable/);
+  assert.match(p2pBuy, /chain_transfer_status: "not_executed"/);
+  assert.doesNotMatch(p2pBuy, /transferBlockchainToken/);
 });
 
 test("public ownership PIN has a durable lockout boundary", async () => {

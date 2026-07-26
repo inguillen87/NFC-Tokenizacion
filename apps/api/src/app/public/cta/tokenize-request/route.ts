@@ -6,10 +6,14 @@ import { sql } from "../../../../lib/db";
 import { ensureTokenizationRequestsSchema } from "../../../../lib/tokenization-schema";
 import { anchorTokenizationRequest } from "../../../../lib/tokenization-engine";
 import { resolvePublicCtaTarget, type PublicCtaTokenizationPolicy } from "../../../../lib/public-cta-target";
-import { requireSunFreshHandoff } from "../../../../lib/sun-fresh-handoff";
+import { consumeSunFreshHandoff } from "../../../../lib/sun-fresh-handoff";
 import { normalizeTokenizationStatus } from "../../../../lib/tokenization-status";
 import { getConsumerFromRequest } from "../../../../lib/consumer-auth";
 import { ensureConsumerPortalSchema } from "../../../../lib/commercial-runtime-schema";
+import { enforceCriticalRateLimit } from "../../../../lib/critical-rate-limit";
+import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../lib/bounded-request-body";
+
+const MAX_TOKENIZATION_BODY_BYTES = 32 * 1024;
 
 const LEDGER_NETWORK_ALLOWED = new Set(["polygon-amoy", "polygon", "ethereum-sepolia", "ethereum-mainnet", "base-sepolia", "base-mainnet"]);
 const PRIVILEGED_PUBLIC_POLICIES = new Set<PublicCtaTokenizationPolicy>(["lot_anchor", "issuer_batch_anchor"]);
@@ -235,22 +239,32 @@ async function hasClaimedOwnership(input: {
 
 export async function POST(req: Request) {
   const traceId = req.headers.get("x-nexid-trace-id") || `api_cta_${Date.now().toString(36)}`;
-  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+  const rateLimited = await enforceCriticalRateLimit(req, {
+    rateClass: "proof_write",
+    tenantId: "platform",
+    subjectId: "public:tokenization-capability",
+  });
+  if (rateLimited) return rateLimited;
+  let body: Record<string, unknown>;
+  try {
+    body = await readBoundedJsonBody<Record<string, unknown>>(req, MAX_TOKENIZATION_BODY_BYTES);
+  } catch (error) {
+    const tooLarge = error instanceof RequestBodyTooLargeError;
+    return json({ ok: false, reason: tooLarge ? "request_body_too_large" : "invalid_json", trace_id: traceId }, tooLarge ? 413 : 400);
+  }
   const target = await resolvePublicCtaTarget(body);
   if (!target.ok) return json({ ok: false, reason: target.reason, trace_id: traceId }, target.status);
   const { bid, uid, eventId, batchId, tenantId } = target;
 
   const auth = requireShareToken(req, bid, target.shareUid);
   if (!auth.ok) return json({ ok: false, reason: auth.reason, trace_id: traceId, share_token_status: auth.share_token_status }, 401);
-  const fresh = requireSunFreshHandoff(req, body, { bid, eventId, uid: target.shareUid });
-  if (!eventId || !fresh.ok) {
-    const freshReason = fresh.ok ? "fresh_event_required" : fresh.reason;
+  if (!eventId) {
     return json({
       ok: false,
       reason: "fresh_physical_tap_required_for_tokenization",
       trace_id: traceId,
       share_token_status: auth.share_token_status,
-      fresh_token_status: freshReason,
+      fresh_token_status: "fresh_event_required",
     }, 403);
   }
   if (!batchId || !tenantId) {
@@ -262,7 +276,6 @@ export async function POST(req: Request) {
       fresh_token_status: "accepted",
     }, 409);
   }
-
   const serverPolicy = target.tokenizationPolicy;
   const requestedBypass = requestedPrivilegedPolicy(body);
   if (requestedBypass && requestedBypass !== serverPolicy) {
@@ -364,6 +377,23 @@ export async function POST(req: Request) {
       fresh_token_status: "accepted",
       next_step: tokenizationCanRunWithoutOwner(serverPolicy) ? "configure_recipient_wallet" : "connect_verified_wallet",
     }, tokenizationCanRunWithoutOwner(serverPolicy) ? 503 : 409);
+  }
+
+  const fresh = await consumeSunFreshHandoff(
+    req,
+    body,
+    { bid, eventId, uid: target.shareUid },
+    "public_tokenize_request",
+  );
+  if (!fresh.ok) {
+    const freshReason = fresh.reason;
+    return json({
+      ok: false,
+      reason: "fresh_physical_tap_required_for_tokenization",
+      trace_id: traceId,
+      share_token_status: auth.share_token_status,
+      fresh_token_status: freshReason,
+    }, 403);
   }
 
   const requestedNetworkRaw = sanitizeText(body.ledger_network || "polygon-amoy", 40).toLowerCase();

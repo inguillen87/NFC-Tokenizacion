@@ -151,7 +151,7 @@ export function SecureDeliveryOpsConsole({ tenantSlug, role }: Props) {
       <div className="flex flex-col gap-4 border-b border-white/10 pb-5 md:flex-row md:items-center md:justify-between">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-300">Warehouse operation</p>
-          <h2 className="mt-2 text-2xl font-black tracking-tight text-white">Create shipment, bind seal, verify delivery</h2>
+          <h2 className="mt-2 text-2xl font-black tracking-tight text-white">Create shipment, record seal assignment, check receipt</h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
             The premium logistics workflow uses pre-encoded seal inventory, then binds a UID to a specific shipment at packing time. No CLI, no exposed admin key, no generic tracking theater.
           </p>
@@ -289,10 +289,10 @@ export function SecureDeliveryOpsConsole({ tenantSlug, role }: Props) {
 
       <div className="mt-5 grid gap-3 md:grid-cols-4">
         {[
-          { icon: PackagePlus, label: "Shipment created", body: "Order, carrier, origin and destination become auditable." },
-          { icon: CheckCircle2, label: "Seal applied", body: "Pre-encoded UID is bound to the physical package." },
-          { icon: Truck, label: "Courier handoff", body: "Transfer events keep chain of custody visible." },
-          { icon: ShieldAlert, label: "Recipient verify", body: "Closed seal confirms delivery; opened seal triggers review." },
+          { icon: PackagePlus, label: "Shipment created", body: "Declared order, carrier, origin and destination are recorded for audit." },
+          { icon: CheckCircle2, label: "Seal assignment", body: "An operator records the association between a pre-encoded UID and the declared package." },
+          { icon: Truck, label: "Courier handoff", body: "Operator-submitted transfer events make the recorded handling sequence reviewable." },
+          { icon: ShieldAlert, label: "Recipient check", body: "A TT-closed report plus recipient record supports review; TT-open triggers an exception. Neither proves contents by itself." },
         ].map((item) => (
           <div key={item.label} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
             <item.icon className="h-5 w-5 text-cyan-300" />

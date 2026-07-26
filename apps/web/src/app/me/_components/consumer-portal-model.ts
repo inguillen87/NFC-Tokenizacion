@@ -8,6 +8,11 @@ export type ConsumerBrand = {
   status?: string | null;
   points_balance?: number | null;
   lifetime_points?: number | null;
+  tier?: string | null;
+  membership_tier?: string | null;
+  progress?: number | null;
+  membership_progress?: number | null;
+  next_milestone?: string | null;
   joined_at?: string | null;
 };
 
@@ -70,11 +75,11 @@ export type BrandEngagement = {
   name: string;
   slug: string;
   status: string;
-  points: number;
-  lifetimePoints: number;
-  tier: string;
-  progress: number;
-  nextMilestone: string;
+  points: number | null;
+  lifetimePoints: number | null;
+  tier: string | null;
+  progress: number | null;
+  nextMilestone: string | null;
   productCount: number;
   claimedCount: number;
   tapCount: number;
@@ -143,12 +148,10 @@ function listingKey(item: MarketplaceListing) {
   return normalizeKey(firstUseful(item.tenant_slug, item.brand_name, item.brand));
 }
 
-function tierFromScore(score: number) {
-  if (score >= 1000) return { tier: "Founders", next: "premium concierge", progress: 100 };
-  if (score >= 650) return { tier: "Black", next: "Founders", progress: Math.min(99, Math.round((score / 1000) * 100)) };
-  if (score >= 300) return { tier: "Gold", next: "Black", progress: Math.min(99, Math.round((score / 650) * 100)) };
-  if (score >= 100) return { tier: "Silver", next: "Gold", progress: Math.min(99, Math.round((score / 300) * 100)) };
-  return { tier: "Member", next: "Silver", progress: Math.max(8, Math.round((score / 100) * 100)) };
+function optionalFiniteNumber(value: unknown) {
+  if (value === null || value === undefined || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
 }
 
 function isClaimed(item: ConsumerPortalProduct) {
@@ -156,7 +159,8 @@ function isClaimed(item: ConsumerPortalProduct) {
 }
 
 function isListingLive(item: MarketplaceListing) {
-  const status = String(item.stock_status || item.status || "available").toLowerCase();
+  const status = String(item.stock_status || item.status || "").toLowerCase();
+  if (!status) return false;
   return status !== "out_of_stock" && status !== "paused" && status !== "archived";
 }
 
@@ -177,7 +181,7 @@ function buildNotifications(input: {
       id: notificationId("promo", listing.id || listing.title, index),
       type: "promo",
       title: listing.title ? `Nuevo beneficio: ${listing.title}` : "Nuevo beneficio publicado",
-      detail: points ? `${points} pts disponibles para miembros con passport.` : "Drop disponible para miembros con producto verificado.",
+      detail: points ? `${points} pts disponibles para miembros con passport.` : "Drop disponible para miembros con producto asociado.",
       href: `/me/marketplace?tenant=${encodeURIComponent(input.slug)}`,
       tone: "violet",
     });
@@ -187,7 +191,7 @@ function buildNotifications(input: {
     notifications.push({
       id: notificationId("tap", tap.tap_event_id || tap.created_at, index),
       type: "tap",
-      title: `Tap ${String(tap.verdict || "valid").toUpperCase()} registrado`,
+      title: `Tap ${String(tap.verdict || "sin dato").toUpperCase()} registrado`,
       detail: `${firstUseful(tap.city, "Ubicacion no informada")}${tap.country ? `, ${tap.country}` : ""} - ${formatPortalDate(tap.created_at)}`,
       href: "/me/taps",
       tone: String(tap.verdict || "").toLowerCase().includes("valid") ? "emerald" : "amber",
@@ -225,10 +229,6 @@ export function buildBrandEngagement(input: {
     if (key) brandMap.set(key, brand);
   });
 
-  [...products.map(productKey), ...taps.map(tapKey), ...listings.map(listingKey)].forEach((key) => {
-    if (key && !brandMap.has(key)) brandMap.set(key, { slug: key, name: key });
-  });
-
   return Array.from(brandMap.entries()).map(([key, brand]) => {
     const brandKeys = new Set([
       normalizeKey(brand.slug),
@@ -242,9 +242,12 @@ export function buildBrandEngagement(input: {
     const brandListings = listings.filter((item) => brandKeys.has(listingKey(item)));
     const liveListings = brandListings.filter(isListingLive);
     const claimedCount = brandProducts.filter(isClaimed).length;
-    const lifetimePoints = Number(brand.lifetime_points || brand.points_balance || 0);
-    const score = lifetimePoints + claimedCount * 120 + brandProducts.length * 45 + brandTaps.length * 30 + liveListings.length * 40;
-    const tier = tierFromScore(score);
+    const points = optionalFiniteNumber(brand.points_balance);
+    const lifetimePoints = optionalFiniteNumber(brand.lifetime_points);
+    const tier = firstUseful(brand.membership_tier, brand.tier) || null;
+    const rawProgress = optionalFiniteNumber(brand.membership_progress ?? brand.progress);
+    const progress = rawProgress === null ? null : Math.max(0, Math.min(100, rawProgress));
+    const nextMilestone = firstUseful(brand.next_milestone) || null;
     const activityDates = [...brandProducts.map((item) => item.created_at), ...brandTaps.map((item) => item.created_at)]
       .map(dateValue)
       .filter((value): value is number => value !== null)
@@ -257,12 +260,12 @@ export function buildBrandEngagement(input: {
       brand,
       name: firstUseful(brand.name, brand.slug, brand.tenant_id, "Marca"),
       slug,
-      status: String(brand.status || "active").toLowerCase(),
-      points: Number(brand.points_balance || 0),
+      status: String(brand.status || "not_reported").toLowerCase(),
+      points,
       lifetimePoints,
-      tier: tier.tier,
-      progress: tier.progress,
-      nextMilestone: tier.next,
+      tier,
+      progress,
+      nextMilestone,
       productCount: brandProducts.length,
       claimedCount,
       tapCount: brandTaps.length,

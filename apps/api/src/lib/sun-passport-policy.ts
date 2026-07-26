@@ -94,9 +94,9 @@ const VERTICAL_POLICIES: Record<PassportVertical, VerticalPolicy> = {
     tokenizationWhenOpened: "verified_opened_tap",
     claimMode: "purchase_or_custody_proof",
     marketplaceMode: "club_and_reorder",
-    requires: ["tap fisico fresco", "prueba de compra o custodia", "tenant activo", "anti-replay OK"],
-    sealedCopy: "Producto original con sello intacto. Ya podés unirte al club de la bodega, reclamar tu botella y registrar tu certificado de propiedad.",
-    openedCopy: "Autenticidad confirmada. El sello físico ya fue abierto (descorchado). Podés registrar la botella como tuya, sumar puntos y acceder al club de beneficios.",
+    requires: ["tap físico reciente", "prueba de compra o custodia", "tenant activo", "control anti-replay correcto"],
+    sealedCopy: "Mensaje SUN del chip validado y sello registrado como intacto. El tap identifica la etiqueta digital; no certifica por sí solo el contenido, el origen físico ni la propiedad de la botella. Club, custodia y certificado dependen de la política de la bodega y de la evidencia requerida.",
+    openedCopy: "Mensaje SUN del chip validado y apertura del sello registrada. El tap no certifica por sí solo el contenido, el origen físico ni la propiedad de la botella. Club, puntos y custodia dependen de la política de la bodega y de la evidencia requerida.",
   },
   spirits: {
     label: "Spirits / botella seriada",
@@ -106,21 +106,21 @@ const VERTICAL_POLICIES: Record<PassportVertical, VerticalPolicy> = {
     tokenizationWhenOpened: "verified_opened_tap",
     claimMode: "purchase_or_custody_proof",
     marketplaceMode: "club_and_reorder",
-    requires: ["tap fisico fresco", "prueba de compra o custodia", "estado de sello registrado"],
-    sealedCopy: "Botella original y cerrada: lista para registrar su propiedad, activar la garantía y acceder a experiencias exclusivas.",
-    openedCopy: "Apertura verificada. El sello fue abierto, pero conserva su autenticidad y trazabilidad. Podés unirte al club y registrar tu consumo.",
+    requires: ["tap físico reciente", "prueba de compra o custodia", "estado del sello registrado"],
+    sealedCopy: "Mensaje SUN del chip validado y sello registrado como cerrado. La evidencia corresponde a la etiqueta digital y no prueba por sí sola el contenido, el origen físico ni la propiedad de la botella. Garantía y experiencias dependen de la política del emisor.",
+    openedCopy: "Mensaje SUN del chip validado y apertura del sello registrada. La evidencia no confirma por sí sola el contenido ni una cadena de custodia completa. Club, consumo y custodia se registran según la política del emisor.",
   },
   cosmetics: {
-    label: "Cosmetica / beauty",
+    label: "Cosmética / belleza",
     sealedActions: ["claim", "save", "join", "warranty", "rewards", "provenance"],
     openedActions: ["claim", "save", "join", "warranty", "rewards", "provenance"],
     tokenizationWhenSealed: "manual_review",
     tokenizationWhenOpened: "manual_review",
     claimMode: "purchase_or_custody_proof",
     marketplaceMode: "care_and_warranty",
-    requires: ["tap fisico fresco", "lote activo", "prueba de compra para garantia premium"],
-    sealedCopy: "Producto cosmético original: listo para activar tu garantía, acceder a consejos de cuidado, club y promociones exclusivas.",
-    openedCopy: "Apertura registrada. El producto es auténtico y se habilitan los servicios de garantía y soporte de la marca.",
+    requires: ["tap físico reciente", "lote activo", "prueba de compra para garantía premium"],
+    sealedCopy: "Mensaje SUN del chip validado y etiqueta asociada a un lote activo. El tap no verifica por sí solo la fórmula, el contenido ni el origen físico del cosmético. Garantía, cuidado y promociones dependen de la política de la marca.",
+    openedCopy: "Mensaje SUN del chip validado y apertura registrada para esta etiqueta. El tap no verifica por sí solo la fórmula ni el contenido del envase. Garantía y soporte dependen de la política de la marca y de la prueba de compra cuando corresponda.",
   },
   pharma: {
     label: "Pharma / regulado",
@@ -130,21 +130,21 @@ const VERTICAL_POLICIES: Record<PassportVertical, VerticalPolicy> = {
     tokenizationWhenOpened: "off",
     claimMode: "retailer_or_seller_attested",
     marketplaceMode: "regulated_consultation",
-    requires: ["dispensa o retailer attestation", "politica regulatoria del tenant", "sin replay"],
-    sealedCopy: "Medicamento verificado. Trazabilidad completa confirmada para tu seguridad y consulta de prospecto.",
-    openedCopy: "Empaque abierto. Podés seguir consultando la información y trazabilidad del producto de forma segura.",
+    requires: ["constancia de dispensa o del vendedor", "política regulatoria del tenant", "sin replay"],
+    sealedCopy: "Mensaje SUN del chip validado y empaque registrado como cerrado. El tap identifica la etiqueta digital; no valida por sí solo la composición, el estado sanitario ni la cadena de custodia completa del medicamento. Consultá el prospecto y los registros del emisor.",
+    openedCopy: "Mensaje SUN del chip validado y apertura del empaque registrada. La consulta conserva la identidad digital y los eventos disponibles, pero no valida por sí sola la composición, el estado sanitario ni la cadena de custodia completa.",
   },
   luxury: {
-    label: "Lujo / coleccionable",
+    label: "Lujo / coleccionables",
     sealedActions: BASE_ACTIONS.consumer,
     openedActions: BASE_ACTIONS.consumer,
     tokenizationWhenSealed: "fresh_valid_tap",
     tokenizationWhenOpened: "verified_opened_tap",
     claimMode: "issuer_transfer_required",
     marketplaceMode: "secondary_market_ready",
-    requires: ["tap fisico fresco", "proof of purchase o transferencia del issuer", "revision ante inconsistencias"],
-    sealedCopy: "Artículo de lujo original: listo para registrar tu propiedad oficial y activar el certificado digital de autenticidad.",
-    openedCopy: "Sello abierto o usado. La autenticidad sigue vigente y podés transferir o registrar la propiedad con tu comprobante de compra.",
+    requires: ["tap físico reciente", "prueba de compra o transferencia del emisor", "revisión ante inconsistencias"],
+    sealedCopy: "Mensaje SUN del chip validado y etiqueta vinculada a un registro digital. El tap no demuestra por sí solo la originalidad física ni la propiedad del artículo. Certificado y transferencia requieren validación del emisor y la evidencia definida.",
+    openedCopy: "Mensaje SUN del chip validado y cambio de estado del sello registrado. La originalidad física y la propiedad no se desprenden únicamente del tap; cualquier registro o transferencia requiere comprobante y validación del emisor.",
   },
   art: {
     label: "Arte / certificado",
@@ -154,9 +154,9 @@ const VERTICAL_POLICIES: Record<PassportVertical, VerticalPolicy> = {
     tokenizationWhenOpened: "issuer_transfer",
     claimMode: "issuer_transfer_required",
     marketplaceMode: "secondary_market_ready",
-    requires: ["issuer transfer", "provenance documentada", "revision si cambia condicion fisica"],
-    sealedCopy: "Obra de arte o certificado auténtico: listo para registrar la autoría y transferir la propiedad digital.",
-    openedCopy: "Modificación de estado registrada. La autenticidad de la obra está confirmada, manteniendo su historial de procedencia.",
+    requires: ["transferencia del emisor", "procedencia documentada", "revisión si cambia la condición física"],
+    sealedCopy: "Mensaje SUN del chip validado y etiqueta vinculada a un registro digital de la obra o certificado. El tap no acredita por sí solo autoría, autenticidad física, procedencia ni propiedad; esas afirmaciones requieren documentación y validación del emisor.",
+    openedCopy: "Mensaje SUN del chip validado y modificación de estado registrada. El historial digital disponible se conserva, pero el tap no confirma por sí solo autoría, autenticidad física, procedencia ni propiedad de la obra.",
   },
   events: {
     label: "Eventos / credenciales",
@@ -166,45 +166,45 @@ const VERTICAL_POLICIES: Record<PassportVertical, VerticalPolicy> = {
     tokenizationWhenOpened: "off",
     claimMode: "inside_pack_secret",
     marketplaceMode: "ticket_activation",
-    requires: ["tap fisico fresco", "reglas server-side", "no replay"],
-    sealedCopy: "Credencial valida: prioriza check-in, acceso, rewards y antifraude operativo.",
-    openedCopy: "Credencial usada o revalidada: se mantiene la trazabilidad; tokenizacion no es necesaria por defecto.",
+    requires: ["tap físico reciente", "reglas del servidor", "sin replay"],
+    sealedCopy: "Mensaje SUN de la credencial validado. El acceso, el check-in y los beneficios dependen de las reglas del servidor; el tap no acredita por sí solo la identidad de la persona portadora.",
+    openedCopy: "Mensaje SUN validado y uso o revalidación registrados. El historial disponible corresponde a la credencial digital; el acceso y los beneficios siguen sujetos a las reglas del servidor.",
   },
   agro: {
-    label: "Agro / lote trazable",
+    label: "Agro / lote con trazabilidad",
     sealedActions: BASE_ACTIONS.lot,
     openedActions: BASE_ACTIONS.lot,
     tokenizationWhenSealed: "lot_anchor",
     tokenizationWhenOpened: "lot_anchor",
     claimMode: "retailer_or_seller_attested",
     marketplaceMode: "lot_traceability",
-    requires: ["lote activo", "operador o distribuidor autorizado", "tap fresco para acciones comerciales"],
-    sealedCopy: "Lote autentico: origen, cadena logistica, garantia y tokenizacion de lote quedan disponibles.",
-    openedCopy: "Packaging abierto o intervenido: se registra como evento logistico; ownership depende de operador autorizado.",
+    requires: ["lote activo", "operador o distribuidor autorizado", "tap reciente para acciones comerciales"],
+    sealedCopy: "Mensaje SUN del chip validado y etiqueta asociada a un lote activo. El tap no prueba por sí solo el contenido, el origen físico ni una cadena logística completa; esos datos dependen de registros del emisor y de operadores autorizados.",
+    openedCopy: "Mensaje SUN del chip validado y apertura o intervención del empaque registrada. El evento se incorpora al historial disponible; contenido, origen, custodia y cadena logística requieren evidencia adicional de operadores autorizados.",
   },
   documents: {
-    label: "Docs / presencia",
+    label: "Documentos / presencia",
     sealedActions: ["save", "tokenization", "provenance"],
     openedActions: ["save", "tokenization", "provenance"],
     tokenizationWhenSealed: "issuer_transfer",
     tokenizationWhenOpened: "issuer_transfer",
     claimMode: "issuer_transfer_required",
     marketplaceMode: "issuer_private",
-    requires: ["issuer autorizado", "identidad de holder", "politica de privacidad"],
-    sealedCopy: "Documento verificable: consulta y holder privado, sin claim publico salvo emisor autorizado.",
-    openedCopy: "Documento consultado: se preserva privacidad; ownership/tokenizacion solo por flujo del issuer.",
+    requires: ["emisor autorizado", "identidad del titular", "política de privacidad"],
+    sealedCopy: "Mensaje SUN del chip validado y etiqueta vinculada a un registro documental. El tap no acredita por sí solo la validez jurídica, la identidad del titular ni la propiedad; la consulta y cualquier transferencia dependen del emisor autorizado.",
+    openedCopy: "Consulta de la etiqueta registrada con su mensaje SUN validado. La privacidad y los datos disponibles se rigen por el emisor; titularidad, validez jurídica y transferencia requieren el flujo autorizado.",
   },
   generic: {
-    label: "Producto fisico verificado",
+    label: "Producto físico con identidad digital",
     sealedActions: BASE_ACTIONS.consumer,
     openedActions: BASE_ACTIONS.consumer,
     tokenizationWhenSealed: "fresh_valid_tap",
     tokenizationWhenOpened: "verified_opened_tap",
     claimMode: "purchase_or_custody_proof",
     marketplaceMode: "proof_only",
-    requires: ["tap fisico fresco", "tenant activo", "anti-replay OK"],
-    sealedCopy: "Producto autentico: se habilitan passport, provenance y acciones comerciales segun politica del tenant.",
-    openedCopy: "Sello abierto verificado: se registra lifecycle y las acciones dependen de compra/custodia.",
+    requires: ["tap físico reciente", "tenant activo", "control anti-replay correcto"],
+    sealedCopy: "Mensaje SUN del chip validado y sello registrado como intacto cuando el tag lo informa. El tap identifica la etiqueta digital; no certifica por sí solo el contenido, el origen físico ni la propiedad del producto. Las acciones dependen de la política del tenant.",
+    openedCopy: "Mensaje SUN del chip validado y apertura del sello registrada. El tap no certifica por sí solo el contenido, el origen físico ni la propiedad del producto; las acciones dependen de la política del tenant y de la evidencia requerida.",
   },
 };
 
@@ -417,24 +417,24 @@ export function resolveRightsPolicy(input: {
       : conditionState === "sun_profile_mismatch"
         ? "No pudimos validar esta lectura"
       : conditionState === "tamper_review"
-        ? "Tap en revision"
+        ? "Tap en revisión"
         : conditionState === "setup_required"
           ? "Onboarding pendiente"
-          : "Accion protegida"
+          : "Acción protegida"
     : isOpened
-      ? "Autentico con sello abierto"
+      ? "Mensaje SUN válido · apertura registrada"
       : isSealed
-        ? "Autentico con sello intacto"
-        : "Autenticidad verificable";
+        ? "Mensaje SUN válido · sello registrado"
+        : "Evidencia digital disponible";
 
   const statusSummary = hardBlocked
     ? conditionState === "sun_profile_mismatch"
       ? "El lote fue detectado, pero esta lectura no coincide con el perfil de seguridad cargado. Las acciones comerciales quedan bloqueadas."
-      : "La trazabilidad sigue visible, pero las acciones comerciales quedan bloqueadas hasta resolver la politica de seguridad."
+      : "El historial digital disponible sigue visible, pero las acciones comerciales quedan bloqueadas hasta resolver la política de seguridad."
     : isOpened
       ? policy.openedCopy
       : conditionState === "unknown"
-        ? "Autenticidad confirmada. Estado de apertura no disponible para este lote."
+        ? "Mensaje SUN del chip validado. Este lote no informa el estado de apertura; el tap no certifica por sí solo el contenido, el origen físico ni la propiedad del producto."
         : policy.sealedCopy;
 
   return {

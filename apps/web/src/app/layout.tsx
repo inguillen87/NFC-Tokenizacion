@@ -15,25 +15,25 @@ const DEFAULT_SITE_URL = "https://nexid.lat";
 
 const socialCopyByLocale = {
   "es-AR": {
-    title: "nexID | Autenticación de Productos, NFC y Tokenización para Cadena de Suministro",
+    title: "nexID | Evidencia NFC/SUN, pasaportes y derechos digitales",
     description:
-      "Protegé tu cadena de suministro empresarial con nexID. Autenticación de productos, trazabilidad y tokenización mediante tecnología NFC segura para marcas premium.",
-    imageAlt: "nexID - Autenticación de productos, NFC y tokenización para marcas premium",
-    keywords: ["Autenticación de Productos", "NFC", "Tokenización", "Cadena de Suministro Empresarial", "Trazabilidad", "Web3", "nexID"]
+      "Validá mensajes NFC/SUN, registrá eventos reportados, organizá lote y origen declarados, y activá pasaportes o derechos digitales bajo política. No es una prueba autónoma del objeto físico.",
+    imageAlt: "nexID - Evidencia NFC/SUN, datos declarados y pasaportes digitales",
+    keywords: ["Validación NFC SUN", "NFC", "Pasaporte Digital", "Cadena de Suministro Empresarial", "Trazabilidad Declarada", "Derechos Digitales", "nexID"]
   },
   "pt-BR": {
-    title: "nexID | Autenticação de Produtos, NFC e Tokenização para Cadeia de Suprimentos",
+    title: "nexID | Evidência NFC/SUN, passaportes e direitos digitais",
     description:
-      "Proteja sua cadeia de suprimentos corporativa com nexID. Autenticação de produtos, rastreabilidade e tokenização usando tecnologia NFC segura para marcas premium.",
-    imageAlt: "nexID - Autenticação de produtos, NFC e tokenização para marcas premium",
-    keywords: ["Autenticação de Produtos", "NFC", "Tokenização", "Cadeia de Suprimentos Corporativa", "Rastreabilidade", "Web3", "nexID"]
+      "Valide mensagens NFC/SUN, registre eventos reportados, organize lote e origem declarados e ative passaportes ou direitos digitais por política. Não é prova autônoma do objeto físico.",
+    imageAlt: "nexID - Evidência NFC/SUN, dados declarados e passaportes digitais",
+    keywords: ["Validação NFC SUN", "NFC", "Passaporte Digital", "Cadeia de Suprimentos Corporativa", "Rastreabilidade Declarada", "Direitos Digitais", "nexID"]
   },
   en: {
-    title: "nexID | NFC Product Authentication & Tokenization for Enterprise Supply Chain",
+    title: "nexID | NFC/SUN evidence, passports and digital rights",
     description:
-      "Secure your enterprise supply chain with nexID. Premium product authentication, traceability, and tokenization powered by secure NFC technology.",
-    imageAlt: "nexID - Product authentication, NFC, and tokenization for premium brands",
-    keywords: ["Product Authentication", "NFC", "Tokenization", "Enterprise Supply Chain", "Traceability", "Web3", "nexID"]
+      "Validate NFC/SUN messages, record reported events, organize declared batch and origin, and activate digital passports or rights under policy. This is not standalone proof of the physical object.",
+    imageAlt: "nexID - NFC/SUN evidence, declared data and digital passports",
+    keywords: ["NFC SUN Validation", "NFC", "Digital Product Passport", "Enterprise Supply Chain", "Declared Traceability", "Digital Rights", "nexID"]
   }
 };
 

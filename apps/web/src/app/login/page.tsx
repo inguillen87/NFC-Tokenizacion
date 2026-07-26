@@ -26,7 +26,7 @@ export default async function WebLoginPage({ searchParams }: { searchParams?: Pr
               <p className="text-xs uppercase tracking-[0.16em] text-cyan-200">{isConsumerAccess ? "Pasaporte nexID" : "Panel empresa"}</p>
             </div>
             <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
-              <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-2 py-1 text-emerald-100">MFA-ready</span>
+              <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-2 py-1 text-emerald-100">OTP por canal</span>
               <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-cyan-100">{isConsumerAccess ? "Usuario verificado" : "Tenant + reseller"}</span>
               <span className="rounded-full border border-violet-300/30 bg-violet-500/10 px-2 py-1 text-violet-100">Login seguro</span>
             </div>

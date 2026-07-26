@@ -41,7 +41,7 @@ export async function POST(req: Request) {
   const body = parsed.data;
 
   const batchRows = await sql/*sql*/`
-    SELECT b.id, b.meta_key_ct, b.file_key_ct, t.last_seen_ctr
+    SELECT b.id, b.tenant_id, b.bid, b.meta_key_ct, b.file_key_ct, b.sdm_config, t.last_seen_ctr
     FROM batches b
     LEFT JOIN tags t ON t.batch_id = b.id AND t.uid_hex = ${body.uidHex}
     WHERE b.id = ${batchScope.batch.id}
@@ -53,12 +53,18 @@ export async function POST(req: Request) {
 
   const currentCtr = Number(batch.last_seen_ctr ?? 0);
   const nextCtr = body.action === 'retail_scan' ? currentCtr : currentCtr + 1;
+  const keyVersion = Number((batch.sdm_config as { key_version?: unknown } | null)?.key_version || 1);
+  const keyContext = {
+    tenantId: String(batch.tenant_id),
+    bid: String(batch.bid || DEMO_BATCH_BID),
+    keyVersion: Number.isSafeInteger(keyVersion) && keyVersion > 0 ? keyVersion : 1,
+  };
 
   const generated = generateSunParams({
     uidHex: body.uidHex,
     ctr: Math.max(0, nextCtr),
-    kMetaHex: decryptKey16(batch.meta_key_ct).toString('hex').toUpperCase(),
-    kFileHex: decryptKey16(batch.file_key_ct).toString('hex').toUpperCase(),
+    kMetaHex: decryptKey16(batch.meta_key_ct, { ...keyContext, role: 'K_META_BATCH' }).toString('hex').toUpperCase(),
+    kFileHex: decryptKey16(batch.file_key_ct, { ...keyContext, role: 'K_FILE_BATCH' }).toString('hex').toUpperCase(),
   });
 
   const result = await processSunScan({

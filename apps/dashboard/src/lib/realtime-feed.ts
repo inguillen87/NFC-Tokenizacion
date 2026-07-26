@@ -1,3 +1,7 @@
+export type RealtimeStreamSource = "production" | "demo" | "all";
+export type RealtimeDataSource = "production" | "demo" | "seed" | "mixed" | "unavailable";
+export type RealtimeAvailability = "ready" | "fallback" | "upstream_error" | "invalid_payload" | "unreachable";
+
 export type TenantTapRealtimeEvent = {
   eventId: string;
   tenantId: string | null;
@@ -23,8 +27,20 @@ export type TenantTapRealtimeEvent = {
   deviceOs?: string | null;
   deviceType?: string | null;
   productName?: string | null;
-  source: "production" | "demo";
+  source: "production" | "demo" | "unknown";
+  eventSource?: string;
 };
+
+export function classifyRealtimeEventSource(value: unknown): Pick<TenantTapRealtimeEvent, "source" | "eventSource"> {
+  const eventSource = String(value || "").trim().toLowerCase() || "unknown";
+  if (eventSource === "demo" || eventSource === "demo_simulation" || eventSource === "seed") {
+    return { source: "demo", eventSource };
+  }
+  if (eventSource === "real" || eventSource === "imported" || eventSource === "production") {
+    return { source: "production", eventSource };
+  }
+  return { source: "unknown", eventSource };
+}
 
 function eventMs(row: TenantTapRealtimeEvent) {
   const candidates = [row.occurredAt, row.occurredAtUtc, row.occurredAtLocal];

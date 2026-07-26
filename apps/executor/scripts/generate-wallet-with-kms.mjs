@@ -9,6 +9,7 @@ function parseArguments(argv) {
   const allowed = new Map([
     ["--environment", "environment"],
     ["--domain", "domain"],
+    ["--role", "role"],
     ["--key-resource", "keyResource"],
     ["--output", "outputPath"],
     ["--transport", "transport"],
@@ -50,6 +51,7 @@ export async function runCli(argv = process.argv.slice(2)) {
     ok: true,
     address: result.address,
     domain: result.domain,
+    role: result.role,
     environment: result.environment,
     output: result.outputPath,
     ciphertext_bytes: result.ciphertextBytes,

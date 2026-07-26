@@ -41,9 +41,18 @@ Variables opcionales:
 - `OTP_TTL_MINUTES`, `OTP_MAX_ATTEMPTS` configuran expiracion e intentos.
 
 ## Flujo de ownership + NFT
+
+> Estado operativo 2026-07-26: esta secuencia describe el modelo objetivo, no
+> un flujo completo disponible hoy. El piloto desplegado puede confirmar mints
+> en Polygon Amoy cuando existe recibo y verificacion on-chain. La transferencia
+> ERC-721 generica, la reventa/P2P, el settlement de pagos y mainnet no estan
+> implementados; esas acciones permanecen como solicitudes o roadmap hasta
+> contar con executor dedicado, consentimiento, recibo, finality y `ownerOf`
+> verificados.
+
 - Estado 1 `MINT_RESERVED`: fabrica crea pasaporte interno con UID hash, lote, origen, tenant, fotos, reglas de claim y exportacion. No hay owner transferible.
-- Estado 2 tienda/gondola: el tap muestra autenticidad, origen, mapa, lote y trazabilidad. El producto queda "Disponible para reclamar despues de compra".
+- Estado 2 tienda/gondola: el tap muestra el resultado de la evidencia NFC/QR, origen declarado, ubicacion reportada de la lectura, lote y trazabilidad registrada. El producto queda "Disponible para reclamar despues de compra".
 - Estado 3 compra: idealmente POS/retailer genera `purchase_token`; si no, consumidor sube ticket/factura; fallback LATAM: tap fresco + email/SMS/WhatsApp verificado + evidencia opcional.
-- Estado 4 claim: el score combina tap fresco, chip no clonado, sello coherente, ubicacion razonable, retailer/ticket e identidad verificada.
-- Estado 5 NFT/wallet: si pasa, nexID crea wallet custodial o conecta MetaMask y mintea en Polygon/Amoy/mainnet segun tenant.
-- Estado 6 reventa: vendedor crea link de transferencia y comprador debe tocar fisicamente el producto para completar ownership.
+- Estado 4 claim: el score combina mensaje NFC fresco, controles anti-replay, estado TT reportado cuando aplica, ubicacion reportada, retailer/ticket e identidad verificada. Ninguna señal aislada certifica el producto fisico.
+- Estado 5 solicitud NFT/wallet: si pasa la policy, nexID puede crear una solicitud y, en el piloto Amoy, confirmar un mint solo despues de verificar recibo y estado on-chain. Mainnet requiere una promocion separada y no se presenta como operativo.
+- Estado 6 reventa/transferencia (roadmap): el vendedor puede iniciar una solicitud, pero hoy nexID no ejecuta ni confirma transferencia ERC-721, compra o settlement P2P. Un tap fisico futuro sera una condicion adicional de policy, no prueba suficiente de ownership ni una transferencia por si mismo.

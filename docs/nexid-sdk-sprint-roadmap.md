@@ -12,7 +12,7 @@ Estado: implementado.
 
 - API key tenant-scoped con scopes: `sdk:verify`, `sdk:claim`, `sdk:products`, `sdk:events`, `sdk:pos`.
 - `POST /api/v1/sdk/pos/activate`: emite token `nxpos_...` de un solo uso para POS, caja, ERP o checkout.
-- `POST /api/v1/sdk/claim`: consume `posToken`, valida PIN si aplica y evita auto-claim sin identidad fisica segura.
+- `POST /api/v1/sdk/claim`: consume `posToken`, valida PIN si aplica y evita auto-claim sin evidencia adicional de compra, identidad o aprobación de marca. La lectura NFC sola no transfiere ownership.
 - Uso SDK auditado en `sdk_usage_logs`.
 - Claim request auditable con `pos_activation_id` y `pos_validated`.
 - Webhooks firmados para `sdk.verify`, `sdk.claim.created`, `sdk.claim.claimed`, `sdk.pos.activated` y `sdk.external_event`.

@@ -63,7 +63,7 @@ export default async function WalletLedgerPage({ searchParams }: { searchParams?
   return (
     <PortalShell
       title="Pasaporte Criptográfico & Wallet"
-      subtitle="Colecciona y administra los certificados de autenticidad NFT de tus botellas y canjea tus puntos por preventas exclusivas."
+      subtitle="Administrá certificados digitales, registros de ownership, NFT y puntos. Ninguno garantiza por sí solo autenticidad física, contenido o procedencia."
     >
       <div className="space-y-6">
         <MetamaskSandboxCard initialWallet={wallet?.blockchainWallet} autoConnect={shouldAutoConnectMetaMask} />
@@ -80,11 +80,11 @@ export default async function WalletLedgerPage({ searchParams }: { searchParams?
               <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <span className="rounded-full border border-amber-300/20 bg-amber-500/10 px-3 py-0.5 text-[9px] font-black uppercase tracking-wider text-amber-200">
-                    Certificación de Autenticidad
+                    Evidencia Digital & Ownership
                   </span>
                   <h2 className="mt-3 text-2xl font-black text-white tracking-tight leading-none">Tu Pasaporte de Colección</h2>
                   <p className="mt-2 text-xs leading-relaxed text-slate-300">
-                    Cada botella cuenta con un identificador de seguridad encriptado en su chip NFC. Al escanearla, registras la firma digital en tu cuenta, garantizando su procedencia e impidiendo fraudes de clonación.
+                    El chip NFC puede aportar un mensaje dinámico validado y una referencia de evento. El certificado y el ownership registran evidencia digital; no garantizan procedencia, contenido ni ausencia de fraude físico.
                   </p>
                 </div>
                 <div className="flex flex-row gap-2 sm:flex-col shrink-0 min-w-48">
@@ -103,8 +103,8 @@ export default async function WalletLedgerPage({ searchParams }: { searchParams?
               <div className="mt-6 grid gap-2.5 sm:grid-cols-4 border-t border-white/5 pt-5">
                 {[
                   [ShieldCheck, "1", "Tocar NFC", "Escanea la etiqueta con tu celular."],
-                  [BadgeCheck, "2", "Asociar Dueño", "Registra la botella en tu cuenta."],
-                  [WalletCards, "3", "Ver Firma", "Visualiza tu certificado digital."],
+                  [BadgeCheck, "2", "Solicitar Ownership", "Requiere identidad, compra y política del tenant."],
+                  [WalletCards, "3", "Ver Evidencia", "Consultá el certificado y sus límites."],
                   [Store, "4", "Canjear Club", "Usa tus beneficios en el marketplace."]
                 ].map(([Icon, step, title, text]) => {
                   const StepIcon = Icon as typeof ShieldCheck;
@@ -127,7 +127,7 @@ export default async function WalletLedgerPage({ searchParams }: { searchParams?
               {[
                 { label: "Puntos Disponibles", value: networkPoints, Icon: Coins, desc: "Canjeables en bodega" },
                 { label: "Puntos Históricos", value: lifetimePoints, Icon: Award, desc: "Acumulado total" },
-                { label: "Botellas Totales", value: products.length, Icon: PackageCheck, desc: "Originales asociadas" },
+                { label: "Botellas Totales", value: products.length, Icon: PackageCheck, desc: "Unidades asociadas" },
               ].map(({ label, value, Icon, desc }) => (
                 <article key={label} className="rounded-2xl border border-white/5 bg-slate-950/60 p-4 transition duration-300 hover:border-white/10">
                   <div className="flex items-center justify-between">
@@ -174,7 +174,7 @@ export default async function WalletLedgerPage({ searchParams }: { searchParams?
                   ))
                 ) : (
                   <div className="rounded-2xl border border-white/5 bg-slate-900/10 p-4 text-center text-[10px] text-slate-500">
-                    Aún no acumulas puntos. Los puntos se activan con tu primer escaneo físico.
+                    Aún no acumulas puntos. La marca define qué interacción elegible los activa.
                   </div>
                 )}
               </div>
@@ -184,13 +184,13 @@ export default async function WalletLedgerPage({ searchParams }: { searchParams?
             <div className="rounded-3xl border border-cyan-500/15 bg-cyan-500/5 p-5">
                <h4 className="text-xs font-black uppercase tracking-wider text-cyan-300 flex items-center gap-1.5">
                  <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse" />
-                 Red Descentralizada nexID
+                 Registro Polygon opcional
                </h4>
                <p className="mt-2 text-[11px] leading-relaxed text-slate-300">
-                 Cuando un producto premium se tokeniza, nexID registra la prueba de propiedad en Polygon. Eso habilita un título transferible para regalar o vender la botella en el marketplace sin exponer tus datos completos.
+                 Cuando la política lo habilita, nexID puede registrar un ownership digital en Polygon. La transacción prueba ese registro y el control de la wallet; no prueba autenticidad física, procedencia ni custodia del producto.
                </p>
                <div className="mt-4 space-y-2 text-[10px] text-slate-300 font-mono">
-                 {["1. Tap Físico Seguro", "2. Firma Criptográfica", "3. Acuñación del NFT", "4. Drops Habilitados"].map((step, idx) => (
+                 {["1. Mensaje NFC Validado", "2. Identidad + Política", "3. Acuñación Confirmada", "4. Acciones Habilitadas"].map((step, idx) => (
                    <div key={step} className="rounded-xl border border-white/5 bg-slate-950/65 px-3 py-2 flex items-center justify-between">
                      <span>{step}</span>
                      <span className="text-cyan-400 font-bold">Paso 0{idx + 1}</span>

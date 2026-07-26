@@ -78,6 +78,10 @@ export async function GET(req: Request) {
     ok: true,
     items: rows.map((row) => ({
       ...row,
+      ownership_record_scope: "nexid_off_chain_digital_title",
+      chain_transfer_status: "not_executed",
+      nft_transfer_executed: false,
+      on_chain_owner_verified: false,
       tokenization_status: normalizeTokenizationStatus(row.tokenization_status),
     })),
   });

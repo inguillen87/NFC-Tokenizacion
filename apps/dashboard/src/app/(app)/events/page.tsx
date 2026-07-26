@@ -1,5 +1,6 @@
 import { Card, SectionHeading, StatusChip } from "@product/ui";
 import { DataTable } from "../../../components/data-table";
+import { EnterpriseOpsState } from "../../../components/enterprise-ops-state";
 import { ModuleAudienceHero } from "../../../components/module-audience-hero";
 import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
@@ -20,15 +21,21 @@ type EventRow = {
   device: { label: string; os: string; browser: string; deviceType: string; timezone: string; mobile: boolean };
 };
 
-async function getLiveEvents(context: AdminPageContext, params: URLSearchParams): Promise<EventRow[]> {
+type EventsResult = {
+  availability: "ready" | "upstream_error" | "invalid_payload" | "unreachable";
+  rows: EventRow[];
+};
+
+async function getLiveEvents(context: AdminPageContext, params: URLSearchParams): Promise<EventsResult> {
   try {
     const query = params.toString() ? `?${params.toString()}` : "";
     const response = await fetchAdminPage(context, `events${query}`);
-    if (!response.ok) return [];
-    const data = await response.json().catch(() => ({ rows: [] }));
-    return Array.isArray(data?.rows) ? (data.rows as EventRow[]) : [];
+    if (!response.ok) return { availability: "upstream_error", rows: [] };
+    const data = await response.json().catch(() => null) as { rows?: unknown } | null;
+    if (!data || !Array.isArray(data.rows)) return { availability: "invalid_payload", rows: [] };
+    return { availability: "ready", rows: data.rows as EventRow[] };
   } catch {
-    return [];
+    return { availability: "unreachable", rows: [] };
   }
 }
 
@@ -53,7 +60,8 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
   params.set("limit", "250");
 
   const copy = dashboardContent[locale];
-  const liveRows = await getLiveEvents(adminContext, params);
+  const eventsResult = await getLiveEvents(adminContext, params);
+  const liveRows = eventsResult.rows;
   const validCount = liveRows.filter((item) => item.result === "VALID").length;
   const riskCount = liveRows.filter((item) => item.result !== "VALID").length;
 
@@ -76,10 +84,24 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
     <main className="space-y-8">
       <SectionHeading eyebrow={copy.nav.events} title={copy.pages.events.title} description={copy.pages.events.description} />
       <ModuleAudienceHero
-        ceo={{ eyebrow: "CEO / Investor read", summary: isTenantAdmin ? "Vista ejecutiva del tenant con actividad real y alertas de autenticidad." : "Events muestran actividad real, alertas y evidencia de protección operacional.", decision: "Priorizás mitigación de riesgo con evidencia real por tap.", cta: "Úsalo como feed vivo para operación y auditoría." }}
-        operator={{ eyebrow: "Operator / Engineer read", summary: "Consola cruda para revisar autenticaciones, replay, tamper y contexto de dispositivo.", decision: "Investigás anomalías por UID/BID/resultado y contexto técnico.", cta: isTenantAdmin ? "Scope actual: solo tu tenant." : "Scope configurable multi-tenant." }}
-        buyer={{ eyebrow: "Buyer / Client read", summary: "Demuestra que la plataforma detecta señales reales en calle.", decision: "Validás nivel de control y trazabilidad operativa.", cta: "Cerrar conversación con evidencia verificable." }}
+        ceo={{ eyebrow: "CEO / Investor read", summary: isTenantAdmin ? "Vista ejecutiva del tenant con eventos reportados y alertas derivadas de la validación NFC." : "Events muestra la actividad devuelta por la fuente seleccionada y sus alertas operativas.", decision: "Priorizás mitigación de riesgo con evidencia técnica por evento.", cta: "Úsalo como feed operativo con fuente y alcance visibles." }}
+        operator={{ eyebrow: "Operator / Engineer read", summary: "Consola cruda para revisar mensajes NFC, replay, tamper reportado y contexto de dispositivo.", decision: "Investigás anomalías por UID/BID/resultado y contexto técnico.", cta: isTenantAdmin ? "Scope actual: solo tu tenant." : "Scope configurable multi-tenant." }}
+        buyer={{ eyebrow: "Buyer / Client read", summary: "Demuestra qué señales NFC y de dispositivo reporta la plataforma.", decision: "Validás nivel de control y trazabilidad digital de eventos.", cta: "Cerrá la conversación con evidencia verificable y sus límites." }}
       />
+
+      {eventsResult.availability !== "ready" ? (
+        <EnterpriseOpsState
+          variant="error"
+          title="El feed de eventos no está disponible"
+          description="No convertimos una falla del backend, una respuesta inválida o una fuente inaccesible en cero actividad. Reintentá antes de tomar decisiones operativas."
+          checklist={[
+            `Estado de fuente: ${eventsResult.availability}`,
+            "Los contadores y la tabla permanecen sin afirmar valores.",
+          ]}
+          action={<a href="/events" className="rounded-xl border border-rose-300/30 bg-rose-400/10 px-3 py-2 text-xs font-black text-rose-100">Reintentar feed</a>}
+          testId="events-source-unavailable"
+        />
+      ) : null}
 
       <Card className="p-5">
         <form className="grid gap-3 md:grid-cols-6">
@@ -91,9 +113,9 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
           <button suppressHydrationWarning className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-100" type="submit">Aplicar filtros</button>
         </form>
         <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-300">
-          <StatusChip label={`Events ${liveRows.length}`} tone="neutral" />
-          <StatusChip label={`Valid ${validCount}`} tone="good" />
-          <StatusChip label={`Risk ${riskCount}`} tone="risk" />
+          <StatusChip label={eventsResult.availability === "ready" ? `Events ${liveRows.length}` : "Events no disponibles"} tone="neutral" />
+          {eventsResult.availability === "ready" ? <StatusChip label={`Valid ${validCount}`} tone="good" /> : null}
+          {eventsResult.availability === "ready" ? <StatusChip label={`Con alerta ${riskCount}`} tone="risk" /> : null}
           <StatusChip label={`Scope ${tenantScope || "global"}`} tone="neutral" />
         </div>
       </Card>
@@ -117,7 +139,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
         rows={rows}
         filterKey="status"
         loadingLabel={copy.shell.loading}
-        emptyLabel={copy.shell.empty}
+        emptyLabel={eventsResult.availability === "ready" ? copy.shell.empty : "El feed no pudo cargarse; no es un cero operativo."}
         searchPlaceholder={copy.shell.search}
         allFilterLabel={copy.shell.all}
         refreshLabel={copy.shell.refresh}

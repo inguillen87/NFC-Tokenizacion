@@ -14,15 +14,15 @@ export default async function TokenizationPage() {
       <SectionHeading
         eyebrow="Ownership ledger operations"
         title="Tokenization, custody and digital twins"
-        description="Controla la transición entre un evento físico verificado, una prueba hash-only y un activo transferible. La consola distingue simulación, evidencia IOTA y ownership Polygon sin presentar una demo como blockchain real."
+        description="Controla la transición entre un mensaje NFC validado, una prueba hash-only y un activo digital verificable. La consola procesa mints y distingue simulación, evidencia IOTA y ownership Polygon; una solicitud de transferencia no se presenta como ejecutada sin executor, receipt y ownerOf verificados."
       />
 
       <section className="grid gap-3 lg:grid-cols-3" aria-label="Capas de confianza y ownership">
         <LayerSummary
           icon={Fingerprint}
           eyebrow="1. Fuente de verdad"
-          title="nexID valida el producto"
-          body="UID, lote, política, tap fresco, canal y estado físico viven en el dominio nexID. Ninguna blockchain reemplaza esta validación."
+          title="nexID valida el mensaje NFC"
+          body="UID, lote declarado, política, frescura del tap, canal y TT reportado se evalúan en el dominio nexID. El resultado valida el mensaje y la política aplicable; no prueba por sí solo el contenido, el origen ni la custodia física."
           tone="cyan"
         />
         <LayerSummary
@@ -36,7 +36,7 @@ export default async function TokenizationPage() {
           icon={Boxes}
           eyebrow="3. Ownership opcional"
           title="Polygon registra el gemelo"
-          body="El NFT se emite o transfiere solo cuando la política comercial lo exige y existe recibo confirmado en Amoy. Simulación no crea token."
+          body="El NFT se emite solo cuando la política comercial lo exige y existe recibo confirmado en Amoy. Las transferencias permanecen como solicitudes hasta contar con un flujo dedicado, receipt finalizado y ownerOf verificado. Simulación no crea token."
           tone="violet"
         />
       </section>

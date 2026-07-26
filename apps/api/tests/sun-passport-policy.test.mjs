@@ -62,7 +62,7 @@ test("invalid payload does not require leaking raw sun internals in public contr
   assert.equal(serialized.includes("cmac"), false);
 });
 
-test("wine opened remains authentic but commercial rights require proof", () => {
+test("wine opened records the seal state while commercial rights require proof", () => {
   const policy = resolveRightsPolicy({
     verdict: "valid_opened",
     vertical: "wine",
@@ -75,7 +75,7 @@ test("wine opened remains authentic but commercial rights require proof", () => 
   assert.equal(policy.canTokenize, true);
   assert.equal(policy.claimMode, "purchase_or_custody_proof");
   assert.match(policy.statusSummary, /sello/i);
-  assert.match(policy.statusSummary, /abierto/i);
+  assert.match(policy.statusSummary, /apertura|abierto/i);
 });
 
 test("pharma opened keeps provenance but blocks public tokenization", () => {
@@ -136,4 +136,51 @@ test("documents require issuer transfer", () => {
   assert.equal(policy.claimMode, "issuer_transfer_required");
   assert.equal(policy.tokenizationPolicy, "issuer_transfer");
   assert.equal(policy.marketplaceMode, "issuer_private");
+});
+
+test("SUN passport copy limits evidence to the chip message, digital identity and recorded state", () => {
+  const verticals = ["wine", "spirits", "cosmetics", "pharma", "luxury", "art", "events", "agro", "documents", "generic"];
+  const forbiddenClaims = [
+    /\bproducto original\b/i,
+    /\bbotella original\b/i,
+    /\bproducto aut[eé]ntico\b/i,
+    /\bart[ií]culo(?: de lujo)? original\b/i,
+    /\bmedicamento verificado\b/i,
+    /\bautenticidad (?:confirmada|vigente)\b/i,
+    /\bautenticidad de la obra (?:est[aá] )?confirmada\b/i,
+    /\btrazabilidad completa(?: confirmada)?\b/i,
+    /\blote aut[eé]ntico\b/i,
+    /\bpropiedad oficial\b/i,
+  ];
+
+  for (const vertical of verticals) {
+    for (const verdict of ["valid", "valid_opened"]) {
+      const policy = resolveRightsPolicy({
+        verdict,
+        vertical,
+        statusCode: verdict === "valid" ? "VALID" : "OPENED",
+        productState: verdict === "valid" ? "VALID_CLOSED" : "VALID_OPENED",
+      });
+      const copy = `${policy.statusTitle} ${policy.statusSummary}`;
+      assert.match(copy, /SUN/i, `${vertical}/${verdict} must name the evidence source`);
+      assert.doesNotMatch(copy, /Ã|Â|�/, `${vertical}/${verdict} must remain valid UTF-8 copy`);
+      for (const claim of forbiddenClaims) {
+        assert.doesNotMatch(copy, claim, `${vertical}/${verdict} must not imply ${claim}`);
+      }
+    }
+  }
+});
+
+test("unknown seal state does not become a physical authenticity claim", () => {
+  const policy = resolveRightsPolicy({
+    verdict: "valid",
+    vertical: "generic",
+    statusCode: "VALID",
+    productState: "VALID_UNKNOWN_TAMPER",
+  });
+  assert.equal(policy.conditionState, "unknown");
+  assert.equal(policy.statusTitle, "Evidencia digital disponible");
+  assert.match(policy.statusSummary, /no informa el estado de apertura/i);
+  assert.match(policy.statusSummary, /no certifica por sí solo/i);
+  assert.doesNotMatch(`${policy.statusTitle} ${policy.statusSummary}`, /autenticidad confirmada|producto aut[eé]ntico/i);
 });

@@ -4,7 +4,12 @@ import { fileURLToPath } from "node:url";
 import { KeyManagementServiceClient } from "@google-cloud/kms";
 import { computeAddress, getAddress, isAddress, SigningKey } from "ethers";
 import crc32c from "fast-crc32c";
-import { kmsWrapAad } from "../src/wrapped-kms-signer.mjs";
+import {
+  GOOGLE_KMS_ACCESS_TOKEN_ENV as SIGNER_GOOGLE_KMS_ACCESS_TOKEN_ENV,
+  GOOGLE_KMS_GOVERNANCE_ACCESS_TOKEN_ENV as SIGNER_GOOGLE_KMS_GOVERNANCE_ACCESS_TOKEN_ENV,
+  GOOGLE_KMS_PUBLISHER_ACCESS_TOKEN_ENV as SIGNER_GOOGLE_KMS_PUBLISHER_ACCESS_TOKEN_ENV,
+  kmsWrapAad,
+} from "../src/wrapped-kms-signer.mjs";
 
 const PRIVATE_KEY_ENV_NAME = /^[A-Za-z_][A-Za-z0-9_]{0,127}$/;
 const KMS_KEY_RESOURCE = /^projects\/[a-z][a-z0-9-]{4,28}[a-z0-9]\/locations\/[a-z0-9-]+\/keyRings\/[A-Za-z0-9_-]{1,63}\/cryptoKeys\/[A-Za-z0-9_-]{1,63}$/;
@@ -12,7 +17,9 @@ const ACCESS_TOKEN = /^[A-Za-z0-9._~+/-]+=*$/;
 const MAX_TIMEOUT_MS = 30_000;
 const DEFAULT_TIMEOUT_MS = 10_000;
 const MAX_REST_RESPONSE_BYTES = 128 * 1024;
-export const GOOGLE_KMS_ACCESS_TOKEN_ENV = "NEXID_GCP_KMS_ACCESS_TOKEN";
+export const GOOGLE_KMS_ACCESS_TOKEN_ENV = SIGNER_GOOGLE_KMS_ACCESS_TOKEN_ENV;
+export const GOOGLE_KMS_GOVERNANCE_ACCESS_TOKEN_ENV = SIGNER_GOOGLE_KMS_GOVERNANCE_ACCESS_TOKEN_ENV;
+export const GOOGLE_KMS_PUBLISHER_ACCESS_TOKEN_ENV = SIGNER_GOOGLE_KMS_PUBLISHER_ACCESS_TOKEN_ENV;
 
 export class WalletWrapError extends Error {
   constructor(code) {
@@ -79,9 +86,22 @@ function normalizeTransport(value) {
   return transport;
 }
 
-function takeAccessTokenFromEnvironment() {
-  const value = process.env[GOOGLE_KMS_ACCESS_TOKEN_ENV];
-  delete process.env[GOOGLE_KMS_ACCESS_TOKEN_ENV];
+function takeAccessTokenFromEnvironment(roleValue, dependencies = {}) {
+  const role = String(roleValue || "publisher").trim().toLowerCase();
+  if (typeof dependencies.getAccessToken === "function") {
+    const supplied = String(dependencies.getAccessToken(role) || "");
+    if (supplied.length < 20 || supplied.length > 4096 || !ACCESS_TOKEN.test(supplied)) {
+      fail("kms_access_token_env_invalid");
+    }
+    return supplied;
+  }
+  const roleEnvName = role === "governance"
+    ? GOOGLE_KMS_GOVERNANCE_ACCESS_TOKEN_ENV
+    : GOOGLE_KMS_PUBLISHER_ACCESS_TOKEN_ENV;
+  const roleValueFromEnvironment = process.env[roleEnvName];
+  delete process.env[roleEnvName];
+  const value = roleValueFromEnvironment || process.env[GOOGLE_KMS_ACCESS_TOKEN_ENV];
+  if (!roleValueFromEnvironment) delete process.env[GOOGLE_KMS_ACCESS_TOKEN_ENV];
   if (typeof value !== "string" || value.length < 20 || value.length > 4096 || !ACCESS_TOKEN.test(value)) {
     fail("kms_access_token_env_invalid");
   }
@@ -127,9 +147,10 @@ async function encryptWithRest({
   keyResource,
   plaintext,
   additionalAuthenticatedData,
+  role,
   timeoutMs,
 }, dependencies) {
-  let accessToken = takeAccessTokenFromEnvironment();
+  let accessToken = takeAccessTokenFromEnvironment(role, dependencies);
   let timer;
   try {
     const fetchImpl = dependencies.fetchImpl || globalThis.fetch;
@@ -268,7 +289,7 @@ export async function wrapWalletWithKms(options, dependencies = {}) {
   const outputPath = normalizeOutputPath(options?.outputPath);
   const timeoutMs = normalizeTimeout(options?.timeoutMs);
   const transport = normalizeTransport(options?.transport);
-  const additionalAuthenticatedData = kmsWrapAad(options?.domain, options?.environment);
+  const additionalAuthenticatedData = kmsWrapAad(options?.domain, options?.environment, options?.role);
   const { plaintext, rawPrivateKey } = takePrivateKeyFromEnvironment(options?.privateKeyEnvName);
   let ciphertext;
 
@@ -282,7 +303,13 @@ export async function wrapWalletWithKms(options, dependencies = {}) {
     if (derivedAddress !== expectedAddress) fail("wallet_address_mismatch");
 
     let response;
-    const encryptInput = { keyResource, plaintext, additionalAuthenticatedData, timeoutMs };
+    const encryptInput = {
+      keyResource,
+      plaintext,
+      additionalAuthenticatedData,
+      role: String(options?.role || "publisher").trim().toLowerCase(),
+      timeoutMs,
+    };
     response = transport === "rest"
       ? await encryptWithRest(encryptInput, dependencies)
       : await encryptWithClient(encryptInput, dependencies);
@@ -292,6 +319,7 @@ export async function wrapWalletWithKms(options, dependencies = {}) {
     return Object.freeze({
       address: expectedAddress,
       domain: String(options.domain).trim().toLowerCase(),
+      role: String(options.role || "publisher").trim().toLowerCase(),
       environment: String(options.environment).trim().toLowerCase(),
       outputPath,
       ciphertextBytes: ciphertext.length,
@@ -309,6 +337,7 @@ function parseArguments(argv) {
     ["--expected-address", "expectedAddress"],
     ["--environment", "environment"],
     ["--domain", "domain"],
+    ["--role", "role"],
     ["--key-resource", "keyResource"],
     ["--output", "outputPath"],
     ["--timeout-ms", "timeoutMs"],
@@ -335,11 +364,11 @@ function usage() {
     "Usage:",
     "  node apps/executor/scripts/wrap-wallet-with-kms.mjs \\",
     "    --private-key-env ENV_NAME --expected-address 0x... \\",
-    "    --environment staging --domain polygon \\",
+    "    --environment staging --domain polygon --role publisher|governance \\",
     "    --key-resource projects/.../cryptoKeys/... --output PATH [--transport client|rest]",
     "",
     "The private key value must never be passed as a command-line argument.",
-    `REST authentication reads its token only from ${GOOGLE_KMS_ACCESS_TOKEN_ENV}.`,
+    `REST authentication reads a role-specific token first, then ${GOOGLE_KMS_ACCESS_TOKEN_ENV} as a single-role fallback.`,
   ].join("\n");
 }
 
@@ -353,6 +382,7 @@ export async function runCli(argv = process.argv.slice(2)) {
     ok: true,
     address: result.address,
     domain: result.domain,
+    role: result.role,
     environment: result.environment,
     output: result.outputPath,
     ciphertext_bytes: result.ciphertextBytes,

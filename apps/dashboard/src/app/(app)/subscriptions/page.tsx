@@ -6,14 +6,14 @@ import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
 import { requireDashboardSession } from "../../../lib/session";
 import { requireDashboardTenantScope } from "../../../lib/admin-page-access";
-import { TENANT_DIRECTORY, type TenantDirectoryItem } from "../../../lib/tenant-directory";
+import { TENANT_DIRECTORY, TENANT_DIRECTORY_SOURCE, type TenantDirectoryItem } from "../../../lib/tenant-directory";
 
 type PlanKey = TenantDirectoryItem["plan"];
 type SubscriptionStatus = "active" | "risk" | "pending";
 
 type PlanCatalogItem = {
   label: string;
-  mrr: number;
+  monthlyListPrice: number;
   included: string;
   usage: string;
   sla: string;
@@ -21,9 +21,9 @@ type PlanCatalogItem = {
 };
 
 type SubscriptionAccount = TenantDirectoryItem & {
-  renewal: string;
+  scenarioRenewal: string;
   contractOwner: string;
-  mrr: number;
+  listPrice: number;
   usage: string;
   expansion: string;
   riskNote: string;
@@ -32,7 +32,7 @@ type SubscriptionAccount = TenantDirectoryItem & {
 const PLAN_CATALOG: Record<PlanKey, PlanCatalogItem> = {
   basic: {
     label: "Pilot",
-    mrr: 1200,
+    monthlyListPrice: 1200,
     included: "QR/GS1 + CRM baseline",
     usage: "12k scans/mo",
     sla: "Business support",
@@ -40,7 +40,7 @@ const PLAN_CATALOG: Record<PlanKey, PlanCatalogItem> = {
   },
   secure: {
     label: "Secure",
-    mrr: 4800,
+    monthlyListPrice: 4800,
     included: "NFC/QR, proof anchors, CRM, anti-replay",
     usage: "100k scans/mo",
     sla: "Priority support",
@@ -48,7 +48,7 @@ const PLAN_CATALOG: Record<PlanKey, PlanCatalogItem> = {
   },
   enterprise: {
     label: "Enterprise",
-    mrr: 12500,
+    monthlyListPrice: 12500,
     included: "Multi-tenant, API keys, webhooks, DPP-ready workflows",
     usage: "Unlimited contracted volume",
     sla: "Enterprise success path",
@@ -56,41 +56,41 @@ const PLAN_CATALOG: Record<PlanKey, PlanCatalogItem> = {
   },
 };
 
-const RENEWAL_BY_TENANT: Record<string, Pick<SubscriptionAccount, "renewal" | "contractOwner" | "usage" | "expansion" | "riskNote">> = {
+const SCENARIO_BY_TENANT: Record<string, Pick<SubscriptionAccount, "scenarioRenewal" | "contractOwner" | "usage" | "expansion" | "riskNote">> = {
   demobodega: {
-    renewal: "2026-09-18",
-    contractOwner: "Founder + Enterprise success",
-    usage: "Demo live / enterprise scope",
-    expansion: "IOTA proof, Polygon ownership and CRM growth",
-    riskNote: "Cuenta demo enterprise para mostrar plan, uso, API y expansion sin mezclar clientes reales",
+    scenarioRenewal: "2026-09-18",
+    contractOwner: "Owner de ejemplo",
+    usage: "Volumen de ejemplo; billing no conectado",
+    expansion: "Escenario: IOTA, Polygon y CRM",
+    riskNote: "Cuenta demo para mostrar el flujo. No representa un cliente, contrato, uso ni revenue confirmado.",
   },
   "bodega-andes": {
-    renewal: "2026-09-01",
-    contractOwner: "Revenue + Ops",
-    usage: "78k scans / 100k",
-    expansion: "Warranty + loyalty club",
-    riskNote: "Healthy renewal; push ownership module",
+    scenarioRenewal: "2026-09-01",
+    contractOwner: "Owner ilustrativo",
+    usage: "Escenario 78k / 100k; no observado",
+    expansion: "Escenario: warranty + loyalty",
+    riskNote: "Fixture comercial. No representa una cuenta ni una renovacion real.",
   },
   "cosmetica-norte": {
-    renewal: "2026-10-15",
-    contractOwner: "Enterprise success",
-    usage: "312k scans / contracted",
-    expansion: "Marketplace + reseller portal",
-    riskNote: "High growth; protect enterprise SLA",
+    scenarioRenewal: "2026-10-15",
+    contractOwner: "Owner ilustrativo",
+    usage: "Escenario 312k; no observado",
+    expansion: "Escenario: marketplace + resellers",
+    riskNote: "Fixture comercial. No representa crecimiento, SLA ni contrato real.",
   },
   "pharma-delta": {
-    renewal: "2026-08-20",
-    contractOwner: "Compliance + QA",
-    usage: "64k scans / 100k",
-    expansion: "Cold-chain proof + recall workflow",
-    riskNote: "Compliance follow-up before renewal",
+    scenarioRenewal: "2026-08-20",
+    contractOwner: "Owner ilustrativo",
+    usage: "Escenario 64k / 100k; no observado",
+    expansion: "Escenario: cold-chain + recalls",
+    riskNote: "Fixture comercial. No representa una cuenta regulada ni un riesgo real.",
   },
   "event-ops-ar": {
-    renewal: "2026-08-05",
-    contractOwner: "Pilot owner",
-    usage: "2k validations / 12k",
-    expansion: "Turnstile anti-replay package",
-    riskNote: "Pilot pending; needs activation owner",
+    scenarioRenewal: "2026-08-05",
+    contractOwner: "Owner ilustrativo",
+    usage: "Escenario 2k / 12k; no observado",
+    expansion: "Escenario: turnstile anti-replay",
+    riskNote: "Fixture comercial. No representa un piloto ni una activacion contratada.",
   },
 };
 
@@ -113,18 +113,18 @@ function planTone(plan: PlanKey) {
 function buildSubscriptionAccounts() {
   return TENANT_DIRECTORY.map((tenant): SubscriptionAccount => {
     const plan = PLAN_CATALOG[tenant.plan];
-    const meta = RENEWAL_BY_TENANT[tenant.slug] || {
-      renewal: "2026-12-31",
-      contractOwner: "Enterprise success",
-      usage: "Pending contract baseline",
-      expansion: "Define rollout path",
-      riskNote: "Tenant pendiente de baseline comercial",
+    const meta = SCENARIO_BY_TENANT[tenant.slug] || {
+      scenarioRenewal: "2026-12-31",
+      contractOwner: "Owner ilustrativo",
+      usage: "Escenario sin baseline",
+      expansion: "Escenario por definir",
+      riskNote: "Fixture sin fuente comercial conectada.",
     };
     return {
       ...tenant,
-      renewal: meta.renewal,
+      scenarioRenewal: meta.scenarioRenewal,
       contractOwner: meta.contractOwner,
-      mrr: plan.mrr,
+      listPrice: plan.monthlyListPrice,
       usage: meta.usage,
       expansion: meta.expansion,
       riskNote: meta.riskNote,
@@ -135,12 +135,6 @@ function buildSubscriptionAccounts() {
 function normalizeTenantParam(value?: string | string[]) {
   const raw = Array.isArray(value) ? value[0] : value;
   return String(raw || "").trim().toLowerCase();
-}
-
-function daysUntil(date: string) {
-  const target = new Date(`${date}T00:00:00.000Z`).getTime();
-  const now = Date.now();
-  return Math.max(0, Math.ceil((target - now) / (24 * 60 * 60 * 1000)));
 }
 
 export default async function SubscriptionsPage({
@@ -157,19 +151,15 @@ export default async function SubscriptionsPage({
   const accounts = buildSubscriptionAccounts();
   const visibleAccounts = scopedTenant ? accounts.filter((account) => account.slug === scopedTenant) : accounts;
   const primaryAccount = visibleAccounts[0] || accounts[0];
-  const totalMrr = visibleAccounts.reduce((sum, account) => sum + account.mrr, 0);
-  const atRisk = visibleAccounts.filter((account) => account.status === "risk").length;
-  const active = visibleAccounts.filter((account) => account.status === "active").length;
-  const renewalQueue = [...visibleAccounts].sort((a, b) => a.renewal.localeCompare(b.renewal));
-  const nextRenewal = renewalQueue[0];
   const tenantQuery = primaryAccount ? `?tenant=${encodeURIComponent(primaryAccount.slug)}` : "";
 
   const rows = visibleAccounts.map((account) => ({
     tenant: account.tenant,
+    source: account.source === "demo" ? "Demo" : "Ilustrativo",
     plan: PLAN_CATALOG[account.plan].label,
-    status: account.status,
-    renewal: account.renewal,
-    mrr: currency(account.mrr),
+    status: `Ejemplo: ${account.status}`,
+    renewal: `Ejemplo: ${account.scenarioRenewal}`,
+    price: `${currency(account.listPrice)} lista modelada`,
     usage: account.usage,
     owner: account.contractOwner,
     expansion: account.expansion,
@@ -179,26 +169,26 @@ export default async function SubscriptionsPage({
     <main className="space-y-8">
       <SectionHeading
         eyebrow={copy.nav.subscriptions}
-        title={scopedTenant ? `Plan y revenue: ${primaryAccount?.tenant || scopedTenant}` : copy.pages.subscriptions.title}
-        description="Command center de contratos: MRR, renovaciones, uso contratado, riesgo de churn, expansion y acciones concretas por tenant."
+        title={scopedTenant ? `Escenario de plan: ${primaryAccount?.tenant || scopedTenant}` : "Simulador de planes y cuentas"}
+        description="Vista ilustrativa para modelar precios, renovaciones, uso y expansion. Billing y contratos reales todavia no estan conectados a esta pantalla."
       />
 
       <ModuleAudienceHero
         ceo={{
           eyebrow: "CEO / Investor read",
-          summary: "Subscriptions muestra revenue recurrente, riesgo de renovacion y expansion por cuenta sin esconderlo en una tabla tecnica.",
-          decision: "Decidis donde proteger renewals, empujar upgrades y defender margen enterprise.",
-          cta: "Usalo como prueba de negocio SaaS: no solo tags, tambien contrato, uso y crecimiento.",
+          summary: "Subscriptions modela como se verian precios, renovaciones y expansion cuando billing este conectado; hoy usa fixtures visibles.",
+          decision: "Proba escenarios comerciales sin confundirlos con MRR, clientes ni contratos confirmados.",
+          cta: "Usalo como prototipo operativo y conecta billing antes de usarlo como reporte financiero.",
         }}
         operator={{
           eyebrow: "Operator / Engineer read",
-          summary: "Cada plan se traduce en capacidad operativa: volumen, SLA, API, webhooks, soporte, proof anchors y controles por tenant.",
-          decision: "Decidis que features, soporte o integraciones habilitar segun el contrato real.",
+          summary: "Cada plan ilustrativo traduce volumen, SLA, API, webhooks y proof anchors en una configuracion posible.",
+          decision: "Disena el entitlement; no habilites features hasta confirmar el contrato en una fuente real.",
           cta: "Leelo como la union entre plataforma, billing y operacion.",
         }}
         buyer={{
           eyebrow: "Buyer / Client read",
-          summary: "El cliente entiende que puede arrancar chico y escalar sin redisenar toda su operacion.",
+          summary: "El comprador puede explorar un recorrido de escalamiento con precios y capacidades modelados.",
           decision: "Decidis si el plan cubre el rollout actual y que modulo conviene activar despues.",
           cta: "Mostralo cuando el comprador pregunte como crece nexID dentro de su empresa.",
         }}
@@ -206,24 +196,24 @@ export default async function SubscriptionsPage({
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Card className="p-5">
-          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">MRR visible</p>
-          <p className="mt-3 text-3xl font-black text-white">{currency(totalMrr)}</p>
-          <p className="mt-2 text-sm text-slate-400">{visibleAccounts.length} cuenta{visibleAccounts.length === 1 ? "" : "s"} en scope</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Fuente</p>
+          <p className="mt-3 text-3xl font-black text-white">Ejemplo</p>
+          <p className="mt-2 text-sm text-slate-400">{TENANT_DIRECTORY_SOURCE}; sin billing conectado</p>
         </Card>
         <Card className="p-5">
-          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-200">Renewals sanos</p>
-          <p className="mt-3 text-3xl font-black text-white">{active}</p>
-          <p className="mt-2 text-sm text-slate-400">Cuentas activas con continuidad operativa.</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-200">Precio del escenario</p>
+          <p className="mt-3 text-3xl font-black text-white">{primaryAccount ? currency(primaryAccount.listPrice) : "—"}</p>
+          <p className="mt-2 text-sm text-slate-400">Precio mensual modelado; no es MRR contratado.</p>
         </Card>
         <Card className="p-5">
-          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-200">Riesgo comercial</p>
-          <p className="mt-3 text-3xl font-black text-white">{atRisk}</p>
-          <p className="mt-2 text-sm text-slate-400">Cuenta con follow-up antes de renovar.</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-200">MRR real</p>
+          <p className="mt-3 text-3xl font-black text-white">No disponible</p>
+          <p className="mt-2 text-sm text-slate-400">No se infiere revenue desde fixtures.</p>
         </Card>
         <Card className="p-5">
-          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-violet-200">Proximo hito</p>
-          <p className="mt-3 text-2xl font-black text-white">{nextRenewal?.renewal || "Sin agenda"}</p>
-          <p className="mt-2 text-sm text-slate-400">{nextRenewal ? `${daysUntil(nextRenewal.renewal)} dias para ${nextRenewal.tenant}` : "No hay renovaciones."}</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-violet-200">Renovaciones reales</p>
+          <p className="mt-3 text-2xl font-black text-white">No conectadas</p>
+          <p className="mt-2 text-sm text-slate-400">Las fechas de la tabla son escenarios de UX.</p>
         </Card>
       </section>
 
@@ -232,13 +222,14 @@ export default async function SubscriptionsPage({
           <Card className="p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Cuenta prioritaria</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Escenario seleccionado</p>
                 <h2 className="mt-2 text-2xl font-black text-white">{primaryAccount.tenant}</h2>
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">{primaryAccount.riskNote}</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Badge tone={planTone(primaryAccount.plan)}>{PLAN_CATALOG[primaryAccount.plan].label}</Badge>
-                <Badge tone={statusTone(primaryAccount.status)}>{primaryAccount.status}</Badge>
+                <Badge tone={statusTone(primaryAccount.status)}>estado ejemplo: {primaryAccount.status}</Badge>
+                <Badge>{primaryAccount.source === "demo" ? "demo" : "ilustrativo"}</Badge>
               </div>
             </div>
 
@@ -248,15 +239,15 @@ export default async function SubscriptionsPage({
                 <p className="mt-2 text-sm font-bold text-white">{PLAN_CATALOG[primaryAccount.plan].included}</p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
-                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Uso</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Uso modelado</p>
                 <p className="mt-2 text-sm font-bold text-white">{primaryAccount.usage}</p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
-                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">SLA</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">SLA propuesto</p>
                 <p className="mt-2 text-sm font-bold text-white">{PLAN_CATALOG[primaryAccount.plan].sla}</p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
-                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Expansion</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Expansion modelada</p>
                 <p className="mt-2 text-sm font-bold text-white">{primaryAccount.expansion}</p>
               </div>
             </div>
@@ -288,10 +279,11 @@ export default async function SubscriptionsPage({
             <div className="flex items-start justify-between gap-3">
               <div>
                 <Badge tone={planTone(plan as PlanKey)}>{item.label}</Badge>
-                <h3 className="mt-4 text-xl font-black text-white">{currency(item.mrr)} / mo</h3>
+                <h3 className="mt-4 text-xl font-black text-white">{currency(item.monthlyListPrice)} / mes</h3>
               </div>
               <span className="rounded-full border border-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-300">{item.usage}</span>
             </div>
+            <p className="mt-2 text-xs font-bold uppercase tracking-[0.14em] text-amber-100">Precio modelado; no es MRR contratado</p>
             <p className="mt-4 text-sm leading-6 text-slate-300">{item.included}</p>
             <p className="mt-3 text-xs font-bold uppercase tracking-[0.14em] text-cyan-200">{item.nextStep}</p>
           </div>
@@ -299,16 +291,17 @@ export default async function SubscriptionsPage({
       </section>
 
       <DataTable
-        title={copy.tables.subscriptions.title}
+        title="Escenarios ilustrativos de suscripcion"
         columns={[
           { key: "tenant", label: copy.tables.subscriptions.tenant },
+          { key: "source", label: "Fuente" },
           { key: "plan", label: copy.tables.subscriptions.plan },
-          { key: "status", label: copy.tables.subscriptions.status },
-          { key: "renewal", label: copy.tables.subscriptions.renewal },
-          { key: "mrr", label: "MRR" },
-          { key: "usage", label: "Uso" },
-          { key: "owner", label: "Owner" },
-          { key: "expansion", label: "Expansion" },
+          { key: "status", label: "Estado ilustrativo" },
+          { key: "renewal", label: "Fecha ilustrativa" },
+          { key: "price", label: "Precio modelado" },
+          { key: "usage", label: "Uso modelado" },
+          { key: "owner", label: "Owner ilustrativo" },
+          { key: "expansion", label: "Expansion modelada" },
         ]}
         rows={rows}
         filterKey="status"

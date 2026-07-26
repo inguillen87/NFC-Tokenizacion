@@ -63,7 +63,7 @@ El formato exacto puede vivir en codigo o base de datos. Este documento fija el 
 
 ## Estados de confianza
 
-### Autenticidad fisica
+### Evidencia NFC y estado reportado
 
 | Campo | Valores sugeridos |
 | --- | --- |

@@ -7,7 +7,8 @@ import { sql } from "../../../../../lib/db";
 import { ensureConsumerPortalSchema, ensureOrderRequestsSchema } from "../../../../../lib/commercial-runtime-schema";
 import { canUseConsumerDemoBypass } from "../../../../../lib/consumer-demo-policy";
 import { evaluateMarketplaceCheckoutAccess, parseRequestToBuyPayload } from "../../../../../lib/marketplace-policy";
-import { awardPoints, getActiveProgram, getOrCreateMember } from "../../../../../lib/loyalty-service";
+import { enforceCriticalRateLimit } from "../../../../../lib/critical-rate-limit";
+import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../../lib/bounded-request-body";
 
 async function getOrCreateDemoConsumer(payload: Record<string, unknown>) {
   if (!canUseConsumerDemoBypass(payload)) return null;
@@ -31,99 +32,23 @@ async function getOrCreateDemoConsumer(payload: Record<string, unknown>) {
   return consumer;
 }
 
-async function awardRequestToBuyPoints(input: {
-  tenantId: string;
-  consumer: Record<string, unknown>;
-  quantity: number;
-  orderRequestId: string;
-  sourceTapEventId?: string | null;
-  productTitle?: string | null;
-}) {
-  const points = Math.max(0, Math.min(1000, Number(input.quantity || 1) * 180));
-  if (!points) return null;
-
-  const program = await getActiveProgram(input.tenantId);
-  const consumerId = String(input.consumer.id || "");
-  const consumerEmail = typeof input.consumer.email === "string" ? input.consumer.email : null;
-  const consumerPhone = typeof input.consumer.phone === "string" ? input.consumer.phone : null;
-  const locale = typeof input.consumer.preferred_locale === "string" ? input.consumer.preferred_locale : "es-AR";
-  const displayName = typeof input.consumer.display_name === "string" ? input.consumer.display_name : null;
-
-  const membershipRows = await sql/*sql*/`
-    INSERT INTO tenant_consumer_memberships (tenant_id, consumer_id, loyalty_program_id, source, last_tap_event_id, status, points_balance, lifetime_points, metadata_json)
-    VALUES (
-      ${input.tenantId},
-      ${consumerId},
-      ${program?.id || null},
-      'marketplace',
-      ${input.sourceTapEventId || null},
-      'active',
-      ${points},
-      ${points},
-      ${JSON.stringify({ last_request_to_buy_id: input.orderRequestId, productTitle: input.productTitle || null })}::jsonb
-    )
-    ON CONFLICT (tenant_id, consumer_id)
-    DO UPDATE SET
-      loyalty_program_id = COALESCE(EXCLUDED.loyalty_program_id, tenant_consumer_memberships.loyalty_program_id),
-      last_tap_event_id = COALESCE(EXCLUDED.last_tap_event_id, tenant_consumer_memberships.last_tap_event_id),
-      last_activity_at = now(),
-      points_balance = tenant_consumer_memberships.points_balance + EXCLUDED.points_balance,
-      lifetime_points = tenant_consumer_memberships.lifetime_points + EXCLUDED.lifetime_points,
-      metadata_json = COALESCE(tenant_consumer_memberships.metadata_json, '{}'::jsonb) || EXCLUDED.metadata_json,
-      status = 'active',
-      updated_at = now()
-    RETURNING id, points_balance, lifetime_points
-  `;
-
-  await sql/*sql*/`
-    INSERT INTO consumer_reward_wallets (consumer_id, tenant_id, network_scope, points_balance, lifetime_points)
-    VALUES (${consumerId}, ${input.tenantId}, 'tenant', ${points}, ${points})
-    ON CONFLICT (consumer_id, tenant_id, network_scope)
-    DO UPDATE SET
-      points_balance = consumer_reward_wallets.points_balance + EXCLUDED.points_balance,
-      lifetime_points = consumer_reward_wallets.lifetime_points + EXCLUDED.lifetime_points,
-      updated_at = now()
-  `;
-
-  let ledger: unknown = null;
-  if (program?.id && input.sourceTapEventId) {
-    const member = await getOrCreateMember({
-      tenantId: input.tenantId,
-      programId: program.id,
-      eventId: input.sourceTapEventId,
-      memberKey: `consumer:${consumerId}`,
-      consumerId,
-      locale,
-      email: consumerEmail,
-      phone: consumerPhone,
-      displayName,
-    });
-    ledger = await awardPoints({
-      tenantId: input.tenantId,
-      programId: program.id,
-      memberId: member.id,
-      tapEventId: input.sourceTapEventId,
-      delta: points,
-      source: "ADMIN_ADJUSTMENT",
-      idempotencyKey: `marketplace-request:${input.orderRequestId}:member:${member.id}`,
-      reason: "Marketplace request-to-buy",
-      metadata: { productTitle: input.productTitle || null, orderRequestId: input.orderRequestId },
-    });
-  }
-
-  return {
-    pointsAwarded: points,
-    membership: membershipRows[0] || null,
-    ledger,
-  };
-}
-
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  await Promise.all([ensureConsumerPortalSchema(), ensureOrderRequestsSchema()]);
-  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+  const limited = await enforceCriticalRateLimit(req, {
+    rateClass: "public_write",
+    tenantId: "marketplace",
+    subjectId: "request-to-buy:unauthenticated",
+  });
+  if (limited) return limited;
+  let body: Record<string, unknown>;
+  try {
+    body = await readBoundedJsonBody<Record<string, unknown>>(req, 24 * 1024);
+  } catch (error) {
+    return json({ ok: false, error: error instanceof RequestBodyTooLargeError ? "request_body_too_large" : "invalid_json" }, error instanceof RequestBodyTooLargeError ? 413 : 400);
+  }
   const { id } = await params;
   const consumer = (await getConsumerFromRequest(req)) || (await getOrCreateDemoConsumer(body));
   if (!consumer) return json({ ok: false, error: "unauthorized" }, 401);
+  await Promise.all([ensureConsumerPortalSchema(), ensureOrderRequestsSchema()]);
 
   const parsed = parseRequestToBuyPayload(body);
   if (!parsed.ok) return json({ ok: false, error: parsed.error }, 400);
@@ -215,33 +140,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   ` : [];
   const source = sourceRows[0] || {};
 
-  const existingRows = await sql/*sql*/`
-    SELECT *
-    FROM marketplace_order_requests
-    WHERE consumer_id = ${consumer.id}
-      AND marketplace_product_id = ${record.id}
-      AND status IN ('requested', 'new', 'pending', 'open')
-    ORDER BY created_at DESC
-    LIMIT 1
-  `;
-  const existing = existingRows[0];
-  if (existing) {
-    return json({
-      ok: true,
-      deduplicated: true,
-      reason: "active_marketplace_request_exists",
-      orderRequest: existing,
-      checkout: "request_only",
-      access: checkoutAccess.mode,
-      source: {
-        event_id: existing.source_tap_event_id || null,
-        uid_hex: existing.source_uid_hex || null,
-        batch_id: existing.source_batch_id || null,
-        bid: existing.source_bid || null,
-      },
-    });
-  }
-
   const rows = await sql/*sql*/`
     INSERT INTO marketplace_order_requests (
       consumer_id,
@@ -276,11 +174,22 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         access_mode: checkoutAccess.mode,
       })}::jsonb
     )
+    ON CONFLICT DO NOTHING
     RETURNING *
   `;
-  const orderRequest = rows[0];
+  const created = Boolean(rows[0]);
+  const orderRequest = rows[0] || (await sql/*sql*/`
+    SELECT *
+    FROM marketplace_order_requests
+    WHERE consumer_id = ${consumer.id}
+      AND marketplace_product_id = ${record.id}
+      AND status IN ('requested', 'new', 'pending', 'open')
+    ORDER BY created_at DESC
+    LIMIT 1
+  `)[0];
+  if (!orderRequest) return json({ ok: false, error: "request_creation_conflict" }, 409);
 
-  await sql/*sql*/`
+  if (created) await sql/*sql*/`
     INSERT INTO order_requests (locale, contact, company, tag_type, volume, notes, status, source)
     VALUES (
       ${consumer.preferred_locale || "es-AR"},
@@ -294,21 +203,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     )
   `;
 
-  const loyalty = await awardRequestToBuyPoints({
-    tenantId: record.tenant_id,
-    consumer,
-    quantity: parsed.value.quantity,
-    orderRequestId: String(orderRequest.id),
-    sourceTapEventId: source.event_id || access.latest_verified_tap_event_id || null,
-    productTitle: String(record.title || ""),
-  });
-
   return json({
     ok: true,
+    deduplicated: !created,
+    reason: created ? "request_created" : "active_marketplace_request_exists",
     orderRequest,
     checkout: "request_only",
     access: checkoutAccess.mode,
-    loyalty,
+    loyalty: {
+      pointsAwarded: 0,
+      state: "not_awarded_for_unfulfilled_request",
+      note: "Points can be credited only by a later fulfilled-order event.",
+    },
     source: {
       event_id: source.event_id || access.latest_verified_tap_event_id || null,
       uid_hex: source.uid_hex || null,

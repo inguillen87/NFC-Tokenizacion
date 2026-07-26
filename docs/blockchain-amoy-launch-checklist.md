@@ -1,13 +1,19 @@
 # nexID Polygon Amoy ownership launch checklist
 
+> Aviso vigente 2026-07-26: la opcion aprobada para el piloto desplegado es el
+> executor separado con `TOKENIZATION_USE_LOCAL_MINTER=false`, auto-mint por tap
+> apagado y signer `kms_wrapped`. La opcion de minter local/private key queda
+> documentada solo para desarrollo testnet desechable; no debe copiarse a
+> produccion. `kms_wrapped` usa Cloud KMS SOFTWARE y no es HSM.
+
 Este documento es el checklist corto para activar la capa Polygon ownership manana sin tocar UX/UI ni rehacer la plataforma. El codigo queda listo; lo unico que falta es crear credenciales, pegar variables y redeployar API.
 
 ## 0. Estado del producto
 
 Estado actual del piloto Amoy:
 
-- Tap SUN/NTAG 424 DNA TT valida autenticidad, anti-replay y tamper server-side.
-- Replay bloquea ownership, rewards y tokenizacion hasta un tap fisico fresco.
+- Tap SUN/NTAG 424 DNA TT valida el mensaje criptografico, anti-replay y estado TT reportado server-side; no certifica por si solo el producto fisico.
+- Replay bloquea ownership, rewards y tokenizacion hasta un mensaje NFC fresco obtenido mediante otro tap.
 - El passport autorizado muestra trazabilidad, portal, marketplace y estado Polygon/tokenizacion.
 - Portal consumidor guarda producto, historial, tenant, promos y certificado si existe.
 - Admin/superadmin ven cola de tokenizacion y readiness de Polygon Amoy.
@@ -141,9 +147,10 @@ Proyecto: API backend correspondiente. No fijar dominios productivos en copy pub
 
 Tenes dos modos.
 
-### Opcion A - local minter dentro de API
+### Opcion A - laboratorio local legado (prohibida en produccion)
 
-Mas simple para primer piloto.
+Solo sirve para un entorno de desarrollo testnet desechable. No usar en Vercel,
+Cloud Run compartido ni con datos de un tenant.
 
 ```txt
 TOKENIZATION_MODE=polygon
@@ -162,7 +169,7 @@ SUN_HANDOFF_SECRET=<mismo secreto fuerte o uno dedicado>
 CONSUMER_SESSION_COOKIE_DOMAIN=<COOKIE_DOMAIN>
 ```
 
-### Opcion B - executor separado
+### Opcion B - executor separado (vigente)
 
 Mas parecido a arquitectura premium. La API no guarda private key.
 
@@ -170,7 +177,7 @@ En API/Vercel:
 
 ```txt
 TOKENIZATION_MODE=polygon
-SUN_AUTO_TOKENIZE_ON_VALID_TAP=true
+SUN_AUTO_TOKENIZE_ON_VALID_TAP=false
 TOKENIZATION_USE_LOCAL_MINTER=false
 TOKENIZATION_UID_SALT=<random largo secreto>
 TOKENIZATION_METADATA_CID_PREFIX=nexid-metadata
@@ -182,13 +189,19 @@ En executor:
 
 ```txt
 TOKENIZATION_EXECUTOR_SECRET=<mismo secreto>
-EXECUTOR_SIGNER_MODE=private_key
+EXECUTOR_SIGNER_MODE=kms_wrapped
+NEXID_KMS_ENVIRONMENT=staging
+POLYGON_KMS_WRAP_KEY_RESOURCE=<recurso KMS SOFTWARE>
+POLYGON_KMS_WRAPPED_PRIVATE_KEY=<ciphertext desde Secret Manager>
 POLYGON_RPC_URL=https://polygon-amoy.g.alchemy.com/v2/<RPC_API_KEY>
-POLYGON_MINTER_PRIVATE_KEY=0xPRIVATE_KEY_DE_NEXID_AMOY_MINTER
 POLYGON_MINTER_ADDRESS=0xADDRESS_PUBLICA_DE_NEXID_AMOY_MINTER
 POLYGON_CONTRACT_ADDRESS=0xCONTRATO_DESPLEGADO
 POLYGON_DEFAULT_RECIPIENT=0xWALLET_RECEPTORA_DEFAULT
 ```
+
+La clave queda cifrada en reposo y se descifra transitoriamente dentro del
+executor. Esta modalidad reduce exposicion operativa, pero todavia no es firma
+directa no exportable ni HSM.
 
 No poner ninguna de estas como `NEXT_PUBLIC_*`.
 
@@ -269,8 +282,8 @@ https://amoy.polygonscan.com/tx/0xTX_HASH
 
 Secuencia esperada:
 
-- Tap fresco cerrado: `VALID`, sello intacto, acciones comerciales permitidas por politica del tenant.
-- Tap fresco abierto: `OPENED`, autentico como lifecycle event; ownership/tokenizacion dependen de vertical y politica.
+- Tap fresco cerrado: `VALID`, mensaje NFC validado y TT cerrado reportado cuando aplica; acciones comerciales sujetas a la politica del tenant.
+- Tap fresco abierto: `OPENED`, mensaje NFC validado y TT abierto reportado; ownership/tokenizacion dependen de vertical, politica y evidencia adicional.
 - Snapshot, refresh o link copiado: modo consulta historica. Muestra trazabilidad, pero bloquea ownership, puntos, marketplace y tokenizacion hasta otro tap fisico.
 - Replay criptografico real: queda marcado como riesgo y bloquea acciones comerciales.
 

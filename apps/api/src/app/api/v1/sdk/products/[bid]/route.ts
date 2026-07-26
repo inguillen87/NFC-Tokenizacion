@@ -6,14 +6,19 @@ import { sql } from "../../../../../../lib/db";
 import { json } from "../../../../../../lib/http";
 import { authenticateSdkRequest, logSdkUsage } from "../../../../../../lib/sdk-auth";
 import { clean, readJsonObject } from "../../_shared";
+import { enforceSdkAuthenticationRateLimit, enforceSdkRateLimit } from "../../../../../../lib/critical-rate-limit";
 
 export async function GET(req: Request, { params }: { params: Promise<{ bid: string }> }) {
   const startedAt = Date.now();
+  const authRateLimited = await enforceSdkAuthenticationRateLimit(req);
+  if (authRateLimited) return authRateLimited;
   const auth = await authenticateSdkRequest(req, "sdk:products");
   if (!auth.ok) {
     await logSdkUsage({ req, endpoint: "sdk.products", statusCode: auth.response.status, startedAt, reason: "auth_failed" });
     return auth.response;
   }
+  const rateLimited = await enforceSdkRateLimit(req, auth.context);
+  if (rateLimited) return rateLimited;
 
   await ensureSdkSchema();
   const resolvedParams = await params;

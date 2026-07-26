@@ -1,10 +1,8 @@
 import {
-  PLANNED_MIGRATIONS,
   assertAllowedTarget,
-  compareExactLedger,
+  assertMigrationProgress,
   createStagingClient,
   expectedBaselineLedger,
-  expectedLedgerForPhase,
   identifyTarget,
   readLedger,
   relevantSchemaFingerprint,
@@ -54,11 +52,7 @@ try {
     WHERE t.typname = 'evidence_anchor_status' AND e.enumlabel = 'reconciling'
   ) AS present`)).rows[0]?.present;
   const actualLedger = await readLedger(client);
-  const ledger = compareExactLedger(
-    actualLedger,
-    expectedLedgerForPhase(expectedBaselineLedger(), "preflight"),
-  );
-  const plannedPresent = PLANNED_MIGRATIONS.filter((id) => actualLedger.includes(id));
+  const progress = assertMigrationProgress(actualLedger, expectedBaselineLedger());
   const anchorRisks = (await client.query(`SELECT
     count(*)::int AS anchors,
     count(*) FILTER (WHERE tx_hash IS NOT NULL)::int AS anchors_with_tx_hash,
@@ -84,13 +78,44 @@ try {
     to_regclass('public.evidence_anchor_attempts') IS NOT NULL AS evidence_anchor_attempts,
     to_regclass('public.iota_executor_publications') IS NOT NULL AS iota_executor_publications,
     to_regclass('public.admin_login_attempt_buckets') IS NOT NULL AS admin_login_attempt_buckets,
-    EXISTS (
-      SELECT 1 FROM information_schema.columns
+    (SELECT count(*) = 5 FROM information_schema.columns
       WHERE table_schema = 'public' AND table_name = 'evidence_anchors'
         AND column_name = ANY($1::text[])
-    ) AS evidence_anchor_v2_columns`, [[
+    ) AS evidence_anchor_v2_columns,
+    (SELECT count(*) = 7 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'webhook_deliveries'
+        AND column_name = ANY($2::text[])
+    ) AS webhook_outbox_columns,
+    (SELECT count(*) = 9 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'iota_executor_publications'
+        AND column_name = ANY($3::text[])
+    ) AS iota_durable_columns,
+    (SELECT count(*) = 2 AND bool_and(c.convalidated)
+      FROM pg_constraint c
+      WHERE c.connamespace = 'public'::regnamespace
+        AND c.conname = ANY($4::text[])
+    ) AS evidence_constraints_validated`, [[
     "proof_id", "memo_hash", "public_resource_id", "contract_version", "idempotency_key",
+  ], [
+    "endpoint_url", "event_id", "status", "next_attempt_at", "last_attempt_at", "locked_at", "lock_token",
+  ], [
+    "protocol_version", "payload_hash", "lease_token", "raw_transaction", "signer_address",
+    "chain_id", "signed_at", "broadcast_at", "submitted_at",
+  ], [
+    "evidence_anchors_iota_v2_proof_id_format", "evidence_anchors_iota_v2_memo_hash_format",
   ]])).rows[0];
+  const expectedPrefixSchema = {
+    evidence_anchor_members: progress.prefix_length >= 2,
+    evidence_anchor_attempts: progress.prefix_length >= 2,
+    evidence_anchor_v2_columns: progress.prefix_length >= 2,
+    webhook_outbox_columns: progress.prefix_length >= 3,
+    admin_login_attempt_buckets: progress.prefix_length >= 4,
+    iota_executor_publications: progress.prefix_length >= 5,
+    iota_durable_columns: progress.prefix_length >= 6,
+    evidence_constraints_validated: progress.prefix_length >= 7,
+  };
+  const prefixSchemaConsistent = Object.entries(expectedPrefixSchema)
+    .every(([key, expected]) => Boolean(residualV2[key]) === expected);
   const schemaFingerprint = await relevantSchemaFingerprint(client);
   await client.query("ROLLBACK");
 
@@ -103,10 +128,9 @@ try {
     && ownership
     && locks?.waiting === 0
     && locks?.access_exclusive === 0
-    && !enumReconciling
-    && ledger.ok
-    && plannedPresent.length === 0
-    && Object.values(residualV2).every((value) => !value)
+    && Boolean(enumReconciling) === (progress.prefix_length >= 1)
+    && progress.ok
+    && prefixSchemaConsistent
     && Number(anchorRisks?.duplicate_tx_hash_groups || 0) === 0
     && Number(webhookRisks?.orphan_endpoint_rows || 0) === 0
     && Number(webhookRisks?.missing_endpoint_url_rows || 0) === 0
@@ -121,9 +145,13 @@ try {
     uuid_ossp: Boolean(uuidOssp),
     privileges: { ...privileges, owns_baseline: Boolean(ownership) },
     locks,
-    ledger,
-    planned_migrations_present: plannedPresent,
+    ledger: progress.ledger,
+    migration_progress: progress,
+    planned_migrations_present: progress.applied_migrations,
+    pending_migrations: progress.pending_migrations,
     residual_v2_schema: residualV2,
+    expected_prefix_schema: expectedPrefixSchema,
+    prefix_schema_consistent: prefixSchemaConsistent,
     enum_reconciling_present: Boolean(enumReconciling),
     data_preconditions: { evidence_anchors: anchorRisks, webhook_deliveries: webhookRisks },
   }));

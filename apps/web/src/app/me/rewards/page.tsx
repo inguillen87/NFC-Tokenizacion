@@ -39,10 +39,11 @@ export default async function RewardsPage({ searchParams }: { searchParams?: Pro
     listings: asArray<MarketplaceListing>(marketplacePayload),
   });
   const marketplaceRewards = brandEngagement.flatMap((brand) => brand.listings.map((listing) => ({ brand, listing })));
-  const points = brandEngagement.reduce((sum, brand) => sum + brand.points, 0);
+  const reportedPointBalances = brandEngagement.map((brand) => brand.points).filter((value): value is number => value !== null);
+  const points = reportedPointBalances.length ? reportedPointBalances.reduce((sum, value) => sum + value, 0) : null;
   
-  const metrics: Array<{ label: string; value: number; Icon: LucideIcon; color: string }> = [
-    { label: "Puntos Disponibles", value: points, Icon: Trophy, color: "text-amber-400" },
+  const metrics: Array<{ label: string; value: number | string; Icon: LucideIcon; color: string }> = [
+    { label: "Saldo reportado", value: points ?? "N/D", Icon: Trophy, color: "text-amber-400" },
     { label: "Clubes Activos", value: brandEngagement.length, Icon: Sparkles, color: "text-cyan-400" },
     { label: "Canjes Habilitados", value: rewards.length + marketplaceRewards.length, Icon: Gift, color: "text-emerald-400" },
   ];
@@ -57,7 +58,7 @@ export default async function RewardsPage({ searchParams }: { searchParams?: Pro
             <p className="text-[10px] font-black uppercase tracking-wider text-emerald-300">Loyalty engine nexID</p>
             <h2 className="mt-3 text-xl font-black text-white tracking-tight leading-none">Un canal VIP de fidelización directo</h2>
             <p className="mt-2 text-xs leading-relaxed text-slate-400 max-w-xl">
-              Los beneficios son publicados por cada bodega emisora y quedan vinculados de forma segura a tus botellas escaneadas. Acumulas puntos reales y accedes a sorteos y catas privadas.
+              Mostramos saldos, beneficios y eventos reportados por cada tenant. nexID no inventa puntos ni interpreta la presencia de un tenant como verificación del emisor.
             </p>
           </div>
           <div className="grid grid-cols-3 gap-2.5 lg:min-w-80">
@@ -80,11 +81,11 @@ export default async function RewardsPage({ searchParams }: { searchParams?: Pro
               <h2 className="text-lg font-black text-white">{highlightedReward?.title || "Voucher nexID"}</h2>
               <p className="mt-1 text-xs text-slate-300">
                 Codigo: <span className="font-mono font-black text-cyan-100">{voucher}</span>
-                {tenant ? <> · Emisor verificado por nexID</> : null}
+                {tenant ? <> · Tenant reportado: {tenant}</> : null}
               </p>
             </div>
             <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-100">
-              {highlightedReward ? String(highlightedReward.state || highlightedReward.status || "claimed") : "pendiente"}
+              {highlightedReward ? String(highlightedReward.state || highlightedReward.status || "estado no reportado") : "pendiente"}
             </span>
           </div>
           <p className="mt-3 text-xs leading-relaxed text-slate-300">

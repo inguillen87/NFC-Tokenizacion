@@ -10,6 +10,14 @@ import { platformVerticals } from "../../../lib/platform-verticals";
 import { ThreeDProduct } from "../../investor-snapshot/investor-snapshot-client";
 import { DemoLabThemeToggle } from "./demo-lab-hub-theme";
 import type { VectorMapPoint, VectorMapRoute } from "@product/ui";
+import {
+  canUseVerifiedDemoLanguage,
+  isPositiveDemoVerdict,
+  resolveDemoExecutionTruth,
+  resolveDemoFeedTruth,
+  type DemoExecutionTruthState,
+  type DemoFeedTruthState,
+} from "./demo-lab-truth-state";
 
 type Role = "ceo" | "operator" | "buyer";
 type Beat = 0 | 1 | 2 | 3;
@@ -35,8 +43,11 @@ type DemoSimulationReceipt = {
   mode: SimulationMode;
   execution: "visual" | "persisted" | "failed";
   source: string;
+  degraded: boolean;
   persisted: boolean;
-  chainWrite: false;
+  chainWrite: boolean;
+  evidenceVerified: boolean;
+  evidenceUrl: string | null;
   reference: string | null;
   timestamp: string;
   detail: string;
@@ -162,7 +173,7 @@ function getScenarioStart(value?: string | null): { key: DemoTrustScenarioKey | 
   if (key === "polygon-ownership") return { key, beat: 0, vertical: "luxury" };
   if (key === "nfc-424") return { key, beat: 1, vertical: "wine" };
   if (key === "qr-gs1") return { key, beat: 0, vertical: "pharma" };
-  return { key: null, beat: 1, vertical: "wine" };
+  return { key: null, beat: 0, vertical: "wine" };
 }
 
 function getTrustScenarioInitialStep(key: DemoTrustScenarioKey | null): DemoWizardStep {
@@ -256,18 +267,22 @@ function getTrustScenarioContext(
     "nfc-424": {
       tone: key,
       eyebrow: isEn ? "Cryptographic touch" : "Toque criptografico",
-      title: isEn ? "NFC 424 validates the physical object before any claim." : "NFC 424 valida el objeto fisico antes de cualquier reclamo.",
+      title: isEn ? "NFC 424 validates a cryptographic chip message before any claim." : "NFC 424 valida un mensaje criptografico del chip antes de cualquier reclamo.",
       body: isEn ? "The demo explains why SUN, UID and tenant policy come before ownership, rewards or warranty. The buyer sees a verdict, not raw cryptography." : "La demo explica por que SUN, UID y politica del tenant vienen antes de ownership, rewards o garantia. El comprador ve un veredicto, no criptografia cruda.",
-      publicProof: isEn ? "Visible: verdict, physical state and masked UID." : "Publico: veredicto, estado fisico y UID enmascarado.",
-      privateData: isEn ? "Private: secret material, replay controls and tenant KMS." : "Privado: secretos, controles replay y KMS del tenant.",
+      publicProof: isEn ? "Visible: tag-message verdict, reported TT state and masked UID; no physical-product verdict." : "Publico: veredicto del mensaje, TT reportado y UID enmascarado; sin veredicto del objeto fisico.",
+      privateData: isEn
+        ? "Private: NFC secret material and replay controls managed by nexID under the batch and tenant policy."
+        : isBr
+          ? "Privado: segredos NFC e controles de replay gerenciados pela nexID conforme a politica do lote e do tenant."
+          : "Privado: secretos NFC y controles de replay gestionados por nexID según la política del lote y del tenant.",
       decisionPath: isEn
         ? [
-          { label: "Fresh tap", body: "Read SUN/UID from the real item." },
+          { label: "Fresh message", body: "Read SUN/UID from the provisioned tag; this does not prove the physical item." },
           { label: "Tenant policy", body: "Check replay, channel and batch rules." },
           { label: "Verdict", body: "Only then unlock claim, reward or support." },
         ]
         : [
-          { label: "Tap fresco", body: "Lee SUN/UID desde el objeto real." },
+          { label: "Mensaje fresco", body: "Lee SUN/UID del tag provisionado; no prueba el objeto fisico." },
           { label: "Politica tenant", body: "Evalua replay, canal y reglas de lote." },
           { label: "Veredicto", body: "Recien ahi habilita claim, reward o soporte." },
         ],
@@ -280,20 +295,20 @@ function getTrustScenarioContext(
     "offline-verifier": {
       tone: key,
       eyebrow: isEn ? "Field mode" : "Modo campo",
-      title: isEn ? "Offline verification keeps the workflow running without signal." : "La verificacion offline mantiene el flujo vivo sin senal.",
-      body: isEn ? "Perfect for warehouses, rural operations, wineries and mines: the device validates locally, queues evidence and syncs later with the official verdict." : "Ideal para depositos, campo, cavas y minas: el dispositivo valida localmente, encola evidencia y sincroniza despues con el veredicto oficial.",
+      title: isEn ? "Offline message checks keep the workflow running without signal." : "Los checks offline del mensaje mantienen el flujo sin senal.",
+      body: isEn ? "A controlled device can check scoped tag-message evidence locally, queue it and sync later for backend replay and policy checks. The local result remains provisional." : "Un dispositivo controlado puede revisar evidencia acotada del mensaje, encolarla y sincronizar para checks backend de replay y politica. El resultado local es provisional.",
       publicProof: isEn ? "Visible: provisional pass, queue count and sync status." : "Publico: pase provisional, cola y estado de sync.",
       privateData: isEn ? "Private: permission bundle, operator identity and internal QA." : "Privado: bundle de permisos, operador y QA interno.",
       decisionPath: isEn
         ? [
           { label: "Bundle", body: "Load authorized products and rules." },
           { label: "Local check", body: "Validate in the field without internet." },
-          { label: "Sync", body: "Publish the official verdict when signal returns." },
+          { label: "Sync", body: "Request the backend message, replay and policy verdict when signal returns." },
         ]
         : [
           { label: "Bundle", body: "Carga productos autorizados y reglas." },
           { label: "Check local", body: "Valida en campo sin internet." },
-          { label: "Sync", body: "Emite veredicto oficial al recuperar senal." },
+          { label: "Sync", body: "Pide el veredicto backend del mensaje, replay y politica al recuperar senal." },
         ],
       businessOutcome: isEn ? "Operations keep moving when warehouses, farms or mines lose signal." : "La operacion sigue viva cuando deposito, campo o mina pierden senal.",
       primaryHref: "/demo-lab?scenario=offline-verifier",
@@ -304,22 +319,22 @@ function getTrustScenarioContext(
     "polygon-ownership": {
       tone: key,
       eyebrow: isEn ? "Ownership layer" : "Capa ownership",
-      title: isEn ? "Polygon records ownership after product verification." : "Polygon registra ownership despues de verificar el producto.",
+      title: isEn ? "Polygon records ownership after NFC evidence, buyer and policy checks." : "Polygon registra ownership después de validar evidencia NFC, comprador y política.",
       body: isEn ? "This flow shows the policy plus a confirmed testnet mint. The public certificate reads the owner, mint and HTTPS metadata live; nexID still keeps physical authenticity separate from the NFT." : "Este flujo muestra la politica y un mint testnet confirmado. El certificado publico lee owner, mint y metadata HTTPS en vivo; nexID mantiene la autenticidad fisica separada del NFT.",
       publicProof: isEn ? "Visible: request, confirmed testnet mint/tx and owner status when approved." : "Publico: solicitud, mint/tx testnet confirmado y estado de owner al aprobarse.",
       privateData: isEn ? "Private: buyer identity, invoice, warranty policy and CRM segment." : "Privado: identidad del comprador, factura, politica de garantia y segmento CRM.",
       decisionPath: isEn
         ? [
-          { label: "Authentic item", body: "Require QR/NFC validation first." },
+          { label: "Eligible tag message", body: "Require QR/NFC evidence first; it does not authenticate the physical object." },
           { label: "Approved buyer", body: "Apply warranty, invoice and tenant policy." },
           { label: "Owner record", body: "Issue the mint and expose a certificate with live owner, metadata and transaction checks." },
         ]
         : [
-          { label: "Objeto autentico", body: "Exige validacion QR/NFC primero." },
+          { label: "Mensaje de tag elegible", body: "Exige evidencia QR/NFC primero; no autentica el objeto físico." },
           { label: "Comprador aprobado", body: "Aplica garantia, factura y politica tenant." },
           { label: "Owner record", body: "Emite el mint y muestra certificado con owner, metadata y transaccion comprobados en vivo." },
         ],
-      businessOutcome: isEn ? "Resale, warranty and loyalty become gated by real product proof." : "Reventa, garantia y loyalty quedan atados a prueba real de producto.",
+      businessOutcome: isEn ? "Resale, warranty and loyalty remain gated by approved digital evidence, purchase and policy; the NFT is not physical proof." : "Reventa, garantía y loyalty dependen de evidencia digital aprobada, compra y política; el NFT no es prueba física.",
       primaryHref: "/proof/ownership",
       primaryLabel: isEn ? "Open ownership certificate" : "Abrir certificado ownership",
       secondaryHref: "/?contact=demo#contact-modal",
@@ -328,22 +343,22 @@ function getTrustScenarioContext(
     "iota-proof": {
       tone: key,
       eyebrow: isEn ? "Audit proof layer" : "Capa de auditoria",
-      title: isEn ? "IOTA proves logistics evidence without publishing private operations." : "IOTA prueba evidencia logistica sin publicar operaciones privadas.",
-      body: isEn ? "The deep link opens the traceability step because this layer is about custody, Merkle roots and public verification. It connects directly with Proof Verify so an auditor can test a hash." : "El deep link abre trazabilidad porque esta capa trata custodia, Merkle roots y verificacion publica. Conecta directo con Proof Verify para que un auditor pruebe un hash.",
+      title: isEn ? "IOTA can anchor selected logistics hashes without publishing private operations." : "IOTA puede anclar hashes logisticos seleccionados sin publicar operaciones privadas.",
+      body: isEn ? "This layer verifies hash inclusion for declared or reported custody records. It does not prove the underlying physical event, route or contents." : "Esta capa verifica inclusion de hashes de registros de custodia declarados o reportados. No prueba el evento fisico, la ruta ni el contenido subyacente.",
       publicProof: isEn ? "Visible: event hash, Merkle root, tx/explorer and inclusion status." : "Publico: hash de evento, Merkle root, tx/explorer y estado de inclusion.",
       privateData: isEn ? "Private: customer, route manifest, QA docs and commercial contract." : "Privado: cliente, manifiesto de ruta, QA interno y contrato comercial.",
       decisionPath: isEn
         ? [
-          { label: "Canonical event", body: "Hash the custody or QA fact." },
+          { label: "Canonical record", body: "Hash a reported custody or QA record." },
           { label: "Merkle root", body: "Group many events into one public anchor." },
           { label: "Verify", body: "Let any auditor test inclusion in Proof Verify." },
         ]
         : [
-          { label: "Evento canonico", body: "Hashea custodia o hecho QA." },
+          { label: "Registro canonico", body: "Hashea un registro de custodia o QA reportado." },
           { label: "Merkle root", body: "Agrupa muchos eventos en un anchor publico." },
           { label: "Verificar", body: "Permite a cualquiera probar inclusion en Proof Verify." },
         ],
-      businessOutcome: isEn ? "Auditors get proof of existence while clients and routes stay private." : "Auditores prueban existencia sin ver clientes, rutas ni documentos privados.",
+      businessOutcome: isEn ? "Auditors can verify that a hash was anchored while the underlying claim and routes remain private and separately evidenced." : "Auditores verifican que un hash fue anclado; el claim subyacente y las rutas siguen privados y requieren evidencia separada.",
       primaryHref: proofVerifierHref,
       primaryLabel: isEn ? "Open Proof Verify demo" : "Abrir Proof Verify demo",
       secondaryHref: "/docs#trust-layers",
@@ -353,17 +368,17 @@ function getTrustScenarioContext(
       tone: key,
       eyebrow: isEn ? "DPP-ready stack" : "Stack DPP-ready",
       title: isEn ? "DPP combines identity, ownership and industrial audit proof." : "DPP combina identidad, ownership y auditoria industrial.",
-      body: isEn ? "Use this when the buyer asks for a serious enterprise story: QR/GS1 and NFC for the object, Polygon for ownership, IOTA for audit evidence." : "Usalo cuando el comprador pide una historia enterprise seria: QR/GS1 y NFC para el objeto, Polygon para ownership, IOTA para evidencia auditada.",
+      body: isEn ? "Use QR/GS1 for declared identifiers, NFC for tag-message evidence, Polygon for digital ownership and IOTA for hash anchoring. None proves the physical object by itself." : "Usa QR/GS1 para identificadores declarados, NFC para evidencia del mensaje, Polygon para ownership digital e IOTA para anclaje de hashes. Ninguno prueba por si solo el objeto fisico.",
       publicProof: isEn ? "Visible: passport, proof hash, owner status and compliance trail." : "Publico: pasaporte, proof hash, owner status y camino compliance.",
       privateData: isEn ? "Private: PII, tenant policy, supplier docs and pricing terms." : "Privado: PII, politica tenant, docs de proveedor y precios.",
       decisionPath: isEn
         ? [
-          { label: "Object", body: "QR/GS1 plus NFC prove the physical item." },
+          { label: "Digital evidence", body: "QR/GS1 resolves declared identifiers and NFC validates the tag message." },
           { label: "Owner", body: "Polygon represents approved ownership." },
           { label: "Audit", body: "IOTA anchors hash-only evidence." },
         ]
         : [
-          { label: "Objeto", body: "QR/GS1 mas NFC prueban el item fisico." },
+          { label: "Evidencia digital", body: "QR/GS1 resuelve identificadores declarados y NFC valida el mensaje del tag." },
           { label: "Owner", body: "Polygon representa ownership aprobado." },
           { label: "Auditoria", body: "IOTA ancla evidencia hash-only." },
         ],
@@ -376,8 +391,8 @@ function getTrustScenarioContext(
     "sensor-evidence": {
       tone: key,
       eyebrow: isEn ? "Industrial evidence" : "Evidencia industrial",
-      title: isEn ? "Sensor evidence turns pallets, boxes and conditions into audit facts." : "La evidencia de sensores convierte pallets, cajas y condiciones en hechos auditables.",
-      body: isEn ? "The buyer sees a clean verdict while operations keeps UHF, IoT, temperature and custody details in a controlled proof trail." : "El comprador ve un veredicto simple mientras operaciones conserva UHF, IoT, temperatura y custodia en un trail controlado.",
+      title: isEn ? "Sensor integrations turn reported pallet, box and condition events into audit records." : "Las integraciones de sensores convierten eventos reportados de pallets, cajas y condiciones en registros auditables.",
+      body: isEn ? "The buyer sees source-bounded evidence while operations keeps UHF, IoT, temperature and custody records in a controlled trail. Missing intervals remain unknown." : "El comprador ve evidencia acotada a su fuente mientras operaciones conserva registros UHF, IoT, temperatura y custodia. Los intervalos sin datos quedan desconocidos.",
       publicProof: isEn ? "Visible: milestone hash, risk state and proof receipt." : "Publico: hash del hito, estado de riesgo y recibo proof.",
       privateData: isEn ? "Private: sensor stream, lane economics and warehouse data." : "Privado: stream sensor, costos de ruta y datos de deposito.",
       decisionPath: isEn
@@ -391,7 +406,7 @@ function getTrustScenarioContext(
           { label: "Anclar", body: "Publica solo el hash del hito." },
           { label: "Actuar", body: "Marca riesgo antes de recibir o liquidar." },
         ],
-      businessOutcome: isEn ? "Industrial traceability becomes auditable without exposing operations." : "La trazabilidad industrial queda auditable sin exponer operacion.",
+      businessOutcome: isEn ? "Selected reported events become auditable without exposing private operations or claiming an unobserved physical route." : "Eventos reportados seleccionados quedan auditables sin exponer operaciones ni afirmar una ruta fisica no observada.",
       primaryHref: proofVerifierHref,
       primaryLabel: isEn ? "Open proof receipt" : "Abrir recibo proof",
       secondaryHref: "/docs#trust-layers",
@@ -401,9 +416,17 @@ function getTrustScenarioContext(
       tone: key,
       eyebrow: isEn ? "Supplier network" : "Red autorizada",
       title: isEn ? "Authorized partners operate without receiving raw infrastructure secrets." : "Los partners autorizados operan sin recibir secretos crudos de infraestructura.",
-      body: isEn ? "This scenario is for resellers, printers, integrators and suppliers: they encode and audit within role boundaries while nexID protects tenant keys and policy." : "Este escenario es para resellers, imprentas, integradores y proveedores: codifican y auditan por rol mientras nexID protege claves y politica del tenant.",
+      body: isEn
+        ? "This scenario is for resellers, printers, integrators and suppliers: they operate within role boundaries while nexID manages NFC custody material and tenant policy."
+        : isBr
+          ? "Este cenario e para resellers, graficas, integradores e fornecedores: operam dentro dos limites do papel enquanto a nexID gerencia o material de custodia NFC e a politica do tenant."
+          : "Este escenario es para resellers, imprentas, integradores y proveedores: operan dentro de los límites del rol mientras nexID gestiona el material de custodia NFC y la política del tenant.",
       publicProof: isEn ? "Visible: partner role, batch status and audit receipt." : "Publico: rol del partner, estado del batch y recibo auditado.",
-      privateData: isEn ? "Private: API keys, KMS material, billing and tenant contracts." : "Privado: API keys, material KMS, facturacion y contratos tenant.",
+      privateData: isEn
+        ? "Private: API keys, custody material managed by nexID, billing and tenant contracts."
+        : isBr
+          ? "Privado: API keys, material de custodia gerenciado pela nexID, faturamento e contratos do tenant."
+          : "Privado: API keys, material de custodia gestionado por nexID, facturación y contratos del tenant.",
       decisionPath: isEn
         ? [
           { label: "Role", body: "Define what each partner can encode." },
@@ -624,11 +647,11 @@ const copy: Record<AppLocale, {
   roles: Record<Role, { label: string; headline: string; focus: string }>;
   beats: Record<Beat, { title: string; body: string; event: string; mode: SimulationMode; location: keyof typeof LOCATIONS; status: string; cta: string }>;
   verticals: Record<Vertical, { label: string; profile: string; product: string; visual: string; proof: string[] }>;
-  controls: { narrative: string; cinematicStart: string; cinematicStop: string; product: string; mobile: string; feed: string; valid: string; tamper: string; replay: string; refresh: string; marketplace: string; mapTitle: string; mapSubtitle: string; realFeed: string; adminKey: string; noGeo: string; origin: string; currentTap: string; distance: string; openOrigin: string; openTap: string; joinClub: string; warranty: string; tokenize: string; syncing: string; synced: string; unavailable: string; sendingScan: string; registeredScan: string; failedScan: string; configs: Array<{ title: string; body: string }> };
+  controls: { narrative: string; cinematicStart: string; cinematicStop: string; product: string; mobile: string; feed: string; valid: string; tamper: string; replay: string; refresh: string; marketplace: string; mapTitle: string; mapSubtitle: string; adminKey: string; noGeo: string; origin: string; currentTap: string; distance: string; openOrigin: string; openTap: string; joinClub: string; warranty: string; tokenize: string; syncing: string; synced: string; unavailable: string; sendingScan: string; registeredScan: string; failedScan: string; configs: Array<{ title: string; body: string }> };
 }> = {
   "es-AR": {
     heroEyebrow: "Laboratorio comercial nexID",
-    heroTitle: "Mirá cómo un producto físico se vuelve verificable, vendible y medible.",
+    heroTitle: "Mirá cómo una referencia declarada se convierte en evidencia digital y valor gobernado.",
     heroBody: "Un entorno guiado para vender la historia completa: origen, toque del cliente, seguridad, portal, tienda y datos de negocio sin tratar el sandbox como evidencia productiva.",
     nav: { landing: "Inicio", login: "Ingresar", sun: "SUN celular", portal: "Portal usuario" },
     kpis: { tags: "Etiquetas fisicas", events: "Eventos", portal: "Portal", route: "Ruta origen-toque", noFeed: "Sin eventos recientes", leads: "Contactos / asociaciones" },
@@ -636,50 +659,50 @@ const copy: Record<AppLocale, {
       { metric: "CRM + club", title: "Fidelización después del toque", body: "Puntos, garantías, recompra y promociones de la marca quedan conectados al pasaporte del consumidor." },
       { metric: "Tienda", title: "Red de alta gama por marca y zona", body: "Cada marca conserva su tienda, pero convive en una red nexID para descubrir productos de valor cercanos." },
       { metric: "Canal listo", title: "Operable para terceros", body: "Imprentas, integradores y agencias pueden cargar lotes, operar cuentas de marca y ver contactos sin tocar criptografía." },
-      { metric: "Datos vivos", title: "Ventas con analítica", body: "Lecturas, rutas, riesgo, clics y solicitudes llegan al CRM y al panel en tiempo real." },
+      { metric: "Datos vivos", title: "Ventas con analítica", body: "Con APIs o webhooks configurados, los eventos recibidos actualizan CRM y panel según la latencia de cada integración; la demo no garantiza tiempo real extremo a extremo." },
     ],
     roles: {
       ceo: { label: "CEO / inversor", headline: "Del toque al ingreso: protección de marca, datos y fidelización.", focus: "Usalo para mostrar margen, canal de revendedores y valor recurrente sin entrar en jerga técnica." },
       operator: { label: "Operaciones", headline: "Control real de lotes, UIDs, mapas y alertas.", focus: "Aterriza importacion, activacion, lecturas reales y excepciones de riesgo." },
-      buyer: { label: "Comprador", headline: "Confianza clara antes de comprar o consumir.", focus: "La persona entiende origen, estado del sello, beneficios y próximo paso." },
+      buyer: { label: "Comprador", headline: "Evidencia clara antes de comprar o consumir.", focus: "La persona distingue origen declarado, TT reportado, beneficios y próximo paso." },
     },
     beats: {
-      0: { title: "1. Nace el producto", body: "La marca activa lote, UID y origen.", event: "Lote real conectado a Bodega Balmec.", mode: "valid", location: "mendoza", status: "ORIGEN_LISTO", cta: "Ver origen" },
-      1: { title: "2. Toque del cliente", body: "El consumidor verifica y ve distancia.", event: "Toque valido en Zurich con ruta al origen.", mode: "valid", location: "zurich", status: "AUTENTICADO", cta: "Unirme al club" },
-      2: { title: "3. Riesgo bloqueado", body: "Copia o lectura duplicada entra al registro.", event: "Senial de copia para antifraude.", mode: "replay", location: "zurich", status: "COPIA_BLOQUEADA", cta: "Ver alerta" },
-      3: { title: "4. Apertura + venta", body: "El sello cambia estado y prepara beneficios sujetos a política.", event: "Sello abierto + solicitud de reclamo/tokenización.", mode: "tamper", location: "zurich", status: "ABIERTO", cta: "Solicitar propiedad" },
+      0: { title: "1. Se activa la referencia", body: "La marca declara lote, UID y origen.", event: "Lote demo declarado para Bodega Balmec.", mode: "valid", location: "mendoza", status: "ORIGEN_LISTO", cta: "Ver origen declarado" },
+      1: { title: "2. Toque del cliente", body: "El consumidor revisa el resultado y la distancia estimada.", event: "Preview de mensaje SUN aceptado en Zurich con origen declarado.", mode: "valid", location: "zurich", status: "RESULTADO_VALIDO", cta: "Unirme al club" },
+      2: { title: "3. Riesgo bloqueado", body: "Replay o mensaje duplicado entra al registro.", event: "Señal de replay del mensaje para revisión.", mode: "replay", location: "zurich", status: "COPIA_BLOQUEADA", cta: "Ver alerta" },
+      3: { title: "4. TT + postventa", body: "TT reporta un cambio simulado y prepara beneficios sujetos a política.", event: "TT abierto simulado + solicitud de ownership digital.", mode: "tamper", location: "zurich", status: "ABIERTO", cta: "Solicitar ownership" },
     },
     verticals: {
-      wine: { label: "Vino", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Etiqueta adherida a botella", "Descorche / sello roto", "SUN anti copia", "Origen + toque global"] },
-      seeds: { label: "Semillas", profile: "QR + NFC UID", product: "Sobre semilla certificada", visual: "seed-packet-demo", proof: ["Sobre antifalsificacion", "Lote y variedad", "Custodia agro", "Uso rural"] },
+      wine: { label: "Vino", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Referencia visual de botella", "TT abierto reportado (demo)", "SUN + anti-replay", "Origen declarado + toque simulado"] },
+      seeds: { label: "Semillas", profile: "QR + NFC UID", product: "Sobre de semillas · demo", visual: "seed-packet-demo", proof: ["Identificador del sobre", "Lote y variedad declarados", "Custodia agro", "Uso rural"] },
       pharma: { label: "Pharma", profile: "QR + NFC + recall", product: "Medicamento serializado", visual: "pharma-pack-demo", proof: ["Caja y lote auditables", "Prospecto digital", "Cadena de frio", "Recall por unidad"] },
-      creamJar: { label: "Skincare", profile: "NTAG 424 DNA", product: "Set dermocosmético premium", visual: "cream-jar-demo", proof: ["Sello tapa-envase", "Apertura cambia estado", "Garantía premium", "Anti mercado gris"] },
-      perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Perfume premium", visual: "perfume-demo", proof: ["Sello en tapa y cuello", "Lote y serie", "Garantía", "Anti falsificación"] },
-      creamTube: { label: "Crema", profile: "NTAG213 + lote", product: "Crema dermocosmética", visual: "cream-tube-demo", proof: ["Sello sobre tapa flip", "Lote visible", "Garantía", "Recompra"] },
+      creamJar: { label: "Skincare", profile: "NTAG 424 DNA", product: "Set dermocosmético premium", visual: "cream-jar-demo", proof: ["Referencia tapa-envase", "TT reportado (demo)", "Garantía por política", "Señales de riesgo"] },
+      perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Perfume premium", visual: "perfume-demo", proof: ["Referencia tapa-cuello", "Lote y serie declarados", "Garantía por política", "Evidencia SUN + anti-replay"] },
+      creamTube: { label: "Crema", profile: "NTAG213 + lote", product: "Crema dermocosmética", visual: "cream-tube-demo", proof: ["Referencia visual de tapa", "Lote declarado", "Garantía por política", "Recompra"] },
       bracelet: { label: "Brazalete", profile: "NTAG215", product: "Brazalete VIP evento", visual: "event-bracelet-demo", proof: ["Celular toca pulsera", "UID serializado", "Zonas VIP", "Bloqueo de reingreso"] },
       ticket: { label: "Entrada", profile: "QR + NFC UID", product: "Entrada fiesta VIP", visual: "party-ticket-demo", proof: ["QR visible", "UID respaldo", "Acceso por zona", "Copia bloqueada"] },
       sneaker: { label: "Zapatilla", profile: "NTAG 424 DNA", product: "Drop Runner 37Z", visual: "sneaker-demo", proof: ["Toque en lengueta", "UID + SUN", "Rareza visible", "Dueño/token"] },
-      luxury: { label: "Lujo", profile: "NTAG 424 DNA", product: "Reloj Cronógrafo Premium", visual: "luxury-demo", proof: ["Toque en tarjeta", "UID + SUN", "Evidencia de autenticidad", "Owner/club"] },
+      luxury: { label: "Lujo", profile: "NTAG 424 DNA", product: "Reloj Cronógrafo Premium", visual: "luxury-demo", proof: ["Toque en tarjeta", "UID + SUN", "Evidencia NFC declarada", "Owner/club"] },
       bottle: { label: "Envases refill", profile: "GS1/QR + NFC", product: "Envase Refill Premium", visual: "bottle-demo", proof: ["Envase retornable", "GS1/QR + NFC opcional", "ciclo refill", "Incentivo activo"] },
-      logistics: { label: "Logistica", profile: "UHF + NFC + sensor", product: "Caja cadena fria", visual: "logistics-pack-demo", proof: ["Pallet/caja trazable", "Sensor temperatura", "Ruta auditada", "Entrega verificada"] },
-      electronics: { label: "Electrónica", profile: "QR + NFC garantía", product: "Dispositivo serializado", visual: "electronics-demo", proof: ["Serial verificable", "Garantía por unidad", "Soporte postventa", "Reclamo antifraude"] },
+      logistics: { label: "Logistica", profile: "UHF + NFC + sensor", product: "Caja cadena fria", visual: "logistics-pack-demo", proof: ["Pallet/caja registrada", "Temperatura reportada por sensor", "Eventos de ruta reportados", "Entrega declarada"] },
+      electronics: { label: "Electrónica", profile: "QR + NFC garantía", product: "Dispositivo serializado", visual: "electronics-demo", proof: ["Serial consultable", "Garantía por unidad", "Soporte postventa", "Señales de riesgo"] },
       textile: { label: "Textil DPP", profile: "QR + NFC DPP", product: "Etiqueta pasaporte textil", visual: "textile-dpp-demo", proof: ["Origen y composicion", "Cuidado conectado", "Sustentabilidad", "Reventa verificable"] },
     },
     controls: {
-      narrative: "Narrativa por audiencia", cinematicStart: "Iniciar recorrido", cinematicStop: "Pausar recorrido", product: "Producto físico", mobile: "Resultado en celular", feed: "Registro de eventos", valid: "Registrar toque válido en Zúrich", tamper: "Romper sello / descorchar", replay: "Simular copia duplicada", refresh: "Actualizar", marketplace: "Portal + tienda", mapTitle: "Mapa vivo: origen del producto vs toque del cliente", mapSubtitle: "Línea animada, distancia y enlaces de ubicación para construir confianza.", realFeed: "Registro público real conectado.", adminKey: "Modo lectura/prueba: la escritura privada de lecturas corre en entorno seguro.", noGeo: "Todavía no hay eventos públicos con ubicación disponibles desde la API.", origin: "Origen", currentTap: "Toque actual", distance: "Distancia", openOrigin: "Abrir origen", openTap: "Abrir toque", joinClub: "Unirme al club", warranty: "Activar garantía", tokenize: "Crear NFT", syncing: "Conectando con Bodega Balmec...", synced: "Bodega Balmec sincronizada con servidor.", unavailable: "Bodega Balmec no disponible.", sendingScan: "Enviando lectura", registeredScan: "Lectura registrada en Bodega Balmec.", failedScan: "No se pudo simular el toque.", configs: [
+      narrative: "Narrativa por audiencia", cinematicStart: "Iniciar recorrido", cinematicStop: "Pausar recorrido", product: "Escena de producto", mobile: "Resultado en celular", feed: "Registro de eventos", valid: "Simular mensaje válido en Zúrich", tamper: "Simular TT abierto", replay: "Simular replay duplicado", refresh: "Actualizar", marketplace: "Portal + tienda", mapTitle: "Mapa de escenario: origen declarado vs ubicación reportada", mapSubtitle: "Línea y distancia estimadas para la demo; no prueban recorrido ni custodia física.", adminKey: "Modo lectura/prueba: la escritura privada de lecturas corre en entorno seguro.", noGeo: "Todavía no hay eventos públicos con ubicación disponibles desde la API.", origin: "Origen declarado", currentTap: "Ubicación reportada", distance: "Distancia estimada", openOrigin: "Abrir origen declarado", openTap: "Abrir ubicación", joinClub: "Unirme al club", warranty: "Solicitar garantía", tokenize: "Solicitar NFT", syncing: "Conectando con Bodega Balmec...", synced: "Bodega Balmec sincronizada con servidor.", unavailable: "Bodega Balmec no disponible.", sendingScan: "Enviando lectura", registeredScan: "Lectura registrada en Bodega Balmec.", failedScan: "No se pudo simular el toque.", configs: [
         { title: "QR / GS1 Digital Link", body: "Entrada economica para contenido, lote, retiro de producto y trazabilidad GS1. Ideal como respaldo visible; cualquiera puede copiarlo, por eso no habilita reclamo de dueño por si solo." },
-        { title: "NTAG213 / NTAG215", body: "UID físico serializado para entradas, pulseras, garantías simples y activaciones masivas. Sube la fricción contra capturas de pantalla y permite reglas por lote desde el servidor." },
-        { title: "NTAG 424 DNA", body: "Cada toque genera SUN dinamico con CMAC para detectar copias, enlaces reutilizados y lecturas sospechosas. Es la capa recomendada para productos de valor medio/alto." },
+        { title: "NTAG213 / NTAG215", body: "UID serializado para entradas, pulseras, garantías simples y activaciones masivas. Permite controles de duplicado por lote desde el servidor, sin prueba del objeto físico." },
+        { title: "NTAG 424 DNA", body: "Cada lectura puede generar un mensaje SUN dinámico con CMAC para detectar replay, enlaces reutilizados y anomalías. Es evidencia del mensaje, no autenticación física del producto." },
         { title: "Offline Verifier", body: "Android primero, iOS donde Core NFC/ISO 7816 lo permita, o lector dedicado para campo sin senal: ejecuta checks locales con bundle autorizado, sin master keys, y mantiene veredicto provisional hasta sync backend." },
         { title: "Polygon Ownership Demo", body: "Activa ownership, certificado o token premium solo despues de tap fresco, comprador validado y politica aprobada. Polygon no reemplaza la validacion SUN ni recibe taps individuales." },
         { title: "IOTA Proof Layer Demo", body: "Muestra auditoria opcional para DPP, lotes y logistica: se anclan hashes o Merkle roots, no datos privados ni lecturas individuales." },
         { title: "Dual Proof DPP", body: "Combina QR/GS1, NFC 424, Polygon para ownership e IOTA para evidencia industrial cuando el cliente necesita compliance avanzado." },
-        { title: "NTAG 424 DNA TT + tokenización", body: "Suma estado físico del sello: cerrado, abierto o manipulado. Permite pasaporte, garantía, tienda y token Polygon solo cuando la política de compra/reclamo lo habilita." },
+        { title: "NTAG 424 DNA TT + tokenización", body: "Suma estado TT reportado del circuito: cerrado, abierto o cambio detectado. No certifica el sello físico; pasaporte, garantía, tienda y token Polygon dependen de política y evidencia separada." },
       ] },
   },
   "pt-BR": {
     heroEyebrow: "Enterprise Lab",
-    heroTitle: "Veja como um produto fisico vira confianca, dados e receita.",
+    heroTitle: "Veja como uma referencia declarada vira evidencia digital e valor governado.",
     heroBody: "Uma experiencia para vender a historia completa: origem, toque do cliente, seguranca, portal, marketplace e dados de negocio.",
     nav: { landing: "Landing", login: "Entrar", sun: "SUN mobile", portal: "Portal usuario" },
     kpis: { tags: "Tags fisicas", events: "Eventos", portal: "Portal", route: "Rota origem-toque", noFeed: "Sem feed recente", leads: "Leads / associacoes" },
@@ -687,49 +710,49 @@ const copy: Record<AppLocale, {
       { metric: "CRM + clube", title: "Fidelizacao pos-toque", body: "Pontos, garantias, recompra e promos do tenant ficam conectados ao passport do consumidor." },
       { metric: "Marketplace", title: "Rede luxury por marca e regiao", body: "Cada marca mantem sua loja, mas convive em uma rede nexID para descobrir produtos premium proximos." },
       { metric: "Reseller ready", title: "White-label operavel", body: "Graficas, integradores e agencias carregam lotes, operam tenants e veem leads sem tocar criptografia." },
-      { metric: "Dados vivos", title: "Vendas com analitica", body: "Scans, rotas, risco, cliques e solicitacoes chegam ao CRM e ao dashboard em tempo real." },
+      { metric: "Dados vivos", title: "Vendas com analitica", body: "Com APIs ou webhooks configurados, eventos recebidos atualizam CRM e dashboard conforme a latencia de cada integracao; a demo nao garante tempo real ponta a ponta." },
     ],
     roles: {
       ceo: { label: "CEO / investidor", headline: "Do toque ao revenue: marca protegida, dados e fidelizacao.", focus: "Use para mostrar margem, canal revendedor e receita recorrente sem jargao tecnico." },
       operator: { label: "Operacoes", headline: "Controle de lotes, UIDs, mapas e alertas.", focus: "Mostra importacao, ativacao, leituras reais e excecoes de risco." },
-      buyer: { label: "Comprador", headline: "Confianca instantanea antes de comprar ou consumir.", focus: "A pessoa entende origem, estado do lacre, beneficios e proximo passo." },
+      buyer: { label: "Comprador", headline: "Evidencia clara antes de comprar ou consumir.", focus: "A pessoa distingue origem declarada, TT reportado, beneficios e proximo passo." },
     },
     beats: {
-      0: { title: "1. Produto nasce", body: "A marca ativa lote, UID e origem.", event: "Lote real conectado ao Bodega Balmec.", mode: "valid", location: "mendoza", status: "ORIGIN_READY", cta: "Ver origem" },
-      1: { title: "2. Toque do cliente", body: "O consumidor verifica e ve distancia.", event: "Toque valido em Zurique com rota de origem.", mode: "valid", location: "zurich", status: "AUTH_OK", cta: "Entrar no clube" },
-      2: { title: "3. Risco bloqueado", body: "Replay ou duplicata entra no feed.", event: "Replay signal para antifraude.", mode: "replay", location: "zurich", status: "REPLAY_BLOCKED", cta: "Ver alerta" },
-      3: { title: "4. Abertura + venda", body: "O lacre muda estado e abre beneficios.", event: "Lacre aberto + dono/tokenizacao.", mode: "tamper", location: "zurich", status: "OPENED", cta: "Reivindicar dono" },
+      0: { title: "1. A referencia e ativada", body: "A marca declara lote, UID e origem.", event: "Lote demo declarado para Bodega Balmec.", mode: "valid", location: "mendoza", status: "ORIGIN_READY", cta: "Ver origem declarada" },
+      1: { title: "2. Toque do cliente", body: "O consumidor revisa o resultado e a distancia estimada.", event: "Preview de mensagem SUN aceita em Zurique com origem declarada.", mode: "valid", location: "zurich", status: "AUTH_OK", cta: "Entrar no clube" },
+      2: { title: "3. Risco bloqueado", body: "Replay ou mensagem duplicada entra no feed.", event: "Sinal de replay da mensagem para revisao.", mode: "replay", location: "zurich", status: "REPLAY_BLOCKED", cta: "Ver alerta" },
+      3: { title: "4. TT + pos-venda", body: "TT reporta uma mudanca simulada e prepara beneficios por politica.", event: "TT aberto simulado + pedido de ownership digital.", mode: "tamper", location: "zurich", status: "OPENED", cta: "Solicitar ownership" },
     },
     verticals: {
-      wine: { label: "Garrafa", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Etiqueta na garrafa", "Rolha / lacre aberto", "SUN anti-replay", "Origem + toque global"] },
-      seeds: { label: "Sementes", profile: "QR + NFC UID", product: "Envelope de semente certificada", visual: "seed-packet-demo", proof: ["Envelope antifraude", "Lote e variedade", "Custodia agro", "Uso rural"] },
+      wine: { label: "Garrafa", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Referencia visual de garrafa", "TT aberto reportado (demo)", "SUN + anti-replay", "Origem declarada + toque simulado"] },
+      seeds: { label: "Sementes", profile: "QR + NFC UID", product: "Envelope de sementes · demo", visual: "seed-packet-demo", proof: ["Identificador do envelope", "Lote e variedade declarados", "Custodia agro", "Uso rural"] },
       pharma: { label: "Pharma", profile: "QR + NFC + recall", product: "Medicamento serializado", visual: "pharma-pack-demo", proof: ["Caixa e lote auditaveis", "Bula digital", "Cadeia fria", "Recall por unidade"] },
-      creamJar: { label: "Skincare", profile: "NTAG 424 DNA", product: "Set dermocosmetico premium", visual: "cream-jar-demo", proof: ["Lacre tampa-envase", "Abertura muda estado", "Garantia premium", "Anti grey-market"] },
-      perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Perfume premium", visual: "perfume-demo", proof: ["Lacre entre tampa e gargalo", "Lote e serie", "Garantia", "Antifalsificacao"] },
-      creamTube: { label: "Creme", profile: "NTAG213 + lote", product: "Creme dermocosmetico", visual: "cream-tube-demo", proof: ["Lacre sobre tampa flip", "Lote visivel", "Garantia", "Recompra"] },
+      creamJar: { label: "Skincare", profile: "NTAG 424 DNA", product: "Set dermocosmetico premium", visual: "cream-jar-demo", proof: ["Referencia tampa-envase", "TT reportado (demo)", "Garantia por politica", "Sinais de risco"] },
+      perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Perfume premium", visual: "perfume-demo", proof: ["Referencia tampa-gargalo", "Lote e serie declarados", "Garantia por politica", "Evidencia SUN + anti-replay"] },
+      creamTube: { label: "Creme", profile: "NTAG213 + lote", product: "Creme dermocosmetico", visual: "cream-tube-demo", proof: ["Referencia visual da tampa", "Lote declarado", "Garantia por politica", "Recompra"] },
       bracelet: { label: "Pulseira", profile: "NTAG215", product: "Pulseira VIP evento", visual: "event-bracelet-demo", proof: ["Celular toca pulseira", "UID serializado", "Zonas VIP", "Bloqueio duplicado"] },
       ticket: { label: "Ingresso", profile: "QR + NFC UID", product: "Ingresso festa VIP", visual: "party-ticket-demo", proof: ["QR visivel", "UID respaldo", "Acesso por zona", "Replay bloqueado"] },
       sneaker: { label: "Tenis", profile: "NTAG 424 DNA", product: "Drop Runner 37Z", visual: "sneaker-demo", proof: ["Toque na lingueta", "UID + SUN", "Raridade visivel", "Dono/token"] },
-      luxury: { label: "Luxo", profile: "NTAG 424 DNA", product: "Relogio de Luxo", visual: "luxury-demo", proof: ["Toque no cartao", "UID + SUN", "Evidencia de autenticidade", "Dono/clube"] },
+      luxury: { label: "Luxo", profile: "NTAG 424 DNA", product: "Relogio de Luxo", visual: "luxury-demo", proof: ["Toque no cartao", "UID + SUN", "Evidência NFC declarada", "Dono/clube"] },
       bottle: { label: "Embalagens refill", profile: "GS1/QR + NFC", product: "Embalagem Refill Premium", visual: "bottle-demo", proof: ["Embalagem retornavel", "GS1/QR + NFC opcional", "ciclo refill", "Incentivo ativo"] },
-      logistics: { label: "Logistica", profile: "UHF + NFC + sensor", product: "Caixa cadeia fria", visual: "logistics-pack-demo", proof: ["Pallet/caixa rastreavel", "Sensor temperatura", "Rota auditada", "Entrega verificada"] },
-      electronics: { label: "Eletronica", profile: "QR + NFC garantia", product: "Dispositivo serializado", visual: "electronics-demo", proof: ["Serial verificavel", "Garantia por unidade", "Suporte pos-venda", "Reclamo antifraude"] },
+      logistics: { label: "Logistica", profile: "UHF + NFC + sensor", product: "Caixa cadeia fria", visual: "logistics-pack-demo", proof: ["Pallet/caixa registrada", "Temperatura informada pelo sensor", "Eventos de rota informados", "Entrega declarada"] },
+      electronics: { label: "Eletronica", profile: "QR + NFC garantia", product: "Dispositivo serializado", visual: "electronics-demo", proof: ["Serial consultavel", "Garantia por unidade", "Suporte pos-venda", "Sinais de risco"] },
       textile: { label: "Textil DPP", profile: "QR + NFC DPP", product: "Etiqueta passport textil", visual: "textile-dpp-demo", proof: ["Origem e composicao", "Cuidado conectado", "Sustentabilidade", "Revenda verificavel"] },
     },
-    controls: { narrative: "Narrativa por audiencia", cinematicStart: "Iniciar cinematic", cinematicStop: "Pausar cinematic", product: "Produto fisico", mobile: "Resultado mobile", feed: "Command feed", valid: "Registrar toque valido em Zurique", tamper: "Abrir lacre / rolha", replay: "Simular replay duplicado", refresh: "Atualizar", marketplace: "Portal + marketplace", mapTitle: "Mapa vivo: origem do produto vs toque do cliente", mapSubtitle: "Linha animada, distancia e links de localizacao para construir confianca.", realFeed: "Feed publico real conectado.", adminKey: "Modo leitura/validacao: a escrita privada de scans roda em ambiente seguro.", noGeo: "Ainda nao ha eventos publicos com localizacao na API.", origin: "Origem", currentTap: "Toque atual", distance: "Distancia", openOrigin: "Abrir origem", openTap: "Abrir toque", joinClub: "Entrar no clube", warranty: "Ativar garantia", tokenize: "Tokenizar premium", syncing: "Conectando ao Bodega Balmec...", synced: "Bodega Balmec sincronizada com backend.", unavailable: "Bodega Balmec indisponivel.", sendingScan: "Enviando scan", registeredScan: "Scan registrado no Bodega Balmec.", failedScan: "Nao foi possivel simular o toque.", configs: [
+    controls: { narrative: "Narrativa por audiencia", cinematicStart: "Iniciar cinematic", cinematicStop: "Pausar cinematic", product: "Cena de produto", mobile: "Resultado mobile", feed: "Command feed", valid: "Simular mensagem valida em Zurique", tamper: "Simular TT aberto", replay: "Simular replay duplicado", refresh: "Atualizar", marketplace: "Portal + marketplace", mapTitle: "Mapa de cenario: origem declarada vs local reportado", mapSubtitle: "Linha e distancia estimadas para demo; nao provam rota nem custodia fisica.", adminKey: "Modo leitura/validacao: a escrita privada de scans roda em ambiente seguro.", noGeo: "Ainda nao ha eventos publicos com localizacao na API.", origin: "Origem declarada", currentTap: "Local reportado", distance: "Distancia estimada", openOrigin: "Abrir origem declarada", openTap: "Abrir local", joinClub: "Entrar no clube", warranty: "Ativar garantia", tokenize: "Tokenizar premium", syncing: "Conectando ao Bodega Balmec...", synced: "Bodega Balmec sincronizada com backend.", unavailable: "Bodega Balmec indisponivel.", sendingScan: "Enviando scan", registeredScan: "Scan registrado no Bodega Balmec.", failedScan: "Nao foi possivel simular o toque.", configs: [
       { title: "QR / GS1 Digital Link", body: "Entrada economica para conteudo, lote, recall e rastreabilidade GS1. Otimo fallback visivel; pode ser copiado, entao nao libera propriedade premium sozinho." },
-      { title: "NTAG213 / NTAG215", body: "UID fisico serializado para tickets, pulseiras, garantias simples e ativacoes massivas. Permite regras server-side por lote." },
-      { title: "NTAG 424 DNA", body: "Cada toque gera SUN dinamico com CMAC para detectar replay, links reutilizados e copias. Recomendado para valor medio/alto." },
+      { title: "NTAG213 / NTAG215", body: "UID serializado para tickets, pulseiras, garantias simples e ativacoes massivas. Permite controles de duplicado por lote, sem prova do objeto fisico." },
+      { title: "NTAG 424 DNA", body: "Cada leitura pode gerar mensagem SUN dinamica com CMAC para detectar replay, links reutilizados e anomalias. E evidencia da mensagem, nao autenticacao fisica do produto." },
       { title: "Offline Verifier", body: "Android primeiro, iOS onde Core NFC/ISO 7816 permitir, ou leitor dedicado para campo sem sinal: executa checks locais com bundle autorizado, sem master keys, e mantem veredito provisional ate sync backend." },
       { title: "Polygon Ownership Demo", body: "Ativa ownership, certificado ou token premium somente depois de toque fresco, comprador validado e politica aprovada. Polygon nao substitui SUN nem recebe eventos individuais." },
       { title: "IOTA Proof Layer Demo", body: "Mostra auditoria opcional para DPP, lotes e logistica: ancoramos hashes ou Merkle roots, nao dados privados nem leituras individuais." },
       { title: "Dual Proof DPP", body: "Combina QR/GS1, NFC 424, Polygon para ownership e IOTA para evidencia industrial quando o cliente precisa de compliance avancado." },
-      { title: "NTAG 424 DNA TT + tokenizacao", body: "Soma estado fisico do lacre: fechado, aberto ou manipulado. Habilita passport, garantia, marketplace e token Polygon conforme politica comercial." },
+      { title: "NTAG 424 DNA TT + tokenizacao", body: "Soma estado TT reportado do circuito: fechado, aberto ou mudanca detectada. Nao certifica o lacre fisico; passport, garantia, marketplace e token dependem de politica e evidencia separada." },
     ] },
   },
   en: {
     heroEyebrow: "Enterprise Lab",
-    heroTitle: "See a physical product become trust, data, and revenue.",
+    heroTitle: "See a declared product reference become digital evidence and governed value.",
     heroBody: "A sales-ready experience for origin, customer tap, security, portal, marketplace and business analytics.",
     nav: { landing: "Landing", login: "Login", sun: "SUN mobile", portal: "User portal" },
     kpis: { tags: "Physical tags", events: "Events", portal: "Portal", route: "Origin-tap route", noFeed: "No recent feed", leads: "Leads / associations" },
@@ -737,44 +760,44 @@ const copy: Record<AppLocale, {
       { metric: "CRM + club", title: "Post-tap loyalty", body: "Points, warranty, repurchase and tenant promos stay attached to the consumer passport." },
       { metric: "Marketplace", title: "Luxury network by brand and region", body: "Each brand keeps its own store while joining a nexID network for nearby premium discovery." },
       { metric: "Reseller ready", title: "Operational white-label", body: "Printers, integrators and agencies can load batches, operate tenants and see leads without touching cryptography." },
-      { metric: "Live data", title: "Sales with analytics", body: "Scans, routes, risk, clicks and requests land in CRM and dashboards in real time." },
+      { metric: "Live data", title: "Sales with analytics", body: "With configured APIs or webhooks, received events update CRM and dashboards at each integration's latency; the demo does not guarantee end-to-end real time." },
     ],
     roles: {
       ceo: { label: "CEO / investor", headline: "From tap to revenue: protected brand, data and loyalty.", focus: "Show margin, reseller channel and recurring value without technical friction." },
       operator: { label: "Operations", headline: "Real control for batches, UIDs, maps and alerts.", focus: "Ground the rollout: import, activation, live scans and risk exceptions." },
-      buyer: { label: "Buyer", headline: "Instant confidence before buying or consuming.", focus: "People understand origin, seal status, benefits and the next action." },
+      buyer: { label: "Buyer", headline: "Clear evidence before buying or consuming.", focus: "People distinguish declared origin, reported TT, benefits and the next action." },
     },
     beats: {
-      0: { title: "1. Product origin", body: "Brand activates batch, UID and origin.", event: "Real batch connected to Bodega Balmec.", mode: "valid", location: "mendoza", status: "ORIGIN_READY", cta: "View origin" },
-      1: { title: "2. Customer tap", body: "Consumer verifies and sees distance.", event: "Valid Zurich tap with origin route.", mode: "valid", location: "zurich", status: "AUTH_OK", cta: "Join club" },
-      2: { title: "3. Risk blocked", body: "Replay or duplicate enters the feed.", event: "Replay signal for anti-fraud.", mode: "replay", location: "zurich", status: "REPLAY_BLOCKED", cta: "View alert" },
-      3: { title: "4. Open + monetize", body: "Seal state changes and benefits open.", event: "Opened seal + ownership/tokenization CTA.", mode: "tamper", location: "zurich", status: "OPENED", cta: "Activate ownership" },
+      0: { title: "1. Reference activation", body: "The brand declares batch, UID and origin.", event: "Demo batch declared for Bodega Balmec.", mode: "valid", location: "mendoza", status: "ORIGIN_READY", cta: "View declared origin" },
+      1: { title: "2. Customer tap", body: "The consumer reviews the result and estimated distance.", event: "Preview of an accepted SUN message in Zurich with declared origin.", mode: "valid", location: "zurich", status: "AUTH_OK", cta: "Join club" },
+      2: { title: "3. Risk blocked", body: "Replay or a duplicate message enters the feed.", event: "Tag-message replay signal for review.", mode: "replay", location: "zurich", status: "REPLAY_BLOCKED", cta: "View alert" },
+      3: { title: "4. TT + after-sales", body: "TT reports a simulated change and prepares policy-based benefits.", event: "Simulated TT open + digital ownership request.", mode: "tamper", location: "zurich", status: "OPENED", cta: "Request ownership" },
     },
     verticals: {
-      wine: { label: "Wine", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Label on bottle", "Uncork / broken seal", "SUN anti-replay", "Origin + global tap"] },
-      seeds: { label: "Seeds", profile: "QR + NFC UID", product: "Certified seed packet", visual: "seed-packet-demo", proof: ["Anti-counterfeit packet", "Lot and variety", "Agro custody", "Rural use"] },
+      wine: { label: "Wine", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Visual bottle reference", "Reported TT open (demo)", "SUN + replay controls", "Declared origin + simulated tap"] },
+      seeds: { label: "Seeds", profile: "QR + NFC UID", product: "Seed packet · demo", visual: "seed-packet-demo", proof: ["Packet identifier", "Declared lot and variety", "Agro custody", "Rural use"] },
       pharma: { label: "Pharma", profile: "QR + NFC + recall", product: "Serialized medicine pack", visual: "pharma-pack-demo", proof: ["Auditable pack and lot", "Digital leaflet", "Cold chain", "Unit recall"] },
-      creamJar: { label: "Skincare", profile: "NTAG 424 DNA", product: "Premium dermocosmetic set", visual: "cream-jar-demo", proof: ["Lid-package seal", "Opening changes state", "Premium warranty", "Anti grey-market"] },
-      perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Premium perfume", visual: "perfume-demo", proof: ["Cap-neck seal", "Lot and serial", "Warranty", "Anti-counterfeit"] },
-      creamTube: { label: "Cream", profile: "NTAG213 + batch", product: "Dermocosmetic cream", visual: "cream-tube-demo", proof: ["Seal over flip cap", "Visible batch", "Warranty", "Repurchase"] },
+      creamJar: { label: "Skincare", profile: "NTAG 424 DNA", product: "Premium dermocosmetic set", visual: "cream-jar-demo", proof: ["Lid-package reference", "Reported TT (demo)", "Policy-based warranty", "Risk signals"] },
+      perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Premium perfume", visual: "perfume-demo", proof: ["Cap-neck reference", "Declared lot and serial", "Policy-based warranty", "SUN evidence + replay controls"] },
+      creamTube: { label: "Cream", profile: "NTAG213 + batch", product: "Dermocosmetic cream", visual: "cream-tube-demo", proof: ["Visual cap reference", "Declared batch", "Policy-based warranty", "Repurchase"] },
       bracelet: { label: "Wristband", profile: "NTAG215", product: "VIP event wristband", visual: "event-bracelet-demo", proof: ["Phone taps wristband", "Serialized UID", "VIP zones", "Duplicate block"] },
       ticket: { label: "Ticket", profile: "QR + NFC UID", product: "VIP party ticket", visual: "party-ticket-demo", proof: ["Visible QR", "UID fallback", "Zone access", "Replay blocked"] },
       sneaker: { label: "Sneaker", profile: "NTAG 424 DNA", product: "Drop Runner 37Z", visual: "sneaker-demo", proof: ["Tongue tap", "UID + SUN", "Rarity visible", "Owner/token"] },
-      luxury: { label: "Luxury", profile: "NTAG 424 DNA", product: "Luxury Watch", visual: "luxury-demo", proof: ["Card tap", "UID + SUN", "Certificate of authenticity", "Owner/club"] },
+      luxury: { label: "Luxury", profile: "NTAG 424 DNA", product: "Luxury Watch", visual: "luxury-demo", proof: ["Card tap", "UID + SUN", "Declared NFC evidence", "Owner/club"] },
       bottle: { label: "Refill packaging", profile: "GS1/QR + NFC", product: "Premium Refill Pack", visual: "bottle-demo", proof: ["Reusable container", "GS1/QR + optional NFC", "refill cycle", "Active incentive"] },
-      logistics: { label: "Logistics", profile: "UHF + NFC + sensor", product: "Cold-chain carton", visual: "logistics-pack-demo", proof: ["Traceable pallet/carton", "Temperature sensor", "Audited route", "Verified delivery"] },
-      electronics: { label: "Electronics", profile: "QR + NFC warranty", product: "Serialized device", visual: "electronics-demo", proof: ["Verifiable serial", "Unit warranty", "Support", "Anti-fraud claim"] },
+      logistics: { label: "Logistics", profile: "UHF + NFC + sensor", product: "Cold-chain carton", visual: "logistics-pack-demo", proof: ["Registered pallet/carton", "Sensor-reported temperature", "Reported route events", "Declared delivery"] },
+      electronics: { label: "Electronics", profile: "QR + NFC warranty", product: "Serialized device", visual: "electronics-demo", proof: ["Queryable serial", "Unit warranty", "Support", "Risk signals"] },
       textile: { label: "Textile DPP", profile: "QR + NFC DPP", product: "Textile passport label", visual: "textile-dpp-demo", proof: ["Origin and composition", "Connected care", "Sustainability", "Verified resale"] },
     },
-    controls: { narrative: "Audience narrative", cinematicStart: "Start cinematic", cinematicStop: "Pause cinematic", product: "Physical product", mobile: "Mobile result", feed: "Command feed", valid: "Register valid Zurich tap", tamper: "Break seal / uncork", replay: "Simulate duplicate replay", refresh: "Refresh", marketplace: "Portal + marketplace", mapTitle: "Live map: product origin vs customer tap", mapSubtitle: "Animated route, distance and location links to build trust.", realFeed: "Real public feed connected.", adminKey: "Read-only validation mode: private scan writes run in the secured environment.", noGeo: "No geolocated API events yet.", origin: "Origin", currentTap: "Current tap", distance: "Distance", openOrigin: "Open origin", openTap: "Open tap", joinClub: "Join club", warranty: "Activate warranty", tokenize: "Tokenize premium", syncing: "Connecting to Bodega Balmec...", synced: "Bodega Balmec synced with backend.", unavailable: "Bodega Balmec unavailable.", sendingScan: "Sending scan", registeredScan: "Scan registered in Bodega Balmec.", failedScan: "Could not simulate the tap.", configs: [
+    controls: { narrative: "Audience narrative", cinematicStart: "Start cinematic", cinematicStop: "Pause cinematic", product: "Product scene", mobile: "Mobile result", feed: "Command feed", valid: "Simulate valid message in Zurich", tamper: "Simulate TT open", replay: "Simulate duplicate replay", refresh: "Refresh", marketplace: "Portal + marketplace", mapTitle: "Scenario map: declared origin vs reported location", mapSubtitle: "Demo line and estimated distance; they do not prove physical route or custody.", adminKey: "Read-only validation mode: private scan writes run in the secured environment.", noGeo: "No geolocated API events yet.", origin: "Declared origin", currentTap: "Reported location", distance: "Estimated distance", openOrigin: "Open declared origin", openTap: "Open location", joinClub: "Join club", warranty: "Activate warranty", tokenize: "Tokenize premium", syncing: "Connecting to Bodega Balmec...", synced: "Bodega Balmec synced with backend.", unavailable: "Bodega Balmec unavailable.", sendingScan: "Sending scan", registeredScan: "Scan registered in Bodega Balmec.", failedScan: "Could not simulate the tap.", configs: [
       { title: "QR / GS1 Digital Link", body: "Low-cost entry for content, batch, recall and GS1 traceability. It is a strong visible fallback, but it can be copied, so it should not unlock premium ownership by itself." },
-      { title: "NTAG213 / NTAG215", body: "Serialized physical UID for tickets, wristbands, simple warranty and mass activations. Adds server-side rules by batch." },
-      { title: "NTAG 424 DNA", body: "Every tap creates dynamic SUN + CMAC proof to detect replay, reused links and simple copies. Recommended for mid/high-value products." },
+      { title: "NTAG213 / NTAG215", body: "Serialized UID for tickets, wristbands, simple warranty and mass activations. Supports server-side duplicate controls without physical-product proof." },
+      { title: "NTAG 424 DNA", body: "Each read can create a dynamic SUN + CMAC message to detect replay, reused links and anomalies. This is tag-message evidence, not physical-product authentication." },
       { title: "Offline Verifier", body: "Android first, iOS where Core NFC/ISO 7816 allows it, or a dedicated reader for no-signal zones: runs local checks from an authorized bundle, without master keys, and keeps verdicts provisional until backend sync." },
       { title: "Polygon Ownership Demo", body: "Enables ownership, certificates or premium tokens only after a fresh tap, validated buyer and approved policy. Polygon does not replace SUN or receive individual taps." },
       { title: "IOTA Proof Layer Demo", body: "Shows optional audit evidence for DPP, batches and logistics: hashes or Merkle roots are anchored, not private data or individual taps." },
       { title: "Dual Proof DPP", body: "Combines QR/GS1, NFC 424, Polygon for ownership and IOTA for industrial evidence when a client needs advanced compliance." },
-      { title: "NTAG 424 DNA TT + tokenization", body: "Adds physical seal state: closed, opened or tampered. Enables passport, warranty, marketplace and Polygon token only when claim policy allows it." },
+      { title: "NTAG 424 DNA TT + tokenization", body: "Adds reported TT circuit state: closed, open or changed. It does not certify the physical seal; passport, warranty, marketplace and Polygon records need separate policy and evidence." },
     ] },
   },
 };
@@ -837,36 +860,124 @@ function routeEvidenceValue(locale: AppLocale, scenario?: Pick<DemoScenario, "to
     return "Copia bloqueada";
   }
   if (scenario?.tone === "open") {
-    if (locale === "en") return "Seal event audited";
-    if (locale === "pt-BR") return "Lacre auditado";
-    return "Sello auditado";
+    if (locale === "en") return "TT open reported";
+    if (locale === "pt-BR") return "TT aberto reportado";
+    return "TT abierto reportado";
   }
   if (scenario?.tone === "origin") {
-    if (locale === "en") return "Origin prepared";
-    if (locale === "pt-BR") return "Origem preparada";
-    return "Origen preparado";
+    if (locale === "en") return "Declared origin ready";
+    if (locale === "pt-BR") return "Origem declarada pronta";
+    return "Origen declarado listo";
   }
   return routeScopeLabel(locale, routeKm);
 }
 
-function getRealProductBadge(locale: AppLocale) {
-  if (locale === "en") return "Real product";
-  if (locale === "pt-BR") return "Produto real";
-  return "Producto real";
+function getProductSceneBadge(locale: AppLocale) {
+  if (locale === "en") return "Product scene";
+  if (locale === "pt-BR") return "Cena do produto";
+  return "Escena del producto";
 }
 
 function formatEventResult(value?: string | null) {
   const normalized = String(value || "").trim().toUpperCase();
   if (!normalized) return "SIN DATO";
-  if (normalized.includes("AUTH_OK") || normalized === "VALID") return "AUTENTICADO";
+  if (isPositiveDemoVerdict(normalized)) return "AUTENTICADO";
   if (normalized.includes("NOT_REGISTERED")) return "NO REGISTRADO";
   if (normalized.includes("REPLAY") || normalized.includes("DUPLICATE")) return "COPIA BLOQUEADA";
   if (normalized.includes("TAMPER")) return "MANIPULADO";
-  if (normalized.includes("OPEN")) return "ABIERTO";
+  if (normalized.includes("OPEN")) return "TT ABIERTO REPORTADO";
   if (normalized.includes("ORIGIN") || normalized.includes("PRODUCT")) return "ORIGEN LISTO";
   if (normalized.includes("REVOKED")) return "REVOCADO";
   if (normalized.includes("INVALID")) return "INVÁLIDO";
   return "EVENTO REGISTRADO";
+}
+
+function demoExecutionCopy(state: DemoExecutionTruthState, locale: AppLocale) {
+  const copy = {
+    en: {
+      not_started: ["GUIDED PREVIEW", "Expected result only", "Run the preview to see the flow. A production result still requires an accepted NFC/SUN message, persistence and public evidence."],
+      synthetic_preview: ["SIMULATION / PREVIEW", "Simulated valid result", "The UI advanced with synthetic data. No scan was persisted and no public or on-chain evidence was created."],
+      persisted_unverified: ["RECORDED / UNVERIFIED", "Scan recorded", "nexID persisted the event, but independently verifiable public evidence is still missing."],
+      verified_evidence: ["VERIFIED EVIDENCE", "Verified result", "Persistence and public evidence were confirmed for this execution."],
+      failed: ["REQUEST FAILED", "No result verified", "The visual state changed, but the request did not complete and produced no evidence."],
+    },
+    "pt-BR": {
+      not_started: ["PREVIEW GUIADO", "Resultado esperado", "Execute o preview para conhecer o fluxo. Um resultado produtivo ainda exige mensagem NFC/SUN aceita, persistencia e evidencia publica."],
+      synthetic_preview: ["SIMULACAO / PREVIEW", "Resultado valido simulado", "A interface avancou com dados sinteticos. Nenhum scan foi persistido e nenhuma evidencia publica ou on-chain foi criada."],
+      persisted_unverified: ["REGISTRADO / NAO VERIFICADO", "Scan registrado", "O evento foi persistido na nexID, mas ainda falta evidencia publica verificavel de forma independente."],
+      verified_evidence: ["EVIDENCIA VERIFICADA", "Resultado verificado", "Persistencia e evidencia publica foram confirmadas nesta execucao."],
+      failed: ["REQUEST FALHOU", "Nenhum resultado verificado", "O estado visual mudou, mas o request nao concluiu nem produziu evidencia."],
+    },
+    "es-AR": {
+      not_started: ["PREVIEW GUIADO", "Resultado esperado", "Ejecuta el preview para conocer el flujo. Un resultado productivo todavía requiere un mensaje NFC/SUN aceptado, persistencia y evidencia pública."],
+      synthetic_preview: ["SIMULACION / PREVIEW", "Resultado valido simulado", "La interfaz avanzo con datos sinteticos. No se persistio un scan ni se creo evidencia publica u on-chain."],
+      persisted_unverified: ["REGISTRADO / NO VERIFICADO", "Scan registrado", "nexID persistio el evento, pero todavia falta evidencia publica verificable de forma independiente."],
+      verified_evidence: ["EVIDENCIA VERIFICADA", "Resultado verificado", "La persistencia y la evidencia publica fueron confirmadas para esta ejecucion."],
+      failed: ["REQUEST FALLIDO", "Ningun resultado verificado", "El estado visual cambio, pero el request no termino ni produjo evidencia."],
+    },
+  } as const;
+  const [badge, title, explanation] = copy[locale][state];
+  return { badge, title, explanation };
+}
+
+function demoFeedCopy(state: DemoFeedTruthState, locale: AppLocale) {
+  const copy = {
+    en: {
+      unavailable: ["Scenario route", "No evidence feed", "Waiting for recorded evidence; the route shown is simulated."],
+      synthetic_preview: ["Simulated route", "Preview without evidence", "Synthetic route only; no scan or public proof backs these points."],
+      recorded_events: ["Recorded event map", "Recorded feed", "Sanitized events are recorded in nexID, but this view does not call them public cryptographic proof."],
+      public_evidence: ["Public evidence map", "Public evidence updated", "The points come from the public proof feed and retain their reported verdict."],
+    },
+    "pt-BR": {
+      unavailable: ["Rota do cenario", "Sem feed de evidencia", "Aguardando evidencia registrada; a rota exibida e simulada."],
+      synthetic_preview: ["Rota simulada", "Preview sem evidencia", "Somente rota sintetica; nenhum scan ou prova publica sustenta estes pontos."],
+      recorded_events: ["Mapa de eventos registrados", "Feed registrado", "Eventos sanitizados estao registrados na nexID, mas esta tela nao os chama de prova criptografica publica."],
+      public_evidence: ["Mapa de evidencia publica", "Evidencia publica atualizada", "Os pontos chegam do feed publico de provas e mantem o veredito reportado."],
+    },
+    "es-AR": {
+      unavailable: ["Ruta del escenario", "Sin feed de evidencia", "Esperando evidencia registrada; la ruta mostrada es simulada."],
+      synthetic_preview: ["Ruta simulada", "Preview sin evidencia", "Es una ruta sintetica: ningun scan o prueba publica respalda estos puntos."],
+      recorded_events: ["Mapa de eventos registrados", "Feed registrado", "Los eventos sanitizados estan registrados en nexID, pero esta vista no los presenta como prueba criptografica publica."],
+      public_evidence: ["Mapa de evidencia publica", "Evidencia publica actualizada", "Los puntos llegan del feed publico de pruebas y conservan su veredicto reportado."],
+    },
+  } as const;
+  const [mapTitle, feedTitle, explanation] = copy[locale][state];
+  return { mapTitle, feedTitle, explanation };
+}
+
+function demoFeedStatus(summary: DemoSummary | null, locale: AppLocale, adminContext: string) {
+  const truthCopy = demoFeedCopy(resolveDemoFeedTruth(summary), locale);
+  return `${truthCopy.feedTitle}. ${truthCopy.explanation} ${adminContext}`;
+}
+
+function formatDemoEventResult(value: string | null | undefined, feedState: DemoFeedTruthState, locale: AppLocale) {
+  const formatted = formatEventResult(value);
+  if (canUseVerifiedDemoLanguage(feedState)) return formatted;
+  const positive = isPositiveDemoVerdict(value);
+  if (feedState === "recorded_events") {
+    if (positive) return locale === "en" ? "VALID EVENT RECORDED" : locale === "pt-BR" ? "EVENTO VALIDO REGISTRADO" : "EVENTO VALIDO REGISTRADO";
+    return `${formatted} - ${locale === "en" ? "RECORDED" : "REGISTRADO"}`;
+  }
+  if (positive) return locale === "en" ? "SIMULATED VALID RESULT" : locale === "pt-BR" ? "RESULTADO VALIDO SIMULADO" : "RESULTADO VALIDO SIMULADO";
+  return `${formatted} - ${locale === "en" ? "SIMULATION" : locale === "pt-BR" ? "SIMULACAO" : "SIMULACION"}`;
+}
+
+function resolveDemoScenarioStateLabel(rawState: string, truthState: DemoExecutionTruthState, locale: AppLocale) {
+  if (canUseVerifiedDemoLanguage(truthState)) return rawState;
+  const normalizedState = isPositiveDemoVerdict(rawState)
+    ? locale === "en" ? "VALID RESULT" : locale === "pt-BR" ? "RESULTADO VALIDO" : "RESULTADO VALIDO"
+    : rawState.replaceAll("_", " ");
+  const prefix = truthState === "persisted_unverified"
+    ? locale === "en" ? "RECORDED" : "REGISTRADO"
+    : locale === "en" ? "SIMULATION" : locale === "pt-BR" ? "SIMULACAO" : "SIMULACION";
+  return `${prefix} - ${normalizedState}`;
+}
+
+function demoEventTone(value: string | null | undefined, feedState: DemoFeedTruthState) {
+  if (/REPLAY|DUPLICATE|COPIA|INVALID|REVOKED/i.test(value || "")) return "invalido";
+  if (/TAMPER|OPEN|ABIERTO/i.test(value || "")) return "bloqueado";
+  if (canUseVerifiedDemoLanguage(feedState) && isPositiveDemoVerdict(value)) return "autenticado";
+  return "preview";
 }
 
 function demoAtlasPointId(point: DemoMapPoint, index: number) {
@@ -910,8 +1021,8 @@ function getScenarioState(txt: DemoCopy, beat: Beat, routeKm: number, locale: Ap
   if (beat === 2) {
     return {
       tone: "risk",
-      headline: "Copia o duplicado bloqueado",
-      body: "El sistema conserva trazabilidad, pero bloquea club, puntos, tienda y tokenización hasta un nuevo toque físico válido.",
+      headline: "Lectura repetida o sospechosa bloqueada",
+      body: "La política detectó evidencia compatible con replay o reutilización y bloquea club, puntos, tienda y tokenización hasta una nueva lectura física válida. No diagnostica por sí sola qué ocurrió con el producto.",
       stateLabel: "RIESGO BLOQUEADO",
       allowed: ["Ver procedencia", "Reportar incidente"],
       blocked: ["Reclamo de dueño", "Garantía", "Tokenización", "Tienda"],
@@ -923,9 +1034,9 @@ function getScenarioState(txt: DemoCopy, beat: Beat, routeKm: number, locale: Ap
   if (beat === 3) {
     return {
       tone: "open",
-      headline: "Sello abierto como evento del producto",
-      body: "El producto conserva evidencia válida. Cambia su estado físico y solo prepara postventa o token de valor con compra/reclamo validado.",
-      stateLabel: "SELLO ABIERTO",
+      headline: "TT abierto reportado como evento digital",
+      body: "El mensaje NFC conserva su evidencia y el estado TT registrado cambió. Ese cambio no prueba por sí solo qué ocurrió físicamente; solo prepara postventa o token de valor con compra/reclamo validado.",
+      stateLabel: "TT ABIERTO REPORTADO",
       allowed: ["Garantía postventa", "Procedencia", "Token de valor con prueba de compra"],
       blocked: ["Reventa como cerrado", "Reclamo anonimo sin prueba"],
       chain: "Solicitud Polygon disponible cuando la política de dueño confirma comprador.",
@@ -935,9 +1046,9 @@ function getScenarioState(txt: DemoCopy, beat: Beat, routeKm: number, locale: Ap
   }
   return {
     tone: "ok",
-    headline: "Toque válido con ruta de confianza",
-    body: `Origen y toque quedan unidos por evidencia viva: ${routeEvidence}. El consumidor ve el resultado de confianza y la marca recibe datos accionables.`,
-    stateLabel: "AUTENTICADO",
+    headline: "Lectura NFC válida con fuente visible",
+    body: `El mensaje NFC superó los controles configurados. La ruta conserva su fuente (${routeEvidence}); no certifica por sí sola origen, contenido ni condición física.`,
+    stateLabel: "LECTURA VALIDA",
     allowed: ["Unirse al club", "Guardar pasaporte", "Solicitud Polygon", "Voucher o recompra"],
     blocked: ["Transferir dueño sin ingreso/reclamo"],
     chain: "Tokenización bajo política: el toque válido crea una solicitud y solo cierra con tx_hash/token_id si el tenant aprueba la operación.",
@@ -1012,34 +1123,33 @@ export function DemoLabClient({
       const newEvents = events.slice(0, events.length - lastEventCountRef.current);
       newEvents.forEach((event) => {
         const resultText = String(event.result || "").toUpperCase();
-        const isSuccess = resultText.includes("AUTH_OK") || resultText.includes("VALID") || resultText.includes("VERIFIED") || resultText.includes("OK") || resultText.includes("AUTHENTICATED");
+        const toastFeedTruthState = resolveDemoFeedTruth(summary);
+        const isPositive = isPositiveDemoVerdict(resultText);
+        const isVerifiedSuccess = canUseVerifiedDemoLanguage(toastFeedTruthState) && isPositive;
         const isRisk = resultText.includes("REPLAY") || resultText.includes("FAIL") || resultText.includes("SUSPICIOUS") || resultText.includes("COPIA");
         const isTamper = resultText.includes("TAMPER") || resultText.includes("OPEN") || resultText.includes("ABIERTO") || resultText.includes("MANIPULADO");
         
-        const type = isSuccess ? "success" : isRisk ? "error" : isTamper ? "warn" : "info";
-        const title = isSuccess 
-          ? "Escaneo Autenticado" 
+        const type = isVerifiedSuccess ? "success" : isRisk ? "error" : isTamper ? "warn" : "info";
+        const title = isVerifiedSuccess
+          ? "Evidencia pública verificada"
+          : isPositive
+          ? toastFeedTruthState === "recorded_events" ? "Evento válido registrado" : "Resultado válido simulado"
           : isRisk 
           ? "¡Alerta de Fraude!"
           : isTamper 
-          ? "Sello de Seguridad Abierto" 
+          ? "TT abierto reportado"
           : "Lectura Registrada";
-        const body = `Producto: ${event.product_name || txt.verticals[vertical]?.product || "Lote Premium"} en ${event.city || "Ubicación remota"}. Verdict: ${event.result}`;
+        const body = `Producto: ${event.product_name || txt.verticals[vertical]?.product || "Lote Premium"} en ${event.city || "Ubicación remota"}. Resultado: ${formatDemoEventResult(event.result, toastFeedTruthState, locale)}`;
         addToast(title, body, type);
       });
       lastEventCountRef.current = events.length;
     }
-  }, [summary, vertical]);
+  }, [locale, summary, vertical]);
 
   useEffect(() => setFallbackLastSeen(new Date().toISOString()), []);
 
   useEffect(() => {
-    if (initialVertical) {
-      setVertical(normalizeDemoVertical(initialVertical));
-      setSimulationReceipt(null);
-      return;
-    }
-    setVertical(scenarioStart.vertical);
+    setVertical(initialVertical ? normalizeDemoVertical(initialVertical) : scenarioStart.vertical);
     setBeat(scenarioStart.beat);
     setTrustScenario(scenarioStart.key);
     const initialWizardStep = getTrustScenarioInitialStep(scenarioStart.key);
@@ -1055,7 +1165,7 @@ export function DemoLabClient({
         const next = await readDemoSummary();
         if (!alive) return;
         setSummary(next);
-        setStatus(next.degraded || next.source === "public-proof" ? `${txt.controls.realFeed} ${txt.controls.adminKey}` : txt.controls.synced);
+        setStatus(demoFeedStatus(next, locale, txt.controls.adminKey));
       } catch (error) {
         if (!alive) return;
         setStatus(error instanceof Error ? error.message : txt.controls.unavailable);
@@ -1074,7 +1184,7 @@ export function DemoLabClient({
       document.removeEventListener("visibilitychange", onVisibilityChange);
       window.clearInterval(id);
     };
-  }, [txt.controls.adminKey, txt.controls.realFeed]);
+  }, [locale, txt.controls.adminKey]);
 
   useEffect(() => {
     if (!running) return;
@@ -1091,9 +1201,15 @@ export function DemoLabClient({
   const activeVertical = txt.verticals[vertical];
   const destination = LOCATIONS[activeBeat.location];
   const routeKm = haversineKm(LOCATIONS.origin, destination);
-  const scenario = getScenarioState(txt, beat, routeKm, locale);
-  const realProductBadge = getRealProductBadge(locale);
+  const executionTruthState = resolveDemoExecutionTruth(simulationReceipt);
+  const baseScenario = getScenarioState(txt, beat, routeKm, locale);
+  const scenario = {
+    ...baseScenario,
+    stateLabel: resolveDemoScenarioStateLabel(baseScenario.stateLabel, executionTruthState, locale),
+  };
   const liveEvents = Array.isArray(summary?.events) ? summary.events : [];
+  const feedTruthState = resolveDemoFeedTruth(summary);
+  const feedTruthCopy = demoFeedCopy(feedTruthState, locale);
   const latestEvent = liveEvents[0];
   const livePoints = liveEvents.flatMap<DemoMapPoint>((event) => {
     const lat = toFiniteNumber(event.lat);
@@ -1106,17 +1222,27 @@ export function DemoLabClient({
       lng,
       scans: 1,
       risk: /REPLAY|DUPLICATE|TAMPER|INVALID|REVOKED/i.test(event.result || "") ? 1 : 0,
-      status: formatEventResult(event.result),
+      status: formatDemoEventResult(event.result, feedTruthState, locale),
       lastSeen: event.created_at || fallbackLastSeen,
       vertical,
     }];
   });
 
   const mapPoints = useMemo<DemoMapPoint[]>(() => {
-    const originPoint = { city: LOCATIONS.origin.city, country: LOCATIONS.origin.country, lat: LOCATIONS.origin.lat, lng: LOCATIONS.origin.lng, scans: 1, risk: 0, status: "ORIGEN LISTO", lastSeen: fallbackLastSeen, vertical };
+    const originPoint = {
+      city: LOCATIONS.origin.city,
+      country: LOCATIONS.origin.country,
+      lat: LOCATIONS.origin.lat,
+      lng: LOCATIONS.origin.lng,
+      scans: livePoints.length ? 1 : 0,
+      risk: 0,
+      status: canUseVerifiedDemoLanguage(feedTruthState) || feedTruthState === "recorded_events" ? "ORIGEN DECLARADO" : "ORIGEN DEL ESCENARIO",
+      lastSeen: fallbackLastSeen,
+      vertical,
+    };
     if (livePoints.length) return [originPoint, ...livePoints.slice(0, 18)];
-    return [originPoint, { city: destination.city, country: destination.country, lat: destination.lat, lng: destination.lng, scans: 1, risk: activeBeat.mode === "replay" ? 1 : 0, status: activeBeat.status, lastSeen: fallbackLastSeen, vertical }];
-  }, [activeBeat.mode, activeBeat.status, destination, fallbackLastSeen, livePoints, vertical]);
+    return [originPoint, { city: destination.city, country: destination.country, lat: destination.lat, lng: destination.lng, scans: 0, risk: activeBeat.mode === "replay" ? 1 : 0, status: scenario.stateLabel, lastSeen: fallbackLastSeen, vertical }];
+  }, [activeBeat.mode, destination, fallbackLastSeen, feedTruthState, livePoints, scenario.stateLabel, vertical]);
 
   const atlasPoints = useMemo(() => toDemoAtlasPoints(mapPoints, txt.controls), [mapPoints, txt.controls]);
   const atlasRoutes = useMemo<VectorMapRoute[]>(() => [{
@@ -1135,7 +1261,7 @@ export function DemoLabClient({
     try {
       const next = await readDemoSummary();
       setSummary(next);
-      setStatus(next.degraded || next.source === "public-proof" ? `${txt.controls.realFeed} ${txt.controls.adminKey}` : txt.controls.synced);
+      setStatus(demoFeedStatus(next, locale, txt.controls.adminKey));
     } catch (error) {
       setStatus(error instanceof Error ? error.message : txt.controls.unavailable);
     }
@@ -1163,31 +1289,46 @@ export function DemoLabClient({
           mode,
           execution: "visual",
           source: String(payload.source || "visual-demo"),
+          degraded: true,
           persisted: false,
           chainWrite: false,
+          evidenceVerified: false,
+          evidenceUrl: null,
           reference: null,
           timestamp: new Date().toISOString(),
           detail: String(payload.reason || "La simulacion actualizo la experiencia visual sin persistir un scan."),
         });
         setStatus(`${modeLabel}: ${String(payload.reason || txt.controls.adminKey)}`);
-        setActionMessage(mode === "replay" ? "Copia simulada solo en pantalla: reclamo de dueño, puntos y tokenización quedan bloqueados." : mode === "tamper" ? "Sello abierto solo en pantalla: no se persistió un evento y no hubo escritura on-chain." : "Toque válido solo en pantalla: no se persistió un scan y no hubo escritura on-chain.");
+        setActionMessage(mode === "replay" ? "Replay simulado solo en pantalla: ownership, puntos y tokenización quedan bloqueados." : mode === "tamper" ? "TT abierto simulado solo en pantalla: no se persistió un evento, no hubo escritura on-chain y no se prueba apertura física." : "Mensaje válido simulado solo en pantalla: no se persistió un scan y no hubo escritura on-chain.");
         return true;
       }
       const eventId = payload?.payload?.event_id;
       const uidHex = payload?.uidHex;
+      const chainWrite = payload?.chain_write === true || payload?.payload?.chain_write === true;
+      const publicEvidence = payload?.public_evidence || payload?.payload?.public_evidence || {};
+      const evidenceUrlCandidate = String(publicEvidence?.explorer_url || payload?.explorer_url || "").trim();
+      const evidenceUrl = /^https:\/\//i.test(evidenceUrlCandidate) ? evidenceUrlCandidate : null;
+      const evidenceVerified = chainWrite && publicEvidence?.verified === true && Boolean(evidenceUrl);
       setBeat(nextBeat);
       setSimulationReceipt({
         mode,
         execution: "persisted",
         source: String(payload?.payload?.source || payload?.source || "demo-scan-api"),
+        degraded: payload?.degraded === true,
         persisted: true,
-        chainWrite: false,
+        chainWrite,
+        evidenceVerified,
+        evidenceUrl,
         reference: eventId ? `event:${String(eventId)}` : uidHex ? `uid:${String(uidHex)}` : null,
         timestamp: new Date().toISOString(),
-        detail: "El endpoint confirmo el scan en nexID. Esta accion no ejecuta mint, transferencia ni anchor on-chain.",
+        detail: evidenceVerified
+          ? "El endpoint confirmo persistencia y evidencia publica verificable para esta ejecucion."
+          : chainWrite
+            ? "El endpoint reporto una escritura, pero falta un explorer HTTPS verificado para confirmarla en esta vista."
+            : "El endpoint confirmo el scan en nexID, pero no ejecuto mint, transferencia ni anchor on-chain.",
       });
       setStatus(`${modeLabel}: ${txt.controls.registeredScan}`);
-      setActionMessage(mode === "replay" ? "Copia simulada: reclamo de dueño, puntos y tokenización quedan bloqueados." : mode === "tamper" ? "Sello abierto: se registra evento del producto y queda listo para postventa controlada." : "Toque válido: club, tienda y analítica quedan listos para activar.");
+      setActionMessage(mode === "replay" ? "Replay registrado: ownership, puntos y tokenización quedan bloqueados." : mode === "tamper" ? "TT abierto reportado: se registra la señal digital para revisión y postventa; no prueba apertura física." : "Mensaje NFC aceptado: club, tienda y analítica quedan sujetos a política.");
       await refreshSummary();
       return true;
     } catch (error) {
@@ -1196,8 +1337,11 @@ export function DemoLabClient({
         mode,
         execution: "failed",
         source: "browser/request-error",
+        degraded: true,
         persisted: false,
         chainWrite: false,
+        evidenceVerified: false,
+        evidenceUrl: null,
         reference: null,
         timestamp: new Date().toISOString(),
         detail: `La escena cambio localmente, pero el request fallo: ${message}`,
@@ -1212,7 +1356,7 @@ export function DemoLabClient({
   function handleDemoAction(action: DemoAction) {
     if (action === "origin") {
       window.open(mapsLink(LOCATIONS.origin), "_blank", "noopener,noreferrer");
-      setActionMessage("Origen abierto en Maps. Esta es la prueba de procedencia visible para el comprador.");
+      setActionMessage("Origen declarado abierto en Maps. Es un dato aportado por la marca, no prueba de procedencia física.");
       return;
     }
     if (action === "tap") {
@@ -1225,14 +1369,14 @@ export function DemoLabClient({
       return;
     }
     if (action === "warranty") {
-      setActionMessage(beat === 2 ? "Garantía bloqueada: se necesita un nuevo toque físico válido." : "Garantía preparada: queda asociada al pasaporte del consumidor y a la marca.");
+      setActionMessage(beat === 2 ? "Garantía bloqueada: se necesita una nueva lectura NFC/SUN aceptada." : "Garantía preparada: queda asociada al pasaporte del consumidor y a la marca.");
       return;
     }
     if (action === "tokenize") {
       setActionMessage(beat === 3 ? "Tokenización de valor preparada: requiere compra o reclamo validado antes de transferir propiedad." : beat === 1 ? "Solicitud de tokenización lista: Polygon registra tx_hash/token_id solo si el tenant aprueba la operación." : "Tokenización bloqueada por política de seguridad para este estado.");
       return;
     }
-    setActionMessage(beat === 2 ? "Club bloqueado por copia. Repetí el toque físico para continuar." : "Club/tienda listo: el consumidor puede asociarse y recibir beneficios de la marca.");
+    setActionMessage(beat === 2 ? "Club bloqueado por replay. Repetí la lectura NFC/SUN para continuar." : "Club/tienda listo: el consumidor puede asociarse y recibir beneficios de la marca.");
   }
 
   function handleVerticalChange(nextVertical: Vertical) {
@@ -1291,7 +1435,7 @@ export function DemoLabClient({
                 : "border border-white/5 bg-white/5 text-slate-400 hover:text-white"
             }`}
           >
-            <span>Live CRM & Leads</span>
+            <span>{locale === "en" ? "Demo CRM & leads" : locale === "pt-BR" ? "CRM demo e leads" : "CRM demo y leads"}</span>
             {Number(summary?.crm?.leads ?? 0) > 0 && (
               <span className="rounded-full bg-cyan-400 px-1.5 py-0.5 text-[10px] font-black text-slate-950">
                 {summary?.crm?.leads}
@@ -1311,6 +1455,8 @@ export function DemoLabClient({
           simulate={simulate}
           simulating={simulating}
           txt={txt}
+          feedTruthState={feedTruthState}
+          feedTruthCopy={feedTruthCopy}
         />
       ) : (
         <>
@@ -1353,7 +1499,7 @@ export function DemoLabClient({
         txt={txt}
         beat={beat}
         vertical={vertical}
-        status={activeBeat.status}
+        status={scenario.stateLabel}
         product={activeVertical.product}
         destination={destination}
         routeKm={routeKm}
@@ -1504,6 +1650,11 @@ function DemoLabStudioHero({
   const studioRef = useRef<HTMLElement>(null);
   const wizardNavRef = useRef<HTMLElement>(null);
   const hasSuccessfulReceipt = Boolean(simulationReceipt && simulationReceipt.execution !== "failed");
+  const executionTruthState = resolveDemoExecutionTruth(simulationReceipt);
+  const executionTruthCopy = demoExecutionCopy(executionTruthState, locale);
+  const feedTruthState = resolveDemoFeedTruth(summary);
+  const feedTruthCopy = demoFeedCopy(feedTruthState, locale);
+  const hasVerifiedExecution = canUseVerifiedDemoLanguage(executionTruthState);
 
   function navigateToUnlockedStep(nextStep: DemoWizardStep) {
     if (nextStep > maxStep) return;
@@ -1554,30 +1705,30 @@ function DemoLabStudioHero({
   }
 
   const stepLabels = locale === "en"
-    ? ["Tap", "Verified", "Traced", "Won"]
+    ? ["Tap", "Tag checked", "Evidence", "Action"]
     : locale === "pt-BR"
-    ? ["Toque", "Verificou", "Rastreou", "Ganhou"]
-    : ["Toca", "Verificó", "Trazó", "Ganó"];
+    ? ["Toque", "Validou tag", "Evidencia", "Acao"]
+    : ["Toca", "Validó tag", "Evidencia", "Acción"];
 
   const stepGuidance = locale === "en"
     ? [
-      { label: "Physical signal", title: "A product becomes a verifiable entry point.", body: "The NFC or QR touch opens the passport and starts a private evidence trail." },
-      { label: "Trust decision", title: "nexID resolves whether the product can be trusted.", body: "SUN, UID, tenant policy and risk state become a clear business verdict." },
-      { label: "Operational evidence", title: "The route becomes an auditable map, not a table.", body: "Custody, city, risk and hash-only proof are visible without exposing sensitive data." },
-      { label: "Commercial action", title: "The brand gets the next best action.", body: "Warranty, claim, CRM, loyalty or ownership can be activated from the same tap." },
+      { label: "Physical signal", title: "The identifier becomes a verifiable entry point.", body: "The NFC or QR touch opens the passport and starts a source-labelled evidence trail." },
+      { label: "Trust decision", title: "nexID classifies the available digital evidence.", body: "SUN, UID, tenant policy and risk state produce a bounded technical result; they do not certify physical contents." },
+      { label: "Operational evidence", title: "Recorded events can become a source-labelled map.", body: "Custody, city, risk and hash-only proof remain separated from simulated or unavailable data." },
+      { label: "Commercial action", title: "The brand gets the next eligible action.", body: "Warranty, claim, CRM, loyalty or ownership stay subject to identity, purchase evidence and tenant policy." },
     ]
     : locale === "pt-BR"
     ? [
-      { label: "Sinal fisico", title: "O produto vira um ponto verificavel.", body: "O toque NFC ou QR abre o passaporte e inicia evidencia privada." },
-      { label: "Decisao de confianca", title: "nexID resolve se o produto e confiavel.", body: "SUN, UID, politica do tenant e risco viram um veredito claro." },
-      { label: "Evidencia operacional", title: "A rota vira um mapa auditavel.", body: "Custodia, cidade, risco e prova hash-only ficam visiveis sem dados sensiveis." },
-      { label: "Acao comercial", title: "A marca recebe a proxima melhor acao.", body: "Garantia, claim, CRM, loyalty ou ownership saem do mesmo toque." },
+      { label: "Sinal fisico", title: "O identificador vira um ponto verificavel.", body: "O toque NFC ou QR abre o passaporte e inicia uma trilha de evidencia com fonte visivel." },
+      { label: "Decisao de confianca", title: "nexID classifica a evidencia digital disponivel.", body: "SUN, UID, politica do tenant e risco produzem um resultado tecnico limitado; nao certificam o conteudo fisico." },
+      { label: "Evidencia operacional", title: "Eventos registrados podem virar um mapa com fonte.", body: "Custodia, cidade, risco e prova hash-only ficam separados de dados simulados ou indisponiveis." },
+      { label: "Acao comercial", title: "A marca recebe a proxima acao elegivel.", body: "Garantia, claim, CRM, loyalty ou ownership dependem de identidade, compra e politica do tenant." },
     ]
     : [
-      { label: "Senal fisica", title: "El producto se vuelve un punto verificable.", body: "El toque NFC o QR abre el pasaporte y arranca evidencia privada." },
-      { label: "Decision de confianza", title: "nexID resuelve si el producto es confiable.", body: "SUN, UID, politica del tenant y riesgo se vuelven un veredicto claro." },
-      { label: "Evidencia operativa", title: "La ruta se ve como mapa auditable.", body: "Custodia, ciudad, riesgo y prueba hash-only quedan visibles sin datos sensibles." },
-      { label: "Accion comercial", title: "La marca obtiene la proxima mejor accion.", body: "Garantia, reclamo, CRM, loyalty u ownership salen del mismo tap." },
+      { label: "Senal fisica", title: "El identificador se vuelve un punto verificable.", body: "El toque NFC o QR abre el pasaporte e inicia una ruta de evidencia con fuente visible." },
+      { label: "Decision de confianza", title: "nexID clasifica la evidencia digital disponible.", body: "SUN, UID, politica del tenant y riesgo producen un resultado tecnico acotado; no certifican el contenido fisico." },
+      { label: "Evidencia operativa", title: "Los eventos registrados pueden formar un mapa con fuente.", body: "Custodia, ciudad, riesgo y prueba hash-only quedan separados de datos simulados o no disponibles." },
+      { label: "Accion comercial", title: "La marca obtiene la proxima accion elegible.", body: "Garantia, reclamo, CRM, loyalty u ownership dependen de identidad, compra y politica del tenant." },
     ];
   const activeStepGuidance = activeTrustScenario === "polygon-ownership" && step === 2
     ? locale === "en"
@@ -1611,20 +1762,20 @@ function DemoLabStudioHero({
       { metric: "Fraud", title: "Block copied URLs", body: "Replay, tamper and invalid channels stop before claims, store actions or certificates.", proof: "Risk policy applied" },
       { metric: "Channel", title: "See real demand", body: "Valid taps create city, campaign and stock signals without assuming personal identity.", proof: "CRM signal ready" },
       { metric: "Compliance", title: "Audit without data leak", body: "Hash-only evidence can be checked by auditors while private operations stay private.", proof: "DPP-ready proof" },
-      { metric: "Revenue", title: "Open post-sale paths", body: "Warranty, ownership, loyalty and partner offers start from a verified product event.", proof: "Next action ready" },
+      { metric: "Revenue", title: "Open post-sale paths", body: "With a verified product event, warranty, ownership, loyalty and partner offers can start under policy.", proof: "Next action ready" },
     ]
     : locale === "pt-BR"
     ? [
       { metric: "Fraude", title: "Bloqueia URLs copiadas", body: "Replay, tamper e canal invalido param antes de claims, loja ou certificados.", proof: "Politica de risco aplicada" },
       { metric: "Canal", title: "Mostra demanda real", body: "Taps validos criam sinais de cidade, campanha e estoque sem assumir identidade pessoal.", proof: "Sinal CRM pronto" },
       { metric: "Compliance", title: "Audita sem vazar dados", body: "Evidencia hash-only pode ser checada por auditores mantendo operacao privada.", proof: "Prova DPP-ready" },
-      { metric: "Receita", title: "Abre pos-venda", body: "Garantia, ownership, loyalty e ofertas de parceiros saem de evento verificado.", proof: "Proxima acao pronta" },
+      { metric: "Receita", title: "Abre pos-venda", body: "Com um evento verificado, garantia, ownership, loyalty e ofertas podem iniciar sob politica.", proof: "Proxima acao pronta" },
     ]
     : [
       { metric: "Fraude", title: "Bloquea URLs copiadas", body: "Replay, tamper y canal invalido frenan antes de claims, tienda o certificados.", proof: "Politica de riesgo aplicada" },
       { metric: "Canal", title: "Muestra demanda real", body: "Taps validos crean senales de ciudad, campana y stock sin asumir identidad personal.", proof: "Senal CRM lista" },
       { metric: "Compliance", title: "Audita sin filtrar datos", body: "Evidencia hash-only puede ser revisada por auditores sin exponer la operacion privada.", proof: "Prueba DPP-ready" },
-      { metric: "Revenue", title: "Abre postventa", body: "Garantia, ownership, loyalty y ofertas de partners salen de un evento verificado.", proof: "Proxima accion lista" },
+      { metric: "Revenue", title: "Abre postventa", body: "Con un evento verificado, garantia, ownership, loyalty y ofertas pueden iniciar bajo politica.", proof: "Proxima accion lista" },
     ];
   const proofDecoderTitle = activeTrustScenario === "polygon-ownership"
     ? locale === "en" ? "What this ownership certificate proves" : locale === "pt-BR" ? "O que este certificado de ownership prova" : "Que prueba este certificado de ownership"
@@ -1640,16 +1791,28 @@ function DemoLabStudioHero({
       : locale === "pt-BR"
         ? "A rota visivel e uma explicacao de negocio. A evidencia criptografica e hash-only: nexID guarda dados privados, IOTA pode ancorar recibos e Polygon fica para ownership ou certificados."
         : "La ruta visible es una explicacion de negocio. La evidencia criptografica es hash-only: nexID guarda datos privados, IOTA puede anclar recibos e Polygon queda para ownership o certificados.";
-  const outcomeHeader = locale === "en"
-    ? "Board-ready outcome from one verified tap"
-    : locale === "pt-BR"
-    ? "Resultado executivo de um toque verificado"
-    : "Resultado ejecutivo de un tap verificado";
-  const outcomeSubhead = locale === "en"
-    ? "This is the part a buyer, auditor or investor needs to understand: product trust becomes operational control and commercial action, not just a pretty certificate."
-    : locale === "pt-BR"
-    ? "Isto e o que comprador, auditor ou investidor precisa entender: confianca do produto vira controle operacional e acao comercial."
-    : "Esto es lo que un comprador, auditor o inversor necesita entender: la confianza del producto se convierte en control operativo y accion comercial.";
+  const outcomeHeader = hasVerifiedExecution
+    ? locale === "en"
+      ? "Board-ready outcome from one verified tap"
+      : locale === "pt-BR"
+        ? "Resultado executivo de um toque verificado"
+        : "Resultado ejecutivo de un tap verificado"
+    : locale === "en"
+      ? "Board-ready outcome from a guided preview"
+      : locale === "pt-BR"
+        ? "Resultado executivo de uma simulacao guiada"
+        : "Resultado ejecutivo de una simulacion guiada";
+  const outcomeSubhead = hasVerifiedExecution
+    ? locale === "en"
+      ? "This verified event can become operational control and commercial action, not just a pretty certificate."
+      : locale === "pt-BR"
+        ? "Este evento verificado pode virar controle operacional e acao comercial, nao apenas um certificado bonito."
+        : "Este evento verificado puede convertirse en control operativo y accion comercial, no solo en un certificado atractivo."
+    : locale === "en"
+      ? "This preview explains the future workflow to a buyer, auditor or investor; it does not assert that a real tap was verified."
+      : locale === "pt-BR"
+        ? "Este preview explica o fluxo futuro para comprador, auditor ou investidor; nao afirma que um toque real foi verificado."
+        : "Este preview explica el flujo futuro a un comprador, auditor o inversor; no afirma que un tap real haya sido verificado.";
   const proofDestinationLabel = activeTrustScenario === "polygon-ownership"
     ? locale === "en" ? "Ownership certificate" : locale === "pt-BR" ? "Certificado ownership" : "Certificado ownership"
     : isIotaProofScenario(activeTrustScenario)
@@ -1729,7 +1892,7 @@ function DemoLabStudioHero({
         <div className="demo-lab-wizard-brief__proof">
           <span>4 pasos</span>
           <span>hash-only</span>
-          <span>IOTA / Polygon ready</span>
+          <span>{locale === "en" ? "IOTA / Polygon: check status" : locale === "pt-BR" ? "IOTA / Polygon: comprovar estado" : "IOTA / Polygon: comprobar estado"}</span>
         </div>
       </div>
 
@@ -1785,6 +1948,15 @@ function DemoLabStudioHero({
             <p className="demo-lab-wizard-eyebrow text-xs font-black uppercase tracking-[0.16em] text-cyan-300">{txt.heroEyebrow}</p>
             <h2 className="demo-lab-wizard-product-name mt-2 text-3xl font-black leading-none text-white md:text-5xl">{activeVertical.product}</h2>
             <p className="demo-lab-wizard-tagline mt-3 text-sm leading-6 text-slate-400">{txt.verticals[vertical].label} · {activeVertical.profile}</p>
+            <div
+              className="mt-4 rounded-2xl border border-amber-300/25 bg-amber-500/10 px-4 py-3 text-amber-100"
+              data-demo-truth-state={executionTruthState}
+              role="status"
+              aria-live="polite"
+            >
+              <strong className="block text-[11px] font-black uppercase tracking-[0.16em]">{executionTruthCopy.badge}</strong>
+              <span className="mt-1 block text-xs leading-5">{executionTruthCopy.explanation}</span>
+            </div>
           </div>
 
           {/* Center: product visual + tap button */}
@@ -1792,7 +1964,7 @@ function DemoLabStudioHero({
             <DemoCinematicProductRender
               vertical={vertical}
               product={activeVertical.product}
-              badge={getRealProductBadge(locale)}
+              badge={getProductSceneBadge(locale)}
               beat={beat}
               title={scenario.stateLabel}
               stat={scenario.chain}
@@ -1837,17 +2009,23 @@ function DemoLabStudioHero({
       {/* ── STEP 1: VERIFICÓ ─────────────────────────────────── */}
       {step === 1 && (
         <div className="demo-lab-wizard-scene demo-lab-wizard-scene--verifico grid min-h-[calc(100vh-12rem)] gap-5 p-3 lg:grid-cols-[minmax(0,1.35fr)_minmax(17rem,0.8fr)]">
-          <div className="demo-lab-wizard-result-card grid min-h-[28rem] content-center justify-items-start rounded-3xl border border-white/10 bg-slate-900/65 p-5 shadow-inner">
-            <div className="demo-lab-wizard-result-icon grid h-20 w-20 place-items-center rounded-3xl bg-emerald-500/15 text-emerald-200">
-              <ShieldCheck size={64} />
+          <div className="demo-lab-wizard-result-card grid min-h-[28rem] content-center justify-items-start rounded-3xl border border-white/10 bg-slate-900/65 p-5 shadow-inner" data-demo-truth-state={executionTruthState}>
+            <div className={`demo-lab-wizard-result-icon grid h-20 w-20 place-items-center rounded-3xl ${hasVerifiedExecution ? "bg-emerald-500/15 text-emerald-200" : "bg-amber-500/15 text-amber-100"}`}>
+              {hasVerifiedExecution ? <ShieldCheck size={64} /> : <Cpu size={58} />}
             </div>
-            <h2 className="demo-lab-wizard-result-status mt-4 text-3xl font-black leading-none text-white md:text-5xl">{scenario.stateLabel}</h2>
+            <p className={`mt-4 text-xs font-black uppercase tracking-[0.16em] ${hasVerifiedExecution ? "text-emerald-200" : "text-amber-200"}`}>{executionTruthCopy.badge}</p>
+            <h2 className="demo-lab-wizard-result-status mt-2 text-3xl font-black leading-none text-white md:text-5xl">{executionTruthCopy.title}</h2>
             <div className="demo-lab-wizard-result-pills mt-4 flex flex-wrap gap-2">
               <span className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-slate-200">🌍 Valle de Uco, Argentina</span>
-              <span className="rounded-full border border-emerald-300/20 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-100">✅ SUN Signature OK</span>
+              <span className={`rounded-full border px-3 py-2 text-xs font-bold ${hasVerifiedExecution ? "border-emerald-300/20 bg-emerald-500/10 text-emerald-100" : "border-amber-300/25 bg-amber-500/10 text-amber-100"}`}>
+                {hasVerifiedExecution
+                  ? locale === "en" ? "Public evidence confirmed" : locale === "pt-BR" ? "Evidencia publica confirmada" : "Evidencia publica confirmada"
+                  : locale === "en" ? "No verified evidence" : locale === "pt-BR" ? "Sem evidencia verificada" : "Sin evidencia verificada"}
+              </span>
               <span className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-slate-200">⏱ {new Date().toLocaleTimeString(locale)}</span>
             </div>
-            <p className="demo-lab-wizard-result-desc mt-3 max-w-2xl text-sm leading-6 text-slate-400">{scenario.headline}</p>
+            <p className="demo-lab-wizard-result-desc mt-3 max-w-2xl text-sm leading-6 text-slate-300">{executionTruthCopy.explanation}</p>
+            <p className="mt-2 max-w-2xl text-xs leading-5 text-slate-400">{scenario.headline}</p>
             <button
               suppressHydrationWarning
               type="button"
@@ -1860,24 +2038,19 @@ function DemoLabStudioHero({
 
           {/* Live scan events sidebar */}
           <div className="demo-lab-wizard-events grid max-h-[68vh] gap-3 overflow-y-auto rounded-3xl border border-white/10 bg-slate-900/65 p-5 shadow-inner">
-            <p className="demo-lab-wizard-eyebrow pb-2 text-xs font-black uppercase tracking-[0.16em] text-cyan-300">ÚLTIMOS TAPS</p>
+            <p className="demo-lab-wizard-eyebrow pb-2 text-xs font-black uppercase tracking-[0.16em] text-cyan-300">{feedTruthCopy.feedTitle}</p>
             {liveEvents.length === 0 ? (
-              <div className="demo-lab-wizard-event demo-lab-wizard-event--autenticado rounded-2xl border border-emerald-300/25 bg-emerald-500/10 p-3 text-xs">
-                <strong>AUTENTICADO</strong>
+              <div className="demo-lab-wizard-event demo-lab-wizard-event--preview rounded-2xl border bg-amber-500/10 p-3 text-xs">
+                <strong>{executionTruthCopy.badge}</strong>
                 <span>Zurich, CH</span>
-                <small>SIM-DEMO · {new Date().toLocaleTimeString(locale)}</small>
+                <small>{feedTruthCopy.explanation}</small>
               </div>
             ) : liveEvents.slice(0, 5).map((ev, i) => (
               <div
                 key={i}
-                className={`demo-lab-wizard-event rounded-2xl border bg-white/5 p-3 text-xs demo-lab-wizard-event--${
-                  /AUTH_OK|VALID|AUTENTICADO/i.test(ev.result || "") ? "autenticado"
-                  : /REPLAY|DUPLICATE|COPIA/i.test(ev.result || "") ? "invalido"
-                  : /TAMPER|OPEN|ABIERTO/i.test(ev.result || "") ? "bloqueado"
-                  : "autenticado"
-                }`}
+                className={`demo-lab-wizard-event rounded-2xl border bg-white/5 p-3 text-xs demo-lab-wizard-event--${demoEventTone(ev.result, feedTruthState)}`}
               >
-                <strong>{formatEventResult(ev.result)}</strong>
+                <strong>{formatDemoEventResult(ev.result, feedTruthState, locale)}</strong>
                 <span>{ev.city || destination.city}</span>
                 <small>{ev.uidMasked || "UID-n/a"} · {ev.created_at ? new Date(ev.created_at).toLocaleTimeString(locale) : ""}</small>
               </div>
@@ -1898,6 +2071,7 @@ function DemoLabStudioHero({
               locale={locale}
               routeKm={routeKm}
               labels={txt.controls}
+              feedTruthState={feedTruthState}
             />
             <div className="demo-lab-wizard-map-proof-strip">
               <span>{mapProofEyebrow}</span>
@@ -1910,7 +2084,7 @@ function DemoLabStudioHero({
           </div>
           <div className="demo-lab-wizard-trazo-column grid min-h-0 gap-3 lg:h-[68vh] lg:grid-rows-[minmax(0,1fr)_auto]">
             <div className="demo-lab-wizard-trazo-side grid min-h-0 max-h-[68vh] gap-3 overflow-y-auto rounded-3xl border border-white/10 bg-slate-900/65 p-5 shadow-inner">
-              <p className="demo-lab-wizard-eyebrow text-xs font-black uppercase tracking-[0.16em] text-cyan-300">ÚLTIMOS TAPS EN VIVO</p>
+              <p className="demo-lab-wizard-eyebrow text-xs font-black uppercase tracking-[0.16em] text-cyan-300">{feedTruthCopy.feedTitle}</p>
               <div className="demo-lab-wizard-proof-decoder">
                 <div className="demo-lab-wizard-proof-decoder__head">
                   <span>{locale === "en" ? "EXECUTIVE DECODER" : locale === "pt-BR" ? "DECODER EXECUTIVO" : "DECODIFICADOR EJECUTIVO"}</span>
@@ -1933,24 +2107,19 @@ function DemoLabStudioHero({
                 </Link>
               </div>
               {liveEvents.length === 0 ? (
-                <div className="demo-lab-wizard-event demo-lab-wizard-event--autenticado rounded-2xl border border-emerald-300/25 bg-emerald-500/10 p-3 text-xs">
-                  <strong>AUTENTICADO</strong>
+                <div className="demo-lab-wizard-event demo-lab-wizard-event--preview rounded-2xl border bg-amber-500/10 p-3 text-xs">
+                  <strong>{executionTruthCopy.badge}</strong>
                   <span>{destination.city}, {destination.countryCode}</span>
-                  <small>SIM-DEMO · en vivo</small>
+                  <small>{feedTruthCopy.explanation}</small>
                 </div>
               ) : liveEvents.slice(0, 6).map((ev, i) => (
                 <div
                   key={i}
-                  className={`demo-lab-wizard-event rounded-2xl border bg-white/5 p-3 text-xs demo-lab-wizard-event--${
-                    /AUTH_OK|VALID|AUTENTICADO/i.test(ev.result || "") ? "autenticado"
-                    : /REPLAY|DUPLICATE|COPIA/i.test(ev.result || "") ? "invalido"
-                    : /TAMPER|OPEN|ABIERTO/i.test(ev.result || "") ? "bloqueado"
-                    : "autenticado"
-                  }`}
+                  className={`demo-lab-wizard-event rounded-2xl border bg-white/5 p-3 text-xs demo-lab-wizard-event--${demoEventTone(ev.result, feedTruthState)}`}
                 >
-                  <strong>{formatEventResult(ev.result)}</strong>
+                  <strong>{formatDemoEventResult(ev.result, feedTruthState, locale)}</strong>
                   <span>{ev.city || destination.city}, {ev.country_code || ""}</span>
-                  <small>{ev.uidMasked || "UID-n/a"} · {ev.created_at ? new Date(ev.created_at).toLocaleTimeString(locale) : "en vivo"}</small>
+                  <small>{ev.uidMasked || "UID-n/a"} · {ev.created_at ? new Date(ev.created_at).toLocaleTimeString(locale) : feedTruthCopy.feedTitle}</small>
                 </div>
               ))}
             </div>
@@ -1962,8 +2131,10 @@ function DemoLabStudioHero({
               className="demo-lab-wizard-trazo-cta demo-lab-wizard-next-btn inline-flex h-11 w-full items-center justify-center rounded-full border border-cyan-300 bg-cyan-300 px-5 text-xs font-black uppercase tracking-wider text-slate-950"
             >
               {hasSuccessfulReceipt
-                ? locale === "en" ? "See business outcome → Won" : locale === "pt-BR" ? "Ver resultado comercial → Ganhou" : "Ver resultado comercial → Ganó"
-                : locale === "en" ? "Run verified tap → Outcome" : locale === "pt-BR" ? "Executar toque verificado → Resultado" : "Ejecutar tap verificado → Resultado"}
+                ? hasVerifiedExecution
+                  ? locale === "en" ? "See verified outcome →" : locale === "pt-BR" ? "Ver resultado verificado →" : "Ver resultado verificado →"
+                  : locale === "en" ? "See simulated outcome →" : locale === "pt-BR" ? "Ver resultado simulado →" : "Ver resultado simulado →"
+                : locale === "en" ? "Run demo tap → Outcome" : locale === "pt-BR" ? "Executar tap demo → Resultado" : "Ejecutar tap demo → Resultado"}
             </button>
           </div>
         </div>
@@ -1973,15 +2144,24 @@ function DemoLabStudioHero({
       {step === 3 && (
         <div className="demo-lab-wizard-scene demo-lab-wizard-scene--gano grid min-h-[calc(100vh-12rem)] content-center gap-5 p-3">
           <div className="demo-lab-wizard-gano-header max-w-4xl">
-            <p className="demo-lab-wizard-eyebrow text-xs font-black uppercase tracking-[0.16em] text-cyan-300">{locale === "en" ? "BRAND OUTCOME" : "RESULTADO PARA LA MARCA"}</p>
+            <p className="demo-lab-wizard-eyebrow text-xs font-black uppercase tracking-[0.16em] text-cyan-300">
+              {hasVerifiedExecution
+                ? locale === "en" ? "VERIFIED BRAND OUTCOME" : locale === "pt-BR" ? "RESULTADO VERIFICADO PARA A MARCA" : "RESULTADO VERIFICADO PARA LA MARCA"
+                : locale === "en" ? "SIMULATED BRAND OUTCOME" : locale === "pt-BR" ? "RESULTADO SIMULADO PARA A MARCA" : "RESULTADO SIMULADO PARA LA MARCA"}
+            </p>
             <h2 className="mt-2 text-3xl font-black leading-none text-white md:text-5xl">{outcomeHeader}</h2>
             <p className="demo-lab-wizard-gano-lede">{outcomeSubhead}</p>
+            <p className={`mt-3 rounded-2xl border px-4 py-3 text-xs leading-5 ${hasVerifiedExecution ? "border-emerald-300/25 bg-emerald-500/10 text-emerald-100" : "border-amber-300/25 bg-amber-500/10 text-amber-100"}`} data-demo-truth-state={executionTruthState}>
+              <strong className="mr-2">{executionTruthCopy.badge}.</strong>{executionTruthCopy.explanation}
+            </p>
           </div>
           <div className="demo-lab-wizard-outcome-console" aria-label="Acciones del resultado Demo Lab">
             <div className="demo-lab-wizard-outcome-console__copy">
               <span>{locale === "en" ? "CONNECTED EXPERIENCE" : locale === "pt-BR" ? "EXPERIENCIA CONECTADA" : "EXPERIENCIA CONECTADA"}</span>
               <strong>{scenario.stateLabel}</strong>
-              <p>{locale === "en" ? "Open the buyer phone, the product file, ownership claim or public hash proof from the same verified event." : locale === "pt-BR" ? "Abra celular do comprador, ficha do produto, claim de ownership ou prova publica a partir do mesmo evento." : "Abrir celular del comprador, ficha del producto, reclamo de ownership o prueba publica desde el mismo evento verificado."}</p>
+              <p>{hasVerifiedExecution
+                ? locale === "en" ? "Open the buyer phone, product file, ownership claim or public proof from the same verified event." : locale === "pt-BR" ? "Abra celular, ficha, claim de ownership ou prova publica a partir do mesmo evento verificado." : "Abri celular, ficha, reclamo de ownership o prueba publica desde el mismo evento verificado."
+                : locale === "en" ? "Explore the buyer phone, product file and ownership steps as a preview. They do not come from a verified event." : locale === "pt-BR" ? "Explore celular, ficha e ownership como preview. Eles nao surgem de um evento verificado." : "Explora celular, ficha y ownership como preview. No provienen de un evento verificado."}</p>
             </div>
             <div className="demo-lab-wizard-outcome-console__actions">
               <Link href={buyerMobileHref}>
@@ -1994,7 +2174,9 @@ function DemoLabStudioHero({
               </button>
               <button suppressHydrationWarning type="button" onClick={onClaim}>
                 <UserRound className="h-4 w-4" />
-                <span>{locale === "en" ? "Claim owner" : locale === "pt-BR" ? "Reclamar dono" : "Reclamar dueno"}</span>
+                <span>{hasVerifiedExecution
+                  ? locale === "en" ? "Claim owner" : locale === "pt-BR" ? "Reclamar dono" : "Reclamar dueno"
+                  : locale === "en" ? "Preview owner claim" : locale === "pt-BR" ? "Simular claim de dono" : "Simular reclamo de dueno"}</span>
               </button>
               <Link href={proofDestinationHref}>
                 {activeTrustScenario === "polygon-ownership" ? <BadgeCheck className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
@@ -2003,13 +2185,15 @@ function DemoLabStudioHero({
             </div>
             <div className="demo-lab-wizard-outcome-console__checks">
               <button suppressHydrationWarning type="button" disabled={simulating} onClick={() => void runValidFlow(3)}>
-                {locale === "en" ? "Fresh valid tap" : locale === "pt-BR" ? "Toque valido fresco" : "Tap valido fresco"}
+                {hasVerifiedExecution
+                  ? locale === "en" ? "Fresh verified tap" : locale === "pt-BR" ? "Tap fresco verificado" : "Tap fresco verificado"
+                  : locale === "en" ? "Repeat tap preview" : locale === "pt-BR" ? "Repetir preview do tap" : "Repetir preview del tap"}
               </button>
               <button suppressHydrationWarning type="button" disabled={simulating} onClick={() => void runRiskFlow("replay")}>
                 {locale === "en" ? "Blocked copied URL" : locale === "pt-BR" ? "URL copiada bloqueada" : "URL copiada bloqueada"}
               </button>
               <button suppressHydrationWarning type="button" disabled={simulating} onClick={() => void runRiskFlow("tamper")}>
-                {locale === "en" ? "Opened seal" : locale === "pt-BR" ? "Lacre aberto" : "Sello abierto"}
+                {locale === "en" ? "Simulate TT open" : locale === "pt-BR" ? "Simular TT aberto" : "Simular TT abierto"}
               </button>
             </div>
           </div>
@@ -2063,8 +2247,11 @@ function DemoSimulationReceiptCard({
   const modeLabel = receipt.mode === "replay"
     ? isEn ? "Duplicate replay" : isBr ? "Replay duplicado" : "Replay duplicado"
     : receipt.mode === "tamper"
-      ? isEn ? "Opened seal" : isBr ? "Lacre aberto" : "Sello abierto"
+      ? isEn ? "Reported TT open" : isBr ? "TT aberto reportado" : "TT abierto reportado"
       : isEn ? "Fresh valid tap" : isBr ? "Toque valido fresco" : "Tap valido fresco";
+  const truthState = resolveDemoExecutionTruth(receipt);
+  const truthCopy = demoExecutionCopy(truthState, locale);
+  const hasVerifiedEvidence = canUseVerifiedDemoLanguage(truthState);
 
   return (
     <section
@@ -2072,6 +2259,7 @@ function DemoSimulationReceiptCard({
       aria-live="polite"
       aria-label={isEn ? "Simulation execution receipt" : isBr ? "Recibo de execucao da simulacao" : "Recibo de ejecucion de la simulacion"}
       data-demo-simulation-receipt={receipt.execution}
+      data-demo-truth-state={truthState}
       data-persisted={String(receipt.persisted)}
       data-chain-write={String(receipt.chainWrite)}
     >
@@ -2079,8 +2267,9 @@ function DemoSimulationReceiptCard({
         <span className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">
           {isEn ? "Execution receipt" : isBr ? "Recibo de execucao" : "Recibo de ejecucion"}
         </span>
-        <strong className="mt-1 block text-sm text-white">{modeLabel}: {executionLabel}</strong>
+        <strong className="mt-1 block text-sm text-white">{truthCopy.badge}: {modeLabel} / {executionLabel}</strong>
         <p className="mt-1 text-xs leading-5 text-slate-300">{receipt.detail}</p>
+        <p className="mt-1 text-[11px] leading-5 text-amber-100">{truthCopy.explanation}</p>
       </div>
       <dl className="grid min-w-0 grid-cols-2 gap-2 text-[11px] sm:grid-cols-3 md:min-w-[24rem]">
         <div className="min-w-0 rounded-xl border border-white/10 bg-white/5 p-2">
@@ -2091,9 +2280,16 @@ function DemoSimulationReceiptCard({
           <dt className="font-black uppercase text-slate-400">{isEn ? "Persistence" : "Persistencia"}</dt>
           <dd className="mt-1 font-bold text-white">{receipt.persisted ? (isEn ? "Yes, nexID" : "Si, nexID") : (isEn ? "No, visual only" : isBr ? "Nao, so visual" : "No, solo visual")}</dd>
         </div>
-        <div className="col-span-2 min-w-0 rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-2 sm:col-span-1">
-          <dt className="font-black uppercase text-emerald-200">Blockchain</dt>
-          <dd className="mt-1 font-bold text-emerald-100">{isEn ? "No chain write" : isBr ? "Sem escrita on-chain" : "Sin escritura on-chain"}</dd>
+        <div className={`col-span-2 min-w-0 rounded-xl border p-2 sm:col-span-1 ${hasVerifiedEvidence ? "border-emerald-300/20 bg-emerald-500/10" : "border-amber-300/20 bg-amber-500/10"}`}>
+          <dt className={`font-black uppercase ${hasVerifiedEvidence ? "text-emerald-200" : "text-amber-200"}`}>Blockchain</dt>
+          <dd className={`mt-1 font-bold ${hasVerifiedEvidence ? "text-emerald-100" : "text-amber-100"}`}>
+            {hasVerifiedEvidence
+              ? isEn ? "Public evidence verified" : isBr ? "Evidencia publica verificada" : "Evidencia publica verificada"
+              : receipt.chainWrite
+                ? isEn ? "Write reported; proof pending" : isBr ? "Escrita reportada; prova pendente" : "Escritura reportada; prueba pendiente"
+                : isEn ? "No chain write" : isBr ? "Sem escrita on-chain" : "Sin escritura on-chain"}
+          </dd>
+          {hasVerifiedEvidence && receipt.evidenceUrl ? <dd className="mt-1"><a className="text-[10px] font-bold underline" href={receipt.evidenceUrl} target="_blank" rel="noreferrer">Explorer</a></dd> : null}
         </div>
         <div className="col-span-2 min-w-0 text-slate-400 sm:col-span-3">
           <dd className="flex flex-wrap gap-x-3 gap-y-1">
@@ -2174,7 +2370,7 @@ function DemoTrustScenarioRail({
       sensorTitle: "UHF / IoT Sensor Evidence",
       sensorBody: "Pallet, carton and sensor evidence for industrial traceability. Consumer UX stays simple while logistics keeps audit depth.",
       networkTitle: "Authorized Network",
-      networkBody: "Supplier, reseller and tenant roles can encode, validate and audit without receiving raw KMS keys or database URLs.",
+      networkBody: "Supplier, reseller and tenant roles can operate within policy without receiving raw NFC secrets or database access.",
     }
     : locale === "pt-BR"
     ? {
@@ -2184,7 +2380,7 @@ function DemoTrustScenarioRail({
       sensorTitle: "UHF / IoT Sensor Evidence",
       sensorBody: "Evidencia de pallet, caixa e sensores para rastreabilidade industrial. UX do consumidor fica simples; logistica guarda a auditoria.",
       networkTitle: "Rede autorizada",
-      networkBody: "Fornecedor, reseller e tenant codificam, validam e auditam sem receber chaves KMS cruas nem URLs de banco.",
+      networkBody: "Fornecedor, reseller e tenant operam dentro da politica sem receber segredos NFC brutos nem acesso ao banco.",
     }
     : {
       eyebrow: "Escenarios enterprise de prueba",
@@ -2193,7 +2389,7 @@ function DemoTrustScenarioRail({
       sensorTitle: "UHF / IoT Sensor Evidence",
       sensorBody: "Evidencia de pallet, caja y sensores para trazabilidad industrial. La UX del consumidor sigue simple y logistica conserva profundidad de auditoria.",
       networkTitle: "Red autorizada",
-      networkBody: "Proveedor, reseller y tenant codifican, validan y auditan sin recibir claves KMS crudas ni URLs de base de datos.",
+      networkBody: "Proveedor, reseller y tenant operan dentro de la política sin recibir secretos NFC crudos ni acceso a la base de datos.",
     };
 
   const configByTitle = new Map(txt.controls.configs.map((item) => [item.title, item]));
@@ -2264,6 +2460,7 @@ function DemoLiveOpsMap({
   locale,
   routeKm,
   labels,
+  feedTruthState,
 }: {
   points: DemoMapPoint[];
   liveEvents: DemoEvent[];
@@ -2272,14 +2469,13 @@ function DemoLiveOpsMap({
   locale: AppLocale;
   routeKm: number;
   labels: Pick<DemoCopy["controls"], "origin" | "currentTap">;
+  feedTruthState: DemoFeedTruthState;
 }) {
   const visiblePoints = points.slice(0, 9);
   const recentEvents = liveEvents.slice(0, 4);
-  const totalScans = visiblePoints.reduce((acc, point) => acc + (point.scans || 1), 0);
+  const totalScans = recentEvents.length ? visiblePoints.reduce((acc, point) => acc + (point.scans || 0), 0) : 0;
   const risks = visiblePoints.reduce((acc, point) => acc + (point.risk || 0), 0);
-  const title = locale === "en" ? "Live taps map" : locale === "pt-BR" ? "Mapa de taps ao vivo" : "Mapa de taps en vivo";
-  const feedTitle = locale === "en" ? "Latest taps" : locale === "pt-BR" ? "Ultimos taps" : "Últimos taps";
-  const fallbackText = locale === "en" ? "Waiting for live feed; showing route simulation." : locale === "pt-BR" ? "Aguardando feed real; mostrando rota simulada." : "Esperando feed real; mostrando ruta simulada.";
+  const truthCopy = demoFeedCopy(feedTruthState, locale);
 
   const originPoint = visiblePoints[0];
   const atlasPoints = toDemoAtlasPoints(visiblePoints, labels);
@@ -2300,10 +2496,10 @@ function DemoLiveOpsMap({
   return (
     <div className="demo-lab-studio-info demo-lab-studio-live-map">
       <div className="demo-lab-studio-panel-head">
-        <p>{title}</p>
-        <span><i /> {totalScans} taps</span>
+        <p>{truthCopy.mapTitle}</p>
+        <span><i /> {totalScans} {locale === "en" ? "recorded events" : locale === "pt-BR" ? "eventos registrados" : "eventos registrados"}</span>
       </div>
-      <div className={`demo-lab-mini-map demo-lab-mini-map--atlas demo-lab-mini-map--${vertical} flex justify-center items-center relative overflow-hidden`} aria-label={`${title}: ${LOCATIONS.origin.city} a ${destination.city}`}>
+      <div className={`demo-lab-mini-map demo-lab-mini-map--atlas demo-lab-mini-map--${vertical} flex justify-center items-center relative overflow-hidden`} aria-label={`${truthCopy.mapTitle}: ${LOCATIONS.origin.city} a ${destination.city}`}>
         <HeroTrustAtlasSvg points={atlasPoints} routes={atlasRoutes} selectedPointId="tap" />
         <div className="demo-lab-mini-map__legend z-10 pointer-events-none">
           <span>{LOCATIONS.origin.city}</span>
@@ -2317,14 +2513,14 @@ function DemoLiveOpsMap({
         <span><strong>{formatDemoTapTime(visiblePoints[1]?.lastSeen, locale)}</strong> último</span>
       </div>
       <div className="demo-lab-live-feed-mini">
-        <p>{feedTitle}</p>
+        <p>{truthCopy.feedTitle}</p>
         {recentEvents.length ? recentEvents.map((event) => (
           <div key={event.id || `${event.created_at}-${event.uidMasked}`}>
-            <span>{formatEventResult(event.result)}</span>
+            <span>{formatDemoEventResult(event.result, feedTruthState, locale)}</span>
             <strong>{event.city || destination.city}</strong>
             <small>{event.uidMasked || event.sku || "UID n/a"} / {formatDemoTapTime(event.created_at, locale)}</small>
           </div>
-        )) : <small>{fallbackText}</small>}
+        )) : <small>{truthCopy.explanation}</small>}
       </div>
     </div>
   );
@@ -2347,9 +2543,9 @@ function DemoFirstRunGuide({
 }) {
   const guideSteps = [
     { beat: 0, kicker: "01", title: "Producto cerrado", body: "La etiqueta NFC esta intacta. Todavia no libera beneficios ni reclamo de dueño." },
-    { beat: 1, kicker: "02", title: "Toque válido", body: "El SUN dinámico valida el producto y une origen, ubicación y consumidor." },
+    { beat: 1, kicker: "02", title: "Mensaje válido simulado", body: "El SUN dinámico valida el mensaje; origen y ubicación siguen declarados o reportados." },
     { beat: 2, kicker: "03", title: "Copia bloqueada", body: "Una URL repetida o copiada no habilita club, tienda ni NFT." },
-    { beat: 3, kicker: "04", title: "Apertura + reclamo", body: "El sello abierto dispara postventa, certificado y reclamo de dueño." },
+    { beat: 3, kicker: "04", title: "TT + solicitud", body: "TT abierto reportado prepara postventa y solicitud de ownership bajo política; no prueba apertura física." },
   ];
 
   return (
@@ -2357,7 +2553,7 @@ function DemoFirstRunGuide({
       <div className="demo-lab-guide-copy">
         <p>Primera vez aca</p>
         <h3>Proba el flujo como lo haria un cliente en 30 segundos.</h3>
-        <span>Arranca cerrado, hace un toque válido, muestra cómo detecta copia/replay y termina con sello abierto, solicitud Polygon y reclamo.</span>
+        <span>Arranca con TT cerrado simulado, valida un mensaje, muestra una señal de replay y termina con TT abierto reportado y una solicitud Polygon sujeta a política.</span>
       </div>
       <div className="demo-lab-guide-steps">
         {guideSteps.map((step) => (
@@ -2370,8 +2566,8 @@ function DemoFirstRunGuide({
       </div>
       <div className="demo-lab-guide-actions">
         <button suppressHydrationWarning type="button" onClick={onGuided}>Ver prueba guiada</button>
-        <button suppressHydrationWarning type="button" disabled={simulating} onClick={onValid}>Toque válido</button>
-        <button suppressHydrationWarning type="button" disabled={simulating} onClick={onOpen}>Abrir sello</button>
+        <button suppressHydrationWarning type="button" disabled={simulating} onClick={onValid}>Simular mensaje válido</button>
+        <button suppressHydrationWarning type="button" disabled={simulating} onClick={onOpen}>Simular TT abierto</button>
         <button suppressHydrationWarning type="button" onClick={onMobile}>Ver celular</button>
       </div>
     </section>
@@ -2382,26 +2578,26 @@ function DemoStageExplainer({ beat, scenario, routeKm, locale }: { beat: Beat; s
   const evidence = routeEvidenceValue(locale, scenario, routeKm);
   const copyByBeat: Record<Beat, { title: string; body: string; backend: string; next: string }> = {
     0: {
-      title: "Etiqueta NFC cerrada",
-      body: "El producto nacio con UID y origen, pero todavia no hay prueba fresca del consumidor.",
+      title: "TT cerrado simulado",
+      body: "La referencia tiene UID, lote y origen declarados, pero todavía no hay una lectura reciente del consumidor.",
       backend: "Servidor: lote y UID listos, sin reclamo de dueño ni token de valor habilitado.",
       next: "Siguiente: simular toque válido.",
     },
     1: {
-      title: "Toque físico fresco",
-      body: `El cliente ve el resultado de confianza y la ruta al origen con ${evidence}.`,
-      backend: "Servidor: evento válido, anti copia OK, acciones comerciales habilitables según política.",
-      next: "Siguiente: abrir celular, preparar tokenización o simular apertura.",
+      title: "Mensaje SUN reciente",
+      body: `El cliente ve el resultado del mensaje y un escenario de origen declarado con ${evidence}.`,
+      backend: "Servidor: mensaje aceptado y controles anti-replay; las acciones comerciales siguen sujetas a política.",
+      next: "Siguiente: abrir celular, preparar solicitud digital o simular TT abierto.",
     },
     2: {
-      title: "Copia bloqueada",
+      title: "Replay bloqueado",
       body: "La prueba muestra por que copiar una URL no alcanza para reclamar beneficios.",
       backend: "Servidor: riesgo registrado; reclamo, club, tienda sensible y token quedan bloqueados.",
       next: "Siguiente: repetir con un toque válido.",
     },
     3: {
-      title: "Sello abierto",
-      body: "La etiqueta se parte visualmente y el producto cambia de estado.",
+      title: "TT abierto reportado",
+      body: "La etiqueta cambia visualmente y la demo representa una señal TT; no certifica apertura ni estado físico del producto.",
       backend: "Servidor: postventa, certificado, solicitud de token y reclamo requieren política de compra/dueño.",
       next: "Siguiente: abrir solicitud de certificado o reclamar dueño.",
     },
@@ -2425,25 +2621,25 @@ function DemoStageExplainer({ beat, scenario, routeKm, locale }: { beat: Beat; s
 
 function getTrustSignals(beat: Beat) {
   return [
-    { label: "Toque físico", value: beat === 0 ? "pendiente" : beat === 2 ? "sospechoso" : "fresco", tone: beat === 0 ? "pending" : beat === 2 ? "blocked" : "ok" },
-    { label: "SUN anti copia", value: beat === 2 ? "bloqueado" : beat === 0 ? "en espera" : "ok", tone: beat === 2 ? "blocked" : beat === 0 ? "pending" : "ok" },
-    { label: "Marca", value: "Bodega Balmec", tone: "ok" },
-    { label: "Dueño", value: beat === 3 ? "reclamo listo" : beat === 2 ? "bloqueado" : "con regla", tone: beat === 3 ? "ok" : beat === 2 ? "blocked" : "pending" },
+    { label: "Mensaje NFC/SUN", value: beat === 0 ? "pendiente" : beat === 2 ? "replay" : "aceptado en demo", tone: beat === 0 ? "pending" : beat === 2 ? "blocked" : "ok" },
+    { label: "Anti-replay", value: beat === 2 ? "bloqueado" : beat === 0 ? "en espera" : "sin señal en demo", tone: beat === 2 ? "blocked" : beat === 0 ? "pending" : "ok" },
+    { label: "Marca", value: "Bodega Balmec · demo", tone: "ok" },
+    { label: "Ownership digital", value: beat === 3 ? "solicitud lista" : beat === 2 ? "bloqueado" : "con regla", tone: beat === 3 ? "ok" : beat === 2 ? "blocked" : "pending" },
     { label: "Polygon", value: beat === 2 ? "sin NFT" : beat === 0 ? "antes de cadena" : "solicitud lista", tone: beat === 2 ? "blocked" : beat === 0 ? "pending" : "ok" },
     { label: "Tienda", value: beat === 2 ? "cerrada" : beat === 0 ? "publica" : "abierta", tone: beat === 2 ? "blocked" : beat === 0 ? "pending" : "ok" },
   ] as const;
 }
 
 function DemoDifferentiatorStrip({ beat, onGuided }: { beat: Beat; onGuided: () => void }) {
-  const chain = ["Producto físico", "Confianza", "Dueño", "Comunidad", "Recompra", "Tienda", "Datos"];
+  const chain = ["Escena de producto", "Evidencia digital", "Ownership digital", "Comunidad", "Recompra", "Tienda", "Datos"];
   const activeIndex = beat === 0 ? 0 : beat === 1 ? 2 : beat === 2 ? 1 : 6;
 
   return (
     <section className="demo-lab-differentiator-strip mt-5">
       <div className="demo-lab-differentiator-copy">
         <p>Diferencial nexID</p>
-        <h2>No vendemos solo anti-falsificacion. Convertimos cada producto en canal propio de ingresos.</h2>
-        <span>El flujo que tiene que entender cualquier bodega, marca o evento: validar confianza, reclamar dueño, activar comunidad, recompra, tienda y datos.</span>
+        <h2>Conectamos evidencia NFC/SUN con postventa y derechos digitales bajo política.</h2>
+        <span>El flujo separa validación del mensaje, datos declarados, solicitud de ownership, comunidad, recompra, tienda y analítica.</span>
       </div>
       <div className="demo-lab-differentiator-chain" aria-label="Cadena de valor nexID">
         {chain.map((item, index) => (
@@ -2473,14 +2669,14 @@ function DemoCinematicShowcase({
   const localized = locale === "en"
     ? {
       label: "nexID visual studio",
-      title: "A demo that feels like a video: real product, physical proof, risk and business.",
+      title: "A video-like demo: product scene, bounded digital evidence, risk and business.",
       body: "This block works as a visual pitch inside the platform: any brand can understand trust, ownership, data and revenue in seconds.",
       openPack: "Open visual pack",
       scenes: [
-        { beat: 0, tag: "Scene 01", title: "Product is born", body: "Premium package, UID and closed NFC label before the first tap.", stat: "UID + lot", tone: "origin" },
-        { beat: 1, tag: "Scene 02", title: "Live tap", body: "Dynamic SUN, distance, origin and actionable data for consumer and brand.", stat: "Verified", tone: "ok" },
+        { beat: 0, tag: "Scene 01", title: "Item is registered", body: "Reference package, UID and declared lot before the simulated tap.", stat: "UID + lot", tone: "origin" },
+        { beat: 1, tag: "Scene 02", title: "Simulated tap", body: "SUN message, estimated distance, declared origin and actionable data for consumer and brand.", stat: "Tag evidence", tone: "ok" },
         { beat: 2, tag: "Scene 03", title: "Attack blocked", body: "A copied URL does not open benefits, claim, tokenization or store actions.", stat: "No claim", tone: "risk" },
-        { beat: 3, tag: "Scene 04", title: "Business loop", body: "Open seal, owner claim, certificate, community and repurchase.", stat: "Open", tone: "open" },
+        { beat: 3, tag: "Scene 04", title: "Business loop", body: "Reported TT-open state, ownership request, certificate, community and repurchase under policy.", stat: "TT reported", tone: "open" },
       ],
       proof: {
         sun: beat === 0 ? "waiting" : beat === 2 ? "blocked" : "valid",
@@ -2497,14 +2693,14 @@ function DemoCinematicShowcase({
     : locale === "pt-BR"
       ? {
         label: "Estudio visual nexID",
-        title: "Uma experiencia que parece video: produto real, prova fisica, risco e negocio.",
+        title: "Uma demo em video: cena de produto, evidencia digital limitada, risco e negocio.",
         body: "Este bloco funciona como apresentacao visual dentro da plataforma: qualquer marca entende confianca, dono, dados e receita em segundos.",
         openPack: "Abrir pacote visual",
         scenes: [
-          { beat: 0, tag: "Cena 01", title: "Produto nasce", body: "Embalagem premium, UID e etiqueta NFC fechada antes do primeiro toque.", stat: "UID + lote", tone: "origin" },
-          { beat: 1, tag: "Cena 02", title: "Toque vivo", body: "SUN dinamico, distancia, origem e dados acionaveis para consumidor e marca.", stat: "Verificado", tone: "ok" },
+          { beat: 0, tag: "Cena 01", title: "Item registrado", body: "Embalagem de referencia, UID e lote declarado antes do toque simulado.", stat: "UID + lote", tone: "origin" },
+          { beat: 1, tag: "Cena 02", title: "Toque simulado", body: "Mensagem SUN, distancia estimada, origem declarada e dados acionaveis.", stat: "Evidencia do tag", tone: "ok" },
           { beat: 2, tag: "Cena 03", title: "Ataque bloqueado", body: "Uma URL copiada nao abre beneficios, dono, tokenizacao nem loja.", stat: "Sem dono", tone: "risk" },
-          { beat: 3, tag: "Cena 04", title: "Ciclo comercial", body: "Lacre aberto, dono, certificado, comunidade e recompra.", stat: "Aberto", tone: "open" },
+          { beat: 3, tag: "Cena 04", title: "Ciclo comercial", body: "Estado TT aberto reportado, pedido de ownership, certificado, comunidade e recompra sob politica.", stat: "TT reportado", tone: "open" },
         ],
         proof: {
           sun: beat === 0 ? "em espera" : beat === 2 ? "bloqueado" : "valido",
@@ -2520,14 +2716,14 @@ function DemoCinematicShowcase({
       }
       : {
         label: "Estudio visual nexID",
-        title: "Una prueba que se entiende como video: producto real, prueba fisica, riesgo y negocio.",
+        title: "Una demo en video: escena de producto, evidencia digital acotada, riesgo y negocio.",
         body: "Este bloque funciona como presentacion visual dentro de la plataforma: cualquier marca entiende confianza, dueño, datos e ingresos en segundos.",
         openPack: "Abrir paquete visual",
         scenes: [
-          { beat: 0, tag: "Escena 01", title: "Producto nace", body: "Envase de alto valor, UID y etiqueta NFC cerrada antes del primer toque.", stat: "UID + lote", tone: "origin" },
-          { beat: 1, tag: "Escena 02", title: "Toque vivo", body: "SUN dinámico, distancia, origen y datos accionables para consumidor y marca.", stat: "Verificado", tone: "ok" },
+          { beat: 0, tag: "Escena 01", title: "Ítem registrado", body: "Envase de referencia, UID y lote declarado antes del toque simulado.", stat: "UID + lote", tone: "origin" },
+          { beat: 1, tag: "Escena 02", title: "Toque simulado", body: "Mensaje SUN, distancia estimada, origen declarado y datos accionables.", stat: "Evidencia del tag", tone: "ok" },
           { beat: 2, tag: "Escena 03", title: "Ataque bloqueado", body: "Una URL copiada no abre beneficios, reclamo, tokenización ni tienda.", stat: "Sin reclamo", tone: "risk" },
-          { beat: 3, tag: "Escena 04", title: "Ciclo comercial", body: "Sello abierto, reclamo de dueño, certificado, comunidad y recompra sujetos a política.", stat: "Abierto", tone: "open" },
+          { beat: 3, tag: "Escena 04", title: "Ciclo comercial", body: "Estado TT abierto reportado, solicitud de ownership, certificado, comunidad y recompra bajo política.", stat: "TT reportado", tone: "open" },
         ],
         proof: {
           sun: beat === 0 ? "en espera" : beat === 2 ? "bloqueado" : "válido",
@@ -2586,7 +2782,7 @@ function DemoCinematicShowcase({
           <DemoCinematicProductRender
             vertical={vertical}
             product={product}
-            badge={getRealProductBadge(locale)}
+            badge={getProductSceneBadge(locale)}
             beat={beat}
             title={active.title}
             stat={active.stat}
@@ -2667,27 +2863,27 @@ function getPremiumSceneMeta(vertical: Vertical, beat: Beat, badge: string, stat
     tone === "risk"
       ? "BLOQUEADO"
       : tone === "open"
-        ? "SELLO ABIERTO"
+        ? "TT ABIERTO REPORTADO"
         : tone === "ok"
-          ? "AUTENTICADO"
+          ? "RESULTADO VALIDO"
           : "LISTO";
   const phoneAction =
     tone === "risk"
-      ? "Repetir tap físico"
+      ? "Repetir lectura"
       : tone === "open"
-        ? "Reclamar dueño"
+        ? "Solicitar ownership"
         : tone === "ok"
-          ? "Compra confiable"
+          ? "Ver siguiente paso"
           : "Acercar teléfono";
-  const sun = tone === "risk" ? "SUN bloquea copia" : tone === "origin" ? "SUN listo" : "SUN válido";
-  const lifecycle = tone === "open" ? "Beneficios abiertos" : tone === "risk" ? "Beneficios bloqueados" : "Beneficios listos";
+  const sun = tone === "risk" ? "SUN marca replay" : tone === "origin" ? "SUN pendiente" : "SUN aceptado";
+  const lifecycle = tone === "open" ? "Beneficios sujetos a política" : tone === "risk" ? "Beneficios bloqueados" : "Beneficios evaluables";
 
   const proofBody =
     tone === "risk"
-      ? "Acciones bloqueadas hasta nuevo tap físico."
+      ? "Acciones bloqueadas hasta una nueva lectura aceptada."
       : tone === "open"
-        ? "Postventa, dueño y beneficios habilitados."
-        : "Producto, UID y canal validados.";
+        ? "TT reportado; postventa, ownership y beneficios requieren política y evidencia separada."
+        : "Mensaje NFC validado; el producto físico requiere evidencia adicional.";
 
   const base = {
     tone,
@@ -2703,9 +2899,9 @@ function getPremiumSceneMeta(vertical: Vertical, beat: Beat, badge: string, stat
   if (vertical === "wine") {
     return {
       ...base,
-      family: "Botella premium real",
-      evidence: "Malbec, lote y sello unidos al SUN",
-      proofTitle: "Botella + sello + lote",
+      family: "Referencia visual de botella",
+      evidence: "Malbec y lote declarados, con estado TT reportado vinculado al mensaje SUN",
+      proofTitle: "Mensaje + TT + lote declarado",
       tagTitle: "NTAG 424 DNA TT",
       crop: "portrait",
     };
@@ -2714,10 +2910,10 @@ function getPremiumSceneMeta(vertical: Vertical, beat: Beat, badge: string, stat
   if (vertical === "sneaker") {
     return {
       ...base,
-      family: "Zapatilla coleccionable real",
-      evidence: "UID, rareza, dueño y beneficio vinculados",
+      family: "Zapatilla coleccionable conectada",
+      evidence: "UID, SUN, rareza declarada y estado de ownership vinculados",
       proofTitle: "Lengueta NFC + owner",
-      tagTitle: "Drop verificado",
+      tagTitle: "Drop conectado",
       crop: "wide",
     };
   }
@@ -2725,8 +2921,8 @@ function getPremiumSceneMeta(vertical: Vertical, beat: Beat, badge: string, stat
   if (vertical === "seeds") {
     return {
       ...base,
-      family: "Sobre de semillas certificado",
-      evidence: "Lote, origen y canal agricola auditados",
+      family: "Sobre de semillas · demo",
+      evidence: "Lote y origen declarados, con eventos de canal reportados",
       proofTitle: "QR + NFC UID",
       tagTitle: "Lote trazable",
       crop: "wide",
@@ -2736,9 +2932,9 @@ function getPremiumSceneMeta(vertical: Vertical, beat: Beat, badge: string, stat
   if (vertical === "pharma") {
     return {
       ...base,
-      family: "Caja pharma serializada",
-      evidence: "Lote, prospecto, cadena de frio y recall unidos",
-      proofTitle: "Pack + lote + auditoria",
+      family: "Referencia de caja pharma serializada",
+      evidence: "Lote y prospecto declarados; cadena de frío sólo con eventos de sensor reportados",
+      proofTitle: "Mensaje + lote + eventos reportados",
       tagTitle: "QR + NFC",
       crop: "square",
     };
@@ -2747,8 +2943,8 @@ function getPremiumSceneMeta(vertical: Vertical, beat: Beat, badge: string, stat
   if (vertical === "bracelet" || vertical === "ticket") {
     return {
       ...base,
-      family: "Acceso real de evento",
-      evidence: "Pulsera VIP, ingreso y postventa unidos",
+      family: "Credencial de evento · demo",
+      evidence: "UID, acceso reportado y postventa vinculados en la demo",
       proofTitle: "Pulsera + UID + canal",
       tagTitle: "NTAG215",
       crop: "wide",
@@ -2758,9 +2954,9 @@ function getPremiumSceneMeta(vertical: Vertical, beat: Beat, badge: string, stat
   if (vertical === "perfume") {
     return {
       ...base,
-      family: "Fragancia premium real",
-      evidence: "Tapa, serie y lote validados antes de compra",
-      proofTitle: "Frasco + tapa + lote",
+      family: "Referencia visual de fragancia",
+      evidence: "Serie y lote declarados con evidencia del mensaje NFC/SUN",
+      proofTitle: "Mensaje + serie + lote declarado",
       tagTitle: "NTAG 424 DNA",
       crop: "portrait",
     };
@@ -2770,7 +2966,7 @@ function getPremiumSceneMeta(vertical: Vertical, beat: Beat, badge: string, stat
     return {
       ...base,
       family: "Caja logistica con sensor",
-      evidence: "Ruta, temperatura y entrega auditadas",
+      evidence: "Ruta, temperatura y entrega sólo como eventos reportados por sus fuentes",
       proofTitle: "UHF + NFC + IoT",
       tagTitle: "Cadena fria",
       crop: "wide",
@@ -2781,7 +2977,7 @@ function getPremiumSceneMeta(vertical: Vertical, beat: Beat, badge: string, stat
     return {
       ...base,
       family: "Producto electronico serializado",
-      evidence: "Serial, garantia y soporte antifraude vinculados",
+      evidence: "Serial declarado, garantía y señales de riesgo vinculados",
       proofTitle: "Serial + garantia",
       tagTitle: "QR + NFC",
       crop: "wide",
@@ -2792,7 +2988,7 @@ function getPremiumSceneMeta(vertical: Vertical, beat: Beat, badge: string, stat
     return {
       ...base,
       family: "Etiqueta textil DPP",
-      evidence: "Origen, composicion, cuidado y reventa verificables",
+      evidence: "Origen, composición y cuidado declarados; reventa sujeta a ownership digital",
       proofTitle: "DPP + etiqueta",
       tagTitle: "QR + NFC",
       crop: "wide",
@@ -2802,8 +2998,8 @@ function getPremiumSceneMeta(vertical: Vertical, beat: Beat, badge: string, stat
   return {
     ...base,
     family: "Set skincare premium",
-    evidence: "Envase sellado, lote y recompra verificada",
-    proofTitle: "Envase + sello + lote",
+    evidence: "Referencia visual de envase, lote declarado y recompra por política",
+    proofTitle: "Mensaje + TT + lote declarado",
     tagTitle: "NTAG 424 DNA",
     crop: "square",
   };
@@ -2868,7 +3064,7 @@ function DemoPremiumProductScene({
       <div className="demo-lab-premium-scene__tag-card" aria-hidden="true">
         <span>nexID</span>
         <strong>{meta.tagTitle}</strong>
-        <em>{meta.tone === "risk" ? "riesgo" : meta.tone === "open" ? "abierto" : "sellado"}</em>
+        <em>{meta.tone === "risk" ? "riesgo" : meta.tone === "open" ? "TT abierto" : "TT cerrado"}</em>
       </div>
 
       <div className="demo-lab-premium-scene__phone" aria-hidden="true">
@@ -2880,7 +3076,7 @@ function DemoPremiumProductScene({
       </div>
 
       <div className="demo-lab-premium-scene__proof" aria-hidden="true">
-        <span>Producto real</span>
+        <span>{badge}</span>
         <strong>{meta.proofTitle}</strong>
         <small>{meta.proofBody}</small>
       </div>
@@ -2999,7 +3195,7 @@ function DemoPhoneMirror({
   destination: DemoLocation;
   onOpen: (view: DemoModalView) => void;
 }) {
-  const cta = beat === 2 ? "Repetir toque fisico" : beat === 3 ? "Ver salida celular" : beat === 0 ? "Acercar telefono" : "Unirme al club";
+  const cta = beat === 2 ? "Repetir lectura NFC" : beat === 3 ? "Ver salida celular" : beat === 0 ? "Acercar telefono" : "Unirme al club";
 
   return (
     <article className={`demo-lab-phone-mirror demo-lab-phone-mirror--${scenario.tone}`}>
@@ -3088,9 +3284,9 @@ function DemoWineProduct({
   const asset = demoLabRealAssets.wine;
   const blocked = beat === 2;
   const opened = beat === 3;
-  const status = blocked ? "COPIA BLOQUEADA" : opened ? "SELLO ABIERTO" : beat === 0 ? "LISTO PARA TOQUE" : "AUTENTICADO";
-  const action = blocked ? "Replay bloqueado" : opened ? "Reclamo + token pendiente" : "Compra confiable";
-  const proof = stat || (blocked ? "SUN bloquea copia y beneficios" : "Origen, lote, sello y canal auditados");
+  const status = blocked ? "REPLAY SOSPECHOSO" : opened ? "TT ABIERTO" : beat === 0 ? "LISTO PARA TOQUE" : "LECTURA NFC VALIDA";
+  const action = blocked ? "Acciones bloqueadas" : opened ? "Reclamo + token pendiente" : "Ver siguiente paso";
+  const proof = stat || (blocked ? "SUN marca reutilización y bloquea acciones" : "Mensaje NFC validado; origen y lote son datos declarados");
 
   return (
     <div
@@ -3104,7 +3300,7 @@ function DemoWineProduct({
         <img className="nexid-premium-image--dark" src={asset.imageUrl} alt="" loading="eager" decoding="async" />
         <img className="nexid-premium-image--light" src={asset.imageLightUrl} alt="" loading="eager" decoding="async" />
         <figcaption>
-          <span>Producto real</span>
+          <span>{badge}</span>
           <strong>{product}</strong>
           <small>Valle de Uco - 2022 - NTAG 424 DNA TT</small>
         </figcaption>
@@ -3112,7 +3308,7 @@ function DemoWineProduct({
       <div className="demo-lab-wine-product__seal" aria-hidden="true">
         <span>nexID</span>
         <strong>NTAG 424 DNA TT</strong>
-        <em>{opened ? "abierto" : blocked ? "riesgo" : "sellado"}</em>
+        <em>{opened ? "TT abierto" : blocked ? "riesgo" : "TT cerrado"}</em>
       </div>
       <div className="demo-lab-wine-product__chip" aria-hidden="true">NFC</div>
       <div className="demo-lab-wine-product__phone" aria-hidden="true">
@@ -3148,9 +3344,9 @@ function DemoPremiumCosmeticProduct({
   const blocked = beat === 2;
   const opened = beat === 3;
   const isPerfume = vertical === "perfume";
-  const status = blocked ? "RIESGO BLOQUEADO" : opened ? "SELLO ABIERTO" : beat === 0 ? "SELLADO" : "AUTENTICADO";
-  const action = blocked ? "Sin reclamo" : opened ? "Garantía lista" : "Compra confiable";
-  const referenceLabel = isPerfume ? "Perfume premium real" : vertical === "creamJar" ? "Set skincare real" : "Dermo premium real";
+  const status = blocked ? "RIESGO BLOQUEADO" : opened ? "TT ABIERTO" : beat === 0 ? "LISTO PARA TOQUE" : "LECTURA NFC VALIDA";
+  const action = blocked ? "Sin reclamo" : opened ? "Garantía sujeta a política" : "Ver siguiente paso";
+  const referenceLabel = isPerfume ? "Referencia visual · perfume" : vertical === "creamJar" ? "Referencia visual · skincare" : "Referencia visual · dermo";
   const proofLabel = isPerfume ? "Tapa NFC + lote" : "Envase sellado + lote";
 
   return (
@@ -3201,9 +3397,9 @@ function DemoEventAccessProduct({
   const asset = demoLabRealAssets[vertical];
   const blocked = beat === 2;
   const opened = beat === 3;
-  const status = blocked ? "COPIA BLOQUEADA" : opened ? "SELLO ABIERTO" : beat === 0 ? "LISTO PARA TOQUE" : "ACCESO VERIFICADO";
+  const status = blocked ? "REPLAY BLOQUEADO" : opened ? "TT ABIERTO REPORTADO" : beat === 0 ? "LISTO PARA TOQUE" : "CREDENCIAL ACEPTADA";
   const primary = vertical === "ticket" ? "Entrada VIP" : "Pulsera VIP";
-  const action = blocked ? "Sin beneficios" : opened ? "Reclamo listo" : "Autentico";
+  const action = blocked ? "Sin beneficios" : opened ? "Solicitud sujeta a política" : "Mensaje aceptado";
 
   return (
     <div
@@ -3235,7 +3431,7 @@ function DemoEventAccessProduct({
       <div className="demo-lab-event-proof-card" aria-hidden="true">
         <span>NTAG215</span>
         <strong>NFC + pasaporte</strong>
-        <small>{blocked ? "Replay no abre reclamo" : "Toque físico validado"}</small>
+        <small>{blocked ? "Replay no abre reclamo" : "Mensaje NFC aceptado"}</small>
       </div>
     </div>
   );
@@ -3257,9 +3453,9 @@ function DemoSneakerProduct({
   const asset = demoLabRealAssets.sneaker;
   const blocked = beat === 2;
   const opened = beat === 3;
-  const status = blocked ? "COPIA BLOQUEADA" : opened ? "OWNER LISTO" : beat === 0 ? "LISTO PARA TOQUE" : "AUTENTICADO";
-  const action = blocked ? "Repetir tap físico" : opened ? "Claim + token pendiente" : "SUN dinámico validado";
-  const proof = stat || (blocked ? "Replay no habilita beneficios" : "Lengueta NFC + UID + lote verificable");
+  const status = blocked ? "COPIA BLOQUEADA" : opened ? "OWNER LISTO" : beat === 0 ? "LISTO PARA TOQUE" : "VALIDÓ TAG";
+  const action = blocked ? "Repetir lectura NFC" : opened ? "Claim + token pendiente" : "SUN dinámico validado";
+  const proof = stat || (blocked ? "Replay no habilita beneficios" : "Lengueta NFC + UID + lote registrado");
 
   return (
     <div
@@ -3330,13 +3526,13 @@ function DemoRealProductShot({
 
 function ProductIllustration({ vertical, product, label, beat }: { vertical: Vertical; product: string; label: string; beat: Beat }) {
   const uid = `demo-product-${vertical}`;
-  const statusLabel = beat === 2 ? "BLOQ" : beat === 3 ? "ABIERTO" : "NFC";
+  const statusLabel = beat === 2 ? "BLOQ" : beat === 3 ? "TT OPEN" : "NFC";
   const productLine = product.length > 24 ? `${product.slice(0, 22)}...` : product;
   const accent = beat === 2 ? "#fb7185" : beat === 3 ? "#a78bfa" : "#22d3ee";
   const sceneState = beat === 0 ? "origin" : beat === 1 ? "auth" : beat === 2 ? "blocked" : "open";
-  const sealTitle = beat === 2 ? "COPIA" : beat === 3 ? "ABIERTO" : "CERRADO";
+  const sealTitle = beat === 2 ? "REPLAY" : beat === 3 ? "TT ABIERTO" : "TT CERRADO";
   const sealBody = beat === 0 ? "UID SELLADO" : beat === 1 ? "SUN OK" : beat === 2 ? "SIN RECLAMO" : "RECLAMO LISTO";
-  const stateTitle = beat === 2 ? "Riesgo bloqueado" : beat === 3 ? "Etiqueta NFC abierta" : "Etiqueta NFC cerrada";
+  const stateTitle = beat === 2 ? "Riesgo bloqueado" : beat === 3 ? "TT abierto reportado" : "TT cerrado reportado";
   const stateBody = beat === 0 ? "lista para primer toque" : beat === 1 ? "toque validado" : beat === 2 ? "copia detenida" : "beneficios habilitados";
 
   return (
@@ -3970,7 +4166,7 @@ function DemoProductModalContent({
 }) {
   const verticalCopy = txt.verticals[vertical];
   const proofItems = verticalCopy.proof.slice(0, 4);
-  const state = beat === 2 ? "Bloqueado por replay" : beat === 3 ? "Sello abierto / reclamo" : beat === 0 ? "Listo para primer toque" : "Autenticado";
+  const state = scenario.stateLabel;
 
   return (
     <div className="demo-lab-product-modal">
@@ -3980,7 +4176,7 @@ function DemoProductModalContent({
             vertical={vertical}
             product={product}
             beat={beat}
-            badge={getRealProductBadge(locale)}
+            badge={getProductSceneBadge(locale)}
             simulating={false}
           />
         </div>
@@ -4049,7 +4245,7 @@ function DemoClaimModalContent({ beat, scenario }: { beat: Beat; scenario: DemoS
   const steps = [
     { label: "Ingreso", body: "El consumidor entra al portal con sesión propia." },
     { label: "Marca", body: "El reclamo valida que producto, marca y evento coincidan." },
-    { label: "Dueño", body: blocked ? "La copia bloquea el reclamo hasta nuevo toque físico." : "El producto queda asociado al usuario si la política lo permite." },
+    { label: "Dueño", body: blocked ? "El replay bloquea el reclamo hasta una nueva lectura NFC/SUN aceptada." : "La referencia digital queda asociada al usuario si identidad, compra y política lo permiten." },
     { label: "Tienda", body: blocked ? "Beneficios de valor bloqueados." : "Se habilitan club, garantía, recompra y beneficios." },
   ];
   return (
@@ -4097,8 +4293,8 @@ function DemoFinalTapDock({
   onRefresh: () => void;
 }) {
   const flow = [
-    { step: "01", title: "Toque físico fresco", body: "El chip genera SUN dinámico. No sirve URL copiada." },
-    { step: "02", title: "Anti copia + pasaporte", body: "Si es válido, se habilitan acciones sujetas a política y queda evento." },
+    { step: "01", title: "Mensaje SUN reciente", body: "El chip genera un mensaje dinámico. Una URL copiada no aporta un mensaje fresco." },
+    { step: "02", title: "Control de replay + pasaporte", body: "Si el mensaje y la política se aceptan, se habilitan acciones y queda un evento." },
     { step: "03", title: "Solicitud / certificado", body: "Se crea solicitud; Polygon devuelve tx_hash + token_id solo si la política aprueba." },
     { step: "04", title: "Reclamar dueño", body: "El usuario asocia producto con ingreso, marca y política de dueño." },
   ];
@@ -4119,7 +4315,7 @@ function DemoFinalTapDock({
             Probar copia bloqueada
           </button>
           <button suppressHydrationWarning type="button" disabled={simulating} onClick={onTamper} className="demo-lab-final-button demo-lab-final-button--warn">
-            Sello abierto
+            Simular TT abierto
           </button>
           <button suppressHydrationWarning type="button" onClick={onRefresh} className="demo-lab-final-button demo-lab-final-button--ghost">
             Actualizar servidor
@@ -4154,41 +4350,41 @@ function StageRouteLayer({
 }) {
   const routeCopy = locale === "en"
     ? {
-      eyebrow: "Live route",
-      title: "Origin to tap verified",
-      distance: "Evidence",
+      eyebrow: "Reported events",
+      title: "Declared origin and tap",
+      distance: "Reported distance",
       origin: "Origin",
       tap: "Current tap",
       chain: "Proof chain",
-      path: "Audited product route",
-      pathBody: "One readable proof: product, UID, SUN, seal and channel policy.",
+      path: "Reported event sequence",
+      pathBody: "A readable event record: item reference, UID, SUN, reported TT state and channel policy. It does not prove the physical route or custody.",
       checkpointA: "UID",
       checkpointB: "SUN",
       checkpointC: "Policy",
     }
     : locale === "pt-BR"
     ? {
-      eyebrow: "Rota viva",
-      title: "Origem e toque verificados",
-      distance: "Evidencia",
+      eyebrow: "Eventos reportados",
+      title: "Origem e toque declarados",
+      distance: "Distância informada",
       origin: "Origem",
       tap: "Toque atual",
       chain: "Cadeia de prova",
-      path: "Rota auditada do produto",
-      pathBody: "Uma prova legivel: produto, UID, SUN, lacre e politica do canal.",
+      path: "Sequência de eventos reportados",
+      pathBody: "Um registro legível: referência do item, UID, SUN, estado TT reportado e política do canal. Não comprova rota física nem custódia.",
       checkpointA: "UID",
       checkpointB: "SUN",
       checkpointC: "Politica",
     }
     : {
-      eyebrow: "Ruta viva",
-      title: "Origen y toque verificados",
-      distance: "Evidencia",
+      eyebrow: "Eventos reportados",
+      title: "Origen y toque declarados",
+      distance: "Distancia reportada",
       origin: "Origen",
       tap: "Toque actual",
       chain: "Cadena de prueba",
-      path: "Ruta auditada del producto",
-      pathBody: "Una prueba legible: producto, UID, SUN, sello y política de canal.",
+      path: "Secuencia de eventos reportados",
+      pathBody: "Un registro legible: referencia del ítem, UID, SUN, estado TT reportado y política de canal. No prueba la ruta física ni la custodia.",
       checkpointA: "UID",
       checkpointB: "SUN",
       checkpointC: "Politica",
@@ -4339,7 +4535,7 @@ function DemoActionMatrix({
         <InfoCell label="Marca" value="Bodega Balmec" />
       </div>
       <p className="mt-3 text-xs text-slate-400">
-        Ruta activa: {LOCATIONS.origin.city} -&gt; {destination.city}. Los botones cambian de política según estado físico, copia y compra/reclamo.
+        Ruta ilustrativa: {LOCATIONS.origin.city} -&gt; {destination.city}. Los botones cambian según TT reportado, replay y compra/reclamo; la línea no prueba ruta ni custodia.
       </p>
       {actionMessage ? <p className="demo-lab-action-message mt-4 rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-3 py-3 text-xs font-bold text-emerald-100">{actionMessage}</p> : null}
     </article>
@@ -4355,6 +4551,8 @@ function DemoCrmDashboard({
   simulate,
   simulating,
   txt,
+  feedTruthState,
+  feedTruthCopy,
 }: {
   summary: DemoSummary | null;
   locale: AppLocale;
@@ -4364,6 +4562,8 @@ function DemoCrmDashboard({
   simulate: (mode: SimulationMode) => Promise<boolean>;
   simulating: boolean;
   txt: DemoCopy;
+  feedTruthState: DemoFeedTruthState;
+  feedTruthCopy: ReturnType<typeof demoFeedCopy>;
 }) {
   const [activeTab, setActiveTab] = useState<"leads" | "tickets" | "orders" | "taps">("leads");
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -4400,10 +4600,10 @@ function DemoCrmDashboard({
         toLng: event.lng!,
         label: `${LOCATIONS.origin.city} -> ${event.city || "scan"}`,
         tone,
-        evidence: formatEventResult(event.result),
+        evidence: formatDemoEventResult(event.result, feedTruthState, locale),
       };
     })
-    .slice(0, 10), [liveEvents]);
+    .slice(0, 10), [feedTruthState, liveEvents, locale]);
 
   const formatTime = (isoString: string) => {
     try {
@@ -4455,8 +4655,8 @@ function DemoCrmDashboard({
   };
 
   const getTapStatusClass = (result?: string) => {
-    if (result === "AUTHENTICATED" || result === "VERIFIED" || result === "OK") return "is-success";
-    if (result === "REPLAY_FAIL" || result === "SUSPICIOUS" || result === "FAIL") return "is-danger";
+    if (canUseVerifiedDemoLanguage(feedTruthState) && isPositiveDemoVerdict(result)) return "is-success";
+    if (/REPLAY|DUPLICATE|SUSPICIOUS|FAIL|TAMPER|INVALID|REVOKED/i.test(result || "")) return "is-danger";
     return "is-muted";
   };
 
@@ -4518,13 +4718,15 @@ function DemoCrmDashboard({
         <div className="demo-lab-crm-map-panel lg:col-span-2 rounded-3xl border border-white/10 bg-slate-950/60 p-5 shadow-xl">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-black uppercase tracking-wider text-cyan-300">Mapa Operativo en Tiempo Real</h3>
-              <p className="text-xs text-slate-400">Procedencia (Uco Valley) hacia puntos de escaneo actuales</p>
+              <h3 className="text-sm font-black uppercase tracking-wider text-cyan-300">{feedTruthCopy.mapTitle}</h3>
+              <p className="text-xs text-slate-400">{feedTruthCopy.explanation}</p>
             </div>
             <div className="flex items-center gap-2">
-              <span className={`h-2 w-2 rounded-full bg-emerald-400 ${autoRefresh ? "animate-ping" : ""}`} />
+              <span className={`h-2 w-2 rounded-full ${canUseVerifiedDemoLanguage(feedTruthState) ? "bg-emerald-400" : liveEvents.length > 0 ? "bg-cyan-400" : "bg-amber-400"} ${autoRefresh && liveEvents.length > 0 ? "animate-ping" : ""}`} />
               <span className="text-[10px] uppercase font-bold text-slate-400">
-                {autoRefresh ? "Feed en vivo" : "Pausado"}
+                {autoRefresh
+                  ? liveEvents.length > 0 ? feedTruthCopy.feedTitle : locale === "en" ? "Polling; no evidence" : locale === "pt-BR" ? "Atualizando; sem evidencia" : "Actualizando; sin evidencia"
+                  : locale === "en" ? "Updates paused" : locale === "pt-BR" ? "Atualizacao pausada" : "Actualizacion pausada"}
               </span>
             </div>
           </div>
@@ -4584,7 +4786,7 @@ function DemoCrmDashboard({
                   onClick={() => void simulate("tamper")}
                   className="demo-lab-crm-sim-button demo-lab-crm-sim-button--tamper flex flex-col items-center justify-center rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 px-2 py-2.5 text-center transition disabled:opacity-55"
                 >
-                  <span className="text-[11px] font-black text-amber-400">✕ Abierto</span>
+                  <span className="text-[11px] font-black text-amber-400">TT abierto (demo)</span>
                   <span className="text-[8px] text-slate-400 font-mono mt-0.5">Tamper</span>
                 </button>
               </div>
@@ -4597,8 +4799,8 @@ function DemoCrmDashboard({
                 </p>
               ) : (
                 liveEvents.slice(0, 10).map((event) => {
-                  const isSuccess = event.result === "AUTHENTICATED" || event.result === "VERIFIED" || event.result === "OK";
-                  const isRisk = event.result === "REPLAY_FAIL" || event.result === "SUSPICIOUS" || event.result === "FAIL";
+                  const isSuccess = canUseVerifiedDemoLanguage(feedTruthState) && isPositiveDemoVerdict(event.result);
+                  const isRisk = /REPLAY|DUPLICATE|SUSPICIOUS|FAIL|TAMPER|INVALID|REVOKED/i.test(event.result || "");
                   return (
                     <div 
                       key={event.id || `${event.created_at}-${event.uidMasked}`} 
@@ -4621,7 +4823,7 @@ function DemoCrmDashboard({
                             ? "bg-rose-500/10 text-rose-400" 
                             : "bg-slate-800 text-slate-300"
                         }`}>
-                          {event.result}
+                          {formatDemoEventResult(event.result, feedTruthState, locale)}
                         </span>
                       </div>
                       <p className="mt-1 text-slate-300">
@@ -4655,7 +4857,7 @@ function DemoCrmDashboard({
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-4">
           <div className="demo-lab-crm-ledger-head">
             <p className="demo-lab-crm-ledger-eyebrow">Operacion comercial conectada</p>
-            <h3 className="demo-lab-crm-ledger-title">CRM live desde cada tap verificado</h3>
+            <h3 className="demo-lab-crm-ledger-title">CRM demo desde eventos y previews claramente rotulados</h3>
           </div>
           <div className="demo-lab-crm-tabs flex gap-2" role="tablist" aria-label="Vistas del CRM Demo Lab">
             {(["leads", "tickets", "orders", "taps"] as const).map((tab) => (
@@ -4975,15 +5177,15 @@ function DemoCrmDashboard({
           {/* ALL SCANS HISTORIAL TABLE */}
           {activeTab === "taps" && (
             <>
-            <div className="demo-lab-crm-mobile-cards" aria-label="Escaneos verificados para mobile">
+            <div className="demo-lab-crm-mobile-cards" aria-label="Eventos del Demo Lab para mobile">
               {liveEvents.length === 0 ? (
                 <DemoCrmMobileEmpty message="No hay escaneos historicos registrados. Simula un tap para ver el trail operativo." />
               ) : (
                 liveEvents.map((event) => (
                   <article key={event.id || `${event.created_at}-${event.uidMasked}`} className="demo-lab-crm-mobile-card">
                     <div className="demo-lab-crm-mobile-card__head">
-                      <span>Tap verificado</span>
-                      <b className={`demo-lab-crm-status ${getTapStatusClass(event.result)}`}>{event.result || "N/A"}</b>
+                      <span>{canUseVerifiedDemoLanguage(feedTruthState) && isPositiveDemoVerdict(event.result) ? "Evidencia publica" : feedTruthState === "recorded_events" ? "Evento registrado" : "Preview de tap"}</span>
+                      <b className={`demo-lab-crm-status ${getTapStatusClass(event.result)}`}>{formatDemoEventResult(event.result, feedTruthState, locale)}</b>
                     </div>
                     <strong>{event.city || "Sin dato"}</strong>
                     <p>{event.product_name || activeVertical?.product || "Lote General"}</p>
@@ -5003,7 +5205,7 @@ function DemoCrmDashboard({
                   <th className="py-3 px-4">Código País</th>
                   <th className="py-3 px-4">Producto</th>
                   <th className="py-3 px-4">Tag UID</th>
-                  <th className="py-3 px-4">Veredicto Cripto</th>
+                  <th className="py-3 px-4">Estado / evidencia</th>
                   <th className="py-3 px-4">Fecha Toque</th>
                 </tr>
               </thead>
@@ -5014,7 +5216,7 @@ function DemoCrmDashboard({
                   </tr>
                 ) : (
                   liveEvents.map((event) => {
-                    const isSuccess = event.result === "AUTHENTICATED" || event.result === "VERIFIED" || event.result === "OK";
+                    const isSuccess = canUseVerifiedDemoLanguage(feedTruthState) && isPositiveDemoVerdict(event.result);
                     const isRisk = event.result === "REPLAY_FAIL" || event.result === "SUSPICIOUS" || event.result === "FAIL";
                     return (
                       <tr key={event.id || `${event.created_at}-${event.uidMasked}`} className="hover:bg-white/5 transition">
@@ -5030,7 +5232,7 @@ function DemoCrmDashboard({
                               ? "bg-rose-500/10 text-rose-400 border border-rose-400/20" 
                               : "bg-slate-800 text-slate-300 border border-slate-700"
                           }`}>
-                            {event.result}
+                            {formatDemoEventResult(event.result, feedTruthState, locale)}
                           </span>
                         </td>
                         <td className="py-3 px-4 text-slate-500">{formatTime(event.created_at || "")}</td>

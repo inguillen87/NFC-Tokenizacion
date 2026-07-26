@@ -6,7 +6,7 @@ Este documento sirve como manual estratégico y de preparación de ventas (Sales
 
 ## 1. El Gran Combate: NFC Criptográfico nexID vs. Código QR Tradicional
 
-Esta es la pregunta más frecuente. La respuesta corta es: **El QR es un cartel estático que se copia con una fotocopia; el chip nexID es un microprocesador de seguridad activa que valida la presencia física del producto.**
+Esta es la pregunta más frecuente. La respuesta corta es: **El QR impreso puede copiarse con una foto; un NTAG 424 DNA provisionado genera una respuesta criptográfica dinámica que nexID valida contra el lote, el contador y la política anti-replay. Esa evidencia corresponde al tag y no prueba por sí sola el contenido, el origen ni la presencia física del producto.**
 
 ### Tabla Comparativa de Tecnologías
 
@@ -14,12 +14,12 @@ Esta es la pregunta más frecuente. La respuesta corta es: **El QR es un cartel 
 | :--- | :--- | :--- |
 | **Copiabilidad / Fraude** | **Crítica.** Cualquier persona le saca una foto y puede imprimir 10,000 etiquetas iguales. | **Alta resistencia.** Cada toque genera una firma criptográfica dinámica de un solo uso (NFC SUN), validada server-side. |
 | **Experiencia de Usuario** | **Fricción.** Requiere abrir la cámara, enfocar, buena luz y presionar un enlace flotante. | **Rápida.** Solo requiere acercar el teléfono a la botella (tap); no necesita app y la velocidad depende del teléfono/red. |
-| **Detección de Apertura** | **Nula.** El QR no cambia si la botella ya fue abierta, rellenada o adulterada. | **Física.** El circuito TagTamper permite registrar en nexID/DPP que el sello fue abierto o alterado. |
-| **Geolocalización Antifraude** | **Fácil de engañar.** Solo reporta la IP de red del navegador del usuario de forma estática. | **Señales de riesgo.** Cruza tap físico, replay, región aproximada, timing y patrón de lecturas para levantar alertas. |
+| **Señal de Apertura** | **Nula.** El QR no cambia si la botella ya fue abierta. | **Estado TT reportado.** Si el circuito TagTamper fue integrado correctamente al cierre, nexID/DPP registra el estado abierto/cerrado reportado; no certifica por si solo el contenido ni la integridad fisica completa. |
+| **Geolocalización Antifraude** | **Fácil de engañar.** Solo reporta la IP de red del navegador del usuario de forma estática. | **Señales de riesgo.** Cruza mensaje NFC, replay, región aproximada reportada, timing y patrón de lecturas para levantar alertas. Ubicación y dispositivo siguen siendo señales potencialmente manipulables. |
 | **Estatus y Valor de Lujo** | **Bajo.** Asociado a cartas de restaurantes baratos, menús digitales y folletos de supermercado. | **Premium.** Asociado a tarjetas de crédito de metal black, pasaportes biométricos y llaves de vehículos de alta gama. |
 
 ### Cómo responder en vivo:
-  > *"Mire, don [Nombre del dueño], un código QR en su etiqueta es el equivalente a poner un cartel en la puerta que dice 'Esto es original'. Cualquiera puede fotografiar ese cartel y pegarlo en una botella falsa. Con nexID, lo que ponemos en su botella no es solo un cartel: es un microchip de seguridad similar al que tiene una tarjeta contactless. Cada vez que alguien lo toca con el celular, el chip genera una prueba criptográfica dinámica. Si alguien intenta reutilizar una lectura o copiar la URL, el backend lo marca como replay o riesgo. Su QR es comunicación; nuestro chip suma seguridad física, DPP y propiedad digital cuando corresponde."*
+  > *"Mire, don [Nombre del dueño], un código QR en su etiqueta es el equivalente a poner un cartel en la puerta que dice 'Esto es original'. Cualquiera puede fotografiar ese cartel y pegarlo en una botella falsa. Con nexID, lo que ponemos en su botella no es solo un cartel: es un microchip de seguridad similar al que tiene una tarjeta contactless. Cada vez que alguien lo toca con el celular, el chip genera evidencia criptográfica dinámica. Si alguien intenta reutilizar una lectura o copiar la URL, el backend lo marca como replay o riesgo. Su QR es comunicación; nuestro chip suma evidencia dinámica, control anti-replay, DPP y propiedad digital cuando corresponde. Esa evidencia no certifica por sí sola el contenido de la botella."*
 
 ---
 
@@ -71,7 +71,7 @@ Esta es la pregunta más frecuente. La respuesta corta es: **El QR es un cartel 
 
 ### Pregunta A: *"¿Tengo que descargar una aplicación para usar nexID?"*
 * **Respuesta:**
-  > *"No hace falta descargar una app en teléfonos NFC compatibles. El usuario acerca el celular al punto marcado y, si el teléfono está desbloqueado, NFC está habilitado y hay conectividad para cargar el pasaporte, se abre una experiencia web segura con autenticidad, origen, garantía y beneficios. Sin app obligatoria ni registros pesados."*
+  > *"No hace falta descargar una app en teléfonos NFC compatibles. El usuario acerca el celular al punto marcado y, si el teléfono está desbloqueado, NFC está habilitado y hay conectividad, se abre una experiencia web segura con el resultado de la evidencia NFC, origen declarado, garantía y beneficios. Sin app obligatoria ni registros pesados."*
 
 ### Pregunta B: *"¿Esta etiqueta inteligente consume batería o emite radiación?"*
 * **Respuesta:**
@@ -90,5 +90,5 @@ Cuando expongas ante el dueño de la bodega, seguí esta estructura de demostrac
 1.  **Llevá dos botellas iguales:** Una con chip nexID y otra común con un código QR impreso.
 2.  **Mostrá la debilidad del QR:** Pedile al dueño que escanee el QR de la botella común. Luego, sacale una foto con tu celular a ese QR y escanealo desde la pantalla de tu móvil. Decile: *"Vea, acabo de duplicar la identidad de su botella en un segundo"*.
 3.  **Mostrá la fortaleza de nexID:** Pedile que apoye el celular en tu botella inteligente. Se abrirá el Portal nexID VIP mostrando la botella en 3D interactiva. 
-4.  **Simulá el descorche:** Si es posible, abrí la botella nexID TagTamper (o rompe el circuito de muestra) y volvé a apoyarla. El celular mostrará una alerta roja: *"ATENCIÓN: Botella abierta el 12/06/2026. Sello violado"*.
+4.  **Simulá el descorche:** Solo con una muestra cuyo circuito TagTamper esté integrado al cierre, abrí la botella (o interrumpí el circuito de demostración) y volvé a apoyarla. El celular debe mostrar: *"Estado TT reportado: abierto desde el 12/06/2026"*. Aclará que es la lectura del circuito, no una certificación independiente del contenido.
 5.  **Abrí tu notebook con el CRM:** Mostrale cómo su tap en Buenos Aires apareció en el mapa al instante con el score de riesgo en 0%. Decile: *"Si esta botella ahora viaja a Miami y alguien intenta duplicar el chip, el CRM le avisará a usted al instante. Usted tiene el control total"*.

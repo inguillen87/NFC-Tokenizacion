@@ -30,7 +30,7 @@ export default async function SupplierBatchPage() {
               <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-200">Factory Trust Room</p>
               <h2 className="mt-2 text-2xl font-black text-white">De orden industrial a tags activos sin exponer secretos</h2>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
-                Esta consola separa producción física, seguridad de llaves, recepción de manifiesto, QA y activación comercial. El proveedor recibe solo lo necesario para codificar; nexID conserva KMS, auditoría y activación.
+                Esta consola separa producción física, seguridad de llaves, recepción de manifiesto, QA y activación comercial. El proveedor recibe solo lo necesario para codificar; nexID cifra las claves de lote con una clave maestra de aplicación guardada como secreto de Vercel. No es Google Cloud KMS ni HSM.
               </p>
             </div>
             <span className="rounded-full border border-emerald-300/25 bg-emerald-500/10 px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-emerald-100">
@@ -41,7 +41,7 @@ export default async function SupplierBatchPage() {
             {[
               ["Superadmin", "Crea pedidos, genera llaves batch, exporta ZIP cifrado y ve auditoría completa."],
               ["Tenant admin", "Importa manifiesto, ejecuta QA con evidencia, activa lotes y opera CRM/marketplace."],
-              ["Proveedor", "Recibe BATCH_ID, pack cifrado de un solo uso, URL template y formato manifest. Nunca recibe KMS ni secretos en claro."],
+              ["Proveedor", "Recibe BATCH_ID, pack cifrado de un solo uso, URL template y formato manifest. Nunca recibe la clave maestra de aplicación ni secretos fuera del pack autorizado."],
             ].map(([title, body]) => (
               <div key={title} className="rounded-2xl border border-white/10 bg-slate-900/55 p-4">
                 <h3 className="text-sm font-black text-white">{title}</h3>
@@ -141,7 +141,7 @@ export default async function SupplierBatchPage() {
           <li>Activación: queda bloqueada hasta manifiesto importado, cantidad esperada y QA aprobado.</li>
         </ul>
         <p className="mt-3 rounded-xl border border-amber-300/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-          No se expone KMS. No se guardan llaves en claro en frontend. No se ancla cada tap on-chain; la prueba externa se hace por hashes agregados.
+          No se expone la clave maestra de aplicación. No se guardan llaves en claro en frontend. El flujo NFC actual usa cifrado server-side con secreto Vercel; Google Cloud KMS SOFTWARE queda reservado a custodia blockchain. No se ancla cada tap on-chain.
         </p>
       </Card>
 

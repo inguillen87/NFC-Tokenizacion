@@ -1,9 +1,9 @@
 {
   "vertical_slug": "pharma-secure",
-  "title": "Pharma / Cold Chain & Authenticity (Secure)",
+  "title": "Pharma / Cold Chain Evidence (Secure)",
   "recommended_tag": "NTAG424DNA_TT",
-  "narrative": "Authenticate medicine packs, prove chain-of-custody and support patient-facing verification with anti-diversion signals.",
-  "why_nfc_over_qr": "Better than QR/photo/email because regulated products need stronger provenance. NFC provides a physical identity layer on the pack; 424 DNA adds cryptographic checks, controlled redirects and event logging for every scan.",
+  "narrative": "Validate cryptographic tag messages, associate declared lot data and record authorized handoffs for patient-facing anti-diversion signals.",
+  "why_nfc_over_qr": "Better than a static QR because NTAG 424 DNA adds dynamic SUN checks, replay controls, controlled redirects and scan-event logging. These signals strengthen the digital record but do not by themselves prove medicine contents, cold-chain conditions or physical custody.",
   "batch_id": "PHARMA_SECURE_DEMO_001",
   "locale_defaults": [
     "es-AR",

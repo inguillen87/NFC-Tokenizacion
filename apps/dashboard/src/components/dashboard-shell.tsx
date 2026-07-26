@@ -227,7 +227,7 @@ export function DashboardShellInner({
     { href: "/consumer-network/offers", label: "Ofertas & Drops" },
     { href: "/consumer-network/order-requests", label: "Order Requests" },
     { href: "/users", label: "IAM Users" },
-    { href: "/mfa", label: "MFA Security" },
+    { href: "/mfa", label: "Account Security" },
     { href: "/sdk-vision", label: nav.sdkVision },
   ].filter((entry) => {
     if (entry.href === "/proof" && !canReadProof) return false;
@@ -293,7 +293,7 @@ export function DashboardShellInner({
   }
 
   const settingsItems = [
-    { href: "/mfa", label: "MFA Security", icon: ShieldCheck }
+    { href: "/mfa", label: "Account Security", icon: ShieldCheck }
   ];
   if (currentPermissions.includes("users:manage") || currentRole === "super-admin") {
     settingsItems.unshift({ href: "/users", label: "IAM Users", icon: Users });
@@ -464,31 +464,25 @@ export function DashboardShellInner({
           </div>
         </nav>
 
-        {/* Bottom usage stats widget for business owners */}
-        <div className="mt-8 rounded-2xl border border-white/5 bg-slate-950/60 p-4 shrink-0">
-          <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
-            <span>Uso de Lotes</span>
-            <span className="text-cyan-300">30%</span>
-          </div>
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-900">
-            <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-violet-500" style={{ width: "30%" }} />
-          </div>
-          <p className="mt-2 text-[10px] text-slate-500 leading-4 font-medium">
-            Has consumido 3 de tus 10 lotes contratados. Contacta a soporte para ampliar tu plan.
-          </p>
-        </div>
+        {/* Neutral pointers until billing and realtime metrics are supplied by trusted props. */}
+        <Link
+          href="/billing"
+          className="mt-8 block rounded-2xl border border-white/5 bg-slate-950/60 p-4 text-slate-400 transition hover:border-cyan-500/20 hover:text-cyan-200 shrink-0"
+        >
+          <span className="block text-[10px] font-black uppercase tracking-[0.15em]">Uso</span>
+          <span className="mt-2 block text-[10px] font-medium leading-4">Uso: consultar facturación</span>
+        </Link>
 
-        {/* Live Operations Stream Widget */}
-        <div className="mt-4 flex items-center justify-between rounded-xl border border-emerald-500/10 bg-emerald-500/5 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-emerald-400 shrink-0">
-          <div className="flex items-center gap-2">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-            </span>
-            <span>Stream Live</span>
-          </div>
-          <span className="text-[9px] opacity-70 font-bold">120 TPM</span>
-        </div>
+        <Link
+          href="/analytics"
+          className="mt-4 flex items-center justify-between rounded-xl border border-white/5 bg-slate-950/60 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400 transition hover:border-cyan-500/20 hover:text-cyan-200 shrink-0"
+        >
+          <span className="flex items-center gap-2">
+            <BarChart3 className="h-3.5 w-3.5" />
+            <span>Realtime: estado en Analytics</span>
+          </span>
+          <span aria-hidden="true" className="text-[11px]">&rarr;</span>
+        </Link>
 
         {canShowSandboxTools ? (
           <div className="mt-4 rounded-xl border border-cyan-500/20 bg-gradient-to-b from-cyan-950/40 to-transparent p-4 shadow-lg relative overflow-hidden shrink-0">

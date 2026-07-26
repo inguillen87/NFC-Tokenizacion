@@ -3,11 +3,12 @@ export const dynamic = "force-dynamic";
 
 import { createHash, randomBytes } from "node:crypto";
 import nodemailer from "nodemailer";
-import twilio from "twilio";
+import { enforceCriticalRateLimit, enforceWebhookAuthenticationRateLimit } from "../../../../lib/critical-rate-limit";
 import { sql } from "../../../../lib/db";
 import { ensureConsumerPortalSchema, ensureLeadsSchema } from "../../../../lib/commercial-runtime-schema";
 import { publishRealtimeEvent } from "../../../../lib/realtime-events";
 import { ensureRewardPublicToken, publicRewardPassUrl, publicRewardUrl } from "../../../../lib/reward-public-links";
+import { readAndVerifyTwilioInbound } from "../../../../lib/twilio-inbound-security";
 
 const DEFAULT_NEXID_WHATSAPP_MEDIA_URL = "https://app.nexid.lat/nexid-mark-pulse-512.png";
 const PUBLIC_CONSUMER_WEB_FALLBACK = "https://nexid.lat";
@@ -73,7 +74,7 @@ function xml(message: string, status = 200, mediaUrl?: string) {
   const media = mediaUrl ? `<Media>${escapeXml(mediaUrl)}</Media>` : "";
   return new Response(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(message)}${media}</Message></Response>`, {
     status,
-    headers: { "content-type": "text/xml; charset=utf-8" },
+    headers: { "content-type": "text/xml; charset=utf-8", "cache-control": "no-store" },
   });
 }
 
@@ -133,45 +134,6 @@ function publicApiBase(req: Request) {
   if (host && !/localhost|127\.0\.0\.1|\[::1\]/i.test(host)) return `https://${host.replace(/\/$/, "")}`;
   const url = new URL(req.url);
   return url.origin;
-}
-
-function isFalseEnv(value: string) {
-  return /^(0|false|no|off)$/i.test(value.trim());
-}
-
-function shouldValidateTwilioWebhook() {
-  if (isFalseEnv(env("TWILIO_VALIDATE_WEBHOOKS"))) return false;
-  return Boolean(env("TWILIO_AUTH_TOKEN")) && (process.env.NODE_ENV === "production" || env("VERCEL_ENV") === "production");
-}
-
-function hasInternalWebhookBypass(req: Request) {
-  const expected = env("ADMIN_API_KEY");
-  const received = clean(req.headers.get("x-nexid-internal-key"));
-  return Boolean(expected && received && received === expected);
-}
-
-function twilioWebhookUrl(req: Request) {
-  const url = new URL(req.url);
-  const forwardedHost = clean(req.headers.get("x-forwarded-host")).split(",")[0]?.trim();
-  const forwardedProto = clean(req.headers.get("x-forwarded-proto")).split(",")[0]?.trim();
-  if (forwardedHost) {
-    url.host = forwardedHost.replace(/\/$/, "");
-    url.protocol = forwardedProto === "http" ? "http:" : "https:";
-  }
-  return url.toString();
-}
-
-function formParamsObject(params: URLSearchParams) {
-  const output: Record<string, string> = {};
-  for (const [key, value] of params.entries()) output[key] = value;
-  return output;
-}
-
-function verifyTwilioWebhook(req: Request, params: URLSearchParams) {
-  if (!shouldValidateTwilioWebhook() || hasInternalWebhookBypass(req)) return true;
-  const signature = clean(req.headers.get("x-twilio-signature"));
-  if (!signature) return false;
-  return twilio.validateRequest(env("TWILIO_AUTH_TOKEN"), signature, twilioWebhookUrl(req), formParamsObject(params));
 }
 
 function formatArDate(iso: string) {
@@ -678,24 +640,10 @@ async function claimCampaignVoucher(input: {
     };
   }
 
-  const stockRows = await sql/*sql*/`
-    UPDATE rewards
-    SET stock_remaining = CASE
-      WHEN stock_remaining IS NULL THEN NULL
-      WHEN stock_remaining > 0 THEN stock_remaining - 1
-      ELSE stock_remaining
-    END,
-    updated_at = now()
-    WHERE id = ${reward.id}
-      AND (stock_remaining IS NULL OR stock_remaining > 0)
-    RETURNING stock_remaining
-  `;
-  if (reward.stock_remaining !== null && !stockRows[0]) throw new Error("voucher_out_of_stock");
-
   const code = await generateUniqueVoucherCode();
   const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
   const seal = redemptionSeal(code, consumerId, tenantId);
-  const idempotencyKey = `twilio:${tenantId}:${consumerId}:${input.messageSid || randomBytes(8).toString("hex")}`;
+  const idempotencyKey = `twilio-voucher:${tenantId}:${consumerId}:${reward.id}:post-tap-mendoza-2x1`;
   const metadata = {
     source: "twilio_whatsapp_campaign",
     channel: "whatsapp",
@@ -709,26 +657,87 @@ async function claimCampaignVoucher(input: {
     staff_instruction: "Validar código, teléfono y sello nexID antes de entregar beneficio.",
   };
   const claimRows = await sql/*sql*/`
-    INSERT INTO consumer_reward_claims (consumer_id, tenant_id, reward_id, tap_event_id, status, points_spent, redemption_code, idempotency_key, metadata_json)
-    VALUES (${consumerId}, ${tenantId}, ${reward.id}, ${input.context.last_tap_event_id || null}, 'claimed', 0, ${code}, ${idempotencyKey}, ${JSON.stringify(metadata)}::jsonb)
-    ON CONFLICT (idempotency_key) DO UPDATE SET updated_at = now()
-    RETURNING *
+    WITH locked_reward AS MATERIALIZED (
+      SELECT id
+      FROM rewards
+      WHERE id = ${reward.id}
+        AND (stock_remaining IS NULL OR stock_remaining > 0)
+      FOR UPDATE
+    ),
+    inserted_claim AS MATERIALIZED (
+      INSERT INTO consumer_reward_claims (
+        consumer_id, tenant_id, reward_id, tap_event_id, status,
+        points_spent, redemption_code, idempotency_key, metadata_json
+      )
+      SELECT ${consumerId}, ${tenantId}, locked_reward.id, ${input.context.last_tap_event_id || null},
+        'claimed', 0, ${code}, ${idempotencyKey}, ${JSON.stringify(metadata)}::jsonb
+      FROM locked_reward
+      ON CONFLICT (idempotency_key) DO NOTHING
+      RETURNING *
+    ),
+    updated_stock AS MATERIALIZED (
+      UPDATE rewards reward_row
+      SET stock_remaining = CASE WHEN reward_row.stock_remaining IS NULL THEN NULL ELSE reward_row.stock_remaining - 1 END,
+          updated_at = now()
+      FROM inserted_claim
+      WHERE reward_row.id = inserted_claim.reward_id
+        AND (reward_row.stock_remaining IS NULL OR reward_row.stock_remaining > 0)
+      RETURNING reward_row.id
+    )
+    SELECT inserted_claim.*
+    FROM inserted_claim, updated_stock
   `;
-  const publicToken = await ensureRewardPublicToken(String(claimRows[0].id), claimRows[0].metadata_json || metadata);
+  let claim = claimRows[0] || null;
+  let duplicate = false;
+  if (!claim) {
+    const existingRows = await sql/*sql*/`
+      SELECT *
+      FROM consumer_reward_claims
+      WHERE idempotency_key = ${idempotencyKey}
+        AND consumer_id = ${consumerId}
+        AND tenant_id = ${tenantId}
+        AND reward_id = ${reward.id}
+      LIMIT 1
+    `;
+    claim = existingRows[0] || null;
+    duplicate = Boolean(claim);
+  }
+  if (!claim) throw new Error("voucher_out_of_stock");
+  let claimMetadata: Record<string, unknown> = metadata;
+  if (claim.metadata_json && typeof claim.metadata_json === "object") claimMetadata = claim.metadata_json as Record<string, unknown>;
+  else if (typeof claim.metadata_json === "string") {
+    try { claimMetadata = JSON.parse(claim.metadata_json) as Record<string, unknown>; } catch { claimMetadata = metadata; }
+  }
+  const effectiveCode = String(claim.redemption_code || code);
+  const effectiveSeal = String(claimMetadata.verification_seal || seal);
+  const effectiveExpiresAt = String(claimMetadata.expires_at || expiresAt);
+  const publicToken = await ensureRewardPublicToken(String(claim.id), claimMetadata);
+  if (duplicate) {
+    return {
+      claim,
+      code: effectiveCode,
+      seal: effectiveSeal,
+      expiresAt: effectiveExpiresAt,
+      rewardTitle: String(reward.title),
+      duplicate: true,
+      emailDelivery: String(claimMetadata.voucher_email_delivery || "previous"),
+      publicToken,
+    };
+  }
 
   await sql/*sql*/`
     INSERT INTO consumer_notifications (consumer_id, tenant_id, type, title, body, action_url)
-    VALUES (${consumerId}, ${tenantId}, 'reward_claimed', 'Voucher nexID activado', ${`Codigo ${code} - ${reward.title}`}, ${publicRewardUrl(publicToken)})
+    VALUES (${consumerId}, ${tenantId}, 'reward_claimed', 'Voucher nexID activado', ${`Codigo ${effectiveCode} - ${reward.title}`}, ${publicRewardUrl(publicToken)})
   `;
 
   const emailDelivery = await sendVoucherEmail({
     to: input.context.email || null,
     displayName: input.context.display_name || null,
-    code,
-    seal,
+    code: effectiveCode,
+    seal: effectiveSeal,
     rewardTitle: String(reward.title),
     tenantSlug,
-    expiresAt,
+    expiresAt: effectiveExpiresAt,
     qrImageUrl: publicRewardPassUrl(input.req, publicToken),
     publicToken,
   });
@@ -737,17 +746,34 @@ async function claimCampaignVoucher(input: {
     UPDATE consumer_reward_claims
     SET metadata_json = metadata_json || ${JSON.stringify({ voucher_email_delivery: emailDelivery })}::jsonb,
         updated_at = now()
-    WHERE id = ${claimRows[0].id}
+    WHERE id = ${claim.id}
   `;
 
-  return { claim: claimRows[0], code, seal, expiresAt, rewardTitle: String(reward.title), duplicate: false, emailDelivery, publicToken };
+  return { claim, code: effectiveCode, seal: effectiveSeal, expiresAt: effectiveExpiresAt, rewardTitle: String(reward.title), duplicate: false, emailDelivery, publicToken };
 }
 
 export async function POST(req: Request) {
-  await ensureConsumerPortalSchema();
-  const form = new URLSearchParams(await req.text());
-  if (!verifyTwilioWebhook(req, form)) return xml("Firma Twilio invalida.", 403);
+  const sourceRateLimited = await enforceWebhookAuthenticationRateLimit(req);
+  if (sourceRateLimited) return sourceRateLimited;
+
+  const verified = await readAndVerifyTwilioInbound(req);
+  if (!verified.ok) {
+    return xml(
+      verified.reason === "body_too_large" ? "Solicitud demasiado grande." : "Solicitud no autorizada.",
+      verified.status,
+    );
+  }
+  const form = verified.form;
   const from = normalizePhone(clean(form.get("From")));
+  const rateLimited = await enforceCriticalRateLimit(req, {
+    rateClass: "webhook",
+    tenantId: "platform",
+    subjectId: from ? `twilio-sender:${from}` : "twilio-sender:unknown",
+    globalPrincipal: true,
+  });
+  if (rateLimited) return rateLimited;
+
+  await ensureConsumerPortalSchema();
   const body = clean(form.get("Body"));
   const profileName = clean(form.get("ProfileName"));
   const buttonText = clean(form.get("ButtonText"));

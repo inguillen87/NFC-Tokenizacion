@@ -21,20 +21,20 @@ export function HeroSection({ content, stats, locale, initialTheme = "dark" }: {
   const trustBadge = isEn ? "Enterprise Trusted" : isBr ? "Confiabilidade Corporativa" : "Confianza para empresas";
   const demoEyebrow = isEn ? "Interactive product experience" : isBr ? "Experiencia interativa do produto" : "Experiencia guiada de producto";
   const demoBody = isEn
-    ? "Bottle, wristband, seal and package: real tap, origin map, authenticity, club, points and marketplace in one guided scene."
+    ? "Bottle, wristband and package: a guided tap shows NFC/SUN message evidence, declared origin and reported seal state. It does not prove physical authenticity, contents, origin, seal or custody."
     : isBr
-    ? "Garrafa, pulseira, lacre e embalagem: toque real, mapa de origem, autenticidade, clube, pontos e marketplace em uma cena guiada."
-    : "Botella, pulsera, sello y envase: toque real, autenticidad, mapa de origen, club, puntos y tienda en una escena guiada.";
+    ? "Garrafa, pulseira e embalagem: um toque guiado mostra evidência da mensagem NFC/SUN, origem declarada e estado reportado do lacre. Não comprova autenticidade física, conteúdo, origem, lacre ou custódia."
+    : "Botella, pulsera y envase: un tap guiado muestra evidencia del mensaje NFC/SUN, origen declarado y estado reportado del sello. No prueba autenticidad física, contenido, origen, sello ni custodia.";
   const heroFlow = isEn
     ? ["Physical product", "Fresh tap", "Safe claim", "Portal + benefits"]
     : isBr
     ? ["Produto fisico", "Toque fresco", "Claim seguro", "Portal + beneficios"]
     : ["Producto físico", "Tap fresco", "Reclamo seguro", "Portal + beneficios"];
   const heroAssurance = isEn
-    ? "No app download for the buyer. No crypto knowledge required. The tap explains authenticity, origin and next step."
+    ? "No app download or crypto knowledge required. The tap explains the tag-message result, declared data and next step—not a physical-product verdict."
     : isBr
-    ? "Sem app para o comprador. Sem exigir cripto. O toque explica autenticidade, origem e proximo passo."
-    : "Sin app para el comprador. Sin explicar cripto. El tap muestra evidencia, origen y próximo paso.";
+    ? "Sem app ou conhecimento de cripto. O toque explica o resultado da mensagem, os dados declarados e o próximo passo, não um veredito físico."
+    : "Sin app ni conocimientos de cripto. El tap explica el resultado del mensaje, los datos declarados y el próximo paso, no un veredicto físico.";
   const demoCta = isEn ? "Open Product Lab" : isBr ? "Abrir Laboratorio" : "Abrir laboratorio";
   const meetingCta = isEn ? "Schedule meeting" : isBr ? "Agendar reunião" : "Agendar reunión";
   const heroStats = [
@@ -134,65 +134,65 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
   const copy = isEn
     ? {
       eyebrow: "Understand it in 10 seconds",
-      title: "Tap the product. Know if it is real. Claim benefits only when the purchase is trusted.",
-      body: "nexID does not force people to understand NFC, cryptography or blockchain. First it shows the product, origin, seal status and the next safe step.",
+      title: "Tap the product. Read the tag evidence. Claim benefits only after the required checks.",
+      body: "nexID shows the NFC/SUN message result, declared product data and reported seal state. A tap alone does not prove physical authenticity, contents, origin, seal or custody.",
       primary: "Open Product Lab",
       secondary: "See mobile passport",
       claimTitle: "When can ownership or NFT open?",
-      claimBody: "Only after a fresh physical tap, verified email or phone, purchase proof or retailer token, and a risk score that does not look copied.",
+      claimBody: "Only after a fresh valid tag message, a validated contact channel, separately approved purchase evidence or retailer token, tenant policy and explicit approval.",
       steps: [
         { label: "Physical product", body: "The brand loads batch, photos, labels, rules and allowed claim policy." },
-        { label: "Fresh tap", body: "The person taps NFC/QR and sees authenticity, origin, map and seal state." },
-        { label: "Safe claim", body: "Email or phone plus fresh tap, purchase proof and risk score unlock ownership." },
-        { label: "Living portal", body: "Warranty, club, points, store, optional NFT and resale require product proof again." },
+        { label: "Fresh tap", body: "The person taps NFC/QR and sees the message result, declared origin, reported location and reported seal state." },
+        { label: "Safe claim", body: "Contact validation and evidence can start a claim; ownership opens only after explicit policy approval." },
+        { label: "Living portal", body: "Warranty, club, store, optional NFT and resale each require their relevant evidence and policy." },
       ],
       audiences: [
-        ["Consumer", "I know what I bought, where it came from and what I can do next."],
+        ["Consumer", "I see what the brand declared, which tag checks passed and what I can do next."],
         ["Brand", "I receive demand, geography, risk, leads, warranty and repurchase data."],
-        ["Retailer", "I validate purchase, reduce copy/replay and unlock benefits at checkout."],
+        ["Retailer", "I record purchase evidence, review copy/replay risk and unlock approved benefits at checkout."],
       ],
       rubros: "One engine for wine, events, cosmetics, agro, health, documents, governments and enterprise assets.",
     }
     : isBr
     ? {
       eyebrow: "Entender em 10 segundos",
-      title: "Toque o produto. Saiba se e real. Reivindique beneficios somente quando a compra for confiavel.",
-      body: "nexID nao obriga ninguem a entender NFC, criptografia ou blockchain. Primeiro mostra produto, origem, estado do lacre e proximo passo seguro.",
+      title: "Toque o produto. Leia a evidência da tag. Reivindique benefícios somente após os controles exigidos.",
+      body: "nexID mostra o resultado da mensagem NFC/SUN, os dados declarados e o estado reportado do lacre. O toque sozinho não comprova autenticidade física, conteúdo, origem, lacre ou custódia.",
       primary: "Abrir Laboratorio",
       secondary: "Ver passport mobile",
       claimTitle: "Quando a titularidade digital ou NFT pode ser habilitada?",
-      claimBody: "Somente depois de toque fisico fresco, email ou celular validado, comprovante ou token da loja, e score de risco sem sinais de copia.",
+      claimBody: "Somente após mensagem fresca e válida da tag, canal de contato validado, comprovante ou token da loja aprovado separadamente, política do tenant e aprovação explícita.",
       steps: [
         { label: "Produto fisico", body: "A marca carrega lote, fotos, etiquetas, regras e politica de claim." },
-        { label: "Toque fresco", body: "A pessoa toca NFC/QR e ve autenticidade, origem, mapa e estado do lacre." },
-        { label: "Claim seguro", body: "Email ou celular mais toque fresco, comprovante e score de risco liberam titularidade digital." },
-        { label: "Portal vivo", body: "Garantia, clube, pontos, loja, NFT opcional e revenda pedem prova fisica de novo." },
+        { label: "Toque fresco", body: "A pessoa toca NFC/QR e vê o resultado da mensagem, origem declarada, local informado e estado reportado do lacre." },
+        { label: "Claim seguro", body: "Contato e evidência podem iniciar o claim; titularidade exige aprovação explícita da política." },
+        { label: "Portal vivo", body: "Garantia, clube, loja, NFT opcional e revenda exigem sua evidência e política aplicáveis." },
       ],
       audiences: [
-        ["Consumidor", "Eu sei o que comprei, de onde veio e o que posso fazer agora."],
+        ["Consumidor", "Vejo o que a marca declarou, quais controles da tag passaram e o que posso fazer agora."],
         ["Marca", "Recebo demanda, geografia, risco, leads, garantia e recompra."],
-        ["Loja", "Valido compra, reduzo copia/replay e libero beneficios no checkout."],
+        ["Loja", "Registro evidência de compra, reviso risco de cópia/replay e libero benefícios aprovados."],
       ],
       rubros: "Um motor para vinho, eventos, cosmetica, agro, saude, documentos, governos e ativos empresariais.",
     }
     : {
       eyebrow: "Entendelo en 10 segundos",
       title: "Toca el producto. Ve el resultado de confianza. Reclama beneficios solo cuando la compra es confiable.",
-      body: "nexID no obliga a nadie a entender NFC, criptografía o blockchain. Primero muestra producto, origen, estado del sello y el próximo paso seguro.",
+      body: "nexID muestra el resultado del mensaje NFC/SUN, los datos declarados y el estado reportado del sello. El tap solo no prueba autenticidad física, contenido, origen, sello ni custodia.",
       primary: "Abrir laboratorio",
       secondary: "Ver pasaporte mobile",
       claimTitle: "¿Cuándo se habilita la propiedad digital o NFT?",
-      claimBody: "Solo después de tap físico fresco, email o celular validado, prueba de compra o token de tienda, y score de riesgo sin señales de copia.",
+      claimBody: "Solo después de un mensaje fresco y válido del tag, canal de contacto validado, evidencia de compra o token de tienda aprobado por separado, política del tenant y aprobación explícita.",
       steps: [
         { label: "Producto físico", body: "La marca carga lote, fotos, etiquetas, reglas y política de reclamo." },
-        { label: "Tap fresco", body: "La persona toca NFC/QR y ve autenticidad, origen, mapa y estado del sello." },
-        { label: "Reclamo seguro", body: "Email o celular más tap fresco, prueba de compra y score de riesgo habilitan propiedad digital." },
-        { label: "Portal vivo", body: "Garantía, club, puntos, tienda, NFT opcional y reventa piden prueba física otra vez." },
+        { label: "Tap fresco", body: "La persona toca NFC/QR y ve el resultado del mensaje, origen declarado, ubicación reportada y estado reportado del sello." },
+        { label: "Reclamo seguro", body: "Contacto y evidencia pueden iniciar el reclamo; la propiedad exige aprobación explícita de la política." },
+        { label: "Portal vivo", body: "Garantía, club, tienda, NFT opcional y reventa exigen su evidencia y política aplicables." },
       ],
       audiences: [
-        ["Consumidor", "Sé qué compré, de dónde vino y qué puedo hacer ahora."],
+        ["Consumidor", "Veo qué declaró la marca, qué controles del tag pasaron y qué puedo hacer ahora."],
         ["Marca", "Recibo demanda, geografía, riesgo, leads, garantía y recompra."],
-        ["Tienda", "Valido compra, reduzco copia/replay y libero beneficios en caja."],
+        ["Tienda", "Registro evidencia de compra, reviso riesgo de copia/replay y libero beneficios aprobados."],
       ],
       rubros: "Un motor para vinos, eventos, cosmética, agro, salud, documentos, gobiernos y activos empresariales.",
     };
@@ -366,10 +366,10 @@ export function EnterpriseTrustLayersSection({ locale }: { locale: string }) {
       ],
       cards: [
         { title: "QR / GS1", body: "Batch tracking, product data and GS1 Digital Link compliance at low cost.", meta: "Identity", icon: QrCode },
-        { title: "NFC 424 DNA", body: "Dynamic SUN/SDM response per tap, designed to resist copying and replay when keys, counters and server validation are correctly configured.", meta: "Authenticity", icon: Fingerprint },
+        { title: "NFC 424 DNA", body: "Dynamic SUN/SDM message per tap, designed to resist message copying and replay when keys, counters and server validation are correctly configured; it is not physical-product proof.", meta: "Tag evidence", icon: Fingerprint },
         { title: "Offline Verifier", body: "Your phone or reader works in warehouses and remote areas. Syncs to server when back online.", meta: "Field", icon: Cpu },
-        { title: "TagTamper", body: "Physical opening evidence: the tag changes state if the package was opened or broken.", meta: "Tamper", icon: ShieldCheck },
-        { title: "Polygon", body: "The buyer claims the product as theirs: creates a digital twin, activates a transferable warranty and can resell with a verified certificate.", meta: "Ownership", icon: BadgeCheck },
+        { title: "TagTamper", body: "Reports a TT-state change from the tag for review; it does not by itself prove the package, contents or physical opening.", meta: "Reported TT", icon: ShieldCheck },
+        { title: "Polygon", body: "After separate evidence and tenant approval, a buyer can receive a digital ownership record. The transaction verifies the digital claim, not the physical item.", meta: "Digital ownership", icon: BadgeCheck },
         { title: "IOTA", body: "Anchors selected supply-chain evidence as hashes or Merkle roots when audit policy requires it. Private product and customer data stay off-chain.", meta: "Supply Chain", icon: Network },
         { title: "UHF / IoT", body: "Pallets, cartons and industrial sensors: operational traceability without complicating consumer UX.", meta: "Industrial", icon: RadioTower },
       ],
@@ -387,10 +387,10 @@ export function EnterpriseTrustLayersSection({ locale }: { locale: string }) {
       ],
       cards: [
         { title: "QR / GS1", body: "Identidade visivel, dados do produto, resolver links e entrada low-cost para PMEs.", meta: "Identidade", icon: QrCode },
-        { title: "NFC 424 DNA", body: "Resposta SUN/SDM dinamica por tap, projetada para resistir copia e replay quando chaves, contadores e validacao server-side estao configurados corretamente.", meta: "Autenticidade", icon: Fingerprint },
+        { title: "NFC 424 DNA", body: "Mensagem SUN/SDM dinâmica por toque, projetada para resistir cópia da mensagem e replay quando chaves, contadores e validação server-side estão corretos; não é prova do produto físico.", meta: "Evidência da tag", icon: Fingerprint },
         { title: "Offline Verifier", body: "App ou leitor controlado para zonas rurais e industriais com chaves por device e sync posterior.", meta: "Campo", icon: Cpu },
-        { title: "TagTamper", body: "Evidencia fisica de abertura para garrafas, lacres, pharma e embalagens premium.", meta: "Tamper", icon: ShieldCheck },
-        { title: "Polygon", body: "O comprador reivindica o produto como seu: cria um gêmeo digital, ativa garantia transferível e pode revender com certificado verificado.", meta: "Propriedade", icon: BadgeCheck },
+        { title: "TagTamper", body: "Reporta uma mudança de estado TT para revisão; sozinho não comprova embalagem, conteúdo ou abertura física.", meta: "TT reportado", icon: ShieldCheck },
+        { title: "Polygon", body: "Após evidência separada e aprovação do tenant, o comprador pode receber um registro digital de titularidade. A transação verifica o claim digital, não o item físico.", meta: "Titularidade digital", icon: BadgeCheck },
         { title: "IOTA", body: "Ancora evidencias selecionadas da cadeia como hashes ou Merkle roots quando a politica de auditoria exige. Dados privados ficam fora da blockchain.", meta: "Cadeia de Suprimentos", icon: Network },
         { title: "UHF / IoT", body: "Pallets, logistica, sensores e rastreabilidade industrial sem complicar o consumidor.", meta: "Industrial", icon: RadioTower },
       ],
@@ -407,10 +407,10 @@ export function EnterpriseTrustLayersSection({ locale }: { locale: string }) {
       ],
       cards: [
         { title: "QR / GS1", body: "Identidad visible, datos de producto, resolver links y entrada low-cost para pymes.", meta: "Identidad", icon: QrCode },
-        { title: "NFC 424 DNA", body: "Respuesta SUN/SDM dinamica por tap, disenada para resistir copia y replay cuando claves, contadores y validacion server-side estan configurados correctamente.", meta: "Autenticidad", icon: Fingerprint },
-        { title: "Verificador Offline", body: "El celular o lector valida en campo o galpón sin internet. Al conectarse, sincroniza con el servidor.", meta: "Campo", icon: Cpu },
-        { title: "Sello Tamper", body: "Evidencia física de apertura: el sello cambia de estado si el envase fue abierto.", meta: "Tamper", icon: ShieldCheck },
-        { title: "Polygon", body: "El comprador reclama el producto como suyo: crea un gemelo digital, activa garantía transferible y puede revender con certificado verificado.", meta: "Propiedad", icon: BadgeCheck },
+        { title: "NFC 424 DNA", body: "Mensaje SUN/SDM dinámico por tap, diseñado para resistir copia del mensaje y replay cuando claves, contadores y validación server-side están bien configurados; no es prueba del producto físico.", meta: "Evidencia del tag", icon: Fingerprint },
+        { title: "Verificador Offline", body: "El celular o lector evalúa localmente el mensaje y la política disponible. Al conectarse, el servidor confirma el resultado digital.", meta: "Campo", icon: Cpu },
+        { title: "Sello Tamper", body: "Reporta un cambio de estado TT para revisión; por sí solo no prueba envase, contenido ni apertura física.", meta: "TT reportado", icon: ShieldCheck },
+        { title: "Polygon", body: "Después de evidencia separada y aprobación del tenant, el comprador puede recibir un registro de propiedad digital. La transacción valida el claim digital, no el objeto físico.", meta: "Propiedad digital", icon: BadgeCheck },
         { title: "IOTA", body: "Ancla evidencia seleccionada de cadena como hashes o Merkle roots cuando la política de auditoría lo exige. Los datos privados quedan fuera de blockchain.", meta: "Cadena de Suministro", icon: Network },
         { title: "UHF / IoT", body: "Pallets, cajas y sensores industriales: trazabilidad operacional sin complicar al consumidor.", meta: "Industrial", icon: RadioTower },
       ],
@@ -503,19 +503,19 @@ export function OfflineFieldOperationsSection({ locale }: { locale: string }) {
   const copy = isEn
     ? {
       eyebrow: "Offline and low-connectivity operations",
-      title: "Field verification for farms, wine cellars, plants, mines and warehouses without signal.",
-      body: "nexID allows authorized phones and scanners to work in areas without internet. The app securely saves the scan and issues a provisional pass. Upon regaining signal, the system syncs the data and issues the official authenticity verdict.",
+      title: "Field message checks for farms, wine cellars, plants, mines and warehouses without signal.",
+      body: "Authorized phones and scanners can evaluate the available tag message and local policy offline, then queue hashed evidence. Server sync issues the final digital message/policy result—not a verdict on physical authenticity, contents, origin, seal or custody.",
       docs: "Read offline architecture",
       demo: "Open offline DemoLab",
       phoneLabel: "Samsung field verifier",
       phoneStatus: "OFFLINE_LOCAL_PASS",
       phoneSub: "Provisional until backend sync",
-      phoneWarning: "Full authenticity, warranty and ownership verdict are issued when the device reconnects to the server.",
+      phoneWarning: "Server sync confirms replay and policy checks. Warranty and ownership remain separate approved workflows; no physical-product verdict is issued.",
       stages: [
         { label: "Enroll", body: "Security operator registers the device fingerprint and operator.", icon: Smartphone },
         { label: "Bundle", body: "Backend issues allowed BIDs, policy and key fingerprints only.", icon: KeyRound },
         { label: "Scan", body: "The app or reader queues hashed evidence in no-signal zones.", icon: CloudOff },
-        { label: "Sync", body: "nexID performs final replay, policy, warranty and proof checks.", icon: RotateCcw },
+        { label: "Sync", body: "nexID confirms replay and policy checks; warranty and ownership use separate evidence.", icon: RotateCcw },
       ],
       atlas: [
         ["Field", "Seed lots, rural depots and crop inputs"],
@@ -527,19 +527,19 @@ export function OfflineFieldOperationsSection({ locale }: { locale: string }) {
     : isBr
     ? {
       eyebrow: "Operacao offline e baixa conectividade",
-      title: "Verificacao de campo para fazendas, cavas, plantas, minas e armazens sem sinal.",
-      body: "nexID permite que celulares e leitores autorizados funcionem em areas sem internet. O app guarda a leitura com seguranca e emite um passe provisorio. Ao recuperar o sinal, o sistema sincroniza os dados e emite o veredicto oficial.",
+      title: "Validação de mensagens em campo para fazendas, cavas, plantas, minas e armazéns sem sinal.",
+      body: "Celulares e leitores autorizados avaliam a mensagem da tag e a política local disponível offline e enfileiram evidência com hash. O sync confirma o resultado digital, não autenticidade física, conteúdo, origem, lacre ou custódia.",
       docs: "Ler arquitetura offline",
       demo: "Abrir DemoLab offline",
       phoneLabel: "Scanner de campo",
-      phoneStatus: "VERIFICADO SEM SINAL",
+      phoneStatus: "PASSE LOCAL PROVISÓRIO",
       phoneSub: "Passe provisório até sincronizar",
-      phoneWarning: "Replay, politica, garantia, ownership e proof checks finais acontecem apos sync.",
+      phoneWarning: "O sync confirma replay e política. Garantia e ownership continuam fluxos separados com aprovação; não há veredito físico.",
       stages: [
         { label: "Enroll", body: "O administrador vincula o celular do operador com seguranca.", icon: Smartphone },
         { label: "Bundle", body: "O sistema envia permissoes e dados dos produtos para o celular.", icon: KeyRound },
-        { label: "Scan", body: "O app valida os produtos no campo mesmo sem internet.", icon: CloudOff },
-        { label: "Sync", body: "Ao conectar na internet, o celular atualiza o sistema central.", icon: RotateCcw },
+        { label: "Scan", body: "O app avalia a mensagem da tag e a política local mesmo sem internet.", icon: CloudOff },
+        { label: "Sync", body: "Ao conectar, o servidor confirma replay e política; outros direitos exigem evidência separada.", icon: RotateCcw },
       ],
       atlas: [
         ["Campo", "Lotes agro, depositos rurais e insumos"],
@@ -550,19 +550,19 @@ export function OfflineFieldOperationsSection({ locale }: { locale: string }) {
     }
     : {
       eyebrow: "Operación offline y baja conectividad",
-      title: "Verificación de campo para agro, cavas, plantas, minas y depósitos sin señal.",
-      body: "nexID permite que celulares y escáneres autorizados funcionen en zonas sin internet. La app guarda la lectura de forma segura y da un pase provisional en el momento. Al recuperar señal, el sistema sincroniza los datos y emite el veredicto oficial.",
+      title: "Validación de mensajes en campo para agro, cavas, plantas, minas y depósitos sin señal.",
+      body: "Celulares y escáneres autorizados evalúan el mensaje del tag y la política local disponible sin internet y encolan evidencia con hash. La sincronización confirma el resultado digital, no autenticidad física, contenido, origen, sello ni custodia.",
       docs: "Leer arquitectura offline",
       demo: "Abrir DemoLab offline",
       phoneLabel: "Escáner de campo",
-      phoneStatus: "VERIFICADO SIN RED",
+      phoneStatus: "PASE LOCAL PROVISIONAL",
       phoneSub: "Pase provisional hasta sincronizar",
-      phoneWarning: "El veredicto final de autenticidad, garantía y propiedad se emite al reconectar con el servidor.",
+      phoneWarning: "La sincronización confirma replay y política. Garantía y propiedad siguen flujos separados con aprobación; no se emite un veredicto físico.",
       stages: [
         { label: "Vincular", body: "El administrador vincula de forma segura el celular del operador.", icon: Smartphone },
         { label: "Permisos", body: "Se envian los permisos y datos de los productos al celular.", icon: KeyRound },
-        { label: "Campo", body: "La app valida los productos en el campo aunque no haya internet.", icon: CloudOff },
-        { label: "Sincronizar", body: "Al conectarse a internet, el celular actualiza el sistema central.", icon: RotateCcw },
+        { label: "Campo", body: "La app evalúa el mensaje del tag y la política local aunque no haya internet.", icon: CloudOff },
+        { label: "Sincronizar", body: "Al conectarse, el servidor confirma replay y política; otros derechos exigen evidencia separada.", icon: RotateCcw },
       ],
       atlas: [
         ["Campo", "Lotes agro, depositos rurales e insumos"],
@@ -705,7 +705,7 @@ export function PremiumVerticalShowcaseSection({ locale }: { locale: string }) {
     ? {
       kicker: "One platform, many industries",
       title: "nexID is more than a wine showcase. It is infrastructure for every physical asset that needs trust.",
-      body: "Start with QR when cost matters, add NFC or NTAG 424 DNA TT when the product needs cryptographic proof, and connect POS, logistics, loyalty and CRM without forcing the buyer into a confusing registration flow.",
+      body: "Start with QR when cost matters, add NFC or NTAG 424 DNA TT for cryptographic tag-message and reported-TT evidence, and connect POS, logistics, loyalty and CRM without presenting that evidence as proof of the physical item.",
       cta: "Open SDK & APIs",
       secondary: "Open Product Lab",
     }
@@ -713,14 +713,14 @@ export function PremiumVerticalShowcaseSection({ locale }: { locale: string }) {
     ? {
       kicker: "Uma plataforma, muitos setores",
       title: "nexID vai alem de uma vitrine de vinho. E infraestrutura para qualquer ativo fisico que precise de confianca.",
-      body: "Comece com QR quando custo importa, adicione NFC ou NTAG 424 DNA TT quando o produto precisa de prova criptografica, e conecte POS, logistica, loyalty e CRM sem empurrar o comprador para um cadastro confuso.",
+      body: "Comece com QR quando o custo importa, adicione NFC ou NTAG 424 DNA TT para evidência criptográfica da mensagem e TT reportado, e conecte POS, logística, loyalty e CRM sem apresentar isso como prova do item físico.",
       cta: "Abrir SDK & APIs",
       secondary: "Abrir Laboratorio",
     }
     : {
       kicker: "Una plataforma, muchos rubros",
       title: "nexID va mas alla de una vitrina de vinos. Es infraestructura para cualquier activo fisico que necesite confianza.",
-      body: "Empeza con QR cuando el costo importa, suma NFC o NTAG 424 DNA TT cuando el producto necesita prueba criptografica, y conecta POS, logistica, loyalty y CRM sin empujar al comprador a un registro confuso.",
+      body: "Empezá con QR cuando el costo importa, sumá NFC o NTAG 424 DNA TT para evidencia criptográfica del mensaje y TT reportado, y conectá POS, logística, loyalty y CRM sin presentarlo como prueba del objeto físico.",
       cta: "Abrir SDK & APIs",
       secondary: "Abrir laboratorio",
     };
@@ -773,18 +773,18 @@ export function PlainLanguageValueSection({ locale }: { locale: string }) {
     ? {
       eyebrow: "In plain language",
       title: "nexID is not a chip company. It turns each product into a direct trust and after-sales channel.",
-      body: "A premium product should not disappear after it leaves the factory or store. With nexID, every unit can prove it is real, show its story and keep the relationship alive with the buyer.",
+      body: "A premium product should not disappear after it leaves the factory or store. nexID validates tag messages, presents brand-declared history and keeps the buyer relationship alive without claiming that a tap proves the physical item.",
       primary: "Book a 20 minute demo",
       secondary: "Open customer journey",
       cards: [
-        { title: "For the brand", body: "Protect products, channels and reputation while collecting first-party data from real validations." },
-        { title: "For the customer", body: "Tap, understand what was bought, claim warranty, receive benefits and keep a digital certificate." },
-        { title: "For stores and distributors", body: "Validate purchase, reduce suspicious claims and activate campaigns by batch, city or channel." },
+        { title: "For the brand", body: "Protect channels and reputation while collecting first-party data from tag-message validations and approved claims." },
+        { title: "For the customer", body: "Tap, review declared product data, request warranty, receive approved benefits and keep a digital record." },
+        { title: "For stores and distributors", body: "Record purchase evidence, reduce suspicious claims and activate campaigns by batch, city or channel." },
       ],
       story: [
-        "Product is created with batch, origin and visual assets.",
-        "Customer taps NFC or QR and sees a clear answer: authentic, observed or blocked.",
-        "After purchase, contact validation and risk score unlock policy-based ownership, warranty and benefits.",
+        "A digital record is created with declared batch, origin and visual assets.",
+        "Customer taps NFC or QR and sees a clear message/policy result: valid, flagged or blocked.",
+        "After purchase, separately reviewed evidence and explicit policy approval can unlock ownership, warranty and benefits.",
         "If the case needs it, the certificate can be registered on Polygon and connected to wallet or marketplace under tenant policy.",
       ],
       note: "The user does not need to understand blockchain. The screen must simply say what happened, why it matters and what to do next.",
@@ -793,18 +793,18 @@ export function PlainLanguageValueSection({ locale }: { locale: string }) {
     ? {
       eyebrow: "Em palavras simples",
       title: "nexID nao e uma empresa de chips. Transforma cada produto em um canal direto de confianca e pos-venda.",
-      body: "Um produto premium nao deveria desaparecer depois da fabrica ou da loja. Com nexID, cada unidade prova que e real, conta sua historia e mantem a relacao com o comprador.",
+      body: "Um produto premium não deveria desaparecer depois da fábrica ou da loja. nexID valida mensagens da tag, mostra o histórico declarado pela marca e mantém a relação com o comprador sem afirmar que o toque prova o item físico.",
       primary: "Agendar demo de 20 min",
       secondary: "Ver jornada do cliente",
       cards: [
-        { title: "Para a marca", body: "Protege produto, canal e reputacao enquanto gera dados proprios de validacoes reais." },
-        { title: "Para o cliente", body: "Toca, entende o que comprou, ativa garantia, recebe beneficios e guarda certificado digital." },
-        { title: "Para lojas e distribuidores", body: "Valida compra, reduz reclamos suspeitos e ativa campanhas por lote, cidade ou canal." },
+        { title: "Para a marca", body: "Protege canal e reputação enquanto gera dados próprios de mensagens validadas e claims aprovados." },
+        { title: "Para o cliente", body: "Toca, consulta dados declarados, solicita garantia, recebe benefícios aprovados e guarda um registro digital." },
+        { title: "Para lojas e distribuidores", body: "Registra evidência de compra, reduz claims suspeitos e ativa campanhas por lote, cidade ou canal." },
       ],
       story: [
-        "Produto nasce com lote, origem e banco visual.",
-        "Cliente toca NFC ou QR e ve uma resposta clara: autentico, observado ou bloqueado.",
-        "Depois da compra, contato validado e score de risco liberam titularidade digital, garantia e beneficios.",
+        "O registro digital nasce com lote, origem e banco visual declarados.",
+        "Cliente toca NFC ou QR e vê um resultado claro da mensagem/política: válido, sinalizado ou bloqueado.",
+        "Depois da compra, evidência revisada separadamente e aprovação explícita podem liberar titularidade, garantia e benefícios.",
         "Se o caso pedir, o certificado pode ser registrado na Polygon e conectado a wallet ou marketplace sob politica do tenant.",
       ],
       note: "O usuario nao precisa entender blockchain. A tela deve explicar o que aconteceu, por que importa e qual e o proximo passo.",
@@ -816,14 +816,14 @@ export function PlainLanguageValueSection({ locale }: { locale: string }) {
       primary: "Agendar demo de 20 min",
       secondary: "Ver experiencia del cliente",
       cards: [
-        { title: "Para la marca", body: "Protege producto, canal y reputación mientras genera datos propios desde validaciones reales." },
-        { title: "Para el cliente", body: "Toca, entiende qué compró, activa garantía, recibe beneficios y guarda su certificado digital." },
-        { title: "Para tiendas y distribuidores", body: "Valida compra, reduce reclamos sospechosos y activa campanas por lote, ciudad o canal." },
+        { title: "Para la marca", body: "Protege canal y reputación mientras genera datos propios desde mensajes validados y reclamos aprobados." },
+        { title: "Para el cliente", body: "Toca, consulta datos declarados, solicita garantía, recibe beneficios aprobados y guarda un registro digital." },
+        { title: "Para tiendas y distribuidores", body: "Registra evidencia de compra, reduce reclamos sospechosos y activa campañas por lote, ciudad o canal." },
       ],
       story: [
-        "El producto nace con lote, origen y banco visual.",
-        "El cliente toca NFC o QR y ve una respuesta clara: válido, observado o bloqueado.",
-        "Después de la compra, contacto validado y score de riesgo habilitan propiedad digital, garantía y beneficios.",
+        "El registro digital nace con lote, origen y banco visual declarados.",
+        "El cliente toca NFC o QR y ve un resultado claro del mensaje y la política: válido, observado o bloqueado.",
+        "Después de la compra, evidencia revisada por separado y aprobación explícita pueden habilitar propiedad digital, garantía y beneficios.",
         "Si el caso lo necesita, el certificado puede registrarse en Polygon y conectarse a wallet o marketplace bajo política del tenant.",
       ],
       note: "El usuario no necesita entender blockchain. La pantalla tiene que explicar que paso, por que importa y cual es el proximo paso.",
@@ -879,12 +879,12 @@ export function CommercialPromiseSection({ locale }: { locale: string }) {
     ? {
       eyebrow: "Why companies choose nexID",
       title: "The product does not end at the sale. It becomes a live channel for trust, data and after-sales.",
-      body: "Every validation can prove authenticity, show origin, protect the channel, open warranty, trigger benefits and send useful data back to the brand.",
+      body: "Each validation can confirm a tag message and policy, show declared data, protect the channel and start governed after-sales actions. It does not prove the physical item, contents, origin, seal or custody.",
       cta: "Plan a pilot",
       secondary: "See architecture",
       items: [
-        ["Authenticity", "The buyer sees a clear answer: authentic, observed or blocked. No technical explanation needed."],
-        ["Traceability", "Origin, batch, store, distributor, tap location and product state become part of one readable story."],
+        ["NFC evidence", "The buyer sees a clear message/policy result: valid, flagged or blocked, without a false physical verdict."],
+        ["Declared traceability", "Declared origin, batch, store, distributor, reported tap location and TT state become one readable story."],
         ["After-sales", "Warranty, club, points, vouchers, support, marketplace and resale can open from the same passport."],
         ["Data for teams", "Marketing, operations, risk and sales get first-party signals by batch, city, channel and campaign."],
       ],
@@ -893,12 +893,12 @@ export function CommercialPromiseSection({ locale }: { locale: string }) {
     ? {
       eyebrow: "Por que empresas escolhem nexID",
       title: "O produto não termina na venda. Ele vira um canal vivo de confiança, dados e pós-venda.",
-      body: "Cada validação pode mostrar evidência de autenticidade, origem, estado, risco e próximos passos comerciais para a marca.",
+      body: "Cada validação confirma mensagem e política da tag, mostra dados declarados e inicia ações governadas. Não comprova item físico, conteúdo, origem, lacre ou custódia.",
       cta: "Planejar piloto",
       secondary: "Ver arquitetura",
       items: [
-        ["Autenticidade", "O comprador vê uma resposta clara: autêntico, observado ou bloqueado. Sem explicação técnica."],
-        ["Rastreabilidade", "Origem, lote, loja, distribuidor, local do toque e estado do produto viram uma história legível."],
+        ["Evidência NFC", "O comprador vê um resultado claro da mensagem/política: válido, sinalizado ou bloqueado, sem falso veredito físico."],
+        ["Rastreabilidade declarada", "Origem, lote, loja, distribuidor, local informado do toque e TT reportado formam uma história legível."],
         ["Pós-venda", "Garantia, clube, pontos, vouchers, suporte, marketplace e revenda podem abrir no mesmo passaporte."],
         ["Dados para equipes", "Marketing, operações, risco e vendas recebem sinais por lote, cidade, canal e campanha."],
       ],
@@ -906,12 +906,12 @@ export function CommercialPromiseSection({ locale }: { locale: string }) {
     : {
       eyebrow: "Por que una empresa elige nexID",
       title: "El producto no termina en la venta. Se convierte en un canal vivo de confianza, datos y postventa.",
-      body: "Cada validación puede mostrar evidencia de autenticidad, origen, estado, riesgo y próximos pasos comerciales para la marca.",
+      body: "Cada validación confirma el mensaje y la política del tag, muestra datos declarados e inicia acciones gobernadas. No prueba objeto físico, contenido, origen, sello ni custodia.",
       cta: "Planear un piloto",
       secondary: "Ver arquitectura",
       items: [
-        ["Autenticidad", "El comprador ve una respuesta clara: auténtico, observado o bloqueado. Sin explicación técnica."],
-        ["Trazabilidad", "Origen, lote, tienda, distribuidor, lugar del tap y estado del producto se cuentan como una historia simple."],
+        ["Evidencia NFC", "El comprador ve un resultado claro del mensaje y la política: válido, observado o bloqueado, sin falso veredicto físico."],
+        ["Trazabilidad declarada", "Origen, lote, tienda, distribuidor, ubicación reportada del tap y TT reportado forman una historia simple."],
         ["Postventa", "Garantía, club, puntos, vouchers, soporte, marketplace y reventa pueden abrir desde el mismo pasaporte."],
         ["Datos para equipos", "Marketing, operaciones, riesgo y ventas reciben señales por lote, ciudad, canal y campaña."],
       ],
@@ -1008,8 +1008,8 @@ export function AboutInmovarSection({ locale }: { locale: string }) {
 export function RadarSection({ radar, locale }: { radar: any; locale: string }) {
   const isEn = locale === "en";
   const isBr = locale === "pt-BR";
-  const liveLabel = isEn ? "Live Network" : isBr ? "Rede ao vivo" : "Red en vivo";
-  const liveBody = isEn ? "Global node visualization." : isBr ? "Visualizacao de nodos globais." : "Visualizacion de nodos globales.";
+  const demoLabel = isEn ? "Illustrative network" : isBr ? "Rede ilustrativa" : "Red ilustrativa";
+  const demoBody = isEn ? "Simulated nodes; not live telemetry." : isBr ? "Nodos simulados; nao e telemetria ao vivo." : "Nodos simulados; no es telemetría en vivo.";
   return (
     <section className="container-shell py-16">
       <div className="grid items-center gap-12 lg:grid-cols-2">
@@ -1031,8 +1031,8 @@ export function RadarSection({ radar, locale }: { radar: any; locale: string }) 
          </div>
          <div className="relative overflow-hidden">
             <PremiumTraceabilityGlobe
-              title="Red operativa global"
-              subtitle="Origen, taps, riesgo y rutas comerciales en vivo."
+              title="Vista global de trazabilidad"
+              subtitle="Origen, taps, riesgo y rutas ilustrativas con fuente declarada."
               caption="El mismo motor visual alimenta SDK, laboratorio de producto, CRM e Investor."
               points={traceabilityGlobePoints}
               routes={traceabilityGlobeRoutes}
@@ -1040,10 +1040,10 @@ export function RadarSection({ radar, locale }: { radar: any; locale: string }) 
             />
             <div className="absolute bottom-4 right-4 bg-slate-950/80 backdrop-blur-md border border-white/10 rounded-lg p-3 text-xs text-slate-300 shadow-xl">
                <div className="flex items-center gap-2 mb-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="font-bold text-white">{liveLabel}</span>
+                  <span className="w-2 h-2 rounded-full bg-amber-400" />
+                  <span className="font-bold text-white">{demoLabel}</span>
                </div>
-               {liveBody}
+               {demoBody}
             </div>
          </div>
       </div>
@@ -1087,11 +1087,11 @@ export function InteractiveDemoSection({ locale }: { locale: string }) {
                      </div>
                      <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?q=80&w=600')] bg-cover bg-center opacity-30" />
                      <div className="absolute inset-0 flex flex-col justify-end p-6 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent">
-                        <div className="inline-flex px-2 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold rounded mb-3 w-max">AUTÉNTICO</div>
+                        <div className="inline-flex px-2 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold rounded mb-3 w-max">DEMO · MENSAJE NFC VÁLIDO</div>
                         <h3 className="text-xl font-bold text-white">Gran Reserva Malbec</h3>
                         <p className="text-xs text-slate-300 mt-1">Mendoza, Argentina</p>
                         <div className="mt-4 w-full h-10 bg-white text-slate-950 rounded-lg flex items-center justify-center text-sm font-bold shadow-lg">
-                           Reclamar Propiedad
+                           Solicitar ownership
                         </div>
                      </div>
                   </div>
@@ -1116,12 +1116,12 @@ export function EventsTagPositioningSection({ locale }: { locale: string }) {
         "Harder to share casually than a screenshot QR.",
         "Ideal for event wristbands, credentials, tickets and brand activations.",
       ],
-      secureTitle: "NTAG 424 DNA TagTamper (premium anti-fraud)",
+      secureTitle: "NTAG 424 DNA TagTamper (premium tag-message evidence)",
       secureBullets: [
-        "Use this profile when anti-clone and tamper resistance are business critical.",
+        "Use this profile when dynamic message validation, replay resistance and reported TT state are business critical.",
         "Recommended for wine, cosmetics, docs/presence and high-risk supply chains.",
       ],
-      footer: "Message to buyers: NTAG215 = UX + control + serialisation. NTAG 424 DNA TT = strong anti-fraud.",
+      footer: "Message to buyers: NTAG215 = UX + control + serialisation. NTAG 424 DNA TT = stronger tag-message and reported-TT evidence, not proof of physical contents.",
     }
     : locale === "pt-BR"
     ? {
@@ -1135,17 +1135,17 @@ export function EventsTagPositioningSection({ locale }: { locale: string }) {
         "Mais difícil de compartilhar casualmente do que um QR por screenshot.",
         "Ideal para pulseiras, credenciais, tickets e ativações de marca.",
       ],
-      secureTitle: "NTAG 424 DNA TagTamper (anti-fraude premium)",
+      secureTitle: "NTAG 424 DNA TagTamper (evidência premium da tag)",
       secureBullets: [
-        "Use este perfil quando anti-clone e tamper são críticos.",
+        "Use este perfil quando mensagem dinâmica, resistência a replay e TT reportado são críticos.",
         "Recomendado para vinho, cosméticos, docs/presence e cadeias de risco.",
       ],
-      footer: "Mensagem comercial: NTAG215 = UX + controle + serialização. NTAG 424 DNA TT = anti-fraude forte.",
+      footer: "Mensagem comercial: NTAG215 = UX + controle + serialização. NTAG 424 DNA TT = evidência mais forte da mensagem e TT reportado, não prova do conteúdo físico.",
     }
     : {
       eyebrow: "Posicionamiento Eventos / NTAG215",
       title: "Por que NTAG215 supera al QR en muchos flujos de eventos",
-      intro: "NTAG215 está pensado para experiencia por toque, serialización y control operativo en pulseras, entradas y credenciales. No es antifraude premium.",
+      intro: "NTAG215 está pensado para experiencia por toque, serialización y control operativo en pulseras, entradas y credenciales. No aporta mensajes SUN dinámicos ni prueba del objeto físico.",
       basicTitle: "NTAG215 Basico (eventos y activaciones)",
       basicBullets: [
         "Ingreso mas rapido que QR, email o foto en accesos con filas.",
@@ -1153,12 +1153,12 @@ export function EventsTagPositioningSection({ locale }: { locale: string }) {
         "Mas dificil de compartir casualmente que un QR por captura.",
         "Ideal para pulseras, credenciales, tickets y activaciones de marca.",
       ],
-      secureTitle: "NTAG 424 DNA TagTamper (anti-fraude premium)",
+      secureTitle: "NTAG 424 DNA TagTamper (evidencia premium del tag)",
       secureBullets: [
-        "Usa este perfil cuando anti-clonación y sello físico sean críticos.",
+        "Usá este perfil cuando mensaje dinámico, resistencia a replay y TT reportado sean críticos.",
         "Recomendado para vino, cosmética, documentos, presencia y cadenas de alto riesgo.",
       ],
-      footer: "Mensaje comercial: NTAG215 = experiencia + control + serializacion. NTAG 424 DNA TT = antifraude fuerte.",
+      footer: "Mensaje comercial: NTAG215 = experiencia + control + serialización. NTAG 424 DNA TT = evidencia más fuerte del mensaje y TT reportado, no prueba del contenido físico.",
     };
 
   return (
@@ -1202,10 +1202,10 @@ export function EventsTagPositioningSection({ locale }: { locale: string }) {
           </div>
           <div className="mt-5 grid gap-3 md:grid-cols-4">
             {[
-              { name: "QR / GS1 Digital Link", tag: "Contenido", body: "La entrada mas economica: URL verificable, envase masivo, campanas, manuales y analitica basica. Ideal cuando no se necesita anti-clon fuerte." },
+              { name: "QR / GS1 Digital Link", tag: "Contenido", body: "La entrada mas economica: resolver, envase masivo, campanas, manuales y analitica basica. Ideal cuando no se necesita evidencia criptografica dinamica del mensaje." },
               { name: "NTAG213 / NTAG215", tag: "Toque simple", body: "Bajo costo NFC para entradas, credenciales, beneficios y productos de rotacion: UID serializado, reglas del servidor y experiencia sin camara." },
-              { name: "NTAG 424 DNA", tag: "SUN/SDM", body: "Cada toque genera datos dinámicos verificables contra copias, clones y URLs reutilizadas. Recomendado para autenticidad fuerte sin sello físico." },
-              { name: "424 DNA TT + token", tag: "Sello + política", body: "Para vino, lujo, salud y activos premium: detecta apertura física, cambia el pasaporte y prepara propiedad digital/tokenización según política de compra." },
+              { name: "NTAG 424 DNA", tag: "SUN/SDM", body: "Cada toque genera un mensaje dinámico verificable para detectar copia del mensaje, replay y URLs reutilizadas. No certifica el objeto físico." },
+              { name: "424 DNA TT + token", tag: "TT + política", body: "Para vino, lujo, salud y activos premium: reporta estado TT, actualiza el pasaporte y prepara propiedad digital sólo según evidencia y política aprobadas." },
             ].map((item, index) => (
               <article key={item.name} className="risk-stack-card relative rounded-xl border border-white/10 bg-white/[0.03] p-4">
                 <div className="mb-3 flex items-center justify-between gap-2">
@@ -1237,32 +1237,32 @@ export function PlansSection({ content, locale }: { content: Content; locale: st
     {
       visual: "ntag",
       title: "Toque seguro",
-      example: "NTAG215 o NTAG 424 DNA con UID/SUN dinamico para serializacion, anti copia y control del servidor.",
+      example: "NTAG215 o NTAG 424 DNA con UID/SUN dinámico para serialización, detección de copia/replay del mensaje y control del servidor.",
       fit: "Para eventos, credenciales, productos de valor medio y operaciones con validacion frecuente.",
     },
     {
       visual: "tt",
       title: "Premium tokenizado",
       example: "NTAG 424 DNA TT + pasaporte + certificado Polygon opcional para propiedad digital, historial y tienda.",
-      fit: "Para vino, lujo, cosmética, salud y activos donde apertura, origen y postventa importan.",
+      fit: "Para vino, lujo, cosmética, salud y activos donde TT reportado, datos de origen declarados y postventa importan.",
     },
   ];
   const enrichedPlanEducation = isEn
     ? [
-      { visual: "qr", title: "Basic launch", example: "Common QR or NFC UID for manuals, landing pages, warranty forms and first scan analytics.", fit: "Use it when speed matters more than anti-clone protection.", flow: ["Customer scans", "Content opens", "Lead or warranty is saved"] },
+      { visual: "qr", title: "Basic launch", example: "Common QR or NFC UID for manuals, landing pages, warranty forms and first scan analytics.", fit: "Use it when speed matters more than dynamic cryptographic message evidence.", flow: ["Customer scans", "Content opens", "Lead or warranty is saved"] },
       { visual: "ntag", title: "Secure tap", example: "NTAG215 for events or NTAG 424 DNA for dynamic SUN, serialized UID and server-side rules.", fit: "Use it for tickets, credentials, mid-value products and frequent validation.", flow: ["Phone taps", "Backend checks UID/SUN", "Dashboard records location"] },
-      { visual: "tt", title: "Premium tokenized", example: "NTAG 424 DNA TT + passport + optional Polygon certificate for ownership, lifecycle and marketplace.", fit: "Use it for wine, luxury, cosmetics, pharma and assets where opening, origin and resale matter.", flow: ["Seal breaks", "Passport state changes", "Ownership or voucher opens"] },
+      { visual: "tt", title: "Premium tokenized", example: "NTAG 424 DNA TT + passport + optional Polygon record for policy-approved ownership, lifecycle and marketplace.", fit: "Use it where reported TT, declared origin and resale workflows matter.", flow: ["Tag reports TT change", "Passport records the report", "Policy reviews ownership or voucher"] },
     ]
     : isBr
     ? [
-      { visual: "qr", title: "Basic real", example: "QR comum ou NFC UID para manuais, landing pages, garantia e primeiras metricas de scan.", fit: "Use quando velocidade importa mais que protecao anti-clone.", flow: ["Cliente escaneia", "Conteudo abre", "Lead ou garantia salva"] },
+      { visual: "qr", title: "Basic", example: "QR comum ou NFC UID para manuais, landing pages, garantia e primeiras metricas de scan.", fit: "Use quando velocidade importa mais que evidencia criptografica dinamica da mensagem.", flow: ["Cliente escaneia", "Conteudo abre", "Lead ou garantia salva"] },
       { visual: "ntag", title: "Secure tap", example: "NTAG215 para eventos ou NTAG 424 DNA com SUN dinamico, UID serializado e regras server-side.", fit: "Para ingressos, credenciais, produtos de valor medio e validacao frequente.", flow: ["Celular toca", "Backend valida UID/SUN", "Dashboard registra local"] },
-      { visual: "tt", title: "Premium tokenizado", example: "NTAG 424 DNA TT + passaporte + certificado Polygon opcional para titularidade digital, ciclo de vida e marketplace.", fit: "Para vinho, luxo, cosmeticos, pharma e ativos onde abertura, origem e revenda importam.", flow: ["Lacre rompe", "Passaporte muda estado", "Titularidade ou voucher abre"] },
+      { visual: "tt", title: "Premium tokenizado", example: "NTAG 424 DNA TT + passaporte + registro Polygon opcional para titularidade aprovada por política, ciclo de vida e marketplace.", fit: "Para casos em que TT reportado, origem declarada e revenda importam.", flow: ["Tag reporta mudança TT", "Passaporte registra o reporte", "Política revisa titularidade ou voucher"] },
     ]
     : [
       { visual: "qr", title: "Basico real", example: "QR comun o NFC UID para manuales, paginas, registro de garantia y primeras metricas de escaneo.", fit: "Usalo cuando importa lanzar rapido y el riesgo de copia todavia no es critico.", flow: ["Cliente escanea", "Abre contenido", "Se guarda contacto o garantia"] },
       { visual: "ntag", title: "Toque seguro", example: "NTAG215 para eventos o NTAG 424 DNA con SUN dinamico, UID serializado y reglas del servidor.", fit: "Para entradas, credenciales, productos de valor medio y operaciones con validacion frecuente.", flow: ["El telefono toca", "Servidor valida UID/SUN", "Panel registra ubicacion"] },
-      { visual: "tt", title: "Premium tokenizado", example: "NTAG 424 DNA TT + pasaporte + certificado Polygon opcional para propiedad digital, historial y tienda.", fit: "Para vino, lujo, cosmética, salud y activos donde apertura, origen y reventa importan.", flow: ["Se rompe el sello", "El pasaporte cambia estado", "Se revisa propiedad o voucher"] },
+      { visual: "tt", title: "Premium tokenizado", example: "NTAG 424 DNA TT + pasaporte + registro Polygon opcional para propiedad aprobada por política, historial y tienda.", fit: "Para casos donde TT reportado, origen declarado y reventa importan.", flow: ["El tag reporta cambio TT", "El pasaporte registra el reporte", "La política revisa propiedad o voucher"] },
     ];
 
   return (
@@ -1358,72 +1358,72 @@ export function PremiumIdentitySection({ content, locale }: { content: Content; 
     ? {
       eyebrow: "Premium layer",
       title: "Digital ownership for products that keep value after the tap",
-      body: "The premium layer turns each verified unit into a living passport: provenance, warranty, policy-based ownership and marketplace actions stay attached to the physical item.",
+      body: "The premium layer associates a living passport with a declared asset reference after separate evidence and policy approval. Tag validation and the digital record do not prove physical authenticity, contents, origin, seal or custody.",
       demo: "Open premium flow",
       docs: "Read architecture",
-      wallet: "Wallet / custody",
+      wallet: "Wallet / digital custody",
       proofTitle: "Premium passport example",
-      proofStatus: "AUTH_OK / OPENED",
+      proofStatus: "TAG_MSG_VALID / TT_OPEN_REPORTED",
       proofRows: [
-        ["Origin", "Uco Valley, Mendoza"],
-        ["Seal", "NTAG 424 DNA TT opened"],
-        ["Token", "Polygon claim ready"],
-        ["Recipient", "Buyer wallet or tenant custody"],
+        ["Declared origin", "Uco Valley, Mendoza"],
+        ["Reported TT", "NTAG 424 DNA TT open"],
+        ["Token", "Optional Polygon claim - policy and RPC confirmation required"],
+        ["Digital recipient", "Buyer wallet or tenant digital custody"],
       ],
       cards: [
-        { title: "Ownership passport", body: "After authentication, the buyer can claim a digital ownership record tied to a derived asset reference, batch and product state." },
+        { title: "Ownership passport", body: "After separate purchase evidence and tenant approval, the buyer can receive a digital ownership record tied to a declared asset reference and batch." },
         { title: "Warranty lifecycle", body: "Warranty, service, return and support events become auditable lifecycle updates, not loose forms." },
-        { title: "Provenance records", body: "Origin, production lot, reseller path and customer tap can be shown as a trust trail." },
+        { title: "Declared provenance records", body: "Declared origin, lot, channel and reported tap events form an auditable timeline, not proof of a physical route." },
         { title: "Marketplace unlocks", body: "Vouchers, club access, resale rules and premium tokenization become post-tap actions." },
       ],
-      steps: ["Verify product", "Claim passport", "Attach warranty", "Unlock marketplace"],
+      steps: ["Validate tag message", "Review claim evidence", "Approve passport", "Open governed actions"],
     }
     : isBr
     ? {
       eyebrow: "Camada premium",
       title: "Titularidade digital para produtos que seguem gerando valor",
-      body: "A camada premium transforma cada unidade verificada em um passaporte vivo: proveniencia, garantia, titularidade por politica e acoes de marketplace ficam ligadas ao item fisico.",
+      body: "A camada premium associa um passaporte a uma referência declarada do ativo após evidência separada e aprovação da política. A validação da tag e o registro digital não comprovam autenticidade física, conteúdo, origem, lacre ou custódia.",
       demo: "Abrir fluxo premium",
       docs: "Ler arquitetura",
-      wallet: "Wallet / custodia",
+      wallet: "Wallet / custódia digital",
       proofTitle: "Exemplo de passport premium",
-      proofStatus: "AUTH_OK / OPENED",
+      proofStatus: "TAG_MSG_VALID / TT_OPEN_REPORTED",
       proofRows: [
-        ["Origem", "Valle de Uco, Mendoza"],
-        ["Lacre", "NTAG 424 DNA TT aberto"],
-        ["Token", "Claim Polygon pronto"],
-        ["Destinatario", "Carteira do comprador ou custodia do tenant"],
+        ["Origem declarada", "Valle de Uco, Mendoza"],
+        ["TT reportado", "NTAG 424 DNA TT aberto"],
+        ["Token", "Polygon opcional - sujeito a politica e confirmacao RPC"],
+        ["Destinatário digital", "Carteira do comprador ou custódia digital do tenant"],
       ],
       cards: [
-        { title: "Passaporte de titularidade", body: "Depois da autenticacao, o comprador pode reclamar um registro digital ligado a referencia derivada do ativo, lote e estado." },
+        { title: "Passaporte de titularidade", body: "Após evidência de compra separada e aprovação do tenant, o comprador pode receber um registro digital ligado à referência declarada e ao lote." },
         { title: "Ciclo de garantia", body: "Garantia, suporte, devolucao e servico viram eventos auditaveis, nao formularios soltos." },
-        { title: "Registros de proveniencia", body: "Origem, lote, canal revendedor e toque do cliente aparecem como trilha de confianca." },
+        { title: "Registros de proveniência declarada", body: "Origem, lote, canal e eventos reportados formam uma linha do tempo auditável, não prova de rota física." },
         { title: "Aberturas de marketplace", body: "Vouchers, clube, regras de revenda e tokenizacao premium viram acoes pos-toque." },
       ],
-      steps: ["Verificar produto", "Reclamar passaporte", "Anexar garantia", "Abrir marketplace"],
+      steps: ["Validar mensagem da tag", "Revisar evidência do claim", "Aprovar passaporte", "Abrir ações governadas"],
     }
     : {
       eyebrow: "Capa premium",
       title: "Propiedad digital para productos que siguen generando valor",
-      body: "La capa premium convierte cada unidad verificada en un pasaporte vivo: procedencia, garantía, propiedad por política y acciones de tienda quedan asociadas al objeto físico.",
+      body: "La capa premium asocia un pasaporte a una referencia declarada del activo después de evidencia separada y aprobación de política. La validación del tag y el registro digital no prueban autenticidad física, contenido, origen, sello ni custodia.",
       demo: "Abrir flujo premium",
       docs: "Ver arquitectura",
-      wallet: "Billetera / custodia",
+      wallet: "Billetera / custodia digital",
       proofTitle: "Ejemplo de pasaporte premium",
-      proofStatus: "AUTENTICO / ABIERTO",
+      proofStatus: "MENSAJE_VALIDO / TT_ABIERTO_REPORTADO",
       proofRows: [
-        ["Origen", "Valle de Uco, Mendoza"],
-        ["Sello", "NTAG 424 DNA TT abierto"],
-        ["Token", "Claim Polygon listo"],
-        ["Destinatario", "Billetera del comprador o custodia del tenant"],
+        ["Origen declarado", "Valle de Uco, Mendoza"],
+        ["TT reportado", "NTAG 424 DNA TT abierto"],
+        ["Token", "Polygon opcional - sujeto a politica y confirmacion RPC"],
+        ["Destinatario digital", "Billetera del comprador o custodia digital del tenant"],
       ],
       cards: [
-        { title: "Pasaporte de propiedad", body: "Después de autenticar, el comprador puede reclamar un registro digital vinculado a una referencia derivada del activo, lote y estado." },
+        { title: "Pasaporte de propiedad", body: "Después de evidencia de compra separada y aprobación del tenant, el comprador puede recibir un registro digital vinculado a la referencia declarada y al lote." },
         { title: "Ciclo de garantía", body: "Garantía, soporte, devolución y servicio se vuelven eventos auditables, no formularios sueltos." },
-        { title: "Registros de procedencia", body: "Origen, lote, canal distribuidor y toque del cliente se muestran como una ruta de confianza." },
+        { title: "Registros de procedencia", body: "Origen declarado, lote, canal y eventos reportados se muestran como una cronología auditable; no prueban por sí solos la ruta física." },
         { title: "Tienda habilitada", body: "Vouchers, club, reglas de reventa y tokenización premium se activan después del toque cuando la política lo permite." },
       ],
-      steps: ["Verificar producto", "Reclamar pasaporte", "Adjuntar garantía", "Abrir tienda"],
+      steps: ["Validar mensaje del tag", "Revisar evidencia del reclamo", "Aprobar pasaporte", "Abrir acciones gobernadas"],
     };
 
   return (
@@ -1597,7 +1597,7 @@ export function CarrierProfileMatrixSection({ locale }: { locale: string }) {
       level: "Toque web",
       promise: isEn ? "Low-cost NFC for campaigns and basic warranty." : isBr ? "NFC economico para campanhas e garantia basica." : "NFC económico para campañas y garantía básica.",
       best: isEn ? "Tourism, local brands, simple activation." : isBr ? "Turismo, marcas locais, ativacao simples." : "Turismo, marcas locales, activacion simple.",
-      risk: isEn ? "Not cryptographic anti-fraud." : isBr ? "Nao e antifraude criptografico." : "No es antifraude criptográfico.",
+      risk: isEn ? "No dynamic SUN message evidence or physical-product proof." : isBr ? "Sem evidencia SUN dinamica nem prova do produto fisico." : "Sin evidencia SUN dinamica ni prueba del producto fisico.",
     },
     {
       name: "NTAG215 / 216",
@@ -1605,7 +1605,7 @@ export function CarrierProfileMatrixSection({ locale }: { locale: string }) {
       level: "Operacion",
       promise: isEn ? "Serialized UID, events, credentials and high-frequency validation." : isBr ? "UID serializado, eventos, credenciais e validacao frequente." : "UID serializado, eventos, credenciales y validacion frecuente.",
       best: isEn ? "Wristbands, tickets, access and mid-value products." : isBr ? "Pulseiras, tickets, acesso e produtos medios." : "Pulseras, tickets, accesos y productos medios.",
-      risk: isEn ? "Server-side control, not premium clone proof." : isBr ? "Controle server-side, nao premium anti-clone." : "Control del servidor, no prueba anti-clon premium.",
+      risk: isEn ? "Server-side duplicate controls, without SUN message evidence or physical-product proof." : isBr ? "Controle de duplicados server-side, sem evidencia SUN da mensagem nem prova do produto fisico." : "Control de duplicados server-side, sin evidencia SUN del mensaje ni prueba del producto fisico.",
     },
     {
       name: "NTAG424 DNA",
@@ -1613,13 +1613,13 @@ export function CarrierProfileMatrixSection({ locale }: { locale: string }) {
       level: "Secure",
       promise: isEn ? "SUN/SDM, dynamic URL and anti-replay evidence." : isBr ? "SUN/SDM, URL dinamica e evidencia anti-replay." : "SUN/SDM, URL dinamica y evidencia anti-replay.",
       best: isEn ? "Premium products, documents, warranty." : isBr ? "Produtos premium, documentos, garantia." : "Productos premium, documentos, garantía.",
-      risk: isEn ? "Strong cryptographic authenticity." : isBr ? "Autenticidade criptografica forte." : "Autenticidad criptográfica fuerte.",
+      risk: isEn ? "Strong tag-message evidence; not physical authenticity." : isBr ? "Evidência criptográfica forte da mensagem; não autenticidade física." : "Evidencia criptográfica fuerte del mensaje; no autenticidad física.",
     },
     {
       name: "NTAG424 DNA TT",
       price: "USD 0.85 - 1.25",
       level: "Luxury",
-      promise: isEn ? "Cryptographic tap plus physical opened/closed seal." : isBr ? "Toque criptografico mais selo fisico aberto/fechado." : "Toque criptográfico más sello físico abierto/cerrado.",
+      promise: isEn ? "Cryptographic tag message plus reported open/closed TT state." : isBr ? "Mensagem criptográfica da tag mais estado TT aberto/fechado reportado." : "Mensaje criptográfico del tag más estado TT abierto/cerrado reportado.",
       best: isEn ? "Wine, luxury, pharma, collectibles." : isBr ? "Vinho, luxo, pharma, colecionaveis." : "Vino, lujo, pharma, coleccionables.",
       risk: isEn ? "Best fit for ownership and token gates." : isBr ? "Ideal para titularidade digital e acessos por token." : "Ideal para propiedad digital y accesos por token.",
     },
@@ -1697,21 +1697,21 @@ export function MarketplaceNetworkSection({ locale }: { locale: string }) {
   const isEn = locale === "en";
   const isBr = locale === "pt-BR";
   const title = isEn
-    ? "Security is only the first tap. The real value is the premium network after it."
+    ? "A tag read is only the start. Business value depends on governed next actions."
     : isBr
-    ? "A seguranca e apenas o primeiro toque. O valor real e a rede premium depois dele."
-    : "La seguridad es solo el primer toque. El valor real es la red premium después.";
+    ? "A leitura da etiqueta é apenas o começo. O valor depende das próximas ações governadas."
+    : "La lectura de la etiqueta es solo el comienzo. El valor depende de las siguientes acciones gobernadas.";
   const body = isEn
-    ? "Every verified product can open a consumer passport, tenant club, marketplace offers, CRM tickets and cross-brand loyalty. That turns anti-fraud into retention and sales."
+    ? "This simulated network shows possible passport, club, marketplace, CRM and loyalty flows. A SUN/UID result covers the tag message and a reported seal state when available; it does not prove the physical product, contents, declared origin, custody or ownership."
     : isBr
-    ? "Cada produto verificado abre passport do consumidor, clube do tenant, ofertas de marketplace, tickets CRM e loyalty entre marcas."
-    : "Cada producto verificado abre pasaporte del usuario, club de la marca, ofertas de tienda, casos CRM y beneficios entre marcas.";
+    ? "Esta rede simulada mostra fluxos possíveis de passaporte, clube, marketplace, CRM e fidelidade. Um resultado SUN/UID cobre a mensagem da etiqueta e, quando disponível, o estado informado do lacre; não comprova produto físico, conteúdo, origem declarada, custódia ou propriedade."
+    : "Esta red simulada muestra posibles flujos de pasaporte, club, tienda, CRM y beneficios. Un resultado SUN/UID cubre el mensaje de la etiqueta y, cuando existe, el estado reportado del sello; no prueba producto físico, contenido, origen declarado, custodia ni propiedad.";
   const nodes = [
-    { k: "01", title: isEn ? "Trust tap" : isBr ? "Toque confiavel" : "Toque confiable", body: isEn ? "Authenticity, seal state, origin and risk." : isBr ? "Autenticidade, lacre, origem e risco." : "Autenticidad, sello, origen y riesgo." },
-    { k: "02", title: isEn ? "Passport" : isBr ? "Passaporte" : "Pasaporte", body: isEn ? "Product history, warranty and owner context." : isBr ? "Historico, garantia e contexto de titularidade." : "Historial, garantía y contexto de propiedad." },
-    { k: "03", title: isEn ? "Club & points" : isBr ? "Clube e pontos" : "Club y puntos", body: isEn ? "Rewards, vouchers and private drops by tenant." : isBr ? "Rewards, vouchers e drops privados por tenant." : "Puntos, vouchers y beneficios privados por marca." },
-    { k: "04", title: isEn ? "Marketplace" : isBr ? "Marketplace" : "Tienda", body: isEn ? "Premium products, reorder, resale and partner offers." : isBr ? "Produtos premium, recompra, revenda e ofertas." : "Productos premium, recompra, reventa y ofertas." },
-    { k: "05", title: "CRM", body: isEn ? "Leads, tickets, buyer intent and live notifications." : isBr ? "Leads, tickets, intencao e notificacoes." : "Contactos, casos, intencion de compra y avisos." },
+    { k: "01", title: isEn ? "Simulated tag read" : isBr ? "Leitura simulada" : "Lectura simulada", body: isEn ? "SUN/UID message and reported seal state; no physical-product verdict." : isBr ? "Mensagem SUN/UID e estado informado do lacre; sem veredito sobre o produto físico." : "Mensaje SUN/UID y estado reportado del sello; sin veredicto sobre el producto físico." },
+    { k: "02", title: isEn ? "Passport" : isBr ? "Passaporte" : "Pasaporte", body: isEn ? "Declared product record; warranty and ownership require their own evidence." : isBr ? "Registro declarado; garantia e propriedade exigem evidência própria." : "Registro declarado; garantía y propiedad requieren evidencia propia." },
+    { k: "03", title: isEn ? "Club & points" : isBr ? "Clube e pontos" : "Club y puntos", body: isEn ? "Example rewards and vouchers, subject to tenant rules." : isBr ? "Recompensas e vouchers de exemplo, sujeitos às regras do tenant." : "Puntos y vouchers de ejemplo, sujetos a reglas del tenant." },
+    { k: "04", title: isEn ? "Marketplace" : isBr ? "Marketplace" : "Tienda", body: isEn ? "Demo reorder, resale and partner offers; transactions need policy and claim checks." : isBr ? "Recompra, revenda e ofertas demo; transações exigem política e validação do claim." : "Recompra, reventa y ofertas demo; las transacciones requieren política y validación del claim." },
+    { k: "05", title: "CRM", body: isEn ? "Simulated leads, tickets and buyer intent; no live customer feed." : isBr ? "Leads, tickets e intenção simulados; sem feed de clientes ao vivo." : "Contactos, casos e intención simulados; sin feed de clientes en vivo." },
   ];
 
   return (
@@ -1724,9 +1724,9 @@ export function MarketplaceNetworkSection({ locale }: { locale: string }) {
             <p className="mt-4 text-sm leading-7 text-slate-300 md:text-base">{body}</p>
             <div className="mt-6 grid grid-cols-3 gap-3">
               {[
-                ["320", isEn ? "avg points" : isBr ? "pontos medios" : "pts promedio"],
-                ["5", isEn ? "live actions" : isBr ? "acoes live" : "acciones activas"],
-                ["1", isEn ? "network login" : isBr ? "login de rede" : "ingreso de red"],
+                ["320", isEn ? "demo points" : isBr ? "pontos demo" : "puntos demo"],
+                ["5", isEn ? "example actions" : isBr ? "ações de exemplo" : "acciones de ejemplo"],
+                ["1", isEn ? "demo login" : isBr ? "login demo" : "ingreso demo"],
               ].map(([value, label]) => (
                 <div key={label} className="rounded-2xl border border-cyan-300/15 bg-cyan-500/10 p-4">
                   <p className="text-2xl font-black text-white">{value}</p>
@@ -1807,8 +1807,8 @@ export function UnitEconomicsSection({ locale }: { locale: string }) {
   const cards = [
     { title: "Inicio QR / GS1", hardware: "USD 0.01 - 0.05", saas: "SaaS + página + analítica", margin: "Baja barrera, alto volumen" },
     { title: "NFC Básico", hardware: "USD 0.08 - 0.45", saas: "Toque web + garantía + contactos", margin: "Eventos, turismo, comercio local" },
-    { title: "424 DNA Seguro", hardware: "USD 0.55 - 0.90", saas: "SUN + anti copia + panel", margin: "Antifraude real y auditoria" },
-    { title: "DNA TT Premium", hardware: "USD 0.85 - 1.25", saas: "Sello + propiedad digital + token", margin: "Lujo, salud, vino, coleccionables" },
+    { title: "424 DNA Seguro", hardware: "USD 0.55 - 0.90", saas: "SUN + detección de replay + panel", margin: "Evidencia del mensaje y auditoría" },
+    { title: "DNA TT Premium", hardware: "USD 0.85 - 1.25", saas: "TT reportado + propiedad digital por política", margin: "Lujo, salud, vino, coleccionables" },
   ];
   const title = isEn ? "A pricing story that works for small brands and enterprise rollouts" : isBr ? "Uma historia comercial para marcas pequenas e rollouts enterprise" : "Una historia comercial para marcas chicas y despliegues grandes";
   const body = isEn
@@ -1854,7 +1854,7 @@ export function CtaSection({ content, locale }: { content: Content; locale: stri
   const isBr = locale === "pt-BR";
   const ctaLinks = isEn
     ? [
-      { href: "/demo-lab?vertical=wine", label: "View live demo", body: "Bottle, seal, tap route, portal and marketplace in one guided scene." },
+      { href: "/demo-lab?vertical=wine", label: "View guided demo", body: "Bottle reference, reported seal state, simulated tap journey, portal and marketplace in one guided scene." },
       { href: schedulingUrls.meeting, label: "Schedule meeting", body: "Open the calendar and reserve a slot for business, reseller or customer pilots.", external: true },
       { href: "/?contact=demo#contact-modal", label: "Book a demo", body: "Create the lead and save the case in the admin flow." },
       { href: "/?contact=sales#contact-modal", label: "Talk to sales", body: "Discuss tags, volumes, tenant setup and rollout." },
@@ -1862,14 +1862,14 @@ export function CtaSection({ content, locale }: { content: Content; locale: stri
     ]
     : isBr
     ? [
-      { href: "/demo-lab?vertical=wine", label: "Ver demo ao vivo", body: "Garrafa, lacre, rota, portal e marketplace em uma cena guiada." },
+      { href: "/demo-lab?vertical=wine", label: "Ver demo guiada", body: "Referência da garrafa, lacre reportado, jornada simulada do toque, portal e marketplace." },
       { href: schedulingUrls.meeting, label: "Agendar reuniao", body: "Abre o calendario para reservar horario com marcas, resellers ou clientes.", external: true },
       { href: "/?contact=demo#contact-modal", label: "Agendar demo", body: "Cria o lead e salva o caso no fluxo admin." },
       { href: "/?contact=sales#contact-modal", label: "Falar com vendas", body: "Tags, volume, tenant e rollout comercial." },
       { href: "/docs", label: "Ler docs", body: "API, SUN, NTAG, dashboard e arquitetura de integracao." },
     ]
     : [
-      { href: "/demo-lab?vertical=wine", label: "Ver demo en vivo", body: "Botella, sello, ruta del toque, portal y tienda en una escena guiada." },
+      { href: "/demo-lab?vertical=wine", label: "Ver demo guiada", body: "Referencia de botella, sello reportado, recorrido simulado del tap, portal y tienda en una escena guiada." },
       { href: schedulingUrls.meeting, label: "Agendar reunion", body: "Abre el calendario y reserva una reunion con empresarios, distribuidores o clientes.", external: true },
       { href: "/?contact=demo#contact-modal", label: "Agendar demo", body: "Crea el contacto y guarda el caso en el flujo del panel." },
       { href: "/?contact=sales#contact-modal", label: "Hablar con ventas", body: "Etiquetas, volumen, cuenta de marca y despliegue comercial." },

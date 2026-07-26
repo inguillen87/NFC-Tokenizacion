@@ -21,35 +21,35 @@ function copyFor(input: { locale: string; surface: string; campaign: string }): 
     if (locale === "en") {
       return {
         eyebrow: "Product passport",
-        title: "Verify the physical product before the next action.",
-        subtitle: "SUN validation, tamper status, provenance and ownership in one mobile flow.",
-        badge: "Fresh tap required",
+        title: "Validate the NFC/SUN message before the next action.",
+        subtitle: "Message result, reported TT, declared origin and digital ownership in one mobile flow; no standalone physical proof.",
+        badge: "Fresh message required",
         proof: "NFC + batch + UID",
         status: "SUN OK",
-        route: "Origin -> tap -> passport",
+        route: "Declared origin -> message -> passport",
         action: "Claim warranty",
       };
     }
     if (locale === "pt-BR") {
       return {
         eyebrow: "Passaporte do produto",
-        title: "Valide o produto físico antes da próxima ação.",
-        subtitle: "SUN, estado do selo, origem e ownership em um fluxo mobile.",
-        badge: "Tap fresco obrigatório",
+        title: "Valide a mensagem NFC/SUN antes da próxima ação.",
+        subtitle: "Resultado da mensagem, TT reportado, origem declarada e ownership digital; sem prova física autônoma.",
+        badge: "Mensagem fresca obrigatória",
         proof: "NFC + lote + UID",
         status: "SUN OK",
-        route: "Origem -> tap -> passaporte",
+        route: "Origem declarada -> mensagem -> passaporte",
         action: "Ativar garantia",
       };
     }
     return {
       eyebrow: "Pasaporte del producto",
-      title: "Validá el producto físico antes de activar beneficios.",
-      subtitle: "SUN, estado del sello, origen, garantía, ownership y marketplace en un flujo mobile.",
-      badge: "Tap físico fresco",
+      title: "Validá el mensaje NFC/SUN antes de activar beneficios.",
+      subtitle: "Resultado del mensaje, TT reportado, origen declarado y ownership digital; sin prueba física autónoma.",
+      badge: "Mensaje fresco requerido",
       proof: "NFC + lote + UID",
       status: "SUN OK",
-      route: "Origen -> tap -> pasaporte",
+      route: "Origen declarado -> mensaje -> pasaporte",
       action: "Activar garantía",
     };
   }
@@ -104,37 +104,37 @@ function copyFor(input: { locale: string; surface: string; campaign: string }): 
 
   if (locale === "en") {
     return {
-      eyebrow: "Secure product identity",
-      title: "NFC authenticity for premium products.",
-      subtitle: "A mobile passport that connects every physical unit with trust, provenance, warranty and post-purchase sales.",
+      eyebrow: "NFC/SUN product evidence",
+      title: "Message evidence for connected products.",
+      subtitle: "A mobile passport for NFC/SUN results, declared batch and origin, reported TT and policy-based warranty; not physical-product proof.",
       badge: "NFC Secure",
       proof: "Passport + Marketplace",
-      status: "Trusted product",
-      route: "Factory -> store -> customer",
-      action: "Verify product",
+      status: "Message evidence",
+      route: "Declared origin -> reported event -> customer",
+      action: "Inspect evidence",
     };
   }
   if (locale === "pt-BR") {
     return {
-      eyebrow: "Identidade segura de produto",
-      title: "Autenticidade NFC para produtos premium.",
-      subtitle: "Um passaporte mobile que conecta cada unidade física com confiança, origem, garantia e venda pós-compra.",
+      eyebrow: "Evidência NFC/SUN de produto",
+      title: "Evidência de mensagem para produtos conectados.",
+      subtitle: "Passaporte mobile para resultado NFC/SUN, lote e origem declarados, TT reportado e garantia por política; não prova o produto físico.",
       badge: "NFC seguro",
       proof: "Passaporte + Marketplace",
-      status: "Produto confiável",
-      route: "Fábrica -> loja -> cliente",
-      action: "Verificar produto",
+      status: "Evidência da mensagem",
+      route: "Origem declarada -> evento reportado -> cliente",
+      action: "Inspecionar evidência",
     };
   }
   return {
-    eyebrow: "Identidad segura de producto",
-    title: "Autenticidad NFC para productos premium.",
-    subtitle: "Un pasaporte mobile que conecta cada unidad física con confianza, origen, garantía y ventas post-compra.",
+    eyebrow: "Evidencia NFC/SUN de producto",
+    title: "Evidencia del mensaje para productos conectados.",
+    subtitle: "Pasaporte mobile para resultado NFC/SUN, lote y origen declarados, TT reportado y garantía por política; no prueba el producto físico.",
     badge: "NFC seguro",
     proof: "Pasaporte + Marketplace",
-    status: "Producto confiable",
-    route: "Fábrica -> tienda -> cliente",
-    action: "Verificar producto",
+    status: "Evidencia del mensaje",
+    route: "Origen declarado -> evento reportado -> cliente",
+    action: "Revisar evidencia",
   };
 }
 
@@ -142,48 +142,48 @@ function labelsFor(locale: string) {
   if (locale === "en") {
     return {
       nav: ["Product", "Pricing", "Docs"],
-      cockpit: "Live verification cockpit",
-      map: "Trace route",
-      passport: "Verified passport",
-      scan: "Fresh tap",
-      seal: "Seal closed",
-      risk: "Replay safe",
+      cockpit: "Demo evidence cockpit",
+      map: "Reported events",
+      passport: "Digital passport",
+      scan: "Fresh message",
+      seal: "TT closed reported",
+      risk: "Replay checks",
       buyer: "Buyer portal",
       rows: ["SUN signature", "Batch policy", "Warranty flow"],
       ok: "OK",
-      event: "Validated scan",
-      unit: "Premium unit",
+      event: "Message accepted",
+      unit: "Declared reference",
     };
   }
   if (locale === "pt-BR") {
     return {
       nav: ["Produto", "Planos", "Docs"],
-      cockpit: "Cockpit de verificação",
-      map: "Rota de rastreio",
-      passport: "Passaporte verificado",
-      scan: "Tap fresco",
-      seal: "Selo fechado",
+      cockpit: "Cockpit de evidência demo",
+      map: "Eventos reportados",
+      passport: "Passaporte digital",
+      scan: "Mensagem fresca",
+      seal: "TT fechado reportado",
       risk: "Anti-replay",
       buyer: "Portal comprador",
       rows: ["Assinatura SUN", "Política de lote", "Fluxo garantia"],
       ok: "OK",
-      event: "Scan validado",
-      unit: "Unidade premium",
+      event: "Mensagem aceita",
+      unit: "Referência declarada",
     };
   }
   return {
     nav: ["Producto", "Planes", "Docs"],
-    cockpit: "Cockpit de verificación",
-    map: "Ruta trazable",
-    passport: "Pasaporte verificado",
-    scan: "Tap fresco",
-    seal: "Sello cerrado",
+    cockpit: "Cockpit de evidencia demo",
+    map: "Eventos reportados",
+    passport: "Pasaporte digital",
+    scan: "Mensaje fresco",
+    seal: "TT cerrado reportado",
     risk: "Anti-replay",
     buyer: "Portal comprador",
     rows: ["Firma SUN", "Política de lote", "Flujo garantía"],
     ok: "OK",
-    event: "Scan validado",
-    unit: "Unidad premium",
+    event: "Mensaje aceptado",
+    unit: "Referencia declarada",
   };
 }
 

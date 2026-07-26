@@ -3,9 +3,12 @@ export const dynamic = "force-dynamic";
 import { getConsumerFromRequest } from "../../../../lib/consumer-auth";
 import { json } from "../../../../lib/http";
 import { sql } from "../../../../lib/db";
+import { enforceCriticalRateLimit } from "../../../../lib/critical-rate-limit";
 export async function POST(req: Request) {
   const consumer = await getConsumerFromRequest(req);
   if (!consumer) return json({ ok: false, error: 'unauthorized' }, 401);
+  const limited = await enforceCriticalRateLimit(req, { rateClass: "public_write", tenantId: "consumer", subjectId: `consumer:${consumer.id}:privacy-delete` });
+  if (limited) return limited;
   await sql/*sql*/`UPDATE consumers SET status = 'deleted', email = NULL, phone = NULL, display_name = NULL, updated_at = now() WHERE id = ${consumer.id}`;
   return json({ ok: true, status: 'delete_requested' });
 }

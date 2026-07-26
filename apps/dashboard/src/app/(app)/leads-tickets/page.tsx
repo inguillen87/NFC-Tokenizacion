@@ -3,16 +3,23 @@ import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
 import { requireDashboardSession } from "../../../lib/session";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../lib/admin-page-access";
+import { EnterpriseOpsState } from "../../../components/enterprise-ops-state";
 import LeadsTicketsClient from "./leads-tickets-client";
 
-async function adminGet(context: AdminPageContext, path: string) {
+type AdminCollectionResult = {
+  rows: any[];
+  availability: "ready" | "upstream_error" | "invalid_payload" | "unreachable";
+};
+
+async function adminGet(context: AdminPageContext, path: string): Promise<AdminCollectionResult> {
   try {
     const response = await fetchAdminPage(context, path);
-
-    if (!response.ok) return [];
-    return response.json();
+    if (!response.ok) return { rows: [], availability: "upstream_error" };
+    const payload = await response.json().catch(() => null);
+    if (!Array.isArray(payload)) return { rows: [], availability: "invalid_payload" };
+    return { rows: payload, availability: "ready" };
   } catch {
-    return [];
+    return { rows: [], availability: "unreachable" };
   }
 }
 
@@ -41,16 +48,25 @@ export default async function LeadsTicketsPage({
   const tenantScope = adminContext.tenantSlug;
   const tenantFilter = adminContext.canSelectTenant ? requestedTenant : tenantScope;
   const copy = dashboardContent[locale];
+  const retryQuery = new URLSearchParams();
+  if (tenantFilter) retryQuery.set("tenant", tenantFilter);
+  if (sessionFilter) retryQuery.set("session", sessionFilter);
+  const retryHref = `/leads-tickets${retryQuery.size ? `?${retryQuery.toString()}` : ""}`;
 
-  const [leads, tickets, orders] = await Promise.all([
+  const [leadsResult, ticketsResult, ordersResult] = await Promise.all([
     adminGet(adminContext, "/admin/leads"),
     adminGet(adminContext, "/admin/tickets"),
     adminGet(adminContext, "/admin/consumer-portal/order-requests"),
   ]);
 
-  const leadsArray = Array.isArray(leads) ? (leads as any[]) : [];
-  const ticketsArray = Array.isArray(tickets) ? (tickets as any[]) : [];
-  const ordersArray = Array.isArray(orders) ? (orders as any[]) : [];
+  const leadsArray = leadsResult.rows;
+  const ticketsArray = ticketsResult.rows;
+  const ordersArray = ordersResult.rows;
+  const unavailableSources = [
+    { label: "prospectos", availability: leadsResult.availability },
+    { label: "tickets", availability: ticketsResult.availability },
+    { label: "pedidos", availability: ordersResult.availability },
+  ].filter((source) => source.availability !== "ready");
   
   const scopedLeads = tenantScope ? leadsArray.filter((lead) => leadTenant(lead) === tenantScope) : leadsArray;
   const scopedTickets = tenantScope ? ticketsArray.filter((item) => String(item.tenant_slug || "").toLowerCase() === tenantScope) : ticketsArray;
@@ -125,6 +141,21 @@ export default async function LeadsTicketsPage({
       <section className="rounded-2xl border border-white/10 bg-slate-900/60 p-4 text-sm text-slate-300">
         {labels.scope}: <b className="text-cyan-300 font-mono">{tenantScope ? `tenant:${tenantScope}` : labels.global}</b>.
       </section>
+
+      {unavailableSources.length ? (
+        <EnterpriseOpsState
+          variant="warning"
+          title={unavailableSources.length === 3 ? "CRM sin confirmación de upstream" : "CRM parcialmente disponible"}
+          description="Una o más fuentes no pudieron confirmar su estado. Las colecciones afectadas se muestran vacías, pero no deben interpretarse como cero actividad comercial."
+          checklist={unavailableSources.map((source) => `${source.label}: ${source.availability.replaceAll("_", " ")}`)}
+          action={(
+            <a href={retryHref} className="rounded-xl border border-amber-200/30 bg-amber-300/10 px-4 py-2 text-sm font-black text-amber-100 hover:bg-amber-300/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-200">
+              Reintentar fuentes
+            </a>
+          )}
+          testId="crm-upstream-warning"
+        />
+      ) : null}
 
       <LeadsTicketsClient
         initialLeads={scopedLeads}

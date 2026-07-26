@@ -32,7 +32,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: "Demo Lab · nexID — Probá la plataforma",
     description:
-      "Simulá autenticidad NFC/QR, trazabilidad por lote, verificación offline, propiedad tokenizada y auditoría logística. Casos reales por industria.",
+      "Simulá validación de mensajes NFC/QR, trazabilidad declarada por lote, decisión offline provisional, ownership tokenizado y eventos logísticos reportados.",
     openGraph: {
       title: "Demo Lab · nexID",
       images: [
@@ -131,10 +131,10 @@ function demoLabStructuredData(locale: string) {
       ? "Laboratorio interativo de identidade de produto para NFC/QR, rastreabilidade, risco e pos-venda."
       : "Laboratorio interactivo de identidad de producto para NFC/QR, trazabilidad, riesgo y postventa.";
   const steps = isEn
-    ? ["Tap the product", "Verify authenticity", "Trace route and context", "Unlock the business outcome"]
+    ? ["Read the tag", "Validate message evidence", "Review reported events and context", "Unlock the permitted outcome"]
     : isBr
-      ? ["Tocar o produto", "Verificar autenticidade", "Rastrear rota e contexto", "Liberar resultado comercial"]
-      : ["Tocar el producto", "Verificar autenticidad", "Trazar ruta y contexto", "Activar resultado comercial"];
+      ? ["Ler o tag", "Validar evidência da mensagem", "Revisar eventos reportados e contexto", "Liberar resultado permitido"]
+      : ["Leer el tag", "Validar evidencia del mensaje", "Revisar eventos reportados y contexto", "Activar resultado permitido"];
 
   return [
     {
@@ -205,7 +205,7 @@ const PANEL_CONTENT: Record<
     title: "Propiedad Digital (Polygon)",
     subtitle: "El comprador inicia ownership con un mint testnet verificable",
     context:
-      "Cuando el comprador toca el producto, puede solicitar ownership en Polygon despues de validar autenticidad y politica tenant. El demo conecta con un certificado publico que consulta owner, mint y metadata HTTPS en vivo.",
+      "Cuando el comprador toca el producto, puede solicitar ownership en Polygon después de validar el mensaje NFC, la evidencia disponible y la política tenant. El demo conecta con un certificado público que consulta owner, mint y metadata HTTPS en vivo.",
     value:
       "Cada ownership aprobado puede habilitar garantia, reventa y club sin exponer identidad ni factura on-chain. La transaccion prueba el mint; nexID conserva contexto, permisos y datos privados.",
     doc: { label: "Abrir certificado Polygon", href: "/proof/ownership" },
@@ -219,7 +219,7 @@ const PANEL_CONTENT: Record<
     context:
       "Cada evento clave de la cadena de suministro genera evidencia privada en nexID. Cuando la política lo exige, se anclan hashes o Merkle roots en IOTA; no se publican datos privados ni cada lectura individual.",
     value:
-      "Cumplí normativas de exportación (SENASA, FDA, DPP europeo) con evidencia auditable. Clientes B2B y auditores pueden verificar pruebas sin exponer datos sensibles.",
+      "Prepará evidencia auditable para procesos de exportación, IoT o DPP cuando existan eventos de fuente trazable y revisión legal o regulatoria aplicable. Clientes B2B y auditores pueden verificar recibos hash-only sin exponer los datos privados seleccionados; nexID no garantiza cumplimiento ni certificación por sí solo.",
     doc: { label: "Ver capa de auditoría", href: "/docs#trust-layers" },
   },
   "offline-verifier": {
@@ -231,7 +231,7 @@ const PANEL_CONTENT: Record<
     context:
       "El celular o lector recibe un paquete de permisos y se puede usar en zonas sin señal. Registra cada verificación localmente. Al volver a conectarse, sincroniza todo con el servidor.",
     value:
-      "Controlá la autenticidad de tus productos en el campo, en la cava o en la planta sin depender de conectividad. El resultado oficial llega al sincronizar.",
+      "Validá localmente el mensaje y la política disponible para operar en campo, cava o planta. Es una decisión provisional; el resultado oficial llega al sincronizar y no autentica por sí solo el producto físico.",
     doc: { label: "Ver arquitectura offline", href: "/docs#trust-layers" },
   },
   "qr-gs1": {
@@ -241,10 +241,22 @@ const PANEL_CONTENT: Record<
     title: "Experiencia Core (QR / GS1)",
     subtitle: "Flujo completo de producto para pymes",
     context:
-      "El cliente escanea el QR, ve la autenticidad, el origen del producto, el lote y puede activar beneficios de fidelización. Todo sin app, directo desde el celular.",
+      "El cliente escanea el QR y consulta identidad digital, origen y lote declarados, política del resolver y beneficios disponibles. Un QR no autentica por sí solo el producto físico.",
     value:
       "Arrancar con QR es la forma más económica de digitalizar tu producto. Podés sumar capas NFC y blockchain cuando lo necesites.",
     doc: { label: "Ver docs de integración", href: "/docs" },
+  },
+  "nfc-424": {
+    icon: ShieldCheck,
+    color: "text-cyan-400",
+    gradientFrom: "from-cyan-500/20",
+    title: "NFC 424 DNA — Toque criptográfico",
+    subtitle: "SUN dinámico + UID + control anti-replay",
+    context:
+      "El usuario acerca el celular a un NTAG 424 DNA. nexID evalúa SUN/CMAC, UID, contador y política del tenant antes de habilitar garantía, rewards, soporte o reclamo.",
+    value:
+      "La capa NFC vincula una interacción digital con el identificador del tag y permite detectar mensajes repetidos, copiados o reproducidos según contador y política, sin exponer secretos del tag ni claves del KMS al navegador.",
+    doc: { label: "Ver capa NFC", href: "/docs#trust-layers" },
   },
   seeds: {
     icon: Leaf,
@@ -253,9 +265,9 @@ const PANEL_CONTENT: Record<
     title: "Agro — Semillas y Fitosanitarios",
     subtitle: "Trazabilidad de lote + canal seguro + soporte al aplicador",
     context:
-      "El productor escanea el NFC/QR del envase antes de aplicar. nexID valida si el producto es original, verifica el lote y muestra instrucciones de uso responsable. Todo queda registrado en el CRM.",
+      "El productor escanea el NFC/QR del envase antes de aplicar. nexID valida el mensaje y la evidencia digital asociada, consulta el lote declarado y muestra instrucciones de uso responsable. La autenticidad física requiere controles adicionales del fabricante y la cadena de suministro. Los eventos recibidos quedan disponibles para el CRM cuando la integración POS, API o webhook está configurada; no se infiere una venta ni una ubicación no reportada.",
     value:
-      "Controlá el canal de distribución, eliminá el mercado gris y conectá con el productor final para asesoramiento técnico post-venta.",
+      "Aumentá la visibilidad del canal, detectá desvíos y reducí la exposición al mercado gris mientras conectás con el productor final para asesoramiento técnico post-venta.",
     doc: { label: "Ver vertical Agro", href: "/docs" },
   },
   pharma: {
@@ -265,9 +277,9 @@ const PANEL_CONTENT: Record<
     title: "Pharma — Medicamentos y Cadena Fría",
     subtitle: "Recall por unidad, prospecto digital y cadena de frío",
     context:
-      "El paciente o farmacéutico escanea el medicamento. nexID verifica la autenticidad del lote, muestra el prospecto digital y permite activar el recall de forma inmediata por unidad.",
+      "El paciente o farmacéutico escanea la unidad. nexID valida el mensaje del tag y el registro de lote, muestra el prospecto digital y permite activar un recall por unidad según la política.",
     value:
-      "Asegurate de que cada unidad vendida sea genuina. Ante un recall, identificás exactamente qué unidades están en circulación y dónde.",
+      "Consultá qué unidades están registradas y cuáles reportaron eventos durante un recall. La evidencia digital no demuestra por sí sola el contenido, la autenticidad física ni la ubicación actual.",
     doc: { label: "Ver vertical Pharma", href: "/docs" },
   },
   wine: {
@@ -277,9 +289,9 @@ const PANEL_CONTENT: Record<
     title: "Vinos y Spirits Premium",
     subtitle: "NFC 424 TT + sello de apertura + ownership digital",
     context:
-      "El coleccionista toca la botella con el celular. nexID verifica la autenticidad criptográfica, muestra el origen de la cosecha, registra si fue abierta y activa beneficios exclusivos del club.",
+      "El coleccionista lee el tag con el celular. nexID valida el mensaje dinámico, muestra origen y cosecha declarados, y presenta el estado TT reportado antes de evaluar beneficios del club.",
     value:
-      "Diferenciá tus botellas premium en el mercado gris. El sello cambia de estado al abrir, probando integridad y activando la experiencia post-apertura.",
+      "Sumá evidencia digital y una señal TT al control del mercado gris. Su significado físico depende de la integración con el packaging; no prueba por sí sola contenido, origen o autenticidad de la botella.",
     doc: { label: "Ver vertical Vinos", href: "/docs" },
   },
   luxury: {
@@ -289,7 +301,7 @@ const PANEL_CONTENT: Record<
     title: "Lujo y Retail Premium",
     subtitle: "Gemelos digitales + garantía + experiencias exclusivas",
     context:
-      "El comprador activa su producto con un tap NFC. Recibe el certificado de autenticidad, la garantía digital transferible y acceso al portal de experiencias exclusivas de la marca.",
+      "El comprador valida el mensaje NFC y puede solicitar un certificado digital, garantía o acceso al portal según identidad, compra y política de la marca. El certificado no autentica por sí solo el objeto físico.",
     value:
       "Recuperá el control sobre el canal de reventa y construí una relación directa con el comprador final. Cada producto se convierte en un punto de contacto permanente.",
     doc: { label: "Ver vertical Lujo", href: "/docs" },
@@ -301,9 +313,9 @@ const PANEL_CONTENT: Record<
     title: "Logística y Cadena de Frío",
     subtitle: "UHF + NFC + IoT para rutas y temperatura",
     context:
-      "Los pallets y bultos llevan tags UHF o QR. En cada punto de la cadena se registra la temperatura, la ubicación y el responsable. Todo queda en el historial de cadena de custodia.",
+      "Los pallets y bultos pueden asociarse a tags UHF o QR. Cada lectura o integración de sensor reporta, cuando está disponible, temperatura, ubicación, responsable y cobertura temporal; los intervalos sin evidencia quedan visibles.",
     value:
-      "Demostrá a tus clientes que la cadena de frío se mantuvo intacta. Reducí disputas de entrega y cumplí normativas de exportación con evidencia auditable.",
+      "Mostrá las mediciones recibidas, su fuente y cobertura para reducir disputas de entrega. La evidencia no afirma continuidad de frío fuera de los intervalos observados ni reemplaza certificaciones regulatorias.",
     doc: { label: "Ver vertical Logística", href: "/docs" },
   },
   bracelet: {
@@ -313,9 +325,9 @@ const PANEL_CONTENT: Record<
     title: "Eventos y Control de Acceso",
     subtitle: "Pulseras NFC + cashless + zonas VIP",
     context:
-      "Las pulseras NFC permiten acceso a zonas, consumo cashless y validación de identidad. Cada toque es único y no se puede copiar ni reutilizar.",
+      "Las pulseras NFC permiten acceso a zonas, consumo cashless y validación de credenciales. Cada lectura evalúa mensaje, contador y política para detectar o rechazar replays; esos controles no vuelven imposible copiar el soporte físico.",
     value:
-      "Eliminá la cola de ingreso, controlá zonas VIP en tiempo real y conocé el patrón de consumo de cada asistente para optimizar la operación.",
+      "Agilizá el ingreso, monitoreá los eventos reportados por zona y analizá patrones de consumo para optimizar la operación.",
     doc: { label: "Ver vertical Eventos", href: "/docs" },
   },
   electronics: {
@@ -325,9 +337,9 @@ const PANEL_CONTENT: Record<
     title: "Electrónica y Garantía",
     subtitle: "Serialización + propiedad digital + soporte post-venta",
     context:
-      "El comprador escanea el dispositivo y lo registra a su nombre. Desde ese momento, la garantía es digital, transferible y activable en cualquier momento sin factura.",
+      "El comprador escanea el dispositivo y solicita registrarlo a su nombre. La activación y cualquier transferencia de la garantía dependen de identidad, evidencia de compra y política de la marca; el tap no reemplaza por sí solo la factura ni autoriza una transferencia on-chain.",
     value:
-      "Cada unidad vendida queda registrada. Si el producto aparece en el mercado gris, podés rastrear el origen de la filtración. El soporte post-venta se activa con un tap.",
+      "Con serialización e integración POS/eventos, las unidades reportadas pueden vincularse con la venta, el canal y la evidencia disponible. Esas señales ayudan a investigar posibles desvíos —no atribuyen por sí solas el origen de una filtración— y permiten solicitar soporte sujeto a identidad, compra, política de marca y revisión legal aplicable.",
     doc: { label: "Ver vertical Electrónica", href: "/docs" },
   },
   textile: {
@@ -337,9 +349,9 @@ const PANEL_CONTENT: Record<
     title: "Textil y Pasaporte Digital (DPP)",
     subtitle: "Origen, composición y circularidad",
     context:
-      "El tag del producto abre su pasaporte digital europeo (DPP). El consumidor ve el origen de los materiales, el impacto ambiental, las instrucciones de cuidado y cómo revender o reciclar.",
+      "El tag abre un pasaporte digital configurable. El consumidor puede consultar los datos declarados sobre materiales, impacto, cuidado, reventa o reciclaje; el alcance regulatorio depende del producto, mercado, datos fuente y validación legal del fabricante.",
     value:
-      "Cumplí la normativa DPP de la UE anticipadamente y diferenciá tu marca con transparencia. El pasaporte digital abre una relación directa con el cliente más allá de la venta.",
+      "Prepará una base trazable para los requisitos DPP aplicables y diferenciá tu marca con información verificable. La configuración debe revisarse contra la normativa vigente y no constituye por sí sola certificación ni asesoramiento legal.",
     doc: { label: "Ver vertical Textil", href: "/docs" },
   },
   perfume: {
@@ -347,11 +359,11 @@ const PANEL_CONTENT: Record<
     color: "text-rose-400",
     gradientFrom: "from-rose-500/20",
     title: "Belleza y Cosméticos",
-    subtitle: "Sello NFC + protección anti-refill + fidelización",
+    subtitle: "Sello NFC + señal anti-refill + fidelización",
     context:
-      "El cliente escanea el perfume o producto de skincare y verifica que el envase no fue rellenado. El tag cambia de estado al ser abierto por primera vez, garantizando la integridad del contenido.",
+      "El cliente escanea el perfume o producto de skincare y consulta el estado reportado por el chip o circuito de sello: cerrado, abierto o alterado. Esa señal no verifica la composición ni demuestra por sí sola que el envase nunca fue rellenado.",
     value:
-      "Protegete del refill fraudulento y el mercado gris. Conectá con tu cliente post-compra para ofrecer recarga, kit complementario y programa de fidelización.",
+      "Sumá una señal operativa frente al refill fraudulento y el mercado gris, combinada con controles físicos, lote y canal. Conectá con tu cliente post-compra para ofrecer recarga, kit complementario y fidelización.",
     doc: { label: "Ver vertical Belleza", href: "/docs" },
   },
   sneaker: {
@@ -359,11 +371,11 @@ const PANEL_CONTENT: Record<
     color: "text-indigo-400",
     gradientFrom: "from-indigo-500/20",
     title: "Zapatillas y Calzado",
-    subtitle: "Drop verificado + certificado de propiedad + anti-fraude",
+    subtitle: "Drop conectado + registro de propiedad + controles anti-fraude",
     context:
-      "El comprador verifica la autenticidad de su par en el momento de la compra. Recibe el certificado digital de propiedad y acceso al club exclusivo de la marca.",
+      "El comprador valida el mensaje dinámico del tag al comprar. Si la política del tenant lo permite, puede solicitar un registro digital de propiedad y acceso al club. Esa evidencia no autentica por sí sola el calzado físico.",
     value:
-      "Controlá el mercado de reventa y distinguí productos originales de réplicas. Cada drop verificado genera datos de canal y comportamiento del comprador.",
+      "Controlá la reventa con evidencia del tag y datos de canal declarados. Cada interacción del drop conectado aporta señales para revisar el canal y entender el comportamiento del comprador.",
     doc: { label: "Ver vertical Calzado", href: "/docs" },
   },
   bottle: {
@@ -373,9 +385,9 @@ const PANEL_CONTENT: Record<
     title: "Envases y Refill Circular",
     subtitle: "Retorno + refill + circularidad con QR/NFC",
     context:
-      "El envase retornable tiene un QR o NFC que identifica cada unidad. El cliente lo devuelve y el sistema registra el retorno, acredita el beneficio y habilita el refill verificado.",
+      "El envase retornable tiene un QR o NFC que identifica cada unidad. Un operador puede registrar retorno y refill bajo política; el tap aislado no demuestra limpieza, composición ni que la recarga física ocurrió.",
     value:
-      "Monetizá la circularidad de tu packaging. Conocé exactamente cuántas veces se reutilizó cada envase y cuántos clientes participan del programa de retorno.",
+      "Medí retornos y recargas registrados para operar la circularidad del packaging. Las métricas describen eventos persistidos, no certifican por sí solas el estado físico o el contenido del envase.",
     doc: { label: "Ver vertical Envases", href: "/docs" },
   },
 };
@@ -424,7 +436,7 @@ const HUB_SCENARIOS = [
     accent: "bg-amber-500/30 text-amber-200",
     accentGlow: "group-hover:shadow-amber-500/20",
     title: "Experiencia Core (QR / GS1)",
-    body: "Flujo completo de producto: origen, autenticidad, portal y fidelización del cliente.",
+    body: "Flujo de identidad digital: origen y lote declarados, resolver, portal y fidelización.",
   },
   {
     id: "nfc-424",
@@ -435,7 +447,7 @@ const HUB_SCENARIOS = [
     accent: "bg-cyan-500/30 text-cyan-100",
     accentGlow: "group-hover:shadow-cyan-500/20",
     title: "NFC 424 DNA",
-    body: "Tap criptografico para validar objeto fisico, bloquear replay y habilitar garantia, reward o soporte solo si el item es autentico.",
+    body: "Mensaje dinámico para validar evidencia del tag y detectar replay. El objeto físico requiere controles adicionales; garantía, rewards o soporte dependen de la política.",
   },
   {
     id: "dual-proof",
@@ -446,7 +458,7 @@ const HUB_SCENARIOS = [
     accent: "bg-teal-500/24 text-teal-100",
     accentGlow: "group-hover:shadow-teal-500/20",
     title: "DPP / Dual Proof",
-    body: "Historia enterprise completa: identidad de producto, ownership opcional y evidencia hash-only para compliance o auditoria externa.",
+    body: "Historia enterprise completa: identidad de producto, ownership opcional y evidencia hash-only para revisión de compliance o auditoría externa.",
   },
   {
     id: "sensor-evidence",
@@ -468,7 +480,7 @@ const HUB_SCENARIOS = [
     accent: "bg-slate-500/24 text-slate-100",
     accentGlow: "group-hover:shadow-slate-500/20",
     title: "Red Autorizada",
-    body: "Controla impresores, integradores, resellers y proveedores para que cada emision o auditoria respete roles, tenant y politica.",
+    body: "Controla impresores, integradores, resellers y proveedores para que cada emisión o auditoría respete roles, tenant y política.",
   },
 ];
 
@@ -547,22 +559,22 @@ const HUB_STEPS = [
   {
     icon: Smartphone,
     label: "1. Toca",
-    body: "El producto abre una lectura verificable para cliente, canal o auditor.",
+    body: "El tag abre una lectura digital para cliente, canal o auditor.",
   },
   {
     icon: ShieldCheck,
-    label: "2. Verificó",
-    body: "nexID resuelve autenticidad, estado fisico y politica del tenant.",
+    label: "2. Validó tag",
+    body: "nexID valida el mensaje y muestra el estado TT reportado y la política del tenant.",
   },
   {
     icon: Network,
     label: "3. Trazó",
-    body: "Muestra ruta, hitos, hash-only proof y anchors cuando aplica.",
+    body: "Muestra eventos e hitos reportados, hash-only proof y anchors cuando aplica; no prueba recorrido físico.",
   },
   {
     icon: ArrowRight,
     label: "4. Ganó",
-    body: "Habilita garantia, reclamo, beneficio, CRM o salida enterprise.",
+    body: "Habilita garantía, reclamo, beneficio, CRM o salida enterprise.",
   },
 ];
 
@@ -570,24 +582,24 @@ const HUB_EXECUTIVE_PATHS = [
   {
     icon: Smartphone,
     eyebrow: "Demo en 60s",
-    title: "Proba el flujo completo",
-    body: "Toca, verifica, traza y activa un resultado comercial sin perderte en pantallas tecnicas.",
+    title: "Probá el flujo completo",
+    body: "Tocá, validá el tag, revisá la evidencia y activá un resultado comercial sin perderte en pantallas técnicas.",
     href: "/demo-lab?scenario=qr-gs1",
     cta: "Abrir wizard",
   },
   {
     icon: Network,
     eyebrow: "IOTA / hash-only",
-    title: "Verifica evidencia publica",
-    body: "Un auditor pega un hash y comprueba inclusion sin ver clientes, rutas ni documentos privados.",
+    title: "Verificá evidencia pública",
+    body: "Un auditor pega un hash y comprueba inclusión sin ver clientes, rutas ni documentos privados.",
     href: buildProofVerifierHandoffHref(),
     cta: "Abrir Proof Verify",
   },
   {
     icon: Box,
-    eyebrow: "Polygon ready",
-    title: "Muestra ownership y garantia",
-    body: "Despues del tap autentico, el cliente reclama propiedad, garantia o reventa certificada.",
+    eyebrow: "Polygon opcional - confirmar RPC",
+    title: "Mostrá ownership y garantía",
+    body: "Después de validar el mensaje, la identidad, la compra y la política, el cliente puede solicitar ownership, garantía o reventa registrada.",
     href: "/demo-lab?scenario=polygon-ownership",
     cta: "Ver ownership",
   },
@@ -595,7 +607,7 @@ const HUB_EXECUTIVE_PATHS = [
     icon: Database,
     eyebrow: "API / webhooks",
     title: "Conecta el resultado",
-    body: "CRM, recall, garantia, loyalty o webhook reciben una decision lista para operar.",
+    body: "Con una integración configurada, CRM, recall, garantía, loyalty o webhooks pueden recibir la decisión y su evidencia disponible.",
     href: "/sdk",
     cta: "Ver SDK/API",
   },
@@ -610,19 +622,19 @@ const HUB_PROOF_STACK = [
   },
   {
     label: "IOTA",
-    title: "Recibo publico hash-only",
-    body: "Publica hashes o Merkle roots para auditoria externa cuando hay que probar que una evidencia existia y no cambio.",
+    title: "Recibo público hash-only",
+    body: "Publica hashes o Merkle roots para auditoría externa cuando hay que probar que una evidencia existía y no cambió.",
     status: "Audit-ready",
   },
   {
     label: "Polygon",
-    title: "Propiedad, garantia y reventa",
-    body: "Se usa cuando el comprador reclama ownership, certificado NFT, garantia transferible o beneficio comercial verificable.",
+    title: "Propiedad, garantía y reventa",
+    body: "Se usa cuando el comprador solicita ownership, certificado NFT, garantía transferible o un beneficio comercial verificable.",
     status: "Opcional",
   },
   {
     label: "API / SDK",
-    title: "Conexion con ERP, CRM y portal",
+    title: "Conexión con ERP, CRM y portal",
     body: "El mismo flujo entra por QR, NFC, app de campo o API; cada canal recibe una salida clara para operar.",
     status: "Integrable",
   },
@@ -849,7 +861,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
                   key={s.id}
                   href={`/demo-lab?scenario=${s.id}`}
                   className={`demo-lab-hub-quick-launch__card group ${s.border} ${s.shadow}`}
-                  aria-label={`Abrir prueba rapida ${s.title}`}
+                  aria-label={`Abrir prueba rápida ${s.title}`}
                 >
                   <span className="demo-lab-hub-quick-launch__step">{String(index + 1).padStart(2, "0")}</span>
                   <span className={`demo-lab-hub-quick-launch__icon bg-gradient-to-br ${s.color}`}>
@@ -866,14 +878,21 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
         <section className="demo-lab-hub-executive-path mb-10" aria-label="Ruta ejecutiva Demo Lab">
           <div className="demo-lab-hub-executive-path__copy">
             <span>Ruta enterprise</span>
-            <strong>De producto fisico a prueba verificable en tres clicks.</strong>
+            <strong>Del producto físico a una prueba verificable en tres clics.</strong>
             <p>
               Pensado para ventas, inversores y equipos C-level: primero se entiende el flujo,
-              despues se valida el hash y finalmente se ve donde entran IOTA, Polygon y API.
+              después se valida el hash y finalmente se ve dónde entran IOTA, Polygon y API.
             </p>
             <small className="demo-lab-hub-executive-path__note">
               Abrís una demo, volvés al Hub desde la barra superior y podés saltar a Docs, SDK o Proof Verify.
             </small>
+            <Link
+              href="/demo-lab/chains"
+              className="mt-3 inline-flex min-h-11 w-fit items-center gap-2 rounded-full border border-cyan-200 bg-cyan-300 px-4 text-xs font-black uppercase tracking-[0.1em] text-slate-950 transition-colors hover:bg-cyan-200"
+            >
+              Abrir Chain Lab IOTA + Polygon
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
           </div>
           <div className="demo-lab-hub-executive-path__grid">
             {HUB_EXECUTIVE_PATHS.map((item) => {
@@ -902,11 +921,11 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
               <Database className="h-4 w-4" />
             </div>
             <div>
-              <span>Que se prueba realmente</span>
+              <span>Qué se prueba realmente</span>
               <strong>La demo separa negocio, privacidad y blockchain.</strong>
               <p>
-                Para un cliente no tecnico: nexID opera la identidad del producto, IOTA demuestra evidencia publica
-                hash-only y Polygon aparece solo cuando hay propiedad, garantia o reventa que certificar.
+                Para un cliente no técnico: nexID opera la identidad del producto, IOTA demuestra evidencia pública
+                hash-only y Polygon aparece sólo cuando hay propiedad, garantía o reventa que certificar.
               </p>
             </div>
           </div>

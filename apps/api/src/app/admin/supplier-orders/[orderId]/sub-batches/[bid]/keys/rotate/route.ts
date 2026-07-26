@@ -185,6 +185,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
   const nextVersion = Math.max(1, Math.trunc(Number(subBatch.max_key_version || subBatch.current_pair_version || 1)) + 1);
   const keys = generateSupplierBatchKeys();
   const keyMaterial = buildBatchKeyLifecycleRecords({
+    tenantId: String(subBatch.tenant_id),
     bid: String(subBatch.bid),
     kMetaHex: keys.kMetaHex,
     kFileHex: keys.kFileHex,

@@ -61,7 +61,7 @@ export default function SignInPage() {
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Demo comercial 12h</p>
                 <h2 className="mt-2 text-lg font-black text-white">Bodega Balmec</h2>
                 <p className="mt-2 text-sm leading-5 text-slate-300">
-                  Tenant completo para mostrar CRM, mapa vivo, proof y marketplace sin permisos globales.
+                  Tenant completo para mostrar CRM, mapa de eventos reportados, proof y marketplace sin permisos globales.
                 </p>
               </Link>
             ) : (

@@ -7,5 +7,6 @@ test('sun web page maps tag_tamper status to explicit UX copy', async () => {
   assert.match(src, /ttStatus === "closed"/);
   assert.match(src, /ttStatus === "opened"/);
   assert.match(src, /ttStatus === "invalid"/);
-  assert.match(src, /Estado de apertura no disponible\./);
+  assert.match(src, /Mensaje SUN válido\. Estado TT no disponible\./);
+  assert.match(src, /Su significado fisico depende de como se integra al packaging\./);
 });

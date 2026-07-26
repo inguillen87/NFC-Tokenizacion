@@ -5,6 +5,7 @@ import { DataTable } from "../../../components/data-table";
 import { ModuleAudienceHero } from "../../../components/module-audience-hero";
 import { OpsCommandCenter, type OpsCommandStep, type OpsCommandTenantRow } from "../../../components/ops-command-center";
 import { QuickOnboardingPanel } from "../../../components/quick-onboarding-panel";
+import { EnterpriseOpsState } from "../../../components/enterprise-ops-state";
 import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
 import { requireDashboardSession } from "../../../lib/session";
@@ -29,12 +30,12 @@ const rolloutSteps = [
   {
     step: "04",
     title: "Pegar y probar",
-    body: "El operador pega tags, hace un tap real y confirma que /sun muestra producto, mapa y acciones.",
+    body: "El operador pega tags, hace un tap y confirma que /sun muestra la ficha declarada, el evento reportado y las acciones configuradas.",
   },
   {
     step: "05",
     title: "Publicar",
-    body: "Portal, marketplace, club, garantia, ownership, NFT y experiencias verificadas quedan listos.",
+    body: "Portal, marketplace, club, garantia, titularidad digital, NFT y experiencias con evidencia quedan listos.",
   },
 ];
 
@@ -56,18 +57,27 @@ const carrierLadder = [
   },
   {
     label: "NTAG424 DNA TT",
-    promise: "SUN + estado fisico de sello abierto/cerrado.",
-    warning: "Ideal para vino, cosmetica, lujo, pharma ligera y cajas premium.",
+    promise: "SUN + estado TT reportado abierto/cerrado.",
+    warning: "La señal TT no certifica por sí sola contenido, sello ni apertura física.",
   },
 ];
 
-async function getBatchRows(context: AdminPageContext): Promise<Array<Record<string, unknown>>> {
+type SourceAvailability = "ready" | "upstream_error" | "invalid_payload" | "unreachable";
+
+type SourceResult<T> = {
+  availability: SourceAvailability;
+  data: T;
+};
+
+async function getBatchRows(context: AdminPageContext): Promise<SourceResult<Array<Record<string, unknown>>>> {
   try {
     const response = await fetchAdminPage(context, "batches");
-    if (!response.ok) return [] as Array<Record<string, unknown>>;
-    return response.json();
+    if (!response.ok) return { availability: "upstream_error", data: [] };
+    const payload: unknown = await response.json();
+    if (!Array.isArray(payload)) return { availability: "invalid_payload", data: [] };
+    return { availability: "ready", data: payload as Array<Record<string, unknown>> };
   } catch {
-    return [] as Array<Record<string, unknown>>;
+    return { availability: "unreachable", data: [] };
   }
 }
 
@@ -93,14 +103,15 @@ type ProductAssetItem = {
   } | null;
 };
 
-async function getAssetRows(context: AdminPageContext): Promise<ProductAssetItem[]> {
+async function getAssetRows(context: AdminPageContext): Promise<SourceResult<ProductAssetItem[]>> {
   try {
     const response = await fetchAdminPage(context, "product-assets?limit=60");
-    if (!response.ok) return [];
+    if (!response.ok) return { availability: "upstream_error", data: [] };
     const payload = await response.json() as { items?: ProductAssetItem[] };
-    return Array.isArray(payload.items) ? payload.items : [];
+    if (!Array.isArray(payload.items)) return { availability: "invalid_payload", data: [] };
+    return { availability: "ready", data: payload.items };
   } catch {
-    return [];
+    return { availability: "unreachable", data: [] };
   }
 }
 
@@ -116,10 +127,18 @@ export default async function BatchesPage({
   const tenantScope = adminContext.tenantSlug;
   const isTenantAdmin = session.role === "tenant-admin";
   const copy = dashboardContent[locale];
-  const [batchRows, assetRows] = await Promise.all([
+  const [batchResult, assetResult] = await Promise.all([
     getBatchRows(adminContext),
     getAssetRows(adminContext),
   ]);
+  const batchRows = batchResult.data;
+  const assetRows = assetResult.data;
+  const batchesReady = batchResult.availability === "ready";
+  const assetsReady = assetResult.availability === "ready";
+  const failedSources = [
+    !batchesReady ? `batches (${batchResult.availability})` : null,
+    !assetsReady ? `product-assets (${assetResult.availability})` : null,
+  ].filter((source): source is string => Boolean(source));
   const plannedTags = batchRows.reduce((sum, row) => sum + Number(row.requested_quantity || row.qty || row.quantity || 0), 0);
   const importedTags = batchRows.reduce((sum, row) => sum + Number(row.imported_tags || row.quantity || row.qty || 0), 0);
   const activeTags = batchRows.reduce((sum, row) => sum + Number(row.active_tags || 0), 0);
@@ -205,6 +224,16 @@ export default async function BatchesPage({
       <Card className="p-4 text-sm text-slate-300">
         Scope actual: <b className="text-white">{tenantScope ? `tenant ${tenantScope}` : "global / multi-tenant"}</b>.
       </Card>
+      {failedSources.length ? (
+        <EnterpriseOpsState
+          variant="error"
+          title="Fuentes operativas de batches no disponibles"
+          description="La pantalla conserva el alcance solicitado, pero no convierte una falla del backend en inventario cero ni en un rollout bloqueado. Reintentá cuando las fuentes vuelvan a responder."
+          checklist={failedSources}
+          action={<Link href="/batches" className="rounded-xl border border-rose-300/30 bg-rose-500/10 px-3 py-2 text-xs font-bold text-rose-100">Reintentar fuentes</Link>}
+          testId="batches-source-unavailable"
+        />
+      ) : null}
       <ModuleAudienceHero
         ceo={{
           eyebrow: "CEO / Investor read",
@@ -225,7 +254,7 @@ export default async function BatchesPage({
           cta: "Mostralo cuando quieras hablar de implementacion real y no solo de demo.",
         }}
       />
-      <OpsCommandCenter
+      {batchesReady ? <OpsCommandCenter
         mode={isTenantAdmin ? "tenant" : "global"}
         title="Rollout center de batches"
         subtitle="Pensado para resellers, administradores y auditores: recibe la caja de tags, carga el manifest, valida el lote y deja el producto listo para venta sin depender de un tecnico."
@@ -250,7 +279,7 @@ export default async function BatchesPage({
           { label: "Carrier", ready: secureBatches, pending: Math.max(batchRows.length - secureBatches, 0) },
           { label: "Supplier", ready: supplierBatches, pending: Math.max(batchRows.length - supplierBatches, 0) },
         ]}
-      />
+      /> : null}
       <Card className="overflow-hidden p-0">
         <div className="dashboard-hero-panel dashboard-hero-panel--green border-b border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.18),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.96),rgba(2,6,23,0.98))] p-5 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -269,11 +298,11 @@ export default async function BatchesPage({
           </div>
           <div className="mt-5 grid gap-3 md:grid-cols-5">
             {[
-              { label: "Lotes con ficha", value: batchProductReady.toLocaleString("es-AR"), detail: "product identity batch-level" },
-              { label: "UID con metadata", value: unitMetadataRows.toLocaleString("es-AR"), detail: "serial, botella, caja, pallet" },
-              { label: "UID con IoT", value: iotMetadataRows.toLocaleString("es-AR"), detail: "temperatura, humedad, logger" },
-              { label: "Overrides", value: unitProductOverrides.toLocaleString("es-AR"), detail: "producto por UID excepcional" },
-              { label: "Fotos reales", value: realPhotoRows.toLocaleString("es-AR"), detail: "asset visual opcional" },
+              { label: "Lotes con ficha", value: batchesReady ? batchProductReady.toLocaleString("es-AR") : "—", detail: "product identity batch-level" },
+              { label: "UID con metadata", value: batchesReady ? unitMetadataRows.toLocaleString("es-AR") : "—", detail: "serial, botella, caja, pallet" },
+              { label: "UID con IoT", value: batchesReady ? iotMetadataRows.toLocaleString("es-AR") : "—", detail: "temperatura, humedad, logger" },
+              { label: "Overrides", value: batchesReady ? unitProductOverrides.toLocaleString("es-AR") : "—", detail: "producto por UID excepcional" },
+              { label: "Fotos reales", value: assetsReady ? realPhotoRows.toLocaleString("es-AR") : "—", detail: "asset visual opcional" },
             ].map((item) => (
               <div key={item.label} className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                 <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">{item.label}</p>
@@ -283,11 +312,15 @@ export default async function BatchesPage({
             ))}
           </div>
           <p className="mt-4 rounded-2xl border border-emerald-300/20 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-100">
-            Readiness visual promedio: {averageAssetScore}/100. Objetivo enterprise: ficha de lote completa, manifest UID limpio y al menos una muestra visual real por producto/lote.
+            {assetsReady && assetScores.length
+              ? `Readiness visual promedio: ${averageAssetScore}/100 sobre ${assetScores.length} perfiles con score. Objetivo enterprise: ficha de lote completa, manifest UID limpio y al menos una muestra visual aprobada por producto/lote.`
+              : assetsReady
+                ? "Readiness visual sin base: la fuente respondió, pero no informó scores de assets."
+              : "Readiness visual no disponible: la fuente product-assets no respondió; no se infiere un puntaje cero."}
           </p>
         </div>
         <div className="grid gap-4 p-5 sm:p-6 lg:grid-cols-3">
-          {(assetRows.length ? assetRows.slice(0, 6) : [
+          {(assetsReady && assetRows.length ? assetRows.slice(0, 6) : assetsReady ? [
             {
               uidMasked: "pendiente",
               tagStatus: "setup",
@@ -295,16 +328,17 @@ export default async function BatchesPage({
               bid: "sin manifest",
               assetReadiness: "0 reales / 0 demo / 5 pendientes",
               profile: {
-                productName: "Primer producto real del lote",
+                productName: "Primer producto del lote",
                 brandName: "Marca / tenant",
                 verticalLabel: "Vertical comercial",
-                assetScore: 0,
+                assetScore: null,
                 uploadChecklist: ["Foto producto", "Etiqueta frontal", "Foto tag aplicado", "Ficha comercial", "Reglas claim/NFT", "Modelo GLB opcional"],
                 slots: [],
               },
             },
-          ]).map((item, index) => {
-            const score = Number(item.profile?.assetScore || 0);
+          ] : []).map((item, index) => {
+            const rawScore = item.profile?.assetScore;
+            const score = rawScore === null || rawScore === undefined ? null : Number(rawScore);
             const checklist = Array.isArray(item.profile?.uploadChecklist) ? item.profile?.uploadChecklist || [] : [];
             const slots = Array.isArray(item.profile?.slots) ? item.profile?.slots || [] : [];
             return (
@@ -315,7 +349,7 @@ export default async function BatchesPage({
                     <h3 className="mt-1 text-lg font-black text-white">{item.profile?.productName || "Producto sin nombre"}</h3>
                     <p className="mt-1 text-xs text-slate-400">{item.profile?.brandName || "Marca pendiente"} - {item.profile?.verticalLabel || "Vertical pendiente"}</p>
                   </div>
-                  <span className={`rounded-full border px-3 py-1 text-xs font-black ${score >= 80 ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-100" : score >= 55 ? "border-amber-300/30 bg-amber-500/10 text-amber-100" : "border-rose-300/30 bg-rose-500/10 text-rose-100"}`}>{score}/100</span>
+                  <span className={`rounded-full border px-3 py-1 text-xs font-black ${score !== null && score >= 80 ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-100" : score !== null && score >= 55 ? "border-amber-300/30 bg-amber-500/10 text-amber-100" : score === null ? "border-white/15 bg-white/5 text-slate-300" : "border-rose-300/30 bg-rose-500/10 text-rose-100"}`}>{score === null ? "Sin score" : `${score}/100`}</span>
                 </div>
                 <p className="mt-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-300">{item.assetReadiness || "readiness pendiente"}</p>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -414,7 +448,7 @@ export default async function BatchesPage({
           <Link href="/onboarding" className="rounded-lg border border-cyan-300/35 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">Abrir onboarding guiado</Link>
         </div>
       </Card>
-      <BatchSunValidator defaultBid={defaultOpsBid} canRepair={session.role === "super-admin"} />
+      {batchesReady ? <BatchSunValidator defaultBid={defaultOpsBid} canRepair={session.role === "super-admin"} /> : null}
       <QuickOnboardingPanel context="dashboard" />
       <DataTable
         title={copy.tables.batches.title}
@@ -427,7 +461,7 @@ export default async function BatchesPage({
         rows={rows}
         filterKey="status"
         loadingLabel={copy.shell.loading}
-        emptyLabel={copy.shell.empty}
+        emptyLabel={batchesReady ? copy.shell.empty : "Batches source unavailable; this is not a confirmed zero."}
         searchPlaceholder={copy.shell.search}
         allFilterLabel={copy.shell.all}
         refreshLabel={copy.shell.refresh}

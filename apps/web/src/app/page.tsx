@@ -223,7 +223,7 @@ export default async function HomePage() {
     : locale === "pt-BR"
       ? {
         eyebrow: "Premium tokenization + blockchain-ready trust layer",
-        title: "Projetado para marcas premium, revendedores e equipes enterprise que precisam de antifraude, rastreabilidade e fidelização no mesmo fluxo.",
+        title: "Projetado para marcas premium, revendedores e equipes enterprise que precisam de sinais de risco, rastreabilidade declarada e fidelização no mesmo fluxo.",
         body: "Cada tap executa as validações configuradas, atualiza o passport digital e abre ações comerciais somente quando a política permite.",
         points: [
           "Tap & verificação: evidência SUN/NFC e resultado de confiança em segundos.",
@@ -233,7 +233,7 @@ export default async function HomePage() {
       }
       : {
         eyebrow: "Premium tokenization + blockchain-ready trust layer",
-        title: "Diseñada para marcas premium, resellers y equipos enterprise que necesitan antifraude, trazabilidad y fidelización en la misma experiencia.",
+        title: "Diseñada para marcas premium, resellers y equipos enterprise que necesitan señales de riesgo, trazabilidad declarada y fidelización en la misma experiencia.",
         body: "Cada tap ejecuta las validaciones configuradas, actualiza el pasaporte digital y habilita acciones comerciales solo cuando la política lo permite.",
         points: [
           "Tap & verificación: evidencia SUN/NFC y estado de confianza en segundos.",
@@ -400,8 +400,8 @@ export default async function HomePage() {
             <h3 className="mt-4 text-base font-bold text-white">🛡️ Verify Centre (SUN)</h3>
             <p className="mt-2 text-xs leading-5 text-slate-400">
               {locale === "en" 
-                ? "Public verification portal for cryptographic tags (SUN/SDM) to prove physical presence."
-                : "Portal público de validación criptográfica SUN/SDM para constatar procedencia y firmas físicas."
+                ? "Public portal for validating fresh SUN/SDM messages from provisioned tags; it does not prove the physical product or its presence."
+                : "Portal público para validar mensajes SUN/SDM frescos de tags provisionados; no prueba procedencia, presencia ni autenticidad del producto físico."
               }
             </p>
             <Link href="/sun" className="nexid-quick-hub-card__cta mt-5 inline-flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-blue-300/20 bg-blue-400/10 px-3.5 py-2.5 text-sm font-black text-blue-200 transition group-hover:border-blue-300/45 group-hover:bg-blue-300/15 group-hover:text-blue-100">

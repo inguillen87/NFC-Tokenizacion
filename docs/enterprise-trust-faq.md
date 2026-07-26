@@ -1,10 +1,10 @@
 # FAQ enterprise de confianza: Enterprise Trust Layer, Polygon e IOTA
 
-Este FAQ alinea el discurso comercial y tecnico de nexID para clientes enterprise. Debe usarse cuando se explica autenticidad NFC, Enterprise Trust Layer, ownership en Polygon, proof layer IOTA, privacidad y auditoria.
+Este FAQ alinea el discurso comercial y tecnico de nexID para clientes enterprise. Debe usarse cuando se explica evidencia NFC, Enterprise Trust Layer, ownership en Polygon, proof layer IOTA, privacidad y auditoria.
 
 ## Respuesta corta
 
-nexID valida productos fisicos con NFC criptografico y registra eventos DPP en su backend. El Enterprise Trust Layer es la combinacion de fuente de verdad privada, politicas de tenant y capas publicas opcionales. Polygon se usa para propiedad digital, NFT, certificados, claims y transferencias de garantia/titularidad. IOTA puede usarse como capa opcional para hashes, Merkle roots, auditoria, DPP y logistica. Los datos sensibles no se publican on-chain y no todos los taps se escriben en blockchain.
+nexID valida mensajes NFC criptograficos, los vincula con una identidad digital y datos declarados, y registra eventos DPP en su backend. Un tap no certifica por si solo contenido, origen, condicion ni custodia fisica. El Enterprise Trust Layer combina esa fuente de verdad digital, politicas de tenant y capas publicas opcionales. Polygon se usa para propiedad digital, NFT, certificados, claims y transferencias digitales. IOTA puede usarse como capa opcional para hashes, Merkle roots, auditoria, DPP y logistica. Los datos sensibles no se publican on-chain y no todos los taps se escriben en blockchain.
 
 ## Mapa de capas
 
@@ -92,7 +92,7 @@ El hash prueba integridad de un artefacto concreto. El Merkle root permite proba
 
 La fabrica recibe un Supplier Encoding Pack acotado al sub-batch: `order_id`, `batch_id`, `sub_batch_id`/`bid`, chip model, perfil SDM/TagTamper, route template redacted para documentacion publica, formato de manifest y claves de encoding de ese sub-batch por canal cifrado.
 
-La fabrica nunca recibe KMS, database URLs, private keys de Polygon, secretos de executor, tokens admin ni PII. Tenant Vault muestra evidencia operativa, hashes, manifest, QA y estado; no muestra secretos internos.
+La fabrica nunca recibe la clave maestra de aplicación, acceso a Google Cloud KMS, database URLs, private keys de Polygon, secretos de executor, tokens admin ni PII. Tenant Vault muestra evidencia operativa, hashes, manifest, QA y estado; no muestra secretos internos.
 
 ### Existe una alianza formal con Polygon o IOTA?
 
@@ -108,7 +108,7 @@ nexID puede dejar la solicitud en estado pendiente y reintentar. No debe mostrar
 
 ### Que pasa si IOTA falla?
 
-La validacion NFC, DPP, dashboard y Polygon no deben caerse. El evento puede quedar con proof pendiente o fallido. La ausencia de proof IOTA no invalida automaticamente la autenticidad SUN ni la propiedad digital registrada en Polygon.
+La validacion del mensaje NFC, DPP, dashboard y Polygon no deben caerse. El evento puede quedar con proof pendiente o fallido. La ausencia de proof IOTA no invalida automaticamente la evidencia SUN registrada ni la propiedad digital registrada en Polygon.
 
 ### El consumidor necesita wallet?
 
@@ -133,7 +133,7 @@ En ambos casos, la verificacion no requiere exponer PII ni secretos criptografic
 - "La fuente de verdad operacional vive en nexID; blockchain se usa para pruebas o propiedad cuando aporta valor."
 - "No todos los taps van on-chain."
 - "No publicamos PII ni datos crudos de negocio en redes publicas."
-- "Enterprise Trust Layer separa autenticidad fisica, ownership digital y prueba externa de auditoria."
+- "Enterprise Trust Layer separa evidencia criptografica NFC, ownership digital y prueba externa de auditoria."
 
 ## Frases a evitar
 

@@ -4,19 +4,36 @@ export const dynamic = "force-dynamic";
 import { sql } from "../../../../../lib/db";
 import { json } from "../../../../../lib/http";
 import { authenticateSdkRequest, logSdkUsage } from "../../../../../lib/sdk-auth";
-import { dispatchTenantWebhooks } from "../../../../../lib/sdk-webhooks";
+import { enqueueSdkWebhookGuaranteed, sdkWebhookOutboxUnavailableBody, SdkWebhookOutboxUnavailableError } from "../../../../../lib/sdk-webhook-outbox-guarantee";
 import { processSunScan } from "../../../../../lib/sun-service";
+import { enforceSdkAuthenticationRateLimit, enforceSdkRateLimit } from "../../../../../lib/critical-rate-limit";
 import { asRecord, clean, mapSdkVerdict, mapSealStatus, maskUid, numberOrNull, parseHeaderIp } from "../_shared";
+import { readSdkMutationBody, runSdkIdempotentMutation, SDK_IDEMPOTENCY_OPERATIONS } from "../_idempotency";
 
 export async function POST(req: Request) {
   const startedAt = Date.now();
+  const authRateLimited = await enforceSdkAuthenticationRateLimit(req);
+  if (authRateLimited) return authRateLimited;
   const auth = await authenticateSdkRequest(req, "sdk:verify");
   if (!auth.ok) {
     await logSdkUsage({ req, endpoint: "sdk.verify", statusCode: auth.response.status, startedAt, reason: "auth_failed" });
     return auth.response;
   }
+  const rateLimited = await enforceSdkRateLimit(req, auth.context);
+  if (rateLimited) return rateLimited;
 
-  const body = asRecord(await req.json().catch(() => ({})));
+  const parsedBody = await readSdkMutationBody(req, auth.context.traceId);
+  if (!parsedBody.ok) {
+    await logSdkUsage({ req, context: auth.context, endpoint: "sdk.verify", statusCode: parsedBody.response.status, startedAt, reason: "invalid_request_body" });
+    return parsedBody.response;
+  }
+  const body = parsedBody.body;
+  return runSdkIdempotentMutation({
+    req,
+    context: auth.context,
+    route: SDK_IDEMPOTENCY_OPERATIONS.verifyTap.route,
+    body,
+    execute: async ({ idempotencyOperationId }) => {
   const bid = clean(body.bid);
   const piccDataHex = clean(body.picc_data || body.piccDataHex || body.picc);
   const encHex = clean(body.enc || body.encrypted_data || body.encHex);
@@ -62,6 +79,8 @@ export async function POST(req: Request) {
         sdk: true,
         api_key_id: auth.context.apiKeyId,
         tenant_slug: auth.context.tenantSlug,
+        trace_id: auth.context.traceId,
+        sdk_idempotency_operation_id: idempotencyOperationId,
         device: deviceMeta,
         gps,
       },
@@ -90,12 +109,34 @@ export async function POST(req: Request) {
     reason: clean(resultBody.reason || resultBody.crypto_error_reason) || null,
     traceId: auth.context.traceId,
   };
-  await dispatchTenantWebhooks({
-    tenantId: auth.context.tenantId,
-    eventName: "sdk.verify",
-    idempotencyKey: responseBody.eventId || auth.context.traceId,
-    payload: { ...responseBody, eventId: responseBody.eventId, traceId: auth.context.traceId },
-  }).catch(() => null);
+  if (idempotencyOperationId && responseBody.eventId) {
+    await sql/*sql*/`
+      UPDATE events event
+      SET sdk_idempotency_operation_id = ${idempotencyOperationId}::uuid
+      FROM batches batch
+      WHERE event.id::text = ${responseBody.eventId}
+        AND event.batch_id = batch.id
+        AND batch.tenant_id = ${auth.context.tenantId}::uuid
+        AND event.sdk_idempotency_operation_id IS NULL
+    `;
+  }
+  let webhookOutbox;
+  try {
+    webhookOutbox = await enqueueSdkWebhookGuaranteed({
+      tenantId: auth.context.tenantId,
+      eventName: "sdk.verify",
+      idempotencyKey: responseBody.eventId || auth.context.traceId,
+      payload: { ...responseBody, eventId: responseBody.eventId, traceId: auth.context.traceId },
+      correlationId: auth.context.traceId,
+      resourceId: responseBody.eventId,
+    });
+  } catch (error) {
+    if (!(error instanceof SdkWebhookOutboxUnavailableError)) throw error;
+    await logSdkUsage({ req, context: auth.context, endpoint: "sdk.verify", statusCode: 503, startedAt, reason: error.code, meta: { bid, eventId: responseBody.eventId } });
+    return json({ ...sdkWebhookOutboxUnavailableBody(error), operation: responseBody }, 503, { "retry-after": "2", "x-nexid-trace-id": auth.context.traceId });
+  }
   await logSdkUsage({ req, context: auth.context, endpoint: "sdk.verify", statusCode: result.status, startedAt, reason: responseBody.reason, meta: { bid, verdict: responseBody.verdict } });
-  return json(responseBody, result.status);
+  return json({ ...responseBody, webhookOutbox }, result.status);
+    },
+  });
 }

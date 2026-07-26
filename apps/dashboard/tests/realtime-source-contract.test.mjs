@@ -1,0 +1,43 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+
+const { classifyRealtimeEventSource } = await import("../src/lib/realtime-feed.ts");
+
+const homeSource = await readFile(new URL("../src/app/(app)/page.tsx", import.meta.url), "utf8");
+const crmSource = await readFile(new URL("../src/components/executive-realtime-crm.tsx", import.meta.url), "utf8");
+const streamBffSource = await readFile(new URL("../src/app/api/admin/events/stream/route.ts", import.meta.url), "utf8");
+
+test("dashboard keeps seed and unknown origins out of the production label", () => {
+  assert.deepEqual(classifyRealtimeEventSource("real"), { source: "production", eventSource: "real" });
+  assert.deepEqual(classifyRealtimeEventSource("imported"), { source: "production", eventSource: "imported" });
+  assert.deepEqual(classifyRealtimeEventSource("demo"), { source: "demo", eventSource: "demo" });
+  assert.deepEqual(classifyRealtimeEventSource("seed"), { source: "demo", eventSource: "seed" });
+  assert.deepEqual(classifyRealtimeEventSource("mystery"), { source: "unknown", eventSource: "mystery" });
+});
+
+test("Home returns explicit source and availability when upstream data falls back", () => {
+  assert.match(homeSource, /type HomeRealtimeAvailability = "ready" \| "fallback" \| "upstream_error" \| "invalid_payload" \| "unreachable"/);
+  assert.match(homeSource, /source: includeSeedRows \? "seed" : "unavailable"/);
+  assert.match(homeSource, /availability: includeSeedRows \? "fallback" : availability/);
+  assert.match(homeSource, /classifyRealtimeEventSource\(row\.source\)/);
+  assert.match(homeSource, /realtimeStreamSource = session\.isDemo \? "demo" : "production"/);
+});
+
+test("CRM requests one source, replaces fallback snapshots and labels it explicitly", () => {
+  assert.match(crmSource, /streamUrl\.searchParams\.set\("source", streamSource\)/);
+  assert.match(crmSource, /streamUrl\.searchParams\.set\("window", timeRange\)/);
+  assert.match(crmSource, /setEvents\(sortRealtimeEvents\(payload\.rows \|\| \[\], 50\)\)/);
+  assert.match(crmSource, /data-testid="crm-source-badge"/);
+  assert.match(crmSource, /"Respaldo seed"/);
+  assert.match(crmSource, /"Demo declarada"/);
+  assert.match(crmSource, /"Fuente mixta"/);
+});
+
+test("dashboard SSE BFF validates source and never injects demo rows into production fallback", () => {
+  assert.match(streamBffSource, /reason: "invalid_source_filter"/);
+  assert.match(streamBffSource, /const effectiveSource: DashboardStreamSource = forceSandbox \? "demo" : requestedSource/);
+  assert.match(streamBffSource, /const includeDemoRows = effectiveSource === "demo"/);
+  assert.match(streamBffSource, /availability: includeDemoRows \? "fallback" : "upstream_error"/);
+  assert.match(streamBffSource, /rows, source: options\.source \|\| "production", availability:/);
+});

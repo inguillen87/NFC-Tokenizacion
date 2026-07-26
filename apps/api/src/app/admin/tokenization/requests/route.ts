@@ -8,6 +8,7 @@ import { json } from "../../../../lib/http";
 import { sql } from "../../../../lib/db";
 import { anchorTokenizationRequest } from "../../../../lib/tokenization-engine";
 import { ensureTokenizationRequestsSchema } from "../../../../lib/tokenization-schema";
+import { adminCriticalRateLimitIdentity, enforceCriticalRateLimit } from "../../../../lib/critical-rate-limit";
 
 function clean(value: unknown) {
   return String(value || "").trim();
@@ -102,6 +103,11 @@ export async function POST(req: Request): Promise<Response> {
   if (auth) return auth;
   const permission = checkAdminPermission(req, "tokenization:write");
   if (permission) return permission;
+  const rateLimited = await enforceCriticalRateLimit(req, {
+    rateClass: "proof_write",
+    ...adminCriticalRateLimitIdentity(req),
+  });
+  if (rateLimited) return rateLimited;
 
   const { forcedTenantSlug } = getAdminTenantScope(req);
   const body = await req.json().catch(() => ({})) as Record<string, unknown>;

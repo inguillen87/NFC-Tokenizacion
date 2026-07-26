@@ -4,13 +4,23 @@ import { getConsumerFromRequest } from "../../../../../lib/consumer-auth";
 import { json } from "../../../../../lib/http";
 import { sql } from "../../../../../lib/db";
 import { ensureConsumerPortalSchema } from "../../../../../lib/commercial-runtime-schema";
+import { enforceCriticalRateLimit } from "../../../../../lib/critical-rate-limit";
+import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../../lib/bounded-request-body";
 
 export async function POST(req: Request, { params }: { params: Promise<{ rewardId: string }> }) {
-  await ensureConsumerPortalSchema();
   const consumer = await getConsumerFromRequest(req);
   if (!consumer) return json({ ok: false, error: "unauthorized" }, 401);
+  const limited = await enforceCriticalRateLimit(req, { rateClass: "public_write", tenantId: "consumer", subjectId: `consumer:${consumer.id}:reward-redeem` });
+  if (limited) return limited;
   const { rewardId } = await params;
-  const body = await req.json().catch(() => ({}));
+  let body: Record<string, unknown>;
+  try {
+    body = await readBoundedJsonBody<Record<string, unknown>>(req, 8 * 1024);
+  } catch (error) {
+    const tooLarge = error instanceof RequestBodyTooLargeError;
+    return json({ ok: false, error: tooLarge ? "request_body_too_large" : "invalid_json" }, tooLarge ? 413 : 400);
+  }
+  await ensureConsumerPortalSchema();
   const redemptionId = body.redemptionId || null;
   if (!redemptionId) return json({ ok: false, error: 'redemptionId_required' }, 400);
 

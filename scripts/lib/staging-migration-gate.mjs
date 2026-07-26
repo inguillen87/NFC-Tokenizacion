@@ -14,8 +14,6 @@ export const PLANNED_MIGRATIONS = Object.freeze([
   "20260725014500_0056_iota_evidence_constraints_validate.sql",
 ]);
 
-export const DRY_RUN_MIGRATIONS = Object.freeze(PLANNED_MIGRATIONS.slice(1));
-
 const RELEVANT_TABLES = Object.freeze([
   "admin_login_attempt_buckets",
   "evidence_anchor_attempts",
@@ -62,6 +60,81 @@ export function normalizeLedger(ids) {
   }
   if (new Set(normalized).size !== normalized.length) throw gateError("EXPECTED_LEDGER_DUPLICATE");
   return normalized.sort();
+}
+
+function normalizeLedgerSequence(ids) {
+  if (!Array.isArray(ids)) throw gateError("EXPECTED_LEDGER_INVALID");
+  const normalized = ids.map((id) => String(id || "").trim());
+  if (normalized.some((id) => !id || !/^[A-Za-z0-9_.-]+\.sql$/.test(id))) {
+    throw gateError("EXPECTED_LEDGER_INVALID");
+  }
+  if (new Set(normalized).size !== normalized.length) throw gateError("EXPECTED_LEDGER_DUPLICATE");
+  return normalized;
+}
+
+export function expectedLedgerForPrefix(baseline, prefixLength) {
+  const normalizedBaseline = normalizeLedger(baseline);
+  if (!Number.isInteger(prefixLength) || prefixLength < 0 || prefixLength > PLANNED_MIGRATIONS.length) {
+    throw gateError("MIGRATION_PREFIX_LENGTH_INVALID");
+  }
+  return normalizeLedger([...normalizedBaseline, ...PLANNED_MIGRATIONS.slice(0, prefixLength)]);
+}
+
+/**
+ * Accept only the approved baseline plus an exact, chronologically ordered
+ * prefix of the planned migration sequence. This deliberately rejects both
+ * sparse ledgers (for example 0050-0054 + 0056) and an out-of-order manual
+ * insertion even when the same migration IDs are present.
+ */
+export function migrationProgress(actualIds, baselineIds) {
+  const actualSequence = normalizeLedgerSequence(actualIds);
+  const baseline = normalizeLedger(baselineIds);
+  const actual = normalizeLedger(actualSequence);
+  const baselineSet = new Set(baseline);
+  const plannedSet = new Set(PLANNED_MIGRATIONS);
+  const actualSet = new Set(actual);
+  const missingBaseline = baseline.filter((id) => !actualSet.has(id));
+  const unexpected = actual.filter((id) => !baselineSet.has(id) && !plannedSet.has(id));
+  const appliedMigrations = PLANNED_MIGRATIONS.filter((id) => actualSet.has(id));
+  let prefixLength = 0;
+  while (prefixLength < PLANNED_MIGRATIONS.length && actualSet.has(PLANNED_MIGRATIONS[prefixLength])) {
+    prefixLength += 1;
+  }
+  const nonPrefixApplied = PLANNED_MIGRATIONS
+    .slice(prefixLength)
+    .filter((id) => actualSet.has(id));
+  const observedPlannedOrder = actualSequence.filter((id) => plannedSet.has(id));
+  const orderValid = observedPlannedOrder.every((id, index) => id === appliedMigrations[index]);
+  const expected = expectedLedgerForPrefix(baseline, prefixLength);
+  const ledger = compareExactLedger(actual, expected);
+  const ok = missingBaseline.length === 0
+    && unexpected.length === 0
+    && nonPrefixApplied.length === 0
+    && orderValid
+    && ledger.ok;
+  return {
+    ok,
+    prefix_length: prefixLength,
+    applied_migrations: appliedMigrations,
+    pending_migrations: PLANNED_MIGRATIONS.slice(prefixLength),
+    complete: prefixLength === PLANNED_MIGRATIONS.length,
+    missing_baseline: missingBaseline,
+    unexpected_migrations: unexpected,
+    non_prefix_applied: nonPrefixApplied,
+    observed_planned_order: observedPlannedOrder,
+    order_valid: orderValid,
+    ledger,
+  };
+}
+
+export function assertMigrationProgress(actualIds, baselineIds) {
+  const progress = migrationProgress(actualIds, baselineIds);
+  if (!progress.ok) {
+    throw gateError("MIGRATION_LEDGER_NOT_EXACT_CONTIGUOUS_PREFIX", {
+      migration_progress: progress,
+    });
+  }
+  return progress;
 }
 
 export function expectedBaselineLedger(source = process.env) {
@@ -197,7 +270,11 @@ export function assertAllowedTarget(target, source = process.env) {
 export async function readLedger(client) {
   const table = await client.query("SELECT to_regclass('public.schema_migrations') IS NOT NULL AS present");
   if (!table.rows[0]?.present) throw gateError("SCHEMA_MIGRATIONS_TABLE_REQUIRED");
-  return normalizeLedger((await client.query("SELECT id FROM schema_migrations ORDER BY id")).rows.map((row) => row.id));
+  // Preserve application chronology so prefix validation can reject a manual
+  // out-of-order ledger insertion. Exact-ledger comparisons normalize later.
+  return normalizeLedgerSequence((await client.query(
+    "SELECT id FROM schema_migrations ORDER BY applied_at, id",
+  )).rows.map((row) => row.id));
 }
 
 export async function relevantSchemaFingerprint(client) {

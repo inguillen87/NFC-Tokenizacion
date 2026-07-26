@@ -58,7 +58,7 @@ export function buildWalletControlMessage(input: {
     "",
     input.address,
     "",
-    "Purpose: Link this wallet to a nexID Passport for ownership and transfer authorization.",
+    "Purpose: Link this wallet to a nexID Passport as proof of account control.",
     `URI: ${input.uri}`,
     "Version: 1",
     `Chain ID: ${input.chainId}`,
@@ -67,7 +67,7 @@ export function buildWalletControlMessage(input: {
     `Issued At: ${input.issuedAt}`,
     `Expiration Time: ${input.expiresAt}`,
     "",
-    "Signing is free and does not send a blockchain transaction.",
+    "This signature only links the wallet. It does not authorize a purchase, NFT transfer or blockchain transaction.",
   ].join("\n");
 }
 

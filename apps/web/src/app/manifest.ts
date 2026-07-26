@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "nexID — NFC Authentication & Product Identity",
+    name: "nexID — NFC Message Evidence & Digital Product Identity",
     short_name: "nexID",
-    description: "Enterprise-grade NFC authentication, traceability and product identity cloud.",
+    description: "Enterprise NFC/QR message evidence, declared traceability and governed digital product identity.",
     start_url: "/?source=pwa",
     id: "/",
     display: "standalone",

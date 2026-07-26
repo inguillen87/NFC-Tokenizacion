@@ -20,9 +20,9 @@ const samplePoints: GlobePoint[] = [
 ];
 
 const sampleRoutes: GlobeRoute[] = [
-  { fromLat: -32.8895, fromLng: -68.8458, toLat: 47.3769, toLng: 8.5417, tone: "info", label: "Mendoza -> Zurich (Vino Premium)" },
-  { fromLat: 4.711, fromLng: -74.0721, toLat: 40.4168, toLng: -3.7038, tone: "success", label: "Bogotá -> Madrid (Pharma Cold-Chain)" },
-  { fromLat: -34.6037, fromLng: -58.3816, toLat: -23.5505, toLng: -46.6333, tone: "warn", label: "Buenos Aires -> Sao Paulo (Replay Attack Alert)" },
+  { fromLat: -32.8895, fromLng: -68.8458, toLat: 47.3769, toLng: 8.5417, tone: "info", label: "Mendoza -> Zurich (escenario vino simulado)" },
+  { fromLat: 4.711, fromLng: -74.0721, toLat: 40.4168, toLng: -3.7038, tone: "success", label: "Bogotá -> Madrid (escenario cold-chain simulado)" },
+  { fromLat: -34.6037, fromLng: -58.3816, toLat: -23.5505, toLng: -46.6333, tone: "warn", label: "Buenos Aires -> Sao Paulo (alerta de replay simulada)" },
 ];
 
 export default function DemoGlobePage() {
@@ -32,14 +32,14 @@ export default function DemoGlobePage() {
 
   const handleSimulateTap = () => {
     setSimulating(true);
-    // Simula un evento logístico en tiempo real agregando una ruta dinámica
+    // Agrega una conexión dinámica únicamente dentro del escenario simulado.
     const newRoute: GlobeRoute = {
       fromLat: -32.8895, // Mendoza
       fromLng: -68.8458,
       toLat: 25.7617, // Miami
       toLng: -80.1918,
       tone: "success",
-      label: "Mendoza -> Miami (Emisión de pasaporte Web3)"
+      label: "Mendoza -> Miami (emisión de pasaporte simulada)"
     };
     setCurrentRoutes([newRoute, ...sampleRoutes]);
 
@@ -54,7 +54,7 @@ export default function DemoGlobePage() {
       <SectionHeading 
         eyebrow="Laboratorio de Visualización" 
         title="Ecosistema Global 3D & Sectores Sincronizados" 
-        description="Demo interactiva del nuevo globo 3D holográfico con trazabilidad física en tiempo real y la unificación de los 4 pilares de marca de nexID." 
+        description="Escenario geográfico simulado con conexiones configuradas y eventos reportados de ejemplo. Permite explorar la interfaz 3D, pero no prueba recorridos ni custodia física."
       />
 
       <div className="grid gap-8 lg:grid-cols-12">
@@ -65,11 +65,11 @@ export default function DemoGlobePage() {
             
             <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-2 self-start flex items-center gap-2">
               <Compass className="h-4.5 w-4.5 text-cyan-400 animate-spin" />
-              Trazabilidad 3D del Origen al Destino
+              Conexiones 3D reportadas · simulación
             </h3>
             
             <p className="text-xs text-slate-400 self-start mb-6 leading-relaxed">
-              Interactúa arrastrando el globo con el ratón. Observa las conexiones de exportación de Mendoza a Zúrich, Pharma de Bogotá a Madrid y alertas en tiempo real de São Paulo.
+              Interactúa arrastrando el globo. Las conexiones, contadores y alertas de São Paulo son datos de demostración simulados; no representan movimiento físico observado.
             </p>
 
             {/* GLOBO 3D CANVAS */}
@@ -94,7 +94,7 @@ export default function DemoGlobePage() {
                 className="flex items-center gap-2 rounded-lg bg-cyan-500 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-cyan-400 disabled:opacity-50 transition"
               >
                 <Play className="h-3.5 w-3.5" />
-                {simulating ? "Transmitiendo Telemetría..." : "Emitir Escaneo Realtime"}
+                {simulating ? "Generando evento demo..." : "Emitir escaneo simulado"}
               </button>
             </div>
           </Card>
@@ -119,7 +119,7 @@ export default function DemoGlobePage() {
                 <div>
                   <h4 className="text-xs font-black text-white uppercase tracking-wider">Agro & Alimentos</h4>
                   <p className="text-[11px] text-slate-300 mt-1 leading-normal">
-                    Trazabilidad de origen y germinación en semillas. Sensores IoT de humedad de suelo y origen geográfico certificado.
+                    Eventos declarados de origen y germinación en semillas, más mediciones IoT reportadas. La demo no certifica origen ni condiciones físicas.
                   </p>
                   <span className="text-[9px] font-mono text-emerald-400 mt-2 block">Imagen: sacos de semillas en tierra fértil</span>
                 </div>
@@ -147,7 +147,7 @@ export default function DemoGlobePage() {
                 <div>
                   <h4 className="text-xs font-black text-white uppercase tracking-wider">Pharma & Salud</h4>
                   <p className="text-[11px] text-slate-300 mt-1 leading-normal">
-                    Verificación de medicamentos auténticos, prospectos dinámicos y control de temperatura de vacunas en tránsito.
+                    Evidencia digital asociada a medicamentos, prospectos dinámicos y mediciones de temperatura reportadas. No prueba contenido ni autenticidad física.
                   </p>
                   <span className="text-[9px] font-mono text-indigo-400 mt-2 block">Imagen: caja blanca con sello NFC y vial de vidrio</span>
                 </div>
@@ -161,9 +161,9 @@ export default function DemoGlobePage() {
                 <div>
                   <h4 className="text-xs font-black text-white uppercase tracking-wider">Vinos & Lujo</h4>
                   <p className="text-[11px] text-slate-300 mt-1 leading-normal">
-                    Sellos de seguridad TagTamper en corchos de vinos premium. Certificados de propiedad (NFT) para retail de lujo.
+                    Integración TagTamper que reporta estado TT para revisión; no certifica sello, contenido ni apertura física. El NFT registra titularidad digital declarada según policy, no propiedad física.
                   </p>
-                  <span className="text-[9px] font-mono text-cyan-400 mt-2 block">Imagen: botella con precinto anticopia NTAG 424 DNA</span>
+                  <span className="text-[9px] font-mono text-cyan-400 mt-2 block">Imagen conceptual: botella con integración NTAG 424 DNA TT</span>
                 </div>
               </div>
             </div>

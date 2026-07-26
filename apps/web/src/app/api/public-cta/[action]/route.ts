@@ -3,17 +3,25 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { productUrls } from "@product/config";
 import { createDemoShareToken } from "../../../../lib/demo-share";
+import {
+  consumePublicApiRateLimit,
+  isJsonRequest,
+  isSameOriginRequest,
+  parseJsonRecord,
+  readBoundedText,
+} from "../../../../lib/public-api-guard";
 
 const ALLOWED = new Set(["claim-ownership", "register-warranty", "tokenize-request", "provenance", "report-problem", "receipt-ocr"]);
 const UID_OR_EVENT_RE = /^(?:[0-9A-F]{8,20}|EVENT-\d+)$/;
 const BID_RE = /^[A-Za-z0-9._:-]{3,120}$/;
+const MAX_PAYLOAD_BYTES = 32 * 1024;
 
 function clean(value: unknown) {
   return String(value || "").trim();
 }
 
 function traceId() {
-  return `cta_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  return `cta_${crypto.randomUUID()}`;
 }
 
 function buildForwardHeaders(req: Request, trace: string) {
@@ -24,13 +32,17 @@ function buildForwardHeaders(req: Request, trace: string) {
 
   const cookie = req.headers.get("cookie");
   const userAgent = req.headers.get("user-agent");
-  const forwardedFor = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip");
   const authorization = req.headers.get("authorization");
   if (cookie) headers.cookie = cookie;
   if (userAgent) headers["user-agent"] = userAgent;
-  if (forwardedFor) headers["x-forwarded-for"] = forwardedFor;
   if (authorization) headers.authorization = authorization;
   return headers;
+}
+
+function errorResponse(reason: string, status: number, trace: string, retryAfter = 0) {
+  const headers: Record<string, string> = { "Cache-Control": "no-store", "x-nexid-trace-id": trace };
+  if (retryAfter) headers["Retry-After"] = String(retryAfter);
+  return NextResponse.json({ ok: false, reason, trace_id: trace }, { status, headers });
 }
 
 function getSetCookies(response: Response) {
@@ -95,12 +107,17 @@ async function forward(req: Request, action: string, method: "GET" | "POST", bid
     uid,
     event_id: eventId || payloadEventId,
   };
-  const response = await fetch(url.toString(), {
-    method,
-    headers: buildForwardHeaders(req, trace),
-    body: method === "POST" ? JSON.stringify(outboundPayload) : undefined,
-    cache: "no-store",
-  });
+  let response: Response;
+  try {
+    response = await fetch(url.toString(), {
+      method,
+      headers: buildForwardHeaders(req, trace),
+      body: method === "POST" ? JSON.stringify(outboundPayload) : undefined,
+      cache: "no-store",
+    });
+  } catch {
+    return errorResponse("cta_backend_unavailable", 503, trace);
+  }
 
   const text = await response.text();
   const next = new NextResponse(text, {
@@ -118,15 +135,26 @@ async function forward(req: Request, action: string, method: "GET" | "POST", bid
 
 export async function POST(req: Request, { params }: { params: Promise<{ action: string }> }) {
   const { action } = await params;
-  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
-  return forward(req, action, "POST", clean(body.bid), clean(body.uid || body.uid_hex).toUpperCase(), clean(body.event_id || body.eventId), traceId(), body);
+  const trace = traceId();
+  if (!isSameOriginRequest(req)) return errorResponse("forbidden_origin", 403, trace);
+  if (!isJsonRequest(req)) return errorResponse("unsupported_media_type", 415, trace);
+  const retryAfter = consumePublicApiRateLimit("public-cta:post", req, { max: 30, windowMs: 10 * 60_000 });
+  if (retryAfter) return errorResponse("rate_limited", 429, trace, retryAfter);
+  const input = await readBoundedText(req, MAX_PAYLOAD_BYTES);
+  if (!input.ok) return errorResponse(input.reason, input.status, trace);
+  const body = parseJsonRecord(input.text);
+  if (!body) return errorResponse("invalid_json", 400, trace);
+  return forward(req, action, "POST", clean(body.bid), clean(body.uid || body.uid_hex).toUpperCase(), clean(body.event_id || body.eventId), trace, body);
 }
 
 export async function GET(req: Request, { params }: { params: Promise<{ action: string }> }) {
   const { action } = await params;
+  const trace = traceId();
+  const retryAfter = consumePublicApiRateLimit("public-cta:get", req, { max: 120, windowMs: 10 * 60_000 });
+  if (retryAfter) return errorResponse("rate_limited", 429, trace, retryAfter);
   const url = new URL(req.url);
   const bid = clean(url.searchParams.get("bid"));
   const uid = clean(url.searchParams.get("uid")).toUpperCase();
   const eventId = clean(url.searchParams.get("event_id") || url.searchParams.get("eventId"));
-  return forward(req, action, "GET", bid, uid, eventId, traceId());
+  return forward(req, action, "GET", bid, uid, eventId, trace);
 }

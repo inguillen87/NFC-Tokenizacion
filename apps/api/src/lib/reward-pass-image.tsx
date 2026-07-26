@@ -225,7 +225,7 @@ export async function renderRewardPassImage(input: {
               <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
                 <span style={{ fontSize: 15, fontWeight: 900, letterSpacing: 6, color: "#2dd4bf" }}>BENEFICIO RESERVADO</span>
                 <span style={{ marginTop: 8, fontSize: 34, fontWeight: 900, lineHeight: 1.08 }}>{rewardTitle}</span>
-                <span style={{ marginTop: 10, fontSize: 20, color: "#94a3b8" }}>Emitido por tap verificado post-compra</span>
+                <span style={{ marginTop: 10, fontSize: 20, color: "#94a3b8" }}>Emitido por evento NFC elegible post-compra</span>
               </div>
             </div>
           </div>

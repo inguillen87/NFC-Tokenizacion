@@ -1,5 +1,11 @@
 # Staging evidence — 2026-07-24
 
+> **SUPERSEDED - HISTORICAL SNAPSHOT.** This file preserves evidence captured
+> on 2026-07-24 and must not be used as the current migration, custody or
+> promotion status. Its historical IDs, counts and blockers are intentionally
+> unchanged. The later canonical release summary is
+> [`enterprise-product-experience-sprint.md`](enterprise-hardening/2026-07-26/enterprise-product-experience-sprint.md).
+
 - Neon project: `nfc-token-api` (`young-mouse-14324031`)
 - Branch: `nexid-staging` (isolated from `main`)
 - PostgreSQL: 17.0

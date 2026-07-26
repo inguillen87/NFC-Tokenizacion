@@ -1,5 +1,14 @@
 # nexID Polygon ownership - Runbook paso a paso
 
+> Estado operativo 2026-07-26: produccion usa el executor separado de Cloud
+> Run con `TOKENIZATION_USE_LOCAL_MINTER=false` y custodia
+> `EXECUTOR_SIGNER_MODE=kms_wrapped`. El auto-mint por cada tap esta apagado:
+> `SUN_AUTO_TOKENIZE_ON_VALID_TAP=false`. Las instrucciones de private key y
+> minter local que siguen en este documento son exclusivamente un laboratorio
+> historico de desarrollo/testnet; no son una configuracion aprobada para
+> Vercel ni para un tenant. `kms_wrapped` es una envoltura SOFTWARE: no equivale
+> a HSM ni a firma no exportable.
+
 Esta guia es para activar tokenizacion real en Polygon Amoy para taps SUN/NTAG 424 DNA TT de nexID, usando las 10 etiquetas fisicas actuales como piloto. La meta es que un tap valido y fresco pueda habilitar un certificado/token verificable cuando la politica del tenant lo permita, sin exponer el UID crudo del chip en blockchain.
 
 Polygon es la capa de ownership/NFT/claim. No es el ledger de todos los taps. Los taps se validan y registran en nexID; solo claims, mints o eventos seleccionados deben terminar on-chain.
@@ -23,13 +32,18 @@ apps/executor/README.md
 Activar este flujo:
 
 1. El cliente tapea una etiqueta NFC/SUN.
-2. La API valida autenticidad, anti-replay y estado tamper.
+2. La API valida el mensaje SUN/SDM, anti-replay y el estado TT reportado; no certifica por si sola el producto fisico.
 3. Si el tap es valido, fresco y elegible por politica, nexID crea o procesa una solicitud de tokenizacion.
 4. El backend firma una transaccion en Polygon Amoy.
 5. El producto queda asociado a un token/certificado con `tx_hash`, `token_id`, red, contrato y metadata.
 6. El usuario ve el estado en el passport/portal autorizado y los equipos internos lo auditan en consola privada.
 
-## Estado actual verificado
+## Estado implementado y snapshot historico de verificacion
+
+> Los conteos de tests y smokes de esta seccion pertenecen a una corrida
+> anterior del 2026-07-26. No representan el total vigente ni deben usarse como
+> gate de release. La barrida posterior y sus conteos estan documentados en
+> [`enterprise-product-experience-sprint.md`](enterprise-hardening/2026-07-26/enterprise-product-experience-sprint.md).
 
 - `tsc` API, web y dashboard: OK.
 - `qa-static`: OK.
@@ -44,8 +58,8 @@ Activar este flujo:
   - modo cerrado por defecto: `TOKENIZATION_MODE=disabled` o `off`
   - modo demo/sandbox explícito: `TOKENIZATION_MODE=simulated`, sin `tx_hash`, `token_id` ni explorer
   - modo real Polygon: `TOKENIZATION_MODE=polygon`
-  - minter local backend: `TOKENIZATION_USE_LOCAL_MINTER=true`
-  - executor externo futuro: `TOKENIZATION_EXECUTOR_URL` + `TOKENIZATION_EXECUTOR_SECRET`
+  - minter local backend: solo desarrollo/testnet, prohibido en produccion
+  - executor externo desplegado: `TOKENIZATION_EXECUTOR_URL` + `TOKENIZATION_EXECUTOR_SECRET`
 - Executor separado incluido: `apps/executor`
 - Piloto Amoy/sandbox:
   - RPC: `<POLYGON_AMOY_RPC_URL_REDACTED>`
@@ -278,7 +292,7 @@ Verificar en explorer:
 https://amoy.polygonscan.com/address/0xCONTRATO_DESPLEGADO
 ```
 
-## Paso 7 - Variables de entorno en Vercel/API
+## Paso 7 - Variables de entorno en Vercel/API (configuracion vigente)
 
 Abrir el dashboard del hosting y entrar al proyecto API correspondiente. No documentar dominios productivos ni project links en copy publico.
 
@@ -292,13 +306,12 @@ Agregar estas variables en `Production` y, si usas previews, tambien en `Preview
 
 ```txt
 TOKENIZATION_MODE=polygon
-SUN_AUTO_TOKENIZE_ON_VALID_TAP=true
-TOKENIZATION_USE_LOCAL_MINTER=true
+SUN_AUTO_TOKENIZE_ON_VALID_TAP=false
+TOKENIZATION_USE_LOCAL_MINTER=false
 TOKENIZATION_UID_SALT=<random largo secreto>
 TOKENIZATION_METADATA_CID_PREFIX=nexid-metadata
-POLYGON_RPC_URL=https://polygon-amoy.g.alchemy.com/v2/<RPC_API_KEY>
-POLYGON_MINTER_PRIVATE_KEY=0xPRIVATE_KEY_DE_NEXID_AMOY_MINTER
-POLYGON_MINTER_ADDRESS=0xADDRESS_PUBLICA_DE_NEXID_AMOY_MINTER
+TOKENIZATION_EXECUTOR_URL=<EXECUTOR_MINT_URL_HTTPS>
+TOKENIZATION_EXECUTOR_SECRET=<secreto dedicado>
 POLYGON_CONTRACT_ADDRESS=0xCONTRATO_DESPLEGADO
 POLYGON_DEFAULT_RECIPIENT=0xWALLET_RECEPTORA_DEFAULT
 POLYGON_DEPLOY_OWNER=0xOWNER_DEL_CONTRATO
@@ -306,30 +319,28 @@ POLYGON_DEPLOY_OWNER=0xOWNER_DEL_CONTRATO
 
 Despues de guardar variables:
 
-1. Hacer redeploy del proyecto API.
-2. Confirmar que el deploy termina OK.
-3. Probar un endpoint SUN real.
+1. Crear un deployment candidato sin mover el dominio canonico.
+2. Confirmar build, readiness autenticada del executor y smoke del candidato.
+3. Promover y repetir el smoke por `api.nexid.lat`; hacer rollback si falla.
 
 Importante:
 
-- `POLYGON_MINTER_PRIVATE_KEY` va solo en API/backend.
-- No va en web.
-- No va en dashboard.
-- No va en `NEXT_PUBLIC_*`.
-- No va en repositorio.
+- `POLYGON_MINTER_PRIVATE_KEY` no se configura en la API de produccion.
+- Ninguna private key va en web, dashboard, `NEXT_PUBLIC_*` o repositorio.
+- La revision desplegada usa una clave envuelta por Google Cloud KMS SOFTWARE;
+  el executor la descifra transitoriamente en memoria para firmar.
 
 ## Que significa cada variable
 
 | Variable | Valor | Para que sirve |
 | --- | --- | --- |
 | `TOKENIZATION_MODE` | `polygon` | Obliga a usar anclaje real Polygon. Si falla, no simula como fallback. |
-| `SUN_AUTO_TOKENIZE_ON_VALID_TAP` | `true` | Crea tokenizacion automatica cuando el tap SUN es valido. |
-| `TOKENIZATION_USE_LOCAL_MINTER` | `true` | Permite que la API firme con la wallet minter configurada. |
+| `SUN_AUTO_TOKENIZE_ON_VALID_TAP` | `false` | Evita un mint por cada lectura; la tokenizacion ocurre solo por una solicitud/hito elegible. |
+| `TOKENIZATION_USE_LOCAL_MINTER` | `false` | Impide que la API firme con una private key local. |
 | `TOKENIZATION_UID_SALT` | secreto largo | Protege privacidad del UID: se hashea antes de anclar. |
 | `TOKENIZATION_METADATA_CID_PREFIX` | `nexid-metadata` o CID | Prefijo/base para metadata. En piloto puede ser local/logico; en premium usar IPFS/Arweave. |
-| `POLYGON_RPC_URL` | URL RPC Amoy | Nodo por donde la API envia transacciones. |
-| `POLYGON_MINTER_PRIVATE_KEY` | `0x...` | Private key de wallet minter dedicada. |
-| `POLYGON_MINTER_ADDRESS` | `0x...` | Address publica autorizada como minter en el contrato; debe coincidir con la private key si firma API/executor. |
+| `TOKENIZATION_EXECUTOR_URL` | URL HTTPS | Executor aislado que aplica allowlists y firma. |
+| `TOKENIZATION_EXECUTOR_SECRET` | secreto dedicado | Autentica el handoff API -> executor; no sustituye IAM de servicio como objetivo futuro. |
 | `POLYGON_CONTRACT_ADDRESS` | `0x...` | Contrato NFT/certificado desplegado. |
 | `POLYGON_DEFAULT_RECIPIENT` | `0x...` | Wallet que recibe token si el usuario no conecto wallet. |
 | `POLYGON_DEPLOY_OWNER` | `0x...` | Owner/admin del contrato. |
@@ -476,11 +487,11 @@ Llevar una tabla de control:
 
 Despues de un tap valido:
 
-1. El passport debe mostrar origen, trazabilidad, estado tamper y tokenizacion.
+1. El passport debe mostrar origen declarado, trazabilidad registrada, estado TT reportado y tokenizacion.
 2. El usuario puede tocar `Registrarme`.
 3. Se asocia el tap al portal consumidor.
 4. El portal muestra:
-   - producto verificado
+   - mensaje NFC y evidencia digital disponibles
    - tenant asociado
    - historial de taps
    - beneficios/promos
@@ -551,7 +562,7 @@ Ejemplo conceptual:
 chip_uid_real + TOKENIZATION_UID_SALT -> chipUidHash -> contrato
 ```
 
-Esto permite demostrar que el producto fue autenticado sin revelar el identificador fisico original.
+Esto permite demostrar que se registro una validacion del mensaje NFC asociado sin revelar el identificador original del tag; no demuestra por si solo autenticidad, contenido, origen ni custodia fisica del producto.
 
 La ruta de metadata y el `asset_ref` tambien deben usar un identificador publico derivado:
 
@@ -583,7 +594,7 @@ Campos recomendados:
 ```json
 {
   "name": "Gran Reserva Malbec - Digital Passport",
-  "description": "nexID verified physical product passport.",
+  "description": "nexID digital product passport with validated NFC tag evidence.",
   "attributes": [
     { "trait_type": "Tenant", "value": "tenant_public_ref" },
     { "trait_type": "Batch", "value": "BATCH_PUBLIC_REF" },

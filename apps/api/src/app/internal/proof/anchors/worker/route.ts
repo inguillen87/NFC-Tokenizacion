@@ -1,18 +1,20 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { timingSafeEqual } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { json } from "../../../../../lib/http";
 import { ensureSupplierOpsSchema } from "../../../../../lib/supplier-ops-schema";
 import {
   claimIotaEvidenceAnchors,
   processIotaEvidenceAnchor,
 } from "../../../../../lib/iota-evidence-reconciler";
+import { enforceCriticalRateLimit } from "../../../../../lib/critical-rate-limit";
 
 function secretMatches(provided: string, expected: string) {
-  const left = Buffer.from(provided, "utf8");
-  const right = Buffer.from(expected, "utf8");
-  return left.length === right.length && left.length > 0 && timingSafeEqual(left, right);
+  if (!provided || !expected) return false;
+  const left = createHash("sha256").update(provided, "utf8").digest();
+  const right = createHash("sha256").update(expected, "utf8").digest();
+  return timingSafeEqual(left, right);
 }
 
 function isAuthorized(req: Request) {
@@ -23,6 +25,13 @@ function isAuthorized(req: Request) {
 
 export async function POST(req: Request) {
   if (!isAuthorized(req)) return json({ ok: false, reason: "unauthorized" }, 401);
+  const rateLimited = await enforceCriticalRateLimit(req, {
+    rateClass: "proof_write",
+    tenantId: "platform",
+    subjectId: "internal:proof-anchor-worker",
+    globalPrincipal: true,
+  });
+  if (rateLimited) return rateLimited;
   const body = await req.json().catch(() => ({})) as Record<string, unknown>;
   const requestedLimit = Number(body.limit || 10);
   const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(Math.floor(requestedLimit), 1), 50) : 10;

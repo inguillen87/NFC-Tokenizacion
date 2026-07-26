@@ -18,7 +18,13 @@ type CertificatePayload = {
     status?: string;
     statusLabel?: string;
     verification?: {
-      state?: "authentic_intact" | "authentic_opened" | "replay_blocked" | "tamper_review" | "not_verified";
+      state?: "nfc_message_validated_tt_intact" | "nfc_message_validated_tt_opened" | "nfc_message_validated" | "replay_blocked" | "tamper_review" | "not_verified";
+      evidenceState?: string;
+      nfcMessageValidated?: boolean;
+      /** @deprecated Legacy compatibility field; never use it as physical-authenticity evidence. */
+      tagMessageValidated?: boolean;
+      physicalAuthenticityConfirmed?: boolean;
+      /** @deprecated The API keeps this nullable for compatibility. */
       authentic?: boolean;
       actionEligible?: boolean;
       resultCode?: string;
@@ -66,7 +72,7 @@ function chainLabel(status?: string | null) {
 function blockchainExplainer(token?: NonNullable<CertificatePayload["certificate"]>["tokenization"]) {
   const status = String(token?.status || "none").toLowerCase();
   if (token?.explorerUrl || token?.txHash || token?.tokenId) {
-    return "Anclado: este certificado ya tiene prueba visible en Polygon.";
+    return "Referencia Polygon reportada: abrí el explorer para comprobar red, contrato, transacción y estado.";
   }
   if (status === "pending" || status === "processing" || status === "pending_retry") {
     return "En cola: la solicitud esta guardada y se muestra la transaccion cuando Polygon confirme.";
@@ -92,7 +98,7 @@ export async function generateMetadata({ params }: { params: Promise<{ eventId: 
   const { eventId } = await params;
   return {
     title: `Certificado nexID #${eventId}`,
-    description: "Certificado publico de autenticidad, ownership y tokenizacion nexID.",
+    description: "Certificado público de evidencia NFC, ownership declarado y tokenización nexID.",
   };
 }
 
@@ -166,7 +172,8 @@ export default async function PublicCertificatePage({
   const ownership = cert.ownership || {};
   const token = cert.tokenization || {};
   const trust = cert.trust || {};
-  const score = Number(trust.score || 0);
+  const evidenceFactors = trust.factors || [];
+  const confirmedEvidenceCount = evidenceFactors.filter((factor) => factor.ok === true).length;
   const assetProfile = cert.assets || resolveProductAssetProfile({
     tenantSlug: tenant.slug,
     brandName: product.brand || tenant.name,
@@ -188,8 +195,9 @@ export default async function PublicCertificatePage({
     || cert.publicUrl
     || `https://nexid.lat/certificado/${encodeURIComponent(String(tap.eventId || eventId))}${shareToken ? `?share=${encodeURIComponent(shareToken)}` : ""}`;
   const blockchainState = blockchainExplainer(token);
-  const authentic = cert.verification?.authentic === true;
-  const statusTone = authentic
+  const nfcMessageValidated = cert.verification?.nfcMessageValidated === true
+    || cert.verification?.tagMessageValidated === true;
+  const statusTone = nfcMessageValidated
     ? "border-emerald-300/25 bg-emerald-500/10 text-emerald-100"
     : cert.verification?.state === "replay_blocked"
       ? "border-rose-300/30 bg-rose-500/15 text-rose-100"
@@ -217,23 +225,23 @@ export default async function PublicCertificatePage({
             <div className="min-w-0 max-w-[calc(100vw-2rem)] rounded-[2rem] border border-white/10 bg-slate-950/70 p-5 shadow-[0_30px_90px_rgba(0,0,0,.35)] backdrop-blur-xl sm:max-w-none">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Certificado #{tap.eventId || eventId}</p>
               <h1 className="mt-3 max-w-full break-words text-3xl font-black leading-tight text-white [overflow-wrap:anywhere] sm:text-6xl">
-                {product.name || "Producto verificado"}
+                {product.name || "Producto conectado"}
               </h1>
               <p className="mt-3 max-w-full break-words text-sm leading-6 text-slate-300 [overflow-wrap:anywhere] sm:text-base sm:leading-7">
                 <span className="block">
-                  {authentic
-                    ? `${product.brand || tenant.name || "La marca"} confirma el evento fisico en nexID.`
-                    : "Este evento no confirma autenticidad y no habilita ownership."}
+                  {nfcMessageValidated
+                    ? `${product.brand || tenant.name || "La marca"} tiene un mensaje NFC validado y un evento digital registrado en nexID.`
+                    : "Este evento no aporta evidencia NFC suficiente; no confirma autenticidad física ni habilita ownership."}
                 </span>
                 <span className="block">{cert.verification?.explainer || "Polygon registra ownership solo despues de la validacion nexID."}</span>
               </p>
 
               <div className="mt-6 grid gap-3 sm:grid-cols-4">
                 {[
-                  [ShieldCheck, "Autenticidad", String(tap.result || "verificado").toUpperCase()],
+                  [ShieldCheck, "Evidencia NFC", String(tap.result || "sin validar").toUpperCase()],
                   [Fingerprint, "UID", cert.identity?.uidMasked || "Protegido"],
-                  [BadgeCheck, "Ownership", ownership.claimed ? "Claim nexID" : authentic ? "Reclamable" : "Bloqueado"],
-                  [WalletCards, "NFT", authentic ? chainLabel(token.status) : "No habilitado"],
+                  [BadgeCheck, "Ownership", ownership.claimed ? "Claim nexID" : actionEligible ? "Reclamable" : "Bloqueado"],
+                  [WalletCards, "NFT", actionEligible ? chainLabel(token.status) : "No habilitado"],
                 ].map(([Icon, label, value]) => {
                   const ItemIcon = Icon as typeof ShieldCheck;
                   return (
@@ -341,13 +349,13 @@ export default async function PublicCertificatePage({
             <section className="max-w-[calc(100vw-2rem)] rounded-[2rem] border border-cyan-300/20 bg-cyan-950/20 p-5 backdrop-blur-xl sm:max-w-none">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Score de confianza</p>
-                  <h2 className="mt-2 text-4xl font-black text-white">{score || 88}/100</h2>
+                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Cobertura de evidencia</p>
+                  <h2 className="mt-2 text-4xl font-black text-white">{confirmedEvidenceCount}/{evidenceFactors.length || "—"}</h2>
                 </div>
                 <FileCheck2 className="h-8 w-8 text-emerald-200" aria-hidden="true" />
               </div>
               <div className="mt-4 grid gap-2">
-                {(trust.factors || []).map((factor) => (
+                {evidenceFactors.map((factor) => (
                   <div key={factor.label} className="flex items-center justify-between rounded-xl border border-white/10 bg-slate-950/55 px-3 py-2 text-xs">
                     <span className="font-semibold text-slate-200">{factor.label}</span>
                     <b className={factor.ok ? "text-emerald-200" : "text-amber-200"}>{factor.ok ? "OK" : "Pendiente"}</b>

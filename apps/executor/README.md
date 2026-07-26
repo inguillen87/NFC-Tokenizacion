@@ -54,7 +54,7 @@ POLYGON_CONTRACT_ADDRESS=...
 POLYGON_DEFAULT_RECIPIENT=...
 ```
 
-The API sends `chip_uid_hash`, `token_uri` and `asset_ref`. The executor does not need `K_META`, `K_FILE`, `KMS_MASTER_KEY_HEX`, or the raw UID for normal operation. `KMS_MASTER_KEY_HEX` is the API's batch/NFC encryption key and must never be configured as `IOTA_KMS_KEY_ID`; blockchain signing uses a separate non-exportable secp256k1 key behind the remote signer.
+The API sends `chip_uid_hash`, `token_uri` and `asset_ref`. The executor does not need `K_META`, `K_FILE`, `KMS_MASTER_KEY_HEX`, or the raw UID for normal operation. `KMS_MASTER_KEY_HEX` is the API's batch/NFC encryption key and must never be configured as `IOTA_KMS_KEY_ID`; blockchain signing always uses a separate signer identity. In `kms` mode that identity may be non-exportable behind a remote signer. The current testnet pilot uses the `kms_wrapped` software-envelope boundary described below.
 
 ## Production direction
 
@@ -72,7 +72,11 @@ when omitted both routes remain available for backwards compatibility. A
 Polygon-only Cloud Run revision should set `EXECUTOR_CAPABILITIES=polygon`, so
 missing IOTA configuration does not make `/ready` fail. `/ready` returns
 per-chain results under `chains` and fails unless every declared capability is
-fully configured.
+fully configured. For IOTA, readiness also opens the configured PostgreSQL
+connection and verifies the durable publication table's required columns,
+validated constraints, valid indexes, and `SELECT`/`INSERT`/`UPDATE` privileges.
+Probe results are cached for five seconds to avoid a database query per health
+poll; failures return only stable reason codes and boolean checks.
 
 Polygon minting is idempotent at the executor boundary. Before loading a
 signer, the executor reads `tokenByChipHash`; an existing token is accepted only

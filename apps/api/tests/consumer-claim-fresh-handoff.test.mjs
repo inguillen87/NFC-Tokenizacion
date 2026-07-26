@@ -31,10 +31,13 @@ function createFreshToken(overrides = {}) {
 test("mobile ownership claim requires the fresh SUN handoff after auth and tenant checks but before the claim sink", async () => {
   const source = await readFile(claimRouteUrl, "utf8");
 
-  assert.match(source, /import \{ requireSunFreshHandoff \} from .*sun-fresh-handoff/);
+  assert.match(source, /import \{ consumeSunFreshHandoff \} from .*sun-fresh-handoff/);
   assert.match(source, /const expectedEventId = String\(event\.id \|\| eventId\)\.trim\(\)/);
   assert.match(source, /const expectedBid = String\(body\.bid \|\| event\.bid \|\| ""\)\.trim\(\)/);
-  assert.match(source, /const fresh = requireSunFreshHandoff\(req, body as Record<string, unknown>, \{ eventId: expectedEventId, bid: expectedBid \}\)/);
+  assert.match(source, /const fresh = await consumeSunFreshHandoff\(req, body as Record<string, unknown>, \{/);
+  assert.match(source, /uidHex: String\(event\.uid_hex \|\| ""\)/);
+  assert.match(source, /readCounter: event\.sdm_read_ctr/);
+  assert.match(source, /\}, "consumer_claim_ownership"\)/);
   assert.match(source, /const FRESH_OWNERSHIP_REQUIRED = "fresh_physical_tap_required_for_ownership"/);
   assert.match(source, /error: FRESH_OWNERSHIP_REQUIRED,\s+reason: FRESH_OWNERSHIP_REQUIRED,\s+fresh_token_status: freshTokenStatus,\s+\}, 403\)/);
   assert.match(source, /if \(!expectedBid\) return freshOwnershipForbidden\("fresh_token_bid_missing"\)/);
@@ -42,7 +45,7 @@ test("mobile ownership claim requires the fresh SUN handoff after auth and tenan
 
   const authCheck = source.indexOf("const consumer = await getConsumerFromRequest(req)");
   const tenantCheck = source.indexOf("if (!matchesOwnershipTenant(");
-  const freshCheck = source.indexOf("const fresh = requireSunFreshHandoff(");
+  const freshCheck = source.indexOf("const fresh = await consumeSunFreshHandoff(");
   const claimSink = source.indexOf("const claimed = await claimOwnershipForConsumer(");
 
   assert.ok(authCheck >= 0, "consumer authentication must remain enforced");

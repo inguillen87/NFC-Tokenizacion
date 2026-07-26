@@ -16,6 +16,10 @@ import {
   publicProofIotaExplorerUrl,
   publicProofIotaReceiptTx,
 } from "../../../../lib/public-proof-runtime";
+import { enforceCriticalRateLimit } from "../../../../lib/critical-rate-limit";
+import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../lib/bounded-request-body";
+
+const MAX_PROOF_VERIFY_BODY_BYTES = 8 * 1024;
 
 function readText(value: unknown) {
   return String(value || "").trim();
@@ -279,15 +283,39 @@ async function verifyPublicProof(eventHash: string, anchorId = "") {
 }
 
 export async function GET(req: Request) {
+  const limited = await enforceCriticalRateLimit(req, {
+    rateClass: "proof_write",
+    tenantId: "public-proof",
+    subjectId: "proof-verify:public",
+  });
+  if (limited) return limited;
   const url = new URL(req.url);
   const eventHash = readText(url.searchParams.get("event_hash") || url.searchParams.get("hash"));
   const anchorId = readText(url.searchParams.get("anchor_id") || url.searchParams.get("anchorId"));
+  if (eventHash.length > 80 || anchorId.length > 64) {
+    return json({ ok: false, reason: "proof_input_too_large", verification_state: "invalid", evidence_level: "none" }, 413);
+  }
   return verifyPublicProof(eventHash, anchorId);
 }
 
 export async function POST(req: Request) {
-  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+  const limited = await enforceCriticalRateLimit(req, {
+    rateClass: "proof_write",
+    tenantId: "public-proof",
+    subjectId: "proof-verify:public",
+  });
+  if (limited) return limited;
+  let body: Record<string, unknown>;
+  try {
+    body = await readBoundedJsonBody<Record<string, unknown>>(req, MAX_PROOF_VERIFY_BODY_BYTES);
+  } catch (error) {
+    const tooLarge = error instanceof RequestBodyTooLargeError;
+    return json({ ok: false, reason: tooLarge ? "request_body_too_large" : "invalid_json" }, tooLarge ? 413 : 400);
+  }
   const eventHash = readText(body.event_hash || body.eventHash || body.hash);
   const anchorId = readText(body.anchor_id || body.anchorId);
+  if (eventHash.length > 80 || anchorId.length > 64) {
+    return json({ ok: false, reason: "proof_input_too_large", verification_state: "invalid", evidence_level: "none" }, 413);
+  }
   return verifyPublicProof(eventHash, anchorId);
 }

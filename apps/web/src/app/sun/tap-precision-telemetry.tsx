@@ -9,6 +9,7 @@ type TapPrecisionTelemetryProps = {
   bid: string;
   uid?: string | null;
   eventId?: string | null;
+  freshToken?: string | null;
   readCounter?: number | null;
   contextStatus?: string | null;
   enabled?: boolean;
@@ -36,6 +37,7 @@ export function TapPrecisionTelemetry({
   bid,
   uid,
   eventId,
+  freshToken,
   readCounter,
   contextStatus,
   enabled = true,
@@ -57,6 +59,7 @@ export function TapPrecisionTelemetry({
       bid,
       uid: uid || undefined,
       eventId: eventId || undefined,
+      fresh_token: freshToken || undefined,
       ctr: typeof readCounter === "number" ? readCounter : undefined,
       contextStatus: contextStatus || "viewed",
       scannedAt: new Date().toISOString(),
@@ -119,7 +122,7 @@ export function TapPrecisionTelemetry({
     return () => {
       cancelled = true;
     };
-  }, [bid, contextStatus, enabled, endpoint, eventId, readCounter, storageKey, uid]);
+  }, [bid, contextStatus, enabled, endpoint, eventId, freshToken, readCounter, storageKey, uid]);
 
   if (state !== "updated") return null;
 

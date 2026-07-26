@@ -47,60 +47,60 @@ const points: Record<MapKey, Point> = {
 };
 
 const examples: Example[] = [
-  { vertical: "wine", point: "mendoza", title: "Bottle uncorked — Mendoza, Argentina", status: "opened" },
-  { vertical: "wine", point: "lujan", title: "Authenticity verified — Luján de Cuyo", status: "valid" },
+  { vertical: "wine", point: "mendoza", title: "TT open reported (demo) — Mendoza, Argentina", status: "opened" },
+  { vertical: "wine", point: "lujan", title: "NFC message valid (demo) — Luján de Cuyo", status: "valid" },
   { vertical: "wine", point: "miami", title: "Export bottle scanned — Miami, USA", status: "valid" },
   { vertical: "events", point: "cordoba", title: "VIP wristband check-in — Córdoba, Argentina", status: "valid" },
   { vertical: "events", point: "saopaulo", title: "Duplicate access blocked — São Paulo, Brazil", status: "duplicate" },
-  { vertical: "cosmetics", point: "santiago", title: "Seal opened — Santiago, Chile", status: "opened" },
+  { vertical: "cosmetics", point: "santiago", title: "TT open reported (demo) — Santiago, Chile", status: "opened" },
   { vertical: "cosmetics", point: "cdmx", title: "Product passport viewed — Mexico City, Mexico", status: "valid" },
-  { vertical: "agro", point: "rosario", title: "Bag opened — Rosario, Argentina", status: "opened" },
+  { vertical: "agro", point: "rosario", title: "TT change reported (demo) — Rosario, Argentina", status: "opened" },
   { vertical: "agro", point: "matogrosso", title: "Lot verified — Mato Grosso, Brazil", status: "valid" },
-  { vertical: "pharma", point: "bogota", title: "Package verified — Bogotá, Colombia", status: "valid" },
-  { vertical: "pharma", point: "lima", title: "Chain-of-custody event — Lima, Peru", status: "tamper" },
+  { vertical: "pharma", point: "bogota", title: "Message accepted (demo) — Bogotá, Colombia", status: "valid" },
+  { vertical: "pharma", point: "lima", title: "Reported custody event (demo) — Lima, Peru", status: "tamper" },
 ];
 
 const i18n: Record<AppLocale, Copy> = {
   "es-AR": {
-    kpiTags: "Tags activos",
-    kpiValidations: "Validaciones hoy",
-    kpiTamper: "Alertas tamper",
-    kpiRegions: "Regiones activas",
+    kpiTags: "Tags de demo",
+    kpiValidations: "Eventos simulados",
+    kpiTamper: "Señales TT demo",
+    kpiRegions: "Regiones de demo",
     legendValid: "valid",
     legendTamper: "tamper",
     legendDuplicate: "duplicate",
-    legendOpened: "opened",
-    geoTitle: "Geo intelligence live feed",
+    legendOpened: "TT abierto reportado (demo)",
+    geoTitle: "Feed geográfico simulado",
     hubsTitle: "Top hubs",
     feedCounter: "eventos",
     iconLabel: { wine: "🍷 Wine", events: "🎟️ Events", cosmetics: "🧴 Cosmetics", agro: "🌾 Agro", pharma: "💊 Pharma" },
     examples,
   },
   "pt-BR": {
-    kpiTags: "Tags ativos",
-    kpiValidations: "Validações hoje",
-    kpiTamper: "Alertas tamper",
-    kpiRegions: "Regiões ativas",
+    kpiTags: "Tags de demo",
+    kpiValidations: "Eventos simulados",
+    kpiTamper: "Sinais TT demo",
+    kpiRegions: "Regiões de demo",
     legendValid: "valid",
     legendTamper: "tamper",
     legendDuplicate: "duplicate",
-    legendOpened: "opened",
-    geoTitle: "Geo intelligence live feed",
+    legendOpened: "TT aberto reportado (demo)",
+    geoTitle: "Feed geográfico simulado",
     hubsTitle: "Top hubs",
     feedCounter: "eventos",
     iconLabel: { wine: "🍷 Wine", events: "🎟️ Events", cosmetics: "🧴 Cosmetics", agro: "🌾 Agro", pharma: "💊 Pharma" },
     examples,
   },
   en: {
-    kpiTags: "Active tags",
-    kpiValidations: "Validations today",
-    kpiTamper: "Tamper alerts",
-    kpiRegions: "Active regions",
+    kpiTags: "Demo tags",
+    kpiValidations: "Simulated events",
+    kpiTamper: "Demo TT signals",
+    kpiRegions: "Demo regions",
     legendValid: "valid",
     legendTamper: "tamper",
     legendDuplicate: "duplicate",
-    legendOpened: "opened",
-    geoTitle: "Geo intelligence live feed",
+    legendOpened: "TT open reported (demo)",
+    geoTitle: "Simulated geo feed",
     hubsTitle: "Top hubs",
     feedCounter: "events",
     iconLabel: { wine: "🍷 Wine", events: "🎟️ Events", cosmetics: "🧴 Cosmetics", agro: "🌾 Agro", pharma: "💊 Pharma" },
@@ -213,7 +213,7 @@ export function RadarSection({ radar, locale }: { radar: RadarCopy; locale: AppL
             <div className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-emerald-200">{txt.legendValid} · AUTH_OK</div>
             <div className="rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-amber-200">{txt.legendTamper} · seal/risk</div>
             <div className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-cyan-200">{txt.legendDuplicate} · access denied</div>
-            <div className="rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-violet-200">{txt.legendOpened} · trace event</div>
+            <div className="rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-violet-200">{txt.legendOpened} · señal digital, no apertura física</div>
           </div>
         </Card>
 

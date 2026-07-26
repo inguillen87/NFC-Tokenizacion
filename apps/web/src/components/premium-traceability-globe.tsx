@@ -4,6 +4,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import * as THREE from "three";
 import { traceabilityGlobePoints } from "../lib/platform-verticals";
+import {
+  describeTraceabilityMapTruth,
+  resolveTraceabilityMapTruth,
+  type TraceabilityMapTruthState,
+} from "../lib/traceability-map-truth";
 
 export type TraceabilityGlobePoint = {
   city: string;
@@ -15,6 +20,8 @@ export type TraceabilityGlobePoint = {
   vertical?: string;
   status?: string;
   lastSeen?: string;
+  coordinateSource?: string;
+  accuracyM?: number | null;
 };
 
 export type TraceabilityGlobeRoute = {
@@ -124,6 +131,14 @@ function pointTone(point: TraceabilityGlobePoint) {
   return "#22d3ee";
 }
 
+function pointCoordinateLabel(point: TraceabilityGlobePoint) {
+  const source = String(point.coordinateSource || "").toLowerCase();
+  if (source === "city_centroid") return "Centroide de ciudad aproximado";
+  if (source === "browser_gps") return `GPS reportado${point.accuracyM != null ? ` (±${Math.round(point.accuracyM)} m)` : ""}`;
+  if (source) return `Coordenada reportada · fuente ${source}`;
+  return "Fuente de coordenada no reportada";
+}
+
 function routeTone(route: TraceabilityGlobeRoute) {
   return route.tone === "warn" ? "#fb7185" : "#22d3ee";
 }
@@ -215,17 +230,20 @@ function TraceabilityAtlasScene({
   routes,
   width,
   height,
+  truthState,
   onPointSelect,
 }: {
   points: readonly TraceabilityGlobePoint[];
   routes: readonly TraceabilityGlobeRoute[];
   width: number;
   height: number;
+  truthState: TraceabilityMapTruthState;
   onPointSelect?: (point: TraceabilityGlobePoint) => void;
 }) {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const pointMeshesRef = useRef<Array<{ mesh: THREE.Mesh; point: TraceabilityGlobePoint }>>([]);
   const [activePoint, setActivePoint] = useState<TraceabilityGlobePoint | null>(null);
+  const truthCopy = describeTraceabilityMapTruth(truthState);
   const sceneKey = useMemo(
     () =>
       JSON.stringify({
@@ -432,12 +450,17 @@ function TraceabilityAtlasScene({
       {activePoint ? (
         <div className="pointer-events-none absolute left-4 top-4 z-20 max-w-[min(88%,18rem)] rounded-2xl border border-cyan-200/20 bg-slate-950/80 px-3 py-2 text-left shadow-[0_18px_54px_rgba(0,0,0,.34)] backdrop-blur-xl">
           <p className="text-[0.56rem] font-black uppercase tracking-[0.18em] text-cyan-200">
-            {activePoint.risk || activePoint.status === "risk" ? "Riesgo operativo" : activePoint.status === "origin" ? "Origen verificado" : "Tap verificado"}
+            {activePoint.status === "origin"
+              ? `${truthCopy.pointLabel} · origen`
+              : activePoint.risk || activePoint.status === "risk"
+                ? `${truthCopy.pointLabel} · señal de riesgo`
+                : truthCopy.pointLabel}
           </p>
           <strong className="mt-1 block text-sm font-black leading-tight text-white">{activePoint.city}</strong>
           <span className="mt-1 block text-[0.66rem] font-bold text-slate-300">
-            {activePoint.country || "Ubicacion verificada"} - {(activePoint.scans || 1).toLocaleString("es-AR")} taps
+            {activePoint.country || "Ubicación no informada"} · {(activePoint.scans || 0).toLocaleString("es-AR")} {truthCopy.metricLabel}
           </span>
+          <span className="mt-1 block text-[0.6rem] text-slate-400">{pointCoordinateLabel(activePoint)}</span>
         </div>
       ) : null}
     </div>
@@ -461,6 +484,7 @@ export function PremiumTraceabilityGlobe({
   const [liveData, setLiveData] = useState<{
     points: TraceabilityGlobePoint[];
     routes: TraceabilityGlobeRoute[];
+    truthState: TraceabilityMapTruthState;
   } | null>(null);
 
   useEffect(() => {
@@ -473,19 +497,6 @@ export function PremiumTraceabilityGlobe({
         if (data && data.ok && Array.isArray(data.events) && data.events.length > 0) {
           const pointsList: TraceabilityGlobePoint[] = [];
           const routesList: TraceabilityGlobeRoute[] = [];
-
-          const getOrigin = (vertical: string) => {
-            if (vertical === "agro" || vertical === "seeds") {
-              return { city: "Rosario", country: "Argentina", lat: -32.9442, lng: -60.6505 };
-            }
-            if (vertical === "fashion" || vertical === "textile") {
-              return { city: "Buenos Aires", country: "Argentina", lat: -34.5875, lng: -58.3974 };
-            }
-            if (vertical === "cosmetics" || vertical === "pharma") {
-              return { city: "Santiago", country: "Chile", lat: -33.4489, lng: -70.6693 };
-            }
-            return { city: "Valle de Uco", country: "Argentina", lat: -33.6131, lng: -69.2075 };
-          };
 
           const uniqueTaps: Record<string, any> = {};
           data.events.forEach((event: any) => {
@@ -502,23 +513,15 @@ export function PremiumTraceabilityGlobe({
           const activeEvents = Object.values(uniqueTaps);
 
           activeEvents.forEach((event: any) => {
-            const origin = getOrigin(event.vertical);
             const tapLat = Number(event.lat);
             const tapLng = Number(event.lng);
             const isRisk = /REPLAY|DUPLICATE|TAMPER|INVALID|REVOKED/i.test(event.result || "");
-
-            if (!pointsList.some((p) => p.city === origin.city)) {
-              pointsList.push({
-                city: origin.city,
-                country: origin.country,
-                lat: origin.lat,
-                lng: origin.lng,
-                scans: 1,
-                risk: 0,
-                status: "origin",
-                vertical: event.vertical
-              });
-            }
+            const originLat = Number(event.origin_lat);
+            const originLng = Number(event.origin_lng);
+            const originSource = String(event.origin_source || "").toLowerCase();
+            const hasDurableOrigin = Number.isFinite(originLat)
+              && Number.isFinite(originLng)
+              && ["batch_config", "tenant_config", "manufacturer_record", "supplier_manifest", "declared_origin"].includes(originSource);
 
             pointsList.push({
               city: event.city,
@@ -528,29 +531,54 @@ export function PremiumTraceabilityGlobe({
               scans: 1,
               risk: isRisk ? 1 : 0,
               status: isRisk ? "risk" : "tap",
-              vertical: event.vertical
+              vertical: event.vertical,
+              coordinateSource: event.coordinate_source,
+              accuracyM: Number.isFinite(Number(event.coordinate_accuracy_m)) ? Number(event.coordinate_accuracy_m) : null,
             });
 
-            routesList.push({
-              fromLat: origin.lat,
-              fromLng: origin.lng,
-              toLat: tapLat,
-              toLng: tapLng,
-              tone: isRisk ? "warn" : "info",
-              label: `${event.product_name || "Producto"} · ${origin.city} → ${event.city}`
-            });
+            if (hasDurableOrigin) {
+              const originCity = String(event.origin_city || "Origen declarado");
+              if (!pointsList.some((point) => point.status === "origin" && point.lat === originLat && point.lng === originLng)) {
+                pointsList.push({
+                  city: originCity,
+                  country: String(event.origin_country || "País no reportado"),
+                  lat: originLat,
+                  lng: originLng,
+                  scans: 0,
+                  risk: 0,
+                  status: "origin",
+                  vertical: event.vertical,
+                  coordinateSource: originSource,
+                  accuracyM: null,
+                });
+              }
+              routesList.push({
+                fromLat: originLat,
+                fromLng: originLng,
+                toLat: tapLat,
+                toLng: tapLng,
+                tone: isRisk ? "warn" : "info",
+                label: `${event.product_name || "Producto no reportado"} · ${originCity} → ${event.city}`,
+              });
+            }
           });
 
           if (pointsList.length > 0) {
-            setLiveData({ points: pointsList, routes: routesList });
+            setLiveData({
+              points: pointsList,
+              routes: routesList,
+              truthState: resolveTraceabilityMapTruth(data),
+            });
           }
         }
       })
-      .catch((err) => console.error("Error loading live globe summary:", err));
+      .catch((err) => console.error("Error loading globe summary:", err));
   }, [points]);
 
   const safePoints = liveData ? liveData.points : (points.length ? points : fallbackPoints);
   const safeRoutes = liveData ? liveData.routes : (routes.length ? routes : fallbackRoutes);
+  const truthState: TraceabilityMapTruthState = liveData?.truthState || "fixture";
+  const truthCopy = describeTraceabilityMapTruth(truthState);
   const totalScans = safePoints.reduce((acc, point) => acc + (point.scans || 0), 0);
   const totalRisk = safePoints.reduce((acc, point) => acc + (point.risk || 0), 0);
   const regions = new Set(safePoints.map((point) => point.country || point.city)).size;
@@ -577,14 +605,14 @@ export function PremiumTraceabilityGlobe({
     >
       <div className="traceability-globe__header">
         <div>
-          <p>nexID Global Trust Mesh</p>
+          <p>Mapa de trazabilidad · {truthCopy.badge}</p>
           <h2>{title}</h2>
-          <span>{subtitle}</span>
+          <span>{subtitle} · {truthCopy.sourceLabel}</span>
         </div>
         <div className="traceability-globe__kpis" aria-label="Indicadores del mapa">
-          <strong>{totalScans.toLocaleString("es-AR")}<small>taps</small></strong>
-          <strong>{regions}<small>regiones</small></strong>
-          <strong>{totalRisk}<small>riesgo</small></strong>
+          <strong>{totalScans.toLocaleString("es-AR")}<small>{truthCopy.metricLabel}</small></strong>
+          <strong>{regions}<small>{truthState === "fixture" ? "regiones demo" : "regiones reportadas"}</small></strong>
+          <strong>{totalRisk}<small>{truthState === "fixture" ? "señales demo" : "señales reportadas"}</small></strong>
         </div>
       </div>
 
@@ -595,17 +623,18 @@ export function PremiumTraceabilityGlobe({
             routes={safeRoutes}
             width={globeSize.width}
             height={globeSize.height}
+            truthState={truthState}
             onPointSelect={onPointSelect}
           />
         </div>
 
         {primaryRoute ? (
           <div className="traceability-globe__routebar">
-            <span>Ruta activa</span>
+            <span>{truthCopy.badge}</span>
             <strong>
-              {primaryFrom?.city || "Origen"} {"->"} {primaryTo?.city || "Tap verificado"}
+              {primaryFrom?.city || "Origen"} {"->"} {primaryTo?.city || truthCopy.pointLabel}
             </strong>
-            <small>Ruta comercial auditada - {primaryDistance} km</small>
+            <small>{truthCopy.routeLabel} · {primaryDistance} km</small>
           </div>
         ) : null}
 
@@ -615,9 +644,9 @@ export function PremiumTraceabilityGlobe({
           <small>Una arquitectura, muchos soportes.</small>
         </div>
         <div className="traceability-globe__floating traceability-globe__floating--right z-20 pointer-events-none">
-          <span>Confianza</span>
-          <strong>98.7%</strong>
-          <small>Lecturas limpias en ventana activa.</small>
+          <span>Fuente</span>
+          <strong>{truthCopy.badge}</strong>
+          <small>{truthCopy.sourceLabel}.</small>
         </div>
       </div>
 

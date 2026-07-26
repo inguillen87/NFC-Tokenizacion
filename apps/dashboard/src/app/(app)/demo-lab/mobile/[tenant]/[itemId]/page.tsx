@@ -36,7 +36,7 @@ const PACK_DETAILS: Record<string, PackDetail> = {
   "wine-secure": {
     title: "Wine secure · bottle passport",
     chip: "NTAG 424 DNA TT",
-    narrative: "Producto premium con trazabilidad completa y detección de tamper.",
+    narrative: "Pasaporte demo con historial digital declarado y estado TT reportado; no prueba recorrido, contenido ni apertura física.",
     attributes: [
       { label: "Varietal", value: "Malbec" },
       { label: "Añada", value: "2022" },
@@ -75,8 +75,8 @@ function getCommercialState(result?: string): CommercialState {
     return {
       label: "VALID",
       tone: "green",
-      message: "Producto auténtico y backend consistente.",
-      recommendation: "Recomendación: comprar seguro / activar ownership.",
+      message: "Mensaje NFC válido e identidad del tag consistente con la respuesta del backend.",
+      recommendation: "Recomendación: continuar con el flujo comercial o solicitar ownership según la política del tenant.",
     };
   }
   if (result === "TAMPER") {
@@ -189,7 +189,7 @@ export default function DemoMobileItemPage() {
 
   return (
     <main className="mx-auto max-w-5xl space-y-4 p-4">
-      <SectionHeading eyebrow="Mobile preview" title="Producto verificado" description="Vista realista de consumidor por tenant/item con refresh automático cada 5s" />
+      <SectionHeading eyebrow="Mobile preview" title="Lectura NFC validada" description="Vista de consumidor por tenant/item basada en el último evento reportado; refresh automático cada 20s" />
       <div className="mx-auto w-full max-w-[420px] rounded-[2.3rem] border border-cyan-300/20 bg-slate-950 p-2.5 shadow-[0_24px_90px_rgba(2,6,23,0.65)]">
         <div className="mx-auto mb-2 h-1.5 w-20 rounded-full bg-slate-700" />
         <div className="space-y-4 rounded-[1.8rem] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(34,211,238,.10),transparent_30%),#020617] p-4">
@@ -276,7 +276,8 @@ export default function DemoMobileItemPage() {
         <ul className="mt-2 space-y-1 text-xs text-slate-300">
           <li>Leído del tag: URL/NDEF + UID/serial si disponible.</li>
           <li>Aportado por teléfono: hora local, idioma y geolocalización (con permiso).</li>
-          <li>Resuelto por backend nexID: autenticidad, riesgo, estado y provenance.</li>
+          <li>Resuelto por backend nexID: validez criptográfica del mensaje NFC/SUN, policy aplicada, riesgo digital y estado registrado.</li>
+          <li>Límite: no certifica por sí solo contenido, origen, sello, apertura, custodia ni autenticidad física.</li>
           <li>Simulado para demo: seed data, playback comercial y tráfico sintético.</li>
         </ul>
       </Card>

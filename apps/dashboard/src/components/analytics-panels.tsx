@@ -10,6 +10,13 @@ import { TapVelocityChart } from "./charts/tap-velocity-chart";
 import { TopProductsTable } from "./charts/top-products-table";
 import { TrustFunnelChart } from "./charts/trust-funnel-chart";
 import { classifyEventAlertSeverity, matchesSeverityFilter } from "../lib/alert-severity";
+import { formatAnalyticsPercentage, resolveMobileSharePercent } from "../lib/analytics-percentage";
+import {
+  describeCognitiveSummary,
+  deterministicCognitiveSummary,
+  resolveCognitiveSummaryDelivery,
+  type CognitiveSummaryDelivery,
+} from "../lib/cognitive-summary-contract";
 
 const GlobalOpsMap = dynamic(() => import("@product/ui/global-ops-map").then((mod) => mod.GlobalOpsMap), { ssr: false });
 
@@ -37,7 +44,8 @@ type AnalyticsPanelsProps = {
     geoDistributionDelta: string;
   };
   data?: {
-    kpis?: { scans?: number; validRate?: number; invalidRate?: number; duplicates?: number; tamper?: number; activeBatches?: number; activeTenants?: number; geoRegions?: number; resellerPerformance?: number; riskScore?: number };
+    kpis?: { scans?: number; validRate?: number; invalidRate?: number; duplicates?: number; tamper?: number; activeBatches?: number; activeTenants?: number; geoRegions?: number; resellerPerformance?: number | null; riskScore?: number };
+    billing?: { resellerMrrAmount?: number | null; currency?: string | null; source?: string | null; period?: string | null };
     trend?: Array<{ day: string; scans: number; duplicates: number; tamper: number }>;
     batchStatus?: Array<{ name: string; value: number }>;
     geoPoints?: Array<{ city: string; country?: string; scans?: number; risk?: number; lat: number; lng: number }>;
@@ -46,9 +54,11 @@ type AnalyticsPanelsProps = {
     devices?: { os?: Array<{ label: string; count: number }>; browser?: Array<{ label: string; count: number }>; deviceType?: Array<{ label: string; count: number }>; timezones?: Array<{ label: string; count: number }>; mobileShare?: number };
     feed?: Array<{ id: number; uidHex: string; bid: string; result: string; city: string; country: string; device: string; createdAt: string }>;
     products?: Array<{ uidHex: string; bid: string; productName: string; winery: string; region: string; vintage: string; scanCount: number; firstSeenAt: string | null; lastSeenAt: string | null; lastVerifiedCity: string; lastVerifiedCountry: string; tokenization: { status: string; network: string; txHash: string | null; tokenId: string | null } }>;
-    tagJourney?: Array<{ uid: string; taps: number; firstSeenAt: string | null; lastSeenAt: string | null; origin: { city: string; country: string; lat: number | null; lng: number | null }; current: { city: string; country: string; lat: number | null; lng: number | null }; lastDevice: string }>;
+    tagJourney?: Array<{ uid: string; taps: number; firstSeenAt: string | null; lastSeenAt: string | null; originSource?: string | null; origin: { city: string; country: string; lat: number | null; lng: number | null }; current: { city: string; country: string; lat: number | null; lng: number | null }; lastDevice: string }>;
   };
   mapMode?: "demo" | "tenant" | "global";
+  dataSource: "production" | "demo" | "imported" | "mixed";
+  sourceDetail: string;
 };
 
 function fmtDate(value: string | null) {
@@ -115,12 +125,12 @@ function analyticsCsvRows(data: AnalyticsPanelsProps["data"]) {
   const rows: Array<Record<string, unknown>> = [];
   const api = data?.kpis || {};
   rows.push({ section: "kpi", metric: "scans", value: api.scans || 0 });
-  rows.push({ section: "kpi", metric: "validRate", value: api.validRate || 0 });
+  rows.push({ section: "kpi", metric: "validRate", value: typeof api.validRate === "number" ? api.validRate : "N/D" });
   rows.push({ section: "kpi", metric: "duplicates", value: api.duplicates || 0 });
   rows.push({ section: "kpi", metric: "tamper", value: api.tamper || 0 });
   (data?.feed || []).forEach((item) => rows.push({ section: "feed", metric: item.uidHex, value: item.result, city: item.city, country: item.country, createdAt: item.createdAt }));
   (data?.products || []).forEach((item) => rows.push({ section: "product", metric: item.uidHex, value: item.scanCount, product: item.productName, lastCity: item.lastVerifiedCity, token: item.tokenization?.status }));
-  (data?.tagJourney || []).forEach((item) => rows.push({ section: "journey", metric: item.uid, value: item.taps, origin: `${item.origin.city}, ${item.origin.country}`, current: `${item.current.city}, ${item.current.country}` }));
+  (data?.tagJourney || []).forEach((item) => rows.push({ section: "journey", metric: item.uid, value: item.taps, originSource: item.originSource || "unreported", origin: `${item.origin.city}, ${item.origin.country}`, current: `${item.current.city}, ${item.current.country}` }));
   return rows;
 }
 
@@ -152,6 +162,17 @@ function AnalyticsExportActions({ data }: { data?: AnalyticsPanelsProps["data"] 
   );
 }
 
+function isDeclaredProductOrigin(originSource?: string | null) {
+  return String(originSource || "").trim().toLowerCase() === "product_passport_declared";
+}
+
+function journeyInitialPointLabel(originSource?: string | null) {
+  const source = String(originSource || "").trim().toLowerCase();
+  if (source === "product_passport_declared") return "Origen declarado";
+  if (source === "first_observed_event") return "Primer tap reportado";
+  return "Punto inicial reportado (fuente no clasificada)";
+}
+
 type GeoOfferSource = {
   city: string;
   country?: string;
@@ -171,6 +192,9 @@ function GamificationGeoOfferStudio({
   geoPoints: GeoOfferSource[];
   mapMode: "demo" | "tenant" | "global";
 }) {
+  const baseClaimRate = 0.14;
+  const boostedClaimRate = 0.22;
+  const pointsPerTap = 10;
   const [multipliers, setMultipliers] = useState<Record<string, number>>({});
   const rows = useMemo(() => {
     const source = cities.length ? cities : geoPoints;
@@ -186,7 +210,7 @@ function GamificationGeoOfferStudio({
           lng: Number(item.lng),
           scans: Number(item.scans || 0),
           risk: Number(item.risk || 0),
-          lastSeen: item.lastSeen || new Date().toISOString(),
+          lastSeen: item.lastSeen || "",
           multiplier: multipliers[key] || 1,
         };
       })
@@ -194,8 +218,8 @@ function GamificationGeoOfferStudio({
       .slice(0, 8);
   }, [cities, geoPoints, multipliers]);
   const totalScans = rows.reduce((sum, row) => sum + row.scans, 0);
-  const projectedClaims = rows.reduce((sum, row) => sum + Math.round(row.scans * (row.multiplier > 1 ? 0.22 : 0.14)), 0);
-  const projectedPoints = rows.reduce((sum, row) => sum + Math.round(row.scans * row.multiplier * 10), 0);
+  const projectedClaims = rows.reduce((sum, row) => sum + Math.round(row.scans * (row.multiplier > 1 ? boostedClaimRate : baseClaimRate)), 0);
+  const projectedPoints = rows.reduce((sum, row) => sum + Math.round(row.scans * row.multiplier * pointsPerTap), 0);
   const mapPoints = rows.map((row) => ({
     id: `geo-offer-${row.key}`,
     city: row.city,
@@ -217,7 +241,7 @@ function GamificationGeoOfferStudio({
   }
 
   return (
-    <OpsPanel title="Gamification & geotargeted offers studio" subtitle="Multiplicadores de puntos por origen geografico, simulados sobre hotspots reales del scope.">
+    <OpsPanel title="Gamification & geotargeted offers studio" subtitle="Simulación de multiplicadores sobre los puntos del dataset visible. No ejecuta campañas ni implica geolocalización continua.">
       {!rows.length ? (
         <p className="text-sm text-slate-400">Sin coordenadas suficientes para activar ofertas por zona. Hace un tap con GPS o revisa la resolucion de ciudad.</p>
       ) : (
@@ -226,7 +250,7 @@ function GamificationGeoOfferStudio({
             <GlobalOpsMap
               title="Heatmap de ofertas localizadas"
               subtitle="Hotspots, recurrencia y zonas candidatas para puntos extra."
-              mode={mapMode === "global" ? "global" : "tenant"}
+              mode={mapMode}
               points={mapPoints}
               routes={[]}
               playbackEnabled={false}
@@ -240,11 +264,11 @@ function GamificationGeoOfferStudio({
                 <p className="mt-1 text-lg font-semibold">{totalScans}</p>
               </div>
               <div className="rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3 text-xs text-emerald-100">
-                <p className="uppercase tracking-[0.12em] text-emerald-200/80">Claims</p>
+                <p className="uppercase tracking-[0.12em] text-emerald-200/80">Claims simulados</p>
                 <p className="mt-1 text-lg font-semibold">{projectedClaims}</p>
               </div>
               <div className="rounded-xl border border-violet-300/20 bg-violet-500/10 p-3 text-xs text-violet-100">
-                <p className="uppercase tracking-[0.12em] text-violet-200/80">Puntos</p>
+                <p className="uppercase tracking-[0.12em] text-violet-200/80">Puntos simulados</p>
                 <p className="mt-1 text-lg font-semibold">{projectedPoints}</p>
               </div>
             </div>
@@ -274,6 +298,9 @@ function GamificationGeoOfferStudio({
                 </div>
               ))}
             </div>
+            <p className="rounded-xl border border-amber-300/20 bg-amber-500/10 px-3 py-2 text-[11px] leading-5 text-amber-100">
+              Modelo editable sólo por multiplicador: claim base 14%, claim con incentivo 22% y 10 puntos por tap antes del multiplicador. No son conversiones observadas ni una audiencia contactable.
+            </p>
           </div>
         </div>
       )}
@@ -281,12 +308,13 @@ function GamificationGeoOfferStudio({
   );
 }
 
-export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: AnalyticsPanelsProps) {
+export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSource, sourceDetail }: AnalyticsPanelsProps) {
   const [selectedDay, setSelectedDay] = useState<string>("");
   const [riskCategoryFilter, setRiskCategoryFilter] = useState<string>("ALL");
   const [feedSeverityFilter, setFeedSeverityFilter] = useState<string>("all");
   const [dynamicSummary, setDynamicSummary] = useState<string>("");
   const [loadingSummary, setLoadingSummary] = useState<boolean>(false);
+  const [summaryDelivery, setSummaryDelivery] = useState<CognitiveSummaryDelivery>(() => deterministicCognitiveSummary());
 
   const api = data?.kpis || {};
   const trend = data?.trend || [];
@@ -298,16 +326,54 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
   const tagJourney = data?.tagJourney || [];
   const devices = data?.devices;
   const productByUid = useMemo(() => new Map(products.map((product) => [String(product.uidHex || "").toUpperCase(), product])), [products]);
+  const cityLastSeenByKey = useMemo(
+    () => new Map(cities.map((item) => [`${String(item.city || "").trim().toLowerCase()}|${String(item.country || "--").trim().toUpperCase()}`, item.lastSeen || ""])),
+    [cities],
+  );
   const scansTotal = Number(api.scans || 0);
+  const validRate = typeof api.validRate === "number" && Number.isFinite(api.validRate)
+    ? Math.min(100, Math.max(0, api.validRate))
+    : null;
+  const invalidRate = typeof api.invalidRate === "number" && Number.isFinite(api.invalidRate)
+    ? Math.min(100, Math.max(0, api.invalidRate))
+    : null;
+  const riskScore = typeof api.riskScore === "number" && Number.isFinite(api.riskScore)
+    ? Math.min(100, Math.max(0, api.riskScore))
+    : null;
   const riskSignals = Number(api.duplicates || 0) + Number(api.tamper || 0);
-  const journeyCoverage = tagJourney.length ? Math.min(100, (tagJourney.length / Math.max(products.length, 1)) * 100) : 0;
+  const billingAmount = typeof data?.billing?.resellerMrrAmount === "number" && Number.isFinite(data.billing.resellerMrrAmount)
+    ? data.billing.resellerMrrAmount
+    : null;
+  const billingSource = String(data?.billing?.source || "").trim();
+  const billingCurrencyCandidate = String(data?.billing?.currency || "USD").trim().toUpperCase();
+  const billingCurrency = /^[A-Z]{3}$/.test(billingCurrencyCandidate) ? billingCurrencyCandidate : "USD";
+  const billingConfirmed = billingAmount !== null && Boolean(billingSource);
+  const resellerRevenueDisplay = billingConfirmed
+    ? new Intl.NumberFormat("es-AR", { style: "currency", currency: billingCurrency, maximumFractionDigits: 0 }).format(billingAmount)
+    : "N/D";
+  const resellerRevenueDetail = billingConfirmed
+    ? `Fuente billing: ${billingSource}${data?.billing?.period ? ` · ${data.billing.period}` : ""}`
+    : extra.resellerPerformanceDelta;
+  const validityDisplay = scansTotal > 0 && validRate != null && invalidRate != null
+    ? `${validRate} / ${invalidRate}`
+    : "N/D";
+  const riskRate = scansTotal > 0 ? pct(riskSignals, scansTotal) : "sin base";
+  const journeyCoverage = products.length > 0 ? Math.min(100, (tagJourney.length / products.length) * 100) : null;
+  const mobileSharePercent = resolveMobileSharePercent(devices?.deviceType || [], devices?.mobileShare);
 
-  const metricText = `Taps totales: ${scansTotal}. Tasa de lecturas válidas: ${(api.validRate ?? 0).toFixed(1)}%. Tasa de lecturas sospechosas: ${(api.invalidRate ?? 0).toFixed(1)}%. Duplicados detectados: ${api.duplicates ?? 0}. Alertas de manipulación física (tamper): ${api.tamper ?? 0}. Regiones geográficas activas: ${api.geoRegions ?? 0}. Score de riesgo general: ${api.riskScore ?? 0}/100.`;
+  const metricText = `Taps totales: ${scansTotal}. Tasa de mensajes validos: ${validRate == null ? "N/D" : `${validRate.toFixed(1)}%`}. Tasa de resultados INVALID explicitos: ${invalidRate == null ? "N/D" : `${invalidRate.toFixed(1)}%`}. Duplicados/replay: ${api.duplicates ?? 0}. Senales TT/tamper reportadas: ${api.tamper ?? 0}. Regiones geograficas reportadas: ${api.geoRegions ?? 0}. Score de riesgo general: ${riskScore == null ? "N/D" : `${riskScore}/100`}.`;
 
   useEffect(() => {
-    if (!scansTotal) return;
+    if (!scansTotal) {
+      setDynamicSummary("");
+      setSummaryDelivery(deterministicCognitiveSummary("not_requested"));
+      setLoadingSummary(false);
+      return;
+    }
     let cancelled = false;
     setLoadingSummary(true);
+    setDynamicSummary("");
+    setSummaryDelivery(deterministicCognitiveSummary("provider_request_pending"));
     fetch("/api/cognitive-ai", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -320,13 +386,18 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
         if (!res.ok) throw new Error("Status: " + res.status);
         return res.json();
       })
-      .then((data) => {
-        if (!cancelled && data?.optimizedText) {
-          setDynamicSummary(data.optimizedText);
-        }
+      .then((payload) => {
+        if (cancelled) return;
+        const delivery = resolveCognitiveSummaryDelivery(payload);
+        setSummaryDelivery(delivery);
+        setDynamicSummary(delivery.mode === "live_provider" ? delivery.text : "");
       })
-      .catch((err) => {
-        console.warn("AI Executive Summary error, using local template:", err);
+      .catch(() => {
+        if (!cancelled) {
+          setDynamicSummary("");
+          setSummaryDelivery(deterministicCognitiveSummary("provider_request_failed"));
+        }
+        console.info("[ops_copilot] provider unavailable; deterministic summary selected");
       })
       .finally(() => {
         if (!cancelled) setLoadingSummary(false);
@@ -335,7 +406,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
     return () => {
       cancelled = true;
     };
-  }, [scansTotal, api.validRate, api.invalidRate, api.duplicates, api.tamper, api.geoRegions, api.riskScore]);
+  }, [scansTotal, validRate, invalidRate, api.duplicates, api.tamper, api.geoRegions, riskScore]);
 
   const riskRadar = [
     { label: "Replay / duplicates", value: Number(api.duplicates || 0), max: Math.max(scansTotal, 1) },
@@ -344,11 +415,20 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
     { label: "Device anomalies", value: deviceSignals.filter((item) => item.risk >= 8).length, max: Math.max(deviceSignals.length, 1) },
   ];
   const aiSummary = [
-    `Taps del scope actual: ${scansTotal}. Lecturas limpias: ${(api.validRate ?? 0).toFixed(1)}%.`,
-    `Riesgo activo: ${riskSignals} senales entre duplicados y tamper (${pct(riskSignals, Math.max(scansTotal, 1))}).`,
-    `Risk Score: ${api.riskScore || 0}/100.`,
-    `Proxima accion: ${riskSignals > 0 ? "abrir feed filtrado por riesgo y bloquear acciones comerciales sensibles" : "activar marketplace, club y puntos sobre taps validos"}.`,
+    `Taps del scope actual: ${scansTotal}. Mensajes aceptados: ${validRate == null ? "N/D" : `${validRate.toFixed(1)}%`}.`,
+    `Riesgo activo: ${riskSignals} senales entre duplicados y tamper (${riskRate}).`,
+    `Risk Score: ${scansTotal > 0 && riskScore != null ? `${riskScore}/100` : "N/D"}.`,
+    `Proxima accion: ${scansTotal <= 0 ? "capturar y confirmar el primer tap del scope" : riskSignals > 0 ? "abrir feed filtrado por riesgo y bloquear acciones comerciales sensibles" : "activar marketplace, club y puntos sobre taps validos"}.`,
   ];
+  const summaryTruth = describeCognitiveSummary(summaryDelivery);
+  const sourceLabel = dataSource === "production" ? "Producción confirmada" : dataSource === "demo" ? "Demo identificada" : dataSource === "imported" ? "Importado identificado" : "Fuentes mixtas identificadas";
+  const sourceTone = dataSource === "demo" ? "border-amber-300/30 bg-amber-500/10 text-amber-100" : "border-cyan-300/25 bg-cyan-500/10 text-cyan-100";
+  const sourceBanner = (
+    <div data-analytics-source={dataSource} className={`rounded-2xl border p-4 ${sourceTone}`}>
+      <p className="text-xs font-black uppercase tracking-[0.14em]">{sourceLabel}</p>
+      <p className="mt-1 text-xs opacity-80">{sourceDetail}</p>
+    </div>
+  );
   const hasOperationalData = scansTotal > 0 || trend.length > 0 || feed.length > 0 || products.length > 0 || tagJourney.length > 0;
   const filteredFeed = useMemo(() => feed.filter((item) => {
     const dayMatch = selectedDay ? String(item.createdAt || "").includes(selectedDay) : true;
@@ -365,35 +445,30 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
   }), [feed, feedSeverityFilter, riskCategoryFilter, selectedDay]);
   const trustFunnel = useMemo(() => {
     const taps = scansTotal;
-    const valid = Math.round(taps * ((api.validRate || 0) / 100));
-    const claims = Math.min(valid, Math.max(0, tagJourney.length));
-    const warranty = Math.round(claims * 0.35);
-    const marketplace = Math.round(claims * 0.2);
-    return [
-      { stage: "Tap", value: taps },
-      { stage: "Valid passport", value: valid },
-      { stage: "Claim", value: claims },
-      { stage: "Warranty", value: warranty },
-      { stage: "Marketplace", value: marketplace },
-    ];
-  }, [api.validRate, scansTotal, tagJourney.length]);
+    const measured = [{ stage: "Taps reportados", value: taps }];
+    if (validRate != null) {
+      measured.push({ stage: "Mensajes NFC válidos (derivado)", value: Math.round(taps * (validRate / 100)) });
+    }
+    return measured;
+  }, [scansTotal, validRate]);
   const journeyMapPoints = tagJourney.flatMap((item, idx) => {
     const product = productByUid.get(String(item.uid || "").toUpperCase());
+    const declaredOrigin = isDeclaredProductOrigin(item.originSource);
     const originPoint = item.origin.lat != null && item.origin.lng != null
       ? [{
-        id: `${item.uid}-origin-${idx}`,
-        city: item.origin.city || "Origin",
+        id: `${item.uid}-initial-${idx}`,
+        city: item.origin.city || (declaredOrigin ? "Declared origin" : "First reported tap"),
         country: item.origin.country || "--",
         lat: Number(item.origin.lat),
         lng: Number(item.origin.lng),
         scans: item.taps,
         risk: 0,
-        verdict: "ORIGIN",
+        verdict: declaredOrigin ? "DECLARED_ORIGIN" : "FIRST_OBSERVED",
         tenantSlug: "tenant",
-        lastSeen: item.firstSeenAt || item.lastSeenAt || new Date().toISOString(),
+        lastSeen: item.firstSeenAt || item.lastSeenAt || "",
         uid: item.uid,
         device: item.lastDevice || "unknown",
-        role: "origin" as const,
+        role: declaredOrigin ? "origin" as const : "tap" as const,
         productName: product?.productName,
       }]
       : [];
@@ -405,10 +480,10 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
         lat: Number(item.current.lat),
         lng: Number(item.current.lng),
         scans: item.taps,
-        risk: item.taps > 20 ? 0 : 1,
-        verdict: item.taps > 20 ? "VALID" : "RISK",
+        risk: 0,
+        verdict: "REPORTED",
         tenantSlug: "tenant",
-        lastSeen: item.lastSeenAt || new Date().toISOString(),
+        lastSeen: item.lastSeenAt || "",
         uid: item.uid,
         device: item.lastDevice || "unknown",
         role: "tap" as const,
@@ -418,7 +493,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
     return [...originPoint, ...currentPoint];
   });
   const journeyRoutes = tagJourney
-    .filter((item) => item.origin.lat != null && item.origin.lng != null && item.current.lat != null && item.current.lng != null)
+    .filter((item) => isDeclaredProductOrigin(item.originSource) && item.origin.lat != null && item.origin.lng != null && item.current.lat != null && item.current.lng != null)
     .slice(0, 120)
     .map((item, idx) => {
       const product = productByUid.get(String(item.uid || "").toUpperCase());
@@ -429,11 +504,11 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
         toLat: Number(item.current.lat),
         toLng: Number(item.current.lng),
         uid: item.uid,
-        risk: item.taps > 20 ? 0 : 1,
+        risk: 0,
         taps: item.taps,
-        firstSeenAt: item.firstSeenAt || item.lastSeenAt || new Date().toISOString(),
-        lastSeenAt: item.lastSeenAt || new Date().toISOString(),
-        fromLabel: `${item.origin.city || "Origin"}, ${item.origin.country || "--"}`,
+        firstSeenAt: item.firstSeenAt || item.lastSeenAt || "",
+        lastSeenAt: item.lastSeenAt || "",
+        fromLabel: `Origen declarado: ${item.origin.city || "sin ciudad"}, ${item.origin.country || "--"}`,
         toLabel: `${item.current.city || "Tap"}, ${item.current.country || "--"}`,
         productName: product?.productName,
       };
@@ -445,12 +520,13 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
     lng: point.lng,
     scans: point.scans || 0,
     risk: point.risk || 0,
-    lastSeen: null,
+    lastSeen: cityLastSeenByKey.get(`${String(point.city || "").trim().toLowerCase()}|${String(point.country || "--").trim().toUpperCase()}`) || null,
   }));
 
   if (!hasOperationalData) {
     return (
       <div className="space-y-6">
+        {sourceBanner}
         <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -462,28 +538,31 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
         </div>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard label={kpis.scans} value={String(api.scans ?? 0)} delta={kpis.scansDelta} tone="good" />
-          <StatCard label={kpis.validInvalid} value={`${api.validRate ?? 0} / ${api.invalidRate ?? 0}`} delta={kpis.validInvalidDelta} tone="good" />
+          <StatCard label={kpis.validInvalid} value={validityDisplay} delta={kpis.validInvalidDelta} tone="good" />
           <StatCard label={kpis.duplicates} value={String(api.duplicates ?? 0)} delta={kpis.duplicatesDelta} tone="warn" />
           <StatCard label={kpis.tamper} value={String(api.tamper ?? 0)} delta={kpis.tamperDelta} tone="warn" />
           <StatCard label={extra.activeBatches} value={String(api.activeBatches ?? 0)} delta={extra.activeBatchesDelta} tone="good" />
           <StatCard label={extra.activeTenants} value={String(api.activeTenants ?? 0)} delta={extra.activeTenantsDelta} tone="good" />
-          <StatCard label={extra.resellerPerformance} value={`USD ${(api.resellerPerformance ?? 0).toLocaleString()}`} delta={extra.resellerPerformanceDelta} tone="good" />
+          <StatCard label={extra.resellerPerformance} value={resellerRevenueDisplay} delta={resellerRevenueDetail} />
           <StatCard label={extra.geoDistribution} value={`${api.geoRegions ?? 0} regions`} delta={extra.geoDistributionDelta} />
         </div>
 
         <OpsPanel title="Control operativo" subtitle="KPIs del scope activo. Sin datos reales, no se inventa actividad.">
           <div className="grid gap-3 md:grid-cols-4">
             <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3"><p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Taps</p><p className="mt-1 text-2xl font-semibold text-cyan-200">{api.scans ?? 0}</p></div>
-            <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3"><p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Confianza</p><p className="mt-1 text-2xl font-semibold text-emerald-300">{(api.validRate ?? 0).toFixed(1)}%</p></div>
-            <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3"><p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Riesgo</p><p className="mt-1 text-2xl font-semibold text-amber-200">{pct(riskSignals, scansTotal)}</p></div>
-            <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3"><p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Cobertura</p><p className="mt-1 text-2xl font-semibold text-indigo-200">{journeyCoverage.toFixed(1)}%</p></div>
+            <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3"><p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Mensajes válidos</p><p className="mt-1 text-2xl font-semibold text-emerald-300">{scansTotal > 0 && validRate != null ? `${validRate.toFixed(1)}%` : "N/D"}</p></div>
+            <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3"><p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Riesgo</p><p className="mt-1 text-2xl font-semibold text-amber-200">{riskRate}</p></div>
+            <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3"><p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Cobertura</p><p className="mt-1 text-2xl font-semibold text-indigo-200">{journeyCoverage == null ? "sin base" : `${journeyCoverage.toFixed(1)}%`}</p></div>
           </div>
         </OpsPanel>
-        <OpsPanel title="Ops Copilot (AI Summary)" subtitle="Siguiente acción operativa redactada por Hugging Face GLM-5.2 en tiempo real.">
+        <OpsPanel title="Ops Copilot (AI Summary)" subtitle={summaryTruth.subtitle}>
+          <p className={`mb-3 inline-flex rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${summaryDelivery.mode === "live_provider" ? "border-emerald-300/25 bg-emerald-500/10 text-emerald-100" : "border-amber-300/25 bg-amber-500/10 text-amber-100"}`}>
+            {summaryTruth.badge}
+          </p>
           {loadingSummary ? (
             <div className="flex items-center gap-2 py-2 text-xs text-slate-400">
               <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-ping" />
-              <span>Redactando resumen de negocio en tiempo real...</span>
+              <span>Consultando proveedor; el resumen determinístico permanece disponible.</span>
             </div>
           ) : dynamicSummary ? (
             <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-line bg-slate-950/60 border border-white/5 rounded-2xl p-4">
@@ -501,7 +580,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
 
         <GamificationGeoOfferStudio cities={cities} geoPoints={geoOfferPoints} mapMode={mapMode} />
 
-        <OpsPanel title="Sin datos operativos" subtitle="Todavia no hay escaneos reales en el scope elegido.">
+        <OpsPanel title="Dataset vacío confirmado" subtitle={`No hay escaneos en ${sourceLabel.toLowerCase()} para el scope elegido.`}>
           <ul className="space-y-2 text-sm text-slate-300">
             <li>- Revisar tenant, source, rango y pais en filtros.</li>
             <li>- Confirmar que existan eventos SUN reales para este tenant.</li>
@@ -514,6 +593,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
 
   return (
     <div className="space-y-6">
+      {sourceBanner}
       <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -525,16 +605,16 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
       </div>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label={kpis.scans} value={String(api.scans ?? 0)} delta={kpis.scansDelta} tone="good" />
-        <StatCard label={kpis.validInvalid} value={`${api.validRate ?? 0} / ${api.invalidRate ?? 0}`} delta={kpis.validInvalidDelta} tone="good" />
+        <StatCard label={kpis.validInvalid} value={validityDisplay} delta={kpis.validInvalidDelta} tone="good" />
         <StatCard label={kpis.duplicates} value={String(api.duplicates ?? 0)} delta={kpis.duplicatesDelta} tone="warn" />
         <StatCard label={kpis.tamper} value={String(api.tamper ?? 0)} delta={kpis.tamperDelta} tone="warn" />
         <StatCard label={extra.activeBatches} value={String(api.activeBatches ?? 0)} delta={extra.activeBatchesDelta} tone="good" />
         <StatCard label={extra.activeTenants} value={String(api.activeTenants ?? 0)} delta={extra.activeTenantsDelta} tone="good" />
-        <StatCard label={extra.resellerPerformance} value={`USD ${(api.resellerPerformance ?? 0).toLocaleString()}`} delta={extra.resellerPerformanceDelta} tone="good" />
+        <StatCard label={extra.resellerPerformance} value={resellerRevenueDisplay} delta={resellerRevenueDetail} />
         <StatCard label={extra.geoDistribution} value={`${api.geoRegions ?? 0} regions`} delta={extra.geoDistributionDelta} />
       </div>
 
-      <OpsPanel title="Control operativo" subtitle="Resumen de actividad, confianza, riesgo y cobertura real.">
+      <OpsPanel title="Control operativo" subtitle={`Resumen calculado exclusivamente sobre ${sourceLabel.toLowerCase()}.`}>
         <div className="grid gap-3 md:grid-cols-4">
           <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3">
             <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Taps</p>
@@ -543,26 +623,29 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
           </div>
           <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3">
             <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Confianza</p>
-            <p className="mt-1 text-2xl font-semibold text-emerald-300">{(api.validRate ?? 0).toFixed(1)}%</p>
-            <p className="text-xs text-slate-400">Validacion autenticada sobre taps.</p>
+            <p className="mt-1 text-2xl font-semibold text-emerald-300">{validRate == null ? "N/D" : `${validRate.toFixed(1)}%`}</p>
+            <p className="text-xs text-slate-400">Mensajes NFC aceptados por la política del scope.</p>
           </div>
           <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3">
             <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Riesgo</p>
-            <p className="mt-1 text-2xl font-semibold text-amber-200">{pct(riskSignals, scansTotal)}</p>
+            <p className="mt-1 text-2xl font-semibold text-amber-200">{riskRate}</p>
             <p className="text-xs text-slate-400">{riskSignals} senales de riesgo (dup + tamper).</p>
           </div>
           <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3">
             <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Cobertura</p>
-            <p className="mt-1 text-2xl font-semibold text-indigo-200">{journeyCoverage.toFixed(1)}%</p>
-            <p className="text-xs text-slate-400">UIDs con historia de origen/destino visible.</p>
+            <p className="mt-1 text-2xl font-semibold text-indigo-200">{journeyCoverage == null ? "sin base" : `${journeyCoverage.toFixed(1)}%`}</p>
+            <p className="text-xs text-slate-400">UIDs con puntos inicial y final reportados; no implica una ruta.</p>
           </div>
         </div>
       </OpsPanel>
-      <OpsPanel title="Ops Copilot (AI Summary)" subtitle="Acción recomendada para el operador generada por Hugging Face GLM-5.2 en tiempo real.">
+      <OpsPanel title="Ops Copilot (AI Summary)" subtitle={summaryTruth.subtitle}>
+        <p className={`mb-3 inline-flex rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${summaryDelivery.mode === "live_provider" ? "border-emerald-300/25 bg-emerald-500/10 text-emerald-100" : "border-amber-300/25 bg-amber-500/10 text-amber-100"}`}>
+          {summaryTruth.badge}
+        </p>
         {loadingSummary ? (
           <div className="flex items-center gap-2 py-2 text-xs text-slate-400">
             <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-ping" />
-            <span>Redactando resumen de negocio en tiempo real...</span>
+            <span>Consultando proveedor; el resumen determinístico permanece disponible.</span>
           </div>
         ) : dynamicSummary ? (
           <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-line bg-slate-950/60 border border-white/5 rounded-2xl p-4">
@@ -586,11 +669,11 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
           {selectedDay ? <p className="mt-2 text-xs text-cyan-200">Drill-down day activo: {selectedDay}</p> : null}
         </OpsPanel>
 
-        <OpsPanel title="Trust / Risk split" subtitle="Lecturas válidas frente a señales de invalidación y manipulación.">
+        <OpsPanel title="Mensajes y señales de riesgo" subtitle="Etapas calculadas sólo con taps y tasa válida del API. Claim, garantía y marketplace quedan N/D hasta tener eventos propios.">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4">
               <p className="text-xs text-slate-400">Valid rate</p>
-              <p className="text-2xl font-semibold text-emerald-300">{(api.validRate ?? 0).toFixed(1)}%</p>
+              <p className="text-2xl font-semibold text-emerald-300">{validRate == null ? "N/D" : `${validRate.toFixed(1)}%`}</p>
             </div>
             <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4">
               <p className="text-xs text-slate-400">Risk signals</p>
@@ -619,14 +702,14 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
           </div>
         </OpsPanel>
 
-        <OpsPanel title="Device breakdown" subtitle="OS, browser, tipo de dispositivo y timezone por tap real.">
+        <OpsPanel title="Device breakdown" subtitle={`OS, browser, dispositivo y timezone sobre ${sourceLabel.toLowerCase()}.`}>
           <div className="grid gap-3 md:grid-cols-2">
             <DeviceBucket title="OS" items={devices?.os || []} />
             <DeviceBucket title="Browser" items={devices?.browser || []} />
             <DeviceBucket title="Device type" items={devices?.deviceType || []} />
             <DeviceBucket title="Timezone" items={devices?.timezones || []} />
           </div>
-          <p className="mt-2 text-xs text-slate-300">Mobile share: <b>{((devices?.mobileShare || 0) * 100).toFixed(1)}%</b></p>
+          <p className="mt-2 text-xs text-slate-300">Mobile share: <b>{formatAnalyticsPercentage(mobileSharePercent)}</b></p>
           <div className="mt-3">
             <DeviceRiskMatrix rows={deviceSignals} />
           </div>
@@ -635,23 +718,31 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
 
       <GamificationGeoOfferStudio cities={cities} geoPoints={geoOfferPoints} mapMode={mapMode} />
 
-      <DemoOpsMap mode={mapMode} points={(data?.geoPoints || []).map((point) => ({ city: point.city, country: point.country || "--", lat: point.lat, lng: point.lng, scans: point.scans || 1, risk: point.risk || 0 }))} />
-      <OpsPanel title="Journey map (tenant premium taps)" subtitle="Origen del producto vs tap actual del cliente, con distancia estimada, linea punteada y links a ubicacion.">
+      <DemoOpsMap mode={mapMode} points={(data?.geoPoints || []).map((point) => ({
+        city: point.city,
+        country: point.country || "--",
+        lat: point.lat,
+        lng: point.lng,
+        scans: point.scans ?? 0,
+        risk: point.risk || 0,
+        lastSeen: cityLastSeenByKey.get(`${String(point.city || "").trim().toLowerCase()}|${String(point.country || "--").trim().toUpperCase()}`) || undefined,
+      }))} />
+      <OpsPanel title="Journey map (tenant premium taps)" subtitle="Referencia inicial y ultimo tap reportado. Solo se dibuja un conector cuando originSource=product_passport_declared; first_observed_event no se presenta como ruta logistica.">
         {journeyMapPoints.length ? (
           <GlobalOpsMap
-            title="Journey heatmap premium"
-            subtitle="Origen del producto, tap actual, distancia y ruta punteada por UID."
+            title="Conectores de eventos por UID"
+            subtitle="Origen declarado o primer tap reportado vs ultimo tap. Un conector requiere origen declarado; el conector visual no representa un recorrido físico."
             mode={mapMode === "global" ? "global" : "tenant"}
             points={journeyMapPoints}
             routes={journeyRoutes}
-            playbackEnabled
+            playbackEnabled={false}
             riskOnly={false}
           />
         ) : <p className="text-sm text-slate-400">Sin coordenadas suficientes para dibujar journeys todavía.</p>}
       </OpsPanel>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <OpsPanel title="Live tap feed" subtitle="Actividad reciente y contexto operativo real.">
+        <OpsPanel title="Live tap feed" subtitle={`Actividad reciente del dataset ${sourceLabel.toLowerCase()}.`}>
           <div className="mb-2 flex items-center justify-between gap-2 text-xs text-slate-300">
             <p>Eventos recientes del tenant.</p>
             <label>
@@ -680,7 +771,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
           </div>
         </OpsPanel>
 
-        <OpsPanel title="Top tags / products" subtitle="Activos con más lecturas, última ubicación verificada y tokenización.">
+        <OpsPanel title="Top tags / products" subtitle="Activos con más lecturas, última ubicación reportada y tokenización.">
           <TopProductsTable items={products} />
         </OpsPanel>
       </div>
@@ -703,23 +794,25 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
           </div>
         </OpsPanel>
 
-        <OpsPanel title="Tag journey" subtitle="Origen de primer tap y última ubicación verificada por UID.">
+        <OpsPanel title="Tag journey" subtitle="Distingue origen declarado de primer tap reportado; no reconstruye un recorrido fisico.">
           <div className="space-y-2">
             {tagJourney.map((item) => {
               const product = productByUid.get(String(item.uid || "").toUpperCase());
-              const distance = distanceKm(item.origin.lat, item.origin.lng, item.current.lat, item.current.lng);
+              const declaredOrigin = isDeclaredProductOrigin(item.originSource);
+              const initialLabel = journeyInitialPointLabel(item.originSource);
+              const distance = declaredOrigin ? distanceKm(item.origin.lat, item.origin.lng, item.current.lat, item.current.lng) : null;
               const originHref = mapHref(item.origin.lat, item.origin.lng);
               const currentHref = mapHref(item.current.lat, item.current.lng);
               return (
                 <div key={item.uid} className="rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 text-xs text-slate-200">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="font-semibold">{product?.productName || item.uid}</p>
-                    <p>{item.taps} taps - {fmtDistance(distance)}</p>
+                    <p>{item.taps} taps - {declaredOrigin ? `distancia recta ${fmtDistance(distance)}` : "sin distancia logistica"}</p>
                   </div>
-                  <p className="mt-1 text-slate-300">Origen: <b>{item.origin.city}, {item.origin.country}</b> - tap actual: <b>{item.current.city}, {item.current.country}</b></p>
+                  <p className="mt-1 text-slate-300">{initialLabel}: <b>{item.origin.city}, {item.origin.country}</b> - ultimo tap: <b>{item.current.city}, {item.current.country}</b></p>
                   <p className="text-slate-400">Primer tap: {fmtDate(item.firstSeenAt)} - ultimo tap: {fmtDate(item.lastSeenAt)} - {item.lastDevice}</p>
                   <div className="mt-2 flex flex-wrap gap-2">
-                    {originHref ? <a href={originHref} target="_blank" rel="noreferrer" className="rounded-lg border border-emerald-300/30 px-2 py-1 text-[11px] font-semibold text-emerald-100 hover:bg-emerald-400/10">Ver origen</a> : null}
+                    {originHref ? <a href={originHref} target="_blank" rel="noreferrer" className="rounded-lg border border-emerald-300/30 px-2 py-1 text-[11px] font-semibold text-emerald-100 hover:bg-emerald-400/10">{declaredOrigin ? "Ver origen declarado" : "Ver primer tap"}</a> : null}
                     {currentHref ? <a href={currentHref} target="_blank" rel="noreferrer" className="rounded-lg border border-cyan-300/30 px-2 py-1 text-[11px] font-semibold text-cyan-100 hover:bg-cyan-400/10">Ver tap</a> : null}
                   </div>
                 </div>
@@ -730,22 +823,23 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo" }: Analyti
         </OpsPanel>
       </div>
 
-      <OpsPanel title="Traceability lane by UID" subtitle="Journey visual para storytelling comercial y auditoría operacional por activo.">
+      <OpsPanel title="Traceability lane by UID" subtitle="Comparacion de puntos reportados por activo; solo un origen de pasaporte se etiqueta como declarado.">
         <div className="space-y-3">
-          {tagJourney.slice(0, 8).map((item) => (
-            <div key={`lane-${item.uid}`} className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs text-slate-200">
+          {tagJourney.slice(0, 8).map((item) => {
+            const declaredOrigin = isDeclaredProductOrigin(item.originSource);
+            return <div key={`lane-${item.uid}`} className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs text-slate-200">
               <div className="flex items-center justify-between">
                 <p className="font-semibold text-white">{item.uid}</p>
                 <StatusChip label={`${item.taps} taps`} tone={item.taps > 20 ? "good" : "neutral"} />
               </div>
               <div className="mt-2 flex items-center gap-2 text-slate-300">
-                <span className="rounded bg-emerald-500/20 px-2 py-1 text-[11px]">{item.origin.city}, {item.origin.country}</span>
-                <span className="text-slate-500">→</span>
-                <span className="rounded bg-cyan-500/20 px-2 py-1 text-[11px]">{item.current.city}, {item.current.country}</span>
+                <span className="rounded bg-emerald-500/20 px-2 py-1 text-[11px]">{journeyInitialPointLabel(item.originSource)}: {item.origin.city}, {item.origin.country}</span>
+                <span className="text-slate-500">{declaredOrigin ? "referencia / tap" : "antes / despues; sin ruta"}</span>
+                <span className="rounded bg-cyan-500/20 px-2 py-1 text-[11px]">Ultimo tap: {item.current.city}, {item.current.country}</span>
                 <span className="ml-auto text-slate-400">{item.lastDevice}</span>
               </div>
-            </div>
-          ))}
+            </div>;
+          })}
           {!tagJourney.length ? <p className="text-sm text-slate-400">Sin journeys para construir lane visual.</p> : null}
         </div>
       </OpsPanel>

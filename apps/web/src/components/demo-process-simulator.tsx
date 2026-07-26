@@ -25,8 +25,8 @@ const stagesByLocale: Record<Props["locale"], { title: string; subtitle: string;
     scenarios: { wine: "Bodega / botella", bracelet: "Evento / brazalete", pharma: "Farmacia / cosmética" },
     impactByScenario: {
       wine: [
-        { label: "Claim comercial", value: "Origen y autenticidad por botella" },
-        { label: "Riesgo controlado", value: "Anti-relleno y trazabilidad lote" },
+        { label: "Claim comercial", value: "Evidencia NFC y origen declarado por botella" },
+        { label: "Riesgo controlado", value: "Señales anti-relleno y trazabilidad de lote" },
         { label: "Qué ve ventas", value: "Historia + confianza en un tap" },
       ],
       bracelet: [
@@ -35,7 +35,7 @@ const stagesByLocale: Record<Props["locale"], { title: string; subtitle: string;
         { label: "Qué ve ventas", value: "Control de aforo y experiencia premium" },
       ],
       pharma: [
-        { label: "Claim comercial", value: "Producto genuino al consumidor" },
+        { label: "Claim comercial", value: "Evidencia digital del tag para el consumidor" },
         { label: "Riesgo controlado", value: "Canal informal y copia visual" },
         { label: "Qué ve ventas", value: "Confianza en punto de venta" },
       ],
@@ -66,8 +66,8 @@ const stagesByLocale: Record<Props["locale"], { title: string; subtitle: string;
     scenarios: { wine: "Vinícola / garrafa", bracelet: "Evento / pulseira", pharma: "Farmácia / cosméticos" },
     impactByScenario: {
       wine: [
-        { label: "Claim comercial", value: "Origem e autenticidade por garrafa" },
-        { label: "Risco controlado", value: "Anti-refill e rastreio por lote" },
+        { label: "Claim comercial", value: "Evidência NFC e origem declarada por garrafa" },
+        { label: "Risco controlado", value: "Sinais anti-refill e rastreio por lote" },
         { label: "O que vendas mostra", value: "História + confiança em um tap" },
       ],
       bracelet: [
@@ -76,7 +76,7 @@ const stagesByLocale: Record<Props["locale"], { title: string; subtitle: string;
         { label: "O que vendas mostra", value: "Controle de lotação e experiência premium" },
       ],
       pharma: [
-        { label: "Claim comercial", value: "Produto genuíno ao consumidor" },
+        { label: "Claim comercial", value: "Evidência digital do tag para o consumidor" },
         { label: "Risco controlado", value: "Canal paralelo e cópia visual" },
         { label: "O que vendas mostra", value: "Confiança no ponto de venda" },
       ],
@@ -107,8 +107,8 @@ const stagesByLocale: Record<Props["locale"], { title: string; subtitle: string;
     scenarios: { wine: "Winery / bottle", bracelet: "Event / wristband", pharma: "Pharma / cosmetics" },
     impactByScenario: {
       wine: [
-        { label: "Commercial claim", value: "Origin + authenticity per bottle" },
-        { label: "Controlled risk", value: "Anti-refill and batch traceability" },
+        { label: "Commercial claim", value: "NFC evidence + declared origin per bottle" },
+        { label: "Controlled risk", value: "Anti-refill signals and batch traceability" },
         { label: "Sales narrative", value: "Story + trust in one tap" },
       ],
       bracelet: [
@@ -117,7 +117,7 @@ const stagesByLocale: Record<Props["locale"], { title: string; subtitle: string;
         { label: "Sales narrative", value: "Capacity control + premium UX" },
       ],
       pharma: [
-        { label: "Commercial claim", value: "Genuine product at point of sale" },
+        { label: "Commercial claim", value: "Digital tag evidence at point of sale" },
         { label: "Controlled risk", value: "Grey market and visual counterfeits" },
         { label: "Sales narrative", value: "Consumer trust at purchase moment" },
       ],
@@ -226,10 +226,10 @@ export function DemoProcessSimulator({ locale }: Props) {
         <p className="mt-2 text-sm text-slate-300">{current.note}</p>
         <p className="mt-2 text-xs text-slate-400">
           {scenario === "wine"
-            ? "Narrative tip: connect this state with bottle provenance and anti-refill value."
+            ? "Narrative tip: connect this state with declared origin and reported anti-refill signals."
             : scenario === "bracelet"
               ? "Narrative tip: connect this state with access rights and gate fraud prevention."
-              : "Narrative tip: connect this state with product authenticity and patient confidence."}
+              : "Narrative tip: connect this state with tag evidence, batch context and patient confidence."}
         </p>
       </div>
 

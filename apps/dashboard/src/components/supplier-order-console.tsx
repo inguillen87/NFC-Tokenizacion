@@ -430,7 +430,7 @@ export function SupplierOrderConsole({
   const [sku, setSku] = useState("");
   const [notes, setNotes] = useState("");
   const [pending, setPending] = useState(false);
-  const [status, setStatus] = useState("Listo para crear un pedido industrial real. No pega llaves manuales y no expone KMS.");
+  const [status, setStatus] = useState("Listo para crear un pedido industrial real. No pega llaves manuales ni expone la clave maestra de aplicación.");
   const [response, setResponse] = useState("{}");
   const [created, setCreated] = useState<SupplierOrderResponse | null>(null);
   const [pack, setPack] = useState<SupplierPackResponse | null>(null);
@@ -661,7 +661,7 @@ export function SupplierOrderConsole({
       setOfflineBundle(null);
       setOfflineSelectedDeviceId("");
       setOfflineDevices([]);
-      setStatus(`Pedido creado: ${data.sub_batches?.length || 0} sub-batches con fingerprints, llaves cifradas y sin KMS expuesta.`);
+      setStatus(`Pedido creado: ${data.sub_batches?.length || 0} sub-batches con fingerprints y llaves cifradas bajo el secreto de aplicación.`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "No se pudo crear el pedido.");
     } finally {
@@ -1076,6 +1076,9 @@ export function SupplierOrderConsole({
                   : "Superadmin activo: genera un contenedor cifrado con carpetas por sub-batch, TXT/JSON/PDF y checksums. El password se genera en esta consola, no vuelve desde la API y debe enviarse por canal separado."
                 : "Bloqueado para tenant admin: el tenant opera manifiestos, QA y Vault, pero el pack cifrado de fábrica queda bajo superadmin, security operator o permiso explícito."}
             </p>
+            <p className="mt-3 rounded-xl border border-amber-200/20 bg-slate-950/55 px-3 py-2 text-xs leading-5 text-amber-50/90">
+              Custodia NFC piloto: envelope AES-256-GCM con secreto de aplicacion versionado en Vercel y AAD por tenant, lote, rol y version. No es KMS administrado ni HSM; la migracion a custodia no exportable sigue siendo un gate de produccion enterprise.
+            </p>
             <div className="mt-3 rounded-2xl border border-white/10 bg-slate-950/60 p-3">
               <label className="block">
                 <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Password de fábrica</span>
@@ -1302,7 +1305,7 @@ export function SupplierOrderConsole({
             ) : null}
 
             <p className="mt-3 rounded-xl border border-amber-300/20 bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-100">
-              Este modo no certifica ownership, warranty, CRM ni proof anchors sin backend. El bundle no incluye K_META_BATCH, K_FILE_BATCH, KMS ni tenant master keys.
+              Este modo no certifica ownership, warranty, CRM ni proof anchors sin backend. El bundle no incluye K_META_BATCH, K_FILE_BATCH, la clave maestra de aplicación ni tenant master keys.
             </p>
           </div>
 

@@ -19,6 +19,7 @@ import {
   Info
 } from "lucide-react";
 import { Button } from "@product/ui";
+import type { LucideIcon } from "lucide-react";
 
 interface FAQItem {
   question: string;
@@ -28,7 +29,7 @@ interface FAQItem {
 
 interface FAQSection {
   title: string;
-  icon: any;
+  icon: LucideIcon;
   iconColor: string;
   items: FAQItem[];
 }
@@ -48,18 +49,18 @@ export default function SalesPlaybookPage() {
       items: [
         {
           question: "¿Esto me va a encarecer mucho el costo por botella o empaque premium?",
-          answer: "El microchip criptográfico representa centavos de dólar por unidad (menos del 1.5% en botellas o perfumes premium). La línea estándar opera en backend seguro nexID sin transacciones on-chain por cada tap; Polygon o IOTA se activan solo cuando hay ownership, auditoría, DPP o mercado secundario que justifican gas, RPC y custodia.",
-          context: "A cambio de este mínimo costo, reducís fuertemente el fraude y abrís un canal de datos directo al consumidor final (DTC), con impacto medible frente a intermediarios de marketing."
+          answer: "El costo unitario depende del chip, antena, formato wet/dry inlay, volumen, conversión y logística. Se cotiza con una prueba de packaging antes de escalar. El plan base no escribe cada tap on-chain; Polygon o IOTA se activan sólo para eventos acordados, como claims autorizados, handling declarado, auditoría, DPP o certificados.",
+          context: "El ROI se mide por caso: fraude evitado, recuperación de producto, opt-ins, canjes y trazabilidad. No usamos un porcentaje universal sin datos del envase y la línea del cliente."
         },
         {
           question: "¿Me va a ralentizar la línea de empaque industrial o embotellado?",
-          answer: "No. Los chips se entregan en formato inlay autoadhesivo (rollos industriales estándar). Tus máquinas etiquetadoras automáticas los aplican debajo de la contraetiqueta o bajo el sello del empaque de forma integrada y sin perder milésimas de velocidad.",
-          context: "La implementación es totalmente transparente para el gerente de operaciones tanto en embotelladoras como en líneas de envasado cosmético."
+          answer: "Se diseña para integrarse sin cambiar el flujo principal, pero la velocidad debe validarse en una corrida piloto. Para aplicación directa suele convenir wet inlay en rollo; un dry inlay necesita conversión o laminado antes de entrar a la etiquetadora. Materiales, separación, core y sentido de bobinado se acuerdan con packaging.",
+          context: "Antes de producción masiva se aprueban adhesivo, radio de curvatura, metal o líquido cercano, posición de antena, lectura y compatibilidad con la máquina real."
         },
         {
           question: "En cosmética, ¿cómo evito que rellenen mis envases originales de perfume o cremas?",
           answer: "nexID utiliza circuitos micro-electrónicos TagTamper integrados en el cierre. Al abrir la tapa o atomizador, el filamento del chip cambia de estado físicamente. El sistema registra el evento del sello en el backend para auditoría y reglas de postventa.",
-          context: "Si alguien escanea un perfume rellenado, el sistema puede advertir al comprador que el envase original ya fue abierto, reduciendo el mercado negro de adulteraciones."
+          context: "Si el tag reporta TT abierto, el sistema puede mostrar ese estado y elevar una revisión. No infiere relleno, contenido ni apertura real del envase sin una integración de packaging validada."
         }
       ]
     },
@@ -70,12 +71,12 @@ export default function SalesPlaybookPage() {
       items: [
         {
           question: "¿Qué ventaja tiene sobre el código de barras que exige la regulación de medicamentos?",
-          answer: "El código de barras es estático y fácilmente duplicable por fotocopiadoras en empaques apócrifos. El microchip nexID genera una firma criptográfica dinámica de un solo uso que se valida contra nuestro servidor seguro en Render/AWS.",
-          context: "Si una red copia el empaque, el servidor detecta firma ausente, inválida o patrones geográficos incompatibles, bloqueando beneficios y elevando el caso para revisión operativa."
+          answer: "El código regulatorio sigue siendo obligatorio cuando corresponde. nexID lo complementa con una firma SUN dinámica del chip, validada server-side por la API en Vercel contra claves de lote cifradas en Neon. Una imagen del empaque no reproduce una lectura criptográfica fresca.",
+          context: "La política puede rechazar una firma inválida y elevar patrones anómalos para revisión. La ubicación del navegador requiere permiso y la IP es sólo aproximada; ninguna se presenta como GPS infalible."
         },
         {
           question: "En el agro, ¿qué valor tiene colocar chips en bolsas de semillas de autor o agroquímicos?",
-          answer: "El mercado negro de semillas adulteradas y agroquímicos diluidos genera pérdidas millonarias y daña cosechas enteras. nexID vincula el lote declarado por el criadero o laboratorio oficial con el envase físico mediante QR/NFC y verificación server-side cuando corresponde.",
+          answer: "nexID asocia el lote, canal y documentación declarados por el criadero o laboratorio con una identidad QR/NFC. Cuando el carrier lo permite, la API valida el mensaje criptográfico server-side; la asociación física se controla en el proceso de packaging del cliente.",
           context: "El productor escanea el bidón o bolsa con su celular y consulta lote, canal autorizado, documentación técnica y composición declarada por la marca, sin reemplazar la etiqueta regulatoria ni la recomendación del asesor agronómico."
         }
       ]
@@ -87,8 +88,8 @@ export default function SalesPlaybookPage() {
       items: [
         {
           question: "Los códigos QR de las entradas se revenden y duplican. ¿Cómo lo soluciona nexID?",
-          answer: "Reemplazamos el QR digital por pulseras o credenciales VIP físicas inteligentes equipadas con chip NFC nexID. Cada ingreso requiere un tap físico que se procesa en milisegundos contra nuestro servidor Render.",
-          context: "Al no exponer la clave criptográfica del chip y exigir tap físico fresco, se reduce fuertemente la entrada duplicada y se bloquean acciones de alto riesgo en eventos VIP y corporativos."
+          answer: "Podemos complementar o reemplazar el QR, según la operación, con pulseras o credenciales NFC. Cada ingreso de alto riesgo exige un mensaje criptográfico NFC fresco y una decisión server-side de la API desplegada en Vercel; la latencia y el modo offline se validan en el piloto del recinto.",
+          context: "Al no exponer la clave del chip y exigir un mensaje fresco, la política puede rechazar replays y credenciales reutilizadas. La reducción real de ingresos duplicados, latencia y tasa de lectura se mide en el piloto del recinto."
         }
       ]
     },
@@ -99,18 +100,18 @@ export default function SalesPlaybookPage() {
       items: [
         {
           question: "¿Por qué ofrecer una solución híbrida (SQL + Blockchain Opcional)?",
-          answer: "Muchos clientes B2B tradicionales le temen a la Web3, gas fees y billeteras digitales. Al ofrecer por defecto una arquitectura SQL segura hospedada en AWS y Render, logramos un onboarding inmediato y sin fricciones.",
-          context: "Si un cliente final lanza una línea ultra-premium o de colección y necesita evidencia pública de ownership, activamos la capa Polygon on-chain como add-on premium facturado en el plan SaaS."
+          answer: "El flujo operativo actual usa funciones y APIs en Vercel con PostgreSQL administrado en Neon y aislamiento lógico por tenant. Blockchain es opcional: no procesa cada lectura y se reserva para eventos que justifican evidencia pública, costo de red y custodia separada.",
+          context: "Polygon puede registrar ownership o certificados autorizados; IOTA puede anclar evidencia de integridad o supply chain. La red, frecuencia, gas y SLA se definen por tenant y caso de uso."
         },
         {
-          question: "¿Cómo garantizan la seguridad de la base de datos SQL si es centralizada?",
-          answer: "La seguridad no depende solo de la base de datos, sino de la criptografía del chip y de la política del backend. Cada tap dinámico genera una firma SUN verificada con claves protegidas por KMS/HSM o custody signer según el despliegue.",
-          context: "Incluso si un hacker vulnera el servidor SQL, no puede generar firmas dinámicas falsas de chips físicos porque no posee las claves criptográficas maestras."
+          question: "¿Cómo protegen la operación si la base de datos es centralizada?",
+          answer: "La seguridad combina chip, backend y controles de acceso. En NFC, K_META y K_FILE de cada lote se guardan cifradas en Neon; KMS_MASTER_KEY_HEX vive sólo como variable del backend en Vercel y permite descifrar server-side para validar SUN/CMAC. Es cifrado de aplicación tipo envelope, separado de blockchain.",
+          context: "Las wallets piloto de Polygon e IOTA usan claves separadas, envueltas por Google Cloud KMS con nivel SOFTWARE en modo kms_wrapped. El executor descifra el material de forma efímera para firmar. La arquitectura actual no se vende como firma directa no exportable."
         },
         {
-          question: "¿Cómo escala el modelo SaaS en Render y AWS?",
-          answer: "Operamos un modelo de software de alta rentabilidad: margen por volumen en el hardware programado (chips) + suscripción SaaS mensual por el uso del panel CRM, telemetría y el motor nexID Cognitive AI Engine.",
-          context: "Esto nos da ingresos predecibles y un moat defensivo basado en el software y la integración criptográfica propietaria."
+          question: "¿Cómo escala el modelo SaaS sobre Vercel y Neon?",
+          answer: "El modelo combina suministro y programación de tags con suscripciones por workspace, usuarios, operación, SDK/webhooks y módulos opcionales de evidencia blockchain. Los límites, costos variables y SLA se cotizan por tenant; no dependen de prometer una IA propietaria.",
+          context: "El optimizador comercial puede llamar a un proveedor externo. Sólo se etiqueta como live cuando la respuesta confirma proveedor y modelo; sin cuota, token o respuesta útil, la interfaz declara fallback determinístico."
         }
       ]
     }
@@ -170,7 +171,7 @@ export default function SalesPlaybookPage() {
             Playbook de Ventas & FAQs <span className="text-xs bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2.5 py-0.5 rounded-full font-black uppercase">Sales Tool</span>
           </h1>
           <p className="mt-1 text-sm text-slate-400">
-            Manual de manejo de objeciones y comparativa técnica. Descargá el PDF premium o imprimí el contenido.
+            Manual comercial basado en la arquitectura operativa actual. Descargá el PDF versionado o imprimí esta vista.
           </p>
         </div>
 
@@ -195,6 +196,43 @@ export default function SalesPlaybookPage() {
         </div>
       </header>
 
+      <section className="print-block rounded-2xl border border-cyan-500/20 bg-slate-950 p-6 shadow-xl">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">Arquitectura actual · alcance verificable</p>
+            <h2 className="mt-1 text-lg font-bold text-white print-title">Qué puede vender nexID hoy</h2>
+          </div>
+          <span className="rounded-full border border-emerald-400/25 bg-emerald-400/10 px-3 py-1 text-[9px] font-black uppercase tracking-wider text-emerald-300">
+            Vercel + Neon
+          </span>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          {[
+            {
+              label: "Runtime y datos",
+              detail: "APIs y funciones en Vercel; PostgreSQL administrado en Neon con alcance lógico por tenant.",
+            },
+            {
+              label: "Custodia NFC / SUN",
+              detail: "K_META y K_FILE cifradas en Neon; KMS_MASTER_KEY_HEX permanece en el backend de Vercel para validación SUN/CMAC server-side.",
+            },
+            {
+              label: "Custodia blockchain piloto",
+              detail: "Wallets separadas de Polygon e IOTA con Google Cloud KMS SOFTWARE envelope (kms_wrapped); el material se descifra efímeramente en el executor para firmar.",
+            },
+            {
+              label: "Asistencia de copy",
+              detail: "Proveedor y modelo se muestran sólo tras una respuesta confirmada. Si falla o no hay cuota, se declara fallback determinístico.",
+            },
+          ].map((item) => (
+            <div key={item.label} className="rounded-xl border border-white/10 bg-slate-900/45 p-4">
+              <h3 className="text-xs font-black uppercase tracking-wider text-white print-title">{item.label}</h3>
+              <p className="mt-2 text-[11px] leading-relaxed text-slate-400">{item.detail}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* Section 1: NFC vs QR comparison table */}
       <section className="print-block rounded-2xl border border-white/10 bg-slate-950 p-6 shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/5 rounded-full filter blur-3xl pointer-events-none no-print" />
@@ -203,7 +241,7 @@ export default function SalesPlaybookPage() {
           <Zap className="w-5 h-5 text-cyan-400" /> nexID NFC vs. Código QR Tradicional
         </h2>
         <p className="text-xs text-slate-400 mb-6 no-print">
-          La comparativa técnica definitiva para desarmar la duda principal del bodeguero.
+          Comparativa para elegir el control adecuado sin promesas absolutas.
         </p>
 
         <div className="overflow-x-auto">
@@ -218,28 +256,28 @@ export default function SalesPlaybookPage() {
             <tbody className="divide-y divide-white/5">
               <tr>
                 <td className="p-3 font-semibold text-white print-title">Copiabilidad / Fraude</td>
-                <td className="p-3 flex items-center gap-1.5 text-rose-400"><XCircle className="w-4 h-4 shrink-0" /> Crítica (Fotocopiable)</td>
-                <td className="p-3 text-emerald-400 font-bold"><CheckCircle2 className="w-4 h-4 shrink-0 inline mr-1" /> Imposible (Firma única SUN)</td>
+                <td className="p-3 flex items-center gap-1.5 text-rose-400"><XCircle className="w-4 h-4 shrink-0" /> El contenido visual puede copiarse</td>
+                <td className="p-3 text-emerald-400 font-bold"><CheckCircle2 className="w-4 h-4 shrink-0 inline mr-1" /> Firma SUN dinámica + política server-side</td>
               </tr>
               <tr>
                 <td className="p-3 font-semibold text-white print-title">Experiencia de Apertura</td>
-                <td className="p-3">Lenta (Enfocar cámara + click)</td>
-                <td className="p-3 text-cyan-300">Instantánea (Apoyar móvil - 0.5s)</td>
+                <td className="p-3">Requiere cámara y encuadre</td>
+                <td className="p-3 text-cyan-300">Tap sin app en móviles compatibles; la latencia se mide en piloto</td>
               </tr>
               <tr>
                 <td className="p-3 font-semibold text-white print-title">Detección de Apertura</td>
-                <td className="p-3 text-slate-500">Ninguna (QR estático)</td>
-                <td className="p-3 text-emerald-400"><CheckCircle2 className="w-4 h-4 shrink-0 inline mr-1" /> Física (Circuito TagTamper)</td>
+                <td className="p-3 text-slate-500">No informa estado físico por sí solo</td>
+                <td className="p-3 text-emerald-400"><CheckCircle2 className="w-4 h-4 shrink-0 inline mr-1" /> Disponible con tag TT y construcción tamper validada</td>
               </tr>
               <tr>
                 <td className="p-3 font-semibold text-white print-title">Ubicación Antifraude</td>
-                <td className="p-3">Fácil de falsificar (IP de red)</td>
-                <td className="p-3 text-cyan-300">Señal de riesgo por ubicación de lectura e IP</td>
+                <td className="p-3">Depende del portal, permiso del usuario e IP aproximada</td>
+                <td className="p-3 text-cyan-300">Mismas señales declaradas + evidencia criptográfica del chip</td>
               </tr>
               <tr>
                 <td className="p-3 font-semibold text-white print-title">Percepción de Valor</td>
-                <td className="p-3">Baja (Carta de bar, spam)</td>
-                <td className="p-3 text-purple-300 font-bold">Lujo y estatus premium</td>
+                <td className="p-3">Depende de diseño, contenido y contexto</td>
+                <td className="p-3 text-purple-300 font-bold">Punto de contacto físico interactivo, medible por caso</td>
               </tr>
             </tbody>
           </table>
@@ -270,6 +308,9 @@ export default function SalesPlaybookPage() {
                     >
                       {/* Accordion Header */}
                       <button
+                        type="button"
+                        aria-expanded={isOpen}
+                        aria-controls={`sales-playbook-panel-${uniqueId}`}
                         onClick={() => toggleAccordion(uniqueId)}
                         className="w-full flex items-center justify-between gap-4 p-4 text-left font-bold text-xs text-white uppercase tracking-wide print-title"
                       >
@@ -280,7 +321,10 @@ export default function SalesPlaybookPage() {
                       </button>
 
                       {/* Accordion Content */}
-                      <div className={`overflow-hidden transition-all duration-300 ${isOpen ? "max-h-[500px]" : "max-h-0 print:max-h-[500px]"}`}>
+                      <div
+                        id={`sales-playbook-panel-${uniqueId}`}
+                        className={`overflow-hidden transition-all duration-300 ${isOpen ? "max-h-[500px]" : "max-h-0 print:max-h-[500px]"}`}
+                      >
                         <div className="p-4 pt-0 border-t border-white/5 space-y-3 text-xs text-slate-300 leading-relaxed">
                           <p>{item.answer}</p>
                           {item.context && (
@@ -300,28 +344,28 @@ export default function SalesPlaybookPage() {
         })}
       </section>
 
-      {/* Section 3: Live Demo Flow */}
+      {/* Section 3: Verifiable demo flow */}
       <section className="print-block rounded-2xl border border-purple-500/20 bg-[radial-gradient(circle_at_bottom_right,rgba(168,85,247,0.06),transparent_60%),linear-gradient(135deg,rgba(15,23,42,0.95),rgba(2,6,23,0.98))] p-6 shadow-xl">
         <h2 className="text-base font-bold text-white mb-2 flex items-center gap-2 print-title">
-          <Lock className="w-5 h-5 text-purple-400" /> El &quot;As bajo la manga&quot; en Reuniones de Venta
+          <Lock className="w-5 h-5 text-purple-400" /> Demo comercial verificable
         </h2>
         <p className="text-xs text-slate-400 mb-6">
-          Cómo estructurar tu demo física en 3 minutos para convencer al cliente de inmediato.
+          Un recorrido breve que distingue evidencia digital del tag, datos confirmados y simulación declarada.
         </p>
 
         <div className="grid gap-4 md:grid-cols-3">
           {[
             {
-              step: "1. Hackear el QR",
-              desc: "Llevá una botella común con QR. Escanealo, sacale una foto con tu celular al QR y hacé que escaneen la foto. Decile: 'Vea, acabo de clonar y duplicar la identidad de su botella en un segundo. Cualquiera en Europa puede hacerlo'."
+              step: "1. Mostrar el límite visual",
+              desc: "Usá un QR de muestra y mostrá que una foto conserva el mismo contenido visual. Aclará que esto no demuestra fraude por sí solo: explica por qué los casos de mayor riesgo agregan una prueba criptográfica del chip."
             },
             {
               step: "2. Tap Criptográfico",
-              desc: "Pedile que apoye su celular en tu botella inteligente con chip nexID. Se abrirá de inmediato su Portal VIP mostrando la botella en 3D. Explicale que el celular validó una firma criptográfica dinámica y que una foto o captura no reemplaza el tap físico fresco."
+              desc: "Pedile que apoye su celular en una muestra NTAG 424 configurada. El portal debe indicar si recibió un mensaje criptográfico NFC nuevo o si está en modo demo. Explicá que una captura no genera una nueva firma SUN."
             },
             {
               step: "3. Demostrar el Control",
-              desc: "Abrí tu notebook con el panel CRM nexID. Mostrale cómo su tap en Mendoza apareció en tiempo real en el mapa, cómo el sistema calcula riesgo y, si el tenant activó Polygon, dónde queda el certificado listo para auditoría comercial."
+              desc: "Abrí el panel CRM. Si el evento del tag llegó al backend, mostrá su fuente y estado; si son datos demo, dejá visible esa procedencia. Enseñá Polygon o IOTA sólo cuando la evidencia de red esté verificada."
             }
           ].map((item, idx) => (
             <div key={idx} className="rounded-xl border border-white/5 bg-slate-950/40 p-4 space-y-2 relative">

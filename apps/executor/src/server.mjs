@@ -4,6 +4,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { Contract, JsonRpcProvider, Transaction, Wallet, formatEther, getAddress, isAddress } from "ethers";
 import {
+  checkIotaDurableStore,
   markIotaBroadcast,
   markIotaConfirmed,
   markIotaFailed,
@@ -27,6 +28,8 @@ const polygonAbi = [
   "function ownerOf(uint256 tokenId) external view returns (address)",
   "function tokenURI(uint256 tokenId) external view returns (string)",
   "function assetRefByTokenId(uint256 tokenId) external view returns (string)",
+  "function owner() external view returns (address)",
+  "function authorizedMinters(address minter) external view returns (bool)",
 ];
 
 const iotaEvidenceAbi = [
@@ -110,8 +113,8 @@ function secretMatches(provided, expected) {
 function authOk(req, secretName, headerName) {
   const expected = env(secretName);
   if (!expected) return false;
-  const headerSecret = String(req.headers[headerName] || "");
-  const auth = String(req.headers.authorization || "");
+  const headerSecret = String(req.headers?.get?.(headerName) || req.headers?.[headerName] || "");
+  const auth = String(req.headers?.get?.("authorization") || req.headers?.authorization || "");
   return secretMatches(headerSecret, expected)
     || (auth.startsWith("Bearer ") && secretMatches(auth.slice(7), expected));
 }
@@ -134,6 +137,15 @@ function deriveTokenId(receipt) {
 }
 
 async function health() {
+  let capabilities = [];
+  try {
+    capabilities = [...executorCapabilities()];
+  } catch {
+    capabilities = [];
+  }
+  const polygonEnabled = capabilities.includes("polygon");
+  const iotaEnabled = capabilities.includes("iota");
+  const iotaOnly = iotaEnabled && !polygonEnabled;
   const signerMode = env("EXECUTOR_SIGNER_MODE", "private_key").toLowerCase();
   const rpcUrl = env("POLYGON_RPC_URL");
   const contractAddress = env("POLYGON_CONTRACT_ADDRESS");
@@ -156,6 +168,14 @@ async function health() {
   }
   const iotaKmsReady = iotaSignerMode === "kms" && kmsConfigured() && isAddress(iotaPublisherAddress);
   const iotaWrappedKmsReady = iotaSignerMode === "kms_wrapped" && wrappedKmsConfigured({ domain: "iota" }) && isAddress(iotaPublisherAddress);
+  const activeSignerMode = iotaOnly ? iotaSignerMode : signerMode;
+  const network = capabilities.length === 0
+    ? "unconfigured"
+    : iotaOnly
+      ? "iota-evm-testnet"
+      : polygonEnabled && iotaEnabled
+        ? "multi-chain"
+        : "polygon-amoy";
 
   let minterAddress = null;
   let minterBalancePol = null;
@@ -185,11 +205,28 @@ async function health() {
   return {
     ok: true,
     service: "nexid-tokenization-executor",
-    signerMode,
-    network: "polygon-amoy",
-    rpcConfigured: Boolean(rpcUrl),
-    contract: { address: contractAddress || null, deployed: contractDeployed },
-    minter: {
+    capabilities,
+    signerMode: activeSignerMode,
+    network,
+    networks: {
+      ...(polygonEnabled ? {
+        polygon: {
+          name: "polygon-amoy",
+          expectedChainId: env("POLYGON_EXPECTED_CHAIN_ID", "80002"),
+        },
+      } : {}),
+      ...(iotaEnabled ? {
+        iota: {
+          name: "iota-evm-testnet",
+          expectedChainId: env("IOTA_EVM_EXPECTED_CHAIN_ID", "1076"),
+        },
+      } : {}),
+    },
+    rpcConfigured: iotaOnly ? Boolean(iotaRpcUrl) : Boolean(rpcUrl),
+    contract: iotaOnly
+      ? { address: isAddress(iotaContractAddress) ? getAddress(iotaContractAddress) : null, deployed: null }
+      : { address: contractAddress || null, deployed: contractDeployed },
+    minter: iotaOnly ? null : {
       address: minterAddress,
       configuredAddress: configuredMinterAddress || null,
       matchesConfigured: configuredMinterAddress && minterAddress
@@ -198,7 +235,7 @@ async function health() {
       configured: signerMode === "kms" ? polygonKms : signerMode === "kms_wrapped" ? polygonWrappedKms : Boolean(privateKey),
       balancePol: minterBalancePol,
     },
-    defaultRecipient: defaultRecipient || null,
+    defaultRecipient: iotaOnly ? null : defaultRecipient || null,
     iotaEvidenceV2: {
       signerMode: iotaSignerMode,
       rpcConfigured: Boolean(iotaRpcUrl),
@@ -209,22 +246,79 @@ async function health() {
     },
     kmsReady: iotaKmsReady || iotaWrappedKmsReady || polygonKms || polygonWrappedKms,
     note: signerMode === "kms_wrapped" || iotaSignerMode === "kms_wrapped"
-      ? "Google KMS-wrapped pilot signer configured; plaintext exists only ephemerally in executor memory."
+      ? "Google Cloud KMS SOFTWARE-wrapped pilot signer configured; wallet plaintext exists ephemerally in executor memory. This is not HSM or direct non-exportable signing."
       : signerMode === "kms" || iotaSignerMode === "kms"
-        ? "Remote non-exportable KMS/HSM signer configured."
+        ? "Remote signer contract configured. Configuration alone does not attest KMS protection level, HSM backing, or key non-exportability."
         : "Private-key executor is for isolated testnet development only.",
   };
 }
 
-function polygonReadiness() {
-  const signerMode = env("EXECUTOR_SIGNER_MODE", "private_key").toLowerCase();
-  let expectedChainIdValid = true;
+function polygonReadinessTimeoutMs() {
+  const parsed = Number(env("POLYGON_READINESS_TIMEOUT_MS", "2500"));
+  return Number.isFinite(parsed) ? Math.max(500, Math.min(5000, Math.trunc(parsed))) : 2500;
+}
+
+async function withinPolygonReadinessTimeout(operation) {
+  let timeout;
   try {
-    expectedChainId("POLYGON_EXPECTED_CHAIN_ID", 80002, "polygon_expected_chain_id_invalid");
-  } catch {
-    expectedChainIdValid = false;
+    return await Promise.race([
+      operation,
+      new Promise((_, reject) => {
+        timeout = setTimeout(() => reject(new Error("polygon_readiness_timeout")), polygonReadinessTimeoutMs());
+      }),
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
   }
+}
+
+async function probePolygonChain({ rpcUrl, contractAddress, signerAddress, expectedChain }) {
+  const provider = new JsonRpcProvider(rpcUrl);
+  try {
+    return await withinPolygonReadinessTimeout((async () => {
+      const network = await provider.getNetwork();
+      const chainId = Number(network.chainId);
+      const code = await provider.getCode(contractAddress);
+      const contractDeployed = Boolean(code && code !== "0x");
+      let ownerAddress = null;
+      let minterAllowlisted = false;
+      if (chainId === expectedChain && contractDeployed) {
+        const contract = new Contract(contractAddress, polygonAbi, provider);
+        [ownerAddress, minterAllowlisted] = await Promise.all([
+          contract.owner(),
+          contract.authorizedMinters(signerAddress),
+        ]);
+      }
+      const balanceWei = await provider.getBalance(signerAddress);
+      return {
+        chainId,
+        contractDeployed,
+        ownerAddress: isAddress(ownerAddress) ? getAddress(ownerAddress) : null,
+        minterAllowlisted: minterAllowlisted === true,
+        balanceWei,
+      };
+    })());
+  } finally {
+    provider.destroy();
+  }
+}
+
+async function polygonReadiness(dependencies = {}) {
+  const signerMode = env("EXECUTOR_SIGNER_MODE", "private_key").toLowerCase();
+  let expectedChain = null;
+  try {
+    expectedChain = expectedChainId("POLYGON_EXPECTED_CHAIN_ID", 80002, "polygon_expected_chain_id_invalid");
+  } catch {
+    expectedChain = null;
+  }
+  const rpcUrl = env("POLYGON_RPC_URL");
+  const contractAddress = env("POLYGON_CONTRACT_ADDRESS");
   const publisherAddress = env("POLYGON_KMS_PUBLISHER_ADDRESS");
+  const configuredMinterAddress = env("POLYGON_MINTER_ADDRESS");
+  const privateSignerAddress = signerMode === "private_key" ? privateKeyAddress(env("POLYGON_MINTER_PRIVATE_KEY")) : null;
+  const signerAddress = signerMode === "kms" || signerMode === "kms_wrapped"
+    ? (isAddress(publisherAddress) ? getAddress(publisherAddress) : null)
+    : privateSignerAddress;
   const signer = signerMode === "kms"
     ? kmsConfigured({
       url: env("POLYGON_KMS_SIGNER_URL") || env("KMS_SIGNER_URL"),
@@ -233,17 +327,65 @@ function polygonReadiness() {
     : signerMode === "kms_wrapped"
       ? wrappedKmsConfigured({ domain: "polygon" }) && isAddress(publisherAddress)
       : signerMode === "private_key" && Boolean(privateKeyAddress(env("POLYGON_MINTER_PRIVATE_KEY")));
+  const configuredMinterMatches = !configuredMinterAddress
+    || (isAddress(configuredMinterAddress) && signerAddress && configuredMinterAddress.toLowerCase() === signerAddress.toLowerCase());
   const checks = {
-    rpc: Boolean(env("POLYGON_RPC_URL")),
-    contract: isAddress(env("POLYGON_CONTRACT_ADDRESS")),
+    rpc: Boolean(rpcUrl),
+    contract: isAddress(contractAddress),
     executor_secret: Boolean(env("TOKENIZATION_EXECUTOR_SECRET")),
-    expected_chain_id: expectedChainIdValid,
+    expected_chain_id: expectedChain === 80002,
     signer,
+    configured_minter_match: Boolean(configuredMinterMatches),
+    rpc_live: false,
+    chain_id: false,
+    contract_code: false,
+    signer_authorized: false,
+    signer_gas: false,
   };
-  return { ok: Object.values(checks).every(Boolean), signer_mode: signerMode, checks };
+  let live = null;
+  if (checks.rpc && checks.contract && checks.expected_chain_id && checks.signer && checks.configured_minter_match && signerAddress) {
+    try {
+      live = await (dependencies.polygonReadinessProbe || probePolygonChain)({
+        rpcUrl,
+        contractAddress,
+        signerAddress,
+        expectedChain,
+      });
+      const chainId = Number(live.chainId);
+      const balanceWei = BigInt(live.balanceWei ?? 0);
+      const ownerMatches = isAddress(live.ownerAddress)
+        && String(live.ownerAddress).toLowerCase() === signerAddress.toLowerCase();
+      checks.rpc_live = true;
+      checks.chain_id = chainId === expectedChain;
+      checks.contract_code = live.contractDeployed === true;
+      checks.signer_authorized = ownerMatches || live.minterAllowlisted === true;
+      checks.signer_gas = balanceWei > 0n;
+    } catch {
+      live = null;
+    }
+  }
+  const liveVerified = Object.values(checks).every(Boolean);
+  return {
+    ok: liveVerified,
+    configured: checks.rpc && checks.contract && checks.executor_secret && checks.expected_chain_id && checks.signer && checks.configured_minter_match,
+    live_verified: liveVerified,
+    signer_mode: signerMode,
+    checks,
+    chain_id: live?.chainId == null ? null : String(live.chainId),
+    expected_chain_id: expectedChain == null ? null : String(expectedChain),
+    contract: {
+      address: isAddress(contractAddress) ? getAddress(contractAddress) : null,
+      deployed: live?.contractDeployed === true,
+    },
+    signer: {
+      address: signerAddress,
+      authorized: checks.signer_authorized,
+      balance_pol: live?.balanceWei == null ? null : Number(formatEther(BigInt(live.balanceWei))),
+    },
+  };
 }
 
-function iotaReadiness() {
+async function iotaReadiness(dependencies = {}) {
   const signerMode = env("IOTA_EXECUTOR_SIGNER_MODE", env("EXECUTOR_SIGNER_MODE", "private_key")).toLowerCase();
   let expectedChainIdValid = true;
   try {
@@ -257,18 +399,27 @@ function iotaReadiness() {
     : signerMode === "kms_wrapped"
       ? wrappedKmsConfigured({ domain: "iota" }) && isAddress(publisherAddress)
       : signerMode === "private_key" && Boolean(privateKeyAddress(env("IOTA_EVM_PRIVATE_KEY")));
+  const durableStore = await checkIotaDurableStore({
+    database: dependencies.iotaReadinessDatabase,
+    cache: dependencies.iotaReadinessCache,
+  });
   const checks = {
     rpc: Boolean(env("IOTA_EVM_RPC_URL")),
     contract: isAddress(env("IOTA_EVM_ANCHOR_CONTRACT_V2")),
-    durable_store: Boolean(env("DATABASE_URL") || env("POSTGRES_URL")),
+    durable_store: durableStore.ok,
     executor_secret: Boolean(env("IOTA_PROOF_EXECUTOR_SECRET")),
     expected_chain_id: expectedChainIdValid,
     signer,
   };
-  return { ok: Object.values(checks).every(Boolean), signer_mode: signerMode, checks };
+  return {
+    ok: Object.values(checks).every(Boolean),
+    signer_mode: signerMode,
+    checks,
+    durable_store: durableStore,
+  };
 }
 
-function readiness() {
+async function readiness(dependencies = {}, requestedCapability = "") {
   let capabilities;
   try {
     capabilities = [...executorCapabilities()];
@@ -283,15 +434,19 @@ function readiness() {
       reason: "executor_capabilities_invalid",
     };
   }
+  if (requestedCapability && !SUPPORTED_CAPABILITIES.has(requestedCapability)) {
+    return { ok: false, service: "nexid-tokenization-executor", capabilities: [], chains: {}, reason: "readiness_capability_invalid" };
+  }
+  const selectedCapabilities = requestedCapability ? capabilities.filter((item) => item === requestedCapability) : capabilities;
   const chains = {};
-  if (capabilities.includes("polygon")) chains.polygon = polygonReadiness();
-  if (capabilities.includes("iota")) chains.iota = iotaReadiness();
-  const ok = capabilities.length > 0 && capabilities.every((capability) => chains[capability]?.ok === true);
+  if (selectedCapabilities.includes("polygon")) chains.polygon = await polygonReadiness(dependencies);
+  if (selectedCapabilities.includes("iota")) chains.iota = await iotaReadiness(dependencies);
+  const ok = selectedCapabilities.length > 0 && selectedCapabilities.every((capability) => chains[capability]?.ok === true);
   const legacy = chains.iota || chains.polygon;
   return {
     ok,
     service: "nexid-tokenization-executor",
-    capabilities,
+    capabilities: selectedCapabilities,
     chains,
     signer_mode: legacy?.signer_mode || null,
     checks: legacy?.checks || { capabilities: false },
@@ -722,11 +877,18 @@ function safeErrorReason(error) {
   return /^[a-zA-Z0-9_]{3,120}$/.test(reason) ? reason : "executor_failed";
 }
 
-async function handler(req, res) {
+async function handler(req, res, dependencies = {}) {
   const url = new URL(req.url || "/", "http://localhost");
   try {
     if (req.method === "GET" && url.pathname === "/ready") {
-      const result = readiness();
+      const requestedCapability = String(url.searchParams.get("capability") || "").trim().toLowerCase();
+      if (requestedCapability === "polygon" && !authOk(req, "TOKENIZATION_EXECUTOR_SECRET", "x-tokenization-secret")) {
+        return json(res, 401, { ok: false, reason: "unauthorized_executor_readiness" });
+      }
+      if (requestedCapability === "iota" && !authOk(req, "IOTA_PROOF_EXECUTOR_SECRET", "x-iota-proof-secret")) {
+        return json(res, 401, { ok: false, reason: "unauthorized_executor_readiness" });
+      }
+      const result = await readiness(dependencies, requestedCapability);
       return json(res, result.ok ? 200 : 503, result);
     }
     if (req.method === "GET" && ["/", "/health"].includes(url.pathname)) {

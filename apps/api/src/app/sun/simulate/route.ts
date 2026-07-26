@@ -1,6 +1,9 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+import { createHash, timingSafeEqual } from "node:crypto";
+import { RequestBodyTooLargeError, readRequestTextBounded } from "../../../lib/bounded-request-body";
+import { enforceCriticalRateLimit } from "../../../lib/critical-rate-limit";
 import { json } from "../../../lib/http";
 import { sql } from "../../../lib/db";
 import { anchorTokenizationRequest } from "../../../lib/tokenization-engine";
@@ -17,22 +20,71 @@ type SimulateBody = {
   autoTokenize?: boolean;
 };
 
+const MAX_SIMULATION_BODY_BYTES = 32 * 1024;
+const SIMULATION_RESULTS = new Set(["VALID", "REPLAY_SUSPECT", "TAMPER_RISK", "INVALID"]);
+
 function clean(value: unknown, max = 120) {
   return String(value || "").trim().slice(0, max);
 }
 
+function secretValue(value: unknown) {
+  const secret = String(value || "").trim();
+  return secret.length <= 512 ? secret : "";
+}
+
+function secretMatches(provided: string, expected: string) {
+  if (!provided || !expected) return false;
+  const providedDigest = createHash("sha256").update(provided, "utf8").digest();
+  const expectedDigest = createHash("sha256").update(expected, "utf8").digest();
+  return timingSafeEqual(providedDigest, expectedDigest);
+}
+
+function isProductionRuntime() {
+  return process.env.NODE_ENV === "production" || clean(process.env.VERCEL_ENV, 32).toLowerCase() === "production";
+}
+
 export async function POST(req: Request): Promise<Response> {
-  const providedKey = clean(req.headers.get("x-sun-sim-key"), 200);
-  const expectedKey = clean(process.env.SUN_SIMULATE_API_KEY, 200);
-  if (expectedKey && providedKey !== expectedKey) {
-    return json({ ok: false, reason: "invalid simulation key" }, 401);
+  const providedKey = secretValue(req.headers.get("x-sun-sim-key"));
+  const expectedKey = secretValue(process.env.SUN_SIMULATE_API_KEY);
+  if (!expectedKey) {
+    return json(
+      { ok: false, reason: isProductionRuntime() ? "not_found" : "simulation_not_configured" },
+      isProductionRuntime() ? 404 : 503,
+      { "cache-control": "no-store" },
+    );
+  }
+  if (!secretMatches(providedKey, expectedKey)) {
+    return json({ ok: false, reason: "unauthorized" }, 401, { "cache-control": "no-store" });
   }
 
-  const body = await req.json().catch(() => ({})) as SimulateBody;
+  const rateLimited = await enforceCriticalRateLimit(req, {
+    rateClass: "proof_write",
+    tenantId: "simulation",
+    subjectId: `sun-simulation-key:${createHash("sha256").update(expectedKey, "utf8").digest("hex")}`,
+    globalPrincipal: true,
+  });
+  if (rateLimited) return rateLimited;
+
+  let body: SimulateBody;
+  try {
+    const rawBody = await readRequestTextBounded(req, MAX_SIMULATION_BODY_BYTES);
+    const parsed = JSON.parse(rawBody || "{}");
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("simulation_payload_invalid");
+    body = parsed as SimulateBody;
+  } catch (error) {
+    const tooLarge = error instanceof RequestBodyTooLargeError;
+    return json(
+      { ok: false, reason: tooLarge ? "simulation_body_too_large" : "simulation_payload_invalid" },
+      tooLarge ? 413 : 400,
+      { "cache-control": "no-store" },
+    );
+  }
+
   const bid = clean(body.bid).toUpperCase();
   const uid = clean(body.uid).toUpperCase();
   const result = clean(body.result || "VALID", 32).toUpperCase();
   if (!bid || !uid) return json({ ok: false, reason: "bid and uid required" }, 400);
+  if (!SIMULATION_RESULTS.has(result)) return json({ ok: false, reason: "invalid simulation result" }, 400);
 
   const batch = (await sql/*sql*/`
     SELECT b.id, b.tenant_id

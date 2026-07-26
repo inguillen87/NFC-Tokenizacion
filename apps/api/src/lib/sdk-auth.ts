@@ -3,6 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { ensureSdkSchema } from "./commercial-runtime-schema";
 import { sql } from "./db";
 import { json } from "./http";
+import { getRequestMeta } from "./request-meta";
 
 export type SdkScope = "sdk:verify" | "sdk:claim" | "sdk:products" | "sdk:events" | "sdk:pos" | "sdk:logistics";
 
@@ -125,7 +126,7 @@ export async function logSdkUsage(input: {
 }) {
   try {
     await ensureSdkSchema();
-    const ipAddress = input.req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || input.req.headers.get("x-real-ip") || null;
+    const ipAddress = getRequestMeta(input.req).ip;
     const ipCountry = input.req.headers.get("x-vercel-ip-country") || null;
     const latencyMs = Math.max(0, Math.round(Date.now() - input.startedAt));
     await sql/*sql*/`

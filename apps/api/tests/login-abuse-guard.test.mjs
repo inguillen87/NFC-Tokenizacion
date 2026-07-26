@@ -6,7 +6,6 @@ import {
   clearSuccessfulLoginAttempt,
   getLoginRateLimitPolicy,
   reserveLoginAttempt,
-  resolveTrustedLoginClientIp,
   shouldFailClosedLoginAbuseGuard,
 } from '../src/lib/login-abuse-guard.ts';
 
@@ -16,20 +15,19 @@ function testPolicy(overrides = {}) {
   return getLoginRateLimitPolicy({
     NODE_ENV: 'test',
     LOGIN_RATE_LIMIT_PEPPER: TEST_PEPPER,
-    LOGIN_TRUSTED_PROXY_HOPS: '1',
     ...overrides,
   });
 }
 
-test('production policy is bounded, requires secret and proxy trust, and cannot fail open', () => {
+test('production policy is bounded, requires a secret, and cannot fail open', () => {
   assert.throws(
-    () => getLoginRateLimitPolicy({ NODE_ENV: 'production', LOGIN_TRUSTED_PROXY_HOPS: '1' }),
+    () => getLoginRateLimitPolicy({ NODE_ENV: 'production' }),
     /login_rate_limit_pepper_required/,
   );
-  assert.throws(
-    () => getLoginRateLimitPolicy({ NODE_ENV: 'production', LOGIN_RATE_LIMIT_PEPPER: TEST_PEPPER }),
-    /login_trusted_proxy_hops_required/,
-  );
+  assert.equal(getLoginRateLimitPolicy({
+    NODE_ENV: 'production',
+    LOGIN_RATE_LIMIT_PEPPER: TEST_PEPPER,
+  }).pepper, TEST_PEPPER);
   assert.throws(
     () => testPolicy({ LOGIN_RATE_LIMIT_SOURCE_MAX_ATTEMPTS: '4' }),
     /login_rate_limit_invalid_login_rate_limit_source_max_attempts/,
@@ -38,29 +36,6 @@ test('production policy is bounded, requires secret and proxy trust, and cannot 
     NODE_ENV: 'production',
     LOGIN_RATE_LIMIT_FAIL_CLOSED: 'false',
   }), true);
-});
-
-test('trusted proxy depth selects from the right and rejects implicit/spoofable fallbacks', () => {
-  const oneProxy = new Request('https://api.example.test/auth/login', {
-    headers: { 'x-forwarded-for': '192.0.2.66, 203.0.113.9', 'x-real-ip': '198.51.100.200' },
-  });
-  assert.equal(resolveTrustedLoginClientIp(oneProxy, { trustedProxyHops: 1 }), '203.0.113.9');
-
-  const twoProxies = new Request('https://api.example.test/auth/login', {
-    headers: { 'x-forwarded-for': '192.0.2.66, 203.0.113.9, 10.0.0.4' },
-  });
-  assert.equal(resolveTrustedLoginClientIp(twoProxies, { trustedProxyHops: 2 }), '203.0.113.9');
-  assert.equal(resolveTrustedLoginClientIp(twoProxies, { trustedProxyHops: 0 }), null);
-
-  const realIpOnly = new Request('https://api.example.test/auth/login', {
-    headers: { 'x-real-ip': '203.0.113.9' },
-  });
-  assert.equal(resolveTrustedLoginClientIp(realIpOnly, { trustedProxyHops: 1 }), null);
-
-  const malformedSelectedHop = new Request('https://api.example.test/auth/login', {
-    headers: { 'x-forwarded-for': '203.0.113.9, attacker-controlled' },
-  });
-  assert.equal(resolveTrustedLoginClientIp(malformedSelectedHop, { trustedProxyHops: 1 }), null);
 });
 
 test('reservation uses two HMAC-only buckets in one atomic PostgreSQL upsert', async () => {
@@ -148,6 +123,8 @@ test('login route guards before lookup and keeps account-state failures non-enum
   assert.match(route, /reason: 'invalid credentials' \}, 401, authHeaders/);
   assert.match(route, /'retry-after': String\(reservation\.retryAfterSeconds\)/);
   assert.match(route, /const meta = \{ \.\.\.requestMeta, ip: null as string \| null \}/);
+  assert.match(route, /const clientIp = requestMeta\.ip/);
+  assert.doesNotMatch(route, /resolveTrustedLoginClientIp\(req, policy\)/);
   assert.match(route, /meta\.ip = clientIp/);
 });
 

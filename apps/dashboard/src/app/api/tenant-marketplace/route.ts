@@ -66,7 +66,7 @@ function getStore() {
 }
 
 export async function GET() {
-  return NextResponse.json({ items: getStore().items });
+  return NextResponse.json({ items: getStore().items, demoMode: true, dataSource: "demo" });
 }
 
 export async function POST(req: Request) {

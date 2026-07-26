@@ -1,15 +1,15 @@
 import { spawn } from "node:child_process";
+import path from "node:path";
 import {
   PLANNED_MIGRATIONS,
   assertAllowedTarget,
+  assertMigrationProgress,
   assertRecordedPrechangeFingerprint,
-  compareExactLedger,
   createStagingClient,
   expectedBaselineLedger,
-  expectedLedgerForPhase,
+  expectedLedgerForPrefix,
   gateError,
   identifyTarget,
-  normalizeLedger,
   readLedger,
   relevantSchemaFingerprint,
   safeFailure,
@@ -21,15 +21,24 @@ function requiredEvidence(name) {
   return value;
 }
 
-function run(command, args, env = process.env) {
+function run(command, args, env = process.env, options = {}) {
   return new Promise((resolve) => {
-    const child = spawn(command, args, { stdio: "inherit", env });
+    const child = spawn(command, args, { stdio: "inherit", env, ...options });
     child.on("error", () => resolve(1));
     child.on("close", (value) => resolve(value ?? 1));
   });
 }
 
-async function verifyLedger(expected) {
+function runMigration(file, env) {
+  return run(
+    process.execPath,
+    ["scripts/db-apply.mjs", "--only", file],
+    env,
+    { cwd: path.resolve(process.cwd(), "apps/api") },
+  );
+}
+
+async function verifyPrefix(baseline, expectedPrefixLength) {
   const connection = createStagingClient();
   const client = connection.client;
   try {
@@ -37,10 +46,19 @@ async function verifyLedger(expected) {
     await client.query("BEGIN TRANSACTION READ ONLY");
     const target = await identifyTarget(client, connection.endpointFromHost);
     assertAllowedTarget(target);
-    const ledger = compareExactLedger(await readLedger(client), expected);
+    const progress = assertMigrationProgress(await readLedger(client), baseline);
     await client.query("ROLLBACK");
-    if (!ledger.ok) throw gateError("MIGRATION_LEDGER_PHASE_MISMATCH", { ledger });
-    return { target, ledger };
+    if (progress.prefix_length !== expectedPrefixLength) {
+      throw gateError("MIGRATION_LEDGER_PREFIX_CHANGED", {
+        expected_prefix_length: expectedPrefixLength,
+        migration_progress: progress,
+      });
+    }
+    const ledger = progress.ledger;
+    if (!ledger.ok || ledger.expected.join("\n") !== expectedLedgerForPrefix(baseline, expectedPrefixLength).join("\n")) {
+      throw gateError("MIGRATION_LEDGER_PHASE_MISMATCH", { ledger });
+    }
+    return { target, ledger, progress };
   } catch (error) {
     await client.query("ROLLBACK").catch(() => {});
     throw error;
@@ -53,6 +71,8 @@ const approved = String(process.env.STAGING_MIGRATION_APPROVED || "").trim();
 const envName = String(process.env.NODE_ENV || "").toLowerCase();
 let backupReference = null;
 let lastCompleted = null;
+let initialProgress = null;
+const appliedNow = [];
 
 try {
   if (approved !== "YES") throw gateError("STAGING_MIGRATION_CONFIRMATION_REQUIRED");
@@ -70,8 +90,7 @@ try {
     await client.query("BEGIN TRANSACTION READ ONLY");
     const target = await identifyTarget(client, connection.endpointFromHost);
     assertAllowedTarget(target);
-    const ledger = compareExactLedger(await readLedger(client), expectedLedgerForPhase(baseline, "preflight"));
-    if (!ledger.ok) throw gateError("MIGRATION_LEDGER_BASELINE_MISMATCH", { ledger });
+    initialProgress = assertMigrationProgress(await readLedger(client), baseline);
     assertRecordedPrechangeFingerprint(await relevantSchemaFingerprint(client));
     await client.query("ROLLBACK");
   } catch (error) {
@@ -89,26 +108,37 @@ try {
   }
 
   const migrationEnv = { ...process.env, DATABASE_URL: connection.connectionString };
-  const first = PLANNED_MIGRATIONS[0];
-  if (await run("npm.cmd", ["run", "db:migrate", "--workspace=api", "--", "--only", first], migrationEnv) !== 0) {
-    throw gateError("MIGRATION_APPLY_FAILED", { migration: first });
-  }
-  lastCompleted = first;
-  await verifyLedger(expectedLedgerForPhase(baseline, "after_0050"));
+  let prefixLength = initialProgress.prefix_length;
+  await verifyPrefix(baseline, prefixLength);
 
   // PostgreSQL enum additions must be committed before 0051 can reference the
-  // new value. Only after 0050 is durable can 0051-0056 be rehearsed together.
-  if (await run(process.execPath, ["scripts/staging-migration-dry-run.mjs"]) !== 0) {
-    throw gateError("MIGRATION_DRY_RUN_FAILED_AFTER_0050");
+  // new value. A virgin baseline applies 0050 alone; a valid resumed prefix
+  // has already crossed this transaction boundary and must never replay it.
+  if (prefixLength === 0) {
+    const first = PLANNED_MIGRATIONS[0];
+    if (await runMigration(first, migrationEnv) !== 0) {
+      throw gateError("MIGRATION_APPLY_FAILED", { migration: first });
+    }
+    lastCompleted = first;
+    appliedNow.push(first);
+    prefixLength = 1;
+    await verifyPrefix(baseline, prefixLength);
   }
 
-  for (let index = 1; index < PLANNED_MIGRATIONS.length; index += 1) {
+  // Rehearse only the still-pending suffix. For an already-complete ledger this
+  // is an explicit no-op whose rollback/fingerprint checks still run.
+  if (await run(process.execPath, ["scripts/staging-migration-dry-run.mjs"]) !== 0) {
+    throw gateError("MIGRATION_PENDING_SUFFIX_DRY_RUN_FAILED");
+  }
+
+  for (let index = prefixLength; index < PLANNED_MIGRATIONS.length; index += 1) {
     const file = PLANNED_MIGRATIONS[index];
-    if (await run("npm.cmd", ["run", "db:migrate", "--workspace=api", "--", "--only", file], migrationEnv) !== 0) {
+    if (await runMigration(file, migrationEnv) !== 0) {
       throw gateError("MIGRATION_APPLY_FAILED", { migration: file });
     }
     lastCompleted = file;
-    await verifyLedger(normalizeLedger([...baseline, ...PLANNED_MIGRATIONS.slice(0, index + 1)]));
+    appliedNow.push(file);
+    await verifyPrefix(baseline, index + 1);
   }
 
   if (await run(process.execPath, ["scripts/staging-postgres-smoke.mjs"]) !== 0) {
@@ -118,6 +148,9 @@ try {
     ok: true,
     gate: "staging_v2_migrations",
     migrations: PLANNED_MIGRATIONS,
+    already_applied_migrations: initialProgress.applied_migrations,
+    migrations_applied_now: appliedNow,
+    idempotent_noop: initialProgress.complete,
     backup_reference: backupReference,
     rollback_required: false,
   }));

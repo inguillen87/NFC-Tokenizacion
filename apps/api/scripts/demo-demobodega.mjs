@@ -169,9 +169,9 @@ await sql`
     ${JSON.stringify(['verify', 'claim', 'loyalty', 'tokenize', 'marketplace'])}::jsonb,
     ${JSON.stringify(['public_claim_without_fresh_tap'])}::jsonb,
     ${JSON.stringify({
-      headline: 'Autenticidad + sello fisico',
-      body: 'Valida criptografia y estado del sello: cerrado, abierto o tamper para productos premium.',
-      disclaimer: 'Ownership y tokenizacion requieren tap fresco y politica comercial del tenant.',
+      headline: 'Mensaje SUN + estado TT reportado',
+      body: 'Valida evidencia SUN/SDM y registra el estado TT reportado: cerrado, abierto o tamper.',
+      disclaimer: 'No certifica por si solo el contenido ni la condicion fisica; ownership y tokenizacion requieren tap fresco y politica del tenant.',
     })}::jsonb,
     ${JSON.stringify({
       positioning: 'Capa premium para confianza, lifecycle y evidencia de apertura.',

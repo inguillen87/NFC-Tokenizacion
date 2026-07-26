@@ -9,8 +9,8 @@ export default async function SecurityPage() {
 
   return (
     <PortalShell
-      title="Seguridad y Doble Factor"
-      subtitle="Protegé tu Pasaporte de Productos vinculando tu WhatsApp y Email para obtener tu estatus Verificado (2FA) y bonificar tus puntos."
+      title="Seguridad y canales de contacto"
+      subtitle="Vinculá email y WhatsApp para mejorar entrega y recuperación. El código puede validarse desde cualquiera de los canales configurados; este flujo no es MFA secuencial."
       notificationCount={Number(stats.unread || 0)}
     >
       <SecurityPanel initialConsumer={consumer} />

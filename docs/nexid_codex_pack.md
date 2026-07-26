@@ -406,7 +406,7 @@ Trabajo requerido:
 
 Criterios de aceptación:
 - El passport se ve premium en mobile.
-- El usuario entiende en menos de 5 segundos si el producto es auténtico, riesgoso o replay.
+- El usuario entiende en menos de 5 segundos si la evidencia NFC/QR paso, presenta riesgo o replay, y que el resultado no certifica por si solo el contenido fisico.
 - CTAs respetan estado de riesgo.
 - No se rompe JSON API.
 ```

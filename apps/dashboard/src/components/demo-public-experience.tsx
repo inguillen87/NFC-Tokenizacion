@@ -113,7 +113,7 @@ export function DemoPublicExperience() {
       total,
       authOk,
       risk,
-      authRate: total > 0 ? Math.round((authOk / total) * 100) : 100,
+      authRate: total > 0 ? Math.round((authOk / total) * 100) : null,
       wine: events.filter((event) => event.vertical === "wine").length,
       eventsVertical: events.filter((event) => event.vertical === "events").length,
       docs: events.filter((event) => event.vertical === "docs").length,
@@ -124,14 +124,14 @@ export function DemoPublicExperience() {
     if (vertical === "wine") {
       return {
         title: "Demo vino secure",
-        text: "Mostrá autenticidad de botella, estado de apertura y trazabilidad por ciudad en una sola historia comercial.",
+        text: "Mostrá evidencia del mensaje NFC, TT reportado y origen declarado en una sola historia comercial. El tap no prueba autenticidad, contenido, sello ni custodia física.",
         badge: "Brand protection",
       };
     }
     if (vertical === "events") {
       return {
         title: "Demo eventos / VIP",
-        text: "Mostrá check-in, control anti-duplicado y acceso en tiempo real para pulseras o credenciales.",
+        text: "Mostrá check-in simulado, control anti-duplicado y emisión demo de eventos para pulseras o credenciales.",
         badge: "Access control",
       };
     }
@@ -198,8 +198,8 @@ export function DemoPublicExperience() {
       <Card className="p-4 text-sm text-slate-300">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="font-semibold text-white">La etiqueta aporta identidad. El celular aporta contexto. nexID aporta la verdad del objeto.</p>
-            <p className="mt-1 text-xs text-slate-400">No leemos “todo el chip” desde web: en navegador mostramos NDEF + contexto móvil + veredicto backend.</p>
+            <p className="font-semibold text-white">La etiqueta aporta un mensaje de identidad. El celular aporta contexto reportado. nexID evalúa el mensaje y la policy.</p>
+            <p className="mt-1 text-xs text-slate-400">No leemos “todo el chip” desde web: mostramos NDEF, contexto móvil reportado y el resultado backend del mensaje; no la verdad física del objeto.</p>
           </div>
           <Badge tone="cyan">Consumer-ready demo</Badge>
         </div>
@@ -207,7 +207,7 @@ export function DemoPublicExperience() {
 
       <div className="grid gap-3 md:grid-cols-4">
         <Card className="p-3 text-xs text-slate-300">Scans demo: <b>{metrics.total}</b></Card>
-        <Card className="p-3 text-xs text-slate-300">AUTH rate: <b>{metrics.authRate}%</b> · Riesgo: <b>{metrics.risk}</b></Card>
+        <Card className="p-3 text-xs text-slate-300">Tasa de mensajes válidos: <b>{metrics.authRate === null ? "N/D · sin eventos" : `${metrics.authRate}%`}</b> · Riesgo: <b>{metrics.risk}</b></Card>
         <Card className="p-3 text-xs text-slate-300">Vino: <b>{metrics.wine}</b> · Eventos: <b>{metrics.eventsVertical}</b> · Docs: <b>{metrics.docs}</b></Card>
         <Card className="p-3 text-xs text-slate-300">Última sync: <b>{loading ? "cargando" : formatTimestamp(latest?.created_at)}</b></Card>
       </div>
@@ -239,7 +239,7 @@ export function DemoPublicExperience() {
             <h3 className="text-sm font-semibold text-white">2) Elegir escenario</h3>
             <div className="mt-2 grid gap-2 md:grid-cols-3">
               {([
-                ["valid", "AUTH OK"],
+                ["valid", "MENSAJE NFC OK"],
                 ["tamper", "TAMPER RISK"],
                 ["replay", "DUPLICATE RISK"],
               ] as Array<[Scenario, string]>).map(([key, label]) => (
@@ -265,8 +265,8 @@ export function DemoPublicExperience() {
             {simulation?.tap ? (
               <div className="mt-3 grid gap-2 rounded-xl border border-white/10 bg-slate-950/70 p-3 text-xs text-slate-200 md:grid-cols-2">
                 <p>Tap status: <b>{simulation.tap.status || "N/A"}</b></p>
-                <p>Product state: <b>{simulation.tap.product_state || "N/A"}</b></p>
-                <p>Tamper: <b>{simulation.tap.tamper_status || "N/A"}</b></p>
+                <p>Estado declarado: <b>{simulation.tap.product_state || "N/A"}</b></p>
+                <p>TT reportado: <b>{simulation.tap.tamper_status || "N/A"}</b></p>
                 <p>Risk / Quality: <b>{simulation.tap.risk_score ?? "-"} / {simulation.tap.quality_score ?? "-"}</b></p>
                 <p>Tenant: <b>{simulation.tap.tenant_name || simulation.tap.tenant || "-"}</b></p>
                 <p>Device: <b>{simulation.tap.device || "-"}</b></p>
@@ -282,7 +282,7 @@ export function DemoPublicExperience() {
             <p className="mt-2">Item: {latest?.product_name || "Demo product"}</p>
             <p>Última ciudad: {latest?.city || "-"} ({latest?.country_code || "-"})</p>
             {simulation?.nfc?.raw ? (
-              <p className="mt-2 break-all text-[11px] text-slate-400">URL SUN real usada: {simulation.nfc.raw}</p>
+              <p className="mt-2 break-all text-[11px] text-slate-400">URL SUN usada por el escenario demo: {simulation.nfc.raw}</p>
             ) : null}
             <div className="mt-3 grid gap-2 md:grid-cols-2">
               <a href={publicMobile} target="_blank" rel="noreferrer" className="rounded-lg border border-white/10 bg-slate-900 p-2 text-xs text-white">Ver resultado en celular (público)</a>
@@ -327,7 +327,7 @@ export function DemoPublicExperience() {
         <p>{status}</p>
         {simulation?.dashboard_realtime ? (
           <p className="mt-2 text-cyan-200">
-            Realtime dashboard: +{simulation.dashboard_realtime.taps_delta ?? 0} tap · {simulation.dashboard_realtime.region_delta || "region N/A"}
+            Emisión demo de eventos al dashboard: +{simulation.dashboard_realtime.taps_delta ?? 0} tap · {simulation.dashboard_realtime.region_delta || "región N/D"}
           </p>
         ) : null}
         {error ? <p className="mt-2 text-rose-300">{error}</p> : null}

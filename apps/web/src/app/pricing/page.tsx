@@ -7,7 +7,7 @@ import { PricingRoiCalculator } from "../../components/pricing-roi-calculator";
 
 export const metadata: Metadata = {
   title: "Pricing | nexID enterprise product identity",
-  description: "Pilot and rollout pricing for NFC, QR, DPP-ready product identity, anti-counterfeit verification, traceability, warranty and lifecycle engagement.",
+  description: "Pilot and rollout pricing for NFC/QR message evidence, DPP-ready digital identity, replay-risk controls, declared traceability, warranty and lifecycle engagement.",
   openGraph: {
     title: "Pricing | nexID",
     description: "Choose a rollout model for secure digital product identity across QR, NFC, DPP, analytics and enterprise integrations.",
@@ -24,6 +24,7 @@ type Tier = {
   name: string;
   label: string;
   price: string;
+  recurring: string;
   body: string;
   cta: string;
   href: string;
@@ -44,7 +45,8 @@ const copyByLocale = {
       {
         name: "Starter",
         label: "QR / NFC pilot",
-        price: "From $2,500",
+        price: "Pilot setup from $2,500",
+        recurring: "Software from $99 / month",
         body: "For one product line, limited batches and fast buyer validation.",
         cta: "Request pilot",
         href: "/?contact=quote&intent=pricing_starter#contact-modal",
@@ -53,7 +55,8 @@ const copyByLocale = {
       {
         name: "Pro",
         label: "Secure rollout",
-        price: "From $7,500",
+        price: "Rollout setup from $7,500",
+        recurring: "Software from $249 / month",
         body: "For brands that need cryptographic NFC, tamper states and post-sale actions.",
         cta: "Plan rollout",
         href: "/?contact=quote&intent=pricing_pro#contact-modal",
@@ -63,20 +66,21 @@ const copyByLocale = {
       {
         name: "Enterprise",
         label: "Multi-brand platform",
-        price: "Custom",
+        price: "Implementation scoped separately",
+        recurring: "Software from $499 / month + usage",
         body: "For regulated, multi-country or reseller operations with integrations and governance.",
         cta: "Talk to enterprise",
         href: "/?contact=sales&intent=pricing_enterprise#contact-modal",
         featured: true,
-        bullets: ["Tenant Vault, API and webhooks", "DPP event model and audit exports", "Offline verifier and supplier ops", "Custom deployment and SLA"],
+        bullets: ["Tenant Vault, API and webhooks", "DPP event model and audit exports", "Offline verifier and supplier ops", "Custom deployment/SLA subject to readiness review"],
       },
     ] satisfies Tier[],
     compare: [
       ["Product identity", "QR/NFC pilot", "Secure NFC + passport", "Multi-brand identity graph"],
-      ["Anti-counterfeit", "Basic verification", "SUN/SDM and replay signals", "Policy, alerts and audit workflow"],
+      ["Message evidence", "Basic resolver checks", "SUN/SDM and replay signals", "Policy, alerts and audit workflow; no standalone physical proof"],
       ["Lifecycle actions", "Lead capture", "Warranty, loyalty, offers", "Ownership, resale, support and integrations"],
       ["Compliance", "Exportable events", "DPP-ready fields", "DPP/audit model and data governance"],
-      ["Operations", "Guided setup", "Priority rollout", "Dedicated success and SLA"],
+      ["Operations", "Guided setup", "Priority rollout", "Dedicated success; SLA after readiness review"],
     ],
   },
   "pt-BR": {
@@ -90,7 +94,8 @@ const copyByLocale = {
       {
         name: "Starter",
         label: "Piloto QR / NFC",
-        price: "Desde US$ 2.500",
+        price: "Setup do piloto desde US$ 2.500",
+        recurring: "Software desde US$ 99 / mes",
         body: "Para uma linha de produto, lotes limitados e validacao rapida.",
         cta: "Solicitar piloto",
         href: "/?contact=quote&intent=pricing_starter#contact-modal",
@@ -99,30 +104,32 @@ const copyByLocale = {
       {
         name: "Pro",
         label: "Rollout seguro",
-        price: "Desde US$ 7.500",
+        price: "Setup do rollout desde US$ 7.500",
+        recurring: "Software desde US$ 249 / mes",
         body: "Para marcas que precisam de NFC criptografico, tamper e pos-venda.",
         cta: "Planejar rollout",
         href: "/?contact=quote&intent=pricing_pro#contact-modal",
         popular: true,
-        bullets: ["Opcao NTAG 424 DNA / TagTamper", "Garantia, clube e ofertas", "Alertas antifraude e CRM live", "Suporte prioritario"],
+        bullets: ["Opcao NTAG 424 DNA / TagTamper", "Garantia, clube e ofertas", "Alertas de replay/risco e CRM", "Suporte prioritario"],
       },
       {
         name: "Enterprise",
         label: "Plataforma multi-marca",
-        price: "Custom",
+        price: "Implementacao cotada separadamente",
+        recurring: "Software desde US$ 499 / mes + uso",
         body: "Para operacoes reguladas, multi-pais ou reseller com integracoes.",
         cta: "Falar com enterprise",
         href: "/?contact=sales&intent=pricing_enterprise#contact-modal",
         featured: true,
-        bullets: ["Tenant Vault, API e webhooks", "Modelo DPP e exports de auditoria", "Offline verifier e supplier ops", "Deploy custom e SLA"],
+        bullets: ["Tenant Vault, API e webhooks", "Modelo DPP e exports de auditoria", "Offline verifier e supplier ops", "Deploy/SLA sujeito a readiness review"],
       },
     ] satisfies Tier[],
     compare: [
       ["Identidade", "Piloto QR/NFC", "NFC seguro + passport", "Grafo multi-marca"],
-      ["Antifraude", "Verificacao basica", "SUN/SDM e replay", "Politica, alertas e auditoria"],
+      ["Evidencia da mensagem", "Checks basicos do resolver", "SUN/SDM e replay", "Politica, alertas e auditoria; sem prova fisica autonoma"],
       ["Lifecycle", "Captura de lead", "Garantia, loyalty, ofertas", "Ownership, resale e integracoes"],
       ["Compliance", "Eventos exportaveis", "Campos DPP-ready", "Governanca DPP/audit"],
-      ["Operacao", "Setup guiado", "Rollout prioritario", "Success dedicado e SLA"],
+      ["Operacao", "Setup guiado", "Rollout prioritario", "Success dedicado; SLA apos readiness review"],
     ],
   },
   "es-AR": {
@@ -136,7 +143,8 @@ const copyByLocale = {
       {
         name: "Starter",
         label: "Piloto QR / NFC",
-        price: "Desde US$ 2.500",
+        price: "Implementacion piloto desde US$ 2.500",
+        recurring: "Software desde US$ 99 / mes",
         body: "Para una linea de producto, lotes limitados y validacion rapida.",
         cta: "Solicitar piloto",
         href: "/?contact=quote&intent=pricing_starter#contact-modal",
@@ -145,30 +153,32 @@ const copyByLocale = {
       {
         name: "Pro",
         label: "Rollout seguro",
-        price: "Desde US$ 7.500",
+        price: "Implementacion rollout desde US$ 7.500",
+        recurring: "Software desde US$ 249 / mes",
         body: "Para marcas que necesitan NFC criptografico, tamper y acciones postventa.",
         cta: "Planear rollout",
         href: "/?contact=quote&intent=pricing_pro#contact-modal",
         popular: true,
-        bullets: ["Opcion NTAG 424 DNA / TagTamper", "Garantia, club y ofertas", "Alertas antifraude y CRM live", "Soporte prioritario"],
+        bullets: ["Opcion NTAG 424 DNA / TagTamper", "Garantia, club y ofertas", "Alertas de replay/riesgo y CRM", "Soporte prioritario"],
       },
       {
         name: "Enterprise",
         label: "Plataforma multi-marca",
-        price: "Custom",
+        price: "Implementacion cotizada por separado",
+        recurring: "Software desde US$ 499 / mes + uso",
         body: "Para operaciones reguladas, multi-pais o reseller con integraciones y gobierno.",
         cta: "Hablar con enterprise",
         href: "/?contact=sales&intent=pricing_enterprise#contact-modal",
         featured: true,
-        bullets: ["Tenant Vault, API y webhooks", "Modelo DPP y exports de auditoria", "Offline verifier y supplier ops", "Deploy custom y SLA"],
+        bullets: ["Tenant Vault, API y webhooks", "Modelo DPP y exports de auditoria", "Offline verifier y supplier ops", "Deploy/SLA sujeto a readiness review"],
       },
     ] satisfies Tier[],
     compare: [
       ["Identidad", "Piloto QR/NFC", "NFC seguro + pasaporte", "Grafo multi-marca"],
-      ["Antifraude", "Verificacion basica", "SUN/SDM y replay", "Politica, alertas y auditoria"],
+      ["Evidencia del mensaje", "Checks basicos del resolver", "SUN/SDM y replay", "Politica, alertas y auditoria; sin prueba fisica autonoma"],
       ["Lifecycle", "Captura de lead", "Garantia, loyalty, ofertas", "Ownership, resale e integraciones"],
       ["Compliance", "Eventos exportables", "Campos DPP-ready", "Gobierno DPP/audit"],
-      ["Operacion", "Setup guiado", "Rollout prioritario", "Success dedicado y SLA"],
+      ["Operacion", "Setup guiado", "Rollout prioritario", "Success dedicado; SLA luego de readiness review"],
     ],
   },
 };
@@ -190,7 +200,7 @@ export default async function PricingPage() {
         priceSpecification: {
           "@type": "PriceSpecification",
           priceCurrency: "USD",
-          description: tier.price,
+          description: `${tier.price}; ${tier.recurring}`,
         },
       })),
     },
@@ -247,6 +257,7 @@ export default async function PricingPage() {
               <p className="text-xs font-black uppercase tracking-[0.14em] text-cyan-700">{tier.label}</p>
               <h2 className="mt-2 text-3xl font-black text-slate-950">{tier.name}</h2>
               <strong className="mt-2 break-words text-2xl font-black text-slate-950">{tier.price}</strong>
+              <span className="mt-2 w-fit rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-black text-cyan-900">{tier.recurring}</span>
               <span className="mt-3 text-sm leading-6 text-slate-600">{tier.body}</span>
               <ul className="my-6 grid gap-3">
                 {tier.bullets.map((bullet) => (

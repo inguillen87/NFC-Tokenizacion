@@ -50,12 +50,13 @@ type ReadinessCheck = {
 type PolygonReadiness = {
   ready?: boolean;
   chainReady?: boolean;
+  verificationLevel?: "live_verified" | "configured_unverified" | "not_live_verified" | string;
   mode?: string;
   network?: string;
   autoTokenize?: boolean;
   useLocalMinter?: boolean;
   chainId?: string | null;
-  executor?: { configured?: boolean; url?: string | null; secretConfigured?: boolean };
+  executor?: { configured?: boolean; liveVerified?: boolean; reason?: string; url?: string | null; secretConfigured?: boolean };
   contract?: { address?: string | null; deployed?: boolean };
   minter?: { address?: string | null; configured?: boolean; balancePol?: number | null };
   recipient?: { address?: string | null; balancePol?: number | null };
@@ -184,7 +185,7 @@ export function TokenizationQueuePanel({ canWrite = true, tenantSlug = "" }: { c
       await Promise.all([load(), loadReadiness()]);
       setMessage(data.status === "simulated"
         ? "Simulación completada sin crear transacción ni token."
-        : "Recibo Polygon confirmado y asociado al producto.");
+        : "Recibo Polygon confirmado y asociado al registro digital del producto.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "No se pudo procesar la solicitud");
     } finally {
@@ -212,18 +213,21 @@ export function TokenizationQueuePanel({ canWrite = true, tenantSlug = "" }: { c
   }, [rows]);
 
   const mode = String(readiness?.mode || "unavailable").toLowerCase();
-  const polygonLive = mode === "polygon" && readiness?.chainReady === true;
+  const polygonLive = mode === "polygon"
+    && readiness?.chainReady === true
+    && readiness?.verificationLevel === "live_verified"
+    && (readiness?.executor?.configured !== true || readiness.executor.liveVerified === true);
   const simulationMode = mode === "simulated";
   const disabledMode = mode === "disabled" || mode === "off";
   const actionAllowed = canWrite && !disabledMode && (simulationMode || polygonLive);
-  const modeLabel = polygonLive ? "Polygon Amoy operativo" : simulationMode ? "Simulación explícita" : disabledMode ? "Tokenization deshabilitada" : mode === "polygon" ? "Polygon incompleto" : "Estado no disponible";
+  const modeLabel = polygonLive ? "Polygon Amoy verificado en vivo" : simulationMode ? "Simulación explícita" : disabledMode ? "Tokenization deshabilitada" : mode === "polygon" ? "Polygon configurado, no verificado" : "Estado no disponible";
   const modeBody = polygonLive
-    ? "Cada mint requiere contrato desplegado, signer autorizado y evidencia confirmada en chain 80002."
+    ? "La última prueba autenticada confirmó RPC, chain 80002, bytecode, signer autorizado y gas. Cada mint aún exige recibo y verificación de evidencia."
     : simulationMode
       ? "Sirve para ensayar la operación. Guarda una referencia interna, pero no crea tx hash, token ID ni explorer."
       : disabledMode
         ? "El runtime falla cerrado. Ninguna solicitud se presenta como blockchain hasta que un operador habilite un modo."
-        : "La consola no habilita acciones hasta recuperar y validar el estado del runtime.";
+        : `La consola no habilita acciones hasta validar el runtime en vivo${readiness?.executor?.reason ? ` (${readiness.executor.reason})` : ""}.`;
 
   return (
     <div className="space-y-4">
@@ -245,7 +249,7 @@ export function TokenizationQueuePanel({ canWrite = true, tenantSlug = "" }: { c
             <div className="mt-5 grid gap-px overflow-hidden rounded-lg border border-white/10 bg-white/10 sm:grid-cols-4">
               <RuntimeMetric label="Network" value={polygonLive ? "Amoy 80002" : simulationMode ? "Sin chain" : "No activa"} />
               <RuntimeMetric label="Contrato" value={readiness?.contract?.deployed ? "Verificado" : readiness?.contract?.address ? "Sin bytecode" : "No configurado"} />
-              <RuntimeMetric label="Signer" value={readiness?.executor?.configured ? "Executor" : readiness?.useLocalMinter ? "Local" : "No disponible"} />
+              <RuntimeMetric label="Signer" value={readiness?.executor?.liveVerified ? "Executor verificado" : readiness?.executor?.configured ? "Executor no verificado" : readiness?.useLocalMinter ? "Local" : "No disponible"} />
               <RuntimeMetric label="Gas" value={typeof readiness?.minter?.balancePol === "number" ? `${readiness.minter.balancePol.toFixed(4)} POL` : "No informado"} />
             </div>
           </div>
@@ -253,9 +257,9 @@ export function TokenizationQueuePanel({ canWrite = true, tenantSlug = "" }: { c
           <div className="p-5">
             <p className="text-[11px] font-black uppercase tracking-[0.16em] text-emerald-200">Regla de producto</p>
             <div className="mt-3 space-y-3">
-              <FlowRule icon={Fingerprint} title="nexID decide elegibilidad" body="Tap válido, tenant, lote, ownership y política de canal." />
+              <FlowRule icon={Fingerprint} title="nexID decide elegibilidad" body="Mensaje NFC válido según política, tenant, lote, titularidad digital y canal." />
               <FlowRule icon={ShieldCheck} title="IOTA conserva evidencia" body="Merkle root hash-only para auditoría de hitos; no representa propiedad." />
-              <FlowRule icon={Boxes} title="Polygon registra ownership" body="Mint o transferencia opcional con recibo real y owner verificable." />
+              <FlowRule icon={Boxes} title="Polygon registra el certificado digital" body="Esta cola puede ejecutar mint con recibo verificable. Las transferencias quedan como solicitud hasta incorporar executor, recibo y verificación ownerOf; no acredita propiedad física." />
             </div>
           </div>
         </div>

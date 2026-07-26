@@ -14,7 +14,6 @@ type LeadForm = {
 
 type LeadResponse = {
   ok?: boolean;
-  queued_local?: boolean;
   delivery?: {
     webhook?: { ok?: boolean; status?: number } | null;
     whatsapp?: { ok?: boolean; status?: number } | null;
@@ -30,7 +29,6 @@ const copy: Record<AppLocale, {
   submit: string;
   loading: string;
   sent: string;
-  queued: string;
   error: string;
   delivery: string;
   meeting: string;
@@ -44,7 +42,6 @@ const copy: Record<AppLocale, {
     submit: "Enviar demo",
     loading: "Enviando...",
     sent: "Lead creado en super-admin.",
-    queued: "Solicitud recibida. Quedo en cola local porque el backend comercial no respondio.",
     error: "Falta un contacto valido o no pudimos enviar la solicitud.",
     delivery: "Notificacion comercial enviada.",
     meeting: "Agendar reunion",
@@ -64,7 +61,6 @@ const copy: Record<AppLocale, {
     submit: "Enviar demo",
     loading: "Enviando...",
     sent: "Lead criado no super-admin.",
-    queued: "Solicitacao recebida. Ficou em fila local porque o backend comercial nao respondeu.",
     error: "Falta um contato valido ou nao foi possivel enviar.",
     delivery: "Notificacao comercial enviada.",
     meeting: "Agendar reuniao",
@@ -84,7 +80,6 @@ const copy: Record<AppLocale, {
     submit: "Send demo request",
     loading: "Sending...",
     sent: "Lead created in super-admin.",
-    queued: "Request received. It is locally queued because the commercial backend did not respond.",
     error: "Add a valid contact or retry the request.",
     delivery: "Commercial notification sent.",
     meeting: "Schedule meeting",
@@ -105,7 +100,7 @@ function deliveryWorked(data: LeadResponse) {
 
 export function DemoRequestSection({ locale }: { locale: AppLocale }) {
   const t = copy[locale] || copy["es-AR"];
-  const [status, setStatus] = useState<"idle" | "ok" | "queued" | "error" | "loading">("idle");
+  const [status, setStatus] = useState<"idle" | "ok" | "error" | "loading">("idle");
   const [deliveryOk, setDeliveryOk] = useState(false);
   const [form, setForm] = useState<LeadForm>({ name: "", contact: "", company: "", vertical: "wine", notes: "" });
 
@@ -142,7 +137,7 @@ export function DemoRequestSection({ locale }: { locale: AppLocale }) {
 
     const data = await res.json().catch(() => ({} as LeadResponse));
     setDeliveryOk(deliveryWorked(data));
-    setStatus(data.queued_local ? "queued" : "ok");
+    setStatus("ok");
     setForm({ name: "", contact: "", company: "", vertical: "wine", notes: "" });
   }
 
@@ -192,7 +187,6 @@ export function DemoRequestSection({ locale }: { locale: AppLocale }) {
               </a>
               <p className="text-xs text-slate-400">{t.meetingHint}</p>
               {status === "ok" ? <p className="text-sm text-emerald-300">{t.sent} {deliveryOk ? t.delivery : ""}</p> : null}
-              {status === "queued" ? <p className="text-sm text-amber-300">{t.queued}</p> : null}
               {status === "error" ? <p className="text-sm text-rose-300">{t.error}</p> : null}
             </div>
           </div>

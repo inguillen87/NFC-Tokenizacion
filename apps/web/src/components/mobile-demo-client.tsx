@@ -73,15 +73,15 @@ const BID_RE = /^[A-Za-z0-9._:-]{3,120}$/;
 const WINERY_HQ = { name: "Bodega demo · Mendoza", lat: -33.0086, lng: -68.7794 };
 
 const STATE_COPY: Record<ConsumerState, { label: string; tone: "green" | "amber" | "cyan" | "red"; message: string }> = {
-  AUTH_PENDING: { label: "AUTH PENDING", tone: "cyan", message: "Verificando autenticidad criptográfica y estado del lote." },
+  AUTH_PENDING: { label: "AUTH PENDING", tone: "cyan", message: "Validando el mensaje criptográfico del tag y el estado reportado del lote." },
   VALID: { label: "VALID", tone: "green", message: "Lectura aceptada por la demo; en produccion depende de validacion backend, SUN/SDM y estado del lote." },
-  OPENED: { label: "OPENED", tone: "cyan", message: "Producto abierto: estado transparente para comprador final." },
-  TAMPER_RISK: { label: "TAMPER RISK", tone: "amber", message: "Riesgo de manipulación detectado en sello o contexto." },
+  OPENED: { label: "TT OPEN REPORTED", tone: "cyan", message: "TT reporta abierto; no certifica apertura, sello ni contenido físico." },
+  TAMPER_RISK: { label: "TT RISK REPORTED", tone: "amber", message: "La demo recibió una señal TT o de contexto para revisión; no prueba manipulación física." },
   CLAIMED: { label: "CLAIMED", tone: "green", message: "Ownership activado para lifecycle, soporte y postventa." },
-  REPLAY_SUSPECT: { label: "REPLAY SUSPECT", tone: "red", message: "Lectura sospechosa por repetición o posible clonación." },
-  DELIVERED_CLOSED: { label: "SEAL INTACT", tone: "green", message: "Tu paquete llegó sellado y es auténtico." },
-  DELIVERED_OPENED: { label: "SEAL OPENED", tone: "red", message: "El sello aparece abierto. Crear reclamo inmediato." },
-  OFFLINE_PENDING: { label: "OFFLINE PENDING", tone: "amber", message: "Verificación pendiente. La autenticidad criptográfica se confirmará al volver la conexión." },
+  REPLAY_SUSPECT: { label: "REPLAY SUSPECT", tone: "red", message: "Mensaje repetido o reutilizado según contador y política; no determina el objeto físico." },
+  DELIVERED_CLOSED: { label: "TT CLOSED", tone: "green", message: "La demo registra entrega y TT reporta cerrado; no prueba el contenido ni la custodia física." },
+  DELIVERED_OPENED: { label: "TT OPEN REPORTED", tone: "red", message: "La demo registra entrega y TT reporta abierto. Revisar antes de actuar; no prueba el sello físico." },
+  OFFLINE_PENDING: { label: "OFFLINE PENDING", tone: "amber", message: "Validación pendiente. El backend decidirá sobre el mensaje criptográfico al recuperar conexión." },
 };
 
 function nowIso() {
@@ -94,6 +94,17 @@ function seedItemUid(item: SeedItem) {
 
 function seedItemSku(item: SeedItem) {
   return String(item.sku || item.serial || item.rollId || item.roll_id || "").trim();
+}
+
+function optionalMetric(value: unknown, suffix = "") {
+  const text = String(value ?? "").trim();
+  if (!text) return "N/D";
+  return suffix && !text.endsWith(suffix) ? `${text}${suffix}` : text;
+}
+
+function optionalText(...values: unknown[]) {
+  const text = values.map((value) => String(value ?? "").trim()).find(Boolean);
+  return text || "N/D";
 }
 
 function seedItemName(item: SeedItem) {
@@ -125,14 +136,14 @@ const VERTICAL_TEMPLATES: Record<VerticalTemplate["key"], VerticalTemplate> = {
   wine: {
     key: "wine",
     title: "Wine passport",
-    subtitle: "Autenticidad + storytelling enológico + posventa premium.",
+    subtitle: "Evidencia NFC/SUN + storytelling declarado + posventa premium.",
     fields: [
-      { label: "Varietal", value: (item) => String(item.varietal || item.grapeVarietal || item.grape_varietal || "Malbec") },
-      { label: "Vintage", value: (item) => String(item.vintage || "2024") },
-      { label: "Alcohol", value: (item) => String(item.alcohol || (item.alcoholPct ? `${item.alcoholPct}%` : "13.9%")) },
-      { label: "Barrel", value: (item) => String(item.barrelAging || (item.barrelMonths || item.barrel_months ? `${item.barrelMonths || item.barrel_months} months` : "12 months")) },
-      { label: "Region", value: (item) => String(item.region || "Mendoza, AR") },
-      { label: "Service", value: (item) => String(item.serviceTemperature || item.service_temperature || "16°C") },
+      { label: "Varietal", value: (item) => optionalText(item.varietal, item.grapeVarietal, item.grape_varietal) },
+      { label: "Vintage", value: (item) => optionalText(item.vintage) },
+      { label: "Alcohol", value: (item) => optionalMetric(item.alcohol ?? item.alcoholPct, item.alcohol ? "" : "%") },
+      { label: "Barrel", value: (item) => optionalMetric(item.barrelAging ?? item.barrelMonths ?? item.barrel_months, item.barrelAging ? "" : " months") },
+      { label: "Region", value: (item) => optionalText(item.region) },
+      { label: "Service", value: (item) => optionalMetric(item.serviceTemperature ?? item.service_temperature) },
     ],
   },
   agro: {
@@ -140,25 +151,25 @@ const VERTICAL_TEMPLATES: Record<VerticalTemplate["key"], VerticalTemplate> = {
     title: "Seed passport",
     subtitle: "Control de origen de semillas + guía agronómica por lote.",
     fields: [
-      { label: "Harvest", value: (item) => String(item.harvestYear || item.harvest_year || item.vintage || "2026") },
-      { label: "Soil humidity", value: (item) => `${String(item.soilHumidity || item.soil_humidity || "38")}%` },
-      { label: "Field humidity", value: (item) => `${String(item.vineyardHumidity || item.vineyard_humidity || "55")}%` },
-      { label: "Storage", value: (item) => String(item.temperatureStorage || item.temperature_storage || "15-25°C") },
-      { label: "Region", value: (item) => String(item.region || "Córdoba, AR") },
-      { label: "Notes", value: (item) => String(item.notes || "Dosis y trazabilidad de campaña") },
+      { label: "Harvest", value: (item) => optionalText(item.harvestYear, item.harvest_year, item.vintage) },
+      { label: "Soil humidity", value: (item) => optionalMetric(item.soilHumidity ?? item.soil_humidity, "%") },
+      { label: "Field humidity", value: (item) => optionalMetric(item.vineyardHumidity ?? item.vineyard_humidity, "%") },
+      { label: "Storage", value: (item) => optionalMetric(item.temperatureStorage ?? item.temperature_storage) },
+      { label: "Region", value: (item) => optionalText(item.region) },
+      { label: "Notes", value: (item) => optionalText(item.notes) },
     ],
   },
   perfume: {
     key: "perfume",
     title: "Perfume passport",
-    subtitle: "Autenticidad anti-clone + narrativa de marca y coleccionables.",
+    subtitle: "Evidencia del mensaje y anti-replay + narrativa de marca y coleccionables.",
     fields: [
-      { label: "Fragrance family", value: () => "Woody / Floral" },
-      { label: "Launch", value: (item) => String(item.vintage || "2026") },
-      { label: "Region", value: (item) => String(item.region || "São Paulo, BR") },
-      { label: "Storage", value: (item) => String(item.temperatureStorage || item.temperature_storage || "20°C") },
-      { label: "SKU", value: (item) => seedItemSku(item) || "PF-001" },
-      { label: "Notes", value: (item) => String(item.notes || "Edición autenticada") },
+      { label: "Fragrance family", value: (item) => optionalText(item.notes) },
+      { label: "Launch", value: (item) => optionalText(item.vintage) },
+      { label: "Region", value: (item) => optionalText(item.region) },
+      { label: "Storage", value: (item) => optionalMetric(item.temperatureStorage ?? item.temperature_storage) },
+      { label: "SKU", value: (item) => seedItemSku(item) || "N/D" },
+      { label: "Notes", value: (item) => optionalText(item.notes) },
     ],
   },
   pharma: {
@@ -166,12 +177,12 @@ const VERTICAL_TEMPLATES: Record<VerticalTemplate["key"], VerticalTemplate> = {
     title: "Pharma passport",
     subtitle: "Integridad de empaque + trazabilidad regulatoria por unidad.",
     fields: [
-      { label: "Batch year", value: (item) => String(item.harvestYear || item.harvest_year || item.vintage || "2026") },
-      { label: "Cold chain", value: (item) => String(item.temperatureStorage || item.temperature_storage || "2-8°C") },
-      { label: "Region", value: (item) => String(item.region || "Bogotá, CO") },
-      { label: "SKU", value: (item) => seedItemSku(item) || "PH-001" },
-      { label: "Serial UID", value: (item) => seedItemUid(item) || "-" },
-      { label: "Notes", value: (item) => String(item.notes || "Dispensación segura y recall-ready") },
+      { label: "Batch year", value: (item) => optionalText(item.harvestYear, item.harvest_year, item.vintage) },
+      { label: "Cold chain", value: (item) => optionalMetric(item.temperatureStorage ?? item.temperature_storage) },
+      { label: "Region", value: (item) => optionalText(item.region) },
+      { label: "SKU", value: (item) => seedItemSku(item) || "N/D" },
+      { label: "Serial UID", value: (item) => seedItemUid(item) || "N/D" },
+      { label: "Notes", value: (item) => optionalText(item.notes) },
     ],
   },
 };
@@ -629,10 +640,11 @@ export function MobileDemoClient({
     }
     setCtaPending(true);
     try {
-      await postCta("register-warranty");
+      const response = await postCta("register-warranty");
       setWarrantySaved(true);
-      setCtaStatus(`Garantía registrada para ${warrantyName.trim()} y persistida en backend.`);
-      pushEvent("WARRANTY_REGISTERED", `Garantía registrada para ${warrantyName.trim()} y persistida en backend.`);
+      const requestStatus = String(response?.request_status || "pending_review");
+      setCtaStatus(`Solicitud de garantía para ${warrantyName.trim()} registrada (${requestStatus}); cobertura aún no confirmada.`);
+      pushEvent("WARRANTY_REQUEST_RECORDED", "Solicitud de garantía registrada para revisión; cobertura aún no confirmada.");
     } catch (error) {
       const reason = error instanceof Error ? error.message : "CTA unavailable";
       setCtaStatus(`Garantia no confirmada: ${reason}`);

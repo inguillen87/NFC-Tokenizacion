@@ -1,0 +1,240 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "nexID Server API",
+    "version": "1.1.0",
+    "description": "Machine-readable contract for the private nexID server SDK. API keys are server-side credentials. NFC VALID describes cryptographic message evidence and does not by itself prove physical-product authenticity, custody or ownership."
+  },
+  "servers": [
+    { "url": "https://api.nexid.lat", "description": "Production" }
+  ],
+  "security": [
+    { "NexIdApiKey": [], "NexIdTenant": [] }
+  ],
+  "tags": [
+    { "name": "NFC", "description": "NFC message verification" },
+    { "name": "Ownership", "description": "Policy-gated digital ownership requests" },
+    { "name": "Catalog", "description": "Tenant-scoped product reads" },
+    { "name": "Events", "description": "External operational events" },
+    { "name": "POS", "description": "Point-of-sale activation" },
+    { "name": "Idempotency", "description": "Durable replay and uncertain-write reconciliation" },
+    { "name": "Logistics", "description": "Reported seal and handoff events" }
+  ],
+  "paths": {
+    "/api/v1/sdk/verify": {
+      "post": {
+        "operationId": "verifyTap",
+        "summary": "Verify an NFC/SUN message",
+        "description": "Validates the submitted digital NFC evidence. A VALID verdict is message-level evidence, not a blanket physical-product certification.",
+        "tags": ["NFC"],
+        "parameters": [
+          { "$ref": "#/components/parameters/TraceId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/VerifyTapRequest" } } } },
+        "responses": {
+          "200": { "description": "Verification completed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/VerifyTapResponse" } } } },
+          "400": { "$ref": "#/components/responses/ApiError" },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "409": { "$ref": "#/components/responses/IdempotencyConflict" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "503": { "$ref": "#/components/responses/CommittedWriteUncertain" }
+        }
+      }
+    },
+    "/api/v1/sdk/claim": {
+      "post": {
+        "operationId": "claimOwnership",
+        "summary": "Request or complete policy-gated digital ownership",
+        "description": "A tap alone never transfers ownership. The tenant policy may require POS evidence, PIN, identity verification or manual approval.",
+        "tags": ["Ownership"],
+        "parameters": [
+          { "$ref": "#/components/parameters/TraceId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ClaimOwnershipRequest" } } } },
+        "responses": {
+          "201": { "description": "Claim evaluated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ClaimOwnershipResponse" } } } },
+          "400": { "$ref": "#/components/responses/ApiError" },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "409": { "$ref": "#/components/responses/ApiError" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "503": { "$ref": "#/components/responses/CommittedWriteUncertain" }
+        }
+      }
+    },
+    "/api/v1/sdk/products/{bid}": {
+      "get": {
+        "operationId": "getProduct",
+        "summary": "Read a tenant-scoped product batch",
+        "tags": ["Catalog"],
+        "parameters": [
+          { "$ref": "#/components/parameters/TraceId" },
+          { "name": "bid", "in": "path", "required": true, "schema": { "type": "string", "minLength": 3, "maxLength": 120 } }
+        ],
+        "responses": {
+          "200": { "description": "Product batch", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SdkProductResponse" } } } },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "404": { "$ref": "#/components/responses/ApiError" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/api/v1/sdk/events": {
+      "post": {
+        "operationId": "reportEvent",
+        "summary": "Record an external operational event",
+        "tags": ["Events"],
+        "parameters": [
+          { "$ref": "#/components/parameters/TraceId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ExternalEventRequest" } } } },
+        "responses": {
+          "201": { "description": "Event recorded", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ExternalEventResponse" } } } },
+          "400": { "$ref": "#/components/responses/ApiError" },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "409": { "$ref": "#/components/responses/IdempotencyConflict" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "503": { "$ref": "#/components/responses/CommittedWriteUncertain" }
+        }
+      }
+    },
+    "/api/v1/sdk/pos/activate": {
+      "post": {
+        "operationId": "activatePosPurchase",
+        "summary": "Create a point-of-sale activation token",
+        "tags": ["POS"],
+        "parameters": [
+          { "$ref": "#/components/parameters/TraceId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PosActivationRequest" } } } },
+        "responses": {
+          "201": { "description": "Activation created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PosActivationResponse" } } } },
+          "400": { "$ref": "#/components/responses/ApiError" },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "409": { "$ref": "#/components/responses/IdempotencyConflict" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "503": { "$ref": "#/components/responses/CommittedWriteUncertain" }
+        }
+      }
+    },
+    "/api/v1/sdk/idempotency/status": {
+      "get": {
+        "operationId": "getIdempotencyStatus",
+        "summary": "Read a durable SDK mutation outcome",
+        "description": "Returns tenant-scoped operation state without exposing the encrypted stored response. Reissue the exact original mutation with the same key to replay its status and body.",
+        "tags": ["Idempotency"],
+        "parameters": [
+          { "$ref": "#/components/parameters/TraceId" },
+          { "$ref": "#/components/parameters/RequiredIdempotencyKey" },
+          { "$ref": "#/components/parameters/IdempotencyOperation" }
+        ],
+        "responses": {
+          "200": { "description": "Operation status", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/IdempotencyStatus" } } } },
+          "400": { "$ref": "#/components/responses/ApiError" },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "404": { "$ref": "#/components/responses/ApiError" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "503": { "$ref": "#/components/responses/ApiError" }
+        }
+      },
+      "post": {
+        "operationId": "reconcileIdempotency",
+        "summary": "Reconcile an uncertain SDK mutation",
+        "description": "Scans the durable route-specific business linkage and re-enqueues only missing, deterministically deduplicated webhook outbox rows. It never reruns the original business mutation.",
+        "tags": ["Idempotency"],
+        "parameters": [
+          { "$ref": "#/components/parameters/TraceId" },
+          { "$ref": "#/components/parameters/RequiredIdempotencyKey" },
+          { "$ref": "#/components/parameters/IdempotencyOperation" }
+        ],
+        "responses": {
+          "200": { "description": "Reconciled operation status", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/IdempotencyStatus" } } } },
+          "400": { "$ref": "#/components/responses/ApiError" },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "404": { "$ref": "#/components/responses/ApiError" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "503": { "$ref": "#/components/responses/ApiError" }
+        }
+      }
+    },
+    "/api/v1/logistics/seal-apply": {
+      "post": {
+        "operationId": "applyDeliverySeal",
+        "summary": "Record a reported logistics seal application",
+        "tags": ["Logistics"],
+        "parameters": [{ "$ref": "#/components/parameters/TraceId" }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LogisticsSealApplyRequest" } } } },
+        "responses": { "200": { "description": "Reported transition recorded", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LogisticsScanResponse" } } } }, "400": { "$ref": "#/components/responses/ApiError" }, "401": { "$ref": "#/components/responses/ApiError" }, "403": { "$ref": "#/components/responses/ApiError" }, "429": { "$ref": "#/components/responses/RateLimited" } }
+      }
+    },
+    "/api/v1/logistics/handoff": {
+      "post": {
+        "operationId": "handoffDeliverySeal",
+        "summary": "Record a reported logistics handoff",
+        "tags": ["Logistics"],
+        "parameters": [{ "$ref": "#/components/parameters/TraceId" }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LogisticsHandoffRequest" } } } },
+        "responses": { "200": { "description": "Reported transition recorded", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LogisticsScanResponse" } } } }, "400": { "$ref": "#/components/responses/ApiError" }, "401": { "$ref": "#/components/responses/ApiError" }, "403": { "$ref": "#/components/responses/ApiError" }, "429": { "$ref": "#/components/responses/RateLimited" } }
+      }
+    },
+    "/api/v1/logistics/recipient-verify": {
+      "post": {
+        "operationId": "verifyDeliverySeal",
+        "summary": "Record a recipient verification event",
+        "tags": ["Logistics"],
+        "parameters": [{ "$ref": "#/components/parameters/TraceId" }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LogisticsRecipientVerifyRequest" } } } },
+        "responses": { "200": { "description": "Reported transition recorded", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LogisticsScanResponse" } } } }, "400": { "$ref": "#/components/responses/ApiError" }, "401": { "$ref": "#/components/responses/ApiError" }, "403": { "$ref": "#/components/responses/ApiError" }, "429": { "$ref": "#/components/responses/RateLimited" } }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "NexIdApiKey": { "type": "apiKey", "in": "header", "name": "x-nexid-api-key", "description": "Server-side API key. Never expose it in browser code." },
+      "NexIdTenant": { "type": "apiKey", "in": "header", "name": "x-nexid-tenant-slug", "description": "Tenant scope bound to the API key." }
+    },
+    "parameters": {
+      "TraceId": { "name": "x-nexid-trace-id", "in": "header", "required": false, "description": "Caller correlation ID. Returned in response metadata when available.", "schema": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$" } },
+      "IdempotencyKey": { "name": "Idempotency-Key", "in": "header", "required": false, "description": "Enables a seven-day durable replay contract on verifyTap, claimOwnership, reportEvent and activatePosPurchase. Scope is tenant plus route plus key. Same canonical JSON replays the original status/body; a different payload returns 409.", "schema": { "type": "string", "minLength": 1, "maxLength": 255, "pattern": "^[A-Za-z0-9][A-Za-z0-9._~:/+=-]{0,254}$" } },
+      "RequiredIdempotencyKey": { "name": "Idempotency-Key", "in": "header", "required": true, "description": "The exact original Idempotency-Key. It stays out of the URL and ordinary access logs.", "schema": { "type": "string", "minLength": 1, "maxLength": 255, "pattern": "^[A-Za-z0-9][A-Za-z0-9._~:/+=-]{0,254}$" } },
+      "IdempotencyOperation": { "name": "operation", "in": "query", "required": true, "description": "Original SDK method. It determines both route scope and the required API-key permission.", "schema": { "type": "string", "enum": ["verifyTap", "claimOwnership", "reportEvent", "activatePosPurchase"] } }
+    },
+    "responses": {
+      "ApiError": { "description": "Request rejected", "headers": { "x-nexid-trace-id": { "schema": { "type": "string" } } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } },
+      "IdempotencyConflict": { "description": "The operation is still processing or this key was already used with another canonical request payload.", "headers": { "Retry-After": { "schema": { "type": "integer", "minimum": 1 } }, "x-nexid-idempotency-status": { "schema": { "type": "string", "enum": ["processing", "completed", "failed", "uncertain"] } } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } },
+      "RateLimited": { "description": "Rate limit exceeded", "headers": { "Retry-After": { "schema": { "type": "integer", "minimum": 1 } }, "x-nexid-trace-id": { "schema": { "type": "string" } } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } },
+      "CommittedWriteUncertain": { "description": "The business write may have committed but final response or webhook outbox confirmation failed. Query or POST the idempotency endpoint with the original key; never retry with a new key.", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/ApiError" }, { "type": "object", "properties": { "operationCommitted": { "type": ["boolean", "null"] }, "resourceId": { "type": ["string", "null"] } } }] } } } }
+    },
+    "schemas": {
+      "ApiError": { "type": "object", "required": ["ok"], "properties": { "ok": { "const": false }, "reason": { "type": "string" }, "error": { "type": "string" }, "message": { "type": "string" }, "traceId": { "type": ["string", "null"] }, "trace_id": { "type": ["string", "null"] } }, "additionalProperties": true },
+      "Tenant": { "type": "object", "required": ["slug"], "properties": { "slug": { "type": "string" }, "name": { "type": "string" } }, "additionalProperties": false },
+      "Gps": { "type": "object", "required": ["lat", "lng"], "properties": { "lat": { "type": "number", "minimum": -90, "maximum": 90 }, "lng": { "type": "number", "minimum": -180, "maximum": 180 }, "accuracy": { "type": "number", "minimum": 0 }, "city": { "type": "string" }, "country": { "type": "string" } }, "additionalProperties": false },
+      "DeviceMeta": { "type": "object", "properties": { "userAgent": { "type": "string" }, "language": { "type": "string" }, "mobile": { "type": "boolean" }, "label": { "type": "string" } }, "additionalProperties": false },
+      "WebhookOutboxReceipt": { "type": "object", "required": ["status", "eventId", "attempted", "confirmed", "queued", "deduplicated"], "properties": { "status": { "type": "string", "enum": ["confirmed", "not_configured"] }, "eventId": { "type": ["string", "null"] }, "attempted": { "type": "integer", "minimum": 0 }, "confirmed": { "type": "integer", "minimum": 0 }, "queued": { "type": "integer", "minimum": 0 }, "deduplicated": { "type": "integer", "minimum": 0 } }, "additionalProperties": false },
+      "IdempotencyStatus": { "type": "object", "required": ["ok", "operation", "route", "state", "operationCommitted", "resourceId", "responseStatus", "replayAvailable", "reconciliationStatus", "reconciliationDetails", "reconciledAt", "reconciled", "createdAt", "updatedAt", "expiresAt", "nextAction"], "properties": { "ok": { "const": true }, "operation": { "type": "string", "enum": ["verifyTap", "claimOwnership", "reportEvent", "activatePosPurchase"] }, "route": { "type": "string", "enum": ["/api/v1/sdk/verify", "/api/v1/sdk/claim", "/api/v1/sdk/events", "/api/v1/sdk/pos/activate"] }, "state": { "type": "string", "enum": ["processing", "completed", "failed", "uncertain"] }, "operationCommitted": { "type": ["boolean", "null"] }, "resourceId": { "type": ["string", "null"] }, "traceId": { "type": ["string", "null"] }, "responseStatus": { "type": ["integer", "null"], "minimum": 100, "maximum": 599 }, "replayAvailable": { "type": "boolean" }, "reconciliationStatus": { "type": "string", "enum": ["not_requested", "confirmed", "not_configured", "failed"] }, "reconciliationDetails": { "type": "object", "additionalProperties": true }, "reconciledAt": { "type": ["string", "null"], "format": "date-time" }, "reconciled": { "type": "boolean" }, "createdAt": { "type": "string", "format": "date-time" }, "updatedAt": { "type": "string", "format": "date-time" }, "completedAt": { "type": ["string", "null"], "format": "date-time" }, "expiresAt": { "type": "string", "format": "date-time" }, "nextAction": { "type": "string" } }, "additionalProperties": false },
+      "VerifyTapRequest": { "type": "object", "required": ["bid", "picc_data", "enc", "cmac"], "properties": { "bid": { "type": "string", "minLength": 3, "maxLength": 120 }, "picc_data": { "type": "string", "minLength": 1 }, "enc": { "type": "string", "minLength": 1 }, "cmac": { "type": "string", "minLength": 1 }, "gps": { "$ref": "#/components/schemas/Gps" }, "deviceMeta": { "$ref": "#/components/schemas/DeviceMeta" } }, "additionalProperties": false },
+      "VerifyTapResponse": { "type": "object", "required": ["ok", "verdict", "uidMasked", "readCounter", "sealStatus", "eventId"], "properties": { "ok": { "type": "boolean" }, "verdict": { "type": "string", "enum": ["VALID", "REPLAY_SUSPECT", "TAMPER_RISK", "INVALID", "UNKNOWN_BATCH"] }, "uidMasked": { "type": ["string", "null"] }, "readCounter": { "type": ["integer", "null"] }, "sealStatus": { "type": "string", "enum": ["CLOSED", "OPENED", "UNKNOWN"] }, "eventId": { "type": ["string", "null"] }, "tenant": { "$ref": "#/components/schemas/Tenant" }, "bid": { "type": "string" }, "result": { "type": "string" }, "reason": { "type": ["string", "null"] }, "traceId": { "type": "string" }, "webhookOutbox": { "$ref": "#/components/schemas/WebhookOutboxReceipt" } }, "additionalProperties": true },
+      "ClaimOwnershipRequest": { "type": "object", "required": ["contact", "bid"], "properties": { "contact": { "type": "string", "minLength": 3 }, "name": { "type": "string" }, "bid": { "type": "string", "minLength": 3, "maxLength": 120 }, "uidHex": { "type": "string" }, "pin": { "type": "string" }, "posToken": { "type": "string" }, "meta": { "type": "object", "additionalProperties": true }, "gps": { "type": "object", "additionalProperties": true }, "device": { "type": "object", "additionalProperties": true } }, "additionalProperties": false },
+      "ClaimOwnershipResponse": { "type": "object", "required": ["ok", "claimId", "status"], "properties": { "ok": { "type": "boolean" }, "claimId": { "type": "string" }, "leadId": { "type": "string" }, "status": { "type": "string", "enum": ["claimed", "pending_verification", "failed"] }, "tokenId": { "type": ["string", "null"] }, "txHash": { "type": ["string", "null"] }, "policy": { "type": "object", "additionalProperties": true }, "traceId": { "type": "string" }, "webhookOutbox": { "type": "array", "items": { "$ref": "#/components/schemas/WebhookOutboxReceipt" } } }, "additionalProperties": true },
+      "SdkProductResponse": { "type": "object", "required": ["ok", "tenant", "batch", "carrier", "product", "stats", "tags"], "properties": { "ok": { "type": "boolean" }, "tenant": { "$ref": "#/components/schemas/Tenant" }, "batch": { "type": "object", "additionalProperties": true }, "carrier": { "type": "object", "additionalProperties": true }, "product": { "type": "object", "additionalProperties": true }, "stats": { "type": "object", "additionalProperties": { "type": "number" } }, "tags": { "type": "array", "items": { "type": "object", "additionalProperties": true } }, "traceId": { "type": "string" } }, "additionalProperties": true },
+      "ExternalEventRequest": { "type": "object", "required": ["eventType"], "properties": { "eventType": { "type": "string", "minLength": 1 }, "bid": { "type": "string" }, "uidHex": { "type": "string" }, "source": { "type": "string" }, "occurredAt": { "type": "string", "format": "date-time" }, "data": { "type": "object", "additionalProperties": true }, "meta": { "type": "object", "additionalProperties": true }, "gps": { "type": "object", "additionalProperties": true }, "device": { "type": "object", "additionalProperties": true } }, "additionalProperties": false },
+      "ExternalEventResponse": { "type": "object", "required": ["ok", "eventId", "eventType"], "properties": { "ok": { "type": "boolean" }, "eventId": { "type": "string" }, "eventType": { "type": "string" }, "tenant": { "$ref": "#/components/schemas/Tenant" }, "bid": { "type": ["string", "null"] }, "uidMasked": { "type": ["string", "null"] }, "traceId": { "type": "string" }, "webhookOutbox": { "$ref": "#/components/schemas/WebhookOutboxReceipt" } }, "additionalProperties": true },
+      "PosActivationRequest": { "type": "object", "required": ["bid"], "properties": { "bid": { "type": "string", "minLength": 3, "maxLength": 120 }, "uidHex": { "type": "string" }, "externalOrderId": { "type": "string" }, "retailerId": { "type": "string" }, "contact": { "type": "string" }, "pin": { "type": "string" }, "expiresInMinutes": { "type": "integer", "minimum": 1 }, "meta": { "type": "object", "additionalProperties": true }, "gps": { "type": "object", "additionalProperties": true }, "device": { "type": "object", "additionalProperties": true } }, "additionalProperties": false },
+      "PosActivationResponse": { "type": "object", "required": ["ok", "activationId", "bid", "posToken", "expiresAt"], "properties": { "ok": { "type": "boolean" }, "activationId": { "type": "string" }, "tenant": { "$ref": "#/components/schemas/Tenant" }, "bid": { "type": "string" }, "uidMasked": { "type": ["string", "null"] }, "posToken": { "type": "string", "writeOnly": true }, "expiresAt": { "type": "string", "format": "date-time" }, "policy": { "type": "object", "additionalProperties": true }, "traceId": { "type": "string" }, "webhookOutbox": { "$ref": "#/components/schemas/WebhookOutboxReceipt" } }, "additionalProperties": true },
+      "LogisticsSealApplyRequest": { "type": "object", "required": ["uidHex", "shipmentId"], "properties": { "uidHex": { "type": "string" }, "shipmentId": { "type": "string" }, "ttRaw": { "type": "string" }, "location": { "type": "string" }, "scannedBy": { "type": "string" } }, "additionalProperties": false },
+      "LogisticsHandoffRequest": { "type": "object", "required": ["uidHex"], "properties": { "uidHex": { "type": "string" }, "shipmentId": { "type": "string" }, "ttRaw": { "type": "string" }, "location": { "type": "string" }, "scannedBy": { "type": "string" } }, "additionalProperties": false },
+      "LogisticsRecipientVerifyRequest": { "type": "object", "required": ["uidHex"], "properties": { "uidHex": { "type": "string" }, "shipmentId": { "type": "string" }, "ttRaw": { "type": "string" }, "location": { "type": "string" }, "recipientName": { "type": "string" }, "verificationMethod": { "type": "string" } }, "additionalProperties": false },
+      "LogisticsScanResponse": { "type": "object", "required": ["ok", "data"], "properties": { "ok": { "type": "boolean" }, "tenant": { "$ref": "#/components/schemas/Tenant" }, "trace_id": { "type": "string" }, "data": { "type": "object", "required": ["sealId", "previousStatus", "newStatus", "shipmentId", "tamperState"], "properties": { "sealId": { "type": "string" }, "previousStatus": { "type": "string" }, "newStatus": { "type": "string" }, "shipmentId": { "type": ["string", "null"] }, "tamperState": { "type": "string", "enum": ["closed", "opened", "unknown"] } }, "additionalProperties": false } }, "additionalProperties": true }
+    }
+  }
+}

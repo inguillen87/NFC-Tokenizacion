@@ -4,7 +4,12 @@ import { ensureSdkSchema } from "./commercial-runtime-schema";
 import { sql } from "./db";
 import { deliverWebhookRequest, safeWebhookError } from "./webhook-egress";
 import {
+  decryptWebhookSigningSecret,
+  WebhookSecretCipherError,
+} from "./webhook-secret-cipher";
+import {
   createWebhookSignatureHeaders,
+  normalizeWebhookSignatureVersion,
   webhookSigningSecretIssue,
 } from "./webhook-signing";
 
@@ -15,30 +20,15 @@ type ClaimedWebhookDelivery = {
   endpoint_id: string;
   endpoint_url: string;
   endpoint_enabled: boolean;
+  tenant_id: string;
   signing_secret: string | null;
+  signature_version: string;
   event_id: string;
   event_name: string;
   payload: Record<string, unknown> | string;
   attempt_count: number;
   lock_token: string;
 };
-
-function parseEvents(value: unknown): string[] {
-  if (Array.isArray(value)) return value.map((item) => String(item || "").trim()).filter(Boolean);
-  if (typeof value === "string") {
-    try {
-      const parsed = JSON.parse(value);
-      if (Array.isArray(parsed)) return parseEvents(parsed);
-    } catch {
-      return value.split(",").map((item) => item.trim()).filter(Boolean);
-    }
-  }
-  return [];
-}
-
-function endpointMatches(events: string[], eventName: string) {
-  return events.includes("*") || events.includes(eventName);
-}
 
 function maxAttempts() {
   const parsed = Number(process.env.WEBHOOK_MAX_ATTEMPTS || 8);
@@ -80,17 +70,8 @@ export async function dispatchTenantWebhooks(input: {
   payload: Record<string, unknown>;
   idempotencyKey?: string | null;
 }) {
-  if (!input.tenantId) return { attempted: 0, queued: 0, delivered: 0 };
+  if (!input.tenantId) return { attempted: 0, confirmed: 0, queued: 0, deduplicated: 0, delivered: 0, eventId: null };
   await ensureSdkSchema();
-
-  const endpoints = await sql/*sql*/`
-    SELECT id::text AS id, url, events
-    FROM webhook_endpoints
-    WHERE tenant_id = ${input.tenantId}
-      AND enabled = true
-    ORDER BY updated_at DESC
-    LIMIT 25
-  `;
 
   const eventId = deriveWebhookEventId({
     tenantId: input.tenantId,
@@ -104,12 +85,23 @@ export async function dispatchTenantWebhooks(input: {
     data: input.payload,
   };
 
-  let attempted = 0;
-  let queued = 0;
-  for (const endpoint of endpoints as Array<Record<string, unknown>>) {
-    if (!endpointMatches(parseEvents(endpoint.events), input.eventName)) continue;
-    attempted += 1;
-    const rows = await sql/*sql*/`
+  const receiptRows = await sql/*sql*/`
+    WITH matching_endpoints AS MATERIALIZED (
+      SELECT id, url
+      FROM webhook_endpoints
+      WHERE tenant_id = ${input.tenantId}
+        AND enabled = true
+        AND (events ? ${input.eventName} OR events ? '*')
+      ORDER BY updated_at DESC
+      LIMIT 25
+    ),
+    existing_deliveries AS MATERIALIZED (
+      SELECT wd.endpoint_id
+      FROM webhook_deliveries wd
+      JOIN matching_endpoints endpoint ON endpoint.id = wd.endpoint_id
+      WHERE wd.event_id = ${eventId}
+    ),
+    inserted_deliveries AS (
       INSERT INTO webhook_deliveries (
         endpoint_id,
         endpoint_url,
@@ -119,23 +111,30 @@ export async function dispatchTenantWebhooks(input: {
         status,
         attempt_count,
         next_attempt_at
-      ) VALUES (
-        ${String(endpoint.id)},
-        ${String(endpoint.url)},
+      )
+      SELECT
+        endpoint.id,
+        endpoint.url,
         ${eventId},
         ${input.eventName},
         ${JSON.stringify(payload)}::jsonb,
         'pending',
         0,
         now()
-      )
+      FROM matching_endpoints endpoint
       ON CONFLICT (endpoint_id, event_id) DO NOTHING
-      RETURNING id::text AS id
-    `;
-    if (rows[0]) queued += 1;
-  }
-
-  return { attempted, queued, delivered: 0, eventId };
+      RETURNING endpoint_id
+    )
+    SELECT
+      (SELECT count(*)::integer FROM matching_endpoints) AS attempted,
+      (SELECT count(*)::integer FROM existing_deliveries) AS deduplicated,
+      (SELECT count(*)::integer FROM inserted_deliveries) AS queued
+  `;
+  const receipt = (receiptRows[0] || {}) as Record<string, unknown>;
+  const attempted = Number(receipt.attempted || 0);
+  const queued = Number(receipt.queued || 0);
+  const deduplicated = Number(receipt.deduplicated || 0);
+  return { attempted, confirmed: queued + deduplicated, queued, deduplicated, delivered: 0, eventId };
 }
 
 export async function claimWebhookDeliveries(limit = 10) {
@@ -171,7 +170,9 @@ export async function claimWebhookDeliveries(limit = 10) {
       wd.endpoint_id::text AS endpoint_id,
       wd.endpoint_url,
       we.enabled AS endpoint_enabled,
+      we.tenant_id::text AS tenant_id,
       we.signing_secret,
+      we.signature_version,
       wd.event_id,
       wd.event_name,
       wd.payload,
@@ -203,17 +204,34 @@ export async function processClaimedWebhookDelivery(row: ClaimedWebhookDelivery)
   } else {
     const payload = deliveryPayload(row.payload);
     const body = JSON.stringify(payload);
-    const secret = String(row.signing_secret || "");
-    const secretIssue = webhookSigningSecretIssue(secret, { required: true });
+    let secret = "";
+    try {
+      secret = decryptWebhookSigningSecret(row.signing_secret, { tenantId: String(row.tenant_id || "") });
+    } catch (error) {
+      const code = error instanceof WebhookSecretCipherError
+        ? error.code
+        : "webhook_signing_secret_decryption_failed";
+      const retryable = code === "webhook_signing_master_key_required"
+        || code === "webhook_signing_master_key_invalid"
+        || code === "webhook_signing_legacy_plaintext_disabled";
+      errorInfo = { code, retryable, statusCode: null };
+    }
+
+    const secretIssue = errorInfo ? null : webhookSigningSecretIssue(secret, { required: true });
     if (secretIssue) {
       errorInfo = { code: secretIssue, retryable: false, statusCode: null };
-    } else try {
+    } else if (!errorInfo) try {
+      const signatureVersion = normalizeWebhookSignatureVersion(row.signature_version);
+      if (!signatureVersion) {
+        throw new Error("webhook_signature_version_invalid");
+      }
       const signatureHeaders = createWebhookSignatureHeaders({
         secret,
         keyId: String(row.endpoint_id),
         deliveryId: id,
         eventId: String(row.event_id || ""),
         rawBody: body,
+        version: signatureVersion,
       });
       const response = await deliverWebhookRequest({
         url: String(row.endpoint_url),
@@ -243,9 +261,11 @@ export async function processClaimedWebhookDelivery(row: ClaimedWebhookDelivery)
       `;
       return { id, ok: Boolean(updated[0]), status: updated[0] ? "delivered" : "lease_lost", attemptCount };
     } catch (error) {
-      errorInfo = error instanceof Error && error.name === "WebhookSigningError"
-        ? { code: "invalid_webhook_signature_input", retryable: false, statusCode: null }
-        : safeWebhookError(error);
+      errorInfo = error instanceof Error && error.message === "webhook_signature_version_invalid"
+        ? { code: "webhook_signature_version_invalid", retryable: false, statusCode: null }
+        : error instanceof Error && error.name === "WebhookSigningError"
+          ? { code: "invalid_webhook_signature_input", retryable: false, statusCode: null }
+          : safeWebhookError(error);
     }
   }
 

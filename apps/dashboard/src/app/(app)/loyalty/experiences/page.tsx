@@ -4,12 +4,13 @@ import { VerifiedExperiencesPanel } from "../../../../components/verified-experi
 import { requireDashboardSession } from "../../../../lib/session";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../../lib/admin-page-access";
 import type { VerifiedExperienceItem } from "../../../../components/verified-experiences-panel";
+import type { ExperienceAvailability, ExperienceSource } from "../../../../components/verified-experiences-panel";
 
 const clubControls = [
   {
     title: "Quién puede opinar",
-    body: "Tap físico fresco, contacto validado y producto guardado, reclamado o comprado según política del lote.",
-    status: "Owner-safe",
+    body: "Mensaje NFC fresco con veredicto válido, contacto validado y acción digital confirmada por la fuente según política del lote.",
+    status: "Policy-gated",
   },
   {
     title: "Qué puede publicar",
@@ -23,32 +24,32 @@ const clubControls = [
   },
   {
     title: "Qué gana el negocio",
-    body: "Prueba social real, feedback por lote, club VIP, marketplace más confiable y más valor para el certificado.",
+    body: "Prueba social sujeta a evidencia, feedback por lote, club VIP y una experiencia de marketplace más confiable.",
     status: "Growth",
   },
 ];
 
-const eventClubs = [
+const eventClubExamples = [
   {
     name: "Club Terroir",
     product: "Vinos premium",
-    members: "842 miembros",
-    signal: "4.9 estrellas verificadas",
-    body: "Dueños y compradores comparten experiencia, apertura, guarda, reventa y recomendaciones.",
+    members: "Membresía configurable",
+    signal: "Rating de ejemplo",
+    body: "Ejemplo de UX para experiencias, apertura, guarda, reventa y recomendaciones aprobadas.",
   },
   {
     name: "Beauty Passport",
     product: "Cosmética y perfume",
-    members: "510 miembros",
-    signal: "87% compra validada",
-    body: "Comentarios visibles solo si existe tap, ticket, garantía o producto guardado.",
+    members: "Membresía configurable",
+    signal: "Compra: señal opcional",
+    body: "Ejemplo de política: comentarios visibles sólo con evidencia aceptada por el tenant.",
   },
   {
     name: "VIP Access",
     product: "Eventos y pulseras",
-    members: "1.120 miembros",
-    signal: "Check-in real",
-    body: "Experiencias del evento con ingreso verificado y beneficios posteriores.",
+    members: "Membresía configurable",
+    signal: "Check-in de ejemplo",
+    body: "Ejemplo visual de experiencias con ingreso registrado y beneficios posteriores.",
   },
 ];
 
@@ -59,16 +60,42 @@ type AdminExperiencesPayload = {
     approved?: number;
     needsBrandResponse?: number;
   };
+  demoMode?: boolean;
+  dataSource?: string;
 };
 
-async function adminGet(context: AdminPageContext, path: string) {
+type AdminExperiencesResult = {
+  payload: AdminExperiencesPayload | null;
+  availability: ExperienceAvailability;
+  source: ExperienceSource;
+};
+
+async function adminGet(context: AdminPageContext, path: string): Promise<AdminExperiencesResult> {
+  let response: Response;
   try {
-    const response = await fetchAdminPage(context, path);
-    if (!response.ok) return null;
-    return response.json();
+    response = await fetchAdminPage(context, path);
   } catch {
-    return null;
+    return { payload: null, availability: "unreachable", source: "unavailable" };
   }
+  if (!response.ok) return { payload: null, availability: "upstream_error", source: "unavailable" };
+
+  let payload: unknown;
+  try {
+    payload = await response.json();
+  } catch {
+    return { payload: null, availability: "invalid_payload", source: "unavailable" };
+  }
+  if (!payload || typeof payload !== "object" || !Array.isArray((payload as AdminExperiencesPayload).items)) {
+    return { payload: null, availability: "invalid_payload", source: "unavailable" };
+  }
+
+  const typedPayload = payload as AdminExperiencesPayload;
+  const source: ExperienceSource = typedPayload.demoMode === true || typedPayload.dataSource === "demo"
+    ? "demo"
+    : typedPayload.dataSource === "production"
+      ? "production"
+      : "unconfirmed";
+  return { payload: typedPayload, availability: "ready", source };
 }
 
 function statusCopy(status?: string | null) {
@@ -79,39 +106,55 @@ function statusCopy(status?: string | null) {
   return "Revisar evidencia";
 }
 
+function formatTrustScore(value?: number | string | null) {
+  if (value === null || value === undefined || String(value).trim() === "") return "No informado";
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return "No informado";
+  return `${Math.max(0, Math.min(100, parsed))}/100`;
+}
+
 export default async function ExperiencesPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const query = searchParams ? await searchParams : {};
   const session = await requireDashboardSession();
   const adminContext = await createAdminPageContext(session, query.tenant);
-  const experiencesRaw = (await adminGet(adminContext, "/admin/consumer-experiences?limit=50")) as AdminExperiencesPayload | null;
+  const experiencesResult = await adminGet(adminContext, "/admin/consumer-experiences?limit=50");
+  const experiencesRaw = experiencesResult.payload;
   const experiences = Array.isArray(experiencesRaw?.items) ? experiencesRaw.items : [];
-  const pendingReviews = experiences.length
+  const pendingReviews = experiencesResult.availability === "ready" && experiences.length
     ? experiences.slice(0, 8).map((review) => ({
-        product: String(review.product_name || review.product || "Producto verificado"),
+        product: String(review.product_name || review.product || "Producto sin nombre reportado"),
         user: [review.city, review.country].filter(Boolean).join(", ") || String(review.tenant_slug || "tenant"),
-        score: `${Number(review.trust_score || 0)}/100`,
+        score: formatTrustScore(review.trust_score),
         state: statusCopy(review.moderation_status),
       }))
-    : [
-        { product: "Sin experiencias reales todavia", user: "Esperando primer tap + ownership", score: "0/100", state: "Activar modulo" },
-      ];
+    : experiencesResult.availability === "ready"
+      ? [{ product: "Sin experiencias registradas", user: "La fuente confirmó una lista vacía", score: "—", state: "Sin cola pendiente" }]
+      : [{ product: "Fuente de experiencias no disponible", user: "No se infieren registros ni ceros", score: "—", state: "Reintentar cuando la API esté disponible" }];
 
   return (
-    <main className="space-y-8">
+    <main className="space-y-8" data-experiences-availability={experiencesResult.availability} data-experiences-source={experiencesResult.source}>
       <SectionHeading
         eyebrow="Loyalty + social proof"
         title="Experiencias verificadas"
-        description="Una capa social premium: opiniones reales, moderadas y traducidas, solo de usuarios con evidencia del producto."
+        description={experiencesResult.availability === "ready"
+          ? "Fuente conectada: experiencias y moderación se muestran sólo desde la respuesta del tenant."
+          : "La fuente no está disponible; esta vista no reemplaza la falla con reviews ni métricas ficticias."}
       />
 
-      <VerifiedExperiencesPanel mode="loyalty" items={experiences} moderation={experiencesRaw?.moderation} />
+      <VerifiedExperiencesPanel
+        mode="loyalty"
+        items={experiences}
+        moderation={experiencesRaw?.moderation}
+        availability={experiencesResult.availability}
+        source={experiencesResult.source}
+      />
 
       <Card className="p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-sm font-black uppercase tracking-[0.16em] text-cyan-200">Politica para marcas premium</h2>
+            <h2 className="text-sm font-black uppercase tracking-[0.16em] text-cyan-200">Política para marcas premium</h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
-              La marca decide si publica automatico, si modera antes de mostrar o si solo usa el feedback privado.
+              La marca decide si publica automáticamente, si modera antes de mostrar o si sólo usa el feedback privado.
               El usuario entiende el beneficio y la empresa evita reviews falsas o destructivas.
             </p>
           </div>
@@ -153,9 +196,9 @@ export default async function ExperiencesPage({ searchParams }: { searchParams?:
         <Card className="p-5 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="text-sm font-black uppercase tracking-[0.16em] text-cyan-200">Clubes vivos por vertical</h2>
+              <h2 className="text-sm font-black uppercase tracking-[0.16em] text-cyan-200">Clubes de ejemplo por vertical</h2>
               <p className="mt-2 text-sm leading-6 text-slate-300">
-                El producto deja de ser una validacion aislada y se convierte en comunidad, beneficio y reputacion.
+                Fixtures de diseño: no representan miembros, ratings, compras ni check-ins observados.
               </p>
             </div>
             <Link href="/consumer-network/marketplace" className="rounded-xl border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-xs font-bold text-violet-100">
@@ -163,7 +206,7 @@ export default async function ExperiencesPage({ searchParams }: { searchParams?:
             </Link>
           </div>
           <div className="mt-5 grid gap-3">
-            {eventClubs.map((club) => (
+            {eventClubExamples.map((club) => (
               <article key={club.name} className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>

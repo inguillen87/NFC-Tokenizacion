@@ -13,7 +13,14 @@ test("public certificate route exposes certificate without owner PII", async () 
   assert.match(source, /readProductAssetMedia/);
   assert.match(source, /isClaimableOwnershipResult/);
   assert.match(source, /replay_blocked/);
-  assert.match(source, /Autenticidad no confirmada/);
+  assert.match(source, /tagMessageValidated/);
+  assert.match(source, /physicalAuthenticityConfirmed: false/);
+  assert.match(source, /explicit_evidence_factors_only/);
+  assert.match(source, /scans: nullableScanCount\(row\.scan_count\)/);
+  assert.match(source, /value === null \|\| value === undefined \|\| value === ""/);
+  assert.doesNotMatch(source, /Number\(row\.scan_count \|\| 1\)/);
+  assert.match(source, /Mensaje NFC no validado/);
+  assert.doesNotMatch(source, /Producto autentico|Evento autentico|score: !authentic|product_verified/i);
   assert.match(source, /recordScope: "nexid_off_chain"/);
   assert.match(source, /onChainOwnerVerified: false/);
   assert.doesNotMatch(source, /owner_verified/);

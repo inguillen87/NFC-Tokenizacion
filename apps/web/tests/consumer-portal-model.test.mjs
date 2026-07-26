@@ -42,8 +42,17 @@ test("marketplace consumer UI no expone textos de demo ni mojibake", () => {
   const visibleSurface = `${page}\n${grid}`;
 
   assert.match(visibleSurface, /Bodega Balmec/);
-  assert.match(visibleSurface, /CRM-ready checkout/);
+  assert.match(visibleSurface, /Request-to-buy . sin cobro/);
   assert.match(visibleSurface, /MercadoPago/);
   assert.match(visibleSurface, /MetaMask \/ USDC/);
   assert.doesNotMatch(visibleSurface, /Ã|Â|�|Demo Bodega|sandbox commerce|Lote Experimental/);
+});
+
+test("consumer experiences preserves an uncomputed trust score instead of fabricating zero", () => {
+  const page = readFileSync(new URL("../src/app/me/experiences/page.tsx", import.meta.url), "utf8");
+
+  assert.match(page, /trust_score\?: number \| null/);
+  assert.match(page, /trust_score_status\?: string/);
+  assert.match(page, /Trust Score no calculado/);
+  assert.doesNotMatch(page, /trust_score \|\| 0/);
 });

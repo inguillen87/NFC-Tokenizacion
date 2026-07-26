@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 
 type Visibility = "network" | "private";
 type CheckoutMode = "request" | "external" | "direct";
+type MarketplaceAvailability = "loading" | "ready" | "upstream_error" | "unreachable" | "invalid_payload";
+type MarketplaceSource = "demo" | "production" | "unconfirmed" | "unavailable";
 
 type Item = {
   id: string;
@@ -27,23 +29,23 @@ const emptyDraft: Draft = {
 };
 
 const verifiedSignals = [
-  { label: "Experiencias verificadas", value: "Owner-only", body: "Solo usuarios con tap, contacto o ownership." },
+  { label: "Política de experiencias", value: "Owner-only", body: "Capacidad configurable: tap, contacto u ownership según tenant." },
   { label: "Trust visible", value: "0-100", body: "Score visible para marca y auditor." },
   { label: "Feedback global", value: "Multi-idioma", body: "Traducción automática por mercado." },
 ];
 
-const socialPreview = [
+const socialPreviewExamples = [
   {
     product: "Gran Reserva Malbec",
-    stars: "5.0",
-    badge: "Dueño verificado",
-    quote: "Veo origen, apertura y certificado; no es una opinión anónima.",
+    stars: "5.0 ejemplo",
+    badge: "Ejemplo: titularidad digital confirmada",
+    quote: "Ejemplo de cómo se vería una review aprobada con evidencia.",
   },
   {
     product: "Serum premium",
-    stars: "4.8",
-    badge: "Compra validada",
-    quote: "La garantía quedó guardada y el sello me mostró autenticidad.",
+    stars: "4.8 ejemplo",
+    badge: "Ejemplo: compra validada",
+    quote: "Ejemplo visual de garantía y sello; no es actividad publicada.",
   },
 ];
 
@@ -70,6 +72,8 @@ export default function TenantMarketplacePage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [loading, setLoading] = useState(true);
+  const [availability, setAvailability] = useState<MarketplaceAvailability>("loading");
+  const [dataSource, setDataSource] = useState<MarketplaceSource>("unavailable");
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -92,17 +96,63 @@ export default function TenantMarketplacePage() {
       return matchesVisibility && matchesText;
     });
   }, [items, query, visibilityFilter]);
+  const sourceLabel = availability === "loading"
+    ? "Cargando fuente"
+    : availability !== "ready"
+      ? "Fuente no disponible"
+      : dataSource === "demo"
+        ? "Sandbox / datos demo"
+        : dataSource === "production"
+          ? "Fuente operativa confirmada"
+          : "Fuente sin confirmar";
+  const sourceDetail = availability === "ready"
+    ? dataSource === "demo"
+      ? "Los productos y métricas pertenecen al sandbox; no representan catálogo ni ventas reales."
+      : dataSource === "production"
+        ? "La API confirmó la procedencia del catálogo."
+        : "La API respondió, pero no declaró la procedencia del catálogo."
+    : "No se muestran ceros como inventario confirmado mientras la API no esté disponible.";
 
   useEffect(() => {
     let isMounted = true;
     const load = async () => {
       setLoading(true);
+      setAvailability("loading");
+      setDataSource("unavailable");
+      let response: Response;
       try {
-        const response = await fetch("/api/tenant-marketplace", { cache: "no-store" });
-        const data = (await response.json()) as { items: Item[] };
-        if (isMounted) setItems(data.items || []);
-      } finally {
-        if (isMounted) setLoading(false);
+        response = await fetch("/api/tenant-marketplace", { cache: "no-store" });
+      } catch {
+        if (isMounted) {
+          setItems([]);
+          setAvailability("unreachable");
+          setLoading(false);
+        }
+        return;
+      }
+      if (!response.ok) {
+        if (isMounted) {
+          setItems([]);
+          setAvailability("upstream_error");
+          setLoading(false);
+        }
+        return;
+      }
+
+      const data = await response.json().catch(() => null) as { items?: unknown; demoMode?: boolean; dataSource?: string } | null;
+      if (!data || !Array.isArray(data.items)) {
+        if (isMounted) {
+          setItems([]);
+          setAvailability("invalid_payload");
+          setLoading(false);
+        }
+        return;
+      }
+      if (isMounted) {
+        setItems(data.items as Item[]);
+        setDataSource(data.demoMode === true || data.dataSource === "demo" ? "demo" : data.dataSource === "production" ? "production" : "unconfirmed");
+        setAvailability("ready");
+        setLoading(false);
       }
     };
     load();
@@ -231,7 +281,7 @@ export default function TenantMarketplacePage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-marketplace-availability={availability} data-marketplace-source={dataSource}>
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-white">Marketplace & Network</h1>
@@ -249,19 +299,19 @@ export default function TenantMarketplacePage() {
       </header>
 
       <div className="grid gap-3 md:grid-cols-3">
-        <div className="rounded-xl border border-white/10 bg-slate-900/50 p-4 text-sm text-slate-200">Items activos: <b className="text-white">{totals.total}</b></div>
-        <div className="rounded-xl border border-emerald-500/20 bg-emerald-950/20 p-4 text-sm text-emerald-100">Públicos en network: <b>{totals.publicCount}</b></div>
-        <div className="rounded-xl border border-cyan-500/20 bg-cyan-950/20 p-4 text-sm text-cyan-100">Direct checkout listos: <b>{totals.directCount}</b></div>
+        <div className="rounded-xl border border-white/10 bg-slate-900/50 p-4 text-sm text-slate-200">Items activos: <b className="text-white">{availability === "ready" ? totals.total : "—"}</b></div>
+        <div className="rounded-xl border border-emerald-500/20 bg-emerald-950/20 p-4 text-sm text-emerald-100">Públicos en network: <b>{availability === "ready" ? totals.publicCount : "—"}</b></div>
+        <div className="rounded-xl border border-cyan-500/20 bg-cyan-950/20 p-4 text-sm text-cyan-100">Direct checkout listos: <b>{availability === "ready" ? totals.directCount : "—"}</b></div>
       </div>
 
       <section className="rounded-2xl border border-violet-500/20 bg-[radial-gradient(circle_at_top_left,rgba(139,92,246,0.18),transparent_36%),linear-gradient(135deg,rgba(15,23,42,0.92),rgba(2,6,23,0.98))] p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-200">Marketplace con prueba social real</p>
-            <h2 className="mt-2 text-xl font-black text-white">Cada producto puede mostrar reputación verificada, no reviews anónimas.</h2>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-200">Vista previa · ejemplos de prueba social</p>
+            <h2 className="mt-2 text-xl font-black text-white">Diseño de reputación sujeto a evidencia y moderación.</h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
-              Las experiencias se publican solo si el usuario pasó por tap físico, identidad y política de compra o club.
-              Esto hace que la reputación suba valor de marca, reventa, NFT y confianza del comprador.
+              Las tarjetas siguientes son fixtures de UX, no reviews del tenant. En producción, una experiencia sólo puede publicarse
+              cuando la API confirma evidencia, identidad y política de compra o club.
             </p>
           </div>
           <button suppressHydrationWarning onClick={() => window.location.assign("/loyalty/experiences")} className="rounded-xl border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-xs font-bold text-violet-100">
@@ -279,7 +329,7 @@ export default function TenantMarketplacePage() {
             ))}
           </div>
           <div className="grid gap-3 md:grid-cols-2">
-            {socialPreview.map((review) => (
+            {socialPreviewExamples.map((review) => (
               <article key={review.product} className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -314,8 +364,8 @@ export default function TenantMarketplacePage() {
           <span className="text-xs font-black">NX</span>
         </div>
         <div>
-          <h3 className="text-sm font-bold text-white">Estado de la Red: Activo</h3>
-          <p className="mt-1 max-w-2xl text-xs text-slate-400">Tus productos públicos son visibles para consumidores verificados de otras marcas. Sin exponer datos sensibles de tus clientes.</p>
+          <h3 className="text-sm font-bold text-white">Estado del catálogo: {sourceLabel}</h3>
+          <p className="mt-1 max-w-2xl text-xs text-slate-400">{sourceDetail}</p>
         </div>
       </div>
 
@@ -334,6 +384,11 @@ export default function TenantMarketplacePage() {
             {loading ? (
               <tr>
                 <td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-400">Cargando productos...</td>
+              </tr>
+            ) : null}
+            {!loading && availability !== "ready" ? (
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-sm text-amber-200">Fuente de marketplace no disponible. Este estado no representa inventario cero.</td>
               </tr>
             ) : null}
             {filteredItems.map((item) => (
@@ -365,7 +420,7 @@ export default function TenantMarketplacePage() {
                 </td>
               </tr>
             ))}
-            {!loading && filteredItems.length === 0 ? (
+            {!loading && availability === "ready" && filteredItems.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-400">Todavía no hay productos. Publicá el primero.</td>
               </tr>

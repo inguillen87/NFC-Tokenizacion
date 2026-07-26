@@ -12,13 +12,15 @@ Every real supplier carton must work through the same generic chain:
 
 ## Key roles
 
-### KMS master key
+### Pilot application envelope key (legacy env name)
 
 `KMS_MASTER_KEY_HEX` lives only in the backend environment, for example Vercel API env.
 
-It is not a chip key. It is not sent to the supplier. It is not stored in GitHub. It is used only to encrypt and decrypt per-batch keys at rest.
+Despite its historical name, this is a raw application secret, not a managed KMS key handle and not HSM-backed custody. Customer and UI copy must call it **pilot application envelope encryption**, never KMS/HSM.
 
-If this key is rotated, existing encrypted batch keys require a re-encryption plan.
+It is not a chip key. It is not sent to the supplier. It is not stored in GitHub. It is used only to encrypt and decrypt per-batch keys at rest. New ciphertext uses a versioned AES-256-GCM envelope whose authenticated AAD binds tenant, BID, key role, lifecycle version and KEK version. Existing unversioned sample ciphertext remains readable during migration.
+
+For rotation, set `NFC_ENVELOPE_KEK_VERSION` to the new version and keep the prior key temporarily under `NFC_ENVELOPE_KEK_<OLD_VERSION>_HEX` for dual-read. Because legacy envelopes do not embed a version, pin `NFC_LEGACY_ENVELOPE_KEK_VERSION` to the old version until every legacy sample/row has been re-enveloped and audited. Backfill and verify every ciphertext before removing the old secret. This improves application-level isolation but does not turn Vercel environment variables into KMS or HSM.
 
 ### K_META
 

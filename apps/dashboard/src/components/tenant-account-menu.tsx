@@ -562,20 +562,16 @@ export function TenantAccountMenu({
   const accountRoleDescription = roleDescription(role, mode);
   const canManageUsers = role === "super-admin" || permissions.includes("*") || permissions.includes("users:manage") || permissions.includes("employees:*");
   const isClerkSsoSession = role === "super-admin" && Boolean(clerkEnabled);
-  const identityVerified = Boolean(mfaVerified) || isClerkSsoSession;
-  const accountSecurityOk = Boolean(mfaVerified);
   const hasWildcardAccess = permissions.includes("*");
   const normalizedPermissions = hasWildcardAccess
     ? [role === "super-admin" || mode === "global" ? "Acceso global" : "Tenant completo"]
     : permissions.length ? permissions.slice(0, 3) : ["Scope operativo"];
   const workspaceStatus = setupCompleted === false
     ? "Setup pendiente"
-    : accountSecurityOk
-      ? "Operativo"
-      : "Seguridad pendiente";
-  const workspacePlan = isTenantMode ? "Enterprise" : "Platform";
+    : "Sesión activa";
+  const workspacePlan = "No informado";
   const workspaceScope = isTenantMode ? tenantName : "Todos los tenants";
-  const workspaceRegion = isTenantMode ? "AR / LATAM" : "Global";
+  const workspaceRegion = "No informada";
   const workspaceInsights = [
     {
       label: "Workspace",
@@ -584,31 +580,29 @@ export function TenantAccountMenu({
     },
     {
       label: "Seguridad",
-      value: mfaVerified ? "MFA activo" : isClerkSsoSession ? "Google SSO" : "MFA pendiente",
-      detail: accountSecurityOk
-        ? "Sesion autorizada con segundo factor nexID."
-        : identityVerified
-          ? "Identidad Google verificada; MFA nexID queda separado."
-          : "Conviene reforzar acceso antes de escalar.",
+      value: isClerkSsoSession ? "Google SSO" : mfaVerified ? "Factor legacy reportado" : "TOTP no disponible",
+      detail: isClerkSsoSession
+        ? "Identidad Google verificada; TOTP nexID permanece deshabilitado."
+        : mfaVerified
+          ? "Estado heredado reportado por la sesión; no habilita un nuevo enrollment."
+          : "Enrollment TOTP bloqueado hasta completar step-up y recovery.",
     },
     {
       label: "Plan",
       value: workspacePlan,
-      detail: isTenantMode ? "Proof, CRM, marketplace e integraciones." : "Tenants, billing, IAM y soporte global.",
+      detail: "La sesión no aporta una fuente de billing confirmada.",
     },
     {
       label: "Region",
       value: workspaceRegion,
-      detail: isTenantMode ? "Demo comercial con datos no sensibles." : "Control multi-region y partners.",
+      detail: "No se infiere una región desde el slug ni el rol.",
     },
   ];
   const nextAction = setupCompleted === false && role === "tenant-admin"
     ? { href: "/onboarding", label: "Completar setup del tenant", meta: "Datos, equipo e integraciones base" }
-    : !accountSecurityOk
-      ? { href: "/mfa", label: "Revisar MFA y seguridad", meta: "Segundo factor antes de escalar permisos" }
-      : isTenantMode
-        ? { href: tenantHref, label: "Abrir perfil del tenant", meta: "Plan, vertical, health y playbook del workspace" }
-        : { href: "/settings", label: "Abrir configuracion global", meta: "Seguridad, tenants, integraciones y soporte" };
+    : isTenantMode
+      ? { href: tenantHref, label: "Abrir perfil del tenant", meta: "Contexto, navegación y playbook del workspace" }
+      : { href: "/settings", label: "Abrir configuracion global", meta: "Seguridad, tenants, integraciones y soporte" };
 
   const updatePanelPosition = useCallback(() => {
     if (typeof window === "undefined") {
@@ -818,13 +812,13 @@ export function TenantAccountMenu({
       href: canManageUsers ? "/users" : "/settings",
       icon: <Users className="h-4 w-4" />,
       label: canManageUsers ? "Usuarios y permisos" : "Permisos del workspace",
-      meta: canManageUsers ? "Roles, alcance por recurso, reset y MFA" : "Solicitudes, politicas y alcance autorizado",
+      meta: canManageUsers ? "Roles, alcance, reset y revocación de MFA legacy" : "Solicitudes, politicas y alcance autorizado",
     },
     {
       href: "/mfa",
       icon: <ShieldCheck className="h-4 w-4" />,
-      label: "Seguridad y MFA",
-      meta: "Segundo factor y controles de acceso",
+      label: "Seguridad de cuenta",
+      meta: "SSO, sesión y estado fail-closed de TOTP",
     },
   ], [canManageUsers, isTenantMode, tenantHref, tenantName]);
 
@@ -953,7 +947,7 @@ export function TenantAccountMenu({
                 <p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">{accountRoleDescription}</p>
               </div>
               <span className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-black uppercase tracking-[0.1em] ${
-                accountSecurityOk && setupCompleted !== false
+                setupCompleted !== false
                   ? "border-emerald-300/30 bg-emerald-400/10 text-emerald-100"
                   : "border-amber-300/30 bg-amber-400/10 text-amber-100"
               }`}>
@@ -1042,7 +1036,7 @@ export function TenantAccountMenu({
                 {setupCompleted === false ? "setup pendiente" : "setup ok"}
               </span>
               <span className="rounded-lg border border-cyan-300/25 bg-cyan-400/10 px-2 py-2 text-cyan-100">
-                {mfaVerified ? "mfa ok" : isClerkSsoSession ? "sso google" : "mfa revisar"}
+                {isClerkSsoSession ? "sso google" : mfaVerified ? "mfa legacy" : "totp no disponible"}
               </span>
               <span className="rounded-lg border border-violet-300/25 bg-violet-400/10 px-2 py-2 text-violet-100">
                 {isTenantMode ? "tenant" : "global"}
@@ -1068,10 +1062,10 @@ export function TenantAccountMenu({
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Command center</p>
-                  <p className="mt-1 text-sm font-black text-white">Cuenta lista para operar SaaS</p>
+                  <p className="mt-1 text-sm font-black text-white">Resumen del workspace</p>
                 </div>
                 <span className={`rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.08em] ${
-                  accountSecurityOk && setupCompleted !== false
+                  setupCompleted !== false
                     ? "border-emerald-300/30 bg-emerald-400/10 text-emerald-100"
                     : "border-amber-300/30 bg-amber-400/10 text-amber-100"
                 }`}>

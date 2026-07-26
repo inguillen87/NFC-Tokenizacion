@@ -439,7 +439,7 @@ export default async function ProofPage() {
     {
       label: "Ownership tx",
       value: tokenizationResult.ok ? ownershipTxCount : null,
-      detail: tokenizationResult.ok ? "Polygon con evidencia verificada" : "No disponible",
+      detail: tokenizationResult.ok ? "Filtradas por meta.evidence_verified, tx_hash y red Polygon/Amoy" : "No disponible",
       icon: Fingerprint,
     },
   ];
@@ -780,10 +780,10 @@ export default async function ProofPage() {
             <div className={styles.layerIcon}><Fingerprint aria-hidden="true" /></div>
             <div>
               <span>Polygon</span>
-              <h3>Ownership y certificado</h3>
-              <p>Registra mint o transferencia y habilita un certificado verificable. No sustituye el historial operativo del tenant.</p>
+              <h3>Titularidad digital y certificado</h3>
+              <p>Registra mint o transferencia y habilita un certificado verificable segun policy. No sustituye el historial operativo del tenant. No prueba propiedad fisica.</p>
               <dl>
-                <div><dt>Prueba</dt><dd>Ownership, garantia o activo tokenizado</dd></div>
+                <div><dt>Evidencia</dt><dd>Titularidad digital, garantia digital o activo tokenizado</dd></div>
                 <div><dt>Dato publico</dt><dd>Tx, contrato y token cuando aplica</dd></div>
                 <div><dt>Red</dt><dd>{publicProofResult.ok ? readText(polygonReference?.network) || "No informada" : "No disponible"}</dd></div>
               </dl>
@@ -793,7 +793,7 @@ export default async function ProofPage() {
 
         <div className={styles.privacyNote}>
           <ShieldCheck aria-hidden="true" />
-          <p>La evidencia publica se limita a referencias criptograficas y de red. La evidencia privada permanece en el alcance autenticado del tenant.</p>
+          <p>La evidencia publica se limita a referencias criptograficas y de red. La evidencia privada permanece en el alcance autenticado del tenant; ninguna de las dos acredita por si sola propiedad, ubicacion o custodia fisica.</p>
         </div>
       </section>
     </main>

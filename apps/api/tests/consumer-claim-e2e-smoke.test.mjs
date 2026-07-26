@@ -23,13 +23,14 @@ test('blocked statuses do not produce successful ownership claim response', asyn
   assert.match(portalService, /revoked/);
 });
 
-test('public claim ownership route has GPS and mobile verification safety checks', async () => {
+test('public claim ownership treats GPS and user-agent as spoofable risk signals, not custody proof', async () => {
   const publicClaimRoute = await readFile(new URL('../src/app/public/cta/claim-ownership/route.ts', import.meta.url), 'utf8');
   assert.match(publicClaimRoute, /getDistanceKm/);
-  assert.match(publicClaimRoute, /mobile_device_required/);
-  assert.match(publicClaimRoute, /gps_location_required/);
-  assert.match(publicClaimRoute, /location_mismatch/);
+  assert.match(publicClaimRoute, /client_reported_spoofable/);
+  assert.match(publicClaimRoute, /authorization_role: "risk_signal_only"/);
+  assert.match(publicClaimRoute, /physical_custody_verified: false/);
   assert.match(publicClaimRoute, /createAlert/);
-  assert.match(publicClaimRoute, /client_gps/);
-  assert.match(publicClaimRoute, /client_device/);
+  assert.doesNotMatch(publicClaimRoute, /reason: "mobile_device_required"/);
+  assert.doesNotMatch(publicClaimRoute, /reason: "gps_location_required"/);
+  assert.doesNotMatch(publicClaimRoute, /reason: "location_mismatch"/);
 });

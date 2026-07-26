@@ -27,13 +27,25 @@ type PublicReward = {
   passImageUrl?: string;
   reward?: { title?: string; description?: string };
   tenant?: { name?: string };
-  consumer?: { name?: string; phoneMasked?: string; emailMasked?: string };
+  consumer?: {
+    name?: string;
+    phoneMasked?: string;
+    emailMasked?: string;
+    phoneVerifiedAt?: string;
+    phone_verified_at?: string;
+    phoneStatus?: string;
+    phone_status?: string;
+    emailVerifiedAt?: string;
+    email_verified_at?: string;
+    emailStatus?: string;
+    email_status?: string;
+  };
   staffInstruction?: string;
 };
 
 function formatDate(value?: string) {
   const date = value ? new Date(value) : null;
-  if (!date || Number.isNaN(date.getTime())) return "48h desde emisión";
+  if (!date || Number.isNaN(date.getTime())) return "Vencimiento no disponible";
   return new Intl.DateTimeFormat("es-AR", {
     timeZone: "America/Argentina/Buenos_Aires",
     dateStyle: "medium",
@@ -46,12 +58,23 @@ function labelForStatus(value?: string) {
   if (status === "redeemed") return { label: "Canjeado", tone: "border-slate-300/20 bg-slate-400/10 text-slate-200", dot: "bg-slate-300" };
   if (status === "expired") return { label: "Vencido", tone: "border-amber-300/25 bg-amber-400/10 text-amber-100", dot: "bg-amber-300" };
   if (status === "cancelled") return { label: "Pausado", tone: "border-rose-300/25 bg-rose-400/10 text-rose-100", dot: "bg-rose-300" };
-  return { label: "Activo", tone: "border-emerald-300/25 bg-emerald-400/10 text-emerald-100", dot: "bg-emerald-300" };
+  if (["active", "issued", "available"].includes(status)) return { label: "Activo", tone: "border-emerald-300/25 bg-emerald-400/10 text-emerald-100", dot: "bg-emerald-300" };
+  return { label: "Estado no reportado", tone: "border-amber-300/25 bg-amber-400/10 text-amber-100", dot: "bg-amber-300" };
 }
 
 function formatCode(value?: string) {
   const digits = String(value || "").replace(/[^\d]/g, "");
-  return digits ? digits.replace(/(\d{4})(?=\d)/g, "$1 ") : "NEXID";
+  return digits ? digits.replace(/(\d{4})(?=\d)/g, "$1 ") : "No disponible";
+}
+
+function hasExplicitContactVerification(consumer: PublicReward["consumer"], channel: "phone" | "email") {
+  if (!consumer) return false;
+  const masked = channel === "phone" ? consumer.phoneMasked : consumer.emailMasked;
+  const verifiedAt = channel === "phone"
+    ? consumer.phoneVerifiedAt || consumer.phone_verified_at
+    : consumer.emailVerifiedAt || consumer.email_verified_at;
+  const status = String(channel === "phone" ? consumer.phoneStatus || consumer.phone_status : consumer.emailStatus || consumer.email_status).toLowerCase();
+  return Boolean(masked && verifiedAt && ["verified", "confirmed", "active"].includes(status));
 }
 
 async function fetchReward(token: string): Promise<PublicReward | null> {
@@ -91,10 +114,21 @@ export default async function PublicRewardPage({ params }: { params: Promise<{ t
     );
   }
 
+  const phoneVerified = hasExplicitContactVerification(reward.consumer, "phone");
+  const emailVerified = hasExplicitContactVerification(reward.consumer, "email");
+  const rewardOperational = ["active", "issued", "available"].includes(String(reward.status || "").toLowerCase());
+  const verifiedContactLabel = phoneVerified && emailVerified
+    ? "Teléfono y email verificados"
+    : phoneVerified
+      ? "Teléfono verificado"
+      : emailVerified
+        ? "Email verificado"
+        : "Contacto no verificado";
+
   const summaryCards = [
     {
       label: "Beneficio",
-      value: reward.reward?.title || "Voucher nexID",
+      value: reward.reward?.title || "Beneficio no disponible",
       Icon: TicketCheck,
       tone: "border-cyan-300/20 bg-cyan-400/[0.07] text-cyan-200",
     },
@@ -106,7 +140,7 @@ export default async function PublicRewardPage({ params }: { params: Promise<{ t
     },
     {
       label: "Comercio",
-      value: reward.tenant?.name || "nexID Partner",
+      value: reward.tenant?.name || "Comercio no disponible",
       Icon: ShieldCheck,
       tone: "border-violet-300/20 bg-violet-400/[0.07] text-violet-200",
     },
@@ -115,7 +149,7 @@ export default async function PublicRewardPage({ params }: { params: Promise<{ t
   const validationSteps = [
     { label: "QR para comercio", detail: "El QR del pase abre validación staff, no datos internos.", Icon: QrCode },
     { label: "Código manual", detail: "El staff puede validar aunque falle la cámara.", Icon: WalletCards },
-    { label: "Backup doble", detail: "WhatsApp y email conservan el beneficio para el cliente.", Icon: MailCheck },
+    { label: "Canal de respaldo", detail: phoneVerified || emailVerified ? `Canal explícitamente verificado: ${verifiedContactLabel}.` : "No hay canal verificado reportado; el staff debe bloquear el canje hasta revisarlo en CRM.", Icon: MailCheck },
   ];
 
   return (
@@ -143,16 +177,16 @@ export default async function PublicRewardPage({ params }: { params: Promise<{ t
           <div className="absolute inset-y-0 right-0 w-28 bg-gradient-to-l from-cyan-300/[0.04] to-transparent" />
 
           <div className="flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em]">
-            <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1.5 text-cyan-200">Beneficio verificado</span>
-            <span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1.5 text-emerald-200">WhatsApp + email</span>
+            <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1.5 text-cyan-200">Beneficio reportado</span>
+            <span className={`rounded-full border px-3 py-1.5 ${phoneVerified || emailVerified ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-200" : "border-amber-300/20 bg-amber-400/10 text-amber-200"}`}>{verifiedContactLabel}</span>
             <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-slate-300">CRM staff-ready</span>
           </div>
 
           <h1 className="mt-5 max-w-3xl text-4xl font-black leading-[0.95] tracking-tight text-white md:text-6xl">
-            Tu experiencia está lista para canjear.
+            {rewardOperational ? "Tu experiencia esta lista para validar." : "Revisa el estado del pase antes de usarlo."}
           </h1>
           <p className="mt-5 max-w-2xl text-sm leading-relaxed text-slate-300 md:text-base">
-            Mostrá este pase al llegar. El comercio confirma el código, tu teléfono enmascarado y el sello nexID antes de entregar el premio, cena, experiencia o descuento.
+            Mostrá este pase al llegar. El comercio confirma código, sello y, si el backend lo reporta explícitamente, un canal enmascarado verificado antes de entregar el beneficio.
           </p>
 
           <div className="mt-8 grid gap-3 md:grid-cols-3">
@@ -173,7 +207,7 @@ export default async function PublicRewardPage({ params }: { params: Promise<{ t
               </div>
               <div className="text-left md:text-right">
                 <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Sello nexID</p>
-                <p className="mt-2 font-mono text-sm font-black tracking-[0.14em] text-white">{reward.seal || "NEXID"}</p>
+                <p className="mt-2 font-mono text-sm font-black tracking-[0.14em] text-white">{reward.seal || "No disponible"}</p>
               </div>
             </div>
           </div>
@@ -184,15 +218,16 @@ export default async function PublicRewardPage({ params }: { params: Promise<{ t
                 <Smartphone className="h-4 w-4" aria-hidden="true" />
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Titular</p>
               </div>
-              <p className="mt-3 text-sm font-black text-white">{reward.consumer?.name || "Cliente nexID"}</p>
-              <p className="mt-1 text-xs text-slate-400">{reward.consumer?.phoneMasked || "Teléfono verificado"}</p>
+              <p className="mt-3 text-sm font-black text-white">{reward.consumer?.name || "Nombre no disponible"}</p>
+              <p className="mt-1 text-xs text-slate-400">{reward.consumer?.phoneMasked || "Teléfono no disponible"} · {phoneVerified ? "verificado" : "sin verificación reportada"}</p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
               <div className="flex items-center gap-2 text-emerald-200">
                 <MailCheck className="h-4 w-4" aria-hidden="true" />
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Respaldo</p>
               </div>
-              <p className="mt-3 text-sm font-black text-white">{reward.consumer?.emailMasked || "WhatsApp verificado"}</p>
+              <p className="mt-3 text-sm font-black text-white">{reward.consumer?.emailMasked || "Email no disponible"}</p>
+              <p className="mt-1 text-xs text-slate-400">{emailVerified ? "Email verificado" : "Sin verificación de email reportada"}</p>
               <p className="mt-1 text-xs text-slate-400">No compartimos datos completos en este enlace.</p>
             </div>
           </div>
@@ -214,9 +249,13 @@ export default async function PublicRewardPage({ params }: { params: Promise<{ t
           </div>
 
           <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-            <a href={reward.passImageUrl} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-cyan-300 px-5 py-3 text-sm font-black text-slate-950 shadow-[0_16px_48px_rgba(34,211,238,.22)] transition hover:-translate-y-0.5 hover:bg-cyan-200">
-              Abrir pase visual <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </a>
+            {reward.passImageUrl ? (
+              <a href={reward.passImageUrl} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-cyan-300 px-5 py-3 text-sm font-black text-slate-950 shadow-[0_16px_48px_rgba(34,211,238,.22)] transition hover:-translate-y-0.5 hover:bg-cyan-200">
+                Abrir pase visual <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </a>
+            ) : (
+              <span className="inline-flex items-center justify-center rounded-2xl border border-amber-300/20 bg-amber-500/10 px-5 py-3 text-sm font-black text-amber-100">Pase visual no disponible</span>
+            )}
             <Link href="/me/rewards" className="btn-neon-glass inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-black">
               Ver beneficios
             </Link>
@@ -231,8 +270,8 @@ export default async function PublicRewardPage({ params }: { params: Promise<{ t
                 <Gift className="h-5 w-5" aria-hidden="true" />
               </div>
               <div>
-                <p className="text-sm font-black text-white">Reward Pass activo</p>
-                <p className="text-[11px] text-slate-400">Visual listo para WhatsApp, email y mostrador.</p>
+                <p className="text-sm font-black text-white">Reward Pass: {status.label}</p>
+                <p className="text-[11px] text-slate-400">Estado y visual segun datos reportados por el tenant.</p>
               </div>
             </div>
             <Sparkles className="h-5 w-5 text-cyan-200" aria-hidden="true" />
@@ -250,7 +289,7 @@ export default async function PublicRewardPage({ params }: { params: Promise<{ t
               <LockKeyhole className="mt-0.5 h-5 w-5 text-emerald-300" aria-hidden="true" />
               <div>
                 <p className="text-sm font-black text-white">Validación segura</p>
-                <p className="mt-1 text-xs leading-relaxed text-slate-300">{reward.staffInstruction || "Validar código, teléfono y sello nexID antes de entregar beneficio."}</p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-300">{reward.staffInstruction || "Consultar el CRM y validar solo los campos efectivamente reportados antes de entregar el beneficio."}</p>
               </div>
             </div>
           </div>

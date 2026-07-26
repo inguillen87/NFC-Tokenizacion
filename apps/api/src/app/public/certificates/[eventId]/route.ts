@@ -25,6 +25,12 @@ function maskUid(uid: unknown) {
   return `${raw.slice(0, 4)}****${raw.slice(-4)}`;
 }
 
+function nullableScanCount(value: unknown) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
+}
+
 function publicWebBase() {
   return (process.env.NEXT_PUBLIC_WEB_URL || process.env.NEXT_PUBLIC_WEB_BASE_URL || process.env.WEB_BASE_URL || "https://nexid.lat").replace(/\/$/, "");
 }
@@ -161,8 +167,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ eventId:
   const localeData = readJsonObject(row.locale_data);
   const productConfig = readJsonObject(sdmConfig.sun && typeof sdmConfig.sun === "object" ? (sdmConfig.sun as Record<string, unknown>).product : null);
   const originConfig = readJsonObject(sdmConfig.sun && typeof sdmConfig.sun === "object" ? (sdmConfig.sun as Record<string, unknown>).origin : null);
-  const productName = String(row.product_name || productConfig.name || row.sku || "Producto verificado");
-  const brandName = String(row.winery || productConfig.producer || row.tenant_name || "Marca verificada");
+  const productName = String(row.product_name || productConfig.name || row.sku || "Producto asociado");
+  const brandName = String(row.winery || productConfig.producer || row.tenant_name || "Marca asociada");
   const originLabel = String(row.origin_label || row.region || originConfig.label || readPath(localeData, ["origin", "label"]) || "Origen registrado");
   const media = readProductAssetMedia(row.locale_data);
   const assetProfile = buildProductAssetProfile({
@@ -182,9 +188,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ eventId:
   const txUrl = explorerUrl(row.tokenization_network, row.tokenization_tx_hash);
   const claimed = String(row.ownership_status || "").toLowerCase() === "claimed";
   const resultCode = String(row.result || "").toUpperCase();
-  const authentic = isClaimableOwnershipResult(resultCode);
+  const tagMessageValidated = isClaimableOwnershipResult(resultCode);
   const replayBlocked = resultCode === "REPLAY_SUSPECT" || resultCode === "DUPLICATE";
-  const tamperReview = resultCode.includes("TAMPER") && !authentic;
+  const tamperReview = resultCode.includes("TAMPER") && !tagMessageValidated;
   const issuedShareToken = (() => {
     try {
       return createPublicCertificateShareToken(eventId);
@@ -193,20 +199,23 @@ export async function GET(req: Request, { params }: { params: Promise<{ eventId:
     }
   })();
   const certificateUrl = `${publicWebBase()}/certificado/${row.event_id}${issuedShareToken ? `?share=${encodeURIComponent(issuedShareToken)}` : ""}`;
-  const verificationState = authentic
-    ? (resultCode.includes("OPENED") ? "authentic_opened" : "authentic_intact")
+  const verificationState = tagMessageValidated
+    ? (resultCode.includes("OPENED") ? "nfc_message_validated_tt_open_reported" : "nfc_message_validated_tt_closed_or_unavailable")
     : replayBlocked
       ? "replay_blocked"
       : tamperReview
         ? "tamper_review"
         : "not_verified";
-  const statusLabel = authentic
-    ? (claimed ? "Claim registrado en nexID" : resultCode.includes("OPENED") ? "Autentico - abierto" : "Producto autentico")
+  const evidenceState = tagMessageValidated
+    ? (resultCode.includes("OPENED") ? "nfc_validated_tt_open_reported" : "nfc_validated_tt_closed_or_unavailable")
+    : verificationState;
+  const statusLabel = tagMessageValidated
+    ? (claimed ? "Mensaje NFC validado · claim registrado" : resultCode.includes("OPENED") ? "Mensaje NFC validado · TT reporta apertura" : "Mensaje NFC validado")
     : replayBlocked
       ? "Replay bloqueado"
       : tamperReview
         ? "Requiere revision de tamper"
-        : "Autenticidad no confirmada";
+        : "Mensaje NFC no validado";
 
   const timelineRows = row.batch_id && row.uid_hex ? await sql/*sql*/`
     SELECT id, result, city, country_code, created_at
@@ -222,22 +231,27 @@ export async function GET(req: Request, { params }: { params: Promise<{ eventId:
     publicUrl: certificateUrl,
     links: {
       certificateUrl,
-      walletUrl: authentic ? `${publicWebBase()}/me/wallet?tenant=${encodeURIComponent(String(row.tenant_slug || ""))}&eventId=${encodeURIComponent(String(row.event_id))}` : null,
-      marketplaceUrl: authentic ? `${publicWebBase()}/me/marketplace${row.tenant_slug ? `?tenant=${encodeURIComponent(String(row.tenant_slug))}` : ""}` : null,
-      explorerUrl: authentic ? txUrl : null,
+      walletUrl: tagMessageValidated ? `${publicWebBase()}/me/wallet?tenant=${encodeURIComponent(String(row.tenant_slug || ""))}&eventId=${encodeURIComponent(String(row.event_id))}` : null,
+      marketplaceUrl: tagMessageValidated ? `${publicWebBase()}/me/marketplace${row.tenant_slug ? `?tenant=${encodeURIComponent(String(row.tenant_slug))}` : ""}` : null,
+      explorerUrl: tagMessageValidated ? txUrl : null,
     },
-    status: authentic ? (claimed ? "claim_recorded" : "product_verified") : verificationState,
+    status: tagMessageValidated ? (claimed ? "claim_recorded" : "tag_message_validated") : evidenceState,
     statusLabel,
     verification: {
       state: verificationState,
-      authentic,
-      actionEligible: authentic,
+      evidenceState,
+      tagMessageValidated,
+      nfcMessageValidated: tagMessageValidated,
+      physicalAuthenticityConfirmed: false,
+      authentic: null,
+      authenticCompatibilityScope: "deprecated_ambiguous_alias_never_asserted",
+      actionEligible: tagMessageValidated,
       resultCode: resultCode || "UNKNOWN",
-      explainer: authentic
-        ? "nexID valido el evento fisico. Polygon, si aparece, registra ownership; no reemplaza esta validacion."
+      explainer: tagMessageValidated
+        ? "nexID validó el mensaje NFC y aplicó la policy del lote. Esto no certifica contenido, origen, custodia ni propiedad física; Polygon, si aparece, registra un claim digital separado."
         : replayBlocked
-          ? "El evento fue bloqueado por replay. No habilita ownership, garantia ni certificado de autenticidad."
-          : "Este evento no alcanza el umbral de autenticidad y no habilita acciones de ownership.",
+          ? "El evento fue bloqueado por replay. No habilita ownership, garantía ni certificado digital."
+          : "Este evento no aporta evidencia NFC suficiente y no habilita acciones de ownership.",
     },
     product: {
       name: productName,
@@ -262,7 +276,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ eventId:
       at: row.created_at || null,
       city: row.city || null,
       country: row.country_code || null,
-      scans: Number(row.scan_count || 1),
+      scans: nullableScanCount(row.scan_count),
     },
     origin: {
       label: originLabel,
@@ -277,13 +291,15 @@ export async function GET(req: Request, { params }: { params: Promise<{ eventId:
     ownership: {
       status: row.ownership_status || "not_claimed",
       claimed,
-      actionEligible: authentic,
+      actionEligible: tagMessageValidated,
       recordScope: "nexid_off_chain",
       onChainOwnerVerified: false,
+      chainTransferStatus: "not_executed",
+      nftTransferExecuted: false,
       claimedAt: row.ownership_claimed_at || null,
       ownerLabel: claimed
         ? "Claim de consumidor registrado en nexID"
-        : authentic
+        : tagMessageValidated
           ? "Disponible para reclamar con tap fresco"
           : "Ownership bloqueado para este evento",
     },
@@ -294,16 +310,17 @@ export async function GET(req: Request, { params }: { params: Promise<{ eventId:
       tokenId: row.tokenization_token_id || null,
       anchorHash: row.tokenization_anchor_hash || null,
       processedAt: row.tokenization_processed_at || null,
-      explorerUrl: authentic ? txUrl : null,
+      explorerUrl: tagMessageValidated ? txUrl : null,
     },
     trust: {
-      score: !authentic ? (replayBlocked ? 18 : tamperReview ? 32 : 24) : claimed ? 96 : tokenStatus === "anchored" ? 93 : 88,
+      score: null,
+      basis: "explicit_evidence_factors_only",
       factors: [
-        { label: "Evento autentico", ok: authentic },
+        { label: "Mensaje NFC elegible según policy", ok: tagMessageValidated },
         { label: "Identidad de chip disponible", ok: Boolean(row.uid_hex) },
         { label: "Tenant y lote registrados", ok: Boolean(row.tenant_slug && row.bid) },
-        { label: "Claim de consumidor registrado", ok: authentic && claimed },
-        { label: "Blockchain confirmado", ok: Boolean(authentic && txUrl && row.tokenization_token_id && tokenStatus === "anchored") },
+        { label: "Claim de consumidor registrado", ok: tagMessageValidated && claimed },
+        { label: "Referencia Polygon disponible", ok: Boolean(tagMessageValidated && txUrl && row.tokenization_token_id && tokenStatus === "anchored") },
       ],
     },
     timeline: timelineRows.map((item) => ({

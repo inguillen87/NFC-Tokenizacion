@@ -98,6 +98,7 @@ test("wrap tool binds the wallet and AAD, validates CRC32C, and writes only base
   assert.deepEqual(result, {
     address,
     domain: "polygon",
+    role: "publisher",
     environment: "staging",
     outputPath,
     ciphertextBytes: ciphertext.length,

@@ -66,7 +66,8 @@ export type TenantTapRealtimeEvent = {
   deviceOs?: string | null;
   deviceType?: string | null;
   productName?: string | null;
-  source: "production" | "demo";
+  source: "production" | "demo" | "unknown";
+  eventSource: string;
 };
 
 const WEIGHTS = {
@@ -272,7 +273,12 @@ export function normalizeTenantTapRealtimeEvent(row: Record<string, unknown>): T
     deviceOs: deviceOs || null,
     deviceType: deviceType || null,
     productName,
-    source: normalized.isDemo ? "demo" : "production",
+    source: normalized.isDemo || normalized.source === "seed"
+      ? "demo"
+      : normalized.source === "real" || normalized.source === "imported" || normalized.source === "production"
+        ? "production"
+        : "unknown",
+    eventSource: normalized.source || "unknown",
   };
 }
 

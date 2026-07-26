@@ -146,7 +146,7 @@ const copyByLocale: Record<"es-AR" | "pt-BR" | "en", DemoCopy> = {
     openLab: "Open full Demo Lab",
     jumpTitle: "What you can understand here",
     jumpCards: [
-      { title: "Trust state", body: "How genuine, alerted or blocked validations look for products/documents.", icon: "trust" },
+      { title: "Evidence state", body: "How valid, alerted or blocked message and credential results are presented without judging the physical object.", icon: "trust" },
       { title: "Mobile experience", body: "What a person sees after tapping a tag or opening a demo credential.", icon: "mobile" },
       { title: "Real operations", body: "How map, feed, batches and demo surfaces connect for sales and investors.", icon: "ops" },
     ],

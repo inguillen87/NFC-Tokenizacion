@@ -6,10 +6,16 @@ import { ensureTenantMembership, saveTapForConsumer } from "../../../../../../li
 import { getTapEvent } from "../../../../../../lib/loyalty-service";
 import { isClaimableOwnershipResult, matchesOwnershipBatch, matchesOwnershipTenant } from "../../../../../../lib/ownership-policy";
 import { ensureConsumerPortalSchema } from "../../../../../../lib/commercial-runtime-schema";
+import { enforceCriticalRateLimit } from "../../../../../../lib/critical-rate-limit";
+import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../../../lib/bounded-request-body";
+import { consumeSunFreshHandoff } from "../../../../../../lib/sun-fresh-handoff";
 
 export async function POST(req: Request, { params }: { params: Promise<{ eventId: string }> }) {
-  await ensureConsumerPortalSchema();
-  const body = (await req.json().catch(() => ({}))) as {
+  const consumer = await getConsumerFromRequest(req);
+  if (!consumer) return json({ ok: false, error: "unauthorized" }, 401);
+  const limited = await enforceCriticalRateLimit(req, { rateClass: "public_write", tenantId: "consumer", subjectId: `consumer:${consumer.id}:join-tenant` });
+  if (limited) return limited;
+  let body: {
     tenantId?: string;
     tenant_id?: string;
     tenantSlug?: string;
@@ -19,11 +25,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
     email?: string;
     contact?: string;
   };
+  try {
+    body = await readBoundedJsonBody<typeof body>(req, 16 * 1024);
+  } catch (error) {
+    const tooLarge = error instanceof RequestBodyTooLargeError;
+    return json({ ok: false, error: tooLarge ? "request_body_too_large" : "invalid_json" }, tooLarge ? 413 : 400);
+  }
   const { eventId } = await params;
   const event = await getTapEvent(eventId);
   if (!event) return json({ ok: false, error: "event_not_found" }, 404);
-  const consumer = await getConsumerFromRequest(req);
-  if (!consumer) return json({ ok: false, error: "unauthorized" }, 401);
+  await ensureConsumerPortalSchema();
   if (!matchesOwnershipTenant({
     eventTenantId: event.tenant_id,
     eventTenantSlug: event.tenant_slug,
@@ -35,6 +46,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
   }
   if (!matchesOwnershipBatch({ eventBid: event.bid, requestedBid: body.bid })) return json({ ok: false, error: "tenant_batch_mismatch" }, 403);
   if (!isClaimableOwnershipResult(String(event.result || ""))) return json({ ok: false, error: "tap_not_claimable" }, 409);
+  const capability = await consumeSunFreshHandoff(req, body as Record<string, unknown>, {
+    eventId: String(event.id), bid: String(event.bid || ""), uidHex: String(event.uid_hex || ""), readCounter: event.sdm_read_ctr,
+  }, "consumer_join_tenant");
+  if (!capability.ok) return json({ ok: false, error: "fresh_tap_capability_required", fresh_token_status: capability.reason }, 403);
   await saveTapForConsumer({ consumerId: consumer.id, eventId: String(event.id) });
   const membership = await ensureTenantMembership({ consumerId: consumer.id, tenantId: event.tenant_id, tapEventId: String(event.id), source: "tap" });
   return json({ ok: true, membership });

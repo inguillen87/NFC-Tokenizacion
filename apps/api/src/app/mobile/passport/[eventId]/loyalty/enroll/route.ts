@@ -1,54 +1,67 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { sql } from "../../../../../../lib/db";
+import { getConsumerFromRequest } from "../../../../../../lib/consumer-auth";
+import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../../../lib/bounded-request-body";
+import { enforceCriticalRateLimit } from "../../../../../../lib/critical-rate-limit";
 import { json } from "../../../../../../lib/http";
-import { ensureDefaultLoyaltyProgram, ensureLoyaltySchema } from "../../../../../../lib/loyalty-schema";
+import { getActiveProgram, getOrCreateMember, getTapEvent } from "../../../../../../lib/loyalty-service";
+import { consumeSunFreshHandoff } from "../../../../../../lib/sun-fresh-handoff";
+
+const MAX_BODY_BYTES = 16 * 1024;
+const BLOCKED_RESULTS = new Set(["REPLAY_SUSPECT", "INVALID", "TAMPER_RISK", "TAMPER", "REVOKED", "NOT_REGISTERED", "NOT_ACTIVE"]);
 
 export async function POST(req: Request, { params }: { params: Promise<{ eventId: string }> }) {
-  const eventId = (await params).eventId;
-  const body = await req.json().catch(() => ({}));
-  const email = String(body.email || "").trim();
-  const phone = String(body.phone || "").trim();
-  const memberKey = String(body.memberKey || req.headers.get("x-forwarded-for") || "anonymous").trim();
-
-  if (!email && !phone) {
-    return json({ ok: false, reason: "missing_contact" }, 400);
+  const consumer = await getConsumerFromRequest(req);
+  if (!consumer) return json({ ok: false, reason: "unauthorized" }, 401);
+  const limited = await enforceCriticalRateLimit(req, {
+    rateClass: "public_write",
+    tenantId: "consumer",
+    subjectId: `consumer:${consumer.id}:loyalty-enroll`,
+  });
+  if (limited) return limited;
+  let body: Record<string, unknown>;
+  try {
+    body = await readBoundedJsonBody<Record<string, unknown>>(req, MAX_BODY_BYTES);
+  } catch (error) {
+    const tooLarge = error instanceof RequestBodyTooLargeError;
+    return json({ ok: false, reason: tooLarge ? "request_body_too_large" : "invalid_json" }, tooLarge ? 413 : 400);
   }
 
-  // Get the tap event and ensure it's valid
-  const eventRows = await sql`
-    SELECT e.id, e.tenant_id, e.uid_hex, e.result, e.batch_id, t.slug as tenant_slug
-    FROM events e
-    JOIN tenants t ON t.id = e.tenant_id
-    WHERE e.id = ${eventId}
-    LIMIT 1
-  `;
-  const event = eventRows[0];
+  const { eventId } = await params;
+  if (!/^\d+$/.test(eventId)) return json({ ok: false, reason: "invalid_event_id" }, 400);
+  const event = await getTapEvent(eventId);
   if (!event) return json({ ok: false, reason: "event_not_found" }, 404);
-
-  await ensureLoyaltySchema();
-
-  // Replay, revoked, tampered can't enroll via this flow for security
-  if (["REPLAY_SUSPECT", "INVALID", "TAMPER_RISK", "TAMPER", "REVOKED", "NOT_REGISTERED"].includes(String(event.result).toUpperCase())) {
+  if (BLOCKED_RESULTS.has(String(event.result || "").toUpperCase())) {
     return json({ ok: false, reason: "event_security_blocked" }, 403);
   }
-
-  const program = await ensureDefaultLoyaltyProgram({ tenantId: event.tenant_id, tenantSlug: event.tenant_slug });
+  const capability = await consumeSunFreshHandoff(req, body, {
+    eventId: String(event.id),
+    bid: String(event.bid || ""),
+    uidHex: String(event.uid_hex || ""),
+    readCounter: event.sdm_read_ctr,
+  }, "loyalty_enroll");
+  if (!capability.ok) {
+    return json({ ok: false, reason: "fresh_tap_capability_required", fresh_token_status: capability.reason }, 403);
+  }
+  const program = await getActiveProgram(event.tenant_id);
   if (!program) return json({ ok: false, reason: "no_active_program" }, 404);
-
-  // Enroll member or update if exists
-  const memberRows = await sql`
-    INSERT INTO loyalty_members (tenant_id, program_id, member_key, email, phone, status, first_tap_at, last_tap_at)
-    VALUES (${event.tenant_id}, ${program.id}, ${memberKey}, ${email || null}, ${phone || null}, 'enrolled', now(), now())
-    ON CONFLICT (program_id, email) DO UPDATE
-    SET status = 'enrolled', last_tap_at = now(), phone = COALESCE(EXCLUDED.phone, loyalty_members.phone)
-    RETURNING id, points_balance, status
-  `;
-
+  const locale = String(body.locale || consumer.preferred_locale || "es-AR").trim().slice(0, 12);
+  const member = await getOrCreateMember({
+    tenantId: event.tenant_id,
+    programId: program.id,
+    eventId: String(event.id),
+    memberKey: `consumer:${consumer.id}`,
+    consumerId: consumer.id,
+    locale,
+    email: consumer.email || null,
+    phone: consumer.phone || null,
+    displayName: consumer.display_name || null,
+    country: event.country_code || consumer.country || null,
+  });
   return json({
     ok: true,
-    message: "Enrolled successfully",
-    member: memberRows[0]
+    enrollment_status: "enrolled",
+    member: { id: member.id, pointsBalance: member.points_balance, status: member.status },
   });
 }

@@ -364,7 +364,7 @@ async function run() {
 
   const claimData = await claimResponse.json();
   console.log("✅ Propiedad registrada correctamente en base de datos!");
-  console.log("   Detalle de validación:", claimData.message || "Comprador verificado y activado.");
+  console.log("   Detalle de validación:", claimData.message || "Solicitud de comprador registrada según policy.");
 
   console.log("\n🔍 Buscando producto activo en el Marketplace para la bodega...");
   const productRows = await sql`

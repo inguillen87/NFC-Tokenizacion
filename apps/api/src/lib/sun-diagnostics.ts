@@ -302,7 +302,7 @@ function normalizeSnapshotContractFromCurrentIdentity(input: unknown, currentIde
     clubName: currentIdentity.club_name || tenant.clubName || null,
   };
   contract.product = {
-    name: productName || currentIdentity.sku || "Producto verificado",
+    name: productName || currentIdentity.sku || "Producto asociado",
     sku: currentIdentity.sku || null,
     winery: winery || null,
     region: region || null,
@@ -404,7 +404,7 @@ function markHistoricalSnapshotContract(input: unknown, snapshot: { id: number; 
   contract.allowedActions = uniqueStrings(contract.allowedActions, isSunProfileMismatch ? ["provenance", "report"] : []).filter((action) => action === "provenance" || action === "report");
   contract.blockedActions = uniqueStrings(contract.blockedActions, ["claim", "save", "join", "warranty", "rewards", "tokenization"]);
 
-  const summary = String(status.summary || "Autenticidad visible en modo consulta.");
+  const summary = String(status.summary || "Mensaje NFC disponible en modo consulta; sin veredicto sobre el producto fisico.");
   contract.status = {
     ...status,
     snapshot: true,

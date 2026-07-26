@@ -27,11 +27,22 @@ import {
   Cpu
 } from "lucide-react";
 import { motion } from "framer-motion";
+import {
+  resolveLoyaltyAiProvenance,
+  type LoyaltyOptimizerMode,
+} from "../../../../lib/loyalty-ai-provenance";
+import {
+  describeCampaignMeasurement,
+  describeQuestionRate,
+  describeTriviaSummary,
+  type CampaignMeasurement,
+} from "./loyalty-campaign-truth";
 
 // Types
 interface Campaign {
   id: string;
   status: "RUNNING" | "DRAFT" | "COMPLETED";
+  measurement: CampaignMeasurement;
   title: string;
   description: string;
   conversion: string;
@@ -50,7 +61,7 @@ interface AnalysisResult {
     urgency: number;
   };
   viralityScore: number;
-  viralityTier: "Baja" | "Media" | "Alta" | "Viral Garantizado";
+  viralityTier: "Baja" | "Media" | "Alta" | "Potencial muy alto";
 }
 
 interface ChatMessage {
@@ -113,7 +124,7 @@ interface CampaignTemplate {
   category: "MARKETING" | "UTILITY" | "LOYALTY";
   segment: string;
   offer: string;
-  expectedLift: string;
+  modeledOutcome: string;
   body: string;
   requirements: string[];
 }
@@ -149,11 +160,11 @@ const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
     name: "Voucher cercanía bodega",
     channel: "whatsapp",
     category: "MARKETING",
-    segment: "Usuarios verificados cerca de Mendoza",
+    segment: "Perfiles demo con ciudad declarada cerca de Mendoza",
     offer: "2x1 en copa de bienvenida + upgrade de visita",
-    expectedLift: "+14% visitas al portal",
+    modeledOutcome: "Escenario modelado: +14% visitas al portal",
     body:
-      "Hola {{name}}, vimos tu tap verificado en {{city}} sobre {{product}}. Bodega Balmec te reserva {{offer}} por 48h. Toca Quiero y nexID emite tu código de canje con respaldo por WhatsApp y email si lo tenés cargado. Stop para salir.",
+      "Hola {{name}}, vimos una lectura NFC registrada en {{city}} para {{product}}. Bodega Balmec te reserva {{offer}} por 48h. Toca Quiero y nexID emite tu código de canje con respaldo por WhatsApp y email si lo tenés cargado. Stop para salir.",
     requirements: ["phone_verified", "whatsapp_opt_in", "city_match"],
   },
   {
@@ -163,9 +174,9 @@ const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
     category: "UTILITY",
     segment: "Primer tap validado",
     offer: "club digital con puntos iniciales",
-    expectedLift: "+22% registros completados",
+    modeledOutcome: "Escenario modelado: +22% registros completados",
     body:
-      "Hola {{name}}, tu producto {{product}} quedó autenticado con nexID. Ya tenés {{points}} puntos y podés guardar el pasaporte, reclamar beneficios y recibir novedades de {{brand}}. Stop para salir.",
+      "Hola {{name}}, la lectura NFC de {{product}} fue aceptada según la política de {{brand}}. Ya tenés {{points}} puntos y podés guardar el pasaporte, solicitar beneficios y recibir novedades. La lectura no certifica por sí sola el contenido físico ni el origen. Stop para salir.",
     requirements: ["tap_valid", "consumer_session"],
   },
   {
@@ -175,9 +186,9 @@ const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
     category: "UTILITY",
     segment: "Usuarios con señales de riesgo",
     offer: "validación asistida y beneficio compensatorio",
-    expectedLift: "-18% abandono post-alerta",
+    modeledOutcome: "Escenario modelado: -18% abandono post-alerta",
     body:
-      "Hola {{name}}, detectamos una verificación que requiere revisión para {{product}}. El equipo de {{brand}} puede validar el caso y activar un beneficio de confianza desde tu Pasaporte nexID. Stop para salir.",
+      "Hola {{name}}, detectamos una lectura NFC que requiere revisión para {{product}}. El equipo de {{brand}} puede revisar el mensaje y la política aplicable antes de activar un beneficio desde tu Pasaporte nexID. Stop para salir.",
     requirements: ["risk_case", "support_ready"],
   },
   {
@@ -187,9 +198,9 @@ const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
     category: "LOYALTY",
     segment: "Clientes con 2+ taps o puntos",
     offer: "bonus de 300 puntos + badge Vendimia Insider",
-    expectedLift: "+9% recompra esperada",
+    modeledOutcome: "Escenario modelado: +9% recompra; no medida",
     body:
-      "Hola {{name}}, por tus taps en {{city}} desbloqueaste el reto Vendimia Insider. Escanea otro producto de {{brand}} esta semana y gana {{offer}}. Ver bases en tu portal nexID. Stop para salir.",
+      "Hola {{name}}, por tus lecturas NFC registradas en {{city}} desbloqueaste el reto Vendimia Insider. Lee otra etiqueta de {{brand}} esta semana y gana {{offer}} según las bases del portal nexID. Stop para salir.",
     requirements: ["loyalty_member", "marketing_opt_in"],
   },
 ];
@@ -243,16 +254,13 @@ const TRIVIA_FALLBACK: TriviaInsight = {
     completed: 0,
     pointsIssued: 0,
     avgScorePct: 0,
-    topCity: "Mendoza",
-    topProduct: "Gran Reserva Malbec",
+    topCity: null,
+    topProduct: null,
     insight: "Apenas los clientes completen la trivia post-tap, este panel muestra conocimiento por ciudad, producto y pregunta para activar promociones o eventos.",
   },
-  cities: [
-    { city: "Mendoza", attempts: 0, avgScorePct: 0, pointsIssued: 0, topProduct: "Gran Reserva Malbec" },
-    { city: "Cordoba", attempts: 0, avgScorePct: 0, pointsIssued: 0, topProduct: "Cabernet Franc Reserva" },
-  ],
+  cities: [],
   questions: [
-    { prompt: "Origen verificado y lote del producto", insightTag: "origin-literacy", attempts: 0, correctRatePct: 0, dominantMiss: null },
+    { prompt: "Origen declarado y lote asociado al mensaje NFC", insightTag: "origin-literacy", attempts: 0, correctRatePct: 0, dominantMiss: null },
     { prompt: "Beneficios por cercania a bodega o feria", insightTag: "geo-campaign-understanding", attempts: 0, correctRatePct: 0, dominantMiss: null },
     { prompt: "Experiencia premium post-tap", insightTag: "post-tap-experience-fit", attempts: 0, correctRatePct: 0, dominantMiss: null },
   ],
@@ -274,7 +282,7 @@ function renderTemplateBody(template: CampaignTemplate, member: AudienceMember |
   const replacements: Record<string, string> = {
     name: firstName(selected.display_name),
     city: selected.city || "Mendoza",
-    product: selected.last_product || "tu producto autenticado",
+    product: selected.last_product || "tu producto registrado",
     brand: selected.tenant_slug === "demobodega" ? "Bodega Balmec" : selected.tenant_slug || "tu marca",
     offer: template.offer,
     points: String(asNumber(selected.points_balance)),
@@ -287,6 +295,7 @@ const INITIAL_CAMPAIGNS: Campaign[] = [
   {
     id: "1",
     status: "RUNNING",
+    measurement: "demo_model",
     title: "Vendimia Passport (Seasonal)",
     description: "Invita a usuarios que hayan escaneado en el último mes a completar un Quiz de Terroir a cambio de un Upgrade en su próxima degustación.",
     conversion: "18%",
@@ -297,8 +306,9 @@ const INITIAL_CAMPAIGNS: Campaign[] = [
   {
     id: "2",
     status: "DRAFT",
+    measurement: "demo_model",
     title: "Turista Brasil (Localizado)",
-    description: "Campaña generada por IA en Portugués. Segmentada a IPs de Brasil para incentivar la compra de cajas de vino con envío bonificado.",
+    description: "Borrador demo en portugués, preparado para un segmento de turismo de Brasil y pendiente de configurar antes del envío.",
     conversion: "-",
     sentCount: 0,
     clicksCount: 0,
@@ -319,10 +329,11 @@ export default function LoyaltyCampaignsClient() {
   const [selectedTone, setSelectedTone] = useState<"sommelier" | "vip-club" | "modern-web3">("sommelier");
   const [appliedImprovements, setAppliedImprovements] = useState<ImprovementApplied[]>([]);
   const [selectedModel, setSelectedModel] = useState("Qwen/Qwen2.5-7B-Instruct");
-  const [optimizerMode, setOptimizerMode] = useState<"idle" | "huggingface" | "server-fallback" | "local-fallback">("idle");
+  const [optimizerMode, setOptimizerMode] = useState<LoyaltyOptimizerMode>("idle");
   const [serverAiConfigured, setServerAiConfigured] = useState<boolean | null>(null);
   const [serverAiModel, setServerAiModel] = useState("");
   const [lastOptimizerModel, setLastOptimizerModel] = useState("");
+  const [lastOptimizerProvider, setLastOptimizerProvider] = useState("");
 
   // Custom Hugging Face Token state loaded from localStorage
   const [hfTokenInput, setHfTokenInput] = useState(() => {
@@ -376,7 +387,7 @@ export default function LoyaltyCampaignsClient() {
     {
       id: "1",
       sender: "bot",
-      text: "¡Hola! Analicé los datos de fidelización de este mes. Tu tasa de retención de clientes cayó un 2%. ¿Querés que diseñemos una campaña exclusiva para reactivar a los usuarios que no han escaneado en los últimos 30 días?",
+      text: "¡Hola! Soy un asistente guiado por reglas locales. Puedo ayudarte a preparar un borrador de reactivación para usuarios sin lecturas recientes; revisá el segmento y los datos antes de enviarlo.",
       action: {
         label: "Diseñar Campaña de Reactivación",
         title: "Reactivación Club Selección",
@@ -405,8 +416,12 @@ export default function LoyaltyCampaignsClient() {
   const [voucherChecking, setVoucherChecking] = useState(false);
   const [voucherResult, setVoucherResult] = useState<RedemptionValidation | null>(null);
 
-  const audience = audienceMembers.length ? audienceMembers : DEMO_AUDIENCE;
+  const audienceUsesDemo = audienceMembers.length === 0;
+  const audience = audienceUsesDemo ? DEMO_AUDIENCE : audienceMembers;
   const selectedTemplate = CAMPAIGN_TEMPLATES.find((item) => item.id === selectedTemplateId) || CAMPAIGN_TEMPLATES[0];
+  const triviaMeasurement = describeTriviaSummary(triviaInsight.summary);
+  const triviaHasMeasurements = triviaMeasurement.hasMeasurements;
+  const measuredTriviaCities = triviaInsight.cities.filter((city) => asNumber(city.attempts) > 0);
   const cityOptions = useMemo(() => {
     return Array.from(new Set(audience.map((item) => item.city).filter(Boolean) as string[])).sort();
   }, [audience]);
@@ -441,9 +456,9 @@ export default function LoyaltyCampaignsClient() {
       optInProfiles,
       steps: [
         {
-          label: "Tap verificado",
+          label: "Lecturas NFC registradas",
           value: `${audienceKpis.taps.toLocaleString("es-AR")} lecturas`,
-          detail: "Senal fisica del producto usada como disparador comercial.",
+          detail: "Mensajes NFC asociados por backend y sujetos a la politica del tenant.",
           ready: audienceKpis.taps > 0,
           Icon: Gauge,
         },
@@ -462,9 +477,9 @@ export default function LoyaltyCampaignsClient() {
           Icon: ShieldCheck,
         },
         {
-          label: "Plantilla",
+          label: "Plantilla demo",
           value: selectedTemplate.name,
-          detail: selectedTemplate.offer,
+          detail: `${selectedTemplate.offer}. Hipotesis no medida.`,
           ready: Boolean(selectedTemplate),
           Icon: MessageSquare,
         },
@@ -652,7 +667,7 @@ export default function LoyaltyCampaignsClient() {
       emotions.exclusivity += (100 - sum);
     }
 
-    // Virality/CTR prediction
+    // Local copy heuristic. It is not a calibrated CTR or conversion model.
     const len = text.trim().length;
     let lenFactor = 0;
     if (len >= 80 && len <= 160) lenFactor = 30; // Optimal SMS/Push notification size
@@ -674,7 +689,7 @@ export default function LoyaltyCampaignsClient() {
 
     let viralityTier: AnalysisResult["viralityTier"] = "Media";
     if (viralityScore < 35) viralityTier = "Baja";
-    else if (viralityScore > 75) viralityTier = "Viral Garantizado";
+    else if (viralityScore > 75) viralityTier = "Potencial muy alto";
     else if (viralityScore > 50) viralityTier = "Alta";
 
     return {
@@ -709,14 +724,14 @@ export default function LoyaltyCampaignsClient() {
       "gratis": ["cortesía selecta sin cargo", "experiencia de cortesía exclusiva"],
       "completar": ["consagrar", "validar"],
       "ganar": ["ser galardonado con", "acceder al derecho de disfrutar"],
-      "escanear": ["autenticar su chip nexID", "verificar la firma criptográfica de su etiqueta"],
-      "escaneá": ["autenticá tu botella NFC", "escaneá el sello de autenticidad nexID"],
+      "escanear": ["validar el mensaje NFC con nexID", "leer la etiqueta NFC y consultar su registro"],
+      "escaneá": ["validá el mensaje NFC de la etiqueta", "leé la etiqueta NFC nexID"],
     },
     "vip-club": {
       "vino": ["reserva privada numerada", "cosecha limitada de cofradía", "etiqueta exclusiva de asignación"],
       "vinos": ["piezas numeradas de guarda", "asignaciones exclusivas", "reliquias de bodega"],
       "rico": ["de prestigio inigualable y distinción sublime", "reservado exclusivamente para paladares exigentes"],
-      "ricos": ["de nobleza certificada y linaje sobresaliente"],
+      "ricos": ["presentados por la marca como una selección de linaje destacado"],
       "bueno": ["altamente codiciado y de colección privada", "de abolengo vinícola excepcional"],
       "barato": ["un beneficio arancelario de cortesía exclusivo de miembro", "un valor preferencial de cofradía"],
       "baratos": ["privilegios de asignación directa"],
@@ -733,32 +748,32 @@ export default function LoyaltyCampaignsClient() {
       "gratis": ["cortesía de cofradía", "beneficio exclusivo sin cargo adicional"],
       "completar": ["formalizar su registro de miembro", "validar su pasaporte digital"],
       "ganar": ["adquirir el derecho preferencial de disfrutar", "ser condecorado con"],
-      "escanear": ["autenticar su chip de seguridad", "validar su pasaporte digital en el sello NFC"],
-      "escaneá": ["autenticá tu botella nexID", "verificá tu sello digital de miembro"],
+      "escanear": ["validar el mensaje NFC según la política", "consultar el pasaporte digital desde la etiqueta NFC"],
+      "escaneá": ["validá el mensaje NFC de la etiqueta", "consultá tu pasaporte digital nexID"],
     },
     "modern-web3": {
-      "vino": ["activo físico con certificado transferible", "botella respaldada criptográficamente", "gemelo digital de colección"],
-      "vinos": ["activos físicos con certificado", "coleccionables con pasaporte auditable", "botellas con respaldo criptográfico"],
-      "rico": ["con trazabilidad verificable y huella sensorial auditada"],
-      "ricos": ["de alto valor de coleccionabilidad y procedencia certificada"],
-      "bueno": ["con firma criptográfica verificable", "certificado transferible"],
+      "vino": ["producto con registro digital sujeto a política", "botella con ficha digital declarada", "gemelo digital de colección"],
+      "vinos": ["productos con registros digitales", "coleccionables con pasaporte consultable", "botellas con ficha digital declarada"],
+      "rico": ["con historia declarada en el pasaporte digital"],
+      "ricos": ["con ficha digital declarada por la marca"],
+      "bueno": ["con mensaje NFC validable por backend", "elegible para un registro digital sujeto a política"],
       "barato": ["un valor preferencial de acuñación (minting rate)"],
       "baratos": ["asignaciones inteligentes con fee reducido"],
-      "comprar": ["reclamar la propiedad digital (claim)", "transferir al ledger privado", "acuñar el certificado de procedencia"],
-      "compra": ["tokenización de propiedad"],
+      "comprar": ["iniciar una solicitud digital sujeta a validación", "solicitar registro en el ledger", "pedir un certificado digital según política"],
+      "compra": ["validación de compra previa a cualquier claim"],
       "club": ["red descentralizada de coleccionistas", "Cofradía Cripto-Sommelier nexID", "DAO de beneficios Web3"],
-      "degustar": ["catar y validar certificado", "desbloquear la experiencia interactiva"],
+      "degustar": ["catar y consultar la ficha digital", "desbloquear la experiencia interactiva"],
       "botella": ["activo digital tokenizado", "botella con microchip nexID NFC"],
       "botellas": ["lote digitalizado de etiquetas"],
-      "olor": ["perfil aromático verificado y registrado en el smart contract"],
-      "tomar": ["consumir y quemar el token de sello (burn)", "desbloquear"],
+      "olor": ["perfil aromático declarado por la marca"],
+      "tomar": ["registrar el consumo según la política del tenant", "desbloquear"],
       "oferta": ["drop exclusivo de asignación digital", "acceso anticipado al pool"],
       "descuento": ["recompensa nativa de fidelidad", "cashback digital de protocolo"],
       "gratis": ["airdrop de cortesía sin cargo", "recompensa directa de bloque"],
       "completar": ["firmar la transacción digital", "aprobar en el ledger"],
       "ganar": ["acuñar el derecho de redención", "desbloquear la recompensa en tu wallet"],
-      "escanear": ["autenticar el gemelo digital NFC", "escanear el chip físico criptográfico nexID"],
-      "escaneá": ["escaneá el chip criptográfico NFC", "autenticá tu gemelo digital nexID"],
+      "escanear": ["validar el mensaje NFC del registro digital", "leer la etiqueta NFC nexID"],
+      "escaneá": ["validá el mensaje NFC de la etiqueta", "consultá el registro digital nexID"],
     }
   };
 
@@ -766,6 +781,9 @@ export default function LoyaltyCampaignsClient() {
   async function handleOptimizeText() {
     if (!draftText.trim()) return;
     setIsOptimizing(true);
+    setOptimizerMode("idle");
+    setLastOptimizerProvider("");
+    setLastOptimizerModel("");
 
     try {
       const response = await fetch("/api/cognitive-ai", {
@@ -799,8 +817,12 @@ export default function LoyaltyCampaignsClient() {
 
       setAppliedImprovements(foundImprovements);
       setOptimizedText(data.optimizedText);
-      setOptimizerMode(data.fallback ? "server-fallback" : "huggingface");
-      setLastOptimizerModel(String(data.model || selectedModel || ""));
+      const confirmedProvider = typeof data.provider === "string" ? data.provider.trim() : "";
+      const confirmedModel = typeof data.model === "string" ? data.model.trim() : "";
+      const hasConfirmedLiveProvenance = data.fallback !== true && Boolean(confirmedProvider && confirmedModel);
+      setOptimizerMode(hasConfirmedLiveProvenance ? "live-provider" : "server-fallback");
+      setLastOptimizerProvider(hasConfirmedLiveProvenance ? confirmedProvider : "");
+      setLastOptimizerModel(hasConfirmedLiveProvenance ? confirmedModel : "");
       setShowOptimizedResult(true);
       setIsOptimizing(false);
     } catch (err) {
@@ -838,7 +860,7 @@ export default function LoyaltyCampaignsClient() {
         const hasPremiumHook = clean.includes("vip") || clean.includes("exclusiv") || clean.includes("colección") || clean.includes("terroir") || clean.includes("cofradía") || clean.includes("chain") || clean.includes("token");
         if (!hasPremiumHook) {
           if (selectedTone === "modern-web3") {
-            optimized = `Gemelo digital verificado nexID: ${optimized} — Certificado transferible bajo política del tenant.`;
+            optimized = `Borrador Web3 nexID: ${optimized} — Registro digital sujeto a política, evidencia y confirmación on-chain.`;
           } else {
             optimized = `Una propuesta de valor exclusivo nexID: ${optimized} — Reservado para miembros de nuestra Cofradía Privada.`;
           }
@@ -847,7 +869,7 @@ export default function LoyaltyCampaignsClient() {
         const hasCTA = clean.includes("autentic") || clean.includes("escan") || clean.includes("sumar") || clean.includes("adquirir") || clean.includes("particip") || clean.includes("claim") || clean.includes("reclamar");
         if (!hasCTA) {
           if (selectedTone === "modern-web3") {
-            optimized += " Escaneá el chip NFC nexID para reclamar el certificado de propiedad de tu activo físico.";
+            optimized += " Leé la etiqueta NFC nexID para iniciar una solicitud digital sujeta a validación; la lectura no prueba propiedad física.";
           } else {
             optimized += " Escaneá el chip NFC nexID para activar este beneficio único.";
           }
@@ -871,6 +893,7 @@ export default function LoyaltyCampaignsClient() {
     const newCampaign: Campaign = {
       id: Date.now().toString(),
       status: "DRAFT",
+      measurement: "draft_unmeasured",
       title: draftTitle.trim() || `Campaña AI #${campaigns.length + 1}`,
       description: textToUse,
       conversion: "-",
@@ -888,6 +911,7 @@ export default function LoyaltyCampaignsClient() {
     setShowOptimizedResult(false);
     setAppliedImprovements([]);
     setOptimizerMode("idle");
+    setLastOptimizerProvider("");
     setLastOptimizerModel("");
     
     // Back to list
@@ -933,7 +957,7 @@ export default function LoyaltyCampaignsClient() {
         mediaSid: payload?.mediaSid || null,
         contentSid: payload?.contentSid || null,
         mediaUrl: payload?.mediaUrl || null,
-        message: `Mensaje interactivo enviado a ${payload?.to || "destinatario verificado"}. Estado: ${payload?.status || "queued"}.`,
+        message: `Mensaje interactivo enviado a ${payload?.to || "destinatario configurado"}. Estado reportado: ${payload?.status || "queued"}.`,
       });
     } catch (error) {
       setTwilioStatus({
@@ -993,7 +1017,7 @@ export default function LoyaltyCampaignsClient() {
     setIsBotTyping(true);
 
     setTimeout(() => {
-      let replyText = "Entendido. Como nexID Cognitive AI Engine, te sugiero diseñar campañas enfocadas en la exclusividad de tu terroir y el valor agregado de tus colecciones numeradas. ¿Querés probar redactando un copy promocional en la pestaña superior?";
+      let replyText = "Entendido. Con las reglas locales de este asistente, te sugiero diseñar una campaña enfocada en la propuesta de valor del producto. Podés pasar el borrador al optimizador y revisar su procedencia antes de usarlo.";
       let action = undefined;
 
       if (prompt.includes("fidelización") || prompt.includes("retención") || prompt.includes("reactivar")) {
@@ -1008,7 +1032,7 @@ export default function LoyaltyCampaignsClient() {
         action = {
           label: "Usar Borrador Premium",
           title: "Cosecha Limitada de Autor",
-          prompt: "Lanzamos el nuevo vino de barrica de este año. Comprá ahora con descuento del club y escaneá el chip para ver el certificado."
+          prompt: "Lanzamos el nuevo vino de barrica de este año. Comprá ahora con descuento del club y leé la etiqueta NFC para consultar la ficha digital disponible según la política de la marca."
         };
       } else if (prompt.includes("brasil") || prompt.includes("portugués") || prompt.includes("turismo")) {
         replyText = "Para tu segmento internacional, es vital destacar la logística premium y el pasaporte de bodega. Probá con esta estructura en el Editor:";
@@ -1018,11 +1042,11 @@ export default function LoyaltyCampaignsClient() {
           prompt: "Aprovechá el envío gratis para comprar vino de autor y escaneá tu botella en Brasil para ganar accesos VIP en Mendoza."
         };
       } else if (prompt.includes("web3") || prompt.includes("blockchain") || prompt.includes("nft")) {
-        replyText = "Para una campaña de fidelización basada en activos digitales y procedencia criptográfica, probá este borrador en el tono 'Modern Web3':";
+        replyText = "Para una campaña basada en registros digitales y claims declarados sujetos a política, probá este borrador en el tono 'Modern Web3':";
         action = {
           label: "Usar Borrador Web3",
           title: "Tokenización de Lote Exclusivo",
-          prompt: "Asegurá tu botella con certificado transferible. Escaneá el chip NFC para reclamar propiedad digital, beneficios de club y trazabilidad verificable."
+          prompt: "Leé la etiqueta NFC para consultar la ficha declarada e iniciar, si la política lo permite, una solicitud de certificado digital o beneficios de club. La lectura no prueba propiedad física."
         };
       }
 
@@ -1036,59 +1060,46 @@ export default function LoyaltyCampaignsClient() {
     }, 1000);
   }
 
-  const optimizerModeLabel =
-    optimizerMode === "huggingface"
-      ? "LLM Hugging Face"
-      : optimizerMode === "server-fallback"
-        ? "Fallback seguro"
-        : optimizerMode === "local-fallback"
-          ? "Motor local"
-          : hfTokenInput
-            ? "LLM override listo"
-            : serverAiConfigured === true
-              ? "LLM servidor listo"
-              : serverAiConfigured === null
-                ? "Verificando IA"
-                : "Heuristicas locales";
-
-  const optimizerModeDetail =
-    optimizerMode === "huggingface"
-      ? "La reescritura salio por Hugging Face Router con el modelo seleccionado."
-      : optimizerMode === "server-fallback"
-        ? "No hubo respuesta util del proveedor o falta token; se uso fallback seguro del servidor."
-        : optimizerMode === "local-fallback"
-          ? "La API no respondio; se uso el diccionario premium local del navegador."
-          : hfTokenInput
-            ? `Hay token guardado en este navegador; al optimizar se intenta usar ${selectedModel}.`
-            : serverAiConfigured === true
-              ? `El servidor tiene IA configurada${serverAiModel ? ` (${serverAiModel})` : ""}. El editor usa esa configuracion sin exponer tokens al navegador.`
-              : serverAiConfigured === null
-                ? "Consultando el estado del proveedor de IA del servidor."
-                : "Sin proveedor configurado, la reescritura y los scores quedan en modo estimado/local.";
-  const optimizerIsConfigured = Boolean(hfTokenInput || serverAiConfigured === true);
+  const aiProvenance = resolveLoyaltyAiProvenance({
+    mode: optimizerMode,
+    provider: lastOptimizerProvider,
+    model: lastOptimizerModel,
+    requestPending: isOptimizing,
+    customTokenPresent: Boolean(hfTokenInput),
+    serverConfigured: serverAiConfigured,
+    serverModel: serverAiModel,
+  });
+  const optimizerModeLabel = aiProvenance.tabBadge;
+  const optimizerModeDetail = aiProvenance.detail;
+  const optimizerStatusClass =
+    aiProvenance.kind === "live-provider"
+      ? "bg-emerald-500/10 text-emerald-300"
+      : aiProvenance.kind === "checking"
+        ? "bg-sky-500/10 text-sky-300"
+        : "bg-amber-500/10 text-amber-300";
 
   return (
     <div className="space-y-8 pb-12">
       <SectionHeading 
         eyebrow="IA Comercial" 
         title="Clientes & campañas" 
-        description="Fidelizá a tus consumidores mediante campañas inteligentes optimizadas en tiempo real por el motor cognitivo de nexID." 
+        description="Fidelizá a tus consumidores con campañas asistidas, reglas comerciales y un optimizador cuya procedencia se informa en cada resultado."
       />
       <section className="rounded-2xl border border-cyan-500/20 bg-slate-950/70 p-4 shadow-[0_0_30px_rgba(6,182,212,0.06)]">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">
               <MessageCircle className="h-4 w-4" />
-              Audiencia CRM en vivo
+              {audienceUsesDemo ? "Audiencia demo modelada" : "Audiencia CRM reportada"}
             </div>
             <h2 className="mt-1 text-xl font-black text-white">Segmentos, beneficios y WhatsApp</h2>
             <p className="mt-1 max-w-3xl text-xs leading-relaxed text-slate-400">
-              De lectura verificada a relación comercial: usuario registrado, ciudad, producto, consentimiento, plantilla y envío controlado.
+              De mensaje NFC registrado a relación comercial: perfil, ciudad declarada o reportada, producto asociado, consentimiento, plantilla y envío controlado.
             </p>
           </div>
           <div className="flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-xs font-bold text-emerald-200">
             <ShieldCheck className="h-4 w-4" />
-            {audienceLoading ? "Cargando audiencia" : audienceError ? "Fallback offline activo" : "Datos CRM activos"}
+            {audienceLoading ? "Cargando audiencia" : audienceUsesDemo ? "Datos demo · no son audiencia real" : "Datos CRM reportados"}
           </div>
         </div>
 
@@ -1124,7 +1135,7 @@ export default function LoyaltyCampaignsClient() {
               </p>
             </div>
             <div className="min-w-[150px] rounded-2xl border border-cyan-300/20 bg-slate-950/60 p-3 text-right">
-              <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Readiness</div>
+              <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Readiness de configuracion</div>
               <div className="mt-1 text-3xl font-black text-cyan-100">{flowReadiness.score}%</div>
               <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-800">
                 <div className="h-full rounded-full bg-gradient-to-r from-cyan-300 to-emerald-300 transition-all" style={{ width: `${flowReadiness.score}%` }} />
@@ -1164,23 +1175,23 @@ export default function LoyaltyCampaignsClient() {
                 <Sparkles className="h-4 w-4" />
                 Trivia & market research
               </div>
-              <h3 className="mt-1 text-sm font-black text-white">Conocimiento real del cliente por tap</h3>
+              <h3 className="mt-1 text-sm font-black text-white">Resultados de trivia asociados a lecturas NFC</h3>
               <p className="mt-1 max-w-3xl text-[11px] leading-relaxed text-slate-400">
-                Cada respuesta convierte el producto físico en investigación de mercado: ciudad, producto, interés, educación de marca y puntos emitidos.
+                Solo las respuestas confirmadas permiten medir conocimiento por ciudad reportada, producto asociado y pregunta. Una lectura NFC no verifica contenido físico ni origen.
               </p>
             </div>
             <div className="flex items-center gap-2 rounded-xl border border-violet-300/20 bg-violet-400/10 px-3 py-2 text-xs font-bold text-violet-100">
               <Gauge className="h-4 w-4" />
-              {triviaLoading ? "Cargando trivia" : triviaError ? "Fallback market demo" : "Datos de trivia activos"}
+              {triviaLoading ? "Cargando trivia" : triviaError ? "Guia demo · sin medicion" : triviaHasMeasurements ? "Intentos confirmados" : "Sin intentos confirmados"}
             </div>
           </div>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {[
               { label: "Intentos", value: triviaInsight.summary.attempts, hint: "trivias post-tap", color: "text-violet-200" },
-              { label: "Score medio", value: `${triviaInsight.summary.avgScorePct}%`, hint: "conocimiento marca", color: "text-cyan-200" },
+              { label: "Score medio", value: triviaMeasurement.avgScoreLabel, hint: triviaMeasurement.avgScoreHint, color: "text-cyan-200" },
               { label: "Puntos emitidos", value: triviaInsight.summary.pointsIssued, hint: "gamificacion", color: "text-emerald-200" },
-              { label: "Ciudad lider", value: triviaInsight.summary.topCity || "Sin datos", hint: triviaInsight.summary.topProduct || "producto pendiente", color: "text-amber-200" },
+              { label: "Ciudad lider", value: triviaMeasurement.topCityLabel, hint: triviaMeasurement.topCityHint, color: "text-amber-200" },
             ].map((item) => (
               <div key={item.label} className="rounded-xl border border-white/10 bg-slate-950/55 p-3">
                 <div className="text-[9px] font-black uppercase tracking-wider text-slate-500">{item.label}</div>
@@ -1216,7 +1227,7 @@ export default function LoyaltyCampaignsClient() {
                             ? "bg-amber-400/10 text-amber-200"
                             : "bg-slate-800 text-slate-400"
                       }`}>
-                        {question.correctRatePct}%
+                        {describeQuestionRate(question.attempts, question.correctRatePct)}
                       </div>
                     </div>
                   </div>
@@ -1233,7 +1244,7 @@ export default function LoyaltyCampaignsClient() {
                 <MapPin className="h-5 w-5 text-violet-200" />
               </div>
               <div className="space-y-2">
-                {(triviaInsight.cities.length ? triviaInsight.cities : TRIVIA_FALLBACK.cities).slice(0, 4).map((city) => (
+                {measuredTriviaCities.slice(0, 4).map((city) => (
                   <button
                     key={city.city}
                     type="button"
@@ -1254,6 +1265,11 @@ export default function LoyaltyCampaignsClient() {
                     </div>
                   </button>
                 ))}
+                {!measuredTriviaCities.length ? (
+                  <div className="rounded-xl border border-dashed border-violet-300/20 bg-slate-900/30 p-3 text-[11px] leading-relaxed text-slate-400">
+                    Sin ciudades con intentos confirmados. No se infiere una ciudad lider desde plantillas ni datos demo.
+                  </div>
+                ) : null}
               </div>
               <p className="mt-3 rounded-xl border border-violet-400/20 bg-violet-400/10 p-3 text-[11px] leading-relaxed text-violet-100">
                 {triviaInsight.summary.insight || TRIVIA_FALLBACK.summary.insight}
@@ -1266,8 +1282,8 @@ export default function LoyaltyCampaignsClient() {
           <div className="rounded-2xl border border-white/10 bg-slate-900/35 p-4">
             <div className="mb-3 flex items-center justify-between gap-2">
               <div>
-                <h3 className="text-sm font-black text-white">Plantillas profesionales</h3>
-                <p className="text-[11px] text-slate-400">Promos, fidelizacion, recuperacion de confianza y gamificacion.</p>
+                <h3 className="text-sm font-black text-white">Plantillas demo para configurar</h3>
+                <p className="text-[11px] text-slate-400">Hipotesis de promos y fidelizacion; uplift, recompra y conversion no estan medidos.</p>
               </div>
               <Gift className="h-5 w-5 text-amber-300" />
             </div>
@@ -1296,7 +1312,7 @@ export default function LoyaltyCampaignsClient() {
                       </span>
                     </div>
                     <div className="mt-2 flex flex-wrap gap-2 text-[10px]">
-                      <span className="rounded-full bg-emerald-400/10 px-2 py-1 font-bold text-emerald-300">{template.expectedLift}</span>
+                      <span className="rounded-full bg-emerald-400/10 px-2 py-1 font-bold text-emerald-300">{template.modeledOutcome}</span>
                       <span className="rounded-full bg-amber-400/10 px-2 py-1 font-bold text-amber-200">{template.offer}</span>
                     </div>
                   </button>
@@ -1341,7 +1357,7 @@ export default function LoyaltyCampaignsClient() {
               <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                 Número receptor
                 <input
-                  title="Número WhatsApp verificado para recibir la prueba"
+                  title="Número WhatsApp de prueba con opt-in confirmado"
                   value={twilioRecipient}
                   onChange={(event) => setTwilioRecipient(event.target.value)}
                   className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs normal-case tracking-normal text-white outline-none focus:border-cyan-400"
@@ -1669,8 +1685,11 @@ export default function LoyaltyCampaignsClient() {
         >
           <Sparkle className="w-4 h-4 text-purple-400 animate-pulse" />
           nexID Cognitive AI Engine
-          <span className="absolute -top-1.5 -right-2 px-1.5 py-0.5 text-[8px] bg-purple-600 text-white rounded font-bold uppercase tracking-wider">
-            Live
+          <span
+            title={aiProvenance.detail}
+            className={`absolute -top-1.5 -right-2 rounded px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider ${optimizerStatusClass}`}
+          >
+            {aiProvenance.tabBadge}
           </span>
         </button>
       </div>
@@ -1691,7 +1710,7 @@ export default function LoyaltyCampaignsClient() {
                   className="gap-2 text-xs py-1.5 border border-purple-500/30 hover:border-purple-500/60"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-                  Redactar con IA
+                  Abrir optimizador
                 </Button>
               </div>
 
@@ -1702,9 +1721,9 @@ export default function LoyaltyCampaignsClient() {
                     <Sparkles className="w-5 h-5" />
                   </div>
                   <div>
-                    <h4 className="text-xs font-black text-white uppercase tracking-wider">nexID Cognitive AI Suite Activo</h4>
+                    <h4 className="text-xs font-black text-white uppercase tracking-wider">{aiProvenance.headline}</h4>
                     <p className="text-xs text-slate-300 mt-0.5">
-                      Analizá el prestigio, la viralidad de tus borradores y reescribilos al instante con vocabulario Sommelier Premium.
+                      {aiProvenance.detail} Podés analizar el copy y abrir el optimizador sin perder el borrador.
                     </p>
                   </div>
                 </div>
@@ -1718,14 +1737,16 @@ export default function LoyaltyCampaignsClient() {
                 </button>
               </div>
 
-              {campaigns.map((camp) => (
+              {campaigns.map((camp) => {
+                const measurement = describeCampaignMeasurement(camp.measurement, camp.conversion);
+                return (
                 <Card key={camp.id} className="p-5 hover:border-white/20 transition-all duration-300">
                   <div className="flex flex-wrap justify-between items-start gap-3">
                     <div>
                       <div className="flex items-center gap-2 mb-2">
                         {camp.status === "RUNNING" && (
                           <span className="inline-flex px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-black uppercase tracking-wider">
-                            ACTIVE
+                            {camp.measurement === "demo_model" ? "ACTIVE DEMO" : "ACTIVE"}
                           </span>
                         )}
                         {camp.status === "DRAFT" && (
@@ -1733,6 +1754,13 @@ export default function LoyaltyCampaignsClient() {
                             DRAFT
                           </span>
                         )}
+                        <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${
+                          camp.measurement === "confirmed"
+                            ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
+                            : "border-violet-500/20 bg-violet-500/10 text-violet-300"
+                        }`}>
+                          {measurement.badge}
+                        </span>
                         <h3 className="text-base font-bold text-white leading-none">{camp.title}</h3>
                       </div>
                       <p className="text-xs text-slate-300 leading-relaxed max-w-xl">
@@ -1740,8 +1768,10 @@ export default function LoyaltyCampaignsClient() {
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-2xl font-black text-white">{camp.conversion}</p>
-                      <p className="text-[10px] text-slate-400 uppercase tracking-wider">Tasa Conversión</p>
+                      <p className="text-2xl font-black text-white">{measurement.conversion}</p>
+                      <p className="text-[10px] text-slate-400 uppercase tracking-wider">
+                        {measurement.conversionLabel}
+                      </p>
                     </div>
                   </div>
                   <div className="mt-4 pt-4 border-t border-white/5 flex flex-wrap gap-x-6 gap-y-2 text-xs text-slate-400">
@@ -1749,8 +1779,12 @@ export default function LoyaltyCampaignsClient() {
                     <span>Clicks: <strong className="text-white">{camp.clicksCount.toLocaleString()}</strong></span>
                     <span>Recompensas emitidas: <strong className="text-white">{camp.rewardsCount.toLocaleString()}</strong></span>
                   </div>
+                  {camp.measurement !== "confirmed" ? (
+                    <p className="mt-2 text-[10px] leading-relaxed text-violet-200">Valores de demostracion o borrador; no representan envios, conversion ni recompra medidas del tenant.</p>
+                  ) : null}
                 </Card>
-              ))}
+                );
+              })}
             </div>
           ) : (
             /* Tab 2: AI Optimizer Workspace */
@@ -1759,7 +1793,7 @@ export default function LoyaltyCampaignsClient() {
               <div className="space-y-4">
                 <div className="space-y-1">
                   <h3 className="text-sm font-bold text-white">Redacción de Campaña</h3>
-                  <p className="text-xs text-slate-400">Escribí tu propuesta comercial técnica y analizala en tiempo real.</p>
+                  <p className="text-xs text-slate-400">Escribí tu propuesta comercial y revisá scores estimados, reglas aplicadas y procedencia de la reescritura.</p>
                 </div>
 
                 {/* AI provider settings */}
@@ -1770,7 +1804,7 @@ export default function LoyaltyCampaignsClient() {
                     </span>
                     <span
                       title={optimizerModeDetail}
-                      className={`text-[8.5px] font-bold px-2 py-0.5 rounded font-mono ${optimizerIsConfigured ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400 animate-pulse"}`}
+                      className={`text-[8.5px] font-bold px-2 py-0.5 rounded font-mono ${optimizerStatusClass}`}
                     >
                       {optimizerModeLabel.toUpperCase()}
                     </span>
@@ -1983,14 +2017,14 @@ export default function LoyaltyCampaignsClient() {
                   <div className="pt-2">
                     <Button
                       type="button"
-                      title="Registrar esta campaña en el CRM"
+                      title="Agregar este borrador local a la lista de campañas"
                       onClick={handleCreateCampaign}
                       disabled={!draftText.trim() && !optimizedText.trim()}
                       variant="primary"
                       className="w-full gap-2 text-xs py-2 bg-gradient-to-r from-cyan-400 to-emerald-500 border-none text-slate-950 font-bold shadow-[0_0_20px_rgba(6,182,212,0.2)] disabled:opacity-40"
                     >
                       <Plus className="w-4 h-4" />
-                      <span>Registrar y Lanzar Campaña</span>
+                      <span>Agregar borrador local</span>
                     </Button>
                   </div>
                 </div>
@@ -2000,9 +2034,9 @@ export default function LoyaltyCampaignsClient() {
               <div className="space-y-4">
                 <div className="space-y-1">
                   <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                    <Gauge className="w-4 h-4 text-purple-400" /> Score de copy y conversion
+                    <Gauge className="w-4 h-4 text-purple-400" /> Heurísticas locales de copy
                   </h3>
-                  <p className="text-xs text-slate-400">Estimación local de prestigio, emoción y CTR probable. No es telemetría real de campaña hasta que haya envíos y aperturas medidos.</p>
+                  <p className="text-xs text-slate-400">Scores de 0 a 100 calculados con palabras, longitud, CTA, emoji y puntuación. No son CTR, conversión, sentimiento medido ni telemetría de campaña.</p>
                 </div>
 
                 <div className="rounded-2xl border border-white/10 bg-slate-900/30 p-5 space-y-5">
@@ -2034,8 +2068,8 @@ export default function LoyaltyCampaignsClient() {
                         />
                       </svg>
                       <div className="absolute inset-0 flex flex-col items-center justify-center font-mono">
-                        <span className="text-sm font-black text-white">{analysis.prestigeScore}%</span>
-                        <span className="text-[8px] text-slate-400 uppercase font-bold">Prestigio</span>
+                        <span className="text-sm font-black text-white">{analysis.prestigeScore}/100</span>
+                        <span className="text-[8px] text-slate-400 uppercase font-bold">Heurística</span>
                       </div>
                     </div>
 
@@ -2055,13 +2089,13 @@ export default function LoyaltyCampaignsClient() {
                     </div>
                   </div>
 
-                  {/* Virality / CTR Meter */}
+                  {/* Local action-copy heuristic. Never present it as observed CTR. */}
                   <div className="pt-2 border-t border-white/5 space-y-2">
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-slate-400 font-bold uppercase tracking-wider text-[9px] flex items-center gap-1">
-                        <TrendingUp className="w-3.5 h-3.5 text-purple-400" /> Tasa Click-Through (CTR) Estimada
+                        <TrendingUp className="w-3.5 h-3.5 text-purple-400" /> Heurística de acción del copy · 0–100
                       </span>
-                      <span className="font-mono text-purple-300 font-black">{analysis.viralityScore}%</span>
+                      <span className="font-mono text-purple-300 font-black">{analysis.viralityScore}/100</span>
                     </div>
                     
                     <div className="w-full bg-slate-950 h-2.5 rounded-full overflow-hidden border border-white/5">
@@ -2073,21 +2107,21 @@ export default function LoyaltyCampaignsClient() {
                     </div>
 
                     <div className="flex justify-between text-[9px] text-slate-500">
-                      <span>Conversión Estimada: <strong>{analysis.viralityTier}</strong></span>
-                      <span>{analysis.viralityScore > 65 ? "🔥 CTR Elevado" : "⏳ Moderado"}</span>
+                      <span>Rango heurístico: <strong>{analysis.viralityTier}</strong></span>
+                      <span>{analysis.viralityScore > 65 ? "Score de copy alto" : "Score de copy moderado"}</span>
                     </div>
                   </div>
 
                   {/* Emotion Distribution Breakdown */}
                   <div className="pt-2 border-t border-white/5 space-y-3">
                     <span className="text-slate-400 font-bold uppercase tracking-wider text-[9px] block">
-                      Huella Emocional del Copy
+                      Distribución heurística de palabras del copy
                     </span>
 
                     <div className="space-y-2.5">
                       {[
                         { name: "Exclusividad / Lujo", value: analysis.emotions.exclusivity, color: "bg-purple-500" },
-                        { name: "Confianza / Sello de Origen", value: analysis.emotions.trust, color: "bg-emerald-500" },
+                        { name: "Confianza / origen declarado", value: analysis.emotions.trust, color: "bg-emerald-500" },
                         { name: "Curiosidad / Experiencia", value: analysis.emotions.curiosity, color: "bg-cyan-500" },
                         { name: "Urgencia / Deseo", value: analysis.emotions.urgency, color: "bg-amber-500" }
                       ].map((item, idx) => (
@@ -2121,11 +2155,13 @@ export default function LoyaltyCampaignsClient() {
                 <Bot className="w-4 h-4 text-slate-950" />
               </div>
               <div>
-                <h3 className="text-xs font-black text-white uppercase tracking-wider">IA de cercanía comercial</h3>
-                <p className="text-[9px] text-cyan-300 font-bold uppercase tracking-wider">Asistente de Fidelización</p>
+                <h3 className="text-xs font-black text-white uppercase tracking-wider">Asistente de cercanía comercial</h3>
+                <p className="text-[9px] text-amber-300 font-bold uppercase tracking-wider">Reglas locales · simulación conversacional</p>
               </div>
             </div>
-            <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="rounded border border-amber-400/20 bg-amber-400/10 px-2 py-1 text-[8px] font-black uppercase tracking-wider text-amber-300">
+              Sin LLM
+            </span>
           </div>
 
           {/* Messages Container */}

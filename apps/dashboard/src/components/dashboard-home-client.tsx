@@ -11,6 +11,8 @@ import { OpsCommandCenter, type OpsCommandStep, type OpsCommandTenantRow } from 
 import { ExecutiveRealtimeCrm } from "./executive-realtime-crm";
 import { VerifiedExperiencesPanel } from "./verified-experiences-panel";
 import { CustomerGrowthCommandCenter } from "./customer-growth-command-center";
+import { EnterpriseOpsState } from "./enterprise-ops-state";
+import type { RealtimeAvailability, RealtimeDataSource, RealtimeStreamSource } from "../lib/realtime-feed";
 import {
   LayoutDashboard,
   Cpu,
@@ -27,13 +29,25 @@ interface DashboardHomeClientProps {
   session: any;
   tenantScope: string;
   isTenantAdmin: boolean;
-  analyticsData: any;
   kpis: any;
   copy: any;
   labels: any;
   opsSteps: OpsCommandStep[];
   opsTenantRows: OpsCommandTenantRow[];
   initialRealtimeEvents: any[];
+  realtimeStreamSource: RealtimeStreamSource;
+  realtimeDataSource: RealtimeDataSource;
+  realtimeAvailability: RealtimeAvailability;
+  realtimeAvailabilityDetail: string;
+  overviewDataSource: RealtimeDataSource;
+  overviewAvailability: RealtimeAvailability;
+  overviewAvailabilityDetail: string;
+  batchDataSource: RealtimeDataSource;
+  batchAvailability: RealtimeAvailability;
+  batchAvailabilityDetail: string;
+  tokenizationDataSource: RealtimeDataSource;
+  tokenizationAvailability: RealtimeAvailability;
+  tokenizationAvailabilityDetail: string;
   successfulTaps: number;
   failedTaps: number;
   tokenizationByStatus: Record<string, number>;
@@ -61,13 +75,25 @@ export default function DashboardHomeClient({
   session,
   tenantScope,
   isTenantAdmin,
-  analyticsData,
   kpis,
   copy,
   labels,
   opsSteps,
   opsTenantRows,
   initialRealtimeEvents,
+  realtimeStreamSource,
+  realtimeDataSource,
+  realtimeAvailability,
+  realtimeAvailabilityDetail,
+  overviewDataSource,
+  overviewAvailability,
+  overviewAvailabilityDetail,
+  batchDataSource,
+  batchAvailability,
+  batchAvailabilityDetail,
+  tokenizationDataSource,
+  tokenizationAvailability,
+  tokenizationAvailabilityDetail,
   successfulTaps,
   failedTaps,
   tokenizationByStatus,
@@ -84,6 +110,13 @@ export default function DashboardHomeClient({
   clerkEnabled
 }: DashboardHomeClientProps) {
   const [activeTab, setActiveTab] = useState<DashboardTab>("summary");
+  const overviewAvailable = overviewAvailability === "ready" || overviewAvailability === "fallback";
+  const batchesAvailable = batchAvailability === "ready" || batchAvailability === "fallback";
+  const tokenizationAvailable = tokenizationAvailability === "ready" || tokenizationAvailability === "fallback";
+  const realtimeAvailable = realtimeAvailability === "ready" || realtimeAvailability === "fallback";
+  const operationsAvailable = overviewAvailable && batchesAvailable && realtimeAvailable && tokenizationAvailable;
+  const hasExplicitDemoData = [overviewDataSource, batchDataSource, tokenizationDataSource, realtimeDataSource]
+    .some((source) => source === "demo" || source === "seed");
 
   const tabClass = (tab: DashboardTab) =>
     `flex min-w-[11.5rem] items-center gap-3 px-4 py-2.5 rounded-xl text-left text-sm font-semibold transition-all select-none border ${
@@ -111,7 +144,7 @@ export default function DashboardHomeClient({
           <Cpu className="h-4 w-4" />
           {tabText("Operación NFC", "lotes, QA, anclaje")}
         </button>
-        <button type="button" title="Clientes & campañas: convertir lecturas verificadas en segmentos, beneficios y recompra" aria-label="Abrir clientes y campañas" onClick={() => setActiveTab("loyalty")} className={tabClass("loyalty")}>
+        <button type="button" title="Clientes & campañas: convertir mensajes NFC válidos en segmentos, beneficios y recompra" aria-label="Abrir clientes y campañas" onClick={() => setActiveTab("loyalty")} className={tabClass("loyalty")}>
           <Trophy className="h-4 w-4" />
           {tabText("Clientes & campañas", isTenantAdmin ? "segmentos, beneficios" : "portfolio, campañas")}
         </button>
@@ -148,6 +181,10 @@ export default function DashboardHomeClient({
               initialEvents={initialRealtimeEvents}
               tenantScope={tenantScope}
               mode={isTenantAdmin ? "tenant" : "global"}
+              streamSource={realtimeStreamSource}
+              initialDataSource={realtimeDataSource}
+              initialAvailability={realtimeAvailability}
+              initialAvailabilityDetail={realtimeAvailabilityDetail}
               onSectionChange={(section) => setActiveTab(section)}
             />
           </div>
@@ -156,8 +193,18 @@ export default function DashboardHomeClient({
         {/* INFRASTRUCTURE TAB */}
         {activeTab === "infra" && (
           <div className="space-y-8">
+            {hasExplicitDemoData ? (
+              <EnterpriseOpsState
+                variant="warning"
+                title="Datos demo identificados"
+                description="Esta sesión demo puede usar muestras locales cuando una fuente no responde. No deben interpretarse como producción ni como cobertura confirmada."
+                checklist={[`Overview: ${overviewDataSource}`, `Batches: ${batchDataSource}`, `Tokenización: ${tokenizationDataSource}`, `Eventos: ${realtimeDataSource}`]}
+                compact
+                testId="home-explicit-demo-source"
+              />
+            ) : null}
             {/* Operations center and batch status */}
-            <OpsCommandCenter
+            {operationsAvailable ? <OpsCommandCenter
               mode={isTenantAdmin ? "tenant" : "global"}
               metrics={[
                 { label: "Tenants", value: String(opsTenantRows.length), detail: tenantScope ? "Scope tenant activo" : "Marcas registradas", tone: opsTenantRows.length ? "good" : "warn" },
@@ -180,7 +227,15 @@ export default function DashboardHomeClient({
                 { label: "Riesgo", ready: successfulTaps, pending: failedTaps },
                 { label: "Token", ready: mintedTokens, pending: Math.max(scopedTokenizationRows.length - mintedTokens, 0) },
               ]}
-            />
+            /> : (
+              <EnterpriseOpsState
+                variant="warning"
+                title="Operación no confirmada"
+                description="Una o más fuentes operativas no respondieron. El dashboard conserva el scope, pero no convierte la indisponibilidad en métricas cero."
+                checklist={[overviewAvailabilityDetail, batchAvailabilityDetail, realtimeAvailabilityDetail]}
+                testId="home-operations-unavailable"
+              />
+            )}
 
             {/* Polygon / tokenization details card */}
             <Card className="p-5">
@@ -191,25 +246,25 @@ export default function DashboardHomeClient({
                 </h2>
                 <Badge tone="cyan">Polygon / cola de anclaje</Badge>
               </div>
-              <p className="mt-2 text-xs text-slate-400">Estado de transacciones de autenticidad, cola interna y anclaje blockchain cuando el tenant lo tiene habilitado.</p>
+              <p className="mt-2 text-xs text-slate-400">Estado de validaciones NFC, cola interna y anclaje blockchain cuando el tenant lo tiene habilitado; no representa autenticidad física.</p>
               
               <div className="mt-4 grid gap-3 grid-cols-2 md:grid-cols-4">
                 <div className="rounded-xl border border-white/5 bg-slate-900/50 p-3 text-xs text-slate-300">
-                  Taps exitosos<br /><b className="text-sm font-black text-emerald-300">{successfulTaps}</b>
+                  Taps exitosos<br /><b className="text-sm font-black text-emerald-300">{realtimeAvailable ? successfulTaps : "no disponible"}</b>
                 </div>
                 <div className="rounded-xl border border-white/5 bg-slate-900/50 p-3 text-xs text-slate-300">
-                  Taps fallidos<br /><b className="text-sm font-black text-rose-300">{failedTaps}</b>
+                  Taps fallidos<br /><b className="text-sm font-black text-rose-300">{realtimeAvailable ? failedTaps : "no disponible"}</b>
                 </div>
                 <div className="rounded-xl border border-white/5 bg-slate-900/50 p-3 text-xs text-slate-300">
-                  Anclados / emitidos<br /><b className="text-sm font-black text-cyan-200">{Number(tokenizationByStatus.anchored || 0) + Number(tokenizationByStatus.minted || 0)}</b>
+                  Anclados / emitidos<br /><b className="text-sm font-black text-cyan-200">{tokenizationAvailable ? Number(tokenizationByStatus.anchored || 0) + Number(tokenizationByStatus.minted || 0) : "no disponible"}</b>
                 </div>
                 <div className="rounded-xl border border-white/5 bg-slate-900/50 p-3 text-xs text-slate-300">
-                  Pendientes / Cola<br /><b className="text-sm font-black text-amber-200">{Number(tokenizationByStatus.pending || 0)}</b>
+                  Pendientes / Cola<br /><b className="text-sm font-black text-amber-200">{tokenizationAvailable ? Number(tokenizationByStatus.pending || 0) : "no disponible"}</b>
                 </div>
               </div>
 
               <div className="mt-4 space-y-2">
-                {scopedTokenizationRows.slice(0, 5).map((row: any) => {
+                {tokenizationAvailable && scopedTokenizationRows.slice(0, 5).map((row: any) => {
                   const status = String(row.status || "unknown").toLowerCase();
                   const tone = status === "anchored" || status === "minted" ? "good" : status === "failed" ? "risk" : "warn";
                   const statusLabel = status === "anchored" ? "anclado" : status === "minted" ? "emitido" : status === "pending" ? "pendiente" : status === "failed" ? "fallido" : status;
@@ -223,11 +278,14 @@ export default function DashboardHomeClient({
                     </div>
                   );
                 })}
-                {!scopedTokenizationRows.length && (
+                {tokenizationAvailable && !scopedTokenizationRows.length && (
                   <p className="rounded-xl border border-dashed border-white/10 bg-slate-900/20 p-3 text-center text-xs text-slate-400">
                     No hay solicitudes de tokenización registradas en este lote.
                   </p>
                 )}
+                {!tokenizationAvailable ? (
+                  <EnterpriseOpsState variant="warning" title="Tokenización no disponible" description="No se recibió una respuesta válida. No se muestra cero porque la ausencia de datos no confirma ausencia de solicitudes." checklist={[tokenizationAvailabilityDetail]} compact testId="home-tokenization-unavailable" />
+                ) : null}
               </div>
             </Card>
           </div>
@@ -237,12 +295,16 @@ export default function DashboardHomeClient({
         {activeTab === "loyalty" && (
           <div className="space-y-8">
             {!isTenantAdmin ? <MultirubroOpsPanel /> : null}
-            <CustomerGrowthCommandCenter
-              events={initialRealtimeEvents}
-              tenantScope={tenantScope}
-              successfulTaps={successfulTaps}
-              failedTaps={failedTaps}
-            />
+            {realtimeAvailable ? (
+              <CustomerGrowthCommandCenter
+                events={initialRealtimeEvents}
+                tenantScope={tenantScope}
+                successfulTaps={successfulTaps}
+                failedTaps={failedTaps}
+              />
+            ) : (
+              <EnterpriseOpsState variant="warning" title="Señales CRM no disponibles" description="La fuente de eventos no respondió; no se calculan audiencias, conversión ni riesgo como si fueran cero." checklist={[realtimeAvailabilityDetail]} testId="home-growth-unavailable" />
+            )}
             <VerifiedExperiencesPanel mode="loyalty" />
             
             {/* Quick access grid for marketing features */}
@@ -253,7 +315,7 @@ export default function DashboardHomeClient({
                     { title: "Campañas por señal", description: "Crear campañas WhatsApp/email desde señales de tap, ciudad y producto.", href: "/loyalty/campaigns", status: "activo", tone: "green" as const },
                     { title: "Beneficios y vouchers", description: "Configurar premios, canjes, códigos QR y reglas de expiración.", href: "/loyalty/rewards", status: "activo", tone: "green" as const },
                     { title: "Clientes CRM", description: "Ver usuarios, opt-in, lecturas, wallet, rewards y marketplace conectado.", href: "/consumer-network/overview", status: "activo", tone: "green" as const },
-                    { title: "Experiencias verificadas", description: "Reviews owner-only con moderación de marca y evidencia de tap real.", href: "/loyalty/experiences", status: "activo", tone: "green" as const },
+                    { title: "Experiencias con evidencia", description: "Reviews sujetas a policy, moderación de marca y evidencia digital del evento NFC.", href: "/loyalty/experiences", status: "activo", tone: "green" as const },
                   ]
                 : [
                     { title: "Portfolio de campañas", description: "Comparar tenants por audiencia, campaña, canje, recurrencia y riesgo.", href: "/loyalty/campaigns", status: "activo", tone: "green" as const },
@@ -318,7 +380,7 @@ export default function DashboardHomeClient({
                 </div>
                 <div className="rounded-2xl border border-white/5 bg-slate-900/50 p-4 text-xs text-slate-300">
                   <p className="font-bold text-white mb-1">3) Hacé el Tap</p>
-                  <p className="leading-relaxed">Hacé un tap real, verificá el mapa vivo y convertí la señal en voucher, lead, venta o soporte.</p>
+                  <p className="leading-relaxed">Hacé un tap real, confirmá que el evento reportado aparezca en el mapa y convertí esa señal en voucher, lead, venta o soporte.</p>
                 </div>
               </div>
             </Card>
@@ -331,7 +393,7 @@ export default function DashboardHomeClient({
         {/* BRANDS & TENANTS TAB */}
         {activeTab === "tenants" && !isTenantAdmin && (
           <div className="space-y-8">
-            <DataTable
+            {overviewAvailable ? <DataTable
               title={copy.tables.tenants.title}
               columns={[
                 { key: "tenant", label: copy.tables.tenants.tenant },
@@ -349,7 +411,9 @@ export default function DashboardHomeClient({
               allFilterLabel={copy.shell.all}
               refreshLabel={copy.shell.refresh}
               statusMap={copy.statuses}
-            />
+            /> : (
+              <EnterpriseOpsState variant="warning" title="Tenants no disponibles" description="El overview de tenants no respondió con datos válidos; no se muestra una tabla vacía como si confirmara cero tenants." checklist={[overviewAvailabilityDetail]} testId="home-overview-unavailable" />
+            )}
           </div>
         )}
       </div>

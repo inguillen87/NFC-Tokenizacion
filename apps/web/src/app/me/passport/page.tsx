@@ -19,7 +19,7 @@ export default async function PassportPage({ searchParams }: { searchParams?: Pr
   const tenant = typeof params.tenant === "string" ? params.tenant : "";
 
   return (
-    <PortalShell title="NexID Premium Passport" subtitle="Identidad digital validada, memberships activas, propiedad de botellas y reputación de autenticidad.">
+    <PortalShell title="NexID Premium Passport" subtitle="Estado de cuenta, memberships y registros de ownership. La identidad digital no garantiza autenticidad física, procedencia ni custodia.">
       
       {/* Golden Passport Identity Document */}
       <section className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-[linear-gradient(135deg,#131316_0%,#1e1b18_100%)] p-6 shadow-[0_20px_50px_rgba(245,158,11,0.05)] transition hover:border-amber-500/35">
@@ -44,17 +44,17 @@ export default async function PassportPage({ searchParams }: { searchParams?: Pr
         </div>
 
         <div className="mt-4 grid gap-3 text-xs text-slate-300 sm:grid-cols-2">
-          <p><span className="block text-[9px] uppercase tracking-wider text-slate-500 font-bold mb-0.5">Tipo de Credencial</span>Pasaporte Criptográfico Personal</p>
-          <p><span className="block text-[9px] uppercase tracking-wider text-slate-500 font-bold mb-0.5">Fecha de Emisión</span>Junio 2026 (nexID Network)</p>
+          <p><span className="block text-[9px] uppercase tracking-wider text-slate-500 font-bold mb-0.5">Tipo de Credencial</span>Cuenta consumer nexID</p>
+          <p><span className="block text-[9px] uppercase tracking-wider text-slate-500 font-bold mb-0.5">Estado del Passport</span>{status.toUpperCase()}</p>
         </div>
       </section>
 
       {/* Passport Features Specs Grid */}
       <section className="grid gap-4 md:grid-cols-3">
         {[
-          { title: "Memberships", value: "Activo por Tenant", desc: "Te unes automáticamente a las bodegas al escanear botellas físicas.", Icon: Award, colorClass: "text-amber-400" },
-          { title: "Propiedad Digital", value: "Vino + Certificado NFT", desc: "Garantía de procedencia cifrada y verificable en tu Wallet.", Icon: WalletCards, colorClass: "text-cyan-400" },
-          { title: "Estatus de Reputación", value: isVerif ? "Premium Collector" : "Starter Account", desc: "Nivel de confianza calculado según tus interacciones y reclamos.", Icon: ShieldCheck, colorClass: "text-emerald-400" }
+          { title: "Memberships", value: "Estado por Tenant", desc: "Cada marca aplica consentimiento, elegibilidad y política antes de activar una membresía.", Icon: Award, colorClass: "text-amber-400" },
+          { title: "Ownership Digital", value: "Registro + NFT opcional", desc: "La Wallet muestra registros digitales; no garantiza procedencia ni autenticidad física.", Icon: WalletCards, colorClass: "text-cyan-400" },
+          { title: "Estado de Cuenta", value: isVerif ? "Cuenta validada" : "Cuenta inicial", desc: "Refleja el estado de identidad de la cuenta, no la autenticidad de productos.", Icon: ShieldCheck, colorClass: "text-emerald-400" }
         ].map(({ title, value, desc, Icon, colorClass }) => {
           const FeatureIcon = Icon;
           return (

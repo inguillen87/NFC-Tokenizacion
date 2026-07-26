@@ -12,15 +12,21 @@ import {
   Thermometer, 
   GlassWater, 
   CalendarDays,
-  CheckCircle,
   HelpCircle
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  classifySommelierResponse,
+  safeSommelierGuidance,
+  sommelierProvenanceLabel,
+  type SommelierProvenance,
+} from "../../../lib/sommelier-guidance";
 
 interface ChatMessage {
   id: string;
   sender: "sommelier" | "user";
   text: string;
+  provenance?: SommelierProvenance;
 }
 
 interface SommelierClientProps {
@@ -39,7 +45,8 @@ export default function SommelierClient({ productName, brandName }: SommelierCli
       {
         id: "welcome",
         sender: "sommelier",
-        text: `¡Hola! Soy tu Sommelier Virtual nexID. Veo que tenés una botella original de "${productName || "Gran Reserva"}" de la bodega "${brandName || "nexID Partner"}". ¿En qué te puedo ayudar hoy? Decime si querés saber sobre su maridaje, temperatura de servicio o notas de cata.`
+        text: `Hola. Puedo darte orientación general sobre "${productName || "el producto seleccionado"}" de "${brandName || "la marca indicada"}". Esos nombres fueron proporcionados por la pantalla y no prueban autenticidad ni reemplazan una ficha técnica.`,
+        provenance: { mode: "context" },
       }
     ]);
   }, [productName, brandName]);
@@ -61,44 +68,32 @@ export default function SommelierClient({ productName, brandName }: SommelierCli
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          text: `Vino: ${productName}. Bodega: ${brandName}. Pregunta del cliente: ${textToSend}`,
-          tone: "sommelier-chat"
+          text: textToSend,
+          tone: "sommelier-chat",
+          productContext: { productName, brandName },
         })
       });
 
       if (!res.ok) throw new Error("API failed");
       const data = await res.json();
       if (!data?.optimizedText) throw new Error("Empty AI response");
+      const provenance = classifySommelierResponse(data);
 
       setMessages(prev => [...prev, {
         id: Date.now().toString(),
         sender: "sommelier",
-        text: data.optimizedText
+        text: data.optimizedText,
+        provenance,
       }]);
     } catch (err) {
       console.warn("AI Sommelier fallback to rule-based cata:", err);
-      // Dynamic sommelier response based on keywords
-      let replyText = `Como tu Sommelier Virtual de nexID, te confirmo que la etiqueta "${productName}" posee una tipicidad excepcional propia de su terroir. Te recomiendo descorcharla unos 20 minutos antes de tomar para que exprese todo su abanico de aromas.`;
-      const clean = textToSend.toLowerCase();
-
-      if (clean.includes("maridaje") || clean.includes("comer") || clean.includes("comida") || clean.includes("acompañar")) {
-        replyText = `Para disfrutar al máximo el perfil de tu "${productName}", te sugiero maridarlo con carnes rojas asadas, cortes a la parrilla, pastas con salsas intensas (como fileto trufado o ragú) o una tabla de quesos duros maduros. Evitá los platos excesivamente picantes para no desbalancear los taninos.`;
-      } else if (clean.includes("temperatura") || clean.includes("servir") || clean.includes("frio") || clean.includes("caliente")) {
-        replyText = `Este varietal se expresa en su plenitud a una temperatura de servicio recomendada de entre 16°C y 18°C. Si hace calor, te aconsejo colocar la botella en una cubeta con agua y pocos hielos durante 10 minutos para templarlo antes de servir.`;
-      } else if (clean.includes("cata") || clean.includes("aroma") || clean.includes("sabor") || clean.includes("oler") || clean.includes("gusto")) {
-        replyText = `En copa vas a apreciar un color rojo rubí profundo con reflejos violáceos. En nariz resaltan las notas de frutas negras maduras (ciruelas y moras) entrelazadas con dejos de tabaco, vainilla y roble provenientes de su paso por barrica. En boca tiene una entrada sedosa, excelente estructura y un final muy persistente.`;
-      } else if (clean.includes("guarda") || clean.includes("guardar") || clean.includes("tiempo") || clean.includes("años") || clean.includes("vencer")) {
-        replyText = `Esta botella de "${brandName}" tiene un gran potencial de guarda. Si la conservás en posición horizontal, en un lugar oscuro, sin vibraciones y a una temperatura constante (entre 12°C y 15°C), continuará evolucionando y mejorando en botella durante los próximos 5 a 8 años.`;
-      } else if (clean.includes("premio") || clean.includes("punto") || clean.includes("suckling") || clean.includes("decanter") || clean.includes("atkin") || clean.includes("calificacion")) {
-        replyText = `¡Este vino es de élite! Este Gran Reserva fue galardonado con 95 puntos en guías internacionales (como James Suckling) y ha obtenido medalla de oro Decanter por su notable tipicidad y crianza de 12 meses en roble francés.`;
-      } else if (clean.includes("regalo") || clean.includes("cena") || clean.includes("romantica") || clean.includes("romantico") || clean.includes("ocasion") || clean.includes("evento") || clean.includes("festejo")) {
-        replyText = `Es una opción perfecta. Para una cena romántica, sus notas aterciopeladas y aromas seductores son ideales; y si lo pensás como regalo premium, su gran potencial de guarda (5 a 8 años) y su estuche exclusivo lo convierten en un acierto garantizado.`;
-      }
+      const replyText = safeSommelierGuidance(textToSend, { productName, brandName });
 
       setMessages(prev => [...prev, {
         id: Date.now().toString(),
         sender: "sommelier",
-        text: replyText
+        text: replyText,
+        provenance: { mode: "local-fallback" },
       }]);
     } finally {
       setIsTyping(false);
@@ -124,7 +119,7 @@ export default function SommelierClient({ productName, brandName }: SommelierCli
           <ArrowLeft className="w-4 h-4" /> Volver a mis productos
         </Link>
         <span className="flex items-center gap-1.5 rounded-full border border-purple-500/20 bg-purple-500/10 px-2.5 py-1 text-[10px] font-black uppercase text-purple-300">
-          <Sparkles className="w-3 h-3 text-purple-300 animate-pulse" /> Sello de Origen Certificado
+          <Sparkles className="w-3 h-3 text-purple-300" /> Producto indicado · autenticidad no verificada
         </span>
       </header>
 
@@ -165,6 +160,11 @@ export default function SommelierClient({ productName, brandName }: SommelierCli
                         : "bg-slate-900 border border-white/5 text-slate-200 rounded-bl-none"
                     }`}
                   >
+                    {msg.sender === "sommelier" ? (
+                      <span className="mb-1 block text-[9px] font-black uppercase tracking-wide text-cyan-300">
+                        {sommelierProvenanceLabel(msg.provenance)}
+                      </span>
+                    ) : null}
                     {msg.text}
                   </div>
                 </motion.div>
@@ -226,16 +226,19 @@ export default function SommelierClient({ productName, brandName }: SommelierCli
             </div>
           </Card>
 
-          {/* Verification Verdict Card */}
-          <div className="rounded-3xl border border-emerald-500/20 bg-emerald-500/5 p-5 space-y-3">
+          {/* Declared identity card: this route has no SUN/tamper evidence. */}
+          <div className="rounded-3xl border border-amber-400/20 bg-amber-400/5 p-5 space-y-3">
             <div className="flex items-center gap-2.5">
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-300">✓</span>
-              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-300">Botella Verificada</span>
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-400/15 text-amber-200">
+                <HelpCircle className="h-3.5 w-3.5" aria-hidden="true" />
+              </span>
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-200">Identidad declarada</span>
             </div>
             <div className="text-xs text-slate-300 space-y-1">
-              <p>Producto: <strong className="text-white">{productName}</strong></p>
-              <p>Bodega: <strong className="text-white">{brandName}</strong></p>
-              <p>Estado Sello: <strong className="text-emerald-400">Original Cerrado</strong></p>
+              <p>Producto indicado: <strong className="text-white">{productName}</strong></p>
+              <p>Marca indicada: <strong className="text-white">{brandName}</strong></p>
+              <p>Estado SUN/tamper: <strong className="text-amber-200">No disponible en esta pantalla</strong></p>
+              <p className="pt-1 text-[10px] leading-relaxed text-slate-400">Estos datos no verifican la botella, su contenido ni el estado físico del sello.</p>
             </div>
           </div>
         </div>

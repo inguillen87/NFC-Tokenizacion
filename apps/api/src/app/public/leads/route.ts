@@ -1,13 +1,40 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+import { createHash } from "node:crypto";
 import { sql } from "../../../lib/db";
 import { json } from "../../../lib/http";
 import { publishRealtimeEvent } from "../../../lib/realtime-events";
 import { ensureCrmOpsSchema } from "../../../lib/commercial-runtime-schema";
+import { enforceCriticalRateLimit } from "../../../lib/critical-rate-limit";
+import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../lib/bounded-request-body";
+import { hitSunRateLimit } from "../../../lib/sun-rate-limit-store";
+
+const MAX_LEAD_BODY_BYTES = 32 * 1024;
+const LEAD_CONTACT_WINDOW_SECONDS = 60 * 60;
+const LEAD_CONTACT_MAX = 5;
+const LOCALES = new Set(["es-AR", "pt-BR", "en"]);
+const VERTICALS = new Set(["wine", "spirits", "events", "cosmetics", "agro", "pharma", "luxury", "art", "documents", "retail", "logistics", "other"]);
+const TAG_TYPES = new Set(["basic", "secure", "ntag213", "ntag215", "ntag216", "ntag424_dna", "ntag424_dna_tt", "qr", "gs1", "uhf"]);
 
 function clean(value: unknown) {
   return String(value || "").trim();
+}
+
+function limitedText(value: unknown, maximum: number) {
+  return clean(value).slice(0, maximum);
+}
+
+function sha256(value: string) {
+  return createHash("sha256").update(value, "utf8").digest("hex");
+}
+
+function validEmail(value: string) {
+  return !value || /^[^\s@]{1,120}@[^\s@]{1,190}\.[^\s@]{2,63}$/.test(value);
+}
+
+function validPhone(value: string) {
+  return !value || /^\+?[0-9 ()-]{7,30}$/.test(value);
 }
 
 async function postJson(url: string, payload: unknown, token?: string) {
@@ -159,31 +186,55 @@ async function createCompanionTicket(context: {
 }
 
 export async function POST(req: Request) {
-  const body: Record<string, unknown> = await req.json().catch(() => ({}));
-  const locale = clean(body.locale) || "es-AR";
-  const name = clean(body.name);
-  const email = clean(body.email);
-  const phone = clean(body.phone || body.whatsapp);
-  const company = clean(body.company);
-  const country = clean(body.country);
-  const vertical = clean(body.vertical) || "other";
-  const roleInterest = clean(body.role_interest || body.role);
-  const estimatedVolume = clean(body.estimated_volume || body.volume);
-  const volume = Number(body.volume || 0);
-  const source = clean(body.source) || "public";
-  const message = clean(body.message);
-  const tenantSlug = clean(body.tenantSlug || body.tenant_slug || body.tenant);
-  const tenantIdInput = clean(body.tenantId || body.tenant_id);
-  const eventId = clean(body.eventId || body.event_id);
-  const bid = clean(body.bid);
-  const uidHex = clean(body.uidHex || body.uid_hex);
-  const productName = clean(body.productName || body.product_name);
-  const gender = clean(body.gender);
-  const occasion = clean(body.occasion);
-  const contact = clean(body.contact) || [email, phone, name].filter(Boolean).join(" | ");
-  const tagType = clean(body.tag_type) || (vertical === "events" ? "basic" : "secure");
+  const sourceLimited = await enforceCriticalRateLimit(req, {
+    rateClass: "public_write",
+    tenantId: "platform",
+    subjectId: "public-leads:source",
+  });
+  if (sourceLimited) return sourceLimited;
+
+  let body: Record<string, unknown>;
+  try {
+    body = await readBoundedJsonBody<Record<string, unknown>>(req, MAX_LEAD_BODY_BYTES);
+  } catch (error) {
+    const tooLarge = error instanceof RequestBodyTooLargeError;
+    return json({ ok: false, reason: tooLarge ? "request_body_too_large" : "invalid_json" }, tooLarge ? 413 : 400);
+  }
+
+  const requestedLocale = limitedText(body.locale, 12);
+  const locale = LOCALES.has(requestedLocale) ? requestedLocale : "es-AR";
+  const name = limitedText(body.name, 120);
+  const email = limitedText(body.email, 320).toLowerCase();
+  const phone = limitedText(body.phone || body.whatsapp, 32);
+  const company = limitedText(body.company, 160);
+  const country = limitedText(body.country, 80);
+  const requestedVertical = limitedText(body.vertical, 40).toLowerCase();
+  const vertical = VERTICALS.has(requestedVertical) ? requestedVertical : "other";
+  const roleInterest = limitedText(body.role_interest || body.role, 120);
+  const estimatedVolume = limitedText(body.estimated_volume || body.volume, 80);
+  const rawVolume = Number(body.volume || 0);
+  const volume = Number.isFinite(rawVolume) ? Math.max(0, Math.min(Math.trunc(rawVolume), 10_000_000)) : 0;
+  const requestedSource = limitedText(body.source, 60).toLowerCase();
+  const source = /^[a-z0-9][a-z0-9._-]{0,59}$/.test(requestedSource) ? requestedSource : "public";
+  const message = limitedText(body.message, 2_000);
+  const tenantSlugCandidate = limitedText(body.tenantSlug || body.tenant_slug || body.tenant, 120).toLowerCase();
+  const tenantSlug = /^[a-z0-9][a-z0-9._-]{1,119}$/.test(tenantSlugCandidate) ? tenantSlugCandidate : "";
+  const tenantIdInput = "";
+  const eventIdCandidate = limitedText(body.eventId || body.event_id, 24);
+  const eventId = /^[1-9]\d{0,19}$/.test(eventIdCandidate) ? eventIdCandidate : "";
+  const bidCandidate = limitedText(body.bid, 120);
+  const bid = /^[A-Za-z0-9._:-]{3,120}$/.test(bidCandidate) ? bidCandidate : "";
+  const uidCandidate = limitedText(body.uidHex || body.uid_hex, 20).toUpperCase();
+  const uidHex = /^[0-9A-F]{8,20}$/.test(uidCandidate) ? uidCandidate : "";
+  const productName = limitedText(body.productName || body.product_name, 200);
+  const gender = limitedText(body.gender, 40);
+  const occasion = limitedText(body.occasion, 80);
+  const explicitContact = limitedText(body.contact, 320);
+  const contact = explicitContact || [email, phone, name].filter(Boolean).join(" | ").slice(0, 320);
+  const requestedTagType = limitedText(body.tag_type, 40).toLowerCase();
+  const tagType = TAG_TYPES.has(requestedTagType) ? requestedTagType : vertical === "events" ? "basic" : "secure";
   const baseMeta = asRecord(body.meta);
-  const meta = {
+  const meta: Record<string, unknown> = {
     ...baseMeta,
     tenantSlug: tenantSlug || baseMeta.tenantSlug || null,
     eventId: eventId || baseMeta.eventId || null,
@@ -196,7 +247,7 @@ export async function POST(req: Request) {
     device: asRecord(body.device || baseMeta.device),
     engagement: asRecord(body.engagement || baseMeta.engagement),
   };
-  const notes = clean(body.notes) || [
+  const notes = limitedText(body.notes, 2_000) || [
     tenantSlug ? `tenant=${tenantSlug}` : "",
     eventId ? `event=${eventId}` : "",
     bid ? `bid=${bid}` : "",
@@ -208,7 +259,31 @@ export async function POST(req: Request) {
     estimatedVolume ? `estimated_volume=${estimatedVolume}` : "",
   ].filter(Boolean).join(" | ");
 
-  if (!contact) return json({ ok: false, reason: "contact required" }, 400);
+  if (!contact) return json({ ok: false, reason: "contact_required" }, 400);
+  if (!validEmail(email)) return json({ ok: false, reason: "email_invalid" }, 400);
+  if (!validPhone(phone)) return json({ ok: false, reason: "phone_invalid" }, 400);
+
+  const contactDigest = sha256(contact.toLowerCase());
+  const antiSpam = await hitSunRateLimit(
+    "public_lead_contact",
+    contactDigest,
+    LEAD_CONTACT_WINDOW_SECONDS,
+    LEAD_CONTACT_MAX,
+  ).catch(() => null);
+  if (!antiSpam || antiSpam.unavailable) return json({ ok: false, reason: "lead_rate_limit_unavailable" }, 503);
+  if (antiSpam.limited) {
+    return json({ ok: false, reason: "lead_rate_limited" }, 429, {
+      "cache-control": "no-store",
+      "retry-after": String(antiSpam.retryAfterSeconds),
+    });
+  }
+
+  const requestedIdempotencyKey = limitedText(req.headers.get("idempotency-key") || body.idempotency_key, 128);
+  const timeBucket = Math.floor(Date.now() / (10 * 60 * 1000));
+  const idempotencyKey = /^[A-Za-z0-9._:-]{8,128}$/.test(requestedIdempotencyKey)
+    ? requestedIdempotencyKey
+    : sha256(`${contact.toLowerCase()}\0${company.toLowerCase()}\0${message}\0${source}\0${timeBucket}`);
+  meta.idempotencyKey = idempotencyKey;
 
   const context = {
     locale,
@@ -226,16 +301,73 @@ export async function POST(req: Request) {
     tagType,
     notes,
   };
+  const sanitizedSourceBody = {
+    locale,
+    name,
+    email,
+    phone,
+    company,
+    country,
+    vertical,
+    role_interest: roleInterest,
+    estimated_volume: estimatedVolume,
+    volume,
+    source,
+    message,
+    tenant_slug: tenantSlug || null,
+    event_id: eventId || null,
+    bid: bid || null,
+    uid_hex: uidHex || null,
+    product_name: productName || null,
+    meta,
+  };
 
   async function finishLead(lead: Record<string, unknown>, compatibilityMode = false) {
     publishLead(lead, { contact, company, source });
     const ticket = await createCompanionTicket(context);
-    const delivery = await notifyLead({ lead, sourceBody: body });
-    return json({ ok: true, lead, ticket, delivery, compatibilityMode }, 201);
+    const delivery = await notifyLead({ lead, sourceBody: sanitizedSourceBody });
+    const warnings = [
+      !ticket ? "companion_ticket_not_created" : "",
+      delivery.webhook && !delivery.webhook.ok ? "lead_webhook_delivery_failed" : "",
+      delivery.whatsapp && !delivery.whatsapp.ok ? "lead_whatsapp_delivery_failed" : "",
+    ].filter(Boolean);
+    return json({
+      ok: true,
+      persisted: true,
+      lead,
+      ticket,
+      delivery,
+      warnings,
+      follow_up_required: warnings.length > 0,
+      compatibilityMode,
+      idempotency_key: idempotencyKey,
+      anti_automation: { distributed_rate_limit: true, turnstile: "not_configured" },
+    }, 201);
   }
 
   await ensureCrmOpsSchema();
   const tenantId = await resolveTenantId({ tenantId: tenantIdInput, tenantSlug }).catch(() => null);
+  try {
+    const existing = await sql/*sql*/`
+      SELECT *
+      FROM leads
+      WHERE meta->>'idempotencyKey' = ${idempotencyKey}
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+    if (existing[0]) {
+      return json({
+        ok: true,
+        persisted: true,
+        lead: existing[0],
+        idempotentReplay: true,
+        idempotency_key: idempotencyKey,
+        anti_automation: { distributed_rate_limit: true, turnstile: "not_configured" },
+      }, 200);
+    }
+  } catch (error) {
+    console.warn("[public_leads] idempotency lookup unavailable; continuing with persisted insert", error);
+  }
 
   async function insertFullLead() {
     return sql/*sql*/`

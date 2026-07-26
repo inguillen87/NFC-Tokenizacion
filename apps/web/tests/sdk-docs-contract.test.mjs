@@ -26,4 +26,13 @@ test("Docs and SDK publish the same executable verify contract", () => {
 
   assert.match(sdkPage, /import \{ NEXID_SDK_VERIFY_URL \} from "\.\.\/\.\.\/lib\/sdk-public-contract"/);
   assert.match(sdkPage, /fetch\("\$\{NEXID_SDK_VERIFY_URL\}"/);
+  assert.match(sdkPage, /"Idempotency-Key": crypto\.randomUUID\(\)/);
+  assert.match(sdkPage, /verify, claim, events y POS aceptan Idempotency-Key/);
+  assert.match(sdkPage, /reutilizar la clave con otro payload devuelve HTTP 409/);
+  assert.match(sdkPage, /consulta status o solicita reconcile con la misma clave/);
+  assert.match(sdkPage, /La firma v2 incluye versión e identificador de clave/);
+  assert.match(sdkPage, /webhooks llegan de forma asíncrona con estado de entrega/);
+  assert.doesNotMatch(sdkPage, /webhooks en tiempo real/);
+  assert.match(sdkPage, /https:\/\/api\.nexid\.lat\/openapi\/nexid-sdk-v1\.json/);
+  assert.match(sdkPage, /OpenAPI v1/);
 });

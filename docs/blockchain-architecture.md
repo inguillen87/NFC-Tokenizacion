@@ -29,7 +29,7 @@ IOTA puede estar completamente deshabilitado sin romper autenticacion NFC, passp
 ```mermaid
 flowchart TD
   Tag["NTAG 424 DNA / TagTamper"] --> Sun["Validacion SUN server-side"]
-  Sun --> Backend["nexID backend + KMS + DB"]
+  Sun --> Backend["nexID backend + claves de lote cifradas + DB"]
   Backend --> DPP["DPP event store"]
   DPP --> Policy["Policy engine por tenant/lote"]
   Policy --> Polygon["Polygon ownership layer"]
@@ -38,7 +38,7 @@ flowchart TD
   Backend --> Admin["Dashboard enterprise / auditoria"]
 ```
 
-### 1. Autenticidad fisica
+### 1. Evidencia criptografica del tag NFC
 
 El chip NFC genera una URL SUN/SDM dinamica. El backend valida criptograficamente:
 
@@ -48,7 +48,7 @@ El chip NFC genera una URL SUN/SDM dinamica. El backend valida criptograficament
 - Estado TagTamper si el lote lo soporta.
 - Estado de batch, tenant y allowlist.
 
-Esta capa prueba presencia fisica razonable del producto y frescura criptografica. Blockchain no reemplaza esta validacion.
+Esta capa prueba que el backend recibio un mensaje fresco atribuible a un tag provisionado bajo las claves y reglas configuradas. No certifica por si sola el contenido, origen, condicion ni custodia fisica del producto. Blockchain no reemplaza esta validacion ni agrega esa prueba fisica ausente.
 
 ### 2. Registro DPP privado
 
@@ -68,7 +68,7 @@ Ejemplos de datos internos:
 Polygon se usa cuando la plataforma necesita un registro publico de propiedad digital o certificado:
 
 - Claim de producto por un consumidor o tenant.
-- NFT/certificado de autenticidad.
+- NFT/certificado digital asociado al registro y a la politica del tenant.
 - Transferencia de garantia o titularidad digital cuando el tenant lo habilita.
 - Token URI con metadata publica sanitizada.
 
@@ -115,7 +115,8 @@ Polygon no se usa para manifest de proveedor ni QA de fabrica. Polygon se usa si
 | --- | --- | --- |
 | PII de consumidor | Backend privado / proveedor autorizado | Nunca on-chain |
 | UID crudo | Backend seguro si es necesario | Nunca on-chain; preferir hash interno |
-| Claves SUN/KMS | Backend/KMS | Nunca frontend, nunca blockchain |
+| Claves SUN de lote | Backend, cifradas bajo secreto de aplicación Vercel | Nunca frontend, nunca blockchain; este flujo no es KMS/HSM administrado |
+| Wallets IOTA/Polygon testnet | Executor aislado + envelope Google Cloud KMS SOFTWARE | No es HSM ni firma asimétrica no exportable; plaintext existe brevemente en memoria del executor |
 | Manifest completo | Backend privado | IOTA solo puede recibir hash/checkpoint |
 | Evento DPP completo | Backend privado | On-chain solo digest sanitizado |
 | Certificado publico | Polygon metadata sanitizada | Sin PII ni datos comerciales sensibles |
@@ -138,7 +139,7 @@ Usar:
 - "nexID puede anclar hashes y Merkle roots verificables en IOTA para auditoria y evidencia logistica."
 - "Los datos sensibles permanecen off-chain."
 - "No todos los taps se escriben en blockchain; se registran en nexID y solo algunos eventos se anclan segun politica."
-- "Enterprise Trust Layer separa autenticidad fisica, DPP privado, ownership Polygon y proof IOTA opcional."
+- "Enterprise Trust Layer separa evidencia criptografica NFC, DPP privado, ownership Polygon y proof IOTA opcional."
 
 Evitar:
 

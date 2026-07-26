@@ -8,8 +8,11 @@ import {
   publicRewardPassUrl,
 } from "../../../../../lib/reward-public-links";
 import { json } from "../../../../../lib/http";
+import { enforceCriticalRateLimit } from "../../../../../lib/critical-rate-limit";
 
 export async function GET(req: Request, { params }: { params: Promise<{ token: string }> }) {
+  const limited = await enforceCriticalRateLimit(req, { rateClass: "public", tenantId: "platform", subjectId: "public-reward-token" });
+  if (limited) return limited;
   const { token } = await params;
   const publicToken = cleanPublicRewardToken(token);
   if (!publicToken) return json({ ok: false, reason: "invalid_reward_link" }, 400);

@@ -134,6 +134,17 @@ type ClaimOwnershipInput = {
   trustSnapshot?: Record<string, unknown>;
 };
 
+function withDigitalTitleExecutionTruth(ownership: Record<string, any> | null | undefined): Record<string, any> | null {
+  if (!ownership) return ownership || null;
+  return {
+    ...ownership,
+    record_scope: "nexid_off_chain_digital_title",
+    chain_transfer_status: "not_executed",
+    nft_transfer_executed: false,
+    on_chain_owner_verified: false,
+  };
+}
+
 export async function claimOwnershipForConsumer(input: ClaimOwnershipInput) {
   await ensureConsumerPortalSchema();
   const event = await getTapEvent(input.eventId);
@@ -193,7 +204,12 @@ export async function claimOwnershipForConsumer(input: ClaimOwnershipInput) {
     String(existingClaim?.consumer_email || "").toLowerCase() === "demo.consumer@nexid.local";
 
   if (existingClaim && !sameConsumerClaim && !canSupersedeDemoClaim) {
-    return { ok: false as const, status: 409, error: "already_claimed" as const, ownership: existingClaim };
+    return {
+      ok: false as const,
+      status: 409,
+      error: "already_claimed" as const,
+      ownership: withDigitalTitleExecutionTruth(existingClaim),
+    };
   }
 
   let ownershipRows;
@@ -255,7 +271,12 @@ export async function claimOwnershipForConsumer(input: ClaimOwnershipInput) {
             AND o.status = 'claimed'
           LIMIT 1
         `;
-        return { ok: false as const, status: 409, error: "already_claimed" as const, ownership: claimedRows[0] || null };
+        return {
+          ok: false as const,
+          status: 409,
+          error: "already_claimed" as const,
+          ownership: withDigitalTitleExecutionTruth(claimedRows[0] || null),
+        };
       }
       throw error;
     }
@@ -276,28 +297,43 @@ export async function claimOwnershipForConsumer(input: ClaimOwnershipInput) {
   `;
 
   if (isBlocked) {
-    return { ok: false as const, status: 409, error: nextStatus === "blocked_replay" ? "blocked_replay" as const : "revoked" as const, ownership };
+    return {
+      ok: false as const,
+      status: 409,
+      error: nextStatus === "blocked_replay" ? "blocked_replay" as const : "revoked" as const,
+      ownership: withDigitalTitleExecutionTruth(ownership),
+    };
   }
 
-  return { ok: true as const, status: 200, ownership };
+  return { ok: true as const, status: 200, ownership: withDigitalTitleExecutionTruth(ownership) };
 }
 
 export async function claimPointsForConsumer(input: { consumerId: string; eventId: string; locale?: string }) {
   await ensureConsumerPortalSchema();
   const event = await saveTapForConsumer(input);
   if (!event) return { ok: false, error: "event_not_found" };
-  const claim = await claimTapPoints({ eventId: input.eventId, locale: input.locale || "es-AR" });
+  const claim = await claimTapPoints({
+    eventId: input.eventId,
+    locale: input.locale || "es-AR",
+    memberKey: `consumer:${input.consumerId}`,
+    consumerId: input.consumerId,
+  });
 
   const membership = await ensureTenantMembership({ consumerId: input.consumerId, tenantId: event.tenant_id, tapEventId: String(event.id), source: "tap" });
-  if (claim.ok && claim.awarded && claim.points) {
+  if (claim.ok && claim.memberId) {
     await sql/*sql*/`
-      UPDATE tenant_consumer_memberships
-      SET points_balance = points_balance + ${claim.points},
-          lifetime_points = lifetime_points + ${claim.points},
+      UPDATE tenant_consumer_memberships membership
+      SET points_balance = member.points_balance,
+          lifetime_points = member.lifetime_points,
+          loyalty_program_id = member.program_id,
+          metadata_json = COALESCE(membership.metadata_json, '{}'::jsonb) || '{"pointsProjectionSource":"loyalty_members"}'::jsonb,
           updated_at = now()
-      WHERE id = ${membership.id}
+      FROM loyalty_members member
+      WHERE membership.id = ${membership.id}
+        AND member.id = ${claim.memberId}
+        AND member.consumer_id = ${input.consumerId}
     `;
   }
 
-  return { ...claim, membershipId: membership.id };
+  return { ...claim, membershipId: membership.id, pointsSource: "loyalty_members" };
 }

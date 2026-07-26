@@ -50,9 +50,9 @@ function tenantPlaybook(vertical: string): TenantPlaybook {
   if (key.includes("wine")) {
     return {
       productLabel: "Wine Trust Passport",
-      readiness: "Etiquetado premium, postventa verificable y defensa anti-replay.",
-      boardSignal: "Listo para reunion comercial: producto real, prueba movil y salida hash-only.",
-      kpis: { batches: "2 activos", tags: "10 fisicas piloto", scans: "240/30d", incidents: "1 replay aislado" },
+      readiness: "Configuracion sugerida: etiquetado premium, postventa y defensa anti-replay.",
+      boardSignal: "Playbook orientativo: muestra movil, evidencia NFC y salida hash-only.",
+      kpis: { batches: "—", tags: "—", scans: "—", incidents: "Sin fuente operativa" },
       nextActions: [
         "Cerrar onboarding de lote proveedor con import y activacion.",
         "Activar ownership, warranty y CTA post-scan para compradores.",
@@ -63,9 +63,9 @@ function tenantPlaybook(vertical: string): TenantPlaybook {
   if (key.includes("pharma")) {
     return {
       productLabel: "Cold Chain Proof",
-      readiness: "Lote serializado, custodia, QA y verificacion de campo.",
-      boardSignal: "Preparado para compliance: eventos minimos, privacidad por diseno y auditoria.",
-      kpis: { batches: "1 regulado", tags: "200 unidades", scans: "680/30d", incidents: "0 criticas" },
+      readiness: "Configuracion sugerida: lote serializado, registros de QA y controles de campo.",
+      boardSignal: "Playbook orientativo para compliance: eventos minimos, privacidad por diseno y auditoria.",
+      kpis: { batches: "—", tags: "—", scans: "—", incidents: "Sin fuente operativa" },
       nextActions: [
         "Vincular QA de lote y temperatura como evento hash-only.",
         "Separar datos privados del paciente de la evidencia publica.",
@@ -76,9 +76,9 @@ function tenantPlaybook(vertical: string): TenantPlaybook {
   if (key.includes("events")) {
     return {
       productLabel: "Event Access Shield",
-      readiness: "Ticketing seguro, antifraude de accesos y control de venue.",
-      boardSignal: "Piloto accionable: validacion, replay, turnstile y leads del evento.",
-      kpis: { batches: "1 activo", tags: "500 credenciales", scans: "1.2k/30d", incidents: "3 clones" },
+      readiness: "Configuracion sugerida: ticketing, señales anti-replay y control de venue.",
+      boardSignal: "Playbook orientativo: validacion de credencial, replay, turnstile y leads del evento.",
+      kpis: { batches: "—", tags: "—", scans: "—", incidents: "Sin fuente operativa" },
       nextActions: [
         "Integrar validador con operacion de ingreso.",
         "Monitorear replay/tamper en picos de evento.",
@@ -88,9 +88,9 @@ function tenantPlaybook(vertical: string): TenantPlaybook {
   }
   return {
     productLabel: "Secure Product Passport",
-    readiness: "Trazabilidad, autenticidad y soporte comercial conectado.",
-    boardSignal: "Cuenta lista para escalar por canal, producto y region.",
-    kpis: { batches: "1 activo", tags: "200 unidades", scans: "680/30d", incidents: "0 criticas" },
+    readiness: "Configuracion sugerida: trazabilidad digital y soporte comercial conectado.",
+    boardSignal: "Playbook orientativo para escalar por canal, producto y region.",
+    kpis: { batches: "—", tags: "—", scans: "—", incidents: "Sin fuente operativa" },
     nextActions: [
       "Consolidar lotes y politica de reorden.",
       "Activar modulos de warranty, provenance y tokenizacion.",
@@ -102,8 +102,8 @@ function tenantPlaybook(vertical: string): TenantPlaybook {
 function metricCards(tenant: (typeof TENANT_DIRECTORY)[number], playbook: TenantPlaybook) {
   return [
     { label: "Producto", value: playbook.productLabel, detail: tenant.vertical, icon: <PackageCheck className="h-4 w-4" /> },
-    { label: "Lotes", value: playbook.kpis.batches, detail: "emision y lifecycle", icon: <BadgeCheck className="h-4 w-4" /> },
-    { label: "Tags", value: playbook.kpis.tags, detail: "inventario piloto", icon: <RadioTower className="h-4 w-4" /> },
+    { label: "Lotes", value: playbook.kpis.batches, detail: "Fuente operativa no conectada", icon: <BadgeCheck className="h-4 w-4" /> },
+    { label: "Tags", value: playbook.kpis.tags, detail: "Fuente operativa no conectada", icon: <RadioTower className="h-4 w-4" /> },
     { label: "Lecturas", value: playbook.kpis.scans, detail: playbook.kpis.incidents, icon: <BarChart3 className="h-4 w-4" /> },
   ];
 }
@@ -119,14 +119,14 @@ function proofLayers(tenantSlug: string) {
     },
     {
       label: "IOTA proof",
-      body: "Evidencia publica hash-only para hitos de custodia o QA.",
+      body: "Integridad hash-only para registros declarados de custodia o QA.",
       href: `/proof/anchor?tenant=${tenantSlug}`,
       icon: <RadioTower className="h-4 w-4" />,
       tone: "green",
     },
     {
-      label: "Polygon ownership",
-      body: "Capa opcional para reclamo, garantia o certificado transferible.",
+      label: "Polygon titularidad digital",
+      body: "Capa opcional para reclamo, garantia o certificado digital segun policy; no prueba propiedad fisica.",
       href: `/tokenization?tenant=${tenantSlug}`,
       icon: <Globe2 className="h-4 w-4" />,
       tone: "violet",
@@ -193,11 +193,11 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ s
   ];
 
   return (
-    <main className="space-y-8" data-testid="tenant-detail-enterprise-profile">
+    <main className="space-y-8" data-testid="tenant-detail-enterprise-profile" data-tenant-source={tenant.source}>
       <SectionHeading
-        eyebrow="Tenant account cockpit"
+        eyebrow={`Tenant account cockpit · ${tenant.source.toUpperCase()}`}
         title={tenant.tenant}
-        description="Vista ejecutiva y operativa de la cuenta: plan, salud, evidencia, integraciones y siguientes acciones en un solo lugar."
+        description="Fixture navegable para evaluar la UX de una cuenta. No representa un cliente, contrato, plan activo ni health productivo."
       />
 
       <section className="overflow-hidden rounded-[2rem] border border-cyan-300/20 bg-[radial-gradient(circle_at_85%_0%,rgba(34,211,238,.18),transparent_38%),linear-gradient(135deg,rgba(15,23,42,.98),rgba(2,8,23,.96))] shadow-[0_28px_90px_rgba(2,6,23,.38)]">
@@ -205,11 +205,13 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ s
           <div className="p-5 md:p-7">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-200">Cuenta enterprise</p>
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-200">Escenario de cuenta · no productivo</p>
                 <h2 className="mt-3 text-3xl font-black leading-tight text-white md:text-5xl">{tenant.tenant}</h2>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">{playbook.boardSignal}</p>
+                <p className="mt-2 max-w-2xl text-xs leading-5 text-amber-100">Vista orientativa del directorio: no consulta métricas operativas. Abrí Lotes, Tags, Eventos o Analytics para cifras confirmadas.</p>
               </div>
               <div className="flex flex-wrap gap-2">
+                <Badge tone="amber">{tenant.source}</Badge>
                 <Badge tone={statusTone[tenant.status]}>{tenant.status}</Badge>
                 <Badge tone="cyan">{tenant.plan}</Badge>
                 <Badge tone="violet">{tenant.region}</Badge>
@@ -233,7 +235,7 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ s
               <div className="rounded-2xl border border-cyan-300/20 bg-cyan-400/10 p-4">
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Administracion de cuenta</p>
                 <p className="mt-2 text-sm leading-6 text-slate-300">
-                  Acciones directas del tenant sin volver a buscar dentro del CRM.
+                  Navegación de demostración sobre el fixture, sin implicar una cuenta contratada.
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2 text-sm">
                   {accountActions.map((item) => (
@@ -309,8 +311,8 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ s
           <dl className="mt-5 grid gap-3 text-sm text-slate-300 sm:grid-cols-2">
             <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4"><dt className="text-slate-400">Slug</dt><dd className="mt-1 break-all font-bold text-white">{tenant.slug}</dd></div>
             <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4"><dt className="text-slate-400">Vertical</dt><dd className="mt-1 font-bold text-white">{tenant.vertical}</dd></div>
-            <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4"><dt className="text-slate-400">Health</dt><dd className="mt-1 font-bold text-white">{tenant.health}</dd></div>
-            <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4"><dt className="text-slate-400">Region / plan</dt><dd className="mt-1 font-bold text-white">{tenant.region} / {tenant.plan}</dd></div>
+            <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4"><dt className="text-slate-400">Health del fixture</dt><dd className="mt-1 font-bold text-white">{tenant.health}</dd></div>
+            <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4"><dt className="text-slate-400">Region / plan ilustrativos</dt><dd className="mt-1 font-bold text-white">{tenant.region} / {tenant.plan}</dd></div>
           </dl>
         </Card>
 
@@ -321,7 +323,7 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ s
             </span>
             <div>
               <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-200">Capas de confianza</p>
-              <h3 className="mt-1 text-xl font-black text-white">Que se prueba en nexID, IOTA, Polygon y API</h3>
+              <h3 className="mt-1 text-xl font-black text-white">Que evidencia registra nexID, IOTA, Polygon y API</h3>
             </div>
           </div>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">

@@ -9,6 +9,8 @@ node_modules
 .DS_Store
 *.log
 .codex-run-logs/
+.nexid-custody/
+*.ct.b64
 coverage
 pnpm-lock.yaml
 apps/api/artifacts

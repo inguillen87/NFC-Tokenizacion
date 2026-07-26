@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Globe3dMap } from "@product/ui/globe-3d-map";
 import { PremiumVectorMap, type VectorMapPoint, type VectorMapRoute } from "@product/ui/premium-vector-map";
 import type { ProductInteractionState, ProductKind } from "../../components/hero-three-stage";
+import { getSunHeroTraceCopy } from "./sun-hero-truth-copy";
 
 const HeroThreeStage = dynamic(() => import("../../components/hero-three-stage").then((mod) => mod.HeroThreeStage), {
   ssr: false,
@@ -24,6 +25,7 @@ type SunProductHeroStageProps = {
   originLng?: number | null;
   tapLat?: number | null;
   tapLng?: number | null;
+  isDemoPreview: boolean;
 };
 
 function toThreeKind(kind: SunVisualKind): ProductKind {
@@ -152,36 +154,38 @@ export function SunProductHeroStage({
   originLng,
   tapLat,
   tapLng,
+  isDemoPreview,
 }: SunProductHeroStageProps) {
   const [ready, setReady] = useState(false);
   const threeKind = toThreeKind(kind);
   const hasTraceCoordinates = originLat != null && originLng != null && tapLat != null && tapLng != null;
   const traceTone = state === "blocked" ? "warn" : state === "opened" ? "success" : "info";
+  const traceCopy = getSunHeroTraceCopy(isDemoPreview, state);
   const tracePoints: VectorMapPoint[] = hasTraceCoordinates
     ? [
         {
           id: "sun-origin",
           label: shortLocation(originDisplay),
-          sublabel: "Origen del producto",
+          sublabel: traceCopy.originSublabel,
           lat: Number(originLat),
           lng: Number(originLng),
           scans: 1,
           risk: 0,
           tone: "origin",
-          stageLabel: "Origen",
-          evidence: "Lote, productor y pasaporte interno",
+          stageLabel: traceCopy.originStageLabel,
+          evidence: traceCopy.originEvidence,
         },
         {
           id: "sun-current-tap",
           label: shortLocation(tapDisplay),
-          sublabel: "Tap actual",
+          sublabel: traceCopy.tapSublabel,
           lat: Number(tapLat),
           lng: Number(tapLng),
           scans: state === "blocked" ? 2 : 1,
           risk: state === "blocked" ? 1 : 0,
           tone: state === "blocked" ? "risk" : "tap",
-          stageLabel: "Tap fisico",
-          evidence: state === "opened" ? "Sello abierto y evento comercial registrado" : "Lectura fisica del chip",
+          stageLabel: traceCopy.tapStageLabel,
+          evidence: traceCopy.tapEvidence,
         },
       ]
     : [];
@@ -193,10 +197,10 @@ export function SunProductHeroStage({
           fromLng: Number(originLng),
           toLat: Number(tapLat),
           toLng: Number(tapLng),
-          label: "Origen -> tap",
+          label: traceCopy.routeLabel,
           tone: traceTone,
           distanceLabel: distanceDisplay,
-          evidence: "Ruta real de confianza del producto",
+          evidence: traceCopy.routeEvidence,
         },
       ]
     : [];
@@ -242,11 +246,11 @@ export function SunProductHeroStage({
         </div>
       )}
       <span className="sun-stage-pin sun-stage-pin--origin">
-        <b>Origen</b>
+        <b>{traceCopy.originPinLabel}</b>
         <em>{shortLocation(originDisplay)}</em>
       </span>
       <span className="sun-stage-pin sun-stage-pin--tap">
-        <b>Tap</b>
+        <b>{traceCopy.tapPinLabel}</b>
         <em>{shortLocation(tapDisplay)}</em>
       </span>
       <span className="sun-stage-route-label">{distanceDisplay}</span>

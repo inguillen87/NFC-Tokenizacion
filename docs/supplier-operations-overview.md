@@ -21,7 +21,7 @@ Que cada lote fisico tenga:
 | Responsable | Responsabilidad |
 | --- | --- |
 | nexID ops | Crear tenant, batch, politica y paquete de encoding |
-| nexID security | Generar/guardar claves, controlar KMS y rotacion |
+| nexID security | Generar claves de sub-batch, cifrarlas con la clave maestra de aplicación en Vercel y controlar rotación; Google Cloud KMS SOFTWARE sólo aplica a la custodia blockchain actual |
 | Proveedor | Codificar tags segun especificacion y devolver manifest |
 | Tenant | Aprobar producto, arte, volumen y politica comercial |
 | QA | Validar muestras fisicas, replay, tamper y manifest |
@@ -81,7 +81,7 @@ sub_batch_id,bid,uid_hex,ic_type,roll_id,qc_status,timestamp
 NXD2606-A01-R001,NXD2606-A01-R001,04AABBCCDDEEFF,NTAG424DNA_TT,R001,PASS,2026-06-27T00:00:00Z
 ```
 
-El manifest es stock y allowlist. No es prueba de autenticidad por si solo. La autenticidad se valida en cada tap con SUN/SDM y claves del lote.
+El manifest es stock y allowlist. No es prueba de autenticidad por si solo. Cada tap permite validar el mensaje SUN/SDM contra las claves y reglas del lote; esa validacion no certifica por si sola contenido, origen, condicion ni custodia fisica.
 
 ## Tenant Vault
 

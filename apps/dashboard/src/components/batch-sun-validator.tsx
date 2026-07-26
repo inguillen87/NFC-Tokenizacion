@@ -94,8 +94,8 @@ function summarizePayload(payload: unknown, mode: RunMode): { tone: string; titl
   if (result === "VALID_CLOSED" || ttRaw === "4343") {
     return {
       tone: "success",
-      title: "Tap valido: sello intacto",
-      detail: `UID ${uid || "decodificado"} con TTStatus ${ttRaw || "4343"}. Acciones comerciales habilitables.`,
+      title: "Mensaje NFC válido · TT reporta cerrado",
+      detail: `UID ${uid || "decodificado"} con TTStatus ${ttRaw || "4343"}. No certifica contenido, origen, custodia ni propiedad; las acciones dependen de policy.`,
     };
   }
 

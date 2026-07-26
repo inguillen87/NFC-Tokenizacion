@@ -38,7 +38,9 @@ test("pilot launchpad exposes one evidence-backed next action and five connected
   assert.match(launchpadSource, /Cargar manifest e identidad visual/);
   assert.match(launchpadSource, /Validar muestra fisica/);
   assert.match(launchpadSource, /Abrir prueba y salida comercial/);
-  assert.match(launchpadSource, /IOTA prueba evidencia; Polygon prueba ownership/);
+  assert.match(launchpadSource, /IOTA verifica integridad de evidencia; Polygon registra titularidad digital/);
+  assert.match(launchpadSource, /snapshot\.scoredAssetProfiles > 0/);
+  assert.match(pageSource, /scoredAssetProfiles: assetScores\.length/);
   assert.match(launchpadSource, /Accion limitada al tenant de la sesion/);
   assert.match(launchpadSource, /Sandbox de solo lectura: explora el flujo sin escribir sobre datos productivos/);
   assert.match(launchpadSource, /Explorar pedidos seguros/);

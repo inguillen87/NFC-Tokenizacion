@@ -8,6 +8,7 @@ import {
   publicApiBase,
   publicRewardStaffUrl,
 } from "../../../../../lib/reward-public-links";
+import { enforceCriticalRateLimit } from "../../../../../lib/critical-rate-limit";
 
 function clean(value: unknown) {
   return String(value || "").trim();
@@ -28,6 +29,8 @@ function formatArDate(value: unknown) {
 }
 
 export async function GET(req: Request, { params }: { params: Promise<{ code: string }> }) {
+  const limited = await enforceCriticalRateLimit(req, { rateClass: "public", tenantId: "platform", subjectId: "public-reward-pass" });
+  if (limited) return limited;
   const { code } = await params;
   const normalizedCode = clean(code).replace(/[^\d]/g, "");
   if (!validCode(normalizedCode)) return new Response("Invalid voucher code", { status: 400 });
@@ -36,6 +39,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ code: st
   const providedSeal = clean(url.searchParams.get("seal")).replace(/[^A-Z0-9]/gi, "").toUpperCase().slice(0, 24);
   const fallbackTenant = clean(url.searchParams.get("tenant")).replace(/[^a-z0-9-]/gi, "").toLowerCase().slice(0, 60) || "demobodega";
   const claim = await getPublicRewardClaimByCode(normalizedCode);
+  if (!claim) return new Response("Voucher not found", { status: 404 });
   const metadata = claim?.metadata_json || {};
   const expectedSeal = clean(metadata.verification_seal).toUpperCase();
   const brandName = clean(claim?.tenant_name) || clean(claim?.tenant_slug) || fallbackTenant || "nexID Partner";
@@ -44,9 +48,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ code: st
     return new Response("Invalid voucher seal", { status: 403 });
   }
 
-  const publicToken = claim?.id
-    ? await ensureRewardPublicToken(String(claim.id), metadata)
-    : `legacy-${normalizedCode}`;
+  const publicToken = await ensureRewardPublicToken(String(claim.id), metadata);
 
   const response = await renderRewardPassImage({
     code: normalizedCode,

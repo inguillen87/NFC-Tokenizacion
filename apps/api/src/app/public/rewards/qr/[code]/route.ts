@@ -7,6 +7,7 @@ import {
   getPublicRewardClaimByCode,
   publicRewardStaffUrl,
 } from "../../../../../lib/reward-public-links";
+import { enforceCriticalRateLimit } from "../../../../../lib/critical-rate-limit";
 
 function clean(value: unknown) {
   return String(value || "").trim();
@@ -17,6 +18,8 @@ function validCode(value: string) {
 }
 
 export async function GET(req: Request, { params }: { params: Promise<{ code: string }> }) {
+  const limited = await enforceCriticalRateLimit(req, { rateClass: "public", tenantId: "platform", subjectId: "public-reward-qr" });
+  if (limited) return limited;
   const { code } = await params;
   const normalizedCode = clean(code).replace(/[^\d]/g, "");
   if (!validCode(normalizedCode)) return new Response("Invalid voucher code", { status: 400 });
@@ -28,7 +31,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ code: st
 
   const metadata = claim.metadata_json || {};
   const expectedSeal = clean(metadata.verification_seal).toUpperCase();
-  if (expectedSeal && providedSeal && providedSeal !== expectedSeal) {
+  if (expectedSeal && providedSeal !== expectedSeal) {
     return new Response("Invalid voucher seal", { status: 403 });
   }
 

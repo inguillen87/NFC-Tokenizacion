@@ -173,15 +173,16 @@ export function generateSupplierBatchKeyPair(): SupplierBatchKeyPair {
   };
 }
 
-export function encryptBatchKeyHex(keyHex: string) {
-  return encryptKey16(Buffer.from(assertBatchKeyHex32(keyHex), "hex"));
+export function encryptBatchKeyHex(keyHex: string, context: { tenantId?: string | null; bid?: string | null; role?: BatchKeyRole | null; keyVersion?: number | null } = {}) {
+  return encryptKey16(Buffer.from(assertBatchKeyHex32(keyHex), "hex"), context);
 }
 
-export function decryptBatchKeyHex(encryptedKeyCt: string) {
-  return decryptKey16(String(encryptedKeyCt)).toString("hex").toUpperCase();
+export function decryptBatchKeyHex(encryptedKeyCt: string, context: { tenantId?: string | null; bid?: string | null; role?: BatchKeyRole | null; keyVersion?: number | null } = {}) {
+  return decryptKey16(String(encryptedKeyCt), context).toString("hex").toUpperCase();
 }
 
 export function buildBatchKeyLifecycleRecords(input: {
+  tenantId?: string | null;
   bid: string;
   kMetaHex: string;
   kFileHex: string;
@@ -200,7 +201,7 @@ export function buildBatchKeyLifecycleRecords(input: {
     bid,
     keyRole: role,
     keyVersion,
-    encryptedKeyCt: encryptBatchKeyHex(hex),
+    encryptedKeyCt: encryptBatchKeyHex(hex, { tenantId: input.tenantId, bid, role, keyVersion }),
     keyFingerprint: fingerprintBatchKey(hex, role),
     status: "active",
     createdBy,

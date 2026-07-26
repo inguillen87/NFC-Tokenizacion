@@ -7,8 +7,10 @@ import { ensureSdkSchema } from "../../../../../../lib/commercial-runtime-schema
 import { sql } from "../../../../../../lib/db";
 import { json } from "../../../../../../lib/http";
 import { authenticateSdkRequest, hashSdkApiKey, logSdkUsage, sdkKeyPrefix } from "../../../../../../lib/sdk-auth";
-import { dispatchTenantWebhooks } from "../../../../../../lib/sdk-webhooks";
+import { enqueueSdkWebhookGuaranteed, sdkWebhookOutboxUnavailableBody, SdkWebhookOutboxUnavailableError } from "../../../../../../lib/sdk-webhook-outbox-guarantee";
 import { asRecord, clean, numberOrNull, parseHeaderIp, sha256Hex } from "../../_shared";
+import { enforceSdkAuthenticationRateLimit, enforceSdkRateLimit } from "../../../../../../lib/critical-rate-limit";
+import { readSdkMutationBody, runSdkIdempotentMutation, SDK_IDEMPOTENCY_OPERATIONS } from "../../_idempotency";
 
 function generatePosToken() {
   return `nxpos_${randomBytes(24).toString("base64url")}`;
@@ -22,14 +24,29 @@ function clampExpiryMinutes(value: unknown) {
 
 export async function POST(req: Request) {
   const startedAt = Date.now();
+  const authRateLimited = await enforceSdkAuthenticationRateLimit(req);
+  if (authRateLimited) return authRateLimited;
   const auth = await authenticateSdkRequest(req, "sdk:pos");
   if (!auth.ok) {
     await logSdkUsage({ req, endpoint: "sdk.pos.activate", statusCode: auth.response.status, startedAt, reason: "auth_failed" });
     return auth.response;
   }
+  const rateLimited = await enforceSdkRateLimit(req, auth.context);
+  if (rateLimited) return rateLimited;
 
   await ensureSdkSchema();
-  const body = asRecord(await req.json().catch(() => ({})));
+  const parsedBody = await readSdkMutationBody(req, auth.context.traceId);
+  if (!parsedBody.ok) {
+    await logSdkUsage({ req, context: auth.context, endpoint: "sdk.pos.activate", statusCode: parsedBody.response.status, startedAt, reason: "invalid_request_body" });
+    return parsedBody.response;
+  }
+  const body = parsedBody.body;
+  return runSdkIdempotentMutation({
+    req,
+    context: auth.context,
+    route: SDK_IDEMPOTENCY_OPERATIONS.activatePosPurchase.route,
+    body,
+    execute: async ({ idempotencyOperationId }) => {
   const bid = clean(body.bid);
   const uidHex = clean(body.uidHex || body.uid_hex).toUpperCase();
   const externalOrderId = clean(body.externalOrderId || body.external_order_id || body.orderId);
@@ -122,7 +139,7 @@ export async function POST(req: Request) {
   const activationRows = await sql/*sql*/`
     INSERT INTO sdk_pos_activations (
       tenant_id, api_key_id, batch_id, tag_id, bid, uid_hex, pos_token_prefix, pos_token_hash,
-      external_order_id, retailer_id, contact, expires_at, meta
+      external_order_id, retailer_id, contact, expires_at, meta, idempotency_operation_id
     ) VALUES (
       ${auth.context.tenantId},
       ${auth.context.apiKeyId},
@@ -136,27 +153,37 @@ export async function POST(req: Request) {
       ${retailerId || null},
       ${contact || null},
       ${expiresAt},
-      ${JSON.stringify(meta)}::jsonb
+      ${JSON.stringify(meta)}::jsonb,
+      ${idempotencyOperationId}::uuid
     )
     RETURNING id::text AS id, expires_at
   `;
   const activation = activationRows[0] as { id?: string; expires_at?: string } | undefined;
   const activationId = String(activation?.id || "");
 
-  await dispatchTenantWebhooks({
-    tenantId: auth.context.tenantId,
-    eventName: "sdk.pos.activated",
-    idempotencyKey: activationId,
-    payload: {
-      activationId,
-      bid,
-      uidHex: normalizedUid || null,
-      externalOrderId: externalOrderId || null,
-      retailerId: retailerId || null,
-      expiresAt: String(activation?.expires_at || expiresAt),
-      traceId: auth.context.traceId,
-    },
-  }).catch(() => null);
+  let webhookOutbox;
+  try {
+    webhookOutbox = await enqueueSdkWebhookGuaranteed({
+      tenantId: auth.context.tenantId,
+      eventName: "sdk.pos.activated",
+      idempotencyKey: activationId,
+      payload: {
+        activationId,
+        bid,
+        uidHex: normalizedUid || null,
+        externalOrderId: externalOrderId || null,
+        retailerId: retailerId || null,
+        expiresAt: String(activation?.expires_at || expiresAt),
+        traceId: auth.context.traceId,
+      },
+      correlationId: auth.context.traceId,
+      resourceId: activationId,
+    });
+  } catch (error) {
+    if (!(error instanceof SdkWebhookOutboxUnavailableError)) throw error;
+    await logSdkUsage({ req, context: auth.context, endpoint: "sdk.pos.activate", statusCode: 503, startedAt, reason: error.code, meta: { bid, activationId } });
+    return json({ ...sdkWebhookOutboxUnavailableBody(error), operation: { activationId, bid, posToken: rawToken, expiresAt: String(activation?.expires_at || expiresAt) } }, 503, { "retry-after": "2", "x-nexid-trace-id": auth.context.traceId });
+  }
   await logSdkUsage({ req, context: auth.context, endpoint: "sdk.pos.activate", statusCode: 201, startedAt, meta: { bid, uidHex: normalizedUid || null, activationId } });
 
   return json({
@@ -174,5 +201,8 @@ export async function POST(req: Request) {
       note: "The token is shown once. Store it in the POS, receipt, ERP or checkout backend.",
     },
     traceId: auth.context.traceId,
+    webhookOutbox,
   }, 201);
+    },
+  });
 }

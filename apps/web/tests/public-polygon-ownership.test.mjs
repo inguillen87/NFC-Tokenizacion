@@ -99,10 +99,12 @@ test("ownership theme follows nexID data-theme with readable desktop and 390px n
   }
 });
 
-test("event certificate does not present invalid events as authentic", async () => {
+test("event certificate uses message-validation evidence and never legacy authenticity as authority", async () => {
   const page = await readFile(new URL("../src/app/certificado/[eventId]/page.tsx", import.meta.url), "utf8");
 
-  assert.match(page, /verification\?\.authentic/);
+  assert.match(page, /verification\?\.nfcMessageValidated === true/);
+  assert.match(page, /verification\?\.tagMessageValidated === true/);
+  assert.doesNotMatch(page, /verification\?\.authentic === true|Boolean\([^\n]*authentic/);
   assert.match(page, /no confirma autenticidad/);
   assert.match(page, /Ownership.*Bloqueado/s);
   assert.doesNotMatch(page, /confirma autenticidad y origen/);

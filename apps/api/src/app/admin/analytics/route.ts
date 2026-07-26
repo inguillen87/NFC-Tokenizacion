@@ -7,7 +7,7 @@ import { json } from "../../../lib/http";
 import { addBucket, normalizeBrowser, normalizeDeviceType, normalizeOs, normalizeTimezone, parseAnalyticsFilters, toSortedBuckets } from "../../../lib/analytics";
 import { aggregateTenantMetrics } from "@product/core";
 
-type TrendRow = { day: string; scans: number; duplicates: number; tamper: number };
+type TrendRow = { day: string; scans: number; duplicates: number; tamper: number; invalid: number; unregistered: number; inactive: number };
 
 type GeoRow = {
   city: string | null;
@@ -16,6 +16,10 @@ type GeoRow = {
   lng: number | null;
   scans: number;
   risk: number;
+  browser_gps_count: number;
+  ip_approx_count: number;
+  coordinate_count: number;
+  accuracy_m: number | null;
 };
 
 type DeviceRow = {
@@ -43,7 +47,19 @@ type JourneyRow = {
 };
 
 type CountryRow = { country: string | null; scans: number; risk: number };
-type CityRow = { city: string | null; country: string | null; lat: number | null; lng: number | null; scans: number; risk: number; last_seen: string | null };
+type CityRow = {
+  city: string | null;
+  country: string | null;
+  lat: number | null;
+  lng: number | null;
+  scans: number;
+  risk: number;
+  last_seen: string | null;
+  browser_gps_count: number;
+  ip_approx_count: number;
+  coordinate_count: number;
+  accuracy_m: number | null;
+};
 type DeviceBucketRow = { label: string | null; count: number };
 type FeedRow = { id: number; uid_hex: string | null; bid: string | null; result: string; city: string | null; country_code: string | null; device: string | null; created_at: string };
 type ProductRow = {
@@ -84,6 +100,38 @@ function cityCoords(city: string | null, country: string | null) {
   return KNOWN_CITY_COORDS.find((item) => item.country === normalizedCountry && item.match.test(normalizedCity)) || null;
 }
 
+function coordinateProvenance(
+  row: Pick<GeoRow, "browser_gps_count" | "ip_approx_count" | "coordinate_count" | "accuracy_m">,
+  fallbackUsed: boolean,
+) {
+  const browserGpsCount = Number(row.browser_gps_count || 0);
+  const ipApproxCount = Number(row.ip_approx_count || 0);
+  const coordinateCount = Number(row.coordinate_count || 0);
+  const unknownCount = Math.max(coordinateCount - browserGpsCount - ipApproxCount, 0);
+  const coordinateSource = fallbackUsed
+    ? "city_centroid"
+    : coordinateCount > 0 && browserGpsCount === coordinateCount
+      ? "browser_gps_reported"
+      : coordinateCount > 0 && ipApproxCount === coordinateCount
+        ? "ip_approx"
+        : coordinateCount > 0
+          ? "mixed_or_unknown_approx"
+          : "unknown";
+  return {
+    coordinateSource,
+    coordinateAccuracyMeters: coordinateSource === "browser_gps_reported" && typeof row.accuracy_m === "number"
+      ? Number(row.accuracy_m)
+      : null,
+    coordinateSampleCount: fallbackUsed ? 0 : coordinateCount,
+    coordinateIsApproximate: coordinateSource !== "browser_gps_reported",
+    coordinateSourceCounts: {
+      browserGpsReported: browserGpsCount,
+      ipApprox: ipApproxCount,
+      unknown: unknownCount,
+    },
+  };
+}
+
 let analyticsEventsSchemaReady: Promise<void> | null = null;
 
 async function ensureAnalyticsEventsSchema() {
@@ -93,6 +141,8 @@ async function ensureAnalyticsEventsSchema() {
       await sql/*sql*/`ALTER TABLE events ADD COLUMN IF NOT EXISTS geo_lng double precision`;
       await sql/*sql*/`ALTER TABLE events ADD COLUMN IF NOT EXISTS lat double precision`;
       await sql/*sql*/`ALTER TABLE events ADD COLUMN IF NOT EXISTS lng double precision`;
+      await sql/*sql*/`ALTER TABLE events ADD COLUMN IF NOT EXISTS location_accuracy_m double precision`;
+      await sql/*sql*/`ALTER TABLE events ADD COLUMN IF NOT EXISTS location_source text`;
       await sql/*sql*/`
         CREATE TABLE IF NOT EXISTS product_passports (
           id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -148,10 +198,12 @@ export async function GET(req: Request) {
           COUNT(*) FILTER (WHERE e.verdict = 'valid' OR e.result = 'VALID')::int AS valid,
           COUNT(*) FILTER (WHERE e.verdict = 'invalid' OR e.result = 'INVALID')::int AS invalid,
           COUNT(*) FILTER (WHERE e.verdict IN ('replay_suspect', 'blocked_replay') OR e.result IN ('DUPLICATE','REPLAY_SUSPECT'))::int AS duplicates,
-          COUNT(*) FILTER (WHERE e.verdict IN ('tampered', 'not_registered', 'not_active') OR e.result IN ('TAMPER','NOT_REGISTERED','NOT_ACTIVE'))::int AS tamper,
+          COUNT(*) FILTER (WHERE e.verdict = 'tampered' OR e.result IN ('TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED'))::int AS tamper,
+          COUNT(*) FILTER (WHERE e.verdict = 'not_registered' OR e.result = 'NOT_REGISTERED')::int AS unregistered,
+          COUNT(*) FILTER (WHERE e.verdict = 'not_active' OR e.result = 'NOT_ACTIVE')::int AS inactive,
           COUNT(*) FILTER (WHERE e.verdict = 'revoked' OR e.result = 'REVOKED')::int AS revoked,
-          COUNT(DISTINCT b.id)::int AS active_batches,
-          COUNT(DISTINCT tn.id)::int AS active_tenants
+          COUNT(DISTINCT b.id) FILTER (WHERE b.status = 'active')::int AS active_batches,
+          COUNT(DISTINCT tn.id) FILTER (WHERE b.status = 'active')::int AS active_tenants
         FROM tenants tn
         LEFT JOIN batches b ON b.tenant_id = tn.id
         LEFT JOIN events e ON e.batch_id = b.id
@@ -165,10 +217,12 @@ export async function GET(req: Request) {
           COUNT(*) FILTER (WHERE e.verdict = 'valid' OR e.result = 'VALID')::int AS valid,
           COUNT(*) FILTER (WHERE e.verdict = 'invalid' OR e.result = 'INVALID')::int AS invalid,
           COUNT(*) FILTER (WHERE e.verdict IN ('replay_suspect', 'blocked_replay') OR e.result IN ('DUPLICATE','REPLAY_SUSPECT'))::int AS duplicates,
-          COUNT(*) FILTER (WHERE e.verdict IN ('tampered', 'not_registered', 'not_active') OR e.result IN ('TAMPER','NOT_REGISTERED','NOT_ACTIVE'))::int AS tamper,
+          COUNT(*) FILTER (WHERE e.verdict = 'tampered' OR e.result IN ('TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED'))::int AS tamper,
+          COUNT(*) FILTER (WHERE e.verdict = 'not_registered' OR e.result = 'NOT_REGISTERED')::int AS unregistered,
+          COUNT(*) FILTER (WHERE e.verdict = 'not_active' OR e.result = 'NOT_ACTIVE')::int AS inactive,
           COUNT(*) FILTER (WHERE e.verdict = 'revoked' OR e.result = 'REVOKED')::int AS revoked,
           COUNT(DISTINCT b.id) FILTER (WHERE b.status = 'active')::int AS active_batches,
-          COUNT(DISTINCT tn.id)::int AS active_tenants
+          COUNT(DISTINCT tn.id) FILTER (WHERE b.status = 'active')::int AS active_tenants
         FROM batches b
         JOIN tenants tn ON tn.id = b.tenant_id
         LEFT JOIN events e ON e.batch_id = b.id
@@ -180,7 +234,10 @@ export async function GET(req: Request) {
         SELECT to_char(date_trunc('day', e.created_at), 'Dy') AS day,
           COUNT(*)::int AS scans,
           COUNT(*) FILTER (WHERE e.verdict IN ('replay_suspect', 'blocked_replay') OR e.result IN ('DUPLICATE','REPLAY_SUSPECT'))::int AS duplicates,
-          COUNT(*) FILTER (WHERE e.verdict IN ('tampered', 'not_registered', 'not_active') OR e.result IN ('TAMPER','NOT_REGISTERED','NOT_ACTIVE'))::int AS tamper,
+          COUNT(*) FILTER (WHERE e.verdict = 'tampered' OR e.result IN ('TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED'))::int AS tamper,
+          COUNT(*) FILTER (WHERE e.verdict = 'invalid' OR e.result = 'INVALID')::int AS invalid,
+          COUNT(*) FILTER (WHERE e.verdict = 'not_registered' OR e.result = 'NOT_REGISTERED')::int AS unregistered,
+          COUNT(*) FILTER (WHERE e.verdict = 'not_active' OR e.result = 'NOT_ACTIVE')::int AS inactive,
           COUNT(*) FILTER (WHERE e.verdict = 'revoked' OR e.result = 'REVOKED')::int AS revoked
         FROM events e
         JOIN batches b ON b.id = e.batch_id
@@ -196,7 +253,10 @@ export async function GET(req: Request) {
         SELECT to_char(date_trunc('day', e.created_at), 'Dy') AS day,
           COUNT(*)::int AS scans,
           COUNT(*) FILTER (WHERE e.verdict IN ('replay_suspect', 'blocked_replay') OR e.result IN ('DUPLICATE','REPLAY_SUSPECT'))::int AS duplicates,
-          COUNT(*) FILTER (WHERE e.verdict IN ('tampered', 'not_registered', 'not_active') OR e.result IN ('TAMPER','NOT_REGISTERED','NOT_ACTIVE'))::int AS tamper,
+          COUNT(*) FILTER (WHERE e.verdict = 'tampered' OR e.result IN ('TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED'))::int AS tamper,
+          COUNT(*) FILTER (WHERE e.verdict = 'invalid' OR e.result = 'INVALID')::int AS invalid,
+          COUNT(*) FILTER (WHERE e.verdict = 'not_registered' OR e.result = 'NOT_REGISTERED')::int AS unregistered,
+          COUNT(*) FILTER (WHERE e.verdict = 'not_active' OR e.result = 'NOT_ACTIVE')::int AS inactive,
           COUNT(*) FILTER (WHERE e.verdict = 'revoked' OR e.result = 'REVOKED')::int AS revoked
         FROM events e
         WHERE e.created_at >= now() - ${rangeSql}::interval
@@ -226,7 +286,11 @@ export async function GET(req: Request) {
           AVG(COALESCE(e.lat, e.geo_lat))::float8 AS lat,
           AVG(COALESCE(e.lng, e.geo_lng))::float8 AS lng,
           COUNT(e.id)::int AS scans,
-          COUNT(*) FILTER (WHERE e.result IN ('DUPLICATE','REPLAY_SUSPECT','TAMPER','NOT_REGISTERED','NOT_ACTIVE'))::int AS risk
+          COUNT(*) FILTER (WHERE e.result IN ('INVALID','DUPLICATE','REPLAY_SUSPECT','TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED','REVOKED'))::int AS risk,
+          COUNT(*) FILTER (WHERE e.location_source = 'browser_gps_reported' AND COALESCE(e.lat, e.geo_lat) IS NOT NULL AND COALESCE(e.lng, e.geo_lng) IS NOT NULL)::int AS browser_gps_count,
+          COUNT(*) FILTER (WHERE e.location_source IN ('ip_approx','edge_ip_approx') AND COALESCE(e.lat, e.geo_lat) IS NOT NULL AND COALESCE(e.lng, e.geo_lng) IS NOT NULL)::int AS ip_approx_count,
+          COUNT(*) FILTER (WHERE COALESCE(e.lat, e.geo_lat) IS NOT NULL AND COALESCE(e.lng, e.geo_lng) IS NOT NULL)::int AS coordinate_count,
+          AVG(e.location_accuracy_m) FILTER (WHERE e.location_accuracy_m IS NOT NULL)::float8 AS accuracy_m
         FROM events e
         JOIN tenants tn ON tn.id = e.tenant_id
         WHERE tn.slug = ${tenant}
@@ -243,7 +307,11 @@ export async function GET(req: Request) {
           AVG(COALESCE(e.lat, e.geo_lat))::float8 AS lat,
           AVG(COALESCE(e.lng, e.geo_lng))::float8 AS lng,
           COUNT(e.id)::int AS scans,
-          COUNT(*) FILTER (WHERE e.result IN ('DUPLICATE','REPLAY_SUSPECT','TAMPER','NOT_REGISTERED','NOT_ACTIVE'))::int AS risk
+          COUNT(*) FILTER (WHERE e.result IN ('INVALID','DUPLICATE','REPLAY_SUSPECT','TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED','REVOKED'))::int AS risk,
+          COUNT(*) FILTER (WHERE e.location_source = 'browser_gps_reported' AND COALESCE(e.lat, e.geo_lat) IS NOT NULL AND COALESCE(e.lng, e.geo_lng) IS NOT NULL)::int AS browser_gps_count,
+          COUNT(*) FILTER (WHERE e.location_source IN ('ip_approx','edge_ip_approx') AND COALESCE(e.lat, e.geo_lat) IS NOT NULL AND COALESCE(e.lng, e.geo_lng) IS NOT NULL)::int AS ip_approx_count,
+          COUNT(*) FILTER (WHERE COALESCE(e.lat, e.geo_lat) IS NOT NULL AND COALESCE(e.lng, e.geo_lng) IS NOT NULL)::int AS coordinate_count,
+          AVG(e.location_accuracy_m) FILTER (WHERE e.location_accuracy_m IS NOT NULL)::float8 AS accuracy_m
         FROM events e
         WHERE e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source = ${source}::text)
@@ -258,7 +326,7 @@ export async function GET(req: Request) {
           COUNT(*)::int AS scans,
           COUNT(DISTINCT COALESCE(e.geo_country, e.country_code, '--'))::int AS countries,
           COUNT(*) FILTER (WHERE e.result = 'VALID')::int AS valid,
-          COUNT(*) FILTER (WHERE e.result IN ('INVALID','REPLAY_SUSPECT','TAMPER','NOT_REGISTERED','NOT_ACTIVE'))::int AS risk
+          COUNT(*) FILTER (WHERE e.result IN ('INVALID','DUPLICATE','REPLAY_SUSPECT','TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED','REVOKED'))::int AS risk
         FROM events e
         JOIN tenants tn ON tn.id = e.tenant_id
         WHERE tn.slug = ${tenant}
@@ -275,7 +343,7 @@ export async function GET(req: Request) {
           COUNT(*)::int AS scans,
           COUNT(DISTINCT COALESCE(e.geo_country, e.country_code, '--'))::int AS countries,
           COUNT(*) FILTER (WHERE e.result = 'VALID')::int AS valid,
-          COUNT(*) FILTER (WHERE e.result IN ('INVALID','REPLAY_SUSPECT','TAMPER','NOT_REGISTERED','NOT_ACTIVE'))::int AS risk
+          COUNT(*) FILTER (WHERE e.result IN ('INVALID','DUPLICATE','REPLAY_SUSPECT','TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED','REVOKED'))::int AS risk
         FROM events e
         WHERE e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source = ${source}::text)
@@ -346,7 +414,14 @@ export async function GET(req: Request) {
         LIMIT 12
       `
       : sql/*sql*/`
-        WITH ranked AS (
+        WITH scoped_events AS (
+          SELECT *
+          FROM events e
+          WHERE e.uid_hex IS NOT NULL
+            AND e.created_at >= now() - ${rangeSql}::interval
+            AND (${source} = '' OR e.source = ${source}::text)
+        ),
+        ranked AS (
           SELECT
             e.uid_hex,
             e.created_at,
@@ -357,15 +432,11 @@ export async function GET(req: Request) {
             COALESCE(NULLIF(e.device_label, ''), split_part(COALESCE(e.user_agent, ''), ' ', 1), 'Unknown device') AS device,
             ROW_NUMBER() OVER (PARTITION BY e.uid_hex ORDER BY e.created_at ASC) AS rn_first,
             ROW_NUMBER() OVER (PARTITION BY e.uid_hex ORDER BY e.created_at DESC) AS rn_last
-          FROM events e
-          WHERE e.uid_hex IS NOT NULL
-            AND e.created_at >= now() - ${rangeSql}::interval
-            AND (${source} = '' OR e.source = ${source}::text)
+          FROM scoped_events e
         ),
         totals AS (
           SELECT uid_hex, COUNT(*)::int AS taps
-          FROM events
-          WHERE uid_hex IS NOT NULL
+          FROM scoped_events
           GROUP BY uid_hex
         )
         SELECT
@@ -396,7 +467,7 @@ export async function GET(req: Request) {
         SELECT
           COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, ''), '--') AS country,
           COUNT(*)::int AS scans,
-          COUNT(*) FILTER (WHERE e.result IN ('INVALID','REPLAY_SUSPECT','TAMPER','NOT_REGISTERED','NOT_ACTIVE'))::int AS risk
+          COUNT(*) FILTER (WHERE e.result IN ('INVALID','DUPLICATE','REPLAY_SUSPECT','TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED','REVOKED'))::int AS risk
         FROM events e
         JOIN tenants tn ON tn.id = e.tenant_id
         WHERE tn.slug = ${tenant}
@@ -410,7 +481,7 @@ export async function GET(req: Request) {
         SELECT
           COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, ''), '--') AS country,
           COUNT(*)::int AS scans,
-          COUNT(*) FILTER (WHERE e.result IN ('INVALID','REPLAY_SUSPECT','TAMPER','NOT_REGISTERED','NOT_ACTIVE'))::int AS risk
+          COUNT(*) FILTER (WHERE e.result IN ('INVALID','DUPLICATE','REPLAY_SUSPECT','TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED','REVOKED'))::int AS risk
         FROM events e
         WHERE e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source = ${source}::text)
@@ -426,8 +497,12 @@ export async function GET(req: Request) {
           AVG(COALESCE(e.lat, e.geo_lat))::float8 AS lat,
           AVG(COALESCE(e.lng, e.geo_lng))::float8 AS lng,
           COUNT(*)::int AS scans,
-          COUNT(*) FILTER (WHERE e.result IN ('INVALID','REPLAY_SUSPECT','TAMPER','NOT_REGISTERED','NOT_ACTIVE'))::int AS risk,
-          MAX(e.created_at)::text AS last_seen
+          COUNT(*) FILTER (WHERE e.result IN ('INVALID','DUPLICATE','REPLAY_SUSPECT','TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED','REVOKED'))::int AS risk,
+          MAX(e.created_at)::text AS last_seen,
+          COUNT(*) FILTER (WHERE e.location_source = 'browser_gps_reported' AND COALESCE(e.lat, e.geo_lat) IS NOT NULL AND COALESCE(e.lng, e.geo_lng) IS NOT NULL)::int AS browser_gps_count,
+          COUNT(*) FILTER (WHERE e.location_source IN ('ip_approx','edge_ip_approx') AND COALESCE(e.lat, e.geo_lat) IS NOT NULL AND COALESCE(e.lng, e.geo_lng) IS NOT NULL)::int AS ip_approx_count,
+          COUNT(*) FILTER (WHERE COALESCE(e.lat, e.geo_lat) IS NOT NULL AND COALESCE(e.lng, e.geo_lng) IS NOT NULL)::int AS coordinate_count,
+          AVG(e.location_accuracy_m) FILTER (WHERE e.location_source = 'browser_gps_reported' AND e.location_accuracy_m IS NOT NULL)::float8 AS accuracy_m
         FROM events e
         JOIN tenants tn ON tn.id = e.tenant_id
         WHERE tn.slug = ${tenant}
@@ -445,8 +520,12 @@ export async function GET(req: Request) {
           AVG(COALESCE(e.lat, e.geo_lat))::float8 AS lat,
           AVG(COALESCE(e.lng, e.geo_lng))::float8 AS lng,
           COUNT(*)::int AS scans,
-          COUNT(*) FILTER (WHERE e.result IN ('INVALID','REPLAY_SUSPECT','TAMPER','NOT_REGISTERED','NOT_ACTIVE'))::int AS risk,
-          MAX(e.created_at)::text AS last_seen
+          COUNT(*) FILTER (WHERE e.result IN ('INVALID','DUPLICATE','REPLAY_SUSPECT','TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED','REVOKED'))::int AS risk,
+          MAX(e.created_at)::text AS last_seen,
+          COUNT(*) FILTER (WHERE e.location_source = 'browser_gps_reported' AND COALESCE(e.lat, e.geo_lat) IS NOT NULL AND COALESCE(e.lng, e.geo_lng) IS NOT NULL)::int AS browser_gps_count,
+          COUNT(*) FILTER (WHERE e.location_source IN ('ip_approx','edge_ip_approx') AND COALESCE(e.lat, e.geo_lat) IS NOT NULL AND COALESCE(e.lng, e.geo_lng) IS NOT NULL)::int AS ip_approx_count,
+          COUNT(*) FILTER (WHERE COALESCE(e.lat, e.geo_lat) IS NOT NULL AND COALESCE(e.lng, e.geo_lng) IS NOT NULL)::int AS coordinate_count,
+          AVG(e.location_accuracy_m) FILTER (WHERE e.location_source = 'browser_gps_reported' AND e.location_accuracy_m IS NOT NULL)::float8 AS accuracy_m
         FROM events e
         WHERE e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source = ${source}::text)
@@ -677,6 +756,8 @@ export async function GET(req: Request) {
     invalid: 0,
     duplicates: 0,
     tamper: 0,
+    unregistered: 0,
+    inactive: 0,
     active_batches: 0,
     active_tenants: 0,
   }) as Record<string, number>;
@@ -685,6 +766,8 @@ export async function GET(req: Request) {
   const duplicates = Number(overview.duplicates || 0);
   const tamper = Number(overview.tamper || 0);
   const invalid = Number(overview.invalid || 0);
+  const unregistered = Number(overview.unregistered || 0);
+  const inactive = Number(overview.inactive || 0);
   const revoked = Number((overview as Record<string, number>).revoked || 0);
   const metrics = aggregateTenantMetrics({
     counts: { scans: scansTotal, valid: Number(overview.valid || 0), invalid, duplicates, tamper, revoked },
@@ -695,6 +778,9 @@ export async function GET(req: Request) {
     scans: Number(row.scans || 0),
     duplicates: Number(row.duplicates || 0),
     tamper: Number(row.tamper || 0),
+    invalid: Number(row.invalid || 0),
+    unregistered: Number(row.unregistered || 0),
+    inactive: Number(row.inactive || 0),
   }));
 
   const batchMap = new Map((batchRows as Array<{ status: string; value: number }>).map((row) => [row.status, Number(row.value || 0)]));
@@ -710,13 +796,15 @@ export async function GET(req: Request) {
       const lat = typeof row.lat === "number" ? Number(row.lat) : fallback?.lat ?? null;
       const lng = typeof row.lng === "number" ? Number(row.lng) : fallback?.lng ?? null;
       if (lat == null || lng == null) return null;
+      const provenance = coordinateProvenance(row, typeof row.lat !== "number");
       return {
-      city: row.city || "Unknown",
-      country: row.country || "--",
+        city: row.city || "Unknown",
+        country: row.country || "--",
         lat,
         lng,
-      scans: Number(row.scans || 0),
-      risk: Number(row.risk || 0),
+        scans: Number(row.scans || 0),
+        risk: Number(row.risk || 0),
+        ...provenance,
       };
     })
     .filter((row): row is NonNullable<typeof row> => Boolean(row));
@@ -757,6 +845,7 @@ export async function GET(req: Request) {
           lat: hasProductOriginCoords ? productOrigin?.lat ?? null : typeof row.origin_lat === "number" ? Number(row.origin_lat) : null,
           lng: hasProductOriginCoords ? productOrigin?.lng ?? null : typeof row.origin_lng === "number" ? Number(row.origin_lng) : null,
         },
+        originSource: hasProductOriginCoords ? "product_passport_declared" : "first_observed_event",
         current: {
           city: row.current_city || "Unknown",
           country: row.current_country || "--",
@@ -788,10 +877,13 @@ export async function GET(req: Request) {
       invalidRate: metrics.invalidRate,
       duplicates,
       tamper,
+      unregistered,
+      inactive,
       activeBatches: Number(overview.active_batches || 0),
       activeTenants: Number(overview.active_tenants || 0),
       geoRegions: geoPoints.length,
-      resellerPerformance: Number((overview.scans || 0) * 1.8),
+      resellerPerformance: null,
+      resellerPerformanceSource: "billing_unavailable",
       riskScore: metrics.riskScore,
     },
     scope: {
@@ -801,6 +893,29 @@ export async function GET(req: Request) {
       country: country || "all",
     },
     riskBreakdown: metrics.riskBreakdown,
+    eventTaxonomy: {
+      version: "2026-07-26.v1",
+      definitions: {
+        valid: "cryptographic_or_policy_validation_passed",
+        invalid: "validation_failed",
+        duplicate: "replay_or_duplicate_signal",
+        tamper: "explicit_tamper_signal_only",
+        unregistered: "tag_uid_not_registered",
+        inactive: "tag_or_batch_not_active",
+        revoked: "tag_or_credential_revoked",
+      },
+      securityRiskClasses: ["invalid", "duplicate", "tamper", "revoked"],
+      lifecycleClassesExcludedFromRisk: ["unregistered", "inactive"],
+      counts: {
+        valid: Number(overview.valid || 0),
+        invalid,
+        duplicate: duplicates,
+        tamper,
+        unregistered,
+        inactive,
+        revoked,
+      },
+    },
     geography: {
       countries: (countryRows as CountryRow[]).map((row) => ({
         country: row.country || "--",
@@ -815,6 +930,7 @@ export async function GET(req: Request) {
         scans: Number(row.scans || 0),
         risk: Number(row.risk || 0),
         lastSeen: row.last_seen,
+        ...coordinateProvenance(row, false),
       })),
     },
     devices: {

@@ -23,9 +23,11 @@ export function LandingProofSection({ proof }: { proof: ProofSummary }) {
     <section className="container-shell py-8">
       <Card className="p-6 md:p-8">
         <SectionHeading
-          eyebrow="Prueba en vivo"
-          title="Prueba operativa en tiempo real"
-          description="Métricas de validación y últimos eventos públicos anonimizados."
+          eyebrow={proof.demoMode ? "Prueba guiada" : "Prueba en vivo"}
+          title={proof.demoMode ? "Escenario simulado de validación" : "Prueba operativa en tiempo real"}
+          description={proof.demoMode
+            ? "Métricas y eventos anonimizados de demostración; no representan actividad productiva."
+            : "Métricas de validación y últimos eventos públicos anonimizados reportados por la fuente operativa."}
         />
 
         <div className="mt-6 grid gap-3 md:grid-cols-4">

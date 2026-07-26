@@ -45,7 +45,7 @@ test("landing claims qualify technical security and commercial outcomes", async 
   assert.doesNotMatch(sections, /impossible to clone or replay|imposible de clonar o copiar/);
   assert.match(content, /Conversion and repeat purchase are measured in each pilot, not promised/);
   assert.match(content, /Conversión y recompra se miden en cada piloto; no se prometen/);
-  assert.match(sections, /designed to resist copying and replay when keys, counters and server validation are correctly configured/);
+  assert.match(sections, /designed to resist message copying and replay when keys, counters and server validation are correctly configured/);
 });
 
 test("brand synergy light mode and mobile controls keep enterprise contrast", async () => {
