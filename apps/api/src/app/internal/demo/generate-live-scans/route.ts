@@ -12,7 +12,7 @@ import {
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.nexid.lat';
 
 export async function POST(req: Request) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
 
   const body = await req.json().catch(() => ({} as Record<string, unknown>));

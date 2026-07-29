@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { getAdminPrincipal } from "./auth";
 import {
   buildFleetRateLimitDecision,
   type FleetRateLimitClass,
@@ -244,16 +244,12 @@ export function enforceSdkRateLimit(
 }
 
 export function adminCriticalRateLimitIdentity(req: Request) {
-  const tenant = String(req.headers.get("x-nexid-tenant-slug") || "").trim();
-  const authorization = String(req.headers.get("authorization") || "").trim();
-  const credentialDigest = createHash("sha256")
-    .update(`nexid-admin-rate-principal-v1\0${authorization}`, "utf8")
-    .digest("hex");
+  const principal = getAdminPrincipal(req);
   return {
-    tenantId: tenant || "platform",
-    // Called only after checkAdmin succeeds. The credential never enters the
-    // bucket key or database; arbitrary identity/scope headers cannot shard it.
-    subjectId: `admin-credential:${credentialDigest}`,
+    tenantId: principal.tenantId || "platform",
+    // Called only after checkAdmin succeeds. Stable database identities prevent
+    // caller headers or token rotation from sharding the rate-limit bucket.
+    subjectId: `admin-session:${principal.sessionId}`,
     globalPrincipal: true,
   };
 }

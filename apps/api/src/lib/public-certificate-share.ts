@@ -8,20 +8,33 @@ function cleanEventId(value: unknown) {
   return eventId;
 }
 
+function legacyFallbackEnabled() {
+  return String(process.env.PUBLIC_CERTIFICATE_ALLOW_LEGACY_SECRET_FALLBACK || "").trim().toLowerCase() === "true";
+}
+
+function legacySecrets() {
+  if (!legacyFallbackEnabled()) return [];
+  return [process.env.SUN_HANDOFF_SECRET, process.env.PUBLIC_DEMO_SHARE_SECRET, process.env.ADMIN_API_KEY]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+}
+
 function signingSecret() {
-  const value = String(
-    process.env.PUBLIC_CERTIFICATE_SIGNING_SECRET
-    || process.env.SUN_HANDOFF_SECRET
-    || process.env.PUBLIC_DEMO_SHARE_SECRET
-    || process.env.ADMIN_API_KEY
-    || "",
-  ).trim();
+  const value = String(process.env.PUBLIC_CERTIFICATE_SIGNING_SECRET || "").trim() || legacySecrets()[0] || "";
   if (!value) throw new Error("PUBLIC_CERTIFICATE_SIGNING_SECRET is not configured");
   return value;
 }
 
-function signatureFor(eventId: string) {
-  return createHmac("sha256", signingSecret())
+function verificationSecrets() {
+  return [...new Set([
+    String(process.env.PUBLIC_CERTIFICATE_SIGNING_SECRET || "").trim(),
+    String(process.env.PUBLIC_CERTIFICATE_SIGNING_SECRET_PREVIOUS || "").trim(),
+    ...legacySecrets(),
+  ].filter(Boolean))];
+}
+
+function signatureFor(eventId: string, secret = signingSecret()) {
+  return createHmac("sha256", secret)
     .update(`nexid:public-certificate:${TOKEN_VERSION}:${eventId}`)
     .digest("base64url");
 }
@@ -35,12 +48,13 @@ export function verifyPublicCertificateShareToken(eventId: unknown, token: unkno
   if (!candidate.startsWith(`${TOKEN_VERSION}.`)) return false;
 
   try {
-    const expected = createPublicCertificateShareToken(eventId);
     const left = Buffer.from(candidate);
-    const right = Buffer.from(expected);
-    return left.length === right.length && timingSafeEqual(left, right);
+    const cleanId = cleanEventId(eventId);
+    return verificationSecrets().some((secret) => {
+      const right = Buffer.from(`${TOKEN_VERSION}.${signatureFor(cleanId, secret)}`);
+      return left.length === right.length && timingSafeEqual(left, right);
+    });
   } catch {
     return false;
   }
 }
-

@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminTenantScope } from "../../../../../../lib/auth";
+import { checkAdmin, getAdminActor, getAdminTenantScope } from "../../../../../../lib/auth";
 import { logAuditEvent } from "../../../../../../lib/audit-logger";
 import { sql } from "../../../../../../lib/db";
 import { json } from "../../../../../../lib/http";
@@ -24,7 +24,7 @@ async function resolveShipment(shipmentId: string, forcedTenantSlug = "") {
 }
 
 export async function POST(req: Request, context: { params: Promise<{ shipmentId: string }> }) {
-  const auth = checkAdmin(req, ["super_admin", "security_operator", "tenant_admin"]);
+  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
   if (auth) return auth;
   await ensureSecureDeliverySchema();
 
@@ -34,6 +34,7 @@ export async function POST(req: Request, context: { params: Promise<{ shipmentId
   if (!shipment) return json({ ok: false, reason: "shipment_not_found" }, 404);
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+  const actor = getAdminActor(req);
   const issueType = clean(body.issue_type || body.issueType || "tamper_report");
   const description = clean(body.description);
   if (!description) return json({ ok: false, reason: "claim_description_required" }, 400);
@@ -59,13 +60,13 @@ export async function POST(req: Request, context: { params: Promise<{ shipmentId
       ${shipment.id},
       'CLAIM_OPENED',
       ${clean(body.location) || null},
-      ${clean(body.reported_by || body.reportedBy) || req.headers.get("x-nexid-actor") || null},
+      ${actor.email},
       ${description}
     )
   `;
 
   await logAuditEvent({
-    actorId: req.headers.get("x-nexid-actor-id"),
+    actorId: actor.id,
     tenantId: String(shipment.tenant_id),
     action: "secure_delivery_claim_opened",
     resourceType: "shipment",

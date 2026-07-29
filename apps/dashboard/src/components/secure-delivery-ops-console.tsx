@@ -58,7 +58,7 @@ export function SecureDeliveryOpsConsole({ tenantSlug, role }: Props) {
     const quantity = Math.max(1, Number(formData.get("quantity") || 1));
 
     if (!tenant && !tenantLocked) {
-      setError("Tenant slug is required for super-admin/security-operator workflows.");
+      setError("Tenant slug is required for global administrator workflows.");
       setLoading(null);
       return;
     }

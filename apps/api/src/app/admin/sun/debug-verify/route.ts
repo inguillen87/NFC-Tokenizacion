@@ -74,7 +74,7 @@ function debugRecommendation(input: {
 }
 
 export async function POST(req: Request) {
-  const auth = checkAdmin(req, ["super_admin"]);
+  const auth = await checkAdmin(req, ["super_admin"]);
   if (auth) return auth;
 
   const body = (await req.json().catch(() => ({}))) as DebugVerifyBody;

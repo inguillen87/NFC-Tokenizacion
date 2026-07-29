@@ -3,16 +3,43 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const { resolveAdminProofTenantScope } = await import("../src/lib/admin-proof-tenant-scope.ts");
-const { checkAdminPermission } = await import("../src/lib/auth.ts");
+const { checkAdmin, checkAdminPermission } = await import("../src/lib/auth.ts");
 
-function tenantRequest(slug) {
-  return new Request("https://api.nexid.lat/admin/proof/anchors", {
+function adminSession(role, tenantSlug = null, permissions = []) {
+  return {
+    id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    userId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    email: "admin@example.com",
+    label: "Admin",
+    role,
+    tenantId: tenantSlug ? "cccccccc-cccc-4ccc-8ccc-cccccccccccc" : null,
+    tenantSlug,
+    permissions,
+    mfaVerified: true,
+    expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    rotatedCookieValue: null,
+    setupCompleted: true,
+  };
+}
+
+async function tenantRequest(slug, permissions = []) {
+  const req = new Request("https://api.nexid.lat/admin/proof/anchors", {
     headers: {
-      authorization: "Bearer test-admin-key",
-      "x-nexid-admin-scope": "tenant_admin",
-      "x-nexid-tenant-slug": slug,
+      authorization: "Bearer opaque-session",
+      "x-nexid-admin-scope": "super_admin",
+      "x-nexid-tenant-slug": "forged-tenant",
     },
   });
+  assert.equal(await checkAdmin(req, ["tenant_admin"], async () => adminSession("tenant-admin", slug, permissions)), null);
+  return req;
+}
+
+async function superAdminRequest() {
+  const req = new Request("https://api.nexid.lat/admin/proof/anchors", {
+    headers: { authorization: "Bearer opaque-super-session" },
+  });
+  assert.equal(await checkAdmin(req, ["super_admin"], async () => adminSession("super-admin", null, ["*"])), null);
+  return req;
 }
 
 test("forced proof tenant wins over a requested tenant and fails closed when absent", async () => {
@@ -22,7 +49,7 @@ test("forced proof tenant wins over a requested tenant and fails closed when abs
     return [];
   };
 
-  const scope = await resolveAdminProofTenantScope(tenantRequest("missing-tenant"), "other-tenant", query);
+  const scope = await resolveAdminProofTenantScope(await tenantRequest("missing-tenant"), "other-tenant", query);
   assert.deepEqual(scope, {
     requested: true,
     found: false,
@@ -35,7 +62,7 @@ test("forced proof tenant wins over a requested tenant and fails closed when abs
 
 test("resolved proof tenant returns the tenant id used by every evidence query", async () => {
   const query = async () => [{ id: "11111111-1111-4111-8111-111111111111", slug: "tenant-a" }];
-  const scope = await resolveAdminProofTenantScope(tenantRequest("tenant-a"), "tenant-b", query);
+  const scope = await resolveAdminProofTenantScope(await tenantRequest("tenant-a"), "tenant-b", query);
   assert.equal(scope.found, true);
   assert.equal(scope.tenantId, "11111111-1111-4111-8111-111111111111");
   assert.equal(scope.tenantSlug, "tenant-a");
@@ -44,9 +71,7 @@ test("resolved proof tenant returns the tenant id used by every evidence query",
 test("unscoped super admin proof reads remain explicitly global", async () => {
   let queryCalls = 0;
   const scope = await resolveAdminProofTenantScope(
-    new Request("https://api.nexid.lat/admin/proof/anchors", {
-      headers: { "x-nexid-admin-scope": "super_admin" },
-    }),
+    await superAdminRequest(),
     "",
     async () => {
       queryCalls += 1;
@@ -58,19 +83,11 @@ test("unscoped super admin proof reads remain explicitly global", async () => {
 });
 
 test("tenant proof permissions distinguish read from write", async () => {
-  const readOnly = new Request("https://api.nexid.lat/admin/proof/anchors", {
-    headers: {
-      "x-nexid-admin-scope": "tenant_admin",
-      "x-nexid-tenant-slug": "tenant-a",
-      "x-nexid-permissions": "events:read,proof:read",
-    },
-  });
+  const readOnly = await tenantRequest("tenant-a", ["events:read", "proof:read"]);
   assert.equal(checkAdminPermission(readOnly, "proof:read"), null);
   assert.equal(checkAdminPermission(readOnly, "proof:write")?.status, 403);
 
-  const superAdmin = new Request("https://api.nexid.lat/admin/proof/anchors", {
-    headers: { "x-nexid-admin-scope": "super_admin" },
-  });
+  const superAdmin = await superAdminRequest();
   assert.equal(checkAdminPermission(superAdmin, "proof:write"), null);
 });
 

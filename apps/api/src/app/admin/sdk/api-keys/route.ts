@@ -35,7 +35,7 @@ async function resolveTenantId(input: { tenant?: string | null; tenantScope?: st
 }
 
 export async function GET(req: Request) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
   const permission = checkSdkApiKeyPermission(req, "read");
   if (permission) return permission;
@@ -88,7 +88,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
   const permission = checkSdkApiKeyPermission(req, "write");
   if (permission) return permission;

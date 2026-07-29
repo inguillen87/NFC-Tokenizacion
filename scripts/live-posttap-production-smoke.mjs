@@ -111,9 +111,10 @@ async function sendTwilioDirect({ to, body, mediaUrl }) {
 async function main() {
   loadEnv(path.resolve("apps/api/.env.local"));
   const apiBase = process.env.LIVE_API_BASE || "https://api.nexid.lat";
-  const adminKey = process.env.ADMIN_API_KEY;
+  const adminSessionToken = process.env.NEXID_ADMIN_SESSION_TOKEN || process.env.LIVE_ADMIN_SESSION_TOKEN;
+  const twilioPreviewKey = process.env.TWILIO_PREVIEW_INTERNAL_KEY;
   const databaseUrl = process.env.DATABASE_URL;
-  if (!adminKey || !databaseUrl) throw new Error("ADMIN_API_KEY_or_DATABASE_URL_missing");
+  if (!adminSessionToken || !databaseUrl) throw new Error("NEXID_ADMIN_SESSION_TOKEN_or_DATABASE_URL_missing");
 
   const sql = neon(databaseUrl);
   const phone = process.env.LIVE_PROD_PHONE || process.env.LIVE_DEMO_PHONE || "+5492613168608";
@@ -160,7 +161,7 @@ async function main() {
 
   const tap = await requireOk("live scan", await requestJson(apiBase, "/internal/demo/scan", {
     method: "POST",
-    headers: { "content-type": "application/json", authorization: `Bearer ${adminKey}` },
+    headers: { "content-type": "application/json", authorization: `Bearer ${adminSessionToken}` },
     body: JSON.stringify({
       bid,
       uidHex,
@@ -261,7 +262,7 @@ async function main() {
   ].join(" ");
   const campaign = await requireOk("whatsapp campaign prompt", await requestJson(apiBase, "/admin/campaigns/test-whatsapp", {
     method: "POST",
-    headers: { "content-type": "application/json", authorization: `Bearer ${adminKey}` },
+    headers: { "content-type": "application/json", authorization: `Bearer ${adminSessionToken}` },
     body: JSON.stringify({
       to: phone,
       confirmRecipientOptIn: true,
@@ -291,6 +292,8 @@ async function main() {
     return;
   }
 
+  if (!twilioPreviewKey) throw new Error("TWILIO_PREVIEW_INTERNAL_KEY_missing_for_automated_reply");
+
   const inboundForm = new URLSearchParams();
   inboundForm.set("From", `whatsapp:${phone}`);
   inboundForm.set("To", "whatsapp:+14155238886");
@@ -301,7 +304,7 @@ async function main() {
   inboundForm.set("MessageSid", `SM_codex_live_${Date.now()}`);
   const inboundRes = await fetch(`${apiBase}/twilio/whatsapp/inbound`, {
     method: "POST",
-    headers: { "x-nexid-internal-key": adminKey },
+    headers: { "x-nexid-internal-key": twilioPreviewKey },
     body: inboundForm,
   });
   const inboundText = await inboundRes.text();
@@ -346,7 +349,7 @@ async function main() {
 
   const validate = await requireOk("admin voucher lookup", await requestJson(apiBase, "/admin/rewards/redemptions/validate", {
     method: "POST",
-    headers: { "content-type": "application/json", authorization: `Bearer ${adminKey}` },
+    headers: { "content-type": "application/json", authorization: `Bearer ${adminSessionToken}` },
     body: JSON.stringify({ code: claim.redemption_code, action: "lookup" }),
   }));
   summary.voucherValidation = {

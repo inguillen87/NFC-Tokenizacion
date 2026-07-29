@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminTenantScope } from "../../../../lib/auth";
+import { checkAdmin, getAdminActor, getAdminTenantScope } from "../../../../lib/auth";
 import { sql } from "../../../../lib/db";
 import { json } from "../../../../lib/http";
 import { logAuditEvent } from "../../../../lib/audit-logger";
@@ -19,16 +19,6 @@ function firstString(...values: unknown[]) {
     if (normalized) return normalized;
   }
   return "";
-}
-
-function safeActor(req: Request) {
-  return firstString(
-    req.headers.get("x-nexid-actor"),
-    req.headers.get("x-nexid-actor-id"),
-    req.headers.get("x-dashboard-user"),
-    req.headers.get("x-forwarded-user"),
-    "unknown_admin",
-  );
 }
 
 function readEvents(value: unknown) {
@@ -50,7 +40,7 @@ type SyncResult = {
 };
 
 export async function POST(req: Request) {
-  const auth = checkAdmin(req, ["super_admin", "tenant_admin", "security_operator"]);
+  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
   if (auth) return auth;
   await ensureSupplierOpsSchema();
 
@@ -173,7 +163,7 @@ export async function POST(req: Request) {
           ${bundle.tenant_id}, ${bundle.device_id}, ${bundle.id}, ${clientEventId}, ${bid}, ${uidHash},
           ${sunPayloadHash}, ${localVerdict}, 'received', ${serverVerdict}, null, ${payloadHash},
           ${observedAt}::timestamptz, ${JSON.stringify({
-            synced_by: safeActor(req),
+            synced_by: getAdminActor(req).email,
             app_version: firstString(event.app_version, event.appVersion) || null,
           })}::jsonb
         )
@@ -218,7 +208,7 @@ export async function POST(req: Request) {
       bundle_ref: bundle.bundle_ref,
       received: results.filter((item) => item.ok).length,
       rejected: results.filter((item) => !item.ok).length,
-      synced_by: safeActor(req),
+      synced_by: getAdminActor(req).email,
       final_verdict: false,
     },
     userAgent: req.headers.get("user-agent"),

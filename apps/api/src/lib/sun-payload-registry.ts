@@ -87,8 +87,9 @@ export async function upsertTagSunPayload(input: {
 export async function findRegisteredSunPayload(input: {
   batchId: string;
   hashes: SunPayloadHashes;
+  ensureSchema?: boolean;
 }): Promise<RegisteredSunPayloadMatch | null> {
-  await ensureTagSunPayloadSchema();
+  if (input.ensureSchema !== false) await ensureTagSunPayloadSchema();
   const rows = await sql/*sql*/`
     SELECT
       p.id AS payload_id,

@@ -1,17 +1,17 @@
 param(
   [string]$ApiBase = "https://api.nexid.lat",
-  [string]$AdminApiKey,
+  [string]$AdminSessionToken,
   [switch]$AllowSimulated
 )
 
 $ErrorActionPreference = "Stop"
 
-function Read-AdminKey {
-  if ($AdminApiKey) {
-    return $AdminApiKey.Trim()
+function Read-AdminSessionToken {
+  if ($AdminSessionToken) {
+    return $AdminSessionToken.Trim()
   }
 
-  $secure = Read-Host "Paste ADMIN_API_KEY (input hidden)" -AsSecureString
+  $secure = Read-Host "Paste an active nexID admin session token (input hidden)" -AsSecureString
   $ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
   try {
     return [Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr).Trim()
@@ -20,15 +20,14 @@ function Read-AdminKey {
   }
 }
 
-$key = Read-AdminKey
-if (-not $key) {
-  throw "ADMIN_API_KEY vacio"
+$sessionToken = Read-AdminSessionToken
+if (-not $sessionToken) {
+  throw "Admin session token vacio"
 }
 
 $url = $ApiBase.TrimEnd("/") + "/admin/polygon/wallet"
 $headers = @{
-  "Authorization" = "Bearer $key"
-  "x-nexid-admin-scope" = "super_admin"
+  "Authorization" = "Bearer $sessionToken"
 }
 
 $result = Invoke-RestMethod -Method GET -Uri $url -Headers $headers

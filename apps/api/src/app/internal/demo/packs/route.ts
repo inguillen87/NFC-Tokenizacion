@@ -6,7 +6,7 @@ import { json } from '../../../../lib/http';
 import { listDemoPacks } from '../../../../lib/demo-packs';
 
 export async function GET(req: Request) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
 
   const packs = listDemoPacks().map((p) => ({ key: p.key, icType: p.icType, batchId: p.batchId }));

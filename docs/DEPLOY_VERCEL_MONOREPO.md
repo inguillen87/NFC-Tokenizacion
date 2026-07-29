@@ -13,8 +13,10 @@ Create 3 separate Vercel projects from the same GitHub repo:
 
 ## API project env vars
 - `DATABASE_URL`
-- `ADMIN_API_KEY`
-- `KMS_MASTER_KEY_HEX`
+- `NFC_ENVELOPE_KEK_VERSION` + `NFC_ENVELOPE_KEK_<VERSION>_HEX`
+- `PUBLIC_CERTIFICATE_SIGNING_SECRET`
+- `SUN_HANDOFF_SECRET`
+- `CLERK_SECRET_KEY` + `CLERK_AUTHORIZED_PARTIES`
 
 ## Root Directory per project
 - API: `apps/api`

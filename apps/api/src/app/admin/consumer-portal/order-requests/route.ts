@@ -41,7 +41,7 @@ async function listOrderRequests(tenant: string) {
 }
 
 export async function GET(req: Request) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
   const scope = getAdminTenantScope(req);
   const tenant = scope.forcedTenantSlug || cleanTenant(new URL(req.url).searchParams.get("tenant"));

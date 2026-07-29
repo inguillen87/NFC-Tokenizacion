@@ -104,7 +104,7 @@ function runtimeReadiness(code: string) {
 }
 
 export async function GET(req: Request) {
-  const auth = checkAdmin(req, ["super_admin", "tenant_admin"]);
+  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
   if (auth) return auth;
   const permission = checkAdminPermission(req, "proof:read");
   if (permission) return permission;

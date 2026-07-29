@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { createHash } from "node:crypto";
-import { checkAdmin, getAdminTenantScope, type AdminScope } from "../../../../../lib/auth";
+import { checkAdmin, getAdminActor, getAdminPermissions, getAdminTenantScope, type AdminScope } from "../../../../../lib/auth";
 import { json } from "../../../../../lib/http";
 import { sql } from "../../../../../lib/db";
 import { logAuditEvent } from "../../../../../lib/audit-logger";
@@ -18,6 +18,9 @@ import {
   type SupplierZipEntry,
 } from "../../../../../lib/supplier-ops";
 import { hashEvidencePayload } from "../../../../../lib/proof-layer";
+import { evaluateSupplierPackagingExportGate } from "../../../../../lib/supplier-packaging-governance";
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function sha256Text(value: string) {
   return `sha256:${createHash("sha256").update(value).digest("hex")}`;
@@ -29,23 +32,6 @@ function safeFilename(value: unknown, fallback: string) {
     .replace(/[^a-zA-Z0-9._-]+/g, "-")
     .replace(/^-+|-+$/g, "");
   return normalized || fallback;
-}
-
-function safeActor(req: Request) {
-  return (
-    req.headers.get("x-nexid-actor")
-    || req.headers.get("x-nexid-actor-id")
-    || req.headers.get("x-dashboard-user")
-    || req.headers.get("x-forwarded-user")
-    || "unknown_admin"
-  );
-}
-
-function parsePermissionHeader(value: string | null) {
-  return String(value || "")
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
 }
 
 function hasScopedPermission(grants: string[], permission: string) {
@@ -64,7 +50,6 @@ function hasScopedPermission(grants: string[], permission: string) {
 
 function canExportFactoryPack(scope: AdminScope | null, permissions: string[]) {
   return scope === "super_admin"
-    || scope === "security_operator"
     || hasScopedPermission(permissions, "supplier:export_pack");
 }
 
@@ -91,35 +76,73 @@ function validatePackPassword(password: string) {
   return { ok: true as const };
 }
 
+function safeDatabaseErrorCode(error: unknown) {
+  if (!error || typeof error !== "object" || !("code" in error)) return "unknown_error";
+  const code = String((error as { code?: unknown }).code || "");
+  return /^[A-Za-z0-9_-]{1,32}$/.test(code) ? code : "unknown_error";
+}
+
 export async function POST(req: Request, { params }: { params: Promise<{ orderId: string }> }) {
-  const auth = checkAdmin(req, ["super_admin", "security_operator", "tenant_admin"]);
+  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
   if (auth) return auth;
   const adminTenantScope = getAdminTenantScope(req);
-  const permissionGrants = parsePermissionHeader(req.headers.get("x-nexid-permissions"));
+  const permissionGrants = getAdminPermissions(req);
   if (!canExportFactoryPack(adminTenantScope.scope, permissionGrants)) {
     return json({
       ok: false,
       reason: "supplier_pack_export_forbidden",
-      message: "Supplier factory packs require superadmin, security-operator scope, or explicit supplier:export_pack permission.",
+      message: "Supplier factory packs require superadmin or explicit supplier:export_pack permission.",
     }, 403);
   }
   await ensureSupplierOpsSchema();
 
   const { orderId } = await params;
+  if (!UUID_PATTERN.test(orderId)) return json({ ok: false, reason: "supplier_order_not_found" }, 404);
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const requestedBid = String(body.bid || body.batch_id || "").trim();
   const packPassword = normalizePackPassword(body.password || body.pack_password);
   const passwordGate = validatePackPassword(packPassword);
   if (!passwordGate.ok) return json(passwordGate, 400);
-  const actor = safeActor(req);
+  const actor = getAdminActor(req).email;
 
-  const orderRows = await sql/*sql*/`
-    SELECT so.*, t.slug AS tenant_slug
-    FROM supplier_orders so
-    JOIN tenants t ON t.id = so.tenant_id
-    WHERE so.id = ${orderId}::uuid
-    LIMIT 1
-  `;
+  let orderRows;
+  try {
+    orderRows = await sql/*sql*/`
+      SELECT
+        so.*,
+        t.slug AS tenant_slug,
+        EXISTS (
+          SELECT 1
+          FROM supplier_packaging_governance_decisions decision
+          WHERE decision.supplier_order_id = so.id
+            AND decision.tenant_id = so.tenant_id
+            AND decision.spec_revision = so.packaging_spec_revision
+            AND decision.decision_status = 'approved'
+            AND decision.spec_hash = so.packaging_spec_hash
+            AND decision.spec_snapshot = so.packaging_spec_snapshot
+            AND decision.evidence_refs = so.packaging_evidence_refs
+            AND decision.validation_snapshot = so.packaging_validation_snapshot
+            AND decision.decided_by = so.packaging_approved_by
+            AND decision.decided_at = so.packaging_approved_at
+        ) AS packaging_approval_history_receipt_consistent
+      FROM supplier_orders so
+      JOIN tenants t ON t.id = so.tenant_id
+      WHERE so.id = ${orderId}::uuid
+      LIMIT 1
+    `;
+  } catch (error) {
+    const code = safeDatabaseErrorCode(error);
+    console.error("[supplier_packaging_export_gate_unavailable]", code);
+    return json({
+      ok: false,
+      reason: new Set(["42P01", "42703", "42883"]).has(code)
+        ? "supplier_packaging_migration_required"
+        : "supplier_packaging_governance_unavailable",
+      ...(new Set(["42P01", "42703", "42883"]).has(code)
+        ? { required_migration: "20260728143000_0063_supplier_packaging_governance.sql" }
+        : {}),
+    }, 503);
+  }
   const order = orderRows[0];
   if (!order) return json({ ok: false, reason: "supplier_order_not_found" }, 404);
   if (adminTenantScope.forcedTenantSlug && String(order.tenant_slug || "").toLowerCase() !== adminTenantScope.forcedTenantSlug) {
@@ -129,6 +152,36 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       message: "Supplier order belongs to a different tenant scope.",
     }, 403);
   }
+
+  // This gate deliberately precedes both the batch-key SELECT and every call
+  // to decryptBatchKeyHex. An unapproved or inconsistent packaging record must
+  // never cross the factory-key custody boundary.
+  const packagingGate = evaluateSupplierPackagingExportGate({
+    status: order.packaging_governance_status,
+    specRevision: order.packaging_spec_revision,
+    carrierProfileCode: order.carrier_profile_code,
+    specSnapshot: order.packaging_spec_snapshot,
+    specHash: order.packaging_spec_hash,
+    evidenceRefs: order.packaging_evidence_refs,
+    validationSnapshot: order.packaging_validation_snapshot,
+    approvalHistoryReceiptConsistent: order.packaging_approval_history_receipt_consistent,
+  });
+  if (!packagingGate.ok) {
+    return json({
+      ok: false,
+      reason: "supplier_packaging_approval_required",
+      packaging_governance_status: packagingGate.status,
+      gaps: packagingGate.gaps,
+    }, 409);
+  }
+  const packagingApprovalMetadata = {
+    schema: "nexid-supplier-packaging-approval-v1",
+    spec_revision: packagingGate.specRevision,
+    spec_hash: packagingGate.specHash,
+    carrier_profile_code: String(order.carrier_profile_code || ""),
+    production_ready: true,
+    spec: packagingGate.specSnapshot,
+  };
 
   const rows = requestedBid
     ? await sql/*sql*/`
@@ -246,7 +299,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
         artifact_type: artifactType,
         content_hash: contentHash,
         mime_type: mimeType,
-        metadata_json: { bid: row.bid, key_fingerprint: row.key_fingerprint },
+        metadata_json: {
+          bid: row.bid,
+          key_fingerprint: row.key_fingerprint,
+          packaging_spec_revision: packagingGate.specRevision,
+          packaging_spec_hash: packagingGate.specHash,
+        },
       });
     }
     const eventPayload = {
@@ -258,6 +316,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       key_fingerprint: row.key_fingerprint,
       exported_by: actor,
       pdf_hash: pdfHash,
+      packaging_spec_revision: packagingGate.specRevision,
+      packaging_spec_hash: packagingGate.specHash,
     };
     const eventHash = hashEvidencePayload({
       tenantId: String(order.tenant_id),
@@ -294,6 +354,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
     `Tenant: ${order.tenant_slug}`,
     `Customer: ${order.customer_slug || order.tenant_slug}`,
     `Sub-batches: ${packs.length}`,
+    `Approved packaging revision: ${packagingGate.specRevision}`,
+    `Approved packaging hash: ${packagingGate.specHash}`,
     "",
     "Contents:",
     "- One folder per sub-batch.",
@@ -301,6 +363,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
     "- K_META_BATCH and K_FILE_BATCH appear only for NTAG 424 DNA / TagTamper profiles.",
     "- PDF contains human-readable instructions and hashes.",
     "- CHECKSUMS.sha256 verifies every file before factory handoff.",
+    "- PACKAGING_APPROVAL.json is the approved, non-secret production specification bound to this export.",
     "",
     "Security:",
     "- This encrypted container is the only browser payload.",
@@ -310,7 +373,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
     "- Do not paste decrypted keys into chat, tickets, screenshots or logs.",
     "",
   ].join("\n");
-  const archiveEntries: SupplierZipEntry[] = [{ path: "README_FIRST.txt", data: readme }, ...zipEntries];
+  const archiveEntries: SupplierZipEntry[] = [
+    { path: "README_FIRST.txt", data: readme },
+    { path: "PACKAGING_APPROVAL.json", data: JSON.stringify(packagingApprovalMetadata, null, 2) },
+    ...zipEntries,
+  ];
   const checksums = archiveEntries
     .map((entry) => `${sha256Buffer(entry.data).replace(/^sha256:/, "")}  ${entry.path}`)
     .join("\n") + "\n";
@@ -322,6 +389,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
     tenant_slug: order.tenant_slug,
     customer_slug: order.customer_slug,
     order_name: order.order_name,
+    packaging_spec_revision: packagingGate.specRevision,
+    packaging_spec_hash: packagingGate.specHash,
     zip_layout: "one-folder-per-sub-batch",
     sub_batches: packs.map((pack) => ({
       bid: pack.bid,
@@ -352,6 +421,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       encryption: encrypted.encryption,
       password_policy: "operator_generated_not_returned_send_separately",
       entry_count: archiveEntries.length,
+      packaging_spec_revision: packagingGate.specRevision,
+      packaging_spec_hash: packagingGate.specHash,
     },
   });
 
@@ -359,7 +430,28 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
   // one PostgreSQL statement. Any archive/persistence failure leaves every
   // export counter at zero, so the operator can retry safely.
   const persistedRows = await sql/*sql*/`
-    WITH target AS MATERIALIZED (
+    WITH approved_order AS MATERIALIZED (
+      SELECT so.id
+      FROM supplier_orders so
+      JOIN supplier_packaging_governance_decisions decision
+        ON decision.supplier_order_id = so.id
+       AND decision.tenant_id = so.tenant_id
+       AND decision.spec_revision = so.packaging_spec_revision
+       AND decision.decision_status = 'approved'
+       AND decision.spec_hash = so.packaging_spec_hash
+       AND decision.spec_snapshot = so.packaging_spec_snapshot
+       AND decision.evidence_refs = so.packaging_evidence_refs
+       AND decision.validation_snapshot = so.packaging_validation_snapshot
+       AND decision.decided_by = so.packaging_approved_by
+       AND decision.decided_at = so.packaging_approved_at
+      WHERE so.id = ${order.id}
+        AND so.tenant_id = ${order.tenant_id}
+        AND so.packaging_governance_status = 'approved'
+        AND so.packaging_spec_revision = ${packagingGate.specRevision}
+        AND so.packaging_spec_hash = ${packagingGate.specHash}
+      FOR SHARE OF so
+    ),
+    target AS MATERIALIZED (
       SELECT unnest(${subBatchIds}::uuid[]) AS supplier_sub_batch_id
     ),
     locked AS MATERIALIZED (
@@ -372,7 +464,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       FOR UPDATE OF ssb, bk
     ),
     readiness AS MATERIALIZED (
-      SELECT COUNT(*)::int = ${rows.length} AS ok
+      SELECT
+        COUNT(*)::int = ${rows.length} AS keys_ready,
+        EXISTS (SELECT 1 FROM approved_order) AS packaging_ready
       FROM locked
     ),
     reserved_sub_batches AS (
@@ -381,7 +475,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
           key_exported_at = now(),
           updated_at = now()
       FROM locked, readiness
-      WHERE readiness.ok
+      WHERE readiness.keys_ready AND readiness.packaging_ready
         AND ssb.id = locked.supplier_sub_batch_id
       RETURNING ssb.id
     ),
@@ -390,7 +484,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       SET export_count = export_count + 1,
           exported_at = now()
       FROM locked, readiness
-      WHERE readiness.ok
+      WHERE readiness.keys_ready AND readiness.packaging_ready
         AND bk.supplier_sub_batch_id = locked.supplier_sub_batch_id
       RETURNING bk.supplier_sub_batch_id
     ),
@@ -401,7 +495,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
           exported_by = ${actor},
           updated_at = now()
       FROM locked, readiness
-      WHERE readiness.ok
+      WHERE readiness.keys_ready AND readiness.packaging_ready
         AND material.supplier_sub_batch_id = locked.supplier_sub_batch_id
         AND material.status = 'active'
         AND material.export_count = 0
@@ -409,9 +503,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
     ),
     reservation_gate AS MATERIALIZED (
       SELECT
-        readiness.ok
+        readiness.keys_ready
+          AND readiness.packaging_ready
           AND (SELECT COUNT(*) FROM reserved_sub_batches) = ${rows.length}
           AND (SELECT COUNT(*) FROM reserved_keys) = ${rows.length} AS ok,
+        readiness.packaging_ready,
         (SELECT COUNT(*)::int FROM reserved_sub_batches) AS reserved_sub_batches,
         (SELECT COUNT(*)::int FROM reserved_keys) AS reserved_keys,
         (SELECT COUNT(*)::int FROM reserved_material) AS reserved_material
@@ -470,7 +566,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       ON CONFLICT (payload_hash) DO NOTHING
       RETURNING id
     )
-    SELECT gate.ok AS ready,
+      SELECT gate.ok AS ready,
+           gate.packaging_ready,
            gate.reserved_sub_batches,
            gate.reserved_keys,
            gate.reserved_material,
@@ -482,8 +579,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
   if (persisted.ready !== true || Number(persisted.inserted_artifacts || 0) !== artifactRecords.length) {
     return json({
       ok: false,
-      reason: "supplier_pack_export_conflict",
-      message: "The encrypted artifact was not committed, so no one-time export counter was consumed. Retry after checking for a concurrent export.",
+      reason: persisted.packaging_ready === false
+        ? "supplier_packaging_approval_changed"
+        : "supplier_pack_export_conflict",
+      message: persisted.packaging_ready === false
+        ? "Packaging approval changed during export. No artifact or one-time counter was committed; review the current packaging revision before retrying."
+        : "The encrypted artifact was not committed, so no one-time export counter was consumed. Retry after checking for a concurrent export.",
       requested: rows.length,
       reserved_sub_batches: Number(persisted.reserved_sub_batches || 0),
       reserved_keys: Number(persisted.reserved_keys || 0),
@@ -502,6 +603,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       exported_by: actor,
       encrypted_pack_hash: encrypted.envelopeHash,
       plaintext_zip_hash: encrypted.plaintextZipHash,
+      packaging_spec_revision: packagingGate.specRevision,
+      packaging_spec_hash: packagingGate.specHash,
       bids: packs.map((pack) => ({
         bid: pack.bid,
         content_hash: pack.content_hash,
@@ -529,6 +632,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       tenant_slug: order.tenant_slug,
       customer_slug: order.customer_slug,
       order_name: order.order_name,
+      packaging_spec_revision: packagingGate.specRevision,
+      packaging_spec_hash: packagingGate.specHash,
     },
     zip_layout: "one-folder-per-sub-batch",
     encrypted_pack: {

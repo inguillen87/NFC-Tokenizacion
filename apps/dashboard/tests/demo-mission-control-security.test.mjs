@@ -10,7 +10,7 @@ const shellSource = await readFile(new URL("../src/components/dashboard-shell.ts
 const profilesSource = await readFile(new URL("../src/lib/access-profiles.ts", import.meta.url), "utf8");
 
 test("demo admin proxy requires a dashboard session, permission and tenant scope", () => {
-  assert.match(proxySource, /getDashboardSession\(\)/);
+  assert.match(proxySource, /getDashboardSessionCredential\(\{ persistRotation: true \}\)/);
   assert.match(proxySource, /authentication_required/);
   assert.match(proxySource, /dashboardPermissionMatches\(session\.permissions, permission\)/);
   assert.match(proxySource, /demoTenantScopeAllowed\(session\.role, session\.tenantSlug\)/);

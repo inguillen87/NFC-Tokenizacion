@@ -10,6 +10,7 @@ import {
   enforceWebhookAuthenticationRateLimit,
 } from "../src/lib/critical-rate-limit.ts";
 import { rateLimitBucketKey } from "../src/lib/sun-rate-limit-store.ts";
+import { checkAdmin } from "../src/lib/auth.ts";
 
 const TEST_PEPPER = "critical-rate-limit-test-pepper-0123456789abcdef";
 
@@ -178,13 +179,32 @@ test("admin credential bucket cannot be sharded by rotating tenant, scope or das
     "x-nexid-admin-scope": "super_admin",
     "x-dashboard-user": "different@example.com",
   });
+  const otherRequest = request("/admin/proof/anchors", {
+    authorization: "Bearer another-admin-credential",
+  });
+  const bindPrincipal = (candidate, sessionId) => checkAdmin(candidate, ["tenant_admin"], async () => ({
+    id: sessionId,
+    userId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    email: "real-admin@example.com",
+    label: "Real Admin",
+    role: "tenant-admin",
+    tenantId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+    tenantSlug: "tenant-authoritative",
+    permissions: ["proof:write"],
+    mfaVerified: true,
+    expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    rotatedCookieValue: null,
+    setupCompleted: true,
+  }));
+  assert.equal(await bindPrincipal(firstRequest, "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"), null);
+  assert.equal(await bindPrincipal(rotatedRequest, "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"), null);
+  assert.equal(await bindPrincipal(otherRequest, "dddddddd-dddd-4ddd-8ddd-dddddddddddd"), null);
+
   const identity = adminCriticalRateLimitIdentity(firstRequest);
   const rotatedHeaders = adminCriticalRateLimitIdentity(rotatedRequest);
-  const differentCredential = adminCriticalRateLimitIdentity(request("/admin/proof/anchors", {
-    authorization: "Bearer another-admin-credential",
-  }));
-  assert.equal(identity.tenantId, "tenant-a");
-  assert.match(identity.subjectId, /^admin-credential:[0-9a-f]{64}$/);
+  const differentCredential = adminCriticalRateLimitIdentity(otherRequest);
+  assert.equal(identity.tenantId, "cccccccc-cccc-4ccc-8ccc-cccccccccccc");
+  assert.equal(identity.subjectId, "admin-session:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
   assert.equal(identity.globalPrincipal, true);
   assert.equal(rotatedHeaders.subjectId, identity.subjectId);
   assert.notEqual(differentCredential.subjectId, identity.subjectId);
@@ -212,6 +232,9 @@ test("admin credential bucket cannot be sharded by rotating tenant, scope or das
   const tenantKeys = buckets.filter((item) => item.scope.endsWith(":tenant")).map((item) => item.key);
   assert.equal(principalKeys[0], principalKeys[1]);
   assert.notEqual(tenantKeys[0], tenantKeys[1]);
+  assert.match(tenantKeys[0], /cccccccc-cccc-4ccc-8ccc-cccccccccccc/);
+  assert.match(tenantKeys[1], /cccccccc-cccc-4ccc-8ccc-cccccccccccc/);
+  assert.doesNotMatch(tenantKeys.join("\n"), /tenant-a|tenant-b|rotate-me|different@example/);
 });
 
 const routes = [

@@ -44,7 +44,7 @@ function payloadFromDiagnosticRequest(requestJson: unknown, fallbackBid: string)
 }
 
 export async function POST(req: Request) {
-  const auth = checkAdmin(req, ["super_admin", "tenant_admin"]);
+  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
   if (auth) return auth;
   const { forcedTenantSlug } = getAdminTenantAccess(req);
 

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const { evaluateAdminAccess, resolveAdminTenantAccess } = await import("../src/lib/admin-auth-policy.ts");
+const { checkAdmin, getAdminTenantAccess } = await import("../src/lib/auth.ts");
 const { areAdminSunBidsInTenantScope, isAdminSunDiagnosticInTenantScope } = await import("../src/lib/admin-sun-tenant-scope.ts");
 
 const routeSources = new Map();
@@ -14,8 +14,28 @@ async function routeSource(path) {
   return routeSources.get(path);
 }
 
-test("tenant-bound principals cannot override their tenant with request input", () => {
-  const access = resolveAdminTenantAccess("tenant_admin", null, "Tenant-A", "tenant-b");
+async function authenticatedRequest(role, tenantSlug = null) {
+  const req = new Request("https://api.nexid.lat/admin", { headers: { authorization: "Bearer opaque-session" } });
+  const scope = role === "super-admin" ? "super_admin" : "tenant_admin";
+  assert.equal(await checkAdmin(req, [scope], async () => ({
+    id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    userId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    email: "admin@example.com",
+    label: "Admin",
+    role,
+    tenantId: tenantSlug ? "cccccccc-cccc-4ccc-8ccc-cccccccccccc" : null,
+    tenantSlug,
+    permissions: [],
+    mfaVerified: true,
+    expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    rotatedCookieValue: null,
+    setupCompleted: true,
+  })), null);
+  return req;
+}
+
+test("tenant-bound principals cannot override their tenant with request input", async () => {
+  const access = getAdminTenantAccess(await authenticatedRequest("tenant-admin", "Tenant-A"), "tenant-b");
 
   assert.equal(access.tenantBound, true);
   assert.equal(access.forcedTenantSlug, "tenant-a");
@@ -23,28 +43,34 @@ test("tenant-bound principals cannot override their tenant with request input", 
   assert.equal(access.effectiveTenantSlug, "tenant-a");
 });
 
-test("tenant-bound scopes without a principal tenant fail closed at authentication", () => {
-  const verdict = evaluateAdminAccess({
-    providedToken: "secret",
-    expectedToken: "secret",
-    requireScoped: true,
-    scope: "tenant_admin",
-    tenantSlug: "",
-    requiredScopes: ["tenant_admin"],
-  });
-
-  assert.equal(verdict.ok, false);
-  assert.equal(verdict.status, 403);
+test("tenant-bound scopes without a principal tenant fail closed at authentication", async () => {
+  const req = new Request("https://api.nexid.lat/admin", { headers: { authorization: "Bearer malformed-session" } });
+  const verdict = await checkAdmin(req, ["tenant_admin"], async () => ({
+    id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    userId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    email: "admin@example.com",
+    label: "Admin",
+    role: "tenant-admin",
+    tenantId: null,
+    tenantSlug: null,
+    permissions: [],
+    mfaVerified: true,
+    expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    rotatedCookieValue: null,
+    setupCompleted: true,
+  }));
+  assert.equal(verdict?.status, 403);
 });
 
-test("super-admin and legacy internal callers preserve explicit or global access", () => {
-  const superAdmin = resolveAdminTenantAccess("super_admin", null, "tenant-a", "Tenant-B");
-  const legacyInternal = resolveAdminTenantAccess(null, null, null, null);
+test("super-admin preserves explicit access while unauthenticated callers have no implicit global path", async () => {
+  const superAdmin = getAdminTenantAccess(await authenticatedRequest("super-admin"), "Tenant-B");
 
   assert.equal(superAdmin.tenantBound, false);
   assert.equal(superAdmin.effectiveTenantSlug, "tenant-b");
-  assert.equal(legacyInternal.tenantBound, false);
-  assert.equal(legacyInternal.effectiveTenantSlug, "");
+  assert.throws(
+    () => getAdminTenantAccess(new Request("https://api.nexid.lat/admin")),
+    /authenticated_admin_principal_required/,
+  );
 });
 
 test("analytics and consumer member reads bind request tenant filters to the principal", async () => {

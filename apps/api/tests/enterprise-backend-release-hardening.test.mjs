@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const source = async (relative) => readFile(new URL(relative, import.meta.url), "utf8");
 const analytics = await source("../src/app/admin/analytics/route.ts");
+const overview = await source("../src/app/admin/overview/route.ts");
 const trivia = await source("../src/lib/trivia-service.ts");
 const p2pList = await source("../src/app/marketplace/p2p/list/route.ts");
 const p2pBuy = await source("../src/app/marketplace/p2p/buy/route.ts");
@@ -37,8 +38,11 @@ test("analytics uses explicit taxonomy, real active filters and source-labelled 
   assert.match(analytics, /resellerPerformance: null/);
   assert.match(analytics, /resellerPerformanceSource: "billing_unavailable"/);
   assert.match(analytics, /coordinateSource/);
-  assert.match(analytics, /city_centroid/);
+  assert.doesNotMatch(analytics, /city_centroid|KNOWN_CITY_COORDS|cityCoords/);
+  assert.match(analytics, /coordinateEvidence: coordinateCount > 0 \? "persisted_event" : "none"/);
+  assert.match(analytics, /Number\(row\.coordinate_count \|\| 0\) <= 0 \|\| !coordinate/);
   assert.match(analytics, /browserGpsCount === coordinateCount/);
+  assert.match(analytics, /browser_gps_approximate_consent/);
   assert.match(analytics, /mixed_or_unknown_approx/);
   assert.match(analytics, /coordinateIsApproximate/);
   const riskExpressions = [...analytics.matchAll(/COUNT\(\*\) FILTER \(WHERE e\.result IN \(([^)]*)\)\)::int AS risk/g)];
@@ -48,7 +52,21 @@ test("analytics uses explicit taxonomy, real active filters and source-labelled 
   }
   assert.match(analytics, /lifecycleClassesExcludedFromRisk: \["unregistered", "inactive"\]/);
   assert.match(analytics, /originSource: hasProductOriginCoords \? "product_passport_declared" : "first_observed_event"/);
+  assert.match(analytics, /AVG\(CASE[\s\S]*?e\.lat BETWEEN -90 AND 90 AND e\.lng BETWEEN -180 AND 180/);
+  assert.match(analytics, /validCoordinatePair\(row\.lat, row\.lng\)/);
+  assert.doesNotMatch(analytics, /AVG\(COALESCE\(e\.lat, e\.geo_lat\)\)/);
   assert.match(analytics, /WITH scoped_events AS \([\s\S]*?WHERE e\.uid_hex IS NOT NULL[\s\S]*?e\.created_at >= now\(\) - \$\{rangeSql\}::interval[\s\S]*?e\.source = \$\{source\}::text/);
+});
+
+test("overview uses the canonical risk taxonomy and excludes lifecycle outcomes", () => {
+  assert.match(overview, /classified_events AS MATERIALIZED/);
+  assert.match(overview, /COUNT\(\*\) FILTER \(WHERE event_class = 'invalid'\)::int AS invalid/);
+  assert.match(overview, /COUNT\(\*\) FILTER \(WHERE event_class = 'tampered'\)::int AS tamper/);
+  assert.match(overview, /invalid: stats\.invalid/);
+  assert.match(overview, /lifecycleClassesExcludedFromRisk: \["unregistered", "inactive", "unknown_batch", "lifecycle"\]/);
+  assert.doesNotMatch(overview, /Math\.max\(Number\(stats\.scans[\s\S]*Number\(stats\.valid/);
+  const tamperCounts = [...overview.matchAll(/FILTER \(WHERE event_class = 'tampered'\)/g)];
+  assert.equal(tamperCounts.length, 2);
 });
 
 test("trivia completion reserves attempt, points and projections in one data-modifying CTE", () => {
@@ -139,8 +157,8 @@ test("production request paths skip runtime DDL and require the latest migration
   assert.match(dbRuntime, /isRuntimeDdlStatement/);
   assert.match(dbRuntime, /isProductionRuntime\(\) && isRuntimeDdlStatement/);
   assert.match(dbRuntime, /required_schema_migration_not_applied/);
-  assert.match(dbRuntime, /20260726190000_0061_supplier_export_artifact_delivery\.sql/);
-  assert.equal(DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.length, 5);
+  assert.match(dbRuntime, /20260728143000_0063_supplier_packaging_governance\.sql/);
+  assert.equal(DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.length, 7);
   assert.deepEqual([...DEFAULT_REQUIRED_SCHEMA_MIGRATIONS], [...DEFAULT_REQUIRED_SCHEMA_MIGRATIONS].sort());
   assert.equal(isRuntimeDdlStatement("DO $$ BEGIN CREATE TYPE unsafe AS ENUM ('a'); END $$"), true);
   assert.equal(isRuntimeDdlStatement("SELECT 1; /* request path */ ALTER TABLE tags ADD COLUMN unsafe text"), true);
@@ -148,6 +166,8 @@ test("production request paths skip runtime DDL and require the latest migration
   assert.equal(isRuntimeDdlStatement("WITH changed AS (UPDATE tags SET status = 'active' RETURNING id) SELECT * FROM changed"), false);
   assert.match(dbPreflight, /20260726173000_0060_sdk_idempotency_operations\.sql/);
   assert.match(dbPreflight, /20260726190000_0061_supplier_export_artifact_delivery\.sql/);
+  assert.match(dbPreflight, /20260728120000_0062_sun_atomic_persistence\.sql/);
+  assert.match(dbPreflight, /20260728143000_0063_supplier_packaging_governance\.sql/);
   assert.match(dbPreflight, /Required enterprise migrations are missing/);
 });
 

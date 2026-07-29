@@ -26,7 +26,7 @@ Usage:
     --activate-imported=true \\
 
 Required env:
-  ADMIN_API_KEY=<super-admin API key>
+  NEXID_ADMIN_SESSION_TOKEN=<active super-admin opaque session token>
 
 Notes:
   - This script never creates demo tenants by default.
@@ -122,13 +122,12 @@ function prepareManifest(content, bid, productLabel, sku) {
   ].join("\n");
 }
 
-async function apiFetch(apiUrl, apiKey, method, pathname, body) {
+async function apiFetch(apiUrl, sessionToken, method, pathname, body) {
   const res = await fetch(`${apiUrl}${pathname}`, {
     method,
     headers: {
       "content-type": "application/json",
-      "authorization": `Bearer ${apiKey}`,
-      "x-admin-api-key": apiKey,
+      "authorization": `Bearer ${sessionToken}`,
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
@@ -140,7 +139,8 @@ async function apiFetch(apiUrl, apiKey, method, pathname, body) {
 }
 
 const apiUrl = normalizeApiUrl(requireArg("api-url"));
-const apiKey = String(arg("admin-api-key") || process.env.ADMIN_API_KEY || "").trim() || requireEnv("ADMIN_API_KEY");
+const sessionToken = String(arg("admin-session-token") || process.env.NEXID_ADMIN_SESSION_TOKEN || "").trim()
+  || requireEnv("NEXID_ADMIN_SESSION_TOKEN");
 const tenant = requireArg("tenant").toLowerCase();
 const tenantName = requireArg("tenant-name");
 const vertical = requireArg("vertical");
@@ -206,15 +206,15 @@ const rawManifest = fs.readFileSync(manifestPath, "utf8");
 const csv = prepareManifest(rawManifest, bid, productLabel, sku);
 
 console.log(`Creating/updating tenant ${tenant} through ${apiUrl}...`);
-const tenantResult = await apiFetch(apiUrl, apiKey, "POST", "/admin/tenants", tenantPayload);
+const tenantResult = await apiFetch(apiUrl, sessionToken, "POST", "/admin/tenants", tenantPayload);
 console.log(`Tenant ready: ${tenantResult.slug || tenant}`);
 
 console.log(`Registering batch ${bid} (${mode})...`);
-const batchResult = await apiFetch(apiUrl, apiKey, "POST", "/admin/batches/register", batchPayload);
+const batchResult = await apiFetch(apiUrl, sessionToken, "POST", "/admin/batches/register", batchPayload);
 console.log(`Batch ready: ${batchResult.batch?.bid || bid}`);
 
 console.log(`Importing manifest ${path.basename(manifestPath)}...`);
-const manifestResult = await apiFetch(apiUrl, apiKey, "POST", `/admin/batches/${encodeURIComponent(bid)}/import-manifest`, {
+const manifestResult = await apiFetch(apiUrl, sessionToken, "POST", `/admin/batches/${encodeURIComponent(bid)}/import-manifest`, {
   csv,
   activateImported,
 });

@@ -2,7 +2,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 import { sql } from "../../../../../lib/db";
-import { checkAdmin, getAdminTenantScope } from "../../../../../lib/auth";
+import { checkAdmin, getAdminActor, getAdminTenantScope } from "../../../../../lib/auth";
 import { json } from "../../../../../lib/http";
 import { parseTagManifest } from "../../../../../lib/tag-manifest";
 import { requireTenantSunProfile } from "../../../../../lib/tenant-onboarding";
@@ -22,14 +22,6 @@ type ManifestPayload = {
   overrideBy?: string;
 };
 
-function safeActor(req: Request) {
-  return req.headers.get("x-nexid-actor")
-    || req.headers.get("x-nexid-actor-id")
-    || req.headers.get("x-dashboard-user")
-    || req.headers.get("x-forwarded-user")
-    || "unknown_admin";
-}
-
 async function readPayload(req: Request): Promise<ManifestPayload & { csv: string }> {
   const contentType = req.headers.get("content-type") || "";
   if (contentType.includes("application/json")) {
@@ -48,7 +40,7 @@ async function readPayload(req: Request): Promise<ManifestPayload & { csv: strin
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ bid: string }> }) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
   await ensureCarrierProfileSchema();
   await ensureSupplierOpsSchema();
@@ -148,7 +140,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
     ? validateSupplierManifestQuantity(manifest, Number(supplierSubBatch.expected_quantity || 0))
     : { ok: true as const };
   const quantityOverrideReason = String(payload.overrideReason || "").trim();
-  const quantityOverrideBy = String(payload.overrideBy || safeActor(req)).trim();
+  const quantityOverrideBy = getAdminActor(req).email;
   const quantityOverride = Boolean(supplierSubBatch && !supplierQuantityGate.ok && quantityOverrideReason);
   if (!supplierQuantityGate.ok) {
     if (!quantityOverride || quantityOverrideReason.length < 16 || !quantityOverrideBy) {
@@ -487,7 +479,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
         row_count: manifest.rows.length,
         content_hash: manifest.contentHash,
         carrier_profile_code: batchCarrierCode,
-        imported_by: safeActor(req),
+        imported_by: getAdminActor(req).email,
         quantity_override: quantityOverride ? {
           reason: quantityOverrideReason,
           override_by: quantityOverrideBy,

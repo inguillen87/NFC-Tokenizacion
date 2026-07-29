@@ -40,7 +40,7 @@ function buildDiff(previous: Record<string, unknown>, next: Record<string, unkno
 }
 
 export async function POST(req: Request, context: { params: Promise<{ bid: string }> }) {
-  const auth = checkAdmin(req, ["super_admin"]);
+  const auth = await checkAdmin(req, ["super_admin"]);
   if (auth) return auth;
 
   const { bid: rawBid } = await context.params;

@@ -10,6 +10,7 @@ import { json } from "../../../../lib/http";
 import { getRequestMeta } from "../../../../lib/request-meta";
 import { enforceCriticalRateLimit } from "../../../../lib/critical-rate-limit";
 import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../lib/bounded-request-body";
+import { resolveVerifiedClerkIdentity } from "../../../../lib/clerk-admin-auth";
 
 function sha(value: string) {
   return createHash("sha256").update(value).digest("hex");
@@ -30,10 +31,8 @@ export async function POST(req: Request) {
     subjectId: "consumer-auth-web3:unauthenticated",
   });
   if (sourceLimited) return sourceLimited;
-  const expected = String(process.env.ADMIN_API_KEY || "").trim();
-  const authHeader = req.headers.get("authorization") || "";
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
-  if (!expected || token !== expected) return json({ ok: false, error: "unauthorized" }, 401);
+  const clerk = await resolveVerifiedClerkIdentity(req);
+  if (!clerk.ok) return json({ ok: false, error: clerk.reason }, clerk.status);
 
   let body: Record<string, unknown>;
   try {
@@ -42,15 +41,15 @@ export async function POST(req: Request) {
     const tooLarge = error instanceof RequestBodyTooLargeError;
     return json({ ok: false, error: tooLarge ? "request_body_too_large" : "invalid_json" }, tooLarge ? 413 : 400);
   }
-  const externalUserId = cleanText(body.externalUserId || body.clerkUserId, 120);
-  const displayName = cleanText(body.fullName || body.displayName || "Usuario Web3 nexID", 120);
-  const walletAddress = cleanText(body.walletAddress || body.address, 64);
+  const externalUserId = cleanText(clerk.identity.externalUserId, 120);
+  const displayName = cleanText(clerk.identity.fullName || "Usuario Web3 nexID", 120);
+  const verifiedWallet = clerk.identity.verifiedWeb3Wallets[0] || null;
+  const walletAddress = cleanText(verifiedWallet?.address, 64);
   const normalizedWallet = walletAddress && isAddress(walletAddress) ? walletAddress.toLowerCase() : "";
   const chainId = cleanText(body.chainId, 24);
-  const provider = cleanText(body.provider || "clerk_web3_metamask", 60);
-  const walletVerificationSource = cleanText(body.walletVerificationSource, 60);
-  if (!externalUserId) return json({ ok: false, error: "clerk_user_required" }, 400);
-  if (!normalizedWallet || walletVerificationSource !== "clerk_verified_web3") {
+  const provider = cleanText(verifiedWallet?.provider || "clerk_web3", 60);
+  if (!externalUserId) return json({ ok: false, error: "clerk_user_required" }, 401);
+  if (!normalizedWallet) {
     return json({ ok: false, error: "verified_clerk_wallet_required" }, 400);
   }
 

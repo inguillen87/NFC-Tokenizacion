@@ -7,7 +7,7 @@ import { sql } from '../../../../lib/db';
 import { requireReservedDemoBatch, validateDemoResourceScopeRequest } from '../../../../lib/demo-resource-scope';
 
 export async function POST(req: Request) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
 
   const body = await req.json().catch(() => ({} as Record<string, unknown>));

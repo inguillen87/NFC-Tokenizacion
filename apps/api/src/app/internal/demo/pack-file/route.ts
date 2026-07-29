@@ -6,7 +6,7 @@ import { checkAdmin } from '../../../../lib/auth';
 import { getDemoPack } from '../../../../lib/demo-packs';
 
 export async function GET(req: Request) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
 
   const url = new URL(req.url);

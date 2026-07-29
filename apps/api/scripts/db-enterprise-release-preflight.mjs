@@ -13,6 +13,8 @@ export const expectedMigrations = Object.freeze([
   '20260726135000_0059_marketplace_claim_truth_cleanup.sql',
   '20260726173000_0060_sdk_idempotency_operations.sql',
   '20260726190000_0061_supplier_export_artifact_delivery.sql',
+  '20260728120000_0062_sun_atomic_persistence.sql',
+  '20260728143000_0063_supplier_packaging_governance.sql',
 ]);
 
 export class EnterpriseReleasePreflightError extends Error {
@@ -93,6 +95,10 @@ export async function runEnterpriseReleasePreflight(options = {}) {
          to_regclass('public.marketplace_brand_profiles') IS NOT NULL AS has_marketplace_brand_profiles,
          to_regclass('public.sdk_idempotency_operations') IS NOT NULL AS has_sdk_idempotency_operations,
          to_regclass('public.vault_artifacts') IS NOT NULL AS has_vault_artifacts,
+         to_regprocedure('public.nexid_persist_sun_scan_v1(jsonb)') IS NOT NULL AS has_sun_atomic_persistence,
+         to_regclass('public.uq_tags_batch_uid_upper') IS NOT NULL AS has_sun_casefold_uid_guard,
+         to_regclass('public.supplier_packaging_governance_decisions') IS NOT NULL AS has_supplier_packaging_governance,
+         to_regprocedure('public.nexid_record_supplier_packaging_decision_v1(jsonb)') IS NOT NULL AS has_supplier_packaging_governance_writer,
          EXISTS (
            SELECT 1 FROM information_schema.columns
            WHERE table_schema = 'public'
@@ -112,6 +118,10 @@ export async function runEnterpriseReleasePreflight(options = {}) {
       ['sdk_idempotency_operations', state.has_sdk_idempotency_operations],
       ['vault_artifacts', state.has_vault_artifacts],
       ['vault_artifacts.encrypted_payload_base64', state.has_supplier_export_envelope],
+      ['nexid_persist_sun_scan_v1(jsonb)', state.has_sun_atomic_persistence],
+      ['uq_tags_batch_uid_upper', state.has_sun_casefold_uid_guard],
+      ['supplier_packaging_governance_decisions', state.has_supplier_packaging_governance],
+      ['nexid_record_supplier_packaging_decision_v1(jsonb)', state.has_supplier_packaging_governance_writer],
     ];
     const missingSchema = requiredSchema.filter(([, present]) => !present).map(([name]) => name);
     if (missingSchema.length) {

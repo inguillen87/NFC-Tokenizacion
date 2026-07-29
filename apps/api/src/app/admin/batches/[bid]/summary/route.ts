@@ -7,7 +7,7 @@ import { sql } from '../../../../../lib/db';
 import { ensureCarrierProfileSchema } from '../../../../../lib/commercial-runtime-schema';
 
 export async function GET(req: Request, { params }: { params: Promise<{ bid: string }> }) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
 
   const { bid } = await params;

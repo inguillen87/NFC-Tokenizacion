@@ -33,7 +33,7 @@ function normalizeValues(values: unknown, fallback: string[]) {
 }
 
 export async function PATCH(req: Request, context: { params: Promise<{ bid: string }> }) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
 
   const { bid } = await context.params;

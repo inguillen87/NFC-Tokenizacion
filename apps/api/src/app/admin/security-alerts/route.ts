@@ -6,7 +6,7 @@ import { json } from "../../../lib/http";
 import { sql } from "../../../lib/db";
 
 export async function GET(req: Request): Promise<Response> {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
 
   const { searchParams } = new URL(req.url);

@@ -58,14 +58,14 @@ export async function GET(req: Request) {
   const email = resolveVerifiedEmail(clerkUser);
   if (!email) return redirectToLogin(req, "clerk_email_unverified");
 
-  const adminKey = String(process.env.ADMIN_API_KEY || "").trim();
-  if (!adminKey) return redirectToLogin(req, "admin_api_key_missing");
+  const clerkSessionToken = await clerkAuth.getToken().catch(() => null);
+  if (!clerkSessionToken) return redirectToLogin(req, "clerk_session_token_missing");
 
   const syncRes = await fetch(`${API_BASE}/auth/clerk-sync`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${adminKey}`,
+      "Authorization": `Bearer ${clerkSessionToken}`,
       "user-agent": req.headers.get("user-agent") || "dashboard-clerk-super-admin",
     },
     body: JSON.stringify({
@@ -88,13 +88,16 @@ export async function GET(req: Request) {
     expiresAt?: string;
     tenantId?: string | null;
     tenantSlug?: string | null;
+    reason?: string;
   } | null;
 
   if (!syncRes.ok || !data?.ok || !data.sessionToken) {
-    const error = syncRes.status === 403
+    const error = data?.reason === "clerk_verification_not_configured" || data?.reason === "clerk_authorized_parties_not_configured"
+      ? data.reason
+      : syncRes.status === 403
       ? "clerk_super_admin_not_allowed"
       : syncRes.status === 401
-      ? "admin_api_key_invalid"
+      ? "clerk_session_invalid"
       : "clerk_sync_failed";
     return redirectToLogin(req, error);
   }

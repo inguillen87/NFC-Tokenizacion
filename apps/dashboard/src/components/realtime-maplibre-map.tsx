@@ -3,7 +3,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { GeoJSONSource, Map as MapLibreMap, MapLayerMouseEvent, Popup } from "maplibre-gl";
 import { resolveEventMapCoordinate, type MapCoordinatePrecision } from "../lib/geo-coordinates";
-import type { TenantTapRealtimeEvent } from "../lib/realtime-feed";
+import { isRealtimeRisk, type TenantTapRealtimeEvent } from "../lib/realtime-feed";
 
 type MapMode = "tenant" | "global";
 type MapView = "heat" | "points" | "nearby";
@@ -121,9 +121,8 @@ function deviceSummary(row: TenantTapRealtimeEvent) {
 function eventToFeature(row: TenantTapRealtimeEvent, index: number): TapFeature | null {
   const city = String(row.city || "Unknown");
   const country = String(row.country || "--");
-  const verdict = String(row.verdict || "VALID").toUpperCase();
-  const risk = verdict === "VALID" ? 0 : 1;
-  const seed = String(row.eventId || row.uidMasked || row.occurredAt || index);
+  const verdict = String(row.verdict || "UNKNOWN").toUpperCase();
+  const risk = isRealtimeRisk(row.verdict, row.reason) ? 1 : 0;
   const coordinate = resolveEventMapCoordinate({
     lat: row.lat,
     lng: row.lng,
@@ -131,14 +130,13 @@ function eventToFeature(row: TenantTapRealtimeEvent, index: number): TapFeature 
     country,
     locationSource: row.locationSource,
     locationAccuracyM: row.locationAccuracyM,
-    seed,
   });
   if (!coordinate) return null;
 
   return {
     type: "Feature",
     properties: {
-      eventId: String(row.eventId || seed),
+      eventId: String(row.eventId || `${row.uidMasked || "evt"}-${row.occurredAt || index}`),
       uid: String(row.uidMasked || "UID n/a"),
       city,
       country,
@@ -401,7 +399,7 @@ export function RealtimeMapLibreMap({
   const precisionSummary = useMemo(() => geojson.features.reduce((summary, feature) => {
     summary[feature.properties.locationPrecision] += 1;
     return summary;
-  }, { reported: 0, approximate: 0, synthetic: 0 } as Record<MapCoordinatePrecision, number>), [geojson]);
+  }, { reported: 0, approximate: 0 } as Record<MapCoordinatePrecision, number>), [geojson]);
   const textualHotspots = hotspots.slice(0, 5);
 
   useEffect(() => {
@@ -560,7 +558,7 @@ export function RealtimeMapLibreMap({
       <div id={mapSummaryId} className="nexid-map-status pointer-events-none absolute left-16 top-20 max-w-[calc(100%-5rem)] rounded-lg border border-white/10 bg-slate-950/72 px-3 py-2 text-xs text-slate-300 shadow-xl backdrop-blur sm:top-16 lg:top-20">
         <b className="text-cyan-200">{geojson.features.length}</b> ubicaciones mapeables / {hotspots.length} zonas / {mode === "tenant" ? "tenant" : "global"}
         <span className="mt-1 block text-[10px] text-slate-400">
-          {precisionSummary.reported} GPS/reportadas · {precisionSummary.approximate} aproximadas · {precisionSummary.synthetic} sintéticas por centro urbano
+          {precisionSummary.reported} reportadas · {precisionSummary.approximate} aproximadas · sin coordenada persistida, el evento no se dibuja
         </span>
       </div>
       {!loaded && !mapError ? (

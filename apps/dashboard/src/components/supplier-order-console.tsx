@@ -30,6 +30,9 @@ type SupplierOrder = {
   status?: string;
   pack_exported_at?: string;
   pack_status?: string;
+  packaging_governance_status?: string;
+  packaging_spec_revision?: number;
+  packaging_spec_hash?: string | null;
   sub_batches?: SupplierSubBatch[];
 };
 
@@ -399,21 +402,17 @@ export function SupplierOrderConsole({
 }: SupplierOrderConsoleProps) {
   const normalizedRole = currentRole.replace(/_/g, "-");
   const isSuperAdmin = normalizedRole === "super-admin";
-  const isSecurityOperator = normalizedRole === "security-operator";
   const canCreateOrder = isSuperAdmin
-    || isSecurityOperator
     || hasScopedPermission(currentPermissions, "supplier:write");
   const canManageManifest = isSuperAdmin
-    || isSecurityOperator
     || hasPermission(currentPermissions, "supplier:manifest")
     || hasPermission(currentPermissions, "batches:write");
   const canRunQa = isSuperAdmin
     || hasPermission(currentPermissions, "supplier:qa")
     || hasPermission(currentPermissions, "batches:qa")
     || hasPermission(currentPermissions, "batches:write");
-  const canExportPack = isSuperAdmin || isSecurityOperator || hasScopedPermission(currentPermissions, "supplier:export_pack");
+  const canExportPack = isSuperAdmin || hasScopedPermission(currentPermissions, "supplier:export_pack");
   const canActivateTags = isSuperAdmin
-    || isSecurityOperator
     || hasPermission(currentPermissions, "supplier:activate")
     || hasPermission(currentPermissions, "batches:write");
   const canManageOfflineVerifier = canExportPack || hasScopedPermission(currentPermissions, "supplier:offline_verifier");
@@ -474,6 +473,8 @@ export function SupplierOrderConsole({
     [qaSampleUrls],
   );
   const packAlreadyExported = hasExportEvidence(created?.order, vaultArtifacts, pack);
+  const packagingStatus = normalStatus(created?.order?.packaging_governance_status) || "legacy_unverified";
+  const packagingApproved = packagingStatus === "approved";
   const totalQuantityValue = Number(totalQuantity);
   const subBatchSizeValue = Number(subBatchSize);
   const offlineBids = useMemo(() => {
@@ -482,7 +483,7 @@ export function SupplierOrderConsole({
     return qaBid ? [qaBid] : [];
   }, [offlineBundleBids, qaBid]);
   const createOrderBlockReason = !canCreateOrder
-    ? "Solo superadmin, security operator o supplier:write puede crear un Supplier Order."
+    ? "Solo superadmin o un usuario con supplier:write puede crear un Supplier Order."
     : !tenantSlug.trim()
       ? "Falta tenant slug."
       : !orderName.trim() && !baseBatchId.trim()
@@ -545,14 +546,16 @@ export function SupplierOrderConsole({
         ? "Selecciona un BID."
         : "";
   const exportPackBlockReason = !canExportPack
-    ? "Solo superadmin, security operator o supplier:export_pack puede exportar el pack."
+    ? "Solo superadmin o un usuario con supplier:export_pack puede exportar el pack."
     : !selectedOrderId
       ? "Primero selecciona un Supplier Order."
-      : packAlreadyExported
-        ? "Pack ya exportado o con evidencia en Vault."
-        : "";
+      : !packagingApproved
+        ? `Packaging ${packagingStatus}: completa y aproba la especificacion industrial antes de exportar llaves.`
+        : packAlreadyExported
+          ? "Pack ya exportado o con evidencia en Vault."
+          : "";
   const offlineBlockReason = !canManageOfflineVerifier
-    ? "Solo superadmin, security operator, supplier:export_pack o supplier:offline_verifier puede emitir bundles offline."
+    ? "Solo superadmin o permisos supplier:export_pack / supplier:offline_verifier pueden emitir bundles offline."
     : !effectiveTenantSlug
       ? "Falta tenant slug."
       : "";
@@ -576,8 +579,10 @@ export function SupplierOrderConsole({
     ? "Crea o selecciona un Supplier Order."
     : !selectedSubBatch
       ? "Selecciona un sub-batch del pedido."
-      : !packAlreadyExported && canExportPack
-        ? "Exporta el pack cifrado una sola vez y entrega la clave por canal separado."
+      : !packagingApproved
+        ? "Completa la especificacion de packaging, evidencia fisica y aprobacion antes del pack."
+        : !packAlreadyExported && canExportPack
+          ? "Exporta el pack cifrado una sola vez y entrega la clave por canal separado."
         : normalStatus(selectedSubBatch.manifest_status) !== "imported"
           ? "Valida el manifiesto con dry-run y despues importalo."
           : normalStatus(selectedSubBatch.qa_status) !== "passed"
@@ -782,6 +787,10 @@ export function SupplierOrderConsole({
     }
     if (!selectedOrderId) {
       setStatus("Primero crea o selecciona un Supplier Order.");
+      return;
+    }
+    if (!packagingApproved) {
+      setStatus(`Pack bloqueado: packaging ${packagingStatus}. Abri el detalle del pedido y completa el release fisico antes de exponer claves a fabrica.`);
       return;
     }
     if (packAlreadyExported) {
@@ -1013,9 +1022,10 @@ export function SupplierOrderConsole({
         </div>
 
         <div className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <Metric label="Sub-batches" value={String(subBatches.length)} />
             <Metric label="Pack" value={packAlreadyExported ? "exportado" : "pendiente"} />
+            <Metric label="Packaging" value={`${packagingStatus} · r${created?.order?.packaging_spec_revision || 0}`} />
             <Metric label="Manifiesto" value={selectedSubBatch?.manifest_status || "pendiente"} />
             <Metric label="QA BID" value={qaBid || "pendiente"} />
           </div>
@@ -1071,11 +1081,19 @@ export function SupplierOrderConsole({
             <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-100">Export pack</p>
             <p className="mt-2 text-sm leading-6 text-amber-50">
               {canExportPack
-                ? isSecurityOperator
-                  ? "Operador de seguridad activo: puede emitir el pack cifrado de fábrica bajo auditoría, sin exponer claves crudas al tenant."
-                  : "Superadmin activo: genera un contenedor cifrado con carpetas por sub-batch, TXT/JSON/PDF y checksums. El password se genera en esta consola, no vuelve desde la API y debe enviarse por canal separado."
-                : "Bloqueado para tenant admin: el tenant opera manifiestos, QA y Vault, pero el pack cifrado de fábrica queda bajo superadmin, security operator o permiso explícito."}
+                ? isSuperAdmin
+                  ? "Superadmin activo: genera un contenedor cifrado con carpetas por sub-batch, TXT/JSON/PDF y checksums. El password se genera en esta consola, no vuelve desde la API y debe enviarse por canal separado."
+                  : "Permiso supplier:export_pack activo: puede emitir el pack cifrado bajo auditoría, sin exponer claves crudas al tenant."
+                : "Bloqueado para este perfil: manifiestos, QA y Vault siguen disponibles, pero el pack cifrado exige superadmin o permiso explícito."}
             </p>
+            {selectedOrderId ? (
+              <a
+                className="mt-3 inline-flex rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs font-black text-cyan-100 hover:bg-cyan-500/20"
+                href={`/supplier-orders/${encodeURIComponent(selectedOrderId)}`}
+              >
+                Abrir especificación y aprobación de packaging
+              </a>
+            ) : null}
             <p className="mt-3 rounded-xl border border-amber-200/20 bg-slate-950/55 px-3 py-2 text-xs leading-5 text-amber-50/90">
               Custodia NFC piloto: envelope AES-256-GCM con secreto de aplicacion versionado en Vercel y AAD por tenant, lote, rol y version. No es KMS administrado ni HSM; la migracion a custodia no exportable sigue siendo un gate de produccion enterprise.
             </p>
@@ -1086,14 +1104,14 @@ export function SupplierOrderConsole({
                   <input
                     className="min-w-0 flex-1 rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 font-mono text-xs text-white placeholder:text-slate-500"
                     value={packPassword}
-                    disabled={!canExportPack}
+                    disabled={!canExportPack || !packagingApproved}
                     onChange={(event) => setPackPassword(event.target.value)}
                     placeholder="Generar antes de exportar"
                   />
                   <Button
                     variant="secondary"
                     type="button"
-                    disabled={!canExportPack}
+                    disabled={!canExportPack || !packagingApproved}
                     onClick={() => {
                       setPackPassword(makeLocalPackPassword(created?.order?.customer_slug || customerSlug, created?.order?.tenant_slug || tenantSlug));
                       setPackPasswordVisible(false);

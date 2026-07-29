@@ -35,7 +35,7 @@ function maskUrl(value: string) {
 }
 
 export async function GET(req: Request): Promise<Response> {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
   const permission = checkAdminPermission(req, "tokenization:read");
   if (permission) return permission;

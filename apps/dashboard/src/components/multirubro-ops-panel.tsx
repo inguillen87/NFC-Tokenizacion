@@ -8,6 +8,8 @@ import { motion } from "framer-motion";
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, BarChart, Bar, Legend } from "recharts";
 import { readDemoDataMetaFromResponse } from "../lib/demo-data-mode";
 import { isSecurityAlertCreatedEvent, mergeAlertCenterItems, toAlertCenterItem, type AlertCenterItem, type SecurityAlertRealtimePayload } from "../lib/realtime-alerts";
+import { strictCoordinatePair } from "../lib/geo-coordinates";
+import { classifyRealtimeVerdict, isRealtimeRisk, type TenantTapRealtimeWireEvent } from "../lib/realtime-feed";
 
 type AnalyticsPayload = {
   ok?: boolean;
@@ -18,8 +20,8 @@ type AnalyticsPayload = {
     country?: string;
     scans?: number;
     risk?: number;
-    lat: number;
-    lng: number;
+    lat: number | string | null;
+    lng: number | string | null;
     coordinateSource?: string | null;
     coordinate_source?: string | null;
     locationSource?: string | null;
@@ -70,28 +72,6 @@ type DiagnosticsPayload = {
   freshness?: { latestAt?: string | null; ageMs?: number | null; streamState?: string };
 };
 
-type StreamEventPayload = {
-  id?: string | number;
-  result?: string;
-  reason?: string;
-  uid_hex?: string;
-  bid?: string;
-  tenant_slug?: string;
-  city?: string;
-  country_code?: string;
-  lat?: number | string | null;
-  lng?: number | string | null;
-  coordinate_source?: string | null;
-  location_source?: string | null;
-  location_accuracy_m?: number | string | null;
-  created_at?: string;
-  stream_sent_at?: string;
-  stream_latency_ms?: number | null;
-  request_id?: string;
-  stream_request_id?: string;
-  origin_trace_id?: string | null;
-};
-
 type LiveFeedItem = {
   id: string;
   at: string;
@@ -113,18 +93,7 @@ const METADATA_TEMPLATES = [
   { vertical: "Semillas", fields: ["Certificado origen", "Fecha vencimiento", "Tratamiento fitosanitario"] },
 ];
 
-type EventVerdictBucket = "valid" | "duplicate_replay" | "tamper" | "invalid" | "unknown";
 type LocationFilter = "all" | "precise" | "approximate" | "unreported";
-
-function classifyEventVerdict(resultValue?: string, reasonValue?: string): EventVerdictBucket {
-  const result = String(resultValue || "").trim().toUpperCase();
-  const reason = String(reasonValue || "").trim().toLowerCase();
-  if (["VALID", "TAP_VALID", "CLAIMED", "REDEEMED", "CHECK_IN"].includes(result)) return "valid";
-  if (result.includes("REPLAY") || result.includes("DUPLICATE") || reason.includes("replay") || reason.includes("duplicate")) return "duplicate_replay";
-  if (result.includes("TAMPER") || reason.includes("tamper")) return "tamper";
-  if (!result || ["UNKNOWN", "NOT_REGISTERED", "NOT_ACTIVE"].includes(result) || reason.includes("not_registered") || reason.includes("not_active")) return "unknown";
-  return "invalid";
-}
 
 function normalizeLocationSource(value?: string | null) {
   return String(value || "unreported").trim().toLowerCase() || "unreported";
@@ -132,7 +101,7 @@ function normalizeLocationSource(value?: string | null) {
 
 function classifyLocationSource(sourceValue?: string | null): Exclude<LocationFilter, "all"> {
   const source = normalizeLocationSource(sourceValue);
-  const explicitlyApproximate = source.includes("city") || source.includes("centroid") || source.includes("ip_") || source.includes("synthetic") || source.includes("fallback");
+  const explicitlyApproximate = source.includes("approximate") || source.includes("city") || source.includes("centroid") || source.includes("ip_") || source.includes("synthetic") || source.includes("fallback");
   if (!explicitlyApproximate && source.includes("gps")) return "precise";
   if (explicitlyApproximate) return "approximate";
   return "unreported";
@@ -140,7 +109,9 @@ function classifyLocationSource(sourceValue?: string | null): Exclude<LocationFi
 
 function locationEvidenceLabel(sourceValue?: string | null, accuracyValue?: number | string | null) {
   const source = normalizeLocationSource(sourceValue);
-  const accuracy = Number(accuracyValue);
+  const accuracy = accuracyValue == null || (typeof accuracyValue === "string" && !accuracyValue.trim())
+    ? Number.NaN
+    : Number(accuracyValue);
   const accuracyLabel = Number.isFinite(accuracy) && accuracy >= 0 ? ` (+/-${Math.round(accuracy)} m reportados)` : "";
   const precision = classifyLocationSource(source);
   if (precision === "precise") return `GPS reportado por cliente; no verificacion independiente: ${source}${accuracyLabel}`;
@@ -198,7 +169,7 @@ export function MultirubroOpsPanel() {
     return `${url.pathname}${url.search}`;
   }
 
-  function normalizeFeedItem(payload: StreamEventPayload): LiveFeedItem {
+  function normalizeFeedItem(payload: TenantTapRealtimeWireEvent): LiveFeedItem {
     return {
       id: String(payload.id || `${payload.created_at || Date.now()}-${payload.uid_hex || "evt"}`),
       at: String(payload.created_at || new Date().toISOString()),
@@ -214,17 +185,17 @@ export function MultirubroOpsPanel() {
     };
   }
 
-  function applyIncomingEvent(payload: StreamEventPayload) {
-    const lat = Number(payload.lat);
-    const lng = Number(payload.lng);
-    const hasGeo = Number.isFinite(lat) && Number.isFinite(lng);
+  function applyIncomingEvent(payload: TenantTapRealtimeWireEvent) {
+    const coordinate = strictCoordinatePair(payload.lat, payload.lng);
     const createdAt = payload.created_at || new Date().toISOString();
-    const verdictBucket = classifyEventVerdict(payload.result, payload.reason);
+    const verdictBucket = classifyRealtimeVerdict(payload, payload.reason);
     const isValid = verdictBucket === "valid";
     const isReplay = verdictBucket === "duplicate_replay";
-    const isRisk = ["duplicate_replay", "tamper", "invalid"].includes(verdictBucket);
+    const isRisk = isRealtimeRisk(payload, payload.reason);
     const locationSource = normalizeLocationSource(payload.coordinate_source || payload.location_source);
-    const locationAccuracyM = Number(payload.location_accuracy_m);
+    const locationAccuracyM = payload.location_accuracy_m == null || (typeof payload.location_accuracy_m === "string" && !payload.location_accuracy_m.trim())
+      ? Number.NaN
+      : Number(payload.location_accuracy_m);
 
     setAnalytics((prev) => {
       if (!prev) return prev;
@@ -258,7 +229,7 @@ export function MultirubroOpsPanel() {
       }
 
       const geoPoints = [...(prev.geoPoints || [])];
-      if (hasGeo) {
+      if (coordinate) {
         const city = String(payload.city || "Unknown");
         const country = String(payload.country_code || "--");
         const existing = geoPoints.find((point) => {
@@ -274,8 +245,8 @@ export function MultirubroOpsPanel() {
             country,
             scans: 1,
             risk: isRisk ? 1 : 0,
-            lat,
-            lng,
+            lat: coordinate.lat,
+            lng: coordinate.lng,
             coordinateSource: locationSource,
             locationAccuracyM: Number.isFinite(locationAccuracyM) && locationAccuracyM >= 0 ? locationAccuracyM : null,
           });
@@ -415,7 +386,7 @@ export function MultirubroOpsPanel() {
         bumpStaleTimer();
         void loadData();
         try {
-          const payload = JSON.parse(String((event as MessageEvent).data || "{}")) as { rows?: StreamEventPayload[] };
+          const payload = JSON.parse(String((event as MessageEvent).data || "{}")) as { rows?: TenantTapRealtimeWireEvent[] };
           const rows = Array.isArray(payload.rows) ? payload.rows : [];
           setLiveFeed(rows.slice(0, 12).map(normalizeFeedItem));
         } catch {
@@ -443,13 +414,13 @@ export function MultirubroOpsPanel() {
         setStreamState("connected");
         bumpStaleTimer();
         try {
-          const payload = JSON.parse(String((event as MessageEvent).data || "{}")) as StreamEventPayload | SecurityAlertRealtimePayload;
+          const payload = JSON.parse(String((event as MessageEvent).data || "{}")) as TenantTapRealtimeWireEvent | SecurityAlertRealtimePayload;
           if (isSecurityAlertCreatedEvent(payload as Record<string, unknown>)) {
             const item = toAlertCenterItem(payload as SecurityAlertRealtimePayload);
             setAlerts((prev) => mergeAlertCenterItems(prev, item, 12));
             return;
           }
-          const tapPayload = payload as StreamEventPayload;
+          const tapPayload = payload as TenantTapRealtimeWireEvent;
           applyIncomingEvent(tapPayload);
           const item = normalizeFeedItem(tapPayload);
           setLiveFeed((prev) => [item, ...prev.filter((row) => row.id !== item.id)].slice(0, 12));
@@ -498,20 +469,22 @@ export function MultirubroOpsPanel() {
   const validRate = Number(analytics?.kpis?.validRate || 0);
   const validMessages = tapsTotal > 0 ? Math.round((validRate / 100) * tapsTotal) : null;
   const messagesWithAlerts = validMessages === null ? null : Math.max(0, tapsTotal - validMessages);
-  const points = (analytics?.geoPoints || []).map((point) => {
+  const points = (analytics?.geoPoints || []).flatMap((point) => {
+    const coordinate = strictCoordinatePair(point.lat, point.lng);
+    if (!coordinate) return [];
     const coordinateSource = normalizeLocationSource(point.coordinateSource || point.coordinate_source || point.locationSource || point.location_source);
     const locationAccuracyM = point.locationAccuracyM ?? point.location_accuracy_m ?? null;
-    return {
+    return [{
       city: point.city,
       country: point.country || "--",
-      lat: point.lat,
-      lng: point.lng,
+      lat: coordinate.lat,
+      lng: coordinate.lng,
       scans: point.scans ?? 0,
       risk: point.risk ?? 0,
       status: (point.risk ?? 0) > 0 ? "RISK" : "REPORTED",
       source: locationEvidenceLabel(coordinateSource, locationAccuracyM),
       precision: classifyLocationSource(coordinateSource),
-    };
+    }];
   });
   const locationSummary = points.reduce((summary, point) => {
     summary[point.precision] += 1;
@@ -543,7 +516,7 @@ export function MultirubroOpsPanel() {
     const events = Array.isArray(response?.events) ? response.events : [];
     const tap = response?.tap;
     const realtime = response?.dashboard_realtime;
-    const tapEvent: StreamEventPayload | null = tap && realtime
+    const tapEvent: TenantTapRealtimeWireEvent | null = tap && realtime
       ? {
           id: realtime.event_id,
           result: response?.result || tap.status || "VALID",
@@ -568,7 +541,7 @@ export function MultirubroOpsPanel() {
       : null;
     const incomingEvents = tapEvent ? [tapEvent] : events;
     for (const event of incomingEvents) {
-      const payload = event as StreamEventPayload;
+      const payload = event as TenantTapRealtimeWireEvent;
       applyIncomingEvent(payload);
       const item = normalizeFeedItem(payload);
       setLiveFeed((prev) => [item, ...prev.filter((row) => row.id !== item.id)].slice(0, 12));

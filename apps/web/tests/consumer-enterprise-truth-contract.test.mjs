@@ -90,7 +90,12 @@ test("SUN map preserves missing counts and timestamps", () => {
 test("SUN precision telemetry preserves the fresh handoff proof", () => {
   assert.match(sun, /freshToken=\{freshToken\}/);
   assert.match(telemetry, /fresh_token: freshToken \|\| undefined/);
-  assert.match(telemetry, /eventId, freshToken, readCounter/);
+  assert.match(telemetry, /geoConsent: true/);
+  assert.match(telemetry, /geoPrecision: "approximate"/);
+  assert.match(telemetry, /onClick=\{shareApproximateLocation\}/);
+  assert.match(telemetry, /enableHighAccuracy: false/);
+  assert.match(telemetry, /roundApproximateCoordinate\(position\.coords\.latitude\)/);
+  assert.match(telemetry, /El pasaporte sigue funcionando sin ella/);
 });
 
 test("public rewards require explicit status and contact-verification evidence", () => {

@@ -29,14 +29,11 @@ test("shared public API guard provides same-origin, bounded-body and bounded-rat
   assert.match(guard, /MAX_RATE_BUCKETS/);
 });
 
-test("privileged demo onboarding is hidden in production and gated in development", () => {
-  assert.match(onboard, /process\.env\.NODE_ENV === "production"/);
-  assert.match(onboard, /DEMO_ONBOARD_SECRET/);
-  assert.match(onboard, /x-nexid-demo-onboard-secret/);
-  assert.match(onboard, /isSameOrigin/);
-  assert.match(onboard, /MAX_PAYLOAD_BYTES/);
-  assert.match(onboard, /consumeRateLimit/);
-  assert.match(onboard, /timingSafeEqual/);
+test("privileged demo onboarding is unavailable from the browser runtime", () => {
+  assert.match(onboard, /Privileged tenant\/batch creation is intentionally unavailable/);
+  assert.match(onboard, /reason: "not_found"/);
+  assert.match(onboard, /status: 404/);
+  assert.doesNotMatch(onboard, /ADMIN_API_KEY|Authorization|fetch\(/);
   assert.doesNotMatch(onboardButton, /fetch\("\/api\/demo\/onboard"/);
 });
 
@@ -97,12 +94,13 @@ test("public CTA mutations enforce browser origin, bounded JSON and rate limits"
   assert.doesNotMatch(publicCta, /await req\.json\(\)/);
 });
 
-test("Clerk Web3 bridge fails closed without its admin credential and bounds chain IDs", () => {
-  assert.match(web3, /if \(!adminKey\)/);
-  assert.match(web3, /web3_bridge_not_configured/);
+test("Clerk Web3 bridge forwards only the verified Clerk session token and bounds chain IDs", () => {
+  assert.match(web3, /const clerkAuth = await auth\(\)/);
+  assert.match(web3, /clerkAuth\?\.getToken\(\)/);
+  assert.match(web3, /authorization: `Bearer \$\{clerkSessionToken\}`/);
   assert.match(web3, /MAX_PAYLOAD_BYTES/);
   assert.match(web3, /CHAIN_ID_RE/);
   assert.match(web3, /invalid_chain_id/);
   assert.doesNotMatch(web3, /"x-forwarded-for"/);
-  assert.doesNotMatch(web3, /Bearer \$\{process\.env\.ADMIN_API_KEY/);
+  assert.doesNotMatch(web3, /ADMIN_API_KEY|externalUserId|walletVerificationSource/);
 });

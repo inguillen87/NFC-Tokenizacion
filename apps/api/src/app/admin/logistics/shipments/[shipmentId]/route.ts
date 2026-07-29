@@ -48,7 +48,7 @@ async function getShipment(shipmentId: string, forcedTenantSlug = "") {
 }
 
 export async function GET(req: Request, context: { params: Promise<{ shipmentId: string }> }) {
-  const auth = checkAdmin(req, ["super_admin", "security_operator", "tenant_admin"]);
+  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
   if (auth) return auth;
   await ensureSecureDeliverySchema();
 

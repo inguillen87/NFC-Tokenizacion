@@ -18,7 +18,7 @@ function isMissingRelation(error: unknown) {
 }
 
 export async function GET(req: Request) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
   const { searchParams } = new URL(req.url);
   const requestedTenant = clean(searchParams.get("tenant"));

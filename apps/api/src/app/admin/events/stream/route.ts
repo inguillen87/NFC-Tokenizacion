@@ -96,6 +96,8 @@ async function fetchRows(
             NULLIF(b.sdm_config #>> '{sun,product,sku}', '')
           ) AS product_name,
           e.result,
+          e.verdict,
+          e.risk_level,
           e.reason,
           e.uid_hex,
           e.created_at,
@@ -125,9 +127,10 @@ async function fetchRows(
             ${risk} = ''
             OR (
               CASE
-                WHEN UPPER(e.result) IN ('VALID', 'TAP_VALID') THEN 'NONE'
-                WHEN UPPER(e.result) IN ('REPLAY_SUSPECT', 'TAMPER', 'TAMPERED') THEN 'HIGH'
-                WHEN UPPER(e.result) IN ('INVALID', 'NOT_REGISTERED', 'NOT_ACTIVE', 'REVOKED') THEN 'MEDIUM'
+                WHEN LOWER(COALESCE(e.verdict, '')) IN ('replay_suspect', 'blocked_replay', 'tampered') OR UPPER(COALESCE(e.result, '')) IN ('DUPLICATE', 'REPLAY_SUSPECT', 'BLOCKED_REPLAY', 'TAMPER', 'TAMPER_RISK', 'TAMPER_UNVERIFIED', 'TAMPERED') THEN 'HIGH'
+                WHEN LOWER(COALESCE(e.verdict, '')) IN ('revoked', 'broken') OR UPPER(COALESCE(e.result, '')) IN ('REVOKED', 'BROKEN') THEN 'CRITICAL'
+                WHEN LOWER(COALESCE(e.verdict, '')) = 'invalid' OR UPPER(COALESCE(e.result, '')) IN ('INVALID', 'TAP_INVALID') OR (UPPER(COALESCE(e.result, '')) LIKE 'BLOCKED_%' AND UPPER(COALESCE(e.result, '')) <> 'BLOCKED_REPLAY') THEN 'MEDIUM'
+                WHEN LOWER(COALESCE(e.verdict, '')) = 'valid' OR UPPER(COALESCE(e.result, '')) IN ('VALID', 'TAP_VALID') OR UPPER(COALESCE(e.result, '')) LIKE 'VALID_%' THEN 'NONE'
                 ELSE 'LOW'
               END
             ) = ${risk}
@@ -150,6 +153,8 @@ async function fetchRows(
             NULLIF(b.sdm_config #>> '{sun,product,sku}', '')
           ) AS product_name,
           e.result,
+          e.verdict,
+          e.risk_level,
           e.reason,
           e.uid_hex,
           e.created_at,
@@ -178,9 +183,10 @@ async function fetchRows(
             ${risk} = ''
             OR (
               CASE
-                WHEN UPPER(e.result) IN ('VALID', 'TAP_VALID') THEN 'NONE'
-                WHEN UPPER(e.result) IN ('REPLAY_SUSPECT', 'TAMPER', 'TAMPERED') THEN 'HIGH'
-                WHEN UPPER(e.result) IN ('INVALID', 'NOT_REGISTERED', 'NOT_ACTIVE', 'REVOKED') THEN 'MEDIUM'
+                WHEN LOWER(COALESCE(e.verdict, '')) IN ('replay_suspect', 'blocked_replay', 'tampered') OR UPPER(COALESCE(e.result, '')) IN ('DUPLICATE', 'REPLAY_SUSPECT', 'BLOCKED_REPLAY', 'TAMPER', 'TAMPER_RISK', 'TAMPER_UNVERIFIED', 'TAMPERED') THEN 'HIGH'
+                WHEN LOWER(COALESCE(e.verdict, '')) IN ('revoked', 'broken') OR UPPER(COALESCE(e.result, '')) IN ('REVOKED', 'BROKEN') THEN 'CRITICAL'
+                WHEN LOWER(COALESCE(e.verdict, '')) = 'invalid' OR UPPER(COALESCE(e.result, '')) IN ('INVALID', 'TAP_INVALID') OR (UPPER(COALESCE(e.result, '')) LIKE 'BLOCKED_%' AND UPPER(COALESCE(e.result, '')) <> 'BLOCKED_REPLAY') THEN 'MEDIUM'
+                WHEN LOWER(COALESCE(e.verdict, '')) = 'valid' OR UPPER(COALESCE(e.result, '')) IN ('VALID', 'TAP_VALID') OR UPPER(COALESCE(e.result, '')) LIKE 'VALID_%' THEN 'NONE'
                 ELSE 'LOW'
               END
             ) = ${risk}
@@ -193,7 +199,7 @@ async function fetchRows(
 }
 
 export async function GET(req: Request): Promise<Response> {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
   const { scope, forcedTenantSlug } = getAdminTenantScope(req);
 

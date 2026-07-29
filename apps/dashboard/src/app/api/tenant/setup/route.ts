@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import { getDashboardSession } from "../../../../lib/session";
+import { getDashboardSessionCredential } from "../../../../lib/session";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
 
 export async function POST(req: Request) {
-  const session = await getDashboardSession();
+  const credential = await getDashboardSessionCredential({ persistRotation: true });
+  const session = credential?.session || null;
   if (!session) {
     return NextResponse.json({ ok: false, reason: "unauthorized" }, { status: 401 });
   }
@@ -15,6 +16,10 @@ export async function POST(req: Request) {
 
   if (session.isDemo) {
     return NextResponse.json({ ok: false, reason: "demo sessions cannot mutate tenant setup" }, { status: 403 });
+  }
+
+  if (!credential?.bearerToken) {
+    return NextResponse.json({ ok: false, reason: "unauthorized" }, { status: 401 });
   }
 
   const tenantSlug = session.tenantSlug;
@@ -35,16 +40,12 @@ export async function POST(req: Request) {
   if (!Number.isFinite(originLng) || originLng < -180 || originLng > 180) {
     return NextResponse.json({ ok: false, reason: "invalid origin longitude" }, { status: 400 });
   }
-  const adminKey = process.env.ADMIN_API_KEY || "";
-
   try {
     const res = await fetch(`${API_BASE}/admin/tenants/setup`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${adminKey}`,
-        "x-nexid-admin-scope": "tenant_admin",
-        "x-nexid-tenant-slug": tenantSlug,
+        "Authorization": `Bearer ${credential.bearerToken}`,
       },
       body: JSON.stringify({
         ...body,

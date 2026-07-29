@@ -25,7 +25,7 @@ async function ensureEventLocationContextSchema() {
 }
 
 export async function GET(req: Request) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
   await ensureEventLocationContextSchema().catch(() => null);
 

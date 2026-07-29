@@ -1,6 +1,9 @@
+import { classifyEventRiskBucket, isEventSecurityRisk } from "@product/core";
+
 export type RealtimeStreamSource = "production" | "demo" | "all";
 export type RealtimeDataSource = "production" | "demo" | "seed" | "mixed" | "unavailable";
 export type RealtimeAvailability = "ready" | "fallback" | "upstream_error" | "invalid_payload" | "unreachable";
+export type RealtimeVerdictBucket = "valid" | "duplicate_replay" | "tamper" | "invalid" | "unknown";
 
 export type TenantTapRealtimeEvent = {
   eventId: string;
@@ -17,6 +20,7 @@ export type TenantTapRealtimeEvent = {
   timezoneOffset: string | null;
   verdict: string;
   riskLevel: string;
+  reason?: string | null;
   city?: string | null;
   country?: string | null;
   lat?: number | null;
@@ -30,6 +34,47 @@ export type TenantTapRealtimeEvent = {
   source: "production" | "demo" | "unknown";
   eventSource?: string;
 };
+
+/** Wire contract emitted by the API SSE endpoint before dashboard normalization. */
+export type TenantTapRealtimeWireEvent = {
+  id?: string | number;
+  result?: string;
+  verdict?: string;
+  reason?: string;
+  uid_hex?: string;
+  bid?: string;
+  tenant_slug?: string;
+  city?: string;
+  country_code?: string;
+  lat?: number | string | null;
+  lng?: number | string | null;
+  coordinate_source?: string | null;
+  location_source?: string | null;
+  location_accuracy_m?: number | string | null;
+  created_at?: string;
+  stream_sent_at?: string;
+  stream_latency_ms?: number | null;
+  request_id?: string;
+  stream_request_id?: string;
+  origin_trace_id?: string | null;
+};
+
+export function classifyRealtimeVerdict(value?: unknown, reason?: unknown): RealtimeVerdictBucket {
+  const input = value && typeof value === "object" && !Array.isArray(value)
+    ? value
+    : { verdict: value, result: value, reason };
+  const bucket = classifyEventRiskBucket(input);
+  if (bucket === "revoked") return "invalid";
+  if (bucket === "lifecycle") return "unknown";
+  return bucket;
+}
+
+export function isRealtimeRisk(value?: unknown, reason?: unknown) {
+  const input = value && typeof value === "object" && !Array.isArray(value)
+    ? value
+    : { verdict: value, result: value, reason };
+  return isEventSecurityRisk(input);
+}
 
 export function classifyRealtimeEventSource(value: unknown): Pick<TenantTapRealtimeEvent, "source" | "eventSource"> {
   const eventSource = String(value || "").trim().toLowerCase() || "unknown";

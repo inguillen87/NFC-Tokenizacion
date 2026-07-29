@@ -32,24 +32,6 @@ function apiBase(params?: Record<string, string | string[] | undefined>) {
   return productUrls.api;
 }
 
-const KNOWN_ORIGIN_COORDS: Array<{ match: RegExp; lat: number; lng: number }> = [
-  { match: /(demo bodega|bodega demo)/i, lat: -33.2095, lng: -69.1211 },
-  { match: /(mendoza|valle de uco|finca altamira)/i, lat: -33.2095, lng: -69.1211 },
-  { match: /(san rafael)/i, lat: -34.6177, lng: -68.3301 },
-  { match: /(cafayate|salta)/i, lat: -26.0729, lng: -65.9761 },
-  { match: /(patagonia|rio negro)/i, lat: -39.033, lng: -67.583 },
-];
-
-const KNOWN_TAP_COORDS: Array<{ match: RegExp; lat: number; lng: number }> = [
-  { match: /(san martin|san martín).*?(ar|argentina|buenos aires)|^(san martin|san martín)$/i, lat: -34.5744, lng: -58.5358 },
-  { match: /(buenos aires|caba|palermo|recoleta|puerto madero)/i, lat: -34.6037, lng: -58.3816 },
-  { match: /(sao paulo|são paulo|brasil|brazil)/i, lat: -23.5558, lng: -46.6396 },
-  { match: /(santiago|chile)/i, lat: -33.4489, lng: -70.6693 },
-  { match: /(miami|florida|estados unidos|united states|usa)/i, lat: 25.7617, lng: -80.1918 },
-  { match: /(zurich|zürich|suiza|switzerland)/i, lat: 47.3769, lng: 8.5417 },
-  { match: /(new york|nyc|manhattan)/i, lat: 40.7128, lng: -74.006 },
-];
-
 type ProductState =
   | "VALID_CLOSED"
   | "VALID_OPENED"
@@ -199,18 +181,6 @@ function fmtDate(value?: string | null, timezone?: string | null) {
   return Number.isNaN(d.getTime()) ? "N/A" : d.toLocaleString("es-AR", { dateStyle: "medium", timeStyle: "short", timeZone: timezone || undefined });
 }
 
-function resolveOriginCoordinates(input: Array<string | null | undefined>) {
-  const blob = input.filter(Boolean).join(" · ");
-  const match = KNOWN_ORIGIN_COORDS.find((item) => item.match.test(blob));
-  return match ? { lat: match.lat, lng: match.lng } : null;
-}
-
-function resolveKnownTapCoordinates(input: Array<string | null | undefined>) {
-  const blob = input.filter(Boolean).join(" - ");
-  const match = KNOWN_TAP_COORDS.find((item) => item.match.test(blob));
-  return match ? { lat: match.lat, lng: match.lng } : null;
-}
-
 function policyLabel(value?: string | null) {
   const raw = String(value || "").replace(/_/g, " ").trim();
   if (!raw) return "No configurado";
@@ -224,8 +194,14 @@ function mapHref(lat?: number | null, lng?: number | null) {
 
 function isUsableCoordinate(lat?: number | null, lng?: number | null) {
   if (lat == null || lng == null) return false;
-  if (!Number.isFinite(Number(lat)) || !Number.isFinite(Number(lng))) return false;
-  return !(Number(lat) === 0 && Number(lng) === 0);
+  const parsedLat = Number(lat);
+  const parsedLng = Number(lng);
+  return Number.isFinite(parsedLat)
+    && Number.isFinite(parsedLng)
+    && parsedLat >= -90
+    && parsedLat <= 90
+    && parsedLng >= -180
+    && parsedLng <= 180;
 }
 
 function resolveSunVisualKind(result: SunContract): SunVisualKind {
@@ -573,34 +549,25 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     .map((item) => {
       const city = item.city || "Unknown city";
       const country = item.country || "--";
-      const knownCoords = resolveKnownTapCoordinates([city, country, `${city}, ${country}`]);
       const hasEventCoords = isUsableCoordinate(item.lat, item.lng);
-      const lat = hasEventCoords ? Number(item.lat) : knownCoords?.lat;
-      const lng = hasEventCoords ? Number(item.lng) : knownCoords?.lng;
-      if (lat == null || lng == null) return null;
+      if (!hasEventCoords) return null;
       return {
         city,
         country,
-        lat,
-        lng,
+        lat: Number(item.lat),
+        lng: Number(item.lng),
         scans: 1,
         risk: String(item.result || "").toLowerCase().includes("replay") || String(item.result || "").toLowerCase().includes("tamper") ? 1 : 0,
         status: item.result || "REVIEW",
         lastSeen: item.at || undefined,
-        source: hasEventCoords ? "tap_timeline" : "tap_city_geocenter",
+        source: "tap_timeline",
       };
     })
     .filter((item): item is NonNullable<typeof item> => Boolean(item));
-  const resolvedOriginCoords = result.iot?.wineryCoordinates?.lat != null && result.iot?.wineryCoordinates?.lng != null
-    ? { lat: Number(result.iot.wineryCoordinates.lat), lng: Number(result.iot.wineryCoordinates.lng) }
-    : resolveOriginCoordinates([
-      result.iot?.wineryLocation,
-      result.product?.winery,
-      result.product?.region,
-      result.provenance?.origin,
-      result.provenance?.firstVerified?.city,
-      result.provenance?.firstVerified?.country,
-    ]);
+  const wineryCoordinates = result.iot?.wineryCoordinates;
+  const resolvedOriginCoords = isUsableCoordinate(wineryCoordinates?.lat, wineryCoordinates?.lng)
+    ? { lat: Number(wineryCoordinates?.lat), lng: Number(wineryCoordinates?.lng) }
+    : null;
   const wineryPoint = resolvedOriginCoords
     ? [{
       city: result.product?.winery || "Bodega",
@@ -614,18 +581,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     }]
     : [];
   const hasCurrentTapCoords = isUsableCoordinate(result.tapContext?.lat, result.tapContext?.lng);
-  const currentTapFallbackCoords = hasCurrentTapCoords
-    ? null
-    : resolveKnownTapCoordinates([
-      result.tapContext?.city,
-      result.tapContext?.country,
-      result.provenance?.lastVerifiedLocation?.city,
-      result.provenance?.lastVerifiedLocation?.country,
-      result.provenance?.timelineSummary?.[0]?.city,
-      result.provenance?.timelineSummary?.[0]?.country,
-    ]);
-  const currentTapLat = hasCurrentTapCoords ? Number(result.tapContext?.lat) : currentTapFallbackCoords?.lat;
-  const currentTapLng = hasCurrentTapCoords ? Number(result.tapContext?.lng) : currentTapFallbackCoords?.lng;
+  const currentTapLat = hasCurrentTapCoords ? Number(result.tapContext?.lat) : null;
+  const currentTapLng = hasCurrentTapCoords ? Number(result.tapContext?.lng) : null;
   const currentTapCity = result.tapContext?.city || result.provenance?.lastVerifiedLocation?.city || result.provenance?.timelineSummary?.[0]?.city || "Tap";
   const currentTapCountry = result.tapContext?.country || result.provenance?.lastVerifiedLocation?.country || result.provenance?.timelineSummary?.[0]?.country || "--";
   const currentTapPoint = currentTapLat != null && currentTapLng != null
@@ -637,7 +594,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       scans: 1,
       risk: isRiskBlocked ? 1 : 0,
       status: result.status?.code || "REVIEW",
-      source: hasCurrentTapCoords ? "current_mobile_tap" : "current_tap_city_geocenter",
+      source: "current_mobile_tap",
     }]
     : [];
   const orderedTimelinePoints = [...timelinePoints].reverse();
@@ -686,17 +643,17 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const rawLocationSource = String(result.tapContext?.locationSource || "").toLowerCase();
   const accuracyM = Number(result.tapContext?.accuracyM);
   const hasAccuracy = Number.isFinite(accuracyM) && accuracyM > 0;
-  const tapLocationPrecisionLabel = rawLocationSource === "browser_gps"
-    ? `GPS telefono${hasAccuracy ? ` (${Math.round(accuracyM)} m)` : ""}`
+  const tapLocationPrecisionLabel = rawLocationSource === "browser_gps_approximate_consent"
+    ? `Ubicacion aproximada con consentimiento${hasAccuracy ? ` (+/-${Math.round(accuracyM)} m)` : ""}`
+    : rawLocationSource === "browser_gps" || rawLocationSource === "browser_gps_reported"
+      ? `GPS reportado por cliente${hasAccuracy ? ` (+/-${Math.round(accuracyM)} m)` : ""}`
     : rawLocationSource === "ip_geo"
       ? "IP aproximada"
       : rawLocationSource.includes("error") || rawLocationSource.includes("denied")
         ? "GPS no autorizado"
         : hasCurrentTapCoords
           ? "Coordenada reportada"
-          : currentTapFallbackCoords
-            ? "Centro de ciudad aproximado"
-            : "Sin ubicacion";
+          : "Sin ubicacion";
   const distanceDisplay = fmtDistance(originToTapDistance);
   const sensorSnapshot = result.iot?.sensorSnapshot;
   const sensorEvidenceKind = String(result.iot?.sensorEvidenceKind || "none").toLowerCase();

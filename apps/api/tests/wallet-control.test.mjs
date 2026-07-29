@@ -73,12 +73,13 @@ test("wallet routes require an authenticated one-time challenge and signature", 
 test("Clerk Web3 bridge cannot reassign an existing wallet identity", async () => {
   const route = await readFile(new URL("../src/app/consumer/auth/web3/route.ts", import.meta.url), "utf8");
 
-  assert.match(route, /walletVerificationSource !== "clerk_verified_web3"/);
+  assert.match(route, /resolveVerifiedClerkIdentity\(req\)/);
+  assert.match(route, /clerk\.identity\.verifiedWeb3Wallets\[0\]/);
   assert.match(route, /web3_identity_conflict/);
   assert.match(route, /wallet_account_link_required/);
   assert.match(route, /WHERE consumer_identities\.consumer_id = EXCLUDED\.consumer_id/);
   assert.match(route, /created_session AS MATERIALIZED/);
-  assert.doesNotMatch(route, /body\.email|body\.phone/);
+  assert.doesNotMatch(route, /body\.email|body\.phone|body\.walletAddress|body\.externalUserId|ADMIN_API_KEY/);
   assert.doesNotMatch(route, /DO UPDATE SET consumer_id = EXCLUDED\.consumer_id/);
 });
 

@@ -6,7 +6,7 @@ import { checkAdmin, getAdminTenantAccess } from "../../../../../lib/auth";
 import { json } from "../../../../../lib/http";
 
 export async function POST(req: Request, { params }: { params: Promise<{ bid: string }> }) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
 
   const { bid } = await params;

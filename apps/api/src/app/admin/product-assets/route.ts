@@ -58,7 +58,7 @@ function readIotMetadata(localeData: unknown) {
 }
 
 export async function GET(req: Request) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
   const permission = checkAdminPermission(req, "tokenization:read");
   if (permission) return permission;
@@ -160,7 +160,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
   const permission = checkAdminPermission(req, "tokenization:write");
   if (permission) return permission;

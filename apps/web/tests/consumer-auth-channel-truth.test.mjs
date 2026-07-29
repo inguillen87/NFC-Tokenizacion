@@ -29,9 +29,8 @@ test("consumer security treats linked contacts as recovery channels, not two fac
   assert.doesNotMatch(securityPage, /estatus Verificado \(2FA\)/);
 });
 
-test("Clerk bridge forwards only explicitly verified email and phone identifiers", () => {
-  assert.match(web3Bridge, /item\.verification\?\.status === "verified"/);
-  assert.match(web3Bridge, /firstVerifiedContact\(user\.emailAddresses, "emailAddress"\)/);
-  assert.match(web3Bridge, /firstVerifiedContact\(user\.phoneNumbers, "phoneNumber"\)/);
-  assert.doesNotMatch(web3Bridge, /emailAddresses\?\.\[0\]|phoneNumbers\?\.\[0\]/);
+test("Clerk bridge delegates identity resolution to the API-verified Clerk token", () => {
+  assert.match(web3Bridge, /clerkAuth\?\.getToken\(\)/);
+  assert.match(web3Bridge, /authorization: `Bearer \$\{clerkSessionToken\}`/);
+  assert.doesNotMatch(web3Bridge, /emailAddresses|phoneNumbers|walletAddress|externalUserId|ADMIN_API_KEY|cookie:/);
 });

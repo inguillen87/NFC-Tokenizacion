@@ -35,7 +35,7 @@ async function runStep(name: string, run: () => Promise<unknown>): Promise<Boots
 }
 
 export async function POST(req: Request) {
-  const auth = checkAdmin(req, ["super_admin"]);
+  const auth = await checkAdmin(req, ["super_admin"]);
   if (auth) return auth;
 
   const startedAt = Date.now();

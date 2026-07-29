@@ -157,12 +157,16 @@ test("public QR scans fail closed on unknown tenant or batch and never create tr
 });
 
 test("QR geography preserves provenance between client-reported and edge-IP coordinates", () => {
-  assert.match(sunRoute, /const hasClientGeo = Number\.isFinite\(clientLat\) && Number\.isFinite\(clientLng\)/);
-  assert.match(sunRoute, /const hasEdgeGeo = Number\.isFinite\(input\.geoLat\) && Number\.isFinite\(input\.geoLng\)/);
+  assert.match(sunRoute, /normalizeConsentedApproximateLocation/);
+  assert.match(sunRoute, /const hasClientGeo = clientLocation\.accepted/);
+  assert.match(sunRoute, /const hasEdgeGeo = edgeCoordinate !== null/);
   assert.match(sunRoute, /hasClientGeo \? "browser_rounded" : hasEdgeGeo \? "ip" : "none"/);
-  assert.match(sunRoute, /hasClientGeo \? "client_reported" : hasEdgeGeo \? "edge_ip_approx" : "none"/);
-  assert.match(sunRoute, /geo_evidence: \{ source: locationSource, verified: false \}/);
+  assert.match(sunRoute, /hasClientGeo \? "browser_gps_approximate_consent" : hasEdgeGeo \? "edge_ip_approx" : "none"/);
+  assert.match(sunRoute, /raw_query_location_redacted: true/);
+  assert.match(sunRoute, /raw_query_sun_dynamic_redacted: true/);
+  assert.match(sunRoute, /redactSensitiveQueryValues/);
   assert.doesNotMatch(sunRoute, /const hasGeo = Number\.isFinite\(browserLat\)/);
+  assert.doesNotMatch(sunRoute, /Object\.fromEntries\(input\.url\.searchParams\.entries\(\)\);/);
 });
 
 test("SUN passport omits invented quality scores and routes when source data is unavailable", () => {

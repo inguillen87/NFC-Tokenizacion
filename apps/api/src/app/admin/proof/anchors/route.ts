@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { createHash } from "node:crypto";
-import { checkAdmin, checkAdminPermission } from "../../../../lib/auth";
+import { checkAdmin, checkAdminPermission, getAdminActor } from "../../../../lib/auth";
 import { resolveAdminProofTenantScope } from "../../../../lib/admin-proof-tenant-scope";
 import { json } from "../../../../lib/http";
 import { sql } from "../../../../lib/db";
@@ -101,7 +101,7 @@ async function eventRowsFromIds(eventIds: string[], tenantId: string) {
 }
 
 export async function GET(req: Request) {
-  const auth = checkAdmin(req, ["super_admin", "tenant_admin"]);
+  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
   if (auth) return auth;
   const permission = checkAdminPermission(req, "proof:read");
   if (permission) return permission;
@@ -142,7 +142,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = checkAdmin(req, ["super_admin", "tenant_admin"]);
+  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
   if (auth) return auth;
   const permission = checkAdminPermission(req, "proof:write");
   if (permission) return permission;
@@ -379,7 +379,7 @@ export async function POST(req: Request) {
   }
 
   await logAuditEvent({
-    actorId: req.headers.get("x-nexid-actor-id"),
+    actorId: getAdminActor(req).id,
     tenantId,
     action: "proof_anchor_iota_v2_created",
     resourceType: "evidence_anchor",

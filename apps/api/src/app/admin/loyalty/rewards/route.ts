@@ -26,7 +26,7 @@ const ALLOWED_TYPES = [
 ];
 
 export async function GET(req: Request) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
 
   const { searchParams } = new URL(req.url);
@@ -50,7 +50,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
 
   const { forcedTenantSlug } = getAdminTenantScope(req);

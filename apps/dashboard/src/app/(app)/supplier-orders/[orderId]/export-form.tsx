@@ -2,7 +2,15 @@
 
 import { useState } from "react";
 
-export function ExportPackForm({ action }: { action: (formData: FormData) => Promise<any> }) {
+export function ExportPackForm({
+  action,
+  disabled = false,
+  disabledReason = "",
+}: {
+  action: (formData: FormData) => Promise<any>;
+  disabled?: boolean;
+  disabledReason?: string;
+}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<any>(null);
@@ -10,6 +18,10 @@ export function ExportPackForm({ action }: { action: (formData: FormData) => Pro
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (disabled) {
+      setError(disabledReason || "Packaging approval is required before factory export.");
+      return;
+    }
     setLoading(true);
     setError("");
     setResult(null);
@@ -60,6 +72,11 @@ export function ExportPackForm({ action }: { action: (formData: FormData) => Pro
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
+      {disabled ? (
+        <div className="rounded border border-amber-400/40 bg-amber-500/10 p-3 text-xs text-amber-100">
+          {disabledReason || "Packaging approval is required before factory export."}
+        </div>
+      ) : null}
       {error && <div className="p-3 bg-red-500/20 border border-red-500/50 text-red-200 rounded text-xs">{error}</div>}
       
       <div>
@@ -77,10 +94,10 @@ export function ExportPackForm({ action }: { action: (formData: FormData) => Pro
       
       <button 
         type="submit" 
-        disabled={loading} 
+        disabled={loading || disabled}
         className="w-full rounded-lg bg-amber-600 px-4 py-2 font-bold text-white hover:bg-amber-500 disabled:opacity-50"
       >
-        {loading ? "Exporting..." : "Export Pack & Consume Keys"}
+        {loading ? "Exporting..." : disabled ? "Blocked pending packaging approval" : "Export Pack & Consume Keys"}
       </button>
     </form>
   );

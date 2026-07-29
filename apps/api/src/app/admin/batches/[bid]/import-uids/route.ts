@@ -9,7 +9,7 @@ import { requireTenantSunProfile } from '../../../../../lib/tenant-onboarding';
 import { ensureSupplierOpsSchema } from '../../../../../lib/supplier-ops-schema';
 
 export async function POST(req: Request, { params }: { params: Promise<{ bid: string }> }) {
-  const auth = checkAdmin(req, ["super_admin", "tenant_admin"]);
+  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
   if (auth) return auth;
   const tenantScope = getAdminTenantScope(req);
   await ensureSupplierOpsSchema();

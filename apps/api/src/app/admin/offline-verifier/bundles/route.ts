@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminTenantScope } from "../../../../lib/auth";
+import { checkAdmin, getAdminActor, getAdminTenantScope } from "../../../../lib/auth";
 import { sql } from "../../../../lib/db";
 import { json } from "../../../../lib/http";
 import { logAuditEvent } from "../../../../lib/audit-logger";
@@ -21,18 +21,8 @@ function firstString(...values: unknown[]) {
   return "";
 }
 
-function safeActor(req: Request) {
-  return firstString(
-    req.headers.get("x-nexid-actor"),
-    req.headers.get("x-nexid-actor-id"),
-    req.headers.get("x-dashboard-user"),
-    req.headers.get("x-forwarded-user"),
-    "unknown_admin",
-  );
-}
-
 export async function POST(req: Request) {
-  const auth = checkAdmin(req, ["super_admin", "tenant_admin", "security_operator"]);
+  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
   if (auth) return auth;
   await ensureSupplierOpsSchema();
 
@@ -134,7 +124,7 @@ export async function POST(req: Request) {
     ) VALUES (
       ${device.tenant_id}, ${device.id}, ${bundleRef}, ${JSON.stringify(bids)}::jsonb,
       ${JSON.stringify(keyFingerprints)}::jsonb, ${JSON.stringify(policy)}::jsonb, ${bundleHash},
-      'active', ${safeActor(req)}, ${expiresAt}::timestamptz
+      'active', ${getAdminActor(req).email}, ${expiresAt}::timestamptz
     )
     RETURNING id, bundle_ref, allowed_bids_json, key_fingerprints_json, policy_json, bundle_hash, status, expires_at, created_at
   `;
@@ -153,7 +143,7 @@ export async function POST(req: Request) {
       allowed_bids: bids,
       bundle_hash: bundle.bundle_hash,
       contains_key_material: false,
-      issued_by: safeActor(req),
+      issued_by: getAdminActor(req).email,
       expires_at: bundle.expires_at,
     },
     userAgent: req.headers.get("user-agent"),

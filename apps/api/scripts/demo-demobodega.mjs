@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { neon } from "@neondatabase/serverless";
+import { buildBatchKeyLifecycleRecords } from "../src/lib/batch-keys.ts";
 
 function assertDemoWriteAllowed(scriptName) {
   const demoMode = String(process.env.DEMO_MODE || "").toLowerCase() === "true";
@@ -72,6 +73,7 @@ const manifestPolicy = {
 const sdmConfig = {
   profile: "demobodega",
   pack: requestedPack,
+  key_version: 1,
   carrier_profile_code: carrierProfileCode,
   chip_model: "NTAG 424 DNA TT",
   tagtamper_enabled: true,
@@ -239,20 +241,6 @@ await sql`CREATE TABLE IF NOT EXISTS tag_profiles (
 await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_tag_profiles_tag_id_unique ON tag_profiles(tag_id)`;
 await sql`ALTER TABLE tag_profiles ADD COLUMN IF NOT EXISTS carrier_profile_code text`;
 
-function encryptKey16(hex) {
-  const kmsHex = process.env.KMS_MASTER_KEY_HEX;
-  if (!kmsHex) throw new Error("KMS_MASTER_KEY_HEX is not set");
-  const kms = Buffer.from(kmsHex, "hex");
-  if (kms.length !== 32) throw new Error("KMS_MASTER_KEY_HEX must be 32 bytes");
-  const key16 = Buffer.from(hex, "hex");
-  if (key16.length !== 16) throw new Error("Batch key must be 16 bytes hex");
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv("aes-256-gcm", kms, iv);
-  const ct = Buffer.concat([cipher.update(key16), cipher.final()]);
-  const tag = cipher.getAuthTag();
-  return Buffer.concat([iv, tag, ct]).toString("base64");
-}
-
 function hashPassword(password) {
   return crypto.createHash("sha256").update(password).digest("hex");
 }
@@ -330,6 +318,17 @@ await sql`INSERT INTO tenants (slug, name, type, status, root_key_ct)
 VALUES ('demobodega', 'Demo Bodega', 'winery', 'active', 'demo-root-key')
 ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name, type = 'winery', status = 'active'`;
 const tenant = (await sql`SELECT id, slug, name FROM tenants WHERE slug='demobodega' LIMIT 1`)[0];
+const keyMaterial = buildBatchKeyLifecycleRecords({
+  tenantId: String(tenant.id),
+  bid,
+  kMetaHex: metaHex,
+  kFileHex: fileHex,
+  keyVersion: Number(sdmConfig.key_version),
+  createdBy: null,
+});
+const metaKey = keyMaterial.find((item) => item.keyRole === "K_META_BATCH");
+const fileKey = keyMaterial.find((item) => item.keyRole === "K_FILE_BATCH");
+if (!metaKey || !fileKey) throw new Error("demo batch key lifecycle records are incomplete");
 
 for (const account of accounts) {
   await sql`INSERT INTO users (email, full_name, locale)
@@ -345,7 +344,7 @@ for (const account of accounts) {
 }
 
 await sql`INSERT INTO batches (tenant_id, bid, status, meta_key_ct, file_key_ct, sdm_config, carrier_profile_code)
-VALUES (${tenant.id}, ${bid}, 'active', ${encryptKey16(metaHex)}, ${encryptKey16(fileHex)}, ${JSON.stringify(sdmConfig)}::jsonb, ${carrierProfileCode})
+VALUES (${tenant.id}, ${bid}, 'active', ${metaKey.encryptedKeyCt}, ${fileKey.encryptedKeyCt}, ${JSON.stringify(sdmConfig)}::jsonb, ${carrierProfileCode})
 ON CONFLICT (bid) DO UPDATE SET
   tenant_id = EXCLUDED.tenant_id,
   status = 'active',

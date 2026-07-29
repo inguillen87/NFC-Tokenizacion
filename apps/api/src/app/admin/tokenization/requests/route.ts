@@ -15,7 +15,7 @@ function clean(value: unknown) {
 }
 
 export async function GET(req: Request): Promise<Response> {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
   const permission = checkAdminPermission(req, "tokenization:read");
   if (permission) return permission;
@@ -99,7 +99,7 @@ export async function GET(req: Request): Promise<Response> {
 }
 
 export async function POST(req: Request): Promise<Response> {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
   const permission = checkAdminPermission(req, "tokenization:write");
   if (permission) return permission;

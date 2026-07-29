@@ -15,7 +15,7 @@ function safeString(value: unknown) {
 }
 
 export async function GET(req: Request) {
-  const auth = checkAdmin(req, ["super_admin", "tenant_admin"]);
+  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
   if (auth) return auth;
   const permission = checkAdminPermission(req, "proof:read");
   if (permission) return permission;
@@ -54,7 +54,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = checkAdmin(req, ["super_admin", "tenant_admin"]);
+  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
   if (auth) return auth;
   const permission = checkAdminPermission(req, "proof:write");
   if (permission) return permission;

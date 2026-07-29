@@ -14,8 +14,8 @@ test("supplier export requires operator password and never returns it", () => {
   const source = readWorkspaceFile("apps/api/src/app/admin/supplier-orders/[orderId]/export-pack/route.ts");
 
   assert.match(source, /supplier_pack_export_forbidden/);
-  assert.match(source, /security_operator/);
   assert.match(source, /supplier:export_pack/);
+  assert.doesNotMatch(source, /security_operator/);
   assert.match(source, /forcedTenantSlug/);
   assert.match(source, /supplier_pack_password_required/);
   assert.match(source, /encryptSupplierZipArchive\(zipBuffer,\s*packPassword/);
@@ -67,8 +67,8 @@ test("supplier key rotation is gated pre-export and never returns raw batch keys
   const client = readWorkspaceFile("packages/api-client/src/index.ts");
 
   assert.match(source, /supplier_key_rotation_forbidden/);
-  assert.match(source, /security_operator/);
   assert.match(source, /supplier:key_rotate/);
+  assert.doesNotMatch(source, /security_operator/);
   assert.match(source, /canRotateSupplierSubBatchKeys/);
   assert.match(source, /ssb\.key_export_count = 0/);
   assert.match(source, /bk\.export_count = 0/);
@@ -153,10 +153,11 @@ test("dashboard supplier console keeps pack password client-side only", () => {
   assert.match(source, /currentRole/);
   assert.match(source, /supplier:export_pack/);
   assert.match(source, /hasScopedPermission/);
-  assert.match(source, /security-operator/);
-  assert.match(source, /Operador de seguridad activo/);
+  assert.doesNotMatch(source, /security-operator/);
   assert.match(source, /canExportPack/);
-  assert.match(source, /Bloqueado para tenant admin/);
+  assert.match(source, /Bloqueado para este perfil/);
+  assert.match(source, /packagingApproved/);
+  assert.match(source, /packagingStatus/);
   assert.doesNotMatch(source, /encrypted_pack\?\.password/);
   assert.doesNotMatch(source, /pack\.encrypted_pack\.password/);
 });
@@ -205,11 +206,11 @@ test("supplier QA stores hashed evidence and publishes a sanitized vault report"
   assert.doesNotMatch(source, /sample_urls:\s*normalizedSampleUrls/);
 });
 
-test("supplier activate-all override is restricted to security scope or explicit permission", () => {
+test("supplier activate-all override is restricted to super-admin or explicit permission", () => {
   const source = readWorkspaceFile("apps/api/src/app/admin/batches/[bid]/activate-all/route.ts");
 
-  assert.match(source, /security_operator/);
   assert.match(source, /supplier:activate_override/);
+  assert.doesNotMatch(source, /security_operator/);
   assert.match(source, /supplier_activation_override_forbidden/);
   assert.match(source, /canUseActivationOverride/);
   assert.match(source, /overrideReason:\s*overrideAllowed \? overrideReason : ''/);
@@ -233,10 +234,10 @@ test("supplier manifest import and activation write audit events without raw UID
 
   assert.match(manifestSource, /logAuditEvent/);
   assert.match(manifestSource, /supplier_manifest_imported/);
-  assert.match(manifestSource, /imported_by:\s*safeActor\(req\)/);
+  assert.match(manifestSource, /imported_by:\s*getAdminActor\(req\)\.email/);
 
   assert.match(activateSource, /logAuditEvent/);
   assert.match(activateSource, /supplier_tags_activated/);
-  assert.match(activateSource, /activated_by:\s*safeActor\(req\)/);
+  assert.match(activateSource, /activated_by:\s*getAdminActor\(req\)\.email/);
   assert.doesNotMatch(activateSource, /afterData:\s*{\s*uids/);
 });

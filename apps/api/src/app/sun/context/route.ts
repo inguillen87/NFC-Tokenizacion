@@ -8,6 +8,7 @@ import { findNearestCity } from "../../../lib/geo-utils";
 import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../lib/bounded-request-body";
 import { enforceCriticalRateLimit } from "../../../lib/critical-rate-limit";
 import { consumeSunFreshHandoff } from "../../../lib/sun-fresh-handoff";
+import { normalizeConsentedApproximateLocation } from "../../../lib/approximate-location";
 
 const MAX_CONTEXT_BODY_BYTES = 32 * 1024;
 const BID_RE = /^[A-Za-z0-9._:-]{3,120}$/;
@@ -27,6 +28,8 @@ type ContextBody = {
     altitude?: number | null;
     speed?: number | null;
   };
+  geoConsent?: boolean;
+  geoPrecision?: string;
   client?: Record<string, unknown>;
   geoError?: string;
 };
@@ -159,14 +162,24 @@ export async function POST(req: Request): Promise<Response> {
   const batch = batchRows[0];
   if (!batch) return json({ ok: false, reason: "unknown batch" }, 404, { "cache-control": "no-store" });
 
-  const rawLat = asNumber(body.geo?.lat);
-  const rawLng = asNumber(body.geo?.lng);
-  const rawAccuracy = asNumber(body.geo?.accuracy);
-  const lat = rawLat !== null && rawLat >= -90 && rawLat <= 90 ? rawLat : null;
-  const lng = rawLng !== null && rawLng >= -180 && rawLng <= 180 ? rawLng : null;
-  const accuracy = rawAccuracy !== null && rawAccuracy >= 0 && rawAccuracy <= 50_000 ? rawAccuracy : null;
-  const hasBrowserGps = lat !== null && lng !== null;
-  const locationSource = hasBrowserGps ? "browser_gps_reported" : body.geoError ? "browser_geolocation_error_reported" : "browser_context_reported";
+  const approximateLocation = normalizeConsentedApproximateLocation({
+    consent: body.geoConsent,
+    precision: body.geoPrecision,
+    lat: body.geo?.lat,
+    lng: body.geo?.lng,
+    accuracy: body.geo?.accuracy,
+  });
+  const lat = approximateLocation.lat;
+  const lng = approximateLocation.lng;
+  const accuracy = approximateLocation.accuracy;
+  const hasBrowserGps = approximateLocation.accepted;
+  const locationSource = hasBrowserGps
+    ? "browser_gps_approximate_consent"
+    : body.geoError
+      ? "browser_geolocation_error_reported"
+      : body.geo
+        ? "browser_geolocation_ignored_without_consent"
+        : "browser_context_reported";
   const client = safeClientContext(body.client);
   const device = deviceContext(client);
   const metaPayload = {
@@ -179,11 +192,14 @@ export async function POST(req: Request): Promise<Response> {
       geo: {
         source: locationSource,
         verification: "client_reported_not_independently_verified",
+        consent: body.geoConsent === true,
+        precision: hasBrowserGps ? "approximate" : "not_stored",
+        normalization: hasBrowserGps ? "rounded_3_decimals_min_150m" : approximateLocation.reason,
         lat,
         lng,
         accuracy,
-        altitude: asNumber(body.geo?.altitude),
-        speed: asNumber(body.geo?.speed),
+        altitude: null,
+        speed: null,
       },
       client,
       device,

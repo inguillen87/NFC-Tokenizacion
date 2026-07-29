@@ -23,6 +23,11 @@ test("post-tap copy qualifies TT, GPS and on-chain evidence", () => {
   assert.match(source, /Su significado fisico depende de la integracion al packaging/);
   assert.match(source, /señales auxiliares de auditoria/);
   assert.match(source, /No prueban identidad, compra ni ubicacion fisica del producto por si solos/);
+  assert.match(source, /checked=\{shareApproximateLocation\}/);
+  assert.match(source, /getClientMetadata\(shareApproximateLocation\)/);
+  assert.match(source, /geoPrecision: shareApproximateLocation \? "approximate" : "not_requested"/);
+  assert.match(source, /no guarda GPS exacto/);
+  assert.match(source, /enableHighAccuracy: false/);
   assert.match(source, /Una transaccion confirmada puede registrar/);
   assert.match(source, /no prueba por si sola custodia ni contenido fisico/);
   assert.doesNotMatch(source, /Sello abierto verificado/);

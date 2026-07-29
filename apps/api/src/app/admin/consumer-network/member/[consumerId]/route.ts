@@ -7,7 +7,7 @@ import { sql } from "../../../../../lib/db";
 import { maskConsumerEmail, resolveConsumerNetworkTenant } from "../../../../../lib/consumer-network-metrics";
 
 export async function GET(req: Request, { params }: { params: Promise<{ consumerId: string }> }) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
   const { forcedTenantSlug } = getAdminTenantScope(req);
   const tenant = resolveConsumerNetworkTenant({ forcedTenantSlug, requestedTenantSlug: new URL(req.url).searchParams.get("tenant") });

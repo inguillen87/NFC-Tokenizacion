@@ -7,7 +7,7 @@ import { json } from "../../../../lib/http";
 import { ensureLoyaltySchema } from "../../../../lib/loyalty-schema";
 
 export async function GET(req: Request) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
 
   const { searchParams } = new URL(req.url);

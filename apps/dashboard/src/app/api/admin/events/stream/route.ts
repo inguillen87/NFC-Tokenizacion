@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 import { randomUUID } from "node:crypto";
-import { getDashboardSession } from "../../../../../lib/session";
+import { getDashboardSessionCredential } from "../../../../../lib/session";
 import { getDashboardDemoEvents, toDemoRealtimeEvent } from "../../../../../lib/demo-runtime-state";
 import { DashboardTenantScopeError, resolveDashboardTenantScope } from "../../../../../lib/dashboard-tenant-scope-policy";
 
@@ -89,9 +89,8 @@ export async function GET(request: Request) {
     });
   }
 
-  const token = String(process.env.ADMIN_API_KEY || "").trim();
-  const requireScopedAdminAuth = String(process.env.REQUIRE_SCOPED_ADMIN_AUTH || "").toLowerCase() === "true";
-  const session = await getDashboardSession().catch(() => null);
+  const credential = await getDashboardSessionCredential({ persistRotation: true }).catch(() => null);
+  const session = credential?.session || null;
   const scopedRole = session?.role === "super-admin"
     ? "super_admin"
     : session?.role === "tenant-admin"
@@ -101,9 +100,7 @@ export async function GET(request: Request) {
         : session?.role
           ? "readonly_demo"
           : "";
-  const isProduction = String(process.env.NODE_ENV || "").toLowerCase() === "production";
-
-  if (isProduction && !session) return fallbackStream("Dashboard session required", requestId, limit, { source: requestedSource });
+  if (!session) return fallbackStream("Dashboard session required", requestId, limit, { source: requestedSource });
 
   let tenant = requestedTenant;
   if (session) {
@@ -122,18 +119,24 @@ export async function GET(request: Request) {
   const effectiveSource: DashboardStreamSource = forceSandbox ? "demo" : requestedSource;
   upstream.searchParams.set("source", effectiveSource);
 
-  if (forceSandbox && (!isProduction || Boolean(scopedRole)) && scopedRole !== "tenant_admin") {
+  if (session.isDemo) {
+    return fallbackStream("dashboard demo sandbox stream", requestId, limit, {
+      includeDemoRows: true,
+      tenant,
+      source: "demo",
+      availability: "fallback",
+    });
+  }
+
+  if (forceSandbox && Boolean(scopedRole) && scopedRole !== "tenant_admin") {
     return fallbackStream("dashboard demo sandbox stream", requestId, limit, { includeDemoRows: true, tenant, source: "demo", availability: "fallback" });
   }
 
-  if (requireScopedAdminAuth && !scopedRole) return fallbackStream("Scoped admin auth required", requestId, limit, { tenant, source: effectiveSource });
-  if (!token && !scopedRole) return fallbackStream("ADMIN_API_KEY missing in dashboard environment", requestId, limit, { tenant, source: effectiveSource });
+  if (!credential?.bearerToken) return fallbackStream("Validated dashboard session required", requestId, limit, { tenant, source: effectiveSource });
 
   const response = await fetch(upstream.toString(), {
     headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(scopedRole ? { "x-nexid-admin-scope": scopedRole } : {}),
-      ...(session?.tenantSlug ? { "x-nexid-tenant-slug": session.tenantSlug } : {}),
+      Authorization: `Bearer ${credential.bearerToken}`,
       Accept: "text/event-stream",
       "x-nexid-request-id": requestId,
       ...(request.headers.get("last-event-id") ? { "Last-Event-ID": String(request.headers.get("last-event-id")) } : {}),

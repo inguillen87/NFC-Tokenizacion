@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { buildBatchKeyLifecycleRecords } from "./batch-keys";
 import { sql } from "./db";
-import { encryptKey16 } from "./keys";
 import { getDemoPack } from "./demo-packs";
 import { ensureCarrierProfileSchema } from "./commercial-runtime-schema";
 import { ensureSunTenantProfilesSchema } from "./sun-tenant-profile-schema";
@@ -175,12 +175,22 @@ export async function seedDemoPack(options: SeedOptions = {}) {
   await sql`INSERT INTO tenants (slug, name, type, status, root_key_ct) VALUES (${tenantSlug}, 'Bodega Balmec', 'winery', 'active', 'demo-root-key') ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name, type = 'winery', status = 'active'`;
   const tenant = (await sql`SELECT id FROM tenants WHERE slug = ${tenantSlug} LIMIT 1`)[0];
 
-  const metaCt = encryptKey16(Buffer.from(metaHex, "hex"));
-  const fileCt = encryptKey16(Buffer.from(fileHex, "hex"));
+  const keyVersion = 1;
+  const keyMaterial = buildBatchKeyLifecycleRecords({
+    tenantId: String(tenant.id),
+    bid,
+    kMetaHex: metaHex,
+    kFileHex: fileHex,
+    keyVersion,
+    createdBy: null,
+  });
+  const metaCt = keyMaterial.find((item) => item.keyRole === "K_META_BATCH")?.encryptedKeyCt;
+  const fileCt = keyMaterial.find((item) => item.keyRole === "K_FILE_BATCH")?.encryptedKeyCt;
+  if (!metaCt || !fileCt) throw new Error("demo batch key lifecycle records are incomplete");
 
   await sql`
     INSERT INTO batches (tenant_id, bid, status, meta_key_ct, file_key_ct, sdm_config)
-    VALUES (${tenant.id}, ${bid}, 'active', ${metaCt}, ${fileCt}, ${JSON.stringify({ ...DEMO_SDM_CONFIG, pack: packKey })}::jsonb)
+    VALUES (${tenant.id}, ${bid}, 'active', ${metaCt}, ${fileCt}, ${JSON.stringify({ ...DEMO_SDM_CONFIG, pack: packKey, key_version: keyVersion })}::jsonb)
     ON CONFLICT (bid)
     DO UPDATE SET
       tenant_id = EXCLUDED.tenant_id,

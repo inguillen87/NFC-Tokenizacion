@@ -12,8 +12,10 @@ En Vercel:
 3. Framework = `Next.js`
 4. Variables:
    - `DATABASE_URL`
-   - `ADMIN_API_KEY`
-   - `KMS_MASTER_KEY_HEX`
+   - `NFC_ENVELOPE_KEK_VERSION` + la clave `NFC_ENVELOPE_KEK_<VERSION>_HEX`
+   - `PUBLIC_CERTIFICATE_SIGNING_SECRET`
+   - `SUN_HANDOFF_SECRET`
+   - `CLERK_SECRET_KEY` y `CLERK_AUTHORIZED_PARTIES`
    - `OPENAI_API_KEY` *(solo si querés habilitar `/assistant/chat`)*
 5. Deploy
 
@@ -46,7 +48,7 @@ If your Vercel project root is `apps/api`, set `WEB_APP_URL` so `/` redirects to
 7. Recien despues tocar `apps/web` y `apps/dashboard`
 
 ## Nota clave sobre keys
-- `KMS_MASTER_KEY_HEX` = solo backend / Vercel / privado
+- El KEK NFC configurado en Vercel es envelope encryption por software; no se presenta como KMS/HSM.
 - `K_META_BATCH` y `K_FILE_BATCH` = un batch especifico
 - El batch demo actual usa exactamente las dos sample keys que ya le mandaste al proveedor.
 - La master no reescribe ni recalcula batches viejos.

@@ -8,7 +8,7 @@ import {
   resetDashboardDemoEvents,
   type DashboardDemoEvent,
 } from "../../../../../lib/demo-runtime-state";
-import { getDashboardSession } from "../../../../../lib/session";
+import { getDashboardSessionCredential, type DashboardSessionCredential } from "../../../../../lib/session";
 import { dashboardPermissionMatches } from "../../../../../lib/permission-policy";
 import {
   demoEndpointAllowed,
@@ -308,7 +308,8 @@ function fallback(path: string[], req: Request, bodyText: string | undefined) {
 }
 
 async function authorizeDemoRequest(req: Request, path: string[], bodyText?: string) {
-  const session = await getDashboardSession();
+  const credential = await getDashboardSessionCredential({ persistRotation: true });
+  const session = credential?.session || null;
   if (!session) {
     return { response: NextResponse.json({ ok: false, reason: "authentication_required" }, { status: 401 }) };
   }
@@ -337,10 +338,15 @@ async function authorizeDemoRequest(req: Request, path: string[], bodyText?: str
   if (path[0] === "reset" && !validDemoResetCommand(payload)) {
     return { response: NextResponse.json({ ok: false, reason: "reset_confirmation_required" }, { status: 400 }) };
   }
-  return { session, payload };
+  return { session, payload, credential };
 }
 
-async function forward(req: Request, path: string[], bodyText?: string) {
+async function forward(
+  req: Request,
+  path: string[],
+  credential: DashboardSessionCredential,
+  bodyText?: string,
+) {
   const target = `${API_BASE}/internal/demo/${path.join("/")}${new URL(req.url).search}`;
   const body = req.method === "GET" ? undefined : bodyText;
   const url = new URL(req.url);
@@ -349,6 +355,13 @@ async function forward(req: Request, path: string[], bodyText?: string) {
     url.searchParams.get("demo") === "1" ||
     req.headers.get("x-nexid-demo-fallback") === "1";
   const fallbackAllowed = requestWantsDemoFallback && (!IS_PRODUCTION || DEMO_FALLBACK_ENABLED);
+
+  if (credential.session.isDemo) {
+    const res = NextResponse.json(fallback(path, req, body), { status: 200 });
+    res.headers.set("x-nexid-demo-data", "DEMO DATA");
+    res.headers.set("x-nexid-demo-source", "local-sandbox");
+    return res;
+  }
 
   const failWithoutFallback = (status: number, detail: string) =>
     NextResponse.json(
@@ -366,7 +379,7 @@ async function forward(req: Request, path: string[], bodyText?: string) {
       method: req.method,
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}`,
+        Authorization: `Bearer ${credential.bearerToken || ""}`,
       },
       body,
       cache: "no-store",
@@ -407,7 +420,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ path: s
   const bodyText = await req.text();
   const authorization = await authorizeDemoRequest(req, path, bodyText);
   if (authorization.response) return authorization.response;
-  return forward(req, path, bodyText);
+  return forward(req, path, authorization.credential!, bodyText);
 }
 
 export async function GET(req: Request, { params }: { params: Promise<{ path: string[] }> }) {
@@ -415,7 +428,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ path: st
   const path = p.path || [];
   const authorization = await authorizeDemoRequest(req, path);
   if (authorization.response) return authorization.response;
-  const response = await forward(req, path);
+  const response = await forward(req, path, authorization.credential!);
   if (path[0] === "pack-file" && response.headers.get("content-type")?.includes("application/json")) {
     const data = await response.json().catch(() => null) as { content?: string; filename?: string; contentType?: string } | null;
     if (data?.content) {

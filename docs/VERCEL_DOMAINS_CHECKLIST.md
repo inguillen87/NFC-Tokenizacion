@@ -20,16 +20,19 @@ Objetivo: eliminar loops y dejar routing limpio entre web/dashboard/api.
 
 ### apps/api
 - `WEB_APP_URL=https://nexid.lat`
-- `ADMIN_API_KEY=<secret>`
 - `DATABASE_URL=<neon-url>`
 - `POSTGRES_PRISMA_URL=<neon-prisma-url>` (si usás Prisma)
+- `PUBLIC_CERTIFICATE_SIGNING_SECRET=<secret dedicado>`
+- `SUN_HANDOFF_SECRET=<secret dedicado distinto>`
+- `CLERK_SECRET_KEY=<server secret>`
+- `CLERK_AUTHORIZED_PARTIES=https://app.nexid.lat,https://nexid.lat`
 
 ### apps/web
 - `NEXT_PUBLIC_API_BASE_URL=https://api.nexid.lat`
 
 ### apps/dashboard
 - `NEXT_PUBLIC_API_BASE_URL=https://api.nexid.lat`
-- `ADMIN_API_KEY=<secret>` (solo server-side routes)
+- Variables Clerk del dashboard. La BFF reenvía la sesión opaca validada; no guarda una root key.
 
 ## 5) DNS (en tu proveedor de dominio)
 - `nexid.lat` -> CNAME/Apex según guía Vercel al proyecto web.
@@ -104,7 +107,7 @@ Esto evita perder APIs, DB o secretos por mover todo de golpe.
 
 ### 10.1 Antes de tocar dominios (pre-check)
 1. En el proyecto actual (`apps/api`), confirmar que `https://<tu-proyecto>.vercel.app/health` responde 200.
-2. En **Settings -> Environment Variables**, exportar/copy de variables actuales (al menos `DATABASE_URL`, `ADMIN_API_KEY`, `WEB_APP_URL`).
+2. En **Settings -> Environment Variables**, exportar/copy de variables actuales (al menos `DATABASE_URL`, secretos NFC/SUN/certificado, Clerk y `WEB_APP_URL`).
 3. No borrar nada todavía (ni variables ni dominios).
 
 ### 10.2 Crear proyecto `nexid-web` (landing)
@@ -127,13 +130,13 @@ Esto evita perder APIs, DB o secretos por mover todo de golpe.
 4. Deploy.
 5. En `nexid-dashboard` -> **Settings -> Environment Variables**:
    - `NEXT_PUBLIC_API_BASE_URL=https://api.nexid.lat`
-   - `ADMIN_API_KEY=<mismo secret del api>`
+   - Variables Clerk del dashboard; no copiar credenciales root del API.
 6. Redeploy.
 
 ### 10.4 Dejar proyecto actual como API (`apps/api`)
 En el proyecto original (el que ya existe):
 1. **NO** cambiar Root Directory (dejar `apps/api`).
-2. Mantener env vars de API (`DATABASE_URL`, `ADMIN_API_KEY`, `WEB_APP_URL=https://nexid.lat`).
+2. Mantener env vars de API (`DATABASE_URL`, secretos dedicados NFC/SUN/certificado, Clerk y `WEB_APP_URL=https://nexid.lat`).
 3. Dominio final de este proyecto: `api.nexid.lat`.
 
 ### 10.5 Mover dominios en Vercel (orden exacto)

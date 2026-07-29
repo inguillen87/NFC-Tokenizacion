@@ -7,12 +7,13 @@ import {
   toDemoAdminEventRow,
 } from "../../lib/demo-runtime-state";
 import { messages, productUrls } from "@product/config";
-import { resolveEventLocalTime } from "@product/core";
+import { normalizeTenantTapRealtimeEvent } from "@product/core";
 import DashboardHomeClient from "../../components/dashboard-home-client";
 import { type OpsCommandStep, type OpsCommandTenantRow } from "../../components/ops-command-center";
 import { isClerkConfiguredForRuntime } from "../../lib/clerk-env";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../lib/admin-page-access";
 import { readDemoDataMetaFromResponse } from "../../lib/demo-data-mode";
+import { resolveCanonicalTenantRisk } from "../../lib/tenant-risk";
 
 const FALLBACK_KPIS = {
   scans: "Scans",
@@ -199,44 +200,8 @@ function resolveTenantStatus(scans: number, duplicates: number, tamper: number) 
   return "active";
 }
 
-function buildTenantRiskScore(scans: number, duplicates: number, tamper: number) {
-  if (scans <= 0) return 0;
-  const duplicateRatio = duplicates / scans;
-  const tamperRatio = tamper / scans;
-  const weighted = duplicateRatio * 45 + tamperRatio * 55;
-  return Math.max(0, Math.min(100, Math.round(weighted * 100)));
-}
-
 function toRealtimeEvent(row: Record<string, unknown>): TenantTapRealtimeEvent {
-  const uid = String(row.uid_hex || row.uidHex || "").toUpperCase();
-  const uidMasked = uid ? `${uid.slice(0, 4)}****${uid.slice(-2)}` : "N/A";
-  const time = resolveEventLocalTime(row);
-  const location = row.location && typeof row.location === "object" ? row.location as Record<string, unknown> : {};
-  const accuracy = Number(row.location_accuracy_m ?? row.locationAccuracyM ?? location.accuracyM);
-  return {
-    eventId: String(row.id || row.eventId || row.created_at || Date.now()),
-    tenantId: row.tenant_id ? String(row.tenant_id) : null,
-    tenantSlug: row.tenant_slug ? String(row.tenant_slug) : null,
-    batchId: row.batch_id ? String(row.batch_id) : (row.bid ? String(row.bid) : null),
-    tagId: row.tag_id ? String(row.tag_id) : null,
-    uidMasked,
-    occurredAt: time.occurredAtUtc,
-    occurredAtUtc: time.occurredAtUtc,
-    occurredAtLocal: time.occurredAtLocal,
-    timezone: time.timezone,
-    timezoneLabel: time.timezoneLabel,
-    timezoneOffset: time.timezoneOffset,
-    verdict: String(row.verdict || row.result || "invalid").toLowerCase(),
-    riskLevel: String(row.risk_level || "medium").toLowerCase(),
-    city: row.city ? String(row.city) : (location.city ? String(location.city) : null),
-    country: row.country_code ? String(row.country_code) : (location.country ? String(location.country) : null),
-    lat: typeof row.lat === "number" ? row.lat : (typeof location.lat === "number" ? Number(location.lat) : null),
-    lng: typeof row.lng === "number" ? row.lng : (typeof location.lng === "number" ? Number(location.lng) : null),
-    locationSource: row.location_source ? String(row.location_source) : (location.source ? String(location.source) : null),
-    locationAccuracyM: Number.isFinite(accuracy) ? accuracy : null,
-    productName: row.product_name ? String(row.product_name) : null,
-    ...classifyRealtimeEventSource(row.source),
-  };
+  return normalizeTenantTapRealtimeEvent(row);
 }
 
 export default async function DashboardHome() {
@@ -315,7 +280,7 @@ export default async function DashboardHome() {
     const scans = Number(row.scans || 0);
     const duplicates = Number(row.duplicates || 0);
     const tamper = Number(row.tamper || 0);
-    const riskScore = buildTenantRiskScore(scans, duplicates, tamper);
+    const riskScore = resolveCanonicalTenantRisk(row);
     return {
       tenant: String(row.name || row.slug || "-"),
       status: resolveTenantStatus(scans, duplicates, tamper),
@@ -361,7 +326,7 @@ export default async function DashboardHome() {
       name: String(row.name || row.slug || slug),
       slug,
       scans,
-      riskScore: buildTenantRiskScore(scans, duplicates, tamper),
+      riskScore: resolveCanonicalTenantRisk(row),
       batches: batchInfo.batches,
       tags: batchInfo.tags,
       status: resolveTenantStatus(scans, duplicates, tamper),

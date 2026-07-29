@@ -15,6 +15,7 @@ import { hitSunRateLimit, readSunRateLimit } from "../../../../lib/sun-rate-limi
 import { normalizeClaimPolicy } from "../../../../lib/sun-tenant-profile";
 import { enforceCriticalRateLimit } from "../../../../lib/critical-rate-limit";
 import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../lib/bounded-request-body";
+import { normalizeConsentedApproximateLocation } from "../../../../lib/approximate-location";
 
 const CLAIM_PIN_DEVICE_MAX_ATTEMPTS = 5;
 const CLAIM_PIN_PRODUCT_MAX_ATTEMPTS = 20;
@@ -227,12 +228,15 @@ export async function POST(req: Request) {
   const userAgent = req.headers.get("user-agent") || "";
   const isMobileUaReported = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
   const screenSize = body.screenSize as { width?: number; height?: number } | undefined;
-  const clientLat = typeof body.latitude === "number" && Number.isFinite(body.latitude) && Math.abs(body.latitude) <= 90
-    ? body.latitude
-    : null;
-  const clientLng = typeof body.longitude === "number" && Number.isFinite(body.longitude) && Math.abs(body.longitude) <= 180
-    ? body.longitude
-    : null;
+  const approximateLocation = normalizeConsentedApproximateLocation({
+    consent: body.locationConsent,
+    precision: body.geoPrecision,
+    lat: body.latitude,
+    lng: body.longitude,
+    accuracy: body.accuracy,
+  });
+  const clientLat = approximateLocation.lat;
+  const clientLng = approximateLocation.lng;
   const eventLat = event.geo_lat !== null && event.geo_lat !== undefined && Number.isFinite(Number(event.geo_lat))
     ? Number(event.geo_lat)
     : null;
@@ -248,8 +252,11 @@ export async function POST(req: Request) {
     mobile_user_agent_reported: isMobileUaReported,
     screen_size_reported: screenSize || null,
     location_reported: clientLat !== null && clientLng !== null,
+    location_consent: body.locationConsent === true,
+    location_precision: approximateLocation.accepted ? "approximate" : "not_stored",
+    location_normalization: approximateLocation.reason,
     location: clientLat !== null && clientLng !== null
-      ? { latitude: clientLat, longitude: clientLng, accuracy: body.accuracy || null }
+      ? { latitude: clientLat, longitude: clientLng, accuracy: approximateLocation.accuracy }
       : null,
     distance_from_event_reported_km: reportedDistanceKm,
   };

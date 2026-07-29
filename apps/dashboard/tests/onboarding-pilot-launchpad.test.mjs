@@ -62,8 +62,9 @@ test("pilot launchpad supports explicit light mode and compact mobile workflow",
 
 test("tenant setup mutation remains server-scoped", () => {
   assert.match(setupProxySource, /session\.role !== "tenant-admin"/);
-  assert.match(setupProxySource, /"x-nexid-admin-scope": "tenant_admin"/);
-  assert.match(setupProxySource, /"x-nexid-tenant-slug": tenantSlug/);
+  assert.match(setupProxySource, /getDashboardSessionCredential\(\{ persistRotation: true \}\)/);
+  assert.match(setupProxySource, /Authorization": `Bearer \$\{credential\.bearerToken\}`/);
+  assert.doesNotMatch(setupProxySource, /ADMIN_API_KEY|x-nexid-admin-scope|x-nexid-tenant-slug/);
   assert.match(setupProxySource, /session\.isDemo/);
   assert.match(setupProxySource, /originLat < -90 \|\| originLat > 90/);
   assert.match(setupProxySource, /originLng < -180 \|\| originLng > 180/);

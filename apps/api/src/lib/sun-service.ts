@@ -4,25 +4,17 @@ import { decryptKey16 } from './keys';
 import { DEFAULT_SUN_MAC_INPUT_MODE, SUN_MAC_INPUT_MODES, type SunMacInputMode, verifySun } from './crypto/sdm';
 import { publishRealtimeEvent } from './realtime-events';
 import { decodeTTStatus, parseTTStatusFromDecryptedPayload } from './ttstatus';
-import { recordTapEvent } from './tap-event-service';
-import type { NexidEventVerdict } from '@product/core';
+import { evaluateSecurityAlerts } from './alert-engine';
 import { buildSunPayloadHashes } from './sun-payload.ts';
 import { findRegisteredSunPayload } from './sun-payload-registry.ts';
+import { persistSunScanAtomically } from './sun-atomic-persistence.ts';
+import { normalizeCoordinatePair, redactSensitiveQueryValues } from './approximate-location.ts';
 
 const AUTHENTIC_SCAN_RESULTS = new Set([
   "VALID",
   "TAP_VALID",
   "VALID_CLOSED",
   "VALID_UNKNOWN_TAMPER",
-  "OPENED",
-  "OPENED_PREVIOUSLY",
-  "MANUAL_OPENED",
-  "VALID_OPENED",
-  "VALID_OPENED_PREVIOUSLY",
-  "VALID_MANUAL_OPENED",
-]);
-
-const OPENED_SCAN_RESULTS = new Set([
   "OPENED",
   "OPENED_PREVIOUSLY",
   "MANUAL_OPENED",
@@ -360,6 +352,8 @@ export async function processSunScan(input: {
   }
   async function logUnassignedAttempt(reason: string) {
     try {
+      const persistedRawQuery = redactSensitiveQueryValues(input.rawQuery) || {};
+      const coordinate = normalizeCoordinatePair(input.context?.lat, input.context?.lng);
       await sunStateSql/*sql*/`
         CREATE TABLE IF NOT EXISTS sun_scan_attempts (
           id bigserial PRIMARY KEY,
@@ -389,104 +383,16 @@ export async function processSunScan(input: {
           ${input.context?.userAgent || null},
           ${input.context?.city || null},
           ${input.context?.countryCode || null},
-          ${Number.isFinite(input.context?.lat) ? input.context?.lat! : null},
-          ${Number.isFinite(input.context?.lng) ? input.context?.lng! : null},
+          ${coordinate?.lat ?? null},
+          ${coordinate?.lng ?? null},
           ${input.context?.source || 'real'},
-          ${JSON.stringify(input.rawQuery || {})}::jsonb,
+          ${JSON.stringify(persistedRawQuery)}::jsonb,
           ${JSON.stringify({ warning: 'batch_not_found_or_revoked', context: input.context?.meta || {} })}::jsonb
         )
       `;
     } catch {
       // best effort logging for unknown/revoked batch attempts
     }
-  }
-
-  async function insertEvent(payload: {
-    uidHex: string | null;
-    ctr: number | null;
-    cmacOk: boolean;
-    allowlistedValue: boolean;
-    tagStatusValue: string | null;
-    resultValue: string;
-    reasonValue: string | null;
-    hasGeoValue: boolean;
-  }): Promise<number | null> {
-    if (!persistScanState) return null;
-    if (!batch) return null;
-    const normalizedResult = String(payload.resultValue || "").toUpperCase();
-    const isReplay = normalizedResult === 'REPLAY_SUSPECT';
-    const isAuthentic = AUTHENTIC_SCAN_RESULTS.has(normalizedResult);
-    const isOpened = OPENED_SCAN_RESULTS.has(normalizedResult);
-    const isInvalid = !isAuthentic;
-    const riskLevelStr: 'none' | 'low' | 'medium' | 'high' =
-      normalizedResult === 'TAMPER_RISK' || isReplay
-        ? 'high'
-        : isInvalid
-          ? 'medium'
-          : isOpened
-            ? 'low'
-            : 'none';
-    const verdictByResult: Record<string, NexidEventVerdict> = {
-      VALID: "valid",
-      TAP_VALID: "valid",
-      VALID_CLOSED: "valid",
-      VALID_UNKNOWN_TAMPER: "valid",
-      OPENED: "valid",
-      OPENED_PREVIOUSLY: "valid",
-      MANUAL_OPENED: "valid",
-      VALID_OPENED: "valid",
-      VALID_OPENED_PREVIOUSLY: "valid",
-      VALID_MANUAL_OPENED: "valid",
-      REPLAY_SUSPECT: "replay_suspect",
-      SUN_PROFILE_MISMATCH: "invalid",
-      SUN_BATCH_DUPLICATE_CONFIG: "invalid",
-      TAMPER_RISK: "tampered",
-      NOT_REGISTERED: "not_registered",
-      NOT_ACTIVE: "not_active",
-      UNKNOWN_BATCH: "unknown_batch",
-      REVOKED: "revoked",
-      BROKEN: "broken",
-      INVALID: "invalid",
-    };
-    const verdict = verdictByResult[normalizedResult] || "invalid";
-
-    return await recordTapEvent({
-      tenantId: batch.tenant_id,
-      tenantSlug: (batch as { tenant_slug?: string }).tenant_slug || null,
-      batchId: batch.id,
-      bid: input.bid,
-      uidHex: payload.uidHex,
-      source: input.context?.source || 'real',
-      eventType: isReplay ? 'REPLAY_SUSPECT' : isInvalid ? 'TAP_INVALID' : 'TAP_VALID',
-      verdict,
-      riskLevel: riskLevelStr,
-      readCounter: payload.ctr,
-      sdmReadCtr: payload.ctr,
-      cmacOk: payload.cmacOk,
-      allowlisted: payload.allowlistedValue,
-      tagStatus: payload.tagStatusValue,
-      userAgent: input.context?.userAgent,
-      city: input.context?.city,
-      countryCode: input.context?.countryCode,
-      lat: payload.hasGeoValue ? input.context?.lat : null,
-      lng: payload.hasGeoValue ? input.context?.lng : null,
-      reason: payload.reasonValue,
-      piccDataHash: scanHashes.piccDataHash,
-      cmacHash: scanHashes.cmacHash,
-      rawUrlHash: scanHashes.rawUrlHash,
-      productName: resolveBatchProductName(batch as Record<string, unknown>),
-      meta: {
-        ...(input.context?.meta || {}),
-        enc_data_hash: scanHashes.encHash,
-        replay_original_event_id: replayOriginalEventId,
-      },
-      traceId: typeof input.context?.meta?.trace_id === 'string' ? String(input.context.meta.trace_id) : null,
-      ip: input.context?.ip,
-      geoCity: input.context?.city,
-      geoCountry: input.context?.countryCode,
-      deviceLabel: input.context?.deviceLabel,
-      rawQuery: input.rawQuery,
-    });
   }
 
   const batchRows = await sql/*sql*/`
@@ -563,7 +469,11 @@ export async function processSunScan(input: {
 
   const registeredPayloadMatch = res.ok
     ? null
-    : await findRegisteredSunPayload({ batchId: String(batch.id), hashes: scanHashes }).catch(() => null);
+    : await findRegisteredSunPayload({
+        batchId: String(batch.id),
+        hashes: scanHashes,
+        ensureSchema: persistScanState,
+      }).catch(() => null);
   const resolvedUidHex = res.ok ? res.uidHex : registeredPayloadMatch?.uidHex || null;
   const resolvedCtr = res.ok ? res.ctr : null;
   const cryptographicVerification = Boolean(res.ok);
@@ -576,71 +486,55 @@ export async function processSunScan(input: {
   let tagStatus: string | null = null;
   let replaySuspect = false;
 
-  const priorPayloadEventRows = await sql/*sql*/`
-    SELECT id
-    FROM events
-    WHERE batch_id = ${batch.id}
-      AND (
-        (picc_data_hash = ${scanHashes.piccDataHash} AND cmac_hash = ${scanHashes.cmacHash})
-        OR raw_url_hash = ${scanHashes.rawUrlHash}
-      )
-    ORDER BY created_at ASC
-    LIMIT 1
-  `;
-  if (priorPayloadEventRows[0]) {
-    replaySuspect = true;
-    replayOriginalEventId = Number((priorPayloadEventRows[0] as { id?: number }).id || 0) || null;
-  }
-
-  if (res.ok && resolvedUidHex && resolvedCtr != null) {
-    const priorCounterEventRows = await sql/*sql*/`
+  // Diagnostics stay mutation-free and may inspect the current snapshot. A
+  // persistent scan must not perform these replay reads outside the database
+  // transaction; nexid_persist_sun_scan_v1 repeats them after acquiring its
+  // per-batch identity lock and the tag row lock.
+  if (!persistScanState) {
+    const priorPayloadEventRows = await sql/*sql*/`
       SELECT id
       FROM events
       WHERE batch_id = ${batch.id}
-        AND UPPER(uid_hex) = UPPER(${resolvedUidHex})
-        AND sdm_read_ctr = ${resolvedCtr}
-      ORDER BY created_at ASC
+        AND (
+          (picc_data_hash = ${scanHashes.piccDataHash} AND cmac_hash = ${scanHashes.cmacHash})
+          OR raw_url_hash = ${scanHashes.rawUrlHash}
+        )
+      ORDER BY created_at ASC, id ASC
       LIMIT 1
     `;
-    if (priorCounterEventRows[0]) {
+    if (priorPayloadEventRows[0]) {
       replaySuspect = true;
-      replayOriginalEventId = replayOriginalEventId || Number((priorCounterEventRows[0] as { id?: number }).id || 0) || null;
+      replayOriginalEventId = Number((priorPayloadEventRows[0] as { id?: number }).id || 0) || null;
     }
-  }
 
-  if (resolvedUidHex) {
-    const tagRows = await sql/*sql*/`
-      SELECT id, status, last_seen_ctr
-      FROM tags
-      WHERE batch_id = ${batch.id} AND UPPER(uid_hex) = UPPER(${resolvedUidHex})
-      LIMIT 1
-    `;
-    const tag = tagRows[0];
-    if (tag || registeredPayloadMatch) {
-      allowlisted = true;
-      tagStatus = String(tag?.status || registeredPayloadMatch?.tagStatus || registeredPayloadMatch?.payloadStatus || "active");
-      if (res.ok && typeof tag?.last_seen_ctr === 'number' && resolvedCtr != null && resolvedCtr <= tag.last_seen_ctr) replaySuspect = true;
-      const tagId = tag?.id || registeredPayloadMatch?.tagId || null;
-      if (tagId) {
-        await sunStateSql/*sql*/`
-          UPDATE tags
-          SET scan_count = scan_count + 1,
-              first_seen_at = COALESCE(first_seen_at, now()),
-              last_seen_at = now(),
-              last_seen_ctr = CASE
-                WHEN ${resolvedCtr}::integer IS NULL THEN tags.last_seen_ctr
-                ELSE GREATEST(COALESCE(last_seen_ctr, -1), ${resolvedCtr})
-              END
-          WHERE id = ${tagId}
-        `;
-      } else {
-        await sunStateSql/*sql*/`
-          UPDATE tags
-          SET scan_count = scan_count + 1,
-              first_seen_at = COALESCE(first_seen_at, now()),
-              last_seen_at = now()
-          WHERE batch_id = ${batch.id} AND UPPER(uid_hex) = UPPER(${resolvedUidHex})
-        `;
+    if (res.ok && resolvedUidHex && resolvedCtr != null) {
+      const priorCounterEventRows = await sql/*sql*/`
+        SELECT id
+        FROM events
+        WHERE batch_id = ${batch.id}
+          AND UPPER(uid_hex) = UPPER(${resolvedUidHex})
+          AND sdm_read_ctr = ${resolvedCtr}
+        ORDER BY created_at ASC, id ASC
+        LIMIT 1
+      `;
+      if (priorCounterEventRows[0]) {
+        replaySuspect = true;
+        replayOriginalEventId = replayOriginalEventId || Number((priorCounterEventRows[0] as { id?: number }).id || 0) || null;
+      }
+    }
+
+    if (resolvedUidHex) {
+      const tagRows = await sql/*sql*/`
+        SELECT id, status, last_seen_ctr
+        FROM tags
+        WHERE batch_id = ${batch.id} AND UPPER(uid_hex) = UPPER(${resolvedUidHex})
+        LIMIT 1
+      `;
+      const tag = tagRows[0];
+      if (tag || registeredPayloadMatch) {
+        allowlisted = true;
+        tagStatus = String(tag?.status || registeredPayloadMatch?.tagStatus || registeredPayloadMatch?.payloadStatus || "active");
+        if (res.ok && typeof tag?.last_seen_ctr === 'number' && resolvedCtr != null && resolvedCtr <= tag.last_seen_ctr) replaySuspect = true;
       }
     }
   }
@@ -700,34 +594,35 @@ export async function processSunScan(input: {
     }
     return "UNKNOWN" as const;
   })();
-  const authStatus = supplierPayloadOnly
-    ? 'SUPPLIER_PAYLOAD_ONLY'
-    : !payloadVerified
-    ? 'SUN_PROFILE_MISMATCH'
-    : replaySuspect
-      ? 'REPLAY_SUSPECT'
-    : parsedTTStatus?.product_state === "VALID_OPENED" || parsedTTStatus?.product_state === "VALID_OPENED_PREVIOUSLY"
-      ? 'OPENED'
+  const preRegistryResult = parsedTTStatus?.product_state === "VALID_OPENED" || parsedTTStatus?.product_state === "VALID_OPENED_PREVIOUSLY"
+    ? 'OPENED'
     : parsedTTStatus?.product_state === "VALID_UNKNOWN_TAMPER"
       ? 'VALID'
-    : tamperStatus === "OPENED" || tamperStatus === "OPENED_PREVIOUSLY"
-      ? tamperStatus
-    : tamperSignal.tamper
-        ? 'TAMPER_RISK'
-      : !allowlisted
-        ? 'NOT_REGISTERED'
-        : tagStatus !== 'active'
-          ? 'NOT_ACTIVE'
-          : 'VALID';
+      : tamperStatus === "OPENED" || tamperStatus === "OPENED_PREVIOUSLY"
+        ? tamperStatus
+        : tamperSignal.tamper
+          ? 'TAMPER_RISK'
+          : null;
+  let authStatus = supplierPayloadOnly
+    ? 'SUPPLIER_PAYLOAD_ONLY'
+    : !payloadVerified
+      ? 'SUN_PROFILE_MISMATCH'
+      : replaySuspect
+        ? 'REPLAY_SUSPECT'
+        : preRegistryResult
+          ? preRegistryResult
+          : !allowlisted
+            ? 'NOT_REGISTERED'
+            : tagStatus !== 'active'
+              ? 'NOT_ACTIVE'
+              : 'VALID';
   let result = authStatus;
   const manualTamper = await getManualTamperOverride(resolvedUidHex);
   const manualOpened = String(manualTamper?.tamper_status || "").toUpperCase() === "MANUAL_OPENED" || String(manualTamper?.tamper_status || "").toUpperCase() === "OPENED";
   const resolvedTamperStatus = manualOpened ? "MANUAL_OPENED" as const : tamperStatus;
   const tamperSource = manualOpened ? "manual" as const : (tamperConfigured ? "electronic" as const : "unavailable" as const);
 
-  const successReason = replaySuspect
-    ? 'copied URL / replay suspected'
-    : manualOpened
+  const successReasonWithoutReplay = manualOpened
     ? `manual_tamper_opened:${String(manualTamper?.reason || "operator_override")}`
     : tamperStatus === "OPENED"
     ? `tagtamper_opened:${ttstatusParsed?.raw || 'ttstatus'}`
@@ -740,7 +635,104 @@ export async function processSunScan(input: {
     : tamperSignal.tamper
       ? `tagtamper_alert:${tamperSignal.raw || 'signal'}`
       : null;
-  const resolvedReason = !payloadVerified ? cryptoErrorReason : successReason;
+  let resolvedReason = replaySuspect
+    ? 'copied URL / replay suspected'
+    : !payloadVerified
+      ? cryptoErrorReason
+      : successReasonWithoutReplay;
+  const verificationMethod = cryptographicVerification
+    ? "sun_crypto"
+    : supplierPayloadMatch
+      ? "supplier_payload_manifest"
+      : "sun_crypto_failed";
+  const batchSdmConfigSummary = summarizeBatchSdmConfig((batch as { sdm_config?: unknown }).sdm_config || {});
+  const productName = resolveBatchProductName(batch as Record<string, unknown>);
+  const coordinate = normalizeCoordinatePair(input.context?.lat, input.context?.lng);
+  let eventId: number | null = null;
+
+  if (persistScanState) {
+    const receipt = await persistSunScanAtomically({
+      tenantId: String(batch.tenant_id),
+      tenantSlug: (batch as { tenant_slug?: string }).tenant_slug || null,
+      batchId: String(batch.id),
+      bid: input.bid,
+      resolvedUidHex,
+      resolvedCtr,
+      registeredTagId: registeredPayloadMatch?.tagId || null,
+      registeredTagStatus: registeredPayloadMatch?.tagStatus || registeredPayloadMatch?.payloadStatus || null,
+      cryptographicVerification,
+      payloadVerified,
+      supplierPayloadMatch,
+      supplierPayloadOnly,
+      preRegistryResult,
+      forceResult: input.context?.forceResult || null,
+      reasonIfNotReplay: !payloadVerified ? cryptoErrorReason : successReasonWithoutReplay,
+      source: input.context?.source || 'real',
+      userAgent: input.context?.userAgent,
+      city: input.context?.city,
+      countryCode: input.context?.countryCode,
+      lat: coordinate?.lat ?? null,
+      lng: coordinate?.lng ?? null,
+      ip: input.context?.ip,
+      geoCity: input.context?.city,
+      geoCountry: input.context?.countryCode,
+      deviceLabel: input.context?.deviceLabel,
+      productName,
+      piccDataHash: scanHashes.piccDataHash,
+      encHash: scanHashes.encHash,
+      cmacHash: scanHashes.cmacHash,
+      rawUrlHash: scanHashes.rawUrlHash,
+      meta: input.context?.meta,
+      rawQuery: input.rawQuery,
+    });
+    eventId = receipt.eventId;
+    result = receipt.finalResult;
+    authStatus = receipt.authStatus;
+    resolvedReason = receipt.finalReason;
+    replaySuspect = receipt.replaySuspect;
+    replayOriginalEventId = receipt.replayOriginalEventId;
+    allowlisted = receipt.allowlisted;
+    tagStatus = receipt.tagStatus;
+
+    // Notifications and alerts are post-commit projections. Their failure must
+    // never undo or misreport the canonical tag/event transaction.
+    try {
+      publishRealtimeEvent({
+        id: receipt.eventId,
+        tenant_id: String(batch.tenant_id),
+        tenant_slug: (batch as { tenant_slug?: string }).tenant_slug || undefined,
+        batch_id: String(batch.id),
+        tag_id: receipt.tagId || undefined,
+        bid: input.bid,
+        uid_hex: resolvedUidHex || undefined,
+        verdict: receipt.verdict,
+        risk_level: receipt.riskLevel,
+        event_type: receipt.eventType,
+        product_name: productName || undefined,
+        result: String(receipt.finalResult).toUpperCase(),
+        reason: receipt.finalReason || undefined,
+        city: input.context?.city || null,
+        country_code: input.context?.countryCode || null,
+        lat: coordinate?.lat ?? null,
+        lng: coordinate?.lng ?? null,
+        source: input.context?.source || 'real',
+        created_at: receipt.createdAt,
+        trace_id: typeof input.context?.meta?.trace_id === 'string' ? String(input.context.meta.trace_id) : null,
+      });
+    } catch (error) {
+      console.error("[sun_realtime_projection_failed]", error instanceof Error ? error.message : "unknown_error");
+    }
+    void evaluateSecurityAlerts({
+      eventId: receipt.eventId,
+      tenantId: String(batch.tenant_id),
+      tenantSlug: (batch as { tenant_slug?: string }).tenant_slug || null,
+      uidHex: resolvedUidHex,
+      result: String(receipt.finalResult).toUpperCase(),
+      countryCode: input.context?.countryCode || null,
+      deviceLabel: input.context?.deviceLabel || null,
+    }).catch(() => null);
+  }
+
   const ttStateRaw = ttstatusParsed?.product_state;
   const ttState: TTStatusProductState | null =
     ttStateRaw === "VALID_CLOSED"
@@ -752,7 +744,7 @@ export async function processSunScan(input: {
   const authValid = cryptographicVerification && authStatus === "VALID";
   const productState: ProductState = (() => {
     if (!cryptographicVerification || supplierPayloadOnly || authStatus === "SUN_PROFILE_MISMATCH") return "SUN_PROFILE_MISMATCH";
-    if (result === "REPLAY_SUSPECT") return "REPLAY_SUSPECT";
+    if (authStatus === "REPLAY_SUSPECT") return "REPLAY_SUSPECT";
     if (ttState === "VALID_OPENED" || ttState === "VALID_OPENED_PREVIOUSLY") return ttState;
     if (ttState === "VALID_CLOSED") return "VALID_CLOSED";
     if (manualOpened || resolvedTamperStatus === "MANUAL_OPENED") return "VALID_MANUAL_OPENED";
@@ -772,27 +764,7 @@ export async function processSunScan(input: {
     || productState === "VALID_MANUAL_OPENED";
   const resolvedTamperRisk = Boolean(tamperSignal.tamper || resolvedTamperStatus === "INVALID" || productState === "TAMPER_RISK");
 
-  if (input.context?.forceResult) result = input.context.forceResult;
-
-  const verificationMethod = cryptographicVerification
-    ? "sun_crypto"
-    : supplierPayloadMatch
-      ? "supplier_payload_manifest"
-      : "sun_crypto_failed";
-  const batchSdmConfigSummary = summarizeBatchSdmConfig((batch as { sdm_config?: unknown }).sdm_config || {});
-
-  const hasGeo = Number.isFinite(input.context?.lat) && Number.isFinite(input.context?.lng);
-
-  const eventId = await insertEvent({
-    uidHex: resolvedUidHex,
-    ctr: resolvedCtr,
-    cmacOk: cryptographicVerification,
-    allowlistedValue: allowlisted,
-    tagStatusValue: tagStatus,
-    resultValue: result,
-    reasonValue: resolvedReason,
-    hasGeoValue: hasGeo,
-  });
+  if (!persistScanState && input.context?.forceResult) result = input.context.forceResult;
 
   if (eventId && batch) {
     // Async background process for fraud tracking and loyalty syncs

@@ -12,17 +12,19 @@ import {
 
 const validKey = "a5".repeat(32);
 
-test("enterprise release gate requires the reviewed ordered set through 0061", () => {
+test("enterprise release gate requires the reviewed ordered set through 0063", () => {
   assert.deepEqual(expectedMigrations, [
     "20260725230000_0057_sun_rate_limit_atomic_buckets.sql",
     "20260726103000_0058_webhook_signature_v2.sql",
     "20260726135000_0059_marketplace_claim_truth_cleanup.sql",
     "20260726173000_0060_sdk_idempotency_operations.sql",
     "20260726190000_0061_supplier_export_artifact_delivery.sql",
+    "20260728120000_0062_sun_atomic_persistence.sql",
+    "20260728143000_0063_supplier_packaging_governance.sql",
   ]);
 });
 
-test("migration safety gate covers 0059-0061 and the historical 0040 clean-order boundary", () => {
+test("migration safety gate covers 0059-0063 and the historical 0040 clean-order boundary", () => {
   const repositoryRoot = fileURLToPath(new URL("../../../", import.meta.url));
   const script = fileURLToPath(new URL("../../../scripts/check-migration-safety.mjs", import.meta.url));
   const result = spawnSync(process.execPath, [script], {
@@ -32,14 +34,18 @@ test("migration safety gate covers 0059-0061 and the historical 0040 clean-order
   assert.equal(result.status, 0, result.stderr || result.stdout);
   const report = JSON.parse(result.stdout.trim());
   assert.equal(report.ok, true);
-  assert.deepEqual(report.migrations.slice(-3).map(({ id }) => id), [
+  assert.deepEqual(report.migrations.slice(-5).map(({ id }) => id), [
     "20260726135000_0059_marketplace_claim_truth_cleanup.sql",
     "20260726173000_0060_sdk_idempotency_operations.sql",
     "20260726190000_0061_supplier_export_artifact_delivery.sql",
+    "20260728120000_0062_sun_atomic_persistence.sql",
+    "20260728143000_0063_supplier_packaging_governance.sql",
   ]);
   assert.equal(report.assertions.tenant_api_keys_clean_order_safe, true);
   assert.equal(report.assertions.sdk_idempotency_schema_is_durable, true);
   assert.equal(report.assertions.supplier_export_envelope_is_durable, true);
+  assert.equal(report.assertions.sun_atomic_persistence_is_durable, true);
+  assert.equal(report.assertions.supplier_packaging_governance_is_durable, true);
 });
 
 test("SDK replay keyring validation is strict and returns only non-secret metadata", () => {
@@ -82,6 +88,10 @@ test("enterprise release gate fails closed when any reviewed migration is absent
           has_sdk_idempotency_operations: true,
           has_vault_artifacts: true,
           has_supplier_export_envelope: true,
+          has_sun_atomic_persistence: true,
+          has_sun_casefold_uid_guard: true,
+          has_supplier_packaging_governance: true,
+          has_supplier_packaging_governance_writer: true,
         }] };
       }
       return { rows: expectedMigrations.slice(0, -1).map((id) => ({ id })) };
@@ -96,7 +106,7 @@ test("enterprise release gate fails closed when any reviewed migration is absent
     }),
     (error) => error instanceof EnterpriseReleasePreflightError
       && error.reason === "required_migrations_missing"
-      && error.details.missing_migrations.includes("20260726190000_0061_supplier_export_artifact_delivery.sql"),
+      && error.details.missing_migrations.includes("20260728143000_0063_supplier_packaging_governance.sql"),
   );
   assert.equal(ended, true);
 });

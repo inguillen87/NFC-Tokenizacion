@@ -5,7 +5,7 @@ export type StrictCoordinatePair = {
   lng: number;
 };
 
-export type MapCoordinatePrecision = "reported" | "approximate" | "synthetic";
+export type MapCoordinatePrecision = "reported" | "approximate";
 
 export type ResolvedMapCoordinate = StrictCoordinatePair & {
   accuracyM: number | null;
@@ -17,21 +17,12 @@ export type ResolvedMapCoordinate = StrictCoordinatePair & {
 type EventCoordinateInput = {
   lat?: CoordinateValue;
   lng?: CoordinateValue;
+  /** Descriptive fields only; never used to manufacture map coordinates. */
   city?: string | null;
   country?: string | null;
   locationSource?: string | null;
   locationAccuracyM?: CoordinateValue;
-  seed: string;
 };
-
-const CITY_FALLBACK_COORDS: Array<{ match: RegExp; country: string; lat: number; lng: number }> = [
-  { match: /san\s*martin|buenos\s*aires|caba/i, country: "AR", lat: -34.6037, lng: -58.3816 },
-  { match: /mendoza|valle\s+de\s+uco|tunuyan|tupungato|lujan/i, country: "AR", lat: -32.8895, lng: -68.8458 },
-  { match: /cordoba/i, country: "AR", lat: -31.4201, lng: -64.1888 },
-  { match: /rosario/i, country: "AR", lat: -32.9442, lng: -60.6505 },
-  { match: /neuquen/i, country: "AR", lat: -38.9516, lng: -68.0591 },
-  { match: /mar\s*del\s*plata/i, country: "AR", lat: -38.0055, lng: -57.5426 },
-];
 
 function parseFiniteNumber(value: CoordinateValue): number | null {
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
@@ -65,33 +56,16 @@ function parseAccuracy(value: CoordinateValue): number | null {
   return parsed != null && parsed >= 0 ? parsed : null;
 }
 
-function cityFallbackCoordinate(city: string, country: string): StrictCoordinatePair | null {
-  const normalizedCountry = country.trim().toUpperCase();
-  const normalizedCity = city.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  const match = CITY_FALLBACK_COORDS.find((item) => item.country === normalizedCountry && item.match.test(normalizedCity));
-  return match ? { lat: match.lat, lng: match.lng } : null;
-}
-
-function hashString(value: string) {
-  let hash = 0;
-  for (let index = 0; index < value.length; index += 1) {
-    hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
-  }
-  return hash;
-}
-
-function jitterCityCenter(coordinate: StrictCoordinatePair, seed: string): StrictCoordinatePair {
-  const hash = hashString(seed);
-  const lngDelta = (((hash % 100) / 100) - 0.5) * 0.18;
-  const latDelta = ((((hash >> 8) % 100) / 100) - 0.5) * 0.18;
-  return { lat: coordinate.lat + latDelta, lng: coordinate.lng + lngDelta };
-}
-
 function reportedCoordinateLabel(source: string, accuracyM: number | null) {
-  if (source === "browser_gps") {
-    return accuracyM == null ? "GPS reportado; precision no informada" : `GPS reportado +/-${Math.round(accuracyM)} m`;
+  if (source === "browser_gps_approximate_consent") {
+    return accuracyM == null
+      ? "Ubicacion aproximada compartida con consentimiento"
+      : `Ubicacion aproximada compartida con consentimiento +/-${Math.round(accuracyM)} m`;
   }
-  if (source === "ip_geo") {
+  if (source === "browser_gps" || source === "browser_gps_reported") {
+    return accuracyM == null ? "GPS historico reportado; precision no informada" : `GPS historico reportado +/-${Math.round(accuracyM)} m`;
+  }
+  if (["ip_geo", "ip_approx", "edge_ip_approx"].includes(source)) {
     return accuracyM == null ? "Ubicacion aproximada por IP" : `Ubicacion aproximada por IP +/-${Math.round(accuracyM)} m`;
   }
   const sourceLabel = source || "fuente no informada";
@@ -105,28 +79,20 @@ export function resolveEventMapCoordinate(input: EventCoordinateInput): Resolved
   const originalSource = String(input.locationSource || "").trim().toLowerCase();
   const accuracyM = parseAccuracy(input.locationAccuracyM);
 
-  if (reported) {
-    const precision: MapCoordinatePrecision = originalSource === "ip_geo" ? "approximate" : "reported";
-    return {
-      ...reported,
-      accuracyM,
-      label: reportedCoordinateLabel(originalSource, accuracyM),
-      precision,
-      source: originalSource || "reported_coordinate",
-    };
-  }
-
-  const city = String(input.city || "").trim();
-  const country = String(input.country || "").trim();
-  const fallback = cityFallbackCoordinate(city, country);
-  if (!fallback) return null;
-  const synthetic = jitterCityCenter(fallback, input.seed);
-  const sourceContext = originalSource ? `; evento=${originalSource}` : "";
+  if (!reported) return null;
+  const precision: MapCoordinatePrecision = [
+    "browser_gps_approximate_consent",
+    "ip_geo",
+    "ip_approx",
+    "edge_ip_approx",
+  ].includes(originalSource)
+    ? "approximate"
+    : "reported";
   return {
-    ...synthetic,
+    ...reported,
     accuracyM,
-    label: `Posicion sintetica alrededor del centro de ${city}; sirve para densidad por ciudad, no es GPS${sourceContext}`,
-    precision: "synthetic",
-    source: originalSource ? `city_fallback:${originalSource}` : "city_fallback",
+    label: reportedCoordinateLabel(originalSource, accuracyM),
+    precision,
+    source: originalSource || "reported_coordinate",
   };
 }

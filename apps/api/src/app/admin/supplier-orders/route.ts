@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminTenantScope } from "../../../lib/auth";
+import { checkAdmin, getAdminActor, getAdminTenantScope } from "../../../lib/auth";
 import { json } from "../../../lib/http";
 import { sql } from "../../../lib/db";
 import { logAuditEvent } from "../../../lib/audit-logger";
@@ -73,7 +73,7 @@ function buildSupplierUrlTemplate(apiOrigin: string, carrierProfileCode: string,
 }
 
 export async function GET(req: Request) {
-  const auth = checkAdmin(req, ["super_admin", "tenant_admin"]);
+  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
   if (auth) return auth;
   await ensureSupplierOpsSchema();
 
@@ -148,7 +148,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = checkAdmin(req, ["super_admin", "tenant_admin"]);
+  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
   if (auth) return auth;
   await ensureCarrierProfileSchema();
   await ensureSupplierOpsSchema();
@@ -223,7 +223,11 @@ export async function POST(req: Request) {
       }, 409);
     }
 
-    const actor = firstString(req.headers.get("x-nexid-actor"), req.headers.get("x-dashboard-user")) || null;
+    const actor = getAdminActor(req).email;
+    // Order provisioning below spans multiple statements and is not an atomic
+    // packaging-decision transaction. A caller-supplied packaging_spec is
+    // therefore never trusted here; migration 0063 defaults the order to
+    // legacy_unverified and the dedicated route records its first draft.
     const orderRows = await sql/*sql*/`
       INSERT INTO supplier_orders (
         tenant_id, customer_slug, order_name, base_batch_id, total_quantity, sub_batch_size,
@@ -267,6 +271,7 @@ export async function POST(req: Request) {
         supplier_sequence_index: subBatch.sequenceIndex,
         source: "supplier_order",
         mode: "supplier",
+        key_version: 1,
         url_template: urlTemplate,
         mac_input: secureSunProfile ? "enc_plus_cmac_literal" : "not_applicable",
         tagtamper_enabled: carrierProfileCode === "ntag424_dna_tt",
@@ -375,7 +380,14 @@ export async function POST(req: Request) {
       ok: true,
       order: { ...order, tenant_slug: tenant.slug },
       sub_batches: subBatches,
-      warning: "Keys are encrypted. Plaintext keys are only returned by the explicit supplier-pack export endpoint.",
+      packaging_governance: {
+        status: String(order.packaging_governance_status || "legacy_unverified"),
+        spec_revision: Number(order.packaging_spec_revision || 0),
+        initial_spec_accepted: false,
+        supplied_spec_was_persisted: false,
+        next: `/admin/supplier-orders/${order.id}/packaging`,
+      },
+      warning: "Keys are encrypted. This non-transactional creation flow intentionally leaves packaging legacy_unverified; create and approve its packaging specification before the explicit supplier-pack export endpoint can release factory material.",
     }, 201);
   } catch (error) {
     return json({ ok: false, reason: error instanceof Error ? error.message : "supplier_order_failed" }, 400);

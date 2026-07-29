@@ -288,43 +288,5 @@ async function publicProofFallback() {
 }
 
 export async function GET() {
-  const adminKey = clean(process.env.ADMIN_API_KEY);
-  if (!adminKey) {
-    return publicProofFallback();
-  }
-
-  let response: Response;
-  try {
-    response = await fetch(`${productUrls.api}/internal/demo/summary`, {
-      headers: { Authorization: `Bearer ${adminKey}` },
-      cache: "no-store",
-    });
-  } catch {
-    return publicProofFallback();
-  }
-  const payload = await response.json().catch(() => null);
-  if (!response.ok || !payload || typeof payload !== "object" || (payload as Record<string, unknown>).ok === false) {
-    return publicProofFallback();
-  }
-
-  const data = payload as Record<string, unknown>;
-  const crm = data.crm && typeof data.crm === "object" ? data.crm as Record<string, unknown> : {};
-  const generatedAt = new Date().toISOString();
-  const events = Array.isArray(data.events) ? data.events.map(safeEvent).filter(Boolean) : [];
-  return NextResponse.json({
-    ok: true,
-    exists: data.exists !== false,
-    source: "internal-demo-sanitized",
-    tagCount: safeCount(data.tagCount),
-    crm: {
-      leads: safeCount(crm.leads),
-      tickets: safeCount(crm.tickets),
-      orders: safeCount(crm.orders),
-    },
-    recentLeads: demoLeads(demoRecordCount(data.recentLeads), generatedAt),
-    recentTickets: demoTickets(demoRecordCount(data.recentTickets), generatedAt),
-    recentOrders: demoOrders(demoRecordCount(data.recentOrders), generatedAt),
-    events,
-    generatedAt,
-  });
+  return publicProofFallback();
 }

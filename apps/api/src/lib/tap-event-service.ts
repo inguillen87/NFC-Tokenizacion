@@ -1,6 +1,7 @@
 import { sql } from './db';
 import { publishRealtimeEvent } from './realtime-events';
 import { evaluateSecurityAlerts } from "./alert-engine";
+import { normalizeCoordinatePair, redactSensitiveQueryValues } from "./approximate-location";
 
 export type TapEventPayload = {
   tenantId?: string | null;
@@ -45,6 +46,10 @@ export async function recordTapEvent(payload: TapEventPayload): Promise<number |
   const resultStr = payload.verdict.toUpperCase();
   const sourceStr = payload.source === 'sun' || payload.source === 'real' ? 'real' : payload.source === 'demo' || payload.source === 'demo_simulation' ? 'demo' : 'imported';
   const metaJson = payload.meta || payload.metadataJson || {};
+  const coordinate = normalizeCoordinatePair(payload.lat, payload.lng);
+  const eventLat = coordinate?.lat ?? null;
+  const eventLng = coordinate?.lng ?? null;
+  const persistedRawQuery = redactSensitiveQueryValues(payload.rawQuery);
 
   const insertWithReadCounter = () => sql`
       INSERT INTO events (
@@ -54,9 +59,9 @@ export async function recordTapEvent(payload: TapEventPayload): Promise<number |
         ip, geo_city, geo_country, device_label, raw_query
       ) VALUES (
         ${payload.tenantId || null}, ${payload.batchId || null}, ${payload.uidHex || null}, ${payload.sdmReadCtr ?? payload.readCounter ?? null}, ${payload.readCounter ?? null}, ${payload.cmacOk ?? null}, ${payload.allowlisted ?? null}, ${payload.tagStatus || null}, ${resultStr}, ${payload.reason || null},
-        ${payload.userAgent || null}, ${payload.city || null}, ${payload.countryCode || null}, ${payload.lat || null}, ${payload.lng || null}, ${sourceStr}::text, ${metaJson}::jsonb, ${payload.tenantSlug || null}, ${payload.tagId || null}, ${payload.bid || null}, ${payload.eventType}::text, ${payload.verdict}, ${payload.riskLevel}::text,
+        ${payload.userAgent || null}, ${payload.city || null}, ${payload.countryCode || null}, ${eventLat}, ${eventLng}, ${sourceStr}::text, ${metaJson}::jsonb, ${payload.tenantSlug || null}, ${payload.tagId || null}, ${payload.bid || null}, ${payload.eventType}::text, ${payload.verdict}, ${payload.riskLevel}::text,
         ${payload.piccDataHash || null}, ${payload.cmacHash || null}, ${payload.rawUrlHash || null}, ${payload.ipHash || null}, ${payload.geoPrecision || 'none'}::text, ${payload.productName || null},
-        ${payload.ip || null}, ${payload.geoCity || null}, ${payload.geoCountry || null}, ${payload.deviceLabel || null}, ${payload.rawQuery || null}::jsonb
+        ${payload.ip || null}, ${payload.geoCity || null}, ${payload.geoCountry || null}, ${payload.deviceLabel || null}, ${persistedRawQuery}::jsonb
       )
       RETURNING id
     `;
@@ -68,9 +73,9 @@ export async function recordTapEvent(payload: TapEventPayload): Promise<number |
         ip, geo_city, geo_country, device_label, raw_query
       ) VALUES (
         ${payload.tenantId || null}, ${payload.batchId || null}, ${payload.uidHex || null}, ${payload.sdmReadCtr ?? payload.readCounter ?? null}, ${payload.cmacOk ?? null}, ${payload.allowlisted ?? null}, ${payload.tagStatus || null}, ${resultStr}, ${payload.reason || null},
-        ${payload.userAgent || null}, ${payload.city || null}, ${payload.countryCode || null}, ${payload.lat || null}, ${payload.lng || null}, ${sourceStr}::text, ${metaJson}::jsonb, ${payload.tenantSlug || null}, ${payload.tagId || null}, ${payload.bid || null}, ${payload.eventType}::text, ${payload.verdict}, ${payload.riskLevel}::text,
+        ${payload.userAgent || null}, ${payload.city || null}, ${payload.countryCode || null}, ${eventLat}, ${eventLng}, ${sourceStr}::text, ${metaJson}::jsonb, ${payload.tenantSlug || null}, ${payload.tagId || null}, ${payload.bid || null}, ${payload.eventType}::text, ${payload.verdict}, ${payload.riskLevel}::text,
         ${payload.piccDataHash || null}, ${payload.cmacHash || null}, ${payload.rawUrlHash || null}, ${payload.ipHash || null}, ${payload.geoPrecision || 'none'}::text, ${payload.productName || null},
-        ${payload.ip || null}, ${payload.geoCity || null}, ${payload.geoCountry || null}, ${payload.deviceLabel || null}, ${payload.rawQuery || null}::jsonb
+        ${payload.ip || null}, ${payload.geoCity || null}, ${payload.geoCountry || null}, ${payload.deviceLabel || null}, ${persistedRawQuery}::jsonb
       )
       RETURNING id
     `;
@@ -103,8 +108,8 @@ export async function recordTapEvent(payload: TapEventPayload): Promise<number |
         reason: payload.reason || undefined,
         city: payload.city || null,
         country_code: payload.countryCode || null,
-        lat: payload.lat || null,
-        lng: payload.lng || null,
+        lat: eventLat,
+        lng: eventLng,
         source: sourceStr,
         created_at: new Date().toISOString(),
         trace_id: payload.traceId || null,

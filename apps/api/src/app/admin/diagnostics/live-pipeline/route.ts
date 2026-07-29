@@ -8,7 +8,7 @@ import { randomUUID } from "node:crypto";
 type CountRow = { total?: number; latest?: string | null; replay?: number; risk?: number };
 
 export async function GET(req: Request) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
 
   const { searchParams } = new URL(req.url);

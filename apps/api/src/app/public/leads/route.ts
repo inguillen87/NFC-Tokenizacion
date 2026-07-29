@@ -9,6 +9,7 @@ import { ensureCrmOpsSchema } from "../../../lib/commercial-runtime-schema";
 import { enforceCriticalRateLimit } from "../../../lib/critical-rate-limit";
 import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../lib/bounded-request-body";
 import { hitSunRateLimit } from "../../../lib/sun-rate-limit-store";
+import { normalizeConsentedApproximateLocation } from "../../../lib/approximate-location";
 
 const MAX_LEAD_BODY_BYTES = 32 * 1024;
 const LEAD_CONTACT_WINDOW_SECONDS = 60 * 60;
@@ -234,6 +235,29 @@ export async function POST(req: Request) {
   const requestedTagType = limitedText(body.tag_type, 40).toLowerCase();
   const tagType = TAG_TYPES.has(requestedTagType) ? requestedTagType : vertical === "events" ? "basic" : "secure";
   const baseMeta = asRecord(body.meta);
+  const requestedGps = asRecord(body.gps || baseMeta.gps);
+  const approximateGps = normalizeConsentedApproximateLocation({
+    consent: requestedGps.consent,
+    precision: requestedGps.precision,
+    lat: requestedGps.lat ?? requestedGps.latitude,
+    lng: requestedGps.lng ?? requestedGps.longitude,
+    accuracy: requestedGps.accuracy,
+  });
+  const gps = approximateGps.accepted
+    ? {
+        consent: true,
+        precision: "approximate",
+        source: "browser_gps_approximate_consent",
+        lat: approximateGps.lat,
+        lng: approximateGps.lng,
+        accuracy: approximateGps.accuracy,
+      }
+    : {
+        consent: false,
+        precision: "none",
+        source: "not_persisted",
+        reason: approximateGps.reason,
+      };
   const meta: Record<string, unknown> = {
     ...baseMeta,
     tenantSlug: tenantSlug || baseMeta.tenantSlug || null,
@@ -243,7 +267,7 @@ export async function POST(req: Request) {
     productName: productName || baseMeta.productName || null,
     gender: gender || baseMeta.gender || null,
     occasion: occasion || baseMeta.occasion || null,
-    gps: asRecord(body.gps || baseMeta.gps),
+    gps,
     device: asRecord(body.device || baseMeta.device),
     engagement: asRecord(body.engagement || baseMeta.engagement),
   };

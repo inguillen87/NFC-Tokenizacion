@@ -182,7 +182,7 @@ export async function getAuthUserByEmail(sql: Sql, email: string): Promise<AuthU
       WHEN 'reseller' THEN 3
       WHEN 'viewer' THEN 4
       ELSE 9
-    END
+    END, m.tenant_id ASC NULLS FIRST, m.role::text ASC
     LIMIT 1
   `;
   const row = rows[0] as AuthUser | undefined;
@@ -220,7 +220,11 @@ export async function createSession(sql: Sql, payload: { user: AuthUser; ip?: st
   return { id: rows[0].id as string, secret, expiresAt: rows[0].expires_at };
 }
 
-export async function resolveSession(sql: Sql, cookieValue: string | undefined | null) : Promise<SessionRecord | null> {
+export async function resolveSession(
+  sql: Sql,
+  cookieValue: string | undefined | null,
+  options: { rotate?: boolean } = {},
+): Promise<SessionRecord | null> {
   const parsed = parseSessionCookie(cookieValue);
   if (!parsed) return null;
   if (!isUuidString(parsed.sessionId)) return null;
@@ -268,16 +272,34 @@ export async function resolveSession(sql: Sql, cookieValue: string | undefined |
   }
   const idleMs = now - new Date(session.last_seen_at).getTime();
   let rotatedCookieValue: string | null = null;
-  if (idleMs > SESSION_IDLE_MS / 2) {
+  let refreshedRows: Array<{ expires_at: unknown }>;
+  if (options.rotate === true && idleMs > SESSION_IDLE_MS / 2) {
     const newSecret = createSessionSecret();
-    await sql/*sql*/`
+    refreshedRows = await sql/*sql*/`
       UPDATE auth_sessions
       SET session_token_hash = ${sha256(newSecret)}, last_seen_at = now(), expires_at = now() + interval '12 hours'
       WHERE id = ${parsed.sessionId}::uuid
+        AND session_token_hash = ${String(session.session_token_hash)}
+        AND revoked_at IS NULL
+        AND expires_at > now()
+      RETURNING expires_at
     `;
+    // A concurrent request may have rotated this session after our SELECT.
+    // Never return a second, already-invalid bearer: exactly one CAS winner
+    // receives the authoritative rotated secret and every stale contender fails.
+    if (!refreshedRows[0]) return null;
     rotatedCookieValue = sessionCookieValue(parsed.sessionId, newSecret);
   } else {
-    await sql/*sql*/`UPDATE auth_sessions SET last_seen_at = now(), expires_at = now() + interval '12 hours' WHERE id = ${parsed.sessionId}::uuid`;
+    refreshedRows = await sql/*sql*/`
+      UPDATE auth_sessions
+      SET last_seen_at = now(), expires_at = now() + interval '12 hours'
+      WHERE id = ${parsed.sessionId}::uuid
+        AND session_token_hash = ${String(session.session_token_hash)}
+        AND revoked_at IS NULL
+        AND expires_at > now()
+      RETURNING expires_at
+    `;
+    if (!refreshedRows[0]) return null;
   }
   return {
     id: String(session.id),
@@ -290,7 +312,7 @@ export async function resolveSession(sql: Sql, cookieValue: string | undefined |
     permissions: parsePermissions(session.current_permissions),
     mfaVerified: Boolean(session.mfa_verified),
     rotatedCookieValue,
-    expiresAt: String(session.expires_at),
+    expiresAt: String(refreshedRows[0].expires_at),
     setupCompleted: Boolean(session.setup_completed),
   };
 }

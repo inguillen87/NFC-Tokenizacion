@@ -198,7 +198,7 @@ async function getStats(tenantSlugOrId: string) {
 }
 
 export async function GET(req: Request) {
-  const auth = checkAdmin(req, ["super_admin", "security_operator", "tenant_admin"]);
+  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
   if (auth) return auth;
   await ensureSecureDeliverySchema();
 
@@ -212,7 +212,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = checkAdmin(req, ["super_admin", "security_operator", "tenant_admin"]);
+  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
   if (auth) return auth;
   await ensureSecureDeliverySchema();
 

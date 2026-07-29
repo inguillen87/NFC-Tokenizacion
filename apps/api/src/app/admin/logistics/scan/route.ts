@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminTenantScope } from "../../../../lib/auth";
+import { checkAdmin, getAdminActor, getAdminTenantScope } from "../../../../lib/auth";
 import { logAuditEvent } from "../../../../lib/audit-logger";
 import { sql } from "../../../../lib/db";
 import { json } from "../../../../lib/http";
@@ -48,7 +48,7 @@ async function resolveTenantByShipment(shipmentId: string) {
 }
 
 export async function POST(req: Request) {
-  const auth = checkAdmin(req, ["super_admin", "security_operator", "tenant_admin"]);
+  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
   if (auth) return auth;
   await ensureSecureDeliverySchema();
 
@@ -116,7 +116,7 @@ export async function POST(req: Request) {
   }
 
   await logAuditEvent({
-    actorId: req.headers.get("x-nexid-actor-id"),
+    actorId: getAdminActor(req).id,
     tenantId: String(tenant.id),
     action: `secure_delivery_scan_${context.toLowerCase()}`,
     resourceType: "shipment",

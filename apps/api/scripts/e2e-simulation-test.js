@@ -1,38 +1,17 @@
-import fs from "node:fs";
-import path from "node:path";
-import crypto from "node:crypto";
 import { neon } from "@neondatabase/serverless";
+import { readE2eSimulationConfig } from "./lib/e2e-simulation-safety.mjs";
 
-// 1. Load Env Config
-const envLocalPath = path.resolve("apps/api/.env.local");
-if (!fs.existsSync(envLocalPath)) {
-  console.error("Error: apps/api/.env.local does not exist.");
+let e2eConfig;
+try {
+  e2eConfig = readE2eSimulationConfig(process.env);
+} catch (error) {
+  console.error(`E2E safety gate rejected this run: ${error instanceof Error ? error.message : String(error)}`);
   process.exit(1);
 }
 
-const envContent = fs.readFileSync(envLocalPath, "utf8");
-const env = {};
-envContent.split("\n").forEach((line) => {
-  const match = line.match(/^\s*([\w.-]+)\s*=\s*(.*)?\s*$/);
-  if (match) {
-    let value = match[2] || "";
-    if (value.startsWith('"') && value.endsWith('"')) {
-      value = value.slice(1, -1);
-    }
-    env[match[1]] = value;
-  }
-});
-
-const DATABASE_URL = env.DATABASE_URL;
-const ADMIN_API_KEY = env.ADMIN_API_KEY;
-
-if (!DATABASE_URL || !ADMIN_API_KEY) {
-  console.error("Error: DATABASE_URL or ADMIN_API_KEY missing in apps/api/.env.local");
-  process.exit(1);
-}
-
-const sql = neon(DATABASE_URL);
-const API_BASE = process.env.API_BASE || "https://api.nexid.lat";
+const sql = neon(e2eConfig.databaseUrl);
+const API_BASE = e2eConfig.apiBase;
+const ADMIN_SESSION_TOKEN = e2eConfig.adminSessionToken;
 const SIMULATED_GPS_POINTS = [
   { label: "Mendoza", city: "Mendoza", countryCode: "AR", lat: -32.8895, lng: -68.8458, accuracy: 18 },
   { label: "Buenos Aires", city: "Buenos Aires", countryCode: "AR", lat: -34.6037, lng: -58.3816, accuracy: 22 },
@@ -41,25 +20,12 @@ const SIMULATED_GPS_POINTS = [
   { label: "Sao Paulo", city: "Sao Paulo", countryCode: "BR", lat: -23.5505, lng: -46.6333, accuracy: 30 },
 ];
 
-// Helpers
-function sha256(value) {
-  return crypto.createHash("sha256").update(value).digest("hex");
-}
-
-function signHandoffToken(payload, secret) {
-  const encode = (input) => Buffer.from(JSON.stringify(input), "utf8").toString("base64url");
-  const sign = (body) => crypto.createHmac("sha256", secret).update(body).digest("base64url");
-  const body = encode(payload);
-  return `${body}.${sign(body)}`;
-}
-
 async function run() {
   console.log("==================================================================");
   console.log("🟢 INICIANDO SIMULACIÓN DE PRUEBA E2E POST-TAP (PORTALES Y COMPRAS)");
   console.log("==================================================================");
 
-  const testContact = `e2e.test.buyer.${Date.now()}@nexid.lat`;
-  const testPhone = `+549261${Math.floor(1000000 + Math.random() * 9000000)}`;
+  const testContact = `e2e.test.buyer.${Date.now()}@nexid.local`;
   const bid = "DEMO-2026-02";
   const tapLocation = SIMULATED_GPS_POINTS[Math.floor(Math.random() * SIMULATED_GPS_POINTS.length)];
 
@@ -73,22 +39,9 @@ async function run() {
   let uidHex;
   if (unclaimedRows.length > 0) {
     uidHex = unclaimedRows[0].uid_hex;
-    console.log(`✅ Encontrado tag no reclamado: ${uidHex}`);
+    console.log(`✅ Encontrado tag no reclamado en el fixture aislado: ${uidHex}`);
   } else {
-    console.log("⚠️ Todos los tags están reclamados. Liberando uno para la simulación...");
-    const claimedRows = await sql`
-      SELECT t.uid_hex, o.id as ownership_id FROM consumer_product_ownerships o
-      JOIN tags t ON t.id = o.tag_id
-      WHERE o.batch_id = (SELECT id FROM batches WHERE bid = ${bid} LIMIT 1)
-      LIMIT 1
-    `;
-    if (claimedRows.length > 0) {
-      await sql`DELETE FROM consumer_product_ownerships WHERE id = ${claimedRows[0].ownership_id}`;
-      uidHex = claimedRows[0].uid_hex;
-      console.log(`✅ Liberado tag UID: ${uidHex}`);
-    } else {
-      uidHex = "0470856A0B1090";
-    }
+    throw new Error("The isolated demo fixture has no unclaimed tag. Reset the non-production fixture instead of deleting an existing ownership.");
   }
 
   // Pre-condition: Enforce active_for_claim = true and claim_pin_required = false for test consistency
@@ -109,7 +62,7 @@ async function run() {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${ADMIN_API_KEY}`,
+      "Authorization": `Bearer ${ADMIN_SESSION_TOKEN}`,
     },
     body: JSON.stringify({
       bid,
@@ -166,6 +119,8 @@ async function run() {
         lng: tapLocation.lng,
         accuracy: tapLocation.accuracy,
       },
+      geoConsent: true,
+      geoPrecision: "approximate",
       client: {
         platform: "iPhone",
         userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148",
@@ -191,27 +146,17 @@ async function run() {
     console.error("ERROR Geocoder local no resolvio la ciudad esperada.", { expected: tapLocation, contextData, resolvedLocation });
     process.exit(1);
   }
-  if (String(resolvedLocation.location_source || "") !== "browser_gps") {
-    console.error("ERROR El evento no quedo marcado como browser_gps.", resolvedLocation);
+  if (String(resolvedLocation.location_source || "") !== "browser_gps_approximate_consent") {
+    console.error("ERROR El evento no quedo marcado como browser_gps_approximate_consent.", resolvedLocation);
     process.exit(1);
   }
   console.log(`OK Contexto GPS resuelto: ${resolvedLocation.city}, ${resolvedLocation.country_code} (${resolvedLocation.location_accuracy_m || tapLocation.accuracy}m)`);
 
-  const diagnosticId = tapData.request_id || 1;
-
-  // Sign a fresh handoff token
-  const now = Math.floor(Date.now() / 1000);
-  const handoffPayload = {
-    purpose: "sun_fresh_handoff",
-    bid,
-    eventId: String(eventId),
-    diagnosticId: Number(diagnosticId),
-    traceId: String(traceId),
-    iat: now,
-    exp: now + 300,
-  };
-  const freshToken = signHandoffToken(handoffPayload, ADMIN_API_KEY);
-  console.log("✅ Handoff Token Criptográfico firmado localmente con éxito.");
+  const freshToken = String(tapData.fresh_token || "");
+  if (!freshToken) {
+    throw new Error("The non-production demo scan did not return a server-issued fresh capability.");
+  }
+  console.log("✅ Capability efímera emitida por el servidor para este tap.");
 
   console.log(`\n👉 2. Iniciando autenticación del Comprador (OTP a: ${testContact})`);
   const startResponse = await fetch(`${API_BASE}/consumer/auth/start`, {
@@ -228,36 +173,11 @@ async function run() {
   const startData = await startResponse.json();
   console.log("✅ Desafío OTP iniciado. Canal de entrega:", startData.deliveryChannel);
 
-  console.log("🔍 Buscando hash del código en base de datos para romper OTP de forma segura...");
-  const challengeRows = await sql`
-    SELECT code_hash FROM consumer_auth_challenges 
-    WHERE contact = ${testContact} 
-    ORDER BY created_at DESC LIMIT 1
-  `;
-  
-  if (challengeRows.length === 0) {
-    console.error("❌ No se encontró ningún desafío OTP activo en la base de datos.");
-    process.exit(1);
-  }
-  
-  const targetHash = challengeRows[0].code_hash;
-  console.log(`   Hash encontrado: ${targetHash}. Bruteforceando código de 6 dígitos...`);
-  
-  let otpCode = null;
-  const startBrute = Date.now();
-  for (let i = 100000; i <= 999999; i++) {
-    const candidate = String(i);
-    if (sha256(candidate) === targetHash) {
-      otpCode = candidate;
-      break;
-    }
-  }
-  
+  const otpCode = typeof startData.code === "string" ? startData.code : null;
   if (!otpCode) {
-    console.error("❌ No se pudo encontrar el código OTP.");
-    process.exit(1);
+    throw new Error("The staging/local API must enable CONSUMER_AUTH_DEBUG_CODE_RESPONSE outside production for this isolated harness.");
   }
-  console.log(`✅ Código descifrado en ${Date.now() - startBrute}ms: ${otpCode}`);
+  console.log("✅ OTP de prueba recibido por el canal debug no productivo.");
 
   console.log("\n👉 3. Verificando código OTP y obteniendo cookie de sesión...");
   const verifyResponse = await fetch(`${API_BASE}/consumer/auth/verify`, {
@@ -282,7 +202,7 @@ async function run() {
     console.error("❌ No se pudo encontrar la cookie de sesión en la respuesta.");
     process.exit(1);
   }
-  console.log("✅ Autenticación exitosa! Token de sesión obtenido:", sessionToken.slice(0, 10) + "...");
+  console.log("✅ Autenticación de prueba exitosa; sesión recibida y mantenida fuera de logs.");
 
   const cookieHeader = `nexid_consumer_session=${encodeURIComponent(sessionToken)}`;
 
@@ -353,6 +273,8 @@ async function run() {
       latitude: tapLocation.lat,
       longitude: tapLocation.lng,
       accuracy: tapLocation.accuracy,
+      locationConsent: true,
+      geoPrecision: "approximate",
       screenSize: { width: 390, height: 844 },
     }),
   });
@@ -447,7 +369,7 @@ async function run() {
   console.log(`   Precio de Venta: $${listData.offer.resale_price} ${listData.offer.resale_currency}`);
 
   console.log("\n👉 9. Creando segundo comprador para adquirir el NFT secundario...");
-  const secondContact = `e2e.test.second.buyer.${Date.now()}@nexid.lat`;
+  const secondContact = `e2e.test.second.buyer.${Date.now()}@nexid.local`;
   const secondAuthStart = await fetch(`${API_BASE}/consumer/auth/start`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -459,35 +381,12 @@ async function run() {
     process.exit(1);
   }
 
-  // Bruteforce second OTP
-  const secondChallengeRows = await sql`
-    SELECT code_hash
-    FROM consumer_auth_challenges
-    WHERE contact = ${secondContact}
-    ORDER BY created_at DESC
-    LIMIT 1
-  `;
-  if (secondChallengeRows.length === 0) {
-    console.error("❌ No se encontró desafío de autenticación en la base de datos para el segundo comprador.");
-    process.exit(1);
-  }
-
-  const secondHash = secondChallengeRows[0].code_hash;
-  let secondOtpCode = "";
-  console.log("   Bruteforceando segundo código OTP...");
-  for (let candidate = 100000; candidate <= 999999; candidate++) {
-    const candStr = String(candidate);
-    if (sha256(candStr) === secondHash) {
-      secondOtpCode = candStr;
-      break;
-    }
-  }
-
+  const secondStartData = await secondAuthStart.json();
+  const secondOtpCode = typeof secondStartData.code === "string" ? secondStartData.code : "";
   if (!secondOtpCode) {
-    console.error("❌ No se pudo descifrar el código OTP del segundo comprador.");
-    process.exit(1);
+    throw new Error("The staging/local API did not expose the second non-production debug OTP.");
   }
-  console.log(`   Segundo OTP descifrado: ${secondOtpCode}`);
+  console.log("   Segundo OTP de prueba recibido por el canal debug no productivo.");
 
   const secondVerifyResponse = await fetch(`${API_BASE}/consumer/auth/verify`, {
     method: "POST",

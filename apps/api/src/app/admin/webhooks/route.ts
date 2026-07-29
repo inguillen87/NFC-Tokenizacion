@@ -41,7 +41,7 @@ async function resolveTenant(req: Request, requestedTenant?: string | null) {
 }
 
 export async function GET(req: Request) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
   await ensureSdkSchema();
 
@@ -69,7 +69,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
   const rateLimited = await enforceCriticalRateLimit(req, {
     rateClass: "webhook",

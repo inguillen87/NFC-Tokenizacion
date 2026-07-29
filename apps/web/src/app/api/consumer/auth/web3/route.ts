@@ -1,24 +1,10 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { currentUser } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { productUrls } from "@product/config";
 import { isClerkConfiguredForRuntime } from "../../../../../lib/clerk-env";
-
-type ClerkWalletLike = {
-  id?: string | null;
-  web3Wallet?: string | null;
-  walletAddress?: string | null;
-  identifier?: string | null;
-  verification?: { status?: string | null; strategy?: string | null } | null;
-};
-
-type ClerkContactLike = {
-  emailAddress?: string | null;
-  phoneNumber?: string | null;
-  verification?: { status?: string | null; strategy?: string | null } | null;
-};
 
 const MAX_PAYLOAD_BYTES = 2_048;
 const CHAIN_ID_RE = /^(?:0x[0-9a-f]{1,16}|[0-9]{1,20})$/i;
@@ -44,39 +30,15 @@ function getSetCookies(response: Response) {
   return one ? [one] : [];
 }
 
-function rewriteApiCookie(cookie: string, req: Request) {
+function rewriteApiCookie(setCookieValue: string, req: Request) {
   const host = req.headers.get("host") || "";
   const isLocalHttp = new URL(req.url).protocol === "http:" && /^(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i.test(host);
-  let nextCookie = cookie.replace(/;\s*Domain=[^;]+/gi, "");
+  let nextCookie = setCookieValue.replace(/;\s*Domain=[^;]+/gi, "");
   if (isLocalHttp) nextCookie = nextCookie.replace(/;\s*Secure/gi, "");
   return nextCookie;
 }
 
-function firstWalletAddress(user: unknown) {
-  const web3Wallets = Array.isArray((user as { web3Wallets?: unknown[] } | null)?.web3Wallets)
-    ? ((user as { web3Wallets: ClerkWalletLike[] }).web3Wallets)
-    : [];
-  const wallet = web3Wallets.find((item) => (
-    item.verification?.status === "verified"
-    && (item.web3Wallet || item.walletAddress || item.identifier)
-  ));
-  return {
-    address: String(wallet?.web3Wallet || wallet?.walletAddress || wallet?.identifier || "").trim(),
-    provider: String(wallet?.verification?.strategy || "clerk_web3_metamask").trim(),
-  };
-}
-
-function firstVerifiedContact(items: unknown, field: "emailAddress" | "phoneNumber") {
-  const contacts = Array.isArray(items) ? items as ClerkContactLike[] : [];
-  const contact = contacts.find((item) => item.verification?.status === "verified" && clean(item[field]));
-  return clean(contact?.[field]);
-}
-
 export async function POST(req: Request) {
-  const adminKey = clean(process.env.ADMIN_API_KEY);
-  if (!adminKey) {
-    return NextResponse.json({ ok: false, error: "web3_bridge_not_configured" }, { status: 503 });
-  }
   if (!isClerkConfiguredForRuntime()) {
     return NextResponse.json({ ok: false, error: "clerk_not_configured" }, { status: 503 });
   }
@@ -101,31 +63,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "invalid_chain_id" }, { status: 400 });
   }
 
-  const user = await currentUser().catch(() => null);
-  if (!user) return NextResponse.json({ ok: false, error: "clerk_session_required" }, { status: 401 });
+  const clerkAuth = await auth().catch(() => null);
+  const clerkSessionToken = await clerkAuth?.getToken().catch(() => null);
+  if (!clerkAuth?.userId || !clerkSessionToken) {
+    return NextResponse.json({ ok: false, error: "clerk_session_required" }, { status: 401 });
+  }
 
-  const wallet = firstWalletAddress(user);
-  const email = firstVerifiedContact(user.emailAddresses, "emailAddress");
-  const phone = firstVerifiedContact(user.phoneNumbers, "phoneNumber");
-  const fullName = user.fullName || `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Usuario Web3 nexID";
   const response = await fetch(`${productUrls.api}/consumer/auth/web3`, {
     method: "POST",
     cache: "no-store",
     headers: {
       "content-type": "application/json",
-      authorization: `Bearer ${adminKey}`,
-      cookie: req.headers.get("cookie") || "",
+      authorization: `Bearer ${clerkSessionToken}`,
       "user-agent": req.headers.get("user-agent") || "nexid-web3-bridge",
     },
     body: JSON.stringify({
-      externalUserId: user.id,
-      email,
-      phone,
-      fullName,
-      walletAddress: wallet.address,
       chainId,
-      provider: wallet.provider,
-      walletVerificationSource: wallet.address ? "clerk_verified_web3" : null,
     }),
   }).catch((error) => {
     console.error("[consumer-web3] upstream bridge unavailable", error instanceof Error ? error.message : "unknown_error");

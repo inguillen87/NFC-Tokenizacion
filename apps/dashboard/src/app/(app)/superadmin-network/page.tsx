@@ -4,6 +4,7 @@ import { OpsCommandCenter, type OpsCommandStep, type OpsCommandTenantRow } from 
 import { BlockchainHsmHealth } from "../../../components/blockchain-hsm-health";
 import { requireDashboardSession } from "../../../lib/session";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../lib/admin-page-access";
+import { resolveCanonicalTenantRisk } from "../../../lib/tenant-risk";
 
 type TenantRow = Record<string, unknown>;
 type BatchRow = Record<string, unknown>;
@@ -46,12 +47,6 @@ function resolveTenantStatus(scans: number, duplicates: number, tamper: number):
   if (scans <= 0) return "pending";
   if (duplicates + tamper > 0) return "healthy";
   return "active";
-}
-
-function riskScore(scans: number, duplicates: number, tamper: number) {
-  if (!scans) return 0;
-  const score = ((duplicates * 40 + tamper * 60) / scans) * 100;
-  return Math.max(0, Math.min(100, Math.round(score)));
 }
 
 export default async function SuperadminConsumerNetworkPage() {
@@ -154,7 +149,7 @@ export default async function SuperadminConsumerNetworkPage() {
       name: String(row.name || row.slug || slug),
       slug,
       scans,
-      riskScore: riskScore(scans, duplicates, tamper),
+      riskScore: resolveCanonicalTenantRisk(row),
       batches: batchInfo.batches,
       tags: batchInfo.tags,
       status: resolveTenantStatus(scans, duplicates, tamper),

@@ -1,6 +1,7 @@
 import { sql } from './db';
 import { verifySunFreshHandoffToken } from './sun-fresh-handoff';
 import { createPublicCertificateShareToken } from './public-certificate-share';
+import { redactSensitiveQueryValues } from './approximate-location';
 
 export type SunDiagnosticTool = 'sun_scan' | 'inspect' | 'compare_tamper' | 'compare_tamper_samples';
 
@@ -550,6 +551,9 @@ export async function insertSunDiagnostic(input: {
 }) {
   try {
     await ensureTable();
+    const persistedRequestJson = input.request_json && typeof input.request_json === "object" && !Array.isArray(input.request_json)
+      ? redactSensitiveQueryValues(input.request_json as Record<string, unknown>)
+      : input.request_json;
     const rows = await sql/*sql*/`
       INSERT INTO sun_diagnostics (
         trace_id, tool_type, bid, uid_hex, uid_masked, read_counter, auth_status, replay_status,
@@ -560,7 +564,7 @@ export async function insertSunDiagnostic(input: {
         ${input.trace_id || null}, ${input.tool_type}, ${input.bid || null}, ${input.uid_hex || null}, ${input.uid_masked || null}, ${input.read_counter ?? null}, ${input.auth_status || null}, ${input.replay_status || null},
         ${input.product_state || null}, ${input.tamper_status || null}, ${input.tamper_signal || null}, ${typeof input.tamper_opened === 'boolean' ? input.tamper_opened : null}, ${typeof input.tamper_risk === 'boolean' ? input.tamper_risk : null},
         ${typeof input.tagtamper_config_detected === 'boolean' ? input.tagtamper_config_detected : null}, ${input.enc_plain_status_byte || null}, ${input.closed_url || null}, ${input.opened_url || null},
-        ${JSON.stringify(input.request_json || {})}::jsonb, ${JSON.stringify(input.result_json || {})}::jsonb, ${JSON.stringify(input.notes || [])}::jsonb
+        ${JSON.stringify(persistedRequestJson || {})}::jsonb, ${JSON.stringify(input.result_json || {})}::jsonb, ${JSON.stringify(input.notes || [])}::jsonb
       )
       RETURNING id
     `;

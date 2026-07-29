@@ -33,13 +33,11 @@ test("consumer wallet proxies preserve the signed API boundary", async () => {
   assert.match(connectProxy, /proxyToApi\(req, "\/consumer\/wallet\/connect"\)/);
 });
 
-test("Clerk bridge accepts only wallets and contacts Clerk marked verified", async () => {
+test("Clerk bridge forwards only its server-verified session token", async () => {
   const bridge = await readFile(new URL("../src/app/api/consumer/auth/web3/route.ts", import.meta.url), "utf8");
 
-  assert.match(bridge, /item\.verification\?\.status === "verified"/);
-  assert.match(bridge, /function firstVerifiedContact/);
-  assert.match(bridge, /firstVerifiedContact\(user\.emailAddresses, "emailAddress"\)/);
-  assert.match(bridge, /firstVerifiedContact\(user\.phoneNumbers, "phoneNumber"\)/);
-  assert.doesNotMatch(bridge, /emailAddresses\?\.\[0\]|phoneNumbers\?\.\[0\]/);
-  assert.match(bridge, /walletVerificationSource: wallet\.address \? "clerk_verified_web3" : null/);
+  assert.match(bridge, /const clerkAuth = await auth\(\)/);
+  assert.match(bridge, /clerkAuth\?\.getToken\(\)/);
+  assert.match(bridge, /authorization: `Bearer \$\{clerkSessionToken\}`/);
+  assert.doesNotMatch(bridge, /ADMIN_API_KEY|externalUserId|walletAddress|walletVerificationSource|cookie:/);
 });

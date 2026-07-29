@@ -84,34 +84,15 @@ type ProductRow = {
   provenance_text: string | null;
 };
 
-const KNOWN_CITY_COORDS: Array<{ match: RegExp; country: string; lat: number; lng: number }> = [
-  { match: /san\s*mart[ií]n/i, country: "AR", lat: -34.5744, lng: -58.5358 },
-  { match: /buenos\s*aires|caba/i, country: "AR", lat: -34.6037, lng: -58.3816 },
-  { match: /mendoza|valle\s+de\s+uco|tunuy[aá]n|tupungato|luj[aá]n/i, country: "AR", lat: -32.8895, lng: -68.8458 },
-  { match: /c[oó]rdoba/i, country: "AR", lat: -31.4201, lng: -64.1888 },
-  { match: /rosario/i, country: "AR", lat: -32.9442, lng: -60.6505 },
-  { match: /santa\s*fe/i, country: "AR", lat: -31.6107, lng: -60.6973 },
-  { match: /s[aã]o\s*paulo/i, country: "BR", lat: -23.5558, lng: -46.6396 },
-];
-
-function cityCoords(city: string | null, country: string | null) {
-  const normalizedCity = String(city || "");
-  const normalizedCountry = String(country || "").toUpperCase();
-  return KNOWN_CITY_COORDS.find((item) => item.country === normalizedCountry && item.match.test(normalizedCity)) || null;
-}
-
 function coordinateProvenance(
   row: Pick<GeoRow, "browser_gps_count" | "ip_approx_count" | "coordinate_count" | "accuracy_m">,
-  fallbackUsed: boolean,
 ) {
   const browserGpsCount = Number(row.browser_gps_count || 0);
   const ipApproxCount = Number(row.ip_approx_count || 0);
   const coordinateCount = Number(row.coordinate_count || 0);
   const unknownCount = Math.max(coordinateCount - browserGpsCount - ipApproxCount, 0);
-  const coordinateSource = fallbackUsed
-    ? "city_centroid"
-    : coordinateCount > 0 && browserGpsCount === coordinateCount
-      ? "browser_gps_reported"
+  const coordinateSource = coordinateCount > 0 && browserGpsCount === coordinateCount
+      ? "browser_approximate_consent"
       : coordinateCount > 0 && ipApproxCount === coordinateCount
         ? "ip_approx"
         : coordinateCount > 0
@@ -119,17 +100,25 @@ function coordinateProvenance(
           : "unknown";
   return {
     coordinateSource,
-    coordinateAccuracyMeters: coordinateSource === "browser_gps_reported" && typeof row.accuracy_m === "number"
+    coordinateAccuracyMeters: coordinateSource === "browser_approximate_consent" && typeof row.accuracy_m === "number"
       ? Number(row.accuracy_m)
       : null,
-    coordinateSampleCount: fallbackUsed ? 0 : coordinateCount,
-    coordinateIsApproximate: coordinateSource !== "browser_gps_reported",
+    coordinateSampleCount: coordinateCount,
+    coordinateIsApproximate: true,
+    coordinateEvidence: coordinateCount > 0 ? "persisted_event" : "none",
     coordinateSourceCounts: {
       browserGpsReported: browserGpsCount,
       ipApprox: ipApproxCount,
       unknown: unknownCount,
     },
   };
+}
+
+function validCoordinatePair(latValue: unknown, lngValue: unknown) {
+  const lat = typeof latValue === "number" ? latValue : typeof latValue === "string" && latValue.trim() ? Number(latValue) : Number.NaN;
+  const lng = typeof lngValue === "number" ? lngValue : typeof lngValue === "string" && lngValue.trim() ? Number(lngValue) : Number.NaN;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+  return { lat, lng };
 }
 
 let analyticsEventsSchemaReady: Promise<void> | null = null;
@@ -181,7 +170,7 @@ async function ensureAnalyticsEventsSchema() {
 }
 
 export async function GET(req: Request) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
 
   const { searchParams } = new URL(req.url);
@@ -283,14 +272,26 @@ export async function GET(req: Request) {
         SELECT
           COALESCE(NULLIF(e.city, ''), NULLIF(e.geo_city, ''), 'Unknown') AS city,
           COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, ''), '--') AS country,
-          AVG(COALESCE(e.lat, e.geo_lat))::float8 AS lat,
-          AVG(COALESCE(e.lng, e.geo_lng))::float8 AS lng,
+          AVG(CASE
+            WHEN e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180 THEN e.lat
+            WHEN e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180 THEN e.geo_lat
+          END)::float8 AS lat,
+          AVG(CASE
+            WHEN e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180 THEN e.lng
+            WHEN e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180 THEN e.geo_lng
+          END)::float8 AS lng,
           COUNT(e.id)::int AS scans,
           COUNT(*) FILTER (WHERE e.result IN ('INVALID','DUPLICATE','REPLAY_SUSPECT','TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED','REVOKED'))::int AS risk,
-          COUNT(*) FILTER (WHERE e.location_source = 'browser_gps_reported' AND COALESCE(e.lat, e.geo_lat) IS NOT NULL AND COALESCE(e.lng, e.geo_lng) IS NOT NULL)::int AS browser_gps_count,
-          COUNT(*) FILTER (WHERE e.location_source IN ('ip_approx','edge_ip_approx') AND COALESCE(e.lat, e.geo_lat) IS NOT NULL AND COALESCE(e.lng, e.geo_lng) IS NOT NULL)::int AS ip_approx_count,
-          COUNT(*) FILTER (WHERE COALESCE(e.lat, e.geo_lat) IS NOT NULL AND COALESCE(e.lng, e.geo_lng) IS NOT NULL)::int AS coordinate_count,
-          AVG(e.location_accuracy_m) FILTER (WHERE e.location_accuracy_m IS NOT NULL)::float8 AS accuracy_m
+          COUNT(*) FILTER (WHERE e.location_source IN ('browser_gps_reported','browser_gps_approximate_consent') AND e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180)::int AS browser_gps_count,
+          COUNT(*) FILTER (WHERE
+            (e.location_source IN ('ip_approx','edge_ip_approx') AND e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180)
+            OR ((e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180) IS NOT TRUE AND e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180)
+          )::int AS ip_approx_count,
+          COUNT(*) FILTER (WHERE
+            (e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180)
+            OR (e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180)
+          )::int AS coordinate_count,
+          AVG(e.location_accuracy_m) FILTER (WHERE e.location_source IN ('browser_gps_reported','browser_gps_approximate_consent') AND e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180 AND e.location_accuracy_m >= 0)::float8 AS accuracy_m
         FROM events e
         JOIN tenants tn ON tn.id = e.tenant_id
         WHERE tn.slug = ${tenant}
@@ -304,14 +305,26 @@ export async function GET(req: Request) {
         SELECT
           COALESCE(NULLIF(e.city, ''), NULLIF(e.geo_city, ''), 'Unknown') AS city,
           COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, ''), '--') AS country,
-          AVG(COALESCE(e.lat, e.geo_lat))::float8 AS lat,
-          AVG(COALESCE(e.lng, e.geo_lng))::float8 AS lng,
+          AVG(CASE
+            WHEN e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180 THEN e.lat
+            WHEN e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180 THEN e.geo_lat
+          END)::float8 AS lat,
+          AVG(CASE
+            WHEN e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180 THEN e.lng
+            WHEN e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180 THEN e.geo_lng
+          END)::float8 AS lng,
           COUNT(e.id)::int AS scans,
           COUNT(*) FILTER (WHERE e.result IN ('INVALID','DUPLICATE','REPLAY_SUSPECT','TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED','REVOKED'))::int AS risk,
-          COUNT(*) FILTER (WHERE e.location_source = 'browser_gps_reported' AND COALESCE(e.lat, e.geo_lat) IS NOT NULL AND COALESCE(e.lng, e.geo_lng) IS NOT NULL)::int AS browser_gps_count,
-          COUNT(*) FILTER (WHERE e.location_source IN ('ip_approx','edge_ip_approx') AND COALESCE(e.lat, e.geo_lat) IS NOT NULL AND COALESCE(e.lng, e.geo_lng) IS NOT NULL)::int AS ip_approx_count,
-          COUNT(*) FILTER (WHERE COALESCE(e.lat, e.geo_lat) IS NOT NULL AND COALESCE(e.lng, e.geo_lng) IS NOT NULL)::int AS coordinate_count,
-          AVG(e.location_accuracy_m) FILTER (WHERE e.location_accuracy_m IS NOT NULL)::float8 AS accuracy_m
+          COUNT(*) FILTER (WHERE e.location_source IN ('browser_gps_reported','browser_gps_approximate_consent') AND e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180)::int AS browser_gps_count,
+          COUNT(*) FILTER (WHERE
+            (e.location_source IN ('ip_approx','edge_ip_approx') AND e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180)
+            OR ((e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180) IS NOT TRUE AND e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180)
+          )::int AS ip_approx_count,
+          COUNT(*) FILTER (WHERE
+            (e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180)
+            OR (e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180)
+          )::int AS coordinate_count,
+          AVG(e.location_accuracy_m) FILTER (WHERE e.location_source IN ('browser_gps_reported','browser_gps_approximate_consent') AND e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180 AND e.location_accuracy_m >= 0)::float8 AS accuracy_m
         FROM events e
         WHERE e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source = ${source}::text)
@@ -381,8 +394,14 @@ export async function GET(req: Request) {
             created_at,
             COALESCE(NULLIF(geo_city, ''), NULLIF(city, ''), 'Unknown') AS city,
             COALESCE(NULLIF(geo_country, ''), NULLIF(country_code, ''), '--') AS country,
-            COALESCE(geo_lat, lat) AS lat,
-            COALESCE(geo_lng, lng) AS lng,
+            CASE
+              WHEN lat BETWEEN -90 AND 90 AND lng BETWEEN -180 AND 180 THEN lat
+              WHEN geo_lat BETWEEN -90 AND 90 AND geo_lng BETWEEN -180 AND 180 THEN geo_lat
+            END AS lat,
+            CASE
+              WHEN lat BETWEEN -90 AND 90 AND lng BETWEEN -180 AND 180 THEN lng
+              WHEN geo_lat BETWEEN -90 AND 90 AND geo_lng BETWEEN -180 AND 180 THEN geo_lng
+            END AS lng,
             COALESCE(NULLIF(device_label, ''), split_part(COALESCE(user_agent, ''), ' ', 1), 'Unknown device') AS device,
             ROW_NUMBER() OVER (PARTITION BY uid_hex ORDER BY created_at ASC) AS rn_first,
             ROW_NUMBER() OVER (PARTITION BY uid_hex ORDER BY created_at DESC) AS rn_last
@@ -427,8 +446,14 @@ export async function GET(req: Request) {
             e.created_at,
             COALESCE(NULLIF(e.geo_city, ''), NULLIF(e.city, ''), 'Unknown') AS city,
             COALESCE(NULLIF(e.geo_country, ''), NULLIF(e.country_code, ''), '--') AS country,
-            COALESCE(e.geo_lat, e.lat) AS lat,
-            COALESCE(e.geo_lng, e.lng) AS lng,
+            CASE
+              WHEN e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180 THEN e.lat
+              WHEN e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180 THEN e.geo_lat
+            END AS lat,
+            CASE
+              WHEN e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180 THEN e.lng
+              WHEN e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180 THEN e.geo_lng
+            END AS lng,
             COALESCE(NULLIF(e.device_label, ''), split_part(COALESCE(e.user_agent, ''), ' ', 1), 'Unknown device') AS device,
             ROW_NUMBER() OVER (PARTITION BY e.uid_hex ORDER BY e.created_at ASC) AS rn_first,
             ROW_NUMBER() OVER (PARTITION BY e.uid_hex ORDER BY e.created_at DESC) AS rn_last
@@ -494,15 +519,27 @@ export async function GET(req: Request) {
         SELECT
           COALESCE(NULLIF(e.city, ''), NULLIF(e.geo_city, ''), 'Unknown') AS city,
           COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, ''), '--') AS country,
-          AVG(COALESCE(e.lat, e.geo_lat))::float8 AS lat,
-          AVG(COALESCE(e.lng, e.geo_lng))::float8 AS lng,
+          AVG(CASE
+            WHEN e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180 THEN e.lat
+            WHEN e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180 THEN e.geo_lat
+          END)::float8 AS lat,
+          AVG(CASE
+            WHEN e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180 THEN e.lng
+            WHEN e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180 THEN e.geo_lng
+          END)::float8 AS lng,
           COUNT(*)::int AS scans,
           COUNT(*) FILTER (WHERE e.result IN ('INVALID','DUPLICATE','REPLAY_SUSPECT','TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED','REVOKED'))::int AS risk,
           MAX(e.created_at)::text AS last_seen,
-          COUNT(*) FILTER (WHERE e.location_source = 'browser_gps_reported' AND COALESCE(e.lat, e.geo_lat) IS NOT NULL AND COALESCE(e.lng, e.geo_lng) IS NOT NULL)::int AS browser_gps_count,
-          COUNT(*) FILTER (WHERE e.location_source IN ('ip_approx','edge_ip_approx') AND COALESCE(e.lat, e.geo_lat) IS NOT NULL AND COALESCE(e.lng, e.geo_lng) IS NOT NULL)::int AS ip_approx_count,
-          COUNT(*) FILTER (WHERE COALESCE(e.lat, e.geo_lat) IS NOT NULL AND COALESCE(e.lng, e.geo_lng) IS NOT NULL)::int AS coordinate_count,
-          AVG(e.location_accuracy_m) FILTER (WHERE e.location_source = 'browser_gps_reported' AND e.location_accuracy_m IS NOT NULL)::float8 AS accuracy_m
+          COUNT(*) FILTER (WHERE e.location_source IN ('browser_gps_reported','browser_gps_approximate_consent') AND e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180)::int AS browser_gps_count,
+          COUNT(*) FILTER (WHERE
+            (e.location_source IN ('ip_approx','edge_ip_approx') AND e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180)
+            OR ((e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180) IS NOT TRUE AND e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180)
+          )::int AS ip_approx_count,
+          COUNT(*) FILTER (WHERE
+            (e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180)
+            OR (e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180)
+          )::int AS coordinate_count,
+          AVG(e.location_accuracy_m) FILTER (WHERE e.location_source IN ('browser_gps_reported','browser_gps_approximate_consent') AND e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180 AND e.location_accuracy_m >= 0)::float8 AS accuracy_m
         FROM events e
         JOIN tenants tn ON tn.id = e.tenant_id
         WHERE tn.slug = ${tenant}
@@ -517,15 +554,27 @@ export async function GET(req: Request) {
         SELECT
           COALESCE(NULLIF(e.city, ''), NULLIF(e.geo_city, ''), 'Unknown') AS city,
           COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, ''), '--') AS country,
-          AVG(COALESCE(e.lat, e.geo_lat))::float8 AS lat,
-          AVG(COALESCE(e.lng, e.geo_lng))::float8 AS lng,
+          AVG(CASE
+            WHEN e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180 THEN e.lat
+            WHEN e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180 THEN e.geo_lat
+          END)::float8 AS lat,
+          AVG(CASE
+            WHEN e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180 THEN e.lng
+            WHEN e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180 THEN e.geo_lng
+          END)::float8 AS lng,
           COUNT(*)::int AS scans,
           COUNT(*) FILTER (WHERE e.result IN ('INVALID','DUPLICATE','REPLAY_SUSPECT','TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED','REVOKED'))::int AS risk,
           MAX(e.created_at)::text AS last_seen,
-          COUNT(*) FILTER (WHERE e.location_source = 'browser_gps_reported' AND COALESCE(e.lat, e.geo_lat) IS NOT NULL AND COALESCE(e.lng, e.geo_lng) IS NOT NULL)::int AS browser_gps_count,
-          COUNT(*) FILTER (WHERE e.location_source IN ('ip_approx','edge_ip_approx') AND COALESCE(e.lat, e.geo_lat) IS NOT NULL AND COALESCE(e.lng, e.geo_lng) IS NOT NULL)::int AS ip_approx_count,
-          COUNT(*) FILTER (WHERE COALESCE(e.lat, e.geo_lat) IS NOT NULL AND COALESCE(e.lng, e.geo_lng) IS NOT NULL)::int AS coordinate_count,
-          AVG(e.location_accuracy_m) FILTER (WHERE e.location_source = 'browser_gps_reported' AND e.location_accuracy_m IS NOT NULL)::float8 AS accuracy_m
+          COUNT(*) FILTER (WHERE e.location_source IN ('browser_gps_reported','browser_gps_approximate_consent') AND e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180)::int AS browser_gps_count,
+          COUNT(*) FILTER (WHERE
+            (e.location_source IN ('ip_approx','edge_ip_approx') AND e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180)
+            OR ((e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180) IS NOT TRUE AND e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180)
+          )::int AS ip_approx_count,
+          COUNT(*) FILTER (WHERE
+            (e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180)
+            OR (e.geo_lat BETWEEN -90 AND 90 AND e.geo_lng BETWEEN -180 AND 180)
+          )::int AS coordinate_count,
+          AVG(e.location_accuracy_m) FILTER (WHERE e.location_source IN ('browser_gps_reported','browser_gps_approximate_consent') AND e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180 AND e.location_accuracy_m >= 0)::float8 AS accuracy_m
         FROM events e
         WHERE e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source = ${source}::text)
@@ -792,16 +841,13 @@ export async function GET(req: Request) {
 
   const geoPoints = (geoRows as GeoRow[])
     .map((row) => {
-      const fallback = cityCoords(row.city, row.country);
-      const lat = typeof row.lat === "number" ? Number(row.lat) : fallback?.lat ?? null;
-      const lng = typeof row.lng === "number" ? Number(row.lng) : fallback?.lng ?? null;
-      if (lat == null || lng == null) return null;
-      const provenance = coordinateProvenance(row, typeof row.lat !== "number");
+      const coordinate = validCoordinatePair(row.lat, row.lng);
+      if (Number(row.coordinate_count || 0) <= 0 || !coordinate) return null;
+      const provenance = coordinateProvenance(row);
       return {
         city: row.city || "Unknown",
         country: row.country || "--",
-        lat,
-        lng,
+        ...coordinate,
         scans: Number(row.scans || 0),
         risk: Number(row.risk || 0),
         ...provenance,
@@ -818,22 +864,25 @@ export async function GET(req: Request) {
   }));
 
   const productOriginByUid = new Map(
-    (productRows as ProductRow[]).map((row) => [
-      String(row.uid_hex || "").toUpperCase(),
-      {
+    (productRows as ProductRow[]).map((row) => {
+      const coordinate = validCoordinatePair(row.winery_lat, row.winery_lng);
+      return [String(row.uid_hex || "").toUpperCase(), {
         city: row.winery || row.region || "Product origin",
         country: row.winery_address || row.provenance_text || row.region || "--",
-        lat: typeof row.winery_lat === "number" ? Number(row.winery_lat) : null,
-        lng: typeof row.winery_lng === "number" ? Number(row.winery_lng) : null,
-      },
-    ]),
+        lat: coordinate?.lat ?? null,
+        lng: coordinate?.lng ?? null,
+      }] as const;
+    }),
   );
 
   const tagJourney = (journeyRows as JourneyRow[])
     .filter((row) => row.uid_hex)
     .map((row) => {
       const productOrigin = productOriginByUid.get(String(row.uid_hex || "").toUpperCase());
-      const hasProductOriginCoords = productOrigin?.lat != null && productOrigin?.lng != null;
+      const productOriginCoordinate = validCoordinatePair(productOrigin?.lat, productOrigin?.lng);
+      const eventOriginCoordinate = validCoordinatePair(row.origin_lat, row.origin_lng);
+      const currentCoordinate = validCoordinatePair(row.current_lat, row.current_lng);
+      const hasProductOriginCoords = productOriginCoordinate !== null;
       return {
         uid: row.uid_hex as string,
         taps: Number(row.taps || 0),
@@ -842,15 +891,15 @@ export async function GET(req: Request) {
         origin: {
           city: hasProductOriginCoords ? productOrigin?.city || "Product origin" : row.origin_city || "Unknown",
           country: hasProductOriginCoords ? productOrigin?.country || "--" : row.origin_country || "--",
-          lat: hasProductOriginCoords ? productOrigin?.lat ?? null : typeof row.origin_lat === "number" ? Number(row.origin_lat) : null,
-          lng: hasProductOriginCoords ? productOrigin?.lng ?? null : typeof row.origin_lng === "number" ? Number(row.origin_lng) : null,
+          lat: hasProductOriginCoords ? productOriginCoordinate.lat : eventOriginCoordinate?.lat ?? null,
+          lng: hasProductOriginCoords ? productOriginCoordinate.lng : eventOriginCoordinate?.lng ?? null,
         },
         originSource: hasProductOriginCoords ? "product_passport_declared" : "first_observed_event",
         current: {
           city: row.current_city || "Unknown",
           country: row.current_country || "--",
-          lat: typeof row.current_lat === "number" ? Number(row.current_lat) : null,
-          lng: typeof row.current_lng === "number" ? Number(row.current_lng) : null,
+          lat: currentCoordinate?.lat ?? null,
+          lng: currentCoordinate?.lng ?? null,
         },
         lastDevice: row.last_device || "Unknown device",
       };
@@ -922,16 +971,19 @@ export async function GET(req: Request) {
         scans: Number(row.scans || 0),
         risk: Number(row.risk || 0),
       })),
-      cities: (cityRows as CityRow[]).map((row) => ({
-        city: row.city || "Unknown",
-        country: row.country || "--",
-        lat: typeof row.lat === "number" ? Number(row.lat) : null,
-        lng: typeof row.lng === "number" ? Number(row.lng) : null,
-        scans: Number(row.scans || 0),
-        risk: Number(row.risk || 0),
-        lastSeen: row.last_seen,
-        ...coordinateProvenance(row, false),
-      })),
+      cities: (cityRows as CityRow[]).map((row) => {
+        const coordinate = validCoordinatePair(row.lat, row.lng);
+        return {
+          city: row.city || "Unknown",
+          country: row.country || "--",
+          lat: coordinate?.lat ?? null,
+          lng: coordinate?.lng ?? null,
+          scans: Number(row.scans || 0),
+          risk: Number(row.risk || 0),
+          lastSeen: row.last_seen,
+          ...coordinateProvenance(row),
+        };
+      }),
     },
     devices: {
       os: toSortedBuckets(osBuckets),
@@ -950,31 +1002,34 @@ export async function GET(req: Request) {
       device: row.device || "Unknown",
       createdAt: row.created_at,
     })),
-    products: (productRows as ProductRow[]).map((row) => ({
-      uidHex: row.uid_hex,
-      bid: row.bid,
-      productName: row.product_name || "Unprofiled bottle",
-      winery: row.winery || "-",
-      region: row.region || "-",
-      vintage: row.vintage || "-",
-      scanCount: Number(row.scan_count || 0),
-      firstSeenAt: row.first_seen_at,
-      lastSeenAt: row.last_seen_at,
-      lastVerifiedCity: row.last_verified_city || "-",
-      lastVerifiedCountry: row.last_verified_country || "-",
-      tokenization: {
-        status: row.tokenization_status || "none",
-        network: row.tokenization_network || "-",
-        txHash: row.tokenization_tx_hash || null,
-        tokenId: row.tokenization_token_id || null,
-      },
-      origin: {
-        city: row.winery || row.region || null,
-        label: row.winery_address || row.provenance_text || row.region || null,
-        lat: typeof row.winery_lat === "number" ? Number(row.winery_lat) : null,
-        lng: typeof row.winery_lng === "number" ? Number(row.winery_lng) : null,
-      },
-    })),
+    products: (productRows as ProductRow[]).map((row) => {
+      const originCoordinate = validCoordinatePair(row.winery_lat, row.winery_lng);
+      return {
+        uidHex: row.uid_hex,
+        bid: row.bid,
+        productName: row.product_name || "Unprofiled bottle",
+        winery: row.winery || "-",
+        region: row.region || "-",
+        vintage: row.vintage || "-",
+        scanCount: Number(row.scan_count || 0),
+        firstSeenAt: row.first_seen_at,
+        lastSeenAt: row.last_seen_at,
+        lastVerifiedCity: row.last_verified_city || "-",
+        lastVerifiedCountry: row.last_verified_country || "-",
+        tokenization: {
+          status: row.tokenization_status || "none",
+          network: row.tokenization_network || "-",
+          txHash: row.tokenization_tx_hash || null,
+          tokenId: row.tokenization_token_id || null,
+        },
+        origin: {
+          city: row.winery || row.region || null,
+          label: row.winery_address || row.provenance_text || row.region || null,
+          lat: originCoordinate?.lat ?? null,
+          lng: originCoordinate?.lng ?? null,
+        },
+      };
+    }),
     trend,
     batchStatus,
     geoPoints,

@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 
 import { sql } from '../../../../lib/db';
 import { json } from '../../../../lib/http';
+import { checkAdmin, getAdminTenantAccess } from '../../../../lib/auth';
 import { upsertTenantSunProfile, type TenantSunProfileInput } from '../../../../lib/tenant-onboarding';
 import {
   type SunVertical,
@@ -42,13 +43,8 @@ const EXTENDED_MANIFEST_COLUMNS = [
 ];
 
 export async function POST(req: Request) {
-  const authHeader = req.headers.get("authorization") || "";
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
-  const expected = String(process.env.ADMIN_API_KEY || "").trim();
-
-  if (!expected || token !== expected) {
-    return json({ ok: false, reason: "unauthorized" }, 401);
-  }
+  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
+  if (auth) return auth;
 
   const body = await req.json().catch(() => ({})) as {
     tenantSlug?: string;
@@ -62,9 +58,9 @@ export async function POST(req: Request) {
     originLng?: number;
   };
 
-  const tenantSlug = req.headers.get("x-nexid-tenant-slug") || body.tenantSlug;
+  const { effectiveTenantSlug: tenantSlug } = getAdminTenantAccess(req, body.tenantSlug);
   if (!tenantSlug) {
-    return json({ ok: false, reason: "x-nexid-tenant-slug header or tenantSlug in body required" }, 400);
+    return json({ ok: false, reason: "tenantSlug required" }, 400);
   }
 
   const tenantRows = await sql`SELECT id FROM tenants WHERE slug = ${tenantSlug} LIMIT 1`;

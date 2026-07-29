@@ -7,6 +7,8 @@ import pg from "pg";
 const RELEASE_MIGRATIONS = Object.freeze([
   "20260726173000_0060_sdk_idempotency_operations.sql",
   "20260726190000_0061_supplier_export_artifact_delivery.sql",
+  "20260728120000_0062_sun_atomic_persistence.sql",
+  "20260728143000_0063_supplier_packaging_governance.sql",
 ]);
 const REQUIRED_APPLIED = Object.freeze([
   "20260725230000_0057_sun_rate_limit_atomic_buckets.sql",
@@ -71,12 +73,20 @@ try {
         AND table_name = 'vault_artifacts'
         AND column_name = 'encrypted_payload_base64'
     ) AS supplier_export_envelope,
+    to_regprocedure('public.nexid_persist_sun_scan_v1(jsonb)') IS NOT NULL AS sun_atomic_persistence,
+    to_regclass('public.uq_tags_batch_uid_upper') IS NOT NULL AS sun_casefold_uid_guard,
+    to_regclass('public.supplier_packaging_governance_decisions') IS NOT NULL AS supplier_packaging_governance,
+    to_regprocedure('public.nexid_record_supplier_packaging_decision_v1(jsonb)') IS NOT NULL AS supplier_packaging_governance_writer,
     (SELECT count(*)::int FROM schema_migrations WHERE id = ANY($1::text[])) AS release_ledger_count`,
     [RELEASE_MIGRATIONS])).rows[0];
   if (
     !postcheck.sdk_idempotency_operations
     || !postcheck.vault_artifacts
     || !postcheck.supplier_export_envelope
+    || !postcheck.sun_atomic_persistence
+    || !postcheck.sun_casefold_uid_guard
+    || !postcheck.supplier_packaging_governance
+    || !postcheck.supplier_packaging_governance_writer
     || postcheck.release_ledger_count !== RELEASE_MIGRATIONS.length
   ) throw new Error("release_dry_run_postcheck_failed");
 

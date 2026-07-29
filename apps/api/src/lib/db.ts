@@ -6,6 +6,8 @@ export const DEFAULT_REQUIRED_SCHEMA_MIGRATIONS = [
   "20260726135000_0059_marketplace_claim_truth_cleanup.sql",
   "20260726173000_0060_sdk_idempotency_operations.sql",
   "20260726190000_0061_supplier_export_artifact_delivery.sql",
+  "20260728120000_0062_sun_atomic_persistence.sql",
+  "20260728143000_0063_supplier_packaging_governance.sql",
 ] as const;
 export const DEFAULT_REQUIRED_SCHEMA_MIGRATION = DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.at(-1)!;
 

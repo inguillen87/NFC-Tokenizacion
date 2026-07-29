@@ -1,11 +1,11 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-import { checkAdmin, getAdminTenantAccess, type AdminScope } from '../../../../lib/auth';
+import { checkAdmin, getAdminPermissions, getAdminTenantAccess, type AdminScope } from '../../../../lib/auth';
+import { buildBatchKeyLifecycleRecords, generateBatchKeyHex } from '../../../../lib/batch-keys';
 import { json } from '../../../../lib/http';
 import { sql } from '../../../../lib/db';
-import { encryptKey16 } from '../../../../lib/keys';
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import { requireTenantSunProfile } from '../../../../lib/tenant-onboarding';
 import { ensureCarrierProfileSchema } from '../../../../lib/commercial-runtime-schema';
 import { getCarrierProfile, inferCarrierProfileFromPayload } from '../../../../lib/carrier-profiles';
@@ -31,13 +31,6 @@ function keyFingerprint(kMetaHex: string, kFileHex: string) {
   return `sha256:${createHash('sha256').update(`${kMetaHex}:${kFileHex}`).digest('hex')}`;
 }
 
-function parsePermissionHeader(value: string | null) {
-  return String(value || '')
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
 function hasScopedPermission(grants: string[], permission: string) {
   const current = permission.trim();
   for (const rawGrant of grants) {
@@ -55,7 +48,6 @@ function hasScopedPermission(grants: string[], permission: string) {
 function canRegisterInternalBatch(scope: AdminScope | null, permissions: string[]) {
   return scope === null
     || scope === 'super_admin'
-    || scope === 'security_operator'
     || hasScopedPermission(permissions, 'batch:register_internal');
 }
 
@@ -71,7 +63,7 @@ function resolveApiOrigin(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = checkAdmin(req, ['super_admin', 'tenant_admin', 'security_operator', 'reseller']);
+  const auth = await checkAdmin(req, ['super_admin', 'tenant_admin', 'reseller']);
   if (auth) return auth;
   await ensureCarrierProfileSchema();
 
@@ -91,12 +83,12 @@ export async function POST(req: Request) {
       message: 'Use /admin/supplier-orders. Supplier batches require server-side key generation, encrypted one-time supplier packs, immutable manifests and QA gates.',
     }, 410);
   }
-  const permissionGrants = parsePermissionHeader(req.headers.get('x-nexid-permissions'));
+  const permissionGrants = getAdminPermissions(req);
   if (!canRegisterInternalBatch(adminTenantAccess.scope, permissionGrants)) {
     return json({
       ok: false,
       reason: 'internal_batch_registration_forbidden',
-      message: 'Internal encrypted batch registration requires superadmin, security-operator scope, or batch:register_internal permission. Use Supplier Orders for production supplier stock.',
+      message: 'Internal encrypted batch registration requires superadmin or explicit batch:register_internal permission. Use Supplier Orders for production supplier stock.',
     }, 403);
   }
 
@@ -128,11 +120,21 @@ export async function POST(req: Request) {
   }
 
   try {
-    const kMetaHex = randomBytes(16).toString('hex').toUpperCase();
-    const kFileHex = randomBytes(16).toString('hex').toUpperCase();
+    const keyVersion = 1;
+    const kMetaHex = generateBatchKeyHex();
+    const kFileHex = generateBatchKeyHex();
     const fingerprint = keyFingerprint(kMetaHex, kFileHex);
-    const metaCt = encryptKey16(Buffer.from(kMetaHex, 'hex'));
-    const fileCt = encryptKey16(Buffer.from(kFileHex, 'hex'));
+    const keyMaterial = buildBatchKeyLifecycleRecords({
+      tenantId: String(tenant.id),
+      bid,
+      kMetaHex,
+      kFileHex,
+      keyVersion,
+      createdBy: null,
+    });
+    const metaCt = keyMaterial.find((item) => item.keyRole === 'K_META_BATCH')?.encryptedKeyCt;
+    const fileCt = keyMaterial.find((item) => item.keyRole === 'K_FILE_BATCH')?.encryptedKeyCt;
+    if (!metaCt || !fileCt) throw new Error('batch key lifecycle records are incomplete');
 
     const apiOrigin = resolveApiOrigin(req);
     const profile = firstString(body.profile, body.security_profile);
@@ -164,6 +166,7 @@ export async function POST(req: Request) {
       notes: String(body.notes || '').trim() || undefined,
       source: 'server_generated_internal',
       mode,
+      key_version: keyVersion,
       url_template: `${apiOrigin}/sun?v=1&bid=${encodeURIComponent(bid)}&picc_data=<PICC_DATA_DYNAMIC>&enc=<ENC_DYNAMIC>&cmac=<CMAC_DYNAMIC>`,
       mac_input: 'enc_plus_cmac_literal',
       mac_input_candidates: ['enc_plus_cmac_literal', 'enc_only_ascii', 'query_from_enc_to_cmac', 'query_from_picc_data_to_cmac'],

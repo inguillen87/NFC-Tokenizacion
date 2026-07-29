@@ -113,23 +113,27 @@ async function call(path: string, method: "POST" | "GET", payload: Record<string
   };
 }
 
-async function getClientMetadata() {
+function roundApproximateCoordinate(value: number) {
+  return Math.round(value * 1000) / 1000;
+}
+
+async function getClientMetadata(shareApproximateLocation: boolean) {
   let lat: number | null = null;
   let lng: number | null = null;
   let acc: number | null = null;
 
   try {
-    if (typeof window !== "undefined" && window.navigator && window.navigator.geolocation) {
+    if (shareApproximateLocation && typeof window !== "undefined" && window.navigator && window.navigator.geolocation) {
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
         window.navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
+          enableHighAccuracy: false,
           timeout: 4000,
-          maximumAge: 0,
+          maximumAge: 5 * 60 * 1000,
         });
       });
-      lat = position.coords.latitude;
-      lng = position.coords.longitude;
-      acc = position.coords.accuracy;
+      lat = roundApproximateCoordinate(position.coords.latitude);
+      lng = roundApproximateCoordinate(position.coords.longitude);
+      acc = Math.max(150, Math.round(position.coords.accuracy || 150));
     }
   } catch (error) {
     console.warn("Geolocation gathering failed or denied", error);
@@ -148,6 +152,8 @@ async function getClientMetadata() {
     latitude: lat,
     longitude: lng,
     accuracy: acc,
+    locationConsent: shareApproximateLocation,
+    geoPrecision: shareApproximateLocation ? "approximate" : "not_requested",
     screenSize: {
       width: typeof window !== "undefined" ? window.innerWidth || 0 : 0,
       height: typeof window !== "undefined" ? window.innerHeight || 0 : 0,
@@ -197,6 +203,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
   const [ocrLoading, setOcrLoading] = useState(false);
   const [ocrVerification, setOcrVerification] = useState<ReceiptOcrUiState | null>(null);
   const [securityPin, setSecurityPin] = useState("");
+  const [shareApproximateLocation, setShareApproximateLocation] = useState(false);
   const emailInputRef = useRef<HTMLInputElement | null>(null);
   const tokenModalRef = useRef<HTMLDivElement | null>(null);
   const tokenActionButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -561,7 +568,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
     try {
       let extraPayload: Record<string, unknown> | undefined;
       if (actionKey === "claimOwnership") {
-        const meta = await getClientMetadata();
+        const meta = await getClientMetadata(shareApproximateLocation);
         extraPayload = {
           ...meta,
           receiptDate: receiptDate || null,
@@ -980,6 +987,21 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
                 />
               </div>
             </div>
+
+            <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3 text-left">
+              <input
+                type="checkbox"
+                checked={shareApproximateLocation}
+                onChange={(event) => setShareApproximateLocation(event.target.checked)}
+                className="mt-0.5 h-5 w-5 rounded border-white/20 bg-slate-950 accent-cyan-400"
+              />
+              <span>
+                <span className="block text-[11px] font-black text-cyan-100">Compartir ubicacion aproximada (opcional)</span>
+                <span className="mt-1 block text-[10px] leading-relaxed text-cyan-100/70">
+                  Solo se solicita si marcas esta opcion. Se redondea antes de enviarla, no guarda GPS exacto y no demuestra compra, custodia ni recorrido fisico.
+                </span>
+              </span>
+            </label>
 
             <button
               suppressHydrationWarning

@@ -2,28 +2,44 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const [source, executiveSource] = await Promise.all([
+const [{ classifyRealtimeVerdict, isRealtimeRisk }, source, executiveSource, multirubroSource] = await Promise.all([
+  import("../src/lib/realtime-feed.ts"),
   readFile(new URL("../src/components/realtime-ops-monitor.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/components/executive-realtime-crm.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../src/components/multirubro-ops-panel.tsx", import.meta.url), "utf8"),
 ]);
 
 test("realtime operations centralize verdict classes and exclude lifecycle unknowns from risk", () => {
-  assert.match(source, /type RealtimeVerdictBucket = "valid" \| "duplicate_replay" \| "tamper" \| "invalid" \| "unknown"/);
-  assert.match(source, /function classifyRealtimeVerdict/);
-  assert.match(source, /function isRealtimeRisk/);
-  assert.match(source, /\["duplicate_replay", "tamper", "invalid"\]\.includes/);
-  assert.match(source, /\["UNKNOWN", "NOT_REGISTERED", "NOT_ACTIVE"\]/);
+  assert.equal(classifyRealtimeVerdict("VALID_OPENED"), "valid");
+  assert.equal(classifyRealtimeVerdict("CLAIMED"), "unknown");
+  assert.equal(classifyRealtimeVerdict("NOT_REGISTERED"), "unknown");
+  assert.equal(isRealtimeRisk("CLAIMED"), false);
+  assert.equal(isRealtimeRisk("NOT_REGISTERED"), false);
+  assert.equal(isRealtimeRisk("REPLAY_SUSPECT"), true);
+  assert.equal(isRealtimeRisk("TAMPER_RISK"), true);
+  assert.equal(isRealtimeRisk("INVALID"), true);
+  assert.equal(isRealtimeRisk("REVOKED"), true);
+  assert.equal(classifyRealtimeVerdict({ verdict: "valid", result: "REPLAY_SUSPECT" }), "duplicate_replay");
+  assert.equal(classifyRealtimeVerdict({ verdict: "valid", result: "TAMPER_RISK" }), "tamper");
+  assert.equal(classifyRealtimeVerdict({ verdict: "valid", result: "REVOKED" }), "invalid");
+  assert.equal(classifyRealtimeVerdict({ verdict: "valid", result: "INVALID" }), "invalid");
+
+  assert.match(source, /classifyRealtimeVerdict,/);
+  assert.match(source, /isRealtimeRisk,/);
+  assert.doesNotMatch(source, /function classifyRealtimeVerdict|function isRealtimeRisk/);
   assert.doesNotMatch(source, /length - valid|!== "valid"|!== "VALID"|result !== "VALID"/);
 });
 
 test("all realtime risk derivatives use the centralized classification", () => {
-  assert.match(source, /risk: isRealtimeRisk\(result\) \? 1 : 0/);
-  assert.match(source, /if \(isRealtimeRisk\(row\.verdict\)\) current\.risk \+= 1/);
-  assert.match(source, /const risk = visibleEvents\.filter\(\(item\) => isRealtimeRisk\(item\.verdict\)\)\.length/);
-  assert.match(source, /if \(isRealtimeRisk\(event\.verdict\)\) buckets\[bucketIndex\]\.risk \+= 1/);
-  assert.match(source, /visibleEvents\.filter\(\(event\) => isRealtimeRisk\(event\.verdict\)\)/);
+  assert.match(source, /risk: isRealtimeRisk\(result, row\.reason\) \? 1 : 0/);
+  assert.match(source, /if \(isRealtimeRisk\(row\.verdict, row\.reason\)\) current\.risk \+= 1/);
+  assert.match(source, /const risk = visibleEvents\.filter\(\(item\) => isRealtimeRisk\(item\.verdict, item\.reason\)\)\.length/);
+  assert.match(source, /if \(isRealtimeRisk\(event\.verdict, event\.reason\)\) buckets\[bucketIndex\]\.risk \+= 1/);
+  assert.match(source, /visibleEvents\.filter\(\(event\) => isRealtimeRisk\(event\.verdict, event\.reason\)\)/);
   assert.match(source, /ALERTA DE RIESGO NFC/);
   assert.match(source, /liveMetrics\.unknown/);
+  assert.match(multirubroSource, /classifyRealtimeVerdict\(payload, payload\.reason\)/);
+  assert.match(multirubroSource, /isRealtimeRisk\(payload, payload\.reason\)/);
 });
 
 test("browser_gps_reported is recognized as client-reported, non-independent GPS evidence", () => {
@@ -35,8 +51,9 @@ test("browser_gps_reported is recognized as client-reported, non-independent GPS
 });
 
 test("executive CRM keeps lifecycle unknowns out of risk and recognizes reported GPS variants", () => {
-  assert.match(executiveSource, /function classifyRealtimeVerdict/);
-  assert.match(executiveSource, /function isRealtimeRisk/);
+  assert.match(executiveSource, /classifyRealtimeVerdict,/);
+  assert.match(executiveSource, /isRealtimeRisk,/);
+  assert.doesNotMatch(executiveSource, /function classifyRealtimeVerdict|function isRealtimeRisk/);
   assert.match(executiveSource, /const unknown = visibleEvents\.filter/);
   assert.match(executiveSource, /explicitRiskRate/);
   assert.match(executiveSource, /no se cuentan como riesgo/);

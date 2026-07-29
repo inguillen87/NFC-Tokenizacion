@@ -8,6 +8,7 @@ import { json } from "../../../lib/http";
 import { sql } from "../../../lib/db";
 import { anchorTokenizationRequest } from "../../../lib/tokenization-engine";
 import { ensureTokenizationRequestsSchema } from "../../../lib/tokenization-schema";
+import { normalizeCoordinatePair } from "../../../lib/approximate-location";
 
 type SimulateBody = {
   bid?: string;
@@ -96,8 +97,9 @@ export async function POST(req: Request): Promise<Response> {
 
   const city = clean(body.city || "Simulation City", 80);
   const country = clean(body.country || "AR", 3).toUpperCase();
-  const lat = Number.isFinite(Number(body.lat)) ? Number(body.lat) : null;
-  const lng = Number.isFinite(Number(body.lng)) ? Number(body.lng) : null;
+  const coordinate = normalizeCoordinatePair(body.lat, body.lng);
+  const lat = coordinate?.lat ?? null;
+  const lng = coordinate?.lng ?? null;
   const reason = result === "VALID" ? "sun_simulated_ok" : result === "REPLAY_SUSPECT" ? "sun_simulated_replay" : result === "TAMPER_RISK" ? "sun_simulated_tamper" : "sun_simulated_invalid";
 
   const insertedEvent = (await sql/*sql*/`

@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminTenantScope, type AdminScope } from "../../../../../../../../lib/auth";
+import { checkAdmin, getAdminActor, getAdminPermissions, getAdminTenantScope, type AdminScope } from "../../../../../../../../lib/auth";
 import { logAuditEvent } from "../../../../../../../../lib/audit-logger";
 import { buildBatchKeyLifecycleRecords } from "../../../../../../../../lib/batch-keys";
 import { sql } from "../../../../../../../../lib/db";
@@ -12,21 +12,6 @@ import { canRotateSupplierSubBatchKeys, generateSupplierBatchKeys } from "../../
 
 function safeString(value: unknown) {
   return String(value || "").trim();
-}
-
-function safeActor(req: Request) {
-  return safeString(req.headers.get("x-nexid-actor"))
-    || safeString(req.headers.get("x-nexid-actor-id"))
-    || safeString(req.headers.get("x-dashboard-user"))
-    || safeString(req.headers.get("x-forwarded-user"))
-    || "unknown_admin";
-}
-
-function parsePermissionHeader(value: string | null) {
-  return String(value || "")
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
 }
 
 function hasScopedPermission(grants: string[], permission: string) {
@@ -45,22 +30,21 @@ function hasScopedPermission(grants: string[], permission: string) {
 
 function canRotateSupplierKeys(scope: AdminScope | null, permissions: string[]) {
   return scope === "super_admin"
-    || scope === "security_operator"
     || hasScopedPermission(permissions, "supplier:key_rotate");
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ orderId: string; bid: string }> }) {
-  const auth = checkAdmin(req, ["super_admin", "security_operator", "tenant_admin"]);
+  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
   if (auth) return auth;
   await ensureSupplierOpsSchema();
 
   const adminTenantScope = getAdminTenantScope(req);
-  const permissionGrants = parsePermissionHeader(req.headers.get("x-nexid-permissions"));
+  const permissionGrants = getAdminPermissions(req);
   if (!canRotateSupplierKeys(adminTenantScope.scope, permissionGrants)) {
     return json({
       ok: false,
       reason: "supplier_key_rotation_forbidden",
-      message: "Supplier key rotation requires superadmin, security-operator scope, or explicit supplier:key_rotate permission.",
+      message: "Supplier key rotation requires superadmin or explicit supplier:key_rotate permission.",
     }, 403);
   }
 
@@ -181,7 +165,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
     }, 409);
   }
 
-  const actor = safeActor(req);
+  const actor = getAdminActor(req).email;
   const nextVersion = Math.max(1, Math.trunc(Number(subBatch.max_key_version || subBatch.current_pair_version || 1)) + 1);
   const keys = generateSupplierBatchKeys();
   const keyMaterial = buildBatchKeyLifecycleRecords({

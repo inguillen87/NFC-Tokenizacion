@@ -3,7 +3,7 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { productUrls } from "@product/config";
 import { aggregateTenantMetrics } from "@product/core";
-import { getDashboardSession } from "../../../../lib/session";
+import { getDashboardSessionCredential } from "../../../../lib/session";
 import { canDemoSandboxAccess, resolveAdminProxyPolicy } from "../../../../lib/admin-proxy-policy";
 import { dashboardPermissionMatches, requiredPermissionForAdminResource } from "../../../../lib/permission-policy";
 import {
@@ -79,7 +79,6 @@ function isDemoSession(req: Request) {
 function dashboardRoleToScope(role: string | undefined) {
   const normalizedRole = String(role || "");
   if (normalizedRole === "super-admin") return "super_admin";
-  if (normalizedRole === "security-operator") return "security_operator";
   if (normalizedRole === "tenant-admin") return "tenant_admin";
   if (normalizedRole === "reseller") return "reseller";
   return "readonly_demo";
@@ -1032,9 +1031,7 @@ async function forward(req: Request, path: string[]) {
   const forceSandbox = ["1", "true", "sandbox"].includes(String(reqUrl.searchParams.get("sandbox") || reqUrl.searchParams.get("demoFallback") || "").toLowerCase());
   reqUrl.searchParams.delete("sandbox");
   reqUrl.searchParams.delete("demoFallback");
-  const hasAdminKey = Boolean((process.env.ADMIN_API_KEY || "").trim());
   const requireScopedAdminAuth = String(process.env.REQUIRE_SCOPED_ADMIN_AUTH || "").toLowerCase() === "true";
-  const demoSession = isDemoSession(req);
   const allowDemoFallback = String(process.env.DEMO_FALLBACK_ALLOWED || process.env.DASHBOARD_ALLOW_DEMO_FALLBACK || "").toLowerCase() === "true";
   const isProduction = String(process.env.NODE_ENV || "").toLowerCase() === "production";
   const demoModeExplicit = String(process.env.DEMO_MODE || process.env.DASHBOARD_DEMO_MODE || process.env.NEXT_PUBLIC_DEMO_MODE || "").toLowerCase() === "true";
@@ -1044,7 +1041,9 @@ async function forward(req: Request, path: string[]) {
     demoFallbackAllowed: allowDemoFallback,
     requireScopedAdminAuth,
   });
-  const dashboardSession = await getDashboardSession().catch(() => null);
+  const credential = await getDashboardSessionCredential({ persistRotation: true }).catch(() => null);
+  const dashboardSession = credential?.session || null;
+  const demoSession = Boolean(dashboardSession?.isDemo) || isDemoSession(req);
   const scopedRole = demoSession ? "readonly_demo" : dashboardSession?.role ? dashboardRoleToScope(dashboardSession.role) : null;
   const allowDemoFallbackForRequest = policy.allowDemoFallback || scopedRole === "readonly_demo" || (demoSession && !isProduction);
 
@@ -1175,8 +1174,8 @@ async function forward(req: Request, path: string[]) {
     return NextResponse.json(annotatePayload({ ok: false, reason }, "production"), { status: 502 });
   };
 
-  if (!hasAdminKey && !scopedRole && (!demoSession || !allowDemoFallbackForRequest)) {
-    return unavailable("ADMIN_API_KEY missing. Real tenant data is disabled until admin API auth is configured.");
+  if (!credential?.bearerToken && (!demoSession || !allowDemoFallbackForRequest)) {
+    return unavailable("A validated dashboard session is required. Real tenant data is disabled.");
   }
 
   if (requireScopedAdminAuth && !scopedRole) {
@@ -1199,12 +1198,7 @@ async function forward(req: Request, path: string[]) {
       method: req.method,
       headers: {
         "Content-Type": "application/json",
-        ...(hasAdminKey ? { Authorization: `Bearer ${process.env.ADMIN_API_KEY || ""}` } : {}),
-        ...(scopedRole ? { "x-nexid-admin-scope": scopedRole } : {}),
-        ...(dashboardSession?.tenantSlug ? { "x-nexid-tenant-slug": dashboardSession.tenantSlug } : {}),
-        ...(dashboardSession?.email ? { "x-nexid-actor": dashboardSession.email } : {}),
-        ...(dashboardSession?.id ? { "x-nexid-actor-id": dashboardSession.id } : {}),
-        ...(dashboardSession?.permissions?.length ? { "x-nexid-permissions": dashboardSession.permissions.join(",") } : {}),
+        Authorization: `Bearer ${credential?.bearerToken || ""}`,
       },
       body,
       cache: "no-store",
@@ -1214,7 +1208,7 @@ async function forward(req: Request, path: string[]) {
   }
 
   if (response.status === 401) {
-    return unavailable("Unauthorized admin API key.");
+    return unavailable("Dashboard session is no longer authorized.");
   }
 
   if (response.status >= 500 && criticalGet) {

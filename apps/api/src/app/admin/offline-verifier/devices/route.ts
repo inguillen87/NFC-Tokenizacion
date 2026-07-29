@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminTenantScope } from "../../../../lib/auth";
+import { checkAdmin, getAdminActor, getAdminTenantScope } from "../../../../lib/auth";
 import { sql } from "../../../../lib/db";
 import { json } from "../../../../lib/http";
 import { logAuditEvent } from "../../../../lib/audit-logger";
@@ -16,16 +16,6 @@ function firstString(...values: unknown[]) {
   return "";
 }
 
-function safeActor(req: Request) {
-  return firstString(
-    req.headers.get("x-nexid-actor"),
-    req.headers.get("x-nexid-actor-id"),
-    req.headers.get("x-dashboard-user"),
-    req.headers.get("x-forwarded-user"),
-    "unknown_admin",
-  );
-}
-
 async function resolveTenant(input: string) {
   const normalized = input.trim();
   if (!normalized) return null;
@@ -36,7 +26,7 @@ async function resolveTenant(input: string) {
 }
 
 export async function GET(req: Request) {
-  const auth = checkAdmin(req, ["super_admin", "tenant_admin", "security_operator"]);
+  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
   if (auth) return auth;
   await ensureSupplierOpsSchema();
 
@@ -76,7 +66,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = checkAdmin(req, ["super_admin", "tenant_admin", "security_operator"]);
+  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
   if (auth) return auth;
   await ensureSupplierOpsSchema();
 
@@ -106,7 +96,7 @@ export async function POST(req: Request) {
   const metadata = {
     app_version: firstString(body.app_version, body.appVersion) || null,
     platform: firstString(body.platform) || null,
-    enrolled_by: safeActor(req),
+    enrolled_by: getAdminActor(req).email,
   };
 
   const rows = await sql/*sql*/`
@@ -138,7 +128,7 @@ export async function POST(req: Request) {
       device_type: device.device_type,
       device_fingerprint: device.device_fingerprint,
       operator_ref: device.operator_ref,
-      enrolled_by: safeActor(req),
+      enrolled_by: getAdminActor(req).email,
     },
     userAgent: req.headers.get("user-agent"),
     requestId: req.headers.get("x-request-id"),

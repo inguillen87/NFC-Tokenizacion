@@ -4,11 +4,11 @@ import { hasPermission, resolveSession } from "./iam";
 import { ensureEnterpriseIamSchema } from "./commercial-runtime-schema";
 import { getRequestMeta } from "./request-meta";
 
-export async function requireApiSession(req: Request, permission?: string) {
+export async function requireApiSession(req: Request, permission?: string, options: { rotate?: boolean } = {}) {
   const auth = req.headers.get("authorization") || "";
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
   await ensureEnterpriseIamSchema();
-  const session = await resolveSession(sql as any, token);
+  const session = await resolveSession(sql as any, token, options);
   if (!session) return { error: json({ ok: false, reason: "unauthorized" }, 401), session: null, meta: getRequestMeta(req), token } as const;
   if (!hasPermission(session, permission)) return { error: json({ ok: false, reason: "forbidden" }, 403), session, meta: getRequestMeta(req), token } as const;
   return { error: null, session, meta: getRequestMeta(req), token } as const;

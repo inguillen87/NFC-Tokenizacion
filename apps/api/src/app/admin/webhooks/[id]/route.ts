@@ -36,7 +36,7 @@ async function tenantScopeId(req: Request) {
 }
 
 export async function PATCH(req: Request, context: { params: Promise<{ id: string }> }) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
   const rateLimited = await enforceCriticalRateLimit(req, {
     rateClass: "webhook",
@@ -132,7 +132,7 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 }
 
 export async function DELETE(req: Request, context: { params: Promise<{ id: string }> }) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
   const rateLimited = await enforceCriticalRateLimit(req, {
     rateClass: "webhook",

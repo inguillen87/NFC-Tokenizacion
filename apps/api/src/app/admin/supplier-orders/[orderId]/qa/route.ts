@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminTenantScope } from "../../../../../lib/auth";
+import { checkAdmin, getAdminActor, getAdminTenantScope } from "../../../../../lib/auth";
 import { json } from "../../../../../lib/http";
 import { sql } from "../../../../../lib/db";
 import { logAuditEvent } from "../../../../../lib/audit-logger";
@@ -13,15 +13,8 @@ function safeString(value: unknown) {
   return String(value || "").trim();
 }
 
-function safeActor(req: Request) {
-  return safeString(req.headers.get("x-nexid-actor"))
-    || safeString(req.headers.get("x-dashboard-user"))
-    || safeString(req.headers.get("x-forwarded-user"))
-    || "admin";
-}
-
 export async function POST(req: Request, { params }: { params: Promise<{ orderId: string }> }) {
-  const auth = checkAdmin(req, ["super_admin", "tenant_admin"]);
+  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
   if (auth) return auth;
   await ensureSupplierOpsSchema();
 
@@ -116,7 +109,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
   const sampleUrlHashes = evidenceGate.ok ? evidenceGate.sampleUrlHashes ?? [] : [];
   const notes = safeString(body.notes) || null;
   const status = passed ? "passed" : "failed";
-  const actor = safeActor(req);
+  const actor = getAdminActor(req).email;
   const evidence = {
     sample_url_hashes: sampleUrlHashes,
     replay_checked: replayChecked,

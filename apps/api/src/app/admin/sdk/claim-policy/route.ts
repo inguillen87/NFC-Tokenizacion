@@ -47,7 +47,7 @@ async function resolveBatch(req: Request, bid: string, tenant?: string) {
 }
 
 export async function POST(req: Request) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
   await ensureSdkSchema();
 

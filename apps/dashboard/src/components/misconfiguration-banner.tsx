@@ -1,4 +1,4 @@
-const REQUIRED_ENV_VARS = ["NEXT_PUBLIC_API_BASE_URL", "ADMIN_API_KEY"] as const;
+const REQUIRED_ENV_VARS = ["NEXT_PUBLIC_API_BASE_URL", "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "CLERK_SECRET_KEY"] as const;
 
 function missingVars() {
   return REQUIRED_ENV_VARS.filter((key) => !process.env[key]);

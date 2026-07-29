@@ -4,12 +4,18 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { Badge } from "@product/ui";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { DemoOpsMap } from "./demo-ops-map";
-import { mergeRealtimeEvents, sortRealtimeEvents, type TenantTapRealtimeEvent } from "../lib/realtime-feed";
+import {
+  classifyRealtimeVerdict,
+  isRealtimeRisk,
+  mergeRealtimeEvents,
+  sortRealtimeEvents,
+  type TenantTapRealtimeEvent,
+} from "../lib/realtime-feed";
+import { strictCoordinatePair } from "../lib/geo-coordinates";
 import { exportToCsv } from "../lib/export-utils";
 import { Maximize2, Minimize2, Clock, Terminal, Volume2, VolumeX, Activity, Globe, MapPin, Radio, Target } from "lucide-react";
 
 type MapMode = "tenant" | "global";
-type RealtimeVerdictBucket = "valid" | "duplicate_replay" | "tamper" | "invalid" | "unknown";
 
 type Labels = {
   liveFeed: string;
@@ -18,44 +24,9 @@ type Labels = {
   mapSubtitle: string;
 };
 
-const KNOWN_CITY_COORDS: Array<{ match: RegExp; country: string; lat: number; lng: number }> = [
-  { match: /san\s*martin/i, country: "AR", lat: -34.5744, lng: -58.5358 },
-  { match: /buenos\s*aires|caba/i, country: "AR", lat: -34.6037, lng: -58.3816 },
-  { match: /mendoza|valle\s+de\s+uco|tunuyan|tupungato|lujan/i, country: "AR", lat: -32.8895, lng: -68.8458 },
-  { match: /cordoba/i, country: "AR", lat: -31.4201, lng: -64.1888 },
-  { match: /rosario/i, country: "AR", lat: -32.9442, lng: -60.6505 },
-  { match: /santa\s*fe/i, country: "AR", lat: -31.6107, lng: -60.6973 },
-  { match: /sao\s*paulo/i, country: "BR", lat: -23.5558, lng: -46.6396 },
-  { match: /santiago/i, country: "CL", lat: -33.4489, lng: -70.6693 },
-  { match: /montevideo/i, country: "UY", lat: -34.9011, lng: -56.1645 },
-  { match: /lima/i, country: "PE", lat: -12.0464, lng: -77.0428 },
-  { match: /bogota/i, country: "CO", lat: 4.711, lng: -74.0721 },
-  { match: /mexico|ciudad\s+de\s+mexico|cdmx/i, country: "MX", lat: 19.4326, lng: -99.1332 },
-  { match: /ashburn/i, country: "US", lat: 39.0438, lng: -77.4874 },
-];
-
-function cityFallback(city: string, country: string) {
-  const normalizedCountry = country.toUpperCase();
-  return KNOWN_CITY_COORDS.find((item) => item.country === normalizedCountry && item.match.test(city)) || null;
-}
-
-function classifyRealtimeVerdict(value?: string | null): RealtimeVerdictBucket {
-  const verdict = String(value || "").trim().toUpperCase();
-  if (["VALID", "TAP_VALID", "CLAIMED", "REDEEMED", "CHECK_IN"].includes(verdict)) return "valid";
-  if (verdict.includes("REPLAY") || verdict.includes("DUPLICATE")) return "duplicate_replay";
-  if (verdict.includes("TAMPER")) return "tamper";
-  if (!verdict || ["UNKNOWN", "NOT_REGISTERED", "NOT_ACTIVE"].includes(verdict)) return "unknown";
-  if (verdict.includes("INVALID") || verdict === "REVOKED" || verdict.startsWith("BLOCKED_")) return "invalid";
-  return "unknown";
-}
-
-function isRealtimeRisk(value?: string | null) {
-  return ["duplicate_replay", "tamper", "invalid"].includes(classifyRealtimeVerdict(value));
-}
-
 function isClientReportedGps(value?: string | null) {
   const source = String(value || "").trim().toLowerCase();
-  const approximate = source.includes("city") || source.includes("centroid") || source.includes("ip_") || source.includes("synthetic") || source.includes("fallback");
+  const approximate = source.includes("approximate") || source.includes("city") || source.includes("centroid") || source.includes("ip_") || source.includes("synthetic") || source.includes("fallback");
   return !approximate && source.includes("gps");
 }
 
@@ -68,7 +39,7 @@ function locationSourceLabel(row: TenantTapRealtimeEvent) {
   }
   if (source === "ip_geo") return "IP aproximada";
   if (source.includes("error") || source.includes("denied")) return "GPS no autorizado";
-  return Number.isFinite(Number(row.lat)) && Number.isFinite(Number(row.lng)) ? "Coordenada reportada" : "Ciudad estimada";
+  return strictCoordinatePair(row.lat, row.lng) ? "Coordenada reportada" : "Sin coordenadas reportadas";
 }
 
 function deviceSummary(row: TenantTapRealtimeEvent) {
@@ -83,9 +54,9 @@ function deviceSummary(row: TenantTapRealtimeEvent) {
 function toMapPoint(row: TenantTapRealtimeEvent) {
   const city = String(row.city || "Unknown");
   const country = String(row.country || "--");
-  const fallback = cityFallback(city, country);
-  const lat = Number.isFinite(Number(row.lat)) ? Number(row.lat) : fallback?.lat ?? Number.NaN;
-  const lng = Number.isFinite(Number(row.lng)) ? Number(row.lng) : fallback?.lng ?? Number.NaN;
+  const coordinate = strictCoordinatePair(row.lat, row.lng);
+  const lat = coordinate?.lat ?? Number.NaN;
+  const lng = coordinate?.lng ?? Number.NaN;
   const result = String(row.verdict || "UNKNOWN").toUpperCase();
   return {
     city,
@@ -93,7 +64,7 @@ function toMapPoint(row: TenantTapRealtimeEvent) {
     lat,
     lng,
     scans: 1,
-    risk: isRealtimeRisk(result) ? 1 : 0,
+    risk: isRealtimeRisk(result, row.reason) ? 1 : 0,
     status: result,
     source: String(row.source || "production"),
     lastSeen: String(row.occurredAt || ""),
@@ -194,8 +165,8 @@ function buildCityHotspots(rows: TenantTapRealtimeEvent[]) {
       device: deviceSummary(row),
     };
     current.taps += 1;
-    if (isRealtimeRisk(row.verdict)) current.risk += 1;
-    if (classifyRealtimeVerdict(row.verdict) === "unknown") current.unknown += 1;
+    if (isRealtimeRisk(row.verdict, row.reason)) current.risk += 1;
+    if (classifyRealtimeVerdict(row.verdict, row.reason) === "unknown") current.unknown += 1;
     if (isClientReportedGps(row.locationSource)) current.gps += 1;
     if (lastSeenMs >= current.lastSeenMs) {
       current.lastSeen = String(row.occurredAt || current.lastSeen);
@@ -279,9 +250,9 @@ export function RealtimeOpsMonitor({
     setAiAnalyzing(true);
     setTimeout(() => {
       const total = visible.length;
-      const valid = visible.filter((item) => classifyRealtimeVerdict(item.verdict) === "valid").length;
-      const risk = visible.filter((item) => isRealtimeRisk(item.verdict)).length;
-      const unknown = visible.filter((item) => classifyRealtimeVerdict(item.verdict) === "unknown").length;
+      const valid = visible.filter((item) => classifyRealtimeVerdict(item.verdict, item.reason) === "valid").length;
+      const risk = visible.filter((item) => isRealtimeRisk(item.verdict, item.reason)).length;
+      const unknown = visible.filter((item) => classifyRealtimeVerdict(item.verdict, item.reason) === "unknown").length;
       const ratio = total > 0 ? (risk / total) * 100 : 0;
       const uids = new Set(visible.map((item) => item.uidMasked)).size;
       const cities = new Set(visible.map((item) => item.city || "Unknown")).size;
@@ -325,13 +296,13 @@ Acción recomendada: ${recommendation}
       Zona_Horaria: e.timezoneLabel || e.timezone || "N/A",
       Fecha_UTC_Auditoria: e.occurredAtUtc || e.occurredAt || "N/A",
       Veredicto: String(e.verdict || "").toUpperCase(),
-      Clasificacion_nexID: classifyRealtimeVerdict(e.verdict),
-      Riesgo_Explicito: isRealtimeRisk(e.verdict) ? "SI" : "NO",
+      Clasificacion_nexID: classifyRealtimeVerdict(e.verdict, e.reason),
+      Riesgo_Explicito: isRealtimeRisk(e.verdict, e.reason) ? "SI" : "NO",
       Riesgo_Reportado_Upstream: String(e.riskLevel || "N/A").toUpperCase(),
       Ciudad: e.city || "Geolocalización pendiente",
       Pais: e.country || "--",
-      Latitud: e.lat || "",
-      Longitud: e.lng || "",
+      Latitud: e.lat ?? "",
+      Longitud: e.lng ?? "",
       Fuente_Ubicacion: locationSourceLabel(e),
       Precision_Metros: e.locationAccuracyM || "",
       Dispositivo: e.deviceLabel || "N/A",
@@ -434,10 +405,10 @@ Acción recomendada: ${recommendation}
               setLastUpdateAt(new Date().toISOString());
 
               // Audio chime
-              const verdictBucket = classifyRealtimeVerdict(payload.verdict);
+              const verdictBucket = classifyRealtimeVerdict(payload.verdict, payload.reason);
               if (audioEnabledRef.current) {
                 if (verdictBucket === "valid") playPing("success");
-                else if (isRealtimeRisk(payload.verdict)) playPing("warning");
+                else if (isRealtimeRisk(payload.verdict, payload.reason)) playPing("warning");
               }
 
               return incomingId;
@@ -475,9 +446,9 @@ Acción recomendada: ${recommendation}
     [visibleEvents]
   );
   const liveMetrics = useMemo(() => {
-    const valid = visibleEvents.filter((item) => classifyRealtimeVerdict(item.verdict) === "valid").length;
-    const risk = visibleEvents.filter((item) => isRealtimeRisk(item.verdict)).length;
-    const unknown = visibleEvents.filter((item) => classifyRealtimeVerdict(item.verdict) === "unknown").length;
+    const valid = visibleEvents.filter((item) => classifyRealtimeVerdict(item.verdict, item.reason) === "valid").length;
+    const risk = visibleEvents.filter((item) => isRealtimeRisk(item.verdict, item.reason)).length;
+    const unknown = visibleEvents.filter((item) => classifyRealtimeVerdict(item.verdict, item.reason) === "unknown").length;
     const uniqueTags = new Set(visibleEvents.map((item) => String(item.uidMasked || ""))).size;
     const uniqueCities = new Set(visibleEvents.map((item) => String(item.city || "Unknown"))).size;
     const gps = visibleEvents.filter((item) => isClientReportedGps(item.locationSource)).length;
@@ -499,8 +470,8 @@ Acción recomendada: ${recommendation}
       const tenant = String(event.tenantSlug || "unknown");
       const current = byTenant.get(tenant) || { taps: 0, risk: 0, unknown: 0 };
       current.taps += 1;
-      if (isRealtimeRisk(event.verdict)) current.risk += 1;
-      if (classifyRealtimeVerdict(event.verdict) === "unknown") current.unknown += 1;
+      if (isRealtimeRisk(event.verdict, event.reason)) current.risk += 1;
+      if (classifyRealtimeVerdict(event.verdict, event.reason) === "unknown") current.unknown += 1;
       byTenant.set(tenant, current);
     });
     const topTenants = [...byTenant.entries()]
@@ -557,7 +528,7 @@ Acción recomendada: ${recommendation}
       const bucketIndex = 11 - diff;
       if (bucketIndex < 0 || bucketIndex > 11) return;
       buckets[bucketIndex].taps += 1;
-      if (isRealtimeRisk(event.verdict)) buckets[bucketIndex].risk += 1;
+      if (isRealtimeRisk(event.verdict, event.reason)) buckets[bucketIndex].risk += 1;
     });
     return buckets;
   }, [visibleEvents, hydrated]);
@@ -567,8 +538,8 @@ Acción recomendada: ${recommendation}
     const gps = liveMetrics.gps;
     const mobile = liveMetrics.mobile;
     const actionable = visibleEvents.filter((event) => {
-      const hasLocation = Number.isFinite(Number(event.lat)) && Number.isFinite(Number(event.lng));
-      return classifyRealtimeVerdict(event.verdict) === "valid" && hasLocation && Boolean(event.uidMasked);
+      const hasLocation = strictCoordinatePair(event.lat, event.lng) != null;
+      return classifyRealtimeVerdict(event.verdict, event.reason) === "valid" && hasLocation && Boolean(event.uidMasked);
     }).length;
     const max = Math.max(taps, 1);
     return [
@@ -580,7 +551,7 @@ Acción recomendada: ${recommendation}
     ].map((stage) => ({ ...stage, pct: Math.round((stage.value / max) * 100) }));
   }, [liveMetrics.gps, liveMetrics.mobile, liveMetrics.valid, visibleEvents]);
   const riskEvents = useMemo(
-    () => visibleEvents.filter((event) => isRealtimeRisk(event.verdict)).slice(0, 4),
+    () => visibleEvents.filter((event) => isRealtimeRisk(event.verdict, event.reason)).slice(0, 4),
     [visibleEvents],
   );
   const latestTap = visibleEvents[0] || null;
@@ -793,8 +764,8 @@ Acción recomendada: ${recommendation}
               <div className="flex-1 overflow-y-auto space-y-2.5 text-xs">
                 {visibleEvents.map((event) => {
                   const result = String(event.verdict || "UNKNOWN").toUpperCase();
-                  const verdictBucket = classifyRealtimeVerdict(result);
-                  const isRisk = isRealtimeRisk(result);
+                  const verdictBucket = classifyRealtimeVerdict(result, event.reason);
+                  const isRisk = isRealtimeRisk(result, event.reason);
                   const isUnknown = verdictBucket === "unknown";
                   const eventId = String(event.eventId || "");
                   const isLatest = latestEventId && eventId === latestEventId;
@@ -1052,7 +1023,7 @@ Acción recomendada: ${recommendation}
             <div>
               <p className="text-sm font-black uppercase tracking-[0.16em] text-cyan-100">Mapa de eventos reportados</p>
               <p className="mt-1 text-xs text-slate-400">
-                Usa coordenadas del evento y fallback de ciudad solo cuando falta GPS.
+                Solo grafica pares lat/lng reportados y válidos; la ciudad queda como etiqueta descriptiva.
               </p>
             </div>
             {latestTap ? (
@@ -1108,8 +1079,8 @@ Acción recomendada: ${recommendation}
           <div className="mt-3 space-y-2">
             {(riskEvents.length ? riskEvents : visibleEvents.slice(0, 5)).map((event) => {
               const result = String(event.verdict || "UNKNOWN").toUpperCase();
-              const verdictBucket = classifyRealtimeVerdict(result);
-              const risk = isRealtimeRisk(result);
+              const verdictBucket = classifyRealtimeVerdict(result, event.reason);
+              const risk = isRealtimeRisk(result, event.reason);
               const unknown = verdictBucket === "unknown";
               return (
                 <div key={String(event.eventId || `${event.uidMasked}-${event.occurredAt}`)} className={`rounded-xl border px-3 py-2 text-xs ${risk ? "border-rose-300/30 bg-rose-500/10" : unknown ? "border-amber-300/25 bg-amber-500/10" : "border-white/10 bg-slate-900/55"}`}>

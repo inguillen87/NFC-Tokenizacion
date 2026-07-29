@@ -6,6 +6,7 @@ import { getDashboardI18n } from "../../../../lib/locale";
 import { requireDashboardSession } from "../../../../lib/session";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../../lib/admin-page-access";
 import { ExportPackForm } from "./export-form";
+import { PackagingGovernancePanel } from "./packaging-governance-panel";
 
 async function getOrderDetails(context: AdminPageContext, orderId: string) {
   try {
@@ -18,6 +19,16 @@ async function getOrderDetails(context: AdminPageContext, orderId: string) {
     const orderTenantSlug = String(order.tenant_slug || "").trim().toLowerCase();
     if (context.tenantSlug && orderTenantSlug !== context.tenantSlug) return null;
     return order;
+  } catch {
+    return null;
+  }
+}
+
+async function getPackagingGovernance(context: AdminPageContext, orderId: string) {
+  try {
+    const response = await fetchAdminPage(context, `supplier-orders/${encodeURIComponent(orderId)}/packaging`);
+    if (!response.ok) return null;
+    return await response.json();
   } catch {
     return null;
   }
@@ -37,6 +48,10 @@ export default async function SupplierOrderDetailPage({ params }: { params: Prom
       </main>
     );
   }
+
+  const packaging = await getPackagingGovernance(adminContext, orderId);
+  const packagingStatus = String(packaging?.governance?.status || order.packaging_governance_status || "legacy_unverified");
+  const packagingApproved = packagingStatus === "approved";
 
   const subBatches = order.sub_batches || [];
 
@@ -103,9 +118,15 @@ export default async function SupplierOrderDetailPage({ params }: { params: Prom
             Generates the encrypted zip containing K_META_BATCH and K_FILE_BATCH along with the PDF instructions for the factory.
             <strong> Exporting is atomic and can only be done once.</strong>
           </p>
-          <ExportPackForm action={exportAction} />
+          <ExportPackForm
+            action={exportAction}
+            disabled={!packagingApproved}
+            disabledReason={`Factory export is blocked while packaging is ${packagingStatus}. Complete the industrial specification, physical trials and approval first.`}
+          />
         </Card>
       </div>
+
+      <PackagingGovernancePanel orderId={orderId} initialData={packaging} />
 
       <DataTable
         title="Sub-batches"

@@ -7,7 +7,7 @@ import { sql } from "../../../../lib/db";
 import { normalizeAlertSeverity } from "../../../../lib/alerts-query";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
   const { forcedTenantSlug } = getAdminTenantScope(req);
   const { id } = await params;

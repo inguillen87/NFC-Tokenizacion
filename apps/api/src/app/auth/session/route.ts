@@ -8,7 +8,8 @@ import { ensureEnterpriseIamSchema } from '../../../lib/commercial-runtime-schem
 
 export async function GET(req: Request) {
   await ensureEnterpriseIamSchema();
-  const { error, session } = await requireApiSession(req);
+  const rotate = req.headers.get("x-nexid-session-rotation") === "rotate";
+  const { error, session } = await requireApiSession(req, undefined, { rotate });
   if (error || !session) return error;
   return json({ ok: true, session, rotatedSessionToken: session.rotatedCookieValue });
 }

@@ -20,6 +20,7 @@ import { createSunFreshHandoffToken } from '../../lib/sun-fresh-handoff';
 import { createPublicCertificateShareToken } from '../../lib/public-certificate-share';
 import { eventShareUid } from '../../lib/public-cta-target';
 import { recordTapEvent } from '../../lib/tap-event-service';
+import { normalizeConsentedApproximateLocation, normalizeCoordinatePair, redactSensitiveQueryValues } from '../../lib/approximate-location';
 import { buildSunSensorEvidence } from '../../lib/sun-sensor-evidence';
 import { resolveEventLocalTime } from '@product/core';
 import crypto from "node:crypto";
@@ -585,12 +586,6 @@ function firstParam(url: URL, keys: string[], fallback = "") {
   return fallback;
 }
 
-function parseCoordinate(value: string | null, fallback: number) {
-  if (!value?.trim()) return fallback;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
-
 function tapTimeContext(input: {
   at?: string | null;
   city?: string | null;
@@ -671,9 +666,10 @@ async function logQrAttempt(input: {
   country: string | null;
   lat: number | null;
   lng: number | null;
-  rawQuery: Record<string, string>;
+  rawQuery: Record<string, unknown>;
   meta: Record<string, unknown>;
 }) {
+  const persistedRawQuery = redactSensitiveQueryValues(input.rawQuery) || {};
   await sql/*sql*/`
     CREATE TABLE IF NOT EXISTS sun_scan_attempts (
       id bigserial PRIMARY KEY,
@@ -706,7 +702,7 @@ async function logQrAttempt(input: {
       ${input.lat},
       ${input.lng},
       'real',
-      ${JSON.stringify(input.rawQuery)}::jsonb,
+      ${JSON.stringify(persistedRawQuery)}::jsonb,
       ${JSON.stringify(input.meta)}::jsonb
     )
   `;
@@ -720,10 +716,10 @@ async function handleQrScan(input: {
   userAgent: string;
   geoCity: string | null;
   geoCountry: string | null;
-  geoLat: number;
-  geoLng: number;
+  geoLat: number | null;
+  geoLng: number | null;
 }) {
-  const rawQuery = Object.fromEntries(input.url.searchParams.entries());
+  const rawQuery = redactSensitiveQueryValues(Object.fromEntries(input.url.searchParams.entries())) || {};
   const explicitDemo = input.url.searchParams.get("demo") === "1";
   const tenantSlug = firstParam(
     input.url,
@@ -744,14 +740,21 @@ async function handleQrScan(input: {
       ["vintage", firstParam(input.url, ["vintage"])],
     ].filter((entry): entry is [string, string] => Boolean(entry[1])),
   );
-  const clientLat = parseCoordinate(input.url.searchParams.get("lat") || input.url.searchParams.get("gps_lat"), Number.NaN);
-  const clientLng = parseCoordinate(input.url.searchParams.get("lng") || input.url.searchParams.get("gps_lng"), Number.NaN);
-  const hasClientGeo = Number.isFinite(clientLat) && Number.isFinite(clientLng);
-  const hasEdgeGeo = Number.isFinite(input.geoLat) && Number.isFinite(input.geoLng);
-  const resolvedLat = hasClientGeo ? clientLat : hasEdgeGeo ? input.geoLat : null;
-  const resolvedLng = hasClientGeo ? clientLng : hasEdgeGeo ? input.geoLng : null;
+  const locationConsent = ["1", "true", "yes"].includes(firstParam(input.url, ["locationConsent", "location_consent"]).toLowerCase());
+  const clientLocation = normalizeConsentedApproximateLocation({
+    consent: locationConsent,
+    precision: firstParam(input.url, ["locationPrecision", "location_precision", "precision"]),
+    lat: firstParam(input.url, ["lat", "latitude", "gps_lat"]),
+    lng: firstParam(input.url, ["lng", "longitude", "gps_lng"]),
+    accuracy: firstParam(input.url, ["accuracy", "gps_accuracy"]),
+  });
+  const edgeCoordinate = normalizeCoordinatePair(input.geoLat, input.geoLng);
+  const hasClientGeo = clientLocation.accepted;
+  const hasEdgeGeo = edgeCoordinate !== null;
+  const resolvedLat = hasClientGeo ? clientLocation.lat : edgeCoordinate?.lat ?? null;
+  const resolvedLng = hasClientGeo ? clientLocation.lng : edgeCoordinate?.lng ?? null;
   const geoPrecision = hasClientGeo ? "browser_rounded" : hasEdgeGeo ? "ip" : "none";
-  const locationSource = hasClientGeo ? "client_reported" : hasEdgeGeo ? "edge_ip_approx" : "none";
+  const locationSource = hasClientGeo ? "browser_gps_approximate_consent" : hasEdgeGeo ? "edge_ip_approx" : "none";
   const deviceMeta = {
     userAgent: input.userAgent,
     platform: platformFromUserAgent(input.userAgent),
@@ -765,7 +768,16 @@ async function handleQrScan(input: {
     channel: "qr",
     qr: true,
     declared_input: declaredInput,
-    geo_evidence: { source: locationSource, verified: false },
+    geo_evidence: {
+      source: locationSource,
+      verified: false,
+      consent: hasClientGeo,
+      precision: hasClientGeo ? "approximate" : hasEdgeGeo ? "ip_approximate" : "none",
+      accuracy_m: hasClientGeo ? clientLocation.accuracy : null,
+      client_location_reason: clientLocation.reason,
+      raw_query_location_redacted: true,
+      raw_query_sun_dynamic_redacted: true,
+    },
     sun_context: { client: deviceMeta },
   };
 
@@ -1174,7 +1186,6 @@ function buildPublicContract(params: {
   result: SunResult['body'];
   passport: PassportSnapshot;
   timeline: TimelineEvent[];
-  raw: { picc_data: string; enc: string; cmac: string };
   tap: { userAgent: string; city: string | null; country: string | null; lat: number | null; lng: number | null };
 }) {
   const status = params.result.result || (params.result.ok ?'VALID' : 'INVALID');
@@ -2575,8 +2586,12 @@ export async function GET(req: Request): Promise<Response> {
   const ip = meta.ip;
   const geoCity = safeDecode(req.headers.get('x-vercel-ip-city'));
   const geoCountry = req.headers.get('x-vercel-ip-country') || null;
-  const geoLat = Number(req.headers.get('x-vercel-ip-latitude') || '');
-  const geoLng = Number(req.headers.get('x-vercel-ip-longitude') || '');
+  const edgeCoordinate = normalizeCoordinatePair(
+    req.headers.get('x-vercel-ip-latitude'),
+    req.headers.get('x-vercel-ip-longitude'),
+  );
+  const geoLat = edgeCoordinate?.lat ?? null;
+  const geoLng = edgeCoordinate?.lng ?? null;
   const locale = resolveSunLocale(url, geoCountry, req.headers.get('accept-language'));
 
   const payloadFingerprint = crypto
@@ -2624,8 +2639,8 @@ export async function GET(req: Request): Promise<Response> {
       userAgent: ua,
       city: geoCity,
       countryCode: geoCountry,
-      lat: Number.isFinite(geoLat) ?geoLat : null,
-      lng: Number.isFinite(geoLng) ?geoLng : null,
+      lat: geoLat,
+      lng: geoLng,
       source: 'real' as const,
       meta: {
         trace_id: traceId,
@@ -2707,13 +2722,12 @@ export async function GET(req: Request): Promise<Response> {
     result: result.body,
     passport,
     timeline: mergedTimeline,
-    raw: { picc_data, enc, cmac },
     tap: {
       userAgent: ua,
       city: geoCity,
       country: geoCountry,
-      lat: Number.isFinite(geoLat) ?geoLat : null,
-      lng: Number.isFinite(geoLng) ?geoLng : null,
+      lat: geoLat,
+      lng: geoLng,
     },
   });
   (contract as Record<string, unknown>).trace_id = traceId;
@@ -2726,8 +2740,8 @@ export async function GET(req: Request): Promise<Response> {
         city: geoCity || "Unknown",
         country: geoCountry || "--",
         device: `${contract.tapContext.os} · ${contract.tapContext.browser}`,
-        lat: Number.isFinite(geoLat) ?geoLat : null,
-        lng: Number.isFinite(geoLng) ?geoLng : null,
+        lat: geoLat,
+        lng: geoLng,
         stage: "current_tap",
       },
     ];
@@ -2816,11 +2830,15 @@ export async function GET(req: Request): Promise<Response> {
   }
 
   if (result.body.ok) {
-    void dispatchValidScanWebhook({ event: 'tag.scan.valid', bid, uid: result.body.uid, counter: result.body.ctr, ip, userAgent: ua, geoCity, geoCountry, geoLat: Number.isFinite(geoLat) ?geoLat : null, geoLng: Number.isFinite(geoLng) ?geoLng : null, ts: new Date().toISOString() });
+    void dispatchValidScanWebhook({ event: 'tag.scan.valid', bid, uid: result.body.uid, counter: result.body.ctr, ip, userAgent: ua, geoCity, geoCountry, geoLat, geoLng, ts: new Date().toISOString() });
   }
 
   const maskedUid = uid ?`${String(uid).slice(0, 4)}***${String(uid).slice(-4)}` : null;
   const verdict = String(contract.status.code || result.body.result || "UNKNOWN");
+  const diagnosticRequest = {
+    ...(redactSensitiveQueryValues({ bid, picc_data, enc, cmac }) || { bid }),
+    payload_fingerprint: payloadFingerprint,
+  };
   const diagnosticId = await insertSunDiagnostic({
     trace_id: traceId,
     tool_type: "sun_scan",
@@ -2837,7 +2855,7 @@ export async function GET(req: Request): Promise<Response> {
     tamper_risk: Boolean((result.body as { tamper_risk?: boolean }).tamper_risk),
     tagtamper_config_detected: Boolean((result.body as { tag_tamper_config_detected?: boolean }).tag_tamper_config_detected),
     enc_plain_status_byte: (result.body as { enc_plain_status_byte?: string }).enc_plain_status_byte || null,
-    request_json: { bid, picc_data, enc, cmac },
+    request_json: diagnosticRequest,
     result_json: { contract, raw_result: result.body },
     notes: [`trace:${traceId}`],
   });

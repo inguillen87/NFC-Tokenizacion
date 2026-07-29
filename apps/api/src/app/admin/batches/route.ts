@@ -8,7 +8,7 @@ import { ensureCarrierProfileSchema } from "../../../lib/commercial-runtime-sche
 import { effectiveTenantFilter } from "../../../lib/admin-tenant-filter";
 
 export async function GET(req: Request) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
   await ensureCarrierProfileSchema();
 
@@ -161,7 +161,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
   return json({
     ok: false,

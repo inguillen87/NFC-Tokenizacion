@@ -10,7 +10,7 @@ const DEMO_BATCH_ID = 'DEMO-2026-02';
 const RESET_CONFIRMATION = `RESET ${DEMO_TENANT_SLUG}/${DEMO_BATCH_ID}`;
 
 export async function POST(req: Request) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
 
   const demoEnabled = String(process.env.DEMO_MODE || '').toLowerCase() === 'true';

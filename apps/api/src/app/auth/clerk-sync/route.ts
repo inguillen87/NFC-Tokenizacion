@@ -10,17 +10,17 @@ import { ensureSunTenantProfilesSchema } from '../../../lib/sun-tenant-profile-s
 import { isClerkSuperAdminEmailAllowed, redactAllowlistForLogs } from '../../../lib/clerk-super-admin-allowlist';
 import { RequestBodyTooLargeError, readBoundedJsonBody } from '../../../lib/bounded-request-body';
 import { enforceCriticalRateLimit } from '../../../lib/critical-rate-limit';
+import { resolveVerifiedClerkAdminIdentity } from '../../../lib/clerk-admin-auth';
 
 export async function POST(req: Request) {
-  const authHeader = req.headers.get("authorization") || "";
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
-  const expected = String(process.env.ADMIN_API_KEY || "").trim();
+  const clerkAuth = await resolveVerifiedClerkAdminIdentity(req);
+  if (!clerkAuth.ok) return json({ ok: false, reason: clerkAuth.reason }, clerkAuth.status);
 
-  if (!expected || token !== expected) {
-    return json({ ok: false, reason: "unauthorized" }, 401);
-  }
-
-  const limited = await enforceCriticalRateLimit(req, { rateClass: 'auth', tenantId: 'platform', subjectId: 'clerk-sync:authenticated' });
+  const limited = await enforceCriticalRateLimit(req, {
+    rateClass: 'auth',
+    tenantId: 'platform',
+    subjectId: `clerk-sync:${clerkAuth.identity.externalUserId}`,
+  });
   if (limited) return limited;
   let body: { email?: string; fullName?: string; externalUserId?: string; };
   try {
@@ -28,14 +28,17 @@ export async function POST(req: Request) {
   } catch (error) {
     return json({ ok: false, reason: error instanceof RequestBodyTooLargeError ? 'request_body_too_large' : 'invalid_json' }, error instanceof RequestBodyTooLargeError ? 413 : 400);
   }
-  const rawEmail = String(body.email || '').trim().toLowerCase().slice(0, 320);
-  const fullName = String(body.fullName || '').trim().slice(0, 160);
-
-  if (!rawEmail) {
-    return json({ ok: false, reason: "email is required" }, 400);
+  const claimedExternalUserId = String(body.externalUserId || '').trim();
+  const claimedEmail = String(body.email || '').trim().toLowerCase();
+  if (claimedExternalUserId && claimedExternalUserId !== clerkAuth.identity.externalUserId) {
+    return json({ ok: false, reason: "clerk_identity_mismatch" }, 403);
+  }
+  if (claimedEmail && claimedEmail !== clerkAuth.identity.email) {
+    return json({ ok: false, reason: "clerk_identity_mismatch" }, 403);
   }
 
-  const email = rawEmail;
+  const email = clerkAuth.identity.email;
+  const fullName = clerkAuth.identity.fullName;
   const isSuperAdmin = isClerkSuperAdminEmailAllowed(email);
 
   if (!isSuperAdmin) {
@@ -87,21 +90,26 @@ export async function POST(req: Request) {
 
   // 3. Resolve Super Admin Membership. Clerk is only a founder/admin SSO path;
   // tenant onboarding stays behind explicit invites or controlled credentials.
-  const membershipRows = await sql`
-    SELECT id, role, tenant_id FROM memberships WHERE user_id = ${userId}::uuid LIMIT 1
+  await sql`
+    WITH identity_lock AS MATERIALIZED (
+      SELECT pg_advisory_xact_lock(hashtextextended(${userId}::text, 91731))
+    ),
+    existing_super_admin AS MATERIALIZED (
+      SELECT membership.id
+      FROM memberships membership
+      CROSS JOIN identity_lock
+      WHERE membership.user_id = ${userId}::uuid
+        AND membership.role = 'super_admin'::membership_role
+        AND membership.tenant_id IS NULL
+      ORDER BY membership.created_at ASC, membership.id ASC
+      LIMIT 1
+    )
+    INSERT INTO memberships (user_id, tenant_id, role)
+    SELECT ${userId}::uuid, NULL, 'super_admin'::membership_role
+    FROM identity_lock
+    WHERE NOT EXISTS (SELECT 1 FROM existing_super_admin)
+    ON CONFLICT DO NOTHING
   `;
-  if (membershipRows.length === 0) {
-    await sql`
-      INSERT INTO memberships (user_id, tenant_id, role)
-      VALUES (${userId}::uuid, NULL, 'super_admin'::membership_role)
-    `;
-  } else if (membershipRows[0].role !== 'super_admin' || membershipRows[0].tenant_id !== null) {
-    await sql`
-      UPDATE memberships
-      SET role = 'super_admin'::membership_role, tenant_id = NULL, updated_at = now()
-      WHERE id = ${membershipRows[0].id}::uuid
-    `;
-  }
 
   const superPermissions = ["users:manage", "tenants:write", "batches:write", "analytics:read", "events:read"];
   for (const p of superPermissions) {
@@ -119,9 +127,15 @@ export async function POST(req: Request) {
     return json({ ok: false, reason: "failed to retrieve synced user" }, 500);
   }
 
-  const userStatus = 'active'; // Clerk authenticated is active by definition
   const session = await createSession(sql as any, { user, ...meta, mfaVerified: false });
-  await auditAuthEvent(sql as any, { email, eventName: 'clerk_login', ok: true, role: user.role, ...meta, meta: { source: 'dashboard', mfaVerified: false } }).catch(() => null);
+  await auditAuthEvent(sql as any, {
+    email,
+    eventName: 'clerk_login',
+    ok: true,
+    role: user.role,
+    ...meta,
+    meta: { source: 'dashboard', mfaVerified: false, clerkUserId: clerkAuth.identity.externalUserId },
+  }).catch(() => null);
 
   return json({
     ok: true,

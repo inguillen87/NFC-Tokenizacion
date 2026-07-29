@@ -131,6 +131,7 @@ export function QREngagementSuite({
   const [optInSubmitted, setOptInSubmitted] = useState(false);
   const [submittingLead, setSubmittingLead] = useState(false);
   const [leadError, setLeadError] = useState<string | null>(null);
+  const [shareApproximateLocation, setShareApproximateLocation] = useState(false);
 
   const currentQuestion = triviaQuestions[triviaStep] || triviaQuestions[0];
   const selectedAnswer = currentQuestion ? triviaAnswers[currentQuestion.id] ?? null : null;
@@ -164,15 +165,19 @@ export function QREngagementSuite({
   });
 
   const getGps = () => new Promise<Record<string, unknown>>((resolve) => {
-    if (!navigator.geolocation) return resolve({});
+    if (!shareApproximateLocation || !navigator.geolocation) {
+      return resolve({ consent: false, precision: "none" });
+    }
     navigator.geolocation.getCurrentPosition(
       (position) => resolve({
-        lat: position.coords.latitude,
-        lng: position.coords.longitude,
-        accuracy: position.coords.accuracy,
-        source: "browser",
+        lat: Math.round(position.coords.latitude * 1_000) / 1_000,
+        lng: Math.round(position.coords.longitude * 1_000) / 1_000,
+        accuracy: Math.max(150, Math.round(position.coords.accuracy)),
+        source: "browser_gps_approximate_consent",
+        consent: true,
+        precision: "approximate",
       }),
-      () => resolve({}),
+      () => resolve({ consent: false, precision: "none" }),
       { enableHighAccuracy: false, timeout: 1800, maximumAge: 10 * 60 * 1000 },
     );
   });
@@ -439,6 +444,19 @@ export function QREngagementSuite({
       </div>
 
       <div className="p-5">
+        {(activeTab === "feedback" || activeTab === "contact") ? (
+          <label className="mb-4 flex items-start gap-2 rounded-xl border border-white/10 bg-slate-950/70 p-3 text-[11px] leading-relaxed text-slate-300">
+            <input
+              type="checkbox"
+              checked={shareApproximateLocation}
+              onChange={(event) => setShareApproximateLocation(event.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-white/20 bg-slate-900 accent-cyan-400"
+            />
+            <span>
+              Compartir ubicacion aproximada (opt-in). Se redondea antes de enviarla y nunca se guarda la coordenada exacta del dispositivo.
+            </span>
+          </label>
+        ) : null}
         {activeTab === "sommelier" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-slate-400">

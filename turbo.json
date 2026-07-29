@@ -17,8 +17,7 @@
     "DATABASE_URL_UNPOOLED",
     "POSTGRES_PASSWORD",
     "PGUSER",
-    "KMS_MASTER_KEY_HEX",
-    "ADMIN_API_KEY"
+    "KMS_MASTER_KEY_HEX"
   ],
   "tasks": {
     "build": {

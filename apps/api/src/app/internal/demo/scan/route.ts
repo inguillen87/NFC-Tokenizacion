@@ -8,6 +8,8 @@ import { sql } from '../../../../lib/db';
 import { decryptKey16 } from '../../../../lib/keys';
 import { generateSunParams } from '../../../../lib/crypto/sdm';
 import { processSunScan } from '../../../../lib/sun-service';
+import { insertSunDiagnostic } from '../../../../lib/sun-diagnostics';
+import { createSunFreshHandoffToken } from '../../../../lib/sun-fresh-handoff';
 import {
   DEMO_BATCH_BID,
   requireReservedDemoBatch,
@@ -26,7 +28,7 @@ const bodySchema = z.object({
 });
 
 export async function POST(req: Request) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
 
   const rawBody = await req.json().catch(() => ({} as Record<string, unknown>));
@@ -91,5 +93,50 @@ export async function POST(req: Request) {
     },
   });
 
-  return json({ ...result.body, source: 'demo', action: body.action }, result.status);
+  const eventId = result.body.event_id ? String(result.body.event_id) : '';
+  const traceId = String(result.body.request_id || '');
+  const resultUid = String(result.body.uid || body.uidHex).toUpperCase();
+  const rawCounter = result.body.ctr;
+  const readCounter = Number.isSafeInteger(rawCounter) && Number(rawCounter) >= 0 ? Number(rawCounter) : null;
+  const diagnosticId = eventId && traceId
+    ? await insertSunDiagnostic({
+        trace_id: traceId,
+        tool_type: 'sun_scan',
+        bid: DEMO_BATCH_BID,
+        uid_hex: resultUid,
+        uid_masked: `${resultUid.slice(0, 4)}***${resultUid.slice(-4)}`,
+        read_counter: readCounter,
+        auth_status: String(result.body.auth_status || result.body.result || 'UNKNOWN'),
+        replay_status: result.body.result === 'REPLAY_SUSPECT' ? 'REPLAY_SUSPECT' : 'NO_REPLAY',
+        product_state: result.body.product_state || null,
+        tamper_status: result.body.tamper_status || null,
+        tamper_signal: result.body.tamper_signal || null,
+        tamper_opened: Boolean(result.body.tamper_opened),
+        tamper_risk: Boolean(result.body.tamper_risk),
+        tagtamper_config_detected: Boolean(result.body.tag_tamper_config_detected),
+        enc_plain_status_byte: result.body.enc_plain_status_byte || null,
+        request_json: { bid: DEMO_BATCH_BID, uidHex: resultUid, action: body.action },
+        result_json: { raw_result: result.body, source: 'internal_demo_scan' },
+        notes: ['non-production-e2e-demo'],
+      })
+    : null;
+
+  let freshToken: string | null = null;
+  if (eventId && traceId && diagnosticId) {
+    try {
+      freshToken = createSunFreshHandoffToken({
+        bid: DEMO_BATCH_BID,
+        eventId,
+        diagnosticId,
+        traceId,
+        uidHex: resultUid,
+        readCounter,
+        exp: Math.floor(Date.now() / 1000) + 5 * 60,
+      });
+    } catch {
+      freshToken = null;
+    }
+  }
+
+  return json({ ...result.body, source: 'demo', action: body.action, fresh_token: freshToken || undefined }, result.status);
 }

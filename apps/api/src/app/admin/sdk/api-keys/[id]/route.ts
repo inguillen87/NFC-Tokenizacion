@@ -19,7 +19,7 @@ async function tenantScopeFilter(req: Request) {
 }
 
 export async function PATCH(req: Request, context: { params: Promise<{ id: string }> }) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
   const permission = checkSdkApiKeyPermission(req, "write");
   if (permission) return permission;
@@ -61,7 +61,7 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 }
 
 export async function DELETE(req: Request, context: { params: Promise<{ id: string }> }) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
   const permission = checkSdkApiKeyPermission(req, "write");
   if (permission) return permission;

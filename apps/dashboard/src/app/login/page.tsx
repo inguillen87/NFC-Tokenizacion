@@ -42,10 +42,13 @@ function authNoticeForCode(code?: string) {
       return "Google/Clerk no esta configurado con claves live para este deploy.";
     case "clerk_email_unverified":
       return "Clerk no devolvio un email verificado. Verifica el email en Google/Clerk y reintenta.";
-    case "admin_api_key_missing":
-      return "Falta ADMIN_API_KEY en el dashboard; no puedo convertir Google en sesión nexID.";
-    case "admin_api_key_invalid":
-      return "ADMIN_API_KEY del dashboard no coincide con la API. Hay que sincronizar envs en Vercel.";
+    case "clerk_session_token_missing":
+      return "Clerk no entrego una sesion verificable. Cerra la sesion de Google/Clerk y volve a ingresar.";
+    case "clerk_session_invalid":
+      return "La API rechazo la sesion Clerk. Revisa issuer, claves y dominios autorizados de Clerk.";
+    case "clerk_verification_not_configured":
+    case "clerk_authorized_parties_not_configured":
+      return "La verificacion Clerk de la API no esta configurada para este dominio.";
     case "auth_upstream_unavailable":
       return "La API de autenticación no respondió. Reintenta o revisa el deploy de api.nexid.lat.";
     case "clerk_super_admin_not_allowed":

@@ -1,28 +1,13 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-import { checkAdmin, getAdminTenantScope, type AdminScope } from '../../../../../lib/auth';
+import { checkAdmin, getAdminActor, getAdminPermissions, getAdminTenantScope, type AdminScope } from '../../../../../lib/auth';
 import { json } from '../../../../../lib/http';
 import { sql } from '../../../../../lib/db';
 import { ensureSupplierOpsSchema } from '../../../../../lib/supplier-ops-schema';
 import { canActivateSupplierSubBatch } from '../../../../../lib/supplier-ops';
 import { hashEvidencePayload } from '../../../../../lib/proof-layer';
 import { logAuditEvent } from '../../../../../lib/audit-logger';
-
-function safeActor(req: Request) {
-  return req.headers.get('x-nexid-actor')
-    || req.headers.get('x-nexid-actor-id')
-    || req.headers.get('x-dashboard-user')
-    || req.headers.get('x-forwarded-user')
-    || 'unknown_admin';
-}
-
-function parsePermissionHeader(value: string | null) {
-  return String(value || '')
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
 
 function hasScopedPermission(grants: string[], permission: string) {
   const current = permission.trim();
@@ -40,12 +25,11 @@ function hasScopedPermission(grants: string[], permission: string) {
 
 function canUseActivationOverride(scope: AdminScope | null, permissions: string[]) {
   return scope === 'super_admin'
-    || scope === 'security_operator'
     || hasScopedPermission(permissions, 'supplier:activate_override');
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ bid: string }> }) {
-  const auth = checkAdmin(req, ['super_admin', 'tenant_admin', 'security_operator']);
+  const auth = await checkAdmin(req, ['super_admin', 'tenant_admin']);
   if (auth) return auth;
   await ensureSupplierOpsSchema();
 
@@ -53,16 +37,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const limit = Math.max(0, Math.trunc(Number(body.limit || 0)));
   const overrideReason = String(body.override_reason || body.overrideReason || '').trim();
-  const overrideBy = String(body.override_by || body.overrideBy || safeActor(req)).trim();
+  const overrideBy = getAdminActor(req).email;
   const adminTenantScope = getAdminTenantScope(req);
-  const permissionGrants = parsePermissionHeader(req.headers.get('x-nexid-permissions'));
+  const permissionGrants = getAdminPermissions(req);
   const overrideRequested = Boolean(overrideReason);
   const overrideAllowed = canUseActivationOverride(adminTenantScope.scope, permissionGrants);
   if (overrideRequested && !overrideAllowed) {
     return json({
       ok: false,
       reason: 'supplier_activation_override_forbidden',
-      message: 'Activation overrides require superadmin, security-operator scope, or supplier:activate_override permission.',
+      message: 'Activation overrides require superadmin or explicit supplier:activate_override permission.',
     }, 403);
   }
 

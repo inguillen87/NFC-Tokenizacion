@@ -8,7 +8,7 @@ import { ensureSupplierOpsSchema } from "../../../../../lib/supplier-ops-schema"
 import { canActivateSupplierSubBatch } from "../../../../../lib/supplier-ops";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ bid: string }> }) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
   await ensureSupplierOpsSchema();
 

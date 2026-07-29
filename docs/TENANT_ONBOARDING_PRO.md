@@ -126,7 +126,7 @@ El script `apps/api/scripts/bootstrap-enterprise-tenant.mjs` ahora usa la API re
 Ejemplo:
 
 ```powershell
-$env:ADMIN_API_KEY="<tu-admin-api-key>"
+$env:NEXID_ADMIN_SESSION_TOKEN="<sesion-opaca-super-admin-activa>"
 cd C:\Users\guill\OneDrive\Documentos\GitHub\NFC-Tokenizacion\apps\api
 node scripts/bootstrap-enterprise-tenant.mjs `
   --api-url=https://api.nexid.lat `

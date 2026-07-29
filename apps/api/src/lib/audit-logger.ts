@@ -16,6 +16,10 @@ export type AuditLogInput = {
   requestId?: string | null;
 };
 
+export type AuditLogResult =
+  | { ok: true }
+  | { ok: false; reason: "audit_log_projection_failed" };
+
 function computeHash(data: unknown) {
   if (data == null) return null;
   const safeData = redactSecretsDeep(data);
@@ -23,7 +27,7 @@ function computeHash(data: unknown) {
   return createHash("sha256").update(str).digest("hex");
 }
 
-export async function logAuditEvent(input: AuditLogInput) {
+export async function logAuditEvent(input: AuditLogInput): Promise<AuditLogResult> {
   try {
     await ensureAuditLogsSchema();
     const beforeHash = computeHash(input.beforeData);
@@ -45,7 +49,12 @@ export async function logAuditEvent(input: AuditLogInput) {
         ${input.requestId || null}
       )
     `;
+    return { ok: true };
   } catch (error) {
-    console.warn("[audit_log_failed]", error instanceof Error ? error.message : "unknown_error");
+    const code = error && typeof error === "object" && "code" in error
+      ? String((error as { code?: unknown }).code || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 32)
+      : "unknown_error";
+    console.warn("[audit_log_failed]", code || "unknown_error");
+    return { ok: false, reason: "audit_log_projection_failed" };
   }
 }

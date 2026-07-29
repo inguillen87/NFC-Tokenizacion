@@ -25,6 +25,12 @@ export type DashboardSession = {
   isDemo?: boolean;
 };
 
+export type DashboardSessionCredential = {
+  session: DashboardSession;
+  bearerToken: string | null;
+  rotatedSessionToken: string | null;
+};
+
 function demoFallbackSession(): DashboardSession {
   return {
     id: "demo-tenant-admin-demobodega",
@@ -73,7 +79,9 @@ function parseDemoToken(token: string): DashboardSession | null {
   }
 }
 
-export async function getDashboardSession() {
+export async function getDashboardSessionCredential(
+  options: { persistRotation?: boolean } = {},
+): Promise<DashboardSessionCredential | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(DASHBOARD_SESSION_COOKIE)?.value;
 
@@ -82,24 +90,53 @@ export async function getDashboardSession() {
     if (isDemoToken) {
       const demoSession = parseDemoToken(token);
       if (!demoSession || !dashboardDemoAccessAllowedForRole(demoSession.role)) return null;
-      return demoSession;
+      return { session: demoSession, bearerToken: null, rotatedSessionToken: null };
     }
 
     const res = await fetch(`${API_BASE}/auth/session`, {
-      headers: { authorization: `Bearer ${token}` },
+      headers: {
+        authorization: `Bearer ${token}`,
+        ...(options.persistRotation ? { "x-nexid-session-rotation": "rotate" } : {}),
+      },
       cache: "no-store",
     }).catch(() => null);
 
     if (res && res.ok) {
-      const data = await res.json().catch(() => null) as { ok?: boolean; session?: DashboardSession } | null;
+      const data = await res.json().catch(() => null) as {
+        ok?: boolean;
+        session?: DashboardSession;
+        rotatedSessionToken?: string | null;
+      } | null;
       if (data?.ok && data.session) {
-        return data.session;
+        const rotatedSessionToken = String(data.rotatedSessionToken || data.session.rotatedCookieValue || "").trim() || null;
+        if (rotatedSessionToken && options.persistRotation) {
+          try {
+            cookieStore.set(DASHBOARD_SESSION_COOKIE, rotatedSessionToken, {
+              httpOnly: true,
+              sameSite: "lax",
+              secure: process.env.NODE_ENV === "production",
+              path: "/",
+              maxAge: 60 * 60 * 12,
+            });
+          } catch {}
+        }
+        return {
+          session: { ...data.session, rotatedCookieValue: rotatedSessionToken },
+          bearerToken: rotatedSessionToken || token,
+          rotatedSessionToken,
+        };
       }
     }
   }
 
-  if (dashboardFallbackSessionAllowed()) return demoFallbackSession();
+  if (dashboardFallbackSessionAllowed()) {
+    return { session: demoFallbackSession(), bearerToken: null, rotatedSessionToken: null };
+  }
   return null;
+}
+
+export async function getDashboardSession() {
+  return (await getDashboardSessionCredential())?.session || null;
 }
 
 export async function requireDashboardSession(permission?: string) {

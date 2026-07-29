@@ -7,7 +7,7 @@ import { sql } from "../../../../../lib/db";
 import { json } from "../../../../../lib/http";
 
 export async function GET(req: Request, { params }: { params: Promise<{ uid: string }> }) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
 
   const resolvedParams = await params;

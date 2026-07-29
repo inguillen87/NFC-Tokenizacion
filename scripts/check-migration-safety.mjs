@@ -15,6 +15,8 @@ const ids = [
   "20260726135000_0059_marketplace_claim_truth_cleanup.sql",
   "20260726173000_0060_sdk_idempotency_operations.sql",
   "20260726190000_0061_supplier_export_artifact_delivery.sql",
+  "20260728120000_0062_sun_atomic_persistence.sql",
+  "20260728143000_0063_supplier_packaging_governance.sql",
 ];
 const checks = [];
 for (const id of ids) {
@@ -30,6 +32,8 @@ const sql56 = await fs.readFile(path.join(root, "20260725014500_0056_iota_eviden
 const sql58 = await fs.readFile(path.join(root, "20260726103000_0058_webhook_signature_v2.sql"), "utf8");
 const sql60 = await fs.readFile(path.join(root, "20260726173000_0060_sdk_idempotency_operations.sql"), "utf8");
 const sql61 = await fs.readFile(path.join(root, "20260726190000_0061_supplier_export_artifact_delivery.sql"), "utf8");
+const sql62 = await fs.readFile(path.join(root, "20260728120000_0062_sun_atomic_persistence.sql"), "utf8");
+const sql63 = await fs.readFile(path.join(root, "20260728143000_0063_supplier_packaging_governance.sql"), "utf8");
 const executor = await fs.readFile(path.resolve(process.cwd(), "apps/executor/src/iota-idempotency.mjs"), "utf8");
 const runner = await fs.readFile(path.resolve(process.cwd(), "apps/api/scripts/db-apply.mjs"), "utf8");
 const legacyRunner = await fs.readFile(path.resolve(process.cwd(), "apps/api/scripts/db-apply-file.mjs"), "utf8");
@@ -50,6 +54,23 @@ const sdkIdempotencySchemaIsDurable = sql60.includes("CREATE TABLE IF NOT EXISTS
 const supplierExportEnvelopeIsDurable = sql61.includes("encrypted_payload_base64")
   && sql61.includes("delivery_status")
   && sql61.includes("delivery_attempt_count");
+const sunAtomicPersistenceIsDurable = sql62.includes("CREATE OR REPLACE FUNCTION public.nexid_persist_sun_scan_v1")
+  && sql62.includes("pg_advisory_xact_lock")
+  && sql62.includes("FOR UPDATE")
+  && sql62.includes("UPDATE tags")
+  && sql62.includes("INSERT INTO events")
+  && sql62.includes("sun_atomic_tag_uid_casefold_duplicates")
+  && sql62.includes("CREATE UNIQUE INDEX IF NOT EXISTS uq_tags_batch_uid_upper");
+const supplierPackagingGovernanceIsDurable = sql63.includes("DEFAULT 'legacy_unverified'")
+  && sql63.includes("CREATE TABLE IF NOT EXISTS supplier_packaging_governance_decisions")
+  && sql63.includes("CREATE OR REPLACE FUNCTION public.nexid_record_supplier_packaging_decision_v1")
+  && sql63.includes("FOR UPDATE")
+  && sql63.includes("packaging_governance_revision_conflict")
+  && sql63.includes("packaging_approval_separation_required")
+  && sql63.includes("supplier_packaging_governance_history_is_immutable")
+  && sql63.includes("packaging_governance_current_state_without_history")
+  && sql63.includes("validateSupplierPackagingSpec")
+  && sql63.includes("nexid_packaging_evidence_ref_present(evidence_refs, 'tagtamper_placement')");
 
 const allMigrationFiles = (await fs.readdir(root)).filter((file) => file.endsWith(".sql")).sort();
 let tenantApiKeysMaterialized = false;
@@ -82,7 +103,8 @@ const legacyBypassBlocked = legacyRunner.includes("IOTA V2 migrations require th
 const ok = checks.every((item) => item.bytes > 0)
   && drop >= 0 && rewrite > drop && hasProtocolCheck && hasSignerNonceGuard && validatesEvidenceConstraints
   && executorMatchesDurableStateMachine && webhookV2MigrationPreservesLegacy
-  && sdkIdempotencySchemaIsDurable && supplierExportEnvelopeIsDurable && tenantApiKeysCleanOrderSafe
+  && sdkIdempotencySchemaIsDurable && supplierExportEnvelopeIsDurable && sunAtomicPersistenceIsDurable
+  && supplierPackagingGovernanceIsDurable && tenantApiKeysCleanOrderSafe
   && runnerIsAtomic && legacyBypassBlocked
   && checks.every((item) => !item.hasExplicitTransactionControl);
 console.log(JSON.stringify({
@@ -97,6 +119,8 @@ console.log(JSON.stringify({
     webhook_v2_preserves_existing_v1: webhookV2MigrationPreservesLegacy,
     sdk_idempotency_schema_is_durable: sdkIdempotencySchemaIsDurable,
     supplier_export_envelope_is_durable: supplierExportEnvelopeIsDurable,
+    sun_atomic_persistence_is_durable: sunAtomicPersistenceIsDurable,
+    supplier_packaging_governance_is_durable: supplierPackagingGovernanceIsDurable,
     tenant_api_keys_clean_order_safe: tenantApiKeysCleanOrderSafe,
     executor_matches_durable_state_machine: executorMatchesDurableStateMachine,
     runner_owns_transaction_boundary: checks.every((item) => !item.hasExplicitTransactionControl),

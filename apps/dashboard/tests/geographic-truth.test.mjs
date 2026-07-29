@@ -7,6 +7,8 @@ const { resolveEventMapCoordinate, strictCoordinatePair } = await import("../src
 const crmSource = await readFile(new URL("../src/components/executive-realtime-crm.tsx", import.meta.url), "utf8");
 const customerGrowthSource = await readFile(new URL("../src/components/customer-growth-command-center.tsx", import.meta.url), "utf8");
 const realtimeMapSource = await readFile(new URL("../src/components/realtime-maplibre-map.tsx", import.meta.url), "utf8");
+const realtimeOpsSource = await readFile(new URL("../src/components/realtime-ops-monitor.tsx", import.meta.url), "utf8");
+const multirubroSource = await readFile(new URL("../src/components/multirubro-ops-panel.tsx", import.meta.url), "utf8");
 const demoMapSource = await readFile(new URL("../src/components/demo-ops-map.tsx", import.meta.url), "utf8");
 const analyticsSource = await readFile(new URL("../src/components/analytics-panels.tsx", import.meta.url), "utf8");
 const legacyRealMapSource = await readFile(new URL("../src/components/real-ops-map.tsx", import.meta.url), "utf8");
@@ -23,7 +25,7 @@ test("strict coordinates reject null and empty values instead of coercing them t
   assert.deepEqual(strictCoordinatePair("-34.6037", "-58.3816"), { lat: -34.6037, lng: -58.3816 });
 });
 
-test("city fallback remains explicitly synthetic and preserves original source context", () => {
+test("production coordinate resolution never manufactures a coordinate from city text", () => {
   const coordinate = resolveEventMapCoordinate({
     lat: null,
     lng: null,
@@ -34,13 +36,7 @@ test("city fallback remains explicitly synthetic and preserves original source c
     seed: "evt-synthetic-regression",
   });
 
-  assert.ok(coordinate);
-  assert.equal(coordinate.precision, "synthetic");
-  assert.equal(coordinate.source, "city_fallback:browser_gps");
-  assert.equal(coordinate.accuracyM, 12);
-  assert.match(coordinate.label, /sintetica/);
-  assert.match(coordinate.label, /no es GPS/);
-  assert.notDeepEqual({ lat: coordinate.lat, lng: coordinate.lng }, { lat: 0, lng: 0 });
+  assert.equal(coordinate, null);
 
   const accentedCity = resolveEventMapCoordinate({
     lat: "",
@@ -49,8 +45,7 @@ test("city fallback remains explicitly synthetic and preserves original source c
     country: "AR",
     seed: "evt-accented-city",
   });
-  assert.ok(accentedCity);
-  assert.equal(accentedCity.precision, "synthetic");
+  assert.equal(accentedCity, null);
 });
 
 test("reported IP coordinates remain approximate and retain declared accuracy", () => {
@@ -78,6 +73,13 @@ test("CRM, customer growth and realtime map all consume the strict coordinate co
   assert.doesNotMatch(crmSource, /Number\.isFinite\(Number\(event\.lat\)\)/);
   assert.doesNotMatch(customerGrowthSource, /Number\.isFinite\(Number\(event\.lat\)\)/);
   assert.doesNotMatch(realtimeMapSource, /Number\.isFinite\(Number\(row\.lat\)\)/);
+  assert.doesNotMatch(realtimeMapSource, /precisionSummary\.synthetic|sintéticas por centro urbano/);
+  assert.doesNotMatch(realtimeOpsSource, /KNOWN_CITY_COORDS|cityFallback/);
+  assert.match(realtimeOpsSource, /strictCoordinatePair\(row\.lat, row\.lng\)/);
+  assert.match(multirubroSource, /strictCoordinatePair\(payload\.lat, payload\.lng\)/);
+  assert.match(multirubroSource, /strictCoordinatePair\(point\.lat, point\.lng\)/);
+  assert.match(multirubroSource, /TenantTapRealtimeWireEvent/);
+  assert.doesNotMatch(multirubroSource, /const lat = Number\(payload\.lat\)/);
 });
 
 test("aggregated analytics points never invent a route or current recency", () => {

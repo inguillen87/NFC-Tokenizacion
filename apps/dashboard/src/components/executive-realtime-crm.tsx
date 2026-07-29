@@ -36,6 +36,8 @@ import { EnterpriseOpsState } from "./enterprise-ops-state";
 import { exportToCsv } from "../lib/export-utils";
 import { strictCoordinatePair } from "../lib/geo-coordinates";
 import {
+  classifyRealtimeVerdict,
+  isRealtimeRisk,
   mergeRealtimeEvents,
   sortRealtimeEvents,
   type RealtimeAvailability,
@@ -48,7 +50,6 @@ type MapMode = "tenant" | "global";
 type CrmSection = "summary" | "infra" | "loyalty";
 type MapView = "heat" | "points" | "nearby";
 type TimeRange = "5m" | "1h" | "24h";
-type RealtimeVerdictBucket = "valid" | "duplicate_replay" | "tamper" | "invalid" | "unknown";
 
 type MarketOpportunity = {
   key: string;
@@ -122,23 +123,9 @@ type CommercialContext = {
   playbooks: Array<{ eyebrow: string; title: string; body: string }>;
 };
 
-function classifyRealtimeVerdict(value?: string | null): RealtimeVerdictBucket {
-  const verdict = String(value || "").trim().toUpperCase();
-  if (["VALID", "TAP_VALID", "CLAIMED", "REDEEMED", "CHECK_IN"].includes(verdict)) return "valid";
-  if (verdict.includes("REPLAY") || verdict.includes("DUPLICATE")) return "duplicate_replay";
-  if (verdict.includes("TAMPER")) return "tamper";
-  if (!verdict || ["UNKNOWN", "NOT_REGISTERED", "NOT_ACTIVE"].includes(verdict)) return "unknown";
-  if (verdict.includes("INVALID") || verdict === "REVOKED" || verdict.startsWith("BLOCKED_")) return "invalid";
-  return "unknown";
-}
-
-function isRealtimeRisk(value?: string | null) {
-  return ["duplicate_replay", "tamper", "invalid"].includes(classifyRealtimeVerdict(value));
-}
-
 function isClientReportedGps(value?: string | null) {
   const source = String(value || "").trim().toLowerCase();
-  const approximate = source.includes("city") || source.includes("centroid") || source.includes("ip_") || source.includes("synthetic") || source.includes("fallback");
+  const approximate = source.includes("approximate") || source.includes("city") || source.includes("centroid") || source.includes("ip_") || source.includes("synthetic") || source.includes("fallback");
   return !approximate && source.includes("gps");
 }
 
@@ -409,7 +396,7 @@ function buildHotspots(rows: TenantTapRealtimeEvent[]) {
     const city = String(row.city || "Unknown");
     const country = String(row.country || "--");
     const key = `${city.toLowerCase()}|${country}`;
-    const verdictBucket = classifyRealtimeVerdict(row.verdict);
+    const verdictBucket = classifyRealtimeVerdict(row.verdict, row.reason);
     const valid = verdictBucket === "valid";
     const gps = isClientReportedGps(row.locationSource);
     const lastSeenMs = safeDate(row.occurredAt);
@@ -429,7 +416,7 @@ function buildHotspots(rows: TenantTapRealtimeEvent[]) {
     current.taps += 1;
     if (valid) current.valid += 1;
     if (gps) current.gps += 1;
-    if (isRealtimeRisk(row.verdict)) current.risk += 1;
+    if (isRealtimeRisk(row.verdict, row.reason)) current.risk += 1;
     if (verdictBucket === "unknown") current.unknown += 1;
     if (lastSeenMs >= current.lastSeenMs) {
       current.lastSeenMs = lastSeenMs;
@@ -457,7 +444,7 @@ function buildMarketOpportunities(
     const riskRate = hotspot.taps ? (hotspot.risk / hotspot.taps) * 100 : 0;
     const crmReady = new Set(
       cityRows
-        .filter((row) => classifyRealtimeVerdict(row.verdict) === "valid")
+        .filter((row) => classifyRealtimeVerdict(row.verdict, row.reason) === "valid")
         .map((row) => String(row.uidMasked || "").trim())
         .filter((uid) => uid && uid !== "N/A"),
     ).size;
@@ -841,13 +828,13 @@ export function ExecutiveRealtimeCrm({
 
   const metrics = useMemo(() => {
     const total = visibleEvents.length;
-    const valid = visibleEvents.filter((event) => classifyRealtimeVerdict(event.verdict) === "valid").length;
-    const risk = visibleEvents.filter((event) => isRealtimeRisk(event.verdict)).length;
-    const unknown = visibleEvents.filter((event) => classifyRealtimeVerdict(event.verdict) === "unknown").length;
+    const valid = visibleEvents.filter((event) => classifyRealtimeVerdict(event.verdict, event.reason) === "valid").length;
+    const risk = visibleEvents.filter((event) => isRealtimeRisk(event.verdict, event.reason)).length;
+    const unknown = visibleEvents.filter((event) => classifyRealtimeVerdict(event.verdict, event.reason) === "unknown").length;
     const gps = visibleEvents.filter((event) => isClientReportedGps(event.locationSource) && strictCoordinatePair(event.lat, event.lng) != null).length;
     const actionable = visibleEvents.filter((event) => {
       const hasLocation = strictCoordinatePair(event.lat, event.lng) != null;
-      return classifyRealtimeVerdict(event.verdict) === "valid" && hasLocation && Boolean(event.uidMasked);
+      return classifyRealtimeVerdict(event.verdict, event.reason) === "valid" && hasLocation && Boolean(event.uidMasked);
     }).length;
     const offerReady = buildHotspots(visibleEvents).filter((item) => item.valid > 0).length;
     return {
@@ -884,9 +871,9 @@ export function ExecutiveRealtimeCrm({
       const bucket = 11 - diff;
       if (bucket < 0 || bucket > 11) return;
       buckets[bucket].taps += 1;
-      const verdictBucket = classifyRealtimeVerdict(event.verdict);
+      const verdictBucket = classifyRealtimeVerdict(event.verdict, event.reason);
       if (verdictBucket === "valid") buckets[bucket].valid += 1;
-      else if (isRealtimeRisk(event.verdict)) buckets[bucket].risk += 1;
+      else if (isRealtimeRisk(event.verdict, event.reason)) buckets[bucket].risk += 1;
       else buckets[bucket].unknown += 1;
     });
     return buckets;
@@ -925,7 +912,7 @@ export function ExecutiveRealtimeCrm({
     if (metrics.gpsCoverage < 60 && metrics.total > 0) {
       rows.push({ id: `gps-${metrics.total}-${Math.round(metrics.gpsCoverage)}`, tone: "amber", title: "Cobertura GPS baja", detail: `Solo ${formatPercent(metrics.gpsCoverage)} de lecturas con GPS útil`, time: formatShortTimeInZone(Date.now(), consoleTimezone) });
     }
-    visibleEvents.filter((event) => isRealtimeRisk(event.verdict)).slice(0, 3).forEach((event, index) => {
+    visibleEvents.filter((event) => isRealtimeRisk(event.verdict, event.reason)).slice(0, 3).forEach((event, index) => {
       rows.push({ id: `exception-${String(event.eventId || event.uidMasked || "uid")}-${index}`, tone: "amber", title: `UID con excepción ${event.uidMasked}`, detail: `${event.city || "sin ciudad"} · ${deviceSummary(event)}`, time: timeAgo(event.occurredAt) });
     });
     if (metrics.unknown > 0) {
@@ -1295,9 +1282,9 @@ export function ExecutiveRealtimeCrm({
                 <p className="text-sm font-semibold text-white">Últimos eventos visibles</p>
                 <div className="mt-3 space-y-2">
                   {visibleEvents.slice(0, 4).map((event) => {
-                    const verdictBucket = classifyRealtimeVerdict(event.verdict);
+                    const verdictBucket = classifyRealtimeVerdict(event.verdict, event.reason);
                     const valid = verdictBucket === "valid";
-                    const risk = isRealtimeRisk(event.verdict);
+                    const risk = isRealtimeRisk(event.verdict, event.reason);
                     return (
                       <div key={String(event.eventId || `${event.uidMasked}-${event.occurredAt}`)} className="rounded-lg border border-white/8 bg-slate-900/70 p-3">
                         <div className="flex items-center justify-between gap-2">

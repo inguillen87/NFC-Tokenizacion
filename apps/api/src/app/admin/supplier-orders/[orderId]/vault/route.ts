@@ -43,7 +43,7 @@ function sanitizeMetadata(value: unknown) {
 }
 
 export async function GET(req: Request, { params }: { params: Promise<{ orderId: string }> }) {
-  const auth = checkAdmin(req, ["super_admin", "tenant_admin"]);
+  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
   if (auth) return auth;
   await ensureSupplierOpsSchema();
 

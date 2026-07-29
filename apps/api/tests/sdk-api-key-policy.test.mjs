@@ -7,15 +7,34 @@ const {
   checkSdkApiKeyPermission,
   parseSdkApiKeyScopes,
 } = await import("../src/app/admin/sdk/api-keys/policy.ts");
+const { checkAdmin } = await import("../src/lib/auth.ts");
 
-function scopedRequest(scope, permissions = []) {
-  return new Request("https://api.nexid.test/admin/sdk/api-keys", {
+async function scopedRequest(scope, permissions = []) {
+  const req = new Request("https://api.nexid.test/admin/sdk/api-keys", {
     headers: {
-      "x-nexid-admin-scope": scope,
-      "x-nexid-permissions": permissions.join(","),
-      "x-nexid-tenant-slug": "tenant-a",
+      authorization: "Bearer opaque-session",
+      "x-nexid-admin-scope": scope === "super_admin" ? "tenant_admin" : "super_admin",
+      "x-nexid-permissions": "*",
+      "x-nexid-tenant-slug": "forged-tenant",
     },
   });
+  const role = scope === "super_admin" ? "super-admin" : "tenant-admin";
+  const tenantSlug = role === "tenant-admin" ? "tenant-a" : null;
+  assert.equal(await checkAdmin(req, [scope], async () => ({
+    id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    userId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    email: "admin@example.com",
+    label: "Admin",
+    role,
+    tenantId: tenantSlug ? "cccccccc-cccc-4ccc-8ccc-cccccccccccc" : null,
+    tenantSlug,
+    permissions,
+    mfaVerified: true,
+    expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    rotatedCookieValue: null,
+    setupCompleted: true,
+  })), null);
+  return req;
 }
 
 test("SDK API key scopes must be explicit, non-empty and allowlisted", () => {
@@ -48,13 +67,13 @@ test("SDK API key scopes must be explicit, non-empty and allowlisted", () => {
   ]);
 });
 
-test("SDK API key admin permissions preserve authorized super and tenant admins", () => {
-  assert.equal(checkSdkApiKeyPermission(scopedRequest("super_admin"), "write"), null);
-  assert.equal(checkSdkApiKeyPermission(scopedRequest("tenant_admin", ["sdk:keys:read"]), "read"), null);
-  assert.equal(checkSdkApiKeyPermission(scopedRequest("tenant_admin", ["sdk:keys:read"]), "write")?.status, 403);
-  assert.equal(checkSdkApiKeyPermission(scopedRequest("tenant_admin", ["tenant:*"]), "read"), null);
-  assert.equal(checkSdkApiKeyPermission(scopedRequest("tenant_admin", ["tenant:*"]), "write"), null);
-  assert.equal(checkSdkApiKeyPermission(scopedRequest("tenant_admin", ["events:*"]), "read")?.status, 403);
+test("SDK API key admin permissions preserve authorized super and tenant admins", async () => {
+  assert.equal(checkSdkApiKeyPermission(await scopedRequest("super_admin"), "write"), null);
+  assert.equal(checkSdkApiKeyPermission(await scopedRequest("tenant_admin", ["sdk:keys:read"]), "read"), null);
+  assert.equal(checkSdkApiKeyPermission(await scopedRequest("tenant_admin", ["sdk:keys:read"]), "write")?.status, 403);
+  assert.equal(checkSdkApiKeyPermission(await scopedRequest("tenant_admin", ["tenant:*"]), "read"), null);
+  assert.equal(checkSdkApiKeyPermission(await scopedRequest("tenant_admin", ["tenant:*"]), "write"), null);
+  assert.equal(checkSdkApiKeyPermission(await scopedRequest("tenant_admin", ["events:*"]), "read")?.status, 403);
 });
 
 test("SDK API key routes enforce read and write permissions at every handler", async () => {

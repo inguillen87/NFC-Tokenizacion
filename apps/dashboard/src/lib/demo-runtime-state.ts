@@ -1,3 +1,6 @@
+import { classifyEventRiskBucket, isEventSecurityRisk } from "@product/core";
+import { strictCoordinatePair } from "./geo-coordinates";
+
 export type DashboardDemoEvent = {
   id: string;
   sequence: number;
@@ -86,13 +89,14 @@ function productByVertical(vertical: string) {
   return "Gran Reserva Malbec";
 }
 
-function isRiskEvent(event: Pick<DashboardDemoEvent, "result" | "risk">) {
-  return event.result === "REPLAY_SUSPECT" || event.result === "TAMPER" || event.risk >= 40;
+function isRiskEvent(event: Pick<DashboardDemoEvent, "result" | "reason">) {
+  return isEventSecurityRisk({ result: event.result, reason: event.reason });
 }
 
 export function recordDashboardDemoEvent(input: Partial<DashboardDemoEvent> = {}) {
   const state = getState();
-  const cityFallback = demoCities[state.sequence % demoCities.length] || demoCities[0];
+  const demoLocation = demoCities[state.sequence % demoCities.length] || demoCities[0];
+  const reportedCoordinate = strictCoordinatePair(input.lat, input.lng);
   const result = normalizeResult(input.result, input.mode, input.scenario);
   const now = new Date().toISOString();
   const event: DashboardDemoEvent = {
@@ -103,10 +107,10 @@ export function recordDashboardDemoEvent(input: Partial<DashboardDemoEvent> = {}
     uid_hex: String(input.uid_hex || `04A7${String(1000 + state.sequence).padStart(4, "0")}1090`).toUpperCase(),
     bid: String(input.bid || "DEMO-2026-02"),
     tenant_slug: String(input.tenant_slug || "demobodega"),
-    city: String(input.city || cityFallback.city),
-    country_code: String(input.country_code || cityFallback.country_code),
-    lat: Number.isFinite(Number(input.lat)) ? Number(input.lat) : cityFallback.lat,
-    lng: Number.isFinite(Number(input.lng)) ? Number(input.lng) : cityFallback.lng,
+    city: String(input.city || demoLocation.city),
+    country_code: String(input.country_code || demoLocation.country_code),
+    lat: reportedCoordinate?.lat ?? demoLocation.lat,
+    lng: reportedCoordinate?.lng ?? demoLocation.lng,
     product_name: String(input.product_name || productByVertical(String(input.vertical || "wine"))),
     device: String(input.device || "iPhone demo tap"),
     vertical: String(input.vertical || "wine"),
@@ -291,13 +295,14 @@ export function mergeDemoTrend<T extends { day: string; scans: number; duplicate
 export function demoRuntimeSummary(events: DashboardDemoEvent[]) {
   const scans = events.length;
   const risk = events.filter(isRiskEvent).length;
-  const valid = events.filter((event) => event.result === "VALID" || event.result === "CLAIMED" || event.result === "REDEEMED" || event.result === "CHECK_IN").length;
+  const buckets = events.map((event) => classifyEventRiskBucket({ result: event.result, reason: event.reason }));
+  const valid = buckets.filter((bucket) => bucket === "valid").length;
   return {
     scans,
     valid,
-    invalid: Math.max(scans - valid, 0),
-    duplicates: events.filter((event) => event.result === "REPLAY_SUSPECT").length,
-    tamper: events.filter((event) => event.result === "TAMPER").length,
+    invalid: buckets.filter((bucket) => bucket === "invalid").length,
+    duplicates: buckets.filter((bucket) => bucket === "duplicate_replay").length,
+    tamper: buckets.filter((bucket) => bucket === "tamper").length,
     risk,
   };
 }

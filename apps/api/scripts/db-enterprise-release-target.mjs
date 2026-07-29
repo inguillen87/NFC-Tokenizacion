@@ -26,7 +26,7 @@ try {
   const releaseLedger = (await client.query(`SELECT id, applied_at
     FROM schema_migrations
     WHERE id >= '20260723193000_0050'
-      AND id <= '20260726190000_0061_supplier_export_artifact_delivery.sql'
+      AND id <= '20260728143000_0063_supplier_packaging_governance.sql'
     ORDER BY id`)).rows;
   const identity = [target.endpoint_id, target.database, target.database_role].join("|");
   console.log(JSON.stringify({

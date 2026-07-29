@@ -2,7 +2,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 import { sql } from "../../../../lib/db";
-import { checkAdmin, getAdminTenantScope } from "../../../../lib/auth";
+import { checkAdmin, getAdminActor, getAdminTenantScope } from "../../../../lib/auth";
 import { json } from "../../../../lib/http";
 import { ensureSupplierOpsSchema } from "../../../../lib/supplier-ops-schema";
 import { canActivateSupplierSubBatch } from "../../../../lib/supplier-ops";
@@ -13,16 +13,8 @@ function normalizeUid(value: unknown) {
   return String(value || "").trim().toUpperCase();
 }
 
-function safeActor(req: Request) {
-  return req.headers.get("x-nexid-actor")
-    || req.headers.get("x-nexid-actor-id")
-    || req.headers.get("x-dashboard-user")
-    || req.headers.get("x-forwarded-user")
-    || "unknown_admin";
-}
-
 export async function POST(req: Request) {
-  const auth = checkAdmin(req, ["super_admin", "tenant_admin"]);
+  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
   if (auth) return auth;
   await ensureSupplierOpsSchema();
 
@@ -167,7 +159,7 @@ export async function POST(req: Request) {
       resourceId: String(supplierSubBatch.id),
       afterData: {
         ...eventPayload,
-        activated_by: safeActor(req),
+        activated_by: getAdminActor(req).email,
       },
       userAgent: req.headers.get("user-agent"),
       requestId: req.headers.get("x-request-id"),

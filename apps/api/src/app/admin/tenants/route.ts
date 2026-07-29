@@ -9,9 +9,30 @@ import { json } from "../../../lib/http";
 import { buildTenantSunProfileInput, normalizeTenantCreateSlug, upsertTenantSunProfile } from "../../../lib/tenant-onboarding";
 import { ensureSunTenantProfilesSchema } from "../../../lib/sun-tenant-profile-schema";
 import { effectiveTenantFilter } from "../../../lib/admin-tenant-filter";
+import { aggregateTenantMetrics, EVENT_TAXONOMY_VERSION } from "@product/core";
+
+function withCanonicalRisk(row: Record<string, unknown>) {
+  const scans = Number(row.scans || 0);
+  const metrics = aggregateTenantMetrics({
+    counts: {
+      scans,
+      valid: Number(row.valid || 0),
+      invalid: Number(row.invalid || 0),
+      duplicates: Number(row.duplicates || 0),
+      tamper: Number(row.tamper || 0),
+      revoked: Number(row.revoked || 0) + Number(row.broken || 0),
+    },
+  });
+  return {
+    ...row,
+    risk_score: metrics.riskScore,
+    risk_breakdown: metrics.riskBreakdown,
+    risk_taxonomy_version: EVENT_TAXONOMY_VERSION,
+  };
+}
 
 export async function GET(req: Request) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
 
   const { searchParams } = new URL(req.url);
@@ -23,39 +44,77 @@ export async function GET(req: Request) {
   if (withStats) {
     const rows = tenantSlug
       ? await sql/*sql*/`
+      WITH classified AS (
+        SELECT tn.id, tn.slug, tn.name, tn.created_at, e.id AS event_id, CASE
+          WHEN UPPER(COALESCE(e.result, '')) IN ('DUPLICATE','REPLAY_SUSPECT') THEN 'replay_suspect'
+          WHEN UPPER(COALESCE(e.result, '')) = 'BLOCKED_REPLAY' THEN 'blocked_replay'
+          WHEN UPPER(COALESCE(e.result, '')) IN ('TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED') THEN 'tampered'
+          WHEN UPPER(COALESCE(e.result, '')) = 'REVOKED' THEN 'revoked'
+          WHEN UPPER(COALESCE(e.result, '')) = 'BROKEN' THEN 'broken'
+          WHEN UPPER(COALESCE(e.result, '')) = 'NOT_REGISTERED' THEN 'not_registered'
+          WHEN UPPER(COALESCE(e.result, '')) = 'NOT_ACTIVE' THEN 'not_active'
+          WHEN UPPER(COALESCE(e.result, '')) = 'UNKNOWN_BATCH' THEN 'unknown_batch'
+          WHEN UPPER(COALESCE(e.result, '')) IN ('INVALID','TAP_INVALID') OR UPPER(COALESCE(e.result, '')) LIKE 'BLOCKED_%' THEN 'invalid'
+          WHEN UPPER(COALESCE(e.result, '')) IN ('CLAIMED','REDEEMED','CHECK_IN','OWNERSHIP_ACTIVATED','WARRANTY_REGISTERED','PROVENANCE_VIEWED','TOKENIZATION_REQUESTED','TOKENIZATION_SIMULATED','TOKENIZATION_ANCHORED','EXPORT_GENERATED') THEN 'lifecycle'
+          WHEN LOWER(COALESCE(e.verdict, '')) IN ('valid','invalid','replay_suspect','blocked_replay','tampered','revoked','broken','not_registered','not_active','unknown_batch','unknown') THEN LOWER(e.verdict)
+          WHEN UPPER(COALESCE(e.result, '')) IN ('VALID','TAP_VALID') OR UPPER(COALESCE(e.result, '')) LIKE 'VALID_%' THEN 'valid'
+          ELSE 'unknown'
+        END AS event_class
+        FROM tenants tn
+        LEFT JOIN batches b ON b.tenant_id = tn.id
+        LEFT JOIN events e ON e.batch_id = b.id
+        WHERE tn.slug = ${tenantSlug}
+      )
       SELECT
-        tn.id,
-        tn.slug,
-        tn.name,
-        tn.created_at,
-        COUNT(e.id)::int AS scans,
-        COUNT(*) FILTER (WHERE e.result IN ('DUPLICATE','REPLAY_SUSPECT'))::int AS duplicates,
-        COUNT(*) FILTER (WHERE e.result IN ('TAMPER','NOT_REGISTERED','NOT_ACTIVE','INVALID'))::int AS tamper
-      FROM tenants tn
-      LEFT JOIN batches b ON b.tenant_id = tn.id
-      LEFT JOIN events e ON e.batch_id = b.id
-      WHERE tn.slug = ${tenantSlug}
-      GROUP BY tn.id, tn.slug, tn.name, tn.created_at
-      ORDER BY tn.created_at DESC
+        id, slug, name, created_at,
+        COUNT(event_id)::int AS scans,
+        COUNT(*) FILTER (WHERE event_id IS NOT NULL AND event_class = 'valid')::int AS valid,
+        COUNT(*) FILTER (WHERE event_id IS NOT NULL AND event_class = 'invalid')::int AS invalid,
+        COUNT(*) FILTER (WHERE event_id IS NOT NULL AND event_class IN ('replay_suspect','blocked_replay'))::int AS duplicates,
+        COUNT(*) FILTER (WHERE event_id IS NOT NULL AND event_class = 'tampered')::int AS tamper,
+        COUNT(*) FILTER (WHERE event_id IS NOT NULL AND event_class = 'revoked')::int AS revoked,
+        COUNT(*) FILTER (WHERE event_id IS NOT NULL AND event_class = 'broken')::int AS broken
+      FROM classified
+      GROUP BY id, slug, name, created_at
+      ORDER BY created_at DESC
       LIMIT 200
     `
       : await sql/*sql*/`
+      WITH classified AS (
+        SELECT tn.id, tn.slug, tn.name, tn.created_at, e.id AS event_id, CASE
+          WHEN UPPER(COALESCE(e.result, '')) IN ('DUPLICATE','REPLAY_SUSPECT') THEN 'replay_suspect'
+          WHEN UPPER(COALESCE(e.result, '')) = 'BLOCKED_REPLAY' THEN 'blocked_replay'
+          WHEN UPPER(COALESCE(e.result, '')) IN ('TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED') THEN 'tampered'
+          WHEN UPPER(COALESCE(e.result, '')) = 'REVOKED' THEN 'revoked'
+          WHEN UPPER(COALESCE(e.result, '')) = 'BROKEN' THEN 'broken'
+          WHEN UPPER(COALESCE(e.result, '')) = 'NOT_REGISTERED' THEN 'not_registered'
+          WHEN UPPER(COALESCE(e.result, '')) = 'NOT_ACTIVE' THEN 'not_active'
+          WHEN UPPER(COALESCE(e.result, '')) = 'UNKNOWN_BATCH' THEN 'unknown_batch'
+          WHEN UPPER(COALESCE(e.result, '')) IN ('INVALID','TAP_INVALID') OR UPPER(COALESCE(e.result, '')) LIKE 'BLOCKED_%' THEN 'invalid'
+          WHEN UPPER(COALESCE(e.result, '')) IN ('CLAIMED','REDEEMED','CHECK_IN','OWNERSHIP_ACTIVATED','WARRANTY_REGISTERED','PROVENANCE_VIEWED','TOKENIZATION_REQUESTED','TOKENIZATION_SIMULATED','TOKENIZATION_ANCHORED','EXPORT_GENERATED') THEN 'lifecycle'
+          WHEN LOWER(COALESCE(e.verdict, '')) IN ('valid','invalid','replay_suspect','blocked_replay','tampered','revoked','broken','not_registered','not_active','unknown_batch','unknown') THEN LOWER(e.verdict)
+          WHEN UPPER(COALESCE(e.result, '')) IN ('VALID','TAP_VALID') OR UPPER(COALESCE(e.result, '')) LIKE 'VALID_%' THEN 'valid'
+          ELSE 'unknown'
+        END AS event_class
+        FROM tenants tn
+        LEFT JOIN batches b ON b.tenant_id = tn.id
+        LEFT JOIN events e ON e.batch_id = b.id
+      )
       SELECT
-        tn.id,
-        tn.slug,
-        tn.name,
-        tn.created_at,
-        COUNT(e.id)::int AS scans,
-        COUNT(*) FILTER (WHERE e.result IN ('DUPLICATE','REPLAY_SUSPECT'))::int AS duplicates,
-        COUNT(*) FILTER (WHERE e.result IN ('TAMPER','NOT_REGISTERED','NOT_ACTIVE','INVALID'))::int AS tamper
-      FROM tenants tn
-      LEFT JOIN batches b ON b.tenant_id = tn.id
-      LEFT JOIN events e ON e.batch_id = b.id
-      GROUP BY tn.id, tn.slug, tn.name, tn.created_at
-      ORDER BY tn.created_at DESC
+        id, slug, name, created_at,
+        COUNT(event_id)::int AS scans,
+        COUNT(*) FILTER (WHERE event_id IS NOT NULL AND event_class = 'valid')::int AS valid,
+        COUNT(*) FILTER (WHERE event_id IS NOT NULL AND event_class = 'invalid')::int AS invalid,
+        COUNT(*) FILTER (WHERE event_id IS NOT NULL AND event_class IN ('replay_suspect','blocked_replay'))::int AS duplicates,
+        COUNT(*) FILTER (WHERE event_id IS NOT NULL AND event_class = 'tampered')::int AS tamper,
+        COUNT(*) FILTER (WHERE event_id IS NOT NULL AND event_class = 'revoked')::int AS revoked,
+        COUNT(*) FILTER (WHERE event_id IS NOT NULL AND event_class = 'broken')::int AS broken
+      FROM classified
+      GROUP BY id, slug, name, created_at
+      ORDER BY created_at DESC
       LIMIT 200
     `;
-    return json(rows);
+    return json(rows.map((row) => withCanonicalRisk(row as Record<string, unknown>)));
   }
 
   const rows = tenantSlug
@@ -122,7 +181,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = checkAdmin(req, ["super_admin"]);
+  const auth = await checkAdmin(req, ["super_admin"]);
   if (auth) return auth;
   const { scope } = getAdminTenantScope(req);
   if (scope && scope !== "super_admin") return json({ ok: false, reason: "super_admin_required" }, 403);

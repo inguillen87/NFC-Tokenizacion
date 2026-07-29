@@ -30,7 +30,7 @@ function parseJson<T>(value: unknown, fallback: T): T {
 }
 
 export async function GET(req: Request) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
 
   await ensureLoyaltySchema();

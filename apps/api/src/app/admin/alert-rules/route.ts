@@ -8,7 +8,7 @@ import { effectiveTenantFilter } from "../../../lib/admin-tenant-filter";
 import { normalizeAlertSeverity, normalizeAlertType } from "../../../lib/alerts-query";
 
 export async function GET(req: Request) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
   const { forcedTenantSlug } = getAdminTenantScope(req);
   const { searchParams } = new URL(req.url);
@@ -24,7 +24,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = checkAdmin(req);
+  const auth = await checkAdmin(req);
   if (auth) return auth;
   const { forcedTenantSlug } = getAdminTenantScope(req);
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
