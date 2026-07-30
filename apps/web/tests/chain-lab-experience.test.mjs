@@ -231,6 +231,7 @@ test("chain lab route is guided, truthful, retryable and connected to existing p
   assert.match(client, /El laboratorio no muestra links inventados/);
   assert.match(client, /No prueba por si solo/);
   assert.match(client, /aria-live="polite"/);
+  assert.match(client, /aria-label="Volver al Demo Lab"/);
   assert.match(client, /router\.refresh\(\)/);
   assert.match(modelSource, /\/proof\/verify\?layer=iota#iota-proof/);
   assert.match(modelSource, /\/proof\/ownership/);

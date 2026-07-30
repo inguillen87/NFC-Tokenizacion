@@ -6,8 +6,13 @@ import { processSunScan } from '../../lib/sun-service';
 import { createDemoShareToken } from '../../lib/demo-share';
 import { seedDemoPack } from '../../lib/demo-seed';
 import { sql } from '../../lib/db';
-import { anchorTokenizationRequest } from '../../lib/tokenization-engine';
-import { ensureTokenizationRequestsSchema } from '../../lib/tokenization-schema';
+import { anchorTokenizationRequest, resolveTokenizationRuntimeMode } from '../../lib/tokenization-engine';
+import {
+  classifyTokenizationExecutionClass,
+  ensureTokenizationCommercialScopeSchema,
+  isTokenizationCommercialScopeSchemaError,
+  TOKENIZATION_COMMERCIAL_SCOPE_MIGRATION_REQUIRED,
+} from '../../lib/tokenization-schema';
 import { buildLifecycleState, listDemoCta } from '../../lib/demo-cta';
 import { insertSunDiagnostic } from '../../lib/sun-diagnostics';
 import { mapVerdictAndRisk, resolveActionMatrix, resolveRightsPolicy } from '../../lib/sun-passport-policy';
@@ -18,7 +23,7 @@ import { getRequestMeta } from '../../lib/request-meta';
 import { hitSunRateLimit, shouldFailClosedSunRateLimit } from '../../lib/sun-rate-limit-store';
 import { createSunFreshHandoffToken } from '../../lib/sun-fresh-handoff';
 import { createPublicCertificateShareToken } from '../../lib/public-certificate-share';
-import { eventShareUid } from '../../lib/public-cta-target';
+import { eventShareUid, resolveExplicitSunAutoTokenizationAuthorization } from '../../lib/public-cta-target';
 import { recordTapEvent } from '../../lib/tap-event-service';
 import { normalizeConsentedApproximateLocation, normalizeCoordinatePair, redactSensitiveQueryValues } from '../../lib/approximate-location';
 import { buildSunSensorEvidence } from '../../lib/sun-sensor-evidence';
@@ -296,9 +301,10 @@ async function safeHitSunRateLimit(scope: string, scopeKey: string, windowSecond
 }
 
 function shouldRepairDemoBodegaSun(bid: string, result: SunResult) {
-  const runtime = String(process.env.VERCEL_ENV || process.env.NODE_ENV || "").trim().toLowerCase();
+  const production = [process.env.VERCEL_ENV, process.env.NODE_ENV]
+    .some((value) => String(value || "").trim().toLowerCase() === "production");
   const explicitlyEnabled = String(process.env.NEXID_SUN_DEMO_AUTO_SEED || "").trim().toLowerCase() === "true";
-  if (!explicitlyEnabled || runtime === "production") return false;
+  if (!explicitlyEnabled || production) return false;
   if (bid !== DEMO_BODEGA_BID) return false;
   const reason = String(result.body?.reason || "").toLowerCase();
   return result.status === 404 && reason.includes("unknown batch");
@@ -962,7 +968,7 @@ async function handleQrScan(input: {
 
 async function getPassportSnapshot(bid: string, uid: string | undefined): Promise<PassportSnapshot> {
   if (!uid) return null;
-  await ensureTokenizationRequestsSchema().catch((error) => {
+  await ensureTokenizationCommercialScopeSchema().catch((error) => {
     const reason = error instanceof Error ?error.message : "tokenization_schema_unavailable";
     console.warn("[tokenization_schema_unavailable]", JSON.stringify({ bid, reason: sanitizePublicErrorReason(reason) }));
   });
@@ -2483,91 +2489,142 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
 }
 
 
-async function dispatchValidScanWebhook(payload: Record<string, unknown>) {
-  let url = process.env.SCAN_WEBHOOK_URL;
-  if (!url) return;
-  url = url.replace(/^['"]|['"]$/g, "").trim();
-  const secret = (process.env.SCAN_WEBHOOK_SECRET || '').replace(/^['"]|['"]$/g, "").trim();
-  await fetch(url, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', ...(secret ?{ 'x-nexid-signature': secret } : {}) },
-    body: JSON.stringify(payload),
-    cache: 'no-store',
-  }).catch(() => null);
-}
-
 async function queueAutoTokenizationForValidTap(params: { bid: string; uid: string; traceId: string; eventId?: number | null }) {
   const enabled = String(process.env.SUN_AUTO_TOKENIZE_ON_VALID_TAP || "false").toLowerCase() === "true";
   if (!enabled) return null;
   if (!params.eventId) return { ok: false, reason: "event_identity_required", status: "blocked" } as const;
 
-  await ensureTokenizationRequestsSchema();
-  const eventIdentity = (await sql/*sql*/`
-    SELECT e.tenant_id, e.batch_id
+  try {
+    await ensureTokenizationCommercialScopeSchema();
+  } catch (error) {
+    if (isTokenizationCommercialScopeSchemaError(error)) {
+      return { ok: false, reason: TOKENIZATION_COMMERCIAL_SCOPE_MIGRATION_REQUIRED, status: "blocked" } as const;
+    }
+    throw error;
+  }
+
+  const eventIdentityRows = await sql/*sql*/`
+    SELECT e.tenant_id, e.batch_id, e.created_at AS source_event_created_at, tag.id AS tag_id,
+           b.sdm_config AS batch_sdm_config,
+           tsp.vertical AS sun_profile_vertical,
+           tsp.tokenization_mode AS sun_profile_tokenization_mode,
+           tsp.claim_policy AS sun_profile_claim_policy,
+           tsp.ownership_policy AS sun_profile_ownership_policy,
+           tsp.metadata AS sun_profile_metadata
     FROM events e
     JOIN batches b ON b.id = e.batch_id AND b.tenant_id = e.tenant_id
+    JOIN tags tag ON tag.batch_id = e.batch_id AND UPPER(tag.uid_hex) = UPPER(e.uid_hex)
+    LEFT JOIN tenant_sun_profiles tsp ON tsp.tenant_id = e.tenant_id
     WHERE e.id = ${params.eventId}
       AND b.bid = ${params.bid}
       AND UPPER(e.uid_hex) = UPPER(${params.uid})
-    LIMIT 1
-  `)[0];
-  if (!eventIdentity?.tenant_id || !eventIdentity?.batch_id) {
+    LIMIT 2
+  `;
+  const eventIdentity = eventIdentityRows[0];
+  if (eventIdentityRows.length !== 1
+    || !eventIdentity?.tenant_id
+    || !eventIdentity?.batch_id
+    || !eventIdentity?.tag_id
+    || !eventIdentity?.source_event_created_at) {
     return { ok: false, reason: "event_identity_mismatch", status: "blocked" } as const;
   }
 
+  const runtimeMode = resolveTokenizationRuntimeMode();
+  const targetNetwork = runtimeMode === "simulated" ? "simulation" : "polygon-amoy";
+  const executionClass = classifyTokenizationExecutionClass(targetNetwork, { simulated: runtimeMode === "simulated" });
+  if (!executionClass) return { ok: false, reason: "tokenization_execution_class_invalid", status: "blocked" } as const;
+  const tokenizationConfig = resolveExplicitSunAutoTokenizationAuthorization(eventIdentity);
+  if (!tokenizationConfig.enabled) {
+    return { ok: false, reason: "tokenization_auto_opt_in_required", status: "blocked" } as const;
+  }
+  if (tokenizationConfig.policy !== "lot_anchor" && tokenizationConfig.policy !== "issuer_batch_anchor") {
+    return { ok: false, reason: "tokenization_auto_policy_not_authorized", status: "blocked" } as const;
+  }
+  const trustedRecipient = runtimeMode === "simulated"
+    ? ""
+    : String(tokenizationConfig.configuredRecipient || "").trim();
+  if (runtimeMode !== "simulated" && !/^0x[0-9a-f]{40}$/i.test(trustedRecipient)) {
+    return { ok: false, reason: "tokenization_tenant_recipient_required", status: "blocked" } as const;
+  }
+
   const row = (await sql/*sql*/`
-    SELECT tr.id, tr.status, tr.network, tr.tx_hash, tr.token_id, tr.anchor_hash, tr.external_ref,
+    SELECT tr.id, tr.status, tr.network, tr.issuer_wallet, tr.tx_hash, tr.token_id, tr.anchor_hash, tr.external_ref,
            tr.last_error, tr.next_attempt_at, tr.attempt_count
     FROM tokenization_requests tr
     WHERE tr.tenant_id = ${eventIdentity.tenant_id}::uuid
       AND tr.batch_id = ${eventIdentity.batch_id}::uuid
+      AND tr.tag_id = ${eventIdentity.tag_id}::uuid
       AND tr.bid = ${params.bid}
       AND tr.uid_hex = ${params.uid}
-      AND tr.status IN ('pending', 'processing', 'anchored', 'failed', 'simulated', 'blocked')
+      AND tr.execution_class = ${executionClass}
+      AND tr.network = ${targetNetwork}
+      AND tr.status IN ('pending', 'processing', 'reconciling', 'anchored', 'failed', 'simulated', 'blocked')
     ORDER BY tr.requested_at DESC
     LIMIT 1
   `)[0];
-  if (row?.status === "anchored") {
-    return {
-      ok: true,
-      deduplicated: true,
-      status: "anchored",
-      request_id: row.id,
-      network: row.network || "polygon-amoy",
-      tx_hash: row.tx_hash || null,
-      token_id: row.token_id || null,
-      anchor_hash: row.anchor_hash || null,
-      external_ref: row.external_ref || null,
-    };
+  if (row?.id) {
+    if (String(row.issuer_wallet || "").toLowerCase() !== trustedRecipient.toLowerCase()) {
+      return { ok: false, reason: "tokenization_request_recipient_mismatch", status: "blocked" } as const;
+    }
+    return await anchorTokenizationRequest({
+      requestId: String(row.id),
+      tenantId: String(eventIdentity.tenant_id),
+      issuerWallet: trustedRecipient || null,
+      processor: "sun_auto_tokenization",
+    });
   }
-  if (row?.id) return await anchorTokenizationRequest({
-    requestId: String(row.id),
-    tenantId: String(eventIdentity.tenant_id),
-    processor: "sun_auto_tokenization",
-  });
 
   const inserted = (await sql/*sql*/`
     INSERT INTO tokenization_requests (
-      tenant_id, batch_id, bid, uid_hex, status, network, asset_ref, requested_by, next_attempt_at, meta
+      tenant_id, batch_id, tag_id, source_event_id, source_event_created_at, bid, uid_hex, execution_class,
+      status, network, asset_ref, issuer_wallet, requested_by, next_attempt_at, meta
     ) VALUES (
       ${eventIdentity.tenant_id},
       ${eventIdentity.batch_id},
+      ${eventIdentity.tag_id},
+      ${params.eventId}::bigint,
+      ${eventIdentity.source_event_created_at},
       ${params.bid},
       ${params.uid},
+      ${executionClass},
       'pending',
-      'polygon-amoy',
-      ${`${params.bid}:${params.uid}`},
+      ${targetNetwork},
+      ${null},
+      ${trustedRecipient || null},
       'sun_auto_valid_tap',
       now(),
-      ${JSON.stringify({ trace_id: params.traceId, event_id: params.eventId || null, source: "sun_valid_tap_auto_mint" })}::jsonb
+      ${JSON.stringify({
+        trace_id: params.traceId,
+        event_id: params.eventId || null,
+        source: "sun_valid_tap_auto_mint",
+        execution_class: executionClass,
+        tokenization_policy: tokenizationConfig.policy,
+        tokenization_policy_source: tokenizationConfig.policySource,
+        auto_tokenization_source: tokenizationConfig.autoSource,
+      })}::jsonb
     )
+    ON CONFLICT DO NOTHING
     RETURNING id
   `)[0];
 
-  if (!inserted?.id) return null;
+  const executionRequest = inserted || (await sql/*sql*/`
+    SELECT id
+    FROM tokenization_requests
+    WHERE tenant_id = ${eventIdentity.tenant_id}::uuid
+      AND tag_id = ${eventIdentity.tag_id}::uuid
+      AND execution_class = ${executionClass}
+      AND network = ${targetNetwork}
+      AND status IN ('pending', 'processing', 'reconciling', 'failed', 'anchored', 'blocked')
+    ORDER BY requested_at DESC, id DESC
+    LIMIT 1
+  `)[0];
+  if (!executionRequest?.id) {
+    return { ok: false, reason: "tokenization_request_creation_conflict", status: "blocked" } as const;
+  }
   return await anchorTokenizationRequest({
-    requestId: String(inserted.id),
+    requestId: String(executionRequest.id),
     tenantId: String(eventIdentity.tenant_id),
+    issuerWallet: trustedRecipient || null,
     processor: "sun_auto_tokenization",
   });
 }
@@ -2829,13 +2886,11 @@ export async function GET(req: Request): Promise<Response> {
     contract.tokenization.network = contract.tokenization.network || "polygon-amoy";
   }
 
-  if (result.body.ok) {
-    void dispatchValidScanWebhook({ event: 'tag.scan.valid', bid, uid: result.body.uid, counter: result.body.ctr, ip, userAgent: ua, geoCity, geoCountry, geoLat, geoLng, ts: new Date().toISOString() });
-  }
-
   const maskedUid = uid ?`${String(uid).slice(0, 4)}***${String(uid).slice(-4)}` : null;
   const verdict = String(contract.status.code || result.body.result || "UNKNOWN");
   const diagnosticRequest = {
+    evidence_source: "public_sun_route",
+    evidence_version: 1,
     ...(redactSensitiveQueryValues({ bid, picc_data, enc, cmac }) || { bid }),
     payload_fingerprint: payloadFingerprint,
   };
@@ -2871,7 +2926,6 @@ export async function GET(req: Request): Promise<Response> {
     cmacValid: sunDiagnostics.cmac_valid ?? null,
     sdmDecryptionOk: sunDiagnostics.sdm_decryption_ok ?? null,
     uidDecoded: sunDiagnostics.uid_decoded ?? null,
-    uidHex: sunDiagnostics.uid_hex || null,
     readCounter: sunDiagnostics.read_counter ?? null,
     piccLayout: sunDiagnostics.picc_layout || null,
     selectedMacInput: sunDiagnostics.selected_mac_input || null,

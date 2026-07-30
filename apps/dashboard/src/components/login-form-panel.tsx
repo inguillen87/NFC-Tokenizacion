@@ -51,8 +51,8 @@ export function LoginFormPanel({
     },
     {
       label: "Super Admin",
-      value: clerkEnabled ? "Google live" : "Setup pendiente",
-      detail: "Solo el email fundador allowlisted puede convertir Google en sesión global nexID.",
+      value: clerkEnabled ? "Google configurado" : "Setup pendiente",
+      detail: "La presencia de configuración habilita el intento; solo una sesión verificada y un email fundador allowlisted conceden acceso global.",
       ok: Boolean(clerkEnabled),
     },
     {
@@ -187,7 +187,7 @@ export function LoginFormPanel({
             )}
             <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-bold uppercase tracking-[0.1em] text-cyan-100/80">
               <span className="rounded-lg border border-white/10 bg-white/5 px-2 py-2">Tenant</span>
-              <span className="rounded-lg border border-white/10 bg-white/5 px-2 py-2">Taps live</span>
+              <span className="rounded-lg border border-white/10 bg-white/5 px-2 py-2">Eventos demo</span>
               <span className="rounded-lg border border-white/10 bg-white/5 px-2 py-2">CRM</span>
             </div>
           </div>

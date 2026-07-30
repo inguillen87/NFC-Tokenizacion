@@ -43,15 +43,21 @@ CREATE TABLE IF NOT EXISTS memberships (
 );
 
 ALTER TABLE leads
+  ALTER COLUMN status DROP DEFAULT;
+ALTER TABLE leads
   ALTER COLUMN status TYPE lead_status USING status::lead_status,
   ALTER COLUMN status SET DEFAULT 'new';
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS transcript text;
 
 ALTER TABLE tickets
+  ALTER COLUMN status DROP DEFAULT;
+ALTER TABLE tickets
   ALTER COLUMN status TYPE ticket_status USING status::ticket_status,
   ALTER COLUMN status SET DEFAULT 'open';
 ALTER TABLE tickets ADD COLUMN IF NOT EXISTS source text NOT NULL DEFAULT 'web_bot';
 
+ALTER TABLE order_requests
+  ALTER COLUMN status DROP DEFAULT;
 ALTER TABLE order_requests
   ALTER COLUMN status TYPE order_request_status USING status::order_request_status,
   ALTER COLUMN status SET DEFAULT 'new';

@@ -7,7 +7,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "check": "npm run test && npm run typecheck && npm run build && npm run test:package",
-    "test": "node --import tsx --test tests/client.test.mjs tests/webhook-versioning.test.mjs",
+    "test": "node --import tsx --test tests/client.test.mjs tests/epcis-client.test.mjs tests/webhook-versioning.test.mjs tests/webhook-envelope.test.mjs",
     "test:package": "node --test tests/package-consumer.test.mjs && tsc --noEmit -p tsconfig.consumer.json && node scripts/pack-smoke.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },

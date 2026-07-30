@@ -3,7 +3,17 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { sql } from "./db";
 import { buildChipUidHash } from "./tokenization-hash";
-import { ensureTokenizationRequestsSchema } from "./tokenization-schema";
+import { ensureTokenizationCommercialScopeSchema } from "./tokenization-schema";
+import { recordTokenizationCanonicalEvent } from "./tokenization-event-service";
+import {
+  createTokenizationExecutionLeaseId,
+  prepareTokenizationExecution,
+} from "./tokenization-execution-lease";
+import {
+  tokenizationExecutionGovernanceError,
+  tokenizationFailurePolicy,
+} from "./tokenization-execution-policy";
+import { buildPolygonMintIntentDigest, POLYGON_MINT_INTENT_VERSION } from "./polygon-mint-intent";
 
 type AnchorInput = {
   requestId: string;
@@ -39,6 +49,8 @@ const POLYGON_MINT_ABI = [
   "function tokenURI(uint256 tokenId) external view returns (string)",
   "function chipUidHashByTokenId(uint256 tokenId) external view returns (string)",
   "function assetRefByTokenId(uint256 tokenId) external view returns (string)",
+  "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)",
+  "event DigitalTwinMinted(uint256 indexed tokenId, address indexed to, string chipUidHash, string assetRef, string tokenUri)",
 ] as const;
 
 export type TokenizationRuntimeMode = "disabled" | "simulated" | "polygon";
@@ -51,7 +63,8 @@ export function resolveTokenizationRuntimeMode(value = process.env.TOKENIZATION_
 }
 
 function isProductionRuntime(source: NodeJS.ProcessEnv = process.env) {
-  return String(source.VERCEL_ENV || source.NODE_ENV || "").trim().toLowerCase() === "production";
+  return [source.VERCEL_ENV, source.NODE_ENV]
+    .some((value) => String(value || "").trim().toLowerCase() === "production");
 }
 
 function assertExportablePolygonSignerAllowed() {
@@ -225,6 +238,13 @@ export async function runExternalExecutor(
   const url = resolveExecutorUrl(rawUrl, production);
   const secret = String(source.TOKENIZATION_EXECUTOR_SECRET || "").trim();
   if (production && !secret) throw new ExecutorClientError("executor_secret_required_in_production");
+  if (production && Buffer.byteLength(secret, "utf8") < 32) {
+    throw new ExecutorClientError("executor_secret_too_short_in_production");
+  }
+  const idempotencyKey = String(payload.request_id || "").trim();
+  if (idempotencyKey && !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(idempotencyKey)) {
+    throw new ExecutorClientError("executor_idempotency_key_invalid");
+  }
 
   const controller = new AbortController();
   const timeoutMs = boundedExecutorTimeout(options.timeoutMs ?? source.TOKENIZATION_EXECUTOR_TIMEOUT_MS);
@@ -235,6 +255,7 @@ export async function runExternalExecutor(
       headers: {
         "content-type": "application/json",
         ...(secret ? { "x-tokenization-secret": secret } : {}),
+        ...(idempotencyKey ? { "idempotency-key": idempotencyKey } : {}),
       },
       body: JSON.stringify(payload),
       cache: "no-store",
@@ -259,6 +280,48 @@ function normalizePrivateKey(raw: string) {
   return value;
 }
 
+function assertPolygonExecutionConfiguration(network: string) {
+  if (network !== "polygon-amoy" && network !== "polygon") {
+    throw new Error("polygon_anchor_network_mismatch");
+  }
+  const rpcUrl = String(process.env.POLYGON_RPC_URL || "").trim();
+  const contractAddress = String(process.env.POLYGON_CONTRACT_ADDRESS || "").trim();
+  if (!rpcUrl || !contractAddress) throw new Error("polygon_anchor_verification_unavailable");
+  if (!canonicalEvidenceAddress(contractAddress)) throw new Error("invalid_POLYGON_CONTRACT_ADDRESS");
+  if (Buffer.byteLength(String(process.env.TOKENIZATION_UID_SALT || "").trim(), "utf8") < 32) {
+    throw new Error("tokenization_uid_salt_too_short");
+  }
+  const configuredMinter = canonicalEvidenceAddress(
+    process.env.POLYGON_KMS_PUBLISHER_ADDRESS || process.env.POLYGON_MINTER_ADDRESS,
+  );
+  if (!configuredMinter) throw new Error("polygon_minter_address_required");
+
+  const production = isProductionRuntime();
+  const executorUrl = String(process.env.TOKENIZATION_EXECUTOR_URL || "").trim();
+  if (executorUrl) {
+    resolveExecutorUrl(executorUrl, production || network === "polygon");
+    const executorSecret = String(process.env.TOKENIZATION_EXECUTOR_SECRET || "").trim();
+    if (!executorSecret) {
+      if (network === "polygon") throw new Error("executor_secret_required_for_live_chain");
+      if (production) throw new Error("executor_secret_required_in_production");
+    }
+    if ((production || network === "polygon") && Buffer.byteLength(executorSecret, "utf8") < 32) {
+      throw new Error(network === "polygon" ? "executor_secret_too_short_for_live_chain" : "executor_secret_too_short_in_production");
+    }
+    return;
+  }
+  if (network === "polygon") throw new Error("executor_required_for_live_chain");
+  if (production) throw new Error("executor_required_in_production");
+
+  const wantsLocalMinter = String(process.env.TOKENIZATION_USE_LOCAL_MINTER || "false").toLowerCase() === "true";
+  if (!wantsLocalMinter) {
+    throw new Error("polygon_anchor_unavailable_configure_local_minter_or_executor");
+  }
+  if (!/^0x[0-9a-f]{64}$/i.test(normalizePrivateKey(String(process.env.POLYGON_MINTER_PRIVATE_KEY || "")))) {
+    throw new Error("missing_POLYGON_MINTER_PRIVATE_KEY_for_direct_minter");
+  }
+}
+
 async function runDirectPolygonMint(payload: Record<string, unknown>) {
   const enabled = String(process.env.TOKENIZATION_USE_LOCAL_MINTER || "false").toLowerCase() === "true";
   if (!enabled) return null;
@@ -268,7 +331,7 @@ async function runDirectPolygonMint(payload: Record<string, unknown>) {
   const privateKey = normalizePrivateKey(String(process.env.POLYGON_MINTER_PRIVATE_KEY || ""));
   const contractAddress = String(process.env.POLYGON_CONTRACT_ADDRESS || "").trim();
   const chipUidHash = String(payload.chip_uid_hash || "").trim();
-  const recipient = String(payload.issuer_wallet || process.env.POLYGON_DEFAULT_RECIPIENT || "").trim();
+  const recipient = String(payload.issuer_wallet || "").trim();
   const tokenUri = String(payload.token_uri || "").trim();
   const assetRef = String(payload.asset_ref || "").trim();
 
@@ -339,7 +402,7 @@ async function runLocalPolygonScript(payload: Record<string, unknown>) {
   const uid = String(payload.uid_hex || "").trim();
   if (!chipUidHash && !uid) return null;
 
-  const recipient = String(payload.issuer_wallet || process.env.POLYGON_DEFAULT_RECIPIENT || "").trim();
+  const recipient = String(payload.issuer_wallet || "").trim();
   const tokenUri = String(payload.token_uri || "").trim();
   if (!recipient || !tokenUri) return null;
 
@@ -373,6 +436,7 @@ async function runLocalPolygonScript(payload: Record<string, unknown>) {
 }
 
 async function verifyPolygonMintEvidence(input: {
+  network: string;
   chipUidHash: string;
   expectedRecipient: string;
   expectedTokenUri: string;
@@ -387,8 +451,14 @@ async function verifyPolygonMintEvidence(input: {
   const { ethers } = await import("ethers");
   if (!ethers.isAddress(contractAddress)) throw new Error("invalid_POLYGON_CONTRACT_ADDRESS");
   const provider = new ethers.JsonRpcProvider(rpcUrl);
-  const network = await provider.getNetwork();
-  if (network.chainId !== 80002n) throw new Error("polygon_anchor_wrong_chain");
+  const expectedChainId = input.network === "polygon-amoy"
+    ? 80002n
+    : input.network === "polygon"
+      ? 137n
+      : 0n;
+  if (expectedChainId === 0n) throw new Error("polygon_anchor_network_mismatch");
+  const providerNetwork = await provider.getNetwork();
+  if (providerNetwork.chainId !== expectedChainId) throw new Error("polygon_anchor_wrong_chain");
   const bytecode = await provider.getCode(contractAddress);
   if (!bytecode || bytecode === "0x") throw new Error("polygon_anchor_contract_missing");
 
@@ -420,26 +490,71 @@ async function verifyPolygonMintEvidence(input: {
     actualAssetRef,
   });
 
+  let verificationKind = "on_chain_state_only" as "on_chain_state_only" | "mint_receipt_and_state";
   if (input.txHash) {
     const receipt = await provider.getTransactionReceipt(input.txHash);
     if (!receipt || receipt.status !== 1) throw new Error("polygon_anchor_receipt_not_confirmed");
     if (String(receipt.to || "").toLowerCase() !== contractAddress.toLowerCase()) {
       throw new Error("polygon_anchor_contract_mismatch");
     }
+    const expectedMinter = canonicalEvidenceAddress(
+      process.env.POLYGON_KMS_PUBLISHER_ADDRESS || process.env.POLYGON_MINTER_ADDRESS,
+    );
+    if (!expectedMinter || String(receipt.from || "").toLowerCase() !== expectedMinter) {
+      throw new Error("polygon_anchor_minter_mismatch");
+    }
+
+    const parsedLogs = receipt.logs.flatMap((log) => {
+      if (String(log.address || "").toLowerCase() !== contractAddress.toLowerCase()) return [];
+      try {
+        const parsed = contract.interface.parseLog({ topics: [...log.topics], data: log.data });
+        return parsed ? [parsed] : [];
+      } catch {
+        return [];
+      }
+    });
+    const transfers = parsedLogs.filter((event) =>
+      event.name === "Transfer" && String(event.args.tokenId) === chainTokenId
+    );
+    const minted = parsedLogs.filter((event) =>
+      event.name === "DigitalTwinMinted" && String(event.args.tokenId) === chainTokenId
+    );
+    if (transfers.length !== 1 || minted.length !== 1) {
+      throw new Error("polygon_anchor_mint_events_missing");
+    }
+    const transfer = transfers[0];
+    const mint = minted[0];
+    if (
+      String(transfer.args.from).toLowerCase() !== ethers.ZeroAddress.toLowerCase()
+      || String(transfer.args.to).toLowerCase() !== input.expectedRecipient.toLowerCase()
+      || String(mint.args.to).toLowerCase() !== input.expectedRecipient.toLowerCase()
+      || String(mint.args.chipUidHash) !== input.chipUidHash
+      || String(mint.args.assetRef) !== input.expectedAssetRef
+      || String(mint.args.tokenUri) !== input.expectedTokenUri
+    ) {
+      throw new Error("polygon_anchor_mint_events_mismatch");
+    }
+    verificationKind = "mint_receipt_and_state";
   }
 
-  return { tokenId: chainTokenId, chainId: String(network.chainId) };
+  return {
+    tokenId: chainTokenId,
+    chainId: String(providerNetwork.chainId),
+    verificationKind,
+  };
 }
 
 export async function anchorTokenizationRequest(input: AnchorInput) {
-  await ensureTokenizationRequestsSchema();
+  await ensureTokenizationCommercialScopeSchema();
 
   const tokenizationMode = resolveTokenizationRuntimeMode();
   const tenantId = String(input.tenantId || "").trim();
   if (!tenantId) return { ok: false, reason: "tenant_id_required", status: "blocked" } as const;
 
   const rows = await sql/*sql*/`
-    SELECT id, tenant_id, batch_id, bid, uid_hex, status, network, issuer_wallet, attempt_count, tx_hash, token_id, anchor_hash, external_ref
+    SELECT id, tenant_id, batch_id, tag_id, source_event_id, source_event_created_at,
+           bid, uid_hex, execution_class, status, network, issuer_wallet,
+           attempt_count, tx_hash, token_id, anchor_hash, external_ref, meta
     FROM tokenization_requests
     WHERE id = ${input.requestId}::uuid
       AND tenant_id = ${tenantId}::uuid
@@ -447,42 +562,198 @@ export async function anchorTokenizationRequest(input: AnchorInput) {
   `;
   const existing = rows[0];
   if (!existing) return { ok: false, reason: "request_not_found" } as const;
-  if (existing.status === "anchored") {
-    return {
-      ok: true,
-      status: "anchored",
-      already_processed: true,
-      request_id: existing.id,
-      tx_hash: existing.tx_hash || null,
-      token_id: existing.token_id || null,
-      network: existing.network || input.network || "polygon-amoy",
-      anchor_hash: existing.anchor_hash || null,
-      external_ref: existing.external_ref || null,
-      request: existing,
-    } as const;
-  }
-
-  if (existing.status === "simulated" && tokenizationMode === "simulated") {
-    return {
-      ok: true,
-      status: "simulated",
-      simulated: true,
-      already_processed: true,
-      request_id: existing.id,
-      simulation_ref: existing.external_ref || buildSimulationRef(existing.id, existing.uid_hex),
-      tx_hash: null,
-      token_id: null,
-      network: "simulation",
-      request: existing,
-    } as const;
-  }
-
-  const network = input.network || existing.network || "polygon-amoy";
-  const issuerWallet = input.issuerWallet || existing.issuer_wallet || null;
   const processor = input.processor || "tokenization_engine";
+  const requestedCanonicalEvent = await recordTokenizationCanonicalEvent({
+    request: existing,
+    state: "requested",
+    runtimeMode: tokenizationMode,
+    processor,
+  });
+  if (!requestedCanonicalEvent.ok) {
+    return {
+      ok: false,
+      reason: requestedCanonicalEvent.reason,
+      status: existing.status || "pending",
+      request_id: existing.id,
+      operation_committed: true,
+      canonical_event_confirmed: false,
+    } as const;
+  }
+  const network = String(existing.network || "polygon-amoy").trim().toLowerCase();
+  const issuerWallet = existing.issuer_wallet ? String(existing.issuer_wallet).trim() : null;
+  const requestedNetworkHint = String(input.network || "").trim().toLowerCase();
+  if (requestedNetworkHint && requestedNetworkHint !== network) {
+    return {
+      ok: false,
+      reason: "tokenization_request_network_class_mismatch",
+      request_id: existing.id,
+      status: "blocked",
+    } as const;
+  }
+  const requestedIssuerHint = String(input.issuerWallet || "").trim().toLowerCase();
+  if (requestedIssuerHint && requestedIssuerHint !== String(issuerWallet || "").toLowerCase()) {
+    return {
+      ok: false,
+      reason: "tokenization_request_recipient_mismatch",
+      request_id: existing.id,
+      status: "blocked",
+    } as const;
+  }
+
+  // Resolve every non-pending row through the database state machine before
+  // looking at the current process mode. A config change to disabled/simulated
+  // must never erase an in-flight or uncertain Polygon execution.
+  if (String(existing.status || "").toLowerCase() !== "pending") {
+    let prepared;
+    try {
+      prepared = await prepareTokenizationExecution({
+        tenantId,
+        requestId: String(existing.id),
+        leaseId: createTokenizationExecutionLeaseId(),
+        processor,
+        leaseSeconds: 300,
+      });
+    } catch (error) {
+      const mapped = tokenizationExecutionGovernanceError(error);
+      return {
+        ok: false,
+        reason: mapped.reason,
+        request_id: existing.id,
+        status: mapped.status === 409 ? "blocked" : "unavailable",
+        ...(mapped.requiredMigration ? { required_migration: mapped.requiredMigration } : {}),
+      } as const;
+    }
+
+    if (prepared.disposition === "already_final") {
+      const finalRows = await sql/*sql*/`
+        SELECT id, batch_id, bid, execution_class, status, network, tx_hash,
+               token_id, anchor_hash, external_ref, meta
+        FROM tokenization_requests
+        WHERE id = ${existing.id}::uuid
+          AND tenant_id = ${tenantId}::uuid
+        LIMIT 1
+      `;
+      const final = finalRows[0];
+      if (final?.status !== "anchored") {
+        return {
+          ok: false,
+          reason: "tokenization_execution_already_final",
+          request_id: existing.id,
+          status: String(final?.status || prepared.status || "blocked"),
+          retryable: false,
+        } as const;
+      }
+      const anchoredCanonicalEvent = await recordTokenizationCanonicalEvent({
+        request: final,
+        state: "anchored",
+        runtimeMode: tokenizationMode,
+        processor,
+      });
+      if (!anchoredCanonicalEvent.ok) {
+        return {
+          ok: false,
+          reason: anchoredCanonicalEvent.reason,
+          status: "reconciling",
+          request_id: existing.id,
+          operation_committed: true,
+          canonical_event_confirmed: false,
+          tx_hash: final.tx_hash || null,
+          token_id: final.token_id || null,
+          retryable: false,
+        } as const;
+      }
+      return {
+        ok: true,
+        status: "anchored",
+        already_processed: true,
+        request_id: existing.id,
+        tx_hash: final.tx_hash || null,
+        token_id: final.token_id || null,
+        network: final.network || network,
+        anchor_hash: final.anchor_hash || null,
+        external_ref: final.external_ref || null,
+        commercial_disposition: prepared.commercialDisposition,
+        commercially_eligible: String(prepared.commercialDisposition || "").toUpperCase() === "COMMERCIAL_RELEASE",
+        canonical_event_confirmed: true,
+        canonical_events: [requestedCanonicalEvent.receipt, anchoredCanonicalEvent.receipt],
+      } as const;
+    }
+    if (prepared.disposition === "simulation_only") {
+      if (
+        String(existing.status || "").toLowerCase() !== "simulated"
+        || prepared.executionClass !== "simulation"
+        || prepared.network !== "simulation"
+        || existing.tx_hash || existing.token_id || existing.anchor_hash
+      ) {
+        return {
+          ok: false,
+          reason: "tokenization_simulation_truth_invalid",
+          request_id: existing.id,
+          status: "blocked",
+          retryable: false,
+        } as const;
+      }
+      const simulatedCanonicalEvent = await recordTokenizationCanonicalEvent({
+        request: existing,
+        state: "simulated",
+        runtimeMode: tokenizationMode,
+        processor,
+      });
+      if (!simulatedCanonicalEvent.ok) {
+        return {
+          ok: false,
+          reason: simulatedCanonicalEvent.reason,
+          status: "simulated",
+          request_id: existing.id,
+          operation_committed: true,
+          canonical_event_confirmed: false,
+        } as const;
+      }
+      return {
+        ok: true,
+        status: "simulated",
+        simulated: true,
+        already_processed: true,
+        request_id: existing.id,
+        simulation_ref: existing.external_ref || buildSimulationRef(existing.id, existing.uid_hex),
+        tx_hash: null,
+        token_id: null,
+        network: "simulation",
+        canonical_event_confirmed: true,
+        canonical_events: [requestedCanonicalEvent.receipt, simulatedCanonicalEvent.receipt],
+      } as const;
+    }
+    if (prepared.disposition === "reconcile_required") {
+      return {
+        ok: false,
+        reason: "tokenization_execution_reconciliation_required",
+        request_id: existing.id,
+        status: "reconciling",
+        retryable: false,
+      } as const;
+    }
+    if (prepared.disposition === "busy" || prepared.disposition === "lease_replay") {
+      return {
+        ok: false,
+        reason: prepared.disposition === "busy"
+          ? "tokenization_execution_busy"
+          : "tokenization_execution_lease_replay",
+        request_id: existing.id,
+        status: "processing",
+        retryable: false,
+      } as const;
+    }
+    return {
+      ok: false,
+      reason: "tokenization_execution_state_invalid",
+      request_id: existing.id,
+      status: "blocked",
+      retryable: false,
+    } as const;
+  }
 
   if (tokenizationMode === "disabled") {
-    await sql/*sql*/`
+    const blockedRows = await sql/*sql*/`
       UPDATE tokenization_requests
       SET status = 'blocked',
           last_error = 'tokenization_disabled',
@@ -490,10 +761,17 @@ export async function anchorTokenizationRequest(input: AnchorInput) {
           meta = COALESCE(meta, '{}'::jsonb) || ${JSON.stringify({ processor, blocked_at: new Date().toISOString(), tokenization_mode: tokenizationMode })}::jsonb
       WHERE id = ${existing.id}::uuid
         AND tenant_id = ${tenantId}::uuid
+        AND status = 'pending'
+      RETURNING id
     `;
+    if (!blockedRows[0]?.id) {
+      return { ok: false, reason: "tokenization_execution_state_changed", request_id: existing.id, status: "blocked" } as const;
+    }
     return { ok: false, reason: "tokenization_disabled", request_id: existing.id, status: "blocked" } as const;
   }
 
+  let acquiredLeaseId: string | null = null;
+  let externalExecutionStarted = false;
   try {
     const chipUidHash = buildChipUidHash(existing.uid_hex);
     const publicAssetId = buildPublicAssetId(chipUidHash);
@@ -509,11 +787,24 @@ export async function anchorTokenizationRequest(input: AnchorInput) {
       asset_ref: assetRef,
       chip_uid_hash: chipUidHash,
       public_asset_id: publicAssetId,
+      execution_class: "",
+      commercial_disposition: "",
+      lease_id: "",
+      intent_digest: "",
     };
 
     if (tokenizationMode === "simulated") {
+      if (String(existing.execution_class || "").toLowerCase() !== "simulation" || network !== "simulation") {
+        return {
+          ok: false,
+          reason: "tokenization_runtime_execution_class_mismatch",
+          request_id: existing.id,
+          status: "blocked",
+          retryable: false,
+        } as const;
+      }
       const simulationRef = buildSimulationRef(existing.id, existing.uid_hex);
-      await sql/*sql*/`
+      const simulatedRows = await sql/*sql*/`
         UPDATE tokenization_requests
         SET status = 'simulated',
             network = 'simulation',
@@ -529,17 +820,49 @@ export async function anchorTokenizationRequest(input: AnchorInput) {
             meta = COALESCE(meta, '{}'::jsonb) || ${JSON.stringify({ processor, simulated_at: new Date().toISOString(), tokenization_mode: tokenizationMode, simulated: true, target_network: network })}::jsonb
         WHERE id = ${existing.id}::uuid
           AND tenant_id = ${tenantId}::uuid
+          AND status = 'pending'
+          AND execution_class = 'simulation'
+          AND network = 'simulation'
+        RETURNING id
       `;
+      if (!simulatedRows[0]?.id) {
+        return {
+          ok: false,
+          reason: "tokenization_execution_state_changed",
+          request_id: existing.id,
+          status: "blocked",
+          retryable: false,
+        } as const;
+      }
 
-      await sql/*sql*/`
-        INSERT INTO demo_cta_actions (action, bid, uid_hex, payload)
-        VALUES (
-          'ledger_simulated',
-          ${existing.bid},
-          ${existing.uid_hex},
-          ${JSON.stringify({ simulation_ref: simulationRef, target_network: network, issuer_wallet: issuerWallet, simulated: true })}::jsonb
-        )
-      `;
+      const simulatedRequest = {
+        ...existing,
+        network: "simulation",
+        tx_hash: null,
+        token_id: null,
+        anchor_hash: null,
+      };
+      const simulatedCanonicalEvent = await recordTokenizationCanonicalEvent({
+        request: simulatedRequest,
+        state: "simulated",
+        runtimeMode: tokenizationMode,
+        processor,
+      });
+      if (!simulatedCanonicalEvent.ok) {
+        return {
+          ok: false,
+          status: "simulated",
+          simulated: true,
+          request_id: existing.id,
+          simulation_ref: simulationRef,
+          tx_hash: null,
+          token_id: null,
+          network: "simulation",
+          operation_committed: true,
+          canonical_event_confirmed: false,
+          reason: simulatedCanonicalEvent.reason,
+        } as const;
+      }
 
       return {
         ok: true,
@@ -551,18 +874,37 @@ export async function anchorTokenizationRequest(input: AnchorInput) {
         token_id: null,
         network: "simulation",
         anchor_hash: null,
+        canonical_event_confirmed: true,
+        canonical_events: [requestedCanonicalEvent.receipt, simulatedCanonicalEvent.receipt],
       } as const;
     }
 
-    if (!String(network).toLowerCase().startsWith("polygon")) {
+    if (network !== "polygon-amoy" && network !== "polygon") {
       throw new Error("polygon_anchor_network_mismatch");
     }
 
-    const expectedRecipient = String(issuerWallet || process.env.POLYGON_DEFAULT_RECIPIENT || "").trim();
+    const expectedRecipient = String(issuerWallet || "").trim();
     if (!canonicalEvidenceAddress(expectedRecipient)) {
       throw new Error("polygon_anchor_expected_recipient_invalid");
     }
     externalInput.issuer_wallet = expectedRecipient;
+
+    let parsedTokenUri: URL;
+    try {
+      parsedTokenUri = new URL(tokenUri);
+    } catch {
+      throw new Error("polygon_anchor_token_uri_invalid");
+    }
+    if (
+      parsedTokenUri.protocol !== "https:"
+      || parsedTokenUri.username
+      || parsedTokenUri.password
+      || parsedTokenUri.hash
+      || !/^sha256:[0-9a-f]{64}$/.test(chipUidHash)
+      || !assetRef
+    ) {
+      throw new Error("polygon_anchor_metadata_binding_invalid");
+    }
 
     const wantsLocalMinter = String(process.env.TOKENIZATION_USE_LOCAL_MINTER || "false").toLowerCase() === "true";
     if (wantsLocalMinter && isProductionRuntime()) {
@@ -571,7 +913,158 @@ export async function anchorTokenizationRequest(input: AnchorInput) {
     if (wantsLocalMinter && !process.env.POLYGON_RPC_URL) {
       throw new Error("missing_POLYGON_RPC_URL_for_local_minter");
     }
+    assertPolygonExecutionConfiguration(network);
+
+    const leaseId = createTokenizationExecutionLeaseId();
+    let prepared;
+    try {
+      prepared = await prepareTokenizationExecution({
+        tenantId,
+        requestId: String(existing.id),
+        leaseId,
+        processor,
+        leaseSeconds: 300,
+      });
+    } catch (error) {
+      const mapped = tokenizationExecutionGovernanceError(error);
+      return {
+        ok: false,
+        reason: mapped.reason,
+        request_id: existing.id,
+        status: mapped.status === 409 ? "blocked" : "unavailable",
+        ...(mapped.requiredMigration ? { required_migration: mapped.requiredMigration } : {}),
+      } as const;
+    }
+
+    if (
+      prepared.network !== network
+      || prepared.bid !== String(existing.bid || "")
+      || prepared.uidHex.toUpperCase() !== String(existing.uid_hex || "").toUpperCase()
+    ) {
+      return {
+        ok: false,
+        reason: "tokenization_execution_governance_unavailable",
+        request_id: existing.id,
+        status: "unavailable",
+      } as const;
+    }
+
+    if (prepared.disposition === "already_final") {
+      const finalRows = await sql/*sql*/`
+        SELECT status, network, tx_hash, token_id, anchor_hash, external_ref
+        FROM tokenization_requests
+        WHERE id = ${existing.id}::uuid
+          AND tenant_id = ${tenantId}::uuid
+        LIMIT 1
+      `;
+      const final = finalRows[0];
+      if (final?.status === "anchored") {
+        return {
+          ok: true,
+          status: "anchored",
+          already_processed: true,
+          request_id: existing.id,
+          tx_hash: final.tx_hash || null,
+          token_id: final.token_id || null,
+          network: final.network || network,
+          anchor_hash: final.anchor_hash || null,
+          external_ref: final.external_ref || null,
+          commercial_disposition: prepared.commercialDisposition,
+          commercially_eligible: String(prepared.commercialDisposition || "").toUpperCase() === "COMMERCIAL_RELEASE",
+        } as const;
+      }
+      return {
+        ok: false,
+        reason: "tokenization_execution_already_final",
+        request_id: existing.id,
+        status: String(final?.status || prepared.status || "blocked"),
+      } as const;
+    }
+    if (prepared.disposition === "reconcile_required") {
+      return {
+        ok: false,
+        reason: "tokenization_execution_reconciliation_required",
+        request_id: existing.id,
+        status: "reconciling",
+        retryable: false,
+      } as const;
+    }
+    if (prepared.disposition === "busy" || prepared.disposition === "lease_replay") {
+      return {
+        ok: false,
+        reason: prepared.disposition === "busy"
+          ? "tokenization_execution_busy"
+          : "tokenization_execution_lease_replay",
+        request_id: existing.id,
+        status: "processing",
+        retryable: false,
+      } as const;
+    }
+    if (prepared.disposition === "simulation_only") {
+      return {
+        ok: false,
+        reason: "tokenization_execution_simulation_only",
+        request_id: existing.id,
+        status: "blocked",
+        retryable: false,
+      } as const;
+    }
+    if (prepared.disposition !== "acquired" || !prepared.externalCallAllowed || prepared.leaseId !== leaseId) {
+      return {
+        ok: false,
+        reason: "tokenization_execution_governance_unavailable",
+        request_id: existing.id,
+        status: "unavailable",
+      } as const;
+    }
+
+    acquiredLeaseId = leaseId;
+    externalInput.execution_class = prepared.executionClass;
+    externalInput.commercial_disposition = prepared.commercialDisposition;
+    externalInput.lease_id = leaseId;
+    const intentDigest = buildPolygonMintIntentDigest({
+      requestId: String(existing.id),
+      tenantId,
+      leaseId,
+      network,
+      executionClass: prepared.executionClass,
+      commercialDisposition: prepared.commercialDisposition,
+      issuerWallet: expectedRecipient,
+      chipUidHash,
+      tokenUri,
+      assetRef,
+    });
+    externalInput.intent_digest = intentDigest;
+    const intentRows = await sql/*sql*/`
+      UPDATE tokenization_requests
+      SET asset_ref = ${assetRef},
+          issuer_wallet = ${expectedRecipient},
+          meta = COALESCE(meta, '{}'::jsonb) || ${JSON.stringify({
+            dispatch_intent_version: POLYGON_MINT_INTENT_VERSION,
+            dispatch_intent_digest: intentDigest,
+            dispatch_intent_lease_id: leaseId,
+            dispatch_intent_bound_at: new Date().toISOString(),
+          })}::jsonb
+      WHERE id = ${existing.id}::uuid
+        AND tenant_id = ${tenantId}::uuid
+        AND status = 'processing'
+        AND lease_id = ${leaseId}::uuid
+        AND lease_expires_at > now()
+        AND execution_class = ${prepared.executionClass}
+        AND network = ${network}
+      RETURNING id
+    `;
+    if (!intentRows[0]?.id) {
+      return {
+        ok: false,
+        reason: "tokenization_execution_intent_binding_failed",
+        request_id: existing.id,
+        status: "reconciling",
+        retryable: false,
+      } as const;
+    }
     const productionRuntime = isProductionRuntime();
+    externalExecutionStarted = true;
     let external = await runExternalExecutor(externalInput);
     if (productionRuntime && !external) throw new Error("executor_required_in_production");
     const directPolygonMint = !productionRuntime && !external ? await runDirectPolygonMint(externalInput) : null;
@@ -583,7 +1076,31 @@ export async function anchorTokenizationRequest(input: AnchorInput) {
 
     const txHash = external?.tx_hash ? String(external.tx_hash) : null;
     const externalTokenId = external?.token_id ? String(external.token_id) : null;
+    const broadcastRows = await sql/*sql*/`
+      UPDATE tokenization_requests
+      SET asset_ref = ${assetRef},
+          issuer_wallet = ${expectedRecipient},
+          tx_hash = ${txHash},
+          token_id = ${externalTokenId},
+          next_attempt_at = NULL,
+          meta = COALESCE(meta, '{}'::jsonb) || ${JSON.stringify({ processor, external_result_received_at: new Date().toISOString(), evidence_verified: false, automatic_resend_forbidden: true, execution_class: prepared.executionClass, commercial_disposition: prepared.commercialDisposition })}::jsonb
+      WHERE id = ${existing.id}::uuid
+        AND tenant_id = ${tenantId}::uuid
+        AND status IN ('processing', 'reconciling')
+        AND lease_id = ${acquiredLeaseId}::uuid
+      RETURNING id
+    `;
+    if (!broadcastRows[0]?.id) {
+      return {
+        ok: false,
+        reason: "tokenization_execution_stale_lease",
+        request_id: existing.id,
+        status: "reconciling",
+        retryable: false,
+      } as const;
+    }
     const verified = await verifyPolygonMintEvidence({
+      network,
       chipUidHash,
       expectedRecipient,
       expectedTokenUri: tokenUri,
@@ -594,56 +1111,150 @@ export async function anchorTokenizationRequest(input: AnchorInput) {
       throw safePolygonAnchorVerificationError(error);
     });
     const tokenId = verified.tokenId;
-    const anchorHash = String(external?.anchor_hash || txHash || `polygon-token:${String(process.env.POLYGON_CONTRACT_ADDRESS || "").trim()}:${tokenId}`);
-    const externalRef = external?.external_ref ? String(external.external_ref) : null;
+    const canonicalContract = String(process.env.POLYGON_CONTRACT_ADDRESS || "").trim().toLowerCase();
+    const externalRef = `${network}:${verified.chainId}:${canonicalContract}:${tokenId}`;
+    const anchorHash = txHash || `sha256:${createHash("sha256")
+      .update(`${network}:${verified.chainId}:${canonicalContract}:${tokenId}:${chipUidHash}:${assetRef}`)
+      .digest("hex")}`;
 
-    await sql/*sql*/`
+    const settledRows = await sql/*sql*/`
       UPDATE tokenization_requests
       SET status = 'anchored',
           network = ${network},
-          issuer_wallet = COALESCE(${issuerWallet}, issuer_wallet),
+          asset_ref = ${assetRef},
+          issuer_wallet = ${expectedRecipient},
           tx_hash = ${txHash},
           token_id = ${tokenId},
           anchor_hash = ${anchorHash},
-          external_ref = COALESCE(${externalRef}, external_ref),
+          external_ref = ${externalRef},
           processed_at = now(),
           last_error = NULL,
+          next_attempt_at = NULL,
           attempt_count = attempt_count + 1,
-          meta = COALESCE(meta, '{}'::jsonb) || ${JSON.stringify({ processor, anchored_at: new Date().toISOString(), tokenization_mode: tokenizationMode, simulated: false, chain_id: verified.chainId, evidence_verified: true })}::jsonb
+          meta = COALESCE(meta, '{}'::jsonb) || ${JSON.stringify({ processor, anchored_at: new Date().toISOString(), tokenization_mode: tokenizationMode, simulated: false, chain_id: verified.chainId, evidence_verified: true, evidence_verification: verified.verificationKind, execution_class: prepared.executionClass, commercial_disposition: prepared.commercialDisposition })}::jsonb
       WHERE id = ${existing.id}::uuid
         AND tenant_id = ${tenantId}::uuid
+        AND status IN ('processing', 'reconciling')
+        AND lease_id = ${acquiredLeaseId}::uuid
+      RETURNING id
     `;
+    if (!settledRows[0]?.id) {
+      return {
+        ok: false,
+        reason: "tokenization_execution_stale_lease",
+        request_id: existing.id,
+        status: "reconciling",
+        retryable: false,
+      } as const;
+    }
 
-    await sql/*sql*/`
-      INSERT INTO demo_cta_actions (action, bid, uid_hex, payload)
-      VALUES (
-        'ledger_anchored',
-        ${existing.bid},
-        ${existing.uid_hex},
-        ${JSON.stringify({ tenant_id: tenantId, tx_hash: txHash, token_id: tokenId, network, anchor_hash: anchorHash, issuer_wallet: issuerWallet, external_ref: externalRef, simulated: false, evidence_verified: true })}::jsonb
-      )
-    `;
+    const anchoredRequest = {
+      ...existing,
+      network,
+      execution_class: prepared.executionClass,
+      tx_hash: txHash,
+      token_id: tokenId,
+      anchor_hash: anchorHash,
+      meta: { evidence_verified: true, evidence_verification: verified.verificationKind },
+    };
+    const anchoredCanonicalEvent = await recordTokenizationCanonicalEvent({
+      request: anchoredRequest,
+      state: "anchored",
+      runtimeMode: tokenizationMode,
+      processor,
+    });
+    if (!anchoredCanonicalEvent.ok) {
+      return {
+        ok: false,
+        status: "anchored",
+        simulated: false,
+        request_id: existing.id,
+        tx_hash: txHash,
+        token_id: tokenId,
+        network,
+        anchor_hash: anchorHash,
+        commercial_disposition: prepared.commercialDisposition,
+        commercially_eligible: String(prepared.commercialDisposition || "").toUpperCase() === "COMMERCIAL_RELEASE",
+        operation_committed: true,
+        canonical_event_confirmed: false,
+        reason: anchoredCanonicalEvent.reason,
+      } as const;
+    }
 
-    return { ok: true, status: "anchored", simulated: false, request_id: existing.id, tx_hash: txHash, token_id: tokenId, network, anchor_hash: anchorHash } as const;
+    return {
+      ok: true,
+      status: "anchored",
+      simulated: false,
+      request_id: existing.id,
+      tx_hash: txHash,
+      token_id: tokenId,
+      network,
+      anchor_hash: anchorHash,
+      commercial_disposition: prepared.commercialDisposition,
+      commercially_eligible: String(prepared.commercialDisposition || "").toUpperCase() === "COMMERCIAL_RELEASE",
+      canonical_event_confirmed: true,
+      canonical_events: [requestedCanonicalEvent.receipt, anchoredCanonicalEvent.receipt],
+    } as const;
   } catch (error) {
-    const message = error instanceof Error ? error.message : "tokenization_failed";
-    const attempts = Number(existing.attempt_count || 0) + 1;
-    const retryMs = Math.min(15 * 60 * 1000, 30_000 * attempts);
-    const nextAttemptAt = new Date(Date.now() + retryMs).toISOString();
-    const nextStatus = attempts >= 6 ? "failed" : "pending";
+    const policy = tokenizationFailurePolicy(
+      error,
+      externalExecutionStarted ? "external_started" : "pre_external",
+    );
+    console.error("[tokenization_execution]", policy.reason);
 
-    await sql/*sql*/`
-      UPDATE tokenization_requests
-      SET status = ${nextStatus},
-          attempt_count = attempt_count + 1,
-          last_error = ${message},
-          next_attempt_at = ${nextAttemptAt}::timestamptz,
-          meta = COALESCE(meta, '{}'::jsonb) || ${JSON.stringify({ processor, failed_at: new Date().toISOString() })}::jsonb
-      WHERE id = ${existing.id}::uuid
-        AND tenant_id = ${tenantId}::uuid
-    `;
+    if (externalExecutionStarted && acquiredLeaseId) {
+      try {
+        const reconciliationRows = await sql/*sql*/`
+          UPDATE tokenization_requests
+          SET status = 'reconciling',
+              attempt_count = attempt_count + 1,
+              last_error = ${policy.reason},
+              next_attempt_at = NULL,
+              meta = COALESCE(meta, '{}'::jsonb) || ${JSON.stringify({ processor, reconciling_at: new Date().toISOString(), automatic_resend_forbidden: true })}::jsonb
+          WHERE id = ${existing.id}::uuid
+            AND tenant_id = ${tenantId}::uuid
+            AND status IN ('processing', 'reconciling')
+            AND lease_id = ${acquiredLeaseId}::uuid
+          RETURNING id
+        `;
+        if (!reconciliationRows[0]?.id) {
+          console.error("[tokenization_execution_reconciliation]", "lease_cas_lost");
+        }
+      } catch {
+        // The worker selects only expired processing rows so 0072 can move
+        // them to reconciliation; it never compensates with a resend.
+        console.error("[tokenization_execution_reconciliation]", "persistence_failed");
+      }
+      return {
+        ok: false,
+        reason: policy.reason,
+        request_id: existing.id,
+        status: "reconciling",
+        retryable: false,
+      } as const;
+    }
 
-    return { ok: false, reason: message, request_id: existing.id, status: nextStatus, next_attempt_at: nextAttemptAt } as const;
+    try {
+      await sql/*sql*/`
+        UPDATE tokenization_requests
+        SET status = 'blocked',
+            last_error = ${policy.reason},
+            next_attempt_at = NULL,
+            meta = COALESCE(meta, '{}'::jsonb) || ${JSON.stringify({ processor, blocked_at: new Date().toISOString(), automatic_resend_forbidden: true })}::jsonb
+        WHERE id = ${existing.id}::uuid
+          AND tenant_id = ${tenantId}::uuid
+          AND status NOT IN ('anchored', 'processing', 'reconciling')
+      `;
+    } catch {
+      console.error("[tokenization_execution_blocked]", "persistence_failed");
+    }
+    return {
+      ok: false,
+      reason: policy.reason,
+      request_id: existing.id,
+      status: "blocked",
+      retryable: false,
+    } as const;
   }
 }
 

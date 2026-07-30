@@ -74,12 +74,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ eventId
     bid: body.bid,
     uidHex: body.uidHex || body.uid_hex,
   });
-  if (!claimed.ok) return json({ ok: false, error: claimed.error, ownership: claimed.ownership || null }, claimed.status);
+  if (!claimed.ok) return json({
+    ok: false,
+    error: claimed.error,
+    ownership: claimed.ownership || null,
+    operation_committed: "operationCommitted" in claimed ? claimed.operationCommitted : false,
+  }, claimed.status);
   return json({
     ok: true,
     eventId,
     consumerId: consumer.id,
     ownership: claimed.ownership,
+    canonical_event: claimed.canonicalEvent,
+    webhook_outbox: claimed.canonicalEvent.webhookOutbox,
     ownership_scope: "nexid_off_chain_digital_title",
     chain_transfer_status: "not_executed",
     nft_transfer_executed: false,

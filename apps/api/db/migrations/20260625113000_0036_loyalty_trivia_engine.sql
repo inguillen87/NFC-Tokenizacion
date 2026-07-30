@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS loyalty_quiz_attempts (
   program_id uuid NOT NULL REFERENCES loyalty_programs(id) ON DELETE CASCADE,
   quiz_id uuid NOT NULL REFERENCES loyalty_quizzes(id) ON DELETE CASCADE,
   member_id uuid NOT NULL REFERENCES loyalty_members(id) ON DELETE CASCADE,
-  tap_event_id bigint REFERENCES events(id) ON DELETE SET NULL,
+  tap_event_id bigint,
   consumer_id uuid,
   score integer NOT NULL DEFAULT 0,
   total_questions integer NOT NULL DEFAULT 0,

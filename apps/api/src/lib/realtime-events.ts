@@ -34,6 +34,11 @@ type RealtimeEventPayload = {
   trace_id?: string | null;
   lead_id?: string;
   ticket_id?: string;
+  incident_id?: string;
+  incident_event_id?: string;
+  incident_status?: string;
+  incident_severity?: string;
+  incident_title?: string;
   sdk_event_id?: string;
   contact?: string;
   company?: string;

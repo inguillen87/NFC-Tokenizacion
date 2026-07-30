@@ -1,10 +1,15 @@
 import { json } from "../../../../lib/http";
 import { isAddress } from "ethers";
-import { recordDemoCta } from "../../../../lib/demo-cta";
 import { requireShareToken } from "../../../../lib/public-cta-auth";
 import { sql } from "../../../../lib/db";
-import { ensureTokenizationRequestsSchema } from "../../../../lib/tokenization-schema";
-import { anchorTokenizationRequest } from "../../../../lib/tokenization-engine";
+import {
+  classifyTokenizationExecutionClass,
+  ensureTokenizationCommercialScopeSchema,
+  isTokenizationCommercialScopeSchemaError,
+  TOKENIZATION_COMMERCIAL_SCOPE_MIGRATION_REQUIRED,
+} from "../../../../lib/tokenization-schema";
+import { anchorTokenizationRequest, resolveTokenizationRuntimeMode } from "../../../../lib/tokenization-engine";
+import { recordTokenizationCanonicalEvent, type TokenizationEventRecord } from "../../../../lib/tokenization-event-service";
 import { resolvePublicCtaTarget, type PublicCtaTokenizationPolicy } from "../../../../lib/public-cta-target";
 import { consumeSunFreshHandoff } from "../../../../lib/sun-fresh-handoff";
 import { normalizeTokenizationStatus } from "../../../../lib/tokenization-status";
@@ -15,7 +20,6 @@ import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../lib/b
 
 const MAX_TOKENIZATION_BODY_BYTES = 32 * 1024;
 
-const LEDGER_NETWORK_ALLOWED = new Set(["polygon-amoy", "polygon", "ethereum-sepolia", "ethereum-mainnet", "base-sepolia", "base-mainnet"]);
 const PRIVILEGED_PUBLIC_POLICIES = new Set<PublicCtaTokenizationPolicy>(["lot_anchor", "issuer_batch_anchor"]);
 
 type AnchorResult = {
@@ -27,10 +31,18 @@ type AnchorResult = {
   token_id?: string | null;
   reason?: string | null;
   next_attempt_at?: string | null;
+  canonical_event_confirmed?: boolean;
+  operation_committed?: boolean;
+  commercial_disposition?: string | null;
+  commercially_eligible?: boolean;
 };
 
 type TokenizationRequestRow = {
   id?: string;
+  tag_id?: string | null;
+  source_event_id?: number | string | null;
+  source_event_created_at?: string | Date | null;
+  execution_class?: string | null;
   status?: string | null;
   requested_at?: string | Date | null;
   network?: string | null;
@@ -67,7 +79,8 @@ async function maybeAnchorPublicRequest(requestId: string | undefined, tenantId:
 async function loadTokenizationRequest(requestId: string | undefined, tenantId: string) {
   if (!requestId) return null;
   const rows = await sql/*sql*/`
-    SELECT id, status, requested_at, network, asset_ref, issuer_wallet, anchor_hash, tx_hash, token_id, last_error, next_attempt_at, attempt_count
+    SELECT id, tag_id, source_event_id, source_event_created_at, execution_class,
+           status, requested_at, network, asset_ref, issuer_wallet, anchor_hash, tx_hash, token_id, last_error, next_attempt_at, attempt_count
     FROM tokenization_requests
     WHERE id = ${requestId}
       AND tenant_id = ${tenantId}::uuid
@@ -76,20 +89,75 @@ async function loadTokenizationRequest(requestId: string | undefined, tenantId: 
   return (rows[0] || null) as TokenizationRequestRow | null;
 }
 
+async function ensureCanonicalRequestedEvent(request: TokenizationEventRecord) {
+  return recordTokenizationCanonicalEvent({
+    request,
+    state: "requested",
+    runtimeMode: resolveTokenizationRuntimeMode(),
+    processor: "public_cta_tokenize_request",
+  });
+}
+
 function normalizedStatus(request: TokenizationRequestRow | null, anchor: AnchorResult | null) {
+  const rawStatus = String(anchor?.status || request?.status || "").trim().toLowerCase();
+  if (rawStatus === "reconciling") return "reconciling";
   const status = normalizeTokenizationStatus(anchor?.status || request?.status || "");
   if (status === "simulated" || anchor?.simulated === true) return "simulated";
   if (status === "anchored" && (request?.tx_hash || request?.token_id || anchor?.tx_hash || anchor?.token_id)) return "anchored";
   return status === "none" ? "pending" : status;
 }
 
+const PUBLIC_TOKENIZATION_ERROR_REASONS = new Set([
+  "tokenization_disabled",
+  "tokenization_execution_busy",
+  "tokenization_execution_lease_replay",
+  "tokenization_execution_reconciliation_required",
+  "tokenization_execution_governance_migration_required",
+  "tokenization_execution_governance_unavailable",
+  "tokenization_execution_unavailable",
+  "tokenization_runtime_execution_class_mismatch",
+  "tokenization_request_network_class_mismatch",
+  "tokenization_request_recipient_mismatch",
+  "tokenization_anchor_evidence_not_verified",
+  "supplier_pack_purpose_unclassified",
+  "supplier_trial_integration_non_sellable",
+  "supplier_production_acceptance_v2_required",
+]);
+
+function publicTokenizationErrorReason(value: unknown) {
+  const reason = String(value || "").trim();
+  if (!reason) return null;
+  return PUBLIC_TOKENIZATION_ERROR_REASONS.has(reason)
+    ? reason
+    : "tokenization_execution_unavailable";
+}
+
+function publicTokenizationRequest(request: TokenizationRequestRow | null | undefined) {
+  if (!request) return null;
+  return {
+    id: request.id || null,
+    status: normalizeTokenizationStatus(request.status),
+    requested_at: request.requested_at || null,
+    network: request.network || null,
+    tx_hash: request.tx_hash || null,
+    token_id: request.token_id || null,
+    anchor_hash: request.anchor_hash || null,
+    next_attempt_at: request.next_attempt_at || null,
+    attempt_count: request.attempt_count ?? 0,
+    execution_class: request.execution_class || null,
+  };
+}
+
 function tokenizationOutcome(request: TokenizationRequestRow | null, anchor: AnchorResult | null) {
   const status = normalizedStatus(request, anchor);
   const txHash = anchor?.tx_hash || request?.tx_hash || null;
   const tokenId = anchor?.token_id || request?.token_id || null;
-  const error = anchor?.reason || request?.last_error || null;
+  const error = publicTokenizationErrorReason(anchor?.reason || request?.last_error);
   const nextAttemptAt = anchor?.next_attempt_at || request?.next_attempt_at || null;
   const mintOk = status === "anchored" && Boolean(txHash || tokenId || anchor?.ok);
+  const commercialDisposition = sanitizeText(anchor?.commercial_disposition, 80) || null;
+  const commerciallyEligible = commercialDisposition !== null
+    && commercialDisposition.toUpperCase() === "COMMERCIAL_RELEASE";
 
   if (status === "anchored") {
     return {
@@ -99,6 +167,8 @@ function tokenizationOutcome(request: TokenizationRequestRow | null, anchor: Anc
       tokenization_error: null,
       tx_hash: txHash,
       token_id: tokenId,
+      commercial_disposition: commercialDisposition,
+      commercially_eligible: commerciallyEligible,
       next_attempt_at: null,
       explainer: "Producto anclado en Polygon Amoy con UID hasheado y salt privado.",
     };
@@ -131,16 +201,31 @@ function tokenizationOutcome(request: TokenizationRequestRow | null, anchor: Anc
     };
   }
 
+  if (status === "reconciling") {
+    return {
+      ok: true,
+      mint_ok: false,
+      tokenization_status: "reconciling",
+      tokenization_error: error || "external_result_requires_reconciliation",
+      tx_hash: null,
+      token_id: null,
+      next_attempt_at: null,
+      safe_to_retry: false,
+      explainer: "La solicitud esta en reconciliacion. No se enviara otra transaccion hasta confirmar el resultado externo.",
+    };
+  }
+
   if (status === "failed") {
     return {
       ok: true,
       mint_ok: false,
-      tokenization_status: "pending_retry",
+      tokenization_status: "failed",
       tokenization_error: error || "polygon_mint_failed",
       tx_hash: txHash,
       token_id: tokenId,
       next_attempt_at: nextAttemptAt,
-      explainer: "Solicitud guardada. El mint no se completo y quedo en reintento operativo sin exponer el UID crudo.",
+      safe_to_retry: false,
+      explainer: "No hay prueba on-chain confirmada. La solicitud queda para revision operativa y no autoriza un nuevo envio automatico.",
     };
   }
 
@@ -152,7 +237,8 @@ function tokenizationOutcome(request: TokenizationRequestRow | null, anchor: Anc
     tx_hash: txHash,
     token_id: tokenId,
     next_attempt_at: nextAttemptAt,
-    explainer: "Solicitud guardada y en cola. El minter puede reintentar sin exponer el UID crudo.",
+    safe_to_retry: false,
+    explainer: "Solicitud guardada. No se informa transaccion ni token hasta contar con evidencia externa confirmada.",
   };
 }
 
@@ -193,25 +279,6 @@ function callerRecipient(body: Record<string, unknown>) {
       || body.recipientWallet,
     180,
   );
-}
-
-function withoutCallerAuthorizationFields(body: Record<string, unknown>) {
-  const sanitized = { ...body };
-  for (const field of [
-    "tokenization_policy",
-    "tokenizationPolicy",
-    "lot_anchor",
-    "lotAnchor",
-    "issuer_batch_anchor",
-    "issuerBatchAnchor",
-    "issuer_wallet",
-    "issuerWallet",
-    "recipient_wallet",
-    "recipientWallet",
-  ]) {
-    delete sanitized[field];
-  }
-  return sanitized;
 }
 
 async function hasClaimedOwnership(input: {
@@ -301,6 +368,18 @@ export async function POST(req: Request) {
     }, 403);
   }
 
+  try {
+    await ensureTokenizationCommercialScopeSchema();
+  } catch (error) {
+    if (isTokenizationCommercialScopeSchemaError(error)) {
+      return json({ ok: false, reason: TOKENIZATION_COMMERCIAL_SCOPE_MIGRATION_REQUIRED, trace_id: traceId }, 503, {
+        "cache-control": "no-store",
+        "retry-after": "2",
+      });
+    }
+    throw error;
+  }
+
   let consumer: Record<string, unknown> | null = null;
   if (!tokenizationCanRunWithoutOwner(serverPolicy)) {
     consumer = await getConsumerFromRequest(req) as Record<string, unknown> | null;
@@ -339,21 +418,13 @@ export async function POST(req: Request) {
   if (!tenantRecipient.ok) {
     return json({ ok: false, reason: tenantRecipient.reason, trace_id: traceId }, 503);
   }
-  const environmentRecipient = tenantRecipient.wallet
-    ? { ok: true as const, wallet: null }
-    : configuredRecipient(process.env.POLYGON_DEFAULT_RECIPIENT);
-  if (!environmentRecipient.ok) {
-    return json({ ok: false, reason: environmentRecipient.reason, trace_id: traceId }, 503);
-  }
   const consumerRecipient = verifiedConsumerWallet(consumer);
-  const trustedRecipient = consumerRecipient || tenantRecipient.wallet || environmentRecipient.wallet;
+  const trustedRecipient = consumerRecipient || tenantRecipient.wallet;
   const recipientSource = consumerRecipient
     ? "verified_consumer_wallet"
     : tenantRecipient.wallet
       ? "tenant_or_batch_config"
-      : environmentRecipient.wallet
-        ? "server_default"
-        : null;
+      : null;
   const suppliedRecipient = callerRecipient(body);
   if (suppliedRecipient && (!trustedRecipient || suppliedRecipient.toLowerCase() !== trustedRecipient.toLowerCase())) {
     return json({
@@ -396,17 +467,31 @@ export async function POST(req: Request) {
     }, 403);
   }
 
-  const requestedNetworkRaw = sanitizeText(body.ledger_network || "polygon-amoy", 40).toLowerCase();
-  const ledgerNetwork = LEDGER_NETWORK_ALLOWED.has(requestedNetworkRaw) ? requestedNetworkRaw : "polygon-amoy";
+  const requestedNetworkHint = sanitizeText(body.ledger_network, 40).toLowerCase();
+  if (requestedNetworkHint && requestedNetworkHint !== "polygon-amoy") {
+    return json({
+      ok: false,
+      reason: "caller_tokenization_network_not_authorized",
+      trace_id: traceId,
+    }, 403, { "cache-control": "no-store" });
+  }
+  const runtimeMode = resolveTokenizationRuntimeMode();
+  const ledgerNetwork = runtimeMode === "simulated" ? "simulation" : "polygon-amoy";
   const ledger = {
     ledger_status: "pending",
     ledger_network: ledgerNetwork,
-    ledger_ref: sanitizeText(body.ledger_ref, 160) || null,
-    asset_ref: sanitizeText(body.asset_ref || `${bid}:${uid}`, 180),
-    anchor_hash: sanitizeText(body.anchor_hash, 180) || null,
+    ledger_ref: null,
+    asset_ref: null,
+    anchor_hash: null,
     issuer_wallet: trustedRecipient,
-    last_anchor_at: sanitizeText(body.last_anchor_at, 80) || null,
+    last_anchor_at: null,
   };
+  const executionClass = classifyTokenizationExecutionClass(ledger.ledger_network, {
+    simulated: runtimeMode === "simulated",
+  });
+  if (!executionClass) {
+    return json({ ok: false, reason: "unsupported_tokenization_network", trace_id: traceId }, 400);
+  }
   const policyMeta = {
     condition_state: sanitizeText(body.condition_state, 80) || null,
     claim_mode: sanitizeText(body.claim_mode, 80) || null,
@@ -419,33 +504,87 @@ export async function POST(req: Request) {
       : [],
   };
 
-  await ensureTokenizationRequestsSchema();
+  let tagId = "";
+  let sourceEventCreatedAt: string | Date | null = null;
+  try {
+    const identityRows = await sql/*sql*/`
+      SELECT tag.id AS tag_id, event.created_at AS source_event_created_at
+      FROM events event
+      JOIN batches batch
+        ON batch.id = event.batch_id
+       AND batch.tenant_id = event.tenant_id
+      JOIN tags tag
+        ON tag.batch_id = event.batch_id
+       AND UPPER(tag.uid_hex) = UPPER(event.uid_hex)
+      WHERE event.id = ${eventId}::bigint
+        AND event.tenant_id = ${tenantId}::uuid
+        AND event.batch_id = ${batchId}::uuid
+        AND batch.bid = ${bid}
+        AND UPPER(event.uid_hex) = UPPER(${uid})
+      LIMIT 2
+    `;
+    if (identityRows.length !== 1 || !identityRows[0]?.tag_id) {
+      return json({ ok: false, reason: "tokenization_asset_identity_mismatch", trace_id: traceId }, 409);
+    }
+    tagId = String(identityRows[0].tag_id);
+    sourceEventCreatedAt = identityRows[0].source_event_created_at as string | Date | null;
+    if (!sourceEventCreatedAt) {
+      return json({ ok: false, reason: "tokenization_event_time_identity_missing", trace_id: traceId }, 409);
+    }
+  } catch (error) {
+    if (isTokenizationCommercialScopeSchemaError(error)) {
+      return json({ ok: false, reason: TOKENIZATION_COMMERCIAL_SCOPE_MIGRATION_REQUIRED, trace_id: traceId }, 503, {
+        "cache-control": "no-store",
+        "retry-after": "2",
+      });
+    }
+    throw error;
+  }
 
   const existingRows = await sql/*sql*/`
-    SELECT id, status, requested_at, network, asset_ref, issuer_wallet, anchor_hash, tx_hash, token_id, last_error, next_attempt_at
+    SELECT id, tenant_id, batch_id, tag_id, source_event_id, source_event_created_at, bid, uid_hex, execution_class,
+           status, requested_at, network, asset_ref, issuer_wallet, anchor_hash, tx_hash, token_id, last_error, next_attempt_at
     FROM tokenization_requests
     WHERE tenant_id = ${tenantId}::uuid
       AND batch_id = ${batchId}::uuid
+      AND tag_id = ${tagId}::uuid
       AND bid = ${bid}
       AND uid_hex = ${uid}
-      AND status IN ('pending', 'processing', 'failed', 'anchored', 'simulated', 'blocked')
+      AND execution_class = ${executionClass}
+      AND network = ${ledger.ledger_network}
+      AND status IN ('pending', 'processing', 'reconciling', 'failed', 'anchored', 'simulated', 'blocked')
     ORDER BY requested_at DESC
     LIMIT 1
   `;
   const existingRequest = existingRows[0];
   if (existingRequest) {
+    const requestedEvent = await ensureCanonicalRequestedEvent(existingRequest);
+    if (!requestedEvent.ok) {
+      return json({
+        ok: false,
+        reason: requestedEvent.reason,
+        operation_committed: true,
+        tokenization_request: publicTokenizationRequest(existingRequest),
+        trace_id: traceId,
+      }, 503, { "cache-control": "no-store", "retry-after": "2" });
+    }
     const alreadyAnchored = String(existingRequest.status || "") === "anchored";
     const anchor = alreadyAnchored
-      ? null
+      ? (await anchorTokenizationRequest({
+          requestId: String(existingRequest.id || ""),
+          tenantId,
+          network: ledger.ledger_network,
+          issuerWallet: ledger.issuer_wallet,
+          processor: "public_cta_anchored_event_repair",
+        }) as AnchorResult)
       : ((await maybeAnchorPublicRequest(String(existingRequest.id || ""), tenantId, ledger.ledger_network, ledger.issuer_wallet)) as AnchorResult | null);
     const latestRequest = await loadTokenizationRequest(String(existingRequest.id || ""), tenantId);
     const outcome = tokenizationOutcome(latestRequest || existingRequest, anchor);
+    const canonicalUnavailable = anchor?.canonical_event_confirmed === false;
     return json({
       action: "tokenize_request",
       deduplicated: true,
-      reason: alreadyAnchored
-        ? "existing request already anchored"
-        : outcome.tokenization_status === "anchored"
+      reason: outcome.tokenization_status === "anchored"
           ? "existing request anchored"
           : outcome.tokenization_status === "simulated"
             ? "existing request simulated without blockchain"
@@ -453,26 +592,36 @@ export async function POST(req: Request) {
               ? "existing request blocked by runtime policy"
           : outcome.tokenization_status === "failed"
             ? "existing request failed"
-            : "existing request queued for retry",
-      tokenization_request: latestRequest || existingRequest,
+            : outcome.tokenization_status === "reconciling"
+              ? "existing request awaiting reconciliation without redispatch"
+              : "existing request pending review",
+      tokenization_request: publicTokenizationRequest(latestRequest || existingRequest),
       anchor,
       ...outcome,
+      ok: canonicalUnavailable ? false : outcome.ok,
       trace_id: traceId,
       share_token_status: auth.share_token_status,
       fresh_token_status: "accepted",
       tokenization_policy: serverPolicy,
       tokenization_policy_source: target.tokenizationPolicySource,
-    }, outcome.ok ? 200 : 502);
+      canonical_event: requestedEvent.receipt,
+      operation_committed: canonicalUnavailable ? true : undefined,
+    }, canonicalUnavailable ? 503 : outcome.ok ? 200 : 502, canonicalUnavailable ? { "cache-control": "no-store", "retry-after": "2" } : undefined);
   }
 
   const reqRows = await sql/*sql*/`
     INSERT INTO tokenization_requests (
-      tenant_id, batch_id, bid, uid_hex, status, network, asset_ref, issuer_wallet, anchor_hash, requested_by, next_attempt_at, meta
+      tenant_id, batch_id, tag_id, source_event_id, source_event_created_at, bid, uid_hex, execution_class,
+      status, network, asset_ref, issuer_wallet, anchor_hash, requested_by, next_attempt_at, meta
     ) VALUES (
       ${tenantId},
       ${batchId},
+      ${tagId},
+      ${eventId}::bigint,
+      ${sourceEventCreatedAt},
       ${bid},
       ${uid},
+      ${executionClass},
       'pending',
       ${ledger.ledger_network},
       ${ledger.asset_ref},
@@ -480,33 +629,60 @@ export async function POST(req: Request) {
       ${ledger.anchor_hash},
       'public_cta',
       now(),
-      ${JSON.stringify({ trace_id: traceId, share_token_status: auth.share_token_status, fresh_handoff_exp: fresh.payload.exp, ...policyMeta })}::jsonb
+      ${JSON.stringify({ trace_id: traceId, share_token_status: auth.share_token_status, fresh_handoff_exp: fresh.payload.exp, execution_class: executionClass, ...policyMeta })}::jsonb
     )
-    RETURNING id, status, requested_at
+    ON CONFLICT DO NOTHING
+    RETURNING id, tenant_id, batch_id, tag_id, source_event_id, source_event_created_at,
+              bid, uid_hex, execution_class, status, network, requested_at
   `;
-  const tokenizationRequest = reqRows[0];
+  const createdRequest = reqRows[0] || null;
+  const tokenizationRequest = createdRequest || (await sql/*sql*/`
+    SELECT id, tenant_id, batch_id, tag_id, source_event_id, source_event_created_at,
+           bid, uid_hex, execution_class, status, network, requested_at
+    FROM tokenization_requests
+    WHERE tenant_id = ${tenantId}::uuid
+      AND tag_id = ${tagId}::uuid
+      AND execution_class = ${executionClass}
+      AND network = ${ledger.ledger_network}
+      AND status IN ('pending', 'processing', 'reconciling', 'failed', 'anchored', 'blocked')
+    ORDER BY requested_at DESC, id DESC
+    LIMIT 1
+  `)[0];
+  if (!tokenizationRequest?.id) {
+    return json({ ok: false, reason: "tokenization_request_creation_conflict", trace_id: traceId }, 409, {
+      "cache-control": "no-store",
+    });
+  }
+  const requestedEvent = await ensureCanonicalRequestedEvent(tokenizationRequest as TokenizationEventRecord);
+  if (!requestedEvent.ok) {
+    return json({
+      ok: false,
+      reason: requestedEvent.reason,
+      operation_committed: true,
+      tokenization_request: publicTokenizationRequest(tokenizationRequest),
+      trace_id: traceId,
+    }, 503, { "cache-control": "no-store", "retry-after": "2" });
+  }
   const anchor = (await maybeAnchorPublicRequest(String(tokenizationRequest?.id || ""), tenantId, ledger.ledger_network, ledger.issuer_wallet)) as AnchorResult | null;
   const latestRequest = await loadTokenizationRequest(String(tokenizationRequest?.id || ""), tenantId);
   const outcome = tokenizationOutcome(latestRequest || tokenizationRequest, anchor);
-  const saved = await recordDemoCta("tokenize_request", bid, uid, {
-    ...withoutCallerAuthorizationFields(body),
-    ...ledger,
-    ...policyMeta,
-    fresh_handoff_exp: fresh.payload.exp,
-    tokenization_requested_at: new Date().toISOString(),
-  });
+  const canonicalUnavailable = anchor?.canonical_event_confirmed === false;
   return json({
     action: "tokenize_request",
-    id: saved.id,
-    created_at: saved.created_at,
+    deduplicated: !createdRequest,
+    id: requestedEvent.receipt.canonicalOperationId,
+    created_at: requestedEvent.receipt.eventCreatedAt,
     ledger,
-    tokenization_request: latestRequest || tokenizationRequest || null,
+    tokenization_request: publicTokenizationRequest(latestRequest || tokenizationRequest),
     anchor,
     ...outcome,
+    ok: canonicalUnavailable ? false : outcome.ok,
     trace_id: traceId,
     share_token_status: auth.share_token_status,
     fresh_token_status: "accepted",
     tokenization_policy: serverPolicy,
     tokenization_policy_source: target.tokenizationPolicySource,
-  }, outcome.ok ? 201 : 502);
+    canonical_event: requestedEvent.receipt,
+    operation_committed: canonicalUnavailable ? true : undefined,
+  }, canonicalUnavailable ? 503 : outcome.ok ? (createdRequest ? 201 : 200) : 502, canonicalUnavailable ? { "cache-control": "no-store", "retry-after": "2" } : undefined);
 }

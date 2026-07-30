@@ -1,8 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin } from "../../../../lib/auth";
-import { getAdminTenantScope } from "../../../../lib/auth";
+import { checkAdmin, checkAdminPermission, getAdminTenantScope } from "../../../../lib/auth";
 import { sql } from "../../../../lib/db";
 import { onRealtimeEvent } from "../../../../lib/realtime-events";
 import { randomUUID } from "node:crypto";
@@ -23,6 +22,20 @@ type RealtimeAlertPayload = {
   tenant_slug?: string;
   type: string;
   severity: string;
+  created_at: string;
+};
+
+type RealtimeIncidentPayload = {
+  event_type: "incident.created" | "incident.updated";
+  incident_id: string;
+  incident_event_id: string;
+  ticket_id: string;
+  tenant_id?: string;
+  tenant_slug?: string;
+  incident_status: string;
+  incident_severity: string;
+  incident_title: string;
+  source?: string;
   created_at: string;
 };
 
@@ -52,6 +65,14 @@ function resolveWindowMs(raw: string): number | null {
     "30d": 30 * 24 * 60 * 60 * 1000,
   };
   return map[raw] ?? null;
+}
+
+function isIncidentPayload(payload: Record<string, unknown>): payload is RealtimeIncidentPayload {
+  const type = String(payload.event_type || "");
+  return (type === "incident.created" || type === "incident.updated")
+    && Boolean(payload.incident_id)
+    && Boolean(payload.incident_event_id)
+    && Boolean(payload.ticket_id);
 }
 
 let eventLocationContextSchemaReady: Promise<void> | null = null;
@@ -119,8 +140,8 @@ async function fetchRows(
         WHERE t.slug = ${tenant}
           AND (
             ${sourceFilter} = 'all'
-            OR (${sourceFilter} = 'production' AND LOWER(COALESCE(e.source, '')) IN ('real', 'imported'))
-            OR (${sourceFilter} IN ('demo', 'real', 'imported') AND LOWER(COALESCE(e.source, '')) = ${sourceFilter})
+            OR (${sourceFilter} = 'production' AND LOWER(COALESCE(e.source::text, '')) IN ('real', 'imported'))
+            OR (${sourceFilter} IN ('demo', 'real', 'imported') AND LOWER(COALESCE(e.source::text, '')) = ${sourceFilter})
           )
           AND (${verdict} = '' OR UPPER(e.result) = ${verdict})
           AND (
@@ -175,8 +196,8 @@ async function fetchRows(
         LEFT JOIN tenants t ON t.id = COALESCE(b.tenant_id, e.tenant_id)
         WHERE (
             ${sourceFilter} = 'all'
-            OR (${sourceFilter} = 'production' AND LOWER(COALESCE(e.source, '')) IN ('real', 'imported'))
-            OR (${sourceFilter} IN ('demo', 'real', 'imported') AND LOWER(COALESCE(e.source, '')) = ${sourceFilter})
+            OR (${sourceFilter} = 'production' AND LOWER(COALESCE(e.source::text, '')) IN ('real', 'imported'))
+            OR (${sourceFilter} IN ('demo', 'real', 'imported') AND LOWER(COALESCE(e.source::text, '')) = ${sourceFilter})
           )
           AND (${verdict} = '' OR UPPER(e.result) = ${verdict})
           AND (
@@ -201,6 +222,7 @@ async function fetchRows(
 export async function GET(req: Request): Promise<Response> {
   const auth = await checkAdmin(req);
   if (auth) return auth;
+  const canReadIncidents = checkAdminPermission(req, "incidents:read") === null;
   const { scope, forcedTenantSlug } = getAdminTenantScope(req);
 
   const { searchParams } = new URL(req.url);
@@ -225,6 +247,8 @@ export async function GET(req: Request): Promise<Response> {
   }
   console.info("[admin_sse_access]", JSON.stringify({ requestId, scope: scope || "none", forcedTenantSlug: forcedTenantSlug || null, sourceFilter }));
 
+  let cancelled = false;
+  let cancelStream: ((closeController: boolean) => void) | null = null;
   const stream = new ReadableStream({
     async start(controller) {
       let closed = false;
@@ -234,7 +258,7 @@ export async function GET(req: Request): Promise<Response> {
       const { raw } = resolveWindow(searchParams);
       const windowMs = resolveWindowMs(raw);
       const send = (event: string, payload: unknown) => {
-        if (closed) return;
+        if (closed || cancelled) return;
         const eventId = typeof payload === "object" && payload && "eventId" in (payload as Record<string, unknown>)
           ? String((payload as Record<string, unknown>).eventId)
           : String(Date.now());
@@ -244,19 +268,28 @@ export async function GET(req: Request): Promise<Response> {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
       };
 
-      const close = () => {
-        if (closed) return;
-        closed = true;
-        controller.close();
-      };
-
       try {
         send("connected", { id: `connected-${Date.now()}`, stream_request_id: requestId, source: sourceFilter, availability: "ready", ts: new Date().toISOString() });
         const snapshotRows = await fetchRows(searchParams, forcedTenantSlug, sourceFilter);
         send("snapshot", { id: `snapshot-${Date.now()}`, stream_request_id: requestId, source: sourceFilter, availability: "ready", rows: snapshotRows.map((row) => normalizeTenantTapRealtimeEvent(row)) });
-      } catch {
+      } catch (error) {
+        const errorCode = typeof (error as { code?: unknown })?.code === "string"
+          ? String((error as { code: string }).code).slice(0, 32)
+          : "snapshot_query_failed";
+        const diagnostic = process.env.NODE_ENV === "test" && process.env.VERCEL_ENV === "test"
+          ? String(error instanceof Error ? error.message : "snapshot_query_failed")
+            .replace(/postgres(?:ql)?:\/\/[^\s"']+/gi, "[redacted_database_url]")
+            .slice(0, 240)
+          : null;
+        console.warn("[admin_sse_snapshot_unavailable]", JSON.stringify({
+          requestId,
+          errorCode,
+          ...(diagnostic ? { diagnostic } : {}),
+        }));
         send("warning", { id: `warning-${Date.now()}`, stream_request_id: requestId, reason: "snapshot_unavailable" });
       }
+
+      if (cancelled) return;
 
       const unsubscribe = onRealtimeEvent((payload) => {
         const rawPayload = payload as Record<string, unknown>;
@@ -277,6 +310,34 @@ export async function GET(req: Request): Promise<Response> {
             tenant_slug: rawPayload.tenant_slug ? String(rawPayload.tenant_slug) : null,
             type: String(rawPayload.type || ""),
             severity: String(rawPayload.severity || ""),
+            created_at: String(rawPayload.created_at || new Date().toISOString()),
+            stream_sent_at: new Date().toISOString(),
+            stream_request_id: requestId,
+            request_id: requestId,
+          });
+          return;
+        }
+
+        if (isIncidentPayload(rawPayload)) {
+          if (!canReadIncidents) return;
+          if (!allowRealtimeEventForSource(sourceFilter, rawPayload.source)) return;
+          if (!allowRealtimeEventForScope({
+            scope,
+            forcedTenantSlug,
+            requestedTenant: tenant,
+            eventTenantSlug: typeof rawPayload.tenant_slug === "string" ? rawPayload.tenant_slug : null,
+          })) return;
+          send("event", {
+            event_type: rawPayload.event_type,
+            incident_id: String(rawPayload.incident_id),
+            incident_event_id: String(rawPayload.incident_event_id),
+            ticket_id: String(rawPayload.ticket_id),
+            tenant_id: rawPayload.tenant_id ? String(rawPayload.tenant_id) : null,
+            tenant_slug: rawPayload.tenant_slug ? String(rawPayload.tenant_slug) : null,
+            incident_status: String(rawPayload.incident_status || ""),
+            incident_severity: String(rawPayload.incident_severity || ""),
+            incident_title: String(rawPayload.incident_title || ""),
+            source: rawPayload.source ? String(rawPayload.source) : null,
             created_at: String(rawPayload.created_at || new Date().toISOString()),
             stream_sent_at: new Date().toISOString(),
             stream_request_id: requestId,
@@ -321,18 +382,28 @@ export async function GET(req: Request): Promise<Response> {
       }, 15000);
 
       const onAbort = () => shutdown();
-      const shutdown = () => {
+      let lifetime: ReturnType<typeof setTimeout> | null = null;
+      const shutdown = (closeController = true) => {
+        if (closed) return;
+        closed = true;
         clearInterval(heartbeat);
+        if (lifetime) clearTimeout(lifetime);
         unsubscribe();
         req.signal.removeEventListener("abort", onAbort);
-        close();
+        cancelStream = null;
+        if (closeController) controller.close();
       };
+      cancelStream = shutdown;
 
-      setTimeout(() => {
+      lifetime = setTimeout(() => {
         shutdown();
       }, 4 * 60 * 1000);
 
       req.signal.addEventListener("abort", onAbort, { once: true });
+    },
+    cancel() {
+      cancelled = true;
+      cancelStream?.(false);
     },
   });
 

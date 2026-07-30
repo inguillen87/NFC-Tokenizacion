@@ -1,0 +1,153 @@
+{
+  "asyncapi": "3.0.0",
+  "info": {
+    "title": "nexID tenant webhooks",
+    "version": "1.0.0",
+    "description": "Machine-readable outbound webhook contract. Delivery is asynchronous and at least once after a durable outbox receipt. Consumers must verify the exact raw body, atomically deduplicate x-nexid-delivery-id and only then parse the event. NFC verdicts describe digital message evidence; they do not independently prove physical-product authenticity, contents, custody or ownership."
+  },
+  "defaultContentType": "application/json",
+  "channels": {
+    "tenantWebhook": {
+      "address": "tenant-configured-https-callback",
+      "title": "Tenant HTTPS callback",
+      "description": "The HTTPS URL configured and egress-validated for one tenant. It is not a public broker topic and does not carry secrets in the URL.",
+      "messages": {
+        "NexIdWebhookEventV1": {
+          "$ref": "#/components/messages/NexIdWebhookEventV1"
+        }
+      }
+    }
+  },
+  "operations": {
+    "sendTenantWebhook": {
+      "action": "send",
+      "channel": {
+        "$ref": "#/channels/tenantWebhook"
+      },
+      "summary": "Send a signed tenant event",
+      "description": "nexID sends one signed event attempt. Any 2xx response acknowledges the delivery. Retry scheduling and dead-letter state are managed by the durable nexID outbox; a consumer must treat deliveryId as the idempotency identity.",
+      "messages": [
+        {
+          "$ref": "#/channels/tenantWebhook/messages/NexIdWebhookEventV1"
+        }
+      ],
+      "x-nexid-delivery-semantics": "at-least-once"
+    }
+  },
+  "components": {
+    "messages": {
+      "NexIdWebhookEventV1": {
+        "name": "NexIdWebhookEventV1",
+        "title": "nexID webhook event schema 1.0",
+        "summary": "Versioned, signed tenant event envelope",
+        "contentType": "application/json",
+        "correlationId": {
+          "description": "Stable event identity. It must equal the signed x-nexid-event-id header.",
+          "location": "$message.payload#/id"
+        },
+        "headers": {
+          "$ref": "#/components/schemas/WebhookHeadersV2"
+        },
+        "payload": {
+          "$ref": "#/components/schemas/WebhookEventV1"
+        },
+        "x-nexid-supported-signature-versions": ["v1", "v2"],
+        "x-nexid-preferred-signature-version": "v2",
+        "x-nexid-supported-contract-versions": ["legacy", "1.0"]
+      }
+    },
+    "schemas": {
+      "WebhookHeadersV2": {
+        "type": "object",
+        "required": [
+          "x-nexid-signature-version",
+          "x-nexid-timestamp",
+          "x-nexid-key-id",
+          "x-nexid-delivery-id",
+          "x-nexid-event-id",
+          "x-nexid-signature"
+        ],
+        "properties": {
+          "x-nexid-signature-version": {
+            "type": "string",
+            "enum": ["v1", "v2"],
+            "description": "v2 additionally authenticates keyId and is required for new integrations."
+          },
+          "x-nexid-timestamp": {
+            "type": "string",
+            "pattern": "^[0-9]{1,12}$"
+          },
+          "x-nexid-key-id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "x-nexid-delivery-id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "description": "Persist with a unique constraint before business side effects."
+          },
+          "x-nexid-event-id": {
+            "type": "string",
+            "pattern": "^evt_[A-Za-z0-9_-]{8,128}$"
+          },
+          "x-nexid-signature": {
+            "type": "string",
+            "pattern": "^v[12]=[a-f0-9]{64}$"
+          },
+          "x-nexid-event": {
+            "type": "string",
+            "description": "Unsigned convenience routing header. Authoritative type remains inside the signed body."
+          },
+          "x-nexid-delivery": {
+            "type": "string",
+            "description": "Legacy convenience alias. Use the signed x-nexid-delivery-id identity."
+          }
+        },
+        "additionalProperties": true
+      },
+      "WebhookEventV1": {
+        "type": "object",
+        "required": ["schemaVersion", "id", "type", "createdAt", "data"],
+        "properties": {
+          "schemaVersion": {
+            "const": "1.0"
+          },
+          "id": {
+            "type": "string",
+            "pattern": "^evt_[A-Za-z0-9_-]{8,128}$"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "demo.tap.simulated",
+              "epcis.event.captured",
+              "ownership.activated",
+              "provenance.viewed",
+              "sdk.claim.claimed",
+              "sdk.claim.created",
+              "sdk.external_event",
+              "sdk.pos.activated",
+              "sdk.verify",
+              "tokenization.anchored",
+              "tokenization.requested",
+              "tokenization.simulated",
+              "warranty.review_requested"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "data": {
+            "type": "object",
+            "description": "Tenant-scoped event data. Raw NFC keys, signing secrets, API keys, full receipts and unredacted personal data are forbidden.",
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  }
+}

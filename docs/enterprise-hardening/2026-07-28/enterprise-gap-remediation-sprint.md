@@ -2,7 +2,7 @@
 
 ## Executive verdict
 
-NexID already has a credible product surface: SUN/SDM verification, normalized event contracts, tenant-aware SSE, analytics, maps, SDK/API keys, signed webhook delivery, public proof labs and mobile post-tap experiences. It is not yet correct to call the whole platform enterprise-complete. The remaining gaps are concentrated in identity-bound administration, atomic SUN persistence, privacy defaults, operational incident handling, standards conformance and production evidence.
+NexID already has a credible product surface: SUN/SDM verification, normalized event contracts, tenant-aware SSE, analytics, maps, SDK/API keys, signed webhook delivery, public proof labs and mobile post-tap experiences. This sprint closes the identified local-code gaps in identity-bound administration, atomic SUN persistence, privacy defaults, webhook lifecycle, canonical event writing and operational incident handling. It is still not correct to call the whole platform enterprise-complete: the remaining gaps are controlled database rollout, external runtime and physical-tag evidence, operational SLOs and standards conformance.
 
 The physical NFC path remains authoritative and unchanged by this sprint. GS1 Digital Link/QR is an identity and discovery carrier; it does not become cryptographic NFC authentication. Software envelope encryption remains software custody and is not described as HSM.
 
@@ -30,7 +30,18 @@ This makes the harness safer to prepare for a future isolated staging E2E. It ha
 - Preserves the QR/NFC trust boundary in both resolver metadata and the target passport parameters.
 - Drops resolver-owned and secret-shaped query parameters before redirecting. This is an intentional security constraint and a known deviation from the GS1 default of forwarding the complete query string.
 
-This is a standards-aligned foundation, not a claim of full GS1-Conformant Resolver certification. Full conformance still requires a product/link registry that returns `404` for syntactically valid but unknown identifiers, language/context selection, validation against the normative schemas and a passing run of the official GS1 Resolver 1.2 test suite on the deployed HTTPS domain.
+The resolver is now backed by a tenant-owned registry: syntactically valid but unknown, suspended or retired identifiers return `404`, registry outages fail closed, and caller-selected tenant/batch scope cannot override the registered owner. Registry lifecycle uses keyset pagination, compare-and-swap transitions and append-only audit. Production web resolution requires the explicit server-only `NEXID_GS1_REGISTRY_API_URL`; there is no implicit API fallback. This remains a standards-aligned foundation, not a claim of full GS1-Conformant Resolver certification. Full conformance still requires language/context selection, normative schema validation and a passing run of the official GS1 Resolver 1.2 test suite on the deployed HTTPS domain.
+
+### EPCIS/CBV 2.0 bounded foundation
+
+- Added tenant-scoped `capture`, `events` query and paginated `export` routes with dedicated `sdk:epcis:write/read` scopes.
+- Capture is required-idempotent and all-or-none across EPCIS storage, registered GS1 identifiers, canonical events and webhook outbox rows.
+- Hard limits cover bytes, events, identifiers, canonical fan-out, query pages and a dedicated 12-captures/minute distributed budget.
+- Query and export use keyset pagination and never expose another tenant's rows.
+- EPCIS projections are explicitly `declared_business_event` with `cryptographic_authentication: false`; SUN/SDM/CMAC and TagTamper code is unchanged.
+- OpenAPI publishes media types, scopes, idempotency, headers and bounded failure responses.
+
+This is not a full EPCIS conformance or certification claim. Complete normative JSON Schema/SHACL validation, broader query/subscription/master-data behavior and official deployed conformance testing remain open. The detailed contract and rollout order are in `docs/enterprise-hardening/2026-07-29/gs1-epcis-foundation.md`.
 
 ### Location privacy is explicit and approximate by default
 
@@ -74,42 +85,134 @@ This is a standards-aligned foundation, not a claim of full GS1-Conformant Resol
 
 This is locally validated code. Production still requires the paired rollout and canary order in `docs/security.md`; no environment variable, session, credential or deployment was changed here.
 
+### SUN persistence and administrative tag lifecycle are fail-closed
+
+- SUN verification keeps the existing NTAG 424 DNA SDM/CMAC and TagTamper path intact, but replay classification, counter mutation and required event persistence now share the database transaction and per-tag lock introduced by migration `0062`.
+- Administrative lifecycle states are explicit: `inactive`, `active`, `suspended`, `quarantined`, `lost`, `expired`, `broken`, `tampered` and `revoked`.
+- State transitions are tenant- and actor-scoped, compare-and-swap the revision, support idempotency and append immutable history.
+- Activation cannot pass without at least one governed supplier sub-batch; an empty set is rejected instead of satisfying a vacuous aggregate.
+- The SUN wrapper evaluates administrative status only after cryptographic verification and updates the exact partitioned event identity `(id, created_at)`. It does not replace or weaken CMAC, SDM, counter or TagTamper verification.
+- Dashboard tag lists and passports expose lifecycle state, history and permission-gated controls without turning an administrative status into proof of physical authenticity.
+
+### Supplier QA now derives SUN evidence server-side
+
+- Supplier QA no longer trusts operator booleans, a claimed sample count or plausible raw SUN URLs. It accepts only bounded result-page references and resolves their diagnostics and canonical events server-side.
+- A pass requires ten distinct manifest UIDs, CMAC/SDM/UID verification, exact tenant/batch/BID/counter/result binding and an event-linked same-counter replay for every selected UID.
+- TagTamper additionally requires ten electronically decoded closed samples plus one later opened transition with a higher counter on a revoked sacrificial UID. Manual opened states cannot pass.
+- The gate supports cryptographically verified pre-activation `NOT_ACTIVE` samples, so factory QA does not require making products market-active.
+- Each qualifying scan now records an application-level `verification_context_digest` over the manifest, carrier/SDM configuration, authoritative pair fingerprint, supplier state, one-time export receipts and approved packaging revision. QA recomputes it from current authoritative rows and rejects a mismatch while avoiding raw UID and SUN query duplication in the QA/Vault artifact. This unkeyed database-resident digest is not a signature, WORM timestamp, KMS operation or HSM attestation.
+- Order and batch carrier profiles must agree; the route uses the authoritative active `batch_keys` fingerprint, strictly parses the decision, bounds the request and notes, attributes the persisted IAM actor and prevents QA mutation after pass or activation.
+- Migration `0070` makes the aggregate QA receipt idempotent and atomic: PostgreSQL locks and revalidates the supplier/batch context, globally claims every diagnostic once, and commits receipt, Vault metadata, statuses, evidence and audit together. The route has no request-path DDL or independent QA writes, and exact UI retries reuse the same `Idempotency-Key`.
+- The lifecycle activation migration now uses the platform's canonical supplier QA value `passed`; the previous local `approved` mismatch would have blocked valid supplier activation.
+- Public SUN operational logs no longer duplicate the raw decoded UID. The masked value is diagnostic only and remains pseudonymous.
+
+This proves server-verified SUN evidence, not physical presence. The exact ceremony, privacy boundary, current limitations and two-stage trial/production target are documented in `docs/enterprise-hardening/2026-07-29/supplier-sun-qa-evidence-gate.md`.
+
+### Canonical event, webhook and incident operations are durable
+
+- Demo, ownership, warranty and tokenization actions use one canonical event writer instead of direct event inserts.
+- The writer records the canonical event and webhook outbox in the same database transaction, stores the partition-safe source identity and binds idempotency to the complete persisted semantic operation.
+- A repository gate rejects new direct `INSERT INTO events` paths outside the canonical migration/writer boundary.
+- Webhooks now support history-preserving disable/delete, explicit reactivation, one-time server-generated secrets and rotation with a bounded dual-secret overlap.
+- Delivery remains signed and is driven from the durable outbox; list/detail APIs do not expose stored secret material.
+- The tenant-scoped event-to-incident flow persists incidents, linked tickets and append-only history, with SSE plus polling fallback and a dashboard evidence drawer.
+
+### Tenant administration and external actions have narrower authority
+
+- Global superadmin routes require the persisted `super_admin` role; tenant roles cannot select a global view with a header or query parameter.
+- Leads and orders bind tenant, actor, bounded input, rate limit and idempotency at the API boundary.
+- WhatsApp test delivery additionally requires the persisted permission, a valid E.164 destination, recorded consent, rate limiting and audit. No Twilio message was sent during this slice.
+- Polygon wallet diagnostics now expose tenants only to capability, mode, network and availability. RPC/executor endpoints, signer configuration, contract/minter/recipient addresses and balances remain superadmin-only.
+
+### Production surfaces no longer disguise fixtures or infrastructure claims
+
+- The dashboard only serves CRM/demo fixtures during an explicit demo session and labels their source. Production views fail closed to unavailable/empty states instead of manufacturing zero-valued executive evidence.
+- Consumer-network and heatmap clients reject demo payloads outside a demo session.
+- Public, dashboard and documentation claims distinguish implemented code, historical staging evidence and currently verified runtime state.
+- Software envelope encryption is consistently described as software custody. The code and product copy do not market Vercel environment variables, Cloudflare storage or application encryption as managed KMS/HSM.
+
+### DemoLab preview no longer impersonates the physical NFC authority path
+
+- Public and dashboard mobile demos display persistent simulation/preview banners and explicitly separate backend-reported demo data from synthetic seed content.
+- The public preview no longer calls `/api/sun-context` or protected ownership, warranty and tokenization mutations. Those actions remain reserved for the canonical `/sun` flow and its short-lived server-issued handoff.
+- Historical provenance remains a read-only query; tokenization from the preview is only a commercial-interest lead and cannot create a chain request.
+- Demo maps use vertical-specific illustrative origins, lazy-load the heavy 3D runtime and label routes, GPS, metrics and trust scores as illustrative rather than physical evidence.
+- Local browser persistence is versioned and allowlisted to event type plus timestamp. Legacy DemoLab keys are purged, and email, name, company, country, role, free text, coordinates and server errors are not persisted. Optional preview GPS is requested in low-accuracy mode and rounded to three decimal places at collection time.
+- The dashboard duplicate now publishes `evidenceSource` and `physicalTapVerified: false`, removes `LIVE TAP`/`SCAN PULSE`, and disables sensitive CTAs instead of presenting inert controls as functioning actions.
+
+The complete boundary, data-minimization contract and external proof gates are documented in `docs/enterprise-hardening/2026-07-29/demo-preview-physical-boundary.md`.
+
+### Secret custody and release gates are explicit
+
+- Local NFC provisioning helpers default to an ignored `.nexid-custody` path instead of repository-visible output locations.
+- The tracked-secret gate rejects NFC custody artifacts and recognized live-secret formats before release.
+- The database release watermark and dry-run/preflight tooling now cover migrations `0057` through `0071`, including SUN atomic persistence, supplier packaging governance, webhook lifecycle, incidents, tag lifecycle, the canonical event outbox, the GS1/EPCIS foundation, atomic Supplier QA receipts and fail-closed supplier pack-purpose governance. The enum-only `0068` must commit before `0069`; `0070` materializes durable SUN diagnostics and the QA writer; `0071` prevents an integration receipt from being treated as commercial release.
+- Migration safety checks assert transaction ownership, durable tables/functions, the non-empty supplier activation gate, composite partition identity and atomic event/outbox semantics.
+
+These controls are implemented and locally verified. They are not evidence that migrations `0062` through `0071` have been applied to production, that the QA or pack-purpose functions passed a real PostgreSQL concurrency/rollback test, that a live webhook worker or chain executor has processed an event, or that a physical NFC sample has passed the complete deployed path.
+
 ## Verified evidence
 
 - API TypeScript check: pass.
+- Dashboard TypeScript check: pass.
 - Web TypeScript check: pass.
 - Next dynamic-route conflict check: pass.
-- Web test suite after the resolver and auth changes: 228/228 pass.
-- Focused GS1 resolver tests: 8/8 pass.
+- Final API authorization/security regression: 100/100 pass.
+- Final API route regression: 2/2 pass.
+- Final dashboard suite: 254/254 pass.
+- Final web suite: 236/236 pass.
+- Focused GS1 resolver tests: 9/9 pass.
 - E2E harness safety tests: 5/5 pass.
 - Approximate-location privacy tests: 5/5 pass.
-- Supplier/key-custody and packaging-governance security tests: 51/51 pass.
+- Supplier/key-custody, SUN QA atomicity contracts and packaging-governance security tests: 68/68 pass.
 - Batch envelope migration missing-config and missing-apply-consent gates: pass.
 - Canonical analytics/risk/tenant-isolation contract tests: 26/26 pass.
 - Dashboard analytics source and canonical risk contract tests: 5/5 pass.
-- Focused authoritative admin-principal, Clerk, wallet, tenant isolation, rate-limit, signing-secret, E2E safety and special-route tests: 74/74 pass.
+- SUN and administrative lifecycle focused tests: 67/67 pass.
+- Webhook signature, outbox and lifecycle focused tests: 49/49 pass.
+- Polygon transfer controls: 24/24 pass.
+- Polygon/IOTA proof validation: 48/48 pass.
+- Polygon wallet disclosure boundary: 11/11 pass.
+- Fleet rate-limit policy: 44/44 pass.
+- Migration/preflight and GS1/EPCIS contract tests: final focused counts recorded in the 2026-07-29 GS1/EPCIS handoff.
 - Focused dashboard proxy/session/demo authorization tests: 29/29 pass.
+- Secret-custody gate: 1,611 tracked files checked; no recognized tracked live-secret format or NFC custody output found.
+- Dependency audit: 0 known production vulnerabilities across 343 production dependencies at the time of this run.
+- Migration safety gate: 21 release migrations reviewed, with all structural assertions passing.
 - Unsafe default harness invocation: rejected before database or network initialization.
+- Focused DemoLab preview/storage/heavy-import contracts: 11/11 pass.
 
 No batch envelope migration, staging or production mutation, deployment, physical NFC scan or GS1 external conformance run was performed.
 
+The read-only preflight against the database currently configured in `apps/api/.env.local` did not authorize a release. The normal run stopped because `SDK_IDEMPOTENCY_MASTER_KEY_HEX` is not configured. A process-only diagnostic value was then used solely to reach the read-only schema checks; that historical check reported migrations/functions for `0062` through `0067` as absent. Migrations `0068` through `0071` were authored afterward and have not been applied. No key was persisted and no database write was made. This configured target must not be called production-ready until the real release secret is provisioned through the approved secret manager and the migration plan completes its fingerprint, backup, apply and post-check gates.
+
 ## Prioritized remaining work
 
-### P0 — security and truth
+### P0 — controlled database release
 
-1. Make replay classification, tag counter/state mutation and canonical TapEvent persistence one database transaction under a per-tag lock; required persistence must fail closed.
+1. Provision a real `SDK_IDEMPOTENCY_MASTER_KEY_HEX` and version identifier through the approved deployment secret manager; never place them in Git, chat, logs or migration output.
+2. Confirm the exact target database and change window, capture the release fingerprint and backup/restore evidence, then run the fail-closed dry-run for `0062` through `0071`.
+3. Apply the migrations only after explicit production authorization, and require the post-checks for functions, constraints, indexes, ledger watermark and rollback readiness to pass before traffic proceeds.
 
-### P1 — enterprise operations
+### P0 — factory trial and QA release boundary
 
-1. Build the tenant-scoped tap-to-incident loop: SSE with polling fallback, event drawer, evidence explanation, real linked ticket and immediate CRM update.
-2. Add lifecycle states and semantics for revoked, broken, tampered, lost, expired and quarantined tags without changing SUN cryptography.
-3. Route demo, ownership, warranty and tokenization actions through the canonical event writer/outbox.
-4. Replace fixture-backed superadmin/CRM metrics with live APIs and explicit empty states.
-5. Add soft-disable/history-preserving webhook deletion and dual-secret rotation overlap.
+1. Persist the explicit manufacturing state machine `DRAFT_SPEC -> TRIAL_PACK_APPROVED -> TRIAL_10_ENCODED -> TRIAL_QA_PASSED -> PRODUCTION_PROVISIONED -> PRODUCTION_PACK_RELEASED`.
+2. Split trial from production with dedicated BIDs/keys, bounded trial quantity and no promotion of trial key material.
+3. Add an expiring QA session with server-selected manifest UIDs and a customer-quality-approved AQL/stratified receiving policy. The fixed ten-tag ceremony remains integration evidence, not lot acceptance.
+4. Prove migration `0070` against disposable PostgreSQL with double-pass, pass-versus-activation, diagnostic-reuse, exact retry and forced rollback tests, then run deployed staging smoke.
+5. Version/domain-separate the scan-time context digest, bind the future `pack_purpose`/manufacturing state/QA-session commitment and independently anchor the receipt where required. The current database-resident SHA-256 binding is not a signature or HSM attestation.
+6. Run the real 10/11-tag TT ceremony on production-like staging before releasing any customer pilot.
 
-### P2 — standards and proof
+### P1 — external runtime evidence
 
-1. Add the GS1 link registry, normative schema validation and official test-suite gate.
-2. Implement EPCIS/CBV 2.0 capture, query and export over the canonical event model.
-3. Add browser E2E against an ephemeral database for tap → persisted event → tenant SSE → analytics → incident ticket.
-4. Measure the end-to-end latency SLO and run physical NTAG 424 TT samples through the production-like staging path.
+1. Exercise webhook create/rotate/overlap/delivery/disable/reactivate against an isolated staging worker and record signed-delivery receipts without exposing secrets.
+2. Run the tap → canonical event → tenant SSE/polling → incident → linked ticket journey in browser E2E with an ephemeral database.
+3. Validate Polygon Amoy and IOTA publication through their configured executors and independent proof readers. Local fixtures and historical staging evidence are not a fresh live-chain certification.
+4. Validate the consent-gated WhatsApp path with a dedicated test recipient before enabling any customer-facing send.
+
+### P2 — standards, physical proof and SLOs
+
+1. Validate the registry-backed resolver against the normative schemas and official test-suite gate on deployed HTTPS domains.
+2. Extend the bounded EPCIS/CBV 2.0 foundation with normative JSON Schema/SHACL validation and the required query, subscription and master-data surface.
+3. Measure end-to-end latency/error SLOs and define alert/runbook ownership for SUN, event, webhook and chain queues.
+4. Run the ten physical NTAG 424 TT samples through the production-like staging path, preserving the current cryptographic keys and documenting each expected counter/tamper outcome.

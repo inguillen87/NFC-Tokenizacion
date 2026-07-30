@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS consumer_product_ownerships (
   batch_id uuid NOT NULL REFERENCES batches(id) ON DELETE CASCADE,
   tag_id uuid REFERENCES tags(id) ON DELETE SET NULL,
   uid_hex text NOT NULL,
-  event_id bigint NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  event_id bigint NOT NULL,
   status text NOT NULL CHECK (status IN ('claimed', 'blocked_replay', 'revoked', 'disputed')),
   source text NOT NULL CHECK (source IN ('sun_passport', 'marketplace', 'admin')),
   trust_snapshot jsonb NOT NULL DEFAULT '{}'::jsonb,

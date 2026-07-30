@@ -59,8 +59,8 @@ Esperado:
 
 - `/mobile/loyalty/overview` deja de devolver 500.
 - `/admin/tokenization/requests` deja de devolver 500.
-- Un tap SUN valido puede crear request y mintear token en Polygon Amoy solo si `SUN_AUTO_TOKENIZE_ON_VALID_TAP=true` y la policy/allowlist del tenant lo permite. No es modelo para escribir cada tap on-chain.
+- Un tap SUN valido puede crear request y mintear token en Polygon Amoy solo si `SUN_AUTO_TOKENIZE_ON_VALID_TAP=true`, la policy es explicita y el tenant/batch tiene `auto_tokenize_on_valid_tap=true`. Una inferencia por vertical no autoriza gas ni custodia. No es modelo para escribir cada tap on-chain.
 
 ## Nota operativa
 
-El codigo tambien tiene guards runtime (`ensureLoyaltySchema` y `ensureTokenizationRequestsSchema`) para evitar caidas si un ambiente preview nace incompleto. Eso es proteccion secundaria. La fuente profesional de verdad sigue siendo la migration versionada.
+El codigo tambien tiene guards runtime para previews locales. En produccion, `ensureTokenizationRequestsSchema` ejecuta solo un preflight de lectura y falla cerrado si falta la migration: ninguna request HTTP tiene permiso para fabricar DDL. La fuente profesional de verdad sigue siendo la migration versionada.

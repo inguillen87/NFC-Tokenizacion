@@ -107,7 +107,7 @@ test("workers claim atomically, use expiring leases and persist retry or DLQ sta
   const worker = read("src/app/internal/webhooks/worker/route.ts");
   const workerAuth = read("src/lib/webhook-worker-auth.ts");
 
-  assert.match(source, /FOR UPDATE SKIP LOCKED/);
+  assert.match(source, /FOR UPDATE OF wd, we SKIP LOCKED/);
   assert.match(source, /status = 'processing'/);
   assert.match(source, /interval '10 minutes'/);
   assert.match(source, /status = 'retry_scheduled'/);

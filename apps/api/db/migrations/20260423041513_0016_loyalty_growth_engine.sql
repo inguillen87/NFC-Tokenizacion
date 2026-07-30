@@ -1,13 +1,18 @@
 -- Phase 1: LOYALTY DOMAIN MODEL
 
-DO $$ BEGIN
-  CREATE TYPE loyalty_program_status AS ENUM ('draft', 'active', 'paused', 'archived');
-  CREATE TYPE loyalty_member_status AS ENUM ('anonymous', 'enrolled', 'verified', 'blocked', 'deleted');
-  CREATE TYPE reward_type AS ENUM ('DISCOUNT', 'EXPERIENCE', 'TASTING', 'TOUR', 'FREE_SHIPPING', 'EARLY_ACCESS', 'DIGITAL_COLLECTIBLE', 'CONTENT_UNLOCK', 'GIFT', 'SERVICE', 'WARRANTY_EXTENSION', 'REFILL', 'VIP_ACCESS', 'WINE_BOTTLE', 'WINE_BOX');
-  CREATE TYPE reward_redemption_status AS ENUM ('pending', 'confirmed', 'fulfilled', 'cancelled', 'expired', 'reversed');
-  CREATE TYPE points_source AS ENUM ('TAP_VALID', 'PROVENANCE_VIEWED', 'OWNERSHIP_ACTIVATED', 'WARRANTY_REGISTERED', 'QUIZ_COMPLETED', 'EXPERIENCE_ATTENDED', 'REFERRAL_SIGNUP', 'REWARD_REDEEMED', 'ADMIN_ADJUSTMENT', 'FRAUD_REVERSAL', 'EXPIRATION');
-  CREATE TYPE experience_status AS ENUM ('draft', 'active', 'sold_out', 'cancelled', 'archived');
-  CREATE TYPE booking_status AS ENUM ('requested', 'confirmed', 'checked_in', 'cancelled', 'no_show');
+DO $$ BEGIN CREATE TYPE loyalty_program_status AS ENUM ('draft', 'active', 'paused', 'archived');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE TYPE loyalty_member_status AS ENUM ('anonymous', 'enrolled', 'verified', 'blocked', 'deleted');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE TYPE reward_type AS ENUM ('DISCOUNT', 'EXPERIENCE', 'TASTING', 'TOUR', 'FREE_SHIPPING', 'EARLY_ACCESS', 'DIGITAL_COLLECTIBLE', 'CONTENT_UNLOCK', 'GIFT', 'SERVICE', 'WARRANTY_EXTENSION', 'REFILL', 'VIP_ACCESS', 'WINE_BOTTLE', 'WINE_BOX');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE TYPE reward_redemption_status AS ENUM ('pending', 'confirmed', 'fulfilled', 'cancelled', 'expired', 'reversed');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE TYPE points_source AS ENUM ('TAP_VALID', 'PROVENANCE_VIEWED', 'OWNERSHIP_ACTIVATED', 'WARRANTY_REGISTERED', 'QUIZ_COMPLETED', 'EXPERIENCE_ATTENDED', 'REFERRAL_SIGNUP', 'REWARD_REDEEMED', 'ADMIN_ADJUSTMENT', 'FRAUD_REVERSAL', 'EXPIRATION');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE TYPE experience_status AS ENUM ('draft', 'active', 'sold_out', 'cancelled', 'archived');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE TYPE booking_status AS ENUM ('requested', 'confirmed', 'checked_in', 'cancelled', 'no_show');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE TABLE IF NOT EXISTS loyalty_programs (
@@ -70,6 +75,7 @@ CREATE TABLE IF NOT EXISTS loyalty_tiers (
   UNIQUE(program_id, rank)
 );
 
+ALTER TABLE loyalty_members ADD COLUMN IF NOT EXISTS tier_id uuid;
 ALTER TABLE loyalty_members ADD CONSTRAINT fk_tier FOREIGN KEY (tier_id) REFERENCES loyalty_tiers(id) ON DELETE SET NULL;
 
 CREATE TABLE IF NOT EXISTS points_ledger (
@@ -77,7 +83,7 @@ CREATE TABLE IF NOT EXISTS points_ledger (
   tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   program_id uuid NOT NULL REFERENCES loyalty_programs(id) ON DELETE CASCADE,
   member_id uuid NOT NULL REFERENCES loyalty_members(id) ON DELETE CASCADE,
-  tap_event_id bigint REFERENCES events(id) ON DELETE SET NULL,
+  tap_event_id bigint,
   source points_source NOT NULL,
   delta integer NOT NULL,
   balance_after integer NOT NULL,
@@ -110,7 +116,7 @@ CREATE TABLE IF NOT EXISTS member_badges (
   program_id uuid NOT NULL REFERENCES loyalty_programs(id) ON DELETE CASCADE,
   member_id uuid NOT NULL REFERENCES loyalty_members(id) ON DELETE CASCADE,
   badge_id uuid NOT NULL REFERENCES badges(id) ON DELETE CASCADE,
-  tap_event_id bigint REFERENCES events(id) ON DELETE SET NULL,
+  tap_event_id bigint,
   earned_at timestamptz NOT NULL DEFAULT now(),
   metadata_json jsonb NOT NULL DEFAULT '{}'::jsonb,
   UNIQUE(member_id, badge_id)
@@ -188,7 +194,7 @@ CREATE TABLE IF NOT EXISTS experience_bookings (
   experience_id uuid NOT NULL REFERENCES experiences(id) ON DELETE CASCADE,
   member_id uuid NOT NULL REFERENCES loyalty_members(id) ON DELETE CASCADE,
   status booking_status NOT NULL DEFAULT 'requested',
-  check_in_tap_event_id bigint REFERENCES events(id) ON DELETE SET NULL,
+  check_in_tap_event_id bigint,
   booking_code text UNIQUE,
   guests_count integer DEFAULT 1,
   metadata_json jsonb NOT NULL DEFAULT '{}'::jsonb,

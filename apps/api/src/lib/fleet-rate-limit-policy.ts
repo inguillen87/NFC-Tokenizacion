@@ -8,6 +8,8 @@ export type FleetRateLimitClass =
   | "sdk_auth"
   | "sdk_read"
   | "sdk_write"
+  | "sdk_epcis_capture"
+  | "observability_read"
   | "public";
 
 export type FleetRateLimitInput = {
@@ -37,6 +39,11 @@ const classes: Record<FleetRateLimitClass, { limit: number; windowSeconds: numbe
   sdk_auth: { limit: 1_200, windowSeconds: 60 },
   sdk_read: { limit: 1_200, windowSeconds: 60 },
   sdk_write: { limit: 600, windowSeconds: 60 },
+  // One EPCIS document can fan out into many persisted events and identifiers.
+  // Keep the initial tenant-wide admission budget deliberately conservative;
+  // production load evidence must justify any higher commercial tier.
+  sdk_epcis_capture: { limit: 2, windowSeconds: 60 },
+  observability_read: { limit: 12, windowSeconds: 60 },
   public: { limit: 120, windowSeconds: 60 },
 };
 
@@ -59,13 +66,19 @@ export function classifyFleetRateLimit(pathname: string, method: string): FleetR
     || path.includes("/wallet/challenge")
   ) return "auth";
   if (path === "/_rate-limit/sdk-auth") return "sdk_auth";
+  if (path === "/api/v1/sdk/epcis/capture" && verb === "POST") return "sdk_epcis_capture";
   if (path.startsWith("/api/v1/sdk/")) return verb === "GET" ? "sdk_read" : "sdk_write";
   if (path === "/sun") return "nfc";
-  if (path === "/assistant/chat" || path === "/realtime/session") return "ai_expensive";
+  if (verb === "GET" && path === "/admin/observability/service-levels") return "observability_read";
+  if (path === "/assistant/chat" || path === "/realtime/session" || path === "/admin/campaigns/test-whatsapp") return "ai_expensive";
+  if (verb !== "GET" && (path === "/admin/leads" || path === "/admin/orders")) return "public_write";
   if (path === "/public/leads" || path === "/sun/context") return "public_write";
   if (path === "/public/proof/verify" || path === "/public/proof/decode" || path === "/public/cta/provenance") return "proof_write";
   if (verb !== "GET" && (
-    path === "/sun/simulate"
+    path.startsWith("/admin/gs1/")
+    || path.startsWith("/admin/epcis/")
+    || (path.includes("/supplier-orders/") && path.endsWith("/purpose/classify-trial"))
+    || path === "/sun/simulate"
     || path === "/admin/proof/anchor"
     || path === "/admin/proof/events"
     || path.includes("/proof/anchors")

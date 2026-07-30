@@ -6,7 +6,7 @@ import { sql } from "../../../../lib/db";
 import { json } from "../../../../lib/http";
 
 export async function GET(req: Request) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdmin(req, ["super_admin"]);
   if (auth) return auth;
 
   const rows = await sql`

@@ -36,6 +36,7 @@ export async function GET(req: Request) {
         FROM events e
         JOIN tenants t ON t.id = e.tenant_id
         WHERE t.slug = ${tenant}
+          AND COALESCE(e.source::text, 'real') <> 'demo'
       `
     : await sql/*sql*/`
         SELECT
@@ -54,6 +55,7 @@ export async function GET(req: Request) {
             )
           )::int AS risk
         FROM events
+        WHERE COALESCE(source::text, 'real') <> 'demo'
       `;
 
   const throughputRows = tenant
@@ -64,12 +66,14 @@ export async function GET(req: Request) {
         FROM events e
         JOIN tenants t ON t.id = e.tenant_id
         WHERE t.slug = ${tenant}
+          AND COALESCE(e.source::text, 'real') <> 'demo'
       `
     : await sql/*sql*/`
         SELECT
           COUNT(*) FILTER (WHERE created_at >= now() - interval '1 minute')::int AS events_1m,
           COUNT(*) FILTER (WHERE created_at >= now() - interval '5 minutes')::int AS events_5m
         FROM events
+        WHERE COALESCE(source::text, 'real') <> 'demo'
       `;
 
   let attemptRows: CountRow[] = [];

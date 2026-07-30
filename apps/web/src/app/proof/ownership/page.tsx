@@ -135,7 +135,7 @@ function statusCopy(state: OwnershipCertificate["verification_state"], buyerCont
     return {
       label: "Emision testnet confirmada",
       title: "El registro coincide con Polygon Amoy.",
-      body: "Contrato, eventos del mint, holder actual y metadata publica fueron leidos en vivo. El token sigue bajo custodia de plataforma, no de un comprador.",
+      body: "La consulta actual confirmo contrato, eventos del mint, holder y metadata publica. El token sigue bajo custodia de plataforma, no de un comprador.",
       className: "border-emerald-300/40 bg-emerald-500/12 text-emerald-950 dark:text-emerald-100",
     };
   }
@@ -222,8 +222,8 @@ export default async function PolygonOwnershipPage() {
                 : "nexID demuestra mint, holder y metadata sin publicar identidad, factura ni secretos NFC. Este fixture esta en custodia de la plataforma; buyer ownership exige firma de wallet y transferencia posterior."}
             </p>
             <div className="mt-7 flex flex-col gap-2 sm:flex-row">
-              {buyerControlled ? <ExternalButton href={certificate.links?.claim_transaction_explorer}>Ver transferencia real</ExternalButton> : null}
-              <ExternalButton href={certificate.links?.transaction_explorer}>Ver mint real</ExternalButton>
+              {buyerControlled ? <ExternalButton href={certificate.links?.claim_transaction_explorer}>Ver transferencia en Amoy</ExternalButton> : null}
+              <ExternalButton href={certificate.links?.transaction_explorer}>Ver mint en Amoy</ExternalButton>
               <ExternalButton href={certificate.links?.token_explorer} tone="violet">Ver token</ExternalButton>
               <Link href="/proof/verify?layer=iota#iota-proof" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-4 text-xs font-black uppercase text-slate-800 dark:border-white/15 dark:bg-white/[0.04] dark:text-slate-100">
                 Comparar con IOTA <ArrowRight className="h-4 w-4" />

@@ -9,6 +9,12 @@ import { buildSunPayloadHashes } from './sun-payload.ts';
 import { findRegisteredSunPayload } from './sun-payload-registry.ts';
 import { persistSunScanAtomically } from './sun-atomic-persistence.ts';
 import { normalizeCoordinatePair, redactSensitiveQueryValues } from './approximate-location.ts';
+import { lifecycleResultOverride, normalizeTagLifecycleState } from './tag-lifecycle.ts';
+import {
+  buildSupplierQaVerificationContext,
+  normalizeSupplierQaPackPurpose,
+  type SupplierQaPackPurpose,
+} from './supplier-qa-verification-context.ts';
 
 const AUTHENTIC_SCAN_RESULTS = new Set([
   "VALID",
@@ -197,6 +203,34 @@ function asPlainRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
     ? value as Record<string, unknown>
     : {};
+}
+
+async function resolveEffectiveSupplierQaPackPurpose(
+  supplierOrderId: unknown,
+  declaredPurpose: unknown,
+): Promise<SupplierQaPackPurpose | null> {
+  const normalizedDeclared = normalizeSupplierQaPackPurpose(declaredPurpose);
+  if (normalizedDeclared && normalizedDeclared !== "legacy_unclassified") return normalizedDeclared;
+
+  const normalizedOrderId = String(supplierOrderId || "").trim();
+  if (!normalizedOrderId) return normalizedDeclared;
+
+  try {
+    const capability = await sql/*sql*/`
+      SELECT to_regprocedure('public.nexid_effective_supplier_pack_purpose_v1(uuid)') IS NOT NULL AS available
+    `;
+    if (capability[0]?.available !== true) return normalizedDeclared;
+
+    const rows = await sql/*sql*/`
+      SELECT public.nexid_effective_supplier_pack_purpose_v1(${normalizedOrderId}::uuid) AS effective_pack_purpose
+    `;
+    return normalizeSupplierQaPackPurpose(rows[0]?.effective_pack_purpose) || normalizedDeclared;
+  } catch {
+    // Supplier purpose is an additional QA consistency binding. Its optional
+    // lookup must never weaken or make the physical SUN verifier unavailable;
+    // a missing value leaves QA fail-closed because no context digest is made.
+    return normalizedDeclared;
+  }
 }
 
 function firstText(...values: unknown[]) {
@@ -396,9 +430,63 @@ export async function processSunScan(input: {
   }
 
   const batchRows = await sql/*sql*/`
-    SELECT b.id, b.tenant_id, t.slug AS tenant_slug, t.name AS tenant_name, b.status, b.meta_key_ct, b.file_key_ct, b.sdm_config, b.created_at
+    SELECT
+      b.id,
+      b.tenant_id,
+      t.slug AS tenant_slug,
+      t.name AS tenant_name,
+      b.status,
+      b.meta_key_ct,
+      b.file_key_ct,
+      b.sdm_config,
+      b.carrier_profile_code,
+      b.created_at,
+      supplier_context.supplier_order_id,
+      supplier_context.declared_pack_purpose,
+      supplier_context.supplier_sub_batch_id,
+      supplier_context.key_fingerprint,
+      supplier_context.manifest_hash,
+      supplier_context.supplier_sub_batch_status,
+      supplier_context.key_export_count,
+      supplier_context.key_exported_at,
+      supplier_context.batch_key_export_count,
+      supplier_context.batch_key_exported_at,
+      supplier_context.packaging_spec_revision,
+      supplier_context.packaging_spec_hash,
+      supplier_context.packaging_governance_status
     FROM batches b
     LEFT JOIN tenants t ON t.id = b.tenant_id
+    LEFT JOIN LATERAL (
+      SELECT
+        so.id AS supplier_order_id,
+        NULLIF(lower(trim(to_jsonb(so)->>'pack_purpose')), '') AS declared_pack_purpose,
+        ssb.id AS supplier_sub_batch_id,
+        bk.key_fingerprint,
+        ssb.manifest_hash,
+        ssb.status AS supplier_sub_batch_status,
+        ssb.key_export_count,
+        to_char(ssb.key_exported_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS key_exported_at,
+        bk.export_count AS batch_key_export_count,
+        to_char(bk.exported_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS batch_key_exported_at,
+        so.packaging_spec_revision,
+        so.packaging_spec_hash,
+        so.packaging_governance_status
+      FROM supplier_sub_batches ssb
+      JOIN supplier_orders so
+        ON so.id = ssb.supplier_order_id
+       AND so.tenant_id = ssb.tenant_id
+      JOIN batch_keys bk
+        ON bk.supplier_sub_batch_id = ssb.id
+       AND bk.batch_id = ssb.batch_id
+       AND bk.tenant_id = ssb.tenant_id
+       AND bk.bid = ssb.bid
+       AND bk.status = 'active'
+      WHERE ssb.batch_id = b.id
+        AND ssb.tenant_id = b.tenant_id
+        AND ssb.bid = b.bid
+      ORDER BY ssb.created_at DESC, ssb.id DESC
+      LIMIT 1
+    ) supplier_context ON true
     WHERE b.bid = ${input.bid}
     ORDER BY b.created_at ASC, b.id ASC
   `;
@@ -425,7 +513,7 @@ export async function processSunScan(input: {
         result: "SUN_BATCH_DUPLICATE_CONFIG",
         auth_status: "SUN_BATCH_DUPLICATE_CONFIG",
         product_state: "SUN_BATCH_DUPLICATE_CONFIG",
-        bid: input.bid,
+        bid: input.bid.trim().toUpperCase(),
         sun_diagnostics: {
           traceId: requestId,
           bid: input.bid,
@@ -457,6 +545,45 @@ export async function processSunScan(input: {
   const kMeta = decryptKey16(batch.meta_key_ct, { ...keyContext, role: 'K_META_BATCH' }).toString('hex').toUpperCase();
   const kFile = decryptKey16(batch.file_key_ct, { ...keyContext, role: 'K_FILE_BATCH' }).toString('hex').toUpperCase();
   const selectedMacInputModes = resolveSelectedMacInputModes((batch as { sdm_config?: unknown }).sdm_config || {});
+  const carrierProfileCode = String(batch.carrier_profile_code || "").trim().toLowerCase();
+  const keyFingerprint = String(batch.key_fingerprint || "").trim().toUpperCase();
+  const manifestHash = String(batch.manifest_hash || "").trim().toLowerCase();
+  const supplierOrderId = String(batch.supplier_order_id || "").trim().toLowerCase();
+  const supplierSubBatchId = String(batch.supplier_sub_batch_id || "").trim().toLowerCase();
+  const effectivePackPurpose = await resolveEffectiveSupplierQaPackPurpose(
+    supplierOrderId,
+    batch.declared_pack_purpose,
+  );
+  const supplierSubBatchStatus = String(batch.supplier_sub_batch_status || "").trim().toLowerCase();
+  const packagingGovernanceStatus = String(batch.packaging_governance_status || "").trim().toLowerCase();
+  const packagingSpecRevision = Math.trunc(Number(batch.packaging_spec_revision || 0));
+  const packagingSpecHash = String(batch.packaging_spec_hash || "").trim().toLowerCase();
+  const keyExportCount = Math.trunc(Number(batch.key_export_count || 0));
+  const batchKeyExportCount = Math.trunc(Number(batch.batch_key_export_count || 0));
+  const keyExportedAt = String(batch.key_exported_at || "").trim() || null;
+  const batchKeyExportedAt = String(batch.batch_key_exported_at || "").trim() || null;
+  const verificationContext = buildSupplierQaVerificationContext({
+    tenantId: batch.tenant_id,
+    batchId: batch.id,
+    bid: input.bid,
+    manifestHash,
+    carrierProfileCode,
+    keyFingerprint,
+    sdmConfig: batch.sdm_config || {},
+    supplierOrderId,
+    supplierSubBatchId,
+    supplierSubBatchStatus,
+    batchStatus: batch.status,
+    keyExportCount,
+    keyExportedAt,
+    batchKeyExportCount,
+    batchKeyExportedAt,
+    packagingGovernanceStatus,
+    packagingSpecRevision,
+    packagingSpecHash,
+    packPurpose: effectivePackPurpose,
+  });
+  const verificationContextDigest = verificationContext?.verificationContextDigest || null;
 
   const res = verifySun({
     piccDataHex: input.piccDataHex,
@@ -484,6 +611,8 @@ export async function processSunScan(input: {
 
   let allowlisted = false;
   let tagStatus: string | null = null;
+  let tagLifecycleState: string | null = registeredPayloadMatch?.lifecycleState || null;
+  let tagLifecycleRevision = Number(registeredPayloadMatch?.lifecycleRevision || 0);
   let replaySuspect = false;
 
   // Diagnostics stay mutation-free and may inspect the current snapshot. A
@@ -525,7 +654,7 @@ export async function processSunScan(input: {
 
     if (resolvedUidHex) {
       const tagRows = await sql/*sql*/`
-        SELECT id, status, last_seen_ctr
+        SELECT id, status, lifecycle_state, lifecycle_revision, last_seen_ctr
         FROM tags
         WHERE batch_id = ${batch.id} AND UPPER(uid_hex) = UPPER(${resolvedUidHex})
         LIMIT 1
@@ -534,6 +663,8 @@ export async function processSunScan(input: {
       if (tag || registeredPayloadMatch) {
         allowlisted = true;
         tagStatus = String(tag?.status || registeredPayloadMatch?.tagStatus || registeredPayloadMatch?.payloadStatus || "active");
+        tagLifecycleState = String(tag?.lifecycle_state || registeredPayloadMatch?.lifecycleState || tagStatus);
+        tagLifecycleRevision = Number(tag?.lifecycle_revision ?? registeredPayloadMatch?.lifecycleRevision ?? 0);
         if (res.ok && typeof tag?.last_seen_ctr === 'number' && resolvedCtr != null && resolvedCtr <= tag.last_seen_ctr) replaySuspect = true;
       }
     }
@@ -616,13 +747,19 @@ export async function processSunScan(input: {
             : tagStatus !== 'active'
               ? 'NOT_ACTIVE'
               : 'VALID';
-  let result = authStatus;
+  let normalizedLifecycleState = normalizeTagLifecycleState(tagLifecycleState || tagStatus);
+  const serverLifecycleResult = payloadVerified && allowlisted && !replaySuspect
+    ? lifecycleResultOverride(normalizedLifecycleState)
+    : null;
+  let result = serverLifecycleResult || authStatus;
   const manualTamper = await getManualTamperOverride(resolvedUidHex);
   const manualOpened = String(manualTamper?.tamper_status || "").toUpperCase() === "MANUAL_OPENED" || String(manualTamper?.tamper_status || "").toUpperCase() === "OPENED";
   const resolvedTamperStatus = manualOpened ? "MANUAL_OPENED" as const : tamperStatus;
   const tamperSource = manualOpened ? "manual" as const : (tamperConfigured ? "electronic" as const : "unavailable" as const);
 
-  const successReasonWithoutReplay = manualOpened
+  const successReasonWithoutReplay = serverLifecycleResult
+    ? `tag_lifecycle_${normalizedLifecycleState}:administrative_state`
+    : manualOpened
     ? `manual_tamper_opened:${String(manualTamper?.reason || "operator_override")}`
     : tamperStatus === "OPENED"
     ? `tagtamper_opened:${ttstatusParsed?.raw || 'ttstatus'}`
@@ -665,7 +802,7 @@ export async function processSunScan(input: {
       supplierPayloadMatch,
       supplierPayloadOnly,
       preRegistryResult,
-      forceResult: input.context?.forceResult || null,
+      forceResult: serverLifecycleResult || input.context?.forceResult || null,
       reasonIfNotReplay: !payloadVerified ? cryptoErrorReason : successReasonWithoutReplay,
       source: input.context?.source || 'real',
       userAgent: input.context?.userAgent,
@@ -682,7 +819,11 @@ export async function processSunScan(input: {
       encHash: scanHashes.encHash,
       cmacHash: scanHashes.cmacHash,
       rawUrlHash: scanHashes.rawUrlHash,
-      meta: input.context?.meta,
+      meta: {
+        ...(input.context?.meta || {}),
+        tag_lifecycle_state: normalizedLifecycleState,
+        tag_lifecycle_revision: tagLifecycleRevision,
+      },
       rawQuery: input.rawQuery,
     });
     eventId = receipt.eventId;
@@ -693,6 +834,9 @@ export async function processSunScan(input: {
     replayOriginalEventId = receipt.replayOriginalEventId;
     allowlisted = receipt.allowlisted;
     tagStatus = receipt.tagStatus;
+    tagLifecycleState = receipt.tagLifecycleState || tagLifecycleState;
+    tagLifecycleRevision = receipt.tagLifecycleRevision;
+    normalizedLifecycleState = normalizeTagLifecycleState(tagLifecycleState || tagStatus);
 
     // Notifications and alerts are post-commit projections. Their failure must
     // never undo or misreport the canonical tag/event transaction.
@@ -787,9 +931,12 @@ export async function processSunScan(input: {
       }
     }).catch(() => null);
   }
+  const maskedUidForLog = resolvedUidHex
+    ? `${resolvedUidHex.slice(0, 4)}***${resolvedUidHex.slice(-4)}`
+    : null;
   console.info("[sun_tamper_decode]", JSON.stringify({
     bid: input.bid,
-    uid: resolvedUidHex,
+    uid_masked: maskedUidForLog,
     read_counter: resolvedCtr,
     cmac_valid: cryptographicVerification,
     supplier_payload_match: supplierPayloadMatch,
@@ -855,6 +1002,9 @@ export async function processSunScan(input: {
     tt_status_length: tamperProfile.ttstatus_length,
     configured_status_hex: configuredStatusHex,
     batch_sdm_config: batchSdmConfigSummary,
+    verification_context_domain: verificationContext?.domain || null,
+    verification_context_version: verificationContext?.schemaVersion || null,
+    verification_context_digest: verificationContextDigest,
     supplier_payload_match: supplierPayloadMatch,
   };
   return {
@@ -877,6 +1027,9 @@ export async function processSunScan(input: {
       crypto_error_reason: cryptoErrorReason || undefined,
       allowlisted,
       tag_status: tagStatus,
+      tag_lifecycle_state: normalizedLifecycleState,
+      tag_lifecycle_revision: tagLifecycleRevision,
+      lifecycle_evidence_boundary: "Administrative lifecycle can block a verified tag, but it does not replace NFC CMAC/SDM verification or physical TagTamper evidence.",
       tamper_signal: tamperSignal.raw || undefined,
       tamper_opened: resolvedTamperOpened,
       tamper_risk: resolvedTamperRisk,

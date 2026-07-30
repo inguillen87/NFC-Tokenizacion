@@ -225,7 +225,7 @@ function EvidenceCard({ chain }: { chain: LabChain }) {
     <article className={styles.evidenceCard} data-chain={chain.id}>
       <header className={styles.evidenceHeader}>
         <div>
-          <span className={styles.eyebrow}>{chain.name} · lectura viva</span>
+          <span className={styles.eyebrow}>{chain.name} · consulta pública actual</span>
           <h3>{chain.headline}</h3>
         </div>
         <span className={`${styles.statusPill} ${statusClass(chain.status.code)}`}>
@@ -339,7 +339,7 @@ export function ChainLabClient({ model, initialGoal }: ChainLabClientProps) {
     <main className={styles.page}>
       <header className={styles.header}>
         <div className={styles.headerInner}>
-          <Link href="/demo-lab" className={styles.backLink}>
+          <Link href="/demo-lab" className={styles.backLink} aria-label="Volver al Demo Lab">
             <ArrowLeft aria-hidden="true" />
             <span>Demo Lab</span>
           </Link>

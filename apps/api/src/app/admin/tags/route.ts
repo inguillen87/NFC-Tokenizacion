@@ -37,6 +37,8 @@ export async function GET(req: Request) {
       COALESCE(CASE WHEN profile_guard.allowed THEN NULLIF(tp.vintage, '') END, NULLIF(b.sdm_config->>'vintage', ''), NULLIF(b.sdm_config #>> '{sun,product,vintage}', '') ) AS vintage,
       profile_guard.conflict AS tag_profile_conflict,
       t.status AS tag_status,
+      COALESCE(t.lifecycle_state, t.status::text) AS lifecycle_state,
+      t.lifecycle_revision,
       t.scan_count,
       t.first_seen_at,
       t.last_seen_at,
@@ -79,7 +81,7 @@ export async function GET(req: Request) {
       FROM events e
       WHERE e.batch_id = t.batch_id
         AND e.uid_hex = t.uid_hex
-        AND (${source} = '' OR e.source = ${source}::text)
+        AND (${source} = '' OR e.source::text = ${source})
         AND e.created_at >= now() - ${rangeSql}::interval
       ORDER BY e.created_at DESC
       LIMIT 1
@@ -106,6 +108,7 @@ export async function GET(req: Request) {
         ) ILIKE ${`%${query}%`}
         OR COALESCE(CASE WHEN profile_guard.allowed THEN NULLIF(tp.winery, '') END, NULLIF(b.sdm_config->>'winery', ''), NULLIF(b.sdm_config #>> '{sun,product,producer}', ''), '') ILIKE ${`%${query}%`}
         OR COALESCE(CASE WHEN profile_guard.allowed THEN NULLIF(tp.region, '') END, NULLIF(b.sdm_config->>'region', ''), NULLIF(b.sdm_config #>> '{sun,origin,region}', ''), '') ILIKE ${`%${query}%`}
+        OR COALESCE(t.lifecycle_state, t.status::text) ILIKE ${`%${query}%`}
       )
     ORDER BY COALESCE(t.last_seen_at, t.created_at) DESC
     OFFSET ${offset}
@@ -115,8 +118,8 @@ export async function GET(req: Request) {
   const totalsRows = await sql/*sql*/`
     SELECT
       COUNT(*)::int AS total,
-      COUNT(*) FILTER (WHERE t.status = 'active')::int AS active_tags,
-      COUNT(*) FILTER (WHERE t.status <> 'active')::int AS non_active_tags,
+      COUNT(*) FILTER (WHERE COALESCE(t.lifecycle_state, t.status::text) = 'active')::int AS active_tags,
+      COUNT(*) FILTER (WHERE COALESCE(t.lifecycle_state, t.status::text) <> 'active')::int AS non_active_tags,
       COUNT(*) FILTER (WHERE tok.status = 'anchored')::int AS minted_tags,
       COUNT(*) FILTER (WHERE tok.status = 'simulated')::int AS simulated_tokenization,
       COUNT(*) FILTER (WHERE tok.status IS NULL OR tok.status IN ('none', 'pending', 'processing', 'pending_retry'))::int AS pending_tokenization
@@ -147,7 +150,7 @@ export async function GET(req: Request) {
       FROM events e
       WHERE e.batch_id = t.batch_id
         AND e.uid_hex = t.uid_hex
-        AND (${source} = '' OR e.source = ${source}::text)
+        AND (${source} = '' OR e.source::text = ${source})
         AND e.created_at >= now() - ${rangeSql}::interval
       ORDER BY e.created_at DESC
       LIMIT 1
@@ -174,6 +177,7 @@ export async function GET(req: Request) {
         ) ILIKE ${`%${query}%`}
         OR COALESCE(CASE WHEN profile_guard.allowed THEN NULLIF(tp.winery, '') END, NULLIF(b.sdm_config->>'winery', ''), NULLIF(b.sdm_config #>> '{sun,product,producer}', ''), '') ILIKE ${`%${query}%`}
         OR COALESCE(CASE WHEN profile_guard.allowed THEN NULLIF(tp.region, '') END, NULLIF(b.sdm_config->>'region', ''), NULLIF(b.sdm_config #>> '{sun,origin,region}', ''), '') ILIKE ${`%${query}%`}
+        OR COALESCE(t.lifecycle_state, t.status::text) ILIKE ${`%${query}%`}
       )
   `;
 
@@ -189,7 +193,10 @@ export async function GET(req: Request) {
       profileConflict: Boolean(row.tag_profile_conflict),
     },
     status: {
-      tag: String(row.tag_status || "unknown"),
+      tag: String(row.lifecycle_state || row.tag_status || "unknown"),
+      operational: String(row.tag_status || "unknown"),
+      lifecycle: String(row.lifecycle_state || row.tag_status || "unknown"),
+      lifecycleRevision: Number(row.lifecycle_revision || 0),
       lastResult: String(row.last_result || "unknown"),
     },
     scans: {
@@ -219,6 +226,8 @@ export async function GET(req: Request) {
       "region",
       "vintage",
       "tagStatus",
+      "operationalStatus",
+      "lifecycleRevision",
       "lastResult",
       "scanCount",
       "firstSeenAt",
@@ -242,6 +251,8 @@ export async function GET(req: Request) {
         escapeCsv(row.product.region),
         escapeCsv(row.product.vintage),
         escapeCsv(row.status.tag),
+        escapeCsv(row.status.operational),
+        escapeCsv(row.status.lifecycleRevision),
         escapeCsv(row.status.lastResult),
         escapeCsv(row.scans.count),
         escapeCsv(row.scans.firstSeenAt || ""),

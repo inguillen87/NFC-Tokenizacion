@@ -12,6 +12,7 @@ import {
 
 const MANAGED_ENV = [
   "ADMIN_API_KEY",
+  "NODE_ENV",
   "PUBLIC_CERTIFICATE_ALLOW_LEGACY_SECRET_FALLBACK",
   "PUBLIC_CERTIFICATE_SIGNING_SECRET",
   "PUBLIC_CERTIFICATE_SIGNING_SECRET_PREVIOUS",
@@ -20,6 +21,7 @@ const MANAGED_ENV = [
   "SUN_HANDOFF_SECRET",
   "SUN_HANDOFF_SECRET_PREVIOUS",
   "TOKENIZATION_UID_SALT",
+  "VERCEL_ENV",
 ];
 
 function withSigningEnvironment(values, run) {
@@ -137,4 +139,36 @@ test("fresh SUN compatibility is explicit and rotation preserves UID binding", {
     assert.equal(verifySunFreshHandoffToken(newToken, expected).ok, true);
     assert.notEqual(newToken, oldToken);
   });
+});
+
+test("production fresh SUN capabilities require at least 32 bytes of dedicated key material", { concurrency: false }, () => {
+  assert.throws(
+    () => withSigningEnvironment({
+      NODE_ENV: "production",
+      SUN_HANDOFF_SECRET: "too-short",
+    }, () => createSunFreshHandoffToken(sunInput())),
+    /at least 32 bytes in production/,
+  );
+
+  const weakDevelopmentToken = withSigningEnvironment({
+    NODE_ENV: "development",
+    SUN_HANDOFF_SECRET: "too-short",
+  }, () => createSunFreshHandoffToken(sunInput()));
+  assert.deepEqual(withSigningEnvironment({
+    NODE_ENV: "production",
+    SUN_HANDOFF_SECRET: "too-short",
+  }, () => verifySunFreshHandoffToken(weakDevelopmentToken)), {
+    ok: false,
+    reason: "fresh_token_secret_too_short",
+  });
+
+  const productionSecret = "sun-handoff-production-secret-32-bytes-minimum";
+  const strongToken = withSigningEnvironment({
+    NODE_ENV: "production",
+    SUN_HANDOFF_SECRET: productionSecret,
+  }, () => createSunFreshHandoffToken(sunInput()));
+  assert.equal(withSigningEnvironment({
+    NODE_ENV: "production",
+    SUN_HANDOFF_SECRET: productionSecret,
+  }, () => verifySunFreshHandoffToken(strongToken)).ok, true);
 });

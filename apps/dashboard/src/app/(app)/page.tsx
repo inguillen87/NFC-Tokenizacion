@@ -233,25 +233,25 @@ export default async function DashboardHome() {
 
   const labels = locale === "en"
     ? {
-        liveFeed: "Live operations feed",
+        liveFeed: "Reported operations feed",
         mission: "Mission control",
-        mapTitle: "Live scan map",
-        mapSubtitle: isTenantAdmin ? "Geolocated scans for your tenant operations." : "Geolocated scans from tenants, commercial showcases and partner operations.",
+        mapTitle: "Reported scan locations",
+        mapSubtitle: isTenantAdmin ? "Locations reported by events in your tenant scope." : "Locations reported by tenant, demo and partner data sources.",
         roleNote: isTenantAdmin ? "Tenant-level operations scope with no cross-tenant noise." : "Contextual permissions visible across tenants, CRM and commercial orchestration.",
       }
     : locale === "pt-BR"
     ? {
-        liveFeed: "Feed de operações ao vivo",
+        liveFeed: "Feed de eventos reportados",
         mission: "Mission control",
-        mapTitle: "Mapa de scans ao vivo",
-        mapSubtitle: isTenantAdmin ? "Scans geolocalizados das operações do seu tenant." : "Scans geolocalizados de tenants, vitrines comerciais e operações parceiras",
+        mapTitle: "Mapa de localizações reportadas",
+        mapSubtitle: isTenantAdmin ? "Localizações reportadas pelos eventos do seu tenant." : "Localizações reportadas por fontes tenant, demo e parceiras.",
         roleNote: isTenantAdmin ? "Escopo operacional por tenant, sem ruído cross-tenant." : "Permissões contextuais visíveis em tenants, CRM e orquestração comercial.",
       }
     : {
-        liveFeed: "Feed operativo en vivo",
+        liveFeed: "Feed de eventos reportados",
         mission: "Mission control",
-        mapTitle: "Mapa de escaneos en vivo",
-        mapSubtitle: isTenantAdmin ? "Escaneos geolocalizados de la operación de tu tenant." : "Escaneos geolocalizados de tenants, showrooms comerciales y operaciones partner",
+        mapTitle: "Mapa de ubicaciones reportadas",
+        mapSubtitle: isTenantAdmin ? "Ubicaciones reportadas por eventos de tu tenant." : "Ubicaciones reportadas por fuentes tenant, demo y partner.",
         roleNote: isTenantAdmin ? "Alcance operativo por tenant, sin ruido cross-tenant." : "Permisos contextuales visibles en tenants, CRM y orquestación comercial.",
       };
 

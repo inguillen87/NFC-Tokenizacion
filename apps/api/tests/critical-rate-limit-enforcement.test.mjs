@@ -6,6 +6,7 @@ import {
   adminCriticalRateLimitIdentity,
   enforceCriticalRateLimit,
   enforceSdkAuthenticationRateLimit,
+  enforceSdkEpcisCaptureRateLimit,
   enforceSdkRateLimit,
   enforceWebhookAuthenticationRateLimit,
 } from "../src/lib/critical-rate-limit.ts";
@@ -166,7 +167,39 @@ test("SDK source and authenticated limits use distinct durable budgets", async (
   assert.match(authenticatedReservations[1][1], /sdk_write:tenant-acme:sdk-key:key-42:203\.0\.113\.91/u);
 });
 
-test("admin credential bucket cannot be sharded by rotating tenant, scope or dashboard identity", async () => {
+test("EPCIS capture cannot shard its principal or tenant-wide budget by IP or API-key rotation", async () => {
+  const captured = [];
+  for (const [apiKeyId, ip] of [
+    ["key-42", "203.0.113.91"],
+    ["key-rotated", "198.51.100.92"],
+  ]) {
+    const response = await enforceSdkEpcisCaptureRateLimit(
+      request("/api/v1/sdk/epcis/capture"),
+      { tenantId: "tenant-acme", apiKeyId },
+      {
+        requestMeta: () => ({ ip, userAgent: null, traceId: "trace-test" }),
+        reserve: async (...args) => {
+          captured.push(args);
+          return { hits: 1, limited: false, retryAfterSeconds: 60 };
+        },
+      },
+    );
+    assert.equal(response, null);
+  }
+
+  assert.equal(captured.length, 6);
+  assert.deepEqual(captured[0], [
+    "fleet:sdk_epcis_capture:tenant-wide",
+    "sdk_epcis_capture:tenant-acme:all-subjects:all-sources",
+    60,
+    2,
+  ]);
+  assert.deepEqual(captured[3], captured[0], "rotated API key and IP must consume the same tenant-wide bucket");
+  assert.notEqual(captured[1][1], captured[4][1], "each API key also keeps its own principal bucket");
+  assert.notEqual(captured[2][1], captured[5][1], "the contextual bucket still captures API key and source IP");
+});
+
+test("admin credential bucket cannot be sharded by rotating sessions, tenant, scope or dashboard identity", async () => {
   const firstRequest = request("/admin/proof/anchors", {
     authorization: "Bearer stable-admin-credential",
     "x-nexid-tenant-slug": "tenant-a",
@@ -182,9 +215,12 @@ test("admin credential bucket cannot be sharded by rotating tenant, scope or das
   const otherRequest = request("/admin/proof/anchors", {
     authorization: "Bearer another-admin-credential",
   });
-  const bindPrincipal = (candidate, sessionId) => checkAdmin(candidate, ["tenant_admin"], async () => ({
+  const otherUserRequest = request("/admin/proof/anchors", {
+    authorization: "Bearer other-user-credential",
+  });
+  const bindPrincipal = (candidate, sessionId, userId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb") => checkAdmin(candidate, ["tenant_admin"], async () => ({
     id: sessionId,
-    userId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    userId,
     email: "real-admin@example.com",
     label: "Real Admin",
     role: "tenant-admin",
@@ -199,15 +235,18 @@ test("admin credential bucket cannot be sharded by rotating tenant, scope or das
   assert.equal(await bindPrincipal(firstRequest, "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"), null);
   assert.equal(await bindPrincipal(rotatedRequest, "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"), null);
   assert.equal(await bindPrincipal(otherRequest, "dddddddd-dddd-4ddd-8ddd-dddddddddddd"), null);
+  assert.equal(await bindPrincipal(otherUserRequest, "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee", "ffffffff-ffff-4fff-8fff-ffffffffffff"), null);
 
   const identity = adminCriticalRateLimitIdentity(firstRequest);
   const rotatedHeaders = adminCriticalRateLimitIdentity(rotatedRequest);
   const differentCredential = adminCriticalRateLimitIdentity(otherRequest);
+  const differentUser = adminCriticalRateLimitIdentity(otherUserRequest);
   assert.equal(identity.tenantId, "cccccccc-cccc-4ccc-8ccc-cccccccccccc");
-  assert.equal(identity.subjectId, "admin-session:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
+  assert.equal(identity.subjectId, "admin-user:bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
   assert.equal(identity.globalPrincipal, true);
   assert.equal(rotatedHeaders.subjectId, identity.subjectId);
-  assert.notEqual(differentCredential.subjectId, identity.subjectId);
+  assert.equal(differentCredential.subjectId, identity.subjectId);
+  assert.notEqual(differentUser.subjectId, identity.subjectId);
   assert.doesNotMatch(identity.subjectId, /stable-admin-credential|example\.com|tenant_admin/);
 
   const buckets = [];
@@ -235,6 +274,46 @@ test("admin credential bucket cannot be sharded by rotating tenant, scope or das
   assert.match(tenantKeys[0], /cccccccc-cccc-4ccc-8ccc-cccccccccccc/);
   assert.match(tenantKeys[1], /cccccccc-cccc-4ccc-8ccc-cccccccccccc/);
   assert.doesNotMatch(tenantKeys.join("\n"), /tenant-a|tenant-b|rotate-me|different@example/);
+});
+
+test("observability reserves one tenant-wide budget across users, sessions and source IPs", async () => {
+  const captured = [];
+  for (const [subjectId, ip] of [
+    ["admin-user:user-a", "203.0.113.77"],
+    ["admin-user:user-b", "198.51.100.78"],
+  ]) {
+    const response = await enforceCriticalRateLimit(
+      new Request("https://api.nexid.lat/admin/observability/service-levels", { method: "GET" }),
+      {
+        rateClass: "observability_read",
+        tenantId: "tenant-acme",
+        subjectId,
+        globalPrincipal: true,
+        tenantWide: true,
+      },
+      {
+        requestMeta: () => ({ ip, userAgent: null, traceId: "trace-test" }),
+        reserve: async (...args) => {
+          captured.push(args);
+          return { hits: 1, limited: false, retryAfterSeconds: 60 };
+        },
+      },
+    );
+    assert.equal(response, null);
+  }
+
+  assert.equal(captured.length, 6);
+  assert.deepEqual(captured[0], [
+    "fleet:observability_read:tenant-wide",
+    "observability_read:tenant-acme:all-subjects:all-sources",
+    60,
+    12,
+  ]);
+  assert.deepEqual(captured[3], captured[0]);
+  assert.match(captured[1][1], /all-tenants:admin-user:user-a:all-sources/);
+  assert.match(captured[2][1], /tenant-acme:admin-user:user-a:203\.0\.113\.77/);
+  assert.match(captured[4][1], /all-tenants:admin-user:user-b:all-sources/);
+  assert.match(captured[5][1], /tenant-acme:admin-user:user-b:198\.51\.100\.78/);
 });
 
 const routes = [

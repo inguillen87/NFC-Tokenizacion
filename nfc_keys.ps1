@@ -1,8 +1,8 @@
 param(
   [Parameter(Mandatory=$true)][string]$ClientSlug,
   [Parameter(Mandatory=$true)][string]$BatchId,
-  [string]$OutDir = "./generated-keys",
-  [string]$SecretsDir = "./secrets"
+  [string]$OutDir = "./.nexid-custody/generated-keys",
+  [string]$SecretsDir = "./.nexid-custody/secrets"
 )
 
 function New-HexKey([int]$bytes) {

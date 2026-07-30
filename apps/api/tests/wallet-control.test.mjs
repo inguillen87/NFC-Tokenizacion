@@ -85,10 +85,18 @@ test("Clerk Web3 bridge cannot reassign an existing wallet identity", async () =
 
 test("migration runner applies multi-statement files transactionally and refuses an unknown baseline", async () => {
   const runner = await readFile(new URL("../scripts/db-apply.mjs", import.meta.url), "utf8");
+  const safety = await readFile(new URL("../scripts/lib/db-apply-safety.mjs", import.meta.url), "utf8");
 
   assert.match(runner, /import pg from "pg"/);
   assert.match(runner, /argumentValue\("--only"\)/);
-  assert.match(runner, /Existing schema has no migration history/);
+  assert.match(runner, /assertSafeDbApplyStart/);
+  assert.ok(
+    runner.indexOf("assertSafeDbApplyStart({") < runner.indexOf("CREATE TABLE IF NOT EXISTS schema_migrations"),
+    "baseline safety must run before the migration ledger can be created",
+  );
+  assert.match(safety, /canonical_baseline_required/);
+  assert.match(safety, /existing_schema_without_migration_history/);
+  assert.match(safety, /database_mutated: false/);
   assert.match(runner, /pg_advisory_xact_lock/);
   assert.match(runner, /containsExplicitTransactionControl/);
   assert.match(runner, /runner can atomically apply and ledger the migration/);

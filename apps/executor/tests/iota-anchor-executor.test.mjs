@@ -288,7 +288,7 @@ test("executor readiness is scoped to explicitly enabled chain capabilities", as
     POLYGON_CONTRACT_ADDRESS: "0x0000000000000000000000000000000000000001",
     POLYGON_MINTER_PRIVATE_KEY: "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a841cb6b37e8db1e1cb",
     POLYGON_EXPECTED_CHAIN_ID: "80002",
-    TOKENIZATION_EXECUTOR_SECRET: "test-only-long-executor-secret",
+    TOKENIZATION_EXECUTOR_SECRET: "test-only-long-executor-secret-32-bytes",
   }, async () => {
     const signerAddress = new Wallet(process.env.POLYGON_MINTER_PRIVATE_KEY).address;
     const response = await getExecutorJson("/ready", "GET", {
@@ -298,6 +298,11 @@ test("executor readiness is scoped to explicitly enabled chain capabilities", as
         ownerAddress: "0x0000000000000000000000000000000000000002",
         minterAllowlisted: true,
         balanceWei: 1_000_000_000_000_000n,
+      }),
+      polygonIntentReadinessProbe: async () => ({
+        ok: true,
+        reason: null,
+        checks: { connectivity: true, table: true, columns: true, privileges: true },
       }),
     });
     assert.equal(response.status, 200);

@@ -98,6 +98,9 @@ export async function probePolygonExecutorReadiness(options: {
   try {
     const production = String(source.NODE_ENV || "").toLowerCase() === "production"
       || String(source.VERCEL_ENV || "").toLowerCase() === "production";
+    if (production && Buffer.byteLength(secret, "utf8") < 32) {
+      return result({ configured: true, reason: "executor_secret_too_short" });
+    }
     url = readinessUrl(rawUrl, production);
   } catch (error) {
     return result({ configured: true, reason: error instanceof Error ? error.message : "executor_readiness_url_invalid" });

@@ -3,8 +3,8 @@ param(
   [string]$Mode = "both",
   [string]$ClientSlug = "demo-mendoza",
   [string]$BatchId = "DEMO-YYYYMMDD-001",
-  [string]$OutDir = ".",
-  [string]$KmsFile = ".platform-kms.local.env"
+  [string]$OutDir = ".\.nexid-custody",
+  [string]$KmsFile = "platform-kms.local.env"
 )
 
 Set-StrictMode -Version Latest

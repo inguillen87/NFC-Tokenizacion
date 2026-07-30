@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 
 const {
   buildSupplierSubBatchPlan,
@@ -13,9 +14,19 @@ const {
   canExportSupplierPack,
   canImportSupplierManifest,
   canActivateSupplierSubBatch,
+  resolveSupplierActivationScope,
   canRotateSupplierSubBatchKeys,
-  validateSupplierQaEvidence,
 } = await import("../src/lib/supplier-ops.ts");
+const {
+  parseSupplierQaSnapshotReferences,
+  validateSupplierQaSunEvidence,
+} = await import("../src/lib/supplier-qa-evidence.ts");
+const {
+  buildSupplierQaVerificationContext,
+  canonicalSupplierQaJson,
+  SUPPLIER_QA_VERIFICATION_CONTEXT_DOMAIN,
+  SUPPLIER_QA_VERIFICATION_CONTEXT_VERSION,
+} = await import("../src/lib/supplier-qa-verification-context.ts");
 const { normalizeCarrierProfileCode } = await import("../src/lib/carrier-profiles.ts");
 const {
   buildMerkleRoot,
@@ -55,6 +66,7 @@ test("supplier keys are random 16-byte hex pairs and pack includes TagTamper con
   const pack = buildSupplierEncodingPack({
     clientSlug: "syngenta",
     batchId: "SYN-AR-2026-001-A",
+    packPurpose: "trial_integration",
     quantity: 1000,
     chipModel: "NTAG 424 DNA TagTamper",
     carrierProfile: "ntag424_dna_tt",
@@ -64,7 +76,55 @@ test("supplier keys are random 16-byte hex pairs and pack includes TagTamper con
   });
   assert.match(pack.contentHash, /^sha256:[0-9a-f]{64}$/);
   assert.equal(pack.json.TTSTATUS.closed, "4343");
+  assert.deepEqual(pack.json.QA_INTEGRATION_GATE, {
+    acceptance_scope: "trial_integration_only",
+    sample_count: 10,
+    selection_authority: "nexid_server",
+    must_pass: ["uid_decode", "cmac_valid", "replay_blocked", "ttstatus_closed_when_supported"],
+    physical_ceremony_required: true,
+    physical_ceremony_verified: false,
+  });
+  assert.equal(pack.json.PACK_PURPOSE, "trial_integration");
+  assert.equal(pack.json.COMMERCIAL_RELEASE, "NON_SELLABLE_TRIAL");
+  assert.equal(pack.json.SALEABLE, false);
+  assert.equal(pack.json.PRODUCTION_LOT_ACCEPTANCE.status, "not_applicable_non_sellable_trial");
+  assert.equal(pack.json.PRODUCTION_LOT_ACCEPTANCE.integration_gate_is_acceptance, false);
   assert.match(pack.text, /MANIFEST_FORMAT=batch_id,uid_hex/);
+  assert.match(pack.text, /QA_INTEGRATION_GATE:/);
+  assert.match(pack.text, /PRODUCTION_LOT_ACCEPTANCE:/);
+
+  const smallPack = buildSupplierEncodingPack({
+    clientSlug: "trial",
+    batchId: "TRIAL-004",
+    packPurpose: "trial_integration",
+    quantity: 4,
+    chipModel: "NTAG 424 DNA",
+    carrierProfile: "ntag424_dna",
+    kMetaHex: first.kMetaHex,
+    kFileHex: first.kFileHex,
+    urlTemplate: "https://api.nexid.lat/sun?v=1&bid=TRIAL-004&picc_data=<PICC_DATA_DYNAMIC>&enc=<ENC_DYNAMIC>&cmac=<CMAC_DYNAMIC>",
+  });
+  assert.equal(smallPack.json.QA_INTEGRATION_GATE.sample_count, 4);
+
+  const productionPack = buildSupplierEncodingPack({
+    clientSlug: "syngenta",
+    batchId: "SYN-PROD-001",
+    packPurpose: "production",
+    quantity: 10000,
+    chipModel: "NTAG 424 DNA",
+    carrierProfile: "ntag424_dna",
+    kMetaHex: first.kMetaHex,
+    kFileHex: first.kFileHex,
+    urlTemplate: "https://api.nexid.lat/sun?v=1&bid=SYN-PROD-001&picc_data=<PICC_DATA_DYNAMIC>&enc=<ENC_DYNAMIC>&cmac=<CMAC_DYNAMIC>",
+  });
+  assert.equal(productionPack.json.QA_INTEGRATION_GATE, null);
+  assert.equal(productionPack.json.COMMERCIAL_RELEASE, "BLOCKED_PENDING_PRODUCTION_QA");
+  assert.equal(productionPack.json.PRODUCTION_LOT_ACCEPTANCE.status, "blocked_pending_tenant_qa_plan");
+  assert.equal(productionPack.json.SALEABLE, false);
+  assert.throws(
+    () => buildSupplierEncodingPack({ ...productionPack.json, packPurpose: "" }),
+    /supplier_pack_purpose_invalid/,
+  );
 });
 
 test("non-cryptographic supplier profiles never expose 424 batch keys", () => {
@@ -72,6 +132,7 @@ test("non-cryptographic supplier profiles never expose 424 batch keys", () => {
   const ntagPack = buildSupplierEncodingPack({
     clientSlug: "balmec",
     batchId: "BALMEC-EVENT-A",
+    packPurpose: "trial_integration",
     quantity: 500,
     chipModel: "NTAG215 wristband",
     carrierProfile: "event_wristband",
@@ -81,12 +142,15 @@ test("non-cryptographic supplier profiles never expose 424 batch keys", () => {
   });
   assert.doesNotMatch(ntagPack.text, /K_META_BATCH=/);
   assert.doesNotMatch(ntagPack.text, /K_FILE_BATCH=/);
+  assert.equal(ntagPack.json.QA_INTEGRATION_GATE, null);
+  assert.doesNotMatch(ntagPack.text, /QA_INTEGRATION_GATE/);
   assert.match(ntagPack.text, /KEY_MATERIAL=NO_BATCH_KEYS_REQUIRED_FOR_THIS_PROFILE/);
   assert.match(ntagPack.text, /MANIFEST_FORMAT=batch_id,uid_hex,attendee_ref,zone,valid_from,valid_until/);
 
   const gs1Pack = buildSupplierEncodingPack({
     clientSlug: "syngenta",
     batchId: "SYN-GS1-A",
+    packPurpose: "trial_integration",
     quantity: 1000,
     chipModel: "GS1 Digital Link label",
     carrierProfile: "gs1_digital_link",
@@ -112,6 +176,7 @@ test("supplier pack export can be delivered as encrypted ZIP without plaintext k
   const pack = buildSupplierEncodingPack({
     clientSlug: "syngenta",
     batchId: "SYN-AR-2026-001-A",
+    packPurpose: "trial_integration",
     quantity: 1000,
     chipModel: "NTAG 424 DNA",
     carrierProfile: "ntag424_dna",
@@ -123,6 +188,9 @@ test("supplier pack export can be delivered as encrypted ZIP without plaintext k
   const pdf = buildSupplierPackPdfSummary({
     clientSlug: "syngenta",
     batchId: "SYN-AR-2026-001-A",
+    packPurpose: "trial_integration",
+    commercialDisposition: "NON_SELLABLE",
+    activationAllowed: false,
     quantity: 1000,
     chipModel: "NTAG 424 DNA",
     carrierProfile: "ntag424_dna",
@@ -132,6 +200,8 @@ test("supplier pack export can be delivered as encrypted ZIP without plaintext k
     urlTemplate: "https://api.nexid.lat/sun?v=1&bid=SYN-AR-2026-001-A&picc_data=<PICC_DATA_DYNAMIC>&enc=<ENC_DYNAMIC>&cmac=<CMAC_DYNAMIC>",
   });
   assert.equal(pdf.subarray(0, 8).toString("utf8"), "%PDF-1.4");
+  assert.match(pdf.toString("utf8"), /NON_SELLABLE - TRIAL INTEGRATION ONLY/);
+  assert.match(pdf.toString("utf8"), /Activation allowed: false/);
 
   const zip = buildZipArchive([
     { path: "README_FIRST.txt", data: "nexID supplier pack\n" },
@@ -163,11 +233,102 @@ test("supplier manifest gate rejects quantity mismatch before activation", () =>
   assert.equal(gate.received, 1);
 });
 
+const FUTURE_PRODUCTION_ACCEPTANCE_V2 = Object.freeze({
+  schemaVersion: "supplier-production-acceptance/v2",
+  status: "passed",
+  receiptId: "77777777-7777-4777-8777-777777777777",
+});
+
 test("supplier activation gate requires imported manifest, QA and matching count", () => {
-  assert.equal(canActivateSupplierSubBatch({ manifestStatus: "pending", qaStatus: "passed", expectedQuantity: 1000, manifestCount: 1000 }).reason, "manifest_not_imported");
-  assert.equal(canActivateSupplierSubBatch({ manifestStatus: "imported", qaStatus: "pending", expectedQuantity: 1000, manifestCount: 1000 }).reason, "qa_not_passed");
-  assert.equal(canActivateSupplierSubBatch({ manifestStatus: "imported", qaStatus: "passed", expectedQuantity: 1000, manifestCount: 999 }).reason, "manifest_quantity_mismatch");
-  assert.equal(canActivateSupplierSubBatch({ manifestStatus: "imported", qaStatus: "passed", expectedQuantity: 1000, manifestCount: 1000 }).ok, true);
+  const commercialScope = {
+    effectivePackPurpose: "production",
+    productionAcceptanceV2: FUTURE_PRODUCTION_ACCEPTANCE_V2,
+  };
+  assert.equal(canActivateSupplierSubBatch({ ...commercialScope, manifestStatus: "pending", qaStatus: "passed", expectedQuantity: 1000, manifestCount: 1000 }).reason, "manifest_not_imported");
+  assert.equal(canActivateSupplierSubBatch({ ...commercialScope, manifestStatus: "imported", qaStatus: "pending", expectedQuantity: 1000, manifestCount: 1000 }).reason, "qa_not_passed");
+  assert.equal(canActivateSupplierSubBatch({ ...commercialScope, manifestStatus: "imported", qaStatus: "passed", expectedQuantity: 1000, manifestCount: 999 }).reason, "manifest_quantity_mismatch");
+  assert.equal(canActivateSupplierSubBatch({ ...commercialScope, manifestStatus: "imported", qaStatus: "passed", expectedQuantity: 1000, manifestCount: 1000 }).ok, true);
+});
+
+test("supplier purpose and production acceptance are hard gates that no override can bypass", () => {
+  const overrideAttempt = {
+    manifestStatus: "imported",
+    qaStatus: "passed",
+    expectedQuantity: 1000,
+    manifestCount: 1000,
+    overrideReason: "customer-approved corrective activation",
+    overrideBy: "security-operator@nexid",
+  };
+  const legacy = canActivateSupplierSubBatch({
+    ...overrideAttempt,
+    effectivePackPurpose: "legacy_unclassified",
+  });
+  assert.equal(legacy.ok, false);
+  assert.equal(legacy.reason, "supplier_pack_purpose_unclassified");
+  assert.equal(legacy.hardGate, true);
+  assert.equal(legacy.override, false);
+
+  const trial = canActivateSupplierSubBatch({
+    ...overrideAttempt,
+    effectivePackPurpose: "trial_integration",
+  });
+  assert.equal(trial.ok, false);
+  assert.equal(trial.reason, "supplier_trial_integration_non_sellable");
+  assert.equal(trial.hardGate, true);
+  assert.equal(trial.override, false);
+
+  const productionWithoutV2 = canActivateSupplierSubBatch({
+    ...overrideAttempt,
+    effectivePackPurpose: "production",
+    productionAcceptanceV2: null,
+  });
+  assert.equal(productionWithoutV2.ok, false);
+  assert.equal(productionWithoutV2.reason, "supplier_production_acceptance_v2_required");
+  assert.equal(productionWithoutV2.hardGate, true);
+  assert.equal(productionWithoutV2.override, false);
+});
+
+test("supplier activation scope requires one coherent tenant, order, sub-batch, batch and BID link", () => {
+  const batch = {
+    id: "22222222-2222-4222-8222-222222222222",
+    tenantId: "11111111-1111-4111-8111-111111111111",
+    bid: "SYN-AR-2026-001-A",
+    supplierOrderId: "33333333-3333-4333-8333-333333333333",
+    supplierSubBatchId: "44444444-4444-4444-8444-444444444444",
+  };
+  const candidate = {
+    id: batch.supplierSubBatchId,
+    tenantId: batch.tenantId,
+    supplierOrderId: batch.supplierOrderId,
+    batchId: batch.id,
+    bid: batch.bid.toLowerCase(),
+    declaredPackPurpose: "legacy_unclassified",
+    orderPackPurpose: "legacy_unclassified",
+    effectivePackPurpose: "trial_integration",
+    classificationDecisionId: "55555555-5555-4555-8555-555555555555",
+  };
+
+  const exact = resolveSupplierActivationScope({ batch, candidates: [candidate] });
+  assert.equal(exact.ok, true);
+  assert.equal(exact.supplierSubBatch?.effectivePackPurpose, "trial_integration");
+
+  const reverseOnly = resolveSupplierActivationScope({
+    batch: { ...batch, supplierOrderId: null, supplierSubBatchId: null },
+    candidates: [candidate],
+  });
+  assert.equal(reverseOnly.ok, false);
+  assert.equal(reverseOnly.reason, "supplier_commercial_scope_invalid");
+
+  const tenantMismatch = resolveSupplierActivationScope({
+    batch,
+    candidates: [{ ...candidate, tenantId: "66666666-6666-4666-8666-666666666666" }],
+  });
+  assert.equal(tenantMismatch.ok, false);
+  assert.equal(tenantMismatch.reason, "supplier_commercial_scope_invalid");
+
+  const duplicateBidScope = resolveSupplierActivationScope({ batch, candidates: [candidate, candidate] });
+  assert.equal(duplicateBidScope.ok, false);
+  assert.equal(duplicateBidScope.candidateCount, 2);
 });
 
 test("supplier pack and manifest gates are one-time production controls", () => {
@@ -206,6 +367,8 @@ test("supplier key rotation is allowed only before export, manifest, QA and acti
 
 test("supplier activation override requires explicit audit fields", () => {
   const blocked = canActivateSupplierSubBatch({
+    effectivePackPurpose: "production",
+    productionAcceptanceV2: FUTURE_PRODUCTION_ACCEPTANCE_V2,
     manifestStatus: "pending",
     qaStatus: "pending",
     expectedQuantity: 1000,
@@ -215,6 +378,8 @@ test("supplier activation override requires explicit audit fields", () => {
   assert.equal(blocked.reason, "manifest_not_imported");
 
   const unaudited = canActivateSupplierSubBatch({
+    effectivePackPurpose: "production",
+    productionAcceptanceV2: FUTURE_PRODUCTION_ACCEPTANCE_V2,
     manifestStatus: "pending",
     qaStatus: "pending",
     expectedQuantity: 1000,
@@ -225,6 +390,8 @@ test("supplier activation override requires explicit audit fields", () => {
   assert.equal(unaudited.reason, "supplier_activation_override_audit_required");
 
   const override = canActivateSupplierSubBatch({
+    effectivePackPurpose: "production",
+    productionAcceptanceV2: FUTURE_PRODUCTION_ACCEPTANCE_V2,
     manifestStatus: "pending",
     qaStatus: "pending",
     expectedQuantity: 1000,
@@ -241,48 +408,384 @@ test("supplier activation override requires explicit audit fields", () => {
   ]);
 });
 
-test("supplier QA gate rejects empty pass declarations", () => {
-  assert.equal(validateSupplierQaEvidence({ passed: false }).ok, true);
-  assert.equal(validateSupplierQaEvidence({ passed: true, sampleUrls: [], replayChecked: true, ttstatusChecked: true, requiresTtstatus: true }).reason, "qa_sample_evidence_required");
-  assert.equal(validateSupplierQaEvidence({ passed: true, sampleUrls: ["https://qa.nexid.lat/sample/1"], replayChecked: false, ttstatusChecked: true, requiresTtstatus: true }).reason, "qa_replay_check_required");
-  assert.equal(validateSupplierQaEvidence({ passed: true, sampleUrls: ["https://qa.nexid.lat/sample/1"], replayChecked: true, ttstatusChecked: false, requiresTtstatus: true }).reason, "qa_ttstatus_check_required");
-  assert.equal(validateSupplierQaEvidence({ passed: true, sampleUrls: ["https://qa.nexid.lat/sample/1"], replayChecked: true, ttstatusChecked: false, requiresTtstatus: false }).ok, true);
-  assert.equal(validateSupplierQaEvidence({ passed: true, sampleUrls: ["https://qa.nexid.lat/sample/1"], replayChecked: true, ttstatusChecked: true, requiresTtstatus: true }).ok, true);
+const QA_BID = "SYN-AR-2026-001-A";
+const QA_TENANT_ID = "11111111-1111-4111-8111-111111111111";
+const QA_BATCH_ID = "22222222-2222-4222-8222-222222222222";
+const QA_MANIFEST_IMPORTED_AT = "2026-07-29T09:59:00.000Z";
+const QA_EVALUATED_AT = "2026-07-29T11:00:00.000Z";
+const QA_MANIFEST_HASH = `sha256:${"a".repeat(64)}`;
+const QA_KEY_FINGERPRINT = "B".repeat(16);
+const QA_CONTEXT_INPUT = {
+  tenantId: QA_TENANT_ID,
+  batchId: QA_BATCH_ID,
+  bid: QA_BID,
+  manifestHash: QA_MANIFEST_HASH,
+  carrierProfileCode: "ntag424_dna_tt",
+  keyFingerprint: QA_KEY_FINGERPRINT,
+  sdmConfig: { mac_input: "picc_enc" },
+  supplierOrderId: "33333333-3333-4333-8333-333333333333",
+  supplierSubBatchId: "44444444-4444-4444-8444-444444444444",
+  supplierSubBatchStatus: "manifest_received",
+  batchStatus: "planned",
+  keyExportCount: 1,
+  keyExportedAt: "2026-07-29T09:00:00.000000Z",
+  batchKeyExportCount: 1,
+  batchKeyExportedAt: "2026-07-29T09:00:00.000000Z",
+  packagingGovernanceStatus: "approved",
+  packagingSpecRevision: 1,
+  packagingSpecHash: `sha256:${"d".repeat(64)}`,
+  packPurpose: "trial_integration",
+};
+const QA_VERIFICATION_CONTEXT = buildSupplierQaVerificationContext(QA_CONTEXT_INPUT);
+assert.ok(QA_VERIFICATION_CONTEXT);
+const QA_CARRIER_CONFIG_DIGEST = QA_VERIFICATION_CONTEXT.carrierConfigDigest;
+const QA_VERIFICATION_CONTEXT_DIGEST = QA_VERIFICATION_CONTEXT.verificationContextDigest;
+
+test("supplier QA verification context is canonical, domain-separated and purpose-bound", () => {
+  const normalizedReplay = buildSupplierQaVerificationContext({
+    ...QA_CONTEXT_INPUT,
+    bid: QA_BID.toLowerCase(),
+    manifestHash: QA_MANIFEST_HASH.toUpperCase(),
+    carrierProfileCode: "NTAG424_DNA_TT",
+    keyFingerprint: QA_KEY_FINGERPRINT.toLowerCase(),
+    packPurpose: "TRIAL_INTEGRATION",
+  });
+  const production = buildSupplierQaVerificationContext({
+    ...QA_CONTEXT_INPUT,
+    packPurpose: "production",
+  });
+
+  assert.equal(QA_VERIFICATION_CONTEXT.domain, SUPPLIER_QA_VERIFICATION_CONTEXT_DOMAIN);
+  assert.equal(QA_VERIFICATION_CONTEXT.schemaVersion, SUPPLIER_QA_VERIFICATION_CONTEXT_VERSION);
+  assert.equal(normalizedReplay?.verificationContextDigest, QA_VERIFICATION_CONTEXT_DIGEST);
+  assert.notEqual(production?.verificationContextDigest, QA_VERIFICATION_CONTEXT_DIGEST);
+  assert.equal(production?.acceptanceScope, "production_lot");
+  assert.equal(buildSupplierQaVerificationContext({ ...QA_CONTEXT_INPUT, packPurpose: null }), null);
 });
 
-test("supplier QA gate ties production evidence to the expected BID and SUN sample", () => {
-  const validSample = "https://api.nexid.lat/sun?v=1&bid=SYN-AR-2026-001-A&picc_data=0011223344556677&enc=AABBCCDDEEFF0011&cmac=0102030405060708";
-  const gate = validateSupplierQaEvidence({
-    passed: true,
-    sampleUrls: [validSample],
-    replayChecked: true,
-    ttstatusChecked: true,
-    requiresTtstatus: true,
-    requiresSecureSun: true,
-    expectedBid: "SYN-AR-2026-001-A",
+test("supplier QA verification context v2 canonicalizes nested JSON and binds every mutable prerequisite", () => {
+  assert.equal(
+    canonicalSupplierQaJson({ z: 1, a: { "β": 2, a: 3 }, list: [{ b: true, a: null }] }),
+    '{"a":{"a":3,"β":2},"list":[{"a":null,"b":true}],"z":1}',
+  );
+
+  const reorderedConfig = buildSupplierQaVerificationContext({
+    ...QA_CONTEXT_INPUT,
+    sdmConfig: { nested: { z: 2, a: 1 }, mac_input: "picc_enc" },
   });
+  const sameConfigDifferentInsertionOrder = buildSupplierQaVerificationContext({
+    ...QA_CONTEXT_INPUT,
+    sdmConfig: { mac_input: "picc_enc", nested: { a: 1, z: 2 } },
+  });
+  assert.equal(
+    reorderedConfig?.verificationContextDigest,
+    sameConfigDifferentInsertionOrder?.verificationContextDigest,
+  );
+
+  const mutations = [
+    { tenantId: "99999999-9999-4999-8999-999999999999" },
+    { batchId: "99999999-9999-4999-8999-999999999999" },
+    { bid: "SYN-AR-2026-001-B" },
+    { manifestHash: `sha256:${"f".repeat(64)}` },
+    { carrierProfileCode: "ntag424_dna" },
+    { keyFingerprint: "C".repeat(16) },
+    { sdmConfig: { mac_input: "different" } },
+    { supplierOrderId: "99999999-9999-4999-8999-999999999999" },
+    { supplierSubBatchId: "99999999-9999-4999-8999-999999999999" },
+    { supplierSubBatchStatus: "qa_pending" },
+    { batchStatus: "production_registered" },
+    { keyExportCount: 2 },
+    { keyExportedAt: "2026-07-29T09:00:01.000000Z" },
+    { batchKeyExportCount: 2 },
+    { batchKeyExportedAt: "2026-07-29T09:00:01.000000Z" },
+    { packagingGovernanceStatus: "pending" },
+    { packagingSpecRevision: 2 },
+    { packagingSpecHash: `sha256:${"e".repeat(64)}` },
+    { packPurpose: "production" },
+  ];
+  for (const mutation of mutations) {
+    const changed = buildSupplierQaVerificationContext({ ...QA_CONTEXT_INPUT, ...mutation });
+    assert.notEqual(
+      changed?.verificationContextDigest,
+      QA_VERIFICATION_CONTEXT_DIGEST,
+      `mutation must change digest: ${Object.keys(mutation)[0]}`,
+    );
+  }
+});
+
+function qaUid(index) {
+  return index.toString(16).toUpperCase().padStart(14, "0");
+}
+
+function qaDiagnostic({
+  id,
+  uid,
+  counter,
+  eventId,
+  second,
+  replayOriginalEventId = null,
+  state = "VALID_CLOSED",
+  tamperStatus = "CLOSED",
+  tamperOpened = false,
+  source = "enc_decrypted",
+  crypto = true,
+  tenantId = QA_TENANT_ID,
+  batchId = QA_BATCH_ID,
+  bid = QA_BID,
+  lifecycleState = "inactive",
+}) {
+  const replay = replayOriginalEventId != null;
+  const result = replay ? "REPLAY_SUSPECT" : state;
+  const eventCreatedAt = new Date(Date.parse("2026-07-29T10:00:00.000Z") + second * 1000).toISOString();
+  const diagnosticCreatedAt = new Date(Date.parse(eventCreatedAt) + 250).toISOString();
+  return {
+    id,
+    trace_id: `trace-${id}`,
+    created_at: diagnosticCreatedAt,
+    bid,
+    uid_hex: uid,
+    read_counter: counter,
+    auth_status: replay ? "REPLAY_SUSPECT" : "VALID",
+    replay_status: replay ? "REPLAY_SUSPECT" : "NO_REPLAY",
+    product_state: replay ? "REPLAY_SUSPECT" : state,
+    tamper_status: tamperStatus,
+    tamper_opened: tamperOpened,
+    tagtamper_config_detected: true,
+    evidence_source: "public_sun_route",
+    manifest_uid_match: true,
+    manifest_tag_lifecycle_state: lifecycleState,
+    event_id: eventId,
+    event_created_at: eventCreatedAt,
+    event_tenant_id: tenantId,
+    event_batch_id: batchId,
+    event_bid: bid,
+    event_uid_hex: uid,
+    event_counter: counter,
+    event_cmac_ok: crypto,
+    event_source: "real",
+    event_result: result,
+    replay_original_event_id: replayOriginalEventId == null ? null : String(replayOriginalEventId),
+    result_json: {
+      raw_result: {
+        ok: !replay,
+        tenant_id: tenantId,
+        bid,
+        uid,
+        ctr: counter,
+        result,
+        auth_status: replay ? "REPLAY_SUSPECT" : "VALID",
+        tag_status: "inactive",
+        product_state: replay ? "REPLAY_SUSPECT" : state,
+        tamper_status: tamperStatus,
+        tamper_opened: tamperOpened,
+        tag_tamper_config_detected: true,
+        event_id: eventId,
+        side_effect_mode: "persist",
+        cryptographic_verification: crypto,
+        tag_tamper: {
+          verified: crypto,
+          source,
+          raw: tamperStatus === "OPENED" ? "0101" : "0000",
+        },
+        sun_diagnostics: {
+          side_effect_mode: "persist",
+          verification_method: "sun_crypto",
+          cmac_valid: crypto,
+          sdm_decryption_ok: crypto,
+          uid_decoded: crypto,
+          uid_hex: uid,
+          read_counter: counter,
+          verification_context_domain: SUPPLIER_QA_VERIFICATION_CONTEXT_DOMAIN,
+          verification_context_version: SUPPLIER_QA_VERIFICATION_CONTEXT_VERSION,
+          verification_context_digest: QA_VERIFICATION_CONTEXT_DIGEST,
+        },
+      },
+    },
+  };
+}
+
+function buildQaFixture({ count = 10, includeOpened = true } = {}) {
+  const diagnostics = [];
+  const urls = [];
+  for (let index = 1; index <= count; index += 1) {
+    const uid = qaUid(index);
+    const acceptedEventId = 1000 + index;
+    const acceptedId = 100 + index;
+    const replayId = 200 + index;
+    diagnostics.push(qaDiagnostic({ id: acceptedId, uid, counter: index, eventId: acceptedEventId, second: index * 3 }));
+    diagnostics.push(qaDiagnostic({
+      id: replayId,
+      uid,
+      counter: index,
+      eventId: 2000 + index,
+      second: index * 3 + 1,
+      replayOriginalEventId: acceptedEventId,
+      state: "REPLAY_SUSPECT",
+      tamperStatus: "CLOSED",
+    }));
+    urls.push(`https://nexid.lat/sun?snapshot=${acceptedId}&trace=trace-${acceptedId}`);
+    urls.push(`https://nexid.lat/sun?snapshot=${replayId}&trace=trace-${replayId}`);
+  }
+  if (includeOpened && count > 0) {
+    const openedId = 301;
+    diagnostics.push(qaDiagnostic({
+      id: openedId,
+      uid: qaUid(1),
+      counter: 2,
+      eventId: 3001,
+      second: 40,
+      state: "VALID_OPENED",
+      tamperStatus: "OPENED",
+      tamperOpened: true,
+      lifecycleState: "revoked",
+    }));
+    urls.push(`https://nexid.lat/sun?snapshot=${openedId}&trace=trace-${openedId}`);
+  }
+  const parsed = parseSupplierQaSnapshotReferences(urls);
+  assert.equal(parsed.ok, true);
+  return { diagnostics, references: parsed.references };
+}
+
+function validateQaFixture(fixture, overrides = {}) {
+  return validateSupplierQaSunEvidence({
+    references: fixture.references,
+    diagnostics: fixture.diagnostics,
+    expectedBid: QA_BID,
+    expectedTenantId: QA_TENANT_ID,
+    expectedBatchId: QA_BATCH_ID,
+    expectedQuantity: 1000,
+    manifestHash: QA_MANIFEST_HASH,
+    carrierProfileCode: "ntag424_dna_tt",
+    keyFingerprint: QA_KEY_FINGERPRINT,
+    carrierConfigDigest: QA_CARRIER_CONFIG_DIGEST,
+    verificationContextDigest: QA_VERIFICATION_CONTEXT_DIGEST,
+    manifestImportedAt: QA_MANIFEST_IMPORTED_AT,
+    evaluatedAt: QA_EVALUATED_AT,
+    requiresTtstatus: true,
+    requiresSecureSun: true,
+    ...overrides,
+  });
+}
+
+test("supplier QA accepts only result-page snapshot and trace references", () => {
+  assert.equal(parseSupplierQaSnapshotReferences([]).reason, "qa_snapshot_evidence_required");
+  assert.equal(parseSupplierQaSnapshotReferences([
+    "https://api.nexid.lat/sun?v=1&bid=SYN-AR-2026-001-A&picc_data=0011&enc=AABB&cmac=0102",
+  ]).reason, "qa_snapshot_id_required");
+  const parsed = parseSupplierQaSnapshotReferences([
+    "https://nexid.lat/sun?snapshot=101&trace=trace-101&fresh=must-not-be-stored",
+    "https://nexid.lat/sun?snapshot=101&trace=trace-101&fresh=duplicate",
+  ]);
+  assert.equal(parsed.ok, true);
+  assert.equal(parsed.references.length, 1);
+  assert.equal(
+    parsed.references[0].referenceHash,
+    `sha256:${createHash("sha256").update("supplier-qa-sun/v1\u0000101\u0000trace-101", "utf8").digest("hex")}`,
+  );
+  assert.doesNotMatch(JSON.stringify(parsed.references), /must-not-be-stored|duplicate/);
+});
+
+test("supplier QA derives ten UID, canonical replay and electronic TagTamper evidence server-side", () => {
+  const fixture = buildQaFixture();
+  const gate = validateQaFixture(fixture);
   assert.equal(gate.ok, true);
+  assert.equal(gate.sampleCount, 10);
+  assert.equal(gate.replayChecked, true);
+  assert.equal(gate.ttstatusChecked, true);
+  assert.equal(gate.evidence.server_verified_sun_evidence, true);
+  assert.equal(gate.evidence.physical_ceremony_verified, false);
   assert.match(gate.evidenceDigest, /^sha256:[0-9a-f]{64}$/);
+  for (let index = 1; index <= 10; index += 1) {
+    assert.doesNotMatch(JSON.stringify(gate.evidence), new RegExp(qaUid(index)));
+  }
+});
 
-  assert.equal(validateSupplierQaEvidence({
-    passed: true,
-    sampleUrls: [validSample.replace("SYN-AR-2026-001-A", "SYN-AR-2026-001-B")],
-    replayChecked: true,
-    ttstatusChecked: true,
-    requiresTtstatus: true,
-    requiresSecureSun: true,
-    expectedBid: "SYN-AR-2026-001-A",
-  }).reason, "qa_sample_bid_mismatch");
+test("supplier QA accepts cryptographically verified pre-activation NOT_ACTIVE samples", () => {
+  const fixture = buildQaFixture();
+  for (const row of fixture.diagnostics.filter((candidate) => candidate.id >= 101 && candidate.id <= 110)) {
+    row.auth_status = "NOT_ACTIVE";
+    row.event_result = "NOT_ACTIVE";
+    row.result_json.raw_result.result = "NOT_ACTIVE";
+    row.result_json.raw_result.auth_status = "NOT_ACTIVE";
+    row.result_json.raw_result.tag_status = "inactive";
+  }
+  const gate = validateQaFixture(fixture);
+  assert.equal(gate.ok, true);
+  assert.equal(gate.sampleCount, 10);
+  assert.equal(gate.evidence.physical_ceremony_verified, false);
+});
 
-  assert.equal(validateSupplierQaEvidence({
-    passed: true,
-    sampleUrls: ["https://api.nexid.lat/sun?v=1&bid=SYN-AR-2026-001-A"],
-    replayChecked: true,
-    ttstatusChecked: true,
-    requiresTtstatus: true,
-    requiresSecureSun: true,
-    expectedBid: "SYN-AR-2026-001-A",
-  }).reason, "qa_secure_sun_sample_required");
+test("supplier QA rejects duplicate UIDs and replays without canonical original-event linkage", () => {
+  const tooSmall = buildQaFixture({ count: 9 });
+  assert.equal(validateQaFixture(tooSmall).reason, "qa_unique_manifest_uids_required");
+
+  const unlinked = buildQaFixture();
+  unlinked.diagnostics.find((row) => row.id === 201).replay_original_event_id = "999999";
+  assert.equal(validateQaFixture(unlinked).reason, "qa_replay_pair_required");
+});
+
+test("supplier QA rejects manual or missing electronic TagTamper transitions", () => {
+  const noOpened = buildQaFixture({ includeOpened: false });
+  assert.equal(validateQaFixture(noOpened).reason, "qa_tt_opened_transition_required");
+
+  const sellableOpened = buildQaFixture();
+  sellableOpened.diagnostics.find((row) => row.id === 301).manifest_tag_lifecycle_state = "inactive";
+  assert.equal(validateQaFixture(sellableOpened).reason, "qa_tt_sacrificial_tag_must_be_revoked");
+
+  const manual = buildQaFixture();
+  const opened = manual.diagnostics.find((row) => row.id === 301);
+  opened.product_state = "VALID_MANUAL_OPENED";
+  opened.event_result = "VALID_MANUAL_OPENED";
+  opened.result_json.raw_result.result = "VALID_MANUAL_OPENED";
+  opened.result_json.raw_result.product_state = "VALID_MANUAL_OPENED";
+  opened.result_json.raw_result.tag_tamper.source = "manual";
+  assert.equal(validateQaFixture(manual).reason, "qa_tt_opened_transition_required");
+
+  const staleOpening = buildQaFixture();
+  const staleRow = staleOpening.diagnostics.find((row) => row.id === 301);
+  staleRow.event_id = 999;
+  staleRow.result_json.raw_result.event_id = 999;
+  staleRow.event_created_at = "2026-07-29T10:00:01.000Z";
+  assert.equal(validateQaFixture(staleOpening).reason, "qa_tt_opened_transition_required");
+});
+
+test("supplier QA rejects demo-like, cross-tenant, stale and non-cryptographic evidence", () => {
+  const wrongTenant = buildQaFixture();
+  wrongTenant.diagnostics[0].event_tenant_id = "33333333-3333-4333-8333-333333333333";
+  assert.equal(validateQaFixture(wrongTenant).reason, "qa_canonical_event_scope_mismatch");
+
+  const nonCrypto = buildQaFixture();
+  nonCrypto.diagnostics[0].result_json.raw_result.cryptographic_verification = false;
+  assert.equal(validateQaFixture(nonCrypto).reason, "qa_cryptographic_sun_verification_required");
+
+  const demo = buildQaFixture();
+  demo.diagnostics[0].event_source = "demo";
+  assert.equal(validateQaFixture(demo).reason, "qa_canonical_event_scope_mismatch");
+
+  const stale = buildQaFixture();
+  assert.equal(validateQaFixture(stale, { evaluatedAt: "2026-08-10T11:00:00.000Z" }).reason, "qa_snapshot_outside_evidence_window");
+
+  const missingCounter = buildQaFixture();
+  missingCounter.diagnostics[0].read_counter = null;
+  missingCounter.diagnostics[0].event_counter = null;
+  missingCounter.diagnostics[0].result_json.raw_result.ctr = null;
+  assert.equal(validateQaFixture(missingCounter).reason, "qa_snapshot_counter_required");
+
+  const rawIdentityMismatch = buildQaFixture();
+  rawIdentityMismatch.diagnostics[0].result_json.raw_result.uid = qaUid(99);
+  assert.equal(validateQaFixture(rawIdentityMismatch).reason, "qa_snapshot_result_identity_mismatch");
+
+  const staleVerificationContext = buildQaFixture();
+  staleVerificationContext.diagnostics[0].result_json.raw_result.sun_diagnostics.verification_context_digest = `sha256:${"d".repeat(64)}`;
+  assert.equal(validateQaFixture(staleVerificationContext).reason, "qa_verification_context_mismatch");
+
+  const staleVerificationContextVersion = buildQaFixture();
+  staleVerificationContextVersion.diagnostics[0].result_json.raw_result.sun_diagnostics.verification_context_version = "v1";
+  assert.equal(validateQaFixture(staleVerificationContextVersion).reason, "qa_verification_context_mismatch");
+
+  const rawStateMismatch = buildQaFixture();
+  rawStateMismatch.diagnostics[0].result_json.raw_result.product_state = "VALID_UNKNOWN_TAMPER";
+  assert.equal(validateQaFixture(rawStateMismatch).reason, "qa_snapshot_result_state_mismatch");
 });
 
 test("proof layer builds a verifiable Merkle root without exposing raw events", () => {

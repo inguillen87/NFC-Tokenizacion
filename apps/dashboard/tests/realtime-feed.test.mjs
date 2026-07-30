@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { tsImport } from "tsx/esm/api";
 
-const { mergeRealtimeEvents } = await import("../src/lib/realtime-feed.ts");
+const { mergeRealtimeEvents } = await tsImport("../src/lib/realtime-feed.ts", import.meta.url);
 
 test("dashboard dedupes repeated eventId", () => {
   const first = {

@@ -10,6 +10,18 @@ node_modules
 *.log
 .codex-run-logs/
 .nexid-custody/
+# NFC custody outputs. Keep explicit legacy patterns as defense in depth even
+# though the key tools now default to .nexid-custody/.
+/secrets/
+/generated-keys/
+/.platform-kms.local.env
+/supplier-keys-*.env
+/backend-batch-*.env
+/nfc-keys-*.env
+/nfc-keys-*-supplier.txt
+/nfc-keys-*.private.env
+/nfc-keys-*.backend.env
+/nfc-keys-*.supplier.txt
 *.ct.b64
 coverage
 pnpm-lock.yaml

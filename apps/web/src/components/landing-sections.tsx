@@ -365,7 +365,7 @@ export function EnterpriseTrustLayersSection({ locale }: { locale: string }) {
         { label: "Enterprise rollout", body: "Add Supplier Ops, Tenant Vault, NFC 424, offline verifier, Polygon ownership, IOTA proof and UHF/IoT evidence only where risk justifies it." },
       ],
       cards: [
-        { title: "QR / GS1", body: "Batch tracking, product data and GS1 Digital Link compliance at low cost.", meta: "Identity", icon: QrCode },
+        { title: "QR / GS1", body: "Batch tracking, product data and a registry-backed GS1 Digital Link foundation at low cost; conformance certification remains a separate gate.", meta: "Identity", icon: QrCode },
         { title: "NFC 424 DNA", body: "Dynamic SUN/SDM message per tap, designed to resist message copying and replay when keys, counters and server validation are correctly configured; it is not physical-product proof.", meta: "Tag evidence", icon: Fingerprint },
         { title: "Offline Verifier", body: "Your phone or reader works in warehouses and remote areas. Syncs to server when back online.", meta: "Field", icon: Cpu },
         { title: "TagTamper", body: "Reports a TT-state change from the tag for review; it does not by itself prove the package, contents or physical opening.", meta: "Reported TT", icon: ShieldCheck },
@@ -1885,7 +1885,7 @@ export function CtaSection({ content, locale }: { content: Content; locale: stri
            <p className="mx-auto max-w-2xl text-base leading-7 text-slate-400 mb-8">{content.cta.body}</p>
            <div className="flex flex-wrap justify-center gap-4">
              <Link href="/demo-lab?vertical=wine" className="inline-flex items-center justify-center rounded-xl bg-white px-8 py-4 text-sm font-bold text-slate-950 transition hover:bg-slate-200 hover:scale-105 shadow-xl">
-                {isEn ? "View live demo" : isBr ? "Ver demo ao vivo" : "Ver demo en vivo"}
+                {isEn ? "View guided demo" : isBr ? "Ver demo guiada" : "Ver demo guiada"}
              </Link>
              <a href={schedulingUrls.meeting} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-8 py-4 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/20">
                 {isEn ? "Schedule meeting" : isBr ? "Agendar reuniao" : "Agendar reunion"}

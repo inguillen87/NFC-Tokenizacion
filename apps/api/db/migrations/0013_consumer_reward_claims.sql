@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS consumer_reward_claims (
   consumer_id uuid NOT NULL REFERENCES consumers(id) ON DELETE CASCADE,
   tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   reward_id uuid NOT NULL REFERENCES rewards(id) ON DELETE CASCADE,
-  tap_event_id bigint REFERENCES events(id) ON DELETE SET NULL,
+  tap_event_id bigint,
   status consumer_reward_claim_status NOT NULL DEFAULT 'claimed',
   points_spent integer NOT NULL,
   redemption_code text NOT NULL UNIQUE,

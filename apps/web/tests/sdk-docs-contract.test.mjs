@@ -4,10 +4,16 @@ import test from "node:test";
 
 const contract = await readFile(new URL("../src/lib/sdk-public-contract.ts", import.meta.url), "utf8");
 const docsConsole = await readFile(new URL("../src/app/docs/docs-integration-console.tsx", import.meta.url), "utf8");
+const docsPage = await readFile(new URL("../src/app/docs/page.tsx", import.meta.url), "utf8");
 const sdkPage = await readFile(new URL("../src/app/sdk/page.tsx", import.meta.url), "utf8");
 
 test("Docs and SDK publish the same executable verify contract", () => {
   assert.match(contract, /NEXID_SDK_VERIFY_ROUTE = "\/api\/v1\/sdk\/verify"/);
+  assert.match(contract, /NEXID_SDK_OPENAPI_URL = `\$\{NEXID_SDK_API_BASE\}\/openapi\/nexid-sdk-v1\.json`/);
+  assert.match(contract, /NEXID_SDK_ASYNCAPI_URL = `\$\{NEXID_SDK_API_BASE\}\/asyncapi\/nexid-webhooks-v1\.json`/);
+  assert.match(contract, /NEXID_SDK_EPCIS_CAPTURE_ROUTE = "\/api\/v1\/sdk\/epcis\/capture"/);
+  assert.match(contract, /NEXID_SDK_EPCIS_EVENTS_ROUTE = "\/api\/v1\/sdk\/epcis\/events"/);
+  assert.match(contract, /NEXID_SDK_EPCIS_EXPORT_ROUTE = "\/api\/v1\/sdk\/epcis\/export"/);
   assert.match(contract, /NEXID_SDK_VERIFY_REQUIRED_FIELDS = \["bid", "picc_data", "enc", "cmac"\]/);
   assert.match(contract, /NEXID_SDK_VERIFY_OPTIONAL_FIELDS = \["gps", "deviceMeta"\]/);
 
@@ -23,16 +29,35 @@ test("Docs and SDK publish the same executable verify contract", () => {
   assert.doesNotMatch(docsConsole, /"carrier": "ntag424_dna"/);
   assert.doesNotMatch(docsConsole, /"batchId"/);
   assert.doesNotMatch(docsConsole, /Authorization: Bearer/);
+  assert.match(docsPage, /NEXID_SDK_OPENAPI_URL/);
+  assert.match(docsPage, /NEXID_SDK_ASYNCAPI_URL/);
+  assert.match(docsPage, /Webhooks firmados y asíncronos/);
+  assert.match(docsPage, /Entrega durable al menos una vez/);
+  assert.doesNotMatch(docsPage, /Webhooks en Tiempo Real/);
 
-  assert.match(sdkPage, /import \{ NEXID_SDK_VERIFY_URL \} from "\.\.\/\.\.\/lib\/sdk-public-contract"/);
+  assert.match(sdkPage, /NEXID_SDK_VERIFY_URL,/);
+  assert.match(sdkPage, /from "\.\.\/\.\.\/lib\/sdk-public-contract"/);
   assert.match(sdkPage, /fetch\("\$\{NEXID_SDK_VERIFY_URL\}"/);
   assert.match(sdkPage, /"Idempotency-Key": crypto\.randomUUID\(\)/);
-  assert.match(sdkPage, /verify, claim, events y POS aceptan Idempotency-Key/);
+  assert.match(sdkPage, /Verify, claim, events y POS aceptan Idempotency-Key; EPCIS capture la exige/);
   assert.match(sdkPage, /reutilizar la clave con otro payload devuelve HTTP 409/);
   assert.match(sdkPage, /consulta status o solicita reconcile con la misma clave/);
   assert.match(sdkPage, /La firma v2 incluye versión e identificador de clave/);
   assert.match(sdkPage, /webhooks llegan de forma asíncrona con estado de entrega/);
   assert.doesNotMatch(sdkPage, /webhooks en tiempo real/);
-  assert.match(sdkPage, /https:\/\/api\.nexid\.lat\/openapi\/nexid-sdk-v1\.json/);
+  assert.match(sdkPage, /NEXID_SDK_OPENAPI_URL/);
+  assert.match(sdkPage, /NEXID_SDK_ASYNCAPI_URL/);
   assert.match(sdkPage, /OpenAPI v1/);
+  assert.match(sdkPage, /AsyncAPI webhooks v1/);
+  assert.match(sdkPage, /NEXID_SDK_EPCIS_CAPTURE_URL/);
+  assert.match(sdkPage, /application\/vnd\.gs1\.epcis\+json/);
+  assert.match(sdkPage, /EPCIS capture la exige/);
+  assert.match(sdkPage, /no reemplaza ni simula la verificacion criptografica SUN/);
+  assert.match(sdkPage, /no se presenta como certificacion GS1/);
+  assert.match(sdkPage, /buttonClassName/);
+  assert.doesNotMatch(sdkPage, /<(?:Link|a)[^>]*>\s*<Button/);
+  assert.equal((sdkPage.match(/<pre role="region" tabIndex=\{0\}/g) || []).length, 2);
+  assert.doesNotMatch(sdkPage, /sdk-global-hero-atlas" role="img"/);
+  assert.doesNotMatch(sdkPage, /sdk-proof-phone" role="img"/);
+  assert.doesNotMatch(sdkPage, /className="sdk-theme-toggle" aria-label=/);
 });

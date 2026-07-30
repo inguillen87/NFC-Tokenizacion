@@ -3,19 +3,25 @@ import { DataTable } from "../../../../components/data-table";
 import { EnterpriseOpsState } from "../../../../components/enterprise-ops-state";
 import { requireDashboardSession } from "../../../../lib/session";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../../lib/admin-page-access";
+import { readDemoDataMetaFromResponse } from "../../../../lib/demo-data-mode";
 
 type SourceAvailability = "ready" | "upstream_error" | "invalid_payload" | "unreachable";
-type AdminGetResult = { availability: SourceAvailability; data: unknown | null };
+type AdminGetResult = { availability: SourceAvailability; data: unknown | null; source: "production" | "demo" | "unavailable" };
 
-async function adminGet(context: AdminPageContext, path: string): Promise<AdminGetResult> {
+async function adminGet(context: AdminPageContext, path: string, allowDemoData: boolean): Promise<AdminGetResult> {
   try {
     const response = await fetchAdminPage(context, path);
-    if (!response.ok) return { availability: "upstream_error", data: null };
+    const meta = readDemoDataMetaFromResponse(response);
+    if (!response.ok) return { availability: "upstream_error", data: null, source: "unavailable" };
     const data = await response.json().catch(() => null);
-    if (!data || typeof data !== "object") return { availability: "invalid_payload", data: null };
-    return { availability: "ready", data };
+    const upstreamUnavailable = Boolean(data && typeof data === "object" && !Array.isArray(data) && (data as { ok?: boolean }).ok === false);
+    if (upstreamUnavailable) return { availability: "upstream_error", data: null, source: "unavailable" };
+    if (!data || typeof data !== "object" || (meta.demoMode && !allowDemoData)) {
+      return { availability: "invalid_payload", data: null, source: "unavailable" };
+    }
+    return { availability: "ready", data, source: meta.demoMode ? "demo" : "production" };
   } catch {
-    return { availability: "unreachable", data: null };
+    return { availability: "unreachable", data: null, source: "unavailable" };
   }
 }
 
@@ -41,18 +47,23 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
   const query = searchParams ? await searchParams : {};
   const session = await requireDashboardSession();
   const adminContext = await createAdminPageContext(session, query.tenant);
+  const allowDemoData = Boolean(session.isDemo);
 
   const [overviewResult, membersResult, productsResult, tapsResult] = await Promise.all([
-    adminGet(adminContext, "/admin/consumer-network/overview"),
-    adminGet(adminContext, "/admin/consumer-network/members"),
-    adminGet(adminContext, "/admin/consumer-network/products"),
-    adminGet(adminContext, "/admin/consumer-network/taps"),
+    adminGet(adminContext, "/admin/consumer-network/overview", allowDemoData),
+    adminGet(adminContext, "/admin/consumer-network/members", allowDemoData),
+    adminGet(adminContext, "/admin/consumer-network/products", allowDemoData),
+    adminGet(adminContext, "/admin/consumer-network/taps", allowDemoData),
   ]);
 
   const overviewReady = overviewResult.availability === "ready";
   const membersReady = membersResult.availability === "ready";
   const productsReady = productsResult.availability === "ready";
   const tapsReady = tapsResult.availability === "ready";
+  const visibleSources = [overviewResult, membersResult, productsResult, tapsResult]
+    .filter((result) => result.availability === "ready")
+    .map((result) => result.source);
+  const dataSource = visibleSources.includes("demo") ? "demo" : visibleSources.length ? "production" : "unavailable";
   const unavailableSources = [
     ["overview", overviewResult.availability],
     ["members", membersResult.availability],
@@ -83,8 +94,15 @@ export default async function PortalUsuariosOverviewPage({ searchParams }: { sea
       <SectionHeading
         eyebrow="Clientes CRM"
         title="Clientes & campañas"
-        description="Conversión real de lecturas post-tap a consumidores, membresías y productos guardados, con scope por tenant."
+        description={dataSource === "demo"
+          ? "Escenario demo aislado de actividad productiva; permite recorrer el funnel, tablas y heatmap sin afirmar consumidores reales."
+          : "Conversión de lecturas post-tap confirmadas por las APIs operativas, con scope por tenant."}
       />
+
+      <div data-testid="consumer-network-source" data-data-source={dataSource} className="rounded-xl border border-white/10 bg-slate-900/50 px-4 py-3 text-xs text-slate-300">
+        Fuente: <b className={dataSource === "demo" ? "text-amber-200" : dataSource === "production" ? "text-emerald-200" : "text-slate-200"}>{dataSource}</b>
+        {dataSource === "demo" ? " · DEMO DATA; no se agrega como actividad productiva." : null}
+      </div>
 
       {unavailableSources.length ? (
         <EnterpriseOpsState

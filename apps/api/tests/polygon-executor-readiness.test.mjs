@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { probePolygonExecutorReadiness } from "../src/lib/polygon-executor-readiness.ts";
 
-const SECRET = "unit-test-executor-secret";
+const SECRET = "unit-test-executor-secret-32-bytes-minimum";
 const CONTRACT = "0x0000000000000000000000000000000000000001";
 const SIGNER = "0x0000000000000000000000000000000000000002";
 
@@ -78,6 +78,10 @@ test("production rejects insecure executor readiness URLs and missing secrets", 
   const missingSecret = await probePolygonExecutorReadiness({ source: source({ TOKENIZATION_EXECUTOR_SECRET: "" }) });
   assert.equal(missingSecret.liveVerified, false);
   assert.equal(missingSecret.reason, "executor_secret_missing");
+
+  const weakSecret = await probePolygonExecutorReadiness({ source: source({ TOKENIZATION_EXECUTOR_SECRET: "too-short" }) });
+  assert.equal(weakSecret.liveVerified, false);
+  assert.equal(weakSecret.reason, "executor_secret_too_short");
 });
 
 test("a nominal 200 still fails closed if any chain evidence is absent", async () => {

@@ -176,7 +176,9 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const { tenant: requestedTenant, source: requestedSource, range, rangeSql, country } = parseAnalyticsFilters(searchParams);
   const { effectiveTenantSlug: tenant } = getAdminTenantAccess(req, requestedTenant);
-  const source = requestedSource || (tenant ? "real" : "");
+  // Real operational analytics fail closed. Demo/simulated events remain
+  // queryable only through an explicit `source=demo` filter.
+  const source = requestedSource || "real";
   await ensureAnalyticsEventsSchema();
 
   const [overviewRows, trendRows, batchRows, geoRows, deviceRows, journeyRows] = await Promise.all([
@@ -197,7 +199,7 @@ export async function GET(req: Request) {
         LEFT JOIN batches b ON b.tenant_id = tn.id
         LEFT JOIN events e ON e.batch_id = b.id
           AND e.created_at >= now() - ${rangeSql}::interval
-          AND (${source} = '' OR e.source = ${source}::text)
+          AND (${source} = '' OR e.source::text = ${source})
         WHERE tn.slug = ${tenant}
       `
       : sql/*sql*/`
@@ -216,7 +218,7 @@ export async function GET(req: Request) {
         JOIN tenants tn ON tn.id = b.tenant_id
         LEFT JOIN events e ON e.batch_id = b.id
           AND e.created_at >= now() - ${rangeSql}::interval
-          AND (${source} = '' OR e.source = ${source}::text)
+          AND (${source} = '' OR e.source::text = ${source})
       `,
     tenant
       ? sql/*sql*/`
@@ -233,7 +235,7 @@ export async function GET(req: Request) {
         JOIN tenants tn ON tn.id = b.tenant_id
         WHERE tn.slug = ${tenant}
           AND e.created_at >= now() - ${rangeSql}::interval
-          AND (${source} = '' OR e.source = ${source}::text)
+          AND (${source} = '' OR e.source::text = ${source})
           AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
         GROUP BY 1
         ORDER BY min(e.created_at)
@@ -249,7 +251,7 @@ export async function GET(req: Request) {
           COUNT(*) FILTER (WHERE e.verdict = 'revoked' OR e.result = 'REVOKED')::int AS revoked
         FROM events e
         WHERE e.created_at >= now() - ${rangeSql}::interval
-          AND (${source} = '' OR e.source = ${source}::text)
+          AND (${source} = '' OR e.source::text = ${source})
           AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
         GROUP BY 1
         ORDER BY min(e.created_at)
@@ -296,7 +298,7 @@ export async function GET(req: Request) {
         JOIN tenants tn ON tn.id = e.tenant_id
         WHERE tn.slug = ${tenant}
           AND e.created_at >= now() - ${rangeSql}::interval
-          AND (${source} = '' OR e.source = ${source}::text)
+          AND (${source} = '' OR e.source::text = ${source})
         GROUP BY 1, 2
         ORDER BY scans DESC
         LIMIT 20
@@ -327,7 +329,7 @@ export async function GET(req: Request) {
           AVG(e.location_accuracy_m) FILTER (WHERE e.location_source IN ('browser_gps_reported','browser_gps_approximate_consent') AND e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180 AND e.location_accuracy_m >= 0)::float8 AS accuracy_m
         FROM events e
         WHERE e.created_at >= now() - ${rangeSql}::interval
-          AND (${source} = '' OR e.source = ${source}::text)
+          AND (${source} = '' OR e.source::text = ${source})
         GROUP BY 1, 2
         ORDER BY scans DESC
         LIMIT 20
@@ -344,7 +346,7 @@ export async function GET(req: Request) {
         JOIN tenants tn ON tn.id = e.tenant_id
         WHERE tn.slug = ${tenant}
           AND e.created_at >= now() - ${rangeSql}::interval
-          AND (${source} = '' OR e.source = ${source}::text)
+          AND (${source} = '' OR e.source::text = ${source})
           AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
         GROUP BY 1
         ORDER BY scans DESC
@@ -359,7 +361,7 @@ export async function GET(req: Request) {
           COUNT(*) FILTER (WHERE e.result IN ('INVALID','DUPLICATE','REPLAY_SUSPECT','TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED','REVOKED'))::int AS risk
         FROM events e
         WHERE e.created_at >= now() - ${rangeSql}::interval
-          AND (${source} = '' OR e.source = ${source}::text)
+          AND (${source} = '' OR e.source::text = ${source})
           AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
         GROUP BY 1
         ORDER BY scans DESC
@@ -386,7 +388,7 @@ export async function GET(req: Request) {
           WHERE tn.slug = ${tenant}
             AND e.uid_hex IS NOT NULL
             AND e.created_at >= now() - ${rangeSql}::interval
-            AND (${source} = '' OR e.source = ${source}::text)
+            AND (${source} = '' OR e.source::text = ${source})
         ),
         ranked AS (
           SELECT
@@ -438,7 +440,7 @@ export async function GET(req: Request) {
           FROM events e
           WHERE e.uid_hex IS NOT NULL
             AND e.created_at >= now() - ${rangeSql}::interval
-            AND (${source} = '' OR e.source = ${source}::text)
+            AND (${source} = '' OR e.source::text = ${source})
         ),
         ranked AS (
           SELECT
@@ -497,7 +499,7 @@ export async function GET(req: Request) {
         JOIN tenants tn ON tn.id = e.tenant_id
         WHERE tn.slug = ${tenant}
           AND e.created_at >= now() - ${rangeSql}::interval
-          AND (${source} = '' OR e.source = ${source}::text)
+          AND (${source} = '' OR e.source::text = ${source})
         GROUP BY 1
         ORDER BY scans DESC
         LIMIT 12
@@ -509,7 +511,7 @@ export async function GET(req: Request) {
           COUNT(*) FILTER (WHERE e.result IN ('INVALID','DUPLICATE','REPLAY_SUSPECT','TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED','REVOKED'))::int AS risk
         FROM events e
         WHERE e.created_at >= now() - ${rangeSql}::interval
-          AND (${source} = '' OR e.source = ${source}::text)
+          AND (${source} = '' OR e.source::text = ${source})
         GROUP BY 1
         ORDER BY scans DESC
         LIMIT 12
@@ -544,7 +546,7 @@ export async function GET(req: Request) {
         JOIN tenants tn ON tn.id = e.tenant_id
         WHERE tn.slug = ${tenant}
           AND e.created_at >= now() - ${rangeSql}::interval
-          AND (${source} = '' OR e.source = ${source}::text)
+          AND (${source} = '' OR e.source::text = ${source})
           AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
         GROUP BY 1,2
         ORDER BY scans DESC
@@ -577,7 +579,7 @@ export async function GET(req: Request) {
           AVG(e.location_accuracy_m) FILTER (WHERE e.location_source IN ('browser_gps_reported','browser_gps_approximate_consent') AND e.lat BETWEEN -90 AND 90 AND e.lng BETWEEN -180 AND 180 AND e.location_accuracy_m >= 0)::float8 AS accuracy_m
         FROM events e
         WHERE e.created_at >= now() - ${rangeSql}::interval
-          AND (${source} = '' OR e.source = ${source}::text)
+          AND (${source} = '' OR e.source::text = ${source})
           AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
         GROUP BY 1,2
         ORDER BY scans DESC
@@ -590,7 +592,7 @@ export async function GET(req: Request) {
         JOIN tenants tn ON tn.id = e.tenant_id
         WHERE tn.slug = ${tenant}
           AND e.created_at >= now() - ${rangeSql}::interval
-          AND (${source} = '' OR e.source = ${source}::text)
+          AND (${source} = '' OR e.source::text = ${source})
         GROUP BY 1
         ORDER BY count DESC
         LIMIT 8
@@ -599,7 +601,7 @@ export async function GET(req: Request) {
         SELECT COALESCE(NULLIF(e.meta->'sun_context'->'client'->>'platform', ''), 'Unknown') AS label, COUNT(*)::int AS count
         FROM events e
         WHERE e.created_at >= now() - ${rangeSql}::interval
-          AND (${source} = '' OR e.source = ${source}::text)
+          AND (${source} = '' OR e.source::text = ${source})
         GROUP BY 1
         ORDER BY count DESC
         LIMIT 8
@@ -611,7 +613,7 @@ export async function GET(req: Request) {
         JOIN tenants tn ON tn.id = e.tenant_id
         WHERE tn.slug = ${tenant}
           AND e.created_at >= now() - ${rangeSql}::interval
-          AND (${source} = '' OR e.source = ${source}::text)
+          AND (${source} = '' OR e.source::text = ${source})
         GROUP BY 1
         ORDER BY count DESC
         LIMIT 8
@@ -620,7 +622,7 @@ export async function GET(req: Request) {
         SELECT COALESCE(NULLIF(e.meta->'sun_context'->'client'->>'browser', ''), 'Unknown') AS label, COUNT(*)::int AS count
         FROM events e
         WHERE e.created_at >= now() - ${rangeSql}::interval
-          AND (${source} = '' OR e.source = ${source}::text)
+          AND (${source} = '' OR e.source::text = ${source})
         GROUP BY 1
         ORDER BY count DESC
         LIMIT 8
@@ -632,7 +634,7 @@ export async function GET(req: Request) {
         JOIN tenants tn ON tn.id = e.tenant_id
         WHERE tn.slug = ${tenant}
           AND e.created_at >= now() - ${rangeSql}::interval
-          AND (${source} = '' OR e.source = ${source}::text)
+          AND (${source} = '' OR e.source::text = ${source})
         GROUP BY 1
         ORDER BY count DESC
         LIMIT 8
@@ -641,7 +643,7 @@ export async function GET(req: Request) {
         SELECT COALESCE(NULLIF(e.meta->'sun_context'->'client'->>'timezone', ''), 'Unknown') AS label, COUNT(*)::int AS count
         FROM events e
         WHERE e.created_at >= now() - ${rangeSql}::interval
-          AND (${source} = '' OR e.source = ${source}::text)
+          AND (${source} = '' OR e.source::text = ${source})
         GROUP BY 1
         ORDER BY count DESC
         LIMIT 8
@@ -655,7 +657,7 @@ export async function GET(req: Request) {
         JOIN tenants tn ON tn.id = e.tenant_id
         WHERE tn.slug = ${tenant}
           AND e.created_at >= now() - ${rangeSql}::interval
-          AND (${source} = '' OR e.source = ${source}::text)
+          AND (${source} = '' OR e.source::text = ${source})
       `
       : sql/*sql*/`
         SELECT
@@ -663,7 +665,7 @@ export async function GET(req: Request) {
           COUNT(*)::int AS total_count
         FROM events e
         WHERE e.created_at >= now() - ${rangeSql}::interval
-          AND (${source} = '' OR e.source = ${source}::text)
+          AND (${source} = '' OR e.source::text = ${source})
       `,
     tenant
       ? sql/*sql*/`
@@ -681,7 +683,7 @@ export async function GET(req: Request) {
         JOIN tenants tn ON tn.id = b.tenant_id
         WHERE tn.slug = ${tenant}
           AND e.created_at >= now() - ${rangeSql}::interval
-          AND (${source} = '' OR e.source = ${source}::text)
+          AND (${source} = '' OR e.source::text = ${source})
           AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
         ORDER BY e.created_at DESC
         LIMIT 30
@@ -699,7 +701,7 @@ export async function GET(req: Request) {
         FROM events e
         JOIN batches b ON b.id = e.batch_id
         WHERE e.created_at >= now() - ${rangeSql}::interval
-          AND (${source} = '' OR e.source = ${source}::text)
+          AND (${source} = '' OR e.source::text = ${source})
           AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
         ORDER BY e.created_at DESC
         LIMIT 30
@@ -736,7 +738,7 @@ export async function GET(req: Request) {
           FROM events e
           WHERE e.batch_id = t.batch_id
             AND e.uid_hex = t.uid_hex
-            AND (${source} = '' OR e.source = ${source}::text)
+            AND (${source} = '' OR e.source::text = ${source})
             AND e.created_at >= now() - ${rangeSql}::interval
           ORDER BY e.created_at DESC
           LIMIT 1
@@ -782,7 +784,7 @@ export async function GET(req: Request) {
           FROM events e
           WHERE e.batch_id = t.batch_id
             AND e.uid_hex = t.uid_hex
-            AND (${source} = '' OR e.source = ${source}::text)
+            AND (${source} = '' OR e.source::text = ${source})
             AND e.created_at >= now() - ${rangeSql}::interval
           ORDER BY e.created_at DESC
           LIMIT 1

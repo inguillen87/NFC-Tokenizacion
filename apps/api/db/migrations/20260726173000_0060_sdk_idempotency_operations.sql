@@ -196,7 +196,11 @@ ALTER TABLE sdk_pos_activations
   REFERENCES sdk_idempotency_operations(id) ON DELETE SET NULL;
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_events_sdk_idempotency_operation
-  ON events (sdk_idempotency_operation_id)
+  -- PostgreSQL requires every unique index on a partitioned table to include
+  -- its partition key. The central operation row remains the cross-partition
+  -- idempotency authority; this index prevents duplicates within the event
+  -- identity while remaining valid for RANGE(created_at).
+  ON events (sdk_idempotency_operation_id, created_at)
   WHERE sdk_idempotency_operation_id IS NOT NULL;
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_sdk_claim_requests_idempotency_operation

@@ -107,7 +107,7 @@ export default async function SettingsPage() {
       href: "/demo-lab",
       label: "Demo Lab enterprise",
       eyebrow: "Sales demo",
-      body: "Secure Delivery, pharma, agro, proof verifier y mobile flows para explicar valor en vivo.",
+      body: "Secure Delivery, pharma, agro, proof verifier y mobile flows para explicar valor con simulación y evidencia identificadas.",
       proof: "Ruta comercial para clientes, inversores y C-level.",
       tone: "cyan",
       icon: <FlaskConical className="h-5 w-5" />,

@@ -109,7 +109,7 @@ export const roleAccess: Record<UserRole, Array<keyof DashboardContent["nav"]>> 
 
 export const dashboardContent: Record<AppLocale, DashboardContent> = {
   "es-AR": {
-    shell: { subtitle: "Control multi-tenant enterprise", search: "Buscar...", role: "Rol", logout: "Salir", apiConnected: "API conectada", loading: "Cargando...", empty: "Sin resultados", all: "Todos", refresh: "Actualizar", openModule: "Abrir módulo", ready: "Listo." },
+    shell: { subtitle: "Control multi-tenant enterprise", search: "Buscar...", role: "Rol", logout: "Salir", apiConnected: "Estado API en módulo", loading: "Cargando...", empty: "Sin resultados", all: "Todos", refresh: "Actualizar", openModule: "Abrir módulo", ready: "Listo." },
     nav: { overview: "Resumen", tenants: "Tenants", batches: "Lotes", tags: "Tags", analytics: "Analítica", events: "Eventos", resellers: "Resellers", leadsTickets: "Leads & Tickets", loyalty: "Fidelización", experiences: "Experiencias", campaigns: "Campañas", subscriptions: "Suscripciones", apiKeys: "API Keys", sdkVision: "Ecosistema SDK", logistics: "Logistics Hub", proof: "Trust Layers", supplierBatches: "Pedidos proveedor" },
     pages: {
       overview: { title: "Overview operativo", description: "KPIs críticos de validación de mensajes NFC, señales de fraude y operación de lotes." },
@@ -161,11 +161,11 @@ export const dashboardContent: Record<AppLocale, DashboardContent> = {
     },
     crmAi: {
       aiQueries: "Consultas IA",
-      aiQueriesTitle: "Feed de Consultas de Clientes por IA",
-      liveBeacon: "En vivo",
-      aiAnswerHeader: "Respuesta Cognitiva IA",
+      aiQueriesTitle: "Consultas de clientes registradas",
+      liveBeacon: "Fuente visible",
+      aiAnswerHeader: "Respuesta y procedencia",
       queryRadar: "Radar de consultas",
-      liveQueries: "Consultas en vivo",
+      liveQueries: "Consultas registradas",
       intentDistribution: "Distribucion por intencion",
       assistantLedger: "Ledger de asistentes",
       generatedAnswer: "Respuesta generada",
@@ -176,7 +176,7 @@ export const dashboardContent: Record<AppLocale, DashboardContent> = {
     statuses: { active: "Activo", pending: "Pendiente", revoked: "Revocado", healthy: "Sano", risk: "Riesgo", draft: "Borrador", valid: "Válido", duplicate: "Duplicado", tamper: "Tamper", INVALID: "Inválido", NOT_REGISTERED: "No registrado", NOT_ACTIVE: "No activo", REPLAY_SUSPECT: "Replay sospechoso", VALID: "Válido" },
   },
   "pt-BR": {
-    shell: { subtitle: "Controle multi-tenant enterprise", search: "Buscar...", role: "Papel", logout: "Sair", apiConnected: "API conectada", loading: "Carregando...", empty: "Sem resultados", all: "Todos", refresh: "Atualizar", openModule: "Abrir módulo", ready: "Pronto." },
+    shell: { subtitle: "Controle multi-tenant enterprise", search: "Buscar...", role: "Papel", logout: "Sair", apiConnected: "Estado da API no módulo", loading: "Carregando...", empty: "Sem resultados", all: "Todos", refresh: "Atualizar", openModule: "Abrir módulo", ready: "Pronto." },
     nav: { overview: "Visão geral", tenants: "Tenants", batches: "Lotes", tags: "Tags", analytics: "Analytics", events: "Eventos", resellers: "Revendedores", leadsTickets: "Leads & Tickets", loyalty: "Fidelidade", experiences: "Experiências", campaigns: "Campanhas", subscriptions: "Assinaturas", apiKeys: "API Keys", sdkVision: "Ecossistema SDK", logistics: "Logistics Hub", proof: "Trust Layers", supplierBatches: "Pedidos fornecedor" },
     pages: {
       overview: { title: "Overview operacional", description: "KPIs críticos de autenticação, fraude e lotes." },
@@ -228,11 +228,11 @@ export const dashboardContent: Record<AppLocale, DashboardContent> = {
     },
     crmAi: {
       aiQueries: "Consultas IA",
-      aiQueriesTitle: "Feed de Consultas de Clientes por IA",
-      liveBeacon: "Ao vivo",
-      aiAnswerHeader: "Resposta Cognitiva IA",
+      aiQueriesTitle: "Consultas de clientes registradas",
+      liveBeacon: "Origem visível",
+      aiAnswerHeader: "Resposta e procedência",
       queryRadar: "Radar de consultas",
-      liveQueries: "Consultas ao vivo",
+      liveQueries: "Consultas registradas",
       intentDistribution: "Distribuicao por intencao",
       assistantLedger: "Ledger de assistentes",
       generatedAnswer: "Resposta generada",
@@ -243,7 +243,7 @@ export const dashboardContent: Record<AppLocale, DashboardContent> = {
     statuses: { active: "Ativo", pending: "Pendente", revoked: "Revogado", healthy: "Saudável", risk: "Risco", draft: "Rascunho", valid: "Válido", duplicate: "Duplicado", tamper: "Tamper", INVALID: "Inválido", NOT_REGISTERED: "Não registrado", NOT_ACTIVE: "Não ativo", REPLAY_SUSPECT: "Replay suspeito", VALID: "Válido" },
   },
   en: {
-    shell: { subtitle: "Enterprise multi-tenant control", search: "Search...", role: "Role", logout: "Logout", apiConnected: "API connected", loading: "Loading...", empty: "No results", all: "All", refresh: "Refresh", openModule: "Open module", ready: "Ready." },
+    shell: { subtitle: "Enterprise multi-tenant control", search: "Search...", role: "Role", logout: "Logout", apiConnected: "Module API status", loading: "Loading...", empty: "No results", all: "All", refresh: "Refresh", openModule: "Open module", ready: "Ready." },
     nav: { overview: "Overview", tenants: "Tenants", batches: "Batches", tags: "Tags", analytics: "Analytics", events: "Events", resellers: "Resellers", leadsTickets: "Leads & Tickets", loyalty: "Loyalty Studio", experiences: "Experiences", campaigns: "Campaigns", subscriptions: "Subscriptions", apiKeys: "API Keys", sdkVision: "SDK Developer Hub", logistics: "Logistics Hub", proof: "Trust Layers", supplierBatches: "Supplier Orders" },
     pages: {
       overview: { title: "Operational overview", description: "Critical NFC-message validation, fraud-signal and batch KPIs." },
@@ -291,15 +291,15 @@ export const dashboardContent: Record<AppLocale, DashboardContent> = {
       resellerPerformance: "Reseller MRR",
       resellerPerformanceDelta: "N/A · billing source required",
       geoDistribution: "Geo distribution",
-      geoDistributionDelta: "live heatmap",
+      geoDistributionDelta: "scope heatmap",
     },
     crmAi: {
       aiQueries: "AI Customer Queries",
-      aiQueriesTitle: "AI Customer Live Queries Feed",
-      liveBeacon: "Live",
-      aiAnswerHeader: "AI Cognitive Response",
+      aiQueriesTitle: "Recorded customer queries",
+      liveBeacon: "Source visible",
+      aiAnswerHeader: "Response and provenance",
       queryRadar: "Query radar",
-      liveQueries: "Live queries",
+      liveQueries: "Recorded queries",
       intentDistribution: "Intent distribution",
       assistantLedger: "Assistant ledger",
       generatedAnswer: "Generated answer",

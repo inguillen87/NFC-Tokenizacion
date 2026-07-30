@@ -13,7 +13,7 @@ type TagRow = {
   bid: string;
   tenantSlug: string;
   product: { name: string; winery: string; region: string; vintage: string };
-  status: { tag: string; lastResult: string };
+  status: { tag: string; operational?: string; lifecycle?: string; lifecycleRevision?: number; lastResult: string };
   scans: { count: number; firstSeenAt: string | null; lastSeenAt: string | null };
   lastVerifiedLocation: { city: string; country: string };
   tokenization: { status: string; network: string; txHash: string | null; tokenId: string | null };
@@ -180,7 +180,7 @@ export default async function TagsPage({ searchParams }: { searchParams: Promise
                     <td className="px-3 py-2"><Link href={`/tags/${encodeURIComponent(row.uidHex)}?tenant=${encodeURIComponent(row.tenantSlug)}&range=${encodeURIComponent(range)}&source=${encodeURIComponent(source)}`} className="text-cyan-200 hover:text-cyan-100">{row.uidHex}</Link></td>
                     <td className="px-3 py-2">{row.bid}</td>
                     <td className="px-3 py-2">{row.product.name}<br /><span className="text-slate-400">{row.product.winery} / {row.product.region} / {row.product.vintage}</span></td>
-                    <td className="px-3 py-2"><StatusChip label={row.status.tag} tone={row.status.tag === "active" ? "good" : "warn"} /></td>
+                    <td className="px-3 py-2"><StatusChip label={row.status.lifecycle || row.status.tag} tone={(row.status.lifecycle || row.status.tag) === "active" ? "good" : "warn"} /><br /><span className="text-slate-500">operativo: {row.status.operational || row.status.tag} · rev. {row.status.lifecycleRevision || 0}</span></td>
                     <td className="px-3 py-2">{row.scans.count}</td>
                     <td className="px-3 py-2">{formatDate(row.scans.firstSeenAt)}</td>
                     <td className="px-3 py-2">{row.lastVerifiedLocation.city}, {row.lastVerifiedLocation.country}<br /><span className="text-slate-400">{formatDate(row.scans.lastSeenAt)}</span></td>

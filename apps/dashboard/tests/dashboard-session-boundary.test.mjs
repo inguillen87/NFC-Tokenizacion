@@ -10,7 +10,7 @@ test("unverified snapshot cookies are never accepted as an authenticated session
   assert.doesNotMatch(sessionSource, /function parseSnapshot/);
   assert.doesNotMatch(sessionSource, /if \(snapshot\) return snapshot/);
   assert.doesNotMatch(sessionSource, /snapshot \|\| demoFallbackSession/);
-  assert.match(sessionSource, /if \(dashboardFallbackSessionAllowed\(\)\) return demoFallbackSession\(\)/);
+  assert.match(sessionSource, /if \(dashboardFallbackSessionAllowed\(\)\) \{[\s\S]*return \{ session: demoFallbackSession\(\), bearerToken: null, rotatedSessionToken: null \};[\s\S]*\}/);
 });
 
 test("demo sessions are isolated to readonly local admin responses", () => {

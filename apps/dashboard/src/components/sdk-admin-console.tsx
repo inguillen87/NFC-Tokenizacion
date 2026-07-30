@@ -37,9 +37,17 @@ type WebhookRow = {
   name?: string;
   url: string;
   enabled: boolean;
+  lifecycle_status?: "active" | "disabled" | "deleted";
   events: string[] | string;
   has_signing_secret?: boolean;
   signature_version?: "v1" | "v2";
+  signing_secret_version?: number;
+  signing_secret_fingerprint?: string | null;
+  signing_secret_previous_version?: number | null;
+  signing_secret_previous_fingerprint?: string | null;
+  signing_secret_previous_valid_until?: string | null;
+  previous_secret_overlap_active?: boolean;
+  deleted_at?: string | null;
 };
 
 type DeliveryRow = {
@@ -58,9 +66,9 @@ type DeliveryRow = {
 };
 
 type Notice = { tone: "success" | "error" | "info"; text: string };
-type PendingAction = "create-key" | "save-policy" | "create-webhook" | `revoke:${string}` | null;
+type PendingAction = "create-key" | "save-policy" | "create-webhook" | `revoke:${string}` | `webhook:${"rotate" | "disable" | "reactivate" | "delete"}:${string}` | null;
 type SnippetId = "curl" | "node";
-type CopyTarget = "secret" | SnippetId | "webhook";
+type CopyTarget = "secret" | SnippetId | "webhook" | "webhook-secret";
 type AdminJsonResult = {
   data: Record<string, unknown> | unknown[];
   dataMode: Exclude<DeveloperDataMode, "unknown">;
@@ -125,7 +133,7 @@ export function SdkAdminConsole({ tenantSlug }: { tenantSlug?: string | null }) 
   const [activeSnippet, setActiveSnippet] = useState<SnippetId>("curl");
   const [webhookName, setWebhookName] = useState("production · nexID events");
   const [webhookUrl, setWebhookUrl] = useState("");
-  const [webhookSecret, setWebhookSecret] = useState("");
+  const [webhookOneTimeSecret, setWebhookOneTimeSecret] = useState("");
   const [selectedWebhookEvents, setSelectedWebhookEvents] = useState<WebhookEventName[]>([
     ...SDK_INTEGRATION_PROFILES[0].webhookEvents,
   ]);
@@ -147,6 +155,9 @@ export function SdkAdminConsole({ tenantSlug }: { tenantSlug?: string | null }) 
   useEffect(() => {
     invalidateActiveLoad();
     clearOperationalData();
+    setSecret("");
+    setWebhookOneTimeSecret("");
+    setCopyStatus(null);
     setTenantInput(scopedTenant);
     setTenant(scopedTenant);
   }, [clearOperationalData, invalidateActiveLoad, scopedTenant]);
@@ -250,6 +261,8 @@ export function SdkAdminConsole({ tenantSlug }: { tenantSlug?: string | null }) 
     setLoadFailed(false);
     setNotice(null);
     setSecret("");
+    setWebhookOneTimeSecret("");
+    setCopyStatus(null);
     setTenant(nextTenant);
     if (nextTenant === tenant) void load();
   }
@@ -403,13 +416,10 @@ export function SdkAdminConsole({ tenantSlug }: { tenantSlug?: string | null }) 
   async function createWebhook() {
     setLoadFailed(false);
     setNotice(null);
+    setWebhookOneTimeSecret("");
     if (!ensureMutationAllowed()) return;
     if (!tenant) {
       setNotice({ tone: "error", text: "Seleccioná un tenant antes de crear un webhook." });
-      return;
-    }
-    if (webhookSecret.length < 32) {
-      setNotice({ tone: "error", text: "El signing secret debe tener al menos 32 caracteres y guardarse en el secret manager del receptor." });
       return;
     }
     if (!selectedWebhookEvents.length) {
@@ -418,25 +428,79 @@ export function SdkAdminConsole({ tenantSlug }: { tenantSlug?: string | null }) 
     }
     setPendingAction("create-webhook");
     try {
-      await fetch("/api/admin/webhooks", {
+      const created = await fetch("/api/admin/webhooks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tenant,
           name: webhookName.trim() || "production · nexID events",
           url: webhookUrl.trim(),
-          signingSecret: webhookSecret,
           signatureVersion: "v2",
           enabled: true,
           events: selectedWebhookEvents,
         }),
       }).then(readJson);
+      const generatedSecret = String(asRecord(created.data).secret || "");
+      if (!generatedSecret) throw new Error("El endpoint se creó sin recibo de secreto one-time; verificá el estado antes de reintentar.");
       setWebhookUrl("");
-      setWebhookSecret("");
-      setNotice({ tone: "success", text: "Webhook activo. La primera entrega 2xx completará el checklist." });
+      setWebhookOneTimeSecret(generatedSecret);
+      setNotice({ tone: "success", text: "Webhook activo. Guardá ahora el secreto generado por nexID; no se volverá a mostrar." });
       await load();
     } catch (error) {
       setNotice({ tone: "error", text: error instanceof Error ? error.message : "No se pudo crear el webhook." });
+    } finally {
+      setPendingAction(null);
+    }
+  }
+
+  async function mutateWebhook(row: WebhookRow, action: "rotate" | "disable" | "reactivate" | "delete") {
+    setLoadFailed(false);
+    setNotice(null);
+    if (action === "rotate" || action === "reactivate") setWebhookOneTimeSecret("");
+    if (!ensureMutationAllowed()) return;
+    if ((action === "rotate" || action === "reactivate") && !Number.isSafeInteger(Number(row.signing_secret_version))) {
+      setNotice({ tone: "error", text: "No hay una versión canónica del secreto. Actualizá la lista antes de operar." });
+      return;
+    }
+    if (action === "delete" && typeof window !== "undefined" && !window.confirm("Esta acción desactiva el endpoint y destruye su secreto cifrado. El historial se conserva. ¿Continuar?")) return;
+
+    setPendingAction(`webhook:${action}:${row.id}`);
+    try {
+      const path = action === "rotate"
+        ? `/api/admin/webhooks/${encodeURIComponent(row.id)}/rotate`
+        : action === "reactivate"
+          ? `/api/admin/webhooks/${encodeURIComponent(row.id)}/reactivate`
+          : `/api/admin/webhooks/${encodeURIComponent(row.id)}`;
+      const method = action === "disable" ? "PATCH" : action === "delete" ? "DELETE" : "POST";
+      const body = action === "rotate" || action === "reactivate"
+        ? JSON.stringify({ expectedSecretVersion: Number(row.signing_secret_version), overlapSeconds: 3600 })
+        : action === "disable"
+          ? JSON.stringify({ enabled: false })
+          : undefined;
+      const response = await fetch(path, {
+        method,
+        headers: body ? { "Content-Type": "application/json" } : undefined,
+        body,
+      }).then(readJson);
+      const payload = asRecord(response.data);
+      if (action === "rotate" || action === "reactivate") {
+        const generatedSecret = String(payload.secret || "");
+        if (!generatedSecret) throw new Error("La operación terminó sin recibo de secreto one-time. Actualizá antes de reintentar.");
+        setWebhookOneTimeSecret(generatedSecret);
+      }
+      setNotice({
+        tone: "success",
+        text: action === "rotate"
+          ? "Secreto rotado con una hora de superposición. Guardá el nuevo valor ahora."
+          : action === "reactivate"
+            ? "Endpoint reactivado con un secreto nuevo. Guardalo ahora."
+            : action === "disable"
+              ? "Endpoint pausado; el backlog pendiente quedó retirado."
+              : "Endpoint eliminado lógicamente; el secreto fue destruido y el historial permanece.",
+      });
+      await load();
+    } catch (error) {
+      setNotice({ tone: "error", text: error instanceof Error ? error.message : "No se pudo cambiar el lifecycle del webhook." });
     } finally {
       setPendingAction(null);
     }
@@ -687,10 +751,7 @@ export function SdkAdminConsole({ tenantSlug }: { tenantSlug?: string | null }) 
               <input id="webhook-url" type="url" className="mt-2 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300" value={webhookUrl} onChange={(event) => setWebhookUrl(event.target.value)} placeholder="https://example.com/webhooks/nexid" autoComplete="url" />
             </label>
           </div>
-          <label className="mt-3 block text-sm text-slate-300" htmlFor="webhook-secret">Signing secret · mínimo 32 caracteres
-            <input id="webhook-secret" type="password" minLength={32} className="mt-2 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 font-mono text-sm text-white outline-none focus:border-cyan-300" value={webhookSecret} onChange={(event) => setWebhookSecret(event.target.value)} placeholder="Generado por tu secret manager" autoComplete="new-password" />
-          </label>
-          <p className="mt-2 text-xs text-slate-500">nexID lo cifra al guardarlo. Conservá la misma versión en el secret manager del receptor.</p>
+          <p className="mt-3 rounded-lg border border-cyan-300/20 bg-cyan-500/5 p-3 text-xs leading-5 text-slate-300">nexID genera el secreto con entropía criptográfica, lo cifra para custodia y lo muestra una sola vez. Nunca envíes un secreto elegido por una persona ni lo pegues en esta pantalla.</p>
           <fieldset className="mt-4">
             <legend className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Eventos suscritos</legend>
             <div className="mt-3 grid gap-2 md:grid-cols-2">
@@ -703,7 +764,7 @@ export function SdkAdminConsole({ tenantSlug }: { tenantSlug?: string | null }) 
             </div>
           </fieldset>
           <div className="mt-4 flex flex-wrap items-center gap-3">
-            <Button type="button" onClick={createWebhook} disabled={!mutationsAllowed || !tenant || !webhookUrl.trim() || webhookSecret.length < 32 || !selectedWebhookEvents.length || pendingAction !== null} aria-busy={pendingAction === "create-webhook"} aria-describedby={isDemoData ? "developer-mutation-gate" : undefined} title={!mutationsAllowed ? mutationDisabledHelp : undefined}>{pendingAction === "create-webhook" ? "Validando…" : "Crear webhook activo"}</Button>
+            <Button type="button" onClick={createWebhook} disabled={!mutationsAllowed || !tenant || !webhookUrl.trim() || !selectedWebhookEvents.length || pendingAction !== null} aria-busy={pendingAction === "create-webhook"} aria-describedby={isDemoData ? "developer-mutation-gate" : undefined} title={!mutationsAllowed ? mutationDisabledHelp : undefined}>{pendingAction === "create-webhook" ? "Validando…" : "Crear webhook y generar secreto"}</Button>
             <span className="text-xs text-slate-500">La URL se valida antes de activarse; redirects y redes privadas se rechazan.</span>
           </div>
           <details className="mt-5 rounded-xl border border-cyan-300/20 bg-slate-950/55 p-4">
@@ -730,6 +791,18 @@ export function SdkAdminConsole({ tenantSlug }: { tenantSlug?: string | null }) 
         </Card>
       </div>
 
+      {webhookOneTimeSecret ? (
+        <Card className="border-amber-300/30 bg-amber-500/10 p-5" role="alert" aria-live="assertive">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-amber-200">Secreto webhook · única visualización</p>
+          <p className="mt-2 text-sm text-slate-200">Copialo ahora al secret manager del receptor. Al ocultarlo no podrá recuperarse: deberás rotarlo.</p>
+          <code className="mt-3 block overflow-x-auto rounded-lg border border-white/10 bg-slate-950 p-3 font-mono text-xs text-white">{webhookOneTimeSecret}</code>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button type="button" onClick={() => void copyValue(webhookOneTimeSecret, "webhook-secret")}>{copyStatus === "webhook-secret" ? "Copiado" : "Copiar secreto"}</Button>
+            <Button type="button" variant="ghost" onClick={() => { setWebhookOneTimeSecret(""); setCopyStatus(null); }}>Ya lo guardé, ocultar</Button>
+          </div>
+        </Card>
+      ) : null}
+
       <div className="grid gap-6 xl:grid-cols-2">
         <Card className="p-5" role="region" aria-labelledby="webhook-list-title">
           <div className="flex items-start justify-between gap-4">
@@ -741,11 +814,19 @@ export function SdkAdminConsole({ tenantSlug }: { tenantSlug?: string | null }) 
               <article key={row.id} className="rounded-lg border border-white/10 bg-slate-950/70 p-4 text-sm">
                 <div className="flex items-center justify-between gap-3">
                   <p className="truncate font-medium text-white">{row.name || "Webhook"}</p>
-                  <StatusBadge tone={row.enabled ? "success" : "neutral"} label={row.enabled ? "Activo" : "Pausado"} />
+                  <StatusBadge tone={row.lifecycle_status === "deleted" ? "error" : row.enabled ? "success" : "neutral"} label={row.lifecycle_status === "deleted" ? "Eliminado" : row.enabled ? "Activo" : "Pausado"} />
                 </div>
                 <p className="mt-2 break-all font-mono text-xs text-slate-400">{row.url}</p>
                 <div className="mt-3 flex flex-wrap gap-1.5">{stringList(row.events).map((eventName) => <span key={eventName} className="rounded bg-slate-800 px-2 py-1 font-mono text-[10px] text-slate-300">{eventName}</span>)}</div>
-                <p className={`mt-3 text-xs ${row.has_signing_secret ? "text-emerald-200" : "text-rose-200"}`}>{row.has_signing_secret ? `Firma ${row.signature_version || "legacy"} configurada` : "Sin signing secret"}</p>
+                <p className={`mt-3 text-xs ${row.has_signing_secret ? "text-emerald-200" : "text-rose-200"}`}>{row.has_signing_secret ? `Firma ${row.signature_version || "legacy"} · versión ${row.signing_secret_version || 0} · huella ${row.signing_secret_fingerprint?.slice(0, 18) || "no disponible"}` : "Sin signing secret activo"}</p>
+                {row.previous_secret_overlap_active ? <p className="mt-1 text-xs text-amber-200">Secreto anterior aceptado hasta {displayDate(row.signing_secret_previous_valid_until)}</p> : null}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {row.lifecycle_status === "active" ? <Button type="button" variant="ghost" disabled={!mutationsAllowed || pendingAction !== null} onClick={() => void mutateWebhook(row, "rotate")}>{pendingAction === `webhook:rotate:${row.id}` ? "Rotando…" : "Rotar secreto"}</Button> : null}
+                  {row.lifecycle_status === "active" ? <Button type="button" variant="ghost" disabled={!mutationsAllowed || pendingAction !== null} onClick={() => void mutateWebhook(row, "disable")}>{pendingAction === `webhook:disable:${row.id}` ? "Pausando…" : "Pausar"}</Button> : null}
+                  {row.lifecycle_status !== "active" ? <Button type="button" variant="ghost" disabled={!mutationsAllowed || pendingAction !== null} onClick={() => void mutateWebhook(row, "reactivate")}>{pendingAction === `webhook:reactivate:${row.id}` ? "Reactivando…" : "Reactivar + secreto nuevo"}</Button> : null}
+                  {row.lifecycle_status !== "deleted" ? <Button type="button" variant="ghost" disabled={!mutationsAllowed || pendingAction !== null} onClick={() => void mutateWebhook(row, "delete")}>{pendingAction === `webhook:delete:${row.id}` ? "Eliminando…" : "Eliminar y destruir secreto"}</Button> : null}
+                </div>
+                {row.lifecycle_status === "deleted" ? <p className="mt-2 text-[11px] text-slate-500">La reactivación de un endpoint eliminado requiere separación de funciones o break-glass auditado.</p> : null}
               </article>
             )) : null}
             {!loading && !webhooks.length ? <EmptyState title="Todavía no hay destinos" body="Creá un webhook sólo si ERP, CRM o e-commerce necesitan reaccionar a eventos sin consultar la API." actionHref="#webhook-create-title" actionLabel="Configurar webhook" /> : null}

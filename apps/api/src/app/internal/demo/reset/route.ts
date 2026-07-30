@@ -38,7 +38,7 @@ export async function POST(req: Request) {
     DELETE FROM events
     WHERE tenant_id=${tenant.id}
       AND batch_id=${batch.id}
-      AND LOWER(COALESCE(source, ''))='demo'
+      AND LOWER(COALESCE(source::text, ''))='demo'
     RETURNING id
   `;
   return json({

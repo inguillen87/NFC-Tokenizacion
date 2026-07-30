@@ -40,11 +40,13 @@ test("deterministic calculator is not presented as live AI", () => {
   assert.doesNotMatch(source, /Respuesta nexID AI:/);
 });
 
-test("investor snapshot describes the verified runtime without invented redundancy", () => {
-  assert.match(source, /runtime verificado hoy usa Vercel/);
-  assert.match(source, /Neon para los datos operativos/);
+test("investor snapshot treats deployment evidence as dated and does not invent current runtime health", () => {
+  assert.match(source, /snapshot de despliegue fechado 2026-07-26 documentó Vercel/);
+  assert.match(source, /Neon para datos operativos/);
+  assert.match(source, /no acredita por sí solo el estado del deploy actual/);
   assert.match(source, /value: "Vercel \+ Neon"/);
 
+  assert.doesNotMatch(source, /runtime verificado hoy/);
   assert.doesNotMatch(source, /Render\/AWS/);
   assert.doesNotMatch(source, /AWS \/ Render/);
   assert.doesNotMatch(source, /servidor Render/);

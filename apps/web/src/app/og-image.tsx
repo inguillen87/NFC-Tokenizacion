@@ -81,22 +81,22 @@ function copyFor(input: { locale: string; surface: string; campaign: string }): 
   if (input.surface === "demo-lab") {
     return locale === "en"
       ? {
-          eyebrow: "Live demo lab",
+          eyebrow: "Guided demo lab",
           title: "Show the complete tap-to-portal experience.",
           subtitle: "Product passport, validation states, consumer portal, certificates and marketplace.",
           badge: "Demo-ready",
           proof: "Operator view",
-          status: "Demo live",
+          status: "Guided demo",
           route: "Tap -> proof -> portal",
           action: "Open Demo Lab",
         }
       : {
-          eyebrow: "Demo lab en vivo",
+          eyebrow: "Demo lab guiado",
           title: "Mostrá la experiencia completa después del tap.",
           subtitle: "Pasaporte, estados de validación, portal consumidor, certificados y marketplace.",
           badge: "Listo para demo",
           proof: "Vista operador",
-          status: "Demo live",
+          status: "Demo guiada",
           route: "Tap -> prueba -> portal",
           action: "Abrir Demo Lab",
         };

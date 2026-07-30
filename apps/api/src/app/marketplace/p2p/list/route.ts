@@ -4,10 +4,15 @@ export const dynamic = "force-dynamic";
 import { json } from "../../../../lib/http";
 import { getConsumerFromRequest } from "../../../../lib/consumer-auth";
 import { sql } from "../../../../lib/db";
-import { ensureConsumerPortalSchema } from "../../../../lib/commercial-runtime-schema";
 import { enforceCriticalRateLimit } from "../../../../lib/critical-rate-limit";
 import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../lib/bounded-request-body";
 import { consumeSunFreshHandoff } from "../../../../lib/sun-fresh-handoff";
+import {
+  COMMERCIAL_ASSET_SCOPE_MIGRATION_REQUIRED,
+  isCommercialAssetScopeSchemaError,
+  requireCommercialAssetScopeSchema,
+  supplierCommercialReleaseReason,
+} from "../../../../lib/commercial-asset-scope";
 
 const UID_RE = /^[0-9A-F]{8,32}$/;
 const CURRENCIES = new Set(["ARS", "BRL", "EUR", "USD"]);
@@ -28,8 +33,17 @@ export async function POST(req: Request) {
   } catch (error) {
     return json({ ok: false, error: error instanceof RequestBodyTooLargeError ? "request_body_too_large" : "invalid_json" }, error instanceof RequestBodyTooLargeError ? 413 : 400);
   }
-  await ensureConsumerPortalSchema();
-
+  try {
+    await requireCommercialAssetScopeSchema();
+  } catch (error) {
+    if (isCommercialAssetScopeSchemaError(error)) {
+      return json({ ok: false, error: COMMERCIAL_ASSET_SCOPE_MIGRATION_REQUIRED }, 503, {
+        "cache-control": "no-store",
+        "retry-after": "2",
+      });
+    }
+    throw error;
+  }
   const uidHex = String(body.uidHex || "").replace(/[^0-9a-f]/gi, "").toUpperCase();
   const price = Number(body.price || 0);
   const currency = String(body.currency || "USD").trim().toUpperCase();
@@ -47,7 +61,7 @@ export async function POST(req: Request) {
   }
 
   const evidenceRows = await sql/*sql*/`
-    SELECT ownership.id AS ownership_id, ownership.tenant_id, batch.bid, event.sdm_read_ctr,
+    SELECT ownership.id AS ownership_id, ownership.tenant_id, batch.id AS batch_id, batch.bid, event.sdm_read_ctr,
            COALESCE(NULLIF(profile.product_name, ''), NULLIF(profile.sku, ''), 'Premium Asset') AS product_name,
            tag.id AS tag_id
     FROM consumer_product_ownerships ownership
@@ -78,46 +92,87 @@ export async function POST(req: Request) {
     return json({ ok: false, error: "fresh_tap_capability_required", fresh_token_status: capability.reason }, 403);
   }
 
+  try {
+    await sql/*sql*/`SELECT public.nexid_assert_supplier_commercial_release_v1(${evidence.batch_id}::uuid)`;
+  } catch (error) {
+    const releaseReason = supplierCommercialReleaseReason(error);
+    if (releaseReason) {
+      return json({
+        ok: false,
+        error: releaseReason,
+        sellable: false,
+        custody_unchanged: true,
+      }, 409, { "cache-control": "no-store" });
+    }
+    if (isCommercialAssetScopeSchemaError(error)) {
+      return json({ ok: false, error: COMMERCIAL_ASSET_SCOPE_MIGRATION_REQUIRED }, 503, {
+        "cache-control": "no-store",
+        "retry-after": "2",
+      });
+    }
+    throw error;
+  }
+
   const title = `${String(evidence.product_name || "Premium Asset").slice(0, 160)} (Reventa de owner reclamado)`;
-  const offerRows = await sql/*sql*/`
-    INSERT INTO marketplace_offers (
-      tenant_id,
-      marketplace_product_id,
-      title,
-      description,
-      status,
-      type,
-      starts_at,
-      visibility,
-      seller_consumer_id,
-      resale_price,
-      resale_currency,
-      resale_uid_hex
-    )
-    SELECT
-      ownership.tenant_id,
-      NULL,
-      ${title},
-      ${description || null},
-      'active',
-      'p2p_resale',
-      now(),
-      'nexid_network',
-      ${consumer.id},
-      ${price},
-      ${currency},
-      ${uidHex}
-    FROM consumer_product_ownerships ownership
-    WHERE ownership.id = ${evidence.ownership_id}
-      AND ownership.consumer_id = ${consumer.id}
-      AND ownership.status = 'claimed'
-    ON CONFLICT DO NOTHING
-    RETURNING *
-  `;
+  let offerRows;
+  try {
+    offerRows = await sql/*sql*/`
+      INSERT INTO marketplace_offers (
+        tenant_id,
+        ownership_id,
+        marketplace_product_id,
+        title,
+        description,
+        status,
+        type,
+        starts_at,
+        visibility,
+        seller_consumer_id,
+        resale_price,
+        resale_currency,
+        resale_uid_hex
+      )
+      SELECT
+        ownership.tenant_id,
+        ownership.id,
+        NULL,
+        ${title},
+        ${description || null},
+        'active',
+        'p2p_resale',
+        now(),
+        'nexid_network',
+        ${consumer.id},
+        ${price},
+        ${currency},
+        ${uidHex}
+      FROM consumer_product_ownerships ownership
+      WHERE ownership.id = ${evidence.ownership_id}
+        AND ownership.consumer_id = ${consumer.id}
+        AND ownership.status = 'claimed'
+      ON CONFLICT DO NOTHING
+      RETURNING *
+    `;
+  } catch (error) {
+    if (isCommercialAssetScopeSchemaError(error)) {
+      return json({ ok: false, error: COMMERCIAL_ASSET_SCOPE_MIGRATION_REQUIRED }, 503, {
+        "cache-control": "no-store",
+        "retry-after": "2",
+      });
+    }
+    const releaseReason = supplierCommercialReleaseReason(error);
+    if (releaseReason) {
+      return json({ ok: false, error: releaseReason, sellable: false, custody_unchanged: true }, 409, {
+        "cache-control": "no-store",
+      });
+    }
+    throw error;
+  }
   if (!offerRows[0]) {
     const existing = (await sql/*sql*/`
       SELECT * FROM marketplace_offers
       WHERE tenant_id = ${evidence.tenant_id}
+        AND ownership_id = ${evidence.ownership_id}
         AND seller_consumer_id = ${consumer.id}
         AND UPPER(resale_uid_hex) = ${uidHex}
         AND type = 'p2p_resale'

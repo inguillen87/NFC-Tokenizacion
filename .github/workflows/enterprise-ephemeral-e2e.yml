@@ -1,0 +1,72 @@
+name: Enterprise ephemeral E2E
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: enterprise-ephemeral-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  postgres-e2e:
+    name: PostgreSQL ${{ matrix.postgres.version }} enterprise E2E
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        postgres:
+          - version: "16.4"
+            image: "postgres:16.4-alpine@sha256:5660c2cbfea50c7a9127d17dc4e48543eedd3d7a41a595a2dfa572471e37e64c"
+          - version: "18.4"
+            image: "postgres:18.4-alpine@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15"
+    services:
+      postgres:
+        image: "${{ matrix.postgres.image }}"
+        env:
+          POSTGRES_USER: nexid_e2e
+          POSTGRES_PASSWORD: ephemeral-ci-password
+          POSTGRES_DB: nexid_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nexid_e2e -d nexid_e2e"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
+    env:
+      NODE_ENV: test
+      VERCEL_ENV: test
+      NEXID_E2E_CONFIRMATION: I_UNDERSTAND_NEXID_E2E_USES_AN_EMPTY_LOCAL_DATABASE
+      NEXID_E2E_EXPECTED_POSTGRES_VERSION: ${{ matrix.postgres.version }}
+      NEXID_E2E_DATABASE_URL: postgresql://nexid_e2e:ephemeral-ci-password@127.0.0.1:5432/nexid_e2e
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "20.19.1"
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Verify fail-closed harness policy
+        run: npm run test:e2e:ephemeral:safety
+
+      - name: Run isolated tap-to-ticket E2E
+        run: npm run test:e2e:ephemeral

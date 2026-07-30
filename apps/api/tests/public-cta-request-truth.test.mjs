@@ -10,14 +10,17 @@ const sun = await readFile(new URL("../src/app/sun/route.ts", import.meta.url), 
 
 test("warranty CTA records a tenant-policy review request and never confirms coverage", () => {
   assert.match(registerWarranty, /target\.warrantyPolicy/);
-  assert.match(registerWarranty, /recordDemoCta\("warranty_review_requested"/);
+  assert.match(registerWarranty, /eventName: "warranty\.review_requested"/);
+  assert.match(registerWarranty, /writeCanonicalEvent/);
   assert.match(registerWarranty, /request_status: "pending_review"/);
   assert.match(registerWarranty, /outcome: "request_recorded"/);
   assert.match(registerWarranty, /warranty_confirmed: false/);
   assert.match(registerWarranty, /consumer_or_contact/);
   assert.match(registerWarranty, /purchase_evidence/);
   assert.match(registerWarranty, /terms_accepted/);
-  assert.match(registerWarranty, /real_warranty_service: false/);
+  assert.match(registerWarranty, /workflow: "review_request_only"/);
+  assert.match(registerWarranty, /warranty_confirmed: false/);
+  assert.doesNotMatch(registerWarranty, /recordDemoCta/);
   assert.doesNotMatch(registerWarranty, /recordDemoCta\("register_warranty"/);
 });
 

@@ -104,14 +104,18 @@ test("a decrypted envelope produces the existing SDK-compatible signature", () =
 test("admin writes encrypt and the delivery worker decrypts before signing", () => {
   const createRoute = readFileSync(new URL("../src/app/admin/webhooks/route.ts", import.meta.url), "utf8");
   const updateRoute = readFileSync(new URL("../src/app/admin/webhooks/[id]/route.ts", import.meta.url), "utf8");
+  const rotateRoute = readFileSync(new URL("../src/app/admin/webhooks/[id]/rotate/route.ts", import.meta.url), "utf8");
+  const reactivateRoute = readFileSync(new URL("../src/app/admin/webhooks/[id]/reactivate/route.ts", import.meta.url), "utf8");
   const delivery = readFileSync(new URL("../src/lib/sdk-webhooks.ts", import.meta.url), "utf8");
-  for (const route of [createRoute, updateRoute]) {
+  for (const route of [createRoute, rotateRoute, reactivateRoute]) {
     assert.match(route, /encryptWebhookSigningSecret\(/);
-    assert.doesNotMatch(route, /signing_secret\s*=\s*COALESCE\(\$\{signingSecret/);
   }
+  assert.doesNotMatch(updateRoute, /encryptWebhookSigningSecret\(/);
+  assert.match(updateRoute, /webhook_secret_rotation_route_required/);
+  assert.doesNotMatch(createRoute + updateRoute + rotateRoute + reactivateRoute, /signing_secret\s*=\s*COALESCE\(\$\{signingSecret/);
   assert.match(delivery, /decryptWebhookSigningSecret\(row\.signing_secret/);
-  assert.match(delivery, /we\.tenant_id::text AS tenant_id/);
-  assert.doesNotMatch(createRoute + updateRoute + delivery, /KMS_MASTER_KEY_HEX/);
+  assert.match(delivery, /picked\.tenant_id::text AS tenant_id/);
+  assert.doesNotMatch(createRoute + updateRoute + rotateRoute + reactivateRoute + delivery, /KMS_MASTER_KEY_HEX/);
 });
 
 test("migration is transactional, dry-run by default and skips existing envelopes", () => {

@@ -1,13 +1,91 @@
 import { neon } from "@neondatabase/serverless";
 
+export type SqlExecutor = (
+  strings: TemplateStringsArray,
+  ...values: unknown[]
+) => Promise<Array<Record<string, unknown>>>;
+
+const EPHEMERAL_E2E_SQL_EXECUTOR = Symbol.for("nexid.ephemeral-e2e.sql-executor");
+const EPHEMERAL_E2E_CONFIRMATION = "I_UNDERSTAND_NEXID_E2E_USES_AN_EMPTY_LOCAL_DATABASE";
+const LOOPBACK_DATABASE_HOSTS = new Set(["127.0.0.1", "::1", "[::1]", "localhost"]);
+
+type EphemeralSqlStore = typeof globalThis & {
+  [EPHEMERAL_E2E_SQL_EXECUTOR]?: SqlExecutor;
+};
+
+function ephemeralSqlExecutor() {
+  return (globalThis as EphemeralSqlStore)[EPHEMERAL_E2E_SQL_EXECUTOR] || null;
+}
+
+/**
+ * Installs a process-local SQL executor only for the disposable enterprise E2E
+ * harness. The production runtime can never opt into this adapter: callers
+ * must provide an explicit loopback URL whose database and role are both
+ * named for the isolated nexid_e2e fixture.
+ */
+export function installEphemeralE2eSqlExecutor(executor: SqlExecutor, env = process.env) {
+  const nodeEnvironment = String(env.NODE_ENV || "").trim().toLowerCase();
+  const vercelEnvironment = String(env.VERCEL_ENV || "").trim().toLowerCase();
+  if (nodeEnvironment !== "test" || vercelEnvironment !== "test") {
+    throw new Error("ephemeral_e2e_sql_executor_test_runtime_required");
+  }
+  if (String(env.NEXID_E2E_CONFIRMATION || "") !== EPHEMERAL_E2E_CONFIRMATION) {
+    throw new Error("ephemeral_e2e_sql_executor_confirmation_required");
+  }
+
+  let databaseUrl: URL;
+  try {
+    databaseUrl = new URL(String(env.NEXID_E2E_DATABASE_URL || ""));
+  } catch {
+    throw new Error("ephemeral_e2e_sql_executor_database_url_invalid");
+  }
+  if (databaseUrl.search || databaseUrl.hash) {
+    throw new Error("ephemeral_e2e_sql_executor_database_url_overrides_rejected");
+  }
+  const databaseName = decodeURIComponent(databaseUrl.pathname.replace(/^\/+/, ""));
+  if (
+    !["postgres:", "postgresql:"].includes(databaseUrl.protocol)
+    || !LOOPBACK_DATABASE_HOSTS.has(databaseUrl.hostname.toLowerCase())
+    || databaseUrl.username !== "nexid_e2e"
+    || !databaseUrl.password
+    || !/^nexid_e2e(?:_[a-z0-9][a-z0-9_-]{0,48})?$/.test(databaseName)
+  ) {
+    throw new Error("ephemeral_e2e_sql_executor_local_target_required");
+  }
+  if (typeof executor !== "function") throw new Error("ephemeral_e2e_sql_executor_invalid");
+
+  const store = globalThis as EphemeralSqlStore;
+  if (store[EPHEMERAL_E2E_SQL_EXECUTOR]) {
+    throw new Error("ephemeral_e2e_sql_executor_already_installed");
+  }
+  store[EPHEMERAL_E2E_SQL_EXECUTOR] = executor;
+  return () => {
+    if (store[EPHEMERAL_E2E_SQL_EXECUTOR] === executor) {
+      delete store[EPHEMERAL_E2E_SQL_EXECUTOR];
+    }
+  };
+}
+
 export const DEFAULT_REQUIRED_SCHEMA_MIGRATIONS = [
   "20260725230000_0057_sun_rate_limit_atomic_buckets.sql",
   "20260726103000_0058_webhook_signature_v2.sql",
+  "20260726120000_0058_marketplace_runtime_baseline.sql",
   "20260726135000_0059_marketplace_claim_truth_cleanup.sql",
   "20260726173000_0060_sdk_idempotency_operations.sql",
   "20260726190000_0061_supplier_export_artifact_delivery.sql",
   "20260728120000_0062_sun_atomic_persistence.sql",
   "20260728143000_0063_supplier_packaging_governance.sql",
+  "20260728160000_0064_webhook_lifecycle_governance.sql",
+  "20260728173000_0065_event_incident_workflow.sql",
+  "20260728180000_0066_tag_lifecycle_governance.sql",
+  "20260728183000_0067_canonical_event_outbox.sql",
+  "20260729110000_0068_epcis_event_type.sql",
+  "20260729110500_0069_gs1_epcis_foundation.sql",
+  "20260729130000_0070_supplier_qa_atomic_receipts.sql",
+  "20260729143000_0071_supplier_pack_purpose_governance.sql",
+  "20260729160000_0072_tokenization_marketplace_execution_governance.sql",
+  "20260730110000_0073_supplier_qa_verification_context_v2.sql",
+  "20260730150000_0074_supplier_key_rotation_atomic.sql",
 ] as const;
 export const DEFAULT_REQUIRED_SCHEMA_MIGRATION = DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.at(-1)!;
 
@@ -135,6 +213,8 @@ export async function sql(strings: TemplateStringsArray, ...values: unknown[]) {
     // than request-path DDL. The first business query verifies the watermark.
     return [];
   }
+  const testExecutor = ephemeralSqlExecutor();
+  if (testExecutor) return testExecutor(strings, ...values);
   await requireProductionSchemaWatermark();
   return getSql()(strings, ...values);
 }

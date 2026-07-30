@@ -10,7 +10,7 @@ function source(overrides = {}) {
     NODE_ENV: "production",
     VERCEL_ENV: "production",
     TOKENIZATION_EXECUTOR_URL: "https://executor.example.test/mint",
-    TOKENIZATION_EXECUTOR_SECRET: "test-executor-secret",
+    TOKENIZATION_EXECUTOR_SECRET: "test-executor-secret-32-bytes-minimum",
     ...overrides,
   };
 }
@@ -45,6 +45,10 @@ test("production executor requires HTTPS and a secret while development keeps lo
     fetchImpl: shouldNotFetch,
   }), "executor_secret_required_in_production");
   await rejectsCode(runExternalExecutor({}, {
+    source: source({ TOKENIZATION_EXECUTOR_SECRET: "too-short" }),
+    fetchImpl: shouldNotFetch,
+  }), "executor_secret_too_short_in_production");
+  await rejectsCode(runExternalExecutor({}, {
     source: source({ TOKENIZATION_EXECUTOR_URL: "" }),
     fetchImpl: shouldNotFetch,
   }), "executor_required_in_production");
@@ -72,7 +76,8 @@ test("production executor requires HTTPS and a secret while development keeps lo
   assert.equal(devResult?.token_id, "42");
   assert.equal(observedRequest.url, "http://127.0.0.1:8787/mint");
   assert.equal(observedRequest.init.redirect, "error");
-  assert.equal(observedRequest.init.headers["x-tokenization-secret"], "test-executor-secret");
+  assert.equal(observedRequest.init.headers["x-tokenization-secret"], "test-executor-secret-32-bytes-minimum");
+  assert.equal(observedRequest.init.headers["idempotency-key"], "dev-request");
   assert.ok(observedRequest.init.signal instanceof AbortSignal);
 });
 

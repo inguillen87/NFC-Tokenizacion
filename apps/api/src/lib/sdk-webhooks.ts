@@ -14,6 +14,7 @@ import {
 } from "./webhook-signing";
 
 const RETRY_DELAYS_SECONDS = [60, 300, 1_800, 7_200, 21_600, 86_400, 172_800];
+export const WEBHOOK_EVENT_SCHEMA_VERSION = "1.0" as const;
 
 type ClaimedWebhookDelivery = {
   id: string;
@@ -29,6 +30,18 @@ type ClaimedWebhookDelivery = {
   attempt_count: number;
   lock_token: string;
 };
+
+type WebhookDeliveryDependencies = {
+  deliver?: typeof deliverWebhookRequest;
+};
+
+function webhookDeliveryTransport(dependencies: WebhookDeliveryDependencies) {
+  if (!dependencies.deliver) return deliverWebhookRequest;
+  if (process.env.NODE_ENV !== "test" || process.env.VERCEL_ENV !== "test") {
+    throw new Error("webhook_delivery_test_transport_forbidden");
+  }
+  return dependencies.deliver;
+}
 
 function maxAttempts() {
   const parsed = Number(process.env.WEBHOOK_MAX_ATTEMPTS || 8);
@@ -79,6 +92,7 @@ export async function dispatchTenantWebhooks(input: {
     idempotencyKey: input.idempotencyKey,
   });
   const payload = {
+    schemaVersion: WEBHOOK_EVENT_SCHEMA_VERSION,
     id: eventId,
     type: input.eventName,
     createdAt: new Date().toISOString(),
@@ -91,6 +105,7 @@ export async function dispatchTenantWebhooks(input: {
       FROM webhook_endpoints
       WHERE tenant_id = ${input.tenantId}
         AND enabled = true
+        AND deleted_at IS NULL
         AND (events ? ${input.eventName} OR events ? '*')
       ORDER BY updated_at DESC
       LIMIT 25
@@ -143,17 +158,27 @@ export async function claimWebhookDeliveries(limit = 10) {
   const lockToken = randomUUID();
   return await sql/*sql*/`
     WITH picked AS (
-      SELECT wd.id
+      SELECT
+        wd.id,
+        we.id AS endpoint_id,
+        we.tenant_id,
+        we.signing_secret,
+        we.signature_version
       FROM webhook_deliveries wd
+      JOIN webhook_endpoints we ON we.id = wd.endpoint_id
       WHERE (
-          wd.status IN ('pending', 'retry_scheduled')
-          AND COALESCE(wd.next_attempt_at, wd.created_at) <= now()
-        ) OR (
-          wd.status = 'processing'
-          AND COALESCE(wd.locked_at, wd.last_attempt_at, wd.created_at) <= now() - interval '10 minutes'
+          (
+            wd.status IN ('pending', 'retry_scheduled')
+            AND COALESCE(wd.next_attempt_at, wd.created_at) <= now()
+          ) OR (
+            wd.status = 'processing'
+            AND COALESCE(wd.locked_at, wd.last_attempt_at, wd.created_at) <= now() - interval '10 minutes'
+          )
         )
+        AND we.enabled = true
+        AND we.deleted_at IS NULL
       ORDER BY COALESCE(wd.next_attempt_at, wd.created_at) ASC, wd.created_at ASC
-      FOR UPDATE SKIP LOCKED
+      FOR UPDATE OF wd, we SKIP LOCKED
       LIMIT ${safeLimit}
     )
     UPDATE webhook_deliveries wd
@@ -162,17 +187,16 @@ export async function claimWebhookDeliveries(limit = 10) {
         last_attempt_at = now(),
         locked_at = now(),
         lock_token = ${lockToken}
-    FROM picked, webhook_endpoints we
+    FROM picked
     WHERE wd.id = picked.id
-      AND we.id = wd.endpoint_id
     RETURNING
       wd.id::text AS id,
       wd.endpoint_id::text AS endpoint_id,
       wd.endpoint_url,
-      we.enabled AS endpoint_enabled,
-      we.tenant_id::text AS tenant_id,
-      we.signing_secret,
-      we.signature_version,
+      true AS endpoint_enabled,
+      picked.tenant_id::text AS tenant_id,
+      picked.signing_secret,
+      picked.signature_version,
       wd.event_id,
       wd.event_name,
       wd.payload,
@@ -193,7 +217,10 @@ function deliveryPayload(value: ClaimedWebhookDelivery["payload"]) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
 }
 
-export async function processClaimedWebhookDelivery(row: ClaimedWebhookDelivery) {
+export async function processClaimedWebhookDelivery(
+  row: ClaimedWebhookDelivery,
+  dependencies: WebhookDeliveryDependencies = {},
+) {
   const id = String(row.id);
   const lockToken = String(row.lock_token || "");
   const attemptCount = Number(row.attempt_count || 1);
@@ -233,7 +260,7 @@ export async function processClaimedWebhookDelivery(row: ClaimedWebhookDelivery)
         rawBody: body,
         version: signatureVersion,
       });
-      const response = await deliverWebhookRequest({
+      const response = await webhookDeliveryTransport(dependencies)({
         url: String(row.endpoint_url),
         body,
         headers: {

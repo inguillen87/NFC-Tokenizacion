@@ -28,6 +28,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const auth = await checkAdmin(req, ["super_admin"]);
+  if (auth) return auth;
   const body: Record<string, unknown> = await req.json().catch(() => ({}));
   const locale = String(body.locale || "es-AR");
   const contact = String(body.contact || "");

@@ -1,16 +1,18 @@
 # nexID Polygon Amoy ownership launch checklist
 
-> Aviso vigente 2026-07-26: la opcion aprobada para el piloto desplegado es el
+> Snapshot historico 2026-07-26: la opcion aprobada para aquel piloto fue el
 > executor separado con `TOKENIZATION_USE_LOCAL_MINTER=false`, auto-mint por tap
 > apagado y signer `kms_wrapped`. La opcion de minter local/private key queda
 > documentada solo para desarrollo testnet desechable; no debe copiarse a
-> produccion. `kms_wrapped` usa Cloud KMS SOFTWARE y no es HSM.
+> produccion. `kms_wrapped` usa Cloud KMS SOFTWARE y no es HSM. Antes de usar
+> este runbook se debe volver a ejecutar readiness y verificar una transaccion;
+> el snapshot no demuestra el estado del runtime actual.
 
-Este documento es el checklist corto para activar la capa Polygon ownership manana sin tocar UX/UI ni rehacer la plataforma. El codigo queda listo; lo unico que falta es crear credenciales, pegar variables y redeployar API.
+Este documento es un checklist de laboratorio para preparar Polygon ownership en Amoy sin rehacer la plataforma. Tener codigo y variables no alcanza: migraciones, policy, executor, RPC, gas, recibo, reconciliacion y UX deben pasar sus gates antes de declarar el piloto operativo.
 
 ## 0. Estado del producto
 
-Estado actual del piloto Amoy:
+Capacidades implementadas y evidencia historica del piloto Amoy (revalidar antes de presentar):
 
 - Tap SUN/NTAG 424 DNA TT valida el mensaje criptografico, anti-replay y estado TT reportado server-side; no certifica por si solo el producto fisico.
 - Replay bloquea ownership, rewards y tokenizacion hasta un mensaje NFC fresco obtenido mediante otro tap.
@@ -18,11 +20,11 @@ Estado actual del piloto Amoy:
 - Portal consumidor guarda producto, historial, tenant, promos y certificado si existe.
 - Admin/superadmin ven cola de tokenizacion y readiness de Polygon Amoy.
 - Polygon usa hash de UID + salt. No publica UID crudo ni recibe todos los taps.
-- El contrato Amoy ya fue desplegado y un mint manual ya funciono.
+- El snapshot historico registra un contrato Amoy y un mint manual; no acredita disponibilidad actual.
 - La API puede mintear directo con `ethers` cuando `TOKENIZATION_USE_LOCAL_MINTER=true`.
 - `tsc` API/web, `qa-static` y tests SUN pasan.
 
-Valores del piloto/sandbox actual:
+Valores redacted del snapshot historico del piloto/sandbox:
 
 ```txt
 Network: Polygon Amoy
@@ -316,7 +318,7 @@ Tabla de control:
 
 ## 11. Seguridad premium despues del piloto
 
-Para piloto Amoy, `TOKENIZATION_USE_LOCAL_MINTER=true` esta bien si la wallet minter es dedicada y solo tiene gas testnet.
+El minter local queda limitado a desarrollo testnet desechable. El piloto compartido usa executor separado y no debe degradarse a `TOKENIZATION_USE_LOCAL_MINTER=true`.
 
 Para produccion premium:
 
@@ -328,7 +330,7 @@ Para produccion premium:
 
 ## 12. Criterio de listo
 
-Blockchain queda lista cuando:
+El piloto testnet queda listo para una demostracion controlada cuando, en la misma ventana de evidencia:
 
 - `npm run tokenization:check` termina con `ok: true`.
 - Dashboard readiness muestra `ready`.
@@ -347,7 +349,7 @@ $node="C:\Users\guill\.cache\codex-runtimes\codex-primary-runtime\dependencies\n
 & $node --test apps\api\tests\sun-*.test.mjs apps\api\tests\ttstatus-decode.test.mjs
 ```
 
-Resultado esperado actual:
+Ejemplo historico de una corrida; no es un conteo vigente ni un gate reutilizable:
 
 ```txt
 API tsc: OK

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Activity,
   BadgeCheck,
@@ -33,6 +33,7 @@ import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, T
 import { RealtimeMapLibreMap, type BaseMapLayer } from "./realtime-maplibre-map";
 import { TenantAccountMenu } from "./tenant-account-menu";
 import { EnterpriseOpsState } from "./enterprise-ops-state";
+import { IncidentEventDrawer } from "./incident-event-drawer";
 import { exportToCsv } from "../lib/export-utils";
 import { strictCoordinatePair } from "../lib/geo-coordinates";
 import {
@@ -45,6 +46,12 @@ import {
   type RealtimeStreamSource,
   type TenantTapRealtimeEvent,
 } from "../lib/realtime-feed";
+import { dashboardPermissionMatches } from "../lib/permission-policy";
+import {
+  incidentByEvent,
+  isIncidentRealtimeWireEvent,
+  type DashboardIncident,
+} from "../lib/incident-workflow";
 
 type MapMode = "tenant" | "global";
 type CrmSection = "summary" | "infra" | "loyalty";
@@ -663,8 +670,41 @@ export function ExecutiveRealtimeCrm({
   const [timeRange, setTimeRange] = useState<TimeRange>("24h");
   const [clock, setClock] = useState("");
   const [campaignDraft, setCampaignDraft] = useState<string | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<TenantTapRealtimeEvent | null>(null);
+  const [incidentsByEventId, setIncidentsByEventId] = useState<Record<string, DashboardIncident>>({});
+  const [incidentAvailability, setIncidentAvailability] = useState<"loading" | "ready" | "unavailable">("loading");
+  const canReadIncidents = account.role === "super-admin" || dashboardPermissionMatches(account.permissions, "incidents:read");
+  const canWriteIncidents = account.role === "super-admin" || dashboardPermissionMatches(account.permissions, "incidents:write");
   const lastEventIdRef = useRef("");
   const mapPanelRef = useRef<HTMLDivElement | null>(null);
+
+  const handleIncident = useCallback((incident: DashboardIncident) => {
+    setIncidentsByEventId((current) => ({ ...current, [String(incident.eventId)]: incident }));
+    setIncidentAvailability("ready");
+  }, []);
+
+  const refreshIncidents = useCallback(async () => {
+    if (!canReadIncidents) return;
+    const url = new URL("/api/admin/incidents", window.location.origin);
+    url.searchParams.set("limit", "100");
+    if (tenantScope) url.searchParams.set("tenant", tenantScope);
+    try {
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) {
+        setIncidentAvailability("unavailable");
+        return;
+      }
+      const payload = await response.json().catch(() => null) as { ok?: boolean; incidents?: DashboardIncident[] } | null;
+      if (!payload?.ok || !Array.isArray(payload.incidents)) {
+        setIncidentAvailability("unavailable");
+        return;
+      }
+      setIncidentsByEventId(incidentByEvent(payload.incidents));
+      setIncidentAvailability("ready");
+    } catch {
+      setIncidentAvailability("unavailable");
+    }
+  }, [canReadIncidents, tenantScope]);
 
   useEffect(() => {
     document.body.classList.add("nexid-crm-overlay-active");
@@ -690,6 +730,20 @@ export function ExecutiveRealtimeCrm({
     const timer = window.setInterval(() => setFreshnessNow(Date.now()), 5_000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (!canReadIncidents) return;
+    void refreshIncidents();
+    const poll = window.setInterval(() => void refreshIncidents(), 15_000);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void refreshIncidents();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.clearInterval(poll);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [canReadIncidents, refreshIncidents]);
 
   useEffect(() => {
     const streamUrl = new URL("/api/admin/events/stream", window.location.origin);
@@ -734,11 +788,16 @@ export function ExecutiveRealtimeCrm({
 
     const onEvent = (event: MessageEvent<string>) => {
       try {
-        const payload = JSON.parse(event.data) as TenantTapRealtimeEvent;
-        const incomingId = String(payload.eventId || "");
+        const payload = JSON.parse(event.data) as unknown;
+        if (isIncidentRealtimeWireEvent(payload)) {
+          void refreshIncidents();
+          return;
+        }
+        const tapPayload = payload as TenantTapRealtimeEvent;
+        const incomingId = String(tapPayload.eventId || "");
         if (incomingId && incomingId === lastEventIdRef.current) return;
         lastEventIdRef.current = incomingId;
-        setEvents((prev) => mergeRealtimeEvents(prev, payload, 50));
+        setEvents((prev) => mergeRealtimeEvents(prev, tapPayload, 50));
         setActiveDataSource(streamSource === "all" ? "mixed" : streamSource);
         setDataAvailability("ready");
         setAvailabilityDetail("Evento confirmado por nexID Core.");
@@ -790,7 +849,7 @@ export function ExecutiveRealtimeCrm({
       source.removeEventListener("warning", onWarning as EventListener);
       source.close();
     };
-  }, [initialAvailability, initialAvailabilityDetail, initialDataSource, initialEvents.length, streamSource, tenantScope, timeRange]);
+  }, [initialAvailability, initialAvailabilityDetail, initialDataSource, initialEvents.length, refreshIncidents, streamSource, tenantScope, timeRange]);
 
   const tenantOptions = useMemo(
     () => [...new Set(events.map((event) => String(event.tenantSlug || "unknown").toLowerCase()))].filter(Boolean).sort(),
@@ -1285,15 +1344,17 @@ export function ExecutiveRealtimeCrm({
                     const verdictBucket = classifyRealtimeVerdict(event.verdict, event.reason);
                     const valid = verdictBucket === "valid";
                     const risk = isRealtimeRisk(event.verdict, event.reason);
+                    const linkedIncident = incidentsByEventId[String(event.eventId)] || null;
                     return (
-                      <div key={String(event.eventId || `${event.uidMasked}-${event.occurredAt}`)} className="rounded-lg border border-white/8 bg-slate-900/70 p-3">
+                      <button type="button" onClick={() => setSelectedEvent(event)} key={String(event.eventId || `${event.uidMasked}-${event.occurredAt}`)} className="w-full rounded-lg border border-white/8 bg-slate-900/70 p-3 text-left transition hover:border-cyan-300/35 hover:bg-slate-900" data-testid="open-event-incident-drawer">
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-[11px] text-slate-500">{formatTimeInZone(event.occurredAt || Date.now(), consoleTimezone)}</p>
-                          <span className={`rounded px-2 py-0.5 text-[10px] font-semibold ${valid ? "bg-emerald-400/10 text-emerald-300" : risk ? "bg-rose-400/10 text-rose-300" : "bg-sky-400/10 text-sky-300"}`}>{valid ? "Válido" : risk ? "Riesgo" : "Sin clasificar"}</span>
+                          <span className={`rounded px-2 py-0.5 text-[10px] font-semibold ${linkedIncident ? "bg-cyan-400/10 text-cyan-200" : valid ? "bg-emerald-400/10 text-emerald-300" : risk ? "bg-rose-400/10 text-rose-300" : "bg-sky-400/10 text-sky-300"}`}>{linkedIncident ? `Incidente · ${linkedIncident.status}` : valid ? "Válido" : risk ? "Riesgo" : "Sin clasificar"}</span>
                         </div>
                         <p className="mt-1 text-sm font-black text-white">UID: {event.uidMasked}</p>
                         <p className="text-xs text-slate-400">{deviceSummary(event)}</p>
-                      </div>
+                        <p className="mt-1 text-[10px] font-bold text-cyan-300">Abrir evidencia y expediente →</p>
+                      </button>
                     );
                   })}
                 </div>
@@ -1400,6 +1461,19 @@ export function ExecutiveRealtimeCrm({
           </div>
         </section>
       </main>
+
+      {selectedEvent ? (
+        <IncidentEventDrawer
+          key={`${selectedEvent.tenantSlug || "global"}:${selectedEvent.eventId}`}
+          event={selectedEvent}
+          incident={incidentsByEventId[String(selectedEvent.eventId)] || null}
+          incidentAvailability={incidentAvailability}
+          canRead={canReadIncidents}
+          canWrite={canWriteIncidents}
+          onClose={() => setSelectedEvent(null)}
+          onIncident={handleIncident}
+        />
+      ) : null}
 
       <footer className="fixed bottom-0 left-0 right-0 z-20 flex h-9 items-center justify-between gap-3 border-t border-white/8 bg-[#06101d]/95 px-3 text-[11px] text-slate-400 lg:absolute lg:h-8 lg:px-8 lg:text-xs">
         <span className="flex items-center gap-2"><i className={`h-2 w-2 rounded-full ${streamHealth.dot}`} /> Stream: {streamHealth.label}</span>

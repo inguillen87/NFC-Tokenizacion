@@ -2,8 +2,10 @@ import Link from "next/link";
 import { Card, SectionHeading, StatusChip } from "@product/ui";
 import { OpsCommandCenter, type OpsCommandStep, type OpsCommandTenantRow } from "../../../components/ops-command-center";
 import { BlockchainHsmHealth } from "../../../components/blockchain-hsm-health";
+import { EnterpriseOpsState } from "../../../components/enterprise-ops-state";
 import { requireDashboardSession } from "../../../lib/session";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../lib/admin-page-access";
+import { readDemoDataMetaFromResponse } from "../../../lib/demo-data-mode";
 import { resolveCanonicalTenantRisk } from "../../../lib/tenant-risk";
 
 type TenantRow = Record<string, unknown>;
@@ -27,14 +29,30 @@ type ProductAssetsPayload = {
   }>;
 };
 
-async function fetchJson<T>(context: AdminPageContext, path: string, fallback: T): Promise<T> {
+type SourceAvailability = "ready" | "upstream_error" | "invalid_payload" | "unreachable";
+type SourceResult<T> = { availability: SourceAvailability; data: T | null };
+
+async function fetchJson<T>(
+  context: AdminPageContext,
+  path: string,
+  validate: (value: unknown) => value is T,
+): Promise<SourceResult<T>> {
   try {
     const response = await fetchAdminPage(context, path);
-    if (!response.ok) return fallback;
-    return await response.json() as T;
+    const meta = readDemoDataMetaFromResponse(response);
+    if (!response.ok) return { availability: "upstream_error", data: null };
+    const payload = await response.json().catch(() => null);
+    const upstreamUnavailable = Boolean(payload && typeof payload === "object" && !Array.isArray(payload) && (payload as { ok?: boolean }).ok === false);
+    if (upstreamUnavailable) return { availability: "upstream_error", data: null };
+    if (meta.demoMode || !validate(payload)) return { availability: "invalid_payload", data: null };
+    return { availability: "ready", data: payload };
   } catch {
-    return fallback;
+    return { availability: "unreachable", data: null };
   }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
 function numberFrom(value: unknown) {
@@ -98,15 +116,28 @@ export default async function SuperadminConsumerNetworkPage() {
   }
 
   const adminContext = await createAdminPageContext(session);
-  const [tenants, batches, tagsPayload, experiencesPayload, productAssetsPayload] = await Promise.all([
-    fetchJson<TenantRow[]>(adminContext, "/api/admin/tenants?withStats=1", []),
-    fetchJson<BatchRow[]>(adminContext, "/api/admin/batches", []),
-    fetchJson<TagsPayload>(adminContext, "/api/admin/tags?limit=100", { rows: [], totals: {} }),
-    fetchJson<ExperiencesPayload>(adminContext, "/api/admin/consumer-experiences", { items: [], moderation: {} }),
-    fetchJson<ProductAssetsPayload>(adminContext, "/api/admin/product-assets?limit=80", { items: [] }),
+  const [tenantsResult, batchesResult, tagsResult, experiencesResult, productAssetsResult] = await Promise.all([
+    fetchJson<TenantRow[]>(adminContext, "/api/admin/tenants?withStats=1", Array.isArray),
+    fetchJson<BatchRow[]>(adminContext, "/api/admin/batches", Array.isArray),
+    fetchJson<TagsPayload>(adminContext, "/api/admin/tags?limit=100", isRecord),
+    fetchJson<ExperiencesPayload>(adminContext, "/api/admin/consumer-experiences", isRecord),
+    fetchJson<ProductAssetsPayload>(adminContext, "/api/admin/product-assets?limit=80", isRecord),
   ]);
 
-  const scopedTenants = tenants;
+  const allSourcesReady = [tenantsResult, batchesResult, tagsResult, experiencesResult, productAssetsResult]
+    .every((result) => result.availability === "ready");
+  const unavailableSources = [
+    ["tenants", tenantsResult.availability],
+    ["batches", batchesResult.availability],
+    ["tags", tagsResult.availability],
+    ["consumer-experiences", experiencesResult.availability],
+    ["product-assets", productAssetsResult.availability],
+  ].filter(([, availability]) => availability !== "ready");
+  const scopedTenants = tenantsResult.data || [];
+  const batches = batchesResult.data || [];
+  const tagsPayload = tagsResult.data || {};
+  const experiencesPayload = experiencesResult.data || {};
+  const productAssetsPayload = productAssetsResult.data || {};
   const totals = tagsPayload.totals || {};
   const tagRows = tagsPayload.rows || [];
   const experiences = experiencesPayload.items || [];
@@ -205,7 +236,18 @@ export default async function SuperadminConsumerNetworkPage() {
 
       <BlockchainHsmHealth />
 
-      <OpsCommandCenter
+      {!allSourcesReady ? (
+        <EnterpriseOpsState
+          variant="warning"
+          title="Consola global sin snapshot completo"
+          description="Una o más APIs operativas no confirmaron datos. Se ocultan métricas, funnels, readiness y prioridades derivadas para no convertir una falla en ceros ni mezclar fixtures demo con producción."
+          checklist={unavailableSources.map(([name, availability]) => `${name}: ${availability}`)}
+          action={<a href="/superadmin-network" className="rounded-xl border border-amber-300/30 bg-amber-400/10 px-3 py-2 text-xs font-black text-amber-100">Reintentar snapshot</a>}
+          testId="superadmin-network-source-unavailable"
+        />
+      ) : null}
+
+      {allSourcesReady ? <OpsCommandCenter
         mode="global"
         metrics={[
           { label: "Tenants", value: String(scopedTenants.length), detail: "Marcas conectadas a la red", tone: scopedTenants.length ? "good" : "warn" },
@@ -230,10 +272,10 @@ export default async function SuperadminConsumerNetworkPage() {
           { label: "Assets", ready: readyAssets, pending: Math.max(productAssets.length - readyAssets, 0) },
           { label: "Club", ready: approvedExperiences, pending: pendingExperiences },
         ]}
-      />
+      /> : null}
 
       <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-        <Card className="overflow-hidden p-0">
+        {allSourcesReady ? <Card className="overflow-hidden p-0">
           <div className="border-b border-white/10 p-5">
             <h2 className="text-sm font-black uppercase tracking-[0.16em] text-cyan-200">Prioridades del dia</h2>
             <p className="mt-1 text-sm text-slate-400">Lo que un superadmin o auditor deberia mirar antes de aprobar nuevos rollouts.</p>
@@ -278,7 +320,7 @@ export default async function SuperadminConsumerNetworkPage() {
               </Link>
             ))}
           </div>
-        </Card>
+        </Card> : null}
 
         <Card className="p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -306,7 +348,7 @@ export default async function SuperadminConsumerNetworkPage() {
       <Card className="p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-sm font-black uppercase tracking-[0.16em] text-cyan-200">Accesos rapidos</h2>
-          <span className="text-xs text-slate-500">Super Admin / Bodega Balmec / equipos operativos</span>
+          <span className="text-xs text-slate-500">Super Admin / tenants confirmados / equipos operativos</span>
         </div>
         <div className="mt-4 grid gap-3 md:grid-cols-4">
           {[

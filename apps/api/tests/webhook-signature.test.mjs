@@ -131,8 +131,13 @@ test("delivery and admin paths cannot send or enable an unsigned endpoint", () =
 
   const createRoute = readFileSync(new URL("../src/app/admin/webhooks/route.ts", import.meta.url), "utf8");
   const updateRoute = readFileSync(new URL("../src/app/admin/webhooks/[id]/route.ts", import.meta.url), "utf8");
-  assert.match(createRoute, /webhookSigningSecretIssue\(effectiveSigningSecret, \{ required: true \}\)/);
-  assert.match(updateRoute, /webhookSigningSecretIssue\(effectiveSigningSecret, \{ required: true \}\)/);
+  const reactivateRoute = readFileSync(new URL("../src/app/admin/webhooks/[id]/reactivate/route.ts", import.meta.url), "utf8");
+  assert.match(createRoute, /generateWebhookSigningSecret\(\)/);
+  assert.match(createRoute, /encryptWebhookSigningSecret\(oneTimeSecret/);
+  assert.match(updateRoute, /webhook_explicit_reactivation_required/);
+  assert.match(updateRoute, /webhook_secret_rotation_route_required/);
+  assert.match(reactivateRoute, /generateWebhookSigningSecret\(\)/);
+  assert.match(reactivateRoute, /enabled = true/);
 });
 
 test("signature v2 rollout preserves existing endpoints and defaults new endpoints to v2", () => {
@@ -146,9 +151,9 @@ test("signature v2 rollout preserves existing endpoints and defaults new endpoin
   assert.match(schemaSource, /ALTER COLUMN signature_version SET DEFAULT 'v2'/);
   assert.match(migration, /SET signature_version = 'v1'[\s\S]*SET DEFAULT 'v2'/);
   assert.match(migration, /CHECK \(signature_version IN \('v1', 'v2'\)\)/);
-  assert.match(createRoute, /signatureVersion \|\| "v2"/);
-  assert.match(createRoute, /signature_version = COALESCE\(\$\{signatureVersion\}, webhook_endpoints\.signature_version\)/);
+  assert.match(createRoute, /signatureVersion !== "v2"/);
+  assert.match(createRoute, /'v2'/);
   assert.match(updateRoute, /normalizeWebhookSignatureVersion/);
-  assert.match(deliverySource, /we\.signature_version/);
+  assert.match(deliverySource, /picked\.signature_version/);
   assert.match(deliverySource, /version: signatureVersion/);
 });

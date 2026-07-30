@@ -56,7 +56,8 @@ CREATE TABLE IF NOT EXISTS loyalty_members (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   program_id uuid NOT NULL REFERENCES loyalty_programs(id) ON DELETE CASCADE,
-  event_id bigint REFERENCES events(id) ON DELETE SET NULL,
+  -- events is partitioned by created_at, so id alone cannot be an FK target.
+  event_id bigint,
   email text,
   phone text,
   display_name text,
@@ -79,7 +80,7 @@ CREATE TABLE IF NOT EXISTS points_ledger (
   tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   program_id uuid NOT NULL REFERENCES loyalty_programs(id) ON DELETE CASCADE,
   member_id uuid NOT NULL REFERENCES loyalty_members(id) ON DELETE CASCADE,
-  tap_event_id bigint REFERENCES events(id) ON DELETE SET NULL,
+  tap_event_id bigint,
   source points_source NOT NULL,
   delta integer NOT NULL,
   balance_after integer NOT NULL,

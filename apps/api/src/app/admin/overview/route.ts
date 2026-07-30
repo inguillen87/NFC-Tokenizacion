@@ -40,6 +40,7 @@ export async function GET(req: Request) {
         END AS event_class
         FROM events e
         JOIN scoped_batches b ON b.id = e.batch_id
+        WHERE COALESCE(e.source::text, 'real') <> 'demo'
       ),
       asset_counts AS (
         SELECT COUNT(DISTINCT b.id)::int AS batches, COUNT(DISTINCT t.id)::int AS tags
@@ -86,6 +87,7 @@ export async function GET(req: Request) {
         END AS event_class
         FROM events e
         JOIN scoped_batches b ON b.id = e.batch_id
+        WHERE COALESCE(e.source::text, 'real') <> 'demo'
       ),
       asset_counts AS (
         SELECT COUNT(DISTINCT b.id)::int AS batches, COUNT(DISTINCT t.id)::int AS tags

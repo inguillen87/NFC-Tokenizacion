@@ -115,14 +115,14 @@ function getCommercialState(result?: string): CommercialState {
     return {
       label: "VALID",
       tone: "green",
-      message: "Ingreso validado correctamente en tiempo real.",
+      message: "Ingreso registrado por el escenario demo; la operación real requiere respuesta confirmada del backend.",
       recommendation: "Recomendación: avanzar con hospitalidad, upsell o sponsor action.",
     };
   }
   return {
     label: "AUTH_PENDING",
     tone: "cyan",
-    message: "Esperando próxima interacción con backend en vivo.",
+    message: "Esperando la próxima interacción; todavía no hay respuesta backend confirmada.",
     recommendation: "Recomendación: escanear o correr un escenario desde Demo Lab.",
   };
 }
@@ -167,6 +167,7 @@ export default function DemoMobileItemPage() {
   }, []);
 
   const latest = events[0];
+  const evidenceSource = events.length > 0 ? "backend_reported" : "synthetic_seed";
   const uid = requestedUid || latest?.uid_hex || "N/A";
   const detail = PACK_DETAILS[pack] || PACK_DETAILS["wine-secure"];
   const commercial = getCommercialState(latest?.result);
@@ -189,11 +190,18 @@ export default function DemoMobileItemPage() {
 
   return (
     <main className="mx-auto max-w-5xl space-y-4 p-4">
-      <SectionHeading eyebrow="Mobile preview" title="Lectura NFC validada" description="Vista de consumidor por tenant/item basada en el último evento reportado; refresh automático cada 20s" />
+      <SectionHeading
+        eyebrow="Mobile preview"
+        title="Preview de evidencia reportada"
+        description="Vista orientativa por tenant/item. Expone la fuente de los datos y nunca sustituye una lectura NFC física."
+      />
       <div className="mx-auto w-full max-w-[420px] rounded-[2.3rem] border border-cyan-300/20 bg-slate-950 p-2.5 shadow-[0_24px_90px_rgba(2,6,23,0.65)]">
         <div className="mx-auto mb-2 h-1.5 w-20 rounded-full bg-slate-700" />
         <div className="space-y-4 rounded-[1.8rem] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(34,211,238,.10),transparent_30%),#020617] p-4">
-      <Card className="sticky top-4 z-10 border border-white/10 bg-slate-950/95 p-4 backdrop-blur">
+      <div role="status" className="sticky top-2 z-20 rounded-xl border border-amber-300/50 bg-amber-950/95 px-3 py-2 text-center text-xs font-semibold tracking-[0.08em] text-amber-100 shadow-lg backdrop-blur">
+        PREVIEW · NO ES UN TAP NFC FÍSICO
+      </div>
+      <Card className="sticky top-14 z-10 border border-white/10 bg-slate-950/95 p-4 backdrop-blur">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Estado comercial</p>
@@ -205,11 +213,18 @@ export default function DemoMobileItemPage() {
         </div>
         <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-300">
           <div className="rounded-xl border border-white/10 bg-slate-900 p-3">Pack: <b>{pack}</b></div>
-          <div className="rounded-xl border border-white/10 bg-slate-900 p-3">Modo: <b>{demoMode}</b></div>
+          <div className="rounded-xl border border-white/10 bg-slate-900 p-3">Escenario solicitado: <b>{demoMode}</b></div>
+          <div className="col-span-2 rounded-xl border border-white/10 bg-slate-900 p-3">
+            Fuente: <code className="font-semibold text-cyan-200">{evidenceSource}</code>
+          </div>
         </div>
         <div className="mt-3 rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3 text-xs text-cyan-100">
-          <p className="font-semibold">Lectura doble:</p>
-          <p className="mt-1">Para negocio: este estado ayuda a vender confianza y activar postventa. Para ingeniería: resume el outcome que viene del backend demo/live.</p>
+          <p className="font-semibold">Alcance de esta evidencia:</p>
+          <p className="mt-1">
+            {evidenceSource === "backend_reported"
+              ? "El backend interno reportó uno o más eventos; eso no demuestra que esta vista provenga de un tap físico fresco."
+              : "No hay eventos reportados disponibles; la vista usa exclusivamente el seed sintético del Demo Lab."}
+          </p>
         </div>
       </Card>
 
@@ -217,20 +232,34 @@ export default function DemoMobileItemPage() {
         <div className="relative mb-3 h-44 overflow-hidden rounded-xl border border-white/10 bg-[radial-gradient(circle_at_30%_25%,rgba(56,189,248,.22),transparent_45%),radial-gradient(circle_at_70%_70%,rgba(16,185,129,.2),transparent_35%),#0f172a]">
           <div className="absolute inset-y-6 left-1/2 w-24 -translate-x-1/2 rounded-3xl border border-amber-200/20 bg-gradient-to-b from-amber-100/20 via-amber-300/10 to-amber-700/20 shadow-[0_18px_40px_rgba(146,64,14,.35)]" />
           <div className="absolute bottom-4 left-1/2 h-2 w-14 -translate-x-1/2 rounded-full bg-black/40 blur-sm" />
-          <div className="absolute right-3 top-3 rounded-full border border-cyan-300/40 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-100">LIVE TAP</div>
-          <div className="absolute left-3 top-3 rounded-full border border-emerald-300/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-100">SCAN PULSE</div>
+          <div className="absolute right-3 top-3 rounded-full border border-cyan-300/40 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-100">PREVIEW</div>
+          <div className="absolute left-3 top-3 rounded-full border border-emerald-300/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-100">
+            {evidenceSource === "backend_reported" ? "REPORTED DATA" : "SYNTHETIC SEED"}
+          </div>
         </div>
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-white">{itemId}</h2>
           <Badge tone={commercial.tone}>{commercial.label}</Badge>
         </div>
         <p className="mt-2 text-sm text-slate-300">Tenant: {tenant}</p>
-        <p className="text-xs text-emerald-300">Estado sincronizado con Demo Lab y backend interno.</p>
-        <p className="text-sm text-slate-300">Último evento: {latest?.city || "-"}, {latest?.country_code || "-"}</p>
+        <p className="text-xs text-cyan-200">Fuente del estado: {evidenceSource}</p>
+        <p className="text-sm text-slate-300">Última ubicación reportada: {latest?.city || "-"}, {latest?.country_code || "-"}</p>
         <p className="text-xs text-slate-400">UID: {uid}</p>
+        <p id="preview-actions-note" className="mt-3 text-xs text-amber-200">
+          Estos controles son ilustrativos. Escaneá el NFC físico para habilitar acciones basadas en evidencia SUN fresca.
+        </p>
         <div className="mt-3 grid gap-2 text-xs md:grid-cols-2">
           {detail.ctas.map((cta) => (
-            <button suppressHydrationWarning key={cta} type="button" className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-emerald-100">{cta}</button>
+            <button
+              suppressHydrationWarning
+              key={cta}
+              type="button"
+              disabled
+              aria-describedby="preview-actions-note"
+              className="cursor-not-allowed rounded-lg border border-slate-600/50 bg-slate-800/60 px-3 py-2 text-slate-400"
+            >
+              {cta} · preview
+            </button>
           ))}
         </div>
       </Card>
@@ -267,23 +296,29 @@ export default function DemoMobileItemPage() {
           uid,
           status: commercial.label,
           latestResult: latest?.result || "PENDING",
+          evidenceSource,
+          physicalTapVerified: false,
           attributes: Object.fromEntries(detail.attributes.map((field) => [field.label, field.value])),
         }, null, 2)}</pre>
       </Card>
 
       <Card className="p-4">
-        <h3 className="text-sm font-semibold text-white">How we know this</h3>
+        <h3 className="text-sm font-semibold text-white">Qué respalda este preview</h3>
+        <p className="mt-2 text-xs text-cyan-200">Fuente actual: <code>{evidenceSource}</code></p>
         <ul className="mt-2 space-y-1 text-xs text-slate-300">
-          <li>Leído del tag: URL/NDEF + UID/serial si disponible.</li>
-          <li>Aportado por teléfono: hora local, idioma y geolocalización (con permiso).</li>
-          <li>Resuelto por backend nexID: validez criptográfica del mensaje NFC/SUN, policy aplicada, riesgo digital y estado registrado.</li>
-          <li>Límite: no certifica por sí solo contenido, origen, sello, apertura, custodia ni autenticidad física.</li>
-          <li>Simulado para demo: seed data, playback comercial y tráfico sintético.</li>
+          <li>
+            {evidenceSource === "backend_reported"
+              ? "Origen: eventos devueltos por /api/internal/demo/summary; pueden pertenecer a escenarios demo."
+              : "Origen: seed sintético local porque no hay eventos devueltos por el backend."}
+          </li>
+          <li>El pack, sus atributos y su narrativa son contenido ilustrativo del Demo Lab.</li>
+          <li>El UID puede venir de la URL o de un evento reportado; esta pantalla no recibe ni valida un payload SUN fresco.</li>
+          <li>Límite: no certifica contenido, origen, sello, apertura, custodia, autenticidad física ni un tap presente.</li>
         </ul>
       </Card>
 
       <Card className="p-4">
-        <h3 className="text-sm font-semibold text-white">Timeline (backend-linked)</h3>
+        <h3 className="text-sm font-semibold text-white">Timeline ({evidenceSource})</h3>
         <div className="mt-2 space-y-2 text-xs text-slate-300">
           {timeline.map((event, index) => (
             <div key={`${event.label}-${index}`} className="rounded-lg border border-white/10 bg-slate-900 p-2">
@@ -296,12 +331,15 @@ export default function DemoMobileItemPage() {
       </Card>
 
       <Card className="p-4 text-xs text-slate-300">
-        <h3 className="text-sm font-semibold text-white">CTA comerciales</h3>
+        <h3 className="text-sm font-semibold text-white">Acciones que requieren tap físico</h3>
+        <p id="physical-tap-required" className="mt-2 text-amber-200">
+          Escaneá el NFC físico para obtener evidencia SUN fresca. Este preview no ejecuta ownership, garantía, provenance ni tokenización.
+        </p>
         <div className="mt-2 grid gap-2 md:grid-cols-2">
-          <button suppressHydrationWarning type="button" className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-cyan-100">Activar ownership</button>
-          <button suppressHydrationWarning type="button" className="rounded-lg border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-violet-100">Registrar garantía</button>
-          <button suppressHydrationWarning type="button" className="rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-amber-100">Ver provenance</button>
-          <button suppressHydrationWarning type="button" className="rounded-lg border border-white/20 px-3 py-2 text-white">Tokenización opcional (NFT/asset)</button>
+          <button suppressHydrationWarning type="button" disabled aria-describedby="physical-tap-required" className="cursor-not-allowed rounded-lg border border-slate-600/50 bg-slate-800/60 px-3 py-2 text-slate-400">Activar ownership</button>
+          <button suppressHydrationWarning type="button" disabled aria-describedby="physical-tap-required" className="cursor-not-allowed rounded-lg border border-slate-600/50 bg-slate-800/60 px-3 py-2 text-slate-400">Registrar garantía</button>
+          <button suppressHydrationWarning type="button" disabled aria-describedby="physical-tap-required" className="cursor-not-allowed rounded-lg border border-slate-600/50 bg-slate-800/60 px-3 py-2 text-slate-400">Ver provenance</button>
+          <button suppressHydrationWarning type="button" disabled aria-describedby="physical-tap-required" className="cursor-not-allowed rounded-lg border border-slate-600/50 bg-slate-800/60 px-3 py-2 text-slate-400">Tokenización opcional (NFT/asset)</button>
         </div>
       </Card>
         </div>

@@ -7,11 +7,12 @@ const navItems = [
   { href: "/batches", label: "Batches & Activation", description: "Alta, activación y lifecycle de lotes y tags.", badge: "ops" },
   { href: "/batches/supplier", label: "Factory Trust Room", description: "Supplier packs cifrados, manifest, QA, bóveda y Proof Layer.", badge: "factory" },
   { href: "/analytics", label: "Analytics", description: "Fraude, scans, geo y performance operacional/comercial.", badge: "insight" },
+  { href: "/service-levels", label: "SLO & Runbooks", description: "SLIs persistidos, burn rate, colas y respuesta operativa por tenant.", badge: "reliability" },
   { href: "/resellers", label: "White-label", description: "Canal, partners y operación reseller / enterprise.", badge: "gtm" },
   { href: "/billing", label: "Plans", description: "Planes, suscripciones y expansión monetizable.", badge: "rev" },
   { href: "/superadmin-network", label: "Superadmin Network", description: "Red global, control de tenants y auditoría de gas.", badge: "admin" },
   { href: "/demo", label: "Demo Control", description: "Entrada simple para contar el producto sin ruido técnico.", badge: "story" },
-  { href: "/demo-lab", label: "Demo Lab", description: "Runbooks, pitch, mobile preview y evidencia en vivo.", badge: "live" },
+  { href: "/demo-lab", label: "Demo Lab", description: "Runbooks, pitch, mobile preview y evidencia con estado de fuente.", badge: "lab" },
 ];
 
 export function DashboardLayoutShell({ children }: { children: ReactNode }) {
@@ -26,7 +27,7 @@ export function DashboardLayoutShell({ children }: { children: ReactNode }) {
               <h1 className="text-lg font-semibold text-white">Authentication & Product Identity</h1>
             </div>
             <div className="flex items-center gap-3">
-              <Badge tone="green">API Connected</Badge>
+              <Badge tone="amber">Estado API en cada módulo</Badge>
               <Link href="/demo-lab" className="rounded-xl border border-cyan-300/40 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-100 hover:bg-cyan-500/20">
                 Open Demo Lab
               </Link>

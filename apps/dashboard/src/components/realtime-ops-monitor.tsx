@@ -244,7 +244,7 @@ export function RealtimeOpsMonitor({
   const generateAiInsights = () => {
     const visible = selectedTenant === "all" ? events : events.filter((event) => String(event.tenantSlug || "unknown").toLowerCase() === selectedTenant);
     if (!visible.length) {
-      setAiReport("Sin eventos reales en el stream activo. Primer paso: hacer 1 tap NFC fresco del tenant y confirmar que aparezca en mapa, feed y analytics.");
+      setAiReport("Sin eventos en el stream activo. Primer paso: hacer 1 tap NFC fresco del tenant y confirmar su fuente en mapa, feed y analytics.");
       return;
     }
     setAiAnalyzing(true);
@@ -759,7 +759,7 @@ Acción recomendada: ${recommendation}
                   <Terminal className="h-4 w-4 text-cyan-400" />
                   STREAM DE EVENTOS DEL CRM
                 </span>
-                <span className="text-[10px] text-cyan-500">LIVE FEED</span>
+                <span className="text-[10px] text-cyan-500">{connected ? "STREAM CONECTADO" : "STREAM SIN CONFIRMAR"}</span>
               </div>
               <div className="flex-1 overflow-y-auto space-y-2.5 text-xs">
                 {visibleEvents.map((event) => {
@@ -799,11 +799,11 @@ Acción recomendada: ${recommendation}
               <div className="flex items-center justify-between border-b border-violet-500/10 pb-2 mb-2">
                 <span className="text-xs font-black tracking-widest text-violet-300 flex items-center gap-1.5">
                   <Activity className="h-4 w-4 text-violet-400" />
-                  IA OPERATIVA SOBRE STREAM
+                  RESUMEN DETERMINISTICO DEL STREAM
                 </span>
               </div>
               <div className="text-slate-300 leading-5 text-[11px] whitespace-pre-line bg-violet-950/5 p-2 rounded border border-violet-500/10 h-24 overflow-y-auto">
-                {aiReport || "ANALIZANDO CONDICIONES DE SEGURIDAD EN TIEMPO REAL..."}
+                {aiReport || "CALCULANDO EL RESUMEN SOBRE LOS EVENTOS VISIBLES..."}
               </div>
             </div>
 
@@ -894,7 +894,7 @@ Acción recomendada: ${recommendation}
             >
               Exportar CSV
             </button>
-            <Badge tone={connected ? "green" : "amber"}>{connected ? "Live stream" : "Reconectando"}</Badge>
+            <Badge tone={connected ? "green" : "amber"}>{connected ? "Stream conectado" : "Stream no confirmado"}</Badge>
           </div>
         </div>
 
@@ -1001,7 +1001,7 @@ Acción recomendada: ${recommendation}
 
           <div className="rounded-xl border border-violet-300/20 bg-slate-950/70 p-4">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-xs font-black uppercase tracking-[0.14em] text-violet-200">IA de cercanía comercial</p>
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-violet-200">Resumen determinístico comercial</p>
               <button
                 suppressHydrationWarning
                 type="button"
@@ -1009,7 +1009,7 @@ Acción recomendada: ${recommendation}
                 onClick={generateAiInsights}
                 disabled={aiAnalyzing}
               >
-                {aiAnalyzing ? "Analizando..." : "Recalcular"}
+                {aiAnalyzing ? "Calculando..." : "Recalcular"}
               </button>
             </div>
             <div className="mt-3 whitespace-pre-line text-sm leading-6 text-slate-200">

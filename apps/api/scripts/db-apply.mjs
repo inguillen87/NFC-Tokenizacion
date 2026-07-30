@@ -2,6 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 import pg from "pg";
 
+import { assertSafeDbApplyStart, DbApplySafetyError } from "./lib/db-apply-safety.mjs";
+import {
+  assertEmptyEnterpriseE2eDatabase,
+  readEnterpriseEphemeralE2eConfig,
+} from "./lib/enterprise-ephemeral-e2e-safety.mjs";
+
 const url = process.env.DATABASE_URL;
 if (!url) {
   console.error("DATABASE_URL is required");
@@ -20,15 +26,50 @@ function containsExplicitTransactionControl(sql) {
 const migrationsDir = path.join(process.cwd(), "db", "migrations");
 const files = fs.readdirSync(migrationsDir).filter((file) => file.endsWith(".sql")).sort();
 const only = argumentValue("--only");
+const cleanBootstrapRequested = process.argv.includes("--allow-empty-ephemeral-e2e-bootstrap");
 if (only && !files.includes(only)) {
   console.error(`Unknown migration: ${only}`);
   process.exit(1);
+}
+
+let allowCleanBootstrap = false;
+let cleanBootstrapConfig = null;
+if (cleanBootstrapRequested) {
+  cleanBootstrapConfig = readEnterpriseEphemeralE2eConfig(process.env);
+  if (new URL(url).toString() !== cleanBootstrapConfig.databaseUrl) {
+    throw new Error("clean_bootstrap_database_url_must_match_validated_e2e_target");
+  }
+  allowCleanBootstrap = true;
 }
 
 const client = new pg.Client({ connectionString: url });
 await client.connect();
 
 try {
+  if (cleanBootstrapConfig) {
+    await assertEmptyEnterpriseE2eDatabase(client, cleanBootstrapConfig);
+  }
+  const initialState = (await client.query(`
+    SELECT
+      to_regclass('public.schema_migrations') IS NOT NULL AS has_migration_ledger,
+      (
+        to_regclass('public.tenants') IS NOT NULL
+        OR to_regclass('public.consumers') IS NOT NULL
+        OR to_regclass('public.tags') IS NOT NULL
+      ) AS initialized
+  `)).rows[0] || {};
+  let preexistingApplied = [];
+  if (initialState.has_migration_ledger) {
+    preexistingApplied = (await client.query("SELECT id FROM schema_migrations")).rows;
+  }
+  assertSafeDbApplyStart({
+    hasMigrationLedger: initialState.has_migration_ledger === true,
+    initialized: initialState.initialized === true,
+    appliedCount: preexistingApplied.length,
+    only,
+    allowCleanBootstrap,
+  });
+
   await client.query(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
       id text PRIMARY KEY,
@@ -46,21 +87,6 @@ try {
       throw new Error(
         `Migration ledger has ${historicalGaps.length} historical gap(s). `
         + "Refusing an unscoped replay; reconcile the ledger or use an approved --only migration."
-      );
-    }
-  }
-
-  if (!only && applied.size === 0) {
-    const existingSchema = await client.query(`
-      SELECT
-        to_regclass('public.tenants') IS NOT NULL
-        OR to_regclass('public.consumers') IS NOT NULL
-        OR to_regclass('public.tags') IS NOT NULL AS initialized
-    `);
-    if (existingSchema.rows[0]?.initialized) {
-      throw new Error(
-        "Existing schema has no migration history. Refusing to replay from 0001. "
-        + "Audit the baseline first, or apply one additive migration with --only <filename>."
       );
     }
   }
@@ -93,6 +119,13 @@ try {
   }
 
   console.log(pending.length ? "Migrations applied." : "Migrations up to date.");
+} catch (error) {
+  if (error instanceof DbApplySafetyError) {
+    console.error(JSON.stringify({ ok: false, code: error.code, ...error.details }));
+    process.exitCode = 1;
+  } else {
+    throw error;
+  }
 } finally {
   await client.end();
 }

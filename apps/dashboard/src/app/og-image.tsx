@@ -17,10 +17,10 @@ export default function OgImage({
       : "Centro de Control";
   const subtitle =
     locale === "en"
-      ? "Multi-tenant operations in real time."
+      ? "Multi-tenant operations with visible data provenance."
       : locale === "pt-BR"
-      ? "Operação multi-tenant em tempo real."
-      : "Operación multi-tenant en tiempo real.";
+      ? "Operação multi-tenant com origem dos dados visível."
+      : "Operación multi-tenant con procedencia de datos visible.";
 
   return new ImageResponse(
     (

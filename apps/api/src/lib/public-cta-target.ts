@@ -80,11 +80,12 @@ function normalizePolicy(value: unknown): PublicCtaTokenizationPolicy | null {
   return null;
 }
 
-export function resolvePublicCtaTokenizationConfig(identity: PublicCtaEventIdentity) {
-  const batchConfig = asRecord(identity.batch_sdm_config);
-  const ownershipPolicy = asRecord(identity.sun_profile_ownership_policy);
-  const tenantMetadata = asRecord(identity.sun_profile_metadata);
-  const explicitCandidates: Array<{ source: string; value: unknown }> = [
+function explicitTokenizationPolicyCandidates(
+  batchConfig: Record<string, unknown>,
+  ownershipPolicy: Record<string, unknown>,
+  tenantMetadata: Record<string, unknown>,
+) {
+  return [
     { source: "batch.sdm_config.tokenization.policy", value: readPath(batchConfig, ["tokenization", "policy"]) },
     { source: "batch.sdm_config.sun.passport.tokenizationPolicy", value: readPath(batchConfig, ["sun", "passport", "tokenizationPolicy"]) },
     { source: "batch.sdm_config.sun.tokenizationPolicy", value: readPath(batchConfig, ["sun", "tokenizationPolicy"]) },
@@ -95,6 +96,59 @@ export function resolvePublicCtaTokenizationConfig(identity: PublicCtaEventIdent
     { source: "tenant.metadata.tokenizationPolicy", value: tenantMetadata.tokenizationPolicy },
     { source: "tenant.metadata.tokenization_policy", value: tenantMetadata.tokenization_policy },
   ];
+}
+
+function explicitBoolean(value: unknown): boolean | null {
+  if (value === true || value === false) return value;
+  const normalized = clean(value).toLowerCase();
+  if (["true", "1", "on", "enabled"].includes(normalized)) return true;
+  if (["false", "0", "off", "disabled"].includes(normalized)) return false;
+  return null;
+}
+
+/**
+ * A SUN tap is a metered custody operation, so vertical inference is not an
+ * authorization boundary. Both the policy and auto-mint opt-in must be
+ * explicit in tenant/batch configuration.
+ */
+export function resolveExplicitSunAutoTokenizationAuthorization(identity: PublicCtaEventIdentity) {
+  const batchConfig = asRecord(identity.batch_sdm_config);
+  const ownershipPolicy = asRecord(identity.sun_profile_ownership_policy);
+  const tenantMetadata = asRecord(identity.sun_profile_metadata);
+  const configuredPolicyCandidate = explicitTokenizationPolicyCandidates(batchConfig, ownershipPolicy, tenantMetadata)
+    .find((candidate) => candidate.value !== undefined && candidate.value !== null && clean(candidate.value) !== "");
+  const policyCandidate = configuredPolicyCandidate
+    ? { ...configuredPolicyCandidate, policy: normalizePolicy(configuredPolicyCandidate.value) }
+    : null;
+  const autoCandidates = [
+    { source: "batch.sdm_config.tokenization.auto_tokenize_on_valid_tap", value: readPath(batchConfig, ["tokenization", "auto_tokenize_on_valid_tap"]) },
+    { source: "batch.sdm_config.tokenization.autoTokenizeOnValidTap", value: readPath(batchConfig, ["tokenization", "autoTokenizeOnValidTap"]) },
+    { source: "batch.sdm_config.sun.auto_tokenize_on_valid_tap", value: readPath(batchConfig, ["sun", "auto_tokenize_on_valid_tap"]) },
+    { source: "tenant.ownership_policy.auto_tokenize_on_valid_tap", value: ownershipPolicy.auto_tokenize_on_valid_tap },
+    { source: "tenant.ownership_policy.autoTokenizeOnValidTap", value: ownershipPolicy.autoTokenizeOnValidTap },
+    { source: "tenant.metadata.tokenization.auto_tokenize_on_valid_tap", value: readPath(tenantMetadata, ["tokenization", "auto_tokenize_on_valid_tap"]) },
+    { source: "tenant.metadata.tokenization.autoTokenizeOnValidTap", value: readPath(tenantMetadata, ["tokenization", "autoTokenizeOnValidTap"]) },
+  ];
+  const configuredAutoCandidate = autoCandidates
+    .find((candidate) => candidate.value !== undefined && candidate.value !== null && clean(candidate.value) !== "");
+  const autoCandidate = configuredAutoCandidate
+    ? { ...configuredAutoCandidate, enabled: explicitBoolean(configuredAutoCandidate.value) }
+    : null;
+
+  return {
+    enabled: autoCandidate?.enabled === true,
+    autoSource: autoCandidate?.source || "unconfigured",
+    policy: policyCandidate?.policy || null,
+    policySource: policyCandidate?.source || "unconfigured",
+    configuredRecipient: configuredRecipient(batchConfig, ownershipPolicy, tenantMetadata),
+  };
+}
+
+export function resolvePublicCtaTokenizationConfig(identity: PublicCtaEventIdentity) {
+  const batchConfig = asRecord(identity.batch_sdm_config);
+  const ownershipPolicy = asRecord(identity.sun_profile_ownership_policy);
+  const tenantMetadata = asRecord(identity.sun_profile_metadata);
+  const explicitCandidates = explicitTokenizationPolicyCandidates(batchConfig, ownershipPolicy, tenantMetadata);
 
   for (const candidate of explicitCandidates) {
     const policy = normalizePolicy(candidate.value);

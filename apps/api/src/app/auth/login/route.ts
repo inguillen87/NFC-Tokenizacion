@@ -40,8 +40,9 @@ function normalizeLoginEmail(rawEmail: string) {
 function unsafeMissingUsersFallbackAllowed() {
   const explicit = String(process.env.DASHBOARD_MISSING_USERS_TABLE_FALLBACK || "").trim().toLowerCase();
   const allowed = explicit === "1" || explicit === "true" || explicit === "yes" || explicit === "on";
-  const runtime = String(process.env.VERCEL_ENV || process.env.NODE_ENV || "").trim().toLowerCase();
-  return allowed && runtime !== "production";
+  const production = [process.env.VERCEL_ENV, process.env.NODE_ENV]
+    .some((value) => String(value || "").trim().toLowerCase() === "production");
+  return allowed && !production;
 }
 
 function authHeaders(traceId: string, extra: Record<string, string> = {}) {

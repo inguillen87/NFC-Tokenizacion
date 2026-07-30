@@ -28,6 +28,15 @@ function legacyFallbackEnabled() {
   return String(process.env.SUN_HANDOFF_ALLOW_LEGACY_SECRET_FALLBACK || "").trim().toLowerCase() === "true";
 }
 
+function productionRuntime() {
+  return [process.env.VERCEL_ENV, process.env.NODE_ENV]
+    .some((value) => String(value || "").trim().toLowerCase() === "production");
+}
+
+function strongEnough(secret: string) {
+  return Buffer.byteLength(secret, "utf8") >= 32;
+}
+
 function legacySecrets() {
   if (!legacyFallbackEnabled()) return [];
   return [process.env.PUBLIC_DEMO_SHARE_SECRET, process.env.ADMIN_API_KEY, process.env.TOKENIZATION_UID_SALT]
@@ -38,6 +47,9 @@ function legacySecrets() {
 function signingSecret() {
   const value = String(process.env.SUN_HANDOFF_SECRET || "").trim() || legacySecrets()[0] || "";
   if (!value) throw new Error("SUN_HANDOFF_SECRET is required");
+  if (productionRuntime() && !strongEnough(value)) {
+    throw new Error("SUN_HANDOFF_SECRET must be at least 32 bytes in production");
+  }
   return value;
 }
 
@@ -121,7 +133,11 @@ export function verifySunFreshHandoffToken(token: string | null | undefined, exp
   if (!secrets.length) {
     return { ok: false as const, reason: "fresh_token_secret_missing" };
   }
-  const matchedSecret = secrets.find((candidate) => safeEquals(signature, sign(body, candidate)));
+  if (productionRuntime() && !secrets.some(strongEnough)) {
+    return { ok: false as const, reason: "fresh_token_secret_too_short" };
+  }
+  const eligibleSecrets = productionRuntime() ? secrets.filter(strongEnough) : secrets;
+  const matchedSecret = eligibleSecrets.find((candidate) => safeEquals(signature, sign(body, candidate)));
   if (!matchedSecret) return { ok: false as const, reason: "fresh_token_invalid_signature" };
 
   try {

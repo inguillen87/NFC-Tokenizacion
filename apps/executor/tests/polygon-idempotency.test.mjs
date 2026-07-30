@@ -5,18 +5,54 @@ import {
   reconcileExistingPolygonMint,
   runPolygonMintIdempotently,
 } from "../src/polygon-idempotency.mjs";
+import { buildPolygonMintIntentDigest } from "../src/polygon-mint-intent.mjs";
 import { mintUnlocked } from "../src/server.mjs";
 
 const contractAddress = "0x00000000000000000000000000000000000000A1";
 const recipient = "0x00000000000000000000000000000000000000B2";
-const expected = Object.freeze({
+const expected = {
   contractAddress,
   recipient,
   chipUidHash: `sha256:${"ab".repeat(32)}`,
   tokenUri: "https://api.nexid.lat/public/polygon/assets/nx-test",
   assetRef: "batch-2026:nx-test",
-  requestId: "request-test-1",
+  requestId: "11111111-1111-4111-8111-111111111111",
+  tenantId: "22222222-2222-4222-8222-222222222222",
+  leaseId: "33333333-3333-4333-8333-333333333333",
+  network: "polygon-amoy",
+  executionClass: "testnet_trial",
+  commercialDisposition: "NON_SELLABLE",
+};
+expected.intentDigest = buildPolygonMintIntentDigest({
+  requestId: expected.requestId,
+  tenantId: expected.tenantId,
+  leaseId: expected.leaseId,
+  network: expected.network,
+  executionClass: expected.executionClass,
+  commercialDisposition: expected.commercialDisposition,
+  issuerWallet: expected.recipient,
+  chipUidHash: expected.chipUidHash,
+  tokenUri: expected.tokenUri,
+  assetRef: expected.assetRef,
 });
+Object.freeze(expected);
+
+function executorMintBody(overrides = {}) {
+  return {
+    request_id: expected.requestId,
+    tenant_id: expected.tenantId,
+    lease_id: expected.leaseId,
+    network: expected.network,
+    execution_class: expected.executionClass,
+    commercial_disposition: expected.commercialDisposition,
+    issuer_wallet: expected.recipient,
+    chip_uid_hash: expected.chipUidHash,
+    token_uri: expected.tokenUri,
+    asset_ref: expected.assetRef,
+    intent_digest: expected.intentDigest,
+    ...overrides,
+  };
+}
 
 function matchingContract(overrides = {}) {
   const state = {
@@ -65,15 +101,10 @@ test("the real Polygon executor boundary returns an exact replay before wrapped-
     POLYGON_EXPECTED_CHAIN_ID: "80002",
     POLYGON_KMS_PUBLISHER_ADDRESS: undefined,
   }, async () => {
-    const result = await mintUnlocked({
-      request_id: expected.requestId,
-      chip_uid_hash: expected.chipUidHash,
-      token_uri: expected.tokenUri,
-      issuer_wallet: expected.recipient,
-      asset_ref: expected.assetRef,
-    }, {
+    const result = await mintUnlocked(executorMintBody(), {
       provider: { async getNetwork() { return { chainId: 80002n }; } },
       readContract,
+      async polygonMintIntentAuthorizer() { return { mode: "reconcile" }; },
       async signWithWrappedKms() {
         calls.decrypt += 1;
         calls.sign += 1;
@@ -95,7 +126,7 @@ test("the real executor preserves a first Polygon mint and confirms its exact bi
   const signingContract = {
     async mintWithChipHash(to, chipUidHash, tokenUri, assetRef) {
       mintCalls += 1;
-      assert.equal(to, expected.recipient);
+      assert.equal(to, expected.recipient.toLowerCase());
       assert.equal(chipUidHash, expected.chipUidHash);
       assert.equal(tokenUri, expected.tokenUri);
       assert.equal(assetRef, expected.assetRef);
@@ -127,16 +158,11 @@ test("the real executor preserves a first Polygon mint and confirms its exact bi
     POLYGON_EXPECTED_CHAIN_ID: "80002",
     POLYGON_MINTER_PRIVATE_KEY: "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a841cb6b37e8db1e1cb",
   }, async () => {
-    const result = await mintUnlocked({
-      request_id: expected.requestId,
-      chip_uid_hash: expected.chipUidHash,
-      token_uri: expected.tokenUri,
-      issuer_wallet: expected.recipient,
-      asset_ref: expected.assetRef,
-    }, {
+    const result = await mintUnlocked(executorMintBody(), {
       provider: { async getNetwork() { return { chainId: 80002n }; } },
       readContract,
       signingContract,
+      async polygonMintIntentAuthorizer() { return { mode: "dispatch" }; },
     });
     assert.equal(result.token_id, "27");
     assert.equal(result.tx_hash, `0x${"34".repeat(32)}`);

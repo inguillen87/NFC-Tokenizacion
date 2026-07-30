@@ -1,11 +1,11 @@
 import { json } from "../../../../lib/http";
-import { recordDemoCta } from "../../../../lib/demo-cta";
 import { requireShareToken } from "../../../../lib/public-cta-auth";
 import { resolvePublicCtaTarget } from "../../../../lib/public-cta-target";
 import { consumeSunFreshHandoff } from "../../../../lib/sun-fresh-handoff";
 import { enforceCriticalRateLimit } from "../../../../lib/critical-rate-limit";
 import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../lib/bounded-request-body";
 import { getConsumerFromRequest } from "../../../../lib/consumer-auth";
+import { CanonicalEventWriteError, writeCanonicalEvent } from "../../../../lib/canonical-event-writer";
 
 const MAX_WARRANTY_BODY_BYTES = 32 * 1024;
 
@@ -84,20 +84,43 @@ export async function POST(req: Request) {
     }, 403);
   }
 
-  const saved = await recordDemoCta("warranty_review_requested", bid, uid, {
-    request_status: "pending_review",
-    provenance: "demo_cta_action_log",
-    event_id: eventId,
-    tenant_id: target.tenantId,
-    warranty_policy: target.warrantyPolicy,
-    warranty_policy_source: target.warrantyPolicySource,
-    consumer_authenticated: Boolean(consumer?.id),
-    contact_provided: contactAvailable,
-    purchase_evidence_provided: purchaseEvidenceProvided,
-    terms_accepted: termsAccepted,
-    missing_requirements: missingRequirements,
-    fresh_handoff_exp: fresh.payload.exp,
-  });
+  let saved;
+  try {
+    saved = await writeCanonicalEvent({
+      operationKey: `warranty-review:event-${eventId}`,
+      eventName: "warranty.review_requested",
+      mode: "live",
+      family: "lifecycle",
+      referenceEventId: eventId,
+      batchId: target.batchId,
+      uidHex: uid,
+      eventType: "WARRANTY_REVIEW_REQUESTED",
+      result: "WARRANTY_REVIEW_REQUESTED",
+      verdict: "valid",
+      riskLevel: missingRequirements.length ? "medium" : "low",
+      reason: missingRequirements.length ? "warranty_requirements_incomplete" : "warranty_review_requested",
+      meta: {
+        trace_id: traceId,
+        fresh_handoff_exp: fresh.payload.exp,
+        warranty_policy_source: target.warrantyPolicySource,
+      },
+      webhookData: {
+        requestStatus: "pending_review",
+        warrantyPolicy: target.warrantyPolicy,
+        consumerAuthenticated: Boolean(consumer?.id),
+        contactProvided: contactAvailable,
+        purchaseEvidenceProvided,
+        termsAccepted,
+        missingRequirements,
+      },
+    });
+  } catch (error) {
+    const reason = error instanceof CanonicalEventWriteError ? error.code : "canonical_event_write_unavailable";
+    return json({ ok: false, reason, request_status: "not_recorded", warranty_confirmed: false, trace_id: traceId }, 503, {
+      "cache-control": "no-store",
+      "retry-after": "2",
+    });
+  }
   return json({
     ok: true,
     action: "register_warranty",
@@ -105,7 +128,7 @@ export async function POST(req: Request) {
     outcome: "request_recorded",
     warranty_confirmed: false,
     warranty: { status: "pending_review", confirmed: false },
-    request: { id: saved.id, recorded_at: saved.created_at },
+    request: { id: saved.canonicalOperationId, event_id: saved.eventId, recorded_at: saved.eventCreatedAt },
     requirements: {
       tenant_policy: "configured",
       consumer_or_contact: contactAvailable,
@@ -113,7 +136,8 @@ export async function POST(req: Request) {
       terms_accepted: termsAccepted,
       missing: missingRequirements,
     },
-    provenance: { mode: "demo_action_log", system: "demo_cta_actions", real_warranty_service: false },
+    provenance: { mode: "canonical_event", system: "events", workflow: "review_request_only", warranty_confirmed: false },
+    webhook_outbox: saved.webhookOutbox,
     trace_id: traceId,
     share_token_status: auth.share_token_status,
     fresh_token_status: "accepted",

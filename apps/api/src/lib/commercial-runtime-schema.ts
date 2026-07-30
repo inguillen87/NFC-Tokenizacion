@@ -243,6 +243,7 @@ export async function ensureOrderRequestsSchema() {
       await sql/*sql*/`
         CREATE TABLE IF NOT EXISTS order_requests (
           id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+          tenant_id uuid REFERENCES tenants(id) ON DELETE SET NULL,
           locale text NOT NULL DEFAULT 'es-AR',
           contact text NOT NULL,
           company text,
@@ -256,6 +257,7 @@ export async function ensureOrderRequestsSchema() {
           updated_at timestamptz NOT NULL DEFAULT now()
         )
       `;
+      await sql/*sql*/`ALTER TABLE order_requests ADD COLUMN IF NOT EXISTS tenant_id uuid REFERENCES tenants(id) ON DELETE SET NULL`;
       await sql/*sql*/`ALTER TABLE order_requests ADD COLUMN IF NOT EXISTS locale text NOT NULL DEFAULT 'es-AR'`;
       await sql/*sql*/`ALTER TABLE order_requests ADD COLUMN IF NOT EXISTS contact text NOT NULL DEFAULT 'unknown'`;
       await sql/*sql*/`ALTER TABLE order_requests ADD COLUMN IF NOT EXISTS company text`;
@@ -268,6 +270,7 @@ export async function ensureOrderRequestsSchema() {
       await sql/*sql*/`ALTER TABLE order_requests ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now()`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_order_requests_status_created_at ON order_requests(status, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_order_requests_contact_created_at ON order_requests(contact, created_at DESC)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_order_requests_tenant_created_at ON order_requests(tenant_id, created_at DESC)`;
     }, () => {
       orderRequestsSchemaReady = null;
     });
@@ -492,7 +495,7 @@ export async function ensureSdkSchema() {
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_idempotency_processing_lease ON sdk_idempotency_operations(lease_expires_at) WHERE state = 'processing'`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_sdk_idempotency_expiry ON sdk_idempotency_operations(expires_at)`;
       await sql/*sql*/`ALTER TABLE events ADD COLUMN IF NOT EXISTS sdk_idempotency_operation_id uuid REFERENCES sdk_idempotency_operations(id) ON DELETE SET NULL`;
-      await sql/*sql*/`CREATE UNIQUE INDEX IF NOT EXISTS uq_events_sdk_idempotency_operation ON events(sdk_idempotency_operation_id) WHERE sdk_idempotency_operation_id IS NOT NULL`;
+      await sql/*sql*/`CREATE UNIQUE INDEX IF NOT EXISTS uq_events_sdk_idempotency_operation ON events(sdk_idempotency_operation_id, created_at) WHERE sdk_idempotency_operation_id IS NOT NULL`;
 
       await tolerateConcurrentSchemaCreate(() => sql/*sql*/`
         CREATE TABLE IF NOT EXISTS sdk_pos_activations (
@@ -1179,6 +1182,7 @@ export async function ensureConsumerPortalSchema() {
         CREATE TABLE IF NOT EXISTS marketplace_offers (
           id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
           tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+          ownership_id uuid REFERENCES consumer_product_ownerships(id) ON DELETE RESTRICT,
           marketplace_product_id uuid REFERENCES marketplace_products(id) ON DELETE SET NULL,
           reward_id uuid REFERENCES rewards(id) ON DELETE SET NULL,
           title text NOT NULL,
@@ -1207,7 +1211,9 @@ export async function ensureConsumerPortalSchema() {
           consumer_message text,
           contact_json jsonb NOT NULL DEFAULT '{}'::jsonb,
           shipping_address_json jsonb,
-          source_tap_event_id bigint REFERENCES events(id) ON DELETE SET NULL,
+          source_tap_event_id bigint,
+          source_tap_event_created_at timestamptz,
+          source_tag_id uuid REFERENCES tags(id) ON DELETE RESTRICT,
           created_at timestamptz NOT NULL DEFAULT now(),
           updated_at timestamptz NOT NULL DEFAULT now()
         )
@@ -1215,10 +1221,13 @@ export async function ensureConsumerPortalSchema() {
 
       await sql/*sql*/`ALTER TABLE marketplace_order_requests ADD COLUMN IF NOT EXISTS source_uid_hex text`;
       await sql/*sql*/`ALTER TABLE marketplace_order_requests ADD COLUMN IF NOT EXISTS source_batch_id uuid`;
+      await sql/*sql*/`ALTER TABLE marketplace_order_requests ADD COLUMN IF NOT EXISTS source_tag_id uuid REFERENCES tags(id) ON DELETE RESTRICT`;
+      await sql/*sql*/`ALTER TABLE marketplace_order_requests ADD COLUMN IF NOT EXISTS source_tap_event_created_at timestamptz`;
       await sql/*sql*/`ALTER TABLE marketplace_order_requests ADD COLUMN IF NOT EXISTS source_bid text`;
       await sql/*sql*/`ALTER TABLE marketplace_order_requests ADD COLUMN IF NOT EXISTS source_context_json jsonb NOT NULL DEFAULT '{}'::jsonb`;
       
       await sql/*sql*/`ALTER TABLE marketplace_offers ADD COLUMN IF NOT EXISTS seller_consumer_id uuid REFERENCES consumers(id) ON DELETE CASCADE`;
+      await sql/*sql*/`ALTER TABLE marketplace_offers ADD COLUMN IF NOT EXISTS ownership_id uuid REFERENCES consumer_product_ownerships(id) ON DELETE RESTRICT`;
       await sql/*sql*/`ALTER TABLE marketplace_offers ADD COLUMN IF NOT EXISTS resale_price numeric(12,2)`;
       await sql/*sql*/`ALTER TABLE marketplace_offers ADD COLUMN IF NOT EXISTS resale_currency text`;
       await sql/*sql*/`ALTER TABLE marketplace_offers ADD COLUMN IF NOT EXISTS resale_uid_hex text`;
@@ -1230,6 +1239,8 @@ export async function ensureConsumerPortalSchema() {
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_marketplace_order_requests_tenant ON marketplace_order_requests(tenant_id, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_marketplace_order_requests_consumer_product_status ON marketplace_order_requests(consumer_id, marketplace_product_id, status, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_marketplace_order_requests_source_tap ON marketplace_order_requests(source_tap_event_id)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_marketplace_order_requests_source_identity ON marketplace_order_requests(tenant_id, source_tag_id, source_tap_event_id, source_tap_event_created_at)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_marketplace_offers_ownership ON marketplace_offers(tenant_id, ownership_id) WHERE ownership_id IS NOT NULL`;
 
       await seedBalmecMarketplaceRows();
     }, () => {

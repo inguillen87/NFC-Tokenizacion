@@ -26,7 +26,7 @@ export async function GET() {
       COUNT(*)::int AS demo_events
     FROM events e
     JOIN tenants t ON t.id = e.tenant_id
-    WHERE LOWER(COALESCE(e.source, '')) = 'demo'
+    WHERE LOWER(COALESCE(e.source::text, '')) = 'demo'
       AND LOWER(t.slug) = ${publicDemoTenantSlug}
   `;
 
@@ -40,7 +40,7 @@ export async function GET() {
       COALESCE(t.slug, 'tenant') AS tenant_slug
     FROM events e
     JOIN tenants t ON t.id = e.tenant_id
-    WHERE LOWER(COALESCE(e.source, '')) = 'demo'
+    WHERE LOWER(COALESCE(e.source::text, '')) = 'demo'
       AND LOWER(t.slug) = ${publicDemoTenantSlug}
     ORDER BY e.created_at DESC
     LIMIT 12

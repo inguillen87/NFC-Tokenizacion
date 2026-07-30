@@ -203,9 +203,9 @@ const PANEL_CONTENT: Record<
     color: "text-violet-400",
     gradientFrom: "from-violet-500/20",
     title: "Propiedad Digital (Polygon)",
-    subtitle: "El comprador inicia ownership con un mint testnet verificable",
+    subtitle: "El comprador inicia una solicitud; el certificado confirma el mint testnet solo si pasan los checks actuales",
     context:
-      "Cuando el comprador toca el producto, puede solicitar ownership en Polygon después de validar el mensaje NFC, la evidencia disponible y la política tenant. El demo conecta con un certificado público que consulta owner, mint y metadata HTTPS en vivo.",
+      "Cuando el comprador toca el producto, puede solicitar ownership en Polygon después de validar el mensaje NFC, la evidencia disponible y la política tenant. El demo conecta con un certificado público que muestra el estado actual de sus consultas de owner, mint y metadata HTTPS.",
     value:
       "Cada ownership aprobado puede habilitar garantia, reventa y club sin exponer identidad ni factura on-chain. La transaccion prueba el mint; nexID conserva contexto, permisos y datos privados.",
     doc: { label: "Abrir certificado Polygon", href: "/proof/ownership" },

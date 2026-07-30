@@ -2,6 +2,7 @@ import { sql } from "./db";
 import { claimTapPoints, getTapEvent } from "./loyalty-service";
 import { evaluateOwnershipEligibility } from "./ownership-policy";
 import { ensureConsumerPortalSchema } from "./commercial-runtime-schema";
+import { CanonicalEventWriteError, writeCanonicalEvent } from "./canonical-event-writer";
 
 export async function ensureTenantMembership(input: { consumerId: string; tenantId: string; tapEventId?: string; source?: string }) {
   await ensureConsumerPortalSchema();
@@ -305,7 +306,45 @@ export async function claimOwnershipForConsumer(input: ClaimOwnershipInput) {
     };
   }
 
-  return { ok: true as const, status: 200, ownership: withDigitalTitleExecutionTruth(ownership) };
+  const ownershipTruth = withDigitalTitleExecutionTruth(ownership);
+  try {
+    const canonicalEvent = await writeCanonicalEvent({
+      operationKey: `ownership:${String(ownership.id)}:activated`,
+      eventName: "ownership.activated",
+      mode: "live",
+      family: "lifecycle",
+      referenceEventId: event.id,
+      referenceEventCreatedAt: event.created_at || null,
+      batchId: tag.batch_id,
+      uidHex,
+      eventType: "OWNERSHIP_ACTIVATED",
+      result: "OWNERSHIP_ACTIVATED",
+      verdict: "valid",
+      riskLevel: "low",
+      reason: "off_chain_digital_title_activated",
+      meta: {
+        source: input.source || "sun_passport",
+        source_event_id: event.id,
+      },
+      webhookData: {
+        ownershipId: String(ownership.id),
+        status: String(ownership.status || nextStatus),
+        recordScope: "nexid_off_chain_digital_title",
+        chainTransferStatus: "not_executed",
+        physicalCustodyVerified: false,
+      },
+    });
+    return { ok: true as const, status: 200, ownership: ownershipTruth, canonicalEvent };
+  } catch (error) {
+    const reason = error instanceof CanonicalEventWriteError ? error.code : "canonical_event_write_unavailable";
+    return {
+      ok: false as const,
+      status: 503,
+      error: reason,
+      operationCommitted: true,
+      ownership: ownershipTruth,
+    };
+  }
 }
 
 export async function claimPointsForConsumer(input: { consumerId: string; eventId: string; locale?: string }) {

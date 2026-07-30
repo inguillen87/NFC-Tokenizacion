@@ -14,11 +14,15 @@ test("fleet policy separates auth, proof writes, webhooks and public traffic", (
   assert.equal(classifyFleetRateLimit("/admin/proof/anchor", "POST"), "proof_write");
   assert.equal(classifyFleetRateLimit("/admin/proof/events", "POST"), "proof_write");
   assert.equal(classifyFleetRateLimit("/admin/proof/anchors", "POST"), "proof_write");
+  assert.equal(classifyFleetRateLimit("/admin/supplier-orders/00000000-0000-4000-8000-000000000000/purpose/classify-trial", "POST"), "proof_write");
   assert.equal(classifyFleetRateLimit("/public/cta/tokenize-request", "POST"), "proof_write");
   assert.equal(classifyFleetRateLimit("/marketplace/p2p/buy", "POST"), "proof_write");
   assert.equal(classifyFleetRateLimit("/assistant/chat", "POST"), "ai_expensive");
   assert.equal(classifyFleetRateLimit("/realtime/session", "POST"), "ai_expensive");
+  assert.equal(classifyFleetRateLimit("/admin/campaigns/test-whatsapp", "POST"), "ai_expensive");
   assert.equal(classifyFleetRateLimit("/public/leads", "POST"), "public_write");
+  assert.equal(classifyFleetRateLimit("/admin/leads", "POST"), "public_write");
+  assert.equal(classifyFleetRateLimit("/admin/orders", "POST"), "public_write");
   assert.equal(classifyFleetRateLimit("/public/proof/verify", "GET"), "proof_write");
   assert.equal(classifyFleetRateLimit("/public/proof/decode", "POST"), "proof_write");
   assert.equal(classifyFleetRateLimit("/public/cta/register-warranty", "POST"), "proof_write");
@@ -31,7 +35,21 @@ test("fleet policy separates auth, proof writes, webhooks and public traffic", (
   assert.equal(classifyFleetRateLimit("/_rate-limit/sdk-auth", "POST"), "sdk_auth");
   assert.equal(classifyFleetRateLimit("/api/v1/sdk/products/BID-1", "GET"), "sdk_read");
   assert.equal(classifyFleetRateLimit("/api/v1/sdk/offline-sync", "POST"), "sdk_write");
+  assert.equal(classifyFleetRateLimit("/api/v1/sdk/epcis/capture", "POST"), "sdk_epcis_capture");
   assert.equal(classifyFleetRateLimit("/public/proof/x", "GET"), "public");
+});
+
+test("EPCIS capture has a dedicated transaction-amplification limit", () => {
+  const decision = buildFleetRateLimitDecision({
+    pathname: "/api/v1/sdk/epcis/capture",
+    method: "POST",
+    tenantId: "tenant-acme",
+    subjectId: "sdk-key:key-42",
+    clientIp: "203.0.113.10",
+  });
+  assert.equal(decision.rateClass, "sdk_epcis_capture");
+  assert.equal(decision.limit, 2);
+  assert.equal(decision.windowSeconds, 60);
 });
 
 test("fleet keys bind tenant, subject and IP and expose stable gateway headers", () => {

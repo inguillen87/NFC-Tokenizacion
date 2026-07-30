@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import http from "node:http";
-import { createHash, timingSafeEqual } from "node:crypto";
+import { timingSafeEqual } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { Contract, JsonRpcProvider, Transaction, Wallet, formatEther, getAddress, isAddress } from "ethers";
 import {
@@ -19,6 +19,11 @@ import {
   reconcileExistingPolygonMint,
   runPolygonMintIdempotently,
 } from "./polygon-idempotency.mjs";
+import {
+  checkPolygonMintIntentStore,
+  normalizePolygonMintIntent,
+  reservePolygonMintIntent,
+} from "./polygon-mint-intent.mjs";
 import { signWithWrappedKms, wrappedKmsConfigured } from "./wrapped-kms-signer.mjs";
 
 const polygonAbi = [
@@ -47,6 +52,44 @@ const enqueuePolygonMint = createPolygonMintQueue();
 
 function env(name, fallback = "") {
   return String(process.env[name] || fallback).trim();
+}
+
+function isProductionRuntime() {
+  return [
+    env("NODE_ENV"),
+    env("VERCEL_ENV"),
+    env("EXECUTOR_ENVIRONMENT"),
+    env("NEXID_ENVIRONMENT"),
+    env("NEXID_KMS_ENVIRONMENT"),
+  ].some((value) => new Set(["prod", "production"]).has(value.toLowerCase()));
+}
+
+function polygonSignerCustody(signerMode) {
+  if (signerMode === "kms") {
+    return {
+      model: "remote_signer",
+      key_exportability: "provider_unattested",
+      hsm_attested: false,
+    };
+  }
+  if (signerMode === "kms_wrapped") {
+    return {
+      model: "software_envelope_key_decrypted_in_process",
+      key_exportability: "exportable_in_runtime_memory",
+      hsm_attested: false,
+    };
+  }
+  return {
+    model: "plaintext_exportable_private_key",
+    key_exportability: "exportable",
+    hsm_attested: false,
+  };
+}
+
+function assertPolygonSignerPolicy(signerMode, executionClass) {
+  if (signerMode === "private_key" && (isProductionRuntime() || executionClass === "live_chain")) {
+    throw new Error("polygon_exportable_private_key_forbidden");
+  }
 }
 
 function executorCapabilities() {
@@ -110,6 +153,10 @@ function secretMatches(provided, expected) {
   return left.length === right.length && left.length > 0 && timingSafeEqual(left, right);
 }
 
+function strongExecutorSecretConfigured(name) {
+  return Buffer.byteLength(env(name), "utf8") >= 32;
+}
+
 function authOk(req, secretName, headerName) {
   const expected = env(secretName);
   if (!expected) return false;
@@ -122,12 +169,6 @@ function authOk(req, secretName, headerName) {
 function required(name, value) {
   if (!value) throw new Error(`missing_${name}`);
   return value;
-}
-
-function hashUid(uidHex, salt = "") {
-  const normalizedUid = String(uidHex || "").trim().toUpperCase();
-  const normalizedSalt = String(salt || env("TOKENIZATION_UID_SALT")).trim();
-  return `sha256:${createHash("sha256").update(`${normalizedUid}:${normalizedSalt}`).digest("hex")}`;
 }
 
 function deriveTokenId(receipt) {
@@ -149,7 +190,6 @@ async function health() {
   const signerMode = env("EXECUTOR_SIGNER_MODE", "private_key").toLowerCase();
   const rpcUrl = env("POLYGON_RPC_URL");
   const contractAddress = env("POLYGON_CONTRACT_ADDRESS");
-  const defaultRecipient = env("POLYGON_DEFAULT_RECIPIENT");
   const privateKey = signerMode === "private_key" ? env("POLYGON_MINTER_PRIVATE_KEY") : "";
   const polygonKms = signerMode === "kms" && kmsConfigured({ url: env("POLYGON_KMS_SIGNER_URL") || env("KMS_SIGNER_URL"), keyId: env("POLYGON_KMS_KEY_ID") || env("KMS_KEY_ID") }) && isAddress(env("POLYGON_KMS_PUBLISHER_ADDRESS"));
   const polygonWrappedKms = signerMode === "kms_wrapped" && wrappedKmsConfigured({ domain: "polygon" }) && isAddress(env("POLYGON_KMS_PUBLISHER_ADDRESS"));
@@ -207,6 +247,7 @@ async function health() {
     service: "nexid-tokenization-executor",
     capabilities,
     signerMode: activeSignerMode,
+    polygonSignerCustody: polygonEnabled ? polygonSignerCustody(signerMode) : null,
     network,
     networks: {
       ...(polygonEnabled ? {
@@ -235,7 +276,6 @@ async function health() {
       configured: signerMode === "kms" ? polygonKms : signerMode === "kms_wrapped" ? polygonWrappedKms : Boolean(privateKey),
       balancePol: minterBalancePol,
     },
-    defaultRecipient: iotaOnly ? null : defaultRecipient || null,
     iotaEvidenceV2: {
       signerMode: iotaSignerMode,
       rpcConfigured: Boolean(iotaRpcUrl),
@@ -303,6 +343,52 @@ async function probePolygonChain({ rpcUrl, contractAddress, signerAddress, expec
   }
 }
 
+function iotaReadinessTimeoutMs() {
+  const parsed = Number(env("IOTA_READINESS_TIMEOUT_MS", "2500"));
+  return Number.isFinite(parsed) ? Math.max(500, Math.min(5000, Math.trunc(parsed))) : 2500;
+}
+
+async function withinIotaReadinessTimeout(operation) {
+  let timeout;
+  try {
+    return await Promise.race([
+      operation,
+      new Promise((_, reject) => {
+        timeout = setTimeout(() => reject(new Error("iota_readiness_timeout")), iotaReadinessTimeoutMs());
+      }),
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
+
+async function probeIotaChain({ rpcUrl, contractAddress, publisherAddress, expectedChain }) {
+  const provider = new JsonRpcProvider(rpcUrl);
+  try {
+    return await withinIotaReadinessTimeout((async () => {
+      const network = await provider.getNetwork();
+      const chainId = Number(network.chainId);
+      const code = await provider.getCode(contractAddress);
+      const contractDeployed = Boolean(code && code !== "0x");
+      let schemaVersion = null;
+      let publisherAuthorized = false;
+      if (chainId === expectedChain && contractDeployed) {
+        const contract = new Contract(contractAddress, iotaEvidenceAbi, provider);
+        const [schema, authorized] = await Promise.all([
+          contract.SCHEMA_VERSION(),
+          contract.authorizedPublishers(publisherAddress),
+        ]);
+        schemaVersion = Number(schema);
+        publisherAuthorized = authorized === true;
+      }
+      const balanceWei = await provider.getBalance(publisherAddress);
+      return { chainId, contractDeployed, schemaVersion, publisherAuthorized, balanceWei };
+    })());
+  } finally {
+    provider.destroy();
+  }
+}
+
 async function polygonReadiness(dependencies = {}) {
   const signerMode = env("EXECUTOR_SIGNER_MODE", "private_key").toLowerCase();
   let expectedChain = null;
@@ -327,14 +413,20 @@ async function polygonReadiness(dependencies = {}) {
     : signerMode === "kms_wrapped"
       ? wrappedKmsConfigured({ domain: "polygon" }) && isAddress(publisherAddress)
       : signerMode === "private_key" && Boolean(privateKeyAddress(env("POLYGON_MINTER_PRIVATE_KEY")));
+  const productionSignerPolicy = !(isProductionRuntime() && signerMode === "private_key");
+  const durableIntentStore = await (dependencies.polygonIntentReadinessProbe || checkPolygonMintIntentStore)({
+    database: dependencies.polygonIntentReadinessDatabase,
+  });
   const configuredMinterMatches = !configuredMinterAddress
     || (isAddress(configuredMinterAddress) && signerAddress && configuredMinterAddress.toLowerCase() === signerAddress.toLowerCase());
   const checks = {
     rpc: Boolean(rpcUrl),
     contract: isAddress(contractAddress),
-    executor_secret: Boolean(env("TOKENIZATION_EXECUTOR_SECRET")),
-    expected_chain_id: expectedChain === 80002,
+    executor_secret: strongExecutorSecretConfigured("TOKENIZATION_EXECUTOR_SECRET"),
+    expected_chain_id: new Set([80002, 137]).has(expectedChain),
     signer,
+    production_signer_policy: productionSignerPolicy,
+    durable_intent_store: durableIntentStore.ok === true,
     configured_minter_match: Boolean(configuredMinterMatches),
     rpc_live: false,
     chain_id: false,
@@ -343,7 +435,17 @@ async function polygonReadiness(dependencies = {}) {
     signer_gas: false,
   };
   let live = null;
-  if (checks.rpc && checks.contract && checks.expected_chain_id && checks.signer && checks.configured_minter_match && signerAddress) {
+  if (
+    checks.rpc
+    && checks.contract
+    && checks.executor_secret
+    && checks.expected_chain_id
+    && checks.signer
+    && checks.production_signer_policy
+    && checks.durable_intent_store
+    && checks.configured_minter_match
+    && signerAddress
+  ) {
     try {
       live = await (dependencies.polygonReadinessProbe || probePolygonChain)({
         rpcUrl,
@@ -367,9 +469,18 @@ async function polygonReadiness(dependencies = {}) {
   const liveVerified = Object.values(checks).every(Boolean);
   return {
     ok: liveVerified,
-    configured: checks.rpc && checks.contract && checks.executor_secret && checks.expected_chain_id && checks.signer && checks.configured_minter_match,
+    configured: checks.rpc
+      && checks.contract
+      && checks.executor_secret
+      && checks.expected_chain_id
+      && checks.signer
+      && checks.production_signer_policy
+      && checks.durable_intent_store
+      && checks.configured_minter_match,
     live_verified: liveVerified,
     signer_mode: signerMode,
+    signer_custody: polygonSignerCustody(signerMode),
+    durable_intent_store: durableIntentStore,
     checks,
     chain_id: live?.chainId == null ? null : String(live.chainId),
     expected_chain_id: expectedChain == null ? null : String(expectedChain),
@@ -387,18 +498,22 @@ async function polygonReadiness(dependencies = {}) {
 
 async function iotaReadiness(dependencies = {}) {
   const signerMode = env("IOTA_EXECUTOR_SIGNER_MODE", env("EXECUTOR_SIGNER_MODE", "private_key")).toLowerCase();
-  let expectedChainIdValid = true;
+  let expectedChain = null;
   try {
-    expectedChainId("IOTA_EVM_EXPECTED_CHAIN_ID", 1076, "iota_expected_chain_id_invalid");
+    expectedChain = expectedChainId("IOTA_EVM_EXPECTED_CHAIN_ID", 1076, "iota_expected_chain_id_invalid");
   } catch {
-    expectedChainIdValid = false;
+    expectedChain = null;
   }
   const publisherAddress = env("IOTA_KMS_PUBLISHER_ADDRESS");
+  const privateSignerAddress = signerMode === "private_key" ? privateKeyAddress(env("IOTA_EVM_PRIVATE_KEY")) : null;
+  const resolvedPublisherAddress = signerMode === "kms" || signerMode === "kms_wrapped"
+    ? (isAddress(publisherAddress) ? getAddress(publisherAddress) : null)
+    : privateSignerAddress;
   const signer = signerMode === "kms"
     ? kmsConfigured() && isAddress(publisherAddress)
     : signerMode === "kms_wrapped"
       ? wrappedKmsConfigured({ domain: "iota" }) && isAddress(publisherAddress)
-      : signerMode === "private_key" && Boolean(privateKeyAddress(env("IOTA_EVM_PRIVATE_KEY")));
+      : signerMode === "private_key" && Boolean(privateSignerAddress);
   const durableStore = await checkIotaDurableStore({
     database: dependencies.iotaReadinessDatabase,
     cache: dependencies.iotaReadinessCache,
@@ -407,15 +522,72 @@ async function iotaReadiness(dependencies = {}) {
     rpc: Boolean(env("IOTA_EVM_RPC_URL")),
     contract: isAddress(env("IOTA_EVM_ANCHOR_CONTRACT_V2")),
     durable_store: durableStore.ok,
-    executor_secret: Boolean(env("IOTA_PROOF_EXECUTOR_SECRET")),
-    expected_chain_id: expectedChainIdValid,
+    executor_secret: strongExecutorSecretConfigured("IOTA_PROOF_EXECUTOR_SECRET"),
+    expected_chain_id: expectedChain === 1076,
     signer,
+    production_signer_policy: !(isProductionRuntime() && signerMode === "private_key"),
+    rpc_live: false,
+    chain_id: false,
+    contract_code: false,
+    contract_schema_v2: false,
+    publisher_authorized: false,
+    publisher_gas: false,
   };
+  let live = null;
+  if (
+    checks.rpc
+    && checks.contract
+    && checks.durable_store
+    && checks.executor_secret
+    && checks.expected_chain_id
+    && checks.signer
+    && checks.production_signer_policy
+    && resolvedPublisherAddress
+  ) {
+    try {
+      live = await (dependencies.iotaReadinessProbe || probeIotaChain)({
+        rpcUrl: env("IOTA_EVM_RPC_URL"),
+        contractAddress: env("IOTA_EVM_ANCHOR_CONTRACT_V2"),
+        publisherAddress: resolvedPublisherAddress,
+        expectedChain,
+      });
+      checks.rpc_live = true;
+      checks.chain_id = Number(live.chainId) === expectedChain;
+      checks.contract_code = live.contractDeployed === true;
+      checks.contract_schema_v2 = Number(live.schemaVersion) === 2;
+      checks.publisher_authorized = live.publisherAuthorized === true;
+      checks.publisher_gas = BigInt(live.balanceWei ?? 0) > 0n;
+    } catch {
+      live = null;
+    }
+  }
+  const liveVerified = Object.values(checks).every(Boolean);
   return {
-    ok: Object.values(checks).every(Boolean),
+    ok: liveVerified,
+    configured: checks.rpc
+      && checks.contract
+      && checks.durable_store
+      && checks.executor_secret
+      && checks.expected_chain_id
+      && checks.signer
+      && checks.production_signer_policy,
+    live_verified: liveVerified,
     signer_mode: signerMode,
+    signer_custody: polygonSignerCustody(signerMode),
     checks,
     durable_store: durableStore,
+    chain_id: live?.chainId == null ? null : String(live.chainId),
+    expected_chain_id: expectedChain == null ? null : String(expectedChain),
+    contract: {
+      address: isAddress(env("IOTA_EVM_ANCHOR_CONTRACT_V2")) ? getAddress(env("IOTA_EVM_ANCHOR_CONTRACT_V2")) : null,
+      deployed: live?.contractDeployed === true,
+      schema_version: live?.schemaVersion == null ? null : Number(live.schemaVersion),
+    },
+    publisher: {
+      address: resolvedPublisherAddress,
+      authorized: checks.publisher_authorized,
+      balance_iota: live?.balanceWei == null ? null : Number(formatEther(BigInt(live.balanceWei))),
+    },
   };
 }
 
@@ -459,17 +631,18 @@ async function mintUnlocked(body, dependencies = {}) {
     throw new Error("executor_signer_mode_not_available_for_mint");
   }
 
-  const expectedPolygonChainId = expectedChainId("POLYGON_EXPECTED_CHAIN_ID", 80002, "polygon_expected_chain_id_invalid");
+  const intentInput = normalizePolygonMintIntent(body);
+  assertPolygonSignerPolicy(signerMode, intentInput.executionClass);
+  const networkChainId = intentInput.network === "polygon-amoy" ? 80002 : 137;
+  const expectedPolygonChainId = expectedChainId("POLYGON_EXPECTED_CHAIN_ID", networkChainId, "polygon_expected_chain_id_invalid");
+  if (expectedPolygonChainId !== networkChainId) throw new Error("polygon_intent_network_chain_mismatch");
   const rpcUrl = required("POLYGON_RPC_URL", env("POLYGON_RPC_URL"));
   const privateKey = signerMode === "private_key" ? required("POLYGON_MINTER_PRIVATE_KEY", env("POLYGON_MINTER_PRIVATE_KEY")) : null;
   const contractAddress = required("POLYGON_CONTRACT_ADDRESS", env("POLYGON_CONTRACT_ADDRESS"));
-  const uidHex = String(body.uid_hex || "").trim();
-  const chipUidHash = String(body.chip_uid_hash || (uidHex ? hashUid(uidHex) : ""));
-  const tokenUri = String(required("token_uri", body.token_uri)).trim();
-  const recipient = String(required("recipient", body.issuer_wallet || env("POLYGON_DEFAULT_RECIPIENT"))).trim();
-  const publicAssetId = String(body.public_asset_id || `nx-${chipUidHash.split(":").pop()?.slice(0, 24) || "asset"}`);
-  const assetRef = String(body.asset_ref || `${body.bid || "nexid"}:${publicAssetId}`);
-  required("chip_uid_hash", chipUidHash);
+  const chipUidHash = intentInput.chipUidHash;
+  const tokenUri = intentInput.tokenUri;
+  const recipient = intentInput.issuerWallet;
+  const assetRef = intentInput.assetRef;
 
   if (!isAddress(contractAddress)) throw new Error("invalid_POLYGON_CONTRACT_ADDRESS");
   if (!isAddress(recipient)) throw new Error("invalid_recipient");
@@ -477,6 +650,12 @@ async function mintUnlocked(body, dependencies = {}) {
   const provider = dependencies.provider || new JsonRpcProvider(rpcUrl, expectedPolygonChainId, { batchMaxCount: 1 });
   const network = await provider.getNetwork();
   if (Number(network.chainId) !== expectedPolygonChainId) throw new Error("polygon_chain_id_mismatch");
+  const reservation = await (dependencies.polygonMintIntentAuthorizer || reservePolygonMintIntent)(body, {
+    database: dependencies.polygonIntentDatabase,
+  });
+  if (!reservation || !new Set(["dispatch", "reconcile"]).has(reservation.mode)) {
+    throw new Error("polygon_mint_intent_authorization_invalid");
+  }
   const readContract = dependencies.readContract || new Contract(contractAddress, polygonAbi, provider);
   const inspect = () => reconcileExistingPolygonMint({
     contract: readContract,
@@ -485,8 +664,14 @@ async function mintUnlocked(body, dependencies = {}) {
     chipUidHash,
     tokenUri,
     assetRef,
-    requestId: body.request_id || null,
+    requestId: intentInput.requestId,
   });
+
+  if (reservation.mode === "reconcile") {
+    const canonical = await inspect();
+    if (!canonical) throw new Error("polygon_mint_reconciliation_pending");
+    return canonical;
+  }
 
   return runPolygonMintIdempotently({
     inspect,
@@ -539,8 +724,8 @@ async function mintUnlocked(body, dependencies = {}) {
   });
 }
 
-function mint(body) {
-  return enqueuePolygonMint(() => mintUnlocked(body));
+function mint(body, dependencies = {}) {
+  return enqueuePolygonMint(() => mintUnlocked(body, dependencies));
 }
 
 function sha256Bytes32(value, field) {
@@ -900,7 +1085,7 @@ async function handler(req, res, dependencies = {}) {
         return json(res, 401, { ok: false, reason: "unauthorized_executor" });
       }
       const body = await readJson(req);
-      return json(res, 200, await mint(body));
+      return json(res, 200, await mint(body, dependencies));
     }
     if (req.method === "POST" && ["/anchor-evidence", "/iota/evidence-v2"].includes(url.pathname)) {
       if (!executorCapabilities().has("iota")) return json(res, 404, { ok: false, reason: "not_found" });

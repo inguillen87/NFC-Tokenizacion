@@ -26,6 +26,13 @@ an API key in a browser. The package remains the preferred Node.js integration
 because it also enforces timeouts, typed errors, mutation retry policy and
 webhook signature verification.
 
+The outbound event contract is published separately as AsyncAPI 3.0 at
+`https://api.nexid.lat/asyncapi/nexid-webhooks-v1.json`; its source is
+`apps/api/public/asyncapi/nexid-webhooks-v1.json`. OpenAPI describes synchronous
+requests to nexID. AsyncAPI describes asynchronous, at-least-once callbacks from
+nexID to a tenant endpoint. Neither document implies that a live environment or
+customer endpoint has been verified merely because the contract exists.
+
 ## Five-minute server quickstart
 
 ```ts
@@ -58,7 +65,8 @@ Keep `NEXID_API_KEY` in a backend, BFF, secret manager or protected server envir
 
 The default timeout is 15 seconds per attempt. Reads retry at most twice after
 HTTP `429`, `5xx` or a transport failure. Mutations default to one attempt; only
-the four supported SDK mutations with an explicit `idempotencyKey` may retry.
+routes with an explicit durable server contract and an `idempotencyKey` may
+retry. EPCIS capture requires that key instead of making it optional.
 
 ```ts
 const nexid = new NexIdClient({
@@ -148,6 +156,13 @@ key. `processing` means wait and poll. `uncertain` means do not use a new key;
 inspect `resourceId` and reconcile downstream delivery. A different payload is
 never accepted under an existing key.
 
+EPCIS capture has a separate atomic contract: one required idempotency key binds
+the complete normalized document, its events, GS1 identity links and canonical
+outbox projections in one database transaction. A replay returns the original
+capture receipt; a different document under the same key returns `409`. The
+generic idempotency-status endpoint does not currently reconcile EPCIS capture,
+so retain the original key and retry the same document after a transport error.
+
 Webhook-producing mutation responses include `webhookOutbox`. `confirmed`
 means every currently enabled matching tenant endpoint has a durable outbox row;
 `not_configured` means there was no matching endpoint and no delivery was
@@ -173,12 +188,82 @@ business write was rolled back.
 | `applyDeliverySeal` | `POST /api/v1/logistics/seal-apply` | `sdk:logistics` |
 | `handoffDeliverySeal` | `POST /api/v1/logistics/handoff` | `sdk:logistics` |
 | `verifyDeliverySeal` | `POST /api/v1/logistics/recipient-verify` | `sdk:logistics` |
+| `captureEpcisDocument` | `POST /api/v1/sdk/epcis/capture` | `sdk:epcis:write` |
+| `queryEpcisEvents` | `GET /api/v1/sdk/epcis/events` | `sdk:epcis:read` |
+| `exportEpcisEvents` | `GET /api/v1/sdk/epcis/export` | `sdk:epcis:read` |
 
 There is no public sandbox endpoint. For an approved local or private deployment use `environment: "private"` with an explicit `apiBaseUrl`.
+
+## GS1 Digital Link and bounded EPCIS 2.0
+
+The EPCIS client uses the official GS1 EPCIS 2.0 JSON-LD context and media type,
+requires GTIN-14 identities registered to the authenticated tenant, validates
+bounded inputs before network I/O, and returns cursor metadata without asking
+callers to parse response headers.
+
+One capture is capped at 512 KiB, 100 events, 100 identifiers per event and 100
+total canonical projections. These are operational safety limits, not GS1
+standard maxima.
+
+```ts
+import {
+  NEXID_EPCIS_CONTEXT,
+  type NexIdEpcisDocument,
+} from "@product/nexid-server-sdk";
+
+const document = {
+  "@context": NEXID_EPCIS_CONTEXT,
+  type: "EPCISDocument",
+  schemaVersion: "2.0",
+  epcisBody: {
+    eventList: [{
+      type: "ObjectEvent",
+      eventTime: new Date().toISOString(),
+      eventTimeZoneOffset: "-03:00",
+      action: "OBSERVE",
+      bizStep: "shipping",
+      disposition: "in_transit",
+      epcList: ["https://id.nexid.lat/01/09506000134352/10/SYNGENTA-2026-001"],
+    }],
+  },
+} satisfies NexIdEpcisDocument;
+
+const receipt = await nexid.captureEpcisDocument(document, {
+  idempotencyKey: "wms:shipment:48392",
+  requestId: "wms_shipment_48392",
+});
+
+let cursor: string | undefined;
+do {
+  const page = await nexid.queryEpcisEvents({
+    gtin: "09506000134352",
+    lot: "SYNGENTA-2026-001",
+    limit: 100,
+    cursor,
+  });
+  for (const event of page.document.epcisBody.queryResults.resultsBody.eventList) {
+    console.log(event.type, event.eventTime);
+  }
+  cursor = page.nextCursor ?? undefined;
+} while (cursor);
+```
+
+This is an intentionally bounded interoperability foundation, not a claim of
+complete GS1 EPCIS/CBV conformance or certification. An EPCIS capture records a
+declared business event; it does not prove an NFC SUN cryptogram was verified.
+Cryptographic NFC evidence remains on the independent physical-tag verification
+path and is never synthesized from an EPCIS document.
 
 ## Webhooks: verify the raw body first
 
 The signature covers the exact bytes delivered by nexID. Never parse JSON and serialize it again before verification. After a valid signature, persist `deliveryId` with a uniqueness constraint before processing to reject replayed deliveries.
+
+New receivers should use `verifyAndParseNexIdWebhook`. It first verifies the
+signature, then checks the bounded UTF-8/JSON event envelope, requires the body
+event ID to match the signed header and optionally allowlists event types. The
+current body contract is `schemaVersion: "1.0"`; the immediately previous
+unversioned envelope remains readable as `contractVersion: "legacy"` during the
+N-1 migration window. Unknown future schema versions fail closed.
 
 ### Signature envelopes and v2 migration
 
@@ -225,25 +310,25 @@ Adding v2 support to this SDK does not silently change the server-side webhook p
 ### Next.js App Router (Node runtime)
 
 ```ts
-import { verifyNexIdWebhookSignature } from "@product/nexid-server-sdk";
+import { verifyAndParseNexIdWebhook } from "@product/nexid-server-sdk";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   const rawBody = new Uint8Array(await request.arrayBuffer());
-  const verification = verifyNexIdWebhookSignature({
+  const result = verifyAndParseNexIdWebhook({
     secret: process.env.NEXID_WEBHOOK_SECRET!,
     rawBody,
     headers: request.headers,
+    expectedEventTypes: ["sdk.verify", "sdk.claim.created"],
   });
 
-  if (!verification.ok) {
-    return Response.json({ ok: false, reason: verification.reason }, { status: 401 });
+  if (!result.ok) {
+    return Response.json({ ok: false, reason: result.reason }, { status: 401 });
   }
 
-  // Atomically reserve verification.deliveryId before side effects.
-  const event = JSON.parse(Buffer.from(rawBody).toString("utf8"));
-  await processNexIdEvent(event, verification.deliveryId);
+  // Atomically reserve result.verification.deliveryId before side effects.
+  await processNexIdEvent(result.event, result.verification.deliveryId);
   return Response.json({ ok: true });
 }
 ```
@@ -254,21 +339,20 @@ Register the raw route before any global `express.json()` middleware.
 
 ```ts
 import express from "express";
-import { verifyNexIdWebhookSignature } from "@product/nexid-server-sdk";
+import { verifyAndParseNexIdWebhook } from "@product/nexid-server-sdk";
 
 const app = express();
 
 app.post("/webhooks/nexid", express.raw({ type: "application/json" }), async (req, res) => {
-  const verification = verifyNexIdWebhookSignature({
+  const result = verifyAndParseNexIdWebhook({
     secret: process.env.NEXID_WEBHOOK_SECRET!,
     rawBody: req.body,
     headers: req.headers,
   });
-  if (!verification.ok) return res.status(401).json({ ok: false, reason: verification.reason });
+  if (!result.ok) return res.status(401).json({ ok: false, reason: result.reason });
 
   // Enforce a unique deliveryId in durable storage before processing.
-  const event = JSON.parse(req.body.toString("utf8"));
-  await processNexIdEvent(event, verification.deliveryId);
+  await processNexIdEvent(result.event, result.verification.deliveryId);
   return res.status(200).json({ ok: true });
 });
 

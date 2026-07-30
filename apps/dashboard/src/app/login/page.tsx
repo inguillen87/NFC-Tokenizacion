@@ -24,7 +24,7 @@ const visibleRoleCards = [
   },
   {
     label: "Empleado Operaciones NFC",
-    description: "Opera batches, tags, validaciones, eventos en vivo y canjes sin tocar seguridad global ni facturación.",
+    description: "Opera batches, tags, validaciones, eventos reportados y canjes sin tocar seguridad global ni facturación.",
   },
   {
     label: "Empleado CRM & Growth",
@@ -97,13 +97,13 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               <p className="mt-8 text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200">Centro de control enterprise</p>
               <h1 className="mt-3 text-3xl font-bold text-white md:text-4xl">{t.common.login}</h1>
               <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">
-                Ingreso exclusivo para operaciones nexID: tenants, tags, taps en vivo, CRM, marketplace, antifraude y analytics.
+                Ingreso exclusivo para operaciones nexID: tenants, tags, eventos NFC reportados, CRM, marketplace, señales de riesgo y analytics.
                 El portal de consumidores vive separado para mantener clara la experiencia del comprador final.
               </p>
 
               <div className="mt-5 rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-4 text-sm text-cyan-100">
-                Consola lista para venta: ingreso controlado, métricas en vivo, exportación de reportes y flujo completo para operar
-                tenants, tags y clientes sin mezclar el portal consumidor.
+                Consola comercial con ingreso controlado, métricas con fuente declarada, exportación de reportes y flujos para operar
+                tenants, tags y clientes sin mezclar el portal consumidor. La disponibilidad productiva se valida por módulo y entorno.
               </div>
 
               <div className="mt-5 grid gap-2 text-xs">

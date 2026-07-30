@@ -28,7 +28,7 @@ import {
   GlassWater,
   ExternalLink,
 } from "lucide-react";
-import { BrandLockup, Button, Card, ThemeToggle, type VectorMapPoint, type VectorMapRoute } from "@product/ui";
+import { BrandLockup, buttonClassName, Card, ThemeToggle, type VectorMapPoint, type VectorMapRoute } from "@product/ui";
 import { HeroTrustAtlasSvg } from "../../components/hero-scene";
 import {
   platformTrustedBy,
@@ -37,7 +37,12 @@ import {
   type PlatformIconKey,
   type PlatformVertical,
 } from "../../lib/platform-verticals";
-import { NEXID_SDK_VERIFY_URL } from "../../lib/sdk-public-contract";
+import {
+  NEXID_SDK_ASYNCAPI_URL,
+  NEXID_SDK_EPCIS_CAPTURE_URL,
+  NEXID_SDK_OPENAPI_URL,
+  NEXID_SDK_VERIFY_URL,
+} from "../../lib/sdk-public-contract";
 
 export const metadata: Metadata = {
   title: "SDK y APIs - nexID",
@@ -66,6 +71,22 @@ const verification = await response.json();
 if (verification.verdict === "VALID") {
   // Continuar en backend: POS token, claim y webhook por politica.
 }`;
+const epcisCode = `// ERP/WMS backend - EPCIS capture is never called from a browser
+const response = await fetch("${NEXID_SDK_EPCIS_CAPTURE_URL}", {
+  method: "POST",
+  headers: {
+    "content-type": "application/vnd.gs1.epcis+json",
+    "accept": "application/vnd.gs1.epcis+json",
+    "x-nexid-api-key": process.env.NEXID_API_KEY!,
+    "x-nexid-tenant-slug": "mi-marca",
+    "Idempotency-Key": shipment.eventId,
+  },
+  body: JSON.stringify(epcisDocument),
+});
+
+if (!response.ok) throw new Error("No se pudo capturar el documento EPCIS");
+const receipt = await response.json();
+console.log(receipt.captureID, receipt.canonicalProjectionCount);`;
 const pillars = [
   {
     icon: Code2,
@@ -113,7 +134,7 @@ const trustSignals = [
 const enterpriseContracts = [
   {
     label: "Reintentos seguros",
-    detail: "verify, claim, events y POS aceptan Idempotency-Key. El SDK reintenta mutaciones solo cuando esa clave está presente.",
+    detail: "Verify, claim, events y POS aceptan Idempotency-Key; EPCIS capture la exige. El SDK reintenta solo operaciones con contrato durable.",
     Icon: Zap,
   },
   {
@@ -259,16 +280,16 @@ function SdkTopNav({ theme }: { theme: SdkTheme }) {
         <Link href="/?contact=sales&intent=sdk_access&source=sdk&return_to=%2Fsdk#contact-modal" className="sdk-mobile-primary-action" aria-label="Solicitar acceso a la API nexID">
           Solicitar acceso <ArrowRight className="h-3.5 w-3.5" />
         </Link>
-        <div className="sdk-theme-toggle" aria-label="Cambiar tema SDK">
+        <div className="sdk-theme-toggle">
           <ThemeToggle initialTheme={theme} />
         </div>
         <div className="sdk-nav-actions">
           <span className="sdk-api-status">API de produccion</span>
-          <Link href="https://app.nexid.lat/login">
-            <Button variant="secondary">Iniciar sesion</Button>
+          <Link href="https://app.nexid.lat/login" className={buttonClassName("secondary")}>
+            Iniciar sesion
           </Link>
-          <Link href="/?contact=sales&intent=sdk_access&source=sdk&return_to=%2Fsdk#contact-modal">
-            <Button>Solicitar acceso</Button>
+          <Link href="/?contact=sales&intent=sdk_access&source=sdk&return_to=%2Fsdk#contact-modal" className={buttonClassName()}>
+            Solicitar acceso
           </Link>
         </div>
       </div>
@@ -423,7 +444,7 @@ function SdkGlobalHeroScene({ activeVertical, theme }: { activeVertical: Platfor
 
   return (
     <div className="sdk-proof-hero-system">
-      <div className="sdk-global-hero-globe sdk-global-hero-atlas" aria-label="Atlas SDK nexID">
+      <div className="sdk-global-hero-globe sdk-global-hero-atlas">
         <HeroTrustAtlasSvg points={atlas.points} routes={atlas.routes} selectedPointId="tap" />
         <div className="sdk-global-hero-atlas__caption">
           <span>Infraestructura viva</span>
@@ -443,7 +464,7 @@ function SdkGlobalHeroScene({ activeVertical, theme }: { activeVertical: Platfor
           />
           <span>{profile.proof}</span>
         </div>
-        <div className="sdk-proof-phone" aria-label="Salida celular SDK nexID">
+        <div className="sdk-proof-phone">
           <div className="sdk-proof-phone__chrome" aria-hidden="true">
             <strong>nexID</strong>
             <em>9:41</em>
@@ -537,17 +558,20 @@ export default async function SdkPage({ searchParams }: SdkPageProps) {
               Las APIs nexID y el acceso SDK privado asocian una referencia declarada de producto, empaque, evento o activo con una identidad digital y evidencia del mensaje NFC/SUN. La integracion se ejecuta desde el servidor del cliente, con credenciales por tenant y cambios controlados; no autentica por si sola el objeto fisico.
             </p>
             <div className="sdk-hero-actions">
-              <Link href="/docs">
-                <Button><Code2 className="mr-2 h-4 w-4" />Explorar documentacion</Button>
+              <Link href="/docs" className={buttonClassName()}>
+                <Code2 className="mr-2 h-4 w-4" />Explorar documentacion
               </Link>
-              <a href="https://api.nexid.lat/openapi/nexid-sdk-v1.json" target="_blank" rel="noreferrer">
-                <Button variant="secondary"><ExternalLink className="mr-2 h-4 w-4" />OpenAPI v1</Button>
+              <a href={NEXID_SDK_OPENAPI_URL} target="_blank" rel="noreferrer" className={buttonClassName("secondary")}>
+                <ExternalLink className="mr-2 h-4 w-4" />OpenAPI v1
               </a>
-              <Link href={`/demo-lab?vertical=${activeVertical.demoVertical}`}>
-                <Button variant="secondary"><PlayCircle className="mr-2 h-4 w-4" />Ver demo interactiva</Button>
+              <a href={NEXID_SDK_ASYNCAPI_URL} target="_blank" rel="noreferrer" className={buttonClassName("secondary")}>
+                <Webhook className="mr-2 h-4 w-4" />AsyncAPI webhooks v1
+              </a>
+              <Link href={`/demo-lab?vertical=${activeVertical.demoVertical}`} className={buttonClassName("secondary")}>
+                <PlayCircle className="mr-2 h-4 w-4" />Ver demo interactiva
               </Link>
-              <Link href="/proof/verify">
-                <Button variant="secondary"><ShieldCheck className="mr-2 h-4 w-4" />Proof Verify & Decoder</Button>
+              <Link href="/proof/verify" className={buttonClassName("secondary")}>
+                <ShieldCheck className="mr-2 h-4 w-4" />Proof Verify & Decoder
               </Link>
             </div>
             <div className="sdk-trust-rail">
@@ -610,6 +634,29 @@ export default async function SdkPage({ searchParams }: SdkPageProps) {
           </div>
         </section>
 
+        <section aria-labelledby="sdk-epcis-contract" className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
+          <Card className="p-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">ERP, WMS y supply chain</p>
+            <h2 id="sdk-epcis-contract" className="mt-3 text-2xl font-black tracking-tight text-white">EPCIS 2.0 sin formato propietario obligatorio</h2>
+            <p className="mt-4 text-sm leading-7 text-slate-300">
+              Capture, consulta y exportacion usan un perfil JSON/JSON-LD acotado, identidades GS1 registradas por tenant, scopes separados de lectura y escritura, paginacion por cursor y proyeccion atomica al outbox de webhooks.
+            </p>
+            <div className="mt-5 grid gap-3">
+              <div className="rounded-lg border border-white/10 bg-white/5 p-3 text-sm text-slate-200">Hasta 512 KiB, 100 eventos y 100 proyecciones canonicas por captura.</div>
+              <div className="rounded-lg border border-white/10 bg-white/5 p-3 text-sm text-slate-200">Un retry conserva el mismo Idempotency-Key y nunca duplica el documento aceptado.</div>
+              <div className="rounded-lg border border-amber-300/20 bg-amber-500/10 p-3 text-sm text-amber-50">Un evento EPCIS declara un hecho de negocio: no reemplaza ni simula la verificacion criptografica SUN del tag NFC.</div>
+            </div>
+            <p className="mt-4 text-xs leading-5 text-slate-400">Fundacion interoperable; no se presenta como certificacion GS1 ni como implementacion completa de todas las extensiones EPCIS/CBV.</p>
+          </Card>
+          <Card className="overflow-hidden p-0">
+            <div className="border-b border-white/10 px-5 py-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">Captura server-side</p>
+              <h3 className="mt-2 text-xl font-semibold text-white">Un recibo auditable para cada documento</h3>
+            </div>
+            <pre role="region" tabIndex={0} aria-label="Ejemplo EPCIS 2.0 en JSON" className="overflow-x-auto bg-slate-950 p-5 text-xs leading-6 text-cyan-50"><code>{epcisCode}</code></pre>
+          </Card>
+        </section>
+
         <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
           <Card className="p-6">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">Por que lo construimos</p>
@@ -629,7 +676,7 @@ export default async function SdkPage({ searchParams }: SdkPageProps) {
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">Contrato server-side</p>
               <h2 className="mt-2 text-xl font-semibold text-white">Una llamada auditable, sin secretos en el navegador</h2>
             </div>
-            <pre className="overflow-x-auto bg-slate-950 p-5 text-xs leading-6 text-cyan-50"><code>{code}</code></pre>
+            <pre role="region" tabIndex={0} aria-label="Ejemplo de integracion server-side" className="overflow-x-auto bg-slate-950 p-5 text-xs leading-6 text-cyan-50"><code>{code}</code></pre>
           </Card>
         </section>
 

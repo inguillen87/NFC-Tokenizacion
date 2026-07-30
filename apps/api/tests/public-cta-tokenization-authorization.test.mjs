@@ -5,6 +5,7 @@ import test from "node:test";
 
 const {
   eventShareUid,
+  resolveExplicitSunAutoTokenizationAuthorization,
   resolvePublicCtaTarget,
   resolvePublicCtaTokenizationConfig,
 } = await import("../src/lib/public-cta-target.ts");
@@ -141,6 +142,42 @@ test("server policy supports configured lot anchors and otherwise fails closed",
   assert.equal(fallback.policy, "ownership_required");
 });
 
+test("SUN auto tokenization requires an explicit policy and explicit tenant or batch opt-in", () => {
+  const inferredAgro = resolveExplicitSunAutoTokenizationAuthorization(eventIdentity({
+    sun_profile_vertical: "agro",
+    sun_profile_tokenization_mode: "valid_only",
+  }));
+  const policyOnly = resolveExplicitSunAutoTokenizationAuthorization(eventIdentity({
+    batch_sdm_config: { tokenization: { policy: "lot_anchor" } },
+  }));
+  const explicitlyAuthorized = resolveExplicitSunAutoTokenizationAuthorization(eventIdentity({
+    batch_sdm_config: {
+      tokenization: {
+        policy: "lot_anchor",
+        auto_tokenize_on_valid_tap: true,
+        recipientWallet: "0x1111111111111111111111111111111111111111",
+      },
+    },
+  }));
+  const invalidBatchCannotFallThroughToTenant = resolveExplicitSunAutoTokenizationAuthorization(eventIdentity({
+    batch_sdm_config: { tokenization: { policy: "caller-invented", auto_tokenize_on_valid_tap: "invalid" } },
+    sun_profile_ownership_policy: { tokenizationPolicy: "lot_anchor", autoTokenizeOnValidTap: true },
+  }));
+
+  assert.equal(inferredAgro.enabled, false);
+  assert.equal(inferredAgro.policy, null);
+  assert.equal(policyOnly.enabled, false);
+  assert.equal(policyOnly.policy, "lot_anchor");
+  assert.equal(explicitlyAuthorized.enabled, true);
+  assert.equal(explicitlyAuthorized.policy, "lot_anchor");
+  assert.equal(explicitlyAuthorized.policySource, "batch.sdm_config.tokenization.policy");
+  assert.equal(explicitlyAuthorized.autoSource, "batch.sdm_config.tokenization.auto_tokenize_on_valid_tap");
+  assert.equal(invalidBatchCannotFallThroughToTenant.policy, null);
+  assert.equal(invalidBatchCannotFallThroughToTenant.enabled, false);
+  assert.equal(invalidBatchCannotFallThroughToTenant.policySource, "batch.sdm_config.tokenization.policy");
+  assert.equal(invalidBatchCannotFallThroughToTenant.autoSource, "batch.sdm_config.tokenization.auto_tokenize_on_valid_tap");
+});
+
 test("fresh handoff signs an event-derived UID alias and enforces it for tokenization", () => {
   const token = freshToken();
   const accepted = requireSunFreshHandoff(
@@ -189,6 +226,7 @@ test("tokenization route uses only resolved policy, exact ownership and trusted 
   assert.match(source, /caller_tokenization_recipient_not_authorized/);
   assert.match(source, /verifiedConsumerWallet\(consumer\)/);
   assert.match(source, /issuer_wallet: trustedRecipient/);
+  assert.doesNotMatch(source, /POLYGON_DEFAULT_RECIPIENT/);
   assert.doesNotMatch(source, /issuer_wallet:\s*sanitizeText\(body\.issuer_wallet/);
   assert.match(source, /o\.tenant_id = \$\{input\.tenantId\}/);
   assert.match(source, /o\.batch_id = \$\{input\.batchId\}/);

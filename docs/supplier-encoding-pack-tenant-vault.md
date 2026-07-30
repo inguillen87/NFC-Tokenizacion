@@ -25,7 +25,7 @@ The factory never receives:
 - Consumer PII.
 - Tenant commercial contracts, margins or private routes.
 
-Use generic labels such as "sub-batch encoding keys" in public and tenant-facing copy. The actual key field names and values belong only in the encrypted supplier pack and secure backend logs; the supplier should not see KMS terminology or database implementation details.
+Use generic labels such as "sub-batch encoding keys" in public and tenant-facing copy. Raw key values may exist only transiently in authorized backend memory and inside the encrypted supplier pack. Backend logs and audit records contain only non-secret fingerprints, versions, hashes and custody metadata, never raw encoding keys. The supplier should not see KMS terminology or database implementation details.
 
 ## Why sub-batches matter
 
@@ -67,11 +67,16 @@ The pack should be encrypted for transfer and treated as one-time operational ma
   "url_template": "<VALIDATION_URL_TEMPLATE_REDACTED>",
   "manifest_format": "sub_batch_id,bid,uid_hex,ic_type,roll_id,qc_status,timestamp",
   "qa": {
-    "sample_count": 12,
+    "acceptance_scope": "trial_integration_only",
+    "sample_count": 10,
     "must_pass": ["uid_decode", "cmac_valid", "replay_blocked", "ttstatus_closed"]
   }
 }
 ```
+
+The exported runtime pack now emits `QA_INTEGRATION_GATE` with `acceptance_scope=trial_integration_only`, a sample count capped at ten, server selection authority and explicit physical-ceremony status. It also emits `PRODUCTION_LOT_ACCEPTANCE.status=tenant_qa_plan_required`. The fixed ceremony does not statistically accept a production lot.
+
+Production receiving QA remains a target control, not an implemented runtime path. It requires a tenant-approved plan that records lot size, inspection level, AQL, sample size, accept/reject numbers, a reproducible server-side selection commitment, stratification by roll/carton/pallet, observed defects and audited disposition. nexID must not invent the customer's AQL.
 
 Recommended transport controls:
 
@@ -79,7 +84,9 @@ Recommended transport controls:
 - Encrypt the ZIP or JSON before sending.
 - Share the archive and password/key through separate channels.
 - Record export time, exporter, supplier recipient and pack fingerprint.
-- Expire or rotate the pack after delivery, incident or production drift.
+- After export, never rotate or resend keys in place for the same sub-batch. An incident or production drift requires revoking the affected scope and issuing a new sub-batch and one-time pack.
+
+An encrypted supplier pack is application-level custody and controlled delivery. It must not be described as managed KMS or HSM protection unless the deployed key path is actually backed by that service and independently evidenced.
 
 ## Supplier manifest return
 
@@ -119,7 +126,7 @@ Tenant Vault can show:
 
 Tenant Vault must not show:
 
-- Raw sub-batch encoding keys after export.
+- Raw sub-batch encoding keys at any time.
 - Master keys.
 - Database URLs.
 - Internal storage paths that reveal infrastructure.
@@ -128,7 +135,7 @@ Tenant Vault must not show:
 
 ## Hash and Merkle policy
 
-Use hashes to prove that a file or event set has not changed without publishing the file itself.
+Use hashes as integrity commitments. Comparison with a trusted reference can detect modification without publishing the file itself, but a bare hash does not prove authorship, custody, timestamp, physical truth or correctness of the underlying evidence. Those claims require an authenticated receipt, signature or confirmed anchor plus controlled evidence custody.
 
 - For one artifact, canonicalize the artifact metadata and calculate `sha256`.
 - For many rows/events, calculate one digest per row/event, build a Merkle tree and store only the Merkle root as the public checkpoint.

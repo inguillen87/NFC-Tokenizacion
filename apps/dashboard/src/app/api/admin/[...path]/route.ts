@@ -1194,12 +1194,17 @@ async function forward(req: Request, path: string[]) {
 
   let response: Response;
   try {
+    const forwardedHeaders = new Headers({
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${credential?.bearerToken || ""}`,
+    });
+    for (const header of ["idempotency-key", "x-nexid-trace-id", "if-match"]) {
+      const value = req.headers.get(header);
+      if (value) forwardedHeaders.set(header, value);
+    }
     response = await fetch(target, {
       method: req.method,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${credential?.bearerToken || ""}`,
-      },
+      headers: forwardedHeaders,
       body,
       cache: "no-store",
     });
@@ -1240,6 +1245,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ path: s
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ path: string[] }> }) {
+  const p = await params;
+  return forward(req, p.path || []);
+}
+
+export async function DELETE(req: Request, { params }: { params: Promise<{ path: string[] }> }) {
   const p = await params;
   return forward(req, p.path || []);
 }

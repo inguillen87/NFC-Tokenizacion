@@ -4,7 +4,7 @@ import { Wallet } from "ethers";
 import { handler } from "../src/server.mjs";
 
 const PRIVATE_KEY = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a841cb6b37e8db1e1cb";
-const SECRET = "test-only-long-executor-secret";
+const SECRET = "test-only-long-executor-secret-32-bytes";
 const CONTRACT = "0x0000000000000000000000000000000000000001";
 
 async function withProcessEnv(overrides, operation) {
@@ -21,7 +21,7 @@ async function withProcessEnv(overrides, operation) {
   }
 }
 
-async function requestReadiness({ secret = SECRET, probe } = {}) {
+async function requestReadiness({ secret = SECRET, probe, intentStoreProbe } = {}) {
   return new Promise((resolve) => {
     const headers = secret ? { "x-tokenization-secret": secret } : {};
     const req = new Request("http://executor.test/ready?capability=polygon", { headers });
@@ -30,7 +30,14 @@ async function requestReadiness({ secret = SECRET, probe } = {}) {
       writeHead(status) { response.status = status; },
       end(body) { response.body = JSON.parse(body); resolve(response); },
     };
-    void handler(req, res, { polygonReadinessProbe: probe });
+    void handler(req, res, {
+      polygonReadinessProbe: probe,
+      polygonIntentReadinessProbe: intentStoreProbe || (async () => ({
+        ok: true,
+        reason: null,
+        checks: { connectivity: true, table: true, columns: true, privileges: true },
+      })),
+    });
   });
 }
 
@@ -78,6 +85,61 @@ test("Polygon readiness is live only after chain, bytecode, authorization and ga
     assert.equal(response.body.chains.polygon.contract.deployed, true);
     assert.equal(response.body.chains.polygon.signer.authorized, true);
     assert.ok(response.body.chains.polygon.signer.balance_pol > 0);
+  });
+});
+
+test("Polygon readiness fails closed for a weak executor secret", async () => {
+  await withProcessEnv({ ...environment, TOKENIZATION_EXECUTOR_SECRET: "too-short" }, async () => {
+    let called = false;
+    const response = await requestReadiness({
+      secret: "too-short",
+      probe: async () => { called = true; throw new Error("must_not_probe"); },
+    });
+    assert.equal(response.status, 503);
+    assert.equal(response.body.chains.polygon.checks.executor_secret, false);
+    assert.equal(called, false);
+  });
+});
+
+test("Polygon readiness fails closed when durable one-shot intent storage is unavailable", async () => {
+  await withProcessEnv(environment, async () => {
+    let called = false;
+    const response = await requestReadiness({
+      probe: async () => { called = true; throw new Error("must_not_probe"); },
+      intentStoreProbe: async () => ({
+        ok: false,
+        reason: "database_unavailable",
+        checks: { connectivity: false, table: false, columns: false, privileges: false },
+      }),
+    });
+    assert.equal(response.status, 503);
+    assert.equal(response.body.chains.polygon.checks.durable_intent_store, false);
+    assert.equal(response.body.chains.polygon.durable_intent_store.reason, "database_unavailable");
+    assert.equal(called, false);
+  });
+});
+
+test("Polygon readiness labels wrapped software custody without claiming HSM", async () => {
+  await withProcessEnv({
+    ...environment,
+    EXECUTOR_SIGNER_MODE: "kms_wrapped",
+    POLYGON_MINTER_PRIVATE_KEY: undefined,
+    POLYGON_KMS_PUBLISHER_ADDRESS: new Wallet(PRIVATE_KEY).address,
+    POLYGON_KMS_WRAP_KEY_RESOURCE: "projects/test/locations/global/keyRings/test/cryptoKeys/test",
+    POLYGON_KMS_WRAPPED_PRIVATE_KEY: Buffer.from("test-ciphertext").toString("base64"),
+  }, async () => {
+    const response = await requestReadiness({
+      probe: async () => ({
+        chainId: 80002,
+        contractDeployed: true,
+        ownerAddress: "0x0000000000000000000000000000000000000002",
+        minterAllowlisted: true,
+        balanceWei: 1n,
+      }),
+    });
+    assert.equal(response.body.chains.polygon.signer_custody.model, "software_envelope_key_decrypted_in_process");
+    assert.equal(response.body.chains.polygon.signer_custody.key_exportability, "exportable_in_runtime_memory");
+    assert.equal(response.body.chains.polygon.signer_custody.hsm_attested, false);
   });
 });
 

@@ -62,7 +62,7 @@ test("reseller MRR is withheld until an explicit billing source reports it", () 
 });
 
 test("live verdicts and map precision stay in separate evidence buckets", () => {
-  assert.match(multirubro, /type EventVerdictBucket = "valid" \| "duplicate_replay" \| "tamper" \| "invalid" \| "unknown"/);
+  assert.match(multirubro, /import \{ classifyRealtimeVerdict, isRealtimeRisk, type TenantTapRealtimeWireEvent \} from "\.\.\/lib\/realtime-feed"/);
   assert.match(multirubro, /verdictBucket === "duplicate_replay"/);
   assert.match(multirubro, /verdictBucket === "invalid"/);
   assert.match(multirubro, /verdictBucket === "unknown"/);
@@ -72,6 +72,6 @@ test("live verdicts and map precision stay in separate evidence buckets", () => 
   assert.match(multirubro, /locationFilter === "all"/);
   assert.match(multirubro, /source\.includes\("gps"\)/);
   assert.match(multirubro, /GPS reportado por cliente; no verificacion independiente/);
-  assert.match(multirubro, /const isRisk = \["duplicate_replay", "tamper", "invalid"\]\.includes\(verdictBucket\)/);
+  assert.match(multirubro, /const isRisk = isRealtimeRisk\(payload, payload\.reason\)/);
   assert.doesNotMatch(multirubro, /const isRisk = verdictBucket !== "valid"/);
 });

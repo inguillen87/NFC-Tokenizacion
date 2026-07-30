@@ -18,7 +18,8 @@
     { "name": "Events", "description": "External operational events" },
     { "name": "POS", "description": "Point-of-sale activation" },
     { "name": "Idempotency", "description": "Durable replay and uncertain-write reconciliation" },
-    { "name": "Logistics", "description": "Reported seal and handoff events" }
+    { "name": "Logistics", "description": "Reported seal and handoff events" },
+    { "name": "EPCIS", "description": "Tenant-scoped GS1 EPCIS/CBV 2.0 bounded interoperability foundation. Not a GS1 certification claim." }
   ],
   "paths": {
     "/api/v1/sdk/verify": {
@@ -196,6 +197,105 @@
         "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LogisticsRecipientVerifyRequest" } } } },
         "responses": { "200": { "description": "Reported transition recorded", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LogisticsScanResponse" } } } }, "400": { "$ref": "#/components/responses/ApiError" }, "401": { "$ref": "#/components/responses/ApiError" }, "403": { "$ref": "#/components/responses/ApiError" }, "429": { "$ref": "#/components/responses/RateLimited" } }
       }
+    },
+    "/api/v1/sdk/epcis/capture": {
+      "post": {
+        "operationId": "captureEpcisDocument",
+        "summary": "Atomically capture a bounded EPCIS 2.0 document",
+        "description": "Validates the nexID bounded EPCIS/CBV 2.0 JSON-LD profile, rejects unregistered GS1 Digital Link identities, and atomically stores the document, events, canonical projections and webhook outbox rows. Maximum 512 KiB, 100 events, 100 identifiers per event and 100 canonical projections per document. Captured business declarations are not NFC cryptographic authentication. This foundation is not claimed as GS1 certified.",
+        "tags": ["EPCIS"],
+        "x-nexid-required-scope": "sdk:epcis:write",
+        "x-nexid-profile": "bounded-foundation-not-certified",
+        "parameters": [
+          { "$ref": "#/components/parameters/TraceId" },
+          { "$ref": "#/components/parameters/RequiredEpcisIdempotencyKey" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.gs1.epcis+json": { "schema": { "$ref": "#/components/schemas/EpcisDocument" } },
+            "application/ld+json": { "schema": { "$ref": "#/components/schemas/EpcisDocument" } },
+            "application/json": { "schema": { "$ref": "#/components/schemas/EpcisDocument" } }
+          }
+        },
+        "responses": {
+          "200": { "description": "Document captured or exact idempotent replay", "headers": { "idempotent-replayed": { "schema": { "type": "string", "enum": ["true", "false"] } }, "x-nexid-epcis-profile": { "$ref": "#/components/headers/EpcisProfile" } }, "content": { "application/vnd.gs1.epcis+json": { "schema": { "$ref": "#/components/schemas/EpcisCaptureReceipt" } } } },
+          "400": { "$ref": "#/components/responses/ApiError" },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "409": { "$ref": "#/components/responses/ApiError" },
+          "413": { "$ref": "#/components/responses/EpcisPayloadTooLarge" },
+          "415": { "$ref": "#/components/responses/ApiError" },
+          "422": { "$ref": "#/components/responses/EpcisSemanticError" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "503": { "$ref": "#/components/responses/ApiError" }
+        }
+      }
+    },
+    "/api/v1/sdk/epcis/events": {
+      "get": {
+        "operationId": "queryEpcisEvents",
+        "summary": "Query tenant-scoped EPCIS events",
+        "description": "Keyset-paginated query over captured EPCIS events. The supported filters are a bounded SimpleEventQuery subset and are not a full EPCIS query-subscription implementation.",
+        "tags": ["EPCIS"],
+        "x-nexid-required-scope": "sdk:epcis:read",
+        "x-nexid-profile": "bounded-foundation-not-certified",
+        "parameters": [
+          { "$ref": "#/components/parameters/TraceId" },
+          { "$ref": "#/components/parameters/EpcisLimit" },
+          { "$ref": "#/components/parameters/EpcisCursor" },
+          { "$ref": "#/components/parameters/EpcisEventType" },
+          { "$ref": "#/components/parameters/EpcisBizStep" },
+          { "$ref": "#/components/parameters/EpcisDisposition" },
+          { "$ref": "#/components/parameters/EpcisGtin" },
+          { "$ref": "#/components/parameters/EpcisLot" },
+          { "$ref": "#/components/parameters/EpcisSerial" },
+          { "$ref": "#/components/parameters/EpcisEventTimeFrom" },
+          { "$ref": "#/components/parameters/EpcisEventTimeTo" }
+        ],
+        "responses": {
+          "200": { "description": "EPCIS query document page", "headers": { "x-nexid-next-cursor": { "$ref": "#/components/headers/NextCursor" }, "x-nexid-epcis-profile": { "$ref": "#/components/headers/EpcisProfile" } }, "content": { "application/vnd.gs1.epcis+json": { "schema": { "$ref": "#/components/schemas/EpcisQueryDocument" } } } },
+          "400": { "$ref": "#/components/responses/ApiError" },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "422": { "$ref": "#/components/responses/EpcisSemanticError" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "503": { "$ref": "#/components/responses/ApiError" }
+        }
+      }
+    },
+    "/api/v1/sdk/epcis/export": {
+      "get": {
+        "operationId": "exportEpcisEvents",
+        "summary": "Export one tenant-scoped EPCIS event page",
+        "description": "Exports one bounded, keyset-paginated EPCISDocument page. Follow x-nexid-next-cursor to export additional pages. This is not an unbounded bulk dump or a GS1 certification claim.",
+        "tags": ["EPCIS"],
+        "x-nexid-required-scope": "sdk:epcis:read",
+        "x-nexid-profile": "bounded-foundation-not-certified",
+        "parameters": [
+          { "$ref": "#/components/parameters/TraceId" },
+          { "$ref": "#/components/parameters/EpcisLimit" },
+          { "$ref": "#/components/parameters/EpcisCursor" },
+          { "$ref": "#/components/parameters/EpcisEventType" },
+          { "$ref": "#/components/parameters/EpcisBizStep" },
+          { "$ref": "#/components/parameters/EpcisDisposition" },
+          { "$ref": "#/components/parameters/EpcisGtin" },
+          { "$ref": "#/components/parameters/EpcisLot" },
+          { "$ref": "#/components/parameters/EpcisSerial" },
+          { "$ref": "#/components/parameters/EpcisEventTimeFrom" },
+          { "$ref": "#/components/parameters/EpcisEventTimeTo" }
+        ],
+        "responses": {
+          "200": { "description": "EPCIS export document page", "headers": { "content-disposition": { "schema": { "type": "string" } }, "x-nexid-next-cursor": { "$ref": "#/components/headers/NextCursor" }, "x-nexid-epcis-profile": { "$ref": "#/components/headers/EpcisProfile" } }, "content": { "application/vnd.gs1.epcis+json": { "schema": { "$ref": "#/components/schemas/EpcisDocument" } } } },
+          "400": { "$ref": "#/components/responses/ApiError" },
+          "401": { "$ref": "#/components/responses/ApiError" },
+          "403": { "$ref": "#/components/responses/ApiError" },
+          "413": { "$ref": "#/components/responses/EpcisPayloadTooLarge" },
+          "422": { "$ref": "#/components/responses/EpcisSemanticError" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "503": { "$ref": "#/components/responses/ApiError" }
+        }
+      }
     }
   },
   "components": {
@@ -207,13 +307,30 @@
       "TraceId": { "name": "x-nexid-trace-id", "in": "header", "required": false, "description": "Caller correlation ID. Returned in response metadata when available.", "schema": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$" } },
       "IdempotencyKey": { "name": "Idempotency-Key", "in": "header", "required": false, "description": "Enables a seven-day durable replay contract on verifyTap, claimOwnership, reportEvent and activatePosPurchase. Scope is tenant plus route plus key. Same canonical JSON replays the original status/body; a different payload returns 409.", "schema": { "type": "string", "minLength": 1, "maxLength": 255, "pattern": "^[A-Za-z0-9][A-Za-z0-9._~:/+=-]{0,254}$" } },
       "RequiredIdempotencyKey": { "name": "Idempotency-Key", "in": "header", "required": true, "description": "The exact original Idempotency-Key. It stays out of the URL and ordinary access logs.", "schema": { "type": "string", "minLength": 1, "maxLength": 255, "pattern": "^[A-Za-z0-9][A-Za-z0-9._~:/+=-]{0,254}$" } },
+      "RequiredEpcisIdempotencyKey": { "name": "Idempotency-Key", "in": "header", "required": true, "description": "Required for atomic EPCIS capture. Scope is tenant plus capture route plus key; an exact canonical document replay returns the original receipt and a different document returns 409.", "schema": { "type": "string", "minLength": 1, "maxLength": 255, "pattern": "^[A-Za-z0-9][A-Za-z0-9._~:/+=-]{0,254}$" } },
+      "EpcisLimit": { "name": "limit", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 1, "maximum": 200, "default": 50 } },
+      "EpcisCursor": { "name": "cursor", "in": "query", "required": false, "description": "Opaque tenant-bound keyset cursor from x-nexid-next-cursor.", "schema": { "type": "string", "maxLength": 512 } },
+      "EpcisEventType": { "name": "eventType", "in": "query", "required": false, "schema": { "type": "string", "enum": ["ObjectEvent", "AggregationEvent", "TransactionEvent", "TransformationEvent", "AssociationEvent"] } },
+      "EpcisBizStep": { "name": "bizStep", "in": "query", "required": false, "schema": { "type": "string", "maxLength": 512 } },
+      "EpcisDisposition": { "name": "disposition", "in": "query", "required": false, "schema": { "type": "string", "maxLength": 512 } },
+      "EpcisGtin": { "name": "gtin", "in": "query", "required": false, "schema": { "type": "string", "pattern": "^[0-9]{14}$" } },
+      "EpcisLot": { "name": "lot", "in": "query", "required": false, "schema": { "type": "string", "minLength": 1, "maxLength": 20 } },
+      "EpcisSerial": { "name": "serial", "in": "query", "required": false, "schema": { "type": "string", "minLength": 1, "maxLength": 20 } },
+      "EpcisEventTimeFrom": { "name": "eventTimeFrom", "in": "query", "required": false, "schema": { "type": "string", "format": "date-time" } },
+      "EpcisEventTimeTo": { "name": "eventTimeTo", "in": "query", "required": false, "schema": { "type": "string", "format": "date-time" } },
       "IdempotencyOperation": { "name": "operation", "in": "query", "required": true, "description": "Original SDK method. It determines both route scope and the required API-key permission.", "schema": { "type": "string", "enum": ["verifyTap", "claimOwnership", "reportEvent", "activatePosPurchase"] } }
+    },
+    "headers": {
+      "NextCursor": { "description": "Opaque keyset cursor for the next tenant-scoped page. Absent on the final page.", "schema": { "type": "string", "maxLength": 512 } },
+      "EpcisProfile": { "description": "Implemented EPCIS interoperability level; never a certification assertion.", "schema": { "type": "string", "const": "bounded-foundation-not-certified" } }
     },
     "responses": {
       "ApiError": { "description": "Request rejected", "headers": { "x-nexid-trace-id": { "schema": { "type": "string" } } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } },
       "IdempotencyConflict": { "description": "The operation is still processing or this key was already used with another canonical request payload.", "headers": { "Retry-After": { "schema": { "type": "integer", "minimum": 1 } }, "x-nexid-idempotency-status": { "schema": { "type": "string", "enum": ["processing", "completed", "failed", "uncertain"] } } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } },
       "RateLimited": { "description": "Rate limit exceeded", "headers": { "Retry-After": { "schema": { "type": "integer", "minimum": 1 } }, "x-nexid-trace-id": { "schema": { "type": "string" } } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } },
       "CommittedWriteUncertain": { "description": "The business write may have committed but final response or webhook outbox confirmation failed. Query or POST the idempotency endpoint with the original key; never retry with a new key.", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/ApiError" }, { "type": "object", "properties": { "operationCommitted": { "type": ["boolean", "null"] }, "resourceId": { "type": ["string", "null"] } } }] } } } }
+      ,"EpcisPayloadTooLarge": { "description": "The EPCIS document, event, identifier fan-out or export request exceeds the bounded profile.", "content": { "application/vnd.gs1.epcis+json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
+      ,"EpcisSemanticError": { "description": "The JSON is syntactically valid but violates the bounded EPCIS/CBV profile or references an unknown tenant GS1 identity.", "content": { "application/vnd.gs1.epcis+json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
     },
     "schemas": {
       "ApiError": { "type": "object", "required": ["ok"], "properties": { "ok": { "const": false }, "reason": { "type": "string" }, "error": { "type": "string" }, "message": { "type": "string" }, "traceId": { "type": ["string", "null"] }, "trace_id": { "type": ["string", "null"] } }, "additionalProperties": true },
@@ -234,7 +351,11 @@
       "LogisticsSealApplyRequest": { "type": "object", "required": ["uidHex", "shipmentId"], "properties": { "uidHex": { "type": "string" }, "shipmentId": { "type": "string" }, "ttRaw": { "type": "string" }, "location": { "type": "string" }, "scannedBy": { "type": "string" } }, "additionalProperties": false },
       "LogisticsHandoffRequest": { "type": "object", "required": ["uidHex"], "properties": { "uidHex": { "type": "string" }, "shipmentId": { "type": "string" }, "ttRaw": { "type": "string" }, "location": { "type": "string" }, "scannedBy": { "type": "string" } }, "additionalProperties": false },
       "LogisticsRecipientVerifyRequest": { "type": "object", "required": ["uidHex"], "properties": { "uidHex": { "type": "string" }, "shipmentId": { "type": "string" }, "ttRaw": { "type": "string" }, "location": { "type": "string" }, "recipientName": { "type": "string" }, "verificationMethod": { "type": "string" } }, "additionalProperties": false },
-      "LogisticsScanResponse": { "type": "object", "required": ["ok", "data"], "properties": { "ok": { "type": "boolean" }, "tenant": { "$ref": "#/components/schemas/Tenant" }, "trace_id": { "type": "string" }, "data": { "type": "object", "required": ["sealId", "previousStatus", "newStatus", "shipmentId", "tamperState"], "properties": { "sealId": { "type": "string" }, "previousStatus": { "type": "string" }, "newStatus": { "type": "string" }, "shipmentId": { "type": ["string", "null"] }, "tamperState": { "type": "string", "enum": ["closed", "opened", "unknown"] } }, "additionalProperties": false } }, "additionalProperties": true }
+      "LogisticsScanResponse": { "type": "object", "required": ["ok", "data"], "properties": { "ok": { "type": "boolean" }, "tenant": { "$ref": "#/components/schemas/Tenant" }, "trace_id": { "type": "string" }, "data": { "type": "object", "required": ["sealId", "previousStatus", "newStatus", "shipmentId", "tamperState"], "properties": { "sealId": { "type": "string" }, "previousStatus": { "type": "string" }, "newStatus": { "type": "string" }, "shipmentId": { "type": ["string", "null"] }, "tamperState": { "type": "string", "enum": ["closed", "opened", "unknown"] } }, "additionalProperties": false } }, "additionalProperties": true },
+      "EpcisEvent": { "type": "object", "required": ["type", "eventTime", "eventTimeZoneOffset"], "properties": { "type": { "type": "string", "enum": ["ObjectEvent", "AggregationEvent", "TransactionEvent", "TransformationEvent", "AssociationEvent"] }, "eventID": { "type": "string", "maxLength": 512 }, "eventTime": { "type": "string", "format": "date-time" }, "recordTime": { "type": "string", "format": "date-time", "readOnly": true }, "eventTimeZoneOffset": { "type": "string", "pattern": "^[+-](0[0-9]|1[0-4]):[0-5][0-9]$" }, "action": { "type": "string", "enum": ["ADD", "OBSERVE", "DELETE"] }, "bizStep": { "type": "string", "maxLength": 512 }, "disposition": { "type": "string", "maxLength": 512 }, "epcList": { "type": "array", "maxItems": 100, "items": { "type": "string", "format": "uri", "maxLength": 2048 } } }, "additionalProperties": true },
+      "EpcisDocument": { "type": "object", "required": ["@context", "type", "schemaVersion", "epcisBody"], "properties": { "@context": { "oneOf": [{ "const": "https://ref.gs1.org/standards/epcis/epcis-context.jsonld" }, { "type": "array", "prefixItems": [{ "const": "https://ref.gs1.org/standards/epcis/epcis-context.jsonld" }], "minItems": 1, "maxItems": 1 }] }, "type": { "const": "EPCISDocument" }, "schemaVersion": { "const": "2.0" }, "id": { "type": "string", "maxLength": 512 }, "creationDate": { "type": "string", "format": "date-time" }, "epcisBody": { "type": "object", "required": ["eventList"], "properties": { "eventList": { "type": "array", "minItems": 1, "maxItems": 100, "items": { "$ref": "#/components/schemas/EpcisEvent" } } }, "additionalProperties": true } }, "additionalProperties": true },
+      "EpcisQueryDocument": { "type": "object", "required": ["@context", "type", "schemaVersion", "creationDate", "epcisBody"], "properties": { "@context": { "const": "https://ref.gs1.org/standards/epcis/epcis-context.jsonld" }, "type": { "const": "EPCISQueryDocument" }, "schemaVersion": { "const": "2.0" }, "creationDate": { "type": "string", "format": "date-time" }, "epcisBody": { "type": "object", "additionalProperties": true } }, "additionalProperties": true },
+      "EpcisCaptureReceipt": { "type": "object", "required": ["ok", "captureID", "documentRecordID", "eventCount", "canonicalProjectionCount", "capturedAt", "replayed", "evidence"], "properties": { "ok": { "const": true }, "captureID": { "type": "string", "format": "uuid" }, "documentRecordID": { "type": "string", "format": "uuid" }, "eventCount": { "type": "integer", "minimum": 1, "maximum": 100 }, "canonicalProjectionCount": { "type": "integer", "minimum": 1, "maximum": 100 }, "capturedAt": { "type": "string", "format": "date-time" }, "replayed": { "type": "boolean" }, "evidence": { "type": "object", "required": ["level", "cryptographicNfcAuthentication"], "properties": { "level": { "const": "declared_business_event" }, "cryptographicNfcAuthentication": { "const": false } }, "additionalProperties": false } }, "additionalProperties": false }
     }
   }
 }

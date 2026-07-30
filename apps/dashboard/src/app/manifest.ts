@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "nexID Control Center — NFC operations and CRM",
     short_name: "nexID Control",
-    description: "Enterprise-grade NFC operations, traceability analytics and tenant CRM console.",
+    description: "Multi-tenant NFC operations, source-labelled analytics and tenant CRM console.",
     start_url: "/?source=pwa",
     id: "/",
     display: "standalone",

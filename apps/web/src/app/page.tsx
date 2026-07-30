@@ -332,8 +332,8 @@ export default async function HomePage() {
             <h3 className="mt-4 text-base font-bold text-white">🧪 Demo Lab & Sandbox</h3>
             <p className="mt-2 text-xs leading-5 text-slate-400">
               {locale === "en" 
-                ? "Simulate physical NFC scans, read-location risk signals, verification logs, and tamper events in real-time."
-                : "Simulá escaneos físicos de chips, señales de riesgo por ubicación de lectura, logs de auditoría y tamper en tiempo real."
+                ? "Run guided NFC scenarios with simulated read locations, verification logs and reported tamper states."
+                : "Corré escenarios NFC guiados con ubicaciones de lectura simuladas, logs de auditoría y estados de tamper reportados."
               }
             </p>
             <Link href="/demo-lab" className="nexid-quick-hub-card__cta mt-5 inline-flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-cyan-300/20 bg-cyan-400/10 px-3.5 py-2.5 text-sm font-black text-cyan-200 transition group-hover:border-cyan-300/45 group-hover:bg-cyan-300/15 group-hover:text-cyan-100">

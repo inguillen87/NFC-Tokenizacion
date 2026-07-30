@@ -50,6 +50,53 @@ export declare function verifyNexIdWebhookSignature(input: {
 }): NexIdWebhookVerificationResult;
 /** Short alias for frameworks that expose a generic webhook verification hook. */
 export declare const verifyWebhookSignature: typeof verifyNexIdWebhookSignature;
+export declare const NEXID_WEBHOOK_EVENT_SCHEMA_VERSION: "1.0";
+export declare const NEXID_WEBHOOK_EVENT_TYPES: readonly ["demo.tap.simulated", "epcis.event.captured", "ownership.activated", "provenance.viewed", "sdk.claim.claimed", "sdk.claim.created", "sdk.external_event", "sdk.pos.activated", "sdk.verify", "tokenization.anchored", "tokenization.requested", "tokenization.simulated", "warranty.review_requested"];
+export type NexIdWebhookEventType = typeof NEXID_WEBHOOK_EVENT_TYPES[number];
+export type NexIdWebhookEventEnvelope<Data extends Record<string, unknown> = Record<string, unknown>> = {
+    /** Present on the current contract; omitted only by the supported legacy N-1 envelope. */
+    schemaVersion?: typeof NEXID_WEBHOOK_EVENT_SCHEMA_VERSION;
+    id: string;
+    type: string;
+    createdAt: string;
+    data: Data;
+};
+export type NexIdWebhookEnvelopeFailureReason = "webhook_body_too_large" | "invalid_webhook_body_encoding" | "invalid_webhook_json" | "invalid_webhook_envelope" | "unsupported_webhook_schema_version" | "webhook_event_id_mismatch" | "unexpected_webhook_event_type";
+export type NexIdWebhookVerificationAndParseResult = {
+    ok: true;
+    verification: NexIdWebhookVerifiedEnvelope<NexIdWebhookSignatureVersion>;
+    event: NexIdWebhookEventEnvelope;
+    /** `legacy` is the one supported N-1 envelope and omits schemaVersion. */
+    contractVersion: typeof NEXID_WEBHOOK_EVENT_SCHEMA_VERSION | "legacy";
+    knownEventType: boolean;
+} | {
+    ok: false;
+    stage: "signature";
+    reason: Exclude<NexIdWebhookVerificationResult, {
+        ok: true;
+    }>["reason"];
+} | {
+    ok: false;
+    stage: "envelope";
+    reason: NexIdWebhookEnvelopeFailureReason;
+};
+/**
+ * Verifies the signed bytes and then validates the versioned event envelope.
+ *
+ * The header event ID must equal the signed body ID. Current v1 events carry
+ * schemaVersion `1.0`; the immediately previous unversioned envelope remains
+ * readable as `legacy` during migration. Unknown future schema versions fail
+ * closed instead of being interpreted with today's semantics.
+ */
+export declare function verifyAndParseNexIdWebhook(input: {
+    secret: string;
+    rawBody: string | Uint8Array;
+    headers: NexIdWebhookHeaders;
+    toleranceSeconds?: number;
+    now?: number | Date;
+    expectedEventTypes?: readonly string[];
+    maxBodyBytes?: number;
+}): NexIdWebhookVerificationAndParseResult;
 export type NexIdEnvironment = "production" | "private";
 export interface NexIdRetryConfig {
     /** Number of retries after the initial read or explicitly idempotent SDK mutation. */
@@ -83,6 +130,10 @@ export interface NexIdMutationRequestOptions extends NexIdRequestContext {
      */
     maxRetries?: number;
 }
+/** Required for EPCIS capture because the server commits the document atomically. */
+export interface NexIdRequiredIdempotencyOptions extends NexIdMutationRequestOptions {
+    idempotencyKey: string;
+}
 export interface NexIdConfig {
     apiKey: string;
     tenantSlug: string;
@@ -93,6 +144,79 @@ export interface NexIdConfig {
     timeoutMs?: number;
     /** Bounded retry policy for GET requests. Set to false to disable retries. */
     retry?: false | NexIdRetryConfig;
+}
+export declare const NEXID_EPCIS_CONTEXT: "https://ref.gs1.org/standards/epcis/epcis-context.jsonld";
+export declare const NEXID_EPCIS_VERSION: "2.0";
+export declare const NEXID_EPCIS_MEDIA_TYPE: "application/vnd.gs1.epcis+json";
+export declare const NEXID_EPCIS_CAPTURE_MAX_BYTES: number;
+export declare const NEXID_EPCIS_CAPTURE_MAX_EVENTS = 100;
+export declare const NEXID_EPCIS_CAPTURE_MAX_PROJECTIONS = 100;
+export type NexIdEpcisEventType = "ObjectEvent" | "AggregationEvent" | "TransactionEvent" | "TransformationEvent" | "AssociationEvent";
+/**
+ * The SDK intentionally models nexID's bounded EPCIS 2.0 JSON/JSON-LD profile,
+ * not every extension in the complete GS1 standard.
+ */
+export interface NexIdEpcisEvent extends Record<string, unknown> {
+    type: NexIdEpcisEventType;
+    eventTime: string;
+    eventTimeZoneOffset: string;
+    eventID?: string;
+}
+export interface NexIdEpcisDocument extends Record<string, unknown> {
+    "@context": typeof NEXID_EPCIS_CONTEXT | readonly [typeof NEXID_EPCIS_CONTEXT];
+    type: "EPCISDocument";
+    schemaVersion: typeof NEXID_EPCIS_VERSION;
+    epcisBody: {
+        eventList: NexIdEpcisEvent[];
+    };
+}
+export interface NexIdEpcisQueryDocument extends Record<string, unknown> {
+    "@context": typeof NEXID_EPCIS_CONTEXT;
+    type: "EPCISQueryDocument";
+    schemaVersion: typeof NEXID_EPCIS_VERSION;
+    epcisBody: {
+        queryResults: {
+            queryName: "SimpleEventQuery";
+            resultsBody: {
+                eventList: NexIdEpcisEvent[];
+            };
+        };
+    };
+}
+export interface NexIdEpcisCaptureReceipt {
+    ok: true;
+    captureID: string;
+    documentRecordID: string;
+    eventCount: number;
+    canonicalProjectionCount: number;
+    capturedAt: string;
+    replayed: boolean;
+    evidence: {
+        level: "declared_business_event";
+        cryptographicNfcAuthentication: false;
+    };
+    /** Correlation id returned by the API, or the SDK request id as fallback. */
+    traceId: string;
+}
+export interface NexIdEpcisQueryFilters {
+    /** Page size. nexID accepts 1..200 and defaults to 50. */
+    limit?: number;
+    cursor?: string;
+    eventType?: NexIdEpcisEventType;
+    bizStep?: string;
+    disposition?: string;
+    gtin?: string;
+    lot?: string;
+    serial?: string;
+    eventTimeFrom?: string | Date;
+    eventTimeTo?: string | Date;
+}
+export interface NexIdEpcisPage<Document> {
+    document: Document;
+    nextCursor: string | null;
+    pageSize: number;
+    /** Correlation id returned by the API, or the SDK request id as fallback. */
+    traceId: string;
 }
 export interface NexIdApiErrorOptions {
     status: number;
@@ -318,6 +442,15 @@ export declare class NexIdClient {
     reportEvent(params: ExternalEventRequest, options: NexIdMutationRequestOptions): Promise<ExternalEventResponse>;
     activatePosPurchase(params: PosActivationRequest): Promise<PosActivationResponse>;
     activatePosPurchase(params: PosActivationRequest, options: NexIdMutationRequestOptions): Promise<PosActivationResponse>;
+    /**
+     * Captures one bounded EPCIS 2.0 JSON/JSON-LD document. The idempotency key
+     * is mandatory so a transport retry cannot duplicate business events.
+     */
+    captureEpcisDocument(document: NexIdEpcisDocument, options: NexIdRequiredIdempotencyOptions): Promise<NexIdEpcisCaptureReceipt>;
+    /** Returns one cursor page in an EPCISQueryDocument. */
+    queryEpcisEvents(filters?: NexIdEpcisQueryFilters, options?: NexIdReadRequestOptions): Promise<NexIdEpcisPage<NexIdEpcisQueryDocument>>;
+    /** Returns one cursor page as a portable EPCISDocument export. */
+    exportEpcisEvents(filters?: NexIdEpcisQueryFilters, options?: NexIdReadRequestOptions): Promise<NexIdEpcisPage<NexIdEpcisDocument>>;
     getIdempotencyStatus(operation: NexIdIdempotencyOperation, idempotencyKey: string, options?: NexIdReadRequestOptions): Promise<NexIdIdempotencyStatus>;
     reconcileIdempotency(operation: NexIdIdempotencyOperation, idempotencyKey: string, options?: NexIdRequestContext): Promise<NexIdIdempotencyStatus>;
     applyDeliverySeal(params: LogisticsSealApplyRequest): Promise<LogisticsScanResponse>;

@@ -55,7 +55,7 @@ test("analytics uses explicit taxonomy, real active filters and source-labelled 
   assert.match(analytics, /AVG\(CASE[\s\S]*?e\.lat BETWEEN -90 AND 90 AND e\.lng BETWEEN -180 AND 180/);
   assert.match(analytics, /validCoordinatePair\(row\.lat, row\.lng\)/);
   assert.doesNotMatch(analytics, /AVG\(COALESCE\(e\.lat, e\.geo_lat\)\)/);
-  assert.match(analytics, /WITH scoped_events AS \([\s\S]*?WHERE e\.uid_hex IS NOT NULL[\s\S]*?e\.created_at >= now\(\) - \$\{rangeSql\}::interval[\s\S]*?e\.source = \$\{source\}::text/);
+  assert.match(analytics, /WITH scoped_events AS \([\s\S]*?WHERE e\.uid_hex IS NOT NULL[\s\S]*?e\.created_at >= now\(\) - \$\{rangeSql\}::interval[\s\S]*?e\.source::text = \$\{source\}/);
 });
 
 test("overview uses the canonical risk taxonomy and excludes lifecycle outcomes", () => {
@@ -157,8 +157,12 @@ test("production request paths skip runtime DDL and require the latest migration
   assert.match(dbRuntime, /isRuntimeDdlStatement/);
   assert.match(dbRuntime, /isProductionRuntime\(\) && isRuntimeDdlStatement/);
   assert.match(dbRuntime, /required_schema_migration_not_applied/);
-  assert.match(dbRuntime, /20260728143000_0063_supplier_packaging_governance\.sql/);
-  assert.equal(DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.length, 7);
+  assert.match(dbRuntime, /20260729130000_0070_supplier_qa_atomic_receipts\.sql/);
+  assert.match(dbRuntime, /20260729143000_0071_supplier_pack_purpose_governance\.sql/);
+  assert.match(dbRuntime, /20260729160000_0072_tokenization_marketplace_execution_governance\.sql/);
+  assert.match(dbRuntime, /20260730110000_0073_supplier_qa_verification_context_v2\.sql/);
+  assert.match(dbRuntime, /20260730150000_0074_supplier_key_rotation_atomic\.sql/);
+  assert.equal(DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.length, 19);
   assert.deepEqual([...DEFAULT_REQUIRED_SCHEMA_MIGRATIONS], [...DEFAULT_REQUIRED_SCHEMA_MIGRATIONS].sort());
   assert.equal(isRuntimeDdlStatement("DO $$ BEGIN CREATE TYPE unsafe AS ENUM ('a'); END $$"), true);
   assert.equal(isRuntimeDdlStatement("SELECT 1; /* request path */ ALTER TABLE tags ADD COLUMN unsafe text"), true);
@@ -166,8 +170,20 @@ test("production request paths skip runtime DDL and require the latest migration
   assert.equal(isRuntimeDdlStatement("WITH changed AS (UPDATE tags SET status = 'active' RETURNING id) SELECT * FROM changed"), false);
   assert.match(dbPreflight, /20260726173000_0060_sdk_idempotency_operations\.sql/);
   assert.match(dbPreflight, /20260726190000_0061_supplier_export_artifact_delivery\.sql/);
+  assert.match(dbPreflight, /20260726120000_0058_marketplace_runtime_baseline\.sql/);
   assert.match(dbPreflight, /20260728120000_0062_sun_atomic_persistence\.sql/);
   assert.match(dbPreflight, /20260728143000_0063_supplier_packaging_governance\.sql/);
+  assert.match(dbPreflight, /20260728160000_0064_webhook_lifecycle_governance\.sql/);
+  assert.match(dbPreflight, /20260728173000_0065_event_incident_workflow\.sql/);
+  assert.match(dbPreflight, /20260728180000_0066_tag_lifecycle_governance\.sql/);
+  assert.match(dbPreflight, /20260728183000_0067_canonical_event_outbox\.sql/);
+  assert.match(dbPreflight, /20260729110000_0068_epcis_event_type\.sql/);
+  assert.match(dbPreflight, /20260729110500_0069_gs1_epcis_foundation\.sql/);
+  assert.match(dbPreflight, /20260729130000_0070_supplier_qa_atomic_receipts\.sql/);
+  assert.match(dbPreflight, /20260729143000_0071_supplier_pack_purpose_governance\.sql/);
+  assert.match(dbPreflight, /20260729160000_0072_tokenization_marketplace_execution_governance\.sql/);
+  assert.match(dbPreflight, /20260730110000_0073_supplier_qa_verification_context_v2\.sql/);
+  assert.match(dbPreflight, /20260730150000_0074_supplier_key_rotation_atomic\.sql/);
   assert.match(dbPreflight, /Required enterprise migrations are missing/);
 });
 

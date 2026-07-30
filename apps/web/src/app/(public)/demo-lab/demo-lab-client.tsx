@@ -320,19 +320,19 @@ function getTrustScenarioContext(
       tone: key,
       eyebrow: isEn ? "Ownership layer" : "Capa ownership",
       title: isEn ? "Polygon records ownership after NFC evidence, buyer and policy checks." : "Polygon registra ownership después de validar evidencia NFC, comprador y política.",
-      body: isEn ? "This flow shows the policy plus a confirmed testnet mint. The public certificate reads the owner, mint and HTTPS metadata live; nexID still keeps physical authenticity separate from the NFT." : "Este flujo muestra la politica y un mint testnet confirmado. El certificado publico lee owner, mint y metadata HTTPS en vivo; nexID mantiene la autenticidad fisica separada del NFT.",
-      publicProof: isEn ? "Visible: request, confirmed testnet mint/tx and owner status when approved." : "Publico: solicitud, mint/tx testnet confirmado y estado de owner al aprobarse.",
+      body: isEn ? "This scenario explains the policy and links to a runtime certificate. Only that certificate may call a testnet mint confirmed when its current RPC checks pass; nexID keeps physical authenticity separate from the NFT." : "Este escenario explica la politica y enlaza un certificado runtime. Solo ese certificado puede llamar confirmado al mint testnet cuando pasan sus checks RPC actuales; nexID mantiene la autenticidad fisica separada del NFT.",
+      publicProof: isEn ? "Visible when available: request, testnet tx and owner status, each with its current verification state." : "Publico cuando esta disponible: solicitud, tx testnet y estado de owner, cada uno con su estado actual de verificacion.",
       privateData: isEn ? "Private: buyer identity, invoice, warranty policy and CRM segment." : "Privado: identidad del comprador, factura, politica de garantia y segmento CRM.",
       decisionPath: isEn
         ? [
           { label: "Eligible tag message", body: "Require QR/NFC evidence first; it does not authenticate the physical object." },
           { label: "Approved buyer", body: "Apply warranty, invoice and tenant policy." },
-          { label: "Owner record", body: "Issue the mint and expose a certificate with live owner, metadata and transaction checks." },
+          { label: "Owner record", body: "Request the mint, then expose a certificate only with the owner, metadata and transaction checks returned by the runtime." },
         ]
         : [
           { label: "Mensaje de tag elegible", body: "Exige evidencia QR/NFC primero; no autentica el objeto físico." },
           { label: "Comprador aprobado", body: "Aplica garantia, factura y politica tenant." },
-          { label: "Owner record", body: "Emite el mint y muestra certificado con owner, metadata y transaccion comprobados en vivo." },
+          { label: "Owner record", body: "Solicita el mint y muestra certificado solo con los checks de owner, metadata y transaccion devueltos por el runtime." },
         ],
       businessOutcome: isEn ? "Resale, warranty and loyalty remain gated by approved digital evidence, purchase and policy; the NFT is not physical proof." : "Reventa, garantía y loyalty dependen de evidencia digital aprobada, compra y política; el NFT no es prueba física.",
       primaryHref: "/proof/ownership",

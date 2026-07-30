@@ -4,14 +4,26 @@ import { clearIotaReadinessCache } from "../src/iota-idempotency.mjs";
 import { handler } from "../src/server.mjs";
 
 const validIotaEnvironment = {
+  NODE_ENV: "test",
+  EXECUTOR_ENVIRONMENT: "test",
+  NEXID_ENVIRONMENT: "test",
+  NEXID_KMS_ENVIRONMENT: "staging",
   EXECUTOR_CAPABILITIES: "iota",
   IOTA_EXECUTOR_SIGNER_MODE: "private_key",
   IOTA_EVM_PRIVATE_KEY: "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a841cb6b37e8db1e1cb",
   IOTA_EVM_RPC_URL: "https://iota-rpc.example.test",
   IOTA_EVM_ANCHOR_CONTRACT_V2: "0x0000000000000000000000000000000000000001",
   IOTA_EVM_EXPECTED_CHAIN_ID: "1076",
-  IOTA_PROOF_EXECUTOR_SECRET: "test-only-long-iota-secret",
+  IOTA_PROOF_EXECUTOR_SECRET: "test-only-long-iota-secret-32-bytes",
   DATABASE_URL: "postgresql://readiness.invalid/nexid",
+};
+
+const readyChain = {
+  chainId: 1076,
+  contractDeployed: true,
+  schemaVersion: 2,
+  publisherAuthorized: true,
+  balanceWei: 1_000_000_000_000_000n,
 };
 
 const readyRow = {
@@ -61,7 +73,10 @@ async function requestJson(pathname, dependencies = {}) {
         resolve(response);
       },
     };
-    void handler(req, res, dependencies);
+    void handler(req, res, {
+      iotaReadinessProbe: async () => readyChain,
+      ...dependencies,
+    });
   });
 }
 
@@ -103,6 +118,12 @@ test("/ready accepts the complete durable schema and briefly caches the probe", 
     const second = await requestJson("/ready", dependencies);
     assert.equal(first.status, 200);
     assert.equal(first.body.ok, true);
+    assert.equal(first.body.chains.iota.live_verified, true);
+    assert.equal(first.body.chains.iota.chain_id, "1076");
+    assert.equal(first.body.chains.iota.contract.deployed, true);
+    assert.equal(first.body.chains.iota.contract.schema_version, 2);
+    assert.equal(first.body.chains.iota.publisher.authorized, true);
+    assert.ok(first.body.chains.iota.publisher.balance_iota > 0);
     assert.equal(first.body.checks.durable_store, true);
     assert.equal(second.status, 200);
     assert.equal(database.calls.length, 1);
@@ -115,6 +136,48 @@ test("/ready accepts the complete durable schema and briefly caches the probe", 
     assert.ok(probe.values[2].includes("iota_executor_publications_protocol_v2_required_check"));
     assert.ok(probe.values[4].includes("uq_iota_executor_publications_signer_nonce"));
   });
+});
+
+for (const [name, override, failedCheck] of [
+  ["wrong chain", { chainId: 1 }, "chain_id"],
+  ["missing bytecode", { contractDeployed: false }, "contract_code"],
+  ["wrong contract schema", { schemaVersion: 1 }, "contract_schema_v2"],
+  ["unauthorized publisher", { publisherAuthorized: false }, "publisher_authorized"],
+  ["empty publisher gas wallet", { balanceWei: 0n }, "publisher_gas"],
+]) {
+  test(`IOTA readiness fails closed for ${name}`, async () => {
+    const database = fakeReadinessDatabase(readyRow);
+    await withProcessEnv(validIotaEnvironment, async () => {
+      const response = await requestJson("/ready", {
+        iotaReadinessDatabase: database,
+        iotaReadinessProbe: async () => ({ ...readyChain, ...override }),
+      });
+      assert.equal(response.status, 503);
+      assert.equal(response.body.ok, false);
+      assert.equal(response.body.chains.iota.live_verified, false);
+      assert.equal(response.body.chains.iota.checks[failedCheck], false);
+    });
+  });
+}
+
+test("IOTA readiness is testnet-only and rejects weak secrets or production plaintext signers before RPC", async () => {
+  const database = fakeReadinessDatabase(readyRow);
+  for (const overrides of [
+    { IOTA_EVM_EXPECTED_CHAIN_ID: "1" },
+    { IOTA_PROOF_EXECUTOR_SECRET: "too-short" },
+    { NODE_ENV: "production" },
+  ]) {
+    await withProcessEnv({ ...validIotaEnvironment, ...overrides }, async () => {
+      let probed = false;
+      const response = await requestJson("/ready", {
+        iotaReadinessDatabase: database,
+        iotaReadinessProbe: async () => { probed = true; return readyChain; },
+      });
+      assert.equal(response.status, 503);
+      assert.equal(response.body.ok, false);
+      assert.equal(probed, false);
+    });
+  }
 });
 
 test("/health remains independent from durable-store readiness", async () => {

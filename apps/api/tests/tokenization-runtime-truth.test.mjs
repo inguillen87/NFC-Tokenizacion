@@ -23,13 +23,17 @@ test("tokenization defaults fail closed and simulation is explicit", () => {
 
 test("simulation never persists a blockchain transaction or anchored status", async () => {
   const source = await readFile(engineUrl, "utf8");
-  const simulationBranch = source.slice(source.indexOf('if (tokenizationMode === "simulated")'), source.indexOf('if (!String(network).toLowerCase().startsWith("polygon"))'));
+  const anchor = source.slice(source.indexOf("export async function anchorTokenizationRequest"), source.indexOf("export async function transferBlockchainToken"));
+  const simulationBranch = anchor.slice(anchor.indexOf('if (tokenizationMode === "simulated")'), anchor.indexOf('if (network !== "polygon-amoy" && network !== "polygon")'));
 
   assert.match(simulationBranch, /status = 'simulated'/);
   assert.match(simulationBranch, /tx_hash = NULL/);
   assert.match(simulationBranch, /token_id = NULL/);
   assert.match(simulationBranch, /anchor_hash = NULL/);
-  assert.match(simulationBranch, /'ledger_simulated'/);
+  assert.match(simulationBranch, /state: "simulated"/);
+  assert.match(simulationBranch, /recordTokenizationCanonicalEvent/);
+  assert.match(simulationBranch, /canonical_event_confirmed: true/);
+  assert.doesNotMatch(simulationBranch, /INSERT INTO demo_cta_actions/);
   assert.doesNotMatch(simulationBranch, /status = 'anchored'/);
   assert.doesNotMatch(simulationBranch, /0x\$\{/);
 });
@@ -72,4 +76,15 @@ test("public ownership PIN has a durable lockout boundary", async () => {
   assert.match(source, /reason: "claim_pin_locked"/);
   assert.match(source, /retry-after/);
   assert.match(source, /claim_pin_security_unavailable/);
+});
+
+test("anchored public responses separate historical proof from current commercial eligibility", async () => {
+  const engine = await readFile(engineUrl, "utf8");
+  const publicRoute = await readFile(publicRouteUrl, "utf8");
+
+  assert.match(engine, /commercial_disposition: prepared\.commercialDisposition/);
+  assert.match(engine, /commercially_eligible: String\(prepared\.commercialDisposition \|\| ""\)\.toUpperCase\(\) === "COMMERCIAL_RELEASE"/);
+  assert.match(publicRoute, /commercial_disposition: commercialDisposition/);
+  assert.match(publicRoute, /commercially_eligible: commerciallyEligible/);
+  assert.match(publicRoute, /commercialDisposition\.toUpperCase\(\) === "COMMERCIAL_RELEASE"/);
 });

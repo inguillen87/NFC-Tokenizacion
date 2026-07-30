@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS alert_rules (
 CREATE TABLE IF NOT EXISTS security_alerts (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   tenant_id uuid REFERENCES tenants(id) ON DELETE CASCADE,
-  event_id bigint REFERENCES events(id) ON DELETE SET NULL,
+  event_id bigint,
   rule_id uuid REFERENCES alert_rules(id) ON DELETE SET NULL,
   type text NOT NULL CHECK (type IN ('replay_spike','tamper_rate','invalid_rate','geo_velocity','new_country_for_uid','suspicious_device_cluster')),
   severity text NOT NULL CHECK (severity IN ('low','medium','high','critical')),

@@ -7,6 +7,24 @@ import { fileURLToPath } from "node:url";
 const apiRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = path.resolve(apiRoot, "../..");
 const { canUseConsumerDemoBypass } = await import("../src/lib/consumer-demo-policy.ts");
+const { requireShareToken } = await import("../src/lib/public-cta-auth.ts");
+
+function withEnvironment(values, run) {
+  const keys = Object.keys(values);
+  const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+  try {
+    for (const [key, value] of Object.entries(values)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    return run();
+  } finally {
+    for (const key of keys) {
+      if (previous[key] === undefined) delete process.env[key];
+      else process.env[key] = previous[key];
+    }
+  }
+}
 
 test("consumer demo bypass fails closed in production and remains explicit in development", () => {
   const request = { demoConsumer: true };
@@ -30,6 +48,26 @@ test("marketplace demo consumer bypass delegates to the shared production-safe p
   assert.match(verifyRoute, /canUseConsumerDemoBypass/);
   assert.doesNotMatch(marketplaceRoute, /CONSUMER_AUTH_MODE/);
   assert.doesNotMatch(marketplaceRoute, /startsWith\("demo-"\)/);
+});
+
+test("remote preview with NODE_ENV production cannot re-enable insecure CTA or runtime DDL", { concurrency: false }, () => {
+  const result = withEnvironment({
+    ALLOW_INSECURE_DEMO_CTA: "true",
+    PUBLIC_DEMO_SHARE_SECRET: undefined,
+    VERCEL_ENV: "preview",
+    NODE_ENV: "production",
+  }, () => requireShareToken(
+    new Request("https://preview.example.test/public/cta?share="),
+    "DEMO-2026-02",
+    "EVENT-42",
+  ));
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, "share secret missing");
+
+  const schema = readFileSync(path.join(apiRoot, "src/lib/tokenization-schema.ts"), "utf8");
+  const engine = readFileSync(path.join(apiRoot, "src/lib/tokenization-engine.ts"), "utf8");
+  assert.match(schema, /\[process\.env\.VERCEL_ENV, process\.env\.NODE_ENV\][\s\S]*\.some/);
+  assert.match(engine, /\[source\.VERCEL_ENV, source\.NODE_ENV\][\s\S]*\.some/);
 });
 
 test("production environment example fails closed for consumer demo auth", () => {

@@ -48,7 +48,7 @@ test("VALID remains a message-level NFC result and is not promoted to physical-p
   assert.match(demoMobile, /if \(result === "VALID"\)/);
   assert.match(demoMobile, /label: "VALID"/);
   assert.match(demoMobile, /Mensaje NFC válido e identidad del tag consistente/);
-  assert.match(demoMobile, /title="Lectura NFC validada"/);
+  assert.match(demoMobile, /title="Preview de evidencia reportada"/);
   assert.doesNotMatch(demoMobile, /Producto auténtico|title="Producto verificado"/);
 });
 
@@ -58,10 +58,22 @@ test("realtime insights report digital evidence quality instead of physical auth
   assert.doesNotMatch(realtimeMonitor, /Buena autenticidad/);
 });
 
-test("mobile demo explains exactly what the backend resolves", () => {
-  assert.match(demoMobile, /validez criptográfica del mensaje NFC\/SUN, policy aplicada, riesgo digital y estado registrado/);
-  assert.match(demoMobile, /no certifica por sí solo contenido, origen, sello, apertura, custodia ni autenticidad física/);
-  assert.doesNotMatch(demoMobile, /Resuelto por backend nexID: autenticidad/);
+test("mobile demo distinguishes backend-reported events from synthetic seed data", () => {
+  assert.match(demoMobile, /const evidenceSource = events\.length > 0 \? "backend_reported" : "synthetic_seed"/);
+  assert.match(demoMobile, /PREVIEW · NO ES UN TAP NFC FÍSICO/);
+  assert.match(demoMobile, /Fuente: <code[^>]*>\{evidenceSource\}<\/code>/);
+  assert.match(demoMobile, /eventos devueltos por \/api\/internal\/demo\/summary; pueden pertenecer a escenarios demo/);
+  assert.match(demoMobile, /esta pantalla no recibe ni valida un payload SUN fresco/);
+  assert.match(demoMobile, /physicalTapVerified: false/);
+  assert.doesNotMatch(demoMobile, /LIVE TAP|SCAN PULSE|Lectura NFC validada/);
+});
+
+test("mobile demo keeps sensitive actions disabled until a physical NFC scan", () => {
+  assert.match(demoMobile, /id="physical-tap-required"/);
+  assert.match(demoMobile, /Escaneá el NFC físico para obtener evidencia SUN fresca/);
+  assert.match(demoMobile, /Este preview no ejecuta ownership, garantía, provenance ni tokenización/);
+  assert.equal((demoMobile.match(/disabled aria-describedby="physical-tap-required"/g) ?? []).length, 4);
+  assert.doesNotMatch(demoMobile, /href=[^\n]*\/sun|router\.(?:push|replace)\([^\n]*\/sun|\/api\/public-cta\//);
 });
 
 test("onboarding configures evidence controls and policy-bound digital title only", () => {

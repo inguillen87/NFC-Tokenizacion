@@ -1,7 +1,8 @@
-import { sql } from './db';
-import { publishRealtimeEvent } from './realtime-events';
+import { createHash } from "node:crypto";
+
 import { evaluateSecurityAlerts } from "./alert-engine";
 import { normalizeCoordinatePair, redactSensitiveQueryValues } from "./approximate-location";
+import { writeCanonicalEvent } from "./canonical-event-writer";
 
 export type TapEventPayload = {
   tenantId?: string | null;
@@ -10,10 +11,10 @@ export type TapEventPayload = {
   tagId?: string | null;
   uidHex?: string | null;
   bid?: string | null;
-  source: 'real' | 'demo' | 'imported' | 'sun' | 'demo_simulation' | 'admin_manual' | 'mobile_action' | 'tokenization' | 'warranty' | 'ownership';
-  eventType: 'TAP_VALID' | 'TAP_INVALID' | 'REPLAY_SUSPECT' | 'UNKNOWN_BATCH' | 'NOT_REGISTERED' | 'NOT_ACTIVE' | 'REVOKED' | 'BROKEN' | 'TAMPERED' | 'OWNERSHIP_ACTIVATED' | 'WARRANTY_REGISTERED' | 'PROVENANCE_VIEWED' | 'TOKENIZATION_REQUESTED' | 'TOKENIZATION_SIMULATED' | 'TOKENIZATION_ANCHORED' | 'EXPORT_GENERATED';
-  verdict: 'valid' | 'invalid' | 'replay_suspect' | 'blocked_replay' | 'revoked' | 'broken' | 'tampered' | 'unknown_batch' | 'not_registered' | 'not_active';
-  riskLevel: 'none' | 'low' | 'medium' | 'high' | 'critical';
+  source: "real" | "demo" | "imported" | "sun" | "demo_simulation" | "admin_manual" | "mobile_action" | "tokenization" | "warranty" | "ownership";
+  eventType: "TAP_VALID" | "TAP_INVALID" | "REPLAY_SUSPECT" | "UNKNOWN_BATCH" | "NOT_REGISTERED" | "NOT_ACTIVE" | "REVOKED" | "BROKEN" | "TAMPERED" | "OWNERSHIP_ACTIVATED" | "WARRANTY_REGISTERED" | "PROVENANCE_VIEWED" | "TOKENIZATION_REQUESTED" | "TOKENIZATION_SIMULATED" | "TOKENIZATION_ANCHORED" | "EXPORT_GENERATED";
+  verdict: "valid" | "invalid" | "replay_suspect" | "blocked_replay" | "revoked" | "broken" | "tampered" | "unknown_batch" | "not_registered" | "not_active";
+  riskLevel: "none" | "low" | "medium" | "high" | "critical";
   readCounter?: number | null;
   sdmReadCtr?: number | null;
   piccDataHash?: string | null;
@@ -29,12 +30,12 @@ export type TapEventPayload = {
   countryCode?: string | null;
   lat?: number | null;
   lng?: number | null;
-  geoPrecision?: 'none' | 'ip' | 'browser_rounded' | 'browser_exact';
+  geoPrecision?: "none" | "ip" | "browser_rounded" | "browser_exact";
   productName?: string | null;
   metadataJson?: Record<string, unknown>;
   reason?: string | null;
   meta?: Record<string, unknown>;
-  traceId?: string | null;
+  traceId: string;
   ip?: string | null;
   geoCity?: string | null;
   geoCountry?: string | null;
@@ -42,94 +43,80 @@ export type TapEventPayload = {
   rawQuery?: Record<string, unknown>;
 };
 
+function operationKey(traceId: string) {
+  const normalized = String(traceId || "").trim();
+  if (/^[A-Za-z0-9][A-Za-z0-9:._/-]{0,220}$/.test(normalized)) return `tap:${normalized}`;
+  return `tap:${createHash("sha256").update(normalized, "utf8").digest("hex")}`;
+}
 export async function recordTapEvent(payload: TapEventPayload): Promise<number | null> {
-  const resultStr = payload.verdict.toUpperCase();
-  const sourceStr = payload.source === 'sun' || payload.source === 'real' ? 'real' : payload.source === 'demo' || payload.source === 'demo_simulation' ? 'demo' : 'imported';
-  const metaJson = payload.meta || payload.metadataJson || {};
-  const coordinate = normalizeCoordinatePair(payload.lat, payload.lng);
-  const eventLat = coordinate?.lat ?? null;
-  const eventLng = coordinate?.lng ?? null;
-  const persistedRawQuery = redactSensitiveQueryValues(payload.rawQuery);
+  // Unknown/unresolved batches cannot satisfy the canonical events FK contract.
+  // The caller records those attempts in the dedicated SUN attempt store.
+  if (!payload.batchId) return null;
 
-  const insertWithReadCounter = () => sql`
-      INSERT INTO events (
-        tenant_id, batch_id, uid_hex, sdm_read_ctr, read_counter, cmac_ok, allowlisted, tag_status, result, reason,
-        user_agent, city, country_code, lat, lng, source, meta, tenant_slug, tag_id, bid, event_type, verdict, risk_level,
-        picc_data_hash, cmac_hash, raw_url_hash, ip_hash, geo_precision, product_name,
-        ip, geo_city, geo_country, device_label, raw_query
-      ) VALUES (
-        ${payload.tenantId || null}, ${payload.batchId || null}, ${payload.uidHex || null}, ${payload.sdmReadCtr ?? payload.readCounter ?? null}, ${payload.readCounter ?? null}, ${payload.cmacOk ?? null}, ${payload.allowlisted ?? null}, ${payload.tagStatus || null}, ${resultStr}, ${payload.reason || null},
-        ${payload.userAgent || null}, ${payload.city || null}, ${payload.countryCode || null}, ${eventLat}, ${eventLng}, ${sourceStr}::text, ${metaJson}::jsonb, ${payload.tenantSlug || null}, ${payload.tagId || null}, ${payload.bid || null}, ${payload.eventType}::text, ${payload.verdict}, ${payload.riskLevel}::text,
-        ${payload.piccDataHash || null}, ${payload.cmacHash || null}, ${payload.rawUrlHash || null}, ${payload.ipHash || null}, ${payload.geoPrecision || 'none'}::text, ${payload.productName || null},
-        ${payload.ip || null}, ${payload.geoCity || null}, ${payload.geoCountry || null}, ${payload.deviceLabel || null}, ${persistedRawQuery}::jsonb
-      )
-      RETURNING id
-    `;
-  const insertWithoutReadCounter = () => sql`
-      INSERT INTO events (
-        tenant_id, batch_id, uid_hex, sdm_read_ctr, cmac_ok, allowlisted, tag_status, result, reason,
-        user_agent, city, country_code, lat, lng, source, meta, tenant_slug, tag_id, bid, event_type, verdict, risk_level,
-        picc_data_hash, cmac_hash, raw_url_hash, ip_hash, geo_precision, product_name,
-        ip, geo_city, geo_country, device_label, raw_query
-      ) VALUES (
-        ${payload.tenantId || null}, ${payload.batchId || null}, ${payload.uidHex || null}, ${payload.sdmReadCtr ?? payload.readCounter ?? null}, ${payload.cmacOk ?? null}, ${payload.allowlisted ?? null}, ${payload.tagStatus || null}, ${resultStr}, ${payload.reason || null},
-        ${payload.userAgent || null}, ${payload.city || null}, ${payload.countryCode || null}, ${eventLat}, ${eventLng}, ${sourceStr}::text, ${metaJson}::jsonb, ${payload.tenantSlug || null}, ${payload.tagId || null}, ${payload.bid || null}, ${payload.eventType}::text, ${payload.verdict}, ${payload.riskLevel}::text,
-        ${payload.piccDataHash || null}, ${payload.cmacHash || null}, ${payload.rawUrlHash || null}, ${payload.ipHash || null}, ${payload.geoPrecision || 'none'}::text, ${payload.productName || null},
-        ${payload.ip || null}, ${payload.geoCity || null}, ${payload.geoCountry || null}, ${payload.deviceLabel || null}, ${persistedRawQuery}::jsonb
-      )
-      RETURNING id
-    `;
+  const coordinate = normalizeCoordinatePair(payload.lat, payload.lng);
+  const persistedRawQuery = redactSensitiveQueryValues(payload.rawQuery);
+  const mode = payload.source === "demo_simulation"
+    ? "simulated" as const
+    : payload.source === "demo"
+      ? "demo" as const
+      : "live" as const;
 
   try {
-    let inserted;
-    try {
-      inserted = await insertWithReadCounter();
-    } catch (error) {
-      const err = error as { code?: string; message?: string };
-      const missingReadCounter = err?.code === "42703" && String(err?.message || "").toLowerCase().includes("read_counter");
-      if (!missingReadCounter) throw error;
-      inserted = await insertWithoutReadCounter();
-    }
-    const eventId = Number((inserted?.[0] as { id?: number } | undefined)?.id || 0) || null;
+    const receipt = await writeCanonicalEvent({
+      operationKey: operationKey(payload.traceId),
+      eventName: payload.eventType === "PROVENANCE_VIEWED" ? "provenance.viewed" : mode === "live" ? "provenance.viewed" : "demo.tap.simulated",
+      mode,
+      family: "tap",
+      batchId: payload.batchId,
+      uidHex: payload.uidHex,
+      eventType: payload.eventType,
+      result: payload.verdict.toUpperCase(),
+      verdict: payload.verdict,
+      riskLevel: payload.riskLevel,
+      reason: payload.reason,
+      readCounter: payload.readCounter,
+      sdmReadCtr: payload.sdmReadCtr,
+      cmacOk: payload.cmacOk,
+      allowlisted: payload.allowlisted,
+      userAgent: payload.userAgent,
+      city: payload.city,
+      countryCode: payload.countryCode,
+      lat: coordinate?.lat ?? null,
+      lng: coordinate?.lng ?? null,
+      geoPrecision: payload.geoPrecision,
+      productName: payload.productName,
+      piccDataHash: payload.piccDataHash,
+      cmacHash: payload.cmacHash,
+      rawUrlHash: payload.rawUrlHash,
+      ipHash: payload.ipHash,
+      deviceLabel: payload.deviceLabel,
+      rawQuery: persistedRawQuery,
+      meta: {
+        ...(payload.meta || payload.metadataJson || {}),
+        trace_id: payload.traceId,
+        requested_tenant_id_ignored: Boolean(payload.tenantId),
+        requested_tag_status_ignored: Boolean(payload.tagStatus),
+      },
+      webhookData: {
+        result: payload.verdict.toUpperCase(),
+        riskLevel: payload.riskLevel,
+        product: payload.productName || null,
+      },
+    });
 
-    if (eventId) {
-      publishRealtimeEvent({
-        id: eventId,
-        tenant_id: payload.tenantId || undefined,
-        tenant_slug: payload.tenantSlug || undefined,
-        batch_id: payload.batchId || undefined,
-        tag_id: payload.tagId || undefined,
-        bid: payload.bid || undefined,
-        uid_hex: payload.uidHex || undefined,
-        verdict: payload.verdict,
-        risk_level: payload.riskLevel,
-        product_name: payload.productName || undefined,
-        result: resultStr,
-        reason: payload.reason || undefined,
-        city: payload.city || null,
-        country_code: payload.countryCode || null,
-        lat: eventLat,
-        lng: eventLng,
-        source: sourceStr,
-        created_at: new Date().toISOString(),
-        trace_id: payload.traceId || null,
-      });
-      void evaluateSecurityAlerts({
-        eventId,
-        tenantId: payload.tenantId || null,
-        tenantSlug: payload.tenantSlug || null,
-        uidHex: payload.uidHex || null,
-        result: resultStr,
-        countryCode: payload.countryCode || payload.geoCountry || null,
-        deviceLabel: payload.deviceLabel || null,
-      }).catch(() => null);
-    }
+    void evaluateSecurityAlerts({
+      eventId: receipt.eventId,
+      tenantId: receipt.tenantId,
+      tenantSlug: payload.tenantSlug || null,
+      uidHex: payload.uidHex || null,
+      result: payload.verdict.toUpperCase(),
+      countryCode: payload.countryCode || payload.geoCountry || null,
+      deviceLabel: payload.deviceLabel || null,
+    }).catch(() => null);
 
-    return eventId;
+    return receipt.eventId;
   } catch (error) {
-    console.error('Failed to record tap event:', error);
-    // Even if db insert fails due to some missing column during migration transition, we might still want to emit realtime event
-    // but ideally we just fail gracefully and perhaps return null
+    console.error("Failed to record canonical tap event:", error);
     return null;
   }
 }

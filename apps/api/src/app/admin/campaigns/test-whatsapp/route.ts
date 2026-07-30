@@ -1,8 +1,15 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin } from "../../../../lib/auth";
+import { checkAdmin, checkAdminPermission, getAdminPrincipal } from "../../../../lib/auth";
 import { json } from "../../../../lib/http";
+import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../lib/bounded-request-body";
+import { adminCriticalRateLimitIdentity, enforceCriticalRateLimit } from "../../../../lib/critical-rate-limit";
+import { resolveAdminWriteTenant, tenantReference } from "../../../../lib/admin-commercial-policy";
+import { ensureConsumerPortalSchema } from "../../../../lib/commercial-runtime-schema";
+import { sql } from "../../../../lib/db";
+import { logAuditEvent } from "../../../../lib/audit-logger";
+import { getRequestMeta } from "../../../../lib/request-meta";
 
 function env(name: string) {
   return String(process.env[name] || "")
@@ -14,7 +21,7 @@ function env(name: string) {
 function normalizePhone(input: unknown) {
   const raw = String(input || "").trim();
   const digits = raw.replace(/[^\d]/g, "");
-  if (!digits) return "";
+  if (!/^[1-9]\d{7,14}$/.test(digits)) return "";
   return raw.startsWith("+") ? `+${digits}` : `+${digits}`;
 }
 
@@ -100,19 +107,29 @@ async function sendTwilioMessage(input: {
 }
 
 export async function POST(req: Request) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
   if (auth) return auth;
+  const permission = checkAdminPermission(req, "campaigns:test_whatsapp");
+  if (permission) return permission;
+  const principal = getAdminPrincipal(req);
+  const rateLimited = await enforceCriticalRateLimit(req, {
+    rateClass: "ai_expensive",
+    ...adminCriticalRateLimitIdentity(req),
+  });
+  if (rateLimited) return rateLimited;
 
-  const payload = await req.json().catch(() => ({}));
+  let payload: Record<string, unknown>;
+  try {
+    payload = await readBoundedJsonBody<Record<string, unknown>>(req, 16 * 1024);
+  } catch (error) {
+    const tooLarge = error instanceof RequestBodyTooLargeError;
+    return json({ ok: false, reason: tooLarge ? "request_body_too_large" : "invalid_json" }, tooLarge ? 413 : 400);
+  }
   const toPhone = normalizePhone(payload?.to);
   const body = clampBody(payload?.body);
-  const confirmRecipientOptIn = payload?.confirmRecipientOptIn === true;
   const sandbox = payload?.sandbox !== false;
   const quickReplies = normalizeQuickReplies(payload?.quickReplies);
 
-  if (!confirmRecipientOptIn) {
-    return json({ ok: false, reason: "recipient_opt_in_required" }, 400);
-  }
   if (!toPhone) {
     return json({ ok: false, reason: "recipient_phone_required" }, 400);
   }
@@ -122,6 +139,84 @@ export async function POST(req: Request) {
   if (!sandbox) {
     return json({ ok: false, reason: "sandbox_only_endpoint" }, 400);
   }
+
+  await ensureConsumerPortalSchema();
+  const requestUrl = new URL(req.url);
+  const explicitTenantValues = [
+    payload.tenantId,
+    payload.tenant_id,
+    payload.tenantSlug,
+    payload.tenant_slug,
+    payload.tenant,
+    requestUrl.searchParams.get("tenant"),
+  ].map((value) => String(value || "").trim()).filter(Boolean);
+  const tenantReferences = [
+    { tenantId: payload.tenantId },
+    { tenantId: payload.tenant_id },
+    { tenantSlug: payload.tenantSlug },
+    { tenantSlug: payload.tenant_slug },
+    tenantReference(payload.tenant),
+    tenantReference(requestUrl.searchParams.get("tenant")),
+  ];
+  let tenantId = "";
+  if (principal.scope !== "super_admin" || explicitTenantValues.length) {
+    const tenantResult = await resolveAdminWriteTenant({
+      principal,
+      references: tenantReferences,
+      lookup: async ({ tenantId: requestedId, tenantSlug }) => (await sql/*sql*/`
+        SELECT id::text AS id, lower(slug) AS slug
+        FROM tenants
+        WHERE (${requestedId} = '' OR id::text = ${requestedId})
+          AND (${tenantSlug} = '' OR lower(slug) = ${tenantSlug})
+        LIMIT 2
+      `) as Array<{ id: unknown; slug: unknown }>,
+    });
+    if (!tenantResult.ok) return json({ ok: false, reason: tenantResult.reason }, tenantResult.status);
+    tenantId = tenantResult.tenant.tenantId;
+  }
+
+  const consentRows = await sql/*sql*/`
+    SELECT DISTINCT
+      consumer.id::text AS consumer_id,
+      tenant.id::text AS tenant_id,
+      lower(tenant.slug) AS tenant_slug
+    FROM consumers consumer
+    JOIN tenant_consumer_memberships membership
+      ON membership.consumer_id = consumer.id
+     AND membership.status = 'active'
+    JOIN tenants tenant ON tenant.id = membership.tenant_id
+    WHERE consumer.phone = ${toPhone}
+      AND (${tenantId} = '' OR tenant.id::text = ${tenantId})
+      AND EXISTS (
+        SELECT 1
+        FROM consumer_tenant_consents consent
+        WHERE consent.tenant_id = tenant.id
+          AND consent.consumer_id = consumer.id
+          AND consent.granted = true
+          AND consent.revoked_at IS NULL
+          AND lower(consent.scope) IN ('whatsapp', 'whatsapp_marketing', 'phone_marketing')
+      )
+    ORDER BY tenant_id, consumer_id
+    LIMIT 3
+  `;
+  if (consentRows.length !== 1) {
+    const reason = consentRows.length > 1 ? "recipient_consent_ambiguous" : "recipient_persisted_opt_in_required";
+    const requestMeta = getRequestMeta(req);
+    const audit = await logAuditEvent({
+      actorId: principal.userId,
+      tenantId: tenantId || null,
+      action: "campaign_test_whatsapp_denied",
+      resourceType: "consumer",
+      afterData: { reason, sandbox: true },
+      ipAddress: requestMeta.ip,
+      userAgent: requestMeta.userAgent,
+      requestId: requestMeta.traceId,
+    });
+    return json({ ok: false, reason, warning: audit.ok ? null : audit.reason }, consentRows.length > 1 ? 409 : 403);
+  }
+  const consent = consentRows[0] as Record<string, unknown>;
+  tenantId = String(consent.tenant_id || "");
+  const consumerId = String(consent.consumer_id || "");
 
   const accountSid = env("TWILIO_ACCOUNT_SID");
   const authToken = env("TWILIO_AUTH_TOKEN");
@@ -136,15 +231,46 @@ export async function POST(req: Request) {
   form.set("To", `whatsapp:${toPhone}`);
   form.set("From", from);
   let contentSid: string | null = null;
-  if (quickReplies.length) {
-    contentSid = await createInteractiveContent({ accountSid, authToken, body, actions: quickReplies });
-    form.set("ContentSid", contentSid);
-  } else {
-    form.set("Body", body);
+  let response: Response;
+  let result: Record<string, unknown>;
+  try {
+    if (quickReplies.length) {
+      contentSid = await createInteractiveContent({ accountSid, authToken, body, actions: quickReplies });
+      form.set("ContentSid", contentSid);
+    } else {
+      form.set("Body", body);
+    }
+    const delivery = await sendTwilioMessage({ accountSid, authToken, form });
+    response = delivery.response;
+    result = delivery.result as Record<string, unknown>;
+  } catch {
+    const requestMeta = getRequestMeta(req);
+    const audit = await logAuditEvent({
+      actorId: principal.userId,
+      tenantId,
+      action: "campaign_test_whatsapp_failed",
+      resourceType: "consumer",
+      resourceId: consumerId,
+      afterData: { reason: "twilio_delivery_failed", sandbox: true },
+      ipAddress: requestMeta.ip,
+      userAgent: requestMeta.userAgent,
+      requestId: requestMeta.traceId,
+    });
+    return json({ ok: false, reason: "twilio_delivery_failed", warning: audit.ok ? null : audit.reason }, 502);
   }
-
-  const { response, result } = await sendTwilioMessage({ accountSid, authToken, form });
   if (!response.ok) {
+    const requestMeta = getRequestMeta(req);
+    const audit = await logAuditEvent({
+      actorId: principal.userId,
+      tenantId,
+      action: "campaign_test_whatsapp_failed",
+      resourceType: "consumer",
+      resourceId: consumerId,
+      afterData: { reason: "twilio_delivery_failed", provider_status: response.status, sandbox: true },
+      ipAddress: requestMeta.ip,
+      userAgent: requestMeta.userAgent,
+      requestId: requestMeta.traceId,
+    });
     return json({
       ok: false,
       reason: "twilio_delivery_failed",
@@ -156,8 +282,27 @@ export async function POST(req: Request) {
         message: result?.message || null,
         moreInfo: result?.more_info || null,
       },
+      warning: audit.ok ? null : audit.reason,
     }, 502);
   }
+
+  const requestMeta = getRequestMeta(req);
+  const audit = await logAuditEvent({
+    actorId: principal.userId,
+    tenantId,
+    action: "campaign_test_whatsapp_queued",
+    resourceType: "consumer",
+    resourceId: consumerId,
+    afterData: {
+      provider_status: result?.status || "queued",
+      provider_message_id: result?.sid || null,
+      content_id: contentSid,
+      sandbox: true,
+    },
+    ipAddress: requestMeta.ip,
+    userAgent: requestMeta.userAgent,
+    requestId: requestMeta.traceId,
+  });
 
   return json({
     ok: true,
@@ -167,5 +312,6 @@ export async function POST(req: Request) {
     status: result?.status || "queued",
     to: maskPhone(toPhone),
     from,
+    warning: audit.ok ? null : audit.reason,
   });
 }

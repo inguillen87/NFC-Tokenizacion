@@ -88,8 +88,8 @@ La cadena no recibe todos los taps. Los eventos DPP completos quedan en backend;
 | --- | --- | --- | --- |
 | SUN validation actual | Backend envelope key en secreto Vercel | Descifrar claves de encoding y validar mensajes de tags | API backend; no es HSM/KMS gestionado |
 | Per batch | Claves de encoding cifradas | Validar CMAC/SDM de cada lote | DB cifrada + API |
-| Blockchain pilot | `POLYGON_MINTER_PRIVATE_KEY` | Firmar mint Polygon Amoy | Executor o API local minter |
-| Blockchain pilot `kms_wrapped` | Wallet cifrada por Google Cloud KMS `SOFTWARE` | El executor la desenvuelve y firma con plaintext efimero en memoria | Executor; no es firma directa ni HSM |
+| Laboratorio legado | `POLYGON_MINTER_PRIVATE_KEY` | Firmar mint Polygon Amoy solo en desarrollo testnet desechable | Nunca es la configuracion aprobada para produccion o un tenant |
+| Blockchain pilot `kms_wrapped` | Wallet cifrada por Google Cloud KMS `SOFTWARE` | El executor la desenvuelve y firma con plaintext efimero en memoria | Executor; no es firma directa ni HSM; su estado se confirma con readiness y recibo fresco |
 | Blockchain target | Direct KMS/HSM/custody signer verificado | Firmar sin exponer la private key al workload | Executor + signer remoto |
 
 ## 5. Arquitectura recomendada para nexID
@@ -125,7 +125,7 @@ Asi el contrato y el explorer no exponen UID crudo.
 
 ## 7. Como queda con executor/KMS
 
-Modo testnet manana:
+Modo de piloto testnet soportado (la configuracion no prueba por si sola que el runtime este activo):
 
 ```txt
 API:
@@ -136,8 +136,13 @@ TOKENIZATION_EXECUTOR_SECRET=<secreto>
 TOKENIZATION_UID_SALT=<salt>
 
 Executor:
+EXECUTOR_CAPABILITIES=polygon
+EXECUTOR_SIGNER_MODE=kms_wrapped
+NEXID_KMS_ENVIRONMENT=staging
 POLYGON_RPC_URL=<amoy rpc>
-POLYGON_MINTER_PRIVATE_KEY=<wallet minter testnet>
+POLYGON_KMS_WRAP_KEY_RESOURCE=<recurso Cloud KMS SOFTWARE>
+POLYGON_KMS_WRAPPED_PRIVATE_KEY=<ciphertext de wallet>
+POLYGON_KMS_PUBLISHER_ADDRESS=<address publica del publisher>
 POLYGON_MINTER_ADDRESS=<address publica de la minter>
 POLYGON_CONTRACT_ADDRESS=<contrato>
 POLYGON_DEFAULT_RECIPIENT=<wallet default>
@@ -149,8 +154,10 @@ Modo premium despues:
 ```txt
 Executor:
 EXECUTOR_SIGNER_MODE=kms
-KMS_KEY_ID=<key id>
+POLYGON_KMS_SIGNER_URL=<signer remoto allowlisted>
+POLYGON_KMS_KEY_ID=<key id no exportable>
+POLYGON_KMS_PUBLISHER_ADDRESS=<address derivada de esa key>
 RPC/CONTRACT/RECIPIENT igual
 ```
 
-La API no cambia. Solo cambia el signer interno del executor.
+La API no cambia. Solo cambia el signer interno del executor. No se usa la palabra HSM hasta verificar el nivel de proteccion del proveedor y que la clave de firma nunca sea exportada al workload.

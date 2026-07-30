@@ -161,7 +161,7 @@ test("readonly demo disables every developer mutation before the proxy can retur
   assert.equal(developerMutationsAllowed({ dataMode: "unknown", loading: false }), false);
   assert.equal(developerMutationsAllowed({ dataMode: "production", loading: true }), false);
   assert.equal(developerMutationsAllowed({ dataMode: "production", loading: false }), true);
-  assert.equal((consoleSource.match(/if \(!ensureMutationAllowed\(\)\) return/g) || []).length, 4);
+  assert.equal((consoleSource.match(/if \(!ensureMutationAllowed\(\)\) return/g) || []).length, 5);
   assert.match(consoleSource, /disabled=\{!mutationsAllowed[^}]*\}/);
   assert.match(consoleSource, /developer-mutation-gate/);
 });
@@ -226,9 +226,16 @@ test("developer hub exposes explicit empty, error, one-time-secret and webhook d
 });
 
 test("webhook UX requires signatures, uses existing events and does not invent redelivery", () => {
-  assert.match(consoleSource, /webhookSecret\.length < 32/);
+  assert.doesNotMatch(consoleSource, /signingSecret:\s*webhookSecret/);
+  assert.doesNotMatch(consoleSource, /id="webhook-secret"\s+type="password"/);
+  assert.match(consoleSource, /asRecord\(created\.data\)\.secret/);
   assert.match(consoleSource, /events: selectedWebhookEvents/);
   assert.match(consoleSource, /signatureVersion: "v2"/);
+  assert.match(consoleSource, /expectedSecretVersion: Number\(row\.signing_secret_version\)/);
+  assert.match(consoleSource, /overlapSeconds: 3600/);
+  assert.match(consoleSource, /Rotar secreto/);
+  assert.match(consoleSource, /Reactivar \+ secreto nuevo/);
+  assert.match(consoleSource, /Eliminar y destruir secreto/);
   assert.match(consoleSource, /Sólo se aceptan destinos HTTPS públicos/);
   assert.match(consoleSource, /row\.signature_version \|\| "legacy"/);
   assert.match(consoleSource, /attempt_count/);

@@ -2,9 +2,10 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { Wallet, JsonRpcProvider, formatEther, isAddress } from "ethers";
-import { checkAdmin, checkAdminPermission } from "../../../../lib/auth";
+import { checkAdmin, checkAdminPermission, getAdminPrincipal } from "../../../../lib/auth";
 import { json } from "../../../../lib/http";
 import { probePolygonExecutorReadiness } from "../../../../lib/polygon-executor-readiness";
+import { polygonWalletViewForViewer } from "../../../../lib/polygon-wallet-view";
 
 const AMOY_CHAIN_ID = 80002n;
 
@@ -32,6 +33,14 @@ function maskUrl(value: string) {
   } catch {
     return "configured";
   }
+}
+
+function walletJson(req: Request, payload: Record<string, unknown>) {
+  const principal = getAdminPrincipal(req);
+  return json(polygonWalletViewForViewer(payload, {
+    scope: principal.scope,
+    tenantSlug: principal.tenantSlug,
+  }));
 }
 
 export async function GET(req: Request): Promise<Response> {
@@ -89,7 +98,7 @@ export async function GET(req: Request): Promise<Response> {
         : "Tokenization is disabled until an operator explicitly selects simulated or polygon mode.",
     ));
     const failed = checks.filter((item) => item.status === "fail");
-    return json({
+    return walletJson(req, {
       ok: true,
       ready: mode === "simulated" && failed.length === 0,
       chainReady: false,
@@ -191,7 +200,7 @@ export async function GET(req: Request): Promise<Response> {
     ? chainId === String(AMOY_CHAIN_ID) && contractDeployed && Boolean(minterAddress) && Number(minterBalancePol || 0) > 0
     : executorReadiness?.liveVerified === true;
   const chainReady = failed.length === 0 && executionPathLive;
-  return json({
+  return walletJson(req, {
     ok: true,
     ready: chainReady,
     chainReady,

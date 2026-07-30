@@ -20,7 +20,7 @@ Ejemplo conceptual de evento interno:
   "tenant_id": "ten_01H...",
   "batch_id": "NXD2606-A01",
   "product_ref": "prod_public_or_internal_ref",
-  "event_type": "physical_authentication",
+  "event_type": "sun_cryptographic_verification",
   "occurred_at": "2026-06-27T00:00:00Z",
   "actor_type": "consumer_device",
   "trust": {
@@ -44,14 +44,17 @@ Ejemplo conceptual de evento interno:
 
 El formato exacto puede vivir en codigo o base de datos. Este documento fija el contrato conceptual: no todo evento interno es publico ni on-chain.
 
+Los tipos `sun_cryptographic_verification` y `packaging_physical_test_attested` de este documento son el contrato canónico objetivo. El runtime actual todavía persiste eventos históricos (`TAP_VALID`, `TAP_INVALID`, `REPLAY_SUSPECT`, `qa_passed`, `qa_failed`) y no existe aún un emisor canónico de evidencia física; no deben presentarse los nombres objetivo como eventos ya desplegados.
+
 ## Tipos de evento
 
 | Tipo | Uso | Polygon | IOTA opcional |
 | --- | --- | --- | --- |
 | `supplier_batch_created` | Lote creado para proveedor | No | Hash de configuracion sanitizada |
 | `supplier_manifest_received` | Manifest recibido y validado | No | Hash del manifest sanitizado |
-| `batch_activated` | Lote habilitado para scans | No | Checkpoint de lote |
-| `physical_authentication` | Tap SUN validado o rechazado | No por defecto | Solo checkpoint/agregado si aplica |
+| `sun_cryptographic_verification` | Mensaje SUN/SDM validado o rechazado | No por defecto | Sólo checkpoint/agregado si aplica |
+| `packaging_physical_test_attested` | Prueba física de instalación, adhesión o apertura atestada por QA | No | Digest de evidencia sanitizada si aplica |
+| `batch_activated` | Lote habilitado para scans después de QA aplicable | No | Checkpoint de lote |
 | `tamper_observed` | TagTamper abierto o invalido | No por defecto | Si requiere auditoria |
 | `ownership_claim_requested` | Usuario inicia claim | Puede derivar en Polygon | Digest opcional |
 | `ownership_claim_confirmed` | Claim aceptado | Si | Digest opcional |
@@ -70,6 +73,8 @@ El formato exacto puede vivir en codigo o base de datos. Este documento fija el 
 | `sun_verdict` | `VALID_CLOSED`, `VALID_OPENED`, `VALID_UNKNOWN_TAMPER`, `REPLAY_SUSPECT`, `NOT_REGISTERED`, `INVALID`, `SUN_PROFILE_MISMATCH` |
 | `freshness` | `fresh`, `snapshot`, `replay`, `unknown` |
 | `tamper` | `closed`, `opened`, `opened_previously`, `invalid`, `unknown`, `not_supported` |
+
+Un veredicto SUN verifica criptográficamente un mensaje contra la clave, perfil y contexto provisionados, junto con sus controles de freshness/replay. No demuestra por sí solo origen físico, contenido, instalación del inlay, adhesión, custodia ni apertura real del envase. Incluso `VALID_OPENED` no prueba que el loop TagTamper estuvo instalado atravesando la apertura real; esa afirmación exige evidencia física separada: protocolo, operador, dispositivo, fotos o evidencia de línea, y su propio evento `packaging_physical_test_attested`.
 
 ### Propiedad digital
 

@@ -7,6 +7,8 @@ export type RegisteredSunPayloadMatch = {
   uidHex: string;
   payloadStatus: string;
   tagStatus: string | null;
+  lifecycleState: string | null;
+  lifecycleRevision: number;
   carrierProfileCode: string | null;
 };
 
@@ -97,6 +99,8 @@ export async function findRegisteredSunPayload(input: {
       p.uid_hex,
       p.status AS payload_status,
       t.status AS tag_status,
+      t.lifecycle_state,
+      COALESCE(t.lifecycle_revision, 0)::bigint AS lifecycle_revision,
       t.carrier_profile_code
     FROM tag_sun_payloads p
     LEFT JOIN tags t ON t.id = p.tag_id OR (t.batch_id = p.batch_id AND UPPER(t.uid_hex) = UPPER(p.uid_hex))
@@ -118,6 +122,8 @@ export async function findRegisteredSunPayload(input: {
     uidHex: String(row.uid_hex || "").toUpperCase(),
     payloadStatus: String(row.payload_status || "active"),
     tagStatus: row.tag_status ? String(row.tag_status) : null,
+    lifecycleState: row.lifecycle_state ? String(row.lifecycle_state) : null,
+    lifecycleRevision: Number(row.lifecycle_revision || 0),
     carrierProfileCode: row.carrier_profile_code ? String(row.carrier_profile_code) : null,
   };
 }

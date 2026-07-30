@@ -1,9 +1,17 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge, Card } from "@product/ui";
-import { Globe3dMap } from "@product/ui/globe-3d-map";
 import type { VectorMapEvidenceStep, VectorMapLedgerItem, VectorMapPoint, VectorMapRoute } from "@product/ui/premium-vector-map";
+
+const Globe3dMap = dynamic(
+  () => import("@product/ui/globe-3d-map").then((module) => module.Globe3dMap),
+  {
+    ssr: false,
+    loading: () => <div className="flex h-[180px] w-[260px] items-center justify-center text-[11px] text-slate-400">Cargando mapa ilustrativo...</div>,
+  },
+);
 
 type DemoMode = "consumer_tap" | "consumer_opened" | "consumer_tamper" | "consumer_duplicate";
 type ConsumerState = "AUTH_PENDING" | "VALID" | "OPENED" | "TAMPER_RISK" | "CLAIMED" | "REPLAY_SUSPECT" | "DELIVERED_CLOSED" | "DELIVERED_OPENED" | "OFFLINE_PENDING";
@@ -69,11 +77,19 @@ const MODE_STATE: Record<DemoMode, ConsumerState> = {
 };
 
 const BID_RE = /^[A-Za-z0-9._:-]{3,120}$/;
+const MOBILE_DEMO_STORAGE_PREFIX = "nexid:mobile:";
+const MOBILE_DEMO_STORAGE_VERSION = "v2";
+const STORED_EVENT_NOTE = "Evento de simulación restaurado sin datos personales.";
 
-const WINERY_HQ = { name: "Bodega demo · Mendoza", lat: -33.0086, lng: -68.7794 };
+const ILLUSTRATIVE_ORIGINS: Record<VerticalTemplate["key"], { name: string; lat: number; lng: number }> = {
+  wine: { name: "Origen demo · Mendoza", lat: -33.0086, lng: -68.7794 },
+  agro: { name: "Origen demo · Córdoba", lat: -31.4201, lng: -64.1888 },
+  perfume: { name: "Origen demo · São Paulo", lat: -23.5505, lng: -46.6333 },
+  pharma: { name: "Origen demo · Bogotá", lat: 4.711, lng: -74.0721 },
+};
 
 const STATE_COPY: Record<ConsumerState, { label: string; tone: "green" | "amber" | "cyan" | "red"; message: string }> = {
-  AUTH_PENDING: { label: "AUTH PENDING", tone: "cyan", message: "Validando el mensaje criptográfico del tag y el estado reportado del lote." },
+  AUTH_PENDING: { label: "DEMO LOADING", tone: "cyan", message: "Preparando el escenario visual. La validación criptográfica SUN/SDM sólo ocurre en el flujo físico `/sun`." },
   VALID: { label: "VALID", tone: "green", message: "Lectura aceptada por la demo; en produccion depende de validacion backend, SUN/SDM y estado del lote." },
   OPENED: { label: "TT OPEN REPORTED", tone: "cyan", message: "TT reporta abierto; no certifica apertura, sello ni contenido físico." },
   TAMPER_RISK: { label: "TT RISK REPORTED", tone: "amber", message: "La demo recibió una señal TT o de contexto para revisión; no prueba manipulación física." },
@@ -112,7 +128,39 @@ function seedItemName(item: SeedItem) {
 }
 
 function storeKey(tenant: string, itemId: string, pack: string) {
-  return `nexid:mobile:${tenant}:${itemId}:${pack}`;
+  return `${MOBILE_DEMO_STORAGE_PREFIX}${MOBILE_DEMO_STORAGE_VERSION}:${tenant}:${itemId}:${pack}`;
+}
+
+function parseStoredEvents(raw: string): EventItem[] {
+  try {
+    const parsed = JSON.parse(raw) as Array<{ type?: unknown; at?: unknown }>;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.flatMap((item) => {
+      const type = String(item?.type || "").trim();
+      const at = String(item?.at || "").trim();
+      if (!/^[A-Z0-9_:-]{1,64}$/.test(type) || !Number.isFinite(Date.parse(at))) return [];
+      return [{ type, at: new Date(at).toISOString(), note: STORED_EVENT_NOTE }];
+    }).slice(0, 12);
+  } catch {
+    return [];
+  }
+}
+
+function serializeStoredEvents(events: EventItem[]) {
+  return JSON.stringify(events.slice(0, 12).map(({ type, at }) => ({
+    type: type.replace(/[^A-Z0-9_:-]/gi, "").slice(0, 64),
+    at,
+  })));
+}
+
+function purgeLegacyMobileDemoStorage(storage: Storage) {
+  for (let index = storage.length - 1; index >= 0; index -= 1) {
+    const key = storage.key(index);
+    if (key?.startsWith(MOBILE_DEMO_STORAGE_PREFIX)
+      && !key.startsWith(`${MOBILE_DEMO_STORAGE_PREFIX}${MOBILE_DEMO_STORAGE_VERSION}:`)) {
+      storage.removeItem(key);
+    }
+  }
 }
 
 function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -122,6 +170,10 @@ function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number) {
   const dLon = toRad(lon2 - lon1);
   const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
   return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function approximateCoordinate(value: number) {
+  return Math.round(value * 1_000) / 1_000;
 }
 
 function detectVertical(pack: string, item: SeedItem): VerticalTemplate["key"] {
@@ -208,8 +260,6 @@ export function MobileDemoClient({
 }) {
   const [consumerState, setConsumerState] = useState<ConsumerState>("AUTH_PENDING");
   const [events, setEvents] = useState<EventItem[]>([]);
-  const [warrantyName, setWarrantyName] = useState("");
-  const [warrantySaved, setWarrantySaved] = useState(false);
   const [timelineOpen, setTimelineOpen] = useState(false);
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [showLeadModal, setShowLeadModal] = useState(false);
@@ -229,7 +279,6 @@ export function MobileDemoClient({
   const [geoError, setGeoError] = useState("");
   const [geoRequestId, setGeoRequestId] = useState(0);
 
-  const contextSyncKeyRef = useRef<string>("");
   const mainRef = useRef<HTMLElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
@@ -244,6 +293,7 @@ export function MobileDemoClient({
   const activeSku = seedItemSku(activeItem);
   const activeVertical = detectVertical(pack, activeItem);
   const template = VERTICAL_TEMPLATES[activeVertical];
+  const illustrativeOrigin = ILLUSTRATIVE_ORIGINS[activeVertical];
   const stateTimeline: ConsumerState[] = ["AUTH_PENDING", "VALID", "DELIVERED_CLOSED", "DELIVERED_OPENED", "OFFLINE_PENDING", "OPENED", "TAMPER_RISK", "CLAIMED", "REPLAY_SUSPECT"];
   const firstScan = events.length ? events[events.length - 1] : null;
   const lastScan = events.length ? events[0] : null;
@@ -256,29 +306,29 @@ export function MobileDemoClient({
     return 64;
   }, [consumerState]);
   const investorSignals = useMemo(() => ([
-    { label: "Scan-to-CTA", value: `${Math.max(18, Math.min(67, 22 + events.length * 4))}%`, tone: "text-cyan-100" },
-    { label: "Fraud shield", value: consumerState === "REPLAY_SUSPECT" ? "Replay blocked" : "Active", tone: consumerState === "REPLAY_SUSPECT" ? "text-amber-200" : "text-emerald-200" },
-    { label: "Lead quality", value: leadSaved ? "Qualified" : "Pending", tone: leadSaved ? "text-emerald-200" : "text-slate-300" },
+    { label: "Scan-to-CTA demo", value: `${Math.max(18, Math.min(67, 22 + events.length * 4))}%`, tone: "text-cyan-100" },
+    { label: "Fraud scenario", value: consumerState === "REPLAY_SUSPECT" ? "Replay simulated" : "No demo alert", tone: consumerState === "REPLAY_SUSPECT" ? "text-amber-200" : "text-emerald-200" },
+    { label: "Lead server state", value: leadSaved ? "Accepted" : "Not submitted", tone: leadSaved ? "text-emerald-200" : "text-slate-300" },
   ]), [consumerState, events.length, leadSaved]);
-  const distanceFromWinery = useMemo(() => {
+  const distanceFromOrigin = useMemo(() => {
     if (!geoState) return null;
-    return haversineKm(WINERY_HQ.lat, WINERY_HQ.lng, geoState.lat, geoState.lng);
-  }, [geoState]);
+    return haversineKm(illustrativeOrigin.lat, illustrativeOrigin.lng, geoState.lat, geoState.lng);
+  }, [activeVertical, geoState, illustrativeOrigin.lat, illustrativeOrigin.lng]);
   const mobileMapPoints = useMemo<VectorMapPoint[]>(() => [
     {
       id: "origin",
-      label: "Origen",
-      sublabel: WINERY_HQ.name,
-      lat: WINERY_HQ.lat,
-      lng: WINERY_HQ.lng,
+      label: "Origen ilustrativo",
+      sublabel: illustrativeOrigin.name,
+      lat: illustrativeOrigin.lat,
+      lng: illustrativeOrigin.lng,
       scans: 1,
       risk: 0,
       tone: "origin",
     },
     geoState
       ? {
-          id: "tap",
-          label: "Lectura",
+          id: "visitor-location",
+          label: "GPS opcional",
           sublabel: `${geoState.lat.toFixed(3)}, ${geoState.lng.toFixed(3)}`,
           lat: geoState.lat,
           lng: geoState.lng,
@@ -287,93 +337,86 @@ export function MobileDemoClient({
           tone: consumerState === "REPLAY_SUSPECT" || consumerState === "TAMPER_RISK" ? "risk" : "tap",
         }
       : {
-          id: "pending",
-          label: "Tap pendiente",
-          sublabel: "Permiso de ubicacion",
-          lat: WINERY_HQ.lat + 7,
-          lng: WINERY_HQ.lng + 16,
+          id: "pending-location",
+          label: "GPS no compartido",
+          sublabel: "Preview sin ubicación",
+          lat: illustrativeOrigin.lat + 7,
+          lng: illustrativeOrigin.lng + 16,
           scans: 0,
           risk: 0,
           tone: "hub",
         },
-  ], [consumerState, geoState]);
+  ], [activeVertical, consumerState, geoState, illustrativeOrigin.lat, illustrativeOrigin.lng, illustrativeOrigin.name]);
   const mobileMapRoutes = useMemo<VectorMapRoute[]>(() => geoState ? [{
     id: "origin-to-tap",
-    fromLat: WINERY_HQ.lat,
-    fromLng: WINERY_HQ.lng,
+    fromLat: illustrativeOrigin.lat,
+    fromLng: illustrativeOrigin.lng,
     toLat: geoState.lat,
     toLng: geoState.lng,
-    distanceLabel: distanceFromWinery ? `${distanceFromWinery.toFixed(1)} km` : undefined,
-    evidence: "Origen, punto de lectura y CTA comercial quedan conectados.",
+    distanceLabel: distanceFromOrigin ? `${distanceFromOrigin.toFixed(1)} km` : undefined,
+    evidence: "Ruta ilustrativa entre el origen declarado del escenario y el GPS opcional del visitante.",
     tone: consumerState === "REPLAY_SUSPECT" || consumerState === "TAMPER_RISK" ? "warn" : "info",
-  }] : [], [consumerState, distanceFromWinery, geoState]);
+  }] : [], [activeVertical, consumerState, distanceFromOrigin, geoState, illustrativeOrigin.lat, illustrativeOrigin.lng]);
   const mobileMapEvidenceSteps = useMemo<VectorMapEvidenceStep[]>(() => [
     {
       id: "origin",
-      label: "Origen",
-      value: WINERY_HQ.name,
-      detail: "Lote, producto y tenant inicial.",
+      label: "Origen demo",
+      value: illustrativeOrigin.name,
+      detail: "Dato ilustrativo del escenario; no constituye evidencia de origen.",
       tone: "origin",
     },
     {
-      id: "tap",
-      label: "Tap actual",
-      value: geoState ? `${geoState.lat.toFixed(3)}, ${geoState.lng.toFixed(3)}` : "Ubicacion pendiente",
-      detail: consumerState === "REPLAY_SUSPECT" ? "Replay bloqueado." : "Ownership disponible solo si backend confirma la lectura.",
+      id: "visitor-location",
+      label: "GPS del visitante",
+      value: geoState ? `${geoState.lat.toFixed(3)}, ${geoState.lng.toFixed(3)}` : "No compartido",
+      detail: "Dato opcional de esta sesión de preview; no demuestra lectura, custodia ni ubicación del producto.",
       tone: consumerState === "REPLAY_SUSPECT" || consumerState === "TAMPER_RISK" ? "risk" : "tap",
     },
     {
       id: "token",
       label: "Token / NFT",
       value: leadIntent === "tokenization_optional" || events.some((item) => item.type.includes("TOKENIZATION")) ? "solicitado" : "opcional",
-      detail: "Polygon se solicita solo cuando la marca habilita tokenizacion.",
+      detail: "Polygon o IOTA se ejecutan sólo tras una política backend autorizada; este preview no firma ni publica on-chain.",
       tone: "token",
     },
     {
       id: "loyalty",
       label: "Beneficios",
-      value: warrantySaved || leadSaved ? "activados" : "disponibles",
-      detail: "Garantia, recompra, club y marketplace.",
+      value: leadSaved ? "interés registrado" : "preview",
+      detail: "Garantía, ownership y marketplace requieren un tap físico fresco.",
       tone: "marketplace",
     },
-  ], [consumerState, events, geoState, leadIntent, leadSaved, warrantySaved]);
+  ], [activeVertical, consumerState, events, geoState, illustrativeOrigin.name, leadIntent, leadSaved]);
   const mobileMapLedgerItems = useMemo<VectorMapLedgerItem[]>(() => [
-    { id: "distance", label: "Distancia", value: distanceFromWinery ? `${distanceFromWinery.toFixed(1)} km` : "N/A", tone: "origin" },
-    { id: "events", label: "Eventos", value: String(events.length), tone: "tap" },
-    { id: "risk", label: "Riesgo", value: consumerState === "REPLAY_SUSPECT" || consumerState === "TAMPER_RISK" ? "bloqueado" : "controlado", tone: consumerState === "REPLAY_SUSPECT" || consumerState === "TAMPER_RISK" ? "risk" : "loyalty" },
-  ], [consumerState, distanceFromWinery, events.length]);
+    { id: "distance", label: "Distancia demo", value: distanceFromOrigin ? `${distanceFromOrigin.toFixed(1)} km` : "N/A", tone: "origin" },
+    { id: "events", label: "Eventos demo", value: String(events.length), tone: "tap" },
+    { id: "risk", label: "Escenario", value: consumerState === "REPLAY_SUSPECT" || consumerState === "TAMPER_RISK" ? "alerta simulada" : "sin alerta demo", tone: consumerState === "REPLAY_SUSPECT" || consumerState === "TAMPER_RISK" ? "risk" : "loyalty" },
+  ], [consumerState, distanceFromOrigin, events.length]);
   const demoBid = bidSource === "demo-pack" || effectiveBid.toUpperCase().startsWith("DEMO-");
   const bidPresentation = !effectiveBid
     ? {
         badge: "MISSING BID",
-        message: "MISSING BID · Ownership, provenance y tokenizacion no estan disponibles.",
+        message: "MISSING BID · La provenance histórica no está disponible; las acciones protegidas requieren un tap físico.",
         className: "border-amber-300/30 bg-amber-500/10 text-amber-100",
       }
     : demoBid
       ? {
           badge: "DEMO PACK",
-          message: "DEMO MODE · BID provisto por el dataset de demostracion.",
+          message: "DEMO MODE · BID provisto por el dataset de demostración; no prueba una lectura física.",
           className: "border-violet-300/30 bg-violet-500/10 text-violet-100",
         }
       : {
           badge: "BID UNVERIFIED",
-          message: "BID PROVIDED · Validacion de servidor pendiente.",
+          message: "BID PROVIDED · Identificador de preview sin validación SUN en esta pantalla.",
           className: "border-amber-300/30 bg-amber-500/10 text-amber-100",
         };
-  const ctaBlocked = consumerState === "REPLAY_SUSPECT" || consumerState === "TAMPER_RISK";
-  const ctaPendingAuth = consumerState === "AUTH_PENDING";
   const identityMissing = !effectiveBid || !activeUid;
   const missingIdentityFields = [!effectiveBid ? "BID" : "", !activeUid ? "UID" : ""].filter(Boolean).join(" y ");
-  const actionDisabled = ctaBlocked || ctaPendingAuth || identityMissing || ctaPending;
   const provenanceDisabled = identityMissing || ctaPending;
-  const ctaBlockedReason = ctaBlocked
-    ? "Accion bloqueada: la lectura quedo en riesgo y requiere revision backend antes de ownership, garantia o tokenizacion."
-    : ctaPendingAuth
-      ? "Accion bloqueada: la validacion todavia esta pendiente."
-      : identityMissing
-        ? `Accion bloqueada: falta ${missingIdentityFields} para identificar el producto.`
-        : "Accion en curso. Espera la respuesta del servidor.";
-  const actionDisabledClass = actionDisabled ? "cursor-not-allowed opacity-50" : "";
+  const protectedMutationReason = "Preview solamente: escaneá el NFC físico para obtener un handoff SUN fresco y habilitar ownership, garantía o tokenización.";
+  const provenanceBlockedReason = identityMissing
+    ? `Provenance no disponible: falta ${missingIdentityFields} para identificar el producto.`
+    : "Consulta en curso. Esperá la respuesta del servidor.";
   const provenanceDisabledClass = provenanceDisabled ? "cursor-not-allowed opacity-50" : "";
   const activeDialog = showTokenModal ? "token" : showLeadModal ? "lead" : null;
 
@@ -401,13 +444,12 @@ export function MobileDemoClient({
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const raw = window.localStorage.getItem(storeKey(tenant, itemId, pack));
-    if (!raw) return;
     try {
-      const parsed = JSON.parse(raw) as EventItem[];
-      if (Array.isArray(parsed)) setEvents(parsed.slice(0, 12));
+      purgeLegacyMobileDemoStorage(window.localStorage);
+      const raw = window.localStorage.getItem(storeKey(tenant, itemId, pack));
+      if (raw) setEvents(parseStoredEvents(raw));
     } catch {
-      // ignore corrupted local demo state
+      // Storage can be disabled, full or unavailable in private browsing.
     }
   }, [tenant, itemId, pack]);
 
@@ -422,16 +464,16 @@ export function MobileDemoClient({
       (position) => {
         setGeoError("");
         setGeoState({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-          accuracy: position.coords.accuracy,
+          lat: approximateCoordinate(position.coords.latitude),
+          lng: approximateCoordinate(position.coords.longitude),
+          accuracy: Math.max(150, Number.isFinite(position.coords.accuracy) ? position.coords.accuracy : 150),
           capturedAt: nowIso(),
         });
       },
       (error) => {
         setGeoError(error.message || "geolocation unavailable");
       },
-      { enableHighAccuracy: true, timeout: 12_000, maximumAge: 60_000 },
+      { enableHighAccuracy: false, timeout: 12_000, maximumAge: 60_000 },
     );
   }, [geoRequestId]);
 
@@ -495,82 +537,18 @@ export function MobileDemoClient({
   }
 
 
-  async function syncSunContext() {
-    if (!effectiveBid || !activeUid) return;
-    const syncKey = `${effectiveBid}:${activeUid}:${consumerState}:${geoState?.capturedAt || "na"}:${geoError || "ok"}`;
-    if (contextSyncKeyRef.current === syncKey) return;
-    contextSyncKeyRef.current = syncKey;
-
-    const clientMeta = {
-      platform: typeof navigator !== "undefined" ? navigator.platform : "unknown",
-      browser: typeof navigator !== "undefined" ? navigator.userAgent : "unknown",
-      language: typeof navigator !== "undefined" ? navigator.language : locale,
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-      mobile: typeof navigator !== "undefined" ? /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) : false,
-    };
-
-    await fetch("/api/sun-context", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        bid: effectiveBid,
-        uid: activeUid,
-        contextStatus: consumerState,
-        scannedAt: new Date().toISOString(),
-        geo: geoState
-          ? {
-              lat: geoState.lat,
-              lng: geoState.lng,
-              accuracy: geoState.accuracy ?? null,
-            }
-          : undefined,
-        client: clientMeta,
-        geoError: geoError || undefined,
-      }),
-    }).catch(() => null);
-  }
-
   function pushEvent(type: string, note: string) {
     setEvents((currentEvents) => {
       const next = [{ type, note, at: nowIso() }, ...currentEvents].slice(0, 12);
       if (typeof window !== "undefined") {
-        window.localStorage.setItem(storeKey(tenant, itemId, pack), JSON.stringify(next));
+        try {
+          window.localStorage.setItem(storeKey(tenant, itemId, pack), serializeStoredEvents(next));
+        } catch {
+          // The preview remains usable when local storage is unavailable.
+        }
       }
       return next;
     });
-  }
-
-
-  async function postCta(action: "claim-ownership" | "register-warranty" | "tokenize-request") {
-    if (ctaBlocked || ctaPendingAuth) throw new Error(ctaBlockedReason);
-    if (!effectiveBid) throw new Error("Batch ID missing (add ?bid=... in public demo URL)");
-    if (!activeUid) throw new Error("UID missing for CTA call");
-    const response = await fetch(`/api/public-cta/${action}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        bid: effectiveBid,
-        uid: activeUid,
-        tenant,
-        itemId,
-        pack,
-        geo: geoState
-          ? {
-              lat: geoState.lat,
-              lng: geoState.lng,
-              accuracy: geoState.accuracy ?? null,
-              captured_at: geoState.capturedAt,
-              winery_origin: WINERY_HQ,
-              distance_km: distanceFromWinery ? Number(distanceFromWinery.toFixed(2)) : null,
-            }
-          : null,
-      }),
-    });
-    const data = await response.json().catch(() => ({ ok: false, reason: "invalid json" }));
-    if (!response.ok || data?.ok === false) {
-      throw new Error(String(data?.reason || `CTA failed (${response.status})`));
-    }
-    return data;
   }
 
   async function fetchProvenance() {
@@ -589,7 +567,7 @@ export function MobileDemoClient({
 
   async function viewProvenance() {
     if (provenanceDisabled) {
-      setCtaStatus(ctaBlockedReason);
+      setCtaStatus(provenanceBlockedReason);
       return;
     }
     setCtaPending(true);
@@ -602,7 +580,7 @@ export function MobileDemoClient({
       pushEvent("PROVENANCE_VIEWED", `Provenance consultada: ${total} acciones registradas.`);
     } catch (error) {
       const reason = error instanceof Error ? error.message : "provenance unavailable";
-      setCtaStatus(`Provenance local solamente: ${reason}`);
+      setCtaStatus(`Provenance no confirmada: ${reason}. Se muestran únicamente eventos locales de simulación.`);
       pushEvent("PROVENANCE_VIEWED_LOCAL", `Fallback local: ${reason}`);
     } finally {
       setTimelineOpen((value) => !value);
@@ -610,62 +588,13 @@ export function MobileDemoClient({
     }
   }
 
-  async function activateOwnership() {
-    if (actionDisabled) {
-      setCtaStatus(ctaBlockedReason);
-      pushEvent("OWNERSHIP_BLOCKED", ctaBlockedReason);
-      return;
-    }
-    setCtaPending(true);
-    try {
-      await postCta("claim-ownership");
-      setConsumerState("CLAIMED");
-      setCtaStatus("Ownership activado y persistido en backend.");
-      pushEvent("OWNERSHIP_CLAIMED", "Ownership activado y persistido en backend CTA.");
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : "CTA unavailable";
-      setCtaStatus(`Ownership no confirmado: ${reason}`);
-      pushEvent("OWNERSHIP_CLAIM_FAILED", reason);
-    } finally {
-      setCtaPending(false);
-    }
-  }
-
-  async function saveWarranty() {
-    if (!warrantyName.trim()) return;
-    if (actionDisabled) {
-      setCtaStatus(ctaBlockedReason);
-      pushEvent("WARRANTY_BLOCKED", ctaBlockedReason);
-      return;
-    }
-    setCtaPending(true);
-    try {
-      const response = await postCta("register-warranty");
-      setWarrantySaved(true);
-      const requestStatus = String(response?.request_status || "pending_review");
-      setCtaStatus(`Solicitud de garantía para ${warrantyName.trim()} registrada (${requestStatus}); cobertura aún no confirmada.`);
-      pushEvent("WARRANTY_REQUEST_RECORDED", "Solicitud de garantía registrada para revisión; cobertura aún no confirmada.");
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : "CTA unavailable";
-      setCtaStatus(`Garantia no confirmada: ${reason}`);
-      pushEvent("WARRANTY_REGISTER_FAILED", reason);
-    } finally {
-      setCtaPending(false);
-    }
-  }
-
   function requestTokenization() {
-    if (actionDisabled) {
-      setCtaStatus(ctaBlockedReason);
-      pushEvent("TOKENIZATION_BLOCKED", ctaBlockedReason);
-      return;
-    }
     setShowLeadModal(false);
     setShowTokenModal(true);
     setLeadSaved(false);
     setCtaStatus("");
     setLeadIntent("tokenization_optional");
-    pushEvent("TOKENIZATION_GATE_OPENED", "Interés en tokenización capturado (tokenization-ready).");
+    pushEvent("TOKENIZATION_INTEREST_OPENED", "Formulario comercial abierto; no se solicitó ninguna operación on-chain.");
   }
 
   function openLeadFlow(intent: LeadIntent) {
@@ -687,7 +616,7 @@ export function MobileDemoClient({
       source: "public_mobile_demo",
       interest: leadIntent,
       message: `${leadMessage || "Lead captured from mobile preview CTA"} [tenant=${tenant}] [session=${demoSessionId}] [pack=${pack}] [interest=${leadIntent}]`,
-      notes: `tenant=${tenant} | item=${itemId} | session=${demoSessionId} | bid=${effectiveBid || "missing"} | mode=${demoBid ? "demo" : effectiveBid ? "unverified" : "missing-bid"} | geo=${geoState ? `${geoState.lat.toFixed(5)},${geoState.lng.toFixed(5)}` : "na"} | distance_km=${distanceFromWinery ? distanceFromWinery.toFixed(1) : "na"}`,
+      notes: `tenant=${tenant} | item=${itemId} | session=${demoSessionId} | bid=${effectiveBid || "missing"} | mode=${demoBid ? "demo" : effectiveBid ? "unverified" : "missing-bid"} | geo_consent=${geoState ? "shared_for_preview_not_attached" : "not_shared"}`,
       vertical: pack,
       created_at: new Date().toISOString(),
     };
@@ -705,25 +634,18 @@ export function MobileDemoClient({
       }
 
       setLeadSaved(true);
-      pushEvent("LEAD_CAPTURED", `${leadIntent} · ${leadEmail.trim()}`);
+      pushEvent("LEAD_CAPTURED", `${leadIntent} · server accepted`);
       if (leadIntent === "tokenization_optional") {
-        if (actionDisabled) {
-          pushEvent("TOKENIZATION_BLOCKED", ctaBlockedReason);
-          setCtaStatus(ctaBlockedReason);
-        } else {
-          try {
-            await postCta("tokenize-request");
-            pushEvent("TOKENIZATION_REQUESTED", "Tokenizacion opcional solicitada y guardada en CTA backend.");
-            setCtaStatus("Lead y solicitud de tokenizacion confirmados por el servidor.");
-          } catch (error) {
-            const reason = error instanceof Error ? error.message : "CTA unavailable";
-            pushEvent("TOKENIZATION_REQUEST_FAILED", reason);
-            setCtaStatus(`Lead guardado; tokenizacion no confirmada: ${reason}`);
-          }
-        }
+        setCtaStatus("Interés comercial guardado. La tokenización real continúa bloqueada hasta un tap NFC físico con handoff SUN fresco.");
       } else {
         setCtaStatus("Lead confirmado por el servidor.");
       }
+      setLeadName("");
+      setLeadEmail("");
+      setLeadCompany("");
+      setLeadCountry("");
+      setLeadRole("");
+      setLeadMessage("");
     } catch (error) {
       const reason = error instanceof Error ? error.message : "Lead request unavailable";
       setCtaStatus(`Lead no confirmado: ${reason}`);
@@ -734,11 +656,6 @@ export function MobileDemoClient({
   }
 
 
-  useEffect(() => {
-    if (consumerState === "AUTH_PENDING") return;
-    void syncSunContext();
-  }, [consumerState, effectiveBid, activeUid, geoState, geoError, locale]);
-
   return (
     <>
     <main ref={mainRef} className="mx-auto max-w-5xl space-y-4 bg-[radial-gradient(circle_at_top,rgba(14,165,233,.10),transparent_38%)] p-4">
@@ -746,6 +663,9 @@ export function MobileDemoClient({
         <div className="mx-auto mb-2 h-1.5 w-20 rounded-full bg-slate-700" />
         <div className="space-y-4 rounded-[1.8rem] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(34,211,238,.10),transparent_30%),#020617] p-4">
           <Card className="border border-white/10 bg-slate-950/95 p-4">
+            <p className="mb-3 rounded-lg border border-rose-300/35 bg-rose-500/10 px-2 py-1 text-[11px] font-semibold text-rose-100">
+              SIMULACIÓN · NO ES UN TAP NFC FÍSICO
+            </p>
             <p className={`mb-3 rounded-lg border px-2 py-1 text-[11px] ${bidPresentation.className}`}>
               {bidPresentation.message}
             </p>
@@ -771,8 +691,9 @@ export function MobileDemoClient({
               >
                 <div aria-hidden="true" className="h-full rounded-full bg-cyan-400 transition-all" style={{ width: `${scanProgress}%` }} />
               </div>
-              <p className="mt-1 text-[11px] text-slate-300">Backend trust check demo {scanProgress}%</p>
+              <p className="mt-1 text-[11px] text-slate-300">Animación del escenario; no representa una validación SUN ejecutada ({scanProgress}%).</p>
             </div>
+            <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Métricas ilustrativas del escenario</p>
             <div className="mt-3 grid grid-cols-3 gap-2">
               {investorSignals.map((signal) => (
                 <div key={signal.label} className="rounded-lg border border-white/10 bg-slate-900/70 p-2">
@@ -785,7 +706,7 @@ export function MobileDemoClient({
               <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">Geo trace capture</p>
               {geoState ? (
                 <p className="mt-1 text-[11px] text-cyan-100">
-                  GPS {geoState.lat.toFixed(5)}, {geoState.lng.toFixed(5)} · ±{Math.round(geoState.accuracy || 0)}m
+                  GPS aproximado {geoState.lat.toFixed(3)}, {geoState.lng.toFixed(3)} · precisión declarada ≥{Math.round(geoState.accuracy || 150)}m
                 </p>
               ) : (
                 <p className="mt-1 text-[11px] text-slate-300">
@@ -819,20 +740,20 @@ export function MobileDemoClient({
             <p className="mt-2 text-slate-400">SKU {activeSku || "-"} · UID {activeUid || "-"}</p>
             <div className="mt-3 rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3">
               <div className="flex items-center justify-between">
-                <p className="text-[11px] uppercase tracking-[0.14em] text-cyan-100">Trust index</p>
+                <p className="text-[11px] uppercase tracking-[0.14em] text-cyan-100">Trust index simulado</p>
                 <p className="text-sm font-semibold text-white">{trustIndex}/100</p>
               </div>
               <div
                 className="mt-2 h-2 overflow-hidden rounded-full bg-slate-900/70"
                 role="progressbar"
-                aria-label="Indice de confianza"
+                aria-label="Índice de confianza simulado"
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-valuenow={trustIndex}
               >
                 <div aria-hidden="true" className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-violet-400 to-emerald-300 transition-all" style={{ width: `${trustIndex}%` }} />
               </div>
-              <p className="mt-1 text-[11px] text-cyan-100/90">Listo para demo comercial de alto impacto (marca + seguridad + conversión).</p>
+              <p className="mt-1 text-[11px] text-cyan-100/90">Indicador ilustrativo calculado en el navegador; no es un score de riesgo productivo.</p>
             </div>
           </Card>
 
@@ -853,10 +774,10 @@ export function MobileDemoClient({
             </div>
             <div className="mt-3 rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3">
               <div className="flex items-center justify-between">
-                <p className="text-[11px] uppercase tracking-[0.12em] text-emerald-100">Origin route map</p>
-                <p className="text-[11px] text-emerald-100">{distanceFromWinery ? `${distanceFromWinery.toFixed(1)} km` : "N/A"}</p>
+                <p className="text-[11px] uppercase tracking-[0.12em] text-emerald-100">Ruta ilustrativa</p>
+                <p className="text-[11px] text-emerald-100">{distanceFromOrigin ? `${distanceFromOrigin.toFixed(1)} km` : "N/A"}</p>
               </div>
-              <p className="mt-1 text-[11px] text-slate-200">{WINERY_HQ.name} → {geoState ? "Punto de lectura" : "Ubicación pendiente"}</p>
+              <p className="mt-1 text-[11px] text-slate-200">{illustrativeOrigin.name} → {geoState ? "GPS opcional del visitante" : "Ubicación no compartida"}</p>
               <div className="mt-2 overflow-hidden rounded-lg border border-white/10 flex justify-center">
                 <Globe3dMap
                   points={mobileMapPoints.map((p) => ({
@@ -900,30 +821,26 @@ export function MobileDemoClient({
                 </div>
                 <p className="mt-2 text-[10px] text-slate-300">
                   {consumerState === "REPLAY_SUSPECT"
-                    ? "Payload reutilizado: se bloquean token, ownership y acciones comerciales."
-                    : "Mapa preparado para contar distribucion, token/NFT opcional, ownership confirmado por backend y beneficios post-tap."}
+                    ? "Escenario de replay: las acciones sensibles siguen reservadas al flujo físico."
+                    : "Mapa de demostración: el origen es declarado y el GPS no se persiste ni se adjunta al lead."}
                 </p>
               </div>
             </div>
           </Card>
 
           <Card className="p-4 text-xs text-slate-300">
-            <h2 className="text-sm font-semibold text-white">Ownership · Warranty · Provenance</h2>
-            {ctaBlocked || ctaPendingAuth || identityMissing ? (
-              <p className="mt-2 rounded-lg border border-amber-300/25 bg-amber-500/10 p-2 text-[11px] text-amber-100">{ctaBlockedReason}</p>
-            ) : null}
+            <h2 className="text-sm font-semibold text-white">Acciones protegidas y provenance</h2>
+            <p className="mt-2 rounded-lg border border-amber-300/25 bg-amber-500/10 p-2 text-[11px] text-amber-100">{protectedMutationReason}</p>
             <div className="mt-2 grid gap-2 md:grid-cols-2">
-              <button suppressHydrationWarning type="button" disabled={actionDisabled} className={`rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2.5 text-left text-cyan-100 shadow-[0_0_0_1px_rgba(34,211,238,.08)] ${actionDisabledClass}`} onClick={() => void activateOwnership()}>Activar ownership</button>
-              <button suppressHydrationWarning type="button" disabled={actionDisabled} className={`rounded-xl border border-violet-300/30 bg-violet-500/10 px-3 py-2.5 text-left text-violet-100 shadow-[0_0_0_1px_rgba(167,139,250,.10)] ${actionDisabledClass}`} onClick={() => void saveWarranty()}>Registrar garantia</button>
+              <button suppressHydrationWarning type="button" disabled title={protectedMutationReason} className="cursor-not-allowed rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2.5 text-left text-cyan-100 opacity-50">Activar ownership · requiere tap físico</button>
+              <button suppressHydrationWarning type="button" disabled title={protectedMutationReason} className="cursor-not-allowed rounded-xl border border-violet-300/30 bg-violet-500/10 px-3 py-2.5 text-left text-violet-100 opacity-50">Registrar garantía · requiere tap físico</button>
               <button suppressHydrationWarning type="button" disabled={provenanceDisabled} className={`rounded-xl border border-amber-300/30 bg-amber-500/10 px-3 py-2.5 text-left text-amber-100 shadow-[0_0_0_1px_rgba(251,191,36,.10)] ${provenanceDisabledClass}`} onClick={() => void viewProvenance()}>Ver provenance</button>
-              <button suppressHydrationWarning type="button" disabled={actionDisabled} className={`rounded-xl border border-white/20 bg-white/5 px-3 py-2.5 text-left text-white ${actionDisabledClass}`} onClick={requestTokenization}>Tokenizacion opcional</button>
+              <button suppressHydrationWarning type="button" className="rounded-xl border border-white/20 bg-white/5 px-3 py-2.5 text-left text-white" onClick={requestTokenization}>Consultar tokenización opcional</button>
             </div>
             <div className="mt-3 rounded-lg border border-white/10 bg-slate-900 p-2">
-              <label htmlFor="mobile-demo-warranty-name" className="sr-only">Nombre para garantia</label>
-              <input id="mobile-demo-warranty-name" suppressHydrationWarning value={warrantyName} onChange={(event) => setWarrantyName(event.target.value)} placeholder="Nombre para garantía" className="w-full rounded border border-white/10 bg-slate-950 px-2 py-1 text-white" />
-              {warrantySaved ? <p className="mt-2 text-emerald-300">Garantía guardada y vinculada al lifecycle.</p> : null}
-              <p className="mt-2 text-[11px] text-slate-400">Batch: {effectiveBid || "(missing)"} · UID: {activeUid || "-"}</p>
-              {ctaPending ? <p className="mt-1 text-xs text-cyan-200">Procesando CTA...</p> : null}
+              <p className="text-[11px] text-slate-400">Batch: {effectiveBid || "(missing)"} · UID: {activeUid || "-"}</p>
+              <p className="mt-1 text-[11px] text-slate-400">La provenance es una lectura histórica. Esta pantalla nunca crea capacidades frescas ni ejecuta mutaciones protegidas.</p>
+              {ctaPending ? <p className="mt-1 text-xs text-cyan-200">Consultando provenance...</p> : null}
               {ctaStatus ? <p className="mt-1 text-xs text-cyan-100" role="status" aria-live="polite">{ctaStatus}</p> : null}
             </div>
           </Card>
@@ -975,14 +892,16 @@ export function MobileDemoClient({
           >
             {activeDialog === "token" ? (
               <Card className="border border-cyan-300/25 bg-slate-950 p-4 text-xs text-slate-300 shadow-2xl">
-                <h2 id="mobile-token-dialog-title" className="text-sm font-semibold text-white">Tokenization-ready</h2>
-                <p id="mobile-token-dialog-description" className="mt-1">El lead y la solicitud de tokenizacion se confirman solamente con respuesta exitosa del servidor.</p>
-                <label htmlFor="mobile-token-email" className="sr-only">Email de contacto</label>
-                <input id="mobile-token-email" data-autofocus type="email" autoComplete="email" required suppressHydrationWarning className="mt-3 w-full rounded border border-white/10 bg-slate-900 px-2 py-2 text-white" placeholder="Email de contacto" value={leadEmail} onChange={(event) => setLeadEmail(event.target.value)} />
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button suppressHydrationWarning type="button" disabled={leadPending || !leadEmail.trim()} className="rounded border border-cyan-300/40 bg-cyan-500/10 px-3 py-2 text-cyan-100 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => void saveLeadInterest()}>{leadPending ? "Guardando..." : "Guardar interes"}</button>
-                  <button suppressHydrationWarning type="button" className="rounded border border-white/20 px-3 py-2 text-white" onClick={closeDialogs}>Cerrar</button>
-                </div>
+                <h2 id="mobile-token-dialog-title" className="text-sm font-semibold text-white">Consulta comercial de tokenización</h2>
+                <p id="mobile-token-dialog-description" className="mt-1">Este formulario sólo registra interés comercial. Una operación on-chain exige un tap NFC físico y autorización backend independiente.</p>
+                <form onSubmit={(event) => { event.preventDefault(); void saveLeadInterest(); }}>
+                  <label htmlFor="mobile-token-email" className="sr-only">Email de contacto</label>
+                  <input id="mobile-token-email" data-autofocus type="email" autoComplete="email" required suppressHydrationWarning className="mt-3 w-full rounded border border-white/10 bg-slate-900 px-2 py-2 text-white" placeholder="Email de contacto" value={leadEmail} onChange={(event) => setLeadEmail(event.target.value)} />
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button suppressHydrationWarning type="submit" disabled={leadPending || !leadEmail.trim()} className="rounded border border-cyan-300/40 bg-cyan-500/10 px-3 py-2 text-cyan-100 disabled:cursor-not-allowed disabled:opacity-50">{leadPending ? "Guardando..." : "Guardar interés"}</button>
+                    <button suppressHydrationWarning type="button" className="rounded border border-white/20 px-3 py-2 text-white" onClick={closeDialogs}>Cerrar</button>
+                  </div>
+                </form>
                 {leadSaved ? <p className="mt-2 text-emerald-300" role="status">Lead capturado para seguimiento comercial.</p> : null}
                 {ctaStatus ? <p className="mt-2 text-cyan-100" role="status" aria-live="polite">{ctaStatus}</p> : null}
               </Card>
@@ -990,30 +909,32 @@ export function MobileDemoClient({
               <Card className="border border-violet-300/25 bg-slate-950 p-4 text-xs text-slate-300 shadow-2xl">
                 <h2 id="mobile-lead-dialog-title" className="text-sm font-semibold text-white">Lead capture · {leadIntent}</h2>
                 <p id="mobile-lead-dialog-description" className="mt-1">La oportunidad se confirma cuando el servidor acepta el formulario.</p>
-                <div className="mt-3 grid gap-2">
-                  <label htmlFor="mobile-lead-name" className="sr-only">Nombre</label>
-                  <input id="mobile-lead-name" data-autofocus autoComplete="name" suppressHydrationWarning className="rounded border border-white/10 bg-slate-900 px-2 py-2 text-white" placeholder="Nombre" value={leadName} onChange={(event) => setLeadName(event.target.value)} />
-                  <label htmlFor="mobile-lead-email" className="sr-only">Email</label>
-                  <input id="mobile-lead-email" type="email" autoComplete="email" required suppressHydrationWarning className="rounded border border-white/10 bg-slate-900 px-2 py-2 text-white" placeholder="Email" value={leadEmail} onChange={(event) => setLeadEmail(event.target.value)} />
-                  <label htmlFor="mobile-lead-company" className="sr-only">Compania</label>
-                  <input id="mobile-lead-company" autoComplete="organization" suppressHydrationWarning className="rounded border border-white/10 bg-slate-900 px-2 py-2 text-white" placeholder="Compania" value={leadCompany} onChange={(event) => setLeadCompany(event.target.value)} />
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    <div>
-                      <label htmlFor="mobile-lead-country" className="sr-only">Pais</label>
-                      <input id="mobile-lead-country" autoComplete="country-name" suppressHydrationWarning className="w-full rounded border border-white/10 bg-slate-900 px-2 py-2 text-white" placeholder="Pais" value={leadCountry} onChange={(event) => setLeadCountry(event.target.value)} />
+                <form onSubmit={(event) => { event.preventDefault(); void saveLeadInterest(); }}>
+                  <div className="mt-3 grid gap-2">
+                    <label htmlFor="mobile-lead-name" className="sr-only">Nombre</label>
+                    <input id="mobile-lead-name" data-autofocus autoComplete="name" suppressHydrationWarning className="rounded border border-white/10 bg-slate-900 px-2 py-2 text-white" placeholder="Nombre" value={leadName} onChange={(event) => setLeadName(event.target.value)} />
+                    <label htmlFor="mobile-lead-email" className="sr-only">Email</label>
+                    <input id="mobile-lead-email" type="email" autoComplete="email" required suppressHydrationWarning className="rounded border border-white/10 bg-slate-900 px-2 py-2 text-white" placeholder="Email" value={leadEmail} onChange={(event) => setLeadEmail(event.target.value)} />
+                    <label htmlFor="mobile-lead-company" className="sr-only">Compañía</label>
+                    <input id="mobile-lead-company" autoComplete="organization" suppressHydrationWarning className="rounded border border-white/10 bg-slate-900 px-2 py-2 text-white" placeholder="Compañía" value={leadCompany} onChange={(event) => setLeadCompany(event.target.value)} />
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <div>
+                        <label htmlFor="mobile-lead-country" className="sr-only">País</label>
+                        <input id="mobile-lead-country" autoComplete="country-name" suppressHydrationWarning className="w-full rounded border border-white/10 bg-slate-900 px-2 py-2 text-white" placeholder="País" value={leadCountry} onChange={(event) => setLeadCountry(event.target.value)} />
+                      </div>
+                      <div>
+                        <label htmlFor="mobile-lead-role" className="sr-only">Rol</label>
+                        <input id="mobile-lead-role" autoComplete="organization-title" suppressHydrationWarning className="w-full rounded border border-white/10 bg-slate-900 px-2 py-2 text-white" placeholder="Rol" value={leadRole} onChange={(event) => setLeadRole(event.target.value)} />
+                      </div>
                     </div>
-                    <div>
-                      <label htmlFor="mobile-lead-role" className="sr-only">Rol</label>
-                      <input id="mobile-lead-role" autoComplete="organization-title" suppressHydrationWarning className="w-full rounded border border-white/10 bg-slate-900 px-2 py-2 text-white" placeholder="Rol" value={leadRole} onChange={(event) => setLeadRole(event.target.value)} />
-                    </div>
+                    <label htmlFor="mobile-lead-message" className="sr-only">Mensaje</label>
+                    <textarea id="mobile-lead-message" suppressHydrationWarning className="min-h-20 rounded border border-white/10 bg-slate-900 px-2 py-2 text-white" placeholder="Mensaje" value={leadMessage} onChange={(event) => setLeadMessage(event.target.value)} />
                   </div>
-                  <label htmlFor="mobile-lead-message" className="sr-only">Mensaje</label>
-                  <textarea id="mobile-lead-message" suppressHydrationWarning className="min-h-20 rounded border border-white/10 bg-slate-900 px-2 py-2 text-white" placeholder="Mensaje" value={leadMessage} onChange={(event) => setLeadMessage(event.target.value)} />
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button suppressHydrationWarning type="button" disabled={leadPending || !leadEmail.trim()} className="rounded border border-violet-300/40 bg-violet-500/10 px-3 py-2 text-violet-100 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => void saveLeadInterest()}>{leadPending ? "Guardando..." : "Guardar lead"}</button>
-                  <button suppressHydrationWarning type="button" className="rounded border border-white/20 px-3 py-2 text-white" onClick={closeDialogs}>Cerrar</button>
-                </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button suppressHydrationWarning type="submit" disabled={leadPending || !leadEmail.trim()} className="rounded border border-violet-300/40 bg-violet-500/10 px-3 py-2 text-violet-100 disabled:cursor-not-allowed disabled:opacity-50">{leadPending ? "Guardando..." : "Guardar lead"}</button>
+                    <button suppressHydrationWarning type="button" className="rounded border border-white/20 px-3 py-2 text-white" onClick={closeDialogs}>Cerrar</button>
+                  </div>
+                </form>
                 {leadSaved ? <p className="mt-2 text-emerald-300" role="status">Lead guardado.</p> : null}
                 {ctaStatus ? <p className="mt-2 text-cyan-100" role="status" aria-live="polite">{ctaStatus}</p> : null}
               </Card>

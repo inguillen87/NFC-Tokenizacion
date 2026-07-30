@@ -7,6 +7,8 @@ export const SDK_API_KEY_SCOPES = [
   "sdk:events",
   "sdk:pos",
   "sdk:logistics",
+  "sdk:epcis:read",
+  "sdk:epcis:write",
 ] as const;
 
 export type SdkApiKeyScope = (typeof SDK_API_KEY_SCOPES)[number];

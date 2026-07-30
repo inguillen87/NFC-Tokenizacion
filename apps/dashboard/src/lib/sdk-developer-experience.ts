@@ -98,6 +98,18 @@ export const SDK_SCOPE_OPTIONS = [
     description: "Registra estados TT, handoffs y controles de recepción; no prueba por sí solo contenido ni custodia física.",
     access: "write",
   },
+  {
+    value: "sdk:epcis:read",
+    label: "Consultar EPCIS",
+    description: "Consulta y exporta el perfil EPCIS/CBV 2.0 acotado del tenant con paginaciÃ³n por cursor.",
+    access: "read",
+  },
+  {
+    value: "sdk:epcis:write",
+    label: "Capturar EPCIS",
+    description: "Captura documentos EPCIS JSON/JSON-LD validados contra el registro GS1 del tenant; no equivale a autenticaciÃ³n NFC.",
+    access: "write",
+  },
 ] as const;
 
 export type SdkApiKeyScope = (typeof SDK_SCOPE_OPTIONS)[number]["value"];
@@ -126,7 +138,7 @@ export const SDK_INTEGRATION_PROFILES = [
     label: "Enterprise",
     title: "Supply chain",
     description: "Para ERP, secuencias de manipulación declaradas, controles de recepción y eventos externos.",
-    scopes: ["sdk:verify", "sdk:products", "sdk:events", "sdk:logistics"],
+    scopes: ["sdk:verify", "sdk:products", "sdk:events", "sdk:logistics", "sdk:epcis:read", "sdk:epcis:write"],
     keyName: "production · supply-chain service",
     webhookEvents: ["sdk.verify", "sdk.external_event"],
   },

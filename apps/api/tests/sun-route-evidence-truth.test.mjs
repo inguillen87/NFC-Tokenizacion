@@ -13,7 +13,8 @@ test("SUN surfaces distinguish validated tag evidence from the physical product"
   assert.doesNotMatch(route, /deterministic_policy_heuristic/);
   assert.doesNotMatch(route, /normalizeDemoBodegaSunResult/);
   assert.match(route, /NEXID_SUN_DEMO_AUTO_SEED/);
-  assert.match(route, /runtime === "production"/);
+  assert.match(route, /\[process\.env\.VERCEL_ENV, process\.env\.NODE_ENV\]/);
+  assert.match(route, /\.some\(\(value\) => String\(value \|\| ""\)\.trim\(\)\.toLowerCase\(\) === "production"\)/);
   assert.match(route, /la línea visual no prueba ruta física ni custodia/i);
   assert.doesNotMatch(releaseSurface, /Producto auténtico|Autenticidad confirmada|Sello intacto|Authentic product|Authenticity confirmed|Seal intact|Produto autêntico|Autenticidade confirmada|Selo intacto/i);
 });

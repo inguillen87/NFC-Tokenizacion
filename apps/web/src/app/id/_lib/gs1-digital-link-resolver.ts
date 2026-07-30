@@ -1,4 +1,4 @@
-export const GS1_DIGITAL_LINK_TRUST_LEVEL = "GS1_IDENTITY_RESOLVED";
+export const GS1_DIGITAL_LINK_TRUST_LEVEL = "GS1_REGISTERED_IDENTITY_RESOLVED";
 export const GS1_DIGITAL_LINK_AUTH_LEVEL = "NOT_CRYPTOGRAPHICALLY_AUTHENTICATED";
 export const GS1_RESOLVER_VERSION = "1.2.0";
 export const GS1_LINKSET_MEDIA_TYPE = "application/linkset+json";
@@ -28,6 +28,9 @@ const RESOLVER_QUERY_KEYS = new Set([
   "gtin",
   "lot",
   "serial",
+  "tenant",
+  "bid",
+  "gs1_registry_id",
 ]);
 const SENSITIVE_QUERY_KEYS = new Set([
   "access_token",
@@ -49,6 +52,20 @@ export type Gs1DigitalLinkResolverParams = {
 };
 
 type ValidGs1Identity = { gtin: string; lot: string; serial: string };
+
+export type Gs1RegistryResolution = {
+  id: string;
+  gtin: string;
+  lot: string;
+  serial: string;
+  tenantSlug: string;
+  bid: string;
+  displayName: string | null;
+};
+
+export type Gs1RegistryLookup = (
+  identity: ValidGs1Identity,
+) => Promise<{ status: "found"; registry: Gs1RegistryResolution } | { status: "not_found" } | { status: "unavailable" }>;
 
 function cleanPathValue(value: unknown) {
   const raw = String(value ?? "").trim();
@@ -101,7 +118,11 @@ function appendSafeQueryParams(incoming: URL, target: URL) {
   }
 }
 
-export function buildGs1DigitalLinkSunUrl(requestUrl: string | URL, params: Gs1DigitalLinkResolverParams) {
+export function buildGs1DigitalLinkSunUrl(
+  requestUrl: string | URL,
+  params: Gs1DigitalLinkResolverParams,
+  registry?: Gs1RegistryResolution | null,
+) {
   const incoming = new URL(String(requestUrl));
   const target = new URL("/sun", incoming.origin);
   const gtin = cleanPathValue(params.gtin);
@@ -118,6 +139,11 @@ export function buildGs1DigitalLinkSunUrl(requestUrl: string | URL, params: Gs1D
   if (gtin) target.searchParams.set("gtin", gtin);
   if (lot) target.searchParams.set("lot", lot);
   if (serial) target.searchParams.set("serial", serial);
+  if (registry) {
+    target.searchParams.set("tenant", registry.tenantSlug);
+    target.searchParams.set("bid", registry.bid);
+    target.searchParams.set("gs1_registry_id", registry.id);
+  }
   return target;
 }
 
@@ -140,8 +166,12 @@ function linkEntry(href: string) {
   };
 }
 
-export function buildGs1Linkset(requestUrl: string | URL, params: Gs1DigitalLinkResolverParams) {
-  const href = buildGs1DigitalLinkSunUrl(requestUrl, params).toString();
+export function buildGs1Linkset(
+  requestUrl: string | URL,
+  params: Gs1DigitalLinkResolverParams,
+  registry?: Gs1RegistryResolution | null,
+) {
+  const href = buildGs1DigitalLinkSunUrl(requestUrl, params, registry).toString();
   return {
     linkset: [
       {
@@ -216,22 +246,93 @@ function linksetResponse(request: Request, linkset: ReturnType<typeof buildGs1Li
   return response(html, 200, { "content-type": "text/html; charset=utf-8", link: contextHeader }, head);
 }
 
-export function resolveGs1DigitalLink(request: Request, params: Gs1DigitalLinkResolverParams, options: { head?: boolean } = {}) {
+function registryApiBase() {
+  const configured = String(process.env.NEXID_GS1_REGISTRY_API_URL || "").trim();
+  if (!configured) return null;
+  try {
+    const url = new URL(configured);
+    const allowedProtocol = url.protocol === "https:"
+      || (process.env.NODE_ENV !== "production" && url.protocol === "http:");
+    if (!allowedProtocol || url.username || url.password || url.search || url.hash) return null;
+    return url.toString().replace(/\/+$/, "");
+  } catch {
+    return null;
+  }
+}
+
+export const lookupGs1RegistryIdentity: Gs1RegistryLookup = async (identity) => {
+  const apiBase = registryApiBase();
+  if (!apiBase) return { status: "unavailable" };
+  const query = new URLSearchParams({ gtin: identity.gtin });
+  if (identity.lot) query.set("lot", identity.lot);
+  if (identity.serial) query.set("serial", identity.serial);
+  try {
+    const response = await fetch(`${apiBase}/public/gs1/resolve?${query.toString()}`, {
+      cache: "no-store",
+      headers: { accept: "application/json" },
+      signal: AbortSignal.timeout(4_000),
+    });
+    if (response.status === 404) return { status: "not_found" };
+    if (!response.ok) return { status: "unavailable" };
+    const payload = await response.json() as { ok?: unknown; registry?: Partial<Gs1RegistryResolution> };
+    const registry = payload.registry;
+    if (payload.ok !== true || !registry
+      || registry.gtin !== identity.gtin
+      || String(registry.lot || "") !== identity.lot
+      || String(registry.serial || "") !== identity.serial
+      || !/^[0-9a-f-]{36}$/i.test(String(registry.id || ""))
+      || !/^[a-z0-9][a-z0-9-]{0,62}$/.test(String(registry.tenantSlug || ""))
+      || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(String(registry.bid || ""))) {
+      return { status: "unavailable" };
+    }
+    return {
+      status: "found",
+      registry: {
+        id: String(registry.id),
+        gtin: identity.gtin,
+        lot: identity.lot,
+        serial: identity.serial,
+        tenantSlug: String(registry.tenantSlug),
+        bid: String(registry.bid),
+        displayName: registry.displayName ? String(registry.displayName).slice(0, 240) : null,
+      },
+    };
+  } catch {
+    return { status: "unavailable" };
+  }
+};
+
+export async function resolveGs1DigitalLink(
+  request: Request,
+  params: Gs1DigitalLinkResolverParams,
+  options: { head?: boolean; registryLookup?: Gs1RegistryLookup } = {},
+) {
   const head = Boolean(options.head);
   const validated = validateGs1DigitalLinkIdentity(params);
   if (!validated.ok) return problem(400, "Invalid GS1 Digital Link", validated.reason, head);
 
+  const resolved = await (options.registryLookup || lookupGs1RegistryIdentity)(validated.identity);
+  if (resolved.status === "not_found") {
+    return problem(404, "GS1 identity not found", "The identifier is syntactically valid but is not registered.", head);
+  }
+  if (resolved.status !== "found") {
+    return response(JSON.stringify({ type: "about:blank", title: "GS1 registry unavailable", status: 503 }), 503, {
+      "content-type": "application/problem+json; charset=utf-8",
+      "retry-after": "5",
+    }, head);
+  }
+
   const requestUrl = new URL(request.url);
   const requestedType = String(requestUrl.searchParams.get("linkType") || "").trim();
   if (requestedType.toLowerCase() === "linkset" || requestedType.toLowerCase() === "all" || accepts(request, GS1_LINKSET_MEDIA_TYPE) || accepts(request, "application/json") || accepts(request, "application/ld+json")) {
-    return linksetResponse(request, buildGs1Linkset(requestUrl, validated.identity), head);
+    return linksetResponse(request, buildGs1Linkset(requestUrl, validated.identity, resolved.registry), head);
   }
 
   if (requestedType && !SUPPORTED_RELATIONS.has(requestedType.toLowerCase())) {
     return problem(404, "GS1 link type not found", `No link is available for linkType=${requestedType}.`, head);
   }
 
-  const location = buildGs1DigitalLinkSunUrl(requestUrl, validated.identity).toString();
+  const location = buildGs1DigitalLinkSunUrl(requestUrl, validated.identity, resolved.registry).toString();
   return response(null, 307, { location }, head);
 }
 

@@ -61,7 +61,7 @@ export async function GET(req: Request) {
     LEFT JOIN tags t ON t.batch_id = e.batch_id AND t.uid_hex = e.uid_hex
     LEFT JOIN tag_profiles tp ON tp.tag_id = t.id
     WHERE e.tenant_id=${tenant.id}
-      AND LOWER(COALESCE(e.source, ''))='demo'
+      AND LOWER(COALESCE(e.source::text, ''))='demo'
     ORDER BY e.created_at DESC
     LIMIT 20
   `;

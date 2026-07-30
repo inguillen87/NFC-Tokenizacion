@@ -34,15 +34,14 @@ test("public certificates allow unsigned demo rows but require a signed capabili
   ]);
 
   assert.match(route, /verifyPublicCertificateShareToken\(eventId, shareToken\)/);
-  assert.match(route, /LOWER\(COALESCE\(e\.source, ''\)\) = 'demo' OR \$\{signedAccess\}/);
+  assert.match(route, /LOWER\(COALESCE\(e\.source::text, ''\)\) = 'demo' OR \$\{signedAccess\}/);
   assert.match(route, /signedAccess \? "private, no-store"/);
   assert.match(route, /createPublicCertificateShareToken\(eventId\)/);
   assert.match(sunRoute, /certificateShareToken = createPublicCertificateShareToken\(eventId\)/);
   assert.match(snapshots, /createPublicCertificateShareToken\(tokenizationEventId\)/);
 
   assert.match(summary, /PUBLIC_DEMO_TENANT_SLUG \|\| "demobodega"/);
-  assert.match(summary, /LOWER\(COALESCE\(e\.source, ''\)\) = 'demo'/);
+  assert.match(summary, /LOWER\(COALESCE\(e\.source::text, ''\)\) = 'demo'/);
   assert.match(summary, /scope: "public-demo-only"/);
   assert.doesNotMatch(summary, /prod_events/);
 });
-

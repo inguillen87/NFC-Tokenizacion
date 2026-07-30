@@ -111,6 +111,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       SELECT
         so.*,
         t.slug AS tenant_slug,
+        public.nexid_effective_supplier_pack_purpose_v1(so.id) AS effective_pack_purpose,
         EXISTS (
           SELECT 1
           FROM supplier_packaging_governance_decisions decision
@@ -153,6 +154,36 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
     }, 403);
   }
 
+  // Purpose is a custody-boundary decision, not descriptive metadata. Keep
+  // every non-trial order outside the batch-key SELECT/decryption path. Legacy
+  // classification is resolved by the append-only governance decision; it is
+  // never inferred from order names, quantities, carrier profiles or QA state.
+  const effectivePackPurpose = String(order.effective_pack_purpose || "").trim();
+  if (!effectivePackPurpose || effectivePackPurpose === "legacy_unclassified") {
+    return json({
+      ok: false,
+      reason: "supplier_pack_purpose_unclassified",
+      message: "Classify this legacy supplier order through the audited purpose workflow before exporting factory key material.",
+    }, 409);
+  }
+  if (effectivePackPurpose === "production") {
+    return json({
+      ok: false,
+      reason: "supplier_production_qa_plan_required",
+      message: "Production factory export remains blocked until a tenant-approved production QA plan and release receipt are implemented.",
+    }, 409);
+  }
+  if (effectivePackPurpose !== "trial_integration") {
+    return json({
+      ok: false,
+      reason: "supplier_pack_purpose_unclassified",
+      message: "Unsupported supplier pack purpose. Reconcile the audited order classification before export.",
+    }, 409);
+  }
+  const packPurpose = effectivePackPurpose;
+  const commercialDisposition = "NON_SELLABLE" as const;
+  const activationAllowed = false as const;
+
   // This gate deliberately precedes both the batch-key SELECT and every call
   // to decryptBatchKeyHex. An unapproved or inconsistent packaging record must
   // never cross the factory-key custody boundary.
@@ -179,7 +210,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
     spec_revision: packagingGate.specRevision,
     spec_hash: packagingGate.specHash,
     carrier_profile_code: String(order.carrier_profile_code || ""),
-    production_ready: true,
+    physical_packaging_approved: true,
+    pack_purpose: packPurpose,
+    commercial_disposition: commercialDisposition,
+    activation_allowed: activationAllowed,
     spec: packagingGate.specSnapshot,
   };
 
@@ -255,6 +289,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
     const pack = buildSupplierEncodingPack({
       clientSlug: String(order.customer_slug || order.tenant_slug),
       batchId: String(row.bid),
+      packPurpose,
       quantity: Number(row.expected_quantity || 0),
       chipModel: String(order.chip_model || ""),
       carrierProfile: String(order.carrier_profile_code || ""),
@@ -265,16 +300,33 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       urlTemplate,
     });
 
-    const jsonBody = JSON.stringify(pack.json, null, 2);
+    const governedPackJson = {
+      ...pack.json,
+      PACK_PURPOSE: packPurpose,
+      COMMERCIAL_DISPOSITION: commercialDisposition,
+      ACTIVATION_ALLOWED: activationAllowed,
+    };
+    const governedPackText = [
+      "NON_SELLABLE - TRIAL INTEGRATION ONLY - DO NOT SELL, SHIP, OR ACTIVATE",
+      `COMMERCIAL_DISPOSITION=${commercialDisposition}`,
+      `ACTIVATION_ALLOWED=${activationAllowed}`,
+      pack.text.trimEnd(),
+      "",
+    ].join("\n");
+    const governedPackContentHash = sha256Text(governedPackText);
+    const jsonBody = JSON.stringify(governedPackJson, null, 2);
     const jsonHash = sha256Text(jsonBody);
     const pdfBody = buildSupplierPackPdfSummary({
       clientSlug: String(order.customer_slug || order.tenant_slug),
       batchId: String(row.bid),
+      packPurpose,
+      commercialDisposition,
+      activationAllowed,
       quantity: Number(row.expected_quantity || 0),
       chipModel: String(order.chip_model || ""),
       carrierProfile: String(order.carrier_profile_code || ""),
       keyFingerprint: String(row.key_fingerprint || ""),
-      contentHash: pack.contentHash,
+      contentHash: governedPackContentHash,
       jsonHash,
       urlTemplate,
     });
@@ -283,12 +335,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
     const jsonFilename = `${row.bid}_supplier_encoding_pack.json`;
     const pdfFilename = `${row.bid}_supplier_encoding_summary.pdf`;
     zipEntries.push(
-      { path: `${row.bid}/${textFilename}`, data: pack.text },
+      { path: `${row.bid}/${textFilename}`, data: governedPackText },
       { path: `${row.bid}/${jsonFilename}`, data: jsonBody },
       { path: `${row.bid}/${pdfFilename}`, data: pdfBody },
     );
     for (const [artifactType, contentHash, mimeType] of [
-      ["supplier_pack_txt", pack.contentHash, "text/plain"],
+      ["supplier_pack_txt", governedPackContentHash, "text/plain"],
       ["supplier_pack_json", jsonHash, "application/json"],
       ["supplier_pack_pdf_summary", pdfHash, "application/pdf"],
     ] as const) {
@@ -301,6 +353,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
         mime_type: mimeType,
         metadata_json: {
           bid: row.bid,
+          pack_purpose: packPurpose,
+          commercial_disposition: commercialDisposition,
+          activation_allowed: activationAllowed,
           key_fingerprint: row.key_fingerprint,
           packaging_spec_revision: packagingGate.specRevision,
           packaging_spec_hash: packagingGate.specHash,
@@ -311,7 +366,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       supplier_order_id: order.id,
       supplier_sub_batch_id: row.supplier_sub_batch_id,
       bid: row.bid,
-      content_hash: pack.contentHash,
+      pack_purpose: packPurpose,
+      commercial_disposition: commercialDisposition,
+      activation_allowed: activationAllowed,
+      content_hash: governedPackContentHash,
       json_hash: jsonHash,
       key_fingerprint: row.key_fingerprint,
       exported_by: actor,
@@ -341,13 +399,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       text_filename: textFilename,
       json_filename: jsonFilename,
       pdf_summary_filename: pdfFilename,
-      content_hash: pack.contentHash,
+      content_hash: governedPackContentHash,
       json_hash: jsonHash,
       pdf_hash: pdfHash,
+      pack_purpose: packPurpose,
+      commercial_disposition: commercialDisposition,
+      activation_allowed: activationAllowed,
     });
   }
 
   const readme = [
+    "NON_SELLABLE - TRIAL INTEGRATION ONLY - DO NOT SELL, SHIP, OR ACTIVATE",
+    `PACK_PURPOSE=${packPurpose}`,
+    `COMMERCIAL_DISPOSITION=${commercialDisposition}`,
+    `ACTIVATION_ALLOWED=${activationAllowed}`,
+    "",
     "nexID Supplier Encoding Pack",
     "",
     `Order: ${order.order_name || order.id}`,
@@ -389,6 +455,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
     tenant_slug: order.tenant_slug,
     customer_slug: order.customer_slug,
     order_name: order.order_name,
+    pack_purpose: packPurpose,
+    commercial_disposition: commercialDisposition,
+    activation_allowed: activationAllowed,
     packaging_spec_revision: packagingGate.specRevision,
     packaging_spec_hash: packagingGate.specHash,
     zip_layout: "one-folder-per-sub-batch",
@@ -421,6 +490,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       encryption: encrypted.encryption,
       password_policy: "operator_generated_not_returned_send_separately",
       entry_count: archiveEntries.length,
+      pack_purpose: packPurpose,
+      commercial_disposition: commercialDisposition,
+      activation_allowed: activationAllowed,
       packaging_spec_revision: packagingGate.specRevision,
       packaging_spec_hash: packagingGate.specHash,
     },
@@ -446,6 +518,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
        AND decision.decided_at = so.packaging_approved_at
       WHERE so.id = ${order.id}
         AND so.tenant_id = ${order.tenant_id}
+        AND public.nexid_effective_supplier_pack_purpose_v1(so.id) = ${packPurpose}
         AND so.packaging_governance_status = 'approved'
         AND so.packaging_spec_revision = ${packagingGate.specRevision}
         AND so.packaging_spec_hash = ${packagingGate.specHash}
@@ -603,6 +676,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       exported_by: actor,
       encrypted_pack_hash: encrypted.envelopeHash,
       plaintext_zip_hash: encrypted.plaintextZipHash,
+      pack_purpose: packPurpose,
+      commercial_disposition: commercialDisposition,
+      activation_allowed: activationAllowed,
       packaging_spec_revision: packagingGate.specRevision,
       packaging_spec_hash: packagingGate.specHash,
       bids: packs.map((pack) => ({
@@ -632,6 +708,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       tenant_slug: order.tenant_slug,
       customer_slug: order.customer_slug,
       order_name: order.order_name,
+      pack_purpose: packPurpose,
+      commercial_disposition: commercialDisposition,
+      activation_allowed: activationAllowed,
       packaging_spec_revision: packagingGate.specRevision,
       packaging_spec_hash: packagingGate.specHash,
     },
@@ -645,6 +724,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       plaintext_zip_sha256: encrypted.plaintextZipHash,
       ciphertext_sha256: encrypted.ciphertextHash,
       encryption: encrypted.encryption,
+      pack_purpose: packPurpose,
+      commercial_disposition: commercialDisposition,
+      activation_allowed: activationAllowed,
       password_warning: "Password is not returned by the API. Use the operator-generated password and send it over a separate channel.",
       password_delivery: {
         mode: "operator_generated",
@@ -652,7 +734,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
         separate_channel_required: true,
       },
     },
-    warning: "Encrypted supplier ZIP generated. The response does not include the pack password. Raw K_META_BATCH/K_FILE_BATCH are present only inside encrypted 424 DNA supplier folders.",
+    warning: "NON_SELLABLE trial-integration ZIP generated. Activation is forbidden. The response does not include the pack password. Raw K_META_BATCH/K_FILE_BATCH are present only inside encrypted 424 DNA supplier folders.",
     packs,
   });
 }

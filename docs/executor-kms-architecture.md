@@ -14,7 +14,9 @@ La capa executor/KMS separa la validacion del tap de la firma blockchain.
 Cliente tapea NFC
   -> API valida SUN/CMAC, replay, tamper y reglas comerciales
   -> API crea tokenization request
-  -> API llama executor por HTTP privado
+  -> PostgreSQL adquiere lease y persiste el digest de una intencion exacta
+  -> API llama executor por HTTP privado con request + tenant + lease + digest
+  -> executor revalida y consume esa intencion; el bearer solo no autoriza
   -> executor firma/minta en Polygon Amoy
   -> executor devuelve tx_hash/token_id
   -> API guarda proof y lo muestra en passport/portal autorizado y consola privada
@@ -66,6 +68,7 @@ En `apps/executor`:
 ```txt
 PORT=3010
 TOKENIZATION_EXECUTOR_SECRET=<random largo secreto>
+DATABASE_URL=<conexion con privilegio minimo para validar/consumir intenciones>
 EXECUTOR_CAPABILITIES=polygon
 EXECUTOR_SIGNER_MODE=kms_wrapped
 NEXID_KMS_ENVIRONMENT=staging
@@ -74,7 +77,6 @@ POLYGON_KMS_WRAPPED_PRIVATE_KEY=<ciphertext desde Secret Manager>
 POLYGON_RPC_URL=https://polygon-amoy.g.alchemy.com/v2/<RPC_API_KEY>
 POLYGON_MINTER_ADDRESS=0xADDRESS_PUBLICA_DE_NEXID_AMOY_MINTER
 POLYGON_CONTRACT_ADDRESS=0xCONTRATO
-POLYGON_DEFAULT_RECIPIENT=0xWALLET_RECEPTORA
 ```
 
 Para el piloto Amoy, el ciphertext queda fuera de la API principal y el
@@ -100,8 +102,8 @@ Opciones:
 En produccion premium:
 
 ```txt
-API principal: TOKENIZATION_EXECUTOR_URL + TOKENIZATION_EXECUTOR_SECRET
-Executor: KMS key id + RPC + contrato + politicas de tenant/lote
+API principal: TOKENIZATION_EXECUTOR_URL + TOKENIZATION_EXECUTOR_SECRET + lease/intencion en PostgreSQL
+Executor: acceso DB de minimo privilegio + signer/KMS + RPC + contrato; el bearer nunca decide tenant, recipient ni asset
 Frontend: nada sensible
 ```
 
@@ -117,9 +119,12 @@ Frontend: nada sensible
 
 ## Seguridad minima
 
-- `TOKENIZATION_EXECUTOR_SECRET` largo, random y distinto al API admin key.
+- `TOKENIZATION_EXECUTOR_SECRET` random, de 32 bytes o mas y distinto al API admin key.
+- `/mint` exige request, tenant, lease vigente y digest exacto persistidos; una repeticion del mismo lease solo reconcilia y nunca reenvia.
+- El rol DB del executor debe tener el minimo privilegio para validar y marcar la intencion, no privilegios generales de migracion.
 - Executor accesible solo desde API si se despliega en cloud.
 - Rate limit por tenant/lote.
 - Logs sin UID crudo ni private key.
 - El contrato recibe `chip_uid_hash`, no UID real.
 - Replay detectado no debe mintar.
+- `private_key` exportable queda limitado a laboratorio no productivo. `kms_wrapped` es envelope encryption por SOFTWARE y no se presenta como HSM.

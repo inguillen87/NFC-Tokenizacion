@@ -455,7 +455,17 @@ export async function POST(req: Request) {
     });
     if (!claim.ok) {
       return json(
-        { ok: false, reason: claim.error, trace_id: traceId, share_token_status: auth.share_token_status, ownership: claim.ownership || null },
+        {
+          ok: false,
+          reason: claim.error,
+          trace_id: traceId,
+          share_token_status: auth.share_token_status,
+          ownership: claim.ownership || null,
+          operation_committed: "operationCommitted" in claim ? claim.operationCommitted : false,
+          reconciliation: "operationCommitted" in claim && claim.operationCommitted
+            ? "Retry the same ownership claim; the canonical event writer is idempotent."
+            : null,
+        },
         claim.status,
       );
     }
@@ -466,6 +476,8 @@ export async function POST(req: Request) {
       share_token_status: auth.share_token_status,
       fresh_token_status: "accepted",
       ownership: claim.ownership,
+      canonical_event: claim.canonicalEvent,
+      webhook_outbox: claim.canonicalEvent.webhookOutbox,
       ownership_status: claim.ownership?.status || "claimed",
       ownership_mode: "durable",
       ownership_scope: "nexid_off_chain_digital_title",

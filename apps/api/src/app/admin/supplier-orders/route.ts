@@ -12,6 +12,7 @@ import { buildBatchKeyLifecycleRecords } from "../../../lib/batch-keys";
 import {
   buildSupplierSubBatchPlan,
   generateSupplierBatchKeys,
+  normalizeSupplierPackPurpose,
   requiresSecureSunEncoding,
 } from "../../../lib/supplier-ops";
 import { requireTenantSunProfile } from "../../../lib/tenant-onboarding";
@@ -82,6 +83,9 @@ export async function GET(req: Request) {
     ? await sql/*sql*/`
         SELECT
           so.*,
+          so.pack_purpose AS declared_pack_purpose,
+          COALESCE(purpose_decision.to_purpose, so.pack_purpose) AS effective_pack_purpose,
+          purpose_decision.id AS classification_decision_id,
           t.slug AS tenant_slug,
           COUNT(ssb.id)::int AS sub_batch_count,
           COALESCE(SUM(ssb.expected_quantity), 0)::int AS planned_quantity,
@@ -106,15 +110,21 @@ export async function GET(req: Request) {
           ) AS sub_batches
         FROM supplier_orders so
         JOIN tenants t ON t.id = so.tenant_id
+        LEFT JOIN supplier_pack_purpose_decisions purpose_decision
+          ON purpose_decision.supplier_order_id = so.id
+         AND purpose_decision.tenant_id = so.tenant_id
         LEFT JOIN supplier_sub_batches ssb ON ssb.supplier_order_id = so.id
         WHERE t.slug = ${forcedTenantSlug}
-        GROUP BY so.id, t.slug
+        GROUP BY so.id, t.slug, purpose_decision.id, purpose_decision.to_purpose
         ORDER BY so.created_at DESC
         LIMIT 100
       `
     : await sql/*sql*/`
         SELECT
           so.*,
+          so.pack_purpose AS declared_pack_purpose,
+          COALESCE(purpose_decision.to_purpose, so.pack_purpose) AS effective_pack_purpose,
+          purpose_decision.id AS classification_decision_id,
           t.slug AS tenant_slug,
           COUNT(ssb.id)::int AS sub_batch_count,
           COALESCE(SUM(ssb.expected_quantity), 0)::int AS planned_quantity,
@@ -139,8 +149,11 @@ export async function GET(req: Request) {
           ) AS sub_batches
         FROM supplier_orders so
         JOIN tenants t ON t.id = so.tenant_id
+        LEFT JOIN supplier_pack_purpose_decisions purpose_decision
+          ON purpose_decision.supplier_order_id = so.id
+         AND purpose_decision.tenant_id = so.tenant_id
         LEFT JOIN supplier_sub_batches ssb ON ssb.supplier_order_id = so.id
-        GROUP BY so.id, t.slug
+        GROUP BY so.id, t.slug, purpose_decision.id, purpose_decision.to_purpose
         ORDER BY so.created_at DESC
         LIMIT 100
       `;
@@ -170,6 +183,7 @@ export async function POST(req: Request) {
     const totalQuantity = positiveInt(body.total_quantity ?? body.totalQuantity, "total_quantity");
     const subBatchSize = positiveInt(body.sub_batch_size ?? body.subBatchSize, "sub_batch_size");
     const chipModel = firstString(body.chip_model, body.chipModel, body.chip);
+    const packPurpose = normalizeSupplierPackPurpose(body.pack_purpose ?? body.packPurpose);
     const carrierProfileCode = inferCarrierProfileFromPayload(body);
     const carrierProfile = getCarrierProfile(carrierProfileCode);
     if (!orderName || !chipModel || !carrierProfileCode || !carrierProfile) {
@@ -181,6 +195,14 @@ export async function POST(req: Request) {
           !chipModel ? "chip_model" : "",
           !carrierProfileCode ? "carrier_profile_code" : "",
         ].filter(Boolean),
+      }, 400);
+    }
+    if (!packPurpose) {
+      return json({
+        ok: false,
+        reason: "supplier_pack_purpose_required",
+        allowed: ["trial_integration", "production"],
+        message: "Choose the pack purpose explicitly. Trial packs are non-sellable; production remains blocked until a tenant-approved production QA plan exists.",
       }, 400);
     }
 
@@ -223,7 +245,8 @@ export async function POST(req: Request) {
       }, 409);
     }
 
-    const actor = getAdminActor(req).email;
+    const actorIdentity = getAdminActor(req);
+    const actor = actorIdentity.email;
     // Order provisioning below spans multiple statements and is not an atomic
     // packaging-decision transaction. A caller-supplied packaging_spec is
     // therefore never trusted here; migration 0063 defaults the order to
@@ -231,10 +254,12 @@ export async function POST(req: Request) {
     const orderRows = await sql/*sql*/`
       INSERT INTO supplier_orders (
         tenant_id, customer_slug, order_name, base_batch_id, total_quantity, sub_batch_size,
-        chip_model, carrier_profile_code, material_type, notes, status, created_by
+        chip_model, carrier_profile_code, pack_purpose, purpose_locked_at, purpose_locked_by,
+        material_type, notes, status, created_by
       ) VALUES (
         ${tenant.id}, ${customerSlug}, ${orderName}, ${baseBatchId}, ${totalQuantity}, ${subBatchSize},
-        ${chipModel}, ${carrierProfileCode}, ${firstString(body.material_type, body.materialType) || null},
+        ${chipModel}, ${carrierProfileCode}, ${packPurpose}, now(), ${actorIdentity.id},
+        ${firstString(body.material_type, body.materialType) || null},
         ${firstString(body.notes) || null}, 'pack_ready', ${actor}
       )
       RETURNING *
@@ -297,10 +322,12 @@ export async function POST(req: Request) {
       const batch = batchRows[0];
       const subBatchRows = await sql/*sql*/`
         INSERT INTO supplier_sub_batches (
-          supplier_order_id, tenant_id, batch_id, bid, sequence_index, expected_quantity, status, metadata_json
+          supplier_order_id, tenant_id, batch_id, bid, sequence_index, expected_quantity,
+          pack_purpose, status, metadata_json
         ) VALUES (
           ${order.id}, ${tenant.id}, ${batch.id}, ${subBatch.bid}, ${subBatch.sequenceIndex},
-          ${subBatch.expectedQuantity}, 'pack_ready', ${JSON.stringify({ url_template: urlTemplate, key_fingerprint: keys.fingerprint })}::jsonb
+          ${subBatch.expectedQuantity}, ${packPurpose}, 'pack_ready',
+          ${JSON.stringify({ url_template: urlTemplate, key_fingerprint: keys.fingerprint })}::jsonb
         )
         RETURNING *
       `;
@@ -341,6 +368,10 @@ export async function POST(req: Request) {
         bid: subBatch.bid,
         expected_quantity: subBatch.expectedQuantity,
         carrier_profile_code: carrierProfileCode,
+        pack_purpose: packPurpose,
+        commercial_release: packPurpose === "trial_integration"
+          ? "NON_SELLABLE_TRIAL"
+          : "BLOCKED_PENDING_PRODUCTION_QA",
       };
       const eventHash = hashEvidencePayload({
         tenantId: String(tenant.id),

@@ -29,10 +29,10 @@ test("landing sections separate tag, TT and declared data from physical proof", 
   assert.doesNotMatch(sections, /Strong cryptographic authenticity|Autenticidad criptográfica fuerte|physical opened\/closed seal/i);
 });
 
-test("landing proof labels demoMode as guided simulation and reserves live copy for operational data", () => {
-  assert.match(proofSection, /eyebrow=\{proof\.demoMode \? "Prueba guiada" : "Prueba en vivo"\}/);
-  assert.match(proofSection, /title=\{proof\.demoMode \? "Escenario simulado de validación" : "Prueba operativa en tiempo real"\}/);
+test("landing proof labels demoMode as guided simulation and describes non-demo data by source", () => {
+  assert.match(proofSection, /eyebrow=\{proof\.demoMode \? "Prueba guiada" : "Fuente operativa"\}/);
+  assert.match(proofSection, /title=\{proof\.demoMode \? "Escenario simulado de validación" : "Eventos reportados por la API"\}/);
   assert.match(proofSection, /no representan actividad productiva/);
   assert.match(proofSection, /reportados por la fuente operativa/);
-  assert.doesNotMatch(proofSection, /eyebrow="Prueba en vivo"|title="Prueba operativa en tiempo real"/);
+  assert.doesNotMatch(proofSection, /Prueba en vivo|Prueba operativa en tiempo real/);
 });

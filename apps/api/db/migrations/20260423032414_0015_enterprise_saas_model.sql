@@ -106,7 +106,7 @@ ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
 ALTER TABLE tickets
 ADD COLUMN IF NOT EXISTS tenant_id uuid REFERENCES tenants(id) ON DELETE SET NULL,
 ADD COLUMN IF NOT EXISTS lead_id uuid REFERENCES leads(id) ON DELETE SET NULL,
-ADD COLUMN IF NOT EXISTS tap_event_id bigint REFERENCES events(id) ON DELETE SET NULL,
+ADD COLUMN IF NOT EXISTS tap_event_id bigint,
 ADD COLUMN IF NOT EXISTS description text,
 ADD COLUMN IF NOT EXISTS priority text DEFAULT 'low',
 ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();

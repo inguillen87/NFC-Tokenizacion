@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
+import { tsImport } from "tsx/esm/api";
 
-import { resolveCanonicalTenantRisk } from "../src/lib/tenant-risk.ts";
-import { demoRuntimeSummary } from "../src/lib/demo-runtime-state.ts";
+const [{ resolveCanonicalTenantRisk }, { demoRuntimeSummary }] = await Promise.all([
+  tsImport("../src/lib/tenant-risk.ts", import.meta.url),
+  tsImport("../src/lib/demo-runtime-state.ts", import.meta.url),
+]);
 
 test("tenant dashboards consume the canonical API/core risk score", () => {
   assert.equal(resolveCanonicalTenantRisk({ risk_score: 17.4, scans: 100, duplicates: 90, tamper: 90 }), 17.4);

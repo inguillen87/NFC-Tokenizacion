@@ -23,6 +23,18 @@ export function dashboardPermissionMatches(granted: unknown, requested?: string 
 }
 
 export function requiredPermissionForAdminResource(method: string, normalizedPath: string) {
+  if (/^supplier-orders\/[^/]+\/purpose\/classify-trial$/.test(normalizedPath)) {
+    return "supplier:pack_purpose_classify_trial";
+  }
+  if (normalizedPath === "observability/service-levels") {
+    return "analytics:read";
+  }
+  if (normalizedPath === "tags" || normalizedPath.startsWith("tags/")) {
+    return String(method || "").toUpperCase() === "GET" ? "tags:read" : "tags:write";
+  }
+  if (normalizedPath === "incidents" || normalizedPath.startsWith("incidents/")) {
+    return String(method || "").toUpperCase() === "GET" ? "incidents:read" : "incidents:write";
+  }
   if (normalizedPath === "sdk/api-keys" || normalizedPath.startsWith("sdk/api-keys/")) {
     return String(method || "").toUpperCase() === "GET" ? "sdk:keys:read" : "sdk:keys:write";
   }

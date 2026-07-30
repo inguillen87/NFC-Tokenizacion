@@ -46,6 +46,8 @@ export type SunAtomicPersistenceResult = {
   allowlisted: boolean;
   tagId: string | null;
   tagStatus: string | null;
+  tagLifecycleState: string | null;
+  tagLifecycleRevision: number;
   previousLastSeenCtr: number | null;
   lastSeenCtr: number | null;
   scanCount: number | null;
@@ -142,6 +144,10 @@ export async function persistSunScanAtomically(
   );
   const lastSeenCtr = nullableSafeInteger(row.last_seen_ctr, "sun_atomic_counter_invalid");
   const scanCount = nullableSafeInteger(row.scan_count, "sun_atomic_scan_count_invalid");
+  const tagLifecycleRevision = nullableSafeInteger(
+    row.tag_lifecycle_revision,
+    "sun_atomic_tag_lifecycle_revision_invalid",
+  );
 
   if (typeof row.replay_suspect !== "boolean" || typeof row.allowlisted !== "boolean") {
     throw new Error("sun_atomic_boolean_receipt_invalid");
@@ -157,6 +163,8 @@ export async function persistSunScanAtomically(
     allowlisted: row.allowlisted,
     tagId: nullableText(row.tag_id),
     tagStatus: nullableText(row.tag_status),
+    tagLifecycleState: nullableText(row.tag_lifecycle_state),
+    tagLifecycleRevision: tagLifecycleRevision ?? 0,
     previousLastSeenCtr,
     lastSeenCtr,
     scanCount,

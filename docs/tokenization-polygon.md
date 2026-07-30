@@ -1,13 +1,14 @@
 # nexID Polygon ownership - Runbook paso a paso
 
-> Estado operativo 2026-07-26: produccion usa el executor separado de Cloud
+> Snapshot historico del rollout 2026-07-26: aquel deploy usaba el executor separado de Cloud
 > Run con `TOKENIZATION_USE_LOCAL_MINTER=false` y custodia
 > `EXECUTOR_SIGNER_MODE=kms_wrapped`. El auto-mint por cada tap esta apagado:
 > `SUN_AUTO_TOKENIZE_ON_VALID_TAP=false`. Las instrucciones de private key y
 > minter local que siguen en este documento son exclusivamente un laboratorio
 > historico de desarrollo/testnet; no son una configuracion aprobada para
 > Vercel ni para un tenant. `kms_wrapped` es una envoltura SOFTWARE: no equivale
-> a HSM ni a firma no exportable.
+> a HSM ni a firma no exportable. Revalidar readiness, revision desplegada y
+> recibo testnet antes de describir el entorno actual como operativo.
 
 Esta guia es para activar tokenizacion real en Polygon Amoy para taps SUN/NTAG 424 DNA TT de nexID, usando las 10 etiquetas fisicas actuales como piloto. La meta es que un tap valido y fresco pueda habilitar un certificado/token verificable cuando la politica del tenant lo permita, sin exponer el UID crudo del chip en blockchain.
 
@@ -34,9 +35,10 @@ Activar este flujo:
 1. El cliente tapea una etiqueta NFC/SUN.
 2. La API valida el mensaje SUN/SDM, anti-replay y el estado TT reportado; no certifica por si sola el producto fisico.
 3. Si el tap es valido, fresco y elegible por politica, nexID crea o procesa una solicitud de tokenizacion.
-4. El backend firma una transaccion en Polygon Amoy.
-5. El producto queda asociado a un token/certificado con `tx_hash`, `token_id`, red, contrato y metadata.
-6. El usuario ve el estado en el passport/portal autorizado y los equipos internos lo auditan en consola privada.
+4. PostgreSQL adquiere un lease atomico y liga una intencion exacta `tenant + request + lease + digest`; el executor no puede firmar usando solo su bearer.
+5. El executor verifica esa intencion duradera y firma una transaccion en Polygon Amoy.
+6. El producto queda asociado a un token/certificado con `tx_hash`, `token_id`, red, contrato y metadata.
+7. El usuario ve el estado en el passport/portal autorizado y los equipos internos lo auditan en consola privada.
 
 ## Estado implementado y snapshot historico de verificacion
 
@@ -311,9 +313,8 @@ TOKENIZATION_USE_LOCAL_MINTER=false
 TOKENIZATION_UID_SALT=<random largo secreto>
 TOKENIZATION_METADATA_CID_PREFIX=nexid-metadata
 TOKENIZATION_EXECUTOR_URL=<EXECUTOR_MINT_URL_HTTPS>
-TOKENIZATION_EXECUTOR_SECRET=<secreto dedicado>
+TOKENIZATION_EXECUTOR_SECRET=<secreto dedicado de 32 bytes o mas>
 POLYGON_CONTRACT_ADDRESS=0xCONTRATO_DESPLEGADO
-POLYGON_DEFAULT_RECIPIENT=0xWALLET_RECEPTORA_DEFAULT
 POLYGON_DEPLOY_OWNER=0xOWNER_DEL_CONTRATO
 ```
 
@@ -335,15 +336,28 @@ Importante:
 | Variable | Valor | Para que sirve |
 | --- | --- | --- |
 | `TOKENIZATION_MODE` | `polygon` | Obliga a usar anclaje real Polygon. Si falla, no simula como fallback. |
-| `SUN_AUTO_TOKENIZE_ON_VALID_TAP` | `false` | Evita un mint por cada lectura; la tokenizacion ocurre solo por una solicitud/hito elegible. |
+| `SUN_AUTO_TOKENIZE_ON_VALID_TAP` | `false` | Gate global. Aun en `true`, exige policy y `auto_tokenize_on_valid_tap=true` explicitos en tenant/batch; la inferencia por vertical no autoriza gas ni custodia. |
 | `TOKENIZATION_USE_LOCAL_MINTER` | `false` | Impide que la API firme con una private key local. |
 | `TOKENIZATION_UID_SALT` | secreto largo | Protege privacidad del UID: se hashea antes de anclar. |
 | `TOKENIZATION_METADATA_CID_PREFIX` | `nexid-metadata` o CID | Prefijo/base para metadata. En piloto puede ser local/logico; en premium usar IPFS/Arweave. |
 | `TOKENIZATION_EXECUTOR_URL` | URL HTTPS | Executor aislado que aplica allowlists y firma. |
-| `TOKENIZATION_EXECUTOR_SECRET` | secreto dedicado | Autentica el handoff API -> executor; no sustituye IAM de servicio como objetivo futuro. |
+| `TOKENIZATION_EXECUTOR_SECRET` | secreto dedicado >= 32 bytes | Autentica la capa HTTP. No autoriza por si solo: `/mint` tambien exige la intencion exacta, lease vigente y digest persistidos en PostgreSQL. |
 | `POLYGON_CONTRACT_ADDRESS` | `0x...` | Contrato NFT/certificado desplegado. |
-| `POLYGON_DEFAULT_RECIPIENT` | `0x...` | Wallet que recibe token si el usuario no conecto wallet. |
 | `POLYGON_DEPLOY_OWNER` | `0x...` | Owner/admin del contrato. |
+
+La wallet receptora de una operacion real debe provenir de una wallet de consumidor verificada o de configuracion explicita del tenant/batch. `POLYGON_DEFAULT_RECIPIENT` no es una frontera multi-tenant y no se usa como fallback de mint.
+
+Para habilitar excepcionalmente el auto-mint de un hito SUN, el batch o tenant debe persistir ambos campos (ademas del gate global):
+
+```json
+{
+  "tokenization": {
+    "policy": "lot_anchor",
+    "auto_tokenize_on_valid_tap": true,
+    "recipientWallet": "0xWALLET_DEL_TENANT"
+  }
+}
+```
 
 ## Paso 8 - Variables locales para desarrollo
 
@@ -360,7 +374,7 @@ Para probar local, setear variables en PowerShell antes de levantar API:
 ```powershell
 cd C:\Users\guill\OneDrive\Documentos\GitHub\NFC-Tokenizacion\apps\api
 $env:TOKENIZATION_MODE="polygon"
-$env:SUN_AUTO_TOKENIZE_ON_VALID_TAP="true"
+$env:SUN_AUTO_TOKENIZE_ON_VALID_TAP="false"
 $env:TOKENIZATION_USE_LOCAL_MINTER="true"
 $env:TOKENIZATION_UID_SALT="TU_SALT"
 $env:TOKENIZATION_METADATA_CID_PREFIX="nexid-metadata"
@@ -368,7 +382,6 @@ $env:POLYGON_RPC_URL="TU_RPC"
 $env:POLYGON_MINTER_PRIVATE_KEY="0xTU_PRIVATE_KEY"
 $env:POLYGON_MINTER_ADDRESS="0xTU_MINTER_PUBLICO"
 $env:POLYGON_CONTRACT_ADDRESS="0xTU_CONTRATO"
-$env:POLYGON_DEFAULT_RECIPIENT="0xTU_RECIPIENT"
 $env:POLYGON_DEPLOY_OWNER="0xTU_OWNER"
 ```
 

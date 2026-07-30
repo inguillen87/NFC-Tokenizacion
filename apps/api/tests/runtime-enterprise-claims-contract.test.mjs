@@ -104,9 +104,11 @@ test("secure demo seeds disclose the limits of SUN and TT evidence", () => {
   }
 });
 
-test("custody documentation separates current SOFTWARE wrapping from target direct signing", () => {
+test("custody documentation separates historically staged SOFTWARE wrapping from current runtime evidence and target direct signing", () => {
   const architecture = source("../../../docs/enterprise-kms-cloudflare-architecture.md");
-  assert.match(architecture, /current blockchain pilot mode is `kms_wrapped`/i);
+  assert.match(architecture, /implemented and historically staged blockchain pilot mode is `kms_wrapped`/i);
+  assert.match(architecture, /Do not infer that an arbitrary current environment is configured or healthy/i);
+  assert.doesNotMatch(architecture, /current blockchain pilot mode is `kms_wrapped`/i);
   assert.match(architecture, /`SOFTWARE` protection level/);
   assert.match(architecture, /not direct KMS signing, a non-exportable workload key or HSM custody/i);
   assert.match(architecture, /label it `HSM-backed` or `non-exportable` only after/i);

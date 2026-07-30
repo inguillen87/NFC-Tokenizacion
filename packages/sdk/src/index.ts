@@ -172,6 +172,169 @@ export function verifyNexIdWebhookSignature(input: {
 /** Short alias for frameworks that expose a generic webhook verification hook. */
 export const verifyWebhookSignature = verifyNexIdWebhookSignature;
 
+export const NEXID_WEBHOOK_EVENT_SCHEMA_VERSION = "1.0" as const;
+export const NEXID_WEBHOOK_EVENT_TYPES = [
+  "demo.tap.simulated",
+  "epcis.event.captured",
+  "ownership.activated",
+  "provenance.viewed",
+  "sdk.claim.claimed",
+  "sdk.claim.created",
+  "sdk.external_event",
+  "sdk.pos.activated",
+  "sdk.verify",
+  "tokenization.anchored",
+  "tokenization.requested",
+  "tokenization.simulated",
+  "warranty.review_requested",
+] as const;
+export type NexIdWebhookEventType = typeof NEXID_WEBHOOK_EVENT_TYPES[number];
+
+export type NexIdWebhookEventEnvelope<Data extends Record<string, unknown> = Record<string, unknown>> = {
+  /** Present on the current contract; omitted only by the supported legacy N-1 envelope. */
+  schemaVersion?: typeof NEXID_WEBHOOK_EVENT_SCHEMA_VERSION;
+  id: string;
+  type: string;
+  createdAt: string;
+  data: Data;
+};
+
+export type NexIdWebhookEnvelopeFailureReason =
+  | "webhook_body_too_large"
+  | "invalid_webhook_body_encoding"
+  | "invalid_webhook_json"
+  | "invalid_webhook_envelope"
+  | "unsupported_webhook_schema_version"
+  | "webhook_event_id_mismatch"
+  | "unexpected_webhook_event_type";
+
+export type NexIdWebhookVerificationAndParseResult =
+  | {
+      ok: true;
+      verification: NexIdWebhookVerifiedEnvelope<NexIdWebhookSignatureVersion>;
+      event: NexIdWebhookEventEnvelope;
+      /** `legacy` is the one supported N-1 envelope and omits schemaVersion. */
+      contractVersion: typeof NEXID_WEBHOOK_EVENT_SCHEMA_VERSION | "legacy";
+      knownEventType: boolean;
+    }
+  | {
+      ok: false;
+      stage: "signature";
+      reason: Exclude<NexIdWebhookVerificationResult, { ok: true }>["reason"];
+    }
+  | {
+      ok: false;
+      stage: "envelope";
+      reason: NexIdWebhookEnvelopeFailureReason;
+    };
+
+const NEXID_WEBHOOK_EVENT_TYPE_SET = new Set<string>(NEXID_WEBHOOK_EVENT_TYPES);
+const NEXID_WEBHOOK_EVENT_ID_PATTERN = /^evt_[A-Za-z0-9_-]{8,128}$/;
+const NEXID_WEBHOOK_EVENT_TYPE_PATTERN = /^[a-z0-9][a-z0-9._-]{0,119}$/;
+const DEFAULT_WEBHOOK_BODY_MAX_BYTES = 256 * 1024;
+
+function decodeWebhookBody(rawBody: string | Uint8Array) {
+  if (typeof rawBody === "string") return rawBody;
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(rawBody);
+  } catch {
+    return null;
+  }
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+/**
+ * Verifies the signed bytes and then validates the versioned event envelope.
+ *
+ * The header event ID must equal the signed body ID. Current v1 events carry
+ * schemaVersion `1.0`; the immediately previous unversioned envelope remains
+ * readable as `legacy` during migration. Unknown future schema versions fail
+ * closed instead of being interpreted with today's semantics.
+ */
+export function verifyAndParseNexIdWebhook(input: {
+  secret: string;
+  rawBody: string | Uint8Array;
+  headers: NexIdWebhookHeaders;
+  toleranceSeconds?: number;
+  now?: number | Date;
+  expectedEventTypes?: readonly string[];
+  maxBodyBytes?: number;
+}): NexIdWebhookVerificationAndParseResult {
+  const verification = verifyNexIdWebhookSignature(input);
+  if (!verification.ok) return { ok: false, stage: "signature", reason: verification.reason };
+
+  const requestedMaxBytes = Number(input.maxBodyBytes ?? DEFAULT_WEBHOOK_BODY_MAX_BYTES);
+  const maxBodyBytes = Number.isSafeInteger(requestedMaxBytes)
+    ? Math.min(Math.max(requestedMaxBytes, 1), 1024 * 1024)
+    : DEFAULT_WEBHOOK_BODY_MAX_BYTES;
+  const bodyBytes = typeof input.rawBody === "string"
+    ? Buffer.byteLength(input.rawBody, "utf8")
+    : input.rawBody.byteLength;
+  if (bodyBytes > maxBodyBytes) return { ok: false, stage: "envelope", reason: "webhook_body_too_large" };
+
+  const decoded = decodeWebhookBody(input.rawBody);
+  if (decoded === null) return { ok: false, stage: "envelope", reason: "invalid_webhook_body_encoding" };
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(decoded);
+  } catch {
+    return { ok: false, stage: "envelope", reason: "invalid_webhook_json" };
+  }
+  if (!isPlainRecord(parsed) || !isPlainRecord(parsed.data)) {
+    return { ok: false, stage: "envelope", reason: "invalid_webhook_envelope" };
+  }
+
+  const id = typeof parsed.id === "string" ? parsed.id : "";
+  const type = typeof parsed.type === "string" ? parsed.type : "";
+  const createdAt = typeof parsed.createdAt === "string" ? parsed.createdAt : "";
+  const schemaVersion = parsed.schemaVersion;
+  if (
+    !NEXID_WEBHOOK_EVENT_ID_PATTERN.test(id)
+    || !NEXID_WEBHOOK_EVENT_TYPE_PATTERN.test(type)
+    || createdAt.length < 20
+    || createdAt.length > 40
+    || !Number.isFinite(Date.parse(createdAt))
+  ) {
+    return { ok: false, stage: "envelope", reason: "invalid_webhook_envelope" };
+  }
+  if (schemaVersion !== undefined && schemaVersion !== NEXID_WEBHOOK_EVENT_SCHEMA_VERSION) {
+    return { ok: false, stage: "envelope", reason: "unsupported_webhook_schema_version" };
+  }
+  if (id !== verification.eventId) {
+    return { ok: false, stage: "envelope", reason: "webhook_event_id_mismatch" };
+  }
+
+  const expected = input.expectedEventTypes;
+  if (expected?.length) {
+    const allowed = new Set(expected.map((entry) => String(entry || "").trim()).filter(Boolean));
+    if (!allowed.has(type)) {
+      return { ok: false, stage: "envelope", reason: "unexpected_webhook_event_type" };
+    }
+  }
+
+  return {
+    ok: true,
+    verification,
+    event: {
+      ...(schemaVersion === NEXID_WEBHOOK_EVENT_SCHEMA_VERSION ? { schemaVersion } : {}),
+      id,
+      type,
+      createdAt,
+      data: parsed.data,
+    },
+    contractVersion: schemaVersion === NEXID_WEBHOOK_EVENT_SCHEMA_VERSION
+      ? NEXID_WEBHOOK_EVENT_SCHEMA_VERSION
+      : "legacy",
+    knownEventType: NEXID_WEBHOOK_EVENT_TYPE_SET.has(type),
+  };
+}
+
 export type NexIdEnvironment = "production" | "private";
 
 export interface NexIdRetryConfig {
@@ -210,6 +373,11 @@ export interface NexIdMutationRequestOptions extends NexIdRequestContext {
   maxRetries?: number;
 }
 
+/** Required for EPCIS capture because the server commits the document atomically. */
+export interface NexIdRequiredIdempotencyOptions extends NexIdMutationRequestOptions {
+  idempotencyKey: string;
+}
+
 export interface NexIdConfig {
   apiKey: string;
   tenantSlug: string;
@@ -220,6 +388,90 @@ export interface NexIdConfig {
   timeoutMs?: number;
   /** Bounded retry policy for GET requests. Set to false to disable retries. */
   retry?: false | NexIdRetryConfig;
+}
+
+export const NEXID_EPCIS_CONTEXT = "https://ref.gs1.org/standards/epcis/epcis-context.jsonld" as const;
+export const NEXID_EPCIS_VERSION = "2.0" as const;
+export const NEXID_EPCIS_MEDIA_TYPE = "application/vnd.gs1.epcis+json" as const;
+export const NEXID_EPCIS_CAPTURE_MAX_BYTES = 512 * 1024;
+export const NEXID_EPCIS_CAPTURE_MAX_EVENTS = 100;
+export const NEXID_EPCIS_CAPTURE_MAX_PROJECTIONS = 100;
+
+export type NexIdEpcisEventType =
+  | "ObjectEvent"
+  | "AggregationEvent"
+  | "TransactionEvent"
+  | "TransformationEvent"
+  | "AssociationEvent";
+
+/**
+ * The SDK intentionally models nexID's bounded EPCIS 2.0 JSON/JSON-LD profile,
+ * not every extension in the complete GS1 standard.
+ */
+export interface NexIdEpcisEvent extends Record<string, unknown> {
+  type: NexIdEpcisEventType;
+  eventTime: string;
+  eventTimeZoneOffset: string;
+  eventID?: string;
+}
+
+export interface NexIdEpcisDocument extends Record<string, unknown> {
+  "@context": typeof NEXID_EPCIS_CONTEXT | readonly [typeof NEXID_EPCIS_CONTEXT];
+  type: "EPCISDocument";
+  schemaVersion: typeof NEXID_EPCIS_VERSION;
+  epcisBody: {
+    eventList: NexIdEpcisEvent[];
+  };
+}
+
+export interface NexIdEpcisQueryDocument extends Record<string, unknown> {
+  "@context": typeof NEXID_EPCIS_CONTEXT;
+  type: "EPCISQueryDocument";
+  schemaVersion: typeof NEXID_EPCIS_VERSION;
+  epcisBody: {
+    queryResults: {
+      queryName: "SimpleEventQuery";
+      resultsBody: { eventList: NexIdEpcisEvent[] };
+    };
+  };
+}
+
+export interface NexIdEpcisCaptureReceipt {
+  ok: true;
+  captureID: string;
+  documentRecordID: string;
+  eventCount: number;
+  canonicalProjectionCount: number;
+  capturedAt: string;
+  replayed: boolean;
+  evidence: {
+    level: "declared_business_event";
+    cryptographicNfcAuthentication: false;
+  };
+  /** Correlation id returned by the API, or the SDK request id as fallback. */
+  traceId: string;
+}
+
+export interface NexIdEpcisQueryFilters {
+  /** Page size. nexID accepts 1..200 and defaults to 50. */
+  limit?: number;
+  cursor?: string;
+  eventType?: NexIdEpcisEventType;
+  bizStep?: string;
+  disposition?: string;
+  gtin?: string;
+  lot?: string;
+  serial?: string;
+  eventTimeFrom?: string | Date;
+  eventTimeTo?: string | Date;
+}
+
+export interface NexIdEpcisPage<Document> {
+  document: Document;
+  nextCursor: string | null;
+  pageSize: number;
+  /** Correlation id returned by the API, or the SDK request id as fallback. */
+  traceId: string;
 }
 
 export interface NexIdApiErrorOptions {
@@ -445,7 +697,7 @@ export interface NexIdIdempotencyStatus {
   nextAction: string;
 }
 
-type RequestOptions = {
+type RequestOptions<T> = {
   method?: "GET" | "POST";
   body?: unknown;
   context?: NexIdRequestContext;
@@ -453,6 +705,9 @@ type RequestOptions = {
   idempotencyKey?: string;
   /** True only for routes that implement the durable server contract. */
   idempotentMutation?: boolean;
+  accept?: string;
+  contentType?: string;
+  transformResponse?: (data: unknown, response: Response, traceId: string) => T;
 };
 
 type ResolvedRetryConfig = Required<NexIdRetryConfig>;
@@ -465,6 +720,17 @@ const DEFAULT_RETRY: ResolvedRetryConfig = {
 };
 const TENANT_SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9._-]{0,126}[a-z0-9])?$/;
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._~:/+=-]{0,254}$/;
+const EPCIS_CURSOR_PATTERN = /^[A-Za-z0-9_-]+$/;
+const EPCIS_QUALIFIER_PATTERN = /^[\x21-\x7e]{1,20}$/;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const EPCIS_EVENT_TYPE_VALUES = new Set<NexIdEpcisEventType>([
+  "ObjectEvent",
+  "AggregationEvent",
+  "TransactionEvent",
+  "TransformationEvent",
+  "AssociationEvent",
+]);
 const SDK_IDEMPOTENCY_OPERATION_VALUES = new Set<NexIdIdempotencyOperation>([
   "verifyTap",
   "claimOwnership",
@@ -509,6 +775,151 @@ function normalizeHeaderValue(name: string, value: string, maximumLength: number
     throw new TypeError(`nexID SDK ${name} is invalid`);
   }
   return normalized;
+}
+
+function isValidGtin14(value: string) {
+  if (!/^\d{14}$/.test(value)) return false;
+  let sum = 0;
+  for (let index = 0; index < 13; index += 1) {
+    sum += Number(value[index]) * (index % 2 === 0 ? 3 : 1);
+  }
+  return (10 - (sum % 10)) % 10 === Number(value[13]);
+}
+
+function normalizedEpcisDate(name: string, value: string | Date | undefined) {
+  if (value === undefined) return "";
+  const date = value instanceof Date ? value : new Date(value);
+  if (!Number.isFinite(date.getTime())) throw new TypeError(`nexID SDK ${name} must be a valid date-time`);
+  return date.toISOString();
+}
+
+function normalizedEpcisText(name: string, value: string | undefined, maximumLength: number) {
+  if (value === undefined) return "";
+  const normalized = String(value).trim();
+  if (!normalized || normalized.length > maximumLength || /[\u0000-\u001f\u007f]/.test(normalized)) {
+    throw new TypeError(`nexID SDK ${name} is invalid`);
+  }
+  return normalized;
+}
+
+function epcisQueryString(filters: NexIdEpcisQueryFilters = {}) {
+  if (!filters || typeof filters !== "object" || Array.isArray(filters)) {
+    throw new TypeError("nexID SDK EPCIS filters must be an object");
+  }
+  const search = new URLSearchParams();
+  if (filters.limit !== undefined) search.set("limit", String(boundedInteger("EPCIS limit", filters.limit, 50, 1, 200)));
+  const cursor = normalizedEpcisText("EPCIS cursor", filters.cursor, 512);
+  if (cursor) {
+    if (!EPCIS_CURSOR_PATTERN.test(cursor)) throw new TypeError("nexID SDK EPCIS cursor is invalid");
+    search.set("cursor", cursor);
+  }
+  if (filters.eventType !== undefined) {
+    if (!EPCIS_EVENT_TYPE_VALUES.has(filters.eventType)) throw new TypeError("nexID SDK EPCIS eventType is invalid");
+    search.set("eventType", filters.eventType);
+  }
+  for (const [key, raw] of [["bizStep", filters.bizStep], ["disposition", filters.disposition]] as const) {
+    const value = normalizedEpcisText(`EPCIS ${key}`, raw, 512);
+    if (value) search.set(key, value);
+  }
+  const gtin = normalizedEpcisText("EPCIS gtin", filters.gtin, 14);
+  if (gtin && !isValidGtin14(gtin)) throw new TypeError("nexID SDK EPCIS gtin must be a valid GTIN-14");
+  const lot = normalizedEpcisText("EPCIS lot", filters.lot, 20);
+  const serial = normalizedEpcisText("EPCIS serial", filters.serial, 20);
+  if ((lot || serial) && !gtin) throw new TypeError("nexID SDK EPCIS lot and serial filters require gtin");
+  for (const [key, value] of [["lot", lot], ["serial", serial]] as const) {
+    if (value && (!EPCIS_QUALIFIER_PATTERN.test(value) || /[\/?#]/.test(value))) {
+      throw new TypeError(`nexID SDK EPCIS ${key} is invalid`);
+    }
+  }
+  if (gtin) search.set("gtin", gtin);
+  if (lot) search.set("lot", lot);
+  if (serial) search.set("serial", serial);
+  const eventTimeFrom = normalizedEpcisDate("EPCIS eventTimeFrom", filters.eventTimeFrom);
+  const eventTimeTo = normalizedEpcisDate("EPCIS eventTimeTo", filters.eventTimeTo);
+  if (eventTimeFrom && eventTimeTo && eventTimeFrom > eventTimeTo) {
+    throw new TypeError("nexID SDK EPCIS eventTimeFrom must not be after eventTimeTo");
+  }
+  if (eventTimeFrom) search.set("eventTimeFrom", eventTimeFrom);
+  if (eventTimeTo) search.set("eventTimeTo", eventTimeTo);
+  const encoded = search.toString();
+  return encoded ? `?${encoded}` : "";
+}
+
+function assertBoundedEpcisCaptureDocument(document: NexIdEpcisDocument) {
+  const record = document && typeof document === "object" && !Array.isArray(document)
+    ? document as Record<string, unknown>
+    : null;
+  const context = record?.["@context"];
+  const officialContext = context === NEXID_EPCIS_CONTEXT
+    || (Array.isArray(context) && context.length === 1 && context[0] === NEXID_EPCIS_CONTEXT);
+  const body = record?.epcisBody && typeof record.epcisBody === "object" && !Array.isArray(record.epcisBody)
+    ? record.epcisBody as Record<string, unknown>
+    : null;
+  const events = body?.eventList;
+  if (
+    !record
+    || !officialContext
+    || record.type !== "EPCISDocument"
+    || record.schemaVersion !== NEXID_EPCIS_VERSION
+    || !Array.isArray(events)
+    || events.length < 1
+    || events.length > NEXID_EPCIS_CAPTURE_MAX_EVENTS
+  ) {
+    throw new TypeError("nexID SDK EPCIS document is outside the supported bounded EPCIS 2.0 profile");
+  }
+  let encoded: string;
+  try {
+    encoded = JSON.stringify(document);
+  } catch (error) {
+    throw new TypeError("nexID SDK EPCIS document must be JSON serializable", { cause: error });
+  }
+  if (Buffer.byteLength(encoded, "utf8") > NEXID_EPCIS_CAPTURE_MAX_BYTES) {
+    throw new TypeError(`nexID SDK EPCIS document exceeds ${NEXID_EPCIS_CAPTURE_MAX_BYTES} bytes`);
+  }
+}
+
+function epcisPage<Document>(
+  expectedType: "EPCISDocument" | "EPCISQueryDocument",
+  data: unknown,
+  response: Response,
+  traceId: string,
+): NexIdEpcisPage<Document> {
+  const record = data && typeof data === "object" && !Array.isArray(data)
+    ? data as Record<string, unknown>
+    : null;
+  const rawPageSize = response.headers.get("x-nexid-page-size");
+  const pageSize = rawPageSize && /^\d{1,3}$/.test(rawPageSize) ? Number(rawPageSize) : -1;
+  const nextCursor = response.headers.get("x-nexid-next-cursor")?.trim() || null;
+  const body = record?.epcisBody && typeof record.epcisBody === "object" && !Array.isArray(record.epcisBody)
+    ? record.epcisBody as Record<string, unknown>
+    : null;
+  const queryResults = body?.queryResults && typeof body.queryResults === "object" && !Array.isArray(body.queryResults)
+    ? body.queryResults as Record<string, unknown>
+    : null;
+  const resultsBody = queryResults?.resultsBody && typeof queryResults.resultsBody === "object" && !Array.isArray(queryResults.resultsBody)
+    ? queryResults.resultsBody as Record<string, unknown>
+    : null;
+  const eventList = expectedType === "EPCISQueryDocument" ? resultsBody?.eventList : body?.eventList;
+  if (
+    !record
+    || record.type !== expectedType
+    || record.schemaVersion !== NEXID_EPCIS_VERSION
+    || record["@context"] !== NEXID_EPCIS_CONTEXT
+    || !Array.isArray(eventList)
+    || pageSize < 0
+    || pageSize > 200
+    || pageSize !== eventList.length
+    || (nextCursor !== null && (nextCursor.length > 512 || !EPCIS_CURSOR_PATTERN.test(nextCursor)))
+  ) {
+    throw new NexIdApiError({
+      status: 502,
+      reason: "invalid_epcis_response",
+      traceId,
+      retryAfter: null,
+      body: data,
+    });
+  }
+  return { document: record as Document, nextCursor, pageSize, traceId };
 }
 
 function parseRetryAfter(value: string | null, now = Date.now()) {
@@ -626,7 +1037,7 @@ export class NexIdClient {
         };
   }
 
-  private async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
+  private async request<T>(endpoint: string, options: RequestOptions<T> = {}): Promise<T> {
     const method = options.method || (options.body === undefined ? "GET" : "POST");
     const timeoutMs = boundedInteger("request timeoutMs", options.context?.timeoutMs, this.timeoutMs, 0, 300_000);
     const requestId = options.context?.requestId
@@ -656,8 +1067,7 @@ export class NexIdClient {
       const attemptSignal = createAttemptSignal(options.context?.signal, timeoutMs);
       try {
         const headers: Record<string, string> = {
-          "accept": "application/json",
-          "content-type": "application/json",
+          "accept": options.accept || "application/json",
           "user-agent": NEXID_SDK_USER_AGENT,
           "x-nexid-sdk-version": NEXID_SDK_VERSION,
           "x-nexid-api-key": this.apiKey,
@@ -665,6 +1075,7 @@ export class NexIdClient {
           "x-nexid-trace-id": requestId,
           "x-request-id": requestId,
         };
+        if (options.body !== undefined) headers["content-type"] = options.contentType || "application/json";
         if (idempotencyKey) headers["idempotency-key"] = idempotencyKey;
 
         const response = await this.fetchImpl(`${this.apiBaseUrl}${endpoint}`, {
@@ -700,7 +1111,10 @@ export class NexIdClient {
             body: data,
           });
         }
-        return data as T;
+        const traceId = responseTraceId(data, response, requestId) || requestId;
+        return options.transformResponse
+          ? options.transformResponse(data, response, traceId)
+          : data as T;
       } catch (error) {
         if (error instanceof NexIdApiError) throw error;
         const reason = attemptSignal.didTimeout()
@@ -760,6 +1174,110 @@ export class NexIdClient {
   activatePosPurchase(params: PosActivationRequest, options: NexIdMutationRequestOptions): Promise<PosActivationResponse>;
   activatePosPurchase(params: PosActivationRequest, options: NexIdMutationRequestOptions = {}): Promise<PosActivationResponse> {
     return this.request<PosActivationResponse>("/api/v1/sdk/pos/activate", { method: "POST", body: params, context: options, idempotencyKey: options.idempotencyKey, idempotentMutation: true, maxRetries: options.maxRetries });
+  }
+
+  /**
+   * Captures one bounded EPCIS 2.0 JSON/JSON-LD document. The idempotency key
+   * is mandatory so a transport retry cannot duplicate business events.
+   */
+  captureEpcisDocument(
+    document: NexIdEpcisDocument,
+    options: NexIdRequiredIdempotencyOptions,
+  ): Promise<NexIdEpcisCaptureReceipt> {
+    if (!options || typeof options !== "object") {
+      throw new TypeError("nexID SDK EPCIS capture requires options with idempotencyKey");
+    }
+    assertBoundedEpcisCaptureDocument(document);
+    const idempotencyKey = normalizeHeaderValue("idempotencyKey", options.idempotencyKey, 255);
+    if (!IDEMPOTENCY_KEY_PATTERN.test(idempotencyKey)) {
+      throw new TypeError("nexID SDK idempotencyKey contains unsupported characters");
+    }
+    return this.request<NexIdEpcisCaptureReceipt>("/api/v1/sdk/epcis/capture", {
+      method: "POST",
+      body: document,
+      context: options,
+      idempotencyKey,
+      idempotentMutation: true,
+      maxRetries: options.maxRetries,
+      accept: NEXID_EPCIS_MEDIA_TYPE,
+      contentType: NEXID_EPCIS_MEDIA_TYPE,
+      transformResponse: (data, response, traceId) => {
+        const receipt = data && typeof data === "object" && !Array.isArray(data)
+          ? data as Record<string, unknown>
+          : null;
+        if (
+          !receipt
+          || receipt.ok !== true
+          || typeof receipt.captureID !== "string"
+          || !UUID_PATTERN.test(receipt.captureID)
+          || typeof receipt.documentRecordID !== "string"
+          || !UUID_PATTERN.test(receipt.documentRecordID)
+          || !Number.isSafeInteger(receipt.eventCount)
+          || Number(receipt.eventCount) < 1
+          || Number(receipt.eventCount) > NEXID_EPCIS_CAPTURE_MAX_EVENTS
+          || !Number.isSafeInteger(receipt.canonicalProjectionCount)
+          || Number(receipt.canonicalProjectionCount) < Number(receipt.eventCount)
+          || Number(receipt.canonicalProjectionCount) > NEXID_EPCIS_CAPTURE_MAX_PROJECTIONS
+          || typeof receipt.capturedAt !== "string"
+          || !Number.isFinite(Date.parse(receipt.capturedAt))
+          || typeof receipt.replayed !== "boolean"
+          || !receipt.evidence
+          || typeof receipt.evidence !== "object"
+          || Array.isArray(receipt.evidence)
+          || (receipt.evidence as Record<string, unknown>).level !== "declared_business_event"
+          || (receipt.evidence as Record<string, unknown>).cryptographicNfcAuthentication !== false
+        ) {
+          throw new NexIdApiError({
+            status: 502,
+            reason: "invalid_epcis_capture_receipt",
+            traceId,
+            retryAfter: null,
+            body: data,
+          });
+        }
+        return { ...receipt, traceId } as unknown as NexIdEpcisCaptureReceipt;
+      },
+    });
+  }
+
+  /** Returns one cursor page in an EPCISQueryDocument. */
+  queryEpcisEvents(
+    filters: NexIdEpcisQueryFilters = {},
+    options: NexIdReadRequestOptions = {},
+  ): Promise<NexIdEpcisPage<NexIdEpcisQueryDocument>> {
+    const query = epcisQueryString(filters);
+    return this.request<NexIdEpcisPage<NexIdEpcisQueryDocument>>(`/api/v1/sdk/epcis/events${query}`, {
+      method: "GET",
+      context: options,
+      maxRetries: options.maxRetries,
+      accept: NEXID_EPCIS_MEDIA_TYPE,
+      transformResponse: (data, response, traceId) => epcisPage<NexIdEpcisQueryDocument>(
+        "EPCISQueryDocument",
+        data,
+        response,
+        traceId,
+      ),
+    });
+  }
+
+  /** Returns one cursor page as a portable EPCISDocument export. */
+  exportEpcisEvents(
+    filters: NexIdEpcisQueryFilters = {},
+    options: NexIdReadRequestOptions = {},
+  ): Promise<NexIdEpcisPage<NexIdEpcisDocument>> {
+    const query = epcisQueryString(filters);
+    return this.request<NexIdEpcisPage<NexIdEpcisDocument>>(`/api/v1/sdk/epcis/export${query}`, {
+      method: "GET",
+      context: options,
+      maxRetries: options.maxRetries,
+      accept: NEXID_EPCIS_MEDIA_TYPE,
+      transformResponse: (data, response, traceId) => epcisPage<NexIdEpcisDocument>(
+        "EPCISDocument",
+        data,
+        response,
+        traceId,
+      ),
+    });
   }
 
   getIdempotencyStatus(

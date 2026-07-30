@@ -43,6 +43,7 @@ export type SupplierBatchKeys = {
 export type SupplierPackInput = {
   clientSlug: string;
   batchId: string;
+  packPurpose: "trial_integration" | "production";
   quantity: number;
   chipModel: string;
   carrierProfile: string;
@@ -67,6 +68,9 @@ export type SupplierZipEntry = {
 export type SupplierPackPdfInput = {
   clientSlug: string;
   batchId: string;
+  packPurpose: "trial_integration";
+  commercialDisposition: "NON_SELLABLE";
+  activationAllowed: false;
   quantity: number;
   chipModel: string;
   carrierProfile: string;
@@ -122,6 +126,14 @@ export function sha256Buffer(value: string | Buffer | Uint8Array) {
 }
 
 const SECURE_SUN_CARRIER_PROFILES = new Set(["ntag424_dna", "ntag424_dna_tt"]);
+const SUPPLIER_PACK_PURPOSES = new Set(["trial_integration", "production"]);
+
+export type SupplierPackPurpose = "trial_integration" | "production";
+
+export function normalizeSupplierPackPurpose(input: unknown): SupplierPackPurpose | null {
+  const value = String(input || "").trim().toLowerCase();
+  return SUPPLIER_PACK_PURPOSES.has(value) ? value as SupplierPackPurpose : null;
+}
 
 function canonicalCarrierProfile(input: unknown) {
   return normalizeCarrierProfileCode(input) || String(input || "").trim().toLowerCase() || "unknown";
@@ -336,9 +348,14 @@ export function buildSupplierPackPdfSummary(input: SupplierPackPdfInput) {
   const carrierProfile = canonicalCarrierProfile(input.carrierProfile);
   const secureSun = requiresSecureSunEncoding(carrierProfile);
   const rows = [
+    "NON_SELLABLE - TRIAL INTEGRATION ONLY",
+    "DO NOT SELL, SHIP, CLAIM, TOKENIZE OR ACTIVATE",
     "nexID Supplier Encoding Pack",
     `Client: ${input.clientSlug}`,
     `Batch ID: ${input.batchId}`,
+    `Pack purpose: ${input.packPurpose}`,
+    `Commercial disposition: ${input.commercialDisposition}`,
+    `Activation allowed: ${input.activationAllowed}`,
     `Quantity: ${input.quantity}`,
     `Chip model: ${input.chipModel}`,
     `Carrier profile: ${carrierProfile}`,
@@ -586,13 +603,22 @@ export function buildSupplierEncodingPack(input: SupplierPackInput): SupplierPac
   const carrierProfile = canonicalCarrierProfile(input.carrierProfile);
   const profile = getCarrierProfile(carrierProfile);
   const secureSun = requiresSecureSunEncoding(carrierProfile);
+  const packPurpose = normalizeSupplierPackPurpose(input.packPurpose);
+  if (!packPurpose) {
+    throw new Error("supplier_pack_purpose_invalid");
+  }
+  const isTrial = packPurpose === "trial_integration";
+  const quantity = Math.max(0, Math.trunc(Number(input.quantity || 0)));
   const kMetaHex = secureSun ? assertHex32(input.kMetaHex, "K_META_BATCH") : null;
   const kFileHex = secureSun ? assertHex32(input.kFileHex, "K_FILE_BATCH") : null;
   const isTagTamper = carrierProfile === "ntag424_dna_tt";
   const payload = {
     CLIENT_SLUG: String(input.clientSlug || "").trim(),
     BATCH_ID: String(input.batchId || "").trim(),
-    QUANTITY: Math.max(0, Math.trunc(Number(input.quantity || 0))),
+    PACK_PURPOSE: packPurpose,
+    COMMERCIAL_RELEASE: isTrial ? "NON_SELLABLE_TRIAL" : "BLOCKED_PENDING_PRODUCTION_QA",
+    SALEABLE: false,
+    QUANTITY: quantity,
     CHIP_MODEL: String(input.chipModel || "").trim(),
     CARRIER_PROFILE: carrierProfile,
     CARRIER_FAMILY: profile?.family || "unknown",
@@ -605,6 +631,26 @@ export function buildSupplierEncodingPack(input: SupplierPackInput): SupplierPac
     MANIFEST_FORMAT: manifestFormatForCarrier(carrierProfile),
     PACKAGING_LABEL: `${String(input.clientSlug || "").trim()} / ${String(input.batchId || "").trim()}`,
     REQUIREMENTS: supplierRequirementsForCarrier(carrierProfile),
+    QA_INTEGRATION_GATE: secureSun && isTrial
+      ? {
+          acceptance_scope: "trial_integration_only",
+          sample_count: Math.min(10, quantity),
+          selection_authority: "nexid_server",
+          must_pass: ["uid_decode", "cmac_valid", "replay_blocked", "ttstatus_closed_when_supported"],
+          physical_ceremony_required: true,
+          physical_ceremony_verified: false,
+        }
+      : null,
+    PRODUCTION_LOT_ACCEPTANCE: {
+      status: isTrial ? "not_applicable_non_sellable_trial" : "blocked_pending_tenant_qa_plan",
+      integration_gate_is_acceptance: false,
+      required_controls: [
+        "tenant_approved_inspection_plan",
+        "server_selected_stratified_sample",
+        "recorded_aql_and_accept_reject_numbers",
+        "audited_disposition",
+      ],
+    },
     TTSTATUS: isTagTamper
       ? {
           source: "enc_decrypted",
@@ -631,7 +677,107 @@ export function buildSupplierEncodingPack(input: SupplierPackInput): SupplierPac
   return { text, json: payload, contentHash };
 }
 
+export type SupplierActivationBatchScope = {
+  id?: string | null;
+  tenantId?: string | null;
+  bid?: string | null;
+  supplierOrderId?: string | null;
+  supplierSubBatchId?: string | null;
+};
+
+export type SupplierActivationScopeCandidate = {
+  id?: string | null;
+  tenantId?: string | null;
+  supplierOrderId?: string | null;
+  batchId?: string | null;
+  bid?: string | null;
+  declaredPackPurpose?: string | null;
+  orderPackPurpose?: string | null;
+  effectivePackPurpose?: string | null;
+  classificationDecisionId?: string | null;
+};
+
+function normalizedScopeId(value: unknown) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function normalizedScopeBid(value: unknown) {
+  return String(value || "").trim().toUpperCase();
+}
+
+export function resolveSupplierActivationScope<T extends SupplierActivationScopeCandidate>(input: {
+  batch: SupplierActivationBatchScope;
+  candidates: T[];
+}) {
+  const candidates = Array.isArray(input.candidates) ? input.candidates : [];
+  const batch = input.batch || {};
+  const hasSupplierSignal = Boolean(
+    normalizedScopeId(batch.supplierOrderId)
+    || normalizedScopeId(batch.supplierSubBatchId)
+    || candidates.length,
+  );
+  if (!hasSupplierSignal) {
+    return { ok: true as const, supplierSubBatch: null };
+  }
+  if (candidates.length !== 1) {
+    return {
+      ok: false as const,
+      reason: "supplier_commercial_scope_invalid",
+      candidateCount: candidates.length,
+    };
+  }
+
+  const candidate = candidates[0];
+  const declaredPackPurpose = normalizedScopeId(candidate.declaredPackPurpose);
+  const orderPackPurpose = normalizedScopeId(candidate.orderPackPurpose);
+  const effectivePackPurpose = normalizedScopeId(candidate.effectivePackPurpose);
+  const classificationDecisionId = normalizedScopeId(candidate.classificationDecisionId);
+  const allowedPurposes = new Set(["legacy_unclassified", "trial_integration", "production"]);
+  const exactScope = normalizedScopeId(candidate.id) === normalizedScopeId(batch.supplierSubBatchId)
+    && normalizedScopeId(candidate.supplierOrderId) === normalizedScopeId(batch.supplierOrderId)
+    && normalizedScopeId(candidate.batchId) === normalizedScopeId(batch.id)
+    && normalizedScopeId(candidate.tenantId) === normalizedScopeId(batch.tenantId)
+    && normalizedScopeBid(candidate.bid) === normalizedScopeBid(batch.bid);
+  const exactBasePurpose = allowedPurposes.has(declaredPackPurpose)
+    && declaredPackPurpose === orderPackPurpose;
+  const exactEffectivePurpose = classificationDecisionId
+    ? declaredPackPurpose === "legacy_unclassified" && effectivePackPurpose === "trial_integration"
+    : effectivePackPurpose === orderPackPurpose;
+  if (!exactScope || !exactBasePurpose || !exactEffectivePurpose) {
+    return {
+      ok: false as const,
+      reason: "supplier_commercial_scope_invalid",
+      candidateCount: candidates.length,
+    };
+  }
+
+  return { ok: true as const, supplierSubBatch: candidate };
+}
+
+export function supplierActivationGateMessage(reason: string) {
+  switch (String(reason || "").trim()) {
+    case "supplier_pack_purpose_unclassified":
+      return "Supplier pack purpose must be explicitly classified before commercial activation.";
+    case "supplier_trial_integration_non_sellable":
+      return "Trial integration packs are NON_SELLABLE and cannot be activated for market or claims.";
+    case "supplier_production_acceptance_v2_required":
+      return "Production activation requires a tenant-approved Supplier Production Acceptance v2 receipt.";
+    case "supplier_commercial_scope_invalid":
+      return "Supplier batch links do not resolve to one exact tenant, order, sub-batch and BID scope.";
+    case "supplier_activation_override_audit_required":
+      return "Activation override requires override_reason with at least 16 characters and override_by.";
+    default:
+      return "Industrial supplier batch activation is blocked until manifest import, quantity match and QA approval are complete.";
+  }
+}
+
 export function canActivateSupplierSubBatch(input: {
+  effectivePackPurpose?: "legacy_unclassified" | SupplierPackPurpose | null;
+  productionAcceptanceV2?: {
+    schemaVersion?: string | null;
+    status?: string | null;
+    receiptId?: string | null;
+  } | null;
   manifestStatus?: string | null;
   qaStatus?: string | null;
   expectedQuantity?: number | null;
@@ -639,6 +785,46 @@ export function canActivateSupplierSubBatch(input: {
   overrideReason?: string | null;
   overrideBy?: string | null;
 }) {
+  const effectivePackPurpose = String(input.effectivePackPurpose || "").trim().toLowerCase();
+  if (!effectivePackPurpose || effectivePackPurpose === "legacy_unclassified") {
+    return {
+      ok: false as const,
+      override: false as const,
+      hardGate: true as const,
+      reason: "supplier_pack_purpose_unclassified",
+    };
+  }
+  if (effectivePackPurpose === "trial_integration") {
+    return {
+      ok: false as const,
+      override: false as const,
+      hardGate: true as const,
+      reason: "supplier_trial_integration_non_sellable",
+    };
+  }
+  if (effectivePackPurpose !== "production") {
+    return {
+      ok: false as const,
+      override: false as const,
+      hardGate: true as const,
+      reason: "supplier_commercial_scope_invalid",
+    };
+  }
+
+  const productionAcceptance = input.productionAcceptanceV2;
+  const productionReceiptId = String(productionAcceptance?.receiptId || "").trim();
+  const productionAcceptancePassed = productionAcceptance?.schemaVersion === "supplier-production-acceptance/v2"
+    && productionAcceptance?.status === "passed"
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(productionReceiptId);
+  if (!productionAcceptancePassed) {
+    return {
+      ok: false as const,
+      override: false as const,
+      hardGate: true as const,
+      reason: "supplier_production_acceptance_v2_required",
+    };
+  }
+
   const overrideReason = String(input.overrideReason || "").trim();
   const overrideBy = String(input.overrideBy || "").trim();
   const failures: Array<{ reason: string; expected?: number; received?: number }> = [];
@@ -668,107 +854,4 @@ export function canActivateSupplierSubBatch(input: {
     };
   }
   return { ok: true as const, override: true as const, overrideReason, overrideBy, blockedReasons: failures };
-}
-
-export function validateSupplierQaEvidence(input: {
-  passed: boolean;
-  sampleUrls?: unknown[] | null;
-  replayChecked?: boolean | null;
-  ttstatusChecked?: boolean | null;
-  requiresTtstatus?: boolean | null;
-  requiresSecureSun?: boolean | null;
-  expectedBid?: string | null;
-}) {
-  if (!input.passed) return { ok: true as const };
-  const sampleUrls = normalizeSupplierQaSampleUrls(input.sampleUrls);
-  const sampleCount = sampleUrls.length;
-  if (sampleCount <= 0) {
-    return { ok: false as const, reason: "qa_sample_evidence_required", sampleCount };
-  }
-  const expectedBid = String(input.expectedBid || "").trim();
-  for (const sampleUrl of sampleUrls) {
-    const parsed = parseQaSampleUrl(sampleUrl);
-    if (!parsed.ok) {
-      return { ok: false as const, reason: parsed.reason, sampleCount, sampleUrl };
-    }
-    if (expectedBid && !qaSampleMatchesBid(parsed.url, expectedBid)) {
-      return { ok: false as const, reason: "qa_sample_bid_mismatch", sampleCount, sampleUrl, expectedBid };
-    }
-  }
-  if (input.requiresSecureSun && !sampleUrls.some(hasSecureSunSampleParams)) {
-    return { ok: false as const, reason: "qa_secure_sun_sample_required", sampleCount };
-  }
-  if (!input.replayChecked) {
-    return { ok: false as const, reason: "qa_replay_check_required", sampleCount };
-  }
-  if (input.requiresTtstatus && !input.ttstatusChecked) {
-    return { ok: false as const, reason: "qa_ttstatus_check_required", sampleCount };
-  }
-  const sampleUrlHashes = sampleUrls.map(hashSupplierQaSampleUrl);
-  return { ok: true as const, sampleCount, sampleUrls, sampleUrlHashes, evidenceDigest: buildSupplierQaEvidenceDigest({
-    sample_url_hashes: sampleUrlHashes,
-    replayChecked: Boolean(input.replayChecked),
-    ttstatusChecked: Boolean(input.ttstatusChecked),
-    requiresTtstatus: Boolean(input.requiresTtstatus),
-    requiresSecureSun: Boolean(input.requiresSecureSun),
-    expectedBid: expectedBid || null,
-  }) };
-}
-
-export function normalizeSupplierQaSampleUrls(sampleUrls?: unknown[] | null) {
-  if (!Array.isArray(sampleUrls)) return [];
-  return Array.from(new Set(
-    sampleUrls
-      .map((item) => String(item || "").trim())
-      .filter(Boolean)
-      .slice(0, 25),
-  ));
-}
-
-export function hashSupplierQaSampleUrl(sampleUrl: string) {
-  return sha256(String(sampleUrl || "").trim());
-}
-
-export function buildSupplierQaEvidenceDigest(payload: Record<string, unknown>) {
-  return sha256(JSON.stringify(payload, Object.keys(payload).sort()));
-}
-
-function parseQaSampleUrl(sampleUrl: string):
-  | { ok: true; url: URL }
-  | { ok: false; reason: "qa_sample_url_invalid" | "qa_sample_url_scheme_invalid" } {
-  let url: URL;
-  try {
-    url = new URL(sampleUrl);
-  } catch {
-    return { ok: false, reason: "qa_sample_url_invalid" };
-  }
-  if (!["https:", "http:"].includes(url.protocol)) {
-    return { ok: false, reason: "qa_sample_url_scheme_invalid" };
-  }
-  if (url.protocol === "http:" && !["localhost", "127.0.0.1", "::1"].includes(url.hostname)) {
-    return { ok: false, reason: "qa_sample_url_scheme_invalid" };
-  }
-  return { ok: true, url };
-}
-
-function qaSampleMatchesBid(url: URL, expectedBid: string) {
-  const expected = expectedBid.toUpperCase();
-  const candidates = [
-    url.searchParams.get("bid"),
-    url.searchParams.get("batch"),
-    url.searchParams.get("batch_id"),
-    url.searchParams.get("b"),
-    decodeURIComponent(url.pathname),
-  ].map((item) => String(item || "").toUpperCase());
-  return candidates.some((item) => item === expected || item.includes(expected));
-}
-
-function hasSecureSunSampleParams(sampleUrl: string) {
-  const parsed = parseQaSampleUrl(sampleUrl);
-  if (!parsed.ok) return false;
-  const params = parsed.url.searchParams;
-  const hasPicc = Boolean(params.get("picc_data") || params.get("picc"));
-  const hasEnc = Boolean(params.get("enc"));
-  const hasCmac = Boolean(params.get("cmac") || params.get("mac"));
-  return hasPicc && hasEnc && hasCmac;
 }

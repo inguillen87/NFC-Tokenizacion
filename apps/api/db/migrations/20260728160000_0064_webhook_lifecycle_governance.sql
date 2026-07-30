@@ -33,11 +33,62 @@ SET enabled = false,
 WHERE deleted_at IS NOT NULL
   AND enabled = true;
 
+-- Canonical writers fan out to at most 25 destinations. Make that operational
+-- bound an invariant instead of silently omitting endpoint 26+. Existing
+-- violations must be resolved explicitly before this migration can proceed.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM webhook_endpoints
+    WHERE enabled = true AND deleted_at IS NULL
+    GROUP BY tenant_id
+    HAVING count(*) > 25
+  ) THEN
+    RAISE EXCEPTION 'webhook_enabled_endpoint_limit_preexisting';
+  END IF;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION nexid_enforce_webhook_enabled_endpoint_limit_v1()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_enabled_count integer;
+BEGIN
+  IF NEW.enabled IS DISTINCT FROM true OR NEW.deleted_at IS NOT NULL THEN
+    RETURN NEW;
+  END IF;
+
+  PERFORM pg_advisory_xact_lock(hashtextextended(NEW.tenant_id::text, 9824));
+  SELECT count(*)::integer INTO v_enabled_count
+  FROM webhook_endpoints endpoint
+  WHERE endpoint.tenant_id = NEW.tenant_id
+    AND endpoint.enabled = true
+    AND endpoint.deleted_at IS NULL
+    AND endpoint.id IS DISTINCT FROM NEW.id;
+
+  IF v_enabled_count >= 25 THEN
+    RAISE EXCEPTION 'webhook_enabled_endpoint_limit_exceeded';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_webhook_enabled_endpoint_limit ON webhook_endpoints;
+CREATE TRIGGER trg_webhook_enabled_endpoint_limit
+BEFORE INSERT OR UPDATE OF enabled, deleted_at, tenant_id ON webhook_endpoints
+FOR EACH ROW EXECUTE FUNCTION nexid_enforce_webhook_enabled_endpoint_limit_v1();
+
 ALTER TABLE webhook_endpoints
   DROP CONSTRAINT IF EXISTS webhook_endpoints_secret_version_check,
   DROP CONSTRAINT IF EXISTS webhook_endpoints_previous_secret_state_check,
   DROP CONSTRAINT IF EXISTS webhook_endpoints_previous_secret_window_check,
-  DROP CONSTRAINT IF EXISTS webhook_endpoints_deleted_disabled_check;
+  DROP CONSTRAINT IF EXISTS webhook_endpoints_deleted_disabled_check,
+  DROP CONSTRAINT IF EXISTS webhook_endpoints_enabled_lifecycle_check,
+  DROP CONSTRAINT IF EXISTS webhook_endpoints_secret_fingerprint_check,
+  DROP CONSTRAINT IF EXISTS webhook_endpoints_previous_secret_fingerprint_check;
 
 ALTER TABLE webhook_endpoints
   ADD CONSTRAINT webhook_endpoints_secret_version_check
@@ -64,7 +115,19 @@ ALTER TABLE webhook_endpoints
       OR signing_secret_previous_valid_until <= COALESCE(signing_secret_rotated_at, updated_at) + interval '24 hours'
     ),
   ADD CONSTRAINT webhook_endpoints_deleted_disabled_check
-    CHECK (deleted_at IS NULL OR enabled = false);
+    CHECK (deleted_at IS NULL OR enabled = false),
+  ADD CONSTRAINT webhook_endpoints_enabled_lifecycle_check
+    CHECK (enabled = false OR (disabled_at IS NULL AND deleted_at IS NULL)),
+  ADD CONSTRAINT webhook_endpoints_secret_fingerprint_check
+    CHECK (
+      signing_secret_fingerprint IS NULL
+      OR signing_secret_fingerprint ~ '^sha256:[0-9a-f]{32}$'
+    ),
+  ADD CONSTRAINT webhook_endpoints_previous_secret_fingerprint_check
+    CHECK (
+      signing_secret_previous_fingerprint IS NULL
+      OR signing_secret_previous_fingerprint ~ '^sha256:[0-9a-f]{32}$'
+    );
 
 -- Prevent tenant or endpoint deletion from cascading through retained webhook
 -- evidence. Lifecycle changes must use the audited soft-delete contract.
@@ -116,6 +179,56 @@ CREATE TABLE IF NOT EXISTS webhook_endpoint_audit_events (
     secret_version IS NULL OR secret_version >= 0
   )
 );
+
+-- Bind audit tenant identity to the endpoint itself. A route cannot append an
+-- apparently tenant-scoped receipt for an endpoint owned by another tenant.
+ALTER TABLE webhook_endpoint_audit_events
+  DROP CONSTRAINT IF EXISTS webhook_endpoint_audit_events_endpoint_id_fkey,
+  DROP CONSTRAINT IF EXISTS webhook_endpoint_audit_events_actor_id_fkey,
+  DROP CONSTRAINT IF EXISTS webhook_endpoint_audit_endpoint_tenant_fkey;
+
+ALTER TABLE webhook_endpoints
+  DROP CONSTRAINT IF EXISTS webhook_endpoints_id_tenant_unique;
+
+ALTER TABLE webhook_endpoints
+  ADD CONSTRAINT webhook_endpoints_id_tenant_unique UNIQUE (id, tenant_id);
+
+ALTER TABLE webhook_endpoint_audit_events
+  ADD CONSTRAINT webhook_endpoint_audit_endpoint_tenant_fkey
+    FOREIGN KEY (endpoint_id, tenant_id)
+    REFERENCES webhook_endpoints(id, tenant_id)
+    ON DELETE RESTRICT NOT VALID,
+  ADD CONSTRAINT webhook_endpoint_audit_events_actor_id_fkey
+    FOREIGN KEY (actor_id)
+    REFERENCES users(id)
+    ON DELETE RESTRICT NOT VALID;
+
+ALTER TABLE webhook_endpoint_audit_events
+  VALIDATE CONSTRAINT webhook_endpoint_audit_endpoint_tenant_fkey;
+
+ALTER TABLE webhook_endpoint_audit_events
+  VALIDATE CONSTRAINT webhook_endpoint_audit_events_actor_id_fkey;
+
+-- Lifecycle receipts are append-only. Endpoint/user hard deletion is already
+-- restricted above so FK maintenance never needs to rewrite an audit row.
+CREATE OR REPLACE FUNCTION nexid_webhook_audit_append_only()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RAISE EXCEPTION USING
+    MESSAGE = 'webhook_audit_history_is_append_only',
+    ERRCODE = '55000';
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_webhook_endpoint_audit_append_only
+  ON webhook_endpoint_audit_events;
+
+CREATE TRIGGER trg_webhook_endpoint_audit_append_only
+BEFORE UPDATE OR DELETE ON webhook_endpoint_audit_events
+FOR EACH ROW
+EXECUTE FUNCTION nexid_webhook_audit_append_only();
 
 CREATE INDEX IF NOT EXISTS idx_webhook_endpoints_tenant_lifecycle
   ON webhook_endpoints(tenant_id, deleted_at, enabled, updated_at DESC);

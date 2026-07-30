@@ -21,10 +21,10 @@ Que cada lote fisico tenga:
 | Responsable | Responsabilidad |
 | --- | --- |
 | nexID ops | Crear tenant, batch, politica y paquete de encoding |
-| nexID security | Generar claves de sub-batch, cifrarlas con la clave maestra de aplicación en Vercel y controlar rotación; Google Cloud KMS SOFTWARE sólo aplica a la custodia blockchain actual |
+| nexID security | Generar claves de sub-batch y protegerlas mediante AES-256-GCM envelope ligado a tenant, BID, rol y versión. La API NFC piloto usa una KEK versionada como secreto de despliegue; no es KMS gestionado ni HSM. El executor blockchain soporta por separado el modo piloto `kms_wrapped` con Google Cloud KMS SOFTWARE, que sólo puede declararse activo para un entorno con readiness y receipt fresco |
 | Proveedor | Codificar tags segun especificacion y devolver manifest |
 | Tenant | Aprobar producto, arte, volumen y politica comercial |
-| QA | Validar muestras fisicas, replay, tamper y manifest |
+| QA | Validar evidencia SUN/SDM derivada por servidor, UIDs del manifest, pares anti-replay y, para TagTamper, una transición electrónica cerrada-abierta. La instalación, adhesión y apertura física del packaging se atestan por separado; el receipt QA actual registra `physical_ceremony_verified=false` |
 | Compliance | Definir si se requiere proof IOTA o reportes privados |
 
 ## Flujo operacional
@@ -37,11 +37,17 @@ Que cada lote fisico tenga:
 6. Exportar paquete de encoding para proveedor.
 7. Proveedor codifica tags y devuelve manifest.
 8. Importar manifest en nexID.
-9. Activar lote en estado controlado.
-10. Probar muestras fisicas.
-11. Aprobar lote para produccion o venta.
+9. Para un trial, ejecutar QA de integración sobre diez tags o sobre el total cuando el pack tenga menos de diez.
+10. Aprobar o rechazar el alcance evaluado y conservar el receipt inmutable.
+11. Activar el lote piloto sólo después de una aprobación QA aplicable a ese mismo manifest y configuración.
 12. Registrar eventos DPP relevantes.
 13. Anclar en IOTA solo si la politica enterprise lo requiere.
+
+La ceremonia fija de diez tags demuestra integración SUN/SDM, anti-replay y TagTamper del pack de prueba. No constituye aceptación estadística de un lote productivo. El runtime actual implementa un `pack_purpose` inmutable y trata `trial_integration` como `NON_SELLABLE`, pero todavía no implementa el estado de fabricación completo, una sesión QA server-owned ni un plan AQL aprobado por el tenant. Por eso, una aprobación actual debe tratarse sólo como `trial_integration_only`; no habilita una afirmación de aceptación productiva.
+
+Antes de habilitar producción, calidad del tenant debe aprobar lote, nivel de inspección, AQL, tamaño de muestra, límites accept/reject y selección server-side estratificada por rollo, cartón o pallet. El endpoint de activación actual comprueba manifest, cantidad y `qa_status`, y aplica el gate de propósito antes de cualquier override: un trial, un lote sin clasificar o un lote productivo sin la estrategia QA v2 no puede activarse mediante break-glass. Todavía no enlaza un receipt de aceptación productiva ni un estado de fabricación versionado. Esa ampliación permanece como control P0, no como capacidad desplegada.
+
+En el camino normal, la activación exige manifest importado con cantidad exacta y `qa_status=passed`, además de un propósito comercial elegible. El override break-glass disponible para superadmin o `supplier:activate_override` exige motivo y auditoría, pero no puede convertir un trial `NON_SELLABLE` ni una integración QA fija en aprobación productiva o AQL.
 
 ## Paquete de encoding
 
@@ -109,10 +115,13 @@ Eventos operativos que conviene registrar internamente:
 - `supplier_batch_created`.
 - `supplier_pack_exported`.
 - `supplier_manifest_received`.
-- `batch_activated`.
 - `quality_check_completed`.
-- `physical_authentication`.
+- `sun_cryptographic_verification`.
+- `packaging_physical_test_attested`.
+- `batch_activated`.
 - `tamper_observed`.
+
+Los nombres `sun_cryptographic_verification` y `packaging_physical_test_attested` son el contrato DPP objetivo. El runtime actual conserva nombres históricos como `TAP_VALID`, `TAP_INVALID`, `REPLAY_SUSPECT`, `qa_passed` y `qa_failed`; no debe afirmarse que los eventos objetivo ya fueron migrados hasta que exista migración, backfill y compatibilidad de consumidores.
 
 Eventos que pueden anclarse en IOTA si el tenant lo pide:
 
@@ -137,13 +146,17 @@ Un lote puede estar operativo sin Polygon si solo se requiere autenticacion DPP.
 
 ## Criterio de listo
 
-Un lote esta listo para venta o piloto cuando:
+Un lote piloto esta listo para uso controlado cuando:
 
 - El batch existe y esta asociado al tenant correcto.
 - Las claves estan cifradas en backend.
 - El proveedor recibio solo el paquete autorizado.
 - El manifest fue importado y validado.
-- QA fisico paso con muestras intactas y tamper.
+- La verificación SUN criptográfica pasó para la muestra y el contexto de configuración registrados.
+- La prueba física de packaging fue aprobada y atestada por separado cuando el producto o el perfil TagTamper la requiere.
 - Replay fue bloqueado.
+- El alcance QA corresponde al uso real: integración trial o plan de aceptación productiva aprobado por calidad del tenant.
 - La politica de Polygon/IOTA esta documentada para el tenant.
 - No hay secretos ni PII en archivos compartidos con proveedor.
+
+Un lote productivo no cumple este criterio todavía: requiere el plan de aceptación y el enlace transaccional con fabricación descritos arriba.

@@ -34,7 +34,7 @@ test("public Polygon certificate explains proof boundaries and preserves exits",
   assert.match(page, /buyerControlled/);
   assert.match(page, /claim\?\.state === "buyer_controlled"/);
   assert.match(page, /wallet_control\?\.verified === true/);
-  assert.match(page, /Ver transferencia real/);
+  assert.match(page, /Ver transferencia en Amoy/);
   assert.match(page, /Ver mensaje firmado/);
   assert.match(page, /No autoriza login, compra ni transferencia/);
   assert.match(page, /firma EIP-191 archivada/);

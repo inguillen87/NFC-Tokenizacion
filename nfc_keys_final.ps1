@@ -1,7 +1,7 @@
 param(
   [Parameter(Mandatory=$true)][string]$BatchId,
-  [string]$OutDir = ".\\generated-keys",
-  [string]$SecretsDir = ".\\secrets"
+  [string]$OutDir = ".\\.nexid-custody\\generated-keys",
+  [string]$SecretsDir = ".\\.nexid-custody\\secrets"
 )
 
 Set-StrictMode -Version Latest

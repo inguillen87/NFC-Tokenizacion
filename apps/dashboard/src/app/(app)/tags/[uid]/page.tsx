@@ -8,12 +8,14 @@ import {
 } from "../../../../lib/admin-resource-read";
 import { requireDashboardSession } from "../../../../lib/session";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../../lib/admin-page-access";
+import { dashboardPermissionMatches } from "../../../../lib/permission-policy";
+import { TagLifecyclePanel } from "./tag-lifecycle-panel";
 
 type PassportResponse = {
   ok: boolean;
   scope?: { tenant: string; source: string; range: string; country: string };
   passport?: {
-    identity: { uidHex: string; bid: string; tenantSlug: string; tagStatus: string; readCounter: number; scanCount: number };
+    identity: { uidHex: string; bid: string; tenantSlug: string; tagStatus: string; lifecycleState?: string; lifecycleRevision?: number; readCounter: number; scanCount: number };
     product: { productName: string; winery: string; region: string; vintage: string; varietal: string };
     provenance: {
       origin: { harvestYear: string | null; barrelMonths: number | null; temperatureStorage: number | null };
@@ -140,11 +142,17 @@ export default async function TagPassportPage({ params, searchParams }: { params
             <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Identity & product</h2>
             <div className="mt-3 grid gap-2 text-sm text-slate-200 md:grid-cols-2">
               <p>Tenant: <b>{passport.identity.tenantSlug}</b></p><p>BID: <b>{passport.identity.bid}</b></p>
-              <p>UID: <b>{passport.identity.uidHex}</b></p><p>Tag status: <StatusChip label={passport.identity.tagStatus} tone={passport.identity.tagStatus === "active" ? "good" : "warn"} /></p>
+              <p>UID: <b>{passport.identity.uidHex}</b></p><p>Lifecycle: <StatusChip label={passport.identity.lifecycleState || passport.identity.tagStatus} tone={(passport.identity.lifecycleState || passport.identity.tagStatus) === "active" ? "good" : "warn"} /> <span className="text-xs text-slate-400">operativo {passport.identity.tagStatus} · rev. {passport.identity.lifecycleRevision || 0}</span></p>
               <p>Producto: <b>{passport.product.productName}</b></p><p>Bodega / Región: <b>{passport.product.winery} / {passport.product.region}</b></p>
               <p>Varietal / Vintage: <b>{passport.product.varietal} / {passport.product.vintage}</b></p><p>Scans / Read counter: <b>{passport.identity.scanCount} / {passport.identity.readCounter}</b></p>
             </div>
           </Card>
+
+          <TagLifecyclePanel
+            uid={uid}
+            tenantSlug={tenantScope || null}
+            canWrite={session.role === "super-admin" || dashboardPermissionMatches(session.permissions, "tags:write")}
+          />
 
           <Card className="p-5">
             <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Datos declarados y eventos NFC</h2>

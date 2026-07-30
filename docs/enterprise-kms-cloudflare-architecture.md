@@ -4,9 +4,9 @@
 
 The existing Vercel `KMS_MASTER_KEY_HEX` remains dedicated to NFC/batch-key envelope encryption. Despite its legacy name, a secret stored as a Vercel environment variable is not by itself a managed KMS or HSM and does not attest non-exportability. It must not be reused for blockchain transaction signing.
 
-The current blockchain pilot mode is `kms_wrapped`: Google Cloud KMS with the `SOFTWARE` protection level unwraps an encrypted wallet inside the isolated executor, and wallet plaintext exists ephemerally in executor memory while a transaction is signed. Ciphertext can be persisted; plaintext must never be logged or returned. This is stronger than storing the wallet plaintext in an application environment variable, but it is not direct KMS signing, a non-exportable workload key or HSM custody.
+The implemented and historically staged blockchain pilot mode is `kms_wrapped`: Google Cloud KMS with the `SOFTWARE` protection level unwraps an encrypted wallet inside the isolated executor, and wallet plaintext exists ephemerally in executor memory while a transaction is signed. Ciphertext can be persisted; plaintext must never be logged or returned. This is stronger than storing the wallet plaintext in an application environment variable, but it is not direct KMS signing, a non-exportable workload key or HSM custody. Do not infer that an arbitrary current environment is configured or healthy from this document; require the runtime readiness gate and a fresh transaction receipt.
 
-The production API rejects the legacy exportable Polygon private-key signer. Polygon minting can use the durable executor/intention path; the local-key path remains limited to non-production development or an isolated testnet environment. ERC-721 transfer is not implemented in the executor and no production caller currently invokes a safe transfer coordinator. Ownership claims therefore remain database records/requests and must never be described as an on-chain transfer. Transfer promotion requires an executor allowlist, caller, durable idempotency, a chain receipt and an `ownerOf` verification.
+The production-mode code path rejects the legacy exportable Polygon private-key signer. Polygon minting can use the durable executor/intention path; the local-key path remains limited to non-production development or an isolated testnet environment. ERC-721 transfer is not implemented in the executor and no production caller currently invokes a safe transfer coordinator. Ownership claims therefore remain database records/requests and must never be described as an on-chain transfer. Transfer promotion requires an executor allowlist, caller, durable idempotency, a chain receipt and an `ownerOf` verification.
 
 Target architecture:
 
@@ -34,13 +34,13 @@ Namecheap should remain the registrar/DNS authority only where required; authori
 
 ### Current plan decision
 
-Cloudflare Free is useful for DNS, TLS, baseline WAF and the simplest edge rules, but it is not sufficient evidence for Nexid's fleet-wide authenticated rate-limit policy. The current Free-zone baseline is deployed and smoke-tested; Neon-backed tenant/subject limits remain authoritative. Paid-plan changes still require Rulesets API schema validation and rollback evidence.
+Cloudflare Free is useful for DNS, TLS, baseline WAF and the simplest edge rules, but it is not sufficient evidence for Nexid's fleet-wide authenticated rate-limit policy. A dated 2026-07-26 rollout snapshot records a deployed and smoke-tested Free-zone baseline; that historical result is not a current health check. Neon-backed tenant/subject limits remain authoritative. Paid-plan changes still require Rulesets API schema validation and rollback evidence.
 
 Google Cloud KMS is the preferred low-cost signer path once billing is enabled: it supports `EC_SIGN_SECP256K1_SHA256`, but KMS is not a permanently free service. The published free allowance applies to Autokey-created keys and 10,000 cryptographic operations/month; billing registration is still required. A dedicated Nexid GCP project should be used, never the existing auth project.
 
 ## Promotion gates
 
-1. Apply the complete ordered migration set through the latest reviewed migration, currently `0061_supplier_export_artifact_delivery`, only to the explicitly approved database, then run the release preflight and postchecks.
+1. Derive the latest required migration from the versioned release preflight, apply the complete ordered set only to the explicitly approved database, then run preflight and postchecks. Do not use a migration number copied from this document as a release watermark.
 2. Provision signer key and policy; record public address and key version.
 3. Configure Cloudflare rules and observe in log/simulation mode before blocking.
 4. Run PostgreSQL, IOTA live-read, proof, webhook, and executor readiness gates.

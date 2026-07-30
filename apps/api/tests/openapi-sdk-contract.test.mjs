@@ -30,6 +30,9 @@ test("OpenAPI publishes the exact SDK v1 route surface and server-only auth", ()
     "/api/v1/logistics/recipient-verify",
     "/api/v1/logistics/seal-apply",
     "/api/v1/sdk/claim",
+    "/api/v1/sdk/epcis/capture",
+    "/api/v1/sdk/epcis/events",
+    "/api/v1/sdk/epcis/export",
     "/api/v1/sdk/events",
     "/api/v1/sdk/idempotency/status",
     "/api/v1/sdk/pos/activate",
@@ -61,6 +64,21 @@ test("OpenAPI required request fields match the SDK source contract", () => {
   assert.deepEqual(spec.components.schemas.ClaimOwnershipRequest.required, ["contact", "bid"]);
   assert.deepEqual(spec.components.schemas.ExternalEventRequest.required, ["eventType"]);
   assert.deepEqual(spec.components.schemas.PosActivationRequest.required, ["bid"]);
+});
+
+test("OpenAPI publishes the bounded EPCIS profile, scopes and failure contract", () => {
+  const capture = spec.paths["/api/v1/sdk/epcis/capture"].post;
+  const events = spec.paths["/api/v1/sdk/epcis/events"].get;
+  const exportPage = spec.paths["/api/v1/sdk/epcis/export"].get;
+  assert.equal(capture["x-nexid-required-scope"], "sdk:epcis:write");
+  assert.equal(events["x-nexid-required-scope"], "sdk:epcis:read");
+  assert.equal(exportPage["x-nexid-required-scope"], "sdk:epcis:read");
+  assert.equal(capture["x-nexid-profile"], "bounded-foundation-not-certified");
+  assert.equal(spec.components.parameters.RequiredEpcisIdempotencyKey.required, true);
+  assert.ok(capture.requestBody.content["application/vnd.gs1.epcis+json"]);
+  for (const status of ["413", "422", "429", "503"]) assert.ok(capture.responses[status]);
+  assert.match(capture.description, /not NFC cryptographic authentication/i);
+  assert.match(capture.description, /not claimed as GS1 certified/i);
 });
 
 test("OpenAPI internal references resolve and operation IDs are unique", () => {

@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const scripts = ["staging-postgres-smoke.mjs", "iota-v2-readonly-smoke.mjs", "validate-waf-policy.mjs"];
+const scripts = ["check-no-tracked-secrets.mjs", "staging-postgres-smoke.mjs", "iota-v2-readonly-smoke.mjs", "validate-waf-policy.mjs"];
 const results = [];
 for (const script of scripts) {
   const result = await new Promise((resolve) => {

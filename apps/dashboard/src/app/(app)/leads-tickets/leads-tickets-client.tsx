@@ -68,6 +68,7 @@ type AiQuery = {
   tag: string;
   created_at: string;
   status: string;
+  source: "production" | "demo";
 };
 
 const AI_QUERY_HIGHLIGHTS = [
@@ -197,6 +198,8 @@ interface LeadsTicketsClientProps {
   tenantFilter: string;
   copy: any;
   labels: any;
+  demoMode: boolean;
+  leadsSource: "production" | "demo" | "unavailable";
 }
 
 export default function LeadsTicketsClient({
@@ -208,7 +211,9 @@ export default function LeadsTicketsClient({
   sessionFilter,
   tenantFilter,
   copy,
-  labels
+  labels,
+  demoMode,
+  leadsSource,
 }: LeadsTicketsClientProps) {
   const [activeTab, setActiveTab] = useState<"opportunities" | "prospects" | "tickets" | "orders" | "ai_queries">("opportunities");
   const [searchTerm, setSearchTerm] = useState("");
@@ -242,23 +247,28 @@ export default function LeadsTicketsClient({
         answer: answer,
         tag: String(l.role_interest || "General").toUpperCase(),
         created_at: l.created_at.slice(0, 10),
-        status: "RESPONDIDO"
+        status: "RESPONDIDO",
+        source: leadsSource === "demo" ? "demo" : "production",
       };
-    }), [initialLeads, tenantScope]);
+    }), [initialLeads, leadsSource, tenantScope]);
+
+  const demoAiQueries = useMemo<AiQuery[]>(() => demoMode
+    ? DEFAULT_AI_QUERIES.filter(q => {
+        if (tenantScope) {
+          const matchesScope =
+            (tenantScope === "bodegas" && q.vertical === "wine") ||
+            (tenantScope === "cosmetica" && q.vertical === "cosmetics") ||
+            (tenantScope === "agro" && q.vertical === "agro");
+          return matchesScope;
+        }
+        return true;
+      }).map((query) => ({ ...query, status: String(query.status || "RESPONDIDO"), source: "demo" }))
+    : [], [demoMode, tenantScope]);
 
   const allAiQueries = useMemo<AiQuery[]>(() => [
-    ...DEFAULT_AI_QUERIES.filter(q => {
-      if (tenantScope) {
-        const matchesScope =
-          (tenantScope === "bodegas" && q.vertical === "wine") ||
-          (tenantScope === "cosmetica" && q.vertical === "cosmetics") ||
-          (tenantScope === "agro" && q.vertical === "agro");
-        return matchesScope;
-      }
-      return true;
-    }).map((query) => ({ ...query, status: String(query.status || "RESPONDIDO") })),
+    ...demoAiQueries,
     ...parsedDbQueries
-  ], [parsedDbQueries, tenantScope]);
+  ], [demoAiQueries, parsedDbQueries]);
 
   const filteredAiQueries = useMemo(() => allAiQueries.filter(q => {
     const searchStr = `${q.contact || ""} ${q.company || ""} ${q.query || ""} ${q.answer || ""} ${q.tag || ""}`.toLowerCase();
@@ -284,7 +294,8 @@ export default function LeadsTicketsClient({
       }));
   }, [filteredAiQueries]);
 
-  const aiLiveCount = filteredAiQueries.filter((query) => /respondido|procesando|live|nuevo/i.test(query.status)).length;
+  const aiLiveCount = filteredAiQueries.filter((query) => query.source === "production" && /respondido|procesando|live|nuevo/i.test(query.status)).length;
+  const aiDemoCount = filteredAiQueries.filter((query) => query.source === "demo").length;
 
   // Pipeline count computations
   const pipelineStages = [
@@ -600,11 +611,13 @@ export default function LeadsTicketsClient({
                   <div>
                     <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-cyan-200">
                       <Radio className="h-4 w-4 text-cyan-300" />
-                      {labels.liveQueries}
+                      {demoMode ? "Consultas demo" : labels.liveQueries}
                     </p>
-                    <p className="mt-3 text-4xl font-black text-white">{aiLiveCount}</p>
+                    <p className="mt-3 text-4xl font-black text-white">{demoMode ? aiDemoCount : aiLiveCount}</p>
                     <p className="mt-1 max-w-md text-xs leading-relaxed text-slate-400">
-                      Preguntas capturadas desde Sommelier, Aura, Inspector y asistentes web. La bandeja se alimenta de leads assistant, sales_chat_widget y notas de modo asistente.
+                      {demoMode
+                        ? "Escenario de demostracion aislado. Estas consultas no representan conversaciones, clientes ni actividad productiva."
+                        : "Consultas confirmadas por la fuente de leads: assistant, sales_chat_widget y notas de modo asistente. Si la API no informa filas, la bandeja queda vacia."}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 rounded-full border border-cyan-300/25 bg-cyan-400/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-cyan-100">
@@ -612,14 +625,14 @@ export default function LeadsTicketsClient({
                       <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-300 opacity-75" />
                       <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-cyan-300" />
                     </span>
-                    {labels.liveBeacon}
+                    {demoMode ? "DEMO" : labels.liveBeacon}
                   </div>
                 </div>
                 <div className="relative mt-5 grid grid-cols-3 gap-2">
                   {[
                     { label: labels.queryRadar, value: filteredAiQueries.length, icon: BrainCircuit },
                     { label: "DB", value: parsedDbQueries.length, icon: Network },
-                    { label: "Demo", value: Math.max(0, allAiQueries.length - parsedDbQueries.length), icon: Bot }
+                    { label: "Demo", value: aiDemoCount, icon: Bot }
                   ].map((metric) => (
                     <div key={metric.label} className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
                       <metric.icon className="mb-2 h-4 w-4 text-cyan-300" />
@@ -677,7 +690,7 @@ export default function LeadsTicketsClient({
                 {filteredAiQueries.length ? filteredAiQueries.map((item) => {
                   const category = normalizeAiQueryCategory(item.tag, item.query, item.answer);
                   return (
-                    <article key={item.id} className="grid gap-4 px-5 py-4 transition-colors hover:bg-cyan-400/[0.035] lg:grid-cols-[0.75fr_1.15fr_1.2fr_0.45fr]">
+                    <article key={item.id} data-ai-query-source={item.source} className="grid gap-4 px-5 py-4 transition-colors hover:bg-cyan-400/[0.035] lg:grid-cols-[0.75fr_1.15fr_1.2fr_0.45fr]">
                       <div className="min-w-0">
                         <p className="truncate text-sm font-black text-white">{item.company || "-"}</p>
                         <p className="mt-1 truncate text-xs text-slate-400">{item.contact}</p>
@@ -703,6 +716,12 @@ export default function LeadsTicketsClient({
                         </span>
                         <span className="rounded-full border border-white/10 bg-white/[0.035] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
                           {item.vertical}
+                        </span>
+                        <span className={item.source === "demo"
+                          ? "rounded-full border border-amber-300/25 bg-amber-400/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-amber-100"
+                          : "rounded-full border border-emerald-300/20 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-100"}
+                        >
+                          {item.source === "demo" ? "DEMO" : "API"}
                         </span>
                       </div>
                     </article>

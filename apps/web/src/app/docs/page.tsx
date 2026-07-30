@@ -8,6 +8,7 @@ import { PublicLinkChip } from "../../components/public-link-chip";
 import { Card } from "@product/ui";
 import { getWebI18n } from "../../lib/locale";
 import { legacyInstitutionalVideo } from "../../lib/institutional-video";
+import { NEXID_SDK_ASYNCAPI_URL, NEXID_SDK_OPENAPI_URL } from "../../lib/sdk-public-contract";
 import {
   ArrowRight,
   BookOpen,
@@ -1068,17 +1069,19 @@ export default async function DocsPage() {
               </div>
               <div className="rounded-xl border border-white/5 bg-slate-900/60 p-3">
                 <strong className="text-cyan-200 block">
-                  Webhooks en Tiempo Real
+                  Webhooks firmados y asíncronos
                 </strong>
-                Entrega de eventos de toques, cambios TT reportados y
-                señales de ubicación consentidas hacia tus sistemas.
+                Entrega durable al menos una vez, firma verificable, reintentos
+                y estado de entrega. El consumidor deduplica antes de ejecutar
+                efectos de negocio.
               </div>
             </div>
           </div>
-          <div className="mt-6 pt-4 border-t border-white/5 flex items-center justify-between">
-            <span className="text-[11px] font-mono text-slate-400">
-              SDK base + contratos API
-            </span>
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-white/5 pt-4">
+            <div className="flex flex-wrap gap-2 text-[11px] font-semibold">
+              <a className="rounded-lg border border-white/10 px-2.5 py-1.5 text-cyan-200 hover:border-cyan-300/40" href={NEXID_SDK_OPENAPI_URL} target="_blank" rel="noreferrer">OpenAPI v1</a>
+              <a className="rounded-lg border border-white/10 px-2.5 py-1.5 text-cyan-200 hover:border-cyan-300/40" href={NEXID_SDK_ASYNCAPI_URL} target="_blank" rel="noreferrer">AsyncAPI webhooks v1</a>
+            </div>
             <Link
               href="/sdk"
               className="inline-flex items-center gap-1.5 rounded-xl bg-cyan-400 px-4 py-2 text-xs font-bold text-slate-950 transition hover:bg-cyan-300"

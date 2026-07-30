@@ -5,7 +5,11 @@ import { checkAdmin, getAdminTenantScope } from "../../../../../lib/auth";
 import { sql } from "../../../../../lib/db";
 import { json } from "../../../../../lib/http";
 import { ensureSupplierOpsSchema } from "../../../../../lib/supplier-ops-schema";
-import { canActivateSupplierSubBatch } from "../../../../../lib/supplier-ops";
+import {
+  canActivateSupplierSubBatch,
+  resolveSupplierActivationScope,
+  supplierActivationGateMessage,
+} from "../../../../../lib/supplier-ops";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ bid: string }> }) {
   const auth = await checkAdmin(req);
@@ -69,16 +73,69 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ bid: s
     }
   }
 
-  if (nextState === "active_in_market" && batch.supplier_sub_batch_id) {
+  if (nextState === "active_in_market") {
     const supplierRows = await sql/*sql*/`
-      SELECT id, expected_quantity, manifest_status, manifest_count, qa_status
-      FROM supplier_sub_batches
-      WHERE id = ${batch.supplier_sub_batch_id}
-      LIMIT 1
+      SELECT sub_batch.id, sub_batch.tenant_id, sub_batch.supplier_order_id,
+        sub_batch.batch_id, sub_batch.bid, sub_batch.expected_quantity,
+        sub_batch.manifest_status, sub_batch.manifest_count, sub_batch.qa_status,
+        sub_batch.pack_purpose AS declared_pack_purpose,
+        supplier_order.pack_purpose AS order_pack_purpose,
+        COALESCE(purpose_decision.to_purpose, supplier_order.pack_purpose) AS effective_pack_purpose,
+        purpose_decision.id AS classification_decision_id
+      FROM supplier_sub_batches sub_batch
+      LEFT JOIN supplier_orders supplier_order
+        ON supplier_order.id = sub_batch.supplier_order_id
+       AND supplier_order.tenant_id = sub_batch.tenant_id
+      LEFT JOIN supplier_pack_purpose_decisions purpose_decision
+        ON purpose_decision.supplier_order_id = supplier_order.id
+       AND purpose_decision.tenant_id = supplier_order.tenant_id
+      WHERE sub_batch.batch_id = ${batch.id}
+         OR (${batch.supplier_sub_batch_id}::uuid IS NOT NULL AND sub_batch.id = ${batch.supplier_sub_batch_id})
+         OR (sub_batch.tenant_id = ${batch.tenant_id} AND upper(sub_batch.bid) = upper(${bid}))
+      ORDER BY sub_batch.created_at ASC, sub_batch.id ASC
     `;
-    const supplierSubBatch = supplierRows[0];
+    const supplierScope = resolveSupplierActivationScope({
+      batch: {
+        id: batch.id,
+        tenantId: batch.tenant_id,
+        bid,
+        supplierOrderId: batch.supplier_order_id,
+        supplierSubBatchId: batch.supplier_sub_batch_id,
+      },
+      candidates: supplierRows.map((row) => ({
+        id: row.id,
+        tenant_id: row.tenant_id,
+        supplier_order_id: row.supplier_order_id,
+        batch_id: row.batch_id,
+        bid: row.bid,
+        expected_quantity: row.expected_quantity,
+        manifest_status: row.manifest_status,
+        manifest_count: row.manifest_count,
+        qa_status: row.qa_status,
+        effective_pack_purpose: row.effective_pack_purpose,
+        tenantId: row.tenant_id,
+        supplierOrderId: row.supplier_order_id,
+        batchId: row.batch_id,
+        declaredPackPurpose: row.declared_pack_purpose,
+        orderPackPurpose: row.order_pack_purpose,
+        effectivePackPurpose: row.effective_pack_purpose,
+        classificationDecisionId: row.classification_decision_id,
+      })),
+    });
+    if (!supplierScope.ok) {
+      return json({
+        ok: false,
+        reason: supplierScope.reason,
+        message: supplierActivationGateMessage(supplierScope.reason),
+        bid,
+        candidate_count: supplierScope.candidateCount,
+      }, 409);
+    }
+    const supplierSubBatch = supplierScope.supplierSubBatch;
     if (supplierSubBatch) {
       const gate = canActivateSupplierSubBatch({
+        effectivePackPurpose: supplierSubBatch.effective_pack_purpose,
+        productionAcceptanceV2: null,
         manifestStatus: supplierSubBatch.manifest_status,
         qaStatus: supplierSubBatch.qa_status,
         expectedQuantity: supplierSubBatch.expected_quantity,
@@ -88,7 +145,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ bid: s
         return json({
           ok: false,
           reason: gate.reason,
-          message: "Supplier batch cannot enter market until manifest import, quantity match and QA approval are complete.",
+          message: supplierActivationGateMessage(gate.reason),
           expected: "expected" in gate ? gate.expected : undefined,
           received: "received" in gate ? gate.received : undefined,
         }, 409);

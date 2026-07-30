@@ -17,6 +17,16 @@ const {
 } = await import("../src/app/id/_lib/gs1-digital-link-resolver.ts");
 
 const VALID_GTIN = "09506000134352";
+const REGISTRY = {
+  id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  gtin: VALID_GTIN,
+  lot: "",
+  serial: "",
+  tenantSlug: "winery-one",
+  bid: "BID-1",
+  displayName: "Registered product",
+};
+const found = async (identity) => ({ status: "found", registry: { ...REGISTRY, ...identity } });
 
 test("GS1 Digital Link validates GTIN-14 check digits and bounded qualifiers", () => {
   assert.equal(isValidGtin14(VALID_GTIN), true);
@@ -27,10 +37,11 @@ test("GS1 Digital Link validates GTIN-14 check digits and bounded qualifiers", (
   assert.equal(validateGs1DigitalLinkIdentity({ gtin: VALID_GTIN, serial: "X".repeat(21) }).ok, false);
 });
 
-test("resolver maps identity to SUN without crypto-auth claims or sensitive query forwarding", () => {
+test("resolver maps only server-registered scope to SUN without crypto-auth claims or sensitive query forwarding", () => {
   const target = buildGs1DigitalLinkSunUrl(
     `https://id.nexid.lat/01/${VALID_GTIN}/10/LOT-9/21/SER-42?tenant=winery-one&bid=BID-1&recall=R-7&token=drop&linkType=gs1:pip`,
     { gtin: VALID_GTIN, lot: "LOT-9", serial: "SER-42" },
+    { ...REGISTRY, lot: "LOT-9", serial: "SER-42" },
   );
 
   assert.equal(target.pathname, "/sun");
@@ -49,18 +60,19 @@ test("resolver maps identity to SUN without crypto-auth claims or sensitive quer
 });
 
 test("default resolution redirects and rejects malformed identifiers and unsupported link types", async () => {
-  const redirect = resolveGs1DigitalLink(new Request(`https://id.nexid.lat/01/${VALID_GTIN}`), { gtin: VALID_GTIN });
+  const redirect = await resolveGs1DigitalLink(new Request(`https://id.nexid.lat/01/${VALID_GTIN}`), { gtin: VALID_GTIN }, { registryLookup: found });
   assert.equal(redirect.status, 307);
   assert.match(redirect.headers.get("location") || "", new RegExp(`/sun\\?.*gtin=${VALID_GTIN}`));
   assert.equal(redirect.headers.get("access-control-allow-origin"), "*");
 
-  const malformed = resolveGs1DigitalLink(new Request("https://id.nexid.lat/01/123"), { gtin: "123" });
+  const malformed = await resolveGs1DigitalLink(new Request("https://id.nexid.lat/01/123"), { gtin: "123" }, { registryLookup: found });
   assert.equal(malformed.status, 400);
   assert.match(await malformed.text(), /valid 14-digit GTIN/);
 
-  const unsupported = resolveGs1DigitalLink(
+  const unsupported = await resolveGs1DigitalLink(
     new Request(`https://id.nexid.lat/01/${VALID_GTIN}?linkType=gs1:instructions`),
     { gtin: VALID_GTIN },
+    { registryLookup: found },
   );
   assert.equal(unsupported.status, 404);
 });
@@ -69,7 +81,7 @@ test("machine clients receive an RFC 9264-shaped GS1 linkset and immutable JSON-
   const request = new Request(`https://id.nexid.lat/01/${VALID_GTIN}/10/LOT-9?linkType=linkset`, {
     headers: { accept: GS1_LINKSET_MEDIA_TYPE },
   });
-  const resolved = resolveGs1DigitalLink(request, { gtin: VALID_GTIN, lot: "LOT-9" });
+  const resolved = await resolveGs1DigitalLink(request, { gtin: VALID_GTIN, lot: "LOT-9" }, { registryLookup: found });
   assert.equal(resolved.status, 200);
   assert.match(resolved.headers.get("content-type") || "", /^application\/linkset\+json/);
   assert.match(resolved.headers.get("link") || "", new RegExp(GS1_LINKSET_CONTEXT.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
@@ -87,12 +99,12 @@ test("machine clients receive an RFC 9264-shaped GS1 linkset and immutable JSON-
 
 test("linkType=linkset offers human HTML while HEAD and OPTIONS preserve protocol semantics", async () => {
   const request = new Request(`https://id.nexid.lat/01/${VALID_GTIN}?linkType=linkset`);
-  const html = resolveGs1DigitalLink(request, { gtin: VALID_GTIN });
+  const html = await resolveGs1DigitalLink(request, { gtin: VALID_GTIN }, { registryLookup: found });
   assert.equal(html.status, 200);
   assert.match(html.headers.get("content-type") || "", /^text\/html/);
   assert.match(await html.text(), /Recursos del producto/);
 
-  const head = resolveGs1DigitalLink(request, { gtin: VALID_GTIN }, { head: true });
+  const head = await resolveGs1DigitalLink(request, { gtin: VALID_GTIN }, { head: true, registryLookup: found });
   assert.equal(head.status, 200);
   assert.equal(await head.text(), "");
 
@@ -100,6 +112,21 @@ test("linkType=linkset offers human HTML while HEAD and OPTIONS preserve protoco
   assert.equal(options.status, 204);
   assert.equal(options.headers.get("allow"), "GET, HEAD, OPTIONS");
   assert.equal(options.headers.get("access-control-allow-origin"), "*");
+});
+
+test("valid but unknown identities return 404 and registry outages fail closed", async () => {
+  const request = new Request(`https://id.nexid.lat/01/${VALID_GTIN}`);
+  const unknown = await resolveGs1DigitalLink(request, { gtin: VALID_GTIN }, {
+    registryLookup: async () => ({ status: "not_found" }),
+  });
+  assert.equal(unknown.status, 404);
+  assert.match(await unknown.text(), /syntactically valid but is not registered/i);
+
+  const unavailable = await resolveGs1DigitalLink(request, { gtin: VALID_GTIN }, {
+    registryLookup: async () => ({ status: "unavailable" }),
+  });
+  assert.equal(unavailable.status, 503);
+  assert.equal(unavailable.headers.get("retry-after"), "5");
 });
 
 test("resolver description advertises only implemented primary keys and link namespace", () => {
@@ -128,6 +155,10 @@ test("web exposes full /id and id-subdomain GS1 qualifier route families plus re
   assert.match(legacy, /resolveGs1DigitalLink/);
   assert.match(legacy, /HEAD/);
   assert.match(legacy, /OPTIONS/);
+
+  const resolverSource = await readFile(new URL("../src/app/id/_lib/gs1-digital-link-resolver.ts", import.meta.url), "utf8");
+  assert.match(resolverSource, /process\.env\.NEXID_GS1_REGISTRY_API_URL/);
+  assert.doesNotMatch(resolverSource, /process\.env\.NEXT_PUBLIC_API_URL|https:\/\/api\.nexid\.lat/);
 });
 
 test("direct linkset builder keeps the QR trust boundary explicit", () => {

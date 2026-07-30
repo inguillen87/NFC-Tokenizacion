@@ -1,8 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { tsImport } from "tsx/esm/api";
 
-const { classifyRealtimeEventSource } = await import("../src/lib/realtime-feed.ts");
+const { classifyRealtimeEventSource } = await tsImport("../src/lib/realtime-feed.ts", import.meta.url);
 
 const homeSource = await readFile(new URL("../src/app/(app)/page.tsx", import.meta.url), "utf8");
 const crmSource = await readFile(new URL("../src/components/executive-realtime-crm.tsx", import.meta.url), "utf8");

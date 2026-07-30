@@ -1,8 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Button, Card } from "@product/ui";
 import { CheckCircle2, CloudOff, Download, FileCheck2, LockKeyhole, ShieldCheck, Smartphone, UploadCloud } from "lucide-react";
+import {
+  LEGACY_TRIAL_CLASSIFICATION_CONFIRMATION,
+  legacyTrialClassificationAttemptSignature,
+  normalizeLegacyTrialClassificationReason,
+  resolveSupplierPackPurpose,
+  type SupplierPackPurpose,
+} from "../lib/supplier-pack-purpose-policy";
 
 type SupplierSubBatch = {
   id: string;
@@ -33,6 +40,10 @@ type SupplierOrder = {
   packaging_governance_status?: string;
   packaging_spec_revision?: number;
   packaging_spec_hash?: string | null;
+  pack_purpose?: string | null;
+  declared_pack_purpose?: string | null;
+  effective_pack_purpose?: string | null;
+  classification_decision_id?: string | null;
   sub_batches?: SupplierSubBatch[];
 };
 
@@ -386,6 +397,61 @@ function normalStatus(value?: string | null) {
   return (value || "pending").toLowerCase();
 }
 
+function effectiveSupplierPackPurpose(order?: SupplierOrder): Exclude<SupplierPackPurpose, ""> {
+  return resolveSupplierPackPurpose({
+    declaredPackPurpose: order?.declared_pack_purpose || order?.pack_purpose,
+    effectivePackPurpose: order?.effective_pack_purpose,
+  });
+}
+
+function supplierPurposeContract(purpose: SupplierPackPurpose) {
+  if (purpose === "trial_integration") {
+    return {
+      badge: "NON_SELLABLE",
+      detail: "Solo integración. Puede completar el QA de 10 tags, pero nunca activar ni habilitar venta, claim o tokenización.",
+      className: "border-amber-300/30 bg-amber-500/10 text-amber-100",
+    };
+  }
+  if (purpose === "production") {
+    return {
+      badge: "BLOQUEADO · QA V2",
+      detail: "Producción queda bloqueada hasta un plan QA v2 aprobado por el tenant; el QA fijo de 10 tags no libera este lote.",
+      className: "border-rose-300/30 bg-rose-500/10 text-rose-100",
+    };
+  }
+  if (purpose === "legacy_unclassified") {
+    return {
+      badge: "PROPÓSITO SIN CLASIFICAR",
+      detail: "Registro legado fail-closed: no permite exportar, aprobar QA ni activar hasta una clasificación auditada.",
+      className: "border-slate-300/25 bg-slate-500/10 text-slate-200",
+    };
+  }
+  return {
+    badge: "SELECCIÓN REQUERIDA",
+    detail: "Elegí explícitamente integración no vendible o producción antes de crear el pedido.",
+    className: "border-cyan-300/25 bg-cyan-500/10 text-cyan-100",
+  };
+}
+
+function qaSnapshotReferenceKey(value: string) {
+  if (value.length > 4096) return null;
+  try {
+    const url = new URL(value);
+    const snapshot = Number(url.searchParams.get("snapshot"));
+    const trace = String(url.searchParams.get("trace") || "").trim();
+    const loopback = ["localhost", "127.0.0.1", "::1"].includes(url.hostname.toLowerCase());
+    if (url.protocol !== "https:" && !(url.protocol === "http:" && loopback)) return null;
+    if (!Number.isSafeInteger(snapshot) || snapshot <= 0 || !/^[A-Za-z0-9._:-]{1,160}$/.test(trace)) return null;
+    return `${snapshot}:${trace}`;
+  } catch {
+    return null;
+  }
+}
+
+function isQaSnapshotResultUrl(value: string) {
+  return qaSnapshotReferenceKey(value) !== null;
+}
+
 function hasExportEvidence(order: SupplierOrder | undefined, artifacts: SupplierVaultArtifact[], sessionPack: SupplierPackResponse | null) {
   if (sessionPack?.encrypted_pack) return true;
   if (order?.pack_exported_at || normalStatus(order?.pack_status).includes("export")) return true;
@@ -409,12 +475,13 @@ export function SupplierOrderConsole({
     || hasPermission(currentPermissions, "batches:write");
   const canRunQa = isSuperAdmin
     || hasPermission(currentPermissions, "supplier:qa")
-    || hasPermission(currentPermissions, "batches:qa")
-    || hasPermission(currentPermissions, "batches:write");
+    || hasPermission(currentPermissions, "batches:qa");
   const canExportPack = isSuperAdmin || hasScopedPermission(currentPermissions, "supplier:export_pack");
   const canActivateTags = isSuperAdmin
     || hasPermission(currentPermissions, "supplier:activate")
     || hasPermission(currentPermissions, "batches:write");
+  const canClassifyLegacyTrial = isSuperAdmin
+    || hasScopedPermission(currentPermissions, "supplier:pack_purpose_classify_trial");
   const canManageOfflineVerifier = canExportPack || hasScopedPermission(currentPermissions, "supplier:offline_verifier");
 
   const [tenantSlug, setTenantSlug] = useState(sessionTenantSlug || "");
@@ -425,6 +492,7 @@ export function SupplierOrderConsole({
   const [subBatchSize, setSubBatchSize] = useState("1000");
   const [chipModel, setChipModel] = useState("NTAG 424 DNA");
   const [carrierProfileCode, setCarrierProfileCode] = useState("ntag424_dna");
+  const [packPurpose, setPackPurpose] = useState<SupplierPackPurpose>("");
   const [materialType, setMaterialType] = useState("Etiqueta NFC industrial");
   const [sku, setSku] = useState("");
   const [notes, setNotes] = useState("");
@@ -434,10 +502,7 @@ export function SupplierOrderConsole({
   const [created, setCreated] = useState<SupplierOrderResponse | null>(null);
   const [pack, setPack] = useState<SupplierPackResponse | null>(null);
   const [qaBid, setQaBid] = useState("");
-  const [qaSampleCount, setQaSampleCount] = useState("5");
   const [qaSampleUrls, setQaSampleUrls] = useState("");
-  const [qaReplayChecked, setQaReplayChecked] = useState(false);
-  const [qaTtstatusChecked, setQaTtstatusChecked] = useState(false);
   const [orders, setOrders] = useState<SupplierOrder[]>([]);
   const [packPassword, setPackPassword] = useState("");
   const [packPasswordVisible, setPackPasswordVisible] = useState(false);
@@ -445,6 +510,8 @@ export function SupplierOrderConsole({
   const [manifestCsv, setManifestCsv] = useState("");
   const [manifestResult, setManifestResult] = useState<ManifestImportResponse | null>(null);
   const [activationLimit, setActivationLimit] = useState("");
+  const [legacyTrialReason, setLegacyTrialReason] = useState("");
+  const [legacyTrialConfirmation, setLegacyTrialConfirmation] = useState("");
   const [offlineDevices, setOfflineDevices] = useState<OfflineVerifierDevice[]>([]);
   const [offlineDeviceLabel, setOfflineDeviceLabel] = useState("Samsung field verifier");
   const [offlineDeviceType, setOfflineDeviceType] = useState("field_app");
@@ -454,6 +521,8 @@ export function SupplierOrderConsole({
   const [offlineBundleBids, setOfflineBundleBids] = useState("");
   const [offlineBundleExpiryDays, setOfflineBundleExpiryDays] = useState("7");
   const [offlineBundle, setOfflineBundle] = useState<OfflineVerifierBundle | null>(null);
+  const qaOperationKeys = useRef(new Map<string, string>());
+  const legacyTrialClassificationAttempt = useRef<{ signature: string; idempotencyKey: string } | null>(null);
 
   const subBatches = useMemo(() => created?.sub_batches || [], [created]);
   const selectedOrderId = created?.order?.id || "";
@@ -462,16 +531,37 @@ export function SupplierOrderConsole({
     [qaBid, subBatches],
   );
   const activeCarrierProfile = created?.order?.carrier_profile_code || carrierProfileCode;
+  const activePackPurpose: SupplierPackPurpose = selectedOrderId
+    ? effectiveSupplierPackPurpose(created?.order)
+    : packPurpose;
+  const declaredPackPurpose = resolveSupplierPackPurpose({
+    declaredPackPurpose: created?.order?.declared_pack_purpose || created?.order?.pack_purpose,
+  });
+  const creationPurposeContract = supplierPurposeContract(packPurpose);
+  const activePurposeContract = supplierPurposeContract(activePackPurpose);
   const effectiveTenantSlug = (created?.order?.tenant_slug || tenantSlug).trim();
   const requiresTtstatus = activeCarrierProfile === "ntag424_dna_tt";
+  const supportsSunQa = ["ntag424_dna", "ntag424_dna_tt"].includes(activeCarrierProfile);
   const manifestRows = useMemo(() => countManifestRows(manifestCsv), [manifestCsv]);
-  const qaUrls = useMemo(
-    () => qaSampleUrls
+  const legacyTrialReasonContract = normalizeLegacyTrialClassificationReason(legacyTrialReason);
+  const qaUrls = useMemo(() => {
+    const seen = new Set<string>();
+    return qaSampleUrls
       .split(/[\n,]+/)
       .map((value) => value.trim())
-      .filter((value) => /^https?:\/\//i.test(value) && !/[<>]/.test(value)),
-    [qaSampleUrls],
+      .filter((value) => {
+        if (/[<>]/.test(value) || !isQaSnapshotResultUrl(value)) return false;
+        const key = qaSnapshotReferenceKey(value)!;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  }, [qaSampleUrls]);
+  const qaRequiredManifestUids = Math.min(
+    10,
+    Math.max(1, Math.trunc(Number(selectedSubBatch?.expected_quantity || 10))),
   );
+  const qaMinimumDiagnosticReceipts = qaRequiredManifestUids * 2 + (requiresTtstatus ? 1 : 0);
   const packAlreadyExported = hasExportEvidence(created?.order, vaultArtifacts, pack);
   const packagingStatus = normalStatus(created?.order?.packaging_governance_status) || "legacy_unverified";
   const packagingApproved = packagingStatus === "approved";
@@ -484,6 +574,8 @@ export function SupplierOrderConsole({
   }, [offlineBundleBids, qaBid]);
   const createOrderBlockReason = !canCreateOrder
     ? "Solo superadmin o un usuario con supplier:write puede crear un Supplier Order."
+    : !packPurpose
+      ? "Selecciona explícitamente el propósito: trial de integración no vendible o producción bloqueada hasta QA v2."
     : !tenantSlug.trim()
       ? "Falta tenant slug."
       : !orderName.trim() && !baseBatchId.trim()
@@ -495,6 +587,17 @@ export function SupplierOrderConsole({
             : subBatchSizeValue > totalQuantityValue
               ? "El sub-batch no puede superar la cantidad total."
               : "";
+  const legacyTrialClassificationBlockReason = !selectedOrderId
+    ? "Selecciona un Supplier Order historico."
+    : activePackPurpose !== "legacy_unclassified"
+      ? "Solo un pedido legacy_unclassified puede clasificarse por este flujo."
+      : !canClassifyLegacyTrial
+        ? "Solo superadmin o supplier:pack_purpose_classify_trial puede ejecutar esta decision irreversible."
+        : !legacyTrialReasonContract.valid
+          ? "Escribe una razon de auditoria entre 16 y 1000 caracteres."
+          : legacyTrialConfirmation !== LEGACY_TRIAL_CLASSIFICATION_CONFIRMATION
+            ? `Escribe exactamente ${LEGACY_TRIAL_CLASSIFICATION_CONFIRMATION}.`
+            : "";
   const manifestBlockReason = !canManageManifest
     ? "Tu perfil no puede importar manifiestos."
     : !selectedOrderId
@@ -512,6 +615,12 @@ export function SupplierOrderConsole({
     ? "Tu perfil no puede activar tags."
     : !selectedOrderId
       ? "Primero selecciona un Supplier Order."
+      : activePackPurpose === "legacy_unclassified"
+        ? "Propósito sin clasificar: este registro legado no puede activarse."
+        : activePackPurpose === "trial_integration"
+          ? "NON_SELLABLE: un trial de integración nunca puede activar tags."
+          : activePackPurpose === "production"
+            ? "Producción bloqueada: requiere un plan y recibo de aceptación QA v2 aprobado por el tenant."
       : !qaBid.trim()
         ? "Selecciona un BID."
         : !selectedSubBatch
@@ -525,23 +634,31 @@ export function SupplierOrderConsole({
     ? "Tu perfil no puede aprobar QA."
     : !selectedOrderId
       ? "Primero selecciona un Supplier Order."
+      : activePackPurpose === "legacy_unclassified"
+        ? "Propósito sin clasificar: el QA permanece bloqueado hasta una clasificación auditada."
+        : activePackPurpose === "production"
+          ? "El QA fijo de 10 tags es solo para trial de integración; producción requiere QA v2 aprobado por el tenant."
       : !qaBid.trim()
         ? "Selecciona un BID."
         : !selectedSubBatch
           ? "El BID no pertenece al Supplier Order seleccionado."
           : normalStatus(selectedSubBatch.manifest_status) !== "imported"
             ? "Importa el manifiesto antes de aprobar QA."
+            : !supportsSunQa
+              ? "Este gate aprueba solo NTAG 424 SUN; el carrier seleccionado necesita otra estrategia de evidencia."
             : !qaUrls.length
-              ? "Agrega al menos una URL real escaneada."
-              : !qaReplayChecked
-                ? "Confirma replay verificado."
-                : requiresTtstatus && !qaTtstatusChecked
-                  ? "Confirma TTStatus para TagTamper."
-                  : "";
+              ? "Pega las URLs de resultado Nexid con snapshot y trace."
+              : qaUrls.length > 60
+                ? "El gate acepta como máximo 60 recibos SUN únicos por evaluación."
+              : qaUrls.length < qaMinimumDiagnosticReceipts
+                ? `Faltan recibos: minimo ${qaMinimumDiagnosticReceipts} (${qaRequiredManifestUids} validos + ${qaRequiredManifestUids} replays${requiresTtstatus ? " + 1 estado OPENED TagTamper electronico" : ""}).`
+                : "";
   const qaRejectBlockReason = !canRunQa
     ? "Tu perfil no puede rechazar QA."
     : !selectedOrderId
       ? "Primero selecciona un Supplier Order."
+      : activePackPurpose === "legacy_unclassified"
+        ? "Propósito sin clasificar: el flujo QA permanece bloqueado hasta una clasificación auditada."
       : !qaBid.trim()
         ? "Selecciona un BID."
         : "";
@@ -549,6 +666,8 @@ export function SupplierOrderConsole({
     ? "Solo superadmin o un usuario con supplier:export_pack puede exportar el pack."
     : !selectedOrderId
       ? "Primero selecciona un Supplier Order."
+      : activePackPurpose === "legacy_unclassified"
+        ? "Propósito sin clasificar: no se exportan llaves de un registro legado sin clasificación auditada."
       : !packagingApproved
         ? `Packaging ${packagingStatus}: completa y aproba la especificacion industrial antes de exportar llaves.`
         : packAlreadyExported
@@ -567,6 +686,7 @@ export function SupplierOrderConsole({
   const canPassQa = Boolean(!pending && !qaPassBlockReason);
   const canRejectQa = Boolean(!pending && !qaRejectBlockReason);
   const canExportCurrentPack = Boolean(!pending && !exportPackBlockReason);
+  const canClassifyCurrentLegacyOrder = Boolean(!pending && !legacyTrialClassificationBlockReason);
   const canLoadOfflineDevices = Boolean(!pending && !offlineBlockReason);
   const canEnrollOfflineDevice = Boolean(
     !pending
@@ -577,6 +697,10 @@ export function SupplierOrderConsole({
   const canIssueOfflineBundle = Boolean(!pending && !offlineBundleBlockReason);
   const nextAction = !selectedOrderId
     ? "Crea o selecciona un Supplier Order."
+    : activePackPurpose === "legacy_unclassified"
+      ? "Clasifica el propósito legado mediante una decisión auditada antes de operar."
+      : activePackPurpose === "production"
+        ? "Producción bloqueada: configura y aprueba el contrato QA v2 del tenant."
     : !selectedSubBatch
       ? "Selecciona un sub-batch del pedido."
       : !packagingApproved
@@ -587,15 +711,17 @@ export function SupplierOrderConsole({
           ? "Valida el manifiesto con dry-run y despues importalo."
           : normalStatus(selectedSubBatch.qa_status) !== "passed"
             ? "Completa QA con muestra real, replay y TTStatus si aplica."
-            : normalStatus(selectedSubBatch.status).includes("activated")
-              ? "Sub-batch activo. Revisa Vault y evidencias."
-              : "Activacion habilitada: ejecuta activate-all o define un limite.";
+            : activePackPurpose === "trial_integration"
+              ? "Trial validado para integración. Permanece NON_SELLABLE y no puede activarse."
+              : normalStatus(selectedSubBatch.status).includes("activated")
+                ? "Sub-batch activo. Revisa Vault y evidencias."
+                : "Activacion habilitada: ejecuta activate-all o define un limite.";
 
   async function run(path: string, init?: RequestInit) {
     const result = await fetch(path, {
+      ...init,
       cache: "no-store",
       headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
-      ...init,
     });
     const text = await result.text();
     let data: unknown = {};
@@ -625,6 +751,12 @@ export function SupplierOrderConsole({
     });
   }
 
+  function resetLegacyTrialClassificationDraft() {
+    setLegacyTrialReason("");
+    setLegacyTrialConfirmation("");
+    legacyTrialClassificationAttempt.current = null;
+  }
+
   async function createOrder() {
     if (createOrderBlockReason) {
       setStatus(createOrderBlockReason);
@@ -644,6 +776,7 @@ export function SupplierOrderConsole({
           sub_batch_size: Number(subBatchSize),
           chip_model: chipModel.trim(),
           carrier_profile_code: carrierProfileCode,
+          pack_purpose: packPurpose,
           material_type: materialType.trim(),
           sku: sku.trim(),
           notes: notes.trim(),
@@ -655,8 +788,6 @@ export function SupplierOrderConsole({
       const firstBid = data.sub_batches?.[0]?.bid || "";
       setQaBid(firstBid);
       setQaSampleUrls("");
-      setQaReplayChecked(false);
-      setQaTtstatusChecked(false);
       setManifestCsv("");
       setManifestResult(null);
       setActivationLimit("");
@@ -666,7 +797,8 @@ export function SupplierOrderConsole({
       setOfflineBundle(null);
       setOfflineSelectedDeviceId("");
       setOfflineDevices([]);
-      setStatus(`Pedido creado: ${data.sub_batches?.length || 0} sub-batches con fingerprints y llaves cifradas bajo el secreto de aplicación.`);
+      resetLegacyTrialClassificationDraft();
+      setStatus(`Pedido creado: ${data.sub_batches?.length || 0} sub-batches. Contrato ${supplierPurposeContract(packPurpose).badge}; las llaves permanecen cifradas bajo el secreto de aplicación.`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "No se pudo crear el pedido.");
     } finally {
@@ -683,6 +815,65 @@ export function SupplierOrderConsole({
       setStatus(`${data.orders?.length || 0} pedidos cargados.`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "No se pudieron cargar pedidos.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function classifyLegacyOrderAsTrial() {
+    if (legacyTrialClassificationBlockReason) {
+      setStatus(legacyTrialClassificationBlockReason);
+      return;
+    }
+    const reason = legacyTrialReasonContract.reason;
+    const signature = legacyTrialClassificationAttemptSignature({
+      supplierOrderId: selectedOrderId,
+      reason,
+      confirmation: legacyTrialConfirmation,
+    });
+    let attempt = legacyTrialClassificationAttempt.current;
+    if (!attempt || attempt.signature !== signature) {
+      attempt = {
+        signature,
+        idempotencyKey: `supplier-purpose:${crypto.randomUUID()}`,
+      };
+      legacyTrialClassificationAttempt.current = attempt;
+    }
+
+    setPending(true);
+    setStatus("Registrando la decision auditada. No se modifican llaves, UID, BID, SDM ni estados de activacion.");
+    try {
+      await run(`/api/admin/supplier-orders/${encodeURIComponent(selectedOrderId)}/purpose/classify-trial`, {
+        method: "POST",
+        headers: { "Idempotency-Key": attempt.idempotencyKey },
+        body: JSON.stringify({
+          reason,
+          confirmation: legacyTrialConfirmation,
+        }),
+      });
+
+      const authoritative = await run("/api/admin/supplier-orders") as SupplierOrderResponse;
+      const authoritativeOrders = Array.isArray(authoritative.orders) ? authoritative.orders : [];
+      const authoritativeOrder = authoritativeOrders.find((order) => order.id === selectedOrderId);
+      if (!authoritativeOrder || effectiveSupplierPackPurpose(authoritativeOrder) !== "trial_integration") {
+        throw new Error("La decision fue recibida, pero el refresh autoritativo aun no confirma trial_integration. Reintenta exactamente la misma operacion.");
+      }
+      const authoritativeSubBatches = Array.isArray(authoritativeOrder.sub_batches)
+        ? authoritativeOrder.sub_batches
+        : [];
+      setOrders(authoritativeOrders);
+      setCreated({ ok: true, order: authoritativeOrder, sub_batches: authoritativeSubBatches });
+      setQaBid((current) => (
+        authoritativeSubBatches.some((subBatch) => subBatch.bid === current)
+          ? current
+          : authoritativeSubBatches[0]?.bid || ""
+      ));
+      resetLegacyTrialClassificationDraft();
+      setStatus("Pedido historico clasificado como trial_integration. Disposicion permanente NON_SELLABLE: no habilita produccion, venta, claim, tokenizacion ni activacion.");
+    } catch (error) {
+      // Keep the exact key only for retrying this exact payload. Changing the
+      // order, reason, or confirmation clears or replaces the attempt.
+      setStatus(error instanceof Error ? error.message : "No se pudo clasificar el pedido historico.");
     } finally {
       setPending(false);
     }
@@ -789,6 +980,10 @@ export function SupplierOrderConsole({
       setStatus("Primero crea o selecciona un Supplier Order.");
       return;
     }
+    if (activePackPurpose === "legacy_unclassified") {
+      setStatus("Pack bloqueado: el propósito legado debe clasificarse mediante una decisión auditada antes de exportar.");
+      return;
+    }
     if (!packagingApproved) {
       setStatus(`Pack bloqueado: packaging ${packagingStatus}. Abri el detalle del pedido y completa el release fisico antes de exponer claves a fabrica.`);
       return;
@@ -893,26 +1088,42 @@ export function SupplierOrderConsole({
       setStatus(qaPassBlockReason);
       return;
     }
+    if (!passed && qaRejectBlockReason) {
+      setStatus(qaRejectBlockReason);
+      return;
+    }
+    const qaNotes = passed
+      ? "QA solicitado desde consola supplier; veredicto derivado exclusivamente por el backend desde diagnosticos SUN persistidos."
+      : "QA rechazado desde consola supplier. No activar este sub-batch.";
+    const qaRequestSignature = JSON.stringify({
+      supplier_order_id: selectedOrderId,
+      bid: qaBid.trim(),
+      passed,
+      snapshot_urls: passed ? qaUrls : [],
+      notes: qaNotes,
+    });
+    let qaOperationKey = qaOperationKeys.current.get(qaRequestSignature);
+    if (!qaOperationKey) {
+      qaOperationKey = `qa:${crypto.randomUUID()}`;
+      qaOperationKeys.current.set(qaRequestSignature, qaOperationKey);
+    }
     setPending(true);
-    setStatus(passed ? "Marcando QA aprobado con evidencia..." : "Marcando QA rechazado...");
+    setStatus(passed ? "Verificando recibos SUN persistidos contra eventos canonicos..." : "Marcando QA rechazado...");
     try {
       await run(`/api/admin/supplier-orders/${encodeURIComponent(selectedOrderId)}/qa`, {
         method: "POST",
+        headers: { "Idempotency-Key": qaOperationKey },
         body: JSON.stringify({
           bid: qaBid.trim(),
           passed,
-          sample_count: Number(qaSampleCount || 0),
-          sample_urls: passed ? qaUrls : [],
-          replay_checked: passed ? qaReplayChecked : false,
-          ttstatus_checked: passed ? qaTtstatusChecked : false,
-          requires_ttstatus: requiresTtstatus,
-          notes: passed
-            ? "QA aprobado desde consola supplier con muestra SUN real y replay verificado."
-            : "QA rechazado desde consola supplier. No activar este sub-batch.",
+          snapshot_urls: passed ? qaUrls : [],
+          notes: qaNotes,
         }),
       });
       updateSubBatchStatus(qaBid.trim(), { qa_status: passed ? "passed" : "failed" });
-      setStatus(passed ? "QA aprobado. El sub-batch ya puede pasar a activación controlada." : "QA rechazado. No activar este sub-batch.");
+      setStatus(passed
+        ? `QA aprobado por evidencia SUN: ${qaRequiredManifestUids} UIDs unicos, replay ligado al evento original${requiresTtstatus ? " y apertura TagTamper electronica" : ""}.`
+        : "QA rechazado. No activar este sub-batch.");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "No se pudo actualizar QA.");
     } finally {
@@ -938,8 +1149,6 @@ export function SupplierOrderConsole({
     setVaultArtifacts([]);
     setQaBid(subBatchesFromOrder[0]?.bid || "");
     setQaSampleUrls("");
-    setQaReplayChecked(false);
-    setQaTtstatusChecked(false);
     setManifestCsv("");
     setManifestResult(null);
     setActivationLimit("");
@@ -949,7 +1158,8 @@ export function SupplierOrderConsole({
     setOfflineBundle(null);
     setOfflineSelectedDeviceId("");
     setOfflineDevices([]);
-    setStatus(`Pedido seleccionado: ${order.order_name || order.id}. ${subBatchesFromOrder.length} sub-batches disponibles.`);
+    resetLegacyTrialClassificationDraft();
+    setStatus(`Pedido seleccionado: ${order.order_name || order.id}. ${subBatchesFromOrder.length} sub-batches. Contrato ${supplierPurposeContract(effectiveSupplierPackPurpose(order)).badge}.`);
     void loadVaultArtifacts(order.id).catch((error) => {
       setStatus(error instanceof Error ? error.message : "No se pudo cargar Tenant Vault.");
     });
@@ -998,8 +1208,24 @@ export function SupplierOrderConsole({
                 {carrierProfiles.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
               </select>
             </label>
+            <label className="block">
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Propósito comercial</span>
+              <select
+                className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white"
+                value={packPurpose}
+                onChange={(event) => setPackPurpose(event.target.value as SupplierPackPurpose)}
+              >
+                <option value="" disabled>Seleccionar explícitamente</option>
+                <option value="trial_integration">Trial de integración · NON_SELLABLE</option>
+                <option value="production">Producción · bloqueada hasta QA v2</option>
+              </select>
+            </label>
             <Field label="Material" value={materialType} onChange={setMaterialType} placeholder="Etiqueta NFC industrial" />
             <Field label="SKU" value={sku} onChange={setSku} placeholder="opcional" />
+          </div>
+          <div className={`mt-3 rounded-xl border px-3 py-2 text-xs leading-5 ${creationPurposeContract.className}`} data-testid="supplier-pack-purpose-contract">
+            <b className="font-black uppercase tracking-[0.12em]">{creationPurposeContract.badge}</b>
+            <span className="ml-2">{creationPurposeContract.detail}</span>
           </div>
           <textarea
             className="mt-3 min-h-20 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white"
@@ -1022,13 +1248,26 @@ export function SupplierOrderConsole({
         </div>
 
         <div className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
             <Metric label="Sub-batches" value={String(subBatches.length)} />
+            <Metric label="Propósito" value={activePurposeContract.badge} />
             <Metric label="Pack" value={packAlreadyExported ? "exportado" : "pendiente"} />
             <Metric label="Packaging" value={`${packagingStatus} · r${created?.order?.packaging_spec_revision || 0}`} />
             <Metric label="Manifiesto" value={selectedSubBatch?.manifest_status || "pendiente"} />
             <Metric label="QA BID" value={qaBid || "pendiente"} />
           </div>
+          {selectedOrderId ? (
+            <div
+              className={`rounded-xl border px-3 py-2 text-xs leading-5 ${activePurposeContract.className}`}
+              data-testid="supplier-pack-purpose-resolution"
+            >
+              <b>Proposito declarado:</b> {declaredPackPurpose}
+              <span className="mx-2 text-slate-400">/</span>
+              <b>Proposito efectivo:</b> {activePackPurpose}
+              <span className="mx-2 text-slate-400">/</span>
+              <b>Decision:</b> {created?.order?.classification_decision_id || "sin decision adicional"}
+            </div>
+          ) : null}
 
           {subBatches.length ? (
             <div className="max-h-72 overflow-auto rounded-2xl border border-white/10 bg-slate-950/60 p-3">
@@ -1047,6 +1286,7 @@ export function SupplierOrderConsole({
                     <b className="text-white">{item.bid}</b>
                     <span className="ml-2 text-slate-400">{item.expected_quantity || 0} tags</span>
                     <span className="mt-1 block text-cyan-200">fingerprint {item.key_fingerprint || "pendiente"}</span>
+                    <span className="mt-1 block font-black text-amber-100">{activePurposeContract.badge}</span>
                     <span className="mt-1 block text-slate-400">manifest {item.manifest_status || "pending"} / QA {item.qa_status || "pending"}</span>
                   </button>
                 ))}
@@ -1066,6 +1306,7 @@ export function SupplierOrderConsole({
                     <b className="text-white">{item.order_name || item.id}</b>
                     <span className="ml-2 text-cyan-200">{item.tenant_slug || item.customer_slug}</span>
                     <span className="mt-1 block text-slate-400">{item.total_quantity || 0} tags / {item.status || "estado pendiente"}</span>
+                    <span className="mt-1 block font-black text-amber-100">{supplierPurposeContract(effectiveSupplierPackPurpose(item)).badge}</span>
                     <span className="mt-1 block text-cyan-200">{item.sub_batches?.length || 0} sub-batches. Click para operar.</span>
                   </button>
                 ))}
@@ -1076,6 +1317,87 @@ export function SupplierOrderConsole({
               Todavía no hay un pedido en esta sesión. Crea uno o carga la lista de pedidos existentes.
             </div>
           )}
+
+          {selectedOrderId && activePackPurpose === "legacy_unclassified" ? (
+            <section
+              className="rounded-2xl border-2 border-rose-300/50 bg-rose-500/15 p-4 shadow-[0_0_30px_rgba(244,63,94,0.12)]"
+              data-testid="legacy-trial-classification-panel"
+              aria-labelledby="legacy-trial-classification-title"
+            >
+              <div
+                id="legacy-trial-classification-warning"
+                className="rounded-xl border border-rose-200/35 bg-slate-950/70 p-3 text-sm leading-6 text-rose-50"
+                role="alert"
+              >
+                <p id="legacy-trial-classification-title" className="font-black uppercase tracking-[0.14em] text-rose-100">
+                  Decision irreversible: trial NON_SELLABLE permanente
+                </p>
+                <p className="mt-2">
+                  Este flujo existe solo para pedidos historicos sin proposito. No convierte el lote en produccion y nunca habilita venta, claim, tokenizacion, marketplace ni activacion. No modifica K_META, K_FILE, UID, BID ni SDM.
+                </p>
+              </div>
+
+              <div className="mt-3 grid gap-2 text-xs sm:grid-cols-3">
+                <Metric label="Declarado" value={declaredPackPurpose} />
+                <Metric label="Efectivo" value={activePackPurpose} />
+                <Metric label="Decision" value={created?.order?.classification_decision_id || "pendiente"} />
+              </div>
+
+              <label className="mt-3 block" htmlFor="legacy-trial-reason">
+                <span className="text-xs font-black uppercase tracking-[0.12em] text-rose-100">Razon auditada (16-1000)</span>
+                <textarea
+                  id="legacy-trial-reason"
+                  className="mt-1 min-h-24 w-full rounded-xl border border-rose-200/25 bg-slate-950 px-3 py-2.5 text-sm text-white placeholder:text-slate-500"
+                  value={legacyTrialReason}
+                  minLength={16}
+                  maxLength={1000}
+                  disabled={pending || !canClassifyLegacyTrial}
+                  aria-describedby="legacy-trial-classification-warning legacy-trial-reason-count"
+                  onChange={(event) => {
+                    setLegacyTrialReason(event.target.value);
+                    legacyTrialClassificationAttempt.current = null;
+                  }}
+                  placeholder="Explica por que este pedido historico corresponde exclusivamente a una prueba de integracion no vendible."
+                />
+                <span id="legacy-trial-reason-count" className="mt-1 block text-xs text-rose-100/80">
+                  {legacyTrialReasonContract.length}/1000 caracteres
+                </span>
+              </label>
+
+              <label className="mt-3 block" htmlFor="legacy-trial-confirmation">
+                <span className="text-xs font-black uppercase tracking-[0.12em] text-rose-100">Confirmacion exacta</span>
+                <input
+                  id="legacy-trial-confirmation"
+                  className="mt-1 w-full rounded-xl border border-rose-200/25 bg-slate-950 px-3 py-2.5 font-mono text-xs text-white placeholder:text-slate-500"
+                  value={legacyTrialConfirmation}
+                  disabled={pending || !canClassifyLegacyTrial}
+                  autoComplete="off"
+                  spellCheck={false}
+                  aria-describedby="legacy-trial-classification-warning"
+                  onChange={(event) => {
+                    setLegacyTrialConfirmation(event.target.value);
+                    legacyTrialClassificationAttempt.current = null;
+                  }}
+                  placeholder={LEGACY_TRIAL_CLASSIFICATION_CONFIRMATION}
+                />
+              </label>
+
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <Button
+                  className="gap-2 border-rose-200/40 bg-rose-500/20 text-rose-50 hover:bg-rose-500/30"
+                  disabled={!canClassifyCurrentLegacyOrder}
+                  title={legacyTrialClassificationBlockReason || "Clasificar de forma auditada como trial NON_SELLABLE"}
+                  onClick={() => void classifyLegacyOrderAsTrial()}
+                >
+                  <LockKeyhole className="h-4 w-4" aria-hidden="true" />
+                  Clasificar como trial NON_SELLABLE
+                </Button>
+                <span className="text-xs leading-5 text-rose-100">
+                  {legacyTrialClassificationBlockReason || "El backend enumera sub-batches y recibos QA; el navegador no envia ese scope."}
+                </span>
+              </div>
+            </section>
+          ) : null}
 
           <div className="rounded-2xl border border-amber-300/20 bg-amber-500/10 p-4">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-100">Export pack</p>
@@ -1103,15 +1425,15 @@ export function SupplierOrderConsole({
                 <div className="mt-1 flex flex-col gap-2 sm:flex-row">
                   <input
                     className="min-w-0 flex-1 rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 font-mono text-xs text-white placeholder:text-slate-500"
-                    value={packPassword}
-                    disabled={!canExportPack || !packagingApproved}
+                      value={packPassword}
+                      disabled={!canExportCurrentPack}
                     onChange={(event) => setPackPassword(event.target.value)}
                     placeholder="Generar antes de exportar"
                   />
                   <Button
                     variant="secondary"
                     type="button"
-                    disabled={!canExportPack || !packagingApproved}
+                    disabled={!canExportCurrentPack}
                     onClick={() => {
                       setPackPassword(makeLocalPackPassword(created?.order?.customer_slug || customerSlug, created?.order?.tenant_slug || tenantSlug));
                       setPackPasswordVisible(false);
@@ -1130,7 +1452,7 @@ export function SupplierOrderConsole({
                 <LockKeyhole className="h-4 w-4" aria-hidden="true" />
                 Exportar pack
               </Button>
-              <Button className="gap-2" variant="secondary" disabled={!pack?.encrypted_pack || !canExportPack} onClick={downloadEncryptedPack}>
+              <Button className="gap-2" variant="secondary" disabled={!pack?.encrypted_pack || !canExportPack || activePackPurpose === "legacy_unclassified"} onClick={downloadEncryptedPack}>
                 <Download className="h-4 w-4" aria-hidden="true" />
                 Descargar ZIP cifrado
               </Button>
@@ -1332,13 +1654,14 @@ export function SupplierOrderConsole({
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-sky-100">Manifiesto + activación</p>
                 <p className="mt-2 text-sm leading-6 text-sky-50">
-                  Flujo real de fábrica: primero se valida el archivo recibido, después se importa, luego QA aprueba muestras reales y recién ahí se activa el sub-batch.
+                  Flujo de fábrica: primero se valida el archivo recibido, después se importa, luego QA evalúa muestras del manifiesto mediante evidencia SUN y recién ahí se habilita la activación. La evidencia digital no sustituye el protocolo físico de recepción.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-[0.12em]">
                 <span className="rounded-full border border-sky-300/25 bg-sky-400/10 px-3 py-1 text-sky-100">{qaBid || "sin BID"}</span>
                 <span className="rounded-full border border-white/10 bg-slate-950/60 px-3 py-1 text-slate-200">{manifestRows} filas</span>
                 <span className="rounded-full border border-emerald-300/20 bg-emerald-500/10 px-3 py-1 text-emerald-100">QA {selectedSubBatch?.qa_status || "pendiente"}</span>
+                <span className={`rounded-full border px-3 py-1 ${activePurposeContract.className}`}>{activePurposeContract.badge}</span>
               </div>
             </div>
 
@@ -1404,44 +1727,30 @@ export function SupplierOrderConsole({
           </div>
 
           <div className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-4">
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-100">QA gate</p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-100">QA gate</p>
+              <span className={`rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-[0.12em] ${activePurposeContract.className}`}>{activePurposeContract.badge}</span>
+            </div>
             <p className="mt-2 text-sm leading-6 text-emerald-50">
-              Para aprobar un sub-batch no alcanza con declarar "ok". Pega una muestra real del carrier escaneada, confirma que una muestra vieja cae como replay y, si es TagTamper, valida TTStatus cerrado/abierto.
+              La ceremonia operativa exige escaneo físico; el backend verifica {qaRequiredManifestUids} UIDs distintos mediante eventos SUN canónicos, CMAC/SDM y un replay ligado al evento original. {requiresTtstatus ? "Además exige TT electrónico cerrado y una apertura sacrificial posterior." : "No acepta casillas ni declaraciones manuales."}
             </p>
-            <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_0.5fr]">
+            <div className="mt-3">
               <Field label="BID para QA" value={qaBid} onChange={setQaBid} placeholder="SYN-AR-2026-001-A" />
-              <Field label="Muestra" value={qaSampleCount} onChange={setQaSampleCount} placeholder="5" />
             </div>
             <label className="mt-3 block">
-              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Muestras reales escaneadas</span>
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Recibos SUN de la ceremonia (snapshot + trace)</span>
               <textarea
-                className="mt-1 min-h-24 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white placeholder:text-slate-500"
+                className="mt-1 min-h-36 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 font-mono text-xs text-white placeholder:text-slate-500"
                 value={qaSampleUrls}
                 onChange={(event) => setQaSampleUrls(event.target.value)}
-                placeholder="https://api.nexid.lat/sun?v=1&bid=... o https://nexid.lat/01/... o muestra real del carrier"
+                placeholder="https://nexid.lat/sun?snapshot=123&trace=nexid_..."
               />
-              <span className="mt-1 block text-xs text-slate-400">{qaUrls.length} muestra válida lista para adjuntar como evidencia.</span>
+              <span className="mt-1 block text-xs text-slate-400">
+                {qaUrls.length}/{qaMinimumDiagnosticReceipts} recibos mínimos con formato válido. Las URLs SUN crudas con picc_data/enc/cmac no se adjuntan ni se guardan aquí.
+              </span>
             </label>
-            <div className="mt-3 grid gap-2 text-sm text-slate-200 sm:grid-cols-2">
-              <label className="flex items-start gap-2 rounded-xl border border-white/10 bg-slate-950/50 p-3">
-                <input
-                  type="checkbox"
-                  className="mt-1"
-                  checked={qaReplayChecked}
-                  onChange={(event) => setQaReplayChecked(event.target.checked)}
-                />
-                <span><b className="text-white">Replay verificado</b><span className="block text-xs text-slate-400">Una URL vieja o repetida fue rechazada como sospechosa.</span></span>
-              </label>
-              <label className={`flex items-start gap-2 rounded-xl border p-3 ${requiresTtstatus ? "border-cyan-300/30 bg-cyan-500/10" : "border-white/10 bg-slate-950/50 text-slate-400"}`}>
-                <input
-                  type="checkbox"
-                  className="mt-1"
-                  checked={qaTtstatusChecked}
-                  disabled={!requiresTtstatus}
-                  onChange={(event) => setQaTtstatusChecked(event.target.checked)}
-                />
-                <span><b className="text-white">TTStatus validado</b><span className="block text-xs text-slate-400">{requiresTtstatus ? "Obligatorio para TagTamper." : "No aplica para este carrier."}</span></span>
-              </label>
+            <div className="mt-3 rounded-xl border border-cyan-300/20 bg-slate-950/50 p-3 text-xs leading-5 text-slate-300">
+              <b className="text-cyan-100">Secuencia:</b> escanea cada tag físicamente y copia la URL de la página de resultado; vuelve a abrir la URL SUN original para producir el replay y copia también ese resultado. {requiresTtstatus ? "Finalmente abre un tag sacrificial, escanéalo de nuevo, revoca ese UID para que nunca sea vendible y agrega el recibo VALID_OPENED con contador mayor." : "El servidor cruza cada replay con el evento canónico original."} La evidencia digital respalda la ceremonia, pero no prueba por sí sola el contacto NFC presencial.
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button className="gap-2" disabled={!canPassQa} title={qaPassBlockReason || "Aprobar QA con evidencia"} onClick={() => void markQa(true)}>
@@ -1457,7 +1766,7 @@ export function SupplierOrderConsole({
               <p className="mt-2 text-xs leading-5 text-emerald-100">{qaPassBlockReason || qaRejectBlockReason}</p>
             ) : null}
             <p className="mt-3 text-xs leading-5 text-slate-400">
-              Carrier activo: <span className="font-mono text-cyan-100">{activeCarrierProfile}</span>. {requiresTtstatus ? "El backend exige TTStatus además de replay." : "El backend exige muestra real y replay/control equivalente."}
+              Carrier activo: <span className="font-mono text-cyan-100">{activeCarrierProfile}</span>. {supportsSunQa ? "El veredicto se deriva de eventos SUN canónicos posteriores al manifiesto y ligados al tenant/batch/BID; la UI no puede autoaprobarlo." : "No hay fallback auto-declarado: falta implementar el contrato QA específico para este carrier."}
             </p>
           </div>
 

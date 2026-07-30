@@ -133,7 +133,7 @@ export default function DemoGlobePage() {
                 <div>
                   <h4 className="text-xs font-black text-white uppercase tracking-wider">Eventos & Tickets</h4>
                   <p className="text-[11px] text-slate-300 mt-1 leading-normal">
-                    Pulseras NFC y pases VIP anticopia. Validación instantánea de acceso y control de reventa en tiempo real.
+                    Pulseras NFC y pases VIP con validación server-side de mensajes frescos y controles de replay según carrier y policy. Latencia y reventa requieren integración y prueba del recinto.
                   </p>
                   <span className="text-[9px] font-mono text-amber-400 mt-2 block">Imagen: pulsera NFC VIP al lado de smartphone</span>
                 </div>

@@ -258,7 +258,7 @@ export function InteractiveDemoSection({ locale }: { locale: AppLocale }) {
             <div className="rounded-xl border border-violet-300/20 bg-violet-500/10 p-3 text-violet-100">{active.ntagHint}</div>
             <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-slate-300">
               <p>{t.buyer}: {locale === "en" ? "I can verify instantly before buying." : locale === "pt-BR" ? "Posso verificar instantaneamente antes de comprar." : "Puedo verificar instantáneamente antes de comprar."}</p>
-              <p className="mt-1">{t.owner}: {locale === "en" ? "I monitor openings, duplicates and regions in real time." : locale === "pt-BR" ? "Monitoro aberturas, duplicados e regiões em tempo real." : "Monitoreo aperturas, duplicados y regiones en tiempo real."}</p>
+              <p className="mt-1">{t.owner}: {locale === "en" ? "I review reported openings, duplicates and regions from the selected data source." : locale === "pt-BR" ? "Reviso aberturas, duplicados e regiões reportados pela fonte selecionada." : "Reviso aperturas, duplicados y regiones reportados por la fuente seleccionada."}</p>
               <p className="mt-1">{t.reseller}: {locale === "en" ? "I sell encoded tags + recurring SaaS with clear ROI." : locale === "pt-BR" ? "Vendo tags codificadas + SaaS recorrente com ROI claro." : "Vendo tags codificados + SaaS recurrente con ROI claro."}</p>
             </div>
             <div className="rounded-xl border border-white/10 bg-white/5 p-3">

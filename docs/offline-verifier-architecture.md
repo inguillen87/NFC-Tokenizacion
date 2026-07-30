@@ -55,7 +55,7 @@ Difficulty: high.
 The offline verifier should use a device-scoped key bundle, not a tenant master key in the app.
 
 1. Tags are encoded per sub-batch with `K_META_BATCH` and `K_FILE_BATCH` or equivalent NXP SDM keys.
-2. nexID stores key material encrypted server-side and never exposes `KMS_MASTER_KEY`.
+2. nexID stores key material encrypted server-side and never exposes the backend envelope secret. The current Vercel application secret is not a managed KMS or HSM.
 3. A superadmin or security operator enrolls an offline verifier device while online.
 4. The backend issues a scoped offline validation bundle:
    - allowed tenant
@@ -103,7 +103,7 @@ If that key is extracted from an APK, rugged reader, supplier laptop, debug log 
 
 The safer model is:
 
-1. keep tenant root material only in backend KMS/HSM
+1. keep tenant root material only in the backend custody boundary; migrate to a verified managed KMS/HSM when the contractual risk tier requires that claim
 2. derive or generate keys per order/sub-batch
 3. enroll offline devices while online
 4. issue only scoped validation bundles to the app/reader
@@ -122,7 +122,7 @@ This is not science fiction. Product authentication vendors already sell app-bas
 - Device enrollment, scoped key bundles, encrypted scan queue and sync conflict dashboard.
 - Optional DPP/Proof Layer export after sync, not during disconnected operation.
 
-The differentiator should not be "we put the master key in the app". The differentiator should be "we let field teams work without signal while keeping key custody, audit and revocation enterprise-grade."
+The differentiator should not be "we put the master key in the app". The defensible target is "we let field teams work without signal with scoped custody, audit and revocation"; call it enterprise-grade only after device binding, rotation, revocation and field recovery are tested.
 
 ## What the app actually reads
 

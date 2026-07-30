@@ -34,6 +34,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ uid: str
       tp.barrel_months,
       tp.temperature_storage,
       t.status AS tag_status,
+      COALESCE(t.lifecycle_state, t.status::text) AS lifecycle_state,
+      t.lifecycle_revision,
       t.scan_count,
       t.first_seen_at,
       t.last_seen_at,
@@ -61,7 +63,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ uid: str
       SELECT created_at, city, country_code, lat, lng
       FROM events e
       WHERE e.batch_id = t.batch_id AND e.uid_hex = t.uid_hex
-        AND (${source} = '' OR e.source = ${source}::text)
+        AND (${source} = '' OR e.source::text = ${source})
         AND e.created_at >= now() - ${rangeSql}::interval
       ORDER BY created_at ASC
       LIMIT 1
@@ -70,7 +72,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ uid: str
       SELECT created_at, result, city, country_code, lat, lng, device_label
       FROM events e
       WHERE e.batch_id = t.batch_id AND e.uid_hex = t.uid_hex
-        AND (${source} = '' OR e.source = ${source}::text)
+        AND (${source} = '' OR e.source::text = ${source})
         AND e.created_at >= now() - ${rangeSql}::interval
       ORDER BY created_at DESC
       LIMIT 1
@@ -111,7 +113,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ uid: str
     WHERE e.uid_hex = ${uidHex}
       AND b.bid = ${profile.bid}
       AND (${tenant} = '' OR tn.slug = ${tenant})
-      AND (${source} = '' OR e.source = ${source}::text)
+      AND (${source} = '' OR e.source::text = ${source})
       AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
       AND e.created_at >= now() - ${rangeSql}::interval
     ORDER BY e.created_at DESC
@@ -158,6 +160,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ uid: str
         bid: String(profile.bid),
         tenantSlug: String(profile.tenant_slug),
         tagStatus: String(profile.tag_status || "unknown"),
+        lifecycleState: String(profile.lifecycle_state || profile.tag_status || "unknown"),
+        lifecycleRevision: Number(profile.lifecycle_revision || 0),
         readCounter: timelineRows[0]?.readCounter ?? 0,
         scanCount: Number(profile.scan_count || 0),
       },

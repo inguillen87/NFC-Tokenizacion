@@ -5,7 +5,15 @@ import { sql } from "./db";
 import { json } from "./http";
 import { getRequestMeta } from "./request-meta";
 
-export type SdkScope = "sdk:verify" | "sdk:claim" | "sdk:products" | "sdk:events" | "sdk:pos" | "sdk:logistics";
+export type SdkScope =
+  | "sdk:verify"
+  | "sdk:claim"
+  | "sdk:products"
+  | "sdk:events"
+  | "sdk:pos"
+  | "sdk:logistics"
+  | "sdk:epcis:read"
+  | "sdk:epcis:write";
 
 export type SdkAuthContext = {
   apiKeyId: string;

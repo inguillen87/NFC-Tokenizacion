@@ -7,7 +7,7 @@ export default function DemoPage() {
       <SectionHeading
         eyebrow="Public Demo"
         title="Probá un toque NFC simulado"
-        description="Vista anónima: elegí vertical, corré escenario y mirá resultado + passport + mapa en vivo."
+        description="Vista anónima: elegí vertical, corré un escenario simulado y mirá resultado + passport + mapa del dataset demo."
       />
       <DemoPublicExperience />
     </main>

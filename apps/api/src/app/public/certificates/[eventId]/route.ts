@@ -150,7 +150,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ eventId:
       LIMIT 1
     ) tok ON TRUE
     WHERE e.id = ${eventId}
-      AND (LOWER(COALESCE(e.source, '')) = 'demo' OR ${signedAccess})
+      AND (LOWER(COALESCE(e.source::text, '')) = 'demo' OR ${signedAccess})
     LIMIT 1
   `;
 

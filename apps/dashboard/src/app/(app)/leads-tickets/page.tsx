@@ -3,23 +3,32 @@ import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
 import { requireDashboardSession } from "../../../lib/session";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../lib/admin-page-access";
+import { readDemoDataMetaFromResponse } from "../../../lib/demo-data-mode";
 import { EnterpriseOpsState } from "../../../components/enterprise-ops-state";
 import LeadsTicketsClient from "./leads-tickets-client";
 
 type AdminCollectionResult = {
   rows: any[];
   availability: "ready" | "upstream_error" | "invalid_payload" | "unreachable";
+  source: "production" | "demo" | "unavailable";
 };
 
-async function adminGet(context: AdminPageContext, path: string): Promise<AdminCollectionResult> {
+async function adminGet(
+  context: AdminPageContext,
+  path: string,
+  allowDemoData: boolean,
+): Promise<AdminCollectionResult> {
   try {
     const response = await fetchAdminPage(context, path);
-    if (!response.ok) return { rows: [], availability: "upstream_error" };
+    const meta = readDemoDataMetaFromResponse(response);
+    if (!response.ok) return { rows: [], availability: "upstream_error", source: "unavailable" };
     const payload = await response.json().catch(() => null);
-    if (!Array.isArray(payload)) return { rows: [], availability: "invalid_payload" };
-    return { rows: payload, availability: "ready" };
+    if (!Array.isArray(payload) || (meta.demoMode && !allowDemoData)) {
+      return { rows: [], availability: "invalid_payload", source: "unavailable" };
+    }
+    return { rows: payload, availability: "ready", source: meta.demoMode ? "demo" : "production" };
   } catch {
-    return { rows: [], availability: "unreachable" };
+    return { rows: [], availability: "unreachable", source: "unavailable" };
   }
 }
 
@@ -48,15 +57,16 @@ export default async function LeadsTicketsPage({
   const tenantScope = adminContext.tenantSlug;
   const tenantFilter = adminContext.canSelectTenant ? requestedTenant : tenantScope;
   const copy = dashboardContent[locale];
+  const allowDemoData = Boolean(session.isDemo);
   const retryQuery = new URLSearchParams();
   if (tenantFilter) retryQuery.set("tenant", tenantFilter);
   if (sessionFilter) retryQuery.set("session", sessionFilter);
   const retryHref = `/leads-tickets${retryQuery.size ? `?${retryQuery.toString()}` : ""}`;
 
   const [leadsResult, ticketsResult, ordersResult] = await Promise.all([
-    adminGet(adminContext, "/admin/leads"),
-    adminGet(adminContext, "/admin/tickets"),
-    adminGet(adminContext, "/admin/consumer-portal/order-requests"),
+    adminGet(adminContext, "/admin/leads", allowDemoData),
+    adminGet(adminContext, "/admin/tickets", allowDemoData),
+    adminGet(adminContext, "/admin/consumer-portal/order-requests", allowDemoData),
   ]);
 
   const leadsArray = leadsResult.rows;
@@ -167,6 +177,8 @@ export default async function LeadsTicketsPage({
         tenantFilter={tenantFilter}
         copy={copy}
         labels={labels}
+        demoMode={allowDemoData}
+        leadsSource={leadsResult.source}
       />
     </main>
   );

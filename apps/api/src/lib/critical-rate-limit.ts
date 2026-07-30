@@ -12,7 +12,7 @@ import {
 
 export type CriticalRateLimitClass = Extract<
   FleetRateLimitClass,
-  "auth" | "proof_write" | "ai_expensive" | "public_write" | "webhook" | "sdk_read" | "sdk_write" | "public"
+  "auth" | "proof_write" | "ai_expensive" | "public_write" | "webhook" | "sdk_read" | "sdk_write" | "sdk_epcis_capture" | "observability_read" | "public"
 >;
 
 type CriticalRateLimitInput = {
@@ -20,6 +20,7 @@ type CriticalRateLimitInput = {
   tenantId?: string | null;
   subjectId?: string | null;
   globalPrincipal?: boolean;
+  tenantWide?: boolean;
 };
 
 type Reservation = Awaited<ReturnType<typeof hitSunRateLimit>>;
@@ -83,9 +84,9 @@ export async function enforceCriticalRateLimit(
   const reserve = dependencies.reserve || hitSunRateLimit;
   const failClosed = dependencies.failClosed || shouldFailClosedSunRateLimit;
   try {
-    // The tenant bucket provides fair isolation. The additional principal
-    // bucket prevents an authenticated caller from evading the limit by
-    // rotating otherwise-valid tenant or scope headers.
+    // The principal and contextual tenant buckets isolate callers. Expensive
+    // fan-out routes can additionally reserve one tenant-wide bucket that is
+    // invariant across credentials, sessions and source addresses.
     const principalDecision = buildFleetRateLimitDecision({
       method: req.method,
       pathname: new URL(req.url).pathname,
@@ -93,7 +94,19 @@ export async function enforceCriticalRateLimit(
       subjectId: input.subjectId,
       clientIp: input.globalPrincipal ? "all-sources" : meta.ip,
     });
+    const tenantWideDecision = input.tenantWide
+      ? buildFleetRateLimitDecision({
+          method: req.method,
+          pathname: new URL(req.url).pathname,
+          tenantId: input.tenantId,
+          subjectId: "all-subjects",
+          clientIp: "all-sources",
+        })
+      : null;
     const buckets = [
+      ...(tenantWideDecision
+        ? [{ scope: `fleet:${decision.rateClass}:tenant-wide`, key: tenantWideDecision.key }]
+        : []),
       { scope: `fleet:${decision.rateClass}:principal`, key: principalDecision.key },
       { scope: `fleet:${decision.rateClass}:tenant`, key: decision.key },
     ];
@@ -243,13 +256,27 @@ export function enforceSdkRateLimit(
   }, dependencies);
 }
 
+export function enforceSdkEpcisCaptureRateLimit(
+  req: Request,
+  context: SdkRateLimitContext,
+  dependencies: CriticalRateLimitDependencies = {},
+) {
+  return enforceCriticalRateLimit(req, {
+    rateClass: "sdk_epcis_capture",
+    tenantId: context.tenantId,
+    subjectId: `sdk-key:${context.apiKeyId}`,
+    globalPrincipal: true,
+    tenantWide: true,
+  }, dependencies);
+}
+
 export function adminCriticalRateLimitIdentity(req: Request) {
   const principal = getAdminPrincipal(req);
   return {
     tenantId: principal.tenantId || "platform",
     // Called only after checkAdmin succeeds. Stable database identities prevent
     // caller headers or token rotation from sharding the rate-limit bucket.
-    subjectId: `admin-session:${principal.sessionId}`,
+    subjectId: `admin-user:${principal.userId}`,
     globalPrincipal: true,
   };
 }

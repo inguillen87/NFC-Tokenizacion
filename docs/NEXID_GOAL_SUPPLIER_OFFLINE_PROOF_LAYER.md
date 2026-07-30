@@ -1,5 +1,10 @@
 # /goal NEXID ENTERPRISE SUPPLIER OPERATIONS + OFFLINE MODE + PROOF LAYER
 
+> **Document status:** condensed operational brief only. The authoritative,
+> complete goal (including later requirements and acceptance constraints) is
+> [`../NEXID_GOAL_SUPPLIER_OFFLINE_PROOF_LAYER.md`](../NEXID_GOAL_SUPPLIER_OFFLINE_PROOF_LAYER.md).
+> Implementations and audits must use the root document when the two differ.
+
 Build a production-grade nexID enterprise workflow for:
 
 - supplier-programmed NFC/RFID batches

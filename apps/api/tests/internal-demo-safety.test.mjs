@@ -13,7 +13,7 @@ test("demo reset preserves tenant resources and deletes only demo events", () =>
   assert.match(resetSource, /DELETE FROM events/);
   assert.match(resetSource, /tenant_id=\$\{tenant\.id\}/);
   assert.match(resetSource, /batch_id=\$\{batch\.id\}/);
-  assert.match(resetSource, /LOWER\(COALESCE\(source, ''\)\)='demo'/);
+  assert.match(resetSource, /LOWER\(COALESCE\(source::text, ''\)\)='demo'/);
   assert.match(resetSource, /preserved: \['tenant', 'batch', 'tags', 'crm'\]/);
 });
 
@@ -24,5 +24,5 @@ test("demo summary never aggregates global CRM or real event rows", () => {
   assert.match(summarySource, /leads WHERE tenant_id=\$\{tenant\.id\}/);
   assert.match(summarySource, /tickets WHERE LOWER\(source\)='demo-lab'/);
   assert.match(summarySource, /order_requests WHERE LOWER\(source\)='demo-lab'/);
-  assert.match(summarySource, /LOWER\(COALESCE\(e\.source, ''\)\)='demo'/);
+  assert.match(summarySource, /LOWER\(COALESCE\(e\.source::text, ''\)\)='demo'/);
 });

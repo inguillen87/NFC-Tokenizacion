@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { tsImport } from "tsx/esm/api";
 
 const [{ classifyRealtimeVerdict, isRealtimeRisk }, source, executiveSource, multirubroSource] = await Promise.all([
-  import("../src/lib/realtime-feed.ts"),
+  tsImport("../src/lib/realtime-feed.ts", import.meta.url),
   readFile(new URL("../src/components/realtime-ops-monitor.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/components/executive-realtime-crm.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/components/multirubro-ops-panel.tsx", import.meta.url), "utf8"),

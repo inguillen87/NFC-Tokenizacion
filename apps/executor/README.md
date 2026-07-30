@@ -34,7 +34,6 @@ TOKENIZATION_USE_LOCAL_MINTER=false
 TOKENIZATION_EXECUTOR_URL=http://localhost:3010/mint
 TOKENIZATION_EXECUTOR_SECRET=<same secret as executor>
 SUN_AUTO_TOKENIZE_ON_VALID_TAP=true
-TOKENIZATION_UID_SALT=<same salt as executor>
 ```
 
 The executor keeps:
@@ -51,10 +50,59 @@ POLYGON_KMS_WRAPPED_PRIVATE_KEY=<base64 ciphertext>
 POLYGON_KMS_PUBLISHER_ADDRESS=...
 POLYGON_MINTER_ADDRESS=...
 POLYGON_CONTRACT_ADDRESS=...
-POLYGON_DEFAULT_RECIPIENT=...
+DATABASE_URL=postgresql://<dedicated-executor-role>:...@.../nexid?sslmode=require
 ```
 
-The API sends `chip_uid_hash`, `token_uri` and `asset_ref`. The executor does not need `K_META`, `K_FILE`, `KMS_MASTER_KEY_HEX`, or the raw UID for normal operation. `KMS_MASTER_KEY_HEX` is the API's batch/NFC encryption key and must never be configured as `IOTA_KMS_KEY_ID`; blockchain signing always uses a separate signer identity. In `kms` mode that identity may be non-exportable behind a remote signer. The current testnet pilot uses the `kms_wrapped` software-envelope boundary described below.
+The API sends a canonical, DB-bound intent containing `request_id`, `tenant_id`,
+`lease_id`, `network`, `execution_class`, `commercial_disposition`,
+`issuer_wallet`, `chip_uid_hash`, `token_uri`, `asset_ref`, and `intent_digest`.
+The bearer authenticates the calling service but never authorizes a mint by
+itself. Before any signing, the executor locks the exact
+`tokenization_requests` row and consumes its unexpired processing lease by
+writing `meta.dispatch_started_at`. The first exact lease/digest may dispatch;
+the same lease/digest later is inspection-only reconciliation and can never
+submit a second transaction. A different body, lease, tenant, expired lease,
+missing database, or unavailable database fails closed.
+
+The digest is lowercase SHA-256 hex of UTF-8 `JSON.stringify` over this exact
+array, with IDs/network/class/wallet/chip hash lowercase and commercial
+disposition uppercase:
+
+```txt
+["nexid-polygon-mint-intent-v1", request_id, tenant_id, lease_id,
+ network, execution_class, commercial_disposition, issuer_wallet,
+ chip_uid_hash, token_uri, asset_ref]
+```
+
+Use a dedicated PostgreSQL role. Its required data privileges are deliberately
+limited to row reads and the one evidence column updated by the reservation:
+
+```sql
+GRANT SELECT ON public.tokenization_requests TO nexid_executor;
+GRANT UPDATE (meta) ON public.tokenization_requests TO nexid_executor;
+GRANT SELECT ON public.batches, public.tags, public.events,
+  public.supplier_sub_batches, public.supplier_orders,
+  public.supplier_pack_purpose_decisions TO nexid_executor;
+GRANT EXECUTE ON FUNCTION public.nexid_effective_supplier_pack_purpose_v1(uuid)
+  TO nexid_executor;
+GRANT EXECUTE ON FUNCTION public.nexid_assert_supplier_order_commercial_release_v1(uuid)
+  TO nexid_executor;
+GRANT EXECUTE ON FUNCTION public.nexid_assert_supplier_commercial_release_v1(uuid)
+  TO nexid_executor;
+```
+
+Those read/execute grants are required because the existing
+`nexid_tokenization_execution_scope_guard_v1` trigger re-proves batch, tag,
+verified SUN event, and supplier-purpose scope when `meta` is updated. `/ready`
+checks these dependencies as well as the column-scoped write privilege.
+
+The executor does not need `K_META`, `K_FILE`, `KMS_MASTER_KEY_HEX`, or the raw
+UID for normal operation. `KMS_MASTER_KEY_HEX` is the API's batch/NFC encryption
+key and must never be configured as `IOTA_KMS_KEY_ID`; blockchain signing always
+uses a separate signer identity. In `kms` mode that identity is a remote signer,
+but readiness deliberately reports its HSM and exportability status as
+unattested unless independently proven. The current testnet pilot uses the
+`kms_wrapped` software-envelope boundary described below.
 
 ## Production direction
 
@@ -94,8 +142,9 @@ drain mode, rejects new application requests with `503 executor_draining`, and
 waits for in-flight HTTP work via `server.close()` without forcing
 `process.exit()`.
 
-`private_key` remains a development-only compatibility mode. It is not allowed
-for production customer assets; see
+`private_key` remains a development-only compatibility mode. The executor now
+rejects it in a production runtime and for every `live_chain` intent before DB
+authorization or RPC access. It is not allowed for production customer assets; see
 `docs/enterprise-hardening/2026-07-24/cost-and-custody-stages.md`.
 
 For premium production, keep the same HTTP contract but replace the signer internals with direct provider KMS/HSM or custody signing:

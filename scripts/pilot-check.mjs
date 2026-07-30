@@ -8,6 +8,7 @@ const nodeCmd = process.execPath;
 const full = process.argv.includes("--full");
 
 const checks = [
+  { name: "Secret custody", cmd: nodeCmd, args: ["scripts/check-no-tracked-secrets.mjs"] },
   { name: "Static QA", cmd: nodeCmd, args: ["scripts/qa-static.mjs"] },
   { name: "Route safety", cmd: npmCmd, args: ["run", "verify:routes"] },
   { name: "API typecheck", cmd: npxCmd, args: ["tsc", "-p", "apps/api/tsconfig.json", "--noEmit", "--incremental", "false"] },

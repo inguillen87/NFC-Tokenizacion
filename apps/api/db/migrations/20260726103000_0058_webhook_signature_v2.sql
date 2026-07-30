@@ -1,3 +1,9 @@
+-- These columns historically came from runtime compatibility DDL. The release
+-- ledger now owns them so production requests can remain schema-read-only.
+ALTER TABLE webhook_endpoints
+  ADD COLUMN IF NOT EXISTS name text NOT NULL DEFAULT 'Webhook',
+  ADD COLUMN IF NOT EXISTS signing_secret text;
+
 ALTER TABLE webhook_endpoints
   ADD COLUMN IF NOT EXISTS signature_version text NOT NULL DEFAULT 'v1';
 

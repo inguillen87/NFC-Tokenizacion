@@ -119,7 +119,7 @@ const faqCategories = [
     items: [
       {
         q: "¿Qué ventaja tiene sobre el código de barras que exige la regulación de medicamentos?",
-        a: "El código de barras es estático y puede copiarse en empaques apócrifos. Un chip NFC seguro compatible genera evidencia criptográfica dinámica que el backend de nexID valida en la infraestructura actualmente desplegada sobre Vercel, con datos operativos en Neon.",
+        a: "El código de barras es estático y puede copiarse en empaques apócrifos. Un chip NFC seguro compatible genera evidencia criptográfica dinámica que el backend de nexID puede validar. La evidencia histórica de despliegue documenta Vercel y Neon; el estado actual debe confirmarse con health checks durante la demo.",
         ctx: "Si una red copia el empaque, el servidor detecta firma ausente, inválida o patrones geográficos incompatibles, bloquea beneficios sensibles y eleva el caso para revisión operativa."
       },
       {
@@ -136,7 +136,7 @@ const faqCategories = [
     items: [
       {
         q: "Los códigos QR de las entradas se revenden y duplican. ¿Cómo lo soluciona nexID?",
-        a: "Podemos complementar o reemplazar el QR digital con pulseras o credenciales VIP físicas equipadas con NFC. Cada ingreso requiere un tap físico fresco que el backend desplegado en Vercel valida antes de autorizar la acción; la latencia y capacidad objetivo se confirman en el piloto de cada evento.",
+        a: "Podemos complementar o reemplazar el QR digital con pulseras o credenciales VIP físicas equipadas con NFC. Cada ingreso de alto riesgo puede exigir un mensaje NFC fresco y una respuesta confirmada del backend antes de autorizar la acción; la latencia y capacidad objetivo se confirman en el piloto de cada evento.",
         ctx: "Al no exponer la clave criptográfica del chip y exigir tap físico fresco, se reduce fuertemente la entrada duplicada y se bloquean acciones de alto riesgo en eventos VIP y corporativos."
       }
     ]
@@ -158,7 +158,7 @@ const faqCategories = [
       },
       {
         q: "¿Cómo escala el modelo SaaS sobre la infraestructura actual?",
-        a: "El runtime verificado hoy usa Vercel para las aplicaciones y APIs, y Neon para los datos operativos. El modelo comercial combina hardware programado, integración por lote y suscripción SaaS por panel, analítica y automatizaciones determinísticas. Capacidad, redundancia adicional y SLA se dimensionan y validan por contrato; no se presentan como multinodo si todavía no fueron probados.",
+        a: "El snapshot de despliegue fechado 2026-07-26 documentó Vercel para aplicaciones y APIs, y Neon para datos operativos; no acredita por sí solo el estado del deploy actual. El modelo comercial combina hardware programado, integración por lote y suscripción SaaS por panel, analítica y automatizaciones determinísticas. Capacidad, redundancia adicional y SLA se dimensionan y validan por contrato.",
         ctx: "El ingreso recurrente y el valor defensivo son una tesis comercial que debe validarse con pilotos, retención y economía unitaria observada."
       }
     ]
@@ -231,12 +231,12 @@ const slides = [
     ]
   },
   {
-    title: "8) Live Demo Checklist",
-    tagline: "Demostración Práctica en 3 Minutos",
+    title: "8) Runtime Demo Checklist",
+    tagline: "Demostración práctica con evidencia en 3 minutos",
     bullets: [
       "1. Hackear QR: Demostrar cómo se clona un QR fotocopiándolo desde una pantalla.",
       "2. Tap NFC: Acercar el móvil a una botella con chip nexID y abrir el Portal VIP sin instalar apps.",
-      "3. Live CRM: Mostrar en la notebook cómo el tap apareció en vivo en el panel de control de nexID."
+      "3. CRM: Mostrar el tap solo después de confirmar que el evento llegó al stream y conserva su fuente."
     ]
   }
 ];
@@ -1359,7 +1359,7 @@ El modelo supone una exposición de $${lossVal} USD por unidad y una pérdida po
       }
       
       if (userQuestion.includes("blockchain") || userQuestion.includes("web3") || userQuestion.includes("nft") || userQuestion.includes("seguridad") || userQuestion.includes("seguro") || userQuestion.includes("nube")) {
-        return `La arquitectura de nexID utiliza un modelo híbrido: el chip NFC se valida contra nuestro backend seguro, el CRM conserva la operación en tiempo real y Polygon se usa cuando la marca necesita ownership, certificado transferible, NFT o claim público. La operación transaccional de taps queda en backend/CRM y no publicamos datos sensibles. Para auditoría avanzada, se pueden anclar hashes agregados en Polygon/IOTA, manteniendo trazabilidad verificable sin exponer al consumidor ni encarecer cada lectura.`;
+        return `La arquitectura de nexID utiliza un modelo híbrido: el backend valida la evidencia NFC, el CRM conserva eventos con su fuente y Polygon se usa cuando la marca necesita ownership, certificado transferible, NFT o claim público. El estado del stream se confirma en la interfaz; no se presume tiempo real extremo a extremo. La operación transaccional queda en backend/CRM y no publicamos datos sensibles. Para auditoría avanzada, se pueden anclar hashes agregados en Polygon/IOTA sin convertir cada lectura en una transacción.`;
       }
 
       if (userQuestion.includes("ayuda") || userQuestion.includes("como") || userQuestion.includes("plataforma") || userQuestion.includes("que es") || userQuestion.includes("explic")) {
@@ -2581,7 +2581,7 @@ export function InvestorSnapshotClient() {
                   <span>Feed de Consultas</span>
                   <span className="text-cyan-400 font-bold animate-pulse flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
-                    En Vivo
+                    Sesión demo
                   </span>
                 </div>
 
@@ -3321,7 +3321,7 @@ export function InvestorSnapshotClient() {
             <div className="w-full flex items-center justify-between border-b border-white/5 pb-4 mb-4 z-10">
               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400 flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-cyan-400 animate-ping" />
-                Live Demo Arena
+                Interactive Demo Arena
               </span>
               <div className="flex items-center gap-2">
                 <span className="text-[9px] font-bold text-slate-500 uppercase">Audio</span>
