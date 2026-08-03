@@ -1,12 +1,20 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminActor, getAdminTenantScope } from "../../../../lib/auth";
+import { checkAdmin, checkAdminPermission, getAdminActor, getAdminTenantScope } from "../../../../lib/auth";
 import { sql } from "../../../../lib/db";
 import { json } from "../../../../lib/http";
 import { logAuditEvent } from "../../../../lib/audit-logger";
+import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../lib/bounded-request-body";
 import { ensureSupplierOpsSchema } from "../../../../lib/supplier-ops-schema";
-import { hashOfflineIdentifier } from "../../../../lib/offline-verifier";
+import {
+  hashOfflineIdentifier,
+  OFFLINE_DEVICE_ENROLLMENT_BODY_MAX_BYTES,
+  offlineVerifierBundleIssuanceEnabled,
+  requireOfflineJsonObject,
+} from "../../../../lib/offline-verifier";
+
+const NO_STORE = { "cache-control": "no-store" };
 
 function firstString(...values: unknown[]) {
   for (const value of values) {
@@ -28,6 +36,8 @@ async function resolveTenant(input: string) {
 export async function GET(req: Request) {
   const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
   if (auth) return auth;
+  const permission = checkAdminPermission(req, "supplier:offline_verifier");
+  if (permission) return permission;
   await ensureSupplierOpsSchema();
 
   const url = new URL(req.url);
@@ -66,11 +76,22 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
+  const auth = await checkAdmin(req, ["super_admin"]);
   if (auth) return auth;
-  await ensureSupplierOpsSchema();
+  if (!offlineVerifierBundleIssuanceEnabled()) {
+    return json({ ok: false, reason: "offline_verifier_bundles_disabled" }, 503, NO_STORE);
+  }
 
-  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+  let body: Record<string, unknown>;
+  try {
+    body = requireOfflineJsonObject(
+      await readBoundedJsonBody<unknown>(req, OFFLINE_DEVICE_ENROLLMENT_BODY_MAX_BYTES),
+    );
+  } catch (error) {
+    const tooLarge = error instanceof RequestBodyTooLargeError;
+    return json({ ok: false, reason: tooLarge ? "request_body_too_large" : "invalid_json" }, tooLarge ? 413 : 400, NO_STORE);
+  }
+  await ensureSupplierOpsSchema();
   const tenantInput = firstString(body.tenant_id, body.tenantId, body.tenant_slug, body.tenantSlug, body.tenant);
   const tenant = await resolveTenant(tenantInput);
   if (!tenant) return json({ ok: false, reason: "tenant_not_found" }, 404);

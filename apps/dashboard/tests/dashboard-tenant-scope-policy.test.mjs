@@ -8,13 +8,20 @@ const {
   DashboardTenantScopeError,
   resolveDashboardTenantScope,
 } = await import("../src/lib/dashboard-tenant-scope-policy.ts");
+const {
+  DASHBOARD_HUMAN_ENTERPRISE_ROLES,
+} = await import("../src/lib/enterprise-runtime-rbac.ts");
+
+const TENANT_BOUND_HUMAN_ROLES = DASHBOARD_HUMAN_ENTERPRISE_ROLES.filter(
+  (role) => role !== "super-admin",
+);
 
 function session(role, tenantSlug) {
   return { role, tenantSlug };
 }
 
 test("every non-super role is bound to its session tenant and cannot override it", () => {
-  for (const role of ["tenant-admin", "reseller", "viewer"]) {
+  for (const role of TENANT_BOUND_HUMAN_ROLES) {
     assert.deepEqual(resolveDashboardTenantScope(session(role, "Tenant-One"), "tenant-two"), {
       tenantSlug: "tenant-one",
       isGlobal: false,
@@ -23,8 +30,8 @@ test("every non-super role is bound to its session tenant and cannot override it
   }
 });
 
-test("viewer and reseller sessions without a valid tenant fail closed", () => {
-  for (const role of ["viewer", "reseller"]) {
+test("every tenant-bound human role without a valid tenant fails closed", () => {
+  for (const role of TENANT_BOUND_HUMAN_ROLES) {
     assert.throws(
       () => resolveDashboardTenantScope(session(role, null), "attacker-selected"),
       (error) => error instanceof DashboardTenantScopeError && error.code === "tenant_scope_required",
@@ -102,12 +109,14 @@ test("demo presets remain explicit and never fill empty production tenant respon
   assert.match(rewards, /session\.isDemo \? PRESETS : \[\]/);
 });
 
-test("offline page does not turn its POST sync mutation into a render-time read", async () => {
+test("offline page reads the tenant-scoped GET history without exposing captured URLs", async () => {
   const source = await readFile(new URL("../src/app/(app)/offline/page.tsx", import.meta.url), "utf8");
   const contract = await readFile(new URL("../docs/offline-verifier-read-contract.md", import.meta.url), "utf8");
 
   assert.doesNotMatch(source, /fetch\s*\(/);
-  assert.match(source, /POST \/admin\/offline-verifier\/sync/);
-  assert.match(contract, /GET \/admin\/offline-verifier\/events/);
+  assert.match(source, /requireDashboardSession\("supplier:offline_verifier"\)/);
+  assert.match(source, /fetchAdminPage\(context, `offline-verifier\/sync\?/);
+  assert.doesNotMatch(source, /capturedUrl|captured_url/);
+  assert.match(contract, /GET \/admin\/offline-verifier\/sync/);
   assert.match(contract, /no ingestion, reconciliation, counter updates, or audit side effects/);
 });

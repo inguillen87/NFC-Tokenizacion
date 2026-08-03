@@ -84,14 +84,28 @@ async function ensureSunRateLimitTable() {
   ensuredTable = true;
 }
 
-export async function reserveSunRateLimit(
+export type SunRateLimitLease = {
+  scope: string;
+  scopeKeyHash: string;
+  windowStartedAt: string;
+};
+
+type SunRateLimitLeaseReservation = {
+  hits: number;
+  limited: boolean;
+  retryAfterSeconds: number;
+  lease: SunRateLimitLease;
+};
+
+async function reserveSunRateLimitRecord(
   query: Sql,
   scope: string,
   scopeKey: string,
   windowSeconds: number,
   maxHits: number,
   retentionSeconds = DEFAULT_RETENTION_SECONDS,
-): Promise<{ hits: number; limited: boolean; retryAfterSeconds: number }> {
+  requireLease = false,
+): Promise<SunRateLimitLeaseReservation> {
   const key = rateLimitBucketKey(scope, scopeKey);
   const window = boundedInteger(windowSeconds, "window_seconds", 1, 86_400);
   const maximum = boundedInteger(maxHits, "max_hits", 1, 1_000_000);
@@ -148,7 +162,8 @@ export async function reserveSunRateLimit(
       GREATEST(
         1,
         CEIL(EXTRACT(EPOCH FROM (window_started_at + (${window} || ' seconds')::interval - now())))::int
-      ) AS retry_after_seconds
+      ) AS retry_after_seconds,
+      window_started_at::text AS lease_window_started_at
     FROM reserved
   `;
   const row = rows[0];
@@ -156,11 +171,111 @@ export async function reserveSunRateLimit(
   if (!row || !Number.isSafeInteger(hits) || hits < 1) {
     throw new Error("sun_rate_limit_store_invalid_response");
   }
+  const windowStartedAt = String(row.lease_window_started_at || "").trim();
+  if (requireLease && !windowStartedAt) throw new Error("sun_rate_limit_store_invalid_lease");
   return {
     hits,
     limited: row.limited === true || String(row.limited) === "true",
     retryAfterSeconds: Math.max(1, Number(row.retry_after_seconds || window)),
+    lease: {
+      scope: key.scope,
+      scopeKeyHash: key.scopeKeyHash,
+      windowStartedAt,
+    },
   };
+}
+
+export async function reserveSunRateLimit(
+  query: Sql,
+  scope: string,
+  scopeKey: string,
+  windowSeconds: number,
+  maxHits: number,
+  retentionSeconds = DEFAULT_RETENTION_SECONDS,
+): Promise<{ hits: number; limited: boolean; retryAfterSeconds: number }> {
+  const reservation = await reserveSunRateLimitRecord(query, scope, scopeKey, windowSeconds, maxHits, retentionSeconds);
+  return {
+    hits: reservation.hits,
+    limited: reservation.limited,
+    retryAfterSeconds: reservation.retryAfterSeconds,
+  };
+}
+
+export async function reserveSunRateLimitLease(
+  scope: string,
+  scopeKey: string,
+  windowSeconds: number,
+  maxHits: number,
+): Promise<SunRateLimitLeaseReservation & { unavailable?: boolean }> {
+  try {
+    return await reserveSunRateLimitRecord(sql, scope, scopeKey, windowSeconds, maxHits, DEFAULT_RETENTION_SECONDS, true);
+  } catch (error) {
+    const code = typeof error === "object" && error && "code" in error
+      ? String((error as { code?: string }).code || "")
+      : "";
+    if (code !== "42P01") throw error;
+    try {
+      await ensureSunRateLimitTable();
+      return await reserveSunRateLimitRecord(sql, scope, scopeKey, windowSeconds, maxHits, DEFAULT_RETENTION_SECONDS, true);
+    } catch (repairError) {
+      const repairCode = typeof repairError === "object" && repairError && "code" in repairError
+        ? String((repairError as { code?: string }).code || "")
+        : "";
+      if (repairCode === "42P01" || repairCode === "42501") {
+        return {
+          hits: 0,
+          limited: false,
+          retryAfterSeconds: 30,
+          unavailable: true,
+          lease: { scope: "unavailable", scopeKeyHash: "", windowStartedAt: "" },
+        };
+      }
+      throw repairError;
+    }
+  }
+}
+
+export async function releaseSunRateLimitLeases(
+  leases: readonly SunRateLimitLease[],
+): Promise<{ released: boolean; unavailable?: boolean }> {
+  if (!leases.length) return { released: true };
+  const validLeases = leases.map((lease) => {
+    if (!/^[a-z0-9:_-]{1,80}$/.test(lease.scope)) throw new Error("sun_rate_limit_invalid_lease_scope");
+    if (!/^[0-9a-f]{64}$/.test(lease.scopeKeyHash)) throw new Error("sun_rate_limit_invalid_lease_key");
+    if (!lease.windowStartedAt || lease.windowStartedAt.length > 80) throw new Error("sun_rate_limit_invalid_lease_window");
+    return lease;
+  });
+  try {
+    await sql/*sql*/`
+      WITH requested AS (
+        SELECT
+          requested.scope,
+          requested.scope_key_hash,
+          requested.window_started_at::timestamptz AS window_started_at
+        FROM jsonb_to_recordset(${JSON.stringify(validLeases.map((lease) => ({
+          scope: lease.scope,
+          scope_key_hash: lease.scopeKeyHash,
+          window_started_at: lease.windowStartedAt,
+        })))}::jsonb) AS requested(scope text, scope_key_hash text, window_started_at text)
+      )
+      UPDATE sun_rate_limit_buckets bucket
+      SET
+        hit_count = GREATEST(bucket.hit_count - 1, 0),
+        updated_at = now()
+      FROM requested
+      WHERE bucket.scope = requested.scope
+        AND bucket.scope_key_hash = requested.scope_key_hash
+        AND bucket.window_started_at = requested.window_started_at
+        AND bucket.hit_count > 0
+    `;
+    return { released: true };
+  } catch (error) {
+    const code = typeof error === "object" && error && "code" in error
+      ? String((error as { code?: string }).code || "")
+      : "";
+    if (code === "42P01" || code === "42501") return { released: false, unavailable: true };
+    throw error;
+  }
 }
 
 export async function hitSunRateLimit(

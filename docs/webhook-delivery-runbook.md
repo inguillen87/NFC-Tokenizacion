@@ -102,6 +102,49 @@ retry if the remote accepted a request but the database acknowledgement failed.
 A unique `(endpoint_id, event_id)` index prevents the same logical SDK event
 from being enqueued twice for one endpoint.
 
+Each delivery snapshots both the destination URL and the database-owned
+`destination_version` at enqueue time. A real endpoint URL change is therefore
+a custody-boundary change, not a transparent redirect. Migration `0078` makes
+that identity immutable and serializes enqueue against cutover with a
+PostgreSQL `FOR SHARE`/`FOR UPDATE` conflict. The administration transaction
+refuses the change while a fresh delivery lease exists and moves every pending,
+scheduled retry, or expired processing lease for the previous destination to
+`dead_letter` with `webhook_destination_changed`. It never rebinds historical
+events to the new destination. Immediately before network egress, the worker
+renews its lease and verifies endpoint ID, URL and destination version; a failed
+verification performs zero network I/O. An operator may emit a new logical
+event only after reviewing the dead letter and the receiving system's
+deduplication policy.
+
+## Destination-version rollout gate
+
+Migration `20260802130000_0078_webhook_destination_cutover.sql` is backward
+compatible for enqueue because its insert trigger owns the URL/version
+snapshot. It is not safe to leave an old worker revision running indefinitely:
+an old worker does not perform the final pre-egress version check. Use this
+order for the first production rollout:
+
+1. Pause the Scheduler job and confirm that no fresh `processing` lease remains.
+2. Apply the reviewed migration set through `0078` with the release runner.
+3. Deploy the API/worker revision whose schema watermark requires `0078`.
+4. Run the unauthenticated negative control and an authenticated worker drain
+   with no tenant endpoint, then a controlled receiver canary.
+5. Resume Scheduler only after the deployed worker reports Ready.
+
+If the code deployment fails after the migration, keep Scheduler paused. The
+migration and its triggers may stay in place; do not downgrade the schema or
+rewrite historical delivery URLs. Roll forward the worker, then resume. This
+gate has not been executed in production merely because the migration and tests
+exist in the repository.
+
+On 2026-08-02 the database portion of this gate passed on a disposable Neon
+PostgreSQL 17 branch after all 80 migrations through `0078`: an enqueue racing
+the endpoint update waited on the endpoint transaction lock, snapshotted the
+committed URL/version 2 despite forged caller snapshot fields, and the prior
+version-1 delivery became `dead_letter` without URL rebind. The audit row held
+only versions and SHA-256 URL fingerprints. The QA branch was deleted after the
+run. HTTP egress and production Scheduler rollout remain separate gates.
+
 New endpoints use signature v2, which authenticates the endpoint key ID,
 delivery ID, event ID, timestamp and exact raw bytes. Existing endpoints remain
 on v1 until explicitly upgraded; receivers must treat a v1 key ID as an

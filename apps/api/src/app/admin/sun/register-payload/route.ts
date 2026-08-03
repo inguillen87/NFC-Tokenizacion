@@ -135,22 +135,31 @@ export async function POST(req: Request) {
     cmacHex: payload.cmacHex,
   });
 
-  const registered = await upsertTagSunPayload({
-    tenantId: String(batch.tenant_id),
-    batchId: String(batch.id),
-    bid: payload.bid || bid,
-    tagId: String(tag.id),
-    uidHex,
-    hashes,
-    source: readString(body.source) || (diagnosticId ? "admin_diagnostic_binding" : "admin_payload_binding"),
-    rawPayload: {
-      source: "admin.sun.register-payload",
-      diagnosticId: diagnosticId || null,
-      tenantSlug: batch.tenant_slug || null,
-      bid,
-      hasUrl: Boolean(payload.sourceUrl),
-    },
-  });
+  let registered;
+  try {
+    registered = await upsertTagSunPayload({
+      tenantId: String(batch.tenant_id),
+      batchId: String(batch.id),
+      bid: payload.bid || bid,
+      tagId: String(tag.id),
+      uidHex,
+      hashes,
+      source: readString(body.source) || (diagnosticId ? "admin_diagnostic_binding" : "admin_payload_binding"),
+      registrationMetadata: {
+        diagnosticId: diagnosticId || null,
+        tenantSlug: batch.tenant_slug ? String(batch.tenant_slug) : null,
+        hasUrl: Boolean(payload.sourceUrl),
+      },
+    });
+  } catch (error) {
+    if ((error as { code?: string } | null)?.code === "23505") {
+      return json({ ok: false, reason: "sun_payload_binding_conflict" }, 409);
+    }
+    return json({ ok: false, reason: "sun_payload_registration_unavailable" }, 503);
+  }
+  if (!registered) {
+    return json({ ok: false, reason: "sun_payload_binding_conflict" }, 409);
+  }
 
   return json({
     ok: true,

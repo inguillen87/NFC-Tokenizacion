@@ -18,6 +18,7 @@ const DEFAULT_HTTP_TIMEOUT_MS = 20_000;
 const DEFAULT_RECEIPT_TIMEOUT_MS = 180_000;
 const TX_HASH_PATTERN = /^0x[0-9a-f]{64}$/;
 const PROOF_ID_PATTERN = /^0x[0-9a-f]{64}$/;
+const PUBLIC_PROOF_RESOURCE_COMMITMENT_DOMAIN = "nexid.public-ledger.resource.v1";
 
 const IOTA_EVIDENCE_ABI = [
   "function SCHEMA_VERSION() view returns (uint16)",
@@ -125,16 +126,41 @@ function sha256Bytes32(value) {
   return `0x${createHash("sha256").update(value, "utf8").digest("hex")}`;
 }
 
+export function canonicalPublicProofResourceIdentity({ tenantScope, resourceType, resourceId }) {
+  const normalizedTenant = String(tenantScope || "").trim().normalize("NFC").toLowerCase();
+  const normalizedResourceType = String(resourceType || "").trim().normalize("NFC").toLowerCase();
+  const normalizedResourceId = String(resourceId || "").trim().normalize("NFC");
+  if (!normalizedTenant || !normalizedResourceType || !normalizedResourceId) {
+    fail("IOTA_CANARY_PUBLIC_RESOURCE_IDENTITY_INVALID");
+  }
+  return JSON.stringify([
+    PUBLIC_PROOF_RESOURCE_COMMITMENT_DOMAIN,
+    normalizedTenant,
+    normalizedResourceType,
+    normalizedResourceId,
+  ]);
+}
+
+export function createPublicProofResourceCommitment(identity) {
+  return `sha256:${createHash("sha256")
+    .update(canonicalPublicProofResourceIdentity(identity), "utf8")
+    .digest("hex")}`;
+}
+
 export function buildSyntheticEvidence(runId = randomUUID()) {
   const normalizedRunId = String(runId || "").trim().toLowerCase();
   if (!/^[a-z0-9-]{8,80}$/.test(normalizedRunId)) fail("IOTA_CANARY_RUN_ID_INVALID");
   const domain = `nexid.staging.iota.canary.v2:${normalizedRunId}`;
+  const tenantScope = "nexid.staging.synthetic-canary-tenant";
+  const resourceType = "system_canary";
+  const resourceId = `nexid-canary-${normalizedRunId}`;
   return {
     requestId: `iota-canary:${normalizedRunId}`,
     merkleRoot: sha256Bytes32(`${domain}:synthetic-merkle-root`),
-    tenantIdHash: sha256Bytes32("nexid.staging.synthetic-canary-tenant"),
-    resourceType: "system_canary",
-    publicResourceId: `nexid-canary-${normalizedRunId}`,
+    tenantIdHash: sha256Bytes32(tenantScope),
+    resourceType,
+    resourceId,
+    publicResourceId: createPublicProofResourceCommitment({ tenantScope, resourceType, resourceId }),
     eventCount: 1,
     memoHash: sha256Bytes32(`${domain}:non-customer-evidence`),
   };

@@ -6,6 +6,7 @@ import { ensureConsumerAuthSchema } from "./commercial-runtime-schema";
 import { hitSunRateLimit, shouldFailClosedSunRateLimit } from "./sun-rate-limit-store";
 
 const SESSION_COOKIE = "nexid_consumer_session";
+const ACTIVE_CONSUMER_SESSION_STATUSES = new Set(["anonymous", "registered", "verified"]);
 const OTP_TTL_MINUTES = Number(process.env.OTP_TTL_MINUTES || 10);
 const OTP_MAX_ATTEMPTS = Number(process.env.OTP_MAX_ATTEMPTS || 5);
 const OTP_LOCKOUT_MINUTES = 15;
@@ -392,16 +393,87 @@ export async function verifyConsumerAuthToken(token: string, meta?: { userAgent?
   return { ok: true as const, consumer, sessionToken: rawSession };
 }
 
-export async function getConsumerFromRequest(req: Request) {
-  await ensureConsumerAuthSchema();
+export function isConsumerSessionAccountActive(status: unknown) {
+  return ACTIVE_CONSUMER_SESSION_STATUSES.has(String(status || "").trim().toLowerCase());
+}
+
+export function consumerSessionTokenFromRequest(req: Request) {
   const cookie = req.headers.get("cookie") || "";
-  const match = cookie.match(new RegExp(`${SESSION_COOKIE}=([^;]+)`));
+  const match = cookie.match(new RegExp(`(?:^|;\\s*)${SESSION_COOKIE}=([^;]+)`));
   if (!match) return null;
-  const token = decodeURIComponent(match[1]);
+  try {
+    const token = decodeURIComponent(match[1]);
+    return /^[a-f0-9]{48}$/.test(token) ? token : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function revokeConsumerSessionFromRequest(req: Request) {
+  const token = consumerSessionTokenFromRequest(req);
+  if (!token) return { revoked: false } as const;
+  await ensureConsumerAuthSchema();
+  const rows = await sql/*sql*/`
+    UPDATE consumer_sessions
+    SET revoked_at = now(),
+        last_seen_at = now()
+    WHERE session_token_hash = ${sha(token)}
+      AND revoked_at IS NULL
+    RETURNING id, consumer_id
+  `;
+  const revoked = Boolean(rows[0]?.id);
+  audit("consumer_session_logout", {
+    consumerId: rows[0]?.consumer_id || null,
+    revoked,
+  });
+  return { revoked } as const;
+}
+
+export async function deleteConsumerAccountAndRevokeSessions(consumerId: string) {
+  await ensureConsumerAuthSchema();
+  const rows = await sql/*sql*/`
+    WITH deleted_consumer AS MATERIALIZED (
+      UPDATE consumers
+      SET status = 'deleted',
+          email = NULL,
+          phone = NULL,
+          display_name = NULL,
+          updated_at = now()
+      WHERE id = ${consumerId}
+        AND status <> 'deleted'
+      RETURNING id
+    ),
+    revoked_sessions AS MATERIALIZED (
+      UPDATE consumer_sessions session
+      SET revoked_at = now(),
+          last_seen_at = now()
+      WHERE session.consumer_id = ${consumerId}
+        AND session.revoked_at IS NULL
+        AND EXISTS (SELECT 1 FROM deleted_consumer)
+      RETURNING session.id
+    )
+    SELECT
+      (SELECT id FROM deleted_consumer) AS consumer_id,
+      (SELECT count(*)::int FROM revoked_sessions) AS revoked_session_count
+  `;
+  if (!rows[0]?.consumer_id) return null;
+  const result = {
+    consumerId: String(rows[0].consumer_id),
+    revokedSessionCount: Number(rows[0].revoked_session_count || 0),
+  };
+  audit("consumer_account_deleted", result);
+  return result;
+}
+
+export async function getConsumerFromRequest(req: Request) {
+  const token = consumerSessionTokenFromRequest(req);
+  if (!token) return null;
+  await ensureConsumerAuthSchema();
   let rows;
   try {
     rows = await sql/*sql*/`
       SELECT c.*,
+             s.revoked_at AS session_revoked_at,
              EXISTS (
                SELECT 1
                FROM consumer_identities wi
@@ -415,13 +487,17 @@ export async function getConsumerFromRequest(req: Request) {
       JOIN consumers c ON c.id = s.consumer_id
       WHERE s.session_token_hash = ${sha(token)}
         AND s.expires_at >= now()
+        AND s.revoked_at IS NULL
+        AND c.status IN ('anonymous', 'registered', 'verified')
       LIMIT 1
     `;
   } catch (error) {
     if (String((error as { code?: string } | null)?.code || "") === "42P01") return null;
     throw error;
   }
-  return rows[0] || null;
+  const consumer = rows[0] || null;
+  if (!consumer || consumer.session_revoked_at || !isConsumerSessionAccountActive(consumer.status)) return null;
+  return consumer;
 }
 
 function sessionCookieAttributes() {

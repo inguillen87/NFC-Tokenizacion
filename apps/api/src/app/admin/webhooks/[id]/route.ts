@@ -17,6 +17,7 @@ import {
   WEBHOOK_URL_MAX_LENGTH,
   webhookAuditRequestMeta,
   webhookLifecycleFailure,
+  webhookUrlFingerprint,
 } from "../../../../lib/webhook-lifecycle";
 import { normalizeWebhookSignatureVersion } from "../../../../lib/webhook-signing";
 import { checkWebhookPermission } from "../policy";
@@ -55,6 +56,8 @@ const SERVER_DERIVED_OR_SECRET_FIELDS = [
   "signingSecretFingerprint",
   "signing_secret_previous",
   "signingSecretPrevious",
+  "destination_version",
+  "destinationVersion",
 ] as const;
 
 function hasOwn(input: Record<string, unknown>, field: string) {
@@ -80,6 +83,7 @@ async function endpointState(id: string, tenantId: string | null) {
       enabled,
       deleted_at,
       signing_secret_version,
+      destination_version,
       updated_at
     FROM webhook_endpoints
     WHERE id = ${id}::uuid
@@ -93,12 +97,13 @@ async function endpointState(id: string, tenantId: string | null) {
     enabled: boolean;
     deleted_at: string | null;
     signing_secret_version: number;
+    destination_version: string | number;
     updated_at: string;
   } | undefined;
 }
 
 export async function GET(req: Request, context: { params: Promise<{ id: string }> }) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdmin(req, ["super_admin", "tenant_admin", "tenant_operator", "reseller"]);
   if (auth) return auth;
   const permission = checkWebhookPermission(req, "read");
   if (permission) return permission;
@@ -127,6 +132,7 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
         we.signing_secret_previous_valid_until,
         COALESCE(we.signing_secret_previous_valid_until > now(), false) AS previous_secret_overlap_active,
         we.signing_secret_rotated_at,
+        we.destination_version,
         we.disabled_at,
         we.deleted_at,
         we.reactivated_at,
@@ -165,7 +171,7 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
 }
 
 export async function PATCH(req: Request, context: { params: Promise<{ id: string }> }) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdmin(req, ["super_admin", "tenant_admin", "tenant_operator", "reseller"]);
   if (auth) return auth;
   const permission = checkWebhookPermission(req, "write");
   if (permission) return permission;
@@ -248,6 +254,8 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
     rawSignatureVersion ? "signature_version" : null,
     disableRequested ? "enabled" : null,
   ].filter(Boolean);
+  const previousDestinationFingerprint = webhookUrlFingerprint(current.url);
+  const nextDestinationFingerprint = webhookUrlFingerprint(url || current.url);
   const meta = webhookAuditRequestMeta(req);
 
   try {
@@ -268,7 +276,8 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
           FROM webhook_deliveries wd
           WHERE wd.endpoint_id = locked.id
             AND wd.status = 'processing'
-            AND wd.locked_at > now() - interval '10 minutes'
+            AND COALESCE(wd.locked_at, wd.last_attempt_at, wd.created_at)
+              > now() - interval '10 minutes'
         )
       ), updated AS (
         UPDATE webhook_endpoints we
@@ -286,20 +295,34 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
         WHERE we.id = eligible.id
         RETURNING
           we.*,
-          eligible.enabled AS previous_enabled
+          eligible.enabled AS previous_enabled,
+          eligible.url AS previous_url,
+          eligible.destination_version AS previous_destination_version
       ), cancelled_deliveries AS (
         UPDATE webhook_deliveries wd
         SET
           status = 'dead_letter',
           ok = false,
+          status_code = NULL,
           next_attempt_at = NULL,
-          last_error = 'webhook_endpoint_disabled',
+          last_error = CASE
+            WHEN updated.url IS DISTINCT FROM updated.previous_url THEN 'webhook_destination_changed'
+            ELSE 'webhook_endpoint_disabled'
+          END,
+          delivered_at = NULL,
           locked_at = NULL,
           lock_token = NULL
         FROM updated
-        WHERE ${disableRequested}
+        WHERE (${disableRequested} OR updated.url IS DISTINCT FROM updated.previous_url)
           AND wd.endpoint_id = updated.id
-          AND wd.status IN ('pending', 'retry_scheduled')
+          AND (
+            wd.status IN ('pending', 'retry_scheduled')
+            OR (
+              wd.status = 'processing'
+              AND COALESCE(wd.locked_at, wd.last_attempt_at, wd.created_at)
+                <= now() - interval '10 minutes'
+            )
+          )
         RETURNING wd.id
       ), audit AS (
         INSERT INTO webhook_endpoint_audit_events (
@@ -321,7 +344,11 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
           updated.id,
           updated.tenant_id,
           ${actor.id}::uuid,
-          CASE WHEN updated.previous_enabled AND NOT updated.enabled THEN 'webhook_endpoint_disabled' ELSE 'webhook_endpoint_updated' END,
+          CASE
+            WHEN updated.url IS DISTINCT FROM updated.previous_url THEN 'webhook_destination_changed'
+            WHEN updated.previous_enabled AND NOT updated.enabled THEN 'webhook_endpoint_disabled'
+            ELSE 'webhook_endpoint_updated'
+          END,
           updated.signing_secret_version,
           updated.signing_secret_fingerprint,
           updated.signing_secret_previous_version,
@@ -330,10 +357,26 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
           ${meta.requestId},
           ${meta.ipAddress},
           ${meta.userAgent},
-          jsonb_build_object(
+          jsonb_strip_nulls(jsonb_build_object(
             'changed_fields', ${JSON.stringify(changedFields)}::jsonb,
-            'cancelled_deliveries', (SELECT count(*) FROM cancelled_deliveries)
-          )
+            'retired_delivery_count', (SELECT count(*) FROM cancelled_deliveries),
+            'previous_destination_version', CASE
+              WHEN updated.url IS DISTINCT FROM updated.previous_url THEN updated.previous_destination_version
+              ELSE NULL
+            END,
+            'destination_version', CASE
+              WHEN updated.url IS DISTINCT FROM updated.previous_url THEN updated.destination_version
+              ELSE NULL
+            END,
+            'previous_destination_fingerprint', CASE
+              WHEN updated.url IS DISTINCT FROM updated.previous_url THEN ${previousDestinationFingerprint}
+              ELSE NULL
+            END,
+            'destination_fingerprint', CASE
+              WHEN updated.url IS DISTINCT FROM updated.previous_url THEN ${nextDestinationFingerprint}
+              ELSE NULL
+            END
+          ))
         FROM updated
         RETURNING id
       )
@@ -352,13 +395,20 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
         updated.signing_secret_previous_version,
         updated.signing_secret_previous_fingerprint,
         updated.signing_secret_previous_valid_until,
+        updated.destination_version,
         updated.disabled_at,
         updated.updated_at,
+        (SELECT count(*)::integer FROM cancelled_deliveries) AS retired_delivery_count,
         EXISTS (SELECT 1 FROM audit) AS audit_committed
       FROM updated
     `;
     if (!rows[0]) return json({ ok: false, reason: "webhook_endpoint_busy_or_changed" }, 409);
-    return json({ ok: true, endpoint: safeWebhookEndpointProjection(rows[0]) }, 200, { "cache-control": "no-store" });
+    const { retired_delivery_count: retiredDeliveryCount, ...endpoint } = rows[0] as Record<string, unknown>;
+    return json({
+      ok: true,
+      endpoint: safeWebhookEndpointProjection(endpoint),
+      retired_delivery_count: Number(retiredDeliveryCount || 0),
+    }, 200, { "cache-control": "no-store" });
   } catch (error) {
     const failure = webhookLifecycleFailure(error);
     return json({ ok: false, reason: failure.reason, required_migration: "requiredMigration" in failure ? failure.requiredMigration : undefined }, failure.status);
@@ -366,7 +416,7 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 }
 
 export async function DELETE(req: Request, context: { params: Promise<{ id: string }> }) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdmin(req, ["super_admin", "tenant_admin", "tenant_operator", "reseller"]);
   if (auth) return auth;
   const permission = checkWebhookPermission(req, "write");
   if (permission) return permission;

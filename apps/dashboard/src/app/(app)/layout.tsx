@@ -25,6 +25,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       currentEmail={session.email}
       currentLabel={session.label}
       currentPermissions={session.permissions}
+      currentDeniedPermissions={session.deniedPermissions}
       currentTenantSlug={session.tenantSlug}
       currentMfaVerified={session.mfaVerified}
       currentSetupCompleted={session.setupCompleted}

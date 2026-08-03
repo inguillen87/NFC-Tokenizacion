@@ -10,6 +10,26 @@ function readWorkspaceFile(...parts) {
   return readFileSync(path.join(repoRoot, ...parts), "utf8");
 }
 
+const { checkAdmin } = await import("../src/lib/auth.ts");
+
+function verifiedSession(overrides = {}) {
+  return {
+    id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    userId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    email: "supplier-admin@tenant-a.example",
+    label: "Supplier Admin",
+    role: "tenant-admin",
+    tenantId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+    tenantSlug: "tenant-a",
+    permissions: ["supplier:write", "supplier:export_pack", "*"],
+    mfaVerified: true,
+    expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    rotatedCookieValue: null,
+    setupCompleted: true,
+    ...overrides,
+  };
+}
+
 test("supplier operations docs reflect the immutable purpose gate without claiming production QA", () => {
   const overview = readWorkspaceFile("docs/supplier-operations-overview.md");
 
@@ -19,13 +39,13 @@ test("supplier operations docs reflect the immutable purpose gate without claimi
   assert.doesNotMatch(overview, /todavía no implementa `pack_purpose`/);
 });
 
-test("supplier export requires operator password and never returns it", () => {
+test("supplier export uses the enterprise custody allowlist, MFA, operator password and never returns it", () => {
   const source = readWorkspaceFile("apps/api/src/app/admin/supplier-orders/[orderId]/export-pack/route.ts");
 
-  assert.match(source, /supplier_pack_export_forbidden/);
-  assert.match(source, /supplier:export_pack/);
+  assert.match(source, /checkAdminWithPermission\(req, "supplier_pack\.export"\)/);
+  assert.match(source, /getAdminPrincipal\(req\)\.mfaVerified/);
+  assert.doesNotMatch(source, /supplier:export_pack/);
   assert.doesNotMatch(source, /security_operator/);
-  assert.match(source, /forcedTenantSlug/);
   assert.match(source, /supplier_pack_password_required/);
   assert.match(source, /encryptSupplierZipArchive\(zipBuffer,\s*packPassword/);
   assert.match(source, /returned:\s*false/);
@@ -34,29 +54,76 @@ test("supplier export requires operator password and never returns it", () => {
   assert.doesNotMatch(source, /randomBytes\(8\)/);
 });
 
-test("supplier export rejects non-trial purposes before decrypting keys and binds NON_SELLABLE disposition", () => {
+test("tenant-admin cannot cross supplier key custody even with wildcard and legacy supplier grants", async () => {
+  for (const url of [
+    "https://api.nexid.lat/admin/supplier-orders",
+    "https://api.nexid.lat/admin/supplier-orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/export-pack",
+  ]) {
+    const tenantRequest = new Request(url, {
+      method: "POST",
+      headers: { authorization: "Bearer tenant-supplier-session" },
+    });
+    const tenantAuth = await checkAdmin(
+      tenantRequest,
+      ["super_admin"],
+      async () => verifiedSession(),
+    );
+    assert.equal(tenantAuth?.status, 403);
+
+    const superAdminRequest = new Request(url, {
+      method: "POST",
+      headers: { authorization: "Bearer founder-session" },
+    });
+    const superAdminAuth = await checkAdmin(
+      superAdminRequest,
+      ["super_admin"],
+      async () => verifiedSession({
+        role: "super-admin",
+        tenantId: null,
+        tenantSlug: null,
+        permissions: [],
+      }),
+    );
+    assert.equal(superAdminAuth, null);
+  }
+});
+
+test("supplier export gates production per BID before key selection and keeps activation blocked", () => {
   const source = readWorkspaceFile("apps/api/src/app/admin/supplier-orders/[orderId]/export-pack/route.ts");
   const purposeGateIndex = source.indexOf("const effectivePackPurpose");
   const legacyGateIndex = source.indexOf('reason: "supplier_pack_purpose_unclassified"');
   const productionGateIndex = source.indexOf('reason: "supplier_production_qa_plan_required"');
-  const decryptIndex = source.indexOf("decryptBatchKeyHex(String");
+  const keySelectionIndex = source.indexOf("const rows = secureSunProfile");
+  const decryptIndex = source.indexOf("const kMetaHex = secureSunProfile");
 
   assert.match(source, /nexid_effective_supplier_pack_purpose_v1\(so\.id\) AS effective_pack_purpose/);
   assert.ok(purposeGateIndex >= 0 && purposeGateIndex < decryptIndex);
   assert.ok(legacyGateIndex > purposeGateIndex && legacyGateIndex < decryptIndex);
-  assert.ok(productionGateIndex > legacyGateIndex && productionGateIndex < decryptIndex);
-  assert.match(source, /effectivePackPurpose !== "trial_integration"/);
-  assert.match(source, /const commercialDisposition = "NON_SELLABLE" as const/);
+  assert.ok(productionGateIndex > legacyGateIndex && productionGateIndex < keySelectionIndex);
+  assert.ok(keySelectionIndex > productionGateIndex && keySelectionIndex < decryptIndex);
+  assert.match(source, /new Set\(\["trial_integration", "production"\]\)/);
+  assert.match(source, /PENDING_RECEIVING_QA/);
+  assert.match(source, /NON_SELLABLE/);
   assert.match(source, /const activationAllowed = false as const/);
+  assert.match(source, /supplier_production_qa_plans plan/);
+  assert.match(source, /supplier_production_qa_plan_decisions decision/);
+  assert.match(source, /plan\.lot_size = ssb\.expected_quantity/);
+  assert.match(source, /NOT EXISTS \([\s\S]*newer_plan\.revision > plan\.revision/);
   assert.match(source, /PACK_PURPOSE:\s*packPurpose/);
   assert.match(source, /COMMERCIAL_DISPOSITION:\s*commercialDisposition/);
   assert.match(source, /ACTIVATION_ALLOWED:\s*activationAllowed/);
+  assert.match(source, /PRODUCTION_QA_PLAN_APPROVAL:\s*productionQaPlanApproval/);
+  assert.match(source, /productionQaPlanApproved:\s*productionQaPlanApproval !== null/);
+  assert.match(source, /PRODUCTION_QA_PLAN_APPROVAL\.json/);
   assert.match(source, /physical_packaging_approved:\s*true/);
   assert.doesNotMatch(source, /\bproduction_ready\s*:/);
   assert.match(source, /commercial_disposition:\s*commercialDisposition/);
   assert.match(source, /activation_allowed:\s*activationAllowed/);
   assert.match(source, /NON_SELLABLE - TRIAL INTEGRATION ONLY - DO NOT SELL, SHIP, OR ACTIVATE/);
   assert.match(source, /buildSupplierPackPdfSummary\(\{[\s\S]*packPurpose,[\s\S]*commercialDisposition,[\s\S]*activationAllowed,/);
+  assert.match(source, /approved_production_plans AS MATERIALIZED/);
+  assert.match(source, /FOR KEY SHARE OF plan, plan_decision/);
+  assert.match(source, /readiness\.production_qa_ready/);
   assert.match(source, /managed_kms:\s*false/);
   assert.match(source, /hsm_backed:\s*false/);
 });
@@ -87,10 +154,21 @@ test("supplier export consumes one-time counters only with the persisted encrypt
 test("supplier order creation writes lifecycle records without returning raw batch keys", () => {
   const source = readWorkspaceFile("apps/api/src/app/admin/supplier-orders/route.ts");
   const lifecycle = readWorkspaceFile("apps/api/src/lib/batch-keys.ts");
+  const atomicHelper = readWorkspaceFile("apps/api/src/lib/supplier-order-create.ts");
+  const atomicMigration = readWorkspaceFile("apps/api/db/migrations/20260802150000_0079_supplier_order_atomic_create.sql");
 
+  assert.match(source, /export async function POST[\s\S]*?checkAdminWithPermission\(req, "supplier_order\.create"\)/);
+  assert.match(source, /if \(secureSunProfile\)[\s\S]*checkAdminPermission\(req, "batch\.keys\.generate"\)[\s\S]*getAdminPrincipal\(req\)\.mfaVerified/);
   assert.match(source, /buildBatchKeyLifecycleRecords/);
-  assert.match(source, /INSERT INTO batch_key_material/);
-  assert.match(source, /pair_fingerprint/);
+  assert.match(source, /hasSupplierOrderCreateV2/);
+  assert.match(source, /createSupplierOrderV2/);
+  assert.match(atomicHelper, /supplier_order_id: input\.supplierOrderId/);
+  assert.doesNotMatch(atomicHelper, /kMetaHex|kFileHex|raw_key|rawKey/);
+  assert.match(atomicMigration, /INSERT INTO batch_key_material/);
+  assert.match(atomicMigration, /pair_fingerprint/);
+  assert.match(atomicMigration, /'software_envelope', true/);
+  assert.match(atomicMigration, /'managed_kms', false/);
+  assert.match(atomicMigration, /'hsm_backed', false/);
   assert.match(lifecycle, /BATCH_KEY_ROLES/);
   assert.match(lifecycle, /redactSecretsDeep/);
   const successResponse = source.slice(source.indexOf("return json({\n      ok: true"));
@@ -191,8 +269,10 @@ test("dashboard supplier console keeps pack password client-side only", () => {
   assert.match(source, /crypto\.getRandomValues/);
   assert.match(source, /body:\s*JSON\.stringify\(\{\s*password:\s*effectivePassword\s*\}\)/);
   assert.match(source, /currentRole/);
-  assert.match(source, /supplier:export_pack/);
-  assert.match(source, /hasScopedPermission/);
+  assert.match(source, /const canCreateOrder = dashboardHighImpactPermissionMatches\([\s\S]*"supplier_order\.create"/);
+  assert.match(source, /const canExportPack = dashboardHighImpactPermissionMatches\([\s\S]*"supplier_pack\.export"/);
+  assert.doesNotMatch(source, /hasScopedPermission\(currentPermissions, "supplier:export_pack"\)/);
+  assert.match(source, /currentDeniedPermissions/);
   assert.doesNotMatch(source, /security-operator/);
   assert.match(source, /canExportPack/);
   assert.match(source, /Bloqueado para este perfil/);
@@ -211,17 +291,49 @@ test("legacy uid import cannot bypass supplier manifest and QA gates", () => {
   assert.match(source, /legacy_import_disabled_for_supplier_batch/);
   assert.match(source, /import-manifest/);
   assert.match(registerSource, /legacy_supplier_registration_disabled/);
-  assert.match(registerSource, /canRegisterInternalBatch/);
+  assert.match(registerSource, /checkAdminPermission\(req, 'batch:register_internal'\)/);
   assert.match(registerSource, /batch:register_internal/);
   assert.match(registerSource, /internal_batch_registration_forbidden/);
+});
+
+test("legacy internal batch registration shares the global BID lock and canonical public tag origin", () => {
+  const source = readWorkspaceFile("apps/api/src/app/admin/batches/register/route.ts");
+
+  assert.match(source, /readBoundedJsonBody<unknown>\(req, MAX_BODY_BYTES\)/);
+  assert.match(source, /resolveSupplierPublicTagOrigin\(\)/);
+  assert.doesNotMatch(source, /x-forwarded-host|req\.headers\.get\(['"]host/);
+  assert.match(source, /sqlSerializable/);
+  assert.match(source, /pg_advisory_xact_lock\(hashtextextended/);
+  assert.match(source, /'supplier-bid' \|\| chr\(31\) \|\| upper\(trim\(\$\{bid\}\)\)/);
+  assert.match(source, /upper\(trim\(existing_batch\.bid\)\) = upper\(trim\(\$\{bid\}\)\)/);
+  assert.match(source, /upper\(trim\(existing_sub_batch\.bid\)\) = upper\(trim\(\$\{bid\}\)\)/);
+  assert.match(source, /inserted_pair AS[\s\S]*INSERT INTO batch_keys/);
+  assert.match(source, /inserted_material AS[\s\S]*INSERT INTO batch_key_material/);
+  assert.match(source, /key_pair_count[\s\S]*key_material_count/);
+  assert.match(source, /software_envelope:\s*true/);
+  assert.match(source, /managed_kms:\s*false/);
+  assert.match(source, /hsm_backed:\s*false/);
+  assert.doesNotMatch(source, /reason:\s*error instanceof Error \? error\.message/);
 });
 
 test("supplier manifest import requires SUN tenant profile only for secure SUN carriers", () => {
   const source = readWorkspaceFile("apps/api/src/app/admin/batches/[bid]/import-manifest/route.ts");
 
+  assert.match(source, /checkAdminWithPermission\(req, "manifest\.import"\)/);
+  assert.doesNotMatch(source, /const auth = await checkAdmin\(req\)/);
   assert.match(source, /requiresSecureSunEncoding/);
   assert.match(source, /if \(requiresSecureSunEncoding\(batchCarrierCode\)\)/);
   assert.doesNotMatch(source, /Complete tenant SUN profile before importing manifests\./);
+});
+
+test("supplier quantity mismatch override requires a server-derived superadmin actor and an explicit reason", () => {
+  const source = readWorkspaceFile("apps/api/src/app/admin/batches/[bid]/import-manifest/route.ts");
+
+  assert.match(source, /supplier_manifest_quantity_override_forbidden/);
+  assert.match(source, /adminScope\.scope !== "super_admin"/);
+  assert.match(source, /required_scope:\s*"super_admin"/);
+  assert.match(source, /fields:\s*\["overrideReason"\]/);
+  assert.match(source, /const quantityOverrideBy = getAdminActor\(req\)\.email/);
 });
 
 test("tenant vault endpoint returns only safe supplier artifact metadata", () => {
@@ -246,9 +358,8 @@ test("supplier QA derives canonical SUN evidence and publishes a sanitized vault
   const sunRoute = readWorkspaceFile("apps/api/src/app/sun/route.ts");
   const sunService = readWorkspaceFile("apps/api/src/lib/sun-service.ts");
 
-  assert.match(source, /checkAdminPermission\(req, "supplier:qa"\)/);
-  assert.match(source, /checkAdminPermission\(req, "batches:qa"\)/);
-  assert.doesNotMatch(source, /checkAdminPermission\(req, "batches:write"\)/);
+  assert.match(source, /checkAdminWithPermission\(req, "qa\.approve"\)/);
+  assert.doesNotMatch(source, /checkAdminPermission\(req,/);
   assert.match(source, /readBoundedJsonBody<Record<string, unknown>>\(req, MAX_QA_BODY_BYTES\)/);
   assert.match(source, /const passed = parseQaDecision\(body\)/);
   assert.doesNotMatch(source, /Boolean\(body\.passed/);
@@ -332,7 +443,8 @@ test("supplier activate-all override is restricted to super-admin or explicit pe
   assert.match(source, /supplier:activate_override/);
   assert.doesNotMatch(source, /security_operator/);
   assert.match(source, /supplier_activation_override_forbidden/);
-  assert.match(source, /canUseActivationOverride/);
+  assert.match(source, /overridePermission\s*=\s*overrideRequested[\s\S]*checkAdminPermission\(req, 'supplier:activate_override'\)/);
+  assert.ok(source.indexOf("checkAdminPermission(req, 'supplier:activate_override')") < source.indexOf('const overrideAllowed = overrideRequested'));
   assert.match(source, /overrideReason:\s*overrideAllowed \? overrideReason : ''/);
 });
 
@@ -346,15 +458,50 @@ test("SUN debug diagnostics are redacted unless an explicit lab gate is enabled"
   assert.match(source, /picc_plain_hex:\s*null/);
   assert.match(source, /enc_plain_hex:\s*null/);
   assert.match(source, /cmac_candidates:\s*\[\]/);
+  for (const requiredField of [
+    "carrier_profile_code",
+    "key_fingerprints",
+    "reason",
+    "cmac_valid",
+    "sdm_decryption_ok",
+    "uid_decoded",
+    "read_counter",
+    "selected_mac_input",
+    "tt_raw",
+    "tt_perm_status",
+    "tt_curr_status",
+    "manifest_state",
+    "qa_state",
+    "packaging_lab",
+    "approval_id",
+    "receipt_digest",
+  ]) {
+    assert.match(source, new RegExp(`\\b${requiredField}\\b`), `missing diagnostic field ${requiredField}`);
+  }
+  assert.match(source, /carrierProfileCode === "ntag424_dna_tt"/);
+  assert.match(source, /const ttStatus = ttSupported && verification\.ok && encPlainHex/);
+  assert.match(source, /to_regprocedure\('public\.nexid_packaging_lab_activation_receipt_v1\(uuid\)'\)/);
+  assert.match(source, /MIGRATION_NOT_APPLIED/);
+  assert.doesNotMatch(source, /current KMS master/);
+  assert.match(source, /application-envelope master secret/);
+  assert.doesNotMatch(source, /application-envelope master secret:\s*\$\{/);
+  assert.doesNotMatch(source, /\bk_(?:meta|file)_hex\s*:/i);
 });
 
 test("supplier manifest import and activation write audit events without raw UID lists", () => {
   const manifestSource = readWorkspaceFile("apps/api/src/app/admin/batches/[bid]/import-manifest/route.ts");
+  const manifestHelper = readWorkspaceFile("apps/api/src/lib/supplier-manifest-import.ts");
+  const manifestMigration = readWorkspaceFile("apps/api/db/migrations/20260802160000_0081_supplier_manifest_atomic_import.sql");
   const activateSource = readWorkspaceFile("apps/api/src/app/admin/tags/activate/route.ts");
 
-  assert.match(manifestSource, /logAuditEvent/);
-  assert.match(manifestSource, /supplier_manifest_imported/);
-  assert.match(manifestSource, /imported_by:\s*getAdminActor\(req\)\.email/);
+  assert.match(manifestSource, /hasSupplierManifestImportV2/);
+  assert.match(manifestSource, /importTagManifestV2/);
+  assert.match(manifestHelper, /FROM public\.nexid_import_tag_manifest_v2/);
+  assert.match(manifestMigration, /INSERT INTO audit_logs/);
+  assert.match(manifestMigration, /'supplier_manifest_imported'/);
+  assert.match(manifestMigration, /SELECT auth_session\.role::text, lower\(actor\.email\)\s+INTO v_actor_role, v_actor_email/);
+  assert.match(manifestMigration, /auth_session\.user_id = v_actor_id/);
+  assert.doesNotMatch(manifestMigration, /'uids'\s*,/);
 
   assert.match(activateSource, /logAuditEvent/);
   assert.match(activateSource, /supplier_tags_activated/);

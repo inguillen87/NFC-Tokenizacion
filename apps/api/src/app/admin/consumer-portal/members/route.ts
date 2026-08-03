@@ -1,11 +1,11 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-import { checkAdmin, getAdminTenantAccess } from "../../../../lib/auth";
+import { checkAdminWithPermission, getAdminTenantAccess } from "../../../../lib/auth";
 import { json } from "../../../../lib/http";
 import { sql } from "../../../../lib/db";
 
 export async function GET(req: Request) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdminWithPermission(req, "consumers.read_pii");
   if (auth) return auth;
   const requestedTenant = new URL(req.url).searchParams.get('tenant');
   const { effectiveTenantSlug: tenant } = getAdminTenantAccess(req, requestedTenant);

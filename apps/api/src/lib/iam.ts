@@ -1,6 +1,7 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "crypto";
 import { ensureEnterpriseIamSchema } from "./commercial-runtime-schema";
-import { permissionMatches } from "./permission-matcher.js";
+import { permissionDenied, permissionMatches } from "./permission-matcher.js";
+import { roleMayUseEnterpriseCapability } from "./enterprise-capability-policy";
 
 export const SESSION_TTL_MS = 1000 * 60 * 60 * 12;
 export const SESSION_IDLE_MS = 1000 * 60 * 30;
@@ -10,7 +11,20 @@ const MFA_WINDOW_SECONDS = 30;
 
 type Sql = (strings: TemplateStringsArray, ...values: unknown[]) => Promise<any[]>;
 
-type UserRole = "super_admin" | "tenant_admin" | "reseller" | "viewer";
+export const ENTERPRISE_USER_ROLES = [
+  "tenant_owner", "tenant_admin", "security_analyst", "operations_manager",
+  "packaging_operator", "marketing_manager", "viewer", "reseller_admin",
+  "api_integration", "super_admin", "security_operator", "reseller",
+] as const;
+
+export type UserRole = (typeof ENTERPRISE_USER_ROLES)[number];
+export type SessionRole =
+  | "tenant-owner" | "tenant-admin" | "security-analyst" | "operations-manager"
+  | "packaging-operator" | "marketing-manager" | "viewer" | "reseller-admin"
+  | "api-integration" | "super-admin" | "security-operator" | "reseller";
+
+const USER_ROLE_SET = new Set<string>(ENTERPRISE_USER_ROLES);
+const HUMAN_SESSION_ROLES = new Set<UserRole>(ENTERPRISE_USER_ROLES.filter((role) => role !== "api_integration"));
 
 export type AuthUser = {
   id: string;
@@ -21,6 +35,7 @@ export type AuthUser = {
   tenant_id: string | null;
   password_hash: string;
   permissions: string[];
+  deniedPermissions: string[];
   mfa_enabled: boolean;
 };
 
@@ -29,22 +44,30 @@ export type SessionRecord = {
   userId: string;
   email: string;
   label: string;
-  role: "super-admin" | "tenant-admin" | "reseller" | "viewer";
+  role: SessionRole;
   tenantId: string | null;
   tenantSlug: string | null;
   permissions: string[];
+  deniedPermissions?: string[];
   mfaVerified: boolean;
   expiresAt: string;
   rotatedCookieValue: string | null;
   setupCompleted: boolean;
 };
 
-export function normalizeRole(role: string): "super-admin" | "tenant-admin" | "reseller" | "viewer" {
-  return (role || "viewer").replaceAll("_", "-") as ReturnType<typeof normalizeRole>;
+export function normalizeRole(role: string): SessionRole {
+  const normalized = String(role || "viewer").trim().toLowerCase().replaceAll("-", "_");
+  const safeRole = USER_ROLE_SET.has(normalized) ? normalized : "viewer";
+  return safeRole.replaceAll("_", "-") as SessionRole;
 }
 
 export function denormalizeRole(role: string): UserRole {
-  return (role || "viewer").replaceAll("-", "_") as UserRole;
+  const normalized = String(role || "viewer").trim().toLowerCase().replaceAll("-", "_");
+  return (USER_ROLE_SET.has(normalized) ? normalized : "viewer") as UserRole;
+}
+
+export function roleAllowsHumanSession(role: string) {
+  return HUMAN_SESSION_ROLES.has(denormalizeRole(role));
 }
 
 export function sha256(value: string) {
@@ -142,21 +165,57 @@ export function isUuidString(value: string | undefined | null) {
   return Boolean(value && UUID_RE.test(value));
 }
 
+export function roleTenantBindingValid(role: string, tenantId: unknown) {
+  const normalized = String(role || "").trim().toLowerCase().replaceAll("-", "_");
+  if (!USER_ROLE_SET.has(normalized)) return false;
+  if (normalized === "super_admin") return tenantId === null;
+  return isUuidString(typeof tenantId === "string" ? tenantId : null);
+}
+
+export function isEnterpriseRoleProfileTenantBindingValid(profile: {
+  role?: unknown;
+  tenant_id?: unknown;
+  role_profile_tenant_bound?: unknown;
+}) {
+  const normalized = String(profile.role || "").trim().toLowerCase().replaceAll("-", "_");
+  if (!USER_ROLE_SET.has(normalized)) return false;
+  const expectedTenantBound = normalized !== "super_admin";
+  return profile.role_profile_tenant_bound === expectedTenantBound
+    && roleTenantBindingValid(normalized, profile.tenant_id);
+}
+
 export function parsePermissions(value: unknown) {
   if (Array.isArray(value)) return value.map((item) => String(item));
   return [];
 }
 
-export function hasPermission(session: { role: string; permissions: string[] }, permission?: string | null) {
+export function hasPermission(session: { role: string; permissions: string[]; deniedPermissions?: string[] }, permission?: string | null) {
   if (!permission) return true;
   const role = String(session.role || "").replaceAll("_", "-");
-  if (role === "super-admin") return true;
-  return permissionMatches(session.permissions, permission);
+  if (!roleMayUseEnterpriseCapability(role, permission)) return false;
+  if (role === "super-admin") return !permissionDenied(session.deniedPermissions, permission);
+  return permissionMatches(session.permissions, permission, session.deniedPermissions);
+}
+
+export function isActiveHumanEnterpriseRoleProfile(profile: {
+  role_profile_active?: unknown;
+  role_profile_human_session_allowed?: unknown;
+}) {
+  return profile.role_profile_active === true
+    && profile.role_profile_human_session_allowed === true;
+}
+
+async function hasEnterpriseRoleProfiles(sql: Sql) {
+  const rows = await sql/*sql*/`
+    SELECT to_regclass('public.enterprise_role_profiles') IS NOT NULL AS ready
+  `;
+  return rows[0]?.ready === true;
 }
 
 export async function getAuthUserByEmail(sql: Sql, email: string): Promise<AuthUser | null> {
   await ensureEnterpriseIamSchema();
-  const rows = await sql/*sql*/`
+  const roleProfilesReady = await hasEnterpriseRoleProfiles(sql);
+  const rows = roleProfilesReady ? await sql/*sql*/`
     SELECT
       u.id,
       u.email,
@@ -169,24 +228,112 @@ export async function getAuthUserByEmail(sql: Sql, email: string): Promise<AuthU
         WHEN rp.resource = '*' AND rp.action = '*' THEN '*'
         ELSE rp.resource || ':' || rp.action
       END) FILTER (WHERE rp.id IS NOT NULL AND rp.effect = 'allow'), '[]'::json) AS permissions,
+      COALESCE(json_agg(DISTINCT CASE
+        WHEN rp.resource = '*' AND rp.action = '*' THEN '*'
+        ELSE rp.resource || ':' || rp.action
+      END) FILTER (WHERE rp.id IS NOT NULL AND rp.effect = 'deny'), '[]'::json) AS denied_permissions,
+      COALESCE(role_profile.default_permissions, '[]'::jsonb) AS role_default_permissions,
+      role_profile.active AS role_profile_active,
+      role_profile.human_session_allowed AS role_profile_human_session_allowed,
+      role_profile.tenant_bound AS role_profile_tenant_bound,
       EXISTS (SELECT 1 FROM user_mfa_factors umf WHERE umf.user_id = u.id) AS mfa_enabled
     FROM users u
     LEFT JOIN password_credentials pc ON pc.user_id = u.id
     LEFT JOIN memberships m ON m.user_id = u.id
-    LEFT JOIN resource_permissions rp ON rp.user_id = u.id
+    LEFT JOIN resource_permissions rp
+      ON rp.user_id = u.id
+     AND rp.tenant_id IS NOT DISTINCT FROM m.tenant_id
+    JOIN enterprise_role_profiles role_profile
+      ON role_profile.code = m.role::text
+     AND role_profile.active = true
+     AND role_profile.human_session_allowed = true
     WHERE lower(u.email) = ${email}
-    GROUP BY u.id, u.email, u.full_name, u.admin_status, pc.password_hash, m.role, m.tenant_id
+      AND (
+        m.role = 'super_admin'::membership_role
+        OR 1 = (
+          SELECT count(*)
+          FROM memberships active_membership
+          WHERE active_membership.user_id = u.id
+        )
+      )
+    GROUP BY u.id, u.email, u.full_name, u.admin_status, pc.password_hash, m.role, m.tenant_id,
+      role_profile.default_permissions, role_profile.active, role_profile.human_session_allowed,
+      role_profile.tenant_bound
     ORDER BY CASE m.role
       WHEN 'super_admin' THEN 1
-      WHEN 'tenant_admin' THEN 2
-      WHEN 'reseller' THEN 3
-      WHEN 'viewer' THEN 4
+      WHEN 'tenant_owner' THEN 2
+      WHEN 'tenant_admin' THEN 3
+      WHEN 'security_operator' THEN 4
+      WHEN 'security_analyst' THEN 5
+      WHEN 'operations_manager' THEN 6
+      WHEN 'packaging_operator' THEN 7
+      WHEN 'marketing_manager' THEN 8
+      WHEN 'reseller_admin' THEN 9
+      WHEN 'reseller' THEN 10
+      WHEN 'viewer' THEN 11
+      WHEN 'api_integration' THEN 12
       ELSE 9
+    END, m.tenant_id ASC NULLS FIRST, m.role::text ASC
+    LIMIT 1
+  ` : await sql/*sql*/`
+    SELECT
+      u.id,
+      u.email,
+      COALESCE(u.full_name, split_part(u.email, '@', 1)) AS label,
+      u.admin_status,
+      pc.password_hash,
+      COALESCE(m.role::text, 'viewer') AS role,
+      m.tenant_id,
+      COALESCE(json_agg(DISTINCT CASE
+        WHEN rp.resource = '*' AND rp.action = '*' THEN '*'
+        ELSE rp.resource || ':' || rp.action
+      END) FILTER (WHERE rp.id IS NOT NULL AND rp.effect = 'allow'), '[]'::json) AS permissions,
+      COALESCE(json_agg(DISTINCT CASE
+        WHEN rp.resource = '*' AND rp.action = '*' THEN '*'
+        ELSE rp.resource || ':' || rp.action
+      END) FILTER (WHERE rp.id IS NOT NULL AND rp.effect = 'deny'), '[]'::json) AS denied_permissions,
+      '[]'::jsonb AS role_default_permissions,
+      EXISTS (SELECT 1 FROM user_mfa_factors umf WHERE umf.user_id = u.id) AS mfa_enabled
+    FROM users u
+    LEFT JOIN password_credentials pc ON pc.user_id = u.id
+    LEFT JOIN memberships m ON m.user_id = u.id
+    LEFT JOIN resource_permissions rp
+      ON rp.user_id = u.id
+     AND rp.tenant_id IS NOT DISTINCT FROM m.tenant_id
+    WHERE lower(u.email) = ${email}
+      AND (
+        m.role = 'super_admin'::membership_role
+        OR 1 = (
+          SELECT count(*)
+          FROM memberships active_membership
+          WHERE active_membership.user_id = u.id
+        )
+      )
+    GROUP BY u.id, u.email, u.full_name, u.admin_status, pc.password_hash, m.role, m.tenant_id
+    ORDER BY CASE m.role
+      WHEN 'super_admin' THEN 1 WHEN 'tenant_admin' THEN 2
+      WHEN 'reseller' THEN 3 WHEN 'viewer' THEN 4 ELSE 9
     END, m.tenant_id ASC NULLS FIRST, m.role::text ASC
     LIMIT 1
   `;
   const row = rows[0] as AuthUser | undefined;
-  return row ? { ...row, permissions: parsePermissions((row as any).permissions) } : null;
+  if (!row) return null;
+  if (!roleTenantBindingValid(row.role, row.tenant_id)) return null;
+  if (roleProfilesReady && !isActiveHumanEnterpriseRoleProfile(row as AuthUser & {
+    role_profile_active?: unknown;
+    role_profile_human_session_allowed?: unknown;
+  })) return null;
+  if (roleProfilesReady && !isEnterpriseRoleProfileTenantBindingValid(row as AuthUser & {
+    role_profile_tenant_bound?: unknown;
+  })) return null;
+  return {
+    ...row,
+    permissions: [...new Set([
+      ...parsePermissions((row as any).role_default_permissions),
+      ...parsePermissions((row as any).permissions),
+    ])],
+    deniedPermissions: parsePermissions((row as any).denied_permissions),
+  };
 }
 
 export async function auditAuthEvent(sql: Sql, payload: { email: string; eventName: string; ok: boolean; role?: string | null; ip?: string | null; userAgent?: string | null; meta?: Record<string, unknown> }) {
@@ -199,6 +346,10 @@ export async function auditAuthEvent(sql: Sql, payload: { email: string; eventNa
 
 export async function createSession(sql: Sql, payload: { user: AuthUser; ip?: string | null; userAgent?: string | null; mfaVerified: boolean; }) {
   await ensureEnterpriseIamSchema();
+  if (!roleAllowsHumanSession(payload.user.role)) throw new Error("human_session_role_forbidden");
+  if (!roleTenantBindingValid(payload.user.role, payload.user.tenant_id)) {
+    throw new Error("enterprise_role_tenant_binding_invalid");
+  }
   const secret = createSessionSecret();
   const rows = await sql/*sql*/`
     INSERT INTO auth_sessions (user_id, session_token_hash, role, tenant_id, permissions, mfa_verified, expires_at, last_seen_at, created_ip, user_agent, meta)
@@ -229,7 +380,8 @@ export async function resolveSession(
   if (!parsed) return null;
   if (!isUuidString(parsed.sessionId)) return null;
   await ensureEnterpriseIamSchema();
-  const rows = await sql/*sql*/`
+  const roleProfilesReady = await hasEnterpriseRoleProfiles(sql);
+  const rows = roleProfilesReady ? await sql/*sql*/`
     SELECT s.id, s.user_id, s.session_token_hash, s.role::text AS role, s.tenant_id, s.mfa_verified, s.expires_at, s.last_seen_at, s.revoked_at,
       tn.slug AS tenant_slug,
       u.email, u.admin_status, COALESCE(u.full_name, split_part(u.email, '@', 1)) AS label,
@@ -240,6 +392,14 @@ export async function resolveSession(
           AND current_membership.role = s.role
           AND current_membership.tenant_id IS NOT DISTINCT FROM s.tenant_id
       ) AS membership_current,
+      (
+        s.role = 'super_admin'::membership_role
+        OR 1 = (
+          SELECT count(*)
+          FROM memberships active_membership
+          WHERE active_membership.user_id = s.user_id
+        )
+      ) AS membership_scope_unambiguous,
       COALESCE((
         SELECT json_agg(DISTINCT CASE
           WHEN current_permission.resource = '*' AND current_permission.action = '*' THEN '*'
@@ -247,9 +407,75 @@ export async function resolveSession(
         END)
         FROM resource_permissions current_permission
         WHERE current_permission.user_id = s.user_id
+          AND current_permission.tenant_id IS NOT DISTINCT FROM s.tenant_id
           AND current_permission.effect = 'allow'
       ), '[]'::json) AS current_permissions,
-      COALESCE((tsp.metadata->>'setup_completed')::boolean, true) AS setup_completed
+      COALESCE((
+        SELECT json_agg(DISTINCT CASE
+          WHEN current_denial.resource = '*' AND current_denial.action = '*' THEN '*'
+          ELSE current_denial.resource || ':' || current_denial.action
+        END)
+        FROM resource_permissions current_denial
+        WHERE current_denial.user_id = s.user_id
+          AND current_denial.tenant_id IS NOT DISTINCT FROM s.tenant_id
+          AND current_denial.effect = 'deny'
+      ), '[]'::json) AS current_denied_permissions,
+      COALESCE((tsp.metadata->>'setup_completed')::boolean, true) AS setup_completed,
+      COALESCE(role_profile.default_permissions, '[]'::jsonb) AS role_default_permissions,
+      role_profile.active AS role_profile_active,
+      role_profile.human_session_allowed AS role_profile_human_session_allowed,
+      role_profile.tenant_bound AS role_profile_tenant_bound
+    FROM auth_sessions s
+    JOIN users u ON u.id = s.user_id
+    LEFT JOIN tenants tn ON tn.id = s.tenant_id
+    LEFT JOIN tenant_sun_profiles tsp ON tsp.tenant_id = s.tenant_id
+    JOIN enterprise_role_profiles role_profile
+      ON role_profile.code = s.role::text
+     AND role_profile.active = true
+     AND role_profile.human_session_allowed = true
+    WHERE s.id = ${parsed.sessionId}::uuid
+    LIMIT 1
+  ` : await sql/*sql*/`
+    SELECT s.id, s.user_id, s.session_token_hash, s.role::text AS role, s.tenant_id, s.mfa_verified, s.expires_at, s.last_seen_at, s.revoked_at,
+      tn.slug AS tenant_slug,
+      u.email, u.admin_status, COALESCE(u.full_name, split_part(u.email, '@', 1)) AS label,
+      EXISTS (
+        SELECT 1
+        FROM memberships current_membership
+        WHERE current_membership.user_id = s.user_id
+          AND current_membership.role = s.role
+          AND current_membership.tenant_id IS NOT DISTINCT FROM s.tenant_id
+      ) AS membership_current,
+      (
+        s.role = 'super_admin'::membership_role
+        OR 1 = (
+          SELECT count(*)
+          FROM memberships active_membership
+          WHERE active_membership.user_id = s.user_id
+        )
+      ) AS membership_scope_unambiguous,
+      COALESCE((
+        SELECT json_agg(DISTINCT CASE
+          WHEN current_permission.resource = '*' AND current_permission.action = '*' THEN '*'
+          ELSE current_permission.resource || ':' || current_permission.action
+        END)
+        FROM resource_permissions current_permission
+        WHERE current_permission.user_id = s.user_id
+          AND current_permission.tenant_id IS NOT DISTINCT FROM s.tenant_id
+          AND current_permission.effect = 'allow'
+      ), '[]'::json) AS current_permissions,
+      COALESCE((
+        SELECT json_agg(DISTINCT CASE
+          WHEN current_denial.resource = '*' AND current_denial.action = '*' THEN '*'
+          ELSE current_denial.resource || ':' || current_denial.action
+        END)
+        FROM resource_permissions current_denial
+        WHERE current_denial.user_id = s.user_id
+          AND current_denial.tenant_id IS NOT DISTINCT FROM s.tenant_id
+          AND current_denial.effect = 'deny'
+      ), '[]'::json) AS current_denied_permissions,
+      COALESCE((tsp.metadata->>'setup_completed')::boolean, true) AS setup_completed,
+      '[]'::jsonb AS role_default_permissions
     FROM auth_sessions s
     JOIN users u ON u.id = s.user_id
     LEFT JOIN tenants tn ON tn.id = s.tenant_id
@@ -262,7 +488,7 @@ export async function resolveSession(
   if (!safeCompare(sha256(parsed.secret), String(session.session_token_hash))) return null;
   const now = Date.now();
   if (new Date(session.expires_at).getTime() <= now) return null;
-  if (!isSessionPrincipalCurrent(session)) {
+  if (!isSessionPrincipalCurrent(session, roleProfilesReady)) {
     await sql/*sql*/`
       UPDATE auth_sessions
       SET revoked_at = now(), last_seen_at = now()
@@ -309,7 +535,11 @@ export async function resolveSession(
     role: normalizeRole(String(session.role)),
     tenantId: session.tenant_id ? String(session.tenant_id) : null,
     tenantSlug: session.tenant_slug ? String(session.tenant_slug) : null,
-    permissions: parsePermissions(session.current_permissions),
+    permissions: [...new Set([
+      ...parsePermissions(session.role_default_permissions),
+      ...parsePermissions(session.current_permissions),
+    ])],
+    deniedPermissions: parsePermissions(session.current_denied_permissions),
     mfaVerified: Boolean(session.mfa_verified),
     rotatedCookieValue,
     expiresAt: String(refreshedRows[0].expires_at),
@@ -317,9 +547,27 @@ export async function resolveSession(
   };
 }
 
-export function isSessionPrincipalCurrent(session: { admin_status?: unknown; membership_current?: unknown }) {
+export function isSessionPrincipalCurrent(
+  session: {
+    admin_status?: unknown;
+    membership_current?: unknown;
+    membership_scope_unambiguous?: unknown;
+    role_profile_active?: unknown;
+    role_profile_human_session_allowed?: unknown;
+    role_profile_tenant_bound?: unknown;
+    role?: unknown;
+    tenant_id?: unknown;
+  },
+  requireEnterpriseRoleProfile = false,
+) {
   return String(session.admin_status || '').trim().toLowerCase() === 'active'
-    && session.membership_current === true;
+    && session.membership_current === true
+    && session.membership_scope_unambiguous === true
+    && roleTenantBindingValid(String(session.role || ""), session.tenant_id)
+    && (!requireEnterpriseRoleProfile || (
+      isActiveHumanEnterpriseRoleProfile(session)
+      && isEnterpriseRoleProfileTenantBindingValid(session)
+    ));
 }
 
 export async function revokeSession(sql: Sql, cookieValue: string | undefined | null) {

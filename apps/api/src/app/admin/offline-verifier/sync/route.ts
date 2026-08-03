@@ -1,17 +1,26 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminActor, getAdminTenantScope } from "../../../../lib/auth";
+import { checkAdmin, checkAdminPermission, getAdminActor, getAdminTenantScope } from "../../../../lib/auth";
 import { sql } from "../../../../lib/db";
 import { json } from "../../../../lib/http";
 import { logAuditEvent } from "../../../../lib/audit-logger";
+import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../lib/bounded-request-body";
 import { ensureSupplierOpsSchema } from "../../../../lib/supplier-ops-schema";
 import {
+  decodeOfflineHistoryCursor,
+  encodeOfflineHistoryCursor,
   normalizeOfflineHash,
+  normalizeOfflineHistoryLimit,
   normalizeOfflineLocalVerdict,
   normalizeOfflineObservedAt,
+  OFFLINE_ADMIN_SYNC_BODY_MAX_BYTES,
+  requireOfflineJsonObject,
 } from "../../../../lib/offline-verifier";
 import { findForbiddenProofPayloadKey, hashEvidencePayload } from "../../../../lib/proof-layer";
+
+const NO_STORE = { "cache-control": "no-store" };
+const TENANT_SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9._-]{0,126}[a-z0-9])?$/;
 
 function firstString(...values: unknown[]) {
   for (const value of values) {
@@ -23,7 +32,11 @@ function firstString(...values: unknown[]) {
 
 function readEvents(value: unknown) {
   if (!Array.isArray(value)) throw new Error("events_required");
+  if (!value.length) throw new Error("events_required");
   if (value.length > 500) throw new Error("events_max_500");
+  if (value.some((event) => !event || typeof event !== "object" || Array.isArray(event))) {
+    throw new Error("events_invalid");
+  }
   return value as Record<string, unknown>[];
 }
 
@@ -39,12 +52,136 @@ type SyncResult = {
   payload_hash?: string;
 };
 
+export async function GET(req: Request) {
+  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
+  if (auth) return auth;
+  const permission = checkAdminPermission(req, "supplier:offline_verifier");
+  if (permission) return permission;
+
+  const url = new URL(req.url);
+  const { forcedTenantSlug } = getAdminTenantScope(req);
+  const requestedTenantSlug = firstString(
+    url.searchParams.get("tenant"),
+    url.searchParams.get("tenant_slug"),
+  ).toLowerCase();
+  const tenantSlug = forcedTenantSlug || requestedTenantSlug;
+  if (!tenantSlug) {
+    return json({ ok: false, reason: "tenant_scope_required" }, 400, NO_STORE);
+  }
+  if (!TENANT_SLUG_PATTERN.test(tenantSlug)) {
+    return json({ ok: false, reason: "tenant_scope_invalid" }, 400, NO_STORE);
+  }
+
+  let limit: number;
+  let cursor: ReturnType<typeof decodeOfflineHistoryCursor>;
+  try {
+    limit = normalizeOfflineHistoryLimit(url.searchParams.get("limit"));
+    cursor = decodeOfflineHistoryCursor(url.searchParams.get("cursor"));
+  } catch (error) {
+    return json({
+      ok: false,
+      reason: error instanceof Error ? error.message : "offline_history_query_invalid",
+    }, 400, NO_STORE);
+  }
+
+  const tenantRows = await sql/*sql*/`
+    SELECT id, slug
+    FROM tenants
+    WHERE slug = ${tenantSlug}
+    LIMIT 1
+  `;
+  const tenant = tenantRows[0];
+  if (!tenant) return json({ ok: false, reason: "tenant_not_found" }, 404, NO_STORE);
+
+  const rows = cursor
+    ? await sql/*sql*/`
+        SELECT
+          ose.id,
+          ose.bid,
+          ose.local_verdict,
+          ose.sync_status,
+          ose.server_verdict,
+          ose.reason,
+          ose.observed_at,
+          ose.received_at,
+          ovd.id AS device_id,
+          ovd.device_label,
+          ovd.device_type,
+          ovb.id AS bundle_id,
+          ovb.bundle_ref,
+          t.slug AS tenant_slug
+        FROM offline_scan_events ose
+        JOIN offline_verifier_devices ovd ON ovd.id = ose.device_id AND ovd.tenant_id = ose.tenant_id
+        JOIN offline_verifier_bundles ovb ON ovb.id = ose.bundle_id AND ovb.tenant_id = ose.tenant_id
+        JOIN tenants t ON t.id = ose.tenant_id
+        WHERE ose.tenant_id = ${tenant.id}
+          AND (ose.received_at, ose.id) < (${cursor.receivedAt}::timestamptz, ${cursor.id}::uuid)
+        ORDER BY ose.received_at DESC, ose.id DESC
+        LIMIT ${limit + 1}
+      `
+    : await sql/*sql*/`
+        SELECT
+          ose.id,
+          ose.bid,
+          ose.local_verdict,
+          ose.sync_status,
+          ose.server_verdict,
+          ose.reason,
+          ose.observed_at,
+          ose.received_at,
+          ovd.id AS device_id,
+          ovd.device_label,
+          ovd.device_type,
+          ovb.id AS bundle_id,
+          ovb.bundle_ref,
+          t.slug AS tenant_slug
+        FROM offline_scan_events ose
+        JOIN offline_verifier_devices ovd ON ovd.id = ose.device_id AND ovd.tenant_id = ose.tenant_id
+        JOIN offline_verifier_bundles ovb ON ovb.id = ose.bundle_id AND ovb.tenant_id = ose.tenant_id
+        JOIN tenants t ON t.id = ose.tenant_id
+        WHERE ose.tenant_id = ${tenant.id}
+        ORDER BY ose.received_at DESC, ose.id DESC
+        LIMIT ${limit + 1}
+      `;
+
+  const events = rows.slice(0, limit);
+  const last = events.at(-1);
+  const hasMore = rows.length > limit;
+  const nextCursor = hasMore && last
+    ? encodeOfflineHistoryCursor({
+        receivedAt: new Date(String(last.received_at)).toISOString(),
+        id: String(last.id),
+      })
+    : null;
+
+  return json({
+    ok: true,
+    tenant_slug: String(tenant.slug),
+    events,
+    page: {
+      limit,
+      has_more: hasMore,
+      next_cursor: nextCursor,
+    },
+  }, 200, NO_STORE);
+}
+
 export async function POST(req: Request) {
   const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
   if (auth) return auth;
-  await ensureSupplierOpsSchema();
+  const permission = checkAdminPermission(req, "supplier:offline_verifier");
+  if (permission) return permission;
 
-  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+  let body: Record<string, unknown>;
+  try {
+    body = requireOfflineJsonObject(
+      await readBoundedJsonBody<unknown>(req, OFFLINE_ADMIN_SYNC_BODY_MAX_BYTES),
+    );
+  } catch (error) {
+    const tooLarge = error instanceof RequestBodyTooLargeError;
+    return json({ ok: false, reason: tooLarge ? "request_body_too_large" : "invalid_json" }, tooLarge ? 413 : 400, NO_STORE);
+  }
+  await ensureSupplierOpsSchema();
   const bundleRef = firstString(body.bundle_ref, body.bundleRef);
   const bundleId = firstString(body.bundle_id, body.bundleId);
   if (!bundleRef && !/^[0-9a-f-]{36}$/i.test(bundleId)) {

@@ -1,0 +1,18 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "nexID Enterprise API Catalog",
+    "version": "1.0.0",
+    "description": "Namespace index. Authentication, audience and exposure rules are intentionally separated instead of presenting one over-privileged API surface."
+  },
+  "servers": [{ "url": "https://api.nexid.lat" }],
+  "security": [],
+  "paths": {},
+  "x-nexid-documents": {
+    "public": "/openapi/nexid-public-v1.json",
+    "sdk": "/openapi/nexid-sdk-v1.json",
+    "admin": "/openapi/nexid-admin-v1.json",
+    "internal": "/openapi/nexid-internal-v1.json",
+    "webhooks": "/asyncapi/nexid-webhooks-v1.json"
+  }
+}

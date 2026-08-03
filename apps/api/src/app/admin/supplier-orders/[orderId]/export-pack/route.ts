@@ -2,19 +2,21 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { createHash } from "node:crypto";
-import { checkAdmin, getAdminActor, getAdminPermissions, getAdminTenantScope, type AdminScope } from "../../../../../lib/auth";
+import { checkAdminWithPermission, getAdminActor, getAdminPrincipal, getAdminTenantScope } from "../../../../../lib/auth";
 import { json } from "../../../../../lib/http";
 import { sql } from "../../../../../lib/db";
-import { logAuditEvent } from "../../../../../lib/audit-logger";
 import { ensureSupplierOpsSchema } from "../../../../../lib/supplier-ops-schema";
 import { decryptBatchKeyHex } from "../../../../../lib/batch-keys";
 import {
   buildSupplierEncodingPack,
+  buildSupplierManifestTemplate,
   buildSupplierPackPdfSummary,
   buildZipArchive,
   canExportSupplierPack,
   encryptSupplierZipArchive,
+  requiresSecureSunEncoding,
   sha256Buffer,
+  type SupplierProductionQaPlanApproval,
   type SupplierZipEntry,
 } from "../../../../../lib/supplier-ops";
 import { hashEvidencePayload } from "../../../../../lib/proof-layer";
@@ -32,25 +34,6 @@ function safeFilename(value: unknown, fallback: string) {
     .replace(/[^a-zA-Z0-9._-]+/g, "-")
     .replace(/^-+|-+$/g, "");
   return normalized || fallback;
-}
-
-function hasScopedPermission(grants: string[], permission: string) {
-  const current = permission.trim();
-  for (const rawGrant of grants) {
-    const grant = String(rawGrant || "").trim();
-    if (!grant || grant === "*") continue;
-    if (grant === current) return true;
-    if (grant.endsWith(":*")) {
-      const prefix = grant.slice(0, -2);
-      if (current === prefix || current.startsWith(`${prefix}:`)) return true;
-    }
-  }
-  return false;
-}
-
-function canExportFactoryPack(scope: AdminScope | null, permissions: string[]) {
-  return scope === "super_admin"
-    || hasScopedPermission(permissions, "supplier:export_pack");
 }
 
 function normalizePackPassword(value: unknown) {
@@ -82,17 +65,28 @@ function safeDatabaseErrorCode(error: unknown) {
   return /^[A-Za-z0-9_-]{1,32}$/.test(code) ? code : "unknown_error";
 }
 
+function databaseInstant(value: unknown) {
+  const parsed = new Date(String(value || ""));
+  if (!Number.isFinite(parsed.getTime())) throw new Error("supplier_production_qa_approval_timestamp_invalid");
+  return parsed.toISOString();
+}
+
+type ApprovedProductionQaPlan = SupplierProductionQaPlanApproval & {
+  supplier_order_id: string;
+  supplier_sub_batch_id: string;
+  batch_id: string;
+  bid: string;
+  plan_schema: "supplier-production-qa-plan/v1";
+  plan_binding: Record<string, unknown>;
+  submitted_at: string;
+  approval_reason: string;
+};
+
 export async function POST(req: Request, { params }: { params: Promise<{ orderId: string }> }) {
-  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
+  const auth = await checkAdminWithPermission(req, "supplier_pack.export");
   if (auth) return auth;
-  const adminTenantScope = getAdminTenantScope(req);
-  const permissionGrants = getAdminPermissions(req);
-  if (!canExportFactoryPack(adminTenantScope.scope, permissionGrants)) {
-    return json({
-      ok: false,
-      reason: "supplier_pack_export_forbidden",
-      message: "Supplier factory packs require superadmin or explicit supplier:export_pack permission.",
-    }, 403);
+  if (!getAdminPrincipal(req).mfaVerified) {
+    return json({ ok: false, reason: "supplier_pack_export_mfa_required" }, 403);
   }
   await ensureSupplierOpsSchema();
 
@@ -103,7 +97,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
   const packPassword = normalizePackPassword(body.password || body.pack_password);
   const passwordGate = validatePackPassword(packPassword);
   if (!passwordGate.ok) return json(passwordGate, 400);
-  const actor = getAdminActor(req).email;
+  const actorPrincipal = getAdminActor(req);
+  const actor = actorPrincipal.email;
+  const forcedTenantSlug = getAdminTenantScope(req).forcedTenantSlug || null;
 
   let orderRows;
   try {
@@ -129,6 +125,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       FROM supplier_orders so
       JOIN tenants t ON t.id = so.tenant_id
       WHERE so.id = ${orderId}::uuid
+        AND (${forcedTenantSlug}::text IS NULL OR t.slug = ${forcedTenantSlug})
       LIMIT 1
     `;
   } catch (error) {
@@ -146,18 +143,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
   }
   const order = orderRows[0];
   if (!order) return json({ ok: false, reason: "supplier_order_not_found" }, 404);
-  if (adminTenantScope.forcedTenantSlug && String(order.tenant_slug || "").toLowerCase() !== adminTenantScope.forcedTenantSlug) {
-    return json({
-      ok: false,
-      reason: "supplier_order_forbidden_for_tenant",
-      message: "Supplier order belongs to a different tenant scope.",
-    }, 403);
-  }
 
-  // Purpose is a custody-boundary decision, not descriptive metadata. Keep
-  // every non-trial order outside the batch-key SELECT/decryption path. Legacy
+  // Purpose is a custody-boundary decision, not descriptive metadata. Legacy
   // classification is resolved by the append-only governance decision; it is
   // never inferred from order names, quantities, carrier profiles or QA state.
+  // Production crosses the key boundary only after its per-BID plan approvals.
   const effectivePackPurpose = String(order.effective_pack_purpose || "").trim();
   if (!effectivePackPurpose || effectivePackPurpose === "legacy_unclassified") {
     return json({
@@ -166,23 +156,22 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       message: "Classify this legacy supplier order through the audited purpose workflow before exporting factory key material.",
     }, 409);
   }
-  if (effectivePackPurpose === "production") {
-    return json({
-      ok: false,
-      reason: "supplier_production_qa_plan_required",
-      message: "Production factory export remains blocked until a tenant-approved production QA plan and release receipt are implemented.",
-    }, 409);
-  }
-  if (effectivePackPurpose !== "trial_integration") {
+  if (!new Set(["trial_integration", "production"]).has(effectivePackPurpose)) {
     return json({
       ok: false,
       reason: "supplier_pack_purpose_unclassified",
       message: "Unsupported supplier pack purpose. Reconcile the audited order classification before export.",
     }, 409);
   }
-  const packPurpose = effectivePackPurpose;
-  const commercialDisposition = "NON_SELLABLE" as const;
+  const packPurpose = effectivePackPurpose as "trial_integration" | "production";
+  const isProduction = packPurpose === "production";
+  const commercialDisposition = isProduction
+    ? "PENDING_RECEIVING_QA" as const
+    : "NON_SELLABLE" as const;
   const activationAllowed = false as const;
+  const custodyWarning = isProduction
+    ? "PENDING_RECEIVING_QA production encoding pack. Factory encoding does not activate, release, claim or tokenize products; tenant receiving QA and its independent acceptance decision remain mandatory."
+    : "NON_SELLABLE trial-integration pack. Do not sell, ship, claim, tokenize or activate products encoded from this pack.";
 
   // This gate deliberately precedes both the batch-key SELECT and every call
   // to decryptBatchKeyHex. An unapproved or inconsistent packaging record must
@@ -216,8 +205,189 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
     activation_allowed: activationAllowed,
     spec: packagingGate.specSnapshot,
   };
+  const secureSunProfile = requiresSecureSunEncoding(order.carrier_profile_code);
 
-  const rows = requestedBid
+  // Scope is selected without joining batch_keys. For production, every BID
+  // must cross the tenant-approved plan gate before ciphertext is selected or
+  // decryptBatchKeyHex can run.
+  const scopeRows = requestedBid
+    ? await sql/*sql*/`
+        SELECT
+          ssb.id AS supplier_sub_batch_id,
+          ssb.bid,
+          ssb.expected_quantity,
+          ssb.key_export_count,
+          ssb.metadata_json,
+          b.id AS batch_id,
+          b.sdm_config
+        FROM supplier_sub_batches ssb
+        JOIN batches b
+          ON b.id = ssb.batch_id
+         AND b.tenant_id = ssb.tenant_id
+         AND b.supplier_order_id = ssb.supplier_order_id
+         AND b.supplier_sub_batch_id = ssb.id
+         AND upper(b.bid) = upper(ssb.bid)
+        WHERE ssb.supplier_order_id = ${order.id}
+          AND ssb.tenant_id = ${order.tenant_id}
+          AND ssb.bid = ${requestedBid}
+        ORDER BY ssb.sequence_index ASC
+      `
+    : await sql/*sql*/`
+        SELECT
+          ssb.id AS supplier_sub_batch_id,
+          ssb.bid,
+          ssb.expected_quantity,
+          ssb.key_export_count,
+          ssb.metadata_json,
+          b.id AS batch_id,
+          b.sdm_config
+        FROM supplier_sub_batches ssb
+        JOIN batches b
+          ON b.id = ssb.batch_id
+         AND b.tenant_id = ssb.tenant_id
+         AND b.supplier_order_id = ssb.supplier_order_id
+         AND b.supplier_sub_batch_id = ssb.id
+         AND upper(b.bid) = upper(ssb.bid)
+        WHERE ssb.supplier_order_id = ${order.id}
+          AND ssb.tenant_id = ${order.tenant_id}
+        ORDER BY ssb.sequence_index ASC
+      `;
+  if (!scopeRows.length) return json({ ok: false, reason: "supplier_sub_batch_not_found" }, 404);
+
+  const subBatchIds = scopeRows.map((row) => String(row.supplier_sub_batch_id));
+  const approvedProductionPlans = new Map<string, ApprovedProductionQaPlan>();
+  if (isProduction) {
+    let approvalRows: Array<Record<string, unknown>>;
+    try {
+      approvalRows = await sql/*sql*/`
+        SELECT
+          plan.id AS qa_plan_id,
+          plan.supplier_order_id,
+          plan.supplier_sub_batch_id,
+          plan.batch_id,
+          plan.bid,
+          plan.schema_version AS qa_plan_schema,
+          plan.revision AS qa_plan_revision,
+          plan.lot_size AS qa_plan_lot_size,
+          plan.inspection_level AS qa_plan_inspection_level,
+          plan.target_aql::text AS qa_plan_target_aql,
+          plan.sample_size AS qa_plan_sample_size,
+          plan.accept_number AS qa_plan_accept_number,
+          plan.reject_number AS qa_plan_reject_number,
+          plan.policy_reference AS qa_plan_policy_reference,
+          plan.policy_document_sha256 AS qa_plan_policy_document_sha256,
+          plan.stratification_dimension AS qa_plan_stratification_dimension,
+          plan.cryptographic_sample_size AS qa_plan_cryptographic_sample_size,
+          plan.plan_binding AS qa_plan_binding,
+          plan.plan_digest AS qa_plan_digest,
+          plan.submitted_at AS qa_plan_submitted_at,
+          decision.id AS qa_plan_decision_id,
+          decision.schema_version AS qa_plan_decision_schema,
+          decision.reason AS qa_plan_approval_reason,
+          decision.approval_evidence_ref AS qa_plan_approval_evidence_ref,
+          decision.approval_evidence_sha256 AS qa_plan_approval_evidence_sha256,
+          decision.decided_at AS qa_plan_approved_at,
+          lower(approver.email) AS qa_plan_approved_by
+        FROM unnest(${subBatchIds}::uuid[]) AS requested_scope(supplier_sub_batch_id)
+        JOIN supplier_sub_batches ssb
+          ON ssb.id = requested_scope.supplier_sub_batch_id
+         AND ssb.tenant_id = ${order.tenant_id}
+         AND ssb.supplier_order_id = ${order.id}
+        JOIN supplier_production_qa_plans plan
+          ON plan.tenant_id = ssb.tenant_id
+         AND plan.supplier_order_id = ssb.supplier_order_id
+         AND plan.supplier_sub_batch_id = ssb.id
+         AND plan.batch_id = ssb.batch_id
+         AND upper(plan.bid) = upper(ssb.bid)
+         AND plan.schema_version = 'supplier-production-qa-plan/v1'
+         AND plan.lot_size = ssb.expected_quantity
+        JOIN supplier_production_qa_plan_decisions decision
+          ON decision.plan_id = plan.id
+         AND decision.tenant_id = plan.tenant_id
+         AND decision.supplier_order_id = plan.supplier_order_id
+         AND decision.supplier_sub_batch_id = plan.supplier_sub_batch_id
+         AND decision.batch_id = plan.batch_id
+         AND upper(decision.bid) = upper(plan.bid)
+         AND decision.schema_version = 'supplier-production-qa-plan-decision/v1'
+         AND decision.plan_digest = plan.plan_digest
+         AND decision.decision_status = 'approved'
+         AND decision.approver_role IN ('tenant_owner', 'tenant_admin')
+         AND decision.decided_at <= now()
+        JOIN users approver ON approver.id = decision.decided_by
+        WHERE NOT EXISTS (
+          SELECT 1
+          FROM supplier_production_qa_plans newer_plan
+          WHERE newer_plan.tenant_id = plan.tenant_id
+            AND newer_plan.supplier_sub_batch_id = plan.supplier_sub_batch_id
+            AND newer_plan.revision > plan.revision
+        )
+        ORDER BY ssb.sequence_index ASC
+      `;
+    } catch (error) {
+      const code = safeDatabaseErrorCode(error);
+      console.error("[supplier_production_qa_export_gate_unavailable]", code);
+      return json({
+        ok: false,
+        reason: new Set(["42P01", "42703", "42883"]).has(code)
+          ? "supplier_production_qa_migration_required"
+          : "supplier_production_qa_governance_unavailable",
+        ...(new Set(["42P01", "42703", "42883"]).has(code)
+          ? { required_migration: "20260801090000_0075_supplier_production_qa_acceptance.sql" }
+          : {}),
+      }, 503);
+    }
+
+    for (const row of approvalRows) {
+      const approval: ApprovedProductionQaPlan = {
+        supplier_order_id: String(row.supplier_order_id),
+        supplier_sub_batch_id: String(row.supplier_sub_batch_id),
+        batch_id: String(row.batch_id),
+        bid: String(row.bid),
+        plan_schema: "supplier-production-qa-plan/v1",
+        plan_id: String(row.qa_plan_id),
+        plan_revision: Number(row.qa_plan_revision),
+        plan_digest: String(row.qa_plan_digest),
+        decision_id: String(row.qa_plan_decision_id),
+        decision_schema: "supplier-production-qa-plan-decision/v1",
+        approved_by: String(row.qa_plan_approved_by),
+        approved_at: databaseInstant(row.qa_plan_approved_at),
+        approval_evidence_ref: String(row.qa_plan_approval_evidence_ref),
+        approval_evidence_sha256: String(row.qa_plan_approval_evidence_sha256),
+        lot_size: Number(row.qa_plan_lot_size),
+        inspection_level: String(row.qa_plan_inspection_level),
+        target_aql: String(row.qa_plan_target_aql),
+        sample_size: Number(row.qa_plan_sample_size),
+        accept_number: Number(row.qa_plan_accept_number),
+        reject_number: Number(row.qa_plan_reject_number),
+        policy_reference: String(row.qa_plan_policy_reference),
+        policy_document_sha256: String(row.qa_plan_policy_document_sha256),
+        stratification_dimension: String(row.qa_plan_stratification_dimension) as ApprovedProductionQaPlan["stratification_dimension"],
+        cryptographic_sample_size: Number(row.qa_plan_cryptographic_sample_size),
+        plan_binding: row.qa_plan_binding as Record<string, unknown>,
+        submitted_at: databaseInstant(row.qa_plan_submitted_at),
+        approval_reason: String(row.qa_plan_approval_reason),
+      };
+      approvedProductionPlans.set(approval.supplier_sub_batch_id, approval);
+    }
+
+    let blockedBids = scopeRows
+      .filter((row) => !approvedProductionPlans.has(String(row.supplier_sub_batch_id)))
+      .map((row) => String(row.bid));
+    if (approvedProductionPlans.size !== scopeRows.length || blockedBids.length > 0) {
+      if (blockedBids.length === 0) blockedBids = scopeRows.map((row) => String(row.bid));
+      return json({
+        ok: false,
+        reason: "supplier_production_qa_plan_required",
+        message: "Every production BID requires a current tenant-approved QA plan bound to the same order, sub-batch, batch, BID and lot size before factory keys can be selected.",
+        blocked_bids: blockedBids,
+      }, 409);
+    }
+  }
+
+  // Secure SUN packs require exactly one wrapped key pair. Every other carrier
+  // is intentionally keyless: the query proves that no batch-key row or role
+  // material exists before any archive is built.
+  const rows = secureSunProfile
     ? await sql/*sql*/`
         SELECT
           ssb.id AS supplier_sub_batch_id,
@@ -232,10 +402,23 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
           bk.file_key_ct,
           bk.key_fingerprint,
           bk.export_count
-        FROM supplier_sub_batches ssb
-        JOIN batches b ON b.id = ssb.batch_id
-        JOIN batch_keys bk ON bk.supplier_sub_batch_id = ssb.id
-        WHERE ssb.supplier_order_id = ${order.id} AND ssb.bid = ${requestedBid}
+        FROM unnest(${subBatchIds}::uuid[]) AS requested_scope(supplier_sub_batch_id)
+        JOIN supplier_sub_batches ssb
+          ON ssb.id = requested_scope.supplier_sub_batch_id
+         AND ssb.tenant_id = ${order.tenant_id}
+         AND ssb.supplier_order_id = ${order.id}
+        JOIN batches b
+          ON b.id = ssb.batch_id
+         AND b.tenant_id = ssb.tenant_id
+         AND b.supplier_order_id = ssb.supplier_order_id
+         AND b.supplier_sub_batch_id = ssb.id
+         AND upper(b.bid) = upper(ssb.bid)
+        JOIN batch_keys bk
+          ON bk.supplier_sub_batch_id = ssb.id
+         AND bk.tenant_id = ssb.tenant_id
+         AND bk.supplier_order_id = ssb.supplier_order_id
+         AND bk.batch_id = ssb.batch_id
+         AND upper(bk.bid) = upper(ssb.bid)
         ORDER BY ssb.sequence_index ASC
       `
     : await sql/*sql*/`
@@ -247,18 +430,51 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
           ssb.metadata_json,
           b.id AS batch_id,
           b.sdm_config,
-          bk.id AS batch_key_id,
-          bk.meta_key_ct,
-          bk.file_key_ct,
-          bk.key_fingerprint,
-          bk.export_count
-        FROM supplier_sub_batches ssb
-        JOIN batches b ON b.id = ssb.batch_id
-        JOIN batch_keys bk ON bk.supplier_sub_batch_id = ssb.id
-        WHERE ssb.supplier_order_id = ${order.id}
+          NULL::uuid AS batch_key_id,
+          NULL::text AS meta_key_ct,
+          NULL::text AS file_key_ct,
+          NULL::text AS key_fingerprint,
+          0::integer AS export_count
+        FROM unnest(${subBatchIds}::uuid[]) AS requested_scope(supplier_sub_batch_id)
+        JOIN supplier_sub_batches ssb
+          ON ssb.id = requested_scope.supplier_sub_batch_id
+         AND ssb.tenant_id = ${order.tenant_id}
+         AND ssb.supplier_order_id = ${order.id}
+        JOIN batches b
+          ON b.id = ssb.batch_id
+         AND b.tenant_id = ssb.tenant_id
+         AND b.supplier_order_id = ssb.supplier_order_id
+         AND b.supplier_sub_batch_id = ssb.id
+         AND upper(b.bid) = upper(ssb.bid)
+        WHERE b.meta_key_ct IS NULL
+          AND b.file_key_ct IS NULL
+          AND NOT EXISTS (
+            SELECT 1
+            FROM batch_keys unexpected_key
+            WHERE unexpected_key.supplier_sub_batch_id = ssb.id
+               OR unexpected_key.batch_id = b.id
+               OR (unexpected_key.tenant_id = ssb.tenant_id AND upper(unexpected_key.bid) = upper(ssb.bid))
+          )
+          AND NOT EXISTS (
+            SELECT 1
+            FROM batch_key_material unexpected_material
+            WHERE unexpected_material.supplier_sub_batch_id = ssb.id
+               OR unexpected_material.batch_id = b.id
+               OR (unexpected_material.tenant_id = ssb.tenant_id AND upper(unexpected_material.bid) = upper(ssb.bid))
+          )
         ORDER BY ssb.sequence_index ASC
       `;
-  if (!rows.length) return json({ ok: false, reason: "supplier_sub_batch_not_found" }, 404);
+  if (rows.length !== scopeRows.length) {
+    return json({
+      ok: false,
+      reason: secureSunProfile
+        ? "supplier_pack_key_scope_incomplete"
+        : "supplier_pack_keyless_scope_invalid",
+      message: secureSunProfile
+        ? "The scoped batch-key set is incomplete. No key material was decrypted and no export counter was consumed."
+        : "A keyless carrier contains unexpected batch-key material or an invalid batch binding. Nothing was decrypted and no export counter was consumed.",
+    }, 409);
+  }
 
   const alreadyExported = rows
     .map((row) => canExportSupplierPack({
@@ -276,16 +492,66 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
     }, 409);
   }
 
-  const subBatchIds = rows.map((row) => String(row.supplier_sub_batch_id));
+  const productionQaPlanApprovalReceipt = isProduction ? {
+    schema: "nexid-supplier-production-qa-plan-approval-receipt/v1",
+    tenant_id: String(order.tenant_id),
+    tenant_slug: String(order.tenant_slug),
+    supplier_order_id: String(order.id),
+    requested_bid: requestedBid || null,
+    pack_purpose: packPurpose,
+    commercial_disposition: commercialDisposition,
+    activation_allowed: activationAllowed,
+    receiving_qa_required: true,
+    warning: custodyWarning,
+    plans: scopeRows.map((row) => approvedProductionPlans.get(String(row.supplier_sub_batch_id))!),
+  } : null;
+  const productionQaPlanApprovalBody = productionQaPlanApprovalReceipt
+    ? JSON.stringify(productionQaPlanApprovalReceipt, null, 2)
+    : null;
+  const productionQaPlanApprovalHash = productionQaPlanApprovalBody
+    ? sha256Text(productionQaPlanApprovalBody)
+    : null;
+
   const packs = [];
   const zipEntries: SupplierZipEntry[] = [];
   const artifactRecords: Array<Record<string, unknown>> = [];
   const evidenceRecords: Array<Record<string, unknown>> = [];
 
+  if (productionQaPlanApprovalBody && productionQaPlanApprovalHash) {
+    artifactRecords.push({
+      supplier_sub_batch_id: null,
+      resource_type: "supplier_order",
+      resource_id: order.id,
+      artifact_type: "supplier_production_qa_plan_approval_receipt",
+      content_hash: productionQaPlanApprovalHash,
+      mime_type: "application/json",
+      metadata_json: {
+        filename: "PRODUCTION_QA_PLAN_APPROVAL.json",
+        plan_count: approvedProductionPlans.size,
+        selected_sub_batch_ids: subBatchIds,
+        pack_purpose: packPurpose,
+        commercial_disposition: commercialDisposition,
+        activation_allowed: activationAllowed,
+        receiving_qa_required: true,
+      },
+    });
+  }
+
   for (const row of rows) {
-    const kMetaHex = decryptBatchKeyHex(String(row.meta_key_ct), { tenantId: String(order.tenant_id), bid: String(row.bid), role: "K_META_BATCH" });
-    const kFileHex = decryptBatchKeyHex(String(row.file_key_ct), { tenantId: String(order.tenant_id), bid: String(row.bid), role: "K_FILE_BATCH" });
+    const productionQaPlanApproval = isProduction
+      ? approvedProductionPlans.get(String(row.supplier_sub_batch_id))!
+      : null;
+    const kMetaHex = secureSunProfile
+      ? decryptBatchKeyHex(String(row.meta_key_ct), { tenantId: String(order.tenant_id), bid: String(row.bid), role: "K_META_BATCH" })
+      : null;
+    const kFileHex = secureSunProfile
+      ? decryptBatchKeyHex(String(row.file_key_ct), { tenantId: String(order.tenant_id), bid: String(row.bid), role: "K_FILE_BATCH" })
+      : null;
     const urlTemplate = String(row.metadata_json?.url_template || row.sdm_config?.url_template || "");
+    const manifestTemplate = buildSupplierManifestTemplate({
+      carrierProfile: order.carrier_profile_code,
+      batchId: row.bid,
+    });
     const pack = buildSupplierEncodingPack({
       clientSlug: String(order.customer_slug || order.tenant_slug),
       batchId: String(row.bid),
@@ -298,6 +564,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       kMetaHex,
       kFileHex,
       urlTemplate,
+      productionQaPlanApproved: productionQaPlanApproval !== null,
     });
 
     const governedPackJson = {
@@ -305,11 +572,30 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       PACK_PURPOSE: packPurpose,
       COMMERCIAL_DISPOSITION: commercialDisposition,
       ACTIVATION_ALLOWED: activationAllowed,
+      RECEIVING_QA_REQUIRED: isProduction,
+      PRODUCTION_QA_PLAN_APPROVAL: productionQaPlanApproval,
+      PRODUCTION_QA_PLAN_APPROVAL_RECEIPT_SHA256: productionQaPlanApprovalHash,
     };
     const governedPackText = [
-      "NON_SELLABLE - TRIAL INTEGRATION ONLY - DO NOT SELL, SHIP, OR ACTIVATE",
+      isProduction
+        ? "PENDING_RECEIVING_QA - PRODUCTION ENCODING ONLY - DO NOT ACTIVATE OR RELEASE"
+        : "NON_SELLABLE - TRIAL INTEGRATION ONLY - DO NOT SELL, SHIP, OR ACTIVATE",
       `COMMERCIAL_DISPOSITION=${commercialDisposition}`,
       `ACTIVATION_ALLOWED=${activationAllowed}`,
+      `RECEIVING_QA_REQUIRED=${isProduction}`,
+      ...(productionQaPlanApproval ? [
+        `PRODUCTION_QA_PLAN_ID=${productionQaPlanApproval.plan_id}`,
+        `PRODUCTION_QA_PLAN_REVISION=${productionQaPlanApproval.plan_revision}`,
+        `PRODUCTION_QA_PLAN_DIGEST=${productionQaPlanApproval.plan_digest}`,
+        `PRODUCTION_QA_PLAN_DECISION_ID=${productionQaPlanApproval.decision_id}`,
+        `PRODUCTION_QA_PLAN_APPROVED_BY=${productionQaPlanApproval.approved_by}`,
+        `PRODUCTION_QA_PLAN_APPROVED_AT=${productionQaPlanApproval.approved_at}`,
+        `PRODUCTION_QA_PLAN_APPROVAL_EVIDENCE=${productionQaPlanApproval.approval_evidence_ref}`,
+        `PRODUCTION_QA_PLAN_APPROVAL_EVIDENCE_SHA256=${productionQaPlanApproval.approval_evidence_sha256}`,
+        `PRODUCTION_QA_PLAN_APPROVAL_RECEIPT_SHA256=${productionQaPlanApprovalHash}`,
+        "RECEIVING_QA_STATUS=PENDING",
+      ] : []),
+      custodyWarning,
       pack.text.trimEnd(),
       "",
     ].join("\n");
@@ -329,20 +615,25 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       contentHash: governedPackContentHash,
       jsonHash,
       urlTemplate,
+      productionQaPlanApproval,
+      productionQaPlanApprovalReceiptHash: productionQaPlanApprovalHash,
     });
     const pdfHash = sha256Buffer(pdfBody);
     const textFilename = `${row.bid}_supplier_encoding_pack.txt`;
     const jsonFilename = `${row.bid}_supplier_encoding_pack.json`;
     const pdfFilename = `${row.bid}_supplier_encoding_summary.pdf`;
+    const manifestTemplatePath = `${row.bid}/${manifestTemplate.filename}`;
     zipEntries.push(
       { path: `${row.bid}/${textFilename}`, data: governedPackText },
       { path: `${row.bid}/${jsonFilename}`, data: jsonBody },
       { path: `${row.bid}/${pdfFilename}`, data: pdfBody },
+      { path: manifestTemplatePath, data: manifestTemplate.csv },
     );
     for (const [artifactType, contentHash, mimeType] of [
       ["supplier_pack_txt", governedPackContentHash, "text/plain"],
       ["supplier_pack_json", jsonHash, "application/json"],
       ["supplier_pack_pdf_summary", pdfHash, "application/pdf"],
+      ["supplier_manifest_template_csv", manifestTemplate.contentHash, "text/csv"],
     ] as const) {
       artifactRecords.push({
         supplier_sub_batch_id: row.supplier_sub_batch_id,
@@ -356,9 +647,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
           pack_purpose: packPurpose,
           commercial_disposition: commercialDisposition,
           activation_allowed: activationAllowed,
-          key_fingerprint: row.key_fingerprint,
+          key_fingerprint: secureSunProfile ? row.key_fingerprint : null,
+          key_material_mode: secureSunProfile ? "secure_sun" : "none",
+          manifest_template_filename: manifestTemplate.filename,
+          manifest_template_path: manifestTemplatePath,
+          manifest_template_sha256: manifestTemplate.contentHash,
+          manifest_template_headers: manifestTemplate.headers,
           packaging_spec_revision: packagingGate.specRevision,
           packaging_spec_hash: packagingGate.specHash,
+          production_qa_plan_id: productionQaPlanApproval?.plan_id || null,
+          production_qa_plan_digest: productionQaPlanApproval?.plan_digest || null,
+          production_qa_plan_decision_id: productionQaPlanApproval?.decision_id || null,
+          production_qa_plan_approval_receipt_sha256: productionQaPlanApprovalHash,
+          receiving_qa_required: isProduction,
         },
       });
     }
@@ -371,11 +672,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       activation_allowed: activationAllowed,
       content_hash: governedPackContentHash,
       json_hash: jsonHash,
-      key_fingerprint: row.key_fingerprint,
+      key_fingerprint: secureSunProfile ? row.key_fingerprint : null,
+      key_material_mode: secureSunProfile ? "secure_sun" : "none",
+      manifest_template_path: manifestTemplatePath,
+      manifest_template_sha256: manifestTemplate.contentHash,
+      manifest_template_headers: manifestTemplate.headers,
       exported_by: actor,
       pdf_hash: pdfHash,
       packaging_spec_revision: packagingGate.specRevision,
       packaging_spec_hash: packagingGate.specHash,
+      production_qa_plan_id: productionQaPlanApproval?.plan_id || null,
+      production_qa_plan_digest: productionQaPlanApproval?.plan_digest || null,
+      production_qa_plan_decision_id: productionQaPlanApproval?.decision_id || null,
+      production_qa_plan_approval_evidence_sha256: productionQaPlanApproval?.approval_evidence_sha256 || null,
+      production_qa_plan_approval_receipt_sha256: productionQaPlanApprovalHash,
+      receiving_qa_required: isProduction,
     };
     const eventHash = hashEvidencePayload({
       tenantId: String(order.tenant_id),
@@ -395,24 +706,38 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
     packs.push({
       folder: String(row.bid),
       bid: row.bid,
-      key_fingerprint: row.key_fingerprint,
+      key_fingerprint: secureSunProfile ? row.key_fingerprint : null,
+      key_material_mode: secureSunProfile ? "secure_sun" : "none",
       text_filename: textFilename,
       json_filename: jsonFilename,
       pdf_summary_filename: pdfFilename,
+      manifest_template_filename: manifestTemplate.filename,
+      manifest_template_path: manifestTemplatePath,
       content_hash: governedPackContentHash,
       json_hash: jsonHash,
       pdf_hash: pdfHash,
+      manifest_template_sha256: manifestTemplate.contentHash,
+      manifest_template_headers: manifestTemplate.headers,
       pack_purpose: packPurpose,
       commercial_disposition: commercialDisposition,
       activation_allowed: activationAllowed,
+      receiving_qa_required: isProduction,
+      production_qa_plan_id: productionQaPlanApproval?.plan_id || null,
+      production_qa_plan_digest: productionQaPlanApproval?.plan_digest || null,
+      production_qa_plan_decision_id: productionQaPlanApproval?.decision_id || null,
+      production_qa_plan_approval_receipt_sha256: productionQaPlanApprovalHash,
     });
   }
 
   const readme = [
-    "NON_SELLABLE - TRIAL INTEGRATION ONLY - DO NOT SELL, SHIP, OR ACTIVATE",
+    isProduction
+      ? "PENDING_RECEIVING_QA - PRODUCTION ENCODING ONLY - DO NOT ACTIVATE OR RELEASE"
+      : "NON_SELLABLE - TRIAL INTEGRATION ONLY - DO NOT SELL, SHIP, OR ACTIVATE",
     `PACK_PURPOSE=${packPurpose}`,
     `COMMERCIAL_DISPOSITION=${commercialDisposition}`,
     `ACTIVATION_ALLOWED=${activationAllowed}`,
+    `RECEIVING_QA_REQUIRED=${isProduction}`,
+    custodyWarning,
     "",
     "nexID Supplier Encoding Pack",
     "",
@@ -426,10 +751,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
     "Contents:",
     "- One folder per sub-batch.",
     "- TXT and JSON contain profile-specific encoding instructions for that sub-batch.",
+    "- manifest-template.csv provides the carrier-specific import headers for that sub-batch.",
     "- K_META_BATCH and K_FILE_BATCH appear only for NTAG 424 DNA / TagTamper profiles.",
     "- PDF contains human-readable instructions and hashes.",
     "- CHECKSUMS.sha256 verifies every file before factory handoff.",
     "- PACKAGING_APPROVAL.json is the approved, non-secret production specification bound to this export.",
+    ...(isProduction ? [
+      "- PRODUCTION_QA_PLAN_APPROVAL.json is the immutable tenant approval receipt for every selected BID.",
+      `- Production QA approval receipt hash: ${productionQaPlanApprovalHash}`,
+      "- This approval authorizes factory encoding only; it does not replace receiving QA or activate products.",
+    ] : []),
     "",
     "Security:",
     "- This encrypted container is the only browser payload.",
@@ -442,6 +773,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
   const archiveEntries: SupplierZipEntry[] = [
     { path: "README_FIRST.txt", data: readme },
     { path: "PACKAGING_APPROVAL.json", data: JSON.stringify(packagingApprovalMetadata, null, 2) },
+    ...(productionQaPlanApprovalBody
+      ? [{ path: "PRODUCTION_QA_PLAN_APPROVAL.json", data: productionQaPlanApprovalBody }]
+      : []),
     ...zipEntries,
   ];
   const checksums = archiveEntries
@@ -460,13 +794,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
     activation_allowed: activationAllowed,
     packaging_spec_revision: packagingGate.specRevision,
     packaging_spec_hash: packagingGate.specHash,
+    production_qa_plan_approval_receipt_sha256: productionQaPlanApprovalHash,
+    receiving_qa_required: isProduction,
     zip_layout: "one-folder-per-sub-batch",
     sub_batches: packs.map((pack) => ({
       bid: pack.bid,
       key_fingerprint: pack.key_fingerprint,
+      key_material_mode: pack.key_material_mode,
       content_hash: pack.content_hash,
       json_hash: pack.json_hash,
       pdf_hash: pack.pdf_hash,
+      manifest_template_path: pack.manifest_template_path,
+      manifest_template_sha256: pack.manifest_template_sha256,
+      manifest_template_headers: pack.manifest_template_headers,
     })),
   });
   const encryptedFilename = `nexid-supplier-pack-${safeFilename(order.customer_slug || order.tenant_slug, "supplier")}-${String(order.id).slice(0, 8)}.zip.enc`;
@@ -490,13 +830,70 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       encryption: encrypted.encryption,
       password_policy: "operator_generated_not_returned_send_separately",
       entry_count: archiveEntries.length,
+      key_material_mode: secureSunProfile ? "secure_sun" : "none",
+      manifest_templates: packs.map((pack) => ({
+        bid: pack.bid,
+        path: pack.manifest_template_path,
+        sha256: pack.manifest_template_sha256,
+        headers: pack.manifest_template_headers,
+      })),
       pack_purpose: packPurpose,
       commercial_disposition: commercialDisposition,
       activation_allowed: activationAllowed,
       packaging_spec_revision: packagingGate.specRevision,
       packaging_spec_hash: packagingGate.specHash,
+      production_qa_plan_approval_receipt_sha256: productionQaPlanApprovalHash,
+      receiving_qa_required: isProduction,
     },
   });
+
+  const productionPlanLockRecords = isProduction
+    ? scopeRows.map((row) => {
+        const approval = approvedProductionPlans.get(String(row.supplier_sub_batch_id))!;
+        return {
+          supplier_sub_batch_id: approval.supplier_sub_batch_id,
+          batch_id: approval.batch_id,
+          bid: approval.bid,
+          plan_id: approval.plan_id,
+          plan_revision: approval.plan_revision,
+          plan_digest: approval.plan_digest,
+          decision_id: approval.decision_id,
+          approval_evidence_sha256: approval.approval_evidence_sha256,
+          lot_size: approval.lot_size,
+        };
+      })
+    : [];
+
+  const exportAuditData = {
+    order_id: order.id,
+    exported_by: actor,
+    encrypted_pack_hash: encrypted.envelopeHash,
+    plaintext_zip_hash: encrypted.plaintextZipHash,
+    pack_purpose: packPurpose,
+    commercial_disposition: commercialDisposition,
+    activation_allowed: activationAllowed,
+    packaging_spec_revision: packagingGate.specRevision,
+    packaging_spec_hash: packagingGate.specHash,
+    receiving_qa_required: isProduction,
+    production_qa_plan_approval_receipt_sha256: productionQaPlanApprovalHash,
+    bids: packs.map((pack) => ({
+      bid: pack.bid,
+      content_hash: pack.content_hash,
+      json_hash: pack.json_hash,
+      pdf_hash: pack.pdf_hash,
+      key_fingerprint: pack.key_fingerprint,
+      key_material_mode: pack.key_material_mode,
+      manifest_template_path: pack.manifest_template_path,
+      manifest_template_sha256: pack.manifest_template_sha256,
+      manifest_template_headers: pack.manifest_template_headers,
+      production_qa_plan_id: pack.production_qa_plan_id,
+      production_qa_plan_digest: pack.production_qa_plan_digest,
+      production_qa_plan_decision_id: pack.production_qa_plan_decision_id,
+    })),
+  };
+  const exportAuditHash = createHash("sha256")
+    .update(JSON.stringify(exportAuditData))
+    .digest("hex");
 
   // The encrypted artifact, audit evidence and all one-time counters commit in
   // one PostgreSQL statement. Any archive/persistence failure leaves every
@@ -527,28 +924,166 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
     target AS MATERIALIZED (
       SELECT unnest(${subBatchIds}::uuid[]) AS supplier_sub_batch_id
     ),
-    locked AS MATERIALIZED (
-      SELECT ssb.id AS supplier_sub_batch_id
+    production_plan_input AS MATERIALIZED (
+      SELECT *
+      FROM jsonb_to_recordset(${JSON.stringify(productionPlanLockRecords)}::jsonb) AS plan_input(
+        supplier_sub_batch_id uuid,
+        batch_id uuid,
+        bid text,
+        plan_id uuid,
+        plan_revision integer,
+        plan_digest text,
+        decision_id uuid,
+        approval_evidence_sha256 text,
+        lot_size integer
+      )
+    ),
+    approved_production_plans AS MATERIALIZED (
+      SELECT plan.id, plan.supplier_sub_batch_id
+      FROM production_plan_input plan_input
+      JOIN supplier_sub_batches ssb
+        ON ssb.id = plan_input.supplier_sub_batch_id
+       AND ssb.tenant_id = ${order.tenant_id}
+       AND ssb.supplier_order_id = ${order.id}
+       AND ssb.batch_id = plan_input.batch_id
+       AND upper(ssb.bid) = upper(plan_input.bid)
+       AND ssb.expected_quantity = plan_input.lot_size
+      JOIN supplier_production_qa_plans plan
+        ON plan.id = plan_input.plan_id
+       AND plan.tenant_id = ssb.tenant_id
+       AND plan.supplier_order_id = ssb.supplier_order_id
+       AND plan.supplier_sub_batch_id = ssb.id
+       AND plan.batch_id = ssb.batch_id
+       AND upper(plan.bid) = upper(ssb.bid)
+       AND plan.schema_version = 'supplier-production-qa-plan/v1'
+       AND plan.revision = plan_input.plan_revision
+       AND plan.lot_size = plan_input.lot_size
+       AND plan.plan_digest = plan_input.plan_digest
+      JOIN supplier_production_qa_plan_decisions plan_decision
+        ON plan_decision.id = plan_input.decision_id
+       AND plan_decision.plan_id = plan.id
+       AND plan_decision.tenant_id = plan.tenant_id
+       AND plan_decision.supplier_order_id = plan.supplier_order_id
+       AND plan_decision.supplier_sub_batch_id = plan.supplier_sub_batch_id
+       AND plan_decision.batch_id = plan.batch_id
+       AND upper(plan_decision.bid) = upper(plan.bid)
+       AND plan_decision.schema_version = 'supplier-production-qa-plan-decision/v1'
+       AND plan_decision.decision_status = 'approved'
+       AND plan_decision.approver_role IN ('tenant_owner', 'tenant_admin')
+       AND plan_decision.plan_digest = plan.plan_digest
+       AND plan_decision.approval_evidence_sha256 = plan_input.approval_evidence_sha256
+       AND plan_decision.decided_at <= now()
+      WHERE ${packPurpose}::text = 'production'
+        AND NOT EXISTS (
+          SELECT 1
+          FROM supplier_production_qa_plans newer_plan
+          WHERE newer_plan.tenant_id = plan.tenant_id
+            AND newer_plan.supplier_sub_batch_id = plan.supplier_sub_batch_id
+            AND newer_plan.revision > plan.revision
+        )
+      FOR KEY SHARE OF plan, plan_decision
+    ),
+    advisory_locks AS MATERIALIZED (
+      SELECT pg_advisory_xact_lock(hashtextextended(
+        'supplier-pack-export' || chr(31) || target.supplier_sub_batch_id::text,
+        0
+      )) AS acquired
       FROM target
-      JOIN supplier_sub_batches ssb ON ssb.id = target.supplier_sub_batch_id
-      JOIN batch_keys bk ON bk.supplier_sub_batch_id = ssb.id
+      ORDER BY target.supplier_sub_batch_id
+    ),
+    locked_sub_batches AS MATERIALIZED (
+      SELECT ssb.id AS supplier_sub_batch_id, ssb.batch_id
+      FROM target
+      CROSS JOIN approved_order
+      JOIN supplier_sub_batches ssb
+        ON ssb.id = target.supplier_sub_batch_id
+       AND ssb.tenant_id = ${order.tenant_id}
+       AND ssb.supplier_order_id = ${order.id}
+      JOIN batches b
+        ON b.id = ssb.batch_id
+       AND b.tenant_id = ssb.tenant_id
+       AND b.supplier_order_id = ssb.supplier_order_id
+       AND b.supplier_sub_batch_id = ssb.id
+       AND upper(b.bid) = upper(ssb.bid)
       WHERE ssb.key_export_count = 0
-        AND bk.export_count = 0
-      FOR UPDATE OF ssb, bk
+        AND (SELECT COUNT(*) FROM advisory_locks) = ${rows.length}
+        AND (
+          (${secureSunProfile}::boolean AND b.meta_key_ct IS NOT NULL AND b.file_key_ct IS NOT NULL)
+          OR (
+            NOT ${secureSunProfile}::boolean
+            AND b.meta_key_ct IS NULL
+            AND b.file_key_ct IS NULL
+            AND NOT EXISTS (
+              SELECT 1 FROM batch_keys unexpected_key
+              WHERE unexpected_key.supplier_sub_batch_id = ssb.id
+                 OR unexpected_key.batch_id = b.id
+                 OR (unexpected_key.tenant_id = ssb.tenant_id AND upper(unexpected_key.bid) = upper(ssb.bid))
+            )
+            AND NOT EXISTS (
+              SELECT 1 FROM batch_key_material unexpected_material
+              WHERE unexpected_material.supplier_sub_batch_id = ssb.id
+                 OR unexpected_material.batch_id = b.id
+                 OR (unexpected_material.tenant_id = ssb.tenant_id AND upper(unexpected_material.bid) = upper(ssb.bid))
+            )
+          )
+        )
+      FOR UPDATE OF ssb
+    ),
+    locked_keys AS MATERIALIZED (
+      SELECT bk.supplier_sub_batch_id
+      FROM locked_sub_batches locked
+      JOIN batch_keys bk
+        ON bk.supplier_sub_batch_id = locked.supplier_sub_batch_id
+       AND bk.batch_id = locked.batch_id
+       AND bk.tenant_id = ${order.tenant_id}
+       AND bk.supplier_order_id = ${order.id}
+       AND bk.export_count = 0
+      WHERE ${secureSunProfile}::boolean
+      FOR UPDATE OF bk
+    ),
+    locked_key_material AS MATERIALIZED (
+      SELECT material.id, material.supplier_sub_batch_id
+      FROM locked_keys locked
+      JOIN batch_key_material material
+        ON material.supplier_sub_batch_id = locked.supplier_sub_batch_id
+       AND material.tenant_id = ${order.tenant_id}
+       AND material.supplier_order_id = ${order.id}
+       AND material.status = 'active'
+       AND material.export_count = 0
+      WHERE ${secureSunProfile}::boolean
+      FOR UPDATE OF material
     ),
     readiness AS MATERIALIZED (
       SELECT
-        COUNT(*)::int = ${rows.length} AS keys_ready,
-        EXISTS (SELECT 1 FROM approved_order) AS packaging_ready
-      FROM locked
+        (SELECT COUNT(*)::int FROM locked_sub_batches) = ${rows.length} AS sub_batches_ready,
+        CASE WHEN ${secureSunProfile}::boolean
+          THEN (SELECT COUNT(*)::int FROM locked_keys) = ${rows.length}
+          ELSE (SELECT COUNT(*)::int FROM locked_keys) = 0
+        END AS key_scope_ready,
+        CASE WHEN ${secureSunProfile}::boolean
+          THEN (SELECT COUNT(*)::int FROM locked_key_material) = ${rows.length * 2}
+          ELSE (SELECT COUNT(*)::int FROM locked_key_material) = 0
+        END AS key_material_scope_ready,
+        EXISTS (SELECT 1 FROM approved_order) AS packaging_ready,
+        (
+          ${packPurpose}::text <> 'production'
+          OR (SELECT COUNT(*)::int FROM approved_production_plans) = ${rows.length}
+        ) AS production_qa_ready
     ),
     reserved_sub_batches AS (
       UPDATE supplier_sub_batches ssb
       SET key_export_count = key_export_count + 1,
           key_exported_at = now(),
+          metadata_json = COALESCE(metadata_json, '{}'::jsonb) || jsonb_build_object(
+            'supplier_pack_export_count', key_export_count + 1,
+            'supplier_pack_exported_at', now(),
+            'key_material_mode', CASE WHEN ${secureSunProfile}::boolean THEN 'secure_sun' ELSE 'none' END
+          ),
           updated_at = now()
-      FROM locked, readiness
-      WHERE readiness.keys_ready AND readiness.packaging_ready
+      FROM locked_sub_batches locked, readiness
+      WHERE readiness.sub_batches_ready AND readiness.key_scope_ready
+        AND readiness.key_material_scope_ready
+        AND readiness.packaging_ready AND readiness.production_qa_ready
         AND ssb.id = locked.supplier_sub_batch_id
       RETURNING ssb.id
     ),
@@ -556,8 +1091,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       UPDATE batch_keys bk
       SET export_count = export_count + 1,
           exported_at = now()
-      FROM locked, readiness
-      WHERE readiness.keys_ready AND readiness.packaging_ready
+      FROM locked_keys locked, readiness
+      WHERE readiness.sub_batches_ready AND readiness.key_scope_ready
+        AND readiness.key_material_scope_ready
+        AND readiness.packaging_ready AND readiness.production_qa_ready
         AND bk.supplier_sub_batch_id = locked.supplier_sub_batch_id
       RETURNING bk.supplier_sub_batch_id
     ),
@@ -567,20 +1104,28 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
           exported_at = now(),
           exported_by = ${actor},
           updated_at = now()
-      FROM locked, readiness
-      WHERE readiness.keys_ready AND readiness.packaging_ready
-        AND material.supplier_sub_batch_id = locked.supplier_sub_batch_id
-        AND material.status = 'active'
-        AND material.export_count = 0
+      FROM locked_key_material locked, readiness
+      WHERE readiness.sub_batches_ready AND readiness.key_scope_ready
+        AND readiness.key_material_scope_ready
+        AND readiness.packaging_ready AND readiness.production_qa_ready
+        AND material.id = locked.id
       RETURNING material.id
     ),
     reservation_gate AS MATERIALIZED (
       SELECT
-        readiness.keys_ready
+        readiness.sub_batches_ready
+          AND readiness.key_scope_ready
+          AND readiness.key_material_scope_ready
           AND readiness.packaging_ready
+          AND readiness.production_qa_ready
           AND (SELECT COUNT(*) FROM reserved_sub_batches) = ${rows.length}
-          AND (SELECT COUNT(*) FROM reserved_keys) = ${rows.length} AS ok,
+          AND (SELECT COUNT(*) FROM reserved_keys) = CASE
+            WHEN ${secureSunProfile}::boolean THEN ${rows.length} ELSE 0 END
+          AND (SELECT COUNT(*) FROM reserved_material) = CASE
+            WHEN ${secureSunProfile}::boolean THEN ${rows.length * 2} ELSE 0 END AS ok,
         readiness.packaging_ready,
+        readiness.production_qa_ready,
+        (SELECT COUNT(*)::int FROM approved_production_plans) AS approved_production_plans,
         (SELECT COUNT(*)::int FROM reserved_sub_batches) AS reserved_sub_batches,
         (SELECT COUNT(*)::int FROM reserved_keys) AS reserved_keys,
         (SELECT COUNT(*)::int FROM reserved_material) AS reserved_material
@@ -638,70 +1183,76 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       WHERE gate.ok
       ON CONFLICT (payload_hash) DO NOTHING
       RETURNING id
+    ),
+    inserted_audit AS (
+      INSERT INTO audit_logs (
+        actor_id, tenant_id, action, resource_type, resource_id,
+        after_hash, user_agent, request_id
+      )
+      SELECT
+        ${actorPrincipal.id}::uuid, ${order.tenant_id}, 'supplier_pack_exported',
+        'supplier_order', ${String(order.id)}, ${exportAuditHash},
+        ${req.headers.get("user-agent") || null}, ${req.headers.get("x-request-id") || null}
+      FROM reservation_gate gate
+      WHERE gate.ok
+        AND (SELECT COUNT(*)::int FROM inserted_artifacts) = ${artifactRecords.length}
+      RETURNING id
     )
       SELECT gate.ok AS ready,
            gate.packaging_ready,
+           gate.production_qa_ready,
+           gate.approved_production_plans,
            gate.reserved_sub_batches,
            gate.reserved_keys,
            gate.reserved_material,
            (SELECT COUNT(*)::int FROM inserted_artifacts) AS inserted_artifacts,
-           (SELECT COUNT(*)::int FROM inserted_evidence) AS inserted_evidence
+           (SELECT COUNT(*)::int FROM inserted_evidence) AS inserted_evidence,
+           (SELECT COUNT(*)::int FROM inserted_audit) AS inserted_audit
     FROM reservation_gate gate
   `;
   const persisted = persistedRows[0] || {};
-  if (persisted.ready !== true || Number(persisted.inserted_artifacts || 0) !== artifactRecords.length) {
+  if (
+    persisted.ready !== true
+    || Number(persisted.inserted_artifacts || 0) !== artifactRecords.length
+    || Number(persisted.inserted_audit || 0) !== 1
+  ) {
+    const productionQaChanged = isProduction && persisted.production_qa_ready === false;
     return json({
       ok: false,
-      reason: persisted.packaging_ready === false
-        ? "supplier_packaging_approval_changed"
-        : "supplier_pack_export_conflict",
-      message: persisted.packaging_ready === false
-        ? "Packaging approval changed during export. No artifact or one-time counter was committed; review the current packaging revision before retrying."
-        : "The encrypted artifact was not committed, so no one-time export counter was consumed. Retry after checking for a concurrent export.",
+      reason: productionQaChanged
+        ? "supplier_production_qa_plan_approval_changed"
+        : persisted.packaging_ready === false
+          ? "supplier_packaging_approval_changed"
+          : "supplier_pack_export_conflict",
+      message: productionQaChanged
+        ? "A production QA plan approval changed during export. No artifact or one-time counter was committed; review every selected BID before retrying."
+        : persisted.packaging_ready === false
+          ? "Packaging approval changed during export. No artifact or one-time counter was committed; review the current packaging revision before retrying."
+          : "The encrypted artifact was not committed, so no one-time export counter was consumed. Retry after checking for a concurrent export.",
       requested: rows.length,
+      approved_production_plans: Number(persisted.approved_production_plans || 0),
       reserved_sub_batches: Number(persisted.reserved_sub_batches || 0),
       reserved_keys: Number(persisted.reserved_keys || 0),
       artifact_persisted: false,
     }, 409);
   }
 
-  await logAuditEvent({
-    actorId: null,
-    tenantId: String(order.tenant_id),
-    action: "supplier_pack_exported",
-    resourceType: "supplier_order",
-    resourceId: String(order.id),
-    afterData: {
-      order_id: order.id,
-      exported_by: actor,
-      encrypted_pack_hash: encrypted.envelopeHash,
-      plaintext_zip_hash: encrypted.plaintextZipHash,
-      pack_purpose: packPurpose,
-      commercial_disposition: commercialDisposition,
-      activation_allowed: activationAllowed,
-      packaging_spec_revision: packagingGate.specRevision,
-      packaging_spec_hash: packagingGate.specHash,
-      bids: packs.map((pack) => ({
-        bid: pack.bid,
-        content_hash: pack.content_hash,
-        json_hash: pack.json_hash,
-        pdf_hash: pack.pdf_hash,
-        key_fingerprint: pack.key_fingerprint,
-      })),
-    },
-    userAgent: req.headers.get("user-agent"),
-    requestId: req.headers.get("x-request-id"),
-  });
-
   return json({
     ok: true,
-    key_custody: {
+    key_custody: secureSunProfile ? {
       mode: "pilot_application_envelope_encryption",
       algorithm: "AES-256-GCM",
       aad_scope: ["tenant", "bid", "key_role", "key_version", "kek_version"],
       managed_kms: false,
       hsm_backed: false,
       boundary: "The KEK is a versioned application secret in the deployment platform; it is not a managed KMS/HSM key handle.",
+    } : {
+      mode: "not_applicable_keyless_carrier",
+      algorithm: null,
+      aad_scope: [],
+      managed_kms: false,
+      hsm_backed: false,
+      boundary: "This carrier profile has no K_META_BATCH/K_FILE_BATCH and no batch-key custody record.",
     },
     order: {
       id: order.id,
@@ -713,6 +1264,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       activation_allowed: activationAllowed,
       packaging_spec_revision: packagingGate.specRevision,
       packaging_spec_hash: packagingGate.specHash,
+      receiving_qa_required: isProduction,
+      production_qa_plan_approval_receipt_sha256: productionQaPlanApprovalHash,
     },
     zip_layout: "one-folder-per-sub-batch",
     encrypted_pack: {
@@ -727,6 +1280,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       pack_purpose: packPurpose,
       commercial_disposition: commercialDisposition,
       activation_allowed: activationAllowed,
+      receiving_qa_required: isProduction,
+      production_qa_plan_approval_receipt_sha256: productionQaPlanApprovalHash,
       password_warning: "Password is not returned by the API. Use the operator-generated password and send it over a separate channel.",
       password_delivery: {
         mode: "operator_generated",
@@ -734,7 +1289,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
         separate_channel_required: true,
       },
     },
-    warning: "NON_SELLABLE trial-integration ZIP generated. Activation is forbidden. The response does not include the pack password. Raw K_META_BATCH/K_FILE_BATCH are present only inside encrypted 424 DNA supplier folders.",
+    warning: secureSunProfile
+      ? `${custodyWarning} The response does not include the pack password. Raw K_META_BATCH/K_FILE_BATCH are present only inside encrypted 424 DNA supplier folders.`
+      : `${custodyWarning} The response does not include the pack password. This keyless carrier pack contains no K_META_BATCH/K_FILE_BATCH.`,
     packs,
   });
 }

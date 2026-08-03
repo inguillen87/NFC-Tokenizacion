@@ -168,7 +168,7 @@ export function parseSupplierQaSnapshotReferences(values?: unknown[] | null):
   return { ok: true, references };
 }
 
-function fingerprintUid(expectedBid: string, uid: string) {
+export function supplierQaUidFingerprint(expectedBid: string, uid: string) {
   return `sha256:${createHash("sha256").update(`${expectedBid.toUpperCase()}\u0000${uid.toUpperCase()}`, "utf8").digest("hex")}`;
 }
 
@@ -197,7 +197,7 @@ function receipt(row: NormalizedDiagnostic, expectedBid: string) {
     diagnostic_id: row.diagnosticId,
     canonical_event_id: row.eventId,
     diagnostic_reference_hash: row.referenceHash,
-    batch_scoped_uid_fingerprint: fingerprintUid(expectedBid, row.uid),
+    batch_scoped_uid_fingerprint: supplierQaUidFingerprint(expectedBid, row.uid),
     read_counter: row.counter,
     product_state: row.productState,
     created_at: row.createdAt,
@@ -226,6 +226,7 @@ export function validateSupplierQaSunEvidence(input: {
   evaluatedAt?: string;
   requiresTtstatus: boolean;
   requiresSecureSun: boolean;
+  requiredUidFingerprints?: string[];
 }) {
   const expectedBid = normalizedText(input.expectedBid);
   const expectedTenantId = normalizedText(input.expectedTenantId);
@@ -237,7 +238,11 @@ export function validateSupplierQaSunEvidence(input: {
   const verificationContextDigest = normalizedText(input.verificationContextDigest);
   const manifestImportedAt = parseTimestamp(input.manifestImportedAt);
   const evaluatedAt = parseTimestamp(input.evaluatedAt || new Date().toISOString());
-  const requiredTags = requiredManifestTagCount(input.expectedQuantity);
+  const requiredUidFingerprints = Array.isArray(input.requiredUidFingerprints)
+    ? input.requiredUidFingerprints.map((value) => normalizedText(value).toLowerCase())
+    : [];
+  const requiredUidFingerprintSet = new Set(requiredUidFingerprints);
+  const requiredTags = requiredUidFingerprints.length || requiredManifestTagCount(input.expectedQuantity);
   const canonicalDigestPattern = /^sha256:[0-9a-f]{64}$/;
   if (
     !expectedBid
@@ -250,6 +255,9 @@ export function validateSupplierQaSunEvidence(input: {
     || (input.requiresSecureSun && !/^[0-9A-F]{16}$/.test(keyFingerprint.toUpperCase()))
     || !manifestImportedAt
     || !evaluatedAt
+    || (requiredUidFingerprints.length > SUPPLIER_QA_TARGET_SAMPLE_SIZE)
+    || (requiredUidFingerprints.length !== requiredUidFingerprintSet.size)
+    || requiredUidFingerprints.some((value) => !canonicalDigestPattern.test(value))
   ) {
     return { ok: false as const, reason: "qa_evidence_scope_incomplete", requiredTags };
   }
@@ -438,6 +446,19 @@ export function validateSupplierQaSunEvidence(input: {
     byUid.set(row.uid, rows);
   }
 
+  if (requiredUidFingerprintSet.size) {
+    const suppliedFingerprints = [...byUid.keys()]
+      .map((uid) => supplierQaUidFingerprint(expectedBid, uid).toLowerCase());
+    if (suppliedFingerprints.some((fingerprint) => !requiredUidFingerprintSet.has(fingerprint))) {
+      return {
+        ok: false as const,
+        reason: "qa_unselected_manifest_uid_supplied",
+        requiredTags,
+        receivedTags: suppliedFingerprints.length,
+      };
+    }
+  }
+
   const authenticGroups = [...byUid.values()].filter((rows) => rows.some((row) => row.isAuthentic));
   if (authenticGroups.length < requiredTags) {
     return {
@@ -484,8 +505,20 @@ export function validateSupplierQaSunEvidence(input: {
   }
 
   const sortedPairs = pairs
-    .sort((a, b) => fingerprintUid(expectedBid, a.accepted.uid).localeCompare(fingerprintUid(expectedBid, b.accepted.uid)));
-  let selectedPairs = sortedPairs.slice(0, requiredTags);
+    .sort((a, b) => supplierQaUidFingerprint(expectedBid, a.accepted.uid).localeCompare(supplierQaUidFingerprint(expectedBid, b.accepted.uid)));
+  let selectedPairs = requiredUidFingerprintSet.size
+    ? sortedPairs.filter((pair) => requiredUidFingerprintSet.has(
+        supplierQaUidFingerprint(expectedBid, pair.accepted.uid).toLowerCase(),
+      ))
+    : sortedPairs.slice(0, requiredTags);
+  if (selectedPairs.length !== requiredTags) {
+    return {
+      ok: false as const,
+      reason: "qa_server_selected_uids_required",
+      requiredTags,
+      receivedTags: selectedPairs.length,
+    };
+  }
   let tamperTransition: Record<string, unknown> | null = null;
   if (input.requiresTtstatus) {
     let openedWithoutRevocation = false;
@@ -502,7 +535,7 @@ export function validateSupplierQaSunEvidence(input: {
       if (!opened) continue;
       tamperPair = pair;
       tamperTransition = {
-        batch_scoped_uid_fingerprint: fingerprintUid(expectedBid, pair.accepted.uid),
+        batch_scoped_uid_fingerprint: supplierQaUidFingerprint(expectedBid, pair.accepted.uid),
         closed_diagnostic_id: pair.accepted.diagnosticId,
         closed_canonical_event_id: pair.accepted.eventId,
         closed_reference_hash: pair.accepted.referenceHash,
@@ -530,7 +563,7 @@ export function validateSupplierQaSunEvidence(input: {
       selectedPairs = [
         tamperPair,
         ...sortedPairs.filter((pair) => pair !== tamperPair).slice(0, requiredTags - 1),
-      ].sort((a, b) => fingerprintUid(expectedBid, a.accepted.uid).localeCompare(fingerprintUid(expectedBid, b.accepted.uid)));
+      ].sort((a, b) => supplierQaUidFingerprint(expectedBid, a.accepted.uid).localeCompare(supplierQaUidFingerprint(expectedBid, b.accepted.uid)));
     }
   }
 
@@ -551,7 +584,7 @@ export function validateSupplierQaSunEvidence(input: {
     diagnostic_reference_hashes: input.references.map((reference) => reference.referenceHash).sort(),
     diagnostic_ids: input.references.map((reference) => reference.diagnosticId).sort((a, b) => a - b),
     batch_scoped_uid_fingerprints: selectedPairs
-      .map((pair) => fingerprintUid(expectedBid, pair.accepted.uid))
+      .map((pair) => supplierQaUidFingerprint(expectedBid, pair.accepted.uid))
       .sort(),
     accepted_receipts: selectedPairs.map((pair) => receipt(pair.accepted, expectedBid)),
     replay_receipts: selectedPairs.map((pair) => receipt(pair.replay, expectedBid)),

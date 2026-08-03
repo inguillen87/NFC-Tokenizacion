@@ -162,7 +162,7 @@ test("all guaranteed SDK mutations enter the durable guard before their business
   const routes = [
     ["../src/app/api/v1/sdk/verify/route.ts", "verifyTap", /UPDATE events event[\s\S]*sdk_idempotency_operation_id/],
     ["../src/app/api/v1/sdk/claim/route.ts", "claimOwnership", /sdk_claim_requests[\s\S]*idempotency_operation_id/],
-    ["../src/app/api/v1/sdk/events/route.ts", "reportEvent", /sdk_external_events[\s\S]*idempotency_operation_id/],
+    ["../src/app/api/v1/sdk/events/route.ts", "reportEvent", /writeSdkExternalEventAtomic[\s\S]*idempotencyOperationId/],
     ["../src/app/api/v1/sdk/pos/activate/route.ts", "activatePosPurchase", /sdk_pos_activations[\s\S]*idempotency_operation_id/],
   ];
   for (const [path, operation, linkage] of routes) {

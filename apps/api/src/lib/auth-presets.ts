@@ -1,4 +1,5 @@
 import { hashPassword } from "./password";
+import { parsePermissionGrant } from "./admin-user-management-policy";
 
 type Preset = {
   email: string;
@@ -79,6 +80,9 @@ export async function ensurePresetUser(
   if (!preset) return null;
   if (!preset.password) return null;
 
+  const tenantIdForMembership = preset.role === "super_admin" ? null : await resolveDemoTenantId(sql);
+  if (preset.role !== "super_admin" && !tenantIdForMembership) return null;
+
   const existing = await sql`SELECT id FROM users WHERE email = ${preset.email} LIMIT 1`;
   const userId = existing[0]?.id || (await sql`INSERT INTO users (email, full_name) VALUES (${preset.email}, ${preset.fullName}) RETURNING id`)[0]?.id;
   if (!userId) return null;
@@ -88,18 +92,24 @@ export async function ensurePresetUser(
     await sql`INSERT INTO password_credentials (user_id, password_hash) VALUES (${userId}::uuid, ${hashPassword(preset.password)})`;
   }
 
-  const tenantIdForMembership = preset.role === "tenant_admin" ? await resolveDemoTenantId(sql) : null;
   const membershipRows = await sql`SELECT id, tenant_id FROM memberships WHERE user_id = ${userId}::uuid AND role = ${preset.role}::membership_role ORDER BY created_at ASC LIMIT 1`;
   if (!membershipRows[0]) {
     await sql`INSERT INTO memberships (user_id, tenant_id, role) VALUES (${userId}::uuid, ${tenantIdForMembership}::uuid, ${preset.role}::membership_role)`;
-  } else if (preset.role === "tenant_admin" && tenantIdForMembership && !membershipRows[0].tenant_id) {
+  } else if (preset.role === "super_admin" && membershipRows[0].tenant_id) {
+    // Never turn a historical tenant-bound super-admin into global authority
+    // implicitly. Runtime rejects it until an audited reconciliation occurs.
+    return null;
+  } else if (preset.role !== "super_admin" && tenantIdForMembership && !membershipRows[0].tenant_id) {
     await sql`UPDATE memberships SET tenant_id = ${tenantIdForMembership}::uuid, updated_at = now() WHERE id = ${membershipRows[0].id}::uuid`;
+  } else if (preset.role !== "super_admin"
+    && String(membershipRows[0].tenant_id) !== String(tenantIdForMembership)) {
+    return null;
   }
 
   for (const entry of preset.permissions) {
-    const [resource, action] = entry.split(":");
-    if (resource && action) {
-      await sql`INSERT INTO resource_permissions (user_id, resource, action) VALUES (${userId}::uuid, ${resource}, ${action}) ON CONFLICT DO NOTHING`;
+    const grant = parsePermissionGrant(entry);
+    if (grant) {
+      await sql`INSERT INTO resource_permissions (user_id, tenant_id, resource, action) VALUES (${userId}::uuid, ${tenantIdForMembership}::uuid, ${grant.resource}, ${grant.action}) ON CONFLICT DO NOTHING`;
     }
   }
 

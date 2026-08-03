@@ -71,8 +71,9 @@ test("minting and marketplace listing records are tenant scoped while P2P settle
 test("public ownership PIN has a durable lockout boundary", async () => {
   const source = await readFile(claimUrl, "utf8");
 
-  assert.match(source, /readSunRateLimit\("claim_pin_device"/);
-  assert.match(source, /hitSunRateLimit\("claim_pin_product"/);
+  assert.match(source, /reserveOwnershipClaimPinAttempt/);
+  assert.match(source, /releaseSuccessfulOwnershipClaimPinAttempt/);
+  assert.ok(source.indexOf("reserveOwnershipClaimPinAttempt") < source.indexOf("verifyOwnershipClaimPin({"));
   assert.match(source, /reason: "claim_pin_locked"/);
   assert.match(source, /retry-after/);
   assert.match(source, /claim_pin_security_unavailable/);

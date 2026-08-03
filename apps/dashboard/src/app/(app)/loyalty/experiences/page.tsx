@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { Badge, Card, SectionHeading } from "@product/ui";
+import { EnterpriseOpsState } from "../../../../components/enterprise-ops-state";
 import { VerifiedExperiencesPanel } from "../../../../components/verified-experiences-panel";
 import { requireDashboardSession } from "../../../../lib/session";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../../lib/admin-page-access";
+import { dashboardHighImpactPermissionMatches } from "../../../../lib/permission-policy";
 import type { VerifiedExperienceItem } from "../../../../components/verified-experiences-panel";
 import type { ExperienceAvailability, ExperienceSource } from "../../../../components/verified-experiences-panel";
 
@@ -114,8 +116,35 @@ function formatTrustScore(value?: number | string | null) {
 }
 
 export default async function ExperiencesPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
-  const query = searchParams ? await searchParams : {};
   const session = await requireDashboardSession();
+  const canReadConsumerExperiencePii = dashboardHighImpactPermissionMatches(
+    session.role,
+    session.permissions,
+    "consumer_experiences.read_pii",
+    session.deniedPermissions,
+  );
+  if (!canReadConsumerExperiencePii) {
+    return (
+      <main className="space-y-8" data-experiences-availability="access_denied" data-experiences-source="unavailable">
+        <SectionHeading
+          eyebrow="Loyalty + social proof"
+          title="Experiencias verificadas"
+          description="La cola de experiencias contiene identidad y contacto del consumidor, por lo que requiere una capacidad explícita."
+        />
+        <EnterpriseOpsState
+          variant="warning"
+          title="Acceso restringido a experiencias con PII"
+          description="Esta sesión no tiene la capacidad consumer_experiences.read_pii. El servidor no consultó reviews, emails, teléfonos ni metadata de consumidores."
+          checklist={[
+            "Solicitá acceso al administrador del tenant.",
+            "Una denegación explícita mantiene esta superficie cerrada.",
+          ]}
+          testId="consumer-experiences-access-denied"
+        />
+      </main>
+    );
+  }
+  const query = searchParams ? await searchParams : {};
   const adminContext = await createAdminPageContext(session, query.tenant);
   const experiencesResult = await adminGet(adminContext, "/admin/consumer-experiences?limit=50");
   const experiencesRaw = experiencesResult.payload;

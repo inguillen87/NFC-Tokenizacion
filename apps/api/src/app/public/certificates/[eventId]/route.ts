@@ -13,6 +13,7 @@ import {
   createPublicCertificateShareToken,
   verifyPublicCertificateShareToken,
 } from "../../../../lib/public-certificate-share";
+import { DEMO_BATCH_BID, DEMO_TENANT_SLUG } from "../../../../lib/demo-resource-scope";
 
 function cleanId(value: unknown) {
   return String(value || "").trim();
@@ -150,7 +151,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ eventId:
       LIMIT 1
     ) tok ON TRUE
     WHERE e.id = ${eventId}
-      AND (LOWER(COALESCE(e.source::text, '')) = 'demo' OR ${signedAccess})
+      AND (
+        ${signedAccess}
+        OR (
+          LOWER(COALESCE(e.source::text, '')) = 'demo'
+          AND LOWER(tn.slug) = ${DEMO_TENANT_SLUG}
+          AND b.bid = ${DEMO_BATCH_BID}
+        )
+      )
     LIMIT 1
   `;
 

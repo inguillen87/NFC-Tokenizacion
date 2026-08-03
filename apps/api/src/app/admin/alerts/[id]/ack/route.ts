@@ -1,19 +1,19 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminTenantScope } from "../../../../../lib/auth";
+import { checkAdminWithPermission, getAdminActor, getAdminTenantScope } from "../../../../../lib/auth";
 import { json } from "../../../../../lib/http";
 import { sql } from "../../../../../lib/db";
 import { ensureAlertsSchema } from "../../../../../lib/commercial-runtime-schema";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdminWithPermission(req, "alerts.ack");
   if (auth) return auth;
   await ensureAlertsSchema();
   const { forcedTenantSlug } = getAdminTenantScope(req);
   const { id } = await params;
-  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
-  const ackBy = String(body.acknowledged_by || "admin");
+  const actor = getAdminActor(req);
+  const ackBy = actor.email || actor.id;
   const rows = await sql/*sql*/`
     UPDATE security_alerts
     SET status = 'acknowledged',

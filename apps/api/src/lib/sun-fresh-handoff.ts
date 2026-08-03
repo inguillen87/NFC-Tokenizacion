@@ -1,6 +1,10 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { hitSunRateLimit } from "./sun-rate-limit-store";
 
+const SNAPSHOT_ACCESS_MAX_TTL_SECONDS = 15 * 60;
+const FRESH_HANDOFF_MAX_TTL_SECONDS = 5 * 60;
+const TOKEN_CLOCK_SKEW_SECONDS = 60;
+
 export type SunFreshHandoffPayload = {
   purpose: "sun_fresh_handoff";
   bid: string;
@@ -8,6 +12,14 @@ export type SunFreshHandoffPayload = {
   uid: string;
   uidBinding?: string | null;
   readCounter?: number | null;
+  diagnosticId: number;
+  traceId: string;
+  iat: number;
+  exp: number;
+};
+
+export type SunSnapshotAccessPayload = {
+  purpose: "sun_snapshot_access";
   diagnosticId: number;
   traceId: string;
   iat: number;
@@ -69,6 +81,10 @@ function decode(input: string) {
   return JSON.parse(Buffer.from(input, "base64url").toString("utf8")) as SunFreshHandoffPayload;
 }
 
+function decodeSnapshotAccess(input: string) {
+  return JSON.parse(Buffer.from(input, "base64url").toString("utf8")) as SunSnapshotAccessPayload;
+}
+
 function sign(body: string, secret: string) {
   return createHmac("sha256", secret).update(body).digest("base64url");
 }
@@ -111,13 +127,29 @@ export function createSunFreshHandoffToken(input: SunFreshHandoffInput) {
     readCounter: Number.isSafeInteger(input.readCounter) && Number(input.readCounter) >= 0 ? Number(input.readCounter) : null,
     diagnosticId: Number(input.diagnosticId),
     traceId: clean(input.traceId),
-    iat: Number(input.iat || now),
+    iat: Number(input.iat ?? now),
     exp: Number(input.exp),
   };
-  if (!payload.bid || !payload.eventId || !payload.uid || !payload.traceId || !Number.isFinite(payload.diagnosticId) || payload.diagnosticId <= 0) {
+  if (
+    !payload.bid
+    || !payload.eventId
+    || !payload.uid
+    || !payload.traceId
+    || payload.traceId.length > 128
+    || !Number.isSafeInteger(payload.diagnosticId)
+    || payload.diagnosticId <= 0
+  ) {
     throw new Error("invalid sun fresh handoff payload");
   }
-  if (!Number.isFinite(payload.exp) || payload.exp <= now) {
+  if (
+    !Number.isSafeInteger(payload.iat)
+    || payload.iat <= 0
+    || payload.iat > now + TOKEN_CLOCK_SKEW_SECONDS
+    || !Number.isSafeInteger(payload.exp)
+    || payload.exp <= now
+    || payload.exp <= payload.iat
+    || payload.exp - payload.iat > FRESH_HANDOFF_MAX_TTL_SECONDS
+  ) {
     throw new Error("invalid sun fresh handoff expiry");
   }
   const body = encode(payload);
@@ -126,7 +158,9 @@ export function createSunFreshHandoffToken(input: SunFreshHandoffInput) {
 
 export function verifySunFreshHandoffToken(token: string | null | undefined, expected: FreshExpected = {}) {
   if (!token) return { ok: false as const, reason: "fresh_token_missing" };
-  const [body, signature] = String(token).split(".");
+  const tokenParts = String(token).split(".");
+  if (tokenParts.length !== 2) return { ok: false as const, reason: "fresh_token_malformed" };
+  const [body, signature] = tokenParts;
   if (!body || !signature) return { ok: false as const, reason: "fresh_token_malformed" };
 
   const secrets = verificationSecrets();
@@ -144,13 +178,35 @@ export function verifySunFreshHandoffToken(token: string | null | undefined, exp
     const payload = decode(body);
     const now = Math.floor(Date.now() / 1000);
     if (payload.purpose !== "sun_fresh_handoff") return { ok: false as const, reason: "fresh_token_wrong_purpose" };
-    if (!payload.bid || !payload.eventId || !payload.uid || !payload.traceId || !payload.exp) {
+    if (
+      typeof payload.bid !== "string"
+      || !payload.bid
+      || typeof payload.eventId !== "string"
+      || !payload.eventId
+      || typeof payload.uid !== "string"
+      || !payload.uid
+      || typeof payload.traceId !== "string"
+      || !payload.traceId
+      || payload.traceId.length > 128
+      || !Number.isSafeInteger(payload.diagnosticId)
+      || payload.diagnosticId <= 0
+      || !Number.isSafeInteger(payload.iat)
+      || payload.iat <= 0
+      || !Number.isSafeInteger(payload.exp)
+      || (payload.uidBinding !== undefined && payload.uidBinding !== null && typeof payload.uidBinding !== "string")
+      || (payload.readCounter !== undefined && payload.readCounter !== null
+        && (!Number.isSafeInteger(payload.readCounter) || payload.readCounter < 0))
+    ) {
       return { ok: false as const, reason: "fresh_token_incomplete" };
     }
     if (payload.uid !== eventBoundUid(payload.eventId)) {
       return { ok: false as const, reason: "fresh_token_uid_not_event_bound" };
     }
-    if (payload.exp < now) return { ok: false as const, reason: "fresh_token_expired" };
+    if (payload.iat > now + TOKEN_CLOCK_SKEW_SECONDS) return { ok: false as const, reason: "fresh_token_not_yet_valid" };
+    if (payload.exp <= payload.iat || payload.exp - payload.iat > FRESH_HANDOFF_MAX_TTL_SECONDS) {
+      return { ok: false as const, reason: "fresh_token_invalid_lifetime" };
+    }
+    if (payload.exp <= now) return { ok: false as const, reason: "fresh_token_expired" };
     if (expected.bid && payload.bid !== clean(expected.bid)) return { ok: false as const, reason: "fresh_token_bid_mismatch" };
     if (expected.eventId && payload.eventId !== clean(expected.eventId)) return { ok: false as const, reason: "fresh_token_event_mismatch" };
     if (expected.uid && payload.uid !== clean(expected.uid).toUpperCase()) return { ok: false as const, reason: "fresh_token_uid_mismatch" };
@@ -173,6 +229,101 @@ export function verifySunFreshHandoffToken(token: string | null | undefined, exp
     return { ok: true as const, payload };
   } catch {
     return { ok: false as const, reason: "fresh_token_invalid_body" };
+  }
+}
+
+/**
+ * Read-only capability for a single diagnostic snapshot. Diagnostic ids are
+ * sequential and trace ids are operational correlation values, so neither is
+ * an authorization secret. This token binds both values and expires without
+ * granting any commercial action.
+ */
+export function createSunSnapshotAccessToken(input: {
+  diagnosticId: string | number;
+  traceId: string;
+  exp?: number;
+  iat?: number;
+}) {
+  const now = Math.floor(Date.now() / 1000);
+  const payload: SunSnapshotAccessPayload = {
+    purpose: "sun_snapshot_access",
+    diagnosticId: Number(input.diagnosticId),
+    traceId: clean(input.traceId),
+    iat: Number(input.iat ?? now),
+    exp: Number(input.exp ?? now + SNAPSHOT_ACCESS_MAX_TTL_SECONDS),
+  };
+  if (!Number.isSafeInteger(payload.diagnosticId) || payload.diagnosticId <= 0 || !payload.traceId || payload.traceId.length > 128) {
+    throw new Error("invalid sun snapshot access payload");
+  }
+  if (
+    !Number.isSafeInteger(payload.iat)
+    || payload.iat <= 0
+    || payload.iat > now + TOKEN_CLOCK_SKEW_SECONDS
+    || !Number.isSafeInteger(payload.exp)
+    || payload.exp <= now
+    || payload.exp <= payload.iat
+    || payload.exp - payload.iat > SNAPSHOT_ACCESS_MAX_TTL_SECONDS
+  ) {
+    throw new Error("invalid sun snapshot access expiry");
+  }
+  const body = encode(payload);
+  return `snap1.${body}.${sign(`snapshot:${body}`, signingSecret())}`;
+}
+
+export function verifySunSnapshotAccessToken(
+  token: string | null | undefined,
+  expected: { diagnosticId: string | number; traceId: string },
+) {
+  const candidate = clean(token);
+  if (candidate.length > 4096 || clean(expected.traceId).length > 128) {
+    return { ok: false as const, reason: "snapshot_token_malformed" };
+  }
+  const tokenParts = candidate.split(".");
+  if (tokenParts.length !== 3) return { ok: false as const, reason: "snapshot_token_malformed" };
+  const [version, body, signature] = tokenParts;
+  if (version !== "snap1" || !body || !signature) {
+    return { ok: false as const, reason: candidate ? "snapshot_token_malformed" : "snapshot_token_missing" };
+  }
+
+  const secrets = verificationSecrets();
+  if (!secrets.length) return { ok: false as const, reason: "snapshot_token_secret_missing" };
+  if (productionRuntime() && !secrets.some(strongEnough)) {
+    return { ok: false as const, reason: "snapshot_token_secret_too_short" };
+  }
+  const eligibleSecrets = productionRuntime() ? secrets.filter(strongEnough) : secrets;
+  if (!eligibleSecrets.some((secret) => safeEquals(signature, sign(`snapshot:${body}`, secret)))) {
+    return { ok: false as const, reason: "snapshot_token_invalid_signature" };
+  }
+
+  try {
+    const payload = decodeSnapshotAccess(body);
+    const now = Math.floor(Date.now() / 1000);
+    if (payload.purpose !== "sun_snapshot_access") return { ok: false as const, reason: "snapshot_token_wrong_purpose" };
+    if (
+      !Number.isSafeInteger(payload.diagnosticId)
+      || payload.diagnosticId <= 0
+      || !payload.traceId
+      || payload.traceId.length > 128
+      || !Number.isSafeInteger(payload.iat)
+      || payload.iat <= 0
+      || !Number.isSafeInteger(payload.exp)
+    ) {
+      return { ok: false as const, reason: "snapshot_token_incomplete" };
+    }
+    if (payload.iat > now + TOKEN_CLOCK_SKEW_SECONDS) return { ok: false as const, reason: "snapshot_token_not_yet_valid" };
+    if (payload.exp <= payload.iat || payload.exp - payload.iat > SNAPSHOT_ACCESS_MAX_TTL_SECONDS) {
+      return { ok: false as const, reason: "snapshot_token_invalid_lifetime" };
+    }
+    if (payload.exp <= now) return { ok: false as const, reason: "snapshot_token_expired" };
+    if (payload.diagnosticId !== Number(expected.diagnosticId)) {
+      return { ok: false as const, reason: "snapshot_token_id_mismatch" };
+    }
+    if (payload.traceId !== clean(expected.traceId)) {
+      return { ok: false as const, reason: "snapshot_token_trace_mismatch" };
+    }
+    return { ok: true as const, payload };
+  } catch {
+    return { ok: false as const, reason: "snapshot_token_invalid_body" };
   }
 }
 

@@ -1,0 +1,31 @@
+{
+  "ok": true,
+  "gate": "disposable_neon_full_migration_validation",
+  "validated_at": "2026-08-02",
+  "environment": "disposable_neon_schema_only_branch",
+  "endpoint_id": "ep-rapid-glitter-ail9banz",
+  "database": "codex_qa_nexid_20260802",
+  "database_role": "neondb_owner",
+  "migration_count": 95,
+  "latest_migration": "20260802280000_0093_sun_tt_durable_truth_binding.sql",
+  "postcheck": {
+    "migration_count": 95,
+    "production_qa_plans": true,
+    "production_qa_plan_decisions": true,
+    "production_qa_sessions": true,
+    "production_qa_decisions": true,
+    "plan_writer": true,
+    "plan_decision_writer": true,
+    "session_writer": true,
+    "decision_writer": true,
+    "keyless_qa_activation": true,
+    "carrier_scope_integrity": true,
+    "sun_tt_durable_truth": true,
+    "keyless_qa_receipts": true,
+    "sun_tt_truth_receipts": true,
+    "sun_tt_truth_append_only": true,
+    "manufacturing_state": true
+  },
+  "production_touched": false,
+  "contains_credentials": false
+}

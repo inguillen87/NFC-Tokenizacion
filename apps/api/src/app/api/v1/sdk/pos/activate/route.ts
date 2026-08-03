@@ -8,9 +8,14 @@ import { sql } from "../../../../../../lib/db";
 import { json } from "../../../../../../lib/http";
 import { authenticateSdkRequest, hashSdkApiKey, logSdkUsage, sdkKeyPrefix } from "../../../../../../lib/sdk-auth";
 import { enqueueSdkWebhookGuaranteed, sdkWebhookOutboxUnavailableBody, SdkWebhookOutboxUnavailableError } from "../../../../../../lib/sdk-webhook-outbox-guarantee";
-import { asRecord, clean, numberOrNull, parseHeaderIp, sha256Hex } from "../../_shared";
+import { asRecord, clean, numberOrNull, parseHeaderIp } from "../../_shared";
 import { enforceSdkAuthenticationRateLimit, enforceSdkRateLimit } from "../../../../../../lib/critical-rate-limit";
 import { readSdkMutationBody, runSdkIdempotentMutation, SDK_IDEMPOTENCY_OPERATIONS } from "../../_idempotency";
+import {
+  hashOwnershipClaimPin,
+  readOwnershipClaimPinInput,
+  validateNewOwnershipClaimPin,
+} from "../../../../../../lib/ownership-claim-pin";
 
 function generatePosToken() {
   return `nxpos_${randomBytes(24).toString("base64url")}`;
@@ -52,7 +57,12 @@ export async function POST(req: Request) {
   const externalOrderId = clean(body.externalOrderId || body.external_order_id || body.orderId);
   const retailerId = clean(body.retailerId || body.retailer_id || body.storeId);
   const contact = clean(body.contact || body.email || body.phone || body.whatsapp);
-  const pin = clean(body.pin || body.claimPin || body.claim_pin);
+  const pinInput = readOwnershipClaimPinInput(body.pin ?? body.claimPin ?? body.claim_pin);
+  if (!pinInput.ok) {
+    await logSdkUsage({ req, context: auth.context, endpoint: "sdk.pos.activate", statusCode: 400, startedAt, reason: pinInput.reason });
+    return json({ ok: false, reason: pinInput.reason, trace_id: auth.context.traceId }, 400);
+  }
+  const pin = pinInput.pin;
   const expiresInMinutes = clampExpiryMinutes(body.expiresInMinutes || body.expires_in_minutes);
   const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000).toISOString();
 
@@ -60,12 +70,15 @@ export async function POST(req: Request) {
     await logSdkUsage({ req, context: auth.context, endpoint: "sdk.pos.activate", statusCode: 400, startedAt, reason: "bid_required" });
     return json({ ok: false, reason: "bid_required", trace_id: auth.context.traceId }, 400);
   }
+  if (!uidHex) {
+    await logSdkUsage({ req, context: auth.context, endpoint: "sdk.pos.activate", statusCode: 400, startedAt, reason: "uid_required_for_pos_activation", meta: { bid } });
+    return json({ ok: false, reason: "uid_required_for_pos_activation", trace_id: auth.context.traceId }, 400);
+  }
 
   const rows = await sql/*sql*/`
     SELECT
       b.id::text AS batch_id,
       b.bid,
-      b.sdm_config,
       t.id::text AS tag_id,
       t.uid_hex
     FROM batches b
@@ -92,17 +105,19 @@ export async function POST(req: Request) {
   }
 
   const normalizedUid = clean(target.uid_hex || uidHex).toUpperCase();
-  const pinHash = pin ? sha256Hex(normalizedUid ? `${auth.context.tenantId}:${bid}:${normalizedUid}:${pin}` : `${auth.context.tenantId}:${bid}:${pin}`) : "";
+  const pinContext = { tenantId: auth.context.tenantId, bid, uidHex: normalizedUid || null };
+  if (pin) {
+    const validation = validateNewOwnershipClaimPin(pin, pinContext);
+    if (!validation.ok) {
+      await logSdkUsage({ req, context: auth.context, endpoint: "sdk.pos.activate", statusCode: 400, startedAt, reason: validation.reason, meta: { bid, uidHex: normalizedUid || null } });
+      return json({ ok: false, reason: validation.reason, trace_id: auth.context.traceId }, 400);
+    }
+  }
+  const tagPinHash = pin ? await hashOwnershipClaimPin(pin, pinContext) : "";
   const rawToken = generatePosToken();
   const gps = asRecord(body.gps);
   const lat = numberOrNull(gps.lat ?? gps.latitude);
   const lng = numberOrNull(gps.lng ?? gps.longitude);
-  const policyPatch = {
-    claim_requires_pos: true,
-    sdk_auto_claim_enabled: true,
-    pos_activation_required: true,
-    ...(pin ? { claim_pin_required: true, claim_pin_hash: pinHash } : {}),
-  };
   const meta = {
     ...asRecord(body.meta),
     sdk: true,
@@ -117,24 +132,14 @@ export async function POST(req: Request) {
   };
 
   await sql/*sql*/`
-    UPDATE batches
+    UPDATE tags
     SET
       active_for_claim = true,
-      claim_pin_required = claim_pin_required OR ${Boolean(pin)},
-      hash_pin = COALESCE(${pinHash || null}, hash_pin),
-      sdm_config = COALESCE(sdm_config, '{}'::jsonb) || ${JSON.stringify(policyPatch)}::jsonb
-    WHERE id = ${clean(target.batch_id)}
+      claim_pin_required = CASE WHEN ${Boolean(pin)} THEN true ELSE claim_pin_required END,
+      hash_pin = COALESCE(${tagPinHash || null}, hash_pin)
+    WHERE id = ${clean(target.tag_id)}
+      AND batch_id = ${clean(target.batch_id)}
   `;
-  if (clean(target.tag_id)) {
-    await sql/*sql*/`
-      UPDATE tags
-      SET
-        active_for_claim = true,
-        claim_pin_required = COALESCE(claim_pin_required, false) OR ${Boolean(pin)},
-        hash_pin = COALESCE(${pinHash || null}, hash_pin)
-      WHERE id = ${clean(target.tag_id)}
-    `;
-  }
 
   const activationRows = await sql/*sql*/`
     INSERT INTO sdk_pos_activations (

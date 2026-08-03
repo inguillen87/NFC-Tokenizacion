@@ -17,11 +17,13 @@ test("sdk claim atomically consumes a POS token with lead and claim creation", (
   assert.match(statement, /activation\.id = \$\{posActivationId \|\| null\}/);
   assert.match(statement, /activation\.tenant_id = \$\{auth\.context\.tenantId\}/);
   assert.match(statement, /activation\.bid = \$\{bid\}/);
+  assert.match(statement, /activation\.tag_id = \$\{clean\(row\.tag_id\) \|\| null\}/);
   assert.match(statement, /activation\.pos_token_hash = \$\{hashSdkApiKey\(posToken\)\}/);
   assert.match(statement, /activation\.activation_status = 'active'/);
   assert.match(statement, /activation\.claim_request_id IS NULL/);
   assert.match(statement, /activation\.expires_at IS NULL OR activation\.expires_at > now\(\)/);
-  assert.match(statement, /activation\.uid_hex IS NULL OR UPPER\(activation\.uid_hex\) = UPPER\(\$\{uidHex\}\)/);
+  assert.match(statement, /UPPER\(activation\.uid_hex\) = UPPER\(\$\{uidHex\}\)/);
+  assert.doesNotMatch(statement, /activation\.uid_hex IS NULL|activation\.tag_id IS NULL/);
   assert.match(statement, /RETURNING activation\.id/);
 
   assert.match(statement, /claim_gate AS \([\s\S]*LEFT JOIN consumed_pos ON true[\s\S]*WHERE \$\{posToken\} = '' OR consumed_pos\.id IS NOT NULL/);
@@ -34,7 +36,7 @@ test("sdk claim atomically consumes a POS token with lead and claim creation", (
 test("sdk claim fails closed when another request consumes the POS token first", () => {
   const conflictGuard = route.indexOf("if (!persistedClaim && posToken)");
   const persistenceGuard = route.indexOf("if (!persistedClaim)", conflictGuard + 1);
-  const webhookDispatch = route.indexOf("await dispatchTenantWebhooks", conflictGuard);
+  const webhookDispatch = route.indexOf("await enqueueSdkWebhookGuaranteed", conflictGuard);
 
   assert.notEqual(conflictGuard, -1, "concurrent-consumption guard is missing");
   assert.ok(persistenceGuard > conflictGuard, "generic persistence guard must follow the POS conflict guard");

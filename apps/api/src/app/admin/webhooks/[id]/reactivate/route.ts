@@ -38,7 +38,7 @@ function secretStorageError(error: unknown) {
 }
 
 export async function POST(req: Request, context: { params: Promise<{ id: string }> }) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdmin(req, ["super_admin", "tenant_admin", "tenant_operator", "reseller"]);
   if (auth) return auth;
   const permission = checkWebhookPermission(req, "write");
   if (permission) return permission;

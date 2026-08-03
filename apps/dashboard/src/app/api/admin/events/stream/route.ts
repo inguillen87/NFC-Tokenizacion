@@ -4,6 +4,8 @@ import { randomUUID } from "node:crypto";
 import { getDashboardSessionCredential } from "../../../../../lib/session";
 import { getDashboardDemoEvents, toDemoRealtimeEvent } from "../../../../../lib/demo-runtime-state";
 import { DashboardTenantScopeError, resolveDashboardTenantScope } from "../../../../../lib/dashboard-tenant-scope-policy";
+import { dashboardRoleToScope } from "../../../../../lib/enterprise-runtime-rbac";
+import { dashboardHighImpactPermissionMatches } from "../../../../../lib/permission-policy";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
 const DASHBOARD_STREAM_SOURCES = ["production", "demo", "all", "real", "imported"] as const;
@@ -91,16 +93,24 @@ export async function GET(request: Request) {
 
   const credential = await getDashboardSessionCredential({ persistRotation: true }).catch(() => null);
   const session = credential?.session || null;
-  const scopedRole = session?.role === "super-admin"
-    ? "super_admin"
-    : session?.role === "tenant-admin"
-      ? "tenant_admin"
-      : session?.role === "reseller"
-        ? "reseller"
-        : session?.role
-          ? "readonly_demo"
-          : "";
+  const scopedRole = dashboardRoleToScope(session?.role);
   if (!session) return fallbackStream("Dashboard session required", requestId, limit, { source: requestedSource });
+  if (!scopedRole) return fallbackStream("Unsupported dashboard role", requestId, limit, { source: requestedSource });
+  if (!dashboardHighImpactPermissionMatches(
+    session.role,
+    session.permissions,
+    "events.read_sensitive",
+    session.deniedPermissions,
+  )) {
+    return new Response(JSON.stringify({ ok: false, reason: "events.read_sensitive permission required." }), {
+      status: 403,
+      headers: {
+        "content-type": "application/json; charset=utf-8",
+        "cache-control": "no-store",
+        "x-nexid-request-id": requestId,
+      },
+    });
+  }
 
   let tenant = requestedTenant;
   if (session) {

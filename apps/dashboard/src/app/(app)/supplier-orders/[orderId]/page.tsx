@@ -5,8 +5,11 @@ import { DataTable } from "../../../../components/data-table";
 import { getDashboardI18n } from "../../../../lib/locale";
 import { requireDashboardSession } from "../../../../lib/session";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../../lib/admin-page-access";
+import { dashboardHighImpactPermissionMatches } from "../../../../lib/permission-policy";
 import { ExportPackForm } from "./export-form";
 import { PackagingGovernancePanel } from "./packaging-governance-panel";
+import { PackagingLabPanel } from "./packaging-lab-panel";
+import { SupplierOrderLifecyclePanel } from "../../../../components/supplier-order-lifecycle-panel";
 
 async function getOrderDetails(context: AdminPageContext, orderId: string) {
   try {
@@ -34,11 +37,28 @@ async function getPackagingGovernance(context: AdminPageContext, orderId: string
   }
 }
 
+async function getPackagingLab(context: AdminPageContext, orderId: string) {
+  try {
+    const response = await fetchAdminPage(context, `supplier-orders/${encodeURIComponent(orderId)}/packaging-lab`);
+    if (!response.ok) return null;
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
 export default async function SupplierOrderDetailPage({ params }: { params: Promise<{ orderId: string }> }) {
   const session = await requireDashboardSession("supplier_orders:read");
   const { orderId } = await params;
   const { locale } = await getDashboardI18n();
   const adminContext = await createAdminPageContext(session);
+  const canExportFactoryPack = dashboardHighImpactPermissionMatches(
+    session.role,
+    session.permissions,
+    "supplier_pack.export",
+    session.deniedPermissions,
+  );
+  const canManageLifecycle = session.role === "super-admin";
 
   const order = await getOrderDetails(adminContext, orderId);
   if (!order) {
@@ -49,9 +69,13 @@ export default async function SupplierOrderDetailPage({ params }: { params: Prom
     );
   }
 
-  const packaging = await getPackagingGovernance(adminContext, orderId);
+  const [packaging, packagingLab] = await Promise.all([
+    getPackagingGovernance(adminContext, orderId),
+    getPackagingLab(adminContext, orderId),
+  ]);
   const packagingStatus = String(packaging?.governance?.status || order.packaging_governance_status || "legacy_unverified");
   const packagingApproved = packagingStatus === "approved";
+  const effectivePackPurpose = String(order.effective_pack_purpose || order.pack_purpose || "legacy_unclassified");
 
   const subBatches = order.sub_batches || [];
 
@@ -67,6 +91,14 @@ export default async function SupplierOrderDetailPage({ params }: { params: Prom
   const exportAction = async (formData: FormData) => {
     "use server";
     const actionSession = await requireDashboardSession("supplier_orders:read");
+    if (!dashboardHighImpactPermissionMatches(
+      actionSession.role,
+      actionSession.permissions,
+      "supplier_pack.export",
+      actionSession.deniedPermissions,
+    )) {
+      throw new Error("supplier_pack_export_required");
+    }
     const actionContext = await createAdminPageContext(actionSession);
     const password = formData.get("password") as string;
 
@@ -92,6 +124,9 @@ export default async function SupplierOrderDetailPage({ params }: { params: Prom
     <main className="space-y-8">
       <div className="flex items-center gap-4">
         <Link href="/supplier-orders" className="text-slate-400 hover:text-white">&larr; Back to Orders</Link>
+        <Link href={`/admin/tenant-vault/${encodeURIComponent(order.tenant_slug)}`} className="rounded-lg border border-violet-300/25 bg-violet-500/10 px-3 py-1.5 text-sm font-semibold text-violet-100 hover:bg-violet-500/20">
+          Open Tenant Vault
+        </Link>
       </div>
 
       <SectionHeading 
@@ -120,13 +155,28 @@ export default async function SupplierOrderDetailPage({ params }: { params: Prom
           </p>
           <ExportPackForm
             action={exportAction}
-            disabled={!packagingApproved}
-            disabledReason={`Factory export is blocked while packaging is ${packagingStatus}. Complete the industrial specification, physical trials and approval first.`}
+            disabled={!canExportFactoryPack || !packagingApproved}
+            disabledReason={!canExportFactoryPack
+              ? "Factory key packs require the explicit supplier_pack.export capability. Creating an order never grants key export."
+              : `Factory export is blocked while packaging is ${packagingStatus}. Complete the industrial specification, physical trials and approval first.`}
           />
         </Card>
       </div>
 
       <PackagingGovernancePanel orderId={orderId} initialData={packaging} />
+
+      <PackagingLabPanel orderId={orderId} initialData={packagingLab} />
+
+      <SupplierOrderLifecyclePanel
+        orderId={orderId}
+        orderStatus={order.status}
+        packPurpose={effectivePackPurpose}
+        sentToSupplierAt={order.sent_to_supplier_at}
+        tenantHandoverRecordedAt={order.tenant_handover_recorded_at}
+        subBatches={subBatches}
+        canManage={canManageLifecycle}
+        mfaVerified={session.mfaVerified}
+      />
 
       <DataTable
         title="Sub-batches"

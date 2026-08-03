@@ -57,7 +57,7 @@ Los tipos `sun_cryptographic_verification` y `packaging_physical_test_attested` 
 | `batch_activated` | Lote habilitado para scans después de QA aplicable | No | Checkpoint de lote |
 | `tamper_observed` | TagTamper abierto o invalido | No por defecto | Si requiere auditoria |
 | `ownership_claim_requested` | Usuario inicia claim | Puede derivar en Polygon | Digest opcional |
-| `ownership_claim_confirmed` | Claim aceptado | Si | Digest opcional |
+| `ownership_claim_confirmed` | Claim aceptado | Según política/autorización | Digest opcional |
 | `polygon_token_minted` | NFT/certificado emitido | Si | Digest opcional del resultado |
 | `logistics_handoff` | Cambio de custodia o etapa logistica | No | Si |
 | `quality_check_completed` | Inspeccion o QC | No | Si |
@@ -70,9 +70,14 @@ Los tipos `sun_cryptographic_verification` y `packaging_physical_test_attested` 
 
 | Campo | Valores sugeridos |
 | --- | --- |
-| `sun_verdict` | `VALID_CLOSED`, `VALID_OPENED`, `VALID_UNKNOWN_TAMPER`, `REPLAY_SUSPECT`, `NOT_REGISTERED`, `INVALID`, `SUN_PROFILE_MISMATCH` |
+| `sun_verdict` | `VALID_AUTHENTIC`, `VALID_CLOSED`, `VALID_OPENED`, `VALID_OPENED_PREVIOUSLY`, `VALID_UNKNOWN_TAMPER`, `REPLAY_SUSPECT`, `NOT_REGISTERED`, `INVALID`, `SUN_PROFILE_MISMATCH` |
 | `freshness` | `fresh`, `snapshot`, `replay`, `unknown` |
 | `tamper` | `closed`, `opened`, `opened_previously`, `invalid`, `unknown`, `not_supported` |
+
+`VALID_UNKNOWN_TAMPER` se conserva únicamente para compatibilidad diagnóstica
+o histórica. Un perfil TT productivo sin TTStatus canónico completo de dos
+bytes termina en `SUN_PROFILE_MISMATCH` en la frontera durable y no habilita
+afirmaciones de autenticidad o apertura.
 
 Un veredicto SUN verifica criptográficamente un mensaje contra la clave, perfil y contexto provisionados, junto con sus controles de freshness/replay. No demuestra por sí solo origen físico, contenido, instalación del inlay, adhesión, custodia ni apertura real del envase. Incluso `VALID_OPENED` no prueba que el loop TagTamper estuvo instalado atravesando la apertura real; esa afirmación exige evidencia física separada: protocolo, operador, dispositivo, fotos o evidencia de línea, y su propio evento `packaging_physical_test_attested`.
 

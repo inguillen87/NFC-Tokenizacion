@@ -105,7 +105,17 @@ function displayDate(value?: string | null) {
   return Number.isNaN(date.getTime()) ? "Fecha no disponible" : date.toLocaleString("es-AR");
 }
 
-export function SdkAdminConsole({ tenantSlug }: { tenantSlug?: string | null }) {
+export function SdkAdminConsole({
+  tenantSlug,
+  canManageApiKeys,
+  canManageClaimPolicy,
+  mfaVerified,
+}: {
+  tenantSlug?: string | null;
+  canManageApiKeys: boolean;
+  canManageClaimPolicy: boolean;
+  mfaVerified: boolean;
+}) {
   const scopedTenant = String(tenantSlug || "").trim().toLowerCase();
   const [tenantInput, setTenantInput] = useState(scopedTenant);
   const [tenant, setTenant] = useState(scopedTenant);
@@ -246,12 +256,24 @@ export function SdkAdminConsole({ tenantSlug }: { tenantSlug?: string | null }) 
   const quickstart = useMemo(() => buildVerifyQuickstart({ tenantSlug: tenant, bid }), [bid, tenant]);
   const webhookVerifier = useMemo(() => buildWebhookVerificationQuickstart(), []);
   const mutationsAllowed = developerMutationsAllowed({ dataMode, loading });
+  const apiKeyMutationsAllowed = mutationsAllowed && canManageApiKeys && mfaVerified;
+  const claimPolicyMutationsAllowed = mutationsAllowed && canManageClaimPolicy && mfaVerified;
   const isDemoData = dataMode === "demo";
   const mutationDisabledHelp = isDemoData
     ? "Sesión DEMO DATA en sólo lectura: las muestras no crean, cambian ni revocan recursos."
     : loading
       ? "Esperá a que termine la carga del tenant antes de modificar recursos."
       : "No hay una fuente de producción verificada; recargá los datos antes de modificar recursos.";
+  const apiKeyMutationDisabledHelp = !canManageApiKeys
+    ? "Tu sesión puede consultar credenciales, pero no tiene api_keys.manage."
+    : !mfaVerified
+      ? "Crear o revocar API keys requiere MFA verificado en la sesión actual."
+      : mutationDisabledHelp;
+  const claimPolicyMutationDisabledHelp = !canManageClaimPolicy
+    ? "Tu sesión no tiene ownership.claim_policy.manage."
+    : !mfaVerified
+      ? "Cambiar la política de ownership o su PIN requiere MFA verificado en la sesión actual."
+      : mutationDisabledHelp;
 
   function applyTenant() {
     const nextTenant = tenantInput.trim().toLowerCase();
@@ -270,6 +292,21 @@ export function SdkAdminConsole({ tenantSlug }: { tenantSlug?: string | null }) 
   function ensureMutationAllowed() {
     if (mutationsAllowed) return true;
     setNotice({ tone: "info", text: mutationDisabledHelp });
+    return false;
+  }
+
+  function ensureApiKeyMutationAllowed() {
+    if (apiKeyMutationsAllowed) return true;
+    setNotice({ tone: "info", text: apiKeyMutationDisabledHelp });
+    return false;
+  }
+
+  function ensureClaimPolicyMutationAllowed() {
+    if (claimPolicyMutationsAllowed) return true;
+    setNotice({
+      tone: "info",
+      text: claimPolicyMutationDisabledHelp,
+    });
     return false;
   }
 
@@ -326,7 +363,7 @@ export function SdkAdminConsole({ tenantSlug }: { tenantSlug?: string | null }) 
     setLoadFailed(false);
     setNotice(null);
     setSecret("");
-    if (!ensureMutationAllowed()) return;
+    if (!ensureApiKeyMutationAllowed()) return;
     if (!tenant) {
       setNotice({ tone: "error", text: "Seleccioná un tenant antes de crear una API key." });
       return;
@@ -361,7 +398,7 @@ export function SdkAdminConsole({ tenantSlug }: { tenantSlug?: string | null }) 
   }
 
   async function revokeKey(row: ApiKeyRow) {
-    if (!ensureMutationAllowed()) return;
+    if (!ensureApiKeyMutationAllowed()) return;
     const confirmed = window.confirm(`Revocar ${row.name}? La integración dejará de autenticar inmediatamente.`);
     if (!confirmed) return;
     setLoadFailed(false);
@@ -385,7 +422,7 @@ export function SdkAdminConsole({ tenantSlug }: { tenantSlug?: string | null }) 
   async function saveClaimPolicy() {
     setLoadFailed(false);
     setNotice(null);
-    if (!ensureMutationAllowed()) return;
+    if (!ensureClaimPolicyMutationAllowed()) return;
     if (!tenant) {
       setNotice({ tone: "error", text: "Seleccioná un tenant antes de cambiar la política de claim." });
       return;
@@ -622,16 +659,17 @@ export function SdkAdminConsole({ tenantSlug }: { tenantSlug?: string | null }) 
           <div>
             <p className="text-xs uppercase tracking-[0.18em] text-cyan-300">API keys</p>
             <h2 id="api-key-title" className="mt-2 text-xl font-semibold text-white">Una credencial por servicio</h2>
+            {!apiKeyMutationsAllowed ? <p id="api-key-mutation-gate" className="mt-3 text-xs leading-5 text-amber-100">{apiKeyMutationDisabledHelp}</p> : null}
             <p className="mt-1 text-sm text-slate-400">Elegí una ruta recomendada y ajustá sólo si tu arquitectura lo exige. No existe un preset de acceso total.</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-[1fr_150px]">
             <label className="block text-sm text-slate-300" htmlFor="sdk-key-name">
               Nombre operativo
-              <input id="sdk-key-name" className="mt-2 w-full min-w-0 rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300" value={keyName} onChange={(event) => setKeyName(event.target.value)} autoComplete="off" />
+              <input id="sdk-key-name" className="mt-2 w-full min-w-0 rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300" value={keyName} onChange={(event) => setKeyName(event.target.value)} autoComplete="off" disabled={!canManageApiKeys || !mfaVerified} />
             </label>
             <label className="block text-sm text-slate-300" htmlFor="sdk-key-expiry">
               Vencimiento
-              <select id="sdk-key-expiry" className="mt-2 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300" value={keyExpiryDays} onChange={(event) => setKeyExpiryDays(event.target.value)}>
+              <select id="sdk-key-expiry" className="mt-2 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300" value={keyExpiryDays} onChange={(event) => setKeyExpiryDays(event.target.value)} disabled={!canManageApiKeys || !mfaVerified}>
                 <option value="30">30 días</option>
                 <option value="90">90 días</option>
                 <option value="180">180 días</option>
@@ -649,6 +687,7 @@ export function SdkAdminConsole({ tenantSlug }: { tenantSlug?: string | null }) 
               <button
                 key={profile.id}
                 type="button"
+                disabled={!canManageApiKeys || !mfaVerified}
                 aria-pressed={profileId === profile.id}
                 onClick={() => chooseProfile(profile.id)}
                 className={`rounded-xl border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 ${profileId === profile.id ? "border-cyan-300/60 bg-cyan-400/10" : "border-white/10 bg-slate-950/65 hover:border-cyan-300/30"}`}
@@ -666,7 +705,7 @@ export function SdkAdminConsole({ tenantSlug }: { tenantSlug?: string | null }) 
           <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
             {SDK_SCOPE_OPTIONS.map((scope) => (
               <label key={scope.value} className="flex min-h-20 cursor-pointer items-start gap-3 rounded-lg border border-white/10 bg-slate-950/70 p-3 transition hover:border-cyan-300/40">
-                <input type="checkbox" className="mt-1 h-4 w-4 shrink-0 accent-cyan-400" checked={selectedScopes.includes(scope.value)} onChange={(event) => toggleScope(scope.value, event.target.checked)} />
+                <input type="checkbox" className="mt-1 h-4 w-4 shrink-0 accent-cyan-400" checked={selectedScopes.includes(scope.value)} onChange={(event) => toggleScope(scope.value, event.target.checked)} disabled={!canManageApiKeys || !mfaVerified} />
                 <span className="min-w-0">
                   <span className="flex items-center gap-2 text-sm font-medium text-white">{scope.label}<span className={`rounded px-1.5 py-0.5 text-[10px] uppercase ${scope.access === "read" ? "bg-sky-400/10 text-sky-200" : "bg-amber-400/10 text-amber-100"}`}>{scope.access}</span></span>
                   <span className="mt-1 block text-xs leading-5 text-slate-400">{scope.description}</span>
@@ -677,7 +716,7 @@ export function SdkAdminConsole({ tenantSlug }: { tenantSlug?: string | null }) 
           </div>
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-slate-400">{selectedScopes.length} de {SDK_SCOPE_OPTIONS.length} scopes · aplicá mínimo privilegio</p>
-            <Button type="button" onClick={createKey} disabled={!mutationsAllowed || !tenant || !keyName.trim() || !selectedScopes.length || pendingAction !== null} aria-busy={pendingAction === "create-key"} aria-describedby={isDemoData ? "developer-mutation-gate" : undefined} title={!mutationsAllowed ? mutationDisabledHelp : undefined}>{pendingAction === "create-key" ? "Creando…" : "Crear key"}</Button>
+            <Button type="button" onClick={createKey} disabled={!apiKeyMutationsAllowed || !tenant || !keyName.trim() || !selectedScopes.length || pendingAction !== null} aria-busy={pendingAction === "create-key"} aria-describedby={!apiKeyMutationsAllowed ? "api-key-mutation-gate" : undefined} title={!apiKeyMutationsAllowed ? apiKeyMutationDisabledHelp : undefined}>{pendingAction === "create-key" ? "Creando…" : "Crear key"}</Button>
           </div>
         </fieldset>
 
@@ -717,7 +756,7 @@ export function SdkAdminConsole({ tenantSlug }: { tenantSlug?: string | null }) 
                   <td><StatusBadge tone={row.status === "active" ? "success" : "neutral"} label={row.status === "active" ? "Activa" : "Revocada"} /></td>
                   <td>{displayDate(row.last_used_at)}</td>
                   <td>{row.expires_at ? displayDate(row.expires_at) : "Sin vencimiento"}</td>
-                  <td className="text-right">{row.status === "active" ? <Button type="button" variant="ghost" disabled={!mutationsAllowed || pendingAction !== null} aria-busy={pendingAction === `revoke:${row.id}`} aria-describedby={isDemoData ? "developer-mutation-gate" : undefined} title={!mutationsAllowed ? mutationDisabledHelp : undefined} onClick={() => void revokeKey(row)}>{pendingAction === `revoke:${row.id}` ? "Revocando…" : "Revocar"}</Button> : null}</td>
+                  <td className="text-right">{row.status === "active" ? <Button type="button" variant="ghost" disabled={!apiKeyMutationsAllowed || pendingAction !== null} aria-busy={pendingAction === `revoke:${row.id}`} aria-describedby={!apiKeyMutationsAllowed ? "api-key-mutation-gate" : undefined} title={!apiKeyMutationsAllowed ? apiKeyMutationDisabledHelp : undefined} onClick={() => void revokeKey(row)}>{pendingAction === `revoke:${row.id}` ? "Revocando…" : "Revocar"}</Button> : null}</td>
                 </tr>
               )) : null}
             </tbody>
@@ -726,7 +765,7 @@ export function SdkAdminConsole({ tenantSlug }: { tenantSlug?: string | null }) 
       </Card>
 
       <div className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
-        <Card className="p-5" role="region" aria-labelledby="claim-policy-title">
+        {canManageClaimPolicy ? <Card className="p-5" role="region" aria-labelledby="claim-policy-title">
           <p className="text-xs uppercase tracking-[0.18em] text-cyan-300">Ownership · opcional</p>
           <h2 id="claim-policy-title" className="mt-2 text-xl font-semibold text-white">Compra antes que claim</h2>
           <p className="mt-1 text-sm leading-6 text-slate-400">Para retail, exigí un POS token válido y sumá PIN sólo cuando caja u operación lo necesiten. Un tap de góndola no transfiere propiedad.</p>
@@ -735,9 +774,9 @@ export function SdkAdminConsole({ tenantSlug }: { tenantSlug?: string | null }) 
             <input id="claim-bid" className="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300" value={bid} onChange={(event) => setBid(event.target.value)} autoComplete="off" />
             <label className="block text-sm text-slate-300" htmlFor="claim-pin">PIN opcional</label>
             <input id="claim-pin" className="w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300" value={claimPin} onChange={(event) => setClaimPin(event.target.value)} placeholder="Ej: 4921" autoComplete="off" inputMode="numeric" />
-            <Button type="button" onClick={saveClaimPolicy} disabled={!mutationsAllowed || !tenant || !bid.trim() || pendingAction !== null} aria-busy={pendingAction === "save-policy"} aria-describedby={isDemoData ? "developer-mutation-gate" : undefined} title={!mutationsAllowed ? mutationDisabledHelp : undefined}>{pendingAction === "save-policy" ? "Guardando…" : "Guardar política"}</Button>
+            <Button type="button" onClick={saveClaimPolicy} disabled={!claimPolicyMutationsAllowed || !tenant || !bid.trim() || pendingAction !== null} aria-busy={pendingAction === "save-policy"} aria-describedby={isDemoData ? "developer-mutation-gate" : undefined} title={!claimPolicyMutationsAllowed ? claimPolicyMutationDisabledHelp : undefined}>{pendingAction === "save-policy" ? "Guardando…" : "Guardar política"}</Button>
           </div>
-        </Card>
+        </Card> : null}
 
         <Card className="p-5" role="region" aria-labelledby="webhook-create-title">
           <p className="text-xs uppercase tracking-[0.18em] text-cyan-300">Outbound webhooks</p>

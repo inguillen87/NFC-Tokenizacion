@@ -25,8 +25,10 @@ CREATE TABLE IF NOT EXISTS batches (
   tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   bid text NOT NULL UNIQUE,
   status batch_status NOT NULL DEFAULT 'active',
-  meta_key_ct text NOT NULL,
-  file_key_ct text NOT NULL,
+  -- Nullable only for declared non-SUN carriers. Migration 0090 adds the
+  -- supplier-order carrier/key-scope invariant.
+  meta_key_ct text,
+  file_key_ct text,
   sdm_config jsonb NOT NULL DEFAULT '{}'::jsonb,
   created_at timestamptz NOT NULL DEFAULT now()
 );

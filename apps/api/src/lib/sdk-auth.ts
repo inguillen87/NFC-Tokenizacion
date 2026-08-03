@@ -22,6 +22,7 @@ export type SdkAuthContext = {
   tenantName: string;
   scopes: string[];
   traceId: string;
+  rateLimitProfile: "conservative" | "standard" | "high_throughput";
 };
 
 type SdkAuthFailure = {
@@ -59,10 +60,24 @@ function hasScope(scopes: string[], required: SdkScope) {
   return scopes.includes(required) || scopes.includes("sdk:*") || scopes.includes("*");
 }
 
+export function normalizeSdkRequestOrigin(value: string | null) {
+  if (!value) return null;
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== "https:" || parsed.username || parsed.password
+      || parsed.pathname !== "/" || parsed.search || parsed.hash) return null;
+    return parsed.origin.toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
 export async function authenticateSdkRequest(req: Request, requiredScope: SdkScope): Promise<SdkAuthSuccess | SdkAuthFailure> {
   const traceId = req.headers.get("x-nexid-trace-id") || `sdk_${randomUUID()}`;
   const rawKey = req.headers.get("x-nexid-api-key") || req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") || "";
   const tenantSlug = (req.headers.get("x-nexid-tenant-slug") || "").trim();
+  const clientIp = getRequestMeta(req).ip;
+  const requestOrigin = normalizeSdkRequestOrigin(req.headers.get("origin"));
 
   if (!rawKey.trim()) {
     return {
@@ -79,13 +94,22 @@ export async function authenticateSdkRequest(req: Request, requiredScope: SdkSco
       k.scopes,
       tn.id::text AS tenant_id,
       tn.slug AS tenant_slug,
-      tn.name AS tenant_name
+      tn.name AS tenant_name,
+      k.rate_limit_profile
     FROM tenant_api_keys k
     JOIN tenants tn ON tn.id = k.tenant_id
     WHERE k.key_hash = ${keyHash}
       AND k.status = 'active'
       AND (k.expires_at IS NULL OR k.expires_at > now())
       AND (${tenantSlug} = '' OR tn.slug = ${tenantSlug})
+      AND (
+        cardinality(k.allowed_ip_cidrs) = 0
+        OR (${clientIp}::inet IS NOT NULL AND ${clientIp}::inet <<= ANY(k.allowed_ip_cidrs))
+      )
+      AND (
+        cardinality(k.allowed_origins) = 0
+        OR (${requestOrigin}::text IS NOT NULL AND ${requestOrigin} = ANY(k.allowed_origins))
+      )
     LIMIT 1
   `;
   const row = rows[0] as Record<string, unknown> | undefined;
@@ -106,7 +130,7 @@ export async function authenticateSdkRequest(req: Request, requiredScope: SdkSco
 
   await sql/*sql*/`
     UPDATE tenant_api_keys
-    SET last_used_at = now(), updated_at = now()
+    SET last_used_at = now()
     WHERE id = ${row.api_key_id}
   `;
 
@@ -119,6 +143,7 @@ export async function authenticateSdkRequest(req: Request, requiredScope: SdkSco
       tenantName: String(row.tenant_name || row.tenant_slug),
       scopes,
       traceId,
+      rateLimitProfile: String(row.rate_limit_profile || "standard") as SdkAuthContext["rateLimitProfile"],
     },
   };
 }

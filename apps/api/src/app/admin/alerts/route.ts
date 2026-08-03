@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminTenantScope } from "../../../lib/auth";
+import { checkAdminPermission, checkAdminWithPermission, getAdminTenantScope } from "../../../lib/auth";
 import { json } from "../../../lib/http";
 import { sql } from "../../../lib/db";
 import { normalizeAlertSeverity, normalizeAlertType, resolveAlertsTenant } from "../../../lib/alerts-query";
@@ -14,8 +14,10 @@ function isMissingRelation(error: unknown) {
 }
 
 export async function GET(req: Request) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdminWithPermission(req, "audit.read");
   if (auth) return auth;
+  const sensitive = checkAdminPermission(req, "events.read_sensitive");
+  if (sensitive) return sensitive;
   await ensureAlertsSchema();
   const { forcedTenantSlug } = getAdminTenantScope(req);
   const { searchParams } = new URL(req.url);

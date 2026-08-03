@@ -120,11 +120,14 @@ export async function ensureConsumerAuthSchema() {
           expires_at timestamptz NOT NULL,
           created_at timestamptz NOT NULL DEFAULT now(),
           last_seen_at timestamptz NOT NULL DEFAULT now(),
+          revoked_at timestamptz,
           user_agent_hash text,
           ip_hash text
         )
       `;
+      await sql/*sql*/`ALTER TABLE consumer_sessions ADD COLUMN IF NOT EXISTS revoked_at timestamptz`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_consumer_sessions_consumer ON consumer_sessions(consumer_id, expires_at DESC)`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_consumer_sessions_active ON consumer_sessions(consumer_id, expires_at DESC) WHERE revoked_at IS NULL`;
 
       await sql/*sql*/`
         CREATE TABLE IF NOT EXISTS consumer_auth_challenges (
@@ -881,12 +884,62 @@ export async function ensureEnterpriseIamSchema() {
         CREATE TABLE IF NOT EXISTS resource_permissions (
           id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
           user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          tenant_id uuid REFERENCES tenants(id) ON DELETE CASCADE,
           resource text NOT NULL,
           action text NOT NULL,
           effect text NOT NULL DEFAULT 'allow',
-          created_at timestamptz NOT NULL DEFAULT now(),
-          UNIQUE(user_id, resource, action, effect)
+          created_at timestamptz NOT NULL DEFAULT now()
         )
+      `;
+      // Never guess the tenant of historical permission rows at request time.
+      // The column alone is not an enterprise-RBAC marker: a cold runtime can
+      // create it above. Migration 0096 must also have installed the FK,
+      // deferred cross-table guards and the canonical DB capability helper.
+      await sql/*sql*/`
+        DO $resource_permission_scope_required$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'resource_permissions'
+              AND column_name = 'tenant_id'
+              AND data_type = 'uuid'
+          )
+          OR to_regprocedure('public.nexid_actor_has_enterprise_capability_v1(uuid,uuid,text,text)') IS NULL
+          OR NOT EXISTS (
+            SELECT 1
+            FROM pg_catalog.pg_constraint constraint_row
+            WHERE constraint_row.conrelid = 'public.resource_permissions'::regclass
+              AND constraint_row.conname = 'resource_permissions_tenant_id_fkey'
+              AND constraint_row.contype = 'f'
+              AND constraint_row.convalidated
+          )
+          OR NOT EXISTS (
+            SELECT 1
+            FROM pg_catalog.pg_trigger trigger_row
+            WHERE trigger_row.tgrelid = 'public.resource_permissions'::regclass
+              AND trigger_row.tgname = 'trg_resource_permissions_tenant_scope'
+              AND NOT trigger_row.tgisinternal
+              AND trigger_row.tgenabled <> 'D'
+              AND trigger_row.tgdeferrable
+              AND trigger_row.tginitdeferred
+          )
+          OR NOT EXISTS (
+            SELECT 1
+            FROM pg_catalog.pg_trigger trigger_row
+            WHERE trigger_row.tgrelid = 'public.memberships'::regclass
+              AND trigger_row.tgname = 'trg_memberships_permission_scope'
+              AND NOT trigger_row.tgisinternal
+              AND trigger_row.tgenabled <> 'D'
+              AND trigger_row.tgdeferrable
+              AND trigger_row.tginitdeferred
+          ) THEN
+            RAISE EXCEPTION 'enterprise_rbac_migration_0096_required'
+              USING ERRCODE = '55000';
+          END IF;
+        END
+        $resource_permission_scope_required$
       `;
 
       await sql/*sql*/`
@@ -929,6 +982,9 @@ export async function ensureEnterpriseIamSchema() {
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_user_invites_email_created ON user_invites(email, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_access_requests_status_created ON access_requests(status, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_resource_permissions_user ON resource_permissions(user_id, resource)`;
+      await sql/*sql*/`CREATE UNIQUE INDEX IF NOT EXISTS ux_resource_permissions_tenant_scope ON resource_permissions(user_id, tenant_id, resource, action, effect) WHERE tenant_id IS NOT NULL`;
+      await sql/*sql*/`CREATE UNIQUE INDEX IF NOT EXISTS ux_resource_permissions_global_scope ON resource_permissions(user_id, resource, action, effect) WHERE tenant_id IS NULL`;
+      await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_resource_permissions_tenant_user ON resource_permissions(tenant_id, user_id, resource, action, effect)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_user_auth_events_email_created ON user_auth_events(email, created_at DESC)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_admin_login_attempt_buckets_updated ON admin_login_attempt_buckets(updated_at)`;
       await sql/*sql*/`CREATE INDEX IF NOT EXISTS idx_admin_login_attempt_buckets_blocked ON admin_login_attempt_buckets(blocked_until) WHERE blocked_until IS NOT NULL`;

@@ -10,6 +10,8 @@ import { readDemoDataMetaFromResponse } from "../lib/demo-data-mode";
 import { isSecurityAlertCreatedEvent, mergeAlertCenterItems, toAlertCenterItem, type AlertCenterItem, type SecurityAlertRealtimePayload } from "../lib/realtime-alerts";
 import { strictCoordinatePair } from "../lib/geo-coordinates";
 import { classifyRealtimeVerdict, isRealtimeRisk, type TenantTapRealtimeWireEvent } from "../lib/realtime-feed";
+import type { UserRole } from "../lib/dashboard-content";
+import { dashboardHighImpactPermissionMatches } from "../lib/permission-policy";
 
 type AnalyticsPayload = {
   ok?: boolean;
@@ -119,7 +121,17 @@ function locationEvidenceLabel(sourceValue?: string | null, accuracyValue?: numb
   return "Coordenada sin fuente de precision reportada";
 }
 
-export function MultirubroOpsPanel() {
+type MultirubroOpsPanelProps = {
+  currentRole: UserRole;
+  currentPermissions?: string[];
+  currentDeniedPermissions?: string[];
+};
+
+export function MultirubroOpsPanel({
+  currentRole,
+  currentPermissions = [],
+  currentDeniedPermissions = [],
+}: MultirubroOpsPanelProps) {
   const [analytics, setAnalytics] = useState<AnalyticsPayload | null>(null);
   const [security, setSecurity] = useState<SecurityPayload | null>(null);
   const [tokenization, setTokenization] = useState<TokenizationPayload | null>(null);
@@ -144,6 +156,18 @@ export function MultirubroOpsPanel() {
   const [alertSeverityFilter, setAlertSeverityFilter] = useState<string>("");
   const [alertTypeFilter, setAlertTypeFilter] = useState<string>("");
   const [locationFilter, setLocationFilter] = useState<LocationFilter>("all");
+  const canAcknowledgeAlerts = dashboardHighImpactPermissionMatches(
+    currentRole,
+    currentPermissions,
+    "alerts.ack",
+    currentDeniedPermissions,
+  );
+  const canReadSensitiveEvents = dashboardHighImpactPermissionMatches(
+    currentRole,
+    currentPermissions,
+    "events.read_sensitive",
+    currentDeniedPermissions,
+  );
 
   function isLocalDashboardRuntime() {
     if (typeof window === "undefined") return false;
@@ -329,6 +353,7 @@ export function MultirubroOpsPanel() {
   }
 
   async function acknowledgeAlert(alertId: string) {
+    if (!canAcknowledgeAlerts) return;
     const response = await fetch(`/api/admin/alerts/${encodeURIComponent(alertId)}/ack`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
@@ -350,6 +375,12 @@ export function MultirubroOpsPanel() {
   }, [alertSeverityFilter, alertTypeFilter]);
 
   useEffect(() => {
+    if (!canReadSensitiveEvents) {
+      setStreamOnline(false);
+      setStreamState("offline");
+      streamOnlineRef.current = false;
+      return;
+    }
     let active = true;
     let reconnectTimer: number | null = null;
     let stream: EventSource | null = null;
@@ -463,7 +494,7 @@ export function MultirubroOpsPanel() {
       if (reconnectTimer) window.clearTimeout(reconnectTimer);
       if (stream) stream.close();
     };
-  }, []);
+  }, [canReadSensitiveEvents]);
 
   const tapsTotal = Number(analytics?.kpis?.scans || 0);
   const validRate = Number(analytics?.kpis?.validRate || 0);
@@ -796,17 +827,17 @@ export function MultirubroOpsPanel() {
               </div>
               <p className="mt-1 text-slate-400">{item.type} · {item.severity} · {item.status} · tenant {item.tenant_slug || "n/a"}</p>
               <div className="mt-2 flex items-center gap-2">
-                {item.status !== "acknowledged" ? (
+                {canAcknowledgeAlerts && item.status !== "acknowledged" ? (
                   <button suppressHydrationWarning onClick={() => void acknowledgeAlert(item.id)} className="rounded border border-emerald-300/30 bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-100">
                     Ack
                   </button>
                 ) : null}
-                <a
+                {canReadSensitiveEvents ? <a
                   href={`/events?tenant=${encodeURIComponent(String(item.tenant_slug || ""))}`}
                   className="rounded border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-[11px] text-cyan-100"
                 >
                   Open events
-                </a>
+                </a> : null}
               </div>
             </div>
           )) : (

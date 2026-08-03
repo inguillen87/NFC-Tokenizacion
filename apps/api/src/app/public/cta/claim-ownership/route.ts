@@ -10,30 +10,30 @@ import { getTapEvent } from "../../../../lib/loyalty-service";
 import { createAlert } from "../../../../lib/alert-engine";
 import { sql } from "../../../../lib/db";
 import { evaluateReceiptOcrForOwnership, performReceiptOcr, validateReceiptImageDataUrl } from "../../../../lib/ocr-service";
-import { getRequestMeta } from "../../../../lib/request-meta";
-import { hitSunRateLimit, readSunRateLimit } from "../../../../lib/sun-rate-limit-store";
 import { normalizeClaimPolicy } from "../../../../lib/sun-tenant-profile";
 import { enforceCriticalRateLimit } from "../../../../lib/critical-rate-limit";
 import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../lib/bounded-request-body";
 import { normalizeConsentedApproximateLocation } from "../../../../lib/approximate-location";
+import {
+  ownershipClaimPinRateScope,
+  readOwnershipClaimPinInput,
+  verifyOwnershipClaimPin,
+  type OwnershipClaimPinVerification,
+} from "../../../../lib/ownership-claim-pin";
+import {
+  OWNERSHIP_CLAIM_PIN_WINDOW_SECONDS,
+  releaseSuccessfulOwnershipClaimPinAttempt,
+  reserveOwnershipClaimPinAttempt,
+} from "../../../../lib/ownership-claim-pin-rate-limit";
+import {
+  evaluateOwnershipClaimAuthorization,
+  resolveOwnershipClaimPinCredential,
+} from "../../../../lib/ownership-claim-authorization";
 
-const CLAIM_PIN_DEVICE_MAX_ATTEMPTS = 5;
-const CLAIM_PIN_PRODUCT_MAX_ATTEMPTS = 20;
-const CLAIM_PIN_WINDOW_SECONDS = 15 * 60;
 const MAX_CLAIM_REQUEST_BYTES = 8 * 1024 * 1024;
 
 function sha256Hex(value: string) {
   return createHash("sha256").update(value).digest("hex");
-}
-
-function claimPinRateKeys(req: Request, event: Record<string, unknown>) {
-  const meta = getRequestMeta(req);
-  const productIdentity = `${event.tenant_id || "tenant"}:${event.id || "event"}:${event.uid_hex || "uid"}`;
-  const clientIdentity = `${meta.ip || "no-ip"}:${meta.userAgent || "no-ua"}`;
-  return {
-    device: sha256Hex(`${productIdentity}:${clientIdentity}`),
-    product: sha256Hex(productIdentity),
-  };
 }
 
 function getDistanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -106,7 +106,17 @@ export async function POST(req: Request) {
       b.hash_pin AS batch_hash_pin,
       b.active_for_claim AS batch_active_for_claim,
       b.sdm_config AS batch_sdm_config,
-      tsp.claim_policy AS tenant_claim_policy
+      tsp.claim_policy AS tenant_claim_policy,
+      EXISTS (
+        SELECT 1
+        FROM sdk_pos_activations activation
+        WHERE activation.tenant_id = b.tenant_id
+          AND activation.batch_id = b.id
+          AND activation.activation_status = 'active'
+          AND (activation.expires_at IS NULL OR activation.expires_at > now())
+          AND activation.tag_id = t.id
+          AND UPPER(activation.uid_hex) = UPPER(t.uid_hex)
+      ) AS retailer_pos_attested
     FROM tags t
     JOIN batches b ON b.id = t.batch_id
     LEFT JOIN tenant_sun_profiles tsp ON tsp.tenant_id = b.tenant_id
@@ -155,65 +165,75 @@ export async function POST(req: Request) {
     }, 403);
   }
 
-  const pinRequired = claimPolicy === "inside_pack_secret" || (tagRow.tag_claim_pin_required !== null && tagRow.tag_claim_pin_required !== undefined
-    ? Boolean(tagRow.tag_claim_pin_required)
-    : Boolean(tagRow.batch_claim_pin_required || (tagRow.batch_sdm_config as any)?.claim_pin_required));
+  const pinCredential = resolveOwnershipClaimPinCredential({
+    claimPolicy,
+    tagPinRequired: tagRow.tag_claim_pin_required,
+    tagPinHash: tagRow.tag_hash_pin,
+    batchPinRequired: tagRow.batch_claim_pin_required,
+    batchPinHash: tagRow.batch_hash_pin,
+    configPinRequired: batchSdmConfig?.claim_pin_required,
+    configPinHash: batchSdmConfig?.hash_pin || batchSdmConfig?.claim_pin_hash,
+  });
+  const pinRequired = pinCredential.required;
+  if (pinCredential.misconfigured) {
+    return json({ ok: false, reason: "pin_policy_misconfigured", trace_id: traceId }, 409, { "cache-control": "no-store" });
+  }
 
+  let pinVerification: OwnershipClaimPinVerification | null = null;
   if (pinRequired) {
-    const pin = typeof body.pin === "string" ? body.pin.trim() : "";
-    if (!pin) {
+    const pinInput = readOwnershipClaimPinInput(body.pin, { required: true });
+    if (!pinInput.ok) {
       return json({
         ok: false,
-        reason: "pin_required",
+        reason: pinInput.reason === "pin_required" ? "pin_required" : "pin_invalid_input",
         error: "Se requiere ingresar el PIN de seguridad oculto bajo la cápsula de la botella.",
         trace_id: traceId,
       }, 400);
     }
 
-    const rateKeys = claimPinRateKeys(req, event as Record<string, unknown>);
-    let currentRate;
-    try {
-      currentRate = await Promise.all([
-        readSunRateLimit("claim_pin_device", rateKeys.device, CLAIM_PIN_WINDOW_SECONDS, CLAIM_PIN_DEVICE_MAX_ATTEMPTS),
-        readSunRateLimit("claim_pin_product", rateKeys.product, CLAIM_PIN_WINDOW_SECONDS, CLAIM_PIN_PRODUCT_MAX_ATTEMPTS),
-      ]);
-    } catch {
+    const pinRateContext = {
+      tenantId: String(event.tenant_id || ""),
+      bid: String(event.bid || bid),
+      uidHex: String(event.uid_hex || uid),
+      sourceId: "public-claim",
+      credentialScope: ownershipClaimPinRateScope(pinCredential.storedHash),
+    };
+    const attemptReservation = await reserveOwnershipClaimPinAttempt(req, pinRateContext);
+    if (attemptReservation.status === "unavailable") {
       return json({ ok: false, reason: "claim_pin_security_unavailable", trace_id: traceId }, 503, { "cache-control": "no-store" });
     }
-    if (currentRate.some((entry) => entry.limited)) {
+    if (attemptReservation.status === "locked") {
       return json({
         ok: false,
         reason: "claim_pin_locked",
         error: "Demasiados intentos. Espera 15 minutos o solicita asistencia al emisor.",
         trace_id: traceId,
-        retry_after_seconds: CLAIM_PIN_WINDOW_SECONDS,
-      }, 429, { "cache-control": "no-store", "retry-after": String(CLAIM_PIN_WINDOW_SECONDS) });
+        retry_after_seconds: OWNERSHIP_CLAIM_PIN_WINDOW_SECONDS,
+      }, 429, { "cache-control": "no-store", "retry-after": String(OWNERSHIP_CLAIM_PIN_WINDOW_SECONDS) });
     }
 
-    const storedPinHash = tagRow.tag_hash_pin || tagRow.batch_hash_pin || (tagRow.batch_sdm_config as any)?.hash_pin || (tagRow.batch_sdm_config as any)?.claim_pin_hash;
-    const candidateHashes = [
-      sha256Hex(pin),
-      sha256Hex(`${event.tenant_id}:${event.bid}:${event.uid_hex}:${pin}`),
-      sha256Hex(`${event.tenant_id}:${event.bid}:${pin}`)
-    ];
+    const storedPinHash = pinCredential.storedHash;
+    try {
+      pinVerification = await verifyOwnershipClaimPin({
+        storedHash: String(storedPinHash || ""),
+        pin: pinInput.pin,
+        context: {
+          tenantId: String(event.tenant_id || ""),
+          bid: String(event.bid || bid),
+          uidHex: String(event.uid_hex || uid),
+        },
+      });
+    } catch {
+      await releaseSuccessfulOwnershipClaimPinAttempt(attemptReservation.attempt);
+      return json({ ok: false, reason: "claim_pin_security_unavailable", trace_id: traceId }, 503, { "cache-control": "no-store" });
+    }
 
-    if (!storedPinHash || !candidateHashes.includes(storedPinHash)) {
-      const recorded = await Promise.all([
-        hitSunRateLimit("claim_pin_device", rateKeys.device, CLAIM_PIN_WINDOW_SECONDS, CLAIM_PIN_DEVICE_MAX_ATTEMPTS),
-        hitSunRateLimit("claim_pin_product", rateKeys.product, CLAIM_PIN_WINDOW_SECONDS, CLAIM_PIN_PRODUCT_MAX_ATTEMPTS),
-      ]).catch(() => null);
-      if (!recorded || recorded.some((entry) => entry.unavailable)) {
+    if (pinVerification.matches) {
+      const released = await releaseSuccessfulOwnershipClaimPinAttempt(attemptReservation.attempt);
+      if (released.status === "unavailable") {
         return json({ ok: false, reason: "claim_pin_security_unavailable", trace_id: traceId }, 503, { "cache-control": "no-store" });
       }
-      if (recorded.some((entry) => entry.limited)) {
-        return json({
-          ok: false,
-          reason: "claim_pin_locked",
-          error: "Demasiados intentos. Espera 15 minutos o solicita asistencia al emisor.",
-          trace_id: traceId,
-          retry_after_seconds: CLAIM_PIN_WINDOW_SECONDS,
-        }, 429, { "cache-control": "no-store", "retry-after": String(CLAIM_PIN_WINDOW_SECONDS) });
-      }
+    } else {
       return json({
         ok: false,
         reason: "invalid_pin",
@@ -221,6 +241,31 @@ export async function POST(req: Request) {
         trace_id: traceId,
       }, 403);
     }
+    console.info("[ownership_claim_pin_verified]", JSON.stringify({
+      trace_id: traceId,
+      algorithm: pinVerification.algorithm,
+      needs_rotation: pinVerification.needsRotation,
+    }));
+  }
+
+  const claimAuthorization = evaluateOwnershipClaimAuthorization({
+    claimPolicy,
+    activeForClaim,
+    configuredPinRequired: pinRequired,
+    pinPresented: Boolean(pinVerification),
+    pinValidated: pinVerification?.matches === true,
+    configuredPosRequired: Boolean(batchSdmConfig?.claim_requires_pos || batchSdmConfig?.pos_required || batchSdmConfig?.retailer_attestation_required),
+    posValidated: tagRow.retailer_pos_attested === true || String(tagRow.retailer_pos_attested) === "true",
+    purchaseProofPresented: typeof body.receiptFileData === "string" && body.receiptFileData.length > 0,
+  });
+  if (claimAuthorization.disposition === "denied") {
+    const status = claimAuthorization.reason === "claim_policy_configuration_required" ? 409 : 403;
+    return json({
+      ok: false,
+      reason: claimAuthorization.reason,
+      review_required: claimAuthorization.reason === "ownership_manual_approval_required" || claimAuthorization.reason === "purchase_receipt_required",
+      trace_id: traceId,
+    }, status, { "cache-control": "no-store" });
   }
 
   // UA, screen and geolocation are spoofable client-reported risk signals.
@@ -349,6 +394,10 @@ export async function POST(req: Request) {
               review_reason: ocrDecision.reason,
               ownership_scope: "digital_title_record",
               physical_custody_verified: false,
+              claim_pin_verification: pinVerification ? {
+                algorithm: pinVerification.algorithm,
+                needs_rotation: pinVerification.needsRotation,
+              } : null,
             })}::jsonb
           )
           RETURNING id::text AS id, created_at
@@ -436,6 +485,10 @@ export async function POST(req: Request) {
         share_token_status: auth.share_token_status,
         fresh_handoff_exp: fresh.payload.exp,
         reported_client_signals: reportedClientSignals,
+        claim_pin_verification: pinVerification ? {
+          algorithm: pinVerification.algorithm,
+          needs_rotation: pinVerification.needsRotation,
+        } : null,
         // El comprobante y OCR quedan como material de revisión, no como validación de pago.
         receipt_details: {
           date: receiptDate,

@@ -89,6 +89,15 @@ test("session role and tenant binding fail closed even when headers request a br
     headers: { authorization: "Bearer malformed", "x-nexid-tenant-slug": "victim" },
   });
   assert.equal((await checkAdmin(malformedTenantAdmin, ["tenant_admin"], async () => session({ tenantId: null, tenantSlug: null })))?.status, 403);
+
+  const malformedSuperAdmin = new Request("https://api.nexid.lat/admin/tenants", {
+    headers: { authorization: "Bearer malformed-global" },
+  });
+  assert.equal((await checkAdmin(malformedSuperAdmin, ["super_admin"], async () => session({
+    role: "super-admin",
+    tenantId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+    tenantSlug: "tenant-a",
+  })))?.status, 403);
 });
 
 test("admin boundary and sensitive audit routes no longer consume caller authority headers", async () => {

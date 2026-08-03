@@ -21,6 +21,8 @@ type CriticalRateLimitInput = {
   subjectId?: string | null;
   globalPrincipal?: boolean;
   tenantWide?: boolean;
+  limitScale?: number;
+  rateLimitProfile?: string;
 };
 
 type Reservation = Awaited<ReturnType<typeof hitSunRateLimit>>;
@@ -39,6 +41,7 @@ type CriticalRateLimitDependencies = {
 type SdkRateLimitContext = {
   tenantId: string;
   apiKeyId: string;
+  rateLimitProfile?: "conservative" | "standard" | "high_throughput";
 };
 
 function responseHeaders(
@@ -70,6 +73,16 @@ export async function enforceCriticalRateLimit(
     subjectId: input.subjectId,
     clientIp: meta.ip,
   });
+  const effectiveLimit = Math.max(1, Math.floor(decision.limit * Math.min(Math.max(input.limitScale ?? 1, 0.1), 4)));
+  const effectiveDecision = {
+    ...decision,
+    limit: effectiveLimit,
+    headers: {
+      ...decision.headers,
+      "x-ratelimit-limit": String(effectiveLimit),
+      ...(input.rateLimitProfile ? { "x-nexid-rate-limit-profile": input.rateLimitProfile } : {}),
+    },
+  };
 
   // A route added without a matching central policy is an unsafe deployment,
   // not a reason to silently fall back to the broader public allowance.
@@ -115,21 +128,21 @@ export async function enforceCriticalRateLimit(
         bucket.scope,
         bucket.key,
         decision.windowSeconds,
-        decision.limit,
+        effectiveLimit,
       );
       if (reservation.unavailable) {
         if (!failClosed()) return null;
         return json(
           { ok: false, reason: "rate_limit_unavailable" },
           503,
-          responseHeaders(decision, reservation.retryAfterSeconds || 30),
+          responseHeaders(effectiveDecision, reservation.retryAfterSeconds || 30),
         );
       }
       if (reservation.limited) {
         return json(
           { ok: false, reason: "rate_limited" },
           429,
-          responseHeaders(decision, reservation.retryAfterSeconds),
+          responseHeaders(effectiveDecision, reservation.retryAfterSeconds),
         );
       }
     }
@@ -139,7 +152,7 @@ export async function enforceCriticalRateLimit(
     return json(
       { ok: false, reason: "rate_limit_unavailable" },
       503,
-      responseHeaders(decision, 30),
+      responseHeaders(effectiveDecision, 30),
     );
   }
 }
@@ -249,10 +262,14 @@ export function enforceSdkRateLimit(
   context: SdkRateLimitContext,
   dependencies: CriticalRateLimitDependencies = {},
 ) {
+  const profile = context.rateLimitProfile || "standard";
+  const limitScale = profile === "conservative" ? 0.5 : profile === "high_throughput" ? 2 : 1;
   return enforceCriticalRateLimit(req, {
     rateClass: req.method.toUpperCase() === "GET" ? "sdk_read" : "sdk_write",
     tenantId: context.tenantId,
     subjectId: `sdk-key:${context.apiKeyId}`,
+    limitScale,
+    rateLimitProfile: profile,
   }, dependencies);
 }
 
@@ -261,12 +278,16 @@ export function enforceSdkEpcisCaptureRateLimit(
   context: SdkRateLimitContext,
   dependencies: CriticalRateLimitDependencies = {},
 ) {
+  const profile = context.rateLimitProfile || "standard";
+  const limitScale = profile === "conservative" ? 0.5 : profile === "high_throughput" ? 2 : 1;
   return enforceCriticalRateLimit(req, {
     rateClass: "sdk_epcis_capture",
     tenantId: context.tenantId,
     subjectId: `sdk-key:${context.apiKeyId}`,
     globalPrincipal: true,
     tenantWide: true,
+    limitScale,
+    rateLimitProfile: profile,
   }, dependencies);
 }
 

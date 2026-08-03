@@ -1,0 +1,21 @@
+{
+  "ok": true,
+  "gate": "enterprise_release_preflight",
+  "validated_at": "2026-08-02",
+  "environment": "disposable_neon_schema_only_branch",
+  "database": "codex_qa_nexid_20260802",
+  "reviewed_migration_count": 38,
+  "first_reviewed_migration": "20260725230000_0057_sun_rate_limit_atomic_buckets.sql",
+  "latest_reviewed_migration": "20260802280000_0093_sun_tt_durable_truth_binding.sql",
+  "all_reviewed_migrations_applied": true,
+  "schema_capability_and_owner_role_privilege_postchecks": true,
+  "distinct_runtime_role_acl_proven": false,
+  "sdk_idempotency_keyring": {
+    "key_configured": true,
+    "active_key_id_explicit": true,
+    "previous_key_count": 0,
+    "validation_key_scope": "ephemeral_disposable_qa_only"
+  },
+  "production_touched": false,
+  "contains_credentials": false
+}

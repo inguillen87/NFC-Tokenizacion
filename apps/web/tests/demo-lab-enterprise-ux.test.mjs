@@ -256,7 +256,7 @@ test("demo lab hub keeps C-level contrast across cards, filters and theme contro
   assert.match(page, /HUB_PROOF_STACK/);
   assert.match(page, /HUB_QUICK_LAUNCH_SCENARIOS/);
   assert.match(page, /demo-lab-hub-quick-launch/);
-  assert.match(page, /Pruebas vivas/);
+  assert.match(page, /Accesos rápidos/);
   assert.match(page, /Entrar directo sin recorrer todo el hub/);
   assert.match(page, /Abrir prueba rápida/);
   assert.match(page, /demo-lab-hub-executive-path/);
@@ -284,10 +284,13 @@ test("demo lab hub keeps C-level contrast across cards, filters and theme contro
   assert.match(page, /id:\s*"dual-proof"/);
   assert.match(page, /id:\s*"sensor-evidence"/);
   assert.match(page, /id:\s*"authorized-network"/);
+  assert.match(page, /id:\s*"supplier-batch-factory"/);
   assert.match(page, /NFC 424 DNA/);
-  assert.match(page, /DPP \/ Dual Proof/);
-  assert.match(page, /Sensor \/ UHF \/ IoT/);
-  assert.match(page, /Red Autorizada/);
+  assert.match(page, /Dual Proof DPP/);
+  assert.match(page, /Sensor Evidence Demo/);
+  assert.match(page, /Authorized Network Demo/);
+  assert.match(page, /Supplier Batch Factory Demo/);
+  assert.match(page, /Demo no significa live/);
   assert.match(client, /demo-lab-toast-stack/);
   assert.match(client, /demo-lab-crm-ledger/);
   assert.match(client, /demo-lab-crm-tabs/);

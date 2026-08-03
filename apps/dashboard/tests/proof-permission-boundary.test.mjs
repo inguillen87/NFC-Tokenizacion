@@ -2,14 +2,24 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const { dashboardPermissionMatches, requiredPermissionForAdminResource } = await import("../src/lib/permission-policy.ts");
+const {
+  dashboardHighImpactPermissionMatches,
+  dashboardPermissionMatches,
+  requiredPermissionForAdminResource,
+} = await import("../src/lib/permission-policy.ts");
 
 test("proof permission policy separates reads from mutations", () => {
-  assert.equal(dashboardPermissionMatches(["proof:read"], "proof:read"), true);
-  assert.equal(dashboardPermissionMatches(["proof:read"], "proof:write"), false);
-  assert.equal(dashboardPermissionMatches(["proof:*"], "proof:write"), true);
-  assert.equal(requiredPermissionForAdminResource("GET", "proof/anchors"), "proof:read");
-  assert.equal(requiredPermissionForAdminResource("POST", "proof/events"), "proof:write");
+  assert.equal(dashboardPermissionMatches(["proof:read"], "proofs.read"), true);
+  assert.equal(dashboardPermissionMatches(["proof:read"], "proofs.anchor"), false);
+  assert.equal(dashboardPermissionMatches(["proof:write"], "proofs.anchor"), true);
+  assert.equal(dashboardHighImpactPermissionMatches("security-analyst", ["proof:read"], "proofs.read"), true);
+  assert.equal(dashboardHighImpactPermissionMatches("security-analyst", ["proof:write"], "proofs.anchor"), false);
+  assert.equal(dashboardHighImpactPermissionMatches("tenant-admin", ["proofs.read"], "proofs.anchor"), false);
+  assert.equal(dashboardHighImpactPermissionMatches("security-operator", ["proof:write"], "proofs.anchor"), true);
+  assert.equal(dashboardHighImpactPermissionMatches("viewer", ["*"], "proofs.read"), false);
+  assert.equal(dashboardHighImpactPermissionMatches("tenant-owner", ["proofs.read"], "proofs.read", ["proof:read"]), false);
+  assert.equal(requiredPermissionForAdminResource("GET", "proof/anchors"), "proofs.read");
+  assert.equal(requiredPermissionForAdminResource("POST", "proof/events"), "proofs.anchor");
   assert.equal(requiredPermissionForAdminResource("GET", "analytics"), null);
 });
 
@@ -20,10 +30,11 @@ test("dashboard navigation and BFF enforce the same Proof contract", async () =>
 
   assert.match(profiles, /"proof:\*"/);
   assert.match(profiles, /"proof:read"/);
-  assert.match(shell, /const canReadProof =/);
+  assert.match(shell, /const highImpactMatches = \(capability: string\) => dashboardHighImpactPermissionMatches/);
+  assert.match(shell, /const canReadProof = highImpactMatches\("proofs\.read"\)/);
   assert.match(shell, /item\.href !== "\/proof" \|\| canReadProof/);
   assert.match(proxy, /requiredPermissionForAdminResource\(req\.method, normalizedPath\)/);
-  assert.match(proxy, /dashboardPermissionMatches\(dashboardSession\.permissions, requiredPermission\)/);
+  assert.match(proxy, /dashboardHighImpactPermissionMatches\([\s\S]*dashboardSession\.permissions,[\s\S]*requiredPermission,[\s\S]*dashboardSession\.deniedPermissions,[\s\S]*\)/);
   assert.match(proxy, /permission_required/);
 });
 

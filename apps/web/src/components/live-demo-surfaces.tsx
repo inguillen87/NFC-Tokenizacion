@@ -9,7 +9,7 @@ type LiveEvent = {
   id: number;
   created_at: string;
   result: string;
-  uid_hex?: string;
+  uid_masked?: string;
   city?: string;
   country_code?: string;
   lat?: number;
@@ -117,7 +117,7 @@ export function LiveDemoSurfaces() {
           <div className="mt-4 space-y-2 text-sm text-slate-300">
             {items.slice(0, 8).map((event) => (
               <div key={event.id} className="demo-live-feed-item rounded-lg border border-white/10 bg-slate-900/70 p-3">
-                <div className="font-medium text-white">{event.result} · {event.product_name || event.uid_hex || "Item"}</div>
+                <div className="font-medium text-white">{event.result} · {event.product_name || event.uid_masked || "Item"}</div>
                 <div className="text-xs text-slate-400">{verticalLabel(event.vertical)} · {event.city || "--"}, {event.country_code || "--"}</div>
               </div>
             ))}

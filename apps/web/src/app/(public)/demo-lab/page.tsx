@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
+import type { ComponentType } from "react";
 import type { AppLocale } from "@product/config";
 import { getWebI18n } from "../../../lib/locale";
 import { JsonLd } from "../../../components/json-ld";
@@ -25,7 +26,16 @@ import {
   FileText,
   Info,
   Database,
+  Factory,
 } from "lucide-react";
+import {
+  DEMO_LAB_MODE_ORDER,
+  DEMO_LAB_SCENARIO_CATALOG,
+  getDemoLabModeCopy,
+  getDemoLabScenarioStatus,
+  isDemoLabScenarioId,
+  type DemoLabScenarioId,
+} from "./demo-lab-scenario-catalog";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { locale } = await getWebI18n();
@@ -202,7 +212,7 @@ const PANEL_CONTENT: Record<
     icon: Box,
     color: "text-violet-400",
     gradientFrom: "from-violet-500/20",
-    title: "Propiedad Digital (Polygon)",
+    title: "Polygon Ownership Demo",
     subtitle: "El comprador inicia una solicitud; el certificado confirma el mint testnet solo si pasan los checks actuales",
     context:
       "Cuando el comprador toca el producto, puede solicitar ownership en Polygon después de validar el mensaje NFC, la evidencia disponible y la política tenant. El demo conecta con un certificado público que muestra el estado actual de sus consultas de owner, mint y metadata HTTPS.",
@@ -214,7 +224,7 @@ const PANEL_CONTENT: Record<
     icon: Network,
     color: "text-emerald-400",
     gradientFrom: "from-emerald-500/20",
-    title: "Auditoría de Cadena de Suministro (IOTA)",
+    title: "IOTA Proof Layer Demo",
     subtitle: "Evidencia logística anclable para exportaciones, IoT y DPP",
     context:
       "Cada evento clave de la cadena de suministro genera evidencia privada en nexID. Cuando la política lo exige, se anclan hashes o Merkle roots en IOTA; no se publican datos privados ni cada lectura individual.",
@@ -226,13 +236,61 @@ const PANEL_CONTENT: Record<
     icon: CloudOff,
     color: "text-blue-400",
     gradientFrom: "from-blue-500/20",
-    title: "Verificación Offline en Campo",
+    title: "Offline Field Scan Demo",
     subtitle: "Para galpones, agro, cavas e industria sin internet",
     context:
       "El celular o lector recibe un paquete de permisos y se puede usar en zonas sin señal. Registra cada verificación localmente. Al volver a conectarse, sincroniza todo con el servidor.",
     value:
       "Validá localmente el mensaje y la política disponible para operar en campo, cava o planta. Es una decisión provisional; el resultado oficial llega al sincronizar y no autentica por sí solo el producto físico.",
     doc: { label: "Ver arquitectura offline", href: "/docs#trust-layers" },
+  },
+  "dual-proof": {
+    icon: FileText,
+    color: "text-teal-300",
+    gradientFrom: "from-teal-500/20",
+    title: "Dual Proof DPP",
+    subtitle: "Pasaporte, ownership opcional y evidencia hash-only sin mezclar responsabilidades",
+    context:
+      "Este recorrido ilustra como QR/GS1 resuelve identidad declarada, NFC aporta evidencia del mensaje del tag, Polygon puede representar ownership aprobado e IOTA puede anclar hashes seleccionados. No escribe cada tap on-chain y ninguna capa prueba por si sola el objeto fisico.",
+    value:
+      "Permite explicar una arquitectura DPP enterprise manteniendo PII, documentos y reglas del tenant fuera de la cadena. Las pruebas de red se confirman solo en sus verificadores runtime.",
+    doc: { label: "Ver modelo DPP", href: "/docs#trust-layers" },
+  },
+  "sensor-evidence": {
+    icon: Cpu,
+    color: "text-lime-300",
+    gradientFrom: "from-lime-500/20",
+    title: "Sensor Evidence Demo",
+    subtitle: "Hitos reportados por UHF, IoT o sensores con cobertura y fuente visibles",
+    context:
+      "El escenario usa mediciones ilustrativas y declaradas para mostrar como un hito de pallet, temperatura o custodia puede convertirse en evidencia auditable. Los intervalos sin datos permanecen desconocidos y no se inventa una ruta fisica.",
+    value:
+      "Operaciones puede conservar el stream privado y publicar solo el hash de hitos seleccionados cuando la politica lo exige, sin exponer datos industriales sensibles.",
+    doc: { label: "Ver flujo de evidencia", href: "/docs#trust-layers" },
+  },
+  "authorized-network": {
+    icon: ShieldCheck,
+    color: "text-sky-300",
+    gradientFrom: "from-sky-500/20",
+    title: "Authorized Network Demo",
+    subtitle: "Roles acotados para supplier, reseller, integrador y tenant",
+    context:
+      "Este recorrido RBAC es ilustrativo: cada actor ve solo el pedido, batch o tarea que su rol permite. No afirma una relacion de partner y no entrega claves NFC crudas, secretos de infraestructura ni acceso a la base de datos.",
+    value:
+      "Escala la red operativa con permisos por tenant, trazabilidad de acciones y separacion de custodia, manteniendo la exportacion segura bajo control autorizado.",
+    doc: { label: "Ver modelo de acceso", href: "/docs#trust-layers" },
+  },
+  "supplier-batch-factory": {
+    icon: Factory,
+    color: "text-orange-300",
+    gradientFrom: "from-orange-500/20",
+    title: "Supplier Batch Factory Demo",
+    subtitle: "Orden, sub-batches, perfiles, QA y activacion en un plan controlado",
+    context:
+      "La fabrica muestra un plan simulado: tenant, pedido, cantidad, batches, sub-batches, perfil NFC, version de clave y gates de QA. No crea un pedido real, no programa tags y no exporta material de custodia.",
+    value:
+      "Ventas, operaciones y el proveedor pueden revisar cantidades y criterios de aceptacion antes de autorizar un pack seguro, reduciendo errores sin revelar secretos NFC.",
+    doc: { label: "Ver arquitectura de lotes", href: "/docs" },
   },
   "qr-gs1": {
     icon: QrCode,
@@ -393,7 +451,19 @@ const PANEL_CONTENT: Record<
 };
 
 // Hub scenarios
-const HUB_SCENARIOS = [
+type HubScenario = {
+  id: DemoLabScenarioId;
+  icon: ComponentType<{ className?: string }>;
+  color: string;
+  border: string;
+  shadow: string;
+  accent: string;
+  accentGlow: string;
+  title: string;
+  body: string;
+};
+
+const HUB_SCENARIOS: HubScenario[] = [
   {
     id: "polygon-ownership",
     icon: Box,
@@ -402,8 +472,8 @@ const HUB_SCENARIOS = [
     shadow: "hover:shadow-violet-500/20",
     accent: "bg-violet-500/30 text-violet-200",
     accentGlow: "group-hover:shadow-violet-500/20",
-    title: "Propiedad Digital (Polygon)",
-    body: "El comprador inicia ownership y ve un mint testnet confirmado. El certificado completo exige metadata y contrato verificables.",
+    title: DEMO_LAB_SCENARIO_CATALOG["polygon-ownership"].title,
+    body: "El comprador inicia ownership y abre el certificado testnet. Solo aparece confirmado cuando los checks runtime de contrato, mint, owner y metadata coinciden.",
   },
   {
     id: "iota-proof",
@@ -413,7 +483,7 @@ const HUB_SCENARIOS = [
     shadow: "hover:shadow-emerald-500/20",
     accent: "bg-emerald-500/30 text-emerald-200",
     accentGlow: "group-hover:shadow-emerald-500/20",
-    title: "Auditoría de Cadena de Suministro (IOTA)",
+    title: DEMO_LAB_SCENARIO_CATALOG["iota-proof"].title,
     body: "Ancla hashes o Merkle roots de hitos logísticos cuando la política de auditoría lo exige; no publica datos privados ni cada tap.",
   },
   {
@@ -424,8 +494,8 @@ const HUB_SCENARIOS = [
     shadow: "hover:shadow-blue-500/20",
     accent: "bg-blue-500/30 text-blue-200",
     accentGlow: "group-hover:shadow-blue-500/20",
-    title: "Verificación Offline",
-    body: "Validación criptográfica local para galpones, agro, cavas e industria sin señal.",
+    title: DEMO_LAB_SCENARIO_CATALOG["offline-verifier"].title,
+    body: "Captura local y veredicto provisional para campo, galpones o industria; el backend decide al sincronizar.",
   },
   {
     id: "qr-gs1",
@@ -435,7 +505,7 @@ const HUB_SCENARIOS = [
     shadow: "hover:shadow-amber-500/20",
     accent: "bg-amber-500/30 text-amber-200",
     accentGlow: "group-hover:shadow-amber-500/20",
-    title: "Experiencia Core (QR / GS1)",
+    title: DEMO_LAB_SCENARIO_CATALOG["qr-gs1"].title,
     body: "Flujo de identidad digital: origen y lote declarados, resolver, portal y fidelización.",
   },
   {
@@ -446,7 +516,7 @@ const HUB_SCENARIOS = [
     shadow: "hover:shadow-cyan-500/20",
     accent: "bg-cyan-500/30 text-cyan-100",
     accentGlow: "group-hover:shadow-cyan-500/20",
-    title: "NFC 424 DNA",
+    title: DEMO_LAB_SCENARIO_CATALOG["nfc-424"].title,
     body: "Mensaje dinámico para validar evidencia del tag y detectar replay. El objeto físico requiere controles adicionales; garantía, rewards o soporte dependen de la política.",
   },
   {
@@ -457,7 +527,7 @@ const HUB_SCENARIOS = [
     shadow: "hover:shadow-teal-500/20",
     accent: "bg-teal-500/24 text-teal-100",
     accentGlow: "group-hover:shadow-teal-500/20",
-    title: "DPP / Dual Proof",
+    title: DEMO_LAB_SCENARIO_CATALOG["dual-proof"].title,
     body: "Historia enterprise completa: identidad de producto, ownership opcional y evidencia hash-only para revisión de compliance o auditoría externa.",
   },
   {
@@ -468,7 +538,7 @@ const HUB_SCENARIOS = [
     shadow: "hover:shadow-lime-500/20",
     accent: "bg-lime-500/24 text-lime-100",
     accentGlow: "group-hover:shadow-lime-500/20",
-    title: "Sensor / UHF / IoT",
+    title: DEMO_LAB_SCENARIO_CATALOG["sensor-evidence"].title,
     body: "Convierte pallets, cajas, temperatura y eventos industriales en hitos auditables sin exponer streams ni datos operativos sensibles.",
   },
   {
@@ -479,12 +549,38 @@ const HUB_SCENARIOS = [
     shadow: "hover:shadow-cyan-500/16",
     accent: "bg-slate-500/24 text-slate-100",
     accentGlow: "group-hover:shadow-slate-500/20",
-    title: "Red Autorizada",
+    title: DEMO_LAB_SCENARIO_CATALOG["authorized-network"].title,
     body: "Controla impresores, integradores, resellers y proveedores para que cada emisión o auditoría respete roles, tenant y política.",
+  },
+  {
+    id: "supplier-batch-factory",
+    icon: Factory,
+    color: "from-orange-300 to-amber-500",
+    border: "hover:border-orange-300/50",
+    shadow: "hover:shadow-orange-500/16",
+    accent: "bg-orange-500/24 text-orange-100",
+    accentGlow: "group-hover:shadow-orange-500/20",
+    title: DEMO_LAB_SCENARIO_CATALOG["supplier-batch-factory"].title,
+    body: "Planifica pedido, batches, sub-batches, perfil NFC y gates de QA sin crear una orden ni revelar material de custodia.",
   },
 ];
 
-const HUB_QUICK_LAUNCH_SCENARIOS = HUB_SCENARIOS.slice(0, 4);
+const HUB_SCENARIO_ORDER: DemoLabScenarioId[] = [
+  "qr-gs1",
+  "nfc-424",
+  "offline-verifier",
+  "supplier-batch-factory",
+  "authorized-network",
+  "sensor-evidence",
+  "polygon-ownership",
+  "iota-proof",
+  "dual-proof",
+];
+const HUB_SCENARIOS_BY_ID = new Map(HUB_SCENARIOS.map((scenario) => [scenario.id, scenario]));
+const HUB_ORDERED_SCENARIOS = HUB_SCENARIO_ORDER
+  .map((id) => HUB_SCENARIOS_BY_ID.get(id))
+  .filter((scenario): scenario is HubScenario => Boolean(scenario));
+const HUB_QUICK_LAUNCH_SCENARIOS = HUB_ORDERED_SCENARIOS.slice(0, 4);
 
 const HUB_VERTICALS = [
   {
@@ -671,6 +767,9 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
     const panelKey = initialScenario ?? initialVertical ?? "qr-gs1";
     const panel = PANEL_CONTENT[panelKey] ?? PANEL_CONTENT["qr-gs1"];
     const PanelIcon = panel.icon;
+    const panelStatus = isDemoLabScenarioId(panelKey)
+      ? getDemoLabScenarioStatus(panelKey, locale)
+      : null;
 
     return (
       <div className={`demo-lab-fullscreen-root ${demoThemeClass}`}>
@@ -705,6 +804,15 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
                 <Smartphone className="w-3 h-3" />
                 {panel.subtitle}
               </span>
+              {panelStatus ? (
+                <span
+                  className="demo-lab-scenario-mode"
+                  data-demo-mode={panelStatus.mode}
+                  title={panelStatus.detail}
+                >
+                  {panelStatus.label}
+                </span>
+              ) : null}
               <DemoLabThemeToggle initialTheme={requestedTheme} initialReturnTo={demoLabReturnTo} />
               <Link
                 href="/?contact=demo#contact-modal"
@@ -847,15 +955,16 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
           </p>
         </div>
 
-        <section className="demo-lab-hub-quick-launch mb-8" aria-label="Abrir una prueba viva de Demo Lab">
+        <section className="demo-lab-hub-quick-launch mb-8" aria-label="Abrir un escenario de Demo Lab">
           <div className="demo-lab-hub-quick-launch__head">
-            <span>Pruebas vivas</span>
+            <span>Accesos rápidos</span>
             <strong>Entrar directo sin recorrer todo el hub.</strong>
             <p>Para ventas, inversores o C-level: elegi una capa, tocala y volve al hub cuando quieras.</p>
           </div>
           <div className="demo-lab-hub-quick-launch__grid">
             {HUB_QUICK_LAUNCH_SCENARIOS.map((s, index) => {
               const Icon = s.icon;
+              const scenarioStatus = getDemoLabScenarioStatus(s.id, locale);
               return (
                 <Link
                   key={s.id}
@@ -867,6 +976,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
                   <span className={`demo-lab-hub-quick-launch__icon bg-gradient-to-br ${s.color}`}>
                     <Icon className="h-4 w-4" />
                   </span>
+                  <span className="demo-lab-scenario-mode" data-demo-mode={scenarioStatus.mode}>{scenarioStatus.label}</span>
                   <strong>{s.title}</strong>
                   <small>Probar ahora <ArrowRight className="h-3.5 w-3.5" /></small>
                 </Link>
@@ -958,14 +1068,34 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
           })}
         </div>
 
+        <section className="demo-lab-mode-legend mb-8" aria-labelledby="demo-lab-mode-legend-title">
+          <div>
+            <span>Estado verificable</span>
+            <strong id="demo-lab-mode-legend-title">Demo no significa live.</strong>
+            <p>Cada escenario declara su alcance. “Live” queda reservado para evidencia devuelta y verificada por una fuente runtime, nunca por marketing.</p>
+          </div>
+          <ul>
+            {DEMO_LAB_MODE_ORDER.map((mode) => {
+              const modeCopy = getDemoLabModeCopy(mode, locale);
+              return (
+                <li key={mode} data-demo-mode={mode}>
+                  <b>{modeCopy.label}</b>
+                  <span>{modeCopy.explanation}</span>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+
         {/* Scenarios Grid */}
         <div className="mb-12">
           <p className="demo-lab-hub-section-label mb-4 text-xs font-black uppercase tracking-[0.22em] text-slate-400">
             Capas de confianza
           </p>
           <div className="demo-lab-hub-card-grid grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {HUB_SCENARIOS.map((s) => {
+            {HUB_ORDERED_SCENARIOS.map((s) => {
               const Icon = s.icon;
+              const scenarioStatus = getDemoLabScenarioStatus(s.id, locale);
               return (
                 <Link
                   key={s.id}
@@ -984,12 +1114,16 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
                       <Icon className="w-5 h-5" />
                     </div>
                     <div className="min-w-0">
+                      <span className="demo-lab-scenario-mode" data-demo-mode={scenarioStatus.mode}>
+                        {scenarioStatus.label}
+                      </span>
                       <h3 className="mb-1 text-base font-black text-slate-50 transition-colors">
                         {s.title}
                       </h3>
                       <p className="text-sm leading-6 text-slate-300">
                         {s.body}
                       </p>
+                      <small className="demo-lab-hub-card__status-detail">{scenarioStatus.detail}</small>
                     </div>
                   </div>
                   <span className="demo-lab-hub-card__cta inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-cyan-200">

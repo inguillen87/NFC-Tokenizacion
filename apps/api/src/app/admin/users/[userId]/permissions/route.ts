@@ -4,7 +4,7 @@ import { sql } from '../../../../../lib/db';
 import { json } from '../../../../../lib/http';
 import { requireApiSession } from '../../../../../lib/auth-guard';
 import { isUuidString } from '../../../../../lib/iam';
-import { resolveAdminUserDelegation } from '../../../../../lib/admin-user-management-policy';
+import { resolveManagedAdminDelegationRequest } from '../../../../../lib/admin-role-catalog';
 import { replaceManagedAdminUserAccess } from '../../../../../lib/admin-user-management';
 
 export async function POST(req: Request, { params }: { params: Promise<{ userId: string }> }) {
@@ -14,8 +14,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ userId:
   const { userId } = await params;
   if (!isUuidString(userId)) return json({ ok: false, reason: 'invalid_user_id' }, 400);
 
-  const body = await req.json().catch(() => ({})) as { permissions?: string[]; role?: string; tenantSlug?: string | null };
-  const delegation = resolveAdminUserDelegation(session, body.role || 'viewer', body.permissions || []);
+  const body = await req.json().catch(() => ({})) as { permissions?: string[]; role?: string; tenantSlug?: string | null; permissionMode?: string };
+  const delegation = await resolveManagedAdminDelegationRequest(sql as any, session, {
+    role: body.role || 'viewer',
+    permissions: body.permissions || [],
+    permissionMode: body.permissionMode,
+  });
   if (!delegation.ok) {
     return json({ ok: false, reason: delegation.reason }, delegation.status);
   }

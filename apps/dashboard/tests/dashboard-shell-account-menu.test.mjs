@@ -13,6 +13,7 @@ test("dashboard shell exposes enterprise account drawer instead of bare logout",
   assert.match(shellSource, /<TenantAccountMenu[\s\S]*email=\{currentEmail\}/);
   assert.match(shellSource, /<TenantAccountMenu[\s\S]*label=\{currentLabel\}/);
   assert.match(shellSource, /<TenantAccountMenu[\s\S]*permissions=\{currentPermissions\}/);
+  assert.match(shellSource, /<TenantAccountMenu[\s\S]*deniedPermissions=\{currentDeniedPermissions\}/);
   assert.match(shellSource, /className="dashboard-shell-account-menu shrink-0 sm:w-auto"/);
   assert.doesNotMatch(shellSource, /className="dashboard-shell-account-menu w-full sm:w-auto"/);
   assert.match(shellSource, /surface="dashboard"/);

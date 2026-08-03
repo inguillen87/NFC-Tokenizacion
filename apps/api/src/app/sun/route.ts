@@ -21,12 +21,17 @@ import { ensureSunTenantProfilesSchema } from '../../lib/sun-tenant-profile-sche
 import { ensureCarrierProfileSchema } from '../../lib/commercial-runtime-schema';
 import { getRequestMeta } from '../../lib/request-meta';
 import { hitSunRateLimit, shouldFailClosedSunRateLimit } from '../../lib/sun-rate-limit-store';
-import { createSunFreshHandoffToken } from '../../lib/sun-fresh-handoff';
+import { createSunFreshHandoffToken, createSunSnapshotAccessToken } from '../../lib/sun-fresh-handoff';
 import { createPublicCertificateShareToken } from '../../lib/public-certificate-share';
 import { eventShareUid, resolveExplicitSunAutoTokenizationAuthorization } from '../../lib/public-cta-target';
 import { recordTapEvent } from '../../lib/tap-event-service';
 import { normalizeConsentedApproximateLocation, normalizeCoordinatePair, redactSensitiveQueryValues } from '../../lib/approximate-location';
 import { buildSunSensorEvidence } from '../../lib/sun-sensor-evidence';
+import { escapeHtmlText, escapeHtmlTreeForMarkup, serializeForInlineScript } from '../../lib/public-html-security';
+import { hasConfiguredAgroProfile, normalizeAgroProductProfile } from '../../lib/agro-product-profile';
+import { Gs1RegistryError } from '../../lib/gs1-digital-link-registry';
+import { resolvePublicGs1PassportBinding } from '../../lib/public-gs1-passport';
+import { resolveTagTamperPresentationEvidence } from '../../lib/sun-carrier-trust-state';
 import { resolveEventLocalTime } from '@product/core';
 import crypto from "node:crypto";
 
@@ -68,6 +73,7 @@ function sanitizePublicErrorReason(raw: string) {
 type SunResult = Awaited<ReturnType<typeof processSunScan>>;
 
 type ProductState =
+  | "VALID_AUTHENTIC"
   | "VALID_CLOSED"
   | "VALID_OPENED"
   | "VALID_OPENED_PREVIOUSLY"
@@ -266,11 +272,20 @@ function dashboardBaseUrl() {
   return (configured || "https://app.nexid.lat").replace(/\/$/, "");
 }
 
-function buildWebSunSnapshotUrl(url: URL, diagnosticId: number | null, traceId: string, locale: SunLocale, freshToken?: string | null) {
+function buildWebSunSnapshotUrl(
+  url: URL,
+  diagnosticId: number | null,
+  traceId: string,
+  locale: SunLocale,
+  freshToken?: string | null,
+  snapshotAccessToken?: string | null,
+) {
   if (!traceId) return null;
+  if (diagnosticId && !snapshotAccessToken) return null;
   const target = new URL("/sun", webBaseUrl(url));
   if (diagnosticId) {
     target.searchParams.set("snapshot", String(diagnosticId));
+    target.searchParams.set("access", snapshotAccessToken || "");
     if (freshToken) target.searchParams.set("fresh", freshToken);
   } else {
     ["v", "bid", "picc_data", "enc", "cmac"].forEach((key) => {
@@ -475,6 +490,20 @@ function resolveTrustState(status: string, reason: string, productState?: string
   const normalizedStatus = status.toUpperCase();
   const normalizedReason = reason.toLowerCase();
   const normalizedProductState = String(productState || "").toUpperCase();
+  const tagTamperObject = resultMeta?.tag_tamper && typeof resultMeta.tag_tamper === "object"
+    ? resultMeta.tag_tamper as Record<string, unknown>
+    : {};
+  const ttEvidence = resolveTagTamperPresentationEvidence({
+    carrierProfileCode: resultMeta?.carrier_profile_code,
+    ttRaw: resultMeta?.ttstatus_raw || resultMeta?.tamper_raw_value || tagTamperObject.raw,
+  });
+  const claimedTtState = normalizedProductState === "VALID_CLOSED" || normalizedStatus === "VALID_CLOSED"
+    ? "VALID_CLOSED"
+    : normalizedProductState === "VALID_OPENED" || normalizedStatus === "VALID_OPENED" || normalizedStatus === "OPENED"
+      ? "VALID_OPENED"
+      : normalizedProductState === "VALID_OPENED_PREVIOUSLY" || normalizedStatus === "VALID_OPENED_PREVIOUSLY" || normalizedStatus === "OPENED_PREVIOUSLY"
+        ? "VALID_OPENED_PREVIOUSLY"
+        : null;
   if (normalizedStatus === "SUN_BATCH_DUPLICATE_CONFIG" || normalizedProductState === "SUN_BATCH_DUPLICATE_CONFIG") {
     return {
       code: "SUN_BATCH_DUPLICATE_CONFIG",
@@ -495,13 +524,17 @@ function resolveTrustState(status: string, reason: string, productState?: string
       tone: "risk" as const,
     };
   }
+  if (claimedTtState && ttEvidence.state !== claimedTtState) {
+    return {
+      code: "SUN_PROFILE_MISMATCH",
+      label: "No pudimos validar el estado de apertura",
+      summary: "La lectura no aporta un perfil TagTamper exacto y un TTStatus completo coherente. Las acciones comerciales quedan bloqueadas.",
+      tone: "risk" as const,
+    };
+  }
   if (normalizedStatus === 'REPLAY_SUSPECT' || normalizedReason.includes('replay') || normalizedReason.includes('copied url')) {
-    const isTamperOpened = Boolean(
-      resultMeta?.tamper_opened || 
-      resultMeta?.tamperOpened || 
-      normalizedProductState.includes("OPENED") || 
-      normalizedReason.includes("opened")
-    );
+    const isTamperOpened = ttEvidence.state === "VALID_OPENED"
+      || ttEvidence.state === "VALID_OPENED_PREVIOUSLY";
     if (isTamperOpened) {
       return {
         code: 'REPLAY_SUSPECT',
@@ -512,23 +545,29 @@ function resolveTrustState(status: string, reason: string, productState?: string
     }
     return { code: 'REPLAY_SUSPECT', label: 'URL reutilizada', summary: 'Este payload ya fue usado. Escaneá físicamente la etiqueta para generar una nueva lectura.', tone: 'warn' as const };
   }
-  if (normalizedProductState === "VALID_OPENED" || normalizedStatus === 'OPENED' || normalizedReason.includes('opened')) {
-    return { code: 'OPENED', label: 'TT reporta apertura', summary: 'Mensaje NFC validado; el estado TT reporta apertura. No certifica el contenido ni el origen físico.', tone: 'warn' as const };
+  if (normalizedProductState === "VALID_OPENED" || normalizedStatus === 'VALID_OPENED' || normalizedStatus === 'OPENED') {
+    return { code: 'VALID_OPENED', label: 'Producto auténtico · sello abierto', summary: 'Autenticidad confirmada. Sello abierto. El estado proviene del TTStatus completo validado; no certifica por sí solo el contenido ni la custodia.', tone: 'warn' as const };
   }
-  if (normalizedProductState === "VALID_OPENED_PREVIOUSLY") {
-    return { code: 'OPENED_PREVIOUSLY', label: 'Apertura previa reportada', summary: 'Mensaje NFC validado; el historial TT reporta una apertura anterior.', tone: 'warn' as const };
+  if (normalizedProductState === "VALID_OPENED_PREVIOUSLY" || normalizedStatus === "VALID_OPENED_PREVIOUSLY" || normalizedStatus === "OPENED_PREVIOUSLY") {
+    return { code: 'VALID_OPENED_PREVIOUSLY', label: 'Producto auténtico · apertura previa', summary: 'Autenticidad confirmada. El sello fue abierto anteriormente. El estado proviene del TTStatus completo validado; no certifica por sí solo el contenido ni la custodia.', tone: 'warn' as const };
   }
-  if (normalizedProductState === "VALID_MANUAL_OPENED") {
+  if (normalizedProductState === "VALID_MANUAL_OPENED" || normalizedStatus === "MANUAL_OPENED") {
     return { code: 'MANUAL_OPENED', label: 'Apertura declarada', summary: 'Un operador declaró el estado abierto. No es una medición criptográfica del contenido.', tone: 'warn' as const };
   }
-  if (normalizedProductState === "VALID_UNKNOWN_TAMPER") {
-    return { code: 'VALID_UNKNOWN_TAMPER', label: 'Mensaje NFC validado', summary: 'El mensaje NFC fue validado; este lote no aporta estado TT de apertura.', tone: 'good' as const };
+  if (normalizedProductState === "VALID_UNKNOWN_TAMPER" || normalizedStatus === "VALID_UNKNOWN_TAMPER") {
+    return { code: 'VALID_UNKNOWN_TAMPER', label: 'Autenticidad criptográfica confirmada', summary: 'Autenticidad criptográfica confirmada. Estado de apertura no disponible.', tone: 'good' as const };
   }
   if (normalizedStatus === 'TAMPER_RISK' || normalizedReason.includes('tamper')) {
     return { code: 'TAMPER_RISK', label: 'Riesgo de manipulación', summary: 'Se detectaron señales de posible manipulación.', tone: 'risk' as const };
   }
-  if (normalizedProductState === "VALID_CLOSED" || normalizedStatus === 'VALID') {
-    return { code: 'VALID', label: 'Mensaje NFC validado', summary: 'El mensaje SUN/CMAC es consistente; cuando aplica, TT reporta cerrado. No certifica contenido, origen, custodia ni propiedad.', tone: 'good' as const };
+  if (normalizedProductState === "VALID_CLOSED" || normalizedStatus === 'VALID_CLOSED') {
+    return { code: 'VALID_CLOSED', label: 'Autenticidad confirmada · sello intacto', summary: 'Autenticidad confirmada. Sello intacto. El estado proviene del TTStatus completo validado y de una construcción de empaque aprobada.', tone: 'good' as const };
+  }
+  if (normalizedProductState === "VALID_AUTHENTIC" || normalizedStatus === 'VALID_AUTHENTIC') {
+    return { code: 'VALID_AUTHENTIC', label: 'Autenticidad criptográfica confirmada', summary: 'Autenticidad criptográfica confirmada. Este producto no usa sello electrónico de apertura.', tone: 'good' as const };
+  }
+  if (normalizedStatus === 'VALID') {
+    return { code: 'VALID_AUTHENTIC', label: 'Autenticidad criptográfica confirmada', summary: 'Autenticidad criptográfica confirmada. No hay un estado electrónico de apertura validado para esta lectura.', tone: 'good' as const };
   }
   return { code: normalizedStatus || 'INVALID', label: 'Validación no concluyente', summary: 'No fue posible validar el mensaje NFC con la evidencia disponible.', tone: 'warn' as const };
 }
@@ -665,6 +704,7 @@ async function resolveQrTenantBatch(input: { tenantSlug: string; requestedBid: s
 
 async function logQrAttempt(input: {
   bid: string;
+  result: "QR_SCAN" | "STATIC_NFC_SCAN";
   reason: string;
   ip: string | null;
   userAgent: string;
@@ -699,7 +739,7 @@ async function logQrAttempt(input: {
       bid, result, reason, ip, user_agent, geo_city, geo_country, geo_lat, geo_lng, source, raw_query, meta
     ) VALUES (
       ${input.bid || "QR-UNKNOWN"},
-      'QR_SCAN',
+      ${input.result},
       ${input.reason},
       ${input.ip},
       ${input.userAgent},
@@ -727,12 +767,37 @@ async function handleQrScan(input: {
 }) {
   const rawQuery = redactSensitiveQueryValues(Object.fromEntries(input.url.searchParams.entries())) || {};
   const explicitDemo = input.url.searchParams.get("demo") === "1";
-  const tenantSlug = firstParam(
+  const requestedChannel = String(input.url.searchParams.get("channel") || "").trim().toLowerCase();
+  const requestedCarrierProfile = String(input.url.searchParams.get("carrier") || "").trim().toLowerCase();
+  const staticNfcScan = requestedChannel === "static_nfc";
+  const gs1Scan = !staticNfcScan && requestedCarrierProfile === "gs1_digital_link";
+  const carrierProfileCode = staticNfcScan
+    ? requestedCarrierProfile
+    : gs1Scan
+      ? "gs1_digital_link"
+      : "qr_basic";
+  const carrierLabel = staticNfcScan
+    ? `NFC estatico (${carrierProfileCode.toUpperCase()})`
+    : gs1Scan
+      ? "QR GS1 Digital Link (identidad registrada)"
+      : "QR / SDK";
+  const scanResult = staticNfcScan ? "STATIC_NFC_SCAN" : "QR_SCAN";
+  const publicStatusCode = staticNfcScan
+    ? "STATIC_NFC_SCAN"
+    : gs1Scan
+      ? "GS1_IDENTITY_RESOLVED"
+      : "QR_SCAN";
+  const scanReason = staticNfcScan
+    ? "static_nfc_scan_unverified"
+    : gs1Scan
+      ? "gs1_identity_resolved_not_cryptographically_authenticated"
+      : "qr_scan_unverified";
+  let tenantSlug = firstParam(
     input.url,
     ["tenant", "tenantSlug", "tenant_slug"],
     explicitDemo ? "demobodega" : "",
   ).toLowerCase();
-  const requestedBid = firstParam(
+  let requestedBid = firstParam(
     input.url,
     ["bid", "batch", "batchId"],
     explicitDemo && tenantSlug === "demobodega" ? DEMO_BODEGA_BID : "",
@@ -771,8 +836,13 @@ async function handleQrScan(input: {
   };
   const baseMeta = {
     trace_id: input.traceId,
-    channel: "qr",
+    channel: gs1Scan ? "gs1_qr" : staticNfcScan ? "static_nfc" : "qr",
     qr: true,
+    carrier_profile_code: carrierProfileCode,
+    assurance: {
+      identity_registered: gs1Scan,
+      cryptographic_nfc_authentication: false,
+    },
     declared_input: declaredInput,
     geo_evidence: {
       source: locationSource,
@@ -790,6 +860,7 @@ async function handleQrScan(input: {
   const failQrContext = async (status: 404 | 422, detail: string) => {
     await logQrAttempt({
       bid: requestedBid,
+      result: scanResult,
       reason: "qr_context_not_found",
       ip: input.ip,
       userAgent: input.userAgent,
@@ -806,6 +877,36 @@ async function handleQrScan(input: {
     return response;
   };
 
+  if (staticNfcScan && !new Set(["ntag213", "ntag215", "ntag216"]).has(carrierProfileCode)) {
+    return failQrContext(422, "unsupported_static_nfc_carrier");
+  }
+
+  if (!staticNfcScan && requestedCarrierProfile && !new Set(["qr_basic", "gs1_digital_link"]).has(requestedCarrierProfile)) {
+    return failQrContext(422, "unsupported_qr_carrier");
+  }
+
+  let gs1Registry: Awaited<ReturnType<typeof resolvePublicGs1PassportBinding>> | null = null;
+  if (gs1Scan) {
+    try {
+      gs1Registry = await resolvePublicGs1PassportBinding({
+        registryId: input.url.searchParams.get("gs1_registry_id"),
+        gtin: input.url.searchParams.get("gtin"),
+        lot: input.url.searchParams.get("lot"),
+        serial: input.url.searchParams.get("serial"),
+        tenantSlug,
+        bid: requestedBid,
+      });
+      // Tenant and batch scope are authoritative registry values, never the
+      // redirect query supplied by the browser.
+      tenantSlug = gs1Registry.tenantSlug.toLowerCase();
+      requestedBid = gs1Registry.bid;
+    } catch (error) {
+      const status = error instanceof Gs1RegistryError && error.status === 404 ? 404 : 422;
+      const detail = error instanceof Gs1RegistryError ? error.code : "gs1_registry_unavailable";
+      return failQrContext(status, detail);
+    }
+  }
+
   if (!TENANT_SLUG_RE.test(tenantSlug) || !BID_RE.test(requestedBid)) {
     return failQrContext(422, "missing_or_invalid_tenant_or_batch");
   }
@@ -814,6 +915,13 @@ async function handleQrScan(input: {
   if (!tenantBatch?.tenant_id || !tenantBatch.batch_id || !tenantBatch.bid) {
     return failQrContext(404, "active_tenant_batch_not_found");
   }
+  if (gs1Registry && (
+    String(tenantBatch.tenant_id).toLowerCase() !== gs1Registry.tenantId.toLowerCase()
+    || String(tenantBatch.batch_id).toLowerCase() !== gs1Registry.batchId.toLowerCase()
+    || String(tenantBatch.bid).toUpperCase() !== gs1Registry.bid.toUpperCase()
+  )) {
+    return failQrContext(422, "gs1_registry_batch_binding_mismatch");
+  }
 
   const tenantId = tenantBatch.tenant_id;
   const batchId = tenantBatch.batch_id;
@@ -821,15 +929,35 @@ async function handleQrScan(input: {
   const tenantName = String(tenantBatch.tenant_name || tenantSlug);
   const sdmConfig = jsonObject(tenantBatch.sdm_config);
   const configuredProduct = jsonObject(sdmConfig.product);
-  const configuredProductName = String(configuredProduct.name || sdmConfig.product_name || `Batch ${bid}`);
+  const configuredProductName = String(gs1Registry?.displayName || configuredProduct.name || sdmConfig.product_name || `Batch ${bid}`);
   const configuredBrand = String(configuredProduct.winery || configuredProduct.brand || sdmConfig.winery || sdmConfig.brand || tenantName);
   const configuredOrigin = String(configuredProduct.region || configuredProduct.origin || sdmConfig.region || sdmConfig.origin || "").trim() || null;
   const configuredVertical = String(configuredProduct.vertical || sdmConfig.vertical || "generic");
   const configuredProductLabel = String(configuredProduct.category || sdmConfig.product_label || "producto");
   const configuredClubName = String(sdmConfig.club_name || "").trim() || null;
+  const configuredAgroProfile = normalizeAgroProductProfile({
+    batchConfig: sdmConfig,
+    registryMetadata: gs1Registry?.metadata,
+    identity: {
+      gtin: gs1Registry?.gtin || firstParam(input.url, ["gtin"]),
+      lot: gs1Registry?.lot || firstParam(input.url, ["lot"]) || bid,
+      serial: gs1Registry?.serial || firstParam(input.url, ["serial"]),
+    },
+  });
   const meta = {
     ...baseMeta,
     configured_context: { tenant: tenantSlug, bid },
+    ...(gs1Registry ? {
+      gs1_registry: {
+        id: gs1Registry.id,
+        gtin: gs1Registry.gtin,
+        lot: gs1Registry.lot,
+        serial: gs1Registry.serial,
+        tenant_id: gs1Registry.tenantId,
+        batch_id: gs1Registry.batchId,
+        entitlement_id: gs1Registry.entitlementId,
+      },
+    } : {}),
   };
 
   const eventId = await recordTapEvent({
@@ -852,7 +980,7 @@ async function handleQrScan(input: {
       lng: resolvedLng,
       geoPrecision,
       productName: configuredProductName,
-      reason: "qr_scan_unverified",
+      reason: scanReason,
       meta,
       traceId: input.traceId,
       ip: input.ip,
@@ -866,6 +994,7 @@ async function handleQrScan(input: {
   if (!eventId) {
     await logQrAttempt({
       bid,
+      result: scanResult,
       reason: "qr_event_insert_failed",
       ip: input.ip,
       userAgent: input.userAgent,
@@ -890,14 +1019,26 @@ async function handleQrScan(input: {
     ok: true,
     eventId: eventId ? String(eventId) : null,
     status: {
-      code: "QR_SCAN",
-      label: "QR / SDK engagement",
+      code: publicStatusCode,
+      label: staticNfcScan
+        ? `${carrierLabel} - identificador copiable`
+        : gs1Scan
+          ? "Identidad GS1 registrada · QR no criptográfico"
+          : "QR / SDK engagement",
       tone: "warn",
-      summary: "Canal de bajo costo para ficha, CRM, analitica, leads y fidelizacion. No reemplaza la autenticacion criptografica NFC ni activa propiedad automaticamente.",
-      reason: "qr_scan",
-      productState: "QR_UNVERIFIED",
-      carrierProfileCode: "qr_basic",
-      carrierLabel: "QR / SDK",
+      summary: staticNfcScan
+        ? "Lectura de un NFC estatico vinculado al manifiesto. El UID y la URL pueden copiarse: no hay SUN, CMAC, anti-replay ni prueba de presencia fisica."
+        : gs1Scan
+          ? "El GTIN, lote y serie coinciden con el registro GS1 activo y muestran el mismo pasaporte del batch. El QR identifica; no autentica criptograficamente el objeto fisico."
+          : "Canal de bajo costo para ficha, CRM, analitica, leads y fidelizacion. No reemplaza la autenticacion criptografica NFC ni activa propiedad automaticamente.",
+      reason: staticNfcScan ? "static_nfc_scan" : gs1Scan ? "gs1_identity_resolved" : "qr_scan",
+      productState: staticNfcScan
+        ? "STATIC_NFC_UNVERIFIED"
+        : gs1Scan
+          ? "GS1_IDENTITY_RESOLVED_NOT_AUTHENTICATED"
+          : "QR_UNVERIFIED",
+      carrierProfileCode,
+      carrierLabel,
     },
     identity: {
       bid,
@@ -907,6 +1048,12 @@ async function handleQrScan(input: {
       tenantSlug,
       tenantId: tenantId,
       scanCount: 1,
+      gs1: gs1Registry ? {
+        registryId: gs1Registry.id,
+        gtin: gs1Registry.gtin,
+        lot: gs1Registry.lot,
+        serial: gs1Registry.serial,
+      } : null,
     },
     tenant: {
       id: tenantId,
@@ -925,14 +1072,17 @@ async function handleQrScan(input: {
       vintage: configuredProduct.vintage || sdmConfig.vintage || null,
       category: configuredProductLabel,
       vertical: configuredVertical,
+      agro: configuredVertical.toLowerCase() === "agro" || hasConfiguredAgroProfile(configuredAgroProfile)
+        ? configuredAgroProfile
+        : null,
     },
     provenance: {
       origin: configuredOrigin,
       firstVerified: { at: null, city: null, country: null },
-      lastVerifiedLocation: { at: qrNow, city: input.geoCity, country: input.geoCountry, result: "QR_SCAN" },
+      lastVerifiedLocation: { at: qrNow, city: input.geoCity, country: input.geoCountry, result: publicStatusCode },
       timelineSummary: [{
         at: qrNow,
-        result: "QR_SCAN",
+        result: publicStatusCode,
         city: input.geoCity || "Unknown",
         country: input.geoCountry || "--",
         device: `${deviceMeta.platform} - ${deviceMeta.browser}`,
@@ -953,10 +1103,20 @@ async function handleQrScan(input: {
     cta: { claimOwnership: false, registerWarranty: false, provenance: true, tokenize: false },
     allowedActions: ["lead", "feedback", "sommelier"],
     blockedActions: ["ownership", "tokenization", "warranty"],
-    trustSignals: { antiReplay: false, tamperRisk: false, tamperStatus: "not_available", tamperSupported: false, lastEventResult: "QR_SCAN" },
-    tapSecurity: { replayDetected: false, freshTap: false, tokenizationEligible: false, policy: "qr_unverified", actionability: "content_and_crm_only", requiresFreshTapForCommercialActions: true },
-    troubleshooting: ["Para titularidad, garantia o NFT, toca fisicamente el chip NFC seguro."],
-    technical: { carrierProfileCode: "qr_basic", carrierLabel: "QR / SDK", declaredInput, raw: undefined },
+    trustSignals: { antiReplay: false, tamperRisk: false, tamperStatus: "not_available", tamperSupported: false, lastEventResult: publicStatusCode },
+    tapSecurity: { replayDetected: false, freshTap: false, tokenizationEligible: false, policy: staticNfcScan ? "static_nfc_unverified" : gs1Scan ? "gs1_identity_registered_not_authenticated" : "qr_unverified", actionability: "content_and_crm_only", requiresFreshTapForCommercialActions: true },
+    troubleshooting: [staticNfcScan
+      ? "Este carrier NFC es estatico y copiable. Para titularidad, garantia o NFT se requiere un chip NFC criptografico y una lectura SUN valida."
+      : "Para titularidad, garantia o NFT, toca fisicamente el chip NFC seguro."],
+    technical: {
+      carrierProfileCode,
+      carrierLabel,
+      declaredInput,
+      gs1RegistryId: gs1Registry?.id || null,
+      gs1IdentityBound: Boolean(gs1Registry),
+      cryptographicNfcAuthentication: false,
+      raw: undefined,
+    },
   };
 
   const response = json(contract, 200);
@@ -1198,14 +1358,22 @@ function buildPublicContract(params: {
   const reason = params.result.reason || 'sin_observaciones';
   const resultMeta = params.result as Record<string, unknown>;
   const trust = resolveTrustState(status, reason, params.result.product_state || null, resultMeta);
-  const verdictRisk = mapVerdictAndRisk({ statusCode: trust.code, productState: params.result.product_state || null, reason });
+  const effectiveProductState = trust.code === "SUN_PROFILE_MISMATCH"
+    ? "SUN_PROFILE_MISMATCH"
+    : params.result.product_state || null;
+  const verdictRisk = mapVerdictAndRisk({ statusCode: trust.code, productState: effectiveProductState, reason });
   const tenantResolution = resolveSunTenantProfile({ bid: params.bid, passport: params.passport, result: params.result as Record<string, unknown> });
   const setupDashboardBase = dashboardBaseUrl();
   const setupEventId = (params.result as { event_id?: string | number | null }).event_id ? String((params.result as { event_id?: string | number | null }).event_id) : null;
   const setupUa = summarizeUserAgent(params.tap.userAgent);
   const troubleshooting = buildTroubleshooting(reason, params.bid, resultMeta);
-  const carrierProfileCode = params.passport?.carrier_profile_code || null;
-  const inferredCryptoCarrier = Boolean(resultMeta.tamper_supported || resultMeta.tag_tamper || resultMeta.ttstatus_raw || resultMeta.tamper_raw_value);
+  const resultCarrierProfileCode = String(resultMeta.carrier_profile_code || "").trim().toLowerCase();
+  const carrierProfileCode = params.passport?.carrier_profile_code
+    || (resultCarrierProfileCode === "ntag424_dna" || resultCarrierProfileCode === "ntag424_dna_tt"
+      ? resultCarrierProfileCode
+      : null);
+  const inferredCryptoCarrier = carrierProfileCode === "ntag424_dna"
+    || carrierProfileCode === "ntag424_dna_tt";
   const carrierLabel = params.passport?.carrier_label
     || (carrierProfileCode === "ntag424_dna_tt" ?"NTAG 424 DNA TagTamper TT" : null)
     || (carrierProfileCode === "ntag424_dna" ?"NTAG 424 DNA" : null)
@@ -1238,12 +1406,17 @@ function buildPublicContract(params: {
   const carrierSupportsTokenization = readCarrierCapability("supportsTokenization", "supports_tokenization", inferredCryptoCarrier);
   const carrierSupportsLoyalty = readCarrierCapability("supportsLoyalty", "supports_loyalty", true);
   const carrierSupportsMarketplace = readCarrierCapability("supportsMarketplace", "supports_marketplace", true);
+  const publicAgroProfile = normalizeAgroProductProfile({
+    batchConfig: params.passport?.batch_sdm_config,
+    tagLocaleData: params.passport?.locale_data,
+  });
+  const hasPublicAgroProfile = hasConfiguredAgroProfile(publicAgroProfile);
   if (!tenantResolution.ok) {
     const tenantSlug = tenantResolution.tenantSlug || "tenant-setup-required";
     const setupQuery = new URLSearchParams({ tenant: tenantSlug, fromTap: "1", action: "setup-required" });
     if (setupEventId) setupQuery.set("eventId", setupEventId);
     const setupProductName = params.passport?.product_name || params.passport?.sku || `Batch ${params.bid}`;
-    const setupHasValidTagEvidence = ["VALID", "OPENED", "OPENED_PREVIOUSLY", "MANUAL_OPENED", "VALID_UNKNOWN_TAMPER"].includes(trust.code);
+    const setupHasValidTagEvidence = ["VALID", "VALID_AUTHENTIC", "VALID_CLOSED", "VALID_OPENED", "VALID_OPENED_PREVIOUSLY", "MANUAL_OPENED", "VALID_UNKNOWN_TAMPER"].includes(trust.code);
     const setupIsReplay = trust.code === "REPLAY_SUSPECT" || verdictRisk.verdict === "replay_suspect";
     const setupRiskLevel = setupIsReplay || verdictRisk.verdict === "tampered"
       ?"high"
@@ -1265,7 +1438,7 @@ function buildPublicContract(params: {
         summary: "El tap fue procesado, pero el tenant no tiene perfil SUN/manifiesto/ownership completo para publicar CTAs de consumidor.",
         reason: tenantResolution.message,
         authStatus: params.result.auth_status || status,
-        productState: params.result.product_state || null,
+        productState: effectiveProductState,
         tamperSupported: Boolean(params.result.tamper_supported),
         tamperStatus: params.result.tamper_status || "UNKNOWN",
         tamperSource: params.result.tamper_source || "unavailable",
@@ -1345,6 +1518,7 @@ function buildPublicContract(params: {
         serving: null,
         category: null,
         vertical: null,
+        agro: hasPublicAgroProfile ? publicAgroProfile : null,
       },
       provenance: {
         origin: params.passport?.region || null,
@@ -1483,7 +1657,7 @@ function buildPublicContract(params: {
     tenantSlug,
   });
   const isVerifiedOpenedTap = verdictRisk.verdict === "valid_opened"
-    || ["OPENED", "OPENED_PREVIOUSLY", "MANUAL_OPENED"].includes(trust.code);
+    || ["VALID_OPENED", "VALID_OPENED_PREVIOUSLY", "OPENED", "OPENED_PREVIOUSLY", "MANUAL_OPENED"].includes(trust.code);
   const hasValidatedTagMessage = verdictRisk.verdict === "valid" || isVerifiedOpenedTap;
   const rightsPolicy = resolveRightsPolicy({
     verdict: verdictRisk.verdict,
@@ -1492,7 +1666,7 @@ function buildPublicContract(params: {
     claimPolicy: tenantProfile.claimPolicy,
     ownershipPolicy: tenantProfile.ownershipPolicy,
     statusCode: trust.code,
-    productState: params.result.product_state || null,
+    productState: effectiveProductState,
     reason,
   });
 
@@ -1555,7 +1729,7 @@ function buildPublicContract(params: {
       summary: trust.summary,
       reason,
       authStatus: params.result.auth_status || status,
-      productState: params.result.product_state || null,
+      productState: effectiveProductState,
       tamperSupported: Boolean(params.result.tamper_supported),
       tamperStatus: params.result.tamper_status || "UNKNOWN",
       tamperSource: params.result.tamper_source || "unavailable",
@@ -1642,6 +1816,9 @@ function buildPublicContract(params: {
       media: fallbackMedia,
       category: tenantProfile.productLabel,
       vertical: tenantProfile.vertical,
+      agro: tenantProfile.vertical.toLowerCase() === "agro" || hasPublicAgroProfile
+        ? publicAgroProfile
+        : null,
     },
     provenance: {
       origin: params.passport?.region || params.passport?.winery || wineryLocation || null,
@@ -1742,12 +1919,16 @@ function maskIdentityValue(value: string | null | undefined) {
   return `${raw.slice(0, 4)}****${raw.slice(-2)}`;
 }
 
-function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareToken: string | null, locale: SunLocale, currentUrl: URL) {
+function renderSunHtml(rawContract: ReturnType<typeof buildPublicContract>, shareToken: string | null, locale: SunLocale, currentUrl: URL) {
+  // Keep escaping at the final HTML boundary. The raw contract remains
+  // available only for script-safe JSON used by API calls.
+  const contract = escapeHtmlTreeForMarkup(rawContract);
+  const htmlText = escapeHtmlText;
   const copy = getSunCopy(locale);
   const langUrl = (lang: "es-AR" | "pt-BR" | "en") => {
     const next = new URL(currentUrl.toString());
     next.searchParams.set("lang", lang);
-    return next.pathname + next.search;
+    return htmlText(next.pathname + next.search);
   };
   const labels = locale === "pt-BR"
     ?{
@@ -2032,11 +2213,13 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
     verdictName === "sun_profile_mismatch" ||
     conditionState === "sun_profile_mismatch" ||
     conditionState === "blocked_sun_profile_mismatch";
-  const isClosedState = productState === "VALID_CLOSED" || (statusCode === "VALID" && !isSunProfileMismatchState);
+  const isClosedState = productState === "VALID_CLOSED" || statusCode === "VALID_CLOSED";
   const isOpenedState =
     productState === "VALID_MANUAL_OPENED" ||
     productState === "VALID_OPENED" ||
     productState === "VALID_OPENED_PREVIOUSLY" ||
+    statusCode === "VALID_OPENED" ||
+    statusCode === "VALID_OPENED_PREVIOUSLY" ||
     statusCode === "MANUAL_OPENED" ||
     statusCode === "OPENED" ||
     statusCode === "OPENED_PREVIOUSLY";
@@ -2048,9 +2231,9 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
         ?(copy.lang === "en" ?"NFC message validated; TT reports open." : copy.lang === "pt-BR" ?"Mensagem NFC validada; TT informa aberto." : "Mensaje NFC validado; TT reporta apertura.")
     : productState === "VALID_MANUAL_OPENED" || statusCode === "MANUAL_OPENED"
       ?labels.manualOpened
-      : productState === "VALID_OPENED" || statusCode === "OPENED"
+      : productState === "VALID_OPENED" || statusCode === "VALID_OPENED" || statusCode === "OPENED"
       ?labels.opened
-      : productState === "VALID_OPENED_PREVIOUSLY" || statusCode === "OPENED_PREVIOUSLY"
+      : productState === "VALID_OPENED_PREVIOUSLY" || statusCode === "VALID_OPENED_PREVIOUSLY" || statusCode === "OPENED_PREVIOUSLY"
         ?labels.openedPreviously
       : productState === "VALID_UNKNOWN_TAMPER"
         ?labels.unknownTamper
@@ -2059,31 +2242,24 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
     ?`${labels.commercialState}: ${labels.hold}`
     : productState === "VALID_MANUAL_OPENED" || contract.status.code === "MANUAL_OPENED"
       ?`${labels.commercialState}: DEMO_OPENED`
-      : productState === "VALID_OPENED" || contract.status.code === "OPENED"
+      : productState === "VALID_OPENED" || contract.status.code === "VALID_OPENED" || contract.status.code === "OPENED"
       ?`${labels.commercialState}: ${labels.review}`
-      : productState === "VALID_OPENED_PREVIOUSLY" || contract.status.code === "OPENED_PREVIOUSLY"
+      : productState === "VALID_OPENED_PREVIOUSLY" || contract.status.code === "VALID_OPENED_PREVIOUSLY" || contract.status.code === "OPENED_PREVIOUSLY"
         ?`${labels.commercialState}: ${labels.reviewPrev}`
       : `${labels.commercialState}: ${labels.ok}`;
   const riskStateLabel = isRiskBlocked
     ?`${labels.risk}: ${labels.riskReplay}`
     : productState === "VALID_MANUAL_OPENED" || contract.status.code === "MANUAL_OPENED"
       ?`${labels.risk}: ${labels.riskManual}`
-      : productState === "VALID_OPENED" || contract.status.code === "OPENED"
+      : productState === "VALID_OPENED" || contract.status.code === "VALID_OPENED" || contract.status.code === "OPENED"
       ?`${labels.risk}: ${labels.riskTamper}`
-      : productState === "VALID_OPENED_PREVIOUSLY" || contract.status.code === "OPENED_PREVIOUSLY"
+      : productState === "VALID_OPENED_PREVIOUSLY" || contract.status.code === "VALID_OPENED_PREVIOUSLY" || contract.status.code === "OPENED_PREVIOUSLY"
         ?`${labels.risk}: ${labels.riskPrev}`
       : `${labels.risk}: ${labels.riskControlled}`;
   const timeline = contract.provenance.timelineSummary;
   const timelineHtml = timeline.length
     ? timeline.map((item) => `<li>${item.at || 'N/A'} · <b>${item.result || '-'}</b> · ${item.city || '-'}, ${item.country || '-'}</li>`).join('')
     : `<li>${copy.timelineEmpty}</li>`;
-  const htmlText = (value: unknown) => String(value ?? "-").replace(/[&<>"']/g, (char) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;",
-  }[char] || char));
   const finiteCoordinate = (value: unknown) => typeof value === "number" && Number.isFinite(value) ? value : null;
   const wineryLat = finiteCoordinate(contract.iot.wineryCoordinates?.lat);
   const wineryLng = finiteCoordinate(contract.iot.wineryCoordinates?.lng);
@@ -2312,11 +2488,11 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
   <section class="card"><div class="section-head"><h3>${copy.actionsPanel}</h3><span class="section-tag">${labels.consumerJourney}</span></div><p class="subtitle" style="margin-bottom:10px">${labels.actionSubtitle}</p><div class="journey-steps"><div class="journey-step"><b>${labels.journey1}</b><span>${labels.journey1Desc}</span></div><div class="journey-step"><b>${labels.journey2}</b><span>${labels.journey2Desc}</span></div><div class="journey-step"><b>${labels.journey3}</b><span>${labels.journey3Desc}</span></div></div><div class="actions-grid" style="margin-bottom:8px"><a href="${contract.cta.marketplaceUrl}" data-gated-link="marketplace" class="link-btn" style="color:#a5f3fc;background:rgba(6,182,212,.12)">🛍 ${labels.linkMarketplace} ${contract.cta.clubName}</a><a href="${contract.cta.rewardsUrl}" data-gated-link="rewards" class="link-btn" style="color:#ddd6fe;background:rgba(139,92,246,.12)">🎁 ${labels.linkRewards}</a><a href="${contract.cta.registerUrl}" data-gated-link="register" class="link-btn" style="color:#d1fae5;background:rgba(16,185,129,.12)">🧾 ${labels.linkRegister}</a><a href="${contract.cta.portalUrl}" data-gated-link="portal" class="link-btn" style="color:#dbeafe;background:rgba(59,130,246,.12)">👤 ${labels.linkPortal}</a></div><div class="actions-grid"><button type="button" data-cta="claim-ownership" ${contract.cta.claimOwnership ?"" : "disabled"}>✓ ${copy.ctaClaim}</button><button type="button" data-cta="register-warranty" ${contract.cta.registerWarranty ?"" : "disabled"}>🛡 ${copy.ctaWarranty}</button><button type="button" data-cta="provenance" ${contract.cta.provenance ?"" : "disabled"}>📍 ${copy.ctaProvenance}</button><button type="button" data-cta="tokenize-request" ${contract.cta.tokenize ?"" : "disabled"}>⛓ ${copy.ctaTokenize}</button></div><button id="nfc-scan" type="button" style="margin-top:8px;display:none">📲 Escanear con NFC</button><p id="cta-status" style="margin:10px 0 0;font-size:12px;color:#cbd5e1">${isRiskBlocked ?copy.statusReplay : copy.statusReady}</p><p style="margin:6px 0 0;font-size:11px;color:#94a3b8">${labels.tapHelp}</p>${shareToken ?"" : `<p style="margin:8px 0 0;font-size:11px;color:#fbbf24">${labels.demoMode}</p>`}</section>
 <script>
 (() => {
-  const share = ${JSON.stringify(shareToken)};
-  const bid = ${JSON.stringify(contract.identity.bid)};
+  const share = ${serializeForInlineScript(shareToken)};
+  const bid = ${serializeForInlineScript(rawContract.identity.bid)};
   const uid = '';
-  const copy = ${JSON.stringify(copy)};
-  const labels = ${JSON.stringify(labels)};
+  const copy = ${serializeForInlineScript(copy)};
+  const labels = ${serializeForInlineScript(labels)};
   const ui = copy.lang === 'pt-BR'
     ?{
       askContact: 'Informe seu e-mail ou telefone para registrar/associar ao tenant:',
@@ -2357,8 +2533,8 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
       };
   const ctaButtons = Array.from(document.querySelectorAll('[data-cta]'));
   const gatedLinks = Array.from(document.querySelectorAll('[data-gated-link]'));
-  const eventId = ${JSON.stringify(contract.identity.eventId || null)};
-  const canAssociate = ${JSON.stringify((contract.allowedActions as readonly string[]).includes("save") && contract.status.code !== "REPLAY_SUSPECT")};
+  const eventId = ${serializeForInlineScript(rawContract.identity.eventId || null)};
+  const canAssociate = ${serializeForInlineScript((rawContract.allowedActions as readonly string[]).includes("save") && rawContract.status.code !== "REPLAY_SUSPECT")};
   const appBase = window.location.origin;
   const nfcBtn = document.getElementById('nfc-scan');
   const jsonFetch = (path, init = {}) => fetch(appBase + path, { credentials: 'include', ...init }).then((r) => r.json());
@@ -2420,7 +2596,7 @@ function renderSunHtml(contract: ReturnType<typeof buildPublicContract>, shareTo
             ?ui.hostFail
             : ui.assocFail + ' (' + auth.reason + ').';
         if (auth.reason === 'start_failed' || auth.reason === 'verify_failed') {
-          window.location.href = ${JSON.stringify(contract.cta.registerUrl)};
+          window.location.href = ${serializeForInlineScript(rawContract.cta.registerUrl)};
         }
         return;
       }
@@ -2637,7 +2813,10 @@ export async function GET(req: Request): Promise<Response> {
   const picc_data = url.searchParams.get('picc_data') || '';
   const enc = url.searchParams.get('enc') || '';
   const cmac = url.searchParams.get('cmac') || '';
-  const isQrScan = url.searchParams.get("qr") === "1" || String(url.searchParams.get("channel") || "").toLowerCase() === "qr";
+  const lowAssuranceChannel = String(url.searchParams.get("channel") || "").toLowerCase();
+  const isQrScan = url.searchParams.get("qr") === "1"
+    || lowAssuranceChannel === "qr"
+    || lowAssuranceChannel === "static_nfc";
 
   const ua = req.headers.get('user-agent') || '';
   const ip = meta.ip;
@@ -2679,11 +2858,20 @@ export async function GET(req: Request): Promise<Response> {
   if (isQrScan) {
     return handleQrScan({ req, url, traceId, ip, userAgent: ua, geoCity, geoCountry, geoLat, geoLng });
   }
-  if (!bid || !picc_data || !enc || !cmac) return json({ ok: false, reason: 'missing params', need: ['bid', 'picc_data', 'enc', 'cmac'] }, 400, { "x-nexid-trace-id": traceId, "x-request-id": traceId });
-  if (!BID_RE.test(bid)) return json({ ok: false, reason: 'invalid bid format' }, 400, { "x-nexid-trace-id": traceId, "x-request-id": traceId });
-  if (!HEX_RE.test(picc_data) || picc_data.length % 2 !== 0) return json({ ok: false, reason: 'invalid picc_data hex' }, 400, { "x-nexid-trace-id": traceId, "x-request-id": traceId });
-  if (!HEX_RE.test(enc) || enc.length !== 32) return json({ ok: false, reason: 'invalid enc hex (expected 32 hex chars)' }, 400, { "x-nexid-trace-id": traceId, "x-request-id": traceId });
-  if (!HEX_RE.test(cmac) || cmac.length !== 16) return json({ ok: false, reason: 'invalid cmac hex (expected 16 hex chars)' }, 400, { "x-nexid-trace-id": traceId, "x-request-id": traceId });
+  const malformed = (reason: string, need?: string[]) => json({
+    ok: false,
+    request_id: traceId,
+    result: 'MALFORMED_URL',
+    auth_status: 'MALFORMED_URL',
+    product_state: 'MALFORMED_URL',
+    reason,
+    ...(need ? { need } : {}),
+  }, 400, { "x-nexid-trace-id": traceId, "x-request-id": traceId });
+  if (!bid || !picc_data || !enc || !cmac) return malformed('missing params', ['bid', 'picc_data', 'enc', 'cmac']);
+  if (!BID_RE.test(bid)) return malformed('invalid bid format');
+  if (!HEX_RE.test(picc_data) || picc_data.length % 2 !== 0) return malformed('invalid picc_data hex');
+  if (!HEX_RE.test(enc) || enc.length !== 32) return malformed('invalid enc hex (expected 32 hex chars)');
+  if (!HEX_RE.test(cmac) || cmac.length !== 16) return malformed('invalid cmac hex (expected 16 hex chars)');
 
   const sunScanInput = {
     bid,
@@ -2710,7 +2898,7 @@ export async function GET(req: Request): Promise<Response> {
     result = await withTimeout(processSunScan(sunScanInput), SUN_PIPELINE_TIMEOUT_MS, "sun_pipeline");
   } catch (error) {
     const internalReason = error instanceof Error ?error.message : 'sun_processing_error';
-    result = { status: 503, body: { ok: false, reason: sanitizePublicErrorReason(internalReason) } };
+    result = { status: 503, body: { ok: false, reason: sanitizePublicErrorReason(internalReason) } } as SunResult;
     console.error("[sun_scan_error]", JSON.stringify({ traceId, bid, reason: internalReason }));
   }
 
@@ -2970,6 +3158,20 @@ export async function GET(req: Request): Promise<Response> {
   }
 
   if (wantsHtml(req, url)) {
+    const snapshotAccessToken = diagnosticId
+      ?(() => {
+          try {
+            return createSunSnapshotAccessToken({ diagnosticId, traceId });
+          } catch (error) {
+            console.warn("[sun_snapshot_access_unavailable]", JSON.stringify({
+              traceId,
+              diagnosticId,
+              reason: sanitizePublicErrorReason(error instanceof Error ?error.message : "snapshot_access_error"),
+            }));
+            return null;
+          }
+        })()
+      : null;
     const freshHandoffToken = diagnosticId && contract.tapSecurity?.freshTap && !contract.tapSecurity?.replayDetected && eventId
       ?(() => {
           try {
@@ -2993,7 +3195,9 @@ export async function GET(req: Request): Promise<Response> {
           }
         })()
       : null;
-    const webTarget = wantsInlineApiHtml(url) ?null : buildWebSunSnapshotUrl(url, diagnosticId, traceId, locale, freshHandoffToken);
+    const webTarget = wantsInlineApiHtml(url)
+      ?null
+      : buildWebSunSnapshotUrl(url, diagnosticId, traceId, locale, freshHandoffToken, snapshotAccessToken);
     if (webTarget) {
       return Response.redirect(webTarget, 303);
     }
@@ -3012,6 +3216,9 @@ export async function GET(req: Request): Promise<Response> {
       headers: {
         'content-type': 'text/html; charset=utf-8',
         'cache-control': 'no-store',
+        'x-content-type-options': 'nosniff',
+        'x-robots-tag': 'noindex, nofollow',
+        'referrer-policy': 'no-referrer',
         'x-nexid-trace-id': traceId,
         'x-request-id': traceId,
         'x-nexid-upstream-status': String(result.status || 200),

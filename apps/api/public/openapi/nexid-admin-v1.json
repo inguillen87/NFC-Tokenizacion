@@ -1,0 +1,172 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "nexID Administration API",
+    "version": "1.0.0",
+    "description": "Human-session administration surface with tenant-bound RBAC, permission checks, MFA on sensitive mutations and append-only audit receipts."
+  },
+  "servers": [{ "url": "https://api.nexid.lat" }],
+  "security": [{ "AdminBearer": [] }],
+  "paths": {
+    "/admin/risk-analytics": {
+      "get": {
+        "operationId": "readExplainableRiskAnalytics",
+        "summary": "Read tenant-scoped risk KPIs, rules and events",
+        "x-nexid-permission": "analytics:read",
+        "parameters": [
+          { "name": "tenant", "in": "query", "description": "Super-admin only tenant slug or UUID. Tenant sessions remain bound to their own tenant.", "schema": { "type": "string", "maxLength": 160 } },
+          { "name": "sku", "in": "query", "schema": { "type": "string", "maxLength": 160 } },
+          { "name": "product", "in": "query", "schema": { "type": "string", "maxLength": 160 } },
+          { "name": "batch", "in": "query", "description": "Batch UUID or BID.", "schema": { "type": "string", "maxLength": 160 } },
+          { "name": "lot", "in": "query", "schema": { "type": "string", "maxLength": 160 } },
+          { "name": "region", "in": "query", "schema": { "type": "string", "maxLength": 160 } },
+          { "name": "distributor", "in": "query", "schema": { "type": "string", "maxLength": 160 } },
+          { "name": "carrier", "in": "query", "schema": { "type": "string", "enum": ["qr_basic", "gs1_digital_link", "ntag213", "ntag215", "ntag216", "ntag424_dna", "ntag424_dna_tt", "uhf_rfid", "event_wristband", "hotel_keycard", "iot_tracker_placeholder"] } },
+          { "name": "riskLevel", "in": "query", "schema": { "type": "string", "enum": ["none", "low", "medium", "high", "critical"] } },
+          { "name": "from", "in": "query", "description": "RFC3339 instant with explicit Z or numeric UTC offset.", "schema": { "type": "string", "format": "date-time" } },
+          { "name": "to", "in": "query", "description": "RFC3339 instant with explicit Z or numeric UTC offset.", "schema": { "type": "string", "format": "date-time" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 200, "default": 100 } }
+        ],
+        "responses": {
+          "200": { "description": "Explainable risk analytics with explicit KPI scopes", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RiskAnalyticsResponse" } } } },
+          "400": { "$ref": "#/components/responses/AdminError" },
+          "401": { "$ref": "#/components/responses/AdminError" },
+          "403": { "$ref": "#/components/responses/AdminError" },
+          "404": { "$ref": "#/components/responses/AdminError" },
+          "429": { "$ref": "#/components/responses/AdminError" },
+          "503": { "$ref": "#/components/responses/AdminError" }
+        }
+      }
+    },
+    "/admin/integration-profiles": {
+      "get": {
+        "operationId": "listIntegrationProfiles",
+        "summary": "List approved outbound mapping profiles",
+        "description": "cropwise_physical_product_event is template-only unless the returned profile explicitly reports native_integration=true and approval_status=production_enabled.",
+        "x-nexid-permission": "webhooks:read",
+        "responses": { "200": { "description": "Safe integration profile catalog" }, "401": { "$ref": "#/components/responses/AdminError" }, "403": { "$ref": "#/components/responses/AdminError" } }
+      }
+    },
+    "/admin/rbac/roles": {
+      "get": {
+        "operationId": "listEnterpriseRoles",
+        "summary": "List active enterprise role profiles",
+        "responses": { "200": { "description": "Role catalog" }, "401": { "$ref": "#/components/responses/AdminError" } }
+      }
+    },
+    "/admin/webhook-deliveries/{id}/replay": {
+      "post": {
+        "operationId": "replayDeadLetterWebhook",
+        "summary": "Idempotently replay one tenant-owned dead-letter delivery",
+        "x-nexid-permission": "webhooks:write",
+        "x-nexid-mfa-required": true,
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "pattern": "^[1-9][0-9]{0,18}$" } },
+          { "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "type": "string", "minLength": 8, "maxLength": 255 } }
+        ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["reason"], "properties": { "reason": { "type": "string", "minLength": 10, "maxLength": 500 }, "tenant": { "type": "string", "description": "Required only for super-admin cross-tenant selection." } }, "additionalProperties": false } } } },
+        "responses": { "202": { "description": "Replay queued with immutable receipt" }, "200": { "description": "Idempotent replay receipt returned" }, "401": { "$ref": "#/components/responses/AdminError" }, "403": { "$ref": "#/components/responses/AdminError" }, "404": { "$ref": "#/components/responses/AdminError" }, "409": { "$ref": "#/components/responses/AdminError" } }
+      }
+    },
+    "/admin/sdk/api-keys": {
+      "get": { "operationId": "listTenantApiKeys", "x-nexid-permission": "sdk:keys:read", "responses": { "200": { "description": "Hashed API-key metadata and network policies" } } },
+      "post": { "operationId": "createTenantApiKey", "x-nexid-permission": "sdk:keys:write", "x-nexid-mfa-required": true, "responses": { "201": { "description": "One-time API-key secret and immutable policy receipt" } } }
+    }
+  },
+  "components": {
+    "securitySchemes": { "AdminBearer": { "type": "http", "scheme": "bearer", "bearerFormat": "opaque revocable admin session" } },
+    "responses": { "AdminError": { "description": "No-store administration error" } },
+    "schemas": {
+      "RiskAnalyticsResponse": {
+        "type": "object",
+        "required": ["ok", "tenantScoped", "scopes", "kpis", "triggered_rules", "events"],
+        "properties": {
+          "ok": { "const": true },
+          "tenantScoped": { "type": "boolean" },
+          "scopes": {
+            "type": "object",
+            "required": ["eventKpis", "neverScannedUnits", "webhookHealth", "riskScoring"],
+            "properties": {
+              "eventKpis": { "const": "selected_filters_and_time_window" },
+              "neverScannedUnits": { "const": "lifetime_inventory_matching_tenant_sku_product_batch_region_and_carrier" },
+              "webhookHealth": { "const": "tenant_and_time_window" },
+              "riskScoring": { "const": "only_events_scored_with_nexid-risk-v1" }
+            },
+            "additionalProperties": false
+          },
+          "kpis": {
+            "type": "object",
+            "required": ["total_events", "valid_taps", "unique_units", "replay_events", "invalid_auth_events", "never_scanned_units_lifetime", "tamper_events", "geo_anomalies", "content_adoption_events", "cropwise_cta_clicks", "registrations_and_leads", "training_completions", "webhook_deliveries", "webhook_delivered", "webhook_pending", "webhook_dead_letter", "webhook_delivery_rate_pct", "critical_events", "high_events", "medium_events", "low_or_none_events", "risk_event_rate_pct", "average_risk_score", "unique_products", "unique_batches", "unique_distributors", "risk_scored_events", "risk_unscored_events", "risk_coverage_pct"],
+            "properties": {
+              "total_events": { "type": "integer", "minimum": 0 },
+              "valid_taps": { "type": "integer", "minimum": 0 },
+              "unique_units": { "type": "integer", "minimum": 0 },
+              "replay_events": { "type": "integer", "minimum": 0 },
+              "invalid_auth_events": { "type": "integer", "minimum": 0 },
+              "never_scanned_units_lifetime": { "type": "integer", "minimum": 0 },
+              "tamper_events": { "type": "integer", "minimum": 0 },
+              "geo_anomalies": { "type": "integer", "minimum": 0 },
+              "content_adoption_events": { "type": "integer", "minimum": 0 },
+              "cropwise_cta_clicks": { "type": "integer", "minimum": 0 },
+              "registrations_and_leads": { "type": "integer", "minimum": 0 },
+              "training_completions": { "type": "integer", "minimum": 0 },
+              "webhook_deliveries": { "type": "integer", "minimum": 0 },
+              "webhook_delivered": { "type": "integer", "minimum": 0 },
+              "webhook_pending": { "type": "integer", "minimum": 0 },
+              "webhook_dead_letter": { "type": "integer", "minimum": 0 },
+              "webhook_delivery_rate_pct": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+              "critical_events": { "type": "integer", "minimum": 0 },
+              "high_events": { "type": "integer", "minimum": 0 },
+              "medium_events": { "type": "integer", "minimum": 0 },
+              "low_or_none_events": { "type": "integer", "minimum": 0 },
+              "risk_event_rate_pct": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+              "average_risk_score": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+              "unique_products": { "type": "integer", "minimum": 0 },
+              "unique_batches": { "type": "integer", "minimum": 0 },
+              "unique_distributors": { "type": "integer", "minimum": 0 },
+              "risk_scored_events": { "type": "integer", "minimum": 0 },
+              "risk_unscored_events": { "type": "integer", "minimum": 0 },
+              "risk_coverage_pct": { "type": ["number", "null"], "minimum": 0, "maximum": 100, "description": "Classified-event coverage. Null when the selected event set is empty." }
+            },
+            "additionalProperties": true
+          },
+          "triggered_rules": { "type": "array", "items": { "type": "object" } },
+          "events": {
+            "type": "array",
+            "maxItems": 200,
+            "description": "Bounded event projection. It contains neither raw UID, tag ID nor a globally correlatable UID hash.",
+            "items": { "$ref": "#/components/schemas/RiskAnalyticsEvent" }
+          }
+        },
+        "additionalProperties": false
+      },
+      "RiskAnalyticsEvent": {
+        "type": "object",
+        "required": ["id", "created_at", "tenant_slug", "bid", "sku", "product_id", "lot_number", "region", "distributor_id", "carrier_profile_code", "event_type", "result", "risk_profile_version", "risk_classified", "risk_score", "risk_level", "triggered_rules", "recommended_action", "unit_reference", "approximate_location"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[0-9]+$" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "tenant_slug": { "type": "string" },
+          "bid": { "type": "string" },
+          "sku": { "type": ["string", "null"] },
+          "product_id": { "type": ["string", "null"] },
+          "lot_number": { "type": ["string", "null"] },
+          "region": { "type": ["string", "null"] },
+          "distributor_id": { "type": ["string", "null"] },
+          "carrier_profile_code": { "type": ["string", "null"] },
+          "event_type": { "type": "string" },
+          "result": { "type": "string" },
+          "risk_profile_version": { "type": ["string", "null"], "enum": ["nexid-risk-v1", null] },
+          "risk_classified": { "type": "boolean" },
+          "risk_score": { "type": ["integer", "null"], "minimum": 0, "maximum": 100 },
+          "risk_level": { "type": ["string", "null"], "enum": ["none", "low", "medium", "high", "critical", null] },
+          "triggered_rules": { "type": "array", "maxItems": 128, "items": { "type": "string" } },
+          "recommended_action": { "type": ["string", "null"] },
+          "unit_reference": { "type": "string", "pattern": "^event:[0-9a-f]{24}$", "description": "Event-local derived reference; not a UID, tag ID or stable UID hash." },
+          "approximate_location": { "type": ["object", "null"] }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

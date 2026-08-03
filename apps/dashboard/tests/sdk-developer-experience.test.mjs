@@ -161,7 +161,10 @@ test("readonly demo disables every developer mutation before the proxy can retur
   assert.equal(developerMutationsAllowed({ dataMode: "unknown", loading: false }), false);
   assert.equal(developerMutationsAllowed({ dataMode: "production", loading: true }), false);
   assert.equal(developerMutationsAllowed({ dataMode: "production", loading: false }), true);
-  assert.equal((consoleSource.match(/if \(!ensureMutationAllowed\(\)\) return/g) || []).length, 5);
+  assert.equal((consoleSource.match(/if \(!ensureMutationAllowed\(\)\) return/g) || []).length, 2);
+  assert.equal((consoleSource.match(/if \(!ensureApiKeyMutationAllowed\(\)\) return/g) || []).length, 2);
+  assert.equal((consoleSource.match(/if \(!ensureClaimPolicyMutationAllowed\(\)\) return/g) || []).length, 1);
+  assert.match(consoleSource, /const apiKeyMutationsAllowed = mutationsAllowed && canManageApiKeys && mfaVerified/);
   assert.match(consoleSource, /disabled=\{!mutationsAllowed[^}]*\}/);
   assert.match(consoleSource, /developer-mutation-gate/);
 });

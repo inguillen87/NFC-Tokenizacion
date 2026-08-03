@@ -4,12 +4,46 @@ import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
 import { requireDashboardSession } from "../../../lib/session";
 import { requireDashboardTenantScope } from "../../../lib/admin-page-access";
+import { dashboardHighImpactPermissionMatches } from "../../../lib/permission-policy";
 
 export default async function ApiKeysPage() {
   const { locale } = await getDashboardI18n();
   const copy = dashboardContent[locale];
   const session = await requireDashboardSession();
   const tenantSlug = requireDashboardTenantScope(session).tenantSlug;
+  const canReadApiKeys = dashboardHighImpactPermissionMatches(
+    session.role,
+    session.permissions,
+    "api_keys.read",
+    session.deniedPermissions,
+  );
+  const canManageApiKeys = dashboardHighImpactPermissionMatches(
+    session.role,
+    session.permissions,
+    "api_keys.manage",
+    session.deniedPermissions,
+  );
+  const canManageClaimPolicy = dashboardHighImpactPermissionMatches(
+    session.role,
+    session.permissions,
+    "ownership.claim_policy.manage",
+    session.deniedPermissions,
+  );
+
+  if (!canReadApiKeys) {
+    return (
+      <main className="space-y-8" data-api-keys-availability="access_denied">
+        <SectionHeading
+          eyebrow={copy.nav.apiKeys}
+          title="Developer Hub no disponible"
+          description="Tu rol o sus denegaciones explícitas no permiten consultar credenciales de este tenant. Solicitá api_keys.read a un administrador autorizado."
+        />
+        <Card className="border-amber-300/25 bg-amber-500/10 p-5 text-sm text-amber-50">
+          El acceso permanece bloqueado y no se cargaron metadatos de API keys, políticas de ownership ni secretos.
+        </Card>
+      </main>
+    );
+  }
 
   return (
     <main className="space-y-8">
@@ -26,7 +60,12 @@ export default async function ApiKeysPage() {
           <div className="rounded-lg border border-white/10 bg-slate-900/70 p-4"><strong className="block text-white">Enterprise</strong><span className="mt-1 block text-xs leading-5 text-slate-400">Credenciales por servicio, logística, eventos firmados y auditoría de entregas.</span></div>
         </div>
       </Card>
-      <SdkAdminConsole tenantSlug={tenantSlug} />
+      <SdkAdminConsole
+        tenantSlug={tenantSlug}
+        canManageApiKeys={canManageApiKeys}
+        canManageClaimPolicy={canManageClaimPolicy}
+        mfaVerified={session.mfaVerified}
+      />
     </main>
   );
 }

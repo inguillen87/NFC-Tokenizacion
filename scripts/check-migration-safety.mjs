@@ -29,6 +29,28 @@ const ids = [
   "20260729160000_0072_tokenization_marketplace_execution_governance.sql",
   "20260730110000_0073_supplier_qa_verification_context_v2.sql",
   "20260730150000_0074_supplier_key_rotation_atomic.sql",
+  "20260801090000_0075_supplier_production_qa_acceptance.sql",
+  "20260802090000_0076_supplier_production_activation_v2.sql",
+  "20260802113000_0077_tenant_api_key_lifecycle.sql",
+  "20260802130000_0078_webhook_destination_cutover.sql",
+  "20260802150000_0079_supplier_order_atomic_create.sql",
+  "20260802153000_0080_offline_scan_history_index.sql",
+  "20260802160000_0081_supplier_manifest_atomic_import.sql",
+  "20260802170000_0082_consumer_session_revocation.sql",
+  "20260802180000_0083_sdk_event_webhook_atomic_outbox.sql",
+  "20260802190000_0084_tenant_vault_audited_download.sql",
+  "20260802200000_0085_supplier_non_sun_qa_evidence.sql",
+  "20260802210000_0086_supplier_order_lifecycle.sql",
+  "20260802220000_0087_packaging_lab_foundation.sql",
+  "20260802230000_0088_enterprise_event_profile.sql",
+  "20260802240000_0089_sun_carrier_trust_state.sql",
+  "20260802250000_0090_supplier_carrier_key_scope.sql",
+  "20260802260000_0091_supplier_keyless_qa_activation.sql",
+  "20260802270000_0092_supplier_carrier_scope_integrity.sql",
+  "20260802280000_0093_sun_tt_durable_truth_binding.sql",
+  "20260802290000_0094_sun_runtime_acl_boundary.sql",
+  "20260802300000_0095_sun_tt_conflict_target.sql",
+  "20260802310000_0096_enterprise_rbac_risk_truth.sql",
 ];
 const checks = [];
 for (const id of ids) {
@@ -58,6 +80,28 @@ const sql71 = await fs.readFile(path.join(root, "20260729143000_0071_supplier_pa
 const sql72 = await fs.readFile(path.join(root, "20260729160000_0072_tokenization_marketplace_execution_governance.sql"), "utf8");
 const sql73 = await fs.readFile(path.join(root, "20260730110000_0073_supplier_qa_verification_context_v2.sql"), "utf8");
 const sql74 = await fs.readFile(path.join(root, "20260730150000_0074_supplier_key_rotation_atomic.sql"), "utf8");
+const sql75 = await fs.readFile(path.join(root, "20260801090000_0075_supplier_production_qa_acceptance.sql"), "utf8");
+const sql76 = await fs.readFile(path.join(root, "20260802090000_0076_supplier_production_activation_v2.sql"), "utf8");
+const sql77 = await fs.readFile(path.join(root, "20260802113000_0077_tenant_api_key_lifecycle.sql"), "utf8");
+const sql78 = await fs.readFile(path.join(root, "20260802130000_0078_webhook_destination_cutover.sql"), "utf8");
+const sql79 = await fs.readFile(path.join(root, "20260802150000_0079_supplier_order_atomic_create.sql"), "utf8");
+const sql80 = await fs.readFile(path.join(root, "20260802153000_0080_offline_scan_history_index.sql"), "utf8");
+const sql81 = await fs.readFile(path.join(root, "20260802160000_0081_supplier_manifest_atomic_import.sql"), "utf8");
+const sql82 = await fs.readFile(path.join(root, "20260802170000_0082_consumer_session_revocation.sql"), "utf8");
+const sql83 = await fs.readFile(path.join(root, "20260802180000_0083_sdk_event_webhook_atomic_outbox.sql"), "utf8");
+const sql84 = await fs.readFile(path.join(root, "20260802190000_0084_tenant_vault_audited_download.sql"), "utf8");
+const sql85 = await fs.readFile(path.join(root, "20260802200000_0085_supplier_non_sun_qa_evidence.sql"), "utf8");
+const sql86 = await fs.readFile(path.join(root, "20260802210000_0086_supplier_order_lifecycle.sql"), "utf8");
+const sql87 = await fs.readFile(path.join(root, "20260802220000_0087_packaging_lab_foundation.sql"), "utf8");
+const sql88 = await fs.readFile(path.join(root, "20260802230000_0088_enterprise_event_profile.sql"), "utf8");
+const sql89 = await fs.readFile(path.join(root, "20260802240000_0089_sun_carrier_trust_state.sql"), "utf8");
+const sql90 = await fs.readFile(path.join(root, "20260802250000_0090_supplier_carrier_key_scope.sql"), "utf8");
+const sql91 = await fs.readFile(path.join(root, "20260802260000_0091_supplier_keyless_qa_activation.sql"), "utf8");
+const sql92 = await fs.readFile(path.join(root, "20260802270000_0092_supplier_carrier_scope_integrity.sql"), "utf8");
+const sql93 = await fs.readFile(path.join(root, "20260802280000_0093_sun_tt_durable_truth_binding.sql"), "utf8");
+const sql94 = await fs.readFile(path.join(root, "20260802290000_0094_sun_runtime_acl_boundary.sql"), "utf8");
+const sql95 = await fs.readFile(path.join(root, "20260802300000_0095_sun_tt_conflict_target.sql"), "utf8");
+const sql96 = await fs.readFile(path.join(root, "20260802310000_0096_enterprise_rbac_risk_truth.sql"), "utf8");
 const executor = await fs.readFile(path.resolve(process.cwd(), "apps/executor/src/iota-idempotency.mjs"), "utf8");
 const runner = await fs.readFile(path.resolve(process.cwd(), "apps/api/scripts/db-apply.mjs"), "utf8");
 const runnerSafety = await fs.readFile(path.resolve(process.cwd(), "apps/api/scripts/lib/db-apply-safety.mjs"), "utf8");
@@ -277,6 +321,324 @@ const supplierKeyRotationV2IsDurable = sql74.includes("CREATE OR REPLACE FUNCTIO
   && sql74.includes("GET DIAGNOSTICS v_sub_batch_count = ROW_COUNT")
   && sql74.includes("REVOKE ALL ON FUNCTION public.nexid_rotate_supplier_batch_keys_v2(jsonb) FROM PUBLIC")
   && !/hsm[_ -]?backed\s*[:=]\s*true/i.test(sql74);
+const supplierProductionQaAcceptanceV2IsDurable = sql75.includes("CREATE TABLE IF NOT EXISTS supplier_production_qa_plans")
+  && sql75.includes("CREATE TABLE IF NOT EXISTS supplier_production_qa_plan_decisions")
+  && sql75.includes("CREATE TABLE IF NOT EXISTS supplier_production_qa_sessions")
+  && sql75.includes("CREATE TABLE IF NOT EXISTS supplier_production_qa_session_samples")
+  && sql75.includes("CREATE TABLE IF NOT EXISTS supplier_production_qa_decisions")
+  && sql75.includes("CREATE TABLE IF NOT EXISTS supplier_production_qa_observations")
+  && sql75.includes("CREATE OR REPLACE FUNCTION public.nexid_submit_supplier_production_qa_plan_v1")
+  && sql75.includes("CREATE OR REPLACE FUNCTION public.nexid_decide_supplier_production_qa_plan_v1")
+  && sql75.includes("CREATE OR REPLACE FUNCTION public.nexid_create_supplier_production_qa_session_v1")
+  && sql75.includes("CREATE OR REPLACE FUNCTION public.nexid_commit_supplier_production_qa_v1")
+  && sql75.includes("supplier-production-acceptance/v2")
+  && sql75.includes("exact_permission.resource = 'supplier'")
+  && sql75.includes("exact_permission.action = 'production_qa_plan:approve'")
+  && sql75.includes("BEFORE UPDATE OR DELETE ON supplier_production_qa_plan_decisions")
+  && sql75.includes("REVOKE ALL ON FUNCTION public.nexid_decide_supplier_production_qa_plan_v1(jsonb) FROM PUBLIC")
+  && sql75.includes("REVOKE ALL ON FUNCTION public.nexid_commit_supplier_production_qa_v1(jsonb) FROM PUBLIC")
+  && !/hsm[_ -]?backed\s*[:=]\s*true/i.test(sql75);
+const supplierProductionActivationV2IsDurable = sql76.includes("CREATE OR REPLACE FUNCTION public.nexid_supplier_production_activation_receipt_v2")
+  && sql76.includes("CREATE OR REPLACE FUNCTION public.nexid_assert_supplier_production_activation_v2")
+  && sql76.includes("CREATE OR REPLACE FUNCTION public.nexid_assert_supplier_commercial_release_v1")
+  && sql76.includes("CREATE OR REPLACE FUNCTION public.nexid_activate_supplier_tags_v2")
+  && sql76.includes("CREATE TABLE IF NOT EXISTS supplier_production_activation_receipts")
+  && sql76.includes("UNIQUE (tenant_id, operation_key)")
+  && sql76.includes("request_fingerprint text NOT NULL")
+  && sql76.includes("supplier_production_activation_history_is_append_only")
+  && sql76.includes("supplier-production-activation-operation")
+  && sql76.includes("supplier_production_activation_idempotency_conflict")
+  && sql76.includes("v_existing.activated_uids")
+  && sql76.includes("INSERT INTO supplier_production_activation_receipts")
+  && sql76.includes("plan_decision.decision_status = 'approved'")
+  && sql76.includes("plan_decision.approver_role = 'tenant_admin'")
+  && sql76.includes("newer_plan.revision > plan.revision")
+  && sql76.includes("receipt.schema_version = 'supplier-production-acceptance/v2'")
+  && sql76.includes("receipt.status = 'passed'")
+  && sql76.includes("qa_check.status = 'passed'")
+  && sql76.includes("qa_check.acceptance_scope = 'production_lot'")
+  && sql76.includes("receipt.decided_at <= session_row.expires_at")
+  && sql76.includes("sub_batch.manifest_count = sub_batch.expected_quantity")
+  && sql76.includes("session_row.lot_size = plan.lot_size")
+  && sql76.includes("FOR SHARE OF supplier_order, sub_batch, batch, plan, plan_decision")
+  && sql76.includes("UPDATE tags tag")
+  && sql76.includes("INSERT INTO evidence_events")
+  && sql76.includes("INSERT INTO audit_logs")
+  && sql76.includes("REVOKE ALL ON TABLE supplier_production_activation_receipts FROM PUBLIC")
+  && sql76.includes("REVOKE ALL ON FUNCTION public.nexid_activate_supplier_tags_v2(jsonb) FROM PUBLIC")
+  && !/hsm[_ -]?backed\s*[:=]\s*true/i.test(sql76);
+const tenantApiKeyLifecycleV1IsDurable = sql77.includes("CREATE TABLE IF NOT EXISTS tenant_api_key_lifecycle_receipts")
+  && sql77.includes("tenant_api_keys_status_check")
+  && sql77.includes("tenant_api_keys_key_hash_format_check")
+  && sql77.includes("tenant_api_keys_key_prefix_format_check")
+  && sql77.includes("tenant_api_keys_name_check")
+  && sql77.includes("tenant_api_keys_scopes_check")
+  && sql77.includes("tenant_api_keys_metadata_object_check")
+  && sql77.includes("tenant_api_key_lifecycle_history_is_append_only")
+  && sql77.includes("tenant_api_key_identity_immutable")
+  && sql77.includes("tenant_api_key_reactivation_forbidden")
+  && sql77.includes("pg_advisory_xact_lock")
+  && sql77.includes("api_key.expires_at IS NULL OR api_key.expires_at > now()")
+  && sql77.includes("CREATE OR REPLACE FUNCTION public.nexid_create_tenant_api_key_v1")
+  && sql77.includes("CREATE OR REPLACE FUNCTION public.nexid_mutate_tenant_api_key_v1")
+  && sql77.includes("REVOKE ALL ON TABLE tenant_api_key_lifecycle_receipts FROM PUBLIC")
+  && sql77.includes("REVOKE ALL ON FUNCTION public.nexid_create_tenant_api_key_v1(jsonb) FROM PUBLIC")
+  && !/raw_(?:key|secret)\s+(?:text|bytea)/i.test(sql77)
+  && !/hsm[_ -]?backed\s*[:=]\s*true/i.test(sql77);
+const webhookDestinationCutoverV1IsDurable = sql78.includes("destination_version bigint")
+  && sql78.includes("CREATE OR REPLACE FUNCTION public.nexid_webhook_destination_version_v1")
+  && sql78.includes("webhook_destination_has_fresh_lease")
+  && sql78.includes("CREATE OR REPLACE FUNCTION public.nexid_webhook_delivery_destination_snapshot_v1")
+  && sql78.includes("CREATE OR REPLACE FUNCTION public.nexid_webhook_delivery_identity_immutable_v1")
+  && sql78.includes("webhook_destination_changed")
+  && sql78.includes("REVOKE ALL ON FUNCTION public.nexid_webhook_destination_version_v1() FROM PUBLIC");
+const supplierOrderPlpgsqlCaseComparisonsAreUnambiguous = [sql79, sql90].every((source) =>
+  /IF upper\(COALESCE\(v_sdm_config->>'supplier_order_id', ''\)\)[\s\S]*?\)\s*<>\s*\(CASE WHEN v_secure_sun THEN 'secure_sun' ELSE 'none' END\)\s*OR\s*\(v_secure_sun AND COALESCE\(v_sdm_config->>'key_version', ''\) <> '1'\)/m.test(source));
+const supplierOrderAtomicCreateV2IsDurable = sql79.includes("CREATE OR REPLACE FUNCTION public.nexid_supplier_order_create_v2_capability()")
+  && sql79.includes("CREATE OR REPLACE FUNCTION public.nexid_create_supplier_order_v2(p_input jsonb)")
+  && sql79.includes("SECURITY INVOKER")
+  && sql79.includes("'supplier-bid' || chr(31)")
+  && sql79.includes("INSERT INTO supplier_orders")
+  && sql79.includes("INSERT INTO batches")
+  && sql79.includes("INSERT INTO supplier_sub_batches")
+  && sql79.includes("INSERT INTO batch_keys")
+  && sql79.includes("INSERT INTO batch_key_material")
+  && sql79.includes("INSERT INTO evidence_events")
+  && sql79.includes("INSERT INTO audit_logs")
+  && sql79.includes("'software_envelope', true")
+  && sql79.includes("'managed_kms', false")
+  && sql79.includes("'hsm_backed', false")
+  && sql79.includes("REVOKE ALL ON FUNCTION public.nexid_create_supplier_order_v2(jsonb) FROM PUBLIC")
+  && !/p_input\s*->>?\s*'(?:k_meta|k_file|raw_key|raw_secret)'/i.test(sql79)
+  && !/'(?:managed_kms|hsm_backed)'\s*,\s*true/i.test(sql79)
+  && !/hsm[_ -]?backed\s*[:=]\s*true/i.test(sql79);
+const offlineScanHistoryIndexIsDurable = sql80.includes("CREATE INDEX IF NOT EXISTS idx_offline_scan_events_tenant_history")
+  && /ON offline_scan_events\s*\(tenant_id,\s*received_at DESC,\s*id DESC\)/m.test(sql80)
+  && !/(?:raw_url|picc_data|cmac|uid_hex|key_material)/i.test(sql80);
+const supplierManifestAtomicImportV2IsDurable = sql81.includes("CREATE TABLE IF NOT EXISTS tag_sun_payloads")
+  && sql81.includes("tag_uid_global_uniqueness_preflight_failed")
+  && sql81.includes("CREATE UNIQUE INDEX IF NOT EXISTS uq_tags_uid_hex_global")
+  && /ON tags \(upper\(trim\(uid_hex\)\)\)/m.test(sql81)
+  && sql81.includes("CREATE OR REPLACE FUNCTION public.nexid_supplier_manifest_import_v2_capability()")
+  && sql81.includes("CREATE OR REPLACE FUNCTION public.nexid_import_tag_manifest_v2(p_input jsonb)")
+  && sql81.includes("SECURITY INVOKER")
+  && sql81.includes("JOIN memberships membership")
+  && sql81.includes("auth_session.role::text = 'tenant_admin' AND auth_session.tenant_id = v_tenant_id")
+  && sql81.includes("'physical-tag-uid' || chr(31)")
+  && sql81.includes("supplier_manifest_quantity_override_forbidden")
+  && sql81.includes("INSERT INTO tenant_manifests")
+  && sql81.includes("INSERT INTO evidence_events")
+  && sql81.includes("INSERT INTO audit_logs")
+  && sql81.includes("REVOKE ALL ON FUNCTION public.nexid_import_tag_manifest_v2(jsonb) FROM PUBLIC")
+  && !/p_input\s*->>?\s*'(?:k_meta|k_file|raw_key|raw_secret)'/i.test(sql81)
+  && !/'(?:managed_kms|hsm_backed)'\s*,\s*true/i.test(sql81)
+  && !/hsm[_ -]?backed\s*[:=]\s*true/i.test(sql81);
+const consumerSessionRevocationIsDurable = sql82.includes("ALTER TABLE consumer_sessions")
+  && sql82.includes("ADD COLUMN IF NOT EXISTS revoked_at timestamptz")
+  && sql82.includes("CREATE INDEX IF NOT EXISTS idx_consumer_sessions_active")
+  && sql82.includes("WHERE revoked_at IS NULL");
+const sdkEventWebhookAtomicOutboxIsDurable = sql83.includes("CREATE OR REPLACE FUNCTION public.nexid_enqueue_tenant_webhook_outbox_v1")
+  && sql83.includes("CREATE OR REPLACE FUNCTION public.nexid_write_sdk_external_event_v1")
+  && sql83.includes("SECURITY INVOKER")
+  && sql83.includes("INSERT INTO public.sdk_external_events")
+  && sql83.includes("FROM public.nexid_enqueue_tenant_webhook_outbox_v1")
+  && sql83.includes("INSERT INTO public.webhook_deliveries")
+  && sql83.includes("ON CONFLICT (endpoint_id, event_id) DO NOTHING")
+  && sql83.includes("delivery.payload IS DISTINCT FROM v_payload")
+  && sql83.includes("webhook_outbox_idempotency_conflict")
+  && sql83.includes("endpoint.destination_version")
+  && sql83.includes("v_attempted <> v_queued + v_deduplicated")
+  && sql83.includes("REVOKE ALL ON FUNCTION public.nexid_enqueue_tenant_webhook_outbox_v1")
+  && sql83.includes("REVOKE ALL ON FUNCTION public.nexid_write_sdk_external_event_v1")
+  && !/hsm[_ -]?backed\s*[:=]\s*true/i.test(sql83);
+const tenantVaultAuditedDownloadIsDurable = sql84.includes("CREATE TABLE IF NOT EXISTS vault_artifact_downloads")
+  && sql84.includes("ADD COLUMN IF NOT EXISTS download_count integer NOT NULL DEFAULT 0")
+  && sql84.includes("ADD COLUMN IF NOT EXISTS last_downloaded_at timestamptz")
+  && sql84.includes("UNIQUE (artifact_id, idempotency_key)")
+  && sql84.includes("CHECK (content_hash ~ '^sha256:[0-9a-f]{64}$')")
+  && sql84.includes("CHECK (receipt_sha256 ~ '^sha256:[0-9a-f]{64}$')")
+  && sql84.includes("trg_vault_artifact_downloads_immutable")
+  && sql84.includes("BEFORE UPDATE OR DELETE ON vault_artifact_downloads")
+  && !/hsm[_ -]?backed\s*[:=]\s*true/i.test(sql84);
+const supplierNonSunQaEvidenceIsDurable = sql85.includes("CREATE TABLE IF NOT EXISTS supplier_qa_carrier_evidence_receipts")
+  && sql85.includes("CREATE OR REPLACE FUNCTION public.nexid_supplier_carrier_qa_v1_capability")
+  && sql85.includes("CREATE OR REPLACE FUNCTION public.nexid_commit_supplier_carrier_qa_v1")
+  && sql85.includes("SECURITY INVOKER")
+  && sql85.includes("trg_supplier_qa_carrier_receipts_append_only")
+  && sql85.includes("server_verified_sun_evidence")
+  && sql85.includes("cryptographic_authentication_verified")
+  && sql85.includes("anti_replay_verified")
+  && sql85.includes("activation_allowed")
+  && sql85.includes("IS DISTINCT FROM\n      (CASE WHEN v_expected_carrier_profile = 'gs1_digital_link' THEN 'true' ELSE 'false' END) THEN")
+  && sql85.includes("REVOKE ALL ON FUNCTION public.nexid_commit_supplier_carrier_qa_v1")
+  && !/hsm[_ -]?backed\s*[:=]\s*true/i.test(sql85);
+const supplierOrderLifecycleIsDurable = sql86.includes("CREATE TABLE IF NOT EXISTS supplier_order_lifecycle_receipts")
+  && sql86.includes("UNIQUE (tenant_id, operation_key)")
+  && sql86.includes("UNIQUE (supplier_order_id, transition)")
+  && sql86.includes("trg_supplier_order_lifecycle_append_only")
+  && sql86.includes("CREATE OR REPLACE FUNCTION public.nexid_transition_supplier_order_v1")
+  && sql86.includes("SECURITY INVOKER")
+  && sql86.includes("FOR UPDATE")
+  && sql86.includes("auth_session.revoked_at IS NULL")
+  && sql86.includes("auth_session.role::text = 'super_admin'")
+  && sql86.includes("supplier_order_handover_qa_gate_required")
+  && sql86.includes("supplier_order_handover_activation_complete_required")
+  && sql86.includes("tenant_acceptance_claimed boolean NOT NULL DEFAULT false CHECK (tenant_acceptance_claimed = false)")
+  && sql86.includes("physical_handover_verified boolean NOT NULL DEFAULT false CHECK (physical_handover_verified = false)")
+  && sql86.includes("INSERT INTO evidence_events")
+  && sql86.includes("INSERT INTO audit_logs")
+  && sql86.includes("REVOKE ALL ON FUNCTION public.nexid_transition_supplier_order_v1")
+  && !/hsm[_ -]?backed\s*[:=]\s*true/i.test(sql86);
+const packagingLabFoundationIsDurable = sql87.includes("CREATE TABLE IF NOT EXISTS packaging_carrier_specs")
+  && sql87.includes("CREATE TABLE IF NOT EXISTS packaging_placements")
+  && sql87.includes("CREATE TABLE IF NOT EXISTS packaging_lab_projects")
+  && sql87.includes("CREATE TABLE IF NOT EXISTS packaging_lab_test_cases")
+  && sql87.includes("CREATE TABLE IF NOT EXISTS packaging_lab_approvals")
+  && sql87.includes("CREATE OR REPLACE FUNCTION public.nexid_assert_packaging_lab_activation_v1")
+  && sql87.includes("CREATE OR REPLACE FUNCTION public.nexid_assert_supplier_production_activation_v2")
+  && sql87.includes("packaging_lab_approval_required")
+  && sql87.includes("placement.crosses_opening")
+  && sql87.includes("placement.requires_tail_break")
+  && sql87.includes("trg_packaging_lab_tag_activation_guard")
+  && sql87.includes("REVOKE ALL ON TABLE packaging_lab_approvals FROM PUBLIC")
+  && !/hsm[_ -]?backed\s*[:=]\s*true/i.test(sql87);
+const enterpriseEventProfileIsDurable = sql88.includes("'cropwise_physical_product_event'")
+  && sql88.includes("CREATE TABLE IF NOT EXISTS webhook_delivery_attempts")
+  && sql88.includes("CREATE TABLE IF NOT EXISTS webhook_delivery_replay_receipts")
+  && sql88.includes("CREATE OR REPLACE FUNCTION public.nexid_replay_webhook_delivery_v1")
+  && sql88.includes("CREATE OR REPLACE FUNCTION public.nexid_write_sdk_external_event_v1")
+  && sql88.includes("ADD COLUMN IF NOT EXISTS allowed_ip_cidrs cidr[]")
+  && sql88.includes("ADD COLUMN IF NOT EXISTS allowed_origins text[]")
+  && sql88.includes("ADD COLUMN IF NOT EXISTS triggered_rules jsonb")
+  && sql88.includes("ADD COLUMN IF NOT EXISTS recommended_action text")
+  && sql88.includes("REVOKE ALL ON FUNCTION public.nexid_write_sdk_external_event_v1(jsonb) FROM PUBLIC");
+const sunCarrierTrustStateIsDurable = sql89.includes("CREATE OR REPLACE FUNCTION public.nexid_persist_sun_scan_v1_base_0062")
+  && sql89.includes("pg_advisory_xact_lock")
+  && sql89.includes("v_carrier_profile_code = 'ntag424_dna' THEN 'VALID_AUTHENTIC'")
+  && sql89.includes("v_carrier_profile_code = 'ntag424_dna_tt'")
+  && sql89.includes("'VALID_UNKNOWN_TAMPER'")
+  && sql89.includes("WHEN NOT v_crypto_verified THEN 'SUN_PROFILE_MISMATCH'")
+  && sql89.indexOf("WHEN NOT v_crypto_verified") < sql89.indexOf("WHEN NOT v_allowlisted")
+  && sql89.indexOf("WHEN NOT v_allowlisted") < sql89.indexOf("WHEN v_replay_suspect")
+  && !/hsm[_ -]?backed\s*[:=]\s*true/i.test(sql89);
+const supplierCarrierKeyScopeIsDurable = sql90.includes("ALTER TABLE batches ALTER COLUMN meta_key_ct DROP NOT NULL")
+  && sql90.includes("ALTER TABLE batches ALTER COLUMN file_key_ct DROP NOT NULL")
+  && sql90.includes("CREATE OR REPLACE FUNCTION public.nexid_supplier_order_create_keyless_v1_capability()")
+  && sql90.includes("CREATE OR REPLACE FUNCTION public.nexid_create_supplier_order_v2(p_input jsonb)")
+  && sql90.includes("v_secure_sun := v_carrier_profile_code IN ('ntag424_dna', 'ntag424_dna_tt')")
+  && sql90.includes("IF v_secure_sun THEN")
+  && sql90.includes("batches_supplier_carrier_key_scope_v1")
+  && sql90.includes("NOT VALID")
+  && sql90.includes("trg_batch_keys_supplier_carrier_scope_v1")
+  && sql90.includes("trg_batch_key_material_supplier_carrier_scope_v1")
+  && sql90.includes("REVOKE ALL ON FUNCTION public.nexid_create_supplier_order_v2(jsonb) FROM PUBLIC")
+  && sql90.includes("'managed_kms', false")
+  && sql90.includes("'hsm_backed', false")
+  && !/hsm[_ -]?backed\s*[:=]\s*true/i.test(sql90);
+const supplierKeylessQaActivationIsDurable = sql91.includes("CREATE TABLE IF NOT EXISTS supplier_keyless_production_qa_acceptance_receipts")
+  && sql91.includes("CREATE OR REPLACE FUNCTION public.nexid_supplier_keyless_qa_activation_v1_capability()")
+  && sql91.includes("CREATE OR REPLACE FUNCTION public.nexid_commit_supplier_carrier_qa_v1(p_input jsonb)")
+  && sql91.includes("CREATE OR REPLACE FUNCTION public.nexid_supplier_keyless_production_activation_receipt_v1(")
+  && sql91.includes("CREATE OR REPLACE FUNCTION public.nexid_supplier_production_activation_receipt_v2(p_batch_id uuid)")
+  && sql91.includes("NOT EXISTS (\n      SELECT 1 FROM batch_keys unexpected_key")
+  && sql91.includes("key_material_mode text NOT NULL DEFAULT 'none' CHECK (key_material_mode = 'none')")
+  && sql91.includes("managed_kms boolean NOT NULL DEFAULT false CHECK (managed_kms IS FALSE)")
+  && sql91.includes("hsm_backed boolean NOT NULL DEFAULT false CHECK (hsm_backed IS FALSE)")
+  && sql91.includes("REVOKE ALL ON FUNCTION public.nexid_supplier_keyless_qa_activation_v1_capability() FROM PUBLIC")
+  && !/hsm[_ -]?backed\s*[:=]\s*true/i.test(sql91);
+const supplierCarrierScopeIntegrityIsDurable = sql92.includes("CREATE OR REPLACE FUNCTION public.nexid_supplier_carrier_scope_integrity_v1_capability()")
+  && sql92.includes("CREATE OR REPLACE FUNCTION public.nexid_enforce_supplier_batch_key_carrier_scope_v1()")
+  && sql92.includes("BEFORE INSERT OR UPDATE ON batch_keys")
+  && sql92.includes("BEFORE INSERT OR UPDATE ON batch_key_material")
+  && sql92.includes("lower(btrim(batch.carrier_profile_code)) = lower(btrim(supplier_order.carrier_profile_code))")
+  && sql92.includes("(manifest_row.value->>'carrier_profile_code') IS DISTINCT FROM v_batch_carrier")
+  && sql92.includes("jsonb_typeof(manifest_row.value->'sun_payload') IS DISTINCT FROM 'object'")
+  && sql92.includes("WHERE manifest_row.value ? 'sun_payload'")
+  && sql92.includes("REVOKE ALL ON FUNCTION public.nexid_supplier_carrier_scope_integrity_v1_capability() FROM PUBLIC")
+  && !/hsm[_ -]?backed\s*[:=]\s*true/i.test(sql92);
+const sunTtDurableTruthIsDurable = sql93.includes("CREATE OR REPLACE FUNCTION public.nexid_sun_tt_durable_truth_v1_capability()")
+  && sql93.includes("CREATE TABLE IF NOT EXISTS public.sun_tt_truth_receipts")
+  && sql93.includes("trg_sun_tt_truth_receipts_append_only")
+  && sql93.includes("WHEN '4343' THEN 'VALID_CLOSED'")
+  && sql93.includes("WHEN '4F4F' THEN 'VALID_OPENED'")
+  && sql93.includes("WHEN '4F43' THEN 'VALID_OPENED_PREVIOUSLY'")
+  && sql93.includes("v_binding_reason := 'tt_raw_missing_or_noncanonical'")
+  && sql93.includes("v_binding_reason := 'tt_force_result_contradiction'")
+  && sql93.includes("'SUN_PROFILE_MISMATCH', 'NOT_ACTIVE', 'REVOKED', 'BROKEN', 'TAMPER_RISK'")
+  && sql93.includes("REVOKE ALL ON FUNCTION public.nexid_sun_tt_durable_truth_v1_capability() FROM PUBLIC")
+  && !/hsm[_ -]?backed\s*[:=]\s*true/i.test(sql93);
+const sunRuntimeAclBoundaryIsDurable = sql94.includes("CREATE OR REPLACE FUNCTION public.nexid_sun_runtime_acl_v1_capability()")
+  && sql94.includes("REVOKE CREATE ON SCHEMA public FROM PUBLIC")
+  && sql94.includes("ALTER FUNCTION public.nexid_persist_sun_scan_v1(jsonb) SECURITY DEFINER")
+  && sql94.includes("SET search_path TO pg_catalog, public, pg_temp")
+  && sql94.includes("REVOKE ALL ON FUNCTION public.nexid_persist_sun_scan_v1(jsonb) FROM PUBLIC")
+  && sql94.includes("REVOKE ALL ON FUNCTION public.nexid_persist_sun_scan_v1_base_0062(jsonb) FROM PUBLIC")
+  && sql94.includes("REVOKE ALL ON FUNCTION public.nexid_persist_sun_scan_v1_base_pre_tt_0093(jsonb) FROM PUBLIC")
+  && !/GRANT\s+EXECUTE[\s\S]*nexid_persist_sun_scan_v1_base_0062/i.test(sql94)
+  && !/hsm[_ -]?backed\s*[:=]\s*true/i.test(sql94);
+const sunTtConflictTargetIsDurable = sql95.includes("CREATE OR REPLACE FUNCTION public.nexid_sun_tt_conflict_target_v1_capability()")
+  && sql95.includes("v_old_conflict_target constant text := 'ON CONFLICT (event_id, event_created_at) DO NOTHING'")
+  && sql95.includes("v_new_conflict_target constant text := 'ON CONFLICT ON CONSTRAINT sun_tt_truth_receipts_pkey DO NOTHING'")
+  && sql95.includes("EXECUTE replace(v_function_definition, v_old_conflict_target, v_new_conflict_target)")
+  && sql95.includes("constraint_row.conname = 'sun_tt_truth_receipts_pkey'")
+  && sql95.includes("constraint_row.contype = 'p'")
+  && sql95.includes("ARRAY['event_id', 'event_created_at']::text[]")
+  && sql95.includes("REVOKE ALL ON FUNCTION public.nexid_persist_sun_scan_v1(jsonb) FROM PUBLIC")
+  && sql95.includes("REVOKE ALL ON FUNCTION public.nexid_persist_sun_scan_v1_base_0062(jsonb) FROM PUBLIC")
+  && sql95.includes("REVOKE ALL ON FUNCTION public.nexid_persist_sun_scan_v1_base_pre_tt_0093(jsonb) FROM PUBLIC")
+  && sql95.includes("REVOKE ALL ON FUNCTION public.nexid_sun_tt_conflict_target_v1_capability() FROM PUBLIC")
+  && !/GRANT\s+EXECUTE[\s\S]*nexid_persist_sun_scan_v1_base_0062/i.test(sql95)
+  && !/(?:CREATE|ALTER|DROP)\s+TABLE|TRUNCATE|UPDATE\s+public\.(?:tags|events|sun_counter_state)|DELETE\s+FROM/i.test(sql95)
+  && !/hsm[_ -]?backed\s*[:=]\s*true|managed[_ -]?kms\s*[:=]\s*true/i.test(sql95);
+const enterpriseRbacRiskTruthIsDurable = sql96.includes("ADD COLUMN IF NOT EXISTS risk_profile_version text")
+  && sql96.includes("DROP CONSTRAINT IF EXISTS events_risk_profile_version_check")
+  && sql96.includes("VALIDATE CONSTRAINT events_risk_profile_version_check")
+  && sql96.includes("risk_profile_version = 'nexid-risk-v1'")
+  && sql96.includes("CREATE TABLE IF NOT EXISTS public.event_risk_projections")
+  && /CONSTRAINT event_risk_projections_pkey PRIMARY KEY \(\s*event_id, event_created_at, risk_profile_version\s*\)/m.test(sql96)
+  && sql96.includes("CREATE INDEX IF NOT EXISTS idx_event_risk_projections_tenant_created")
+  && sql96.includes("CREATE OR REPLACE FUNCTION public.nexid_compute_event_risk_v1(")
+  && /nexid_compute_event_risk_v1\([\s\S]*?IMMUTABLE\s+PARALLEL SAFE/m.test(sql96)
+  && !/nexid_compute_event_risk_v1\([\s\S]*?FROM public\.batches[\s\S]*?\$enterprise_event_risk_compute_v1\$/m.test(sql96)
+  && sql96.includes("CREATE OR REPLACE FUNCTION public.nexid_explain_event_risk_v1()")
+  && sql96.includes("NEW.risk_score := v_projection.risk_score")
+  && sql96.includes("NEW.triggered_rules := v_projection.triggered_rules")
+  && sql96.includes("NEW.risk_profile_version := v_projection.risk_profile_version")
+  && /FROM public\.batches batch[\s\S]*?batch\.tenant_id = NEW\.tenant_id/m.test(sql96)
+  && /OLD\.triggered_rules[\s\S]*?BATCH_QUARANTINED/m.test(sql96)
+  && /BEFORE INSERT OR UPDATE OF\s+tenant_id, event_type/m.test(sql96)
+  && /risk_score, risk_level, triggered_rules, recommended_action,\s+risk_profile_version/m.test(sql96)
+  && sql96.includes("CREATE OR REPLACE FUNCTION public.nexid_backfill_event_risk_v1(p_limit integer)")
+  && sql96.includes("p_limit > 5000")
+  && sql96.includes("FOR UPDATE OF event_row SKIP LOCKED")
+  && sql96.includes("INSERT INTO public.event_risk_projections")
+  && /event_row\.triggered_rules[\s\S]*?BATCH_QUARANTINED/m.test(sql96)
+  && sql96.includes("ON CONFLICT (event_id, event_created_at, risk_profile_version) DO NOTHING")
+  && !/UPDATE\s+public\.events/i.test(sql96)
+  && sql96.includes("REVOKE ALL ON FUNCTION public.nexid_backfill_event_risk_v1(integer) FROM PUBLIC")
+  && sql96.includes("SECURITY INVOKER")
+  && sql96.includes("memberships_enterprise_tenant_binding_check")
+  && sql96.includes("auth_sessions_enterprise_tenant_binding_check")
+  && sql96.includes("VALIDATE CONSTRAINT memberships_enterprise_tenant_binding_check")
+  && sql96.includes("VALIDATE CONSTRAINT auth_sessions_enterprise_tenant_binding_check")
+  && sql96.includes("'api_integration', 'API integration service account', true, false")
+  && sql96.includes("'super_admin', 'Super admin', false, true")
+  && sql96.includes("'reseller', 'Legacy reseller compatibility', true, true")
+  && sql96.includes("'tenant_owner', 'Tenant owner', true, true")
+  && sql96.includes("'tenant_admin', 'Tenant admin', true, true")
+  && sql96.includes("ALTER TABLE public.resource_permissions\n  ADD COLUMN IF NOT EXISTS tenant_id uuid")
+  && sql96.includes("resource_permissions_tenant_backfill_ambiguous")
+  && sql96.includes("v_global_memberships > 0 AND v_tenant_count = 0")
+  && sql96.includes("v_global_memberships = 0 AND v_tenant_count = 1")
+  && sql96.includes("ADD CONSTRAINT resource_permissions_tenant_id_fkey")
+  && sql96.includes("CREATE UNIQUE INDEX IF NOT EXISTS ux_resource_permissions_tenant_scope")
+  && sql96.includes("CREATE UNIQUE INDEX IF NOT EXISTS ux_resource_permissions_global_scope")
+  && /CREATE CONSTRAINT TRIGGER trg_resource_permissions_tenant_scope[\s\S]*?DEFERRABLE INITIALLY DEFERRED/i.test(sql96)
+  && /CREATE CONSTRAINT TRIGGER trg_memberships_permission_scope[\s\S]*?DEFERRABLE INITIALLY DEFERRED/i.test(sql96)
+  && (sql96.match(/UPDATE\s+public\.resource_permissions\s+permission/gi) || []).length === 1
+  && !/(?:INSERT\s+INTO|DELETE\s+FROM)\s+(?:public\.)?resource_permissions\b/i.test(sql96)
+  && !/(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+(?:public\.)?memberships\b/i.test(sql96)
+  && !/hsm[_ -]?backed\s*[:=]\s*true|managed[_ -]?kms\s*[:=]\s*true/i.test(sql96);
 
 const allMigrationFiles = (await fs.readdir(root)).filter((file) => file.endsWith(".sql")).sort();
 let tenantApiKeysMaterialized = false;
@@ -331,6 +693,29 @@ const ok = checks.every((item) => item.bytes > 0)
   && supplierPackPurposeGovernanceIsDurable && tokenizationMarketplaceExecutionGovernanceIsDurable
   && supplierQaVerificationContextV2IsDurable
   && supplierKeyRotationV2IsDurable
+  && supplierProductionQaAcceptanceV2IsDurable
+  && supplierProductionActivationV2IsDurable
+  && tenantApiKeyLifecycleV1IsDurable
+  && webhookDestinationCutoverV1IsDurable
+  && supplierOrderPlpgsqlCaseComparisonsAreUnambiguous
+  && supplierOrderAtomicCreateV2IsDurable
+  && offlineScanHistoryIndexIsDurable
+  && supplierManifestAtomicImportV2IsDurable
+  && consumerSessionRevocationIsDurable
+  && sdkEventWebhookAtomicOutboxIsDurable
+  && tenantVaultAuditedDownloadIsDurable
+  && supplierNonSunQaEvidenceIsDurable
+  && supplierOrderLifecycleIsDurable
+  && packagingLabFoundationIsDurable
+  && enterpriseEventProfileIsDurable
+  && sunCarrierTrustStateIsDurable
+  && supplierCarrierKeyScopeIsDurable
+  && supplierKeylessQaActivationIsDurable
+  && supplierCarrierScopeIntegrityIsDurable
+  && sunTtDurableTruthIsDurable
+  && sunRuntimeAclBoundaryIsDurable
+  && sunTtConflictTargetIsDurable
+  && enterpriseRbacRiskTruthIsDurable
   && tenantApiKeysCleanOrderSafe && partitionedEventReferencesAreCompositeSafe
   && postgresTextNullDelimiterFree
   && runnerIsAtomic && unauthorizedCleanBootstrapFailsClosed && legacyBypassBlocked
@@ -361,6 +746,29 @@ console.log(JSON.stringify({
     tokenization_marketplace_execution_governance_is_durable: tokenizationMarketplaceExecutionGovernanceIsDurable,
     supplier_qa_verification_context_v2_is_durable: supplierQaVerificationContextV2IsDurable,
     supplier_key_rotation_v2_is_durable: supplierKeyRotationV2IsDurable,
+    supplier_production_qa_acceptance_v2_is_durable: supplierProductionQaAcceptanceV2IsDurable,
+    supplier_production_activation_v2_is_durable: supplierProductionActivationV2IsDurable,
+    tenant_api_key_lifecycle_v1_is_durable: tenantApiKeyLifecycleV1IsDurable,
+    webhook_destination_cutover_v1_is_durable: webhookDestinationCutoverV1IsDurable,
+    supplier_order_plpgsql_case_comparisons_are_unambiguous: supplierOrderPlpgsqlCaseComparisonsAreUnambiguous,
+    supplier_order_atomic_create_v2_is_durable: supplierOrderAtomicCreateV2IsDurable,
+    offline_scan_history_index_is_durable: offlineScanHistoryIndexIsDurable,
+    supplier_manifest_atomic_import_v2_is_durable: supplierManifestAtomicImportV2IsDurable,
+    consumer_session_revocation_is_durable: consumerSessionRevocationIsDurable,
+    sdk_event_webhook_atomic_outbox_is_durable: sdkEventWebhookAtomicOutboxIsDurable,
+    tenant_vault_audited_download_is_durable: tenantVaultAuditedDownloadIsDurable,
+    supplier_non_sun_qa_evidence_is_durable: supplierNonSunQaEvidenceIsDurable,
+    supplier_order_lifecycle_is_durable: supplierOrderLifecycleIsDurable,
+    packaging_lab_foundation_is_durable: packagingLabFoundationIsDurable,
+    enterprise_event_profile_is_durable: enterpriseEventProfileIsDurable,
+    sun_carrier_trust_state_is_durable: sunCarrierTrustStateIsDurable,
+    supplier_carrier_key_scope_is_durable: supplierCarrierKeyScopeIsDurable,
+    supplier_keyless_qa_activation_is_durable: supplierKeylessQaActivationIsDurable,
+    supplier_carrier_scope_integrity_is_durable: supplierCarrierScopeIntegrityIsDurable,
+    sun_tt_durable_truth_is_durable: sunTtDurableTruthIsDurable,
+    sun_runtime_acl_boundary_is_durable: sunRuntimeAclBoundaryIsDurable,
+    sun_tt_conflict_target_is_durable: sunTtConflictTargetIsDurable,
+    enterprise_rbac_risk_truth_is_durable: enterpriseRbacRiskTruthIsDurable,
     tenant_api_keys_clean_order_safe: tenantApiKeysCleanOrderSafe,
     partitioned_event_references_are_composite_safe: partitionedEventReferencesAreCompositeSafe,
     postgres_text_null_delimiter_free: postgresTextNullDelimiterFree,

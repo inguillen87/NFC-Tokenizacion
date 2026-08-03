@@ -1,13 +1,23 @@
-export const GS1_DIGITAL_LINK_TRUST_LEVEL = "GS1_REGISTERED_IDENTITY_RESOLVED";
+export const GS1_DIGITAL_LINK_TRUST_LEVEL = "GS1_IDENTITY_RESOLVED";
 export const GS1_DIGITAL_LINK_AUTH_LEVEL = "NOT_CRYPTOGRAPHICALLY_AUTHENTICATED";
 export const GS1_RESOLVER_VERSION = "1.2.0";
 export const GS1_LINKSET_MEDIA_TYPE = "application/linkset+json";
 export const GS1_LINKSET_CONTEXT = `https://ref.gs1.org/standards/resolver/${GS1_RESOLVER_VERSION}/linkset-context`;
 
 const GS1_VOCABULARY = "https://ref.gs1.org/voc/";
+const NEXID_REL_NAMESPACE = "https://nexid.lat/rel/";
 const DEFAULT_LINK_REL = `${GS1_VOCABULARY}defaultLink`;
 const PRODUCT_INFO_REL = `${GS1_VOCABULARY}pip`;
 const TRACEABILITY_REL = `${GS1_VOCABULARY}traceability`;
+export const NEXID_OFFLINE_PUBLIC_CERTIFICATE_REL = `${NEXID_REL_NAMESPACE}offline-public-certificate`;
+export const NEXID_DPP_REL = `${NEXID_REL_NAMESPACE}digital-product-passport`;
+export const NEXID_PRODUCT_REL = `${NEXID_REL_NAMESPACE}product`;
+export const NEXID_LOT_REL = `${NEXID_REL_NAMESPACE}lot`;
+export const NEXID_SERIAL_REL = `${NEXID_REL_NAMESPACE}serial`;
+export const NEXID_TECHNICAL_SHEET_REL = `${NEXID_REL_NAMESPACE}technical-sheet`;
+export const NEXID_SAFETY_SHEET_REL = `${NEXID_REL_NAMESPACE}safety-sheet`;
+export const NEXID_SUPPORT_REL = `${NEXID_REL_NAMESPACE}support`;
+export const NEXID_RECALL_STATUS_REL = `${NEXID_REL_NAMESPACE}recall-status`;
 const SUPPORTED_RELATIONS = new Map([
   ["gs1:defaultlink", DEFAULT_LINK_REL],
   [DEFAULT_LINK_REL.toLowerCase(), DEFAULT_LINK_REL],
@@ -15,6 +25,25 @@ const SUPPORTED_RELATIONS = new Map([
   [PRODUCT_INFO_REL.toLowerCase(), PRODUCT_INFO_REL],
   ["gs1:traceability", TRACEABILITY_REL],
   [TRACEABILITY_REL.toLowerCase(), TRACEABILITY_REL],
+  ["nexid:offlinecertificate", NEXID_OFFLINE_PUBLIC_CERTIFICATE_REL],
+  [NEXID_OFFLINE_PUBLIC_CERTIFICATE_REL.toLowerCase(), NEXID_OFFLINE_PUBLIC_CERTIFICATE_REL],
+  ["nexid:dpp", NEXID_DPP_REL],
+  ["nexid:digitalproductpassport", NEXID_DPP_REL],
+  [NEXID_DPP_REL.toLowerCase(), NEXID_DPP_REL],
+  ["nexid:product", NEXID_PRODUCT_REL],
+  [NEXID_PRODUCT_REL.toLowerCase(), NEXID_PRODUCT_REL],
+  ["nexid:lot", NEXID_LOT_REL],
+  [NEXID_LOT_REL.toLowerCase(), NEXID_LOT_REL],
+  ["nexid:serial", NEXID_SERIAL_REL],
+  [NEXID_SERIAL_REL.toLowerCase(), NEXID_SERIAL_REL],
+  ["nexid:technicalsheet", NEXID_TECHNICAL_SHEET_REL],
+  [NEXID_TECHNICAL_SHEET_REL.toLowerCase(), NEXID_TECHNICAL_SHEET_REL],
+  ["nexid:safetysheet", NEXID_SAFETY_SHEET_REL],
+  [NEXID_SAFETY_SHEET_REL.toLowerCase(), NEXID_SAFETY_SHEET_REL],
+  ["nexid:support", NEXID_SUPPORT_REL],
+  [NEXID_SUPPORT_REL.toLowerCase(), NEXID_SUPPORT_REL],
+  ["nexid:recallstatus", NEXID_RECALL_STATUS_REL],
+  [NEXID_RECALL_STATUS_REL.toLowerCase(), NEXID_RECALL_STATUS_REL],
 ]);
 
 const RESOLVER_QUERY_KEYS = new Set([
@@ -61,6 +90,12 @@ export type Gs1RegistryResolution = {
   tenantSlug: string;
   bid: string;
   displayName: string | null;
+  publicLinks?: {
+    technicalSheet?: string | null;
+    safetySheet?: string | null;
+    support?: string | null;
+    recallStatus?: string | null;
+  };
 };
 
 export type Gs1RegistryLookup = (
@@ -147,6 +182,20 @@ export function buildGs1DigitalLinkSunUrl(
   return target;
 }
 
+export function buildOfflinePublicCertificateViewerUrl(
+  requestUrl: string | URL,
+  params: Gs1DigitalLinkResolverParams,
+) {
+  const incoming = new URL(String(requestUrl));
+  const target = new URL("/offline/certificate", incoming.origin);
+  target.searchParams.set("gtin", cleanPathValue(params.gtin));
+  const lot = cleanPathValue(params.lot);
+  const serial = cleanPathValue(params.serial);
+  if (lot) target.searchParams.set("lot", lot);
+  if (serial) target.searchParams.set("serial", serial);
+  return target;
+}
+
 function canonicalAnchor(requestUrl: string | URL) {
   const anchor = new URL(String(requestUrl));
   anchor.search = "";
@@ -155,15 +204,37 @@ function canonicalAnchor(requestUrl: string | URL) {
   return anchor.toString();
 }
 
-function linkEntry(href: string) {
+function canonicalIdentityUrl(
+  requestUrl: string | URL,
+  params: Gs1DigitalLinkResolverParams,
+  level: "product" | "lot" | "serial",
+) {
+  const incoming = new URL(String(requestUrl));
+  const prefix = incoming.pathname.startsWith("/id/") ? "/id" : "";
+  const gtin = encodeURIComponent(cleanPathValue(params.gtin));
+  const lot = cleanPathValue(params.lot);
+  const serial = cleanPathValue(params.serial);
+  let pathname = `${prefix}/01/${gtin}`;
+  if ((level === "lot" || level === "serial") && lot) pathname += `/10/${encodeURIComponent(lot)}`;
+  if (level === "serial" && serial) pathname += `/21/${encodeURIComponent(serial)}`;
+  return new URL(pathname, incoming.origin).toString();
+}
+
+function linkEntry(href: string, title = "NexID digital product passport") {
   return {
     href,
-    title: "NexID digital product passport",
+    title,
     hreflang: ["es"],
     type: "text/html",
     fwqs: false,
     public: true,
   };
+}
+
+function withFragment(href: string, fragment: string) {
+  const target = new URL(href);
+  target.hash = fragment;
+  return target.toString();
 }
 
 export function buildGs1Linkset(
@@ -172,16 +243,28 @@ export function buildGs1Linkset(
   registry?: Gs1RegistryResolution | null,
 ) {
   const href = buildGs1DigitalLinkSunUrl(requestUrl, params, registry).toString();
+  const offlineCertificateHref = buildOfflinePublicCertificateViewerUrl(requestUrl, params).toString();
+  const resource: Record<string, unknown> = {
+    anchor: canonicalAnchor(requestUrl),
+    description: "Identidad encontrada. El QR no autentica criptograficamente el producto; usa NFC para confirmar autenticidad.",
+    [DEFAULT_LINK_REL]: [linkEntry(href)],
+    [PRODUCT_INFO_REL]: [linkEntry(href)],
+    [TRACEABILITY_REL]: [linkEntry(href)],
+    [NEXID_DPP_REL]: [linkEntry(href, "NexID digital product passport")],
+    [NEXID_PRODUCT_REL]: [linkEntry(canonicalIdentityUrl(requestUrl, params, "product"), "GS1 product identity")],
+    [NEXID_OFFLINE_PUBLIC_CERTIFICATE_REL]: [linkEntry(offlineCertificateHref, "NexID signed public offline certificate")],
+  };
+  const lot = cleanPathValue(params.lot);
+  const serial = cleanPathValue(params.serial);
+  if (lot) resource[NEXID_LOT_REL] = [linkEntry(canonicalIdentityUrl(requestUrl, params, "lot"), "GS1 lot identity")];
+  if (serial) resource[NEXID_SERIAL_REL] = [linkEntry(canonicalIdentityUrl(requestUrl, params, "serial"), "GS1 serial identity")];
+  const configured = registry?.publicLinks || {};
+  resource[NEXID_TECHNICAL_SHEET_REL] = [linkEntry(configured.technicalSheet || withFragment(href, "technical-sheet"), "Technical product sheet")];
+  resource[NEXID_SAFETY_SHEET_REL] = [linkEntry(configured.safetySheet || withFragment(href, "safety-sheet"), "Safety data sheet")];
+  resource[NEXID_SUPPORT_REL] = [linkEntry(configured.support || withFragment(href, "support"), "Product support")];
+  resource[NEXID_RECALL_STATUS_REL] = [linkEntry(configured.recallStatus || withFragment(href, "recall-status"), "Recall and product status")];
   return {
-    linkset: [
-      {
-        anchor: canonicalAnchor(requestUrl),
-        description: "NexID identity, product information and traceability entry point. QR identity is not NFC cryptographic authentication.",
-        [DEFAULT_LINK_REL]: [linkEntry(href)],
-        [PRODUCT_INFO_REL]: [linkEntry(href)],
-        [TRACEABILITY_REL]: [linkEntry(href)],
-      },
-    ],
+    linkset: [resource],
   };
 }
 
@@ -194,7 +277,10 @@ export function buildGs1ResolverDescription(requestUrl: string | URL) {
     name: "NexID GS1 Digital Link Resolver",
     resolverRoot,
     supportedPrimaryKeys: ["01"],
-    supportedLinkType: [{ namespace: GS1_VOCABULARY, prefix: "gs1:" }],
+    supportedLinkType: [
+      { namespace: GS1_VOCABULARY, prefix: "gs1:" },
+      { namespace: NEXID_REL_NAMESPACE, prefix: "nexid:" },
+    ],
     linkTypeDefaultCanBeLinkset: false,
     jsonLdContextLocation: GS1_LINKSET_CONTEXT,
   };
@@ -285,6 +371,16 @@ export const lookupGs1RegistryIdentity: Gs1RegistryLookup = async (identity) => 
       || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(String(registry.bid || ""))) {
       return { status: "unavailable" };
     }
+    const readPublicLink = (key: keyof NonNullable<Gs1RegistryResolution["publicLinks"]>) => {
+      const raw = registry.publicLinks?.[key];
+      if (!raw) return null;
+      try {
+        const url = new URL(String(raw));
+        return url.protocol === "https:" && !url.username && !url.password ? url.toString() : null;
+      } catch {
+        return null;
+      }
+    };
     return {
       status: "found",
       registry: {
@@ -295,6 +391,12 @@ export const lookupGs1RegistryIdentity: Gs1RegistryLookup = async (identity) => 
         tenantSlug: String(registry.tenantSlug),
         bid: String(registry.bid),
         displayName: registry.displayName ? String(registry.displayName).slice(0, 240) : null,
+        publicLinks: {
+          technicalSheet: readPublicLink("technicalSheet"),
+          safetySheet: readPublicLink("safetySheet"),
+          support: readPublicLink("support"),
+          recallStatus: readPublicLink("recallStatus"),
+        },
       },
     };
   } catch {
@@ -332,7 +434,13 @@ export async function resolveGs1DigitalLink(
     return problem(404, "GS1 link type not found", `No link is available for linkType=${requestedType}.`, head);
   }
 
-  const location = buildGs1DigitalLinkSunUrl(requestUrl, validated.identity, resolved.registry).toString();
+  const normalizedType = SUPPORTED_RELATIONS.get(requestedType.toLowerCase()) || DEFAULT_LINK_REL;
+  const linkset = buildGs1Linkset(requestUrl, validated.identity, resolved.registry);
+  const selected = linkset.linkset[0][normalizedType];
+  const location = Array.isArray(selected) && selected[0] && typeof selected[0] === "object"
+    ? String((selected[0] as { href?: unknown }).href || "")
+    : "";
+  if (!location) return problem(404, "GS1 link type not found", `No link is configured for linkType=${requestedType}.`, head);
   return response(null, 307, { location }, head);
 }
 

@@ -86,6 +86,28 @@ export const DEFAULT_REQUIRED_SCHEMA_MIGRATIONS = [
   "20260729160000_0072_tokenization_marketplace_execution_governance.sql",
   "20260730110000_0073_supplier_qa_verification_context_v2.sql",
   "20260730150000_0074_supplier_key_rotation_atomic.sql",
+  "20260801090000_0075_supplier_production_qa_acceptance.sql",
+  "20260802090000_0076_supplier_production_activation_v2.sql",
+  "20260802113000_0077_tenant_api_key_lifecycle.sql",
+  "20260802130000_0078_webhook_destination_cutover.sql",
+  "20260802150000_0079_supplier_order_atomic_create.sql",
+  "20260802153000_0080_offline_scan_history_index.sql",
+  "20260802160000_0081_supplier_manifest_atomic_import.sql",
+  "20260802170000_0082_consumer_session_revocation.sql",
+  "20260802180000_0083_sdk_event_webhook_atomic_outbox.sql",
+  "20260802190000_0084_tenant_vault_audited_download.sql",
+  "20260802200000_0085_supplier_non_sun_qa_evidence.sql",
+  "20260802210000_0086_supplier_order_lifecycle.sql",
+  "20260802220000_0087_packaging_lab_foundation.sql",
+  "20260802230000_0088_enterprise_event_profile.sql",
+  "20260802240000_0089_sun_carrier_trust_state.sql",
+  "20260802250000_0090_supplier_carrier_key_scope.sql",
+  "20260802260000_0091_supplier_keyless_qa_activation.sql",
+  "20260802270000_0092_supplier_carrier_scope_integrity.sql",
+  "20260802280000_0093_sun_tt_durable_truth_binding.sql",
+  "20260802290000_0094_sun_runtime_acl_boundary.sql",
+  "20260802300000_0095_sun_tt_conflict_target.sql",
+  "20260802310000_0096_enterprise_rbac_risk_truth.sql",
 ] as const;
 export const DEFAULT_REQUIRED_SCHEMA_MIGRATION = DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.at(-1)!;
 
@@ -217,4 +239,23 @@ export async function sql(strings: TemplateStringsArray, ...values: unknown[]) {
   if (testExecutor) return testExecutor(strings, ...values);
   await requireProductionSchemaWatermark();
   return getSql()(strings, ...values);
+}
+
+/**
+ * Runs one business statement at SERIALIZABLE isolation. This is reserved for
+ * predicate-based invariants, such as a tenant quota, that cannot be protected
+ * against concurrent inserts by a row lock alone.
+ */
+export async function sqlSerializable(strings: TemplateStringsArray, ...values: unknown[]) {
+  const staticStatement = strings.join("?");
+  if (isProductionRuntime() && isRuntimeDdlStatement(staticStatement)) return [];
+  const testExecutor = ephemeralSqlExecutor();
+  if (testExecutor) return testExecutor(strings, ...values);
+  await requireProductionSchemaWatermark();
+  const query = getSql();
+  const results = await query.transaction(
+    (transaction) => [transaction(strings, ...values)],
+    { isolationLevel: "Serializable" },
+  );
+  return (results[0] || []) as Array<Record<string, unknown>>;
 }

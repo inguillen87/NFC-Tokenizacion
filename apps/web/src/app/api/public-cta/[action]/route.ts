@@ -11,7 +11,7 @@ import {
   readBoundedText,
 } from "../../../../lib/public-api-guard";
 
-const ALLOWED = new Set(["claim-ownership", "register-warranty", "tokenize-request", "provenance", "report-problem", "receipt-ocr"]);
+const ALLOWED = new Set(["claim-ownership", "register-warranty", "tokenize-request", "provenance", "report-problem", "receipt-ocr", "experience-event"]);
 const UID_OR_EVENT_RE = /^(?:[0-9A-F]{8,20}|EVENT-\d+)$/;
 const BID_RE = /^[A-Za-z0-9._:-]{3,120}$/;
 const MAX_PAYLOAD_BYTES = 32 * 1024;

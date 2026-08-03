@@ -6,6 +6,8 @@ import { fileURLToPath } from "node:url";
 
 const source = async (relative) => readFile(new URL(relative, import.meta.url), "utf8");
 const analytics = await source("../src/app/admin/analytics/route.ts");
+const alerts = await source("../src/app/admin/alerts/route.ts");
+const securityAlerts = await source("../src/app/admin/security-alerts/route.ts");
 const overview = await source("../src/app/admin/overview/route.ts");
 const trivia = await source("../src/lib/trivia-service.ts");
 const p2pList = await source("../src/app/marketplace/p2p/list/route.ts");
@@ -24,11 +26,22 @@ const consumerProducts = await source("../src/app/consumer/products/route.ts");
 const commercialRuntimeSchema = await source("../src/lib/commercial-runtime-schema.ts");
 const dbRuntime = await source("../src/lib/db.ts");
 const dbPreflight = await source("../scripts/db-enterprise-release-preflight.mjs");
+const healthRoute = await source("../src/app/health/route.ts");
 const migration = await source("../db/migrations/20260726135000_0059_marketplace_claim_truth_cleanup.sql");
 const migrationPostcheck = await source("../db/ops/marketplace-claim-truth-postcheck.sql");
 const { DEFAULT_REQUIRED_SCHEMA_MIGRATIONS, isRuntimeDdlStatement } = await import("../src/lib/db.ts");
 
+test("health reports process liveness without fabricating dependency or documentation health", () => {
+  assert.match(healthRoute, /check:\s*"process_liveness"/);
+  assert.match(healthRoute, /"Cache-Control":\s*"no-store, max-age=0"/);
+  assert.match(healthRoute, /"X-Content-Type-Options":\s*"nosniff"/);
+  assert.doesNotMatch(healthRoute, /modules:\s*\[/);
+  assert.doesNotMatch(healthRoute, /docs:\s*\{/);
+});
+
 test("analytics uses explicit taxonomy, real active filters and source-labelled geography", () => {
+  assert.match(analytics, /checkAdminWithPermission\(req, "analytics:read"\)/);
+  assert.match(analytics, /checkAdminPermission\(req, "events\.read_sensitive"\)/);
   assert.doesNotMatch(analytics, /verdict IN \('tampered', 'not_registered', 'not_active'\)/);
   assert.match(analytics, /TAMPER','TAMPER_RISK','TAMPER_UNVERIFIED','TAMPERED/);
   assert.match(analytics, /AS unregistered/);
@@ -56,6 +69,13 @@ test("analytics uses explicit taxonomy, real active filters and source-labelled 
   assert.match(analytics, /validCoordinatePair\(row\.lat, row\.lng\)/);
   assert.doesNotMatch(analytics, /AVG\(COALESCE\(e\.lat, e\.geo_lat\)\)/);
   assert.match(analytics, /WITH scoped_events AS \([\s\S]*?WHERE e\.uid_hex IS NOT NULL[\s\S]*?e\.created_at >= now\(\) - \$\{rangeSql\}::interval[\s\S]*?e\.source::text = \$\{source\}/);
+});
+
+test("alert reads require audit and sensitive-event capabilities", () => {
+  for (const alertSource of [alerts, securityAlerts]) {
+    assert.match(alertSource, /checkAdminWithPermission\(req, "audit\.read"\)/);
+    assert.match(alertSource, /checkAdminPermission\(req, "events\.read_sensitive"\)/);
+  }
 });
 
 test("overview uses the canonical risk taxonomy and excludes lifecycle outcomes", () => {
@@ -162,7 +182,29 @@ test("production request paths skip runtime DDL and require the latest migration
   assert.match(dbRuntime, /20260729160000_0072_tokenization_marketplace_execution_governance\.sql/);
   assert.match(dbRuntime, /20260730110000_0073_supplier_qa_verification_context_v2\.sql/);
   assert.match(dbRuntime, /20260730150000_0074_supplier_key_rotation_atomic\.sql/);
-  assert.equal(DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.length, 19);
+  assert.match(dbRuntime, /20260801090000_0075_supplier_production_qa_acceptance\.sql/);
+  assert.match(dbRuntime, /20260802090000_0076_supplier_production_activation_v2\.sql/);
+  assert.match(dbRuntime, /20260802113000_0077_tenant_api_key_lifecycle\.sql/);
+  assert.match(dbRuntime, /20260802130000_0078_webhook_destination_cutover\.sql/);
+  assert.match(dbRuntime, /20260802150000_0079_supplier_order_atomic_create\.sql/);
+  assert.match(dbRuntime, /20260802153000_0080_offline_scan_history_index\.sql/);
+  assert.match(dbRuntime, /20260802160000_0081_supplier_manifest_atomic_import\.sql/);
+  assert.match(dbRuntime, /20260802170000_0082_consumer_session_revocation\.sql/);
+  assert.match(dbRuntime, /20260802180000_0083_sdk_event_webhook_atomic_outbox\.sql/);
+  assert.match(dbRuntime, /20260802190000_0084_tenant_vault_audited_download\.sql/);
+  assert.match(dbRuntime, /20260802200000_0085_supplier_non_sun_qa_evidence\.sql/);
+  assert.match(dbRuntime, /20260802210000_0086_supplier_order_lifecycle\.sql/);
+  assert.match(dbRuntime, /20260802220000_0087_packaging_lab_foundation\.sql/);
+  assert.match(dbRuntime, /20260802230000_0088_enterprise_event_profile\.sql/);
+  assert.match(dbRuntime, /20260802240000_0089_sun_carrier_trust_state\.sql/);
+  assert.match(dbRuntime, /20260802250000_0090_supplier_carrier_key_scope\.sql/);
+  assert.match(dbRuntime, /20260802260000_0091_supplier_keyless_qa_activation\.sql/);
+  assert.match(dbRuntime, /20260802270000_0092_supplier_carrier_scope_integrity\.sql/);
+  assert.match(dbRuntime, /20260802280000_0093_sun_tt_durable_truth_binding\.sql/);
+  assert.match(dbRuntime, /20260802290000_0094_sun_runtime_acl_boundary\.sql/);
+  assert.match(dbRuntime, /20260802300000_0095_sun_tt_conflict_target\.sql/);
+  assert.match(dbRuntime, /20260802310000_0096_enterprise_rbac_risk_truth\.sql/);
+  assert.equal(DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.length, 41);
   assert.deepEqual([...DEFAULT_REQUIRED_SCHEMA_MIGRATIONS], [...DEFAULT_REQUIRED_SCHEMA_MIGRATIONS].sort());
   assert.equal(isRuntimeDdlStatement("DO $$ BEGIN CREATE TYPE unsafe AS ENUM ('a'); END $$"), true);
   assert.equal(isRuntimeDdlStatement("SELECT 1; /* request path */ ALTER TABLE tags ADD COLUMN unsafe text"), true);
@@ -184,6 +226,55 @@ test("production request paths skip runtime DDL and require the latest migration
   assert.match(dbPreflight, /20260729160000_0072_tokenization_marketplace_execution_governance\.sql/);
   assert.match(dbPreflight, /20260730110000_0073_supplier_qa_verification_context_v2\.sql/);
   assert.match(dbPreflight, /20260730150000_0074_supplier_key_rotation_atomic\.sql/);
+  assert.match(dbPreflight, /20260801090000_0075_supplier_production_qa_acceptance\.sql/);
+  assert.match(dbPreflight, /20260802090000_0076_supplier_production_activation_v2\.sql/);
+  assert.match(dbPreflight, /20260802113000_0077_tenant_api_key_lifecycle\.sql/);
+  assert.match(dbPreflight, /20260802130000_0078_webhook_destination_cutover\.sql/);
+  assert.match(dbPreflight, /20260802150000_0079_supplier_order_atomic_create\.sql/);
+  assert.match(dbPreflight, /20260802153000_0080_offline_scan_history_index\.sql/);
+  assert.match(dbPreflight, /20260802160000_0081_supplier_manifest_atomic_import\.sql/);
+  assert.match(dbPreflight, /20260802170000_0082_consumer_session_revocation\.sql/);
+  assert.match(dbPreflight, /20260802180000_0083_sdk_event_webhook_atomic_outbox\.sql/);
+  assert.match(dbPreflight, /20260802190000_0084_tenant_vault_audited_download\.sql/);
+  assert.match(dbPreflight, /20260802200000_0085_supplier_non_sun_qa_evidence\.sql/);
+  assert.match(dbPreflight, /20260802210000_0086_supplier_order_lifecycle\.sql/);
+  assert.match(dbPreflight, /20260802220000_0087_packaging_lab_foundation\.sql/);
+  assert.match(dbPreflight, /20260802230000_0088_enterprise_event_profile\.sql/);
+  assert.match(dbPreflight, /20260802240000_0089_sun_carrier_trust_state\.sql/);
+  assert.match(dbPreflight, /20260802250000_0090_supplier_carrier_key_scope\.sql/);
+  assert.match(dbPreflight, /20260802260000_0091_supplier_keyless_qa_activation\.sql/);
+  assert.match(dbPreflight, /20260802270000_0092_supplier_carrier_scope_integrity\.sql/);
+  assert.match(dbPreflight, /20260802280000_0093_sun_tt_durable_truth_binding\.sql/);
+  assert.match(dbPreflight, /20260802290000_0094_sun_runtime_acl_boundary\.sql/);
+  assert.match(dbPreflight, /20260802300000_0095_sun_tt_conflict_target\.sql/);
+  assert.match(dbPreflight, /20260802310000_0096_enterprise_rbac_risk_truth\.sql/);
+  assert.match(dbPreflight, /has_supplier_carrier_key_scope/);
+  assert.match(dbPreflight, /can_probe_supplier_order_keyless_v1/);
+  assert.match(dbPreflight, /has_supplier_keyless_qa_activation/);
+  assert.match(dbPreflight, /has_supplier_carrier_scope_integrity/);
+  assert.match(dbPreflight, /has_sun_tt_durable_truth/);
+  assert.match(dbPreflight, /has_sun_runtime_acl_boundary/);
+  assert.match(dbPreflight, /has_sun_tt_conflict_target/);
+  assert.match(dbPreflight, /has_enterprise_rbac_risk_truth/);
+  assert.match(dbPreflight, /has_sdk_event_atomic_outbox_functions/);
+  assert.match(dbPreflight, /can_use_sdk_event_atomic_outbox/);
+  assert.match(dbPreflight, /has_tenant_vault_audited_download/);
+  assert.match(dbPreflight, /can_record_tenant_vault_download/);
+  assert.match(dbPreflight, /has_supplier_carrier_qa/);
+  assert.match(dbPreflight, /can_use_supplier_carrier_qa/);
+  assert.match(dbPreflight, /has_supplier_order_lifecycle/);
+  assert.match(dbPreflight, /can_use_supplier_order_lifecycle/);
+  assert.match(dbPreflight, /has_consumer_session_revocation/);
+  assert.match(dbPreflight, /has_tenant_api_key_lifecycle_receipts/);
+  assert.match(dbPreflight, /has_webhook_destination_versions/);
+  assert.match(dbPreflight, /has_supplier_order_atomic_create_functions/);
+  assert.match(dbPreflight, /has_offline_scan_history_index/);
+  assert.match(dbPreflight, /has_supplier_manifest_atomic_import/);
+  assert.match(dbPreflight, /can_scan_supplier_manifest_secrets/);
+  assert.match(dbPreflight, /has_supplier_production_qa_manufacturing_state/);
+  assert.match(dbPreflight, /has_supplier_production_qa_acceptance_tables/);
+  assert.match(dbPreflight, /has_supplier_production_qa_acceptance_functions/);
+  assert.match(dbPreflight, /can_use_supplier_production_qa_acceptance/);
   assert.match(dbPreflight, /Required enterprise migrations are missing/);
 });
 

@@ -14,6 +14,8 @@ const files = {
   logisticsRecipientVerify: "apps/api/src/app/api/v1/logistics/recipient-verify/route.ts",
   products: "apps/api/src/app/api/v1/sdk/products/[bid]/route.ts",
   events: "apps/api/src/app/api/v1/sdk/events/route.ts",
+  eventWriter: "apps/api/src/lib/sdk-external-event-writer.ts",
+  eventAtomicMigration: "apps/api/db/migrations/20260802230000_0088_enterprise_event_profile.sql",
   idempotency: "apps/api/src/app/api/v1/sdk/_idempotency.ts",
   idempotencyStatus: "apps/api/src/app/api/v1/sdk/idempotency/status/route.ts",
   idempotencyMigration: "apps/api/db/migrations/20260726173000_0060_sdk_idempotency_operations.sql",
@@ -70,6 +72,8 @@ test("sdk protected routes expose verify, POS activation, claim, products and ex
   const posActivate = read(files.posActivate);
   const products = read(files.products);
   const events = read(files.events);
+  const eventWriter = read(files.eventWriter);
+  const eventAtomicMigration = read(files.eventAtomicMigration);
   const idempotency = read(files.idempotency);
   const idempotencyStatus = read(files.idempotencyStatus);
   const idempotencyMigration = read(files.idempotencyMigration);
@@ -89,8 +93,12 @@ test("sdk protected routes expose verify, POS activation, claim, products and ex
   assert.match(posActivate, /sdk\.pos\.activated/);
   assert.match(products, /authenticateSdkRequest\(req, "sdk:products"\)/);
   assert.match(events, /authenticateSdkRequest\(req, "sdk:events"\)/);
-  assert.match(events, /sdk_external_events/);
+  assert.match(events, /writeSdkExternalEventAtomic/);
   assert.match(events, /sdk\.external_event/);
+  assert.match(eventWriter, /nexid_write_sdk_external_event_v1/);
+  assert.match(eventWriter, /webhookOutbox/);
+  assert.match(eventAtomicMigration, /INSERT INTO public\.sdk_external_events/);
+  assert.match(eventAtomicMigration, /nexid_enqueue_tenant_webhook_outbox_v1/);
   assert.match(idempotencyMigration, /uq_sdk_idempotency_tenant_route_key/);
   assert.match(idempotency, /idempotency_key_payload_mismatch/);
   assert.match(idempotency, /aes-256-gcm/);
@@ -144,6 +152,8 @@ test("internal server SDK is typed, private and maps to the protected gateway", 
   assert.doesNotMatch(sdk, /sandbox\.api\.nexid\.lat/);
   assert.match(sdk, /export class NexIdClient/);
   assert.match(sdk, /verifyTap\(params: VerifyTapRequest\)/);
+  assert.match(sdk, /syncOfflineScans\(/);
+  assert.match(sdk, /OfflineScanSyncRequest/);
   assert.match(sdk, /claimOwnership\(params: ClaimOwnershipRequest\)/);
   assert.match(sdk, /posToken\?: string/);
   assert.match(sdk, /getProduct\(bid: string\)/);
@@ -155,6 +165,7 @@ test("internal server SDK is typed, private and maps to the protected gateway", 
   assert.match(sdk, /handoffDeliverySeal\(params: LogisticsHandoffRequest\)/);
   assert.match(sdk, /verifyDeliverySeal\(params: LogisticsRecipientVerifyRequest\)/);
   assert.match(sdk, /\/api\/v1\/sdk\/verify/);
+  assert.match(sdk, /\/api\/v1\/sdk\/offline-sync/);
   assert.match(sdk, /\/api\/v1\/sdk\/claim/);
   assert.match(sdk, /\/api\/v1\/sdk\/products\/\$\{encodeURIComponent\(bid\)\}/);
   assert.match(sdk, /\/api\/v1\/sdk\/events/);

@@ -15,9 +15,16 @@ function buildProxyHeaders(req: Request, correlationId: string) {
   const userAgent = req.headers.get("user-agent");
   const forwardedFor = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip");
   const authorization = req.headers.get("authorization");
+  const origin = req.headers.get("origin");
+  const fetchSite = req.headers.get("sec-fetch-site");
   if (userAgent) headers["user-agent"] = userAgent;
   if (forwardedFor) headers["x-forwarded-for"] = forwardedFor;
   if (authorization) headers.authorization = authorization;
+  // Preserve browser provenance for API-side cookie-mutation CSRF checks. Do
+  // not synthesize Origin from Host: hostile same-site subdomains must remain
+  // distinguishable from the configured nexID portal origin.
+  if (origin) headers.origin = origin;
+  if (fetchSite) headers["sec-fetch-site"] = fetchSite;
   return headers;
 }
 

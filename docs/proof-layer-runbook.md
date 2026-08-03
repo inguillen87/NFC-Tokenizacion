@@ -126,7 +126,10 @@ Los comandos live deben fallar si RPC, chain, contrato, recibo, eventos, owner, 
 ### Crear evidencia IOTA desde admin
 
 1. Autenticar un admin con permiso `proof:write` y tenant scope valido.
-2. Enviar `event_ids` tenant-scoped y un `public_resource_id` pseudonimo. Los hashes directos estan deshabilitados en produccion por default.
+2. Enviar `event_ids` tenant-scoped y un `public_resource_id` con formato `sha256:<64 hex>`, derivado con separacion de dominio de tenant, tipo de recurso e ID interno. El ID interno permanece en `resource_id` off-chain y nunca se copia al campo publico. Los hashes directos estan deshabilitados en produccion por default.
+
+   Contrato canonico v1: normalizar cada valor con Unicode NFC y `trim`; convertir tenant y `resource_type` a minusculas; serializar exactamente `JSON.stringify(["nexid.public-ledger.resource.v1", tenant, resource_type, resource_id])`; aplicar SHA-256 sobre sus bytes UTF-8 y prefijar el hexadecimal minusculo con `sha256:`. No usar email, telefono, URL, UUID, UID NFC ni otro dato personal como `resource_id` de entrada.
+
 3. Enviar `Idempotency-Key`; un retry HTTP debe devolver el mismo anchor y nunca otra transaccion.
 4. La API valida que todos los eventos pertenezcan al mismo tenant/recurso, ordena por `created_at,id`, calcula Merkle root, `memoHash` y `proofId`, y persiste el anchor antes de tocar la red.
 5. El executor valida chain, bytecode, version de contrato, publisher y `proofId`; devuelve `202 submitted` apenas obtiene `tx_hash`.

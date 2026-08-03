@@ -1,9 +1,10 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminTenantAccess } from "../../../../../lib/auth";
+import { checkAdminWithPermission, getAdminTenantAccess } from "../../../../../lib/auth";
 import { json } from "../../../../../lib/http";
 import { sql } from "../../../../../lib/db";
+import { hasConfiguredAgroProfile, normalizeAgroProductProfile } from "../../../../../lib/agro-product-profile";
 
 type ProductConfigBody = {
   product_name?: string | null;
@@ -30,10 +31,11 @@ type ProductConfigBody = {
   simulated_humidity_pct?: number | null;
   simulated_light?: string | null;
   simulated_shock?: string | null;
+  agro_product_profile?: unknown;
 };
 
 export async function PATCH(req: Request, context: { params: Promise<{ bid: string }> }) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdminWithPermission(req, "batch.product.configure");
   if (auth) return auth;
 
   const { bid } = await context.params;
@@ -127,6 +129,22 @@ export async function PATCH(req: Request, context: { params: Promise<{ bid: stri
   if (body.simulated_shock !== undefined) {
     nextConfig.sun.telemetry.simulatedShock = body.simulated_shock ? String(body.simulated_shock).trim() : null;
     nextConfig.sun.product.simulatedShock = body.simulated_shock ? String(body.simulated_shock).trim() : null;
+  }
+
+  if (body.agro_product_profile !== undefined) {
+    if (body.agro_product_profile === null) {
+      nextConfig.agro_product_profile = null;
+    } else if (typeof body.agro_product_profile !== "object" || Array.isArray(body.agro_product_profile)) {
+      return json({ ok: false, reason: "agro_product_profile_invalid" }, 422);
+    } else {
+      const agroProfile = normalizeAgroProductProfile({
+        batchConfig: { agro_product_profile: body.agro_product_profile },
+      });
+      if (!hasConfiguredAgroProfile(agroProfile)) {
+        return json({ ok: false, reason: "agro_product_profile_empty" }, 422);
+      }
+      nextConfig.agro_product_profile = agroProfile;
+    }
   }
 
   const updated = await sql/*sql*/`

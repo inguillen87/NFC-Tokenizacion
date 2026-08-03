@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { Card } from "@product/ui";
 import { InviteUserPanel } from "../../components/invite-user-panel";
+import { requireDashboardSession } from "../../lib/session";
 
 export default async function InviteUserPage() {
+  await requireDashboardSession("users:manage");
   return (
     <main className="container-shell grid min-h-screen place-items-center py-10">
       <Card className="w-full max-w-lg p-8">

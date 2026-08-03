@@ -5,7 +5,8 @@ import { json } from '../../../../lib/http';
 import { createResetToken, sha256 } from '../../../../lib/iam';
 import { requireApiSession } from '../../../../lib/auth-guard';
 import { ensureEnterpriseIamSchema } from '../../../../lib/commercial-runtime-schema';
-import { isProductionRuntime, isProductionSecretExposureAllowed, resolveAdminUserDelegation } from '../../../../lib/admin-user-management-policy';
+import { isProductionRuntime, isProductionSecretExposureAllowed } from '../../../../lib/admin-user-management-policy';
+import { resolveManagedAdminDelegationRequest } from '../../../../lib/admin-role-catalog';
 import { createManagedAdminInvite } from '../../../../lib/admin-user-management';
 
 const configuredInviteTtlMinutes = Number(process.env.ADMIN_INVITE_TTL_MINUTES || 60 * 24 * 3);
@@ -18,17 +19,18 @@ export async function POST(req: Request) {
   if (error || !session) return error;
   await ensureEnterpriseIamSchema();
 
-  const body = await req.json().catch(() => ({})) as { email?: string; role?: string; tenantSlug?: string | null; permissions?: string[]; fullName?: string };
+  const body = await req.json().catch(() => ({})) as { email?: string; role?: string; tenantSlug?: string | null; permissions?: string[]; fullName?: string; permissionMode?: string };
   const email = String(body.email || '').trim().toLowerCase();
   const fullName = String(body.fullName || '').trim() || null;
   if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return json({ ok: false, reason: 'valid email required' }, 400);
   }
 
-  const requestedPermissions = Array.isArray(body.permissions) && body.permissions.length
-    ? body.permissions
-    : ['events:read', 'analytics:read'];
-  const delegation = resolveAdminUserDelegation(session, body.role || 'viewer', requestedPermissions);
+  const delegation = await resolveManagedAdminDelegationRequest(sql as any, session, {
+    role: body.role || 'viewer',
+    permissions: body.permissions || [],
+    permissionMode: body.permissionMode,
+  });
   if (!delegation.ok) {
     return json({ ok: false, reason: delegation.reason }, delegation.status);
   }

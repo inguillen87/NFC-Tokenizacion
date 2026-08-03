@@ -1,0 +1,62 @@
+{
+  "ok": true,
+  "validator": "sun_atomic_postgres_tt_truth_v2",
+  "validated_at": "2026-08-02",
+  "environment": "disposable_neon_schema_only_branch",
+  "endpoint_id": "ep-rapid-glitter-ail9banz",
+  "database": "codex_qa_sun3_20260802",
+  "database_role": "neondb_owner",
+  "migration_count": 97,
+  "latest_migration": "20260802300000_0095_sun_tt_conflict_target.sql",
+  "evidence": {
+    "same_payload_two_connections": {
+      "overlap_observed": true,
+      "fresh_receipts": 1,
+      "replay_receipts": 1,
+      "committed_event_count": 2
+    },
+    "same_uid_counter_distinct_payloads": {
+      "overlap_observed": true,
+      "fresh_receipts": 1,
+      "replay_receipts": 1,
+      "committed_event_count": 2
+    },
+    "forced_rollback_after_tag_update": {
+      "sqlstate": "22P02",
+      "state_unchanged": true,
+      "event_count": 0
+    },
+    "tt_status_exact_mappings": {
+      "4343": "VALID_CLOSED",
+      "4F4F": "VALID_OPENED",
+      "4F43": "VALID_OPENED_PREVIOUSLY"
+    },
+    "tt_raw_missing_fails_closed": true,
+    "tt_raw_contradiction_fails_closed": true,
+    "force_result_cannot_promote": true,
+    "force_result_can_only_degrade": true,
+    "cmac_verification_gate_preserved": true,
+    "sdm_payload_gate_preserved": true,
+    "tt_truth_receipt_append_only": {
+      "update_sqlstate": "55000",
+      "delete_sqlstate": "55000",
+      "row_preserved": true
+    },
+    "committed_event_receipt_bijection": {
+      "event_count": 13,
+      "receipt_count": 13
+    }
+  },
+  "boundaries": {
+    "database_atomicity": "covered_on_disposable_real_postgresql",
+    "http_route": "not_covered_direct_function_validation_only",
+    "fresh_handoff_token_issued": false,
+    "nfc_cmac_sdm_cryptography": "not_revalidated_sanitized_preverified_envelopes",
+    "physical_nfc_tag_scanned": false,
+    "raw_key_material_used": false,
+    "managed_kms_validated": false,
+    "hsm_validated": false,
+    "production_touched": false
+  },
+  "contains_credentials": false
+}

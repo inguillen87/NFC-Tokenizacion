@@ -173,6 +173,7 @@ export default function DashboardHomeClient({
                 label: session.label,
                 mfaVerified: session.mfaVerified,
                 permissions: session.permissions,
+                deniedPermissions: session.deniedPermissions,
                 role: session.role,
                 setupCompleted: session.setupCompleted,
                 tenantSlug: session.tenantSlug,
@@ -294,7 +295,13 @@ export default function DashboardHomeClient({
         {/* MARKETING & LOYALTY TAB */}
         {activeTab === "loyalty" && (
           <div className="space-y-8">
-            {!isTenantAdmin ? <MultirubroOpsPanel /> : null}
+            {!isTenantAdmin ? (
+              <MultirubroOpsPanel
+                currentRole={session.role}
+                currentPermissions={session.permissions}
+                currentDeniedPermissions={session.deniedPermissions}
+              />
+            ) : null}
             {realtimeAvailable ? (
               <CustomerGrowthCommandCenter
                 events={initialRealtimeEvents}
@@ -386,7 +393,14 @@ export default function DashboardHomeClient({
             </Card>
 
             {/* Admin Action Forms */}
-            <AdminActionForms copy={dashboardText.forms} roles={copy.roles} readyLabel={copy.shell.ready} currentRole={session.role} />
+            <AdminActionForms
+              copy={dashboardText.forms}
+              roles={copy.roles}
+              readyLabel={copy.shell.ready}
+              currentRole={session.role}
+              currentPermissions={session.permissions}
+              currentDeniedPermissions={session.deniedPermissions}
+            />
           </div>
         )}
 

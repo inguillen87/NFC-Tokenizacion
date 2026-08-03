@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminTenantAccess } from "../../../lib/auth";
+import { checkAdminPermission, checkAdminWithPermission, getAdminTenantAccess } from "../../../lib/auth";
 import { sql } from "../../../lib/db";
 import { json } from "../../../lib/http";
 import { addBucket, normalizeBrowser, normalizeDeviceType, normalizeOs, normalizeTimezone, parseAnalyticsFilters, toSortedBuckets } from "../../../lib/analytics";
@@ -170,8 +170,13 @@ async function ensureAnalyticsEventsSchema() {
 }
 
 export async function GET(req: Request) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdminWithPermission(req, "analytics:read");
   if (auth) return auth;
+  // This legacy payload contains stable NFC identifiers, device labels and
+  // event-derived coordinates. `reports.export` alone is intentionally not
+  // enough for event-level or location-sensitive data.
+  const sensitive = checkAdminPermission(req, "events.read_sensitive");
+  if (sensitive) return sensitive;
 
   const { searchParams } = new URL(req.url);
   const { tenant: requestedTenant, source: requestedSource, range, rangeSql, country } = parseAnalyticsFilters(searchParams);

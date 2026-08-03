@@ -20,6 +20,7 @@ export type PassportVerdict =
 
 export type PassportConditionState =
   | "sealed"
+  | "authenticated_no_tamper"
   | "opened_verified"
   | "tamper_review"
   | "sun_profile_mismatch"
@@ -266,7 +267,9 @@ export function mapVerdictAndRisk(input: { statusCode: string; productState: str
     return { verdict: "tampered" as const, riskLevel: "high" as const };
   }
   if (
-    code === "OPENED"
+    code === "VALID_OPENED"
+    || code === "VALID_OPENED_PREVIOUSLY"
+    || code === "OPENED"
     || code === "OPENED_PREVIOUSLY"
     || code === "MANUAL_OPENED"
     || state === "VALID_OPENED"
@@ -276,7 +279,7 @@ export function mapVerdictAndRisk(input: { statusCode: string; productState: str
   ) {
     return { verdict: "valid_opened" as const, riskLevel: "low" as const };
   }
-  if (code === "VALID" || code === "AUTH_OK" || state === "VALID_CLOSED" || state === "VALID_UNKNOWN_TAMPER") {
+  if (code === "VALID" || code === "VALID_AUTHENTIC" || code === "VALID_CLOSED" || code === "VALID_UNKNOWN_TAMPER" || code === "AUTH_OK" || state === "VALID_AUTHENTIC" || state === "VALID_CLOSED" || state === "VALID_UNKNOWN_TAMPER") {
     return { verdict: "valid" as const, riskLevel: "none" as const };
   }
   if (code === "TENANT_SETUP_REQUIRED") return { verdict: "not_active" as const, riskLevel: "medium" as const };
@@ -317,9 +320,10 @@ export function resolveConditionState(input: {
   if (verdict === "replay_suspect" || code === "REPLAY_SUSPECT" || reason.includes("REPLAY") || reason.includes("COPIED URL")) return "replay_blocked";
   if (verdict === "revoked" || code === "REVOKED") return "revoked";
   if (verdict === "tampered" || code === "TAMPER_RISK" || state === "TAMPER_RISK") return "tamper_review";
-  if (verdict === "valid_opened" || state.includes("OPENED") || ["OPENED", "OPENED_PREVIOUSLY", "MANUAL_OPENED"].includes(code)) return "opened_verified";
+  if (verdict === "valid_opened" || state.includes("OPENED") || ["VALID_OPENED", "VALID_OPENED_PREVIOUSLY", "OPENED", "OPENED_PREVIOUSLY", "MANUAL_OPENED"].includes(code)) return "opened_verified";
   if (state === "VALID_UNKNOWN_TAMPER") return "unknown";
-  if (verdict === "valid" || state === "VALID_CLOSED" || ["VALID", "AUTH_OK"].includes(code)) return "sealed";
+  if (state === "VALID_AUTHENTIC" || code === "VALID_AUTHENTIC") return "authenticated_no_tamper";
+  if (verdict === "valid" || state === "VALID_CLOSED" || ["VALID", "VALID_CLOSED", "AUTH_OK"].includes(code)) return "sealed";
   if (verdict === "not_active" || code === "NOT_ACTIVE") return "inactive";
   if (verdict === "not_registered" || code === "NOT_REGISTERED") return "unregistered";
   if (verdict === "invalid" || code === "INVALID") return "invalid";
@@ -423,6 +427,8 @@ export function resolveRightsPolicy(input: {
           : "Acción protegida"
     : isOpened
       ? "Mensaje SUN válido · apertura registrada"
+      : conditionState === "authenticated_no_tamper"
+        ? "Autenticidad criptográfica confirmada · sin sello electrónico"
       : isSealed
         ? "Mensaje SUN válido · sello registrado"
         : "Evidencia digital disponible";
@@ -433,6 +439,8 @@ export function resolveRightsPolicy(input: {
       : "El historial digital disponible sigue visible, pero las acciones comerciales quedan bloqueadas hasta resolver la política de seguridad."
     : isOpened
       ? policy.openedCopy
+      : conditionState === "authenticated_no_tamper"
+        ? "Autenticidad criptográfica confirmada. Este producto no usa sello electrónico de apertura."
       : conditionState === "unknown"
         ? "Mensaje SUN del chip validado. Este lote no informa el estado de apertura; el tap no certifica por sí solo el contenido, el origen físico ni la propiedad del producto."
         : policy.sealedCopy;

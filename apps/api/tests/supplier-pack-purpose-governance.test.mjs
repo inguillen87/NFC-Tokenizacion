@@ -6,6 +6,10 @@ const migration = await readFile(
   new URL("../db/migrations/20260729143000_0071_supplier_pack_purpose_governance.sql", import.meta.url),
   "utf8",
 );
+const atomicCreateMigration = await readFile(
+  new URL("../db/migrations/20260802150000_0079_supplier_order_atomic_create.sql", import.meta.url),
+  "utf8",
+);
 const orderRoute = await readFile(
   new URL("../src/app/admin/supplier-orders/route.ts", import.meta.url),
   "utf8",
@@ -31,8 +35,10 @@ test("existing supplier orders fail closed as legacy without heuristic inference
 test("new orders and sub-batches require one immutable explicit purpose", () => {
   assert.match(orderRoute, /normalizeSupplierPackPurpose\(body\.pack_purpose \?\? body\.packPurpose\)/);
   assert.match(orderRoute, /reason: "supplier_pack_purpose_required"/);
-  assert.match(orderRoute, /chip_model, carrier_profile_code, pack_purpose, purpose_locked_at, purpose_locked_by/);
-  assert.match(orderRoute, /expected_quantity,\s*pack_purpose, status, metadata_json/);
+  assert.match(orderRoute, /hasSupplierOrderCreateV2/);
+  assert.match(orderRoute, /createSupplierOrderV2/);
+  assert.match(atomicCreateMigration, /chip_model, carrier_profile_code, pack_purpose,/);
+  assert.match(atomicCreateMigration, /expected_quantity, pack_purpose, status, metadata_json/);
   assert.match(migration, /supplier_pack_purpose_is_immutable/);
   assert.match(migration, /supplier_sub_batch_commercial_scope_is_immutable/);
   assert.match(migration, /supplier_pack_purpose_classified_scope_is_frozen/);
@@ -78,16 +84,18 @@ test("idempotent purpose receipts revalidate current actor scope", () => {
   );
 });
 
-test("fixed SUN QA can prove trial integration but never production acceptance", () => {
+test("fixed SUN QA never becomes production acceptance while reviewed keyless QA remains separately gated", () => {
   assert.match(migration, /WHEN v_effective_purpose = 'trial_integration' THEN 'trial_integration'/);
   assert.match(migration, /MESSAGE = 'supplier_qa_pack_purpose_unclassified'/);
   assert.match(migration, /MESSAGE = 'supplier_qa_production_acceptance_v2_required'/);
   assert.match(qaRoute, /effectivePackPurpose === "legacy_unclassified"/);
-  assert.match(qaRoute, /effectivePackPurpose === "production"/);
+  assert.match(qaRoute, /passed && effectivePackPurpose === "production" && requiresSecureSun/);
   assert.match(qaRoute, /reason: "supplier_qa_production_acceptance_v2_required"/);
   assert.match(qaRoute, /commercial_disposition: "NON_SELLABLE"/);
   assert.match(qaRoute, /activation_allowed: false/);
-  assert.match(qaRoute, /activation_gate: passed \? "trial_integration_non_sellable"/);
+  assert.match(qaRoute, /effectivePackPurpose === "production" && passed[\s\S]*"BLOCKED_PENDING_ACTIVATION"/);
+  assert.match(qaRoute, /effectivePackPurpose === "production"[\s\S]*"production_keyless_qa_passed_pending_activation"/);
+  assert.match(qaRoute, /supplier_keyless_production_qa_plan_or_physical_evidence_required/);
 });
 
 test("QA acceptance and projection bind the exact tenant, order, sub-batch, batch and BID", () => {
@@ -148,7 +156,9 @@ test("every app activation route resolves purpose through tenant, order, reverse
     assert.match(source, /sub_batch\.batch_id = \$\{batch\.id\}/);
     assert.match(source, /sub_batch\.id = \$\{batch\.supplier_sub_batch_id\}/);
     assert.match(source, /sub_batch\.tenant_id = \$\{batch\.tenant_id\} AND upper\(sub_batch\.bid\) = upper\(\$\{bid\}\)/);
-    assert.match(source, /productionAcceptanceV2: null/);
+    assert.match(source, /loadSupplierProductionActivationReceiptV2/);
+    assert.match(source, /productionAcceptanceV2/);
+    assert.doesNotMatch(source, /productionAcceptanceV2: null/);
     assert.match(source, /supplierActivationGateMessage/);
   }
 });

@@ -184,6 +184,7 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ s
   ];
 
   const operationalLinks = [
+    { href: `/admin/tenant-vault/${tenantParam}`, label: "Tenant Vault", body: "Órdenes, manifests, QA y evidencia segura." },
     { href: `/batches?tenant=${tenantParam}`, label: "Lotes", body: "Emision, import y activacion." },
     { href: `/tags?tenant=${tenantParam}`, label: "Tags", body: "NFC/QR, inventario y estado." },
     { href: `/events?tenant=${tenantParam}`, label: "Eventos", body: "Lecturas, riesgo y auditoria." },

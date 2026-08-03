@@ -97,6 +97,7 @@ export function buildSupplierQaVerificationContext(input: SupplierQaVerification
   const manifestHash = normalizedText(input.manifestHash).toLowerCase();
   const carrierProfileCode = normalizedText(input.carrierProfileCode).toLowerCase();
   const keyFingerprint = normalizedText(input.keyFingerprint).toUpperCase();
+  const secureSun = carrierProfileCode === "ntag424_dna" || carrierProfileCode === "ntag424_dna_tt";
   const supplierOrderId = normalizedText(input.supplierOrderId).toLowerCase();
   const supplierSubBatchId = normalizedText(input.supplierSubBatchId).toLowerCase();
   const packPurpose = normalizeSupplierQaPackPurpose(input.packPurpose);
@@ -109,7 +110,7 @@ export function buildSupplierQaVerificationContext(input: SupplierQaVerification
     || !supplierSubBatchId
     || !/^sha256:[0-9a-f]{64}$/.test(manifestHash)
     || !carrierProfileCode
-    || !/^[0-9A-F]{16}$/.test(keyFingerprint)
+    || (secureSun ? !/^[0-9A-F]{16}$/.test(keyFingerprint) : keyFingerprint !== "")
     || !packPurpose
   ) {
     return null;
@@ -120,6 +121,15 @@ export function buildSupplierQaVerificationContext(input: SupplierQaVerification
     sdm_config: input.sdmConfig && typeof input.sdmConfig === "object" ? input.sdmConfig : {},
   });
   const acceptanceScope = acceptanceScopeForPurpose(packPurpose);
+  const keyBinding = secureSun
+    ? { key_fingerprint: keyFingerprint }
+    : {
+        key_fingerprint: null,
+        key_material_mode: "none",
+        software_envelope: false,
+        managed_kms: false,
+        hsm_backed: false,
+      };
   const binding = {
     domain: SUPPLIER_QA_VERIFICATION_CONTEXT_DOMAIN,
     schema_version: SUPPLIER_QA_VERIFICATION_CONTEXT_VERSION,
@@ -128,7 +138,7 @@ export function buildSupplierQaVerificationContext(input: SupplierQaVerification
     bid,
     manifest_hash: manifestHash,
     carrier_profile_code: carrierProfileCode,
-    key_fingerprint: keyFingerprint,
+    ...keyBinding,
     carrier_config_digest: carrierConfigDigest,
     supplier_order_id: supplierOrderId,
     supplier_sub_batch_id: supplierSubBatchId,

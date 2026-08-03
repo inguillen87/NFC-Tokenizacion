@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminTenantScope } from "../../../../../lib/auth";
+import { checkAdminWithPermission, getAdminActor, getAdminTenantScope } from "../../../../../lib/auth";
 import { sql } from "../../../../../lib/db";
 import { json } from "../../../../../lib/http";
 import { ensureSupplierOpsSchema } from "../../../../../lib/supplier-ops-schema";
@@ -10,10 +10,24 @@ import {
   resolveSupplierActivationScope,
   supplierActivationGateMessage,
 } from "../../../../../lib/supplier-ops";
+import {
+  activateSupplierProductionTagsV2,
+  loadSupplierProductionActivationReceiptV2,
+  supplierProductionActivationDatabaseReason,
+  supplierProductionActivationOperationKey,
+} from "../../../../../lib/supplier-production-activation";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ bid: string }> }) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdminWithPermission(req, "batch.lifecycle");
   if (auth) return auth;
+  const operationKey = supplierProductionActivationOperationKey(req);
+  if (!operationKey) {
+    return json({
+      ok: false,
+      reason: "supplier_production_activation_idempotency_key_required",
+      message: "Idempotency-Key must be 8-128 characters using letters, numbers, dot, underscore, colon or hyphen.",
+    }, 400);
+  }
   await ensureSupplierOpsSchema();
 
   const { bid } = await params;
@@ -73,6 +87,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ bid: s
     }
   }
 
+  let productionSupplierSubBatch: Record<string, unknown> | null = null;
   if (nextState === "active_in_market") {
     const supplierRows = await sql/*sql*/`
       SELECT sub_batch.id, sub_batch.tenant_id, sub_batch.supplier_order_id,
@@ -132,10 +147,20 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ bid: s
       }, 409);
     }
     const supplierSubBatch = supplierScope.supplierSubBatch;
+    const productionAcceptanceV2 = supplierSubBatch?.effective_pack_purpose === "production"
+      ? await loadSupplierProductionActivationReceiptV2({
+          tenantId: String(supplierSubBatch.tenant_id),
+          supplierOrderId: String(supplierSubBatch.supplier_order_id),
+          supplierSubBatchId: String(supplierSubBatch.id),
+          batchId: String(supplierSubBatch.batch_id),
+          bid: String(supplierSubBatch.bid),
+          lotSize: Number(supplierSubBatch.expected_quantity),
+        })
+      : null;
     if (supplierSubBatch) {
       const gate = canActivateSupplierSubBatch({
         effectivePackPurpose: supplierSubBatch.effective_pack_purpose,
-        productionAcceptanceV2: null,
+        productionAcceptanceV2,
         manifestStatus: supplierSubBatch.manifest_status,
         qaStatus: supplierSubBatch.qa_status,
         expectedQuantity: supplierSubBatch.expected_quantity,
@@ -150,15 +175,64 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ bid: s
           received: "received" in gate ? gate.received : undefined,
         }, 409);
       }
+      if (supplierSubBatch.effective_pack_purpose === "production") {
+        productionSupplierSubBatch = supplierSubBatch;
+      }
     }
   }
 
-  const updated = await sql/*sql*/`
-    UPDATE batches
-    SET status = ${nextState}
-    WHERE id = ${batch.id}
-    RETURNING id, bid, status
-  `;
+  if (productionSupplierSubBatch) {
+    const actor = getAdminActor(req);
+    try {
+      const receipt = await activateSupplierProductionTagsV2({
+        tenantId: String(productionSupplierSubBatch.tenant_id),
+        supplierOrderId: String(productionSupplierSubBatch.supplier_order_id),
+        supplierSubBatchId: String(productionSupplierSubBatch.id),
+        batchId: String(productionSupplierSubBatch.batch_id),
+        bid: String(productionSupplierSubBatch.bid),
+        lotSize: Number(productionSupplierSubBatch.expected_quantity),
+        actorId: actor.id,
+        authSessionId: actor.sessionId,
+        operationKey,
+        selection: { mode: "state_only" },
+        requestId: req.headers.get("x-request-id"),
+      });
+      return json({
+        ok: true,
+        batch: { id: batch.id, bid, status: "active_in_market" },
+        activationReceiptId: receipt.activationReceiptId,
+        idempotentReplay: receipt.idempotentReplay,
+      });
+    } catch (error) {
+      const reason = supplierProductionActivationDatabaseReason(error);
+      if (!reason) throw error;
+      return json({
+        ok: false,
+        reason,
+        message: supplierActivationGateMessage(reason),
+        bid,
+      }, reason === "supplier_production_activation_actor_scope_invalid" ? 403 : 409);
+    }
+  }
+
+  let updated: Array<Record<string, unknown>>;
+  try {
+    updated = await sql/*sql*/`
+      UPDATE batches
+      SET status = ${nextState}
+      WHERE id = ${batch.id}
+      RETURNING id, bid, status
+    `;
+  } catch (error) {
+    const reason = supplierProductionActivationDatabaseReason(error);
+    if (!reason) throw error;
+    return json({
+      ok: false,
+      reason,
+      message: supplierActivationGateMessage(reason),
+      bid,
+    }, reason === "supplier_production_activation_actor_scope_invalid" ? 403 : 409);
+  }
 
   return json({ ok: true, batch: updated[0] });
 }

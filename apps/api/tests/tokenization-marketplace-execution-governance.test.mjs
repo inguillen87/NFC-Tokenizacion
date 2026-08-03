@@ -135,13 +135,40 @@ test("marketplace attribution stays optional but complete tuples and active P2P 
   assert.match(migration, /REVOKE ALL ON FUNCTION public\.nexid_marketplace_batch_offer_invalidation_v1\(\) FROM PUBLIC/);
 });
 
-test("release tooling advances through 0074 and unauthorized empty bootstrap fails before DDL", () => {
+test("release tooling advances through 0096 and unauthorized empty bootstrap fails before DDL", () => {
   for (const surface of [dbRuntime, preflight, dryRun]) {
     assert.match(surface, /20260730110000_0073_supplier_qa_verification_context_v2\.sql/);
   }
-  for (const surface of [dbRuntime, preflight, dryRun, target]) {
+  for (const surface of [dbRuntime, preflight, dryRun]) {
     assert.match(surface, /20260730150000_0074_supplier_key_rotation_atomic\.sql/);
   }
+  for (const surface of [dbRuntime, preflight, dryRun]) {
+    assert.match(surface, /20260801090000_0075_supplier_production_qa_acceptance\.sql/);
+  }
+  for (const surface of [dbRuntime, preflight, dryRun]) {
+    assert.match(surface, /20260802090000_0076_supplier_production_activation_v2\.sql/);
+    assert.match(surface, /20260802113000_0077_tenant_api_key_lifecycle\.sql/);
+    assert.match(surface, /20260802130000_0078_webhook_destination_cutover\.sql/);
+    assert.match(surface, /20260802150000_0079_supplier_order_atomic_create\.sql/);
+    assert.match(surface, /20260802153000_0080_offline_scan_history_index\.sql/);
+    assert.match(surface, /20260802160000_0081_supplier_manifest_atomic_import\.sql/);
+    assert.match(surface, /20260802170000_0082_consumer_session_revocation\.sql/);
+    assert.match(surface, /20260802180000_0083_sdk_event_webhook_atomic_outbox\.sql/);
+    assert.match(surface, /20260802190000_0084_tenant_vault_audited_download\.sql/);
+    assert.match(surface, /20260802200000_0085_supplier_non_sun_qa_evidence\.sql/);
+    assert.match(surface, /20260802210000_0086_supplier_order_lifecycle\.sql/);
+    assert.match(surface, /20260802220000_0087_packaging_lab_foundation\.sql/);
+    assert.match(surface, /20260802230000_0088_enterprise_event_profile\.sql/);
+    assert.match(surface, /20260802240000_0089_sun_carrier_trust_state\.sql/);
+    assert.match(surface, /20260802250000_0090_supplier_carrier_key_scope\.sql/);
+    assert.match(surface, /20260802260000_0091_supplier_keyless_qa_activation\.sql/);
+    assert.match(surface, /20260802270000_0092_supplier_carrier_scope_integrity\.sql/);
+    assert.match(surface, /20260802280000_0093_sun_tt_durable_truth_binding\.sql/);
+    assert.match(surface, /20260802290000_0094_sun_runtime_acl_boundary\.sql/);
+    assert.match(surface, /20260802300000_0095_sun_tt_conflict_target\.sql/);
+    assert.match(surface, /20260802310000_0096_enterprise_rbac_risk_truth\.sql/);
+  }
+  assert.match(target, /20260802310000_0096_enterprise_rbac_risk_truth\.sql/);
   assert.match(preflight, /has_function_privilege[\s\S]*nexid_prepare_tokenization_execution_v1/);
   assert.match(preflight, /trigger_row\.tgname = 'trg_nexid_tokenization_execution_scope_v1'[\s\S]*trigger_row\.tgrelid = to_regclass\('public\.tokenization_requests'\)/);
   assert.match(preflight, /trigger_row\.tgname = 'trg_nexid_marketplace_request_asset_scope_v1'[\s\S]*trigger_row\.tgrelid = to_regclass\('public\.marketplace_order_requests'\)/);

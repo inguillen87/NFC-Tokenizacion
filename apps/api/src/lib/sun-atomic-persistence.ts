@@ -16,6 +16,14 @@ export type SunAtomicPersistenceInput = {
   supplierPayloadOnly: boolean;
   preRegistryResult?: string | null;
   forceResult?: string | null;
+  ttTruth?: {
+    carrierProfileCode?: string | null;
+    ttRaw?: string | null;
+    claimedProductState?: string | null;
+    statusSource?: string | null;
+    statusOffset?: number | null;
+    statusLength?: number | null;
+  } | null;
   reasonIfNotReplay?: string | null;
   source?: "real" | "demo" | "imported";
   userAgent?: string | null;
@@ -35,6 +43,19 @@ export type SunAtomicPersistenceInput = {
   meta?: Record<string, unknown>;
   rawQuery?: Record<string, unknown>;
 };
+
+const SUN_PERSISTENCE_DEGRADING_RESULTS = new Set([
+  "SUN_PROFILE_MISMATCH",
+  "NOT_ACTIVE",
+  "REVOKED",
+  "BROKEN",
+  "TAMPER_RISK",
+]);
+
+export function normalizeSunPersistenceForceResult(value: unknown): string | null {
+  const normalized = String(value || "").trim().toUpperCase();
+  return SUN_PERSISTENCE_DEGRADING_RESULTS.has(normalized) ? normalized : null;
+}
 
 export type SunAtomicPersistenceResult = {
   eventId: number;
@@ -87,6 +108,17 @@ export async function persistSunScanAtomically(
 ): Promise<SunAtomicPersistenceResult> {
   const coordinate = normalizeCoordinatePair(input.lat, input.lng);
   const persistedRawQuery = redactSensitiveQueryValues(input.rawQuery);
+  const ttTruth = input.ttTruth
+    ? {
+        schema_version: "sun-tt-durable-truth-input/v1",
+        carrier_profile_code: nullableText(input.ttTruth.carrierProfileCode)?.toLowerCase() || null,
+        tt_raw: nullableText(input.ttTruth.ttRaw)?.toUpperCase() || null,
+        claimed_product_state: nullableText(input.ttTruth.claimedProductState)?.toUpperCase() || null,
+        status_source: nullableText(input.ttTruth.statusSource)?.toLowerCase() || null,
+        status_offset: Number.isSafeInteger(input.ttTruth.statusOffset) ? input.ttTruth.statusOffset : null,
+        status_length: Number.isSafeInteger(input.ttTruth.statusLength) ? input.ttTruth.statusLength : null,
+      }
+    : null;
   const envelope = {
     version: 1,
     tenant_id: input.tenantId,
@@ -102,7 +134,14 @@ export async function persistSunScanAtomically(
     supplier_payload_match: input.supplierPayloadMatch,
     supplier_payload_only: input.supplierPayloadOnly,
     pre_registry_result: input.preRegistryResult || null,
-    force_result: input.forceResult || null,
+    // The database independently applies the same allowlist. This application
+    // gate keeps legacy/demo callers from even requesting an authentic or
+    // CLOSED<->OPENED promotion through the administrative override channel.
+    force_result: normalizeSunPersistenceForceResult(input.forceResult),
+    // Reserved top-level evidence: request metadata cannot overwrite it. The
+    // database binds this decoded TTStatus claim to the same atomic event and
+    // CMAC/PICC hashes; raw UID, NFC keys and personal data are never copied.
+    tt_truth: ttTruth,
     reason_if_not_replay: input.reasonIfNotReplay || null,
     source: input.source || "real",
     user_agent: input.userAgent || null,

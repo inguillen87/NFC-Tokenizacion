@@ -270,6 +270,20 @@ const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._~:/+=-]{0,254}$/;
 const EPCIS_CURSOR_PATTERN = /^[A-Za-z0-9_-]+$/;
 const EPCIS_QUALIFIER_PATTERN = /^[\x21-\x7e]{1,20}$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const OFFLINE_EVENT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._~:+/-]{0,159}$/;
+const OFFLINE_BUNDLE_REF_PATTERN = /^ovb_[0-9a-f]{36}$/i;
+const OFFLINE_APP_VERSION_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$/;
+const OFFLINE_SYNC_STATUS_VALUES = new Set([
+    "SYNCED_VALID",
+    "SYNCED_INVALID",
+    "REPLAY_SUSPECT",
+    "SYNC_PROCESSING",
+    "SYNC_FAILED",
+    "SYNC_CONFLICT",
+]);
+const OFFLINE_SYNC_MAX_EVENTS = 100;
+const OFFLINE_SYNC_MAX_BODY_BYTES = 256 * 1024;
+const OFFLINE_SYNC_MAX_CAPTURED_URL_BYTES = 4_096;
 const EPCIS_EVENT_TYPE_VALUES = new Set([
     "ObjectEvent",
     "AggregationEvent",
@@ -290,6 +304,218 @@ function boundedInteger(name, value, fallback, minimum, maximum) {
         throw new TypeError(`nexID SDK ${name} must be an integer between ${minimum} and ${maximum}`);
     }
     return Number(value);
+}
+function normalizedOfflineCapturedUrl(value) {
+    const raw = String(value || "").trim();
+    if (!raw || Buffer.byteLength(raw, "utf8") > OFFLINE_SYNC_MAX_CAPTURED_URL_BYTES) {
+        throw new TypeError("nexID SDK offline capturedUrl is invalid");
+    }
+    let url;
+    try {
+        url = new URL(raw);
+    }
+    catch {
+        throw new TypeError("nexID SDK offline capturedUrl must be an absolute HTTPS SUN URL");
+    }
+    if (url.protocol !== "https:" || url.username || url.password || url.hash || !["/sun", "/sun/"].includes(url.pathname)) {
+        throw new TypeError("nexID SDK offline capturedUrl must be an absolute HTTPS SUN URL");
+    }
+    const allowed = new Set(["v", "bid", "picc_data", "enc", "cmac"]);
+    for (const key of url.searchParams.keys()) {
+        if (!allowed.has(key) || url.searchParams.getAll(key).length !== 1) {
+            throw new TypeError("nexID SDK offline capturedUrl contains an unsupported or duplicate SUN parameter");
+        }
+    }
+    const bid = url.searchParams.get("bid") || "";
+    const piccData = (url.searchParams.get("picc_data") || "").toUpperCase();
+    const enc = (url.searchParams.get("enc") || "").toUpperCase();
+    const cmac = (url.searchParams.get("cmac") || "").toUpperCase();
+    const version = url.searchParams.get("v");
+    if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{2,119}$/.test(bid)
+        || !/^[0-9A-F]{32,256}$/.test(piccData)
+        || piccData.length % 32 !== 0
+        || !/^[0-9A-F]{32,512}$/.test(enc)
+        || enc.length % 32 !== 0
+        || !/^[0-9A-F]{16}$/.test(cmac)
+        || (version !== null && version !== "1")) {
+        throw new TypeError("nexID SDK offline capturedUrl has an invalid SUN/SDM payload");
+    }
+    return raw;
+}
+function normalizeOfflineScanRequest(params) {
+    if (!params || typeof params !== "object" || Array.isArray(params)) {
+        throw new TypeError("nexID SDK offline sync requires a request object");
+    }
+    if (params.schemaVersion !== undefined && params.schemaVersion !== 1) {
+        throw new TypeError("nexID SDK offline sync supports schemaVersion 1 only");
+    }
+    const bundleId = String(params.bundleId || "").trim();
+    const deviceId = String(params.deviceId || "").trim();
+    if (!(UUID_PATTERN.test(bundleId) || OFFLINE_BUNDLE_REF_PATTERN.test(bundleId)) || !UUID_PATTERN.test(deviceId)) {
+        throw new TypeError("nexID SDK offline sync requires a valid bundleId and deviceId");
+    }
+    if (!Array.isArray(params.events) || params.events.length < 1 || params.events.length > OFFLINE_SYNC_MAX_EVENTS) {
+        throw new TypeError(`nexID SDK offline sync requires 1..${OFFLINE_SYNC_MAX_EVENTS} events`);
+    }
+    const localIds = new Set();
+    const events = params.events.map((event) => {
+        if (!event || typeof event !== "object" || Array.isArray(event)) {
+            throw new TypeError("nexID SDK offline sync event is invalid");
+        }
+        const localId = String(event.localId || "").trim();
+        if (!OFFLINE_EVENT_ID_PATTERN.test(localId)) {
+            throw new TypeError("nexID SDK offline sync localId is invalid");
+        }
+        if (localIds.has(localId)) {
+            throw new TypeError("nexID SDK offline sync localId values must be unique within a request");
+        }
+        localIds.add(localId);
+        const capturedUrl = normalizedOfflineCapturedUrl(event.capturedUrl);
+        const capturedAtDate = event.capturedAt instanceof Date ? event.capturedAt : new Date(event.capturedAt);
+        if (!Number.isFinite(capturedAtDate.getTime()) || capturedAtDate.getTime() > Date.now() + 5 * 60 * 1_000) {
+            throw new TypeError("nexID SDK offline sync capturedAt is invalid");
+        }
+        if (event.status !== undefined && !["PENDING_BACKEND_VERIFICATION", "SYNC_FAILED"].includes(event.status)) {
+            throw new TypeError("nexID SDK offline scans cannot claim a final local authenticity verdict");
+        }
+        let approximateLocation;
+        if (event.approximateLocation !== undefined) {
+            const location = event.approximateLocation;
+            if (!location
+                || location.consent !== true
+                || location.precision !== "approximate"
+                || !Number.isFinite(location.lat)
+                || location.lat < -90
+                || location.lat > 90
+                || !Number.isFinite(location.lng)
+                || location.lng < -180
+                || location.lng > 180
+                || (location.accuracy !== undefined && (!Number.isFinite(location.accuracy) || location.accuracy < 0 || location.accuracy > 50_000))) {
+                throw new TypeError("nexID SDK offline sync approximateLocation is invalid or lacks consent");
+            }
+            approximateLocation = {
+                consent: true,
+                precision: "approximate",
+                lat: location.lat,
+                lng: location.lng,
+                ...(location.accuracy === undefined ? {} : { accuracy: location.accuracy }),
+            };
+        }
+        const appVersion = event.appVersion === undefined ? "" : String(event.appVersion).trim();
+        if (appVersion && !OFFLINE_APP_VERSION_PATTERN.test(appVersion)) {
+            throw new TypeError("nexID SDK offline sync appVersion is invalid");
+        }
+        return {
+            localId,
+            capturedUrl,
+            capturedAt: capturedAtDate.toISOString(),
+            status: event.status || "PENDING_BACKEND_VERIFICATION",
+            ...(approximateLocation ? { approximateLocation } : {}),
+            ...(appVersion ? { appVersion } : {}),
+        };
+    });
+    const body = { schemaVersion: 1, bundleId, deviceId, events };
+    if (Buffer.byteLength(JSON.stringify(body), "utf8") > OFFLINE_SYNC_MAX_BODY_BYTES) {
+        throw new TypeError(`nexID SDK offline sync request exceeds ${OFFLINE_SYNC_MAX_BODY_BYTES} bytes`);
+    }
+    return body;
+}
+function transformOfflineSyncResponse(data, traceId) {
+    const record = data && typeof data === "object" && !Array.isArray(data) ? data : null;
+    const rawResults = Array.isArray(record?.results) ? record.results : null;
+    const countNames = ["received", "duplicates", "verified", "valid", "invalid", "pending", "rejected"];
+    const counts = Object.fromEntries(countNames.map((name) => [name, Number(record?.[name])]));
+    if (!record
+        || record.ok !== true
+        || record.schema_version !== 1
+        || record.final_verdict_source !== "backend_sun_sdm"
+        || !rawResults
+        || rawResults.length < 1
+        || rawResults.length > OFFLINE_SYNC_MAX_EVENTS
+        || countNames.some((name) => !Number.isSafeInteger(counts[name]) || counts[name] < 0 || counts[name] > OFFLINE_SYNC_MAX_EVENTS)) {
+        throw new NexIdApiError({ status: 502, reason: "invalid_offline_sync_response", traceId, retryAfter: null, body: { ok: false } });
+    }
+    const results = rawResults.map((value) => {
+        const item = value && typeof value === "object" && !Array.isArray(value) ? value : null;
+        const status = String(item?.sync_status || "");
+        const finalVerdict = item?.final_verdict === true;
+        const cryptoVerified = item?.cryptographic_verification === true;
+        const verdict = String(item?.verdict || "");
+        const terminal = ["SYNCED_VALID", "SYNCED_INVALID", "REPLAY_SUSPECT"].includes(status);
+        const expectedVerdict = status === "SYNCED_VALID"
+            ? "MESSAGE_VALID"
+            : status === "SYNCED_INVALID"
+                ? "MESSAGE_NOT_VALID"
+                : status === "REPLAY_SUSPECT"
+                    ? "REPLAY_SUSPECT"
+                    : "PENDING_BACKEND_VERIFICATION";
+        if (!item
+            || !OFFLINE_SYNC_STATUS_VALUES.has(status)
+            || finalVerdict !== terminal
+            || verdict !== expectedVerdict
+            || cryptoVerified !== (status === "SYNCED_VALID")
+            || typeof item.ok !== "boolean"
+            || typeof item.reason !== "string"
+            || item.reason.length < 1
+            || item.reason.length > 120
+            || typeof item.replayed !== "boolean") {
+            throw new NexIdApiError({ status: 502, reason: "invalid_offline_sync_response", traceId, retryAfter: null, body: { ok: false } });
+        }
+        const readCounter = item.read_counter === null ? null : Number(item.read_counter);
+        const verifiedAt = typeof item.verified_at === "string" && Number.isFinite(Date.parse(item.verified_at))
+            ? new Date(item.verified_at).toISOString()
+            : null;
+        const clientEventId = typeof item.client_event_id === "string" && OFFLINE_EVENT_ID_PATTERN.test(item.client_event_id)
+            ? item.client_event_id
+            : null;
+        const bid = typeof item.bid === "string" && /^[A-Za-z0-9][A-Za-z0-9._:-]{2,119}$/.test(item.bid) ? item.bid : null;
+        if ((terminal && (!verifiedAt || !clientEventId || !bid))
+            || (readCounter !== null && (!Number.isSafeInteger(readCounter) || readCounter < 0))) {
+            throw new NexIdApiError({ status: 502, reason: "invalid_offline_sync_response", traceId, retryAfter: null, body: { ok: false } });
+        }
+        const sealStatus = ["CLOSED", "OPENED", "UNKNOWN"].includes(String(item.seal_status))
+            ? String(item.seal_status)
+            : "UNKNOWN";
+        return {
+            ok: item.ok,
+            clientEventId,
+            bid,
+            status,
+            finalVerdict,
+            verdict,
+            cryptographicVerification: cryptoVerified,
+            uidMasked: typeof item.uid_masked === "string" ? item.uid_masked.slice(0, 20) : null,
+            readCounter,
+            sealStatus: status === "SYNCED_VALID" ? sealStatus : "UNKNOWN",
+            sunEventId: typeof item.sun_event_id === "string" ? item.sun_event_id.slice(0, 40) : null,
+            verifiedAt,
+            reason: item.reason,
+            replayed: item.replayed,
+        };
+    });
+    const terminalCount = results.filter((item) => item.finalVerdict).length;
+    const validCount = results.filter((item) => item.status === "SYNCED_VALID").length;
+    const invalidCount = results.filter((item) => item.status === "SYNCED_INVALID" || item.status === "REPLAY_SUSPECT").length;
+    if (counts.verified !== terminalCount
+        || counts.valid !== validCount
+        || counts.invalid !== invalidCount
+        || counts.received + counts.duplicates + counts.rejected !== results.length) {
+        throw new NexIdApiError({ status: 502, reason: "invalid_offline_sync_response", traceId, retryAfter: null, body: { ok: false } });
+    }
+    return {
+        ok: true,
+        schemaVersion: 1,
+        finalVerdictSource: "backend_sun_sdm",
+        received: counts.received,
+        duplicates: counts.duplicates,
+        verified: counts.verified,
+        valid: counts.valid,
+        invalid: counts.invalid,
+        pending: counts.pending,
+        rejected: counts.rejected,
+        results,
+        traceId,
+    };
 }
 function normalizeApiBaseUrl(value, environment) {
     const raw = String(value || "https://api.nexid.lat").trim();
@@ -698,6 +924,34 @@ export class NexIdClient {
     }
     verifyTap(params, options = {}) {
         return this.request("/api/v1/sdk/verify", { method: "POST", body: params, context: options, idempotencyKey: options.idempotencyKey, idempotentMutation: true, maxRetries: options.maxRetries });
+    }
+    /**
+     * Synchronizes captures made by an authorized operator while offline.
+     *
+     * The device must keep every `localId` stable across retries. A successful
+     * response is a final authenticity result only when `finalVerdict` is true;
+     * only `SYNCED_VALID` means SUN/SDM was cryptographically accepted by the
+     * backend. Hashing, local deduplication and offline metadata are never
+     * treated as authenticity verification.
+     */
+    syncOfflineScans(params, options) {
+        if (!options || typeof options !== "object") {
+            throw new TypeError("nexID SDK offline sync requires options with idempotencyKey");
+        }
+        const idempotencyKey = normalizeHeaderValue("idempotencyKey", options.idempotencyKey, 255);
+        if (!IDEMPOTENCY_KEY_PATTERN.test(idempotencyKey)) {
+            throw new TypeError("nexID SDK idempotencyKey contains unsupported characters");
+        }
+        const body = normalizeOfflineScanRequest(params);
+        return this.request("/api/v1/sdk/offline-sync", {
+            method: "POST",
+            body,
+            context: options,
+            idempotencyKey,
+            idempotentMutation: true,
+            maxRetries: options.maxRetries,
+            transformResponse: (data, _response, traceId) => transformOfflineSyncResponse(data, traceId),
+        });
     }
     claimOwnership(params, options = {}) {
         return this.request("/api/v1/sdk/claim", { method: "POST", body: params, context: options, idempotencyKey: options.idempotencyKey, idempotentMutation: true, maxRetries: options.maxRetries });

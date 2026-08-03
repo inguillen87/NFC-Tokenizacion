@@ -5,7 +5,12 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { dashboardContent } from "../lib/dashboard-content";
-import { dashboardPermissionMatches } from "../lib/permission-policy";
+import type { UserRole } from "../lib/dashboard-content";
+import {
+  dashboardCanReadSensitiveRiskAnalytics,
+  dashboardHighImpactPermissionMatches,
+  dashboardPermissionMatches,
+} from "../lib/permission-policy";
 import { productUrls } from "@product/config";
 import { AudienceModeProvider, useAudienceMode } from "./audience-mode";
 import { AdminNotificationBell } from "./admin-notification-bell";
@@ -34,6 +39,7 @@ import {
   Package,
   FileCheck2,
   ShieldCheck,
+  ShieldAlert,
   Zap,
   Presentation,
   BookOpen,
@@ -107,6 +113,7 @@ export function DashboardShellInner({
   currentEmail,
   currentLabel,
   currentPermissions = [],
+  currentDeniedPermissions = [],
   currentTenantSlug,
   currentMfaVerified,
   currentSetupCompleted,
@@ -120,10 +127,11 @@ export function DashboardShellInner({
   shell: DashboardText["shell"];
   locale: string;
   locales: readonly string[];
-  currentRole: string;
+  currentRole: UserRole;
   currentEmail: string;
   currentLabel: string;
   currentPermissions?: string[];
+  currentDeniedPermissions?: string[];
   currentTenantSlug?: string | null;
   currentMfaVerified?: boolean | null;
   currentSetupCompleted?: boolean | null;
@@ -151,9 +159,30 @@ export function DashboardShellInner({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  const canReadProof = currentRole === "super-admin" || dashboardPermissionMatches(currentPermissions, "proof:read");
+  const permissionMatches = (permission: string) => dashboardPermissionMatches(
+    currentPermissions,
+    permission,
+    currentDeniedPermissions,
+  );
+  const isTenantAdministrator = currentRole === "tenant-owner" || currentRole === "tenant-admin";
+  const isResellerRole = currentRole === "reseller-admin" || currentRole === "reseller";
+  const canReadRiskAnalytics = dashboardCanReadSensitiveRiskAnalytics(
+    currentRole,
+    currentPermissions,
+    currentDeniedPermissions,
+  );
+  const highImpactMatches = (capability: string) => dashboardHighImpactPermissionMatches(
+    currentRole,
+    currentPermissions,
+    capability,
+    currentDeniedPermissions,
+  );
+  const canReadSensitiveEvents = highImpactMatches("events.read_sensitive");
+  const canReadConsumerExperiences = highImpactMatches("consumer_experiences.read_pii");
+  const canReadApiKeys = highImpactMatches("api_keys.read");
+  const canReadProof = highImpactMatches("proofs.read");
   const isDemoMode = currentLabel.toLowerCase().includes("demo") || currentEmail.includes("demo");
-  const canAccessDemoLab = currentRole === "super-admin" || dashboardPermissionMatches(currentPermissions, "demo:read") || isDemoMode;
+  const canAccessDemoLab = currentRole === "super-admin" || permissionMatches("demo:read") || isDemoMode;
   const items = [
     { href: "/", label: nav.overview },
     { href: "/batches", label: nav.batches },
@@ -165,10 +194,13 @@ export function DashboardShellInner({
     { href: "/events", label: nav.events },
     { href: "/tokenization", label: "Tokenization" },
     { href: "/analytics", label: nav.analytics },
+    { href: "/risk-analytics", label: "Risk Analytics" },
     { href: "/leads-tickets", label: nav.leadsTickets },
   ].filter((item) => {
     if (item.href === "/proof" && !canReadProof) return false;
+    if (item.href === "/risk-analytics" && !canReadRiskAnalytics) return false;
     if (item.href === "/demo-lab" && !canAccessDemoLab) return false;
+    if (item.href === "/events" && !canReadSensitiveEvents) return false;
     return true;
   });
 
@@ -176,24 +208,25 @@ export function DashboardShellInner({
     items.unshift({ href: "/tenants", label: nav.tenants });
     items.push({ href: "/resellers", label: nav.resellers });
     items.push({ href: "/subscriptions", label: nav.subscriptions });
-  } else if (currentRole === "reseller") {
-    items.unshift({ href: "/tenants", label: nav.tenants });
-  } else {
+  }
+  if (canReadApiKeys) {
     items.push({ href: "/api-keys", label: nav.apiKeys });
   }
 
   const isActiveRoute = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
   const normalizedQuery = query.trim().toLowerCase();
 
-  const role = (currentRole as keyof typeof roles) || "tenant-admin";
-  const forbidden = (pathname === "/tenants" && currentRole === "tenant-admin") || (pathname.startsWith("/superadmin") && currentRole !== "super-admin");
-  const canShowSandboxTools = isDemoMode && currentRole !== "tenant-admin";
+  const role = currentRole;
+  const forbidden = (pathname === "/tenants" && currentRole !== "super-admin") || (pathname.startsWith("/superadmin") && currentRole !== "super-admin");
+  const canShowSandboxTools = isDemoMode && !isTenantAdministrator;
 
   const quick = { faq: "FAQ", stack: "Tech Stack", glossary: "Glossary", docs: "Docs" };
   const publicMobile = `${productUrls.web}/sun/simulate`;
 
-  const audienceCopy = currentRole === "tenant-admin"
+  const audienceCopy = isTenantAdministrator
     ? { tone: "cyan" as const, label: "Tenant CRM" }
+    : isResellerRole
+      ? { tone: "default" as const, label: "Reseller Workspace" }
     : mode === "buyer"
       ? { tone: "default" as const, label: "Enterprise Buyer Preview" }
       : mode === "ceo"
@@ -202,7 +235,7 @@ export function DashboardShellInner({
 
   const mobileQuickLinks = [
     { href: "/", label: nav.overview },
-    { href: "/events", label: nav.events },
+    ...(canReadSensitiveEvents ? [{ href: "/events", label: nav.events }] : []),
     canAccessDemoLab ? { href: "/demo-lab", label: "Demo" } : { href: "/batches", label: nav.batches },
     { href: "/tokenization", label: "Chain" },
   ];
@@ -231,6 +264,8 @@ export function DashboardShellInner({
     { href: "/sdk-vision", label: nav.sdkVision },
   ].filter((entry) => {
     if (entry.href === "/proof" && !canReadProof) return false;
+    if (entry.href === "/events" && !canReadSensitiveEvents) return false;
+    if (entry.href === "/loyalty/experiences" && !canReadConsumerExperiences) return false;
     return (entry as { role?: string }).role ? currentRole === (entry as { role?: string }).role : true;
   });
 
@@ -260,14 +295,19 @@ export function DashboardShellInner({
     { href: "/events", label: nav.events, icon: Activity },
     { href: "/tokenization", label: "Tokenization", icon: Coins },
     { href: "/analytics", label: nav.analytics, icon: BarChart3 },
+    { href: "/risk-analytics", label: "Risk Analytics", icon: ShieldAlert, badge: "RISK" },
     { href: "/leads-tickets", label: nav.leadsTickets, icon: LifeBuoy },
     { href: "/sdk-vision", label: nav.sdkVision, icon: Terminal },
-  ].filter((item) => item.href !== "/proof" || canReadProof);
+  ].filter((item) => (
+    (item.href !== "/proof" || canReadProof)
+    && (item.href !== "/risk-analytics" || canReadRiskAnalytics)
+    && (item.href !== "/events" || canReadSensitiveEvents)
+  ));
 
-  if (currentRole === "super-admin" || currentRole === "reseller") {
+  if (currentRole === "super-admin") {
     coreOpsItems.unshift({ href: "/tenants", label: nav.tenants, icon: Compass });
   }
-  if (currentRole !== "super-admin" && currentRole !== "reseller") {
+  if (canReadApiKeys) {
     coreOpsItems.push({ href: "/api-keys", label: nav.apiKeys, icon: KeyRound });
   }
 
@@ -279,11 +319,13 @@ export function DashboardShellInner({
   }
 
   const loyaltyNetworkItems = [];
-  if (currentRole === "tenant-admin" || currentRole === "super-admin") {
+  if (isTenantAdministrator || currentRole === "marketing-manager" || currentRole === "super-admin") {
     loyaltyNetworkItems.push({ href: "/loyalty/overview", label: "CRM de clientes", icon: Award });
     loyaltyNetworkItems.push({ href: "/consumer-network/overview", label: "Clientes CRM", icon: UserSquare2 });
     loyaltyNetworkItems.push({ href: "/loyalty/rewards", label: "Catálogo Beneficios", icon: Gift });
-    loyaltyNetworkItems.push({ href: "/loyalty/experiences", label: "Experiencias & Eventos", icon: PartyPopper });
+    if (canReadConsumerExperiences) {
+      loyaltyNetworkItems.push({ href: "/loyalty/experiences", label: "Experiencias & Eventos", icon: PartyPopper });
+    }
     loyaltyNetworkItems.push({ href: "/loyalty/campaigns", label: "Campañas por señal", icon: Bot });
     loyaltyNetworkItems.push({ href: "/investor-snapshot", label: "Investor Presentation", icon: Presentation, badge: "PDF" });
     loyaltyNetworkItems.push({ href: "/sales-playbook", label: "Sales Playbook & FAQs", icon: BookOpen, badge: "PDF" });
@@ -295,7 +337,7 @@ export function DashboardShellInner({
   const settingsItems = [
     { href: "/mfa", label: "Account Security", icon: ShieldCheck }
   ];
-  if (currentPermissions.includes("users:manage") || currentRole === "super-admin") {
+  if (permissionMatches("users:manage") || currentRole === "super-admin") {
     settingsItems.unshift({ href: "/users", label: "IAM Users", icon: Users });
   }
 
@@ -523,7 +565,7 @@ export function DashboardShellInner({
               </div>
             </div>
             <div className="flex w-full max-w-full flex-wrap items-center justify-start gap-2 sm:w-auto sm:justify-end sm:gap-3">
-              <AdminNotificationBell />
+              <AdminNotificationBell canReadSensitiveEvents={canReadSensitiveEvents} />
               <Badge tone={audienceCopy.tone}>{audienceCopy.label}</Badge>
               <Badge tone="green">{shell.apiConnected}</Badge>
               <div className="hidden h-6 w-px bg-white/10 mx-1 sm:block" />
@@ -536,6 +578,7 @@ export function DashboardShellInner({
                 mfaVerified={currentMfaVerified}
                 mode={currentRole === "super-admin" ? "global" : "tenant"}
                 permissions={currentPermissions}
+                deniedPermissions={currentDeniedPermissions}
                 role={currentRole}
                 setupCompleted={currentSetupCompleted}
                 surface="dashboard"

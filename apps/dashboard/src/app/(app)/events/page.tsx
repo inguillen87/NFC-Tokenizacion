@@ -4,6 +4,7 @@ import { EnterpriseOpsState } from "../../../components/enterprise-ops-state";
 import { ModuleAudienceHero } from "../../../components/module-audience-hero";
 import { dashboardContent } from "../../../lib/dashboard-content";
 import { getDashboardI18n } from "../../../lib/locale";
+import { dashboardHighImpactPermissionMatches } from "../../../lib/permission-policy";
 import { requireDashboardSession } from "../../../lib/session";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../lib/admin-page-access";
 
@@ -42,6 +43,30 @@ async function getLiveEvents(context: AdminPageContext, params: URLSearchParams)
 export default async function EventsPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const { locale } = await getDashboardI18n();
   const session = await requireDashboardSession();
+  const copy = dashboardContent[locale];
+  const canReadSensitiveEvents = dashboardHighImpactPermissionMatches(
+    session.role,
+    session.permissions,
+    "events.read_sensitive",
+    session.deniedPermissions,
+  );
+  if (!canReadSensitiveEvents) {
+    return (
+      <main className="space-y-8">
+        <SectionHeading eyebrow={copy.nav.events} title={copy.pages.events.title} description={copy.pages.events.description} />
+        <EnterpriseOpsState
+          variant="warning"
+          title="Acceso restringido al feed sensible"
+          description="Esta sesión no tiene la capacidad events.read_sensitive. El servidor no consultó eventos, ubicaciones, dispositivos ni metadata NFC."
+          checklist={[
+            "Solicitá la capacidad al administrador del tenant.",
+            "Las denegaciones explícitas prevalecen sobre cualquier permiso concedido.",
+          ]}
+          testId="events-access-denied"
+        />
+      </main>
+    );
+  }
   const query = await searchParams;
   const adminContext = await createAdminPageContext(session, query.tenant);
   const tenantScope = adminContext.tenantSlug;
@@ -59,7 +84,6 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
   if (range) params.set("range", range);
   params.set("limit", "250");
 
-  const copy = dashboardContent[locale];
   const eventsResult = await getLiveEvents(adminContext, params);
   const liveRows = eventsResult.rows;
   const validCount = liveRows.filter((item) => item.result === "VALID").length;

@@ -46,7 +46,7 @@ import {
   type RealtimeStreamSource,
   type TenantTapRealtimeEvent,
 } from "../lib/realtime-feed";
-import { dashboardPermissionMatches } from "../lib/permission-policy";
+import { dashboardHighImpactPermissionMatches, dashboardPermissionMatches } from "../lib/permission-policy";
 import {
   incidentByEvent,
   isIncidentRealtimeWireEvent,
@@ -638,6 +638,7 @@ export function ExecutiveRealtimeCrm({
     label?: string | null;
     mfaVerified?: boolean | null;
     permissions?: string[];
+    deniedPermissions?: string[];
     role: string;
     setupCompleted?: boolean | null;
     tenantSlug?: string | null;
@@ -652,7 +653,13 @@ export function ExecutiveRealtimeCrm({
   initialAvailabilityDetail: string;
   onSectionChange?: (section: CrmSection) => void;
 }) {
-  const [events, setEvents] = useState(() => sortRealtimeEvents(initialEvents, 50));
+  const canReadSensitiveEvents = dashboardHighImpactPermissionMatches(
+    account.role,
+    account.permissions,
+    "events.read_sensitive",
+    account.deniedPermissions,
+  );
+  const [events, setEvents] = useState(() => canReadSensitiveEvents ? sortRealtimeEvents(initialEvents, 50) : []);
   const [connected, setConnected] = useState(false);
   const [connectionAttempted, setConnectionAttempted] = useState(false);
   const [streamConfirmed, setStreamConfirmed] = useState(initialAvailability === "ready" && initialEvents.length > 0);
@@ -746,6 +753,16 @@ export function ExecutiveRealtimeCrm({
   }, [canReadIncidents, refreshIncidents]);
 
   useEffect(() => {
+    if (!canReadSensitiveEvents) {
+      setEvents([]);
+      setConnected(false);
+      setConnectionAttempted(true);
+      setStreamConfirmed(false);
+      setActiveDataSource("unavailable");
+      setDataAvailability("upstream_error");
+      setAvailabilityDetail("events.read_sensitive permission required");
+      return;
+    }
     const streamUrl = new URL("/api/admin/events/stream", window.location.origin);
     streamUrl.searchParams.set("limit", "50");
     streamUrl.searchParams.set("window", timeRange);
@@ -849,7 +866,7 @@ export function ExecutiveRealtimeCrm({
       source.removeEventListener("warning", onWarning as EventListener);
       source.close();
     };
-  }, [initialAvailability, initialAvailabilityDetail, initialDataSource, initialEvents.length, refreshIncidents, streamSource, tenantScope, timeRange]);
+  }, [canReadSensitiveEvents, initialAvailability, initialAvailabilityDetail, initialDataSource, initialEvents.length, refreshIncidents, streamSource, tenantScope, timeRange]);
 
   const tenantOptions = useMemo(
     () => [...new Set(events.map((event) => String(event.tenantSlug || "unknown").toLowerCase()))].filter(Boolean).sort(),
@@ -1149,6 +1166,7 @@ export function ExecutiveRealtimeCrm({
             mfaVerified={account.mfaVerified}
             mode={mode}
             permissions={account.permissions}
+            deniedPermissions={account.deniedPermissions}
             role={account.role}
             setupCompleted={account.setupCompleted}
             surface="crm"

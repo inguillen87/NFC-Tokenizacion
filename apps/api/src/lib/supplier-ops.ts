@@ -47,11 +47,12 @@ export type SupplierPackInput = {
   quantity: number;
   chipModel: string;
   carrierProfile: string;
-  kMetaHex: string;
-  kFileHex: string;
+  kMetaHex?: string | null;
+  kFileHex?: string | null;
   urlTemplate: string;
   materialType?: string | null;
   notes?: string | null;
+  productionQaPlanApproved?: boolean;
 };
 
 export type SupplierPack = {
@@ -65,11 +66,33 @@ export type SupplierZipEntry = {
   data: string | Buffer | Uint8Array;
 };
 
+export type SupplierProductionQaPlanApproval = {
+  plan_id: string;
+  plan_revision: number;
+  plan_digest: string;
+  decision_id: string;
+  decision_schema: "supplier-production-qa-plan-decision/v1";
+  approved_by: string;
+  approved_at: string;
+  approval_evidence_ref: string;
+  approval_evidence_sha256: string;
+  lot_size: number;
+  inspection_level: string;
+  target_aql: string;
+  sample_size: number;
+  accept_number: number;
+  reject_number: number;
+  policy_reference: string;
+  policy_document_sha256: string;
+  stratification_dimension: "roll_id" | "case_id" | "pallet_id";
+  cryptographic_sample_size: number;
+};
+
 export type SupplierPackPdfInput = {
   clientSlug: string;
   batchId: string;
-  packPurpose: "trial_integration";
-  commercialDisposition: "NON_SELLABLE";
+  packPurpose: "trial_integration" | "production";
+  commercialDisposition: "NON_SELLABLE" | "PENDING_RECEIVING_QA";
   activationAllowed: false;
   quantity: number;
   chipModel: string;
@@ -78,6 +101,8 @@ export type SupplierPackPdfInput = {
   contentHash: string;
   jsonHash: string;
   urlTemplate: string;
+  productionQaPlanApproval?: SupplierProductionQaPlanApproval | null;
+  productionQaPlanApprovalReceiptHash?: string | null;
 };
 
 export type SupplierEncryptedZip = {
@@ -143,21 +168,84 @@ export function requiresSecureSunEncoding(input: unknown) {
   return SECURE_SUN_CARRIER_PROFILES.has(canonicalCarrierProfile(input));
 }
 
-function manifestFormatForCarrier(carrierProfile: string) {
+export function supplierManifestHeadersForCarrier(input: unknown) {
+  const carrierProfile = canonicalCarrierProfile(input);
   switch (carrierProfile) {
+    case "ntag424_dna":
+      return [
+        "batch_id", "uid_hex", "carrier_profile_code", "sun_url",
+        "picc_data", "enc", "cmac", "roll_id", "case_id", "pallet_id",
+        "production_line", "encoding_station",
+      ] as const;
+    case "ntag424_dna_tt":
+      return [
+        "batch_id", "uid_hex", "carrier_profile_code", "sun_url",
+        "picc_data", "enc", "cmac", "tt_status_hex", "roll_id", "case_id",
+        "pallet_id", "production_line", "encoding_station",
+      ] as const;
     case "gs1_digital_link":
-      return "batch_id,uid_hex,gtin,lot,serial,expiry";
+      return [
+        "batch_id", "uid_hex", "carrier_profile_code", "gtin", "lot",
+        "serial", "expiry", "encoded_url", "roll_id", "case_id", "pallet_id",
+      ] as const;
     case "uhf_rfid":
-      return "batch_id,uid_hex,epc,pallet_id,case_id,warehouse_zone";
+      return [
+        "batch_id", "uid_hex", "carrier_profile_code", "epc", "pallet_id",
+        "case_id", "warehouse_zone", "supplier_lot",
+      ] as const;
     case "iot_tracker_placeholder":
-      return "batch_id,uid_hex,device_id,sensor_json,telemetry_at";
+      return [
+        "batch_id", "uid_hex", "carrier_profile_code", "device_id",
+        "sensor_json", "telemetry_at", "pallet_id", "case_id",
+      ] as const;
     case "event_wristband":
-      return "batch_id,uid_hex,attendee_ref,zone,valid_from,valid_until";
+      return [
+        "batch_id", "uid_hex", "carrier_profile_code", "attendee_ref", "zone",
+        "valid_from", "valid_until",
+      ] as const;
     case "hotel_keycard":
-      return "batch_id,uid_hex,guest_ref,room_or_zone,valid_from,valid_until";
+      return [
+        "batch_id", "uid_hex", "carrier_profile_code", "guest_ref",
+        "room_or_zone", "valid_from", "valid_until",
+      ] as const;
+    case "qr_basic":
+      return [
+        "batch_id", "uid_hex", "carrier_profile_code", "serial", "encoded_url",
+        "roll_id", "case_id", "pallet_id",
+      ] as const;
+    case "ntag213":
+    case "ntag215":
+    case "ntag216":
+      return [
+        "batch_id", "uid_hex", "carrier_profile_code", "encoded_url", "roll_id",
+        "case_id", "pallet_id", "production_line", "encoding_station",
+      ] as const;
     default:
-      return "batch_id,uid_hex";
+      return ["batch_id", "uid_hex", "carrier_profile_code"] as const;
   }
+}
+
+function manifestFormatForCarrier(carrierProfile: string) {
+  return supplierManifestHeadersForCarrier(carrierProfile).join(",");
+}
+
+export function buildSupplierManifestTemplate(input: {
+  carrierProfile: unknown;
+  batchId: unknown;
+}) {
+  const carrierProfile = canonicalCarrierProfile(input.carrierProfile);
+  const batchId = String(input.batchId || "").trim().toUpperCase();
+  if (!batchId) throw new Error("supplier_manifest_template_batch_id_required");
+  const headers = [...supplierManifestHeadersForCarrier(carrierProfile)];
+  const csv = `${headers.join(",")}\n`;
+  return {
+    filename: "manifest-template.csv" as const,
+    carrierProfile,
+    batchId,
+    headers,
+    csv,
+    contentHash: sha256(csv),
+  };
 }
 
 function supplierRequirementsForCarrier(carrierProfile: string) {
@@ -347,9 +435,16 @@ function escapePdfText(value: unknown) {
 export function buildSupplierPackPdfSummary(input: SupplierPackPdfInput) {
   const carrierProfile = canonicalCarrierProfile(input.carrierProfile);
   const secureSun = requiresSecureSunEncoding(carrierProfile);
+  const productionApproval = input.packPurpose === "production"
+    ? input.productionQaPlanApproval || null
+    : null;
   const rows = [
-    "NON_SELLABLE - TRIAL INTEGRATION ONLY",
-    "DO NOT SELL, SHIP, CLAIM, TOKENIZE OR ACTIVATE",
+    input.packPurpose === "production"
+      ? "PENDING_RECEIVING_QA - PRODUCTION ENCODING ONLY"
+      : "NON_SELLABLE - TRIAL INTEGRATION ONLY",
+    input.packPurpose === "production"
+      ? "DO NOT ACTIVATE, RELEASE, CLAIM OR TOKENIZE BEFORE RECEIVING QA"
+      : "DO NOT SELL, SHIP, CLAIM, TOKENIZE OR ACTIVATE",
     "nexID Supplier Encoding Pack",
     `Client: ${input.clientSlug}`,
     `Batch ID: ${input.batchId}`,
@@ -365,6 +460,19 @@ export function buildSupplierPackPdfSummary(input: SupplierPackPdfInput) {
     secureSun
       ? "Raw K_META_BATCH and K_FILE_BATCH are only in the encrypted TXT/JSON files."
       : "This profile does not require K_META_BATCH or K_FILE_BATCH in the supplier pack.",
+    ...(productionApproval ? [
+      `Production QA plan: ${productionApproval.plan_id} rev ${productionApproval.plan_revision}`,
+      `Production QA plan digest: ${productionApproval.plan_digest}`,
+      `Plan approval decision: ${productionApproval.decision_id}`,
+      `Plan approval schema: ${productionApproval.decision_schema}`,
+      `Approved by: ${productionApproval.approved_by}`,
+      `Approved at: ${productionApproval.approved_at}`,
+      `Approval evidence: ${productionApproval.approval_evidence_ref}`,
+      `Approval evidence hash: ${productionApproval.approval_evidence_sha256}`,
+      `Approval receipt hash: ${input.productionQaPlanApprovalReceiptHash || "not supplied"}`,
+      `Receiving QA: lot ${productionApproval.lot_size}; sample ${productionApproval.sample_size}; Ac ${productionApproval.accept_number}; Re ${productionApproval.reject_number}`,
+      `QA policy: ${productionApproval.policy_reference} (${productionApproval.policy_document_sha256})`,
+    ] : []),
     "Never share KMS, database URLs, admin keys, private keys or webhook secrets.",
     `Manifest required: ${manifestFormatForCarrier(carrierProfile)}.`,
     `URL template: ${input.urlTemplate}`,
@@ -608,6 +716,7 @@ export function buildSupplierEncodingPack(input: SupplierPackInput): SupplierPac
     throw new Error("supplier_pack_purpose_invalid");
   }
   const isTrial = packPurpose === "trial_integration";
+  const productionQaPlanApproved = !isTrial && input.productionQaPlanApproved === true;
   const quantity = Math.max(0, Math.trunc(Number(input.quantity || 0)));
   const kMetaHex = secureSun ? assertHex32(input.kMetaHex, "K_META_BATCH") : null;
   const kFileHex = secureSun ? assertHex32(input.kFileHex, "K_FILE_BATCH") : null;
@@ -616,7 +725,11 @@ export function buildSupplierEncodingPack(input: SupplierPackInput): SupplierPac
     CLIENT_SLUG: String(input.clientSlug || "").trim(),
     BATCH_ID: String(input.batchId || "").trim(),
     PACK_PURPOSE: packPurpose,
-    COMMERCIAL_RELEASE: isTrial ? "NON_SELLABLE_TRIAL" : "BLOCKED_PENDING_PRODUCTION_QA",
+    COMMERCIAL_RELEASE: isTrial
+      ? "NON_SELLABLE_TRIAL"
+      : productionQaPlanApproved
+        ? "BLOCKED_PENDING_RECEIVING_QA"
+        : "BLOCKED_PENDING_PRODUCTION_QA",
     SALEABLE: false,
     QUANTITY: quantity,
     CHIP_MODEL: String(input.chipModel || "").trim(),
@@ -625,8 +738,10 @@ export function buildSupplierEncodingPack(input: SupplierPackInput): SupplierPac
     TRUST_POLICY: profile?.defaultPolicy?.riskPolicy || "supplier_declared",
     MATERIAL_TYPE: String(input.materialType || "").trim() || null,
     KEY_MATERIAL: secureSun ? "ENCRYPTED_IN_THIS_PACK" : "NO_BATCH_KEYS_REQUIRED_FOR_THIS_PROFILE",
-    K_META_BATCH: kMetaHex,
-    K_FILE_BATCH: kFileHex,
+    ...(secureSun ? {
+      K_META_BATCH: kMetaHex,
+      K_FILE_BATCH: kFileHex,
+    } : {}),
     URL_TEMPLATE: String(input.urlTemplate || "").trim(),
     MANIFEST_FORMAT: manifestFormatForCarrier(carrierProfile),
     PACKAGING_LABEL: `${String(input.clientSlug || "").trim()} / ${String(input.batchId || "").trim()}`,
@@ -635,14 +750,19 @@ export function buildSupplierEncodingPack(input: SupplierPackInput): SupplierPac
       ? {
           acceptance_scope: "trial_integration_only",
           sample_count: Math.min(10, quantity),
-          selection_authority: "nexid_server",
+          selection_authority: "operator_supplied_distinct_manifest_uids_validated_by_server",
           must_pass: ["uid_decode", "cmac_valid", "replay_blocked", "ttstatus_closed_when_supported"],
           physical_ceremony_required: true,
           physical_ceremony_verified: false,
         }
       : null,
     PRODUCTION_LOT_ACCEPTANCE: {
-      status: isTrial ? "not_applicable_non_sellable_trial" : "blocked_pending_tenant_qa_plan",
+      status: isTrial
+        ? "not_applicable_non_sellable_trial"
+        : productionQaPlanApproved
+          ? "pending_receiving_qa"
+          : "blocked_pending_tenant_qa_plan",
+      qa_plan_approved: productionQaPlanApproved,
       integration_gate_is_acceptance: false,
       required_controls: [
         "tenant_approved_inspection_plan",

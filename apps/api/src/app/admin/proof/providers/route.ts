@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, checkAdminPermission } from "../../../../lib/auth";
+import { checkAdminWithPermission } from "../../../../lib/auth";
 import { sql } from "../../../../lib/db";
 import { json } from "../../../../lib/http";
 import { ensureSupplierOpsSchema } from "../../../../lib/supplier-ops-schema";
@@ -104,10 +104,8 @@ function runtimeReadiness(code: string) {
 }
 
 export async function GET(req: Request) {
-  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
+  const auth = await checkAdminWithPermission(req, "proof:read");
   if (auth) return auth;
-  const permission = checkAdminPermission(req, "proof:read");
-  if (permission) return permission;
   await ensureSupplierOpsSchema();
 
   const rows = await sql/*sql*/`

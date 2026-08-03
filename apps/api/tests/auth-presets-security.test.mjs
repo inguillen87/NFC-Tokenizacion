@@ -20,3 +20,15 @@ test("auth presets no contienen passwords demo hardcodeados", () => {
   assert.equal(content.includes("NexidPartner2026"), false);
   assert.equal(content.includes("NexidDemo2026"), false);
 });
+
+test("auth presets enforce tenant binding and never auto-promote malformed super-admin authority", () => {
+  const file = path.join(repoRoot, "apps/api/src/lib/auth-presets.ts");
+  const content = fs.readFileSync(file, "utf8");
+
+  assert.match(content, /preset\.role === "super_admin" \? null : await resolveDemoTenantId\(sql\)/);
+  assert.match(content, /preset\.role !== "super_admin" && !tenantIdForMembership/);
+  assert.match(content, /preset\.role === "super_admin" && membershipRows\[0\]\.tenant_id/);
+  assert.match(content, /Never turn a historical tenant-bound super-admin into global authority/);
+  assert.match(content, /INSERT INTO resource_permissions \(user_id, tenant_id, resource, action\)[^\n]*\$\{tenantIdForMembership\}::uuid/);
+  assert.doesNotMatch(content, /preset\.role === "tenant_admin" \? await resolveDemoTenantId/);
+});

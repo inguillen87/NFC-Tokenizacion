@@ -14,6 +14,7 @@ import { isClerkConfiguredForRuntime } from "../../lib/clerk-env";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../lib/admin-page-access";
 import { readDemoDataMetaFromResponse } from "../../lib/demo-data-mode";
 import { resolveCanonicalTenantRisk } from "../../lib/tenant-risk";
+import { dashboardHighImpactPermissionMatches } from "../../lib/permission-policy";
 
 const FALLBACK_KPIS = {
   scans: "Scans",
@@ -218,10 +219,18 @@ export default async function DashboardHome() {
   const isTenantAdmin = !adminContext.canSelectTenant;
   const realtimeStreamSource = session.isDemo ? "demo" : "production";
   const allowDemoFallback = Boolean(session.isDemo);
+  const canReadSensitiveEvents = dashboardHighImpactPermissionMatches(
+    session.role,
+    session.permissions,
+    "events.read_sensitive",
+    session.deniedPermissions,
+  );
 
   const [overviewRawResult, liveEventsResult, tokenizationRowsResult, batchRowsResult] = await Promise.all([
     getOverviewRows(adminContext, allowDemoFallback),
-    getLiveEvents(adminContext, realtimeStreamSource, allowDemoFallback),
+    canReadSensitiveEvents
+      ? getLiveEvents(adminContext, realtimeStreamSource, allowDemoFallback)
+      : Promise.resolve(fallbackLiveEvents("upstream_error", "events.read_sensitive permission required", false)),
     getTokenizationRows(adminContext, allowDemoFallback),
     getBatchRows(adminContext, allowDemoFallback),
   ]);

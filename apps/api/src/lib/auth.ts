@@ -1,8 +1,9 @@
 import { sql } from "./db";
 import { resolveSession, type SessionRecord } from "./iam";
-import { permissionMatches } from "./permission-matcher.js";
+import { permissionDenied, permissionMatches } from "./permission-matcher.js";
+import { roleMayUseEnterpriseCapability } from "./enterprise-capability-policy";
 
-export type AdminScope = "super_admin" | "tenant_admin" | "reseller" | "readonly_demo";
+export type AdminScope = "super_admin" | "tenant_admin" | "tenant_operator" | "reseller" | "readonly_demo";
 
 export type AdminPrincipal = {
   authenticationType: "human_session";
@@ -15,6 +16,7 @@ export type AdminPrincipal = {
   tenantId: string | null;
   tenantSlug: string | null;
   permissions: string[];
+  deniedPermissions: string[];
   mfaVerified: boolean;
   expiresAt: string;
   rotatedSessionToken: string | null;
@@ -24,10 +26,15 @@ export type AdminSessionResolver = (token: string) => Promise<SessionRecord | nu
 
 const adminPrincipals = new WeakMap<Request, AdminPrincipal>();
 
-function scopeForSession(session: SessionRecord): AdminScope {
+function scopeForSession(session: SessionRecord): AdminScope | null {
   if (session.role === "super-admin") return "super_admin";
-  if (session.role === "tenant-admin") return "tenant_admin";
-  if (session.role === "reseller") return "reseller";
+  if (session.role === "tenant-admin" || session.role === "tenant-owner") return "tenant_admin";
+  if (session.role === "reseller" || session.role === "reseller-admin") return "reseller";
+  if ([
+    "security-analyst", "operations-manager", "packaging-operator",
+    "marketing-manager", "security-operator",
+  ].includes(session.role)) return "tenant_operator";
+  if (session.role === "api-integration") return null;
   return "readonly_demo";
 }
 
@@ -42,9 +49,14 @@ function bearerToken(req: Request) {
 
 function principalFromSession(session: SessionRecord): AdminPrincipal | null {
   const scope = scopeForSession(session);
+  if (!scope) return null;
   const tenantId = session.tenantId ? String(session.tenantId) : null;
   const tenantSlug = session.tenantSlug ? String(session.tenantSlug).trim().toLowerCase() : null;
-  if ((scope === "tenant_admin" || scope === "reseller") && (!tenantId || !tenantSlug)) return null;
+  if (scope === "super_admin") {
+    if (tenantId || tenantSlug) return null;
+  } else if (!tenantId || !tenantSlug) {
+    return null;
+  }
   return {
     authenticationType: "human_session",
     sessionId: session.id,
@@ -56,6 +68,10 @@ function principalFromSession(session: SessionRecord): AdminPrincipal | null {
     tenantId,
     tenantSlug,
     permissions: [...session.permissions],
+    // Sessions minted before deny-aware rollout and test/service adapters may
+    // not carry this additive field yet. Missing means no explicit deny; live
+    // database resolution always populates the current persisted deny set.
+    deniedPermissions: [...(session.deniedPermissions || [])],
     mfaVerified: session.mfaVerified,
     expiresAt: session.expiresAt,
     rotatedSessionToken: session.rotatedCookieValue,
@@ -69,7 +85,7 @@ function principalFromSession(session: SessionRecord): AdminPrincipal | null {
  */
 export async function checkAdmin(
   req: Request,
-  requiredScopes: AdminScope[] = ["super_admin", "tenant_admin", "reseller"],
+  requiredScopes: AdminScope[] = ["super_admin", "tenant_admin"],
   sessionResolver: AdminSessionResolver = resolvePersistedSession,
 ): Promise<Response | null> {
   const token = bearerToken(req);
@@ -98,7 +114,7 @@ export function getAdminPrincipal(req: Request): AdminPrincipal {
 
 export function getAdminTenantScope(req: Request) {
   const principal = getAdminPrincipal(req);
-  const forcedTenantSlug = principal.scope === "tenant_admin" || principal.scope === "reseller"
+  const forcedTenantSlug = principal.scope === "tenant_admin" || principal.scope === "tenant_operator" || principal.scope === "reseller"
     ? principal.tenantSlug || ""
     : "";
   return {
@@ -140,7 +156,38 @@ export function checkAdminPermission(req: Request, requiredPermission: string): 
   } catch {
     return new Response("Unauthorized", { status: 401 });
   }
-  if (principal.scope === "super_admin") return null;
-  if (permissionMatches(principal.permissions, requiredPermission)) return null;
+  if (!roleMayUseEnterpriseCapability(principal.role, requiredPermission)) {
+    return new Response("Forbidden", { status: 403 });
+  }
+  if (principal.scope === "super_admin") {
+    return permissionDenied(principal.deniedPermissions, requiredPermission)
+      ? new Response("Forbidden", { status: 403 })
+      : null;
+  }
+  if (permissionMatches(principal.permissions, requiredPermission, principal.deniedPermissions)) return null;
   return new Response("Forbidden", { status: 403 });
+}
+
+/**
+ * Authenticates every human enterprise operator but authorizes specialized
+ * roles only through an explicit permission. Existing role-only routes keep
+ * their fail-closed owner/admin scope gate and therefore cannot accidentally
+ * give a legacy zero-capability reseller access to tenant or physical truth.
+ */
+export async function checkAdminWithPermission(
+  req: Request,
+  requiredPermission: string,
+  sessionResolver: AdminSessionResolver = resolvePersistedSession,
+): Promise<Response | null> {
+  const auth = await checkAdmin(
+    req,
+    ["super_admin", "tenant_admin", "tenant_operator", "reseller"],
+    sessionResolver,
+  );
+  if (auth) return auth;
+  const principal = getAdminPrincipal(req);
+  if (!roleMayUseEnterpriseCapability(principal.role, requiredPermission)) {
+    return new Response("Forbidden", { status: 403 });
+  }
+  return checkAdminPermission(req, requiredPermission);
 }

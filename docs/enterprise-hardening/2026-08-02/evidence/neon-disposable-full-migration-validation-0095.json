@@ -1,0 +1,32 @@
+{
+  "ok": true,
+  "gate": "disposable_neon_full_migration_validation_0095",
+  "validated_at": "2026-08-02",
+  "environment": "disposable_neon_schema_only_branch",
+  "endpoint_id": "ep-rapid-glitter-ail9banz",
+  "migration_count": 97,
+  "latest_migration": "20260802300000_0095_sun_tt_conflict_target.sql",
+  "clean_install_receipts": [
+    {
+      "database": "codex_qa_sun3_20260802",
+      "database_role": "neondb_owner",
+      "migration_count": 97
+    },
+    {
+      "database": "codex_qa_supplier3_20260802",
+      "database_role": "neondb_owner",
+      "migration_count": 97
+    }
+  ],
+  "postcheck": {
+    "supplier_carrier_scope_integrity": true,
+    "sun_tt_durable_truth": true,
+    "sun_runtime_acl_boundary": true,
+    "sun_tt_conflict_target_capability": "sun-tt-conflict-target/v1",
+    "named_primary_key_conflict_target": true,
+    "ambiguous_conflict_target_absent": true,
+    "public_internal_base_execute_revoked": true
+  },
+  "production_touched": false,
+  "contains_credentials": false
+}

@@ -2,8 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import {
-  checkAdmin,
-  checkAdminPermission,
+  checkAdminWithPermission,
   getAdminPrincipal,
   getAdminTenantAccess,
 } from "../../../../lib/auth";
@@ -29,10 +28,8 @@ function safeRouteFailure(error: unknown) {
 
 export async function GET(req: Request) {
   const startedAt = Date.now();
-  const auth = await checkAdmin(req);
+  const auth = await checkAdminWithPermission(req, "analytics:read");
   if (auth) return auth;
-  const permission = checkAdminPermission(req, "analytics:read");
-  if (permission) return permission;
   const rateLimited = await enforceCriticalRateLimit(req, {
     rateClass: "observability_read",
     ...adminCriticalRateLimitIdentity(req),

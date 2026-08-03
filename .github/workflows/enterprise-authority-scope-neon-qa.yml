@@ -1,0 +1,64 @@
+name: Enterprise authority-scope Neon QA
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Type RUN_DISPOSABLE_NEON_AUTHORITY_SCOPE_QA"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+# One direct Neon endpoint backs the synchronized session-lock test. Never run
+# two copies against the same disposable database concurrently.
+concurrency:
+  group: enterprise-authority-scope-neon-qa
+  cancel-in-progress: false
+
+jobs:
+  authority-scope-race:
+    name: Disposable Neon authority-scope races
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: disposable-neon-qa
+    env:
+      CI: "true"
+      NODE_ENV: test
+      VERCEL_ENV: test
+    steps:
+      - name: Checkout without persisted credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Setup pinned Node runtime
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "20.19.1"
+          cache: npm
+
+      - name: Confirm disposable synthetic QA
+        shell: bash
+        env:
+          RUN_CONFIRMATION: ${{ inputs.confirmation }}
+        run: test "$RUN_CONFIRMATION" = "RUN_DISPOSABLE_NEON_AUTHORITY_SCOPE_QA"
+
+      - name: Install locked dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts
+
+      - name: Verify the fail-closed authority QA harness
+        run: node --import tsx --test apps/api/tests/authority-scope-postgres-qa-validator.test.mjs
+
+      # These dedicated values must identify an unpooled *.neon.tech endpoint
+      # and a codex_qa_* database. The validator additionally requires empty
+      # business/authority tables before writing synthetic rows and cleans only
+      # its explicit UUIDs. No staging or production database secret is exposed.
+      - name: Run synchronized authority-scope races on disposable Neon
+        env:
+          NEXID_SUN_ATOMIC_QA_DATABASE_URL: ${{ secrets.NEXID_AUTHORITY_SCOPE_QA_DATABASE_URL }}
+          NEXID_SUN_ATOMIC_QA_EXPECTED_HOST: ${{ vars.NEXID_AUTHORITY_SCOPE_QA_EXPECTED_HOST }}
+          NEXID_SUN_ATOMIC_QA_EXPECTED_ENDPOINT_ID: ${{ vars.NEXID_AUTHORITY_SCOPE_QA_EXPECTED_ENDPOINT_ID }}
+          NEXID_SUN_ATOMIC_QA_CONFIRMATION: RUN_NEXID_SUN_ATOMIC_QA:${{ vars.NEXID_AUTHORITY_SCOPE_QA_EXPECTED_ENDPOINT_ID }}:${{ vars.NEXID_AUTHORITY_SCOPE_QA_DATABASE_NAME }}
+        run: npm run db:authority-scope:qa --workspace=api

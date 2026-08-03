@@ -39,6 +39,12 @@ export default function manifest(): MetadataRoute.Manifest {
         description: "Ir directo al Demo Lab.",
         url: "/demo-lab",
       },
+      {
+        name: "Cola offline",
+        short_name: "Offline",
+        description: "Revisar lecturas pendientes de validación online.",
+        url: "/offline",
+      },
     ],
     icons: [
       { src: "/nexid-mark-64.png", sizes: "64x64", type: "image/png" },

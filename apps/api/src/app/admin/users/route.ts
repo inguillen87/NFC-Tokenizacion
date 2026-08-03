@@ -4,7 +4,7 @@ import { sql } from '../../../lib/db';
 import { json } from '../../../lib/http';
 import { hashPassword } from '../../../lib/password';
 import { requireApiSession } from '../../../lib/auth-guard';
-import { resolveAdminUserDelegation } from '../../../lib/admin-user-management-policy';
+import { resolveManagedAdminDelegationRequest } from '../../../lib/admin-role-catalog';
 import { createManagedAdminUser } from '../../../lib/admin-user-management';
 
 export async function GET(req: Request) {
@@ -22,7 +22,9 @@ export async function GET(req: Request) {
       FROM users u
       LEFT JOIN memberships m ON m.user_id = u.id
       LEFT JOIN tenants t ON t.id = m.tenant_id
-      LEFT JOIN resource_permissions rp ON rp.user_id = u.id
+      LEFT JOIN resource_permissions rp
+        ON rp.user_id = u.id
+       AND rp.tenant_id IS NOT DISTINCT FROM m.tenant_id
       GROUP BY u.id, u.email, u.full_name, u.admin_status, m.role, t.slug
       ORDER BY u.created_at DESC
       LIMIT 200
@@ -37,7 +39,9 @@ export async function GET(req: Request) {
       FROM users u
       JOIN memberships m ON m.user_id = u.id
       LEFT JOIN tenants t ON t.id = m.tenant_id
-      LEFT JOIN resource_permissions rp ON rp.user_id = u.id
+      LEFT JOIN resource_permissions rp
+        ON rp.user_id = u.id
+       AND rp.tenant_id IS NOT DISTINCT FROM m.tenant_id
       WHERE m.tenant_id = ${session.tenantId}::uuid
       GROUP BY u.id, u.email, u.full_name, u.admin_status, m.role, t.slug
       ORDER BY u.created_at DESC
@@ -51,7 +55,7 @@ export async function POST(req: Request) {
   const { error, session } = await requireApiSession(req, 'users:manage');
   if (error || !session) return error;
 
-  const body = await req.json().catch(() => ({})) as { email?: string; fullName?: string; password?: string; role?: string; tenantSlug?: string | null; permissions?: string[] };
+  const body = await req.json().catch(() => ({})) as { email?: string; fullName?: string; password?: string; role?: string; tenantSlug?: string | null; permissions?: string[]; permissionMode?: string };
   const email = String(body.email || '').trim().toLowerCase();
   const password = String(body.password || '');
   const fullName = String(body.fullName || '').trim() || null;
@@ -60,7 +64,11 @@ export async function POST(req: Request) {
     return json({ ok: false, reason: 'valid email and password(8+) required' }, 400);
   }
 
-  const delegation = resolveAdminUserDelegation(session, body.role || 'viewer', body.permissions || []);
+  const delegation = await resolveManagedAdminDelegationRequest(sql as any, session, {
+    role: body.role || 'viewer',
+    permissions: body.permissions || [],
+    permissionMode: body.permissionMode,
+  });
   if (!delegation.ok) {
     return json({ ok: false, reason: delegation.reason }, delegation.status);
   }

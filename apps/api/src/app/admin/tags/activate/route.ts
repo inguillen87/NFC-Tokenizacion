@@ -2,24 +2,37 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 import { sql } from "../../../../lib/db";
-import { checkAdmin, getAdminActor, getAdminTenantScope } from "../../../../lib/auth";
+import { checkAdminWithPermission, getAdminActor, getAdminTenantScope } from "../../../../lib/auth";
 import { json } from "../../../../lib/http";
 import { ensureSupplierOpsSchema } from "../../../../lib/supplier-ops-schema";
+import { logAuditEvent } from "../../../../lib/audit-logger";
 import {
   canActivateSupplierSubBatch,
   resolveSupplierActivationScope,
   supplierActivationGateMessage,
 } from "../../../../lib/supplier-ops";
-import { hashEvidencePayload } from "../../../../lib/proof-layer";
-import { logAuditEvent } from "../../../../lib/audit-logger";
+import {
+  activateSupplierProductionTagsV2,
+  loadSupplierProductionActivationReceiptV2,
+  supplierProductionActivationDatabaseReason,
+  supplierProductionActivationOperationKey,
+} from "../../../../lib/supplier-production-activation";
 
 function normalizeUid(value: unknown) {
   return String(value || "").trim().toUpperCase();
 }
 
 export async function POST(req: Request) {
-  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
+  const auth = await checkAdminWithPermission(req, "batch.activate");
   if (auth) return auth;
+  const operationKey = supplierProductionActivationOperationKey(req);
+  if (!operationKey) {
+    return json({
+      ok: false,
+      reason: "supplier_production_activation_idempotency_key_required",
+      message: "Idempotency-Key must be 8-128 characters using letters, numbers, dot, underscore, colon or hyphen.",
+    }, 400);
+  }
   await ensureSupplierOpsSchema();
 
   const body: Record<string, unknown> = await req.json().catch(() => ({}));
@@ -132,10 +145,20 @@ export async function POST(req: Request) {
     }, 409);
   }
   const supplierSubBatch = supplierScope.supplierSubBatch;
+  const productionAcceptanceV2 = supplierSubBatch?.effective_pack_purpose === "production"
+    ? await loadSupplierProductionActivationReceiptV2({
+        tenantId: String(supplierSubBatch.tenant_id),
+        supplierOrderId: String(supplierSubBatch.supplier_order_id),
+        supplierSubBatchId: String(supplierSubBatch.id),
+        batchId: String(supplierSubBatch.batch_id),
+        bid: String(supplierSubBatch.bid),
+        lotSize: Number(supplierSubBatch.expected_quantity),
+      })
+    : null;
   if (supplierSubBatch) {
     const gate = canActivateSupplierSubBatch({
       effectivePackPurpose: supplierSubBatch.effective_pack_purpose,
-      productionAcceptanceV2: null,
+      productionAcceptanceV2,
       manifestStatus: supplierSubBatch.manifest_status,
       qaStatus: supplierSubBatch.qa_status,
       expectedQuantity: supplierSubBatch.expected_quantity,
@@ -153,73 +176,96 @@ export async function POST(req: Request) {
     }
   }
 
-  let targetUids = Array.from(new Set(uids));
-  if (!targetUids.length && (count > 0 || activateAll)) {
-    const candidates = activateAll
-      ? await sql/*sql*/`
-          SELECT uid_hex
-          FROM tags
-          WHERE batch_id = ${batch.id} AND status = 'inactive'
-          ORDER BY created_at ASC, uid_hex ASC
-        `
-      : await sql/*sql*/`
-          SELECT uid_hex
-          FROM tags
-          WHERE batch_id = ${batch.id} AND status = 'inactive'
-          ORDER BY created_at ASC, uid_hex ASC
-          LIMIT ${Math.max(0, Math.trunc(count))}
-        `;
-    targetUids = candidates.map((row) => String(row.uid_hex || "")).filter(Boolean);
-  }
-
-  if (!targetUids.length) {
-    return json({ ok: false, reason: "no tags available to activate" }, 400);
-  }
-
-  const updated = await sql/*sql*/`
-    UPDATE tags
-    SET status = 'active'
-    WHERE batch_id = ${batch.id} AND uid_hex = ANY(${targetUids})
-    RETURNING uid_hex
-  `;
-
-  const remaining = await sql/*sql*/`
-    SELECT COUNT(*)::int AS count
-    FROM tags
-    WHERE batch_id = ${batch.id} AND status = 'inactive'
-  `;
-
-  if (supplierSubBatch && updated.length) {
-    const eventPayload = {
-      supplier_order_id: supplierSubBatch.supplier_order_id,
-      supplier_sub_batch_id: supplierSubBatch.id,
-      bid,
-      activated_tags: updated.length,
-      uid_count: updated.length,
-    };
-    const eventHash = hashEvidencePayload({
-      tenantId: String(batch.tenant_id),
-      resourceType: "supplier_sub_batch",
-      resourceId: String(supplierSubBatch.id),
-      eventType: "tag_activated",
-      payload: eventPayload,
-    });
-    await sql/*sql*/`
-      INSERT INTO evidence_events (tenant_id, resource_type, resource_id, event_type, payload_json, payload_hash)
-      VALUES (${batch.tenant_id}, 'supplier_sub_batch', ${supplierSubBatch.id}, 'tag_activated', ${JSON.stringify(eventPayload)}::jsonb, ${eventHash})
-      ON CONFLICT (payload_hash) DO NOTHING
+  let requestedCount: number;
+  let activatedUids: string[];
+  let remainingInactive: number;
+  let activationReceiptId: string | null = null;
+  let idempotentReplay = false;
+  if (supplierSubBatch?.effective_pack_purpose === "production") {
+    const actor = getAdminActor(req);
+    const selection = uids.length
+      ? { mode: "uids" as const, uids }
+      : activateAll
+        ? { mode: "all" as const }
+        : { mode: "count" as const, limit: Math.max(0, Math.trunc(count)) };
+    try {
+      const receipt = await activateSupplierProductionTagsV2({
+        tenantId: String(supplierSubBatch.tenant_id),
+        supplierOrderId: String(supplierSubBatch.supplier_order_id),
+        supplierSubBatchId: String(supplierSubBatch.id),
+        batchId: String(supplierSubBatch.batch_id),
+        bid: String(supplierSubBatch.bid),
+        lotSize: Number(supplierSubBatch.expected_quantity),
+        actorId: actor.id,
+        authSessionId: actor.sessionId,
+        operationKey,
+        selection,
+        requestId: req.headers.get("x-request-id"),
+      });
+      requestedCount = receipt.requestedCount;
+      activatedUids = receipt.activatedUids;
+      remainingInactive = receipt.remainingInactive;
+      activationReceiptId = receipt.activationReceiptId;
+      idempotentReplay = receipt.idempotentReplay;
+    } catch (error) {
+      const reason = supplierProductionActivationDatabaseReason(error);
+      if (!reason) throw error;
+      return json({
+        ok: false,
+        reason,
+        message: supplierActivationGateMessage(reason),
+        bid,
+      }, reason === "supplier_production_activation_actor_scope_invalid" ? 403 : 409);
+    }
+  } else {
+    let targetUids = Array.from(new Set(uids));
+    if (!targetUids.length && (count > 0 || activateAll)) {
+      const candidates = activateAll
+        ? await sql/*sql*/`
+            SELECT uid_hex
+            FROM tags
+            WHERE batch_id = ${batch.id} AND status = 'inactive'
+            ORDER BY created_at ASC, uid_hex ASC
+          `
+        : await sql/*sql*/`
+            SELECT uid_hex
+            FROM tags
+            WHERE batch_id = ${batch.id} AND status = 'inactive'
+            ORDER BY created_at ASC, uid_hex ASC
+            LIMIT ${Math.max(0, Math.trunc(count))}
+          `;
+      targetUids = candidates.map((row) => String(row.uid_hex || "")).filter(Boolean);
+    }
+    if (!targetUids.length) {
+      return json({ ok: false, reason: "no tags available to activate" }, 400);
+    }
+    const updated = await sql/*sql*/`
+      UPDATE tags
+      SET status = 'active'
+      WHERE batch_id = ${batch.id} AND uid_hex = ANY(${targetUids})
+      RETURNING uid_hex
     `;
+    const remaining = await sql/*sql*/`
+      SELECT COUNT(*)::int AS count
+      FROM tags
+      WHERE batch_id = ${batch.id} AND status = 'inactive'
+    `;
+    requestedCount = targetUids.length;
+    activatedUids = updated.map((row) => String(row.uid_hex || "")).filter(Boolean);
+    remainingInactive = Number(remaining[0]?.count || 0);
     await logAuditEvent({
-      actorId: null,
+      actorId: getAdminActor(req).id,
       tenantId: String(batch.tenant_id),
       action: "supplier_tags_activated",
-      resourceType: "supplier_sub_batch",
-      resourceId: String(supplierSubBatch.id),
+      resourceType: "batch",
+      resourceId: String(batch.id),
       afterData: {
-        ...eventPayload,
+        bid,
+        requested_count: requestedCount,
+        activated_count: activatedUids.length,
+        remaining_inactive: remainingInactive,
         activated_by: getAdminActor(req).email,
       },
-      userAgent: req.headers.get("user-agent"),
       requestId: req.headers.get("x-request-id"),
     });
   }
@@ -227,10 +273,12 @@ export async function POST(req: Request) {
   return json({
     ok: true,
     batch: bid,
-    requested: targetUids.length,
-    activated: updated.length,
-    uids: updated.map((row) => row.uid_hex),
-    remainingInactive: Number(remaining[0]?.count || 0),
+    requested: requestedCount,
+    activated: activatedUids.length,
+    uids: activatedUids,
+    remainingInactive,
+    activationReceiptId,
+    idempotentReplay,
     supplier_gate: supplierSubBatch ? {
       manifest_status: supplierSubBatch.manifest_status,
       qa_status: supplierSubBatch.qa_status,

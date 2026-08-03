@@ -5,13 +5,19 @@ import { checkAdmin, getAdminActor, getAdminTenantScope } from "../../../../lib/
 import { sql } from "../../../../lib/db";
 import { json } from "../../../../lib/http";
 import { logAuditEvent } from "../../../../lib/audit-logger";
+import { RequestBodyTooLargeError, readBoundedJsonBody } from "../../../../lib/bounded-request-body";
 import { ensureSupplierOpsSchema } from "../../../../lib/supplier-ops-schema";
 import {
   buildOfflineBundleRef,
   normalizeOfflineBids,
   normalizeOfflineBundleExpiry,
+  OFFLINE_BUNDLE_ISSUANCE_BODY_MAX_BYTES,
+  offlineVerifierBundleIssuanceEnabled,
+  requireOfflineJsonObject,
 } from "../../../../lib/offline-verifier";
 import { hashEvidencePayload } from "../../../../lib/proof-layer";
+
+const NO_STORE = { "cache-control": "no-store" };
 
 function firstString(...values: unknown[]) {
   for (const value of values) {
@@ -22,11 +28,22 @@ function firstString(...values: unknown[]) {
 }
 
 export async function POST(req: Request) {
-  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
+  const auth = await checkAdmin(req, ["super_admin"]);
   if (auth) return auth;
-  await ensureSupplierOpsSchema();
+  if (!offlineVerifierBundleIssuanceEnabled()) {
+    return json({ ok: false, reason: "offline_verifier_bundles_disabled" }, 503, NO_STORE);
+  }
 
-  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+  let body: Record<string, unknown>;
+  try {
+    body = requireOfflineJsonObject(
+      await readBoundedJsonBody<unknown>(req, OFFLINE_BUNDLE_ISSUANCE_BODY_MAX_BYTES),
+    );
+  } catch (error) {
+    const tooLarge = error instanceof RequestBodyTooLargeError;
+    return json({ ok: false, reason: tooLarge ? "request_body_too_large" : "invalid_json" }, tooLarge ? 413 : 400, NO_STORE);
+  }
+  await ensureSupplierOpsSchema();
   const deviceId = firstString(body.device_id, body.deviceId);
   if (!/^[0-9a-f-]{36}$/i.test(deviceId)) return json({ ok: false, reason: "device_id_required" }, 400);
 

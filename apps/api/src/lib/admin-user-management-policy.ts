@@ -1,22 +1,59 @@
 import { permissionMatches } from "./permission-matcher.js";
 
-export type ManagedAdminRole = "super_admin" | "tenant_admin" | "reseller" | "viewer";
+export type ManagedAdminRole =
+  | "tenant_owner" | "tenant_admin" | "security_analyst" | "operations_manager"
+  | "packaging_operator" | "marketing_manager" | "viewer" | "reseller_admin"
+  | "api_integration" | "super_admin" | "security_operator" | "reseller";
 
 export type AdminUserManagementSession = {
   role: string;
   tenantId: string | null;
   permissions: string[];
+  deniedPermissions?: string[];
 };
 
 export type AdminUserDelegationDecision =
   | { ok: true; role: ManagedAdminRole; permissions: string[] }
   | { ok: false; status: 400 | 403; reason: string };
 
-const MANAGED_ROLES = new Set<ManagedAdminRole>(["super_admin", "tenant_admin", "reseller", "viewer"]);
-const TENANT_DELEGABLE_ROLES = new Set<ManagedAdminRole>(["tenant_admin", "reseller", "viewer"]);
-const PERMISSION_RE = /^[a-z0-9][a-z0-9_.-]*:(?:\*|[a-z0-9][a-z0-9_.-]*)$/;
+const MANAGED_ROLES = new Set<ManagedAdminRole>([
+  "tenant_owner", "tenant_admin", "security_analyst", "operations_manager",
+  "packaging_operator", "marketing_manager", "viewer", "reseller_admin",
+  "api_integration", "super_admin", "security_operator", "reseller",
+]);
+const TENANT_DELEGABLE_ROLES = new Set<ManagedAdminRole>([
+  "tenant_admin", "security_analyst", "operations_manager", "packaging_operator",
+  "marketing_manager", "viewer", "reseller_admin", "security_operator", "reseller",
+]);
+const PERMISSION_RE = /^[a-z0-9][a-z0-9_.-]*(?::[a-z0-9][a-z0-9_.-]*)*(?::(?:[a-z0-9][a-z0-9_.-]*|\*))$/;
 const MAX_PERMISSION_COUNT = 128;
 const MAX_PERMISSION_LENGTH = 128;
+
+export type ParsedPermissionGrant = {
+  permission: string;
+  resource: string;
+  action: string;
+};
+
+/**
+ * Parses the external permission form while preserving every segment after
+ * the first colon as the database action. Wildcards are allowed only as the
+ * complete grant or as the final segment of a scoped grant.
+ */
+export function parsePermissionGrant(rawPermission: unknown): ParsedPermissionGrant | null {
+  const permission = String(rawPermission || "").trim().toLowerCase();
+  if (!permission || permission.length > MAX_PERMISSION_LENGTH) return null;
+  if (permission === "*") return { permission, resource: "*", action: "*" };
+  if (!PERMISSION_RE.test(permission)) return null;
+
+  const separator = permission.indexOf(":");
+  if (separator <= 0 || separator >= permission.length - 1) return null;
+  return {
+    permission,
+    resource: permission.slice(0, separator),
+    action: permission.slice(separator + 1),
+  };
+}
 
 function normalizeRole(rawRole: unknown) {
   return String(rawRole || "").trim().toLowerCase().replaceAll("-", "_");
@@ -28,8 +65,9 @@ function normalizePermissions(rawPermissions: unknown): string[] | null {
   const normalized: string[] = [];
   const seen = new Set<string>();
   for (const rawPermission of rawPermissions) {
-    const permission = String(rawPermission || "").trim().toLowerCase();
-    if (!permission || permission.length > MAX_PERMISSION_LENGTH || (permission !== "*" && !PERMISSION_RE.test(permission))) return null;
+    const parsed = parsePermissionGrant(rawPermission);
+    if (!parsed) return null;
+    const { permission } = parsed;
     if (!seen.has(permission)) {
       seen.add(permission);
       normalized.push(permission);
@@ -47,6 +85,9 @@ export function resolveAdminUserDelegation(
   if (!MANAGED_ROLES.has(role as ManagedAdminRole)) {
     return { ok: false, status: 400, reason: "invalid_role" };
   }
+  if (role === "api_integration") {
+    return { ok: false, status: 400, reason: "api_integration_requires_tenant_api_key" };
+  }
 
   const permissions = normalizePermissions(requestedPermissions);
   if (!permissions) {
@@ -58,13 +99,17 @@ export function resolveAdminUserDelegation(
     return { ok: true, role: role as ManagedAdminRole, permissions };
   }
 
-  if (normalizedSessionRole !== "tenant_admin" || !session.tenantId) {
+  if (!new Set(["tenant_owner", "tenant_admin"]).has(normalizedSessionRole) || !session.tenantId) {
     return { ok: false, status: 403, reason: "tenant_delegation_forbidden" };
   }
   if (!TENANT_DELEGABLE_ROLES.has(role as ManagedAdminRole)) {
     return { ok: false, status: 403, reason: "role_escalation_forbidden" };
   }
-  if (permissions.includes("*") || permissions.some((permission) => !permissionMatches(session.permissions, permission))) {
+  if (permissions.includes("*") || permissions.some((permission) => !permissionMatches(
+    session.permissions,
+    permission,
+    session.deniedPermissions,
+  ))) {
     return { ok: false, status: 403, reason: "permission_escalation_forbidden" };
   }
 

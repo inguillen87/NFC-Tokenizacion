@@ -115,8 +115,8 @@ export async function POST(req: Request) {
   for (const p of superPermissions) {
     const [res, act] = p.split(":");
     await sql`
-      INSERT INTO resource_permissions (user_id, resource, action)
-      VALUES (${userId}::uuid, ${res}, ${act})
+      INSERT INTO resource_permissions (user_id, tenant_id, resource, action)
+      VALUES (${userId}::uuid, NULL, ${res}, ${act})
       ON CONFLICT DO NOTHING
     `;
   }

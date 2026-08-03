@@ -15,6 +15,10 @@ test("fleet policy separates auth, proof writes, webhooks and public traffic", (
   assert.equal(classifyFleetRateLimit("/admin/proof/events", "POST"), "proof_write");
   assert.equal(classifyFleetRateLimit("/admin/proof/anchors", "POST"), "proof_write");
   assert.equal(classifyFleetRateLimit("/admin/supplier-orders/00000000-0000-4000-8000-000000000000/purpose/classify-trial", "POST"), "proof_write");
+  assert.equal(classifyFleetRateLimit("/admin/supplier-orders/00000000-0000-4000-8000-000000000000/lifecycle", "POST"), "proof_write");
+  assert.equal(classifyFleetRateLimit("/admin/supplier-orders/00000000-0000-4000-8000-000000000000/sub-batches/BID-001/production-acceptance", "POST"), "proof_write");
+  assert.equal(classifyFleetRateLimit("/admin/tenant-vault/acme/artifacts/00000000-0000-4000-8000-000000000000/download", "POST"), "proof_write");
+  assert.equal(classifyFleetRateLimit("/admin/supplier-orders/00000000-0000-4000-8000-000000000000/sub-batches/BID-001/production-acceptance/sessions/00000000-0000-4000-8000-000000000001/finalize", "POST"), "proof_write");
   assert.equal(classifyFleetRateLimit("/public/cta/tokenize-request", "POST"), "proof_write");
   assert.equal(classifyFleetRateLimit("/marketplace/p2p/buy", "POST"), "proof_write");
   assert.equal(classifyFleetRateLimit("/assistant/chat", "POST"), "ai_expensive");
@@ -36,7 +40,27 @@ test("fleet policy separates auth, proof writes, webhooks and public traffic", (
   assert.equal(classifyFleetRateLimit("/api/v1/sdk/products/BID-1", "GET"), "sdk_read");
   assert.equal(classifyFleetRateLimit("/api/v1/sdk/offline-sync", "POST"), "sdk_write");
   assert.equal(classifyFleetRateLimit("/api/v1/sdk/epcis/capture", "POST"), "sdk_epcis_capture");
+  assert.equal(classifyFleetRateLimit("/admin/risk-analytics", "GET"), "observability_read");
   assert.equal(classifyFleetRateLimit("/public/proof/x", "GET"), "public");
+});
+
+test("production acceptance mutations cannot bypass proof-write classification by path or method casing", () => {
+  const routes = [
+    "/admin/supplier-orders/00000000-0000-4000-8000-000000000000/sub-batches/BID-001/production-acceptance",
+    "/admin/supplier-orders/00000000-0000-4000-8000-000000000000/sub-batches/BID-001/production-acceptance/plan/00000000-0000-4000-8000-000000000001/decision",
+    "/admin/supplier-orders/00000000-0000-4000-8000-000000000000/sub-batches/BID-001/production-acceptance/sessions",
+    "/admin/supplier-orders/00000000-0000-4000-8000-000000000000/sub-batches/BID-001/production-acceptance/sessions/00000000-0000-4000-8000-000000000002/finalize",
+  ];
+
+  for (const route of routes) {
+    for (const method of ["POST", "post", "PoSt", "PATCH", "DELETE"]) {
+      assert.equal(classifyFleetRateLimit(route, method), "proof_write", `${method} ${route}`);
+    }
+    assert.equal(classifyFleetRateLimit(route.toUpperCase(), "POST"), "proof_write");
+    assert.equal(classifyFleetRateLimit(`${route}///`, "POST"), "proof_write");
+    assert.equal(classifyFleetRateLimit(route, "GET"), "public");
+    assert.equal(classifyFleetRateLimit(route, "get"), "public");
+  }
 });
 
 test("EPCIS capture has a dedicated transaction-amplification limit", () => {

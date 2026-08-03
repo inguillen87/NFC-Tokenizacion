@@ -53,12 +53,12 @@ export async function createManagedAdminUser(sql: Sql, input: {
     desired_permissions AS MATERIALIZED (
       SELECT DISTINCT
         CASE WHEN value = '*' THEN '*' ELSE split_part(value, ':', 1) END AS resource,
-        CASE WHEN value = '*' THEN '*' ELSE split_part(value, ':', 2) END AS action
+        CASE WHEN value = '*' THEN '*' ELSE substr(value, strpos(value, ':') + 1) END AS action
       FROM jsonb_array_elements_text(${JSON.stringify(input.permissions)}::jsonb)
     ),
     new_permissions AS (
-      INSERT INTO resource_permissions (user_id, resource, action)
-      SELECT nu.id, dp.resource, dp.action
+      INSERT INTO resource_permissions (user_id, tenant_id, resource, action)
+      SELECT nu.id, ${input.tenantId}::uuid, dp.resource, dp.action
       FROM new_user nu
       CROSS JOIN desired_permissions dp
       RETURNING user_id
@@ -107,12 +107,12 @@ export async function createManagedAdminInvite(sql: Sql, input: {
     desired_permissions AS MATERIALIZED (
       SELECT DISTINCT
         CASE WHEN value = '*' THEN '*' ELSE split_part(value, ':', 1) END AS resource,
-        CASE WHEN value = '*' THEN '*' ELSE split_part(value, ':', 2) END AS action
+        CASE WHEN value = '*' THEN '*' ELSE substr(value, strpos(value, ':') + 1) END AS action
       FROM jsonb_array_elements_text(${JSON.stringify(input.permissions)}::jsonb)
     ),
     new_permissions AS (
-      INSERT INTO resource_permissions (user_id, resource, action)
-      SELECT nu.id, dp.resource, dp.action
+      INSERT INTO resource_permissions (user_id, tenant_id, resource, action)
+      SELECT nu.id, ${input.tenantId}::uuid, dp.resource, dp.action
       FROM new_user nu
       CROSS JOIN desired_permissions dp
       RETURNING user_id
@@ -157,14 +157,14 @@ export async function replaceManagedAdminUserAccess(sql: Sql, input: ManagedAcce
               FROM memberships own_membership
               WHERE own_membership.user_id = u.id
                 AND own_membership.tenant_id = ${input.actorTenantId}::uuid
-                AND own_membership.role <> 'super_admin'::membership_role
+                AND own_membership.role::text NOT IN ('super_admin', 'tenant_owner')
             )
             AND NOT EXISTS (
               SELECT 1
               FROM memberships forbidden_membership
               WHERE forbidden_membership.user_id = u.id
                 AND (
-                  forbidden_membership.role = 'super_admin'::membership_role
+                  forbidden_membership.role::text IN ('super_admin', 'tenant_owner')
                   OR forbidden_membership.tenant_id IS NULL
                   OR forbidden_membership.tenant_id <> ${input.actorTenantId}::uuid
                 )
@@ -191,15 +191,15 @@ export async function replaceManagedAdminUserAccess(sql: Sql, input: ManagedAcce
     desired_permissions AS MATERIALIZED (
       SELECT DISTINCT
         CASE WHEN value = '*' THEN '*' ELSE split_part(value, ':', 1) END AS resource,
-        CASE WHEN value = '*' THEN '*' ELSE split_part(value, ':', 2) END AS action
+        CASE WHEN value = '*' THEN '*' ELSE substr(value, strpos(value, ':') + 1) END AS action
       FROM jsonb_array_elements_text(${JSON.stringify(input.permissions)}::jsonb)
     ),
     permissions_write AS (
-      INSERT INTO resource_permissions (user_id, resource, action)
-      SELECT target.id, desired.resource, desired.action
+      INSERT INTO resource_permissions (user_id, tenant_id, resource, action)
+      SELECT target.id, ${input.tenantId}::uuid, desired.resource, desired.action
       FROM target
       CROSS JOIN desired_permissions desired
-      ON CONFLICT (user_id, resource, action, effect) DO NOTHING
+      ON CONFLICT DO NOTHING
       RETURNING id
     ),
     old_permissions_delete AS (
@@ -212,6 +212,7 @@ export async function replaceManagedAdminUserAccess(sql: Sql, input: ManagedAcce
           WHERE desired.resource = permission.resource
             AND desired.action = permission.action
             AND permission.effect = 'allow'
+            AND permission.tenant_id IS NOT DISTINCT FROM ${input.tenantId}::uuid
         )
       RETURNING permission.id
     ),
@@ -248,13 +249,13 @@ export async function resetManagedAdminUserMfa(sql: Sql, input: ManagedTarget) {
               SELECT 1 FROM memberships own_membership
               WHERE own_membership.user_id = u.id
                 AND own_membership.tenant_id = ${input.actorTenantId}::uuid
-                AND own_membership.role <> 'super_admin'::membership_role
+                AND own_membership.role::text NOT IN ('super_admin', 'tenant_owner')
             )
             AND NOT EXISTS (
               SELECT 1 FROM memberships forbidden_membership
               WHERE forbidden_membership.user_id = u.id
                 AND (
-                  forbidden_membership.role = 'super_admin'::membership_role
+                  forbidden_membership.role::text IN ('super_admin', 'tenant_owner')
                   OR forbidden_membership.tenant_id IS NULL
                   OR forbidden_membership.tenant_id <> ${input.actorTenantId}::uuid
                 )
@@ -302,13 +303,13 @@ export async function createManagedAdminPasswordReset(sql: Sql, input: ManagedTa
               SELECT 1 FROM memberships own_membership
               WHERE own_membership.user_id = u.id
                 AND own_membership.tenant_id = ${input.actorTenantId}::uuid
-                AND own_membership.role <> 'super_admin'::membership_role
+                AND own_membership.role::text NOT IN ('super_admin', 'tenant_owner')
             )
             AND NOT EXISTS (
               SELECT 1 FROM memberships forbidden_membership
               WHERE forbidden_membership.user_id = u.id
                 AND (
-                  forbidden_membership.role = 'super_admin'::membership_role
+                  forbidden_membership.role::text IN ('super_admin', 'tenant_owner')
                   OR forbidden_membership.tenant_id IS NULL
                   OR forbidden_membership.tenant_id <> ${input.actorTenantId}::uuid
                 )

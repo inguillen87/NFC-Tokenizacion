@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { UserRole } from "./dashboard-content";
 import { dashboardDemoAccessAllowedForRole, dashboardFallbackSessionAllowed } from "./dashboard-access-flags";
+import { normalizeDashboardHumanSessionRole } from "./enterprise-runtime-rbac";
 import { dashboardPermissionMatches } from "./permission-policy";
 
 export const DASHBOARD_SESSION_COOKIE = "nexid_dashboard_session";
@@ -18,6 +19,7 @@ export type DashboardSession = {
   tenantSlug?: string | null;
   label: string;
   permissions: string[];
+  deniedPermissions?: string[];
   mfaVerified: boolean;
   rotatedCookieValue?: string | null;
   expiresAt?: string;
@@ -52,15 +54,16 @@ function parseDemoToken(token: string): DashboardSession | null {
   try {
     const raw = Buffer.from(encoded, "base64url").toString("utf8");
     let email = "";
-    let role: UserRole | "" = "";
+    let rawRole: unknown = "";
     try {
-      const data = JSON.parse(raw) as { email?: string; role?: UserRole };
+      const data = JSON.parse(raw) as { email?: string; role?: unknown };
       email = String(data.email || "");
-      role = (data.role || "") as UserRole;
+      rawRole = data.role;
     } catch {
       email = raw.includes("@") ? raw : "";
-      role = email.includes("superadmin") ? "super-admin" : "tenant-admin";
+      rawRole = email.includes("superadmin") ? "super-admin" : "tenant-admin";
     }
+    const role = normalizeDashboardHumanSessionRole(rawRole);
     if (!email || !role) return null;
     return {
       id: `demo-${role}-${email}`,
@@ -108,6 +111,8 @@ export async function getDashboardSessionCredential(
         rotatedSessionToken?: string | null;
       } | null;
       if (data?.ok && data.session) {
+        const role = normalizeDashboardHumanSessionRole(data.session.role);
+        if (!role) return null;
         const rotatedSessionToken = String(data.rotatedSessionToken || data.session.rotatedCookieValue || "").trim() || null;
         if (rotatedSessionToken && options.persistRotation) {
           try {
@@ -121,7 +126,17 @@ export async function getDashboardSessionCredential(
           } catch {}
         }
         return {
-          session: { ...data.session, rotatedCookieValue: rotatedSessionToken },
+          session: {
+            ...data.session,
+            role,
+            permissions: Array.isArray(data.session.permissions)
+              ? data.session.permissions.map((permission) => String(permission))
+              : [],
+            deniedPermissions: Array.isArray(data.session.deniedPermissions)
+              ? data.session.deniedPermissions.map((permission) => String(permission))
+              : [],
+            rotatedCookieValue: rotatedSessionToken,
+          },
           bearerToken: rotatedSessionToken || token,
           rotatedSessionToken,
         };
@@ -142,6 +157,10 @@ export async function getDashboardSession() {
 export async function requireDashboardSession(permission?: string) {
   const session = await getDashboardSession();
   if (!session) redirect("/login");
-  if (permission && session.role !== "super-admin" && !dashboardPermissionMatches(session.permissions, permission)) redirect("/");
+  if (permission && session.role !== "super-admin" && !dashboardPermissionMatches(
+    session.permissions,
+    permission,
+    session.deniedPermissions,
+  )) redirect("/");
   return session;
 }

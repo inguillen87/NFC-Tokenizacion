@@ -2,51 +2,87 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 import { sql } from "../../../../../lib/db";
-import { checkAdmin, getAdminActor, getAdminTenantScope } from "../../../../../lib/auth";
+import { checkAdminWithPermission, getAdminActor, getAdminTenantScope } from "../../../../../lib/auth";
 import { json } from "../../../../../lib/http";
 import { parseTagManifest } from "../../../../../lib/tag-manifest";
 import { requireTenantSunProfile } from "../../../../../lib/tenant-onboarding";
 import { ensureCarrierProfileSchema } from "../../../../../lib/commercial-runtime-schema";
 import { getCarrierProfile, normalizeCarrierProfileCode } from "../../../../../lib/carrier-profiles";
-import { upsertTagSunPayload } from "../../../../../lib/sun-payload-registry.ts";
 import { ensureSupplierOpsSchema } from "../../../../../lib/supplier-ops-schema";
 import { canImportSupplierManifest, requiresSecureSunEncoding, validateSupplierManifestQuantity } from "../../../../../lib/supplier-ops";
-import { hashEvidencePayload } from "../../../../../lib/proof-layer";
-import { logAuditEvent } from "../../../../../lib/audit-logger";
+import { RequestBodyTooLargeError, readRequestTextBounded } from "../../../../../lib/bounded-request-body";
+import {
+  hasSupplierManifestImportV2,
+  importTagManifestV2,
+  SUPPLIER_MANIFEST_IMPORT_V2_MIGRATION,
+  supplierManifestImportError,
+  type AtomicManifestRow,
+} from "../../../../../lib/supplier-manifest-import";
+import { buildSupplierOpsErrorReport } from "../../../../../lib/supplier-ops-error-report";
+
+const MAX_MANIFEST_BODY_BYTES = 16 * 1024 * 1024;
 
 type ManifestPayload = {
   csv?: string;
   activateImported?: boolean;
   dryRun?: boolean;
   overrideReason?: string;
-  overrideBy?: string;
 };
+
+const SENSITIVE_MANIFEST_COLUMN = /^(?:k_?meta(?:_?hex)?|k_?file(?:_?hex)?|key_?(?:meta|file)|meta_?key(?:_?(?:hex|ct))?|file_?key(?:_?(?:hex|ct))?|master_?key|root_?key|private_?key|secret(?:_?key)?|client_?secret|access_?token|refresh_?token|bearer_?token|auth_?token|encryption_?key|decryption_?key|api_?key|password|passphrase|mnemonic(?:_?phrase)?|seed_?phrase|(?:wallet|signing|recovery|secret)_?seed)$/i;
+
+function sensitiveManifestColumns(rows: Array<{ raw: Record<string, string> }>) {
+  return Array.from(new Set(rows.flatMap((row) => Object.keys(row.raw)
+    .map((key) => key.trim().toLowerCase().replace(/[\s-]+/g, "_"))
+    .filter((key) => SENSITIVE_MANIFEST_COLUMN.test(key))))).sort();
+}
+
+function sanitizeManifestRejections(
+  rows: Array<{ row: number; reason: string; value?: string }>,
+) {
+  return rows.map((entry) => entry.reason === "invalid_sun_payload"
+    ? { row: entry.row, reason: entry.reason, value: "[REDACTED_SUN_PAYLOAD]" }
+    : entry);
+}
 
 async function readPayload(req: Request): Promise<ManifestPayload & { csv: string }> {
   const contentType = req.headers.get("content-type") || "";
+  const raw = await readRequestTextBounded(req, MAX_MANIFEST_BODY_BYTES);
   if (contentType.includes("application/json")) {
-    const body = (await req.json().catch(() => ({}))) as ManifestPayload;
+    const body = (raw.trim() ? JSON.parse(raw) : {}) as ManifestPayload;
     return {
       csv: String(body.csv || ""),
       activateImported: Boolean(body.activateImported),
       dryRun: Boolean(body.dryRun),
       overrideReason: String(body.overrideReason || (body as Record<string, unknown>).override_reason || "").trim(),
-      overrideBy: String(body.overrideBy || (body as Record<string, unknown>).override_by || "").trim(),
     };
   }
 
-  const raw = await req.text();
   return { csv: raw, activateImported: false, dryRun: false };
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ bid: string }> }) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdminWithPermission(req, "manifest.import");
   if (auth) return auth;
+  let atomicManifestAvailable = false;
+  try {
+    atomicManifestAvailable = await hasSupplierManifestImportV2();
+  } catch {
+    atomicManifestAvailable = false;
+  }
+  if (!atomicManifestAvailable) {
+    return json({
+      ok: false,
+      reason: "supplier_manifest_import_v2_migration_required",
+      required_migration: SUPPLIER_MANIFEST_IMPORT_V2_MIGRATION,
+    }, 503);
+  }
   await ensureCarrierProfileSchema();
   await ensureSupplierOpsSchema();
 
   const { bid } = await params;
-  const { forcedTenantSlug } = getAdminTenantScope(req);
+  const adminScope = getAdminTenantScope(req);
+  const { forcedTenantSlug } = adminScope;
   const batchRows = forcedTenantSlug
     ? await sql/*sql*/`
       SELECT
@@ -107,11 +143,40 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
     }
   }
 
-  const payload = await readPayload(req);
+  let payload: ManifestPayload & { csv: string };
+  try {
+    payload = await readPayload(req);
+  } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
+      return json({ ok: false, reason: "manifest_body_too_large", max_bytes: MAX_MANIFEST_BODY_BYTES }, 413);
+    }
+    return json({ ok: false, reason: "manifest_body_invalid" }, 400);
+  }
   if (!payload.csv.trim()) return json({ ok: false, reason: "empty csv body" }, 400);
 
   const manifest = parseTagManifest(payload.csv, bid);
   if (!manifest.rows.length && !manifest.rejectedRows.length) return json({ ok: false, reason: "manifest has no rows" }, 400);
+  const sensitiveColumns = sensitiveManifestColumns(manifest.rows);
+  if (sensitiveColumns.length > 0) {
+    const message = "UID manifests must not contain NFC keys, credentials, seed phrases, or other secret material.";
+    return json({
+      ok: false,
+      reason: "supplier_manifest_sensitive_columns_forbidden",
+      message,
+      rejected_columns: sensitiveColumns,
+      error_report: buildSupplierOpsErrorReport({
+        stage: "manifest",
+        bid,
+        reason: "supplier_manifest_sensitive_columns_forbidden",
+        message,
+        issues: sensitiveColumns.map((field) => ({
+          code: "sensitive_column_forbidden",
+          field,
+          detail: "Remove the column and rotate any secret that may have been disclosed in the supplier file.",
+        })),
+      }),
+    }, 400);
+  }
 
   const supplierSubBatchRows = await sql/*sql*/`
     SELECT
@@ -141,22 +206,48 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
     : { ok: true as const };
   const quantityOverrideReason = String(payload.overrideReason || "").trim();
   const quantityOverrideBy = getAdminActor(req).email;
-  const quantityOverride = Boolean(supplierSubBatch && !supplierQuantityGate.ok && quantityOverrideReason);
+  let quantityOverride = false;
   if (!supplierQuantityGate.ok) {
-    if (!quantityOverride || quantityOverrideReason.length < 16 || !quantityOverrideBy) {
+    if (adminScope.scope !== "super_admin") {
+      return json({
+        ok: false,
+        reason: "supplier_manifest_quantity_override_forbidden",
+        message: "Only a superadmin can override a supplier manifest quantity mismatch.",
+        expected: supplierQuantityGate.expected,
+        received: supplierQuantityGate.received,
+        bid,
+        required_scope: "super_admin",
+      }, 403);
+    }
+    if (quantityOverrideReason.length < 16 || !quantityOverrideBy) {
+      const message = "Supplier manifest quantity must match the planned sub-batch quantity unless a superadmin provides an explicit audited reason.";
       return json({
         ok: false,
         reason: supplierQuantityGate.reason,
-        message: "Supplier manifest quantity must match the planned sub-batch quantity unless an explicit audited override is provided.",
+        message,
         expected: supplierQuantityGate.expected,
         received: supplierQuantityGate.received,
         bid,
         override_required: {
-          fields: ["overrideReason", "overrideBy"],
+          fields: ["overrideReason"],
           min_reason_length: 16,
+          required_scope: "super_admin",
         },
+        error_report: buildSupplierOpsErrorReport({
+          stage: "manifest",
+          bid,
+          reason: supplierQuantityGate.reason,
+          message,
+          issues: [{
+            code: supplierQuantityGate.reason,
+            field: "row_count",
+            value: `expected=${supplierQuantityGate.expected};received=${supplierQuantityGate.received}`,
+            detail: "Correct the supplier file, create a corrective sub-batch, or use the explicitly audited superadmin quantity exception.",
+          }],
+        }),
       }, 409);
     }
+    quantityOverride = true;
   }
 
   const manifestUids = Array.from(new Set(manifest.rows.map((row) => row.uidHex.toUpperCase()).filter(Boolean)));
@@ -173,6 +264,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
       `
     : [];
   if (duplicateGlobalRows.length > 0) {
+    const duplicateUids = duplicateGlobalRows.map((row) => row.uid_hex);
+    const safeRejectedRows = duplicateUids.map((uidHex) => ({
+      reason: "global_uid_duplicate",
+      uid_hex: uidHex,
+    }));
     if (!payload.dryRun) {
       await sql/*sql*/`
         INSERT INTO tenant_manifests (
@@ -182,24 +278,32 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
         ) VALUES (
           ${batch.tenant_id}, ${batch.id}, ${bid}, ${manifest.manifestType}, ${manifest.rows.length},
           ${duplicateGlobalRows.length}, ${duplicateGlobalRows.length}, ${manifest.contentHash},
-          'rejected', ${JSON.stringify(duplicateGlobalRows.map((row) => ({
-            reason: "global_uid_duplicate",
-            uid_hex: row.uid_hex,
-            existing_bid: row.bid,
-            tenant_slug: row.tenant_slug,
-          })))}::jsonb, ${batchCarrierCode},
+          'rejected', ${JSON.stringify(safeRejectedRows)}::jsonb, ${batchCarrierCode},
           ${supplierSubBatch?.supplier_order_id || null}, ${supplierSubBatch?.id || null},
           ${supplierSubBatch?.expected_quantity || null}
         )
       `;
     }
+    const message = "Manifest contains UIDs already registered in another batch. Supplier UIDs must be globally unique.";
     return json({
       ok: false,
       reason: "global_uid_duplicate",
-      message: "Manifest contains UIDs already registered in another batch. Supplier UIDs must be globally unique.",
-      duplicateUids: duplicateGlobalRows.map((row) => row.uid_hex),
-      duplicates: duplicateGlobalRows,
+      message,
+      duplicateUids,
+      ...(adminScope.scope === "super_admin" ? { duplicates: duplicateGlobalRows } : {}),
       bid,
+      error_report: buildSupplierOpsErrorReport({
+        stage: "manifest",
+        bid,
+        reason: "global_uid_duplicate",
+        message,
+        issues: duplicateUids.map((uidHex) => ({
+          code: "global_uid_duplicate",
+          field: "uid_hex",
+          value: uidHex,
+          detail: "UID already belongs to another registered batch; it cannot be silently reassigned.",
+        })),
+      }),
     }, 409);
   }
   if (supplierSubBatch && payload.activateImported) {
@@ -212,6 +316,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
   }
 
   if (manifest.rejectedRows.length > 0) {
+    const safeRejectedRows = sanitizeManifestRejections(manifest.rejectedRows);
     if (!payload.dryRun) {
       await sql/*sql*/`
         INSERT INTO tenant_manifests (
@@ -221,13 +326,36 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
         ) VALUES (
           ${batch.tenant_id}, ${batch.id}, ${bid}, ${manifest.manifestType}, ${manifest.rows.length},
           ${manifest.duplicateUids.length}, ${manifest.rejectedRows.length}, ${manifest.contentHash},
-          'rejected', ${JSON.stringify(manifest.rejectedRows)}::jsonb, ${batchCarrierCode},
+          'rejected', ${JSON.stringify(safeRejectedRows)}::jsonb, ${batchCarrierCode},
           ${supplierSubBatch?.supplier_order_id || null}, ${supplierSubBatch?.id || null},
           ${supplierSubBatch?.expected_quantity || null}
         )
       `;
     }
-    return json({ ok: false, reason: "manifest_validation_failed", rejectedRows: manifest.rejectedRows, duplicateUids: manifest.duplicateUids }, 400);
+    return json({
+      ok: false,
+      reason: "manifest_validation_failed",
+      rejectedRows: safeRejectedRows,
+      duplicateUids: manifest.duplicateUids,
+      error_report: buildSupplierOpsErrorReport({
+        stage: "manifest",
+        bid,
+        reason: "manifest_validation_failed",
+        message: "The supplier manifest contains invalid rows and was not imported.",
+        issues: [
+          ...safeRejectedRows.map((entry) => ({
+            row: entry.row,
+            code: entry.reason,
+            value: entry.value,
+          })),
+          ...manifest.duplicateUids.map((uidHex) => ({
+            code: "duplicate_uid_in_file",
+            field: "uid_hex",
+            value: uidHex,
+          })),
+        ],
+      }),
+    }, 400);
   }
 
   // Dry run simulation
@@ -283,48 +411,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
     });
   }
 
-  let inserted = 0;
-  let reactivated = 0;
-  let registeredSunPayloads = 0;
-
-  for (const row of manifest.rows) {
+  const invalidCarrierRow = manifest.rows.find((row) => !getCarrierProfile(row.carrierProfileCode || batchCarrierCode));
+  if (invalidCarrierRow) {
+    return json({ ok: false, reason: "invalid_carrier_profile", value: invalidCarrierRow.carrierProfileCode }, 400);
+  }
+  const atomicRows: AtomicManifestRow[] = manifest.rows.map((row) => {
     const rowCarrierCode = row.carrierProfileCode || batchCarrierCode;
-    const rowCarrier = getCarrierProfile(rowCarrierCode);
-    if (!rowCarrier) {
-      return json({ ok: false, reason: "invalid_carrier_profile", value: row.carrierProfileCode }, 400);
-    }
-    const result = await sql/*sql*/`
-      INSERT INTO tags (batch_id, uid_hex, status, carrier_profile_code)
-      VALUES (${batch.id}, ${row.uidHex}, ${payload.activateImported ? 'active' : 'inactive'}, ${rowCarrierCode})
-      ON CONFLICT (batch_id, uid_hex)
-      DO UPDATE SET status = CASE
-        WHEN ${payload.activateImported} THEN 'active'::tag_status
-        ELSE tags.status
-      END,
-      carrier_profile_code = COALESCE(tags.carrier_profile_code, EXCLUDED.carrier_profile_code)
-      RETURNING id, xmax = 0 AS inserted, status
-    `;
-    const current = result[0];
-    if (current?.inserted) inserted += 1;
-    else if (payload.activateImported) reactivated += 1;
-
-    if (current?.id && row.sunPayloadHashes) {
-      await upsertTagSunPayload({
-        tenantId: String(batch.tenant_id),
-        batchId: String(batch.id),
-        bid: row.sunPayload?.bid || bid,
-        tagId: String(current.id),
-        uidHex: row.uidHex,
-        hashes: row.sunPayloadHashes,
-        source: "supplier_manifest",
-        rawPayload: {
-          sun_payload: row.sunPayload,
-          manifest: row.raw,
-        },
-      });
-      registeredSunPayloads += 1;
-    }
-
+    const rowCarrier = getCarrierProfile(rowCarrierCode)!;
     const hasUnitManifest = Boolean(
       row.lot
       || row.serial
@@ -338,159 +431,78 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
       || rowCarrierCode !== batchCarrierCode,
     );
     const hasProductOverride = Boolean(row.productName || row.sku);
+    const media = {
+      imageUrl: row.imageUrl,
+      labelImageUrl: row.labelImageUrl,
+      modelUrl: row.modelUrl,
+      galleryUrls: row.galleryUrls,
+    };
+    return {
+      uidHex: row.uidHex,
+      carrierProfileCode: rowCarrierCode,
+      profile: hasUnitManifest || hasProductOverride ? {
+        sku: hasProductOverride ? row.sku : null,
+        product_name: hasProductOverride ? row.productName : null,
+        notes: row.lot || row.serial || row.expiresAt || Object.keys(row.unitMetadata).length || row.iotData
+          ? JSON.stringify({ lot: row.lot, serial: row.serial, expires_at: row.expiresAt, ...row.unitMetadata, iot: row.iotData })
+          : null,
+        image_url: row.imageUrl,
+        locale_data: {
+          media,
+          manifest: {
+            lot: row.lot,
+            serial: row.serial,
+            external_unit_id: row.serial,
+            expires_at: row.expiresAt,
+            unit_metadata: row.unitMetadata,
+            carrier_profile_code: rowCarrierCode,
+            carrier_label: rowCarrier.label,
+          },
+          iot: row.iotData,
+        },
+      } : null,
+      sunPayload: row.sunPayloadHashes ? {
+        raw_url_hash: row.sunPayloadHashes.rawUrlHash,
+        picc_data_hash: row.sunPayloadHashes.piccDataHash,
+        enc_hash: row.sunPayloadHashes.encHash,
+        cmac_hash: row.sunPayloadHashes.cmacHash,
+      } : null,
+    };
+  });
 
-    if (hasUnitManifest || hasProductOverride) {
-      const media = {
-        imageUrl: row.imageUrl,
-        labelImageUrl: row.labelImageUrl,
-        modelUrl: row.modelUrl,
-        galleryUrls: row.galleryUrls,
-      };
-      await sql/*sql*/`
-        INSERT INTO tag_profiles (tag_id, sku, product_name, notes, image_url, locale_data, carrier_profile_code)
-        VALUES (
-          ${current.id},
-          ${hasProductOverride ? row.sku : null},
-          ${hasProductOverride ? row.productName : null},
-          ${row.lot || row.serial || row.expiresAt || Object.keys(row.unitMetadata).length || row.iotData ? JSON.stringify({ lot: row.lot, serial: row.serial, expires_at: row.expiresAt, ...row.unitMetadata, iot: row.iotData }) : null},
-          ${row.imageUrl},
-          ${JSON.stringify({
-            media,
-            manifest: {
-              lot: row.lot,
-              serial: row.serial,
-              external_unit_id: row.serial,
-              expires_at: row.expiresAt,
-              unit_metadata: row.unitMetadata,
-              raw: row.raw,
-              carrier_profile_code: rowCarrierCode,
-              carrier_label: rowCarrier.label,
-            },
-            iot: row.iotData,
-          })}::jsonb,
-          ${rowCarrierCode}
-        )
-        ON CONFLICT (tag_id) DO UPDATE SET
-          sku = COALESCE(EXCLUDED.sku, tag_profiles.sku),
-          product_name = COALESCE(EXCLUDED.product_name, tag_profiles.product_name),
-          notes = COALESCE(EXCLUDED.notes, tag_profiles.notes),
-          image_url = COALESCE(EXCLUDED.image_url, tag_profiles.image_url),
-          locale_data = tag_profiles.locale_data || EXCLUDED.locale_data,
-          carrier_profile_code = COALESCE(tag_profiles.carrier_profile_code, EXCLUDED.carrier_profile_code),
-          updated_at = now()
-      `;
-    }
-  }
-
-  await sql/*sql*/`
-    INSERT INTO tenant_manifests (
-      tenant_id, batch_id, bid, manifest_type, row_count, inserted_count, reactivated_count,
-      duplicate_count, rejected_count, content_hash, import_status, errors_json, carrier_profile_code,
-      supplier_order_id, supplier_sub_batch_id, expected_quantity
-    ) VALUES (
-      ${batch.tenant_id}, ${batch.id}, ${bid}, ${manifest.manifestType}, ${manifest.rows.length},
-      ${inserted}, ${reactivated}, 0, 0, ${manifest.contentHash}, 'imported',
-      ${JSON.stringify({
-        registeredSunPayloads,
-        quantity_override: quantityOverride ? {
-          reason: quantityOverrideReason,
-          override_by: quantityOverrideBy,
-          expected: "expected" in supplierQuantityGate ? supplierQuantityGate.expected : null,
-          received: "received" in supplierQuantityGate ? supplierQuantityGate.received : null,
-        } : null,
-      })}::jsonb, ${batchCarrierCode},
-      ${supplierSubBatch?.supplier_order_id || null}, ${supplierSubBatch?.id || null},
-      ${supplierSubBatch?.expected_quantity || null}
-    )
-  `;
-
-  if (supplierSubBatch) {
-    await sql/*sql*/`
-      UPDATE supplier_sub_batches
-      SET
-        manifest_status = 'imported',
-        manifest_count = ${manifest.rows.length},
-        manifest_hash = ${manifest.contentHash},
-        manifest_imported_at = now(),
-        metadata_json = metadata_json || ${JSON.stringify({
-          quantity_override: quantityOverride ? {
-            reason: quantityOverrideReason,
-            override_by: quantityOverrideBy,
-            expected: "expected" in supplierQuantityGate ? supplierQuantityGate.expected : null,
-            received: "received" in supplierQuantityGate ? supplierQuantityGate.received : null,
-          } : null,
-        })}::jsonb,
-        updated_at = now()
-      WHERE id = ${supplierSubBatch.id}
-    `;
-    await sql/*sql*/`
-      UPDATE batches
-      SET manifest_status = 'imported'
-      WHERE id = ${batch.id}
-    `;
-    await sql/*sql*/`
-      INSERT INTO vault_artifacts (
-        tenant_id, supplier_order_id, supplier_sub_batch_id, resource_type, resource_id,
-        artifact_type, content_hash, mime_type, metadata_json
-      ) VALUES (
-        ${batch.tenant_id}, ${supplierSubBatch.supplier_order_id}, ${supplierSubBatch.id},
-        'supplier_sub_batch', ${supplierSubBatch.id}, 'uid_manifest', ${manifest.contentHash},
-        'text/csv', ${JSON.stringify({ bid, row_count: manifest.rows.length, manifest_type: manifest.manifestType })}::jsonb
-      )
-    `;
-    for (const eventType of ["manifest_imported", "manifest_validated"]) {
-      const eventPayload = {
-        supplier_order_id: supplierSubBatch.supplier_order_id,
-        supplier_sub_batch_id: supplierSubBatch.id,
-        bid,
-        row_count: manifest.rows.length,
-        content_hash: manifest.contentHash,
-        carrier_profile_code: batchCarrierCode,
-        quantity_override: quantityOverride ? {
-          reason: quantityOverrideReason,
-          override_by: quantityOverrideBy,
-          expected: "expected" in supplierQuantityGate ? supplierQuantityGate.expected : null,
-          received: "received" in supplierQuantityGate ? supplierQuantityGate.received : null,
-        } : null,
-      };
-      const eventHash = hashEvidencePayload({
-        tenantId: String(batch.tenant_id),
-        resourceType: "supplier_sub_batch",
-        resourceId: String(supplierSubBatch.id),
-        eventType,
-        payload: eventPayload,
-      });
-      await sql/*sql*/`
-        INSERT INTO evidence_events (tenant_id, resource_type, resource_id, event_type, payload_json, payload_hash)
-        VALUES (${batch.tenant_id}, 'supplier_sub_batch', ${supplierSubBatch.id}, ${eventType}, ${JSON.stringify(eventPayload)}::jsonb, ${eventHash})
-        ON CONFLICT (payload_hash) DO NOTHING
-      `;
-    }
-    await logAuditEvent({
-      actorId: null,
+  const actor = getAdminActor(req);
+  let atomicImport;
+  try {
+    atomicImport = await importTagManifestV2({
       tenantId: String(batch.tenant_id),
-      action: "supplier_manifest_imported",
-      resourceType: "supplier_sub_batch",
-      resourceId: String(supplierSubBatch.id),
-      afterData: {
-        supplier_order_id: supplierSubBatch.supplier_order_id,
-        supplier_sub_batch_id: supplierSubBatch.id,
-        bid,
-        row_count: manifest.rows.length,
-        content_hash: manifest.contentHash,
-        carrier_profile_code: batchCarrierCode,
-        imported_by: getAdminActor(req).email,
-        quantity_override: quantityOverride ? {
-          reason: quantityOverrideReason,
-          override_by: quantityOverrideBy,
-          expected: "expected" in supplierQuantityGate ? supplierQuantityGate.expected : null,
-          received: "received" in supplierQuantityGate ? supplierQuantityGate.received : null,
-        } : null,
-      },
-      userAgent: req.headers.get("user-agent"),
+      batchId: String(batch.id),
+      bid,
+      carrierProfileCode: batchCarrierCode,
+      manifestType: manifest.manifestType,
+      contentHash: manifest.contentHash,
+      activateImported: Boolean(payload.activateImported),
+      supplierOrderId: supplierSubBatch ? String(supplierSubBatch.supplier_order_id) : null,
+      supplierSubBatchId: supplierSubBatch ? String(supplierSubBatch.id) : null,
+      expectedQuantity: supplierSubBatch ? Number(supplierSubBatch.expected_quantity || 0) : null,
+      quantityOverride: quantityOverride ? { reason: quantityOverrideReason } : null,
+      actorId: actor.id,
+      authSessionId: actor.sessionId,
       requestId: req.headers.get("x-request-id"),
+      userAgent: req.headers.get("user-agent"),
+      rows: atomicRows,
     });
+  } catch (error) {
+    const mapped = supplierManifestImportError(error);
+    return json({
+      ok: false,
+      reason: mapped.reason,
+      ...(mapped.requiredMigration ? { required_migration: mapped.requiredMigration } : {}),
+    }, mapped.status);
   }
+
+  const inserted = atomicImport.inserted;
+  const reactivated = atomicImport.reactivated;
+  const registeredSunPayloads = atomicImport.registeredSunPayloads;
 
   return json({
     ok: true,

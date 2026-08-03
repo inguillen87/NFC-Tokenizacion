@@ -10,6 +10,7 @@ import {
   assertEmptyEnterpriseE2eDatabase,
   readEnterpriseEphemeralE2eConfig,
 } from "./lib/enterprise-ephemeral-e2e-safety.mjs";
+import { startEnterpriseEphemeralHttpHarness } from "./lib/enterprise-ephemeral-http.mjs";
 
 const apiRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const { Client, Pool } = pg;
@@ -149,6 +150,7 @@ async function run() {
   const uninstallSqlExecutor = installEphemeralE2eSqlExecutor(query, process.env);
   const abortStream = new AbortController();
   let sseProbe = null;
+  let httpHarness = null;
 
   try {
     const ledger = await client.query("SELECT count(*)::integer AS count FROM schema_migrations");
@@ -161,6 +163,9 @@ async function run() {
     const batchId = "33333333-3333-4333-8333-333333333333";
     const tagId = "44444444-4444-4444-8444-444444444444";
     const userId = "55555555-5555-4555-8555-555555555555";
+    const otherTenantUserId = "56565656-5656-4656-8656-565656565656";
+    const packagingApproverUserId = "57575757-5757-4757-8757-575757575757";
+    const superAdminUserId = "58585858-5858-4858-8858-585858585858";
     const tenantSlug = "enterprise-e2e";
     const bid = "E2E-ENTERPRISE-001";
     const uidHex = "0487856A0B1090";
@@ -195,17 +200,48 @@ async function run() {
     await client.query(`INSERT INTO tags (
       id, batch_id, uid_hex, status, lifecycle_state, lifecycle_revision
     ) VALUES ($1, $2, $3, 'active', 'active', 0)`, [tagId, batchId, uidHex]);
-    await client.query(`INSERT INTO users (id, email, full_name, admin_status)
-      VALUES ($1, 'enterprise-e2e@nexid.invalid', 'Enterprise E2E Operator', 'active')`, [userId]);
-    await client.query(`INSERT INTO memberships (user_id, tenant_id, role)
-      VALUES ($1, $2, 'tenant_admin')`, [userId, tenantId]);
-    await client.query(`INSERT INTO resource_permissions (user_id, resource, action, effect) VALUES
-      ($1, 'incidents', 'read', 'allow'),
-      ($1, 'incidents', 'write', 'allow'),
-      ($1, 'sdk:keys', 'read', 'allow'),
-      ($1, 'sdk:keys', 'write', 'allow'),
-      ($1, 'webhooks', 'read', 'allow'),
-      ($1, 'webhooks', 'write', 'allow')`, [userId]);
+    await client.query(`INSERT INTO users (id, email, full_name, admin_status) VALUES
+      ($1, 'enterprise-e2e@nexid.invalid', 'Enterprise E2E Operator', 'active'),
+      ($2, 'enterprise-e2e-other@nexid.invalid', 'Other Tenant E2E Operator', 'active'),
+      ($3, 'enterprise-e2e-approver@nexid.invalid', 'Enterprise E2E Packaging Approver', 'active'),
+      ($4, 'enterprise-e2e-superadmin@nexid.invalid', 'Enterprise E2E Super Admin', 'active')`, [
+      userId,
+      otherTenantUserId,
+      packagingApproverUserId,
+      superAdminUserId,
+    ]);
+    await client.query(`INSERT INTO memberships (user_id, tenant_id, role) VALUES
+      ($1, $2, 'tenant_admin'),
+      ($3, $4, 'tenant_admin'),
+      ($5, $2, 'tenant_admin'),
+      ($6, NULL, 'super_admin')`, [
+      userId,
+      tenantId,
+      otherTenantUserId,
+      otherTenantId,
+      packagingApproverUserId,
+      superAdminUserId,
+    ]);
+    await client.query(`INSERT INTO resource_permissions (user_id, tenant_id, resource, action, effect) VALUES
+      ($1, $4, 'incidents', 'read', 'allow'),
+      ($1, $4, 'incidents', 'write', 'allow'),
+      ($1, $4, 'sdk:keys', 'read', 'allow'),
+       ($1, $4, 'sdk:keys', 'write', 'allow'),
+       ($1, $4, 'webhooks', 'read', 'allow'),
+       ($1, $4, 'webhooks', 'write', 'allow'),
+       ($2, $4, 'supplier', 'approve_packaging', 'allow'),
+       ($3, $5, 'webhooks', 'read', 'allow')`, [userId, packagingApproverUserId, otherTenantUserId, tenantId, otherTenantId]);
+    await client.query(`INSERT INTO tenant_sun_profiles (
+      tenant_id, vertical, club_name, product_label, origin_label, origin_address,
+      origin_lat, origin_lng, tokenization_mode, claim_policy, ownership_policy,
+      manifest_policy, metadata
+    ) VALUES (
+      $1::uuid, 'agro', 'Enterprise E2E Agro', 'Secure agrochemical',
+      'Rosario packaging line', 'Rosario, Santa Fe, Argentina',
+      -32.95, -60.66, 'manual', 'purchase_proof_required',
+      '{"proof_required":true}'::jsonb, '{"manifest_required":true}'::jsonb,
+      '{"setup_completed":true,"fixture":"enterprise_ephemeral_http"}'::jsonb
+    )`, [tenantId]);
 
     // Supplier QA verification-context v2: prove the marker and canonicalizer
     // on real PostgreSQL, then hold a concurrent state mutation open while the
@@ -662,46 +698,340 @@ async function run() {
     assert.equal(afterRejectedRotation.qa_status, "passed");
 
     const { createSession, sessionCookieValue } = await import("../src/lib/iam.ts");
-    const session = await createSession(query, {
-      user: {
-        id: userId,
-        email: "enterprise-e2e@nexid.invalid",
-        label: "Enterprise E2E Operator",
-        admin_status: "active",
-        role: "tenant_admin",
-        tenant_id: tenantId,
-        password_hash: "not-used-by-ephemeral-e2e",
-        permissions: [
-          "incidents:read",
-          "incidents:write",
-          "sdk:keys:read",
-          "sdk:keys:write",
-          "webhooks:read",
-          "webhooks:write",
-        ],
-        mfa_enabled: false,
-      },
-      mfaVerified: true,
-      ip: "127.0.0.1",
-      userAgent: "nexid-enterprise-ephemeral-e2e",
+    async function issueHumanSession({ id, email, label, role, tenantId: sessionTenantId, permissions = [] }) {
+      const issued = await createSession(query, {
+        user: {
+          id,
+          email,
+          label,
+          admin_status: "active",
+          role,
+          tenant_id: sessionTenantId,
+          password_hash: "not-used-by-ephemeral-e2e",
+          permissions,
+          mfa_enabled: false,
+        },
+        mfaVerified: true,
+        ip: "127.0.0.1",
+        userAgent: "nexid-enterprise-ephemeral-e2e",
+      });
+      return sessionCookieValue(String(issued.id), issued.secret);
+    }
+    const bearer = await issueHumanSession({
+      id: userId,
+      email: "enterprise-e2e@nexid.invalid",
+      label: "Enterprise E2E Operator",
+      role: "tenant_admin",
+      tenantId,
+      permissions: [
+        "incidents:read",
+        "incidents:write",
+        "sdk:keys:read",
+        "sdk:keys:write",
+        "webhooks:read",
+        "webhooks:write",
+      ],
     });
-    const bearer = sessionCookieValue(String(session.id), session.secret);
+    const otherTenantBearer = await issueHumanSession({
+      id: otherTenantUserId,
+      email: "enterprise-e2e-other@nexid.invalid",
+      label: "Other Tenant E2E Operator",
+      role: "tenant_admin",
+      tenantId: otherTenantId,
+      permissions: ["webhooks:read"],
+    });
+    const packagingApproverBearer = await issueHumanSession({
+      id: packagingApproverUserId,
+      email: "enterprise-e2e-approver@nexid.invalid",
+      label: "Enterprise E2E Packaging Approver",
+      role: "tenant_admin",
+      tenantId,
+      permissions: ["supplier:approve_packaging"],
+    });
+    const superAdminBearer = await issueHumanSession({
+      id: superAdminUserId,
+      email: "enterprise-e2e-superadmin@nexid.invalid",
+      label: "Enterprise E2E Super Admin",
+      role: "super_admin",
+      tenantId: null,
+    });
     const adminHeaders = { authorization: `Bearer ${bearer}` };
+    const otherTenantAdminHeaders = { authorization: `Bearer ${otherTenantBearer}` };
+    const packagingApproverHeaders = { authorization: `Bearer ${packagingApproverBearer}` };
+    const superAdminHeaders = { authorization: `Bearer ${superAdminBearer}` };
+
+    const { GET: listSupplierOrders, POST: createSupplierOrder } = await import("../src/app/admin/supplier-orders/route.ts");
+    const { GET: readSupplierPackaging, POST: decideSupplierPackaging } = await import("../src/app/admin/supplier-orders/[orderId]/packaging/route.ts");
+    const { POST: createSdkApiKey } = await import("../src/app/admin/sdk/api-keys/route.ts");
+    const { DELETE: revokeSdkApiKey } = await import("../src/app/admin/sdk/api-keys/[id]/route.ts");
+    const { POST: createWebhook } = await import("../src/app/admin/webhooks/route.ts");
+    const { GET: readWebhook } = await import("../src/app/admin/webhooks/[id]/route.ts");
+    const { POST: rotateWebhook } = await import("../src/app/admin/webhooks/[id]/rotate/route.ts");
+    const { GET: readPublicSun } = await import("../src/app/sun/route.ts");
+    const { GET: pollEvents } = await import("../src/app/admin/events/route.ts");
+    const { GET: pollIncidents, POST: openIncident } = await import("../src/app/admin/incidents/route.ts");
+    const { POST: writeSdkEvent } = await import("../src/app/api/v1/sdk/events/route.ts");
+    const uuidSegment = "([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})";
+    const exact = (pathname) => (url) => url.pathname === pathname ? true : null;
+    const dynamic = (pattern, parameter) => (url) => {
+      const match = pattern.exec(url.pathname);
+      return match ? { [parameter]: match[1] } : null;
+    };
+    httpHarness = await startEnterpriseEphemeralHttpHarness({
+      routes: [
+        { method: "GET", match: exact("/sun"), handle: readPublicSun },
+        { method: "GET", match: exact("/admin/supplier-orders"), handle: listSupplierOrders },
+        { method: "POST", match: exact("/admin/supplier-orders"), handle: createSupplierOrder },
+        {
+          method: "GET",
+          match: dynamic(new RegExp(`^/admin/supplier-orders/${uuidSegment}/packaging$`, "i"), "orderId"),
+          handle: (request, { orderId }) => readSupplierPackaging(request, { params: Promise.resolve({ orderId }) }),
+        },
+        {
+          method: "POST",
+          match: dynamic(new RegExp(`^/admin/supplier-orders/${uuidSegment}/packaging$`, "i"), "orderId"),
+          handle: (request, { orderId }) => decideSupplierPackaging(request, { params: Promise.resolve({ orderId }) }),
+        },
+        { method: "POST", match: exact("/admin/sdk/api-keys"), handle: createSdkApiKey },
+        {
+          method: "DELETE",
+          match: dynamic(new RegExp(`^/admin/sdk/api-keys/${uuidSegment}$`, "i"), "id"),
+          handle: (request, { id }) => revokeSdkApiKey(request, { params: Promise.resolve({ id }) }),
+        },
+        { method: "POST", match: exact("/admin/webhooks"), handle: createWebhook },
+        {
+          method: "GET",
+          match: dynamic(new RegExp(`^/admin/webhooks/${uuidSegment}$`, "i"), "id"),
+          handle: (request, { id }) => readWebhook(request, { params: Promise.resolve({ id }) }),
+        },
+        {
+          method: "POST",
+          match: dynamic(new RegExp(`^/admin/webhooks/${uuidSegment}/rotate$`, "i"), "id"),
+          handle: (request, { id }) => rotateWebhook(request, { params: Promise.resolve({ id }) }),
+        },
+        { method: "GET", match: exact("/admin/events"), handle: pollEvents },
+        { method: "GET", match: exact("/admin/incidents"), handle: pollIncidents },
+        { method: "POST", match: exact("/admin/incidents"), handle: openIncident },
+        { method: "POST", match: exact("/api/v1/sdk/events"), handle: writeSdkEvent },
+      ],
+    });
+
+    const unauthenticatedSupplierResponse = await httpHarness.fetch("/admin/supplier-orders", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{}",
+    });
+    assert.equal(unauthenticatedSupplierResponse.status, 401);
+
+    const tenantAdminSupplierResponse = await httpHarness.fetch("/admin/supplier-orders", {
+      method: "POST",
+      headers: { ...adminHeaders, "content-type": "application/json" },
+      body: JSON.stringify({ tenant: tenantSlug }),
+    });
+    assert.equal(tenantAdminSupplierResponse.status, 403, "supplier-order creation remains super-admin-only");
+
+    const supplierOrderResponse = await httpHarness.fetch("/admin/supplier-orders", {
+      method: "POST",
+      headers: {
+        ...superAdminHeaders,
+        "content-type": "application/json",
+        "x-request-id": "enterprise-e2e-http-supplier-5000",
+      },
+      body: JSON.stringify({
+        tenant: tenantSlug,
+        customer_slug: tenantSlug,
+        order_name: "Enterprise HTTP 5K secure pilot",
+        base_batch_id: "E2E-SYN-HTTP-5000",
+        total_quantity: 5000,
+        sub_batch_size: 1000,
+        chip_model: "NTAG 424 DNA",
+        carrier_profile_code: "ntag424_dna",
+        pack_purpose: "trial_integration",
+        material_type: "converted_smart_label",
+        notes: "Synthetic disposable HTTP acceptance fixture; not a physical manufacturing order.",
+      }),
+    });
+    const supplierOrderPayload = await supplierOrderResponse.json();
+    assert.equal(
+      supplierOrderResponse.status,
+      201,
+      `supplier_http_create_failed:${String(supplierOrderPayload?.reason || "unknown")}`,
+    );
+    const httpSupplierOrderId = String(supplierOrderPayload.order.id);
+    assert.equal(supplierOrderPayload.order.tenant_slug, tenantSlug);
+    assert.equal(supplierOrderPayload.sub_batches.length, 5);
+    assert.deepEqual(
+      supplierOrderPayload.sub_batches.map((entry) => Number(entry.expected_quantity)),
+      [1000, 1000, 1000, 1000, 1000],
+    );
+    assert.equal(new Set(supplierOrderPayload.sub_batches.map((entry) => entry.bid)).size, 5);
+    const supplierHttpPublicPayload = JSON.stringify(supplierOrderPayload).toLowerCase();
+    for (const forbidden of [
+      "meta_key_ct", "file_key_ct", "encrypted_key_ct", "kms_master_key_hex",
+    ]) {
+      assert.equal(supplierHttpPublicPayload.includes(forbidden), false, `supplier HTTP response leaked ${forbidden}`);
+    }
+
+    const supplierHttpDatabaseEvidence = (await client.query(`SELECT
+      (SELECT count(*)::integer FROM supplier_sub_batches
+        WHERE supplier_order_id = $1::uuid AND tenant_id = $2::uuid) AS sub_batch_count,
+      (SELECT count(*)::integer FROM batch_keys
+        WHERE supplier_order_id = $1::uuid AND tenant_id = $2::uuid) AS pair_count,
+      (SELECT count(DISTINCT key_fingerprint)::integer FROM batch_keys
+        WHERE supplier_order_id = $1::uuid AND tenant_id = $2::uuid) AS distinct_pair_fingerprints,
+      (SELECT count(DISTINCT meta_key_ct)::integer FROM batch_keys
+        WHERE supplier_order_id = $1::uuid AND tenant_id = $2::uuid) AS distinct_meta_envelopes,
+      (SELECT count(DISTINCT file_key_ct)::integer FROM batch_keys
+        WHERE supplier_order_id = $1::uuid AND tenant_id = $2::uuid) AS distinct_file_envelopes,
+      (SELECT count(*)::integer FROM batch_key_material
+        WHERE supplier_order_id = $1::uuid AND tenant_id = $2::uuid) AS material_count`, [
+      httpSupplierOrderId,
+      tenantId,
+    ])).rows[0];
+    assert.deepEqual({
+      sub_batch_count: Number(supplierHttpDatabaseEvidence.sub_batch_count),
+      pair_count: Number(supplierHttpDatabaseEvidence.pair_count),
+      distinct_pair_fingerprints: Number(supplierHttpDatabaseEvidence.distinct_pair_fingerprints),
+      distinct_meta_envelopes: Number(supplierHttpDatabaseEvidence.distinct_meta_envelopes),
+      distinct_file_envelopes: Number(supplierHttpDatabaseEvidence.distinct_file_envelopes),
+      material_count: Number(supplierHttpDatabaseEvidence.material_count),
+    }, {
+      sub_batch_count: 5,
+      pair_count: 5,
+      distinct_pair_fingerprints: 5,
+      distinct_meta_envelopes: 5,
+      distinct_file_envelopes: 5,
+      material_count: 10,
+    });
+
+    const crossTenantPackagingResponse = await httpHarness.fetch(
+      `/admin/supplier-orders/${httpSupplierOrderId}/packaging`,
+      { headers: otherTenantAdminHeaders },
+    );
+    assert.equal(crossTenantPackagingResponse.status, 404);
+
+    const packagingSpec = {
+      inlayForm: "converted_smart_label",
+      applicationSurface: "plastic_hdpe",
+      placement: "cap",
+      applicationMode: "automatic_labeler",
+      substrateMaterial: "HDPE cap with induction liner",
+      faceStock: "chemical-resistant synthetic film",
+      adhesive: "permanent acrylic qualified for HDPE",
+      liner: "glassine compatible with applicator",
+      geometry: {
+        labelWidthMm: 45,
+        labelHeightMm: 30,
+        antennaWidthMm: 40,
+        antennaHeightMm: 24,
+        pitchMm: 33,
+        webWidthMm: 50,
+      },
+      roll: {
+        coreDiameterMm: 76,
+        maxOuterDiameterMm: 300,
+        winding: "face_out",
+        unwindDirection: 3,
+        quantityPerRoll: 1000,
+      },
+      line: { unitsPerMinute: 120, printerEncoderModel: "synthetic qualified encoder" },
+      environment: {
+        minTemperatureC: -5,
+        maxTemperatureC: 55,
+        liquidProximity: true,
+        metalProximity: false,
+        outdoorUv: true,
+        chemicalExposure: ["agrochemical splash", "water"],
+      },
+      tagTamper: { required: false, bridgesOpening: null, tailLengthMm: null, placementApproved: false },
+      qa: {
+        rfSampleApproved: true,
+        lineTrialApproved: true,
+        adhesiveApproved: true,
+        artworkApproved: true,
+        encodingTrialApproved: true,
+      },
+    };
+    const packagingEvidenceRefs = {
+      rf_sample: ["artifact://e2e/rf/sample-01"],
+      line_trial: ["artifact://e2e/line/trial-01"],
+      adhesive: ["artifact://e2e/adhesive/report-01"],
+      artwork_dieline: ["artifact://e2e/artwork/dieline-01"],
+      encoding_readback: ["artifact://e2e/encoding/readback-01"],
+      tagtamper_placement: [],
+    };
+    const packagingPath = `/admin/supplier-orders/${httpSupplierOrderId}/packaging`;
+    const forgedPackagingContext = await httpHarness.fetch(packagingPath, {
+      method: "POST",
+      headers: { ...adminHeaders, "content-type": "application/json" },
+      body: JSON.stringify({ status: "draft", tenant_id: otherTenantId, spec: packagingSpec }),
+    });
+    assert.equal(forgedPackagingContext.status, 400);
+    assert.equal((await forgedPackagingContext.json()).reason, "packaging_context_fields_server_derived");
+
+    const draftPackagingResponse = await httpHarness.fetch(packagingPath, {
+      method: "POST",
+      headers: { ...adminHeaders, "content-type": "application/json", "x-request-id": "enterprise-e2e-packaging-draft" },
+      body: JSON.stringify({ status: "draft", spec: packagingSpec, evidence_refs: packagingEvidenceRefs }),
+    });
+    assert.equal(draftPackagingResponse.status, 201);
+    assert.equal((await draftPackagingResponse.json()).decision.status, "draft");
+    const submitPackagingResponse = await httpHarness.fetch(packagingPath, {
+      method: "POST",
+      headers: { ...adminHeaders, "content-type": "application/json", "x-request-id": "enterprise-e2e-packaging-submit" },
+      body: JSON.stringify({ status: "submitted" }),
+    });
+    assert.equal(submitPackagingResponse.status, 201);
+    assert.equal((await submitPackagingResponse.json()).decision.status, "submitted");
+
+    const unauthorizedApprovalResponse = await httpHarness.fetch(packagingPath, {
+      method: "POST",
+      headers: { ...adminHeaders, "content-type": "application/json" },
+      body: JSON.stringify({ status: "approved" }),
+    });
+    assert.equal(unauthorizedApprovalResponse.status, 403);
+    const approvePackagingResponse = await httpHarness.fetch(packagingPath, {
+      method: "POST",
+      headers: {
+        ...packagingApproverHeaders,
+        "content-type": "application/json",
+        "x-request-id": "enterprise-e2e-packaging-approve",
+      },
+      body: JSON.stringify({ status: "approved" }),
+    });
+    const approvePackagingPayload = await approvePackagingResponse.json();
+    assert.equal(
+      approvePackagingResponse.status,
+      201,
+      `supplier_http_packaging_approval_failed:${String(approvePackagingPayload?.reason || "unknown")}`,
+    );
+    assert.equal(approvePackagingPayload.decision.status, "approved");
+    assert.equal(approvePackagingPayload.governance.single_operator_override, false);
+    assert.equal(approvePackagingPayload.governance.decided_by, packagingApproverUserId);
+    const readApprovedPackaging = await httpHarness.fetch(packagingPath, { headers: adminHeaders });
+    assert.equal(readApprovedPackaging.status, 200);
+    const approvedPackagingPayload = await readApprovedPackaging.json();
+    assert.equal(approvedPackagingPayload.governance.status, "approved");
+    assert.equal(approvedPackagingPayload.history.length, 3);
+
+    const listedSupplierOrders = await httpHarness.fetch(`/admin/supplier-orders?tenant=${tenantSlug}`, { headers: adminHeaders });
+    assert.equal(listedSupplierOrders.status, 200);
+    const listedSupplierPayload = await listedSupplierOrders.json();
+    assert.ok(listedSupplierPayload.orders.some((order) => String(order.id) === httpSupplierOrderId));
+    assert.equal(listedSupplierPayload.orders.some((order) => String(order.tenant_id) === otherTenantId), false);
 
     // Exercise the real admin API-key lifecycle against the disposable
     // database. The tenant in the request body is deliberately forged: the
     // verified tenant-admin principal must remain authoritative.
-    const { POST: createSdkApiKey } = await import("../src/app/admin/sdk/api-keys/route.ts");
-    const { DELETE: revokeSdkApiKey } = await import("../src/app/admin/sdk/api-keys/[id]/route.ts");
-    const createKeyResponse = await createSdkApiKey(new Request("http://127.0.0.1/admin/sdk/api-keys", {
+    const createKeyResponse = await httpHarness.fetch("/admin/sdk/api-keys", {
       method: "POST",
       headers: { ...adminHeaders, "content-type": "application/json" },
       body: JSON.stringify({
         tenant: "enterprise-e2e-other",
         name: "Enterprise E2E verifier",
-        scopes: ["sdk:verify"],
+        scopes: ["sdk:verify", "sdk:events"],
       }),
-    }));
+    });
     assert.equal(createKeyResponse.status, 201);
     const createKeyPayload = await createKeyResponse.json();
     assert.equal(createKeyPayload.tenant.slug, tenantSlug);
@@ -763,24 +1093,30 @@ async function run() {
     assert.equal((await limitedEpcisResponse.json()).reason, "rate_limited");
 
     const otherTenantApiKeySecret = `nxid_live_${randomBytes(24).toString("base64url")}`;
-    const otherTenantApiKeyId = (await client.query(`INSERT INTO tenant_api_keys (
-      tenant_id, name, key_prefix, key_hash, scopes, status
-    ) VALUES ($1::uuid, 'Other tenant key', $2, $3, '["sdk:verify"]'::jsonb, 'active')
-    RETURNING id::text AS id`, [
-      otherTenantId,
-      otherTenantApiKeySecret.slice(0, 12),
-      hashSdkApiKey(otherTenantApiKeySecret),
-    ])).rows[0].id;
-    const crossTenantKeyRevoke = await revokeSdkApiKey(
-      new Request("http://127.0.0.1/admin/sdk/api-keys/cross-tenant", { method: "DELETE", headers: adminHeaders }),
-      { params: Promise.resolve({ id: otherTenantApiKeyId }) },
-    );
+    const otherTenantApiKeyId = (await client.query(`SELECT id::text AS id
+      FROM public.nexid_create_tenant_api_key_v1($1::jsonb)`, [JSON.stringify({
+        tenant_id: otherTenantId,
+        actor_id: userId,
+        name: "Other tenant key",
+        key_prefix: otherTenantApiKeySecret.slice(0, 12),
+        key_hash: hashSdkApiKey(otherTenantApiKeySecret),
+        scopes: ["sdk:verify"],
+        expires_at: null,
+        max_active_keys: 20,
+        request_id: "enterprise-e2e-other-tenant-key",
+        ip_address: "127.0.0.1",
+        user_agent: "nexid-enterprise-ephemeral-e2e",
+      })])).rows[0].id;
+    const crossTenantKeyRevoke = await httpHarness.fetch(`/admin/sdk/api-keys/${otherTenantApiKeyId}`, {
+      method: "DELETE",
+      headers: adminHeaders,
+    });
     assert.equal(crossTenantKeyRevoke.status, 404);
 
-    const revokeKeyResponse = await revokeSdkApiKey(
-      new Request(`http://127.0.0.1/admin/sdk/api-keys/${apiKeyId}`, { method: "DELETE", headers: adminHeaders }),
-      { params: Promise.resolve({ id: apiKeyId }) },
-    );
+    const revokeKeyResponse = await httpHarness.fetch(`/admin/sdk/api-keys/${apiKeyId}`, {
+      method: "DELETE",
+      headers: adminHeaders,
+    });
     assert.equal(revokeKeyResponse.status, 200);
     const revokedSdkAuth = await authenticateSdkRequest(sdkAuthRequest(), "sdk:verify");
     assert.equal(revokedSdkAuth.ok, false);
@@ -788,12 +1124,10 @@ async function run() {
 
     // Webhook lifecycle: tenant binding, one-time secret storage, optimistic
     // rotation, append-only audit, idempotent outbox, leased delivery and v2
-    // signature verification. The transport is an in-process verifier, so no
-    // DNS lookup, socket or external request can occur.
-    const { POST: createWebhook } = await import("../src/app/admin/webhooks/route.ts");
-    const { GET: readWebhook } = await import("../src/app/admin/webhooks/[id]/route.ts");
-    const { POST: rotateWebhook } = await import("../src/app/admin/webhooks/[id]/rotate/route.ts");
-    const forgedWebhookResponse = await createWebhook(new Request("http://127.0.0.1/admin/webhooks", {
+    // signature verification. Admin calls cross a real loopback HTTP socket;
+    // delivery itself remains an injected in-process verifier, so no DNS lookup
+    // or external request can occur.
+    const forgedWebhookResponse = await httpHarness.fetch("/admin/webhooks", {
       method: "POST",
       headers: { ...adminHeaders, "content-type": "application/json" },
       body: JSON.stringify({
@@ -804,11 +1138,11 @@ async function run() {
         events: ["sdk.verify"],
         signatureVersion: "v2",
       }),
-    }));
+    });
     assert.equal(forgedWebhookResponse.status, 400);
 
     const webhookUrl = "https://webhook.enterprise-e2e.invalid/hooks/synthetic-secret";
-    const createWebhookResponse = await createWebhook(new Request("http://127.0.0.1/admin/webhooks", {
+    const createWebhookResponse = await httpHarness.fetch("/admin/webhooks", {
       method: "POST",
       headers: { ...adminHeaders, "content-type": "application/json" },
       body: JSON.stringify({
@@ -816,10 +1150,10 @@ async function run() {
         name: "Enterprise E2E webhook",
         url: webhookUrl,
         enabled: false,
-        events: ["sdk.verify"],
+        events: ["sdk.verify", "sdk.external_event"],
         signatureVersion: "v2",
       }),
-    }));
+    });
     assert.equal(createWebhookResponse.status, 201);
     const createWebhookPayload = await createWebhookResponse.json();
     const webhookEndpointId = String(createWebhookPayload.endpoint.id);
@@ -836,14 +1170,11 @@ async function run() {
     assert.match(persistedWebhookBeforeRotation.signing_secret, /^nexid:whsec:v1:/);
     assert.equal(Number(persistedWebhookBeforeRotation.signing_secret_version), 1);
 
-    const rotateWebhookResponse = await rotateWebhook(new Request(
-      `http://127.0.0.1/admin/webhooks/${webhookEndpointId}/rotate`,
-      {
-        method: "POST",
-        headers: { ...adminHeaders, "content-type": "application/json" },
-        body: JSON.stringify({ expectedSecretVersion: 1, overlapSeconds: 300 }),
-      },
-    ), { params: Promise.resolve({ id: webhookEndpointId }) });
+    const rotateWebhookResponse = await httpHarness.fetch(`/admin/webhooks/${webhookEndpointId}/rotate`, {
+      method: "POST",
+      headers: { ...adminHeaders, "content-type": "application/json" },
+      body: JSON.stringify({ expectedSecretVersion: 1, overlapSeconds: 300 }),
+    });
     assert.equal(rotateWebhookResponse.status, 200);
     const rotateWebhookPayload = await rotateWebhookResponse.json();
     const rotatedWebhookSecret = String(rotateWebhookPayload.secret);
@@ -852,21 +1183,21 @@ async function run() {
     assert.equal(Number(rotateWebhookPayload.endpoint.signing_secret_previous_version), 1);
     assert.equal(rotateWebhookPayload.endpoint.audit_committed, true);
 
-    const staleRotationResponse = await rotateWebhook(new Request(
-      `http://127.0.0.1/admin/webhooks/${webhookEndpointId}/rotate`,
-      {
-        method: "POST",
-        headers: { ...adminHeaders, "content-type": "application/json" },
-        body: JSON.stringify({ expectedSecretVersion: 1, overlapSeconds: 300 }),
-      },
-    ), { params: Promise.resolve({ id: webhookEndpointId }) });
+    const staleRotationResponse = await httpHarness.fetch(`/admin/webhooks/${webhookEndpointId}/rotate`, {
+      method: "POST",
+      headers: { ...adminHeaders, "content-type": "application/json" },
+      body: JSON.stringify({ expectedSecretVersion: 1, overlapSeconds: 300 }),
+    });
     assert.equal(staleRotationResponse.status, 409);
     assert.equal((await staleRotationResponse.json()).reason, "webhook_secret_version_conflict");
 
-    const webhookReadResponse = await readWebhook(
-      new Request(`http://127.0.0.1/admin/webhooks/${webhookEndpointId}`, { headers: adminHeaders }),
-      { params: Promise.resolve({ id: webhookEndpointId }) },
-    );
+    const crossTenantWebhookRead = await httpHarness.fetch(`/admin/webhooks/${webhookEndpointId}`, {
+      headers: otherTenantAdminHeaders,
+    });
+    assert.equal(crossTenantWebhookRead.status, 404);
+    const webhookReadResponse = await httpHarness.fetch(`/admin/webhooks/${webhookEndpointId}`, {
+      headers: adminHeaders,
+    });
     assert.equal(webhookReadResponse.status, 200);
     const webhookReadPayload = await webhookReadResponse.json();
     assert.equal(webhookReadPayload.history.length, 2);
@@ -892,26 +1223,94 @@ async function run() {
       WHERE id = $1::uuid AND tenant_id = $2::uuid`, [webhookEndpointId, tenantId]);
     const {
       claimWebhookDeliveries,
-      dispatchTenantWebhooks,
       processClaimedWebhookDelivery,
     } = await import("../src/lib/sdk-webhooks.ts");
-    const webhookDispatch = await dispatchTenantWebhooks({
-      tenantId,
-      eventName: "sdk.verify",
-      payload: { bid, verdict: "VALID", physical_custody_verified: false },
-      idempotencyKey: "enterprise-e2e-webhook-001",
+
+    const integrationKeyResponse = await httpHarness.fetch("/admin/sdk/api-keys", {
+      method: "POST",
+      headers: { ...adminHeaders, "content-type": "application/json" },
+      body: JSON.stringify({
+        tenant: otherTenantId,
+        name: "Enterprise E2E physical-event writer",
+        scopes: ["sdk:events"],
+      }),
     });
-    const webhookReplay = await dispatchTenantWebhooks({
-      tenantId,
-      eventName: "sdk.verify",
-      payload: { bid, verdict: "VALID", physical_custody_verified: false },
-      idempotencyKey: "enterprise-e2e-webhook-001",
+    assert.equal(integrationKeyResponse.status, 201);
+    const integrationKeyPayload = await integrationKeyResponse.json();
+    assert.equal(integrationKeyPayload.tenant.slug, tenantSlug);
+    const integrationApiKeyId = String(integrationKeyPayload.key.id);
+    const integrationApiKeySecret = String(integrationKeyPayload.secret);
+
+    const sdkEventBody = JSON.stringify({
+      eventType: "shipment.received",
+      bid,
+      uidHex,
+      source: "sdk",
+      connectorProfile: "cropwise_physical_product_event",
+      data: {
+        productId: "E2E-AGROCHEMICAL-001",
+        sku: "E2E-SKU-001",
+        lotNumber: bid,
+        authStatus: "VALID_AUTHENTIC",
+        tamperStatus: "NOT_SUPPORTED",
+        replayStatus: "NO_REPLAY",
+        distributorId: "E2E-DISTRIBUTOR-001",
+        approximateLocation: { city: "Rosario", country: "AR", lat: -32.95, lng: -60.66 },
+        consentFlags: { approximate_location: true },
+      },
     });
-    assert.equal(webhookDispatch.queued, 1);
-    assert.equal(webhookDispatch.deduplicated, 0);
-    assert.equal(webhookReplay.queued, 0);
-    assert.equal(webhookReplay.deduplicated, 1);
-    assert.equal(webhookReplay.eventId, webhookDispatch.eventId);
+    const sdkEventHeaders = {
+      "content-type": "application/json",
+      "x-nexid-api-key": integrationApiKeySecret,
+      "x-nexid-tenant-slug": tenantSlug,
+      "idempotency-key": "enterprise-e2e-http-sdk-event-001",
+      "x-request-id": "enterprise-e2e-http-sdk-event-001",
+    };
+    const wrongTenantSdkEvent = await httpHarness.fetch("/api/v1/sdk/events", {
+      method: "POST",
+      headers: { ...sdkEventHeaders, "x-nexid-tenant-slug": "enterprise-e2e-other" },
+      body: sdkEventBody,
+    });
+    assert.equal(wrongTenantSdkEvent.status, 401);
+
+    const secretBearingSdkEvent = await httpHarness.fetch("/api/v1/sdk/events", {
+      method: "POST",
+      headers: { ...sdkEventHeaders, "idempotency-key": "enterprise-e2e-http-sdk-secret-reject" },
+      body: JSON.stringify({
+        eventType: "shipment.received",
+        bid,
+        data: { private_key: "synthetic-forbidden-value" },
+      }),
+    });
+    assert.equal(secretBearingSdkEvent.status, 400);
+    assert.equal((await secretBearingSdkEvent.json()).reason, "enterprise_event_secret_fields_forbidden");
+
+    const sdkEventResponse = await httpHarness.fetch("/api/v1/sdk/events", {
+      method: "POST",
+      headers: sdkEventHeaders,
+      body: sdkEventBody,
+    });
+    const sdkEventPayload = await sdkEventResponse.json();
+    assert.equal(
+      sdkEventResponse.status,
+      201,
+      `sdk_http_event_failed:${String(sdkEventPayload?.reason || "unknown")}`,
+    );
+    assert.equal(sdkEventPayload.tenant.slug, tenantSlug);
+    assert.match(String(sdkEventPayload.uidMasked || ""), /\*{4}/);
+    assert.equal(JSON.stringify(sdkEventPayload).includes(uidHex), false);
+    assert.equal(Number(sdkEventPayload.webhookOutbox.queued), 1);
+    assert.equal(Number(sdkEventPayload.webhookOutbox.deduplicated), 0);
+
+    const sdkEventReplayResponse = await httpHarness.fetch("/api/v1/sdk/events", {
+      method: "POST",
+      headers: sdkEventHeaders,
+      body: sdkEventBody,
+    });
+    assert.equal(sdkEventReplayResponse.status, 201);
+    const sdkEventReplayPayload = await sdkEventReplayResponse.json();
+    assert.equal(sdkEventReplayPayload.eventId, sdkEventPayload.eventId);
+    assert.deepEqual(sdkEventReplayPayload.webhookOutbox, sdkEventPayload.webhookOutbox);
 
     const claimedWebhooks = await claimWebhookDeliveries(10);
     assert.equal(claimedWebhooks.length, 1);
@@ -933,10 +1332,13 @@ async function run() {
         assert.equal(verification.version, "v2");
         assert.equal(verification.keyIdAuthenticated, true);
         assert.equal(verification.deliveryId, webhookDeliveryId);
-        assert.equal(verification.eventId, webhookDispatch.eventId);
         const payload = JSON.parse(delivery.body);
         assert.equal(payload.schemaVersion, "1.0");
-        assert.equal(payload.data.physical_custody_verified, false);
+        assert.equal(payload.type, "sdk.external_event");
+        assert.equal(payload.data.event_id, sdkEventPayload.eventId);
+        assert.match(payload.data.uid_hash, /^sha256:[0-9a-f]{64}$/);
+        assert.equal(JSON.stringify(payload).includes(uidHex), false);
+        assert.equal(Object.hasOwn(payload.data, "physical_custody_verified"), false);
         return { statusCode: 204 };
       },
     });
@@ -963,37 +1365,40 @@ async function run() {
 
     const { generateSunParams } = await import("../src/lib/crypto/sdm.ts");
     const sun = generateSunParams({ uidHex, ctr: 1, kMetaHex, kFileHex });
-    const { processSunScan } = await import("../src/lib/sun-service.ts");
-    const scan = await processSunScan({
+    const sunQuery = new URLSearchParams({
+      view: "json",
       bid,
-      ...sun,
-      rawQuery: {
-        bid,
-        picc_data: sun.piccDataHex,
-        enc: sun.encHex,
-        cmac: sun.cmacHex,
-        safe_fixture_label: "enterprise-e2e",
-      },
-      context: {
-        requestId: "enterprise-e2e-tap-001",
-        source: "real",
-        userAgent: "nexid-enterprise-ephemeral-e2e",
-        city: "Rosario",
-        countryCode: "AR",
-        lat: -32.95,
-        lng: -60.66,
-        deviceLabel: "ephemeral-e2e-reader",
-        meta: { trace_id: "enterprise-e2e-tap-001", fixture: true },
-      },
-      sideEffectMode: "persist",
+      picc_data: sun.piccDataHex,
+      enc: sun.encHex,
+      cmac: sun.cmacHex,
+      safe_fixture_label: "enterprise-e2e",
     });
-    assert.equal(scan.status, 200);
-    assert.equal(scan.body.ok, true);
-    assert.equal(scan.body.cryptographic_verification, true);
-    assert.equal(scan.body.allowlisted, true);
-    assert.equal(scan.body.result, "VALID");
-    const eventId = Number(scan.body.event_id);
+    const scanResponse = await httpHarness.fetch(`/sun?${sunQuery}`, {
+      headers: {
+        accept: "application/json",
+        "user-agent": "nexid-enterprise-ephemeral-e2e",
+        "x-request-id": "enterprise-e2e-tap-001",
+        "x-vercel-ip-city": "Rosario",
+        "x-vercel-ip-country": "AR",
+        "x-vercel-ip-latitude": "-32.95",
+        "x-vercel-ip-longitude": "-60.66",
+      },
+    });
+    assert.equal(scanResponse.status, 200);
+    const scan = await scanResponse.json();
+    assert.equal(scan.ok, true);
+    assert.equal(scan.status.code, "VALID_AUTHENTIC");
+    assert.equal(scan.status.productState, "VALID_AUTHENTIC");
+    assert.equal(scan.tapSecurity.freshTap, true);
+    assert.equal(scan.tapSecurity.replayDetected, false);
+    assert.equal(scan.identity.uid, null);
+    assert.match(String(scan.identity.uidMasked || ""), /\*{3}/);
+    assert.equal(JSON.stringify(scan).includes(sun.piccDataHex), false);
+    assert.equal(JSON.stringify(scan).includes(sun.encHex), false);
+    assert.equal(JSON.stringify(scan).includes(sun.cmacHex), false);
+    const eventId = Number(scan.identity.eventId);
     assert.ok(Number.isSafeInteger(eventId) && eventId > 0);
+    assert.equal(Number(scanResponse.headers.get("x-nexid-event-id")), eventId);
 
     const tapSse = await sseProbe.next((entry) => (
       entry.event === "event" && String(entry.data.eventId || "") === String(eventId)
@@ -1003,18 +1408,16 @@ async function run() {
     assert.equal(Object.hasOwn(tapSse.data, "uidHex"), false);
     assert.match(String(tapSse.data.uidMasked || ""), /\*{4}/);
 
-    const { GET: pollEvents } = await import("../src/app/admin/events/route.ts");
-    const pollResponse = await pollEvents(new Request(
-      `http://127.0.0.1/admin/events?tenant=${tenantSlug}&source=real&limit=10`,
+    const pollResponse = await httpHarness.fetch(
+      `/admin/events?tenant=${tenantSlug}&source=real&limit=10`,
       { headers: adminHeaders },
-    ));
+    );
     assert.equal(pollResponse.status, 200);
     const polled = await pollResponse.json();
     const polledEvent = polled.rows.find((row) => String(row.id) === String(eventId));
     assert.ok(polledEvent, "polling route must expose the committed tenant event");
     assert.equal(polledEvent.tenantSlug, tenantSlug);
 
-    const { POST: openIncident } = await import("../src/app/admin/incidents/route.ts");
     const incidentBody = {
       tenantSlug,
       eventId: String(eventId),
@@ -1023,11 +1426,11 @@ async function run() {
       summary: "Synthetic, isolated incident created from a cryptographically verified ephemeral SUN tap.",
       reason: "exercise durable event to ticket workflow",
     };
-    const incidentResponse = await openIncident(new Request("http://127.0.0.1/admin/incidents", {
+    const incidentResponse = await httpHarness.fetch("/admin/incidents", {
       method: "POST",
       headers: { ...adminHeaders, "content-type": "application/json" },
       body: JSON.stringify(incidentBody),
-    }));
+    });
     const incidentPayload = await incidentResponse.json();
     assert.equal(
       incidentResponse.status,
@@ -1047,21 +1450,20 @@ async function run() {
     assert.equal(incidentSse.data.ticket_id, incident.ticketId);
     assert.equal(incidentSse.data.tenant_slug, tenantSlug);
 
-    const { GET: pollIncidents } = await import("../src/app/admin/incidents/route.ts");
-    const incidentPollResponse = await pollIncidents(new Request(
-      `http://127.0.0.1/admin/incidents?tenant=${tenantSlug}&eventId=${eventId}`,
+    const incidentPollResponse = await httpHarness.fetch(
+      `/admin/incidents?tenant=${tenantSlug}&eventId=${eventId}`,
       { headers: adminHeaders },
-    ));
+    );
     assert.equal(incidentPollResponse.status, 200);
     const incidentPoll = await incidentPollResponse.json();
     assert.equal(incidentPoll.count, 1);
     assert.equal(incidentPoll.incidents[0].ticketId, incident.ticketId);
 
-    const idempotentResponse = await openIncident(new Request("http://127.0.0.1/admin/incidents", {
+    const idempotentResponse = await httpHarness.fetch("/admin/incidents", {
       method: "POST",
       headers: { ...adminHeaders, "content-type": "application/json" },
       body: JSON.stringify(incidentBody),
-    }));
+    });
     assert.equal(idempotentResponse.status, 200);
     const idempotentPayload = await idempotentResponse.json();
     assert.equal(idempotentPayload.incident.id, incident.id);
@@ -1085,11 +1487,11 @@ async function run() {
     assert.equal(openHighCritical?.value, 1);
     assert.ok(Number(oldestOpen?.value || 0) >= 31 * 24 * 60 * 60);
 
-    const forbiddenTenantResponse = await openIncident(new Request("http://127.0.0.1/admin/incidents", {
+    const forbiddenTenantResponse = await httpHarness.fetch("/admin/incidents", {
       method: "POST",
       headers: { ...adminHeaders, "content-type": "application/json" },
       body: JSON.stringify({ ...incidentBody, tenantSlug: "enterprise-e2e-other" }),
-    }));
+    });
     assert.equal(forbiddenTenantResponse.status, 403);
 
     const databaseEvidence = (await client.query(`SELECT
@@ -1125,6 +1527,7 @@ async function run() {
     const enterpriseSecurityEvidence = (await client.query(`SELECT
       (SELECT status FROM tenant_api_keys WHERE id = $1::uuid AND tenant_id = $2::uuid) AS api_key_status,
       (SELECT status FROM tenant_api_keys WHERE id = $3::uuid AND tenant_id = $4::uuid) AS other_api_key_status,
+      (SELECT status FROM tenant_api_keys WHERE id = $7::uuid AND tenant_id = $2::uuid) AS integration_api_key_status,
       (SELECT count(*)::integer FROM webhook_endpoints WHERE id = $5::uuid AND tenant_id = $2::uuid) AS webhook_count,
       (SELECT count(*)::integer FROM webhook_endpoint_audit_events
         WHERE endpoint_id = $5::uuid AND tenant_id = $2::uuid) AS webhook_audit_count,
@@ -1132,6 +1535,12 @@ async function run() {
         WHERE id::text = $6 AND endpoint_id = $5::uuid AND status = 'delivered') AS webhook_delivery_count,
       (SELECT payload #>> '{data,physical_custody_verified}' FROM webhook_deliveries
         WHERE id::text = $6 AND endpoint_id = $5::uuid) AS physical_custody_verified,
+      (SELECT payload #>> '{data,uid_hash}' FROM webhook_deliveries
+        WHERE id::text = $6 AND endpoint_id = $5::uuid) AS webhook_uid_hash,
+      (SELECT strpos(payload::text, $8::text) = 0 FROM webhook_deliveries
+        WHERE id::text = $6 AND endpoint_id = $5::uuid) AS webhook_raw_uid_absent,
+      (SELECT count(*)::integer FROM sdk_external_events
+        WHERE id::text = $9 AND tenant_id = $2::uuid AND api_key_id = $7::uuid) AS sdk_event_count,
       (SELECT count(*)::integer FROM sun_rate_limit_buckets
         WHERE scope = 'enterprise-e2e:distributed'
            OR scope LIKE 'fleet:sdk_epcis_capture:%') AS distributed_rate_bucket_count`, [
@@ -1141,22 +1550,35 @@ async function run() {
       otherTenantId,
       webhookEndpointId,
       webhookDeliveryId,
+      integrationApiKeyId,
+      uidHex,
+      sdkEventPayload.eventId,
     ])).rows[0];
     assert.equal(enterpriseSecurityEvidence.api_key_status, "revoked");
     assert.equal(enterpriseSecurityEvidence.other_api_key_status, "active");
+    assert.equal(enterpriseSecurityEvidence.integration_api_key_status, "active");
     assert.equal(Number(enterpriseSecurityEvidence.webhook_count), 1);
     assert.equal(Number(enterpriseSecurityEvidence.webhook_audit_count), 2);
     assert.equal(Number(enterpriseSecurityEvidence.webhook_delivery_count), 1);
-    assert.equal(enterpriseSecurityEvidence.physical_custody_verified, "false");
+    assert.equal(enterpriseSecurityEvidence.physical_custody_verified, null);
+    assert.match(enterpriseSecurityEvidence.webhook_uid_hash, /^sha256:[0-9a-f]{64}$/);
+    assert.equal(enterpriseSecurityEvidence.webhook_raw_uid_absent, true);
+    assert.equal(Number(enterpriseSecurityEvidence.sdk_event_count), 1);
     assert.ok(Number(enterpriseSecurityEvidence.distributed_rate_bucket_count) >= 4);
 
     console.log(JSON.stringify({
       ok: true,
-      harness: "enterprise_ephemeral_e2e_v1",
+      harness: "enterprise_ephemeral_http_e2e_v2",
       target: emptyTarget,
       migrations: { expected: expectedMigrationCount, applied: Number(ledger.rows[0].count) },
       boundaries: {
+        http_transport: "real_loopback_tcp_http_to_production_route_handlers",
+        next_router_middleware_tls: "not_exercised",
+        human_bearer_authentication: "persisted_revocable_sessions_resolved_per_http_request",
+        supplier_order_http: "super_admin_created_5000_units_as_five_unique_secure_sub_batches",
+        supplier_packaging_http: "tenant_scoped_draft_submit_distinct_approver_and_immutable_receipts",
         sun_crypto: "production_cmac_sdm_code_with_synthetic_inputs",
+        public_sun_http: "synthetic_dynamic_message_verified_through_public_route",
         sun_atomic_event: "committed",
         sse_tenant_projection: "observed",
         polling_tenant_projection: "observed",
@@ -1171,7 +1593,9 @@ async function run() {
         webhook_secret_storage: "software_envelope_encrypted_tenant_bound",
         webhook_lifecycle: "created_rotated_audited_and_stale_rotation_rejected",
         webhook_delivery: "leased_v2_signature_verified_and_committed_without_network",
-        webhook_idempotency: "replayed_without_duplicate",
+        sdk_event_http: "api_key_authenticated_schema_checked_tenant_bound_and_idempotent",
+        webhook_idempotency: "sdk_mutation_replayed_without_duplicate_outbox_or_delivery",
+        webhook_uid_boundary: "sha256_uid_only_raw_uid_absent",
         distributed_rate_limit: "atomic_postgresql_budget_enforced_and_raw_dimensions_hashed",
         supplier_qa_verification_context_v2: "concurrent_stale_binding_rejected_before_evidence_consumption",
         supplier_key_rotation_v2: "eligible_2_2_1_1_1_committed_then_qa_race_rejected_without_effects",
@@ -1188,7 +1612,11 @@ async function run() {
         incidents: Number(databaseEvidence.incident_count),
         tickets: Number(databaseEvidence.ticket_count),
         incident_history: Number(databaseEvidence.history_count),
-        api_keys: 2,
+        api_keys: 3,
+        http_supplier_orders: 1,
+        http_supplier_sub_batches: Number(supplierHttpDatabaseEvidence.sub_batch_count),
+        http_supplier_key_pairs: Number(supplierHttpDatabaseEvidence.pair_count),
+        sdk_external_events: Number(enterpriseSecurityEvidence.sdk_event_count),
         webhook_endpoints: Number(enterpriseSecurityEvidence.webhook_count),
         webhook_deliveries: Number(enterpriseSecurityEvidence.webhook_delivery_count),
         webhook_audit_events: Number(enterpriseSecurityEvidence.webhook_audit_count),
@@ -1196,6 +1624,8 @@ async function run() {
       },
       external_effects: false,
       webhook_delivery_transport: "in_process_signature_verified_no_network",
+      next_router_middleware_exercised: false,
+      tls_termination_exercised: false,
       physical_nfc_tag_scanned: false,
       physical_tag_certification: false,
       tagtamper_physical_certification: false,
@@ -1203,6 +1633,7 @@ async function run() {
   } finally {
     abortStream.abort();
     if (sseProbe) await sseProbe.close();
+    if (httpHarness) await httpHarness.close();
     uninstallSqlExecutor();
     await appPool.end();
     await client.end();
@@ -1215,6 +1646,6 @@ run().catch((error) => {
     .replace(/postgres(?:ql)?:\/\/[^\s"']+/gi, "[redacted_database_url]")
     .replaceAll(config?.databaseUrl || "__no_configured_database_url__", "[redacted_database_url]")
     .slice(0, 500);
-  console.error(JSON.stringify({ ok: false, harness: "enterprise_ephemeral_e2e_v1", reason }));
+  console.error(JSON.stringify({ ok: false, harness: "enterprise_ephemeral_http_e2e_v2", reason }));
   process.exitCode = 1;
 });

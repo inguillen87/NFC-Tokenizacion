@@ -73,7 +73,7 @@ function invalidBody(error: unknown) {
 }
 
 export async function GET(req: Request) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdmin(req, ["super_admin", "tenant_admin", "tenant_operator", "reseller"]);
   if (auth) return auth;
   const permission = checkWebhookPermission(req, "read");
   if (permission) return permission;
@@ -154,7 +154,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdmin(req, ["super_admin", "tenant_admin", "tenant_operator", "reseller"]);
   if (auth) return auth;
   const permission = checkWebhookPermission(req, "write");
   if (permission) return permission;

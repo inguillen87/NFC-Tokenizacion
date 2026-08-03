@@ -42,9 +42,49 @@ function batchSummary(row: Record<string, unknown>) {
     bid: row.bid,
     status: row.status || null,
     tenant_slug: row.tenant_slug || null,
+    carrier_profile_code: row.carrier_profile_code || null,
+    manifest_state: row.manifest_status || null,
+    qa_state: row.qa_status || null,
     created_at: row.created_at || null,
     batch_sdm_config: summarizeBatchSdmConfig(row.sdm_config),
   };
+}
+
+async function packagingLabDiagnostic(batchId: unknown) {
+  const capabilityRows = await sql/*sql*/`
+    SELECT to_regprocedure('public.nexid_packaging_lab_activation_receipt_v1(uuid)') IS NOT NULL AS available
+  `;
+  if (capabilityRows[0]?.available !== true) {
+    return {
+      state: "MIGRATION_NOT_APPLIED",
+      approval_id: null,
+      project_id: null,
+      receipt_digest: null,
+      override_used: false,
+    };
+  }
+
+  const receiptRows = await sql/*sql*/`
+    SELECT project_id, approval_id, receipt_digest, override_used
+    FROM public.nexid_packaging_lab_activation_receipt_v1(${String(batchId)}::uuid)
+    LIMIT 1
+  `;
+  const receipt = receiptRows[0];
+  return receipt
+    ? {
+        state: "APPROVED",
+        approval_id: receipt.approval_id || null,
+        project_id: receipt.project_id || null,
+        receipt_digest: receipt.receipt_digest || null,
+        override_used: receipt.override_used === true,
+      }
+    : {
+        state: "NOT_APPROVED",
+        approval_id: null,
+        project_id: null,
+        receipt_digest: null,
+        override_used: false,
+      };
 }
 
 function debugRecommendation(input: {
@@ -101,6 +141,9 @@ export async function POST(req: Request) {
       b.meta_key_ct,
       b.file_key_ct,
       b.sdm_config,
+      b.carrier_profile_code,
+      b.manifest_status,
+      b.qa_status,
       b.status,
       b.created_at,
       t.slug AS tenant_slug
@@ -155,6 +198,9 @@ export async function POST(req: Request) {
       batch_found: true,
       batch_id: batch.id,
       tenant_slug: batch.tenant_slug || null,
+      carrier_profile_code: batch.carrier_profile_code || null,
+      manifest_state: batch.manifest_status || null,
+      qa_state: batch.qa_status || null,
       keys_present: false,
       verifySun: null,
       batch_sdm_config: summarizeBatchSdmConfig(batch.sdm_config),
@@ -184,17 +230,21 @@ export async function POST(req: Request) {
     kMetaHex = decryptKey16(String(batch.meta_key_ct), { ...keyContext, role: "K_META_BATCH" }).toString("hex").toUpperCase();
     kFileHex = decryptKey16(String(batch.file_key_ct), { ...keyContext, role: "K_FILE_BATCH" }).toString("hex").toUpperCase();
   } catch (error) {
+    console.error("[sun_debug_key_envelope_decrypt_failed]", error instanceof Error ? error.name : "unknown");
     return json({
       ok: false,
       bid,
       batch_found: true,
       batch_id: batch.id,
       tenant_slug: batch.tenant_slug || null,
+      carrier_profile_code: batch.carrier_profile_code || null,
+      manifest_state: batch.manifest_status || null,
+      qa_state: batch.qa_status || null,
       keys_present: true,
       key_fingerprints: null,
       verifySun: null,
       batch_sdm_config: summarizeBatchSdmConfig(batch.sdm_config),
-      recommendation: `Encrypted batch keys could not be opened with current KMS master: ${error instanceof Error ? error.message : "unknown KMS error"}.`,
+      recommendation: "Encrypted batch keys could not be opened with the current application-envelope master secret. Verify the deployment secret version and envelope context without exposing key material.",
     }, 500);
   }
 
@@ -202,6 +252,7 @@ export async function POST(req: Request) {
   const configuredCandidateModes = resolveConfiguredMacInputModes(batch.sdm_config);
   const debugMacInputModes = Array.from(new Set([...configuredCandidateModes, ...SUN_MAC_INPUT_MODES]));
   const verification = verifySun({ kMetaHex, kFileHex, piccDataHex, encHex, cmacHex, macInputModes: debugMacInputModes });
+  const packagingLab = await packagingLabDiagnostic(batch.id);
   const includeSensitiveDiagnostics = canReturnSensitiveDiagnostics(req, body);
   const manifestRows = await sql/*sql*/`
     SELECT UPPER(uid_hex) AS uid_hex
@@ -215,8 +266,17 @@ export async function POST(req: Request) {
   }));
   const uidCandidateManifestMatch = piccCandidates.some((candidate) => candidate.manifest_match);
   const tamperProfile = resolveTamperProfile(batch.sdm_config);
+  const carrierProfileCode = String(
+    batch.carrier_profile_code
+    || (batch.sdm_config as { carrier_profile_code?: unknown } | null)?.carrier_profile_code
+    || "",
+  ).trim().toLowerCase() || null;
+  const ttSupported = carrierProfileCode === "ntag424_dna_tt"
+    && tamperProfile.tagtamper_enabled
+    && tamperProfile.ttstatus_enabled
+    && tamperProfile.ttstatus_source === "enc_decrypted";
   const encPlainHex = verification.encPlainHex || "";
-  const ttStatus = verification.ok && encPlainHex
+  const ttStatus = ttSupported && verification.ok && encPlainHex
     ? parseTTStatusFromDecryptedPayload(encPlainHex, tamperProfile.ttstatus_offset ?? 0, {
       closedValues: tamperProfile.ttstatus_closed_values,
       openedValues: tamperProfile.ttstatus_opened_values,
@@ -266,6 +326,10 @@ export async function POST(req: Request) {
     batch_found: true,
     batch_id: batch.id,
     tenant_slug: batch.tenant_slug || null,
+    carrier_profile_code: carrierProfileCode,
+    manifest_state: batch.manifest_status || null,
+    qa_state: batch.qa_status || null,
+    packaging_lab: packagingLab,
     keys_present: true,
     key_fingerprints: {
       k_meta_sha256_prefix: keyFingerprint(kMetaHex),
@@ -292,6 +356,7 @@ export async function POST(req: Request) {
       tt_raw: ttStatus?.raw || null,
       tt_perm_status: ttStatus?.perm || null,
       tt_curr_status: ttStatus?.current || null,
+      tt_supported: ttSupported,
       tamper_status: ttStatus?.tamper_status || null,
       product_state: ttStatus?.product_state || null,
     },

@@ -1,13 +1,17 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminTenantAccess } from "../../../lib/auth";
+import { createHash } from "node:crypto";
+
+import { checkAdminPermission, checkAdminWithPermission, getAdminTenantAccess } from "../../../lib/auth";
 import { json } from "../../../lib/http";
 import { sql } from "../../../lib/db";
 
 export async function GET(req: Request): Promise<Response> {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdminWithPermission(req, "audit.read");
   if (auth) return auth;
+  const sensitive = checkAdminPermission(req, "events.read_sensitive");
+  if (sensitive) return sensitive;
 
   const { searchParams } = new URL(req.url);
   const requestedTenant = searchParams.get("tenant");
@@ -97,13 +101,13 @@ export async function GET(req: Request): Promise<Response> {
       geoVelocityAlerts: geoRows.length,
     },
     repeatedInvalidUid: invalidRows.map((row) => ({
-      uidHex: String(row.uid_hex || ""),
+      uidHash: createHash("sha256").update(`${tenant || "global"}:${String(row.uid_hex || "")}`, "utf8").digest("hex"),
       count: Number(row.invalid_count || 0),
       lastSeen: String(row.last_seen || ""),
       severity: Number(row.invalid_count || 0) >= 5 ? "critical" : "high",
     })),
     geoVelocityAlerts: geoRows.map((row) => ({
-      uidHex: String(row.uid_hex || ""),
+      uidHash: createHash("sha256").update(`${tenant || "global"}:${String(row.uid_hex || "")}`, "utf8").digest("hex"),
       fromCountry: String(row.prev_country || "--"),
       toCountry: String(row.country || "--"),
       fromAt: String(row.prev_at || ""),

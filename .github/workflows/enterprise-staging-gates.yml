@@ -1,51 +1,81 @@
 name: enterprise staging gates
 
+run-name: enterprise staging gate / ${{ inputs.migration_phase }}
+
 on:
   workflow_dispatch:
     inputs:
       migration_phase:
-        description: "Migration gate phase; no phase applies SQL"
+        description: "Current enterprise preflight or explicitly legacy 0050-0056 recovery gate; no option applies migrations"
         required: true
-        default: preflight
+        default: current_0057_0096_preflight
         type: choice
         options:
-          - preflight
-          - after_0050_dry_run
-          - postcheck
+          - current_0057_0096_preflight
+          - legacy_0050_0056_preflight
+          - legacy_0050_0056_after_0050_dry_run
+          - legacy_0050_0056_postcheck
 
 jobs:
   gates:
     runs-on: ubuntu-latest
     environment: staging
     env:
-      STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
       STAGING_DATABASE_ENDPOINT_ALLOWLIST: ${{ vars.STAGING_DATABASE_ENDPOINT_ALLOWLIST }}
       STAGING_MIGRATION_EXPECTED_BASELINE_LEDGER: ${{ vars.STAGING_MIGRATION_EXPECTED_BASELINE_LEDGER }}
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          node-version: 20
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "20.19.1"
           cache: npm
       - run: npm ci --ignore-scripts
       - name: Validate WAF policy
         run: npm run check:waf:policy
       - name: Validate migration safety invariants
         run: npm run check:migrations:safety
-      - name: Migration baseline preflight
-        if: inputs.migration_phase == 'preflight'
-        run: npm run gate:migrations:preflight
-      - name: Transactional dry-run after committed 0050
-        if: inputs.migration_phase == 'after_0050_dry_run'
-        run: npm run gate:migrations:dry-run
-      - name: PostgreSQL postcheck after 0050-0055
-        if: inputs.migration_phase == 'postcheck'
-        run: npm run gate:migrations:postcheck
-      - name: PostgreSQL and IOTA read-only gates
-        if: inputs.migration_phase == 'postcheck'
+      - name: Validate migration gate contracts
+        run: npm run test:migration-gates
+
+      # This is the authoritative current release gate. It is read-only at the
+      # application level and fails closed when the real staging custody
+      # keyring or any reviewed 0057-0096 schema capability is absent.
+      - name: Current enterprise schema and custody preflight (0057-0096)
+        if: inputs.migration_phase == 'current_0057_0096_preflight'
         env:
+          DATABASE_URL: ${{ secrets.STAGING_RUNTIME_DATABASE_URL }}
+          NEXID_RUNTIME_DB_ROLE: ${{ vars.STAGING_RUNTIME_DB_ROLE }}
+          SDK_IDEMPOTENCY_MASTER_KEY_HEX: ${{ secrets.SDK_IDEMPOTENCY_MASTER_KEY_HEX }}
+          SDK_IDEMPOTENCY_MASTER_KEY_ID: ${{ vars.SDK_IDEMPOTENCY_MASTER_KEY_ID }}
+          SDK_IDEMPOTENCY_PREVIOUS_KEYS_JSON: ${{ secrets.SDK_IDEMPOTENCY_PREVIOUS_KEYS_JSON }}
+        run: npm run db:enterprise-release:preflight --workspace=api
+
+      # The following three options exist only for the historical 0050-0056
+      # migration recovery runbook. They are not current enterprise release
+      # authorization and cannot substitute for the 0057-0096 preflight above.
+      - name: Legacy migration baseline preflight (before 0050-0056)
+        if: inputs.migration_phase == 'legacy_0050_0056_preflight'
+        env:
+          STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+        run: npm run gate:migrations:preflight
+      - name: Legacy transactional dry-run (after committed 0050)
+        if: inputs.migration_phase == 'legacy_0050_0056_after_0050_dry_run'
+        env:
+          STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+        run: npm run gate:migrations:dry-run
+      - name: Legacy PostgreSQL postcheck (0050-0056)
+        if: inputs.migration_phase == 'legacy_0050_0056_postcheck'
+        env:
+          STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+        run: npm run gate:migrations:postcheck
+      - name: Legacy PostgreSQL and IOTA read-only gates (0050-0056)
+        if: inputs.migration_phase == 'legacy_0050_0056_postcheck'
+        env:
+          STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
           IOTA_EVM_RPC_URL: ${{ secrets.STAGING_IOTA_EVM_RPC_URL }}
           IOTA_EVM_ANCHOR_CONTRACT_V2: ${{ secrets.STAGING_IOTA_EVM_ANCHOR_CONTRACT_V2 }}
           IOTA_KMS_PUBLISHER_ADDRESS: ${{ secrets.STAGING_IOTA_KMS_PUBLISHER_ADDRESS }}
@@ -61,7 +91,7 @@ jobs:
           POLYGON_KMS_SIGNER_TOKEN: ${{ secrets.STAGING_POLYGON_KMS_SIGNER_TOKEN }}
         run: npm run gate:enterprise
       - name: Core regression suites
-        if: inputs.migration_phase == 'postcheck'
+        if: inputs.migration_phase == 'legacy_0050_0056_postcheck'
         run: |
           npm run test:proof --workspace=api
           npm test --workspace=executor

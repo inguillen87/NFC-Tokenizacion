@@ -187,9 +187,8 @@ export async function claimOwnershipForConsumer(input: ClaimOwnershipInput) {
 
   const uidHex = String(event.uid_hex).toUpperCase();
   const existingClaimRows = !isBlocked ? await sql/*sql*/`
-    SELECT o.*, c.email AS consumer_email
+    SELECT o.id, o.consumer_id
     FROM consumer_product_ownerships o
-    LEFT JOIN consumers c ON c.id = o.consumer_id
     WHERE o.tenant_id = ${event.tenant_id}
       AND o.uid_hex = ${uidHex}
       AND o.status = 'claimed'
@@ -199,22 +198,18 @@ export async function claimOwnershipForConsumer(input: ClaimOwnershipInput) {
   const existingClaim = existingClaimRows[0];
   const existingConsumerId = String(existingClaim?.consumer_id || "");
   const sameConsumerClaim = existingConsumerId && existingConsumerId === String(input.consumerId);
-  const canSupersedeDemoClaim =
-    existingConsumerId &&
-    existingConsumerId !== String(input.consumerId) &&
-    String(existingClaim?.consumer_email || "").toLowerCase() === "demo.consumer@nexid.local";
 
-  if (existingClaim && !sameConsumerClaim && !canSupersedeDemoClaim) {
+  if (existingClaim && !sameConsumerClaim) {
     return {
       ok: false as const,
       status: 409,
-      error: "already_claimed" as const,
-      ownership: withDigitalTitleExecutionTruth(existingClaim),
+      error: "ownership_already_claimed" as const,
+      ownership: null,
     };
   }
 
   let ownershipRows;
-  if (existingClaim && (sameConsumerClaim || canSupersedeDemoClaim)) {
+  if (existingClaim && sameConsumerClaim) {
     ownershipRows = await sql/*sql*/`
       UPDATE consumer_product_ownerships
       SET consumer_id = ${input.consumerId},
@@ -223,29 +218,12 @@ export async function claimOwnershipForConsumer(input: ClaimOwnershipInput) {
           event_id = ${event.id},
           status = ${nextStatus},
           source = ${input.source || "sun_passport"},
-          trust_snapshot = ${JSON.stringify({
-            ...trustSnapshot,
-            superseded_demo_claim: canSupersedeDemoClaim,
-            previous_consumer_id: canSupersedeDemoClaim ? existingConsumerId : null,
-          })}::jsonb,
+          trust_snapshot = ${JSON.stringify(trustSnapshot)}::jsonb,
           updated_at = now()
       WHERE id = ${existingClaim.id}
       RETURNING *
     `;
 
-    if (canSupersedeDemoClaim) {
-      await sql/*sql*/`
-        UPDATE consumer_products
-        SET ownership_status = 'viewed',
-            updated_at = now()
-        WHERE consumer_id = ${existingConsumerId}
-          AND tenant_id = ${event.tenant_id}
-          AND (
-            product_passport_id = ${uidHex}
-            OR tag_id = ${tag.id || null}
-          )
-      `;
-    }
   } else {
     try {
       ownershipRows = await sql/*sql*/`
@@ -264,19 +242,11 @@ export async function claimOwnershipForConsumer(input: ClaimOwnershipInput) {
     } catch (error) {
       const err = error as { code?: string; constraint?: string };
       if (err.code === "23505" && err.constraint === "uq_consumer_product_ownerships_active_uid") {
-        const claimedRows = await sql/*sql*/`
-          SELECT o.id, o.tenant_id, o.consumer_id, o.uid_hex, o.event_id, o.status, o.source, o.claimed_at, o.updated_at
-          FROM consumer_product_ownerships o
-          WHERE o.tenant_id = ${event.tenant_id}
-            AND o.uid_hex = ${uidHex}
-            AND o.status = 'claimed'
-          LIMIT 1
-        `;
         return {
           ok: false as const,
           status: 409,
-          error: "already_claimed" as const,
-          ownership: withDigitalTitleExecutionTruth(claimedRows[0] || null),
+          error: "ownership_already_claimed" as const,
+          ownership: null,
         };
       }
       throw error;

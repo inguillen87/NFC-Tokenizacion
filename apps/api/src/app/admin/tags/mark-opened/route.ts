@@ -1,9 +1,11 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminTenantAccess } from "../../../../lib/auth";
+import { checkAdminWithPermission, getAdminActor, getAdminTenantAccess } from "../../../../lib/auth";
 import { json } from "../../../../lib/http";
 import { sql } from "../../../../lib/db";
+import { adminCriticalRateLimitIdentity, enforceCriticalRateLimit } from "../../../../lib/critical-rate-limit";
+import { logAuditEvent } from "../../../../lib/audit-logger";
 
 type Body = {
   uid_hex?: string;
@@ -14,24 +16,32 @@ type Body = {
 };
 
 export async function POST(req: Request) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdminWithPermission(req, "tag.tamper.override");
   if (auth) return auth;
+  const rateLimited = await enforceCriticalRateLimit(req, {
+    rateClass: "proof_write",
+    ...adminCriticalRateLimitIdentity(req),
+    tenantWide: true,
+  });
+  if (rateLimited) return rateLimited;
 
   const body = (await req.json().catch(() => ({}))) as Body;
   const uidHex = String(body.uid_hex || "").trim().toUpperCase();
   const bid = String(body.batch_id || "").trim();
-  if (!uidHex || !bid) return json({ ok: false, reason: "uid_hex and batch_id required" }, 400);
+  if (!/^[0-9A-F]{8,64}$/.test(uidHex) || !/^[A-Za-z0-9][A-Za-z0-9._:-]{2,127}$/.test(bid)) {
+    return json({ ok: false, reason: "uid_hex_or_batch_id_invalid" }, 400);
+  }
 
   const { forcedTenantSlug } = getAdminTenantAccess(req);
   const batchRows = forcedTenantSlug
     ? await sql/*sql*/`
-      SELECT b.id
+      SELECT b.id, b.tenant_id
       FROM batches b
       JOIN tenants t ON t.id = b.tenant_id
       WHERE b.bid = ${bid} AND t.slug = ${forcedTenantSlug}
       LIMIT 1
     `
-    : await sql/*sql*/`SELECT id FROM batches WHERE bid = ${bid} LIMIT 1`;
+    : await sql/*sql*/`SELECT id, tenant_id FROM batches WHERE bid = ${bid} LIMIT 1`;
   const batch = batchRows[0];
   if (!batch) return json({ ok: false, reason: "batch not found" }, 404);
 
@@ -51,10 +61,27 @@ export async function POST(req: Request) {
 
   await sql/*sql*/`
     INSERT INTO tag_manual_tamper_overrides (batch_id, uid_hex, tamper_status, reason, evidence_note, source, updated_at)
-    VALUES (${batch.id}, ${uidHex}, 'MANUAL_OPENED', ${String(body.reason || 'physical seal broken during demo')}, ${String(body.evidence_note || '')}, ${String(body.source || 'operator')}, now())
+    VALUES (${batch.id}, ${uidHex}, 'MANUAL_OPENED', ${String(body.reason || 'physical seal broken during demo').slice(0, 1000)}, ${String(body.evidence_note || '').slice(0, 2000)}, ${String(body.source || 'operator').slice(0, 80)}, now())
     ON CONFLICT (batch_id, uid_hex)
     DO UPDATE SET tamper_status='MANUAL_OPENED', reason=EXCLUDED.reason, evidence_note=EXCLUDED.evidence_note, source=EXCLUDED.source, updated_at=now()
   `;
+
+  const actor = getAdminActor(req);
+  await logAuditEvent({
+    actorId: actor.id,
+    tenantId: String(batch.tenant_id),
+    action: "tag_manual_tamper_opened",
+    resourceType: "tag",
+    resourceId: `${bid}:${uidHex}`,
+    afterData: {
+      batch_id: String(batch.id),
+      tamper_status: "MANUAL_OPENED",
+      source: String(body.source || "operator").slice(0, 80),
+      reason: String(body.reason || "physical seal broken during demo").slice(0, 1000),
+    },
+    requestId: req.headers.get("x-request-id"),
+    userAgent: req.headers.get("user-agent"),
+  });
 
   return json({ ok: true, batch_id: bid, uid_hex: uidHex, tamper_status: "MANUAL_OPENED", tamper_source: "manual" });
 }

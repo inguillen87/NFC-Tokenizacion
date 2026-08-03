@@ -18,7 +18,13 @@ export default async function InternalBatchPage() {
           <li>Si el lote es supplier-programmed, usá <b>/batches/supplier</b>.</li>
         </ul>
       </Card>
-      <AdminActionForms copy={t.dashboard.forms} roles={copy.roles} readyLabel={copy.shell.ready} currentRole="super-admin" />
+      <AdminActionForms
+        copy={t.dashboard.forms}
+        roles={copy.roles}
+        readyLabel={copy.shell.ready}
+        currentRole="super-admin"
+        currentPermissions={["*"]}
+      />
     </main>
   );
 }

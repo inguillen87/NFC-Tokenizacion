@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminTenantScope } from "../../../lib/auth";
+import { checkAdminWithPermission, getAdminTenantScope } from "../../../lib/auth";
 import { ensureConsumerPortalSchema } from "../../../lib/commercial-runtime-schema";
 import { sql } from "../../../lib/db";
 import { json } from "../../../lib/http";
@@ -47,7 +47,7 @@ function formatExperience(row: Record<string, unknown>) {
 }
 
 export async function GET(req: Request) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdminWithPermission(req, "consumer_experiences.read_pii");
   if (auth) return auth;
   await ensureConsumerPortalSchema();
 
@@ -111,7 +111,7 @@ export async function GET(req: Request) {
 }
 
 export async function PATCH(req: Request) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdminWithPermission(req, "consumer_experiences.moderate");
   if (auth) return auth;
   await ensureConsumerPortalSchema();
 

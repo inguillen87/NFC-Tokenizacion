@@ -1,14 +1,14 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminTenantScope } from "../../../lib/auth";
+import { checkAdminWithPermission, getAdminTenantScope } from "../../../lib/auth";
 import { json } from "../../../lib/http";
 import { sql } from "../../../lib/db";
 import { effectiveTenantFilter } from "../../../lib/admin-tenant-filter";
 import { normalizeAlertSeverity, normalizeAlertType } from "../../../lib/alerts-query";
 
 export async function GET(req: Request) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdminWithPermission(req, "risk_rules:write");
   if (auth) return auth;
   const { forcedTenantSlug } = getAdminTenantScope(req);
   const { searchParams } = new URL(req.url);
@@ -24,7 +24,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdminWithPermission(req, "risk_rules:write");
   if (auth) return auth;
   const { forcedTenantSlug } = getAdminTenantScope(req);
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;

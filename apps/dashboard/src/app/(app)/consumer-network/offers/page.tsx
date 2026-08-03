@@ -1,7 +1,9 @@
 import { requireDashboardSession } from "../../../../lib/session";
-import { requireDashboardTenantScope } from "../../../../lib/admin-page-access";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
+import {
+  createAdminPageContext,
+  fetchAdminPage,
+  type AdminPageContext,
+} from "../../../../lib/admin-page-access";
 
 type MarketplaceOffer = {
   id: string;
@@ -14,12 +16,9 @@ type MarketplaceOffer = {
   product_title?: string;
 };
 
-async function getOffers(tenantScope: string): Promise<MarketplaceOffer[]> {
+async function getOffers(context: AdminPageContext): Promise<MarketplaceOffer[]> {
   try {
-    const params = tenantScope ? `?tenant=${encodeURIComponent(tenantScope)}` : "";
-    const response = await fetch(`${API_BASE}/marketplace/offers${params}`, {
-      cache: "no-store",
-    });
+    const response = await fetchAdminPage(context, "consumer-network/offers");
     if (!response.ok) return [];
     const data = await response.json();
     return data.items || [];
@@ -54,9 +53,10 @@ const PRESETS: MarketplaceOffer[] = [
 export default async function TenantOffersPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const query = searchParams ? await searchParams : {};
   const session = await requireDashboardSession();
-  const tenantScope = requireDashboardTenantScope(session, query.tenant).tenantSlug;
+  const adminContext = await createAdminPageContext(session, query.tenant);
+  const tenantScope = adminContext.tenantSlug;
 
-  const fetchedOffers = await getOffers(tenantScope);
+  const fetchedOffers = await getOffers(adminContext);
   const rawOffers = fetchedOffers.length ? fetchedOffers : session.isDemo ? PRESETS : [];
   const offers = tenantScope
     ? rawOffers.filter((offer) => String(offer.tenant_slug || "").toLowerCase() === tenantScope.toLowerCase())
@@ -69,9 +69,9 @@ export default async function TenantOffersPage({ searchParams }: { searchParams?
           <h1 className="text-2xl font-bold tracking-tight text-white">Ofertas & Drops</h1>
           <p className="mt-1 text-sm text-slate-400">Promociones exclusivas para usuarios de la red nexID y el marketplace cruzado.</p>
         </div>
-        <button suppressHydrationWarning className="rounded-lg bg-pink-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-pink-500">
-          + Crear oferta
-        </button>
+        <span className="rounded-lg border border-cyan-300/20 bg-cyan-500/10 px-4 py-2 text-xs font-semibold text-cyan-100">
+          Creación gobernada por API / workflow aprobado
+        </span>
       </header>
 
       <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4 text-xs text-slate-300">

@@ -45,7 +45,8 @@ test("dashboard Demo Lab is a permissioned native mission control, not an iframe
 });
 
 test("Demo Lab is discoverable through permission-aware dashboard navigation", () => {
-  assert.match(shellSource, /dashboardPermissionMatches\(currentPermissions, "demo:read"\)/);
+  assert.match(shellSource, /const permissionMatches = \(permission: string\) => dashboardPermissionMatches\([\s\S]*currentDeniedPermissions/);
+  assert.match(shellSource, /permissionMatches\("demo:read"\)/);
   assert.match(shellSource, /href: "\/demo-lab", label: "Demo Mission Control", icon: FlaskConical/);
   assert.match(shellSource, /pathname\.startsWith\("\/demo-lab"\)[\s\S]*title: "Demo Mission Control", subtitle: "Tenant demo operations"/);
   assert.match(profilesSource, /"demo:\*"/);

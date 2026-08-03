@@ -137,6 +137,7 @@ test("Clerk sync rejects caller identity substitution and no longer accepts ADMI
   assert.match(route, /claimedEmail !== clerkAuth\.identity\.email/);
   assert.match(route, /membership\.role = 'super_admin'::membership_role/);
   assert.match(route, /membership\.tenant_id IS NULL/);
+  assert.match(route, /INSERT INTO resource_permissions \(user_id, tenant_id, resource, action\)[\s\S]*VALUES \(\$\{userId\}::uuid, NULL/);
   assert.match(route, /ON CONFLICT DO NOTHING/);
   assert.doesNotMatch(route, /UPDATE memberships/);
   assert.doesNotMatch(route, /ADMIN_API_KEY/);

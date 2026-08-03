@@ -19,6 +19,12 @@ import {
   X,
 } from "lucide-react";
 import { SecureDashboardLogoutButton } from "./secure-dashboard-logout-button";
+import {
+  dashboardRoleDescription,
+  dashboardRoleInitials,
+  dashboardRoleLabel,
+} from "../lib/enterprise-runtime-rbac";
+import { dashboardHighImpactPermissionMatches } from "../lib/permission-policy";
 
 type AccountMenuItem = {
   href: string;
@@ -35,6 +41,7 @@ type TenantAccountMenuProps = {
   mfaVerified?: boolean | null;
   mode: "tenant" | "global";
   permissions?: string[];
+  deniedPermissions?: string[];
   role: string;
   setupCompleted?: boolean | null;
   surface?: "dashboard" | "crm";
@@ -504,30 +511,6 @@ function tenantNameFromSlug(slug?: string | null) {
   return normalized.replace(/[-_]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-function roleLabel(role: string) {
-  if (role === "super-admin") return "Super Admin";
-  if (role === "tenant-admin") return "Admin tenant";
-  if (role === "viewer") return "Viewer";
-  if (role === "reseller") return "Reseller";
-  return role.replace(/[-_]+/g, " ");
-}
-
-function roleDescription(role: string, mode: "tenant" | "global") {
-  if (role === "super-admin") return "Control global: tenants, seguridad, red comercial y plataforma.";
-  if (role === "tenant-admin") return mode === "tenant"
-    ? "Administra lotes, tags, taps, CRM, marketplace y usuarios del tenant."
-    : "Administra un tenant operativo desde el workspace global.";
-  if (role === "reseller") return "Opera cuentas, pipeline comercial y soporte de partners.";
-  return "Acceso operativo limitado por permisos del workspace.";
-}
-
-function initialsFor(role: string) {
-  if (role === "super-admin") return "SA";
-  if (role === "tenant-admin") return "TA";
-  if (role === "reseller") return "RS";
-  return "NX";
-}
-
 export function TenantAccountMenu({
   className = "",
   clerkEnabled,
@@ -536,6 +519,7 @@ export function TenantAccountMenu({
   mfaVerified,
   mode,
   permissions = [],
+  deniedPermissions = [],
   role,
   setupCompleted,
   surface = "dashboard",
@@ -559,8 +543,20 @@ export function TenantAccountMenu({
   const tenantHref = scopedTenant ? `/tenants/${encodeURIComponent(scopedTenant)}` : "/tenants";
   const accountLabel = label || tenantName;
   const isTenantMode = mode === "tenant";
-  const accountRoleDescription = roleDescription(role, mode);
+  const accountRoleDescription = dashboardRoleDescription(role, mode);
   const canManageUsers = role === "super-admin" || permissions.includes("*") || permissions.includes("users:manage") || permissions.includes("employees:*");
+  const canReadApiKeys = dashboardHighImpactPermissionMatches(
+    role,
+    permissions,
+    "api_keys.read",
+    deniedPermissions,
+  );
+  const canReadProof = dashboardHighImpactPermissionMatches(
+    role,
+    permissions,
+    "proofs.read",
+    deniedPermissions,
+  );
   const isClerkSsoSession = role === "super-admin" && Boolean(clerkEnabled);
   const hasWildcardAccess = permissions.includes("*");
   const normalizedPermissions = hasWildcardAccess
@@ -866,7 +862,10 @@ export function TenantAccountMenu({
       meta: "Cuenta, integracion, incidentes o preventa",
       external: true,
     },
-  ], [tenantQuery]);
+  ].filter((item) => (
+    (!item.href.startsWith("/api-keys") || canReadApiKeys)
+    && (item.href !== "/proof" || canReadProof)
+  )), [canReadApiKeys, canReadProof, tenantQuery]);
 
   const itemContent = (item: AccountMenuItem) => (
     <>
@@ -1005,7 +1004,7 @@ export function TenantAccountMenu({
           <div className="tenant-account-panel__header border-b border-white/10 bg-[radial-gradient(circle_at_85%_12%,rgba(34,211,238,.2),transparent_40%),linear-gradient(135deg,#0f172a,#07111f)] p-4">
             <div className="flex items-start gap-3">
               <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-cyan-300/25 bg-cyan-400/10 text-sm font-black text-cyan-100">
-                {initialsFor(role)}
+                {dashboardRoleInitials(role)}
               </span>
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Cuenta operativa</p>
@@ -1159,10 +1158,10 @@ export function TenantAccountMenu({
         }}
       >
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-blue-600 text-xs font-black text-white shadow-[0_0_22px_rgba(37,99,235,.35)]">
-          {initialsFor(role)}
+          {dashboardRoleInitials(role)}
         </span>
         <span className="min-w-0 flex-1">
-          <b className="block truncate text-sm leading-4 text-white">{roleLabel(role)}</b>
+          <b className="block truncate text-sm leading-4 text-white">{dashboardRoleLabel(role)}</b>
           <span className="mt-0.5 block truncate text-xs leading-4 text-slate-300">{tenantName}</span>
         </span>
         <ChevronDown className={`h-4 w-4 shrink-0 text-slate-500 transition ${open ? "rotate-180 text-cyan-200" : ""}`} />

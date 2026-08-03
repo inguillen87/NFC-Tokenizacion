@@ -9,7 +9,8 @@ const exportForm = await readFile(new URL("../src/app/(app)/supplier-orders/[ord
 test("supplier detail loads authoritative packaging governance and blocks export until approved", () => {
   assert.match(page, /supplier-orders\/\$\{encodeURIComponent\(orderId\)\}\/packaging/);
   assert.match(page, /packagingStatus === "approved"/);
-  assert.match(page, /disabled=\{!packagingApproved\}/);
+  assert.match(page, /dashboardHighImpactPermissionMatches\([\s\S]*"supplier_pack\.export"[\s\S]*session\.deniedPermissions/);
+  assert.match(page, /disabled=\{!canExportFactoryPack \|\| !packagingApproved\}/);
   assert.match(exportForm, /if \(disabled\)/);
   assert.match(exportForm, /disabled=\{loading \|\| disabled\}/);
 });

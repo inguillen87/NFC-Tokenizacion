@@ -4,14 +4,19 @@ import { getDashboardI18n } from "../../../lib/locale";
 import { requireDashboardSession } from "../../../lib/session";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../lib/admin-page-access";
 import { readDemoDataMetaFromResponse } from "../../../lib/demo-data-mode";
+import { dashboardHighImpactPermissionMatches } from "../../../lib/permission-policy";
 import { EnterpriseOpsState } from "../../../components/enterprise-ops-state";
 import LeadsTicketsClient from "./leads-tickets-client";
 
 type AdminCollectionResult = {
   rows: any[];
-  availability: "ready" | "upstream_error" | "invalid_payload" | "unreachable";
+  availability: "ready" | "upstream_error" | "invalid_payload" | "unreachable" | "access_denied";
   source: "production" | "demo" | "unavailable";
 };
+
+function accessDeniedCollection(): AdminCollectionResult {
+  return { rows: [], availability: "access_denied", source: "unavailable" };
+}
 
 async function adminGet(
   context: AdminPageContext,
@@ -53,6 +58,12 @@ export default async function LeadsTicketsPage({
   const sessionFilter = String(query.session || "").trim().toLowerCase();
   const { locale } = await getDashboardI18n();
   const session = await requireDashboardSession();
+  const canManageLeads = dashboardHighImpactPermissionMatches(
+    session.role,
+    session.permissions,
+    "leads.manage",
+    session.deniedPermissions,
+  );
   const adminContext = await createAdminPageContext(session, requestedTenant);
   const tenantScope = adminContext.tenantSlug;
   const tenantFilter = adminContext.canSelectTenant ? requestedTenant : tenantScope;
@@ -64,7 +75,9 @@ export default async function LeadsTicketsPage({
   const retryHref = `/leads-tickets${retryQuery.size ? `?${retryQuery.toString()}` : ""}`;
 
   const [leadsResult, ticketsResult, ordersResult] = await Promise.all([
-    adminGet(adminContext, "/admin/leads", allowDemoData),
+    canManageLeads
+      ? adminGet(adminContext, "/admin/leads", allowDemoData)
+      : Promise.resolve(accessDeniedCollection()),
     adminGet(adminContext, "/admin/tickets", allowDemoData),
     adminGet(adminContext, "/admin/consumer-portal/order-requests", allowDemoData),
   ]);
@@ -76,7 +89,7 @@ export default async function LeadsTicketsPage({
     { label: "prospectos", availability: leadsResult.availability },
     { label: "tickets", availability: ticketsResult.availability },
     { label: "pedidos", availability: ordersResult.availability },
-  ].filter((source) => source.availability !== "ready");
+  ].filter((source) => source.availability !== "ready" && source.availability !== "access_denied");
   
   const scopedLeads = tenantScope ? leadsArray.filter((lead) => leadTenant(lead) === tenantScope) : leadsArray;
   const scopedTickets = tenantScope ? ticketsArray.filter((item) => String(item.tenant_slug || "").toLowerCase() === tenantScope) : ticketsArray;
@@ -151,6 +164,19 @@ export default async function LeadsTicketsPage({
       <section className="rounded-2xl border border-white/10 bg-slate-900/60 p-4 text-sm text-slate-300">
         {labels.scope}: <b className="text-cyan-300 font-mono">{tenantScope ? `tenant:${tenantScope}` : labels.global}</b>.
       </section>
+
+      {!canManageLeads ? (
+        <EnterpriseOpsState
+          variant="warning"
+          title="Acceso restringido a prospectos"
+          description="Esta sesión no tiene la capacidad leads.manage. El servidor omitió la consulta de leads y sus datos de contacto; tickets y pedidos conservan sus controles y disponibilidad independientes."
+          checklist={[
+            "La bandeja de prospectos permanece vacía por autorización, no por ausencia de actividad.",
+            "Solicitá leads.manage al administrador del tenant si tu función lo requiere.",
+          ]}
+          testId="leads-access-denied"
+        />
+      ) : null}
 
       {unavailableSources.length ? (
         <EnterpriseOpsState

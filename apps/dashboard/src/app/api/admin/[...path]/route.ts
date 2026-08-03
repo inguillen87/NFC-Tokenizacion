@@ -5,11 +5,23 @@ import { productUrls } from "@product/config";
 import { aggregateTenantMetrics } from "@product/core";
 import { getDashboardSessionCredential } from "../../../../lib/session";
 import { canDemoSandboxAccess, resolveAdminProxyPolicy } from "../../../../lib/admin-proxy-policy";
-import { dashboardPermissionMatches, requiredPermissionForAdminResource } from "../../../../lib/permission-policy";
+import {
+  dashboardCanReadSensitiveAlerts,
+  dashboardCanReadSensitiveRiskAnalytics,
+  dashboardHighImpactPermissionMatches,
+  dashboardPermissionDenied,
+  dashboardPermissionMatches,
+  isSupplierManifestQuantityOverrideRequest,
+  isDashboardHighImpactCapability,
+  requiredPermissionForAdminResource,
+  requiresMfaForAdminResource,
+  requiresSuperAdminForAdminResource,
+} from "../../../../lib/permission-policy";
 import {
   DashboardTenantScopeError,
   resolveDashboardTenantScope,
 } from "../../../../lib/dashboard-tenant-scope-policy";
+import { dashboardRoleToScope } from "../../../../lib/enterprise-runtime-rbac";
 import {
   aggregateDemoGeoPoints,
   demoRuntimeSummary,
@@ -74,14 +86,6 @@ function demoBatchFor(tenantSlug: string) {
 function isDemoSession(req: Request) {
   const cookie = req.headers.get("cookie") || "";
   return cookie.includes("nexid_dashboard_session=demo.");
-}
-
-function dashboardRoleToScope(role: string | undefined) {
-  const normalizedRole = String(role || "");
-  if (normalizedRole === "super-admin") return "super_admin";
-  if (normalizedRole === "tenant-admin") return "tenant_admin";
-  if (normalizedRole === "reseller") return "reseller";
-  return "readonly_demo";
 }
 
 function markDemoData(res: NextResponse) {
@@ -1045,7 +1049,12 @@ async function forward(req: Request, path: string[]) {
   const dashboardSession = credential?.session || null;
   const demoSession = Boolean(dashboardSession?.isDemo) || isDemoSession(req);
   const scopedRole = demoSession ? "readonly_demo" : dashboardSession?.role ? dashboardRoleToScope(dashboardSession.role) : null;
-  const allowDemoFallbackForRequest = policy.allowDemoFallback || scopedRole === "readonly_demo" || (demoSession && !isProduction);
+  const allowDemoFallbackForRequest = policy.allowDemoFallback || (demoSession && !isProduction);
+
+  if (dashboardSession && !scopedRole) {
+    console.info("[admin_proxy_access_denied]", JSON.stringify({ reason: "unsupported_dashboard_role", method: req.method, path: normalizedPath }));
+    return NextResponse.json({ ok: false, reason: "unsupported_dashboard_role" }, { status: 403 });
+  }
 
   if (dashboardSession) {
     try {
@@ -1065,6 +1074,9 @@ async function forward(req: Request, path: string[]) {
   if (superadminUpstream && dashboardSession?.role !== "super-admin") {
     return NextResponse.json({ ok: false, reason: "super_admin_required" }, { status: 403 });
   }
+  if (requiresSuperAdminForAdminResource(req.method, normalizedPath) && dashboardSession?.role !== "super-admin") {
+    return NextResponse.json({ ok: false, reason: "super_admin_required" }, { status: 403 });
+  }
   const target = superadminUpstream
     ? `${API_BASE}/${path.join("/")}${reqUrl.search}`
     : `${API_BASE}/admin/${path.join("/")}${reqUrl.search}`;
@@ -1077,11 +1089,26 @@ async function forward(req: Request, path: string[]) {
   }
 
   const requiredPermission = requiredPermissionForAdminResource(req.method, normalizedPath);
+  const hasRequiredPermission = requiredPermission && dashboardSession
+    ? isDashboardHighImpactCapability(requiredPermission)
+      ? dashboardHighImpactPermissionMatches(
+          dashboardSession.role,
+          dashboardSession.permissions,
+          requiredPermission,
+          dashboardSession.deniedPermissions,
+        )
+      : dashboardSession.role === "super-admin"
+        ? !dashboardPermissionDenied(dashboardSession.deniedPermissions, requiredPermission)
+        : dashboardPermissionMatches(
+            dashboardSession.permissions,
+            requiredPermission,
+            dashboardSession.deniedPermissions,
+          )
+    : true;
   if (
     requiredPermission
     && dashboardSession
-    && dashboardSession.role !== "super-admin"
-    && !dashboardPermissionMatches(dashboardSession.permissions, requiredPermission)
+    && !hasRequiredPermission
   ) {
     console.info("[admin_proxy_access_denied]", JSON.stringify({ reason: "permission_required", requiredPermission, method: req.method, path: normalizedPath }));
     return NextResponse.json(
@@ -1089,8 +1116,61 @@ async function forward(req: Request, path: string[]) {
       { status: 403 },
     );
   }
+  if (
+    dashboardSession
+    && req.method === "GET"
+    && normalizedPath === "risk-analytics"
+    && !dashboardCanReadSensitiveRiskAnalytics(
+      dashboardSession.role,
+      dashboardSession.permissions,
+      dashboardSession.deniedPermissions,
+    )
+  ) {
+    console.info("[admin_proxy_access_denied]", JSON.stringify({
+      reason: "sensitive_risk_analytics_permissions_required",
+      requiredPermissions: ["reports.export", "events.read_sensitive"],
+      method: req.method,
+      path: normalizedPath,
+    }));
+    return NextResponse.json(
+      { ok: false, reason: "reports.export and events.read_sensitive permissions required." },
+      { status: 403 },
+    );
+  }
+  if (
+    dashboardSession
+    && req.method === "GET"
+    && (normalizedPath === "alerts" || normalizedPath === "security-alerts")
+    && !dashboardCanReadSensitiveAlerts(
+      dashboardSession.role,
+      dashboardSession.permissions,
+      dashboardSession.deniedPermissions,
+    )
+  ) {
+    console.info("[admin_proxy_access_denied]", JSON.stringify({
+      reason: "sensitive_alert_permissions_required",
+      requiredPermissions: ["audit.read", "events.read_sensitive"],
+      method: req.method,
+      path: normalizedPath,
+    }));
+    return NextResponse.json(
+      { ok: false, reason: "audit.read and events.read_sensitive permissions required." },
+      { status: 403 },
+    );
+  }
+  if (
+    dashboardSession
+    && requiresMfaForAdminResource(req.method, normalizedPath)
+    && dashboardSession.mfaVerified !== true
+  ) {
+    console.info("[admin_proxy_access_denied]", JSON.stringify({ reason: "mfa_required", method: req.method, path: normalizedPath }));
+    return NextResponse.json(
+      { ok: false, reason: "mfa_required" },
+      { status: 403 },
+    );
+  }
 
-  if (scopedRole === "readonly_demo" && !canDemoSandboxAccess(req.method, normalizedPath)) {
+  if (demoSession && scopedRole === "readonly_demo" && !canDemoSandboxAccess(req.method, normalizedPath)) {
     console.info("[admin_proxy_access_denied]", JSON.stringify({ reason: "readonly_demo_mutation_blocked", method: req.method, path: normalizedPath }));
     return NextResponse.json(
       { ok: false, reason: "readonly_demo scope only allows demo-safe reads and explicit non-persistent simulations." },
@@ -1102,7 +1182,14 @@ async function forward(req: Request, path: string[]) {
   if (!bodyResult.ok) return bodyResult.response;
   const body = bodyResult.body;
 
-  if (scopedRole === "readonly_demo") {
+  if (
+    isSupplierManifestQuantityOverrideRequest(req.method, normalizedPath, body || "")
+    && dashboardSession?.role !== "super-admin"
+  ) {
+    return NextResponse.json({ ok: false, reason: "supplier_manifest_quantity_override_forbidden" }, { status: 403 });
+  }
+
+  if (demoSession && scopedRole === "readonly_demo") {
     console.info("[admin_proxy_demo_sandbox]", JSON.stringify({ method: req.method, path: normalizedPath }));
     return markDemoData(demoAdminResponse(req.method, path, body || "", req.url));
   }
@@ -1225,13 +1312,27 @@ async function forward(req: Request, path: string[]) {
   }
 
   const contentType = (response.headers.get("content-type") || "").toLowerCase();
-  const text = await response.text();
-  if (criticalGet && (!contentType.includes("application/json") || !safeParseJson(text))) {
+  const binaryResponse = contentType.includes("application/pdf")
+    || contentType.includes("application/octet-stream")
+    || contentType.includes("text/csv");
+  const responseBody = binaryResponse ? await response.arrayBuffer() : await response.text();
+  if (criticalGet && (binaryResponse || !contentType.includes("application/json") || !safeParseJson(responseBody as string))) {
     return unavailable("Admin upstream returned invalid payload.");
   }
   const headers = new Headers({ "Content-Type": response.headers.get("content-type") || "application/json" });
+  headers.set("Cache-Control", response.headers.get("cache-control") || "no-store");
+  for (const header of [
+    "content-disposition",
+    "x-nexid-artifact-sha256",
+    "x-nexid-audit-receipt",
+    "x-nexid-download-count",
+    "x-nexid-idempotent-replay",
+  ]) {
+    const value = response.headers.get(header);
+    if (value) headers.set(header, value);
+  }
   headers.set("x-nexid-data-mode", "production");
-  return new NextResponse(text, { status: response.status, headers });
+  return new NextResponse(responseBody, { status: response.status, headers });
 }
 
 export async function GET(req: Request, { params }: { params: Promise<{ path: string[] }> }) {

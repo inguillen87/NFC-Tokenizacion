@@ -159,10 +159,10 @@ test("public and admin pricing separate recurring software from pilot and SLA sc
 
   assert.match(publicPricing, /SLA sujeto a readiness review/);
   assert.match(publicPricing, /SLA after readiness review/);
-  assert.match(publicPricing, /Implementacion piloto desde US\$ 2\.500/);
-  assert.match(publicPricing, /Software desde US\$ 99 \/ mes/);
-  assert.match(publicPricing, /Software desde US\$ 249 \/ mes/);
-  assert.match(publicPricing, /Software desde US\$ 499 \/ mes \+ uso/);
+  assert.match(publicPricing, /Banda de piloto en el configurador/);
+  assert.match(publicPricing, /Cotizado por unidades, carrier y alcance/);
+  assert.match(publicPricing, /SaaS, operacion y uso cotizados por separado/);
+  assert.doesNotMatch(publicPricing, /Software (?:from|desde) (?:US)?\$/);
   assert.match(planConfig, /Software desde USD 99 \/ mes/);
   assert.match(planConfig, /Software desde USD 249 \/ mes/);
   assert.match(planConfig, /Software desde USD 499 \/ mes \+ uso/);

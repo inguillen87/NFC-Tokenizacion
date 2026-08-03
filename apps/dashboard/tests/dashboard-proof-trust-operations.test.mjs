@@ -7,7 +7,9 @@ const proofStyles = await readFile(new URL("../src/app/(app)/proof/page.module.c
 const dashboardStyles = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
 
 test("Trust Operations reads private tenant contracts through the authenticated BFF", () => {
-  assert.match(proofSource, /await requireDashboardSession\("proof:read"\)/);
+  assert.match(proofSource, /await requireDashboardSession\(\)/);
+  assert.match(proofSource, /dashboardHighImpactPermissionMatches\([\s\S]*"proofs\.read"[\s\S]*session\.deniedPermissions/);
+  assert.match(proofSource, /if \(!canReadProof\) notFound\(\)/);
   assert.match(proofSource, /await createAdminPageContext\(session\)/);
   assert.match(proofSource, /fetchAdminPage\(context, path\)/);
   assert.match(proofSource, /"proof\/anchors"/);

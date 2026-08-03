@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, checkAdminPermission, getAdminTenantScope } from "../../../../lib/auth";
+import { checkAdminPermission, checkAdminWithPermission, getAdminTenantScope } from "../../../../lib/auth";
 import { sql } from "../../../../lib/db";
 import { onRealtimeEvent } from "../../../../lib/realtime-events";
 import { randomUUID } from "node:crypto";
@@ -220,7 +220,7 @@ async function fetchRows(
 }
 
 export async function GET(req: Request): Promise<Response> {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdminWithPermission(req, "events.read_sensitive");
   if (auth) return auth;
   const canReadIncidents = checkAdminPermission(req, "incidents:read") === null;
   const { scope, forcedTenantSlug } = getAdminTenantScope(req);

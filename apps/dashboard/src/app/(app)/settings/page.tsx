@@ -17,6 +17,8 @@ import {
 import { Badge, Card, SectionHeading } from "@product/ui";
 import { SecureDashboardLogoutButton } from "../../../components/secure-dashboard-logout-button";
 import { isClerkConfiguredForRuntime } from "../../../lib/clerk-env";
+import { dashboardRoleLabel } from "../../../lib/enterprise-runtime-rbac";
+import { dashboardHighImpactPermissionMatches } from "../../../lib/permission-policy";
 import { requireDashboardSession } from "../../../lib/session";
 
 type SettingsTile = {
@@ -44,13 +46,6 @@ function tenantNameFromSlug(slug?: string | null) {
   return normalized.replace(/[-_]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-function roleLabel(role: string) {
-  if (role === "super-admin") return "Super Admin";
-  if (role === "tenant-admin") return "Admin tenant";
-  if (role === "reseller") return "Reseller";
-  return "Viewer";
-}
-
 function permissionSummary(permissions: string[]) {
   if (permissions.includes("*")) return "Acceso completo";
   if (!permissions.length) return "Scope limitado";
@@ -63,6 +58,18 @@ export default async function SettingsPage() {
   const tenantQuery = tenantSlug ? `?tenant=${encodeURIComponent(tenantSlug)}` : "";
   const tenantHref = tenantSlug ? `/tenants/${encodeURIComponent(tenantSlug)}` : "/tenants";
   const tenantName = tenantNameFromSlug(tenantSlug);
+  const canReadApiKeys = dashboardHighImpactPermissionMatches(
+    session.role,
+    session.permissions,
+    "api_keys.read",
+    session.deniedPermissions,
+  );
+  const canReadProof = dashboardHighImpactPermissionMatches(
+    session.role,
+    session.permissions,
+    "proofs.read",
+    session.deniedPermissions,
+  );
   const isClerkSuperAdminSession = session.role === "super-admin" && !session.mfaVerified;
   const clerkEnabled = isClerkConfiguredForRuntime();
   const sessionSecurityLabel = session.isDemo
@@ -84,7 +91,7 @@ export default async function SettingsPage() {
     ? { href: "/onboarding", label: "Completar setup", meta: "Datos base, equipo e integraciones iniciales" }
     : { href: tenantHref, label: "Abrir workspace", meta: "Perfil, alcance y acciones del tenant" };
 
-  const tiles: SettingsTile[] = [
+  const allTiles: SettingsTile[] = [
     {
       href: "/proof",
       label: "Proof, IOTA y anchors",
@@ -176,6 +183,10 @@ export default async function SettingsPage() {
       icon: <LifeBuoy className="h-5 w-5" />,
     },
   ];
+  const tiles = allTiles.filter((tile) => (
+    (!tile.href.startsWith("/api-keys") || canReadApiKeys)
+    && (tile.href !== "/proof" || canReadProof)
+  ));
 
   return (
     <main className="space-y-8" data-testid="settings-command-center">
@@ -195,7 +206,7 @@ export default async function SettingsPage() {
                 <p className="mt-1 break-all text-sm text-slate-400">{session.email}</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Badge tone={session.role === "super-admin" ? "amber" : "cyan"}>{roleLabel(session.role)}</Badge>
+                <Badge tone={session.role === "super-admin" ? "amber" : "cyan"}>{dashboardRoleLabel(session.role)}</Badge>
                 <Badge tone={securityBadgeTone}>{sessionSecurityLabel}</Badge>
               </div>
             </div>
@@ -250,7 +261,7 @@ export default async function SettingsPage() {
                 </p>
                 <p className="flex items-center justify-between gap-3 text-slate-300">
                   <span>Perfil</span>
-                  <b className="text-white">{roleLabel(session.role)}</b>
+                  <b className="text-white">{dashboardRoleLabel(session.role)}</b>
                 </p>
               </div>
             </div>
@@ -286,13 +297,15 @@ export default async function SettingsPage() {
               Ver workspace asociado
               <ArrowRight className="h-4 w-4" />
             </Link>
-            <Link
-              href="/proof"
-              className="flex min-h-12 items-center justify-between rounded-xl border border-white/10 bg-slate-950/55 px-4 py-3 font-bold text-slate-100 transition hover:border-emerald-300/40 hover:text-emerald-100"
-            >
-              Abrir Proof Verifier
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+            {canReadProof ? (
+              <Link
+                href="/proof"
+                className="flex min-h-12 items-center justify-between rounded-xl border border-white/10 bg-slate-950/55 px-4 py-3 font-bold text-slate-100 transition hover:border-emerald-300/40 hover:text-emerald-100"
+              >
+                Abrir Proof Verifier
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            ) : null}
             <Link
               href="/demo-lab"
               className="flex min-h-12 items-center justify-between rounded-xl border border-white/10 bg-slate-950/55 px-4 py-3 font-bold text-slate-100 transition hover:border-cyan-300/40 hover:text-cyan-100"

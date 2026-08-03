@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminTenantAccess } from "../../../../../lib/auth";
+import { checkAdminWithPermission, getAdminTenantAccess } from "../../../../../lib/auth";
 import { json } from "../../../../../lib/http";
 import { sql } from "../../../../../lib/db";
 
@@ -33,7 +33,7 @@ function normalizeValues(values: unknown, fallback: string[]) {
 }
 
 export async function PATCH(req: Request, context: { params: Promise<{ bid: string }> }) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdminWithPermission(req, "batch.tamper.configure");
   if (auth) return auth;
 
   const { bid } = await context.params;

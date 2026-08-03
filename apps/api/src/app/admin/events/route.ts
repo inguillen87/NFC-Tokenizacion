@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminTenantScope } from "../../../lib/auth";
+import { checkAdminWithPermission, getAdminTenantScope } from "../../../lib/auth";
 import { normalizeBrowser, normalizeDeviceType, normalizeOs, normalizeTimezone, parseAnalyticsFilters } from "../../../lib/analytics";
 import { sql } from "../../../lib/db";
 import { json } from "../../../lib/http";
@@ -25,7 +25,7 @@ async function ensureEventLocationContextSchema() {
 }
 
 export async function GET(req: Request) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdminWithPermission(req, "events.read_sensitive");
   if (auth) return auth;
   await ensureEventLocationContextSchema().catch(() => null);
 

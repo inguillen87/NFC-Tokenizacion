@@ -1,0 +1,46 @@
+{
+  "ok": true,
+  "validator": "enterprise_runtime_role_postgres_acl_v1",
+  "validated_at": "2026-08-02",
+  "environment": "disposable_neon_schema_only_branch",
+  "endpoint_id": "ep-rapid-glitter-ail9banz",
+  "database": "codex_qa_nexid_20260802",
+  "migration_role": "neondb_owner",
+  "migration_count": 96,
+  "latest_migration": "20260802290000_0094_sun_runtime_acl_boundary.sql",
+  "evidence": {
+    "public_schema_create_revoked": true,
+    "public_wrapper_execute_revoked": true,
+    "public_internal_base_execute_revoked": true,
+    "ephemeral_runtime_role": {
+      "no_login": true,
+      "no_superuser": true,
+      "no_create_role": true,
+      "no_create_database": true,
+      "no_bypass_rls": true,
+      "no_create_in_public_schema": true
+    },
+    "granted_function_count": 8,
+    "granted_append_only_receipt_table_count": 3,
+    "denied_internal_function_count": 4,
+    "actual_permission_denials": {
+      "internal_manifest_core_execute": true,
+      "private_batch_key_read": true,
+      "tt_receipt_update": true,
+      "carrier_receipt_delete": true
+    },
+    "role_removed_after_transaction_rollback": true
+  },
+  "boundaries": {
+    "distinct_runtime_role_acl_proven": true,
+    "production_runtime_role_proven": false,
+    "production_runtime_role_created_or_changed": false,
+    "business_mutation_functions_executed": false,
+    "physical_nfc_cryptographic_path_touched": false,
+    "software_envelope_claimed_as_kms_or_hsm": false,
+    "managed_kms_validated": false,
+    "hsm_validated": false,
+    "production_touched": false
+  },
+  "contains_credentials": false
+}

@@ -106,8 +106,10 @@ test("proof routes reject unresolved tenant scope before global reads or writes"
     assert.match(source, /resolveAdminProofTenantScope/);
     assert.match(source, /tenantScope\.requested && !tenantScope\.found/);
     assert.match(source, /tenant_not_found/);
-    assert.match(source, /checkAdminPermission/);
   }
+  assert.match(anchors, /checkAdminWithPermission\(req, "proof:(?:read|write)"\)/);
+  assert.match(events, /checkAdminWithPermission\(req, "proof:(?:read|write)"\)/);
+  assert.match(localAnchor, /checkAdminWithPermission\(req, "proof:write"\)/);
   assert.match(events, /export async function GET/);
   assert.match(events, /WHERE tenant_id = \$\{tenantScope\.tenantId\}::uuid/);
   assert.match(anchors, /eventRowsFromIds\(eventIds, tenantId\)/);

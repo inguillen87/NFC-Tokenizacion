@@ -26,7 +26,7 @@ function resolve(ref) {
 
 test("AsyncAPI 3 publishes the implemented outbound webhook operation", () => {
   assert.equal(spec.asyncapi, "3.0.0");
-  assert.equal(spec.info.version, "1.0.0");
+  assert.equal(spec.info.version, "1.1.0");
   assert.equal(spec.operations.sendTenantWebhook.action, "send");
   assert.equal(spec.operations.sendTenantWebhook.channel.$ref, "#/channels/tenantWebhook");
   assert.equal(spec.operations.sendTenantWebhook["x-nexid-delivery-semantics"], "at-least-once");
@@ -49,6 +49,7 @@ test("AsyncAPI binds the current body schema and every signed identity header", 
     "x-nexid-delivery-id",
     "x-nexid-event-id",
     "x-nexid-signature",
+    "x-nexid-request-id",
   ]);
   assert.match(headers.properties["x-nexid-event"].description, /Unsigned convenience routing header/);
 });

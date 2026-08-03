@@ -2,11 +2,11 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 import { sql } from "../../../../../lib/db";
-import { checkAdmin, getAdminTenantAccess } from "../../../../../lib/auth";
+import { checkAdminWithPermission, getAdminTenantAccess } from "../../../../../lib/auth";
 import { json } from "../../../../../lib/http";
 
 export async function POST(req: Request, { params }: { params: Promise<{ bid: string }> }) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdminWithPermission(req, "batch.revoke");
   if (auth) return auth;
 
   const { bid } = await params;

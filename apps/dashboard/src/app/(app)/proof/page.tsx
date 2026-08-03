@@ -1,5 +1,6 @@
 import { productUrls, withPath } from "@product/config";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import {
   Activity,
   ArrowUpRight,
@@ -17,7 +18,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { dashboardPermissionMatches } from "../../../lib/permission-policy";
+import { dashboardHighImpactPermissionMatches } from "../../../lib/permission-policy";
 import { requireDashboardSession } from "../../../lib/session";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../lib/admin-page-access";
 import styles from "./page.module.css";
@@ -379,7 +380,14 @@ function EmptyState({ children }: { children: string }) {
 }
 
 export default async function ProofPage() {
-  const session = await requireDashboardSession("proof:read");
+  const session = await requireDashboardSession();
+  const canReadProof = dashboardHighImpactPermissionMatches(
+    session.role,
+    session.permissions,
+    "proofs.read",
+    session.deniedPermissions,
+  );
+  if (!canReadProof) notFound();
   const adminContext = await createAdminPageContext(session);
 
   const eventsPromise = getEvents(adminContext);
@@ -457,8 +465,11 @@ export default async function ProofPage() {
     polygonReference?.certificate_url || polygonReference?.ownership_certificate_url,
   );
   const polygonRpcVerified = polygonReference?.rpc_verified === true;
-  const canWriteProof = !session.isDemo && (
-    session.role === "super-admin" || dashboardPermissionMatches(session.permissions, "proof:write")
+  const canWriteProof = !session.isDemo && dashboardHighImpactPermissionMatches(
+    session.role,
+    session.permissions,
+    "proofs.anchor",
+    session.deniedPermissions,
   );
   const composerHref = session.tenantSlug
     ? `/proof/anchor?tenant=${encodeURIComponent(session.tenantSlug)}`

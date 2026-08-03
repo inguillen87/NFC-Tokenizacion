@@ -6,6 +6,7 @@ const {
   buildSupplierSubBatchPlan,
   generateSupplierBatchKeys,
   buildSupplierEncodingPack,
+  buildSupplierManifestTemplate,
   buildSupplierPackPdfSummary,
   buildZipArchive,
   encryptSupplierZipArchive,
@@ -79,7 +80,7 @@ test("supplier keys are random 16-byte hex pairs and pack includes TagTamper con
   assert.deepEqual(pack.json.QA_INTEGRATION_GATE, {
     acceptance_scope: "trial_integration_only",
     sample_count: 10,
-    selection_authority: "nexid_server",
+    selection_authority: "operator_supplied_distinct_manifest_uids_validated_by_server",
     must_pass: ["uid_decode", "cmac_valid", "replay_blocked", "ttstatus_closed_when_supported"],
     physical_ceremony_required: true,
     physical_ceremony_verified: false,
@@ -121,6 +122,22 @@ test("supplier keys are random 16-byte hex pairs and pack includes TagTamper con
   assert.equal(productionPack.json.COMMERCIAL_RELEASE, "BLOCKED_PENDING_PRODUCTION_QA");
   assert.equal(productionPack.json.PRODUCTION_LOT_ACCEPTANCE.status, "blocked_pending_tenant_qa_plan");
   assert.equal(productionPack.json.SALEABLE, false);
+  const approvedProductionPack = buildSupplierEncodingPack({
+    clientSlug: "syngenta",
+    batchId: "SYN-PROD-001",
+    packPurpose: "production",
+    productionQaPlanApproved: true,
+    quantity: 10000,
+    chipModel: "NTAG 424 DNA",
+    carrierProfile: "ntag424_dna",
+    kMetaHex: first.kMetaHex,
+    kFileHex: first.kFileHex,
+    urlTemplate: "https://api.nexid.lat/sun?v=1&bid=SYN-PROD-001&picc_data=<PICC_DATA_DYNAMIC>&enc=<ENC_DYNAMIC>&cmac=<CMAC_DYNAMIC>",
+  });
+  assert.equal(approvedProductionPack.json.COMMERCIAL_RELEASE, "BLOCKED_PENDING_RECEIVING_QA");
+  assert.equal(approvedProductionPack.json.PRODUCTION_LOT_ACCEPTANCE.status, "pending_receiving_qa");
+  assert.equal(approvedProductionPack.json.PRODUCTION_LOT_ACCEPTANCE.qa_plan_approved, true);
+  assert.equal(approvedProductionPack.json.SALEABLE, false);
   assert.throws(
     () => buildSupplierEncodingPack({ ...productionPack.json, packPurpose: "" }),
     /supplier_pack_purpose_invalid/,
@@ -128,7 +145,6 @@ test("supplier keys are random 16-byte hex pairs and pack includes TagTamper con
 });
 
 test("non-cryptographic supplier profiles never expose 424 batch keys", () => {
-  const keys = generateSupplierBatchKeys();
   const ntagPack = buildSupplierEncodingPack({
     clientSlug: "balmec",
     batchId: "BALMEC-EVENT-A",
@@ -136,8 +152,6 @@ test("non-cryptographic supplier profiles never expose 424 batch keys", () => {
     quantity: 500,
     chipModel: "NTAG215 wristband",
     carrierProfile: "event_wristband",
-    kMetaHex: keys.kMetaHex,
-    kFileHex: keys.kFileHex,
     urlTemplate: "https://nexid.lat/t/BALMEC-EVENT-A/<UID_HEX>",
   });
   assert.doesNotMatch(ntagPack.text, /K_META_BATCH=/);
@@ -145,7 +159,9 @@ test("non-cryptographic supplier profiles never expose 424 batch keys", () => {
   assert.equal(ntagPack.json.QA_INTEGRATION_GATE, null);
   assert.doesNotMatch(ntagPack.text, /QA_INTEGRATION_GATE/);
   assert.match(ntagPack.text, /KEY_MATERIAL=NO_BATCH_KEYS_REQUIRED_FOR_THIS_PROFILE/);
-  assert.match(ntagPack.text, /MANIFEST_FORMAT=batch_id,uid_hex,attendee_ref,zone,valid_from,valid_until/);
+  assert.match(ntagPack.text, /MANIFEST_FORMAT=batch_id,uid_hex,carrier_profile_code,attendee_ref,zone,valid_from,valid_until/);
+  assert.equal("K_META_BATCH" in ntagPack.json, false);
+  assert.equal("K_FILE_BATCH" in ntagPack.json, false);
 
   const gs1Pack = buildSupplierEncodingPack({
     clientSlug: "syngenta",
@@ -154,14 +170,46 @@ test("non-cryptographic supplier profiles never expose 424 batch keys", () => {
     quantity: 1000,
     chipModel: "GS1 Digital Link label",
     carrierProfile: "gs1_digital_link",
-    kMetaHex: keys.kMetaHex,
-    kFileHex: keys.kFileHex,
     urlTemplate: "https://nexid.lat/01/<GTIN>/10/<LOT>/21/<SERIAL>",
   });
   assert.doesNotMatch(gs1Pack.text, /K_META_BATCH=/);
   assert.doesNotMatch(gs1Pack.text, /K_FILE_BATCH=/);
   assert.match(gs1Pack.text, /GTIN, lot and serial in manifest/);
   assert.equal(gs1Pack.json.KEY_MATERIAL, "NO_BATCH_KEYS_REQUIRED_FOR_THIS_PROFILE");
+  assert.equal("K_META_BATCH" in gs1Pack.json, false);
+  assert.equal("K_FILE_BATCH" in gs1Pack.json, false);
+});
+
+test("supplier manifest templates are deterministic and carrier-specific", () => {
+  const secure = buildSupplierManifestTemplate({
+    carrierProfile: "ntag424_dna_tt",
+    batchId: "syn-tt-a",
+  });
+  assert.equal(secure.filename, "manifest-template.csv");
+  assert.equal(secure.batchId, "SYN-TT-A");
+  assert.deepEqual(secure.headers.slice(0, 7), [
+    "batch_id", "uid_hex", "carrier_profile_code", "sun_url", "picc_data", "enc", "cmac",
+  ]);
+  assert.ok(secure.headers.includes("tt_status_hex"));
+  assert.equal(secure.csv, `${secure.headers.join(",")}\n`);
+  assert.match(secure.contentHash, /^sha256:[0-9a-f]{64}$/);
+
+  const gs1 = buildSupplierManifestTemplate({
+    carrierProfile: "gs1_digital_link",
+    batchId: "syn-gs1-a",
+  });
+  assert.ok(gs1.headers.includes("gtin"));
+  assert.ok(gs1.headers.includes("lot"));
+  assert.ok(gs1.headers.includes("serial"));
+  assert.equal(gs1.headers.includes("picc_data"), false);
+
+  const uhf = buildSupplierManifestTemplate({
+    carrierProfile: "uhf_rfid",
+    batchId: "syn-uhf-a",
+  });
+  assert.ok(uhf.headers.includes("epc"));
+  assert.ok(uhf.headers.includes("pallet_id"));
+  assert.notEqual(uhf.contentHash, gs1.contentHash);
 });
 
 test("carrier profile normalization supports logistics, events and IoT profiles", () => {
@@ -203,14 +251,21 @@ test("supplier pack export can be delivered as encrypted ZIP without plaintext k
   assert.match(pdf.toString("utf8"), /NON_SELLABLE - TRIAL INTEGRATION ONLY/);
   assert.match(pdf.toString("utf8"), /Activation allowed: false/);
 
+  const manifestTemplate = buildSupplierManifestTemplate({
+    carrierProfile: "ntag424_dna",
+    batchId: "SYN-AR-2026-001-A",
+  });
   const zip = buildZipArchive([
     { path: "README_FIRST.txt", data: "nexID supplier pack\n" },
     { path: "SYN-AR-2026-001-A/SYN-AR-2026-001-A_supplier_encoding_pack.txt", data: pack.text },
     { path: "SYN-AR-2026-001-A/SYN-AR-2026-001-A_supplier_encoding_pack.json", data: jsonBody },
     { path: "SYN-AR-2026-001-A/SYN-AR-2026-001-A_supplier_encoding_summary.pdf", data: pdf },
+    { path: `SYN-AR-2026-001-A/${manifestTemplate.filename}`, data: manifestTemplate.csv },
   ]);
   assert.equal(zip.subarray(0, 2).toString("utf8"), "PK");
   assert.match(zip.toString("utf8"), /README_FIRST\.txt/);
+  assert.match(zip.toString("utf8"), /manifest-template\.csv/);
+  assert.match(zip.toString("utf8"), /picc_data,enc,cmac/);
   assert.match(zip.toString("utf8"), new RegExp(keys.kMetaHex));
 
   const encrypted = encryptSupplierZipArchive(zip, "nexID-SYN-AR-2026-001-A-TEST", { bid: "SYN-AR-2026-001-A" });
@@ -222,6 +277,53 @@ test("supplier pack export can be delivered as encrypted ZIP without plaintext k
   const decrypted = decryptSupplierEncryptedZipForTest(encrypted.envelopeBuffer, "nexID-SYN-AR-2026-001-A-TEST");
   assert.equal(decrypted.subarray(0, 2).toString("utf8"), "PK");
   assert.equal(decrypted.equals(zip), true);
+});
+
+test("production supplier PDF carries the QA plan approval and remains pending receiving QA", () => {
+  const pdf = buildSupplierPackPdfSummary({
+    clientSlug: "syngenta",
+    batchId: "SYN-PROD-2026-001",
+    packPurpose: "production",
+    commercialDisposition: "PENDING_RECEIVING_QA",
+    activationAllowed: false,
+    quantity: 10000,
+    chipModel: "NTAG 424 DNA TT",
+    carrierProfile: "ntag424_dna_tt",
+    keyFingerprint: "sha256:" + "1".repeat(64),
+    contentHash: "sha256:" + "2".repeat(64),
+    jsonHash: "sha256:" + "3".repeat(64),
+    urlTemplate: "https://api.nexid.lat/sun?v=1&bid=SYN-PROD-2026-001&picc_data=<PICC_DATA_DYNAMIC>&enc=<ENC_DYNAMIC>&cmac=<CMAC_DYNAMIC>",
+    productionQaPlanApproval: {
+      plan_id: "11111111-1111-4111-8111-111111111111",
+      plan_revision: 2,
+      plan_digest: "sha256:" + "4".repeat(64),
+      decision_id: "22222222-2222-4222-8222-222222222222",
+      decision_schema: "supplier-production-qa-plan-decision/v1",
+      approved_by: "quality@syngenta.example",
+      approved_at: "2026-08-01T15:00:00.000Z",
+      approval_evidence_ref: "artifact://syngenta/qa-plan/2",
+      approval_evidence_sha256: "sha256:" + "5".repeat(64),
+      lot_size: 10000,
+      inspection_level: "II",
+      target_aql: "1.000",
+      sample_size: 200,
+      accept_number: 5,
+      reject_number: 6,
+      policy_reference: "SYNGENTA-QA-2026-R2",
+      policy_document_sha256: "sha256:" + "6".repeat(64),
+      stratification_dimension: "roll_id",
+      cryptographic_sample_size: 10,
+    },
+    productionQaPlanApprovalReceiptHash: "sha256:" + "7".repeat(64),
+  });
+
+  const body = pdf.toString("utf8");
+  assert.match(body, /PENDING_RECEIVING_QA - PRODUCTION ENCODING ONLY/);
+  assert.match(body, /Activation allowed: false/);
+  assert.match(body, /Production QA plan: 11111111-1111-4111-8111-111111111111 rev 2/);
+  assert.match(body, /Plan approval decision: 22222222-2222-4222-8222-222222222222/);
+  assert.match(body, new RegExp("Approval receipt hash: sha256:" + "7".repeat(64)));
+  assert.match(body, /Receiving QA: lot 10000; sample 200; Ac 5; Re 6/);
 });
 
 test("supplier manifest gate rejects quantity mismatch before activation", () => {

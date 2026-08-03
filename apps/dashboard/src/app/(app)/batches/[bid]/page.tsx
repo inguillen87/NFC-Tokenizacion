@@ -10,7 +10,9 @@ import {
 } from "../../../../lib/admin-resource-read";
 import { requireDashboardSession } from "../../../../lib/session";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../../lib/admin-page-access";
+import { dashboardHighImpactPermissionMatches } from "../../../../lib/permission-policy";
 import { BatchConfigFormClient } from "./batch-config-form-client";
+import { BatchLifecycleControl } from "./batch-lifecycle-control";
 
 type UnitSample = {
   uid_hex?: string | null;
@@ -134,6 +136,24 @@ function Metric({ label, value, detail, tone = "neutral" }: { label: string; val
 export default async function BatchDetailPage({ params }: { params: Promise<{ bid: string }> }) {
   const session = await requireDashboardSession("batches:read");
   const { bid } = await params;
+  const canManageLifecycle = dashboardHighImpactPermissionMatches(
+    session.role,
+    session.permissions,
+    "batch.lifecycle",
+    session.deniedPermissions,
+  );
+  const canRevoke = dashboardHighImpactPermissionMatches(
+    session.role,
+    session.permissions,
+    "batch.revoke",
+    session.deniedPermissions,
+  );
+  const canConfigureProduct = dashboardHighImpactPermissionMatches(
+    session.role,
+    session.permissions,
+    "batch.product.configure",
+    session.deniedPermissions,
+  );
   const adminContext = await createAdminPageContext(session);
   const batch = await getBatch(adminContext, bid);
   const batchData = batch.data;
@@ -324,7 +344,16 @@ export default async function BatchDetailPage({ params }: { params: Promise<{ bi
             </div>
           </Card>
           
-          <BatchConfigFormClient bid={bid} initialData={initialFormData} />
+          {canManageLifecycle || canRevoke ? (
+            <BatchLifecycleControl
+              bid={bid}
+              currentState={text(batchData?.status, "draft")}
+              canManageLifecycle={canManageLifecycle}
+              canRevoke={canRevoke}
+            />
+          ) : null}
+
+          {canConfigureProduct ? <BatchConfigFormClient bid={bid} initialData={initialFormData} /> : null}
 
           <Card className="p-6">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Ops next</p>

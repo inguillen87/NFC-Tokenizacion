@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { createPublicProofResourceCommitment } from "../../../../lib/public-proof-commitment";
 import styles from "./page.module.css";
 
 type ProviderCode = "none" | "iota";
@@ -116,7 +117,8 @@ function errorMessage(payload: Record<string, unknown>, fallback: string) {
     proof_payload_sensitive_key_rejected: "El payload contiene un campo sensible. Usa solo referencias no confidenciales.",
     tenant_not_found: "No se encontro el tenant indicado.",
     tenant_required: "Selecciona un tenant antes de registrar evidencia.",
-    public_resource_id_required: "Define una referencia publica seudonima antes de publicar en IOTA.",
+    public_resource_id_required: "No se pudo generar el compromiso publico SHA-256 para IOTA.",
+    public_resource_id_hash_required: "IOTA exige un compromiso publico SHA-256; el identificador interno permanece privado.",
     direct_event_hashes_forbidden: "En produccion IOTA solo acepta eventos registrados y tenant-scoped.",
     readonly_demo_mutation_blocked: "El sandbox es de solo lectura. Ingresa con una cuenta operativa para emitir un recibo.",
   };
@@ -154,6 +156,7 @@ export function ProofAnchorComposer({ canWrite, defaultOccurredAt, initialTenant
   const [resourceType, setResourceType] = useState("batch");
   const [resourceId, setResourceId] = useState("");
   const [publicResourceId, setPublicResourceId] = useState("");
+  const [publicResourceIdPending, setPublicResourceIdPending] = useState(false);
   const [eventType, setEventType] = useState("origin_attested");
   const [evidenceStatus, setEvidenceStatus] = useState("verified");
   const [locationCode, setLocationCode] = useState("");
@@ -201,6 +204,32 @@ export function ProofAnchorComposer({ canWrite, defaultOccurredAt, initialTenant
     return () => controller.abort();
   }, [role]);
 
+  useEffect(() => {
+    const tenantScope = tenantSlug.trim();
+    const internalResourceId = resourceId.trim();
+    if (!tenantScope || !resourceType || !internalResourceId) {
+      setPublicResourceId("");
+      setPublicResourceIdPending(false);
+      return;
+    }
+    let active = true;
+    setPublicResourceIdPending(true);
+    void createPublicProofResourceCommitment({
+      tenantScope,
+      resourceType,
+      resourceId: internalResourceId,
+    }).then((commitment) => {
+      if (active) setPublicResourceId(commitment);
+    }).catch(() => {
+      if (active) setPublicResourceId("");
+    }).finally(() => {
+      if (active) setPublicResourceIdPending(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [resourceId, resourceType, tenantSlug]);
+
   const providerById = useMemo(
     () => new Map(providers.map((provider) => [provider.id, provider])),
     [providers],
@@ -220,7 +249,7 @@ export function ProofAnchorComposer({ canWrite, defaultOccurredAt, initialTenant
   const writable = canWrite && !isDemo;
   const canSubmit = writable
     && Boolean(tenantSlug.trim() && resourceId.trim() && occurredAt)
-    && (selectedProvider !== "iota" || Boolean(publicResourceId.trim()))
+    && (selectedProvider !== "iota" || (!publicResourceIdPending && /^sha256:[0-9a-f]{64}$/.test(publicResourceId)))
     && Boolean(selectedProviderRow?.write_enabled)
     && !pending;
 
@@ -231,14 +260,24 @@ export function ProofAnchorComposer({ canWrite, defaultOccurredAt, initialTenant
     setResult(null);
     let eventId = "";
     try {
+      const tenantScope = tenantSlug.trim();
+      const internalResourceId = resourceId.trim();
+      if (selectedProvider === "iota") setPhase("Derivando el compromiso publico SHA-256...");
+      const publicResourceCommitment = selectedProvider === "iota"
+        ? await createPublicProofResourceCommitment({
+            tenantScope,
+            resourceType,
+            resourceId: internalResourceId,
+          })
+        : "";
       setPhase("1 de 2: calculando SHA-256 y registrando el evento...");
       const eventResponse = await fetch("/api/admin/proof/events", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          tenant: tenantSlug.trim(),
+          tenant: tenantScope,
           resource_type: resourceType,
-          resource_id: resourceId.trim(),
+          resource_id: internalResourceId,
           event_type: eventType,
           payload: payloadPreview,
         }),
@@ -262,12 +301,12 @@ export function ProofAnchorComposer({ canWrite, defaultOccurredAt, initialTenant
           ...(selectedProvider === "iota" ? { "idempotency-key": `proof-event:${eventId}` } : {}),
         },
         body: JSON.stringify({
-          tenant: tenantSlug.trim(),
+          tenant: tenantScope,
           provider: selectedProvider,
           network: selectedProviderRow?.network || (selectedProvider === "none" ? "local" : "testnet"),
           resource_type: resourceType,
-          resource_id: resourceId.trim(),
-          ...(selectedProvider === "iota" ? { public_resource_id: publicResourceId.trim() } : {}),
+          resource_id: internalResourceId,
+          ...(selectedProvider === "iota" ? { public_resource_id: publicResourceCommitment } : {}),
           event_ids: [eventId],
         }),
       });
@@ -333,7 +372,7 @@ export function ProofAnchorComposer({ canWrite, defaultOccurredAt, initialTenant
       ) : !canWrite ? (
         <div className={styles.readonlyNotice} role="status">
           <LockKeyhole aria-hidden="true" />
-          <div><strong>Permiso de lectura</strong><p>Tu rol puede inspeccionar evidencia, pero necesita el permiso <code>proof:write</code> para emitir recibos.</p></div>
+          <div><strong>Permiso de lectura</strong><p>Tu rol puede inspeccionar evidencia, pero necesita la capacidad <code>proofs.anchor</code> para emitir recibos.</p></div>
         </div>
       ) : null}
 
@@ -375,9 +414,13 @@ export function ProofAnchorComposer({ canWrite, defaultOccurredAt, initialTenant
               </label>
               {selectedProvider === "iota" ? (
                 <label className={`${styles.field} ${styles.fullField}`}>
-                  <span>Referencia publica IOTA</span>
-                  <input disabled={!formInteractive} maxLength={128} onChange={(event) => setPublicResourceId(event.target.value)} placeholder="Ej. nx-lot-8d2f04c1" required value={publicResourceId} />
-                  <small>Se publica on-chain. Usa una referencia seudonima estable; nunca copies un ID interno, PII o un secreto.</small>
+                  <span>Compromiso publico IOTA</span>
+                  <input
+                    aria-label="Compromiso publico SHA-256"
+                    readOnly
+                    value={publicResourceIdPending ? "Calculando SHA-256..." : publicResourceId}
+                  />
+                  <small>Se deriva de tenant, tipo e ID interno con separacion de dominio. Solo el hash se publica; el ID original permanece off-chain.</small>
                 </label>
               ) : null}
               <label className={`${styles.field} ${styles.fullField}`}>
@@ -480,7 +523,7 @@ export function ProofAnchorComposer({ canWrite, defaultOccurredAt, initialTenant
           <dl className={styles.previewFacts}>
             <div><dt>Tenant</dt><dd>{tenantSlug || "Pendiente"}</dd></div>
             <div><dt>Recurso</dt><dd>{resourceType} / {resourceId || "Pendiente"}</dd></div>
-            {selectedProvider === "iota" ? <div><dt>Referencia publica</dt><dd>{publicResourceId || "Pendiente"}</dd></div> : null}
+            {selectedProvider === "iota" ? <div><dt>Compromiso publico</dt><dd>{publicResourceIdPending ? "Calculando..." : shortHash(publicResourceId) || "Pendiente"}</dd></div> : null}
             <div><dt>Evento</dt><dd>{eventType}</dd></div>
             <div><dt>Destino</dt><dd>{selectedProviderRow?.name || "Consultando politica"}</dd></div>
           </dl>

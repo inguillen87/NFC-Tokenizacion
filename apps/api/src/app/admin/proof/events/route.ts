@@ -1,13 +1,17 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, checkAdminPermission } from "../../../../lib/auth";
+import { checkAdminWithPermission } from "../../../../lib/auth";
 import { resolveAdminProofTenantScope } from "../../../../lib/admin-proof-tenant-scope";
 import { json } from "../../../../lib/http";
 import { sql } from "../../../../lib/db";
 import { logAuditEvent } from "../../../../lib/audit-logger";
 import { ensureSupplierOpsSchema } from "../../../../lib/supplier-ops-schema";
 import { findForbiddenProofPayloadKey, hashEvidencePayload } from "../../../../lib/proof-layer";
+import {
+  assertProofProviderEventPolicy,
+  ProofEventPolicyError,
+} from "../../../../lib/proof-event-policy";
 import { adminCriticalRateLimitIdentity, enforceCriticalRateLimit } from "../../../../lib/critical-rate-limit";
 
 function safeString(value: unknown) {
@@ -15,10 +19,8 @@ function safeString(value: unknown) {
 }
 
 export async function GET(req: Request) {
-  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
+  const auth = await checkAdminWithPermission(req, "proof:read");
   if (auth) return auth;
-  const permission = checkAdminPermission(req, "proof:read");
-  if (permission) return permission;
   await ensureSupplierOpsSchema();
 
   const url = new URL(req.url);
@@ -54,10 +56,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
+  const auth = await checkAdminWithPermission(req, "proof:write");
   if (auth) return auth;
-  const permission = checkAdminPermission(req, "proof:write");
-  if (permission) return permission;
   const rateLimited = await enforceCriticalRateLimit(req, {
     rateClass: "proof_write",
     ...adminCriticalRateLimitIdentity(req),
@@ -76,14 +76,34 @@ export async function POST(req: Request) {
   }
   const tenantId = tenantScope.tenantId;
 
-  const resourceType = safeString(body.resource_type || body.resourceType);
+  const requestedResourceType = safeString(body.resource_type || body.resourceType);
   const resourceId = safeString(body.resource_id || body.resourceId);
-  const eventType = safeString(body.event_type || body.eventType);
-  const payload = (body.payload || body.payload_json || {}) as Record<string, unknown>;
+  const requestedEventType = safeString(body.event_type || body.eventType);
+  const providerPreference = safeString(body.provider_preference || body.providerPreference || "none");
+  const rawPayload = body.payload || body.payload_json || {};
 
-  if (!resourceType || !resourceId || !eventType) {
+  if (!requestedResourceType || !resourceId || !requestedEventType) {
     return json({ ok: false, reason: "event_identity_required" }, 400);
   }
+  if (!rawPayload || typeof rawPayload !== "object" || Array.isArray(rawPayload)) {
+    return json({ ok: false, reason: "proof_payload_object_required" }, 400);
+  }
+  const payload = rawPayload as Record<string, unknown>;
+
+  let policy;
+  try {
+    policy = assertProofProviderEventPolicy({
+      provider: providerPreference,
+      eventType: requestedEventType,
+      resourceType: requestedResourceType,
+    });
+  } catch (error) {
+    if (error instanceof ProofEventPolicyError) {
+      return json({ ok: false, reason: error.code, field: error.field || null }, 400);
+    }
+    throw error;
+  }
+  const { eventType, resourceType } = policy;
 
   const forbiddenKey = findForbiddenProofPayloadKey(payload);
   if (forbiddenKey) {
@@ -126,5 +146,7 @@ export async function POST(req: Request) {
     ok: true,
     proof_event_id: eventRow.id,
     payload_hash: eventRow.payload_hash,
+    event_type: eventType,
+    resource_type: resourceType,
   }, 201);
 }

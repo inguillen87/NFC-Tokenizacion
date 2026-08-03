@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { createHash } from "node:crypto";
-import { checkAdmin, checkAdminPermission, getAdminActor } from "../../../../lib/auth";
+import { checkAdminWithPermission, getAdminActor } from "../../../../lib/auth";
 import { resolveAdminProofTenantScope } from "../../../../lib/admin-proof-tenant-scope";
 import { json } from "../../../../lib/http";
 import { sql } from "../../../../lib/db";
@@ -11,19 +11,27 @@ import { ensureSupplierOpsSchema } from "../../../../lib/supplier-ops-schema";
 import {
   IOTA_EVIDENCE_CONTRACT_VERSION,
   IOTA_EVIDENCE_MERKLE_ALGORITHM,
+  canonicalizeIotaEventHashes,
   computeIotaEvidenceProofId,
   inspectIotaEvidenceTarget,
   prepareIotaEvidence,
   resolveIotaEvidenceRuntimeConfig,
 } from "../../../../lib/iota-evidence-writer";
 import { processIotaEvidenceAnchor } from "../../../../lib/iota-evidence-reconciler";
+import {
+  assertProofProviderEventPolicy,
+  canonicalizeProofEventType,
+  canonicalizeProofProvider,
+  canonicalizeProofResourceType,
+  normalizePublicLedgerResourceId,
+  ProofEventPolicyError,
+} from "../../../../lib/proof-event-policy";
 import { adminCriticalRateLimitIdentity, enforceCriticalRateLimit } from "../../../../lib/critical-rate-limit";
-
-type AnchorProvider = "iota" | "polygon";
 
 type EvidenceEventRow = {
   id: string;
   payload_hash: string;
+  event_type: string;
   resource_type: string;
   resource_id: string;
 };
@@ -34,10 +42,6 @@ function safeString(value: unknown) {
 
 function enabled(value: unknown) {
   return ["1", "true", "yes", "on"].includes(safeString(value).toLowerCase());
-}
-
-function normalizeProvider(value: unknown): AnchorProvider {
-  return safeString(value || "iota").toLowerCase() === "polygon" ? "polygon" : "iota";
 }
 
 function normalizeStringList(value: unknown) {
@@ -90,7 +94,7 @@ function publicAnchor(anchor: Record<string, unknown>) {
 async function eventRowsFromIds(eventIds: string[], tenantId: string) {
   if (!eventIds.length) return [];
   const rows = await sql/*sql*/`
-    SELECT id::text, payload_hash, resource_type, resource_id
+    SELECT id::text, payload_hash, event_type, resource_type, resource_id
     FROM evidence_events
     WHERE tenant_id = ${tenantId}::uuid
       AND id = ANY(${eventIds}::uuid[])
@@ -101,10 +105,8 @@ async function eventRowsFromIds(eventIds: string[], tenantId: string) {
 }
 
 export async function GET(req: Request) {
-  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
+  const auth = await checkAdminWithPermission(req, "proof:read");
   if (auth) return auth;
-  const permission = checkAdminPermission(req, "proof:read");
-  if (permission) return permission;
   await ensureSupplierOpsSchema();
 
   const url = new URL(req.url);
@@ -142,10 +144,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
+  const auth = await checkAdminWithPermission(req, "proof:write");
   if (auth) return auth;
-  const permission = checkAdminPermission(req, "proof:write");
-  if (permission) return permission;
   const rateLimited = await enforceCriticalRateLimit(req, {
     rateClass: "proof_write",
     ...adminCriticalRateLimitIdentity(req),
@@ -154,8 +154,30 @@ export async function POST(req: Request) {
   await ensureSupplierOpsSchema();
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
-  const provider = normalizeProvider(body.provider);
-  const network = safeString(body.network) || (provider === "iota" ? "testnet" : "amoy");
+  let provider;
+  try {
+    provider = canonicalizeProofProvider(body.provider || "iota");
+  } catch (error) {
+    if (error instanceof ProofEventPolicyError) {
+      return json({ ok: false, reason: error.code, field: error.field || null }, 400);
+    }
+    throw error;
+  }
+  if (provider === "polygon") {
+    return json({
+      ok: false,
+      reason: "polygon_ownership_route_required",
+      message: "Polygon ownership is managed through tokenization, not the evidence anchor route.",
+    }, 409);
+  }
+  if (provider === "none") {
+    return json({
+      ok: false,
+      reason: "local_proof_route_required",
+      message: "Use /admin/proof/anchor for local-only proof batches.",
+    }, 409);
+  }
+  const network = safeString(body.network) || "testnet";
   const requestedTenant = safeString(body.tenant_id || body.tenantId || body.tenant_slug || body.tenantSlug || body.tenant);
   const tenantScope = await resolveAdminProofTenantScope(req, requestedTenant);
   if (tenantScope.requested && !tenantScope.found) return json({ ok: false, reason: "tenant_not_found" }, 404);
@@ -171,13 +193,6 @@ export async function POST(req: Request) {
   const ledgerProvider = providerRows[0];
   if (!ledgerProvider) return json({ ok: false, reason: "ledger_provider_not_configured", provider, network }, 404);
   if (!ledgerProvider.enabled) return json({ ok: false, reason: "ledger_provider_disabled", provider, network }, 409);
-  if (provider === "polygon") {
-    return json({
-      ok: false,
-      reason: "polygon_ownership_route_required",
-      message: "Polygon ownership is managed through tokenization, not the evidence anchor route.",
-    }, 409);
-  }
 
   const eventIds = normalizeStringList(body.event_ids || body.eventIds);
   const directHashes = [
@@ -194,6 +209,15 @@ export async function POST(req: Request) {
     && !enabled(process.env.IOTA_ALLOW_DIRECT_EVENT_HASHES)) {
     return json({ ok: false, reason: "direct_event_hashes_forbidden" }, 403);
   }
+  let directHashMemberCount = 0;
+  if (directHashes.length) {
+    try {
+      directHashMemberCount = canonicalizeIotaEventHashes(directHashes, "lexicographic").length;
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "event_hash_invalid";
+      return json({ ok: false, reason }, 400);
+    }
+  }
 
   let eventRows: EvidenceEventRow[] = [];
   try {
@@ -204,15 +228,75 @@ export async function POST(req: Request) {
       : "event_id_invalid";
     return json({ ok: false, reason }, reason === "evidence_event_not_found" ? 404 : 400);
   }
-  const resourceKeys = new Set(eventRows.map((event) => `${event.resource_type}\u0000${event.resource_id}`));
-  if (resourceKeys.size > 1) return json({ ok: false, reason: "mixed_resource_events" }, 400);
-  const eventResourceType = eventRows[0]?.resource_type || "";
-  const eventResourceId = eventRows[0]?.resource_id || "";
-  const resourceType = safeString(body.resourceType || body.resource_type || eventResourceType);
+  const requestedEventType = safeString(body.eventType || body.event_type);
+  if (directHashes.length && !requestedEventType) {
+    return json({ ok: false, reason: "proof_event_type_required", field: "event_type" }, 400);
+  }
+
+  const eventResourceId = safeString(eventRows[0]?.resource_id);
+  const requestedResourceType = safeString(body.resourceType || body.resource_type || eventRows[0]?.resource_type);
   const resourceId = safeString(body.resourceId || body.resource_id || eventResourceId);
-  const publicResourceId = safeString(body.publicResourceId || body.public_resource_id);
-  if (eventResourceType && resourceType !== eventResourceType) return json({ ok: false, reason: "event_resource_type_mismatch" }, 400);
-  if (eventResourceId && resourceId !== eventResourceId) return json({ ok: false, reason: "event_resource_id_mismatch" }, 400);
+  if (!requestedResourceType) {
+    return json({ ok: false, reason: "proof_resource_type_required", field: "resource_type" }, 400);
+  }
+  if (!resourceId) {
+    return json({ ok: false, reason: "proof_resource_id_required", field: "resource_id" }, 400);
+  }
+
+  let resourceType = "";
+  let publicResourceId = "";
+  try {
+    const normalizedRows = eventRows.map((event) => ({
+      ...event,
+      canonicalEventType: canonicalizeProofEventType(event.event_type),
+      canonicalResourceType: canonicalizeProofResourceType(event.resource_type),
+    }));
+    if (normalizedRows.some((event) => !safeString(event.resource_id))) {
+      throw new ProofEventPolicyError("proof_resource_id_required", "resource_id");
+    }
+    const resourceKeys = new Set(
+      normalizedRows.map((event) => `${event.canonicalResourceType}\u0000${safeString(event.resource_id)}`),
+    );
+    if (resourceKeys.size > 1) return json({ ok: false, reason: "mixed_resource_events" }, 400);
+
+    resourceType = canonicalizeProofResourceType(requestedResourceType);
+    const eventResourceType = normalizedRows[0]?.canonicalResourceType || "";
+    if (eventResourceType && resourceType !== eventResourceType) {
+      return json({ ok: false, reason: "event_resource_type_mismatch" }, 400);
+    }
+    if (eventResourceId && resourceId !== eventResourceId) {
+      return json({ ok: false, reason: "event_resource_id_mismatch" }, 400);
+    }
+
+    publicResourceId = normalizePublicLedgerResourceId(body.publicResourceId || body.public_resource_id);
+    const hashesByType = new Map<string, Set<string>>();
+    for (const event of normalizedRows) {
+      const hashes = hashesByType.get(event.canonicalEventType) || new Set<string>();
+      hashes.add(safeString(event.payload_hash).toLowerCase());
+      hashesByType.set(event.canonicalEventType, hashes);
+    }
+    for (const event of normalizedRows) {
+      assertProofProviderEventPolicy({
+        provider,
+        eventType: event.canonicalEventType,
+        resourceType: event.canonicalResourceType,
+        aggregateCount: hashesByType.get(event.canonicalEventType)?.size || 0,
+      });
+    }
+    if (directHashes.length) {
+      assertProofProviderEventPolicy({
+        provider,
+        eventType: requestedEventType,
+        resourceType,
+        aggregateCount: directHashMemberCount,
+      });
+    }
+  } catch (error) {
+    if (error instanceof ProofEventPolicyError) {
+      return json({ ok: false, reason: error.code, field: error.field || null }, 400);
+    }
+    throw error;
+  }
 
   const canonicalizationVersion = eventRows.length
     ? "nexid-event-order-created-at-id-v1"

@@ -16,6 +16,7 @@ test("unverified snapshot cookies are never accepted as an authenticated session
 test("demo sessions are isolated to readonly local admin responses", () => {
   assert.match(sessionSource, /isDemo\?: boolean/);
   assert.match(proxySource, /const scopedRole = demoSession \? "readonly_demo"/);
-  assert.match(proxySource, /if \(scopedRole === "readonly_demo"\) \{[\s\S]*return markDemoData\(demoAdminResponse/);
+  assert.match(proxySource, /if \(demoSession && scopedRole === "readonly_demo"\) \{[\s\S]*return markDemoData\(demoAdminResponse/);
+  assert.doesNotMatch(proxySource, /policy\.allowDemoFallback \|\| scopedRole === "readonly_demo"/);
   assert.match(setupSource, /demo sessions cannot mutate tenant setup/);
 });

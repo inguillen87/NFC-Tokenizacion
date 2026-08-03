@@ -101,13 +101,13 @@ export const SDK_SCOPE_OPTIONS = [
   {
     value: "sdk:epcis:read",
     label: "Consultar EPCIS",
-    description: "Consulta y exporta el perfil EPCIS/CBV 2.0 acotado del tenant con paginaciÃ³n por cursor.",
+    description: "Consulta y exporta el perfil EPCIS/CBV 2.0 acotado del tenant con paginación por cursor.",
     access: "read",
   },
   {
     value: "sdk:epcis:write",
     label: "Capturar EPCIS",
-    description: "Captura documentos EPCIS JSON/JSON-LD validados contra el registro GS1 del tenant; no equivale a autenticaciÃ³n NFC.",
+    description: "Captura documentos EPCIS JSON/JSON-LD validados contra el registro GS1 del tenant; no equivale a autenticación NFC.",
     access: "write",
   },
 ] as const;

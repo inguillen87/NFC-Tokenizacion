@@ -35,6 +35,7 @@ test("OpenAPI publishes the exact SDK v1 route surface and server-only auth", ()
     "/api/v1/sdk/epcis/export",
     "/api/v1/sdk/events",
     "/api/v1/sdk/idempotency/status",
+    "/api/v1/sdk/offline-sync",
     "/api/v1/sdk/pos/activate",
     "/api/v1/sdk/products/{bid}",
     "/api/v1/sdk/verify",
@@ -63,7 +64,21 @@ test("OpenAPI required request fields match the SDK source contract", () => {
   assert.deepEqual(spec.components.schemas.VerifyTapRequest.required, ["bid", "picc_data", "enc", "cmac"]);
   assert.deepEqual(spec.components.schemas.ClaimOwnershipRequest.required, ["contact", "bid"]);
   assert.deepEqual(spec.components.schemas.ExternalEventRequest.required, ["eventType"]);
-  assert.deepEqual(spec.components.schemas.PosActivationRequest.required, ["bid"]);
+  assert.deepEqual(spec.components.schemas.PosActivationRequest.required, ["bid", "uidHex"]);
+  assert.deepEqual(spec.components.schemas.OfflineScanSyncRequest.required, ["bundleId", "deviceId", "events"]);
+  assert.deepEqual(spec.components.schemas.OfflineScanEvent.required, ["localId", "capturedUrl", "capturedAt"]);
+});
+
+test("OpenAPI publishes Offline Level 2 without equating hashes or local state with SUN verification", () => {
+  const operation = spec.paths["/api/v1/sdk/offline-sync"].post;
+  assert.equal(operation.operationId, "syncOfflineScans");
+  assert.equal(operation["x-nexid-required-scope"], "sdk:logistics");
+  assert.equal(operation["x-nexid-offline-level"], "operator-2");
+  assert.match(operation.description, /Hashing or local deduplication is not verification/);
+  assert.match(operation.description, /final SYNCED_VALID requires backend SUN\/SDM cryptographic verification/);
+  assert.equal(spec.components.parameters.RequiredOfflineSyncIdempotencyKey.required, true);
+  assert.equal(spec.components.schemas.OfflineScanEvent.properties.capturedUrl.writeOnly, true);
+  assert.equal(spec.components.schemas.OfflineScanSyncResult.properties.cryptographic_verification.description.includes("payload hash"), true);
 });
 
 test("OpenAPI publishes the bounded EPCIS profile, scopes and failure contract", () => {

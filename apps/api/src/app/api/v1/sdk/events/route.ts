@@ -2,11 +2,11 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { ensureSdkSchema } from "../../../../../lib/commercial-runtime-schema";
-import { sql } from "../../../../../lib/db";
+import { normalizeEnterpriseOutboundFields } from "../../../../../lib/enterprise-outbound-event";
 import { json } from "../../../../../lib/http";
 import { publishRealtimeEvent } from "../../../../../lib/realtime-events";
 import { authenticateSdkRequest, logSdkUsage } from "../../../../../lib/sdk-auth";
-import { enqueueSdkWebhookGuaranteed, sdkWebhookOutboxUnavailableBody, SdkWebhookOutboxUnavailableError } from "../../../../../lib/sdk-webhook-outbox-guarantee";
+import { sdkExternalEventAtomicError, writeSdkExternalEventAtomic } from "../../../../../lib/sdk-external-event-writer";
 import { asRecord, clean, parseHeaderIp } from "../_shared";
 import { enforceSdkAuthenticationRateLimit, enforceSdkRateLimit } from "../../../../../lib/critical-rate-limit";
 import { readSdkMutationBody, runSdkIdempotentMutation, SDK_IDEMPOTENCY_OPERATIONS } from "../_idempotency";
@@ -44,28 +44,6 @@ export async function POST(req: Request) {
     return json({ ok: false, reason: "event_type_required", trace_id: auth.context.traceId }, 400);
   }
 
-  const targetRows = bid ? await sql/*sql*/`
-    SELECT
-      b.id::text AS batch_id,
-      t.id::text AS tag_id
-    FROM batches b
-    LEFT JOIN LATERAL (
-      SELECT id
-      FROM tags candidate
-      WHERE candidate.batch_id = b.id
-        AND (${uidHex} = '' OR UPPER(candidate.uid_hex) = UPPER(${uidHex}))
-      ORDER BY candidate.created_at ASC
-      LIMIT 1
-    ) t ON ${uidHex} <> ''
-    WHERE b.tenant_id = ${auth.context.tenantId}
-      AND b.bid = ${bid}
-    LIMIT 1
-  ` : [];
-  if (bid && !targetRows[0]) {
-    await logSdkUsage({ req, context: auth.context, endpoint: "sdk.events", statusCode: 404, startedAt, reason: "batch_not_found_for_tenant", meta: { bid, eventType } });
-    return json({ ok: false, reason: "batch_not_found_for_tenant", bid, trace_id: auth.context.traceId }, 404);
-  }
-  const target = (targetRows[0] || {}) as Record<string, unknown>;
   const data = {
     ...asRecord(body.data),
     meta: asRecord(body.meta),
@@ -74,52 +52,77 @@ export async function POST(req: Request) {
     requestIp: parseHeaderIp(req),
     traceId: auth.context.traceId,
   };
+  const outbound = normalizeEnterpriseOutboundFields({ eventType, data, body });
+  if (!outbound.ok) {
+    await logSdkUsage({
+      req,
+      context: auth.context,
+      endpoint: "sdk.events",
+      statusCode: 400,
+      startedAt,
+      reason: outbound.reason,
+      meta: { eventType, bid: bid || null },
+    });
+    return json({ ok: false, reason: outbound.reason, trace_id: auth.context.traceId }, 400);
+  }
 
-  const rows = await sql/*sql*/`
-    INSERT INTO sdk_external_events (
-      tenant_id, api_key_id, batch_id, tag_id, bid, uid_hex, event_type, source, occurred_at, data,
-      idempotency_operation_id
-    ) VALUES (
-      ${auth.context.tenantId},
-      ${auth.context.apiKeyId},
-      ${clean(target.batch_id) || null},
-      ${clean(target.tag_id) || null},
-      ${bid || null},
-      ${uidHex || null},
-      ${eventType},
-      ${clean(body.source) || "sdk"},
-      ${clean(body.occurredAt || body.occurred_at) || null},
-      ${JSON.stringify(data)}::jsonb,
-      ${idempotencyOperationId}::uuid
-    )
-    RETURNING id::text AS id, created_at
-  `;
-  const eventId = String((rows[0] as { id?: string } | undefined)?.id || "");
-  publishRealtimeEvent({
-    event_type: "sdk.external_event",
-    sdk_event_id: eventId,
-    tenant_id: auth.context.tenantId,
-    tenant_slug: auth.context.tenantSlug,
-    bid: bid || undefined,
-    uid_hex: uidHex || undefined,
-    external_event_type: eventType,
-    created_at: String((rows[0] as { created_at?: string } | undefined)?.created_at || new Date().toISOString()),
-    trace_id: auth.context.traceId,
-  });
-  let webhookOutbox;
+  let persisted;
   try {
-    webhookOutbox = await enqueueSdkWebhookGuaranteed({
+    persisted = await writeSdkExternalEventAtomic({
       tenantId: auth.context.tenantId,
-      eventName: "sdk.external_event",
-      idempotencyKey: eventId,
-      payload: { eventId, eventType, bid: bid || null, uidHex: uidHex || null, source: clean(body.source) || "sdk", traceId: auth.context.traceId },
-      correlationId: auth.context.traceId,
-      resourceId: eventId,
+      apiKeyId: auth.context.apiKeyId,
+      idempotencyOperationId,
+      bid: bid || null,
+      uidHex: uidHex || null,
+      eventType,
+      source: clean(body.source) || "sdk",
+      occurredAt: clean(body.occurredAt || body.occurred_at) || null,
+      data,
+      traceId: auth.context.traceId,
+      outbound: outbound.fields,
     });
   } catch (error) {
-    if (!(error instanceof SdkWebhookOutboxUnavailableError)) throw error;
-    await logSdkUsage({ req, context: auth.context, endpoint: "sdk.events", statusCode: 503, startedAt, reason: error.code, meta: { eventId, eventType, bid: bid || null } });
-    return json({ ...sdkWebhookOutboxUnavailableBody(error), operation: { eventId, eventType, bid: bid || null } }, 503, { "retry-after": "2", "x-nexid-trace-id": auth.context.traceId });
+    const mapped = sdkExternalEventAtomicError(error);
+    if (!mapped) {
+      await logSdkUsage({ req, context: auth.context, endpoint: "sdk.events", statusCode: 503, startedAt, reason: "sdk_operation_outcome_uncertain", meta: { eventType, bid: bid || null } });
+      return json({
+        ok: false,
+        reason: "sdk_operation_outcome_uncertain",
+        retryable: false,
+        operationCommitted: null,
+        traceId: auth.context.traceId,
+        recovery: idempotencyOperationId
+          ? "Query the SDK idempotency status endpoint with the same Idempotency-Key. Do not create a new key or replay the mutation until reconciliation finishes."
+          : "Reconcile the external event by traceId before replaying. Requests without an Idempotency-Key cannot be safely auto-retried after an ambiguous transport failure.",
+      }, 503, { "x-nexid-trace-id": auth.context.traceId });
+    }
+    await logSdkUsage({ req, context: auth.context, endpoint: "sdk.events", statusCode: mapped.status, startedAt, reason: mapped.reason, meta: { eventType, bid: bid || null } });
+    return json({
+      ok: false,
+      reason: mapped.reason,
+      retryable: mapped.status >= 500,
+      operationCommitted: mapped.operationCommitted,
+      ...(mapped.requiredMigration ? { requiredMigration: mapped.requiredMigration } : {}),
+      bid: bid || null,
+      traceId: auth.context.traceId,
+    }, mapped.status, {
+      ...(mapped.status >= 500 ? { "retry-after": "2" } : {}),
+      "x-nexid-trace-id": auth.context.traceId,
+    });
+  }
+  const eventId = persisted.eventId;
+  if (!persisted.replayed) {
+    publishRealtimeEvent({
+      event_type: "sdk.external_event",
+      sdk_event_id: eventId,
+      tenant_id: auth.context.tenantId,
+      tenant_slug: auth.context.tenantSlug,
+      bid: persisted.bid || undefined,
+      uid_hex: persisted.uidHex || undefined,
+      external_event_type: persisted.eventType,
+      created_at: persisted.createdAt,
+      trace_id: auth.context.traceId,
+    });
   }
   await logSdkUsage({ req, context: auth.context, endpoint: "sdk.events", statusCode: 201, startedAt, meta: { eventId, eventType, bid: bid || null } });
 
@@ -128,10 +131,10 @@ export async function POST(req: Request) {
     eventId,
     eventType,
     tenant: { slug: auth.context.tenantSlug, name: auth.context.tenantName },
-    bid: bid || null,
-    uidMasked: uidHex ? `${uidHex.slice(0, 4)}****${uidHex.slice(-4)}` : null,
+    bid: persisted.bid,
+    uidMasked: persisted.uidHex ? `${persisted.uidHex.slice(0, 4)}****${persisted.uidHex.slice(-4)}` : null,
     traceId: auth.context.traceId,
-    webhookOutbox,
+    webhookOutbox: persisted.webhookOutbox,
   }, 201);
     },
   });

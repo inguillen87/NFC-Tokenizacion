@@ -2,7 +2,7 @@
   "asyncapi": "3.0.0",
   "info": {
     "title": "nexID tenant webhooks",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "Machine-readable outbound webhook contract. Delivery is asynchronous and at least once after a durable outbox receipt. Consumers must verify the exact raw body, atomically deduplicate x-nexid-delivery-id and only then parse the event. NFC verdicts describe digital message evidence; they do not independently prove physical-product authenticity, contents, custody or ownership."
   },
   "defaultContentType": "application/json",
@@ -65,7 +65,8 @@
           "x-nexid-key-id",
           "x-nexid-delivery-id",
           "x-nexid-event-id",
-          "x-nexid-signature"
+          "x-nexid-signature",
+          "x-nexid-request-id"
         ],
         "properties": {
           "x-nexid-signature-version": {
@@ -99,6 +100,12 @@
           "x-nexid-event": {
             "type": "string",
             "description": "Unsigned convenience routing header. Authoritative type remains inside the signed body."
+          },
+          "x-nexid-request-id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "description": "Correlation alias copied from the request_id inside the signed body. The signed body remains authoritative."
           },
           "x-nexid-delivery": {
             "type": "string",
@@ -147,6 +154,37 @@
           }
         },
         "additionalProperties": true
+      },
+      "CanonicalSdkExternalEventV1": {
+        "type": "object",
+        "description": "Data schema when WebhookEventV1.type is sdk.external_event. The optional Cropwise profile is a generic mapping template, not a native integration claim.",
+        "required": ["event_id", "event_version", "event_type", "occurred_at", "tenant_id", "request_id"],
+        "properties": {
+          "event_id": { "type": "string", "format": "uuid" },
+          "event_version": { "const": "1.0" },
+          "event_type": { "type": "string" },
+          "occurred_at": { "type": "string", "format": "date-time" },
+          "tenant_id": { "type": "string", "format": "uuid" },
+          "product_id": { "type": "string" },
+          "sku": { "type": "string" },
+          "batch_id": { "type": "string", "format": "uuid" },
+          "lot_number": { "type": "string" },
+          "uid_hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+          "auth_status": { "type": "string" },
+          "tamper_status": { "type": "string" },
+          "replay_status": { "type": "string" },
+          "risk_score": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "risk_level": { "type": "string", "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"] },
+          "triggered_rules": { "type": "array", "items": { "type": "string" } },
+          "recommended_action": { "type": "string" },
+          "distributor_id": { "type": "string" },
+          "campaign_id": { "type": "string" },
+          "approximate_location": { "type": "object", "additionalProperties": true },
+          "consent_flags": { "type": "object", "additionalProperties": { "type": "boolean" } },
+          "request_id": { "type": "string", "maxLength": 256 },
+          "connector_profile_code": { "type": "string", "enum": ["cropwise_physical_product_event"] }
+        },
+        "additionalProperties": false
       }
     }
   }

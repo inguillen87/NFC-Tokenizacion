@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, checkAdminPermission, getAdminActor, getAdminTenantScope } from "../../../../../lib/auth";
+import { checkAdminWithPermission, getAdminActor, getAdminTenantScope } from "../../../../../lib/auth";
 import { json } from "../../../../../lib/http";
 import { sql } from "../../../../../lib/db";
 import { hashEvidencePayload } from "../../../../../lib/proof-layer";
@@ -22,6 +22,21 @@ import {
   type SupplierQaSnapshotReference,
 } from "../../../../../lib/supplier-qa-evidence";
 import { buildSupplierQaVerificationContext } from "../../../../../lib/supplier-qa-verification-context";
+import { auditFreeformValuesAreSafe } from "../../../../../lib/audit-freeform-secret-policy";
+import { buildSupplierOpsErrorReport } from "../../../../../lib/supplier-ops-error-report";
+import {
+  commitSupplierCarrierQa,
+  hasSupplierCarrierQaV1,
+  supplierCarrierQaCommitError,
+} from "../../../../../lib/supplier-carrier-qa-commit";
+import {
+  isSupplierCarrierQaSupported,
+  supplierCarrierQaObservationUids,
+  SUPPLIER_CARRIER_QA_EVIDENCE_VERSION,
+  SUPPLIER_CARRIER_QA_MIGRATION,
+  validateSupplierCarrierQaEvidence,
+} from "../../../../../lib/supplier-carrier-qa-evidence";
+import { resolveSupplierPublicTagOrigin } from "../../../../../lib/supplier-public-tag-origin";
 
 const MAX_QA_BODY_BYTES = 300 * 1024;
 const MAX_QA_NOTES_LENGTH = 2_000;
@@ -41,11 +56,8 @@ function parseQaDecision(body: Record<string, unknown>) {
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ orderId: string }> }) {
-  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
+  const auth = await checkAdminWithPermission(req, "qa.approve");
   if (auth) return auth;
-  const qaPermission = checkAdminPermission(req, "supplier:qa");
-  const legacyBatchQaPermission = checkAdminPermission(req, "batches:qa");
-  if (qaPermission && legacyBatchQaPermission) return qaPermission;
 
   const { orderId } = await params;
   if (!UUID_PATTERN.test(orderId)) return json({ ok: false, reason: "supplier_order_not_found" }, 404);
@@ -105,10 +117,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
           ssb.activated_at,
           ssb.status AS supplier_sub_batch_status,
           ssb.key_export_count,
+          ssb.metadata_json AS supplier_sub_batch_metadata,
           to_char(ssb.key_exported_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS key_exported_at,
           bk.key_fingerprint,
-          bk.export_count AS batch_key_export_count,
+          COALESCE(bk.export_count, 0) AS batch_key_export_count,
           to_char(bk.exported_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS batch_key_exported_at,
+          b.meta_key_ct,
+          b.file_key_ct,
+          (SELECT count(*)::integer FROM batch_keys scoped_key
+            WHERE scoped_key.supplier_sub_batch_id = ssb.id
+               OR scoped_key.batch_id = b.id
+               OR (scoped_key.tenant_id = ssb.tenant_id AND upper(scoped_key.bid) = upper(ssb.bid))) AS batch_key_row_count,
+          (SELECT count(*)::integer FROM batch_key_material scoped_material
+            WHERE scoped_material.supplier_sub_batch_id = ssb.id
+               OR scoped_material.batch_id = b.id
+               OR (scoped_material.tenant_id = ssb.tenant_id AND upper(scoped_material.bid) = upper(ssb.bid))) AS batch_key_material_row_count,
           so.carrier_profile_code AS order_carrier_profile_code,
           so.packaging_governance_status,
           so.packaging_spec_revision,
@@ -124,7 +147,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
          AND purpose_decision.tenant_id = so.tenant_id
         JOIN supplier_sub_batches ssb ON ssb.supplier_order_id = so.id
         JOIN batches b ON b.id = ssb.batch_id AND b.tenant_id = so.tenant_id AND b.bid = ssb.bid
-        JOIN batch_keys bk ON bk.supplier_sub_batch_id = ssb.id AND bk.batch_id = b.id AND bk.tenant_id = so.tenant_id AND bk.bid = ssb.bid AND bk.status = 'active'
+        LEFT JOIN batch_keys bk ON bk.supplier_sub_batch_id = ssb.id AND bk.batch_id = b.id AND bk.tenant_id = so.tenant_id AND bk.bid = ssb.bid AND bk.status = 'active'
         WHERE so.id = ${orderId}::uuid
           AND ssb.tenant_id = so.tenant_id
           AND ssb.bid = ${bid}
@@ -149,10 +172,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
           ssb.activated_at,
           ssb.status AS supplier_sub_batch_status,
           ssb.key_export_count,
+          ssb.metadata_json AS supplier_sub_batch_metadata,
           to_char(ssb.key_exported_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS key_exported_at,
           bk.key_fingerprint,
-          bk.export_count AS batch_key_export_count,
+          COALESCE(bk.export_count, 0) AS batch_key_export_count,
           to_char(bk.exported_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS batch_key_exported_at,
+          b.meta_key_ct,
+          b.file_key_ct,
+          (SELECT count(*)::integer FROM batch_keys scoped_key
+            WHERE scoped_key.supplier_sub_batch_id = ssb.id
+               OR scoped_key.batch_id = b.id
+               OR (scoped_key.tenant_id = ssb.tenant_id AND upper(scoped_key.bid) = upper(ssb.bid))) AS batch_key_row_count,
+          (SELECT count(*)::integer FROM batch_key_material scoped_material
+            WHERE scoped_material.supplier_sub_batch_id = ssb.id
+               OR scoped_material.batch_id = b.id
+               OR (scoped_material.tenant_id = ssb.tenant_id AND upper(scoped_material.bid) = upper(ssb.bid))) AS batch_key_material_row_count,
           so.carrier_profile_code AS order_carrier_profile_code,
           so.packaging_governance_status,
           so.packaging_spec_revision,
@@ -168,7 +202,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
          AND purpose_decision.tenant_id = so.tenant_id
         JOIN supplier_sub_batches ssb ON ssb.supplier_order_id = so.id
         JOIN batches b ON b.id = ssb.batch_id AND b.tenant_id = so.tenant_id AND b.bid = ssb.bid
-        JOIN batch_keys bk ON bk.supplier_sub_batch_id = ssb.id AND bk.batch_id = b.id AND bk.tenant_id = so.tenant_id AND bk.bid = ssb.bid AND bk.status = 'active'
+        LEFT JOIN batch_keys bk ON bk.supplier_sub_batch_id = ssb.id AND bk.batch_id = b.id AND bk.tenant_id = so.tenant_id AND bk.bid = ssb.bid AND bk.status = 'active'
         WHERE so.id = ${orderId}::uuid
           AND ssb.tenant_id = so.tenant_id
           AND ssb.bid = ${bid}
@@ -188,14 +222,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       message: "Classify this historical supplier order through the audited legacy-to-trial workflow before recording a passing integration receipt.",
     }, 409);
   }
-  if (passed && effectivePackPurpose === "production") {
-    return json({
-      ok: false,
-      reason: "supplier_qa_production_acceptance_v2_required",
-      message: "The fixed ten-tag SUN integration receipt is not a production-lot acceptance plan and cannot release a commercial batch.",
-    }, 409);
-  }
-
   if (passed && subBatch.manifest_status !== "imported") {
     return json({
       ok: false,
@@ -214,12 +240,61 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
   }
   const requiresTtstatus = carrierProfileCode === "ntag424_dna_tt";
   const requiresSecureSun = requiresSecureSunEncoding(carrierProfileCode);
-  if (passed && !requiresSecureSun) {
+  const carrierQaSupported = isSupplierCarrierQaSupported(carrierProfileCode);
+  if (passed && effectivePackPurpose === "production" && requiresSecureSun) {
+    return json({
+      ok: false,
+      reason: "supplier_qa_production_acceptance_v2_required",
+      message: "Secure SUN production lots must use the precommitted Production Acceptance v2 session; this carrier-capture path cannot replace CMAC, replay or TagTamper evidence.",
+    }, 409);
+  }
+  const keylessMetadata = subBatch.supplier_sub_batch_metadata
+    && typeof subBatch.supplier_sub_batch_metadata === "object"
+    && !Array.isArray(subBatch.supplier_sub_batch_metadata)
+      ? subBatch.supplier_sub_batch_metadata as Record<string, unknown>
+      : {};
+  if (passed && requiresSecureSun && (
+    Number(subBatch.batch_key_row_count || 0) !== 1
+    || Number(subBatch.batch_key_material_row_count || 0) !== 2
+    || !String(subBatch.key_fingerprint || "").match(/^[0-9A-F]{16}$/)
+    || !subBatch.meta_key_ct
+    || !subBatch.file_key_ct
+  )) {
+    return json({ ok: false, reason: "supplier_qa_sun_key_scope_invalid" }, 409);
+  }
+  if (passed && !requiresSecureSun && (
+    Number(subBatch.batch_key_row_count || 0) !== 0
+    || Number(subBatch.batch_key_material_row_count || 0) !== 0
+    || subBatch.key_fingerprint
+    || subBatch.meta_key_ct
+    || subBatch.file_key_ct
+    || String(keylessMetadata.key_material_mode || "") !== "none"
+    || keylessMetadata.software_envelope !== false
+    || keylessMetadata.managed_kms !== false
+    || keylessMetadata.hsm_backed !== false
+  )) {
+    return json({
+      ok: false,
+      reason: "supplier_carrier_qa_keyless_scope_invalid",
+      message: "Keyless carrier QA requires zero batch-key rows and an explicit none/false/false custody boundary.",
+    }, 409);
+  }
+  if (passed && !requiresSecureSun && !carrierQaSupported) {
     return json({
       ok: false,
       reason: "qa_carrier_evidence_strategy_not_implemented",
-      message: "This QA endpoint currently approves only NTAG 424 SUN evidence. QR and non-SUN carriers require a separate evidence strategy; they cannot fall back to self-attestation.",
+      message: "This carrier needs a dedicated evidence adapter. It cannot fall back to SUN evidence or operator self-attestation.",
     }, 409);
+  }
+  if (passed && carrierQaSupported) {
+    const carrierQaAvailable = await hasSupplierCarrierQaV1().catch(() => false);
+    if (!carrierQaAvailable) {
+      return json({
+        ok: false,
+        reason: "supplier_carrier_qa_migration_required",
+        required_migration: SUPPLIER_CARRIER_QA_MIGRATION,
+      }, 503);
+    }
   }
   const batchSdmConfig = subBatch.batch_sdm_config
     && typeof subBatch.batch_sdm_config === "object"
@@ -255,6 +330,83 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
     }, 409);
   }
   const { carrierConfigDigest, verificationContextDigest } = verificationContext;
+  const notesText = safeString(body.notes);
+  if (notesText.length > MAX_QA_NOTES_LENGTH) {
+    return json({ ok: false, reason: "qa_notes_too_long", maximum_length: MAX_QA_NOTES_LENGTH }, 400);
+  }
+  if (!auditFreeformValuesAreSafe([notesText])) {
+    return json({ ok: false, reason: "supplier_carrier_qa_sensitive_audit_input_rejected" }, 400);
+  }
+  const notes = notesText || null;
+  const actor = getAdminActor(req);
+  const actorEmail = actor.email;
+  const notesDigest = notes ? hashEvidencePayload({ notes }) : null;
+  let keylessProductionAcceptance: {
+    sampleSize: number;
+    qaPlanId: string;
+    qaPlanDigest: string;
+    qaPlanDecisionId: string;
+    packagingLabApprovalId: string;
+    packagingLabReceiptDigest: string;
+  } | null = null;
+  if (passed && effectivePackPurpose === "production" && carrierQaSupported) {
+    const acceptanceRows = await sql/*sql*/`
+      SELECT
+        plan.id::text AS qa_plan_id,
+        plan.sample_size,
+        plan.plan_digest,
+        plan_decision.id::text AS qa_plan_decision_id,
+        lab.approval_id::text AS packaging_lab_approval_id,
+        lab.receipt_digest AS packaging_lab_receipt_digest
+      FROM supplier_production_qa_plans plan
+      JOIN supplier_production_qa_plan_decisions plan_decision
+        ON plan_decision.plan_id = plan.id
+       AND plan_decision.tenant_id = plan.tenant_id
+       AND plan_decision.supplier_order_id = plan.supplier_order_id
+       AND plan_decision.supplier_sub_batch_id = plan.supplier_sub_batch_id
+       AND plan_decision.batch_id = plan.batch_id
+       AND upper(plan_decision.bid) = upper(plan.bid)
+       AND plan_decision.schema_version = 'supplier-production-qa-plan-decision/v1'
+       AND plan_decision.decision_status = 'approved'
+       AND plan_decision.approver_role IN ('tenant_owner', 'tenant_admin')
+       AND plan_decision.plan_digest = plan.plan_digest
+      JOIN LATERAL public.nexid_packaging_lab_activation_receipt_v1(plan.batch_id) lab
+        ON lab.tenant_id = plan.tenant_id
+       AND lab.supplier_order_id = plan.supplier_order_id
+       AND lab.supplier_sub_batch_id = plan.supplier_sub_batch_id
+       AND lab.batch_id = plan.batch_id
+      WHERE plan.tenant_id = ${subBatch.tenant_id}::uuid
+        AND plan.supplier_order_id = ${subBatch.supplier_order_id}::uuid
+        AND plan.supplier_sub_batch_id = ${subBatch.supplier_sub_batch_id}::uuid
+        AND plan.batch_id = ${subBatch.batch_id}::uuid
+        AND upper(plan.bid) = upper(${subBatch.bid})
+        AND plan.schema_version = 'supplier-production-qa-plan/v1'
+        AND plan.lot_size = ${Number(subBatch.expected_quantity || 0)}
+        AND NOT EXISTS (
+          SELECT 1 FROM supplier_production_qa_plans newer_plan
+          WHERE newer_plan.tenant_id = plan.tenant_id
+            AND newer_plan.supplier_sub_batch_id = plan.supplier_sub_batch_id
+            AND newer_plan.revision > plan.revision
+        )
+      LIMIT 1
+    `;
+    const acceptance = acceptanceRows[0];
+    if (!acceptance) {
+      return json({
+        ok: false,
+        reason: "supplier_keyless_production_qa_plan_or_physical_evidence_required",
+        message: "Production keyless QA requires the current tenant-approved sampling plan and a current carrier-appropriate Packaging Lab approval.",
+      }, 409);
+    }
+    keylessProductionAcceptance = {
+      sampleSize: Number(acceptance.sample_size || 0),
+      qaPlanId: String(acceptance.qa_plan_id || ""),
+      qaPlanDigest: String(acceptance.plan_digest || ""),
+      qaPlanDecisionId: String(acceptance.qa_plan_decision_id || ""),
+      packagingLabApprovalId: String(acceptance.packaging_lab_approval_id || ""),
+      packagingLabReceiptDigest: String(acceptance.packaging_lab_receipt_digest || ""),
+    };
+  }
   const suppliedSnapshotUrls = Array.isArray(body.snapshot_urls)
     ? body.snapshot_urls
     : Array.isArray(body.snapshotUrls)
@@ -262,18 +414,37 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       : Array.isArray(body.sample_urls)
         ? body.sample_urls
         : [];
+  const suppliedCarrierObservations = Array.isArray(body.carrier_observations)
+    ? body.carrier_observations
+    : Array.isArray(body.carrierObservations)
+      ? body.carrierObservations
+      : [];
   let verifiedEvidence: Extract<ReturnType<typeof validateSupplierQaSunEvidence>, { ok: true }> | null = null;
+  let verifiedCarrierEvidence: Extract<ReturnType<typeof validateSupplierCarrierQaEvidence>, { ok: true }> | null = null;
   let verifiedReferences: SupplierQaSnapshotReference[] = [];
-  if (passed) {
+  if (passed && requiresSecureSun) {
     const parsedReferences = parseSupplierQaSnapshotReferences(suppliedSnapshotUrls);
     if (!parsedReferences.ok) {
+      const message = "Paste Nexid result-page URLs containing both snapshot and trace. Raw SUN URLs and operator checkboxes are not accepted as QA evidence.";
       return json({
         ok: false,
         reason: parsedReferences.reason,
-        message: "Paste Nexid result-page URLs containing both snapshot and trace. Raw SUN URLs and operator checkboxes are not accepted as QA evidence.",
+        message,
         bid: subBatch.bid,
         reference_count: parsedReferences.referenceCount,
         carrier_profile_code: subBatch.carrier_profile_code,
+        error_report: buildSupplierOpsErrorReport({
+          stage: "qa",
+          bid: String(subBatch.bid),
+          reason: parsedReferences.reason,
+          message,
+          issues: [{
+            code: parsedReferences.reason,
+            field: "snapshot_urls",
+            value: `received=${parsedReferences.referenceCount}`,
+            detail: "Use only Nexid result-page references with an authorized snapshot and trace; never paste raw SUN query material into the report.",
+          }],
+        }),
       }, 409);
     }
     const diagnosticIds = parsedReferences.references.map((reference) => reference.diagnosticId);
@@ -346,35 +517,139 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
       requiresSecureSun,
     });
     if (!evidenceGate.ok) {
+      const message = requiresTtstatus
+        ? "QA requires ten distinct manifest UIDs with canonical SUN events, an event-linked replay for each, and one later electronically decoded TagTamper opening."
+        : "QA requires ten distinct manifest UIDs with canonical SUN events and an event-linked replay for each. The server does not accept operator declarations.";
       return json({
         ok: false,
         reason: evidenceGate.reason,
-        message: requiresTtstatus
-          ? "QA requires ten distinct manifest UIDs with canonical SUN events, an event-linked replay for each, and one later electronically decoded TagTamper opening."
-          : "QA requires ten distinct manifest UIDs with canonical SUN events and an event-linked replay for each. The server does not accept operator declarations.",
+        message,
         bid: subBatch.bid,
         required_manifest_uids: evidenceGate.requiredTags,
         received_manifest_uids: "receivedTags" in evidenceGate ? evidenceGate.receivedTags : undefined,
         carrier_profile_code: subBatch.carrier_profile_code,
+        error_report: buildSupplierOpsErrorReport({
+          stage: "qa",
+          bid: String(subBatch.bid),
+          reason: evidenceGate.reason,
+          message,
+          issues: [{
+            code: evidenceGate.reason,
+            field: "canonical_sun_evidence",
+            value: `required_manifest_uids=${evidenceGate.requiredTags};received_manifest_uids=${"receivedTags" in evidenceGate ? evidenceGate.receivedTags : 0}`,
+            detail: requiresTtstatus
+              ? "Complete distinct valid scans, event-linked replays, and one later electronic TagTamper opening. This report does not attest physical presence."
+              : "Complete distinct valid scans and event-linked replays. This report does not attest physical presence.",
+          }],
+        }),
       }, 409);
     }
     verifiedEvidence = evidenceGate;
     verifiedReferences = parsedReferences.references;
+  } else if (passed && carrierQaSupported) {
+    if (suppliedSnapshotUrls.length > 0) {
+      return json({
+        ok: false,
+        reason: "qa_evidence_mode_conflict",
+        message: "Static carrier QA accepts carrier_observations only. SUN snapshot references cannot prove QR, GS1 or static NFC encoding.",
+      }, 400);
+    }
+    const observationUids = supplierCarrierQaObservationUids(suppliedCarrierObservations);
+    const manifestRows = observationUids.length
+      ? await sql/*sql*/`
+          SELECT id::text AS id, upper(uid_hex) AS uid_hex
+          FROM tags
+          WHERE batch_id = ${subBatch.batch_id}::uuid
+            AND upper(uid_hex) = ANY(${observationUids}::text[])
+          ORDER BY upper(uid_hex), id
+        ` as Array<{ id: string; uid_hex: string }>
+      : [];
+    const manifestTagIds = manifestRows.map((row) => String(row.id));
+    const gs1Rows = carrierProfileCode === "gs1_digital_link" && manifestTagIds.length
+      ? await sql/*sql*/`
+          SELECT
+            identity.id::text AS id,
+            identity.tag_id::text AS tag_id,
+            identity.gtin,
+            identity.lot,
+            identity.serial,
+            identity.status
+          FROM gs1_digital_link_identities identity
+          JOIN gs1_gtin_prefix_entitlements entitlement
+            ON entitlement.id = identity.entitlement_id
+           AND entitlement.tenant_id = identity.tenant_id
+           AND entitlement.status = 'active'
+           AND identity.gtin LIKE entitlement.canonical_gtin_prefix || '%'
+          WHERE identity.tenant_id = ${subBatch.tenant_id}::uuid
+            AND identity.batch_id = ${subBatch.batch_id}::uuid
+            AND identity.tag_id = ANY(${manifestTagIds}::uuid[])
+            AND identity.status = 'active'
+          ORDER BY identity.tag_id, identity.id
+        ` as Array<Record<string, unknown>>
+      : [];
+    const evidenceGate = validateSupplierCarrierQaEvidence({
+      observations: suppliedCarrierObservations,
+      carrierProfileCode,
+      expectedTenantId: subBatch.tenant_id,
+      expectedTenantSlug: subBatch.tenant_slug,
+      expectedBatchId: subBatch.batch_id,
+      expectedBid: subBatch.bid,
+      expectedQuantity: subBatch.expected_quantity,
+      manifestHash: subBatch.manifest_hash,
+      manifestImportedAt: subBatch.manifest_imported_at,
+      carrierConfigDigest,
+      verificationContextDigest,
+      publicOrigin: resolveSupplierPublicTagOrigin(),
+      manifestTags: manifestRows.map((row) => ({ id: String(row.id), uidHex: String(row.uid_hex) })),
+      gs1Identities: gs1Rows.map((row) => ({
+        id: String(row.id || ""),
+        tagId: String(row.tag_id || ""),
+        gtin: String(row.gtin || ""),
+        lot: String(row.lot || ""),
+        serial: String(row.serial || ""),
+        status: String(row.status || ""),
+      })),
+      operationKey,
+      checkedBy: actorEmail,
+      notes,
+      notesDigest,
+      packPurpose: effectivePackPurpose,
+      productionAcceptance: keylessProductionAcceptance,
+    });
+    if (!evidenceGate.ok) {
+      const message = "QA requires distinct, recent carrier captures whose UID and exact encoded target match this imported manifest. Static carriers do not provide SUN, anti-replay or tamper proof.";
+      return json({
+        ok: false,
+        reason: evidenceGate.reason,
+        message,
+        bid: subBatch.bid,
+        required_manifest_uids: evidenceGate.requiredTags,
+        received_manifest_uids: evidenceGate.receivedTags,
+        carrier_profile_code: carrierProfileCode,
+        server_verified_sun_evidence: false,
+        cryptographic_authentication_verified: false,
+        error_report: buildSupplierOpsErrorReport({
+          stage: "qa",
+          bid: String(subBatch.bid),
+          reason: evidenceGate.reason,
+          message,
+          issues: [{
+            code: evidenceGate.reason,
+            field: "carrier_observations",
+            value: `required_manifest_uids=${evidenceGate.requiredTags};received_manifest_uids=${evidenceGate.receivedTags}`,
+            detail: "Submit uid_hex, encoded_url, captured_at and the carrier-specific capture_method. This validates carrier encoding only and never upgrades it to cryptographic NFC evidence.",
+          }],
+        }),
+      }, 409);
+    }
+    verifiedCarrierEvidence = evidenceGate;
   }
 
-  const notesText = safeString(body.notes);
-  if (notesText.length > MAX_QA_NOTES_LENGTH) {
-    return json({ ok: false, reason: "qa_notes_too_long", maximum_length: MAX_QA_NOTES_LENGTH }, 400);
-  }
-  const notes = notesText || null;
   const status = passed ? "passed" : "failed";
-  const actor = getAdminActor(req);
-  const actorEmail = actor.email;
-  const sampleCount = verifiedEvidence?.sampleCount || 0;
+  const sampleCount = verifiedEvidence?.sampleCount || verifiedCarrierEvidence?.sampleCount || 0;
   const replayChecked = verifiedEvidence?.replayChecked || false;
   const ttstatusChecked = verifiedEvidence?.ttstatusChecked || false;
-  const notesDigest = notes ? hashEvidencePayload({ notes }) : null;
-  const evidenceDigest = verifiedEvidence?.evidenceDigest || hashEvidencePayload({
+  const evidenceDigest = verifiedEvidence?.evidenceDigest || verifiedCarrierEvidence?.evidenceDigest || hashEvidencePayload({
     schema_version: SUPPLIER_QA_SUN_EVIDENCE_VERSION,
     bid: String(subBatch.bid),
     status,
@@ -382,8 +657,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
     operation_key: operationKey,
     notes_digest: notesDigest,
   });
-  const evidence = verifiedEvidence
-    ? {
+  const evidence = verifiedCarrierEvidence
+    ? verifiedCarrierEvidence.evidence
+    : verifiedEvidence
+      ? {
         ...verifiedEvidence.evidence,
         evidence_digest: evidenceDigest,
         requires_secure_sun: requiresSecureSun,
@@ -395,8 +672,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
         notes_digest: notesDigest,
         notes,
         checked_by: actorEmail,
-      }
-    : {
+        }
+      : {
         schema_version: SUPPLIER_QA_SUN_EVIDENCE_VERSION,
         evidence_source: "operator_rejection",
         server_verified_sun_evidence: false,
@@ -415,39 +692,67 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
 
   let receipt;
   try {
-    receipt = await commitSupplierQa({
-      tenantId: String(subBatch.tenant_id),
-      supplierOrderId: String(subBatch.supplier_order_id),
-      supplierSubBatchId: String(subBatch.supplier_sub_batch_id),
-      batchId: String(subBatch.batch_id),
-      bid: String(subBatch.bid),
-      status,
-      sampleCount,
-      replayChecked,
-      ttstatusChecked,
-      notes,
-      evidence,
-      evidenceDigest,
-      diagnosticRefs: verifiedReferences.map((reference) => ({
-        diagnostic_id: reference.diagnosticId,
-        trace_id: reference.traceId,
-        reference_hash: reference.referenceHash,
-      })),
-      operationKey,
-      actorId: actor.id,
-      actorEmail,
-      expectedManifestHash: String(subBatch.manifest_hash || ""),
-      expectedCarrierProfileCode: carrierProfileCode,
-      expectedKeyFingerprint: String(subBatch.key_fingerprint || ""),
-      expectedSdmConfig: batchSdmConfig,
-      expectedVerificationContextDigest: verificationContextDigest,
-      expectedVerificationContextBinding: verificationContext.binding,
-      expectedVerificationContextCanonical: verificationContext.canonicalPayload,
-      userAgent: req.headers.get("user-agent"),
-      requestId: req.headers.get("x-request-id"),
-    });
+    receipt = verifiedCarrierEvidence
+      ? await commitSupplierCarrierQa({
+          tenantId: String(subBatch.tenant_id),
+          supplierOrderId: String(subBatch.supplier_order_id),
+          supplierSubBatchId: String(subBatch.supplier_sub_batch_id),
+          batchId: String(subBatch.batch_id),
+          bid: String(subBatch.bid),
+          sampleCount,
+          notes,
+          evidence,
+          evidenceDigest,
+          receiptRows: verifiedCarrierEvidence.receiptRows,
+          operationKey,
+          actorId: actor.id,
+          authSessionId: actor.sessionId,
+          actorEmail,
+          expectedManifestHash: String(subBatch.manifest_hash || ""),
+          expectedCarrierProfileCode: carrierProfileCode,
+          expectedKeyFingerprint: String(subBatch.key_fingerprint || ""),
+          expectedSdmConfig: batchSdmConfig,
+          expectedVerificationContextDigest: verificationContextDigest,
+          expectedVerificationContextBinding: verificationContext.binding,
+          expectedVerificationContextCanonical: verificationContext.canonicalPayload,
+          userAgent: req.headers.get("user-agent"),
+          requestId: req.headers.get("x-request-id"),
+        })
+      : await commitSupplierQa({
+          tenantId: String(subBatch.tenant_id),
+          supplierOrderId: String(subBatch.supplier_order_id),
+          supplierSubBatchId: String(subBatch.supplier_sub_batch_id),
+          batchId: String(subBatch.batch_id),
+          bid: String(subBatch.bid),
+          status,
+          sampleCount,
+          replayChecked,
+          ttstatusChecked,
+          notes,
+          evidence,
+          evidenceDigest,
+          diagnosticRefs: verifiedReferences.map((reference) => ({
+            diagnostic_id: reference.diagnosticId,
+            trace_id: reference.traceId,
+            reference_hash: reference.referenceHash,
+          })),
+          operationKey,
+          actorId: actor.id,
+          actorEmail,
+          expectedManifestHash: String(subBatch.manifest_hash || ""),
+          expectedCarrierProfileCode: carrierProfileCode,
+          expectedKeyFingerprint: String(subBatch.key_fingerprint || ""),
+          expectedSdmConfig: batchSdmConfig,
+          expectedVerificationContextDigest: verificationContextDigest,
+          expectedVerificationContextBinding: verificationContext.binding,
+          expectedVerificationContextCanonical: verificationContext.canonicalPayload,
+          userAgent: req.headers.get("user-agent"),
+          requestId: req.headers.get("x-request-id"),
+        });
   } catch (error) {
-    const failure = supplierQaCommitError(error);
+    const failure = verifiedCarrierEvidence
+      ? supplierCarrierQaCommitError(error)
+      : supplierQaCommitError(error);
     return json({
       ok: false,
       reason: failure.reason,
@@ -460,17 +765,33 @@ export async function POST(req: Request, { params }: { params: Promise<{ orderId
     bid: subBatch.bid,
     qa_status: status,
     pack_purpose: effectivePackPurpose,
-    acceptance_scope: effectivePackPurpose === "trial_integration" ? "trial_integration" : effectivePackPurpose,
-    commercial_disposition: effectivePackPurpose === "trial_integration" ? "NON_SELLABLE" : "BLOCKED",
+    acceptance_scope: effectivePackPurpose === "production" ? "production_lot" : effectivePackPurpose,
+    commercial_disposition: effectivePackPurpose === "production" && passed
+      ? "BLOCKED_PENDING_ACTIVATION"
+      : effectivePackPurpose === "production"
+        ? "BLOCKED_PENDING_PRODUCTION_QA"
+        : "NON_SELLABLE",
     activation_allowed: false,
-    activation_gate: passed ? "trial_integration_non_sellable" : "blocked_until_qa_passed",
+    activation_gate: passed
+      ? effectivePackPurpose === "production"
+        ? "production_keyless_qa_passed_pending_activation"
+        : "trial_integration_non_sellable"
+      : "blocked_until_qa_passed",
     qa_check_id: receipt.qaCheckId,
     evidence_hash: receipt.evidenceEventHash,
     evidence_digest: receipt.evidenceDigest,
     idempotent_replay: receipt.idempotentReplay,
     sample_count: sampleCount,
+    evidence_schema_version: verifiedCarrierEvidence
+      ? SUPPLIER_CARRIER_QA_EVIDENCE_VERSION
+      : SUPPLIER_QA_SUN_EVIDENCE_VERSION,
     server_verified_sun_evidence: Boolean(verifiedEvidence),
+    carrier_encoding_binding_verified: Boolean(verifiedCarrierEvidence),
+    cryptographic_authentication_verified: Boolean(verifiedEvidence),
+    anti_replay_verified: Boolean(verifiedEvidence?.replayChecked),
     physical_ceremony_verified: false,
+    packaging_lab_approval_verified: Boolean(keylessProductionAcceptance),
+    requires_secure_sun: requiresSecureSun,
     requires_ttstatus: requiresTtstatus,
   });
 }

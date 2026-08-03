@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, CheckCircle2, ShieldCheck } from "lucide-react";
 import { getWebI18n } from "../../lib/locale";
 import { JsonLd } from "../../components/json-ld";
 import { PricingRoiCalculator } from "../../components/pricing-roi-calculator";
+import { PricingQuoteConfigurator } from "../../components/pricing-quote-configurator";
 
 export const metadata: Metadata = {
   title: "Pricing | nexID enterprise product identity",
@@ -45,8 +46,8 @@ const copyByLocale = {
       {
         name: "Starter",
         label: "QR / NFC pilot",
-        price: "Pilot setup from $2,500",
-        recurring: "Software from $99 / month",
+        price: "Budgetary pilot range in configurator",
+        recurring: "Quoted by units, carrier and scope",
         body: "For one product line, limited batches and fast buyer validation.",
         cta: "Request pilot",
         href: "/?contact=quote&intent=pricing_starter#contact-modal",
@@ -55,8 +56,8 @@ const copyByLocale = {
       {
         name: "Pro",
         label: "Secure rollout",
-        price: "Rollout setup from $7,500",
-        recurring: "Software from $249 / month",
+        price: "Rollout range built from technical scope",
+        recurring: "SaaS, operations and usage quoted separately",
         body: "For brands that need cryptographic NFC, tamper states and post-sale actions.",
         cta: "Plan rollout",
         href: "/?contact=quote&intent=pricing_pro#contact-modal",
@@ -67,7 +68,7 @@ const copyByLocale = {
         name: "Enterprise",
         label: "Multi-brand platform",
         price: "Implementation scoped separately",
-        recurring: "Software from $499 / month + usage",
+        recurring: "SaaS, support and usage by approved scope",
         body: "For regulated, multi-country or reseller operations with integrations and governance.",
         cta: "Talk to enterprise",
         href: "/?contact=sales&intent=pricing_enterprise#contact-modal",
@@ -94,8 +95,8 @@ const copyByLocale = {
       {
         name: "Starter",
         label: "Piloto QR / NFC",
-        price: "Setup do piloto desde US$ 2.500",
-        recurring: "Software desde US$ 99 / mes",
+        price: "Faixa do piloto no configurador",
+        recurring: "Cotado por unidades, carrier e escopo",
         body: "Para uma linha de produto, lotes limitados e validacao rapida.",
         cta: "Solicitar piloto",
         href: "/?contact=quote&intent=pricing_starter#contact-modal",
@@ -104,8 +105,8 @@ const copyByLocale = {
       {
         name: "Pro",
         label: "Rollout seguro",
-        price: "Setup do rollout desde US$ 7.500",
-        recurring: "Software desde US$ 249 / mes",
+        price: "Faixa de rollout construida pelo escopo tecnico",
+        recurring: "SaaS, operacao e uso cotados separadamente",
         body: "Para marcas que precisam de NFC criptografico, tamper e pos-venda.",
         cta: "Planejar rollout",
         href: "/?contact=quote&intent=pricing_pro#contact-modal",
@@ -116,7 +117,7 @@ const copyByLocale = {
         name: "Enterprise",
         label: "Plataforma multi-marca",
         price: "Implementacao cotada separadamente",
-        recurring: "Software desde US$ 499 / mes + uso",
+        recurring: "SaaS, suporte e uso por escopo aprovado",
         body: "Para operacoes reguladas, multi-pais ou reseller com integracoes.",
         cta: "Falar com enterprise",
         href: "/?contact=sales&intent=pricing_enterprise#contact-modal",
@@ -143,8 +144,8 @@ const copyByLocale = {
       {
         name: "Starter",
         label: "Piloto QR / NFC",
-        price: "Implementacion piloto desde US$ 2.500",
-        recurring: "Software desde US$ 99 / mes",
+        price: "Banda de piloto en el configurador",
+        recurring: "Cotizado por unidades, carrier y alcance",
         body: "Para una linea de producto, lotes limitados y validacion rapida.",
         cta: "Solicitar piloto",
         href: "/?contact=quote&intent=pricing_starter#contact-modal",
@@ -153,8 +154,8 @@ const copyByLocale = {
       {
         name: "Pro",
         label: "Rollout seguro",
-        price: "Implementacion rollout desde US$ 7.500",
-        recurring: "Software desde US$ 249 / mes",
+        price: "Banda de rollout construida por alcance tecnico",
+        recurring: "SaaS, operacion y uso cotizados por separado",
         body: "Para marcas que necesitan NFC criptografico, tamper y acciones postventa.",
         cta: "Planear rollout",
         href: "/?contact=quote&intent=pricing_pro#contact-modal",
@@ -165,7 +166,7 @@ const copyByLocale = {
         name: "Enterprise",
         label: "Plataforma multi-marca",
         price: "Implementacion cotizada por separado",
-        recurring: "Software desde US$ 499 / mes + uso",
+        recurring: "SaaS, soporte y uso segun alcance aprobado",
         body: "Para operaciones reguladas, multi-pais o reseller con integraciones y gobierno.",
         cta: "Hablar con enterprise",
         href: "/?contact=sales&intent=pricing_enterprise#contact-modal",
@@ -246,6 +247,8 @@ export default async function PricingPage() {
             <span className="text-sm leading-6 text-slate-600">{copy.note}</span>
           </div>
         </section>
+
+        <PricingQuoteConfigurator locale={locale} />
 
         <PricingRoiCalculator locale={locale} />
 

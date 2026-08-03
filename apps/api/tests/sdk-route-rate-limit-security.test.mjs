@@ -32,9 +32,10 @@ test("every SDK route applies source limiting before auth SQL and tenant/API-key
 
 test("offline sync binds identity to SDK auth, bounds payloads and deduplicates atomically", () => {
   const source = readFileSync(new URL("../src/app/api/v1/sdk/offline-sync/route.ts", import.meta.url), "utf8");
-  assert.match(source, /const MAX_BODY_BYTES = 256 \* 1024/u);
-  assert.match(source, /const MAX_EVENTS = 100/u);
+  assert.match(source, /const MAX_BODY_BYTES = SDK_OFFLINE_SYNC_MAX_BODY_BYTES/u);
+  assert.match(source, /const MAX_EVENTS = SDK_OFFLINE_SYNC_MAX_EVENTS/u);
   assert.match(source, /offline_sync_tenant_mismatch/u);
+  assert.match(source, /offline_sync_idempotency_key_required/u);
   assert.match(source, /bundle\.tenant_id = \$\{auth\.context\.tenantId\}/u);
   assert.match(source, /device\.tenant_id = \$\{auth\.context\.tenantId\}/u);
   assert.match(source, /ON CONFLICT \(tenant_id, device_id, client_event_id\) DO NOTHING/u);

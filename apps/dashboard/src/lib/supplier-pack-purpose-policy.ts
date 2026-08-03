@@ -1,5 +1,14 @@
 export type SupplierPackPurpose = "" | "trial_integration" | "production" | "legacy_unclassified";
 
+export const SUPPLIER_ORDER_CREATION_PURPOSES = ["trial_integration", "production"] as const;
+
+export type SupplierOrderCreationPurpose = (typeof SUPPLIER_ORDER_CREATION_PURPOSES)[number];
+
+export function parseSupplierOrderCreationPurpose(value: unknown): SupplierOrderCreationPurpose | null {
+  if (value === "trial_integration" || value === "production") return value;
+  return null;
+}
+
 export const LEGACY_TRIAL_CLASSIFICATION_CONFIRMATION =
   "CLASSIFY_LEGACY_SUPPLIER_ORDER_AS_TRIAL";
 

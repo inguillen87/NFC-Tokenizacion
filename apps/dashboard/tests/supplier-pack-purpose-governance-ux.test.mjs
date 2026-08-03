@@ -25,7 +25,8 @@ test("supplier purpose badges state the actual release contract", () => {
 
 test("purpose-specific controls fail closed before QA or activation", () => {
   assert.match(source, /activePackPurpose === "trial_integration"\s*\? "NON_SELLABLE: un trial de integración nunca puede activar tags\./);
-  assert.match(source, /activePackPurpose === "production"\s*\? "Producción bloqueada: requiere un plan y recibo de aceptación QA v2/);
+  assert.match(source, /Falta aceptación QA de producción: plan aprobado por tenant-admin y sesión de recepción aprobada por otro actor autorizado/);
+  assert.match(source, /normalStatus\(selectedSubBatch\.qa_status\) !== "passed"/);
   assert.match(source, /El QA fijo de 10 tags es solo para trial de integración/);
   assert.match(source, /Propósito sin clasificar: el QA permanece bloqueado/);
   assert.match(source, /Propósito sin clasificar: no se exportan llaves/);

@@ -1,48 +1,88 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@product/ui";
+import {
+  EnterpriseRoleCatalogGate,
+  EnterpriseRolePresetSummary,
+  EnterpriseRoleSelect,
+  useEnterpriseRoleCatalog,
+} from "./enterprise-role-catalog-control";
+import {
+  ENTERPRISE_ROLE_PERMISSION_MODE,
+  normalizeEnterpriseRoleCode,
+} from "../lib/enterprise-role-catalog";
 
 export function InviteUserPanel() {
-  const [form, setForm] = useState({ email: "", fullName: "", role: "viewer", tenantSlug: "", permissions: "events:read,analytics:read" });
+  const catalog = useEnterpriseRoleCatalog();
+  const [form, setForm] = useState({ email: "", fullName: "", role: "", tenantSlug: "" });
   const [status, setStatus] = useState("");
   const [activationLink, setActivationLink] = useState("");
+
+  useEffect(() => {
+    if (catalog.status !== "ready") return;
+    setForm((current) => catalog.byCode.has(normalizeEnterpriseRoleCode(current.role))
+      ? current
+      : { ...current, role: catalog.roles.find((role) => role.code === "viewer")?.code || catalog.roles[0]?.code || "" });
+  }, [catalog.status, catalog.roles, catalog.byCode]);
 
   async function submit() {
     setStatus("");
     setActivationLink("");
-    const res = await fetch('/api/iam/users/invite', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const selectedRole = catalog.byCode.get(normalizeEnterpriseRoleCode(form.role));
+    if (catalog.status !== "ready" || !selectedRole) {
+      setStatus("La invitación quedó bloqueada porque el rol no pertenece al catálogo autorizado.");
+      return;
+    }
+    const res = await fetch("/api/iam/users/invite", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...form,
-        permissions: form.permissions.split(',').map((item) => item.trim()).filter(Boolean),
+        role: selectedRole.code,
+        tenantSlug: selectedRole.tenantBound ? (form.tenantSlug || null) : null,
+        permissions: [],
+        permissionMode: ENTERPRISE_ROLE_PERMISSION_MODE,
       }),
     }).catch(() => null);
 
     const data = await res?.json().catch(() => null);
     if (!res?.ok) {
-      setStatus(data?.reason || 'No se pudo crear la invitación.');
+      setStatus(data?.reason || "No se pudo crear la invitación.");
       return;
     }
-    setStatus('Invitación creada correctamente.');
+    setStatus("Invitación creada correctamente con el preset RBAC autoritativo.");
     if (data?.activationLink) setActivationLink(data.activationLink);
   }
 
+  const selectedRole = catalog.byCode.get(normalizeEnterpriseRoleCode(form.role));
+
   return (
     <div className="mt-4 grid gap-3">
-      <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="Email" value={form.email} onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))} />
-      <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="Nombre completo" value={form.fullName} onChange={(e) => setForm((s) => ({ ...s, fullName: e.target.value }))} />
-      <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="Tenant slug (opcional)" value={form.tenantSlug} onChange={(e) => setForm((s) => ({ ...s, tenantSlug: e.target.value }))} />
-      <select suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" value={form.role} onChange={(e) => setForm((s) => ({ ...s, role: e.target.value }))}>
-        <option value="tenant-admin">Tenant Admin</option>
-        <option value="reseller">Reseller</option>
-        <option value="viewer">Viewer</option>
-      </select>
-      <textarea suppressHydrationWarning className="min-h-20 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" value={form.permissions} onChange={(e) => setForm((s) => ({ ...s, permissions: e.target.value }))} />
-      <Button className="w-full" onClick={submit}>Crear invitación</Button>
-      {status ? <p className="text-xs text-cyan-200">{status}</p> : null}
-      {activationLink ? <code className="rounded-lg border border-amber-300/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100 break-all">{activationLink}</code> : null}
+      <EnterpriseRoleCatalogGate status={catalog.status} error={catalog.error} onRetry={catalog.reload} />
+      <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="Email" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} />
+      <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder="Nombre completo" value={form.fullName} onChange={(event) => setForm((current) => ({ ...current, fullName: event.target.value }))} />
+      <EnterpriseRoleSelect
+        roles={catalog.roles}
+        value={form.role}
+        disabled={catalog.status !== "ready"}
+        onChange={(role) => setForm((current) => ({ ...current, role }))}
+      />
+      <label className="grid gap-1.5 text-xs font-bold text-slate-300">
+        Tenant slug
+        <input
+          suppressHydrationWarning
+          className="min-h-11 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+          placeholder={selectedRole?.tenantBound ? "tenant slug" : "Rol global"}
+          value={form.tenantSlug}
+          disabled={!selectedRole?.tenantBound}
+          onChange={(event) => setForm((current) => ({ ...current, tenantSlug: event.target.value }))}
+        />
+      </label>
+      <EnterpriseRolePresetSummary role={selectedRole} />
+      <Button disabled={catalog.status !== "ready" || !selectedRole} className="w-full" onClick={submit}>Crear invitación</Button>
+      {status ? <p className="text-xs text-cyan-200" aria-live="polite">{status}</p> : null}
+      {activationLink ? <code className="break-all rounded-lg border border-amber-300/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">{activationLink}</code> : null}
     </div>
   );
 }

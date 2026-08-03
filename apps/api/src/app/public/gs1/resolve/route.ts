@@ -7,6 +7,8 @@ import {
   normalizeGs1Identity,
   resolveActiveGs1Identity,
 } from "../../../../lib/gs1-digital-link-registry";
+import { agroPublicLinks, hasConfiguredAgroProfile, normalizeAgroProductProfile } from "../../../../lib/agro-product-profile";
+import { sql } from "../../../../lib/db";
 import { json } from "../../../../lib/http";
 
 export async function GET(req: Request) {
@@ -29,6 +31,21 @@ export async function GET(req: Request) {
         "cache-control": "no-store",
       });
     }
+    const productRows = await sql/*sql*/`
+      SELECT b.sdm_config, tp.locale_data
+      FROM batches b
+      LEFT JOIN tag_profiles tp ON tp.tag_id = ${identity.tagId}::uuid
+      WHERE b.id = ${identity.batchId}::uuid
+        AND b.tenant_id = ${identity.tenantId}::uuid
+      LIMIT 1
+    ` as Array<{ sdm_config?: unknown; locale_data?: unknown }>;
+    const agro = normalizeAgroProductProfile({
+      batchConfig: productRows[0]?.sdm_config,
+      tagLocaleData: productRows[0]?.locale_data,
+      registryMetadata: identity.metadata,
+      identity,
+    });
+    const configuredAgro = hasConfiguredAgroProfile(agro) ? agro : null;
     return json({
       ok: true,
       registry: {
@@ -39,6 +56,8 @@ export async function GET(req: Request) {
         tenantSlug: identity.tenantSlug,
         bid: identity.bid,
         displayName: identity.displayName,
+        agro: configuredAgro,
+        publicLinks: configuredAgro ? agroPublicLinks(configuredAgro) : {},
       },
       assurance: {
         identityRegistered: true,

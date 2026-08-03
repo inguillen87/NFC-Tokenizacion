@@ -19,6 +19,7 @@ export default async function SupplierBatchPage() {
         <SupplierOrderConsole
           currentRole={session.role}
           currentPermissions={session.permissions}
+          currentDeniedPermissions={session.deniedPermissions}
           tenantSlug={session.tenantSlug}
         />
       </div>

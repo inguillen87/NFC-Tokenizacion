@@ -86,7 +86,6 @@ test("SDK enqueue receipt distinguishes confirmed delivery rows from no configur
 test("every webhook-producing SDK route returns explicit 503 instead of swallowing enqueue failure", () => {
   const routes = [
     "src/app/api/v1/sdk/verify/route.ts",
-    "src/app/api/v1/sdk/events/route.ts",
     "src/app/api/v1/sdk/pos/activate/route.ts",
     "src/app/api/v1/sdk/claim/route.ts",
   ];
@@ -101,6 +100,14 @@ test("every webhook-producing SDK route returns explicit 503 instead of swallowi
   }
 });
 
+test("SDK external events use the transactional business-event and outbox writer", () => {
+  const route = read("src/app/api/v1/sdk/events/route.ts");
+  assert.match(route, /writeSdkExternalEventAtomic/);
+  assert.match(route, /sdkExternalEventAtomicError/);
+  assert.doesNotMatch(route, /enqueueSdkWebhookGuaranteed/);
+  assert.doesNotMatch(route, /INSERT INTO sdk_external_events/);
+});
+
 test("workers claim atomically, use expiring leases and persist retry or DLQ state", () => {
   const source = read("src/lib/sdk-webhooks.ts");
   const migration = read("db/migrations/20260723194500_0052_webhook_delivery_outbox.sql");
@@ -113,6 +120,11 @@ test("workers claim atomically, use expiring leases and persist retry or DLQ sta
   assert.match(source, /status = 'retry_scheduled'/);
   assert.match(source, /status = 'dead_letter'/);
   assert.match(source, /AND lock_token = /);
+  assert.match(source, /wd\.endpoint_url = we\.url/);
+  assert.match(source, /wd\.destination_version = we\.destination_version/);
+  assert.match(source, /renewAndVerifyWebhookDeliveryLease/);
+  assert.match(source, /FOR SHARE/);
+  assert.match(source, /const claimed = await claimWebhookDeliveries\(1\)/);
   assert.match(migration, /UNIQUE INDEX[\s\S]*endpoint_id, event_id/);
   assert.match(migration, /next_attempt_at/);
   assert.match(worker, /authenticateWebhookWorkerRequest/);

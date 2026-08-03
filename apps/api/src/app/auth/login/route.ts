@@ -5,7 +5,7 @@ import { sql } from '../../../lib/db';
 import { json } from '../../../lib/http';
 import { ensurePresetUser } from '../../../lib/auth-presets';
 import { verifyPassword } from '../../../lib/password';
-import { auditAuthEvent, createSession, getAuthUserByEmail, normalizeRole } from '../../../lib/iam';
+import { auditAuthEvent, createSession, getAuthUserByEmail, normalizeRole, roleAllowsHumanSession } from '../../../lib/iam';
 import {
   clearSuccessfulLoginAttempt,
   getLoginRateLimitPolicy,
@@ -188,6 +188,18 @@ export async function POST(req: Request) {
       meta: blockedAccount
         ? { reason: 'user_not_active', source: 'dashboard', userStatus }
         : { reason: 'invalid_credentials', source: 'dashboard' },
+    }).catch(() => null);
+    return json({ ok: false, reason: 'invalid credentials' }, 401, authHeaders(meta.traceId));
+  }
+
+  if (!roleAllowsHumanSession(user.role)) {
+    await auditAuthEvent(sql as any, {
+      email,
+      eventName: 'login_blocked',
+      ok: false,
+      role: user.role,
+      ...meta,
+      meta: { reason: 'non_human_service_role', source: 'dashboard' },
     }).catch(() => null);
     return json({ ok: false, reason: 'invalid credentials' }, 401, authHeaders(meta.traceId));
   }

@@ -1,0 +1,89 @@
+{
+  "ok": true,
+  "validator": "supplier_atomic_postgres_concurrency_v2",
+  "validated_at": "2026-08-02",
+  "environment": "disposable_neon_schema_only_branch",
+  "endpoint_id": "ep-rapid-glitter-ail9banz",
+  "database": "codex_qa_supplier4_20260802",
+  "database_role": "neondb_owner",
+  "migration_count": 97,
+  "latest_migration": "20260802300000_0095_sun_tt_conflict_target.sql",
+  "evidence": {
+    "canonical_carrier_catalog_fixture": {
+      "codes": ["qr_basic"],
+      "source": "disposable_qa_only",
+      "cryptographic_authentication": false,
+      "requires_batch_keys": false
+    },
+    "supplier_order_mid_function_rollback": {
+      "first_sub_batch_rolled_back": true,
+      "order_graph_rows_after_failure": 0
+    },
+    "supplier_bid_global_serialization": {
+      "concurrent_attempts": 2,
+      "committed_order_graphs": 1,
+      "conflicting_order_graphs": 1
+    },
+    "manifest_global_uid_serialization": {
+      "concurrent_attempts": 2,
+      "globally_owned_uids": 1,
+      "committed_manifests": 1,
+      "conflicting_manifests": 1
+    },
+    "keyless_order_truth": {
+      "carrier_profile_code": "qr_basic",
+      "key_material_mode": "none",
+      "software_envelope": false,
+      "managed_kms": false,
+      "hsm_backed": false,
+      "key_rows": 0,
+      "key_material_rows": 0
+    },
+    "manifest_carrier_and_sun_contract": {
+      "authoritative_carrier_mismatches_rejected": 2,
+      "keyless_sun_payloads_rejected": 1,
+      "committed_tags": 1,
+      "registered_sun_payloads": 0
+    },
+    "supplier_carrier_key_scope_integrity": {
+      "keyless_key_rows_rejected": 2,
+      "null_identity_bypasses_rejected": 1,
+      "cross_scope_mutations_rejected": 2,
+      "secure_sun_key_scope_unchanged": true
+    },
+    "packaging_lab_synthetic_gate_fixture": {
+      "synthetic_test_count": 3,
+      "physical_evidence_validated": false
+    },
+    "tenant_isolation": {
+      "authenticated_tenant_principals": 2,
+      "cross_tenant_mutations": 0,
+      "rls_claimed": false
+    },
+    "keyless_production_qa_acceptance": {
+      "acceptance_path": "keyless_carrier_v1",
+      "key_material_mode": "none",
+      "software_envelope": false,
+      "managed_kms": false,
+      "hsm_backed": false
+    },
+    "activation_archive_serialization": {
+      "concurrent_attempts": 2,
+      "packaging_lab_archive_committed": true,
+      "activation_linearized_before_archive": false,
+      "activation_receipts": 0,
+      "partial_or_unreceipted_activation": false
+    }
+  },
+  "boundaries": {
+    "production_touched": false,
+    "disposable_neon_postgresql_only": true,
+    "physical_nfc_cryptographic_path_touched": false,
+    "physical_packaging_evidence_validated": false,
+    "raw_nfc_keys_used": false,
+    "managed_kms_validated": false,
+    "hsm_validated": false,
+    "rls_validated": false
+  },
+  "contains_credentials": false
+}

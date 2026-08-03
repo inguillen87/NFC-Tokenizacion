@@ -8,6 +8,9 @@ import { SunProductHeroStage, type SunVisualKind } from "./sun-product-hero-stag
 import { TapPrecisionTelemetry } from "./tap-precision-telemetry";
 import { QREngagementSuite } from "./qr-engagement-suite";
 import { PostTapNextStep } from "./post-tap-next-step";
+import { OfflinePublicProductCache } from "./offline-public-product-cache";
+import { AgroDppExperience } from "./agro-dpp-experience";
+import { normalizeAgroDppProfile } from "./agro-dpp-model";
 import { resolveCommercialTapFreshness, resolvePostTapQuickActionAvailability } from "./post-tap-policy";
 import { fmtDistance, haversineKm, selectCanonicalSunMapRoutes } from "./sun-route-distance";
 import { qualifySunStatusForPreview, selectSunTruthCopy, SUN_DEMO_BADGE, SUN_DEMO_COPY } from "./sun-truth-copy";
@@ -119,6 +122,7 @@ type SunContract = {
     alcohol?: string | null;
     altitude?: string | null;
     oakType?: string | null;
+    agro?: unknown;
   };
   provenance?: {
     origin?: string | null;
@@ -379,6 +383,11 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
   const snapshotId = typeof params.snapshot === "string" ? params.snapshot.trim() : "";
   const snapshotTrace = typeof params.trace === "string" ? params.trace.trim() : "";
+  const snapshotAccess = typeof params.access === "string"
+    ? params.access.trim()
+    : typeof params.snapshot_access === "string"
+      ? params.snapshot_access.trim()
+      : "";
   const freshToken = typeof params.fresh === "string"
     ? params.fresh.trim()
     : typeof params.fresh_token === "string"
@@ -447,8 +456,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       troubleshooting: ["Reintentá cuando la API esté disponible. No tomes esta vista como validación del producto ni del mensaje."],
     };
   } else {
-    snapshotResult = snapshotId && snapshotTrace
-      ? await fetch(`${resolvedApiBase}/sun/snapshot/${encodeURIComponent(snapshotId)}?trace=${encodeURIComponent(snapshotTrace)}${freshToken ? `&fresh=${encodeURIComponent(freshToken)}` : ""}`, { cache: "no-store" })
+    snapshotResult = snapshotId && snapshotTrace && snapshotAccess
+      ? await fetch(`${resolvedApiBase}/sun/snapshot/${encodeURIComponent(snapshotId)}?trace=${encodeURIComponent(snapshotTrace)}&access=${encodeURIComponent(snapshotAccess)}${freshToken ? `&fresh=${encodeURIComponent(freshToken)}` : ""}`, { cache: "no-store" })
         .then((res) => res.ok ? res.json() : null)
         .then((payload) => payload?.contract || null)
         .catch(() => null) as SunContract | null
@@ -543,6 +552,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   });
   const isValid = isTechnicallyAuthentic && !isVerifiedOpenedState && ["VALID", "AUTH_OK"].includes(statusCode);
   const isRiskBlocked = isReplay || isTamperRisk || isSunProfileMismatch || (!isTechnicallyAuthentic && !isQrScan);
+  const agroProfile = normalizeAgroDppProfile(result.product?.agro);
+  const isAgroDpp = Boolean(agroProfile);
   const engagementBaseEligible = (isQrScan || isFreshCommercialTap || isVerifiedOpenedState) && !isRiskBlocked && !isSnapshotView;
   const troubleshooting = result.troubleshooting || [];
   const timelinePoints = (result.provenance?.timelineSummary || [])
@@ -855,10 +866,12 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         ? "Mensaje SUN válido. El tag reporta estado TT abierto."
         : statusHeadline);
   const reportProblemHref = "/?contact=sales&intent=sun_mobile#contact-modal";
+  const productSectionHref = isAgroDpp ? "#agro-dpp" : "#product-info";
+  const consumerActionHref = isAgroDpp ? "#agro-dpp" : "#consumer-choice";
   const recommendedAction = isFreshCommercialTap
-    ? { label: "Ver ficha y opciones", href: "#consumer-choice", helper: rightsPolicy.recommendedNextStep || "No hace falta registrarse para leer la ficha. Contacto, club, garantia y propiedad son pasos opt-in separados." }
+    ? { label: "Ver ficha y opciones", href: consumerActionHref, helper: rightsPolicy.recommendedNextStep || "No hace falta registrarse para leer la ficha. Contacto, club, garantia y propiedad son pasos opt-in separados." }
     : isSnapshotView
-      ? { label: "Ver ficha", href: "#product-info", helper: "Consulta segura: evidencia digital y registros declarados quedan visibles. Acciones sensibles requieren otro tap físico." }
+      ? { label: "Ver ficha", href: productSectionHref, helper: "Consulta segura: evidencia digital y registros declarados quedan visibles. Acciones sensibles requieren otro tap físico." }
     : isSunProfileMismatch
       ? { label: "Avisar a soporte", href: reportProblemHref, helper: "El producto y el lote quedan visibles. Garantia, club o tokenizacion esperan el perfil SUN correcto o el payload del proveedor." }
     : !isRiskBlocked && isTechnicallyAuthentic
@@ -1253,12 +1266,14 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       : isVerifiedOpenedState
         ? "El mensaje SUN es válido y el tag reporta TT abierto. Podés leer la ficha; asociar el producto a una cuenta es opcional y separado."
         : "La lectura es fresca. Primero lees la ficha; si queres, despues dejas contacto o acreditas compra.";
-  const primaryPostTapAction = isQrScan
+  const primaryPostTapAction = isQrScan && isAgroDpp
+    ? { label: "Ver pasaporte agro", href: "#agro-dpp", tone: "trace" }
+    : isQrScan
     ? { label: "Abrir sommelier IA", href: "#qr-engagement", tone: "trace" }
     : isSunProfileMismatch
     ? { label: "Avisar a soporte", href: reportProblemHref, tone: "trace" }
     : isFreshCommercialTap
-      ? { label: "Ver trivia y beneficios", href: showEngagementSuite ? "#qr-engagement" : "#consumer-choice", tone: "trace" }
+      ? { label: "Ver trivia y beneficios", href: showEngagementSuite ? "#qr-engagement" : consumerActionHref, tone: "trace" }
       : isSnapshotView
         ? { label: "Hacer nuevo tap fisico", href: "#fresh-tap-required", tone: "fresh" }
         : isRiskBlocked
@@ -1339,6 +1354,17 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   return (
     <main className="min-h-screen bg-[#060813] text-slate-100 flex flex-col items-center py-4 sm:py-8 px-4 font-sans relative overflow-hidden pb-32">
       <FreshHandoffUrlCleaner enabled={Boolean(isFreshHandoff && freshToken)} />
+      <OfflinePublicProductCache
+        enabled={!isDemoPreview && result.ok === true && Boolean(bid)}
+        bid={bid}
+        name={result.product?.name}
+        brand={result.tenant?.name || result.product?.winery}
+        region={result.product?.region}
+        origin={result.provenance?.origin}
+        storage={result.product?.storage}
+        notes={result.product?.notes}
+        agro={agroProfile}
+      />
       
       {/* Background glow effects */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-lg h-[500px] bg-gradient-to-b from-indigo-500/10 via-cyan-500/5 to-transparent blur-3xl pointer-events-none" />
@@ -1377,6 +1403,26 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           </div>
         </header>
 
+        {isAgroDpp && agroProfile ? (
+          <AgroDppExperience
+            profile={agroProfile}
+            bid={bid}
+            eventId={eventId}
+            productName={productDisplayName}
+            brand={tenantDisplayName}
+            statusCode={statusCode}
+            statusLabel={String(result.status?.label || "")}
+            statusSummary={String(result.status?.summary || "")}
+            productState={productState}
+            verdict={verdictName}
+            riskLevel={String(result.riskLevel || "")}
+            isQr={isQrScan}
+            isFreshTap={isFreshCommercialTap}
+            timeline={result.provenance?.timelineSummary || []}
+          />
+        ) : null}
+
+        {!isAgroDpp ? <>
         {/* 1. Main Authenticity Banner (Glassmorphism & Glowing border) */}
         <section 
           className={`relative rounded-3xl border border-white/10 p-6 backdrop-blur-2xl shadow-2xl overflow-hidden bg-gradient-to-br ${
@@ -1530,9 +1576,10 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             </div>
           </div>
         </section>
+        </> : null}
 
         {/* 3. Contextual, policy-aware post-tap journey */}
-        <section id="consumer-choice" className="space-y-3">
+        {!isAgroDpp ? <section id="consumer-choice" className="space-y-3">
           <PostTapNextStep
             vertical={`${verticalLabel} ${result.product?.vertical || ""} ${result.product?.category || ""}`}
             productName={productDisplayName}
@@ -1594,7 +1641,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             </div>
           )}
 
-        </section>
+        </section> : null}
 
         {/* 4. Traceability, Map & Cold Chain history */}
         <section className="rounded-3xl border border-white/5 bg-slate-900/30 p-5 backdrop-blur-md shadow-lg space-y-4">
@@ -1824,7 +1871,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       {/* Fixed Bottom Quick Nav Bar */}
       <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-[390px] px-3 z-30 lg:hidden">
         <div className="grid grid-cols-4 gap-1.5 rounded-2xl border border-white/10 bg-slate-950/80 p-2 backdrop-blur-xl shadow-xl">
-          <a href="#product-info" className="flex flex-col items-center justify-center py-1.5 rounded-xl hover:bg-white/5 text-slate-300">
+          <a href={productSectionHref} className="flex flex-col items-center justify-center py-1.5 rounded-xl hover:bg-white/5 text-slate-300">
             <span className="text-xs">🍷</span>
             <span className="text-[8px] font-bold mt-0.5">Ficha</span>
           </a>
@@ -1843,7 +1890,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               <span className="text-[8px] font-bold mt-0.5">Evidencia</span>
             </a>
           )}
-          <a href={showEngagementSuite ? "#qr-engagement" : "#consumer-choice"} className="flex flex-col items-center justify-center py-1.5 rounded-xl hover:bg-white/5 text-slate-300">
+          <a href={isAgroDpp ? "#agro-dpp" : showEngagementSuite ? "#qr-engagement" : "#consumer-choice"} className="flex flex-col items-center justify-center py-1.5 rounded-xl hover:bg-white/5 text-slate-300">
             <span className="text-xs">🔒</span>
             <span className="text-[8px] font-bold mt-0.5">Acciones</span>
           </a>

@@ -9,6 +9,8 @@ import {
   type NexIdEpcisPage,
   type NexIdEpcisQueryDocument,
   type NexIdIdempotencyStatus,
+  type OfflineScanSyncRequest,
+  type OfflineScanSyncResponse,
   type NexIdWebhookVerificationResult,
   type NexIdWebhookSignatureVersion,
   type NexIdWebhookVerificationAndParseResult,
@@ -58,6 +60,21 @@ const epcisPage: Promise<NexIdEpcisPage<NexIdEpcisQueryDocument>> = client.query
   gtin: "09506000134352",
   limit: 50,
 });
+const offlineSyncRequest = {
+  schemaVersion: 1,
+  bundleId: "ovb_0123456789abcdef0123456789abcdef0123",
+  deviceId: "d877a64d-5a44-4a02-8d33-efb9f4bc0c74",
+  events: [{
+    localId: "type-smoke-scan-1",
+    capturedUrl: "https://tags.example.test/sun?v=1&bid=LOT-42&picc_data=00112233445566778899AABBCCDDEEFF&enc=00112233445566778899AABBCCDDEEFF&cmac=0011223344556677",
+    capturedAt: "2026-08-02T12:00:00.000Z",
+    status: "PENDING_BACKEND_VERIFICATION",
+  }],
+} satisfies OfflineScanSyncRequest;
+const offlineSync: Promise<OfflineScanSyncResponse> = client.syncOfflineScans(
+  offlineSyncRequest,
+  { idempotencyKey: "type-smoke-offline-sync-1" },
+);
 
 function requiresAuthenticatedKeyId(result: NexIdWebhookVerificationResult) {
   if (!result.ok || !result.keyIdAuthenticated) return null;
@@ -75,5 +92,6 @@ void idempotencyStatus;
 void webhookEnvelope;
 void epcisCapture;
 void epcisPage;
+void offlineSync;
 void NexIdApiError;
 void requiresAuthenticatedKeyId;

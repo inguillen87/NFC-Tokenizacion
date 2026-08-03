@@ -29,7 +29,8 @@ test("tenant-sensitive pages read through the authenticated dashboard BFF", () =
 });
 
 test("each page requires its dashboard session before starting its read", () => {
-  assertOrder(proofSource, "export default async function ProofPage", 'await requireDashboardSession("proof:read")', "await getAnchors(");
+  assertOrder(proofSource, "export default async function ProofPage", "await requireDashboardSession()", "await getAnchors(");
+  assertOrder(proofSource, "export default async function ProofPage", '"proofs.read"', "await getAnchors(");
   assertOrder(batchSource, "export default async function BatchDetailPage", 'await requireDashboardSession("batches:read")', "await getBatch(");
   assertOrder(supplierOrderSource, "export default async function SupplierOrderDetailPage", 'await requireDashboardSession("supplier_orders:read")', "await getOrderDetails(");
 });

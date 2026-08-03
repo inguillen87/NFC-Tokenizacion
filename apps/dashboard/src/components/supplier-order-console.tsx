@@ -10,6 +10,9 @@ import {
   resolveSupplierPackPurpose,
   type SupplierPackPurpose,
 } from "../lib/supplier-pack-purpose-policy";
+import { resolveSupplierOpsErrorReport, type SupplierOpsDownloadableErrorReport } from "../lib/supplier-ops-error-report";
+import { dashboardHighImpactPermissionMatches, dashboardPermissionMatches } from "../lib/permission-policy";
+import { SupplierProductionAcceptancePanel } from "./supplier-production-acceptance-panel";
 
 type SupplierSubBatch = {
   id: string;
@@ -20,6 +23,10 @@ type SupplierSubBatch = {
   manifest_status?: string;
   manifest_count?: number;
   qa_status?: string;
+  manufacturing_state?: string;
+  key_export_count?: number;
+  key_exported_at?: string | null;
+  activated_at?: string | null;
   key_fingerprint?: string;
   url_template?: string;
   status?: string;
@@ -37,6 +44,8 @@ type SupplierOrder = {
   status?: string;
   pack_exported_at?: string;
   pack_status?: string;
+  sent_to_supplier_at?: string | null;
+  tenant_handover_recorded_at?: string | null;
   packaging_governance_status?: string;
   packaging_spec_revision?: number;
   packaging_spec_hash?: string | null;
@@ -171,6 +180,7 @@ type OfflineVerifierBundleResponse = {
 type SupplierOrderConsoleProps = {
   currentRole?: string;
   currentPermissions?: string[];
+  currentDeniedPermissions?: string[];
   tenantSlug?: string | null;
 };
 
@@ -281,14 +291,6 @@ function offlineExpiryFromDays(value: string) {
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
 }
 
-function hasPermission(grants: string[], permission: string) {
-  return grants.some((grant) => {
-    if (grant === "*" || grant === permission) return true;
-    if (grant.endsWith(":*")) return permission.startsWith(grant.slice(0, -1));
-    return false;
-  });
-}
-
 function hasScopedPermission(grants: string[], permission: string) {
   return grants.some((grant) => {
     if (grant === permission) return true;
@@ -390,6 +392,21 @@ function safeResponseForPath(path: string, data: unknown) {
         : undefined,
     };
   }
+  if (data && typeof data === "object" && !Array.isArray(data)) {
+    const record = data as Record<string, unknown>;
+    const report = record.error_report && typeof record.error_report === "object" && !Array.isArray(record.error_report)
+      ? record.error_report as Record<string, unknown>
+      : null;
+    if (report && typeof report.csv === "string") {
+      return {
+        ...record,
+        error_report: {
+          ...report,
+          csv: `[CSV disponible para descarga: ${Number(report.row_count || 0)} fila(s)]`,
+        },
+      };
+    }
+  }
   return data;
 }
 
@@ -464,25 +481,49 @@ function hasExportEvidence(order: SupplierOrder | undefined, artifacts: Supplier
 export function SupplierOrderConsole({
   currentRole = "tenant-admin",
   currentPermissions = [],
+  currentDeniedPermissions = [],
   tenantSlug: sessionTenantSlug = null,
 }: SupplierOrderConsoleProps) {
   const normalizedRole = currentRole.replace(/_/g, "-");
   const isSuperAdmin = normalizedRole === "super-admin";
-  const canCreateOrder = isSuperAdmin
-    || hasScopedPermission(currentPermissions, "supplier:write");
-  const canManageManifest = isSuperAdmin
-    || hasPermission(currentPermissions, "supplier:manifest")
-    || hasPermission(currentPermissions, "batches:write");
-  const canRunQa = isSuperAdmin
-    || hasPermission(currentPermissions, "supplier:qa")
-    || hasPermission(currentPermissions, "batches:qa");
-  const canExportPack = isSuperAdmin || hasScopedPermission(currentPermissions, "supplier:export_pack");
-  const canActivateTags = isSuperAdmin
-    || hasPermission(currentPermissions, "supplier:activate")
-    || hasPermission(currentPermissions, "batches:write");
+  const canCreateOrder = dashboardHighImpactPermissionMatches(
+    currentRole,
+    currentPermissions,
+    "supplier_order.create",
+    currentDeniedPermissions,
+  );
+  const canGenerateBatchKeys = dashboardHighImpactPermissionMatches(
+    currentRole,
+    currentPermissions,
+    "batch.keys.generate",
+    currentDeniedPermissions,
+  );
+  const canManageManifest = dashboardPermissionMatches(
+    currentPermissions,
+    "manifest.import",
+    currentDeniedPermissions,
+  );
+  const canRunQa = dashboardPermissionMatches(
+    currentPermissions,
+    "qa.approve",
+    currentDeniedPermissions,
+  );
+  const canExportPack = dashboardHighImpactPermissionMatches(
+    currentRole,
+    currentPermissions,
+    "supplier_pack.export",
+    currentDeniedPermissions,
+  );
+  const canActivateTags = dashboardPermissionMatches(
+    currentPermissions,
+    "batch.activate",
+    currentDeniedPermissions,
+  );
+  const canUseActivationOverride = isSuperAdmin
+    || hasScopedPermission(currentPermissions, "supplier:activate_override");
   const canClassifyLegacyTrial = isSuperAdmin
     || hasScopedPermission(currentPermissions, "supplier:pack_purpose_classify_trial");
-  const canManageOfflineVerifier = canExportPack || hasScopedPermission(currentPermissions, "supplier:offline_verifier");
+  const canManageOfflineVerifier = isSuperAdmin || hasScopedPermission(currentPermissions, "supplier:offline_verifier");
 
   const [tenantSlug, setTenantSlug] = useState(sessionTenantSlug || "");
   const [customerSlug, setCustomerSlug] = useState("");
@@ -509,7 +550,12 @@ export function SupplierOrderConsole({
   const [vaultArtifacts, setVaultArtifacts] = useState<SupplierVaultArtifact[]>([]);
   const [manifestCsv, setManifestCsv] = useState("");
   const [manifestResult, setManifestResult] = useState<ManifestImportResponse | null>(null);
+  const [manifestQuantityOverrideEnabled, setManifestQuantityOverrideEnabled] = useState(false);
+  const [manifestQuantityOverrideReason, setManifestQuantityOverrideReason] = useState("");
   const [activationLimit, setActivationLimit] = useState("");
+  const [activationOverrideEnabled, setActivationOverrideEnabled] = useState(false);
+  const [activationOverrideReason, setActivationOverrideReason] = useState("");
+  const [errorReport, setErrorReport] = useState<SupplierOpsDownloadableErrorReport | null>(null);
   const [legacyTrialReason, setLegacyTrialReason] = useState("");
   const [legacyTrialConfirmation, setLegacyTrialConfirmation] = useState("");
   const [offlineDevices, setOfflineDevices] = useState<OfflineVerifierDevice[]>([]);
@@ -522,6 +568,7 @@ export function SupplierOrderConsole({
   const [offlineBundleExpiryDays, setOfflineBundleExpiryDays] = useState("7");
   const [offlineBundle, setOfflineBundle] = useState<OfflineVerifierBundle | null>(null);
   const qaOperationKeys = useRef(new Map<string, string>());
+  const activationOperationKeys = useRef(new Map<string, string>());
   const legacyTrialClassificationAttempt = useRef<{ signature: string; idempotencyKey: string } | null>(null);
 
   const subBatches = useMemo(() => created?.sub_batches || [], [created]);
@@ -567,13 +614,35 @@ export function SupplierOrderConsole({
   const packagingApproved = packagingStatus === "approved";
   const totalQuantityValue = Number(totalQuantity);
   const subBatchSizeValue = Number(subBatchSize);
+  const selectedExpectedQuantity = Math.max(0, Math.trunc(Number(selectedSubBatch?.expected_quantity || 0)));
+  const selectedManifestCount = Math.max(0, Math.trunc(Number(selectedSubBatch?.manifest_count || 0)));
+  const manifestDraftQuantityMismatch = Boolean(
+    selectedExpectedQuantity > 0
+    && manifestRows > 0
+    && manifestRows !== selectedExpectedQuantity,
+  );
+  const importedManifestQuantityMismatch = Boolean(
+    selectedExpectedQuantity > 0
+    && normalStatus(selectedSubBatch?.manifest_status) === "imported"
+    && selectedManifestCount !== selectedExpectedQuantity,
+  );
+  const manifestQuantityOverrideReady = Boolean(
+    isSuperAdmin
+    && manifestQuantityOverrideEnabled
+    && manifestQuantityOverrideReason.trim().length >= 16,
+  );
+  const activationOverrideReady = Boolean(
+    canUseActivationOverride
+    && activationOverrideEnabled
+    && activationOverrideReason.trim().length >= 16,
+  );
   const offlineBids = useMemo(() => {
     const manualBids = parseBidList(offlineBundleBids);
     if (manualBids.length) return manualBids;
     return qaBid ? [qaBid] : [];
   }, [offlineBundleBids, qaBid]);
   const createOrderBlockReason = !canCreateOrder
-    ? "Solo superadmin o un usuario con supplier:write puede crear un Supplier Order."
+    ? "Tu perfil no tiene supplier_order.create para crear Supplier Orders."
     : !packPurpose
       ? "Selecciona explícitamente el propósito: trial de integración no vendible o producción bloqueada hasta QA v2."
     : !tenantSlug.trim()
@@ -598,7 +667,7 @@ export function SupplierOrderConsole({
           : legacyTrialConfirmation !== LEGACY_TRIAL_CLASSIFICATION_CONFIRMATION
             ? `Escribe exactamente ${LEGACY_TRIAL_CLASSIFICATION_CONFIRMATION}.`
             : "";
-  const manifestBlockReason = !canManageManifest
+  const manifestBaseBlockReason = !canManageManifest
     ? "Tu perfil no puede importar manifiestos."
     : !selectedOrderId
       ? "Primero selecciona un Supplier Order."
@@ -611,16 +680,20 @@ export function SupplierOrderConsole({
             : !manifestCsv.trim()
               ? "Pega el CSV/TXT recibido del proveedor."
               : "";
+  const manifestImportBlockReason = manifestBaseBlockReason
+    || (manifestDraftQuantityMismatch && !isSuperAdmin
+      ? `La cantidad recibida (${manifestRows}) no coincide con la planificada (${selectedExpectedQuantity}); solo superadmin puede registrar una excepción auditada.`
+      : manifestDraftQuantityMismatch && !manifestQuantityOverrideReady
+        ? "Para importar esta diferencia de cantidad, activa la excepción y escribe una razón de al menos 16 caracteres."
+        : "");
   const activationBlockReason = !canActivateTags
     ? "Tu perfil no puede activar tags."
     : !selectedOrderId
       ? "Primero selecciona un Supplier Order."
       : activePackPurpose === "legacy_unclassified"
         ? "Propósito sin clasificar: este registro legado no puede activarse."
-        : activePackPurpose === "trial_integration"
+      : activePackPurpose === "trial_integration"
           ? "NON_SELLABLE: un trial de integración nunca puede activar tags."
-          : activePackPurpose === "production"
-            ? "Producción bloqueada: requiere un plan y recibo de aceptación QA v2 aprobado por el tenant."
       : !qaBid.trim()
         ? "Selecciona un BID."
         : !selectedSubBatch
@@ -628,8 +701,14 @@ export function SupplierOrderConsole({
           : normalStatus(selectedSubBatch.manifest_status) !== "imported"
             ? "Falta manifiesto importado."
             : normalStatus(selectedSubBatch.qa_status) !== "passed"
-              ? "Falta QA aprobado."
-              : "";
+              ? activePackPurpose === "production"
+                ? "Falta aceptación QA de producción: plan aprobado por tenant-admin y sesión de recepción aprobada por otro actor autorizado."
+                : "Falta QA aprobado."
+              : importedManifestQuantityMismatch && !canUseActivationOverride
+                ? `El manifiesto importado (${selectedManifestCount}) no coincide con la cantidad planificada (${selectedExpectedQuantity}); tu perfil no puede autorizar esta excepción.`
+                : importedManifestQuantityMismatch && !activationOverrideReady
+                  ? "La activación exige una excepción explícita con una razón de al menos 16 caracteres para esta diferencia de cantidad."
+                  : "";
   const qaPassBlockReason = !canRunQa
     ? "Tu perfil no puede aprobar QA."
     : !selectedOrderId
@@ -663,7 +742,7 @@ export function SupplierOrderConsole({
         ? "Selecciona un BID."
         : "";
   const exportPackBlockReason = !canExportPack
-    ? "Solo superadmin o un usuario con supplier:export_pack puede exportar el pack."
+    ? "Solo superadmin puede exportar el pack cifrado con llaves de fabrica."
     : !selectedOrderId
       ? "Primero selecciona un Supplier Order."
       : activePackPurpose === "legacy_unclassified"
@@ -674,14 +753,15 @@ export function SupplierOrderConsole({
           ? "Pack ya exportado o con evidencia en Vault."
           : "";
   const offlineBlockReason = !canManageOfflineVerifier
-    ? "Solo superadmin o permisos supplier:export_pack / supplier:offline_verifier pueden emitir bundles offline."
+    ? "Solo superadmin o un usuario con supplier:offline_verifier puede emitir bundles offline sin llaves de fabrica."
     : !effectiveTenantSlug
       ? "Falta tenant slug."
       : "";
   const offlineBundleBlockReason = offlineBlockReason
     || (!offlineSelectedDeviceId ? "Selecciona o enrola un dispositivo offline." : "")
     || (!offlineBids.length ? "Selecciona al menos un BID para el bundle." : "");
-  const canImportManifest = Boolean(!pending && !manifestBlockReason);
+  const canDryRunManifest = Boolean(!pending && !manifestBaseBlockReason);
+  const canImportManifest = Boolean(!pending && !manifestImportBlockReason);
   const canActivateSubBatch = Boolean(!pending && !activationBlockReason);
   const canPassQa = Boolean(!pending && !qaPassBlockReason);
   const canRejectQa = Boolean(!pending && !qaRejectBlockReason);
@@ -699,8 +779,6 @@ export function SupplierOrderConsole({
     ? "Crea o selecciona un Supplier Order."
     : activePackPurpose === "legacy_unclassified"
       ? "Clasifica el propósito legado mediante una decisión auditada antes de operar."
-      : activePackPurpose === "production"
-        ? "Producción bloqueada: configura y aprueba el contrato QA v2 del tenant."
     : !selectedSubBatch
       ? "Selecciona un sub-batch del pedido."
       : !packagingApproved
@@ -710,7 +788,9 @@ export function SupplierOrderConsole({
         : normalStatus(selectedSubBatch.manifest_status) !== "imported"
           ? "Valida el manifiesto con dry-run y despues importalo."
           : normalStatus(selectedSubBatch.qa_status) !== "passed"
-            ? "Completa QA con muestra real, replay y TTStatus si aplica."
+            ? activePackPurpose === "production"
+              ? "Completa el plan QA v2 aprobado por tenant-admin y la recepción aprobada por otro actor autorizado."
+              : "Completa QA con muestra real, replay y TTStatus si aplica."
             : activePackPurpose === "trial_integration"
               ? "Trial validado para integración. Permanece NON_SELLABLE y no puede activarse."
               : normalStatus(selectedSubBatch.status).includes("activated")
@@ -730,10 +810,19 @@ export function SupplierOrderConsole({
     } catch {
       data = { raw: text };
     }
+    const errorStage: "manifest" | "qa" | null = path.includes("/import-manifest")
+      ? "manifest"
+      : /\/supplier-orders\/[^/]+\/qa(?:\?|$)/.test(path)
+        ? "qa"
+        : null;
     setResponse(asJson(safeResponseForPath(path, data)));
     if (!result.ok || (data && typeof data === "object" && (data as { ok?: unknown }).ok === false)) {
+      if (errorStage) {
+        setErrorReport(resolveSupplierOpsErrorReport(data, { stage: errorStage, bid: qaBid.trim() }));
+      }
       throw new Error(formatError(data, result.statusText));
     }
+    if (errorStage) setErrorReport(null);
     return data as Record<string, unknown>;
   }
 
@@ -763,7 +852,9 @@ export function SupplierOrderConsole({
       return;
     }
     setPending(true);
-    setStatus("Creando pedido, sub-batches, llaves cifradas y evidencia batch_created...");
+    setStatus(canGenerateBatchKeys
+      ? "Creando pedido y sub-batches; el backend autorizará por separado cualquier generación de llaves cifradas."
+      : "Creando pedido sin asumir autorización para generar llaves ni exportar material de fábrica.");
     try {
       const data = await run("/api/admin/supplier-orders", {
         method: "POST",
@@ -790,7 +881,12 @@ export function SupplierOrderConsole({
       setQaSampleUrls("");
       setManifestCsv("");
       setManifestResult(null);
+      setManifestQuantityOverrideEnabled(false);
+      setManifestQuantityOverrideReason("");
       setActivationLimit("");
+      setActivationOverrideEnabled(false);
+      setActivationOverrideReason("");
+      setErrorReport(null);
       setPackPassword("");
       setPackPasswordVisible(false);
       setOfflineBundleBids(firstBid);
@@ -973,7 +1069,7 @@ export function SupplierOrderConsole({
 
   async function exportPack() {
     if (!canExportPack) {
-      setStatus("Pack de fábrica bloqueado para este perfil. El tenant puede ver Vault, manifiestos y QA, pero las llaves/export quedan bajo superadmin.");
+      setStatus("Pack de fábrica bloqueado: la sesión no tiene supplier_pack.export. Crear una orden no autoriza generar ni exportar material criptográfico.");
       return;
     }
     if (!selectedOrderId) {
@@ -1015,8 +1111,9 @@ export function SupplierOrderConsole({
   }
 
   async function importManifest(dryRun: boolean) {
-    if (manifestBlockReason) {
-      setStatus(manifestBlockReason);
+    const blockReason = dryRun ? manifestBaseBlockReason : manifestImportBlockReason;
+    if (blockReason) {
+      setStatus(blockReason);
       return;
     }
     setPending(true);
@@ -1028,20 +1125,24 @@ export function SupplierOrderConsole({
           csv: manifestCsv,
           dryRun,
           activateImported: false,
+          overrideReason: manifestQuantityOverrideReady ? manifestQuantityOverrideReason.trim() : undefined,
         }),
       }) as ManifestImportResponse;
       setManifestResult(data);
+      const quantityOverrideUsed = Boolean(data.supplier_gate?.quantity_override);
       if (!dryRun) {
         updateSubBatchStatus(qaBid.trim(), {
           manifest_status: "imported",
           manifest_count: Number(data.inserted || data.importedRows || manifestRows || 0),
         });
+        setManifestQuantityOverrideEnabled(false);
+        setManifestQuantityOverrideReason("");
         await loadVaultArtifacts(selectedOrderId);
       }
       const count = Number(data.inserted || data.importedRows || manifestRows || 0);
       setStatus(dryRun
-        ? `Preflight OK: ${count} filas válidas para ${qaBid.trim()}. Todavía no se activó nada.`
-        : `Manifiesto importado: ${count} UIDs registrados. Ahora falta QA aprobado antes de activar.`);
+        ? `Preflight OK: ${count} filas válidas para ${qaBid.trim()}. Todavía no se activó nada.${quantityOverrideUsed ? " Se evaluó una excepción de cantidad auditada." : ""}`
+        : `Manifiesto importado: ${count} UIDs registrados.${quantityOverrideUsed ? " Diferencia de cantidad aceptada bajo excepción superadmin auditada." : ""} Ahora falta QA aprobado antes de activar.`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "No se pudo importar el manifiesto.");
     } finally {
@@ -1055,19 +1156,40 @@ export function SupplierOrderConsole({
       return;
     }
     const limit = Math.max(0, Math.trunc(Number(activationLimit || 0)));
+    const activationSignature = JSON.stringify({
+      bid: qaBid.trim().toUpperCase(),
+      selection_mode: limit > 0 ? "count" : "all",
+      limit,
+      override_reason: activationOverrideReady ? activationOverrideReason.trim() : "",
+    });
+    let activationOperationKey = activationOperationKeys.current.get(activationSignature);
+    if (!activationOperationKey) {
+      activationOperationKey = `supplier-activation:${crypto.randomUUID()}`;
+      activationOperationKeys.current.set(activationSignature, activationOperationKey);
+    }
     setPending(true);
     setStatus(limit > 0 ? `Activando hasta ${limit} tags del sub-batch...` : "Activando todos los tags pendientes del sub-batch...");
     try {
       const data = await run(`/api/admin/batches/${encodeURIComponent(qaBid.trim())}/activate-all`, {
         method: "POST",
-        body: JSON.stringify({ limit }),
+        headers: { "Idempotency-Key": activationOperationKey },
+        body: JSON.stringify({
+          limit,
+          override_reason: activationOverrideReady ? activationOverrideReason.trim() : undefined,
+        }),
       }) as ActivationResponse;
+      activationOperationKeys.current.delete(activationSignature);
+      const activationOverrideUsed = Boolean(data.supplier_gate?.override);
       updateSubBatchStatus(qaBid.trim(), {
         status: data.activationComplete ? "activated" : "partially_activated",
+        manufacturing_state: data.activationComplete ? "ACTIVATED" : selectedSubBatch?.manufacturing_state,
+        activated_at: data.activationComplete ? new Date().toISOString() : selectedSubBatch?.activated_at,
       });
+      setActivationOverrideEnabled(false);
+      setActivationOverrideReason("");
       setStatus(data.activationComplete
-        ? `Sub-batch activo: ${data.activated || 0} tags activados y sin pendientes.`
-        : `Activación parcial: ${data.activated || 0} tags activados, ${data.remainingInactive || 0} pendientes.`);
+        ? `Sub-batch activo: ${data.activated || 0} tags activados y sin pendientes.${activationOverrideUsed ? " El backend aceptó la excepción explícita de cantidad." : ""}`
+        : `Activación parcial: ${data.activated || 0} tags activados, ${data.remainingInactive || 0} pendientes.${activationOverrideUsed ? " El backend aceptó la excepción explícita de cantidad." : ""}`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "No se pudo activar el sub-batch.");
     } finally {
@@ -1142,6 +1264,11 @@ export function SupplierOrderConsole({
     downloadText(`supplier-pack-summary-${selectedOrderId}.json`, asJson(safePackSummary(pack)), "application/json;charset=utf-8");
   }
 
+  function downloadErrorReport() {
+    if (!errorReport) return;
+    downloadText(errorReport.filename, errorReport.csv, "text/csv;charset=utf-8");
+  }
+
   function selectExistingOrder(order: SupplierOrder) {
     const subBatchesFromOrder = Array.isArray(order.sub_batches) ? order.sub_batches : [];
     setCreated({ ok: true, order, sub_batches: subBatchesFromOrder });
@@ -1151,7 +1278,12 @@ export function SupplierOrderConsole({
     setQaSampleUrls("");
     setManifestCsv("");
     setManifestResult(null);
+    setManifestQuantityOverrideEnabled(false);
+    setManifestQuantityOverrideReason("");
     setActivationLimit("");
+    setActivationOverrideEnabled(false);
+    setActivationOverrideReason("");
+    setErrorReport(null);
     setPackPassword("");
     setPackPasswordVisible(false);
     setOfflineBundleBids(subBatchesFromOrder[0]?.bid || "");
@@ -1281,6 +1413,11 @@ export function SupplierOrderConsole({
                     onClick={() => {
                       setQaBid(item.bid);
                       setManifestResult(null);
+                      setManifestQuantityOverrideEnabled(false);
+                      setManifestQuantityOverrideReason("");
+                      setActivationOverrideEnabled(false);
+                      setActivationOverrideReason("");
+                      setErrorReport(null);
                     }}
                   >
                     <b className="text-white">{item.bid}</b>
@@ -1399,14 +1536,22 @@ export function SupplierOrderConsole({
             </section>
           ) : null}
 
+          {selectedOrderId && selectedSubBatch && activePackPurpose === "production" ? (
+            <SupplierProductionAcceptancePanel
+              key={`${selectedOrderId}:${selectedSubBatch.bid}`}
+              orderId={selectedOrderId}
+              bid={selectedSubBatch.bid}
+              disabled={pending}
+              onDecision={(qaStatus) => updateSubBatchStatus(selectedSubBatch.bid, { qa_status: qaStatus })}
+            />
+          ) : null}
+
           <div className="rounded-2xl border border-amber-300/20 bg-amber-500/10 p-4">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-100">Export pack</p>
             <p className="mt-2 text-sm leading-6 text-amber-50">
               {canExportPack
-                ? isSuperAdmin
-                  ? "Superadmin activo: genera un contenedor cifrado con carpetas por sub-batch, TXT/JSON/PDF y checksums. El password se genera en esta consola, no vuelve desde la API y debe enviarse por canal separado."
-                  : "Permiso supplier:export_pack activo: puede emitir el pack cifrado bajo auditoría, sin exponer claves crudas al tenant."
-                : "Bloqueado para este perfil: manifiestos, QA y Vault siguen disponibles, pero el pack cifrado exige superadmin o permiso explícito."}
+                ? "Superadmin activo: genera un contenedor cifrado con carpetas por sub-batch, TXT/JSON/PDF y checksums. El password se genera en esta consola, no vuelve desde la API y debe enviarse por canal separado."
+                : "Bloqueado para este perfil: manifiestos, QA y Vault siguen disponibles, pero ningún permiso de tenant habilita el pack con llaves de fábrica."}
             </p>
             {selectedOrderId ? (
               <a
@@ -1670,13 +1815,50 @@ export function SupplierOrderConsole({
               <textarea
                 className="mt-1 min-h-32 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 font-mono text-xs text-white placeholder:text-slate-500"
                 value={manifestCsv}
-                onChange={(event) => setManifestCsv(event.target.value)}
+                onChange={(event) => {
+                  setManifestCsv(event.target.value);
+                  setManifestResult(null);
+                  setErrorReport(null);
+                }}
                 placeholder={"uid_hex,bid,product_name,sku,lot,serial\n04AABBCCDD0011,SYN-AR-2026-001-A,Producto,SKU-001,LOT-001,SER-001"}
               />
               <span className="mt-1 block text-xs text-slate-400">
                 No activa tags durante el dry-run. La importación queda registrada en Tenant Vault y no expone llaves.
               </span>
             </label>
+
+            {manifestDraftQuantityMismatch ? (
+              <div className="mt-3 rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-xs leading-5 text-amber-50" data-testid="supplier-manifest-quantity-override">
+                <b>Diferencia detectada:</b> el archivo tiene {manifestRows} filas y el sub-batch espera {selectedExpectedQuantity}.
+                {isSuperAdmin ? (
+                  <>
+                    <label className="mt-2 flex items-start gap-2">
+                      <input
+                        type="checkbox"
+                        className="mt-1"
+                        checked={manifestQuantityOverrideEnabled}
+                        onChange={(event) => setManifestQuantityOverrideEnabled(event.target.checked)}
+                      />
+                      <span>Registrar una excepción de cantidad superadmin. Esta excepción no activa tags, no corrige UIDs y no reemplaza QA.</span>
+                    </label>
+                    {manifestQuantityOverrideEnabled ? (
+                      <label className="mt-2 block">
+                        <span className="font-semibold uppercase tracking-[0.1em]">Razón auditada (mínimo 16 caracteres)</span>
+                        <textarea
+                          className="mt-1 min-h-20 w-full rounded-xl border border-amber-200/25 bg-slate-950 px-3 py-2 text-sm text-white"
+                          minLength={16}
+                          maxLength={1000}
+                          value={manifestQuantityOverrideReason}
+                          onChange={(event) => setManifestQuantityOverrideReason(event.target.value)}
+                        />
+                      </label>
+                    ) : null}
+                  </>
+                ) : (
+                  <span className="mt-1 block">Corregí el archivo o pedí a un superadmin una excepción auditada; este perfil no puede concederla.</span>
+                )}
+              </div>
+            ) : null}
 
             <div className="mt-3 grid gap-3 sm:grid-cols-[0.45fr_1fr]">
               <Field label="Límite activación" value={activationLimit} onChange={setActivationLimit} placeholder="0 = todos" />
@@ -1688,12 +1870,45 @@ export function SupplierOrderConsole({
               </div>
             </div>
 
+            {importedManifestQuantityMismatch ? (
+              <div className="mt-3 rounded-xl border border-rose-300/25 bg-rose-500/10 p-3 text-xs leading-5 text-rose-50" data-testid="supplier-activation-quantity-override">
+                <b>Gate de activación:</b> se importaron {selectedManifestCount} UIDs para {selectedExpectedQuantity} planificados.
+                {canUseActivationOverride ? (
+                  <>
+                    <label className="mt-2 flex items-start gap-2">
+                      <input
+                        type="checkbox"
+                        className="mt-1"
+                        checked={activationOverrideEnabled}
+                        onChange={(event) => setActivationOverrideEnabled(event.target.checked)}
+                      />
+                      <span>Autorizar sólo esta diferencia de cantidad. No permite omitir manifiesto, QA ni la aceptación de producción de dos actores.</span>
+                    </label>
+                    {activationOverrideEnabled ? (
+                      <label className="mt-2 block">
+                        <span className="font-semibold uppercase tracking-[0.1em]">Razón obligatoria para el gate (mínimo 16 caracteres)</span>
+                        <textarea
+                          className="mt-1 min-h-20 w-full rounded-xl border border-rose-200/25 bg-slate-950 px-3 py-2 text-sm text-white"
+                          minLength={16}
+                          maxLength={1000}
+                          value={activationOverrideReason}
+                          onChange={(event) => setActivationOverrideReason(event.target.value)}
+                        />
+                      </label>
+                    ) : null}
+                  </>
+                ) : (
+                  <span className="mt-1 block">Este perfil no puede conceder la excepción. La activación permanece bloqueada.</span>
+                )}
+              </div>
+            ) : null}
+
             <div className="mt-3 flex flex-wrap gap-2">
-              <Button className="gap-2" variant="secondary" disabled={!canImportManifest} title={manifestBlockReason || "Validar manifiesto sin escribir datos"} onClick={() => void importManifest(true)}>
+              <Button className="gap-2" variant="secondary" disabled={!canDryRunManifest} title={manifestBaseBlockReason || "Validar manifiesto sin escribir datos"} onClick={() => void importManifest(true)}>
                 <FileCheck2 className="h-4 w-4" aria-hidden="true" />
                 Validar sin importar
               </Button>
-              <Button className="gap-2" disabled={!canImportManifest} title={manifestBlockReason || "Importar manifiesto auditado"} onClick={() => void importManifest(false)}>
+              <Button className="gap-2" disabled={!canImportManifest} title={manifestImportBlockReason || "Importar manifiesto auditado"} onClick={() => void importManifest(false)}>
                 <UploadCloud className="h-4 w-4" aria-hidden="true" />
                 Importar manifiesto
               </Button>
@@ -1701,14 +1916,20 @@ export function SupplierOrderConsole({
                 <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
                 Activar sub-batch
               </Button>
+              {errorReport?.stage === "manifest" ? (
+                <Button className="gap-2" variant="secondary" onClick={downloadErrorReport}>
+                  <Download className="h-4 w-4" aria-hidden="true" />
+                  Descargar CSV de errores ({errorReport.rowCount})
+                </Button>
+              ) : null}
             </div>
-            {(manifestBlockReason || activationBlockReason) ? (
+            {(manifestImportBlockReason || activationBlockReason) ? (
               <p className="mt-2 text-xs leading-5 text-sky-100">
-                {manifestBlockReason || activationBlockReason}
+                {manifestImportBlockReason || activationBlockReason}
               </p>
             ) : null}
             <p className="mt-2 rounded-xl border border-amber-300/20 bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-100">
-              Override auditado: no hay endpoint/payload en el cliente actual. Backend requerido: activar con reason, approver, snapshot de manifest/QA gate y evidencia de auditoria.
+              Las excepciones disponibles son únicamente de cantidad y requieren una razón explícita. El import de manifiesto persiste su razón en evidencia; la activación valida la razón y audita la operación. Ninguna excepción permite saltar el manifiesto, el QA o la separación de actores de producción.
             </p>
 
             {manifestResult ? (
@@ -1735,7 +1956,20 @@ export function SupplierOrderConsole({
               La ceremonia operativa exige escaneo físico; el backend verifica {qaRequiredManifestUids} UIDs distintos mediante eventos SUN canónicos, CMAC/SDM y un replay ligado al evento original. {requiresTtstatus ? "Además exige TT electrónico cerrado y una apertura sacrificial posterior." : "No acepta casillas ni declaraciones manuales."}
             </p>
             <div className="mt-3">
-              <Field label="BID para QA" value={qaBid} onChange={setQaBid} placeholder="SYN-AR-2026-001-A" />
+              <Field
+                label="BID para QA"
+                value={qaBid}
+                onChange={(value) => {
+                  setQaBid(value);
+                  setManifestResult(null);
+                  setManifestQuantityOverrideEnabled(false);
+                  setManifestQuantityOverrideReason("");
+                  setActivationOverrideEnabled(false);
+                  setActivationOverrideReason("");
+                  setErrorReport(null);
+                }}
+                placeholder="SYN-AR-2026-001-A"
+              />
             </div>
             <label className="mt-3 block">
               <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Recibos SUN de la ceremonia (snapshot + trace)</span>
@@ -1761,6 +1995,12 @@ export function SupplierOrderConsole({
                 <FileCheck2 className="h-4 w-4" aria-hidden="true" />
                 Rechazar QA
               </Button>
+              {errorReport?.stage === "qa" ? (
+                <Button className="gap-2" variant="secondary" onClick={downloadErrorReport}>
+                  <Download className="h-4 w-4" aria-hidden="true" />
+                  Descargar CSV de errores ({errorReport.rowCount})
+                </Button>
+              ) : null}
             </div>
             {(qaPassBlockReason || qaRejectBlockReason) ? (
               <p className="mt-2 text-xs leading-5 text-emerald-100">{qaPassBlockReason || qaRejectBlockReason}</p>

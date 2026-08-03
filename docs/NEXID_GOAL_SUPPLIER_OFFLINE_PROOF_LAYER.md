@@ -90,7 +90,8 @@ Target buyers:
 
 ### 1.2 Never expose
 
-- `KMS_MASTER_KEY`
+- application envelope KEK `KMS_MASTER_KEY_HEX`
+- versioned NFC envelope KEKs `NFC_ENVELOPE_KEK_*_HEX`
 - `DATABASE_URL`
 - Vercel secrets
 - admin tokens
@@ -159,7 +160,8 @@ npm -w api run test:sun
 
 Also search runtime code for forbidden patterns:
 
-KMS_MASTER_KEY
+KMS_MASTER_KEY_HEX
+NFC_ENVELOPE_KEK_*_HEX
 localhost fallback in production
 picc_data= hardcoded runtime URL
 enc= hardcoded runtime URL

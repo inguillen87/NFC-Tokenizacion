@@ -86,7 +86,9 @@ Use precise status labels so field teams do not confuse provisional offline trus
 ## Key custody rules
 
 - Never embed tenant master keys in a consumer app.
-- Never export `KMS_MASTER_KEY`.
+- Never export the application envelope KEK `KMS_MASTER_KEY_HEX` or any
+  versioned `NFC_ENVELOPE_KEK_*_HEX`; these Vercel secrets are not managed KMS
+  or HSM keys.
 - Do not sell "same master key forever" as the reliability model. It creates a single compromise point for every past and future tag.
 - Prefer per-device, per-tenant, per-batch, time-limited derived validation keys.
 - Bind offline bundles to enrolled devices and operators.

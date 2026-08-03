@@ -8,7 +8,7 @@ This document defines the production model for NTAG 424 DNA and NTAG 424 DNA Tag
 
 Every real supplier carton must work through the same generic chain:
 
-`tenant -> supplier order -> sub-batch -> sub-batch keys -> supplier encoding spec -> UID manifest -> activation -> SUN validation`
+`tenant -> supplier order -> sub-batch -> sub-batch keys -> supplier encoding spec -> UID manifest -> controlled SUN/TT QA -> production acceptance -> atomic activation`
 
 ## Key roles
 
@@ -18,7 +18,7 @@ Every real supplier carton must work through the same generic chain:
 
 Despite its historical name, this is a raw application secret, not a managed KMS key handle and not HSM-backed custody. Customer and UI copy must call it **pilot application envelope encryption**, never KMS/HSM.
 
-It is not a chip key. It is not sent to the supplier. It is not stored in GitHub. It is used only to encrypt and decrypt per-batch keys at rest. New ciphertext uses a versioned AES-256-GCM envelope whose authenticated AAD binds tenant, BID, key role, lifecycle version and KEK version. Existing unversioned sample ciphertext remains readable during migration.
+It is not a chip key. It is not sent to the supplier. It is not stored in GitHub. It encrypts explicitly context-bound NFC/application-envelope secrets, including per-batch keys, tenant root material and QA selection/challenge material; it must never be reused for Polygon, IOTA or webhook signing. New ciphertext uses a versioned AES-256-GCM envelope whose authenticated AAD binds tenant, BID, key role, lifecycle version and KEK version. Existing unversioned sample ciphertext remains readable during migration.
 
 For rotation, set `NFC_ENVELOPE_KEK_VERSION` to the new version and keep the prior key temporarily under `NFC_ENVELOPE_KEK_<OLD_VERSION>_HEX` for dual-read. Because legacy envelopes do not embed a version, pin `NFC_LEGACY_ENVELOPE_KEK_VERSION` to the old version until every legacy sample/row has been re-enveloped and audited. Backfill and verify every ciphertext before removing the old secret. This improves application-level isolation but does not turn Vercel environment variables into KMS or HSM.
 
@@ -133,23 +133,28 @@ The package may include:
 }
 ```
 
-The package must never include `KMS_MASTER_KEY_HEX`, `DATABASE_URL`, database URLs, Vercel tokens, admin tokens, Polygon minter keys, executor secrets, or private API keys. The factory receives `K_META` and `K_FILE` for the sub-batch, never KMS or database access.
+The package must never include `KMS_MASTER_KEY_HEX`, versioned NFC envelope KEKs, managed-KMS credentials or key handles, `DATABASE_URL`, database URLs, Vercel tokens, admin tokens, Polygon minter keys, executor secrets, or private API keys. The factory receives `K_META` and `K_FILE` for the authorized sub-batch, never an application KEK, KMS access or database access.
 
 ## Receiving checklist
 
 Before releasing a supplier carton:
 
-1. Create tenant.
-2. Create batch in `planned` or `pending_supplier`.
-3. Generate or register `K_META` and `K_FILE` for each sub-batch.
-4. Store encrypted keys in DB.
-5. Export supplier encoding package.
-6. Import supplier UID manifest.
-7. Activate tags.
-8. Scan one intact tag and expect UID decoded plus `tt_raw = 4343`.
-9. Reuse the same URL and expect `REPLAY_SUSPECT`.
-10. Break one sacrificial tag and expect `tt_raw = 4F4F` or `4F43`.
-11. Approve batch for sale.
+1. Create the tenant and batch in `planned` or `pending_supplier`.
+2. Approve the Packaging Lab specification and the tenant-owned production QA plan.
+3. Generate or register `K_META` and `K_FILE` for each secure sub-batch and store them encrypted in DB.
+4. Export the supplier encoding package through the privileged audited path.
+5. Dry-run and then import the supplier UID manifest.
+6. For `ntag424_dna` without TT, scan one tag and require decoded UID, valid
+   CMAC and `VALID_AUTHENTIC`; do not invent an opening test.
+7. For `ntag424_dna_tt`, scan one intact tag and require decoded UID plus
+   `tt_raw = 4343`, then break one sacrificial tag and require `tt_raw = 4F4F`
+   or `4F43`.
+8. Reuse a captured URL for the applicable profile and require
+   `REPLAY_SUSPECT`.
+9. Commit Supplier Production Acceptance with the required dual control.
+10. Activate the accepted batch atomically and only then release it for sale.
+
+Never activate production tags before the applicable physical and cryptographic evidence is complete.
 
 ## /sun decision tree
 
@@ -163,10 +168,21 @@ The validator must use structured fields, not human reason text:
 6. UID decoded but not in manifest -> `NOT_REGISTERED`
 7. UID decoded but inactive -> `NOT_ACTIVE`
 8. Replayed URL -> `REPLAY_SUSPECT`
-9. Valid plus `tt_raw = 4343` -> `VALID_CLOSED`
-10. Valid plus `tt_raw = 4F4F` -> `VALID_OPENED`
-11. Valid plus `tt_raw = 4F43` -> `VALID_OPENED_PREVIOUSLY`
-12. Valid with no TTStatus -> `VALID_UNKNOWN_TAMPER`
+9. Valid `ntag424_dna` without TT hardware -> `VALID_AUTHENTIC`
+10. Valid `ntag424_dna_tt` plus `tt_raw = 4343` -> `VALID_CLOSED`
+11. Valid `ntag424_dna_tt` plus `tt_raw = 4F4F` -> `VALID_OPENED`
+12. Valid `ntag424_dna_tt` plus `tt_raw = 4F43` -> `VALID_OPENED_PREVIOUSLY`
+13. Cryptographically valid `ntag424_dna_tt` with TTStatus missing or
+    non-canonical -> `SUN_PROFILE_MISMATCH` at the durable boundary.
+
+`VALID_UNKNOWN_TAMPER` is retained only as legacy/intermediate diagnostic
+vocabulary; it must not become a final authenticity or opening assertion for a
+production TT profile.
+
+Neither `encPlainStatusByte` nor query parameters such as `tamper`, `opened` or
+`tt_status` are trust inputs. Electronic opening state comes only from the full
+two-byte TTStatus decoded from the configured encrypted payload; an explicit
+manual state must come from the privileged audited override path.
 
 If UID is null, the problem is SUN crypto/layout, not manifest.
 

@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, checkAdminPermission } from "../../../../lib/auth";
+import { checkAdminWithPermission } from "../../../../lib/auth";
 import { resolveAdminProofTenantScope } from "../../../../lib/admin-proof-tenant-scope";
 import { json } from "../../../../lib/http";
 import { sql } from "../../../../lib/db";
@@ -23,10 +23,8 @@ function safeString(value: unknown) {
 }
 
 export async function POST(req: Request) {
-  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
+  const auth = await checkAdminWithPermission(req, "proof:write");
   if (auth) return auth;
-  const permission = checkAdminPermission(req, "proof:write");
-  if (permission) return permission;
   const rateLimited = await enforceCriticalRateLimit(req, {
     rateClass: "proof_write",
     ...adminCriticalRateLimitIdentity(req),

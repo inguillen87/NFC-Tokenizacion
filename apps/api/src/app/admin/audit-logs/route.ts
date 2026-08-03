@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminTenantScope } from "../../../lib/auth";
+import { checkAdminWithPermission, getAdminTenantScope } from "../../../lib/auth";
 import { ensureAuditLogsSchema } from "../../../lib/commercial-runtime-schema";
 import { sql } from "../../../lib/db";
 import { json } from "../../../lib/http";
@@ -17,7 +17,7 @@ function escapeCsv(val: unknown) {
 }
 
 export async function GET(req: Request) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdminWithPermission(req, "audit.read");
   if (auth) return auth;
   await ensureAuditLogsSchema();
 

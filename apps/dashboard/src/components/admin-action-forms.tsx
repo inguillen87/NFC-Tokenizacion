@@ -1,20 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Button, Card } from "@product/ui";
-import { postAdmin } from "../lib/api";
+import { patchAdmin, postAdmin } from "../lib/api";
+import type { UserRole } from "../lib/dashboard-content";
 import { DEMO_SUPPLIER_UID_TEXT } from "../lib/demo-uids";
-
-type Role = "super-admin" | "tenant-admin" | "reseller" | "viewer";
+import { dashboardHighImpactPermissionMatches } from "../lib/permission-policy";
 
 type AdminActionFormsProps = {
-  roles: Record<Role, string>;
+  roles: Record<UserRole, string>;
   readyLabel: string;
-  currentRole: Role;
+  currentRole: UserRole;
+  currentPermissions?: string[];
+  currentDeniedPermissions?: string[];
   copy: {
     roleHeading: string;
-    roleHint: Record<Role, string>;
+    roleHint: Partial<Record<UserRole, string>>;
     roleLabel: string;
     createTenant: string;
     createBatch: string;
@@ -47,6 +49,15 @@ type ApiSummaryItem = { label: string; value: string };
 
 type ActionPayload = Record<string, unknown>;
 type CopyAction = { label: string; value: string };
+
+const ADMIN_ACTION_FORM_ROLES = new Set<UserRole>([
+  "super-admin",
+  "tenant-owner",
+  "tenant-admin",
+  "operations-manager",
+  "packaging-operator",
+  "reseller-admin",
+]);
 
 
 function stringifyValue(value: unknown) {
@@ -141,8 +152,15 @@ function parseManifestPreview(input: string) {
   };
 }
 
-export function AdminActionForms({ copy, roles, readyLabel, currentRole }: AdminActionFormsProps) {
-  const [role] = useState<Role>(currentRole || "super-admin");
+export function AdminActionForms({
+  copy,
+  roles,
+  readyLabel,
+  currentRole,
+  currentPermissions = [],
+  currentDeniedPermissions = [],
+}: AdminActionFormsProps) {
+  const [role] = useState<UserRole>(currentRole);
   const [status, setStatus] = useState<string>(readyLabel);
   const [summary, setSummary] = useState<ApiSummaryItem[]>([]);
   const [lastResponse, setLastResponse] = useState<ActionPayload | null>(null);
@@ -165,8 +183,30 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
     closed: "00",
     opened: "01",
   });
-  const canEdit = role !== "viewer";
-  const roleMessage = useMemo(() => copy.roleHint[role], [copy.roleHint, role]);
+  const activationAttempt = useRef<{ signature: string; idempotencyKey: string } | null>(null);
+  const canEdit = ADMIN_ACTION_FORM_ROLES.has(role);
+  const canRevoke = dashboardHighImpactPermissionMatches(
+    role,
+    currentPermissions,
+    "batch.revoke",
+    currentDeniedPermissions,
+  );
+  const canConfigureTamper = dashboardHighImpactPermissionMatches(
+    role,
+    currentPermissions,
+    "batch.tamper.configure",
+    currentDeniedPermissions,
+  );
+  const canOverrideTagTamper = dashboardHighImpactPermissionMatches(
+    role,
+    currentPermissions,
+    "tag.tamper.override",
+    currentDeniedPermissions,
+  );
+  const roleMessage = useMemo(
+    () => copy.roleHint[role] || "Acceso determinado por los permisos vigentes de tu sesión.",
+    [copy.roleHint, role],
+  );
   const copyActions = useMemo(() => buildCopyActions(lastResponse), [lastResponse]);
   const manifestPreview = useMemo(() => parseManifestPreview(manifest.csv), [manifest.csv]);
   const onboardingSteps = useMemo(() => [
@@ -209,12 +249,14 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
     }
   }
 
-  async function submit(path: string, payload: unknown) {
+  async function submit(path: string, payload: unknown, method: "PATCH" | "POST" = "POST") {
     setPending(true);
     setSummary([]);
-    setStatus(`POST ${path}`);
+    setStatus(`${method} ${path}`);
     try {
-      const data = await postAdmin<unknown>(path, payload);
+      const data = method === "PATCH"
+        ? await patchAdmin<unknown>(path, payload)
+        : await postAdmin<unknown>(path, payload);
       setLastResponse((data && typeof data === "object") ? (data as ActionPayload) : null);
       setSummary(buildSummary(data));
       setStatus("Action completed successfully");
@@ -255,6 +297,50 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
     setLastResponse(null);
     setStatus("El runner legacy quedo bloqueado: usa Supplier Order para generar llaves en servidor y exportar el pack cifrado.");
     window.location.href = "/batches/supplier#supplier-order-console";
+  }
+
+  async function activateTags() {
+    const uids = activation.uids
+      .split(/[\s,\n]+/)
+      .map((uid) => uid.trim().toUpperCase())
+      .filter(Boolean);
+    const payload = {
+      bid: activation.batchId.trim(),
+      count: Math.max(0, Math.trunc(Number(activation.count || 0))),
+      uids,
+    };
+    const signature = JSON.stringify({
+      bid: payload.bid.toUpperCase(),
+      count: payload.count,
+      uids: payload.uids,
+    });
+    let attempt = activationAttempt.current;
+    if (!attempt || attempt.signature !== signature) {
+      attempt = {
+        signature,
+        idempotencyKey: `supplier-activation:${crypto.randomUUID()}`,
+      };
+      activationAttempt.current = attempt;
+    }
+
+    setPending(true);
+    setSummary([]);
+    setStatus("POST /admin/tags/activate");
+    try {
+      const data = await postAdmin<unknown>("/admin/tags/activate", payload, {
+        headers: { "Idempotency-Key": attempt.idempotencyKey },
+      });
+      activationAttempt.current = null;
+      setLastResponse((data && typeof data === "object") ? (data as ActionPayload) : null);
+      setSummary(buildSummary(data));
+      setStatus("Action completed successfully");
+    } catch (error) {
+      setLastResponse(null);
+      setSummary([]);
+      setStatus(error instanceof Error ? error.message : "Request failed");
+    } finally {
+      setPending(false);
+    }
   }
 
   async function onManifestFile(file: File) {
@@ -402,10 +488,15 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
             <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.count} value={activation.count} onChange={(event) => setActivation({ ...activation, count: event.target.value })} />
             <textarea suppressHydrationWarning disabled={!canEdit} className="min-h-24 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 font-mono text-xs" placeholder="Optional UID list, separated by commas or new lines" value={activation.uids} onChange={(event) => setActivation({ ...activation, uids: event.target.value })} />
             <div className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-[11px] text-slate-400">Tip: paste one UID per line when QA wants to selectively activate audited units only.</div>
-            <Button disabled={pending || !canEdit || !activation.batchId || (!activation.count && !activation.uids.trim())} onClick={() => submit("/admin/tags/activate", { bid: activation.batchId, count: Number(activation.count || 0), uids: activation.uids })}>{copy.actions.activateTags}</Button>
-            <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={revoke.batchId} onChange={(event) => setRevoke({ ...revoke, batchId: event.target.value })} />
-            <input suppressHydrationWarning disabled={!canEdit} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.reason} value={revoke.reason} onChange={(event) => setRevoke({ ...revoke, reason: event.target.value })} />
-            <Button disabled={pending || !canEdit || !revoke.batchId} variant="secondary" onClick={() => { if (window.confirm("Confirm batch revoke? This can impact live validations.")) submit(`/admin/batches/${revoke.batchId}/revoke`, { reason: revoke.reason }); }}>{copy.actions.revokeBatch}</Button>
+            <Button disabled={pending || !canEdit || !activation.batchId || (!activation.count && !activation.uids.trim())} onClick={() => void activateTags()}>{copy.actions.activateTags}</Button>
+            {canRevoke ? (
+              <div className="grid gap-3 rounded-2xl border border-rose-300/20 bg-rose-500/5 p-3">
+                <p className="text-xs font-semibold text-rose-100">Revocación de lote autorizada</p>
+                <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.batchId} value={revoke.batchId} onChange={(event) => setRevoke({ ...revoke, batchId: event.target.value })} />
+                <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm" placeholder={copy.fields.reason} value={revoke.reason} onChange={(event) => setRevoke({ ...revoke, reason: event.target.value })} />
+                <Button disabled={pending || !revoke.batchId} variant="secondary" onClick={() => { if (window.confirm("Confirm batch revoke? This can impact live validations.")) submit(`/admin/batches/${revoke.batchId}/revoke`, { reason: revoke.reason }); }}>{copy.actions.revokeBatch}</Button>
+              </div>
+            ) : null}
           </div>
         </Card>
 
@@ -488,6 +579,7 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
                 Inspect URL payload
               </Button>
             </div>
+            {canConfigureTamper ? (
             <div className="rounded-xl border border-emerald-300/20 bg-emerald-500/5 p-3">
               <p className="text-xs font-semibold text-emerald-100">TagTamper parser config</p>
               <div className="mt-2 grid gap-2 md:grid-cols-2">
@@ -499,7 +591,7 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
                 <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs" value={tamperConfig.opened} onChange={(e) => setTamperConfig((v) => ({ ...v, opened: e.target.value }))} placeholder="open values, comma separated" />
               </div>
               <Button
-                disabled={pending || !canEdit || !tamperConfig.bid.trim()}
+                disabled={pending || !tamperConfig.bid.trim()}
                 className="mt-2"
                 variant="secondary"
                 onClick={() => submit(`/admin/batches/${tamperConfig.bid.trim()}/tamper-config`, {
@@ -510,15 +602,17 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
                   tamper_status_length: Number(tamperConfig.length || 1),
                   tamper_closed_values: tamperConfig.closed.split(",").map((v) => v.trim()).filter(Boolean),
                   tamper_open_values: tamperConfig.opened.split(",").map((v) => v.trim()).filter(Boolean),
-                })}
+                }, "PATCH")}
               >
                 Save tamper parser config
               </Button>
             </div>
+            ) : null}
             <div className="rounded-xl border border-fuchsia-300/20 bg-fuchsia-500/5 p-3 text-xs text-fuchsia-100">
               <p className="font-semibold">Supplier TagTamper Requirements</p>
               <p className="mt-1 whitespace-pre-wrap">- Is TagTamper open/closed status included in SUN/SDM payload?\n- Where is it located?\n- Which byte/field indicates open vs closed?\n- Can you send before/after URLs from the same tag?\n- Can you confirm production batches include this field?</p>
             </div>
+            {canOverrideTagTamper ? (
             <div className="rounded-xl border border-rose-300/20 bg-rose-500/5 p-3">
               <p className="text-xs font-semibold text-rose-100">Manual opened evidence override</p>
               <div className="mt-2 grid gap-2 md:grid-cols-2">
@@ -528,7 +622,7 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
                 <input suppressHydrationWarning className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs md:col-span-2" value={manualOpened.note} onChange={(e) => setManualOpened((v) => ({ ...v, note: e.target.value }))} placeholder="evidence note" />
               </div>
               <Button
-                disabled={pending || !canEdit || !manualOpened.batchId.trim() || !manualOpened.uidHex.trim()}
+                disabled={pending || !manualOpened.batchId.trim() || !manualOpened.uidHex.trim()}
                 className="mt-2"
                 variant="secondary"
                 onClick={() => submit("/admin/tags/mark-opened", {
@@ -542,6 +636,7 @@ export function AdminActionForms({ copy, roles, readyLabel, currentRole }: Admin
                 Mark UID as manual opened
               </Button>
             </div>
+            ) : null}
           </div>
         </Card>
       </div>

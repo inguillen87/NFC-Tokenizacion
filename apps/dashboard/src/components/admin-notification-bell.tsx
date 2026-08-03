@@ -12,7 +12,7 @@ type NotificationSummary = {
   };
 };
 
-export function AdminNotificationBell() {
+export function AdminNotificationBell({ canReadSensitiveEvents = false }: { canReadSensitiveEvents?: boolean }) {
   const [summary, setSummary] = useState<NotificationSummary>({});
   const [liveConnected, setLiveConnected] = useState(false);
   const [lastPulseAt, setLastPulseAt] = useState("");
@@ -37,7 +37,7 @@ export function AdminNotificationBell() {
     void load();
     const timer = window.setInterval(load, 5000);
 
-    if (typeof EventSource !== "undefined") {
+    if (canReadSensitiveEvents && typeof EventSource !== "undefined") {
       const url = new URL("/api/admin/events/stream", window.location.origin);
       url.searchParams.set("limit", "8");
       url.searchParams.set("range", "24h");
@@ -62,7 +62,7 @@ export function AdminNotificationBell() {
       stream?.removeEventListener("heartbeat", refreshFromRealtime as EventListener);
       stream?.close();
     };
-  }, []);
+  }, [canReadSensitiveEvents]);
 
   const unread = Number(summary.unreadCount || 0);
   const counts = summary.counts || {};

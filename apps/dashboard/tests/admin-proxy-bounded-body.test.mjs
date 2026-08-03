@@ -28,3 +28,6 @@ test("admin proxy rejects declared and streamed oversized bodies", () => {
   assert.match(source, /cache-control": "no-store"/);
 });
 
+test("admin proxy preserves upstream no-store for one-time credential responses", () => {
+  assert.match(source, /headers\.set\("Cache-Control", response\.headers\.get\("cache-control"\) \|\| "no-store"\)/);
+});

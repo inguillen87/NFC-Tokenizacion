@@ -7,6 +7,7 @@ import {
   assertEmptyEnterpriseE2eDatabase,
   readEnterpriseEphemeralE2eConfig,
 } from "../scripts/lib/enterprise-ephemeral-e2e-safety.mjs";
+import { startEnterpriseEphemeralHttpHarness } from "../scripts/lib/enterprise-ephemeral-http.mjs";
 import {
   CANONICAL_BASELINE_GUIDE,
   DbApplySafetyError,
@@ -21,6 +22,71 @@ const validEnvironment = {
   NEXID_E2E_EXPECTED_POSTGRES_VERSION: "18.4",
   NEXID_E2E_DATABASE_URL: "postgresql://nexid_e2e:ephemeral-password@127.0.0.1:5432/nexid_e2e",
 };
+
+test("ephemeral HTTP harness crosses loopback TCP while keeping the route surface explicit and bounded", async () => {
+  let observed = null;
+  const harness = await startEnterpriseEphemeralHttpHarness({
+    env: validEnvironment,
+    maxBodyBytes: 1024,
+    routes: [{
+      method: "POST",
+      match: (url) => url.pathname === "/probe" ? { probe: url.searchParams.get("probe") } : null,
+      handle: async (request, context) => {
+        observed = {
+          authorization: request.headers.get("authorization"),
+          body: await request.json(),
+          context,
+          host: new URL(request.url).hostname,
+        };
+        return Response.json({ ok: true, transport: "loopback_http" }, { status: 202 });
+      },
+    }],
+  });
+  try {
+    assert.match(harness.origin, /^http:\/\/127\.0\.0\.1:\d+$/);
+    const response = await harness.fetch("/probe?probe=tenant-bound", {
+      method: "POST",
+      headers: { authorization: "Bearer opaque-ephemeral", "content-type": "application/json" },
+      body: JSON.stringify({ tenant: "tenant-a" }),
+    });
+    assert.equal(response.status, 202);
+    assert.deepEqual(await response.json(), { ok: true, transport: "loopback_http" });
+    assert.deepEqual(observed, {
+      authorization: "Bearer opaque-ephemeral",
+      body: { tenant: "tenant-a" },
+      context: { probe: "tenant-bound" },
+      host: "127.0.0.1",
+    });
+
+    const missing = await harness.fetch("/not-registered");
+    assert.equal(missing.status, 404);
+    assert.equal((await missing.json()).reason, "ephemeral_http_route_not_registered");
+    const tooLarge = await harness.fetch("/probe", {
+      method: "POST",
+      headers: { "content-type": "text/plain" },
+      body: "x".repeat(1025),
+    });
+    assert.equal(tooLarge.status, 413);
+    await assert.rejects(() => harness.fetch("https://example.com/probe"), /relative_path_required/);
+  } finally {
+    await harness.close();
+  }
+  await assert.rejects(() => harness.fetch("/probe"), /harness_closed/);
+});
+
+test("ephemeral HTTP harness refuses non-E2E configuration before binding a socket", async () => {
+  await assert.rejects(
+    () => startEnterpriseEphemeralHttpHarness({
+      env: { ...validEnvironment, NODE_ENV: "production" },
+      routes: [{ method: "GET", match: () => true, handle: () => Response.json({ ok: true }) }],
+    }),
+    /requires NODE_ENV=test and VERCEL_ENV=test/,
+  );
+  await assert.rejects(
+    () => startEnterpriseEphemeralHttpHarness({ env: validEnvironment, routes: [] }),
+    /routes_required/,
+  );
+});
 
 test("db-apply refuses an unauthorized empty bootstrap before any schema mutation", async () => {
   assert.throws(
@@ -278,14 +344,19 @@ test("process-local SQL injection is test-only, loopback-only and explicitly rem
 
 test("harness exercises production CMAC/SDM code with synthetic inputs and makes no physical or HSM claim", async () => {
   const source = await readFile(new URL("../scripts/enterprise-ephemeral-e2e.mjs", import.meta.url), "utf8");
+  const httpHarness = await readFile(new URL("../scripts/lib/enterprise-ephemeral-http.mjs", import.meta.url), "utf8");
   const runtimeSchema = await readFile(new URL("../src/lib/commercial-runtime-schema.ts", import.meta.url), "utf8");
   const webhookWorker = await readFile(new URL("../src/lib/sdk-webhooks.ts", import.meta.url), "utf8");
   assert.match(source, /generateSunParams/);
-  assert.match(source, /processSunScan/);
+  assert.match(source, /readPublicSun/);
+  assert.match(source, /startEnterpriseEphemeralHttpHarness/);
+  assert.match(source, /httpHarness\.fetch\("\/admin\/supplier-orders"/);
+  assert.match(source, /httpHarness\.fetch\(`\/sun\?\$\{sunQuery\}`/);
+  assert.match(source, /writeSdkEvent/);
   assert.match(source, /admin\/events\/stream\/route\.ts/);
   assert.match(source, /admin\/events\/route\.ts/);
   assert.match(source, /admin\/incidents\/route\.ts/);
-  assert.match(source, /cryptographic_verification/);
+  assert.match(source, /scan\.tapSecurity\.freshTap/);
   assert.match(source, /cross_tenant_mutation/);
   assert.match(source, /--allow-empty-ephemeral-e2e-bootstrap/);
   assert.match(source, /new Pool\(/);
@@ -299,7 +370,7 @@ test("harness exercises production CMAC/SDM code with synthetic inputs and makes
   assert.match(source, /enforceSdkEpcisCaptureRateLimit/);
   assert.match(source, /createWebhook/);
   assert.match(source, /rotateWebhook/);
-  assert.match(source, /dispatchTenantWebhooks/);
+  assert.match(source, /sdk_event_http: "api_key_authenticated_schema_checked_tenant_bound_and_idempotent"/);
   assert.match(source, /claimWebhookDeliveries/);
   assert.match(source, /processClaimedWebhookDelivery/);
   assert.match(source, /verifyNexIdWebhookSignature/);
@@ -314,10 +385,15 @@ test("harness exercises production CMAC/SDM code with synthetic inputs and makes
   assert.match(source, /physical_nfc_tag_scanned: false/);
   assert.match(source, /physical_tag_certification: false/);
   assert.match(source, /tagtamper_physical_certification: false/);
+  assert.match(source, /next_router_middleware_exercised: false/);
   assert.doesNotMatch(source, /managed_kms: true|hsm_backed: true|physical_nfc_tag_scanned: true|physical_tag_certification: true|tagtamper_physical_certification: true/);
   assert.doesNotMatch(source, /DROP\s+(?:DATABASE|SCHEMA|TABLE)|TRUNCATE/i);
-  assert.doesNotMatch(source, /\bfetch\s*\(|https\.request\s*\(/i);
+  assert.doesNotMatch(source, /\bglobalThis\.fetch\s*\(|https\.request\s*\(/i);
   assert.doesNotMatch(source, /api\.nexid\.lat|app\.nexid\.lat|neon\.tech/i);
+  assert.match(httpHarness, /server\.listen\(\{ host: "127\.0\.0\.1", port: 0, exclusive: true \}/);
+  assert.match(httpHarness, /ephemeral_http_external_target_forbidden/);
+  assert.match(httpHarness, /readEnterpriseEphemeralE2eConfig\(env\)/);
+  assert.doesNotMatch(httpHarness, /https:\/\//i);
   assert.match(
     runtimeSchema,
     /uq_events_sdk_idempotency_operation ON events\(sdk_idempotency_operation_id, created_at\)/,

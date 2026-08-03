@@ -51,9 +51,20 @@ export async function upsertTagSunPayload(input: {
   uidHex: string;
   hashes: SunPayloadHashes;
   source?: string;
-  rawPayload?: Record<string, unknown>;
+  registrationMetadata?: {
+    diagnosticId?: string | null;
+    tenantSlug?: string | null;
+    hasUrl?: boolean;
+  };
 }) {
   await ensureTagSunPayloadSchema();
+  const registrationMetadata = {
+    schema_version: "sun-payload-registration/v1",
+    raw_values_persisted: false,
+    diagnostic_id: input.registrationMetadata?.diagnosticId || null,
+    tenant_slug: input.registrationMetadata?.tenantSlug || null,
+    has_url: Boolean(input.registrationMetadata?.hasUrl),
+  };
   const rows = await sql/*sql*/`
     INSERT INTO tag_sun_payloads (
       tenant_id, batch_id, tag_id, uid_hex, bid, raw_url_hash, picc_data_hash, enc_hash, cmac_hash, source, status, raw_payload
@@ -69,7 +80,7 @@ export async function upsertTagSunPayload(input: {
       ${input.hashes.cmacHash},
       ${input.source || "supplier_manifest"},
       'active',
-      ${JSON.stringify(input.rawPayload || {})}::jsonb
+      ${JSON.stringify(registrationMetadata)}::jsonb
     )
     ON CONFLICT (batch_id, picc_data_hash, cmac_hash)
     DO UPDATE SET
@@ -79,8 +90,16 @@ export async function upsertTagSunPayload(input: {
       enc_hash = EXCLUDED.enc_hash,
       source = EXCLUDED.source,
       status = 'active',
-      raw_payload = tag_sun_payloads.raw_payload || EXCLUDED.raw_payload,
+      raw_payload = EXCLUDED.raw_payload,
       updated_at = now()
+    WHERE tag_sun_payloads.tenant_id = EXCLUDED.tenant_id
+      AND UPPER(TRIM(tag_sun_payloads.uid_hex)) = UPPER(TRIM(EXCLUDED.uid_hex))
+      AND UPPER(TRIM(tag_sun_payloads.bid)) = UPPER(TRIM(EXCLUDED.bid))
+      AND (
+        tag_sun_payloads.tag_id IS NULL
+        OR EXCLUDED.tag_id IS NULL
+        OR tag_sun_payloads.tag_id = EXCLUDED.tag_id
+      )
     RETURNING id
   `;
   return rows[0] || null;

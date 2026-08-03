@@ -1,7 +1,7 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-import { checkAdmin, getAdminActor, getAdminPermissions, getAdminTenantScope, type AdminScope } from '../../../../../lib/auth';
+import { checkAdminPermission, checkAdminWithPermission, getAdminActor, getAdminTenantScope } from '../../../../../lib/auth';
 import { json } from '../../../../../lib/http';
 import { sql } from '../../../../../lib/db';
 import { ensureSupplierOpsSchema } from '../../../../../lib/supplier-ops-schema';
@@ -10,31 +10,24 @@ import {
   resolveSupplierActivationScope,
   supplierActivationGateMessage,
 } from '../../../../../lib/supplier-ops';
-import { hashEvidencePayload } from '../../../../../lib/proof-layer';
-import { logAuditEvent } from '../../../../../lib/audit-logger';
-
-function hasScopedPermission(grants: string[], permission: string) {
-  const current = permission.trim();
-  for (const rawGrant of grants) {
-    const grant = String(rawGrant || '').trim();
-    if (!grant || grant === '*') continue;
-    if (grant === current) return true;
-    if (grant.endsWith(':*')) {
-      const prefix = grant.slice(0, -2);
-      if (current === prefix || current.startsWith(`${prefix}:`)) return true;
-    }
-  }
-  return false;
-}
-
-function canUseActivationOverride(scope: AdminScope | null, permissions: string[]) {
-  return scope === 'super_admin'
-    || hasScopedPermission(permissions, 'supplier:activate_override');
-}
+import {
+  activateSupplierProductionTagsV2,
+  loadSupplierProductionActivationReceiptV2,
+  supplierProductionActivationDatabaseReason,
+  supplierProductionActivationOperationKey,
+} from '../../../../../lib/supplier-production-activation';
 
 export async function POST(req: Request, { params }: { params: Promise<{ bid: string }> }) {
-  const auth = await checkAdmin(req, ['super_admin', 'tenant_admin']);
+  const auth = await checkAdminWithPermission(req, 'batch.activate');
   if (auth) return auth;
+  const operationKey = supplierProductionActivationOperationKey(req);
+  if (!operationKey) {
+    return json({
+      ok: false,
+      reason: 'supplier_production_activation_idempotency_key_required',
+      message: 'Idempotency-Key must be 8-128 characters using letters, numbers, dot, underscore, colon or hyphen.',
+    }, 400);
+  }
   await ensureSupplierOpsSchema();
 
   const { bid } = await params;
@@ -43,16 +36,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
   const overrideReason = String(body.override_reason || body.overrideReason || '').trim();
   const overrideBy = getAdminActor(req).email;
   const adminTenantScope = getAdminTenantScope(req);
-  const permissionGrants = getAdminPermissions(req);
   const overrideRequested = Boolean(overrideReason);
-  const overrideAllowed = canUseActivationOverride(adminTenantScope.scope, permissionGrants);
-  if (overrideRequested && !overrideAllowed) {
+  const overridePermission = overrideRequested
+    ? checkAdminPermission(req, 'supplier:activate_override')
+    : null;
+  if (overridePermission) {
     return json({
       ok: false,
       reason: 'supplier_activation_override_forbidden',
       message: 'Activation overrides require superadmin or explicit supplier:activate_override permission.',
     }, 403);
   }
+  const overrideAllowed = overrideRequested;
 
   const { forcedTenantSlug } = adminTenantScope;
   const batchRows = forcedTenantSlug
@@ -149,10 +144,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
   }
   const supplierSubBatch = supplierScope.supplierSubBatch;
   let activationGate: ReturnType<typeof canActivateSupplierSubBatch> | null = null;
+  const productionAcceptanceV2 = supplierSubBatch?.effective_pack_purpose === 'production'
+    ? await loadSupplierProductionActivationReceiptV2({
+        tenantId: String(supplierSubBatch.tenant_id),
+        supplierOrderId: String(supplierSubBatch.supplier_order_id),
+        supplierSubBatchId: String(supplierSubBatch.id),
+        batchId: String(supplierSubBatch.batch_id),
+        bid: String(supplierSubBatch.bid),
+        lotSize: Number(supplierSubBatch.expected_quantity),
+      })
+    : null;
   if (supplierSubBatch) {
     activationGate = canActivateSupplierSubBatch({
       effectivePackPurpose: supplierSubBatch.effective_pack_purpose,
-      productionAcceptanceV2: null,
+      productionAcceptanceV2,
       manifestStatus: supplierSubBatch.manifest_status,
       qaStatus: supplierSubBatch.qa_status,
       expectedQuantity: supplierSubBatch.expected_quantity,
@@ -172,98 +177,80 @@ export async function POST(req: Request, { params }: { params: Promise<{ bid: st
     }
   }
 
-  const target = limit > 0
-    ? await sql`
-        SELECT uid_hex
-        FROM tags
-        WHERE batch_id = ${batch.id} AND status = 'inactive'
-        ORDER BY created_at ASC, uid_hex ASC
-        LIMIT ${limit}
-      `
-    : await sql`
-        SELECT uid_hex
-        FROM tags
-        WHERE batch_id = ${batch.id} AND status = 'inactive'
-        ORDER BY created_at ASC, uid_hex ASC
-      `;
-
-  const uids = target.map((row) => String(row.uid_hex || '')).filter(Boolean);
-  const updated = uids.length
-    ? await sql`
-        UPDATE tags
-        SET status = 'active'
-        WHERE batch_id = ${batch.id} AND uid_hex = ANY(${uids})
-        RETURNING uid_hex
-      `
-    : [];
-
-  const remaining = await sql`
-    SELECT COUNT(*)::int AS count
-    FROM tags
-    WHERE batch_id = ${batch.id} AND status = 'inactive'
-  `;
-
-  if (supplierSubBatch) {
-    const remainingInactive = Number(remaining[0]?.count || 0);
-    const activationComplete = remainingInactive === 0;
-    const supplierStatus = activationComplete ? 'activated' : 'partially_activated';
-    await sql/*sql*/`
-      UPDATE supplier_sub_batches
-      SET status = ${supplierStatus}, activated_at = CASE WHEN ${activationComplete} THEN COALESCE(activated_at, now()) ELSE activated_at END, updated_at = now()
-      WHERE id = ${supplierSubBatch.id}
-    `;
-    if (activationComplete) {
-      await sql/*sql*/`
-        UPDATE batches
-        SET status = 'active_in_market'
-        WHERE id = ${batch.id}
-      `;
-    }
-    const overrideAudit = activationGate?.ok === true && activationGate.override ? activationGate : null;
-    const eventPayload = {
-      supplier_order_id: supplierSubBatch.supplier_order_id,
-      supplier_sub_batch_id: supplierSubBatch.id,
-      bid,
-      activated_tags: updated.length,
-      remaining_inactive: remainingInactive,
-      activation_complete: activationComplete,
-      override: Boolean(overrideAudit),
-      override_reason: overrideAudit ? overrideAudit.overrideReason : null,
-      override_by: overrideAudit ? overrideAudit.overrideBy : null,
-      override_blocked_reasons: overrideAudit ? overrideAudit.blockedReasons : [],
-    };
-    const eventHash = hashEvidencePayload({
-      tenantId: String(batch.tenant_id),
-      resourceType: 'supplier_sub_batch',
-      resourceId: String(supplierSubBatch.id),
-      eventType: activationComplete ? 'batch_activated' : 'batch_partially_activated',
-      payload: eventPayload,
-    });
-    await sql/*sql*/`
-      INSERT INTO evidence_events (tenant_id, resource_type, resource_id, event_type, payload_json, payload_hash)
-      VALUES (${batch.tenant_id}, 'supplier_sub_batch', ${supplierSubBatch.id}, ${activationComplete ? 'batch_activated' : 'batch_partially_activated'}, ${JSON.stringify(eventPayload)}::jsonb, ${eventHash})
-      ON CONFLICT (payload_hash) DO NOTHING
-    `;
-    if (overrideAudit) {
-      await logAuditEvent({
-        actorId: null,
-        tenantId: String(batch.tenant_id),
-        action: 'supplier_activation_override_used',
-        resourceType: 'supplier_sub_batch',
-        resourceId: String(supplierSubBatch.id),
-        afterData: eventPayload,
-        userAgent: req.headers.get('user-agent'),
+  let updated: Array<Record<string, unknown>>;
+  let remainingInactive: number;
+  let activationReceiptId: string | null = null;
+  let idempotentReplay = false;
+  if (supplierSubBatch?.effective_pack_purpose === 'production') {
+    const actor = getAdminActor(req);
+    try {
+      const receipt = await activateSupplierProductionTagsV2({
+        tenantId: String(supplierSubBatch.tenant_id),
+        supplierOrderId: String(supplierSubBatch.supplier_order_id),
+        supplierSubBatchId: String(supplierSubBatch.id),
+        batchId: String(supplierSubBatch.batch_id),
+        bid: String(supplierSubBatch.bid),
+        lotSize: Number(supplierSubBatch.expected_quantity),
+        actorId: actor.id,
+        authSessionId: actor.sessionId,
+        operationKey,
+        selection: limit > 0 ? { mode: 'count', limit } : { mode: 'all' },
         requestId: req.headers.get('x-request-id'),
       });
+      updated = receipt.activatedUids.map((uid_hex) => ({ uid_hex }));
+      remainingInactive = receipt.remainingInactive;
+      activationReceiptId = receipt.activationReceiptId;
+      idempotentReplay = receipt.idempotentReplay;
+    } catch (error) {
+      const reason = supplierProductionActivationDatabaseReason(error);
+      if (!reason) throw error;
+      return json({
+        ok: false,
+        reason,
+        message: supplierActivationGateMessage(reason),
+        bid,
+      }, reason === 'supplier_production_activation_actor_scope_invalid' ? 403 : 409);
     }
+  } else {
+    const target = limit > 0
+      ? await sql`
+          SELECT uid_hex
+          FROM tags
+          WHERE batch_id = ${batch.id} AND status = 'inactive'
+          ORDER BY created_at ASC, uid_hex ASC
+          LIMIT ${limit}
+        `
+      : await sql`
+          SELECT uid_hex
+          FROM tags
+          WHERE batch_id = ${batch.id} AND status = 'inactive'
+          ORDER BY created_at ASC, uid_hex ASC
+        `;
+    const uids = target.map((row) => String(row.uid_hex || '')).filter(Boolean);
+    updated = uids.length
+      ? await sql`
+          UPDATE tags
+          SET status = 'active'
+          WHERE batch_id = ${batch.id} AND uid_hex = ANY(${uids})
+          RETURNING uid_hex
+        `
+      : [];
+    const remaining = await sql`
+      SELECT COUNT(*)::int AS count
+      FROM tags
+      WHERE batch_id = ${batch.id} AND status = 'inactive'
+    `;
+    remainingInactive = Number(remaining[0]?.count || 0);
   }
 
   return json({
     ok: true,
     batch: bid,
     activated: updated.length,
-    remainingInactive: Number(remaining[0]?.count || 0),
-    activationComplete: Number(remaining[0]?.count || 0) === 0,
+    remainingInactive,
+    activationComplete: remainingInactive === 0,
+    activationReceiptId,
+    idempotentReplay,
     supplier_gate: supplierSubBatch ? {
       manifest_status: supplierSubBatch.manifest_status,
       qa_status: supplierSubBatch.qa_status,

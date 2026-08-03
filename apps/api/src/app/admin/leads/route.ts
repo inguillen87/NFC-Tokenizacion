@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminPrincipal, getAdminTenantAccess } from "../../../lib/auth";
+import { checkAdminWithPermission, getAdminPrincipal, getAdminTenantAccess } from "../../../lib/auth";
 import { sql } from "../../../lib/db";
 import { json } from "../../../lib/http";
 import { publishRealtimeEvent } from "../../../lib/realtime-events";
@@ -23,7 +23,7 @@ function isMissingRelation(error: unknown) {
 }
 
 export async function GET(req: Request) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdminWithPermission(req, "leads.manage");
   if (auth) return auth;
   const { searchParams } = new URL(req.url);
   const requestedTenant = clean(searchParams.get("tenant"));
@@ -55,7 +55,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
+  const auth = await checkAdminWithPermission(req, "leads.manage");
   if (auth) return auth;
   const principal = getAdminPrincipal(req);
   const rateLimited = await enforceCriticalRateLimit(req, {

@@ -6,22 +6,24 @@ import { sql } from "../../../../../lib/db";
 import { json } from "../../../../../lib/http";
 import { authenticateSdkRequest, hashSdkApiKey, logSdkUsage } from "../../../../../lib/sdk-auth";
 import { enqueueSdkWebhookGuaranteed, sdkWebhookOutboxUnavailableBody, SdkWebhookOutboxUnavailableError, type SdkWebhookOutboxReceipt } from "../../../../../lib/sdk-webhook-outbox-guarantee";
-import { asRecord, clean, isSecureOwnershipCarrier, numberOrNull, parseHeaderIp, readJsonObject, sha256Hex } from "../_shared";
+import { asRecord, clean, isSecureOwnershipCarrier, numberOrNull, parseHeaderIp, readJsonObject } from "../_shared";
 import { enforceSdkAuthenticationRateLimit, enforceSdkRateLimit } from "../../../../../lib/critical-rate-limit";
 import { readSdkMutationBody, runSdkIdempotentMutation, SDK_IDEMPOTENCY_OPERATIONS } from "../_idempotency";
-
-function pinMatches(input: { storedHash: string; pin: string; tenantId: string; bid: string; uidHex: string }) {
-  const stored = clean(input.storedHash).toLowerCase();
-  if (!stored || !input.pin) return false;
-  const normalizedPin = input.pin.trim();
-  const uid = input.uidHex.toUpperCase();
-  const candidates = [
-    sha256Hex(normalizedPin),
-    sha256Hex(`${input.tenantId}:${input.bid}:${uid}:${normalizedPin}`),
-    sha256Hex(`${input.tenantId}:${input.bid}:${normalizedPin}`),
-  ].map((value) => value.toLowerCase());
-  return candidates.includes(stored);
-}
+import {
+  ownershipClaimPinRateScope,
+  readOwnershipClaimPinInput,
+  verifyOwnershipClaimPin,
+  type OwnershipClaimPinVerification,
+} from "../../../../../lib/ownership-claim-pin";
+import {
+  OWNERSHIP_CLAIM_PIN_WINDOW_SECONDS,
+  releaseSuccessfulOwnershipClaimPinAttempt,
+  reserveOwnershipClaimPinAttempt,
+} from "../../../../../lib/ownership-claim-pin-rate-limit";
+import {
+  evaluateOwnershipClaimAuthorization,
+  resolveOwnershipClaimPinCredential,
+} from "../../../../../lib/ownership-claim-authorization";
 
 export async function POST(req: Request) {
   const startedAt = Date.now();
@@ -52,7 +54,12 @@ export async function POST(req: Request) {
   const name = clean(body.name);
   const bid = clean(body.bid);
   const uidHex = clean(body.uidHex || body.uid_hex).toUpperCase();
-  const pin = clean(body.pin);
+  const pinInput = readOwnershipClaimPinInput(body.pin);
+  if (!pinInput.ok) {
+    await logSdkUsage({ req, context: auth.context, endpoint: "sdk.claim", statusCode: 400, startedAt, reason: "pin_invalid_input" });
+    return json({ ok: false, reason: "pin_invalid_input", trace_id: auth.context.traceId }, 400);
+  }
+  const pin = pinInput.pin;
   const posToken = clean(body.posToken || body.pos_token || body.retailerPosToken || body.retailer_pos_token);
   if (!contact || !bid) {
     await logSdkUsage({ req, context: auth.context, endpoint: "sdk.claim", statusCode: 400, startedAt, reason: "contact_and_bid_required" });
@@ -78,7 +85,8 @@ export async function POST(req: Request) {
       tp.product_name,
       tp.sku,
       cp.code AS carrier_profile_code,
-      cp.label AS carrier_label
+      cp.label AS carrier_label,
+      tsp.claim_policy AS tenant_claim_policy
     FROM batches b
     LEFT JOIN LATERAL (
       SELECT *
@@ -90,6 +98,7 @@ export async function POST(req: Request) {
     ) t ON ${uidHex} <> ''
     LEFT JOIN tag_profiles tp ON tp.tag_id = t.id
     LEFT JOIN carrier_profiles cp ON cp.code = COALESCE(t.carrier_profile_code, b.carrier_profile_code, NULLIF(b.sdm_config->>'carrier_profile_code', ''))
+    LEFT JOIN tenant_sun_profiles tsp ON tsp.tenant_id = b.tenant_id
     WHERE b.tenant_id = ${auth.context.tenantId}
       AND b.bid = ${bid}
     LIMIT 1
@@ -105,15 +114,16 @@ export async function POST(req: Request) {
   }
 
   const sdmConfig = readJsonObject(row.sdm_config);
-  const posRows = posToken ? await sql/*sql*/`
+  const posRows = posToken && uidHex && clean(row.tag_id) ? await sql/*sql*/`
     SELECT id::text AS id, uid_hex, external_order_id, retailer_id
     FROM sdk_pos_activations
     WHERE tenant_id = ${auth.context.tenantId}
       AND bid = ${bid}
+      AND tag_id = ${clean(row.tag_id)}
+      AND UPPER(uid_hex) = UPPER(${uidHex})
       AND pos_token_hash = ${hashSdkApiKey(posToken)}
       AND activation_status = 'active'
       AND (expires_at IS NULL OR expires_at > now())
-      AND (${uidHex} = '' OR uid_hex IS NULL OR UPPER(uid_hex) = UPPER(${uidHex}))
     LIMIT 1
   ` : [];
   const posActivation = posRows[0] as Record<string, unknown> | undefined;
@@ -125,26 +135,114 @@ export async function POST(req: Request) {
     : Boolean(row.batch_active_for_claim || sdmConfig.active_for_claim);
   const activeForClaim = posValidated || configuredActiveForClaim;
   const claimRequiresPos = Boolean(sdmConfig.claim_requires_pos || sdmConfig.pos_required || sdmConfig.retailer_attestation_required);
+  const claimPolicy = row.tenant_claim_policy || (asRecord(asRecord(sdmConfig.sun).passport).claimPolicy) || asRecord(sdmConfig.sun).claimPolicy;
   if ((claimRequiresPos || posToken) && !posValidated) {
     await logSdkUsage({ req, context: auth.context, endpoint: "sdk.claim", statusCode: 403, startedAt, reason: "pos_token_invalid_or_required", meta: { bid, uidHex: uidHex || null, claimRequiresPos } });
     return json({ ok: false, reason: claimRequiresPos ? "pos_token_required_or_invalid" : "invalid_pos_token", bid, uidHex: uidHex || null, trace_id: auth.context.traceId }, 403);
   }
-  const pinRequired = row.tag_claim_pin_required !== null && row.tag_claim_pin_required !== undefined
-    ? Boolean(row.tag_claim_pin_required)
-    : Boolean(row.batch_claim_pin_required || sdmConfig.claim_pin_required);
-  const storedPinHash = clean(row.tag_hash_pin || row.batch_hash_pin || sdmConfig.hash_pin || sdmConfig.claim_pin_hash);
-  if (pinRequired && !storedPinHash) {
-    await logSdkUsage({ req, context: auth.context, endpoint: "sdk.claim", statusCode: 409, startedAt, reason: "pin_policy_misconfigured", meta: { bid, uidHex: uidHex || null } });
+  const pinCredential = resolveOwnershipClaimPinCredential({
+    claimPolicy,
+    tagPinRequired: row.tag_claim_pin_required,
+    tagPinHash: row.tag_hash_pin,
+    batchPinRequired: row.batch_claim_pin_required,
+    batchPinHash: row.batch_hash_pin,
+    configPinRequired: sdmConfig.claim_pin_required,
+    configPinHash: sdmConfig.hash_pin || sdmConfig.claim_pin_hash,
+  });
+  const pinRequired = pinCredential.required;
+  const storedPinHash = pinCredential.storedHash;
+  if (pinCredential.misconfigured) {
+    await logSdkUsage({ req, context: auth.context, endpoint: "sdk.claim", statusCode: 409, startedAt, reason: "pin_policy_misconfigured", meta: { bid, uidHex: uidHex || null, pinPolicySource: pinCredential.source } });
     return json({ ok: false, reason: "pin_policy_misconfigured", bid, trace_id: auth.context.traceId }, 409);
   }
   if (pinRequired && !pin) {
     await logSdkUsage({ req, context: auth.context, endpoint: "sdk.claim", statusCode: 403, startedAt, reason: "pin_required", meta: { bid, uidHex: uidHex || null } });
     return json({ ok: false, reason: "pin_required", bid, uidHex: uidHex || null, trace_id: auth.context.traceId }, 403);
   }
-  const pinValidated = pinRequired ? pinMatches({ storedHash: storedPinHash, pin, tenantId: auth.context.tenantId, bid, uidHex }) : false;
+  let pinVerification: OwnershipClaimPinVerification | null = null;
+  let pinValidated = false;
+  if (pinRequired) {
+    const rateContext = {
+      tenantId: auth.context.tenantId,
+      bid,
+      uidHex: uidHex || null,
+      sourceId: `sdk-key:${auth.context.apiKeyId}`,
+      credentialScope: ownershipClaimPinRateScope(storedPinHash),
+    };
+    const attemptReservation = await reserveOwnershipClaimPinAttempt(req, rateContext);
+    if (attemptReservation.status === "unavailable") {
+      await logSdkUsage({ req, context: auth.context, endpoint: "sdk.claim", statusCode: 503, startedAt, reason: "claim_pin_security_unavailable", meta: { bid, uidHex: uidHex || null } });
+      return json({ ok: false, reason: "claim_pin_security_unavailable", trace_id: auth.context.traceId }, 503, { "cache-control": "no-store" });
+    }
+    if (attemptReservation.status === "locked") {
+      await logSdkUsage({ req, context: auth.context, endpoint: "sdk.claim", statusCode: 429, startedAt, reason: "claim_pin_locked", meta: { bid, uidHex: uidHex || null } });
+      return json({ ok: false, reason: "claim_pin_locked", retry_after_seconds: OWNERSHIP_CLAIM_PIN_WINDOW_SECONDS, trace_id: auth.context.traceId }, 429, {
+        "cache-control": "no-store",
+        "retry-after": String(OWNERSHIP_CLAIM_PIN_WINDOW_SECONDS),
+      });
+    }
+    try {
+      pinVerification = await verifyOwnershipClaimPin({
+        storedHash: storedPinHash,
+        pin,
+        context: { tenantId: auth.context.tenantId, bid, uidHex: uidHex || null },
+      });
+      pinValidated = pinVerification.matches;
+    } catch {
+      await releaseSuccessfulOwnershipClaimPinAttempt(attemptReservation.attempt);
+      await logSdkUsage({ req, context: auth.context, endpoint: "sdk.claim", statusCode: 503, startedAt, reason: "claim_pin_security_unavailable", meta: { bid, uidHex: uidHex || null } });
+      return json({ ok: false, reason: "claim_pin_security_unavailable", trace_id: auth.context.traceId }, 503, { "cache-control": "no-store" });
+    }
+    if (pinValidated) {
+      const released = await releaseSuccessfulOwnershipClaimPinAttempt(attemptReservation.attempt);
+      if (released.status === "unavailable") {
+        await logSdkUsage({ req, context: auth.context, endpoint: "sdk.claim", statusCode: 503, startedAt, reason: "claim_pin_security_unavailable", meta: { bid, uidHex: uidHex || null } });
+        return json({ ok: false, reason: "claim_pin_security_unavailable", trace_id: auth.context.traceId }, 503, { "cache-control": "no-store" });
+      }
+    }
+  }
   if (pinRequired && !pinValidated) {
-    await logSdkUsage({ req, context: auth.context, endpoint: "sdk.claim", statusCode: 403, startedAt, reason: "invalid_pin", meta: { bid, uidHex: uidHex || null } });
+    await logSdkUsage({
+      req,
+      context: auth.context,
+      endpoint: "sdk.claim",
+      statusCode: 403,
+      startedAt,
+      reason: "invalid_pin",
+      meta: {
+        bid,
+        uidHex: uidHex || null,
+        pinHashAlgorithm: pinVerification?.algorithm || "unknown",
+        pinHashNeedsRotation: pinVerification?.needsRotation || false,
+      },
+    });
     return json({ ok: false, reason: "invalid_pin", bid, uidHex: uidHex || null, trace_id: auth.context.traceId }, 403);
+  }
+
+  const claimAuthorization = evaluateOwnershipClaimAuthorization({
+    claimPolicy,
+    activeForClaim,
+    configuredPinRequired: pinRequired,
+    pinPresented: Boolean(pin),
+    pinValidated,
+    configuredPosRequired: claimRequiresPos,
+    posValidated,
+    purchaseProofPresented: false,
+  });
+  if (claimAuthorization.disposition !== "authorized") {
+    const reason = claimAuthorization.disposition === "review_required"
+      ? "ownership_manual_review_required"
+      : claimAuthorization.reason;
+    await logSdkUsage({
+      req,
+      context: auth.context,
+      endpoint: "sdk.claim",
+      statusCode: 403,
+      startedAt,
+      reason,
+      meta: { bid, uidHex: uidHex || null, claimPolicy: claimAuthorization.policy },
+    });
+    return json({ ok: false, reason, review_required: true, bid, uidHex: uidHex || null, trace_id: auth.context.traceId }, 403, { "cache-control": "no-store" });
   }
 
   const meta = {
@@ -160,9 +258,14 @@ export async function POST(req: Request) {
     requestIp: parseHeaderIp(req),
     pinRequired,
     pinValidated,
+    pinVerification: pinVerification ? {
+      algorithm: pinVerification.algorithm,
+      needsRotation: pinVerification.needsRotation,
+    } : null,
     posValidated,
     posActivationId: posActivationId || null,
     claimRequiresPos,
+    claimPolicy: claimAuthorization.policy,
     activeForClaim,
     carrierProfileCode,
   };
@@ -191,11 +294,12 @@ export async function POST(req: Request) {
         AND activation.id = ${posActivationId || null}
         AND activation.tenant_id = ${auth.context.tenantId}
         AND activation.bid = ${bid}
+        AND activation.tag_id = ${clean(row.tag_id) || null}
+        AND UPPER(activation.uid_hex) = UPPER(${uidHex})
         AND activation.pos_token_hash = ${hashSdkApiKey(posToken)}
         AND activation.activation_status = 'active'
         AND activation.claim_request_id IS NULL
         AND (activation.expires_at IS NULL OR activation.expires_at > now())
-        AND (${uidHex} = '' OR activation.uid_hex IS NULL OR UPPER(activation.uid_hex) = UPPER(${uidHex}))
       RETURNING activation.id
     ),
     claim_gate AS (
@@ -309,7 +413,22 @@ export async function POST(req: Request) {
     await logSdkUsage({ req, context: auth.context, endpoint: "sdk.claim", statusCode: 503, startedAt, reason: error.code, meta: { bid, claimId, claimStatus } });
     return json({ ...sdkWebhookOutboxUnavailableBody(error), operation: { claimId, leadId, status: claimStatus, bid }, confirmedWebhookEvents: webhookOutbox }, 503, { "retry-after": "2", "x-nexid-trace-id": auth.context.traceId });
   }
-  await logSdkUsage({ req, context: auth.context, endpoint: "sdk.claim", statusCode: 201, startedAt, meta: { bid, uidHex: uidHex || null, claimStatus, posValidated, pinValidated } });
+  await logSdkUsage({
+    req,
+    context: auth.context,
+    endpoint: "sdk.claim",
+    statusCode: 201,
+    startedAt,
+    meta: {
+      bid,
+      uidHex: uidHex || null,
+      claimStatus,
+      posValidated,
+      pinValidated,
+      pinHashAlgorithm: pinVerification?.algorithm || null,
+      pinHashNeedsRotation: pinVerification?.needsRotation || false,
+    },
+  });
 
   return json({
     ok: true,

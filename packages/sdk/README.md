@@ -44,7 +44,7 @@ const nexid = new NexIdClient({
 });
 
 try {
-  const product = await nexid.getProduct("SYNGENTA-2026-001");
+  const product = await nexid.getProduct("LOT-2026-001");
   console.log(product.product);
 } catch (error) {
   if (error instanceof NexIdApiError) {
@@ -71,13 +71,13 @@ retry. EPCIS capture requires that key instead of making it optional.
 ```ts
 const nexid = new NexIdClient({
   apiKey: process.env.NEXID_API_KEY!,
-  tenantSlug: "syngenta",
+  tenantSlug: "tenant-demo",
   timeoutMs: 8_000,
   retry: { maxRetries: 2, baseDelayMs: 200, maxDelayMs: 2_000 },
 });
 
 const controller = new AbortController();
-const product = await nexid.getProduct("SYNGENTA-2026-001", {
+const product = await nexid.getProduct("LOT-2026-001", {
   signal: controller.signal,
   requestId: "erp-sync-2026-07-26-001",
   timeoutMs: 5_000,
@@ -86,13 +86,64 @@ const product = await nexid.getProduct("SYNGENTA-2026-001", {
 
 Every request carries `x-nexid-sdk-version`, a server-side user agent and a trace id. Pass a stable `requestId` to correlate nexID telemetry with your logs; otherwise the SDK creates one.
 
+## Authorized operator offline queue (Level 2)
+
+`syncOfflineScans` is for an enrolled warehouse, distributor or field-operator
+device. It is not a consumer-side verifier. A superadmin must provision the
+tenant-bound device and short-lived bundle first; the API key also needs
+`sdk:logistics`.
+
+```ts
+const sync = await nexid.syncOfflineScans({
+  schemaVersion: 1,
+  deviceId: process.env.NEXID_OFFLINE_DEVICE_ID!,
+  bundleId: process.env.NEXID_OFFLINE_BUNDLE_ID!,
+  events: [{
+    localId: "warehouse-device-7-scan-000042",
+    capturedUrl: capturedSunUrl,
+    capturedAt: new Date(capturedAt),
+    status: "PENDING_BACKEND_VERIFICATION",
+    appVersion: "2.4.1",
+  }],
+}, {
+  idempotencyKey: "warehouse-device-7-upload-000042",
+  requestId: "warehouse-device-7-upload-000042",
+  maxRetries: 2,
+});
+
+for (const result of sync.results) {
+  if (result.status === "SYNCED_VALID" && result.cryptographicVerification) {
+    // The nexID backend accepted this SUN/SDM message.
+  } else if (result.status === "REPLAY_SUSPECT") {
+    // Require a new physical tap; never enable ownership or warranty here.
+  }
+}
+```
+
+The raw captured URL exists in memory and in the HTTPS request only long enough
+for backend verification. nexID stores hashes and a redacted receipt, not the
+raw URL, `picc_data`, `enc`, `cmac`, UID or batch keys. Device-side hashing,
+deduplication, a local “pass” or a bundle manifest never means authenticity.
+Only a terminal `SYNCED_VALID` receipt with
+`cryptographicVerification: true` confirms that the backend accepted the SUN/SDM
+message. `SYNC_PROCESSING`, `SYNC_FAILED` and `SYNC_CONFLICT` are not final
+verdicts. `REPLAY_SUSPECT` is final but invalid for sensitive actions.
+
+Each `localId` is the durable per-device capture identity. Retry the same
+capture with the same `localId`; changing its evidence fails closed. A different
+`localId` containing the same SUN message is not treated as an API duplicate:
+the canonical SUN anti-replay path evaluates it and can return
+`REPLAY_SUSPECT`. Captures must have occurred while the authorized bundle was
+valid; delayed sync is accepted only inside the bounded post-expiry grace
+window.
+
 ## Durable mutation idempotency and reconciliation
 
 ```ts
 const result = await nexid.reportEvent(
   {
     eventType: "shipment.received",
-    bid: "SYNGENTA-2026-001",
+    bid: "LOT-2026-001",
     source: "warehouse-wms",
     occurredAt: new Date().toISOString(),
   },
@@ -179,6 +230,7 @@ business write was rolled back.
 | SDK method | HTTP route | Required API-key scope |
 | --- | --- | --- |
 | `verifyTap` | `POST /api/v1/sdk/verify` | `sdk:verify` |
+| `syncOfflineScans` | `POST /api/v1/sdk/offline-sync` + `Idempotency-Key` | `sdk:logistics` |
 | `claimOwnership` | `POST /api/v1/sdk/claim` | `sdk:claim` |
 | `getProduct` | `GET /api/v1/sdk/products/:bid` | `sdk:products` |
 | `reportEvent` | `POST /api/v1/sdk/events` | `sdk:events` |
@@ -223,7 +275,7 @@ const document = {
       action: "OBSERVE",
       bizStep: "shipping",
       disposition: "in_transit",
-      epcList: ["https://id.nexid.lat/01/09506000134352/10/SYNGENTA-2026-001"],
+      epcList: ["https://id.nexid.lat/01/09506000134352/10/LOT-2026-001"],
     }],
   },
 } satisfies NexIdEpcisDocument;
@@ -237,7 +289,7 @@ let cursor: string | undefined;
 do {
   const page = await nexid.queryEpcisEvents({
     gtin: "09506000134352",
-    lot: "SYNGENTA-2026-001",
+    lot: "LOT-2026-001",
     limit: 100,
     cursor,
   });

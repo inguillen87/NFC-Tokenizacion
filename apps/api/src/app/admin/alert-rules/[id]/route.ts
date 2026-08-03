@@ -1,13 +1,13 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminTenantScope } from "../../../../lib/auth";
+import { checkAdminWithPermission, getAdminTenantScope } from "../../../../lib/auth";
 import { json } from "../../../../lib/http";
 import { sql } from "../../../../lib/db";
 import { normalizeAlertSeverity } from "../../../../lib/alerts-query";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdminWithPermission(req, "risk_rules:write");
   if (auth) return auth;
   const { forcedTenantSlug } = getAdminTenantScope(req);
   const { id } = await params;

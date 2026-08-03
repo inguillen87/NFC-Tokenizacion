@@ -28,6 +28,11 @@ test("settings page keeps tenant-scoped operational links", () => {
   assert.match(settingsSource, /const tenantQuery = tenantSlug \? `\?tenant=\$\{encodeURIComponent\(tenantSlug\)\}` : ""/);
   assert.match(settingsSource, /const tenantHref = tenantSlug \? `\/tenants\/\$\{encodeURIComponent\(tenantSlug\)\}` : "\/tenants"/);
   assert.match(settingsSource, /href: `\/api-keys\$\{tenantQuery\}`/);
+  assert.match(settingsSource, /dashboardHighImpactPermissionMatches\([\s\S]*"api_keys\.read"[\s\S]*session\.deniedPermissions/);
+  assert.match(settingsSource, /dashboardHighImpactPermissionMatches\([\s\S]*"proofs\.read"[\s\S]*session\.deniedPermissions/);
+  assert.match(settingsSource, /!tile\.href\.startsWith\("\/api-keys"\) \|\| canReadApiKeys/);
+  assert.match(settingsSource, /tile\.href !== "\/proof" \|\| canReadProof/);
+  assert.match(settingsSource, /\{canReadProof \? \([\s\S]*href="\/proof"[\s\S]*\) : null\}/);
   assert.match(settingsSource, /href: `\/subscriptions\$\{tenantQuery\}`/);
   assert.match(settingsSource, /href: canManageUsers \? "\/users" : "\/settings"/);
   assert.match(settingsSource, /sessionSecurityLabel/);

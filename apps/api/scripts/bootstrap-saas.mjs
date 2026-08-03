@@ -34,19 +34,25 @@ async function ensureDemoTenant() {
   throw new Error(`Demo tenant "${demoTenantSlug}" does not exist. Create it through demo:demobodega or /batches/supplier so SUN profile, manifest policy and product identity are complete.`);
 }
 
-async function ensureSuperAdmin(demoTenantId = null) {
+async function ensureSuperAdmin() {
   const userRows = await sql`INSERT INTO users (email, full_name) VALUES (${superAdminEmail}, 'Super Admin') ON CONFLICT (email) DO UPDATE SET full_name = EXCLUDED.full_name, updated_at = now() RETURNING id`;
   const userId = userRows[0]?.id;
   if (!userId) throw new Error('failed to ensure super admin user');
 
   await sql`INSERT INTO password_credentials (user_id, password_hash) VALUES (${userId}::uuid, ${hashPassword(superAdminPassword)}) ON CONFLICT (user_id) DO UPDATE SET password_hash = EXCLUDED.password_hash, updated_at = now()`;
 
-  await sql`INSERT INTO memberships (user_id, tenant_id, role) VALUES (${userId}::uuid, ${demoTenantId}::uuid, 'super_admin'::membership_role) ON CONFLICT DO NOTHING`;
+  const existingMemberships = await sql`SELECT id, tenant_id FROM memberships WHERE user_id = ${userId}::uuid AND role = 'super_admin'::membership_role ORDER BY created_at ASC`;
+  if (existingMemberships.some((membership) => membership.tenant_id !== null)) {
+    throw new Error('super_admin_tenant_binding_requires_audited_reconciliation');
+  }
+  if (existingMemberships.length === 0) {
+    await sql`INSERT INTO memberships (user_id, tenant_id, role) VALUES (${userId}::uuid, NULL, 'super_admin'::membership_role)`;
+  }
 
   const permissions = ['users:manage', 'tenants:write', 'batches:write', 'analytics:read', 'events:read'];
   for (const permission of permissions) {
     const [resource, action] = permission.split(':');
-    await sql`INSERT INTO resource_permissions (user_id, resource, action) VALUES (${userId}::uuid, ${resource}, ${action}) ON CONFLICT DO NOTHING`;
+    await sql`INSERT INTO resource_permissions (user_id, tenant_id, resource, action) VALUES (${userId}::uuid, NULL, ${resource}, ${action}) ON CONFLICT DO NOTHING`;
   }
 
   return { userId, permissionsCount: permissions.length };
@@ -61,6 +67,6 @@ let demoTenant = null;
 if (demoEnabled) {
   demoTenant = await ensureDemoTenant();
 }
-const superAdmin = await ensureSuperAdmin(demoTenant?.id || null);
+const superAdmin = await ensureSuperAdmin();
 
 console.log(JSON.stringify({ ok: true, superAdminEmail, demoEnabled, demoTenant: demoTenant || null, superAdmin }, null, 2));

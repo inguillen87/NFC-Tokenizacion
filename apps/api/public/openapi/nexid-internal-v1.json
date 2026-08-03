@@ -1,0 +1,16 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "nexID Internal API Boundary",
+    "version": "1.0.0",
+    "description": "Non-public control-plane contract. No endpoint in this namespace may be exposed through the public or SDK gateway. Empty by design until a route has an authenticated service-identity contract and deployment allowlist."
+  },
+  "servers": [{ "url": "https://api.nexid.lat/internal" }],
+  "security": [{ "InternalServiceBearer": [] }],
+  "paths": {},
+  "x-nexid-exposure": "internal-only-deny-by-default",
+  "x-nexid-demo-policy": "Demo mutation routes are never part of this public contract and remain environment-gated.",
+  "components": {
+    "securitySchemes": { "InternalServiceBearer": { "type": "http", "scheme": "bearer", "bearerFormat": "short-lived workload identity" } }
+  }
+}

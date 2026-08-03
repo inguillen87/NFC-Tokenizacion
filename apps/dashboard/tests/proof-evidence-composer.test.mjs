@@ -16,8 +16,9 @@ test("evidence composer uses real proof contracts and explains network responsib
     readFile(tenantPageUrl, "utf8"),
   ]);
 
-  assert.match(page, /requireDashboardSession\("proof:read"\)/);
-  assert.match(page, /dashboardPermissionMatches\(session\.permissions, "proof:write"\)/);
+  assert.match(page, /requireDashboardSession\(\)/);
+  assert.match(page, /dashboardHighImpactPermissionMatches\([\s\S]*"proofs\.read"[\s\S]*session\.deniedPermissions/);
+  assert.match(page, /dashboardHighImpactPermissionMatches\([\s\S]*"proofs\.anchor"[\s\S]*session\.deniedPermissions/);
   assert.match(composer, /\/api\/admin\/proof\/events/);
   assert.match(composer, /\/api\/admin\/proof\/anchor/);
   assert.match(composer, /\/api\/admin\/proof\/anchors/);

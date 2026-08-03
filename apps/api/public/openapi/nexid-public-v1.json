@@ -1,0 +1,52 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "nexID Public API",
+    "version": "1.0.0",
+    "description": "Public, read-oriented verification and GS1 resolution surface. A digital NFC verdict is evidence about a cryptographic message and is not by itself proof of physical contents, custody or ownership."
+  },
+  "servers": [{ "url": "https://api.nexid.lat" }],
+  "security": [],
+  "paths": {
+    "/public/gs1/resolve": {
+      "get": {
+        "operationId": "resolveGs1DigitalLink",
+        "summary": "Resolve a bounded GS1 Digital Link identity",
+        "responses": {
+          "200": { "description": "Tenant-safe resolution" },
+          "400": { "$ref": "#/components/responses/PublicError" },
+          "404": { "$ref": "#/components/responses/PublicError" },
+          "429": { "$ref": "#/components/responses/PublicError" }
+        }
+      }
+    },
+    "/public/certificates/{eventId}": {
+      "get": {
+        "operationId": "readPublicEventCertificate",
+        "summary": "Read a redacted public event certificate",
+        "parameters": [{ "name": "eventId", "in": "path", "required": true, "schema": { "type": "string", "pattern": "^[1-9][0-9]{0,18}$" } }],
+        "responses": {
+          "200": { "description": "Redacted public certificate" },
+          "404": { "$ref": "#/components/responses/PublicError" },
+          "429": { "$ref": "#/components/responses/PublicError" }
+        }
+      }
+    }
+  },
+  "components": {
+    "responses": {
+      "PublicError": {
+        "description": "Bounded public error",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PublicError" } } }
+      }
+    },
+    "schemas": {
+      "PublicError": {
+        "type": "object",
+        "required": ["ok", "reason"],
+        "properties": { "ok": { "const": false }, "reason": { "type": "string" }, "trace_id": { "type": ["string", "null"] } },
+        "additionalProperties": false
+      }
+    }
+  }
+}

@@ -4,6 +4,7 @@ import { DataTable } from "../../../components/data-table";
 import { getDashboardI18n } from "../../../lib/locale";
 import { requireDashboardSession } from "../../../lib/session";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../lib/admin-page-access";
+import { dashboardHighImpactPermissionMatches } from "../../../lib/permission-policy";
 
 async function getSupplierOrders(context: AdminPageContext) {
   try {
@@ -20,6 +21,12 @@ export default async function SupplierOrdersPage() {
   const { locale } = await getDashboardI18n();
   const session = await requireDashboardSession("supplier_orders:read");
   const adminContext = await createAdminPageContext(session);
+  const canCreateSupplierOrder = dashboardHighImpactPermissionMatches(
+    session.role,
+    session.permissions,
+    "supplier_order.create",
+    session.deniedPermissions,
+  );
 
   const orders = await getSupplierOrders(adminContext);
 
@@ -35,6 +42,11 @@ export default async function SupplierOrdersPage() {
     profile: row.carrier_profile_code,
     status: row.status,
     quantity: `${row.total_quantity} total / ${row.sub_batch_count} sub-batches`,
+    vault: (
+      <Link href={`/admin/tenant-vault/${encodeURIComponent(String(adminContext.tenantSlug || row.tenant_slug || row.customer_slug || ""))}`} className="font-semibold text-violet-300 hover:text-violet-100 hover:underline">
+        Tenant Vault
+      </Link>
+    ),
   }));
 
   return (
@@ -47,12 +59,20 @@ export default async function SupplierOrdersPage() {
       
       <Card className="p-5 text-sm text-slate-300 flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">New Supplier Order</h2>
-          <p className="mt-2 text-xs text-slate-400">Create a new batch order for a factory, ready for export.</p>
+          <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">
+            {canCreateSupplierOrder ? "New Supplier Order" : "Supplier Orders · read only"}
+          </h2>
+          <p className="mt-2 text-xs text-slate-400">
+            {canCreateSupplierOrder
+              ? "Create a new batch order for a factory, ready for controlled export."
+              : "Este perfil puede revisar órdenes, manifiestos y QA, pero no crear Supplier Orders."}
+          </p>
         </div>
-        <Link href="/supplier-orders/create" className="rounded-lg border border-emerald-300/35 bg-emerald-500/10 px-4 py-2 font-bold text-emerald-100">
-          Create Order
-        </Link>
+        {canCreateSupplierOrder ? (
+          <Link href="/supplier-orders/create" className="rounded-lg border border-emerald-300/35 bg-emerald-500/10 px-4 py-2 font-bold text-emerald-100">
+            Create Order
+          </Link>
+        ) : null}
       </Card>
 
       <DataTable
@@ -64,6 +84,7 @@ export default async function SupplierOrdersPage() {
           { key: "profile", label: "Carrier Profile" },
           { key: "status", label: "Status" },
           { key: "quantity", label: "Quantity" },
+          { key: "vault", label: "Evidence" },
         ]}
         rows={rows}
         filterKey="status"

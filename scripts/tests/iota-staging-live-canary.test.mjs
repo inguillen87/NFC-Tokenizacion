@@ -8,6 +8,7 @@ import {
   assertSingleDurablePublication,
   buildPublicCanaryResult,
   buildSyntheticEvidence,
+  createPublicProofResourceCommitment,
   runIotaStagingCanary,
   validateCanaryEnvironment,
 } from "../iota-staging-live-canary.mjs";
@@ -47,7 +48,14 @@ test("synthetic evidence is deterministic, canonical, and explicitly non-custome
   const evidence = buildSyntheticEvidence("11111111-2222-4333-8444-555555555555");
   assert.equal(evidence.requestId, "iota-canary:11111111-2222-4333-8444-555555555555");
   assert.equal(evidence.resourceType, "system_canary");
-  assert.match(evidence.publicResourceId, /^nexid-canary-/);
+  assert.equal(evidence.resourceId, "nexid-canary-11111111-2222-4333-8444-555555555555");
+  assert.match(evidence.publicResourceId, /^sha256:[0-9a-f]{64}$/);
+  assert.notEqual(evidence.publicResourceId, evidence.resourceId);
+  assert.equal(evidence.publicResourceId, createPublicProofResourceCommitment({
+    tenantScope: "nexid.staging.synthetic-canary-tenant",
+    resourceType: evidence.resourceType,
+    resourceId: evidence.resourceId,
+  }));
   assert.match(evidence.merkleRoot, /^0x[0-9a-f]{64}$/);
   assert.match(evidence.tenantIdHash, /^0x[0-9a-f]{64}$/);
   assert.match(evidence.memoHash, /^0x[0-9a-f]{64}$/);
@@ -265,6 +273,10 @@ test("orchestration submits and replays identical bytes, then proves receipt, st
 
   assert.equal(postBodies.length, 2);
   assert.equal(postBodies[0], postBodies[1]);
+  const publishedEnvelope = JSON.parse(postBodies[0]);
+  assert.equal(publishedEnvelope.public_resource_id, evidence.publicResourceId);
+  assert.match(publishedEnvelope.public_resource_id, /^sha256:[0-9a-f]{64}$/);
+  assert.doesNotMatch(postBodies[0], new RegExp(evidence.resourceId));
   assert.equal(result.ok, true);
   assert.equal(result.tx_hash, txHash);
   assert.equal(result.nonce, 5);

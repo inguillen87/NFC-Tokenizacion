@@ -11,6 +11,47 @@ export type CarrierProfileCode =
   | "hotel_keycard"
   | "iot_tracker_placeholder";
 
+export type CarrierTechnology = "QR" | "NFC" | "UHF" | "IOT";
+
+/**
+ * Stable enterprise capability contract projected from the canonical carrier
+ * catalog.  Packaging, QA and UI code consume this contract instead of
+ * inferring security behavior from a BID, SKU or marketing label.
+ *
+ * `gs1_qr` remains an accepted external alias for the existing canonical
+ * `gs1_digital_link` profile; keeping one canonical row avoids two policies
+ * drifting for the same physical carrier.
+ */
+export type EnterpriseCarrierContract = {
+  canonicalCode: CarrierProfileCode;
+  aliases: string[];
+  displayName: string;
+  technology: CarrierTechnology;
+  chipModel: string | null;
+  cryptographicAuthentication: boolean;
+  supportsDynamicUid: boolean;
+  supportsReadCounter: boolean;
+  supportsCmac: boolean;
+  supportsReplayDetection: boolean;
+  supportsTamper: boolean;
+  supportsBulkRead: boolean;
+  requiresReader: boolean;
+  requiresBatchKeys: boolean;
+  trustLevel: string;
+  assuranceModel:
+    | "declared_identity"
+    | "server_uid"
+    | "sun_sdm"
+    | "sun_sdm_tamper"
+    | "declared_logistics"
+    | "sensor_evidence";
+  tamperEvidenceMode: "none" | "ttstatus_2byte_or_explicit_manual_evidence";
+  allowedProductStates: string[];
+  descriptionConsumer: string;
+  descriptionOperator: string;
+  active: boolean;
+};
+
 export type CarrierProfile = {
   code: CarrierProfileCode;
   label: string;
@@ -426,6 +467,74 @@ const profileByCode = new Map(CARRIER_PROFILES.map((profile) => [profile.code, p
 
 export function listCarrierProfiles() {
   return CARRIER_PROFILES;
+}
+
+export function enterpriseCarrierContract(input: CarrierProfile | CarrierProfileCode | unknown): EnterpriseCarrierContract | null {
+  const profile = typeof input === "object" && input && "code" in input
+    ? input as CarrierProfile
+    : getCarrierProfile(input);
+  if (!profile) return null;
+
+  const code = profile.code;
+  const secureSun = code === "ntag424_dna" || code === "ntag424_dna_tt";
+  const tagTamper = code === "ntag424_dna_tt";
+  const declaredIdentity = code === "qr_basic" || code === "gs1_digital_link";
+  const declaredLogistics = code === "uhf_rfid";
+  const sensorEvidence = code === "iot_tracker_placeholder";
+  const technology: CarrierTechnology = profile.family === "rfid"
+    ? "UHF"
+    : profile.family === "iot"
+      ? "IOT"
+      : profile.family === "nfc"
+        ? "NFC"
+        : "QR";
+  const assuranceModel: EnterpriseCarrierContract["assuranceModel"] = tagTamper
+    ? "sun_sdm_tamper"
+    : secureSun
+      ? "sun_sdm"
+      : declaredLogistics
+        ? "declared_logistics"
+        : sensorEvidence
+          ? "sensor_evidence"
+          : declaredIdentity
+            ? "declared_identity"
+            : "server_uid";
+
+  const allowedProductStates = tagTamper
+    ? ["VALID_CLOSED", "VALID_OPENED", "VALID_OPENED_PREVIOUSLY", "VALID_MANUAL_OPENED", "REPLAY_SUSPECT", "INVALID"]
+    : secureSun
+      ? ["VALID_AUTHENTIC", "REPLAY_SUSPECT", "INVALID"]
+      : declaredIdentity
+        ? ["DECLARED_IDENTITY", "INVALID"]
+        : declaredLogistics
+          ? ["DECLARED_LOGISTICS_EVENT", "INVALID"]
+          : sensorEvidence
+            ? ["DECLARED_SENSOR_EVIDENCE", "INVALID"]
+            : ["SERVER_UID_MATCH", "INVALID"];
+
+  return {
+    canonicalCode: code,
+    aliases: code === "gs1_digital_link" ? ["gs1_qr"] : [],
+    displayName: profile.label,
+    technology,
+    chipModel: code.startsWith("ntag") ? code.replace(/^ntag/, "NTAG ").replace(/_/g, " ").toUpperCase() : null,
+    cryptographicAuthentication: secureSun,
+    supportsDynamicUid: secureSun,
+    supportsReadCounter: secureSun,
+    supportsCmac: secureSun,
+    supportsReplayDetection: profile.capabilities.supportsReplayDetection,
+    supportsTamper: tagTamper,
+    supportsBulkRead: declaredLogistics,
+    requiresReader: declaredLogistics || sensorEvidence,
+    requiresBatchKeys: secureSun,
+    trustLevel: profile.defaultPolicy.riskPolicy,
+    assuranceModel,
+    tamperEvidenceMode: tagTamper ? "ttstatus_2byte_or_explicit_manual_evidence" : "none",
+    allowedProductStates,
+    descriptionConsumer: profile.consumerCopy.body,
+    descriptionOperator: `${profile.adminCopy.positioning} ${profile.adminCopy.avoid}`.trim(),
+    active: true,
+  };
 }
 
 export function getCarrierProfile(input: unknown) {

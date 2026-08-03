@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { checkAdmin, getAdminActor, getAdminPermissions, getAdminTenantScope, type AdminScope } from "../../../../../../../../lib/auth";
+import { checkAdmin, checkAdminPermission, getAdminActor, getAdminTenantScope } from "../../../../../../../../lib/auth";
 import { assertBatchKeyEnvelopeContext, buildBatchKeyLifecycleRecords } from "../../../../../../../../lib/batch-keys";
 import { sql } from "../../../../../../../../lib/db";
 import { json } from "../../../../../../../../lib/http";
@@ -17,32 +17,13 @@ function safeString(value: unknown) {
   return String(value || "").trim();
 }
 
-function hasScopedPermission(grants: string[], permission: string) {
-  const current = permission.trim();
-  for (const rawGrant of grants) {
-    const grant = String(rawGrant || "").trim();
-    if (!grant || grant === "*") continue;
-    if (grant === current) return true;
-    if (grant.endsWith(":*")) {
-      const prefix = grant.slice(0, -2);
-      if (current === prefix || current.startsWith(`${prefix}:`)) return true;
-    }
-  }
-  return false;
-}
-
-function canRotateSupplierKeys(scope: AdminScope | null, permissions: string[]) {
-  return scope === "super_admin"
-    || hasScopedPermission(permissions, "supplier:key_rotate");
-}
-
 export async function POST(req: Request, { params }: { params: Promise<{ orderId: string; bid: string }> }) {
   const auth = await checkAdmin(req, ["super_admin", "tenant_admin"]);
   if (auth) return auth;
 
   const adminTenantScope = getAdminTenantScope(req);
-  const permissionGrants = getAdminPermissions(req);
-  if (!canRotateSupplierKeys(adminTenantScope.scope, permissionGrants)) {
+  const rotationPermission = checkAdminPermission(req, "supplier:key_rotate");
+  if (rotationPermission) {
     return json({
       ok: false,
       reason: "supplier_key_rotation_forbidden",

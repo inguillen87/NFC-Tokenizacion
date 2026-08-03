@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, useRef, type CSSProperties } from "react";
 import { DEMO_TENANT_SLUG } from "@product/config";
 import type { AppLocale } from "@product/config";
-import { ArrowLeft, BadgeCheck, CalendarDays, CheckCircle2, ChevronRight, Fingerprint, LockKeyhole, MapPin, PackageCheck, ShieldCheck, Smartphone, UserRound, AlertTriangle, ShoppingCart, RefreshCw, Check, Cpu, Network, QrCode, RadioTower } from "lucide-react";
+import { ArrowLeft, BadgeCheck, CalendarDays, CheckCircle2, ChevronRight, Factory, Fingerprint, LockKeyhole, MapPin, PackageCheck, ShieldCheck, Smartphone, UserRound, AlertTriangle, ShoppingCart, RefreshCw, Check, Cpu, Network, QrCode, RadioTower } from "lucide-react";
 import { HeroTrustAtlasSvg } from "../../../components/hero-scene";
 import { platformVerticals } from "../../../lib/platform-verticals";
 import { ThreeDProduct } from "../../investor-snapshot/investor-snapshot-client";
@@ -18,6 +18,11 @@ import {
   type DemoExecutionTruthState,
   type DemoFeedTruthState,
 } from "./demo-lab-truth-state";
+import {
+  DEMO_LAB_SCENARIO_CATALOG,
+  getDemoLabScenarioStatus,
+  type DemoLabScenarioId,
+} from "./demo-lab-scenario-catalog";
 
 type Role = "ceo" | "operator" | "buyer";
 type Beat = 0 | 1 | 2 | 3;
@@ -55,7 +60,7 @@ type DemoSimulationReceipt = {
 type DemoAction = "origin" | "tap" | "join" | "warranty" | "tokenize" | "report";
 type DemoModalView = "product" | "mobile" | "nft" | "claim" | null;
 type DemoScenarioTone = "origin" | "ok" | "risk" | "open";
-type DemoTrustScenarioKey = "qr-gs1" | "nfc-424" | "offline-verifier" | "polygon-ownership" | "iota-proof" | "dual-proof" | "sensor-evidence" | "authorized-network";
+type DemoTrustScenarioKey = DemoLabScenarioId;
 type DemoScenario = {
   tone: DemoScenarioTone;
   headline: string;
@@ -161,6 +166,11 @@ function normalizeDemoTrustScenario(value?: string | null): DemoTrustScenarioKey
     "authorized": "authorized-network",
     "authorized-network": "authorized-network",
     "network": "authorized-network",
+    "supplier": "supplier-batch-factory",
+    "supplier-batch": "supplier-batch-factory",
+    "batch-factory": "supplier-batch-factory",
+    "supplier-factory": "supplier-batch-factory",
+    "supplier-batch-factory": "supplier-batch-factory",
   };
   return aliases[normalized] || null;
 }
@@ -170,6 +180,7 @@ function getScenarioStart(value?: string | null): { key: DemoTrustScenarioKey | 
   if (key === "iota-proof" || key === "sensor-evidence" || key === "dual-proof") return { key, beat: 1, vertical: key === "sensor-evidence" ? "logistics" : "textile" };
   if (key === "offline-verifier") return { key, beat: 1, vertical: "seeds" };
   if (key === "authorized-network") return { key, beat: 0, vertical: "electronics" };
+  if (key === "supplier-batch-factory") return { key, beat: 0, vertical: "seeds" };
   if (key === "polygon-ownership") return { key, beat: 0, vertical: "luxury" };
   if (key === "nfc-424") return { key, beat: 1, vertical: "wine" };
   if (key === "qr-gs1") return { key, beat: 0, vertical: "pharma" };
@@ -196,6 +207,7 @@ type DemoTrustScenarioContext = {
   primaryLabel: string;
   secondaryHref: string;
   secondaryLabel: string;
+  mode: ReturnType<typeof getDemoLabScenarioStatus>;
 };
 
 type DemoTrustScenarioStep = {
@@ -239,7 +251,7 @@ function getTrustScenarioContext(
       businessOutcome: "Decision habilitada",
     };
 
-  const copyByKey: Record<DemoTrustScenarioKey, Omit<DemoTrustScenarioContext, "labels">> = {
+  const copyByKey: Record<DemoTrustScenarioKey, Omit<DemoTrustScenarioContext, "labels" | "mode">> = {
     "qr-gs1": {
       tone: key,
       eyebrow: isEn ? "Identity layer" : isBr ? "Camada de identidade" : "Capa de identidad",
@@ -444,9 +456,59 @@ function getTrustScenarioContext(
       secondaryHref: "/?contact=demo#contact-modal",
       secondaryLabel: isEn ? "Plan partner pilot" : "Planear piloto partner",
     },
+    "supplier-batch-factory": {
+      tone: key,
+      eyebrow: isEn ? "Supplier operations" : isBr ? "Operacao de fornecedores" : "Operacion de proveedores",
+      title: isEn
+        ? "Supplier Batch Factory plans the order before any secure pack is released."
+        : isBr
+          ? "Supplier Batch Factory planeja o pedido antes de liberar qualquer pack seguro."
+          : "Supplier Batch Factory planifica el pedido antes de liberar cualquier pack seguro.",
+      body: isEn
+        ? "This is a simulated planning walkthrough for tenant, order, batches, sub-batches, NFC profile, key version, QA and activation. It creates no order, programs no tag and exports no custody material."
+        : isBr
+          ? "Esta e uma jornada simulada de planejamento de tenant, pedido, batches, sub-batches, perfil NFC, versao de chave, QA e ativacao. Nao cria pedido, nao programa tags e nao exporta material de custodia."
+          : "Este es un recorrido simulado de tenant, pedido, batches, sub-batches, perfil NFC, version de clave, QA y activacion. No crea pedidos, no programa tags y no exporta material de custodia.",
+      publicProof: isEn
+        ? "Demo-visible: synthetic order ID, quantity plan, sub-batches and QA gates."
+        : isBr
+          ? "Visivel na demo: ID sintetico, plano de quantidades, sub-batches e gates de QA."
+          : "Visible en demo: ID sintetico, plan de cantidades, sub-batches y gates de QA.",
+      privateData: isEn
+        ? "Private in production: supplier contract, operator identity, custody envelopes and secure packs."
+        : isBr
+          ? "Privado em producao: contrato do fornecedor, identidade do operador, envelopes de custodia e packs seguros."
+          : "Privado en produccion: contrato del proveedor, identidad del operador, envelopes de custodia y packs seguros.",
+      decisionPath: isEn
+        ? [
+          { label: "Scope", body: "Bind tenant, order, quantity and NFC profile." },
+          { label: "Split", body: "Plan batches and sub-batches against one controlled key version." },
+          { label: "Gate", body: "Require manifest, QA evidence and approval before activation." },
+        ]
+        : isBr
+          ? [
+            { label: "Escopo", body: "Vincula tenant, pedido, quantidade e perfil NFC." },
+            { label: "Dividir", body: "Planeja batches e sub-batches sob uma versao controlada de chave." },
+            { label: "Gate", body: "Exige manifesto, evidencia de QA e aprovacao antes da ativacao." },
+          ]
+          : [
+            { label: "Alcance", body: "Vincula tenant, pedido, cantidad y perfil NFC." },
+            { label: "Dividir", body: "Planifica batches y sub-batches bajo una version controlada de clave." },
+            { label: "Gate", body: "Exige manifiesto, evidencia de QA y aprobacion antes de activar." },
+          ],
+      businessOutcome: isEn
+        ? "Supplier-ready planning with traceable QA gates and no raw-key exposure."
+        : isBr
+          ? "Planejamento pronto para fornecedor, com gates de QA rastreaveis e sem expor chaves brutas."
+          : "Plan listo para proveedor, con gates de QA trazables y sin exponer claves crudas.",
+      primaryHref: "/demo-lab?scenario=supplier-batch-factory",
+      primaryLabel: isEn ? "Replay batch plan" : isBr ? "Repetir plano de batch" : "Reproducir plan de batches",
+      secondaryHref: "/docs",
+      secondaryLabel: isEn ? "Read integration docs" : isBr ? "Ler docs de integracao" : "Leer docs de integracion",
+    },
   };
 
-  return { ...copyByKey[key], labels };
+  return { ...copyByKey[key], labels, mode: getDemoLabScenarioStatus(key, locale) };
 }
 
 function verticalTo3DIndustry(vertical: Vertical): string {
@@ -1911,6 +1973,10 @@ function DemoLabStudioHero({
         />
       </details>
 
+      {activeTrustScenario === "supplier-batch-factory" ? (
+        <SupplierBatchFactoryPreview locale={locale} />
+      ) : null}
+
       {simulationReceipt ? (
         <DemoSimulationReceiptCard receipt={simulationReceipt} locale={locale} />
       ) : null}
@@ -2230,6 +2296,91 @@ function DemoLabStudioHero({
   );
 }
 
+function SupplierBatchFactoryPreview({ locale }: { locale: AppLocale }) {
+  const copy = locale === "en"
+    ? {
+      eyebrow: "SIMULATED FACTORY PLAN",
+      title: "A reviewable batch plan with zero secret exposure.",
+      disclaimer: "Illustrative only: no order, database row, encoding pack or tag was created.",
+      fields: [
+        ["Tenant", "tenant-demo-agro"],
+        ["Order", "SO-DEMO-2026-001"],
+        ["Quantity", "10,000 tags"],
+        ["NFC profile", "NTAG 424 DNA TT"],
+        ["Sub-batches", "2 x 5,000"],
+        ["Key reference", "tenant-demo / version 1"],
+      ],
+      gates: ["Plan reviewed", "Manifest pending", "QA pending", "Activation blocked"],
+      boundary: "The key reference is metadata only. Raw NFC keys and custody envelopes never reach DemoLab or the supplier-facing view.",
+    }
+    : locale === "pt-BR"
+      ? {
+        eyebrow: "PLANO DE FABRICA SIMULADO",
+        title: "Um plano de batch revisavel sem expor segredos.",
+        disclaimer: "Somente ilustrativo: nenhum pedido, registro, pack de encoding ou tag foi criado.",
+        fields: [
+          ["Tenant", "tenant-demo-agro"],
+          ["Pedido", "SO-DEMO-2026-001"],
+          ["Quantidade", "10.000 tags"],
+          ["Perfil NFC", "NTAG 424 DNA TT"],
+          ["Sub-batches", "2 x 5.000"],
+          ["Referencia de chave", "tenant-demo / versao 1"],
+        ],
+        gates: ["Plano revisado", "Manifesto pendente", "QA pendente", "Ativacao bloqueada"],
+        boundary: "A referencia da chave e somente metadata. Chaves NFC brutas e envelopes de custodia nunca chegam ao DemoLab nem a vista do fornecedor.",
+      }
+      : {
+        eyebrow: "PLAN DE FABRICA SIMULADO",
+        title: "Un plan de batches revisable sin exponer secretos.",
+        disclaimer: "Solo ilustrativo: no se creo ningun pedido, fila, pack de encoding ni tag.",
+        fields: [
+          ["Tenant", "tenant-demo-agro"],
+          ["Pedido", "SO-DEMO-2026-001"],
+          ["Cantidad", "10.000 tags"],
+          ["Perfil NFC", "NTAG 424 DNA TT"],
+          ["Sub-batches", "2 x 5.000"],
+          ["Referencia de clave", "tenant-demo / version 1"],
+        ],
+        gates: ["Plan revisado", "Manifiesto pendiente", "QA pendiente", "Activacion bloqueada"],
+        boundary: "La referencia de clave es solo metadata. Las claves NFC crudas y los envelopes de custodia nunca llegan a DemoLab ni a la vista del proveedor.",
+      };
+
+  return (
+    <section className="demo-lab-supplier-factory" aria-labelledby="demo-lab-supplier-factory-title" data-demo-mode="simulated">
+      <div className="demo-lab-supplier-factory__head">
+        <div>
+          <span>{copy.eyebrow}</span>
+          <h3 id="demo-lab-supplier-factory-title">{copy.title}</h3>
+          <p>{copy.disclaimer}</p>
+        </div>
+        <em className="demo-lab-scenario-mode" data-demo-mode="simulated">
+          {locale === "en" ? "Simulated" : "Simulado"}
+        </em>
+      </div>
+      <dl className="demo-lab-supplier-factory__fields">
+        {copy.fields.map(([label, value]) => (
+          <div key={label}>
+            <dt>{label}</dt>
+            <dd>{value}</dd>
+          </div>
+        ))}
+      </dl>
+      <ol className="demo-lab-supplier-factory__gates">
+        {copy.gates.map((gate, index) => (
+          <li key={gate} data-gate-state={index === 0 ? "reviewed" : "blocked"}>
+            <b>{index + 1}</b>
+            <span>{gate}</span>
+          </li>
+        ))}
+      </ol>
+      <p className="demo-lab-supplier-factory__boundary">
+        <LockKeyhole className="h-4 w-4" aria-hidden="true" />
+        {copy.boundary}
+      </p>
+    </section>
+  );
+}
+
 function DemoSimulationReceiptCard({
   receipt,
   locale,
@@ -2306,9 +2457,13 @@ function DemoTrustScenarioContextCard({ context }: { context: DemoTrustScenarioC
   return (
     <article className={`demo-lab-trust-context demo-lab-trust-context--${context.tone}`}>
       <div className="demo-lab-trust-context__copy">
-        <span>{context.eyebrow}</span>
+        <div className="demo-lab-trust-context__eyebrow-row">
+          <span>{context.eyebrow}</span>
+          <em className="demo-lab-scenario-mode" data-demo-mode={context.mode.mode}>{context.mode.label}</em>
+        </div>
         <h3>{context.title}</h3>
         <p>{context.body}</p>
+        <small className="demo-lab-trust-context__mode-detail">{context.mode.detail}</small>
       </div>
       <div className="demo-lab-trust-context__proofs">
         <div>
@@ -2396,12 +2551,13 @@ function DemoTrustScenarioRail({
   const items: Array<{ key: DemoTrustScenarioKey; title: string; body: string; icon: typeof ShieldCheck; tone: string }> = [
     { key: "qr-gs1", title: configByTitle.get("QR / GS1 Digital Link")?.title || "QR / GS1 Digital Link", body: configByTitle.get("QR / GS1 Digital Link")?.body || "", icon: QrCode, tone: "identity" },
     { key: "nfc-424", title: configByTitle.get("NTAG 424 DNA")?.title || "NTAG 424 DNA", body: configByTitle.get("NTAG 424 DNA")?.body || "", icon: Fingerprint, tone: "secure" },
-    { key: "offline-verifier", title: configByTitle.get("Offline Verifier")?.title || "Offline Verifier", body: configByTitle.get("Offline Verifier")?.body || "", icon: Cpu, tone: "industrial" },
-    { key: "polygon-ownership", title: configByTitle.get("Polygon Ownership Demo")?.title || "Polygon Ownership Demo", body: configByTitle.get("Polygon Ownership Demo")?.body || "", icon: BadgeCheck, tone: "ownership" },
-    { key: "iota-proof", title: configByTitle.get("IOTA Proof Layer Demo")?.title || "IOTA Proof Layer Demo", body: configByTitle.get("IOTA Proof Layer Demo")?.body || "", icon: Network, tone: "proof" },
-    { key: "dual-proof", title: configByTitle.get("Dual Proof DPP")?.title || "Dual Proof DPP", body: configByTitle.get("Dual Proof DPP")?.body || "", icon: PackageCheck, tone: "dpp" },
-    { key: "sensor-evidence", title: labels.sensorTitle, body: labels.sensorBody, icon: RadioTower, tone: "industrial" },
-    { key: "authorized-network", title: labels.networkTitle, body: labels.networkBody, icon: ShieldCheck, tone: "network" },
+    { key: "offline-verifier", title: DEMO_LAB_SCENARIO_CATALOG["offline-verifier"].title, body: configByTitle.get("Offline Verifier")?.body || "", icon: Cpu, tone: "industrial" },
+    { key: "polygon-ownership", title: DEMO_LAB_SCENARIO_CATALOG["polygon-ownership"].title, body: configByTitle.get("Polygon Ownership Demo")?.body || "", icon: BadgeCheck, tone: "ownership" },
+    { key: "iota-proof", title: DEMO_LAB_SCENARIO_CATALOG["iota-proof"].title, body: configByTitle.get("IOTA Proof Layer Demo")?.body || "", icon: Network, tone: "proof" },
+    { key: "dual-proof", title: DEMO_LAB_SCENARIO_CATALOG["dual-proof"].title, body: configByTitle.get("Dual Proof DPP")?.body || "", icon: PackageCheck, tone: "dpp" },
+    { key: "sensor-evidence", title: DEMO_LAB_SCENARIO_CATALOG["sensor-evidence"].title, body: labels.sensorBody, icon: RadioTower, tone: "industrial" },
+    { key: "authorized-network", title: DEMO_LAB_SCENARIO_CATALOG["authorized-network"].title, body: labels.networkBody, icon: ShieldCheck, tone: "network" },
+    { key: "supplier-batch-factory", title: DEMO_LAB_SCENARIO_CATALOG["supplier-batch-factory"].title, body: locale === "en" ? "Plan orders, sub-batches, NFC profiles and QA gates without creating a real order or exposing custody material." : locale === "pt-BR" ? "Planeje pedidos, sub-batches, perfis NFC e gates de QA sem criar um pedido real nem expor material de custodia." : "Planifica pedidos, sub-batches, perfiles NFC y gates de QA sin crear una orden real ni exponer material de custodia.", icon: Factory, tone: "supplier" },
   ];
 
   return (
@@ -2414,6 +2570,7 @@ function DemoTrustScenarioRail({
         {items.map((item) => {
           const Icon = item.icon;
           const href = `/demo-lab?scenario=${item.key}`;
+          const scenarioStatus = getDemoLabScenarioStatus(item.key, locale);
           return (
             <Link
               key={item.key}
@@ -2421,6 +2578,7 @@ function DemoTrustScenarioRail({
               className={`demo-lab-trust-scenario demo-lab-trust-scenario--${item.tone} ${active === item.key ? "is-active" : ""}`}
             >
               <Icon size={18} />
+              <em className="demo-lab-scenario-mode" data-demo-mode={scenarioStatus.mode}>{scenarioStatus.label}</em>
               <span>{item.title}</span>
               <p>{item.body}</p>
               <small>{labels.route}</small>

@@ -279,6 +279,61 @@ export interface VerifyTapResponse {
     traceId?: string;
     webhookOutbox?: WebhookOutboxReceipt;
 }
+export interface OfflineSyncApproximateLocation {
+    /** Explicit consent is required; exact coordinates are never accepted silently. */
+    consent: true;
+    precision: "approximate";
+    lat: number;
+    lng: number;
+    accuracy?: number;
+}
+export interface OfflineScanEvent {
+    /** Stable device-local idempotency identity. Reuse it when retrying the same capture. */
+    localId: string;
+    /** Raw SUN URL is sent only to nexID during sync and is not returned or stored in plaintext. */
+    capturedUrl: string;
+    capturedAt: string | Date;
+    status?: "PENDING_BACKEND_VERIFICATION" | "SYNC_FAILED";
+    approximateLocation?: OfflineSyncApproximateLocation;
+    appVersion?: string;
+}
+export interface OfflineScanSyncRequest {
+    schemaVersion?: 1;
+    bundleId: string;
+    deviceId: string;
+    events: OfflineScanEvent[];
+}
+export type OfflineScanSyncStatus = "SYNCED_VALID" | "SYNCED_INVALID" | "REPLAY_SUSPECT" | "SYNC_PROCESSING" | "SYNC_FAILED" | "SYNC_CONFLICT";
+export interface OfflineScanSyncResult {
+    ok: boolean;
+    clientEventId: string | null;
+    bid: string | null;
+    status: OfflineScanSyncStatus;
+    finalVerdict: boolean;
+    verdict: "MESSAGE_VALID" | "MESSAGE_NOT_VALID" | "REPLAY_SUSPECT" | "PENDING_BACKEND_VERIFICATION";
+    cryptographicVerification: boolean;
+    uidMasked: string | null;
+    readCounter: number | null;
+    sealStatus: "CLOSED" | "OPENED" | "UNKNOWN";
+    sunEventId: string | null;
+    verifiedAt: string | null;
+    reason: string;
+    replayed: boolean;
+}
+export interface OfflineScanSyncResponse {
+    ok: true;
+    schemaVersion: 1;
+    finalVerdictSource: "backend_sun_sdm";
+    received: number;
+    duplicates: number;
+    verified: number;
+    valid: number;
+    invalid: number;
+    pending: number;
+    rejected: number;
+    results: OfflineScanSyncResult[];
+    traceId: string;
+}
 export interface ClaimOwnershipRequest {
     contact: string;
     name?: string;
@@ -340,7 +395,8 @@ export interface ExternalEventResponse {
 }
 export interface PosActivationRequest {
     bid: string;
-    uidHex?: string;
+    /** Required unit identity. POS activation never mutates batch-wide policy. */
+    uidHex: string;
     externalOrderId?: string;
     retailerId?: string;
     contact?: string;
@@ -434,6 +490,16 @@ export declare class NexIdClient {
     private request;
     verifyTap(params: VerifyTapRequest): Promise<VerifyTapResponse>;
     verifyTap(params: VerifyTapRequest, options: NexIdMutationRequestOptions): Promise<VerifyTapResponse>;
+    /**
+     * Synchronizes captures made by an authorized operator while offline.
+     *
+     * The device must keep every `localId` stable across retries. A successful
+     * response is a final authenticity result only when `finalVerdict` is true;
+     * only `SYNCED_VALID` means SUN/SDM was cryptographically accepted by the
+     * backend. Hashing, local deduplication and offline metadata are never
+     * treated as authenticity verification.
+     */
+    syncOfflineScans(params: OfflineScanSyncRequest, options: NexIdRequiredIdempotencyOptions): Promise<OfflineScanSyncResponse>;
     claimOwnership(params: ClaimOwnershipRequest): Promise<ClaimOwnershipResponse>;
     claimOwnership(params: ClaimOwnershipRequest, options: NexIdMutationRequestOptions): Promise<ClaimOwnershipResponse>;
     getProduct(bid: string): Promise<SdkProductResponse>;
