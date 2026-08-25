@@ -94,3 +94,29 @@ test("legacy custody output paths are explicitly ignored", () => {
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
   for (const sample of samples) assert.ok(result.stdout.includes(sample), `${sample} must be ignored`);
 });
+
+test("Vercel packaging keeps tracked routes whose URL contains an artifacts segment", async () => {
+  const vaultDownloadRoute = "apps/api/src/app/admin/tenant-vault/[tenantId]/artifacts/[artifactId]/download/route.ts";
+  const tracked = spawnSync("git", ["ls-files", "--error-unmatch", "--", vaultDownloadRoute], {
+    cwd: root,
+    encoding: "utf8",
+    windowsHide: true,
+  });
+  assert.equal(tracked.status, 0, `${tracked.stdout}\n${tracked.stderr}`);
+
+  const excluded = spawnSync(
+    "git",
+    ["ls-files", "-ci", "--exclude-from=.vercelignore", "--", vaultDownloadRoute],
+    { cwd: root, encoding: "utf8", windowsHide: true },
+  );
+  assert.equal(excluded.status, 0, `${excluded.stdout}\n${excluded.stderr}`);
+  assert.equal(
+    excluded.stdout.trim(),
+    "",
+    `.vercelignore must not exclude the Vault download route:\n${excluded.stdout}`,
+  );
+
+  const vercelIgnore = await readFile(path.join(root, ".vercelignore"), "utf8");
+  assert.match(vercelIgnore, /^\/artifacts\/$/m);
+  assert.doesNotMatch(vercelIgnore, /^artifacts\/?$/m);
+});
