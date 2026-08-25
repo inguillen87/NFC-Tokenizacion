@@ -48,28 +48,24 @@ test("landing claims qualify technical security and commercial outcomes", async 
   assert.match(sections, /designed to resist message copying and replay when keys, counters and server validation are correctly configured/);
 });
 
-test("brand synergy light mode and mobile controls keep enterprise contrast", async () => {
-  const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
+test("home v4 light mode and navigation controls keep enterprise contrast", async () => {
+  const css = await readFile(new URL("../src/components/marketing-v4/nexid-home-v4.module.css", import.meta.url), "utf8");
+  const navCss = await readFile(new URL("../src/components/marketing-v4/nexid-navigation-v4.module.css", import.meta.url), "utf8");
+  const navigation = await readFile(new URL("../src/components/marketing-v4/nexid-navigation-v4.tsx", import.meta.url), "utf8");
   const page = await readFile(new URL("../src/app/page.tsx", import.meta.url), "utf8");
-  const mobileNav = await readFile(new URL("../src/components/mobile-nav-sheet.tsx", import.meta.url), "utf8");
   const themeToggle = await readFile(new URL("../../../packages/ui/src/theme-toggle.tsx", import.meta.url), "utf8");
   const localeSwitcher = await readFile(new URL("../../../packages/ui/src/locale-switcher.tsx", import.meta.url), "utf8");
 
-  assert.ok(contrastRatio("#ffffff", "#155e75") >= 4.5);
-  assert.ok(contrastRatio("#ffffff", "#0f766e") >= 4.5);
-  assert.match(css, /\.landing-brand-synergy-band\s*\{[\s\S]*background:\s*#07111f/);
-  assert.match(css, /html\.theme-light \.landing-brand-synergy-band,[\s\S]*background:\s*#eef5f8/);
-  assert.match(css, /\.brand-synergy-scenario-pill\.is-active\s*\{[\s\S]*#155e75[\s\S]*#0f766e/);
-  assert.match(css, /\.brand-synergy-mobile-view-switch button\s*\{[\s\S]*min-height:\s*2\.75rem/);
-  assert.match(css, /\.brand-synergy-business-pane\[data-mobile-active="false"\],[\s\S]*display:\s*none !important/);
-  assert.match(css, /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*\.brand-synergy-terminal-row[\s\S]*transition-duration:\s*0\.01ms/);
-  assert.match(css, /\.site-header\.mobile-optimized-header \.mobile-nav-toggle\s*\{[\s\S]*min-height:\s*2\.75rem/);
-  assert.match(page, /<section id="brand-synergy" className="landing-brand-synergy-band my-16 scroll-mt-24">/);
-  assert.match(page, /landing-brand-synergy-shell container-shell/);
-  assert.match(page, /<ThemeToggle initialTheme=\{initialTheme\}/);
+  assert.ok(contrastRatio("#ffffff", "#087f6f") >= 4.5);
+  assert.match(css, /:global\(html\[data-theme="light"\]\) \.root/);
+  assert.match(css, /--v4-ink:\s*#13211d/);
+  assert.match(navCss, /:global\(html\[data-theme="light"\]\) \.header/);
+  assert.match(navCss, /\.iconButton\s*\{[\s\S]*min-width:\s*2\.75rem/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.doesNotMatch(page, /BrandSynergySimulator|landing-brand-synergy-band/);
+  assert.match(navigation, /<ThemeToggle initialTheme=\{initialTheme\}/);
+  assert.match(navigation, /<LocaleSwitcher value=\{locale\}/);
   assert.match(page, /initialTheme=\{initialTheme\}/);
-  assert.match(mobileNav, /mobile-menu-close inline-flex min-h-11 min-w-11/);
-  assert.match(mobileNav, /mobile-nav-action-link flex min-h-11/);
   assert.match(themeToggle, /ThemeToggle\(\{ initialTheme = "dark" \}/);
   assert.match(themeToggle, /useState<Theme>\(initialTheme\)/);
   assert.match(localeSwitcher, /locale-switcher inline-flex min-h-11/);

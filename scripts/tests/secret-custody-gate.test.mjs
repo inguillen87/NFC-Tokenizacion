@@ -17,10 +17,19 @@ test("tracked-secret gate passes the current index", () => {
   assert.match(result.stdout, /Secret custody gate passed/);
 });
 
-test("secret gate includes untracked worktree files without printing the secret value", async () => {
+test("secret gate detects supported provider credentials without printing their values", async () => {
   const fixture = path.join(root, `secret-scan-fixture-${process.pid}.txt`);
-  const secret = ["cfk_", "A".repeat(28)].join("");
-  await writeFile(fixture, `TOKEN=${secret}\n`, "utf8");
+  const secrets = [
+    { label: "Cloudflare API token", value: ["cfk_", "G".repeat(28)].join("") },
+    { label: "Cloudflare user API token", value: ["cfut_", "U".repeat(44)].join("") },
+    { label: "Cloudflare account API token", value: ["cfat_", "A".repeat(44)].join("") },
+    { label: "Hugging Face access token", value: ["hf_", "H".repeat(34)].join("") },
+  ];
+  await writeFile(
+    fixture,
+    `${secrets.map(({ value }, index) => `TOKEN_${index}=${value}`).join("\n")}\n`,
+    "utf8",
+  );
   try {
     const result = spawnSync(process.execPath, ["scripts/check-no-tracked-secrets.mjs"], {
       cwd: root,
@@ -28,8 +37,32 @@ test("secret gate includes untracked worktree files without printing the secret 
       windowsHide: true,
     });
     assert.equal(result.status, 1, `${result.stdout}\n${result.stderr}`);
-    assert.match(result.stderr, /secret-scan-fixture-[0-9]+\.txt: Cloudflare API token/);
-    assert.doesNotMatch(result.stderr, new RegExp(secret));
+    for (const { label, value } of secrets) {
+      assert.ok(
+        result.stderr.includes(`secret-scan-fixture-${process.pid}.txt: ${label}`),
+        `${label} must be reported`,
+      );
+      assert.ok(!result.stderr.includes(value), `${label} value must be redacted`);
+    }
+  } finally {
+    await rm(fixture, { force: true });
+  }
+});
+
+test("secret gate does not treat documentation placeholders as live credentials", async () => {
+  const fixture = path.join(root, `secret-placeholder-fixture-${process.pid}.txt`);
+  await writeFile(
+    fixture,
+    ["HF_TOKEN=hf_...", "CF_USER_TOKEN=cfut_[40 characters][checksum]", "CF_ACCOUNT_TOKEN=cfat_example"].join("\n"),
+    "utf8",
+  );
+  try {
+    const result = spawnSync(process.execPath, ["scripts/check-no-tracked-secrets.mjs"], {
+      cwd: root,
+      encoding: "utf8",
+      windowsHide: true,
+    });
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
   } finally {
     await rm(fixture, { force: true });
   }

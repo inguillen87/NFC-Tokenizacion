@@ -2,23 +2,27 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const [landing, home, sdk, demoLab, css] = await Promise.all([
+const [landing, home, homeV4, homeV4Css, sdk, demoLab, css] = await Promise.all([
   readFile(new URL("../src/components/landing-sections.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/app/page.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../src/components/marketing-v4/nexid-home-v4.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../src/components/marketing-v4/nexid-home-v4.module.css", import.meta.url), "utf8"),
   readFile(new URL("../src/app/sdk/page.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/app/(public)/demo-lab/demo-lab-client.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/app/globals.css", import.meta.url), "utf8"),
 ]);
 
-test("landing light mode owns high-risk CTA and footer colors", () => {
+test("home v4 light mode owns CTA, evidence and footer colors", () => {
   assert.match(landing, /landing-consumer-portal-cta/);
   assert.match(landing, /landing-offline-demo-cta/);
-  assert.match(home, /site-footer-data-card/);
-  assert.match(home, /site-footer-whatsapp-link/);
+  assert.match(home, /NexidHomeV4/);
+  assert.match(homeV4, /AFIP_DATA_FISCAL_URL/);
+  assert.match(homeV4, /MIPYME_CERTIFICATE_URL/);
+  assert.match(homeV4Css, /:global\(html\[data-theme="light"\]\) \.root/);
+  assert.match(homeV4Css, /--v4-accent:\s*#087f6f/);
+  assert.match(homeV4Css, /\.footer\s*\{[\s\S]*color:\s*#f2f7f4/);
   assert.match(css, /\.landing-consumer-portal-cta[\s\S]*color: #6b21a8 !important/);
   assert.match(css, /\.landing-offline-demo-cta[\s\S]*color: #0f172a !important/);
-  assert.match(css, /\.site-footer-data-card[\s\S]*color: #0f172a !important/);
-  assert.match(css, /\.site-footer-whatsapp-link[\s\S]*color: #047857 !important/);
 });
 
 test("SDK light mode uses readable semantic tones", () => {

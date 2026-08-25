@@ -46,6 +46,9 @@ const forbiddenPaths = [
 ];
 const forbiddenContent = [
   { label: "Cloudflare API token", regex: /\bcfk_[A-Za-z0-9_-]{20,}\b/g },
+  { label: "Cloudflare user API token", regex: /\bcfut_[A-Za-z0-9_-]{40,}\b/g },
+  { label: "Cloudflare account API token", regex: /\bcfat_[A-Za-z0-9_-]{40,}\b/g },
+  { label: "Hugging Face access token", regex: /\bhf_[A-Za-z0-9]{34}\b/g },
   { label: "NFC master key", regex: /\bKMS_MASTER_KEY_HEX\s*=\s*[0-9A-Fa-f]{64}\b/g },
   { label: "NFC batch key", regex: /\bK_(?:META|FILE)_BATCH\s*=\s*[0-9A-Fa-f]{32,64}\b/g },
   { label: "Polygon or IOTA private key", regex: /\b(?:POLYGON|IOTA|EVM|DEPLOYER|WALLET)_PRIVATE_KEY\s*=\s*(?:0x)?[0-9A-Fa-f]{64}\b/g },

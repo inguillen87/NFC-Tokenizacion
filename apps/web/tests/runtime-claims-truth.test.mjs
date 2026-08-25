@@ -4,8 +4,10 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 
-const [home, demo, landing, interactive, ogImage, assistant, demoLab, demoLabPage, chainLab, ownership, investor] = await Promise.all([
+const [home, homeV4, homeCopy, demo, landing, interactive, ogImage, assistant, demoLab, demoLabPage, chainLab, ownership, investor] = await Promise.all([
   read("../src/app/page.tsx"),
+  read("../src/components/marketing-v4/nexid-home-v4.tsx"),
+  read("../src/components/marketing-v4/home-copy.ts"),
   read("../src/app/demo/page.tsx"),
   read("../src/components/landing-sections.tsx"),
   read("../src/components/interactive-demo-section.tsx"),
@@ -19,9 +21,10 @@ const [home, demo, landing, interactive, ogImage, assistant, demoLab, demoLabPag
 ]);
 
 test("guided public demos never masquerade simulation as production telemetry", () => {
-  const publicDemo = [home, demo, landing, interactive, ogImage, assistant].join("\n");
+  const publicDemo = [home, homeV4, homeCopy, demo, landing, interactive, ogImage, assistant].join("\n");
 
-  assert.match(home, /guided NFC scenarios with simulated read locations/);
+  assert.match(homeCopy, /Simulated scenario/);
+  assert.match(homeCopy, /Cryptographic and policy checks passed in this demo scenario/);
   assert.match(demo, /source-labelled demo surfaces/);
   assert.match(landing, /View guided demo/);
   assert.match(interactive, /reported openings, duplicates and regions from the selected data source/);

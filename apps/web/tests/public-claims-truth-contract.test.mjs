@@ -8,7 +8,7 @@ const [
   metadata, assets, verticals, landing, assistant, video, docs, glossary, wallet, walletCard, audiences, sdk, layout,
   home, demoPage, mobileDemo, demoLab, heroScene, landingSections, calculator, pricing, interactiveDemo, radar,
   ogImage, demoSummary, labelRoute, investorSnapshot, sunPage, ctaActions, manifest, videoEsVtt, videoEnVtt,
-  videoPtVtt, wineSeed, cosmeticsSeed, agroSeed, pharmaSeed, luxurySeed, eventsSeed,
+  videoPtVtt, wineSeed, cosmeticsSeed, agroSeed, pharmaSeed, luxurySeed, eventsSeed, homeV4, homeV4Copy,
 ] = await Promise.all([
   read("../src/lib/public-page-metadata.ts"),
   read("../src/lib/product-asset-bank.ts"),
@@ -49,6 +49,8 @@ const [
   read("../public/demo/pharma-secure/pharma-secure_seed.json"),
   read("../public/demo/luxury-basic/luxury-basic_seed.json"),
   read("../public/demo/events-basic/seed.json"),
+  read("../src/components/marketing-v4/nexid-home-v4.tsx"),
+  read("../src/components/marketing-v4/home-copy.ts"),
 ]);
 
 test("public metadata and global SEO describe digital evidence instead of physical authentication", () => {
@@ -125,8 +127,9 @@ test("audience, SDK and wallet surfaces name digital rights without authenticati
 });
 
 test("landing, pricing and demo surfaces label evidence and simulations precisely", () => {
-  const surfaces = [home, demoPage, demoLab, heroScene, landingSections, calculator, pricing, interactiveDemo, radar, ogImage, demoSummary].join("\n");
-  assert.match(home, /does not prove the physical product or its presence/);
+  const surfaces = [home, homeV4, homeV4Copy, demoPage, demoLab, heroScene, landingSections, calculator, pricing, interactiveDemo, radar, ogImage, demoSummary].join("\n");
+  assert.match(homeV4Copy, /A tap alone does not confirm contents, physical origin or custody/);
+  assert.match(homeV4Copy, /Simulated scenario/);
   assert.match(demoLab, /Product scene/);
   assert.match(demoLab, /Message NFC accepted|Mensaje NFC aceptado/);
   assert.match(radar, /Reported custody event \(demo\)/);

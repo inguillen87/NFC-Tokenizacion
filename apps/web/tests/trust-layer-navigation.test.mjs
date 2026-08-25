@@ -81,33 +81,18 @@ test("landing hero sends prospects to Demo Lab and labels its fixed route as a d
   assert.doesNotMatch(hero, /const routeLabel = isEnglish \? "Active route"/);
 });
 
-test("home quick navigation exposes Proof Verify on desktop, footer and mobile", async () => {
+test("home v4 exposes Proof Verify without restoring the overloaded quick hub", async () => {
   const page = await readFile(new URL("../src/app/page.tsx", import.meta.url), "utf8");
-  const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
-  const hubCtas = page.match(/nexid-quick-hub-card__cta/g) ?? [];
+  const home = await readFile(new URL("../src/components/marketing-v4/nexid-home-v4.tsx", import.meta.url), "utf8");
+  const navigation = await readFile(new URL("../src/components/marketing-v4/nexid-navigation-v4.content.ts", import.meta.url), "utf8");
+  const navigationTypes = await readFile(new URL("../src/components/marketing-v4/nexid-navigation-v4.types.ts", import.meta.url), "utf8");
 
-  assert.match(page, /Proof Verify/);
-  assert.match(page, /href="\/proof\/verify"/);
-  assert.match(page, /aria-label=\{labels\.quickProof\}/);
-  assert.match(page, />Proof<\/Button>/);
-  assert.match(page, /const brandSynergyLabel = locale === "en" \? "Brand AI"/);
-  assert.match(page, /\{ label: brandSynergyLabel, href: "#brand-synergy" \}/);
-  assert.match(page, /<section id="brand-synergy" className="landing-brand-synergy-band my-16 scroll-mt-24">/);
-  assert.match(page, /Verificar evidencia/);
-  assert.match(page, />Proof<\/Link>/);
-  assert.match(page, /landing-mobile-action-dock/);
-  assert.match(page, /labels\.mobileCtaPricing/);
-  assert.match(page, /href="\/pricing" className="landing-mobile-action-dock__link"/);
-  assert.equal(hubCtas.length, 7);
-  assert.match(page, /nexid-quick-hub-card__cta[^"]*min-h-11[^"]*w-full/);
-  assert.match(css, /\.nexid-quick-hub-card__cta\s*\{[\s\S]*min-height:\s*44px/);
-  assert.match(css, /html\.theme-light \.nexid-quick-hub-card \.nexid-quick-hub-card__cta,[\s\S]*background:\s*rgba\(236,\s*254,\s*255,\s*0\.74\) !important/);
-  assert.match(css, /\.landing-mobile-action-dock\s*\{[\s\S]*position:\s*fixed/);
-  assert.match(css, /\.landing-mobile-action-dock__inner\s*\{[\s\S]*grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\)/);
-  assert.match(css, /body:has\(\.landing-mobile-action-dock\) \.sales-widget-root,[\s\S]*bottom:\s*calc\(5\.95rem \+ env\(safe-area-inset-bottom\)\) !important/);
-  assert.doesNotMatch(page, /grid-cols-4 items-center gap-2 rounded-2xl border border-white\/10 bg-slate-950\/85/);
-  assert.doesNotMatch(page, /mt-4 inline-flex items-center gap-1 text-xs font-bold/);
-  assert.doesNotMatch(page, /pb-\[calc\(max\(env\(safe-area-inset-bottom\),0px\)\+1rem\)\]/);
+  assert.match(page, /<NexidHomeV4/);
+  assert.match(home, /href="\/proof\/verify"/);
+  assert.match(home, /copy\.evidence\.publicProof/);
+  assert.match(navigation, /resources:\s*"\/proof\/verify"/);
+  assert.match(navigationTypes, /"product",\s*"solutions",\s*"demo",\s*"resources",\s*"developers"/s);
+  assert.doesNotMatch(home, /nexid-quick-hub-card|landing-mobile-action-dock|BrandSynergySimulator/);
 });
 
 test("landing mobile hero exposes business actions before the heavy product scene", async () => {

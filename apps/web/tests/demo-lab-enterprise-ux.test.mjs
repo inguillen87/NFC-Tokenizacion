@@ -44,29 +44,20 @@ test("web pwa fallback stays production-gated and mobile-safe", async () => {
 
 test("landing header stays compact, touch safe and overflow-free through laptop widths", async () => {
   const page = await readFile(new URL("../src/app/page.tsx", import.meta.url), "utf8");
-  const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
-  const mobileNav = await readFile(new URL("../src/components/mobile-nav-sheet.tsx", import.meta.url), "utf8");
+  const navigation = await readFile(new URL("../src/components/marketing-v4/nexid-navigation-v4.tsx", import.meta.url), "utf8");
+  const css = await readFile(new URL("../src/components/marketing-v4/nexid-navigation-v4.module.css", import.meta.url), "utf8");
 
-  assert.match(page, /site-header mobile-optimized-header/);
-  assert.match(css, /Landing mobile header compact pass/);
-  assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*\.site-header\.mobile-optimized-header \.header-main-row\s*\{[\s\S]*height:\s*3\.55rem !important/);
-  assert.match(css, /\.site-header\.mobile-optimized-header \.site-brand-lockup\s*\{[\s\S]*transform:\s*scale\(0\.84\)/);
-  assert.match(css, /\.site-header\.mobile-optimized-header \.mobile-nav-toggle\s*\{[^}]*min-height:\s*2\.75rem !important/s);
-  assert.match(css, /\.site-header\.mobile-optimized-header \.header-actions > a\.inline-flex \.ui-btn\s*\{[^}]*min-height:\s*2\.75rem !important/s);
-  assert.match(css, /html\.theme-light \.site-header\.mobile-optimized-header \.header-actions > a\.inline-flex \.ui-btn,[\s\S]*color:\s*#0f172a !important/);
-  assert.match(css, /Final landing header guard[\s\S]*\.site-header\.mobile-optimized-header \.header-actions > a\.inline-flex \.ui-btn\.ui-btn--secondary[\s\S]*color:\s*#0f172a !important/);
-  assert.match(css, /@media \(max-width:\s*380px\)[\s\S]*\.site-header\.mobile-optimized-header \.site-brand-lockup\s*\{[\s\S]*transform:\s*scale\(0\.78\)/);
-  assert.match(page, /hidden gap-6 text-sm 2xl:flex site-nav/);
-  assert.match(mobileNav, /window\.innerWidth >= 1536/);
-  assert.match(mobileNav, /mobile-nav-overlay[^"\n]*2xl:hidden/);
-  assert.match(mobileNav, /mobile-nav-toggle[^"\n]*2xl:hidden/);
-  assert.match(mobileNav, /sm:w-\[28rem\][^"\n]*sm:max-w-\[calc\(100vw-1\.5rem\)\]/);
-  assert.match(mobileNav, /role="dialog"/);
-  assert.match(mobileNav, /aria-modal="true"/);
-  assert.match(mobileNav, /appRoot\?\.setAttribute\("inert", ""\)/);
-  assert.match(mobileNav, /closeButtonRef\.current\?\.focus\(\)/);
-  assert.match(mobileNav, /shouldRestoreFocusRef\.current = true/);
-  assert.match(mobileNav, /triggerRef\.current\?\.focus\(\)/);
+  assert.match(page, /<NexidHomeV4/);
+  assert.match(navigation, /const DESKTOP_MEDIA_QUERY = "\(min-width: 76rem\)"/);
+  assert.match(css, /@media \(min-width: 76rem\)/);
+  assert.match(css, /\.inner\s*\{[\s\S]*width:\s*min\(100% - 2rem, 82rem\)/);
+  assert.match(css, /\.iconButton\s*\{[\s\S]*min-width:\s*2\.75rem[\s\S]*height:\s*2\.75rem/);
+  assert.match(navigation, /role="dialog"/);
+  assert.match(navigation, /aria-modal="true"/);
+  assert.match(navigation, /element\.inert = true/);
+  assert.match(navigation, /mobileCloseRef\.current\?\.focus\(\)/);
+  assert.match(navigation, /mobileTriggerRef\.current\?\.focus\(\)/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
 });
 
 test("demo lab mobile wizard shows four steps without horizontal scrolling", async () => {
@@ -540,9 +531,7 @@ test("brand synergy simulator is readable, auto-cycles and stays mobile-safe", a
   assert.match(source, /brand-synergy-outcome-grid/);
   assert.match(source, /hash-only/);
   assert.match(source, /Consent and PII stay inside nexID/);
-  assert.match(page, /landing-brand-synergy-band my-16 scroll-mt-24/);
-  assert.match(page, /landing-brand-synergy-shell container-shell/);
-  assert.doesNotMatch(page, /landing-brand-synergy-shell[^\n]+overflow-hidden/);
+  assert.doesNotMatch(page, /BrandSynergySimulator|landing-brand-synergy-band/);
   assert.match(css, /brand-synergy-proof-grid > div/);
   assert.match(css, /html\.theme-light \.landing-brand-synergy-shell/);
   assert.match(css, /brand-synergy-live-panel\s*\{/);
