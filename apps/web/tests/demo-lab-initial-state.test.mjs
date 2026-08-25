@@ -22,7 +22,7 @@ test("the ready beat drives preview-ready product and mobile copy", async () => 
   assert.match(client, /tone === "ok"[\s\S]*?"RESULTADO VALIDO"[\s\S]*?: "LISTO"/);
   assert.match(client, /beat === 0 \? "Acercar telefono"/);
   assert.match(client, /0:\s*\{[^}]*status:\s*"ORIGEN_LISTO"/);
-  assert.match(client, /stateLabel: resolveDemoScenarioStateLabel\(baseScenario\.stateLabel, executionTruthState, locale\)/);
+  assert.match(client, /stateLabel: resolveDemoScenarioStateLabel\(storyScenario\?\.stateLabel \|\| baseScenario\.stateLabel, executionTruthState, locale\)/);
 });
 
 test("step zero visibly labels the product scene and guided-preview truth", async () => {

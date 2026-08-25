@@ -40,6 +40,11 @@ test("home v4 keeps the hero light and progressive", () => {
   assert.match(home, /copy\.hero\.primary/);
   assert.match(home, /copy\.hero\.secondary/);
   assert.match(home, /href="#evidence"/);
+  assert.match(home, /real-seed-packet-pexels\.jpg/);
+  assert.match(home, /copy\.hero\.sectors\.map/);
+  assert.match(home, /data-guided-case="agro"/);
+  assert.match(home, /href="\/demo-lab\?vertical=seeds"/);
+  assert.doesNotMatch(home, /wine-secure|Gran Reserva|Malbec/i);
   assert.doesNotMatch(home, /<video|react-globe|three|framer-motion|canvas|BrandSynergy|SalesChat|landing-mobile-action-dock/);
   assert.doesNotMatch(css, /linear-gradient|radial-gradient|backdrop-filter/);
   assert.match(css, /content-visibility:\s*auto/);

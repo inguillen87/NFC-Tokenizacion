@@ -18,6 +18,9 @@ type HomeV4Copy = {
     visualOrigin: string;
     visualOriginValue: string;
     visualBoundary: string;
+    visualAlt: string;
+    sectorsLabel: string;
+    sectors: Array<{ title: string; body: string }>;
   };
   flow: {
     eyebrow: string;
@@ -37,7 +40,6 @@ type HomeV4Copy = {
     title: string;
     body: string;
     demoLabel: string;
-    imageAlt: string;
     screenKicker: string;
     screenTitle: string;
     accepted: string;
@@ -46,6 +48,8 @@ type HomeV4Copy = {
     declaredValue: string;
     nextLabel: string;
     nextValue: string;
+    journeyLabel: string;
+    journey: Array<{ step: string; title: string; body: string }>;
     cta: string;
   };
   evidence: {
@@ -77,18 +81,26 @@ export const HOME_V4_COPY: Record<AppLocale, HomeV4Copy> = {
     },
     hero: {
       eyebrow: "Identidad digital para productos físicos",
-      title: "Cada producto puede demostrar más y activar una relación útil.",
+      title: "Cada producto, una identidad clara.",
       body:
-        "nexID conecta NFC seguro o QR con evidencia digital, información declarada, garantía y postventa. El comprador accede desde el navegador, sin instalar una app.",
+        "nexID conecta cada envase o unidad con NFC seguro o QR para mostrar datos declarados, evidencia digital y el próximo paso. Todo desde el navegador.",
       primary: "Ver cómo funciona",
       secondary: "Hablar de un piloto",
       evidence: "Qué verifica exactamente",
-      visualKicker: "Experiencia posterior al tap",
-      visualTitle: "Gran Reserva · Demo",
-      visualStatus: "El mensaje NFC pasó los controles configurados",
-      visualOrigin: "Información del producto",
-      visualOriginValue: "Origen y lote declarados por la marca",
-      visualBoundary: "El tap no confirma por sí solo el contenido, el origen físico ni la custodia.",
+      visualKicker: "Lectura de producto",
+      visualTitle: "Lote de semillas · Demo",
+      visualStatus: "La lectura pasó los controles configurados",
+      visualOrigin: "Datos declarados",
+      visualOriginValue: "Producto, lote y mercado de destino",
+      visualBoundary: "La lectura no confirma por sí sola el contenido, la calidad, el origen físico ni la custodia.",
+      visualAlt: "Semillas cayendo desde un sobre hacia las manos, como contexto visual del caso agro de nexID",
+      sectorsLabel: "Una plataforma. Distintas industrias.",
+      sectors: [
+        { title: "Agro, semillas e insumos", body: "Lote, envase y uso responsable" },
+        { title: "Alimentos y bebidas", body: "Origen declarado, campaña y postventa" },
+        { title: "Farma y salud", body: "Unidad, lote y recall" },
+        { title: "Lujo y bienes durables", body: "Garantía, derechos y reventa" },
+      ],
     },
     flow: {
       eyebrow: "Un flujo, tres momentos",
@@ -112,25 +124,30 @@ export const HOME_V4_COPY: Record<AppLocale, HomeV4Copy> = {
       ],
     },
     caseStudy: {
-      eyebrow: "Caso guiado",
-      title: "Un producto, de punta a punta.",
-      body: "La demo muestra una botella conectada y separa con claridad el mensaje observado, los datos declarados y la acción disponible.",
-      demoLabel: "Escenario simulado",
-      imageAlt: "Botella de vino usada como ejemplo visual de la demo nexID",
-      screenKicker: "nexID · Wine Secure",
-      screenTitle: "Gran Reserva Malbec",
-      accepted: "Mensaje NFC aceptado",
-      acceptedNote: "Controles criptográficos y de política superados en este escenario de demo.",
+      eyebrow: "Caso guiado · Agro",
+      title: "Del envase al próximo paso.",
+      body: "Este escenario simulado sigue un lote de semillas desde su identidad digital hasta una consulta en campo. Distingue la lectura observada, los datos declarados y la acción permitida.",
+      demoLabel: "Escenario simulado · Sin datos de cliente",
+      screenKicker: "nexID · Agro",
+      screenTitle: "Lote de semillas",
+      accepted: "Lectura aceptada",
+      acceptedNote: "El identificador y la política superaron los controles configurados en esta demo.",
       declaredLabel: "Datos declarados",
-      declaredValue: "Mendoza, Argentina · Lote de demostración",
+      declaredValue: "Variedad, lote y mercado · Datos simulados",
       nextLabel: "Siguiente acción",
-      nextValue: "Consultar historia o registrar garantía",
-      cta: "Probar la demo guiada",
+      nextValue: "Consultar ficha aprobada o pedir soporte técnico",
+      journeyLabel: "Lo que la demo hace visible",
+      journey: [
+        { step: "01", title: "Identidad del envase", body: "Código o tag asociado al lote configurado." },
+        { step: "02", title: "Datos declarados", body: "Producto, mercado e información aprobada por la empresa." },
+        { step: "03", title: "Lectura observada", body: "Resultado y próxima acción disponible para esa consulta." },
+      ],
+      cta: "Abrir la demo agro",
     },
     evidence: {
-      eyebrow: "Confianza sin atajos",
-      title: "Claridad comercial sin ocultar los límites técnicos.",
-      body: "nexID distingue lo observado por el sistema, lo declarado por cada actor y las pruebas opcionales. Así, una experiencia simple no se convierte en un claim exagerado.",
+      eyebrow: "Claridad que da confianza",
+      title: "Lo verificado, lo declarado y lo que aún no se sabe.",
+      body: "nexID separa cada capa para que una experiencia simple siga siendo técnicamente honesta.",
       items: [
         { label: "Observado", title: "Mensaje y política", body: "Validación SUN/SDM, freshness, replay y estado reportado cuando corresponda." },
         { label: "Declarado", title: "Producto y recorrido", body: "Origen, lote, contenido y eventos aportados por la marca o sus operadores." },
@@ -158,18 +175,26 @@ export const HOME_V4_COPY: Record<AppLocale, HomeV4Copy> = {
     },
     hero: {
       eyebrow: "Digital identity for physical products",
-      title: "Every product can show more and enable a useful relationship.",
+      title: "A clear identity for every product.",
       body:
-        "nexID connects secure NFC or QR with digital evidence, declared product information, warranty and after-sales journeys. Buyers use it in the browser, with no app to install.",
+        "nexID connects every package or item with secure NFC or QR to show declared data, digital evidence and the next step. All in the browser.",
       primary: "See how it works",
       secondary: "Discuss a pilot",
       evidence: "What it verifies",
-      visualKicker: "Post-tap experience",
-      visualTitle: "Gran Reserva · Demo",
-      visualStatus: "The NFC message passed the configured checks",
-      visualOrigin: "Product information",
-      visualOriginValue: "Origin and batch declared by the brand",
-      visualBoundary: "A tap alone does not confirm contents, physical origin or custody.",
+      visualKicker: "Product reading",
+      visualTitle: "Seed batch · Demo",
+      visualStatus: "The reading passed the configured checks",
+      visualOrigin: "Declared data",
+      visualOriginValue: "Product, batch and destination market",
+      visualBoundary: "A reading alone does not confirm contents, quality, physical origin or custody.",
+      visualAlt: "Seeds falling from a packet into a person's hands as visual context for the nexID agriculture case",
+      sectorsLabel: "One platform. Different industries.",
+      sectors: [
+        { title: "Agriculture, seeds and inputs", body: "Batch, package and responsible use" },
+        { title: "Food and beverages", body: "Declared origin, campaign and after-sales" },
+        { title: "Pharma and health", body: "Item, batch and recall" },
+        { title: "Luxury and durable goods", body: "Warranty, rights and resale" },
+      ],
     },
     flow: {
       eyebrow: "One flow, three moments",
@@ -193,25 +218,30 @@ export const HOME_V4_COPY: Record<AppLocale, HomeV4Copy> = {
       ],
     },
     caseStudy: {
-      eyebrow: "Guided case",
-      title: "One product, end to end.",
-      body: "The demo follows a connected bottle and clearly separates the observed message, declared data and available action.",
-      demoLabel: "Simulated scenario",
-      imageAlt: "Wine bottle used as a visual example in the nexID demo",
-      screenKicker: "nexID · Wine Secure",
-      screenTitle: "Gran Reserva Malbec",
-      accepted: "NFC message accepted",
-      acceptedNote: "Cryptographic and policy checks passed in this demo scenario.",
+      eyebrow: "Guided case · Agriculture",
+      title: "From the package to the next step.",
+      body: "This simulated scenario follows a seed batch from its digital identity to a field query. It separates the observed reading, declared data and permitted action.",
+      demoLabel: "Simulated scenario · No customer data",
+      screenKicker: "nexID · Agriculture",
+      screenTitle: "Seed batch",
+      accepted: "Reading accepted",
+      acceptedNote: "The identifier and policy passed the checks configured for this demo.",
       declaredLabel: "Declared data",
-      declaredValue: "Mendoza, Argentina · Demo batch",
+      declaredValue: "Variety, batch and market · Simulated data",
       nextLabel: "Next action",
-      nextValue: "View the story or register a warranty",
-      cta: "Try the guided demo",
+      nextValue: "View approved information or request technical support",
+      journeyLabel: "What the demo makes visible",
+      journey: [
+        { step: "01", title: "Package identity", body: "Code or tag associated with the configured batch." },
+        { step: "02", title: "Declared data", body: "Product, market and information approved by the company." },
+        { step: "03", title: "Observed reading", body: "Result and next action available for that query." },
+      ],
+      cta: "Open the agriculture demo",
     },
     evidence: {
-      eyebrow: "Trust without shortcuts",
-      title: "Commercial clarity without hiding technical boundaries.",
-      body: "nexID separates what the system observes, what each actor declares and which optional proofs exist. A simple experience never needs an inflated claim.",
+      eyebrow: "Clarity builds trust",
+      title: "What is verified, what is declared and what is still unknown.",
+      body: "nexID separates each layer so a simple experience remains technically honest.",
       items: [
         { label: "Observed", title: "Message and policy", body: "SUN/SDM validation, freshness, replay and reported state when available." },
         { label: "Declared", title: "Product and journey", body: "Origin, batch, contents and events provided by the brand or its operators." },
@@ -239,18 +269,26 @@ export const HOME_V4_COPY: Record<AppLocale, HomeV4Copy> = {
     },
     hero: {
       eyebrow: "Identidade digital para produtos físicos",
-      title: "Cada produto pode demonstrar mais e ativar uma relação útil.",
+      title: "Uma identidade clara para cada produto.",
       body:
-        "A nexID conecta NFC seguro ou QR com evidência digital, informações declaradas, garantia e pós-venda. O comprador acessa tudo pelo navegador, sem instalar um aplicativo.",
+        "A nexID conecta cada embalagem ou unidade com NFC seguro ou QR para mostrar dados declarados, evidência digital e o próximo passo. Tudo pelo navegador.",
       primary: "Ver como funciona",
       secondary: "Conversar sobre um piloto",
       evidence: "O que é verificado",
-      visualKicker: "Experiência após o tap",
-      visualTitle: "Gran Reserva · Demo",
-      visualStatus: "A mensagem NFC passou pelos controles configurados",
-      visualOrigin: "Informações do produto",
-      visualOriginValue: "Origem e lote declarados pela marca",
-      visualBoundary: "O tap, isoladamente, não confirma conteúdo, origem física ou custódia.",
+      visualKicker: "Leitura do produto",
+      visualTitle: "Lote de sementes · Demo",
+      visualStatus: "A leitura passou pelos controles configurados",
+      visualOrigin: "Dados declarados",
+      visualOriginValue: "Produto, lote e mercado de destino",
+      visualBoundary: "A leitura, isoladamente, não confirma conteúdo, qualidade, origem física ou custódia.",
+      visualAlt: "Sementes caindo de um pacote nas mãos de uma pessoa como contexto visual do caso agrícola da nexID",
+      sectorsLabel: "Uma plataforma. Diferentes indústrias.",
+      sectors: [
+        { title: "Agro, sementes e insumos", body: "Lote, embalagem e uso responsável" },
+        { title: "Alimentos e bebidas", body: "Origem declarada, campanha e pós-venda" },
+        { title: "Farma e saúde", body: "Unidade, lote e recall" },
+        { title: "Luxo e bens duráveis", body: "Garantia, direitos e revenda" },
+      ],
     },
     flow: {
       eyebrow: "Um fluxo, três momentos",
@@ -274,25 +312,30 @@ export const HOME_V4_COPY: Record<AppLocale, HomeV4Copy> = {
       ],
     },
     caseStudy: {
-      eyebrow: "Caso guiado",
-      title: "Um produto, de ponta a ponta.",
-      body: "A demo mostra uma garrafa conectada e separa claramente a mensagem observada, os dados declarados e a ação disponível.",
-      demoLabel: "Cenário simulado",
-      imageAlt: "Garrafa de vinho usada como exemplo visual na demo da nexID",
-      screenKicker: "nexID · Wine Secure",
-      screenTitle: "Gran Reserva Malbec",
-      accepted: "Mensagem NFC aceita",
-      acceptedNote: "Controles criptográficos e de política aprovados neste cenário de demo.",
+      eyebrow: "Caso guiado · Agro",
+      title: "Da embalagem ao próximo passo.",
+      body: "Este cenário simulado acompanha um lote de sementes desde sua identidade digital até uma consulta em campo. Separa a leitura observada, os dados declarados e a ação permitida.",
+      demoLabel: "Cenário simulado · Sem dados de cliente",
+      screenKicker: "nexID · Agro",
+      screenTitle: "Lote de sementes",
+      accepted: "Leitura aceita",
+      acceptedNote: "O identificador e a política passaram pelos controles configurados nesta demo.",
       declaredLabel: "Dados declarados",
-      declaredValue: "Mendoza, Argentina · Lote de demonstração",
+      declaredValue: "Variedade, lote e mercado · Dados simulados",
       nextLabel: "Próxima ação",
-      nextValue: "Consultar a história ou registrar a garantia",
-      cta: "Testar a demo guiada",
+      nextValue: "Consultar informação aprovada ou pedir suporte técnico",
+      journeyLabel: "O que a demo torna visível",
+      journey: [
+        { step: "01", title: "Identidade da embalagem", body: "Código ou tag associado ao lote configurado." },
+        { step: "02", title: "Dados declarados", body: "Produto, mercado e informação aprovada pela empresa." },
+        { step: "03", title: "Leitura observada", body: "Resultado e próxima ação disponível para essa consulta." },
+      ],
+      cta: "Abrir a demo agro",
     },
     evidence: {
-      eyebrow: "Confiança sem atalhos",
-      title: "Clareza comercial sem esconder os limites técnicos.",
-      body: "A nexID separa o que o sistema observa, o que cada ator declara e quais provas opcionais existem. Uma experiência simples não precisa de um claim exagerado.",
+      eyebrow: "Clareza que gera confiança",
+      title: "O que foi verificado, o que foi declarado e o que ainda não se sabe.",
+      body: "A nexID separa cada camada para que uma experiência simples continue tecnicamente honesta.",
       items: [
         { label: "Observado", title: "Mensagem e política", body: "Validação SUN/SDM, freshness, replay e estado reportado quando disponível." },
         { label: "Declarado", title: "Produto e percurso", body: "Origem, lote, conteúdo e eventos fornecidos pela marca ou por seus operadores." },

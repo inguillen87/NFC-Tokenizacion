@@ -53,8 +53,8 @@ export function NexidHomeV4({ locale, locales, loginHref, initialTheme }: NexidH
               <figure className={styles.heroVisual}>
                 <div className={styles.heroImage}>
                   <Image
-                    src="/demo/wine-secure/real-malbec-bottle-pexels.jpg"
-                    alt={copy.caseStudy.imageAlt}
+                    src="/demo/agro-secure/real-seed-packet-pexels.jpg"
+                    alt={copy.hero.visualAlt}
                     fill
                     priority
                     loading="eager"
@@ -77,6 +77,18 @@ export function NexidHomeV4({ locale, locales, loginHref, initialTheme }: NexidH
                   <small>{copy.hero.visualBoundary}</small>
                 </figcaption>
               </figure>
+            </div>
+
+            <div className={styles.sectorStrip} aria-labelledby="sector-strip-title">
+              <p id="sector-strip-title">{copy.hero.sectorsLabel}</p>
+              <ul>
+                {copy.hero.sectors.map((sector) => (
+                  <li key={sector.title}>
+                    <strong>{sector.title}</strong>
+                    <span>{sector.body}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         </section>
@@ -129,7 +141,7 @@ export function NexidHomeV4({ locale, locales, loginHref, initialTheme }: NexidH
           </div>
         </section>
 
-        <section id="product" className={styles.caseStudy} aria-labelledby="case-title">
+        <section id="product" className={styles.caseStudy} aria-labelledby="case-title" data-guided-case="agro">
           <div className={styles.shell}>
             <div className={styles.caseGrid}>
               <div className={styles.caseCopy}>
@@ -138,13 +150,19 @@ export function NexidHomeV4({ locale, locales, loginHref, initialTheme }: NexidH
                 <p>{copy.caseStudy.body}</p>
                 <span className={styles.demoLabel}>{copy.caseStudy.demoLabel}</span>
 
-                <div className={styles.caseImage}>
-                  <Image
-                    src="/demo/wine-secure/real-malbec-bottle-pexels.jpg"
-                    alt=""
-                    fill
-                    sizes="(max-width: 900px) 100vw, 42vw"
-                  />
+                <div className={styles.caseJourney} role="group" aria-labelledby="case-journey-title">
+                  <h3 id="case-journey-title">{copy.caseStudy.journeyLabel}</h3>
+                  <ol>
+                    {copy.caseStudy.journey.map((item) => (
+                      <li key={item.step}>
+                        <span>{item.step}</span>
+                        <div>
+                          <strong>{item.title}</strong>
+                          <p>{item.body}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
                 </div>
               </div>
 
@@ -173,7 +191,7 @@ export function NexidHomeV4({ locale, locales, loginHref, initialTheme }: NexidH
                     </div>
                   </dl>
 
-                  <Link className={styles.primaryButton} href="/demo-lab">
+                  <Link className={styles.primaryButton} href="/demo-lab?vertical=seeds">
                     {copy.caseStudy.cta}
                   </Link>
                 </div>

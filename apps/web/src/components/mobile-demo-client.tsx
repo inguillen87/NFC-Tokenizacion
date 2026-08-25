@@ -69,6 +69,26 @@ type VerticalTemplate = {
   fields: Array<{ label: string; value: (item: SeedItem) => string }>;
 };
 
+type MobileCopyLocale = "es-AR" | "en" | "pt-BR";
+
+type AgroPresentation = {
+  title: string;
+  subtitle: string;
+  fieldLabels: readonly [string, string, string, string, string, string];
+  productViewLabel: string;
+  productFallback: string;
+  productMeta: string;
+  packetLabel: string;
+  itemContext: string;
+  returnLabel: string;
+  evidenceBoundary: string;
+  trustIndexLabel: string;
+  trustIndexAria: string;
+  trustIndexNote: string;
+  investorTitle: string;
+  investorBody: string;
+};
+
 const MODE_STATE: Record<DemoMode, ConsumerState> = {
   consumer_tap: "VALID",
   consumer_opened: "OPENED",
@@ -100,6 +120,161 @@ const STATE_COPY: Record<ConsumerState, { label: string; tone: "green" | "amber"
   OFFLINE_PENDING: { label: "OFFLINE PENDING", tone: "amber", message: "Validación pendiente. El backend decidirá sobre el mensaje criptográfico al recuperar conexión." },
 };
 
+const AGRO_PRESENTATION: Record<MobileCopyLocale, AgroPresentation> = {
+  "es-AR": {
+    title: "Pasaporte digital del lote",
+    subtitle: "Datos declarados del lote y evidencia digital acotada para esta consulta.",
+    fieldLabels: ["Campaña", "Humedad de suelo", "Humedad de campo", "Almacenamiento", "Región declarada", "Indicaciones declaradas"],
+    productViewLabel: "Vista del lote · Demo",
+    productFallback: "Lote de semillas · Demo",
+    productMeta: "Ficha de lote simulada · Sin datos de cliente",
+    packetLabel: "LOTE",
+    itemContext: "Escenario agro simulado · Sin datos de cliente",
+    returnLabel: "Volver al Demo Lab de semillas",
+    evidenceBoundary: "Evidencia acotada: esta pantalla muestra un identificador, datos declarados y señales digitales del escenario. No certifica autenticidad física, variedad, calidad, contenido, origen ni custodia.",
+    trustIndexLabel: "Índice ilustrativo de la demo",
+    trustIndexAria: "Índice ilustrativo del escenario de semillas",
+    trustIndexNote: "Indicador calculado en el navegador para esta simulación; no es un score productivo ni prueba el producto físico.",
+    investorTitle: "Resumen del escenario agro",
+    investorBody: "La demo conecta identidad digital declarada, señales del tag y acciones de soporte. No certifica las semillas, el contenido ni el envase físico.",
+  },
+  en: {
+    title: "Seed-lot digital passport",
+    subtitle: "Declared lot data and bounded digital evidence for this query.",
+    fieldLabels: ["Season", "Soil moisture", "Field moisture", "Storage", "Declared region", "Declared guidance"],
+    productViewLabel: "Lot view · Demo",
+    productFallback: "Seed lot · Demo",
+    productMeta: "Simulated lot record · No customer data",
+    packetLabel: "LOT",
+    itemContext: "Simulated agriculture scenario · No customer data",
+    returnLabel: "Back to the seeds Demo Lab",
+    evidenceBoundary: "Bounded evidence: this screen shows an identifier, declared data and digital signals from the scenario. It does not certify physical authenticity, variety, quality, contents, origin or custody.",
+    trustIndexLabel: "Illustrative demo index",
+    trustIndexAria: "Illustrative seed-scenario index",
+    trustIndexNote: "Browser-calculated indicator for this simulation; it is not a production score and does not prove the physical product.",
+    investorTitle: "Agriculture scenario summary",
+    investorBody: "The demo connects declared digital identity, tag signals and support actions. It does not certify the seeds, contents or physical package.",
+  },
+  "pt-BR": {
+    title: "Passaporte digital do lote",
+    subtitle: "Dados declarados do lote e evidência digital limitada para esta consulta.",
+    fieldLabels: ["Safra", "Umidade do solo", "Umidade do campo", "Armazenamento", "Região declarada", "Orientações declaradas"],
+    productViewLabel: "Vista do lote · Demo",
+    productFallback: "Lote de sementes · Demo",
+    productMeta: "Ficha de lote simulada · Sem dados de cliente",
+    packetLabel: "LOTE",
+    itemContext: "Cenário agrícola simulado · Sem dados de cliente",
+    returnLabel: "Voltar ao Demo Lab de sementes",
+    evidenceBoundary: "Evidência limitada: esta tela mostra um identificador, dados declarados e sinais digitais do cenário. Não certifica autenticidade física, variedade, qualidade, conteúdo, origem ou custódia.",
+    trustIndexLabel: "Índice ilustrativo da demo",
+    trustIndexAria: "Índice ilustrativo do cenário de sementes",
+    trustIndexNote: "Indicador calculado no navegador para esta simulação; não é um score produtivo nem comprova o produto físico.",
+    investorTitle: "Resumo do cenário agrícola",
+    investorBody: "A demo conecta identidade digital declarada, sinais da tag e ações de suporte. Não certifica as sementes, o conteúdo nem a embalagem física.",
+  },
+};
+
+const AGRO_STATE_COPY: Record<MobileCopyLocale, Record<ConsumerState, { label: string; message: string }>> = {
+  "es-AR": {
+    AUTH_PENDING: { label: "PREPARANDO DEMO", message: "Preparando el escenario simulado. Todavía no hay evidencia digital validada." },
+    VALID: { label: "LECTURA DEMO ACEPTADA", message: "El identificador y la política del escenario pasaron los controles de la demo. Esto no autentica las semillas, el contenido ni el envase físico." },
+    OPENED: { label: "APERTURA REPORTADA", message: "El tag reporta apertura en la simulación; no prueba el estado, el cierre ni el contenido del envase físico." },
+    TAMPER_RISK: { label: "SEÑAL PARA REVISIÓN", message: "La demo recibió una señal digital para revisión. No demuestra manipulación ni daño físico." },
+    CLAIMED: { label: "DERECHO DIGITAL SIMULADO", message: "La demo registró un estado digital de lifecycle; no transfiere propiedad ni derechos sobre el producto físico." },
+    REPLAY_SUSPECT: { label: "POSIBLE REPLAY DEMO", message: "La política del escenario marcó una posible reutilización del mensaje. No determina la identidad ni la condición del producto físico." },
+    DELIVERED_CLOSED: { label: "CIERRE REPORTADO", message: "La demo registra entrega y un cierre reportado por el tag; no prueba contenido, calidad ni custodia física." },
+    DELIVERED_OPENED: { label: "APERTURA REPORTADA", message: "La demo registra entrega y apertura reportada. Requiere revisión; no prueba el estado físico del envase." },
+    OFFLINE_PENDING: { label: "VALIDACIÓN PENDIENTE", message: "Sin conexión no se valida el mensaje digital. Los datos públicos siguen siendo declarados y no autentican el producto físico." },
+  },
+  en: {
+    AUTH_PENDING: { label: "PREPARING DEMO", message: "Preparing the simulated scenario. No digital evidence has been validated yet." },
+    VALID: { label: "DEMO READING ACCEPTED", message: "The scenario identifier and policy passed the demo checks. This does not authenticate the seeds, contents or physical package." },
+    OPENED: { label: "OPEN STATE REPORTED", message: "The tag reports an open state in the simulation; it does not prove the state, seal or contents of the physical package." },
+    TAMPER_RISK: { label: "SIGNAL FOR REVIEW", message: "The demo received a digital signal for review. It does not demonstrate physical tampering or damage." },
+    CLAIMED: { label: "SIMULATED DIGITAL RIGHT", message: "The demo recorded a digital lifecycle state; it does not transfer ownership of or rights to the physical product." },
+    REPLAY_SUSPECT: { label: "POSSIBLE DEMO REPLAY", message: "The scenario policy flagged possible message reuse. It does not determine the identity or condition of the physical product." },
+    DELIVERED_CLOSED: { label: "CLOSED STATE REPORTED", message: "The demo records delivery and a tag-reported closed state; it does not prove contents, quality or physical custody." },
+    DELIVERED_OPENED: { label: "OPEN STATE REPORTED", message: "The demo records delivery and a reported open state. Review is required; it does not prove the package's physical condition." },
+    OFFLINE_PENDING: { label: "VALIDATION PENDING", message: "The digital message is not validated while offline. Public data remains declared and does not authenticate the physical product." },
+  },
+  "pt-BR": {
+    AUTH_PENDING: { label: "PREPARANDO DEMO", message: "Preparando o cenário simulado. Ainda não há evidência digital validada." },
+    VALID: { label: "LEITURA DEMO ACEITA", message: "O identificador e a política do cenário passaram pelos controles da demo. Isso não autentica as sementes, o conteúdo nem a embalagem física." },
+    OPENED: { label: "ABERTURA REPORTADA", message: "A tag reporta abertura na simulação; isso não comprova o estado, o lacre nem o conteúdo da embalagem física." },
+    TAMPER_RISK: { label: "SINAL PARA REVISÃO", message: "A demo recebeu um sinal digital para revisão. Isso não demonstra violação nem dano físico." },
+    CLAIMED: { label: "DIREITO DIGITAL SIMULADO", message: "A demo registrou um estado digital de ciclo de vida; isso não transfere propriedade nem direitos sobre o produto físico." },
+    REPLAY_SUSPECT: { label: "POSSÍVEL REPLAY DEMO", message: "A política do cenário marcou uma possível reutilização da mensagem. Isso não determina a identidade nem a condição do produto físico." },
+    DELIVERED_CLOSED: { label: "FECHAMENTO REPORTADO", message: "A demo registra entrega e fechamento reportado pela tag; isso não comprova conteúdo, qualidade nem custódia física." },
+    DELIVERED_OPENED: { label: "ABERTURA REPORTADA", message: "A demo registra entrega e abertura reportada. É preciso revisar; isso não comprova o estado físico da embalagem." },
+    OFFLINE_PENDING: { label: "VALIDAÇÃO PENDENTE", message: "Sem conexão, a mensagem digital não é validada. Os dados públicos continuam declarados e não autenticam o produto físico." },
+  },
+};
+
+function normalizeMobileCopyLocale(locale: string): MobileCopyLocale {
+  const normalized = locale.trim().toLowerCase();
+  if (normalized.startsWith("pt")) return "pt-BR";
+  if (normalized.startsWith("en")) return "en";
+  return "es-AR";
+}
+
+const MOBILE_UI_COPY: Record<MobileCopyLocale, {
+  consumerApp: string;
+  missingBidBadge: string;
+  missingBidMessage: string;
+  demoPackBadge: string;
+  demoPackMessage: string;
+  unverifiedBidBadge: string;
+  unverifiedBidMessage: string;
+  nfcEmulation: string;
+  nfcProgressAria: string;
+  nfcProgressBody: string;
+  illustrativeMetrics: string;
+  geoCapture: string;
+}> = {
+  "es-AR": {
+    consumerApp: "Experiencia del comprador",
+    missingBidBadge: "BID no disponible",
+    missingBidMessage: "BID no disponible · No hay historial de procedencia para este fixture; las acciones protegidas requieren un tap físico.",
+    demoPackBadge: "Pack de demostracion",
+    demoPackMessage: "Modo demo · El BID proviene del dataset de demostracion y no prueba una lectura física.",
+    unverifiedBidBadge: "BID sin verificar",
+    unverifiedBidMessage: "BID informado · Este preview no ejecutó una validación SUN.",
+    nfcEmulation: "Simulacion de lectura NFC",
+    nfcProgressAria: "Progreso de la simulacion NFC",
+    nfcProgressBody: "Animacion del escenario; no representa una validacion SUN ejecutada",
+    illustrativeMetrics: "Metricas ilustrativas del escenario",
+    geoCapture: "Ubicacion opcional de la demo",
+  },
+  "pt-BR": {
+    consumerApp: "Experiencia do comprador",
+    missingBidBadge: "BID indisponivel",
+    missingBidMessage: "BID indisponivel · Nao ha historico de procedencia para este fixture; acoes protegidas exigem um tap fisico.",
+    demoPackBadge: "Pack de demonstracao",
+    demoPackMessage: "Modo demo · O BID vem do dataset de demonstracao e nao prova uma leitura fisica.",
+    unverifiedBidBadge: "BID nao verificado",
+    unverifiedBidMessage: "BID informado · Este preview nao executou validacao SUN.",
+    nfcEmulation: "Simulacao de leitura NFC",
+    nfcProgressAria: "Progresso da simulacao NFC",
+    nfcProgressBody: "Animacao do cenario; nao representa uma validacao SUN executada",
+    illustrativeMetrics: "Metricas ilustrativas do cenario",
+    geoCapture: "Localizacao opcional da demo",
+  },
+  en: {
+    consumerApp: "Buyer experience",
+    missingBidBadge: "BID unavailable",
+    missingBidMessage: "BID unavailable · This fixture has no provenance history; protected actions require a physical tap.",
+    demoPackBadge: "Demo pack",
+    demoPackMessage: "Demo mode · The BID comes from the demo dataset and does not prove a physical read.",
+    unverifiedBidBadge: "Unverified BID",
+    unverifiedBidMessage: "BID provided · This preview did not run SUN validation.",
+    nfcEmulation: "NFC read simulation",
+    nfcProgressAria: "NFC simulation progress",
+    nfcProgressBody: "Scenario animation; it does not represent an executed SUN validation",
+    illustrativeMetrics: "Illustrative scenario metrics",
+    geoCapture: "Optional demo location",
+  },
+};
+
 function nowIso() {
   return new Date().toISOString();
 }
@@ -123,8 +298,8 @@ function optionalText(...values: unknown[]) {
   return text || "N/D";
 }
 
-function seedItemName(item: SeedItem) {
-  return String(item.productName || item.display_name || item.name || "Reserva Demo 2024");
+function seedItemName(item: SeedItem, fallback = "Reserva Demo 2024") {
+  return String(item.productName || item.display_name || item.name || fallback);
 }
 
 function storeKey(tenant: string, itemId: string, pack: string) {
@@ -284,7 +459,6 @@ export function MobileDemoClient({
   const restoreFocusRef = useRef<HTMLElement | null>(null);
   const demoSessionId = useMemo(() => `${tenant}:${itemId}:${pack}`, [itemId, pack, tenant]);
 
-  const current = STATE_COPY[consumerState];
   const rawBid = (bid || "").trim();
   const effectiveBid = BID_RE.test(rawBid) ? rawBid : "";
   const geoRequested = geoRequestId > 0;
@@ -292,7 +466,28 @@ export function MobileDemoClient({
   const activeUid = seedItemUid(activeItem);
   const activeSku = seedItemSku(activeItem);
   const activeVertical = detectVertical(pack, activeItem);
+  const mobileCopyLocale = normalizeMobileCopyLocale(locale);
+  const agroCopy = AGRO_PRESENTATION[mobileCopyLocale];
+  const mobileUi = MOBILE_UI_COPY[mobileCopyLocale];
+  const current = activeVertical === "agro"
+    ? { ...STATE_COPY[consumerState], ...AGRO_STATE_COPY[mobileCopyLocale][consumerState] }
+    : STATE_COPY[consumerState];
   const template = VERTICAL_TEMPLATES[activeVertical];
+  const visibleTemplate = activeVertical === "agro"
+    ? {
+        ...template,
+        title: agroCopy.title,
+        subtitle: agroCopy.subtitle,
+        fields: template.fields.map((field, index) => ({
+          ...field,
+          label: agroCopy.fieldLabels[index] || field.label,
+        })),
+      }
+    : template;
+  const rawProductName = seedItemName(activeItem, activeVertical === "agro" ? agroCopy.productFallback : undefined);
+  const visibleProductName = activeVertical === "agro" && /^Agro Demo Item \d+$/i.test(rawProductName)
+    ? `${agroCopy.productFallback}${activeSku ? ` · ${activeSku}` : ""}`
+    : rawProductName;
   const illustrativeOrigin = ILLUSTRATIVE_ORIGINS[activeVertical];
   const stateTimeline: ConsumerState[] = ["AUTH_PENDING", "VALID", "DELIVERED_CLOSED", "DELIVERED_OPENED", "OFFLINE_PENDING", "OPENED", "TAMPER_RISK", "CLAIMED", "REPLAY_SUSPECT"];
   const firstScan = events.length ? events[events.length - 1] : null;
@@ -395,19 +590,19 @@ export function MobileDemoClient({
   const demoBid = bidSource === "demo-pack" || effectiveBid.toUpperCase().startsWith("DEMO-");
   const bidPresentation = !effectiveBid
     ? {
-        badge: "MISSING BID",
-        message: "MISSING BID · La provenance histórica no está disponible; las acciones protegidas requieren un tap físico.",
+        badge: mobileUi.missingBidBadge,
+        message: mobileUi.missingBidMessage,
         className: "border-amber-300/30 bg-amber-500/10 text-amber-100",
       }
     : demoBid
       ? {
-          badge: "DEMO PACK",
-          message: "DEMO MODE · BID provisto por el dataset de demostración; no prueba una lectura física.",
+          badge: mobileUi.demoPackBadge,
+          message: mobileUi.demoPackMessage,
           className: "border-violet-300/30 bg-violet-500/10 text-violet-100",
         }
       : {
-          badge: "BID UNVERIFIED",
-          message: "BID PROVIDED · Identificador de preview sin validación SUN en esta pantalla.",
+          badge: mobileUi.unverifiedBidBadge,
+          message: mobileUi.unverifiedBidMessage,
           className: "border-amber-300/30 bg-amber-500/10 text-amber-100",
         };
   const identityMissing = !effectiveBid || !activeUid;
@@ -658,42 +853,53 @@ export function MobileDemoClient({
 
   return (
     <>
-    <main ref={mainRef} className="mx-auto max-w-5xl space-y-4 bg-[radial-gradient(circle_at_top,rgba(14,165,233,.10),transparent_38%)] p-4">
-      <div className="mx-auto w-full max-w-[430px] rounded-[2.3rem] border border-cyan-300/20 bg-slate-950 p-2.5 shadow-[0_24px_90px_rgba(2,6,23,0.65)]">
+    <main ref={mainRef} className="mobile-demo-root mx-auto max-w-5xl space-y-4 bg-[radial-gradient(circle_at_top,rgba(14,165,233,.10),transparent_38%)] p-2 sm:p-4">
+      {activeVertical === "agro" ? (
+        <a
+          href="/demo-lab?vertical=seeds"
+          className="mx-auto flex min-h-11 w-full max-w-[430px] items-center rounded-xl border border-cyan-300/25 bg-cyan-500/10 px-3 py-2 text-sm font-semibold text-cyan-100 transition hover:border-cyan-200/50 hover:bg-cyan-500/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-200"
+        >
+          <span aria-hidden="true">←</span>
+          <span className="ml-2">{agroCopy.returnLabel}</span>
+        </a>
+      ) : null}
+      <div className="mobile-demo-device mx-auto w-full max-w-[430px] rounded-[2rem] border border-cyan-300/20 bg-slate-950 p-1.5 shadow-[0_24px_90px_rgba(2,6,23,0.65)] sm:rounded-[2.3rem] sm:p-2.5">
         <div className="mx-auto mb-2 h-1.5 w-20 rounded-full bg-slate-700" />
-        <div className="space-y-4 rounded-[1.8rem] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(34,211,238,.10),transparent_30%),#020617] p-4">
-          <Card className="border border-white/10 bg-slate-950/95 p-4">
+        <div className="mobile-demo-screen space-y-4 rounded-[1.55rem] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(34,211,238,.10),transparent_30%),#020617] p-2.5 sm:rounded-[1.8rem] sm:p-4">
+          <Card className="border border-white/10 bg-slate-950/95 p-3 sm:p-4">
             <p className="mb-3 rounded-lg border border-rose-300/35 bg-rose-500/10 px-2 py-1 text-[11px] font-semibold text-rose-100">
               SIMULACIÓN · NO ES UN TAP NFC FÍSICO
             </p>
             <p className={`mb-3 rounded-lg border px-2 py-1 text-[11px] ${bidPresentation.className}`}>
               {bidPresentation.message}
             </p>
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between">
               <div>
-                <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Consumer App · {locale}</p>
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-400">{mobileUi.consumerApp} · {locale}</p>
                 <h1 className="mt-1 text-xl font-semibold text-white">{current.label}</h1>
                 <p className="mt-2 text-sm text-slate-300">{current.message}</p>
               </div>
               <Badge tone={current.tone}>{current.label}</Badge>
             </div>
-            <p className="mt-3 text-xs text-cyan-200">Tenant: {tenant} · Item: {itemId} · Pack: {pack}</p>
+            <p className="mt-3 text-xs text-cyan-200">
+              {activeVertical === "agro" ? agroCopy.itemContext : `Tenant: ${tenant} · Item: ${itemId} · Pack: ${pack}`}
+            </p>
             <p className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-[10px] ${bidPresentation.className}`}>{bidPresentation.badge}</p>
             <div className="mt-3 rounded-lg border border-white/10 bg-slate-900/70 p-2">
-              <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">NFC scan emulation</p>
+              <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">{mobileUi.nfcEmulation}</p>
               <div
                 className="mt-2 h-2 overflow-hidden rounded-full bg-white/10"
                 role="progressbar"
-                aria-label="Progreso de validacion NFC"
+                aria-label={mobileUi.nfcProgressAria}
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-valuenow={scanProgress}
               >
                 <div aria-hidden="true" className="h-full rounded-full bg-cyan-400 transition-all" style={{ width: `${scanProgress}%` }} />
               </div>
-              <p className="mt-1 text-[11px] text-slate-300">Animación del escenario; no representa una validación SUN ejecutada ({scanProgress}%).</p>
+              <p className="mt-1 text-[11px] text-slate-300">{mobileUi.nfcProgressBody} ({scanProgress}%).</p>
             </div>
-            <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Métricas ilustrativas del escenario</p>
+            <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">{mobileUi.illustrativeMetrics}</p>
             <div className="mt-3 grid grid-cols-3 gap-2">
               {investorSignals.map((signal) => (
                 <div key={signal.label} className="rounded-lg border border-white/10 bg-slate-900/70 p-2">
@@ -703,7 +909,7 @@ export function MobileDemoClient({
               ))}
             </div>
             <div className="mt-3 rounded-lg border border-white/10 bg-slate-900/70 p-2">
-              <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">Geo trace capture</p>
+              <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">{mobileUi.geoCapture}</p>
               {geoState ? (
                 <p className="mt-1 text-[11px] text-cyan-100">
                   GPS aproximado {geoState.lat.toFixed(3)}, {geoState.lng.toFixed(3)} · precisión declarada ≥{Math.round(geoState.accuracy || 150)}m
@@ -720,40 +926,60 @@ export function MobileDemoClient({
           </Card>
 
           <Card className="p-4 text-xs text-slate-300">
-            <h2 className="text-sm font-semibold text-white">{template.title}</h2>
-            <p className="mt-1 text-[11px] text-cyan-200">{template.subtitle}</p>
+            <h2 className="text-sm font-semibold text-white">{visibleTemplate.title}</h2>
+            <p className="mt-1 text-[11px] text-cyan-200">{visibleTemplate.subtitle}</p>
             <div className="mt-2 overflow-hidden rounded-xl border border-white/10 bg-gradient-to-r from-fuchsia-500/20 via-violet-500/10 to-cyan-500/20 p-3">
-              <p className="text-[10px] uppercase tracking-[0.16em] text-violet-100">Premium product view</p>
+              <p className="text-[10px] uppercase tracking-[0.16em] text-violet-100">
+                {activeVertical === "agro" ? agroCopy.productViewLabel : "Premium product view"}
+              </p>
               <div className="mt-2 flex items-end justify-between">
                 <div>
-                  <p className="text-lg font-semibold text-white">{seedItemName(activeItem)}</p>
-                  <p className="text-[11px] text-slate-200">Ventana ideal de consumo · 2026-2030</p>
+                  <p className="text-lg font-semibold text-white">{visibleProductName}</p>
+                  <p className="text-[11px] text-slate-200">
+                    {activeVertical === "agro" ? agroCopy.productMeta : "Ventana ideal de consumo · 2026-2030"}
+                  </p>
                 </div>
-                <div className="h-16 w-8 rounded-full border border-white/20 bg-white/10 shadow-[inset_0_0_22px_rgba(34,211,238,.35)]" />
+                {activeVertical === "agro" ? (
+                  <div aria-hidden="true" className="grid h-16 w-12 content-between rounded-lg border border-emerald-200/30 bg-emerald-400/10 p-1.5 shadow-[inset_0_0_22px_rgba(52,211,153,.24)]">
+                    <span className="text-center text-[8px] font-black tracking-[0.12em] text-emerald-100">{agroCopy.packetLabel}</span>
+                    <span className="text-center text-base leading-none text-amber-100">•••</span>
+                  </div>
+                ) : (
+                  <div className="h-16 w-8 rounded-full border border-white/20 bg-white/10 shadow-[inset_0_0_22px_rgba(34,211,238,.35)]" />
+                )}
               </div>
             </div>
             <div className="mt-2 grid grid-cols-2 gap-2">
-              {template.fields.map((field) => (
+              {visibleTemplate.fields.map((field) => (
                 <p key={field.label}>{field.label}: <span className="text-white">{field.value(activeItem)}</span></p>
               ))}
             </div>
             <p className="mt-2 text-slate-400">SKU {activeSku || "-"} · UID {activeUid || "-"}</p>
+            {activeVertical === "agro" ? (
+              <p className="mt-3 rounded-xl border border-amber-300/25 bg-amber-500/10 p-3 text-[11px] leading-relaxed text-amber-100">
+                {agroCopy.evidenceBoundary}
+              </p>
+            ) : null}
             <div className="mt-3 rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3">
               <div className="flex items-center justify-between">
-                <p className="text-[11px] uppercase tracking-[0.14em] text-cyan-100">Trust index simulado</p>
+                <p className="text-[11px] uppercase tracking-[0.14em] text-cyan-100">
+                  {activeVertical === "agro" ? agroCopy.trustIndexLabel : "Trust index simulado"}
+                </p>
                 <p className="text-sm font-semibold text-white">{trustIndex}/100</p>
               </div>
               <div
                 className="mt-2 h-2 overflow-hidden rounded-full bg-slate-900/70"
                 role="progressbar"
-                aria-label="Índice de confianza simulado"
+                aria-label={activeVertical === "agro" ? agroCopy.trustIndexAria : "Índice de confianza simulado"}
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-valuenow={trustIndex}
               >
                 <div aria-hidden="true" className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-violet-400 to-emerald-300 transition-all" style={{ width: `${trustIndex}%` }} />
               </div>
-              <p className="mt-1 text-[11px] text-cyan-100/90">Indicador ilustrativo calculado en el navegador; no es un score de riesgo productivo.</p>
+              <p className="mt-1 text-[11px] text-cyan-100/90">
+                {activeVertical === "agro" ? agroCopy.trustIndexNote : "Indicador ilustrativo calculado en el navegador; no es un score de riesgo productivo."}
+              </p>
             </div>
           </Card>
 
@@ -872,8 +1098,12 @@ export function MobileDemoClient({
         </div>
       </div>
       <div className="mx-auto w-full max-w-[430px] rounded-2xl border border-violet-300/20 bg-[linear-gradient(110deg,rgba(124,58,237,.16),rgba(14,165,233,.12))] p-3 text-xs text-slate-100">
-        <p className="font-semibold">Investor spotlight</p>
-        <p className="mt-1 text-slate-200">Esta demo móvil combina anti-fraude, trazabilidad y conversión comercial en una sola experiencia premium.</p>
+        <p className="font-semibold">{activeVertical === "agro" ? agroCopy.investorTitle : "Investor spotlight"}</p>
+        <p className="mt-1 text-slate-200">
+          {activeVertical === "agro"
+            ? agroCopy.investorBody
+            : "Esta demo móvil combina anti-fraude, trazabilidad y conversión comercial en una sola experiencia premium."}
+        </p>
       </div>
     </main>
 

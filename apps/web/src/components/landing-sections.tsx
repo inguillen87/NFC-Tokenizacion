@@ -9,7 +9,7 @@ import { platformVerticals, traceabilityGlobePoints, traceabilityGlobeRoutes } f
 
 type Content = any;
 
-export function HeroSection({ content, stats, locale, initialTheme = "dark" }: { content: Content; stats: any; locale: string; radar?: any; initialTheme?: "light" | "dark" }) {
+export function HeroSection({ content, stats, locale, initialTheme = "light" }: { content: Content; stats: any; locale: string; radar?: any; initialTheme?: "light" | "dark" }) {
   const isEn = locale === "en";
   const isBr = locale === "pt-BR";
   const hero = content?.hero || {};

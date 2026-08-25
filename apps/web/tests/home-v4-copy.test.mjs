@@ -19,9 +19,9 @@ test("home v4 has one typed content schema for ES, EN and PT-BR", () => {
 });
 
 test("home v4 preserves the physical-evidence boundary in every locale", () => {
-  assert.match(copy, /El tap no confirma por sí solo el contenido, el origen físico ni la custodia/);
-  assert.match(copy, /A tap alone does not confirm contents, physical origin or custody/);
-  assert.match(copy, /O tap, isoladamente, não confirma conteúdo, origem física ou custódia/);
+  assert.match(copy, /La lectura no confirma por sí sola el contenido, la calidad, el origen físico ni la custodia/);
+  assert.match(copy, /A reading alone does not confirm contents, quality, physical origin or custody/);
+  assert.match(copy, /A leitura, isoladamente, não confirma conteúdo, qualidade, origem física ou custódia/);
   assert.match(copy, /Escenario simulado/);
   assert.match(copy, /Simulated scenario/);
   assert.match(copy, /Cenário simulado/);
@@ -34,4 +34,15 @@ test("home v4 copy stays outcome-led and avoids invented performance", () => {
   assert.match(copy, /Conecte\. Verifique\. Ative\./);
   assert.doesNotMatch(copy, /\b(?:99(?:\.\d+)?%|10x|million products|clientes activos|active customers)\b/i);
   assert.doesNotMatch(copy, /Math\.random|crypto\.randomUUID/);
+});
+
+test("home v4 leads with agriculture while making the platform breadth explicit", () => {
+  assert.match(copy, /Agro, semillas e insumos/);
+  assert.match(copy, /Alimentos y bebidas/);
+  assert.match(copy, /Farma y salud/);
+  assert.match(copy, /Lujo y bienes durables/);
+  assert.match(copy, /Una plataforma\. Distintas industrias\./);
+  assert.match(copy, /Escenario simulado · Sin datos de cliente/);
+  assert.doesNotMatch(copy, /Syngenta|cliente confirmado|confirmed customer/i);
+  assert.doesNotMatch(copy, /Gran Reserva|Wine Secure|botella conectada/i);
 });

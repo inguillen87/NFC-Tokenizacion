@@ -24,7 +24,7 @@ test("guided public demos never masquerade simulation as production telemetry", 
   const publicDemo = [home, homeV4, homeCopy, demo, landing, interactive, ogImage, assistant].join("\n");
 
   assert.match(homeCopy, /Simulated scenario/);
-  assert.match(homeCopy, /Cryptographic and policy checks passed in this demo scenario/);
+  assert.match(homeCopy, /The identifier and policy passed the checks configured for this demo/);
   assert.match(demo, /source-labelled demo surfaces/);
   assert.match(landing, /View guided demo/);
   assert.match(interactive, /reported openings, duplicates and regions from the selected data source/);

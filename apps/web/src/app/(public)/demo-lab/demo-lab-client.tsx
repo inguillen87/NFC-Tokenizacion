@@ -6,6 +6,12 @@ import { DEMO_TENANT_SLUG } from "@product/config";
 import type { AppLocale } from "@product/config";
 import { ArrowLeft, BadgeCheck, CalendarDays, CheckCircle2, ChevronRight, Factory, Fingerprint, LockKeyhole, MapPin, PackageCheck, ShieldCheck, Smartphone, UserRound, AlertTriangle, ShoppingCart, RefreshCw, Check, Cpu, Network, QrCode, RadioTower } from "lucide-react";
 import { HeroTrustAtlasSvg } from "../../../components/hero-scene";
+import {
+  buildDemoContactHref,
+  getDemoLabVerticalStory,
+  normalizeCommercialVertical,
+  type DemoLabStoryLocation,
+} from "../../../lib/demo-lab-vertical-story";
 import { platformVerticals } from "../../../lib/platform-verticals";
 import { ThreeDProduct } from "../../investor-snapshot/investor-snapshot-client";
 import { DemoLabThemeToggle } from "./demo-lab-hub-theme";
@@ -226,6 +232,8 @@ function getTrustScenarioContext(
   key: DemoTrustScenarioKey | null,
   locale: AppLocale,
   proofVerifierHref: string,
+  commercialDemoHref: string,
+  vertical: Vertical,
 ): DemoTrustScenarioContext | null {
   if (!key) return null;
   const isEn = locale === "en";
@@ -271,7 +279,7 @@ function getTrustScenarioContext(
           { label: "Canal", body: "Deriva soporte, recall, rewards o CRM." },
         ],
       businessOutcome: isEn ? "Fast rollout with a clear path to stronger layers." : "Rollout rapido con camino claro a capas mas fuertes.",
-      primaryHref: "/demo-lab?scenario=qr-gs1",
+      primaryHref: buildDemoScenarioHref("qr-gs1", vertical),
       primaryLabel: isEn ? "Replay QR/GS1 demo" : "Reproducir demo QR/GS1",
       secondaryHref: "/docs#trust-layers",
       secondaryLabel: isEn ? "Read trust layers" : "Leer capas de confianza",
@@ -299,7 +307,7 @@ function getTrustScenarioContext(
           { label: "Veredicto", body: "Recien ahi habilita claim, reward o soporte." },
         ],
       businessOutcome: isEn ? "Blocks copy/replay before warranty, claim or reward activation." : "Bloquea copia o replay antes de activar garantia, reclamo o reward.",
-      primaryHref: "/demo-lab?scenario=nfc-424",
+      primaryHref: buildDemoScenarioHref("nfc-424", vertical),
       primaryLabel: isEn ? "Replay NFC demo" : "Reproducir demo NFC",
       secondaryHref: "/docs#trust-layers",
       secondaryLabel: isEn ? "Read NFC layer" : "Leer capa NFC",
@@ -323,7 +331,7 @@ function getTrustScenarioContext(
           { label: "Sync", body: "Pide el veredicto backend del mensaje, replay y politica al recuperar senal." },
         ],
       businessOutcome: isEn ? "Operations keep moving when warehouses, farms or mines lose signal." : "La operacion sigue viva cuando deposito, campo o mina pierden senal.",
-      primaryHref: "/demo-lab?scenario=offline-verifier",
+      primaryHref: buildDemoScenarioHref("offline-verifier", vertical),
       primaryLabel: isEn ? "Replay offline demo" : "Reproducir demo offline",
       secondaryHref: "/docs#trust-layers",
       secondaryLabel: isEn ? "Read offline architecture" : "Leer arquitectura offline",
@@ -347,9 +355,9 @@ function getTrustScenarioContext(
           { label: "Owner record", body: "Solicita el mint y muestra certificado solo con los checks de owner, metadata y transaccion devueltos por el runtime." },
         ],
       businessOutcome: isEn ? "Resale, warranty and loyalty remain gated by approved digital evidence, purchase and policy; the NFT is not physical proof." : "Reventa, garantía y loyalty dependen de evidencia digital aprobada, compra y política; el NFT no es prueba física.",
-      primaryHref: "/proof/ownership",
+      primaryHref: proofVerifierHref,
       primaryLabel: isEn ? "Open ownership certificate" : "Abrir certificado ownership",
-      secondaryHref: "/?contact=demo#contact-modal",
+      secondaryHref: commercialDemoHref,
       secondaryLabel: isEn ? "Design ownership pilot" : "Disenar piloto ownership",
     },
     "iota-proof": {
@@ -453,7 +461,7 @@ function getTrustScenarioContext(
       businessOutcome: isEn ? "Supplier scale without handing out raw keys, contracts or tenant data." : "Escala de proveedores sin entregar keys, contratos ni datos tenant.",
       primaryHref: "/docs#trust-layers",
       primaryLabel: isEn ? "Read access model" : "Leer modelo de acceso",
-      secondaryHref: "/?contact=demo#contact-modal",
+      secondaryHref: commercialDemoHref,
       secondaryLabel: isEn ? "Plan partner pilot" : "Planear piloto partner",
     },
     "supplier-batch-factory": {
@@ -501,7 +509,7 @@ function getTrustScenarioContext(
         : isBr
           ? "Planejamento pronto para fornecedor, com gates de QA rastreaveis e sem expor chaves brutas."
           : "Plan listo para proveedor, con gates de QA trazables y sin exponer claves crudas.",
-      primaryHref: "/demo-lab?scenario=supplier-batch-factory",
+      primaryHref: buildDemoScenarioHref("supplier-batch-factory", vertical),
       primaryLabel: isEn ? "Replay batch plan" : isBr ? "Repetir plano de batch" : "Reproducir plan de batches",
       secondaryHref: "/docs",
       secondaryLabel: isEn ? "Read integration docs" : isBr ? "Ler docs de integracao" : "Leer docs de integracion",
@@ -523,7 +531,7 @@ function verticalTo3DIndustry(vertical: Vertical): string {
 
 const demoLabRealAssets: Record<Vertical, { imageUrl: string; imageLightUrl: string; credit: string }> = {
   wine: { imageUrl: "/sdk/verticals/wine-spirits-424-tt.png", imageLightUrl: "/sdk/verticals/light/premium-wine-light.webp", credit: "nexID generated asset" },
-  seeds: { imageUrl: "/sdk/verticals/agro-nfc-qr-traceability.webp", imageLightUrl: "/sdk/verticals/light/premium-agro-light.webp", credit: "nexID generated asset" },
+  seeds: { imageUrl: "/demo/agro-secure/real-seed-packet-pexels.jpg", imageLightUrl: "/demo/agro-secure/real-seed-packet-pexels.jpg", credit: "Pexels · RDNE Stock project" },
   pharma: { imageUrl: "/sdk/pharma-authentication-pack.webp", imageLightUrl: "/sdk/verticals/light/premium-pharma-agro-light-enterprise.webp", credit: "nexID generated asset" },
   creamJar: { imageUrl: "/sdk/verticals/cosmetics-nfc-qr-tamper.webp", imageLightUrl: "/sdk/verticals/light/premium-beauty-light.webp", credit: "nexID generated asset" },
   perfume: { imageUrl: "/sdk/verticals/cosmetics-nfc-qr-tamper.webp", imageLightUrl: "/sdk/verticals/light/premium-beauty-light.webp", credit: "nexID generated asset" },
@@ -633,7 +641,7 @@ const LOCATIONS = {
   zurich: { city: "Zurich", country: "Suiza", countryCode: "CH", lat: 47.3769, lng: 8.5417, label: "Toque del cliente" },
 };
 
-type DemoLocation = (typeof LOCATIONS)[keyof typeof LOCATIONS];
+type DemoLocation = DemoLabStoryLocation;
 
 const STABLE_DEMO_TIME = "2026-05-01T00:00:00.000Z";
 const DEMO_PUBLIC_PROOF_EVENT_HASH = "sha256:0ea0478b694f01a5a76eda955a78c74701786b3d13ac241e6f6cfc3363938320";
@@ -664,18 +672,23 @@ function utf8ToHex(value: string) {
   return Array.from(new TextEncoder().encode(value), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-function buildDemoPublicProofHref(scenario: DemoTrustScenarioKey | null) {
-  if (scenario === "polygon-ownership") return "/proof/ownership";
+function buildDemoPublicProofHref(scenario: DemoTrustScenarioKey | null, vertical: Vertical) {
+  const returnQuery = new URLSearchParams();
+  if (scenario) returnQuery.set("scenario", scenario);
+  returnQuery.set("vertical", vertical);
+  const returnTo = `/demo-lab?${returnQuery.toString()}`;
+  if (scenario === "polygon-ownership") {
+    const ownershipQuery = new URLSearchParams({ return_to: returnTo, vertical });
+    return `/proof/ownership?${ownershipQuery.toString()}`;
+  }
 
   const safeScenario = scenario || "hub";
-  const returnTo = scenario
-    ? `/demo-lab?scenario=${encodeURIComponent(scenario)}`
-    : "/demo-lab";
   const query = new URLSearchParams({
     event_hash: DEMO_PUBLIC_PROOF_EVENT_HASH,
     anchor_id: DEMO_PUBLIC_PROOF_ANCHOR_ID,
     scenario: safeScenario,
     return_to: returnTo,
+    vertical,
   });
   if (isIotaProofScenario(scenario)) {
     query.set("layer", "iota");
@@ -685,18 +698,24 @@ function buildDemoPublicProofHref(scenario: DemoTrustScenarioKey | null) {
   return `/proof/verify?${query.toString()}#proof-result`;
 }
 
+function buildDemoScenarioHref(scenario: DemoTrustScenarioKey, vertical: Vertical) {
+  return `/demo-lab?${new URLSearchParams({ scenario, vertical }).toString()}`;
+}
+
 function buildDemoMobileHref(vertical: Vertical, beat: Beat, locale: AppLocale) {
   const demoMode = beat === 2
     ? "consumer_duplicate"
     : beat === 3
-      ? "consumer_opened"
+      ? vertical === "seeds" ? "consumer_tamper" : "consumer_opened"
       : "consumer_tap";
+  const demoTenant = vertical === "wine" ? DEMO_TENANT_SLUG : "demo-nexid";
   const query = new URLSearchParams({
     pack: DEMO_MOBILE_PACKS[vertical],
     demoMode,
     locale,
+    vertical,
   });
-  return `/demo-lab/mobile/${encodeURIComponent(DEMO_TENANT_SLUG)}/demo-item-001?${query.toString()}`;
+  return `/demo-lab/mobile/${encodeURIComponent(demoTenant)}/demo-item-001?${query.toString()}`;
 }
 
 const copy: Record<AppLocale, {
@@ -736,7 +755,7 @@ const copy: Record<AppLocale, {
     },
     verticals: {
       wine: { label: "Vino", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Referencia visual de botella", "TT abierto reportado (demo)", "SUN + anti-replay", "Origen declarado + toque simulado"] },
-      seeds: { label: "Semillas", profile: "QR + NFC UID", product: "Sobre de semillas · demo", visual: "seed-packet-demo", proof: ["Identificador del sobre", "Lote y variedad declarados", "Custodia agro", "Uso rural"] },
+      seeds: { label: "Semillas", profile: "NTAG 424 DNA TT + QR de respaldo", product: "Sobre de semillas · demo", visual: "seed-packet-demo", proof: ["Mensaje NFC dinámico", "Lote y variedad declarados", "Cambio de estado reportado", "Soporte técnico"] },
       pharma: { label: "Pharma", profile: "QR + NFC + recall", product: "Medicamento serializado", visual: "pharma-pack-demo", proof: ["Caja y lote auditables", "Prospecto digital", "Cadena de frio", "Recall por unidad"] },
       creamJar: { label: "Skincare", profile: "NTAG 424 DNA", product: "Set dermocosmético premium", visual: "cream-jar-demo", proof: ["Referencia tapa-envase", "TT reportado (demo)", "Garantía por política", "Señales de riesgo"] },
       perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Perfume premium", visual: "perfume-demo", proof: ["Referencia tapa-cuello", "Lote y serie declarados", "Garantía por política", "Evidencia SUN + anti-replay"] },
@@ -787,7 +806,7 @@ const copy: Record<AppLocale, {
     },
     verticals: {
       wine: { label: "Garrafa", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Referencia visual de garrafa", "TT aberto reportado (demo)", "SUN + anti-replay", "Origem declarada + toque simulado"] },
-      seeds: { label: "Sementes", profile: "QR + NFC UID", product: "Envelope de sementes · demo", visual: "seed-packet-demo", proof: ["Identificador do envelope", "Lote e variedade declarados", "Custodia agro", "Uso rural"] },
+      seeds: { label: "Sementes", profile: "NTAG 424 DNA TT + QR de apoio", product: "Envelope de sementes · demo", visual: "seed-packet-demo", proof: ["Mensagem NFC dinâmica", "Lote e variedade declarados", "Mudança de estado reportada", "Suporte técnico"] },
       pharma: { label: "Pharma", profile: "QR + NFC + recall", product: "Medicamento serializado", visual: "pharma-pack-demo", proof: ["Caixa e lote auditaveis", "Bula digital", "Cadeia fria", "Recall por unidade"] },
       creamJar: { label: "Skincare", profile: "NTAG 424 DNA", product: "Set dermocosmetico premium", visual: "cream-jar-demo", proof: ["Referencia tampa-envase", "TT reportado (demo)", "Garantia por politica", "Sinais de risco"] },
       perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Perfume premium", visual: "perfume-demo", proof: ["Referencia tampa-gargalo", "Lote e serie declarados", "Garantia por politica", "Evidencia SUN + anti-replay"] },
@@ -837,7 +856,7 @@ const copy: Record<AppLocale, {
     },
     verticals: {
       wine: { label: "Wine", profile: "NTAG 424 DNA TT", product: "Gran Reserva Malbec", visual: "hero-bottle", proof: ["Visual bottle reference", "Reported TT open (demo)", "SUN + replay controls", "Declared origin + simulated tap"] },
-      seeds: { label: "Seeds", profile: "QR + NFC UID", product: "Seed packet · demo", visual: "seed-packet-demo", proof: ["Packet identifier", "Declared lot and variety", "Agro custody", "Rural use"] },
+      seeds: { label: "Seeds", profile: "NTAG 424 DNA TT + backup QR", product: "Seed packet · demo", visual: "seed-packet-demo", proof: ["Dynamic NFC message", "Declared lot and variety", "Reported state change", "Technical support"] },
       pharma: { label: "Pharma", profile: "QR + NFC + recall", product: "Serialized medicine pack", visual: "pharma-pack-demo", proof: ["Auditable pack and lot", "Digital leaflet", "Cold chain", "Unit recall"] },
       creamJar: { label: "Skincare", profile: "NTAG 424 DNA", product: "Premium dermocosmetic set", visual: "cream-jar-demo", proof: ["Lid-package reference", "Reported TT (demo)", "Policy-based warranty", "Risk signals"] },
       perfume: { label: "Perfume", profile: "NTAG 424 DNA", product: "Premium perfume", visual: "perfume-demo", proof: ["Cap-neck reference", "Declared lot and serial", "Policy-based warranty", "SUN evidence + replay controls"] },
@@ -943,7 +962,7 @@ function getProductSceneBadge(locale: AppLocale) {
 function formatEventResult(value?: string | null) {
   const normalized = String(value || "").trim().toUpperCase();
   if (!normalized) return "SIN DATO";
-  if (isPositiveDemoVerdict(normalized)) return "AUTENTICADO";
+  if (isPositiveDemoVerdict(normalized)) return "EVIDENCIA DIGITAL VERIFICADA";
   if (normalized.includes("NOT_REGISTERED")) return "NO REGISTRADO";
   if (normalized.includes("REPLAY") || normalized.includes("DUPLICATE")) return "COPIA BLOQUEADA";
   if (normalized.includes("TAMPER")) return "MANIPULADO";
@@ -1122,15 +1141,64 @@ function getScenarioState(txt: DemoCopy, beat: Beat, routeKm: number, locale: Ap
 async function readDemoSummary(): Promise<DemoSummary> {
   const response = await fetch("/api/demo/summary", { cache: "no-store" });
   const data = await response.json().catch(() => ({ ok: false, reason: "invalid json" }));
-  if (!response.ok || data?.ok === false) throw new Error(String(data?.reason || "No se pudo leer Bodega Balmec."));
+  if (!response.ok || data?.ok === false) throw new Error(String(data?.reason || "No se pudo leer el entorno de demostración."));
   return data as DemoSummary;
+}
+
+function isDemoEventForVertical(event: DemoEvent, vertical: Vertical) {
+  if (vertical !== "seeds") return true;
+  return normalizeCommercialVertical(event.vertical) === "agro";
+}
+
+function scopeDemoSummaryForVertical(summary: DemoSummary | null, vertical: Vertical): DemoSummary | null {
+  if (!summary || vertical !== "seeds") return summary;
+  const recentLeads = (summary.recentLeads || []).filter(
+    (lead) => normalizeCommercialVertical(lead.vertical) === "agro",
+  );
+  return {
+    ...summary,
+    tagCount: undefined,
+    crm: summary.crm ? { ...summary.crm, leads: recentLeads.length, tickets: 0, orders: 0 } : summary.crm,
+    recentLeads,
+    recentTickets: [],
+    recentOrders: [],
+    events: (summary.events || []).filter((event) => isDemoEventForVertical(event, vertical)),
+  };
+}
+
+function agroSimulationMessage(mode: SimulationMode, persisted: boolean, locale: AppLocale) {
+  const copyByLocale = {
+    "es-AR": {
+      valid: "Lectura agro aceptada en la demo; ficha y soporte quedan sujetos a política.",
+      tamper: "Cambio de estado agro reportado para revisión; no prueba apertura, contenido ni aplicación física.",
+      replay: "Lectura repetida marcada para revisión; las acciones sensibles permanecen bloqueadas.",
+    },
+    "pt-BR": {
+      valid: "Leitura agro aceita na demo; ficha e suporte continuam sujeitos à política.",
+      tamper: "Mudança de estado agro reportada para revisão; não prova abertura, conteúdo nem aplicação física.",
+      replay: "Leitura repetida marcada para revisão; ações sensíveis continuam bloqueadas.",
+    },
+    en: {
+      valid: "Agro read accepted in the demo; the product sheet and support remain policy-gated.",
+      tamper: "Agro state change reported for review; it proves neither opening, contents nor physical application.",
+      replay: "Repeated read marked for review; sensitive actions remain blocked.",
+    },
+  } as const;
+  const prefix = persisted
+    ? ""
+    : locale === "en"
+      ? "Visual preview only. "
+      : locale === "pt-BR"
+        ? "Somente preview visual. "
+        : "Sólo preview visual. ";
+  return `${prefix}${copyByLocale[locale][mode]}`;
 }
 
 export function DemoLabClient({
   locale,
   initialVertical,
   initialScenario,
-  initialTheme = "dark",
+  initialTheme = "light",
   initialReturnTo = "/demo-lab",
 }: {
   locale: AppLocale;
@@ -1139,17 +1207,25 @@ export function DemoLabClient({
   initialTheme?: DemoLabTheme;
   initialReturnTo?: string;
 }) {
-  const txt = copy[locale] || copy["es-AR"];
+  const baseTxt = copy[locale] || copy["es-AR"];
   const scenarioStart = useMemo(() => getScenarioStart(initialScenario), [initialScenario]);
   const [viewMode, setViewMode] = useState<"simulator" | "crm">("simulator");
   const [role, setRole] = useState<Role>("ceo");
   const [vertical, setVertical] = useState<Vertical>(() => initialVertical ? normalizeDemoVertical(initialVertical) : scenarioStart.vertical);
+  const verticalStory = getDemoLabVerticalStory(vertical, locale);
+  const txt = useMemo<DemoCopy>(() => verticalStory
+    ? { ...baseTxt, controls: { ...baseTxt.controls, ...verticalStory.controls } }
+    : baseTxt, [baseTxt, verticalStory]);
   const [beat, setBeat] = useState<Beat>(scenarioStart.beat);
   const [trustScenario, setTrustScenario] = useState<DemoTrustScenarioKey | null>(scenarioStart.key);
   const [wizardStep, setWizardStep] = useState<DemoWizardStep>(() => getTrustScenarioInitialStep(scenarioStart.key));
   const [wizardMaxStep, setWizardMaxStep] = useState<DemoWizardStep>(() => getTrustScenarioInitialStep(scenarioStart.key));
   const [running, setRunning] = useState(false);
   const [summary, setSummary] = useState<DemoSummary | null>(null);
+  const visibleSummary = useMemo(
+    () => scopeDemoSummaryForVertical(summary, vertical),
+    [summary, vertical],
+  );
   const [status, setStatus] = useState(txt.controls.syncing);
   const [simulating, setSimulating] = useState(false);
   const [fallbackLastSeen, setFallbackLastSeen] = useState(STABLE_DEMO_TIME);
@@ -1175,8 +1251,12 @@ export function DemoLabClient({
   const lastEventCountRef = useRef<number>(0);
 
   useEffect(() => {
-    if (!summary || !summary.events) return;
-    const events = summary.events;
+    lastEventCountRef.current = 0;
+  }, [vertical]);
+
+  useEffect(() => {
+    if (!visibleSummary || !visibleSummary.events) return;
+    const events = visibleSummary.events;
     if (lastEventCountRef.current === 0) {
       lastEventCountRef.current = events.length;
       return;
@@ -1185,7 +1265,7 @@ export function DemoLabClient({
       const newEvents = events.slice(0, events.length - lastEventCountRef.current);
       newEvents.forEach((event) => {
         const resultText = String(event.result || "").toUpperCase();
-        const toastFeedTruthState = resolveDemoFeedTruth(summary);
+        const toastFeedTruthState = resolveDemoFeedTruth(visibleSummary);
         const isPositive = isPositiveDemoVerdict(resultText);
         const isVerifiedSuccess = canUseVerifiedDemoLanguage(toastFeedTruthState) && isPositive;
         const isRisk = resultText.includes("REPLAY") || resultText.includes("FAIL") || resultText.includes("SUSPICIOUS") || resultText.includes("COPIA");
@@ -1206,7 +1286,7 @@ export function DemoLabClient({
       });
       lastEventCountRef.current = events.length;
     }
-  }, [locale, summary, vertical]);
+  }, [locale, txt.verticals, vertical, visibleSummary]);
 
   useEffect(() => setFallbackLastSeen(new Date().toISOString()), []);
 
@@ -1227,7 +1307,7 @@ export function DemoLabClient({
         const next = await readDemoSummary();
         if (!alive) return;
         setSummary(next);
-        setStatus(demoFeedStatus(next, locale, txt.controls.adminKey));
+        setStatus(demoFeedStatus(scopeDemoSummaryForVertical(next, vertical), locale, txt.controls.adminKey));
       } catch (error) {
         if (!alive) return;
         setStatus(error instanceof Error ? error.message : txt.controls.unavailable);
@@ -1246,7 +1326,7 @@ export function DemoLabClient({
       document.removeEventListener("visibilitychange", onVisibilityChange);
       window.clearInterval(id);
     };
-  }, [locale, txt.controls.adminKey]);
+  }, [locale, txt.controls.adminKey, vertical]);
 
   useEffect(() => {
     if (!running) return;
@@ -1258,19 +1338,26 @@ export function DemoLabClient({
     setActionMessage(null);
   }, [beat, vertical]);
 
-  const activeBeat = txt.beats[beat];
+  const baseActiveBeat = txt.beats[beat];
+  const activeBeat = verticalStory
+    ? { ...baseActiveBeat, ...verticalStory.beats[beat] }
+    : baseActiveBeat;
   const activeRole = txt.roles[role];
   const activeVertical = txt.verticals[vertical];
-  const destination = LOCATIONS[activeBeat.location];
-  const routeKm = haversineKm(LOCATIONS.origin, destination);
+  const origin = verticalStory?.origin || LOCATIONS.origin;
+  const destination = verticalStory?.destinations[beat] || LOCATIONS[activeBeat.location];
+  const validSimulationDestination = verticalStory?.destinations[1] || LOCATIONS[txt.beats[1].location];
+  const routeKm = haversineKm(origin, destination);
   const executionTruthState = resolveDemoExecutionTruth(simulationReceipt);
   const baseScenario = getScenarioState(txt, beat, routeKm, locale);
+  const storyScenario = verticalStory?.scenarios[beat];
   const scenario = {
     ...baseScenario,
-    stateLabel: resolveDemoScenarioStateLabel(baseScenario.stateLabel, executionTruthState, locale),
+    ...storyScenario,
+    stateLabel: resolveDemoScenarioStateLabel(storyScenario?.stateLabel || baseScenario.stateLabel, executionTruthState, locale),
   };
-  const liveEvents = Array.isArray(summary?.events) ? summary.events : [];
-  const feedTruthState = resolveDemoFeedTruth(summary);
+  const liveEvents = Array.isArray(visibleSummary?.events) ? visibleSummary.events : [];
+  const feedTruthState = resolveDemoFeedTruth(visibleSummary);
   const feedTruthCopy = demoFeedCopy(feedTruthState, locale);
   const latestEvent = liveEvents[0];
   const livePoints = liveEvents.flatMap<DemoMapPoint>((event) => {
@@ -1292,10 +1379,10 @@ export function DemoLabClient({
 
   const mapPoints = useMemo<DemoMapPoint[]>(() => {
     const originPoint = {
-      city: LOCATIONS.origin.city,
-      country: LOCATIONS.origin.country,
-      lat: LOCATIONS.origin.lat,
-      lng: LOCATIONS.origin.lng,
+      city: origin.city,
+      country: origin.country,
+      lat: origin.lat,
+      lng: origin.lng,
       scans: livePoints.length ? 1 : 0,
       risk: 0,
       status: canUseVerifiedDemoLanguage(feedTruthState) || feedTruthState === "recorded_events" ? "ORIGEN DECLARADO" : "ORIGEN DEL ESCENARIO",
@@ -1304,26 +1391,26 @@ export function DemoLabClient({
     };
     if (livePoints.length) return [originPoint, ...livePoints.slice(0, 18)];
     return [originPoint, { city: destination.city, country: destination.country, lat: destination.lat, lng: destination.lng, scans: 0, risk: activeBeat.mode === "replay" ? 1 : 0, status: scenario.stateLabel, lastSeen: fallbackLastSeen, vertical }];
-  }, [activeBeat.mode, destination, fallbackLastSeen, feedTruthState, livePoints, scenario.stateLabel, vertical]);
+  }, [activeBeat.mode, destination, fallbackLastSeen, feedTruthState, livePoints, origin, scenario.stateLabel, vertical]);
 
   const atlasPoints = useMemo(() => toDemoAtlasPoints(mapPoints, txt.controls), [mapPoints, txt.controls]);
   const atlasRoutes = useMemo<VectorMapRoute[]>(() => [{
     id: `route-origin-${destination.city.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
-    fromLat: LOCATIONS.origin.lat,
-    fromLng: LOCATIONS.origin.lng,
+    fromLat: origin.lat,
+    fromLng: origin.lng,
     toLat: destination.lat,
     toLng: destination.lng,
-    label: `${LOCATIONS.origin.city} -> ${destination.city}`,
+    label: `${origin.city} -> ${destination.city}`,
     tone: activeBeat.mode === "replay" ? "warn" : "info",
     distanceLabel: routeEvidenceValue(locale, scenario, routeKm),
     evidence: scenario.stateLabel,
-  }], [activeBeat.mode, destination.city, destination.lat, destination.lng, locale, routeKm, scenario.stateLabel, scenario.tone]);
+  }], [activeBeat.mode, destination.city, destination.lat, destination.lng, locale, origin.city, origin.lat, origin.lng, routeKm, scenario.stateLabel]);
 
   async function refreshSummary() {
     try {
       const next = await readDemoSummary();
       setSummary(next);
-      setStatus(demoFeedStatus(next, locale, txt.controls.adminKey));
+      setStatus(demoFeedStatus(scopeDemoSummaryForVertical(next, vertical), locale, txt.controls.adminKey));
     } catch (error) {
       setStatus(error instanceof Error ? error.message : txt.controls.unavailable);
     }
@@ -1332,7 +1419,7 @@ export function DemoLabClient({
   async function simulate(mode: SimulationMode): Promise<boolean> {
     const nextBeat: Beat = mode === "replay" ? 2 : mode === "tamper" ? 3 : 1;
     const nextBeatCopy = txt.beats[nextBeat];
-    const nextDestination = LOCATIONS[nextBeatCopy.location];
+    const nextDestination = verticalStory?.destinations[nextBeat] || LOCATIONS[nextBeatCopy.location];
     const modeLabel = mode === "replay" ? "COPIA" : mode === "tamper" ? "APERTURA" : "TOQUE";
     setSimulating(true);
     setSimulationReceipt(null);
@@ -1341,7 +1428,7 @@ export function DemoLabClient({
       const response = await fetch("/api/demo/simulate-tap", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ mode, city: nextDestination.city, countryCode: nextDestination.countryCode, lat: nextDestination.lat, lng: nextDestination.lng, deviceLabel: `Laboratorio nexID - ${nextDestination.label}` }),
+        body: JSON.stringify({ mode, vertical, city: nextDestination.city, countryCode: nextDestination.countryCode, lat: nextDestination.lat, lng: nextDestination.lng, deviceLabel: `Laboratorio nexID - ${nextDestination.label}` }),
       });
       const payload = await response.json().catch(() => ({ ok: false, reason: "invalid json" }));
       if (!response.ok || payload?.ok === false) throw new Error(String(payload?.reason || payload?.payload?.reason || "lectura fallida"));
@@ -1361,7 +1448,9 @@ export function DemoLabClient({
           detail: String(payload.reason || "La simulacion actualizo la experiencia visual sin persistir un scan."),
         });
         setStatus(`${modeLabel}: ${String(payload.reason || txt.controls.adminKey)}`);
-        setActionMessage(mode === "replay" ? "Replay simulado solo en pantalla: ownership, puntos y tokenización quedan bloqueados." : mode === "tamper" ? "TT abierto simulado solo en pantalla: no se persistió un evento, no hubo escritura on-chain y no se prueba apertura física." : "Mensaje válido simulado solo en pantalla: no se persistió un scan y no hubo escritura on-chain.");
+        setActionMessage(verticalStory
+          ? agroSimulationMessage(mode, false, locale)
+          : mode === "replay" ? "Replay simulado solo en pantalla: ownership, puntos y tokenización quedan bloqueados." : mode === "tamper" ? "TT abierto simulado solo en pantalla: no se persistió un evento, no hubo escritura on-chain y no se prueba apertura física." : "Mensaje válido simulado solo en pantalla: no se persistió un scan y no hubo escritura on-chain.");
         return true;
       }
       const eventId = payload?.payload?.event_id;
@@ -1390,7 +1479,9 @@ export function DemoLabClient({
             : "El endpoint confirmo el scan en nexID, pero no ejecuto mint, transferencia ni anchor on-chain.",
       });
       setStatus(`${modeLabel}: ${txt.controls.registeredScan}`);
-      setActionMessage(mode === "replay" ? "Replay registrado: ownership, puntos y tokenización quedan bloqueados." : mode === "tamper" ? "TT abierto reportado: se registra la señal digital para revisión y postventa; no prueba apertura física." : "Mensaje NFC aceptado: club, tienda y analítica quedan sujetos a política.");
+      setActionMessage(verticalStory
+        ? agroSimulationMessage(mode, true, locale)
+        : mode === "replay" ? "Replay registrado: ownership, puntos y tokenización quedan bloqueados." : mode === "tamper" ? "TT abierto reportado: se registra la señal digital para revisión y postventa; no prueba apertura física." : "Mensaje NFC aceptado: club, tienda y analítica quedan sujetos a política.");
       await refreshSummary();
       return true;
     } catch (error) {
@@ -1417,13 +1508,39 @@ export function DemoLabClient({
 
   function handleDemoAction(action: DemoAction) {
     if (action === "origin") {
-      window.open(mapsLink(LOCATIONS.origin), "_blank", "noopener,noreferrer");
-      setActionMessage("Origen declarado abierto en Maps. Es un dato aportado por la marca, no prueba de procedencia física.");
+      window.open(mapsLink(origin), "_blank", "noopener,noreferrer");
+      setActionMessage(verticalStory
+        ? locale === "en" ? "Declared demo origin opened in Maps. It is organization-provided data, not proof of physical provenance." : locale === "pt-BR" ? "Origem declarada da demo aberta no Maps. É um dado informado pela organização, não prova de procedência física." : "Origen declarado de la demo abierto en Maps. Es un dato aportado por la organización, no prueba de procedencia física."
+        : "Origen declarado abierto en Maps. Es un dato aportado por la marca, no prueba de procedencia física.");
       return;
     }
     if (action === "tap") {
       window.open(mapsLink(destination), "_blank", "noopener,noreferrer");
       setActionMessage(`Toque actual abierto en Maps: ${destination.city}.`);
+      return;
+    }
+    if (verticalStory) {
+      const agroMessages: Record<Exclude<DemoAction, "origin" | "tap">, string> = locale === "en"
+        ? {
+          join: "Technical support path opened for the declared demo lot.",
+          warranty: "Technical review requested; additional evidence is required before any physical conclusion.",
+          tokenize: "Next action queued for policy review; this demo performs no blockchain operation.",
+          report: "Repeated or inconsistent read reported for operational review.",
+        }
+        : locale === "pt-BR"
+          ? {
+            join: "Canal de suporte técnico aberto para o lote declarado da demo.",
+            warranty: "Revisão técnica solicitada; é necessária evidência adicional antes de qualquer conclusão física.",
+            tokenize: "Próxima ação enviada para revisão de política; esta demo não executa operação em blockchain.",
+            report: "Leitura repetida ou inconsistente reportada para revisão operacional.",
+          }
+          : {
+            join: "Canal de soporte técnico abierto para el lote declarado de la demo.",
+            warranty: "Revisión técnica solicitada; se necesita evidencia adicional antes de cualquier conclusión física.",
+            tokenize: "Siguiente acción enviada a revisión de política; esta demo no ejecuta una operación blockchain.",
+            report: "Lectura repetida o inconsistente reportada para revisión operativa.",
+          };
+      setActionMessage(agroMessages[action]);
       return;
     }
     if (action === "report") {
@@ -1448,6 +1565,11 @@ export function DemoLabClient({
     setWizardMaxStep(0);
     setSimulationReceipt(null);
     setActionMessage(null);
+    if (typeof window !== "undefined") {
+      const nextUrl = new URL(window.location.href);
+      nextUrl.searchParams.set("vertical", nextVertical);
+      window.history.replaceState(window.history.state, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+    }
   }
 
   function resetWizardFlow() {
@@ -1498,9 +1620,9 @@ export function DemoLabClient({
             }`}
           >
             <span>{locale === "en" ? "Demo CRM & leads" : locale === "pt-BR" ? "CRM demo e leads" : "CRM demo y leads"}</span>
-            {Number(summary?.crm?.leads ?? 0) > 0 && (
+            {Number(visibleSummary?.crm?.leads ?? 0) > 0 && (
               <span className="rounded-full bg-cyan-400 px-1.5 py-0.5 text-[10px] font-black text-slate-950">
-                {summary?.crm?.leads}
+                {visibleSummary?.crm?.leads}
               </span>
             )}
           </button>
@@ -1509,9 +1631,13 @@ export function DemoLabClient({
 
       {viewMode === "crm" ? (
         <DemoCrmDashboard
-          summary={summary}
+          summary={visibleSummary}
           locale={locale}
+          vertical={vertical}
           mapPoints={mapPoints}
+          origin={origin}
+          destination={destination}
+          validDestination={validSimulationDestination}
           activeVertical={activeVertical}
           refreshSummary={refreshSummary}
           simulate={simulate}
@@ -1528,10 +1654,11 @@ export function DemoLabClient({
             vertical={vertical}
             activeVertical={activeVertical}
             scenario={scenario}
+            origin={origin}
             destination={destination}
             routeKm={routeKm}
             locale={locale}
-            summary={summary}
+            summary={visibleSummary}
             mapPoints={mapPoints}
             liveEvents={liveEvents}
             latestEvent={latestEvent}
@@ -1563,10 +1690,12 @@ export function DemoLabClient({
         vertical={vertical}
         status={scenario.stateLabel}
         product={activeVertical.product}
+        origin={origin}
         destination={destination}
         routeKm={routeKm}
         scenario={scenario}
         actionMessage={actionMessage}
+        simulationReceipt={simulationReceipt}
         locale={locale}
         onAction={handleDemoAction}
         onClose={() => setModalView(null)}
@@ -1641,6 +1770,7 @@ function DemoLabStudioHero({
   vertical,
   activeVertical,
   scenario,
+  origin,
   destination,
   routeKm,
   locale,
@@ -1671,6 +1801,7 @@ function DemoLabStudioHero({
   vertical: Vertical;
   activeVertical: DemoCopy["verticals"][Vertical];
   scenario: DemoScenario;
+  origin: DemoLocation;
   destination: DemoLocation;
   routeKm: number;
   locale: AppLocale;
@@ -1697,13 +1828,20 @@ function DemoLabStudioHero({
   onReplay: () => Promise<boolean>;
 }) {
   const verticalList = DEMO_VERTICAL_ORDER;
-  const proofDestinationHref = useMemo(
-    () => buildDemoPublicProofHref(activeTrustScenario),
-    [activeTrustScenario],
+  const fixtureProofDestinationHref = useMemo(
+    () => buildDemoPublicProofHref(activeTrustScenario, vertical),
+    [activeTrustScenario, vertical],
   );
+  const currentExecutionEvidenceHref = simulationReceipt?.evidenceVerified
+    ? simulationReceipt.evidenceUrl
+    : null;
+  const proofDestinationHref = currentExecutionEvidenceHref || fixtureProofDestinationHref;
+  const proofShowsCurrentExecution = Boolean(currentExecutionEvidenceHref);
+  const isIndependentAgroProof = vertical === "seeds" && !proofShowsCurrentExecution;
+  const commercialDemoHref = useMemo(() => buildDemoContactHref(vertical), [vertical]);
   const trustContext = useMemo(
-    () => getTrustScenarioContext(activeTrustScenario, locale, proofDestinationHref),
-    [activeTrustScenario, locale, proofDestinationHref],
+    () => getTrustScenarioContext(activeTrustScenario, locale, proofDestinationHref, commercialDemoHref, vertical),
+    [activeTrustScenario, commercialDemoHref, locale, proofDestinationHref, vertical],
   );
   const buyerMobileHref = useMemo(
     () => buildDemoMobileHref(vertical, beat, locale),
@@ -1839,10 +1977,18 @@ function DemoLabStudioHero({
       { metric: "Compliance", title: "Audita sin filtrar datos", body: "Evidencia hash-only puede ser revisada por auditores sin exponer la operacion privada.", proof: "Prueba DPP-ready" },
       { metric: "Revenue", title: "Abre postventa", body: "Con un evento verificado, garantia, ownership, loyalty y ofertas pueden iniciar bajo politica.", proof: "Proxima accion lista" },
     ];
-  const proofDecoderTitle = activeTrustScenario === "polygon-ownership"
+  const proofDecoderTitle = isIndependentAgroProof
+    ? locale === "en" ? "What this independent public agro case shows" : locale === "pt-BR" ? "O que este caso agro publico independente mostra" : "Que muestra este caso publico agro independiente"
+    : activeTrustScenario === "polygon-ownership"
     ? locale === "en" ? "What this ownership certificate proves" : locale === "pt-BR" ? "O que este certificado de ownership prova" : "Que prueba este certificado de ownership"
     : locale === "en" ? "What this map proves" : locale === "pt-BR" ? "O que este mapa prova" : "Que prueba este mapa";
-  const proofDecoderBody = activeTrustScenario === "polygon-ownership"
+  const proofDecoderBody = isIndependentAgroProof
+    ? locale === "en"
+      ? "This is a separate technical fixture that demonstrates how declared agro evidence can be inspected. It is not evidence for this packet, read or physical product."
+      : locale === "pt-BR"
+        ? "Este e um fixture tecnico separado que mostra como evidencia agro declarada pode ser consultada. Nao e evidencia deste envelope, leitura ou produto fisico."
+        : "Es un fixture tecnico separado que muestra como se consulta evidencia agro declarada. No es evidencia de este sobre, esta lectura ni del producto fisico."
+    : activeTrustScenario === "polygon-ownership"
     ? locale === "en"
       ? "Polygon proves the current token holder and control of that wallet. nexID keeps buyer identity, invoice and NFC secrets private; the NFT does not authenticate the physical object by itself."
       : locale === "pt-BR"
@@ -1875,19 +2021,31 @@ function DemoLabStudioHero({
       : locale === "pt-BR"
         ? "Este preview explica o fluxo futuro para comprador, auditor ou investidor; nao afirma que um toque real foi verificado."
         : "Este preview explica el flujo futuro a un comprador, auditor o inversor; no afirma que un tap real haya sido verificado.";
-  const proofDestinationLabel = activeTrustScenario === "polygon-ownership"
+  const proofDestinationLabel = proofShowsCurrentExecution
+    ? locale === "en" ? "Evidence for this execution" : locale === "pt-BR" ? "Evidencia desta execucao" : "Evidencia de esta ejecucion"
+    : isIndependentAgroProof
+      ? locale === "en" ? "Independent public agro case" : locale === "pt-BR" ? "Caso agro publico independente" : "Caso publico agro independiente"
+      : activeTrustScenario === "polygon-ownership"
     ? locale === "en" ? "Ownership certificate" : locale === "pt-BR" ? "Certificado ownership" : "Certificado ownership"
     : isIotaProofScenario(activeTrustScenario)
       ? locale === "en" ? "IOTA receipt / decoder" : locale === "pt-BR" ? "Recibo / decoder IOTA" : "Recibo / decoder IOTA"
       : locale === "en" ? "Public Proof Verify" : locale === "pt-BR" ? "Proof Verify publico" : "Proof Verify publico";
-  const mapProofEyebrow = activeTrustScenario === "polygon-ownership"
+  const mapProofEyebrow = proofShowsCurrentExecution
+    ? locale === "en" ? "CURRENT EXECUTION EVIDENCE" : locale === "pt-BR" ? "EVIDENCIA DA EXECUCAO ATUAL" : "EVIDENCIA DE LA EJECUCION ACTUAL"
+    : isIndependentAgroProof
+      ? locale === "en" ? "INDEPENDENT PUBLIC AGRO CASE" : locale === "pt-BR" ? "CASO AGRO PUBLICO INDEPENDENTE" : "CASO PUBLICO AGRO INDEPENDIENTE"
+      : activeTrustScenario === "polygon-ownership"
     ? locale === "en" ? "PUBLIC OWNERSHIP PROOF" : locale === "pt-BR" ? "PROVA PUBLICA DE OWNERSHIP" : "PRUEBA PUBLICA DE OWNERSHIP"
     : activeTrustScenario === "dual-proof"
       ? locale === "en" ? "DUAL-LAYER PUBLIC PROOF" : locale === "pt-BR" ? "PROVA PUBLICA EM DUAS CAMADAS" : "PRUEBA PUBLICA DE DOS CAPAS"
       : isIotaProofScenario(activeTrustScenario)
         ? locale === "en" ? "HASH-ONLY PUBLIC PROOF" : locale === "pt-BR" ? "PROVA PUBLICA HASH-ONLY" : "PRUEBA PUBLICA HASH-ONLY"
         : locale === "en" ? "PUBLIC PRODUCT PROOF" : locale === "pt-BR" ? "PROVA PUBLICA DO PRODUTO" : "PRUEBA PUBLICA DEL PRODUCTO";
-  const mapProofSummary = activeTrustScenario === "polygon-ownership"
+  const mapProofSummary = proofShowsCurrentExecution
+    ? locale === "en" ? "The runtime confirmed this execution and supplied a verifiable public URL." : locale === "pt-BR" ? "O runtime confirmou esta execucao e forneceu uma URL publica verificavel." : "El runtime confirmo esta ejecucion y entrego una URL publica verificable."
+    : isIndependentAgroProof
+      ? locale === "en" ? "Separate example: it shows the proof format, not this packet, read or physical product." : locale === "pt-BR" ? "Exemplo separado: mostra o formato da prova, nao este envelope, leitura ou produto fisico." : "Ejemplo separado: muestra el formato de evidencia, no este sobre, esta lectura ni el producto fisico."
+      : activeTrustScenario === "polygon-ownership"
     ? locale === "en" ? "Map for people. Transfer and wallet control for buyers. Private identity stays in nexID." : locale === "pt-BR" ? "Mapa para pessoas. Transferencia e controle da wallet para compradores. Identidade privada fica no nexID." : "Mapa para personas. Transferencia y control de wallet para compradores. La identidad privada queda en nexID."
     : activeTrustScenario === "dual-proof"
       ? locale === "en" ? "IOTA audits evidence. Polygon proves approved ownership. Private data stays in nexID." : locale === "pt-BR" ? "IOTA audita evidencia. Polygon prova ownership aprovado. Dados privados ficam no nexID." : "IOTA audita evidencia. Polygon prueba ownership aprobado. Los datos privados quedan en nexID."
@@ -1938,7 +2096,7 @@ function DemoLabStudioHero({
         </div>
         <div className="demo-lab-wizard-actions">
           <DemoLabThemeToggle initialTheme={initialTheme} initialReturnTo={initialReturnTo} />
-          <a href="/?contact=demo#contact-modal" className="demo-lab-wizard-step-pill demo-lab-wizard-cta is-active inline-flex h-10 shrink-0 items-center justify-center rounded-full border border-cyan-300 bg-cyan-300 px-4 text-xs font-black uppercase tracking-wider text-slate-950 shadow-lg shadow-cyan-500/20">
+          <a href={commercialDemoHref} className="demo-lab-wizard-step-pill demo-lab-wizard-cta is-active inline-flex h-10 shrink-0 items-center justify-center rounded-full border border-cyan-300 bg-cyan-300 px-4 text-xs font-black uppercase tracking-wider text-slate-950 shadow-lg shadow-cyan-500/20">
             <span className="demo-lab-cta-full">{scheduleLabel}</span>
             <span className="demo-lab-cta-short">Agendar</span>
           </a>
@@ -1958,7 +2116,7 @@ function DemoLabStudioHero({
         </div>
       </div>
 
-      <details className="demo-lab-trust-switcher" open={!activeTrustScenario}>
+      <details className="demo-lab-trust-switcher" open={!activeTrustScenario && vertical !== "seeds"}>
         <summary>
           <span>{locale === "en" ? "Switch trust layer" : locale === "pt-BR" ? "Trocar camada de confianca" : "Cambiar capa de confianza"}</span>
           <strong>{activeTrustScenario ? trustContext?.title : locale === "en" ? "Choose IOTA, Polygon, NFC, offline or DPP" : "Elegir IOTA, Polygon, NFC, offline o DPP"}</strong>
@@ -1969,6 +2127,7 @@ function DemoLabStudioHero({
           txt={txt}
           locale={locale}
           active={activeTrustScenario}
+          vertical={vertical}
           variant="wizard"
         />
       </details>
@@ -2082,7 +2241,7 @@ function DemoLabStudioHero({
             <p className={`mt-4 text-xs font-black uppercase tracking-[0.16em] ${hasVerifiedExecution ? "text-emerald-200" : "text-amber-200"}`}>{executionTruthCopy.badge}</p>
             <h2 className="demo-lab-wizard-result-status mt-2 text-3xl font-black leading-none text-white md:text-5xl">{executionTruthCopy.title}</h2>
             <div className="demo-lab-wizard-result-pills mt-4 flex flex-wrap gap-2">
-              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-slate-200">🌍 Valle de Uco, Argentina</span>
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-slate-200">🌍 {origin.city}, {origin.country}</span>
               <span className={`rounded-full border px-3 py-2 text-xs font-bold ${hasVerifiedExecution ? "border-emerald-300/20 bg-emerald-500/10 text-emerald-100" : "border-amber-300/25 bg-amber-500/10 text-amber-100"}`}>
                 {hasVerifiedExecution
                   ? locale === "en" ? "Public evidence confirmed" : locale === "pt-BR" ? "Evidencia publica confirmada" : "Evidencia publica confirmada"
@@ -2108,7 +2267,7 @@ function DemoLabStudioHero({
             {liveEvents.length === 0 ? (
               <div className="demo-lab-wizard-event demo-lab-wizard-event--preview rounded-2xl border bg-amber-500/10 p-3 text-xs">
                 <strong>{executionTruthCopy.badge}</strong>
-                <span>Zurich, CH</span>
+                <span>{destination.city}, {destination.countryCode}</span>
                 <small>{feedTruthCopy.explanation}</small>
               </div>
             ) : liveEvents.slice(0, 5).map((ev, i) => (
@@ -2133,6 +2292,7 @@ function DemoLabStudioHero({
               points={mapPoints}
               liveEvents={liveEvents}
               vertical={vertical}
+              origin={origin}
               destination={destination}
               locale={locale}
               routeKm={routeKm}
@@ -2259,7 +2419,7 @@ function DemoLabStudioHero({
                 {locale === "en" ? "Blocked copied URL" : locale === "pt-BR" ? "URL copiada bloqueada" : "URL copiada bloqueada"}
               </button>
               <button suppressHydrationWarning type="button" disabled={simulating} onClick={() => void runRiskFlow("tamper")}>
-                {locale === "en" ? "Simulate TT open" : locale === "pt-BR" ? "Simular TT aberto" : "Simular TT abierto"}
+                {txt.controls.tamper}
               </button>
             </div>
           </div>
@@ -2274,7 +2434,7 @@ function DemoLabStudioHero({
             ))}
           </div>
           <div className="demo-lab-wizard-gano-cta flex flex-wrap gap-3">
-            <a href="/?contact=demo#contact-modal" className="demo-lab-wizard-primary-cta inline-flex h-11 items-center justify-center rounded-full border border-cyan-300 bg-cyan-300 px-5 text-xs font-black uppercase tracking-wider text-slate-950">
+            <a href={commercialDemoHref} className="demo-lab-wizard-primary-cta inline-flex h-11 items-center justify-center rounded-full border border-cyan-300 bg-cyan-300 px-5 text-xs font-black uppercase tracking-wider text-slate-950">
               {locale === "en" ? "Schedule full demo →" : locale === "pt-BR" ? "Agendar demo completa →" : "Agendar demo completa →"}
             </a>
             <button
@@ -2510,11 +2670,13 @@ function DemoTrustScenarioRail({
   txt,
   locale,
   active,
+  vertical,
   variant = "default",
 }: {
   txt: DemoCopy;
   locale: AppLocale;
   active: DemoTrustScenarioKey | null;
+  vertical: Vertical;
   variant?: "default" | "wizard";
 }) {
   const labels = locale === "en"
@@ -2569,7 +2731,8 @@ function DemoTrustScenarioRail({
       <div className="demo-lab-trust-scenarios__grid">
         {items.map((item) => {
           const Icon = item.icon;
-          const href = `/demo-lab?scenario=${item.key}`;
+          const query = new URLSearchParams({ scenario: item.key, vertical });
+          const href = `/demo-lab?${query.toString()}`;
           const scenarioStatus = getDemoLabScenarioStatus(item.key, locale);
           return (
             <Link
@@ -2614,6 +2777,7 @@ function DemoLiveOpsMap({
   points,
   liveEvents,
   vertical,
+  origin,
   destination,
   locale,
   routeKm,
@@ -2623,6 +2787,7 @@ function DemoLiveOpsMap({
   points: DemoMapPoint[];
   liveEvents: DemoEvent[];
   vertical: Vertical;
+  origin: DemoLocation;
   destination: DemoLocation;
   locale: AppLocale;
   routeKm: number;
@@ -2657,10 +2822,10 @@ function DemoLiveOpsMap({
         <p>{truthCopy.mapTitle}</p>
         <span><i /> {totalScans} {locale === "en" ? "recorded events" : locale === "pt-BR" ? "eventos registrados" : "eventos registrados"}</span>
       </div>
-      <div className={`demo-lab-mini-map demo-lab-mini-map--atlas demo-lab-mini-map--${vertical} flex justify-center items-center relative overflow-hidden`} aria-label={`${truthCopy.mapTitle}: ${LOCATIONS.origin.city} a ${destination.city}`}>
-        <HeroTrustAtlasSvg points={atlasPoints} routes={atlasRoutes} selectedPointId="tap" />
+      <div className={`demo-lab-mini-map demo-lab-mini-map--atlas demo-lab-mini-map--${vertical} flex justify-center items-center relative overflow-hidden`} aria-label={`${truthCopy.mapTitle}: ${origin.city} a ${destination.city}`}>
+        <HeroTrustAtlasSvg points={atlasPoints} routes={atlasRoutes} selectedPointId="tap" mesh="none" />
         <div className="demo-lab-mini-map__legend z-10 pointer-events-none">
-          <span>{LOCATIONS.origin.city}</span>
+          <span>{origin.city}</span>
           <strong>{routeScopeLabel(locale, routeKm)}</strong>
           <span>{destination.city}</span>
         </div>
@@ -3081,7 +3246,7 @@ function getPremiumSceneMeta(vertical: Vertical, beat: Beat, badge: string, stat
       ...base,
       family: "Sobre de semillas · demo",
       evidence: "Lote y origen declarados, con eventos de canal reportados",
-      proofTitle: "QR + NFC UID",
+      proofTitle: "NFC dinamico + QR de respaldo",
       tagTitle: "Lote trazable",
       crop: "wide",
     };
@@ -3920,6 +4085,7 @@ function MobileOutcome({
   verticalLabel,
   status,
   product,
+  origin,
   destination,
   routeKm,
   scenario,
@@ -3932,6 +4098,7 @@ function MobileOutcome({
   verticalLabel: string;
   status: string;
   product: string;
+  origin: DemoLocation;
   destination: DemoLocation;
   routeKm: number;
   scenario: DemoScenario;
@@ -3965,10 +4132,10 @@ function MobileOutcome({
       {/* Mini SVG Map */}
       <div className="w-full h-[75px] rounded-lg bg-slate-950/90 border border-cyan-500/10 relative p-1.5 flex flex-col justify-between overflow-hidden shadow-[inset_0_1px_3px_rgba(0,0,0,0.4)] my-3 text-left">
         <div className="flex justify-between items-center px-1 text-[7.5px] text-slate-500 uppercase font-black tracking-wider z-10">
-          <span>Trazabilidad de Ruta</span>
+          <span>{locale === "en" ? "Declared evidence" : locale === "pt-BR" ? "Evidência declarada" : "Evidencia declarada"}</span>
           <span className="text-cyan-400 animate-pulse flex items-center gap-1">
             <span className="w-1 h-1 rounded-full bg-cyan-400 animate-ping" />
-            En Tránsito Live
+            {locale === "en" ? "Demo view" : locale === "pt-BR" ? "Vista demo" : "Vista demo"}
           </span>
         </div>
         <svg className="w-full h-[40px] relative z-10" viewBox="0 0 160 40" preserveAspectRatio="none">
@@ -4099,15 +4266,15 @@ function MobileOutcome({
           ))}
         </svg>
         <div className="flex justify-between text-[6.5px] text-slate-400 font-mono leading-none px-1">
-          <span>Valle de Uco</span>
-          <span>Mendoza QA</span>
-          <span>Tránsito</span>
+          <span>{origin.city}</span>
+          <span>{locale === "en" ? "Declared lot" : locale === "pt-BR" ? "Lote declarado" : "Lote declarado"}</span>
+          <span>{locale === "en" ? "Reported signal" : locale === "pt-BR" ? "Sinal reportado" : "Señal reportada"}</span>
           <span>{destination.city}</span>
         </div>
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
-        <InfoCell label={txt.controls.origin} value={LOCATIONS.origin.city} />
+        <InfoCell label={txt.controls.origin} value={origin.city} />
         <InfoCell label={txt.controls.currentTap} value={destination.city} />
         <InfoCell label={routeEvidenceLabel(locale)} value={routeEvidenceValue(locale, scenario, routeKm)} />
       </div>
@@ -4171,10 +4338,12 @@ function DemoFlowModal({
   vertical,
   status,
   product,
+  origin,
   destination,
   routeKm,
   scenario,
   actionMessage,
+  simulationReceipt,
   locale,
   onAction,
   onClose,
@@ -4186,10 +4355,12 @@ function DemoFlowModal({
   vertical: Vertical;
   status: string;
   product: string;
+  origin: DemoLocation;
   destination: DemoLocation;
   routeKm: number;
   scenario: DemoScenario;
   actionMessage: string | null;
+  simulationReceipt: DemoSimulationReceipt | null;
   locale: AppLocale;
   onAction: (action: DemoAction) => void;
   onClose: () => void;
@@ -4200,6 +4371,8 @@ function DemoFlowModal({
   const restoreFocusRef = useRef<HTMLElement | null>(null);
   const onCloseRef = useRef(onClose);
   const isOpen = view !== null;
+  const executionTruthState = resolveDemoExecutionTruth(simulationReceipt);
+  const hasRecordedExecution = executionTruthState === "persisted_unverified" || executionTruthState === "verified_evidence";
   onCloseRef.current = onClose;
 
   useEffect(() => {
@@ -4261,8 +4434,8 @@ function DemoFlowModal({
     : view === "mobile"
       ? "Lo que ve el consumidor después del toque."
       : view === "nft"
-        ? "Cómo se conecta el toque válido con tokenización y evidencia en cadena."
-        : "Como el consumidor pasa de validar a asociar el producto en el portal.";
+        ? hasRecordedExecution ? "Cómo un evento registrado puede pasar a revisión de tokenización; esta vista no ejecuta una operación en cadena." : "Vista conceptual: todavía no existe un evento registrado ni una solicitud de tokenización."
+        : hasRecordedExecution ? "Cómo un evento registrado puede iniciar un reclamo sujeto a identidad, compra y política." : "Vista conceptual: todavía no existe un evento registrado ni un reclamo ejecutable.";
 
   return (
     <div
@@ -4286,17 +4459,17 @@ function DemoFlowModal({
         <div className="demo-lab-modal-tabs">
           <button suppressHydrationWarning type="button" onClick={() => onOpen("product")} className={view === "product" ? "active" : ""}>Ficha</button>
           <button suppressHydrationWarning type="button" onClick={() => onOpen("mobile")} className={view === "mobile" ? "active" : ""}>Celular</button>
-          <button suppressHydrationWarning type="button" onClick={() => onOpen("nft")} className={view === "nft" ? "active" : ""}>NFT</button>
-          <button suppressHydrationWarning type="button" onClick={() => onOpen("claim")} className={view === "claim" ? "active" : ""}>Reclamo</button>
+          <button suppressHydrationWarning type="button" disabled={!hasRecordedExecution} title={!hasRecordedExecution ? "Requiere un evento registrado" : undefined} onClick={() => onOpen("nft")} className={view === "nft" ? "active" : ""}>NFT</button>
+          <button suppressHydrationWarning type="button" disabled={!hasRecordedExecution} title={!hasRecordedExecution ? "Requiere un evento registrado" : undefined} onClick={() => onOpen("claim")} className={view === "claim" ? "active" : ""}>Reclamo</button>
         </div>
         {view === "product" ? (
-          <DemoProductModalContent txt={txt} beat={beat} vertical={vertical} product={product} destination={destination} routeKm={routeKm} scenario={scenario} locale={locale} />
+          <DemoProductModalContent txt={txt} beat={beat} vertical={vertical} product={product} origin={origin} destination={destination} routeKm={routeKm} scenario={scenario} locale={locale} />
         ) : view === "mobile" ? (
-          <MobileOutcome txt={txt} beat={beat} verticalLabel={txt.verticals[vertical].label} status={status} product={product} destination={destination} routeKm={routeKm} scenario={scenario} onAction={onAction} actionMessage={actionMessage} locale={locale} />
+          <MobileOutcome txt={txt} beat={beat} verticalLabel={txt.verticals[vertical].label} status={status} product={product} origin={origin} destination={destination} routeKm={routeKm} scenario={scenario} onAction={onAction} actionMessage={actionMessage} locale={locale} />
         ) : view === "nft" ? (
-          <DemoNftModalContent beat={beat} scenario={scenario} />
+          <DemoNftModalContent beat={beat} scenario={scenario} vertical={vertical} executionTruthState={executionTruthState} />
         ) : (
-          <DemoClaimModalContent beat={beat} scenario={scenario} />
+          <DemoClaimModalContent beat={beat} scenario={scenario} executionTruthState={executionTruthState} />
         )}
       </section>
     </div>
@@ -4308,6 +4481,7 @@ function DemoProductModalContent({
   beat,
   vertical,
   product,
+  origin,
   destination,
   routeKm,
   scenario,
@@ -4317,6 +4491,7 @@ function DemoProductModalContent({
   beat: Beat;
   vertical: Vertical;
   product: string;
+  origin: DemoLocation;
   destination: DemoLocation;
   routeKm: number;
   scenario: DemoScenario;
@@ -4352,7 +4527,7 @@ function DemoProductModalContent({
           <InfoCell label="Perfil" value={verticalCopy.profile} />
           <InfoCell label="Estado" value={state} />
           <InfoCell label={routeEvidenceLabel(locale)} value={routeEvidenceValue(locale, scenario, routeKm)} />
-          <InfoCell label="Origen" value={LOCATIONS.origin.city} />
+          <InfoCell label="Origen" value={origin.city} />
           <InfoCell label="Tap" value={destination.city} />
         </div>
 
@@ -4370,19 +4545,20 @@ function DemoProductModalContent({
   );
 }
 
-function DemoNftModalContent({ beat, scenario }: { beat: Beat; scenario: DemoScenario }) {
+function DemoNftModalContent({ beat, scenario, vertical, executionTruthState }: { beat: Beat; scenario: DemoScenario; vertical: Vertical; executionTruthState: DemoExecutionTruthState }) {
   const blocked = beat === 2;
+  const previewOnly = executionTruthState === "not_started" || executionTruthState === "synthetic_preview" || executionTruthState === "failed";
   const steps = [
-    { label: "01", title: "Toque válido", body: blocked ? "Copia detectada: no se firma en cadena." : "SUN fresco aporta evidencia y crea evento." },
+    { label: "01", title: "Resultado digital", body: blocked ? "Copia detectada: no se habilita ninguna acción sensible." : previewOnly ? "La interfaz ilustra el flujo, pero no creó ni persistió un evento." : vertical === "seeds" ? "El mensaje digital quedó registrado; no autentica por sí solo el insumo físico." : "El mensaje digital quedó registrado como evidencia operativa." },
     { label: "02", title: "UID hasheado", body: "El UID no se expone crudo; se usa hash con salt para el certificado." },
-    { label: "03", title: "Solicitud", body: blocked ? "La solicitud queda bloqueada por política." : "Se prepara solicitud idempotente de tokenización." },
-    { label: "04", title: "Polygon Amoy", body: blocked ? "Sin tx_hash/token_id hasta nuevo toque válido." : "Si la política aprueba el reclamo, el minter registra tx_hash y token_id." },
+    { label: "03", title: "Solicitud", body: blocked ? "La solicitud queda bloqueada por política." : previewOnly ? "No se creó una solicitud; sólo se muestra el paso posible." : "El evento puede pasar a revisión de identidad, compra y política." },
+    { label: "04", title: "Polygon Amoy", body: blocked || previewOnly ? "No existe tx_hash ni token_id para este estado." : "Sólo una operación aprobada y confirmada entrega tx_hash y token_id." },
   ];
   return (
     <div className="demo-lab-modal-story">
       <div className={`demo-lab-modal-status demo-lab-modal-status--${scenario.tone}`}>
         <span>{scenario.stateLabel}</span>
-        <strong>{blocked ? "Tokenización bloqueada por seguridad" : "Solicitud de tokenización lista para revisar"}</strong>
+        <strong>{blocked ? "Tokenización bloqueada por seguridad" : previewOnly ? "Vista conceptual · sin solicitud creada" : "Evento registrado · elegibilidad por revisar"}</strong>
         <p>{scenario.chain}</p>
       </div>
       <div className="demo-lab-modal-step-grid">
@@ -4398,19 +4574,20 @@ function DemoNftModalContent({ beat, scenario }: { beat: Beat; scenario: DemoSce
   );
 }
 
-function DemoClaimModalContent({ beat, scenario }: { beat: Beat; scenario: DemoScenario }) {
+function DemoClaimModalContent({ beat, scenario, executionTruthState }: { beat: Beat; scenario: DemoScenario; executionTruthState: DemoExecutionTruthState }) {
   const blocked = beat === 2;
+  const previewOnly = executionTruthState === "not_started" || executionTruthState === "synthetic_preview" || executionTruthState === "failed";
   const steps = [
     { label: "Ingreso", body: "El consumidor entra al portal con sesión propia." },
     { label: "Marca", body: "El reclamo valida que producto, marca y evento coincidan." },
-    { label: "Dueño", body: blocked ? "El replay bloquea el reclamo hasta una nueva lectura NFC/SUN aceptada." : "La referencia digital queda asociada al usuario si identidad, compra y política lo permiten." },
-    { label: "Tienda", body: blocked ? "Beneficios de valor bloqueados." : "Se habilitan club, garantía, recompra y beneficios." },
+    { label: "Dueño", body: blocked ? "El replay bloquea el reclamo hasta una nueva lectura digital aceptada." : previewOnly ? "No se asoció ningún producto: el paso es sólo una vista previa." : "La referencia digital puede asociarse si identidad, compra y política lo permiten." },
+    { label: "Tienda", body: blocked ? "Beneficios de valor bloqueados." : previewOnly ? "No se habilitaron beneficios ni acciones comerciales." : "Los beneficios quedan sujetos a la política vigente." },
   ];
   return (
     <div className="demo-lab-modal-story">
       <div className={`demo-lab-modal-status demo-lab-modal-status--${scenario.tone}`}>
         <span>{scenario.stateLabel}</span>
-        <strong>{blocked ? "Reclamo bloqueado correctamente" : "Reclamo listo con política de dueño"}</strong>
+        <strong>{blocked ? "Reclamo bloqueado correctamente" : previewOnly ? "Vista conceptual · sin reclamo creado" : "Evento registrado · reclamo sujeto a política"}</strong>
         <p>{scenario.body}</p>
       </div>
       <div className="demo-lab-modal-step-grid">
@@ -4703,7 +4880,11 @@ function DemoActionMatrix({
 function DemoCrmDashboard({
   summary,
   locale,
+  vertical,
   mapPoints,
+  origin,
+  destination,
+  validDestination,
   activeVertical,
   refreshSummary,
   simulate,
@@ -4714,7 +4895,11 @@ function DemoCrmDashboard({
 }: {
   summary: DemoSummary | null;
   locale: AppLocale;
+  vertical: Vertical;
   mapPoints: DemoMapPoint[];
+  origin: DemoLocation;
+  destination: DemoLocation;
+  validDestination: DemoLocation;
   activeVertical: any;
   refreshSummary: () => void;
   simulate: (mode: SimulationMode) => Promise<boolean>;
@@ -4744,6 +4929,11 @@ function DemoCrmDashboard({
   const recentTickets = summary?.recentTickets || [];
   const recentOrders = summary?.recentOrders || [];
   const liveEvents = summary?.events || [];
+  const monitorStatus = feedTruthState === "public_evidence"
+    ? locale === "en" ? "Public evidence confirmed by the active source" : locale === "pt-BR" ? "Evidencia publica confirmada pela fonte ativa" : "Evidencia publica confirmada por la fuente activa"
+    : feedTruthState === "recorded_events"
+      ? locale === "en" ? "Recorded events; public proof not asserted" : locale === "pt-BR" ? "Eventos registrados; sem afirmar prova publica" : "Eventos registrados; sin afirmar prueba publica"
+      : locale === "en" ? "Demo controls; no active cryptographic evidence" : locale === "pt-BR" ? "Controles demo; sem evidencia criptografica ativa" : "Controles demo; sin evidencia criptografica activa";
 
   const atlasPoints = useMemo(() => toDemoAtlasPoints(mapPoints, txt.controls), [mapPoints, txt.controls]);
   const routes = useMemo<VectorMapRoute[]>(() => liveEvents
@@ -4752,16 +4942,16 @@ function DemoCrmDashboard({
       const tone: VectorMapRoute["tone"] = event.result === "REPLAY_FAIL" || event.result === "SUSPICIOUS" ? "warn" : "info";
       return {
         id: `crm-route-${event.id || event.created_at || index}`,
-        fromLat: LOCATIONS.origin.lat,
-        fromLng: LOCATIONS.origin.lng,
+        fromLat: origin.lat,
+        fromLng: origin.lng,
         toLat: event.lat!,
         toLng: event.lng!,
-        label: `${LOCATIONS.origin.city} -> ${event.city || "scan"}`,
+        label: `${origin.city} -> ${event.city || "scan"}`,
         tone,
         evidence: formatDemoEventResult(event.result, feedTruthState, locale),
       };
     })
-    .slice(0, 10), [feedTruthState, liveEvents, locale]);
+    .slice(0, 10), [feedTruthState, liveEvents, locale, origin.city, origin.lat, origin.lng]);
 
   const formatTime = (isoString: string) => {
     try {
@@ -4890,7 +5080,7 @@ function DemoCrmDashboard({
           </div>
           
           <div className="demo-lab-atlas-panel demo-lab-atlas-panel--live mt-4">
-            <HeroTrustAtlasSvg points={atlasPoints} routes={routes} selectedPointId="tap" />
+            <HeroTrustAtlasSvg points={atlasPoints} routes={routes} selectedPointId="tap" mesh="none" />
           </div>
         </div>
 
@@ -4909,7 +5099,7 @@ function DemoCrmDashboard({
               </button>
             </div>
             
-            <p className="mt-2 text-xs text-slate-400">Transacciones y verificaciones criptográficas activas</p>
+            <p className="mt-2 text-xs text-slate-400" data-demo-feed-truth={feedTruthState}>{monitorStatus}</p>
 
             {/* Consola de Simulación Rápida */}
             <div className="demo-lab-crm-simulator mt-4 mb-2 rounded-2xl border border-white/10 bg-slate-900/60 p-4 shadow-inner">
@@ -4925,7 +5115,7 @@ function DemoCrmDashboard({
                   className="demo-lab-crm-sim-button demo-lab-crm-sim-button--valid flex flex-col items-center justify-center rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 px-2 py-2.5 text-center transition disabled:opacity-55"
                 >
                   <span className="text-[11px] font-black text-emerald-400">✓ Válido</span>
-                  <span className="text-[8px] text-slate-400 font-mono mt-0.5">Zúrich</span>
+                  <span className="text-[8px] text-slate-400 font-mono mt-0.5">{validDestination.city}</span>
                 </button>
                 
                 <button
@@ -4941,11 +5131,12 @@ function DemoCrmDashboard({
                 <button
                   type="button"
                   disabled={simulating}
+                  aria-label={txt.controls.tamper}
                   onClick={() => void simulate("tamper")}
                   className="demo-lab-crm-sim-button demo-lab-crm-sim-button--tamper flex flex-col items-center justify-center rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 px-2 py-2.5 text-center transition disabled:opacity-55"
                 >
-                  <span className="text-[11px] font-black text-amber-400">TT abierto (demo)</span>
-                  <span className="text-[8px] text-slate-400 font-mono mt-0.5">Tamper</span>
+                  <span className="text-[11px] font-black text-amber-400">{vertical === "seeds" ? locale === "en" ? "State change" : locale === "pt-BR" ? "Mudanca" : "Cambio" : locale === "en" ? "TT open (demo)" : locale === "pt-BR" ? "TT aberto (demo)" : "TT abierto (demo)"}</span>
+                  <span className="text-[8px] text-slate-400 font-mono mt-0.5">{vertical === "seeds" ? locale === "en" ? "Demo signal" : locale === "pt-BR" ? "Sinal demo" : "Senal demo" : "Tamper"}</span>
                 </button>
               </div>
             </div>

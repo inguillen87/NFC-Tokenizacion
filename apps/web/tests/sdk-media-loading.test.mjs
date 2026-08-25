@@ -8,7 +8,8 @@ test("SDK vertical media renders one responsive asset for the active theme", asy
   const source = await readFile(sdkPageUrl, "utf8");
 
   assert.match(source, /import \{ getImageProps \} from "next\/image"/);
-  assert.match(source, /const theme: SdkTheme = cookieStore\.get\("theme"\)\?\.value === "light" \? "light" : "dark"/);
+  assert.match(source, /const hasCurrentThemePreference = cookieStore\.get\("nexid-theme-preference-version"\)\?\.value === "light-default-v1"/);
+  assert.match(source, /const theme: SdkTheme = hasCurrentThemePreference && cookieStore\.get\("theme"\)\?\.value === "dark" \? "dark" : "light"/);
   assert.match(source, /function SdkThemeImage\(/);
   assert.equal((source.match(/<img\b/g) || []).length, 1, "the SDK page should expose one shared image node, not dark/light pairs");
   assert.equal((source.match(/<SdkThemeImage\b/g) || []).length, 2, "hero and grid should both use the shared theme image");

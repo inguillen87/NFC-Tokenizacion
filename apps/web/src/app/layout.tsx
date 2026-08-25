@@ -100,10 +100,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#020617" },
-    { media: "(prefers-color-scheme: light)", color: "#f5f8ff" },
-  ],
+  themeColor: "#fcfdfb",
 };
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -130,7 +127,7 @@ export async function generateMetadata(): Promise<Metadata> {
     manifest: "/manifest.webmanifest",
     appleWebApp: {
       capable: true,
-      statusBarStyle: "black-translucent",
+      statusBarStyle: "default",
       title: "nexID",
     },
     formatDetection: {
@@ -188,7 +185,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const cookieStore = await cookies();
   const locale = resolveLocale(cookieStore.get("locale")?.value);
   const themeCookie = cookieStore.get("theme")?.value;
-  const theme = themeCookie === "light" ? "light" : "dark";
+  const hasCurrentThemePreference = cookieStore.get("nexid-theme-preference-version")?.value === "light-default-v1";
+  const theme = hasCurrentThemePreference && themeCookie === "dark" ? "dark" : "light";
   const socialCopy = getSocialCopy(locale);
   const facebookAppId = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID?.trim();
   const clerkKey = getClerkPublishableKey();

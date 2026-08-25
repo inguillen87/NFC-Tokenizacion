@@ -67,7 +67,7 @@ function readIsLightTheme() {
   return root.classList.contains("theme-light") || root.getAttribute("data-theme") === "light";
 }
 
-export function InstitutionalVideoPanel({ locale, variant = "landing", className = "", initialTheme = "dark" }: InstitutionalVideoPanelProps) {
+export function InstitutionalVideoPanel({ locale, variant = "landing", className = "", initialTheme = "light" }: InstitutionalVideoPanelProps) {
   const activeLocale = normalizeLocale(locale);
   const video = resolveInstitutionalVideo(locale);
   const copy = PANEL_COPY[activeLocale];

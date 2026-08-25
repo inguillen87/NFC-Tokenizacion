@@ -17,21 +17,29 @@ import { Sun, Moon } from "lucide-react";
 
 type Theme = "dark" | "light";
 
+const THEME_PREFERENCE_VERSION_KEY = "nexid-theme-preference-version";
+const THEME_PREFERENCE_VERSION = "light-default-v1";
+
 type DemoLabThemeToggleProps = {
   initialTheme?: Theme;
   initialReturnTo?: string;
 };
 
-function readTheme(fallback: Theme = "dark"): Theme {
+function readTheme(fallback: Theme = "light"): Theme {
   try {
-    const saved = localStorage.getItem("theme");
-    if (saved === "dark" || saved === "light") return saved;
+    const hasCurrentPreference =
+      localStorage.getItem(THEME_PREFERENCE_VERSION_KEY) === THEME_PREFERENCE_VERSION ||
+      document.cookie.split("; ").includes(`${THEME_PREFERENCE_VERSION_KEY}=${THEME_PREFERENCE_VERSION}`);
+    if (hasCurrentPreference) {
+      const saved = localStorage.getItem("theme");
+      if (saved === "dark" || saved === "light") return saved;
+
+      const attr = document.documentElement.getAttribute("data-theme");
+      if (attr === "dark" || attr === "light") return attr;
+    }
   } catch {
     // SSR / private-browse guard
   }
-
-  const attr = document.documentElement.getAttribute("data-theme");
-  if (attr === "dark" || attr === "light") return attr;
 
   return fallback;
 }
@@ -53,10 +61,16 @@ function applyTheme(theme: Theme) {
   document.documentElement.classList.toggle("theme-light", theme === "light");
   document.documentElement.style.colorScheme = theme;
   syncDemoLabRootTheme(theme);
+  document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((meta) => {
+    meta.content = theme === "dark" ? "#020617" : "#fcfdfb";
+  });
   try {
     localStorage.setItem("theme", theme);
+    localStorage.setItem(THEME_PREFERENCE_VERSION_KEY, THEME_PREFERENCE_VERSION);
     document.cookie = `theme=${theme}; path=/; max-age=31536000; SameSite=Lax`;
     document.cookie = `theme=${theme}; path=/; max-age=31536000; SameSite=Lax; domain=.nexid.lat`;
+    document.cookie = `${THEME_PREFERENCE_VERSION_KEY}=${THEME_PREFERENCE_VERSION}; path=/; max-age=31536000; SameSite=Lax`;
+    document.cookie = `${THEME_PREFERENCE_VERSION_KEY}=${THEME_PREFERENCE_VERSION}; path=/; max-age=31536000; SameSite=Lax; domain=.nexid.lat`;
   } catch {
     // ignore
   }
@@ -67,7 +81,7 @@ function applyTheme(theme: Theme) {
  * applies it to <html>, and listens for cross-tab storage events so the hub
  * stays in sync when the user toggles theme on the landing page in another tab.
  */
-export function DemoLabThemeToggle({ initialTheme = "dark", initialReturnTo = "/demo-lab" }: DemoLabThemeToggleProps) {
+export function DemoLabThemeToggle({ initialTheme = "light", initialReturnTo = "/demo-lab" }: DemoLabThemeToggleProps) {
   const [theme, setTheme] = useState<Theme>(initialTheme);
   const [mounted, setMounted] = useState(false);
   const [returnTo, setReturnTo] = useState(initialReturnTo);

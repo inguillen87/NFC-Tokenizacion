@@ -2860,7 +2860,7 @@ function ProductDetailModal({
   );
 }
 
-export function HeroScene({ locale, initialTheme = "dark" }: { locale: AppLocale; initialTheme?: HeroTheme }) {
+export function HeroScene({ locale, initialTheme = "light" }: { locale: AppLocale; initialTheme?: HeroTheme }) {
   const [selectedVertical, setSelectedVertical] = useState<HeroSelectorKey>("wine");
   const [tapIndex, setTapIndex] = useState(0);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);

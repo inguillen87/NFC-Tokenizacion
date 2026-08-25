@@ -3163,6 +3163,140 @@ html[data-theme="light"] .landing-mobile-action-dock__link--primary {
   }
 }
 
+/* Mobile product passport follows the platform light default. */
+html.theme-light .mobile-demo-root,
+html[data-theme="light"] .mobile-demo-root {
+  color-scheme: light;
+  color: #18332a;
+  background: #f4f8f5 !important;
+}
+
+html.theme-light .mobile-demo-device,
+html[data-theme="light"] .mobile-demo-device {
+  border-color: #cbdcd5 !important;
+  background: #eaf1ed !important;
+  box-shadow: 0 24px 70px rgba(28, 62, 50, 0.14) !important;
+}
+
+html.theme-light .mobile-demo-screen,
+html[data-theme="light"] .mobile-demo-screen {
+  border-color: #d8e4df !important;
+  background: #fcfdfb !important;
+}
+
+html.theme-light .mobile-demo-root [class~="bg-slate-950"],
+html.theme-light .mobile-demo-root [class~="bg-slate-950/95"],
+html.theme-light .mobile-demo-root [class~="bg-slate-950/80"],
+html.theme-light .mobile-demo-root [class~="bg-slate-950/75"],
+html.theme-light .mobile-demo-root [class~="bg-slate-900"],
+html.theme-light .mobile-demo-root [class~="bg-slate-900/80"],
+html.theme-light .mobile-demo-root [class~="bg-slate-900/70"],
+html[data-theme="light"] .mobile-demo-root [class~="bg-slate-950"],
+html[data-theme="light"] .mobile-demo-root [class~="bg-slate-950/95"],
+html[data-theme="light"] .mobile-demo-root [class~="bg-slate-950/80"],
+html[data-theme="light"] .mobile-demo-root [class~="bg-slate-950/75"],
+html[data-theme="light"] .mobile-demo-root [class~="bg-slate-900"],
+html[data-theme="light"] .mobile-demo-root [class~="bg-slate-900/80"],
+html[data-theme="light"] .mobile-demo-root [class~="bg-slate-900/70"] {
+  background: #ffffff !important;
+}
+
+html.theme-light .mobile-demo-root [class~="border-white/10"],
+html[data-theme="light"] .mobile-demo-root [class~="border-white/10"] {
+  border-color: #d9e5df !important;
+}
+
+html.theme-light .mobile-demo-root [class~="text-white"],
+html.theme-light .mobile-demo-root [class~="text-slate-100"],
+html.theme-light .mobile-demo-root [class~="text-slate-200"],
+html[data-theme="light"] .mobile-demo-root [class~="text-white"],
+html[data-theme="light"] .mobile-demo-root [class~="text-slate-100"],
+html[data-theme="light"] .mobile-demo-root [class~="text-slate-200"] {
+  color: #173229 !important;
+}
+
+html.theme-light .mobile-demo-root [class~="text-slate-300"],
+html[data-theme="light"] .mobile-demo-root [class~="text-slate-300"] {
+  color: #3f574e !important;
+}
+
+html.theme-light .mobile-demo-root [class~="text-slate-400"],
+html.theme-light .mobile-demo-root [class~="text-slate-500"],
+html[data-theme="light"] .mobile-demo-root [class~="text-slate-400"],
+html[data-theme="light"] .mobile-demo-root [class~="text-slate-500"] {
+  color: #60736b !important;
+}
+
+html.theme-light .mobile-demo-root [class~="text-cyan-100"],
+html.theme-light .mobile-demo-root [class~="text-cyan-200"],
+html.theme-light .mobile-demo-root [class~="text-cyan-300"],
+html[data-theme="light"] .mobile-demo-root [class~="text-cyan-100"],
+html[data-theme="light"] .mobile-demo-root [class~="text-cyan-200"],
+html[data-theme="light"] .mobile-demo-root [class~="text-cyan-300"] {
+  color: #08655b !important;
+}
+
+html.theme-light .mobile-demo-root [class~="text-amber-100"],
+html.theme-light .mobile-demo-root [class~="text-amber-200"],
+html[data-theme="light"] .mobile-demo-root [class~="text-amber-100"],
+html[data-theme="light"] .mobile-demo-root [class~="text-amber-200"] {
+  color: #854d0e !important;
+}
+
+html.theme-light .mobile-demo-root input,
+html.theme-light .mobile-demo-root select,
+html.theme-light .mobile-demo-root textarea,
+html[data-theme="light"] .mobile-demo-root input,
+html[data-theme="light"] .mobile-demo-root select,
+html[data-theme="light"] .mobile-demo-root textarea {
+  border-color: #cbdcd5 !important;
+  background: #ffffff !important;
+  color: #173229 !important;
+}
+
+html.theme-light .mobile-demo-root [class*="backdrop-blur"],
+html[data-theme="light"] .mobile-demo-root [class*="backdrop-blur"] {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* Demo Lab 4.0: the page header owns navigation, theme and sales actions. */
+.demo-lab-fullscreen-root .demo-lab-wizard-nav-back,
+.demo-lab-fullscreen-root .demo-lab-wizard-actions {
+  display: none !important;
+}
+
+@media (min-width: 1025px) {
+  .demo-lab-fullscreen-root .demo-lab-mode-bar--compact {
+    width: fit-content !important;
+    margin: 0 1.5rem 0.8rem auto !important;
+    padding: 0 !important;
+    border-color: transparent !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-mode-bar--compact > div:first-child {
+    display: none !important;
+  }
+
+  .demo-lab-fullscreen-root .demo-lab-mode-bar--compact > div:last-child {
+    display: flex !important;
+    width: auto !important;
+    padding: 0.25rem !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 999px !important;
+    background: rgba(2, 6, 23, 0.72) !important;
+  }
+
+  html.theme-light .demo-lab-fullscreen-root .demo-lab-mode-bar--compact > div:last-child,
+  html[data-theme="light"] .demo-lab-fullscreen-root .demo-lab-mode-bar--compact > div:last-child {
+    border-color: rgba(15, 118, 110, 0.14) !important;
+    background: rgba(255, 255, 255, 0.78) !important;
+  }
+}
+
 @media (max-width: 380px) {
   .site-header.mobile-optimized-header .site-brand-lockup {
     min-width: 7.75rem !important;

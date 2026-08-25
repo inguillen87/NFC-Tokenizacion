@@ -51,7 +51,8 @@ test("every required DemoLab scenario has a navigable panel and client context",
   }
 
   assert.match(page, /href=\{`\/demo-lab\?scenario=\$\{s\.id\}`\}/);
-  assert.match(client, /const href = `\/demo-lab\?scenario=\$\{item\.key\}`/);
+  assert.match(client, /const query = new URLSearchParams\(\{ scenario: item\.key, vertical \}\)/);
+  assert.match(client, /const href = `\/demo-lab\?\$\{query\.toString\(\)\}`/);
   assert.match(page, /data-demo-mode=\{scenarioStatus\.mode\}/);
   assert.match(client, /data-demo-mode=\{context\.mode\.mode\}/);
   assert.match(page, /const HUB_SCENARIO_ORDER:[\s\S]*"qr-gs1",[\s\S]*"nfc-424",[\s\S]*"offline-verifier",[\s\S]*"supplier-batch-factory",[\s\S]*"polygon-ownership"/);

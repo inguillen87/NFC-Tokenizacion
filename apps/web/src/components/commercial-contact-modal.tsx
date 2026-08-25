@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { schedulingUrls } from "@product/config";
+import { normalizeCommercialVertical } from "../lib/demo-lab-vertical-story";
 
 type AppLocale = "es-AR" | "pt-BR" | "en";
 
@@ -113,7 +114,7 @@ const intentMetaByLocale: Record<AppLocale, Record<string, IntentMeta>> = {
       subtitle: "Contanos el caso y coordinamos la demo con el pack correcto.",
       source: "demo_request",
       role: "Evaluación comercial",
-      vertical: "wine",
+      vertical: "",
       volume: "",
       message: "Quiero una demo guiada para evaluar nexID.",
       badge: "demo",
@@ -123,7 +124,7 @@ const intentMetaByLocale: Record<AppLocale, Record<string, IntentMeta>> = {
       subtitle: "Vamos directo a rollout, perfil de chip y modelo operativo.",
       source: "intent_company_rollout",
       role: "Buyer enterprise",
-      vertical: "wine",
+      vertical: "",
       volume: "50000",
       message: "Quiero evaluar nexID para mi empresa y entender rollout, chip profile y operación.",
       badge: "empresa",
@@ -245,7 +246,7 @@ const intentMetaByLocale: Record<AppLocale, Record<string, IntentMeta>> = {
       subtitle: "Conte seu caso e alinhamos a demo com o pack certo.",
       source: "demo_request",
       role: "Avaliação comercial",
-      vertical: "wine",
+      vertical: "",
       volume: "",
       message: "Quero uma demo guiada para avaliar a nexID.",
       badge: "demo",
@@ -255,7 +256,7 @@ const intentMetaByLocale: Record<AppLocale, Record<string, IntentMeta>> = {
       subtitle: "Vamos direto para rollout, perfil de chip e operação.",
       source: "intent_company_rollout",
       role: "Buyer enterprise",
-      vertical: "wine",
+      vertical: "",
       volume: "50000",
       message: "Quero avaliar a nexID para minha empresa e entender rollout, chip profile e operação.",
       badge: "empresa",
@@ -377,7 +378,7 @@ const intentMetaByLocale: Record<AppLocale, Record<string, IntentMeta>> = {
       subtitle: "Share your use case and we will align the right demo pack.",
       source: "demo_request",
       role: "Commercial evaluation",
-      vertical: "wine",
+      vertical: "",
       volume: "",
       message: "I want a guided demo to evaluate nexID.",
       badge: "demo",
@@ -387,7 +388,7 @@ const intentMetaByLocale: Record<AppLocale, Record<string, IntentMeta>> = {
       subtitle: "Go straight into rollout, chip profile and operating model.",
       source: "intent_company_rollout",
       role: "Enterprise buyer",
-      vertical: "wine",
+      vertical: "",
       volume: "50000",
       message: "I want to evaluate nexID for my company and understand rollout, chip profile and operations.",
       badge: "company",
@@ -524,7 +525,7 @@ export function CommercialContactModal({ initialLocale = "es-AR" }: { initialLoc
     return intentMetaByLocale[locale][intentKey] || intentMetaByLocale[locale][fallbackKey];
   }, [intent, intentKey, locale]);
   const [status, setStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
-  const [form, setForm] = useState<LeadForm>({ name: "", email: "", phone: "", company: "", country: "", role: "", vertical: "wine", volume: "", message: "" });
+  const [form, setForm] = useState<LeadForm>({ name: "", email: "", phone: "", company: "", country: "", role: "", vertical: "", volume: "", message: "" });
   const overlayRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -591,7 +592,7 @@ export function CommercialContactModal({ initialLocale = "es-AR" }: { initialLoc
       return;
     }
 
-    const vertical = search.get("vertical") || intentCopy.vertical;
+    const vertical = normalizeCommercialVertical(search.get("vertical") || intentCopy.vertical);
     const role = search.get("role") || intentCopy.role;
     const volume = search.get("volume") || intentCopy.volume;
     const message = search.get("message") || intentCopy.message;

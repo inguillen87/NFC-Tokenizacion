@@ -2,13 +2,14 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const [landing, home, homeV4, homeV4Css, sdk, demoLab, css] = await Promise.all([
+const [landing, home, homeV4, homeV4Css, sdk, demoLab, mobileDemo, css] = await Promise.all([
   readFile(new URL("../src/components/landing-sections.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/app/page.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/components/marketing-v4/nexid-home-v4.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/components/marketing-v4/nexid-home-v4.module.css", import.meta.url), "utf8"),
   readFile(new URL("../src/app/sdk/page.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/app/(public)/demo-lab/demo-lab-client.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../src/components/mobile-demo-client.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/app/globals.css", import.meta.url), "utf8"),
 ]);
 
@@ -19,7 +20,7 @@ test("home v4 light mode owns CTA, evidence and footer colors", () => {
   assert.match(homeV4, /AFIP_DATA_FISCAL_URL/);
   assert.match(homeV4, /MIPYME_CERTIFICATE_URL/);
   assert.match(homeV4Css, /:global\(html\[data-theme="light"\]\) \.root/);
-  assert.match(homeV4Css, /--v4-accent:\s*#087f6f/);
+  assert.match(homeV4Css, /--v4-accent:\s*#087d6c/);
   assert.match(homeV4Css, /\.footer\s*\{[\s\S]*color:\s*#f2f7f4/);
   assert.match(css, /\.landing-consumer-portal-cta[\s\S]*color: #6b21a8 !important/);
   assert.match(css, /\.landing-offline-demo-cta[\s\S]*color: #0f172a !important/);
@@ -55,4 +56,15 @@ test("Demo Lab light mode owns CRM tones and accessible control sizes", () => {
   assert.match(css, /\.demo-lab-fullscreen-root--light \.demo-lab-crm-kpi--rose[\s\S]*#be123c/);
   assert.match(css, /\.demo-lab-crm-refresh[\s\S]*min-height: 2\.75rem !important/);
   assert.match(css, /\.demo-lab-modal-tabs button[\s\S]*min-height: 2\.75rem !important/);
+});
+
+test("the mobile product passport follows the white default and stays readable on narrow screens", () => {
+  assert.match(mobileDemo, /mobile-demo-root/);
+  assert.match(mobileDemo, /mobile-demo-device/);
+  assert.match(mobileDemo, /mobile-demo-screen/);
+  assert.match(mobileDemo, /p-2 sm:p-4/);
+  assert.match(mobileDemo, /flex flex-col items-start gap-3 sm:flex-row/);
+  assert.match(css, /Mobile product passport follows the platform light default/);
+  assert.match(css, /html\.theme-light \.mobile-demo-screen[\s\S]*background: #fcfdfb !important/);
+  assert.match(css, /html\.theme-light \.mobile-demo-root \[class~="text-slate-300"\][\s\S]*color: #3f574e !important/);
 });

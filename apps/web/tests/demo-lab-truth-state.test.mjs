@@ -86,8 +86,8 @@ test("Demo Lab UI gates verification language through the shared truth model", a
   const client = await readFile(new URL("../src/app/(public)/demo-lab/demo-lab-client.tsx", import.meta.url), "utf8");
 
   assert.match(client, /resolveDemoExecutionTruth\(simulationReceipt\)/);
-  assert.match(client, /resolveDemoFeedTruth\(summary\)/);
-  assert.match(client, /setStatus\(demoFeedStatus\(next, locale, txt\.controls\.adminKey\)\)/);
+  assert.match(client, /resolveDemoFeedTruth\(visibleSummary\)/);
+  assert.match(client, /setStatus\(demoFeedStatus\(scopeDemoSummaryForVertical\(next, vertical\), locale, txt\.controls\.adminKey\)\)/);
   assert.match(client, /data-demo-truth-state=\{executionTruthState\}/);
   assert.match(client, /formatDemoEventResult\(event\.result, feedTruthState, locale\)/);
   assert.match(client, /canUseVerifiedDemoLanguage\(feedTruthState\) && isPositiveDemoVerdict\(event\.result\)/);

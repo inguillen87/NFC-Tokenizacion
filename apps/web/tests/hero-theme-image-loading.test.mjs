@@ -19,7 +19,7 @@ test("hero renders one normal image for the active theme", () => {
 });
 
 test("server theme prop initializes state and follows document theme changes", () => {
-  assert.match(source, /export function HeroScene\(\{ locale, initialTheme = "dark" \}/);
+  assert.match(source, /export function HeroScene\(\{ locale, initialTheme = "light" \}/);
   assert.match(source, /initialTheme\?: HeroTheme/);
   assert.match(source, /useState<HeroTheme>\(initialTheme\)/);
   assert.match(source, /root\.getAttribute\("data-theme"\) === "light"/);

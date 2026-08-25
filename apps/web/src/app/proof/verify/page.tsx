@@ -216,6 +216,7 @@ const DEMO_LAB_PROOF_HANDOFF_SCENARIOS: ReadonlySet<string> = new Set([
 type ProofHandoffContext = {
   scenario: string;
   returnTo: string;
+  vertical?: string;
 };
 
 const proofFlow = [
@@ -408,13 +409,13 @@ const FALLBACK_PUBLIC_PROOF_DEMO_CASES: DemoCase[] = [
     id: "agro-stewardship",
     title: "Agro Stewardship",
     vertical: "agro-quimico",
-    headline: "Origen, canal autorizado, escaneo de campo y politica de reclamo.",
-    body: "Ejemplo agro enterprise: lote, canal, stewardship y reclamo se entienden sin nombrar clientes ni publicar datos operativos sensibles.",
+    headline: "Caso público agro independiente con origen, canal, lectura y política declarados.",
+    body: "Fixture agro independiente del producto y del tap actual. Modela datos declarados para lote, canal, stewardship y reclamo sin nombrar clientes ni afirmar evidencia física u on-chain inexistente.",
     primary_event_hash: "sha256:0ea0478b694f01a5a76eda955a78c74701786b3d13ac241e6f6cfc3363938320",
     anchor_id: "33333333-3333-4333-8333-333333333333",
     provider: "iota",
     network: "iota-evm-testnet-ready",
-    status: "demo_ready",
+    status: "declared_fixture",
     merkle_root: "sha256:5387aaf504ca3b0a6cab83a3af0bfa158f36b04ab2a3558c94907337fc7c7369",
     resource_type: "agro_input_batch",
     resource_id: "AGR-STW-2026-0031",
@@ -422,9 +423,9 @@ const FALLBACK_PUBLIC_PROOF_DEMO_CASES: DemoCase[] = [
     explorer_url: null,
     tx_hash: null,
     public_receipt: {
-      title: "Agro Stewardship public proof receipt",
-      business_claim: "Demuestra origen, canal autorizado, escaneo de campo y politica de reclamo para un insumo agricola.",
-      manager_explanation: "Para canal y compliance: prueba stewardship y trazabilidad de uso responsable sin exponer clientes, lotes comerciales reales ni ubicaciones sensibles.",
+      title: "Agro Stewardship · memo público declarado",
+      business_claim: "Caso público agro independiente: declara origen, canal autorizado, lectura de campo y política de reclamo para un insumo agrícola de demostración.",
+      manager_explanation: "Sin tx_hash ni explorer, este fixture no confirma publicación on-chain, no corresponde al tap actual y no prueba origen, contenido, aplicación, custodia ni autenticidad del producto físico.",
       on_chain_memo: "nexID-proof-v1|case=agro-stewardship|vertical=agro-quimico|resource=agro_input_batch:AGR-STW-2026-0031|events=3|root=sha256:5387aaf504ca3b0a6cab83a3af0bfa158f36b04ab2a3558c94907337fc7c7369|privacy=hash-only",
       receipt_hash: "sha256:5395e58f92df05c6b36f48c67833fed53f12fe60870978b2665c73c5e29d2129",
       tx_hash: null,
@@ -435,29 +436,29 @@ const FALLBACK_PUBLIC_PROOF_DEMO_CASES: DemoCase[] = [
     events: [
       {
         id: "origin_attested",
-        title: "Origen atestado",
+        title: "Origen declarado",
         event_type: "ORIGIN_ATTESTED",
         hash: "sha256:0ea0478b694f01a5a76eda955a78c74701786b3d13ac241e6f6cfc3363938320",
-        summary: "El lote se emite con canal y politica de uso responsable.",
+        summary: "El fixture declara lote, canal y política de uso responsable; no acredita el origen físico.",
       },
       {
         id: "field_scan",
         title: "Escaneo de campo",
         event_type: "FIELD_SCAN",
         hash: "sha256:72ed2d884d008e430617c7a1ed43b63b6f10cfcee3490e9468b91b0192a6954f",
-        summary: "El verificador offline valida producto en zona de baja conectividad.",
+        summary: "El fixture registra una lectura de campo simulada; no valida el producto físico ni una ubicación observada.",
       },
       {
         id: "claim_policy_opened",
         title: "Reclamo habilitado",
         event_type: "CLAIM_POLICY_OPENED",
         hash: "sha256:bca3f082a5839daf37249285a92c92fa297d640bbd8fe48a239ab6a284214310",
-        summary: "Si hay tamper o canal invalido, queda abierto el camino de reclamo.",
+        summary: "El escenario declara el camino de reclamo ante una señal de tamper o canal inválido.",
       },
     ],
     proof_layers: [
       { layer: "nexID", purpose: "Reglas de canal, UID, lote y datos sensibles quedan privados.", status: "activo" },
-      { layer: "IOTA", purpose: "Public proof hash-only para stewardship y auditoria.", status: "testnet-ready" },
+      { layer: "IOTA", purpose: "Esquema hash-only declarado; requiere tx y explorer antes de presentarse como publicación externa.", status: "no-publicado" },
       { layer: "Polygon", purpose: "Certificado o claim transferible opcional.", status: "opcional" },
     ],
   },
@@ -544,13 +545,19 @@ function resolveProofHandoff(
   const expectedReturnTo = scenario === "hub"
     ? "/demo-lab"
     : `/demo-lab?scenario=${encodeURIComponent(scenario)}`;
+  const requestedVertical = first(params.vertical).trim().toLowerCase();
+  const vertical = requestedVertical === "seeds" ? requestedVertical : undefined;
+  const contextualReturnTo = vertical
+    ? `${expectedReturnTo}${expectedReturnTo.includes("?") ? "&" : "?"}vertical=${encodeURIComponent(vertical)}`
+    : expectedReturnTo;
   const requestedReturnTo = first(params.return_to).trim();
 
   return {
     scenario,
-    returnTo: requestedReturnTo === expectedReturnTo
+    vertical,
+    returnTo: requestedReturnTo === contextualReturnTo
       ? requestedReturnTo
-      : expectedReturnTo,
+      : contextualReturnTo,
   };
 }
 
@@ -558,6 +565,7 @@ function appendProofHandoff(query: URLSearchParams, handoff?: ProofHandoffContex
   if (!handoff) return query;
   query.set("scenario", handoff.scenario);
   query.set("return_to", handoff.returnTo);
+  if (handoff.vertical) query.set("vertical", handoff.vertical);
   return query;
 }
 
@@ -815,6 +823,35 @@ function proofLayerHref(layer: "iota" | "polygon", target: string, handoff: Proo
   return proofPageHref(params, target);
 }
 
+function demoLabScenarioHref(scenario: string, vertical?: string) {
+  const query = new URLSearchParams({ scenario });
+  if (vertical) query.set("vertical", vertical);
+  return `/demo-lab?${query.toString()}`;
+}
+
+function ownershipPageHref(vertical?: string) {
+  const query = new URLSearchParams();
+  if (vertical) query.set("vertical", vertical);
+  const search = query.toString();
+  return `/proof/ownership${search ? `?${search}` : ""}`;
+}
+
+function isUnpublishedAgroFixture(demoCase: DemoCase | null | undefined) {
+  return Boolean(
+    demoCase?.id === "agro-stewardship"
+      && !demoCase.tx_hash
+      && !demoCase.explorer_url
+      && !demoCase.public_receipt?.tx_hash
+      && !demoCase.public_receipt?.explorer_url,
+  );
+}
+
+function publicCaseHeadline(demoCase: DemoCase) {
+  return isUnpublishedAgroFixture(demoCase)
+    ? "Caso público agro independiente con evidencia declarada; todavía sin publicación on-chain."
+    : demoCase.headline;
+}
+
 function statusTone(status: string | null | undefined) {
   const normalized = String(status || "").toLowerCase();
   if (normalized === "confirmed") return "border-emerald-300/50 bg-emerald-50 text-emerald-800";
@@ -916,7 +953,29 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
   ) || null;
   const demoFixture = Boolean(resultIsDemoFixture || activeDemo);
   const showcaseDemo = activeDemo || demoCases.find((demoCase) => demoCase.tx_hash && demoCase.public_receipt?.tx_hash) || demoCases[0] || null;
+  const showcaseDemoIsUnpublishedAgro = isUnpublishedAgroFixture(showcaseDemo);
   const guidedDemo = activeDemo;
+  const guidedDemoIsUnpublishedAgro = isUnpublishedAgroFixture(guidedDemo);
+  const activeDemoIsUnpublishedAgro = isUnpublishedAgroFixture(activeDemo);
+  const guidedDemoBody = guidedDemoIsUnpublishedAgro
+    ? "Caso público agro independiente del producto y del tap actual. Presenta evidencia declarada para explicar el modelo; sin tx_hash ni explorer no confirma publicación on-chain ni prueba origen, contenido, aplicación, custodia o autenticidad física."
+    : guidedDemo?.body || "";
+  const guidedReceiptTitle = guidedDemoIsUnpublishedAgro
+    ? "Agro Stewardship · memo público declarado"
+    : guidedDemo?.public_receipt.title || "";
+  const guidedReceiptClaim = guidedDemoIsUnpublishedAgro
+    ? "Declara un esquema de origen, canal autorizado, lectura de campo y política de reclamo para un insumo agrícola de demostración."
+    : guidedDemo?.public_receipt.business_claim || "";
+  const guidedReceiptExplanation = guidedDemoIsUnpublishedAgro
+    ? "Es un fixture independiente y todavía no publicado: no corresponde a esta lectura ni demuestra el producto físico."
+    : guidedDemo?.public_receipt.manager_explanation || "";
+  const iotaDemoLabHref = demoLabScenarioHref("iota-proof", proofHandoff.vertical);
+  const ownershipCertificateHref = ownershipPageHref(proofHandoff.vertical);
+  const contextualConnectionCards = connectionCards.map((card) => {
+    if (card.href === "/demo-lab?scenario=iota-proof") return { ...card, href: iotaDemoLabHref };
+    if (card.href === "/proof/ownership") return { ...card, href: ownershipCertificateHref };
+    return card;
+  });
   const confirmedIotaAnchors = demoCases.filter((demoCase) => demoCase.network_verification?.anchor?.verified === true).length;
   const confirmedMemoReceipts = demoCases.filter((demoCase) => demoCase.network_verification?.receipt?.verified === true).length;
   const polygonRpcVerified = demoCatalog.testnet?.polygon?.rpc_verified === true;
@@ -1878,7 +1937,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                   Probar SHA demo <FileSearch className="h-4 w-4" />
                 </Link>
                 <Link href={decoderHrefForDemo(showcaseDemo, proofHandoff)} className="proof-secondary-cta inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]">
-                  Leer memo real <ArrowRight className="h-4 w-4" />
+                  {showcaseDemoIsUnpublishedAgro ? "Leer memo declarado" : "Leer memo real"} <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
             ) : null}
@@ -1887,6 +1946,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
           <form action="/proof/verify#proof-result" className="proof-elevated rounded-[1.5rem] border border-cyan-100 bg-white/88 p-4 shadow-[0_24px_80px_rgba(15,23,42,0.12)] backdrop-blur">
             <input type="hidden" name="scenario" value={proofHandoff.scenario} />
             <input type="hidden" name="return_to" value={demoLabBackHref} />
+            {proofHandoff.vertical ? <input type="hidden" name="vertical" value={proofHandoff.vertical} /> : null}
             <div className="grid gap-3">
               <div className="rounded-2xl border border-cyan-100 bg-cyan-50/70 p-4 text-sm leading-6 text-slate-700">
                 <strong className="block text-slate-950">Que pega una empresa en este campo?</strong>
@@ -1973,7 +2033,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                       {demoCase.events.length} eventos
                     </span>
                   </div>
-                  <p className="proof-fast-path-card__headline mt-2 text-sm leading-6 text-slate-600">{demoCase.headline}</p>
+                  <p className="proof-fast-path-card__headline mt-2 text-sm leading-6 text-slate-600">{publicCaseHeadline(demoCase)}</p>
                   <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
                     <Link href={verifyHrefForDemo(demoCase, proofHandoff)} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-[0.68rem] font-black uppercase tracking-[0.1em] text-cyan-900">
                       Ver SHA
@@ -2005,7 +2065,9 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Testnet live cockpit</p>
-                  <h2 className="mt-2 text-3xl font-black leading-tight text-slate-950">Prueba real, explicada sin jerga.</h2>
+                  <h2 className="mt-2 text-3xl font-black leading-tight text-slate-950">
+                    {showcaseDemoIsUnpublishedAgro ? "Evidencia declarada, con límites visibles." : "Prueba real, explicada sin jerga."}
+                  </h2>
                 </div>
                 <span className={`rounded-full border px-3 py-1.5 text-[0.68rem] font-black uppercase tracking-[0.12em] ${liveTestnetReady ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-amber-300 bg-amber-50 text-amber-800"}`}>
                   {liveTestnetReady ? "live" : "setup"}
@@ -2015,11 +2077,15 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                 Esta pantalla conecta Demo Lab, API, IOTA y Polygon: nexID genera el evento privado, publica solo evidencia hash-only y deja que un tercero lo verifique sin acceder a datos sensibles.
               </p>
               <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
-                <Link href={showcaseDemo ? verifyHrefForDemo(showcaseDemo, proofHandoff) : "/demo-lab?scenario=iota-proof"} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-cyan-900">
-                  {showcaseDemo ? "Probar verificacion real" : "Abrir demo IOTA"} <FileSearch className="h-4 w-4" />
+                <Link href={showcaseDemo ? verifyHrefForDemo(showcaseDemo, proofHandoff) : iotaDemoLabHref} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-white transition hover:bg-cyan-900">
+                  {showcaseDemo
+                    ? showcaseDemoIsUnpublishedAgro ? "Revisar evidencia declarada" : "Probar verificación real"
+                    : "Abrir demo IOTA"} <FileSearch className="h-4 w-4" />
                 </Link>
                 <Link href={showcaseDemo ? decoderHrefForDemo(showcaseDemo, proofHandoff) : proofVerifierHref} className="proof-secondary-cta inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-cyan-200 bg-white/78 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-cyan-900 transition hover:border-cyan-300 hover:bg-cyan-50">
-                  {showcaseDemo ? "Decodificar memo real" : "Usar decoder manual"} <ArrowRight className="h-4 w-4" />
+                  {showcaseDemo
+                    ? showcaseDemoIsUnpublishedAgro ? "Decodificar memo declarado" : "Decodificar memo real"
+                    : "Usar decoder manual"} <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
             </div>
@@ -2119,7 +2185,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                 <span>Codigo {demoCatalog.testnet?.polygon?.source_verified ? "publicado" : "pendiente"}</span>
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
-                <Link href="/proof/ownership" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-violet-700 px-4 text-xs font-black uppercase tracking-[0.1em] text-white transition hover:bg-violet-800">
+                <Link href={ownershipCertificateHref} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-violet-700 px-4 text-xs font-black uppercase tracking-[0.1em] text-white transition hover:bg-violet-800">
                   Abrir certificado legible <ArrowRight className="h-4 w-4" />
                 </Link>
                 {demoCatalog.testnet?.polygon?.metadata_url ? (
@@ -2162,7 +2228,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                 </div>
               ) : (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
-                  Este entorno todavia no muestra una tx publica para este caso. La verificacion local ya prueba hash y Merkle root; cuando operaciones publique el anchor, este mismo panel muestra explorer real sin exponer datos privados.
+                  Este entorno todavía no muestra una tx pública para este caso. La verificación local sólo comprueba consistencia entre el hash y el Merkle root declarados; no confirma publicación externa ni el evento físico.
                 </div>
               )}
             </dl>
@@ -2172,10 +2238,10 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
         <section className="proof-elevated rounded-[1.5rem] border border-slate-200 bg-white/84 p-5 shadow-sm">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Demos publicos verificables</p>
-              <h2 className="mt-2 text-3xl font-black leading-tight text-slate-950">Entrar, elegir un caso y verificar un SHA real.</h2>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Casos públicos con estado verificable</p>
+              <h2 className="mt-2 text-3xl font-black leading-tight text-slate-950">Entrar, elegir un caso y revisar su SHA.</h2>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-                Estos casos no usan marcas reales ni datos sensibles. El backend calcula hashes canonicos, Merkle roots reales y muestra la transaccion IOTA testnet cuando ese caso ya fue anclado.
+                Estos casos no usan marcas reales ni datos sensibles. El backend calcula hashes canónicos y Merkle roots; sólo presenta publicación externa cuando existen tx, explorer y verificación suficiente.
               </p>
             </div>
             <div className="rounded-2xl border border-cyan-100 bg-cyan-50/75 px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-cyan-800">
@@ -2195,7 +2261,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                     {demoCase.events.length} eventos
                   </span>
                 </div>
-                <p className="mt-3 text-sm leading-6 text-slate-600">{demoCase.headline}</p>
+                <p className="mt-3 text-sm leading-6 text-slate-600">{publicCaseHeadline(demoCase)}</p>
                 <div className="mt-4 rounded-2xl border border-slate-200 bg-white/70 p-3">
                   <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-slate-500">SHA principal</p>
                   <p className="mt-2 break-all font-mono text-xs font-bold text-slate-900">{demoCase.primary_event_hash}</p>
@@ -2251,7 +2317,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                   Abrir receipt tx con Raw input <ArrowRight className="h-4 w-4" />
                 </a>
               ) : (
-                <Link href="/demo-lab?scenario=iota-proof" className="proof-secondary-cta inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]">
+                <Link href={iotaDemoLabHref} className="proof-secondary-cta inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]">
                   Ir a Demo Lab <ArrowRight className="h-4 w-4" />
                 </Link>
               )}
@@ -2341,8 +2407,8 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                 <h3 className="mt-2 text-xl font-black leading-tight text-slate-950">{guidedDemo.title}</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-700">
                   {activeDemo
-                    ? guidedDemo.body
-                    : `${guidedDemo.body} Usa este ejemplo para ver la cadena completa: hash canonico, Merkle root, memo publico y datos privados protegidos.`}
+                    ? guidedDemoBody
+                    : `${guidedDemoBody} Usa este ejemplo para ver la cadena completa: hash canonico, Merkle root, memo publico y datos privados protegidos.`}
                 </p>
                 {!eventHash ? (
                   <Link href={verifyHrefForDemo(guidedDemo, proofHandoff)} className="proof-secondary-cta mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.12em]">
@@ -2367,8 +2433,10 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                 <div className="proof-flat mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <p className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-emerald-800">Recibo publico on-chain</p>
-                      <h4 className="mt-2 text-lg font-black leading-tight text-emerald-950">{guidedDemo.public_receipt.title}</h4>
+                      <p className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-emerald-800">
+                        {guidedDemoIsUnpublishedAgro ? "Memo público declarado · no publicado" : "Recibo público on-chain"}
+                      </p>
+                      <h4 className="mt-2 text-lg font-black leading-tight text-emerald-950">{guidedReceiptTitle}</h4>
                     </div>
                     {guidedDemo.network_verification?.receipt?.verified === true ? (
                       <span className="proof-receipt-status-chip rounded-full px-3 py-1.5 text-[0.68rem] font-black uppercase tracking-[0.1em]">
@@ -2377,10 +2445,12 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                       </span>
                     ) : null}
                   </div>
-                  <p className="mt-3 text-sm leading-6 text-emerald-900">{guidedDemo.public_receipt.business_claim}</p>
-                  <p className="mt-2 text-sm leading-6 text-emerald-900">{guidedDemo.public_receipt.manager_explanation}</p>
+                  <p className="mt-3 text-sm leading-6 text-emerald-900">{guidedReceiptClaim}</p>
+                  <p className="mt-2 text-sm leading-6 text-emerald-900">{guidedReceiptExplanation}</p>
                   <details className="proof-flat mt-4 rounded-2xl border border-emerald-200 bg-white/70 p-3">
-                    <summary className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-emerald-800">Ver texto exacto escrito como data de transaccion</summary>
+                    <summary className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-emerald-800">
+                      {guidedDemoIsUnpublishedAgro ? "Ver memo declarado por el fixture" : "Ver texto exacto escrito como data de transacción"}
+                    </summary>
                     <p className="mt-2 break-all font-mono text-[0.72rem] font-bold leading-5 text-slate-900">{guidedDemo.public_receipt.on_chain_memo}</p>
                   </details>
                   <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -2390,7 +2460,9 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                     </div>
                     <div className="proof-flat rounded-2xl border border-emerald-200 bg-white/70 p-3">
                       <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-emerald-800">Transaccion memo</p>
-                      <p className="mt-2 break-all font-mono text-[0.72rem] font-bold text-slate-900">{shortHash(guidedDemo.public_receipt.tx_hash)}</p>
+                      <p className="mt-2 break-all font-mono text-[0.72rem] font-bold text-slate-900">
+                        {guidedDemo.public_receipt.tx_hash ? shortHash(guidedDemo.public_receipt.tx_hash) : "No publicada"}
+                      </p>
                       {guidedDemo.public_receipt.explorer_url ? (
                         <a href={guidedDemo.public_receipt.explorer_url} className="proof-receipt-action-link mt-3 text-xs font-black uppercase tracking-[0.12em]" target="_blank" rel="noreferrer">
                           Abrir tx con memo en IOTA Explorer <ArrowRight className="h-4 w-4" />
@@ -2563,6 +2635,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
               <form action="/proof/verify#proof-decoder" className="proof-flat mt-4 grid gap-3 rounded-2xl border border-cyan-200 bg-white/72 p-4">
                 <input type="hidden" name="scenario" value={proofHandoff.scenario} />
                 <input type="hidden" name="return_to" value={demoLabBackHref} />
+                {proofHandoff.vertical ? <input type="hidden" name="vertical" value={proofHandoff.vertical} /> : null}
                 {eventHash ? <input type="hidden" name="event_hash" value={eventHash} /> : null}
                 {anchorId ? <input type="hidden" name="anchor_id" value={anchorId} /> : null}
                 <label className="grid gap-2 text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan-800">
@@ -2612,11 +2685,15 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
                   <div className="proof-decoder-translation-grid mt-3">
                     <div className="rounded-2xl border border-cyan-200 bg-cyan-50/70 p-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <strong className="text-sm text-slate-950">Raw input = memo publico</strong>
+                        <strong className="text-sm text-slate-950">
+                          {decodedProof?.publication_configured ? "Raw input = memo público" : "Memo declarado · publicación no confirmada"}
+                        </strong>
                         <span className="rounded-full border border-cyan-200 bg-white/70 px-2 py-1 text-[0.62rem] font-black uppercase tracking-[0.12em] text-cyan-800">IOTA Explorer</span>
                       </div>
                       <p className="mt-2 text-sm leading-6 text-slate-700">
-                        Esto es lo que se copia del explorer. Se ve como hex, pero representa el recibo publico escrito en la transaccion.
+                        {decodedProof?.publication_configured
+                          ? "Esto es lo que se copia del explorer. Se ve como hex, pero representa el recibo público configurado en la transacción."
+                          : "El contenido se pudo decodificar, pero sin tx y explorer sólo representa un memo declarado; no confirma que haya sido publicado on-chain."}
                       </p>
                       <p className="proof-decoder-code mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3 font-mono text-[0.72rem] font-bold leading-5 text-slate-900">
                         {decodedProof?.raw_input_hex || activeReceiptMemoHex || "Pegue un Raw input para ver el hex aca."}
@@ -2773,20 +2850,33 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
               </span>
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Capas del caso</p>
-                <h2 className="mt-1 text-2xl font-black text-slate-950">Que se prueba en nexID, IOTA y Polygon</h2>
+                <h2 className="mt-1 text-2xl font-black text-slate-950">
+                  {activeDemoIsUnpublishedAgro ? "Qué declara el fixture y qué falta publicar" : "Qué se prueba en nexID, IOTA y Polygon"}
+                </h2>
               </div>
             </div>
             <div className="mt-5 grid gap-3 md:grid-cols-3">
-              {activeDemo.proof_layers.map((layer) => (
-                <article key={layer.layer} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-cyan-700">{layer.status}</p>
-                  <h3 className="mt-2 text-xl font-black text-slate-950">{layer.layer}</h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">{layer.purpose}</p>
-                </article>
-              ))}
+              {activeDemo.proof_layers.map((layer) => {
+                const isUnpublishedIotaLayer = activeDemoIsUnpublishedAgro && layer.layer === "IOTA";
+                return (
+                  <article key={layer.layer} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-cyan-700">
+                      {isUnpublishedIotaLayer ? "NO PUBLICADO" : layer.status}
+                    </p>
+                    <h3 className="mt-2 text-xl font-black text-slate-950">{layer.layer}</h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      {isUnpublishedIotaLayer
+                        ? "Esquema hash-only declarado; necesita tx y explorer verificables antes de presentarse como evidencia pública externa."
+                        : layer.purpose}
+                    </p>
+                  </article>
+                );
+              })}
             </div>
             <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
-              {activeDemo.tx_hash
+              {activeDemoIsUnpublishedAgro
+                ? "Caso público agro independiente con hashes y Merkle root declarados. Sin tx_hash ni explorer no confirma publicación on-chain, no corresponde al tap actual y no prueba el producto físico."
+                : activeDemo.tx_hash
                 ? "Este caso ya tiene hash, Merkle root y transaccion IOTA testnet reales. Sirve para mostrar auditoria externa sin publicar datos privados; produccion cambia llaves, saldo, monitoreo y politica de retencion."
                 : "Este caso ya tiene hash y Merkle root reales. Cuando operaciones ancla el root en testnet o mainnet, la misma pantalla muestra tx y explorer sin cambiar la experiencia."}
             </div>
@@ -2805,7 +2895,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
               </div>
             </div>
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              {connectionCards.map((card) => (
+              {contextualConnectionCards.map((card) => (
                 <Link
                   key={card.title}
                   href={card.href}
@@ -2838,12 +2928,16 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
             </div>
             <div className="mt-5 grid gap-3">
               <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                <strong className="text-sm text-emerald-950">Demuestra</strong>
-                <p className="mt-2 text-sm leading-6 text-emerald-900">Que ese hash fue incluido en un anchor con fecha, provider, red, Merkle root y, si aplica, transaccion externa.</p>
+                <strong className="text-sm text-emerald-950">{activeDemoIsUnpublishedAgro ? "Declara" : "Demuestra"}</strong>
+                <p className="mt-2 text-sm leading-6 text-emerald-900">
+                  {activeDemoIsUnpublishedAgro
+                    ? "Un esquema agro independiente con hashes, Merkle root y campos públicos declarados; todavía no acredita publicación externa."
+                    : "Que ese hash fue incluido en un anchor con fecha, provider, red, Merkle root y, si aplica, transacción externa."}
+                </p>
               </div>
               <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
                 <strong className="text-sm text-amber-950">No demuestra solo</strong>
-                <p className="mt-2 text-sm leading-6 text-amber-900">No reemplaza la validacion NFC/SUN, el dashboard privado ni el certificado Polygon. Es una prueba externa de integridad, no una copia de toda la base.</p>
+                <p className="mt-2 text-sm leading-6 text-amber-900">No prueba origen, contenido, aplicación, custodia ni autenticidad del producto físico. Tampoco reemplaza validación NFC/SUN, evidencia operativa ni un certificado Polygon verificable.</p>
               </div>
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <strong className="text-sm text-slate-950">Como se usa en ventas</strong>

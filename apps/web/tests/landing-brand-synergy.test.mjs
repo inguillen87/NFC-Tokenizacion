@@ -56,9 +56,9 @@ test("home v4 light mode and navigation controls keep enterprise contrast", asyn
   const themeToggle = await readFile(new URL("../../../packages/ui/src/theme-toggle.tsx", import.meta.url), "utf8");
   const localeSwitcher = await readFile(new URL("../../../packages/ui/src/locale-switcher.tsx", import.meta.url), "utf8");
 
-  assert.ok(contrastRatio("#ffffff", "#087f6f") >= 4.5);
+  assert.ok(contrastRatio("#ffffff", "#087d6c") >= 4.5);
   assert.match(css, /:global\(html\[data-theme="light"\]\) \.root/);
-  assert.match(css, /--v4-ink:\s*#13211d/);
+  assert.match(css, /--v4-ink:\s*#10211b/);
   assert.match(navCss, /:global\(html\[data-theme="light"\]\) \.header/);
   assert.match(navCss, /\.iconButton\s*\{[\s\S]*min-width:\s*2\.75rem/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
@@ -66,7 +66,7 @@ test("home v4 light mode and navigation controls keep enterprise contrast", asyn
   assert.match(navigation, /<ThemeToggle initialTheme=\{initialTheme\}/);
   assert.match(navigation, /<LocaleSwitcher value=\{locale\}/);
   assert.match(page, /initialTheme=\{initialTheme\}/);
-  assert.match(themeToggle, /ThemeToggle\(\{ initialTheme = "dark" \}/);
+  assert.match(themeToggle, /ThemeToggle\(\{ initialTheme = "light" \}/);
   assert.match(themeToggle, /useState<Theme>\(initialTheme\)/);
   assert.match(localeSwitcher, /locale-switcher inline-flex min-h-11/);
   assert.match(localeSwitcher, /className="min-h-11 bg-transparent/);

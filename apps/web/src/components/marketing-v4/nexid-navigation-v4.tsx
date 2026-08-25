@@ -144,7 +144,7 @@ function LoginLink({ href, className, onNavigate, children }: LoginLinkProps) {
 export function NexidNavigationV4({
   locale,
   loginHref,
-  initialTheme = "dark",
+  initialTheme = "light",
   locales = DEFAULT_LOCALES,
   className,
 }: NexidNavigationV4Props) {

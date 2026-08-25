@@ -34,9 +34,57 @@ test("mobile Demo Lab labels every BID source as preview without claiming a phys
   assert.match(page, /const bid = queryBid \|\| seed\.bid/);
   assert.match(page, /queryBid \? "query" : bid \? "demo-pack" : "missing"/);
   assert.match(client, /SIMULACIÓN · NO ES UN TAP NFC FÍSICO/);
-  assert.match(client, /DEMO MODE · BID provisto por el dataset de demostración; no prueba una lectura física\./);
-  assert.match(client, /BID PROVIDED · Identificador de preview sin validación SUN en esta pantalla\./);
+  assert.match(client, /Modo demo · El BID proviene del dataset de demostracion y no prueba una lectura física\./);
+  assert.match(client, /BID informado · Este preview no ejecutó una validación SUN\./);
   assert.doesNotMatch(client, /PRODUCTION MODE|mode=\$\{[^\n]*"production"/);
+});
+
+test("mobile seeds handoff renders a localized agro story without leaking the winery template", async () => {
+  const client = await readFile(clientUrl, "utf8");
+  const presentationStart = client.indexOf("const AGRO_PRESENTATION");
+  const presentationEnd = client.indexOf("const AGRO_STATE_COPY", presentationStart);
+  assert.ok(presentationStart >= 0 && presentationEnd > presentationStart, "agro presentation copy must remain a bounded locale map");
+  const presentation = client.slice(presentationStart, presentationEnd);
+
+  assert.match(presentation, /Pasaporte digital del lote/);
+  assert.match(presentation, /Seed-lot digital passport/);
+  assert.match(presentation, /Passaporte digital do lote/);
+  assert.match(presentation, /Sin datos de cliente/);
+  assert.match(presentation, /No customer data/);
+  assert.match(presentation, /Sem dados de cliente/);
+  assert.doesNotMatch(presentation, /demobodega|bodega|wine|winery|Syngenta/i);
+
+  assert.match(client, /href="\/demo-lab\?vertical=seeds"/);
+  assert.match(client, /\{activeVertical === "agro" \? agroCopy\.itemContext : `Tenant: \$\{tenant\} · Item: \$\{itemId\} · Pack: \$\{pack\}`\}/);
+  assert.match(client, /activeVertical === "agro" \? agroCopy\.productMeta : "Ventana ideal de consumo · 2026-2030"/);
+  assert.match(client, /activeVertical === "agro" \? \([\s\S]*h-16 w-12[\s\S]*\) : \([\s\S]*h-16 w-8 rounded-full/);
+  assert.match(client, /const visibleTemplate = activeVertical === "agro"[\s\S]*: template;/);
+  assert.match(client, /seedItemName\(activeItem, activeVertical === "agro" \? agroCopy\.productFallback : undefined\)/);
+  assert.match(client, /const visibleProductName = activeVertical === "agro"/);
+  assert.match(client, /const MOBILE_UI_COPY/);
+  assert.match(client, /consumerApp: "Experiencia del comprador"/);
+  assert.match(client, /nfcEmulation: "Simulacion de lectura NFC"/);
+  assert.match(client, /geoCapture: "Ubicacion opcional de la demo"/);
+  assert.doesNotMatch(client, />NFC scan emulation</);
+  assert.doesNotMatch(client, />Geo trace capture</);
+});
+
+test("mobile seeds states keep digital evidence separate from physical product truth in every locale", async () => {
+  const client = await readFile(clientUrl, "utf8");
+  const statesStart = client.indexOf("const AGRO_STATE_COPY");
+  const statesEnd = client.indexOf("function normalizeMobileCopyLocale", statesStart);
+  assert.ok(statesStart >= 0 && statesEnd > statesStart, "agro state copy must remain a bounded locale map");
+  const states = client.slice(statesStart, statesEnd);
+
+  assert.match(states, /Esto no autentica las semillas, el contenido ni el envase físico/);
+  assert.match(states, /This does not authenticate the seeds, contents or physical package/);
+  assert.match(states, /Isso não autentica as sementes, o conteúdo nem a embalagem física/);
+  assert.match(states, /no prueba contenido, calidad ni custodia física/);
+  assert.match(states, /does not prove contents, quality or physical custody/);
+  assert.match(states, /não comprova conteúdo, qualidade nem custódia física/);
+  assert.doesNotMatch(states, /producto auténtico|authenticated product|produto autêntico|origen verificado|verified origin|origem verificada/i);
+  assert.match(client, /activeVertical === "agro"[\s\S]*AGRO_STATE_COPY\[mobileCopyLocale\]\[consumerState\][\s\S]*: STATE_COPY\[consumerState\]/);
+  assert.match(client, /\{agroCopy\.evidenceBoundary\}/);
 });
 
 test("mobile Demo Lab keeps sensitive mutations on the physical SUN flow and provenance read-only", async () => {

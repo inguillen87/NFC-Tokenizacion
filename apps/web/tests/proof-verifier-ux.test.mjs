@@ -14,7 +14,8 @@ test("proof verifier keeps the enterprise decoder readable and non-trapped", asy
   assert.match(page, /Abrir tx con memo en IOTA Explorer/);
   assert.match(page, /Traducir Raw input a negocio/);
   assert.match(page, /Explorer Decoder para C-level/);
-  assert.match(page, /Raw input = memo publico/);
+  assert.match(page, /Raw input = memo público/);
+  assert.match(page, /Memo declarado · publicación no confirmada/);
   assert.match(page, /nexID lo traduce a negocio/);
   assert.match(page, /Ver campos decodificados para auditoria/);
   assert.match(page, /Abrir tx con memo real/);
@@ -34,7 +35,7 @@ test("proof verifier keeps the enterprise decoder readable and non-trapped", asy
   assert.match(page, /FALLBACK_PUBLIC_PROOF_DEMO_CASES/);
   assert.match(page, /Secure Delivery public proof receipt/);
   assert.match(page, /Pharma Cold Chain public proof receipt/);
-  assert.match(page, /Agro Stewardship public proof receipt/);
+  assert.match(page, /Agro Stewardship · memo público declarado/);
   assert.match(page, /FALLBACK_PUBLIC_PROOF_DEMO_RESPONSE/);
   assert.match(page, /function proofApiBases/);
   assert.match(page, /fetchProofApiJson/);
@@ -138,7 +139,7 @@ test("proof verifier keeps the enterprise decoder readable and non-trapped", asy
   assert.match(page, /Abrir anchor tx/);
   assert.match(page, /Abrir receipt tx donde esta el memo/);
   assert.match(page, /Abrir memo tx y copiar Raw input/);
-  assert.match(page, /Este entorno todavia no muestra una tx publica/);
+  assert.match(page, /Este entorno todavía no muestra una tx pública/);
   assert.match(backLink, /aria-label=\{label\}/);
   assert.match(backLink, /ArrowLeft/);
   assert.doesNotMatch(backLink, /\{"<-"\}/);

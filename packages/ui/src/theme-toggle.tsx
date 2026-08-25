@@ -4,14 +4,27 @@ import { useEffect, useState } from "react";
 
 export type Theme = "dark" | "light";
 
+const THEME_PREFERENCE_VERSION_KEY = "nexid-theme-preference-version";
+const THEME_PREFERENCE_VERSION = "light-default-v1";
+
+function syncBrowserChrome(theme: Theme) {
+  document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((meta) => {
+    meta.content = theme === "dark" ? "#020617" : "#fcfdfb";
+  });
+}
+
 export function applyTheme(theme: Theme) {
   document.documentElement.setAttribute("data-theme", theme);
   document.documentElement.classList.toggle("theme-light", theme === "light");
   document.documentElement.style.colorScheme = theme;
+  syncBrowserChrome(theme);
   try {
     localStorage.setItem("theme", theme);
+    localStorage.setItem(THEME_PREFERENCE_VERSION_KEY, THEME_PREFERENCE_VERSION);
     document.cookie = `theme=${theme}; path=/; max-age=31536000; SameSite=Lax`;
     document.cookie = `theme=${theme}; path=/; max-age=31536000; SameSite=Lax; domain=.nexid.lat`;
+    document.cookie = `${THEME_PREFERENCE_VERSION_KEY}=${THEME_PREFERENCE_VERSION}; path=/; max-age=31536000; SameSite=Lax`;
+    document.cookie = `${THEME_PREFERENCE_VERSION_KEY}=${THEME_PREFERENCE_VERSION}; path=/; max-age=31536000; SameSite=Lax; domain=.nexid.lat`;
   } catch {
     // ignore
   }
@@ -19,17 +32,24 @@ export function applyTheme(theme: Theme) {
 
 function readTheme(): Theme {
   try {
-    const saved = localStorage.getItem("theme");
-    if (saved === "dark" || saved === "light") return saved;
+    const hasCurrentPreference =
+      localStorage.getItem(THEME_PREFERENCE_VERSION_KEY) === THEME_PREFERENCE_VERSION ||
+      document.cookie.split("; ").includes(`${THEME_PREFERENCE_VERSION_KEY}=${THEME_PREFERENCE_VERSION}`);
+    if (hasCurrentPreference) {
+      const saved = localStorage.getItem("theme");
+      if (saved === "dark" || saved === "light") return saved;
+
+      const serverTheme = document.documentElement.getAttribute("data-theme");
+      if (serverTheme === "light" || serverTheme === "dark") return serverTheme;
+    }
   } catch {
     // ignore
   }
 
-  const serverTheme = document.documentElement.getAttribute("data-theme");
-  return serverTheme === "light" || serverTheme === "dark" ? serverTheme : "dark";
+  return "light";
 }
 
-export function ThemeToggle({ initialTheme = "dark" }: { initialTheme?: Theme }) {
+export function ThemeToggle({ initialTheme = "light" }: { initialTheme?: Theme }) {
   const [theme, setTheme] = useState<Theme>(initialTheme);
 
   useEffect(() => {

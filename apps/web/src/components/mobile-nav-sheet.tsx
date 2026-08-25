@@ -32,7 +32,7 @@ export function MobileNavSheet({
   meetingLabel,
   locale,
   locales,
-  initialTheme = "dark",
+  initialTheme = "light",
 }: MobileNavSheetProps) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);

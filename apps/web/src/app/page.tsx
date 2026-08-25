@@ -8,7 +8,8 @@ import { getWebI18n } from "../lib/locale";
 export default async function HomePage() {
   const { locale, locales } = await getWebI18n();
   const cookieStore = await cookies();
-  const initialTheme = cookieStore.get("theme")?.value === "light" ? "light" : "dark";
+  const hasCurrentThemePreference = cookieStore.get("nexid-theme-preference-version")?.value === "light-default-v1";
+  const initialTheme = hasCurrentThemePreference && cookieStore.get("theme")?.value === "dark" ? "dark" : "light";
   const loginHref = `${process.env.NEXT_PUBLIC_APP_URL || productUrls.app}/login`;
 
   return (

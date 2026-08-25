@@ -9,9 +9,9 @@ test("demo lab theme toggle changes theme client-side before falling back to SSR
   assert.match(source, /type DemoLabThemeToggleProps = \{/);
   assert.match(source, /initialTheme\?: Theme/);
   assert.match(source, /initialReturnTo\?: string/);
-  assert.match(source, /export function DemoLabThemeToggle\(\{ initialTheme = "dark", initialReturnTo = "\/demo-lab" \}/);
+  assert.match(source, /export function DemoLabThemeToggle\(\{ initialTheme = "light", initialReturnTo = "\/demo-lab" \}/);
   assert.match(source, /function syncDemoLabRootTheme\(theme: Theme\)/);
-  assert.match(source, /function readTheme\(fallback: Theme = "dark"\)/);
+  assert.match(source, /function readTheme\(fallback: Theme = "light"\)/);
   assert.match(source, /localStorage\.getItem\("theme"\)/);
   assert.match(source, /localStorage\.setItem\("theme", theme\)/);
   assert.match(source, /const \[theme, setTheme\] = useState<Theme>\(initialTheme\)/);
@@ -379,7 +379,7 @@ test("demo lab trust scenario deep links open contextual wizard proof layers", a
   assert.match(client, /decisionPath: DemoTrustScenarioStep\[\]/);
   assert.match(client, /businessOutcome: string/);
   assert.match(client, /const DEMO_PUBLIC_PROOF_EVENT_HASH = "sha256:/);
-  assert.match(client, /function buildDemoPublicProofHref\(scenario: DemoTrustScenarioKey \| null\)/);
+  assert.match(client, /function buildDemoPublicProofHref\(scenario: DemoTrustScenarioKey \| null, vertical: Vertical\)/);
   assert.match(client, /function getTrustScenarioInitialStep\(key: DemoTrustScenarioKey \| null\): DemoWizardStep/);
   assert.match(client, /key === "iota-proof" \|\| key === "sensor-evidence" \|\| key === "dual-proof"\) return 2/);
   assert.match(client, /key === "polygon-ownership"\) return \{ key, beat: 0, vertical: "luxury" \}/);
@@ -391,7 +391,7 @@ test("demo lab trust scenario deep links open contextual wizard proof layers", a
   assert.match(client, /demo-lab-trust-context__outcome/);
   assert.match(client, /demo-lab-trust-switcher/);
   assert.match(client, /<DemoTrustScenarioRail[\s\S]*variant="wizard"/);
-  assert.match(client, /const href = `\/demo-lab\?scenario=\$\{item\.key\}`;[\s\S]*<Link[\s\S]*href=\{href\}/);
+  assert.match(client, /new URLSearchParams\(\{ scenario: item\.key, vertical \}\)[\s\S]*<Link[\s\S]*href=\{href\}/);
   assert.doesNotMatch(client, /window\.history\.replaceState\(null, "", href\)/);
   assert.doesNotMatch(client, /setTrustScenario\(null\)/);
   assert.match(client, /onVertical=\{handleVerticalChange\}/);
@@ -401,7 +401,7 @@ test("demo lab trust scenario deep links open contextual wizard proof layers", a
   assert.match(client, /el NFT no es prueba física/);
   assert.doesNotMatch(client, /Polygon registra ownership despues de verificar el producto|Objeto autentico|prueba real de producto/);
   assert.match(client, /Abrir certificado ownership/);
-  assert.match(client, /primaryHref: "\/proof\/ownership"/);
+  assert.match(client, /primaryHref: proofVerifierHref/);
   assert.match(client, /Owner record/);
   assert.match(client, /context\.labels\.publicProof/);
   assert.match(client, /context\.labels\.businessOutcome/);
@@ -422,18 +422,18 @@ test("demo lab keeps scenario headers, execution receipts and proof destinations
   const page = await readFile(new URL("../src/app/(public)/demo-lab/page.tsx", import.meta.url), "utf8");
   const client = await readFile(new URL("../src/app/(public)/demo-lab/demo-lab-client.tsx", import.meta.url), "utf8");
 
-  assert.match(page, /if \(safeScenario === "polygon-ownership"\) return "\/proof\/ownership"/);
+  assert.match(page, /if \(safeScenario === "polygon-ownership"\)[\s\S]*return "\/proof\/ownership"/);
   assert.match(page, /const routesToIota = safeScenario === "iota-proof"[\s\S]*safeScenario === "sensor-evidence"/);
   assert.match(page, /if \(routesToIota\) query\.set\("layer", "iota"\)/);
   assert.match(page, /routesToIota \? "#iota-proof" : ""/);
   assert.match(page, /Abrir recibo IOTA y decoder/);
 
-  assert.match(client, /if \(scenario === "polygon-ownership"\) return "\/proof\/ownership"/);
+  assert.match(client, /if \(scenario === "polygon-ownership"\)[\s\S]*return `\/proof\/ownership\?\$\{ownershipQuery\.toString\(\)\}`/);
   assert.match(client, /query\.set\("layer", "iota"\)/);
   assert.match(client, /query\.set\("decode_input", utf8ToHex\(DEMO_PUBLIC_PROOF_MEMO\)\)/);
   assert.match(client, /#proof-decoder/);
-  assert.match(client, /proofDestinationLabel = activeTrustScenario === "polygon-ownership"/);
-  assert.match(client, /mapProofEyebrow = activeTrustScenario === "polygon-ownership"/);
+  assert.match(client, /proofDestinationLabel = proofShowsCurrentExecution[\s\S]*activeTrustScenario === "polygon-ownership"/);
+  assert.match(client, /mapProofEyebrow = proofShowsCurrentExecution[\s\S]*activeTrustScenario === "polygon-ownership"/);
   assert.match(client, /PRUEBA PUBLICA DE OWNERSHIP/);
   assert.match(client, /Polygon prueba el titular actual del token y el control de esa wallet/);
   assert.match(client, /Recibo \/ decoder IOTA/);
@@ -456,7 +456,8 @@ test("demo lab keeps scenario headers, execution receipts and proof destinations
   assert.match(client, /Sin escritura on-chain/);
 
   assert.match(client, /function buildDemoMobileHref\(vertical: Vertical, beat: Beat, locale: AppLocale\)/);
-  assert.match(client, /`\/demo-lab\/mobile\/\$\{encodeURIComponent\(DEMO_TENANT_SLUG\)\}\/demo-item-001\?/);
+  assert.match(client, /const demoTenant = vertical === "wine" \? DEMO_TENANT_SLUG : "demo-nexid"/);
+  assert.match(client, /`\/demo-lab\/mobile\/\$\{encodeURIComponent\(demoTenant\)\}\/demo-item-001\?/);
   assert.match(client, /const buyerMobileHref = useMemo/);
   assert.match(client, /<Link href=\{buyerMobileHref\}>[\s\S]*Celular comprador/);
   assert.doesNotMatch(client, /onPassport=\{\(\) => setModalView\("mobile"\)\}/);

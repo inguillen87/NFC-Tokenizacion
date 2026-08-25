@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import type { ComponentType } from "react";
 import type { AppLocale } from "@product/config";
 import { getWebI18n } from "../../../lib/locale";
+import { buildDemoContactHref } from "../../../lib/demo-lab-vertical-story";
 import { JsonLd } from "../../../components/json-ld";
 import { DemoLabClient } from "./demo-lab-client";
 import { DemoLabThemeToggle } from "./demo-lab-hub-theme";
@@ -82,20 +83,28 @@ const PROOF_VERIFY_HANDOFF_SCENARIOS: ReadonlySet<string> = new Set([
   "authorized-network",
 ]);
 
-function buildProofVerifierHandoffHref(scenario?: string) {
+function buildProofVerifierHandoffHref(scenario?: string, vertical?: string) {
   const requestedScenario = String(scenario || "").trim().toLowerCase();
+  const requestedVertical = String(vertical || "").trim().toLowerCase();
   const safeScenario = PROOF_VERIFY_HANDOFF_SCENARIOS.has(requestedScenario)
     ? requestedScenario
     : "hub";
-  if (safeScenario === "polygon-ownership") return "/proof/ownership";
+  const returnQuery = new URLSearchParams();
+  if (safeScenario !== "hub") returnQuery.set("scenario", safeScenario);
+  if (requestedVertical) returnQuery.set("vertical", requestedVertical);
+  const returnSearch = returnQuery.toString();
+  const returnTo = returnSearch ? `/demo-lab?${returnSearch}` : "/demo-lab";
+  if (safeScenario === "polygon-ownership") {
+    if (!requestedVertical) return "/proof/ownership";
+    const ownershipQuery = new URLSearchParams({ return_to: returnTo, vertical: requestedVertical });
+    return `/proof/ownership?${ownershipQuery.toString()}`;
+  }
 
-  const returnTo = safeScenario === "hub"
-    ? "/demo-lab"
-    : `/demo-lab?scenario=${encodeURIComponent(safeScenario)}`;
   const query = new URLSearchParams({
     scenario: safeScenario,
     return_to: returnTo,
   });
+  if (requestedVertical) query.set("vertical", requestedVertical);
   const routesToIota = safeScenario === "iota-proof"
     || safeScenario === "dual-proof"
     || safeScenario === "sensor-evidence";
@@ -752,14 +761,16 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
   );
   const requestedThemeParam = firstParam(params.theme);
   const cookieTheme = cookieStore.get("theme")?.value;
+  const hasCurrentThemePreference = cookieStore.get("nexid-theme-preference-version")?.value === "light-default-v1";
   const requestedTheme =
     requestedThemeParam === "light" || requestedThemeParam === "dark"
       ? requestedThemeParam
-      : cookieTheme === "light"
-        ? "light"
-        : "dark";
+      : hasCurrentThemePreference && cookieTheme === "dark"
+        ? "dark"
+        : "light";
   const demoLabReturnTo = buildDemoLabReturnTo(params);
-  const proofVerifierHref = buildProofVerifierHandoffHref(initialScenario);
+  const proofVerifierHref = buildProofVerifierHandoffHref(initialScenario, initialVertical);
+  const commercialDemoHref = buildDemoContactHref(initialVertical);
   const demoThemeClass = requestedTheme === "light" ? "demo-lab-fullscreen-root--light" : "";
 
   // ── FULL-SCREEN SIMULATOR MODE ───────────────────────────────────────────
@@ -815,7 +826,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
               ) : null}
               <DemoLabThemeToggle initialTheme={requestedTheme} initialReturnTo={demoLabReturnTo} />
               <Link
-                href="/?contact=demo#contact-modal"
+                href={commercialDemoHref}
                 className="demo-lab-infobar__cta inline-flex h-9 items-center gap-2 rounded-full bg-cyan-300 px-4 text-xs font-black uppercase tracking-wider text-slate-950"
               >
                 <span className="demo-lab-cta-full">Agendar demo</span>
@@ -863,7 +874,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
                   </Link>
                 ) : null}
                 <Link
-                  href="/?contact=demo#contact-modal"
+                  href={commercialDemoHref}
                   className="demo-lab-context-strip__demo-btn inline-flex h-9 items-center rounded-full bg-cyan-300 px-4 text-xs font-black uppercase tracking-wider text-slate-950"
                 >
                   Agendar demo con asesor
@@ -926,7 +937,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
             <span className="sm:hidden">Proof</span>
           </Link>
           <Link
-            href="/?contact=demo#contact-modal"
+            href={commercialDemoHref}
             className="col-span-2 inline-flex min-h-10 items-center justify-self-end gap-1.5 rounded-full bg-gradient-to-r from-cyan-400 to-teal-400 px-4 text-xs font-black tracking-wide text-slate-950 transition-all hover:brightness-110 md:col-span-1"
           >
             Agendar demo
@@ -1176,7 +1187,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
             Documentación técnica
           </Link>
           <Link
-            href="/?contact=demo#contact-modal"
+            href={commercialDemoHref}
             className="demo-lab-hub-footer-link transition-colors hover:text-cyan-200"
           >
             Agendar demo
