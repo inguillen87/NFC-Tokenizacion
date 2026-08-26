@@ -7,11 +7,11 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Enterprise NFC/QR message evidence, declared traceability and governed digital product identity.",
     start_url: "/?source=pwa",
     id: "/",
+    scope: "/",
     display: "standalone",
-    display_override: ["window-controls-overlay", "standalone"],
-    orientation: "portrait",
-    background_color: "#020617",
-    theme_color: "#06b6d4",
+    orientation: "any",
+    background_color: "#f7fbff",
+    theme_color: "#ffffff",
     lang: "es-AR",
     categories: ["business", "productivity", "security"],
     shortcuts: [
@@ -53,15 +53,6 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: "/nexid-mark-512.png", sizes: "512x512", type: "image/png" },
       { src: "/nexid-mark-pulse-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
       { src: "/nexid-mark-pulse-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
-    ],
-    screenshots: [
-      {
-        src: "/nexid-mark-1024.png",
-        sizes: "1024x1024",
-        type: "image/png",
-        label: "nexID app icon",
-        form_factor: "wide",
-      },
     ],
   };
 }

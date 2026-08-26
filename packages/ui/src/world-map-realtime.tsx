@@ -38,6 +38,10 @@ function compactDateTime(value?: string) {
   return new Intl.DateTimeFormat("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(parsed);
 }
 
+function coordinateKey(lat: number, lng: number) {
+  return `${lat.toFixed(4)}:${lng.toFixed(4)}`;
+}
+
 export function WorldMapRealtime({
   title = "Cobertura de eventos reportados",
   subtitle = "Mapa de lecturas reportadas, señales de riesgo y cobertura multi-tenant; no certifica recorridos físicos.",
@@ -57,7 +61,7 @@ export function WorldMapRealtime({
 }) {
   const [timeWindowMode, setTimeWindowMode] = useState<TimeWindowMode>("all");
   const [expanded, setExpanded] = useState(initialExpanded);
-  const [mapMode, setMapMode] = useState<MapMode>("network");
+  const [mapMode, setMapMode] = useState<MapMode>("classic");
   const [riskOnly, setRiskOnly] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [now, setNow] = useState(() => Date.now());
@@ -101,10 +105,15 @@ export function WorldMapRealtime({
   }, [rankedPoints, activeIndex]);
 
   const activePoint = rankedPoints[activeIndex] || null;
-  const totalScans = rankedPoints.reduce((acc, point) => acc + (point.scans || 0), 0);
-  const riskSignals = rankedPoints.reduce((acc, point) => acc + (point.risk || 0), 0);
-  const visibleRoutes = useMemo<MapRoute[]>(() => routes.slice(0, 16), [routes]);
-  const vectorPoints = useMemo<VectorMapPoint[]>(() => rankedPoints.slice(0, 30).map((point, index) => ({
+  const mappedPoints = useMemo(() => rankedPoints.slice(0, 120), [rankedPoints]);
+  const totalScans = mappedPoints.reduce((acc, point) => acc + (point.scans || 0), 0);
+  const riskSignals = mappedPoints.reduce((acc, point) => acc + (point.risk || 0), 0);
+  const visibleRoutes = useMemo<MapRoute[]>(() => {
+    const visibleCoordinates = new Set(mappedPoints.map((point) => coordinateKey(point.lat, point.lng)));
+    return routes.filter((route) => visibleCoordinates.has(coordinateKey(route.fromLat, route.fromLng))
+      && visibleCoordinates.has(coordinateKey(route.toLat, route.toLng))).slice(0, 120);
+  }, [mappedPoints, routes]);
+  const vectorPoints = useMemo<VectorMapPoint[]>(() => mappedPoints.map((point, index) => ({
     id: `${point.city}-${point.country || "xx"}-${point.lat.toFixed(4)}-${point.lng.toFixed(4)}-${index}`,
     label: point.city,
     sublabel: point.country,
@@ -113,7 +122,7 @@ export function WorldMapRealtime({
     scans: point.scans ?? 0,
     risk: point.risk ?? 0,
     tone: (point.risk ?? 0) > 0 ? "risk" : index === activeIndex ? "tap" : "hub",
-  })), [activeIndex, rankedPoints]);
+  })), [activeIndex, mappedPoints]);
   const vectorRoutes = useMemo<VectorMapRoute[]>(() => visibleRoutes.map((route, index) => ({
     id: `world-route-${index}-${route.fromLat}-${route.toLng}`,
     fromLat: route.fromLat,
@@ -183,8 +192,8 @@ export function WorldMapRealtime({
   ], [confirmedChainSignals, riskSignals, visibleRoutes.length]);
   const selectedVectorPointId = vectorPoints[activeIndex]?.id || vectorPoints[0]?.id;
   const emptyStateText = riskOnly
-    ? "No hay hubs con señales de riesgo para la ventana seleccionada. Desactivá Risk-only o ampliá la ventana temporal."
-    : "No hay hubs geolocalizados para la ventana seleccionada. Generá taps reales o ampliá la ventana temporal.";
+    ? "No hay ubicaciones con señales de riesgo para la ventana seleccionada. Desactivá Solo riesgo o ampliá el período."
+    : "No hay ubicaciones geolocalizadas para el período seleccionado. Generá lecturas reales o ampliá el período.";
 
   return (
     <Card className="worldmap-card relative overflow-hidden p-4 md:p-6">
@@ -196,38 +205,40 @@ export function WorldMapRealtime({
         <div className="flex flex-wrap gap-2 text-[11px]">
           <div className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-cyan-100">eventos reportados</div>
           <div className="rounded-lg border border-white/15 bg-white/5 px-2 py-1 text-slate-300">{hydrated ? new Date(now).toLocaleTimeString("es-AR") : "--:--:--"}</div>
-          <div className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-2 py-1 text-emerald-100">{totalScans.toLocaleString()} scans</div>
-          <div className="rounded-lg border border-rose-300/30 bg-rose-500/10 px-2 py-1 text-rose-100">{riskSignals.toLocaleString()} risk</div>
+          <div className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-2 py-1 text-emerald-100">{totalScans.toLocaleString()} lecturas</div>
+          <div className="rounded-lg border border-rose-300/30 bg-rose-500/10 px-2 py-1 text-rose-100">{riskSignals.toLocaleString()} señales de riesgo</div>
         </div>
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
         {(["5m", "1h", "24h", "all"] as TimeWindowMode[]).map((windowMode) => (
-          <button suppressHydrationWarning key={windowMode} type="button" onClick={() => setTimeWindowMode(windowMode)} className={`rounded-lg border px-3 py-1 ${timeWindowMode === windowMode ? "border-indigo-300/40 bg-indigo-500/15 text-indigo-100" : "border-white/15 bg-white/5 text-slate-300"}`}>
-            {windowMode === "all" ? "Window: all" : `Window: ${windowMode}`}
+          <button suppressHydrationWarning key={windowMode} type="button" aria-pressed={timeWindowMode === windowMode} onClick={() => setTimeWindowMode(windowMode)} className={`min-h-11 rounded-lg border px-3 py-2 ${timeWindowMode === windowMode ? "border-indigo-300/40 bg-indigo-500/15 text-indigo-100" : "border-white/15 bg-white/5 text-slate-300"}`}>
+            {windowMode === "all" ? "Todo el período" : `Últimos ${windowMode}`}
           </button>
         ))}
-        <button suppressHydrationWarning type="button" onClick={() => setExpanded((current) => !current)} className="rounded-lg border border-indigo-300/30 bg-indigo-500/10 px-3 py-1 text-indigo-100">
-          {expanded ? "Compact view" : "Expand map"}
+        <button suppressHydrationWarning type="button" aria-expanded={expanded} onClick={() => setExpanded((current) => !current)} className="min-h-11 rounded-lg border border-indigo-300/30 bg-indigo-500/10 px-3 py-2 text-indigo-100">
+          {expanded ? "Vista compacta" : "Ampliar mapa"}
         </button>
-        <button suppressHydrationWarning type="button" onClick={() => setMapMode((prev) => (prev === "classic" ? "network" : "classic"))} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-cyan-100">
+        <button suppressHydrationWarning type="button" aria-pressed={mapMode === "classic"} aria-label={mapMode === "classic" ? "Vista actual: mapa de calor. Cambiar a relaciones" : "Vista actual: relaciones. Cambiar a mapa de calor"} onClick={() => setMapMode((prev) => (prev === "classic" ? "network" : "classic"))} className="min-h-11 rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-cyan-100">
           {mapMode === "classic" ? "Vista: calor" : "Vista: relaciones"}
         </button>
-        <button suppressHydrationWarning type="button" onClick={() => setRiskOnly((prev) => !prev)} className={`rounded-lg border px-3 py-1 ${riskOnly ? "border-rose-300/35 bg-rose-500/15 text-rose-100" : "border-white/15 bg-white/5 text-slate-300"}`}>
-          {riskOnly ? "Risk-only: on" : "Risk-only: off"}
+        <button suppressHydrationWarning type="button" aria-pressed={riskOnly} onClick={() => setRiskOnly((prev) => !prev)} className={`min-h-11 rounded-lg border px-3 py-2 ${riskOnly ? "border-rose-300/35 bg-rose-500/15 text-rose-100" : "border-white/15 bg-white/5 text-slate-300"}`}>
+          {riskOnly ? "Solo riesgo: activo" : "Solo riesgo"}
         </button>
       </div>
 
       {activePoint ? (
         <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_18rem]">
           <PremiumVectorMap
-            title={mapMode === "classic" ? "Mapa de eventos reportados" : "Relaciones de trazabilidad reportadas"}
-            subtitle="Motor propio: puntos, relaciones configuradas y riesgo sin inferir movimiento físico."
-            caption="Lecturas, tamper, duplicados y ubicaciones reportadas por los eventos visibles."
+            title={mapMode === "classic" ? "Mapa de calor de lecturas reportadas" : "Relaciones de trazabilidad reportadas"}
+            subtitle={mapMode === "classic" ? "La intensidad usa una escala estable de volumen; las señales de riesgo se muestran por separado." : "Relaciones configuradas y riesgo sin inferir movimiento físico."}
+            caption="Lecturas, señales de riesgo y ubicaciones reportadas por los eventos visibles; no prueba recorridos físicos."
             points={vectorPoints}
             routes={vectorRoutes}
             selectedPointId={selectedVectorPointId}
             density={mapMode === "classic" ? "heat" : "route"}
+            maxPoints={120}
+            maxRoutes={120}
             heightClassName={expanded ? "h-[34rem]" : "h-[24rem]"}
             evidenceSteps={mapEvidenceSteps}
             ledgerItems={mapLedgerItems}
@@ -258,9 +269,9 @@ export function WorldMapRealtime({
                 className={`w-full rounded-lg border px-2 py-2 text-left text-xs ${index === activeIndex ? "border-cyan-300/40 bg-cyan-500/10 text-cyan-100" : "border-white/10 bg-slate-900/70 text-slate-300"}`}
               >
                 <p className="font-semibold">{point.city}, {point.country || "--"}</p>
-                <p>Scans: {point.scans || 0} · Risk: {point.risk || 0}</p>
+                <p>Lecturas: {point.scans || 0} · Riesgo: {point.risk || 0}</p>
                 <p className="text-[11px] opacity-80">({point.lat.toFixed(4)}, {point.lng.toFixed(4)})</p>
-                {point.lastSeen ? <p className="text-[11px] opacity-80">Last seen: {point.lastSeen}</p> : null}
+                {point.lastSeen ? <p className="text-[11px] opacity-80">Última señal: {point.lastSeen}</p> : null}
                 {(metadataRows?.(point) || []).map((row) => (
                   <p key={row.label} className="text-[11px] opacity-75">{row.label}: {row.value}</p>
                 ))}

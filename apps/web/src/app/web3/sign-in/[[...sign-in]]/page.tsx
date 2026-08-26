@@ -1,9 +1,9 @@
 import { SignIn } from "@clerk/nextjs";
 import Link from "next/link";
-import { BrandLockup } from "@product/ui";
 import { MetamaskPrimaryButton } from "../metamask-primary-button";
 import { web3ClerkAppearance } from "../../clerk-appearance";
 import { isClerkConfiguredForRuntime } from "../../../../lib/clerk-env";
+import { BrandHomeLink } from "../../../../components/brand-home-link";
 
 export default async function Web3SignInPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const params = (await searchParams) || {};
@@ -15,11 +15,14 @@ export default async function Web3SignInPage({ searchParams }: { searchParams?: 
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.08)_1px,transparent_1px),radial-gradient(circle_at_72%_18%,rgba(34,211,238,.22),transparent_34%),radial-gradient(circle_at_18%_76%,rgba(124,58,237,.18),transparent_30%)] [background-size:32px_32px,32px_32px,auto,auto]" />
       <div className="relative z-10 mx-auto grid min-h-screen w-full max-w-6xl items-center gap-8 px-5 py-10 lg:grid-cols-[1fr_440px]">
         <section>
-          <Link href="/me/wallet" aria-label="Volver a wallet nexID" className="inline-flex items-center">
-            <BrandLockup size={72} variant="ripple" theme="dark" />
-          </Link>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <BrandHomeLink size={72} />
+            <Link href="/me/wallet" className="inline-flex min-h-11 items-center rounded-full border border-white/15 bg-white/5 px-4 text-xs font-bold text-slate-200 transition hover:border-cyan-300/35 hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-cyan-300/35">
+              Volver a Wallet
+            </Link>
+          </div>
           <p className="mt-8 text-xs font-black uppercase tracking-[0.24em] text-cyan-200">Web3 opcional</p>
-          <h1 className="mt-3 max-w-2xl text-4xl font-black leading-tight md:text-6xl">
+          <h1 className="brand-editorial-gradient mt-3 max-w-2xl text-4xl font-black leading-tight md:text-6xl">
             Conecta MetaMask solo para ownership, NFT y marketplace.
           </h1>
           <p className="mt-5 max-w-xl text-base leading-7 text-slate-300">

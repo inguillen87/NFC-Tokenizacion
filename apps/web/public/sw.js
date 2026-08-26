@@ -1,4 +1,4 @@
-const CACHE_NAME = "nexid-v5";
+const CACHE_NAME = "nexid-v6";
 const APP_SHELL = [
   "/",
   "/offline",
@@ -215,22 +215,26 @@ function emergencyOfflineResponse() {
     <html lang="es">
       <head>
         <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <meta name="theme-color" content="#ffffff" />
+        <meta name="color-scheme" content="light" />
         <meta name="robots" content="noindex,nofollow" />
         <title>Verificación pendiente · nexID</title>
         <style>
           *{box-sizing:border-box}
-          body{margin:0;min-height:100vh;display:grid;place-items:center;overflow-x:hidden;padding:1rem;background:#050914;color:#e5f9ff;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
-          main{width:min(34rem,100%);padding:clamp(1.25rem,6vw,2rem);border:1px solid rgba(103,232,249,.22);border-radius:1.5rem;background:rgba(15,23,42,.9)}
+          :root{color-scheme:light}
+          body{margin:0;min-height:100vh;display:grid;place-items:center;overflow-x:hidden;padding:max(1rem,env(safe-area-inset-top)) max(1rem,env(safe-area-inset-right)) max(1rem,env(safe-area-inset-bottom)) max(1rem,env(safe-area-inset-left));background:#f7fbff;color:#10233f;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+          main{width:min(34rem,100%);padding:clamp(1.25rem,6vw,2rem);border:1px solid #d9e5ef;border-radius:1.5rem;background:#fff;box-shadow:0 20px 55px rgba(15,35,59,.12)}
           h1{margin:0;font-size:clamp(1.75rem,9vw,2.5rem);line-height:1.05}
-          p{line-height:1.6;color:#b8c7d9}
-          a{display:inline-flex;min-height:44px;align-items:center;color:#67e8f9;font-weight:800}
+          p{line-height:1.6;color:#53657a}
+          a{display:inline-flex;min-height:44px;align-items:center;color:#087f8c;font-weight:800;text-underline-offset:.2em}
+          a:focus-visible{outline:3px solid rgba(8,127,140,.28);outline-offset:4px;border-radius:.35rem}
         </style>
       </head>
       <body>
         <main>
           <h1>Verificación pendiente</h1>
-          <p>Necesitamos conexión para confirmar autenticidad criptográfica.</p>
+          <p>Necesitamos conexión para completar la verificación digital.</p>
           <p>La lectura se guardó en este dispositivo. Abrí esta pantalla cuando vuelva la conexión para sincronizarla.</p>
           <a href="/offline">Abrir cola local</a>
         </main>
@@ -312,8 +316,12 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (request.destination === "image") {
+    const revalidate = fetchWithTimeout(request)
+      .then((response) => cacheIfUsable(request, response))
+      .catch(() => null);
+    event.waitUntil(revalidate.then(() => undefined));
     event.respondWith(
-      caches.match(request).then((cached) => cached || fetchWithTimeout(request).then((response) => cacheIfUsable(request, response))),
+      caches.match(request).then(async (cached) => cached || (await revalidate) || Response.error()),
     );
   }
 });

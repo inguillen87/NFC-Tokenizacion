@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, CheckCircle2, ShieldCheck } from "lucide-react";
+import { ArrowRight, CheckCircle2, ShieldCheck } from "lucide-react";
 import { getWebI18n } from "../../lib/locale";
 import { JsonLd } from "../../components/json-ld";
 import { PricingRoiCalculator } from "../../components/pricing-roi-calculator";
 import { PricingQuoteConfigurator } from "../../components/pricing-quote-configurator";
+import { PublicSiteHeader } from "../../components/public-site-header";
 
 export const metadata: Metadata = {
   title: "Pricing | nexID enterprise product identity",
@@ -226,19 +227,16 @@ export default async function PricingPage() {
   ];
 
   return (
-    <main className="nexid-pricing-page min-h-screen overflow-x-hidden bg-slate-50 text-slate-950">
+    <>
+      <PublicSiteHeader />
+      <main data-nav-inert className="nexid-pricing-page min-h-screen overflow-x-hidden bg-slate-50 text-slate-950">
       {pricingSchema.map((schema) => (
         <JsonLd key={schema["@type"]} data={schema} />
       ))}
       <div className="container-shell py-8 md:py-12">
-        <Link href="/" className="nexid-pricing-back inline-flex items-center gap-2 text-sm font-bold text-slate-500 transition hover:text-cyan-700">
-          <ArrowLeft className="h-4 w-4" />
-          {copy.back}
-        </Link>
-
         <section className="nexid-pricing-hero grid min-w-0 gap-5 py-10 md:py-16 lg:grid-cols-[minmax(0,1.25fr)_minmax(18rem,0.75fr)] lg:items-end">
           <div>
-            <h1 className="max-w-5xl text-4xl font-black leading-[0.95] tracking-normal text-slate-950 sm:text-5xl md:text-7xl">{copy.title}</h1>
+            <h1 className="brand-editorial-gradient max-w-5xl text-4xl font-black leading-[0.95] tracking-normal text-slate-950 sm:text-5xl md:text-7xl">{copy.title}</h1>
             <p className="mt-5 max-w-3xl text-base leading-7 text-slate-600 md:text-lg">{copy.body}</p>
           </div>
           <div className="nexid-pricing-hero__proof grid gap-3 rounded-3xl border border-slate-200 bg-white p-5 shadow-xl shadow-slate-200/60">
@@ -316,6 +314,7 @@ export default async function PricingPage() {
           </table>
         </section>
       </div>
-    </main>
+      </main>
+    </>
   );
 }

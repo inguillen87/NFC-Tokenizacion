@@ -13,7 +13,7 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
-import { BrandLockup } from "@product/ui";
+import { BrandHomeLink } from "../../components/brand-home-link";
 import { resolveThemePreference, THEME_PREFERENCE_VERSION_COOKIE } from "@product/ui/theme-preference";
 import { productUrls, schedulingUrls, type AppLocale } from "@product/config";
 import { MarketingMegaNav } from "../../components/marketing-mega-nav";
@@ -270,9 +270,15 @@ export default async function AboutPage() {
       <a href="#about-content" className="landing-skip-link">{copy.skip}</a>
       <header className="site-header landing-mega-header sticky top-0 z-50 border-b">
         <div className="container-shell header-main-row flex items-center justify-between gap-4">
-          <Link href="/" aria-label={copy.home} className="landing-brand-link inline-flex items-center">
-            <BrandLockup size={40} variant="static" theme="light" className="site-brand-lockup" />
-          </Link>
+          <BrandHomeLink
+            ariaLabel={copy.home}
+            locale={locale}
+            size={40}
+            variant="static"
+            theme="light"
+            brandClassName="site-brand-lockup"
+            className="landing-brand-link"
+          />
           <MarketingMegaNav
             locale={locale}
             locales={locales}
@@ -289,7 +295,7 @@ export default async function AboutPage() {
         <section className={styles.hero} aria-labelledby="about-title">
           <div className={styles.heroContent}>
             <p className={styles.eyebrow}>{copy.eyebrow}</p>
-            <h1 id="about-title">{copy.title}</h1>
+            <h1 id="about-title" className="brand-editorial-gradient">{copy.title}</h1>
             <p className={styles.heroLead}>{copy.lead}</p>
 
             <div className={styles.relationship}>

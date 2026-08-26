@@ -35,7 +35,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button, type VectorMapPoint, type VectorMapRoute } from "@product/ui";
-import { HeroTrustAtlasSvg } from "../../components/hero-scene";
+import { HeroTrustNetworkDiagram } from "../../components/hero-scene";
 import { platformVerticals } from "../../lib/platform-verticals";
 import {
   classifyInvestorAiResponse,
@@ -337,15 +337,15 @@ function InvestorVerticalMoat() {
       </div>
       <div className="investor-proof-atlas">
         <div className="investor-proof-output-grid">
-          <div className="investor-proof-atlas-map" aria-label="Atlas de trazabilidad para inversores">
-            <HeroTrustAtlasSvg points={investorAtlasPoints} routes={investorAtlasRoutes} selectedPointId="tap" />
+          <div className="investor-proof-atlas-map" aria-label="Diagrama conceptual no geográfico para inversores" data-geographic="false">
+            <HeroTrustNetworkDiagram points={investorAtlasPoints} routes={investorAtlasRoutes} selectedPointId="tap" />
           </div>
           <InvestorMobileOutput />
         </div>
         <div className="investor-proof-live-card">
           <span>Salida celular</span>
-          <strong>Producto, atlas y claim en un solo tap</strong>
-          <p>El inversor ve unidad física, ruta, riesgo y próximo paso comercial sin prometer blockchain para cada lectura.</p>
+          <strong>Producto, señales y próximo paso en un solo tap</strong>
+          <p>El inversor ve el flujo digital, la política y la próxima acción comercial sin inventar ubicaciones, recorridos ni evidencia física.</p>
         </div>
       </div>
     </section>
@@ -3520,9 +3520,8 @@ export function InvestorSnapshotClient() {
                               </div>
                             </div>
                             
-                            {/* Mini SVG Map */}
-                            {/* Mini SVG Map */}
-                            <div className="w-full h-[75px] rounded-lg bg-slate-950/90 border border-cyan-500/10 relative p-1.5 flex flex-col justify-between overflow-hidden shadow-[inset_0_1px_3px_rgba(0,0,0,0.4)]">
+                            {/* Legacy route drawing kept hidden; the visible surface is an event chain, not a geographic map. */}
+                            <div className="hidden">
                               <div className="flex justify-between items-center px-1 text-[7.5px] text-slate-500 uppercase font-black tracking-wider z-10">
                                   <span>Eventos de ruta declarados</span>
                                 <span className="text-cyan-400 animate-pulse flex items-center gap-1">
@@ -3652,6 +3651,20 @@ export function InvestorSnapshotClient() {
                                 <span>{simData.nodes[1]}</span>
                                 <span>{simData.nodes[2]}</span>
                                 <span>{simData.nodes[3]}</span>
+                              </div>
+                            </div>
+
+                            <div className="rounded-lg border border-cyan-500/15 bg-slate-950/75 p-2.5" data-investor-event-chain="simulated">
+                              <div className="mb-2 flex items-center justify-between text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">
+                                <span>Cadena de eventos</span>
+                                <span className="text-cyan-300">Demo · no geográfica</span>
+                              </div>
+                              <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-1 text-center text-[8px] font-bold">
+                                <span className="rounded-md border border-amber-300/20 bg-amber-500/10 px-1 py-2 text-amber-100">{simData.nodes[0]}</span>
+                                <span aria-hidden="true" className="text-cyan-300">→</span>
+                                <span className="rounded-md border border-cyan-300/20 bg-cyan-500/10 px-1 py-2 text-cyan-100">{simData.nodes[1]}</span>
+                                <span aria-hidden="true" className="text-cyan-300">→</span>
+                                <span className="rounded-md border border-violet-300/20 bg-violet-500/10 px-1 py-2 text-violet-100">{simData.nodes[3]}</span>
                               </div>
                             </div>
                             

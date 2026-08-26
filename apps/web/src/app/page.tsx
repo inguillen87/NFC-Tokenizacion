@@ -1,12 +1,11 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { BrandLockup } from "@product/ui";
 import {
   HeroSection,
   SimpleTrustFlowSection,
   CommercialValueSection,
 } from "../components/landing-sections";
-import { PwaInstallPrompt } from "../components/pwa-install-prompt";
+import { BrandHomeLink } from "../components/brand-home-link";
 import { MarketingMegaNav } from "../components/marketing-mega-nav";
 import { landingContent } from "../lib/landing-content";
 import { getWebI18n } from "../lib/locale";
@@ -91,9 +90,15 @@ export default async function HomePage() {
       <a href="#main-content" className="landing-skip-link">{skipLabel}</a>
       <header className="site-header landing-mega-header sticky top-0 z-50 border-b">
         <div className="container-shell header-main-row flex items-center justify-between gap-4">
-          <Link href="/" aria-label="nexID home" className="landing-brand-link inline-flex items-center">
-            <BrandLockup size={40} variant="static" theme="light" className="site-brand-lockup" />
-          </Link>
+          <BrandHomeLink
+            ariaLabel={footerCopy.home}
+            locale={locale}
+            size={40}
+            variant="static"
+            theme="light"
+            brandClassName="site-brand-lockup"
+            className="landing-brand-link"
+          />
           <MarketingMegaNav
             locale={locale}
             locales={locales}
@@ -115,9 +120,15 @@ export default async function HomePage() {
       <footer data-nav-inert className="site-footer border-t">
         <div className="container-shell site-footer-primary py-12">
           <div className="site-footer-intro">
-            <Link href="/" aria-label={footerCopy.home} className="site-footer-brand inline-flex items-center">
-              <BrandLockup size={42} variant="ripple" theme="dark" className="hero-brand brand-surface-footer" />
-            </Link>
+            <BrandHomeLink
+              ariaLabel={footerCopy.home}
+              locale={locale}
+              size={42}
+              variant="ripple"
+              theme="dark"
+              brandClassName="hero-brand brand-surface-footer"
+              className="site-footer-brand"
+            />
             <p className="site-footer-summary text-sm site-muted">{footerCopy.summary}</p>
           </div>
           <nav className="site-footer-columns" aria-label={locale === "en" ? "Footer links" : locale === "pt-BR" ? "Links do rodapé" : "Enlaces del pie de página"}>
@@ -154,7 +165,6 @@ export default async function HomePage() {
           <Link href="/about">{footerCopy.institutional}</Link>
         </div>
       </footer>
-      <div data-nav-inert><PwaInstallPrompt /></div>
     </div>
   );
 }

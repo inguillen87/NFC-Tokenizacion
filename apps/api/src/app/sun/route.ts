@@ -141,6 +141,7 @@ type PassportSnapshot = {
 } | null;
 
 type TimelineEvent = {
+  eventId?: string | null;
   at: string | null;
   result: string | null;
   city: string | null;
@@ -148,6 +149,8 @@ type TimelineEvent = {
   device: string | null;
   lat?: number | null;
   lng?: number | null;
+  locationSource?: string | null;
+  accuracyM?: number | null;
   sensorTempC?: number | null;
   sensorHumidity?: number | null;
   stage?: string | null;
@@ -1299,7 +1302,7 @@ async function getBatchSunContext(bid: string): Promise<PassportSnapshot> {
 async function getTimelineSummary(bid: string, uid: string | undefined): Promise<TimelineEvent[]> {
   if (!uid) return [];
   const rows = await sql/*sql*/`
-    SELECT e.created_at::text AS at, e.result, e.city, e.country_code AS country, e.device_label AS device, e.lat, e.lng, e.meta
+    SELECT e.id::text AS event_id, e.created_at::text AS at, e.result, e.city, e.country_code AS country, e.device_label AS device, e.lat, e.lng, e.meta
     FROM events e
     JOIN batches b ON b.id = e.batch_id
     WHERE b.bid = ${bid} AND UPPER(e.uid_hex) = UPPER(${uid})
@@ -1309,7 +1312,13 @@ async function getTimelineSummary(bid: string, uid: string | undefined): Promise
   return (rows as Array<Record<string, unknown>>).map((row) => {
     const meta = (row.meta && typeof row.meta === "object") ?row.meta as Record<string, unknown> : {};
     const sensors = (meta.sensors && typeof meta.sensors === "object") ?meta.sensors as Record<string, unknown> : {};
+    const sunContext = (meta.sun_context && typeof meta.sun_context === "object") ? meta.sun_context as Record<string, unknown> : {};
+    const sunGeo = (sunContext.geo && typeof sunContext.geo === "object") ? sunContext.geo as Record<string, unknown> : {};
+    const geoEvidence = (meta.geo_evidence && typeof meta.geo_evidence === "object") ? meta.geo_evidence as Record<string, unknown> : {};
+    const rawAccuracy = sunGeo.accuracy ?? sunGeo.accuracy_m ?? geoEvidence.accuracy_m;
+    const accuracy = Number(rawAccuracy);
     return {
+      eventId: row.event_id ?String(row.event_id) : null,
       at: row.at ?String(row.at) : null,
       result: row.result ?String(row.result) : null,
       city: row.city ?String(row.city) : null,
@@ -1317,6 +1326,8 @@ async function getTimelineSummary(bid: string, uid: string | undefined): Promise
       device: row.device ?String(row.device) : null,
       lat: typeof row.lat === "number" ?Number(row.lat) : null,
       lng: typeof row.lng === "number" ?Number(row.lng) : null,
+      locationSource: sunGeo.source ? String(sunGeo.source) : geoEvidence.source ? String(geoEvidence.source) : null,
+      accuracyM: Number.isFinite(accuracy) && accuracy > 0 ? accuracy : null,
       sensorTempC: typeof sensors.temperatureC === "number" ?Number(sensors.temperatureC) : null,
       sensorHumidity: typeof sensors.humidityPct === "number" ?Number(sensors.humidityPct) : null,
       stage: typeof sensors.stage === "string" ?String(sensors.stage) : null,
@@ -1952,9 +1963,9 @@ function renderSunHtml(rawContract: ReturnType<typeof buildPublicContract>, shar
       geoContext: "Contexto geográfico",
       consumerJourney: "Jornada do consumidor",
       mapLocalTitle: "Contexto local · origem declarada e toque informado",
-      mapUnavailable: "Mapa e distância indisponíveis: faltam coordenadas da origem ou do toque.",
+      mapUnavailable: "Mapa indisponível: o toque não possui um par válido de coordenadas WGS84.",
       mapGlobalTitle: "Contexto global · posição informada do toque",
-      mapLegend: "Origem declarada → toque informado (linha ilustrativa)",
+      mapLegend: "Origem declarada ↔ toque informado (referência linear; não é um percurso)",
       routeSummary: "Comparação geográfica",
       routeDistance: "Distância geodésica estimada",
       routeRegion: "Região de leitura",
@@ -2006,7 +2017,7 @@ function renderSunHtml(rawContract: ReturnType<typeof buildPublicContract>, shar
       journey2Desc: "Conectamos este toque ao produto no seu portal.",
       journey3Desc: "Marketplace, garantia e recompensas ficam ativas.",
       mapStoryTitle: "Contexto geográfico informado",
-      mapStorySubtitle: "Origem declarada e localização informada do toque; a linha visual não prova rota física nem custódia.",
+      mapStorySubtitle: "A posição informada conserva sua fonte e precisão. Quando há origem declarada, a linha é apenas uma referência linear; não prova percurso nem custódia.",
       mapOriginStep: "Origem declarada",
       mapTapStep: "Local do toque informado",
       mapTokenStep: "Token / NFT",
@@ -2037,9 +2048,9 @@ function renderSunHtml(rawContract: ReturnType<typeof buildPublicContract>, shar
         geoContext: "Geo context",
         consumerJourney: "Consumer journey",
         mapLocalTitle: "Local context · declared origin and reported tap",
-        mapUnavailable: "Map and distance unavailable: origin or tap coordinates are missing.",
+        mapUnavailable: "Map unavailable: the tap has no valid WGS84 coordinate pair.",
         mapGlobalTitle: "Global context · reported tap position",
-        mapLegend: "Declared origin → reported tap (illustrative line)",
+        mapLegend: "Declared origin ↔ reported tap (linear reference, not a traveled route)",
         routeSummary: "Geographic comparison",
         routeDistance: "Estimated geodesic distance",
         routeRegion: "Read region",
@@ -2091,7 +2102,7 @@ function renderSunHtml(rawContract: ReturnType<typeof buildPublicContract>, shar
         journey2Desc: "We connect this tap to your product portal.",
         journey3Desc: "Marketplace, warranty and rewards become active.",
         mapStoryTitle: "Reported geographic context",
-        mapStorySubtitle: "Declared origin and reported tap location; the visual line does not prove a physical route or custody.",
+        mapStorySubtitle: "The reported position keeps its source and accuracy. When a declared origin is available, the line is only a linear reference; it does not prove travel or custody.",
         mapOriginStep: "Declared origin",
         mapTapStep: "Reported tap location",
         mapTokenStep: "Token / NFT",
@@ -2121,9 +2132,9 @@ function renderSunHtml(rawContract: ReturnType<typeof buildPublicContract>, shar
         geoContext: "Contexto geo",
         consumerJourney: "Recorrido del consumidor",
         mapLocalTitle: "Contexto local · origen declarado y tap reportado",
-        mapUnavailable: "Mapa y distancia no disponibles: faltan coordenadas del origen o del tap.",
+        mapUnavailable: "Mapa no disponible: el tap no tiene un par válido de coordenadas WGS84.",
         mapGlobalTitle: "Contexto global · posición reportada del tap",
-        mapLegend: "Origen declarado → tap reportado (línea ilustrativa)",
+        mapLegend: "Origen declarado ↔ tap reportado (referencia lineal; no es un recorrido)",
         routeSummary: "Comparación geográfica",
         routeDistance: "Distancia geodésica estimada",
         routeRegion: "Región de lectura",
@@ -2175,7 +2186,7 @@ function renderSunHtml(rawContract: ReturnType<typeof buildPublicContract>, shar
         journey2Desc: "Conectamos este tap a tu producto en el portal.",
         journey3Desc: "Se activan marketplace, garantía y recompensas.",
         mapStoryTitle: "Contexto geográfico reportado",
-        mapStorySubtitle: "Origen declarado y ubicación reportada del tap; la línea visual no prueba ruta física ni custodia.",
+        mapStorySubtitle: "La ubicación reportada conserva su fuente y precisión. Cuando hay un origen declarado, la línea es sólo una referencia lineal. La línea visual no prueba ruta física ni custodia.",
         mapOriginStep: "Origen declarado",
         mapTapStep: "Ubicación del tap reportada",
         mapTokenStep: "Token / NFT",
@@ -2260,35 +2271,57 @@ function renderSunHtml(rawContract: ReturnType<typeof buildPublicContract>, shar
   const timelineHtml = timeline.length
     ? timeline.map((item) => `<li>${item.at || 'N/A'} · <b>${item.result || '-'}</b> · ${item.city || '-'}, ${item.country || '-'}</li>`).join('')
     : `<li>${copy.timelineEmpty}</li>`;
-  const finiteCoordinate = (value: unknown) => typeof value === "number" && Number.isFinite(value) ? value : null;
-  const wineryLat = finiteCoordinate(contract.iot.wineryCoordinates?.lat);
-  const wineryLng = finiteCoordinate(contract.iot.wineryCoordinates?.lng);
-  const tapLat = finiteCoordinate(contract.tapContext.lat);
-  const tapLng = finiteCoordinate(contract.tapContext.lng);
-  const mapAvailable = wineryLat !== null && wineryLng !== null && tapLat !== null && tapLng !== null;
-  const safeWineryLat = wineryLat ?? 0;
-  const safeWineryLng = wineryLng ?? 0;
+  const finiteCoordinate = (value: unknown, min: number, max: number) => (
+    typeof value === "number" && Number.isFinite(value) && value >= min && value <= max ? value : null
+  );
+  const wineryLat = finiteCoordinate(contract.iot.wineryCoordinates?.lat, -90, 90);
+  const wineryLng = finiteCoordinate(contract.iot.wineryCoordinates?.lng, -180, 180);
+  const tapLat = finiteCoordinate(contract.tapContext.lat, -90, 90);
+  const tapLng = finiteCoordinate(contract.tapContext.lng, -180, 180);
+  const declaredOriginAvailable = wineryLat !== null && wineryLng !== null;
+  const tapLocationAvailable = tapLat !== null && tapLng !== null;
+  const linearReferenceAvailable = declaredOriginAvailable && tapLocationAvailable;
   const safeTapLat = tapLat ?? 0;
   const safeTapLng = tapLng ?? 0;
-  const mapWidth = 1000;
-  const mapHeight = 460;
-  const projectWorld = (lat: number, lng: number) => {
-    const clippedLat = Math.max(-85.05112878, Math.min(85.05112878, lat));
-    const sin = Math.sin((clippedLat * Math.PI) / 180);
-    return {
-      x: ((lng + 180) / 360) * mapWidth,
-      y: (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * mapHeight,
-    };
-  };
-  const clampMap = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
-  const wineryPoint = projectWorld(safeWineryLat, safeWineryLng);
-  const tapPoint = projectWorld(safeTapLat, safeTapLng);
+  const safeWineryLat = wineryLat ?? safeTapLat;
+  const safeWineryLng = wineryLng ?? safeTapLng;
+  const rawTapLocationSource = String(contract.tapContext.locationSource || "").trim().toLowerCase();
+  const rawTapAccuracyM = contract.tapContext.accuracyM;
+  const tapAccuracyM = typeof rawTapAccuracyM === "number" && Number.isFinite(rawTapAccuracyM) && rawTapAccuracyM > 0
+    ? Math.round(rawTapAccuracyM)
+    : null;
+  const measuredLocationSources = new Set(["device_gnss_measured", "device_gps_measured", "gnss_measured", "gps_measured", "surveyed"]);
+  const browserLocationSources = new Set(["browser", "browser_geo", "browser_geolocation", "browser_geolocation_rounded", "browser_gps_approximate_consent"]);
+  const networkLocationSources = new Set(["ip", "ip_geo", "edge", "edge_geo", "edge_ip_approx", "network"]);
+  const tapLocationSourceLabel = !tapLocationAvailable
+    ? (copy.lang === "en" ? "No coordinates reported" : copy.lang === "pt-BR" ? "Sem coordenadas informadas" : "Sin coordenadas reportadas")
+    : measuredLocationSources.has(rawTapLocationSource)
+      ? (copy.lang === "en" ? "Measured by a reader or device" : copy.lang === "pt-BR" ? "Medida por leitor ou dispositivo" : "Medida por lector o dispositivo")
+      : browserLocationSources.has(rawTapLocationSource)
+        ? (copy.lang === "en" ? "Approximate, rounded device location" : copy.lang === "pt-BR" ? "Localização aproximada e arredondada do dispositivo" : "Ubicación aproximada y redondeada del dispositivo")
+        : networkLocationSources.has(rawTapLocationSource)
+          ? (copy.lang === "en" ? "Approximate network location" : copy.lang === "pt-BR" ? "Localização aproximada por rede" : "Ubicación aproximada por red")
+          : (copy.lang === "en" ? "Reported location; source not specified" : copy.lang === "pt-BR" ? "Localização informada; fonte não especificada" : "Ubicación reportada; fuente no especificada");
+  const tapLocationAccuracyLabel = tapAccuracyM === null
+    ? (copy.lang === "en" ? "Accuracy not reported" : copy.lang === "pt-BR" ? "Precisão não informada" : "Precisión no informada")
+    : (copy.lang === "en" ? `Reported accuracy radius: about ${tapAccuracyM} m` : copy.lang === "pt-BR" ? `Raio de precisão informado: cerca de ${tapAccuracyM} m` : `Radio de precisión reportado: aprox. ${tapAccuracyM} m`);
+  const tapLocationEvidenceLabel = `${tapLocationSourceLabel} · ${tapLocationAccuracyLabel}`;
+  const declaredOriginReferenceNote = copy.lang === "en"
+    ? "Declared reference; it is not an observed reading and does not add intensity."
+    : copy.lang === "pt-BR"
+      ? "Referência declarada; não é uma leitura observada e não soma intensidade."
+      : "Referencia declarada; no es una lectura observada ni suma intensidad.";
+  const locationEvidenceTitle = copy.lang === "en"
+    ? "Location evidence"
+    : copy.lang === "pt-BR"
+      ? "Evidência de localização"
+      : "Evidencia de ubicación";
   const toRad = (v: number) => v * (Math.PI / 180);
   const earthKm = 6371;
   const dLat = toRad(safeTapLat - safeWineryLat);
   const dLng = toRad(safeTapLng - safeWineryLng);
   const aa = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(safeWineryLat)) * Math.cos(toRad(safeTapLat)) * Math.sin(dLng / 2) ** 2;
-  const routeDistanceKm = mapAvailable
+  const routeDistanceKm = linearReferenceAvailable
     ? Math.round(earthKm * 2 * Math.atan2(Math.sqrt(aa), Math.sqrt(1 - aa)))
     : null;
   const routeDistanceLabel = routeDistanceKm === null ? "N/D" : `${routeDistanceKm} km`;
@@ -2308,36 +2341,6 @@ function renderSunHtml(rawContract: ReturnType<typeof buildPublicContract>, shar
       ?"Self-hosted tiles"
       : "Free raster fallback";
   const mapAttribution = process.env.NEXID_MAP_ATTRIBUTION || process.env.NEXT_PUBLIC_NEXID_MAP_ATTRIBUTION || "CARTO / OpenStreetMap";
-  const routeSpanX = Math.abs(wineryPoint.x - tapPoint.x);
-  const routeSpanY = Math.abs(wineryPoint.y - tapPoint.y);
-  const atlasViewWidth = clampMap(Math.max(210, routeSpanX * 3.8), 210, mapWidth);
-  const atlasViewHeight = clampMap(Math.max(132, routeSpanY * 4.7), 132, mapHeight);
-  const atlasCenterX = (wineryPoint.x + tapPoint.x) / 2;
-  const atlasCenterY = (wineryPoint.y + tapPoint.y) / 2;
-  const atlasViewX = clampMap(atlasCenterX - atlasViewWidth / 2, 0, mapWidth - atlasViewWidth);
-  const atlasViewY = clampMap(atlasCenterY - atlasViewHeight / 2, 0, mapHeight - atlasViewHeight);
-  const atlasViewBox = `${atlasViewX.toFixed(1)} ${atlasViewY.toFixed(1)} ${atlasViewWidth.toFixed(1)} ${atlasViewHeight.toFixed(1)}`;
-  const atlasTileZoom = atlasViewWidth < 260 ?5 : atlasViewWidth < 520 ?4 : 3;
-  const atlasTilesPerAxis = 2 ** atlasTileZoom;
-  const atlasTileWidth = mapWidth / atlasTilesPerAxis;
-  const atlasTileHeight = mapHeight / atlasTilesPerAxis;
-  const atlasTileMinX = Math.floor(atlasViewX / atlasTileWidth) - 1;
-  const atlasTileMaxX = Math.ceil((atlasViewX + atlasViewWidth) / atlasTileWidth) + 1;
-  const atlasTileMinY = Math.max(0, Math.floor(atlasViewY / atlasTileHeight) - 1);
-  const atlasTileMaxY = Math.min(atlasTilesPerAxis - 1, Math.ceil((atlasViewY + atlasViewHeight) / atlasTileHeight) + 1);
-  const buildAtlasTileImages = (tileTemplate: string) => mapAvailable ? Array.from({ length: Math.max(0, atlasTileMaxY - atlasTileMinY + 1) }, (_, rowIndex) => atlasTileMinY + rowIndex)
-    .flatMap((tileY) => Array.from({ length: Math.max(0, atlasTileMaxX - atlasTileMinX + 1) }, (_, colIndex) => atlasTileMinX + colIndex)
-      .map((tileX) => {
-        const wrappedX = ((tileX % atlasTilesPerAxis) + atlasTilesPerAxis) % atlasTilesPerAxis;
-        const href = tileTemplate
-          .replaceAll("{z}", String(atlasTileZoom))
-          .replaceAll("{x}", String(wrappedX))
-          .replaceAll("{y}", String(tileY));
-        return `<image href="${htmlText(href)}" x="${(tileX * atlasTileWidth).toFixed(2)}" y="${(tileY * atlasTileHeight).toFixed(2)}" width="${atlasTileWidth.toFixed(2)}" height="${atlasTileHeight.toFixed(2)}" preserveAspectRatio="none"/>`;
-      })).join("") : "";
-  const atlasTileImages = buildAtlasTileImages(rasterTileTemplate);
-  const atlasLightTileImages = buildAtlasTileImages(lightRasterTileTemplate);
-  const oldestTraceEvent = timeline[timeline.length - 1] || null;
   const newestTraceEvent = timeline[0] || null;
   const tokenProof = contract.tokenization.tokenId
     ?`Token #${contract.tokenization.tokenId}`
@@ -2350,18 +2353,19 @@ function renderSunHtml(rawContract: ReturnType<typeof buildPublicContract>, shar
     if (kind === "token") return "border-color:rgba(167,139,250,.32);background:rgba(76,29,149,.2)";
     return "border-color:rgba(45,212,191,.3);background:rgba(19,78,74,.22)";
   };
+  const declaredOriginLabel = contract.provenance.origin || contract.iot.wineryLocation || null;
   const traceStoryHtml = [
-    {
+    ...(declaredOriginLabel ? [{
       cls: "origin",
       label: labels.mapOriginStep,
-      value: contract.provenance.origin || contract.iot.wineryLocation || labels.origin,
-      detail: `${contract.product.name || "Producto"} · ${oldestTraceEvent?.at || contract.product.region || contract.product.winery || labels.winery}`,
-    },
+      value: declaredOriginLabel,
+      detail: `${contract.product.name || "Producto"} · ${declaredOriginReferenceNote}`,
+    }] : []),
     {
       cls: "tap",
       label: labels.mapTapStep,
       value: `${contract.tapContext.city || newestTraceEvent?.city || "-"}, ${contract.tapContext.country || newestTraceEvent?.country || "-"}`,
-      detail: `${contract.status.label} · ${newestTraceEvent?.at || contract.identity.eventId || "tap actual"}`,
+      detail: `${tapLocationEvidenceLabel} · ${newestTraceEvent?.at || contract.identity.eventId || "tap actual"}`,
     },
     {
       cls: "token",
@@ -2382,47 +2386,32 @@ function renderSunHtml(rawContract: ReturnType<typeof buildPublicContract>, shar
     [labels.statusLabel, contract.status.label],
     [labels.tokenIdLabel, contract.tokenization.tokenId || tokenizationStatusLabel],
   ].map(([label, value]) => `<div class="ledger-item" style="border:1px solid rgba(148,163,184,.22);border-radius:10px;padding:8px;background:rgba(15,23,42,.36)"><span style="display:block;color:#9fb5d9;font-size:10px;text-transform:uppercase;letter-spacing:.08em">${htmlText(label)}</span><b style="display:block;margin-top:3px;font-size:12px;color:#f8fafc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${htmlText(value)}</b></div>`).join("");
-  const routeControlX = mapAvailable ? (wineryPoint.x + tapPoint.x) / 2 : 0;
-  const routeControlY = mapAvailable && routeDistanceKm !== null
-    ? Math.max(52, Math.min(wineryPoint.y, tapPoint.y) - Math.min(118, Math.max(58, routeDistanceKm / 62)))
-    : 0;
-  const atlasRoutePath = mapAvailable
-    ? `M ${wineryPoint.x.toFixed(2)} ${wineryPoint.y.toFixed(2)} Q ${routeControlX.toFixed(2)} ${routeControlY.toFixed(2)} ${tapPoint.x.toFixed(2)} ${tapPoint.y.toFixed(2)}`
-    : "";
-  const atlasLights = [
-    [-34.6, -58.4, 0.74],
-    [-33.0, -68.8, 0.86],
-    [-23.5, -46.6, 0.58],
-    [19.4, -99.1, 0.58],
-    [25.7, -80.2, 0.62],
-    [40.7, -74.0, 0.62],
-    [51.5, -0.1, 0.66],
-    [48.8, 2.3, 0.58],
-    [47.3, 8.5, 0.74],
-    [35.6, 139.6, 0.54],
-  ].map(([lat, lng, opacity], index) => {
-    const p = projectWorld(Number(lat), Number(lng));
-    return `<circle key="${index}" cx="${p.x.toFixed(2)}" cy="${p.y.toFixed(2)}" r="2.8" fill="#e0f2fe" opacity="${opacity}"/>`;
-  }).join('');
-  const compactMapLabel = (value: unknown, max = 24) => {
-    const text = String(value ?? "-").trim() || "-";
-    return text.length > max ?`${text.slice(0, Math.max(1, max - 3))}...` : text;
+  const sunMapPayload = {
+    tileTemplate: rasterTileTemplate,
+    lightTileTemplate: lightRasterTileTemplate,
+    attribution: mapAttribution,
+    tap: tapLocationAvailable ? {
+      id: "tap",
+      lat: safeTapLat,
+      lng: safeTapLng,
+      tone: "tap",
+      label: `${contract.tapContext.city || labels.tapLocation}, ${contract.tapContext.country || "-"}`,
+      detail: tapLocationEvidenceLabel,
+    } : null,
+    // The declared origin is a reference marker only: it never contributes to
+    // heat intensity and no line is drawn as if it were a physical route.
+    origin: linearReferenceAvailable ? {
+      id: "declared-origin",
+      lat: safeWineryLat,
+      lng: safeWineryLng,
+      tone: "origin",
+      label: contract.iot.wineryLocation || contract.provenance.origin || labels.origin,
+      detail: declaredOriginReferenceNote,
+    } : null,
+    unavailable: labels.mapUnavailable,
   };
-  const atlasPanelWidth = clampMap(atlasViewWidth - 24, 142, 190);
-  const atlasOriginPanelX = atlasViewX + 12;
-  const atlasOriginPanelY = atlasViewY + atlasViewHeight - 54;
-  const atlasTapPanelX = atlasViewX + atlasViewWidth - atlasPanelWidth - 12;
-  const atlasTapPanelY = atlasViewY + 52;
-  const atlasOriginSafeLabel = htmlText(compactMapLabel(contract.iot.wineryLocation || contract.provenance.origin || labels.origin));
-  const atlasTapSafeLabel = htmlText(compactMapLabel([contract.tapContext.city, contract.tapContext.country].filter(Boolean).join(", ") || labels.tapLocation));
-  const atlasSvg = mapAvailable
-    ? `<svg class="world-route-overlay" viewBox="${atlasViewBox}" aria-hidden="true" data-map-source="${htmlText(mapSourceLabel)}"><defs><linearGradient id="sun-ocean" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="var(--sun-ocean-1,#06243c)"/><stop offset="52%" stop-color="var(--sun-ocean-2,#071827)"/><stop offset="100%" stop-color="var(--sun-ocean-3,#111136)"/></linearGradient><filter id="sun-glow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect width="${mapWidth}" height="${mapHeight}" fill="url(#sun-ocean)"/><g class="atlas-tiles atlas-tiles-dark">${atlasTileImages}</g><g class="atlas-tiles atlas-tiles-light">${atlasLightTileImages}</g><rect width="${mapWidth}" height="${mapHeight}" fill="var(--sun-tile-overlay,rgba(2,6,23,.16))"/><path d="M0 86 H1000 M0 158 H1000 M0 230 H1000 M0 302 H1000 M0 374 H1000 M116 0 V460 M248 0 V460 M500 0 V460 M752 0 V460 M884 0 V460" fill="none" stroke="var(--sun-grid-stroke,rgba(226,232,240,.055))" stroke-width="1" stroke-dasharray="8 14"/><g filter="url(#sun-glow)">${atlasLights}</g><circle cx="${wineryPoint.x.toFixed(2)}" cy="${wineryPoint.y.toFixed(2)}" r="54" fill="rgba(34,211,238,.16)"/><circle cx="${tapPoint.x.toFixed(2)}" cy="${tapPoint.y.toFixed(2)}" r="62" fill="rgba(249,115,22,.16)"/><path d="${atlasRoutePath}" fill="none" stroke="rgba(2,6,23,.82)" stroke-width="12" stroke-linecap="round"/><path d="${atlasRoutePath}" fill="none" stroke="#f97316" stroke-width="4.2" stroke-linecap="round" stroke-dasharray="10 12"><animate attributeName="stroke-dashoffset" values="0;-54" dur="3s" repeatCount="indefinite"/></path><circle r="5.5" fill="#facc15"><animateMotion dur="4.2s" repeatCount="indefinite" path="${atlasRoutePath}"/></circle><circle cx="${wineryPoint.x.toFixed(2)}" cy="${wineryPoint.y.toFixed(2)}" r="9" fill="#22d3ee" stroke="#ecfeff" stroke-width="2.4"/><circle cx="${tapPoint.x.toFixed(2)}" cy="${tapPoint.y.toFixed(2)}" r="10" fill="#f97316" stroke="#fff7ed" stroke-width="2.4"/><g transform="translate(${(atlasViewX + 12).toFixed(2)} ${(atlasViewY + 16).toFixed(2)})"><rect x="0" y="0" width="178" height="28" rx="14" fill="rgba(2,6,23,.74)" stroke="rgba(125,211,252,.32)"/><text x="14" y="18" fill="#cffafe" font-size="11" font-weight="800" letter-spacing="1.4">${htmlText(mapSourceLabel)}</text></g><text x="${(wineryPoint.x + 12).toFixed(2)}" y="${(wineryPoint.y - 13).toFixed(2)}" fill="#e0f2fe" font-size="18" font-weight="800" paint-order="stroke" stroke="rgba(2,6,23,.85)" stroke-width="4">${labels.origin}</text><text x="${(tapPoint.x + 12).toFixed(2)}" y="${(tapPoint.y - 13).toFixed(2)}" fill="#fed7aa" font-size="18" font-weight="800" paint-order="stroke" stroke="rgba(2,6,23,.85)" stroke-width="4">Tap</text><text x="${(atlasViewX + atlasViewWidth - 12).toFixed(2)}" y="${(atlasViewY + atlasViewHeight - 10).toFixed(2)}" text-anchor="end" fill="#cbd5e1" font-size="9" font-weight="700" opacity=".72" paint-order="stroke" stroke="rgba(2,6,23,.8)" stroke-width="3">${htmlText(mapAttribution)}</text></svg>`
-    : "";
-  const atlasSafePanels = mapAvailable
-    ? `<g transform="translate(${atlasOriginPanelX.toFixed(2)} ${atlasOriginPanelY.toFixed(2)})"><rect x="0" y="0" width="${atlasPanelWidth.toFixed(2)}" height="42" rx="13" fill="rgba(2,6,23,.82)" stroke="rgba(34,211,238,.34)"/><text x="12" y="16" fill="#67e8f9" font-size="9" font-weight="900" letter-spacing="1.4">${htmlText(labels.origin)}</text><text x="12" y="31" fill="#f8fafc" font-size="13" font-weight="850">${atlasOriginSafeLabel}</text></g><g transform="translate(${atlasTapPanelX.toFixed(2)} ${atlasTapPanelY.toFixed(2)})"><rect x="0" y="0" width="${atlasPanelWidth.toFixed(2)}" height="42" rx="13" fill="rgba(2,6,23,.82)" stroke="rgba(249,115,22,.38)"/><text x="12" y="16" fill="#fed7aa" font-size="9" font-weight="900" letter-spacing="1.4">TAP</text><text x="12" y="31" fill="#f8fafc" font-size="13" font-weight="850">${atlasTapSafeLabel}</text></g>`
-    : "";
-  const responsiveAtlasSvg = mapAvailable
-    ? atlasSvg.replace("</svg>", `${atlasSafePanels}</svg>`)
+  const responsiveAtlasMap = tapLocationAvailable
+    ? `<div id="nexid-sun-map" class="world-evidence-map" role="region" aria-label="${htmlText(tapLocationEvidenceLabel)}" data-nexid-map="maplibre-gl" data-map-source="${htmlText(mapSourceLabel)}" style="position:absolute;inset:0;width:100%;height:100%;min-height:220px"><div class="world-map-loading" role="status" style="position:absolute;inset:0;z-index:2;display:grid;place-items:center;padding:18px;text-align:center;background:rgba(2,6,23,.78);color:#cbd5e1">Cargando mapa geográfico real...</div></div>`
     : `<div style="display:grid;place-items:center;min-height:180px;padding:24px;text-align:center;color:#cbd5e1">${htmlText(labels.mapUnavailable)}</div>`;
   const reportedQualityScore = typeof contract.quality.score === "number" ? contract.quality.score : null;
   const reportedQualityTier = typeof contract.quality.tier === "string" ? contract.quality.tier : null;
@@ -2436,12 +2425,17 @@ function renderSunHtml(rawContract: ReturnType<typeof buildPublicContract>, shar
   let qualityMeterHtml = hasReportedQuality
     ? `<div class="risk-meter"><div class="risk-track"><div class="risk-fill" style="width:${reportedQualityScore}%"></div></div></div>`
     : "";
-  const mapLegendHtml = mapAvailable
-    ? `<div class="world-map-legend"><div class="legend-item"><span class="legend-dot legend-origin"></span><b>${labels.origin}</b><br/>${contract.iot.wineryLocation || "N/A"}</div><div class="legend-item"><span class="legend-dot legend-tap"></span><b>${labels.tapLocation}</b><br/>${contract.tapContext.city || "N/A"}, ${contract.tapContext.country || "N/A"}</div></div>`
+  const mapOriginLegendHtml = linearReferenceAvailable
+    ? `<div class="legend-item"><span class="legend-dot legend-origin"></span><b>${labels.origin}</b><br/>${contract.iot.wineryLocation || contract.provenance.origin || "N/A"}<br/><small>${htmlText(declaredOriginReferenceNote)}</small></div>`
     : "";
-  const routeSummaryText = mapAvailable
-    ? `${contract.iot.wineryLocation || labels.origin} → ${contract.tapContext.city || "-"}, ${contract.tapContext.country || "-"} · ${labels.mapLegend}.`
-    : labels.mapUnavailable;
+  const mapLegendHtml = tapLocationAvailable
+    ? `<div class="world-map-legend">${mapOriginLegendHtml}<div class="legend-item"><span class="legend-dot legend-tap"></span><b>${labels.tapLocation}</b><br/>${contract.tapContext.city || "N/A"}, ${contract.tapContext.country || "N/A"}<br/><small>${htmlText(tapLocationEvidenceLabel)}</small></div></div>`
+    : "";
+  const routeSummaryText = linearReferenceAvailable
+    ? `${contract.iot.wineryLocation || contract.provenance.origin || labels.origin} ↔ ${contract.tapContext.city || "-"}, ${contract.tapContext.country || "-"} · ${labels.mapLegend}. ${tapLocationEvidenceLabel}.`
+    : tapLocationAvailable
+      ? `${contract.tapContext.city || "-"}, ${contract.tapContext.country || "-"} · ${tapLocationEvidenceLabel}.`
+      : labels.mapUnavailable;
   const maskedBid = maskIdentityValue(contract.identity.bid);
   const maskedUid = contract.uidMasked;
   const sensorEvidenceLabel = contract.iot.sensorEvidenceKind === "simulated"
@@ -2455,21 +2449,24 @@ function renderSunHtml(rawContract: ReturnType<typeof buildPublicContract>, shar
     : contract.iot.sensorEvidenceKind === "reported"
       ? copy.lang === "en" ? "Values reported in event records; not independently verified by NexID." : copy.lang === "pt-BR" ? "Valores informados nos eventos; nao verificados independentemente pela NexID." : "Valores informados en eventos; no verificados independientemente por NexID."
       : copy.lang === "en" ? "No measured or reported sensor values are available." : copy.lang === "pt-BR" ? "Nao ha valores de sensores medidos ou reportados." : "No hay valores de sensores medidos ni reportados.";
-  qualityMeterHtml += `<div style="border:1px solid ${sensorEvidenceTone};background:rgba(2,6,23,.35);border-radius:12px;padding:10px;margin:12px 0 0"><b style="display:block;color:${sensorEvidenceTone};font-size:12px;letter-spacing:.04em">${sensorEvidenceLabel}</b><span style="font-size:11px;color:#cbd5e1">${sensorEvidenceExplanation}</span></div>`;
+  qualityMeterHtml += `<div class="sensor-evidence" style="border:1px solid ${sensorEvidenceTone};background:rgba(2,6,23,.35);border-radius:12px;padding:10px;margin:12px 0 0"><b style="display:block;color:${sensorEvidenceTone};font-size:12px;letter-spacing:.04em">${sensorEvidenceLabel}</b><span style="font-size:11px;color:#cbd5e1">${sensorEvidenceExplanation}</span></div>`;
 
   return `<!doctype html><html lang="${copy.lang}"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>NexID Product Passport</title>
   <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="icon" href="/logo-mark.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/apple-icon" />
-  <style>body{margin:0;background:radial-gradient(circle at top,#0b1e47 0%,#020617 58%);color:#e2e8f0;font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}.wrap{max-width:760px;margin:0 auto;padding:18px;padding-bottom:calc(18px + env(safe-area-inset-bottom))}.card{border:1px solid rgba(148,163,184,.22);border-radius:18px;background:linear-gradient(180deg,#0d1834 0%,#0a1228 100%);padding:16px;margin-top:12px;box-shadow:0 12px 36px rgba(2,6,23,.38)}.hero{padding:18px;background:linear-gradient(180deg,#0e1f43 0%,#09162f 100%);border:1px solid rgba(34,211,238,.22)}.hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.trust-sticky{position:sticky;top:8px;z-index:40;border:1px solid rgba(34,211,238,.35);background:rgba(8,16,36,.85);backdrop-filter:blur(8px);padding:10px 12px;border-radius:12px;margin-bottom:10px;font-size:12px;display:flex;align-items:center;justify-content:space-between;gap:8px}.trust-label{display:flex;align-items:center;gap:8px}.trust-dot{width:8px;height:8px;border-radius:999px;display:inline-block}.auth-card{border-color:rgba(34,211,238,.28);box-shadow:0 8px 28px rgba(34,211,238,.08)}.auth-topline{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#7dd3fc;margin-bottom:8px}.brand{display:flex;align-items:center;gap:10px;margin-bottom:8px}.brand-mark{width:36px;height:36px;border-radius:11px;background:linear-gradient(160deg,#05203d,#0b355f);border:1px solid rgba(125,211,252,.35);display:grid;place-items:center;font-weight:800;color:#e0f2fe;position:relative;overflow:hidden}.brand-ni{display:inline-flex;align-items:flex-end;gap:1px}.brand-ni .n-letter{font-size:16px;line-height:1}.brand-ni .i-stack{position:relative;display:inline-block;padding-top:2px}.brand-ni .i-stem{font-size:16px;line-height:1}.brand-ni .i-dot{position:absolute;top:-1px;left:50%;width:4px;height:4px;border-radius:999px;background:#7dd3fc;transform:translate(-50%,-50%);box-shadow:0 0 0 1px rgba(125,211,252,.22)}.brand-ni .i-orbit{position:absolute;top:-1px;left:50%;width:11px;height:7px;border:1px solid rgba(125,211,252,.5);border-radius:999px;transform:translate(-50%,-50%) rotate(-10deg)}.brand-text{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#7dd3fc}.badge{display:inline-block;border-radius:999px;border:1px solid rgba(255,255,255,.25);padding:4px 10px;font-size:11px;font-weight:700;letter-spacing:.04em}.lang-switch{display:flex;gap:6px;margin-top:6px}.lang-switch a{text-decoration:none;font-size:10px;padding:3px 8px;border-radius:999px;border:1px solid rgba(148,163,184,.4);color:#dbeafe}.lang-switch a.active{border-color:#22d3ee;color:#67e8f9;background:rgba(34,211,238,.12)}.hero h1{margin:10px 0 4px;font-size:clamp(1.7rem,6vw,2.1rem);line-height:1.08;letter-spacing:-.015em}.hero-meta{margin-top:6px;color:#b6c8e7;font-size:12px}.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.chip{border:1px solid rgba(148,163,184,.35);border-radius:999px;padding:4px 10px;font-size:11px;color:#cbd5e1;background:rgba(2,6,23,.24)}.chip-soft{background:rgba(34,211,238,.08);border-color:rgba(34,211,238,.35)}.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}.kpi{border:1px solid rgba(148,163,184,.28);border-radius:12px;padding:10px;background:rgba(2,6,23,.45);min-height:72px;display:flex;flex-direction:column;justify-content:center}.kpi b{display:block;font-size:14px}.kpi span{font-size:11px;color:#9fb5d9}.section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid rgba(148,163,184,.2)}.section-head h3{margin:0}.section-tag{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#7dd3fc;border:1px solid rgba(125,211,252,.35);padding:2px 8px;border-radius:999px}.detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}.detail-item{border:1px solid rgba(148,163,184,.2);border-radius:12px;padding:9px 10px;background:rgba(15,23,42,.35)}.detail-item .k{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#93c5fd;margin-bottom:4px}.detail-item .v{font-size:14px;font-weight:700;color:#f8fafc}.world-map-wrap{margin-top:10px;border:1px solid rgba(148,163,184,.28);border-radius:14px;overflow:hidden;background:linear-gradient(180deg,#07142d 0%,#081b38 100%)}.world-map-canvas{position:relative;aspect-ratio:1000/460;background:#0b1e47}.world-map-image{display:block;width:100%;height:100%;object-fit:cover;filter:saturate(1.05) contrast(1.02)}.world-route-overlay{position:absolute;inset:0;width:100%;height:100%;--sun-ocean-1:#06243c;--sun-ocean-2:#071827;--sun-ocean-3:#111136;--sun-tile-overlay:rgba(2,6,23,.16);--sun-grid-stroke:rgba(226,232,240,.055)}.atlas-tiles-light{display:none}.world-map-legend{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px;border-top:1px solid rgba(148,163,184,.22)}.legend-item{font-size:11px;color:#dbeafe;border:1px solid rgba(148,163,184,.28);border-radius:10px;padding:8px;background:rgba(15,23,42,.35)}.legend-dot{display:inline-block;width:8px;height:8px;border-radius:999px;margin-right:6px}.legend-origin{background:#22d3ee}.legend-tap{background:#f97316}.journey-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:10px}.journey-step{border:1px solid rgba(148,163,184,.25);border-radius:12px;padding:8px;background:rgba(15,23,42,.32)}.journey-step b{display:block;font-size:12px;margin-bottom:4px}.journey-step span{font-size:11px;color:#9fb5d9}details{margin-top:10px}button{border:1px solid rgba(148,163,184,.4);border-radius:10px;background:#071229;color:#dbeafe;padding:9px 8px;font-size:12px;font-weight:700;transition:transform .16s ease,background .2s ease,border-color .2s ease,box-shadow .2s ease}button:hover{transform:translateY(-1px);border-color:#38bdf8;background:#0b1f3f;box-shadow:0 8px 20px rgba(56,189,248,.18)}button:active{transform:scale(.98)}button:disabled{opacity:.45;cursor:not-allowed}.actions-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.link-btn{text-decoration:none;border:1px solid rgba(148,163,184,.32);border-radius:10px;padding:9px 8px;font-size:12px;font-weight:700;text-align:center;transition:transform .15s ease,filter .15s ease}.link-btn:hover{transform:translateY(-1px);filter:brightness(1.08)}.subtitle{margin:0;color:#9fb5d9;font-size:13px}.risk-meter{margin-top:12px}.risk-track{height:10px;border-radius:999px;background:rgba(148,163,184,.2);overflow:hidden}.risk-fill{height:100%;background:linear-gradient(90deg,#22c55e,#f59e0b,#ef4444);transition:width .6s ease}.pulse-ok{display:inline-block;animation:pulse 1.6s infinite}@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.45)}70%{box-shadow:0 0 0 12px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}@media (hover:hover){.card{transition:transform .2s ease,box-shadow .2s ease}.card:hover{transform:translateY(-1px);box-shadow:0 14px 34px rgba(2,6,23,.44)}}@media (max-width:720px){.kpis,.detail-grid,.actions-grid,.world-map-legend,.journey-steps{grid-template-columns:1fr}.hero-top{flex-direction:column;align-items:flex-start}.trust-sticky{padding:9px 10px}.trust-label{line-height:1.25}.kpi{min-height:64px}}@media (prefers-color-scheme: light){body{background:linear-gradient(180deg,#f8fafc 0%,#e2e8f0 100%);color:#0f172a}.card{background:#ffffff;border-color:#cbd5e1;box-shadow:0 8px 24px rgba(15,23,42,.08)}.hero{background:linear-gradient(180deg,#f8fbff 0%,#f1f5f9 100%)}.brand-mark{background:linear-gradient(160deg,#dff3ff,#bfdbfe);border-color:#93c5fd;color:#0f172a}.brand-text{color:#0369a1}.subtitle,.hero-meta{color:#334155}.chip{color:#334155;border-color:#cbd5e1;background:#f8fafc}.chip-soft{background:#ecfeff;border-color:#a5f3fc}.kpi{background:#f8fafc;border-color:#cbd5e1}.kpi span{color:#475569}.section-tag{color:#0369a1;border-color:#93c5fd}.detail-item,.journey-step{background:#f8fafc;border-color:#cbd5e1}.detail-item .k{color:#0369a1}.detail-item .v{color:#0f172a}.journey-step span{color:#475569}.world-map-wrap{background:linear-gradient(180deg,#f8fcff 0%,#dff4ff 100%);border-color:#93c5fd}.world-map-canvas{background:#eaf7ff}.world-route-overlay{--sun-ocean-1:#effaff;--sun-ocean-2:#e0f7ff;--sun-ocean-3:#eef4ff;--sun-tile-overlay:rgba(255,255,255,.28);--sun-grid-stroke:rgba(14,116,144,.1)}.atlas-tiles-dark{display:none}.atlas-tiles-light{display:block}.world-map-image{filter:saturate(.9) contrast(.92) brightness(1.08)}.legend-item{background:#f8fafc;border-color:#cbd5e1;color:#0f172a}button{background:#f8fafc;color:#0f172a}.link-btn{border-color:#cbd5e1}.lang-switch a{color:#0f172a;border-color:#cbd5e1}.lang-switch a.active{color:#075985}}@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}</style></head><body><main class="wrap">
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css" />
+  <script defer src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+  <style>body{margin:0;background:radial-gradient(circle at top,#0b1e47 0%,#020617 58%);color:#e2e8f0;font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}.wrap{max-width:760px;margin:0 auto;padding:18px;padding-bottom:calc(18px + env(safe-area-inset-bottom))}.card{border:1px solid rgba(148,163,184,.22);border-radius:18px;background:linear-gradient(180deg,#0d1834 0%,#0a1228 100%);padding:16px;margin-top:12px;box-shadow:0 12px 36px rgba(2,6,23,.38)}.hero{padding:18px;background:linear-gradient(180deg,#0e1f43 0%,#09162f 100%);border:1px solid rgba(34,211,238,.22)}.hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.trust-sticky{position:sticky;top:8px;z-index:40;border:1px solid rgba(34,211,238,.35);background:rgba(8,16,36,.85);backdrop-filter:blur(8px);padding:10px 12px;border-radius:12px;margin-bottom:10px;font-size:12px;display:flex;align-items:center;justify-content:space-between;gap:8px}.trust-label{display:flex;align-items:center;gap:8px}.trust-dot{width:8px;height:8px;border-radius:999px;display:inline-block}.auth-card{border-color:rgba(34,211,238,.28);box-shadow:0 8px 28px rgba(34,211,238,.08)}.auth-topline{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#7dd3fc;margin-bottom:8px}.brand{display:flex;align-items:center;gap:10px;margin-bottom:8px}.brand-mark{width:36px;height:36px;border-radius:11px;background:linear-gradient(160deg,#05203d,#0b355f);border:1px solid rgba(125,211,252,.35);display:grid;place-items:center;font-weight:800;color:#e0f2fe;position:relative;overflow:hidden}.brand-ni{display:inline-flex;align-items:flex-end;gap:1px}.brand-ni .n-letter{font-size:16px;line-height:1}.brand-ni .i-stack{position:relative;display:inline-block;padding-top:2px}.brand-ni .i-stem{font-size:16px;line-height:1}.brand-ni .i-dot{position:absolute;top:-1px;left:50%;width:4px;height:4px;border-radius:999px;background:#7dd3fc;transform:translate(-50%,-50%);box-shadow:0 0 0 1px rgba(125,211,252,.22)}.brand-ni .i-orbit{position:absolute;top:-1px;left:50%;width:11px;height:7px;border:1px solid rgba(125,211,252,.5);border-radius:999px;transform:translate(-50%,-50%) rotate(-10deg)}.brand-text{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#7dd3fc}.badge{display:inline-block;border-radius:999px;border:1px solid rgba(255,255,255,.25);padding:4px 10px;font-size:11px;font-weight:700;letter-spacing:.04em}.lang-switch{display:flex;gap:6px;margin-top:6px}.lang-switch a{text-decoration:none;font-size:10px;padding:3px 8px;border-radius:999px;border:1px solid rgba(148,163,184,.4);color:#dbeafe}.lang-switch a.active{border-color:#22d3ee;color:#67e8f9;background:rgba(34,211,238,.12)}.hero h1{margin:10px 0 4px;font-size:clamp(1.7rem,6vw,2.1rem);line-height:1.08;letter-spacing:-.015em}.hero-meta{margin-top:6px;color:#b6c8e7;font-size:12px}.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.chip{border:1px solid rgba(148,163,184,.35);border-radius:999px;padding:4px 10px;font-size:11px;color:#cbd5e1;background:rgba(2,6,23,.24)}.chip-soft{background:rgba(34,211,238,.08);border-color:rgba(34,211,238,.35)}.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}.kpi{border:1px solid rgba(148,163,184,.28);border-radius:12px;padding:10px;background:rgba(2,6,23,.45);min-height:72px;display:flex;flex-direction:column;justify-content:center}.kpi b{display:block;font-size:14px}.kpi span{font-size:11px;color:#9fb5d9}.section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid rgba(148,163,184,.2)}.section-head h3{margin:0}.section-tag{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#7dd3fc;border:1px solid rgba(125,211,252,.35);padding:2px 8px;border-radius:999px}.detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}.detail-item{border:1px solid rgba(148,163,184,.2);border-radius:12px;padding:9px 10px;background:rgba(15,23,42,.35)}.detail-item .k{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#93c5fd;margin-bottom:4px}.detail-item .v{font-size:14px;font-weight:700;color:#f8fafc}.world-map-wrap{margin-top:10px;border:1px solid rgba(148,163,184,.28);border-radius:14px;overflow:hidden;background:linear-gradient(180deg,#07142d 0%,#081b38 100%)}.world-map-canvas{position:relative;aspect-ratio:1000/460;background:#0b1e47}.world-map-image{display:block;width:100%;height:100%;object-fit:cover;filter:saturate(1.05) contrast(1.02)}.world-evidence-overlay{position:absolute;inset:0;width:100%;height:100%;--sun-ocean-1:#06243c;--sun-ocean-2:#071827;--sun-ocean-3:#111136;--sun-tile-overlay:rgba(2,6,23,.16);--sun-grid-stroke:rgba(226,232,240,.055)}.atlas-tiles-light{display:none}.world-map-legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;padding:8px;border-top:1px solid rgba(148,163,184,.22)}.legend-item{font-size:11px;color:#dbeafe;border:1px solid rgba(148,163,184,.28);border-radius:10px;padding:8px;background:rgba(15,23,42,.35)}.legend-item small{display:block;margin-top:5px;color:#9fb5d9;line-height:1.35}.legend-dot{display:inline-block;width:8px;height:8px;border-radius:999px;margin-right:6px}.legend-origin{background:#22d3ee}.legend-tap{background:#f97316}.journey-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:10px}.journey-step{border:1px solid rgba(148,163,184,.25);border-radius:12px;padding:8px;background:rgba(15,23,42,.32)}.journey-step b{display:block;font-size:12px;margin-bottom:4px}.journey-step span{font-size:11px;color:#9fb5d9}details{margin-top:10px}button{border:1px solid rgba(148,163,184,.4);border-radius:10px;background:#071229;color:#dbeafe;padding:9px 8px;font-size:12px;font-weight:700;transition:transform .16s ease,background .2s ease,border-color .2s ease,box-shadow .2s ease}button:hover{transform:translateY(-1px);border-color:#38bdf8;background:#0b1f3f;box-shadow:0 8px 20px rgba(56,189,248,.18)}button:active{transform:scale(.98)}button:disabled{opacity:.45;cursor:not-allowed}.actions-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.link-btn{text-decoration:none;border:1px solid rgba(148,163,184,.32);border-radius:10px;padding:9px 8px;font-size:12px;font-weight:700;text-align:center;transition:transform .15s ease,filter .15s ease}.link-btn:hover{transform:translateY(-1px);filter:brightness(1.08)}.subtitle{margin:0;color:#9fb5d9;font-size:13px}.risk-meter{margin-top:12px}.risk-track{height:10px;border-radius:999px;background:rgba(148,163,184,.2);overflow:hidden}.risk-fill{height:100%;background:linear-gradient(90deg,#22c55e,#f59e0b,#ef4444);transition:width .6s ease}.pulse-ok{display:inline-block;animation:pulse 1.6s infinite}@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.45)}70%{box-shadow:0 0 0 12px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}@media (hover:hover){.card{transition:transform .2s ease,box-shadow .2s ease}.card:hover{transform:translateY(-1px);box-shadow:0 14px 34px rgba(2,6,23,.44)}}@media (max-width:720px){.kpis,.detail-grid,.actions-grid,.world-map-legend,.journey-steps{grid-template-columns:1fr}.hero-top{flex-direction:column;align-items:flex-start}.trust-sticky{padding:9px 10px}.trust-label{line-height:1.25}.kpi{min-height:64px}}@media (prefers-color-scheme: light){body{background:linear-gradient(180deg,#f8fafc 0%,#e2e8f0 100%);color:#0f172a}.card{background:#ffffff;border-color:#cbd5e1;box-shadow:0 8px 24px rgba(15,23,42,.08)}.hero{background:linear-gradient(180deg,#f8fbff 0%,#f1f5f9 100%)}.brand-mark{background:linear-gradient(160deg,#dff3ff,#bfdbfe);border-color:#93c5fd;color:#0f172a}.brand-text{color:#0369a1}.subtitle,.hero-meta{color:#334155}.chip{color:#334155;border-color:#cbd5e1;background:#f8fafc}.chip-soft{background:#ecfeff;border-color:#a5f3fc}.kpi{background:#f8fafc;border-color:#cbd5e1}.kpi span{color:#475569}.section-tag{color:#0369a1;border-color:#93c5fd}.detail-item,.journey-step{background:#f8fafc;border-color:#cbd5e1}.detail-item .k{color:#0369a1}.detail-item .v{color:#0f172a}.journey-step span{color:#475569}.world-map-wrap{background:linear-gradient(180deg,#f8fcff 0%,#dff4ff 100%);border-color:#93c5fd}.world-map-canvas{background:#eaf7ff}.world-evidence-overlay{--sun-ocean-1:#effaff;--sun-ocean-2:#e0f7ff;--sun-ocean-3:#eef4ff;--sun-tile-overlay:rgba(255,255,255,.28);--sun-grid-stroke:rgba(14,116,144,.1)}.atlas-tiles-dark{display:none}.atlas-tiles-light{display:block}.world-map-image{filter:saturate(.9) contrast(.92) brightness(1.08)}.legend-item{background:#f8fafc;border-color:#cbd5e1;color:#0f172a}.legend-item small{color:#475569}button{background:#f8fafc;color:#0f172a}.link-btn{border-color:#cbd5e1}.lang-switch a{color:#0f172a;border-color:#cbd5e1}.lang-switch a.active{color:#075985}}@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}</style></head><body><main class="wrap">
+  <style id="nexid-white-first">body{background:linear-gradient(180deg,#f8fbfd 0%,#eef5f7 100%);color:#0f172a}.card{background:#fff;border-color:#cbd5e1;box-shadow:0 8px 24px rgba(15,23,42,.08)}.hero{background:linear-gradient(180deg,#fbfeff 0%,#f1f8fa 100%);border-color:#bae6ef}.trust-sticky{background:rgba(255,255,255,.94);border-color:#a5ddea;box-shadow:0 8px 28px rgba(15,23,42,.09)}.trust-sticky .chip{background:#fff!important}.brand-mark{background:linear-gradient(160deg,#dff6fb,#c8ebf3);border-color:#8fd3e2;color:#0f172a}.brand-text,.auth-topline,.section-tag{color:#076e82}.subtitle,.hero-meta{color:#475569}.chip{color:#334155;border-color:#cbd5e1;background:#f8fafc}.chip-soft{background:#ecfeff;border-color:#a5f3fc}.kpi,.detail-item,.journey-step{background:#f8fafc;border-color:#cbd5e1}.kpi span,.journey-step span{color:#475569}.detail-item .k{color:#08768b}.detail-item .v{color:#0f172a}.world-map-wrap{background:linear-gradient(180deg,#f8fcff 0%,#dff4ff 100%);border-color:#93c5fd}.world-map-canvas{background:#eaf7ff}.legend-item{background:#f8fafc;border-color:#cbd5e1;color:#0f172a}.legend-item small{color:#475569}.sensor-evidence{background:#f8fafc!important}.sensor-evidence span{color:#475569!important}.trace-story{background:linear-gradient(180deg,#f0fdff,#f8fafc)!important;border-color:#a5e5ef!important}.trace-story-head p{color:#475569!important}.trace-story>p{color:#08768b!important}.story-grid>*,.ledger-grid>*{background:#fff!important;color:#0f172a!important;border-color:#cbd5e1!important}.story-grid span,.ledger-grid span{color:#475569!important}.story-grid b,.ledger-grid b{color:#0f172a!important}button{background:#f8fafc;color:#0f172a}.link-btn{border-color:#cbd5e1}.lang-switch a{color:#0f172a;border-color:#cbd5e1}.lang-switch a.active{color:#075985}</style>
   <div class="trust-sticky"><span class="trust-label"><span class="trust-dot" style="background:${authRibbonTone}"></span><b>${copy.authPanel}:</b> <span style="color:${authRibbonTone};font-weight:700">${contract.status.label}</span></span><span class="chip" style="margin-top:0;border-color:${riskTone};color:${riskTone};background:rgba(2,6,23,.36)">${riskLevelLabel}</span></div>
   <section class="card hero"><div class="hero-top"><div><div class="brand"><span class="brand-mark"><span class="brand-ni"><span class="n-letter">N</span><span class="i-stack"><span class="i-stem">i</span><span class="i-dot"></span><span class="i-orbit"></span></span></span></span><span class="brand-text">NexID Verified Tap</span></div><h1>${copy.title}</h1><p class="subtitle">${contract.status.summary}</p><p class="hero-meta">${labels.heroRoute} · ${labels.eventLabel} #${contract.identity.eventId || 'N/A'}</p><div class="lang-switch"><a href="${langUrl('es-AR')}" class="${locale === 'es-AR' ?'active' : ''}">ES</a><a href="${langUrl('pt-BR')}" class="${locale === 'pt-BR' ?'active' : ''}">PT</a><a href="${langUrl('en')}" class="${locale === 'en' ?'active' : ''}">EN</a></div></div><span class="badge" style="color:${tone};border-color:${tone}">${contract.status.label}</span></div><div class="chips"><span class="chip">BID ${maskedBid}</span><span class="chip">UID ${maskedUid}</span><span class="chip">Tap #${contract.identity.readCounter ?? 'N/A'}</span><span class="chip ${contract.status.code === "VALID" ?"pulse-ok" : ""}">${qualitySummary}</span></div>${qualityMeterHtml}<div class="kpis"><div class="kpi"><b>${contract.provenance.timelineSummary.length}</b><span>${labels.events}</span></div><div class="kpi"><b>${tokenizationStatusLabel}</b><span>${labels.tokenization}</span></div><div class="kpi"><b>${contract.tapContext.deviceType || "-"}</b><span>${labels.device}</span></div></div></section>
   <section class="card auth-card"><div class="auth-topline">Trust signal</div><h3 style="margin:0 0 6px">${copy.authPanel}</h3><p class="subtitle">${authPanelMessage}</p><div class="chips"><span class="chip">${commercialStateLabel}</span><span class="chip">${riskStateLabel}</span><span class="chip">${labels.dashboardSync}</span></div></section>
   <section class="card"><div class="section-head"><h3>${copy.identityPanel}</h3><span class="section-tag">${labels.wineProfile}</span></div><p><b>${contract.product.name || 'Unprofiled product'}</b></p><p>${contract.product.winery || '-'} · ${contract.product.region || '-'}</p><div class="detail-grid"><div class="detail-item"><span class="k">${labels.varietal}</span><span class="v">${contract.product.varietal || '-'}</span></div><div class="detail-item"><span class="k">${labels.vintage}</span><span class="v">${contract.product.vintage || '-'}</span></div><div class="detail-item"><span class="k">${labels.harvest}</span><span class="v">${contract.product.harvestYear || '-'}</span></div><div class="detail-item"><span class="k">${labels.barrel}</span><span class="v">${contract.product.barrelMonths || '-'} ${labels.months}</span></div><div class="detail-item"><span class="k">${labels.alcohol}</span><span class="v">${contract.product.alcohol || '-'}</span></div><div class="detail-item"><span class="k">${labels.serving}</span><span class="v">${contract.product.serving || '-'}</span></div></div><p style="margin-top:10px">${labels.bottleFormat}: <b>${contract.product.bottle || '-'}</b></p></section>
   <section class="card"><div class="section-head"><h3>${copy.provenancePanel}</h3><span class="section-tag">${labels.traceability}</span></div><p>${labels.origin}: <b>${contract.provenance.origin || contract.iot.wineryLocation || '-'}</b></p><p>${copy.firstVerified}: <b>${contract.provenance.firstVerified.at || 'N/A'} · ${contract.provenance.firstVerified.city || '-'}, ${contract.provenance.firstVerified.country || '-'}</b></p><p>${copy.lastVerified}: <b>${contract.provenance.lastVerifiedLocation.at || 'N/A'} · ${contract.provenance.lastVerifiedLocation.city || '-'}, ${contract.provenance.lastVerifiedLocation.country || '-'}</b></p></section>
   <section class="card"><div class="section-head"><h3>${copy.iotPanel}</h3><span class="section-tag">${labels.sensorIntelligence}</span></div><p>${labels.winery}: <b>${contract.iot.wineryLocation || 'N/A'}</b></p><p>${labels.altitude}: <b>${contract.iot.altitude || '-'}</b> · ${labels.oak}: <b>${contract.iot.oakType || '-'}</b></p><p>${labels.cellarTemp}: <b>${contract.iot.sensorSnapshot.cellarTemperature || '-'}</b> · ${labels.humidity}: <b>${contract.iot.sensorSnapshot.humidity || '-'}</b></p><p>${labels.light}: <b>${contract.iot.sensorSnapshot.lightExposure || '-'}</b> · ${labels.transit}: <b>${contract.iot.sensorSnapshot.transitShock || '-'}</b></p></section>
-  <section class="card"><div class="section-head"><h3>${copy.tapPanel}</h3><span class="section-tag">${labels.geoContext}</span></div><p>${labels.os}: <b>${contract.tapContext.os}</b> · ${labels.browser}: <b>${contract.tapContext.browser}</b> · ${labels.device}: <b>${contract.tapContext.deviceType}</b></p><p>${labels.tapLocation}: <b>${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'}</b>${contract.tapContext.lat != null && contract.tapContext.lng != null ?` · (${contract.tapContext.lat}, ${contract.tapContext.lng})` : ''}</p><div class="detail-grid"><div class="detail-item"><span class="k">${labels.routeDistance}</span><span class="v">${routeDistanceLabel}</span></div><div class="detail-item"><span class="k">${labels.routeRegion}</span><span class="v">${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'}</span></div></div>
-  <div class="world-map-wrap"><div class="world-map-canvas">${responsiveAtlasSvg}</div>${mapLegendHtml}</div>
+  <section class="card"><div class="section-head"><h3>${copy.tapPanel}</h3><span class="section-tag">${labels.geoContext}</span></div><p>${labels.os}: <b>${contract.tapContext.os}</b> · ${labels.browser}: <b>${contract.tapContext.browser}</b> · ${labels.device}: <b>${contract.tapContext.deviceType}</b></p><p>${labels.tapLocation}: <b>${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'}</b>${tapLocationAvailable ?` · (${tapLat}, ${tapLng})` : ''}</p><div class="detail-grid"><div class="detail-item"><span class="k">${labels.routeDistance}</span><span class="v">${routeDistanceLabel}</span></div><div class="detail-item"><span class="k">${labels.routeRegion}</span><span class="v">${contract.tapContext.city || '-'}, ${contract.tapContext.country || '-'}</span></div><div class="detail-item"><span class="k">${locationEvidenceTitle}</span><span class="v">${htmlText(tapLocationEvidenceLabel)}</span></div></div>
+  <div class="world-map-wrap"><div class="world-map-canvas">${responsiveAtlasMap}</div>${mapLegendHtml}</div>
   <div class="trace-story" style="margin-top:10px;border:1px solid rgba(34,211,238,.22);border-radius:14px;padding:10px;background:linear-gradient(180deg,rgba(8,47,73,.44),rgba(15,23,42,.28))"><div class="trace-story-head" style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px"><div><h4 style="margin:0;font-size:14px">${labels.mapStoryTitle}</h4><p style="margin:2px 0 0;color:#9fb5d9;font-size:11px">${labels.mapStorySubtitle}</p></div><span class="section-tag">${labels.mapLedgerTitle}</span></div><div class="story-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:8px">${traceStoryHtml}</div><div class="ledger-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:8px;margin-top:8px">${traceLedgerHtml}</div><p style="margin:9px 0 0;font-size:11px;color:#a7f3d0">${labels.mapInvestorSignal}: ${contract.provenance.timelineSummary.length} ${labels.events}, ${routeDistanceLabel}, ${htmlText(tokenProof)}. ${labels.mapConsumerSignal}: ${labels.linkPortal} + ${labels.linkRewards}.</p></div>
   <p style="margin:8px 0 0;font-size:11px;color:#94a3b8">${labels.routeSummary}: ${routeSummaryText}</p></section>
   <section class="card"><h3 style="margin:0 0 6px">${copy.timelinePanel}</h3><ul style="margin:0;padding-left:18px">${timelineHtml}</ul></section>
@@ -2493,6 +2490,121 @@ function renderSunHtml(rawContract: ReturnType<typeof buildPublicContract>, shar
   const uid = '';
   const copy = ${serializeForInlineScript(copy)};
   const labels = ${serializeForInlineScript(labels)};
+  const sunMapData = ${serializeForInlineScript(sunMapPayload)};
+  const initSunMap = () => {
+    const container = document.getElementById('nexid-sun-map');
+    if (!container) return;
+    if (!window.maplibregl) {
+      const status = container.querySelector('.world-map-loading');
+      if (status) status.textContent = 'No se pudo iniciar MapLibre. La evidencia textual sigue disponible.';
+      container.setAttribute('data-map-state', 'error');
+      return;
+    }
+      // The public post-tap passport is white-first on every device. It must not
+      // inherit a dark OS preference and surprise a user after the physical tap.
+      const prefersLight = true;
+    const map = new window.maplibregl.Map({
+      container,
+      style: {
+        version: 8,
+        sources: {
+          basemap: {
+            type: 'raster',
+            tiles: [prefersLight ? sunMapData.lightTileTemplate : sunMapData.tileTemplate],
+            tileSize: 256,
+            attribution: sunMapData.attribution,
+          },
+        },
+        layers: [
+          { id: 'sun-map-background', type: 'background', paint: { 'background-color': prefersLight ? '#eaf7fb' : '#061322' } },
+          { id: 'sun-map-basemap', type: 'raster', source: 'basemap' },
+        ],
+      },
+      center: [sunMapData.tap.lng, sunMapData.tap.lat],
+      zoom: 8,
+      attributionControl: false,
+      cooperativeGestures: true,
+      fadeDuration: 0,
+    });
+    map.addControl(new window.maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+    map.addControl(new window.maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-left');
+    map.addControl(new window.maplibregl.AttributionControl({ compact: true }), 'bottom-right');
+    map.on('error', (event) => {
+      if (!event || !event.error) return;
+      let status = container.querySelector('.world-map-loading');
+      if (!status) {
+        status = document.createElement('div');
+        status.className = 'world-map-loading';
+        status.setAttribute('role', 'status');
+        status.style.cssText = 'position:absolute;left:12px;right:12px;top:58px;z-index:5;padding:10px 12px;border:1px solid rgba(251,191,36,.45);border-radius:10px;background:rgba(69,26,3,.92);color:#fef3c7;font:600 12px/1.45 system-ui,sans-serif;text-align:center';
+        container.appendChild(status);
+      }
+      status.textContent = 'Algunas teselas no se pudieron cargar. La evidencia textual sigue disponible.';
+      container.setAttribute('data-map-state', 'degraded');
+    });
+    map.on('load', () => {
+      const mapPoints = [sunMapData.origin, sunMapData.tap].filter(Boolean);
+      map.addSource('sun-location-evidence', {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features: mapPoints.map((point) => ({
+            type: 'Feature',
+            properties: { id: point.id, label: point.label, detail: point.detail, tone: point.tone },
+            geometry: { type: 'Point', coordinates: [point.lng, point.lat] },
+          })),
+        },
+      });
+      map.addLayer({
+        id: 'sun-location-halo',
+        type: 'circle',
+        source: 'sun-location-evidence',
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, 12, 11, 28],
+          'circle-color': ['match', ['get', 'tone'], 'origin', 'rgba(52,211,153,.2)', 'rgba(249,115,22,.2)'],
+          'circle-stroke-color': ['match', ['get', 'tone'], 'origin', '#34d399', '#f97316'],
+          'circle-stroke-width': 1,
+        },
+      });
+      map.addLayer({
+        id: 'sun-location-points',
+        type: 'circle',
+        source: 'sun-location-evidence',
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, 5, 11, 8],
+          'circle-color': ['match', ['get', 'tone'], 'origin', '#34d399', '#f97316'],
+          'circle-stroke-color': '#ffffff',
+          'circle-stroke-width': 2,
+        },
+      });
+      if (mapPoints.length > 1) {
+        const bounds = new window.maplibregl.LngLatBounds();
+        mapPoints.forEach((point) => bounds.extend([point.lng, point.lat]));
+        map.fitBounds(bounds, { padding: 56, maxZoom: 9, duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 550 });
+      }
+      const status = container.querySelector('.world-map-loading');
+      if (status && container.getAttribute('data-map-state') !== 'degraded') status.remove();
+      if (container.getAttribute('data-map-state') !== 'degraded') container.setAttribute('data-map-state', 'ready');
+    });
+    map.on('click', 'sun-location-points', (event) => {
+      const feature = event.features && event.features[0];
+      const coordinates = feature && feature.geometry && feature.geometry.coordinates;
+      if (!feature || !Array.isArray(coordinates)) return;
+      const popup = document.createElement('div');
+      const title = document.createElement('strong');
+      const detail = document.createElement('span');
+      title.textContent = String(feature.properties.label || 'Ubicación reportada');
+      detail.textContent = String(feature.properties.detail || '');
+      detail.style.display = 'block';
+      detail.style.marginTop = '4px';
+      popup.append(title, detail);
+      new window.maplibregl.Popup({ closeButton: false }).setLngLat(coordinates).setDOMContent(popup).addTo(map);
+    });
+    map.on('mouseenter', 'sun-location-points', () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', 'sun-location-points', () => { map.getCanvas().style.cursor = ''; });
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initSunMap, { once: true });
+  else initSunMap();
   const ui = copy.lang === 'pt-BR'
     ?{
       askContact: 'Informe seu e-mail ou telefone para registrar/associar ao tenant:',

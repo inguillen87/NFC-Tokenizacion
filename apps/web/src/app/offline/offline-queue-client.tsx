@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, Clock3, RefreshCw, ShieldAlert, Trash2, Wifi, WifiOff, XCircle } from "lucide-react";
-import { BrandLockup } from "@product/ui";
+import { BrandHomeLink } from "../../components/brand-home-link";
 import {
   isOfflineSunStatus,
   isTerminalOfflineSunStatus,
@@ -254,10 +254,10 @@ export function OfflineQueueClient() {
   const pendingCount = records.filter((record) => !isTerminalOfflineSunStatus(record.status)).length;
 
   return (
-    <main className="min-h-screen bg-[#050914] px-4 py-6 text-slate-100 sm:py-10">
+    <main className="nexid-offline-page min-h-screen bg-[#050914] px-4 py-6 text-slate-100 sm:py-10">
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-5">
         <header className="flex items-center justify-between gap-4">
-          <BrandLockup size={42} variant="ripple" theme="dark" />
+          <BrandHomeLink size={42} />
           <span className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-xs font-black uppercase tracking-[0.14em] ${connectivity === "online" ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200" : "border-amber-400/30 bg-amber-400/10 text-amber-100"}`}>
             {connectivity === "online" ? <Wifi aria-hidden="true" size={16} /> : <WifiOff aria-hidden="true" size={16} />}
             {connectivity === "online" ? "Con conexión" : "Sin conexión"}

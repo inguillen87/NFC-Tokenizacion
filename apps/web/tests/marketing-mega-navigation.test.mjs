@@ -57,7 +57,7 @@ test("mega navigation shares one accessible keyboard and mobile interaction mode
   assert.match(navigation, /querySelectorAll<HTMLElement>\("\[data-nav-inert\]"\)/);
   assert.match(navigation, /document\.body\.style\.overflow = "hidden"/);
   assert.match(navigation, /mobileTriggerRef\.current\?\.focus\(\)/);
-  assert.match(css, /\.mobileMenuButton\s*\{[\s\S]*min-height: 2\.65rem/);
+  assert.match(css, /\.mobileMenuButton\s*\{[\s\S]*min-height: 2\.75rem/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
 });
 

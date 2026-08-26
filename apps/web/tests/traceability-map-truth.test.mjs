@@ -42,6 +42,20 @@ test("public globe and landing remove fixed confidence and live fixture claims",
   assert.doesNotMatch(landing, /Live Network|Red en vivo|rutas comerciales en vivo/);
 });
 
+test("public globe fails closed when no observed geographic feed is available", () => {
+  assert.match(globe, /data-geographic-truth=\{truthState\}/);
+  assert.match(globe, /data-geographic-renderer=\{hasObservedGeography \? "maplibre-gl" : "none"\}/);
+  assert.match(globe, /No se dibujan ubicaciones, rutas ni calor sin coordenadas observadas y una fuente declarada/);
+  assert.match(globe, /El mapa queda cerrado hasta recibir coordenadas válidas y con fuente/);
+  assert.match(globe, /No usamos puntos, rutas, continentes ni zonas de calor de ejemplo como si fueran telemetría/);
+  assert.match(globe, /<PremiumVectorMap/);
+  assert.match(globe, /hasObservedGeography \? \(/);
+  assert.match(globe, /data-caller-geography=\{callerScenarioIgnored \? "unverified-ignored" : "none"\}/);
+  assert.match(globe, /if \(typeof value !== "number" && typeof value !== "string"\) return null/);
+  assert.match(globe, /typeof value === "string" && value\.trim\(\) === ""/);
+  assert.doesNotMatch(globe, /createAtlasTexture|new THREE\.|native-three|fallbackPoints|fallbackRoutes|<svg/);
+});
+
 test("hero fixture routes never claim audited or physical-tap evidence", () => {
   assert.match(hero, /Escenario ilustrativo; sin evidencia de tap físico ni custodia/);
   assert.match(hero, /Ruta global ilustrativa/);

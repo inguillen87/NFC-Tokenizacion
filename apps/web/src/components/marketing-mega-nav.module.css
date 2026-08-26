@@ -47,7 +47,7 @@
 .navGroupButton,
 .navDirectLink {
   display: inline-flex;
-  min-height: 2.65rem;
+  min-height: 2.75rem;
   align-items: center;
   justify-content: center;
   gap: 0.3rem;
@@ -261,7 +261,7 @@
 .headerCta,
 .mobileMenuButton {
   display: inline-flex;
-  min-height: 2.65rem;
+  min-height: 2.75rem;
   align-items: center;
   justify-content: center;
   border-radius: 0.78rem;
@@ -299,7 +299,7 @@
 
 .mobileMenuButton {
   display: none;
-  width: 2.65rem;
+  width: 2.75rem;
   border: 1px solid var(--nav-border-strong);
   background: var(--nav-accent-soft);
   color: var(--nav-accent-strong);
@@ -346,7 +346,7 @@
   z-index: 1;
   display: flex;
   width: min(29rem, 94vw);
-  height: 100%;
+  height: 100dvh;
   flex-direction: column;
   overflow-y: auto;
   border-left: 1px solid var(--nav-border);
@@ -367,14 +367,13 @@
   justify-content: space-between;
   border-bottom: 1px solid var(--nav-border);
   background: color-mix(in srgb, var(--nav-surface) 94%, transparent);
-  padding: 1rem 1.15rem;
+  padding: max(1rem, env(safe-area-inset-top)) max(1.15rem, env(safe-area-inset-right)) 1rem max(1.15rem, env(safe-area-inset-left));
   backdrop-filter: blur(16px);
 }
 
-.mobileDialogHead > span {
-  font-size: 1rem;
-  font-weight: 880;
-  letter-spacing: -0.035em;
+.mobileDialogBrand {
+  color: var(--nav-text);
+  text-decoration: none;
 }
 
 .mobileDialogHead button {
@@ -390,7 +389,7 @@
   cursor: pointer;
 }
 
-.mobileDialogHead svg {
+.mobileDialogHead > button > svg {
   width: 1.15rem;
   height: 1.15rem;
 }

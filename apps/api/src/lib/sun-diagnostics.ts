@@ -1,7 +1,7 @@
 import { sql } from './db';
 import { verifySunFreshHandoffToken } from './sun-fresh-handoff';
 import { createPublicCertificateShareToken } from './public-certificate-share';
-import { redactSensitiveQueryValues } from './approximate-location';
+import { normalizeCoordinatePair, redactSensitiveQueryValues } from './approximate-location';
 
 export type SunDiagnosticTool = 'sun_scan' | 'inspect' | 'compare_tamper' | 'compare_tamper_samples';
 
@@ -374,6 +374,108 @@ function normalizeSnapshotContractFromCurrentIdentity(input: unknown, currentIde
   return contract;
 }
 
+type CurrentSnapshotTapLocation = {
+  eventId: string;
+  at: string | null;
+  result: string | null;
+  city: string | null;
+  country: string | null;
+  lat: number | null;
+  lng: number | null;
+  source: string | null;
+  accuracyM: number | null;
+};
+
+async function resolveCurrentSnapshotTapLocation(eventId: string) {
+  if (!/^\d+$/.test(eventId)) return null;
+  try {
+    const rows = await sql/*sql*/`
+      SELECT id::text AS event_id, created_at::text AS at, result, city, country_code AS country, lat, lng, meta
+      FROM events
+      WHERE id = ${eventId}::bigint
+      LIMIT 1
+    `;
+    const row = rows[0] as Record<string, unknown> | undefined;
+    if (!row) return null;
+    const meta = asRecord(row.meta);
+    const sunContext = asRecord(meta.sun_context);
+    const sunGeo = asRecord(sunContext.geo);
+    const geoEvidence = asRecord(meta.geo_evidence);
+    const coordinate = normalizeCoordinatePair(row.lat, row.lng);
+    const accuracy = numberOrNull(sunGeo.accuracy ?? sunGeo.accuracy_m ?? geoEvidence.accuracy_m);
+    return {
+      eventId: String(row.event_id || eventId),
+      at: textOrNull(row.at),
+      result: textOrNull(row.result),
+      city: textOrNull(row.city),
+      country: textOrNull(row.country),
+      lat: coordinate?.lat ?? null,
+      lng: coordinate?.lng ?? null,
+      source: firstText(sunGeo.source, geoEvidence.source),
+      accuracyM: accuracy !== null && accuracy > 0 ? accuracy : null,
+    } satisfies CurrentSnapshotTapLocation;
+  } catch (error) {
+    console.warn("[snapshot_tap_location_lookup_failed]", JSON.stringify({
+      eventId,
+      reason: error instanceof Error ? error.message : "tap_location_lookup_failed",
+    }));
+    return null;
+  }
+}
+
+function normalizeSnapshotContractFromCurrentTap(input: unknown, tap: CurrentSnapshotTapLocation | null) {
+  const contract = cloneRecord(input);
+  if (!tap) return contract;
+  const tapContext = asRecord(contract.tapContext);
+  const storedCoordinate = normalizeCoordinatePair(tapContext.lat, tapContext.lng);
+  const resolvedLat = tap.lat ?? storedCoordinate?.lat ?? null;
+  const resolvedLng = tap.lng ?? storedCoordinate?.lng ?? null;
+  const storedAccuracy = numberOrNull(tapContext.accuracyM);
+  const resolvedAccuracy = tap.accuracyM ?? (storedAccuracy !== null && storedAccuracy > 0 ? storedAccuracy : null);
+  const provenance = asRecord(contract.provenance);
+  const timeline = Array.isArray(provenance.timelineSummary)
+    ? provenance.timelineSummary.map((item) => cloneRecord(item))
+    : [];
+  const existingIndex = timeline.findIndex((item) => String(item.eventId || "") === tap.eventId);
+  const timelineEvent = {
+    ...(existingIndex >= 0 ? timeline[existingIndex] : {}),
+    eventId: tap.eventId,
+    at: tap.at,
+    result: tap.result,
+    city: tap.city || (existingIndex >= 0 ? timeline[existingIndex].city : null),
+    country: tap.country || (existingIndex >= 0 ? timeline[existingIndex].country : null),
+    lat: resolvedLat,
+    lng: resolvedLng,
+    locationSource: tap.source || (existingIndex >= 0 ? timeline[existingIndex].locationSource : null),
+    accuracyM: resolvedAccuracy,
+  };
+  if (existingIndex >= 0) timeline[existingIndex] = timelineEvent;
+  else timeline.unshift(timelineEvent);
+
+  contract.tapContext = {
+    ...tapContext,
+    city: tap.city || tapContext.city || null,
+    country: tap.country || tapContext.country || null,
+    lat: resolvedLat,
+    lng: resolvedLng,
+    locationSource: tap.source || tapContext.locationSource || (resolvedLat !== null && resolvedLng !== null ? "reported_without_source" : "none"),
+    accuracyM: resolvedAccuracy,
+    utcTime: tap.at || tapContext.utcTime || null,
+  };
+  contract.provenance = {
+    ...provenance,
+    lastVerifiedLocation: {
+      ...asRecord(provenance.lastVerifiedLocation),
+      at: tap.at || asRecord(provenance.lastVerifiedLocation).at || null,
+      city: tap.city || asRecord(provenance.lastVerifiedLocation).city || null,
+      country: tap.country || asRecord(provenance.lastVerifiedLocation).country || null,
+      result: tap.result || asRecord(provenance.lastVerifiedLocation).result || null,
+    },
+    timelineSummary: timeline.slice(0, 8),
+  };
+  return contract;
+}
+
 function markHistoricalSnapshotContract(input: unknown, snapshot: { id: number; traceId: string; createdAt: string | null }) {
   const contract = cloneRecord(input);
   const tapSecurity = asRecord(contract.tapSecurity);
@@ -605,10 +707,14 @@ export async function getSunDiagnosticSnapshot(id: string | number, traceId: str
   const diagnosticId = Number(row.id || numericId);
   const traceIdValue = row.trace_id || trace;
   const createdAt = row.created_at || null;
-  const currentIdentity = await resolveCurrentSnapshotIdentity({ bid: row.bid, uidHex: row.uid_hex, uidMasked: row.uid_masked });
-  const contract = normalizeSunProfileMismatchContract(
-    normalizeSnapshotContractFromCurrentIdentity(result.contract, currentIdentity),
-  );
+  const snapshotIdentity = asRecord(asRecord(result.contract).identity);
+  const currentTapEventId = String(asRecord(result.contract).eventId || snapshotIdentity.eventId || "").trim();
+  const [currentIdentity, currentTap] = await Promise.all([
+    resolveCurrentSnapshotIdentity({ bid: row.bid, uidHex: row.uid_hex, uidMasked: row.uid_masked }),
+    currentTapEventId ? resolveCurrentSnapshotTapLocation(currentTapEventId) : Promise.resolve(null),
+  ]);
+  const storedContract = normalizeSnapshotContractFromCurrentIdentity(result.contract, currentIdentity);
+  const contract = normalizeSunProfileMismatchContract(normalizeSnapshotContractFromCurrentTap(storedContract, currentTap));
   const identity = asRecord(contract.identity);
   const tokenizationEventId = String(contract.eventId || identity.eventId || "").trim();
   const bid = String(identity.bid || contract.bid || "").trim();

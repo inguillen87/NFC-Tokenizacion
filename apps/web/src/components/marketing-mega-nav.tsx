@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { ArrowRight, ChevronDown, ExternalLink, Menu, X } from "lucide-react";
 import { LocaleSwitcher, ThemeToggle, type Theme } from "@product/ui";
 import type { AppLocale } from "@product/config";
+import { BrandHomeLink } from "./brand-home-link";
 import styles from "./marketing-mega-nav.module.css";
 
 type NavItem = {
@@ -337,7 +338,7 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
       openMenuSourceRef.current = null;
       setOpenMenu(null);
       closeTimerRef.current = null;
-    }, 200);
+    }, 340);
   }
 
   useEffect(() => {
@@ -524,7 +525,13 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
           <button type="button" tabIndex={-1} aria-hidden="true" className={styles.mobileScrim} onClick={() => setMobileOpen(false)} />
           <div ref={mobileDialogRef} className={styles.mobileDialog} role="dialog" aria-modal="true" aria-label={copy.menu}>
             <div className={styles.mobileDialogHead}>
-              <span>nexID</span>
+              <BrandHomeLink
+                locale={locale}
+                size={40}
+                brandClassName="mobile-menu-brand"
+                className={styles.mobileDialogBrand}
+                onNavigate={() => setMobileOpen(false)}
+              />
               <button ref={mobileCloseRef} type="button" aria-label={copy.close} onClick={() => setMobileOpen(false)}><X aria-hidden="true" /></button>
             </div>
 

@@ -36,7 +36,7 @@ test("white-first theme migration ignores legacy dark cookies exactly once", asy
     read("../../../packages/ui/package.json"),
   ]);
 
-  assert.match(preference, /THEME_PREFERENCE_VERSION = "white-first-v1"/);
+  assert.match(preference, /THEME_PREFERENCE_VERSION = "white-first-v2"/);
   assert.match(preference, /if \(versionCookie !== THEME_PREFERENCE_VERSION\) return "light"/);
   assert.match(preference, /return themeCookie === "dark" \? "dark" : "light"/);
   assert.match(preference, /normalized === "nexid\.com\.ar" \|\| normalized\.endsWith\("\.nexid\.com\.ar"\)/);

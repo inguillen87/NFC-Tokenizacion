@@ -7,6 +7,8 @@ export * from "./sidebar";
 export type { GlobePoint, GlobeRoute } from "./globe-3d-map";
 export type { GlobalOpsPoint, GlobalOpsRoute } from "./global-ops-map";
 export type {
+  MapDensity,
+  PremiumVectorMapProps,
   VectorMapEvidenceStep,
   VectorMapEvidenceTone,
   VectorMapLedgerItem,

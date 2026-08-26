@@ -66,7 +66,7 @@ test("brand synergy remains a reusable truthful surface but does not crowd the h
   assert.match(css, /\.brand-synergy-mobile-view-switch button\s*\{[\s\S]*min-height:\s*2\.75rem/);
   assert.match(css, /\.brand-synergy-business-pane\[data-mobile-active="false"\],[\s\S]*display:\s*none !important/);
   assert.match(css, /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*\.brand-synergy-terminal-row[\s\S]*transition-duration:\s*0\.01ms/);
-  assert.match(navigationCss, /\.mobileMenuButton\s*\{[\s\S]*min-height:\s*2\.65rem/);
+  assert.match(navigationCss, /\.mobileMenuButton\s*\{[\s\S]*min-height:\s*2\.75rem/);
   assert.doesNotMatch(page, /BrandSynergySimulator|brand-synergy/);
   assert.match(page, /initialTheme=\{initialTheme\}/);
   assert.match(navigation, /<ThemeToggle initialTheme=\{initialTheme\} locale=\{locale\} \/>/);

@@ -3,6 +3,7 @@ import test from "node:test";
 import { readFile } from "node:fs/promises";
 
 const { resolveEventMapCoordinate, strictCoordinatePair } = await import("../src/lib/geo-coordinates.ts");
+const { buildGeojson } = await import("../src/components/realtime-maplibre-map.tsx");
 
 const crmSource = await readFile(new URL("../src/components/executive-realtime-crm.tsx", import.meta.url), "utf8");
 const customerGrowthSource = await readFile(new URL("../src/components/customer-growth-command-center.tsx", import.meta.url), "utf8");
@@ -74,12 +75,47 @@ test("CRM, customer growth and realtime map all consume the strict coordinate co
   assert.doesNotMatch(customerGrowthSource, /Number\.isFinite\(Number\(event\.lat\)\)/);
   assert.doesNotMatch(realtimeMapSource, /Number\.isFinite\(Number\(row\.lat\)\)/);
   assert.doesNotMatch(realtimeMapSource, /precisionSummary\.synthetic|sintéticas por centro urbano/);
+  assert.match(realtimeMapSource, /source: "tap-events-heat"/);
+  assert.match(realtimeMapSource, /Risk remains an independent marker and never inflates activity volume/);
+  assert.doesNotMatch(realtimeMapSource, /riskBoost/);
+  assert.doesNotMatch(realtimeMapSource, /weight: risk \?/);
   assert.doesNotMatch(realtimeOpsSource, /KNOWN_CITY_COORDS|cityFallback/);
   assert.match(realtimeOpsSource, /strictCoordinatePair\(row\.lat, row\.lng\)/);
   assert.match(multirubroSource, /strictCoordinatePair\(payload\.lat, payload\.lng\)/);
   assert.match(multirubroSource, /strictCoordinatePair\(point\.lat, point\.lng\)/);
   assert.match(multirubroSource, /TenantTapRealtimeWireEvent/);
   assert.doesNotMatch(multirubroSource, /const lat = Number\(payload\.lat\)/);
+});
+
+test("CRM heat layer describes observed volume and keeps risk visually separate", () => {
+  assert.match(crmSource, /Volumen relativo de lecturas con ubicación observada/);
+  assert.match(crmSource, /El riesgo se muestra por separado y no altera la intensidad/);
+  assert.match(crmSource, /Escala relativa de volumen observado/);
+  assert.match(crmSource, /Menor volumen/);
+  assert.match(crmSource, /Mayor volumen/);
+  assert.match(crmSource, /useState<BaseMapLayer>\("light"\)/);
+});
+
+test("each observed map event has equal heat weight regardless of risk", () => {
+  const shared = {
+    city: "Mendoza",
+    country: "AR",
+    lat: -32.8895,
+    lng: -68.8458,
+    locationSource: "browser_gps",
+    locationAccuracyM: 12,
+    occurredAt: "2026-08-26T12:00:00.000Z",
+    tenantSlug: "nexid-test",
+  };
+  const collection = buildGeojson([
+    { ...shared, eventId: "evt-valid", uidMasked: "UID-1", verdict: "VALID" },
+    { ...shared, eventId: "evt-risk", uidMasked: "UID-2", verdict: "INVALID", reason: "replay_detected" },
+  ]);
+
+  assert.equal(collection.features.length, 2);
+  assert.deepEqual(collection.features.map((feature) => feature.properties.weight), [1, 1]);
+  assert.deepEqual(collection.features.map((feature) => feature.properties.localTaps), [2, 2]);
+  assert.deepEqual(collection.features.map((feature) => feature.properties.risk), [0, 1]);
 });
 
 test("aggregated analytics points never invent a route or current recency", () => {
@@ -98,6 +134,8 @@ test("aggregated analytics points never invent a route or current recency", () =
   assert.match(analyticsSource, /isDeclaredProductOrigin\(item\.originSource\)/);
   assert.match(analyticsSource, /Primer tap reportado/);
   assert.doesNotMatch(analyticsSource, /última ubicación verificada/);
+  assert.match(analyticsSource, /scans: row\.scans/);
+  assert.doesNotMatch(analyticsSource, /scans: Math\.max\(row\.scans, 1\)/);
 });
 
 test("legacy operational map does not invent recency or connect independent city points", () => {

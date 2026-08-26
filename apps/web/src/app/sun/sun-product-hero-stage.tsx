@@ -169,7 +169,7 @@ export function SunProductHeroStage({
           sublabel: traceCopy.originSublabel,
           lat: Number(originLat),
           lng: Number(originLng),
-          scans: 1,
+          scans: 0,
           risk: 0,
           tone: "origin",
           stageLabel: traceCopy.originStageLabel,
@@ -236,24 +236,30 @@ export function SunProductHeroStage({
           />
         </div>
       ) : (
-        <div className="sun-stage-map" aria-hidden="true">
-          <span className="sun-stage-map__land sun-stage-map__land--origin" />
-          <span className="sun-stage-map__land sun-stage-map__land--tap" />
-          <span className="sun-stage-map__route" />
-          <span className="sun-stage-map__route sun-stage-map__route--glow" />
-          <span className="sun-stage-map__point sun-stage-map__point--origin" />
-          <span className="sun-stage-map__point sun-stage-map__point--tap" />
+        <div
+          className="sun-stage-location-empty"
+          data-geographic-renderer="none"
+          data-location-evidence="absent"
+          role="status"
+        >
+          <span className="sun-stage-location-empty__eyebrow">Ubicación no informada</span>
+          <strong>Sin coordenadas observadas</strong>
+          <span>No mostramos un mapa, una ruta ni puntos de ejemplo.</span>
         </div>
       )}
-      <span className="sun-stage-pin sun-stage-pin--origin">
-        <b>{traceCopy.originPinLabel}</b>
-        <em>{shortLocation(originDisplay)}</em>
-      </span>
-      <span className="sun-stage-pin sun-stage-pin--tap">
-        <b>{traceCopy.tapPinLabel}</b>
-        <em>{shortLocation(tapDisplay)}</em>
-      </span>
-      <span className="sun-stage-route-label">{distanceDisplay}</span>
+      {hasTraceCoordinates ? (
+        <>
+          <span className="sun-stage-pin sun-stage-pin--origin">
+            <b>{traceCopy.originPinLabel}</b>
+            <em>{shortLocation(originDisplay)}</em>
+          </span>
+          <span className="sun-stage-pin sun-stage-pin--tap">
+            <b>{traceCopy.tapPinLabel}</b>
+            <em>{shortLocation(tapDisplay)}</em>
+          </span>
+          <span className="sun-stage-route-label">{distanceDisplay}</span>
+        </>
+      ) : null}
       <div className={`sun-three-product-shell${ready ? " sun-three-product-shell--ready" : ""}`}>
         {imageUrl ? (
           <div className={`sun-product-photo-shell sun-product-photo-shell--${state}`}>

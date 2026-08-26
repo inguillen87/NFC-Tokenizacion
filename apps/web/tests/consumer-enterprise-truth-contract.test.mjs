@@ -81,10 +81,11 @@ test("marketplace is request-to-buy and does not claim payment or reservation", 
 
 test("SUN map preserves missing counts and timestamps", () => {
   assert.match(sun, /const reportedScanCount = hasReportedScanCount \? rawReportedScanCount : 0/);
-  assert.match(sun, /lastSeen: point\.lastSeen \|\| ""/);
-  assert.match(sun, /lastSeen: currentTapReportedAt/);
-  assert.match(sun, /taps: routeTapCount/);
-  assert.doesNotMatch(sun, /new Date\(index \+ 1\)|lastMapSeenAt \|\| new Date\(\)\.toISOString|Math\.max\(1, Number\(result\.identity\?\.scanCount/);
+  assert.match(sun, /lastSeen: point\.lastSeen/);
+  assert.match(sun, /lastSeen: result\.tapContext\?\.utcTime \|\| result\.tapContext\?\.localTime \|\| result\.provenance\?\.lastVerifiedLocation\?\.at \|\| null/);
+  assert.match(sun, /taps: observedEventCount/);
+  assert.match(sun, /scans: point\.count/);
+  assert.doesNotMatch(sun, /new Date\(index \+ 1\)|lastMapSeenAt \|\| new Date\(\)\.toISOString|Math\.max\(1, Number\(result\.identity\?\.scanCount|taps: routeTapCount/);
 });
 
 test("SUN precision telemetry preserves the fresh handoff proof", () => {
@@ -95,7 +96,7 @@ test("SUN precision telemetry preserves the fresh handoff proof", () => {
   assert.match(telemetry, /onClick=\{shareApproximateLocation\}/);
   assert.match(telemetry, /enableHighAccuracy: false/);
   assert.match(telemetry, /roundApproximateCoordinate\(position\.coords\.latitude\)/);
-  assert.match(telemetry, /El pasaporte sigue funcionando sin ella/);
+  assert.match(telemetry, /El pasaporte sigue (?:funcionando normalmente|disponible)/);
 });
 
 test("public rewards require explicit status and contact-verification evidence", () => {
@@ -122,6 +123,6 @@ test("map coordinates expose their source and routes require a durable origin", 
   assert.match(globe, /Centroide de ciudad aproximado/);
   assert.match(globe, /const hasDurableOrigin/);
   assert.match(globe, /supplier_manifest/);
-  assert.match(globe, /if \(hasDurableOrigin\)/);
+  assert.match(globe, /if \(!hasDurableOrigin\) return;/);
   assert.doesNotMatch(globe, /const getOrigin =|vertical === "agro"|vertical === "fashion"|vertical === "cosmetics"/);
 });

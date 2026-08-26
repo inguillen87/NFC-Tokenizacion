@@ -8,6 +8,7 @@ import { DemoFaq } from "../../components/demo-faq";
 import { DemoSessionPlanner } from "../../components/demo-session-planner";
 import { DemoReadinessBoard } from "../../components/demo-readiness-board";
 import { getWebI18n } from "../../lib/locale";
+import { PublicSiteHeader } from "../../components/public-site-header";
 import { ArrowRight, CirclePlay, FileDown, MapPinned, ShieldCheck, Smartphone, Sparkles } from "lucide-react";
 
 type DemoCopy = {
@@ -195,9 +196,11 @@ export default async function PublicDemoPage() {
   const copy = copyByLocale[locale];
 
   return (
-    <main className="py-10">
+    <>
+      <PublicSiteHeader />
+      <main data-nav-inert className="knowledge-page-surface py-10">
       <section className="container-shell space-y-6">
-        <SectionHeading eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
+        <SectionHeading eyebrow={copy.eyebrow} title={copy.title} description={copy.description} level={1} titleClassName="brand-editorial-gradient" />
 
         <div className="flex flex-wrap gap-3">
           <ProductExitLink kind="demoLab">
@@ -305,7 +308,8 @@ export default async function PublicDemoPage() {
       </section>
 
       <VerticalDemoLibrary locale={locale} />
-      <LiveDemoSurfaces />
-    </main>
+      <LiveDemoSurfaces locale={locale} />
+      </main>
+    </>
   );
 }

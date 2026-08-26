@@ -37,27 +37,30 @@ export function HeroSection({ content, locale, initialTheme = "light" }: { conte
           <p className="hero-subtitle mx-auto mt-6 max-w-3xl text-base leading-7 text-slate-400 md:text-lg md:leading-8">
             {heroSubtitle}
           </p>
-          <div className="landing-mobile-hero-actions mt-5 grid grid-cols-2 gap-2 sm:hidden">
-            <Link href="/?contact=demo#contact-modal" className="landing-mobile-hero-actions__primary">
-              <span>{primaryCta}</span>
-              <ArrowRight className="h-4 w-4 shrink-0" />
-            </Link>
-            <Link href="#como-funciona" className="landing-mobile-hero-actions__secondary">
-              {secondaryCta}
-            </Link>
-          </div>
-          <div className="mt-7 hidden items-center justify-center gap-3 sm:flex">
-            <Link href="/?contact=demo#contact-modal" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-cyan-500 px-6 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-400">
-              {primaryCta}
-            </Link>
-            <Link href="#como-funciona" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10">
-              {secondaryCta}
-            </Link>
-          </div>
         </div>
 
         <div className="hero-demo-shell mx-auto mt-10 max-w-5xl text-left relative z-20 md:mt-12">
           <InstitutionalVideoPanel locale={locale} variant="landing" initialTheme={initialTheme} />
+          <div className="hero-post-video-actions" aria-label={isEn ? "Next actions" : isBr ? "Próximas ações" : "Próximas acciones"}>
+            <div className="landing-mobile-hero-actions mt-4 grid grid-cols-2 gap-2 sm:hidden">
+              <Link href="/?contact=demo#contact-modal" className="landing-mobile-hero-actions__primary">
+                <span>{primaryCta}</span>
+                <ArrowRight className="h-4 w-4 shrink-0" />
+              </Link>
+              <Link href="#como-funciona" className="landing-mobile-hero-actions__secondary">
+                {secondaryCta}
+              </Link>
+            </div>
+            <div className="mt-5 hidden items-center justify-center gap-3 sm:flex">
+              <Link href="/?contact=demo#contact-modal" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-cyan-500 px-6 py-3 text-sm font-bold text-slate-950 shadow-[0_12px_30px_rgba(6,182,212,.2)] transition hover:-translate-y-0.5 hover:bg-cyan-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 motion-reduce:hover:translate-y-0">
+                {primaryCta}
+                <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+              </Link>
+              <Link href="#como-funciona" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 motion-reduce:hover:translate-y-0">
+                {secondaryCta}
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     </section>

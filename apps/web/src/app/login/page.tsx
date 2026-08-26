@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BackLink } from "../../components/back-link";
-import { BrandMark, Button, Card } from "@product/ui";
+import { Button, Card } from "@product/ui";
+import { BrandHomeLink } from "../../components/brand-home-link";
 import { landingContent } from "../../lib/landing-content";
 import { getWebI18n } from "../../lib/locale";
 import { ConsumerLoginPanel } from "./consumer-login-panel";
@@ -22,7 +23,7 @@ export default async function WebLoginPage({ searchParams }: { searchParams?: Pr
           <div className="w-full py-2"><BackLink /></div>
           <Card className="auth-card w-full border border-white/10 bg-slate-900/70 p-6">
             <div className="inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-2">
-              <BrandMark size={32} variant="ripple" theme="dark" />
+              <BrandHomeLink locale={locale} markOnly size={32} />
               <p className="text-xs uppercase tracking-[0.16em] text-cyan-200">{isConsumerAccess ? "Pasaporte nexID" : "Panel empresa"}</p>
             </div>
             <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
@@ -30,7 +31,7 @@ export default async function WebLoginPage({ searchParams }: { searchParams?: Pr
               <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-cyan-100">{isConsumerAccess ? "Usuario verificado" : "Tenant + reseller"}</span>
               <span className="rounded-full border border-violet-300/30 bg-violet-500/10 px-2 py-1 text-violet-100">Login seguro</span>
             </div>
-            <h1 className="mt-5 text-3xl font-bold text-white">{isConsumerAccess ? "Entrar a mi Pasaporte nexID" : t.web.auth.loginTitle}</h1>
+            <h1 className="brand-editorial-gradient mt-5 text-3xl font-bold text-white">{isConsumerAccess ? "Entrar a mi Pasaporte nexID" : t.web.auth.loginTitle}</h1>
             <p className="mt-2 text-sm leading-6 text-slate-300">
               {isConsumerAccess
                 ? "Validá el link o código recibido por WhatsApp/email. Desde ahí accedés a tus beneficios, productos guardados y marketplace."

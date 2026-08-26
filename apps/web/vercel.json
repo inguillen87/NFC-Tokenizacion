@@ -3,8 +3,6 @@
   "installCommand": "npm install",
   "buildCommand": "npm run build --if-present",
   "git": {
-    "deploymentEnabled": {
-      "codex/nexid-white-landing-v2": false
-    }
+    "deploymentEnabled": false
   }
 }

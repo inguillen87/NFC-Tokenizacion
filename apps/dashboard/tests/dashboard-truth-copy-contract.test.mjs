@@ -11,6 +11,7 @@ const demoMobile = await readFile(new URL("../src/app/(app)/demo-lab/mobile/[ten
 const onboardingWizard = await readFile(new URL("../src/components/onboarding-setup-wizard.tsx", import.meta.url), "utf8");
 const sdkVision = await readFile(new URL("../src/app/(app)/sdk-vision/page.tsx", import.meta.url), "utf8");
 const premiumMap = await readFile(new URL("../../../packages/ui/src/premium-vector-map.tsx", import.meta.url), "utf8");
+const realMap = await readFile(new URL("../../../packages/ui/src/real-geographic-map.tsx", import.meta.url), "utf8");
 const worldMap = await readFile(new URL("../../../packages/ui/src/world-map-realtime.tsx", import.meta.url), "utf8");
 const dashboardShell = await readFile(new URL("../src/components/dashboard-shell.tsx", import.meta.url), "utf8");
 const sharedSidebar = await readFile(new URL("../../../packages/ui/src/sidebar.tsx", import.meta.url), "utf8");
@@ -91,7 +92,9 @@ test("Developer Hub presents cryptographic tag evidence without physical-authent
 
 test("shared map defaults expose reported events and never synthesize journeys", () => {
   assert.match(worldMap, /title = "Cobertura de eventos reportados"/);
-  assert.match(worldMap, /const visibleRoutes = useMemo<MapRoute\[\]>\(\(\) => routes\.slice\(0, 16\), \[routes\]\)/);
+  assert.match(worldMap, /const visibleRoutes = useMemo<MapRoute\[\]>\(\(\) => \{/);
+  assert.match(worldMap, /visibleCoordinates = new Set\(mappedPoints\.map/);
+  assert.match(worldMap, /routes\.filter[\s\S]*?\.slice\(0, 120\)/);
   assert.match(worldMap, /no son recorridos físicos/);
   assert.match(worldMap, /scans: point\.scans \?\? 0/);
   assert.match(worldMap, /if \(!value\) return null/);
@@ -103,10 +106,12 @@ test("shared map defaults expose reported events and never synthesize journeys",
   assert.doesNotMatch(worldMap, /TOKEN\|MINT\|NFT\|CLAIM|sandbox ready|listo para emitir/);
   assert.doesNotMatch(worldMap, /rankedPoints\.slice\(0, 8\)\.flatMap|Mapa operativo real de autenticaciones|trazadas en vivo/);
 
-  assert.match(premiumMap, /title = "Mapa de eventos reportados"/);
-  assert.match(premiumMap, /no infiere autenticaciones ni recorridos físicos/);
-  assert.match(premiumMap, /Conexión visual configurada; no demuestra movimiento físico/);
-  assert.doesNotMatch(premiumMap, /title = "Mapa vivo"|Movimiento trazado sobre motor vectorial propio|rutas activas/);
+  assert.match(premiumMap, /return <RealGeographicMap \{\.\.\.props\} \/>/);
+  assert.doesNotMatch(premiumMap, /LegacyPremiumVectorMap|<svg/);
+  assert.match(realMap, /title = "Mapa de eventos reportados"/);
+  assert.match(realMap, /no infiere autenticaciones ni recorridos físicos/);
+  assert.match(realMap, /relaciones reportadas/);
+  assert.doesNotMatch(realMap, /title = "Mapa vivo"|Movimiento trazado sobre motor vectorial propio|rutas activas/);
 });
 
 test("batch validator scopes VALID and TT to tag evidence", async () => {

@@ -27,11 +27,14 @@ test("logistics failures and malformed payloads never become confirmed zero inve
   assert.equal(resolveLogisticsStatsPayload(null, false).stats, null);
 });
 
-test("logistics map labels every route and marker as simulated", () => {
-  assert.match(page, /Mapa demo · rutas y marcadores simulados/);
+test("logistics avoids a geographic map until the API supplies shipment coordinates", () => {
+  assert.match(page, /data-logistics-visual="non-geographic-process"/);
+  assert.match(page, /Modelo de proceso · no geográfico/);
+  assert.match(page, /La API actual no entrega coordenadas de los envíos/);
   assert.match(page, /data-logistics-source=\{statsResult\.source\}/);
   assert.match(page, /sourceCopy\.badge/);
   assert.match(page, /stats\?\.total \?\? "—"/);
+  assert.doesNotMatch(page, /<svg|Mapa demo|rutas y marcadores simulados|HUB DEMO|DESTINO DEMO|maplibre-gl/);
   assert.doesNotMatch(page, /Live Network|real-time proof of custody|cryptographic chain of custody for all secure deliveries in real-time/);
 });
 

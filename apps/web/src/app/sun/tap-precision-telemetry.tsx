@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 type TelemetryState = "idle" | "pending" | "updated" | "denied" | "unavailable" | "error";
@@ -48,6 +49,7 @@ export function TapPrecisionTelemetry({
   contextStatus,
   enabled = true,
 }: TapPrecisionTelemetryProps) {
+  const router = useRouter();
   const [state, setState] = useState<TelemetryState>("idle");
   const [accuracy, setAccuracy] = useState<number | null>(null);
   const storageKey = useMemo(
@@ -56,7 +58,21 @@ export function TapPrecisionTelemetry({
   );
 
   useEffect(() => {
-    if (typeof window !== "undefined" && window.sessionStorage.getItem(storageKey) === "sent") setState("updated");
+    if (typeof window === "undefined") return;
+    try {
+      const stored = window.sessionStorage.getItem(storageKey);
+      if (!stored) return;
+      if (stored === "sent") {
+        setState("updated");
+        return;
+      }
+      const parsed = JSON.parse(stored) as { accuracyM?: unknown };
+      const storedAccuracy = Number(parsed.accuracyM);
+      if (Number.isFinite(storedAccuracy) && storedAccuracy > 0) setAccuracy(storedAccuracy);
+      setState("updated");
+    } catch {
+      // Session storage can be unavailable in restricted browser modes.
+    }
   }, [storageKey]);
 
   async function send(payload: Record<string, unknown>) {
@@ -71,8 +87,18 @@ export function TapPrecisionTelemetry({
         setState("error");
         return;
       }
-      window.sessionStorage.setItem(storageKey, "sent");
+      const response = await request.json().catch(() => null) as { accuracyM?: unknown } | null;
+      const responseAccuracy = Number(response?.accuracyM);
+      const storedAccuracy = Number.isFinite(responseAccuracy) && responseAccuracy > 0 ? responseAccuracy : accuracy;
+      try {
+        window.sessionStorage.setItem(storageKey, JSON.stringify({ accuracyM: storedAccuracy }));
+      } catch {
+        // A successful API update must not depend on local browser storage.
+      }
       setState("updated");
+      // The SUN snapshot endpoint re-reads the event location. Refreshing the
+      // server component updates the map without creating a second tap event.
+      router.refresh();
     } catch {
       setState("error");
     }
@@ -125,28 +151,37 @@ export function TapPrecisionTelemetry({
   if (!enabled || !bid || (!uid && !eventId) || !endpoint) return null;
   if (state === "updated") {
     return (
-      <div className="rounded-xl border border-emerald-300/20 bg-emerald-500/10 px-3 py-2 text-[10px] font-semibold text-emerald-100" aria-live="polite">
-        Ubicacion aproximada compartida{accuracy ? ` (precision declarada: ${accuracy} m o mayor)` : ""}. El CRM recibio la actualizacion.
+      <div className="sun-location-consent rounded-2xl border border-emerald-300/30 bg-emerald-500/10 px-4 py-3 text-xs font-semibold text-emerald-100" aria-live="polite">
+        <span className="block font-black">Ubicación aproximada actualizada</span>
+        <span className="mt-1 block font-normal leading-5 text-emerald-100/80">
+          El mapa usa la posición redondeada{accuracy ? ` con un radio informado de ±${accuracy} m` : ""}. No demuestra el recorrido físico del producto.
+        </span>
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 px-3 py-3 text-cyan-50" aria-live="polite">
-      <p className="text-[11px] font-bold">Ubicacion aproximada opcional</p>
-      <p className="mt-1 text-[10px] leading-relaxed text-cyan-100/75">
-        Solo se solicita al tocar el boton, se redondea antes de enviarla y no demuestra el recorrido fisico del producto.
+    <div className="sun-location-consent rounded-2xl border border-cyan-300/25 bg-cyan-500/10 px-4 py-4 text-cyan-50" aria-live="polite" aria-busy={state === "pending"}>
+      <p className="text-xs font-black">¿Querés mejorar la ubicación de esta lectura?</p>
+      <p className="mt-1 text-[11px] leading-5 text-cyan-100/75">
+        Es opcional. Solo pedimos permiso al tocar el botón y enviamos una posición aproximada, redondeada y con un radio mínimo de 150 m.
       </p>
       <button
         type="button"
         onClick={shareApproximateLocation}
         disabled={state === "pending"}
-        className="mt-2 min-h-11 rounded-lg border border-cyan-200/30 bg-cyan-300/10 px-3 text-[10px] font-black uppercase tracking-[0.12em] transition hover:bg-cyan-300/20 disabled:cursor-wait disabled:opacity-60"
+        className="mt-3 min-h-11 w-full rounded-xl border border-cyan-200/35 bg-cyan-300/10 px-4 text-xs font-black transition hover:bg-cyan-300/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 disabled:cursor-wait disabled:opacity-60 sm:w-auto"
       >
-        {state === "pending" ? "Solicitando permiso..." : "Compartir ubicacion aproximada"}
+        {state === "pending" ? "Esperando permiso…" : "Compartir ubicación aproximada"}
       </button>
       {state === "denied" || state === "unavailable" || state === "error" ? (
-        <p className="mt-2 text-[10px] text-amber-200">No se compartio ubicacion. El pasaporte sigue funcionando sin ella.</p>
+        <p className="mt-2 text-[11px] leading-5 text-amber-200">
+          {state === "denied"
+            ? "No autorizaste la ubicación. El pasaporte sigue funcionando normalmente."
+            : state === "error"
+              ? "No pudimos actualizarla ahora. Podés reintentar; el pasaporte sigue disponible."
+              : "Este dispositivo no pudo obtener ubicación. El pasaporte sigue disponible."}
+        </p>
       ) : null}
     </div>
   );

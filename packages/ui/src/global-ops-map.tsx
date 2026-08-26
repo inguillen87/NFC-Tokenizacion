@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card } from "./card";
 import { PremiumVectorMap, type VectorMapEvidenceStep, type VectorMapLedgerItem, type VectorMapPoint, type VectorMapRoute } from "./premium-vector-map";
-import { resolveTrustMapSource } from "./trust-map-source";
 
 export type GlobalOpsPoint = {
   id: string;
@@ -40,39 +39,12 @@ export type GlobalOpsRoute = {
 
 type Mode = "tenant" | "global" | "demo";
 type TimeWindow = "1h" | "24h" | "7d" | "all";
-
-type OptionalMapRuntime = {
-  Map: new (...args: any[]) => any;
-};
-
-const OPTIONAL_MAP_JS = "";
-const OPTIONAL_MAP_CSS = "";
-const NATIVE_VECTOR_ENGINE = true;
-const MAP_STYLES = {
-  dark: "",
-  light: "",
-} as const;
-
-type MapTheme = keyof typeof MAP_STYLES;
+type MapView = "events" | "intensity";
 
 function toMs(value?: string) {
   if (!value) return 0;
   const n = Date.parse(value);
   return Number.isNaN(n) ? 0 : n;
-}
-
-function project(lat: number, lng: number, width = 1200, height = 620) {
-  const x = ((lng + 180) / 360) * width;
-  const clippedLat = Math.max(-85.05112878, Math.min(85.05112878, lat));
-  const sin = Math.sin((clippedLat * Math.PI) / 180);
-  const y = (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * height;
-  return { x, y };
-}
-
-function curve(a: { x: number; y: number }, b: { x: number; y: number }, lift = 46) {
-  const cx = (a.x + b.x) / 2;
-  const cy = Math.min(a.y, b.y) - lift;
-  return `M ${a.x} ${a.y} Q ${cx} ${cy} ${b.x} ${b.y}`;
 }
 
 function haversineKm(fromLat: number, fromLng: number, toLat: number, toLng: number) {
@@ -100,436 +72,6 @@ function roleLabel(role?: GlobalOpsPoint["role"]) {
   return "Hub operativo";
 }
 
-function hasWebGlSupport() {
-  if (typeof window === "undefined") return false;
-  try {
-    const canvas = document.createElement("canvas");
-    return Boolean(canvas.getContext("webgl") || canvas.getContext("experimental-webgl"));
-  } catch {
-    return false;
-  }
-}
-
-async function ensureCss(href: string) {
-  if (typeof document === "undefined") return;
-  if (document.querySelector(`link[data-global-ops-map-css='${href}']`)) return;
-  const link = document.createElement("link");
-  link.rel = "stylesheet";
-  link.href = href;
-  link.dataset.globalOpsMapCss = href;
-  document.head.appendChild(link);
-}
-
-async function ensureScript(src: string) {
-  if (typeof document === "undefined") return;
-  if (document.querySelector(`script[data-global-ops-map-js='${src}']`)) {
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    return;
-  }
-  await new Promise<void>((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = src;
-    script.async = true;
-    script.dataset.globalOpsMapJs = src;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error(`Failed to load ${src}`));
-    document.head.appendChild(script);
-  });
-}
-
-function pointsToFeatureCollection(points: GlobalOpsPoint[]) {
-  return {
-    type: "FeatureCollection",
-    features: points.map((point) => ({
-      type: "Feature",
-      properties: {
-        id: point.id,
-        city: point.city,
-        country: point.country,
-        scans: point.scans,
-        risk: point.risk,
-        verdict: point.verdict,
-        tenantSlug: point.tenantSlug,
-        lastSeen: point.lastSeen,
-        role: point.role || "hub",
-        productName: point.productName || "",
-      },
-      geometry: {
-        type: "Point",
-        coordinates: [point.lng, point.lat],
-      },
-    })),
-  };
-}
-
-function routesToFeatureCollection(routes: GlobalOpsRoute[]) {
-  return {
-    type: "FeatureCollection",
-    features: routes.map((route) => ({
-      type: "Feature",
-      properties: {
-        id: route.id,
-        risk: route.risk,
-        taps: route.taps,
-        uid: route.uid,
-        fromLabel: route.fromLabel || "",
-        toLabel: route.toLabel || "",
-        productName: route.productName || "",
-        distanceKm: Math.round(haversineKm(route.fromLat, route.fromLng, route.toLat, route.toLng)),
-        traceLabel: `${route.fromLabel || "Origen"} -> ${route.toLabel || "Tap cliente"}`,
-      },
-      geometry: {
-        type: "LineString",
-        coordinates: [[route.fromLng, route.fromLat], [route.toLng, route.toLat]],
-      },
-    })),
-  };
-}
-
-function emptyRouteFeatureCollection() {
-  return { type: "FeatureCollection", features: [] };
-}
-
-function routeToFeatureCollection(route?: GlobalOpsRoute | null) {
-  if (!route) return emptyRouteFeatureCollection();
-  return routesToFeatureCollection([route]);
-}
-
-function readDocumentMapTheme(): MapTheme {
-  if (typeof document === "undefined") return "dark";
-  return document.documentElement.classList.contains("theme-light") || document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
-}
-
-function isValidCoordinate(lng: number, lat: number) {
-  return Number.isFinite(lng) && Number.isFinite(lat) && lng >= -180 && lng <= 180 && lat >= -90 && lat <= 90;
-}
-
-function collectBoundsCoordinates(points: GlobalOpsPoint[], routes: GlobalOpsRoute[]) {
-  const coords: Array<[number, number]> = [];
-  for (const point of points) {
-    if (isValidCoordinate(point.lng, point.lat)) coords.push([point.lng, point.lat]);
-  }
-  for (const route of routes) {
-    if (isValidCoordinate(route.fromLng, route.fromLat)) coords.push([route.fromLng, route.fromLat]);
-    if (isValidCoordinate(route.toLng, route.toLat)) coords.push([route.toLng, route.toLat]);
-  }
-  return coords;
-}
-
-function mapBoundsKey(points: GlobalOpsPoint[], routes: GlobalOpsRoute[]) {
-  const coords = collectBoundsCoordinates(points, routes);
-  return coords.map(([lng, lat]) => `${lng.toFixed(4)},${lat.toFixed(4)}`).join("|");
-}
-
-function fitMapToOperationalData(map: any, points: GlobalOpsPoint[], routes: GlobalOpsRoute[], immediate = false) {
-  const coords = collectBoundsCoordinates(points, routes);
-  if (!coords.length) return;
-  const isMobile = typeof window !== "undefined" ? window.innerWidth < 720 : false;
-  const padding = isMobile
-    ? { top: 92, right: 34, bottom: 78, left: 34 }
-    : { top: 82, right: 82, bottom: 78, left: 82 };
-  if (coords.length === 1) {
-    map.easeTo?.({
-      center: coords[0],
-      zoom: Math.max(5, Math.min(8, map.getZoom?.() || 5)),
-      duration: immediate ? 0 : 900,
-      essential: true,
-    });
-    return;
-  }
-  const lngs = coords.map(([lng]) => lng);
-  const lats = coords.map(([, lat]) => lat);
-  map.fitBounds?.(
-    [
-      [Math.min(...lngs), Math.min(...lats)],
-      [Math.max(...lngs), Math.max(...lats)],
-    ],
-    {
-      padding,
-      maxZoom: isMobile ? 7.25 : 6.5,
-      duration: immediate ? 0 : 950,
-      essential: true,
-    },
-  );
-}
-
-function scheduleMapFit(map: any, points: GlobalOpsPoint[], routes: GlobalOpsRoute[], immediate = false) {
-  if (typeof window === "undefined") return;
-  const run = (forceImmediate = false) => {
-    map.resize?.();
-    fitMapToOperationalData(map, points, routes, immediate || forceImmediate);
-  };
-  window.requestAnimationFrame(() => run(true));
-  window.setTimeout(() => run(), 180);
-  window.setTimeout(() => run(), 700);
-}
-
-function setPaint(map: any, layerId: string, property: string, value: unknown) {
-  if (!map.getLayer?.(layerId)) return;
-  try {
-    map.setPaintProperty?.(layerId, property, value);
-  } catch {
-    // The optional map runtime can throw while a style is still loading; the next hydrate pass reapplies it.
-  }
-}
-
-function setLayout(map: any, layerId: string, property: string, value: unknown) {
-  if (!map.getLayer?.(layerId)) return;
-  try {
-    map.setLayoutProperty?.(layerId, property, value);
-  } catch {
-    // Keep the map resilient during live theme swaps.
-  }
-}
-
-function applyOperationalLayerTheme(map: any, theme: MapTheme) {
-  const isLight = theme === "light";
-  setPaint(map, "ops-heat", "heatmap-intensity", ["interpolate", ["linear"], ["zoom"], 1, isLight ? 0.72 : 0.65, 8, isLight ? 1.75 : 1.55]);
-  setPaint(map, "ops-heat", "heatmap-color", [
-    "interpolate",
-    ["linear"],
-    ["heatmap-density"],
-    0,
-    "rgba(14, 165, 233, 0)",
-    0.18,
-    isLight ? "rgba(14, 165, 233, 0.34)" : "rgba(34, 211, 238, 0.28)",
-    0.42,
-    isLight ? "rgba(16, 185, 129, 0.42)" : "rgba(52, 211, 153, 0.38)",
-    0.68,
-    isLight ? "rgba(124, 58, 237, 0.42)" : "rgba(168, 85, 247, 0.46)",
-    1,
-    isLight ? "rgba(225, 29, 72, 0.55)" : "rgba(251, 113, 133, 0.58)",
-  ]);
-  setPaint(map, "ops-heat", "heatmap-opacity", isLight ? 0.64 : 0.56);
-
-  setPaint(map, "ops-routes-halo", "line-color", isLight ? "#ffffff" : "#020617");
-  setPaint(map, "ops-routes-halo", "line-width", isLight ? 8 : 8.5);
-  setPaint(map, "ops-routes-halo", "line-opacity", isLight ? 0.86 : 0.62);
-  setPaint(map, "ops-routes-halo", "line-blur", isLight ? 2.2 : 3);
-  setPaint(map, "ops-routes-risk", "line-color", isLight ? "#e11d48" : "#fb7185");
-  setPaint(map, "ops-routes-clean", "line-color", isLight ? "#0891b2" : "#67e8f9");
-  setPaint(map, "ops-routes-flow", "line-color", isLight ? "rgba(14, 165, 233, 0.34)" : "rgba(103, 232, 249, 0.24)");
-  setPaint(map, "ops-route-labels", "text-color", isLight ? "#075985" : "#cffafe");
-  setPaint(map, "ops-route-labels", "text-halo-color", isLight ? "rgba(255,255,255,.96)" : "rgba(2,6,23,.94)");
-  setPaint(map, "ops-clusters", "circle-stroke-color", isLight ? "#ffffff" : "#0f172a");
-  setPaint(map, "ops-points-unclustered", "circle-stroke-color", isLight ? "#ffffff" : "#f8fafc");
-  setPaint(map, "ops-point-labels", "text-color", isLight ? "#0f172a" : "#e0f2fe");
-  setPaint(map, "ops-point-labels", "text-halo-color", isLight ? "rgba(255,255,255,.94)" : "rgba(2,6,23,.92)");
-  setPaint(map, "ops-focus-route-halo", "line-color", isLight ? "#ffffff" : "#020617");
-  setPaint(map, "ops-focus-route", "line-color", isLight ? "#0f766e" : "#5eead4");
-  setPaint(map, "ops-focus-route", "line-opacity", isLight ? 0.95 : 0.9);
-  setLayout(map, "ops-route-labels", "visibility", "visible");
-}
-
-function installOperationalLayers(map: any, theme: MapTheme) {
-  const isLight = theme === "light";
-  if (!map.getSource?.("ops-points")) {
-    map.addSource("ops-points", { type: "geojson", data: pointsToFeatureCollection([]), cluster: true, clusterRadius: 40, clusterMaxZoom: 7 });
-  }
-  if (!map.getSource?.("ops-routes")) {
-    map.addSource("ops-routes", { type: "geojson", data: routesToFeatureCollection([]), lineMetrics: true });
-  }
-  if (!map.getSource?.("ops-focus-route")) {
-    map.addSource("ops-focus-route", { type: "geojson", data: emptyRouteFeatureCollection(), lineMetrics: true });
-  }
-
-  if (!map.getLayer?.("ops-heat")) {
-    map.addLayer({
-      id: "ops-heat",
-      type: "heatmap",
-      source: "ops-points",
-      maxzoom: 8,
-      paint: {
-        "heatmap-weight": ["interpolate", ["linear"], ["get", "scans"], 0, 0, 100, 1],
-        "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 1, isLight ? 0.72 : 0.65, 8, isLight ? 1.75 : 1.55],
-        "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 1, 14, 8, 38],
-        "heatmap-color": [
-          "interpolate",
-          ["linear"],
-          ["heatmap-density"],
-          0,
-          "rgba(14, 165, 233, 0)",
-          0.18,
-          isLight ? "rgba(14, 165, 233, 0.34)" : "rgba(34, 211, 238, 0.28)",
-          0.42,
-          isLight ? "rgba(16, 185, 129, 0.42)" : "rgba(52, 211, 153, 0.38)",
-          0.68,
-          isLight ? "rgba(124, 58, 237, 0.42)" : "rgba(168, 85, 247, 0.46)",
-          1,
-          isLight ? "rgba(225, 29, 72, 0.55)" : "rgba(251, 113, 133, 0.58)",
-        ],
-        "heatmap-opacity": isLight ? 0.64 : 0.56,
-      },
-    });
-  }
-
-  if (!map.getLayer?.("ops-routes-halo")) {
-    map.addLayer({
-      id: "ops-routes-halo",
-      type: "line",
-      source: "ops-routes",
-      paint: {
-        "line-color": isLight ? "#ffffff" : "#020617",
-        "line-width": isLight ? 8 : 8.5,
-        "line-opacity": isLight ? 0.86 : 0.62,
-        "line-blur": isLight ? 2.2 : 3,
-      },
-    });
-  }
-
-  if (!map.getLayer?.("ops-routes-risk")) {
-    map.addLayer({
-      id: "ops-routes-risk",
-      type: "line",
-      source: "ops-routes",
-      filter: [">", ["get", "risk"], 0],
-      layout: { "line-cap": "round", "line-join": "round" },
-      paint: { "line-color": isLight ? "#e11d48" : "#fb7185", "line-width": isLight ? 4 : 3.6, "line-opacity": 0.94, "line-dasharray": [1.1, 1.15] },
-    });
-  }
-
-  if (!map.getLayer?.("ops-routes-clean")) {
-    map.addLayer({
-      id: "ops-routes-clean",
-      type: "line",
-      source: "ops-routes",
-      filter: ["<=", ["get", "risk"], 0],
-      layout: { "line-cap": "round", "line-join": "round" },
-      paint: { "line-color": isLight ? "#0891b2" : "#67e8f9", "line-width": isLight ? 3.4 : 3, "line-opacity": isLight ? 0.92 : 0.86, "line-dasharray": [1.1, 1.3] },
-    });
-  }
-
-  if (!map.getLayer?.("ops-routes-flow")) {
-    map.addLayer({
-      id: "ops-routes-flow",
-      type: "line",
-      source: "ops-routes",
-      layout: { "line-cap": "round", "line-join": "round" },
-      paint: {
-        "line-color": isLight ? "rgba(14, 165, 233, 0.34)" : "rgba(103, 232, 249, 0.24)",
-        "line-width": ["interpolate", ["linear"], ["zoom"], 2, 7, 7, 13],
-        "line-opacity": 0.34,
-        "line-blur": 7,
-      },
-    }, "ops-routes-risk");
-  }
-
-  if (!map.getLayer?.("ops-route-labels")) {
-    map.addLayer({
-      id: "ops-route-labels",
-      type: "symbol",
-      source: "ops-routes",
-      minzoom: 2.2,
-      layout: {
-        "symbol-placement": "line-center",
-        "text-field": ["concat", ["get", "distanceKm"], " km"],
-        "text-size": ["interpolate", ["linear"], ["zoom"], 2, 10, 6, 12],
-        "text-font": ["Open Sans Semibold", "Arial Unicode MS Bold"],
-        "text-allow-overlap": false,
-        "text-ignore-placement": false,
-      },
-      paint: {
-        "text-color": isLight ? "#075985" : "#cffafe",
-        "text-halo-color": isLight ? "rgba(255,255,255,.96)" : "rgba(2,6,23,.94)",
-        "text-halo-width": 1.8,
-      },
-    });
-  }
-
-  if (!map.getLayer?.("ops-clusters")) {
-    map.addLayer({
-      id: "ops-clusters",
-      type: "circle",
-      source: "ops-points",
-      filter: ["has", "point_count"],
-      paint: {
-        "circle-color": ["step", ["get", "point_count"], "#0ea5e9", 10, "#2563eb", 30, "#7c3aed"],
-        "circle-radius": ["step", ["get", "point_count"], 12, 10, 17, 30, 24],
-        "circle-stroke-width": 1.8,
-        "circle-stroke-color": isLight ? "#ffffff" : "#0f172a",
-        "circle-opacity": 0.9,
-      },
-    });
-  }
-
-  if (!map.getLayer?.("ops-points-unclustered")) {
-    map.addLayer({
-      id: "ops-points-unclustered",
-      type: "circle",
-      source: "ops-points",
-      filter: ["!", ["has", "point_count"]],
-      paint: {
-        "circle-color": ["case", ["==", ["get", "role"], "origin"], "#34d399", [">", ["get", "risk"], 0], "#fb7185", "#22d3ee"],
-        "circle-radius": ["interpolate", ["linear"], ["get", "scans"], 1, 6, 80, 13],
-        "circle-stroke-width": 2,
-        "circle-stroke-color": isLight ? "#ffffff" : "#f8fafc",
-        "circle-opacity": 0.96,
-      },
-    });
-  }
-
-  if (!map.getLayer?.("ops-point-labels")) {
-    map.addLayer({
-      id: "ops-point-labels",
-      type: "symbol",
-      source: "ops-points",
-      filter: ["!", ["has", "point_count"]],
-      layout: {
-        "text-field": [
-          "case",
-          ["==", ["get", "role"], "origin"],
-          ["concat", "ORIGEN - ", ["get", "city"]],
-          ["==", ["get", "role"], "tap"],
-          ["concat", "TAP - ", ["get", "city"]],
-          ["get", "city"],
-        ],
-        "text-size": 11,
-        "text-font": ["Open Sans Semibold", "Arial Unicode MS Bold"],
-        "text-offset": [0, 1.35],
-        "text-anchor": "top",
-        "text-allow-overlap": false,
-      },
-      paint: {
-        "text-color": isLight ? "#0f172a" : "#e0f2fe",
-        "text-halo-color": isLight ? "rgba(255,255,255,.94)" : "rgba(2,6,23,.92)",
-        "text-halo-width": 1.6,
-      },
-    });
-  }
-
-  if (!map.getLayer?.("ops-focus-route-halo")) {
-    map.addLayer({
-      id: "ops-focus-route-halo",
-      type: "line",
-      source: "ops-focus-route",
-      layout: { "line-cap": "round", "line-join": "round" },
-      paint: {
-        "line-color": isLight ? "#ffffff" : "#020617",
-        "line-width": ["interpolate", ["linear"], ["zoom"], 2, 13, 7, 18],
-        "line-opacity": isLight ? 0.92 : 0.76,
-        "line-blur": 2.5,
-      },
-    });
-  }
-
-  if (!map.getLayer?.("ops-focus-route")) {
-    map.addLayer({
-      id: "ops-focus-route",
-      type: "line",
-      source: "ops-focus-route",
-      layout: { "line-cap": "round", "line-join": "round" },
-      paint: {
-        "line-color": isLight ? "#0f766e" : "#5eead4",
-        "line-width": ["interpolate", ["linear"], ["zoom"], 2, 4, 7, 7],
-        "line-opacity": isLight ? 0.95 : 0.9,
-        "line-dasharray": [0.7, 1.2],
-      },
-    });
-  }
-
-  applyOperationalLayerTheme(map, theme);
-}
-
 export function GlobalOpsMap({
   title = "Global Ops Map",
   subtitle = "Origen del producto, tap del cliente, distancia estimada y riesgo.",
@@ -541,6 +83,10 @@ export function GlobalOpsMap({
   playbackEnabled,
   riskOnly,
   chrome = "full",
+  initialView,
+  allowViewToggle,
+  sourceLabel,
+  locationNote,
 }: {
   title?: string;
   subtitle?: string;
@@ -552,41 +98,29 @@ export function GlobalOpsMap({
   playbackEnabled?: boolean;
   riskOnly?: boolean;
   chrome?: "full" | "compact";
+  initialView?: MapView;
+  allowViewToggle?: boolean;
+  sourceLabel?: string;
+  locationNote?: string;
 }) {
   const [tenant, setTenant] = useState("ALL");
   const [country, setCountry] = useState("ALL");
-  const [windowMode, setWindowMode] = useState<TimeWindow>(mode === "demo" ? "all" : "24h");
+  const [windowMode, setWindowMode] = useState<TimeWindow>(mode === "demo" || chrome === "compact" ? "all" : "24h");
   const [verdict, setVerdict] = useState("ALL");
   const [localRiskOnly, setLocalRiskOnly] = useState(Boolean(riskOnly));
   const [playback, setPlayback] = useState(Boolean(playbackEnabled));
   const [progress, setProgress] = useState(100);
   const [internalSelectedId, setInternalSelectedId] = useState(selectedPointId || "");
-  const [webglReady, setWebglReady] = useState(false);
-  const [mapRuntimeReady, setMapRuntimeReady] = useState(false);
-  const [mapTheme, setMapTheme] = useState<MapTheme>("dark");
   const [nowMs, setNowMs] = useState(0);
   const [fitRevision, setFitRevision] = useState(0);
-  const trustMapSource = useMemo(() => resolveTrustMapSource(), []);
+  const [mapView, setMapView] = useState<MapView>(initialView || (mode === "global" ? "intensity" : "events"));
 
-  const mapContainerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<any | null>(null);
-  const activeStyleRef = useRef<MapTheme | null>(null);
-  const lastFitKeyRef = useRef("");
-  const visiblePointsRef = useRef<GlobalOpsPoint[]>([]);
-
-  useEffect(() => setWebglReady(hasWebGlSupport()), []);
   useEffect(() => setNowMs(Date.now()), []);
   useEffect(() => setInternalSelectedId(selectedPointId || ""), [selectedPointId]);
   useEffect(() => setLocalRiskOnly(Boolean(riskOnly)), [riskOnly]);
-
   useEffect(() => {
-    const updateTheme = () => setMapTheme(readDocumentMapTheme());
-    updateTheme();
-    if (typeof MutationObserver === "undefined") return;
-    const observer = new MutationObserver(updateTheme);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "data-theme"] });
-    return () => observer.disconnect();
-  }, []);
+    setMapView(initialView || (mode === "global" ? "intensity" : "events"));
+  }, [initialView, mode]);
 
   useEffect(() => {
     if (!playback) return;
@@ -630,10 +164,6 @@ export function GlobalOpsMap({
 
   const visiblePoints = useMemo(() => clusteredPoints, [clusteredPoints]);
 
-  useEffect(() => {
-    visiblePointsRef.current = visiblePoints;
-  }, [visiblePoints]);
-
   const filteredRoutes = useMemo(() => {
     const filtered = routes
       .filter((route) => {
@@ -652,8 +182,6 @@ export function GlobalOpsMap({
     const limit = Math.max(1, Math.floor((progress / 100) * filteredRoutes.length));
     return filteredRoutes.slice(0, limit);
   }, [filteredRoutes, playback, progress]);
-
-  const boundsKey = useMemo(() => mapBoundsKey(visiblePoints, filteredRoutes), [filteredRoutes, visiblePoints]);
 
   const selectedPoint = visiblePoints.find((point) => point.id === internalSelectedId) || visiblePoints[0] || null;
   const selectedJourney = useMemo(() => {
@@ -742,176 +270,20 @@ export function GlobalOpsMap({
 
   const fallbackRows = visiblePoints.slice(0, 12);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function mountMap() {
-      if (NATIVE_VECTOR_ENGINE) {
-        setMapRuntimeReady(false);
-        return;
-      }
-      if (!webglReady || !mapContainerRef.current || mapRef.current) return;
-      try {
-        await ensureCss(OPTIONAL_MAP_CSS);
-        await ensureScript(OPTIONAL_MAP_JS);
-        const runtime = (window as any).nexidOptionalMapRuntime as OptionalMapRuntime | undefined;
-        if (!runtime?.Map || cancelled) {
-          setMapRuntimeReady(false);
-          return;
-        }
-
-        const initialTheme = readDocumentMapTheme();
-        activeStyleRef.current = initialTheme;
-        const map = new runtime.Map({
-          container: mapContainerRef.current,
-          style: MAP_STYLES[initialTheme],
-          center: [-8, 18],
-          zoom: 1.25,
-          pitch: 25,
-          attributionControl: false,
-        });
-        mapRef.current = map;
-
-        map.on("load", () => {
-          if (cancelled) return;
-          installOperationalLayers(map, initialTheme);
-          applyOperationalLayerTheme(map, initialTheme);
-          map.getSource("ops-points")?.setData?.(pointsToFeatureCollection(visiblePoints));
-          map.getSource("ops-routes")?.setData?.(routesToFeatureCollection(visibleRoutes));
-          map.getSource("ops-focus-route")?.setData?.(routeToFeatureCollection(selectedJourney));
-          lastFitKeyRef.current = boundsKey;
-          scheduleMapFit(map, visiblePoints, filteredRoutes, true);
-
-          map.on("click", "ops-points-unclustered", (event: any) => {
-            const feature = event.features?.[0];
-            if (!feature) return;
-            const id = String(feature.properties?.id || "");
-            const selected = visiblePointsRef.current.find((item) => item.id === id);
-            if (!selected) return;
-            setInternalSelectedId(selected.id);
-            onPointSelect?.(selected);
-          });
-
-          map.on("click", "ops-clusters", (event: any) => {
-            const feature = event.features?.[0];
-            const clusterId = feature?.properties?.cluster_id;
-            if (clusterId === undefined) return;
-            const source = map.getSource("ops-points");
-            source?.getClusterExpansionZoom?.(clusterId, (error: unknown, zoom: number) => {
-              if (error) return;
-              map.easeTo({ center: feature.geometry.coordinates, zoom });
-            });
-          });
-
-          map.on("error", () => setMapRuntimeReady(false));
-          setMapRuntimeReady(true);
-        });
-      } catch {
-        if (!cancelled) setMapRuntimeReady(false);
-      }
-    }
-
-    mountMap();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [boundsKey, filteredRoutes, onPointSelect, selectedJourney, visiblePoints, visibleRoutes, webglReady]);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !activeStyleRef.current || activeStyleRef.current === mapTheme) return;
-
-    let cancelled = false;
-    const animatedRoutes = visibleRoutes;
-    setMapRuntimeReady(false);
-    const hydrateSources = () => {
-      if (cancelled) return;
-      installOperationalLayers(map, mapTheme);
-      applyOperationalLayerTheme(map, mapTheme);
-      map.getSource("ops-points")?.setData?.(pointsToFeatureCollection(visiblePoints));
-      map.getSource("ops-routes")?.setData?.(routesToFeatureCollection(animatedRoutes));
-      map.getSource("ops-focus-route")?.setData?.(routeToFeatureCollection(selectedJourney));
-      activeStyleRef.current = mapTheme;
-      setMapRuntimeReady(true);
-      scheduleMapFit(map, visiblePoints, filteredRoutes, true);
-    };
-
-    map.once?.("style.load", hydrateSources);
-    activeStyleRef.current = mapTheme;
-    map.setStyle?.(MAP_STYLES[mapTheme]);
-    const fallback = window.setTimeout(hydrateSources, 1500);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(fallback);
-      map.off?.("style.load", hydrateSources);
-    };
-  }, [filteredRoutes, mapTheme, playback, progress, selectedJourney, visiblePoints, visibleRoutes]);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !mapRuntimeReady) return;
-
-    const pointsSource = map.getSource("ops-points");
-    const routesSource = map.getSource("ops-routes");
-    const focusRouteSource = map.getSource("ops-focus-route");
-
-    applyOperationalLayerTheme(map, mapTheme);
-    pointsSource?.setData?.(pointsToFeatureCollection(visiblePoints));
-
-    const animatedRoutes = visibleRoutes;
-    routesSource?.setData?.(routesToFeatureCollection(animatedRoutes));
-    focusRouteSource?.setData?.(routeToFeatureCollection(selectedJourney));
-    if (boundsKey && lastFitKeyRef.current !== boundsKey) {
-      lastFitKeyRef.current = boundsKey;
-      scheduleMapFit(map, visiblePoints, filteredRoutes);
-    }
-  }, [boundsKey, filteredRoutes, mapRuntimeReady, mapTheme, playback, progress, selectedJourney, visiblePoints, visibleRoutes]);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    const container = mapContainerRef.current;
-    if (!map || !container || !mapRuntimeReady) return;
-
-    let frame = 0;
-    const refreshViewport = () => {
-      if (frame) window.cancelAnimationFrame(frame);
-      frame = window.requestAnimationFrame(() => {
-        scheduleMapFit(map, visiblePoints, filteredRoutes, true);
-      });
-    };
-
-    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(refreshViewport) : null;
-    observer?.observe(container);
-    window.addEventListener("resize", refreshViewport);
-    refreshViewport();
-
-    return () => {
-      observer?.disconnect();
-      window.removeEventListener("resize", refreshViewport);
-      if (frame) window.cancelAnimationFrame(frame);
-    };
-  }, [boundsKey, filteredRoutes, fitRevision, mapRuntimeReady, visiblePoints]);
-
-  useEffect(() => {
-    return () => {
-      mapRef.current?.remove?.();
-      mapRef.current = null;
-    };
-  }, []);
-
   const centerOperationalMap = () => {
     setFitRevision((value) => value + 1);
-    const map = mapRef.current;
-    if (map) scheduleMapFit(map, visiblePoints, filteredRoutes, true);
   };
 
-  const canRenderMap = true;
   const isDemoMode = mode === "demo";
   const isCompactChrome = chrome === "compact";
   const totalScans = visiblePoints.reduce((sum, point) => sum + point.scans, 0);
   const riskyPoints = visiblePoints.filter((point) => point.risk > 0);
+  const observedLocationCount = visiblePoints.filter((point) => point.role !== "origin").length;
+  const intensityPoints = visiblePoints.filter((point) => point.role !== "origin" && Number(point.scans || 0) > 0);
+  const hasVisibleOrigin = visiblePoints.some((point) => point.role === "origin");
+  const canShowIntensity = intensityPoints.length >= 2;
+  const canToggleMapView = (allowViewToggle ?? mode === "global") && canShowIntensity;
+  const effectiveMapView: MapView = mapView === "intensity" && canShowIntensity ? "intensity" : "events";
   const firstVisibleRoute = visibleRoutes[0] || null;
   const originPoint = selectedJourney?.fromPoint || visiblePoints.find((point) => point.role === "origin") || null;
   const tapPoint = selectedJourney?.toPoint || visiblePoints.find((point) => point.role === "tap") || selectedPoint;
@@ -929,12 +301,31 @@ export function GlobalOpsMap({
 
   return (
     <Card className={`worldmap-card global-ops-map-card overflow-hidden ${isCompactChrome ? "p-2 md:p-3" : "p-4 md:p-6"}`}>
+      {isCompactChrome ? (
+        <div className="global-ops-map-compact-header mb-2 flex flex-wrap items-start justify-between gap-2 rounded-xl border border-white/10 bg-slate-950/55 p-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-black text-white">{title}</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-slate-300">{subtitle}</p>
+            <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] font-semibold">
+              {sourceLabel ? <span className="rounded-full border border-cyan-300/25 bg-cyan-500/10 px-2 py-1 text-cyan-100">{sourceLabel}</span> : null}
+              {locationNote ? <span className="rounded-full border border-emerald-300/25 bg-emerald-500/10 px-2 py-1 text-emerald-100">{locationNote}</span> : null}
+              <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-slate-200">{observedLocationCount} ubicaciones observadas</span>
+            </div>
+          </div>
+          {canToggleMapView ? (
+            <div className="inline-grid grid-cols-2 rounded-xl border border-white/10 bg-white/5 p-1" role="group" aria-label="Vista del mapa">
+              <button suppressHydrationWarning type="button" aria-pressed={effectiveMapView === "events"} onClick={() => setMapView("events")} className={`min-h-11 rounded-lg px-3 py-2 text-[11px] font-bold ${effectiveMapView === "events" ? "bg-white text-slate-900 shadow-sm" : "text-slate-200"}`}>Eventos</button>
+              <button suppressHydrationWarning type="button" aria-pressed={effectiveMapView === "intensity"} onClick={() => setMapView("intensity")} className={`min-h-11 rounded-lg px-3 py-2 text-[11px] font-bold ${effectiveMapView === "intensity" ? "bg-cyan-400 text-slate-950 shadow-sm" : "text-slate-200"}`}>Intensidad</button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       {!isCompactChrome ? (
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-white">{isDemoMode ? title : `${title} - mapa del scope nexID`}</p>
           <p className="text-xs text-slate-400">
-            {isDemoMode ? `${subtitle} - ${trustMapSource.badge}` : `${subtitle} (${mode}) - ${mapTheme === "light" ? "mapa claro" : "mapa oscuro"} - ${trustMapSource.badge}.`}
+            {isDemoMode ? subtitle : `${subtitle} (${mode}) - mapa interactivo.`}
           </p>
         </div>
         <div className="global-ops-map-stats grid grid-cols-2 gap-2 text-[11px] md:grid-cols-4">
@@ -942,7 +333,7 @@ export function GlobalOpsMap({
             <>
               <div className="rounded-lg border border-emerald-300/25 bg-emerald-500/10 px-2 py-1 text-emerald-100">Ruta: <b>{shortOriginLabel} - {shortTapLabel}</b></div>
               <div className="rounded-lg border border-cyan-300/25 bg-cyan-500/10 px-2 py-1 text-cyan-100">Distancia: <b>{demoDistanceLabel}</b></div>
-              <div className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-slate-200">Eventos: <b>{totalScans || visiblePoints.length}</b></div>
+              <div className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-slate-200">Eventos: <b>{totalScans}</b></div>
               <div className="rounded-lg border border-violet-300/25 bg-violet-500/10 px-2 py-1 text-violet-100">Estado: <b>{demoRiskLabel}</b></div>
             </>
           ) : (
@@ -955,6 +346,16 @@ export function GlobalOpsMap({
           )}
         </div>
       </div>
+      ) : null}
+
+      {!isDemoMode && !isCompactChrome && canToggleMapView ? (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/5 p-2">
+          <p className="text-[11px] text-slate-300">Eventos muestra cada ubicación reportada. Intensidad compara volumen sin mezclarlo con riesgo.</p>
+          <div className="inline-grid grid-cols-2 rounded-lg border border-white/10 bg-slate-950/60 p-1" role="group" aria-label="Vista del mapa">
+            <button suppressHydrationWarning type="button" aria-pressed={effectiveMapView === "events"} onClick={() => setMapView("events")} className={`min-h-11 rounded-md px-3 py-2 text-xs ${effectiveMapView === "events" ? "bg-white text-slate-900" : "text-slate-200"}`}>Eventos</button>
+            <button suppressHydrationWarning type="button" aria-pressed={effectiveMapView === "intensity"} onClick={() => setMapView("intensity")} className={`min-h-11 rounded-md px-3 py-2 text-xs ${effectiveMapView === "intensity" ? "bg-cyan-400 text-slate-950" : "text-slate-200"}`}>Intensidad</button>
+          </div>
+        </div>
       ) : null}
 
       {isDemoMode && !isCompactChrome ? (
@@ -980,37 +381,40 @@ export function GlobalOpsMap({
       ) : null}
 
       <div className={isDemoMode || isCompactChrome ? "hidden" : "global-ops-map-controls mt-3 grid gap-2 md:grid-cols-7"}>
-        <select suppressHydrationWarning className="rounded-lg border border-white/10 bg-slate-950 px-2 py-1 text-xs text-white" value={tenant} onChange={(event) => setTenant(event.target.value)}>
+        <select suppressHydrationWarning aria-label="Filtrar por organización" className="min-h-11 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white" value={tenant} onChange={(event) => setTenant(event.target.value)}>
           {tenants.map((item) => <option key={item} value={item}>{item === "ALL" ? "Tenant: todos" : item}</option>)}
         </select>
-        <select suppressHydrationWarning className="rounded-lg border border-white/10 bg-slate-950 px-2 py-1 text-xs text-white" value={country} onChange={(event) => setCountry(event.target.value)}>
-          {countries.map((item) => <option key={item} value={item}>{item === "ALL" ? "Pais: todos" : item}</option>)}
+        <select suppressHydrationWarning aria-label="Filtrar por país" className="min-h-11 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white" value={country} onChange={(event) => setCountry(event.target.value)}>
+          {countries.map((item) => <option key={item} value={item}>{item === "ALL" ? "País: todos" : item}</option>)}
         </select>
-        <select suppressHydrationWarning className="rounded-lg border border-white/10 bg-slate-950 px-2 py-1 text-xs text-white" value={windowMode} onChange={(event) => setWindowMode(event.target.value as TimeWindow)}>
-          <option value="1h">1h</option>
-          <option value="24h">24h</option>
-          <option value="7d">7d</option>
-          <option value="all">all</option>
+        <select suppressHydrationWarning aria-label="Filtrar por período" className="min-h-11 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white" value={windowMode} onChange={(event) => setWindowMode(event.target.value as TimeWindow)}>
+          <option value="1h">Última hora</option>
+          <option value="24h">Últimas 24 horas</option>
+          <option value="7d">Últimos 7 días</option>
+          <option value="all">Todo el período</option>
         </select>
-        <select suppressHydrationWarning className="rounded-lg border border-white/10 bg-slate-950 px-2 py-1 text-xs text-white" value={verdict} onChange={(event) => setVerdict(event.target.value)}>
+        <select suppressHydrationWarning aria-label="Filtrar por resultado" className="min-h-11 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white" value={verdict} onChange={(event) => setVerdict(event.target.value)}>
           {verdicts.map((item) => <option key={item} value={item}>{item === "ALL" ? "Estado: todos" : item}</option>)}
         </select>
-        <button suppressHydrationWarning type="button" onClick={() => setLocalRiskOnly((v) => !v)} className={`rounded-lg border px-2 py-1 text-xs ${localRiskOnly ? "border-rose-300/30 bg-rose-500/10 text-rose-100" : "border-white/10 bg-white/5 text-slate-200"}`}>{localRiskOnly ? "Solo riesgo: si" : "Solo riesgo: no"}</button>
-        <button suppressHydrationWarning type="button" onClick={() => setPlayback((value) => !value)} className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-2 py-1 text-xs text-cyan-100">{playback ? "Pausar ruta" : "Animar ruta"}</button>
-        <button suppressHydrationWarning type="button" onClick={centerOperationalMap} className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-100">Centrar mapa</button>
+        <button suppressHydrationWarning type="button" aria-pressed={localRiskOnly} onClick={() => setLocalRiskOnly((v) => !v)} className={`min-h-11 rounded-xl border px-3 py-2 text-xs ${localRiskOnly ? "border-rose-300/30 bg-rose-500/10 text-rose-100" : "border-white/10 bg-white/5 text-slate-200"}`}>{localRiskOnly ? "Solo riesgo: activo" : "Mostrar solo riesgo"}</button>
+        <button suppressHydrationWarning type="button" aria-pressed={playback} onClick={() => setPlayback((value) => !value)} className="min-h-11 rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">{playback ? "Pausar recorrido" : "Animar recorrido"}</button>
+        <button suppressHydrationWarning type="button" onClick={centerOperationalMap} className="min-h-11 rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-100">Centrar mapa</button>
       </div>
 
       <div className={`global-ops-map-layout grid gap-3 ${isCompactChrome ? "mt-0" : "mt-3"} ${isDemoMode || isCompactChrome ? "" : "lg:grid-cols-[1fr_22rem]"}`}>
         <div className="global-ops-map-stage overflow-hidden rounded-xl border border-white/10 bg-[linear-gradient(90deg,rgba(125,211,252,.055)_1px,transparent_1px),linear-gradient(rgba(125,211,252,.055)_1px,transparent_1px),linear-gradient(160deg,#020617,#0f172a,#111827)] bg-[length:4.5rem_4.5rem,4.5rem_4.5rem,auto]">
           <div className={`global-ops-map-canvas relative ${isCompactChrome ? "h-[26rem]" : isDemoMode ? "h-[24rem] md:h-[31rem]" : "h-[29rem]"}`}>
             <PremiumVectorMap
-              title={isDemoMode ? "Escenario geográfico simulado" : "Mapa de eventos reportados"}
-              subtitle={isDemoMode ? `${shortOriginLabel} -> ${shortTapLabel}: origen declarado y tap simulado; la línea no prueba una ruta física.` : "Eventos con coordenadas reportadas y clusters; no representan por sí solos recorrido ni custodia física."}
-              caption={isDemoMode ? "SUN, TT, claim y capa comercial se muestran como una historia demo gobernada por policy." : "Origen declarado, taps reportados, riesgo y evidencia comercial en una vista operativa."}
+              key={`global-ops-map-${fitRevision}`}
+              title={isDemoMode ? "Escenario geográfico simulado" : effectiveMapView === "intensity" ? "Intensidad de eventos reportados" : "Mapa de eventos reportados"}
+              subtitle={isDemoMode ? `${shortOriginLabel} -> ${shortTapLabel}: origen declarado y tap simulado; la línea no prueba una ruta física.` : effectiveMapView === "intensity" ? "El color representa volumen por ubicación observada; el origen declarado y el riesgo se muestran por separado." : "Ubicaciones aportadas por eventos; no representan por sí solas recorrido ni custodia física."}
+              caption={isDemoMode
+                ? "SUN, TT, claim y capa comercial se muestran como una historia demo gobernada por policy."
+                : `${sourceLabel ? `${sourceLabel}. ` : ""}${hasVisibleOrigin ? "El origen declarado se muestra como referencia y no suma intensidad. " : ""}Eventos reportados y riesgo en una vista operativa honesta.`}
               points={vectorPoints}
               routes={vectorRoutes}
               selectedPointId={selectedPoint?.id}
-              density={mode === "global" ? "heat" : "route"}
+              density={isDemoMode ? "route" : effectiveMapView === "intensity" ? "heat" : "route"}
               chrome={isCompactChrome ? "minimal" : isDemoMode ? "minimal" : "compact"}
               className="h-full rounded-none border-0 shadow-none"
               heightClassName="h-full"
@@ -1018,6 +422,7 @@ export function GlobalOpsMap({
               maxRoutes={isDemoMode ? 18 : mode === "global" ? 120 : 72}
               evidenceSteps={mapEvidenceSteps}
               ledgerItems={mapLedgerItems}
+              ariaLabel={`${title}. ${subtitle}${locationNote ? ` ${locationNote}.` : ""}`}
               onPointSelect={(point) => {
                 const selected = visiblePoints.find((item) => item.id === point.id);
                 if (!selected) return;
@@ -1025,73 +430,6 @@ export function GlobalOpsMap({
                 onPointSelect?.(selected);
               }}
             />
-            <div ref={mapContainerRef} className="hidden" />
-            {!canRenderMap ? (
-              <svg viewBox="0 0 1200 620" className="absolute inset-0 h-full w-full" data-nexid-map="global-ops-fallback">
-                <defs>
-                  <radialGradient id="opsHeatGood" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stopColor="var(--nexid-ops-heat-good, rgba(34,211,238,.5))" />
-                    <stop offset="100%" stopColor="rgba(34,211,238,0)" />
-                  </radialGradient>
-                  <radialGradient id="opsHeatRisk" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stopColor="var(--nexid-ops-heat-risk, rgba(251,113,133,.52))" />
-                    <stop offset="100%" stopColor="rgba(251,113,133,0)" />
-                  </radialGradient>
-                </defs>
-                <rect x="0" y="0" width="1200" height="620" fill="var(--nexid-ops-fallback-fill, rgba(15,23,42,.45))" />
-                <ellipse cx="600" cy="310" rx="410" ry="240" fill="none" stroke="var(--nexid-ops-fallback-ring, rgba(148,163,184,.18))" strokeWidth="1.5" />
-                <ellipse cx="600" cy="310" rx="320" ry="190" fill="none" stroke="var(--nexid-ops-fallback-ring-accent, rgba(34,211,238,.18))" strokeWidth="1.2" />
-                {visiblePoints.map((point) => {
-                  const dot = project(point.lat, point.lng);
-                  return <circle key={`heat-${point.id}`} cx={dot.x} cy={dot.y} r={point.risk > 0 ? 64 : 52} fill={point.risk > 0 ? "url(#opsHeatRisk)" : "url(#opsHeatGood)"} opacity="0.9" />;
-                })}
-                {visibleRoutes.map((route) => {
-                  const a = project(route.fromLat, route.fromLng);
-                  const b = project(route.toLat, route.toLng);
-                  const riskStroke = route.risk > 0 ? "rgba(251,113,133,.85)" : "rgba(34,211,238,.65)";
-                  return (
-                    <g key={route.id}>
-                      <path d={curve(a, b, route.risk > 0 ? 56 : 42)} stroke="var(--nexid-ops-route-shadow, rgba(2,6,23,.72))" strokeWidth={route.risk > 0 ? 7 : 5} fill="none" opacity="0.75" />
-                      <path d={curve(a, b, route.risk > 0 ? 56 : 42)} stroke={riskStroke} strokeWidth={route.risk > 0 ? 3.2 : 2.4} fill="none" strokeDasharray="5 7" opacity="0.95" />
-                    </g>
-                  );
-                })}
-                {visiblePoints.map((point) => {
-                  const dot = project(point.lat, point.lng);
-                  const isSelected = selectedPoint?.id === point.id;
-                  const pointFill = point.role === "origin" ? "rgba(52,211,153,.95)" : point.risk > 0 ? "rgba(251,113,133,.95)" : "rgba(56,189,248,.9)";
-                  return (
-                    <g key={point.id}>
-                      <circle cx={dot.x} cy={dot.y} r={isSelected ? 10 : Math.min(8, 4 + point.scans / 40)} fill={pointFill} />
-                      {(isSelected || point.role === "origin" || point.role === "tap") ? (
-                        <text x={dot.x + 12} y={dot.y - 8} fill="var(--nexid-ops-label-fill, rgba(226,232,240,.88))" fontSize="18" fontWeight="700">
-                          {point.role === "origin" ? "Origen" : point.role === "tap" ? "Tap cliente" : point.city}
-                        </text>
-                      ) : null}
-                    </g>
-                  );
-                })}
-              </svg>
-            ) : null}
-            {!canRenderMap ? (
-              <div className="absolute left-3 top-3 rounded-lg border border-amber-300/25 bg-amber-500/10 px-3 py-1 text-[11px] text-amber-100">
-                Motor vectorial nativo activo. Mostrando vista operativa propia.
-              </div>
-            ) : null}
-            {isDemoMode ? (
-              <div className="absolute left-3 top-3 max-w-[18rem] rounded-xl border border-cyan-300/20 bg-slate-950/70 p-3 text-xs text-slate-200 shadow-xl backdrop-blur-md">
-                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Mapa narrativo del producto</p>
-                <p className="mt-1 font-semibold text-white">{demoProductName}</p>
-                <p className="mt-1 text-[11px] text-slate-300">El escenario relaciona origen declarado, distancia estimada, tap simulado, riesgo y próxima acción; no prueba un recorrido físico.</p>
-              </div>
-            ) : (
-              <div className="global-ops-map-legend absolute right-3 top-3 grid gap-1 rounded-xl border border-white/10 bg-slate-950/80 p-2 text-[10px] text-slate-200 shadow-xl backdrop-blur-md">
-                <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-emerald-300" /> ORIGEN</span>
-                <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-cyan-300" /> TAP CLIENTE</span>
-                <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-rose-300" /> TAMPER-RISK</span>
-                <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-violet-300" /> TOKENIZED</span>
-              </div>
-            )}
             <div className="global-ops-map-caption absolute inset-x-0 bottom-0 border-t border-white/10 bg-slate-950/75 px-3 py-2 text-[11px] text-slate-300">
               {isDemoMode ? `Conexión ilustrativa ${originLabel} -> ${tapLabel}. ${demoDistanceLabel} con datos geográficos y comerciales simulados; no prueba desplazamiento físico.` : `Relaciones entre eventos reportados, señales de riesgo y clusters (${visibleRoutes.length} conexiones renderizadas); no prueban recorridos ni custodia física.`}
             </div>

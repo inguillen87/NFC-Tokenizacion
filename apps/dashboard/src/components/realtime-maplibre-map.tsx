@@ -145,7 +145,7 @@ function eventToFeature(row: TenantTapRealtimeEvent, index: number): TapFeature 
       risk,
       device: deviceSummary(row),
       occurredAt: String(row.occurredAt || ""),
-      weight: risk ? 1.5 : 1,
+      weight: 1,
       localTaps: 1,
       locationAccuracyM: coordinate.accuracyM,
       locationLabel: coordinate.label,
@@ -159,7 +159,7 @@ function eventToFeature(row: TenantTapRealtimeEvent, index: number): TapFeature 
   };
 }
 
-function buildGeojson(events: TenantTapRealtimeEvent[]): TapFeatureCollection {
+export function buildGeojson(events: TenantTapRealtimeEvent[]): TapFeatureCollection {
   const features = events.map(eventToFeature).filter((item): item is TapFeature => Boolean(item));
   const localBuckets = new Map<string, number>();
 
@@ -175,13 +175,14 @@ function buildGeojson(events: TenantTapRealtimeEvent[]): TapFeatureCollection {
       const [lng, lat] = feature.geometry.coordinates;
       const key = `${Math.round(lng * 100) / 100}|${Math.round(lat * 100) / 100}|${feature.properties.tenant}`;
       const localTaps = localBuckets.get(key) || 1;
-      const riskBoost = feature.properties.risk ? 1.15 : 1;
       return {
         ...feature,
         properties: {
           ...feature.properties,
           localTaps,
-          weight: Math.min(5.5, (1 + Math.log2(localTaps)) * riskBoost),
+          // Every observed event contributes the same amount to the heat layer.
+          // Risk remains an independent marker and never inflates activity volume.
+          weight: 1,
         },
       };
     }),
@@ -189,6 +190,13 @@ function buildGeojson(events: TenantTapRealtimeEvent[]): TapFeatureCollection {
 }
 
 function ensureLayers(map: MapLibreMap, data: TapFeatureCollection) {
+  if (!map.getSource("tap-events-heat")) {
+    map.addSource("tap-events-heat", {
+      type: "geojson",
+      data,
+    });
+  }
+
   if (!map.getSource("tap-events")) {
     map.addSource("tap-events", {
       type: "geojson",
@@ -203,10 +211,10 @@ function ensureLayers(map: MapLibreMap, data: TapFeatureCollection) {
     map.addLayer({
       id: "tap-heat",
       type: "heatmap",
-      source: "tap-events",
+      source: "tap-events-heat",
       maxzoom: 14,
       paint: {
-        "heatmap-weight": ["interpolate", ["linear"], ["get", "weight"], 0, 0, 2, 0.38, 5.5, 1],
+        "heatmap-weight": ["interpolate", ["linear"], ["get", "weight"], 0, 0, 1, 1],
         "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 3, 0.5, 9, 1.45, 13, 2.05],
         "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 3, 10, 8, 20, 12, 32],
         "heatmap-opacity": ["interpolate", ["linear"], ["zoom"], 3, 0.7, 9, 0.82, 12, 0.48, 14, 0.12],
@@ -217,15 +225,15 @@ function ensureLayers(map: MapLibreMap, data: TapFeatureCollection) {
           0,
           "rgba(2,6,23,0)",
           0.16,
-          "rgba(34,211,238,.28)",
+          "rgba(34,211,238,.3)",
           0.38,
-          "rgba(34,197,94,.54)",
+          "rgba(20,184,166,.55)",
           0.62,
-          "rgba(250,204,21,.72)",
+          "rgba(37,99,235,.7)",
           0.82,
-          "rgba(249,115,22,.82)",
+          "rgba(79,70,229,.82)",
           1,
-          "rgba(239,68,68,.9)",
+          "rgba(124,58,237,.92)",
         ],
       },
     });
@@ -326,7 +334,7 @@ function setLayerVisibility(map: MapLibreMap, view: MapView) {
 }
 
 function defaultBaseMapLayer(): BaseMapLayer {
-  if (typeof document === "undefined") return "dark";
+  if (typeof document === "undefined") return "light";
   return document.documentElement.classList.contains("theme-light") || document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
 }
 
@@ -389,7 +397,7 @@ export function RealtimeMapLibreMap({
   const mapSummaryId = useId();
   const [loaded, setLoaded] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
-  const [themeBaseMap, setThemeBaseMap] = useState<BaseMapLayer>("dark");
+  const [themeBaseMap, setThemeBaseMap] = useState<BaseMapLayer>("light");
 
   const geojson = useMemo(() => buildGeojson(events), [events]);
   const signature = useMemo(
@@ -520,6 +528,8 @@ export function RealtimeMapLibreMap({
     if (!map || !loaded) return;
     const source = map.getSource("tap-events") as GeoJSONSource | undefined;
     source?.setData(geojson as any);
+    const heatSource = map.getSource("tap-events-heat") as GeoJSONSource | undefined;
+    heatSource?.setData(geojson as any);
   }, [geojson, loaded]);
 
   useEffect(() => {

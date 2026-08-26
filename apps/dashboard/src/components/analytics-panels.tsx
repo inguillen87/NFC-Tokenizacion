@@ -226,7 +226,9 @@ function GamificationGeoOfferStudio({
     country: row.country,
     lat: row.lat,
     lng: row.lng,
-    scans: Math.max(row.scans, 1),
+    // Preserve an explicitly observed zero. The event can remain inspectable,
+    // but a zero-volume location must not create synthetic heat intensity.
+    scans: row.scans,
     risk: row.risk,
     verdict: row.risk > 0 ? "RISK" : "VALID",
     tenantSlug: "geo-offers",

@@ -1,7 +1,12 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
+import { normalizeSqlSourceForStaticAnalysis } from "./lib/sql-source-normalization.mjs";
+
 const root = path.resolve(process.cwd(), "apps/api/db/migrations");
+const readSql = async (id) => normalizeSqlSourceForStaticAnalysis(
+  await fs.readFile(path.join(root, id), "utf8"),
+);
 const ids = [
   "20260723193000_0050_evidence_anchor_reconciling_status.sql",
   "20260723193500_0051_iota_evidence_anchor_v2_writer.sql",
@@ -54,54 +59,54 @@ const ids = [
 ];
 const checks = [];
 for (const id of ids) {
-  const sql = await fs.readFile(path.join(root, id), "utf8");
+  const sql = await readSql(id);
   checks.push({
     id,
     bytes: Buffer.byteLength(sql),
     hasExplicitTransactionControl: /^\s*(?:BEGIN(?:\s+(?:WORK|TRANSACTION))?|START\s+TRANSACTION|COMMIT(?:\s+(?:WORK|TRANSACTION))?|ROLLBACK(?:\s+(?:WORK|TRANSACTION))?)\s*;\s*$/im.test(sql),
   });
 }
-const sql55 = await fs.readFile(path.join(root, "20260724213000_0055_iota_executor_durable_broadcast.sql"), "utf8");
-const sql56 = await fs.readFile(path.join(root, "20260725014500_0056_iota_evidence_constraints_validate.sql"), "utf8");
-const sql58 = await fs.readFile(path.join(root, "20260726103000_0058_webhook_signature_v2.sql"), "utf8");
-const sql58Marketplace = await fs.readFile(path.join(root, "20260726120000_0058_marketplace_runtime_baseline.sql"), "utf8");
-const sql60 = await fs.readFile(path.join(root, "20260726173000_0060_sdk_idempotency_operations.sql"), "utf8");
-const sql61 = await fs.readFile(path.join(root, "20260726190000_0061_supplier_export_artifact_delivery.sql"), "utf8");
-const sql62 = await fs.readFile(path.join(root, "20260728120000_0062_sun_atomic_persistence.sql"), "utf8");
-const sql63 = await fs.readFile(path.join(root, "20260728143000_0063_supplier_packaging_governance.sql"), "utf8");
-const sql64 = await fs.readFile(path.join(root, "20260728160000_0064_webhook_lifecycle_governance.sql"), "utf8");
-const sql65 = await fs.readFile(path.join(root, "20260728173000_0065_event_incident_workflow.sql"), "utf8");
-const sql66 = await fs.readFile(path.join(root, "20260728180000_0066_tag_lifecycle_governance.sql"), "utf8");
-const sql67 = await fs.readFile(path.join(root, "20260728183000_0067_canonical_event_outbox.sql"), "utf8");
-const sql68 = await fs.readFile(path.join(root, "20260729110000_0068_epcis_event_type.sql"), "utf8");
-const sql69 = await fs.readFile(path.join(root, "20260729110500_0069_gs1_epcis_foundation.sql"), "utf8");
-const sql70 = await fs.readFile(path.join(root, "20260729130000_0070_supplier_qa_atomic_receipts.sql"), "utf8");
-const sql71 = await fs.readFile(path.join(root, "20260729143000_0071_supplier_pack_purpose_governance.sql"), "utf8");
-const sql72 = await fs.readFile(path.join(root, "20260729160000_0072_tokenization_marketplace_execution_governance.sql"), "utf8");
-const sql73 = await fs.readFile(path.join(root, "20260730110000_0073_supplier_qa_verification_context_v2.sql"), "utf8");
-const sql74 = await fs.readFile(path.join(root, "20260730150000_0074_supplier_key_rotation_atomic.sql"), "utf8");
-const sql75 = await fs.readFile(path.join(root, "20260801090000_0075_supplier_production_qa_acceptance.sql"), "utf8");
-const sql76 = await fs.readFile(path.join(root, "20260802090000_0076_supplier_production_activation_v2.sql"), "utf8");
-const sql77 = await fs.readFile(path.join(root, "20260802113000_0077_tenant_api_key_lifecycle.sql"), "utf8");
-const sql78 = await fs.readFile(path.join(root, "20260802130000_0078_webhook_destination_cutover.sql"), "utf8");
-const sql79 = await fs.readFile(path.join(root, "20260802150000_0079_supplier_order_atomic_create.sql"), "utf8");
-const sql80 = await fs.readFile(path.join(root, "20260802153000_0080_offline_scan_history_index.sql"), "utf8");
-const sql81 = await fs.readFile(path.join(root, "20260802160000_0081_supplier_manifest_atomic_import.sql"), "utf8");
-const sql82 = await fs.readFile(path.join(root, "20260802170000_0082_consumer_session_revocation.sql"), "utf8");
-const sql83 = await fs.readFile(path.join(root, "20260802180000_0083_sdk_event_webhook_atomic_outbox.sql"), "utf8");
-const sql84 = await fs.readFile(path.join(root, "20260802190000_0084_tenant_vault_audited_download.sql"), "utf8");
-const sql85 = await fs.readFile(path.join(root, "20260802200000_0085_supplier_non_sun_qa_evidence.sql"), "utf8");
-const sql86 = await fs.readFile(path.join(root, "20260802210000_0086_supplier_order_lifecycle.sql"), "utf8");
-const sql87 = await fs.readFile(path.join(root, "20260802220000_0087_packaging_lab_foundation.sql"), "utf8");
-const sql88 = await fs.readFile(path.join(root, "20260802230000_0088_enterprise_event_profile.sql"), "utf8");
-const sql89 = await fs.readFile(path.join(root, "20260802240000_0089_sun_carrier_trust_state.sql"), "utf8");
-const sql90 = await fs.readFile(path.join(root, "20260802250000_0090_supplier_carrier_key_scope.sql"), "utf8");
-const sql91 = await fs.readFile(path.join(root, "20260802260000_0091_supplier_keyless_qa_activation.sql"), "utf8");
-const sql92 = await fs.readFile(path.join(root, "20260802270000_0092_supplier_carrier_scope_integrity.sql"), "utf8");
-const sql93 = await fs.readFile(path.join(root, "20260802280000_0093_sun_tt_durable_truth_binding.sql"), "utf8");
-const sql94 = await fs.readFile(path.join(root, "20260802290000_0094_sun_runtime_acl_boundary.sql"), "utf8");
-const sql95 = await fs.readFile(path.join(root, "20260802300000_0095_sun_tt_conflict_target.sql"), "utf8");
-const sql96 = await fs.readFile(path.join(root, "20260802310000_0096_enterprise_rbac_risk_truth.sql"), "utf8");
+const sql55 = await readSql("20260724213000_0055_iota_executor_durable_broadcast.sql");
+const sql56 = await readSql("20260725014500_0056_iota_evidence_constraints_validate.sql");
+const sql58 = await readSql("20260726103000_0058_webhook_signature_v2.sql");
+const sql58Marketplace = await readSql("20260726120000_0058_marketplace_runtime_baseline.sql");
+const sql60 = await readSql("20260726173000_0060_sdk_idempotency_operations.sql");
+const sql61 = await readSql("20260726190000_0061_supplier_export_artifact_delivery.sql");
+const sql62 = await readSql("20260728120000_0062_sun_atomic_persistence.sql");
+const sql63 = await readSql("20260728143000_0063_supplier_packaging_governance.sql");
+const sql64 = await readSql("20260728160000_0064_webhook_lifecycle_governance.sql");
+const sql65 = await readSql("20260728173000_0065_event_incident_workflow.sql");
+const sql66 = await readSql("20260728180000_0066_tag_lifecycle_governance.sql");
+const sql67 = await readSql("20260728183000_0067_canonical_event_outbox.sql");
+const sql68 = await readSql("20260729110000_0068_epcis_event_type.sql");
+const sql69 = await readSql("20260729110500_0069_gs1_epcis_foundation.sql");
+const sql70 = await readSql("20260729130000_0070_supplier_qa_atomic_receipts.sql");
+const sql71 = await readSql("20260729143000_0071_supplier_pack_purpose_governance.sql");
+const sql72 = await readSql("20260729160000_0072_tokenization_marketplace_execution_governance.sql");
+const sql73 = await readSql("20260730110000_0073_supplier_qa_verification_context_v2.sql");
+const sql74 = await readSql("20260730150000_0074_supplier_key_rotation_atomic.sql");
+const sql75 = await readSql("20260801090000_0075_supplier_production_qa_acceptance.sql");
+const sql76 = await readSql("20260802090000_0076_supplier_production_activation_v2.sql");
+const sql77 = await readSql("20260802113000_0077_tenant_api_key_lifecycle.sql");
+const sql78 = await readSql("20260802130000_0078_webhook_destination_cutover.sql");
+const sql79 = await readSql("20260802150000_0079_supplier_order_atomic_create.sql");
+const sql80 = await readSql("20260802153000_0080_offline_scan_history_index.sql");
+const sql81 = await readSql("20260802160000_0081_supplier_manifest_atomic_import.sql");
+const sql82 = await readSql("20260802170000_0082_consumer_session_revocation.sql");
+const sql83 = await readSql("20260802180000_0083_sdk_event_webhook_atomic_outbox.sql");
+const sql84 = await readSql("20260802190000_0084_tenant_vault_audited_download.sql");
+const sql85 = await readSql("20260802200000_0085_supplier_non_sun_qa_evidence.sql");
+const sql86 = await readSql("20260802210000_0086_supplier_order_lifecycle.sql");
+const sql87 = await readSql("20260802220000_0087_packaging_lab_foundation.sql");
+const sql88 = await readSql("20260802230000_0088_enterprise_event_profile.sql");
+const sql89 = await readSql("20260802240000_0089_sun_carrier_trust_state.sql");
+const sql90 = await readSql("20260802250000_0090_supplier_carrier_key_scope.sql");
+const sql91 = await readSql("20260802260000_0091_supplier_keyless_qa_activation.sql");
+const sql92 = await readSql("20260802270000_0092_supplier_carrier_scope_integrity.sql");
+const sql93 = await readSql("20260802280000_0093_sun_tt_durable_truth_binding.sql");
+const sql94 = await readSql("20260802290000_0094_sun_runtime_acl_boundary.sql");
+const sql95 = await readSql("20260802300000_0095_sun_tt_conflict_target.sql");
+const sql96 = await readSql("20260802310000_0096_enterprise_rbac_risk_truth.sql");
 const executor = await fs.readFile(path.resolve(process.cwd(), "apps/executor/src/iota-idempotency.mjs"), "utf8");
 const runner = await fs.readFile(path.resolve(process.cwd(), "apps/api/scripts/db-apply.mjs"), "utf8");
 const runnerSafety = await fs.readFile(path.resolve(process.cwd(), "apps/api/scripts/lib/db-apply-safety.mjs"), "utf8");
@@ -647,7 +652,7 @@ let tenantApiKeysCleanOrderSafe = true;
 let partitionedEventReferencesAreCompositeSafe = true;
 let postgresTextNullDelimiterFree = true;
 for (const file of allMigrationFiles) {
-  const source = await fs.readFile(path.join(root, file), "utf8");
+  const source = await readSql(file);
   if (/REFERENCES\s+(?:public\.)?events\s*\(\s*id\s*\)/i.test(source)) {
     partitionedEventReferencesAreCompositeSafe = false;
   }

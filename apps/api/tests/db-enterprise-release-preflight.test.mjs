@@ -10,9 +10,29 @@ import {
   validateExpectedRuntimeDatabaseRole,
   validateSdkIdempotencyKeyring,
 } from "../scripts/db-enterprise-release-preflight.mjs";
+import { normalizeSqlSourceForStaticAnalysis } from "../../../scripts/lib/sql-source-normalization.mjs";
 
 const validKey = "a5".repeat(32);
 const runtimeRole = "nexid_runtime";
+
+test("migration safety source normalization treats newline encodings, not SQL semantics, as equivalent", () => {
+  const canonical = [
+    "ALTER TABLE public.resource_permissions",
+    "  ADD COLUMN IF NOT EXISTS tenant_id uuid;",
+  ].join("\n");
+
+  assert.equal(normalizeSqlSourceForStaticAnalysis(canonical), canonical);
+  assert.equal(normalizeSqlSourceForStaticAnalysis(canonical.replaceAll("\n", "\r\n")), canonical);
+  assert.equal(normalizeSqlSourceForStaticAnalysis(canonical.replaceAll("\n", "\r")), canonical);
+  assert.notEqual(
+    normalizeSqlSourceForStaticAnalysis(canonical.replace("tenant_id", "account_id")),
+    canonical,
+  );
+  assert.throws(
+    () => normalizeSqlSourceForStaticAnalysis(null),
+    (error) => error instanceof TypeError && error.message === "sql_source_must_be_a_string",
+  );
+});
 
 test("enterprise release preflight pins the expected non-secret runtime database role", () => {
   assert.equal(validateExpectedRuntimeDatabaseRole({ NEXID_RUNTIME_DB_ROLE: runtimeRole }), runtimeRole);

@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 import { BrandLockup, buttonClassName, Card, ThemeToggle, type VectorMapPoint, type VectorMapRoute } from "@product/ui";
 import { resolveThemePreference, THEME_PREFERENCE_VERSION_COOKIE } from "@product/ui/theme-preference";
-import { HeroTrustAtlasSvg } from "../../components/hero-scene";
+import { HeroTrustNetworkDiagram } from "../../components/hero-scene";
 import {
   platformTrustedBy,
   platformVerticals,
@@ -445,11 +445,12 @@ function SdkGlobalHeroScene({ activeVertical, theme }: { activeVertical: Platfor
 
   return (
     <div className="sdk-proof-hero-system">
-      <div className="sdk-global-hero-globe sdk-global-hero-atlas">
-        <HeroTrustAtlasSvg points={atlas.points} routes={atlas.routes} selectedPointId="tap" />
+      <div className="sdk-global-hero-globe sdk-global-hero-atlas" data-diagram-truth="simulated-sdk-flow" data-geographic="false">
+        <HeroTrustNetworkDiagram points={atlas.points} routes={atlas.routes} selectedPointId="tap" />
         <div className="sdk-global-hero-atlas__caption">
-          <span>Infraestructura viva</span>
-          <strong>{activeVertical.shortTitle}: {profile.proof} en una ruta operativa.</strong>
+          <span>Escenario SDK ilustrativo</span>
+          <strong>{activeVertical.shortTitle}: señales, políticas y acciones simuladas para explicar la integración.</strong>
+          <small>Diagrama no geográfico: sin coordenadas, telemetría productiva ni recorrido físico.</small>
         </div>
       </div>
       <div className="sdk-proof-live-card">
@@ -551,7 +552,7 @@ export default async function SdkPage({ searchParams }: SdkPageProps) {
         <section id="sdk-proof-hero" className="sdk-premium-hero">
           <div className="sdk-premium-copy">
             <p className="sdk-hero-eyebrow">Mensaje NFC/SUN - Evidencia - Derechos digitales</p>
-            <h1>
+            <h1 className="brand-editorial-gradient">
               Infraestructura de identidad{" "}
               <br />
               para todo lo que creas,{" "}

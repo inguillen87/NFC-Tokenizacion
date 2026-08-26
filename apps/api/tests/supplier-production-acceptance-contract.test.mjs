@@ -208,6 +208,8 @@ test("remote SQL validation is pinned to an empty disposable Neon database", () 
   assert.match(disposableValidator, /sun_runtime_acl_boundary/);
   assert.match(disposableValidator, /sun_tt_conflict_target/);
   assert.match(disposableValidator, /enterprise_rbac_risk_truth/);
-  assert.equal(migrationIds.length, 98);
+  // Historical-schema bridges are additive and execute before the existing
+  // production acceptance chain; keep the full disposable rehearsal pinned.
+  assert.equal(migrationIds.length, 101);
   assert.equal(migrationIds.at(-1), "20260802310000_0096_enterprise_rbac_risk_truth.sql");
 });

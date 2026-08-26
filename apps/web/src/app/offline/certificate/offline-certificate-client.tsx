@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, Download, RefreshCw, ShieldCheck, WifiOff, XCircle } from "lucide-react";
 import { productUrls } from "@product/config";
-import { BrandLockup } from "@product/ui";
+import { BrandHomeLink } from "../../../components/brand-home-link";
 import {
   type OfflinePublicCertificateEnvelope,
   type OfflinePublicCertificatePayload,
@@ -189,10 +189,10 @@ export function OfflineCertificateClient() {
   };
 
   return (
-    <main className="min-h-screen bg-[#050914] px-4 py-7 text-slate-100 sm:py-12">
+    <main className="nexid-offline-certificate-page min-h-screen bg-[#050914] px-4 py-7 text-slate-100 sm:py-12">
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-5">
         <header className="flex items-center justify-between gap-4">
-          <BrandLockup size={42} variant="ripple" theme="dark" />
+          <BrandHomeLink size={42} />
           <span className="rounded-full border border-violet-300/25 bg-violet-300/10 px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-violet-100">Offline Level 4</span>
         </header>
 

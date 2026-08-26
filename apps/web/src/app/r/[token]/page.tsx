@@ -16,6 +16,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import { BrandLockup } from "@product/ui";
+import { BrandHomeLink } from "../../../components/brand-home-link";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.nexid.lat";
 
@@ -98,7 +99,7 @@ export default async function PublicRewardPage({ params }: { params: Promise<{ t
     return (
       <main className="min-h-screen bg-[#030712] px-5 py-10 text-slate-100">
         <section className="mx-auto flex min-h-[76vh] max-w-xl flex-col justify-center">
-          <BrandLockup size={54} variant="ripple" theme="dark" />
+          <BrandHomeLink size={54} />
           <div className="card-holographic mt-8 rounded-3xl border border-white/10 bg-white/[0.04] p-6 shadow-2xl">
             <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-300">nexID reward pass</p>
             <h1 className="mt-4 text-3xl font-black tracking-tight text-white">Voucher no disponible</h1>

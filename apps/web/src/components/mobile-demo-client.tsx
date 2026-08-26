@@ -325,8 +325,8 @@ export function MobileDemoClient({
       risk: 0,
       tone: "origin",
     },
-    geoState
-      ? {
+    ...(geoState
+      ? [{
           id: "visitor-location",
           label: "GPS opcional",
           sublabel: `${geoState.lat.toFixed(3)}, ${geoState.lng.toFixed(3)}`,
@@ -335,17 +335,8 @@ export function MobileDemoClient({
           scans: 1,
           risk: consumerState === "REPLAY_SUSPECT" || consumerState === "TAMPER_RISK" ? 1 : 0,
           tone: consumerState === "REPLAY_SUSPECT" || consumerState === "TAMPER_RISK" ? "risk" : "tap",
-        }
-      : {
-          id: "pending-location",
-          label: "GPS no compartido",
-          sublabel: "Preview sin ubicación",
-          lat: illustrativeOrigin.lat + 7,
-          lng: illustrativeOrigin.lng + 16,
-          scans: 0,
-          risk: 0,
-          tone: "hub",
-        },
+        } satisfies VectorMapPoint]
+      : []),
   ], [activeVertical, consumerState, geoState, illustrativeOrigin.lat, illustrativeOrigin.lng, illustrativeOrigin.name]);
   const mobileMapRoutes = useMemo<VectorMapRoute[]>(() => geoState ? [{
     id: "origin-to-tap",
@@ -772,9 +763,15 @@ export function MobileDemoClient({
               <p className="text-slate-300">Último scan: <span className="text-white">{lastScan ? new Date(lastScan.at).toLocaleString() : "-"}</span></p>
               <p className="text-slate-300">Último evento: <span className="text-white">{lastScan?.type || "-"}</span></p>
             </div>
-            <div className="mt-3 rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3">
-              <div className="flex items-center justify-between">
-                <p className="text-[11px] uppercase tracking-[0.12em] text-emerald-100">Ruta ilustrativa</p>
+            <div
+              className="mobile-demo-map-card mt-3 rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3"
+              data-mobile-demo-map-truth={geoState ? "illustrative-session-gps" : "illustrative-no-gps"}
+            >
+              <div className="mobile-demo-map-card__head flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-emerald-100">Mapa ilustrativo del preview</p>
+                  <span className="mt-1 block text-[10px] text-slate-400">Sin telemetría productiva</span>
+                </div>
                 <p className="text-[11px] text-emerald-100">{distanceFromOrigin ? `${distanceFromOrigin.toFixed(1)} km` : "N/A"}</p>
               </div>
               <p className="mt-1 text-[11px] text-slate-200">{illustrativeOrigin.name} → {geoState ? "GPS opcional del visitante" : "Ubicación no compartida"}</p>
@@ -821,8 +818,8 @@ export function MobileDemoClient({
                 </div>
                 <p className="mt-2 text-[10px] text-slate-300">
                   {consumerState === "REPLAY_SUSPECT"
-                    ? "Escenario de replay: las acciones sensibles siguen reservadas al flujo físico."
-                    : "Mapa de demostración: el origen es declarado y el GPS no se persiste ni se adjunta al lead."}
+                    ? "Alerta de replay simulada: no aporta evidencia de movimiento, custodia ni ubicación física del producto."
+                    : "Vista demo: el origen es ilustrativo y el GPS opcional permanece en esta sesión; no genera un mapa de calor productivo ni se adjunta al lead."}
                 </p>
               </div>
             </div>

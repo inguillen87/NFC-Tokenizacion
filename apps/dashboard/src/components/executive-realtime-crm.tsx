@@ -91,8 +91,8 @@ const TIME_RANGE_OPTIONS: Array<{ value: TimeRange; label: string; ms: number }>
 ];
 
 const BASEMAP_OPTIONS: Array<{ value: BaseMapLayer; label: string; title: string }> = [
-  { value: "dark", label: "Control", title: "Capa base oscura para sala de control" },
   { value: "light", label: "Calles", title: "Capa de calles para ubicar comercios y barrios" },
+  { value: "dark", label: "Control", title: "Capa base oscura para sala de control" },
   { value: "satellite", label: "Imagen", title: "Capa de imagen satelital provista por el mapa base" },
   { value: "terrain", label: "Relieve", title: "Capa de relieve y sombreado para lectura territorial" },
 ];
@@ -102,7 +102,7 @@ const MAP_VIEW_OPTIONS: Array<{ value: MapView; label: string; title: string; de
     value: "heat",
     label: "Densidad",
     title: "Ver concentración de lecturas por ciudad o zona",
-    description: "Concentración relativa de lecturas NFC/QR; no equivale a ventas confirmadas.",
+    description: "Volumen relativo de lecturas con ubicación observada. El riesgo se muestra por separado y no altera la intensidad.",
     icon: <Activity className="h-4 w-4" />,
   },
   {
@@ -671,7 +671,7 @@ export function ExecutiveRealtimeCrm({
   const [availabilityDetail, setAvailabilityDetail] = useState(initialAvailabilityDetail);
   const [selectedTenant, setSelectedTenant] = useState("all");
   const [mapView, setMapView] = useState<MapView>("heat");
-  const [baseMap, setBaseMap] = useState<BaseMapLayer>("dark");
+  const [baseMap, setBaseMap] = useState<BaseMapLayer>("light");
   const [mapZoom, setMapZoom] = useState(1);
   const [isMapFullscreen, setIsMapFullscreen] = useState(false);
   const [timeRange, setTimeRange] = useState<TimeRange>("24h");
@@ -1276,17 +1276,17 @@ export function ExecutiveRealtimeCrm({
                 <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${streamHealth.badge}`} title={streamHealth.detail}>{streamHealth.label}</span>
               </div>
               <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:w-auto sm:flex-wrap">
-                <select size={1} aria-label="Filtrar lecturas por tenant" title="Filtrar lecturas por tenant" value={selectedTenant} onChange={(event) => setSelectedTenant(event.target.value)} className="col-span-2 h-9 w-full min-w-0 rounded-lg border border-slate-700 bg-slate-950/80 px-3 text-sm text-white sm:col-span-1 sm:w-auto sm:min-w-[150px]">
+                <select size={1} aria-label="Filtrar lecturas por tenant" title="Filtrar lecturas por tenant" value={selectedTenant} onChange={(event) => setSelectedTenant(event.target.value)} className="col-span-2 h-11 w-full min-w-0 rounded-lg border border-slate-700 bg-slate-950/80 px-3 text-sm text-white sm:col-span-1 sm:w-auto sm:min-w-[150px]">
                   <option value="all">Todos los tenants</option>
                   {tenantOptions.map((tenant) => <option key={tenant} value={tenant}>{tenantDisplayName(tenant)}</option>)}
                 </select>
-                <select size={1} aria-label="Cambiar ventana temporal del mapa y KPIs" title="Cambiar ventana temporal del mapa y KPIs" value={timeRange} onChange={(event) => setTimeRange(event.target.value as TimeRange)} className="h-9 min-w-0 rounded-lg border border-slate-700 bg-slate-950/80 px-3 text-sm text-white">
+                <select size={1} aria-label="Cambiar ventana temporal del mapa y KPIs" title="Cambiar ventana temporal del mapa y KPIs" value={timeRange} onChange={(event) => setTimeRange(event.target.value as TimeRange)} className="h-11 min-w-0 rounded-lg border border-slate-700 bg-slate-950/80 px-3 text-sm text-white">
                   {TIME_RANGE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
-                <select size={1} aria-label="Cambiar capa base del mapa" title="Cambiar capa base del mapa" value={baseMap} onChange={(event) => setBaseMap(event.target.value as BaseMapLayer)} className="h-9 min-w-0 rounded-lg border border-slate-700 bg-slate-950/80 px-3 text-sm text-white xl:hidden">
+                <select size={1} aria-label="Cambiar capa base del mapa" title="Cambiar capa base del mapa" value={baseMap} onChange={(event) => setBaseMap(event.target.value as BaseMapLayer)} className="h-11 min-w-0 rounded-lg border border-slate-700 bg-slate-950/80 px-3 text-sm text-white xl:hidden">
                   {BASEMAP_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
-                <button type="button" title="Exportar eventos visibles a CSV" onClick={handleExport} className="flex h-9 items-center gap-2 rounded-lg border border-slate-700 bg-slate-950/80 px-4 text-sm text-white hover:border-cyan-300/50"><Download className="h-4 w-4" /> Exportar</button>
+                <button type="button" title="Exportar eventos visibles a CSV" onClick={handleExport} className="flex h-11 items-center gap-2 rounded-lg border border-slate-700 bg-slate-950/80 px-4 text-sm text-white hover:border-cyan-300/50"><Download className="h-4 w-4" /> Exportar</button>
               </div>
             </div>
 
@@ -1307,15 +1307,15 @@ export function ExecutiveRealtimeCrm({
 
             <div id="live-tap-map" ref={mapPanelRef} className={`relative overflow-hidden border border-cyan-100/10 bg-[#061426] shadow-[inset_0_1px_0_rgba(255,255,255,.05)] ${isMapFullscreen ? "fixed inset-0 z-[260] h-screen min-h-screen rounded-none border-cyan-300/25 bg-[#020713] p-2" : "min-h-[520px] rounded-xl sm:min-h-[560px] lg:min-h-0"}`}>
               <div className="absolute left-4 top-4 z-20 grid gap-2">
-                <button type="button" title="Acercar mapa sin agrandar artificialmente los eventos" onClick={() => setMapZoom((value) => Math.min(1.22, Number((value + 0.08).toFixed(2))))} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-white" aria-label="Acercar mapa">+</button>
-                <button type="button" title="Alejar mapa para ver más territorio" onClick={() => setMapZoom((value) => Math.max(0.9, Number((value - 0.08).toFixed(2))))} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-white" aria-label="Alejar mapa">-</button>
-                <button type="button" title="Mostrar radio visual de cercanía por hotspot" onClick={() => setMapView("nearby")} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-cyan-200" aria-label="Mostrar cercanía comercial"><Crosshair className="h-4 w-4" /></button>
-                <button type="button" title="Mostrar puntos individuales de lectura" onClick={() => setMapView("points")} className="grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-cyan-200" aria-label="Mostrar puntos"><Layers className="h-4 w-4" /></button>
+                <button type="button" title="Acercar mapa sin agrandar artificialmente los eventos" onClick={() => setMapZoom((value) => Math.min(1.22, Number((value + 0.08).toFixed(2))))} className="grid h-11 w-11 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-white" aria-label="Acercar mapa">+</button>
+                <button type="button" title="Alejar mapa para ver más territorio" onClick={() => setMapZoom((value) => Math.max(0.9, Number((value - 0.08).toFixed(2))))} className="grid h-11 w-11 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-white" aria-label="Alejar mapa">-</button>
+                <button type="button" title="Mostrar radio visual de cercanía por hotspot" onClick={() => setMapView("nearby")} className="grid h-11 w-11 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-cyan-200" aria-label="Mostrar cercanía comercial"><Crosshair className="h-4 w-4" /></button>
+                <button type="button" title="Mostrar puntos individuales de lectura" onClick={() => setMapView("points")} className="grid h-11 w-11 place-items-center rounded-lg border border-white/12 bg-slate-950/70 text-cyan-200" aria-label="Mostrar puntos"><Layers className="h-4 w-4" /></button>
               </div>
 
               <div className="absolute left-[72px] right-3 top-4 z-30 flex flex-wrap items-center justify-end gap-2 lg:left-auto lg:right-5 lg:flex-nowrap">
                 {MAP_VIEW_OPTIONS.map((option) => (
-                  <button key={option.value} type="button" aria-pressed={mapView === option.value} title={option.title} onClick={() => setMapView(option.value)} className={`flex h-9 items-center gap-2 rounded-lg border px-2 text-sm font-semibold sm:px-3 ${mapView === option.value ? "border-cyan-300 bg-cyan-400/12 text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,.22)]" : "border-white/10 bg-slate-950/65 text-slate-300"}`}>
+                  <button key={option.value} type="button" aria-pressed={mapView === option.value} title={option.title} onClick={() => setMapView(option.value)} className={`flex h-11 items-center gap-2 rounded-lg border px-2 text-sm font-semibold sm:px-3 ${mapView === option.value ? "border-cyan-300 bg-cyan-400/12 text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,.22)]" : "border-white/10 bg-slate-950/65 text-slate-300"}`}>
                     {option.icon}<span className="hidden sm:inline">{option.label}</span>
                   </button>
                 ))}
@@ -1327,28 +1327,33 @@ export function ExecutiveRealtimeCrm({
                       title={option.title}
                       aria-pressed={baseMap === option.value}
                       onClick={() => setBaseMap(option.value)}
-                      className={`h-7 rounded-md px-2 text-[11px] font-black uppercase tracking-[0.06em] ${baseMap === option.value ? "bg-cyan-300 text-slate-950" : "text-slate-300 hover:bg-white/8 hover:text-white"}`}
+                      className={`h-11 min-h-11 rounded-md px-3 text-[11px] font-black uppercase tracking-[0.06em] ${baseMap === option.value ? "bg-cyan-300 text-slate-950" : "text-slate-300 hover:bg-white/8 hover:text-white"}`}
                     >
                       {option.label}
                     </button>
                   ))}
                 </div>
-                <button type="button" title="Abrir Google Maps Street View en la coordenada más reciente" onClick={openStreetView} className="hidden h-9 items-center gap-2 rounded-lg border border-white/10 bg-slate-950/65 px-3 text-sm font-semibold text-slate-300 hover:border-cyan-300/50 hover:text-cyan-100 xl:flex"><Globe className="h-4 w-4" /> Street</button>
-                <button type="button" title="Restablecer mapa a capa de densidad y zoom normal" onClick={() => { setMapView("heat"); setMapZoom(1); }} className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-slate-950/65 text-slate-300" aria-label="Restablecer mapa"><Settings className="h-4 w-4" /></button>
-                <button type="button" title={isMapFullscreen ? "Salir de pantalla completa" : "Pantalla completa real para monitor de control"} onClick={() => void toggleMapFullscreen()} className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-slate-950/65 text-slate-300 hover:border-cyan-300/50 hover:text-cyan-100" aria-label={isMapFullscreen ? "Salir de pantalla completa" : "Abrir pantalla completa"}><Expand className="h-4 w-4" /></button>
+                <button type="button" title="Abrir Google Maps Street View en la coordenada más reciente" onClick={openStreetView} className="hidden h-11 items-center gap-2 rounded-lg border border-white/10 bg-slate-950/65 px-3 text-sm font-semibold text-slate-300 hover:border-cyan-300/50 hover:text-cyan-100 xl:flex"><Globe className="h-4 w-4" /> Street</button>
+                <button type="button" title="Restablecer mapa a capa de densidad y zoom normal" onClick={() => { setMapView("heat"); setMapZoom(1); }} className="grid h-11 w-11 place-items-center rounded-lg border border-white/10 bg-slate-950/65 text-slate-300" aria-label="Restablecer mapa"><Settings className="h-4 w-4" /></button>
+                <button type="button" title={isMapFullscreen ? "Salir de pantalla completa" : "Pantalla completa real para monitor de control"} onClick={() => void toggleMapFullscreen()} className="grid h-11 w-11 place-items-center rounded-lg border border-white/10 bg-slate-950/65 text-slate-300 hover:border-cyan-300/50 hover:text-cyan-100" aria-label={isMapFullscreen ? "Salir de pantalla completa" : "Abrir pantalla completa"}><Expand className="h-4 w-4" /></button>
               </div>
 
               <div className="absolute bottom-[260px] left-4 z-20 rounded-lg border border-white/10 bg-slate-950/75 p-3 text-xs text-slate-200 shadow-xl lg:bottom-20">
                 <p className="mb-1 text-[10px] font-black uppercase tracking-[0.14em] text-cyan-100">Capa {MAP_VIEW_OPTIONS.find((option) => option.value === mapView)?.label}</p>
                 <p className="mb-2 max-w-[13rem] text-[10px] leading-4 text-slate-400">{MAP_VIEW_OPTIONS.find((option) => option.value === mapView)?.description}</p>
-                {[
-                  ["Muy alto", "bg-red-500"],
-                  ["Alto", "bg-amber-400"],
-                  ["Medio", "bg-lime-400"],
-                  ["Bajo", "bg-sky-400"],
-                ].map(([label, color]) => (
-                  <p key={label} className="mt-1 flex items-center gap-2"><i className={`h-2.5 w-2.5 rounded-full ${color}`} /> {label}</p>
-                ))}
+                {mapView === "heat" ? (
+                  <div aria-label="Escala relativa de volumen observado">
+                    <div className="h-2.5 w-full rounded-full bg-gradient-to-r from-cyan-400 via-blue-600 to-violet-600" aria-hidden="true" />
+                    <div className="mt-1 flex justify-between gap-3 text-[9px] text-slate-300"><span>Menor volumen</span><span>Mayor volumen</span></div>
+                  </div>
+                ) : mapView === "points" ? (
+                  <div className="space-y-1 text-[10px] text-slate-300">
+                    <p className="flex items-center gap-2"><i className="h-2.5 w-2.5 rounded-full bg-cyan-300" /> Lectura observada</p>
+                    <p className="flex items-center gap-2"><i className="h-2.5 w-2.5 rounded-full bg-rose-400" /> Evento con señal de riesgo</p>
+                  </div>
+                ) : (
+                  <p className="flex items-center gap-2 text-[10px] text-slate-300"><i className="h-3 w-3 rounded-full border border-cyan-300/70 bg-cyan-300/10" /> Radio visual; no es geofencing</p>
+                )}
               </div>
 
               <div className={`${isMapFullscreen ? "h-full" : "h-[460px] sm:h-[520px]"} w-full p-3 pt-[76px] lg:h-full lg:p-3 lg:pr-[300px]`}>

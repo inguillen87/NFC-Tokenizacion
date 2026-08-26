@@ -128,8 +128,11 @@ test("QR engagement is wine-only, policy-aware and never confirms local rewards 
   assert.match(page, /<QREngagementSuite[\s\S]*allowedActions=\{allowedActions\}[\s\S]*blockedActions=\{blockedActions\}/);
   assert.match(page, /postTapQuickActions\.marketplace \? \(/);
   assert.match(page, /routes=\{isDemoPreview \? opsMapRoutes : \[\]\}/);
-  assert.match(page, /mode=\{isDemoPreview \? "demo" : "tenant"\}/);
-  assert.match(page, /nexID no infiere un recorrido fisico/);
+  assert.match(page, /mode=\{isDemoPreview \? "demo" : "global"\}/);
+  assert.match(page, /initialView=\{!isDemoPreview && canShowSunIntensity \? "intensity" : "events"\}/);
+  assert.match(page, /allowViewToggle=\{!isDemoPreview && canShowSunIntensity\}/);
+  assert.match(page, /ninguna l[ií]nea implica un recorrido f[ií]sico/);
+  assert.match(page, /no reconstruye transporte, custodia ni movimiento del producto/);
 
   assert.match(engagement, /const canUseRewards = isPostTapPolicyActionAllowed\("rewards", allowedActions, blockedActions\)/);
   assert.match(engagement, /pointsAwarded: 0/);

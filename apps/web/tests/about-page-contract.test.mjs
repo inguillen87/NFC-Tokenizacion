@@ -78,7 +78,7 @@ test("about page keeps claims bounded and the home only adds navigation access",
   assert.match(about, /<section id="respaldo"/);
   assert.doesNotMatch(home, /<AboutPage|<AboutInmovarSection/);
   assert.match(about, /className="landing-root about-page"/);
-  assert.match(about, /<BrandLockup/);
+  assert.match(about, /<BrandHomeLink/);
   assert.match(about, /<MarketingMegaNav/);
   assert.match(about, /resolveThemePreference\(/);
   assert.match(about, /THEME_PREFERENCE_VERSION_COOKIE/);

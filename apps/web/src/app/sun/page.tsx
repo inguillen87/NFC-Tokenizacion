@@ -13,12 +13,14 @@ import { AgroDppExperience } from "./agro-dpp-experience";
 import { normalizeAgroDppProfile } from "./agro-dpp-model";
 import { resolveCommercialTapFreshness, resolvePostTapQuickActionAvailability } from "./post-tap-policy";
 import { fmtDistance, haversineKm, selectCanonicalSunMapRoutes } from "./sun-route-distance";
+import { clusterSunLocationObservations, classifySunLocationEvidence, describeSunLocationEvidence } from "./sun-location-evidence";
 import { qualifySunStatusForPreview, selectSunTruthCopy, SUN_DEMO_BADGE, SUN_DEMO_COPY } from "./sun-truth-copy";
 import { productUrls } from "@product/config";
-import { BrandLockup, DeviceSignatureBadge, EmptyState, KeyValueSpec, LocaleSwitcher, ThemeToggle, TimelineRail } from "@product/ui";
+import { DeviceSignatureBadge, EmptyState, KeyValueSpec, LocaleSwitcher, ThemeToggle, TimelineRail } from "@product/ui";
 import { GlobalOpsMap, type GlobalOpsPoint, type GlobalOpsRoute } from "@product/ui/global-ops-map";
 import { getWebI18n } from "../../lib/locale";
 import { resolveProductAssetProfile, summarizeAssetReadiness } from "../../lib/product-asset-bank";
+import { BrandHomeLink } from "../../components/brand-home-link";
 
 function apiBase(params?: Record<string, string | string[] | undefined>) {
   const override = typeof params?.api === "string" ? params.api.trim() : "";
@@ -128,7 +130,7 @@ type SunContract = {
     origin?: string | null;
     firstVerified?: { at?: string | null; city?: string | null; country?: string | null };
     lastVerifiedLocation?: { at?: string | null; city?: string | null; country?: string | null; result?: string | null };
-    timelineSummary?: Array<{ at?: string | null; result?: string | null; city?: string | null; country?: string | null; device?: string | null; lat?: number | null; lng?: number | null }>;
+    timelineSummary?: Array<{ eventId?: string | null; at?: string | null; result?: string | null; city?: string | null; country?: string | null; device?: string | null; lat?: number | null; lng?: number | null; locationSource?: string | null; accuracyM?: number | null }>;
   };
   iot?: { 
     wineryLocation?: string | null; 
@@ -482,6 +484,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const bid = String(result.identity?.bid || params.bid || "");
   const uid = String(result.identity?.uid || "");
   const uidMasked = String(result.identity?.uidMasked || result.identity?.uid || "");
+  const eventId = String(result.identity?.eventId || result.eventId || "").trim();
   const statusCode = String(result.status?.code || "").toUpperCase();
   const statusReason = String(result.status?.reason || "").toLowerCase();
   const productState = String(result.status?.productState || "").toUpperCase();
@@ -563,6 +566,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       const hasEventCoords = isUsableCoordinate(item.lat, item.lng);
       if (!hasEventCoords) return null;
       return {
+        eventId: item.eventId || null,
         city,
         country,
         lat: Number(item.lat),
@@ -572,6 +576,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         status: item.result || "REVIEW",
         lastSeen: item.at || undefined,
         source: "tap_timeline",
+        locationSource: item.locationSource || null,
+        accuracyM: item.accuracyM || null,
       };
     })
     .filter((item): item is NonNullable<typeof item> => Boolean(item));
@@ -585,7 +591,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       country: result.provenance?.firstVerified?.country || "AR",
       lat: Number(resolvedOriginCoords.lat),
       lng: Number(resolvedOriginCoords.lng),
-      scans: 1,
+      scans: 0,
       risk: 0,
       status: "ORIGIN",
       source: "winery_origin",
@@ -606,6 +612,10 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       risk: isRiskBlocked ? 1 : 0,
       status: result.status?.code || "REVIEW",
       source: "current_mobile_tap",
+      eventId: eventId || null,
+      locationSource: result.tapContext?.locationSource || null,
+      accuracyM: result.tapContext?.accuracyM || null,
+      lastSeen: result.tapContext?.utcTime || result.tapContext?.localTime || result.provenance?.lastVerifiedLocation?.at || null,
     }]
     : [];
   const orderedTimelinePoints = [...timelinePoints].reverse();
@@ -654,17 +664,22 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const rawLocationSource = String(result.tapContext?.locationSource || "").toLowerCase();
   const accuracyM = Number(result.tapContext?.accuracyM);
   const hasAccuracy = Number.isFinite(accuracyM) && accuracyM > 0;
-  const tapLocationPrecisionLabel = rawLocationSource === "browser_gps_approximate_consent"
-    ? `Ubicacion aproximada con consentimiento${hasAccuracy ? ` (+/-${Math.round(accuracyM)} m)` : ""}`
-    : rawLocationSource === "browser_gps" || rawLocationSource === "browser_gps_reported"
-      ? `GPS reportado por cliente${hasAccuracy ? ` (+/-${Math.round(accuracyM)} m)` : ""}`
-    : rawLocationSource === "ip_geo"
-      ? "IP aproximada"
-      : rawLocationSource.includes("error") || rawLocationSource.includes("denied")
-        ? "GPS no autorizado"
+  const tapLocationEvidenceKind = classifySunLocationEvidence(rawLocationSource, hasCurrentTapCoords);
+  const tapLocationPrecisionLabel = describeSunLocationEvidence(tapLocationEvidenceKind, hasAccuracy ? accuracyM : null);
+  const tapLocationSourceDetail = rawLocationSource === "browser_gps_approximate_consent"
+    ? "Compartida con permiso y redondeada antes de guardarse"
+    : rawLocationSource === "edge_ip_approx" || rawLocationSource === "ip_geo"
+      ? "Estimada por red/IP; no es GPS del dispositivo"
+      : tapLocationEvidenceKind === "measured"
+        ? "Fuente de medición informada por la API SUN"
         : hasCurrentTapCoords
-          ? "Coordenada reportada"
-          : "Sin ubicacion";
+          ? "Coordenada reportada; la API no informó precisión"
+          : rawLocationSource.includes("error") || rawLocationSource.includes("denied")
+            ? "El dispositivo no compartió ubicación"
+            : "No se recibió un par WGS84 válido";
+  const originLocationLabel = describeSunLocationEvidence(
+    classifySunLocationEvidence("brand_profile", Boolean(resolvedOriginCoords), { declared: true }),
+  );
   const distanceDisplay = fmtDistance(originToTapDistance);
   const sensorSnapshot = result.iot?.sensorSnapshot;
   const sensorEvidenceKind = String(result.iot?.sensorEvidenceKind || "none").toLowerCase();
@@ -694,16 +709,58 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const rawReportedScanCount = Number(result.identity?.scanCount);
   const hasReportedScanCount = Number.isFinite(rawReportedScanCount) && rawReportedScanCount >= 0;
   const reportedScanCount = hasReportedScanCount ? rawReportedScanCount : 0;
-  const currentTapReportedAt = result.tapContext?.utcTime || result.tapContext?.localTime || "";
-  const routeTapCount = hasReportedScanCount ? reportedScanCount : orderedTimelinePoints.length;
-  const opsMapPoints: GlobalOpsPoint[] = [
-    ...wineryPoint.map((point, index) => ({
+  const observedLocationClusters = clusterSunLocationObservations([
+    ...timelinePoints.map((point, index) => ({
+      id: `timeline-${index}`,
+      eventId: point.eventId,
+      city: point.city,
+      country: point.country,
+      lat: point.lat,
+      lng: point.lng,
+      at: point.lastSeen,
+      result: point.status,
+      source: point.locationSource,
+      accuracyM: point.accuracyM,
+    })),
+    ...currentTapPoint.map((point) => ({
+      id: `current-${eventId || "tap"}`,
+      eventId: point.eventId,
+      city: point.city,
+      country: point.country,
+      lat: point.lat,
+      lng: point.lng,
+      at: point.lastSeen,
+      result: point.status,
+      source: point.locationSource,
+      accuracyM: point.accuracyM,
+      current: true,
+    })),
+  ]);
+  const observedEventCount = observedLocationClusters.reduce((sum, point) => sum + point.count, 0);
+  const canShowSunIntensity = observedLocationClusters.length >= 2;
+  const observedMapPoints: GlobalOpsPoint[] = observedLocationClusters.map((point) => ({
+    id: point.id,
+    city: point.city,
+    country: point.country,
+    lat: point.lat,
+    lng: point.lng,
+    scans: point.count,
+    risk: point.risk,
+    verdict: point.result,
+    tenantSlug: mapTenant,
+    lastSeen: point.lastSeen,
+    uid: mapUid,
+    device: point.sourceLabel,
+    role: point.current ? "tap" as const : "hub" as const,
+    productName: mapProductName,
+  }));
+  const demoOriginMapPoints: GlobalOpsPoint[] = wineryPoint.map((point, index) => ({
       id: `origin-${mapUid}-${index}`,
       city: point.city,
       country: point.country,
       lat: point.lat,
       lng: point.lng,
-      scans: reportedScanCount,
+      scans: 0,
       risk: 0,
       verdict: "ORIGIN",
       tenantSlug: mapTenant,
@@ -712,40 +769,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       device: "producer",
       role: "origin" as const,
       productName: mapProductName,
-    })),
-    ...orderedTimelinePoints.map((point, index) => ({
-      id: `timeline-${mapUid}-${index}`,
-      city: point.city,
-      country: point.country,
-      lat: point.lat,
-      lng: point.lng,
-      scans: Math.max(0, Number(point.scans) || 0),
-      risk: point.risk,
-      verdict: point.status,
-      tenantSlug: mapTenant,
-      lastSeen: point.lastSeen || "",
-      uid: mapUid,
-      device: "mobile",
-      role: "hub" as const,
-      productName: mapProductName,
-    })),
-    ...currentTapPoint.map((point, index) => ({
-      id: `current-tap-${mapUid}-${index}`,
-      city: point.city,
-      country: point.country,
-      lat: point.lat,
-      lng: point.lng,
-      scans: reportedScanCount,
-      risk: point.risk,
-      verdict: point.status,
-      tenantSlug: mapTenant,
-      lastSeen: currentTapReportedAt,
-      uid: mapUid,
-      device: "mobile",
-      role: "tap" as const,
-      productName: mapProductName,
-    })),
-  ];
+    }));
+  const opsMapPoints = isDemoPreview ? [...demoOriginMapPoints, ...observedMapPoints] : observedMapPoints;
   const canonicalMapRoutes = selectCanonicalSunMapRoutes(originToCurrentTapRoute, mapRoutes);
   const opsMapRoutes: GlobalOpsRoute[] = canonicalMapRoutes.map((route, index) => ({
     id: `sun-route-${mapUid}-${index}`,
@@ -755,7 +780,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     toLng: route.toLng,
     uid: mapUid,
     risk: route.tone === "warn" ? 1 : 0,
-    taps: routeTapCount,
+    taps: observedEventCount,
     firstSeenAt: firstMapSeenAt,
     lastSeenAt: lastMapSeenAt,
     fromLabel: index === 0 ? originDisplay : undefined,
@@ -880,7 +905,6 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const tenantSlug = String(result.identity?.tenantSlug || "").trim();
   const telemetryEndpoint = `${resolvedApiBase.replace(/\/$/, "")}/sun/context`;
   const marketplaceHref = tenantSlug ? `/me/marketplace?tenant=${encodeURIComponent(tenantSlug)}` : "/me/marketplace";
-  const eventId = String(result.identity?.eventId || result.eventId || "").trim();
   const localizeHref = (href?: string | null) => {
     const raw = String(href || "").trim();
     if (!raw) return "";
@@ -1352,7 +1376,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
 
   return (
-    <main className="min-h-screen bg-[#060813] text-slate-100 flex flex-col items-center py-4 sm:py-8 px-4 font-sans relative overflow-hidden pb-32">
+    <main className="nexid-sun-page min-h-screen bg-[#060813] text-slate-100 flex flex-col items-center py-4 sm:py-8 px-4 font-sans relative overflow-hidden pb-32">
       <FreshHandoffUrlCleaner enabled={Boolean(isFreshHandoff && freshToken)} />
       <OfflinePublicProductCache
         enabled={!isDemoPreview && result.ok === true && Boolean(bid)}
@@ -1371,31 +1395,19 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       <div className="absolute -top-40 -left-40 w-80 h-80 bg-violet-600/10 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute top-1/2 -right-40 w-96 h-96 bg-emerald-600/5 rounded-full blur-[120px] pointer-events-none" />
 
-      {/* Telemetry data collection component */}
-      <TapPrecisionTelemetry
-        endpoint={telemetryEndpoint}
-        enabled={!isQrScan && !isSnapshotView && Boolean(eventId)}
-        bid={bid}
-        uid={uid || null}
-        eventId={eventId || null}
-        freshToken={freshToken}
-        readCounter={typeof result.identity?.readCounter === "number" ? result.identity.readCounter : null}
-        contextStatus={result.status?.code || null}
-      />
-
       <div className="w-full max-w-[430px] z-10 space-y-5 mx-auto">
         
         {/* Modern minimal top bar */}
         <header className="flex items-center justify-between px-1 mb-2">
           <div className="flex items-center gap-2">
-            <BrandLockup size={36} variant="ripple" theme="dark" />
+            <BrandHomeLink locale={locale} size={36} />
             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
               {isQrScan ? "qr passport" : "nfc passport"}
             </span>
           </div>
           <div className="flex items-center gap-2">
             <LocaleSwitcher value={locale} options={locales as any} />
-            <ThemeToggle />
+            <ThemeToggle locale={locale} />
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/80 border border-white/5 backdrop-blur-md">
               <span className={`w-2 h-2 rounded-full ${pulseClass} animate-pulse`} />
               <span className="text-[9px] font-black text-slate-300 uppercase tracking-wider">{livePillLabel}</span>
@@ -1547,7 +1559,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               <span className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-400">
                 {tenantDisplayName}
               </span>
-              <h1 className="text-2xl font-black text-white leading-tight mt-1 tracking-tight">
+              <h1 className="brand-editorial-gradient text-2xl font-black text-white leading-tight mt-1 tracking-tight">
                 {productDisplayName}
               </h1>
               <p className="text-xs text-slate-400 mt-1 leading-normal">
@@ -1643,50 +1655,105 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
         </section> : null}
 
-        {/* 4. Traceability, Map & Cold Chain history */}
-        <section className="rounded-3xl border border-white/5 bg-slate-900/30 p-5 backdrop-blur-md shadow-lg space-y-4">
+        {/* 4. Observed SUN locations. Declared origins never become heat density. */}
+        <section className="sun-location-section rounded-3xl border border-white/5 bg-slate-900/30 p-5 backdrop-blur-md shadow-lg space-y-4" aria-labelledby="sun-location-title">
           <div>
             <span className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-400">
-              Trazabilidad e Inteligencia
+              Ubicación de las lecturas
             </span>
-            <h3 className="text-base font-black text-white mt-1">Mapa de eventos & origen declarado</h3>
+            <h2 id="sun-location-title" className="mt-1 text-lg font-black text-white">Dónde se registró la actividad disponible</h2>
+            <p className="mt-2 text-xs leading-5 text-slate-400">
+              El mapa usa únicamente eventos que llegaron a la API SUN con un par WGS84 válido. El origen declarado se muestra aparte y ninguna línea implica un recorrido físico.
+            </p>
           </div>
 
-          {/* Interactive OpsMap */}
-          <div id="geo-trace" className="rounded-2xl overflow-hidden border border-white/5 bg-slate-950 p-2 shadow-inner">
+          <div className="grid gap-2 sm:grid-cols-2">
+            <article className="rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-3">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <span className="block text-[9px] font-black uppercase tracking-[0.14em] text-cyan-300">Lectura actual</span>
+                  <strong className="mt-1 block text-sm text-white">{tapDisplay}</strong>
+                </div>
+                <span className="rounded-full border border-cyan-300/25 px-2 py-1 text-[9px] font-bold text-cyan-100">{tapLocationEvidenceKind === "measured" ? "MEDIDA" : tapLocationEvidenceKind === "approximate" ? "APROX." : "SIN GEO"}</span>
+              </div>
+              <p className="mt-2 text-[11px] font-semibold text-cyan-100">{tapLocationPrecisionLabel}</p>
+              <p className="mt-1 text-[10px] leading-4 text-slate-400">{tapLocationSourceDetail}</p>
+              {tapMapHref ? (
+                <a href={tapMapHref} target="_blank" rel="noreferrer" className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl border border-cyan-300/25 bg-white/5 px-3 text-xs font-bold text-cyan-100 transition hover:bg-cyan-300/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300">
+                  Abrir coordenada <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                </a>
+              ) : null}
+            </article>
+
+            <article className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-3">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <span className="block text-[9px] font-black uppercase tracking-[0.14em] text-emerald-300">Referencia de origen</span>
+                  <strong className="mt-1 block text-sm text-white">{originDisplay}</strong>
+                </div>
+                <span className="rounded-full border border-emerald-300/25 px-2 py-1 text-[9px] font-bold text-emerald-100">{resolvedOriginCoords ? "DECLARADA" : "SIN GEO"}</span>
+              </div>
+              <p className="mt-2 text-[11px] font-semibold text-emerald-100">{originLocationLabel}</p>
+              <p className="mt-1 text-[10px] leading-4 text-slate-400">No suma intensidad al mapa de lecturas.</p>
+              {originMapHref ? (
+                <a href={originMapHref} target="_blank" rel="noreferrer" className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl border border-emerald-300/25 bg-white/5 px-3 text-xs font-bold text-emerald-100 transition hover:bg-emerald-300/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300">
+                  Abrir origen declarado <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                </a>
+              ) : null}
+            </article>
+          </div>
+
+          <TapPrecisionTelemetry
+            endpoint={telemetryEndpoint}
+            enabled={!isQrScan && !isSnapshotView && Boolean(eventId)}
+            bid={bid}
+            uid={uid || null}
+            eventId={eventId || null}
+            freshToken={freshToken}
+            readCounter={typeof result.identity?.readCounter === "number" ? result.identity.readCounter : null}
+            contextStatus={result.status?.code || null}
+          />
+
+          <div id="geo-trace" className="rounded-2xl overflow-hidden border border-white/5 bg-slate-950 p-2 shadow-inner scroll-mt-24">
             {opsMapPoints.length ? (
               <GlobalOpsMap
-                title={isDemoPreview ? "Ruta del producto (demo)" : "Evidencia geografica"}
-                subtitle={isDemoPreview ? "Origen, tap y recorrido simulado" : "Puntos reportados; nexID no infiere un recorrido fisico"}
+                title={isDemoPreview ? "Escenario geográfico del Demo Lab" : "Lecturas SUN con ubicación"}
+                subtitle={isDemoPreview ? "Datos simulados y claramente identificados" : "Intensidad construida solo con eventos observados"}
                 points={opsMapPoints}
                 routes={isDemoPreview ? opsMapRoutes : []}
-                mode={isDemoPreview ? "demo" : "tenant"}
+                mode={isDemoPreview ? "demo" : "global"}
                 selectedPointId={opsMapPoints.find((point) => point.role === "tap")?.id || opsMapPoints[0]?.id}
                 playbackEnabled={isDemoPreview}
                 chrome={isDemoPreview ? "full" : "compact"}
+                initialView={!isDemoPreview && canShowSunIntensity ? "intensity" : "events"}
+                allowViewToggle={!isDemoPreview && canShowSunIntensity}
+                sourceLabel={isDemoPreview ? "Demo Lab · datos simulados" : "API SUN · eventos con ubicación reportada"}
+                locationNote={isDemoPreview ? "Escenario ilustrativo; no representa lecturas reales." : `${tapLocationPrecisionLabel}. ${tapLocationSourceDetail}.`}
               />
             ) : (
-              <div className="py-6 text-center text-xs text-slate-500">
-                Sin coordenadas de geolocalización para este tap.
+              <div className="px-5 py-8 text-center" role="status">
+                <span aria-hidden="true" className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-300/20 bg-white/5 text-lg">⌖</span>
+                <p className="mt-3 text-sm font-black text-slate-200">Todavía no hay una ubicación para mostrar</p>
+                <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-slate-500">La API SUN no devolvió pares WGS84 válidos para estas lecturas. No completamos ciudades ni coordenadas con datos inventados.</p>
               </div>
             )}
           </div>
 
-          {/* Quick Trace Metrics */}
-          <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="grid grid-cols-1 gap-2 text-center sm:grid-cols-3">
             <div className="bg-slate-950/60 rounded-xl border border-white/5 p-2">
-              <span className="text-[8px] uppercase text-slate-500 block">Eventos</span>
-              <span className="text-xs font-bold text-slate-200 mt-0.5 block">{timelineCount}</span>
+              <span className="text-[8px] uppercase text-slate-500 block">Lecturas ubicadas</span>
+              <span className="text-xs font-bold text-slate-200 mt-0.5 block">{observedEventCount}</span>
             </div>
             <div className="bg-slate-950/60 rounded-xl border border-white/5 p-2">
-              <span className="text-[8px] uppercase text-slate-500 block">Distancia</span>
-              <span className="text-xs font-bold text-slate-200 mt-0.5 block">{fmtDistance(originToTapDistance)}</span>
+              <span className="text-[8px] uppercase text-slate-500 block">Historial informado</span>
+              <span className="text-xs font-bold text-slate-200 mt-0.5 block">{hasReportedScanCount ? reportedScanCount : timelineCount || "N/D"}</span>
             </div>
             <div className="bg-slate-950/60 rounded-xl border border-white/5 p-2">
-              <span className="text-[8px] uppercase text-slate-500 block">Último Tap</span>
-              <span className="text-[10px] font-bold text-slate-200 mt-0.5 block truncate">{localTapTimeLabel || "N/A"}</span>
+              <span className="text-[8px] uppercase text-slate-500 block">Distancia lineal</span>
+              <span className="text-xs font-bold text-slate-200 mt-0.5 block">{distanceDisplay}</span>
             </div>
           </div>
+          <p className="text-[10px] leading-4 text-slate-500">La distancia une dos coordenadas como referencia matemática; no reconstruye transporte, custodia ni movimiento del producto.</p>
 
           {/* IoT evidence: a snapshot is never presented as a fabricated time series. */}
           {hasSensorEvidence ? (

@@ -1,6 +1,6 @@
 export type Theme = "dark" | "light";
 
-export const THEME_PREFERENCE_VERSION = "white-first-v1";
+export const THEME_PREFERENCE_VERSION = "white-first-v2";
 export const THEME_PREFERENCE_VERSION_COOKIE = "nexid_theme_version";
 export const THEME_PREFERENCE_VERSION_STORAGE = "nexid-theme-version";
 

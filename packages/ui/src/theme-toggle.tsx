@@ -17,10 +17,28 @@ const themeCopy = {
   en: { dark: "Dark", light: "Light", toDark: "Switch to dark mode", toLight: "Switch to light mode" },
 } as const;
 
+const browserThemeColors: Record<Theme, string> = {
+  light: "#ffffff",
+  dark: "#020617",
+};
+
+function syncBrowserThemeColor(theme: Theme) {
+  const color = browserThemeColors[theme];
+  const existing = Array.from(document.head.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]'));
+  const metas = existing.length ? existing : [document.head.appendChild(document.createElement("meta"))];
+
+  metas.forEach((meta) => {
+    meta.name = "theme-color";
+    meta.content = color;
+    meta.removeAttribute("media");
+  });
+}
+
 export function applyTheme(theme: Theme) {
   document.documentElement.setAttribute("data-theme", theme);
   document.documentElement.classList.toggle("theme-light", theme === "light");
   document.documentElement.style.colorScheme = theme;
+  syncBrowserThemeColor(theme);
 
   try {
     localStorage.setItem(THEME_PREFERENCE_VERSION_STORAGE, THEME_PREFERENCE_VERSION);
@@ -98,7 +116,7 @@ export function ThemeToggle({ initialTheme = "light", locale = "en" }: { initial
         setTheme(nextTheme);
         applyTheme(nextTheme);
       }}
-      className="theme-toggle inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10"
+      className="theme-toggle inline-flex min-h-11 items-center gap-2 rounded-full border border-white/20 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-cyan-500/25"
       aria-label={actionLabel}
       title={actionLabel}
     >

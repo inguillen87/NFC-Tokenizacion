@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { SectionHeading } from "@product/ui";
-import { ShieldAlert, PackageCheck, Package, ShieldCheck, Navigation, Truck, MapPin, Zap, Activity } from "lucide-react";
+import { ShieldAlert, PackageCheck, Package, ShieldCheck, Navigation, Truck, Zap, Activity } from "lucide-react";
 import { requireDashboardSession } from "../../../lib/session";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../lib/admin-page-access";
 import { SecureDeliveryOpsConsole } from "../../../components/secure-delivery-ops-console";
@@ -30,94 +30,97 @@ export default async function LogisticsHubPage() {
       <SectionHeading 
         eyebrow="Secure Delivery" 
         title="Logistics Hub" 
-        description="Manage tenant-scoped shipments, seal assignments and recorded handling events. These records document operator declarations; they do not prove physical custody or contents by themselves. The map below is an illustrative fixture and operational metrics disclose their API source."
+        description="Manage tenant-scoped shipments, seal assignments and recorded handling events. These records document operator declarations; they do not prove physical custody or contents by themselves. The process view below is non-geographic and operational metrics disclose their API source."
       />
       
-      {/* Illustrative map fixture. It is not derived from shipment coordinates. */}
-      <div className="relative w-full h-[400px] rounded-3xl overflow-hidden border border-white/10 bg-slate-950 flex items-center justify-center shadow-2xl">
-        <div className="absolute left-5 top-5 z-20 rounded-full border border-amber-300/30 bg-amber-500/15 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-amber-100">
-          Mapa demo · rutas y marcadores simulados
-        </div>
-        {/* Map Background grid/gradient */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:32px_32px]"></div>
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(6,182,212,0.1),transparent_70%)]"></div>
-
-        {/* Simulated routes */}
-        <svg className="absolute inset-0 w-full h-full opacity-40" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-          <path d="M 10%,80% C 30%,50% 60%,90% 90%,30%" fill="none" stroke="url(#cyan-gradient)" strokeWidth="2" strokeDasharray="4 6" className="animate-pulse" />
-          <path d="M 20%,20% C 40%,10% 70%,50% 80%,80%" fill="none" stroke="url(#cyan-gradient)" strokeWidth="1.5" strokeDasharray="3 5" className="animate-pulse" style={{ animationDelay: '1s' }} />
-          <defs>
-            <linearGradient id="cyan-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#22d3ee" stopOpacity="0" />
-              <stop offset="50%" stopColor="#22d3ee" stopOpacity="1" />
-              <stop offset="100%" stopColor="#22d3ee" stopOpacity="0" />
-            </linearGradient>
-          </defs>
-        </svg>
-
-        {/* Animated Pings/Markers */}
-        <div className="absolute top-[30%] left-[20%] flex items-center justify-center">
-          <div className="absolute h-12 w-12 rounded-full bg-cyan-400/20 animate-ping"></div>
-          <div className="h-3 w-3 rounded-full bg-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.8)]"></div>
-          <div className="absolute -top-8 bg-slate-900/80 backdrop-blur-sm border border-cyan-500/30 text-cyan-400 text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap">
-            HUB DEMO
-          </div>
-          <Truck className="absolute -top-3 text-cyan-300 h-4 w-4" />
-        </div>
-
-        <div className="absolute top-[80%] left-[80%] flex items-center justify-center">
-          <div className="absolute h-10 w-10 rounded-full bg-emerald-400/20 animate-ping" style={{ animationDelay: '1.5s' }}></div>
-          <div className="h-3 w-3 rounded-full bg-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.8)]"></div>
-          <div className="absolute -top-8 bg-slate-900/80 backdrop-blur-sm border border-emerald-500/30 text-emerald-400 text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap">
-            DESTINO DEMO
-          </div>
-          <MapPin className="absolute -top-3 text-emerald-300 h-4 w-4" />
-        </div>
-
-        <div className="absolute top-[50%] left-[60%] flex items-center justify-center">
-          <div className="absolute h-16 w-16 rounded-full bg-blue-400/10 animate-ping" style={{ animationDelay: '0.8s' }}></div>
-          <div className="h-2.5 w-2.5 rounded-full bg-blue-400 shadow-[0_0_15px_rgba(96,165,250,0.8)]"></div>
-          <Navigation className="absolute -top-3 text-blue-300 h-3.5 w-3.5" />
-        </div>
-
-        <div className="absolute top-[20%] left-[70%] flex items-center justify-center">
-          <div className="absolute h-14 w-14 rounded-full bg-rose-500/20 animate-ping" style={{ animationDelay: '0.2s' }}></div>
-          <div className="h-3.5 w-3.5 rounded-full bg-rose-500 shadow-[0_0_20px_rgba(244,63,94,0.8)]"></div>
-          <div className="absolute -top-8 bg-slate-900/80 backdrop-blur-sm border border-rose-500/40 text-rose-400 text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap">
-            ALERTA DEMO
-          </div>
-          <ShieldAlert className="absolute -top-4 text-rose-400 h-5 w-5" />
-        </div>
-
-        {/* Glassmorphic Overlay Box */}
-        <div className="absolute bottom-6 left-6 right-6 md:left-auto md:right-8 md:w-72 rounded-2xl bg-slate-950/70 backdrop-blur-xl border border-white/10 p-5 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="relative flex h-2.5 w-2.5">
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500"></span>
+      {/* The API summary has counts but no shipment coordinates. Render a process model, not a fake map. */}
+      <section
+        className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-950 p-5 shadow-2xl md:p-8"
+        aria-labelledby="logistics-process-title"
+        data-logistics-visual="non-geographic-process"
+      >
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),transparent_38%),radial-gradient(circle_at_bottom_right,rgba(52,211,153,0.08),transparent_34%)]" />
+        <div className="relative grid gap-7 xl:grid-cols-[minmax(0,1fr)_19rem]">
+          <div>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <span className="inline-flex rounded-full border border-cyan-300/25 bg-cyan-400/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-cyan-100">
+                  Modelo de proceso · no geográfico
+                </span>
+                <h2 id="logistics-process-title" className="mt-4 text-2xl font-semibold tracking-tight text-white md:text-3xl">
+                  Cadena operativa declarada
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+                  La API actual no entrega coordenadas de los envíos. Esta secuencia explica el flujo de trabajo sin inventar mapas, recorridos ni ubicaciones.
+                </p>
+              </div>
+              <span className="rounded-xl border border-amber-300/20 bg-amber-500/10 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-amber-100">
+                Sin telemetría geográfica
+              </span>
             </div>
-            <div>
-              <h3 className="text-sm font-semibold text-white tracking-wide uppercase">Network preview</h3>
-              <p className="mt-0.5 text-[9px] font-black uppercase tracking-wider text-cyan-200">{sourceCopy.badge}</p>
-            </div>
+
+            <ol className="mt-7 grid gap-3 md:grid-cols-4" aria-label="Etapas del proceso logístico declarado">
+              <li className="relative rounded-2xl border border-cyan-300/20 bg-cyan-400/[0.07] p-4 md:after:absolute md:after:-right-3 md:after:top-1/2 md:after:z-10 md:after:-translate-y-1/2 md:after:text-lg md:after:font-black md:after:text-cyan-300 md:after:content-['→']">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">01 · Registro</span>
+                  <Package className="h-5 w-5 text-cyan-300" aria-hidden="true" />
+                </div>
+                <strong className="mt-6 block text-sm text-white">Crear el envío</strong>
+                <p className="mt-2 text-xs leading-5 text-slate-400">Tenant, referencias y alcance declarados.</p>
+              </li>
+              <li className="relative rounded-2xl border border-sky-300/20 bg-sky-400/[0.07] p-4 md:after:absolute md:after:-right-3 md:after:top-1/2 md:after:z-10 md:after:-translate-y-1/2 md:after:text-lg md:after:font-black md:after:text-sky-300 md:after:content-['→']">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[10px] font-black uppercase tracking-[0.16em] text-sky-200">02 · Asignación</span>
+                  <PackageCheck className="h-5 w-5 text-sky-300" aria-hidden="true" />
+                </div>
+                <strong className="mt-6 block text-sm text-white">Vincular sellos</strong>
+                <p className="mt-2 text-xs leading-5 text-slate-400">UID y unidad logística quedan asociados.</p>
+              </li>
+              <li className="relative rounded-2xl border border-violet-300/20 bg-violet-400/[0.07] p-4 md:after:absolute md:after:-right-3 md:after:top-1/2 md:after:z-10 md:after:-translate-y-1/2 md:after:text-lg md:after:font-black md:after:text-violet-300 md:after:content-['→']">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[10px] font-black uppercase tracking-[0.16em] text-violet-200">03 · Traspaso</span>
+                  <Truck className="h-5 w-5 text-violet-300" aria-hidden="true" />
+                </div>
+                <strong className="mt-6 block text-sm text-white">Registrar el handoff</strong>
+                <p className="mt-2 text-xs leading-5 text-slate-400">El operador documenta el evento reportado.</p>
+              </li>
+              <li className="rounded-2xl border border-emerald-300/20 bg-emerald-400/[0.07] p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-200">04 · Recepción</span>
+                  <ShieldCheck className="h-5 w-5 text-emerald-300" aria-hidden="true" />
+                </div>
+                <strong className="mt-6 block text-sm text-white">Cerrar la entrega</strong>
+                <p className="mt-2 text-xs leading-5 text-slate-400">La recepción queda registrada, no probada físicamente.</p>
+              </li>
+            </ol>
           </div>
-          <p className="mb-4 text-[10px] leading-4 text-slate-400">{sourceCopy.detail}</p>
-          <div className="space-y-4 text-xs font-medium text-slate-300">
-            <div className="flex justify-between items-center">
-              <span className="flex items-center gap-2"><Activity className="h-3.5 w-3.5 text-cyan-400" /> In-transit records</span>
-              <span className="font-mono text-sm text-cyan-100">{stats?.in_transit ?? "—"}</span>
+
+          <aside className="rounded-2xl border border-white/10 bg-slate-900/70 p-5" aria-label="Procedencia y métricas operativas">
+            <div className="flex items-center gap-3">
+              <span className="h-2.5 w-2.5 rounded-full bg-cyan-400" aria-hidden="true" />
+              <div>
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-white">Resumen operativo</h3>
+                <p className="mt-0.5 text-[9px] font-black uppercase tracking-wider text-cyan-200">{sourceCopy.badge}</p>
+              </div>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="flex items-center gap-2"><Zap className="h-3.5 w-3.5 text-emerald-400" /> Delivered records</span>
-              <span className="font-mono text-sm text-emerald-100">{stats?.delivered ?? "—"}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="flex items-center gap-2"><ShieldAlert className="h-3.5 w-3.5 text-rose-400" /> Alert records</span>
-              <span className="font-mono text-sm text-rose-100">{stats?.alerts ?? "—"}</span>
-            </div>
-          </div>
+            <p className="mt-4 text-[11px] leading-5 text-slate-400">{sourceCopy.detail}</p>
+            <dl className="mt-5 space-y-4 text-xs font-medium text-slate-300">
+              <div className="flex items-center justify-between gap-3">
+                <dt className="flex items-center gap-2"><Activity className="h-3.5 w-3.5 text-cyan-400" aria-hidden="true" /> In-transit records</dt>
+                <dd className="font-mono text-sm text-cyan-100">{stats?.in_transit ?? "—"}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="flex items-center gap-2"><Zap className="h-3.5 w-3.5 text-emerald-400" aria-hidden="true" /> Delivered records</dt>
+                <dd className="font-mono text-sm text-emerald-100">{stats?.delivered ?? "—"}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="flex items-center gap-2"><ShieldAlert className="h-3.5 w-3.5 text-rose-400" aria-hidden="true" /> Alert records</dt>
+                <dd className="font-mono text-sm text-rose-100">{stats?.alerts ?? "—"}</dd>
+              </div>
+            </dl>
+          </aside>
         </div>
-      </div>
+      </section>
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-4">
         <div className="relative overflow-hidden rounded-2xl bg-slate-900/50 backdrop-blur-md border border-white/10 p-6 transition-all duration-300 hover:bg-slate-800/80 hover:shadow-lg hover:-translate-y-1 group">

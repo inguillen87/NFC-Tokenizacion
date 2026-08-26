@@ -2,9 +2,11 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { cookies } from "next/headers";
 import { ClerkProvider } from "@clerk/nextjs";
+import "maplibre-gl/dist/maplibre-gl.css";
 import "./globals.css";
 import { siteConfig } from "@product/config";
 import { ContextualHelpBot } from "../components/contextual-helpbot";
+import { PwaInstallPrompt } from "../components/pwa-install-prompt";
 import { PwaSetup } from "../components/pwa-setup";
 import { MisconfigurationBanner } from "../components/misconfiguration-banner";
 import { WalletExtensionGuard } from "../components/wallet-extension-guard";
@@ -102,10 +104,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#020617" },
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-  ],
+  themeColor: "#ffffff",
 };
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -131,7 +130,7 @@ export async function generateMetadata(): Promise<Metadata> {
     manifest: "/manifest.webmanifest",
     appleWebApp: {
       capable: true,
-      statusBarStyle: "black-translucent",
+      statusBarStyle: "default",
       title: "nexID",
     },
     formatDetection: {
@@ -200,6 +199,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       <PwaSetup />
       <WalletExtensionGuard />
       {children}
+      <div data-nav-inert><PwaInstallPrompt locale={locale} /></div>
       <ContextualHelpBot locale={locale} />
     </>
   );

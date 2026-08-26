@@ -3,6 +3,8 @@
 import React, { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import dynamic from "next/dynamic";
 import * as THREE from "three";
+import { RealGeographicMap } from "./real-geographic-map";
+import type { VectorMapPoint, VectorMapRoute } from "./premium-vector-map";
 
 function determinantAffineShim(this: { determinant?: () => number }) {
   return typeof this?.determinant === "function" ? this.determinant() : 1;
@@ -223,97 +225,6 @@ type GlobeHtmlMarker = GlobePoint & {
   markerKind: "origen" | "tap" | "riesgo" | "pasaporte" | "hotspot";
 };
 
-function encodeSvg(svg: string) {
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-}
-
-function localGlobeTexture(isLightTheme: boolean) {
-  const oceanTop = isLightTheme ? "#d8f4ff" : "#031326";
-  const oceanMid = isLightTheme ? "#5ab7e9" : "#062e52";
-  const oceanDeep = isLightTheme ? "#164293" : "#020714";
-  const grid = isLightTheme ? "rgba(15, 23, 42, .16)" : "rgba(103, 232, 249, .14)";
-  const glow = isLightTheme ? "rgba(37, 99, 235, .26)" : "rgba(34, 211, 238, .28)";
-  const city = isLightTheme ? "#fef3c7" : "#a7f3d0";
-  const horizontalLines = Array.from({ length: 13 }, (_, i) => `<path d="M0 ${80 + i * 72} H2048"/>`).join("");
-  const verticalLines = Array.from({ length: 25 }, (_, i) => `<path d="M${64 + i * 80} 0 V1024"/>`).join("");
-  const lanes = [
-    "M120 590 C420 410 760 395 1060 500 C1340 598 1660 526 1920 356",
-    "M80 410 C374 352 642 394 920 456 C1220 522 1530 474 1988 274",
-    "M418 768 C698 624 982 610 1254 690 C1478 754 1692 730 1960 642",
-    "M704 196 C884 310 980 448 1094 594 C1220 754 1390 844 1666 858",
-  ].map((d) => `<path d="${d}"/>`).join("");
-  const cityLights = [
-    [300, 330, 2.2], [390, 284, 1.5], [505, 375, 1.8], [474, 608, 1.6], [496, 714, 2.4],
-    [575, 820, 1.6], [932, 317, 2.2], [1018, 286, 1.6], [1036, 360, 2.4], [1104, 405, 1.5],
-    [1070, 548, 1.8], [1192, 573, 1.4], [1342, 343, 2.4], [1456, 384, 1.8], [1534, 468, 2.1],
-    [1620, 548, 1.6], [1722, 760, 1.9], [1845, 782, 1.5],
-  ]
-    .map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${city}" opacity=".82"/>`)
-    .join("");
-
-  return encodeSvg(`
-    <svg xmlns="http://www.w3.org/2000/svg" width="2048" height="1024" viewBox="0 0 2048 1024">
-      <defs>
-        <linearGradient id="ocean" x1="0" x2="1" y1="0" y2="1">
-          <stop offset="0" stop-color="${oceanTop}"/>
-          <stop offset=".48" stop-color="${oceanMid}"/>
-          <stop offset="1" stop-color="${oceanDeep}"/>
-        </linearGradient>
-        <radialGradient id="light" cx=".36" cy=".24" r=".78">
-          <stop offset="0" stop-color="white" stop-opacity=".38"/>
-          <stop offset=".36" stop-color="${glow}" stop-opacity=".46"/>
-          <stop offset="1" stop-color="black" stop-opacity=".18"/>
-        </radialGradient>
-        <filter id="soft"><feGaussianBlur stdDeviation="4"/></filter>
-        <filter id="city-glow"><feGaussianBlur stdDeviation="3"/></filter>
-      </defs>
-      <rect width="2048" height="1024" fill="url(#ocean)"/>
-      <g opacity=".42" stroke="${grid}" stroke-width="2" fill="none">${horizontalLines}${verticalLines}</g>
-      <g fill="none" stroke="${isLightTheme ? "rgba(255,255,255,.28)" : "rgba(125,245,255,.22)"}" stroke-width="3" stroke-linecap="round" opacity=".42" filter="url(#soft)">${lanes}</g>
-      <g fill="none" stroke="${isLightTheme ? "rgba(20,184,166,.28)" : "rgba(45,212,191,.2)"}" stroke-width="1.4" stroke-linecap="round" stroke-dasharray="12 18" opacity=".72">${lanes}</g>
-      <g opacity=".5" filter="url(#city-glow)">
-        ${cityLights}
-      </g>
-      <g opacity=".88">
-        ${cityLights}
-      </g>
-      <rect width="2048" height="1024" fill="url(#light)"/>
-    </svg>
-  `);
-}
-
-function localGlobeBumpTexture(isLightTheme: boolean) {
-  const base = isLightTheme ? "#5b6f8d" : "#141c2e";
-  const relief = isLightTheme ? "#f1f5f9" : "#cbd5e1";
-  const shadow = isLightTheme ? "#23324c" : "#020617";
-  const horizontalLines = Array.from({ length: 18 }, (_, i) => `<path d="M0 ${40 + i * 56} H2048"/>`).join("");
-  const ridges = [
-    "M210 304c86-52 225-52 340 4",
-    "M430 620c86 60 111 179 50 284",
-    "M705 282c150-86 343-73 505 16",
-    "M945 540c-92 41-162 112-219 202",
-    "M1220 337c148-75 333-54 492 58",
-    "M1508 530c84-32 182 18 228 88",
-  ]
-    .map((d) => `<path d="${d}"/>`)
-    .join("");
-
-  return encodeSvg(`
-    <svg xmlns="http://www.w3.org/2000/svg" width="2048" height="1024" viewBox="0 0 2048 1024">
-      <rect width="2048" height="1024" fill="${base}"/>
-      <g stroke="${shadow}" stroke-width="4" opacity=".45" fill="none">${horizontalLines}</g>
-      <g stroke="${relief}" stroke-width="18" stroke-linecap="round" opacity=".34" fill="none">${ridges}</g>
-      <g stroke="${shadow}" stroke-width="8" stroke-linecap="round" opacity=".38" fill="none" transform="translate(8 10)">${ridges}</g>
-      <g fill="${relief}" opacity=".3">
-        <ellipse cx="310" cy="320" rx="120" ry="58"/>
-        <ellipse cx="920" cy="330" rx="170" ry="70"/>
-        <ellipse cx="1320" cy="392" rx="190" ry="82"/>
-        <ellipse cx="1688" cy="730" rx="118" ry="62"/>
-      </g>
-    </svg>
-  `);
-}
-
 function rgbaFromHex(hex: string, alpha: number) {
   const clean = hex.replace("#", "");
   const value = Number.parseInt(clean.length === 3 ? clean.split("").map((char) => char + char).join("") : clean, 16);
@@ -324,13 +235,13 @@ function rgbaFromHex(hex: string, alpha: number) {
 }
 
 function pointWeight(point: GlobePoint) {
-  return Math.max(1, Math.min(16, Math.round((point.scans || 1) / 160) + (point.risk ? 3 : 0)));
+  return Math.max(1, Math.min(16, 1 + Math.log10(Math.max(1, point.scans || 1)) * 5));
 }
 
 function hexHeatColor(weight: number, alpha = 0.88) {
-  if (weight >= 12) return `rgba(248, 113, 113, ${alpha})`;
-  if (weight >= 7) return `rgba(251, 191, 36, ${alpha})`;
-  if (weight >= 4) return `rgba(163, 230, 53, ${alpha})`;
+  if (weight >= 13) return `rgba(109, 40, 217, ${alpha})`;
+  if (weight >= 8) return `rgba(37, 99, 235, ${alpha})`;
+  if (weight >= 3) return `rgba(15, 118, 110, ${alpha})`;
   return `rgba(34, 211, 238, ${alpha})`;
 }
 
@@ -564,13 +475,6 @@ function GlobeLoadingBackdrop({
   );
 }
 
-function projectPoint(lat: number, lng: number) {
-  return {
-    x: 50 + Math.max(-180, Math.min(180, lng)) / 180 * 38,
-    y: 50 - Math.max(-82, Math.min(82, lat)) / 82 * 34,
-  };
-}
-
 function pointTone(point: GlobePoint) {
   if (point.risk || point.status === "risk") return "#fb7185";
   if (point.status === "origin") return "#34d399";
@@ -604,145 +508,51 @@ function sanitizeGlobeRoute(route: GlobeRoute): GlobeRoute | null {
   return route;
 }
 
-function GlobeFallbackVisual({
+function MapLibreGlobeFallback({
   points,
   routes,
-  isLightTheme,
   className = "",
 }: {
   points: GlobePoint[];
   routes: GlobeRoute[];
-  isLightTheme: boolean;
   className?: string;
 }) {
-  const visiblePoints = points.slice(0, 10);
-  const visibleRoutes = routes.slice(0, 8);
-  const stroke = isLightTheme ? "rgba(37, 99, 235, .34)" : "rgba(34, 211, 238, .42)";
-  const primaryRoute = visibleRoutes[0];
-  const primaryFrom = primaryRoute ? closestPoint(points, primaryRoute.fromLat, primaryRoute.fromLng) : null;
-  const primaryTo = primaryRoute ? closestPoint(points, primaryRoute.toLat, primaryRoute.toLng) : null;
-  const primaryKm = primaryRoute ? haversineKm(primaryRoute.fromLat, primaryRoute.fromLng, primaryRoute.toLat, primaryRoute.toLng) : 0;
+  const mapPoints = points.map<VectorMapPoint>((point, index) => ({
+    id: `globe-fallback-${point.city}-${point.lat.toFixed(4)}-${point.lng.toFixed(4)}-${index}`,
+    label: point.city,
+    sublabel: point.country,
+    lat: point.lat,
+    lng: point.lng,
+    scans: Math.max(0, point.scans || 0),
+    risk: Math.max(0, point.risk || 0),
+    tone: point.risk || point.status === "risk" ? "risk" : index === 0 ? "origin" : "hub",
+    evidence: point.vertical || "Ubicacion reportada",
+  }));
+  const mapRoutes = routes.map<VectorMapRoute>((route, index) => ({
+    id: `globe-fallback-route-${index}`,
+    fromLat: route.fromLat,
+    fromLng: route.fromLng,
+    toLat: route.toLat,
+    toLng: route.toLng,
+    label: route.label || "Relacion reportada",
+    tone: route.tone,
+    evidence: "Relacion declarada; no prueba un recorrido fisico",
+  }));
 
   return (
-    <div className={`absolute inset-0 z-0 grid place-items-center overflow-hidden rounded-2xl ${className}`} aria-hidden="true">
-      <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(8,47,73,.48),rgba(2,6,23,.74)),radial-gradient(circle_at_28%_24%,rgba(34,211,238,.18),transparent_34%),radial-gradient(circle_at_72%_72%,rgba(52,211,153,.13),transparent_36%)]" />
-      <div className="absolute inset-x-8 top-1/2 h-px bg-gradient-to-r from-transparent via-cyan-200/24 to-transparent" />
-      <div className="absolute left-1/2 top-8 h-[78%] w-px bg-gradient-to-b from-transparent via-cyan-200/14 to-transparent" />
-      <svg className="relative h-[84%] w-[84%] overflow-visible opacity-95" viewBox="0 0 100 100">
-        <defs>
-          <linearGradient id="nexid-fallback-route" x1="0" x2="1">
-            <stop offset="0%" stopColor="#22d3ee" stopOpacity=".05" />
-            <stop offset="52%" stopColor="#67e8f9" stopOpacity=".94" />
-            <stop offset="100%" stopColor="#34d399" stopOpacity=".05" />
-          </linearGradient>
-          <linearGradient id="nexid-fallback-route-warn" x1="0" x2="1">
-            <stop offset="0%" stopColor="#fb7185" stopOpacity=".08" />
-            <stop offset="54%" stopColor="#facc15" stopOpacity=".94" />
-            <stop offset="100%" stopColor="#fb7185" stopOpacity=".08" />
-          </linearGradient>
-          <filter id="nexid-fallback-soft-glow">
-            <feGaussianBlur stdDeviation="1.7" />
-          </filter>
-        </defs>
-        <g opacity=".34" stroke={stroke} strokeWidth=".34">
-          {[18, 31, 44, 57, 70, 83].map((x) => (
-            <path key={`mesh-x-${x}`} d={`M${x} 8 V92`} />
-          ))}
-          {[18, 31, 44, 57, 70, 83].map((y) => (
-            <path key={`mesh-y-${y}`} d={`M8 ${y} H92`} />
-          ))}
-        </g>
-        <g opacity=".24" fill="none" stroke="#67e8f9" strokeWidth=".45">
-          <path d="M14 78 C27 56 36 45 53 39 C69 34 78 26 88 14" />
-          <path d="M12 44 C25 31 44 28 58 33 C73 38 82 51 91 70" />
-          <path d="M25 88 C34 72 48 64 63 61 C75 58 84 50 92 39" />
-        </g>
-        {visibleRoutes.map((route, index) => {
-          const from = projectPoint(route.fromLat, route.fromLng);
-          const to = projectPoint(route.toLat, route.toLng);
-          const cx = (from.x + to.x) / 2;
-          const cy = Math.min(from.y, to.y) - 10 - (index % 3) * 2;
-          return (
-            <path
-              key={`${route.label || "route"}-${index}`}
-              d={`M${from.x.toFixed(2)} ${from.y.toFixed(2)} Q${cx.toFixed(2)} ${cy.toFixed(2)} ${to.x.toFixed(2)} ${to.y.toFixed(2)}`}
-              fill="none"
-              stroke={route.tone === "warn" ? "url(#nexid-fallback-route-warn)" : "url(#nexid-fallback-route)"}
-              strokeWidth={route.tone === "warn" ? 1.05 : 0.82}
-              strokeLinecap="round"
-              strokeDasharray="3 3"
-            />
-          );
-        })}
-        <g opacity=".28" filter="url(#nexid-fallback-soft-glow)">
-          {visiblePoints.map((point, index) => {
-            const pos = projectPoint(point.lat, point.lng);
-            const color = pointTone(point);
-            return <circle key={`${point.city}-glow-${index}`} cx={pos.x} cy={pos.y} r="7.2" fill={color} />;
-          })}
-        </g>
-        {visiblePoints.map((point, index) => {
-          const pos = projectPoint(point.lat, point.lng);
-          const color = pointTone(point);
-          const radius = point.risk || point.status === "risk" ? 1.9 : 1.45;
-          return (
-            <g key={`${point.city}-${index}`}>
-              <circle cx={pos.x} cy={pos.y} r={radius + 2.6} fill={color} opacity=".12" />
-              <circle cx={pos.x} cy={pos.y} r={radius} fill={color} opacity=".95" />
-              <circle cx={pos.x} cy={pos.y} r={radius + 4.2} fill="none" stroke={color} strokeWidth=".42" opacity=".34" />
-            </g>
-          );
-        })}
-        {visiblePoints.slice(0, 5).map((point, index) => {
-          const pos = projectPoint(point.lat, point.lng);
-          const country = displayCountryName(inferCountryName(point));
-          const anchor = pos.x > 68 ? "end" : "start";
-          const dx = pos.x > 68 ? -3.2 : 3.2;
-          return (
-            <g key={`${point.city}-label-${index}`} opacity=".92">
-              <text
-                x={pos.x + dx}
-                y={pos.y - 1.2}
-                textAnchor={anchor}
-                fill="#e0f2fe"
-                fontSize="3.1"
-                fontWeight="900"
-                letterSpacing=".02em"
-              >
-                {point.city}
-              </text>
-              {country ? (
-                <text
-                  x={pos.x + dx}
-                  y={pos.y + 2.5}
-                  textAnchor={anchor}
-                  fill="#67e8f9"
-                  fontSize="2"
-                  fontWeight="800"
-                  opacity=".72"
-                >
-                  {country}
-                </text>
-              ) : null}
-            </g>
-          );
-        })}
-      </svg>
-      {primaryRoute ? (
-        <div
-          className="absolute left-4 top-4 z-10 max-w-[min(88%,18rem)] rounded-2xl border border-cyan-200/18 bg-slate-950/72 px-3 py-2 text-left shadow-[0_16px_46px_rgba(0,0,0,.28)] backdrop-blur-xl"
-          style={{ maxWidth: "min(88%, 18rem)" }}
-        >
-          <p className="text-[0.56rem] font-black uppercase tracking-[0.2em] text-cyan-200">Ruta activa</p>
-          <strong className="mt-1 block truncate text-sm font-black leading-tight text-white">
-            {primaryFrom?.city || "Origen"} → {primaryTo?.city || "Tap"}
-          </strong>
-          <span className="mt-1 block truncate text-[0.66rem] font-bold text-slate-300">
-            {routeTitle(primaryRoute, points)} · {formatKm(primaryKm)}
-          </span>
-        </div>
-      ) : null}
-      <div className="absolute bottom-5 left-1/2 h-8 w-[62%] -translate-x-1/2 rounded-full bg-cyan-400/8 blur-xl" />
+    <div className={`absolute inset-0 z-0 overflow-hidden rounded-2xl ${className}`} data-globe-fallback="maplibre">
+      <RealGeographicMap
+        points={mapPoints}
+        routes={mapRoutes}
+        density="route"
+        chrome="minimal"
+        title="Mapa geografico alternativo"
+        subtitle="Ubicaciones y relaciones reportadas"
+        caption="MapLibre con cartografia real. Las lineas muestran relaciones declaradas, no recorridos fisicos."
+        className="h-full rounded-none border-0 shadow-none"
+        heightClassName="h-full"
+        ariaLabel="Mapa geografico alternativo con ubicaciones reportadas"
+      />
     </div>
   );
 }
@@ -956,14 +766,14 @@ export function Globe3dMap({
   const renderHeight = Math.min(height, Math.max(minRenderHeight, aspectHeight));
   const compactHud = renderWidth < 360 || height <= 260 || (height <= 320 && renderWidth < 460);
   const routePreviewOnly = mode === "preview" || (mode === "auto" && (renderWidth < 300 || height <= 190));
-  const globeImageUrl = useMemo(() => PROFESSIONAL_GLOBE_IMAGE_URL || localGlobeTexture(isLightTheme), [isLightTheme]);
-  const globeBumpUrl = useMemo(() => PROFESSIONAL_GLOBE_BUMP_URL || localGlobeBumpTexture(isLightTheme), [isLightTheme]);
+  const globeImageUrl = PROFESSIONAL_GLOBE_IMAGE_URL;
+  const globeBumpUrl = PROFESSIONAL_GLOBE_BUMP_URL;
   const activeCountryNames = useMemo(
     () => new Set(finitePoints.map((point) => normalizeCountryName(inferCountryName(point))).filter(Boolean)),
     [finitePoints],
   );
   const hexPoints = useMemo(
-    () => finitePoints,
+    () => finitePoints.filter((point) => point.status !== "origin" && Number(point.scans || 0) > 0),
     [finitePoints],
   );
   const ringPoints = useMemo(
@@ -1290,7 +1100,7 @@ export function Globe3dMap({
         className={globeReady ? "opacity-0 pointer-events-none" : "opacity-100"}
       />
       {showFallback ? (
-        <GlobeFallbackVisual points={finitePoints} routes={finiteRoutes} isLightTheme={isLightTheme} />
+        <MapLibreGlobeFallback points={finitePoints} routes={finiteRoutes} />
       ) : null}
 
       {hoverCard ? (
@@ -1377,8 +1187,8 @@ export function Globe3dMap({
         onPolygonHover={(feature: any) => setCountryHover(feature || null)}
         polygonsTransitionDuration={900}
 
-        // Soft heat surface over verified tap density. This is native globe.gl
-        // heatmap rendering, not a static background illustration.
+        // Soft heat surface over the reported scan volume supplied to this
+        // component. Risk remains a separate semantic layer.
         heatmapsData={heatmapLayers}
         heatmapPoints="points"
         heatmapPointLat="lat"
@@ -1389,9 +1199,9 @@ export function Globe3dMap({
         heatmapBaseAltitude={0.004}
         heatmapTopAltitude={compactHud ? 0.035 : 0.065}
         heatmapColorFn={() => (t: number) => {
-          if (t > 0.78) return `rgba(248, 113, 113, ${Math.min(0.95, t)})`;
-          if (t > 0.52) return `rgba(251, 191, 36, ${Math.min(0.9, t)})`;
-          if (t > 0.28) return `rgba(163, 230, 53, ${Math.min(0.82, t + 0.18)})`;
+          if (t > 0.78) return `rgba(109, 40, 217, ${Math.min(0.95, t)})`;
+          if (t > 0.52) return `rgba(37, 99, 235, ${Math.min(0.9, t)})`;
+          if (t > 0.28) return `rgba(15, 118, 110, ${Math.min(0.82, t + 0.18)})`;
           return `rgba(34, 211, 238, ${Math.min(0.7, t + 0.18)})`;
         }}
         heatmapsTransitionDuration={900}
@@ -1409,12 +1219,12 @@ export function Globe3dMap({
           )
         }
         pointResolution={18}
-        pointLabel={(p: any) => `<b>${p.city}</b>${inferCountryName(p) ? `<br/>${displayCountryName(inferCountryName(p))}` : ""}${p.scans ? `<br/>${p.scans} taps` : ""}`}
+        pointLabel={(p: any) => `<b>${p.city}</b>${inferCountryName(p) ? `<br/>${displayCountryName(inferCountryName(p))}` : ""}${p.scans ? `<br/>${p.scans} lecturas reportadas` : ""}`}
         onPointHover={(point: any) => setPointHover(point || null)}
         pointsMerge={false}
         pointsTransitionDuration={900}
 
-        // Density layer: real-time taps are aggregated into H3-like prisms.
+        // Spatial aggregation layer for the points supplied by the caller.
         hexBinPointsData={hexPoints}
         hexBinPointLat="lat"
         hexBinPointLng="lng"
@@ -1426,7 +1236,7 @@ export function Globe3dMap({
         hexTopColor={(hex: any) => hexHeatColor(hex.sumWeight || 1, 0.78)}
         hexSideColor={(hex: any) => hexHeatColor(hex.sumWeight || 1, 0.32)}
         hexTransitionDuration={900}
-        hexLabel={(hex: any) => `${hex.points?.length || 0} nodos<br/>peso comercial ${hex.sumWeight || 1}`}
+        hexLabel={(hex: any) => `${hex.points?.length || 0} ubicaciones<br/>intensidad acumulada ${Math.round(hex.sumWeight || 1)}`}
         
         // Labels
         labelsData={visibleLabelPoints}
@@ -1501,7 +1311,7 @@ export function Globe3dMap({
         onArcHover={(route: any) => setRouteHover(route || null)}
         arcsTransitionDuration={900}
 
-        // Native globe.gl pulse layer for live taps.
+        // Native globe.gl pulse layer for reported locations.
         ringsData={ringPoints}
         ringLat="lat"
         ringLng="lng"
@@ -1513,6 +1323,20 @@ export function Globe3dMap({
           ringResolution={compactHud ? 48 : 96}
           />
         </GlobeRuntimeBoundary>
+      ) : null}
+      {!compactHud && finitePoints.length ? (
+        <div
+          className={`absolute bottom-4 right-4 z-20 grid min-w-36 gap-1.5 rounded-xl border px-3 py-2 text-[0.62rem] font-bold shadow-[0_14px_40px_rgba(0,0,0,.2)] backdrop-blur-xl ${isLightTheme ? "border-cyan-800/15 bg-white/88 text-slate-700" : "border-white/10 bg-slate-950/72 text-slate-200"}`}
+          aria-label="Escala estable de intensidad de lecturas reportadas: 1, 10, 100 y 1000 o más. El punto rosa marca riesgo y no aumenta la intensidad."
+          data-heatmap-legend
+        >
+          <span className="uppercase tracking-[0.12em]">Intensidad de lecturas</span>
+          <i aria-hidden="true" className="h-1.5 w-full rounded-full" style={{ background: "linear-gradient(90deg,#22d3ee,#0f766e,#2563eb,#6d28d9)" }} />
+          <span className="flex justify-between"><em className="not-italic">1</em><em className="not-italic">10</em><em className="not-italic">100</em><em className="not-italic">1000+</em></span>
+          <span className="inline-flex items-center gap-1.5 border-t pt-1.5" style={{ borderColor: isLightTheme ? "rgba(15,23,42,.1)" : "rgba(255,255,255,.1)" }}>
+            <i aria-hidden="true" className="h-2 w-2 rounded-full bg-rose-500 ring-2 ring-rose-300/30" /> Riesgo separado
+          </span>
+        </div>
       ) : null}
     </div>
   );

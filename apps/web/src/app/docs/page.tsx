@@ -1,10 +1,10 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { BackLink } from "../../components/back-link";
 import { DocsIntegrationConsole, DocsSectionNavigation } from "./docs-integration-console";
 import { JsonLd } from "../../components/json-ld";
 import { productExitHref } from "../../components/product-exit-link";
 import { PublicLinkChip } from "../../components/public-link-chip";
+import { PublicSiteHeader } from "../../components/public-site-header";
 import { Card } from "@product/ui";
 import { getWebI18n } from "../../lib/locale";
 import { legacyInstitutionalVideo } from "../../lib/institutional-video";
@@ -836,16 +836,17 @@ export default async function DocsPage() {
   ];
 
   return (
-    <main className="knowledge-page-surface docs-page container-shell max-w-[100vw] space-y-8 overflow-x-hidden px-3 py-16 sm:px-4 md:px-8">
+    <>
+      <PublicSiteHeader />
+      <main data-nav-inert className="knowledge-page-surface docs-page container-shell max-w-[100vw] space-y-8 overflow-x-hidden px-3 py-16 sm:px-4 md:px-8">
       {docsSchema.map((schema) => (
         <JsonLd key={schema["@type"]} data={schema} />
       ))}
-      <BackLink />
       <header className="max-w-3xl">
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-300">
           {copy.eyebrow}
         </p>
-        <h1 className="mt-3 text-3xl font-black tracking-tight text-white md:text-5xl">
+        <h1 className="brand-editorial-gradient mt-3 text-3xl font-black tracking-tight text-white md:text-5xl">
           {copy.title}
         </h1>
         <p className="mt-4 text-base leading-7 text-slate-400">
@@ -1386,6 +1387,7 @@ export default async function DocsPage() {
       </div>
         </div>
       </div>
-    </main>
+      </main>
+    </>
   );
 }

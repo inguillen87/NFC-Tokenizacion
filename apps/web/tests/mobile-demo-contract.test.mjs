@@ -115,7 +115,11 @@ test("mobile Demo Lab lazy-loads one illustrative vertical map", async () => {
     assert.match(client, new RegExp(`\\b${vertical}: \\{ name: "Origen demo`));
   }
   assert.match(client, /const illustrativeOrigin = ILLUSTRATIVE_ORIGINS\[activeVertical\]/);
-  assert.match(client, /Mapa de demostración: el origen es declarado y el GPS no se persiste ni se adjunta al lead\./);
+  assert.match(client, /data-mobile-demo-map-truth=/);
+  assert.match(client, /Mapa ilustrativo del preview/);
+  assert.match(client, /Sin telemetría productiva/);
+  assert.match(client, /no genera un mapa de calor productivo ni se adjunta al lead/);
+  assert.doesNotMatch(client, /pending-location|illustrativeOrigin\.lat \+ 7|illustrativeOrigin\.lng \+ 16/);
   assert.doesNotMatch(client, /WINERY_HQ|distanceFromWinery|winery_origin/);
   assert.equal((client.match(/<Globe3dMap/g) ?? []).length, 1);
 });

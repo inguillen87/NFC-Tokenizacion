@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Card, SectionHeading } from "@product/ui";
-import { BackLink } from "../../components/back-link";
 import { getWebI18n } from "../../lib/locale";
 import { buildPublicPageMetadata } from "../../lib/public-page-metadata";
+import { PublicSiteHeader } from "../../components/public-site-header";
 import { ArrowRight, BadgeCheck, Database, Fingerprint, Link2, ShieldCheck, Sparkles } from "lucide-react";
 
 type StackLayer = { name: string; question: string; whatItMeans: string; sellAs: string; icon: "carrier" | "identity" | "trust" | "passport" | "rights" };
@@ -131,9 +131,10 @@ export default async function StackPage() {
   const copy = copyByLocale[locale];
 
   return (
-    <main className="container-shell space-y-8 py-16">
-      <BackLink href="/docs" />
-      <SectionHeading eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
+    <>
+      <PublicSiteHeader />
+      <main data-nav-inert className="knowledge-page-surface container-shell space-y-8 py-16">
+      <SectionHeading eyebrow={copy.eyebrow} title={copy.title} description={copy.description} level={1} titleClassName="brand-editorial-gradient" />
 
       <div className="space-y-3">
         <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
@@ -222,6 +223,7 @@ export default async function StackPage() {
       </div>
 
       <Card className="p-6 text-sm text-emerald-200">{copy.closer}</Card>
-    </main>
+      </main>
+    </>
   );
 }

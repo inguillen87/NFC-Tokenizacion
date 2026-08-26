@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { ReactNode } from "react";
 import { BadgeCheck, Bell, Gift, Home, PackageCheck, Radio, ShoppingBag, Sparkles, Store, WalletCards } from "lucide-react";
-import { BrandLockup, ThemeToggle } from "@product/ui";
+import { ThemeToggle } from "@product/ui";
+import { BrandHomeLink } from "../../../components/brand-home-link";
 import { TapAssociationBanner } from "./tap-association-banner";
 import { ConsumerLogoutButton } from "./consumer-logout-button";
 
@@ -65,10 +66,12 @@ export function PortalShell({
 
       <nav className="consumer-portal-nav sticky top-0 md:top-4 z-50 mx-auto w-full border-b border-white/10 bg-slate-950/90 backdrop-blur-xl transition-all md:my-4 md:w-[calc(100%-2rem)] md:max-w-[1480px] md:rounded-2xl md:border md:shadow-[0_18px_60px_rgba(0,0,0,0.45)]">
         <div className="flex items-center justify-between gap-3 px-4 py-3 md:px-5">
-          <Link href="/me" className="flex items-center gap-2">
-            <BrandLockup size={40} variant="ripple" theme="dark" className="consumer-portal-brand" />
-            <span className="hidden text-sm font-black tracking-tight text-white sm:block">nexID Passport</span>
-          </Link>
+          <div className="flex items-center gap-2">
+            <BrandHomeLink size={40} brandClassName="consumer-portal-brand" className="shrink-0" />
+            <Link href="/me" className="hidden min-h-11 items-center rounded-xl px-2 text-sm font-black tracking-tight text-white transition hover:text-cyan-200 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-cyan-300/35 sm:inline-flex">
+              nexID Passport
+            </Link>
+          </div>
 
           <div className="hidden min-w-0 flex-1 items-center justify-center gap-1 md:flex">
             {navItems.map((item) => (
@@ -110,7 +113,7 @@ export function PortalShell({
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(390px,0.44fr)] lg:items-end">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-300">nexID consumer network</p>
-              <h1 className="mt-3 max-w-4xl text-3xl font-black leading-[0.96] tracking-tight text-white md:text-5xl lg:text-6xl">{title}</h1>
+              <h1 className="brand-editorial-gradient mt-3 max-w-4xl text-3xl font-black leading-[0.96] tracking-tight text-white md:text-5xl lg:text-6xl">{title}</h1>
               <p className="mt-4 max-w-3xl text-sm leading-relaxed text-slate-300 md:text-base">{subtitle}</p>
             </div>
             <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">

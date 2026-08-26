@@ -993,6 +993,19 @@ html.theme-light .admin-notification-bell__badge {
   background-color: transparent !important;
 }
 
+.nexid-real-map .maplibregl-ctrl-group button,
+.nexid-real-map .maplibregl-ctrl-attrib-button {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+}
+
+.nexid-real-map .maplibregl-canvas:focus-visible {
+  outline: 3px solid #06b6d4;
+  outline-offset: -3px;
+}
+
 .maplibregl-ctrl-group button + button {
   border-top-color: rgba(255, 255, 255, 0.1) !important;
 }

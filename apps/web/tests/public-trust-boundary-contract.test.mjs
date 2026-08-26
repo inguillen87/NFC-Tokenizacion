@@ -10,13 +10,16 @@ const sdk = await readFile(new URL("../src/app/sdk/page.tsx", import.meta.url), 
 const assetBank = await readFile(new URL("../src/lib/product-asset-bank.ts", import.meta.url), "utf8");
 
 test("live demo labels NFC evidence and never invents production telemetry", () => {
-  assert.match(liveDemo, /if \(result === "VALID"\) return "NFC message valid"/);
-  assert.match(liveDemo, /source: "demo_seed_or_simulated_tap"/);
+  assert.match(liveDemo, /if \(result === "VALID"\) return locale === "en" \? "Valid NFC message"/);
+  assert.match(liveDemo, /"Mensagem NFC válida"/);
+  assert.match(liveDemo, /"Mensaje NFC válido"/);
+  assert.match(liveDemo, /source: String\(\(data as \{ source\?: unknown \}\)\.source \|\| "not_reported"\)/);
+  assert.match(liveDemo, /No artificial points or hotspots are generated/);
   assert.match(liveDemo, />N\/D<\/p>/);
-  assert.match(liveDemo, /no live device location is inferred/);
-  assert.match(liveDemo, /Source: seeded demo tenant and simulated taps/);
+  assert.match(liveDemo, /This is not live device location/);
 
   assert.doesNotMatch(liveDemo, /return "Authentic"|\b148\b|activeTenants \|\| 1/);
+  assert.doesNotMatch(liveDemo, /source: "demo_seed_or_simulated_tap"|Source: seeded demo tenant and simulated taps/);
   assert.doesNotMatch(liveDemo, /latest\?\.city \|\| "Mendoza"|latest\?\.country_code \|\| "AR"/);
 });
 

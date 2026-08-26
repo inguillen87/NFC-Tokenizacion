@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Card, SectionHeading } from "@product/ui";
-import { BackLink } from "../../components/back-link";
 import { getWebI18n } from "../../lib/locale";
 import { buildPublicPageMetadata } from "../../lib/public-page-metadata";
+import { PublicSiteHeader } from "../../components/public-site-header";
 import { ArrowRight, Briefcase, Building2, Landmark, Rocket, ShieldCheck, UserRound } from "lucide-react";
 
 type AudienceCard = {
@@ -179,9 +179,10 @@ export default async function AudiencesPage() {
   const copy = copyByLocale[locale];
 
   return (
-    <main className="container-shell space-y-8 py-16">
-      <BackLink href="/docs" />
-      <SectionHeading eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
+    <>
+      <PublicSiteHeader />
+      <main data-nav-inert className="knowledge-page-surface container-shell space-y-8 py-16">
+      <SectionHeading eyebrow={copy.eyebrow} title={copy.title} description={copy.description} level={1} titleClassName="brand-editorial-gradient" />
 
       <Card className="p-6">
         <h3 className="text-lg font-semibold text-white">{copy.intentTitle}</h3>
@@ -293,6 +294,7 @@ export default async function AudiencesPage() {
           </div>
         </Card>
       </div>
-    </main>
+      </main>
+    </>
   );
 }

@@ -1865,7 +1865,7 @@ export default async function ProofVerifierPage({ searchParams }: { searchParams
               Public proof verifier
             </div>
             <div className="space-y-4">
-              <h1 className="max-w-3xl text-4xl font-black leading-[0.98] tracking-normal text-slate-950 sm:text-6xl">
+              <h1 className="brand-editorial-gradient max-w-3xl text-4xl font-black leading-[0.98] tracking-normal text-slate-950 sm:text-6xl">
                 Prueba publica para evidencia privada.
               </h1>
               <p className="max-w-2xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">

@@ -73,9 +73,9 @@ test("landing hero uses one commercial CTA and one in-page discovery CTA", async
   assert.match(hero, /routeTitle: "RUTA DECLARADA · DEMO"/);
   assert.match(hero, /routeSubtitle: "Recorrido ilustrativo; no prueba custodia"/);
   assert.match(hero, /live: "Simulación"/);
-  assert.match(hero, /const routeLabel = isEnglish \? "Demo route" : isPortuguese \? "Rota demo" : "Ruta demo"/);
-  assert.match(hero, /const demoRouteEvidence = isEnglish \? "Simulated case" : isPortuguese \? "Caso simulado" : "Caso simulado"/);
-  assert.match(hero, /simulated route \+ simulated tap/);
+  assert.match(hero, /const routeHeadline = txt\.routeTitle === "Declared demo route"/);
+  assert.match(hero, /const evidenceCopy = routeEvidenceSentenceFromTitle\(txt\.routeTitle\)/);
+  assert.match(hero, /Escenario ilustrativo; sin evidencia de tap físico ni custodia/);
   assert.doesNotMatch(hero, /routeTitle: "RUTA VIVA"/);
   assert.doesNotMatch(hero, /RUTA DEMO VERIFICADA|Audited case|Caso auditado|demo custody \+ physical tap/);
   assert.doesNotMatch(hero, /const routeLabel = isEnglish \? "Active route"/);
@@ -116,7 +116,8 @@ test("landing hero exposes two business actions and one institutional video", as
 
   assert.ok(mobileActionsIndex > -1, "expected mobile hero actions");
   assert.ok(videoIndex > -1, "expected institutional video");
-  assert.ok(mobileActionsIndex < videoIndex, "mobile actions should appear before the institutional video");
+  assert.ok(mobileActionsIndex > videoIndex, "mobile actions should appear after the institutional video");
+  assert.match(sections, /<InstitutionalVideoPanel[\s\S]*hero-post-video-actions/);
   assert.doesNotMatch(sections, /<HeroScene|const heroStats = \[/);
   assert.match(sections, /href="\/\?contact=demo#contact-modal" className="landing-mobile-hero-actions__primary"/);
   assert.match(sections, /href="#como-funciona" className="landing-mobile-hero-actions__secondary"/);

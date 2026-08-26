@@ -1,11 +1,12 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useMemo, useState, useRef, type CSSProperties } from "react";
 import { DEMO_TENANT_SLUG } from "@product/config";
 import type { AppLocale } from "@product/config";
 import { ArrowLeft, BadgeCheck, CalendarDays, CheckCircle2, ChevronRight, Factory, Fingerprint, LockKeyhole, MapPin, PackageCheck, ShieldCheck, Smartphone, UserRound, AlertTriangle, ShoppingCart, RefreshCw, Check, Cpu, Network, QrCode, RadioTower } from "lucide-react";
-import { HeroTrustAtlasSvg } from "../../../components/hero-scene";
+import { HeroTrustNetworkDiagram } from "../../../components/hero-scene";
 import { platformVerticals } from "../../../lib/platform-verticals";
 import { ThreeDProduct } from "../../investor-snapshot/investor-snapshot-client";
 import { DemoLabThemeToggle } from "./demo-lab-hub-theme";
@@ -43,6 +44,14 @@ type Vertical =
   | "logistics"
   | "electronics"
   | "textile";
+
+const DemoPremiumVectorMap = dynamic(
+  () => import("@product/ui/premium-vector-map").then((module) => module.PremiumVectorMap),
+  {
+    ssr: false,
+    loading: () => <div className="demo-map-viewport__loading" role="status">Preparando el mapa de intensidad…</div>,
+  },
+);
 type SimulationMode = "valid" | "tamper" | "replay";
 type DemoSimulationReceipt = {
   mode: SimulationMode;
@@ -547,6 +556,8 @@ type DemoEvent = {
   country_code?: string;
   lat?: number | null;
   lng?: number | null;
+  coordinate_source?: string;
+  coordinate_accuracy_m?: number | null;
   product_name?: string;
   sku?: string;
   vertical?: string;
@@ -2610,6 +2621,209 @@ function formatDemoTapTime(value?: string, locale: AppLocale = "es-AR") {
   return locale === "en" ? `${month}/${day}, ${hour}:${minute}` : `${day}/${month}, ${hour}:${minute}`;
 }
 
+type DemoMapViewMode = "heat" | "relations";
+
+function demoMapViewportCopy(locale: AppLocale) {
+  if (locale === "en") {
+    return {
+      heat: "Heat",
+      relations: "Relations",
+      heatTitle: "Demo API event intensity",
+      heatSubtitle: "Stable event-volume scale. Risk is shown separately and does not change the intensity color.",
+      emptyTitle: "No geolocated API events yet",
+      emptyBody: "We do not fabricate hotspots. Run a demo tap or wait for the recorded/public feed, then this view will group the returned coordinates.",
+      showRelations: "View conceptual flow",
+      recorded: "Recorded demo API events",
+      public: "Public evidence feed",
+      simulated: "Simulated scenario",
+      relationCaption: "Non-geographic flow diagram. It explains functional dependencies without coordinates, physical routes or custody claims.",
+      heatCaption: "Intensity comes only from geolocated events returned by the current demo feed.",
+    };
+  }
+  if (locale === "pt-BR") {
+    return {
+      heat: "Calor",
+      relations: "Relações",
+      heatTitle: "Intensidade de eventos da API demo",
+      heatSubtitle: "Escala estável por volume de eventos. O risco aparece separado e não altera a cor da intensidade.",
+      emptyTitle: "Ainda não há eventos da API com localização",
+      emptyBody: "Não fabricamos hotspots. Execute um tap demo ou aguarde o feed registrado/público; esta vista agrupará apenas as coordenadas recebidas.",
+      showRelations: "Ver fluxo conceitual",
+      recorded: "Eventos registrados da API demo",
+      public: "Feed de evidência pública",
+      simulated: "Cenário simulado",
+      relationCaption: "Diagrama de fluxo não geográfico. Explica dependências funcionais sem coordenadas, rotas físicas ou alegações de custódia.",
+      heatCaption: "A intensidade usa somente eventos geolocalizados retornados pelo feed demo atual.",
+    };
+  }
+  return {
+    heat: "Calor",
+    relations: "Relaciones",
+    heatTitle: "Intensidad de eventos de la API demo",
+    heatSubtitle: "Escala estable por volumen de eventos. El riesgo se muestra aparte y no altera el color de intensidad.",
+    emptyTitle: "Todavía no hay eventos de la API con ubicación",
+    emptyBody: "No fabricamos zonas de calor. Ejecutá un tap demo o esperá el feed registrado/público; esta vista agrupará únicamente las coordenadas recibidas.",
+    showRelations: "Ver flujo conceptual",
+    recorded: "Eventos registrados de la API demo",
+    public: "Feed de evidencia pública",
+    simulated: "Escenario simulado",
+    relationCaption: "Diagrama de flujo no geográfico. Explica dependencias funcionales sin coordenadas, recorridos físicos ni claims de custodia.",
+    heatCaption: "La intensidad usa únicamente eventos geolocalizados devueltos por el feed demo actual.",
+  };
+}
+
+function aggregateDemoHeatPoints(points: VectorMapPoint[]) {
+  const buckets = new Map<string, VectorMapPoint>();
+  points.forEach((point) => {
+    if (point.id === "origin") return;
+    const reportedScans = Number(point.scans || 0);
+    if (!(reportedScans > 0)) return;
+    const key = `${point.lat.toFixed(3)}:${point.lng.toFixed(3)}:${point.label}`;
+    const current = buckets.get(key);
+    if (!current) {
+      buckets.set(key, {
+        ...point,
+        id: `heat-${key.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}`,
+        scans: reportedScans,
+        risk: Math.max(0, point.risk || 0),
+        stageLabel: "Evento API",
+      });
+      return;
+    }
+    current.scans = (current.scans || 0) + reportedScans;
+    current.risk = (current.risk || 0) + Math.max(0, point.risk || 0);
+    if (point.lastSeen && (!current.lastSeen || point.lastSeen > current.lastSeen)) current.lastSeen = point.lastSeen;
+  });
+  return [...buckets.values()];
+}
+
+function demoCoordinateEvidence(event: DemoEvent, locale: AppLocale) {
+  const source = String(event.coordinate_source || "not_reported").trim().toLowerCase();
+  const accuracy = Number(event.coordinate_accuracy_m);
+  if (source === "city_centroid") {
+    return locale === "en" ? "Approximate city centroid" : locale === "pt-BR" ? "Centro aproximado da cidade" : "Centro aproximado de la ciudad";
+  }
+  if (Number.isFinite(accuracy) && accuracy >= 0) {
+    return locale === "en" ? `Reported coordinate · ±${Math.round(accuracy)} m` : locale === "pt-BR" ? `Coordenada reportada · ±${Math.round(accuracy)} m` : `Coordenada reportada · ±${Math.round(accuracy)} m`;
+  }
+  if (source === "not_reported") {
+    return locale === "en" ? "Location source not reported" : locale === "pt-BR" ? "Fonte de localização não informada" : "Fuente de ubicación no informada";
+  }
+  return locale === "en" ? `Reported source: ${source}` : locale === "pt-BR" ? `Fonte reportada: ${source}` : `Fuente reportada: ${source}`;
+}
+
+function toDemoApiHeatPoints(events: DemoEvent[], feedTruthState: DemoFeedTruthState, locale: AppLocale): VectorMapPoint[] {
+  return events.flatMap((event, index) => {
+    const lat = toFiniteNumber(event.lat);
+    const lng = toFiniteNumber(event.lng);
+    if (lat === null || lng === null) return [];
+    const risk = /REPLAY|DUPLICATE|TAMPER|INVALID|REVOKED|SUSPICIOUS|FAIL/i.test(event.result || "") ? 1 : 0;
+    const locationEvidence = demoCoordinateEvidence(event, locale);
+    return [{
+      id: `api-event-${event.id || event.created_at || index}`,
+      label: event.city || (locale === "en" ? "Reported location" : locale === "pt-BR" ? "Local reportado" : "Ubicación reportada"),
+      sublabel: `${event.country_code || "--"} · ${locationEvidence}`,
+      lat,
+      lng,
+      scans: 1,
+      risk,
+      tone: risk ? ("risk" as const) : ("tap" as const),
+      stageLabel: feedTruthState === "public_evidence"
+        ? locale === "en" ? "Public evidence" : locale === "pt-BR" ? "Evidência pública" : "Evidencia pública"
+        : locale === "en" ? "Recorded API event" : locale === "pt-BR" ? "Evento registrado da API" : "Evento registrado de la API",
+      evidence: `${formatDemoEventResult(event.result, feedTruthState, locale)} · ${locationEvidence}`,
+      lastSeen: event.created_at,
+    }];
+  });
+}
+
+function DemoMapViewport({
+  points,
+  heatSourcePoints,
+  routes,
+  feedTruthState,
+  locale,
+  className = "",
+}: {
+  points: VectorMapPoint[];
+  heatSourcePoints: VectorMapPoint[];
+  routes: VectorMapRoute[];
+  feedTruthState: DemoFeedTruthState;
+  locale: AppLocale;
+  className?: string;
+}) {
+  const [viewMode, setViewMode] = useState<DemoMapViewMode>("heat");
+  const copy = demoMapViewportCopy(locale);
+  const feedBacked = feedTruthState === "recorded_events" || feedTruthState === "public_evidence";
+  const heatPoints = useMemo(
+    () => feedBacked ? aggregateDemoHeatPoints(heatSourcePoints) : [],
+    [feedBacked, heatSourcePoints],
+  );
+  const truthLabel = feedTruthState === "public_evidence"
+    ? copy.public
+    : feedTruthState === "recorded_events"
+      ? copy.recorded
+      : copy.simulated;
+
+  return (
+    <section
+      className={`demo-map-viewport ${className}`}
+      data-demo-map-mode={viewMode}
+      data-demo-map-truth={feedTruthState}
+      aria-label={truthLabel}
+    >
+      <div className="demo-map-viewport__toolbar">
+        <span className={`demo-map-viewport__truth demo-map-viewport__truth--${feedTruthState}`}>
+          <i aria-hidden="true" />
+          {truthLabel}
+        </span>
+        <div className="demo-map-viewport__switch" aria-label={locale === "en" ? "Map view" : locale === "pt-BR" ? "Vista do mapa" : "Vista del mapa"}>
+          <button type="button" aria-pressed={viewMode === "heat"} onClick={() => setViewMode("heat")}>
+            <RadioTower aria-hidden="true" />
+            {copy.heat}
+          </button>
+          <button type="button" aria-pressed={viewMode === "relations"} onClick={() => setViewMode("relations")}>
+            <Network aria-hidden="true" />
+            {copy.relations}
+          </button>
+        </div>
+      </div>
+
+      {viewMode === "heat" ? (
+        heatPoints.length ? (
+          <DemoPremiumVectorMap
+            title={copy.heatTitle}
+            subtitle={copy.heatSubtitle}
+            caption={copy.heatCaption}
+            points={heatPoints}
+            density="heat"
+            chrome="compact"
+            heightClassName="h-full min-h-[20rem]"
+            className="demo-map-viewport__heat"
+          />
+        ) : (
+          <div className="demo-map-viewport__empty" role="status" aria-live="polite">
+            <span aria-hidden="true"><MapPin /></span>
+            <div>
+              <strong>{copy.emptyTitle}</strong>
+              <p>{copy.emptyBody}</p>
+            </div>
+            <button type="button" onClick={() => setViewMode("relations")}>{copy.showRelations}</button>
+          </div>
+        )
+      ) : (
+        <div className="demo-map-viewport__relations" role="img" aria-label={`${truthLabel}. ${copy.relationCaption}`}>
+          <HeroTrustNetworkDiagram points={points} routes={routes} selectedPointId="tap" />
+        </div>
+      )}
+
+      <p className="demo-map-viewport__caption">
+        {viewMode === "heat" ? copy.heatCaption : copy.relationCaption}
+      </p>
+    </section>
+  );
+}
+
 function DemoLiveOpsMap({
   points,
   liveEvents,
@@ -2637,6 +2851,7 @@ function DemoLiveOpsMap({
 
   const originPoint = visiblePoints[0];
   const atlasPoints = toDemoAtlasPoints(visiblePoints, labels);
+  const apiHeatPoints = toDemoApiHeatPoints(liveEvents, feedTruthState, locale);
   const atlasRoutes: VectorMapRoute[] = originPoint
     ? visiblePoints.slice(1).map((p, index) => ({
         id: `studio-route-${demoAtlasPointId(p, index + 1)}`,
@@ -2657,14 +2872,14 @@ function DemoLiveOpsMap({
         <p>{truthCopy.mapTitle}</p>
         <span><i /> {totalScans} {locale === "en" ? "recorded events" : locale === "pt-BR" ? "eventos registrados" : "eventos registrados"}</span>
       </div>
-      <div className={`demo-lab-mini-map demo-lab-mini-map--atlas demo-lab-mini-map--${vertical} flex justify-center items-center relative overflow-hidden`} aria-label={`${truthCopy.mapTitle}: ${LOCATIONS.origin.city} a ${destination.city}`}>
-        <HeroTrustAtlasSvg points={atlasPoints} routes={atlasRoutes} selectedPointId="tap" />
-        <div className="demo-lab-mini-map__legend z-10 pointer-events-none">
-          <span>{LOCATIONS.origin.city}</span>
-          <strong>{routeScopeLabel(locale, routeKm)}</strong>
-          <span>{destination.city}</span>
-        </div>
-      </div>
+      <DemoMapViewport
+        className={`demo-lab-mini-map--${vertical}`}
+        points={atlasPoints}
+        heatSourcePoints={apiHeatPoints}
+        routes={atlasRoutes}
+        feedTruthState={feedTruthState}
+        locale={locale}
+      />
       <div className="demo-lab-mini-map__stats">
         <span><strong>{visiblePoints.length}</strong> nodos</span>
         <span><strong>{risks}</strong> riesgo</span>
@@ -3962,8 +4177,8 @@ function MobileOutcome({
         <p className="mt-3 rounded-xl border border-cyan-300/20 bg-cyan-500/10 px-3 py-2 text-[11px] font-bold text-cyan-100">{scenario.chain}</p>
       </div>
 
-      {/* Mini SVG Map */}
-      <div className="w-full h-[75px] rounded-lg bg-slate-950/90 border border-cyan-500/10 relative p-1.5 flex flex-col justify-between overflow-hidden shadow-[inset_0_1px_3px_rgba(0,0,0,0.4)] my-3 text-left">
+      {/* Legacy route drawing retained off-screen only while its product-scene styles are retired. */}
+      <div className="hidden">
         <div className="flex justify-between items-center px-1 text-[7.5px] text-slate-500 uppercase font-black tracking-wider z-10">
           <span>Trazabilidad de Ruta</span>
           <span className="text-cyan-400 animate-pulse flex items-center gap-1">
@@ -4103,6 +4318,20 @@ function MobileOutcome({
           <span>Mendoza QA</span>
           <span>Tránsito</span>
           <span>{destination.city}</span>
+        </div>
+      </div>
+
+      <div className="my-3 rounded-xl border border-cyan-300/20 bg-slate-950/72 p-3 text-left" data-demo-event-chain="reported-steps">
+        <div className="mb-2 flex items-center justify-between gap-2 text-[8px] font-black uppercase tracking-[0.16em] text-slate-400">
+          <span>Cadena de eventos</span>
+          <span className="text-cyan-300">Escenario ilustrativo</span>
+        </div>
+        <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-1 text-center text-[9px] font-bold">
+          <span className="rounded-lg border border-emerald-300/20 bg-emerald-500/10 px-2 py-2 text-emerald-100">Producto</span>
+          <span aria-hidden="true" className="text-cyan-300">→</span>
+          <span className="rounded-lg border border-cyan-300/20 bg-cyan-500/10 px-2 py-2 text-cyan-100">Lectura NFC/QR</span>
+          <span aria-hidden="true" className="text-cyan-300">→</span>
+          <span className="rounded-lg border border-violet-300/20 bg-violet-500/10 px-2 py-2 text-violet-100">Política</span>
         </div>
       </div>
 
@@ -4746,6 +4975,10 @@ function DemoCrmDashboard({
   const liveEvents = summary?.events || [];
 
   const atlasPoints = useMemo(() => toDemoAtlasPoints(mapPoints, txt.controls), [mapPoints, txt.controls]);
+  const apiHeatPoints = useMemo(
+    () => toDemoApiHeatPoints(liveEvents, feedTruthState, locale),
+    [feedTruthState, liveEvents, locale],
+  );
   const routes = useMemo<VectorMapRoute[]>(() => liveEvents
     .filter((event) => event.lat != null && event.lng != null)
     .map((event, index) => {
@@ -4889,9 +5122,14 @@ function DemoCrmDashboard({
             </div>
           </div>
           
-          <div className="demo-lab-atlas-panel demo-lab-atlas-panel--live mt-4">
-            <HeroTrustAtlasSvg points={atlasPoints} routes={routes} selectedPointId="tap" />
-          </div>
+          <DemoMapViewport
+            className="mt-4"
+            points={atlasPoints}
+            heatSourcePoints={apiHeatPoints}
+            routes={routes}
+            feedTruthState={feedTruthState}
+            locale={locale}
+          />
         </div>
 
         {/* Action matrix / Live Log */}

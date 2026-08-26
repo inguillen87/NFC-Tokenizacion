@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BackLink } from "../../components/back-link";
 import { Card, SectionHeading } from "@product/ui";
 import { landingContent } from "../../lib/landing-content";
 import { getWebI18n } from "../../lib/locale";
 import { buildPublicPageMetadata } from "../../lib/public-page-metadata";
+import { PublicSiteHeader } from "../../components/public-site-header";
 import { ArrowRight, BadgeDollarSign, Briefcase, ClipboardCheck, Globe2, Layers3, ShieldCheck, Sparkles } from "lucide-react";
 
 const labels = {
@@ -134,9 +134,10 @@ export default async function ResellersPage() {
   const t = labels[locale];
 
   return (
-    <main className="knowledge-page-surface public-page-shell reseller-page container-shell space-y-8 py-16">
-      <BackLink />
-      <SectionHeading eyebrow={content.reseller.eyebrow} title={content.reseller.title} description={content.reseller.description} />
+    <>
+      <PublicSiteHeader />
+      <main data-nav-inert className="knowledge-page-surface public-page-shell reseller-page container-shell space-y-8 py-16">
+      <SectionHeading eyebrow={content.reseller.eyebrow} title={content.reseller.title} description={content.reseller.description} level={1} titleClassName="brand-editorial-gradient" />
 
       <Card className="public-clarity-card p-6">
         <div className="grid gap-6 lg:grid-cols-[0.92fr_1.08fr] lg:items-end">
@@ -239,6 +240,7 @@ export default async function ResellersPage() {
           <a href="https://wa.me/5492613168608?text=Hola%20quiero%20programa%20reseller%20nexID" target="_blank" rel="noreferrer" className="rounded-lg border border-violet-300/35 bg-violet-500/15 px-4 py-2 text-sm text-violet-100 transition-transform duration-200 hover:-translate-y-0.5">{t.whats}</a>
         </div>
       </Card>
-    </main>
+      </main>
+    </>
   );
 }

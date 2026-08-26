@@ -179,10 +179,13 @@ test("SUN passport omits invented quality scores and routes when source data is 
   assert.doesNotMatch(sunRoute, /deterministic_policy_heuristic/);
   assert.doesNotMatch(sunRoute, /qualityScore|setupScore|trustPenalty|sensorPenalty/);
 
-  assert.match(sunRoute, /const mapAvailable = wineryLat !== null && wineryLng !== null && tapLat !== null && tapLng !== null/);
-  assert.match(sunRoute, /const routeDistanceKm = mapAvailable/);
+  assert.match(sunRoute, /const declaredOriginAvailable = wineryLat !== null && wineryLng !== null/);
+  assert.match(sunRoute, /const tapLocationAvailable = tapLat !== null && tapLng !== null/);
+  assert.match(sunRoute, /const linearReferenceAvailable = declaredOriginAvailable && tapLocationAvailable/);
+  assert.match(sunRoute, /const routeDistanceKm = linearReferenceAvailable/);
   assert.match(sunRoute, /routeDistanceKm === null \? "N\/D"/);
-  assert.match(sunRoute, /Map and distance unavailable: origin or tap coordinates are missing/);
+  assert.match(sunRoute, /Map unavailable: the tap has no valid WGS84 coordinate pair/);
+  assert.doesNotMatch(sunRoute, /atlasReferencePath|nexid-evidence-routes/);
   assert.doesNotMatch(sunRoute, /-33\.0086|-68\.7794/);
   assert.match(sunRoute, /Lectura repetida \(TT reporta apertura\)/);
 });

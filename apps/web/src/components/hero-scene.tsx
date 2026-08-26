@@ -1,13 +1,12 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import type { AppLocale } from "@product/config";
 import type { VectorMapLedgerItem, VectorMapPoint, VectorMapRoute } from "@product/ui";
 import { CheckCircle2, Maximize2, X } from "lucide-react";
 import { platformVerticals, traceabilityGlobePoints, traceabilityGlobeRoutes, type PlatformDemoVertical, type PlatformVertical } from "../lib/platform-verticals";
-import { WORLD_ATLAS_PATHS } from "../lib/world-atlas-paths";
 import { PremiumTraceabilityGlobe, type TraceabilityGlobePoint, type TraceabilityGlobeRoute } from "./premium-traceability-globe";
 
 type Vertical = PlatformDemoVertical;
@@ -1052,112 +1051,9 @@ type HeroRouteHover = {
   tone: "origin" | "tap" | "route" | "crm";
 };
 
-const HERO_ATLAS_WIDTH = 1200;
-const HERO_ATLAS_HEIGHT = 620;
-const HERO_ATLAS_MIN_LAT = -105;
-const HERO_ATLAS_MAX_LAT = 84;
-const HERO_ATLAS_WORLD_SCALE_Y = 1;
-
-type HeroAtlasCityMarker = {
-  id: string;
-  label: string;
-  country: string;
-  lat: number;
-  lng: number;
-  tier: "primary" | "secondary";
-  dx?: number;
-  dy?: number;
-  anchor?: "start" | "end";
-};
-
-type HeroAtlasNetworkLink = {
-  id: string;
-  from: Pick<HeroAtlasCityMarker, "lat" | "lng">;
-  to: Pick<HeroAtlasCityMarker, "lat" | "lng">;
-  tone: "corridor" | "handoff";
-};
-
 type HeroAtlasMeshMode = "none" | "compact" | "hero";
 
-const HERO_ATLAS_CITY_MARKERS: HeroAtlasCityMarker[] = [
-  { id: "buenos-aires", label: "Buenos Aires", country: "ARG", lat: -34.6037, lng: -58.3816, tier: "primary", dx: 12, dy: 22 },
-  { id: "santiago", label: "Santiago", country: "CHL", lat: -33.4489, lng: -70.6693, tier: "secondary" },
-  { id: "sao-paulo", label: "Sao Paulo", country: "BRA", lat: -23.5505, lng: -46.6333, tier: "secondary" },
-  { id: "mexico-city", label: "Mexico City", country: "MEX", lat: 19.4326, lng: -99.1332, tier: "secondary" },
-  { id: "miami", label: "Miami", country: "USA", lat: 25.7617, lng: -80.1918, tier: "primary", dx: 12, dy: -20 },
-  { id: "new-york", label: "New York", country: "USA", lat: 40.7128, lng: -74.006, tier: "secondary" },
-  { id: "london", label: "London", country: "GBR", lat: 51.5072, lng: -0.1276, tier: "secondary" },
-  { id: "madrid", label: "Madrid", country: "ESP", lat: 40.4168, lng: -3.7038, tier: "primary", dx: 14, dy: -24 },
-  { id: "dubai", label: "Dubai", country: "UAE", lat: 25.2048, lng: 55.2708, tier: "secondary" },
-  { id: "mumbai", label: "Mumbai", country: "IND", lat: 19.076, lng: 72.8777, tier: "secondary" },
-  { id: "singapore", label: "Singapore", country: "SGP", lat: 1.3521, lng: 103.8198, tier: "primary", dx: -14, dy: 18, anchor: "end" },
-  { id: "shanghai", label: "Shanghai", country: "CHN", lat: 31.2304, lng: 121.4737, tier: "secondary" },
-  { id: "tokyo", label: "Tokyo", country: "JPN", lat: 35.6762, lng: 139.6503, tier: "secondary" },
-  { id: "sydney", label: "Sydney", country: "AUS", lat: -33.8688, lng: 151.2093, tier: "primary", dx: -14, dy: 22, anchor: "end" },
-  { id: "johannesburg", label: "Johannesburg", country: "ZAF", lat: -26.2041, lng: 28.0473, tier: "secondary" },
-];
-
-const heroAtlasCityById = new Map(HERO_ATLAS_CITY_MARKERS.map((city) => [city.id, city]));
-
-const HERO_ATLAS_NETWORK_LINKS: HeroAtlasNetworkLink[] = [
-  { id: "south-america-us", from: heroAtlasCityById.get("buenos-aires")!, to: heroAtlasCityById.get("miami")!, tone: "handoff" },
-  { id: "us-europe", from: heroAtlasCityById.get("miami")!, to: heroAtlasCityById.get("madrid")!, tone: "corridor" },
-  { id: "europe-mea", from: heroAtlasCityById.get("madrid")!, to: heroAtlasCityById.get("dubai")!, tone: "corridor" },
-  { id: "mea-asia", from: heroAtlasCityById.get("dubai")!, to: heroAtlasCityById.get("singapore")!, tone: "corridor" },
-  { id: "asia-oceania", from: heroAtlasCityById.get("singapore")!, to: heroAtlasCityById.get("sydney")!, tone: "handoff" },
-  { id: "asia-north", from: heroAtlasCityById.get("singapore")!, to: heroAtlasCityById.get("tokyo")!, tone: "corridor" },
-  { id: "latam-network", from: heroAtlasCityById.get("buenos-aires")!, to: heroAtlasCityById.get("sao-paulo")!, tone: "corridor" },
-  { id: "africa-europe", from: heroAtlasCityById.get("johannesburg")!, to: heroAtlasCityById.get("madrid")!, tone: "corridor" },
-];
-
-function projectHeroAtlasPoint(point: Pick<VectorMapPoint, "lat" | "lng">) {
-  const lat = clamp(point.lat, HERO_ATLAS_MIN_LAT, HERO_ATLAS_MAX_LAT);
-  return {
-    x: ((point.lng + 180) / 360) * HERO_ATLAS_WIDTH,
-    y: ((HERO_ATLAS_MAX_LAT - lat) / (HERO_ATLAS_MAX_LAT - HERO_ATLAS_MIN_LAT)) * HERO_ATLAS_HEIGHT,
-  };
-}
-
-function heroAtlasRoutePath(route: VectorMapRoute) {
-  const start = projectHeroAtlasPoint({ lat: route.fromLat, lng: route.fromLng });
-  const end = projectHeroAtlasPoint({ lat: route.toLat, lng: route.toLng });
-  const dx = end.x - start.x;
-  const dy = end.y - start.y;
-  const lift = Math.min(170, Math.max(58, Math.abs(dx) * 0.16 + Math.abs(dy) * 0.08));
-  const c1x = start.x + dx * 0.32;
-  const c2x = start.x + dx * 0.68;
-  const c1y = Math.min(start.y, end.y) - lift;
-  const c2y = Math.min(start.y, end.y) - lift * 0.9;
-  return `M ${start.x.toFixed(1)} ${start.y.toFixed(1)} C ${c1x.toFixed(1)} ${c1y.toFixed(1)} ${c2x.toFixed(1)} ${c2y.toFixed(1)} ${end.x.toFixed(1)} ${end.y.toFixed(1)}`;
-}
-
-function heroAtlasLabelPosition(point: VectorMapPoint) {
-  const projected = projectHeroAtlasPoint(point);
-  const offsets: Record<string, { dx: number; dy: number; anchor: "start" | "end" }> = {
-    origin: { dx: 18, dy: -64, anchor: "start" },
-    "custody-miami": { dx: 22, dy: -40, anchor: "start" },
-    "custody-madrid": { dx: 24, dy: -48, anchor: "start" },
-    "custody-singapore": { dx: -42, dy: -44, anchor: "end" },
-    tap: { dx: -56, dy: -78, anchor: "end" },
-  };
-  const offset = offsets[point.id] || { dx: 18, dy: -34, anchor: "start" as const };
-  return {
-    x: clamp(projected.x + offset.dx, 28, HERO_ATLAS_WIDTH - 28),
-    y: clamp(projected.y + offset.dy, 54, HERO_ATLAS_HEIGHT - 48),
-    anchor: offset.anchor,
-  };
-}
-
-function heroAtlasNetworkPath(link: HeroAtlasNetworkLink) {
-  const start = projectHeroAtlasPoint(link.from);
-  const end = projectHeroAtlasPoint(link.to);
-  const dx = end.x - start.x;
-  const dy = end.y - start.y;
-  const lift = Math.min(120, Math.max(36, Math.abs(dx) * 0.1 + Math.abs(dy) * 0.05));
-  return `M ${start.x.toFixed(1)} ${start.y.toFixed(1)} C ${(start.x + dx * 0.36).toFixed(1)} ${(Math.min(start.y, end.y) - lift).toFixed(1)} ${(start.x + dx * 0.72).toFixed(1)} ${(Math.min(start.y, end.y) - lift * 0.74).toFixed(1)} ${end.x.toFixed(1)} ${end.y.toFixed(1)}`;
-}
-
-export function HeroTrustAtlasSvg({
+export function HeroTrustNetworkDiagram({
   points,
   routes,
   selectedPointId = "tap",
@@ -1168,205 +1064,61 @@ export function HeroTrustAtlasSvg({
   selectedPointId?: string;
   mesh?: HeroAtlasMeshMode;
 }) {
-  const atlasId = useId().replace(/:/g, "");
-  const oceanId = `hero-atlas-ocean-${atlasId}`;
-  const landId = `hero-atlas-land-${atlasId}`;
-  const routeInfoId = `hero-atlas-route-info-${atlasId}`;
-  const routeSuccessId = `hero-atlas-route-success-${atlasId}`;
-  const nodeGlowId = `hero-atlas-node-glow-${atlasId}`;
-  const softGlowId = `hero-atlas-soft-glow-${atlasId}`;
-  const gridId = `hero-atlas-grid-${atlasId}`;
-
-  const meshCities = mesh === "hero" ? HERO_ATLAS_CITY_MARKERS : HERO_ATLAS_CITY_MARKERS.filter((city) => city.tier === "primary");
-  const showNetworkMesh = mesh !== "none";
+  void routes;
+  const maxStages = mesh === "hero" ? 5 : 4;
+  type TrustNetworkStage = Pick<VectorMapPoint, "id" | "tone" | "stageLabel" | "evidence" | "sublabel">;
+  const sourceStages: TrustNetworkStage[] = points.slice(0, maxStages).map((point) => ({
+    id: point.id,
+    tone: point.tone,
+    stageLabel: point.stageLabel,
+    evidence: point.evidence,
+    sublabel: point.sublabel,
+  }));
+  const fallbackStages: TrustNetworkStage[] = [
+    { id: "identity", tone: "origin", stageLabel: "01 · Producto", evidence: "Datos que la marca decide publicar", sublabel: "Referencia declarada" },
+    { id: "reading", tone: "tap", stageLabel: "02 · Señal", evidence: "Resultado de los controles configurados", sublabel: "NFC o QR" },
+    { id: "policy", tone: "hub", stageLabel: "03 · Decisión", evidence: "Acción permitida para ese caso", sublabel: "Reglas del programa" },
+    { id: "action", tone: "hub", stageLabel: "04 · Acción", evidence: "Garantía, beneficio o atención", sublabel: "Postventa" },
+  ];
+  const stages = sourceStages.length ? sourceStages : fallbackStages;
 
   return (
-    <svg
-      className={`hero-trust-atlas hero-trust-atlas--${mesh}`}
-      viewBox={`0 0 ${HERO_ATLAS_WIDTH} ${HERO_ATLAS_HEIGHT}`}
-      preserveAspectRatio="xMidYMid meet"
-      role="img"
-      aria-label="Atlas demo con nodos y rutas simulados"
-      data-nexid-map="hero-trust-atlas"
+    <section
+      className={`hero-trust-network hero-trust-network--${mesh}`}
+      aria-label="Diagrama conceptual de señales; no es un mapa ni representa un recorrido físico"
+      data-nexid-diagram="trust-signal-flow"
+      data-geographic="false"
     >
-      <defs>
-        <linearGradient id={oceanId} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="var(--hero-atlas-ocean-a, #06233a)" />
-          <stop offset="48%" stopColor="var(--hero-atlas-ocean-b, #031321)" />
-          <stop offset="100%" stopColor="var(--hero-atlas-ocean-c, #050918)" />
-        </linearGradient>
-        <linearGradient id={landId} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="var(--hero-atlas-land-a, #0f766e)" stopOpacity="0.72" />
-          <stop offset="52%" stopColor="var(--hero-atlas-land-b, #0891b2)" stopOpacity="0.46" />
-          <stop offset="100%" stopColor="var(--hero-atlas-land-c, #1e3a8a)" stopOpacity="0.34" />
-        </linearGradient>
-        <linearGradient id={routeInfoId} x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="var(--hero-atlas-route-info-a, #22d3ee)" stopOpacity="0.2" />
-          <stop offset="45%" stopColor="var(--hero-atlas-route-info-b, #67e8f9)" stopOpacity="0.98" />
-          <stop offset="100%" stopColor="var(--hero-atlas-route-info-c, #a78bfa)" stopOpacity="0.8" />
-        </linearGradient>
-        <linearGradient id={routeSuccessId} x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="var(--hero-atlas-route-success-a, #34d399)" stopOpacity="0.42" />
-          <stop offset="50%" stopColor="var(--hero-atlas-route-success-b, #22d3ee)" stopOpacity="1" />
-          <stop offset="100%" stopColor="var(--hero-atlas-route-success-c, #fbbf24)" stopOpacity="0.88" />
-        </linearGradient>
-        <radialGradient id={nodeGlowId} cx="50%" cy="50%" r="62%">
-          <stop offset="0%" stopColor="var(--hero-atlas-node-a, #ffffff)" stopOpacity="0.98" />
-          <stop offset="36%" stopColor="var(--hero-atlas-node-b, #67e8f9)" stopOpacity="0.72" />
-          <stop offset="100%" stopColor="var(--hero-atlas-node-c, #22d3ee)" stopOpacity="0" />
-        </radialGradient>
-        <filter id={softGlowId} x="-40%" y="-40%" width="180%" height="180%">
-          <feGaussianBlur stdDeviation="5" result="blur" />
-          <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.12 0 0 0 0 0.82 0 0 0 0 0.92 0 0 0 .72 0" result="glow" />
-          <feMerge>
-            <feMergeNode in="glow" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-        <pattern id={gridId} width="80" height="80" patternUnits="userSpaceOnUse">
-          <path d="M80 0H0V80" fill="none" stroke="rgba(125,211,252,.08)" strokeWidth="1" />
-        </pattern>
-      </defs>
-
-      <rect width={HERO_ATLAS_WIDTH} height={HERO_ATLAS_HEIGHT} fill={`url(#${oceanId})`} />
-      <rect width={HERO_ATLAS_WIDTH} height={HERO_ATLAS_HEIGHT} fill={`url(#${gridId})`} opacity="0.7" />
-
-      <g className="hero-trust-atlas__parallels" aria-hidden="true">
-        {[120, 220, 320, 420, 520].map((y) => (
-          <path key={`parallel-${y}`} d={`M 24 ${y} C 210 ${y - 24} 482 ${y + 22} 696 ${y - 4} C 904 ${y - 30} 1050 ${y + 12} 1176 ${y - 8}`} />
-        ))}
-        {[150, 300, 450, 600, 750, 900, 1050].map((x) => (
-          <path key={`meridian-${x}`} d={`M ${x} 36 C ${x - 38} 174 ${x + 44} 360 ${x - 16} 590`} />
-        ))}
-      </g>
-
-      <g className="hero-trust-atlas__regions" transform={`scale(1 ${HERO_ATLAS_WORLD_SCALE_Y})`} aria-hidden="true">
-        {WORLD_ATLAS_PATHS.map((region, index) => (
-          <g key={region.id} className={`hero-trust-atlas__region-group hero-trust-atlas__region-group--${region.tone}`}>
-            <path
-              className={`hero-trust-atlas__region hero-trust-atlas__region--${region.tone}`}
-              d={region.d}
-              fill={`url(#${landId})`}
-              fillRule="evenodd"
-              stroke="rgba(103,232,249,.24)"
-              strokeWidth="0.95"
-              strokeLinejoin="round"
-              vectorEffect="non-scaling-stroke"
-              style={{ "--hero-atlas-land-fill": `url(#${landId})`, opacity: Math.min(0.92, 0.58 + index * 0.035) } as CSSProperties}
-            />
-            <path
-              className={`hero-trust-atlas__coastline hero-trust-atlas__coastline--${region.tone}`}
-              d={region.d}
-              fill="none"
-              stroke="rgba(207,250,254,.24)"
-              strokeWidth="0.48"
-              strokeLinejoin="round"
-              vectorEffect="non-scaling-stroke"
-            />
-          </g>
-        ))}
-      </g>
-
-      {showNetworkMesh ? (
-        <g className="hero-trust-atlas__network" aria-hidden="true">
-          {HERO_ATLAS_NETWORK_LINKS.map((link, index) => (
-            <path
-              key={link.id}
-              className={`hero-trust-atlas__network-link hero-trust-atlas__network-link--${link.tone}`}
-              d={heroAtlasNetworkPath(link)}
-              style={{ animationDelay: `${index * -0.42}s` } as CSSProperties}
-              vectorEffect="non-scaling-stroke"
-            />
-          ))}
-        </g>
-      ) : null}
-
-      {mesh !== "none" ? (
-        <g className="hero-trust-atlas__cities" aria-hidden="true">
-          {meshCities.map((city) => {
-          const { x, y } = projectHeroAtlasPoint(city);
-          const anchor = city.anchor || "start";
-          const labelX = x + (city.dx ?? (anchor === "end" ? -12 : 12));
-          const labelY = y + (city.dy ?? -10);
-          return (
-            <g key={city.id} className={`hero-trust-atlas__city hero-trust-atlas__city--${city.tier}`} transform={`translate(${x.toFixed(1)} ${y.toFixed(1)})`}>
-              <circle className="hero-trust-atlas__city-halo" r={city.tier === "primary" ? 8 : 5.5} />
-              <circle className="hero-trust-atlas__city-dot" r={city.tier === "primary" ? 2.7 : 1.8} />
-              {city.tier === "primary" ? (
-                <g transform={`translate(${(labelX - x).toFixed(1)} ${(labelY - y).toFixed(1)})`}>
-                  <text className="hero-trust-atlas__city-label" textAnchor={anchor}>{city.label}</text>
-                  <text className="hero-trust-atlas__city-country" y="10" textAnchor={anchor}>{city.country}</text>
-                </g>
-              ) : null}
-            </g>
-          );
-          })}
-        </g>
-      ) : null}
-
-      <g className="hero-trust-atlas__routes" filter={`url(#${softGlowId})`}>
-        {routes.map((route, index) => {
-          const path = heroAtlasRoutePath(route);
-          const tone = route.tone === "success" ? "success" : route.tone === "warn" ? "warn" : "info";
-          const routeStroke = tone === "success" ? `url(#${routeSuccessId})` : tone === "warn" ? "#f59e0b" : `url(#${routeInfoId})`;
-          return (
-            <g key={route.id}>
-              <path className="hero-trust-atlas__route-halo" d={path} />
-              <path className={`hero-trust-atlas__route hero-trust-atlas__route--${tone}`} d={path} style={{ "--hero-atlas-route-stroke": routeStroke, animationDelay: `${index * -0.55}s` } as CSSProperties} />
-              <circle className={`hero-trust-atlas__comet hero-trust-atlas__comet--${tone}`} r={tone === "success" ? 7 : 5} style={{ "--hero-atlas-node-glow": `url(#${nodeGlowId})` } as CSSProperties}>
-                <animateMotion dur={`${4.8 + index * 0.45}s`} repeatCount="indefinite" path={path} />
-              </circle>
-            </g>
-          );
-        })}
-      </g>
-
-      <g className="hero-trust-atlas__nodes">
-        {points.map((point) => {
-          const { x, y } = projectHeroAtlasPoint(point);
-          const label = heroAtlasLabelPosition(point);
-          const tone = point.tone || "hub";
+      <div className="hero-trust-network__header">
+        <span>Diagrama de flujo · no geográfico</span>
+        <strong>Cómo se conectan las señales digitales</strong>
+        <p>Sin mapa, coordenadas, rutas terrestres ni telemetría.</p>
+      </div>
+      <ol className="hero-trust-network__stages" aria-label="Secuencia conceptual de evidencia y acción">
+        {stages.map((point, index) => {
           const isSelected = point.id === selectedPointId;
-          const isEndpoint = point.id === "origin" || point.id === "tap";
-          const plateWidth = isEndpoint ? 122 : 106;
-          const plateHeight = isEndpoint ? 42 : 38;
-          const plateY = isEndpoint ? -12 : -10;
-          const plateX = label.anchor === "end" ? -plateWidth + 10 : -10;
-          const accentX = label.anchor === "end" ? -6 : -10;
-          const leaderX = label.x + (label.anchor === "end" ? -10 : 10);
-          const leaderY = label.y + 10;
+          const stageTitle = point.stageLabel || `Paso ${String(index + 1).padStart(2, "0")}`;
+          const stageDetail = point.evidence || point.sublabel || "Señal digital del escenario";
           return (
-            <g key={point.id}>
-              <path
-                className={`hero-trust-atlas__leader hero-trust-atlas__leader--${tone}`}
-                d={`M ${x.toFixed(1)} ${y.toFixed(1)} L ${leaderX.toFixed(1)} ${leaderY.toFixed(1)}`}
-                vectorEffect="non-scaling-stroke"
-              />
-              <g className={`hero-trust-atlas__node hero-trust-atlas__node--${tone} ${isSelected ? "is-selected" : ""}`} transform={`translate(${x.toFixed(1)} ${y.toFixed(1)})`}>
-                <circle className="hero-trust-atlas__node-pulse" r={isSelected ? 22 : 18} />
-                <circle className="hero-trust-atlas__node-ring" r={isSelected ? 11 : 9} />
-                <circle className="hero-trust-atlas__node-core" r={isSelected ? 4.8 : 4} />
-              </g>
-              <g className={`hero-trust-atlas__label-callout hero-trust-atlas__label-callout--${tone} hero-trust-atlas__label-callout--point-${point.id}`} transform={`translate(${label.x.toFixed(1)} ${label.y.toFixed(1)})`}>
-                <rect className="hero-trust-atlas__label-plate" x={plateX} y={plateY} width={plateWidth} height={plateHeight} rx="7" />
-                <rect className="hero-trust-atlas__label-accent" x={accentX} y={plateY} width="3" height={plateHeight} rx="1.5" />
-                <text textAnchor={label.anchor} className="hero-trust-atlas__label-eyebrow">{point.stageLabel || (point.id === "tap" ? "Tap demo" : "Hito declarado")}</text>
-                <text textAnchor={label.anchor} y="14" className="hero-trust-atlas__label-main">{point.label}</text>
-                <text textAnchor={label.anchor} y="27" className="hero-trust-atlas__label-sub">{point.sublabel}</text>
-              </g>
-            </g>
+            <li
+              key={point.id}
+              className={`hero-trust-network__stage hero-trust-network__stage--${point.tone || "hub"} ${isSelected ? "is-selected" : ""}`}
+            >
+              <span>{String(index + 1).padStart(2, "0")}</span>
+              <small>{stageTitle}</small>
+              <strong>{stageDetail}</strong>
+              <em>{isSelected ? "Resultado actual del escenario" : "Hito lógico del flujo"}</em>
+            </li>
           );
         })}
-      </g>
-
-      <g className="hero-trust-atlas__legend" transform="translate(28 560)">
-        <rect width="210" height="40" rx="8" />
-        <text x="14" y="17">nexID TRUST ATLAS</text>
-        <text x="14" y="31">simulated route + simulated tap</text>
-      </g>
-    </svg>
+      </ol>
+      <p className="hero-trust-network__boundary">
+        Las conexiones explican dependencias funcionales. No prueban ubicación, traslado, custodia ni presencia física.
+      </p>
+    </section>
   );
 }
+
 
 function EnterpriseHeroAtlasPanel({
   origin,
@@ -1492,15 +1244,15 @@ function EnterpriseHeroAtlasPanel({
     { id: "events", label: stageCopy.events, value: `${custodyStops.length}/${custodyStops.length}` },
     { id: "alerts", label: stageCopy.alerts, value: "0" },
   ];
-  const countriesLabel = isEnglish ? "Countries" : isPortuguese ? "Paises" : "Paises";
-  const citiesLabel = isEnglish ? "Cities" : isPortuguese ? "Cidades" : "Ciudades";
-  const routeLabel = isEnglish ? "Demo route" : isPortuguese ? "Rota demo" : "Ruta demo";
-  const demoRouteEvidence = isEnglish ? "Simulated case" : isPortuguese ? "Caso simulado" : "Caso simulado";
+  const stepsLabel = isEnglish ? "Flow steps" : isPortuguese ? "Etapas do fluxo" : "Etapas del flujo";
+  const signalsLabel = isEnglish ? "Signal types" : isPortuguese ? "Tipos de sinal" : "Tipos de señal";
+  const flowLabel = isEnglish ? "Diagram" : isPortuguese ? "Diagrama" : "Diagrama";
+  const flowEvidence = isEnglish ? "Non-geographic" : isPortuguese ? "Não geográfico" : "No geográfico";
   const custodyLabel = isEnglish ? "Declared milestones" : isPortuguese ? "Marcos declarados" : "Hitos declarados";
   const atlasOps = [
-    { id: "countries", label: countriesLabel, value: String(new Set(HERO_ATLAS_CITY_MARKERS.map((city) => city.country)).size) },
-    { id: "cities", label: citiesLabel, value: String(HERO_ATLAS_CITY_MARKERS.length) },
-    { id: "route", label: routeLabel, value: demoRouteEvidence },
+    { id: "steps", label: stepsLabel, value: String(custodyStops.length) },
+    { id: "signals", label: signalsLabel, value: "NFC · SUN · CRM" },
+    { id: "flow", label: flowLabel, value: flowEvidence },
     { id: "custody", label: custodyLabel, value: `${custodyStops.length} ${stageCopy.events.toLowerCase()}` },
   ];
   const atlasZoomLevels = [1, 1.16, 1.32] as const;
@@ -1508,9 +1260,9 @@ function EnterpriseHeroAtlasPanel({
   const atlasZoom = atlasZoomLevels[atlasZoomIndex];
   const canZoomOut = atlasZoomIndex > 0;
   const canZoomIn = atlasZoomIndex < atlasZoomLevels.length - 1;
-  const zoomGroupLabel = isEnglish ? "Trust atlas zoom controls" : isPortuguese ? "Controles de zoom do atlas de confianca" : "Controles de zoom del atlas de confianza";
-  const zoomInLabel = isEnglish ? "Zoom into trust atlas" : isPortuguese ? "Aproximar atlas de confianca" : "Acercar atlas de confianza";
-  const zoomOutLabel = isEnglish ? "Zoom out trust atlas" : isPortuguese ? "Afastar atlas de confianca" : "Alejar atlas de confianza";
+  const zoomGroupLabel = isEnglish ? "Conceptual flow zoom controls" : isPortuguese ? "Controles de zoom do fluxo conceitual" : "Controles de zoom del flujo conceptual";
+  const zoomInLabel = isEnglish ? "Zoom into conceptual flow" : isPortuguese ? "Aproximar fluxo conceitual" : "Acercar flujo conceptual";
+  const zoomOutLabel = isEnglish ? "Zoom out of conceptual flow" : isPortuguese ? "Afastar fluxo conceitual" : "Alejar flujo conceptual";
 
   return (
     <section className="nexid-hero-atlas-card" aria-label={stageCopy.routeTitle}>
@@ -1528,7 +1280,7 @@ function EnterpriseHeroAtlasPanel({
           data-zoom-level={atlasZoomIndex}
           style={{ "--nexid-hero-atlas-zoom": atlasZoom } as CSSProperties}
         >
-          <HeroTrustAtlasSvg points={custodyStops} routes={vectorRoutes} selectedPointId="tap" mesh="hero" />
+          <HeroTrustNetworkDiagram points={custodyStops} routes={vectorRoutes} selectedPointId="tap" mesh="hero" />
         </div>
         <div className="nexid-hero-atlas-card__map-controls" role="group" aria-label={zoomGroupLabel}>
           <button
@@ -1854,7 +1606,7 @@ function HeroEnterpriseTraceMap({
       </div>
 
       <div className="hero-route-vector-atlas" aria-hidden="true">
-        <HeroTrustAtlasSvg
+        <HeroTrustNetworkDiagram
           points={custodyStops}
           routes={vectorRoutes}
           selectedPointId="tap"
