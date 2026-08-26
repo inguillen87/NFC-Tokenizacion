@@ -17,61 +17,48 @@ function contrastRatio(foreground, background) {
   return (light + 0.05) / (dark + 0.05);
 }
 
-test("brand synergy uses a truthful, reduced-motion-safe mobile decision flow", async () => {
-  const source = await readFile(new URL("../src/components/brand-synergy-simulator.tsx", import.meta.url), "utf8");
+test("marketing navigation is user-triggered and reduced-motion safe", async () => {
+  const [home, navigation, css] = await Promise.all([
+    readFile(new URL("../src/components/marketing-clear/clear-home.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/marketing-clear/clear-navigation.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/marketing-clear/marketing-clear.module.css", import.meta.url), "utf8"),
+  ]);
 
-  assert.match(source, /type MobilePane = "business" \| "activation"/);
-  assert.match(source, /brand-synergy-mobile-view-switch/);
-  assert.match(source, /data-mobile-active=\{mobilePane === "business"/);
-  assert.match(source, /data-mobile-active=\{mobilePane === "activation"/);
-  assert.match(source, /window\.matchMedia\("\(prefers-reduced-motion: reduce\)"\)\.matches/);
-  assert.match(source, /if \(isPaused\) return/);
-  assert.match(source, /aria-live="off"/);
-  assert.match(source, /HYPOTHETICAL SCENARIO/);
-  assert.match(source, /They are not customers, partners or measured performance/);
-  assert.match(source, /Generic brands, benefits and outcomes/);
-  assert.match(source, /Guided offer model/);
-  assert.doesNotMatch(source, /Partner matching live/);
-  assert.doesNotMatch(source, /Patagonia Beer Gardens|Combi VIP Traslados|Club 146 Lounge VIP/);
-  assert.doesNotMatch(source, /conversionEst|Risk score: 0\.01|Riesgo: 0\.01|Risco: 0\.01/);
-  assert.doesNotMatch(source, /(?:89|94|97)%/);
+  assert.doesNotMatch(`${home}\n${navigation}`, /setInterval|autoPlay|BrandSynergySimulator/);
+  assert.match(navigation, /onClick=\{\(\) => setOpenMenu\(expanded \? null : group\.id\)\}/);
+  assert.match(navigation, /event\.key === "Escape"/);
+  assert.match(css, /@keyframes menuEnter/);
+  assert.match(css, /@keyframes drawerEnter/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*animation-duration: 0\.01ms !important/);
 });
 
-test("landing claims qualify technical security and commercial outcomes", async () => {
-  const content = await readFile(new URL("../src/lib/landing-content.ts", import.meta.url), "utf8");
-  const sections = await readFile(new URL("../src/components/landing-sections.tsx", import.meta.url), "utf8");
+test("marketing copy keeps commercial outcomes measurable and evidence bounded", async () => {
+  const content = await readFile(new URL("../src/components/marketing-clear/marketing-clear.content.ts", import.meta.url), "utf8");
 
-  assert.doesNotMatch(content, /asegura recompras|sees if the product is real/);
-  assert.doesNotMatch(sections, /impossible to clone or replay|imposible de clonar o copiar/);
-  assert.match(content, /Conversion and repeat purchase are measured in each pilot, not promised/);
-  assert.match(content, /Conversión y recompra se miden en cada piloto; no se prometen/);
-  assert.match(sections, /designed to resist message copying and replay when keys, counters and server validation are correctly configured/);
+  assert.match(content, /Pilotos medibles/);
+  assert.match(content, /Measurable pilots/);
+  assert.match(content, /Digital evidence does not by itself prove the physical object/);
+  assert.match(content, /Commercial results are measurable pilot objectives, not automatic promises of conversion or repurchase/);
+  assert.doesNotMatch(content, /asegura recompras|sees if the product is real|impossible to clone|(?:89|94|97)%/i);
 });
 
-test("brand synergy light mode and mobile controls keep enterprise contrast", async () => {
-  const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
-  const page = await readFile(new URL("../src/app/page.tsx", import.meta.url), "utf8");
-  const mobileNav = await readFile(new URL("../src/components/mobile-nav-sheet.tsx", import.meta.url), "utf8");
-  const themeToggle = await readFile(new URL("../../../packages/ui/src/theme-toggle.tsx", import.meta.url), "utf8");
-  const localeSwitcher = await readFile(new URL("../../../packages/ui/src/locale-switcher.tsx", import.meta.url), "utf8");
+test("clear-mode shell owns contrast, touch targets and explicit dark opt-in", async () => {
+  const [context, navigation, css, themeToggle, localeSwitcher] = await Promise.all([
+    readFile(new URL("../src/components/marketing-clear/marketing-page-context.ts", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/marketing-clear/clear-navigation.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/marketing-clear/marketing-clear.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../../../packages/ui/src/theme-toggle.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../../../packages/ui/src/locale-switcher.tsx", import.meta.url), "utf8"),
+  ]);
 
-  assert.ok(contrastRatio("#ffffff", "#155e75") >= 4.5);
-  assert.ok(contrastRatio("#ffffff", "#0f766e") >= 4.5);
-  assert.match(css, /\.landing-brand-synergy-band\s*\{[\s\S]*background:\s*#07111f/);
-  assert.match(css, /html\.theme-light \.landing-brand-synergy-band,[\s\S]*background:\s*#eef5f8/);
-  assert.match(css, /\.brand-synergy-scenario-pill\.is-active\s*\{[\s\S]*#155e75[\s\S]*#0f766e/);
-  assert.match(css, /\.brand-synergy-mobile-view-switch button\s*\{[\s\S]*min-height:\s*2\.75rem/);
-  assert.match(css, /\.brand-synergy-business-pane\[data-mobile-active="false"\],[\s\S]*display:\s*none !important/);
-  assert.match(css, /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*\.brand-synergy-terminal-row[\s\S]*transition-duration:\s*0\.01ms/);
-  assert.match(css, /\.site-header\.mobile-optimized-header \.mobile-nav-toggle\s*\{[\s\S]*min-height:\s*2\.75rem/);
-  assert.match(page, /<section id="brand-synergy" className="landing-brand-synergy-band my-16 scroll-mt-24">/);
-  assert.match(page, /landing-brand-synergy-shell container-shell/);
-  assert.match(page, /<ThemeToggle initialTheme=\{initialTheme\}/);
-  assert.match(page, /initialTheme=\{initialTheme\}/);
-  assert.match(mobileNav, /mobile-menu-close inline-flex min-h-11 min-w-11/);
-  assert.match(mobileNav, /mobile-nav-action-link flex min-h-11/);
-  assert.match(themeToggle, /ThemeToggle\(\{ initialTheme = "dark" \}/);
+  assert.ok(contrastRatio("#ffffff", "#075f5e") >= 4.5);
+  assert.match(context, /get\("theme"\)\?\.value === "dark" \? "dark" : "light"/);
+  assert.match(navigation, /<ThemeToggle initialTheme=\{initialTheme\} locale=\{locale\} \/>/);
+  assert.match(navigation, /<LocaleSwitcher value=\{locale\}/);
+  assert.match(css, /--clear-bg: #f7f9fc/);
+  assert.match(css, /\.navGroupButton,[\s\S]*min-height: 2\.75rem/);
+  assert.match(css, /\.mobileDialogHead button[\s\S]*width: 2\.8rem[\s\S]*height: 2\.8rem/);
+  assert.match(css, /:focus-visible[\s\S]*outline: 3px solid/);
   assert.match(themeToggle, /useState<Theme>\(initialTheme\)/);
   assert.match(localeSwitcher, /locale-switcher inline-flex min-h-11/);
-  assert.match(localeSwitcher, /className="min-h-11 bg-transparent/);
 });

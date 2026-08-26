@@ -5,24 +5,22 @@ export function StructuredData() {
     "name": "nexID Platform",
     "url": "https://nexid.lat",
     "logo": "https://nexid.lat/nexid-mark-256.png",
-    "description": "Enterprise Supply Chain and Product Authentication via NFC and Tokenization",
+    "description": "Digital identity and source-labelled evidence for connected products using NFC or QR.",
     "contactPoint": {
       "@type": "ContactPoint",
       "contactType": "customer support",
-      "email": "support@nexid.lat"
+      "email": "info@nexid.lat"
     }
   };
 
-  const productData = {
+  const softwareData = {
     "@context": "https://schema.org",
-    "@type": "Product",
+    "@type": "SoftwareApplication",
     "name": "nexID Platform",
-    "description": "NFC and Tokenization platform for Enterprise Supply Chain and Product Authentication.",
-    "brand": {
-      "@type": "Brand",
-      "name": "nexID"
-    },
-    "category": "Enterprise Software"
+    "description": "Business platform for connected-product identity, declared traceability, digital passports and policy-controlled services. Digital evidence does not by itself prove a physical object.",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Web",
+    "url": "https://nexid.lat"
   };
 
   return (
@@ -33,7 +31,7 @@ export function StructuredData() {
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(productData) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareData) }}
       />
     </>
   );

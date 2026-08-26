@@ -2,23 +2,27 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const [landing, home, sdk, demoLab, css] = await Promise.all([
-  readFile(new URL("../src/components/landing-sections.tsx", import.meta.url), "utf8"),
-  readFile(new URL("../src/app/page.tsx", import.meta.url), "utf8"),
+const [context, frame, navigation, marketingCss, sdk, demoLab, css] = await Promise.all([
+  readFile(new URL("../src/components/marketing-clear/marketing-page-context.ts", import.meta.url), "utf8"),
+  readFile(new URL("../src/components/marketing-clear/clear-site-frame.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../src/components/marketing-clear/clear-navigation.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../src/components/marketing-clear/marketing-clear.module.css", import.meta.url), "utf8"),
   readFile(new URL("../src/app/sdk/page.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/app/(public)/demo-lab/demo-lab-client.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/app/globals.css", import.meta.url), "utf8"),
 ]);
 
-test("landing light mode owns high-risk CTA and footer colors", () => {
-  assert.match(landing, /landing-consumer-portal-cta/);
-  assert.match(landing, /landing-offline-demo-cta/);
-  assert.match(home, /site-footer-data-card/);
-  assert.match(home, /site-footer-whatsapp-link/);
-  assert.match(css, /\.landing-consumer-portal-cta[\s\S]*color: #6b21a8 !important/);
-  assert.match(css, /\.landing-offline-demo-cta[\s\S]*color: #0f172a !important/);
-  assert.match(css, /\.site-footer-data-card[\s\S]*color: #0f172a !important/);
-  assert.match(css, /\.site-footer-whatsapp-link[\s\S]*color: #047857 !important/);
+test("marketing shell defaults to light and owns accessible CTA and footer colors", () => {
+  assert.match(context, /get\("theme"\)\?\.value === "dark" \? "dark" : "light"/);
+  assert.match(frame, /className=\{styles\.siteFooter\}/);
+  assert.match(navigation, /<ThemeToggle initialTheme=\{initialTheme\} locale=\{locale\} \/>/);
+  assert.match(marketingCss, /--clear-bg: #f7f9fc/);
+  assert.match(marketingCss, /--clear-accent-strong: #075f5e/);
+  assert.match(marketingCss, /--clear-action-bg: #075f5e/);
+  assert.match(marketingCss, /\.headerCta,[\s\S]*\.primaryButton[\s\S]*color: var\(--clear-action-text\)/);
+  assert.match(marketingCss, /\.siteFooter[\s\S]*background: var\(--clear-bg\)/);
+  assert.match(marketingCss, /\.mobileMenuButton[\s\S]*width: 2\.85rem[\s\S]*height: 2\.85rem/);
+  assert.match(marketingCss, /@media \(prefers-reduced-motion: reduce\)/);
 });
 
 test("SDK light mode uses readable semantic tones", () => {

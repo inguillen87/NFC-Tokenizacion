@@ -4,6 +4,12 @@ import { useEffect, useState } from "react";
 
 export type Theme = "dark" | "light";
 
+const themeCopy = {
+  "es-AR": { dark: "Oscuro", light: "Claro", toDark: "Cambiar a modo oscuro", toLight: "Cambiar a modo claro" },
+  "pt-BR": { dark: "Escuro", light: "Claro", toDark: "Mudar para o modo escuro", toLight: "Mudar para o modo claro" },
+  en: { dark: "Dark", light: "Light", toDark: "Switch to dark mode", toLight: "Switch to light mode" },
+} as const;
+
 export function applyTheme(theme: Theme) {
   document.documentElement.setAttribute("data-theme", theme);
   document.documentElement.classList.toggle("theme-light", theme === "light");
@@ -29,7 +35,7 @@ function readTheme(): Theme {
   return serverTheme === "light" || serverTheme === "dark" ? serverTheme : "dark";
 }
 
-export function ThemeToggle({ initialTheme = "dark" }: { initialTheme?: Theme }) {
+export function ThemeToggle({ initialTheme = "dark", locale = "en" }: { initialTheme?: Theme; locale?: string }) {
   const [theme, setTheme] = useState<Theme>(initialTheme);
 
   useEffect(() => {
@@ -49,7 +55,9 @@ export function ThemeToggle({ initialTheme = "dark" }: { initialTheme?: Theme })
   }, []);
 
   const nextTheme = theme === "dark" ? "light" : "dark";
-  const label = theme === "dark" ? "Dark" : "Light";
+  const copy = locale === "es-AR" ? themeCopy["es-AR"] : locale === "pt-BR" ? themeCopy["pt-BR"] : themeCopy.en;
+  const label = theme === "dark" ? copy.dark : copy.light;
+  const actionLabel = nextTheme === "dark" ? copy.toDark : copy.toLight;
 
   return (
     <button
@@ -60,8 +68,8 @@ export function ThemeToggle({ initialTheme = "dark" }: { initialTheme?: Theme })
         applyTheme(nextTheme);
       }}
       className="theme-toggle inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10"
-      aria-label={`Switch to ${nextTheme} mode`}
-      title={`Switch to ${nextTheme} mode`}
+      aria-label={actionLabel}
+      title={actionLabel}
     >
       <span aria-hidden className={`theme-toggle__glyph theme-toggle__glyph--${theme}`} />
       <span>{label}</span>

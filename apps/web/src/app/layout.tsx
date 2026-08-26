@@ -3,37 +3,38 @@ import type { ReactNode } from "react";
 import { cookies } from "next/headers";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
-import { resolveLocale, siteConfig } from "@product/config";
+import { siteConfig } from "@product/config";
 import { ContextualHelpBot } from "../components/contextual-helpbot";
 import { PwaSetup } from "../components/pwa-setup";
 import { MisconfigurationBanner } from "../components/misconfiguration-banner";
 import { WalletExtensionGuard } from "../components/wallet-extension-guard";
 import { StructuredData } from "../components/structured-data";
 import { getClerkPublishableKey } from "../lib/clerk-env";
+import { getWebI18n } from "../lib/locale";
 
 const DEFAULT_SITE_URL = "https://nexid.lat";
 
 const socialCopyByLocale = {
   "es-AR": {
-    title: "nexID | Evidencia NFC/SUN, pasaportes y derechos digitales",
+    title: "nexID | Identidad digital para productos conectados",
     description:
-      "Validá mensajes NFC/SUN, registrá eventos reportados, organizá lote y origen declarados, y activá pasaportes o derechos digitales bajo política. No es una prueba autónoma del objeto físico.",
-    imageAlt: "nexID - Evidencia NFC/SUN, datos declarados y pasaportes digitales",
-    keywords: ["Validación NFC SUN", "NFC", "Pasaporte Digital", "Cadena de Suministro Empresarial", "Trazabilidad Declarada", "Derechos Digitales", "nexID"]
+      "Conectá productos mediante NFC o QR para mostrar información, evidencia digital con fuente identificada y servicios postventa bajo política. La evidencia digital no prueba por sí sola el objeto físico.",
+    imageAlt: "nexID - Identidad digital para productos conectados",
+    keywords: ["Productos conectados", "NFC", "QR", "Pasaporte Digital", "Trazabilidad", "Experiencia postventa", "nexID"]
   },
   "pt-BR": {
-    title: "nexID | Evidência NFC/SUN, passaportes e direitos digitais",
+    title: "nexID | Identidade digital para produtos conectados",
     description:
-      "Valide mensagens NFC/SUN, registre eventos reportados, organize lote e origem declarados e ative passaportes ou direitos digitais por política. Não é prova autônoma do objeto físico.",
-    imageAlt: "nexID - Evidência NFC/SUN, dados declarados e passaportes digitais",
-    keywords: ["Validação NFC SUN", "NFC", "Passaporte Digital", "Cadeia de Suprimentos Corporativa", "Rastreabilidade Declarada", "Direitos Digitais", "nexID"]
+      "Conecte produtos por NFC ou QR para apresentar informações, evidências digitais com fonte identificada e serviços de pós-venda sob política. A evidência digital não comprova sozinha o objeto físico.",
+    imageAlt: "nexID - Identidade digital para produtos conectados",
+    keywords: ["Produtos conectados", "NFC", "QR", "Passaporte Digital", "Rastreabilidade", "Experiência pós-venda", "nexID"]
   },
   en: {
-    title: "nexID | NFC/SUN evidence, passports and digital rights",
+    title: "nexID | Digital identity for connected products",
     description:
-      "Validate NFC/SUN messages, record reported events, organize declared batch and origin, and activate digital passports or rights under policy. This is not standalone proof of the physical object.",
-    imageAlt: "nexID - NFC/SUN evidence, declared data and digital passports",
-    keywords: ["NFC SUN Validation", "NFC", "Digital Product Passport", "Enterprise Supply Chain", "Declared Traceability", "Digital Rights", "nexID"]
+      "Connect products through NFC or QR to present information, digital evidence with identified sources, and policy-controlled after-sales services. Digital evidence does not by itself prove the physical object.",
+    imageAlt: "nexID - Digital identity for connected products",
+    keywords: ["Connected products", "NFC", "QR", "Digital Product Passport", "Traceability", "After-sales experience", "nexID"]
   }
 };
 
@@ -107,8 +108,7 @@ export const viewport: Viewport = {
 };
 
 export async function generateMetadata(): Promise<Metadata> {
-  const cookieStore = await cookies();
-  const locale = resolveLocale(cookieStore.get("locale")?.value);
+  const { locale } = await getWebI18n();
   const socialCopy = getSocialCopy(locale);
   const siteUrl = new URL(process.env.NEXT_PUBLIC_SITE_URL || DEFAULT_SITE_URL);
   const imageParams = new URLSearchParams({
@@ -185,10 +185,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
-  const cookieStore = await cookies();
-  const locale = resolveLocale(cookieStore.get("locale")?.value);
+  const [{ locale }, cookieStore] = await Promise.all([getWebI18n(), cookies()]);
   const themeCookie = cookieStore.get("theme")?.value;
-  const theme = themeCookie === "light" ? "light" : "dark";
+  const theme = themeCookie === "dark" ? "dark" : "light";
   const socialCopy = getSocialCopy(locale);
   const facebookAppId = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID?.trim();
   const clerkKey = getClerkPublishableKey();

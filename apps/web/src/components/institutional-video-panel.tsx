@@ -28,30 +28,30 @@ type PanelCopy = {
 const PANEL_COPY: Record<SupportedLocale, PanelCopy> = {
   "es-AR": {
     eyebrow: "Video Institucional",
-    title: "Evidencia digital clara para productos conectados.",
-    body: "Descubrí cómo nexID valida mensajes NFC/SUN, muestra lote y origen declarados, reporta TT cuando está disponible y activa beneficios bajo política. El toque no autentica por sí solo el objeto físico.",
-    primary: "Abrir Demo Lab",
+    title: "De un toque a una experiencia útil.",
+    body: "En dos minutos: cómo una marca conecta un producto y habilita servicios. Alcance: ‘validación en tiempo real’ refiere al mensaje NFC cuando el servicio está disponible; prevenir fraude es un objetivo, no una garantía ni prueba del objeto físico.",
+    primary: "Ver experiencia guiada",
     secondary: "Agendar reunión",
     aria: "video institucional nexID",
-    strip: "Mensaje NFC/SUN -> evidencia disponible -> pasaporte digital -> señal CRM",
+    strip: "Producto conectado → información clara → próxima acción",
   },
   en: {
     eyebrow: "Institutional Video",
-    title: "Clear digital evidence for connected products.",
-    body: "See how nexID validates NFC/SUN messages, displays declared batch and origin, reports TT when available, and activates policy-based benefits. A tap does not authenticate the physical object by itself.",
-    primary: "Open Demo Lab",
+    title: "From one tap to a useful experience.",
+    body: "In two minutes: see how a brand connects a product and enables services. Scope: ‘real-time validation’ refers to the NFC message when the service is available; fraud prevention is a goal, not a guarantee or proof of the physical object.",
+    primary: "View guided experience",
     secondary: "Schedule meeting",
     aria: "nexID institutional video",
-    strip: "NFC/SUN message -> available evidence -> digital passport -> CRM signal",
+    strip: "Connected product → clear information → next action",
   },
   "pt-BR": {
     eyebrow: "Vídeo Institucional",
-    title: "Evidência digital clara para produtos conectados.",
-    body: "Veja como a nexID valida mensagens NFC/SUN, mostra lote e origem declarados, informa TT quando disponível e ativa benefícios por política. O toque não autentica sozinho o objeto físico.",
-    primary: "Abrir Demo Lab",
+    title: "De um toque a uma experiência útil.",
+    body: "Em dois minutos: veja como uma marca conecta um produto e habilita serviços. Escopo: ‘validação em tempo real’ refere-se à mensagem NFC quando o serviço está disponível; prevenir fraude é um objetivo, não garantia nem prova do objeto físico.",
+    primary: "Ver experiência guiada",
     secondary: "Agendar reunião",
     aria: "vídeo institucional nexID",
-    strip: "Mensagem NFC/SUN -> evidência disponível -> passaporte digital -> sinal CRM",
+    strip: "Produto conectado → informação clara → próxima ação",
   },
 };
 
@@ -276,7 +276,15 @@ export function InstitutionalVideoPanel({ locale, variant = "landing", className
             controlsList="nodownload"
             poster={isPosterReady && !isLightTheme ? poster : undefined}
             tabIndex={showPlayOverlay ? -1 : undefined}
-          />
+          >
+            <track
+              kind="captions"
+              src={video.captions}
+              srcLang={video.captionsLanguage}
+              label={activeLocale === "en" ? "English" : activeLocale === "pt-BR" ? "Português" : "Español"}
+              default
+            />
+          </video>
           {!isLightTheme && !isPosterReady && showPlayOverlay ? (
             <div
               className="institutional-video-deferred-preview absolute inset-0 z-[1] flex flex-col justify-center gap-3 bg-slate-950 px-6 py-8 text-left"

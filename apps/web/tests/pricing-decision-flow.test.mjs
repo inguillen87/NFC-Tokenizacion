@@ -127,7 +127,7 @@ test("pricing exposes an editable, bounded and truthful decision model", async (
 
 test("pricing intents preserve tier and modeled scenario through the commercial handoff", async () => {
   const modal = await readFile(new URL("../src/components/commercial-contact-modal.tsx", import.meta.url), "utf8");
-  const home = await readFile(new URL("../src/app/page.tsx", import.meta.url), "utf8");
+  const frame = await readFile(new URL("../src/components/marketing-clear/clear-site-frame.tsx", import.meta.url), "utf8");
 
   assert.equal((modal.match(/pricing_starter:\s*\{/g) ?? []).length, 3);
   assert.equal((modal.match(/pricing_pro:\s*\{/g) ?? []).length, 3);
@@ -138,7 +138,7 @@ test("pricing intents preserve tier and modeled scenario through the commercial 
   assert.match(modal, /const message = search\.get\("message"\) \|\| intentCopy\.message/);
   assert.match(modal, /role="dialog" aria-modal="true" aria-labelledby="contact-modal-title"/);
   assert.match(modal, /function getLocale\(fallback: AppLocale\): AppLocale/);
-  assert.match(home, /<CommercialContactModal initialLocale=\{locale\} \/>/);
+  assert.match(frame, /<Suspense fallback=\{null\}>[\s\S]*<CommercialContactModal initialLocale=\{locale\} \/>[\s\S]*<\/Suspense>/);
   assert.match(modal, /document\.body\.style\.overflow = "hidden"/);
   assert.match(modal, /element\.setAttribute\("inert", ""\)/);
   assert.match(modal, /element\.setAttribute\("aria-hidden", "true"\)/);

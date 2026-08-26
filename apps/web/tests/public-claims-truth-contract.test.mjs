@@ -51,13 +51,19 @@ const [
   read("../public/demo/events-basic/seed.json"),
 ]);
 
+const [marketingHome, marketingContent, marketingDetail] = await Promise.all([
+  read("../src/components/marketing-clear/clear-home.tsx"),
+  read("../src/components/marketing-clear/marketing-clear.content.ts"),
+  read("../src/components/marketing-clear/clear-detail-page.tsx"),
+]);
+
 test("public metadata and global SEO describe digital evidence instead of physical authentication", () => {
   assert.match(metadata, /NFC\/SUN message validation, declared data/);
   assert.match(metadata, /conecta validaci.n de mensajes NFC\/SUN, datos declarados/);
   assert.doesNotMatch(metadata, /physical product authentication|autenticaci.n de productos f.sicos|autentica..o de produtos f.sicos/i);
 
-  assert.match(layout, /This is not standalone proof of the physical object/);
-  assert.match(layout, /No es una prueba aut.noma del objeto f.sico/);
+  assert.match(layout, /Digital evidence does not by itself prove the physical object/);
+  assert.match(layout, /La evidencia digital no prueba por s. sola el objeto f.sico/);
   assert.doesNotMatch(layout, /Product Authentication|Autenticaci.n de Productos|Autentica..o de Produtos/);
 });
 
@@ -86,8 +92,10 @@ test("assistant and institutional video bound NFC, TT, origin and ownership clai
   assert.match(assistant, /El registro digital no prueba ownership ni autenticidad fisica/);
   assert.doesNotMatch(assistant, /authentic physical presence|presencia fisica autentica|presenca fisica autentica/i);
 
-  assert.match(video, /validates NFC\/SUN messages, displays declared batch and origin/);
-  assert.match(video, /A tap does not authenticate the physical object by itself/);
+  assert.match(video, /From one tap to a useful experience/);
+  assert.match(video, /real-time validation.*NFC message.*service is available/s);
+  assert.match(video, /fraud prevention is a goal, not a guarantee or proof of the physical object/);
+  assert.match(video, /View guided experience/);
   assert.doesNotMatch(video, /trusted tap|toque confiable|Autenticidad, trazabilidad|Authenticity, traceability|Autenticidade, rastreabilidade/);
 });
 
@@ -125,8 +133,10 @@ test("audience, SDK and wallet surfaces name digital rights without authenticati
 });
 
 test("landing, pricing and demo surfaces label evidence and simulations precisely", () => {
-  const surfaces = [home, demoPage, demoLab, heroScene, landingSections, calculator, pricing, interactiveDemo, radar, ogImage, demoSummary].join("\n");
-  assert.match(home, /does not prove the physical product or its presence/);
+  const surfaces = [marketingHome, marketingContent, marketingDetail, demoPage, demoLab, heroScene, landingSections, calculator, pricing, interactiveDemo, radar, ogImage, demoSummary].join("\n");
+  assert.match(marketingContent, /Digital evidence does not by itself prove the physical object/);
+  assert.match(marketingContent, /clearly labelled simulated data/);
+  assert.match(marketingDetail, /entry\.boundary/);
   assert.match(demoLab, /Product scene/);
   assert.match(demoLab, /Message NFC accepted|Mensaje NFC aceptado/);
   assert.match(radar, /Reported custody event \(demo\)/);
@@ -142,6 +152,7 @@ test("landing, pricing and demo surfaces label evidence and simulations precisel
   assert.doesNotMatch(surfaces, /Authenticity validated|Autenticidad validada|Tamper detected|Seal opened|Sello abierto|Chain-of-custody event|Anti-copy signals|Se.ales anticopia/i);
   assert.doesNotMatch(demoLab, /getPhysicalProductBadge|Toque f.sico validado|Toque f.sico fresco|Repetir tap f.sico|Repetir toque fisico/i);
   assert.doesNotMatch(pricing, /Anti-counterfeit|Antifraude/i);
+  assert.doesNotMatch(`${marketingHome}\n${marketingContent}\n${marketingDetail}`, /live telemetry|real-time telemetry|physical product authenticated|autenticidad f.sica validada/i);
 });
 
 test("mobile demo never invents missing product metrics or locations", () => {

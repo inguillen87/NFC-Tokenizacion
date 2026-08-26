@@ -4,8 +4,10 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 
-const [home, demo, landing, interactive, ogImage, assistant, demoLab, demoLabPage, chainLab, ownership, investor] = await Promise.all([
-  read("../src/app/page.tsx"),
+const [home, marketingContent, marketingDetail, demo, landing, interactive, ogImage, assistant, demoLab, demoLabPage, chainLab, ownership, investor] = await Promise.all([
+  read("../src/components/marketing-clear/clear-home.tsx"),
+  read("../src/components/marketing-clear/marketing-clear.content.ts"),
+  read("../src/components/marketing-clear/clear-detail-page.tsx"),
   read("../src/app/demo/page.tsx"),
   read("../src/components/landing-sections.tsx"),
   read("../src/components/interactive-demo-section.tsx"),
@@ -19,9 +21,9 @@ const [home, demo, landing, interactive, ogImage, assistant, demoLab, demoLabPag
 ]);
 
 test("guided public demos never masquerade simulation as production telemetry", () => {
-  const publicDemo = [home, demo, landing, interactive, ogImage, assistant].join("\n");
+  const publicDemo = [home, marketingContent, marketingDetail, demo, landing, interactive, ogImage, assistant].join("\n");
 
-  assert.match(home, /guided NFC scenarios with simulated read locations/);
+  assert.match(marketingContent, /guided journey with clearly labelled simulated data/);
   assert.match(demo, /source-labelled demo surfaces/);
   assert.match(landing, /View guided demo/);
   assert.match(interactive, /reported openings, duplicates and regions from the selected data source/);

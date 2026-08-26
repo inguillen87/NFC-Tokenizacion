@@ -8,6 +8,9 @@ export function ContextualHelpBot({ locale }: { locale: AppLocale }) {
   const pathname = usePathname() || "";
 
   if (
+    pathname === "/" ||
+    pathname.startsWith("/solutions") ||
+    pathname.startsWith("/industries") ||
     pathname.startsWith("/sun") ||
     pathname.startsWith("/me") ||
     pathname.startsWith("/web3") ||

@@ -533,7 +533,7 @@ type SdkPageProps = {
 export default async function SdkPage({ searchParams }: SdkPageProps) {
   const params = await searchParams;
   const cookieStore = await cookies();
-  const theme: SdkTheme = cookieStore.get("theme")?.value === "light" ? "light" : "dark";
+  const theme: SdkTheme = cookieStore.get("theme")?.value === "dark" ? "dark" : "light";
   const activeVertical = normalizeSdkVertical(params?.vertical);
 
   return (

@@ -2,6 +2,23 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { clerkMiddleware } from "@clerk/nextjs/server";
 import { isClerkConfiguredForRuntime } from "./lib/clerk-env";
+import { INDUSTRY_SLUGS, SOLUTION_SLUGS } from "./lib/marketing-route-slugs";
+
+const solutionSlugSet = new Set<string>(SOLUTION_SLUGS);
+const industrySlugSet = new Set<string>(INDUSTRY_SLUGS);
+
+function marketingCatalogNotFound(req: NextRequest) {
+  const match = req.nextUrl.pathname.match(/^\/(solutions|industries)\/([^/]+)\/?$/);
+  if (!match) return null;
+
+  const [, kind, slug] = match;
+  const isKnown = kind === "solutions" ? solutionSlugSet.has(slug) : industrySlugSet.has(slug);
+  if (isKnown) return null;
+
+  const url = req.nextUrl.clone();
+  url.pathname = "/_not-found";
+  return NextResponse.rewrite(url, { status: 404 });
+}
 
 function landingMiddleware(req: NextRequest) {
   const host = req.headers.get("host") || "";
@@ -21,6 +38,9 @@ function landingMiddleware(req: NextRequest) {
     }
     return NextResponse.redirect(url, 308);
   }
+
+  const catalogNotFound = marketingCatalogNotFound(req);
+  if (catalogNotFound) return catalogNotFound;
 
   return NextResponse.next();
 }
