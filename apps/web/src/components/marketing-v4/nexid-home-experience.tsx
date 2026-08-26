@@ -1,7 +1,18 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { BadgeCheck, Nfc, Pause, Play } from "lucide-react";
+import {
+  BadgeCheck,
+  Building2,
+  FileText,
+  Headphones,
+  Nfc,
+  PackageCheck,
+  Pause,
+  Play,
+  ShieldCheck,
+  Smartphone,
+} from "lucide-react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -15,10 +26,17 @@ import type {
 import styles from "./nexid-home-v4.module.css";
 
 const HERO_ROTATION_MS = 5_800;
-const PROCESS_STEP_MS = 1_650;
+const PROCESS_STEP_MS = 4_600;
 const NexidOperationsPreview = dynamic(
   () => import("./nexid-operations-preview").then((module) => module.NexidOperationsPreview),
-  { ssr: false },
+  {
+    ssr: false,
+    loading: () => (
+      <div className={styles.operationsLoading} aria-hidden="true">
+        <span /><span /><span />
+      </div>
+    ),
+  },
 );
 const DEMO_VERTICAL_BY_SECTOR: Record<HomeHeroSector["id"], string> = {
   agro: "seeds",
@@ -316,86 +334,125 @@ export function NexidProcessExperience({ flow, controls }: ProcessExperienceProp
         </div>
 
         <div className={styles.processLayout}>
-          <div className={styles.processControls} role="group" aria-label={flow.title}>
+          <div
+            className={styles.processControls}
+            role="tablist"
+            aria-label={flow.title}
+            onFocusCapture={() => setPlaying(false)}
+          >
             {flow.steps.map((step, index) => (
               <button
                 key={step.number}
+                id={`journey-step-${index}`}
                 type="button"
-                aria-pressed={stepIndex === index}
+                role="tab"
+                aria-label={step.title}
+                aria-selected={stepIndex === index}
+                aria-controls="journey-stage"
+                tabIndex={stepIndex === index ? 0 : -1}
                 data-active={stepIndex === index ? "true" : "false"}
                 onClick={() => {
                   setStepIndex(index);
                   setPlaying(false);
                 }}
+                onKeyDown={(event) => {
+                  if (!["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft", "Home", "End"].includes(event.key)) return;
+                  event.preventDefault();
+                  const next = event.key === "Home"
+                    ? 0
+                    : event.key === "End"
+                      ? flow.steps.length - 1
+                      : (stepIndex + (["ArrowDown", "ArrowRight"].includes(event.key) ? 1 : -1) + flow.steps.length) % flow.steps.length;
+                  setStepIndex(next);
+                  setPlaying(false);
+                  requestAnimationFrame(() => document.getElementById(`journey-step-${next}`)?.focus());
+                }}
               >
-                <span>{step.number}</span>
-                <div>
-                  <strong>{step.title}</strong>
-                  <small>{step.body}</small>
-                </div>
+                <span aria-hidden="true">{step.number}</span>
+                <strong className={styles.processStepLong} aria-hidden="true">{step.title}</strong>
+                <strong className={styles.processStepShort} aria-hidden="true">{step.shortTitle}</strong>
               </button>
             ))}
-            <div className={styles.processActions}>
+          </div>
+
+          <div
+            id="journey-stage"
+            className={styles.processStage}
+            role="tabpanel"
+            aria-labelledby={`journey-step-${stepIndex}`}
+            aria-live="off"
+          >
+            <div className={styles.processStageTop}>
+              <span>{flow.sampleLabel}</span>
+              <b>{activeStep.number} / {String(flow.steps.length).padStart(2, "0")}</b>
+            </div>
+
+            <div className={styles.processScene} data-step={stepIndex}>
+              <div className={styles.journeyPhoto} role="img" aria-label={controls.mediaLabel}>
+                <motion.span
+                  className={styles.journeyHotspot}
+                  animate={reduceMotion || !playing ? undefined : { scale: [1, 1.09, 1] }}
+                  transition={{ duration: 1.55, repeat: Infinity, ease: "easeInOut" }}
+                  aria-hidden="true"
+                >
+                  {stepIndex === 0 ? <Nfc size={21} /> : stepIndex === 1 ? <ShieldCheck size={21} /> : <PackageCheck size={21} />}
+                </motion.span>
+
+                <AnimatePresence initial={false}>
+                  <motion.div
+                    key={activeStep.signal}
+                    className={styles.journeySignal}
+                    initial={reduceMotion ? false : { opacity: 0, x: -18, y: 8 }}
+                    animate={{ opacity: 1, x: 0, y: 0 }}
+                    exit={reduceMotion ? undefined : { opacity: 0, x: 12 }}
+                    transition={{ duration: reduceMotion ? 0 : 0.38, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    <span aria-hidden="true">{stepIndex === 0 ? <Nfc size={17} /> : stepIndex === 1 ? <BadgeCheck size={17} /> : <Smartphone size={17} />}</span>
+                    <div><small>nexID</small><strong>{activeStep.signal}</strong></div>
+                  </motion.div>
+                </AnimatePresence>
+
+                <div className={styles.journeyActions} data-visible={stepIndex === 2 ? "true" : "false"} aria-hidden="true">
+                  <span><FileText size={15} />{flow.steps[2]?.title}</span>
+                  <span><Headphones size={15} />{controls.openDemo}</span>
+                </div>
+              </div>
+
+              <AnimatePresence initial={false} mode="popLayout">
+                <motion.div
+                  key={activeStep.number}
+                  className={styles.processNarrative}
+                  initial={reduceMotion ? false : { opacity: 0, y: 18 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={reduceMotion ? undefined : { opacity: 0, y: -10 }}
+                  transition={{ duration: reduceMotion ? 0 : 0.42, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  <span>{activeStep.number}</span>
+                  <h3>{activeStep.title}</h3>
+                  <p>{activeStep.body}</p>
+                  <div className={styles.processPerspectives}>
+                    <article>
+                      <Smartphone aria-hidden="true" size={19} />
+                      <div><small>{flow.personLabel}</small><strong>{activeStep.person}</strong></div>
+                    </article>
+                    <article>
+                      <Building2 aria-hidden="true" size={19} />
+                      <div><small>{flow.businessLabel}</small><strong>{activeStep.business}</strong></div>
+                    </article>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+
+            <div className={styles.processFooter}>
               <button type="button" onClick={togglePlayback}>
                 {playing ? <Pause aria-hidden="true" size={15} /> : <Play aria-hidden="true" size={15} />}
                 {playing ? controls.pause : stepIndex === flow.steps.length - 1 ? controls.replay : controls.play}
               </button>
               <a href="#evidence">{flow.detail}<span aria-hidden="true">↘</span></a>
-            </div>
-          </div>
-
-          <div className={styles.processStage} role="region" aria-label={controls.mediaLabel} aria-live="off">
-            <div className={styles.processStageTop}>
-              <span>{controls.boundary}</span>
-              <b>{activeStep.number} / 03</b>
-            </div>
-
-            <div className={styles.processScene} data-step={stepIndex} role="img" aria-label={controls.mediaLabel}>
-              <div className={styles.identityObject} aria-hidden="true">
-                <div className={styles.identityPackage}>
-                  <span>nexID</span>
-                  <i />
-                  <strong>000128</strong>
-                  <small>{flow.steps[0]?.title}</small>
-                </div>
-                <motion.div
-                  className={styles.identityTag}
-                  animate={reduceMotion || !playing ? undefined : { scale: stepIndex === 0 ? [1, 1.08, 1] : 1 }}
-                  transition={{ duration: 1.4, repeat: stepIndex === 0 ? Infinity : 0, ease: "easeInOut" }}
-                >
-                  <Nfc size={22} />
-                </motion.div>
+              <div className={styles.processTimeline} aria-hidden="true">
+                {flow.steps.map((step, index) => <span key={step.number} data-active={stepIndex >= index ? "true" : "false"} />)}
               </div>
-
-              <div className={styles.processConnector} aria-hidden="true"><i /><motion.b animate={reduceMotion ? undefined : { x: stepIndex >= 0 ? [0, 52, 0] : 0 }} transition={{ duration: 1.35, repeat: playing && stepIndex === 0 ? Infinity : 0, ease: "easeInOut" }} /></div>
-
-              <div className={styles.verificationCore} data-active={stepIndex >= 1 ? "true" : "false"} aria-hidden="true">
-                <i /><i /><i />
-                <span>{stepIndex >= 1 ? <BadgeCheck size={28} /> : <Nfc size={27} />}</span>
-                <small>{flow.steps[1]?.title}</small>
-              </div>
-
-              <div className={styles.processConnector} aria-hidden="true"><i /><motion.b animate={reduceMotion ? undefined : { x: stepIndex >= 1 ? [0, 52, 0] : 0 }} transition={{ duration: 1.35, repeat: playing && stepIndex >= 1 ? Infinity : 0, ease: "easeInOut" }} /></div>
-
-              <motion.div
-                key={activeStep.number}
-                className={styles.actionSurface}
-                data-active={stepIndex === 2 ? "true" : "false"}
-                initial={reduceMotion ? false : { opacity: 0.7, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: reduceMotion ? 0 : 0.36 }}
-                aria-hidden="true"
-              >
-                <div className={styles.actionChrome}><i /><i /><i /><span>nexID</span></div>
-                <small>{activeStep.number}</small>
-                <strong>{activeStep.title}</strong>
-                <p>{activeStep.body}</p>
-                <span className={styles.actionButton}>{flow.steps[2]?.title}</span>
-              </motion.div>
-            </div>
-
-            <div className={styles.processTimeline} aria-hidden="true">
-              {flow.steps.map((step, index) => <span key={step.number} data-active={stepIndex >= index ? "true" : "false"} />)}
             </div>
           </div>
         </div>
@@ -444,49 +501,82 @@ export function NexidRoleExperience({ copy }: RoleExperienceProps) {
                   requestAnimationFrame(() => document.getElementById(`${tabSetId}-tab-${next}`)?.focus());
                 }}
                 >
-                  <div><small>{item.role}</small><strong>{item.title}</strong></div>
+                  <small>{item.role}</small>
+                  <strong>{item.title}</strong>
                 </button>
               ))}
             </div>
-            <div className={styles.roleSummary}><p>{active.body}</p><strong>{active.outcome}</strong></div>
+            <div className={styles.roleSummary}>
+              <p>{active.body}</p>
+              <strong>{active.outcome}</strong>
+            </div>
           </div>
 
-          <div id={`${tabSetId}-panel`} className={styles.roleViewport} role="tabpanel" aria-labelledby={`${tabSetId}-tab-${activeIndex}`}>
-            <div className={styles.workspaceChrome}><span>nexID</span><i aria-hidden="true" /><i aria-hidden="true" /><i aria-hidden="true" /><b>{copy.scenarioLabel}</b></div>
-            <AnimatePresence initial={false}>
-              <motion.div key={activeIndex} className={styles.roleMockup} initial={reduceMotion ? false : { opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={reduceMotion ? undefined : { opacity: 0, y: -8 }} transition={{ duration: reduceMotion ? 0 : 0.42, ease: [0.22, 1, 0.36, 1] }}>
+          <div
+            id={`${tabSetId}-panel`}
+            className={styles.roleViewport}
+            data-role={activeIndex}
+            role="tabpanel"
+            aria-labelledby={`${tabSetId}-tab-${activeIndex}`}
+          >
+            <AnimatePresence initial={false} mode="popLayout">
+              <motion.div
+                key={activeIndex}
+                className={styles.roleMockup}
+                initial={reduceMotion ? false : { opacity: 0, y: 18, scale: 0.992 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={reduceMotion ? undefined : { opacity: 0, y: -10, scale: 0.995 }}
+                transition={{ duration: reduceMotion ? 0 : 0.46, ease: [0.22, 1, 0.36, 1] }}
+              >
                 {activeIndex === 0 && (
                   <div className={styles.brandBoard}>
-                    <div className={styles.boardTitle}><span aria-hidden="true">N</span><div><small>{copy.workspace.portfolioTitle}</small><b>{active.outcome}</b></div></div>
+                    <div className={styles.boardTitle}>
+                      <span aria-hidden="true"><PackageCheck size={20} /></span>
+                      <div><small>{copy.workspace.portfolioTitle}</small><b>{active.outcome}</b></div>
+                      <p>{copy.scenarioLabel}</p>
+                    </div>
                     <div className={styles.productPortfolio}>
                       {copy.workspace.portfolioItems.map((item, index) => (
-                        <article key={item}>
-                          <div className={styles.portfolioObject} data-shape={index + 1} aria-hidden="true"><i /><b /></div>
-                          <strong>{item}</strong>
-                          <small>{index === 0 ? copy.workspace.activeLabel : copy.workspace.configuredLabel}</small>
+                        <article key={item} data-sector={index + 1}>
+                          <div className={styles.portfolioImage} aria-hidden="true">
+                            <span><Nfc size={16} /></span>
+                          </div>
+                          <div className={styles.portfolioCopy}>
+                            <span>{String(index + 1).padStart(2, "0")}</span>
+                            <strong>{item}</strong>
+                            <small data-active={index === 0 ? "true" : "false"}>{index === 0 ? copy.workspace.activeLabel : copy.workspace.configuredLabel}</small>
+                          </div>
                         </article>
                       ))}
                     </div>
                     <div className={styles.portfolioSummary}>
+                      <p>{active.body}</p>
                       <span><i aria-hidden="true" />{copy.workspace.activeLabel}</span>
                       <span><i aria-hidden="true" />{copy.workspace.configuredLabel}</span>
                     </div>
                   </div>
                 )}
                 {activeIndex === 1 && (
-                  <NexidOperationsPreview copy={copy.workspace} outcome={active.outcome} />
+                  <NexidOperationsPreview copy={copy.workspace} outcome={active.outcome} scenarioLabel={copy.scenarioLabel} />
                 )}
                 {activeIndex === 2 && (
                   <div className={styles.customerBoard}>
-                    <div className={styles.customerObject} aria-hidden="true"><div><span>nexID</span><i /><b>000128</b></div><em><Nfc size={24} /></em></div>
+                    <div className={styles.customerStory}>
+                      <small>{copy.scenarioLabel}</small>
+                      <strong>{active.title}</strong>
+                      <p>{active.body}</p>
+                      <span><Smartphone size={17} />{active.outcome}</span>
+                    </div>
                     <div className={styles.customerBrowser}>
-                      <div className={styles.browserChrome} aria-hidden="true"><i /><i /><i /><span>nexID</span></div>
+                      <div className={styles.browserChrome} aria-hidden="true"><i /><span>nexID</span><b>000128</b></div>
+                      <div className={styles.customerVerified}><BadgeCheck size={19} /><span>{copy.workspace.activeLabel}</span></div>
                       <small>{copy.workspace.customerTitle}</small>
                       <strong>{active.outcome}</strong>
                       <div><span>{copy.workspace.informationLabel}</span><b>{copy.workspace.activeLabel}</b></div>
                       <div><span>{copy.workspace.nextActionLabel}</span><b>{copy.workspace.configuredLabel}</b></div>
                       <span className={styles.customerAction}>{copy.workspace.viewDetail}</span>
                     </div>
+                    <div className={styles.customerTouchpoint} aria-hidden="true"><Nfc size={21} /></div>
                   </div>
                 )}
               </motion.div>

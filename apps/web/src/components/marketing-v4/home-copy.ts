@@ -30,7 +30,18 @@ export type HomeFlowCopy = {
   eyebrow: string;
   title: string;
   body: string;
-  steps: Array<{ number: string; title: string; body: string }>;
+  personLabel: string;
+  businessLabel: string;
+  sampleLabel: string;
+  steps: Array<{
+    number: string;
+    shortTitle: string;
+    title: string;
+    body: string;
+    person: string;
+    business: string;
+    signal: string;
+  }>;
   detail: string;
 };
 
@@ -50,6 +61,9 @@ export type HomeRolesCopy = {
     signals: string[];
     sequenceLabel: string;
     activityLabel: string;
+    mapZoomIn: string;
+    mapZoomOut: string;
+    mapAttribution: string;
     customerTitle: string;
     informationLabel: string;
     nextActionLabel: string;
@@ -85,12 +99,32 @@ type HomeV4Copy = {
     title: string;
     body: string;
     items: Array<{ label: string; title: string; body: string }>;
+    sampleLabel: string;
+    sampleTitle: string;
+    sampleStatus: string;
+    sourceLabel: string;
+    limitLabel: string;
     publicProof: string;
     pilot: string;
   };
   footer: {
+    eyebrow: string;
+    title: string;
+    ctaBody: string;
+    primary: string;
+    secondary: string;
     body: string;
-    product: string;
+    solutionBy: string;
+    platformLabel: string;
+    exploreLabel: string;
+    integrationLabel: string;
+    contactLabel: string;
+    howItWorks: string;
+    solutions: string;
+    documentation: string;
+    technology: string;
+    contact: string;
+    audience: string;
     demo: string;
     proof: string;
     developers: string;
@@ -177,13 +211,40 @@ export const HOME_V4_COPY: Record<AppLocale, HomeV4Copy> = {
       ],
     },
     flow: {
-      eyebrow: "Un recorrido visible, de punta a punta",
-      title: "Del producto físico a una acción comprobable.",
-      body: "Una sola secuencia vincula la unidad, interpreta la lectura y presenta el paso que corresponde.",
+      eyebrow: "Cómo funciona en la práctica",
+      title: "Una lectura clara. Una decisión útil.",
+      body: "La misma identidad acompaña al producto desde su configuración hasta la consulta y la acción posterior.",
+      personLabel: "Lo que ve la persona",
+      businessLabel: "Lo que obtiene la empresa",
+      sampleLabel: "Ejemplo ilustrativo · Sin datos de cliente",
       steps: [
-        { number: "01", title: "Asigná su identidad", body: "Vinculá cada unidad o lote con la información autorizada por la marca." },
-        { number: "02", title: "Leé la evidencia", body: "Cada consulta devuelve un resultado comprensible, con límites y señales relevantes." },
-        { number: "03", title: "Habilitá una acción", body: "Información, garantía, soporte, beneficios o derechos se muestran según las reglas definidas." },
+        {
+          number: "01",
+          shortTitle: "Producto",
+          title: "Prepará el producto",
+          body: "Vinculá una unidad o un lote con la información que tu organización autoriza.",
+          person: "El producto incorpora una etiqueta inteligente o un código listo para consultar.",
+          business: "Una referencia ordenada para administrar información, lotes y experiencias.",
+          signal: "Identidad asignada · Unidad 000128",
+        },
+        {
+          number: "02",
+          shortTitle: "Consulta",
+          title: "Mostrá un resultado comprensible",
+          body: "La consulta separa lo observado, lo declarado y aquello que todavía no puede confirmarse.",
+          person: "Un mensaje breve que explica qué se consultó y cuáles son sus límites.",
+          business: "Una lectura registrada y señales para revisar cuando algo requiere atención.",
+          signal: "Consulta aceptada · Límites visibles",
+        },
+        {
+          number: "03",
+          shortTitle: "Acción",
+          title: "Abrí el siguiente paso",
+          body: "Información, soporte, garantía o beneficios aparecen sólo cuando las reglas lo permiten.",
+          person: "Una acción concreta, sin instalar una aplicación ni recorrer menús técnicos.",
+          business: "Un canal directo posterior a la venta, conectado con sus sistemas y políticas.",
+          signal: "Próxima acción · Información aprobada",
+        },
       ],
       detail: "Ver evidencia y límites",
     },
@@ -207,6 +268,9 @@ export const HOME_V4_COPY: Record<AppLocale, HomeV4Copy> = {
         signals: ["Lecturas registradas", "Lotes consultados", "Revisión requerida"],
         sequenceLabel: "Secuencia simulada",
         activityLabel: "Actividad ilustrativa",
+        mapZoomIn: "Acercar mapa",
+        mapZoomOut: "Alejar mapa",
+        mapAttribution: "Mostrar información del mapa",
         customerTitle: "Consulta del producto",
         informationLabel: "Información disponible",
         nextActionLabel: "Próxima acción",
@@ -221,24 +285,44 @@ export const HOME_V4_COPY: Record<AppLocale, HomeV4Copy> = {
       pause: "Pausar recorrido",
       replay: "Repetir recorrido",
       openDemo: "Explorar demostraciones",
-      mediaLabel: "Recorrido animado del producto conectado por nexID",
+      mediaLabel: "Escena ilustrativa de un producto conectado por nexID",
       boundary: "Secuencia ilustrativa · Sin datos de cliente",
     },
     evidence: {
       eyebrow: "Claridad que da confianza",
-      title: "Lo verificado, lo declarado y lo que aún no se sabe.",
-      body: "nexID separa cada capa para que una experiencia simple también sea clara sobre sus límites.",
+      title: "Cada resultado explica de dónde sale.",
+      body: "nexID presenta una respuesta útil sin mezclar una lectura técnica con datos aportados por la organización ni con pruebas que todavía faltan.",
       items: [
         { label: "Observado", title: "Mensaje y reglas", body: "Validez del mensaje, vigencia, lecturas repetidas y estado informado cuando corresponda." },
         { label: "Declarado", title: "Producto y recorrido", body: "Origen, lote, contenido y eventos aportados por la marca o sus operadores." },
-        { label: "Opcional", title: "Prueba y derechos", body: "Registros verificables, certificados o derechos digitales sólo cuando el caso y la evidencia lo justifican." },
+        { label: "Por confirmar", title: "Contenido y custodia física", body: "Lo que la lectura no puede acreditar por sí sola queda señalado, sin convertir una suposición en certeza." },
       ],
+      sampleLabel: "Lectura de ejemplo",
+      sampleTitle: "Unidad 000128",
+      sampleStatus: "Resultado disponible",
+      sourceLabel: "Fuente visible",
+      limitLabel: "Límite explícito",
       publicProof: "Ver evidencia pública",
       pilot: "Diseñar un piloto",
     },
     footer: {
+      eyebrow: "Un piloto empieza por un caso concreto",
+      title: "Elegí un producto, un objetivo y una señal para medir.",
+      ctaBody: "Diseñamos el recorrido inicial con tu equipo y definimos desde el comienzo qué información se mostrará, qué sistemas se integrarán y qué resultado podrá evaluarse.",
+      primary: "Hablar con ventas",
+      secondary: "Explorar demostraciones",
       body: "Un producto de Inmovar Latam SAS para conectar productos, operaciones y personas con identidad y evidencia digital.",
-      product: "Producto",
+      solutionBy: "Una solución de Inmovar Latam SAS",
+      platformLabel: "Plataforma",
+      exploreLabel: "Explorar",
+      integrationLabel: "Integración",
+      contactLabel: "Contacto",
+      howItWorks: "Cómo funciona",
+      solutions: "Soluciones por equipo",
+      documentation: "Documentación",
+      technology: "Tecnología",
+      contact: "Hablar con ventas",
+      audience: "Para quién es",
       demo: "Demostraciones",
       proof: "Verificador público",
       developers: "Desarrolladores",
@@ -323,13 +407,40 @@ export const HOME_V4_COPY: Record<AppLocale, HomeV4Copy> = {
       ],
     },
     flow: {
-      eyebrow: "One visible journey, end to end",
-      title: "From a physical product to an evidence-based action.",
-      body: "One sequence links the item, interprets the reading and presents the appropriate next step.",
+      eyebrow: "How it works in practice",
+      title: "One clear reading. One useful decision.",
+      body: "The same identity follows the product from setup to consultation and the next permitted action.",
+      personLabel: "What people see",
+      businessLabel: "What the business gets",
+      sampleLabel: "Illustrative example · No customer data",
       steps: [
-        { number: "01", title: "Assign its identity", body: "Link each item or batch to the information authorized by the brand." },
-        { number: "02", title: "Read the evidence", body: "Each query returns a clear result, its limits and relevant signals." },
-        { number: "03", title: "Enable an action", body: "Information, warranty, support, benefits or rights appear under defined rules." },
+        {
+          number: "01",
+          shortTitle: "Product",
+          title: "Prepare the product",
+          body: "Link an item or batch to the information your organization authorizes.",
+          person: "The product carries a smart tag or code that is ready to scan.",
+          business: "An ordered reference for managing information, batches and experiences.",
+          signal: "Identity assigned · Unit 000128",
+        },
+        {
+          number: "02",
+          shortTitle: "Check",
+          title: "Show a clear result",
+          body: "The result distinguishes what was observed, what was declared and what remains unconfirmed.",
+          person: "A short message explaining what was checked and where its limits are.",
+          business: "A recorded reading and signals for anything that needs attention.",
+          signal: "Check completed · Limits visible",
+        },
+        {
+          number: "03",
+          shortTitle: "Action",
+          title: "Open the next step",
+          body: "Information, support, warranty or benefits appear only when the rules allow them.",
+          person: "A concrete action without installing an app or navigating technical menus.",
+          business: "A direct post-sale channel connected to its systems and policies.",
+          signal: "Next action · Approved information",
+        },
       ],
       detail: "See evidence and limits",
     },
@@ -353,6 +464,9 @@ export const HOME_V4_COPY: Record<AppLocale, HomeV4Copy> = {
         signals: ["Recorded readings", "Queried batches", "Review required"],
         sequenceLabel: "Simulated sequence",
         activityLabel: "Illustrative activity",
+        mapZoomIn: "Zoom in",
+        mapZoomOut: "Zoom out",
+        mapAttribution: "Show map information",
         customerTitle: "Product lookup",
         informationLabel: "Available information",
         nextActionLabel: "Next action",
@@ -367,24 +481,44 @@ export const HOME_V4_COPY: Record<AppLocale, HomeV4Copy> = {
       pause: "Pause walkthrough",
       replay: "Replay walkthrough",
       openDemo: "Explore Demo Lab",
-      mediaLabel: "Animated walkthrough of a product connected by nexID",
+      mediaLabel: "Illustrative scene of a product connected by nexID",
       boundary: "Illustrative sequence · No customer data",
     },
     evidence: {
       eyebrow: "Clarity builds trust",
-      title: "What is verified, what is declared and what is still unknown.",
-      body: "nexID separates each layer so a simple experience remains technically honest.",
+      title: "Every result explains where it came from.",
+      body: "nexID provides a useful answer without mixing a technical reading, organization-supplied data and proof that is still missing.",
       items: [
         { label: "Observed", title: "Message and policy", body: "SUN/SDM validation, freshness, replay and reported state when available." },
         { label: "Declared", title: "Product and journey", body: "Origin, batch, contents and events provided by the brand or its operators." },
-        { label: "Optional", title: "Proof and rights", body: "Anchors, certificates or digital ownership only when the case and evidence justify them." },
+        { label: "Unconfirmed", title: "Contents and physical custody", body: "Anything the reading cannot establish on its own stays clearly identified instead of being presented as certain." },
       ],
+      sampleLabel: "Example reading",
+      sampleTitle: "Unit 000128",
+      sampleStatus: "Result available",
+      sourceLabel: "Visible source",
+      limitLabel: "Explicit limit",
       publicProof: "View public evidence",
       pilot: "Design a pilot",
     },
     footer: {
+      eyebrow: "A pilot starts with a concrete case",
+      title: "Choose one product, one objective and one signal to measure.",
+      ctaBody: "We design the first journey with your team and define from day one which information is shown, which systems are connected and which outcome can be evaluated.",
+      primary: "Talk to sales",
+      secondary: "Explore demonstrations",
       body: "A product by Inmovar Latam SAS that connects products, operations and people with digital identity and evidence.",
-      product: "Product",
+      solutionBy: "A solution by Inmovar Latam SAS",
+      platformLabel: "Platform",
+      exploreLabel: "Explore",
+      integrationLabel: "Integration",
+      contactLabel: "Contact",
+      howItWorks: "How it works",
+      solutions: "Solutions by team",
+      documentation: "Documentation",
+      technology: "Technology",
+      contact: "Talk to sales",
+      audience: "Who it is for",
       demo: "Demo Lab",
       proof: "Proof Verify",
       developers: "Developers",
@@ -469,13 +603,40 @@ export const HOME_V4_COPY: Record<AppLocale, HomeV4Copy> = {
       ],
     },
     flow: {
-      eyebrow: "Um percurso visível, de ponta a ponta",
-      title: "Do produto físico a uma ação comprovável.",
-      body: "Uma única sequência vincula a unidade, interpreta a leitura e apresenta o próximo passo adequado.",
+      eyebrow: "Como funciona na prática",
+      title: "Uma leitura clara. Uma decisão útil.",
+      body: "A mesma identidade acompanha o produto desde a configuração até a consulta e a próxima ação permitida.",
+      personLabel: "O que a pessoa vê",
+      businessLabel: "O que a empresa obtém",
+      sampleLabel: "Exemplo ilustrativo · Sem dados de cliente",
       steps: [
-        { number: "01", title: "Atribua sua identidade", body: "Vincule cada unidade ou lote às informações autorizadas pela marca." },
-        { number: "02", title: "Leia a evidência", body: "Cada consulta devolve um resultado claro, seus limites e sinais relevantes." },
-        { number: "03", title: "Habilite uma ação", body: "Informação, garantia, suporte, benefícios ou direitos aparecem conforme as regras definidas." },
+        {
+          number: "01",
+          shortTitle: "Produto",
+          title: "Prepare o produto",
+          body: "Vincule uma unidade ou lote às informações autorizadas pela sua organização.",
+          person: "O produto recebe uma etiqueta inteligente ou um código pronto para consulta.",
+          business: "Uma referência organizada para administrar informações, lotes e experiências.",
+          signal: "Identidade atribuída · Unidade 000128",
+        },
+        {
+          number: "02",
+          shortTitle: "Consulta",
+          title: "Mostre um resultado compreensível",
+          body: "A consulta separa o que foi observado, o que foi declarado e o que ainda não pode ser confirmado.",
+          person: "Uma mensagem breve que explica o que foi consultado e quais são seus limites.",
+          business: "Uma leitura registrada e sinais para revisar quando algo exige atenção.",
+          signal: "Consulta aceita · Limites visíveis",
+        },
+        {
+          number: "03",
+          shortTitle: "Ação",
+          title: "Abra o próximo passo",
+          body: "Informação, suporte, garantia ou benefícios aparecem somente quando as regras permitem.",
+          person: "Uma ação concreta, sem instalar um aplicativo nem navegar por menus técnicos.",
+          business: "Um canal direto após a venda, conectado aos seus sistemas e políticas.",
+          signal: "Próxima ação · Informação aprovada",
+        },
       ],
       detail: "Ver evidência e limites",
     },
@@ -499,6 +660,9 @@ export const HOME_V4_COPY: Record<AppLocale, HomeV4Copy> = {
         signals: ["Leituras registradas", "Lotes consultados", "Revisão necessária"],
         sequenceLabel: "Sequência simulada",
         activityLabel: "Atividade ilustrativa",
+        mapZoomIn: "Aproximar mapa",
+        mapZoomOut: "Afastar mapa",
+        mapAttribution: "Mostrar informações do mapa",
         customerTitle: "Consulta do produto",
         informationLabel: "Informações disponíveis",
         nextActionLabel: "Próxima ação",
@@ -513,24 +677,44 @@ export const HOME_V4_COPY: Record<AppLocale, HomeV4Copy> = {
       pause: "Pausar percurso",
       replay: "Repetir percurso",
       openDemo: "Explorar demonstrações",
-      mediaLabel: "Percurso animado de um produto conectado pela nexID",
+      mediaLabel: "Cena ilustrativa de um produto conectado pela nexID",
       boundary: "Sequência ilustrativa · Sem dados de cliente",
     },
     evidence: {
       eyebrow: "Clareza que gera confiança",
-      title: "O que foi verificado, o que foi declarado e o que ainda não se sabe.",
-      body: "A nexID separa cada camada para que uma experiência simples também seja clara sobre seus limites.",
+      title: "Cada resultado explica de onde veio.",
+      body: "A nexID apresenta uma resposta útil sem misturar uma leitura técnica, dados fornecidos pela organização e provas que ainda faltam.",
       items: [
         { label: "Observado", title: "Mensagem e regras", body: "Validade da mensagem, vigência, leituras repetidas e estado informado quando disponível." },
         { label: "Declarado", title: "Produto e percurso", body: "Origem, lote, conteúdo e eventos fornecidos pela marca ou por seus operadores." },
-        { label: "Opcional", title: "Prova e direitos", body: "Registros verificáveis, certificados ou direitos digitais somente quando o caso e a evidência justificam." },
+        { label: "A confirmar", title: "Conteúdo e custódia física", body: "O que a leitura não pode comprovar por si só permanece indicado, sem transformar uma suposição em certeza." },
       ],
+      sampleLabel: "Leitura de exemplo",
+      sampleTitle: "Unidade 000128",
+      sampleStatus: "Resultado disponível",
+      sourceLabel: "Fonte visível",
+      limitLabel: "Limite explícito",
       publicProof: "Ver evidência pública",
       pilot: "Desenhar um piloto",
     },
     footer: {
+      eyebrow: "Um piloto começa por um caso concreto",
+      title: "Escolha um produto, um objetivo e um sinal para medir.",
+      ctaBody: "Desenhamos o percurso inicial com sua equipe e definimos desde o começo quais informações serão exibidas, quais sistemas serão integrados e qual resultado poderá ser avaliado.",
+      primary: "Falar com vendas",
+      secondary: "Explorar demonstrações",
       body: "Um produto da Inmovar Latam SAS para conectar produtos, operações e pessoas com identidade e evidência digital.",
-      product: "Produto",
+      solutionBy: "Uma solução da Inmovar Latam SAS",
+      platformLabel: "Plataforma",
+      exploreLabel: "Explorar",
+      integrationLabel: "Integração",
+      contactLabel: "Contato",
+      howItWorks: "Como funciona",
+      solutions: "Soluções por equipe",
+      documentation: "Documentação",
+      technology: "Tecnologia",
+      contact: "Falar com vendas",
+      audience: "Para quem é",
       demo: "Demonstrações",
       proof: "Verificador público",
       developers: "Desenvolvedores",

@@ -2,6 +2,14 @@ import type { AppLocale } from "@product/config";
 import Image from "next/image";
 import Link from "next/link";
 import {
+  ArrowUpRight,
+  BadgeCheck,
+  CircleHelp,
+  Database,
+  FileText,
+  Mail,
+} from "lucide-react";
+import {
   NexidHeroExperience,
   NexidProcessExperience,
   NexidRoleExperience,
@@ -99,15 +107,48 @@ export function NexidHomeV4({ locale, locales, loginHref, initialTheme }: NexidH
               </div>
 
               <div className={styles.evidenceLedger}>
-                {copy.evidence.items.map((item) => (
-                  <article key={item.label}>
-                    <div>
-                      <small>{item.label}</small>
-                      <h3>{item.title}</h3>
-                      <p>{item.body}</p>
-                    </div>
-                  </article>
-                ))}
+                <div className={styles.evidenceCardHeader}>
+                  <div><span>{copy.evidence.sampleLabel}</span><strong>{copy.evidence.sampleTitle}</strong></div>
+                  <b><i />{copy.evidence.sampleStatus}</b>
+                </div>
+
+                <div className={styles.evidenceReceipt}>
+                  {copy.evidence.items.map((item, index) => (
+                    <article key={item.label} data-kind={index === 2 ? "limit" : index === 1 ? "declared" : "observed"}>
+                      <span className={styles.evidenceIcon} aria-hidden="true">
+                        {index === 0 ? <BadgeCheck size={21} /> : index === 1 ? <Database size={21} /> : <CircleHelp size={21} />}
+                      </span>
+                      <div>
+                        <small>{item.label}</small>
+                        <h3>{item.title}</h3>
+                        <p>{item.body}</p>
+                      </div>
+                      <em>{index === 2 ? copy.evidence.limitLabel : copy.evidence.sourceLabel}</em>
+                    </article>
+                  ))}
+                </div>
+
+                <div className={styles.evidenceCardFooter}>
+                  <FileText aria-hidden="true" size={17} />
+                  <span>{copy.video.boundary}</span>
+                  <Link href="/proof/verify">{copy.evidence.publicProof}<ArrowUpRight aria-hidden="true" size={15} /></Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className={styles.footerCtaSection} aria-labelledby="footer-cta-title">
+          <div className={`${styles.shell} ${styles.footerCta}`}>
+            <div>
+              <p className={styles.eyebrow}>{copy.footer.eyebrow}</p>
+              <h2 id="footer-cta-title">{copy.footer.title}</h2>
+            </div>
+            <div>
+              <p>{copy.footer.ctaBody}</p>
+              <div className={styles.footerCtaActions}>
+                <Link className={styles.primaryButton} href="/?contact=sales&intent=company_rollout#contact-modal">{copy.footer.primary}</Link>
+                <Link className={styles.secondaryButton} href="/demo-lab">{copy.footer.secondary}</Link>
               </div>
             </div>
           </div>
@@ -117,24 +158,47 @@ export function NexidHomeV4({ locale, locales, loginHref, initialTheme }: NexidH
       <footer className={styles.footer}>
         <div className={styles.shell}>
           <div className={styles.footerTop}>
-            <div>
-              <Image src="/nexid-lockup-horizontal.svg" alt="nexID" width={154} height={38} />
+            <div className={styles.footerBrand}>
+              <div className={styles.footerLogo}>
+                <Image src="/nexid-mark.svg" alt="" width={48} height={48} />
+                <span>nex<i>ID</i></span>
+              </div>
               <p>{copy.footer.body}</p>
+              <strong>{copy.footer.solutionBy}</strong>
             </div>
-            <nav aria-label={copy.a11y.footerNavigation}>
-              <a href="#solutions">{copy.footer.product}</a>
-              <Link href="/demo-lab">{copy.footer.demo}</Link>
-              <Link href="/proof/verify">{copy.footer.proof}</Link>
-              <Link href="/sdk">{copy.footer.developers}</Link>
-              <Link href="/pricing">{copy.footer.pricing}</Link>
-            </nav>
+
+            <div className={styles.footerNavigation}>
+              <nav aria-label={copy.footer.platformLabel}>
+                <strong>{copy.footer.platformLabel}</strong>
+                <a href="#how-it-works">{copy.footer.howItWorks}</a>
+                <a href="#solutions">{copy.footer.solutions}</a>
+                <Link href="/pricing">{copy.footer.pricing}</Link>
+              </nav>
+              <nav aria-label={copy.footer.exploreLabel}>
+                <strong>{copy.footer.exploreLabel}</strong>
+                <Link href="/demo-lab">{copy.footer.demo}</Link>
+                <Link href="/proof/verify">{copy.footer.proof}</Link>
+                <Link href="/audiences">{copy.footer.audience}</Link>
+              </nav>
+              <nav aria-label={copy.footer.integrationLabel}>
+                <strong>{copy.footer.integrationLabel}</strong>
+                <Link href="/sdk">{copy.footer.developers}</Link>
+                <Link href="/docs">{copy.footer.documentation}</Link>
+                <Link href="/stack">{copy.footer.technology}</Link>
+              </nav>
+              <nav aria-label={copy.footer.contactLabel}>
+                <strong>{copy.footer.contactLabel}</strong>
+                <Link href="/?contact=sales&intent=company_rollout#contact-modal">{copy.footer.contact}</Link>
+                <a href="mailto:info@nexid.lat"><Mail aria-hidden="true" size={14} />info@nexid.lat</a>
+              </nav>
+            </div>
           </div>
 
           <div className={styles.footerBottom}>
             <p>© 2026 {copy.footer.rights}</p>
             <div>
               <a href={AFIP_DATA_FISCAL_URL} target="_blank" rel="noreferrer">{copy.footer.fiscal}</a>
-              <a href={MIPYME_CERTIFICATE_URL} download>{copy.footer.certificate}</a>
+              <a href={MIPYME_CERTIFICATE_URL} download="certificado-mipyme-inmovar-latam.pdf">{copy.footer.certificate}</a>
               <a href="mailto:info@nexid.lat">info@nexid.lat</a>
             </div>
           </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useReducedMotion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Area,
@@ -18,6 +19,7 @@ import styles from "./nexid-home-v4.module.css";
 type OperationsPreviewProps = {
   copy: HomeRolesCopy["workspace"];
   outcome: string;
+  scenarioLabel: string;
 };
 
 const ROUTE_POINTS = [
@@ -126,13 +128,14 @@ function ChartTooltip({ active, payload, label, copy }: {
   );
 }
 
-export function NexidOperationsPreview({ copy, outcome }: OperationsPreviewProps) {
+export function NexidOperationsPreview({ copy, outcome, scenarioLabel }: OperationsPreviewProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const markersRef = useRef<Marker[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [mapError, setMapError] = useState(false);
   const [dark, setDark] = useState(false);
+  const reduceMotion = Boolean(useReducedMotion());
   const chartColors = useMemo(() => ({
     accent: dark ? "#72e0c4" : "#087d6c",
     review: dark ? "#e0b270" : "#a66c29",
@@ -169,6 +172,11 @@ export function NexidOperationsPreview({ copy, outcome }: OperationsPreviewProps
         dragRotate: false,
         pitchWithRotate: false,
         fadeDuration: 0,
+        locale: {
+          "NavigationControl.ZoomIn": copy.mapZoomIn,
+          "NavigationControl.ZoomOut": copy.mapZoomOut,
+          "AttributionControl.ToggleAttribution": copy.mapAttribution,
+        },
       });
 
       mapRef.current = map;
@@ -195,6 +203,7 @@ export function NexidOperationsPreview({ copy, outcome }: OperationsPreviewProps
       readyTimer = setTimeout(revealPreview, 2400);
 
       map.on("error", (event) => {
+        // A missing raster tile should not hide a useful route and its signals.
         if (String(event?.error?.message || "").toLowerCase().includes("tile")) return;
         if (!cancelled) setMapError(true);
       });
@@ -218,7 +227,7 @@ export function NexidOperationsPreview({ copy, outcome }: OperationsPreviewProps
       mapRef.current?.remove();
       mapRef.current = null;
     };
-  }, []);
+  }, [copy.mapAttribution, copy.mapZoomIn, copy.mapZoomOut]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -233,7 +242,7 @@ export function NexidOperationsPreview({ copy, outcome }: OperationsPreviewProps
     <div className={styles.operationsBoard}>
       <section className={styles.signalMap} aria-label={`${copy.sequenceLabel}: Mendoza, Córdoba, Buenos Aires`}>
         <div className={styles.mapHeading}>
-          <div><small>{copy.sequenceLabel}</small><strong>{outcome}</strong></div>
+          <div><small>{copy.sequenceLabel} · {scenarioLabel}</small><strong>{outcome}</strong></div>
           <div className={styles.mapLegend} aria-label={copy.signalsTitle}>
             <span><i />{copy.activeLabel}</span>
             <span><i />{copy.reviewLabel}</span>
@@ -262,8 +271,17 @@ export function NexidOperationsPreview({ copy, outcome }: OperationsPreviewProps
       </aside>
 
       <section className={styles.signalChart} aria-label={copy.activityLabel}>
+        <table className={styles.visuallyHidden}>
+          <caption>{copy.activityLabel} · {scenarioLabel}</caption>
+          <thead><tr><th>{copy.sequenceLabel}</th><th>{copy.activeLabel}</th><th>{copy.reviewLabel}</th></tr></thead>
+          <tbody>
+            {ACTIVITY_SERIES.map((point) => (
+              <tr key={point.time}><th>{point.time}</th><td>{point.accepted}</td><td>{point.review}</td></tr>
+            ))}
+          </tbody>
+        </table>
         <div className={styles.signalChartHeading}>
-          <div><small>{copy.activityLabel}</small><strong>{copy.sequenceLabel}</strong></div>
+          <div><small>{copy.activityLabel} · {scenarioLabel}</small><strong>{copy.sequenceLabel}</strong></div>
           <div className={styles.chartLegend}>
             <span><i style={{ background: chartColors.accent }} />{copy.activeLabel}</span>
             <span><i style={{ background: chartColors.review }} />{copy.reviewLabel}</span>
@@ -282,8 +300,8 @@ export function NexidOperationsPreview({ copy, outcome }: OperationsPreviewProps
               <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fill: chartColors.tick, fontSize: 10 }} interval={1} />
               <YAxis axisLine={false} tickLine={false} tick={{ fill: chartColors.tick, fontSize: 10 }} width={38} />
               <Tooltip content={<ChartTooltip copy={copy} />} cursor={{ stroke: chartColors.grid, strokeWidth: 1 }} />
-              <Area type="monotone" dataKey="accepted" stroke={chartColors.accent} strokeWidth={2.4} fill="url(#nexid-operations-area)" activeDot={{ r: 4 }} isAnimationActive />
-              <Line type="monotone" dataKey="review" stroke={chartColors.review} strokeWidth={2} dot={false} activeDot={{ r: 3 }} isAnimationActive />
+              <Area type="monotone" dataKey="accepted" stroke={chartColors.accent} strokeWidth={2.4} fill="url(#nexid-operations-area)" activeDot={{ r: 4 }} isAnimationActive={!reduceMotion} />
+              <Line type="monotone" dataKey="review" stroke={chartColors.review} strokeWidth={2} dot={false} activeDot={{ r: 3 }} isAnimationActive={!reduceMotion} />
             </AreaChart>
           </ResponsiveContainer>
         </div>

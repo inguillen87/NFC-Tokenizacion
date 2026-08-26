@@ -19,9 +19,12 @@ test("home v4 is a server-first four-scene composition with one focused experien
   assert.doesNotMatch(page, /"use client"|HeroSection|HeroScene|BrandSynergySimulator|SalesChatWidget|DemoRequestSection|PwaInstallPrompt/);
 
   assert.match(home, /data-nexid-home="v4"/);
-  assert.equal((home.match(/<section\b/g) ?? []).length + (experience.match(/<section\b/g) ?? []).length, 4);
-  assert.equal((home.match(/<h1\b/g) ?? []).length, 1);
+  assert.equal((experience.match(/<section\b/g) ?? []).length, 2);
   assert.equal((home.match(/<main\b/g) ?? []).length, 1);
+  const mainMarkup = home.match(/<main[\s\S]*?<\/main>/)?.[0] ?? "";
+  assert.equal((mainMarkup.match(/<section\b/g) ?? []).length, 3);
+  assert.match(home, /styles\.footerCta/);
+  assert.equal((home.match(/<h1\b/g) ?? []).length, 1);
   assert.match(experience, /id="how-it-works"/);
   assert.match(experience, /id="solutions"/);
   assert.match(home, /id="evidence"/);
@@ -33,10 +36,10 @@ test("home v4 is a server-first four-scene composition with one focused experien
   assert.doesNotMatch(`${home}\n${experience}\n${copy}`, /NexidIndustryShowcase|HomeCaseStudyCopy|\bcaseStudy\b|id="product"|NexidMotionStory|id="visual-story"/);
 });
 
-test("home v4 keeps imagery in the light multivertical hero without repeating it downstream", () => {
+test("home v4 uses curated multivertical imagery across distinct product stories", () => {
   assert.match(home, /import Image from "next\/image"/);
   assert.equal((home.match(/<Image\b/g) ?? []).length, 1);
-  assert.match(home, /src="\/nexid-lockup-horizontal\.svg"/);
+  assert.match(home, /src="\/nexid-mark\.svg"/);
   assert.match(experience, /import \{ AnimatePresence, motion, useReducedMotion \} from "framer-motion"/);
   assert.match(experience, /priority=\{activeIndex === 0\}/);
   assert.match(experience, /loading=\{activeIndex === 0 \? "eager" : "lazy"\}/);
@@ -55,6 +58,8 @@ test("home v4 keeps imagery in the light multivertical hero without repeating it
   assert.match(experience, /premium: "sneaker"/);
   assert.match(experience, /href=\{`\/demo-lab\?vertical=\$\{DEMO_VERTICAL_BY_SECTOR\[activeSector\.id\]\}`\}/);
   assert.equal((experience.match(/<Image\b/g) ?? []).length, 1);
+  assert.match(css, /background-image:\s*linear-gradient\([\s\S]{0,260}?pharma-enterprise\.webp/);
+  assert.match(css, /background-image:\s*linear-gradient\([\s\S]{0,260}?fashion-enterprise\.webp/);
   assert.doesNotMatch(experience, /sectors\.slice|sectors\[3\]|type IndustryShowcaseProps|industryPassport|industryStage/);
   assert.doesNotMatch(home, /<NexidProcessExperience[\s\S]{0,240}?sectors=\{/);
   assert.doesNotMatch(home, /wine-secure|Gran Reserva|Malbec/i);
@@ -69,18 +74,25 @@ test("home v4 keeps imagery in the light multivertical hero without repeating it
 
 test("home v4 gives process, workspaces and evidence distinct visual grammars", () => {
   assert.match(experience, /className=\{styles\.processScene\}/);
-  assert.match(experience, /className=\{styles\.identityObject\}/);
-  assert.match(experience, /className=\{styles\.verificationCore\}/);
-  assert.match(experience, /className=\{styles\.actionSurface\}/);
+  assert.match(experience, /className=\{styles\.journeyPhoto\}/);
+  assert.match(experience, /className=\{styles\.journeySignal\}/);
+  assert.match(experience, /className=\{styles\.processPerspectives\}/);
   assert.match(experience, /className=\{styles\.roleWorkspace\}/);
+  assert.match(experience, /className=\{styles\.productPortfolio\}/);
+  assert.match(experience, /className=\{styles\.customerStory\}/);
+  assert.match(experience, /<NexidOperationsPreview/);
   assert.match(home, /className=\{styles\.evidenceLedger\}/);
+  assert.match(home, /className=\{styles\.evidenceReceipt\}/);
+  assert.match(home, /className=\{styles\.footerNavigation\}/);
+  assert.match(home, /download="certificado-mipyme-inmovar-latam\.pdf"/);
+  assert.match(copy, /mapZoomIn: "Acercar mapa"/);
   assert.equal((experience.match(/export function Nexid(?:Hero|Process|Role)Experience/g) ?? []).length, 3);
   assert.doesNotMatch(experience, /mode="wait"/);
 });
 
 test("home v4 motion stays controllable, quiet and resource-aware", () => {
   assert.match(experience, /HERO_ROTATION_MS = 5_800/);
-  assert.match(experience, /PROCESS_STEP_MS = 1_650/);
+  assert.match(experience, /PROCESS_STEP_MS = 4_600/);
   assert.match(experience, /IntersectionObserver/);
   assert.match(experience, /document\.visibilityState === "visible"/);
   assert.match(experience, /aria-live="off"/);
