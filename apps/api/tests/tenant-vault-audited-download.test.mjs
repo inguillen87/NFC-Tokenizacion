@@ -14,6 +14,19 @@ const exportRoute = await readFile(
   new URL("../src/app/admin/supplier-orders/[orderId]/export-pack/route.ts", import.meta.url),
   "utf8",
 );
+const vercelIgnore = await readFile(new URL("../../../.vercelignore", import.meta.url), "utf8");
+
+test("Vercel upload keeps the dynamic Tenant Vault artifact route", () => {
+  const activePatterns = vercelIgnore
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("#"));
+
+  assert.ok(activePatterns.includes("/artifacts"));
+  assert.ok(activePatterns.includes("/apps/api/artifacts"));
+  assert.ok(!activePatterns.includes("artifacts"));
+  assert.match(downloadRoute, /vault_artifact_downloads/);
+});
 
 test("only a persisted superadmin session can request an encrypted Vault artifact", () => {
   assert.match(downloadRoute, /checkAdmin\(req, \["super_admin"\]\)/);

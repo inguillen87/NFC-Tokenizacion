@@ -12,7 +12,8 @@ coverage
 test-results
 
 # Local Codex/dev artifacts that should never be uploaded to Vercel.
-artifacts
+/artifacts
+/apps/api/artifacts
 tmp
 .codex
 .codex-logs
