@@ -3014,7 +3014,7 @@ html.theme-light .mobile-nav-sheet .text-slate-400 {
   margin-inline: auto;
   display: grid;
   max-width: 27rem;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.35rem;
   border: 1px solid rgba(125, 211, 252, 0.2);
   border-radius: 1.15rem;

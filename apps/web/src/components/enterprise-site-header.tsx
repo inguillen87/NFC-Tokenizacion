@@ -257,7 +257,7 @@ export function EnterpriseSiteHeader({ locale, locales, initialTheme, loginHref 
 
         <div className={styles.mobileUtilities}>
           <LocaleSwitcher value={locale} options={[...locales]} />
-          <ThemeToggle initialTheme={initialTheme} />
+          <ThemeToggle initialTheme={initialTheme} locale={locale} />
         </div>
         <div className={styles.mobileActions}>
           <Link href="/?contact=demo#contact-modal" onClick={() => setMobileOpen(false)}>{header.demoLabel}</Link>
@@ -297,7 +297,7 @@ export function EnterpriseSiteHeader({ locale, locales, initialTheme, loginHref 
               <LocaleSwitcher value={locale} options={[...locales]} />
             </div>
             <div className={styles.desktopUtility}>
-              <ThemeToggle initialTheme={initialTheme} />
+              <ThemeToggle initialTheme={initialTheme} locale={locale} />
             </div>
             <Link href="/?contact=demo#contact-modal" className={styles.headerDemo}>{header.demoLabel}</Link>
             <Link href="/?contact=sales&intent=company_rollout#contact-modal" className={styles.headerSales}>{header.salesLabel}</Link>
