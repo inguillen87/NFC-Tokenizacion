@@ -6,10 +6,13 @@ const content = await readFile(new URL("../src/lib/landing-content.ts", import.m
 const sections = await readFile(new URL("../src/components/landing-sections.tsx", import.meta.url), "utf8");
 const proofSection = await readFile(new URL("../src/components/landing-proof-section.tsx", import.meta.url), "utf8");
 
-test("landing content scopes tap validation to NFC/SUN evidence in ES, EN and PT", () => {
-  assert.match(content, /nexID verifica la etiqueta digital; por sí sola, la lectura no confirma que el producto físico sea auténtico/);
-  assert.match(content, /A nexID verifica a etiqueta digital; por si só, a leitura não confirma que o produto físico seja autêntico/);
-  assert.match(content, /nexID checks the digital label; by itself, the reading does not confirm that the physical product is authentic/);
+test("landing content scopes tap validation to digital evidence in ES, EN and PT", () => {
+  assert.match(content, /nexID verifica la etiqueta digital y muestra el resultado de la lectura/);
+  assert.match(content, /A nexID verifica a etiqueta digital e mostra o resultado da leitura/);
+  assert.match(content, /nexID verifies the digital label and shows the reading result/);
+  assert.match(content, /La autenticidad del producto físico requiere controles adicionales/);
+  assert.match(content, /A autenticidade do produto físico requer controles adicionais/);
+  assert.match(content, /Physical product authenticity requires additional checks/);
   assert.match(content, /Mensaje válido/);
   assert.match(content, /Mensagem válida/);
   assert.match(content, /Valid message/);

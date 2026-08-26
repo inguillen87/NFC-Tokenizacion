@@ -34,9 +34,9 @@ test("home hero is large, friendly and truthful without becoming a technical das
     assert.ok(body.trim().split(/\s+/).length <= 55, "hero body must stay scannable");
     assert.doesNotMatch(body, /SUN|tenant|replay|hash-only|TagTamper|custod|\bTT\b/i);
   }
-  assert.match(heroBodies[0], /no confirma[^.]{0,80}producto físico[^.]{0,40}auténtico/i);
-  assert.match(heroBodies[1], /não confirma[^.]{0,80}produto físico[^.]{0,40}autêntico/i);
-  assert.match(heroBodies[2], /does not confirm[^.]{0,80}physical product[^.]{0,40}authentic/i);
+  assert.match(heroBodies[0], /autenticidad[^.]{0,80}producto físico[^.]{0,80}controles adicionales/i);
+  assert.match(heroBodies[1], /autenticidade[^.]{0,80}produto físico[^.]{0,80}controles adicionais/i);
+  assert.match(heroBodies[2], /physical product authenticity[^.]{0,80}additional checks/i);
 });
 
 test("SimpleTrustFlow is three plain-language steps, one action and one physical-limit note", async () => {
