@@ -88,17 +88,20 @@ test("home mega navigation exposes product depth without duplicating a technical
     readFile(new URL("../src/components/marketing-mega-nav.module.css", import.meta.url), "utf8"),
   ]);
 
-  for (const group of ["solutions", "industries", "platform", "resources"]) {
+  for (const group of ["solutions", "industries", "platform", "resources", "plans"]) {
     assert.match(navigation, new RegExp(`id: "${group}"`));
   }
   assert.match(navigation, /label: "Proof Verify"[\s\S]*href: "\/proof\/verify"/);
   assert.match(navigation, /label: "SUN validation"[\s\S]*href: "\/sun"/);
+  assert.match(navigation, /href: "\/offline"/);
   assert.match(navigation, /label: "Documentation"[\s\S]*href: "\/docs"/);
   assert.match(navigation, /label: "SDK and APIs"[\s\S]*href: "\/sdk"/);
-  assert.match(page, /<Link href="\/proof\/verify"[^>]*>Proof Verify<\/Link>/);
-  assert.match(page, /<section id="brand-synergy" className="landing-brand-synergy-band my-16 scroll-mt-24">/);
+  assert.doesNotMatch(page, /OfflineFieldOperationsSection|BrandSynergySimulator|DemoRequestSection|offline-field-operations|brand-synergy/);
   assert.ok((navigation.match(/copy\.groups\.map\(\(group/g) ?? []).length >= 2, "desktop and mobile must share the same groups");
-  assert.match(navigation, /<Link href="\/pricing" className=\{styles\.navDirectLink\}/);
+  assert.match(navigation, /id: "plans"[\s\S]*label: "Plans"[\s\S]*href: "\/pricing#configurator"/);
+  assert.match(navigation, /href: "\/pricing#plans"/);
+  assert.match(navigation, /href: "\/pricing#roi"/);
+  assert.doesNotMatch(navigation, /className=\{styles\.navDirectLink\}/);
   assert.match(navigation, /role="dialog" aria-modal="true"/);
   assert.match(css, /\.navGroupButton,[\s\S]*min-height: 2\.65rem/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);

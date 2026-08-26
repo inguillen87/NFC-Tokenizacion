@@ -369,7 +369,7 @@ export function PricingRoiCalculator({ locale }: { locale: PricingLocale }) {
   }
 
   return (
-    <section className="nexid-pricing-roi" aria-labelledby="pricing-roi-title">
+    <section id="roi" className="nexid-pricing-roi scroll-mt-24" aria-labelledby="pricing-roi-title">
       <header className="nexid-pricing-roi__header">
         <div>
           <span>{copy.eyebrow}</span>

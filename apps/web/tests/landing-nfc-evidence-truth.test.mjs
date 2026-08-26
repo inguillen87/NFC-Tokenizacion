@@ -7,9 +7,9 @@ const sections = await readFile(new URL("../src/components/landing-sections.tsx"
 const proofSection = await readFile(new URL("../src/components/landing-proof-section.tsx", import.meta.url), "utf8");
 
 test("landing content scopes tap validation to NFC/SUN evidence in ES, EN and PT", () => {
-  assert.match(content, /El tap valida el mensaje NFC\/SUN y la política configurada; por sí solo no prueba autenticidad física, contenido, origen, sello ni custodia/);
-  assert.match(content, /O toque valida a mensagem NFC\/SUN e a política configurada; sozinho não comprova autenticidade física, conteúdo, origem, lacre ou custódia/);
-  assert.match(content, /A tap validates the NFC\/SUN message and configured policy; by itself it does not prove physical authenticity, contents, origin, seal or custody/);
+  assert.match(content, /nexID verifica la etiqueta digital; por sí sola, la lectura no confirma que el producto físico sea auténtico/);
+  assert.match(content, /A nexID verifica a etiqueta digital; por si só, a leitura não confirma que o produto físico seja autêntico/);
+  assert.match(content, /nexID checks the digital label; by itself, the reading does not confirm that the physical product is authentic/);
   assert.match(content, /Mensaje válido/);
   assert.match(content, /Mensagem válida/);
   assert.match(content, /Valid message/);
@@ -17,9 +17,9 @@ test("landing content scopes tap validation to NFC/SUN evidence in ES, EN and PT
 });
 
 test("landing sections separate tag, TT and declared data from physical proof", () => {
-  assert.match(sections, /A tap alone does not prove physical authenticity, contents, origin, seal or custody/);
-  assert.match(sections, /O toque sozinho não comprova autenticidade física, conteúdo, origem, lacre ou custódia/);
-  assert.match(sections, /El tap solo no prueba autenticidad física, contenido, origen, sello ni custodia/);
+  assert.match(sections, /The reading checks the digital label; by itself, it does not confirm that the physical product is authentic/);
+  assert.match(sections, /A leitura verifica a etiqueta digital; por si só, não confirma que o produto físico seja autêntico/);
+  assert.match(sections, /La lectura verifica la etiqueta digital; por sí sola, no confirma que el producto físico sea auténtico/);
   assert.match(sections, /no autenticidad física/);
   assert.match(sections, /TT reportado/);
   assert.match(sections, /not proof of physical contents/);

@@ -295,7 +295,7 @@ export function PricingQuoteConfigurator({ locale }: { locale: PricingLocale }) 
   const leadHref = `/?contact=quote&intent=pricing_enterprise&vertical=${input.vertical}&volume=${input.quantity}&message=${encodeURIComponent(leadMessage)}#contact-modal`;
 
   return (
-    <section className="my-6 grid gap-8" aria-labelledby="quote-configurator-title">
+    <section id="configurator" className="my-6 grid scroll-mt-24 gap-8" aria-labelledby="quote-configurator-title">
       <div className="overflow-hidden rounded-[2rem] border border-cyan-200 bg-white shadow-2xl shadow-cyan-100/70">
         <header className="grid gap-4 border-b border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 p-6 text-white md:p-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <div className="max-w-3xl">

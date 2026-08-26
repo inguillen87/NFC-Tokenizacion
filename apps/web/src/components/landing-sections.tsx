@@ -8,7 +8,7 @@ import { platformVerticals, traceabilityGlobePoints, traceabilityGlobeRoutes } f
 
 type Content = any;
 
-export function HeroSection({ content, locale, initialTheme = "dark" }: { content: Content; locale: string; initialTheme?: "light" | "dark" }) {
+export function HeroSection({ content, locale, initialTheme = "light" }: { content: Content; locale: string; initialTheme?: "light" | "dark" }) {
   const isEn = locale === "en";
   const isBr = locale === "pt-BR";
   const hero = content?.hero || {};
@@ -28,10 +28,10 @@ export function HeroSection({ content, locale, initialTheme = "dark" }: { conten
              <span className="text-xs font-medium text-slate-300 uppercase tracking-widest">{trustBadge}</span>
           </div>
 
-          <h1 className="mx-auto mt-5 max-w-[22rem] pb-2 text-[2rem] font-extrabold leading-[1.12] tracking-normal text-transparent bg-clip-text bg-gradient-to-br from-white to-slate-400 sm:max-w-5xl sm:text-[2.85rem] sm:leading-[1.08] lg:text-[3rem] lg:leading-[1.06]">
+          <h1 className="mx-auto mt-6 max-w-[24rem] pb-2 text-[2.35rem] font-extrabold leading-[1.08] tracking-[-0.035em] text-transparent bg-clip-text bg-gradient-to-br from-white to-slate-400 sm:max-w-6xl sm:text-[3.35rem] sm:leading-[1.04] lg:text-[4rem]">
             {hero.title}
           </h1>
-          <p className="hero-subtitle mx-auto mt-5 max-w-xl text-sm leading-6 text-slate-400">
+          <p className="hero-subtitle mx-auto mt-6 max-w-3xl text-base leading-7 text-slate-400 md:text-lg md:leading-8">
             {heroSubtitle}
           </p>
           <div className="landing-mobile-hero-actions mt-5 grid grid-cols-2 gap-2 sm:hidden">
@@ -66,118 +66,68 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
   const isBr = locale === "pt-BR";
   const copy = isEn
     ? {
-      eyebrow: "Understand it in 10 seconds",
-      title: "Tap the product. Read the tag evidence. Claim benefits only after the required checks.",
-      body: "nexID shows the NFC/SUN message result, declared product data and reported seal state. A tap alone does not prove physical authenticity, contents, origin, seal or custody.",
-      primary: "Open Product Lab",
-      secondary: "See mobile passport",
-      claimTitle: "When can ownership or NFT open?",
-      claimBody: "Only after a fresh valid tag message, a validated contact channel, separately approved purchase evidence or retailer token, tenant policy and explicit approval.",
+      eyebrow: "How it works",
+      title: "One tap. Three steps. A relationship that continues.",
+      body: "A customer taps with their phone or scans the QR. nexID shows the available product information and the next useful action.",
+      note: "The reading checks the digital label; by itself, it does not confirm that the physical product is authentic.",
+      primary: "See a real journey",
       steps: [
-        { label: "Physical product", body: "The brand loads batch, photos, labels, rules and allowed claim policy." },
-        { label: "Fresh tap", body: "The person taps NFC/QR and sees the message result, declared origin, reported location and reported seal state." },
-        { label: "Safe claim", body: "Contact validation and evidence can start a claim; ownership opens only after explicit policy approval." },
-        { label: "Living portal", body: "Warranty, club, store, optional NFT and resale each require their relevant evidence and policy." },
+        { label: "Discover the product", body: "See its story, batch and the information the brand chooses to share." },
+        { label: "Check the signal", body: "nexID shows whether the digital reading passed the configured checks." },
+        { label: "Continue after purchase", body: "Open warranty, benefits or direct support when the program allows it." },
       ],
-      audiences: [
-        ["Consumer", "I see what the brand declared, which tag checks passed and what I can do next."],
-        ["Brand", "I receive demand, geography, risk, leads, warranty and repurchase data."],
-        ["Retailer", "I record purchase evidence, review copy/replay risk and unlock approved benefits at checkout."],
-      ],
-      rubros: "One engine for wine, events, cosmetics, agro, health, documents, governments and enterprise assets.",
     }
     : isBr
     ? {
-      eyebrow: "Entender em 10 segundos",
-      title: "Toque o produto. Leia a evidência da tag. Reivindique benefícios somente após os controles exigidos.",
-      body: "nexID mostra o resultado da mensagem NFC/SUN, os dados declarados e o estado reportado do lacre. O toque sozinho não comprova autenticidade física, conteúdo, origem, lacre ou custódia.",
-      primary: "Abrir Laboratorio",
-      secondary: "Ver passport mobile",
-      claimTitle: "Quando a titularidade digital ou NFT pode ser habilitada?",
-      claimBody: "Somente após mensagem fresca e válida da tag, canal de contato validado, comprovante ou token da loja aprovado separadamente, política do tenant e aprovação explícita.",
+      eyebrow: "Como funciona",
+      title: "Um toque. Três passos. Uma relação que continua.",
+      body: "A pessoa aproxima o celular ou escaneia o QR. A nexID mostra as informações disponíveis do produto e a próxima ação útil.",
+      note: "A leitura verifica a etiqueta digital; por si só, não confirma que o produto físico seja autêntico.",
+      primary: "Ver uma experiência real",
       steps: [
-        { label: "Produto fisico", body: "A marca carrega lote, fotos, etiquetas, regras e politica de claim." },
-        { label: "Toque fresco", body: "A pessoa toca NFC/QR e vê o resultado da mensagem, origem declarada, local informado e estado reportado do lacre." },
-        { label: "Claim seguro", body: "Contato e evidência podem iniciar o claim; titularidade exige aprovação explícita da política." },
-        { label: "Portal vivo", body: "Garantia, clube, loja, NFT opcional e revenda exigem sua evidência e política aplicáveis." },
+        { label: "Conheça o produto", body: "Veja sua história, o lote e as informações que a marca decide compartilhar." },
+        { label: "Confira o sinal", body: "A nexID mostra se a leitura digital passou pelos controles configurados." },
+        { label: "Continue no pós-venda", body: "Acesse garantia, benefícios ou atendimento direto quando o programa permitir." },
       ],
-      audiences: [
-        ["Consumidor", "Vejo o que a marca declarou, quais controles da tag passaram e o que posso fazer agora."],
-        ["Marca", "Recebo demanda, geografia, risco, leads, garantia e recompra."],
-        ["Loja", "Registro evidência de compra, reviso risco de cópia/replay e libero benefícios aprovados."],
-      ],
-      rubros: "Um motor para vinho, eventos, cosmetica, agro, saude, documentos, governos e ativos empresariais.",
     }
     : {
-      eyebrow: "Entendelo en 10 segundos",
-      title: "Toca el producto. Ve el resultado de confianza. Reclama beneficios solo cuando la compra es confiable.",
-      body: "nexID muestra el resultado del mensaje NFC/SUN, los datos declarados y el estado reportado del sello. El tap solo no prueba autenticidad física, contenido, origen, sello ni custodia.",
-      primary: "Abrir laboratorio",
-      secondary: "Ver pasaporte mobile",
-      claimTitle: "¿Cuándo se habilita la propiedad digital o NFT?",
-      claimBody: "Solo después de un mensaje fresco y válido del tag, canal de contacto validado, evidencia de compra o token de tienda aprobado por separado, política del tenant y aprobación explícita.",
+      eyebrow: "Cómo funciona",
+      title: "Un toque. Tres pasos. Una relación que continúa.",
+      body: "La persona acerca el celular o escanea el QR. nexID muestra la información disponible del producto y la próxima acción útil.",
+      note: "La lectura verifica la etiqueta digital; por sí sola, no confirma que el producto físico sea auténtico.",
+      primary: "Ver una experiencia real",
       steps: [
-        { label: "Producto físico", body: "La marca carga lote, fotos, etiquetas, reglas y política de reclamo." },
-        { label: "Tap fresco", body: "La persona toca NFC/QR y ve el resultado del mensaje, origen declarado, ubicación reportada y estado reportado del sello." },
-        { label: "Reclamo seguro", body: "Contacto y evidencia pueden iniciar el reclamo; la propiedad exige aprobación explícita de la política." },
-        { label: "Portal vivo", body: "Garantía, club, tienda, NFT opcional y reventa exigen su evidencia y política aplicables." },
+        { label: "Conocé el producto", body: "Mirá su historia, el lote y la información que la marca decide compartir." },
+        { label: "Revisá la señal", body: "nexID muestra si la lectura digital pasó los controles configurados." },
+        { label: "Seguí con la postventa", body: "Accedé a garantía, beneficios o atención directa cuando el programa lo permite." },
       ],
-      audiences: [
-        ["Consumidor", "Veo qué declaró la marca, qué controles del tag pasaron y qué puedo hacer ahora."],
-        ["Marca", "Recibo demanda, geografía, riesgo, leads, garantía y recompra."],
-        ["Tienda", "Registro evidencia de compra, reviso riesgo de copia/replay y libero beneficios aprobados."],
-      ],
-      rubros: "Un motor para vinos, eventos, cosmética, agro, salud, documentos, gobiernos y activos empresariales.",
     };
 
   return (
-    <section className="container-shell py-10 md:py-14">
-      <div className="simple-trust-flow-shell relative overflow-hidden rounded-[2rem] border border-cyan-300/15 bg-slate-950/70 p-5 shadow-[0_30px_90px_rgba(8,47,73,0.22)] md:p-7">
-        <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_15%_10%,rgba(34,211,238,0.16),transparent_34%),radial-gradient(circle_at_84%_18%,rgba(16,185,129,0.12),transparent_30%)]" />
-        <div className="relative grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-300">{copy.eyebrow}</p>
-            <h2 className="mt-3 max-w-2xl text-3xl font-black leading-tight tracking-tight text-white md:text-4xl">{copy.title}</h2>
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 md:text-base">{copy.body}</p>
-            <div className="mt-5 flex flex-wrap gap-3">
-              <Link href="/demo-lab?vertical=wine" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-cyan-300/35 bg-cyan-500/15 px-4 py-2 text-sm font-black text-cyan-100 transition hover:bg-cyan-500/25">
-                {copy.primary}
-              </Link>
-              <Link href="/sun" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-100 transition hover:bg-emerald-500/20">
-                {copy.secondary}
-              </Link>
-            </div>
-          </div>
+    <section className="simple-trust-flow-section container-shell py-12 md:py-20">
+      <div className="simple-trust-flow-shell">
+        <div className="simple-trust-flow-intro">
+          <p className="simple-trust-flow-eyebrow">{copy.eyebrow}</p>
+          <h2>{copy.title}</h2>
+          <p className="simple-trust-flow-body">{copy.body}</p>
+        </div>
 
-          <div className="grid gap-3">
-            <div className="grid gap-3 md:grid-cols-4">
-              {copy.steps.map((step, index) => (
-                <article key={step.label} className="simple-trust-flow-step rounded-2xl border border-white/10 bg-slate-900/70 p-4">
-                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-cyan-300/30 bg-cyan-500/10 text-xs font-black text-cyan-100">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  <h3 className="mt-3 text-sm font-black text-white">{step.label}</h3>
-                  <p className="mt-2 text-xs leading-5 text-slate-400">{step.body}</p>
-                </article>
-              ))}
-            </div>
+        <ol className="simple-trust-flow-steps">
+          {copy.steps.map((step, index) => (
+            <li key={step.label}>
+              <span aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+              <h3>{step.label}</h3>
+              <p>{step.body}</p>
+            </li>
+          ))}
+        </ol>
 
-            <div className="grid gap-3 md:grid-cols-3">
-              {copy.audiences.map(([label, body]) => (
-                <article key={label} className="rounded-2xl border border-emerald-300/15 bg-emerald-500/10 p-4">
-                  <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-200">{label}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-100">{body}</p>
-                </article>
-              ))}
-            </div>
-            <div className="grid gap-3 lg:grid-cols-[1fr_1fr]">
-              <p className="rounded-2xl border border-violet-300/20 bg-violet-500/10 p-4 text-sm font-bold leading-6 text-violet-100">{copy.rubros}</p>
-              <article className="rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-4">
-                <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-200">{copy.claimTitle}</p>
-                <p className="mt-2 text-sm font-semibold leading-6 text-slate-100">{copy.claimBody}</p>
-              </article>
-            </div>
-          </div>
+        <div className="simple-trust-flow-footer">
+          <p>{copy.note}</p>
+          <Link href="/demo-lab?scenario=qr-gs1" className="simple-trust-flow-cta">
+            {copy.primary}
+            <ArrowRight aria-hidden="true" />
+          </Link>
         </div>
       </div>
     </section>

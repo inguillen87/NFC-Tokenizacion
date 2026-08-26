@@ -43,12 +43,14 @@ test("landing claims qualify technical security and commercial outcomes", async 
 
   assert.doesNotMatch(content, /asegura recompras|sees if the product is real/);
   assert.doesNotMatch(sections, /impossible to clone or replay|imposible de clonar o copiar/);
-  assert.match(content, /Conversion and repeat purchase are measured in each pilot, not promised/);
-  assert.match(content, /Conversión y recompra se miden en cada piloto; no se prometen/);
+  assert.match(content, /Medimos qué funciona en cada piloto/);
+  assert.match(content, /Medimos o que funciona em cada piloto/);
+  assert.match(content, /We measure what works in each pilot/);
+  assert.doesNotMatch(content, /(?:garantiza|garante|guarantees) (?:la |a )?(?:conversión|conversão|conversion|recompra|repeat purchase)/i);
   assert.match(sections, /designed to resist message copying and replay when keys, counters and server validation are correctly configured/);
 });
 
-test("brand synergy light mode and mobile controls keep enterprise contrast", async () => {
+test("brand synergy remains a reusable truthful surface but does not crowd the home", async () => {
   const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
   const page = await readFile(new URL("../src/app/page.tsx", import.meta.url), "utf8");
   const navigation = await readFile(new URL("../src/components/marketing-mega-nav.tsx", import.meta.url), "utf8");
@@ -65,13 +67,16 @@ test("brand synergy light mode and mobile controls keep enterprise contrast", as
   assert.match(css, /\.brand-synergy-business-pane\[data-mobile-active="false"\],[\s\S]*display:\s*none !important/);
   assert.match(css, /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*\.brand-synergy-terminal-row[\s\S]*transition-duration:\s*0\.01ms/);
   assert.match(navigationCss, /\.mobileMenuButton\s*\{[\s\S]*min-height:\s*2\.65rem/);
-  assert.match(page, /<section id="brand-synergy" className="landing-brand-synergy-band my-16 scroll-mt-24">/);
-  assert.match(page, /landing-brand-synergy-shell container-shell/);
+  assert.doesNotMatch(page, /BrandSynergySimulator|brand-synergy/);
   assert.match(page, /initialTheme=\{initialTheme\}/);
   assert.match(navigation, /<ThemeToggle initialTheme=\{initialTheme\} locale=\{locale\} \/>/);
   assert.match(navigation, /role="dialog" aria-modal="true"/);
   assert.match(themeToggle, /ThemeToggle\(\{ initialTheme = "light", locale = "en" \}/);
   assert.match(themeToggle, /useState<Theme>\(initialTheme\)/);
+  assert.ok(
+    themeToggle.indexOf('document.documentElement.getAttribute("data-theme")') < themeToggle.indexOf('localStorage.getItem("theme")'),
+    "the server-rendered light default must win over stale browser storage",
+  );
   assert.match(localeSwitcher, /locale-switcher inline-flex min-h-11/);
   assert.match(localeSwitcher, /className="min-h-11 bg-transparent/);
 });

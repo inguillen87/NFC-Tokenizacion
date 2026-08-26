@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowRight, ChevronDown, ExternalLink, Menu, X } from "lucide-react";
@@ -27,7 +27,6 @@ type NavGroup = {
 
 type NavigationCopy = {
   ariaLabel: string;
-  pricing: string;
   login: string;
   demo: string;
   menu: string;
@@ -47,7 +46,6 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
   if (locale === "en") {
     return {
       ariaLabel: "Main navigation",
-      pricing: "Plans",
       login: "Sign in",
       demo: "Book a demo",
       menu: "Open navigation",
@@ -75,7 +73,7 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
           featured: { label: "Explore every industry", description: "Compare all guided product journeys in Demo Lab.", href: "/demo-lab" },
           items: [
             { label: "Wine and beverages", description: "Origin, opening evidence and direct-to-consumer service.", href: "/demo-lab?vertical=wine" },
-            { label: "Luxury and beauty", description: "Authenticity, ownership and premium after-sales.", href: "/demo-lab?vertical=perfume" },
+            { label: "Luxury and beauty", description: "Tag evidence, ownership and premium after-sales.", href: "/demo-lab?vertical=perfume" },
             { label: "Pharma and health", description: "Controlled evidence and guided safety information.", href: "/demo-lab?vertical=pharma" },
             { label: "Agro and seeds", description: "Batch context, channel controls and field verification.", href: "/demo-lab?vertical=seeds" },
             { label: "Logistics", description: "Declared milestones, exceptions and operational handoffs.", href: "/demo-lab?vertical=logistics" },
@@ -112,6 +110,20 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
             { label: "Investor snapshot", description: "Business model, positioning and platform narrative.", href: "/investor-snapshot" },
           ],
         },
+        {
+          id: "plans",
+          label: "Plans",
+          eyebrow: "Choose how to start",
+          description: "Compare a controlled pilot, scalable rollout and partner paths with a clear commercial scope.",
+          featured: { label: "Build your pilot", description: "Configure scope, carriers and a budgetary range for your case.", href: "/pricing#configurator" },
+          items: [
+            { label: "Compare plans", description: "Review pilot, growth and enterprise scope side by side.", href: "/pricing#plans" },
+            { label: "Estimate potential impact", description: "Model assumptions and scenarios without treating them as promised results.", href: "/pricing#roi" },
+            { label: "Request a tailored quote", description: "Send your use case and receive a scoped commercial follow-up.", href: "/?contact=quote&intent=pricing_menu#contact-modal" },
+            { label: "Enterprise rollout", description: "Discuss integrations, governance and multi-market deployment.", href: "/?contact=sales&intent=pricing_enterprise#contact-modal" },
+            { label: "Reseller program", description: "Explore the partner model and regional rollout.", href: "/resellers" },
+          ],
+        },
       ],
     };
   }
@@ -119,7 +131,6 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
   if (locale === "pt-BR") {
     return {
       ariaLabel: "Navegação principal",
-      pricing: "Planos",
       login: "Entrar",
       demo: "Agendar demo",
       menu: "Abrir navegação",
@@ -147,7 +158,7 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
           featured: { label: "Explorar todos os setores", description: "Compare todas as jornadas guiadas no Demo Lab.", href: "/demo-lab" },
           items: [
             { label: "Vinhos e bebidas", description: "Origem, evidência de abertura e serviço direto.", href: "/demo-lab?vertical=wine" },
-            { label: "Luxo e beleza", description: "Autenticidade, ownership e pós-venda premium.", href: "/demo-lab?vertical=perfume" },
+            { label: "Luxo e beleza", description: "Evidência da etiqueta, ownership e pós-venda premium.", href: "/demo-lab?vertical=perfume" },
             { label: "Farma e saúde", description: "Evidência controlada e informação de segurança guiada.", href: "/demo-lab?vertical=pharma" },
             { label: "Agro e sementes", description: "Contexto de lote, controle de canal e verificação em campo.", href: "/demo-lab?vertical=seeds" },
             { label: "Logística", description: "Marcos declarados, exceções e passagens operacionais.", href: "/demo-lab?vertical=logistics" },
@@ -184,13 +195,26 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
             { label: "Investor snapshot", description: "Modelo de negócio, posicionamento e narrativa.", href: "/investor-snapshot" },
           ],
         },
+        {
+          id: "plans",
+          label: "Planos",
+          eyebrow: "Escolha como começar",
+          description: "Compare piloto controlado, rollout escalável e caminhos para parceiros com escopo comercial claro.",
+          featured: { label: "Configure seu piloto", description: "Defina escopo, carriers e uma faixa orçamentária para seu caso.", href: "/pricing#configurator" },
+          items: [
+            { label: "Comparar planos", description: "Revise piloto, crescimento e enterprise lado a lado.", href: "/pricing#plans" },
+            { label: "Estimar impacto potencial", description: "Modele premissas e cenários sem tratá-los como resultados prometidos.", href: "/pricing#roi" },
+            { label: "Solicitar uma proposta", description: "Envie seu caso e receba um acompanhamento comercial com escopo.", href: "/?contact=quote&intent=pricing_menu#contact-modal" },
+            { label: "Rollout enterprise", description: "Converse sobre integrações, governança e implantação em vários mercados.", href: "/?contact=sales&intent=pricing_enterprise#contact-modal" },
+            { label: "Programa reseller", description: "Explore o modelo de parceiros e rollout regional.", href: "/resellers" },
+          ],
+        },
       ],
     };
   }
 
   return {
     ariaLabel: "Navegación principal",
-    pricing: "Planes",
     login: "Ingresar",
     demo: "Agendar demo",
     menu: "Abrir navegación",
@@ -218,7 +242,7 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
         featured: { label: "Explorar todas las industrias", description: "Compará todos los recorridos guiados en Demo Lab.", href: "/demo-lab" },
         items: [
           { label: "Vinos y bebidas", description: "Origen, evidencia de apertura y servicio directo al cliente.", href: "/demo-lab?vertical=wine" },
-          { label: "Lujo y belleza", description: "Autenticidad, propiedad y posventa premium.", href: "/demo-lab?vertical=perfume" },
+          { label: "Lujo y belleza", description: "Evidencia de etiqueta, propiedad y posventa premium.", href: "/demo-lab?vertical=perfume" },
           { label: "Farma y salud", description: "Evidencia controlada e información de seguridad guiada.", href: "/demo-lab?vertical=pharma" },
           { label: "Agro y semillas", description: "Contexto de lote, control de canal y verificación en campo.", href: "/demo-lab?vertical=seeds" },
           { label: "Logística", description: "Hitos declarados, excepciones y traspasos operativos.", href: "/demo-lab?vertical=logistics" },
@@ -255,13 +279,27 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
           { label: "Investor snapshot", description: "Modelo de negocio, posicionamiento y narrativa.", href: "/investor-snapshot" },
         ],
       },
+      {
+        id: "plans",
+        label: "Planes",
+        eyebrow: "Elegí cómo empezar",
+        description: "Compará un piloto controlado, un despliegue escalable y el camino reseller con alcance comercial claro.",
+        featured: { label: "Configurá tu piloto", description: "Definí alcance, soportes y una banda presupuestaria para tu caso.", href: "/pricing#configurator" },
+        items: [
+          { label: "Comparar planes", description: "Revisá piloto, crecimiento y enterprise lado a lado.", href: "/pricing#plans" },
+          { label: "Estimar impacto potencial", description: "Modelá supuestos y escenarios sin tratarlos como resultados prometidos.", href: "/pricing#roi" },
+          { label: "Pedir una cotización", description: "Contanos el caso y recibí un seguimiento comercial con alcance definido.", href: "/?contact=quote&intent=pricing_menu#contact-modal" },
+          { label: "Despliegue enterprise", description: "Conversá sobre integraciones, gobierno y operación en varios mercados.", href: "/?contact=sales&intent=pricing_enterprise#contact-modal" },
+          { label: "Programa reseller", description: "Explorá el modelo de partners y despliegue regional.", href: "/resellers" },
+        ],
+      },
     ],
   };
 }
 
 function MenuLink({ item, currentPath, featured = false, onNavigate }: { item: NavItem; currentPath: string; featured?: boolean; onNavigate?: () => void }) {
   const itemPath = item.href.split(/[?#]/)[0];
-  const isCurrent = !item.external && !item.href.includes("?") && itemPath !== "/" && currentPath === itemPath;
+  const isCurrent = !item.external && !/[?#]/.test(item.href) && itemPath !== "/" && currentPath === itemPath;
   const className = featured ? `${styles.menuItem} ${styles.featuredItem}` : styles.menuItem;
   const content = (
     <>
@@ -297,11 +335,56 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
   const mobileCloseRef = useRef<HTMLButtonElement>(null);
   const mobileTriggerRef = useRef<HTMLButtonElement>(null);
   const groupButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const closeTimerRef = useRef<number | null>(null);
+
+  function cancelScheduledClose() {
+    if (closeTimerRef.current === null) return;
+    window.clearTimeout(closeTimerRef.current);
+    closeTimerRef.current = null;
+  }
+
+  function openDesktopMenu(groupId: string) {
+    cancelScheduledClose();
+    setOpenMenu(groupId);
+  }
+
+  function closeDesktopMenu() {
+    cancelScheduledClose();
+    setOpenMenu(null);
+  }
+
+  function handleDesktopMenuEnter(event: ReactPointerEvent<HTMLDivElement>, groupId: string) {
+    if (event.pointerType !== "mouse") return;
+    openDesktopMenu(groupId);
+  }
+
+  function scheduleDesktopMenuClose(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.pointerType !== "mouse") return;
+    const groupElement = event.currentTarget;
+    cancelScheduledClose();
+    if (groupElement.contains(document.activeElement)) return;
+    closeTimerRef.current = window.setTimeout(() => {
+      if (groupElement.contains(document.activeElement)) {
+        closeTimerRef.current = null;
+        return;
+      }
+      setOpenMenu(null);
+      closeTimerRef.current = null;
+    }, 200);
+  }
 
   useEffect(() => {
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
     setMobileOpen(false);
     setOpenMenu(null);
   }, [pathname]);
+
+  useEffect(() => () => {
+    if (closeTimerRef.current !== null) window.clearTimeout(closeTimerRef.current);
+  }, []);
 
   useEffect(() => {
     if (!mobileOpen) return;
@@ -363,14 +446,14 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
     function onPointerDown(event: PointerEvent) {
       const target = event.target;
       if (!(target instanceof Node) || navigationRef.current?.contains(target)) return;
-      setOpenMenu(null);
+      closeDesktopMenu();
     }
 
     function onKeyDown(event: KeyboardEvent) {
       if (event.key !== "Escape") return;
       const groupId = openMenu;
       if (!groupId) return;
-      setOpenMenu(null);
+      closeDesktopMenu();
       window.requestAnimationFrame(() => groupButtonRefs.current[groupId]?.focus());
     }
 
@@ -383,7 +466,7 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
   }, [openMenu]);
 
   function openAndFocus(groupId: string) {
-    setOpenMenu(groupId);
+    openDesktopMenu(groupId);
     window.requestAnimationFrame(() => {
       document.querySelector<HTMLElement>(`[data-mega-nav-group="${groupId}"] [data-menu-link]`)?.focus();
     });
@@ -394,15 +477,17 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
       <nav className={styles.desktopNav} aria-label={copy.ariaLabel}>
         {copy.groups.map((group) => {
           const expanded = openMenu === group.id;
+          const groupCurrent = group.id === "plans" && pathname === "/pricing";
           return (
             <div
               key={group.id}
               className={styles.navGroup}
               data-mega-nav-group={group.id}
-              onMouseEnter={() => setOpenMenu(group.id)}
-              onMouseLeave={() => setOpenMenu(null)}
+              onPointerEnter={(event) => handleDesktopMenuEnter(event, group.id)}
+              onPointerLeave={scheduleDesktopMenuClose}
+              onFocus={cancelScheduledClose}
               onBlur={(event) => {
-                if (!event.currentTarget.contains(event.relatedTarget)) setOpenMenu(null);
+                if (!event.currentTarget.contains(event.relatedTarget)) closeDesktopMenu();
               }}
             >
               <button
@@ -412,9 +497,10 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
                 type="button"
                 className={styles.navGroupButton}
                 aria-expanded={expanded}
+                aria-current={groupCurrent ? "page" : undefined}
                 aria-haspopup="true"
                 aria-controls={`mega-menu-${group.id}`}
-                onClick={() => setOpenMenu(expanded ? null : group.id)}
+                onClick={() => expanded ? closeDesktopMenu() : openDesktopMenu(group.id)}
                 onKeyDown={(event) => {
                   if (event.key === "ArrowDown") {
                     event.preventDefault();
@@ -431,11 +517,11 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
                   <div className={styles.megaMenuIntro}>
                     <span>{group.eyebrow}</span>
                     <p>{group.description}</p>
-                    <MenuLink item={group.featured} currentPath={pathname} featured onNavigate={() => setOpenMenu(null)} />
+                    <MenuLink item={group.featured} currentPath={pathname} featured onNavigate={closeDesktopMenu} />
                   </div>
                   <div className={styles.megaMenuGrid}>
                     {group.items.map((item) => (
-                      <MenuLink key={`${group.id}-${item.href}`} item={item} currentPath={pathname} onNavigate={() => setOpenMenu(null)} />
+                      <MenuLink key={`${group.id}-${item.href}`} item={item} currentPath={pathname} onNavigate={closeDesktopMenu} />
                     ))}
                   </div>
                 </div>
@@ -443,7 +529,6 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
             </div>
           );
         })}
-        <Link href="/pricing" className={styles.navDirectLink} aria-current={pathname === "/pricing" ? "page" : undefined}>{copy.pricing}</Link>
       </nav>
 
       <div className={styles.headerUtilities}>
@@ -494,7 +579,6 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
               <ThemeToggle initialTheme={initialTheme} locale={locale} />
             </div>
             <div className={styles.mobileActions}>
-              <Link href="/pricing" aria-current={pathname === "/pricing" ? "page" : undefined} onClick={() => setMobileOpen(false)}>{copy.pricing}</Link>
               <a href={loginHref}>{copy.login}</a>
               <Link href="/?contact=demo#contact-modal" onClick={() => setMobileOpen(false)}>{copy.demo}</Link>
             </div>

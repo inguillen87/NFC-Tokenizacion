@@ -33340,16 +33340,17 @@ html[data-theme="light"] .demo-lab-trust-context__secondary {
 
 .landing-hero-section h1 {
   max-width: min(76rem, calc(100vw - 2rem)) !important;
-  margin-top: clamp(0.85rem, 1.4vw, 1.2rem) !important;
-  font-size: clamp(2.1rem, 2.65vw, 2.72rem) !important;
+  margin-top: clamp(1rem, 1.6vw, 1.4rem) !important;
+  font-size: clamp(2.85rem, 4.5vw, 4.25rem) !important;
   line-height: 1.04 !important;
   text-wrap: balance;
 }
 
 .landing-hero-section .hero-subtitle {
-  margin-top: clamp(0.55rem, 1vw, 0.72rem) !important;
-  max-width: 42rem !important;
-  line-height: 1.5 !important;
+  margin-top: clamp(0.9rem, 1.25vw, 1.15rem) !important;
+  max-width: 50rem !important;
+  font-size: clamp(1rem, 1.25vw, 1.15rem) !important;
+  line-height: 1.65 !important;
 }
 
 .landing-hero-section .hero-demo-shell {
@@ -33456,9 +33457,15 @@ html[data-theme="light"] .demo-lab-trust-context__secondary {
   }
 
   .landing-hero-section h1 {
-    max-width: 22rem !important;
-    font-size: clamp(1.62rem, 7vw, 1.9rem) !important;
-    line-height: 1.12 !important;
+    max-width: 25rem !important;
+    font-size: clamp(2.15rem, 9vw, 2.65rem) !important;
+    line-height: 1.06 !important;
+  }
+
+  .landing-hero-section .hero-subtitle {
+    max-width: 23rem !important;
+    font-size: 1rem !important;
+    line-height: 1.65 !important;
   }
 
   .landing-hero-section .hero-demo-copy > p:nth-child(2),
@@ -42186,7 +42193,7 @@ html[data-theme="light"] .institutional-video-panel--landing .institutional-vide
 
 html.theme-light .institutional-video-panel--landing .institutional-video-frame:not(.institutional-video-frame--light-preview),
 html[data-theme="light"] .institutional-video-panel--landing .institutional-video-frame:not(.institutional-video-frame--light-preview) {
-  padding: clamp(0.42rem, 0.9vw, 0.7rem) !important;
+  padding: 0 !important;
   background:
     radial-gradient(circle at 22% 20%, rgba(14, 165, 233, 0.16), transparent 32%),
     radial-gradient(circle at 82% 78%, rgba(16, 185, 129, 0.12), transparent 34%),
@@ -53713,5 +53720,339 @@ html[data-theme="light"] .demo-lab-fullscreen-root--light .demo-lab-shell--crm .
 
   .demo-lab-fullscreen-root .demo-lab-wizard-nav {
     top: 0.75rem !important;
+  }
+}
+
+/* White-first institutional media closure. The photographic poster and the
+   MP4 own the full 16:9 viewport; technical status remains in deeper product
+   surfaces instead of becoming a white row under the landing cover. */
+body .landing-root .institutional-video-panel--landing .institutional-video-strip {
+  display: none !important;
+}
+
+html.theme-light body .landing-root .institutional-video-panel--landing .institutional-video-frame,
+html[data-theme="light"] body .landing-root .institutional-video-panel--landing .institutional-video-frame {
+  padding: 0 !important;
+  border: 0 !important;
+  background: #071722 !important;
+}
+
+html.theme-light body .landing-root .institutional-video-panel--landing .institutional-video-frame::before,
+html.theme-light body .landing-root .institutional-video-panel--landing .institutional-video-frame::after,
+html[data-theme="light"] body .landing-root .institutional-video-panel--landing .institutional-video-frame::before,
+html[data-theme="light"] body .landing-root .institutional-video-panel--landing .institutional-video-frame::after {
+  content: none !important;
+  display: none !important;
+}
+
+html.theme-light body .landing-root .institutional-video-panel--landing.institutional-video-panel--light-preview .institutional-video-light-preview,
+html[data-theme="light"] body .landing-root .institutional-video-panel--landing.institutional-video-panel--light-preview .institutional-video-light-preview {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 2 !important;
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 100% !important;
+  max-width: none !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: #071722 !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  filter: saturate(1.03) contrast(1.03) !important;
+  opacity: 1 !important;
+}
+
+html.theme-light body .landing-root .institutional-video-panel--landing .institutional-video-media--light,
+html[data-theme="light"] body .landing-root .institutional-video-panel--landing .institutional-video-media--light {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  background: #071722 !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  filter: brightness(1.02) contrast(1.02) saturate(1.03) !important;
+}
+
+html.theme-light body .landing-root .institutional-video-panel--landing.institutional-video-panel--light-preview .institutional-video-watermark,
+html[data-theme="light"] body .landing-root .institutional-video-panel--landing.institutional-video-panel--light-preview .institutional-video-watermark {
+  display: none !important;
+}
+
+html.theme-light body .landing-root .institutional-video-panel--landing.institutional-video-panel--light-preview .institutional-video-play,
+html[data-theme="light"] body .landing-root .institutional-video-panel--landing.institutional-video-panel--light-preview .institutional-video-play {
+  z-index: 4 !important;
+  top: 50% !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: 50% !important;
+  width: auto !important;
+  max-width: calc(100% - 2rem) !important;
+  min-height: 3rem !important;
+  transform: translate(-50%, -50%) !important;
+  border-color: rgba(255, 255, 255, 0.34) !important;
+  background: rgba(2, 8, 23, 0.82) !important;
+  color: #ffffff !important;
+  box-shadow: 0 1rem 2.5rem rgba(2, 8, 23, 0.38) !important;
+  backdrop-filter: blur(14px) !important;
+}
+
+@media (max-width: 720px) {
+  body .landing-root .institutional-video-panel--landing.institutional-video-panel--light-preview .institutional-video-frame,
+  body .landing-root .institutional-video-panel--landing .institutional-video-frame {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    aspect-ratio: 16 / 9 !important;
+  }
+}
+
+/* Calm three-step landing narrative. Technical detail remains available from
+   the mega navigation instead of competing with the primary product story. */
+.simple-trust-flow-section {
+  position: relative;
+  background: #07111f;
+}
+
+.simple-trust-flow-shell {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(103, 232, 249, 0.16);
+  border-radius: clamp(1.5rem, 3vw, 2.25rem);
+  background: #0a1628;
+  box-shadow: 0 2rem 5rem rgba(2, 8, 23, 0.22);
+}
+
+.simple-trust-flow-intro {
+  max-width: 58rem;
+  margin-inline: auto;
+  padding: clamp(2.5rem, 5vw, 5rem) clamp(1.5rem, 5vw, 4.5rem) clamp(2.2rem, 4vw, 3.5rem);
+  text-align: center;
+}
+
+.simple-trust-flow-eyebrow {
+  margin: 0;
+  color: #67e8f9;
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.simple-trust-flow-intro h2 {
+  max-width: 52rem;
+  margin: 0.9rem auto 0;
+  color: #f8fbff;
+  font-size: clamp(2rem, 4vw, 3.6rem);
+  font-weight: 830;
+  line-height: 1.05;
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+}
+
+.simple-trust-flow-body {
+  max-width: 44rem;
+  margin: 1.35rem auto 0;
+  color: #b8c6d8;
+  font-size: clamp(1rem, 1.45vw, 1.15rem);
+  line-height: 1.75;
+}
+
+.simple-trust-flow-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid rgba(148, 163, 184, 0.16);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  list-style: none;
+}
+
+.simple-trust-flow-steps li {
+  min-width: 0;
+  padding: clamp(1.75rem, 3.5vw, 3rem);
+}
+
+.simple-trust-flow-steps li + li {
+  border-left: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.simple-trust-flow-steps li > span {
+  display: block;
+  color: #67e8f9;
+  font-size: 0.73rem;
+  font-weight: 850;
+  letter-spacing: 0.16em;
+}
+
+.simple-trust-flow-steps h3 {
+  margin: 1rem 0 0;
+  color: #f8fbff;
+  font-size: clamp(1.05rem, 1.5vw, 1.3rem);
+  font-weight: 790;
+  letter-spacing: -0.025em;
+}
+
+.simple-trust-flow-steps p {
+  margin: 0.7rem 0 0;
+  color: #aebdd0;
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+
+.simple-trust-flow-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: clamp(1.4rem, 3vw, 2rem) clamp(1.5rem, 4vw, 3rem);
+  background: rgba(15, 118, 128, 0.08);
+}
+
+.simple-trust-flow-footer > p {
+  max-width: 42rem;
+  margin: 0;
+  color: #aebdd0;
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+.simple-trust-flow-cta {
+  display: inline-flex;
+  min-height: 3rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  border-radius: 0.9rem;
+  background: #16b8ca;
+  color: #04131d;
+  padding: 0.8rem 1.15rem;
+  font-size: 0.88rem;
+  font-weight: 820;
+  text-decoration: none;
+  transition: background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.simple-trust-flow-cta:hover {
+  background: #45d4df;
+  box-shadow: 0 0.9rem 2rem rgba(34, 211, 238, 0.18);
+  transform: translateY(-1px);
+}
+
+.simple-trust-flow-cta:focus-visible {
+  outline: 3px solid #67e8f9;
+  outline-offset: 3px;
+}
+
+.simple-trust-flow-cta svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+html.theme-light .simple-trust-flow-section,
+html[data-theme="light"] .simple-trust-flow-section {
+  background: #ffffff !important;
+}
+
+html.theme-light .simple-trust-flow-shell,
+html[data-theme="light"] .simple-trust-flow-shell {
+  border-color: rgba(15, 35, 63, 0.11) !important;
+  background: #ffffff !important;
+  box-shadow: 0 1.8rem 5rem rgba(15, 35, 63, 0.075) !important;
+}
+
+html.theme-light .simple-trust-flow-eyebrow,
+html[data-theme="light"] .simple-trust-flow-eyebrow,
+html.theme-light .simple-trust-flow-steps li > span,
+html[data-theme="light"] .simple-trust-flow-steps li > span {
+  color: #087f8c;
+}
+
+html.theme-light .simple-trust-flow-intro h2,
+html[data-theme="light"] .simple-trust-flow-intro h2,
+html.theme-light .simple-trust-flow-steps h3,
+html[data-theme="light"] .simple-trust-flow-steps h3 {
+  color: #10233f;
+}
+
+html.theme-light .simple-trust-flow-body,
+html[data-theme="light"] .simple-trust-flow-body,
+html.theme-light .simple-trust-flow-steps p,
+html[data-theme="light"] .simple-trust-flow-steps p {
+  color: #53657a;
+}
+
+html.theme-light .simple-trust-flow-steps,
+html[data-theme="light"] .simple-trust-flow-steps {
+  border-color: rgba(15, 35, 63, 0.1);
+}
+
+html.theme-light .simple-trust-flow-steps li + li,
+html[data-theme="light"] .simple-trust-flow-steps li + li {
+  border-color: rgba(15, 35, 63, 0.1);
+}
+
+html.theme-light .simple-trust-flow-footer,
+html[data-theme="light"] .simple-trust-flow-footer {
+  background: #f5fafb;
+}
+
+html.theme-light .simple-trust-flow-footer > p,
+html[data-theme="light"] .simple-trust-flow-footer > p {
+  color: #607187;
+}
+
+@media (max-width: 760px) {
+  .simple-trust-flow-section {
+    padding-top: 2.75rem !important;
+    padding-bottom: 2.75rem !important;
+  }
+
+  .simple-trust-flow-intro {
+    padding: 2.25rem 1.35rem 1.9rem;
+  }
+
+  .simple-trust-flow-intro h2 {
+    font-size: clamp(2rem, 9.5vw, 2.65rem);
+  }
+
+  .simple-trust-flow-steps {
+    grid-template-columns: 1fr;
+  }
+
+  .simple-trust-flow-steps li {
+    padding: 1.5rem 1.35rem;
+  }
+
+  .simple-trust-flow-steps li + li {
+    border-top: 1px solid rgba(148, 163, 184, 0.16);
+    border-left: 0;
+  }
+
+  html.theme-light .simple-trust-flow-steps li + li,
+  html[data-theme="light"] .simple-trust-flow-steps li + li {
+    border-top-color: rgba(15, 35, 63, 0.1);
+  }
+
+  .simple-trust-flow-footer {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.35rem;
+  }
+
+  .simple-trust-flow-cta {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .simple-trust-flow-cta {
+    transition: none;
   }
 }

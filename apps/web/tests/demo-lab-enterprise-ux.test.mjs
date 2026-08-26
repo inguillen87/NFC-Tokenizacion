@@ -517,7 +517,7 @@ test("landing hero keeps technical metrics out of the first commercial layer", a
   assert.match(i18n, /No buyer app required/);
 });
 
-test("brand synergy simulator is readable, auto-cycles and stays mobile-safe", async () => {
+test("brand synergy simulator stays reusable and mobile-safe without rendering on home", async () => {
   const source = await readFile(new URL("../src/components/brand-synergy-simulator.tsx", import.meta.url), "utf8");
   const page = await readFile(new URL("../src/app/page.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
@@ -537,9 +537,7 @@ test("brand synergy simulator is readable, auto-cycles and stays mobile-safe", a
   assert.match(source, /brand-synergy-outcome-grid/);
   assert.match(source, /hash-only/);
   assert.match(source, /Consent and PII stay inside nexID/);
-  assert.match(page, /landing-brand-synergy-band my-16 scroll-mt-24/);
-  assert.match(page, /landing-brand-synergy-shell container-shell/);
-  assert.doesNotMatch(page, /landing-brand-synergy-shell[^\n]+overflow-hidden/);
+  assert.doesNotMatch(page, /BrandSynergySimulator|brand-synergy/);
   assert.match(css, /brand-synergy-proof-grid > div/);
   assert.match(css, /html\.theme-light \.landing-brand-synergy-shell/);
   assert.match(css, /brand-synergy-live-panel\s*\{/);

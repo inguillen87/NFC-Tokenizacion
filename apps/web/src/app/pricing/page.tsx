@@ -252,7 +252,7 @@ export default async function PricingPage() {
 
         <PricingRoiCalculator locale={locale} />
 
-        <section className="nexid-pricing-grid grid min-w-0 gap-4 lg:grid-cols-3" aria-label="Pricing tiers">
+        <section id="plans" className="nexid-pricing-grid grid min-w-0 scroll-mt-24 gap-4 lg:grid-cols-3" aria-label="Pricing tiers">
           {copy.tiers.map((tier) => (
             <article key={tier.name} className={`nexid-pricing-card flex min-h-[31rem] min-w-0 flex-col rounded-3xl border p-5 shadow-xl ${tier.featured ? "is-enterprise border-cyan-200 bg-cyan-50 shadow-cyan-100/70" : "border-slate-200 bg-white shadow-slate-200/60"}`}>
               {tier.popular ? <span className="nexid-pricing-card__badge mb-3 w-fit rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-cyan-800">{copy.popular}</span> : null}

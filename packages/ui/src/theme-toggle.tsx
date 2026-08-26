@@ -24,6 +24,9 @@ export function applyTheme(theme: Theme) {
 }
 
 function readTheme(): Theme {
+  const serverTheme = document.documentElement.getAttribute("data-theme");
+  if (serverTheme === "light" || serverTheme === "dark") return serverTheme;
+
   try {
     const saved = localStorage.getItem("theme");
     if (saved === "dark" || saved === "light") return saved;
@@ -31,8 +34,7 @@ function readTheme(): Theme {
     // ignore
   }
 
-  const serverTheme = document.documentElement.getAttribute("data-theme");
-  return serverTheme === "light" || serverTheme === "dark" ? serverTheme : "light";
+  return "light";
 }
 
 export function ThemeToggle({ initialTheme = "light", locale = "en" }: { initialTheme?: Theme; locale?: string }) {

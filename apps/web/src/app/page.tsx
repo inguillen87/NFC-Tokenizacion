@@ -4,14 +4,11 @@ import { BrandLockup } from "@product/ui";
 import {
   CtaSection,
   HeroSection,
-  OfflineFieldOperationsSection,
   SimpleTrustFlowSection,
 } from "../components/landing-sections";
-import { BrandSynergySimulator } from "../components/brand-synergy-simulator";
-import { SalesChatWidget } from "../components/sales-chat-widget";
-import { DemoRequestSection } from "../components/demo-request-section";
 import { PwaInstallPrompt } from "../components/pwa-install-prompt";
 import { MarketingMegaNav } from "../components/marketing-mega-nav";
+import { SalesChatWidget } from "../components/sales-chat-widget";
 import { landingContent } from "../lib/landing-content";
 import { getWebI18n } from "../lib/locale";
 import { CommercialContactModal } from "../components/commercial-contact-modal";
@@ -95,16 +92,7 @@ export default async function HomePage() {
         <HeroSection content={content} locale={locale} initialTheme={initialTheme} />
 
         <SimpleTrustFlowSection locale={locale} />
-        <OfflineFieldOperationsSection locale={locale} />
-        {/* nexID Cognitive AI & Brand Synergy Section */}
-        <section id="brand-synergy" className="landing-brand-synergy-band my-16 scroll-mt-24">
-          <div className="landing-brand-synergy-shell container-shell">
-            <BrandSynergySimulator locale={locale} />
-          </div>
-        </section>
-
         <CtaSection content={content} locale={locale} />
-        <DemoRequestSection locale={locale} />
         <SalesChatWidget locale={locale} deferUntilScroll />
         <CommercialContactModal initialLocale={locale} />
       </main>

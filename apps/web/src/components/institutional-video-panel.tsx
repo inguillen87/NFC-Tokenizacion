@@ -299,22 +299,14 @@ export function InstitutionalVideoPanel({ locale, variant = "landing", className
             </div>
           ) : null}
           {showLightPreview ? (
-            <div className="institutional-video-light-preview" aria-hidden="true">
-              <div className="institutional-video-light-preview__scene">
-                <div className="institutional-video-light-preview__chip">
-                  <span>N</span>
-                </div>
-                <div className="institutional-video-light-preview__signal">
-                  <i />
-                  <i />
-                  <i />
-                </div>
-              </div>
-              <div>
-                <strong>{copy.title}</strong>
-                <p>{copy.strip}</p>
-              </div>
-            </div>
+            <img
+              src={video.poster}
+              alt=""
+              aria-hidden="true"
+              decoding="async"
+              loading="lazy"
+              className="institutional-video-light-preview"
+            />
           ) : null}
           {showPlayOverlay ? (
             <button className="institutional-video-play" type="button" onClick={playVideo} aria-label={copy.aria}>

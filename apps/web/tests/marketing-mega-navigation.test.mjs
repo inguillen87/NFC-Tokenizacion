@@ -7,7 +7,7 @@ const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 test("mega navigation groups commercial and technical depth on existing routes", async () => {
   const navigation = await read("../src/components/marketing-mega-nav.tsx");
 
-  for (const group of ["solutions", "industries", "platform", "resources"]) {
+  for (const group of ["solutions", "industries", "platform", "resources", "plans"]) {
     assert.match(navigation, new RegExp(`id: "${group}"`));
   }
 
@@ -25,6 +25,9 @@ test("mega navigation groups commercial and technical depth on existing routes",
     "/audiences",
     "/resellers",
     "/investor-snapshot",
+    "/pricing#configurator",
+    "/pricing#plans",
+    "/pricing#roi",
   ]) {
     assert.match(navigation, new RegExp(href.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
@@ -32,6 +35,9 @@ test("mega navigation groups commercial and technical depth on existing routes",
   assert.doesNotMatch(navigation, /href:\s*"\/(?:solutions|industries)(?:\/|"|\?)/);
   assert.match(navigation, /without treating it as proof of the physical object/);
   assert.match(navigation, /sin tratarla como prueba del objeto físico/);
+  assert.doesNotMatch(navigation, /className=\{styles\.navDirectLink\}/);
+  assert.match(navigation, /group\.id === "plans" && pathname === "\/pricing"/);
+  assert.match(navigation, /aria-current=\{groupCurrent \? "page" : undefined\}/);
 });
 
 test("mega navigation shares one accessible keyboard and mobile interaction model", async () => {
@@ -52,7 +58,24 @@ test("mega navigation shares one accessible keyboard and mobile interaction mode
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
 });
 
-test("corrective home restores the original journey without the duplicated technical catalog", async () => {
+test("mega navigation keeps hover intent stable instead of closing on pointer gaps", async () => {
+  const navigation = await read("../src/components/marketing-mega-nav.tsx");
+
+  assert.match(navigation, /function scheduleDesktopMenuClose\(/);
+  assert.match(navigation, /function cancelScheduledClose\(\)/);
+  assert.match(navigation, /window\.setTimeout\(\(\) => \{[\s\S]*setOpenMenu\(null\)/);
+  assert.match(navigation, /window\.clearTimeout\(/);
+  assert.match(navigation, /function openDesktopMenu\(groupId: string\) \{[\s\S]{0,180}cancelScheduledClose\(\)[\s\S]{0,180}setOpenMenu\(groupId\)/);
+  assert.match(navigation, /event\.pointerType !== "mouse"/);
+  assert.match(navigation, /onPointerEnter=\{\(event\) => handleDesktopMenuEnter\(event, group\.id\)\}/);
+  assert.match(navigation, /onPointerLeave=\{scheduleDesktopMenuClose\}/);
+  assert.match(navigation, /onFocus=\{cancelScheduledClose\}/);
+  assert.match(navigation, /groupElement\.contains\(document\.activeElement\)/);
+  assert.doesNotMatch(navigation, /onMouseLeave=\{\(\) => setOpenMenu\(null\)\}/);
+  assert.doesNotMatch(navigation, /onPointerLeave=\{\(\) => setOpenMenu\(null\)\}/);
+});
+
+test("focused home keeps the commercial journey while the mega menu carries depth", async () => {
   const [page, layout, demoLab, sdk, css] = await Promise.all([
     read("../src/app/page.tsx"),
     read("../src/app/layout.tsx"),
@@ -64,10 +87,7 @@ test("corrective home restores the original journey without the duplicated techn
   for (const surface of [
     "<HeroSection",
     "<SimpleTrustFlowSection",
-    "<OfflineFieldOperationsSection",
-    "<BrandSynergySimulator",
     "<CtaSection",
-    "<DemoRequestSection",
     "<SalesChatWidget",
     "<CommercialContactModal",
     "site-footer",
@@ -78,7 +98,10 @@ test("corrective home restores the original journey without the duplicated techn
   assert.match(page, /<MarketingMegaNav/);
   assert.match(page, /<SalesChatWidget locale=\{locale\} deferUntilScroll \/>/);
   assert.match(page, /<main id="main-content" data-nav-inert>/);
-  assert.doesNotMatch(page, /EnterpriseTrustLayersSection|Quick-Jump Hub|nexid-quick-hub-card|landing-mobile-action-dock|MobileNavSheet/);
+  assert.doesNotMatch(
+    page,
+    /OfflineFieldOperationsSection|BrandSynergySimulator|DemoRequestSection|offline-field-operations|brand-synergy|EnterpriseTrustLayersSection|Quick-Jump Hub|nexid-quick-hub-card|landing-mobile-action-dock|MobileNavSheet/,
+  );
   assert.match(page, /get\("theme"\)\?\.value === "dark" \? "dark" : "light"/);
   assert.match(layout, /themeCookie === "dark" \? "dark" : "light"/);
   assert.match(demoLab, /cookieTheme === "dark"[\s\S]*\? "dark"[\s\S]*: "light"/);
