@@ -5,15 +5,15 @@ import { readFile } from "node:fs/promises";
 test("demo lab theme toggle changes theme client-side before falling back to SSR", async () => {
   const source = await readFile(new URL("../src/app/(public)/demo-lab/demo-lab-hub-theme.tsx", import.meta.url), "utf8");
 
-  assert.match(source, /function applyTheme\(theme: Theme\)/);
+  assert.match(source, /applyTheme as applySiteTheme/);
   assert.match(source, /type DemoLabThemeToggleProps = \{/);
   assert.match(source, /initialTheme\?: Theme/);
   assert.match(source, /initialReturnTo\?: string/);
-  assert.match(source, /export function DemoLabThemeToggle\(\{ initialTheme = "dark", initialReturnTo = "\/demo-lab" \}/);
+  assert.match(source, /export function DemoLabThemeToggle\(\{ initialTheme = "light", initialReturnTo = "\/demo-lab" \}/);
   assert.match(source, /function syncDemoLabRootTheme\(theme: Theme\)/);
-  assert.match(source, /function readTheme\(fallback: Theme = "dark"\)/);
+  assert.match(source, /function readTheme\(fallback: Theme = "light"\)/);
   assert.match(source, /localStorage\.getItem\("theme"\)/);
-  assert.match(source, /localStorage\.setItem\("theme", theme\)/);
+  assert.match(source, /THEME_PREFERENCE_VERSION_STORAGE/);
   assert.match(source, /const \[theme, setTheme\] = useState<Theme>\(initialTheme\)/);
   assert.match(source, /const \[returnTo, setReturnTo\] = useState\(initialReturnTo\)/);
   assert.match(source, /const initialNextTheme: Theme = initialTheme === "dark" \? "light" : "dark"/);
@@ -27,7 +27,7 @@ test("demo lab theme toggle changes theme client-side before falling back to SSR
   assert.match(source, /classList\.toggle\("demo-lab-fullscreen-root--light", theme === "light"\)/);
   assert.match(source, /onClick=\{onToggle\}/);
   assert.match(source, /event\.preventDefault\(\)/);
-  assert.match(source, /applyTheme\(next\)/);
+  assert.match(source, /applyDemoLabTheme\(next\)/);
 });
 
 test("web pwa fallback stays production-gated and mobile-safe", async () => {

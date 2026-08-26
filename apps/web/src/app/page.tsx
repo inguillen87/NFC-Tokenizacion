@@ -13,6 +13,7 @@ import { getWebI18n } from "../lib/locale";
 import { CommercialContactModal } from "../components/commercial-contact-modal";
 import { productUrls, schedulingUrls } from "@product/config";
 import { Download, ExternalLink, ShieldCheck } from "lucide-react";
+import { resolveThemePreference, THEME_PREFERENCE_VERSION_COOKIE } from "@product/ui/theme-preference";
 
 const afipDataFiscalHref = "https://qr.afip.gob.ar/?qr=-F2blnmFe6pmSP-chYnylQ,,";
 const mipymeCertificateHref = "/certificados/certificado-mipyme-intellitech.pdf";
@@ -20,7 +21,10 @@ const mipymeCertificateHref = "/certificados/certificado-mipyme-intellitech.pdf"
 export default async function HomePage() {
   const { locale, locales } = await getWebI18n();
   const cookieStore = await cookies();
-  const initialTheme = cookieStore.get("theme")?.value === "dark" ? "dark" : "light";
+  const initialTheme = resolveThemePreference(
+    cookieStore.get("theme")?.value,
+    cookieStore.get(THEME_PREFERENCE_VERSION_COOKIE)?.value,
+  );
   const content = landingContent[locale];
 
   const scheduleMeetingLabel = locale === "en" ? "Schedule meeting" : locale === "pt-BR" ? "Agendar reunião" : "Agendar reunión";

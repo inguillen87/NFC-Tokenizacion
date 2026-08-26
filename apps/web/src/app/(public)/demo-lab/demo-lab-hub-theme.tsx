@@ -3,35 +3,37 @@
 /**
  * DemoLabHubTheme
  * ----------------
- * Reads the site-wide theme from localStorage ("theme" key, values "dark" | "light")
- * and keeps <html> class + data-theme in sync without a full page reload.
+ * Uses the same versioned, white-first preference as the marketing site and keeps
+ * <html> plus the Demo Lab roots in sync without a full page reload.
  * Also renders the sun/moon ThemeToggle button to be slotted into the hub nav.
- *
- * The key is "theme" - same key used by packages/ui/src/theme-toggle.tsx and
- * set as a cookie by applyTheme() for SSR hydration.
  */
 
 import { useCallback, useEffect, useState } from "react";
 import type { MouseEvent } from "react";
 import { Sun, Moon } from "lucide-react";
-
-type Theme = "dark" | "light";
+import {
+  applyTheme as applySiteTheme,
+  THEME_PREFERENCE_VERSION,
+  THEME_PREFERENCE_VERSION_STORAGE,
+  type Theme,
+} from "@product/ui";
 
 type DemoLabThemeToggleProps = {
   initialTheme?: Theme;
   initialReturnTo?: string;
 };
 
-function readTheme(fallback: Theme = "dark"): Theme {
+function readTheme(fallback: Theme = "light"): Theme {
+  const attr = document.documentElement.getAttribute("data-theme");
+  if (attr === "dark" || attr === "light") return attr;
+
   try {
+    const version = localStorage.getItem(THEME_PREFERENCE_VERSION_STORAGE);
     const saved = localStorage.getItem("theme");
-    if (saved === "dark" || saved === "light") return saved;
+    if (version === THEME_PREFERENCE_VERSION && (saved === "dark" || saved === "light")) return saved;
   } catch {
     // SSR / private-browse guard
   }
-
-  const attr = document.documentElement.getAttribute("data-theme");
-  if (attr === "dark" || attr === "light") return attr;
 
   return fallback;
 }
@@ -48,18 +50,9 @@ function syncDemoLabRootTheme(theme: Theme) {
   });
 }
 
-function applyTheme(theme: Theme) {
-  document.documentElement.setAttribute("data-theme", theme);
-  document.documentElement.classList.toggle("theme-light", theme === "light");
-  document.documentElement.style.colorScheme = theme;
+function applyDemoLabTheme(theme: Theme) {
+  applySiteTheme(theme);
   syncDemoLabRootTheme(theme);
-  try {
-    localStorage.setItem("theme", theme);
-    document.cookie = `theme=${theme}; path=/; max-age=31536000; SameSite=Lax`;
-    document.cookie = `theme=${theme}; path=/; max-age=31536000; SameSite=Lax; domain=.nexid.lat`;
-  } catch {
-    // ignore
-  }
 }
 
 /**
@@ -67,7 +60,7 @@ function applyTheme(theme: Theme) {
  * applies it to <html>, and listens for cross-tab storage events so the hub
  * stays in sync when the user toggles theme on the landing page in another tab.
  */
-export function DemoLabThemeToggle({ initialTheme = "dark", initialReturnTo = "/demo-lab" }: DemoLabThemeToggleProps) {
+export function DemoLabThemeToggle({ initialTheme = "light", initialReturnTo = "/demo-lab" }: DemoLabThemeToggleProps) {
   const [theme, setTheme] = useState<Theme>(initialTheme);
   const [mounted, setMounted] = useState(false);
   const [returnTo, setReturnTo] = useState(initialReturnTo);
@@ -97,16 +90,17 @@ export function DemoLabThemeToggle({ initialTheme = "dark", initialReturnTo = "/
     }
 
     setTheme(initial);
-    applyTheme(initial);
+    applyDemoLabTheme(initial);
     syncReturnTo();
     setMounted(true);
 
     const onStorage = (e: StorageEvent) => {
       if (e.key !== "theme") return;
       if (e.newValue !== "dark" && e.newValue !== "light") return;
+      if (localStorage.getItem(THEME_PREFERENCE_VERSION_STORAGE) !== THEME_PREFERENCE_VERSION) return;
       const next = e.newValue as Theme;
       setTheme(next);
-      applyTheme(next);
+      applyDemoLabTheme(next);
       syncReturnTo();
     };
 
@@ -121,7 +115,7 @@ export function DemoLabThemeToggle({ initialTheme = "dark", initialReturnTo = "/
     event.preventDefault();
     const next = theme === "dark" ? "light" : "dark";
     setTheme(next);
-    applyTheme(next);
+    applyDemoLabTheme(next);
     syncReturnTo();
   }, [syncReturnTo, theme]);
 

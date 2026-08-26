@@ -29,6 +29,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { BrandLockup, buttonClassName, Card, ThemeToggle, type VectorMapPoint, type VectorMapRoute } from "@product/ui";
+import { resolveThemePreference, THEME_PREFERENCE_VERSION_COOKIE } from "@product/ui/theme-preference";
 import { HeroTrustAtlasSvg } from "../../components/hero-scene";
 import {
   platformTrustedBy,
@@ -533,7 +534,10 @@ type SdkPageProps = {
 export default async function SdkPage({ searchParams }: SdkPageProps) {
   const params = await searchParams;
   const cookieStore = await cookies();
-  const theme: SdkTheme = cookieStore.get("theme")?.value === "dark" ? "dark" : "light";
+  const theme: SdkTheme = resolveThemePreference(
+    cookieStore.get("theme")?.value,
+    cookieStore.get(THEME_PREFERENCE_VERSION_COOKIE)?.value,
+  );
   const activeVertical = normalizeSdkVertical(params?.vertical);
 
   return (

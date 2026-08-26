@@ -1130,7 +1130,7 @@ export function DemoLabClient({
   locale,
   initialVertical,
   initialScenario,
-  initialTheme = "dark",
+  initialTheme = "light",
   initialReturnTo = "/demo-lab",
 }: {
   locale: AppLocale;

@@ -10,6 +10,7 @@
     "./premium-vector-map": "./src/premium-vector-map.tsx",
     "./world-map-realtime": "./src/world-map-realtime.tsx",
     "./world-map-placeholder": "./src/world-map-placeholder.tsx",
+    "./theme-preference": "./src/theme-preference.ts",
     "./trust-map-source": "./src/trust-map-source.ts"
   },
   "peerDependencies": {

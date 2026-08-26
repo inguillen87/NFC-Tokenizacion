@@ -11,6 +11,7 @@ import { WalletExtensionGuard } from "../components/wallet-extension-guard";
 import { StructuredData } from "../components/structured-data";
 import { getClerkPublishableKey } from "../lib/clerk-env";
 import { getWebI18n } from "../lib/locale";
+import { resolveThemePreference, THEME_PREFERENCE_VERSION_COOKIE } from "@product/ui/theme-preference";
 
 const DEFAULT_SITE_URL = "https://nexid.lat";
 
@@ -188,7 +189,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const cookieStore = await cookies();
   const { locale } = await getWebI18n();
   const themeCookie = cookieStore.get("theme")?.value;
-  const theme = themeCookie === "dark" ? "dark" : "light";
+  const themeVersionCookie = cookieStore.get(THEME_PREFERENCE_VERSION_COOKIE)?.value;
+  const theme = resolveThemePreference(themeCookie, themeVersionCookie);
   const socialCopy = getSocialCopy(locale);
   const facebookAppId = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID?.trim();
   const clerkKey = getClerkPublishableKey();

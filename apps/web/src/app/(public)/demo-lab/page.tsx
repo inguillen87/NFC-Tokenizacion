@@ -3,6 +3,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import type { ComponentType } from "react";
 import type { AppLocale } from "@product/config";
+import { resolveThemePreference, THEME_PREFERENCE_VERSION_COOKIE } from "@product/ui/theme-preference";
 import { getWebI18n } from "../../../lib/locale";
 import { JsonLd } from "../../../components/json-ld";
 import { DemoLabClient } from "./demo-lab-client";
@@ -752,12 +753,12 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
   );
   const requestedThemeParam = firstParam(params.theme);
   const cookieTheme = cookieStore.get("theme")?.value;
+  const cookieThemeVersion = cookieStore.get(THEME_PREFERENCE_VERSION_COOKIE)?.value;
+  const persistedTheme = resolveThemePreference(cookieTheme, cookieThemeVersion);
   const requestedTheme =
     requestedThemeParam === "light" || requestedThemeParam === "dark"
       ? requestedThemeParam
-      : cookieTheme === "dark"
-        ? "dark"
-        : "light";
+      : persistedTheme;
   const demoLabReturnTo = buildDemoLabReturnTo(params);
   const proofVerifierHref = buildProofVerifierHandoffHref(initialScenario);
   const demoThemeClass = requestedTheme === "light" ? "demo-lab-fullscreen-root--light" : "";

@@ -102,10 +102,10 @@ test("focused home keeps the commercial journey while the mega menu carries dept
     page,
     /OfflineFieldOperationsSection|BrandSynergySimulator|DemoRequestSection|offline-field-operations|brand-synergy|EnterpriseTrustLayersSection|Quick-Jump Hub|nexid-quick-hub-card|landing-mobile-action-dock|MobileNavSheet/,
   );
-  assert.match(page, /get\("theme"\)\?\.value === "dark" \? "dark" : "light"/);
-  assert.match(layout, /themeCookie === "dark" \? "dark" : "light"/);
-  assert.match(demoLab, /cookieTheme === "dark"[\s\S]*\? "dark"[\s\S]*: "light"/);
-  assert.match(sdk, /get\("theme"\)\?\.value === "dark" \? "dark" : "light"/);
+  for (const surface of [page, layout, demoLab, sdk]) {
+    assert.match(surface, /resolveThemePreference\(/);
+    assert.match(surface, /THEME_PREFERENCE_VERSION_COOKIE/);
+  }
   assert.match(css, /Corrective white-first landing shell/);
   assert.match(css, /html\.theme-light body,[\s\S]*background: #ffffff !important/);
 });

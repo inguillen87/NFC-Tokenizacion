@@ -1,8 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  THEME_PREFERENCE_VERSION,
+  THEME_PREFERENCE_VERSION_COOKIE,
+  THEME_PREFERENCE_VERSION_STORAGE,
+  themeCookieDomainForHostname,
+  type Theme,
+} from "./theme-preference";
 
-export type Theme = "dark" | "light";
+export type { Theme } from "./theme-preference";
 
 const themeCopy = {
   "es-AR": { dark: "Oscuro", light: "Claro", toDark: "Cambiar a modo oscuro", toLight: "Cambiar a modo claro" },
@@ -14,10 +21,30 @@ export function applyTheme(theme: Theme) {
   document.documentElement.setAttribute("data-theme", theme);
   document.documentElement.classList.toggle("theme-light", theme === "light");
   document.documentElement.style.colorScheme = theme;
+
   try {
+    localStorage.setItem(THEME_PREFERENCE_VERSION_STORAGE, THEME_PREFERENCE_VERSION);
     localStorage.setItem("theme", theme);
-    document.cookie = `theme=${theme}; path=/; max-age=31536000; SameSite=Lax`;
-    document.cookie = `theme=${theme}; path=/; max-age=31536000; SameSite=Lax; domain=.nexid.lat`;
+  } catch {
+    // ignore
+  }
+
+  try {
+    const secure = window.location.protocol === "https:" ? "; Secure" : "";
+    const cookieBase = `path=/; SameSite=Lax${secure}`;
+    const persistentCookie = `${cookieBase}; max-age=31536000`;
+    const domain = themeCookieDomainForHostname(window.location.hostname);
+
+    if (domain) {
+      // Remove the old host-only values before persisting one shared value for apex + www.
+      document.cookie = `theme=; ${cookieBase}; max-age=0`;
+      document.cookie = `${THEME_PREFERENCE_VERSION_COOKIE}=; ${cookieBase}; max-age=0`;
+      document.cookie = `theme=${theme}; ${persistentCookie}; domain=${domain}`;
+      document.cookie = `${THEME_PREFERENCE_VERSION_COOKIE}=${THEME_PREFERENCE_VERSION}; ${persistentCookie}; domain=${domain}`;
+    } else {
+      document.cookie = `theme=${theme}; ${persistentCookie}`;
+      document.cookie = `${THEME_PREFERENCE_VERSION_COOKIE}=${THEME_PREFERENCE_VERSION}; ${persistentCookie}`;
+    }
   } catch {
     // ignore
   }
@@ -28,8 +55,9 @@ function readTheme(): Theme {
   if (serverTheme === "light" || serverTheme === "dark") return serverTheme;
 
   try {
+    const version = localStorage.getItem(THEME_PREFERENCE_VERSION_STORAGE);
     const saved = localStorage.getItem("theme");
-    if (saved === "dark" || saved === "light") return saved;
+    if (version === THEME_PREFERENCE_VERSION && (saved === "dark" || saved === "light")) return saved;
   } catch {
     // ignore
   }
@@ -48,6 +76,7 @@ export function ThemeToggle({ initialTheme = "light", locale = "en" }: { initial
     const onStorage = (event: StorageEvent) => {
       if (event.key !== "theme") return;
       if (event.newValue !== "dark" && event.newValue !== "light") return;
+      if (localStorage.getItem(THEME_PREFERENCE_VERSION_STORAGE) !== THEME_PREFERENCE_VERSION) return;
       setTheme(event.newValue);
       applyTheme(event.newValue);
     };
