@@ -1,0 +1,299 @@
+.root {
+  --home-paper: #071512;
+  --home-soft: #0d211c;
+  --home-soft-strong: #123029;
+  --home-ink: #eff8f5;
+  --home-muted: #a9beb7;
+  --home-line: #233b34;
+  --home-accent: #5bd8c2;
+  --home-accent-soft: #123b32;
+  --home-shadow: 0 24px 64px rgba(0, 0, 0, 0.24);
+
+  min-height: 100vh;
+  isolation: isolate;
+  overflow-x: clip;
+  background: var(--home-paper);
+  color: var(--home-ink);
+}
+
+:global(html.theme-light) .root,
+:global(html[data-theme="light"]) .root {
+  --home-paper: #ffffff;
+  --home-soft: #f5f8f6;
+  --home-soft-strong: #edf4f1;
+  --home-ink: #10231d;
+  --home-muted: #52645e;
+  --home-line: #dbe5e0;
+  --home-accent: #087f70;
+  --home-accent-soft: #e4f4ef;
+  --home-shadow: 0 24px 64px rgba(21, 48, 40, 0.09);
+  background: #ffffff !important;
+  color: var(--home-ink);
+}
+
+/* Keep the original map, product and phone scene; clean only its frame. */
+:global(html.theme-light) .root :global(.landing-hero-section),
+:global(html[data-theme="light"]) .root :global(.landing-hero-section) {
+  border-color: var(--home-line) !important;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdfc 100%) !important;
+}
+
+.root :global(.landing-hero-section .hero-main-copy) {
+  max-width: 58rem;
+}
+
+.root :global(.landing-hero-section .hero-demo-shell) {
+  margin-top: clamp(2rem, 4vw, 3.2rem);
+}
+
+:global(html.theme-light) .root :global(.landing-hero-section h1),
+:global(html[data-theme="light"]) .root :global(.landing-hero-section h1) {
+  background: none !important;
+  color: var(--home-ink) !important;
+  -webkit-text-fill-color: var(--home-ink) !important;
+}
+
+:global(html.theme-light) .root :global(.landing-hero-section .hero-signal-field),
+:global(html[data-theme="light"]) .root :global(.landing-hero-section .hero-signal-field) {
+  opacity: 0.2 !important;
+  mix-blend-mode: normal;
+}
+
+:global(html.theme-light) .root :global(.landing-hero-section .hero-scene),
+:global(html[data-theme="light"]) .root :global(.landing-hero-section .hero-scene),
+:global(html.theme-light) .root :global(.landing-hero-section .hero-scene-stage-card),
+:global(html[data-theme="light"]) .root :global(.landing-hero-section .hero-scene-stage-card) {
+  border-color: var(--home-line) !important;
+  background: #ffffff !important;
+  box-shadow: var(--home-shadow) !important;
+}
+
+/* One soft chapter explains the journey; the rest of the page stays white. */
+:global(html.theme-light) .root :global(#como-funciona),
+:global(html[data-theme="light"]) .root :global(#como-funciona) {
+  border-block: 1px solid var(--home-line);
+  background: var(--home-soft);
+}
+
+:global(html.theme-light) .root :global(.simple-trust-flow-shell),
+:global(html[data-theme="light"]) .root :global(.simple-trust-flow-shell) {
+  border-color: var(--home-line) !important;
+  background: #ffffff !important;
+  box-shadow: var(--home-shadow) !important;
+}
+
+:global(html.theme-light) .root :global(.simple-trust-flow-shell > .absolute),
+:global(html[data-theme="light"]) .root :global(.simple-trust-flow-shell > .absolute) {
+  opacity: 0.18;
+}
+
+:global(html.theme-light) .root :global(.simple-trust-flow-step),
+:global(html[data-theme="light"]) .root :global(.simple-trust-flow-step) {
+  border-color: var(--home-line) !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+}
+
+:global(html.theme-light) .root :global(.simple-trust-flow-audiences article),
+:global(html[data-theme="light"]) .root :global(.simple-trust-flow-audiences article) {
+  border-color: #cce5dc !important;
+  background: var(--home-accent-soft) !important;
+}
+
+:global(html.theme-light) .root :global(#rubros),
+:global(html[data-theme="light"]) .root :global(#rubros) {
+  background: #ffffff;
+}
+
+.root :global(.landing-premium-verticals::before) {
+  opacity: 0.3;
+}
+
+.root :global(.landing-premium-verticals__grid) {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+:global(html.theme-light) .root :global(.landing-premium-verticals__head h2),
+:global(html[data-theme="light"]) .root :global(.landing-premium-verticals__head h2) {
+  color: var(--home-ink) !important;
+}
+
+:global(html.theme-light) .root :global(.landing-premium-verticals__head span),
+:global(html[data-theme="light"]) .root :global(.landing-premium-verticals__head span) {
+  color: var(--home-muted) !important;
+}
+
+.root :global(.landing-premium-vertical-card) {
+  min-height: 330px;
+  border-color: rgba(16, 35, 29, 0.14);
+  border-radius: 1.25rem;
+  box-shadow: 0 18px 44px rgba(15, 35, 29, 0.12);
+}
+
+/* The video remains tangible, without becoming another full dark band. */
+:global(html.theme-light) .root :global(.landing-video-band),
+:global(html[data-theme="light"]) .root :global(.landing-video-band) {
+  background: #ffffff;
+}
+
+.root :global(.landing-video-panel--compact) {
+  grid-template-columns: minmax(250px, 0.66fr) minmax(0, 1.34fr);
+}
+
+:global(html.theme-light) .root :global(.landing-video-panel--compact),
+:global(html[data-theme="light"]) .root :global(.landing-video-panel--compact),
+:global(html.theme-light) .root :global(.landing-video-panel--compact .institutional-video-device),
+:global(html[data-theme="light"]) .root :global(.landing-video-panel--compact .institutional-video-device) {
+  border-color: var(--home-line) !important;
+  background: #ffffff !important;
+  box-shadow: var(--home-shadow) !important;
+}
+
+:global(html.theme-light) .root :global(.landing-video-panel--compact video),
+:global(html[data-theme="light"]) .root :global(.landing-video-panel--compact video) {
+  filter: none !important;
+  opacity: 1 !important;
+}
+
+/* Preserve the original interactive simulator, but present it as a white product surface. */
+.root :global(.landing-brand-synergy-band) {
+  padding-block: 0 !important;
+}
+
+:global(html.theme-light) .root :global(.landing-brand-synergy-band),
+:global(html[data-theme="light"]) .root :global(.landing-brand-synergy-band) {
+  border-color: var(--home-line);
+  background: var(--home-soft);
+}
+
+.root :global(.landing-brand-synergy-shell) {
+  padding-block: clamp(4rem, 7vw, 6rem) !important;
+}
+
+:global(html.theme-light) .root :global(.brand-synergy-simulator),
+:global(html[data-theme="light"]) .root :global(.brand-synergy-simulator),
+:global(html.theme-light) .root :global(.brand-synergy-live-panel),
+:global(html[data-theme="light"]) .root :global(.brand-synergy-live-panel),
+:global(html.theme-light) .root :global(.brand-synergy-terminal),
+:global(html[data-theme="light"]) .root :global(.brand-synergy-terminal) {
+  border-color: var(--home-line) !important;
+  background: #ffffff !important;
+  box-shadow: var(--home-shadow) !important;
+}
+
+/* A single commercial close: decision first, short form immediately after. */
+:global(html.theme-light) .root :global(.landing-cta-panel),
+:global(html[data-theme="light"]) .root :global(.landing-cta-panel) {
+  border-color: var(--home-line) !important;
+  background: #ffffff !important;
+  box-shadow: var(--home-shadow) !important;
+}
+
+:global(html.theme-light) .root :global(.landing-cta-panel > .absolute),
+:global(html[data-theme="light"]) .root :global(.landing-cta-panel > .absolute) {
+  background: radial-gradient(circle at 50% 0%, rgba(8, 127, 112, 0.08), transparent 58%) !important;
+}
+
+:global(html.theme-light) .root :global(.landing-cta-panel h2),
+:global(html[data-theme="light"]) .root :global(.landing-cta-panel h2) {
+  color: var(--home-ink) !important;
+}
+
+:global(html.theme-light) .root :global(.landing-cta-panel p),
+:global(html[data-theme="light"]) .root :global(.landing-cta-panel p) {
+  color: var(--home-muted) !important;
+}
+
+:global(html.theme-light) .root :global(.landing-cta-primary),
+:global(html[data-theme="light"]) .root :global(.landing-cta-primary) {
+  border: 1px solid var(--home-accent) !important;
+  background: var(--home-accent) !important;
+  color: #ffffff !important;
+  box-shadow: 0 14px 30px rgba(8, 127, 112, 0.18) !important;
+}
+
+:global(html.theme-light) .root :global(.landing-cta-secondary),
+:global(html[data-theme="light"]) .root :global(.landing-cta-secondary) {
+  border-color: var(--home-line) !important;
+  background: #ffffff !important;
+  color: var(--home-ink) !important;
+}
+
+:global(html.theme-light) .root :global(.demo-request-card),
+:global(html[data-theme="light"]) .root :global(.demo-request-card) {
+  border-color: var(--home-line) !important;
+  background: var(--home-soft) !important;
+  box-shadow: var(--home-shadow) !important;
+}
+
+.root :global(.demo-field-label) {
+  display: grid;
+  gap: 0.45rem;
+  color: var(--home-muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+:global(html.theme-light) .root :global(.demo-input),
+:global(html[data-theme="light"]) .root :global(.demo-input) {
+  min-height: 3rem;
+  border-color: #cfdad5 !important;
+  background: #ffffff !important;
+  color: var(--home-ink) !important;
+}
+
+.root :global(.demo-input:focus-visible) {
+  border-color: var(--home-accent) !important;
+  box-shadow: 0 0 0 3px rgba(8, 127, 112, 0.13) !important;
+}
+
+.root :global(.demo-meeting-link) {
+  color: var(--home-accent);
+}
+
+:global(html.theme-light) .root :global(.site-footer),
+:global(html[data-theme="light"]) .root :global(.site-footer) {
+  border-color: var(--home-line) !important;
+  background: var(--home-soft) !important;
+}
+
+.root :global(.site-footer-links),
+.root :global(.site-footer-actions) {
+  display: grid;
+  align-content: start;
+  gap: 0.7rem;
+}
+
+:global(html.theme-light) .root :global(.site-footer-data-card),
+:global(html[data-theme="light"]) .root :global(.site-footer-data-card) {
+  border-color: var(--home-line) !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+}
+
+@media (max-width: 1100px) {
+  .root :global(.landing-premium-verticals__grid) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .root :global(.landing-premium-verticals__grid),
+  .root :global(.landing-video-panel--compact) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .root :global(.landing-premium-vertical-card) {
+    min-height: 310px;
+  }
+
+  .root :global(.landing-brand-synergy-shell) {
+    padding-block: 3.25rem 5.5rem !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root :global(*) {
+    scroll-behavior: auto !important;
+  }
+}

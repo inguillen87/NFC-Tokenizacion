@@ -12,6 +12,7 @@ import { PremiumTraceabilityGlobe, type TraceabilityGlobePoint, type Traceabilit
 
 type Vertical = PlatformDemoVertical;
 type HeroSelectorKey = PlatformDemoVertical;
+const featuredHeroVerticals: HeroSelectorKey[] = ["seeds", "pharma", "wine", "sneaker"];
 
 const HeroThreeStage = dynamic(() => import("./hero-three-stage").then((mod) => mod.HeroThreeStage), {
   ssr: false,
@@ -79,19 +80,19 @@ const productModalCopy: Record<AppLocale, {
     open: "Ampliar ficha",
     close: "Cerrar",
     title: "Ficha completa de producto",
-    subtitle: "Escenario ilustrativo con producto, lote y ruta declarados, resultado SUN/TT simulado y próxima acción comercial. No prueba el activo físico.",
+    subtitle: "Escenario ilustrativo con producto, lote, recorrido declarado y próxima acción. No prueba el producto físico.",
     consumerTitle: "Ficha de producto",
     operatorTitle: "Registro premium",
-    proofTitle: "Evidencia tecnica",
-    commerceTitle: "Acciones post-tap",
+    proofTitle: "Información disponible",
+    commerceTitle: "Próximas acciones",
     iphone: "iPhone",
     samsung: "Samsung",
     state: "Estado",
-    trustedTap: "Lectura SUN simulada",
-    productTitle: "Activo fisico",
-    productSubtitle: "Click para abrir ficha completa",
-    livePhoneTitle: "Demo celular simulada",
-    phoneNote: "La demo representa un mensaje SUN y, cuando corresponde, un estado TT reportado. No confirma autenticidad física, contenido, origen, custodia ni propiedad.",
+    trustedTap: "Consulta segura simulada",
+    productTitle: "Producto físico",
+    productSubtitle: "Abrí la ficha completa",
+    livePhoneTitle: "Vista simulada en celular",
+    phoneNote: "La demostración muestra información y reglas configuradas. No confirma por sí sola el contenido, el origen físico, la custodia ni la titularidad.",
   },
   "pt-BR": {
     open: "Ampliar ficha",
@@ -152,8 +153,8 @@ const heroStageCopy: Record<AppLocale, {
 }> = {
   "es-AR": {
     identityTitle: "IDENTIDAD DIGITAL SIMULADA",
-    consumerTitle: "TAP FINAL (CONSUMIDOR)",
-    routeTitle: "RUTA DECLARADA · DEMO",
+    consumerTitle: "CONSULTA DEL PRODUCTO",
+    routeTitle: "RECORRIDO ILUSTRATIVO",
     routeSubtitle: "Recorrido ilustrativo; no prueba custodia",
     live: "Simulación",
     custodyTitle: "HITOS DECLARADOS",
@@ -166,8 +167,8 @@ const heroStageCopy: Record<AppLocale, {
     cellularState: "SALIDA CELULAR",
     productType: "Tipo",
     bottle: "Unidad",
-    tapFinal: "Tap final",
-    demoEvent: "Evento demo",
+    tapFinal: "Consulta final",
+    demoEvent: "Consulta ilustrativa",
   },
   "pt-BR": {
     identityTitle: "IDENTIDADE DIGITAL SIMULADA",
@@ -210,7 +211,7 @@ const heroStageCopy: Record<AppLocale, {
 };
 
 const tapLocations: LocationPoint[] = [
-  { city: "Sydney", country: "Australia", label: "tap de consumidor", lat: -33.8688, lng: 151.2093 },
+  { city: "Sydney", country: "Australia", label: "consulta de consumidor", lat: -33.8688, lng: 151.2093 },
   { city: "Buenos Aires", country: "Argentina", label: "miembro del club", lat: -34.6037, lng: -58.3816 },
   { city: "Santiago", country: "Chile", label: "comprador en tienda", lat: -33.4489, lng: -70.6693 },
   { city: "São Paulo", country: "Brasil", label: "distribuidor del escenario", lat: -23.5558, lng: -46.6396 },
@@ -280,18 +281,18 @@ const labels: Record<AppLocale, {
   items: Record<Vertical, Scene>;
 }> = {
   "es-AR": {
-    selectorTitle: "Elegí vertical",
-    microcopy: "Escenario simulado: el mensaje SUN/UID y el estado TT reportado pueden orientar el siguiente paso; no prueban el producto físico ni la ruta declarada.",
-    commercialRail: "Capa comercial que se activa después del toque",
-    valuePills: ["Club VIP", "Puntos", "Garantía", "Dato para CRM", "Tienda", "Token opcional"],
+    selectorTitle: "Elegí un rubro",
+    microcopy: "Escenario ilustrativo: muestra la información disponible y orienta el próximo paso; no prueba por sí solo el producto físico ni su recorrido.",
+    commercialRail: "Próximos pasos disponibles después de la consulta",
+    valuePills: ["Club", "Puntos", "Garantía", "Aviso al equipo", "Tienda", "Certificado opcional"],
     ctaBands: ["Bodegas", "Eventos", "Cosmética", "Agro", "Moda", "Salud"],
-    phoneLabel: "Salida celular",
-    swapTap: "Cambiar toque",
-    liveTap: "Toque simulado",
+    phoneLabel: "Vista en celular",
+    swapTap: "Cambiar consulta",
+    liveTap: "Consulta simulada",
     whatHappened: "Qué está pasando",
     routeTitle: "Ruta demo declarada",
     originMap: "Origen declarado",
-    tapMap: "Tap simulado",
+    tapMap: "Consulta simulada",
     openOriginMap: "Ver punto declarado en Maps",
     custody: "Ruta y distancia simuladas; no constituyen evidencia de custodia.",
     assetBank: "Banco visual",
@@ -301,7 +302,7 @@ const labels: Record<AppLocale, {
     labels: {
       product: "Producto",
       origin: "Origen declarado",
-      tap: "Tap simulado",
+      tap: "Consulta simulada",
       distance: "Distancia",
       uid: "UID",
       batch: "Lote",
@@ -312,25 +313,25 @@ const labels: Record<AppLocale, {
       businessValue: "Valor para marca",
     },
     metrics: {
-      authenticity: "Mensaje SUN/UID",
+      authenticity: "Información observada",
       traceability: "Ruta simulada",
-      commercial: "Post-tap",
+      commercial: "Próximo paso",
     },
     items: {
       seeds: {
         label: "Agro",
-        profile: "QR + NFC UID",
+        profile: "Código o etiqueta inteligente",
         action: "Escenario de campo: consulta un identificador y datos de lote declarados; no prueba contenido, origen ni custodia.",
         result: "Identificador demo leído",
         product: "Semilla premium",
         batch: "AG-903",
         uid: "QRF-903-17",
         origin: { city: "Rosario", country: "Argentina", label: "planta", lat: -32.9442, lng: -60.6505 },
-        security: "QR/NFC UID simulado + historial declarado",
-        nextAction: "Ficha técnica, soporte y reclamo",
+        security: "Identificador simulado + historial declarado",
+        nextAction: "Ficha técnica, asistencia y consulta",
         marketplace: "Reposición, asesor técnico y cupón rural",
-        loyalty: "Soporte técnico, reposición y beneficios por lote",
-        businessValue: "Trazabilidad + asistencia + canal rural",
+        loyalty: "Asistencia técnica, reposición y beneficios por lote",
+        businessValue: "Seguimiento + asistencia + canal rural",
         objectClass: "agro-demo tampered scanning",
         phoneTag: "AGRO - ID_DEMO",
         steps: ["Lectura simulada", "Consulta lote declarado", "Muestra ruta demo", "Ofrece soporte"],
@@ -354,22 +355,22 @@ const labels: Record<AppLocale, {
         steps: ["Toque simulado", "Consulta UID demo", "Representa check-in", "Muestra beneficio posible"],
       },
       pharma: {
-        label: "Pharma",
-        profile: "NTAG 424 DNA",
-        action: "Escenario farmacéutico: representa un mensaje SUN y consulta datos declarados de lote y recall; no valida composición ni estado sanitario.",
-        result: "Mensaje SUN simulado",
+        label: "Salud",
+        profile: "Envase identificado",
+        action: "Escenario farmacéutico: consulta información declarada del lote y avisos aprobados; no valida la composición ni el estado sanitario.",
+        result: "Información del envase consultada",
         product: "Amoxicilina Premium",
         batch: "PHA-2026-081",
         uid: "04C3****99A4",
         origin: { city: "Bogota", country: "Colombia", label: "laboratorio", lat: 4.711, lng: -74.0721 },
-        security: "Resultado SUN demo + consulta de recall declarada",
+        security: "Consulta segura + información declarada del lote",
         nextAction: "Ver prospecto digital o reporte de lote",
-        marketplace: "Canal farmacia + soporte médico",
+        marketplace: "Canal de farmacia + asistencia",
         loyalty: "Prospecto declarado, soporte y recordatorios configurables",
-        businessValue: "Auditoría de lote + alerta recall + first party CRM",
+        businessValue: "Revisión de lote + alertas + canal directo",
         objectClass: "pharma-demo scanning",
-        phoneTag: "PHARMA - SUN_DEMO",
-        steps: ["Lectura simulada", "Representa mensaje SUN", "Consulta recall declarado", "Abre prospecto demo"],
+        phoneTag: "SALUD - DEMOSTRACIÓN",
+        steps: ["Lectura simulada", "Consulta el identificador", "Revisa avisos declarados", "Abre el prospecto"],
       },
       perfume: {
         label: "Cosmética",
@@ -391,39 +392,39 @@ const labels: Record<AppLocale, {
       },
       wine: {
         label: "Vino",
-        profile: "NTAG 424 DNA TT",
-        action: "Escenario SUN/TT: representa un mensaje válido y el sello reportado como abierto; no prueba la botella ni su contenido.",
-        result: "SUN demo · TT reporta abierto",
+        profile: "Etiqueta inteligente segura",
+        action: "Escenario de bodega: consulta la información de la botella y un sello informado como abierto; no prueba el contenido.",
+        result: "Consulta válida · sello informado como abierto",
         product: "Gran Reserva Malbec",
         batch: "MZA-2026-0424",
         uid: "04A7****1090",
         origin: { city: "Valle de Uco", country: "Argentina", label: "bodega", lat: -33.6131, lng: -69.2075 },
-        security: "Resultado SUN demo + estado TT reportado",
+        security: "Consulta segura + estado informado del sello",
         nextAction: "Club, garantía o solicitud de propiedad con evidencia adicional",
-        marketplace: "Voucher post-compra + trazabilidad de colección",
-        loyalty: "320 pts, club de cosecha, voucher y recompra premium",
-        businessValue: "CRM post-toque + tienda + tokenización opcional",
+        marketplace: "Beneficio posterior a la compra + historial de colección",
+        loyalty: "Puntos, club de cosecha, beneficio y recompra premium",
+        businessValue: "Canal directo + tienda + certificado opcional",
         objectClass: "hero-bottle scanning tampered",
-        phoneTag: "VINO - TT_OPEN_DEMO",
-        steps: ["Lectura simulada", "Representa mensaje SUN", "TT reporta OPENED", "Muestra club y tienda"],
+        phoneTag: "VINO - DEMOSTRACIÓN",
+        steps: ["Lectura simulada", "Consulta el identificador", "Muestra el estado informado", "Presenta club y tienda"],
       },
       sneaker: {
         label: "Zapatillas",
-        profile: "NTAG 424 DNA",
-        action: "Escenario coleccionable: consulta UID, rareza y beneficios declarados; propiedad y pieza física requieren validación adicional.",
+        profile: "Etiqueta inteligente segura",
+        action: "Escenario de edición limitada: consulta identificador, serie y beneficios declarados; la titularidad y la pieza física requieren validación adicional.",
         result: "Identidad digital simulada",
         product: "Drop Runner 37Z",
         batch: "SNK-37Z-055",
         uid: "04F1****37Z9",
-        origin: { city: "Buenos Aires", country: "Argentina", label: "drop studio", lat: -34.5875, lng: -58.3974 },
-        security: "Resultado SUN demo + UID declarado",
-        nextAction: "Solicitar propiedad, garantía, reventa o token con evidencia",
-        marketplace: "Drop exclusivo, reventa controlada y beneficios de comunidad",
-        loyalty: "Acceso a drops, puntos y certificado de colección",
-        businessValue: "Señales de replay del mensaje + ownership digital + canal de resale",
+        origin: { city: "Buenos Aires", country: "Argentina", label: "estudio de diseño", lat: -34.5875, lng: -58.3974 },
+        security: "Consulta segura + identificador declarado",
+        nextAction: "Solicitar titularidad, garantía o reventa con evidencia",
+        marketplace: "Edición exclusiva, reventa controlada y beneficios de comunidad",
+        loyalty: "Acceso a lanzamientos, puntos y certificado de colección",
+        businessValue: "Señales de riesgo + titularidad digital + canal de reventa",
         objectClass: "sneaker-demo scanning",
-        phoneTag: "SNEAKER - ID_DEMO",
-        steps: ["Toque simulado", "Representa mensaje SUN", "Muestra rareza declarada", "Ofrece flujo de claim"],
+        phoneTag: "CALZADO - DEMOSTRACIÓN",
+        steps: ["Consulta simulada", "Revisa el identificador", "Muestra la serie declarada", "Ofrece iniciar una solicitud"],
       },
       logistics: {
         label: "Logística",
@@ -2861,9 +2862,10 @@ function ProductDetailModal({
 }
 
 export function HeroScene({ locale, initialTheme = "dark" }: { locale: AppLocale; initialTheme?: HeroTheme }) {
-  const [selectedVertical, setSelectedVertical] = useState<HeroSelectorKey>("wine");
+  const [selectedVertical, setSelectedVertical] = useState<HeroSelectorKey>("seeds");
   const [tapIndex, setTapIndex] = useState(0);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [isRotationPaused, setIsRotationPaused] = useState(false);
   const theme = useHeroTheme(initialTheme);
   const productTriggerRef = useRef<HTMLButtonElement>(null);
   const txt = labels[locale] || labels["es-AR"];
@@ -2874,6 +2876,17 @@ export function HeroScene({ locale, initialTheme = "dark" }: { locale: AppLocale
   const tap = tapLocations[tapIndex % tapLocations.length];
   const distance = haversineKm(data.origin, tap);
   const numberLocale = localeName(locale);
+
+  useEffect(() => {
+    if (isRotationPaused || isProductModalOpen || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const interval = window.setInterval(() => {
+      setSelectedVertical((current) => {
+        const currentIndex = featuredHeroVerticals.indexOf(current);
+        return featuredHeroVerticals[(currentIndex + 1) % featuredHeroVerticals.length];
+      });
+    }, 7000);
+    return () => window.clearInterval(interval);
+  }, [isProductModalOpen, isRotationPaused]);
 
   const closeProductModal = () => {
     setIsProductModalOpen(false);
@@ -2896,11 +2909,16 @@ export function HeroScene({ locale, initialTheme = "dark" }: { locale: AppLocale
     { label: txt.labels.businessValue, value: data.businessValue },
   ];
   return (
-    <div>
+    <div
+      onMouseEnter={() => setIsRotationPaused(true)}
+      onMouseLeave={() => setIsRotationPaused(false)}
+      onFocusCapture={() => setIsRotationPaused(true)}
+      onBlurCapture={() => setIsRotationPaused(false)}
+    >
       <div className="hero-scene hero-scene--product-proof rounded-2xl border border-white/10 p-4 md:p-5">
         {/* Removed selectorTitle as per user request to clean UI */}
         <div className="mt-3 flex flex-wrap gap-2">
-          {platformVerticals.map((item) => (
+          {platformVerticals.filter((item) => featuredHeroVerticals.includes(item.demoVertical)).map((item) => (
             <button
               suppressHydrationWarning
               key={item.id}
@@ -2953,12 +2971,10 @@ export function HeroScene({ locale, initialTheme = "dark" }: { locale: AppLocale
         <p className="hero-scene-microcopy mt-3 text-xs text-slate-300">{txt.microcopy}</p>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        {platformVerticals.map((item) => (
-          <span key={item.id} className="hero-scene-band rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-slate-300">
-            {verticalLabel(item, locale)}
-          </span>
-        ))}
+      <div className="hero-scene-more mt-4 flex justify-end">
+        <a href="#rubros" className="hero-scene-band rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-semibold text-slate-300">
+          {locale === "en" ? "Explore industries" : locale === "pt-BR" ? "Explorar setores" : "Explorar más rubros"}
+        </a>
       </div>
       {isProductModalOpen && typeof document !== "undefined"
         ? createPortal(

@@ -8,17 +8,20 @@ const marketplaceStart = landing.indexOf("export function MarketplaceNetworkSect
 const marketplaceEnd = landing.indexOf("export function WhiteLabelOperatingSystemSection");
 const marketplace = landing.slice(marketplaceStart, marketplaceEnd);
 
-test("hero labels SUN, TT and route evidence as simulations in every locale", () => {
-  assert.match(hero, /Lectura SUN simulada/);
+test("hero labels consultations, TT and routes as illustrative evidence in every locale", () => {
+  assert.match(hero, /Consulta segura simulada/);
+  assert.match(hero, /Consulta ilustrativa/);
   assert.match(hero, /Leitura SUN simulada/);
   assert.match(hero, /Simulated SUN read/);
-  assert.match(hero, /No confirma autenticidad física, contenido, origen, custodia ni propiedad/);
+  assert.match(hero, /Escenario ilustrativo con producto, lote, recorrido declarado y próxima acción\. No prueba el producto físico/);
+  assert.match(hero, /No confirma por sí sola el contenido, el origen físico, la custodia ni la titularidad/);
   assert.match(hero, /Não confirma autenticidade física, conteúdo, origem, custódia ou propriedade/);
   assert.match(hero, /does not confirm physical authenticity, contents, origin, custody or ownership/);
-  assert.match(hero, /RUTA DECLARADA · DEMO/);
+  assert.match(hero, /RECORRIDO ILUSTRATIVO/);
+  assert.match(hero, /Recorrido ilustrativo; no prueba custodia/);
   assert.match(hero, /ROTA DECLARADA · DEMO/);
   assert.match(hero, /DECLARED ROUTE · DEMO/);
-  assert.match(hero, /SUN demo · TT reporta abierto/);
+  assert.match(hero, /Consulta válida · sello informado como abierto/);
   assert.match(hero, /SUN demo · TT informa aberto/);
   assert.match(hero, /SUN demo · TT reports opened/);
   assert.match(hero, /detail: "SUN DEMO"/);

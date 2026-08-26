@@ -2,23 +2,39 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const [landing, home, sdk, demoLab, css] = await Promise.all([
+const [landing, home, sdk, demoLab, css, homeCss, layout, header, navigation] = await Promise.all([
   readFile(new URL("../src/components/landing-sections.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/app/page.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/app/sdk/page.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/app/(public)/demo-lab/demo-lab-client.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/app/globals.css", import.meta.url), "utf8"),
+  readFile(new URL("../src/app/home-landing.module.css", import.meta.url), "utf8"),
+  readFile(new URL("../src/app/layout.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../src/components/enterprise-site-header.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../src/components/enterprise-navigation.content.ts", import.meta.url), "utf8"),
 ]);
 
-test("landing light mode owns high-risk CTA and footer colors", () => {
-  assert.match(landing, /landing-consumer-portal-cta/);
-  assert.match(landing, /landing-offline-demo-cta/);
+test("landing is white-first while preserving dark mode and clear commercial actions", () => {
+  assert.match(layout, /const theme = themeCookie === "dark" \? "dark" : "light"/);
+  assert.match(home, /const initialTheme = cookieStore\.get\("theme"\)\?\.value === "dark" \? "dark" : "light"/);
+  assert.match(home, /<EnterpriseSiteHeader[\s\S]*initialTheme=\{initialTheme\}/);
+  assert.match(header, /<ThemeToggle initialTheme=\{initialTheme\} locale=\{locale\} \/>/);
+
+  assert.match(homeCss, /\.root \{[\s\S]*?--home-paper: #071512;/);
+  assert.match(homeCss, /:global\(html\[data-theme="light"\]\) \.root \{[\s\S]*?--home-paper: #ffffff;/);
+  assert.match(homeCss, /background: #ffffff !important/);
+
+  assert.match(landing, /primaryLabel = [^\n]*"Diseñar un piloto"/);
+  assert.match(landing, /secondaryLabel = [^\n]*"Ver una demostración"/);
+  assert.match(landing, /href="#agendar-demo" className="landing-cta-primary/);
+  assert.match(landing, /href="\/demo-lab" className="landing-cta-secondary/);
+  assert.match(homeCss, /\.root :global\(\.landing-cta-primary\)[\s\S]*?color: #ffffff !important/);
+  assert.match(homeCss, /\.root :global\(\.landing-cta-secondary\)[\s\S]*?background: #ffffff !important/);
+
+  assert.match(navigation, /label: "Verificación pública"[\s\S]*?href: "\/proof\/verify"/);
+  assert.match(home, /<Link href="\/proof\/verify">/);
   assert.match(home, /site-footer-data-card/);
-  assert.match(home, /site-footer-whatsapp-link/);
-  assert.match(css, /\.landing-consumer-portal-cta[\s\S]*color: #6b21a8 !important/);
-  assert.match(css, /\.landing-offline-demo-cta[\s\S]*color: #0f172a !important/);
-  assert.match(css, /\.site-footer-data-card[\s\S]*color: #0f172a !important/);
-  assert.match(css, /\.site-footer-whatsapp-link[\s\S]*color: #047857 !important/);
+  assert.match(homeCss, /\.root :global\(\.site-footer-data-card\)[\s\S]*?background: #ffffff !important/);
 });
 
 test("SDK light mode uses readable semantic tones", () => {

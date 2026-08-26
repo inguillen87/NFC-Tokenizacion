@@ -23,17 +23,19 @@ type PanelCopy = {
   secondary: string;
   aria: string;
   strip: string;
+  mediaBadge: string;
 };
 
 const PANEL_COPY: Record<SupportedLocale, PanelCopy> = {
   "es-AR": {
-    eyebrow: "Video Institucional",
+    eyebrow: "Video institucional",
     title: "Evidencia digital clara para productos conectados.",
-    body: "Descubrí cómo nexID valida mensajes NFC/SUN, muestra lote y origen declarados, reporta TT cuando está disponible y activa beneficios bajo política. El toque no autentica por sí solo el objeto físico.",
-    primary: "Abrir Demo Lab",
+    body: "Mirá cómo una consulta puede mostrar información aprobada, explicar qué se comprobó y habilitar el próximo paso. La experiencia es simple para la persona y clara sobre sus límites.",
+    primary: "Ver demostraciones",
     secondary: "Agendar reunión",
     aria: "video institucional nexID",
-    strip: "Mensaje NFC/SUN -> evidencia disponible -> pasaporte digital -> señal CRM",
+    strip: "Producto conectado → información disponible → próximo paso",
+    mediaBadge: "VIDEO OFICIAL",
   },
   en: {
     eyebrow: "Institutional Video",
@@ -43,15 +45,17 @@ const PANEL_COPY: Record<SupportedLocale, PanelCopy> = {
     secondary: "Schedule meeting",
     aria: "nexID institutional video",
     strip: "NFC/SUN message -> available evidence -> digital passport -> CRM signal",
+    mediaBadge: "OFFICIAL VIDEO",
   },
   "pt-BR": {
-    eyebrow: "Vídeo Institucional",
+    eyebrow: "Vídeo institucional",
     title: "Evidência digital clara para produtos conectados.",
-    body: "Veja como a nexID valida mensagens NFC/SUN, mostra lote e origem declarados, informa TT quando disponível e ativa benefícios por política. O toque não autentica sozinho o objeto físico.",
-    primary: "Abrir Demo Lab",
+    body: "Veja como uma consulta pode mostrar informações aprovadas, explicar o que foi verificado e habilitar o próximo passo. A experiência é simples e clara sobre seus limites.",
+    primary: "Ver demonstrações",
     secondary: "Agendar reunião",
     aria: "vídeo institucional nexID",
-    strip: "Mensagem NFC/SUN -> evidência disponível -> passaporte digital -> sinal CRM",
+    strip: "Produto conectado → informação disponível → próximo passo",
+    mediaBadge: "VÍDEO OFICIAL",
   },
 };
 
@@ -220,7 +224,7 @@ export function InstitutionalVideoPanel({ locale, variant = "landing", className
           </div>
           <div className="flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse motion-reduce:animate-none" aria-hidden="true" />
-            <span className="text-[9px] font-mono font-bold tracking-wider text-cyan-400 uppercase">OFFICIAL MEDIA</span>
+            <span className="text-[9px] font-mono font-bold tracking-wider text-cyan-400 uppercase">{copy.mediaBadge}</span>
           </div>
         </div>
 
@@ -276,7 +280,9 @@ export function InstitutionalVideoPanel({ locale, variant = "landing", className
             controlsList="nodownload"
             poster={isPosterReady && !isLightTheme ? poster : undefined}
             tabIndex={showPlayOverlay ? -1 : undefined}
-          />
+          >
+            <track kind="captions" src={video.captions} srcLang={activeLocale === "pt-BR" ? "pt" : activeLocale === "en" ? "en" : "es"} label={copy.mediaBadge} default />
+          </video>
           {!isLightTheme && !isPosterReady && showPlayOverlay ? (
             <div
               className="institutional-video-deferred-preview absolute inset-0 z-[1] flex flex-col justify-center gap-3 bg-slate-950 px-6 py-8 text-left"
@@ -284,7 +290,7 @@ export function InstitutionalVideoPanel({ locale, variant = "landing", className
             >
               <div className="flex items-center gap-3 text-cyan-300">
                 <span className="institutional-video-mark flex items-center justify-center font-bold">N</span>
-                <span className="font-mono text-[10px] font-bold uppercase text-cyan-300">nexID institutional media</span>
+                <span className="font-mono text-[10px] font-bold uppercase text-cyan-300">{copy.mediaBadge}</span>
               </div>
               <strong className="max-w-md text-xl font-bold text-white sm:text-2xl">{copy.title}</strong>
               <span className="max-w-lg text-xs leading-5 text-slate-300">{copy.strip}</span>

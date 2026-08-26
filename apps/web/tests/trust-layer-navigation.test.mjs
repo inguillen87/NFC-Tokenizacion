@@ -64,13 +64,13 @@ test("landing trust layer cards open related proof experiences", async () => {
   assert.match(css, /\.enterprise-trust-layer-card--capability:not\(\.enterprise-trust-layer-card--mobile-sim\) \.trust-layer-sim\s*\{[\s\S]*display:\s*none/);
 });
 
-test("landing hero sends prospects to Demo Lab and labels its fixed route as a demo", async () => {
+test("landing hero keeps the route explicitly illustrative and exposes a demonstration action", async () => {
   const sections = await readFile(new URL("../src/components/landing-sections.tsx", import.meta.url), "utf8");
   const hero = await readFile(new URL("../src/components/hero-scene.tsx", import.meta.url), "utf8");
 
-  assert.match(sections, /href="\/demo-lab"[^>]*>[\s\S]*\{secondaryCta\}/);
+  assert.match(sections, /href="\/\?contact=demo#contact-modal"[^>]*>[\s\S]*?\{secondaryCta\}/);
   assert.doesNotMatch(sections, /href="\/docs"[^>]*>[\s\S]{0,100}\{secondaryCta\}/);
-  assert.match(hero, /routeTitle: "RUTA DECLARADA · DEMO"/);
+  assert.match(hero, /routeTitle: "RECORRIDO ILUSTRATIVO"/);
   assert.match(hero, /routeSubtitle: "Recorrido ilustrativo; no prueba custodia"/);
   assert.match(hero, /live: "Simulación"/);
   assert.match(hero, /const routeLabel = isEnglish \? "Demo route" : isPortuguese \? "Rota demo" : "Ruta demo"/);
@@ -81,36 +81,30 @@ test("landing hero sends prospects to Demo Lab and labels its fixed route as a d
   assert.doesNotMatch(hero, /const routeLabel = isEnglish \? "Active route"/);
 });
 
-test("home quick navigation exposes Proof Verify on desktop, footer and mobile", async () => {
+test("home navigation keeps public verification discoverable without crowding the landing", async () => {
   const page = await readFile(new URL("../src/app/page.tsx", import.meta.url), "utf8");
+  const header = await readFile(new URL("../src/components/enterprise-site-header.tsx", import.meta.url), "utf8");
+  const navigation = await readFile(new URL("../src/components/enterprise-navigation.content.ts", import.meta.url), "utf8");
   const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
-  const hubCtas = page.match(/nexid-quick-hub-card__cta/g) ?? [];
 
-  assert.match(page, /Proof Verify/);
-  assert.match(page, /href="\/proof\/verify"/);
-  assert.match(page, /aria-label=\{labels\.quickProof\}/);
-  assert.match(page, />Proof<\/Button>/);
-  assert.match(page, /const brandSynergyLabel = locale === "en" \? "Brand AI"/);
-  assert.match(page, /\{ label: brandSynergyLabel, href: "#brand-synergy" \}/);
-  assert.match(page, /<section id="brand-synergy" className="landing-brand-synergy-band my-16 scroll-mt-24">/);
-  assert.match(page, /Verificar evidencia/);
-  assert.match(page, />Proof<\/Link>/);
+  const proofLinks = navigation.match(/href: "\/proof\/verify"/g) ?? [];
+  assert.equal(proofLinks.length, 6);
+  assert.match(navigation, /label: "Verificación pública"[\s\S]*?href: "\/proof\/verify"/);
+  assert.match(navigation, /featured: \{ label: "Abrir verificador público"[\s\S]*?href: "\/proof\/verify"/);
+  assert.match(header, /className=\{styles\.mobileGroups\}[\s\S]*?group\.items\.map[\s\S]*?<MenuLink[\s\S]*?item=\{item\}/);
+  assert.match(page, /<Link href="\/proof\/verify">[\s\S]*?Verificador público/);
+  assert.match(page, /<section id="activacion" className="landing-brand-synergy-band/);
   assert.match(page, /landing-mobile-action-dock/);
-  assert.match(page, /labels\.mobileCtaPricing/);
-  assert.match(page, /href="\/pricing" className="landing-mobile-action-dock__link"/);
-  assert.equal(hubCtas.length, 7);
-  assert.match(page, /nexid-quick-hub-card__cta[^"]*min-h-11[^"]*w-full/);
-  assert.match(css, /\.nexid-quick-hub-card__cta\s*\{[\s\S]*min-height:\s*44px/);
-  assert.match(css, /html\.theme-light \.nexid-quick-hub-card \.nexid-quick-hub-card__cta,[\s\S]*background:\s*rgba\(236,\s*254,\s*255,\s*0\.74\) !important/);
+  assert.match(page, /href="\/demo-lab" className="landing-mobile-action-dock__link"/);
+  assert.match(page, /href="\/\?contact=demo#contact-modal" className="landing-mobile-action-dock__link landing-mobile-action-dock__link--primary"/);
+  assert.match(page, /<span>\{isEn \? "Pilot" : "Piloto"\}<\/span>/);
   assert.match(css, /\.landing-mobile-action-dock\s*\{[\s\S]*position:\s*fixed/);
-  assert.match(css, /\.landing-mobile-action-dock__inner\s*\{[\s\S]*grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /\.landing-mobile-action-dock__link\s*\{[\s\S]*min-height:\s*44px/);
   assert.match(css, /body:has\(\.landing-mobile-action-dock\) \.sales-widget-root,[\s\S]*bottom:\s*calc\(5\.95rem \+ env\(safe-area-inset-bottom\)\) !important/);
-  assert.doesNotMatch(page, /grid-cols-4 items-center gap-2 rounded-2xl border border-white\/10 bg-slate-950\/85/);
-  assert.doesNotMatch(page, /mt-4 inline-flex items-center gap-1 text-xs font-bold/);
-  assert.doesNotMatch(page, /pb-\[calc\(max\(env\(safe-area-inset-bottom\),0px\)\+1rem\)\]/);
+  assert.doesNotMatch(page, /nexid-quick-hub-card/);
 });
 
-test("landing mobile hero exposes business actions before the heavy product scene", async () => {
+test("landing mobile hero exposes two clear business actions before the product scene", async () => {
   const sections = await readFile(new URL("../src/components/landing-sections.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
 
@@ -120,11 +114,10 @@ test("landing mobile hero exposes business actions before the heavy product scen
   assert.ok(mobileActionsIndex > -1, "expected mobile hero actions");
   assert.ok(heroSceneIndex > -1, "expected hero scene");
   assert.ok(mobileActionsIndex < heroSceneIndex, "mobile actions should appear before the heavy hero scene");
-  assert.match(sections, /href="\/proof\/verify" className="landing-mobile-hero-actions__secondary"/);
-  assert.match(sections, /href="\/pricing" className="landing-mobile-hero-actions__secondary"/);
-  assert.match(sections, /href="\/docs" className="landing-mobile-hero-actions__muted"/);
-  assert.match(sections, /const mobileDocsCta = "Docs \/ API"/);
-  assert.match(sections, /\{mobileDocsCta\}/);
+  const mobileActions = sections.slice(mobileActionsIndex, heroSceneIndex);
+  assert.match(mobileActions, /href="#como-funciona" className="landing-mobile-hero-actions__primary"/);
+  assert.match(mobileActions, /href="\/\?contact=demo#contact-modal" className="landing-mobile-hero-actions__secondary"/);
+  assert.doesNotMatch(mobileActions, /href="\/(?:proof\/verify|pricing|docs)"/);
   assert.match(css, /\.landing-mobile-hero-actions a\s*\{[\s\S]*min-height:\s*44px/);
   assert.match(css, /\.landing-mobile-hero-actions__primary\s*\{[\s\S]*background:\s*linear-gradient\(135deg,\s*#22d3ee,\s*#14b8a6\)/);
   assert.match(css, /html\.theme-light \.landing-mobile-hero-actions__secondary,[\s\S]*color:\s*#0f172a !important/);

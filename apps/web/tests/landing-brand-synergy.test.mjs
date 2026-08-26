@@ -30,7 +30,10 @@ test("brand synergy uses a truthful, reduced-motion-safe mobile decision flow", 
   assert.match(source, /HYPOTHETICAL SCENARIO/);
   assert.match(source, /They are not customers, partners or measured performance/);
   assert.match(source, /Generic brands, benefits and outcomes/);
-  assert.match(source, /Guided offer model/);
+  assert.match(source, /Guided journey/);
+  assert.match(source, /Recorrido guiado/);
+  assert.match(source, /Escenario hipotetico/);
+  assert.match(source, /Información aprobada y próximos pasos/);
   assert.doesNotMatch(source, /Partner matching live/);
   assert.doesNotMatch(source, /Patagonia Beer Gardens|Combi VIP Traslados|Club 146 Lounge VIP/);
   assert.doesNotMatch(source, /conversionEst|Risk score: 0\.01|Riesgo: 0\.01|Risco: 0\.01/);
@@ -43,14 +46,20 @@ test("landing claims qualify technical security and commercial outcomes", async 
 
   assert.doesNotMatch(content, /asegura recompras|sees if the product is real/);
   assert.doesNotMatch(sections, /impossible to clone or replay|imposible de clonar o copiar/);
-  assert.match(content, /Conversion and repeat purchase are measured in each pilot, not promised/);
-  assert.match(content, /Conversión y recompra se miden en cada piloto; no se prometen/);
+  assert.match(content, /nexID does not publish unsupported percentage gains/);
+  assert.match(content, /nexID no publica mejoras porcentuales sin evidencia del caso/);
+  assert.match(content, /a nexID não publica ganhos percentuais sem evidência do caso/);
+  assert.match(content, /Measure conversion, repeat purchase and operating cost; do not assume uplift/);
+  assert.match(content, /Medir conversión, recompra y costo operativo; no asumir uplift/);
   assert.match(sections, /designed to resist message copying and replay when keys, counters and server validation are correctly configured/);
 });
 
 test("brand synergy light mode and mobile controls keep enterprise contrast", async () => {
   const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
+  const homeCss = await readFile(new URL("../src/app/home-landing.module.css", import.meta.url), "utf8");
   const page = await readFile(new URL("../src/app/page.tsx", import.meta.url), "utf8");
+  const enterpriseHeader = await readFile(new URL("../src/components/enterprise-site-header.tsx", import.meta.url), "utf8");
+  const enterpriseHeaderCss = await readFile(new URL("../src/components/enterprise-site-header.module.css", import.meta.url), "utf8");
   const mobileNav = await readFile(new URL("../src/components/mobile-nav-sheet.tsx", import.meta.url), "utf8");
   const themeToggle = await readFile(new URL("../../../packages/ui/src/theme-toggle.tsx", import.meta.url), "utf8");
   const localeSwitcher = await readFile(new URL("../../../packages/ui/src/locale-switcher.tsx", import.meta.url), "utf8");
@@ -64,10 +73,13 @@ test("brand synergy light mode and mobile controls keep enterprise contrast", as
   assert.match(css, /\.brand-synergy-business-pane\[data-mobile-active="false"\],[\s\S]*display:\s*none !important/);
   assert.match(css, /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*\.brand-synergy-terminal-row[\s\S]*transition-duration:\s*0\.01ms/);
   assert.match(css, /\.site-header\.mobile-optimized-header \.mobile-nav-toggle\s*\{[\s\S]*min-height:\s*2\.75rem/);
-  assert.match(page, /<section id="brand-synergy" className="landing-brand-synergy-band my-16 scroll-mt-24">/);
+  assert.match(page, /<section id="activacion" className="landing-brand-synergy-band scroll-mt-24 py-14 md:py-20">/);
   assert.match(page, /landing-brand-synergy-shell container-shell/);
-  assert.match(page, /<ThemeToggle initialTheme=\{initialTheme\}/);
   assert.match(page, /initialTheme=\{initialTheme\}/);
+  assert.match(homeCss, /html\.theme-light\) \.root :global\(\.landing-brand-synergy-band\)[\s\S]*background:\s*var\(--home-soft\)/);
+  assert.match(enterpriseHeader, /<ThemeToggle initialTheme=\{initialTheme\} locale=\{locale\} \/>/);
+  assert.match(enterpriseHeader, /role="dialog" aria-modal="true" aria-label=\{header\.navigationLabel\}/);
+  assert.match(enterpriseHeaderCss, /\.mobileMenuButton\s*\{[\s\S]*width:\s*2\.75rem;[\s\S]*height:\s*2\.75rem/);
   assert.match(mobileNav, /mobile-menu-close inline-flex min-h-11 min-w-11/);
   assert.match(mobileNav, /mobile-nav-action-link flex min-h-11/);
   assert.match(themeToggle, /ThemeToggle\(\{ initialTheme = "dark" \}/);

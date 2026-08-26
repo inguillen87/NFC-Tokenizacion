@@ -102,7 +102,7 @@ export const viewport: Viewport = {
   viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: dark)", color: "#020617" },
-    { media: "(prefers-color-scheme: light)", color: "#f5f8ff" },
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
   ],
 };
 
@@ -188,7 +188,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const cookieStore = await cookies();
   const locale = resolveLocale(cookieStore.get("locale")?.value);
   const themeCookie = cookieStore.get("theme")?.value;
-  const theme = themeCookie === "light" ? "light" : "dark";
+  const theme = themeCookie === "dark" ? "dark" : "light";
   const socialCopy = getSocialCopy(locale);
   const facebookAppId = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID?.trim();
   const clerkKey = getClerkPublishableKey();

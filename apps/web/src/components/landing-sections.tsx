@@ -3,7 +3,6 @@ import { schedulingUrls } from "@product/config";
 import Link from "next/link";
 import { ArrowRight, BadgeCheck, CloudOff, Cpu, Fingerprint, KeyRound, Network, PackageCheck, QrCode, RadioTower, RotateCcw, ShieldCheck, Smartphone } from "lucide-react";
 import { HeroScene } from "./hero-scene";
-import { InstitutionalVideoPanel } from "./institutional-video-panel";
 import { PremiumTraceabilityGlobe } from "./premium-traceability-globe";
 import { platformVerticals, traceabilityGlobePoints, traceabilityGlobeRoutes } from "../lib/platform-verticals";
 
@@ -16,43 +15,19 @@ export function HeroSection({ content, stats, locale, initialTheme = "dark" }: {
   const heroSubtitle = hero?.subtitle || hero?.body || "";
   const primaryCta = hero?.cta?.primary || hero?.primary || "Empezar";
   const secondaryCta = hero?.cta?.secondary || hero?.secondary || "Contacto";
-  const mobileDocsCta = "Docs / API";
-
-  const trustBadge = isEn ? "Enterprise Trusted" : isBr ? "Confiabilidade Corporativa" : "Confianza para empresas";
-  const demoEyebrow = isEn ? "Interactive product experience" : isBr ? "Experiencia interativa do produto" : "Experiencia guiada de producto";
-  const demoBody = isEn
-    ? "Bottle, wristband and package: a guided tap shows NFC/SUN message evidence, declared origin and reported seal state. It does not prove physical authenticity, contents, origin, seal or custody."
-    : isBr
-    ? "Garrafa, pulseira e embalagem: um toque guiado mostra evidência da mensagem NFC/SUN, origem declarada e estado reportado do lacre. Não comprova autenticidade física, conteúdo, origem, lacre ou custódia."
-    : "Botella, pulsera y envase: un tap guiado muestra evidencia del mensaje NFC/SUN, origen declarado y estado reportado del sello. No prueba autenticidad física, contenido, origen, sello ni custodia.";
-  const heroFlow = isEn
-    ? ["Physical product", "Fresh tap", "Safe claim", "Portal + benefits"]
-    : isBr
-    ? ["Produto fisico", "Toque fresco", "Claim seguro", "Portal + beneficios"]
-    : ["Producto físico", "Tap fresco", "Reclamo seguro", "Portal + beneficios"];
-  const heroAssurance = isEn
-    ? "No app download or crypto knowledge required. The tap explains the tag-message result, declared data and next step—not a physical-product verdict."
-    : isBr
-    ? "Sem app ou conhecimento de cripto. O toque explica o resultado da mensagem, os dados declarados e o próximo passo, não um veredito físico."
-    : "Sin app ni conocimientos de cripto. El tap explica el resultado del mensaje, los datos declarados y el próximo paso, no un veredicto físico.";
-  const demoCta = isEn ? "Open Product Lab" : isBr ? "Abrir Laboratorio" : "Abrir laboratorio";
-  const meetingCta = isEn ? "Schedule meeting" : isBr ? "Agendar reunião" : "Agendar reunión";
+  const trustBadge = hero?.badge || (isEn ? "Identity for physical products" : isBr ? "Identidade para produtos fisicos" : "Identidad para productos físicos");
   const heroStats = [
     {
-      value: stats?.latencyDelta || "P95 < 150ms",
-      label: stats?.latency || (isEn ? "API target latency" : isBr ? "Latencia alvo API" : "Latencia objetivo API"),
+      value: isEn ? "No app" : isBr ? "Sem aplicativo" : "Sin instalar una aplicación",
+      label: isEn ? "Browser-based consultation" : isBr ? "Consulta pelo navegador" : "Consulta desde el navegador",
     },
     {
-      value: "hash-only",
-      label: isEn ? "Public proof without sensitive data" : isBr ? "Prova pública sem dados sensíveis" : "Prueba pública sin datos sensibles",
+      value: isEn ? "One identity" : isBr ? "Uma identidade" : "Una identidad",
+      label: isEn ? "Per unit or batch" : isBr ? "Por unidade ou lote" : "Por unidad o lote",
     },
     {
-      value: "NFC + QR",
-      label: isEn ? "No app required for the buyer" : isBr ? "Sem app para o comprador" : "Sin app para el comprador",
-    },
-    {
-      value: "IOTA / Polygon",
-      label: isEn ? "Optional auditable anchor" : isBr ? "Anchor auditavel opcional" : "Anclaje auditable opcional",
+      value: isEn ? "Clear sources" : isBr ? "Fontes claras" : "Fuentes visibles",
+      label: isEn ? "Evidence, limits and next step" : isBr ? "Evidencia, limites e proximo passo" : "Evidencia, límites y próximo paso",
     },
   ];
   return (
@@ -73,51 +48,35 @@ export function HeroSection({ content, stats, locale, initialTheme = "dark" }: {
             {heroSubtitle}
           </p>
           <div className="landing-mobile-hero-actions mt-5 grid gap-2 sm:hidden">
-            <Link href="/?contact=demo#contact-modal" className="landing-mobile-hero-actions__primary">
+            <Link href="#como-funciona" className="landing-mobile-hero-actions__primary">
               <span>{primaryCta}</span>
               <ArrowRight className="h-4 w-4 shrink-0" />
             </Link>
-            <div className="grid grid-cols-2 gap-2">
-              <Link href="/proof/verify" className="landing-mobile-hero-actions__secondary">
-                Proof
-              </Link>
-              <Link href="/pricing" className="landing-mobile-hero-actions__secondary">
-                {isEn ? "Pricing" : isBr ? "Precos" : "Planes"}
-              </Link>
-            </div>
-            <Link href="/docs" className="landing-mobile-hero-actions__muted">
-              {mobileDocsCta}
+            <Link href="/?contact=demo#contact-modal" className="landing-mobile-hero-actions__secondary">
+              {secondaryCta}
             </Link>
           </div>
         </div>
 
-        <div className="hero-demo-shell mx-auto mt-16 md:mt-24 max-w-7xl text-left relative z-20">
-
+        <div className="hero-demo-shell mx-auto mt-10 max-w-7xl text-left relative z-20 md:mt-14">
           <HeroScene locale={locale as any} initialTheme={initialTheme} />
-          <InstitutionalVideoPanel locale={locale} variant="landing" className="mt-5" initialTheme={initialTheme} />
         </div>
 
-        <div className="mx-auto mt-10 max-w-6xl text-center">
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-            <Link href="/?contact=demo#contact-modal" className="inline-flex items-center justify-center rounded-xl bg-cyan-500 px-6 py-3.5 text-sm font-bold text-slate-950 transition-transform hover:scale-105 hover:bg-cyan-400">
+        <div className="mx-auto mt-8 max-w-6xl text-center">
+          <div className="hidden flex-wrap items-center justify-center gap-3 sm:flex">
+            <Link href="#como-funciona" className="inline-flex items-center justify-center rounded-xl bg-cyan-500 px-6 py-3.5 text-sm font-bold text-slate-950 transition-transform hover:scale-[1.02] hover:bg-cyan-400">
               {primaryCta}
             </Link>
-            <a href={schedulingUrls.meeting} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-6 py-3.5 text-sm font-semibold text-emerald-100 transition-all hover:bg-emerald-500/20">
-              {meetingCta}
-            </a>
-            <Link href="/login?next=/me" className="landing-consumer-portal-cta inline-flex items-center justify-center rounded-xl border border-purple-500/35 bg-purple-500/10 px-6 py-3.5 text-sm font-bold text-purple-300 transition-all hover:scale-105 hover:bg-purple-500/20">
-              {isEn ? "Consumer Portal (Passport)" : isBr ? "Portal do Consumidor" : "Portal Consumidor (Passport/NFT)"}
-            </Link>
-            <Link href="/demo-lab" className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-slate-900/50 backdrop-blur-md px-6 py-3.5 text-sm font-semibold text-white transition-all hover:bg-white/10">
+            <Link href="/?contact=demo#contact-modal" className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-slate-900/50 px-6 py-3.5 text-sm font-semibold text-white transition-all hover:bg-white/10">
               {secondaryCta}
             </Link>
           </div>
 
-          <div className="mt-12 grid grid-cols-2 gap-4 border-t border-white/10 pt-8 md:grid-cols-4">
+          <div className="hero-certainty-strip mt-8 grid gap-3 border-t border-white/10 pt-6 md:grid-cols-3">
              {heroStats.map((item) => (
-               <div key={item.label} className="text-center">
-                  <p className="text-3xl font-bold text-white">{item.value}</p>
-                  <p className="mt-1 text-xs text-slate-500 uppercase tracking-widest">{item.label}</p>
+               <div key={item.label} className="text-left">
+                  <p className="text-base font-bold text-white">{item.value}</p>
+                  <p className="mt-1 text-xs text-slate-500">{item.label}</p>
                </div>
              ))}
           </div>
@@ -133,91 +92,79 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
   const isBr = locale === "pt-BR";
   const copy = isEn
     ? {
-      eyebrow: "Understand it in 10 seconds",
-      title: "Tap the product. Read the tag evidence. Claim benefits only after the required checks.",
-      body: "nexID shows the NFC/SUN message result, declared product data and reported seal state. A tap alone does not prove physical authenticity, contents, origin, seal or custody.",
-      primary: "Open Product Lab",
-      secondary: "See mobile passport",
-      claimTitle: "When can ownership or NFT open?",
-      claimBody: "Only after a fresh valid tag message, a validated contact channel, separately approved purchase evidence or retailer token, tenant policy and explicit approval.",
+      eyebrow: "One journey, three moments",
+      title: "Prepare. Consult. Act.",
+      body: "The technology stays behind the scene. Each person sees only the information and action needed at that moment.",
+      primary: "Open a demonstration",
+      secondary: "See public evidence",
       steps: [
-        { label: "Physical product", body: "The brand loads batch, photos, labels, rules and allowed claim policy." },
-        { label: "Fresh tap", body: "The person taps NFC/QR and sees the message result, declared origin, reported location and reported seal state." },
-        { label: "Safe claim", body: "Contact validation and evidence can start a claim; ownership opens only after explicit policy approval." },
-        { label: "Living portal", body: "Warranty, club, store, optional NFT and resale each require their relevant evidence and policy." },
+        { label: "Prepare the identity", body: "Connect each unit or batch with information approved by the organization." },
+        { label: "Consult the evidence", body: "A tap or scan shows the available result, its source and its limits." },
+        { label: "Enable the next step", body: "Information, support, warranty or benefits appear according to defined rules." },
       ],
       audiences: [
-        ["Consumer", "I see what the brand declared, which tag checks passed and what I can do next."],
-        ["Brand", "I receive demand, geography, risk, leads, warranty and repurchase data."],
-        ["Retailer", "I record purchase evidence, review copy/replay risk and unlock approved benefits at checkout."],
+        ["Brand", "Connect the product and protect the relationship."],
+        ["Operations", "Review signals that require attention."],
+        ["Person", "Understand the result and act without installing anything."],
       ],
-      rubros: "One engine for wine, events, cosmetics, agro, health, documents, governments and enterprise assets.",
     }
     : isBr
     ? {
-      eyebrow: "Entender em 10 segundos",
-      title: "Toque o produto. Leia a evidência da tag. Reivindique benefícios somente após os controles exigidos.",
-      body: "nexID mostra o resultado da mensagem NFC/SUN, os dados declarados e o estado reportado do lacre. O toque sozinho não comprova autenticidade física, conteúdo, origem, lacre ou custódia.",
-      primary: "Abrir Laboratorio",
-      secondary: "Ver passport mobile",
-      claimTitle: "Quando a titularidade digital ou NFT pode ser habilitada?",
-      claimBody: "Somente após mensagem fresca e válida da tag, canal de contato validado, comprovante ou token da loja aprovado separadamente, política do tenant e aprovação explícita.",
+      eyebrow: "Um percurso, tres momentos",
+      title: "Prepare. Consulte. Ative.",
+      body: "A tecnologia fica em segundo plano. Cada pessoa ve apenas a informacao e a acao necessarias naquele momento.",
+      primary: "Abrir demonstracao",
+      secondary: "Ver evidencia publica",
       steps: [
-        { label: "Produto fisico", body: "A marca carrega lote, fotos, etiquetas, regras e politica de claim." },
-        { label: "Toque fresco", body: "A pessoa toca NFC/QR e vê o resultado da mensagem, origem declarada, local informado e estado reportado do lacre." },
-        { label: "Claim seguro", body: "Contato e evidência podem iniciar o claim; titularidade exige aprovação explícita da política." },
-        { label: "Portal vivo", body: "Garantia, clube, loja, NFT opcional e revenda exigem sua evidência e política aplicáveis." },
+        { label: "Prepare a identidade", body: "Conecte cada unidade ou lote a informacao aprovada pela organizacao." },
+        { label: "Consulte a evidencia", body: "Um toque ou leitura mostra o resultado disponivel, sua fonte e seus limites." },
+        { label: "Ative o proximo passo", body: "Informacao, suporte, garantia ou beneficios aparecem conforme as regras definidas." },
       ],
       audiences: [
-        ["Consumidor", "Vejo o que a marca declarou, quais controles da tag passaram e o que posso fazer agora."],
-        ["Marca", "Recebo demanda, geografia, risco, leads, garantia e recompra."],
-        ["Loja", "Registro evidência de compra, reviso risco de cópia/replay e libero benefícios aprovados."],
+        ["Marca", "Conecta o produto e protege a relacao."],
+        ["Operacoes", "Revisa sinais que precisam de atencao."],
+        ["Pessoa", "Entende o resultado e age sem instalar nada."],
       ],
-      rubros: "Um motor para vinho, eventos, cosmetica, agro, saude, documentos, governos e ativos empresariais.",
     }
     : {
-      eyebrow: "Entendelo en 10 segundos",
-      title: "Toca el producto. Ve el resultado de confianza. Reclama beneficios solo cuando la compra es confiable.",
-      body: "nexID muestra el resultado del mensaje NFC/SUN, los datos declarados y el estado reportado del sello. El tap solo no prueba autenticidad física, contenido, origen, sello ni custodia.",
-      primary: "Abrir laboratorio",
-      secondary: "Ver pasaporte mobile",
-      claimTitle: "¿Cuándo se habilita la propiedad digital o NFT?",
-      claimBody: "Solo después de un mensaje fresco y válido del tag, canal de contacto validado, evidencia de compra o token de tienda aprobado por separado, política del tenant y aprobación explícita.",
+      eyebrow: "Un recorrido, tres momentos",
+      title: "Prepará. Consultá. Activá.",
+      body: "La tecnología queda en segundo plano. Cada persona ve únicamente la información y la acción que necesita en ese momento.",
+      primary: "Abrir una demostración",
+      secondary: "Ver evidencia pública",
       steps: [
-        { label: "Producto físico", body: "La marca carga lote, fotos, etiquetas, reglas y política de reclamo." },
-        { label: "Tap fresco", body: "La persona toca NFC/QR y ve el resultado del mensaje, origen declarado, ubicación reportada y estado reportado del sello." },
-        { label: "Reclamo seguro", body: "Contacto y evidencia pueden iniciar el reclamo; la propiedad exige aprobación explícita de la política." },
-        { label: "Portal vivo", body: "Garantía, club, tienda, NFT opcional y reventa exigen su evidencia y política aplicables." },
+        { label: "Prepará la identidad", body: "Vinculá cada unidad o lote con la información aprobada por la organización." },
+        { label: "Consultá la evidencia", body: "Un toque o una lectura muestra el resultado disponible, su fuente y sus límites." },
+        { label: "Activá el próximo paso", body: "Información, soporte, garantía o beneficios aparecen según las reglas definidas." },
       ],
       audiences: [
-        ["Consumidor", "Veo qué declaró la marca, qué controles del tag pasaron y qué puedo hacer ahora."],
-        ["Marca", "Recibo demanda, geografía, riesgo, leads, garantía y recompra."],
-        ["Tienda", "Registro evidencia de compra, reviso riesgo de copia/replay y libero beneficios aprobados."],
+        ["Marca", "Conectá el producto y protegé la relación."],
+        ["Operaciones", "Revisá señales que necesitan atención."],
+        ["Persona", "Entendé el resultado y actuá sin instalar nada."],
       ],
-      rubros: "Un motor para vinos, eventos, cosmética, agro, salud, documentos, gobiernos y activos empresariales.",
     };
 
   return (
     <section className="container-shell py-10 md:py-14">
       <div className="simple-trust-flow-shell relative overflow-hidden rounded-[2rem] border border-cyan-300/15 bg-slate-950/70 p-5 shadow-[0_30px_90px_rgba(8,47,73,0.22)] md:p-7">
         <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_15%_10%,rgba(34,211,238,0.16),transparent_34%),radial-gradient(circle_at_84%_18%,rgba(16,185,129,0.12),transparent_30%)]" />
-        <div className="relative grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+        <div className="relative grid gap-8 xl:grid-cols-[0.78fr_1.22fr]">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-300">{copy.eyebrow}</p>
             <h2 className="mt-3 max-w-2xl text-3xl font-black leading-tight tracking-tight text-white md:text-4xl">{copy.title}</h2>
             <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 md:text-base">{copy.body}</p>
             <div className="mt-5 flex flex-wrap gap-3">
-              <Link href="/demo-lab?vertical=wine" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-cyan-300/35 bg-cyan-500/15 px-4 py-2 text-sm font-black text-cyan-100 transition hover:bg-cyan-500/25">
+              <Link href="/demo-lab" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-cyan-300/35 bg-cyan-500/15 px-4 py-2 text-sm font-black text-cyan-100 transition hover:bg-cyan-500/25">
                 {copy.primary}
               </Link>
-              <Link href="/sun" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-100 transition hover:bg-emerald-500/20">
+              <Link href="/proof/verify" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-100 transition hover:bg-emerald-500/20">
                 {copy.secondary}
               </Link>
             </div>
           </div>
 
           <div className="grid gap-3">
-            <div className="grid gap-3 md:grid-cols-4">
+            <div className="grid gap-3 md:grid-cols-3">
               {copy.steps.map((step, index) => (
                 <article key={step.label} className="simple-trust-flow-step rounded-2xl border border-white/10 bg-slate-900/70 p-4">
                   <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-cyan-300/30 bg-cyan-500/10 text-xs font-black text-cyan-100">
@@ -229,20 +176,13 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
               ))}
             </div>
 
-            <div className="grid gap-3 md:grid-cols-3">
+            <div className="simple-trust-flow-audiences grid gap-3 md:grid-cols-3">
               {copy.audiences.map(([label, body]) => (
                 <article key={label} className="rounded-2xl border border-emerald-300/15 bg-emerald-500/10 p-4">
                   <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-200">{label}</p>
                   <p className="mt-2 text-sm leading-6 text-slate-100">{body}</p>
                 </article>
               ))}
-            </div>
-            <div className="grid gap-3 lg:grid-cols-[1fr_1fr]">
-              <p className="rounded-2xl border border-violet-300/20 bg-violet-500/10 p-4 text-sm font-bold leading-6 text-violet-100">{copy.rubros}</p>
-              <article className="rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-4">
-                <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-200">{copy.claimTitle}</p>
-                <p className="mt-2 text-sm font-semibold leading-6 text-slate-100">{copy.claimBody}</p>
-              </article>
             </div>
           </div>
         </div>
@@ -704,32 +644,44 @@ export function PremiumVerticalShowcaseSection({ locale }: { locale: string }) {
   const copy = isEn
     ? {
       kicker: "One platform, many industries",
-      title: "nexID is more than a wine showcase. It is infrastructure for every physical asset that needs trust.",
-      body: "Start with QR when cost matters, add NFC or NTAG 424 DNA TT for cryptographic tag-message and reported-TT evidence, and connect POS, logistics, loyalty and CRM without presenting that evidence as proof of the physical item.",
-      cta: "Open SDK & APIs",
-      secondary: "Open Product Lab",
+      title: "The product changes. The experience stays clear.",
+      body: "The same platform adapts to the information, risks and next action of each industry.",
+      cta: "Explore all industries",
+      secondary: "Open a demonstration",
     }
     : isBr
     ? {
       kicker: "Uma plataforma, muitos setores",
-      title: "nexID vai alem de uma vitrine de vinho. E infraestrutura para qualquer ativo fisico que precise de confianca.",
-      body: "Comece com QR quando o custo importa, adicione NFC ou NTAG 424 DNA TT para evidência criptográfica da mensagem e TT reportado, e conecte POS, logística, loyalty e CRM sem apresentar isso como prova do item físico.",
-      cta: "Abrir SDK & APIs",
-      secondary: "Abrir Laboratorio",
+      title: "O produto muda. A experiencia continua clara.",
+      body: "A mesma plataforma se adapta a informacao, aos riscos e a proxima acao de cada setor.",
+      cta: "Explorar todos os setores",
+      secondary: "Abrir demonstracao",
     }
     : {
-      kicker: "Una plataforma, muchos rubros",
-      title: "nexID va mas alla de una vitrina de vinos. Es infraestructura para cualquier activo fisico que necesite confianza.",
-      body: "Empezá con QR cuando el costo importa, sumá NFC o NTAG 424 DNA TT para evidencia criptográfica del mensaje y TT reportado, y conectá POS, logística, loyalty y CRM sin presentarlo como prueba del objeto físico.",
-      cta: "Abrir SDK & APIs",
-      secondary: "Abrir laboratorio",
+      kicker: "Una plataforma, distintos rubros",
+      title: "Cambia el producto. La experiencia sigue siendo clara.",
+      body: "La misma plataforma se adapta a la información, los riesgos y la próxima acción de cada rubro.",
+      cta: "Explorar todos los rubros",
+      secondary: "Abrir una demostración",
     };
 
-  const verticals = platformVerticals.map((item) => ({
-    title: isEn ? item.titleEn : isBr ? item.titlePt : item.title,
-    image: item.image,
-    tags: item.tags,
-    body: isEn ? item.bodyEn : isBr ? item.bodyPt : item.body,
+  const selectedIds = ["agro", "pharma", "wine", "sneaker"];
+  const verticals = platformVerticals.filter((item) => selectedIds.includes(item.id)).map((item) => ({
+    title: item.id === "agro"
+      ? (isEn ? "Agriculture and food" : isBr ? "Agro e alimentos" : "Agro y alimentos")
+      : item.id === "pharma"
+        ? (isEn ? "Pharmaceuticals and health" : isBr ? "Medicamentos e saúde" : "Medicamentos y salud")
+        : item.id === "wine"
+          ? (isEn ? "Wine and premium beverages" : isBr ? "Vinhos e bebidas premium" : "Vinos y bebidas premium")
+          : (isEn ? "Footwear and fashion" : isBr ? "Calçados e moda" : "Calzado y moda"),
+    image: item.imageLight,
+    body: item.id === "agro"
+      ? (isEn ? "Seeds, crop inputs and food with identity by unit or batch." : isBr ? "Sementes, insumos e alimentos com identidade por unidade ou lote." : "Semillas, insumos y alimentos con identidad por unidad o lote.")
+      : item.id === "pharma"
+        ? (isEn ? "Approved information, batch consultation and support at the point of use." : isBr ? "Informação aprovada, consulta de lote e suporte no ponto de uso." : "Información aprobada, consulta de lote y asistencia en el punto de uso.")
+        : item.id === "wine"
+          ? (isEn ? "Origin, edition and after-sales for premium bottles." : isBr ? "Origem, edicao e pos-venda para garrafas premium." : "Origen, edición y postventa para botellas premium.")
+          : (isEn ? "Warranty, ownership and after-sales for premium footwear." : isBr ? "Garantia, titularidade e pos-venda para calcados premium." : "Garantía, titularidad y postventa para calzado premium."),
     demoVertical: item.demoVertical,
   }));
 
@@ -743,8 +695,8 @@ export function PremiumVerticalShowcaseSection({ locale }: { locale: string }) {
         <div>
           <span>{copy.body}</span>
           <div>
-            <Link href="/sdk">{copy.cta}</Link>
-            <Link href="/demo-lab?vertical=wine">{copy.secondary}</Link>
+            <Link href="/docs#industrias">{copy.cta}</Link>
+            <Link href="/demo-lab">{copy.secondary}</Link>
           </div>
         </div>
       </div>
@@ -755,9 +707,6 @@ export function PremiumVerticalShowcaseSection({ locale }: { locale: string }) {
             <div className="landing-premium-vertical-card__body">
               <h3>{item.title}</h3>
               <p>{item.body}</p>
-              <div>
-                {item.tags.map((tag) => <span key={tag}>{tag}</span>)}
-              </div>
             </div>
           </Link>
         ))}
@@ -1852,65 +1801,23 @@ export function UnitEconomicsSection({ locale }: { locale: string }) {
 export function CtaSection({ content, locale }: { content: Content; locale: string }) {
   const isEn = locale === "en";
   const isBr = locale === "pt-BR";
-  const ctaLinks = isEn
-    ? [
-      { href: "/demo-lab?vertical=wine", label: "View guided demo", body: "Bottle reference, reported seal state, simulated tap journey, portal and marketplace in one guided scene." },
-      { href: schedulingUrls.meeting, label: "Schedule meeting", body: "Open the calendar and reserve a slot for business, reseller or customer pilots.", external: true },
-      { href: "/?contact=demo#contact-modal", label: "Book a demo", body: "Create the lead and save the case in the admin flow." },
-      { href: "/?contact=sales#contact-modal", label: "Talk to sales", body: "Discuss tags, volumes, tenant setup and rollout." },
-      { href: "/docs", label: "Read docs", body: "API, SUN, NTAG, dashboard and integration architecture." },
-    ]
-    : isBr
-    ? [
-      { href: "/demo-lab?vertical=wine", label: "Ver demo guiada", body: "Referência da garrafa, lacre reportado, jornada simulada do toque, portal e marketplace." },
-      { href: schedulingUrls.meeting, label: "Agendar reuniao", body: "Abre o calendario para reservar horario com marcas, resellers ou clientes.", external: true },
-      { href: "/?contact=demo#contact-modal", label: "Agendar demo", body: "Cria o lead e salva o caso no fluxo admin." },
-      { href: "/?contact=sales#contact-modal", label: "Falar com vendas", body: "Tags, volume, tenant e rollout comercial." },
-      { href: "/docs", label: "Ler docs", body: "API, SUN, NTAG, dashboard e arquitetura de integracao." },
-    ]
-    : [
-      { href: "/demo-lab?vertical=wine", label: "Ver demo guiada", body: "Referencia de botella, sello reportado, recorrido simulado del tap, portal y tienda en una escena guiada." },
-      { href: schedulingUrls.meeting, label: "Agendar reunion", body: "Abre el calendario y reserva una reunion con empresarios, distribuidores o clientes.", external: true },
-      { href: "/?contact=demo#contact-modal", label: "Agendar demo", body: "Crea el contacto y guarda el caso en el flujo del panel." },
-      { href: "/?contact=sales#contact-modal", label: "Hablar con ventas", body: "Etiquetas, volumen, cuenta de marca y despliegue comercial." },
-      { href: "/docs", label: "Ver documentación", body: "API, SUN, NTAG, panel y arquitectura de integración." },
-    ];
+  const primaryLabel = isEn ? "Design a pilot" : isBr ? "Desenhar um piloto" : "Diseñar un piloto";
+  const secondaryLabel = isEn ? "View a demonstration" : isBr ? "Ver uma demonstração" : "Ver una demostración";
 
   return (
-    <section className="container-shell py-24">
-      <div className="relative rounded-[2rem] border border-cyan-500/20 bg-slate-900/80 overflow-hidden shadow-[0_0_80px_rgba(6,182,212,0.15)]">
+    <section className="landing-cta-section container-shell py-14 md:py-20">
+      <div className="landing-cta-panel relative overflow-hidden rounded-[2rem] border border-cyan-500/20 bg-slate-900/80 shadow-[0_0_80px_rgba(6,182,212,0.15)]">
          <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 via-transparent to-violet-500/10 pointer-events-none" />
-         <div className="relative px-6 py-14 md:py-20 text-center z-10">
+         <div className="relative z-10 px-6 py-12 text-center md:px-12 md:py-16">
            <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight text-white mb-6">{content.cta.title}</h2>
            <p className="mx-auto max-w-2xl text-base leading-7 text-slate-400 mb-8">{content.cta.body}</p>
            <div className="flex flex-wrap justify-center gap-4">
-             <Link href="/demo-lab?vertical=wine" className="inline-flex items-center justify-center rounded-xl bg-white px-8 py-4 text-sm font-bold text-slate-950 transition hover:bg-slate-200 hover:scale-105 shadow-xl">
-                {isEn ? "View guided demo" : isBr ? "Ver demo guiada" : "Ver demo guiada"}
+             <Link href="#agendar-demo" className="landing-cta-primary inline-flex items-center justify-center rounded-xl bg-white px-8 py-4 text-sm font-bold text-slate-950 shadow-xl transition hover:scale-[1.02] hover:bg-slate-200">
+                {primaryLabel}
              </Link>
-             <a href={schedulingUrls.meeting} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-8 py-4 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/20">
-                {isEn ? "Schedule meeting" : isBr ? "Agendar reuniao" : "Agendar reunion"}
-             </a>
-             <Link href="/?contact=sales#contact-modal" className="inline-flex items-center justify-center rounded-xl border border-white/20 bg-white/5 backdrop-blur-sm px-8 py-4 text-sm font-semibold text-white transition hover:bg-white/10">
-                {content.cta?.secondary || (isEn ? "Talk to sales" : isBr ? "Falar com vendas" : "Hablar con ventas")}
+             <Link href="/demo-lab" className="landing-cta-secondary inline-flex items-center justify-center rounded-xl border border-white/20 bg-white/5 px-8 py-4 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/10">
+                {secondaryLabel}
              </Link>
-             <Link href="/?contact=demo#contact-modal" className="inline-flex items-center justify-center rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-8 py-4 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/10">
-                {content.cta?.primary || "Empezar"}
-             </Link>
-           </div>
-           <div className="mt-8 grid gap-3 text-left md:grid-cols-5">
-             {ctaLinks.map((item) => (
-               item.external ? (
-                 <a key={item.href + item.label} href={item.href} target="_blank" rel="noreferrer" className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-4 transition hover:border-emerald-300/40 hover:bg-emerald-500/15">
-                   <p className="text-sm font-black text-white">{item.label}</p>
-                   <p className="mt-2 text-xs leading-5 text-slate-300">{item.body}</p>
-                 </a>
-               ) : (
-                 <Link key={item.href + item.label} href={item.href} className="rounded-2xl border border-white/10 bg-slate-950/45 p-4 transition hover:border-cyan-300/35 hover:bg-cyan-500/10">
-                   <p className="text-sm font-black text-white">{item.label}</p>
-                   <p className="mt-2 text-xs leading-5 text-slate-400">{item.body}</p>
-                 </Link>
-               )
-             ))}
            </div>
          </div>
       </div>

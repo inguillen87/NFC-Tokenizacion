@@ -20,7 +20,7 @@ type LeadResponse = {
   };
 };
 
-const verticals = ["wine", "events", "cosmetics", "agro", "pharma"] as const;
+const verticals = ["agro", "pharma", "wine", "cosmetics", "fashion", "events", "other"] as const;
 
 const copy: Record<AppLocale, {
   eyebrow: string;
@@ -34,62 +34,90 @@ const copy: Record<AppLocale, {
   meeting: string;
   meetingHint: string;
   fields: Record<keyof LeadForm, string>;
+  verticalLabels: Record<(typeof verticals)[number], string>;
 }> = {
   "es-AR": {
-    eyebrow: "Demo enterprise",
-    title: "Contanos el caso y activamos el seguimiento comercial",
-    description: "Formulario corto: guardamos el lead en super-admin y disparamos la notificacion comercial para responder rapido.",
-    submit: "Enviar demo",
+    eyebrow: "Diseñemos un piloto",
+    title: "Contanos qué producto querés conectar.",
+    description: "Dejanos un contacto y una breve idea del caso. Te respondemos para definir el alcance y los próximos pasos.",
+    submit: "Enviar consulta",
     loading: "Enviando...",
-    sent: "Lead creado en super-admin.",
-    error: "Falta un contacto valido o no pudimos enviar la solicitud.",
-    delivery: "Notificacion comercial enviada.",
-    meeting: "Agendar reunion",
-    meetingHint: "Agenda directa para empresarios, resellers o clientes finales.",
+    sent: "Recibimos tu consulta.",
+    error: "Ingresá un contacto válido o volvé a intentar.",
+    delivery: "El equipo comercial ya fue avisado.",
+    meeting: "Agendar una reunión",
+    meetingHint: "Si preferís, podés elegir un horario directamente.",
     fields: {
       name: "Nombre",
       contact: "Email o WhatsApp",
       company: "Empresa",
-      vertical: "Vertical",
-      notes: "Que queres validar en la demo? (opcional)",
+      vertical: "Rubro",
+      notes: "¿Qué necesitás mostrar, comprobar o activar? (opcional)",
+    },
+    verticalLabels: {
+      agro: "Agro e insumos",
+      pharma: "Farmacéutica y salud",
+      wine: "Bodegas y bebidas",
+      cosmetics: "Cosmética y cuidado personal",
+      fashion: "Moda y bienes durables",
+      events: "Eventos y accesos",
+      other: "Otro rubro",
     },
   },
   "pt-BR": {
-    eyebrow: "Demo enterprise",
-    title: "Conte o caso e ativamos o follow-up comercial",
-    description: "Formulario curto: salvamos o lead no super-admin e disparamos a notificacao comercial para responder rapido.",
-    submit: "Enviar demo",
+    eyebrow: "Vamos desenhar um piloto",
+    title: "Conte qual produto você quer conectar.",
+    description: "Deixe um contato e uma breve ideia do caso. Respondemos para definir o escopo e os próximos passos.",
+    submit: "Enviar consulta",
     loading: "Enviando...",
-    sent: "Lead criado no super-admin.",
-    error: "Falta um contato valido ou nao foi possivel enviar.",
-    delivery: "Notificacao comercial enviada.",
-    meeting: "Agendar reuniao",
-    meetingHint: "Agenda direta para empresas, resellers ou clientes finais.",
+    sent: "Recebemos sua consulta.",
+    error: "Informe um contato válido ou tente novamente.",
+    delivery: "A equipe comercial já foi avisada.",
+    meeting: "Agendar uma reunião",
+    meetingHint: "Se preferir, escolha um horário diretamente.",
     fields: {
       name: "Nome",
       contact: "Email ou WhatsApp",
       company: "Empresa",
-      vertical: "Vertical",
-      notes: "O que voce quer validar na demo? (opcional)",
+      vertical: "Setor",
+      notes: "O que você precisa mostrar, comprovar ou ativar? (opcional)",
+    },
+    verticalLabels: {
+      agro: "Agro e insumos",
+      pharma: "Farmacêutica e saúde",
+      wine: "Vinhos e bebidas",
+      cosmetics: "Cosméticos e cuidado pessoal",
+      fashion: "Moda e bens duráveis",
+      events: "Eventos e acessos",
+      other: "Outro setor",
     },
   },
   en: {
-    eyebrow: "Enterprise demo",
-    title: "Share the case and we will trigger sales follow-up",
-    description: "Short form: we save the lead in super-admin and trigger the commercial notification so the team can respond fast.",
-    submit: "Send demo request",
+    eyebrow: "Design a pilot",
+    title: "Tell us which product you want to connect.",
+    description: "Leave a contact and a short outline of the case. We will reply to define scope and next steps.",
+    submit: "Send inquiry",
     loading: "Sending...",
-    sent: "Lead created in super-admin.",
+    sent: "We received your inquiry.",
     error: "Add a valid contact or retry the request.",
-    delivery: "Commercial notification sent.",
-    meeting: "Schedule meeting",
-    meetingHint: "Direct calendar for business owners, resellers or final customers.",
+    delivery: "The sales team has been notified.",
+    meeting: "Schedule a meeting",
+    meetingHint: "If you prefer, choose a time directly.",
     fields: {
       name: "Name",
       contact: "Email or WhatsApp",
       company: "Company",
-      vertical: "Vertical",
-      notes: "What should we validate in the demo? (optional)",
+      vertical: "Industry",
+      notes: "What do you need to show, verify or enable? (optional)",
+    },
+    verticalLabels: {
+      agro: "Agriculture and inputs",
+      pharma: "Pharmaceutical and health",
+      wine: "Wine and beverages",
+      cosmetics: "Cosmetics and personal care",
+      fashion: "Fashion and durable goods",
+      events: "Events and access",
+      other: "Another industry",
     },
   },
 };
@@ -102,7 +130,7 @@ export function DemoRequestSection({ locale }: { locale: AppLocale }) {
   const t = copy[locale] || copy["es-AR"];
   const [status, setStatus] = useState<"idle" | "ok" | "error" | "loading">("idle");
   const [deliveryOk, setDeliveryOk] = useState(false);
-  const [form, setForm] = useState<LeadForm>({ name: "", contact: "", company: "", vertical: "wine", notes: "" });
+  const [form, setForm] = useState<LeadForm>({ name: "", contact: "", company: "", vertical: "", notes: "" });
 
   async function submit() {
     if (!form.contact.trim()) {
@@ -138,58 +166,62 @@ export function DemoRequestSection({ locale }: { locale: AppLocale }) {
     const data = await res.json().catch(() => ({} as LeadResponse));
     setDeliveryOk(deliveryWorked(data));
     setStatus("ok");
-    setForm({ name: "", contact: "", company: "", vertical: "wine", notes: "" });
+    setForm({ name: "", contact: "", company: "", vertical: "", notes: "" });
   }
 
   return (
-    <section id="agendar-demo" className="container-shell py-16">
+    <section id="agendar-demo" className="landing-demo-request container-shell scroll-mt-24 py-14 md:py-20">
       <Card className="demo-request-card p-6 md:p-8">
         <div className="grid gap-8 lg:grid-cols-[0.88fr_1.12fr] lg:items-start">
           <div>
             <SectionHeading eyebrow={t.eyebrow} title={t.title} description={t.description} />
-            <div className="mt-5 grid gap-2 text-sm text-slate-300">
-              <div className="rounded-xl border border-cyan-300/20 bg-cyan-500/10 p-3">1. Lead nuevo en super-admin.</div>
-              <div className="rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3">2. Notificacion comercial por webhook/WhatsApp si esta configurado.</div>
-              <div className="rounded-xl border border-violet-300/20 bg-violet-500/10 p-3">3. Seguimiento desde tickets, cotizador y Demo Lab.</div>
-              <div className="rounded-xl border border-amber-300/20 bg-amber-500/10 p-3">4. Agenda directa si el lead quiere hablar ahora.</div>
-            </div>
           </div>
 
-          <div className="grid gap-3">
+          <form
+            className="grid gap-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void submit();
+            }}
+          >
             <div className="grid gap-3 md:grid-cols-2">
-              <input suppressHydrationWarning className="demo-input" placeholder={t.fields.name} value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
-              <input suppressHydrationWarning className="demo-input" placeholder={t.fields.contact} value={form.contact} onChange={(event) => setForm({ ...form, contact: event.target.value })} />
-              <input suppressHydrationWarning className="demo-input md:col-span-2" placeholder={t.fields.company} value={form.company} onChange={(event) => setForm({ ...form, company: event.target.value })} />
+              <label className="demo-field-label">
+                <span>{t.fields.name}</span>
+                <input suppressHydrationWarning name="name" autoComplete="name" className="demo-input" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
+              </label>
+              <label className="demo-field-label">
+                <span>{t.fields.contact}</span>
+                <input suppressHydrationWarning required name="contact" autoComplete="email" className="demo-input" value={form.contact} onChange={(event) => setForm({ ...form, contact: event.target.value })} />
+              </label>
+              <label className="demo-field-label md:col-span-2">
+                <span>{t.fields.company}</span>
+                <input suppressHydrationWarning name="company" autoComplete="organization" className="demo-input" value={form.company} onChange={(event) => setForm({ ...form, company: event.target.value })} />
+              </label>
             </div>
 
-            <div>
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan-300">{t.fields.vertical}</p>
-              <div className="flex flex-wrap gap-2">
-                {verticals.map((vertical) => (
-                  <button suppressHydrationWarning
-                    key={vertical}
-                    type="button"
-                    onClick={() => setForm({ ...form, vertical })}
-                    className={`demo-vertical-pill ${form.vertical === vertical ? "demo-vertical-pill--active" : ""}`}
-                  >
-                    {vertical}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <label className="demo-field-label">
+              <span>{t.fields.vertical}</span>
+              <select suppressHydrationWarning required name="vertical" className="demo-input" value={form.vertical} onChange={(event) => setForm({ ...form, vertical: event.target.value })}>
+                <option value="" disabled>{locale === "en" ? "Choose an industry" : locale === "pt-BR" ? "Escolha um setor" : "Elegí un rubro"}</option>
+                {verticals.map((vertical) => <option key={vertical} value={vertical}>{t.verticalLabels[vertical]}</option>)}
+              </select>
+            </label>
 
-            <textarea suppressHydrationWarning className="demo-input min-h-24" placeholder={t.fields.notes} value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} />
+            <label className="demo-field-label">
+              <span>{t.fields.notes}</span>
+              <textarea suppressHydrationWarning name="notes" className="demo-input min-h-24" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} />
+            </label>
 
             <div className="flex flex-wrap items-center gap-3">
-              <Button onClick={submit} disabled={status === "loading"}>{status === "loading" ? t.loading : t.submit}</Button>
-              <a href={schedulingUrls.meeting} target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center justify-center rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-4 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/20">
+              <Button type="submit" disabled={status === "loading"}>{status === "loading" ? t.loading : t.submit}</Button>
+              <a href={schedulingUrls.meeting} target="_blank" rel="noreferrer" className="demo-meeting-link inline-flex min-h-10 items-center justify-center px-2 text-sm font-semibold underline-offset-4 hover:underline">
                 {t.meeting}
               </a>
               <p className="text-xs text-slate-400">{t.meetingHint}</p>
-              {status === "ok" ? <p className="text-sm text-emerald-300">{t.sent} {deliveryOk ? t.delivery : ""}</p> : null}
-              {status === "error" ? <p className="text-sm text-rose-300">{t.error}</p> : null}
+              {status === "ok" ? <p className="text-sm text-emerald-700" role="status">{t.sent} {deliveryOk ? t.delivery : ""}</p> : null}
+              {status === "error" ? <p className="text-sm text-rose-700" role="alert">{t.error}</p> : null}
             </div>
-          </div>
+          </form>
         </div>
       </Card>
     </section>

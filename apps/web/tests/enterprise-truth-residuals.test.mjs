@@ -35,11 +35,14 @@ test("desktop process simulator separates NFC evidence from physical authenticit
   assert.doesNotMatch(processSimulator, /Origen y autenticidad por botella|Origem e autenticidade por garrafa|Origin \+ authenticity per bottle|Producto genuino al consumidor|Produto genuíno ao consumidor|Genuine product at point of sale/);
 });
 
-test("brand synergy validates NFC and SUN evidence instead of claiming physical authenticity", () => {
-  assert.match(brandSynergy, /NFC\/SUN message evidence check/);
-  assert.match(brandSynergy, /Chequeo de evidencia del mensaje NFC\/SUN/);
-  assert.match(brandSynergy, /Checagem da evidencia da mensagem NFC\/SUN/);
+test("brand synergy presents an illustrative message-and-rules consultation instead of physical authentication", () => {
   assert.match(brandSynergy, /validate NFC\/SUN message evidence/);
-  assert.match(brandSynergy, /NFC evidence/);
+  assert.match(brandSynergy, /Cada consulta puede mostrar información aprobada, aplicar reglas definidas y habilitar una acción útil/);
+  assert.match(brandSynergy, /Cada consulta pode mostrar informações aprovadas, aplicar regras definidas e habilitar uma ação útil/);
+  assert.match(brandSynergy, /Resultado de demostración según las reglas configuradas/);
+  assert.match(brandSynergy, /Resultado de demonstração conforme as regras configuradas/);
+  assert.match(brandSynergy, /Mensaje y reglas del producto/);
+  assert.match(brandSynergy, /HYPOTHETICAL SCENARIO/);
+  assert.match(brandSynergy, /They are not customers, partners or measured performance/);
   assert.doesNotMatch(brandSynergy, /Authenticity check|Chequeo de autenticidad|Checagem de autenticidade|nexID can prove the product|nexID prueba el producto|nexID prova o produto/);
 });

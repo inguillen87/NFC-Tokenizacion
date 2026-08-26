@@ -5,7 +5,7 @@ import { readFile } from "node:fs/promises";
 test("vertical-only Demo Lab deep links start ready and never inherit the valid-result beat", async () => {
   const client = await readFile(new URL("../src/app/(public)/demo-lab/demo-lab-client.tsx", import.meta.url), "utf8");
   const scenarioStart = client.match(/function getScenarioStart[\s\S]*?\n\}/)?.[0] ?? "";
-  const initialStateEffect = client.match(/useEffect\(\(\) => \{\n\s*setVertical\(initialVertical[\s\S]*?\n\s*\}, \[initialVertical, scenarioStart\.beat, scenarioStart\.key, scenarioStart\.vertical\]\);/)?.[0] ?? "";
+  const initialStateEffect = client.match(/useEffect\(\(\) => \{\r?\n\s*setVertical\(initialVertical[\s\S]*?\r?\n\s*\}, \[initialVertical, scenarioStart\.beat, scenarioStart\.key, scenarioStart\.vertical\]\);/)?.[0] ?? "";
 
   assert.match(scenarioStart, /return \{ key: null, beat: 0, vertical: "wine" \};/);
   assert.doesNotMatch(scenarioStart, /return \{ key: null, beat: 1/);

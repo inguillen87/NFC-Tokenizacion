@@ -4,10 +4,11 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 
-const [home, demo, landing, interactive, ogImage, assistant, demoLab, demoLabPage, chainLab, ownership, investor] = await Promise.all([
+const [home, demo, landing, heroScene, interactive, ogImage, assistant, demoLab, demoLabPage, chainLab, ownership, investor] = await Promise.all([
   read("../src/app/page.tsx"),
   read("../src/app/demo/page.tsx"),
   read("../src/components/landing-sections.tsx"),
+  read("../src/components/hero-scene.tsx"),
   read("../src/components/interactive-demo-section.tsx"),
   read("../src/app/og-image.tsx"),
   read("../src/app/api/assistant/chat/route.ts"),
@@ -19,11 +20,16 @@ const [home, demo, landing, interactive, ogImage, assistant, demoLab, demoLabPag
 ]);
 
 test("guided public demos never masquerade simulation as production telemetry", () => {
-  const publicDemo = [home, demo, landing, interactive, ogImage, assistant].join("\n");
+  const publicDemo = [home, demo, landing, heroScene, interactive, ogImage, assistant].join("\n");
 
-  assert.match(home, /guided NFC scenarios with simulated read locations/);
+  assert.match(home, /<HeroSection content=\{content\}/);
+  assert.match(heroScene, /Consulta segura simulada/);
+  assert.match(heroScene, /Consulta ilustrativa/);
+  assert.match(heroScene, /tapMap: "Consulta simulada"/);
+  assert.match(heroScene, /Escenario ilustrativo con producto, lote, recorrido declarado y próxima acción\. No prueba el producto físico/);
   assert.match(demo, /source-labelled demo surfaces/);
-  assert.match(landing, /View guided demo/);
+  assert.match(landing, /Open a demonstration/);
+  assert.match(landing, /Abrir una demostración/);
   assert.match(interactive, /reported openings, duplicates and regions from the selected data source/);
   assert.match(assistant, /source-labelled demo events/);
 

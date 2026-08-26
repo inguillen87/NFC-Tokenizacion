@@ -44,29 +44,27 @@ test("web pwa fallback stays production-gated and mobile-safe", async () => {
 
 test("landing header stays compact, touch safe and overflow-free through laptop widths", async () => {
   const page = await readFile(new URL("../src/app/page.tsx", import.meta.url), "utf8");
-  const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
-  const mobileNav = await readFile(new URL("../src/components/mobile-nav-sheet.tsx", import.meta.url), "utf8");
+  const header = await readFile(new URL("../src/components/enterprise-site-header.tsx", import.meta.url), "utf8");
+  const headerCss = await readFile(new URL("../src/components/enterprise-site-header.module.css", import.meta.url), "utf8");
+  const landingCss = await readFile(new URL("../src/app/home-landing.module.css", import.meta.url), "utf8");
 
-  assert.match(page, /site-header mobile-optimized-header/);
-  assert.match(css, /Landing mobile header compact pass/);
-  assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*\.site-header\.mobile-optimized-header \.header-main-row\s*\{[\s\S]*height:\s*3\.55rem !important/);
-  assert.match(css, /\.site-header\.mobile-optimized-header \.site-brand-lockup\s*\{[\s\S]*transform:\s*scale\(0\.84\)/);
-  assert.match(css, /\.site-header\.mobile-optimized-header \.mobile-nav-toggle\s*\{[^}]*min-height:\s*2\.75rem !important/s);
-  assert.match(css, /\.site-header\.mobile-optimized-header \.header-actions > a\.inline-flex \.ui-btn\s*\{[^}]*min-height:\s*2\.75rem !important/s);
-  assert.match(css, /html\.theme-light \.site-header\.mobile-optimized-header \.header-actions > a\.inline-flex \.ui-btn,[\s\S]*color:\s*#0f172a !important/);
-  assert.match(css, /Final landing header guard[\s\S]*\.site-header\.mobile-optimized-header \.header-actions > a\.inline-flex \.ui-btn\.ui-btn--secondary[\s\S]*color:\s*#0f172a !important/);
-  assert.match(css, /@media \(max-width:\s*380px\)[\s\S]*\.site-header\.mobile-optimized-header \.site-brand-lockup\s*\{[\s\S]*transform:\s*scale\(0\.78\)/);
-  assert.match(page, /hidden gap-6 text-sm 2xl:flex site-nav/);
-  assert.match(mobileNav, /window\.innerWidth >= 1536/);
-  assert.match(mobileNav, /mobile-nav-overlay[^"\n]*2xl:hidden/);
-  assert.match(mobileNav, /mobile-nav-toggle[^"\n]*2xl:hidden/);
-  assert.match(mobileNav, /sm:w-\[28rem\][^"\n]*sm:max-w-\[calc\(100vw-1\.5rem\)\]/);
-  assert.match(mobileNav, /role="dialog"/);
-  assert.match(mobileNav, /aria-modal="true"/);
-  assert.match(mobileNav, /appRoot\?\.setAttribute\("inert", ""\)/);
-  assert.match(mobileNav, /closeButtonRef\.current\?\.focus\(\)/);
-  assert.match(mobileNav, /shouldRestoreFocusRef\.current = true/);
-  assert.match(mobileNav, /triggerRef\.current\?\.focus\(\)/);
+  assert.match(page, /<EnterpriseSiteHeader/);
+  assert.doesNotMatch(page, /site-header mobile-optimized-header|<MobileNavSheet/);
+  assert.match(headerCss, /@media \(max-width: 1160px\)[\s\S]*\.desktopNav,[\s\S]*display: none/);
+  assert.match(headerCss, /@media \(max-width: 1160px\)[\s\S]*\.mobileMenuButton\s*\{[\s\S]*display: inline-flex/);
+  assert.match(headerCss, /\.mobileMenuButton\s*\{[\s\S]*width: 2\.75rem[\s\S]*height: 2\.75rem/);
+  assert.match(headerCss, /\.mobileDialog\s*\{[\s\S]*width: min\(32rem, 94vw\)[\s\S]*height: 100dvh[\s\S]*overflow: auto/);
+  assert.match(headerCss, /@media \(max-width: 700px\)[\s\S]*\.mobileDialog\s*\{[\s\S]*width: 100vw/);
+  assert.match(landingCss, /overflow-x: clip/);
+
+  assert.match(header, /createPortal\(mobileNavigation, document\.body\)/);
+  assert.match(header, /role="dialog" aria-modal="true"/);
+  assert.match(header, /pageRoot\?\.setAttribute\("inert", ""\)/);
+  assert.match(header, /document\.body\.style\.overflow = "hidden"/);
+  assert.match(header, /mobileCloseRef\.current\?\.focus\(\)/);
+  assert.match(header, /mobileTriggerRef\.current\?\.focus\(\)/);
+  assert.match(header, /event\.key === "Escape"/);
+  assert.match(header, /event\.key !== "Tab"/);
 });
 
 test("demo lab mobile wizard shows four steps without horizontal scrolling", async () => {
@@ -508,26 +506,38 @@ test("demo lab wizard explains proof and business outcome for enterprise buyers"
   assert.match(css, /@media \(max-width:\s*520px\)[\s\S]*\.demo-lab-fullscreen-root \.demo-lab-wizard-proof-decoder/);
 });
 
-test("landing hero stats use real configured fields and no old cost placeholder", async () => {
+test("landing hero uses three honest certainty points, simple CTAs and no fabricated metrics", async () => {
   const hero = await readFile(new URL("../src/components/landing-sections.tsx", import.meta.url), "utf8");
-  const i18n = await readFile(new URL("../../../packages/config/src/i18n.ts", import.meta.url), "utf8");
+  const content = await readFile(new URL("../src/lib/landing-content.ts", import.meta.url), "utf8");
+  const heroSection = hero.slice(hero.indexOf("export function HeroSection"), hero.indexOf("export function SimpleTrustFlowSection"));
 
-  assert.match(hero, /const heroStats = \[/);
-  assert.match(hero, /stats\?\.latencyDelta/);
-  assert.doesNotMatch(hero, /stats\.scanSpeed|stats\.uptime|stats\.crypto|stats\.global/);
-  assert.doesNotMatch(i18n, /10k (botellas|garrafas|bottles) × USD 0\.02/);
-  assert.match(i18n, /Sin app para el comprador/);
-  assert.match(i18n, /No buyer app required/);
+  assert.match(heroSection, /const heroStats = \[/);
+  assert.match(heroSection, /"Sin instalar una aplicación"/);
+  assert.match(heroSection, /"Una identidad"/);
+  assert.match(heroSection, /"Fuentes visibles"/);
+  assert.match(heroSection, /"Consulta desde el navegador"/);
+  assert.match(heroSection, /"Evidencia, límites y próximo paso"/);
+  assert.match(heroSection, /heroStats\.map/);
+  assert.doesNotMatch(heroSection, /stats\?\.|stats\.|latency|uptime|scanSpeed|\b\d+(?:\.\d+)?%/);
+  assert.match(heroSection, /href="#como-funciona"/);
+  assert.match(heroSection, /href="\/\?contact=demo#contact-modal"/);
+
+  assert.match(content, /title: "Cada producto explica qué se sabe y qué hacer después\."/);
+  assert.match(content, /primary: "Ver cómo funciona"/);
+  assert.match(content, /secondary: "Diseñar un piloto"/);
+  assert.doesNotMatch(content, /10k (botellas|garrafas|bottles) × USD 0\.02/);
 });
 
 test("brand synergy simulator is readable, auto-cycles and stays mobile-safe", async () => {
   const source = await readFile(new URL("../src/components/brand-synergy-simulator.tsx", import.meta.url), "utf8");
   const page = await readFile(new URL("../src/app/page.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
+  const landingCss = await readFile(new URL("../src/app/home-landing.module.css", import.meta.url), "utf8");
 
-  assert.doesNotMatch(source, /Ã|Â|â|ð/);
+  assert.doesNotMatch(source, /�|Ãƒ|Ã±|Ã¡|Ã©|Ã³|Ãº|Â¿|Â¡|â€™|â€œ|â€|ðŸ/);
   assert.match(source, /window\.setInterval\(\(\) => \{/);
   assert.match(source, /\},\s*4000\)/);
+  assert.match(source, /prefers-reduced-motion: reduce/);
   assert.match(source, /setIsPaused\(true\)/);
   assert.doesNotMatch(source, /scale-105/);
   assert.match(source, /function rowState\(requiredStep: number\)/);
@@ -540,9 +550,24 @@ test("brand synergy simulator is readable, auto-cycles and stays mobile-safe", a
   assert.match(source, /brand-synergy-outcome-grid/);
   assert.match(source, /hash-only/);
   assert.match(source, /Consent and PII stay inside nexID/);
-  assert.match(page, /landing-brand-synergy-band my-16 scroll-mt-24/);
+  assert.match(source, /Productos que informan, orientan y mantienen activa la relación/);
+  assert.match(source, /Cada consulta puede mostrar información aprobada, aplicar reglas definidas y habilitar una acción útil sin exponer datos personales/);
+  assert.match(source, /No son clientes, socios ni resultados medidos/);
+  assert.match(source, /id: "agro-field"/);
+  assert.match(source, /id: "pharma-information"/);
+  assert.match(source, /id: "sneakers-club"/);
+  assert.match(source, /Supuesto del comprador/);
+  assert.match(source, /A validar/);
+  assert.match(source, /Registro de consulta con datos protegidos/);
+  assert.match(source, /aria-live="off"/);
+  assert.doesNotMatch(source, /Syngenta|Bayer|cliente confirmado|resultado medido|\b\d+(?:\.\d+)?%/i);
+
+  assert.match(page, /<section id="activacion" className="landing-brand-synergy-band scroll-mt-24 py-14 md:py-20">/);
   assert.match(page, /landing-brand-synergy-shell container-shell/);
   assert.doesNotMatch(page, /landing-brand-synergy-shell[^\n]+overflow-hidden/);
+  assert.match(landingCss, /\.root :global\(\.landing-brand-synergy-band\)\s*\{[\s\S]*padding-block: 0 !important/);
+  assert.match(landingCss, /html\.theme-light\) \.root :global\(\.brand-synergy-simulator\)/);
+  assert.match(landingCss, /background: #ffffff !important/);
   assert.match(css, /brand-synergy-proof-grid > div/);
   assert.match(css, /html\.theme-light \.landing-brand-synergy-shell/);
   assert.match(css, /brand-synergy-live-panel\s*\{/);
@@ -558,5 +583,6 @@ test("brand synergy simulator is readable, auto-cycles and stays mobile-safe", a
   assert.match(css, /brand-synergy-scenario-pill\s*\{[\s\S]*flex:\s*1 1 100%/);
   assert.match(css, /brand-synergy-outcome-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(css, /brand-synergy-terminal__chrome\s*\{[\s\S]*flex-direction:\s*row !important/);
+  assert.match(css, /brand-synergy-business-pane\[data-mobile-active="false"\],[\s\S]*brand-synergy-live-panel\[data-mobile-active="false"\][\s\S]*display:\s*none !important/);
   assert.match(css, /@media \(max-width:\s*360px\)[\s\S]*\.brand-synergy-outcome-grid\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
 });

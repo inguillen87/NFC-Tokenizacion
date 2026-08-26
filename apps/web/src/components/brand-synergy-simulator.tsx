@@ -11,11 +11,12 @@ import {
   LockKeyhole,
   Navigation,
   Network,
+  PackageCheck,
+  Pill,
   ShieldCheck,
   Smartphone,
   Sparkles,
-  Ticket,
-  Wine,
+  Sprout,
   Zap,
 } from "lucide-react";
 
@@ -46,75 +47,75 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
 
   const copy = {
     badge: isEn
-      ? "NEXID BRAND SYNERGY ENGINE"
+      ? "FROM PRODUCT TO NEXT ACTION"
       : isBr
-        ? "MOTOR DE SINERGIA DE MARCAS"
-        : "MOTOR DE SINERGIA DE MARCAS",
+        ? "DO PRODUTO À PRÓXIMA AÇÃO"
+        : "DEL PRODUCTO A LA PRÓXIMA ACCIÓN",
     title: isEn
       ? "Products that verify, learn and trigger business."
       : isBr
-        ? "Produtos que verificam, aprendem e ativam negocio."
-        : "Productos que verifican, aprenden y activan negocio.",
+        ? "Produtos que informam, orientam e mantêm a relação ativa."
+        : "Productos que informan, orientan y mantienen activa la relación.",
     body: isEn
       ? "A tap is not just a certificate. nexID can validate NFC/SUN message evidence, apply consent and policy, and route an eligible commercial action without exposing private customer data."
       : isBr
-        ? "Um tap nao e apenas um certificado. nexID valida a evidencia da mensagem NFC/SUN, aplica consentimento e politica, e aciona uma resposta comercial elegivel sem expor dados privados."
-        : "Un tap no es solo un certificado. nexID valida la evidencia del mensaje NFC/SUN, aplica consentimiento y politica, y dispara una accion comercial elegible sin exponer datos privados.",
+        ? "Cada consulta pode mostrar informações aprovadas, aplicar regras definidas e habilitar uma ação útil sem expor dados pessoais."
+        : "Cada consulta puede mostrar información aprobada, aplicar reglas definidas y habilitar una acción útil sin exponer datos personales.",
     flow: isEn
       ? ["Product", "Tap", "Policy", "Reward"]
       : isBr
-        ? ["Produto", "Tap", "Politica", "Beneficio"]
-        : ["Producto", "Tap", "Politica", "Beneficio"],
+        ? ["Produto", "Consulta", "Regras", "Próximo passo"]
+        : ["Producto", "Consulta", "Reglas", "Próximo paso"],
     select: isEn ? "Select scenario" : isBr ? "Selecionar cenario" : "Seleccionar escenario",
-    portal: isEn ? "Simulate portal and wallet" : isBr ? "Simular portal e wallet" : "Simular portal y wallet",
-    lab: isEn ? "Open Demo Lab" : isBr ? "Abrir Demo Lab" : "Abrir Demo Lab",
-    terminalTitle: isEn ? "Guided offer model" : isBr ? "Modelo guiado de oferta" : "Modelo guiado de oferta",
+    portal: isEn ? "View product experience" : isBr ? "Ver experiência do produto" : "Ver experiencia del producto",
+    lab: isEn ? "Open demonstrations" : isBr ? "Abrir demonstrações" : "Abrir demostraciones",
+    terminalTitle: isEn ? "Guided journey" : isBr ? "Jornada guiada" : "Recorrido guiado",
     channel: isEn ? "Hypothetical scenario" : isBr ? "Cenario hipotetico" : "Escenario hipotetico",
-    physicalTap: isEn ? "1 - Physical tap detected" : isBr ? "1 - Tap fisico detectado" : "1 - Tap fisico detectado",
-    authenticity: isEn ? "2 - NFC/SUN message evidence check" : isBr ? "2 - Checagem da evidencia da mensagem NFC/SUN" : "2 - Chequeo de evidencia del mensaje NFC/SUN",
-    query: isEn ? "3 - Business policy query" : isBr ? "3 - Consulta de politica comercial" : "3 - Consulta de politica comercial",
+    physicalTap: isEn ? "1 - Product consulted" : isBr ? "1 - Produto consultado" : "1 - Producto consultado",
+    authenticity: isEn ? "2 - Information and controls reviewed" : isBr ? "2 - Informações e controles revisados" : "2 - Información y controles revisados",
+    query: isEn ? "3 - Available rules reviewed" : isBr ? "3 - Regras disponíveis revisadas" : "3 - Reglas disponibles revisadas",
     voucher: isEn ? "4 - Action unlocked" : isBr ? "4 - Acao habilitada" : "4 - Accion habilitada",
     verified: isEn
       ? "Demo check: SUN response + configured policy"
       : isBr
-        ? "Cheque demo: resposta SUN + politica configurada"
-        : "Chequeo demo: respuesta SUN + politica configurada",
+        ? "Resultado de demonstração conforme as regras configuradas"
+        : "Resultado de demostración según las reglas configuradas",
     matching: isEn
       ? "Evaluating a configurable offer under demo rules..."
       : isBr
-        ? "Avaliando uma oferta configuravel com regras demo..."
-        : "Evaluando una oferta configurable con reglas demo...",
-    category: isEn ? "Category" : isBr ? "Categoria" : "Categoria",
-    boardTitle: isEn ? "Hypothetical activation model" : isBr ? "Modelo hipotetico de ativacao" : "Modelo hipotetico de activacion",
+        ? "Revisando a próxima ação disponível neste exemplo..."
+        : "Revisando la próxima acción disponible en este ejemplo...",
+    category: isEn ? "Category" : isBr ? "Categoria" : "Categoría",
+    boardTitle: isEn ? "Illustrative activation" : isBr ? "Ativação ilustrativa" : "Activación ilustrativa",
     boardSubtitle: isEn
       ? "What a team could operate after an eligible NFC event."
       : isBr
-        ? "O que uma equipe poderia operar depois de um evento NFC elegivel."
-        : "Lo que un equipo podria operar despues de un evento NFC elegible.",
+        ? "O que uma equipe poderia oferecer após uma consulta válida."
+        : "Lo que un equipo podría ofrecer después de una consulta válida.",
     hypothesisBadge: isEn ? "HYPOTHETICAL SCENARIO" : isBr ? "CENARIO HIPOTETICO" : "ESCENARIO HIPOTETICO",
     hypothesisNote: isEn
       ? "Generic brands, benefits and outcomes illustrate a configurable workflow. They are not customers, partners or measured performance."
       : isBr
-        ? "Marcas, beneficios e resultados genericos ilustram um fluxo configuravel. Nao sao clientes, parceiros nem performance medida."
-        : "Marcas, beneficios y resultados genericos ilustran un flujo configurable. No son clientes, partners ni performance medida.",
-    signalLabel: isEn ? "CRM signal" : isBr ? "Sinal CRM" : "Senal CRM",
-    policyLabel: isEn ? "Policy gate" : isBr ? "Regra de politica" : "Regla de politica",
+        ? "Marcas, benefícios e resultados genéricos ilustram um percurso configurável. Não são clientes, parceiros nem resultados medidos."
+        : "Marcas, beneficios y resultados genéricos ilustran un recorrido configurable. No son clientes, socios ni resultados medidos.",
+    signalLabel: isEn ? "Team signal" : isBr ? "Sinal para a equipe" : "Señal para el equipo",
+    policyLabel: isEn ? "Applied rule" : isBr ? "Regra aplicada" : "Regla aplicada",
     resultLabel: isEn ? "Business result" : isBr ? "Resultado de negocio" : "Resultado comercial",
     proofLabel: isEn ? "Public proof" : isBr ? "Prova publica" : "Prueba publica",
-    proofVerifiedTitle: isEn ? "NFC evidence" : isBr ? "Evidencia NFC" : "Evidencia NFC",
-    proofVerifiedBody: isEn ? "SUN message + product policy" : isBr ? "Mensagem SUN + politica do produto" : "Mensaje SUN + politica de producto",
+    proofVerifiedTitle: isEn ? "Observed information" : isBr ? "Informação observada" : "Información observada",
+    proofVerifiedBody: isEn ? "Product message and rules" : isBr ? "Mensagem e regras do produto" : "Mensaje y reglas del producto",
     proofPrivateTitle: isEn ? "Private" : isBr ? "Privado" : "Privado",
     proofPrivateBody: isEn
       ? "Consent and PII stay inside nexID"
       : isBr
-        ? "Consentimento e PII ficam dentro de nexID"
-        : "Consentimiento y PII quedan dentro de nexID",
+        ? "Os dados pessoais permanecem protegidos"
+        : "Los datos personales quedan protegidos",
     proofActionTitle: isEn ? "Actionable" : isBr ? "Acionavel" : "Accionable",
     proofActionBody: isEn
       ? "CRM signal, voucher or claim"
       : isBr
-        ? "Sinal CRM, voucher ou claim"
-        : "Senal CRM, voucher o reclamo",
+        ? "Aviso, benefício ou consulta"
+        : "Aviso, beneficio o consulta",
     metricMatchLabel: isEn ? "Scenario basis" : isBr ? "Base do cenario" : "Base del escenario",
     metricMatchValue: isEn ? "Buyer assumption" : isBr ? "Premissa do comprador" : "Supuesto del comprador",
     metricRiskLabel: isEn ? "Risk model" : isBr ? "Modelo de risco" : "Modelo de riesgo",
@@ -123,82 +124,82 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
     privateDataLabel: isEn ? "private" : isBr ? "privado" : "privado",
     illustrativeLabel: isEn ? "Illustrative" : isBr ? "Ilustrativo" : "Ilustrativo",
     mobileViewLabel: isEn ? "Simulator view" : isBr ? "Vista do simulador" : "Vista del simulador",
-    businessView: isEn ? "Decision" : isBr ? "Decisao" : "Decision",
-    activationView: isEn ? "Activation" : isBr ? "Ativacao" : "Activacion",
+    businessView: isEn ? "Decision" : isBr ? "Decisão" : "Decisión",
+    activationView: isEn ? "Activation" : isBr ? "Ativação" : "Activación",
     privacy: isEn
       ? "Public proof stays hash-only. Customer identity, route detail and contracts remain private inside nexID."
       : isBr
-        ? "A prova publica fica hash-only. Identidade, rota e contratos ficam privados dentro de nexID."
-        : "La prueba publica queda hash-only. Identidad, ruta y contratos quedan privados dentro de nexID.",
+        ? "A evidência pública mostra apenas o necessário. Identidade, percurso e acordos permanecem privados na nexID."
+        : "La evidencia pública muestra únicamente lo necesario. La identidad, el recorrido y los acuerdos permanecen privados en nexID.",
   };
 
   const scenarios = useMemo<Scenario[]>(
     () => [
       {
-        id: "wine-tourism",
-        name: isEn ? "Wine + VIP transfer" : isBr ? "Vinhos + traslado VIP" : "Vinos + traslados VIP",
-        industry: isEn ? "Beverages and tourism" : isBr ? "Bebidas e turismo" : "Bebidas y turismo",
-        icon: <Wine className="h-4 w-4" />,
-        activeBg: "bg-gradient-to-r from-purple-600 to-violet-500",
-        activeBorder: "border-purple-500",
-        scannedProduct: isEn ? "Premium wine demo lot" : isBr ? "Lote demo de vinho premium" : "Lote demo de vino premium",
-        scannedBatch: "DEMO-WINE-2026-001",
-        partnerBrand: isEn ? "Authorized mobility operator" : isBr ? "Operador de mobilidade autorizado" : "Operador de movilidad autorizado",
-        partnerBenefit: isEn ? "Configurable return transfer" : isBr ? "Traslado de retorno configuravel" : "Traslado de retorno configurable",
+        id: "agro-field",
+        name: isEn ? "Seeds + field support" : isBr ? "Sementes + suporte no campo" : "Semillas + asistencia en campo",
+        industry: isEn ? "Agriculture and inputs" : isBr ? "Agro e insumos" : "Agro e insumos",
+        icon: <Sprout className="h-4 w-4" />,
+        activeBg: "bg-gradient-to-r from-emerald-600 to-teal-500",
+        activeBorder: "border-emerald-500",
+        scannedProduct: isEn ? "Seed batch demonstration" : isBr ? "Lote de demonstração de sementes" : "Lote de semillas de demostración",
+        scannedBatch: "DEMO-AGRO-2026-001",
+        partnerBrand: isEn ? "Authorized technical team" : isBr ? "Equipe técnica autorizada" : "Equipo técnico autorizado",
+        partnerBenefit: isEn ? "Batch guidance and support" : isBr ? "Orientação e suporte do lote" : "Información y asistencia del lote",
         partnerBenefitDesc: isEn
-          ? "Safe return to the hotel after a validated tasting."
+          ? "Shows approved information and the available support path."
           : isBr
-            ? "Permite voltar ao hotel com seguranca depois da degustacao."
-            : "Permite regresar al hotel con seguridad despues de la degustacion.",
-        feeText: isEn ? "Eligibility + consent" : isBr ? "Elegibilidade + consentimento" : "Elegibilidad + consentimiento",
-        crmSignal: isEn ? "High-value tourist, verified tasting" : isBr ? "Turista VIP, degustacao verificada" : "Turista VIP, cata verificada",
-        policyGate: isEn ? "Same-day tap + consent + route safety" : isBr ? "Tap no dia + consentimento + rota segura" : "Tap del dia + consentimiento + ruta segura",
-        businessResult: isEn ? "Configurable benefit and commercial attribution" : isBr ? "Beneficio configuravel e atribuicao comercial" : "Beneficio configurable y atribucion comercial",
-        proofMode: isEn ? "Hash-only + consent token" : isBr ? "Hash-only + token de consentimento" : "Hash-only + token de consentimiento",
+            ? "Mostra informações aprovadas e o caminho de suporte disponível."
+            : "Muestra información aprobada y el camino de asistencia disponible.",
+        feeText: isEn ? "Batch + use rules" : isBr ? "Lote + regras de uso" : "Lote + reglas de uso",
+        crmSignal: isEn ? "Batch query in the field" : isBr ? "Consulta do lote no campo" : "Consulta del lote en campo",
+        policyGate: isEn ? "Enabled batch + current information" : isBr ? "Lote habilitado + informação vigente" : "Lote habilitado + información vigente",
+        businessResult: isEn ? "Information and support available" : isBr ? "Informação e suporte disponíveis" : "Información y asistencia disponibles",
+        proofMode: isEn ? "Query record with protected data" : isBr ? "Registro da consulta com dados protegidos" : "Registro de consulta con datos protegidos",
       },
       {
-        id: "festivals-food",
-        name: isEn ? "Events + gastronomy" : isBr ? "Festivais + gastronomia" : "Festivales + gastronomia",
-        industry: isEn ? "Entertainment and food" : isBr ? "Entretenimento e gastronomia" : "Entretenimiento y gastronomia",
-        icon: <Ticket className="h-4 w-4" />,
-        activeBg: "bg-gradient-to-r from-orange-500 to-amber-400",
-        activeBorder: "border-orange-500",
-        scannedProduct: isEn ? "Serialized event wristband" : isBr ? "Pulseira serializada de evento" : "Pulsera serializada de evento",
-        scannedBatch: "DEMO-EVENT-2026-001",
-        partnerBrand: isEn ? "Participating venue operator" : isBr ? "Operador gastronomico participante" : "Operador gastronomico participante",
-        partnerBenefit: isEn ? "Configurable on-site benefit" : isBr ? "Beneficio configuravel no evento" : "Beneficio configurable en el evento",
+        id: "pharma-information",
+        name: isEn ? "Medicines + approved information" : isBr ? "Medicamentos + informação aprovada" : "Medicamentos + información aprobada",
+        industry: isEn ? "Pharmaceutical and health" : isBr ? "Medicamentos e saúde" : "Medicamentos y salud",
+        icon: <Pill className="h-4 w-4" />,
+        activeBg: "bg-gradient-to-r from-sky-600 to-cyan-500",
+        activeBorder: "border-sky-500",
+        scannedProduct: isEn ? "Identified package demonstration" : isBr ? "Embalagem identificada de demonstração" : "Envase identificado de demostración",
+        scannedBatch: "DEMO-SALUD-2026-001",
+        partnerBrand: isEn ? "Authorized information channel" : isBr ? "Canal de informação autorizado" : "Canal de información autorizado",
+        partnerBenefit: isEn ? "Approved information and next steps" : isBr ? "Informação aprovada e próximos passos" : "Información aprobada y próximos pasos",
         partnerBenefitDesc: isEn
-          ? "Unlocked only for verified attendees inside the venue."
+          ? "Shows batch information and the action defined for that product."
           : isBr
-            ? "Liberada apenas para assistentes verificados dentro do evento."
-            : "Habilitada solo para asistentes verificados dentro del predio.",
-        feeText: isEn ? "Access proof + audience match" : isBr ? "Prova de acesso + audiencia" : "Prueba de acceso + audiencia",
-        crmSignal: isEn ? "Verified attendee inside venue" : isBr ? "Assistente verificado no evento" : "Asistente verificado en el predio",
-        policyGate: isEn ? "Wristband valid + location window" : isBr ? "Pulseira valida + janela de localizacao" : "Pulsera valida + ventana de ubicacion",
-        businessResult: isEn ? "On-site redemption and sponsor attribution" : isBr ? "Canje no local e atribuicao ao patrocinador" : "Canje en predio y atribucion al sponsor",
-        proofMode: isEn ? "Access proof + hash-only" : isBr ? "Prova de acesso + hash-only" : "Prueba de acceso + hash-only",
+            ? "Mostra informações do lote e a ação definida para esse produto."
+            : "Muestra información del lote y la acción definida para ese producto.",
+        feeText: isEn ? "Package + approved rules" : isBr ? "Embalagem + regras aprovadas" : "Envase + reglas aprobadas",
+        crmSignal: isEn ? "Package query recorded" : isBr ? "Consulta da embalagem registrada" : "Consulta del envase registrada",
+        policyGate: isEn ? "Current batch + approved information" : isBr ? "Lote vigente + informação aprovada" : "Lote vigente + información aprobada",
+        businessResult: isEn ? "Clear information and guided support" : isBr ? "Informação clara e suporte orientado" : "Información clara y asistencia guiada",
+        proofMode: isEn ? "Query result with defined limits" : isBr ? "Resultado da consulta com limites definidos" : "Resultado de consulta con límites definidos",
       },
       {
         id: "sneakers-club",
-        name: isEn ? "Luxury + club access" : isBr ? "Luxo + acesso club" : "Lujo + experiencias club",
-        industry: isEn ? "Fashion and nightlife" : isBr ? "Moda e eventos VIP" : "Moda y eventos VIP",
+        name: isEn ? "Fashion + after-sales" : isBr ? "Moda + pós-venda" : "Moda + postventa",
+        industry: isEn ? "Fashion and premium experiences" : isBr ? "Moda e experiências premium" : "Moda y experiencias premium",
         icon: <Sparkles className="h-4 w-4" />,
         activeBg: "bg-gradient-to-r from-yellow-500 to-amber-600",
         activeBorder: "border-yellow-500",
         scannedProduct: isEn ? "Limited-edition product demo" : isBr ? "Produto demo de edicao limitada" : "Producto demo de edicion limitada",
         scannedBatch: "DEMO-LUXURY-2026-001",
-        partnerBrand: isEn ? "Participating private club" : isBr ? "Clube privado participante" : "Club privado participante",
-        partnerBenefit: isEn ? "Configurable access benefit" : isBr ? "Beneficio de acesso configuravel" : "Beneficio de acceso configurable",
+        partnerBrand: isEn ? "Illustrative premium club" : isBr ? "Clube premium ilustrativo" : "Club premium ilustrativo",
+        partnerBenefit: isEn ? "Configurable access benefit" : isBr ? "Benefício de acesso configurável" : "Beneficio de acceso configurable",
         partnerBenefitDesc: isEn
           ? "Verified ownership acts as a private membership signal."
           : isBr
             ? "A titularidade verificada atua como sinal de membresia privada."
-            : "La titularidad verificada actua como senal de membresia privada.",
-        feeText: isEn ? "Revenue share + fraud gate" : isBr ? "Receita compartilhada + antifraude" : "Revenue share + antifraude",
-        crmSignal: isEn ? "Owner verified, resale-safe profile" : isBr ? "Dono verificado, perfil seguro para revenda" : "Dueno verificado, perfil seguro para reventa",
-        policyGate: isEn ? "Fresh tap + ownership + risk gate" : isBr ? "Tap fresco + titularidade + risco" : "Tap fresco + titularidad + riesgo",
+            : "La titularidad aprobada puede habilitar un beneficio privado.",
+        feeText: isEn ? "Ownership + after-sales rules" : isBr ? "Titularidade + regras de pós-venda" : "Titularidad + reglas de postventa",
+        crmSignal: isEn ? "Ownership query recorded" : isBr ? "Consulta de titularidade registrada" : "Consulta de titularidad registrada",
+        policyGate: isEn ? "Current query + ownership + risk" : isBr ? "Consulta vigente + titularidade + risco" : "Consulta vigente + titularidad + riesgo",
         businessResult: isEn ? "VIP club access and resale trust" : isBr ? "Acesso VIP e confianca para revenda" : "Acceso VIP y confianza para reventa",
-        proofMode: isEn ? "Ownership proof + private CRM" : isBr ? "Prova de titularidade + CRM privado" : "Prueba de propiedad + CRM privado",
+        proofMode: isEn ? "Ownership record with protected data" : isBr ? "Registro de titularidade com dados protegidos" : "Registro de titularidad con datos protegidos",
       },
     ],
     [isBr, isEn]
@@ -279,7 +280,7 @@ export function BrandSynergySimulator({ locale }: { locale: string }) {
 
           <div className="brand-synergy-flow mt-6 flex items-center gap-2 overflow-x-auto pb-1 text-[11px] font-bold">
             <span className="brand-synergy-flow__chip brand-synergy-flow__chip--brand inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-slate-800 px-3 py-1.5 text-white whitespace-nowrap">
-              <Wine className="h-3.5 w-3.5" />
+              <PackageCheck className="h-3.5 w-3.5" />
               {copy.flow[0]}
             </span>
             <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-500" />
