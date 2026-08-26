@@ -128,9 +128,9 @@ test("audience, SDK and wallet surfaces name digital rights without authenticati
 
 test("landing, pricing and demo surfaces label evidence and simulations precisely", () => {
   const surfaces = [home, demoPage, demoLab, heroScene, landingSections, calculator, pricing, interactiveDemo, radar, ogImage, demoSummary].join("\n");
-  assert.match(landingSections, /nexID checks the digital label; the reading does not confirm the physical product by itself/);
-  assert.match(landingSections, /A nexID verifica a etiqueta digital; a leitura não confirma sozinha o produto físico/);
-  assert.match(landingSections, /nexID verifica la etiqueta digital; la lectura no confirma por sí sola el producto físico/);
+  assert.match(landingSections, /nexID checks the digital label and shows a clear result[^.]*\. To validate the physical product as well[^.]*specific controls/);
+  assert.match(landingSections, /A nexID verifica a etiqueta digital e mostra um resultado claro[^.]*\. Para validar também o produto físico[^.]*controles específicos/);
+  assert.match(landingSections, /nexID verifica la etiqueta digital y muestra un resultado claro[^.]*\. Para validar también el producto físico[^.]*controles específicos/);
   assert.match(demoLab, /Product scene/);
   assert.match(demoLab, /Message NFC accepted|Mensaje NFC aceptado/);
   assert.match(radar, /Reported custody event \(demo\)/);

@@ -55,9 +55,9 @@ test("SimpleTrustFlow is three plain-language steps, one action and one physical
   assert.match(flow, /<HorizontalRailControls[\s\S]*railId="simple-trust-rail"/);
   assert.match(flow, /<SimpleTrustStepVisual kind=\{visualKinds\[index\] \?\? "discover"\} locale=\{locale\} \/>/);
 
-  assert.match(flow, /lectura no confirma[^.]{0,80}producto físico/i);
-  assert.match(flow, /leitura não confirma[^.]{0,80}produto físico/i);
-  assert.match(flow, /reading does not confirm[^.]{0,80}physical product/i);
+  assert.match(flow, /validar también el producto físico[^.]{0,80}controles específicos/i);
+  assert.match(flow, /validar também o produto físico[^.]{0,80}controles específicos/i);
+  assert.match(flow, /validate the physical product[^.]{0,80}specific controls/i);
   assert.match(flow, /id="como-funciona"/);
 });
 

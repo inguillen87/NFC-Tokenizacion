@@ -19,6 +19,8 @@ test("landing light mode owns high-risk CTA and footer colors", () => {
   assert.match(css, /\.landing-offline-demo-cta[\s\S]*color: #0f172a !important/);
   assert.match(css, /html\.theme-light \.site-footer-columns h2[\s\S]*color: #10233f/);
   assert.match(css, /html\.theme-light \.site-footer-columns \.site-footer-demo-link[\s\S]*color: #087f8c/);
+  assert.match(css, /\.landing-root \.landing-hero-section h1,[\s\S]*\.landing-root \.commercial-value-intro h2[\s\S]*linear-gradient\(112deg, #f8fbff/);
+  assert.match(css, /html\.theme-light \.landing-root \.landing-hero-section h1,[\s\S]*linear-gradient\(112deg, #10233f[^\n]*#087f8c[^\n]*#12b8c8/);
 });
 
 test("SDK light mode uses readable semantic tones", () => {

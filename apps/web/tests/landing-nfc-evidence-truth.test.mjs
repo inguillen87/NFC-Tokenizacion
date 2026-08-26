@@ -18,9 +18,9 @@ test("landing content scopes tap validation to digital evidence in ES, EN and PT
 });
 
 test("landing sections separate tag, TT and declared data from physical proof", () => {
-  assert.match(sections, /nexID checks the digital label; the reading does not confirm the physical product by itself/);
-  assert.match(sections, /A nexID verifica a etiqueta digital; a leitura não confirma sozinha o produto físico/);
-  assert.match(sections, /nexID verifica la etiqueta digital; la lectura no confirma por sí sola el producto físico/);
+  assert.match(sections, /nexID checks the digital label and shows a clear result[^.]*\. To validate the physical product as well[^.]*specific controls/);
+  assert.match(sections, /A nexID verifica a etiqueta digital e mostra um resultado claro[^.]*\. Para validar também o produto físico[^.]*controles específicos/);
+  assert.match(sections, /nexID verifica la etiqueta digital y muestra un resultado claro[^.]*\. Para validar también el producto físico[^.]*controles específicos/);
   assert.match(sections, /no autenticidad física/);
   assert.match(sections, /TT reportado/);
   assert.match(sections, /not proof of physical contents/);

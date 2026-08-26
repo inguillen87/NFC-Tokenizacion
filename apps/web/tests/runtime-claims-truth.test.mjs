@@ -21,7 +21,7 @@ const [home, demo, landing, interactive, ogImage, assistant, demoLab, demoLabPag
 test("guided public demos never masquerade simulation as production telemetry", () => {
   const publicDemo = [home, demo, landing, interactive, ogImage, assistant].join("\n");
 
-  assert.match(landing, /nexID checks the digital label; the reading does not confirm the physical product by itself/);
+  assert.match(landing, /nexID checks the digital label and shows a clear result[^.]*\. To validate the physical product as well[^.]*specific controls/);
   assert.match(demo, /source-labelled demo surfaces/);
   assert.match(landing, /View guided demo/);
   assert.match(interactive, /reported openings, duplicates and regions from the selected data source/);

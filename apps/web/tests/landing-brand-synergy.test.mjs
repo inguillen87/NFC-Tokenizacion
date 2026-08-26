@@ -43,9 +43,9 @@ test("landing claims qualify technical security and commercial outcomes", async 
 
   assert.doesNotMatch(content, /asegura recompras|sees if the product is real/);
   assert.doesNotMatch(sections, /impossible to clone or replay|imposible de clonar o copiar/);
-  assert.match(sections, /lectura no confirma por sí sola el producto físico/);
-  assert.match(sections, /leitura não confirma sozinha o produto físico/);
-  assert.match(sections, /reading does not confirm the physical product by itself/);
+  assert.match(sections, /validar también el producto físico[^.]*controles específicos/);
+  assert.match(sections, /validar também o produto físico[^.]*controles específicos/);
+  assert.match(sections, /validate the physical product as well[^.]*specific controls/);
   assert.doesNotMatch(content, /(?:garantiza|garante|guarantees) (?:la |a )?(?:conversión|conversão|conversion|recompra|repeat purchase)/i);
   assert.match(sections, /designed to resist message copying and replay when keys, counters and server validation are correctly configured/);
 });

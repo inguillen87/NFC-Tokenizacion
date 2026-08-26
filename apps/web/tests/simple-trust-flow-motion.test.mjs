@@ -31,7 +31,7 @@ test("three decorative vector scenes add no media request or interactive control
   assert.match(visuals, /RA-2407/);
   assert.match(visuals, /MENDOZA, AR/);
   assert.match(visuals, /CONTROLES  3 DE 3/);
-  assert.match(visuals, /NO CONFIRMA EL PRODUCTO FÍSICO/);
+  assert.match(visuals, /RESULTADO DE LA ETIQUETA DIGITAL/);
   assert.doesNotMatch(visuals, /<img|<video|\.gif|https?:\/\/|onClick|tabIndex/i);
 });
 

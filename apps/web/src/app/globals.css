@@ -54824,6 +54824,39 @@ html[data-theme="light"] .commercial-value-icon {
   color: #087f8c;
 }
 
+/* A single brand gradient connects the large editorial statements to the
+   logo and primary actions without turning supporting copy into decoration. */
+.landing-root .landing-hero-section h1,
+.landing-root .institutional-video-copy h2,
+.landing-root .simple-trust-flow-intro h2,
+.landing-root .commercial-value-intro h2 {
+  background-image: linear-gradient(112deg, #f8fbff 0%, #d7eef4 44%, #67e8f9 78%, #2dd4bf 100%) !important;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent !important;
+}
+
+html.theme-light .landing-root .landing-hero-section h1,
+html[data-theme="light"] .landing-root .landing-hero-section h1,
+html.theme-light .landing-root .institutional-video-copy h2,
+html[data-theme="light"] .landing-root .institutional-video-copy h2,
+html.theme-light .landing-root .simple-trust-flow-intro h2,
+html[data-theme="light"] .landing-root .simple-trust-flow-intro h2,
+html.theme-light .landing-root .commercial-value-intro h2,
+html[data-theme="light"] .landing-root .commercial-value-intro h2 {
+  background-image: linear-gradient(112deg, #10233f 0%, #294461 43%, #087f8c 76%, #12b8c8 100%) !important;
+}
+
+@media (forced-colors: active) {
+  .landing-root .landing-hero-section h1,
+  .landing-root .institutional-video-copy h2,
+  .landing-root .simple-trust-flow-intro h2,
+  .landing-root .commercial-value-intro h2 {
+    background: none !important;
+    color: CanvasText !important;
+  }
+}
+
 @media (max-width: 1023px) {
   .commercial-value-shell {
     grid-template-columns: minmax(0, 1fr);
