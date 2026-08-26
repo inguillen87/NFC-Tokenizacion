@@ -78,13 +78,16 @@ test("enterprise release gate requires the reviewed ordered set through 0096", (
     "20260802160000_0081_supplier_manifest_atomic_import.sql",
     "20260802170000_0082_consumer_session_revocation.sql",
     "20260802180000_0083_sdk_event_webhook_atomic_outbox.sql",
+    "20260802185000_0083b_vault_artifact_status_bridge.sql",
     "20260802190000_0084_tenant_vault_audited_download.sql",
     "20260802200000_0085_supplier_non_sun_qa_evidence.sql",
     "20260802210000_0086_supplier_order_lifecycle.sql",
     "20260802220000_0087_packaging_lab_foundation.sql",
+    "20260802225000_0087b_webhook_delivery_identity_bridge.sql",
     "20260802230000_0088_enterprise_event_profile.sql",
     "20260802240000_0089_sun_carrier_trust_state.sql",
     "20260802250000_0090_supplier_carrier_key_scope.sql",
+    "20260802255000_0090b_vault_artifact_canonical_bridge.sql",
     "20260802260000_0091_supplier_keyless_qa_activation.sql",
     "20260802270000_0092_supplier_carrier_scope_integrity.sql",
     "20260802280000_0093_sun_tt_durable_truth_binding.sql",
@@ -104,7 +107,7 @@ test("migration safety gate covers 0061-0096 and the historical clean-order boun
   assert.equal(result.status, 0, result.stderr || result.stdout);
   const report = JSON.parse(result.stdout.trim());
   assert.equal(report.ok, true);
-  assert.deepEqual(report.migrations.slice(-36).map(({ id }) => id), [
+  assert.deepEqual(report.migrations.slice(-39).map(({ id }) => id), [
     "20260726190000_0061_supplier_export_artifact_delivery.sql",
     "20260728120000_0062_sun_atomic_persistence.sql",
     "20260728143000_0063_supplier_packaging_governance.sql",
@@ -128,13 +131,16 @@ test("migration safety gate covers 0061-0096 and the historical clean-order boun
     "20260802160000_0081_supplier_manifest_atomic_import.sql",
     "20260802170000_0082_consumer_session_revocation.sql",
     "20260802180000_0083_sdk_event_webhook_atomic_outbox.sql",
+    "20260802185000_0083b_vault_artifact_status_bridge.sql",
     "20260802190000_0084_tenant_vault_audited_download.sql",
     "20260802200000_0085_supplier_non_sun_qa_evidence.sql",
     "20260802210000_0086_supplier_order_lifecycle.sql",
     "20260802220000_0087_packaging_lab_foundation.sql",
+    "20260802225000_0087b_webhook_delivery_identity_bridge.sql",
     "20260802230000_0088_enterprise_event_profile.sql",
     "20260802240000_0089_sun_carrier_trust_state.sql",
     "20260802250000_0090_supplier_carrier_key_scope.sql",
+    "20260802255000_0090b_vault_artifact_canonical_bridge.sql",
     "20260802260000_0091_supplier_keyless_qa_activation.sql",
     "20260802270000_0092_supplier_carrier_scope_integrity.sql",
     "20260802280000_0093_sun_tt_durable_truth_binding.sql",

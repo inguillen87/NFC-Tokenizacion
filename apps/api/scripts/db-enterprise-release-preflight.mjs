@@ -36,13 +36,16 @@ export const expectedMigrations = Object.freeze([
   '20260802160000_0081_supplier_manifest_atomic_import.sql',
   '20260802170000_0082_consumer_session_revocation.sql',
   '20260802180000_0083_sdk_event_webhook_atomic_outbox.sql',
+  '20260802185000_0083b_vault_artifact_status_bridge.sql',
   '20260802190000_0084_tenant_vault_audited_download.sql',
   '20260802200000_0085_supplier_non_sun_qa_evidence.sql',
   '20260802210000_0086_supplier_order_lifecycle.sql',
   '20260802220000_0087_packaging_lab_foundation.sql',
+  '20260802225000_0087b_webhook_delivery_identity_bridge.sql',
   '20260802230000_0088_enterprise_event_profile.sql',
   '20260802240000_0089_sun_carrier_trust_state.sql',
   '20260802250000_0090_supplier_carrier_key_scope.sql',
+  '20260802255000_0090b_vault_artifact_canonical_bridge.sql',
   '20260802260000_0091_supplier_keyless_qa_activation.sql',
   '20260802270000_0092_supplier_carrier_scope_integrity.sql',
   '20260802280000_0093_sun_tt_durable_truth_binding.sql',
@@ -647,9 +650,11 @@ export async function runEnterpriseReleasePreflight(options = {}) {
                   pg_get_indexdef(index_row.indexrelid, 2, false),
                   pg_get_indexdef(index_row.indexrelid, 3, false),
                   pg_get_indexdef(index_row.indexrelid, 4, false)
-                ] = ARRAY['tenant_id', 'risk_profile_version', 'event_created_at DESC', 'event_id DESC']::text[]
-                AND pg_get_indexdef(index_row.indexrelid)
-                  LIKE '%(tenant_id, risk_profile_version, event_created_at DESC, event_id DESC)%'
+                ] = ARRAY['tenant_id', 'risk_profile_version', 'event_created_at', 'event_id']::text[]
+                AND pg_index_column_has_property(index_row.indexrelid, 1, 'asc') IS TRUE
+                AND pg_index_column_has_property(index_row.indexrelid, 2, 'asc') IS TRUE
+                AND pg_index_column_has_property(index_row.indexrelid, 3, 'desc') IS TRUE
+                AND pg_index_column_has_property(index_row.indexrelid, 4, 'desc') IS TRUE
             )
             AND COALESCE(position(
               'NEW.risk_profile_version := v_projection.risk_profile_version'

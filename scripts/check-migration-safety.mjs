@@ -43,13 +43,16 @@ const ids = [
   "20260802160000_0081_supplier_manifest_atomic_import.sql",
   "20260802170000_0082_consumer_session_revocation.sql",
   "20260802180000_0083_sdk_event_webhook_atomic_outbox.sql",
+  "20260802185000_0083b_vault_artifact_status_bridge.sql",
   "20260802190000_0084_tenant_vault_audited_download.sql",
   "20260802200000_0085_supplier_non_sun_qa_evidence.sql",
   "20260802210000_0086_supplier_order_lifecycle.sql",
   "20260802220000_0087_packaging_lab_foundation.sql",
+  "20260802225000_0087b_webhook_delivery_identity_bridge.sql",
   "20260802230000_0088_enterprise_event_profile.sql",
   "20260802240000_0089_sun_carrier_trust_state.sql",
   "20260802250000_0090_supplier_carrier_key_scope.sql",
+  "20260802255000_0090b_vault_artifact_canonical_bridge.sql",
   "20260802260000_0091_supplier_keyless_qa_activation.sql",
   "20260802270000_0092_supplier_carrier_scope_integrity.sql",
   "20260802280000_0093_sun_tt_durable_truth_binding.sql",
@@ -94,13 +97,16 @@ const sql80 = await readSql("20260802153000_0080_offline_scan_history_index.sql"
 const sql81 = await readSql("20260802160000_0081_supplier_manifest_atomic_import.sql");
 const sql82 = await readSql("20260802170000_0082_consumer_session_revocation.sql");
 const sql83 = await readSql("20260802180000_0083_sdk_event_webhook_atomic_outbox.sql");
+const sql83b = await readSql("20260802185000_0083b_vault_artifact_status_bridge.sql");
 const sql84 = await readSql("20260802190000_0084_tenant_vault_audited_download.sql");
 const sql85 = await readSql("20260802200000_0085_supplier_non_sun_qa_evidence.sql");
 const sql86 = await readSql("20260802210000_0086_supplier_order_lifecycle.sql");
 const sql87 = await readSql("20260802220000_0087_packaging_lab_foundation.sql");
+const sql87b = await readSql("20260802225000_0087b_webhook_delivery_identity_bridge.sql");
 const sql88 = await readSql("20260802230000_0088_enterprise_event_profile.sql");
 const sql89 = await readSql("20260802240000_0089_sun_carrier_trust_state.sql");
 const sql90 = await readSql("20260802250000_0090_supplier_carrier_key_scope.sql");
+const sql90b = await readSql("20260802255000_0090b_vault_artifact_canonical_bridge.sql");
 const sql91 = await readSql("20260802260000_0091_supplier_keyless_qa_activation.sql");
 const sql92 = await readSql("20260802270000_0092_supplier_carrier_scope_integrity.sql");
 const sql93 = await readSql("20260802280000_0093_sun_tt_durable_truth_binding.sql");
@@ -465,6 +471,15 @@ const tenantVaultAuditedDownloadIsDurable = sql84.includes("CREATE TABLE IF NOT 
   && sql84.includes("trg_vault_artifact_downloads_immutable")
   && sql84.includes("BEFORE UPDATE OR DELETE ON vault_artifact_downloads")
   && !/hsm[_ -]?backed\s*[:=]\s*true/i.test(sql84);
+const vaultArtifactStatusBridgeIsDurable = sql83b.includes("ADD COLUMN IF NOT EXISTS status text")
+  && /SET status = 'active'\s+WHERE status IS NULL/m.test(sql83b)
+  && sql83b.includes("status NOT IN ('active', 'archived')")
+  && sql83b.includes("ALTER COLUMN status SET NOT NULL")
+  && sql83b.includes("VALIDATE CONSTRAINT vault_artifacts_status_check")
+  && ids.indexOf("20260802180000_0083_sdk_event_webhook_atomic_outbox.sql")
+    < ids.indexOf("20260802185000_0083b_vault_artifact_status_bridge.sql")
+  && ids.indexOf("20260802185000_0083b_vault_artifact_status_bridge.sql")
+    < ids.indexOf("20260802190000_0084_tenant_vault_audited_download.sql");
 const supplierNonSunQaEvidenceIsDurable = sql85.includes("CREATE TABLE IF NOT EXISTS supplier_qa_carrier_evidence_receipts")
   && sql85.includes("CREATE OR REPLACE FUNCTION public.nexid_supplier_carrier_qa_v1_capability")
   && sql85.includes("CREATE OR REPLACE FUNCTION public.nexid_commit_supplier_carrier_qa_v1")
@@ -507,6 +522,16 @@ const packagingLabFoundationIsDurable = sql87.includes("CREATE TABLE IF NOT EXIS
   && sql87.includes("trg_packaging_lab_tag_activation_guard")
   && sql87.includes("REVOKE ALL ON TABLE packaging_lab_approvals FROM PUBLIC")
   && !/hsm[_ -]?backed\s*[:=]\s*true/i.test(sql87);
+const webhookDeliveryIdentityBridgeIsDurable = sql87b.includes("v_delivery_count <> 0")
+  && sql87b.includes("v_foreign_key_count <> 0")
+  && sql87b.includes("ALTER COLUMN id TYPE bigint USING NULL::bigint")
+  && sql87b.includes("CREATE SEQUENCE IF NOT EXISTS public.webhook_deliveries_id_seq AS bigint")
+  && sql87b.includes("OWNED BY public.webhook_deliveries.id")
+  && sql87b.includes("ALTER COLUMN id SET DEFAULT nextval")
+  && ids.indexOf("20260802220000_0087_packaging_lab_foundation.sql")
+    < ids.indexOf("20260802225000_0087b_webhook_delivery_identity_bridge.sql")
+  && ids.indexOf("20260802225000_0087b_webhook_delivery_identity_bridge.sql")
+    < ids.indexOf("20260802230000_0088_enterprise_event_profile.sql");
 const enterpriseEventProfileIsDurable = sql88.includes("'cropwise_physical_product_event'")
   && sql88.includes("CREATE TABLE IF NOT EXISTS webhook_delivery_attempts")
   && sql88.includes("CREATE TABLE IF NOT EXISTS webhook_delivery_replay_receipts")
@@ -540,6 +565,19 @@ const supplierCarrierKeyScopeIsDurable = sql90.includes("ALTER TABLE batches ALT
   && sql90.includes("'managed_kms', false")
   && sql90.includes("'hsm_backed', false")
   && !/hsm[_ -]?backed\s*[:=]\s*true/i.test(sql90);
+const vaultArtifactCanonicalBridgeIsDurable = sql90b.includes("ADD COLUMN IF NOT EXISTS supplier_sub_batch_id uuid")
+  && sql90b.includes("ADD COLUMN IF NOT EXISTS content_hash text")
+  && sql90b.includes("vault_artifact_content_hash_conflict")
+  && sql90b.includes("vault_artifact_content_hash_unrecoverable")
+  && sql90b.includes("vault_artifact_content_hash_noncanonical")
+  && sql90b.includes("vault_artifact_sub_batch_scope_reconciliation_required")
+  && sql90b.includes("artifact_type TYPE text USING artifact_type::text")
+  && sql90b.includes("ALTER COLUMN content_hash SET NOT NULL")
+  && sql90b.includes("VALIDATE CONSTRAINT vault_artifacts_supplier_sub_batch_id_fkey")
+  && ids.indexOf("20260802250000_0090_supplier_carrier_key_scope.sql")
+    < ids.indexOf("20260802255000_0090b_vault_artifact_canonical_bridge.sql")
+  && ids.indexOf("20260802255000_0090b_vault_artifact_canonical_bridge.sql")
+    < ids.indexOf("20260802260000_0091_supplier_keyless_qa_activation.sql");
 const supplierKeylessQaActivationIsDurable = sql91.includes("CREATE TABLE IF NOT EXISTS supplier_keyless_production_qa_acceptance_receipts")
   && sql91.includes("CREATE OR REPLACE FUNCTION public.nexid_supplier_keyless_qa_activation_v1_capability()")
   && sql91.includes("CREATE OR REPLACE FUNCTION public.nexid_commit_supplier_carrier_qa_v1(p_input jsonb)")
@@ -602,6 +640,11 @@ const enterpriseRbacRiskTruthIsDurable = sql96.includes("ADD COLUMN IF NOT EXIST
   && sql96.includes("CREATE TABLE IF NOT EXISTS public.event_risk_projections")
   && /CONSTRAINT event_risk_projections_pkey PRIMARY KEY \(\s*event_id, event_created_at, risk_profile_version\s*\)/m.test(sql96)
   && sql96.includes("CREATE INDEX IF NOT EXISTS idx_event_risk_projections_tenant_created")
+  && sql96.includes("ARRAY['tenant_id', 'risk_profile_version', 'event_created_at', 'event_id']::text[]")
+  && sql96.includes("pg_index_column_has_property(index_row.indexrelid, 1, 'asc') IS TRUE")
+  && sql96.includes("pg_index_column_has_property(index_row.indexrelid, 2, 'asc') IS TRUE")
+  && sql96.includes("pg_index_column_has_property(index_row.indexrelid, 3, 'desc') IS TRUE")
+  && sql96.includes("pg_index_column_has_property(index_row.indexrelid, 4, 'desc') IS TRUE")
   && sql96.includes("CREATE OR REPLACE FUNCTION public.nexid_compute_event_risk_v1(")
   && /nexid_compute_event_risk_v1\([\s\S]*?IMMUTABLE\s+PARALLEL SAFE/m.test(sql96)
   && !/nexid_compute_event_risk_v1\([\s\S]*?FROM public\.batches[\s\S]*?\$enterprise_event_risk_compute_v1\$/m.test(sql96)
@@ -708,13 +751,16 @@ const ok = checks.every((item) => item.bytes > 0)
   && supplierManifestAtomicImportV2IsDurable
   && consumerSessionRevocationIsDurable
   && sdkEventWebhookAtomicOutboxIsDurable
+  && vaultArtifactStatusBridgeIsDurable
   && tenantVaultAuditedDownloadIsDurable
   && supplierNonSunQaEvidenceIsDurable
   && supplierOrderLifecycleIsDurable
   && packagingLabFoundationIsDurable
+  && webhookDeliveryIdentityBridgeIsDurable
   && enterpriseEventProfileIsDurable
   && sunCarrierTrustStateIsDurable
   && supplierCarrierKeyScopeIsDurable
+  && vaultArtifactCanonicalBridgeIsDurable
   && supplierKeylessQaActivationIsDurable
   && supplierCarrierScopeIntegrityIsDurable
   && sunTtDurableTruthIsDurable
@@ -761,13 +807,16 @@ console.log(JSON.stringify({
     supplier_manifest_atomic_import_v2_is_durable: supplierManifestAtomicImportV2IsDurable,
     consumer_session_revocation_is_durable: consumerSessionRevocationIsDurable,
     sdk_event_webhook_atomic_outbox_is_durable: sdkEventWebhookAtomicOutboxIsDurable,
+    vault_artifact_status_bridge_is_durable: vaultArtifactStatusBridgeIsDurable,
     tenant_vault_audited_download_is_durable: tenantVaultAuditedDownloadIsDurable,
     supplier_non_sun_qa_evidence_is_durable: supplierNonSunQaEvidenceIsDurable,
     supplier_order_lifecycle_is_durable: supplierOrderLifecycleIsDurable,
     packaging_lab_foundation_is_durable: packagingLabFoundationIsDurable,
+    webhook_delivery_identity_bridge_is_durable: webhookDeliveryIdentityBridgeIsDurable,
     enterprise_event_profile_is_durable: enterpriseEventProfileIsDurable,
     sun_carrier_trust_state_is_durable: sunCarrierTrustStateIsDurable,
     supplier_carrier_key_scope_is_durable: supplierCarrierKeyScopeIsDurable,
+    vault_artifact_canonical_bridge_is_durable: vaultArtifactCanonicalBridgeIsDurable,
     supplier_keyless_qa_activation_is_durable: supplierKeylessQaActivationIsDurable,
     supplier_carrier_scope_integrity_is_durable: supplierCarrierScopeIntegrityIsDurable,
     sun_tt_durable_truth_is_durable: sunTtDurableTruthIsDurable,

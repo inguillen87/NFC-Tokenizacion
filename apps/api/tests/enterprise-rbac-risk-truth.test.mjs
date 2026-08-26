@@ -223,7 +223,13 @@ test("0096 versions deterministic software risk and separates historical project
   assert.match(migration, /risk_profile_version=''nexid-risk-v1''::text/);
   assert.match(migration, /risk_score>=0andrisk_score<=100/);
   assert.match(migration, /jsonb_typeoftriggered_rules=''array''::text/);
-  assert.match(migration, /idx_event_risk_projections_tenant_created[\s\S]*indisready[\s\S]*indislive[\s\S]*ARRAY\['tenant_id', 'risk_profile_version', 'event_created_at DESC', 'event_id DESC'\]/);
+  for (const verifier of [migration, preflight, dryRun]) {
+    assert.match(verifier, /idx_event_risk_projections_tenant_created[\s\S]*indisready[\s\S]*indislive[\s\S]*ARRAY\['tenant_id', 'risk_profile_version', 'event_created_at', 'event_id'\]/);
+    assert.match(verifier, /(?:pg_catalog\.)?pg_index_column_has_property\(index_row\.indexrelid, 1, 'asc'\) IS TRUE/);
+    assert.match(verifier, /(?:pg_catalog\.)?pg_index_column_has_property\(index_row\.indexrelid, 2, 'asc'\) IS TRUE/);
+    assert.match(verifier, /(?:pg_catalog\.)?pg_index_column_has_property\(index_row\.indexrelid, 3, 'desc'\) IS TRUE/);
+    assert.match(verifier, /(?:pg_catalog\.)?pg_index_column_has_property\(index_row\.indexrelid, 4, 'desc'\) IS TRUE/);
+  }
   assert.match(migration, /pg_catalog\.aclexplode\([\s\S]*public\.resource_permissions[\s\S]*public\.event_risk_projections[\s\S]*acl\.grantee = 0/);
   assert.match(migration, /CREATE OR REPLACE FUNCTION public\.nexid_compute_event_risk_v1\(/);
 

@@ -1985,9 +1985,14 @@ BEGIN
           pg_catalog.pg_get_indexdef(index_row.indexrelid, 2, false),
           pg_catalog.pg_get_indexdef(index_row.indexrelid, 3, false),
           pg_catalog.pg_get_indexdef(index_row.indexrelid, 4, false)
-        ] = ARRAY['tenant_id', 'risk_profile_version', 'event_created_at DESC', 'event_id DESC']::text[]
-        AND pg_catalog.pg_get_indexdef(index_row.indexrelid)
-          LIKE '%(tenant_id, risk_profile_version, event_created_at DESC, event_id DESC)%'
+        -- The per-column pg_get_indexdef overload returns only each key
+        -- expression. Sort direction is verified structurally through
+        -- pg_index_column_has_property below.
+        ] = ARRAY['tenant_id', 'risk_profile_version', 'event_created_at', 'event_id']::text[]
+        AND pg_catalog.pg_index_column_has_property(index_row.indexrelid, 1, 'asc') IS TRUE
+        AND pg_catalog.pg_index_column_has_property(index_row.indexrelid, 2, 'asc') IS TRUE
+        AND pg_catalog.pg_index_column_has_property(index_row.indexrelid, 3, 'desc') IS TRUE
+        AND pg_catalog.pg_index_column_has_property(index_row.indexrelid, 4, 'desc') IS TRUE
     )
     OR NOT EXISTS (
       SELECT 1

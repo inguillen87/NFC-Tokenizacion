@@ -15,6 +15,32 @@ const exportRoute = await readFile(
   "utf8",
 );
 const vercelIgnore = await readFile(new URL("../../../.vercelignore", import.meta.url), "utf8");
+const statusBridge = await readFile(
+  new URL("../db/migrations/20260802185000_0083b_vault_artifact_status_bridge.sql", import.meta.url),
+  "utf8",
+);
+const canonicalBridge = await readFile(
+  new URL("../db/migrations/20260802255000_0090b_vault_artifact_canonical_bridge.sql", import.meta.url),
+  "utf8",
+);
+
+test("legacy Vault artifacts gain an explicit fail-closed lifecycle before audited downloads", () => {
+  assert.match(statusBridge, /ADD COLUMN IF NOT EXISTS status text/);
+  assert.match(statusBridge, /SET status = 'active'[\s\S]*WHERE status IS NULL/);
+  assert.match(statusBridge, /status NOT IN \('active', 'archived'\)/);
+  assert.match(statusBridge, /ALTER COLUMN status SET NOT NULL/);
+  assert.match(statusBridge, /VALIDATE CONSTRAINT vault_artifacts_status_check/);
+});
+
+test("legacy Vault artifacts reconcile to the canonical supplier contract without inventing hashes", () => {
+  assert.match(canonicalBridge, /ADD COLUMN IF NOT EXISTS supplier_sub_batch_id uuid/);
+  assert.match(canonicalBridge, /ADD COLUMN IF NOT EXISTS content_hash text/);
+  assert.match(canonicalBridge, /vault_artifact_content_hash_conflict/);
+  assert.match(canonicalBridge, /vault_artifact_content_hash_unrecoverable/);
+  assert.match(canonicalBridge, /artifact_type TYPE text USING artifact_type::text/);
+  assert.match(canonicalBridge, /ALTER COLUMN content_hash SET NOT NULL/);
+  assert.match(canonicalBridge, /VALIDATE CONSTRAINT vault_artifacts_supplier_sub_batch_id_fkey/);
+});
 
 test("Vercel upload keeps the dynamic Tenant Vault artifact route", () => {
   const activePatterns = vercelIgnore
