@@ -13,11 +13,12 @@ const [landing, home, sdk, demoLab, css] = await Promise.all([
 test("landing light mode owns high-risk CTA and footer colors", () => {
   assert.doesNotMatch(landing, /landing-consumer-portal-cta/);
   assert.match(landing, /landing-offline-demo-cta/);
-  assert.match(home, /site-footer-data-card/);
-  assert.match(home, /site-footer-whatsapp-link/);
+  assert.match(home, /site-footer-columns/);
+  assert.match(home, /site-footer-demo-link/);
+  assert.doesNotMatch(home, /site-footer-data-card|site-footer-whatsapp-link/);
   assert.match(css, /\.landing-offline-demo-cta[\s\S]*color: #0f172a !important/);
-  assert.match(css, /\.site-footer-data-card[\s\S]*color: #0f172a !important/);
-  assert.match(css, /\.site-footer-whatsapp-link[\s\S]*color: #047857 !important/);
+  assert.match(css, /html\.theme-light \.site-footer-columns h2[\s\S]*color: #10233f/);
+  assert.match(css, /html\.theme-light \.site-footer-columns \.site-footer-demo-link[\s\S]*color: #087f8c/);
 });
 
 test("SDK light mode uses readable semantic tones", () => {

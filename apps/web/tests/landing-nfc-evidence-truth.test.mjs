@@ -7,12 +7,10 @@ const sections = await readFile(new URL("../src/components/landing-sections.tsx"
 const proofSection = await readFile(new URL("../src/components/landing-proof-section.tsx", import.meta.url), "utf8");
 
 test("landing content scopes tap validation to digital evidence in ES, EN and PT", () => {
-  assert.match(content, /nexID verifica la etiqueta digital y muestra el resultado de la lectura/);
-  assert.match(content, /A nexID verifica a etiqueta digital e mostra o resultado da leitura/);
-  assert.match(content, /nexID verifies the digital label and shows the reading result/);
-  assert.match(content, /La autenticidad del producto físico requiere controles adicionales/);
-  assert.match(content, /A autenticidade do produto físico requer controles adicionais/);
-  assert.match(content, /Physical product authenticity requires additional checks/);
+  assert.match(content, /Con NFC o QR, tus clientes conocen el producto/);
+  assert.match(content, /Com NFC ou QR, seus clientes conhecem o produto/);
+  assert.match(content, /With NFC or QR, customers discover the product/);
+  assert.doesNotMatch(content, /hero:[\s\S]{0,420}(?:SUN|\bTT\b|hash-only|producto físico|produto físico|physical product)/i);
   assert.match(content, /Mensaje válido/);
   assert.match(content, /Mensagem válida/);
   assert.match(content, /Valid message/);
@@ -20,9 +18,9 @@ test("landing content scopes tap validation to digital evidence in ES, EN and PT
 });
 
 test("landing sections separate tag, TT and declared data from physical proof", () => {
-  assert.match(sections, /nexID checks the digital label\. Physical product authenticity requires additional checks/);
-  assert.match(sections, /A nexID verifica a etiqueta digital\. A autenticidade do produto físico exige controles adicionais/);
-  assert.match(sections, /nexID comprueba la etiqueta digital\. La autenticidad del producto físico requiere controles adicionales/);
+  assert.match(sections, /nexID checks the digital label; the reading does not confirm the physical product by itself/);
+  assert.match(sections, /A nexID verifica a etiqueta digital; a leitura não confirma sozinha o produto físico/);
+  assert.match(sections, /nexID verifica la etiqueta digital; la lectura no confirma por sí sola el producto físico/);
   assert.match(sections, /no autenticidad física/);
   assert.match(sections, /TT reportado/);
   assert.match(sections, /not proof of physical contents/);

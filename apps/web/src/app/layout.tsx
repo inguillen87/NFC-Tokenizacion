@@ -17,24 +17,24 @@ const DEFAULT_SITE_URL = "https://nexid.lat";
 
 const socialCopyByLocale = {
   "es-AR": {
-    title: "nexID | Evidencia NFC/SUN, pasaportes y derechos digitales",
+    title: "nexID | Productos conectados, garantía y postventa",
     description:
-      "Validá mensajes NFC/SUN, registrá eventos reportados, organizá lote y origen declarados, y activá pasaportes o derechos digitales bajo política. No es una prueba autónoma del objeto físico.",
-    imageAlt: "nexID - Evidencia NFC/SUN, datos declarados y pasaportes digitales",
+      "Conectá cada producto con su historia y sus servicios. Con NFC o QR, tus clientes acceden a información, garantía, beneficios y atención en una experiencia simple.",
+    imageAlt: "nexID conecta productos con información, garantía y postventa",
     keywords: ["Validación NFC SUN", "NFC", "Pasaporte Digital", "Cadena de Suministro Empresarial", "Trazabilidad Declarada", "Derechos Digitales", "nexID"]
   },
   "pt-BR": {
-    title: "nexID | Evidência NFC/SUN, passaportes e direitos digitais",
+    title: "nexID | Produtos conectados, garantia e pós-venda",
     description:
-      "Valide mensagens NFC/SUN, registre eventos reportados, organize lote e origem declarados e ative passaportes ou direitos digitais por política. Não é prova autônoma do objeto físico.",
-    imageAlt: "nexID - Evidência NFC/SUN, dados declarados e passaportes digitais",
+      "Conecte cada produto à sua história e aos seus serviços. Com NFC ou QR, seus clientes acessam informações, garantia, benefícios e atendimento em uma experiência simples.",
+    imageAlt: "nexID conecta produtos com informações, garantia e pós-venda",
     keywords: ["Validação NFC SUN", "NFC", "Passaporte Digital", "Cadeia de Suprimentos Corporativa", "Rastreabilidade Declarada", "Direitos Digitais", "nexID"]
   },
   en: {
-    title: "nexID | NFC/SUN evidence, passports and digital rights",
+    title: "nexID | Connected products, warranty and after-sales",
     description:
-      "Validate NFC/SUN messages, record reported events, organize declared batch and origin, and activate digital passports or rights under policy. This is not standalone proof of the physical object.",
-    imageAlt: "nexID - NFC/SUN evidence, declared data and digital passports",
+      "Connect every product to its story and services. With NFC or QR, customers reach information, warranties, benefits and support in one simple experience.",
+    imageAlt: "nexID connects products with information, warranties and after-sales support",
     keywords: ["NFC SUN Validation", "NFC", "Digital Product Passport", "Enterprise Supply Chain", "Declared Traceability", "Digital Rights", "nexID"]
   }
 };

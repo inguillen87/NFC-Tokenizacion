@@ -1,9 +1,7 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
-import { Play, Calendar, Zap } from "lucide-react";
-import { schedulingUrls } from "@product/config";
+import { Play } from "lucide-react";
 import { resolveInstitutionalVideo } from "../lib/institutional-video";
 
 type InstitutionalVideoPanelProps = {
@@ -19,39 +17,35 @@ type PanelCopy = {
   eyebrow: string;
   title: string;
   body: string;
-  primary: string;
-  secondary: string;
+  play: string;
   aria: string;
   strip: string;
 };
 
 const PANEL_COPY: Record<SupportedLocale, PanelCopy> = {
   "es-AR": {
-    eyebrow: "Video Institucional",
-    title: "Evidencia digital clara para productos conectados.",
-    body: "Descubrí cómo nexID valida mensajes NFC/SUN, muestra lote y origen declarados, reporta TT cuando está disponible y activa beneficios bajo política. El toque no autentica por sí solo el objeto físico.",
-    primary: "Abrir Demo Lab",
-    secondary: "Agendar reunión",
-    aria: "video institucional nexID",
-    strip: "Mensaje NFC/SUN -> evidencia disponible -> pasaporte digital -> señal CRM",
+    eyebrow: "nexID en acción",
+    title: "Del producto a la próxima acción.",
+    body: "Mirá cómo una persona descubre el producto y accede a la información o al servicio que la marca preparó.",
+    play: "Ver video",
+    aria: "Reproducir video institucional de nexID",
+    strip: "Producto → información → servicio",
   },
   en: {
-    eyebrow: "Institutional Video",
-    title: "Clear digital evidence for connected products.",
-    body: "See how nexID validates NFC/SUN messages, displays declared batch and origin, reports TT when available, and activates policy-based benefits. A tap does not authenticate the physical object by itself.",
-    primary: "Open Demo Lab",
-    secondary: "Schedule meeting",
-    aria: "nexID institutional video",
-    strip: "NFC/SUN message -> available evidence -> digital passport -> CRM signal",
+    eyebrow: "nexID in action",
+    title: "From the product to the next action.",
+    body: "See how a customer discovers the product and reaches the information or service prepared by the brand.",
+    play: "Watch video",
+    aria: "Play the nexID institutional video",
+    strip: "Product → information → service",
   },
   "pt-BR": {
-    eyebrow: "Vídeo Institucional",
-    title: "Evidência digital clara para produtos conectados.",
-    body: "Veja como a nexID valida mensagens NFC/SUN, mostra lote e origem declarados, informa TT quando disponível e ativa benefícios por política. O toque não autentica sozinho o objeto físico.",
-    primary: "Abrir Demo Lab",
-    secondary: "Agendar reunião",
-    aria: "vídeo institucional nexID",
-    strip: "Mensagem NFC/SUN -> evidência disponível -> passaporte digital -> sinal CRM",
+    eyebrow: "nexID em ação",
+    title: "Do produto à próxima ação.",
+    body: "Veja como uma pessoa conhece o produto e acessa a informação ou o serviço preparado pela marca.",
+    play: "Ver vídeo",
+    aria: "Reproduzir o vídeo institucional da nexID",
+    strip: "Produto → informação → serviço",
   },
 };
 
@@ -198,16 +192,6 @@ export function InstitutionalVideoPanel({ locale, variant = "landing", className
         <p className="text-cyan-400 font-mono tracking-widest uppercase text-xs">{copy.eyebrow}</p>
         <h2>{copy.title}</h2>
         <span>{copy.body}</span>
-        <div className="institutional-video-actions">
-          <Link href="/demo-lab" className="flex items-center gap-2">
-            <Zap className="w-4 h-4" />
-            {copy.primary}
-          </Link>
-          <a href={schedulingUrls.meeting} target="_blank" rel="noreferrer" className="flex items-center gap-2">
-            <Calendar className="w-4 h-4" />
-            {copy.secondary}
-          </a>
-        </div>
       </div>
 
       <div className="institutional-video-device">
@@ -313,7 +297,7 @@ export function InstitutionalVideoPanel({ locale, variant = "landing", className
           {showPlayOverlay ? (
             <button className="institutional-video-play" type="button" onClick={playVideo} aria-label={copy.aria}>
               <Play className="h-5 w-5" />
-              <span>{copy.eyebrow}</span>
+              <span>{copy.play}</span>
             </button>
           ) : null}
           <span className="institutional-video-watermark font-bold tracking-wider opacity-60">nexID</span>

@@ -390,7 +390,7 @@ export default async function AboutPage() {
           </div>
         </section>
 
-        <section className={styles.section} aria-labelledby="about-sources-title">
+        <section id="respaldo" className={styles.section} aria-labelledby="about-sources-title">
           <div className={styles.sectionHeader}>
             <div>
               <p className={styles.eyebrow}>{copy.sourcesEyebrow}</p>

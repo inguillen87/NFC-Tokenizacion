@@ -2,7 +2,7 @@
 
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
-export function SimpleTrustFlowMotion({ children }: { children: ReactNode }) {
+export function SimpleTrustFlowMotion({ children, id, ariaLabel }: { children: ReactNode; id: string; ariaLabel: string }) {
   const listRef = useRef<HTMLOListElement>(null);
   const [motionActive, setMotionActive] = useState(false);
 
@@ -50,9 +50,12 @@ export function SimpleTrustFlowMotion({ children }: { children: ReactNode }) {
 
   return (
     <ol
+      id={id}
       ref={listRef}
       className="simple-trust-flow-steps"
       data-motion-active={motionActive ? "true" : "false"}
+      aria-label={ariaLabel}
+      tabIndex={0}
     >
       {children}
     </ol>

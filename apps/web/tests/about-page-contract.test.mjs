@@ -69,11 +69,13 @@ test("about page keeps claims bounded and the home only adds navigation access",
   assert.match(navigation, /label: "Quem somos"[\s\S]{0,140}href: "\/about"/);
   assert.match(navigation, /label: "About us"[\s\S]{0,140}href: "\/about"/);
   assert.match(home, /href="\/about"[\s\S]{0,120}footerCopy\.about/);
-  assert.match(home, /className="container-shell site-footer-primary py-10"/);
+  assert.match(home, /className="container-shell site-footer-primary py-12"/);
   assert.match(home, /className="site-footer-intro"/);
   assert.match(home, /className="site-footer-summary text-sm site-muted"/);
-  assert.match(home, /className="site-footer-links flex flex-wrap gap-2"/);
-  assert.match(globalCss, /\.site-footer-primary\s*\{[\s\S]*grid-template-columns:\s*minmax\(0, 0\.92fr\) minmax\(0, 1\.08fr\)/);
+  assert.match(home, /className="site-footer-columns"/);
+  assert.match(home, /href="\/about#respaldo"/);
+  assert.match(globalCss, /\.site-footer-primary\s*\{[\s\S]*grid-template-columns:\s*minmax\(13rem, 0\.72fr\) minmax\(0, 1\.55fr\)/);
+  assert.match(about, /<section id="respaldo"/);
   assert.doesNotMatch(home, /<AboutPage|<AboutInmovarSection/);
   assert.match(about, /className="landing-root about-page"/);
   assert.match(about, /<BrandLockup/);

@@ -64,11 +64,11 @@ test("landing trust layer cards open related proof experiences", async () => {
   assert.match(css, /\.enterprise-trust-layer-card--capability:not\(\.enterprise-trust-layer-card--mobile-sim\) \.trust-layer-sim\s*\{[\s\S]*display:\s*none/);
 });
 
-test("landing hero sends prospects to Demo Lab and labels its fixed route as a demo", async () => {
+test("landing hero uses one commercial CTA and one in-page discovery CTA", async () => {
   const sections = await readFile(new URL("../src/components/landing-sections.tsx", import.meta.url), "utf8");
   const hero = await readFile(new URL("../src/components/hero-scene.tsx", import.meta.url), "utf8");
 
-  assert.match(sections, /href="\/demo-lab"[^>]*>[\s\S]*\{secondaryCta\}/);
+  assert.match(sections, /href="#como-funciona"[^>]*>[\s\S]*\{secondaryCta\}/);
   assert.doesNotMatch(sections, /href="\/docs"[^>]*>[\s\S]{0,100}\{secondaryCta\}/);
   assert.match(hero, /routeTitle: "RUTA DECLARADA · DEMO"/);
   assert.match(hero, /routeSubtitle: "Recorrido ilustrativo; no prueba custodia"/);
@@ -88,19 +88,18 @@ test("home mega navigation exposes product depth without duplicating a technical
     readFile(new URL("../src/components/marketing-mega-nav.module.css", import.meta.url), "utf8"),
   ]);
 
-  for (const group of ["solutions", "industries", "platform", "resources", "plans"]) {
+  for (const group of ["solutions", "industries", "platform", "resources"]) {
     assert.match(navigation, new RegExp(`id: "${group}"`));
   }
-  assert.match(navigation, /label: "Proof Verify"[\s\S]*href: "\/proof\/verify"/);
-  assert.match(navigation, /label: "SUN validation"[\s\S]*href: "\/sun"/);
+  assert.doesNotMatch(navigation, /id: "plans"/);
+  assert.match(navigation, /label: "Verify public evidence"[\s\S]*href: "\/proof\/verify"/);
+  assert.match(navigation, /label: "NFC security"[\s\S]*href: "\/sun"/);
   assert.match(navigation, /href: "\/offline"/);
   assert.match(navigation, /label: "Documentation"[\s\S]*href: "\/docs"/);
   assert.match(navigation, /label: "SDK and APIs"[\s\S]*href: "\/sdk"/);
   assert.doesNotMatch(page, /OfflineFieldOperationsSection|BrandSynergySimulator|DemoRequestSection|offline-field-operations|brand-synergy/);
   assert.ok((navigation.match(/copy\.groups\.map\(\(group/g) ?? []).length >= 2, "desktop and mobile must share the same groups");
-  assert.match(navigation, /id: "plans"[\s\S]*label: "Plans"[\s\S]*href: "\/pricing#configurator"/);
-  assert.match(navigation, /href: "\/pricing#plans"/);
-  assert.match(navigation, /href: "\/pricing#roi"/);
+  assert.match(navigation, /label: "Plans and pilots"[\s\S]*href: "\/pricing"/);
   assert.doesNotMatch(navigation, /className=\{styles\.navDirectLink\}/);
   assert.match(navigation, /role="dialog" aria-modal="true"/);
   assert.match(css, /\.navGroupButton,[\s\S]*min-height: 2\.65rem/);
@@ -120,7 +119,7 @@ test("landing hero exposes two business actions and one institutional video", as
   assert.ok(mobileActionsIndex < videoIndex, "mobile actions should appear before the institutional video");
   assert.doesNotMatch(sections, /<HeroScene|const heroStats = \[/);
   assert.match(sections, /href="\/\?contact=demo#contact-modal" className="landing-mobile-hero-actions__primary"/);
-  assert.match(sections, /href="\/demo-lab" className="landing-mobile-hero-actions__secondary"/);
+  assert.match(sections, /href="#como-funciona" className="landing-mobile-hero-actions__secondary"/);
   assert.doesNotMatch(sections, /landing-mobile-hero-actions[\s\S]{0,800}href="\/(?:proof\/verify|pricing|docs)"/);
   assert.doesNotMatch(sections, /mobileDocsCta|landing-mobile-hero-actions__muted/);
   assert.match(css, /\.landing-mobile-hero-actions a\s*\{[\s\S]*min-height:\s*44px/);

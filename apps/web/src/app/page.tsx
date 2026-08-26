@@ -4,19 +4,15 @@ import { BrandLockup } from "@product/ui";
 import {
   HeroSection,
   SimpleTrustFlowSection,
+  CommercialValueSection,
 } from "../components/landing-sections";
 import { PwaInstallPrompt } from "../components/pwa-install-prompt";
 import { MarketingMegaNav } from "../components/marketing-mega-nav";
-import { SalesChatWidget } from "../components/sales-chat-widget";
 import { landingContent } from "../lib/landing-content";
 import { getWebI18n } from "../lib/locale";
 import { CommercialContactModal } from "../components/commercial-contact-modal";
 import { productUrls, schedulingUrls } from "@product/config";
-import { Download, ExternalLink, ShieldCheck } from "lucide-react";
 import { resolveThemePreference, THEME_PREFERENCE_VERSION_COOKIE } from "@product/ui/theme-preference";
-
-const afipDataFiscalHref = "https://qr.afip.gob.ar/?qr=-F2blnmFe6pmSP-chYnylQ,,";
-const mipymeCertificateHref = "/certificados/certificado-mipyme-intellitech.pdf";
 
 export default async function HomePage() {
   const { locale, locales } = await getWebI18n();
@@ -27,53 +23,67 @@ export default async function HomePage() {
   );
   const content = landingContent[locale];
 
-  const scheduleMeetingLabel = locale === "en" ? "Schedule meeting" : locale === "pt-BR" ? "Agendar reunião" : "Agendar reunión";
   const loginHref = `${process.env.NEXT_PUBLIC_APP_URL || productUrls.app}/login`;
   const meetingHref = schedulingUrls.meeting;
   const skipLabel = locale === "en" ? "Skip to content" : locale === "pt-BR" ? "Ir para o conteúdo" : "Ir al contenido";
   const footerCopy = locale === "en"
     ? {
         home: "nexID home",
-        summary: "nexID connects every product to its story and next useful action. With an NFC tap or QR scan, brands can offer product information, warranties, benefits and after-sales service in one clear experience.",
+        summary: "Every product can begin a relationship that continues.",
+        product: "Product",
+        how: "How it works",
+        demoLab: "Demo Lab",
         about: "About us",
+        company: "Company",
+        resellers: "Partners and resellers",
+        institutional: "Institutional information",
+        resources: "Resources",
+        docs: "Documentation",
         architecture: "Architecture",
-        plans: "Plans",
-        taxEyebrow: "Tax registration",
-        taxTitle: "AFIP digital registration",
-        taxBody: "Public access to tax information for customers, partners and investors.",
-        certificateEyebrow: "MiPyME certificate",
-        certificateTitle: "SEPyME institutional backing",
-        certificateBody: "Official document available for institutional, commercial and regional validation.",
-        download: "Download certificate",
+        verify: "Verify public evidence",
+        plans: "Plans and pilots",
+        contact: "Contact",
+        schedule: "Book a demo",
+        ecosystem: "A platform within the Inmovar Latam ecosystem.",
       }
     : locale === "pt-BR"
     ? {
         home: "Início da nexID",
-        summary: "A nexID conecta cada produto à sua história e à próxima ação útil. Com um toque NFC ou QR, as marcas podem oferecer informações, garantia, benefícios e pós-venda em uma experiência clara.",
+        summary: "Cada produto pode iniciar uma relação que continua.",
+        product: "Produto",
+        how: "Como funciona",
+        demoLab: "Demo Lab",
         about: "Quem somos",
+        company: "Empresa",
+        resellers: "Parceiros e revendedores",
+        institutional: "Informações institucionais",
+        resources: "Recursos",
+        docs: "Documentação",
         architecture: "Arquitetura",
-        plans: "Planos",
-        taxEyebrow: "Dados fiscais",
-        taxTitle: "Inscrição digital AFIP",
-        taxBody: "Acesso público a informações fiscais para clientes, parceiros e investidores.",
-        certificateEyebrow: "Certificado MiPyME",
-        certificateTitle: "Respaldo institucional SEPyME",
-        certificateBody: "Documento oficial para validação institucional, comercial e regional.",
-        download: "Baixar certificado",
+        verify: "Verificar evidência pública",
+        plans: "Planos e pilotos",
+        contact: "Contato",
+        schedule: "Agendar demo",
+        ecosystem: "Uma plataforma do ecossistema Inmovar Latam.",
       }
     : {
         home: "Inicio de nexID",
-        summary: "nexID conecta cada producto con su historia y la próxima acción útil. Con un toque NFC o QR, las marcas pueden ofrecer información, garantía, beneficios y postventa en una experiencia clara.",
+        summary: "Cada producto puede iniciar una relación que continúa.",
+        product: "Producto",
+        how: "Cómo funciona",
+        demoLab: "Demo Lab",
         about: "Quiénes somos",
+        company: "Empresa",
+        resellers: "Partners y resellers",
+        institutional: "Información institucional",
+        resources: "Recursos",
+        docs: "Documentación",
         architecture: "Arquitectura",
-        plans: "Planes",
-        taxEyebrow: "Datos fiscales",
-        taxTitle: "Inscripción digital AFIP",
-        taxBody: "Acceso público a información fiscal para clientes, partners e inversores.",
-        certificateEyebrow: "Certificado MiPyME",
-        certificateTitle: "Respaldo institucional SEPyME",
-        certificateBody: "Documento oficial descargable para validación institucional, comercial y regional.",
-        download: "Descargar certificado",
+        verify: "Verificar evidencia pública",
+        plans: "Planes y pilotos",
+        contact: "Contacto",
+        schedule: "Agendar demo",
+        ecosystem: "Una plataforma del ecosistema Inmovar Latam.",
       };
 
   return (
@@ -98,72 +108,50 @@ export default async function HomePage() {
         <HeroSection content={content} locale={locale} initialTheme={initialTheme} />
 
         <SimpleTrustFlowSection locale={locale} />
-        <SalesChatWidget locale={locale} deferUntilScroll />
+        <CommercialValueSection locale={locale} />
         <CommercialContactModal initialLocale={locale} />
       </main>
 
       <footer data-nav-inert className="site-footer border-t">
-        <div className="container-shell site-footer-primary py-10">
+        <div className="container-shell site-footer-primary py-12">
           <div className="site-footer-intro">
             <Link href="/" aria-label={footerCopy.home} className="site-footer-brand inline-flex items-center">
               <BrandLockup size={42} variant="ripple" theme="dark" className="hero-brand brand-surface-footer" />
             </Link>
             <p className="site-footer-summary text-sm site-muted">{footerCopy.summary}</p>
           </div>
-          <nav className="site-footer-links flex flex-wrap gap-2" aria-label={locale === "en" ? "Footer links" : locale === "pt-BR" ? "Links do rodapé" : "Enlaces del pie de página"}>
-            <Link href="/about" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">{footerCopy.about}</Link>
-            <Link href="/docs" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">{footerCopy.architecture}</Link>
-            <Link href="/proof/verify" className="rounded-lg border border-cyan-300/40 px-3 py-2 text-xs text-cyan-300">Proof Verify</Link>
-            <Link href="/sdk" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">SDK</Link>
-            <Link href="/pricing" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">{footerCopy.plans}</Link>
-            <Link href="/?contact=demo#contact-modal" className="rounded-lg border border-cyan-300/40 px-3 py-2 text-xs text-cyan-300">Demo</Link>
-            <a href="mailto:info@nexid.lat" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">info@nexid.lat</a>
-            <a href="https://api.whatsapp.com/send?phone=5492613168608" target="_blank" rel="noreferrer" className="site-footer-whatsapp-link rounded-lg border border-green-500/40 px-3 py-2 text-xs text-green-400">WhatsApp AR</a>
-            <a href="https://api.whatsapp.com/send?phone=56988689095" target="_blank" rel="noreferrer" className="site-footer-whatsapp-link rounded-lg border border-green-500/40 px-3 py-2 text-xs text-green-400">WhatsApp CL</a>
-            <a href={meetingHref} target="_blank" rel="noreferrer" className="rounded-lg border border-emerald-300/40 px-3 py-2 text-xs text-emerald-300">{scheduleMeetingLabel}</a>
+          <nav className="site-footer-columns" aria-label={locale === "en" ? "Footer links" : locale === "pt-BR" ? "Links do rodapé" : "Enlaces del pie de página"}>
+            <section>
+              <h2>{footerCopy.product}</h2>
+              <Link href="#como-funciona">{footerCopy.how}</Link>
+              <Link href="/demo-lab">{footerCopy.demoLab}</Link>
+              <Link href="/pricing">{footerCopy.plans}</Link>
+            </section>
+            <section>
+              <h2>{footerCopy.company}</h2>
+              <Link href="/about">{footerCopy.about}</Link>
+              <Link href="/resellers">{footerCopy.resellers}</Link>
+              <Link href="/about#respaldo">{footerCopy.institutional}</Link>
+            </section>
+            <section>
+              <h2>{footerCopy.resources}</h2>
+              <Link href="/docs">{footerCopy.docs}</Link>
+              <Link href="/stack">{footerCopy.architecture}</Link>
+              <Link href="/proof/verify">{footerCopy.verify}</Link>
+              <Link href="/sdk">SDK</Link>
+            </section>
+            <section>
+              <h2>{footerCopy.contact}</h2>
+              <a href="mailto:info@nexid.lat">info@nexid.lat</a>
+              <a href="https://api.whatsapp.com/send?phone=5492613168608" target="_blank" rel="noreferrer">WhatsApp Argentina</a>
+              <a href="https://api.whatsapp.com/send?phone=56988689095" target="_blank" rel="noreferrer">WhatsApp Chile</a>
+              <a href={meetingHref} target="_blank" rel="noreferrer" className="site-footer-demo-link">{footerCopy.schedule}</a>
+            </section>
           </nav>
         </div>
-
-        <div className="container-shell grid gap-3 pb-10 md:grid-cols-2">
-          <a
-            href={afipDataFiscalHref}
-            target="_F960AFIPInfo"
-            rel="noopener noreferrer"
-            className="site-footer-data-card group rounded-2xl border border-slate-200 bg-white/90 p-4 text-left text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-100 dark:hover:border-cyan-300/50"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-cyan-700 dark:text-cyan-300">{footerCopy.taxEyebrow}</p>
-                <p className="mt-1 text-sm font-black">{footerCopy.taxTitle}</p>
-                <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">{footerCopy.taxBody}</p>
-              </div>
-              <ExternalLink className="mt-1 h-4 w-4 text-slate-400 transition group-hover:text-cyan-600 dark:text-slate-500 dark:group-hover:text-cyan-300" />
-            </div>
-            <span className="mt-4 inline-flex rounded-xl border border-slate-200 bg-white p-2 shadow-sm dark:border-white/10">
-              <img src="https://www.afip.gob.ar/images/f960/DATAWEB.jpg" alt="Formulario 960 Data Fiscal AFIP" className="h-10 w-auto" />
-            </span>
-          </a>
-
-          <a
-            href={mipymeCertificateHref}
-            download
-            className="group rounded-2xl border border-emerald-200 bg-emerald-50/90 p-4 text-left text-slate-900 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-400 dark:border-emerald-400/25 dark:bg-emerald-400/10 dark:text-white dark:hover:border-emerald-300/60"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-emerald-700 dark:text-emerald-300">{footerCopy.certificateEyebrow}</p>
-                <p className="mt-1 text-sm font-black">{footerCopy.certificateTitle}</p>
-                <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">{footerCopy.certificateBody}</p>
-              </div>
-              <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-emerald-700 shadow-sm dark:bg-white/10 dark:text-emerald-200">
-                <ShieldCheck className="h-4 w-4" />
-              </span>
-            </div>
-            <span className="mt-4 inline-flex items-center gap-2 rounded-xl bg-slate-950 px-3 py-2 text-xs font-black text-white transition group-hover:bg-emerald-700 dark:bg-white dark:text-slate-950 dark:group-hover:bg-emerald-100">
-              <Download className="h-4 w-4" />
-              {footerCopy.download}
-            </span>
-          </a>
+        <div className="container-shell site-footer-meta">
+          <span>{footerCopy.ecosystem}</span>
+          <Link href="/about">{footerCopy.institutional}</Link>
         </div>
       </footer>
       <div data-nav-inert><PwaInstallPrompt /></div>

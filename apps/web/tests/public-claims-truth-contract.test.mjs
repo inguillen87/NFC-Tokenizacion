@@ -56,8 +56,9 @@ test("public metadata and global SEO describe digital evidence instead of physic
   assert.match(metadata, /conecta validaci.n de mensajes NFC\/SUN, datos declarados/);
   assert.doesNotMatch(metadata, /physical product authentication|autenticaci.n de productos f.sicos|autentica..o de produtos f.sicos/i);
 
-  assert.match(layout, /This is not standalone proof of the physical object/);
-  assert.match(layout, /No es una prueba aut.noma del objeto f.sico/);
+  assert.match(layout, /Productos conectados, garantía y postventa/);
+  assert.match(layout, /Connected products, warranty and after-sales/);
+  assert.match(layout, /Conectá cada producto con su historia y sus servicios/);
   assert.doesNotMatch(layout, /Product Authentication|Autenticaci.n de Productos|Autentica..o de Produtos/);
 });
 
@@ -80,14 +81,15 @@ test("pharma and ROI copy remain evidence-led and measurable", () => {
   assert.doesNotMatch(landing, /-30%|\+10x|\+8%|\+18%|-70%/);
 });
 
-test("assistant and institutional video bound NFC, TT, origin and ownership claims", () => {
+test("assistant bounds technical claims while the institutional video stays plain-language", () => {
   assert.match(assistant, /fresh cryptographic evidence from the tag message/);
   assert.match(assistant, /does not by itself prove the physical seal, contents or origin/);
   assert.match(assistant, /El registro digital no prueba ownership ni autenticidad fisica/);
   assert.doesNotMatch(assistant, /authentic physical presence|presencia fisica autentica|presenca fisica autentica/i);
 
-  assert.match(video, /validates NFC\/SUN messages, displays declared batch and origin/);
-  assert.match(video, /A tap does not authenticate the physical object by itself/);
+  assert.match(video, /From the product to the next action/);
+  assert.match(video, /Del producto a la próxima acción/);
+  assert.doesNotMatch(video, /NFC\/SUN|\bTT\b|hash-only|under policy|bajo política/i);
   assert.doesNotMatch(video, /trusted tap|toque confiable|Autenticidad, trazabilidad|Authenticity, traceability|Autenticidade, rastreabilidade/);
 });
 
@@ -126,9 +128,9 @@ test("audience, SDK and wallet surfaces name digital rights without authenticati
 
 test("landing, pricing and demo surfaces label evidence and simulations precisely", () => {
   const surfaces = [home, demoPage, demoLab, heroScene, landingSections, calculator, pricing, interactiveDemo, radar, ogImage, demoSummary].join("\n");
-  assert.match(landingSections, /nexID checks the digital label\. Physical product authenticity requires additional checks/);
-  assert.match(landingSections, /A nexID verifica a etiqueta digital\. A autenticidade do produto físico exige controles adicionais/);
-  assert.match(landingSections, /nexID comprueba la etiqueta digital\. La autenticidad del producto físico requiere controles adicionales/);
+  assert.match(landingSections, /nexID checks the digital label; the reading does not confirm the physical product by itself/);
+  assert.match(landingSections, /A nexID verifica a etiqueta digital; a leitura não confirma sozinha o produto físico/);
+  assert.match(landingSections, /nexID verifica la etiqueta digital; la lectura no confirma por sí sola el producto físico/);
   assert.match(demoLab, /Product scene/);
   assert.match(demoLab, /Message NFC accepted|Mensaje NFC aceptado/);
   assert.match(radar, /Reported custody event \(demo\)/);

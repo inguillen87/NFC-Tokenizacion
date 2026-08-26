@@ -6,6 +6,7 @@ import { InstitutionalVideoPanel } from "./institutional-video-panel";
 import { PremiumTraceabilityGlobe } from "./premium-traceability-globe";
 import { SimpleTrustFlowMotion } from "./simple-trust-flow-motion";
 import { SimpleTrustStepVisual, type SimpleTrustVisualKind } from "./simple-trust-step-visual";
+import { HorizontalRailControls } from "./horizontal-rail-controls";
 import { platformVerticals, traceabilityGlobePoints, traceabilityGlobeRoutes } from "../lib/platform-verticals";
 
 type Content = any;
@@ -41,7 +42,7 @@ export function HeroSection({ content, locale, initialTheme = "light" }: { conte
               <span>{primaryCta}</span>
               <ArrowRight className="h-4 w-4 shrink-0" />
             </Link>
-            <Link href="/demo-lab" className="landing-mobile-hero-actions__secondary">
+            <Link href="#como-funciona" className="landing-mobile-hero-actions__secondary">
               {secondaryCta}
             </Link>
           </div>
@@ -49,7 +50,7 @@ export function HeroSection({ content, locale, initialTheme = "light" }: { conte
             <Link href="/?contact=demo#contact-modal" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-cyan-500 px-6 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-400">
               {primaryCta}
             </Link>
-            <Link href="/demo-lab" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10">
+            <Link href="#como-funciona" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10">
               {secondaryCta}
             </Link>
           </div>
@@ -70,44 +71,53 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
   const copy = isEn
     ? {
       eyebrow: "How it works",
-      title: "One tap. Three steps. A clearer experience.",
-      body: "Tap with your phone or scan the QR. In seconds, you discover the product, understand what was checked and see what you can do next.",
-      note: "nexID checks the digital label. Physical product authenticity requires additional checks.",
-      primary: "Explore the experience",
+      title: "Three steps. No complications.",
+      body: "Tap with your phone or scan the QR. nexID organizes what matters and shows what you can do next.",
+      note: "nexID checks the digital label; the reading does not confirm the physical product by itself.",
+      primary: "Try the journey",
+      railLabel: "Product journey steps",
+      previous: "Previous step",
+      next: "Next step",
       steps: [
-        { label: "Discover the product", body: "Explore its story, batch and the information the brand published for you, all in one place." },
-        { label: "Understand the result", body: "nexID checks the digital label and clearly shows whether it passed the controls defined for that product." },
-        { label: "Choose the next step", body: "Access warranty, benefits or brand support, depending on the options available for that product." },
+        { label: "Discover the product", body: "Story, batch and brand information, gathered in one place." },
+        { label: "Understand the reading", body: "A clear answer about the digital label and its configured checks." },
+        { label: "Stay connected", body: "Warranty, benefits or support, depending on what is available." },
       ],
     }
     : isBr
     ? {
       eyebrow: "Como funciona",
-      title: "Um toque. Três etapas. Tudo mais claro.",
-      body: "Aproxime o celular ou escaneie o QR. Em segundos, você conhece o produto, entende o que foi verificado e vê o que pode fazer depois.",
-      note: "A nexID verifica a etiqueta digital. A autenticidade do produto físico exige controles adicionais.",
-      primary: "Explorar a experiência",
+      title: "Três etapas. Sem complicações.",
+      body: "Aproxime o celular ou escaneie o QR. A nexID organiza o essencial e mostra o que fazer depois.",
+      note: "A nexID verifica a etiqueta digital; a leitura não confirma sozinha o produto físico.",
+      primary: "Testar a jornada",
+      railLabel: "Etapas da jornada do produto",
+      previous: "Etapa anterior",
+      next: "Próxima etapa",
       steps: [
-        { label: "Conheça o produto", body: "Explore sua história, o lote e as informações que a marca publicou para você, tudo em um só lugar." },
-        { label: "Entenda o resultado", body: "A nexID verifica a etiqueta digital e mostra com clareza se ela passou pelos controles definidos para aquele produto." },
-        { label: "Escolha o próximo passo", body: "Acesse garantia, benefícios ou atendimento da marca, conforme as opções disponíveis para aquele produto." },
+        { label: "Conheça o produto", body: "História, lote e informações da marca, reunidos em um só lugar." },
+        { label: "Entenda a leitura", body: "Uma resposta clara sobre a etiqueta digital e os controles configurados." },
+        { label: "Siga com a marca", body: "Garantia, benefícios ou atendimento, conforme o que estiver disponível." },
       ],
     }
     : {
       eyebrow: "Cómo funciona",
-      title: "Un toque. Tres pasos. Todo más claro.",
-      body: "Acercá el celular o escaneá el QR. En segundos conocés el producto, entendés qué se comprobó y encontrás qué podés hacer después.",
-      note: "nexID comprueba la etiqueta digital. La autenticidad del producto físico requiere controles adicionales.",
-      primary: "Explorar la experiencia",
+      title: "Tres pasos. Sin complicaciones.",
+      body: "Acercá el celular o escaneá el QR. nexID ordena lo importante y muestra qué hacer después.",
+      note: "nexID verifica la etiqueta digital; la lectura no confirma por sí sola el producto físico.",
+      primary: "Probar el recorrido",
+      railLabel: "Pasos del recorrido del producto",
+      previous: "Paso anterior",
+      next: "Paso siguiente",
       steps: [
-        { label: "Descubrí el producto", body: "Explorá su historia, el lote y la información que la marca publicó para vos, todo en un mismo lugar." },
-        { label: "Entendé el resultado", body: "nexID comprueba la etiqueta digital y te muestra con claridad si pasó los controles definidos para ese producto." },
-        { label: "Elegí el próximo paso", body: "Accedé a garantía, beneficios o atención de la marca, según las opciones disponibles para ese producto." },
+        { label: "Conocé el producto", body: "Historia, lote e información de la marca, reunidos en un solo lugar." },
+        { label: "Entendé la lectura", body: "Una respuesta clara sobre la etiqueta digital y los controles configurados." },
+        { label: "Seguí con la marca", body: "Garantía, beneficios o atención, según lo que esté disponible." },
       ],
     };
 
   return (
-    <section className="simple-trust-flow-section container-shell py-12 md:py-20">
+    <section id="como-funciona" className="simple-trust-flow-section container-shell py-12 md:py-20">
       <div className="simple-trust-flow-shell">
         <div className="simple-trust-flow-intro">
           <p className="simple-trust-flow-eyebrow">{copy.eyebrow}</p>
@@ -115,7 +125,7 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
           <p className="simple-trust-flow-body">{copy.body}</p>
         </div>
 
-        <SimpleTrustFlowMotion>
+        <SimpleTrustFlowMotion id="simple-trust-rail" ariaLabel={copy.railLabel}>
           {copy.steps.map((step, index) => (
             <li key={step.label}>
               <SimpleTrustStepVisual kind={visualKinds[index] ?? "discover"} locale={locale} />
@@ -128,10 +138,94 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
 
         <div className="simple-trust-flow-footer">
           <p>{copy.note}</p>
+          <HorizontalRailControls
+            railId="simple-trust-rail"
+            itemCount={copy.steps.length}
+            previousLabel={copy.previous}
+            nextLabel={copy.next}
+          />
           <Link href="/demo-lab?scenario=qr-gs1" className="simple-trust-flow-cta">
             {copy.primary}
             <ArrowRight aria-hidden="true" />
           </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function CommercialValueSection({ locale }: { locale: string }) {
+  const isEn = locale === "en";
+  const isBr = locale === "pt-BR";
+  const copy = isEn
+    ? {
+        eyebrow: "After every sale",
+        title: "More value, without more complexity.",
+        body: "nexID gives each product a clear role before, during and after the sale.",
+        railLabel: "Business value highlights",
+        previous: "Previous benefit",
+        next: "Next benefit",
+        items: [
+          { title: "A better product story", body: "Share the batch and the information your brand chooses to publish.", icon: PackageCheck },
+          { title: "After-sales in one place", body: "Bring warranty, benefits and support into one simple experience.", icon: BadgeCheck },
+          { title: "Measurable learning", body: "Review readings and actions to understand what works in each pilot.", icon: RadioTower },
+        ],
+      }
+    : isBr
+    ? {
+        eyebrow: "Depois de cada venda",
+        title: "Mais valor, sem mais complexidade.",
+        body: "A nexID dá a cada produto um papel claro antes, durante e depois da venda.",
+        railLabel: "Benefícios para o negócio",
+        previous: "Benefício anterior",
+        next: "Próximo benefício",
+        items: [
+          { title: "Uma história melhor contada", body: "Mostre o lote e as informações que sua marca decide publicar.", icon: PackageCheck },
+          { title: "Pós-venda em um só lugar", body: "Reúna garantia, benefícios e atendimento em uma experiência simples.", icon: BadgeCheck },
+          { title: "Aprendizado mensurável", body: "Acompanhe leituras e ações para entender o que funciona em cada piloto.", icon: RadioTower },
+        ],
+      }
+    : {
+        eyebrow: "Después de cada venta",
+        title: "Más valor, sin sumar complejidad.",
+        body: "nexID le da a cada producto un rol claro antes, durante y después de la venta.",
+        railLabel: "Beneficios para el negocio",
+        previous: "Beneficio anterior",
+        next: "Beneficio siguiente",
+        items: [
+          { title: "Una historia mejor contada", body: "Mostrá el lote y la información que tu marca decide publicar.", icon: PackageCheck },
+          { title: "Postventa en un solo lugar", body: "Reuní garantía, beneficios y atención en una experiencia simple.", icon: BadgeCheck },
+          { title: "Aprendizaje medible", body: "Observá lecturas y acciones para entender qué funciona en cada piloto.", icon: RadioTower },
+        ],
+      };
+
+  return (
+    <section className="commercial-value-section container-shell" aria-labelledby="commercial-value-title">
+      <div className="commercial-value-shell">
+        <div className="commercial-value-intro">
+          <p>{copy.eyebrow}</p>
+          <h2 id="commercial-value-title">{copy.title}</h2>
+          <span>{copy.body}</span>
+        </div>
+        <div className="commercial-value-rail-shell">
+          <ul id="commercial-value-rail" className="commercial-value-grid" aria-label={copy.railLabel} tabIndex={0}>
+            {copy.items.map((item) => {
+              const Icon = item.icon;
+              return (
+                <li key={item.title}>
+                  <span className="commercial-value-icon"><Icon aria-hidden="true" /></span>
+                  <h3>{item.title}</h3>
+                  <p>{item.body}</p>
+                </li>
+              );
+            })}
+          </ul>
+          <HorizontalRailControls
+            railId="commercial-value-rail"
+            itemCount={copy.items.length}
+            previousLabel={copy.previous}
+            nextLabel={copy.next}
+          />
         </div>
       </div>
     </section>

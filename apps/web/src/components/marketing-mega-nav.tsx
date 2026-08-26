@@ -61,8 +61,8 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
             { label: "Product identity and protection", description: "Validate tag evidence without treating it as proof of the physical object.", href: "/demo-lab?scenario=nfc-424" },
             { label: "Traceability and evidence", description: "Connect declared events, controls and public proofs.", href: "/demo-lab?scenario=dual-proof" },
             { label: "Digital passport", description: "Open provenance, warranty and ownership experiences.", href: "/demo-lab?scenario=polygon-ownership" },
-            { label: "Offline operations", description: "Keep field verification available with limited connectivity.", href: "/offline" },
             { label: "Loyalty and engagement", description: "Turn a tap into service, benefits and repeat purchase.", href: "/demo-lab?scenario=qr-gs1" },
+            { label: "Plans and pilots", description: "Compare a controlled pilot, scalable rollout and enterprise scope.", href: "/pricing" },
           ],
         },
         {
@@ -88,8 +88,8 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
           featured: { label: "Guided experience", description: "See the complete consumer and operator flow.", href: "/demo" },
           items: [
             { label: "Demo Lab", description: "Run transparent, scope-labelled product scenarios.", href: "/demo-lab" },
-            { label: "Proof Verify", description: "Check public hash-only evidence without private data.", href: "/proof/verify" },
-            { label: "SUN validation", description: "Validate fresh messages from provisioned NFC tags.", href: "/sun" },
+            { label: "Verify public evidence", description: "Check public evidence without exposing private data.", href: "/proof/verify" },
+            { label: "NFC security", description: "Review fresh-message validation for provisioned NFC tags.", href: "/sun" },
             { label: "Offline field mode", description: "Review the controlled workflow for low-connectivity sites.", href: "/offline" },
             { label: "Consumer portal", description: "Access passports, certificates, rewards and ownership.", href: "/login?next=/me" },
             { label: "SDK and APIs", description: "Integrate the platform when your technical team is ready.", href: "/sdk" },
@@ -107,21 +107,6 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
             { label: "Architecture", description: "Understand the platform layers and technology choices.", href: "/stack" },
             { label: "Glossary", description: "Plain-language definitions for physical and digital concepts.", href: "/glossary" },
             { label: "By audience", description: "A focused view for brands, resellers and institutions.", href: "/audiences" },
-            { label: "Reseller program", description: "Explore the partner model and regional rollout.", href: "/resellers" },
-            { label: "Investor snapshot", description: "Business model, positioning and platform narrative.", href: "/investor-snapshot" },
-          ],
-        },
-        {
-          id: "plans",
-          label: "Plans",
-          eyebrow: "Choose how to start",
-          description: "Compare a controlled pilot, scalable rollout and partner paths with a clear commercial scope.",
-          featured: { label: "Build your pilot", description: "Configure scope, carriers and a budgetary range for your case.", href: "/pricing#configurator" },
-          items: [
-            { label: "Compare plans", description: "Review pilot, growth and enterprise scope side by side.", href: "/pricing#plans" },
-            { label: "Estimate potential impact", description: "Model assumptions and scenarios without treating them as promised results.", href: "/pricing#roi" },
-            { label: "Request a tailored quote", description: "Send your use case and receive a scoped commercial follow-up.", href: "/?contact=quote&intent=pricing_menu#contact-modal" },
-            { label: "Enterprise rollout", description: "Discuss integrations, governance and multi-market deployment.", href: "/?contact=sales&intent=pricing_enterprise#contact-modal" },
             { label: "Reseller program", description: "Explore the partner model and regional rollout.", href: "/resellers" },
           ],
         },
@@ -147,8 +132,8 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
             { label: "Identidade e proteção do produto", description: "Valide a evidência do tag sem tratá-la como prova do objeto físico.", href: "/demo-lab?scenario=nfc-424" },
             { label: "Rastreabilidade e evidência", description: "Conecte eventos declarados, controles e provas públicas.", href: "/demo-lab?scenario=dual-proof" },
             { label: "Passaporte digital", description: "Abra experiências de origem, garantia e ownership.", href: "/demo-lab?scenario=polygon-ownership" },
-            { label: "Operação offline", description: "Mantenha a verificação em campo com conectividade limitada.", href: "/offline" },
             { label: "Fidelização e experiência", description: "Transforme um tap em serviço, benefícios e recompra.", href: "/demo-lab?scenario=qr-gs1" },
+            { label: "Planos e pilotos", description: "Compare piloto controlado, rollout escalável e escopo enterprise.", href: "/pricing" },
           ],
         },
         {
@@ -174,8 +159,8 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
           featured: { label: "Experiência guiada", description: "Veja o fluxo completo para consumidor e operador.", href: "/demo" },
           items: [
             { label: "Demo Lab", description: "Execute cenários transparentes com escopo declarado.", href: "/demo-lab" },
-            { label: "Proof Verify", description: "Confira evidência hash-only sem expor dados privados.", href: "/proof/verify" },
-            { label: "Validação SUN", description: "Valide mensagens frescas de tags NFC provisionadas.", href: "/sun" },
+            { label: "Verificar evidência pública", description: "Confira evidência pública sem expor dados privados.", href: "/proof/verify" },
+            { label: "Segurança NFC", description: "Revise a validação de mensagens frescas em tags NFC provisionadas.", href: "/sun" },
             { label: "Modo de campo offline", description: "Revise o fluxo controlado para locais sem conectividade.", href: "/offline" },
             { label: "Portal do consumidor", description: "Acesse passaportes, certificados, benefícios e ownership.", href: "/login?next=/me" },
             { label: "SDK e APIs", description: "Integre a plataforma quando sua equipe técnica estiver pronta.", href: "/sdk" },
@@ -193,21 +178,6 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
             { label: "Arquitetura", description: "Entenda as camadas e escolhas tecnológicas da plataforma.", href: "/stack" },
             { label: "Glossário", description: "Definições claras para conceitos físicos e digitais.", href: "/glossary" },
             { label: "Por audiência", description: "Uma visão focada para marcas, revendas e instituições.", href: "/audiences" },
-            { label: "Programa reseller", description: "Explore o modelo de parceiros e rollout regional.", href: "/resellers" },
-            { label: "Investor snapshot", description: "Modelo de negócio, posicionamento e narrativa.", href: "/investor-snapshot" },
-          ],
-        },
-        {
-          id: "plans",
-          label: "Planos",
-          eyebrow: "Escolha como começar",
-          description: "Compare piloto controlado, rollout escalável e caminhos para parceiros com escopo comercial claro.",
-          featured: { label: "Configure seu piloto", description: "Defina escopo, carriers e uma faixa orçamentária para seu caso.", href: "/pricing#configurator" },
-          items: [
-            { label: "Comparar planos", description: "Revise piloto, crescimento e enterprise lado a lado.", href: "/pricing#plans" },
-            { label: "Estimar impacto potencial", description: "Modele premissas e cenários sem tratá-los como resultados prometidos.", href: "/pricing#roi" },
-            { label: "Solicitar uma proposta", description: "Envie seu caso e receba um acompanhamento comercial com escopo.", href: "/?contact=quote&intent=pricing_menu#contact-modal" },
-            { label: "Rollout enterprise", description: "Converse sobre integrações, governança e implantação em vários mercados.", href: "/?contact=sales&intent=pricing_enterprise#contact-modal" },
             { label: "Programa reseller", description: "Explore o modelo de parceiros e rollout regional.", href: "/resellers" },
           ],
         },
@@ -232,8 +202,8 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
           { label: "Identidad y protección de producto", description: "Validá la evidencia del tag sin tratarla como prueba del objeto físico.", href: "/demo-lab?scenario=nfc-424" },
           { label: "Trazabilidad y evidencia", description: "Conectá eventos declarados, controles y pruebas públicas.", href: "/demo-lab?scenario=dual-proof" },
           { label: "Pasaporte digital", description: "Abrí experiencias de origen, garantía y propiedad.", href: "/demo-lab?scenario=polygon-ownership" },
-          { label: "Operación sin conexión", description: "Mantené la verificación de campo con conectividad limitada.", href: "/offline" },
           { label: "Fidelización y experiencia", description: "Convertí un toque en servicio, beneficios y recompra.", href: "/demo-lab?scenario=qr-gs1" },
+          { label: "Planes y pilotos", description: "Compará un piloto controlado, un despliegue escalable y el alcance enterprise.", href: "/pricing" },
         ],
       },
       {
@@ -259,8 +229,8 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
         featured: { label: "Experiencia guiada", description: "Mirá el flujo completo para cliente y operador.", href: "/demo" },
         items: [
           { label: "Demo Lab", description: "Probá escenarios transparentes con alcance declarado.", href: "/demo-lab" },
-          { label: "Proof Verify", description: "Comprobá evidencia hash-only sin exponer datos privados.", href: "/proof/verify" },
-          { label: "Validación SUN", description: "Validá mensajes frescos de tags NFC provisionados.", href: "/sun" },
+          { label: "Verificar evidencia pública", description: "Comprobá evidencia pública sin exponer datos privados.", href: "/proof/verify" },
+          { label: "Seguridad NFC", description: "Revisá la validación de mensajes frescos en tags NFC provisionados.", href: "/sun" },
           { label: "Modo de campo offline", description: "Revisá el flujo controlado para lugares sin conectividad.", href: "/offline" },
           { label: "Portal del consumidor", description: "Accedé a pasaportes, certificados, beneficios y propiedad.", href: "/login?next=/me" },
           { label: "SDK y APIs", description: "Integrá la plataforma cuando tu equipo técnico esté listo.", href: "/sdk" },
@@ -278,21 +248,6 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
           { label: "Arquitectura", description: "Entendé las capas y decisiones tecnológicas de la plataforma.", href: "/stack" },
           { label: "Glosario", description: "Definiciones claras para conceptos físicos y digitales.", href: "/glossary" },
           { label: "Por audiencia", description: "Una vista enfocada para marcas, resellers e instituciones.", href: "/audiences" },
-          { label: "Programa reseller", description: "Explorá el modelo de partners y despliegue regional.", href: "/resellers" },
-          { label: "Investor snapshot", description: "Modelo de negocio, posicionamiento y narrativa.", href: "/investor-snapshot" },
-        ],
-      },
-      {
-        id: "plans",
-        label: "Planes",
-        eyebrow: "Elegí cómo empezar",
-        description: "Compará un piloto controlado, un despliegue escalable y el camino reseller con alcance comercial claro.",
-        featured: { label: "Configurá tu piloto", description: "Definí alcance, soportes y una banda presupuestaria para tu caso.", href: "/pricing#configurator" },
-        items: [
-          { label: "Comparar planes", description: "Revisá piloto, crecimiento y enterprise lado a lado.", href: "/pricing#plans" },
-          { label: "Estimar impacto potencial", description: "Modelá supuestos y escenarios sin tratarlos como resultados prometidos.", href: "/pricing#roi" },
-          { label: "Pedir una cotización", description: "Contanos el caso y recibí un seguimiento comercial con alcance definido.", href: "/?contact=quote&intent=pricing_menu#contact-modal" },
-          { label: "Despliegue enterprise", description: "Conversá sobre integraciones, gobierno y operación en varios mercados.", href: "/?contact=sales&intent=pricing_enterprise#contact-modal" },
           { label: "Programa reseller", description: "Explorá el modelo de partners y despliegue regional.", href: "/resellers" },
         ],
       },
@@ -490,7 +445,7 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
       <nav className={styles.desktopNav} aria-label={copy.ariaLabel}>
         {copy.groups.map((group) => {
           const expanded = openMenu === group.id;
-          const groupCurrent = group.id === "plans" && pathname === "/pricing";
+          const groupCurrent = group.id === "solutions" && pathname === "/pricing";
           return (
             <div
               key={group.id}

@@ -7,9 +7,10 @@ const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 test("mega navigation groups commercial and technical depth on existing routes", async () => {
   const navigation = await read("../src/components/marketing-mega-nav.tsx");
 
-  for (const group of ["solutions", "industries", "platform", "resources", "plans"]) {
+  for (const group of ["solutions", "industries", "platform", "resources"]) {
     assert.match(navigation, new RegExp(`id: "${group}"`));
   }
+  assert.doesNotMatch(navigation, /id: "plans"/);
 
   for (const href of [
     "/demo-lab?scenario=nfc-424",
@@ -25,10 +26,7 @@ test("mega navigation groups commercial and technical depth on existing routes",
     "/glossary",
     "/audiences",
     "/resellers",
-    "/investor-snapshot",
-    "/pricing#configurator",
-    "/pricing#plans",
-    "/pricing#roi",
+    "/pricing",
   ]) {
     assert.match(navigation, new RegExp(href.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
@@ -36,8 +34,12 @@ test("mega navigation groups commercial and technical depth on existing routes",
   assert.doesNotMatch(navigation, /href:\s*"\/(?:solutions|industries)(?:\/|"|\?)/);
   assert.match(navigation, /without treating it as proof of the physical object/);
   assert.match(navigation, /sin tratarla como prueba del objeto físico/);
+  assert.match(navigation, /Plans and pilots/);
+  assert.match(navigation, /Planes y pilotos/);
+  assert.match(navigation, /Planos e pilotos/);
+  assert.doesNotMatch(navigation, /Investor snapshot/);
   assert.doesNotMatch(navigation, /className=\{styles\.navDirectLink\}/);
-  assert.match(navigation, /group\.id === "plans" && pathname === "\/pricing"/);
+  assert.match(navigation, /group\.id === "solutions" && pathname === "\/pricing"/);
   assert.match(navigation, /aria-current=\{groupCurrent \? "page" : undefined\}/);
 });
 
@@ -91,7 +93,7 @@ test("focused home keeps the commercial journey while the mega menu carries dept
   for (const surface of [
     "<HeroSection",
     "<SimpleTrustFlowSection",
-    "<SalesChatWidget",
+    "<CommercialValueSection",
     "<CommercialContactModal",
     "site-footer",
   ]) {
@@ -100,7 +102,7 @@ test("focused home keeps the commercial journey while the mega menu carries dept
 
   assert.match(page, /<MarketingMegaNav/);
   assert.doesNotMatch(page, /<CtaSection/);
-  assert.match(page, /<SalesChatWidget locale=\{locale\} deferUntilScroll \/>/);
+  assert.doesNotMatch(page, /<SalesChatWidget/);
   assert.match(page, /<main id="main-content" data-nav-inert>/);
   assert.doesNotMatch(
     page,
