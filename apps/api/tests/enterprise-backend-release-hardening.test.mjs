@@ -29,7 +29,11 @@ const dbPreflight = await source("../scripts/db-enterprise-release-preflight.mjs
 const healthRoute = await source("../src/app/health/route.ts");
 const migration = await source("../db/migrations/20260726135000_0059_marketplace_claim_truth_cleanup.sql");
 const migrationPostcheck = await source("../db/ops/marketplace-claim-truth-postcheck.sql");
-const { DEFAULT_REQUIRED_SCHEMA_MIGRATIONS, isRuntimeDdlStatement } = await import("../src/lib/db.ts");
+const {
+  DEFAULT_REQUIRED_SCHEMA_MIGRATIONS,
+  isRuntimeDdlStatement,
+  isValidSchemaMigrationId,
+} = await import("../src/lib/db.ts");
 
 test("health reports process liveness without fabricating dependency or documentation health", () => {
   assert.match(healthRoute, /check:\s*"process_liveness"/);
@@ -209,6 +213,11 @@ test("production request paths skip runtime DDL and require the latest migration
   assert.match(dbRuntime, /20260802310000_0096_enterprise_rbac_risk_truth\.sql/);
   assert.equal(DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.length, 44);
   assert.deepEqual([...DEFAULT_REQUIRED_SCHEMA_MIGRATIONS], [...DEFAULT_REQUIRED_SCHEMA_MIGRATIONS].sort());
+  assert.equal(DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.every(isValidSchemaMigrationId), true);
+  assert.equal(isValidSchemaMigrationId("20260802185000_0083b_vault_artifact_status_bridge.sql"), true);
+  assert.equal(isValidSchemaMigrationId("20260802310000_0096_enterprise_rbac_risk_truth.sql"), true);
+  assert.equal(isValidSchemaMigrationId("20260802310000_0096b.sql"), false);
+  assert.equal(isValidSchemaMigrationId("../20260802310000_0096_enterprise_rbac_risk_truth.sql"), false);
   assert.equal(isRuntimeDdlStatement("DO $$ BEGIN CREATE TYPE unsafe AS ENUM ('a'); END $$"), true);
   assert.equal(isRuntimeDdlStatement("SELECT 1; /* request path */ ALTER TABLE tags ADD COLUMN unsafe text"), true);
   assert.equal(isRuntimeDdlStatement("SELECT 'ALTER TABLE is data, not SQL';"), false);

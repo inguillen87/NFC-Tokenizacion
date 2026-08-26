@@ -113,6 +113,11 @@ export const DEFAULT_REQUIRED_SCHEMA_MIGRATIONS = [
   "20260802310000_0096_enterprise_rbac_risk_truth.sql",
 ] as const;
 export const DEFAULT_REQUIRED_SCHEMA_MIGRATION = DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.at(-1)!;
+export const SCHEMA_MIGRATION_ID_PATTERN = /^\d{14}_\d{4}[a-z]?_[a-z0-9_]+\.sql$/;
+
+export function isValidSchemaMigrationId(id: string) {
+  return SCHEMA_MIGRATION_ID_PATTERN.test(id);
+}
 
 let productionWatermarkCheck: Promise<void> | null = null;
 
@@ -207,7 +212,7 @@ async function requireProductionSchemaWatermark() {
         .map((value) => value.trim())
         .filter(Boolean);
       const required = [...new Set([...DEFAULT_REQUIRED_SCHEMA_MIGRATIONS, ...configured])].sort();
-      if (required.some((id) => !/^\d{14}_\d{4}_[a-z0-9_]+\.sql$/.test(id))) {
+      if (required.some((id) => !isValidSchemaMigrationId(id))) {
         throw new Error("required_schema_migration_id_invalid");
       }
       const query = getSql();
