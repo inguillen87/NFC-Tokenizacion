@@ -58,15 +58,17 @@ test("home v4 light mode and navigation controls keep enterprise contrast", asyn
 
   assert.ok(contrastRatio("#ffffff", "#087d6c") >= 4.5);
   assert.match(css, /:global\(html\[data-theme="light"\]\) \.root/);
-  assert.match(css, /--v4-ink:\s*#10211b/);
+  assert.match(css, /--v4-bg:\s*#fbfcfa/);
+  assert.match(css, /--v4-ink:\s*#10221b/);
+  assert.ok(contrastRatio("#10221b", "#fbfcfa") >= 7);
   assert.match(navCss, /:global\(html\[data-theme="light"\]\) \.header/);
   assert.match(navCss, /\.iconButton\s*\{[\s\S]*min-width:\s*2\.75rem/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
   assert.doesNotMatch(page, /BrandSynergySimulator|landing-brand-synergy-band/);
-  assert.match(navigation, /<ThemeToggle initialTheme=\{initialTheme\}/);
+  assert.match(navigation, /<ThemeToggle initialTheme=\{initialTheme\} locale=\{locale\}/);
   assert.match(navigation, /<LocaleSwitcher value=\{locale\}/);
   assert.match(page, /initialTheme=\{initialTheme\}/);
-  assert.match(themeToggle, /ThemeToggle\(\{ initialTheme = "light" \}/);
+  assert.match(themeToggle, /ThemeToggle\(\{ initialTheme = "light", locale = "en" \}/);
   assert.match(themeToggle, /useState<Theme>\(initialTheme\)/);
   assert.match(localeSwitcher, /locale-switcher inline-flex min-h-11/);
   assert.match(localeSwitcher, /className="min-h-11 bg-transparent/);

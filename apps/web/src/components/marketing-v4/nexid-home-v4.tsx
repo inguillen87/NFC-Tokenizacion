@@ -1,6 +1,11 @@
 import type { AppLocale } from "@product/config";
 import Image from "next/image";
 import Link from "next/link";
+import {
+  NexidHeroExperience,
+  NexidProcessExperience,
+  NexidRoleExperience,
+} from "./nexid-home-experience";
 import { NexidNavigationV4 } from "./nexid-navigation-v4";
 import { HOME_V4_COPY } from "./home-copy";
 import styles from "./nexid-home-v4.module.css";
@@ -48,187 +53,62 @@ export function NexidHomeV4({ locale, locales, loginHref, initialTheme }: NexidH
                   {copy.hero.evidence}
                   <span aria-hidden="true">↓</span>
                 </a>
-              </div>
 
-              <figure className={styles.heroVisual}>
-                <div className={styles.heroImage}>
-                  <Image
-                    src="/demo/agro-secure/real-seed-packet-pexels.jpg"
-                    alt={copy.hero.visualAlt}
-                    fill
-                    priority
-                    loading="eager"
-                    sizes="(max-width: 900px) 100vw, 48vw"
-                  />
-                </div>
-                <figcaption className={styles.resultCard}>
-                  <p>{copy.hero.visualKicker}</p>
-                  <strong>{copy.hero.visualTitle}</strong>
-                  <div className={styles.statusLine}>
-                    <span aria-hidden="true" />
-                    {copy.hero.visualStatus}
-                  </div>
-                  <dl>
-                    <div>
-                      <dt>{copy.hero.visualOrigin}</dt>
-                      <dd>{copy.hero.visualOriginValue}</dd>
-                    </div>
-                  </dl>
-                  <small>{copy.hero.visualBoundary}</small>
-                </figcaption>
-              </figure>
-            </div>
-
-            <div className={styles.sectorStrip} aria-labelledby="sector-strip-title">
-              <p id="sector-strip-title">{copy.hero.sectorsLabel}</p>
-              <ul>
-                {copy.hero.sectors.map((sector) => (
-                  <li key={sector.title}>
-                    <strong>{sector.title}</strong>
-                    <span>{sector.body}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </section>
-
-        <section id="how-it-works" className={styles.flow} aria-labelledby="flow-title">
-          <div className={styles.shell}>
-            <div className={styles.sectionIntro}>
-              <p className={styles.eyebrow}>{copy.flow.eyebrow}</p>
-              <h2 id="flow-title">{copy.flow.title}</h2>
-              <p>{copy.flow.body}</p>
-            </div>
-
-            <ol className={styles.flowList}>
-              {copy.flow.steps.map((step) => (
-                <li key={step.number}>
-                  <span className={styles.stepNumber}>{step.number}</span>
-                  <div>
-                    <h3>{step.title}</h3>
-                    <p>{step.body}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-
-            <a className={styles.textLink} href="#evidence">
-              {copy.flow.detail}
-              <span aria-hidden="true">→</span>
-            </a>
-          </div>
-        </section>
-
-        <section id="solutions" className={styles.roles} aria-labelledby="roles-title">
-          <div className={styles.shell}>
-            <div className={styles.sectionIntro}>
-              <p className={styles.eyebrow}>{copy.roles.eyebrow}</p>
-              <h2 id="roles-title">{copy.roles.title}</h2>
-              <p>{copy.roles.body}</p>
-            </div>
-
-            <div className={styles.roleGrid}>
-              {copy.roles.items.map((item) => (
-                <article key={item.role}>
-                  <p className={styles.roleLabel}>{item.role}</p>
-                  <h3>{item.title}</h3>
-                  <p>{item.body}</p>
-                  <strong>{item.outcome}</strong>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section id="product" className={styles.caseStudy} aria-labelledby="case-title" data-guided-case="agro">
-          <div className={styles.shell}>
-            <div className={styles.caseGrid}>
-              <div className={styles.caseCopy}>
-                <p className={styles.eyebrow}>{copy.caseStudy.eyebrow}</p>
-                <h2 id="case-title">{copy.caseStudy.title}</h2>
-                <p>{copy.caseStudy.body}</p>
-                <span className={styles.demoLabel}>{copy.caseStudy.demoLabel}</span>
-
-                <div className={styles.caseJourney} role="group" aria-labelledby="case-journey-title">
-                  <h3 id="case-journey-title">{copy.caseStudy.journeyLabel}</h3>
-                  <ol>
-                    {copy.caseStudy.journey.map((item) => (
-                      <li key={item.step}>
-                        <span>{item.step}</span>
-                        <div>
-                          <strong>{item.title}</strong>
-                          <p>{item.body}</p>
-                        </div>
-                      </li>
-                    ))}
-                  </ol>
+                <div className={styles.heroCapabilities} aria-label={copy.hero.capabilitiesLabel}>
+                  <span>{copy.hero.capabilitiesLabel}</span>
+                  <ul>
+                    {copy.hero.capabilities.map((capability) => <li key={capability}>{capability}</li>)}
+                  </ul>
                 </div>
               </div>
 
-              <div className={styles.phoneStage} aria-label={copy.caseStudy.demoLabel}>
-                <div className={styles.phone}>
-                  <div className={styles.phoneTop} aria-hidden="true" />
-                  <p className={styles.screenKicker}>{copy.caseStudy.screenKicker}</p>
-                  <h3>{copy.caseStudy.screenTitle}</h3>
-
-                  <div className={styles.acceptedState}>
-                    <span aria-hidden="true" />
-                    <div>
-                      <strong>{copy.caseStudy.accepted}</strong>
-                      <p>{copy.caseStudy.acceptedNote}</p>
-                    </div>
-                  </div>
-
-                  <dl className={styles.screenDetails}>
-                    <div>
-                      <dt>{copy.caseStudy.declaredLabel}</dt>
-                      <dd>{copy.caseStudy.declaredValue}</dd>
-                    </div>
-                    <div>
-                      <dt>{copy.caseStudy.nextLabel}</dt>
-                      <dd>{copy.caseStudy.nextValue}</dd>
-                    </div>
-                  </dl>
-
-                  <Link className={styles.primaryButton} href="/demo-lab?vertical=seeds">
-                    {copy.caseStudy.cta}
-                  </Link>
-                </div>
-              </div>
+              <NexidHeroExperience
+                sectors={copy.hero.sectors}
+                sectorsLabel={copy.hero.sectorsLabel}
+                rotationLabel={copy.hero.rotationLabel}
+                pauseRotation={copy.hero.pauseRotation}
+                resumeRotation={copy.hero.resumeRotation}
+                demoLabel={copy.video.openDemo}
+              />
             </div>
           </div>
         </section>
+
+        <NexidProcessExperience
+          flow={copy.flow}
+          controls={copy.video}
+        />
+
+        <NexidRoleExperience copy={copy.roles} />
 
         <section id="evidence" className={styles.evidence} aria-labelledby="evidence-title">
           <div className={styles.shell}>
-            <div className={styles.evidenceGrid}>
-              <div className={styles.evidenceCopy}>
+            <div className={styles.evidenceLayout}>
+              <div className={styles.evidenceIntro}>
                 <p className={styles.eyebrow}>{copy.evidence.eyebrow}</p>
                 <h2 id="evidence-title">{copy.evidence.title}</h2>
                 <p>{copy.evidence.body}</p>
+                <div className={styles.evidenceActions}>
+                  <Link className={styles.secondaryButton} href="/proof/verify">
+                    {copy.evidence.publicProof}
+                  </Link>
+                  <Link className={styles.primaryButton} href="/?contact=sales&intent=company_rollout#contact-modal">
+                    {copy.evidence.pilot}
+                  </Link>
+                </div>
               </div>
 
-              <div className={styles.evidenceList}>
+              <div className={styles.evidenceLedger}>
                 {copy.evidence.items.map((item) => (
                   <article key={item.label}>
-                    <span>{item.label}</span>
                     <div>
+                      <small>{item.label}</small>
                       <h3>{item.title}</h3>
                       <p>{item.body}</p>
                     </div>
                   </article>
                 ))}
               </div>
-            </div>
-
-            <div className={styles.evidenceActions}>
-              <Link className={styles.secondaryButton} href="/proof/verify">
-                {copy.evidence.publicProof}
-              </Link>
-              <Link className={styles.primaryButton} href="/?contact=sales&intent=company_rollout#contact-modal">
-                {copy.evidence.pilot}
-              </Link>
             </div>
           </div>
         </section>
@@ -242,7 +122,7 @@ export function NexidHomeV4({ locale, locales, loginHref, initialTheme }: NexidH
               <p>{copy.footer.body}</p>
             </div>
             <nav aria-label={copy.a11y.footerNavigation}>
-              <a href="#product">{copy.footer.product}</a>
+              <a href="#solutions">{copy.footer.product}</a>
               <Link href="/demo-lab">{copy.footer.demo}</Link>
               <Link href="/proof/verify">{copy.footer.proof}</Link>
               <Link href="/sdk">{copy.footer.developers}</Link>

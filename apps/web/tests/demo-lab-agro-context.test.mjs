@@ -4,7 +4,7 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 
-const [story, client, page, modal, proof, ownership, home, globalCss] = await Promise.all([
+const [story, client, page, modal, proof, ownership, home, experience, globalCss] = await Promise.all([
   read("../src/lib/demo-lab-vertical-story.ts"),
   read("../src/app/(public)/demo-lab/demo-lab-client.tsx"),
   read("../src/app/(public)/demo-lab/page.tsx"),
@@ -12,6 +12,7 @@ const [story, client, page, modal, proof, ownership, home, globalCss] = await Pr
   read("../src/app/proof/verify/page.tsx"),
   read("../src/app/proof/ownership/page.tsx"),
   read("../src/components/marketing-v4/nexid-home-v4.tsx"),
+  read("../src/components/marketing-v4/nexid-home-experience.tsx"),
   read("../src/app/globals.css"),
 ]);
 
@@ -31,7 +32,12 @@ test("the seeds story is localized, agro-first and explicit about evidence limit
 });
 
 test("the seeds route scopes visible evidence and preserves its vertical through handoffs", () => {
-  assert.match(home, /href="\/demo-lab\?vertical=seeds"/);
+  assert.doesNotMatch(home, /NexidIndustryShowcase|caseStudy/);
+  assert.match(experience, /agro: "seeds"/);
+  assert.match(experience, /pharma: "pharma"/);
+  assert.match(experience, /wine: "wine"/);
+  assert.match(experience, /premium: "sneaker"/);
+  assert.match(experience, /href=\{`\/demo-lab\?vertical=\$\{DEMO_VERTICAL_BY_SECTOR\[activeSector\.id\]\}`\}/);
   assert.match(client, /getDemoLabVerticalStory\(vertical, locale\)/);
   assert.match(client, /scopeDemoSummaryForVertical\(summary, vertical\)/);
   assert.match(client, /seeds: \{ imageUrl: "\/demo\/agro-secure\/real-seed-packet-pexels\.jpg", imageLightUrl: "\/demo\/agro-secure\/real-seed-packet-pexels\.jpg"/);

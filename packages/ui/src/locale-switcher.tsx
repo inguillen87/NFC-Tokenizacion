@@ -3,9 +3,15 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 const labels: Record<string, string> = {
-  "es-AR": "Espanol (AR)",
-  "pt-BR": "Portugues (BR)",
+  "es-AR": "Español (AR)",
+  "pt-BR": "Português (BR)",
   en: "English",
+};
+
+const selectLabels: Record<string, string> = {
+  "es-AR": "Seleccionar idioma",
+  "pt-BR": "Selecionar idioma",
+  en: "Select language",
 };
 
 export function LocaleSwitcher({ value, options }: { value: string; options: string[] }) {
@@ -20,7 +26,7 @@ export function LocaleSwitcher({ value, options }: { value: string; options: str
         suppressHydrationWarning
         value={value}
         className="min-h-11 bg-transparent pr-1 text-xs font-semibold"
-        aria-label="Seleccionar idioma"
+        aria-label={selectLabels[value] || selectLabels.en}
         onChange={(event) => {
           const next = event.target.value;
           document.cookie = `locale=${next}; path=/; max-age=31536000; SameSite=Lax`;

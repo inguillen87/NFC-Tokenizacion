@@ -21,7 +21,8 @@ test("home v4 light mode owns CTA, evidence and footer colors", () => {
   assert.match(homeV4, /MIPYME_CERTIFICATE_URL/);
   assert.match(homeV4Css, /:global\(html\[data-theme="light"\]\) \.root/);
   assert.match(homeV4Css, /--v4-accent:\s*#087d6c/);
-  assert.match(homeV4Css, /\.footer\s*\{[\s\S]*color:\s*#f2f7f4/);
+  assert.match(homeV4Css, /\.footer\s*\{[\s\S]*background:\s*var\(--v4-bg-soft\)[\s\S]*color:\s*var\(--v4-ink\)/);
+  assert.match(homeV4Css, /:global\(html\[data-theme="dark"\]\) \.footerTop img/);
   assert.match(css, /\.landing-consumer-portal-cta[\s\S]*color: #6b21a8 !important/);
   assert.match(css, /\.landing-offline-demo-cta[\s\S]*color: #0f172a !important/);
 });

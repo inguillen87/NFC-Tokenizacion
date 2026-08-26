@@ -409,7 +409,7 @@ export function NexidNavigationV4({
           <Suspense fallback={<span className={styles.localeFallback}>{locale}</span>}>
             <LocaleSwitcher value={locale} options={[...locales]} />
           </Suspense>
-          <ThemeToggle initialTheme={initialTheme} />
+          <ThemeToggle initialTheme={initialTheme} locale={locale} />
         </div>
         <nav className={styles.desktopActions} aria-label={content.aria.actions}>
           <NavigationLink
@@ -484,7 +484,7 @@ export function NexidNavigationV4({
           <Suspense fallback={<span className={styles.localeFallback}>{locale}</span>}>
             <LocaleSwitcher value={locale} options={[...locales]} />
           </Suspense>
-          <ThemeToggle initialTheme={initialTheme} />
+          <ThemeToggle initialTheme={initialTheme} locale={locale} />
         </div>
 
         <nav className={styles.mobileNav} aria-label={content.aria.mobileNavigation}>

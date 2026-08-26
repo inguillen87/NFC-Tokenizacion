@@ -17,6 +17,14 @@ test("legacy public landing route redirects to the canonical home landing", asyn
   assert.doesNotMatch(legacy, /Tus productos/);
 });
 
+test("public review host stays out of search indexes", async () => {
+  const proxy = await readFile(new URL("../src/proxy.ts", import.meta.url), "utf8");
+
+  assert.match(proxy, /revision\.nexid\.lat/);
+  assert.match(proxy, /X-Robots-Tag/);
+  assert.match(proxy, /noindex, nofollow, noarchive/);
+});
+
 test("landing mobile media guard wins after hero closures", async () => {
   const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
 

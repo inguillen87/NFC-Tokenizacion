@@ -5,6 +5,7 @@ import { isClerkConfiguredForRuntime } from "./lib/clerk-env";
 
 function landingMiddleware(req: NextRequest) {
   const host = req.headers.get("host") || "";
+  const isPublicReviewHost = host.toLowerCase().split(":")[0] === "revision.nexid.lat";
   const pathname = req.nextUrl.pathname;
   const shouldCanonicalizeWww = host.toLowerCase() === "www.nexid.lat";
   const shouldCanonicalizeLanding = pathname === "/landing" || pathname === "/landing/";
@@ -19,10 +20,18 @@ function landingMiddleware(req: NextRequest) {
     if (shouldCanonicalizeLanding) {
       url.pathname = "/";
     }
-    return NextResponse.redirect(url, 308);
+    const response = NextResponse.redirect(url, 308);
+    if (isPublicReviewHost) {
+      response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+    }
+    return response;
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+  if (isPublicReviewHost) {
+    response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+  }
+  return response;
 }
 
 const clerkGuard = isClerkConfiguredForRuntime()

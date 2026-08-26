@@ -1,21 +1,21 @@
 .header,
 .mobileOverlay {
-  --nav-bg: rgb(6 13 24 / 94%);
-  --nav-bg-solid: #060d18;
-  --nav-surface: #0d1827;
-  --nav-surface-raised: #122034;
-  --nav-text: #f3f7fb;
-  --nav-text-secondary: #b7c3d3;
-  --nav-text-muted: #8998ab;
-  --nav-border: rgb(148 163 184 / 20%);
-  --nav-border-strong: rgb(148 163 184 / 36%);
-  --nav-accent: #54ddc4;
-  --nav-accent-strong: #78ead5;
-  --nav-accent-soft: rgb(84 221 196 / 11%);
-  --nav-accent-text: #041914;
-  --nav-shadow: 0 22px 55px rgb(0 0 0 / 32%);
+  --nav-bg: rgb(255 255 255 / 94%);
+  --nav-bg-solid: #ffffff;
+  --nav-surface: #f5f8fb;
+  --nav-surface-raised: #ffffff;
+  --nav-text: #0c1727;
+  --nav-text-secondary: #34445a;
+  --nav-text-muted: #65748a;
+  --nav-border: rgb(15 23 42 / 13%);
+  --nav-border-strong: rgb(15 23 42 / 25%);
+  --nav-accent: #087f72;
+  --nav-accent-strong: #06685e;
+  --nav-accent-soft: rgb(8 127 114 / 9%);
+  --nav-accent-text: #ffffff;
+  --nav-shadow: 0 22px 55px rgb(15 23 42 / 14%);
   color: var(--nav-text);
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 .initialLight {
@@ -37,6 +37,20 @@
 }
 
 .initialDark {
+  --nav-bg: rgb(6 13 24 / 94%);
+  --nav-bg-solid: #060d18;
+  --nav-surface: #0d1827;
+  --nav-surface-raised: #122034;
+  --nav-text: #f3f7fb;
+  --nav-text-secondary: #b7c3d3;
+  --nav-text-muted: #8998ab;
+  --nav-border: rgb(148 163 184 / 20%);
+  --nav-border-strong: rgb(148 163 184 / 36%);
+  --nav-accent: #54ddc4;
+  --nav-accent-strong: #78ead5;
+  --nav-accent-soft: rgb(84 221 196 / 11%);
+  --nav-accent-text: #041914;
+  --nav-shadow: 0 22px 55px rgb(0 0 0 / 32%);
   color-scheme: dark;
 }
 

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { cookies } from "next/headers";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
+import "maplibre-gl/dist/maplibre-gl.css";
 import { resolveLocale, siteConfig } from "@product/config";
 import { ContextualHelpBot } from "../components/contextual-helpbot";
 import { PwaSetup } from "../components/pwa-setup";
@@ -15,18 +16,18 @@ const DEFAULT_SITE_URL = "https://nexid.lat";
 
 const socialCopyByLocale = {
   "es-AR": {
-    title: "nexID | Evidencia NFC/SUN, pasaportes y derechos digitales",
+    title: "nexID | Identidad y evidencia digital para productos",
     description:
-      "Validá mensajes NFC/SUN, registrá eventos reportados, organizá lote y origen declarados, y activá pasaportes o derechos digitales bajo política. No es una prueba autónoma del objeto físico.",
-    imageAlt: "nexID - Evidencia NFC/SUN, datos declarados y pasaportes digitales",
-    keywords: ["Validación NFC SUN", "NFC", "Pasaporte Digital", "Cadena de Suministro Empresarial", "Trazabilidad Declarada", "Derechos Digitales", "nexID"]
+      "Conectá cada unidad con información declarada, evidencia digital y la próxima acción. No es una prueba autónoma del objeto físico.",
+    imageAlt: "nexID - Identidad y evidencia digital para productos conectados",
+    keywords: ["Identidad digital de productos", "Etiquetas inteligentes", "Pasaporte digital", "Cadena de suministro", "Trazabilidad declarada", "Derechos digitales", "nexID"]
   },
   "pt-BR": {
-    title: "nexID | Evidência NFC/SUN, passaportes e direitos digitais",
+    title: "nexID | Identidade e evidência digital para produtos",
     description:
-      "Valide mensagens NFC/SUN, registre eventos reportados, organize lote e origem declarados e ative passaportes ou direitos digitais por política. Não é prova autônoma do objeto físico.",
-    imageAlt: "nexID - Evidência NFC/SUN, dados declarados e passaportes digitais",
-    keywords: ["Validação NFC SUN", "NFC", "Passaporte Digital", "Cadeia de Suprimentos Corporativa", "Rastreabilidade Declarada", "Direitos Digitais", "nexID"]
+      "Conecte cada unidade a informações declaradas, evidência digital e à próxima ação. Não é uma prova independente do objeto físico.",
+    imageAlt: "nexID - Identidade e evidência digital para produtos conectados",
+    keywords: ["Identidade digital de produtos", "Etiquetas inteligentes", "Passaporte digital", "Cadeia de suprimentos", "Rastreabilidade declarada", "Direitos digitais", "nexID"]
   },
   en: {
     title: "nexID | NFC/SUN evidence, passports and digital rights",
@@ -206,7 +207,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <meta property="og:image:alt" content={socialCopy.imageAlt} />
         <meta name="twitter:image:alt" content={socialCopy.imageAlt} />
         {facebookAppId ? <meta property="fb:app_id" content={facebookAppId} /> : null}
-        <StructuredData />
+        <StructuredData locale={locale} />
       </head>
       <body>
         {process.env.NODE_ENV !== "production" ? <script dangerouslySetInnerHTML={{ __html: extensionConsoleShieldScript }} /> : null}

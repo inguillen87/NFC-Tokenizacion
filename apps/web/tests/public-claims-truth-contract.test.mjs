@@ -128,7 +128,7 @@ test("audience, SDK and wallet surfaces name digital rights without authenticati
 
 test("landing, pricing and demo surfaces label evidence and simulations precisely", () => {
   const surfaces = [home, homeV4, homeV4Copy, demoPage, demoLab, heroScene, landingSections, calculator, pricing, interactiveDemo, radar, ogImage, demoSummary].join("\n");
-  assert.match(homeV4Copy, /A reading alone does not confirm contents, quality, physical origin or custody/);
+  assert.match(homeV4Copy, /The reading validates the configured message and policy; it does not prove/);
   assert.match(homeV4Copy, /Simulated scenario/);
   assert.match(demoLab, /Product scene/);
   assert.match(demoLab, /Message NFC accepted|Mensaje NFC aceptado/);

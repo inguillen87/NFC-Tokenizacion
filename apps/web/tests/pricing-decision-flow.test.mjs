@@ -148,7 +148,9 @@ test("pricing intents preserve tier and modeled scenario through the commercial 
   assert.match(modal, /restoreFocusRef\.current\?\.isConnected/);
   assert.doesNotMatch(modal, /setTimeout\(close,\s*700\)/);
   assert.match(modal, /status === "loading" \|\| status === "ok"/);
-  assert.match(modal, /respond within 1 business day/);
+  assert.match(modal, /Solicitud recibida\. El equipo comercial la revisará y se comunicará con vos\./);
+  assert.match(modal, /Solicitação recebida\. A equipe comercial fará a análise e entrará em contato\./);
+  assert.doesNotMatch(modal, /1 (?:business day|dia habil|dia útil)/i);
 });
 
 test("public and admin pricing separate recurring software from pilot and SLA scope", async () => {

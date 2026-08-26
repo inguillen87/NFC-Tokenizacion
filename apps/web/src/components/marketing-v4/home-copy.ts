@@ -1,5 +1,62 @@
 import type { AppLocale } from "@product/config";
 
+export type HomeHeroSector = {
+  id: "agro" | "pharma" | "wine" | "premium";
+  title: string;
+  body: string;
+  image: string;
+  alt: string;
+  visualKicker: string;
+  visualTitle: string;
+  visualStatus: string;
+  visualOrigin: string;
+  visualOriginValue: string;
+  visualBoundary: string;
+};
+
+export type HomeMotionCopy = {
+  eyebrow: string;
+  title: string;
+  body: string;
+  play: string;
+  pause: string;
+  replay: string;
+  openDemo: string;
+  mediaLabel: string;
+  boundary: string;
+};
+
+export type HomeFlowCopy = {
+  eyebrow: string;
+  title: string;
+  body: string;
+  steps: Array<{ number: string; title: string; body: string }>;
+  detail: string;
+};
+
+export type HomeRolesCopy = {
+  eyebrow: string;
+  title: string;
+  body: string;
+  scenarioLabel: string;
+  items: Array<{ role: string; title: string; body: string; outcome: string }>;
+  workspace: {
+    portfolioTitle: string;
+    portfolioItems: string[];
+    activeLabel: string;
+    configuredLabel: string;
+    reviewLabel: string;
+    signalsTitle: string;
+    signals: string[];
+    sequenceLabel: string;
+    activityLabel: string;
+    customerTitle: string;
+    informationLabel: string;
+    nextActionLabel: string;
+    viewDetail: string;
+  };
+};
+
 type HomeV4Copy = {
   a11y: {
     skipToContent: string;
@@ -12,46 +69,17 @@ type HomeV4Copy = {
     primary: string;
     secondary: string;
     evidence: string;
-    visualKicker: string;
-    visualTitle: string;
-    visualStatus: string;
-    visualOrigin: string;
-    visualOriginValue: string;
-    visualBoundary: string;
-    visualAlt: string;
     sectorsLabel: string;
-    sectors: Array<{ title: string; body: string }>;
+    rotationLabel: string;
+    pauseRotation: string;
+    resumeRotation: string;
+    capabilitiesLabel: string;
+    capabilities: string[];
+    sectors: HomeHeroSector[];
   };
-  flow: {
-    eyebrow: string;
-    title: string;
-    body: string;
-    steps: Array<{ number: string; title: string; body: string }>;
-    detail: string;
-  };
-  roles: {
-    eyebrow: string;
-    title: string;
-    body: string;
-    items: Array<{ role: string; title: string; body: string; outcome: string }>;
-  };
-  caseStudy: {
-    eyebrow: string;
-    title: string;
-    body: string;
-    demoLabel: string;
-    screenKicker: string;
-    screenTitle: string;
-    accepted: string;
-    acceptedNote: string;
-    declaredLabel: string;
-    declaredValue: string;
-    nextLabel: string;
-    nextValue: string;
-    journeyLabel: string;
-    journey: Array<{ step: string; title: string; body: string }>;
-    cta: string;
-  };
+  flow: HomeFlowCopy;
+  roles: HomeRolesCopy;
+  video: HomeMotionCopy;
   evidence: {
     eyebrow: string;
     title: string;
@@ -80,92 +108,144 @@ export const HOME_V4_COPY: Record<AppLocale, HomeV4Copy> = {
       footerNavigation: "Navegación del pie",
     },
     hero: {
-      eyebrow: "Identidad digital para productos físicos",
-      title: "Cada producto, una identidad clara.",
+      eyebrow: "Identidad digital para cada unidad",
+      title: "Conectá cada producto con su información y el próximo paso.",
       body:
-        "nexID conecta cada envase o unidad con NFC seguro o QR para mostrar datos declarados, evidencia digital y el próximo paso. Todo desde el navegador.",
+        "nexID vincula una etiqueta inteligente o un código con la información y la evidencia disponibles. La persona consulta desde el navegador y tu empresa define qué mostrar y qué acción habilitar.",
       primary: "Ver cómo funciona",
       secondary: "Hablar de un piloto",
       evidence: "Qué verifica exactamente",
-      visualKicker: "Lectura de producto",
-      visualTitle: "Lote de semillas · Demo",
-      visualStatus: "La lectura pasó los controles configurados",
-      visualOrigin: "Datos declarados",
-      visualOriginValue: "Producto, lote y mercado de destino",
-      visualBoundary: "La lectura no confirma por sí sola el contenido, la calidad, el origen físico ni la custodia.",
-      visualAlt: "Semillas cayendo desde un sobre hacia las manos, como contexto visual del caso agro de nexID",
       sectorsLabel: "Una plataforma. Distintas industrias.",
+      rotationLabel: "Elegí un rubro o mirá cómo cambia la experiencia.",
+      pauseRotation: "Pausar rotación",
+      resumeRotation: "Reanudar rotación",
+      capabilitiesLabel: "Preparado para integrarse",
+      capabilities: ["Etiqueta inteligente o código", "Consulta desde el navegador, sin instalar una aplicación", "Integración con sistemas existentes"],
       sectors: [
-        { title: "Agro, semillas e insumos", body: "Lote, envase y uso responsable" },
-        { title: "Alimentos y bebidas", body: "Origen declarado, campaña y postventa" },
-        { title: "Farma y salud", body: "Unidad, lote y recall" },
-        { title: "Lujo y bienes durables", body: "Garantía, derechos y reventa" },
+        {
+          id: "agro",
+          title: "Agro e insumos",
+          body: "Lote, envase y uso responsable",
+          image: "/images/nexid-v4/agro-enterprise.webp",
+          alt: "Envase agrícola, bolsa de semillas y teléfono conectados por una identidad digital",
+          visualKicker: "Agro e insumos",
+          visualTitle: "Envase agro · Demostración",
+          visualStatus: "El mensaje pasó los controles configurados",
+          visualOrigin: "Datos declarados",
+          visualOriginValue: "Producto, lote y mercado de destino",
+          visualBoundary: "La lectura valida el mensaje y las reglas configuradas; no acredita por sí sola el contenido ni el objeto físico.",
+        },
+        {
+          id: "pharma",
+          title: "Farma y salud",
+          body: "Lote, vigencia e información aprobada",
+          image: "/images/nexid-v4/pharma-enterprise.webp",
+          alt: "Vial farmacéutico, envase y teléfono conectados por una identidad digital",
+          visualKicker: "Farma y salud",
+          visualTitle: "Producto farmacéutico · Demostración",
+          visualStatus: "La identidad y la vigencia fueron consultadas",
+          visualOrigin: "Datos declarados",
+          visualOriginValue: "Producto, lote, vigencia e información aprobada",
+          visualBoundary: "La lectura valida el mensaje y las reglas configuradas; no acredita por sí sola el contenido ni el objeto físico.",
+        },
+        {
+          id: "wine",
+          title: "Bodegas de alta gama",
+          body: "Origen, lote y experiencia posterior",
+          image: "/images/nexid-v4/winery-enterprise.webp",
+          alt: "Botella de vino de alta gama, estuche y teléfono conectados por una identidad digital",
+          visualKicker: "Bodegas de alta gama",
+          visualTitle: "Botella conectada · Demostración",
+          visualStatus: "El mensaje y la información de origen fueron consultados",
+          visualOrigin: "Datos declarados",
+          visualOriginValue: "Producto, lote, origen y experiencia disponible",
+          visualBoundary: "La lectura valida el mensaje y las reglas configuradas; no acredita por sí sola el contenido, el origen físico ni la custodia.",
+        },
+        {
+          id: "premium",
+          title: "Moda y bienes durables",
+          body: "Garantía, derechos y postventa",
+          image: "/images/nexid-v4/fashion-enterprise.webp",
+          alt: "Calzado de alta gama, etiqueta inteligente y teléfono vinculados a una identidad digital",
+          visualKicker: "Moda y bienes durables",
+          visualTitle: "Producto durable · Demostración",
+          visualStatus: "La identidad y las reglas fueron consultadas",
+          visualOrigin: "Datos declarados",
+          visualOriginValue: "Unidad, garantía y derechos digitales",
+          visualBoundary: "La lectura valida el mensaje y las reglas configuradas; no acredita por sí sola la autenticidad física ni la cadena de custodia.",
+        },
       ],
     },
     flow: {
-      eyebrow: "Un flujo, tres momentos",
-      title: "Conectá. Verificá. Activá.",
-      body: "La tecnología aparece cuando aporta evidencia. La experiencia empieza por lo que la persona necesita hacer.",
+      eyebrow: "Un recorrido visible, de punta a punta",
+      title: "Del producto físico a una acción comprobable.",
+      body: "Una sola secuencia vincula la unidad, interpreta la lectura y presenta el paso que corresponde.",
       steps: [
-        { number: "01", title: "Conectá el producto", body: "Asigná una identidad por unidad y vinculá NFC o QR con los datos autorizados por la marca." },
-        { number: "02", title: "Mostrá la evidencia", body: "Cada tap o scan devuelve un resultado comprensible, con sus límites y señales de riesgo." },
-        { number: "03", title: "Activá el siguiente paso", body: "Garantía, contenido, beneficios, loyalty u ownership se habilitan según política." },
+        { number: "01", title: "Asigná su identidad", body: "Vinculá cada unidad o lote con la información autorizada por la marca." },
+        { number: "02", title: "Leé la evidencia", body: "Cada consulta devuelve un resultado comprensible, con límites y señales relevantes." },
+        { number: "03", title: "Habilitá una acción", body: "Información, garantía, soporte, beneficios o derechos se muestran según las reglas definidas." },
       ],
       detail: "Ver evidencia y límites",
     },
     roles: {
       eyebrow: "Valor por rol",
-      title: "Una identidad. Tres resultados claros.",
-      body: "La misma infraestructura se adapta a la tarea de cada persona sin mezclar todos los conceptos en una pantalla.",
+      title: "La plataforma, vista por cada equipo.",
+      body: "Marca, operaciones y cliente acceden a una vista preparada para la decisión que deben tomar.",
+      scenarioLabel: "Escenario ilustrativo · Sin datos de cliente",
       items: [
         { role: "Marca", title: "Protegé la relación", body: "Conectá cada unidad con información, garantía y acciones posteriores a la venta.", outcome: "Canal directo" },
-        { role: "Operaciones", title: "Trabajá con señales", body: "Revisá lotes, eventos reportados, replay y estados que requieren atención.", outcome: "Decisiones trazables" },
-        { role: "Cliente", title: "Entendé y actuá", body: "Consultá el resultado, la información declarada y el próximo paso sin descargar una app.", outcome: "Menos fricción" },
+        { role: "Operaciones", title: "Trabajá con señales", body: "Revisá lotes, hechos informados, lecturas repetidas y estados que requieren atención.", outcome: "Decisiones trazables" },
+        { role: "Cliente", title: "Entendé y actuá", body: "Consultá el resultado, la información declarada y el próximo paso sin instalar nada.", outcome: "Menos fricción" },
       ],
+      workspace: {
+        portfolioTitle: "Productos conectados",
+        portfolioItems: ["Lote agrícola 24A", "Unidad farmacéutica 000128", "Serie de indumentaria M-420"],
+        activeLabel: "Activo",
+        configuredLabel: "En configuración",
+        reviewLabel: "Revisar",
+        signalsTitle: "Señales de operación",
+        signals: ["Lecturas registradas", "Lotes consultados", "Revisión requerida"],
+        sequenceLabel: "Secuencia simulada",
+        activityLabel: "Actividad ilustrativa",
+        customerTitle: "Consulta del producto",
+        informationLabel: "Información disponible",
+        nextActionLabel: "Próxima acción",
+        viewDetail: "Ver detalle",
+      },
     },
-    caseStudy: {
-      eyebrow: "Caso guiado · Agro",
-      title: "Del envase al próximo paso.",
-      body: "Este escenario simulado sigue un lote de semillas desde su identidad digital hasta una consulta en campo. Distingue la lectura observada, los datos declarados y la acción permitida.",
-      demoLabel: "Escenario simulado · Sin datos de cliente",
-      screenKicker: "nexID · Agro",
-      screenTitle: "Lote de semillas",
-      accepted: "Lectura aceptada",
-      acceptedNote: "El identificador y la política superaron los controles configurados en esta demo.",
-      declaredLabel: "Datos declarados",
-      declaredValue: "Variedad, lote y mercado · Datos simulados",
-      nextLabel: "Siguiente acción",
-      nextValue: "Consultar ficha aprobada o pedir soporte técnico",
-      journeyLabel: "Lo que la demo hace visible",
-      journey: [
-        { step: "01", title: "Identidad del envase", body: "Código o tag asociado al lote configurado." },
-        { step: "02", title: "Datos declarados", body: "Producto, mercado e información aprobada por la empresa." },
-        { step: "03", title: "Lectura observada", body: "Resultado y próxima acción disponible para esa consulta." },
-      ],
-      cta: "Abrir la demo agro",
+    video: {
+      eyebrow: "Recorrido visual",
+      title: "Del producto físico a una experiencia útil.",
+      body: "Mirá cómo una lectura conecta la identidad, la evidencia disponible y la próxima acción. La secuencia ilustra el flujo; cada implementación depende de sus datos y controles.",
+      play: "Iniciar recorrido",
+      pause: "Pausar recorrido",
+      replay: "Repetir recorrido",
+      openDemo: "Explorar demostraciones",
+      mediaLabel: "Recorrido animado del producto conectado por nexID",
+      boundary: "Secuencia ilustrativa · Sin datos de cliente",
     },
     evidence: {
       eyebrow: "Claridad que da confianza",
       title: "Lo verificado, lo declarado y lo que aún no se sabe.",
-      body: "nexID separa cada capa para que una experiencia simple siga siendo técnicamente honesta.",
+      body: "nexID separa cada capa para que una experiencia simple también sea clara sobre sus límites.",
       items: [
-        { label: "Observado", title: "Mensaje y política", body: "Validación SUN/SDM, freshness, replay y estado reportado cuando corresponda." },
+        { label: "Observado", title: "Mensaje y reglas", body: "Validez del mensaje, vigencia, lecturas repetidas y estado informado cuando corresponda." },
         { label: "Declarado", title: "Producto y recorrido", body: "Origen, lote, contenido y eventos aportados por la marca o sus operadores." },
-        { label: "Opcional", title: "Prueba y derechos", body: "Anclajes, certificados u ownership digital sólo cuando el caso y la evidencia lo justifican." },
+        { label: "Opcional", title: "Prueba y derechos", body: "Registros verificables, certificados o derechos digitales sólo cuando el caso y la evidencia lo justifican." },
       ],
       publicProof: "Ver evidencia pública",
       pilot: "Diseñar un piloto",
     },
     footer: {
-      body: "Identidad y evidencia digital para conectar productos, operaciones y personas.",
+      body: "Un producto de Inmovar Latam SAS para conectar productos, operaciones y personas con identidad y evidencia digital.",
       product: "Producto",
-      demo: "Demo Lab",
-      proof: "Proof Verify",
-      developers: "Developers",
+      demo: "Demostraciones",
+      proof: "Verificador público",
+      developers: "Desarrolladores",
       pricing: "Planes",
       fiscal: "Información fiscal",
       certificate: "Certificado MiPyME",
-      rights: "nexID · Intellitech. Todos los derechos reservados.",
+      rights: "nexID · Inmovar Latam SAS. Todos los derechos reservados.",
     },
   },
   en: {
@@ -174,69 +254,121 @@ export const HOME_V4_COPY: Record<AppLocale, HomeV4Copy> = {
       footerNavigation: "Footer navigation",
     },
     hero: {
-      eyebrow: "Digital identity for physical products",
-      title: "A clear identity for every product.",
+      eyebrow: "Digital identity and evidence for every item",
+      title: "Connect every product to its information and next step.",
       body:
-        "nexID connects every package or item with secure NFC or QR to show declared data, digital evidence and the next step. All in the browser.",
+        "nexID links a smart tag or code to the available information and evidence. People check it in their browser, while your business decides what to show and which action to enable.",
       primary: "See how it works",
       secondary: "Discuss a pilot",
       evidence: "What it verifies",
-      visualKicker: "Product reading",
-      visualTitle: "Seed batch · Demo",
-      visualStatus: "The reading passed the configured checks",
-      visualOrigin: "Declared data",
-      visualOriginValue: "Product, batch and destination market",
-      visualBoundary: "A reading alone does not confirm contents, quality, physical origin or custody.",
-      visualAlt: "Seeds falling from a packet into a person's hands as visual context for the nexID agriculture case",
       sectorsLabel: "One platform. Different industries.",
+      rotationLabel: "Choose a sector or watch the experience adapt.",
+      pauseRotation: "Pause rotation",
+      resumeRotation: "Resume rotation",
+      capabilitiesLabel: "Ready to integrate",
+      capabilities: ["Smart tag or code", "Browser experience with no app", "Integration with existing systems"],
       sectors: [
-        { title: "Agriculture, seeds and inputs", body: "Batch, package and responsible use" },
-        { title: "Food and beverages", body: "Declared origin, campaign and after-sales" },
-        { title: "Pharma and health", body: "Item, batch and recall" },
-        { title: "Luxury and durable goods", body: "Warranty, rights and resale" },
+        {
+          id: "agro",
+          title: "Agriculture and inputs",
+          body: "Batch, package and responsible use",
+          image: "/images/nexid-v4/agro-enterprise.webp",
+          alt: "Agricultural container, seed pouch and phone connected through a digital identity",
+          visualKicker: "Agriculture and inputs",
+          visualTitle: "Agricultural package · Demo scenario",
+          visualStatus: "The identifier and policy passed the checks configured for this demo",
+          visualOrigin: "Declared data",
+          visualOriginValue: "Product, batch and destination market",
+          visualBoundary: "The reading validates the configured message and policy; it does not prove the contents or physical item by itself.",
+        },
+        {
+          id: "pharma",
+          title: "Pharma and healthcare",
+          body: "Batch, validity and approved information",
+          image: "/images/nexid-v4/pharma-enterprise.webp",
+          alt: "Pharmaceutical vial, package and phone connected through a digital identity",
+          visualKicker: "Pharma and healthcare",
+          visualTitle: "Pharmaceutical product · Demo scenario",
+          visualStatus: "The identity and validity were queried",
+          visualOrigin: "Declared data",
+          visualOriginValue: "Product, batch, validity and approved information",
+          visualBoundary: "The reading validates the configured message and policy; it does not prove the contents or physical item by itself.",
+        },
+        {
+          id: "wine",
+          title: "Premium wineries",
+          body: "Origin, batch and post-sale experience",
+          image: "/images/nexid-v4/winery-enterprise.webp",
+          alt: "Premium wine bottle, presentation box and phone connected through a digital identity",
+          visualKicker: "Premium wineries",
+          visualTitle: "Connected bottle · Demo scenario",
+          visualStatus: "The message and declared origin were queried",
+          visualOrigin: "Declared data",
+          visualOriginValue: "Product, batch, origin and available experience",
+          visualBoundary: "The reading validates the configured message and policy; it does not prove the contents, physical origin or custody by itself.",
+        },
+        {
+          id: "premium",
+          title: "Fashion and durable goods",
+          body: "Warranty, rights and after-sales",
+          image: "/images/nexid-v4/fashion-enterprise.webp",
+          alt: "Premium footwear, smart label and phone connected to a digital identity",
+          visualKicker: "Fashion and durable goods",
+          visualTitle: "Durable product · Demo scenario",
+          visualStatus: "The identity and policy were queried",
+          visualOrigin: "Declared data",
+          visualOriginValue: "Item, warranty and digital rights",
+          visualBoundary: "The reading validates the configured message and policy; it does not prove physical authenticity or custody by itself.",
+        },
       ],
     },
     flow: {
-      eyebrow: "One flow, three moments",
-      title: "Connect. Verify. Activate.",
-      body: "Technology appears when it adds evidence. The experience starts with what the person needs to do.",
+      eyebrow: "One visible journey, end to end",
+      title: "From a physical product to an evidence-based action.",
+      body: "One sequence links the item, interprets the reading and presents the appropriate next step.",
       steps: [
-        { number: "01", title: "Connect the product", body: "Assign an item identity and link NFC or QR to the information authorized by the brand." },
-        { number: "02", title: "Show the evidence", body: "Each tap or scan returns a clear result, its limits and relevant risk signals." },
-        { number: "03", title: "Enable the next step", body: "Warranty, content, benefits, loyalty or ownership become available under policy." },
+        { number: "01", title: "Assign its identity", body: "Link each item or batch to the information authorized by the brand." },
+        { number: "02", title: "Read the evidence", body: "Each query returns a clear result, its limits and relevant signals." },
+        { number: "03", title: "Enable an action", body: "Information, warranty, support, benefits or rights appear under defined rules." },
       ],
       detail: "See evidence and limits",
     },
     roles: {
       eyebrow: "Value by role",
-      title: "One identity. Three clear outcomes.",
-      body: "The same infrastructure adapts to each person's task without mixing every concept on one screen.",
+      title: "The platform, seen by every team.",
+      body: "Brand, operations and customer each get a view designed for the decision they need to make.",
+      scenarioLabel: "Simulated scenario · No customer data",
       items: [
         { role: "Brand", title: "Protect the relationship", body: "Connect every item with information, warranty and post-sale actions.", outcome: "Direct channel" },
         { role: "Operations", title: "Work with signals", body: "Review batches, reported events, replay and states that need attention.", outcome: "Traceable decisions" },
         { role: "Customer", title: "Understand and act", body: "See the result, declared information and next step without downloading an app.", outcome: "Less friction" },
       ],
+      workspace: {
+        portfolioTitle: "Connected products",
+        portfolioItems: ["Agricultural batch 24A", "Pharmaceutical unit 000128", "Apparel series M-420"],
+        activeLabel: "Active",
+        configuredLabel: "Being configured",
+        reviewLabel: "Review",
+        signalsTitle: "Operational signals",
+        signals: ["Recorded readings", "Queried batches", "Review required"],
+        sequenceLabel: "Simulated sequence",
+        activityLabel: "Illustrative activity",
+        customerTitle: "Product lookup",
+        informationLabel: "Available information",
+        nextActionLabel: "Next action",
+        viewDetail: "View details",
+      },
     },
-    caseStudy: {
-      eyebrow: "Guided case · Agriculture",
-      title: "From the package to the next step.",
-      body: "This simulated scenario follows a seed batch from its digital identity to a field query. It separates the observed reading, declared data and permitted action.",
-      demoLabel: "Simulated scenario · No customer data",
-      screenKicker: "nexID · Agriculture",
-      screenTitle: "Seed batch",
-      accepted: "Reading accepted",
-      acceptedNote: "The identifier and policy passed the checks configured for this demo.",
-      declaredLabel: "Declared data",
-      declaredValue: "Variety, batch and market · Simulated data",
-      nextLabel: "Next action",
-      nextValue: "View approved information or request technical support",
-      journeyLabel: "What the demo makes visible",
-      journey: [
-        { step: "01", title: "Package identity", body: "Code or tag associated with the configured batch." },
-        { step: "02", title: "Declared data", body: "Product, market and information approved by the company." },
-        { step: "03", title: "Observed reading", body: "Result and next action available for that query." },
-      ],
-      cta: "Open the agriculture demo",
+    video: {
+      eyebrow: "Visual walkthrough",
+      title: "From a physical product to a useful experience.",
+      body: "See how a reading connects identity, available evidence and the next action. This sequence illustrates the flow; every implementation depends on its data and controls.",
+      play: "Start walkthrough",
+      pause: "Pause walkthrough",
+      replay: "Replay walkthrough",
+      openDemo: "Explore Demo Lab",
+      mediaLabel: "Animated walkthrough of a product connected by nexID",
+      boundary: "Illustrative sequence · No customer data",
     },
     evidence: {
       eyebrow: "Clarity builds trust",
@@ -251,7 +383,7 @@ export const HOME_V4_COPY: Record<AppLocale, HomeV4Copy> = {
       pilot: "Design a pilot",
     },
     footer: {
-      body: "Digital identity and evidence that connect products, operations and people.",
+      body: "A product by Inmovar Latam SAS that connects products, operations and people with digital identity and evidence.",
       product: "Product",
       demo: "Demo Lab",
       proof: "Proof Verify",
@@ -259,7 +391,7 @@ export const HOME_V4_COPY: Record<AppLocale, HomeV4Copy> = {
       pricing: "Pricing",
       fiscal: "Tax information",
       certificate: "MiPyME certificate",
-      rights: "nexID · Intellitech. All rights reserved.",
+      rights: "nexID · Inmovar Latam SAS. All rights reserved.",
     },
   },
   "pt-BR": {
@@ -268,92 +400,144 @@ export const HOME_V4_COPY: Record<AppLocale, HomeV4Copy> = {
       footerNavigation: "Navegação do rodapé",
     },
     hero: {
-      eyebrow: "Identidade digital para produtos físicos",
-      title: "Uma identidade clara para cada produto.",
+      eyebrow: "Identidade digital para cada unidade",
+      title: "Conecte cada produto às suas informações e ao próximo passo.",
       body:
-        "A nexID conecta cada embalagem ou unidade com NFC seguro ou QR para mostrar dados declarados, evidência digital e o próximo passo. Tudo pelo navegador.",
+        "A nexID vincula uma etiqueta inteligente ou um código às informações e evidências disponíveis. A pessoa consulta pelo navegador, enquanto sua empresa define o que mostrar e qual ação habilitar.",
       primary: "Ver como funciona",
       secondary: "Conversar sobre um piloto",
       evidence: "O que é verificado",
-      visualKicker: "Leitura do produto",
-      visualTitle: "Lote de sementes · Demo",
-      visualStatus: "A leitura passou pelos controles configurados",
-      visualOrigin: "Dados declarados",
-      visualOriginValue: "Produto, lote e mercado de destino",
-      visualBoundary: "A leitura, isoladamente, não confirma conteúdo, qualidade, origem física ou custódia.",
-      visualAlt: "Sementes caindo de um pacote nas mãos de uma pessoa como contexto visual do caso agrícola da nexID",
       sectorsLabel: "Uma plataforma. Diferentes indústrias.",
+      rotationLabel: "Escolha um setor ou veja como a experiência se adapta.",
+      pauseRotation: "Pausar rotação",
+      resumeRotation: "Retomar rotação",
+      capabilitiesLabel: "Pronta para integração",
+      capabilities: ["Etiqueta inteligente ou código", "Consulta pelo navegador, sem instalar aplicativo", "Integração com sistemas existentes"],
       sectors: [
-        { title: "Agro, sementes e insumos", body: "Lote, embalagem e uso responsável" },
-        { title: "Alimentos e bebidas", body: "Origem declarada, campanha e pós-venda" },
-        { title: "Farma e saúde", body: "Unidade, lote e recall" },
-        { title: "Luxo e bens duráveis", body: "Garantia, direitos e revenda" },
+        {
+          id: "agro",
+          title: "Agro e insumos",
+          body: "Lote, embalagem e uso responsável",
+          image: "/images/nexid-v4/agro-enterprise.webp",
+          alt: "Embalagem agrícola, bolsa de sementes e telefone conectados por uma identidade digital",
+          visualKicker: "Agro e insumos",
+          visualTitle: "Embalagem agrícola · Cenário de demonstração",
+          visualStatus: "A mensagem passou pelos controles configurados",
+          visualOrigin: "Dados declarados",
+          visualOriginValue: "Produto, lote e mercado de destino",
+          visualBoundary: "A leitura valida a mensagem e as regras configuradas; por si só, não comprova o conteúdo nem o objeto físico.",
+        },
+        {
+          id: "pharma",
+          title: "Farmacêutica e saúde",
+          body: "Lote, validade e informação aprovada",
+          image: "/images/nexid-v4/pharma-enterprise.webp",
+          alt: "Frasco farmacêutico, embalagem e telefone conectados por uma identidade digital",
+          visualKicker: "Farmacêutica e saúde",
+          visualTitle: "Produto farmacêutico · Demonstração",
+          visualStatus: "A identidade e a validade foram consultadas",
+          visualOrigin: "Dados declarados",
+          visualOriginValue: "Produto, lote, validade e informação aprovada",
+          visualBoundary: "A leitura valida a mensagem e as regras configuradas; por si só, não comprova o conteúdo nem o objeto físico.",
+        },
+        {
+          id: "wine",
+          title: "Vinícolas de alto padrão",
+          body: "Origem, lote e experiência pós-venda",
+          image: "/images/nexid-v4/winery-enterprise.webp",
+          alt: "Garrafa de vinho, estojo e telefone conectados por uma identidade digital",
+          visualKicker: "Vinícolas de alto padrão",
+          visualTitle: "Garrafa conectada · Demonstração",
+          visualStatus: "A mensagem e a origem declarada foram consultadas",
+          visualOrigin: "Dados declarados",
+          visualOriginValue: "Produto, lote, origem e experiência disponível",
+          visualBoundary: "A leitura valida a mensagem e as regras configuradas; por si só, não comprova o conteúdo, a origem física nem a custódia.",
+        },
+        {
+          id: "premium",
+          title: "Moda e bens duráveis",
+          body: "Garantia, direitos e pós-venda",
+          image: "/images/nexid-v4/fashion-enterprise.webp",
+          alt: "Calçado de alta qualidade, etiqueta inteligente e telefone conectados a uma identidade digital",
+          visualKicker: "Moda e bens duráveis",
+          visualTitle: "Produto durável · Cenário de demonstração",
+          visualStatus: "A identidade e as regras foram consultadas",
+          visualOrigin: "Dados declarados",
+          visualOriginValue: "Unidade, garantia e direitos digitais",
+          visualBoundary: "A leitura valida a mensagem e as regras configuradas; por si só, não comprova autenticidade física nem cadeia de custódia.",
+        },
       ],
     },
     flow: {
-      eyebrow: "Um fluxo, três momentos",
-      title: "Conecte. Verifique. Ative.",
-      body: "A tecnologia aparece quando agrega evidência. A experiência começa pelo que a pessoa precisa fazer.",
+      eyebrow: "Um percurso visível, de ponta a ponta",
+      title: "Do produto físico a uma ação comprovável.",
+      body: "Uma única sequência vincula a unidade, interpreta a leitura e apresenta o próximo passo adequado.",
       steps: [
-        { number: "01", title: "Conecte o produto", body: "Atribua uma identidade por unidade e vincule NFC ou QR aos dados autorizados pela marca." },
-        { number: "02", title: "Mostre a evidência", body: "Cada tap ou scan devolve um resultado claro, seus limites e sinais de risco relevantes." },
-        { number: "03", title: "Ative o próximo passo", body: "Garantia, conteúdo, benefícios, loyalty ou ownership são habilitados conforme a política." },
+        { number: "01", title: "Atribua sua identidade", body: "Vincule cada unidade ou lote às informações autorizadas pela marca." },
+        { number: "02", title: "Leia a evidência", body: "Cada consulta devolve um resultado claro, seus limites e sinais relevantes." },
+        { number: "03", title: "Habilite uma ação", body: "Informação, garantia, suporte, benefícios ou direitos aparecem conforme as regras definidas." },
       ],
       detail: "Ver evidência e limites",
     },
     roles: {
       eyebrow: "Valor por função",
-      title: "Uma identidade. Três resultados claros.",
-      body: "A mesma infraestrutura se adapta à tarefa de cada pessoa sem misturar todos os conceitos em uma tela.",
+      title: "A plataforma, vista por cada equipe.",
+      body: "Marca, operações e cliente acessam uma visão preparada para a decisão que precisam tomar.",
+      scenarioLabel: "Cenário ilustrativo · Sem dados de cliente",
       items: [
         { role: "Marca", title: "Proteja a relação", body: "Conecte cada unidade a informações, garantia e ações posteriores à venda.", outcome: "Canal direto" },
-        { role: "Operações", title: "Trabalhe com sinais", body: "Revise lotes, eventos reportados, replay e estados que exigem atenção.", outcome: "Decisões rastreáveis" },
-        { role: "Cliente", title: "Entenda e aja", body: "Consulte o resultado, as informações declaradas e o próximo passo sem baixar um app.", outcome: "Menos atrito" },
+        { role: "Operações", title: "Trabalhe com sinais", body: "Revise lotes, eventos informados, leituras repetidas e estados que exigem atenção.", outcome: "Decisões rastreáveis" },
+        { role: "Cliente", title: "Entenda e aja", body: "Consulte o resultado, as informações declaradas e o próximo passo sem instalar nada.", outcome: "Menos atrito" },
       ],
+      workspace: {
+        portfolioTitle: "Produtos conectados",
+        portfolioItems: ["Lote agrícola 24A", "Unidade farmacêutica 000128", "Série de vestuário M-420"],
+        activeLabel: "Ativo",
+        configuredLabel: "Em configuração",
+        reviewLabel: "Revisar",
+        signalsTitle: "Sinais operacionais",
+        signals: ["Leituras registradas", "Lotes consultados", "Revisão necessária"],
+        sequenceLabel: "Sequência simulada",
+        activityLabel: "Atividade ilustrativa",
+        customerTitle: "Consulta do produto",
+        informationLabel: "Informações disponíveis",
+        nextActionLabel: "Próxima ação",
+        viewDetail: "Ver detalhes",
+      },
     },
-    caseStudy: {
-      eyebrow: "Caso guiado · Agro",
-      title: "Da embalagem ao próximo passo.",
-      body: "Este cenário simulado acompanha um lote de sementes desde sua identidade digital até uma consulta em campo. Separa a leitura observada, os dados declarados e a ação permitida.",
-      demoLabel: "Cenário simulado · Sem dados de cliente",
-      screenKicker: "nexID · Agro",
-      screenTitle: "Lote de sementes",
-      accepted: "Leitura aceita",
-      acceptedNote: "O identificador e a política passaram pelos controles configurados nesta demo.",
-      declaredLabel: "Dados declarados",
-      declaredValue: "Variedade, lote e mercado · Dados simulados",
-      nextLabel: "Próxima ação",
-      nextValue: "Consultar informação aprovada ou pedir suporte técnico",
-      journeyLabel: "O que a demo torna visível",
-      journey: [
-        { step: "01", title: "Identidade da embalagem", body: "Código ou tag associado ao lote configurado." },
-        { step: "02", title: "Dados declarados", body: "Produto, mercado e informação aprovada pela empresa." },
-        { step: "03", title: "Leitura observada", body: "Resultado e próxima ação disponível para essa consulta." },
-      ],
-      cta: "Abrir a demo agro",
+    video: {
+      eyebrow: "Percurso visual",
+      title: "Do produto físico a uma experiência útil.",
+      body: "Veja como uma leitura conecta identidade, evidência disponível e a próxima ação. A sequência ilustra o fluxo; cada implementação depende de seus dados e controles.",
+      play: "Iniciar percurso",
+      pause: "Pausar percurso",
+      replay: "Repetir percurso",
+      openDemo: "Explorar demonstrações",
+      mediaLabel: "Percurso animado de um produto conectado pela nexID",
+      boundary: "Sequência ilustrativa · Sem dados de cliente",
     },
     evidence: {
       eyebrow: "Clareza que gera confiança",
       title: "O que foi verificado, o que foi declarado e o que ainda não se sabe.",
-      body: "A nexID separa cada camada para que uma experiência simples continue tecnicamente honesta.",
+      body: "A nexID separa cada camada para que uma experiência simples também seja clara sobre seus limites.",
       items: [
-        { label: "Observado", title: "Mensagem e política", body: "Validação SUN/SDM, freshness, replay e estado reportado quando disponível." },
+        { label: "Observado", title: "Mensagem e regras", body: "Validade da mensagem, vigência, leituras repetidas e estado informado quando disponível." },
         { label: "Declarado", title: "Produto e percurso", body: "Origem, lote, conteúdo e eventos fornecidos pela marca ou por seus operadores." },
-        { label: "Opcional", title: "Prova e direitos", body: "Âncoras, certificados ou ownership digital somente quando o caso e a evidência justificam." },
+        { label: "Opcional", title: "Prova e direitos", body: "Registros verificáveis, certificados ou direitos digitais somente quando o caso e a evidência justificam." },
       ],
       publicProof: "Ver evidência pública",
       pilot: "Desenhar um piloto",
     },
     footer: {
-      body: "Identidade e evidência digital para conectar produtos, operações e pessoas.",
+      body: "Um produto da Inmovar Latam SAS para conectar produtos, operações e pessoas com identidade e evidência digital.",
       product: "Produto",
-      demo: "Demo Lab",
-      proof: "Proof Verify",
-      developers: "Developers",
+      demo: "Demonstrações",
+      proof: "Verificador público",
+      developers: "Desenvolvedores",
       pricing: "Planos",
       fiscal: "Informações fiscais",
       certificate: "Certificado MiPyME",
-      rights: "nexID · Intellitech. Todos os direitos reservados.",
+      rights: "nexID · Inmovar Latam SAS. Todos os direitos reservados.",
     },
   },
 };

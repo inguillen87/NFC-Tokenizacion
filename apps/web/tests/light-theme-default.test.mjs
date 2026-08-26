@@ -22,7 +22,7 @@ test("light mode is the platform default while an explicit dark preference is pr
   assert.match(webLayout, /hasCurrentThemePreference && themeCookie === "dark" \? "dark" : "light"/);
   assert.match(homePage, /hasCurrentThemePreference && cookieStore\.get\("theme"\)\?\.value === "dark" \? "dark" : "light"/);
   assert.match(dashboardLayout, /hasCurrentThemePreference && themeCookie === "dark" \? "dark" : "light"/);
-  assert.match(themeToggle, /ThemeToggle\(\{ initialTheme = "light" \}/);
+  assert.match(themeToggle, /ThemeToggle\(\{ initialTheme = "light", locale = "en" \}/);
   assert.match(themeToggle, /THEME_PREFERENCE_VERSION = "light-default-v1"/);
   assert.match(themeToggle, /return "light"/);
   assert.match(themeToggle, /meta\.content = theme === "dark" \? "#020617" : "#fcfdfb"/);
