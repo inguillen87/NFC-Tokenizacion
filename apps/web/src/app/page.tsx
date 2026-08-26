@@ -34,7 +34,7 @@ export default async function HomePage() {
   const footerCopy = locale === "en"
     ? {
         home: "nexID home",
-        summary: "nexID helps brands and organizations verify available evidence, tell each product's story, and activate warranties, benefits, digital certificates and after-sales journeys from an NFC tap or QR scan.",
+        summary: "nexID connects every product to its story and next useful action. With an NFC tap or QR scan, brands can offer product information, warranties, benefits and after-sales service in one clear experience.",
         about: "About us",
         architecture: "Architecture",
         plans: "Plans",
@@ -49,7 +49,7 @@ export default async function HomePage() {
     : locale === "pt-BR"
     ? {
         home: "Início da nexID",
-        summary: "A nexID ajuda marcas e organizações a verificar a evidência disponível, contar a história do produto e ativar garantia, benefícios, certificado digital e pós-venda por NFC ou QR.",
+        summary: "A nexID conecta cada produto à sua história e à próxima ação útil. Com um toque NFC ou QR, as marcas podem oferecer informações, garantia, benefícios e pós-venda em uma experiência clara.",
         about: "Quem somos",
         architecture: "Arquitetura",
         plans: "Planos",
@@ -63,7 +63,7 @@ export default async function HomePage() {
       }
     : {
         home: "Inicio de nexID",
-        summary: "nexID ayuda a marcas y organizaciones a verificar la evidencia disponible, contar la historia del producto y activar garantía, beneficios, certificado digital y postventa desde un toque NFC o QR.",
+        summary: "nexID conecta cada producto con su historia y la próxima acción útil. Con un toque NFC o QR, las marcas pueden ofrecer información, garantía, beneficios y postventa en una experiencia clara.",
         about: "Quiénes somos",
         architecture: "Arquitectura",
         plans: "Planes",
@@ -103,12 +103,14 @@ export default async function HomePage() {
       </main>
 
       <footer data-nav-inert className="site-footer border-t">
-        <div className="container-shell grid gap-4 py-10 md:grid-cols-[auto_1fr_auto] md:items-center">
-          <Link href="/" aria-label={footerCopy.home} className="inline-flex items-center">
-            <BrandLockup size={42} variant="ripple" theme="dark" className="hero-brand brand-surface-footer" />
-          </Link>
-          <p className="text-sm site-muted">{footerCopy.summary}</p>
-          <div className="flex flex-wrap gap-2">
+        <div className="container-shell site-footer-primary py-10">
+          <div className="site-footer-intro">
+            <Link href="/" aria-label={footerCopy.home} className="site-footer-brand inline-flex items-center">
+              <BrandLockup size={42} variant="ripple" theme="dark" className="hero-brand brand-surface-footer" />
+            </Link>
+            <p className="site-footer-summary text-sm site-muted">{footerCopy.summary}</p>
+          </div>
+          <nav className="site-footer-links flex flex-wrap gap-2" aria-label={locale === "en" ? "Footer links" : locale === "pt-BR" ? "Links do rodapé" : "Enlaces del pie de página"}>
             <Link href="/about" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">{footerCopy.about}</Link>
             <Link href="/docs" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">{footerCopy.architecture}</Link>
             <Link href="/proof/verify" className="rounded-lg border border-cyan-300/40 px-3 py-2 text-xs text-cyan-300">Proof Verify</Link>
@@ -119,7 +121,7 @@ export default async function HomePage() {
             <a href="https://api.whatsapp.com/send?phone=5492613168608" target="_blank" rel="noreferrer" className="site-footer-whatsapp-link rounded-lg border border-green-500/40 px-3 py-2 text-xs text-green-400">WhatsApp AR</a>
             <a href="https://api.whatsapp.com/send?phone=56988689095" target="_blank" rel="noreferrer" className="site-footer-whatsapp-link rounded-lg border border-green-500/40 px-3 py-2 text-xs text-green-400">WhatsApp CL</a>
             <a href={meetingHref} target="_blank" rel="noreferrer" className="rounded-lg border border-emerald-300/40 px-3 py-2 text-xs text-emerald-300">{scheduleMeetingLabel}</a>
-          </div>
+          </nav>
         </div>
 
         <div className="container-shell grid gap-3 pb-10 md:grid-cols-2">

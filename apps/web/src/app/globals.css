@@ -53494,6 +53494,69 @@ html[data-theme="light"] .site-footer .site-footer-whatsapp-link {
   color: #047857 !important;
 }
 
+/* Keep the public footer readable when the action list grows. The previous
+   auto-sized third column could reduce the summary to a few words per line. */
+.site-footer-primary {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+  align-items: start;
+  gap: clamp(2rem, 4vw, 4rem);
+}
+
+.site-footer-intro {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(1rem, 2vw, 1.5rem);
+  min-width: 0;
+}
+
+.site-footer-brand {
+  flex: 0 0 auto;
+}
+
+.site-footer-summary {
+  max-width: 34rem;
+  margin: 0;
+  line-height: 1.7;
+  text-wrap: pretty;
+}
+
+.site-footer-links {
+  min-width: 0;
+  justify-content: flex-end;
+  align-content: flex-start;
+}
+
+.site-footer-links > a {
+  display: inline-flex;
+  min-height: 2.35rem;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+@media (max-width: 1023px) {
+  .site-footer-primary {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
+  }
+
+  .site-footer-links {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 560px) {
+  .site-footer-intro {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .site-footer-summary {
+    max-width: 38rem;
+  }
+}
+
 html.theme-light .sdk-hero-eyebrow,
 html.theme-light .sdk-global-hero-atlas__caption span,
 html[data-theme="light"] .sdk-hero-eyebrow,
