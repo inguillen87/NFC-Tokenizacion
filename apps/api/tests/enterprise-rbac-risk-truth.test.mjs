@@ -9,6 +9,15 @@ const [migration, priorRiskMigration, preflight, dryRun] = await Promise.all([
   readFile(new URL("../scripts/db-enterprise-release-dry-run.mjs", import.meta.url), "utf8"),
 ]);
 
+test("enterprise release dry-run accepts only a contiguous applied prefix", () => {
+  assert.match(dryRun, /const firstPendingIndex = RELEASE_MIGRATIONS\.findIndex/);
+  assert.match(dryRun, /release_migrations_already_complete/);
+  assert.match(dryRun, /release_migration_history_gap/);
+  assert.match(dryRun, /const pendingMigrationBodies = migrationBodies\.slice\(firstPendingIndex\)/);
+  assert.match(dryRun, /for \(const migration of pendingMigrationBodies\)/);
+  assert.doesNotMatch(dryRun, /if \(alreadyApplied\.length\)/);
+});
+
 function section(source, start, end) {
   const startIndex = source.indexOf(start);
   const endIndex = source.indexOf(end, startIndex + start.length);

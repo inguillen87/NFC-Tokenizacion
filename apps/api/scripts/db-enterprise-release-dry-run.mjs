@@ -88,9 +88,16 @@ try {
   );
   const applied = new Set(ledger.rows.map((row) => String(row.id)));
   const missingPrerequisites = REQUIRED_APPLIED.filter((id) => !applied.has(id));
-  const alreadyApplied = RELEASE_MIGRATIONS.filter((id) => applied.has(id));
   if (missingPrerequisites.length) throw new Error(`release_prerequisites_missing:${missingPrerequisites.join(",")}`);
-  if (alreadyApplied.length) throw new Error(`release_migration_already_applied:${alreadyApplied.join(",")}`);
+  const firstPendingIndex = RELEASE_MIGRATIONS.findIndex((id) => !applied.has(id));
+  if (firstPendingIndex < 0) throw new Error("release_migrations_already_complete");
+  const appliedAfterGap = RELEASE_MIGRATIONS
+    .slice(firstPendingIndex)
+    .filter((id) => applied.has(id));
+  if (appliedAfterGap.length) {
+    throw new Error(`release_migration_history_gap:${appliedAfterGap.join(",")}`);
+  }
+  const pendingMigrationBodies = migrationBodies.slice(firstPendingIndex);
   const baseline = (await client.query(`SELECT
     EXISTS (
       SELECT 1 FROM information_schema.columns
@@ -107,7 +114,7 @@ try {
   await client.query("SET LOCAL lock_timeout = '5s'");
   await client.query("SET LOCAL statement_timeout = '90s'");
   await client.query("SELECT pg_advisory_xact_lock(487421337)");
-  for (const migration of migrationBodies) {
+  for (const migration of pendingMigrationBodies) {
     await client.query(migration.body);
     await client.query("INSERT INTO schema_migrations (id) VALUES ($1)", [migration.id]);
   }
@@ -931,6 +938,8 @@ try {
     ok: true,
     gate: "enterprise_release_dry_run",
     target_fingerprint: actualFingerprint,
+    already_applied_count: firstPendingIndex,
+    pending_count: pendingMigrationBodies.length,
     migrations: migrationBodies.map(({ id, sha256 }) => ({ id, sha256: `sha256:${sha256}` })),
     postcheck,
     committed: false,
