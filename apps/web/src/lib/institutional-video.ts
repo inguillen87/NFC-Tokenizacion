@@ -13,9 +13,9 @@ export const institutionalVideoPosters = {
 } as const;
 
 export const institutionalVideoLightPosters = {
-  "es-AR": "/video/poster_nexid_institutional_es_light.jpg",
-  en: "/video/poster_nexid_institutional_en_light.jpg",
-  "pt-BR": "/video/poster_nexid_institutional_pt_light.jpg",
+  "es-AR": "/video/poster_nexid_institutional_light_v2.webp",
+  en: "/video/poster_nexid_institutional_light_v2.webp",
+  "pt-BR": "/video/poster_nexid_institutional_light_v2.webp",
 } as const;
 
 export const institutionalVideoCaptions = {

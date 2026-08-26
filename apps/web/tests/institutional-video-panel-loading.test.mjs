@@ -48,10 +48,11 @@ test("institutional preview and playback cover the media frame without letterbox
   assert.match(source, /institutional-video-media h-full w-full object-cover/);
   assert.match(
     source,
-    /<img[\s\S]*?src=\{video\.poster\}[\s\S]*?className="institutional-video-light-preview"/,
+    /<img[\s\S]*?src=\{poster\}[\s\S]*?institutional-video-light-preview--visible/,
   );
-  assert.match(source, /<img[\s\S]*?src=\{video\.poster\}[\s\S]*?loading="lazy"/);
+  assert.match(source, /<img[\s\S]*?src=\{poster\}[\s\S]*?loading="lazy"/);
   assert.doesNotMatch(source, /fetchPriority="high"/);
+  assert.match(source, /showLightPreview \? "institutional-video-light-preview--visible" : "institutional-video-light-preview--hidden"/);
   assert.match(
     css,
     /\.institutional-video-frame video\s*\{[\s\S]*?display:\s*block;[\s\S]*?width:\s*100%;[\s\S]*?height:\s*100%;[\s\S]*?object-fit:\s*cover;/,
@@ -97,4 +98,21 @@ test("institutional preview and playback cover the media frame without letterbox
     /@media \(max-width: 720px\)[\s\S]*?body \.landing-root \.institutional-video-panel--landing \.institutional-video-frame\s*\{[\s\S]*?min-height:\s*0\s*!important;[\s\S]*?max-height:\s*none\s*!important;[\s\S]*?aspect-ratio:\s*16 \/ 9\s*!important;/,
     "mobile poster and playback must share the same 16:9 frame without a layout jump",
   );
+
+  const finalLightClosure = css.slice(css.lastIndexOf("White-first institutional media closure"));
+  assert.doesNotMatch(finalLightClosure, /background:\s*#071722/, "white-mode media closure must not restore a dark frame");
+  assert.match(finalLightClosure, /background:\s*#f3fbfd !important/);
+  assert.match(finalLightClosure, /institutional-video-light-preview--hidden[\s\S]{0,240}opacity:\s*0 !important/);
+  assert.match(
+    finalLightClosure,
+    /@media \(prefers-reduced-motion: reduce\)[\s\S]*?institutional-video-panel--landing\.institutional-video-panel--light-preview \.institutional-video-light-preview[\s\S]*?transition:\s*none !important/,
+    "white-mode poster fades must stop when reduced motion is requested",
+  );
+});
+
+test("white-first poster is locale-neutral, optimized and free of baked-in domain copy", async () => {
+  const videoConfig = await readFile(new URL("../src/lib/institutional-video.ts", import.meta.url), "utf8");
+
+  assert.equal((videoConfig.match(/poster_nexid_institutional_light_v2\.webp/g) ?? []).length, 3);
+  assert.doesNotMatch(videoConfig, /institutionalVideoLightPosters[\s\S]{0,320}\.jpg/);
 });

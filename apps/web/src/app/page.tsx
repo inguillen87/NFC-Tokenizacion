@@ -2,7 +2,6 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { BrandLockup } from "@product/ui";
 import {
-  CtaSection,
   HeroSection,
   SimpleTrustFlowSection,
 } from "../components/landing-sections";
@@ -92,7 +91,6 @@ export default async function HomePage() {
         <HeroSection content={content} locale={locale} initialTheme={initialTheme} />
 
         <SimpleTrustFlowSection locale={locale} />
-        <CtaSection content={content} locale={locale} />
         <SalesChatWidget locale={locale} deferUntilScroll />
         <CommercialContactModal initialLocale={locale} />
       </main>

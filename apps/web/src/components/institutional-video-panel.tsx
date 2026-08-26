@@ -298,14 +298,16 @@ export function InstitutionalVideoPanel({ locale, variant = "landing", className
               <span className="max-w-lg text-xs leading-5 text-slate-300">{copy.strip}</span>
             </div>
           ) : null}
-          {showLightPreview ? (
+          {isLightTheme ? (
             <img
-              src={video.poster}
+              src={poster}
               alt=""
               aria-hidden="true"
               decoding="async"
               loading="lazy"
-              className="institutional-video-light-preview"
+              className={`institutional-video-light-preview ${
+                showLightPreview ? "institutional-video-light-preview--visible" : "institutional-video-light-preview--hidden"
+              }`}
             />
           ) : null}
           {showPlayOverlay ? (

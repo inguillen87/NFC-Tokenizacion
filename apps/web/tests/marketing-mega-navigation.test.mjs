@@ -87,7 +87,6 @@ test("focused home keeps the commercial journey while the mega menu carries dept
   for (const surface of [
     "<HeroSection",
     "<SimpleTrustFlowSection",
-    "<CtaSection",
     "<SalesChatWidget",
     "<CommercialContactModal",
     "site-footer",
@@ -96,6 +95,7 @@ test("focused home keeps the commercial journey while the mega menu carries dept
   }
 
   assert.match(page, /<MarketingMegaNav/);
+  assert.doesNotMatch(page, /<CtaSection/);
   assert.match(page, /<SalesChatWidget locale=\{locale\} deferUntilScroll \/>/);
   assert.match(page, /<main id="main-content" data-nav-inert>/);
   assert.doesNotMatch(

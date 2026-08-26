@@ -49,8 +49,11 @@ test("SimpleTrustFlow is three plain-language steps, one action and one physical
   assert.match(flow, /<Link href="\/demo-lab(?:\?[^\"]*)?"/);
   assert.doesNotMatch(flow, /href="\/sun"|audiences:|rubros:|claimTitle:|claimBody:|NFT|tenant|replay|SUN|\bTT\b|custod/i);
   assert.doesNotMatch(flow, /md:grid-cols-4/);
+  assert.match(flow, /\["discover", "signal", "aftercare"\]/);
+  assert.match(flow, /<SimpleTrustFlowMotion>/);
+  assert.match(flow, /<SimpleTrustStepVisual kind=\{visualKinds\[index\] \?\? "discover"\} locale=\{locale\} \/>/);
 
-  assert.match(flow, /no (?:prueba|demuestra|certifica|reemplaza|confirma)[^.]{0,100}físic/i);
-  assert.match(flow, /não (?:prova|comprova|substitui|certifica|confirma)[^.]{0,100}físic/i);
-  assert.match(flow, /does not (?:prove|replace|certify|confirm)[^.]{0,100}physical/i);
+  assert.match(flow, /autenticidad[^.]{0,80}producto físico[^.]{0,80}requiere controles adicionales/i);
+  assert.match(flow, /autenticidade[^.]{0,80}produto físico[^.]{0,80}exige controles adicionais/i);
+  assert.match(flow, /physical product authenticity[^.]{0,80}requires additional checks/i);
 });

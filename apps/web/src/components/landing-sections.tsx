@@ -4,6 +4,8 @@ import Link from "next/link";
 import { ArrowRight, BadgeCheck, CloudOff, Cpu, Fingerprint, KeyRound, Network, PackageCheck, QrCode, RadioTower, RotateCcw, ShieldCheck, Smartphone } from "lucide-react";
 import { InstitutionalVideoPanel } from "./institutional-video-panel";
 import { PremiumTraceabilityGlobe } from "./premium-traceability-globe";
+import { SimpleTrustFlowMotion } from "./simple-trust-flow-motion";
+import { SimpleTrustStepVisual, type SimpleTrustVisualKind } from "./simple-trust-step-visual";
 import { platformVerticals, traceabilityGlobePoints, traceabilityGlobeRoutes } from "../lib/platform-verticals";
 
 type Content = any;
@@ -64,42 +66,43 @@ export function HeroSection({ content, locale, initialTheme = "light" }: { conte
 export function SimpleTrustFlowSection({ locale }: { locale: string }) {
   const isEn = locale === "en";
   const isBr = locale === "pt-BR";
+  const visualKinds: SimpleTrustVisualKind[] = ["discover", "signal", "aftercare"];
   const copy = isEn
     ? {
       eyebrow: "How it works",
-      title: "One tap. Three steps. A relationship that continues.",
-      body: "A customer taps with their phone or scans the QR. nexID shows the available product information and the next useful action.",
-      note: "The reading checks the digital label; by itself, it does not confirm that the physical product is authentic.",
-      primary: "See a real journey",
+      title: "One tap. Three steps. A clearer experience.",
+      body: "Tap with your phone or scan the QR. In seconds, you discover the product, understand what was checked and see what you can do next.",
+      note: "nexID checks the digital label. Physical product authenticity requires additional checks.",
+      primary: "Explore the experience",
       steps: [
-        { label: "Discover the product", body: "See its story, batch and the information the brand chooses to share." },
-        { label: "Check the signal", body: "nexID shows whether the digital reading passed the configured checks." },
-        { label: "Continue after purchase", body: "Open warranty, benefits or direct support when the program allows it." },
+        { label: "Discover the product", body: "Explore its story, batch and the information the brand published for you, all in one place." },
+        { label: "Understand the result", body: "nexID checks the digital label and clearly shows whether it passed the controls defined for that product." },
+        { label: "Choose the next step", body: "Access warranty, benefits or brand support, depending on the options available for that product." },
       ],
     }
     : isBr
     ? {
       eyebrow: "Como funciona",
-      title: "Um toque. Três passos. Uma relação que continua.",
-      body: "A pessoa aproxima o celular ou escaneia o QR. A nexID mostra as informações disponíveis do produto e a próxima ação útil.",
-      note: "A leitura verifica a etiqueta digital; por si só, não confirma que o produto físico seja autêntico.",
-      primary: "Ver uma experiência real",
+      title: "Um toque. Três etapas. Tudo mais claro.",
+      body: "Aproxime o celular ou escaneie o QR. Em segundos, você conhece o produto, entende o que foi verificado e vê o que pode fazer depois.",
+      note: "A nexID verifica a etiqueta digital. A autenticidade do produto físico exige controles adicionais.",
+      primary: "Explorar a experiência",
       steps: [
-        { label: "Conheça o produto", body: "Veja sua história, o lote e as informações que a marca decide compartilhar." },
-        { label: "Confira o sinal", body: "A nexID mostra se a leitura digital passou pelos controles configurados." },
-        { label: "Continue no pós-venda", body: "Acesse garantia, benefícios ou atendimento direto quando o programa permitir." },
+        { label: "Conheça o produto", body: "Explore sua história, o lote e as informações que a marca publicou para você, tudo em um só lugar." },
+        { label: "Entenda o resultado", body: "A nexID verifica a etiqueta digital e mostra com clareza se ela passou pelos controles definidos para aquele produto." },
+        { label: "Escolha o próximo passo", body: "Acesse garantia, benefícios ou atendimento da marca, conforme as opções disponíveis para aquele produto." },
       ],
     }
     : {
       eyebrow: "Cómo funciona",
-      title: "Un toque. Tres pasos. Una relación que continúa.",
-      body: "La persona acerca el celular o escanea el QR. nexID muestra la información disponible del producto y la próxima acción útil.",
-      note: "La lectura verifica la etiqueta digital; por sí sola, no confirma que el producto físico sea auténtico.",
-      primary: "Ver una experiencia real",
+      title: "Un toque. Tres pasos. Todo más claro.",
+      body: "Acercá el celular o escaneá el QR. En segundos conocés el producto, entendés qué se comprobó y encontrás qué podés hacer después.",
+      note: "nexID comprueba la etiqueta digital. La autenticidad del producto físico requiere controles adicionales.",
+      primary: "Explorar la experiencia",
       steps: [
-        { label: "Conocé el producto", body: "Mirá su historia, el lote y la información que la marca decide compartir." },
-        { label: "Revisá la señal", body: "nexID muestra si la lectura digital pasó los controles configurados." },
-        { label: "Seguí con la postventa", body: "Accedé a garantía, beneficios o atención directa cuando el programa lo permite." },
+        { label: "Descubrí el producto", body: "Explorá su historia, el lote y la información que la marca publicó para vos, todo en un mismo lugar." },
+        { label: "Entendé el resultado", body: "nexID comprueba la etiqueta digital y te muestra con claridad si pasó los controles definidos para ese producto." },
+        { label: "Elegí el próximo paso", body: "Accedé a garantía, beneficios o atención de la marca, según las opciones disponibles para ese producto." },
       ],
     };
 
@@ -112,15 +115,16 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
           <p className="simple-trust-flow-body">{copy.body}</p>
         </div>
 
-        <ol className="simple-trust-flow-steps">
+        <SimpleTrustFlowMotion>
           {copy.steps.map((step, index) => (
             <li key={step.label}>
+              <SimpleTrustStepVisual kind={visualKinds[index] ?? "discover"} locale={locale} />
               <span aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
               <h3>{step.label}</h3>
               <p>{step.body}</p>
             </li>
           ))}
-        </ol>
+        </SimpleTrustFlowMotion>
 
         <div className="simple-trust-flow-footer">
           <p>{copy.note}</p>
