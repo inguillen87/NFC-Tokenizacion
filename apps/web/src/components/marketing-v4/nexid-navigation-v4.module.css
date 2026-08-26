@@ -715,7 +715,7 @@
   }
 }
 
-@media (min-width: 76rem) {
+@media (min-width: 86rem) {
   .desktopCluster {
     display: flex;
   }

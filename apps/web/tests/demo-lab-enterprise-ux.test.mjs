@@ -48,8 +48,8 @@ test("landing header stays compact, touch safe and overflow-free through laptop 
   const css = await readFile(new URL("../src/components/marketing-v4/nexid-navigation-v4.module.css", import.meta.url), "utf8");
 
   assert.match(page, /<NexidHomeV4/);
-  assert.match(navigation, /const DESKTOP_MEDIA_QUERY = "\(min-width: 76rem\)"/);
-  assert.match(css, /@media \(min-width: 76rem\)/);
+  assert.match(navigation, /const DESKTOP_MEDIA_QUERY = "\(min-width: 86rem\)"/);
+  assert.match(css, /@media \(min-width: 86rem\)/);
   assert.match(css, /\.inner\s*\{[\s\S]*width:\s*min\(100% - 2rem, 82rem\)/);
   assert.match(css, /\.iconButton\s*\{[\s\S]*min-width:\s*2\.75rem[\s\S]*height:\s*2\.75rem/);
   assert.match(navigation, /role="dialog"/);

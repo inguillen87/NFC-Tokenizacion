@@ -41,7 +41,7 @@ test("navigation v4 keeps preferences, touch targets and reduced motion", () => 
   assert.match(navigation, /<LocaleSwitcher value=\{locale\}/);
   assert.match(navigation, /<ThemeToggle initialTheme=\{initialTheme\} locale=\{locale\}/);
   assert.match(css, /\.iconButton\s*\{[\s\S]*width:\s*2\.75rem[\s\S]*height:\s*2\.75rem/);
-  assert.match(css, /@media \(min-width: 76rem\)/);
+  assert.match(css, /@media \(min-width: 86rem\)/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(css, /@media \(forced-colors: active\)/);
 });

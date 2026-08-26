@@ -26,7 +26,7 @@ import {
   type NexidNavigationV4Props,
 } from "./nexid-navigation-v4.types";
 
-const DESKTOP_MEDIA_QUERY = "(min-width: 76rem)";
+const DESKTOP_MEDIA_QUERY = "(min-width: 86rem)";
 const DEFAULT_LOCALES = ["es-AR", "en", "pt-BR"] as const;
 const FOCUSABLE_SELECTOR = [
   "a[href]",
