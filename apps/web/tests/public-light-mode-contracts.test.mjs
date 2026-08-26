@@ -11,11 +11,10 @@ const [landing, home, sdk, demoLab, css] = await Promise.all([
 ]);
 
 test("landing light mode owns high-risk CTA and footer colors", () => {
-  assert.match(landing, /landing-consumer-portal-cta/);
+  assert.doesNotMatch(landing, /landing-consumer-portal-cta/);
   assert.match(landing, /landing-offline-demo-cta/);
   assert.match(home, /site-footer-data-card/);
   assert.match(home, /site-footer-whatsapp-link/);
-  assert.match(css, /\.landing-consumer-portal-cta[\s\S]*color: #6b21a8 !important/);
   assert.match(css, /\.landing-offline-demo-cta[\s\S]*color: #0f172a !important/);
   assert.match(css, /\.site-footer-data-card[\s\S]*color: #0f172a !important/);
   assert.match(css, /\.site-footer-whatsapp-link[\s\S]*color: #047857 !important/);

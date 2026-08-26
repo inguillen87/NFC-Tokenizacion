@@ -755,9 +755,9 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
   const requestedTheme =
     requestedThemeParam === "light" || requestedThemeParam === "dark"
       ? requestedThemeParam
-      : cookieTheme === "light"
-        ? "light"
-        : "dark";
+      : cookieTheme === "dark"
+        ? "dark"
+        : "light";
   const demoLabReturnTo = buildDemoLabReturnTo(params);
   const proofVerifierHref = buildProofVerifierHandoffHref(initialScenario);
   const demoThemeClass = requestedTheme === "light" ? "demo-lab-fullscreen-root--light" : "";

@@ -51,7 +51,8 @@ test("landing claims qualify technical security and commercial outcomes", async 
 test("brand synergy light mode and mobile controls keep enterprise contrast", async () => {
   const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
   const page = await readFile(new URL("../src/app/page.tsx", import.meta.url), "utf8");
-  const mobileNav = await readFile(new URL("../src/components/mobile-nav-sheet.tsx", import.meta.url), "utf8");
+  const navigation = await readFile(new URL("../src/components/marketing-mega-nav.tsx", import.meta.url), "utf8");
+  const navigationCss = await readFile(new URL("../src/components/marketing-mega-nav.module.css", import.meta.url), "utf8");
   const themeToggle = await readFile(new URL("../../../packages/ui/src/theme-toggle.tsx", import.meta.url), "utf8");
   const localeSwitcher = await readFile(new URL("../../../packages/ui/src/locale-switcher.tsx", import.meta.url), "utf8");
 
@@ -63,14 +64,13 @@ test("brand synergy light mode and mobile controls keep enterprise contrast", as
   assert.match(css, /\.brand-synergy-mobile-view-switch button\s*\{[\s\S]*min-height:\s*2\.75rem/);
   assert.match(css, /\.brand-synergy-business-pane\[data-mobile-active="false"\],[\s\S]*display:\s*none !important/);
   assert.match(css, /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*\.brand-synergy-terminal-row[\s\S]*transition-duration:\s*0\.01ms/);
-  assert.match(css, /\.site-header\.mobile-optimized-header \.mobile-nav-toggle\s*\{[\s\S]*min-height:\s*2\.75rem/);
+  assert.match(navigationCss, /\.mobileMenuButton\s*\{[\s\S]*min-height:\s*2\.65rem/);
   assert.match(page, /<section id="brand-synergy" className="landing-brand-synergy-band my-16 scroll-mt-24">/);
   assert.match(page, /landing-brand-synergy-shell container-shell/);
-  assert.match(page, /<ThemeToggle initialTheme=\{initialTheme\}/);
   assert.match(page, /initialTheme=\{initialTheme\}/);
-  assert.match(mobileNav, /mobile-menu-close inline-flex min-h-11 min-w-11/);
-  assert.match(mobileNav, /mobile-nav-action-link flex min-h-11/);
-  assert.match(themeToggle, /ThemeToggle\(\{ initialTheme = "dark" \}/);
+  assert.match(navigation, /<ThemeToggle initialTheme=\{initialTheme\} locale=\{locale\} \/>/);
+  assert.match(navigation, /role="dialog" aria-modal="true"/);
+  assert.match(themeToggle, /ThemeToggle\(\{ initialTheme = "light", locale = "en" \}/);
   assert.match(themeToggle, /useState<Theme>\(initialTheme\)/);
   assert.match(localeSwitcher, /locale-switcher inline-flex min-h-11/);
   assert.match(localeSwitcher, /className="min-h-11 bg-transparent/);

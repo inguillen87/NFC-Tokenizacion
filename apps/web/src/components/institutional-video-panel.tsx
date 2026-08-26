@@ -276,7 +276,15 @@ export function InstitutionalVideoPanel({ locale, variant = "landing", className
             controlsList="nodownload"
             poster={isPosterReady && !isLightTheme ? poster : undefined}
             tabIndex={showPlayOverlay ? -1 : undefined}
-          />
+          >
+            <track
+              kind="captions"
+              src={video.captions}
+              srcLang={video.captionsLanguage}
+              label={activeLocale === "en" ? "English" : activeLocale === "pt-BR" ? "Português" : "Español"}
+              default
+            />
+          </video>
           {!isLightTheme && !isPosterReady && showPlayOverlay ? (
             <div
               className="institutional-video-deferred-preview absolute inset-0 z-[1] flex flex-col justify-center gap-3 bg-slate-950 px-6 py-8 text-left"

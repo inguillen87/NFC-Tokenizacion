@@ -126,7 +126,7 @@ test("audience, SDK and wallet surfaces name digital rights without authenticati
 
 test("landing, pricing and demo surfaces label evidence and simulations precisely", () => {
   const surfaces = [home, demoPage, demoLab, heroScene, landingSections, calculator, pricing, interactiveDemo, radar, ogImage, demoSummary].join("\n");
-  assert.match(home, /does not prove the physical product or its presence/);
+  assert.match(landingSections, /A tap alone does not prove physical authenticity, contents, origin, seal or custody/);
   assert.match(demoLab, /Product scene/);
   assert.match(demoLab, /Message NFC accepted|Mensaje NFC aceptado/);
   assert.match(radar, /Reported custody event \(demo\)/);

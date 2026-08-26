@@ -42,31 +42,28 @@ test("web pwa fallback stays production-gated and mobile-safe", async () => {
   assert.match(sw, /font-size:clamp\(1\.75rem,9vw,2\.5rem\)/);
 });
 
-test("landing header stays compact, touch safe and overflow-free through laptop widths", async () => {
-  const page = await readFile(new URL("../src/app/page.tsx", import.meta.url), "utf8");
-  const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
-  const mobileNav = await readFile(new URL("../src/components/mobile-nav-sheet.tsx", import.meta.url), "utf8");
+test("landing mega navigation stays compact, keyboard-safe and overflow-free", async () => {
+  const [page, navigation, css] = await Promise.all([
+    readFile(new URL("../src/app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/marketing-mega-nav.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/marketing-mega-nav.module.css", import.meta.url), "utf8"),
+  ]);
 
-  assert.match(page, /site-header mobile-optimized-header/);
-  assert.match(css, /Landing mobile header compact pass/);
-  assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*\.site-header\.mobile-optimized-header \.header-main-row\s*\{[\s\S]*height:\s*3\.55rem !important/);
-  assert.match(css, /\.site-header\.mobile-optimized-header \.site-brand-lockup\s*\{[\s\S]*transform:\s*scale\(0\.84\)/);
-  assert.match(css, /\.site-header\.mobile-optimized-header \.mobile-nav-toggle\s*\{[^}]*min-height:\s*2\.75rem !important/s);
-  assert.match(css, /\.site-header\.mobile-optimized-header \.header-actions > a\.inline-flex \.ui-btn\s*\{[^}]*min-height:\s*2\.75rem !important/s);
-  assert.match(css, /html\.theme-light \.site-header\.mobile-optimized-header \.header-actions > a\.inline-flex \.ui-btn,[\s\S]*color:\s*#0f172a !important/);
-  assert.match(css, /Final landing header guard[\s\S]*\.site-header\.mobile-optimized-header \.header-actions > a\.inline-flex \.ui-btn\.ui-btn--secondary[\s\S]*color:\s*#0f172a !important/);
-  assert.match(css, /@media \(max-width:\s*380px\)[\s\S]*\.site-header\.mobile-optimized-header \.site-brand-lockup\s*\{[\s\S]*transform:\s*scale\(0\.78\)/);
-  assert.match(page, /hidden gap-6 text-sm 2xl:flex site-nav/);
-  assert.match(mobileNav, /window\.innerWidth >= 1536/);
-  assert.match(mobileNav, /mobile-nav-overlay[^"\n]*2xl:hidden/);
-  assert.match(mobileNav, /mobile-nav-toggle[^"\n]*2xl:hidden/);
-  assert.match(mobileNav, /sm:w-\[28rem\][^"\n]*sm:max-w-\[calc\(100vw-1\.5rem\)\]/);
-  assert.match(mobileNav, /role="dialog"/);
-  assert.match(mobileNav, /aria-modal="true"/);
-  assert.match(mobileNav, /appRoot\?\.setAttribute\("inert", ""\)/);
-  assert.match(mobileNav, /closeButtonRef\.current\?\.focus\(\)/);
-  assert.match(mobileNav, /shouldRestoreFocusRef\.current = true/);
-  assert.match(mobileNav, /triggerRef\.current\?\.focus\(\)/);
+  assert.match(page, /site-header landing-mega-header/);
+  assert.match(page, /<main id="main-content" data-nav-inert>/);
+  assert.match(navigation, /aria-expanded=\{expanded\}/);
+  assert.match(navigation, /aria-controls=\{`mega-menu-\$\{group\.id\}`\}/);
+  assert.match(navigation, /role="dialog" aria-modal="true"/);
+  assert.match(navigation, /event\.key === "Escape"/);
+  assert.match(navigation, /event\.key !== "Tab"/);
+  assert.match(navigation, /querySelectorAll<HTMLElement>\("\[data-nav-inert\]"\)/);
+  assert.match(navigation, /document\.body\.style\.overflow = "hidden"/);
+  assert.match(navigation, /mobileCloseRef\.current\?\.focus\(\)/);
+  assert.match(navigation, /mobileTriggerRef\.current\?\.focus\(\)/);
+  assert.match(css, /\.mobileMenuButton\s*\{[\s\S]*width: 2\.65rem/);
+  assert.match(css, /@media \(max-width: 1319px\)[\s\S]*\.mobileMenuButton[\s\S]*display: inline-flex/);
+  assert.match(css, /@media \(max-width: 520px\)[\s\S]*\.mobileDialog[\s\S]*width: 100%/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
 });
 
 test("demo lab mobile wizard shows four steps without horizontal scrolling", async () => {
@@ -508,12 +505,12 @@ test("demo lab wizard explains proof and business outcome for enterprise buyers"
   assert.match(css, /@media \(max-width:\s*520px\)[\s\S]*\.demo-lab-fullscreen-root \.demo-lab-wizard-proof-decoder/);
 });
 
-test("landing hero stats use real configured fields and no old cost placeholder", async () => {
+test("landing hero keeps technical metrics out of the first commercial layer", async () => {
   const hero = await readFile(new URL("../src/components/landing-sections.tsx", import.meta.url), "utf8");
   const i18n = await readFile(new URL("../../../packages/config/src/i18n.ts", import.meta.url), "utf8");
 
-  assert.match(hero, /const heroStats = \[/);
-  assert.match(hero, /stats\?\.latencyDelta/);
+  assert.doesNotMatch(hero, /const heroStats = \[/);
+  assert.doesNotMatch(hero, /stats\?\.latencyDelta|P95 < 150ms|IOTA \/ Polygon/);
   assert.doesNotMatch(hero, /stats\.scanSpeed|stats\.uptime|stats\.crypto|stats\.global/);
   assert.doesNotMatch(i18n, /10k (botellas|garrafas|bottles) × USD 0\.02/);
   assert.match(i18n, /Sin app para el comprador/);

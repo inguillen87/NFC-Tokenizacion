@@ -48281,6 +48281,137 @@ html[data-theme="light"] .nexid-quick-hub-card .nexid-quick-hub-card__cta:hover 
   }
 }
 
+/* Corrective white-first landing shell: preserve the original product story,
+   while removing decorative color fog and giving navigation a calmer hierarchy. */
+.landing-skip-link {
+  position: fixed;
+  z-index: 500;
+  top: 0.75rem;
+  left: 0.75rem;
+  transform: translateY(-180%);
+  border: 2px solid #087f8c;
+  border-radius: 0.75rem;
+  background: #ffffff;
+  color: #10233f;
+  padding: 0.7rem 0.9rem;
+  font-size: 0.82rem;
+  font-weight: 800;
+  box-shadow: 0 12px 30px rgba(15, 35, 63, 0.18);
+  transition: transform 160ms ease;
+}
+
+.landing-skip-link:focus {
+  transform: translateY(0);
+}
+
+.landing-mega-header {
+  background: #ffffff !important;
+  border-color: rgba(15, 35, 63, 0.1) !important;
+  color: #10233f;
+  backdrop-filter: none !important;
+  box-shadow: 0 8px 28px rgba(15, 35, 63, 0.065) !important;
+}
+
+.landing-mega-header .header-main-row {
+  position: relative;
+  min-height: 4.7rem;
+}
+
+.landing-brand-link {
+  flex: 0 0 auto;
+  border-radius: 0.8rem;
+}
+
+.landing-brand-link:focus-visible {
+  outline: 3px solid rgba(8, 127, 140, 0.36);
+  outline-offset: 4px;
+}
+
+html[data-theme="dark"] .landing-mega-header {
+  background: #050c18 !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #f1f5f9;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.24) !important;
+}
+
+html.theme-light body,
+html[data-theme="light"] body,
+html.theme-light .landing-root,
+html[data-theme="light"] .landing-root,
+html.theme-light .landing-root > main,
+html[data-theme="light"] .landing-root > main {
+  background: #ffffff !important;
+}
+
+html.theme-light .landing-hero-section,
+html[data-theme="light"] .landing-hero-section {
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 58%, #f5f9fb 100%) !important;
+  border-color: rgba(15, 35, 63, 0.1) !important;
+}
+
+html.theme-light .landing-hero-section .hero-signal-field,
+html[data-theme="light"] .landing-hero-section .hero-signal-field {
+  opacity: 0 !important;
+  mix-blend-mode: multiply;
+}
+
+html.theme-light .simple-trust-flow-shell,
+html[data-theme="light"] .simple-trust-flow-shell {
+  background: #ffffff !important;
+  border-color: rgba(15, 118, 128, 0.18) !important;
+  box-shadow: 0 24px 64px rgba(15, 35, 63, 0.075) !important;
+}
+
+html.theme-light .simple-trust-flow-step,
+html[data-theme="light"] .simple-trust-flow-step,
+html.theme-light .enterprise-trust-layer-card,
+html[data-theme="light"] .enterprise-trust-layer-card {
+  background: #ffffff !important;
+  border-color: rgba(15, 35, 63, 0.12) !important;
+  box-shadow: 0 8px 26px rgba(15, 35, 63, 0.055) !important;
+}
+
+html.theme-light #offline-field-operations,
+html[data-theme="light"] #offline-field-operations {
+  background: #f7fafb !important;
+  border: 1px solid rgba(15, 118, 128, 0.12);
+  border-radius: clamp(1.5rem, 3vw, 2.5rem);
+}
+
+html.theme-light .landing-brand-synergy-band,
+html[data-theme="light"] .landing-brand-synergy-band {
+  border-color: rgba(15, 35, 63, 0.09) !important;
+  background: #f7fafb !important;
+}
+
+html.theme-light .site-footer,
+html[data-theme="light"] .site-footer {
+  background: #f8fafb !important;
+  border-color: rgba(15, 35, 63, 0.1) !important;
+}
+
+html.theme-light .locale-switcher option,
+html[data-theme="light"] .locale-switcher option {
+  background: #ffffff !important;
+  color: #10233f !important;
+}
+
+@media (max-width: 760px) {
+  .landing-mega-header .header-main-row {
+    min-height: 4.25rem;
+  }
+
+  .landing-mega-header .site-brand-lockup {
+    max-width: 8.4rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-skip-link {
+    transition: none;
+  }
+}
+
 html.theme-light .demo-lab-wizard-gano-cta .demo-lab-wizard-primary-cta,
 html[data-theme="light"] .demo-lab-wizard-gano-cta .demo-lab-wizard-primary-cta {
   border-color: rgba(14, 116, 144, 0.4) !important;

@@ -18,6 +18,12 @@ export const institutionalVideoLightPosters = {
   "pt-BR": "/video/poster_nexid_institutional_pt_light.jpg",
 } as const;
 
+export const institutionalVideoCaptions = {
+  "es-AR": "/video/nexid_institutional_es.vtt",
+  en: "/video/nexid_institutional_en.vtt",
+  "pt-BR": "/video/nexid_institutional_pt.vtt",
+} as const;
+
 const activeInstitutionalVideos: Record<string, string> = {
   "es-AR": institutionalVideoDropTargets["es-AR"],
   en: institutionalVideoDropTargets.en,
@@ -32,6 +38,8 @@ export function resolveInstitutionalVideo(locale: string) {
     futureSrc: institutionalVideoDropTargets[normalized],
     poster: institutionalVideoPosters[normalized] || institutionalVideoPosters["es-AR"],
     lightPoster: institutionalVideoLightPosters[normalized] || institutionalVideoLightPosters["es-AR"],
+    captions: institutionalVideoCaptions[normalized] || institutionalVideoCaptions["es-AR"],
+    captionsLanguage: normalized === "es-AR" ? "es" : normalized === "pt-BR" ? "pt" : "en",
     type: "video/mp4",
   };
 }

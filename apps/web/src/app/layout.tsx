@@ -3,13 +3,14 @@ import type { ReactNode } from "react";
 import { cookies } from "next/headers";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
-import { resolveLocale, siteConfig } from "@product/config";
+import { siteConfig } from "@product/config";
 import { ContextualHelpBot } from "../components/contextual-helpbot";
 import { PwaSetup } from "../components/pwa-setup";
 import { MisconfigurationBanner } from "../components/misconfiguration-banner";
 import { WalletExtensionGuard } from "../components/wallet-extension-guard";
 import { StructuredData } from "../components/structured-data";
 import { getClerkPublishableKey } from "../lib/clerk-env";
+import { getWebI18n } from "../lib/locale";
 
 const DEFAULT_SITE_URL = "https://nexid.lat";
 
@@ -102,13 +103,12 @@ export const viewport: Viewport = {
   viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: dark)", color: "#020617" },
-    { media: "(prefers-color-scheme: light)", color: "#f5f8ff" },
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
   ],
 };
 
 export async function generateMetadata(): Promise<Metadata> {
-  const cookieStore = await cookies();
-  const locale = resolveLocale(cookieStore.get("locale")?.value);
+  const { locale } = await getWebI18n();
   const socialCopy = getSocialCopy(locale);
   const siteUrl = new URL(process.env.NEXT_PUBLIC_SITE_URL || DEFAULT_SITE_URL);
   const imageParams = new URLSearchParams({
@@ -186,9 +186,9 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const cookieStore = await cookies();
-  const locale = resolveLocale(cookieStore.get("locale")?.value);
+  const { locale } = await getWebI18n();
   const themeCookie = cookieStore.get("theme")?.value;
-  const theme = themeCookie === "light" ? "light" : "dark";
+  const theme = themeCookie === "dark" ? "dark" : "light";
   const socialCopy = getSocialCopy(locale);
   const facebookAppId = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID?.trim();
   const clerkKey = getClerkPublishableKey();

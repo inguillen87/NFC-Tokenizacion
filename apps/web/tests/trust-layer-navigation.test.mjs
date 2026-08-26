@@ -81,50 +81,45 @@ test("landing hero sends prospects to Demo Lab and labels its fixed route as a d
   assert.doesNotMatch(hero, /const routeLabel = isEnglish \? "Active route"/);
 });
 
-test("home quick navigation exposes Proof Verify on desktop, footer and mobile", async () => {
-  const page = await readFile(new URL("../src/app/page.tsx", import.meta.url), "utf8");
-  const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
-  const hubCtas = page.match(/nexid-quick-hub-card__cta/g) ?? [];
+test("home mega navigation exposes product depth without duplicating a technical hub", async () => {
+  const [page, navigation, css] = await Promise.all([
+    readFile(new URL("../src/app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/marketing-mega-nav.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/components/marketing-mega-nav.module.css", import.meta.url), "utf8"),
+  ]);
 
-  assert.match(page, /Proof Verify/);
-  assert.match(page, /href="\/proof\/verify"/);
-  assert.match(page, /aria-label=\{labels\.quickProof\}/);
-  assert.match(page, />Proof<\/Button>/);
-  assert.match(page, /const brandSynergyLabel = locale === "en" \? "Brand AI"/);
-  assert.match(page, /\{ label: brandSynergyLabel, href: "#brand-synergy" \}/);
+  for (const group of ["solutions", "industries", "platform", "resources"]) {
+    assert.match(navigation, new RegExp(`id: "${group}"`));
+  }
+  assert.match(navigation, /label: "Proof Verify"[\s\S]*href: "\/proof\/verify"/);
+  assert.match(navigation, /label: "SUN validation"[\s\S]*href: "\/sun"/);
+  assert.match(navigation, /label: "Documentation"[\s\S]*href: "\/docs"/);
+  assert.match(navigation, /label: "SDK and APIs"[\s\S]*href: "\/sdk"/);
+  assert.match(page, /<Link href="\/proof\/verify"[^>]*>Proof Verify<\/Link>/);
   assert.match(page, /<section id="brand-synergy" className="landing-brand-synergy-band my-16 scroll-mt-24">/);
-  assert.match(page, /Verificar evidencia/);
-  assert.match(page, />Proof<\/Link>/);
-  assert.match(page, /landing-mobile-action-dock/);
-  assert.match(page, /labels\.mobileCtaPricing/);
-  assert.match(page, /href="\/pricing" className="landing-mobile-action-dock__link"/);
-  assert.equal(hubCtas.length, 7);
-  assert.match(page, /nexid-quick-hub-card__cta[^"]*min-h-11[^"]*w-full/);
-  assert.match(css, /\.nexid-quick-hub-card__cta\s*\{[\s\S]*min-height:\s*44px/);
-  assert.match(css, /html\.theme-light \.nexid-quick-hub-card \.nexid-quick-hub-card__cta,[\s\S]*background:\s*rgba\(236,\s*254,\s*255,\s*0\.74\) !important/);
-  assert.match(css, /\.landing-mobile-action-dock\s*\{[\s\S]*position:\s*fixed/);
-  assert.match(css, /\.landing-mobile-action-dock__inner\s*\{[\s\S]*grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\)/);
-  assert.match(css, /body:has\(\.landing-mobile-action-dock\) \.sales-widget-root,[\s\S]*bottom:\s*calc\(5\.95rem \+ env\(safe-area-inset-bottom\)\) !important/);
-  assert.doesNotMatch(page, /grid-cols-4 items-center gap-2 rounded-2xl border border-white\/10 bg-slate-950\/85/);
-  assert.doesNotMatch(page, /mt-4 inline-flex items-center gap-1 text-xs font-bold/);
-  assert.doesNotMatch(page, /pb-\[calc\(max\(env\(safe-area-inset-bottom\),0px\)\+1rem\)\]/);
+  assert.ok((navigation.match(/copy\.groups\.map\(\(group/g) ?? []).length >= 2, "desktop and mobile must share the same groups");
+  assert.match(navigation, /<Link href="\/pricing" className=\{styles\.navDirectLink\}/);
+  assert.match(navigation, /role="dialog" aria-modal="true"/);
+  assert.match(css, /\.navGroupButton,[\s\S]*min-height: 2\.65rem/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.doesNotMatch(`${page}\n${navigation}`, /landing-mobile-action-dock|nexid-quick-hub-card/);
 });
 
-test("landing mobile hero exposes business actions before the heavy product scene", async () => {
+test("landing hero exposes two business actions and one institutional video", async () => {
   const sections = await readFile(new URL("../src/components/landing-sections.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
 
   const mobileActionsIndex = sections.indexOf("landing-mobile-hero-actions");
-  const heroSceneIndex = sections.indexOf("<HeroScene");
+  const videoIndex = sections.indexOf("<InstitutionalVideoPanel");
 
   assert.ok(mobileActionsIndex > -1, "expected mobile hero actions");
-  assert.ok(heroSceneIndex > -1, "expected hero scene");
-  assert.ok(mobileActionsIndex < heroSceneIndex, "mobile actions should appear before the heavy hero scene");
-  assert.match(sections, /href="\/proof\/verify" className="landing-mobile-hero-actions__secondary"/);
-  assert.match(sections, /href="\/pricing" className="landing-mobile-hero-actions__secondary"/);
-  assert.match(sections, /href="\/docs" className="landing-mobile-hero-actions__muted"/);
-  assert.match(sections, /const mobileDocsCta = "Docs \/ API"/);
-  assert.match(sections, /\{mobileDocsCta\}/);
+  assert.ok(videoIndex > -1, "expected institutional video");
+  assert.ok(mobileActionsIndex < videoIndex, "mobile actions should appear before the institutional video");
+  assert.doesNotMatch(sections, /<HeroScene|const heroStats = \[/);
+  assert.match(sections, /href="\/\?contact=demo#contact-modal" className="landing-mobile-hero-actions__primary"/);
+  assert.match(sections, /href="\/demo-lab" className="landing-mobile-hero-actions__secondary"/);
+  assert.doesNotMatch(sections, /landing-mobile-hero-actions[\s\S]{0,800}href="\/(?:proof\/verify|pricing|docs)"/);
+  assert.doesNotMatch(sections, /mobileDocsCta|landing-mobile-hero-actions__muted/);
   assert.match(css, /\.landing-mobile-hero-actions a\s*\{[\s\S]*min-height:\s*44px/);
   assert.match(css, /\.landing-mobile-hero-actions__primary\s*\{[\s\S]*background:\s*linear-gradient\(135deg,\s*#22d3ee,\s*#14b8a6\)/);
   assert.match(css, /html\.theme-light \.landing-mobile-hero-actions__secondary,[\s\S]*color:\s*#0f172a !important/);

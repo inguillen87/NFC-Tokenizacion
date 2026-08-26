@@ -189,8 +189,9 @@ function resolveDictationLanguage(locale: AppLocale) {
   return "es-AR";
 }
 
-export function SalesChatWidget({ locale }: { locale: AppLocale }) {
+export function SalesChatWidget({ locale, deferUntilScroll = false }: { locale: AppLocale; deferUntilScroll?: boolean }) {
   const t = copy[locale] || copy["es-AR"];
+  const [isAvailable, setIsAvailable] = useState(!deferUntilScroll);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [input, setInput] = useState("");
@@ -205,6 +206,27 @@ export function SalesChatWidget({ locale }: { locale: AppLocale }) {
   const peerRef = useRef<RTCPeerConnection | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    if (!deferUntilScroll || typeof window === "undefined") return;
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("assistant") === "open" || params.get("assistant_intent")) {
+      setIsAvailable(true);
+      return;
+    }
+
+    const revealOffset = Math.max(900, window.innerHeight * 1.25);
+    const reveal = () => {
+      if (window.scrollY < revealOffset) return;
+      setIsAvailable(true);
+      window.removeEventListener("scroll", reveal);
+    };
+
+    reveal();
+    window.addEventListener("scroll", reveal, { passive: true });
+    return () => window.removeEventListener("scroll", reveal);
+  }, [deferUntilScroll]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -447,6 +469,8 @@ export function SalesChatWidget({ locale }: { locale: AppLocale }) {
     realtimeState === "connecting" ? t.realtimeConnecting :
     realtimeState === "live" ? "Cortar AI" :
     t.realtimeCall;
+
+  if (!isAvailable) return null;
 
   return (
     <div className={`sales-widget-root fixed z-[38] md:bottom-4 md:left-4 md:right-auto md:z-[70] md:max-w-[calc(100vw-1.5rem)] ${open ? "bottom-4 left-3 right-3 w-auto md:w-[390px]" : "bottom-4 right-4 w-auto"}`}>

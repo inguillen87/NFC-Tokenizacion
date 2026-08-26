@@ -25,3 +25,15 @@ test("institutional video disables its decorative status pulse for reduced motio
   assert.match(source, /animate-pulse motion-reduce:animate-none/);
   assert.match(source, /motion-reduce:animate-none" aria-hidden="true"/);
 });
+
+test("institutional video exposes localized captions", async () => {
+  const [source, videoConfig] = await Promise.all([
+    readFile(componentUrl, "utf8"),
+    readFile(new URL("../src/lib/institutional-video.ts", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(source, /<track[\s\S]*kind="captions"[\s\S]*src=\{video\.captions\}[\s\S]*default/);
+  assert.match(videoConfig, /nexid_institutional_es\.vtt/);
+  assert.match(videoConfig, /nexid_institutional_en\.vtt/);
+  assert.match(videoConfig, /nexid_institutional_pt\.vtt/);
+});

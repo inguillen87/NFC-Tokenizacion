@@ -2,59 +2,21 @@ import { Card, SectionHeading, Badge } from "@product/ui";
 import { schedulingUrls } from "@product/config";
 import Link from "next/link";
 import { ArrowRight, BadgeCheck, CloudOff, Cpu, Fingerprint, KeyRound, Network, PackageCheck, QrCode, RadioTower, RotateCcw, ShieldCheck, Smartphone } from "lucide-react";
-import { HeroScene } from "./hero-scene";
 import { InstitutionalVideoPanel } from "./institutional-video-panel";
 import { PremiumTraceabilityGlobe } from "./premium-traceability-globe";
 import { platformVerticals, traceabilityGlobePoints, traceabilityGlobeRoutes } from "../lib/platform-verticals";
 
 type Content = any;
 
-export function HeroSection({ content, stats, locale, initialTheme = "dark" }: { content: Content; stats: any; locale: string; radar?: any; initialTheme?: "light" | "dark" }) {
+export function HeroSection({ content, locale, initialTheme = "dark" }: { content: Content; locale: string; initialTheme?: "light" | "dark" }) {
   const isEn = locale === "en";
   const isBr = locale === "pt-BR";
   const hero = content?.hero || {};
   const heroSubtitle = hero?.subtitle || hero?.body || "";
   const primaryCta = hero?.cta?.primary || hero?.primary || "Empezar";
   const secondaryCta = hero?.cta?.secondary || hero?.secondary || "Contacto";
-  const mobileDocsCta = "Docs / API";
 
   const trustBadge = isEn ? "Enterprise Trusted" : isBr ? "Confiabilidade Corporativa" : "Confianza para empresas";
-  const demoEyebrow = isEn ? "Interactive product experience" : isBr ? "Experiencia interativa do produto" : "Experiencia guiada de producto";
-  const demoBody = isEn
-    ? "Bottle, wristband and package: a guided tap shows NFC/SUN message evidence, declared origin and reported seal state. It does not prove physical authenticity, contents, origin, seal or custody."
-    : isBr
-    ? "Garrafa, pulseira e embalagem: um toque guiado mostra evidência da mensagem NFC/SUN, origem declarada e estado reportado do lacre. Não comprova autenticidade física, conteúdo, origem, lacre ou custódia."
-    : "Botella, pulsera y envase: un tap guiado muestra evidencia del mensaje NFC/SUN, origen declarado y estado reportado del sello. No prueba autenticidad física, contenido, origen, sello ni custodia.";
-  const heroFlow = isEn
-    ? ["Physical product", "Fresh tap", "Safe claim", "Portal + benefits"]
-    : isBr
-    ? ["Produto fisico", "Toque fresco", "Claim seguro", "Portal + beneficios"]
-    : ["Producto físico", "Tap fresco", "Reclamo seguro", "Portal + beneficios"];
-  const heroAssurance = isEn
-    ? "No app download or crypto knowledge required. The tap explains the tag-message result, declared data and next step—not a physical-product verdict."
-    : isBr
-    ? "Sem app ou conhecimento de cripto. O toque explica o resultado da mensagem, os dados declarados e o próximo passo, não um veredito físico."
-    : "Sin app ni conocimientos de cripto. El tap explica el resultado del mensaje, los datos declarados y el próximo paso, no un veredicto físico.";
-  const demoCta = isEn ? "Open Product Lab" : isBr ? "Abrir Laboratorio" : "Abrir laboratorio";
-  const meetingCta = isEn ? "Schedule meeting" : isBr ? "Agendar reunião" : "Agendar reunión";
-  const heroStats = [
-    {
-      value: stats?.latencyDelta || "P95 < 150ms",
-      label: stats?.latency || (isEn ? "API target latency" : isBr ? "Latencia alvo API" : "Latencia objetivo API"),
-    },
-    {
-      value: "hash-only",
-      label: isEn ? "Public proof without sensitive data" : isBr ? "Prova pública sem dados sensíveis" : "Prueba pública sin datos sensibles",
-    },
-    {
-      value: "NFC + QR",
-      label: isEn ? "No app required for the buyer" : isBr ? "Sem app para o comprador" : "Sin app para el comprador",
-    },
-    {
-      value: "IOTA / Polygon",
-      label: isEn ? "Optional auditable anchor" : isBr ? "Anchor auditavel opcional" : "Anclaje auditable opcional",
-    },
-  ];
   return (
     <section className="landing-hero-section relative overflow-hidden border-b border-white/5 bg-slate-950 pb-8 pt-8 lg:pb-10 lg:pt-10">
       <div className="hero-signal-field absolute inset-0 z-0 pointer-events-none" aria-hidden="true" />
@@ -72,56 +34,27 @@ export function HeroSection({ content, stats, locale, initialTheme = "dark" }: {
           <p className="hero-subtitle mx-auto mt-5 max-w-xl text-sm leading-6 text-slate-400">
             {heroSubtitle}
           </p>
-          <div className="landing-mobile-hero-actions mt-5 grid gap-2 sm:hidden">
+          <div className="landing-mobile-hero-actions mt-5 grid grid-cols-2 gap-2 sm:hidden">
             <Link href="/?contact=demo#contact-modal" className="landing-mobile-hero-actions__primary">
               <span>{primaryCta}</span>
               <ArrowRight className="h-4 w-4 shrink-0" />
             </Link>
-            <div className="grid grid-cols-2 gap-2">
-              <Link href="/proof/verify" className="landing-mobile-hero-actions__secondary">
-                Proof
-              </Link>
-              <Link href="/pricing" className="landing-mobile-hero-actions__secondary">
-                {isEn ? "Pricing" : isBr ? "Precos" : "Planes"}
-              </Link>
-            </div>
-            <Link href="/docs" className="landing-mobile-hero-actions__muted">
-              {mobileDocsCta}
-            </Link>
-          </div>
-        </div>
-
-        <div className="hero-demo-shell mx-auto mt-16 md:mt-24 max-w-7xl text-left relative z-20">
-
-          <HeroScene locale={locale as any} initialTheme={initialTheme} />
-          <InstitutionalVideoPanel locale={locale} variant="landing" className="mt-5" initialTheme={initialTheme} />
-        </div>
-
-        <div className="mx-auto mt-10 max-w-6xl text-center">
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-            <Link href="/?contact=demo#contact-modal" className="inline-flex items-center justify-center rounded-xl bg-cyan-500 px-6 py-3.5 text-sm font-bold text-slate-950 transition-transform hover:scale-105 hover:bg-cyan-400">
-              {primaryCta}
-            </Link>
-            <a href={schedulingUrls.meeting} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-6 py-3.5 text-sm font-semibold text-emerald-100 transition-all hover:bg-emerald-500/20">
-              {meetingCta}
-            </a>
-            <Link href="/login?next=/me" className="landing-consumer-portal-cta inline-flex items-center justify-center rounded-xl border border-purple-500/35 bg-purple-500/10 px-6 py-3.5 text-sm font-bold text-purple-300 transition-all hover:scale-105 hover:bg-purple-500/20">
-              {isEn ? "Consumer Portal (Passport)" : isBr ? "Portal do Consumidor" : "Portal Consumidor (Passport/NFT)"}
-            </Link>
-            <Link href="/demo-lab" className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-slate-900/50 backdrop-blur-md px-6 py-3.5 text-sm font-semibold text-white transition-all hover:bg-white/10">
+            <Link href="/demo-lab" className="landing-mobile-hero-actions__secondary">
               {secondaryCta}
             </Link>
           </div>
-
-          <div className="mt-12 grid grid-cols-2 gap-4 border-t border-white/10 pt-8 md:grid-cols-4">
-             {heroStats.map((item) => (
-               <div key={item.label} className="text-center">
-                  <p className="text-3xl font-bold text-white">{item.value}</p>
-                  <p className="mt-1 text-xs text-slate-500 uppercase tracking-widest">{item.label}</p>
-               </div>
-             ))}
+          <div className="mt-7 hidden items-center justify-center gap-3 sm:flex">
+            <Link href="/?contact=demo#contact-modal" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-cyan-500 px-6 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-400">
+              {primaryCta}
+            </Link>
+            <Link href="/demo-lab" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10">
+              {secondaryCta}
+            </Link>
           </div>
+        </div>
 
+        <div className="hero-demo-shell mx-auto mt-10 max-w-5xl text-left relative z-20 md:mt-12">
+          <InstitutionalVideoPanel locale={locale} variant="landing" initialTheme={initialTheme} />
         </div>
       </div>
     </section>
@@ -1852,29 +1785,6 @@ export function UnitEconomicsSection({ locale }: { locale: string }) {
 export function CtaSection({ content, locale }: { content: Content; locale: string }) {
   const isEn = locale === "en";
   const isBr = locale === "pt-BR";
-  const ctaLinks = isEn
-    ? [
-      { href: "/demo-lab?vertical=wine", label: "View guided demo", body: "Bottle reference, reported seal state, simulated tap journey, portal and marketplace in one guided scene." },
-      { href: schedulingUrls.meeting, label: "Schedule meeting", body: "Open the calendar and reserve a slot for business, reseller or customer pilots.", external: true },
-      { href: "/?contact=demo#contact-modal", label: "Book a demo", body: "Create the lead and save the case in the admin flow." },
-      { href: "/?contact=sales#contact-modal", label: "Talk to sales", body: "Discuss tags, volumes, tenant setup and rollout." },
-      { href: "/docs", label: "Read docs", body: "API, SUN, NTAG, dashboard and integration architecture." },
-    ]
-    : isBr
-    ? [
-      { href: "/demo-lab?vertical=wine", label: "Ver demo guiada", body: "Referência da garrafa, lacre reportado, jornada simulada do toque, portal e marketplace." },
-      { href: schedulingUrls.meeting, label: "Agendar reuniao", body: "Abre o calendario para reservar horario com marcas, resellers ou clientes.", external: true },
-      { href: "/?contact=demo#contact-modal", label: "Agendar demo", body: "Cria o lead e salva o caso no fluxo admin." },
-      { href: "/?contact=sales#contact-modal", label: "Falar com vendas", body: "Tags, volume, tenant e rollout comercial." },
-      { href: "/docs", label: "Ler docs", body: "API, SUN, NTAG, dashboard e arquitetura de integracao." },
-    ]
-    : [
-      { href: "/demo-lab?vertical=wine", label: "Ver demo guiada", body: "Referencia de botella, sello reportado, recorrido simulado del tap, portal y tienda en una escena guiada." },
-      { href: schedulingUrls.meeting, label: "Agendar reunion", body: "Abre el calendario y reserva una reunion con empresarios, distribuidores o clientes.", external: true },
-      { href: "/?contact=demo#contact-modal", label: "Agendar demo", body: "Crea el contacto y guarda el caso en el flujo del panel." },
-      { href: "/?contact=sales#contact-modal", label: "Hablar con ventas", body: "Etiquetas, volumen, cuenta de marca y despliegue comercial." },
-      { href: "/docs", label: "Ver documentación", body: "API, SUN, NTAG, panel y arquitectura de integración." },
-    ];
 
   return (
     <section className="container-shell py-24">
@@ -1890,29 +1800,8 @@ export function CtaSection({ content, locale }: { content: Content; locale: stri
              <a href={schedulingUrls.meeting} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-8 py-4 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/20">
                 {isEn ? "Schedule meeting" : isBr ? "Agendar reuniao" : "Agendar reunion"}
              </a>
-             <Link href="/?contact=sales#contact-modal" className="inline-flex items-center justify-center rounded-xl border border-white/20 bg-white/5 backdrop-blur-sm px-8 py-4 text-sm font-semibold text-white transition hover:bg-white/10">
-                {content.cta?.secondary || (isEn ? "Talk to sales" : isBr ? "Falar com vendas" : "Hablar con ventas")}
-             </Link>
-             <Link href="/?contact=demo#contact-modal" className="inline-flex items-center justify-center rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-8 py-4 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/10">
-                {content.cta?.primary || "Empezar"}
-             </Link>
-           </div>
-           <div className="mt-8 grid gap-3 text-left md:grid-cols-5">
-             {ctaLinks.map((item) => (
-               item.external ? (
-                 <a key={item.href + item.label} href={item.href} target="_blank" rel="noreferrer" className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-4 transition hover:border-emerald-300/40 hover:bg-emerald-500/15">
-                   <p className="text-sm font-black text-white">{item.label}</p>
-                   <p className="mt-2 text-xs leading-5 text-slate-300">{item.body}</p>
-                 </a>
-               ) : (
-                 <Link key={item.href + item.label} href={item.href} className="rounded-2xl border border-white/10 bg-slate-950/45 p-4 transition hover:border-cyan-300/35 hover:bg-cyan-500/10">
-                   <p className="text-sm font-black text-white">{item.label}</p>
-                   <p className="mt-2 text-xs leading-5 text-slate-400">{item.body}</p>
-                 </Link>
-               )
-             ))}
-           </div>
-         </div>
+            </div>
+          </div>
       </div>
     </section>
   );
