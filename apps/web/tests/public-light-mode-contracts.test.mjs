@@ -18,7 +18,7 @@ test("landing is white-first while preserving dark mode and clear commercial act
   assert.match(layout, /const theme = themeCookie === "dark" \? "dark" : "light"/);
   assert.match(home, /const initialTheme = cookieStore\.get\("theme"\)\?\.value === "dark" \? "dark" : "light"/);
   assert.match(home, /<EnterpriseSiteHeader[\s\S]*initialTheme=\{initialTheme\}/);
-  assert.match(header, /<ThemeToggle initialTheme=\{initialTheme\} locale=\{locale\} \/>/);
+  assert.match(header, /<ThemeToggle initialTheme=\{initialTheme\} \/>/);
 
   assert.match(homeCss, /\.root \{[\s\S]*?--home-paper: #071512;/);
   assert.match(homeCss, /:global\(html\[data-theme="light"\]\) \.root \{[\s\S]*?--home-paper: #ffffff;/);

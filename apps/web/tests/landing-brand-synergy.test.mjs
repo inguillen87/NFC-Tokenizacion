@@ -77,7 +77,7 @@ test("brand synergy light mode and mobile controls keep enterprise contrast", as
   assert.match(page, /landing-brand-synergy-shell container-shell/);
   assert.match(page, /initialTheme=\{initialTheme\}/);
   assert.match(homeCss, /html\.theme-light\) \.root :global\(\.landing-brand-synergy-band\)[\s\S]*background:\s*var\(--home-soft\)/);
-  assert.match(enterpriseHeader, /<ThemeToggle initialTheme=\{initialTheme\} locale=\{locale\} \/>/);
+  assert.match(enterpriseHeader, /<ThemeToggle initialTheme=\{initialTheme\} \/>/);
   assert.match(enterpriseHeader, /role="dialog" aria-modal="true" aria-label=\{header\.navigationLabel\}/);
   assert.match(enterpriseHeaderCss, /\.mobileMenuButton\s*\{[\s\S]*width:\s*2\.75rem;[\s\S]*height:\s*2\.75rem/);
   assert.match(mobileNav, /mobile-menu-close inline-flex min-h-11 min-w-11/);
