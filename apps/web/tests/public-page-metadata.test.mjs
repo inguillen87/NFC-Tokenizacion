@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const routeFiles = {
+  about: new URL("../src/app/about/page.tsx", import.meta.url),
   audiences: new URL("../src/app/audiences/page.tsx", import.meta.url),
   glossary: new URL("../src/app/glossary/page.tsx", import.meta.url),
   resellers: new URL("../src/app/resellers/page.tsx", import.meta.url),

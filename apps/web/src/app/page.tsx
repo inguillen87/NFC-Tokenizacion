@@ -35,6 +35,7 @@ export default async function HomePage() {
     ? {
         home: "nexID home",
         summary: "nexID helps brands and organizations verify available evidence, tell each product's story, and activate warranties, benefits, digital certificates and after-sales journeys from an NFC tap or QR scan.",
+        about: "About us",
         architecture: "Architecture",
         plans: "Plans",
         taxEyebrow: "Tax registration",
@@ -49,6 +50,7 @@ export default async function HomePage() {
     ? {
         home: "Início da nexID",
         summary: "A nexID ajuda marcas e organizações a verificar a evidência disponível, contar a história do produto e ativar garantia, benefícios, certificado digital e pós-venda por NFC ou QR.",
+        about: "Quem somos",
         architecture: "Arquitetura",
         plans: "Planos",
         taxEyebrow: "Dados fiscais",
@@ -62,6 +64,7 @@ export default async function HomePage() {
     : {
         home: "Inicio de nexID",
         summary: "nexID ayuda a marcas y organizaciones a verificar la evidencia disponible, contar la historia del producto y activar garantía, beneficios, certificado digital y postventa desde un toque NFC o QR.",
+        about: "Quiénes somos",
         architecture: "Arquitectura",
         plans: "Planes",
         taxEyebrow: "Datos fiscales",
@@ -106,6 +109,7 @@ export default async function HomePage() {
           </Link>
           <p className="text-sm site-muted">{footerCopy.summary}</p>
           <div className="flex flex-wrap gap-2">
+            <Link href="/about" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">{footerCopy.about}</Link>
             <Link href="/docs" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">{footerCopy.architecture}</Link>
             <Link href="/proof/verify" className="rounded-lg border border-cyan-300/40 px-3 py-2 text-xs text-cyan-300">Proof Verify</Link>
             <Link href="/sdk" className="rounded-lg border border-white/15 px-3 py-2 text-xs site-muted">SDK</Link>

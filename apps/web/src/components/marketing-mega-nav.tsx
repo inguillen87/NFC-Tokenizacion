@@ -102,6 +102,7 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
           description: "Commercial, technical and institutional material now has a clear place of its own.",
           featured: { label: "Talk to a specialist", description: "Review your use case and define the next useful step.", href: meetingHref, external: true },
           items: [
+            { label: "About us", description: "Meet nexID, the Inmovar Latam ecosystem and its founder.", href: "/about" },
             { label: "Documentation", description: "Guides, operating concepts and frequently asked questions.", href: "/docs" },
             { label: "Architecture", description: "Understand the platform layers and technology choices.", href: "/stack" },
             { label: "Glossary", description: "Plain-language definitions for physical and digital concepts.", href: "/glossary" },
@@ -187,6 +188,7 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
           description: "O material comercial, técnico e institucional agora tem um lugar claro.",
           featured: { label: "Falar com um especialista", description: "Revise seu caso e defina o próximo passo útil.", href: meetingHref, external: true },
           items: [
+            { label: "Quem somos", description: "Conheça a nexID, o ecossistema Inmovar Latam e seu fundador.", href: "/about" },
             { label: "Documentação", description: "Guias, conceitos operacionais e perguntas frequentes.", href: "/docs" },
             { label: "Arquitetura", description: "Entenda as camadas e escolhas tecnológicas da plataforma.", href: "/stack" },
             { label: "Glossário", description: "Definições claras para conceitos físicos e digitais.", href: "/glossary" },
@@ -271,6 +273,7 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
         description: "El material comercial, técnico e institucional ahora tiene un lugar claro y ordenado.",
         featured: { label: "Hablar con un especialista", description: "Revisá tu caso y definí el próximo paso útil.", href: meetingHref, external: true },
         items: [
+          { label: "Quiénes somos", description: "Conocé nexID, el ecosistema Inmovar Latam y a su fundador.", href: "/about" },
           { label: "Documentación", description: "Guías, conceptos operativos y preguntas frecuentes.", href: "/docs" },
           { label: "Arquitectura", description: "Entendé las capas y decisiones tecnológicas de la plataforma.", href: "/stack" },
           { label: "Glosario", description: "Definiciones claras para conceptos físicos y digitales.", href: "/glossary" },
@@ -336,6 +339,7 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
   const mobileTriggerRef = useRef<HTMLButtonElement>(null);
   const groupButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const closeTimerRef = useRef<number | null>(null);
+  const openMenuSourceRef = useRef<"hover" | "click" | null>(null);
 
   function cancelScheduledClose() {
     if (closeTimerRef.current === null) return;
@@ -343,23 +347,30 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
     closeTimerRef.current = null;
   }
 
-  function openDesktopMenu(groupId: string) {
+  function openDesktopMenu(groupId: string, source: "hover" | "click") {
     cancelScheduledClose();
+    openMenuSourceRef.current = source;
     setOpenMenu(groupId);
   }
 
   function closeDesktopMenu() {
     cancelScheduledClose();
+    openMenuSourceRef.current = null;
     setOpenMenu(null);
   }
 
   function handleDesktopMenuEnter(event: ReactPointerEvent<HTMLDivElement>, groupId: string) {
     if (event.pointerType !== "mouse") return;
-    openDesktopMenu(groupId);
+    if (openMenu === groupId && openMenuSourceRef.current === "click") {
+      cancelScheduledClose();
+      return;
+    }
+    openDesktopMenu(groupId, "hover");
   }
 
   function scheduleDesktopMenuClose(event: ReactPointerEvent<HTMLDivElement>) {
     if (event.pointerType !== "mouse") return;
+    if (openMenuSourceRef.current === "click") return;
     const groupElement = event.currentTarget;
     cancelScheduledClose();
     if (groupElement.contains(document.activeElement)) return;
@@ -368,6 +379,7 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
         closeTimerRef.current = null;
         return;
       }
+      openMenuSourceRef.current = null;
       setOpenMenu(null);
       closeTimerRef.current = null;
     }, 200);
@@ -379,6 +391,7 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
       closeTimerRef.current = null;
     }
     setMobileOpen(false);
+    openMenuSourceRef.current = null;
     setOpenMenu(null);
   }, [pathname]);
 
@@ -466,7 +479,7 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
   }, [openMenu]);
 
   function openAndFocus(groupId: string) {
-    openDesktopMenu(groupId);
+    openDesktopMenu(groupId, "click");
     window.requestAnimationFrame(() => {
       document.querySelector<HTMLElement>(`[data-mega-nav-group="${groupId}"] [data-menu-link]`)?.focus();
     });
@@ -500,7 +513,10 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
                 aria-current={groupCurrent ? "page" : undefined}
                 aria-haspopup="true"
                 aria-controls={`mega-menu-${group.id}`}
-                onClick={() => expanded ? closeDesktopMenu() : openDesktopMenu(group.id)}
+                onClick={() => {
+                  if (expanded && openMenuSourceRef.current === "click") closeDesktopMenu();
+                  else openDesktopMenu(group.id, "click");
+                }}
                 onKeyDown={(event) => {
                   if (event.key === "ArrowDown") {
                     event.preventDefault();

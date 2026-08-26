@@ -1741,6 +1741,13 @@ body:has(.sun-mobile-surface) .helpbot-hint {
   display: none;
 }
 
+body:has(.about-page) .helpbot-hint,
+body:has(.about-page) .helpbot-trigger,
+body:has(.about-page) .helpbot-panel {
+  display: none !important;
+  pointer-events: none !important;
+}
+
 body:has(.landing-root) .helpbot-hint,
 body:has(.landing-root) .helpbot-trigger,
 body:has(.landing-root) .helpbot-panel {

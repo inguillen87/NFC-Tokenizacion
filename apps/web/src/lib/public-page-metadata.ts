@@ -6,7 +6,7 @@ const SOCIAL_IMAGE_PATH = "/images/visual_storyboard.jpeg";
 const SOCIAL_IMAGE_WIDTH = 1376;
 const SOCIAL_IMAGE_HEIGHT = 768;
 
-export type PublicPageKey = "audiences" | "glossary" | "resellers" | "stack";
+export type PublicPageKey = "about" | "audiences" | "glossary" | "resellers" | "stack";
 
 type LocalizedMetadataCopy = {
   title: string;
@@ -20,6 +20,29 @@ type PublicPageConfig = {
 };
 
 const publicPageConfig: Record<PublicPageKey, PublicPageConfig> = {
+  about: {
+    path: "/about",
+    copy: {
+      "es-AR": {
+        title: "Quiénes somos | nexID e Inmovar Latam",
+        description:
+          "Conocé nexID, la plataforma de identidad digital de producto y postventa del ecosistema Inmovar Latam, su método de trabajo y a su fundador Marcelo Guillén.",
+        imageAlt: "nexID, plataforma del ecosistema tecnológico Inmovar Latam.",
+      },
+      "pt-BR": {
+        title: "Quem somos | nexID e Inmovar Latam",
+        description:
+          "Conheça a nexID, plataforma de identidade digital de produto e pós-venda do ecossistema Inmovar Latam, seu método de trabalho e o fundador Marcelo Guillén.",
+        imageAlt: "nexID, plataforma do ecossistema tecnológico Inmovar Latam.",
+      },
+      en: {
+        title: "About us | nexID and Inmovar Latam",
+        description:
+          "Meet nexID, the digital product identity and after-sales platform within the Inmovar Latam ecosystem, its working method and founder Marcelo Guillén.",
+        imageAlt: "nexID, a platform within the Inmovar Latam technology ecosystem.",
+      },
+    },
+  },
   audiences: {
     path: "/audiences",
     copy: {

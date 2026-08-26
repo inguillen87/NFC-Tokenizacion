@@ -20,6 +20,7 @@ test("mega navigation groups commercial and technical depth on existing routes",
     "/offline",
     "/sdk",
     "/docs",
+    "/about",
     "/stack",
     "/glossary",
     "/audiences",
@@ -65,7 +66,10 @@ test("mega navigation keeps hover intent stable instead of closing on pointer ga
   assert.match(navigation, /function cancelScheduledClose\(\)/);
   assert.match(navigation, /window\.setTimeout\(\(\) => \{[\s\S]*setOpenMenu\(null\)/);
   assert.match(navigation, /window\.clearTimeout\(/);
-  assert.match(navigation, /function openDesktopMenu\(groupId: string\) \{[\s\S]{0,180}cancelScheduledClose\(\)[\s\S]{0,180}setOpenMenu\(groupId\)/);
+  assert.match(navigation, /function openDesktopMenu\(groupId: string, source: "hover" \| "click"\) \{[\s\S]{0,220}cancelScheduledClose\(\)[\s\S]{0,220}openMenuSourceRef\.current = source[\s\S]{0,220}setOpenMenu\(groupId\)/);
+  assert.match(navigation, /if \(expanded && openMenuSourceRef\.current === "click"\) closeDesktopMenu\(\)/);
+  assert.match(navigation, /else openDesktopMenu\(group\.id, "click"\)/);
+  assert.match(navigation, /if \(openMenuSourceRef\.current === "click"\) return/);
   assert.match(navigation, /event\.pointerType !== "mouse"/);
   assert.match(navigation, /onPointerEnter=\{\(event\) => handleDesktopMenuEnter\(event, group\.id\)\}/);
   assert.match(navigation, /onPointerLeave=\{scheduleDesktopMenuClose\}/);
