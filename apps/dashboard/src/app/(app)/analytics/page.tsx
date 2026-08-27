@@ -8,6 +8,15 @@ import { readDemoDataMetaFromResponse, type DemoDataMeta } from "../../../lib/de
 import { requireDashboardSession } from "../../../lib/session";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../lib/admin-page-access";
 
+type CoordinateProvenance = {
+  coordinateSource?: string;
+  coordinateAccuracyMeters?: number | null;
+  coordinateSampleCount?: number;
+  coordinateIsApproximate?: boolean;
+  coordinateEvidence?: string;
+  coordinateSourceCounts?: { browserGpsReported: number; ipApprox: number; unknown: number };
+};
+
 type AnalyticsPayload = {
   ok?: boolean;
   reason?: string;
@@ -31,7 +40,7 @@ type AnalyticsPayload = {
   billing?: { resellerMrrAmount?: number | null; currency?: string | null; source?: string | null; period?: string | null };
   geography?: {
     countries?: Array<{ country: string; scans: number; risk: number }>;
-    cities?: Array<{ city: string; country: string; lat: number | null; lng: number | null; scans: number; risk: number; lastSeen: string | null }>;
+    cities?: Array<{ city: string; country: string; lat: number | null; lng: number | null; scans: number; risk: number; lastSeen: string | null } & CoordinateProvenance>;
   };
   devices?: {
     os?: Array<{ label: string; count: number }>;
@@ -39,6 +48,31 @@ type AnalyticsPayload = {
     deviceType?: Array<{ label: string; count: number }>;
     timezones?: Array<{ label: string; count: number }>;
     mobileShare?: number;
+  };
+  commercialSignals?: {
+    schemaVersion: string;
+    sampleSize: number;
+    basis: string;
+    confidence: "none" | "low" | "medium" | "high";
+    coverage: {
+      context: { count: number; share: number };
+      extendedConsent: { count: number; share: number };
+      reportedModelOrDeviceLabel: { count: number; share: number };
+      deviceCapability: { count: number; share: number };
+      connection: { count: number; share: number };
+      locationSource: { count: number; share: number };
+    };
+    reportedModel: { basis: string; confidence: string; coverage: number; buckets: Array<{ label: string; count: number }> };
+    deviceCapability: { basis: string; confidence: string; coverage: number; socioeconomicStatus: "not_inferred"; bands: Array<{ label: string; count: number }> };
+    connection: { basis: string; confidence: string; coverage: number; effectiveTypes: Array<{ label: string; count: number }> };
+    location: { basis: string; confidence: string; coverage: number; sources: Array<{ label: string; count: number }> };
+    dataHandling: {
+      aggregateOnly: boolean;
+      rawCoordinatesIncluded: boolean;
+      individualDeviceContextIncluded: boolean;
+      socioeconomicStatusInferred: boolean;
+      browserReportedValuesVerified: boolean;
+    };
   };
   feed?: Array<{ id: number; uidHex: string; bid: string; result: string; city: string; country: string; device: string; createdAt: string }>;
   products?: Array<{
@@ -57,7 +91,7 @@ type AnalyticsPayload = {
   }>;
   trend: Array<{ day: string; scans: number; duplicates: number; tamper: number }>;
   batchStatus: Array<{ name: string; value: number }>;
-  geoPoints: Array<{ city: string; country: string; scans: number; risk: number; lat: number; lng: number }>;
+  geoPoints: Array<{ city: string; country: string; scans: number; risk: number; lat: number; lng: number } & CoordinateProvenance>;
   deviceSignals: Array<{ device: string; scans: number; countries: number; validRate: number; risk: number }>;
   tagJourney: Array<{
     uid: string;

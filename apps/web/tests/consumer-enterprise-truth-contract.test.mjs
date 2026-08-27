@@ -96,6 +96,8 @@ test("SUN precision telemetry preserves the fresh handoff proof", () => {
   assert.match(telemetry, /geoConsent: true/);
   assert.match(telemetry, /geoPrecision: "approximate"/);
   assert.match(telemetry, /onClick=\{shareApproximateLocation\}/);
+  assert.match(telemetry, /nexid:tap-location-prompt:/);
+  assert.match(telemetry, /getHighEntropyValues/);
   assert.match(telemetry, /enableHighAccuracy: true/);
   assert.match(telemetry, /roundApproximateCoordinate\(position\.coords\.latitude\)/);
   assert.match(telemetry, /El pasaporte sigue (?:funcionando normalmente|disponible)/);

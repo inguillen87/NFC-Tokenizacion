@@ -171,3 +171,26 @@ test("rejected SUN geolocation reports cannot overwrite persisted coordinate pro
   assert.match(contextRoute, /const persistedLocationSource = hasBrowserGps[\s\S]*?firstText\(target\.location_source\) \|\| null/);
   assert.match(contextRoute, /locationUpdated: hasBrowserGps/);
 });
+
+test("SUN device enrichment is consent-gated, bounded and never claims socioeconomic truth", async () => {
+  const contextRoute = await readFile(new URL("../src/app/sun/context/route.ts", import.meta.url), "utf8");
+
+  assert.match(contextRoute, /const extendedContextConsent = body\.extendedContextConsent === true[\s\S]*?body\.geoConsent === true[\s\S]*?hasBrowserGps/);
+  assert.match(contextRoute, /extended_context_consent_version: extendedContextConsent \? "sun-context-explicit-v1" : null/);
+  assert.match(contextRoute, /safeClientContext\(body\.client, extendedContextConsent\)/);
+  assert.match(contextRoute, /language: allowExtended \?/);
+  assert.match(contextRoute, /userAgent: allowExtended \?/);
+  assert.match(contextRoute, /mobile: allowExtended && typeof client\?\.mobile === "boolean"/);
+  assert.match(contextRoute, /viewport: allowExtended \?/);
+  assert.match(contextRoute, /model: allowExtended \? firstText\(client\?\.model\)/);
+  assert.match(contextRoute, /os: allowExtended \?/);
+  assert.match(contextRoute, /deviceType: allowExtended/);
+  assert.match(contextRoute, /platformVersion: allowExtended/);
+  assert.match(contextRoute, /screen: allowExtended/);
+  assert.match(contextRoute, /hardware: allowExtended/);
+  assert.match(contextRoute, /connection: allowExtended/);
+  assert.match(contextRoute, /reported_device_capability_heuristic/);
+  assert.match(contextRoute, /socioeconomicStatus: "not_inferred"/);
+  assert.doesNotMatch(contextRoute, /socioeconomicStatus: "(?:low|middle|high)"/);
+  assert.match(contextRoute, /client_values_verified: false/);
+});

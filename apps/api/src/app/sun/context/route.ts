@@ -29,6 +29,7 @@ type ContextBody = {
     speed?: number | null;
   };
   geoConsent?: boolean;
+  extendedContextConsent?: boolean;
   geoPrecision?: string;
   client?: Record<string, unknown>;
   geoError?: string;
@@ -37,6 +38,12 @@ type ContextBody = {
 function asNumber(value: unknown): number | null {
   const num = Number(value);
   return Number.isFinite(num) ? num : null;
+}
+
+function boundedNumber(value: unknown, min: number, max: number): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const num = Number(value);
+  return Number.isFinite(num) && num >= min && num <= max ? num : null;
 }
 
 function firstNumber(...values: unknown[]) {
@@ -57,9 +64,10 @@ function firstText(...values: unknown[]) {
 
 function inferDeviceOs(platform: string, userAgent: string) {
   const normalized = `${platform} ${userAgent}`.toLowerCase();
-  if (/iphone|ipad|ios|mac os/.test(normalized)) return "iOS";
+  if (/iphone|ipad|ios/.test(normalized)) return "iOS";
   if (/android/.test(normalized)) return "Android";
   if (/windows/.test(normalized)) return "Windows";
+  if (/macintosh|macintel|mac os/.test(normalized)) return "macOS";
   if (/linux/.test(normalized)) return "Linux";
   return "";
 }
@@ -69,7 +77,8 @@ function inferDeviceType(mobile: unknown, platform: string, userAgent: string) {
   const normalized = `${platform} ${userAgent}`.toLowerCase();
   if (/ipad|tablet/.test(normalized)) return "tablet";
   if (/mobi|iphone|android/.test(normalized)) return "mobile";
-  return "desktop";
+  if (mobile === false || normalized.trim()) return "desktop";
+  return "";
 }
 
 function deviceContext(client: Record<string, unknown> | undefined) {
@@ -77,32 +86,92 @@ function deviceContext(client: Record<string, unknown> | undefined) {
   const userAgent = firstText(client?.userAgent, client?.browser);
   const deviceOs = firstText(client?.os) || inferDeviceOs(platform, userAgent);
   const deviceType = firstText(client?.deviceType) || inferDeviceType(client?.mobile, platform, userAgent);
-  const deviceLabel = firstText(platform, deviceOs, deviceType);
+  const model = firstText(client?.model);
+  const hardware = client?.hardware && typeof client.hardware === "object" && !Array.isArray(client.hardware)
+    ? client.hardware as Record<string, unknown>
+    : {};
+  const memoryGb = boundedNumber(hardware.memoryGb, 0.25, 128);
+  const logicalProcessors = boundedNumber(hardware.logicalProcessors, 1, 256);
+  const capabilityScore = (memoryGb !== null ? Math.min(memoryGb / 2, 5) : 0)
+    + (logicalProcessors !== null ? Math.min(logicalProcessors / 2, 5) : 0);
+  const capabilityBand = memoryGb === null && logicalProcessors === null
+    ? "unclassified"
+    : capabilityScore >= 7
+      ? "high"
+      : capabilityScore >= 4
+        ? "standard"
+        : "entry";
+  const deviceLabel = firstText(model, platform, deviceOs, deviceType);
   return {
     deviceLabel: deviceLabel.slice(0, 80) || null,
     deviceOs: deviceOs || null,
     deviceType: deviceType || null,
+    reportedModel: model || null,
+    reportedModelSource: firstText(client?.modelSource).slice(0, 40) || null,
+    capabilitySegment: {
+      band: capabilityBand,
+      basis: "reported_device_capability_heuristic",
+      confidence: memoryGb !== null && logicalProcessors !== null ? "medium" : capabilityBand === "unclassified" ? "none" : "low",
+      socioeconomicStatus: "not_inferred",
+    },
   };
 }
 
-function safeClientContext(client: Record<string, unknown> | undefined) {
+function safeClientContext(client: Record<string, unknown> | undefined, allowExtended: boolean) {
   const viewport = client?.viewport && typeof client.viewport === "object" && !Array.isArray(client.viewport)
     ? client.viewport as Record<string, unknown>
     : {};
+  const screen = client?.screen && typeof client.screen === "object" && !Array.isArray(client.screen)
+    ? client.screen as Record<string, unknown>
+    : {};
+  const connection = client?.connection && typeof client.connection === "object" && !Array.isArray(client.connection)
+    ? client.connection as Record<string, unknown>
+    : {};
+  const hardware = client?.hardware && typeof client.hardware === "object" && !Array.isArray(client.hardware)
+    ? client.hardware as Record<string, unknown>
+    : {};
   return {
-    language: firstText(client?.language).slice(0, 24) || null,
-    languages: Array.isArray(client?.languages)
+    schemaVersion: "sun-client-context/v2",
+    language: allowExtended ? firstText(client?.language).slice(0, 24) || null : null,
+    languages: allowExtended && Array.isArray(client?.languages)
       ? client.languages.map((value) => firstText(value).slice(0, 24)).filter(Boolean).slice(0, 8)
       : [],
-    platform: firstText(client?.platform).slice(0, 80) || null,
-    userAgent: firstText(client?.userAgent).slice(0, 512) || null,
-    mobile: client?.mobile === true,
-    timezone: firstText(client?.timezone).slice(0, 80) || null,
-    viewport: {
-      width: asNumber(viewport.width),
-      height: asNumber(viewport.height),
-      pixelRatio: asNumber(viewport.pixelRatio),
-    },
+    platform: allowExtended ? firstText(client?.platform).slice(0, 80) || null : null,
+    platformVersion: allowExtended ? firstText(client?.platformVersion).slice(0, 80) || null : null,
+    model: allowExtended ? firstText(client?.model).slice(0, 120) || null : null,
+    modelSource: allowExtended ? firstText(client?.modelSource).slice(0, 40) || null : null,
+    architecture: allowExtended ? firstText(client?.architecture).slice(0, 40) || null : null,
+    bitness: allowExtended ? firstText(client?.bitness).slice(0, 16) || null : null,
+    os: allowExtended ? firstText(client?.os).slice(0, 40) || null : null,
+    deviceType: allowExtended && ["mobile", "tablet", "desktop"].includes(firstText(client?.deviceType).toLowerCase())
+      ? firstText(client?.deviceType).toLowerCase()
+      : null,
+    userAgent: allowExtended ? firstText(client?.userAgent).slice(0, 512) || null : null,
+    mobile: allowExtended && typeof client?.mobile === "boolean" ? client.mobile : null,
+    timezone: allowExtended ? firstText(client?.timezone).slice(0, 80) || null : null,
+    viewport: allowExtended ? {
+      width: boundedNumber(viewport.width, 1, 20_000),
+      height: boundedNumber(viewport.height, 1, 20_000),
+      pixelRatio: boundedNumber(viewport.pixelRatio, 0.25, 16),
+    } : null,
+    screen: allowExtended ? {
+      width: boundedNumber(screen.width, 1, 20_000),
+      height: boundedNumber(screen.height, 1, 20_000),
+      availableWidth: boundedNumber(screen.availableWidth, 1, 20_000),
+      availableHeight: boundedNumber(screen.availableHeight, 1, 20_000),
+      colorDepth: boundedNumber(screen.colorDepth, 1, 128),
+    } : null,
+    hardware: allowExtended ? {
+      memoryGb: boundedNumber(hardware.memoryGb, 0.25, 128),
+      logicalProcessors: boundedNumber(hardware.logicalProcessors, 1, 256),
+      maxTouchPoints: boundedNumber(hardware.maxTouchPoints, 0, 64),
+    } : null,
+    connection: allowExtended ? {
+      effectiveType: firstText(connection.effectiveType).slice(0, 16) || null,
+      downlinkMbps: boundedNumber(connection.downlinkMbps, 0, 100_000),
+      rttMs: boundedNumber(connection.rttMs, 0, 120_000),
+      saveData: connection.saveData === true,
+    } : null,
   };
 }
 
@@ -183,12 +252,21 @@ export async function POST(req: Request): Promise<Response> {
       : body.geo
         ? "browser_geolocation_ignored_without_consent"
         : "browser_context_reported";
-  const client = safeClientContext(body.client);
+  // Extended device hints are retained only when the person granted the
+  // location/experience permission for this fresh physical event. They are
+  // browser-reported signals for aggregated marketing analysis, never an
+  // independently verified identity or socioeconomic classification.
+  const extendedContextConsent = body.extendedContextConsent === true
+    && body.geoConsent === true
+    && hasBrowserGps;
+  const client = safeClientContext(body.client, extendedContextConsent);
   const device = deviceContext(client);
   const metaPayload = {
     sun_context: {
       evidence_scope: "signed_fresh_event_capability",
       client_values_verified: false,
+      extended_context_consent: extendedContextConsent,
+      extended_context_consent_version: extendedContextConsent ? "sun-context-explicit-v1" : null,
       status: firstText(body.contextStatus).slice(0, 80) || "unknown",
       clientReportedAt: firstText(body.scannedAt).slice(0, 80) || null,
       receivedAt: new Date().toISOString(),

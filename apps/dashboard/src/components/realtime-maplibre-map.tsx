@@ -4,6 +4,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { GeoJSONSource, Map as MapLibreMap, MapLayerMouseEvent, Popup } from "maplibre-gl";
 import { resolveTrustMapSource } from "@product/ui/trust-map-source";
 import { resolveEventMapCoordinate, type MapCoordinatePrecision } from "../lib/geo-coordinates";
+import { classifyLocationProvenance, locationProvenanceLabel, type LocationProvenanceClass } from "../lib/location-provenance";
 import { isRealtimeRisk, type TenantTapRealtimeEvent } from "../lib/realtime-feed";
 
 type MapMode = "tenant" | "global";
@@ -37,6 +38,7 @@ type TapFeature = {
     locationLabel: string;
     locationPrecision: MapCoordinatePrecision;
     locationSource: string;
+    locationClass: LocationProvenanceClass;
   };
   geometry: {
     type: "Point";
@@ -173,6 +175,7 @@ function eventToFeature(row: TenantTapRealtimeEvent, index: number): TapFeature 
       locationLabel: coordinate.label,
       locationPrecision: coordinate.precision,
       locationSource: coordinate.source,
+      locationClass: classifyLocationProvenance(coordinate.source),
     },
     geometry: {
       type: "Point",
@@ -229,17 +232,80 @@ function ensureLayers(map: MapLibreMap, data: TapFeatureCollection) {
     });
   }
 
-  if (!map.getLayer("tap-heat")) {
+  if (!map.getLayer("tap-heat-network")) {
     map.addLayer({
-      id: "tap-heat",
+      id: "tap-heat-network",
       type: "heatmap",
       source: "tap-events-heat",
+      filter: ["==", ["get", "locationClass"], "network_approx"],
       maxzoom: 14,
       paint: {
         "heatmap-weight": ["interpolate", ["linear"], ["get", "weight"], 0, 0, 1, 1],
-        "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 3, 0.5, 9, 1.45, 13, 2.05],
-        "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 3, 10, 8, 20, 12, 32],
-        "heatmap-opacity": ["interpolate", ["linear"], ["zoom"], 3, 0.7, 9, 0.82, 12, 0.48, 14, 0.12],
+        "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 3, 0.42, 9, 1.05, 13, 1.45],
+        // Network/IP coordinates represent a wider uncertainty area, not the phone position.
+        "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 3, 20, 8, 38, 12, 58],
+        "heatmap-opacity": ["interpolate", ["linear"], ["zoom"], 3, 0.42, 9, 0.54, 12, 0.32, 14, 0.08],
+        "heatmap-color": [
+          "interpolate",
+          ["linear"],
+          ["heatmap-density"],
+          0,
+          "rgba(2,6,23,0)",
+          0.2,
+          "rgba(251,191,36,.18)",
+          0.52,
+          "rgba(245,158,11,.34)",
+          0.78,
+          "rgba(249,115,22,.48)",
+          1,
+          "rgba(234,88,12,.6)",
+        ],
+      },
+    });
+  }
+
+  if (!map.getLayer("tap-heat-other")) {
+    map.addLayer({
+      id: "tap-heat-other",
+      type: "heatmap",
+      source: "tap-events-heat",
+      filter: ["in", ["get", "locationClass"], ["literal", ["mixed_approx", "other_reported"]]],
+      maxzoom: 14,
+      paint: {
+        "heatmap-weight": ["interpolate", ["linear"], ["get", "weight"], 0, 0, 1, 1],
+        "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 3, 0.4, 9, 1, 13, 1.35],
+        "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 3, 14, 8, 26, 12, 42],
+        "heatmap-opacity": ["interpolate", ["linear"], ["zoom"], 3, 0.36, 9, 0.48, 12, 0.28, 14, 0.07],
+        "heatmap-color": [
+          "interpolate",
+          ["linear"],
+          ["heatmap-density"],
+          0,
+          "rgba(2,6,23,0)",
+          0.22,
+          "rgba(148,163,184,.18)",
+          0.56,
+          "rgba(139,92,246,.34)",
+          1,
+          "rgba(109,40,217,.5)",
+        ],
+      },
+    });
+  }
+
+  if (!map.getLayer("tap-heat-gps")) {
+    map.addLayer({
+      id: "tap-heat-gps",
+      type: "heatmap",
+      source: "tap-events-heat",
+      filter: ["==", ["get", "locationClass"], "consented_gps"],
+      maxzoom: 14,
+      paint: {
+        "heatmap-weight": ["interpolate", ["linear"], ["get", "weight"], 0, 0, 1, 1],
+        "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 3, 0.58, 9, 1.5, 13, 2.1],
+        // Consented browser GPS is privacy-rounded but materially narrower than network/IP.
+        "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 3, 8, 8, 16, 12, 26],
+        "heatmap-opacity": ["interpolate", ["linear"], ["zoom"], 3, 0.72, 9, 0.84, 12, 0.52, 14, 0.14],
         "heatmap-color": [
           "interpolate",
           ["linear"],
@@ -247,15 +313,13 @@ function ensureLayers(map: MapLibreMap, data: TapFeatureCollection) {
           0,
           "rgba(2,6,23,0)",
           0.16,
-          "rgba(34,211,238,.3)",
-          0.38,
-          "rgba(20,184,166,.55)",
-          0.62,
-          "rgba(37,99,235,.7)",
-          0.82,
-          "rgba(79,70,229,.82)",
+          "rgba(34,211,238,.34)",
+          0.4,
+          "rgba(20,184,166,.6)",
+          0.68,
+          "rgba(16,185,129,.78)",
           1,
-          "rgba(124,58,237,.92)",
+          "rgba(5,150,105,.94)",
         ],
       },
     });
@@ -269,7 +333,13 @@ function ensureLayers(map: MapLibreMap, data: TapFeatureCollection) {
       filter: ["!", ["has", "point_count"]],
       paint: {
         "circle-radius": ["interpolate", ["linear"], ["get", "localTaps"], 1, 3, 4, 5, 12, 8, 30, 12],
-        "circle-color": ["case", ["==", ["get", "risk"], 1], "#fb7185", "#22d3ee"],
+        "circle-color": [
+          "case",
+          ["==", ["get", "risk"], 1], "#fb7185",
+          ["==", ["get", "locationClass"], "consented_gps"], "#2dd4bf",
+          ["==", ["get", "locationClass"], "network_approx"], "#f59e0b",
+          "#a78bfa",
+        ],
         "circle-blur": ["interpolate", ["linear"], ["zoom"], 7, 1.15, 11, 0.32],
         "circle-opacity": ["interpolate", ["linear"], ["zoom"], 7, 0, 9, 0.12, 11, 0.58, 13, 0.78],
         "circle-stroke-color": "rgba(255,255,255,.8)",
@@ -302,9 +372,14 @@ function ensureLayers(map: MapLibreMap, data: TapFeatureCollection) {
       source: "tap-events",
       filter: ["!", ["has", "point_count"]],
       paint: {
-        "circle-radius": ["interpolate", ["linear"], ["zoom"], 4, 12, 10, 38, 13, 60],
-        "circle-color": "rgba(34,211,238,.055)",
-        "circle-stroke-color": "rgba(125,211,252,.46)",
+        "circle-radius": [
+          "case",
+          ["==", ["get", "locationClass"], "network_approx"],
+          ["interpolate", ["linear"], ["zoom"], 4, 18, 10, 54, 13, 88],
+          ["interpolate", ["linear"], ["zoom"], 4, 10, 10, 30, 13, 48],
+        ],
+        "circle-color": ["case", ["==", ["get", "locationClass"], "network_approx"], "rgba(245,158,11,.055)", "rgba(34,211,238,.055)"],
+        "circle-stroke-color": ["case", ["==", ["get", "locationClass"], "network_approx"], "rgba(251,191,36,.48)", "rgba(94,234,212,.52)"],
         "circle-stroke-width": 1,
       },
     });
@@ -334,7 +409,13 @@ function ensureLayers(map: MapLibreMap, data: TapFeatureCollection) {
       filter: ["!", ["has", "point_count"]],
       paint: {
         "circle-radius": ["interpolate", ["linear"], ["get", "localTaps"], 1, ["case", ["==", ["get", "risk"], 1], 4.5, 3.5], 8, 6.5, 18, 9],
-        "circle-color": ["case", ["==", ["get", "risk"], 1], "#fb7185", "#67e8f9"],
+        "circle-color": [
+          "case",
+          ["==", ["get", "risk"], 1], "#fb7185",
+          ["==", ["get", "locationClass"], "consented_gps"], "#2dd4bf",
+          ["==", ["get", "locationClass"], "network_approx"], "#f59e0b",
+          "#a78bfa",
+        ],
         "circle-stroke-color": "#ffffff",
         "circle-stroke-width": 1,
         "circle-opacity": 0.95,
@@ -347,7 +428,9 @@ function setLayerVisibility(map: MapLibreMap, view: MapView) {
   const set = (id: string, visible: boolean) => {
     if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", visible ? "visible" : "none");
   };
-  set("tap-heat", view === "heat");
+  set("tap-heat-network", view === "heat");
+  set("tap-heat-other", view === "heat");
+  set("tap-heat-gps", view === "heat");
   set("tap-bubbles", view === "heat");
   set("tap-nearby-radius", view === "nearby");
   set("tap-clusters", view !== "nearby");
@@ -433,6 +516,15 @@ export function RealtimeMapLibreMap({
     summary[feature.properties.locationPrecision] += 1;
     return summary;
   }, { reported: 0, approximate: 0 } as Record<MapCoordinatePrecision, number>), [geojson]);
+  const sourceSummary = useMemo(() => geojson.features.reduce((summary, feature) => {
+    summary[feature.properties.locationClass] += 1;
+    return summary;
+  }, {
+    consented_gps: 0,
+    network_approx: 0,
+    mixed_approx: 0,
+    other_reported: 0,
+  } as Record<LocationProvenanceClass, number>), [geojson]);
   const textualHotspots = hotspots.slice(0, 5);
   geojsonRef.current = geojson;
   mapViewRef.current = mapView;
@@ -522,7 +614,7 @@ export function RealtimeMapLibreMap({
               <span>${escapeHtml(props.city)}, ${escapeHtml(props.country)}</span>
               <small>${escapeHtml(props.verdict)} / ${escapeHtml(props.device)}</small>
               <small>${escapeHtml(props.locationLabel)}</small>
-              <small>Fuente de ubicación: ${escapeHtml(props.locationSource)}</small>
+              <small>Fuente: ${escapeHtml(locationProvenanceLabel(props.locationSource))}</small>
               <small>${escapeHtml(props.localTaps)} taps en la zona</small>
             </div>
           `)
@@ -614,6 +706,11 @@ export function RealtimeMapLibreMap({
         <b className="text-cyan-200">{geojson.features.length}</b> ubicaciones mapeables / {hotspots.length} zonas / {mode === "tenant" ? "tenant" : "global"}
         <span className="mt-1 block text-[10px] text-slate-400">
           {precisionSummary.reported} reportadas · {precisionSummary.approximate} aproximadas · sin coordenada persistida, el evento no se dibuja
+        </span>
+        <span className="mt-1.5 flex flex-wrap gap-x-2 gap-y-1 text-[10px]" aria-label="Procedencia de las ubicaciones visibles">
+          <span className="text-emerald-200"><i className="mr-1 inline-block h-2 w-2 rounded-full bg-emerald-400" aria-hidden="true" />GPS consentido {sourceSummary.consented_gps}</span>
+          <span className="text-amber-200"><i className="mr-1 inline-block h-2 w-2 rounded-full bg-amber-400" aria-hidden="true" />Red/IP {sourceSummary.network_approx}</span>
+          <span className="text-violet-200"><i className="mr-1 inline-block h-2 w-2 rounded-full bg-violet-400" aria-hidden="true" />Mixta/otra {sourceSummary.mixed_approx + sourceSummary.other_reported}</span>
         </span>
       </div>
       {!loaded && !mapError ? (

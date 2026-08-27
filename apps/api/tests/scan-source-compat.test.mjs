@@ -72,6 +72,12 @@ test('event scan_source comparisons cast the enum column instead of text paramet
 test('qr scans keep channel in reason/meta instead of tag_status enum', () => {
   const content = read('apps/api/src/app/sun/route.ts');
   assert.equal(content.includes('tagStatus: "qr_scan"'), false);
-  assert.equal(content.includes('reason: "qr_scan"'), true);
-  assert.equal(content.includes('channel: "qr"'), true);
+  assert.match(
+    content,
+    /reason:\s*staticNfcScan\s*\?\s*"static_nfc_scan"\s*:\s*gs1Scan\s*\?\s*"gs1_identity_resolved"\s*:\s*"qr_scan"/,
+  );
+  assert.match(
+    content,
+    /channel:\s*gs1Scan\s*\?\s*"gs1_qr"\s*:\s*staticNfcScan\s*\?\s*"static_nfc"\s*:\s*"qr"/,
+  );
 });

@@ -1552,7 +1552,12 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           <div className="sun-result-card__product">
             <div className="sun-result-card__media">
               {productHeroImageUrl ? (
-                <img src={productHeroImageUrl} alt={productDisplayName} />
+                <img
+                  src={productHeroImageUrl}
+                  alt={productDisplayName}
+                  decoding="async"
+                  fetchPriority="high"
+                />
               ) : (
                 <Package aria-hidden="true" />
               )}

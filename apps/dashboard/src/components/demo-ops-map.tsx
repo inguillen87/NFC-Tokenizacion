@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { EmptyState } from "@product/ui";
 import type { GlobalOpsPoint } from "@product/ui/global-ops-map";
 import { ShieldAlert, ShieldCheck, MapPin, RefreshCw } from "lucide-react";
+import { classifyLocationProvenance, locationProvenanceLabel, type LocationProvenanceClass } from "../lib/location-provenance";
 
 const GlobalOpsMap = dynamic(() => import("@product/ui/global-ops-map").then((mod) => mod.GlobalOpsMap), { ssr: false });
 
@@ -22,11 +23,22 @@ type MapPoint = {
   tenantSlug?: string;
   uid?: string;
   device?: string;
+  locationSource?: string | null;
+  locationAccuracyM?: number | null;
 };
 
 type EventFilter = "all" | "clean" | "risk";
 type ScopeFilter = "selected" | "all";
+type LocationFilter = "all" | LocationProvenanceClass;
 type MapMode = "demo" | "tenant" | "global";
+
+const LOCATION_FILTERS: Array<{ value: LocationFilter; label: string; tone: string }> = [
+  { value: "all", label: "Todas", tone: "bg-white/10 text-white" },
+  { value: "consented_gps", label: "GPS consentido", tone: "bg-emerald-500/20 text-emerald-200" },
+  { value: "network_approx", label: "Red/IP", tone: "bg-amber-500/20 text-amber-200" },
+  { value: "mixed_approx", label: "Mixta", tone: "bg-violet-500/20 text-violet-200" },
+  { value: "other_reported", label: "Otra", tone: "bg-slate-500/20 text-slate-200" },
+];
 
 export function DemoOpsMap({
   points,
@@ -44,8 +56,20 @@ export function DemoOpsMap({
   const [eventFilter, setEventFilter] = useState<EventFilter>("all");
   const [country, setCountry] = useState("ALL");
   const [scope, setScope] = useState<ScopeFilter>("selected");
+  const [locationFilter, setLocationFilter] = useState<LocationFilter>("all");
 
   const countries = useMemo(() => ["ALL", ...Array.from(new Set(points.map((point) => point.country))).sort()], [points]);
+  const hasLocationProvenance = useMemo(() => points.some((point) => Boolean(String(point.locationSource || "").trim())), [points]);
+  const effectiveLocationFilter: LocationFilter = hasLocationProvenance ? locationFilter : "all";
+  const locationCounts = useMemo(() => points.reduce((counts, point) => {
+    counts[classifyLocationProvenance(point.locationSource)] += 1;
+    return counts;
+  }, {
+    consented_gps: 0,
+    network_approx: 0,
+    mixed_approx: 0,
+    other_reported: 0,
+  } as Record<LocationProvenanceClass, number>), [points]);
 
   const filteredPoints = useMemo(
     () =>
@@ -53,9 +77,10 @@ export function DemoOpsMap({
         const countryMatch = country === "ALL" ? true : point.country === country;
         const eventMatch = eventFilter === "all" ? true : eventFilter === "clean" ? point.risk === 0 : point.risk > 0;
         const scopeMatch = mode === "demo" ? (scope === "all" ? true : selectedVertical ? point.vertical === selectedVertical : true) : true;
-        return countryMatch && eventMatch && scopeMatch;
+        const locationMatch = effectiveLocationFilter === "all" ? true : classifyLocationProvenance(point.locationSource) === effectiveLocationFilter;
+        return countryMatch && eventMatch && scopeMatch && locationMatch;
       }),
-    [country, eventFilter, mode, points, scope, selectedVertical],
+    [country, effectiveLocationFilter, eventFilter, mode, points, scope, selectedVertical],
   );
 
   const normalizedPoints = useMemo<GlobalOpsPoint[]>(() => filteredPoints.map((point, index) => ({
@@ -70,12 +95,16 @@ export function DemoOpsMap({
     tenantSlug: point.tenantSlug || point.vertical || "demo",
     lastSeen: point.lastSeen || "",
     uid: point.uid,
-    device: point.device,
+    device: [point.device, point.locationSource ? locationProvenanceLabel(point.locationSource) : ""].filter(Boolean).join(" · ") || undefined,
+    role: classifyLocationProvenance(point.locationSource) === "consented_gps" ? "tap" : "hub",
+    locationSource: point.locationSource || undefined,
+    locationAccuracyM: point.locationAccuracyM ?? undefined,
   })), [filteredPoints]);
 
   function resetFilters() {
     setEventFilter("all");
     setCountry("ALL");
+    setLocationFilter("all");
     if (mode === "demo") setScope("selected");
   }
 
@@ -195,12 +224,46 @@ export function DemoOpsMap({
             </div>
           )}
         </div>
+
+        {hasLocationProvenance ? (
+          <div className="basis-full border-t border-white/5 pt-3">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Procedencia geográfica:</span>
+            <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label="Filtrar por procedencia geográfica">
+              {LOCATION_FILTERS.map((item) => {
+                const count = item.value === "all"
+                  ? points.length
+                  : locationCounts[item.value];
+                return (
+                  <button
+                    key={item.value}
+                    suppressHydrationWarning
+                    type="button"
+                    aria-pressed={effectiveLocationFilter === item.value}
+                    onClick={() => setLocationFilter(item.value)}
+                    className={`min-h-9 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition-colors ${effectiveLocationFilter === item.value ? `${item.tone} border-white/20` : "border-white/10 bg-white/5 text-slate-400 hover:text-white"}`}
+                  >
+                    {item.label} · {count} {count === 1 ? "zona" : "zonas"}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
       </div>
+      ) : null}
+
+      {hasLocationProvenance ? (
+        <div data-location-provenance-legend="gps-network" className={`${isCompact ? "mx-2 mt-2" : "mt-3"} flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-white/8 bg-slate-950/65 px-3 py-2 text-[10px] text-slate-300`}>
+          <span className="font-black uppercase tracking-[0.12em] text-slate-400">Precisión</span>
+          <span className="text-emerald-200"><i className="mr-1 inline-block h-2 w-2 rounded-full bg-emerald-400" aria-hidden="true" />GPS consentido: zona aproximada más acotada</span>
+          <span className="text-amber-200"><i className="mr-1 inline-block h-2 w-2 rounded-full bg-amber-400" aria-hidden="true" />Red/IP: zona amplia, no posición del teléfono</span>
+          <span className="text-violet-200"><i className="mr-1 inline-block h-2 w-2 rounded-full bg-violet-400" aria-hidden="true" />Mixta/otra: procedencia no homogénea</span>
+        </div>
       ) : null}
 
       <div className={isCompact ? "overflow-hidden rounded-xl border border-white/5 bg-slate-900/25" : "mt-3 overflow-x-auto rounded-2xl border border-white/5 bg-slate-900/25"}>
         {normalizedPoints.length === 0 ? (
-          <EmptyState title="Sin hubs visibles" description="Probá cambiar país, scope o tipo de evento." className="border-dashed px-4 py-12 text-center text-sm text-slate-400" />
+          <EmptyState title="Sin hubs visibles" description="Probá cambiar país, procedencia, scope o tipo de evento." className="border-dashed px-4 py-12 text-center text-sm text-slate-400" />
         ) : (
           <div className={isCompact ? "min-w-0" : "min-w-[560px]"}>
           <GlobalOpsMap
@@ -212,6 +275,8 @@ export function DemoOpsMap({
             playbackEnabled={false}
             riskOnly={eventFilter === "risk"}
             chrome={isCompact ? "compact" : "full"}
+            sourceLabel={hasLocationProvenance ? "Coordenadas persistidas con procedencia" : undefined}
+            locationNote={hasLocationProvenance ? (effectiveLocationFilter === "all" ? "GPS consentido y red/IP separados" : `Filtro: ${LOCATION_FILTERS.find((item) => item.value === effectiveLocationFilter)?.label || "procedencia"}`) : undefined}
           />
           </div>
         )}

@@ -56053,11 +56053,11 @@ html:is(.theme-light, [data-theme="light"]) .nexid-sun-page > .rounded-xl[class*
 
 .sun-result-card__product {
   display: grid;
-  grid-template-columns: 6.75rem minmax(0, 1fr);
-  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.9rem;
   align-items: center;
   margin-bottom: 1.1rem;
-  padding: 0.65rem;
+  padding: 0.72rem;
   border: 1px solid rgba(148, 163, 184, 0.14);
   border-radius: 1.35rem;
   background: rgba(2, 6, 23, 0.28);
@@ -56067,7 +56067,7 @@ html:is(.theme-light, [data-theme="light"]) .nexid-sun-page > .rounded-xl[class*
   position: relative;
   display: grid;
   width: 100%;
-  min-height: 8.25rem;
+  min-height: 15rem;
   place-items: center;
   overflow: hidden;
   border: 1px solid rgba(103, 232, 249, 0.18);
@@ -56075,13 +56075,22 @@ html:is(.theme-light, [data-theme="light"]) .nexid-sun-page > .rounded-xl[class*
   background:
     radial-gradient(circle at 50% 28%, rgba(103, 232, 249, 0.2), transparent 60%),
     rgba(15, 23, 42, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0.85rem 2rem rgba(2, 6, 23, 0.2);
 }
 
 .sun-result-card__media img {
   width: 100%;
-  height: 8.25rem;
+  height: 15rem;
   object-fit: contain;
   object-position: center;
+  transform: scale(1.035);
+  transition: transform 360ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.sun-result-card__media:hover img {
+  transform: scale(1.075);
 }
 
 .sun-result-card__media > svg {
@@ -56112,6 +56121,7 @@ html:is(.theme-light, [data-theme="light"]) .nexid-sun-page > .rounded-xl[class*
 
 .sun-result-card__identity {
   min-width: 0;
+  padding: 0.15rem 0.25rem 0.3rem;
 }
 
 .sun-result-card__identity > small,
@@ -56132,7 +56142,7 @@ html:is(.theme-light, [data-theme="light"]) .nexid-sun-page > .rounded-xl[class*
 .sun-result-card__identity > strong {
   margin-top: 0.35rem;
   color: #f8fafc;
-  font-size: clamp(1.08rem, 5vw, 1.42rem);
+  font-size: clamp(1.18rem, 5.5vw, 1.58rem);
   font-weight: 900;
   letter-spacing: -0.035em;
   line-height: 1.08;
@@ -56445,6 +56455,9 @@ html:is(.theme-light, [data-theme="light"]) .sun-result-card__media {
   background:
     radial-gradient(circle at 50% 28%, rgba(34, 211, 238, 0.18), transparent 60%),
     linear-gradient(145deg, #f8fdff, #e6f7f8);
+  box-shadow:
+    inset 0 1px 0 #ffffff,
+    0 0.9rem 2rem rgba(14, 116, 144, 0.12);
 }
 
 html:is(.theme-light, [data-theme="light"]) .sun-result-card__identity > small {
@@ -56539,15 +56552,88 @@ html:is(.theme-light, [data-theme="light"]) .sun-result-card__controls strong {
   }
 
   .sun-result-card__product {
-    grid-template-columns: 5.5rem minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     gap: 0.75rem;
   }
 
   .sun-result-card__media,
   .sun-result-card__media img {
-    min-height: 7rem;
-    height: 7rem;
+    min-height: 12.75rem;
+    height: 12.75rem;
   }
+}
+
+/* The permission card belongs to the consumer journey, so it must read like a
+   calm product decision instead of a technical telemetry notice. */
+.sun-location-consent {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 1.35rem !important;
+  background:
+    radial-gradient(circle at 92% 8%, rgba(34, 211, 238, 0.22), transparent 8rem),
+    linear-gradient(145deg, rgba(8, 47, 73, 0.94), rgba(15, 23, 42, 0.96)) !important;
+  box-shadow: 0 1rem 2.8rem rgba(2, 6, 23, 0.22);
+}
+
+.sun-location-consent::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0.22rem;
+  background: linear-gradient(180deg, #22d3ee, #14b8a6);
+}
+
+.sun-location-consent > :is(p, span, button) {
+  position: relative;
+  z-index: 1;
+}
+
+.sun-location-consent > :first-child {
+  color: #ecfeff;
+  font-size: 0.75rem;
+  letter-spacing: 0.015em;
+}
+
+.sun-location-consent > :nth-child(2) {
+  color: rgba(207, 250, 254, 0.76);
+}
+
+.sun-location-consent button {
+  border-color: rgba(165, 243, 252, 0.34) !important;
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.2), rgba(20, 184, 166, 0.18)) !important;
+  color: #ecfeff !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.sun-location-consent--updated::before {
+  background: linear-gradient(180deg, #34d399, #14b8a6);
+}
+
+.sun-location-consent--fresh-required::before {
+  background: linear-gradient(180deg, #fbbf24, #f59e0b);
+}
+
+html:is(.theme-light, [data-theme="light"]) .sun-location-consent {
+  border-color: rgba(8, 145, 178, 0.2) !important;
+  background:
+    radial-gradient(circle at 92% 8%, rgba(34, 211, 238, 0.14), transparent 8rem),
+    linear-gradient(145deg, #ffffff, rgba(236, 254, 255, 0.94)) !important;
+  box-shadow: 0 1rem 2.8rem rgba(15, 35, 63, 0.09);
+}
+
+html:is(.theme-light, [data-theme="light"]) .sun-location-consent > :first-child {
+  color: #10233f !important;
+}
+
+html:is(.theme-light, [data-theme="light"]) .sun-location-consent > :nth-child(2) {
+  color: #52657a !important;
+}
+
+html:is(.theme-light, [data-theme="light"]) .sun-location-consent button {
+  border-color: rgba(8, 145, 178, 0.24) !important;
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.16), rgba(20, 184, 166, 0.12)) !important;
+  color: #075f69 !important;
 }
 
 @keyframes sun-result-reveal {
@@ -56557,7 +56643,8 @@ html:is(.theme-light, [data-theme="light"]) .sun-result-card__controls strong {
 
 @media (prefers-reduced-motion: reduce) {
   .sun-result-card { animation: none; }
-  .sun-result-card__primary { transition: none; }
+  .sun-result-card__primary,
+  .sun-result-card__media img { transition: none; }
 }
 
 /* Shared editorial gradient for public and product page headlines. The light

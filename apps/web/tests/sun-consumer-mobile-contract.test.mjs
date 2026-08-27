@@ -2,13 +2,23 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const [page, telemetry, cleaner, nextStep, actions] = await Promise.all([
+const [page, telemetry, cleaner, nextStep, actions, styles] = await Promise.all([
   readFile(new URL("../src/app/sun/page.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/app/sun/tap-precision-telemetry.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/app/sun/fresh-handoff-url-cleaner.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/app/sun/post-tap-next-step.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/app/sun/cta-actions.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../src/app/globals.css", import.meta.url), "utf8"),
 ]);
+
+test("the physical product image is a primary mobile visual, not a thumbnail", () => {
+  assert.match(page, /className="sun-result-card__media"/);
+  assert.match(styles, /\.sun-result-card__product\s*\{[\s\S]*?grid-template-columns: minmax\(0, 1fr\)/);
+  assert.match(styles, /\.sun-result-card__media\s*\{[\s\S]*?min-height: 15rem/);
+  assert.match(styles, /\.sun-result-card__media img\s*\{[\s\S]*?height: 15rem/);
+  assert.match(page, /fetchPriority="high"/);
+  assert.match(styles, /html:is\(\.theme-light, \[data-theme="light"\]\) \.sun-result-card__media/);
+});
 
 test("consumer seal copy leads with the decision a non-technical buyer needs", () => {
   assert.match(page, /El sello no registra aperturas/);
@@ -65,7 +75,44 @@ test("phone location uses the hardened same-origin proxy and a fresh high-accura
   assert.match(telemetry, /timeout: 15000/);
   assert.match(telemetry, /roundApproximateCoordinate\(position\.coords\.latitude\)/);
   assert.match(telemetry, /APPROXIMATE_ACCURACY_FLOOR_M/);
-  assert.match(telemetry, /Usar mi zona actual/);
+  assert.match(telemetry, /Compartir zona y contexto/);
+});
+
+test("a fresh physical handoff opens explicit consent once and never prompts a stale snapshot", () => {
+  assert.match(telemetry, /AUTO_LOCATION_PROMPT_VERSION = "v2"/);
+  assert.match(telemetry, /nexid:tap-location-prompt:\$\{AUTO_LOCATION_PROMPT_VERSION\}:\$\{eventId \|\| "unknown"\}/);
+  assert.match(telemetry, /autoPromptAttemptedRef/);
+  assert.match(telemetry, /state !== "idle" \|\| !enabled \|\| !eventId \|\| !capabilityToken/);
+  assert.match(telemetry, /freshTokenExpiryMs\(capabilityToken\)/);
+  assert.match(telemetry, /window\.sessionStorage\.getItem\(storageKey\) \|\| window\.sessionStorage\.getItem\(promptStorageKey\)/);
+  assert.match(telemetry, /setConsentOpen\(true\)/);
+  assert.match(telemetry, /Permitir zona y contexto/);
+  assert.match(telemetry, /extendedContextConsent: true/);
+  assert.match(telemetry, /acceptContextConsent/);
+  assert.match(telemetry, /declineContextConsent/);
+});
+
+test("consented SUN context reports only browser-observed device and connection facts", () => {
+  assert.match(telemetry, /getHighEntropyValues/);
+  for (const hint of ["architecture", "bitness", "model", "platformVersion"]) {
+    assert.match(telemetry, new RegExp(`"${hint}"`));
+  }
+  assert.match(telemetry, /const model = cleanText\(highEntropy\.model\)/);
+  assert.match(telemetry, /modelSource: model \? "ua_ch_high_entropy" : null/);
+  assert.match(telemetry, /deviceType: inferDeviceType/);
+  assert.match(telemetry, /os: inferDeviceOs/);
+  assert.match(telemetry, /languages: Array\.isArray\(nav\.languages\)/);
+  assert.match(telemetry, /timezone: Intl\.DateTimeFormat/);
+  assert.match(telemetry, /screen: \{/);
+  assert.match(telemetry, /hardware: \{/);
+  assert.match(telemetry, /memoryGb: Number\.isFinite\(nav\.deviceMemory\)/);
+  assert.match(telemetry, /logicalProcessors: Number\.isFinite\(nav\.hardwareConcurrency\)/);
+  assert.match(telemetry, /effectiveType: cleanText\(connection\.effectiveType\)/);
+  assert.match(telemetry, /downlinkMbps: Number\.isFinite\(connection\.downlink\)/);
+  assert.match(telemetry, /rttMs: Number\.isFinite\(connection\.rtt\)/);
+  assert.match(telemetry, /saveData: connection\.saveData === true/);
+  assert.match(telemetry, /Nothing is sent if the person denies that native permission/);
+  assert.match(telemetry, /A denial is local-only: no device or network profile is transmitted/);
 });
 
 test("phone location retry retains only the short event-bound capability in this tab", () => {

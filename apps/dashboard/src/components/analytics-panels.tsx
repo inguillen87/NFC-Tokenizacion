@@ -20,6 +20,41 @@ import {
 
 const GlobalOpsMap = dynamic(() => import("@product/ui/global-ops-map").then((mod) => mod.GlobalOpsMap), { ssr: false });
 
+type SignalCoverage = { count: number; share: number };
+type CoordinateProvenance = {
+  coordinateSource?: string;
+  coordinateAccuracyMeters?: number | null;
+  coordinateSampleCount?: number;
+  coordinateIsApproximate?: boolean;
+  coordinateEvidence?: string;
+  coordinateSourceCounts?: { browserGpsReported: number; ipApprox: number; unknown: number };
+};
+type CommercialSignalsPayload = {
+  schemaVersion: string;
+  sampleSize: number;
+  basis: string;
+  confidence: "none" | "low" | "medium" | "high";
+  coverage: {
+    context: SignalCoverage;
+    extendedConsent: SignalCoverage;
+    reportedModelOrDeviceLabel: SignalCoverage;
+    deviceCapability: SignalCoverage;
+    connection: SignalCoverage;
+    locationSource: SignalCoverage;
+  };
+  reportedModel: { basis: string; confidence: string; coverage: number; buckets: Array<{ label: string; count: number }> };
+  deviceCapability: { basis: string; confidence: string; coverage: number; socioeconomicStatus: "not_inferred"; bands: Array<{ label: string; count: number }> };
+  connection: { basis: string; confidence: string; coverage: number; effectiveTypes: Array<{ label: string; count: number }> };
+  location: { basis: string; confidence: string; coverage: number; sources: Array<{ label: string; count: number }> };
+  dataHandling: {
+    aggregateOnly: boolean;
+    rawCoordinatesIncluded: boolean;
+    individualDeviceContextIncluded: boolean;
+    socioeconomicStatusInferred: boolean;
+    browserReportedValuesVerified: boolean;
+  };
+};
+
 type AnalyticsPanelsProps = {
   kpis: {
     scans: string;
@@ -48,10 +83,11 @@ type AnalyticsPanelsProps = {
     billing?: { resellerMrrAmount?: number | null; currency?: string | null; source?: string | null; period?: string | null };
     trend?: Array<{ day: string; scans: number; duplicates: number; tamper: number }>;
     batchStatus?: Array<{ name: string; value: number }>;
-    geoPoints?: Array<{ city: string; country?: string; scans?: number; risk?: number; lat: number; lng: number }>;
+    geoPoints?: Array<{ city: string; country?: string; scans?: number; risk?: number; lat: number; lng: number } & CoordinateProvenance>;
     deviceSignals?: Array<{ device: string; scans: number; countries: number; validRate: number; risk: number }>;
-    geography?: { countries?: Array<{ country: string; scans: number; risk: number }>; cities?: Array<{ city: string; country: string; lat: number | null; lng: number | null; scans: number; risk: number; lastSeen: string | null }> };
+    geography?: { countries?: Array<{ country: string; scans: number; risk: number }>; cities?: Array<{ city: string; country: string; lat: number | null; lng: number | null; scans: number; risk: number; lastSeen: string | null } & CoordinateProvenance> };
     devices?: { os?: Array<{ label: string; count: number }>; browser?: Array<{ label: string; count: number }>; deviceType?: Array<{ label: string; count: number }>; timezones?: Array<{ label: string; count: number }>; mobileShare?: number };
+    commercialSignals?: CommercialSignalsPayload;
     feed?: Array<{ id: number; uidHex: string; bid: string; result: string; city: string; country: string; device: string; createdAt: string }>;
     products?: Array<{ uidHex: string; bid: string; productName: string; winery: string; region: string; vintage: string; scanCount: number; firstSeenAt: string | null; lastSeenAt: string | null; lastVerifiedCity: string; lastVerifiedCountry: string; tokenization: { status: string; network: string; txHash: string | null; tokenId: string | null } }>;
     tagJourney?: Array<{ uid: string; taps: number; firstSeenAt: string | null; lastSeenAt: string | null; originSource?: string | null; origin: { city: string; country: string; lat: number | null; lng: number | null }; current: { city: string; country: string; lat: number | null; lng: number | null }; lastDevice: string }>;
@@ -73,6 +109,54 @@ function DeviceBucket({ title, items }: { title: string; items: Array<{ label: s
       <p className="font-semibold text-slate-100">{title}</p>
       <div className="mt-2 space-y-1">
         {(items.length ? items : [{ label: "Unknown", count: 0 }]).slice(0, 5).map((item) => <p key={item.label}>{item.label}: <b>{item.count}</b></p>)}
+      </div>
+    </div>
+  );
+}
+
+function friendlySignalLabel(value: string) {
+  const normalized = String(value || "").trim().toLowerCase();
+  const labels: Record<string, string> = {
+    high: "Capacidad alta",
+    standard: "Capacidad estándar",
+    entry: "Capacidad inicial",
+    unclassified: "Sin clasificar",
+    "slow-2g": "Conexión lenta (2G)",
+    "2g": "Conexión 2G",
+    "3g": "Conexión 3G",
+    "4g": "Conexión 4G o superior",
+    browser_gps_approximate_consent: "Ubicación aproximada compartida",
+    browser_gps_reported: "Ubicación aproximada del dispositivo",
+    edge_ip_approx: "Ubicación aproximada por red",
+    ip_approx: "Ubicación aproximada por red",
+    browser_context_reported: "Contexto del navegador",
+    none: "Sin ubicación",
+    unknown: "Sin dato",
+  };
+  return labels[normalized] || value || "Sin dato";
+}
+
+function friendlyConfidence(value: string) {
+  const labels: Record<string, string> = { high: "Alta", medium: "Media", low: "Inicial", none: "Sin base" };
+  return labels[String(value || "").trim().toLowerCase()] || "Sin base";
+}
+
+function SignalBucket({ title, coverage, items }: { title: string; coverage: number; items: Array<{ label: string; count: number }> }) {
+  return (
+    <div className="rounded-2xl border border-cyan-300/15 bg-gradient-to-br from-cyan-500/10 via-slate-900/70 to-violet-500/10 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-black text-white">{title}</p>
+        <span className="rounded-full border border-white/10 bg-slate-950/70 px-2 py-1 text-[10px] font-bold text-cyan-100">
+          Cobertura {formatAnalyticsPercentage(coverage * 100)}
+        </span>
+      </div>
+      <div className="mt-3 space-y-2">
+        {(items.length ? items : [{ label: "unknown", count: 0 }]).slice(0, 5).map((item) => (
+          <div key={item.label} className="flex items-center justify-between gap-3 text-xs text-slate-300">
+            <span className="min-w-0 truncate">{friendlySignalLabel(item.label)}</span>
+            <b className="shrink-0 text-white">{item.count}</b>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -181,7 +265,7 @@ type GeoOfferSource = {
   lat: number | null;
   lng: number | null;
   lastSeen?: string | null;
-};
+} & CoordinateProvenance;
 
 function GamificationGeoOfferStudio({
   cities,
@@ -211,6 +295,8 @@ function GamificationGeoOfferStudio({
           scans: Number(item.scans || 0),
           risk: Number(item.risk || 0),
           lastSeen: item.lastSeen || "",
+          coordinateSource: item.coordinateSource,
+          coordinateAccuracyMeters: item.coordinateAccuracyMeters,
           multiplier: multipliers[key] || 1,
         };
       })
@@ -220,6 +306,7 @@ function GamificationGeoOfferStudio({
   const totalScans = rows.reduce((sum, row) => sum + row.scans, 0);
   const projectedClaims = rows.reduce((sum, row) => sum + Math.round(row.scans * (row.multiplier > 1 ? boostedClaimRate : baseClaimRate)), 0);
   const projectedPoints = rows.reduce((sum, row) => sum + Math.round(row.scans * row.multiplier * pointsPerTap), 0);
+  const hasLocationProvenance = rows.some((row) => Boolean(row.coordinateSource));
   const mapPoints = rows.map((row) => ({
     id: `geo-offer-${row.key}`,
     city: row.city,
@@ -236,6 +323,8 @@ function GamificationGeoOfferStudio({
     uid: row.key,
     role: "tap" as const,
     productName: `Loyalty x${row.multiplier}`,
+    locationSource: row.coordinateSource,
+    locationAccuracyM: row.coordinateAccuracyMeters ?? undefined,
   }));
 
   function setMultiplier(key: string, multiplier: number) {
@@ -257,6 +346,8 @@ function GamificationGeoOfferStudio({
               routes={[]}
               playbackEnabled={false}
               riskOnly={false}
+              sourceLabel={hasLocationProvenance ? "Procedencia geográfica persistida" : undefined}
+              locationNote={hasLocationProvenance ? "GPS consentido y red/IP no son equivalentes" : undefined}
             />
           </div>
           <div className="space-y-3">
@@ -327,6 +418,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
   const products = data?.products || [];
   const tagJourney = data?.tagJourney || [];
   const devices = data?.devices;
+  const commercialSignals = data?.commercialSignals;
   const productByUid = useMemo(() => new Map(products.map((product) => [String(product.uidHex || "").toUpperCase(), product])), [products]);
   const cityLastSeenByKey = useMemo(
     () => new Map(cities.map((item) => [`${String(item.city || "").trim().toLowerCase()}|${String(item.country || "--").trim().toUpperCase()}`, item.lastSeen || ""])),
@@ -523,6 +615,12 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
     scans: point.scans || 0,
     risk: point.risk || 0,
     lastSeen: cityLastSeenByKey.get(`${String(point.city || "").trim().toLowerCase()}|${String(point.country || "--").trim().toUpperCase()}`) || null,
+    coordinateSource: point.coordinateSource,
+    coordinateAccuracyMeters: point.coordinateAccuracyMeters,
+    coordinateSampleCount: point.coordinateSampleCount,
+    coordinateIsApproximate: point.coordinateIsApproximate,
+    coordinateEvidence: point.coordinateEvidence,
+    coordinateSourceCounts: point.coordinateSourceCounts,
   }));
 
   if (!hasOperationalData) {
@@ -718,6 +816,50 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
         </OpsPanel>
       </div>
 
+      <OpsPanel
+        title="Señales comerciales agregadas"
+        subtitle="Lectura por tenant para segmentación y experiencia. Mide cobertura de señales reportadas; no identifica personas ni estima ingresos."
+      >
+        <div data-commercial-signals-aggregate-only="true" className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">Muestra del filtro</p>
+              <p className="mt-1 text-2xl font-black text-white">{commercialSignals?.sampleSize ?? 0}</p>
+              <p className="mt-1 text-xs text-slate-400">taps persistidos</p>
+            </div>
+            <div className="rounded-2xl border border-emerald-300/15 bg-emerald-500/10 p-4">
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-100/70">Contexto ampliado</p>
+              <p className="mt-1 text-2xl font-black text-emerald-100">
+                {formatAnalyticsPercentage((commercialSignals?.coverage.extendedConsent.share || 0) * 100)}
+              </p>
+              <p className="mt-1 text-xs text-emerald-50/65">con aceptación explícita</p>
+            </div>
+            <div className="rounded-2xl border border-cyan-300/15 bg-cyan-500/10 p-4">
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-100/70">Confianza de cobertura</p>
+              <p className="mt-1 text-2xl font-black text-cyan-100">{friendlyConfidence(commercialSignals?.confidence || "none")}</p>
+              <p className="mt-1 text-xs text-cyan-50/65">depende de la muestra, no valida el modelo informado</p>
+            </div>
+          </div>
+
+          {commercialSignals?.sampleSize ? (
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <SignalBucket title="Modelo o dispositivo reportado" coverage={commercialSignals.reportedModel.coverage} items={commercialSignals.reportedModel.buckets} />
+              <SignalBucket title="Capacidad del dispositivo" coverage={commercialSignals.deviceCapability.coverage} items={commercialSignals.deviceCapability.bands} />
+              <SignalBucket title="Tipo de conexión" coverage={commercialSignals.connection.coverage} items={commercialSignals.connection.effectiveTypes} />
+              <SignalBucket title="Fuente de ubicación" coverage={commercialSignals.location.coverage} items={commercialSignals.location.sources} />
+            </div>
+          ) : (
+            <p className="rounded-2xl border border-white/10 bg-slate-900/60 p-4 text-sm text-slate-400">
+              Todavía no hay taps con contexto comercial en este filtro.
+            </p>
+          )}
+
+          <p className="rounded-xl border border-amber-300/20 bg-amber-500/10 px-3 py-2 text-[11px] leading-5 text-amber-100">
+            Las capacidades son una señal técnica reportada por el navegador. No representan poder adquisitivo ni nivel socioeconómico. El panel muestra sólo estadísticas agregadas, sin coordenadas exactas ni contexto técnico individual.
+          </p>
+        </div>
+      </OpsPanel>
+
       <GamificationGeoOfferStudio cities={cities} geoPoints={geoOfferPoints} mapMode={mapMode} />
 
       <DemoOpsMap mode={mapMode} points={(data?.geoPoints || []).map((point) => ({
@@ -728,6 +870,8 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
         scans: point.scans ?? 0,
         risk: point.risk || 0,
         lastSeen: cityLastSeenByKey.get(`${String(point.city || "").trim().toLowerCase()}|${String(point.country || "--").trim().toUpperCase()}`) || undefined,
+        locationSource: point.coordinateSource,
+        locationAccuracyM: point.coordinateAccuracyMeters,
       }))} />
       <OpsPanel title="Journey map (tenant premium taps)" subtitle="Referencia inicial y ultimo tap reportado. Solo se dibuja un conector cuando originSource=product_passport_declared; first_observed_event no se presenta como ruta logistica.">
         {journeyMapPoints.length ? (
