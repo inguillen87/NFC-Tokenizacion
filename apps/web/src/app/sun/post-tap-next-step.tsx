@@ -12,6 +12,10 @@ import {
 } from "lucide-react";
 import { resolvePostTapQuickActionAvailability } from "./post-tap-policy";
 
+function isProtectedConsumerPortalHref(href: string) {
+  return /^\/me(?:[/?#]|$)/.test(href);
+}
+
 type JourneyKind = "wine" | "seeds" | "chemicals" | "logistics" | "pharma" | "consumer";
 
 type JourneyCopy = {
@@ -240,7 +244,12 @@ export function PostTapNextStep({
   const renderSecondaryAction = (action: (typeof secondaryActions)[number]) => {
     const Icon = action.icon;
     return (
-      <Link key={action.key} href={action.href} className="flex min-h-16 items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/50 p-3 text-white transition hover:border-cyan-300/25 hover:bg-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300">
+      <Link
+        key={action.key}
+        href={action.href}
+        prefetch={isProtectedConsumerPortalHref(action.href) ? false : undefined}
+        className="flex min-h-16 items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/50 p-3 text-white transition hover:border-cyan-300/25 hover:bg-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+      >
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-cyan-300/15 bg-cyan-500/10 text-cyan-200">
           <Icon className="h-4 w-4" aria-hidden="true" />
         </span>

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const source = await readFile(new URL("../src/app/sun/cta-actions.tsx", import.meta.url), "utf8");
+const nextStepSource = await readFile(new URL("../src/app/sun/post-tap-next-step.tsx", import.meta.url), "utf8");
 
 test("consumer session is checked only after the buyer starts a protected action", () => {
   const sessionCalls = source.match(/call\("\/api\/consumer\/session", "GET", null\)/g) || [];
@@ -20,4 +21,10 @@ test("the on-demand session check distinguishes anonymous visitors from real fai
   assert.match(source, /if \(!data\._httpOk \|\| data\.ok === false\) \{[\s\S]*setActionError\(normalizeReason\(data\)\)/);
   assert.match(source, /catch \(error\) \{[\s\S]*setActionError\(message\)[\s\S]*setStatus\(/);
   assert.match(source, /consumerSessionLoading \? "Confirmando sesión\.\.\."/);
+});
+
+test("protected consumer portal links are not prefetched for anonymous visitors", () => {
+  assert.match(nextStepSource, /function isProtectedConsumerPortalHref\(href: string\)/);
+  assert.ok(nextStepSource.includes("return /^\\/me(?:[/?#]|$)/.test(href);"));
+  assert.match(nextStepSource, /prefetch=\{isProtectedConsumerPortalHref\(action\.href\) \? false : undefined\}/);
 });
