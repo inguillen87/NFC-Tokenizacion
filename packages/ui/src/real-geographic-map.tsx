@@ -134,22 +134,31 @@ export function buildTrustMapRouteGeoJson(routes: VectorMapRoute[]): RouteCollec
 }
 
 function mapStyle(tileTemplate: string, attribution: string, light: boolean) {
-  const themeTemplate = light
-    ? tileTemplate.replace("/dark_all/", "/light_all/")
-    : tileTemplate.replace("/light_all/", "/dark_all/");
   return {
     version: 8,
     sources: {
       basemap: {
         type: "raster",
-        tiles: [themeTemplate],
+        tiles: [tileTemplate],
         tileSize: 256,
         attribution,
       },
     },
     layers: [
       { id: "nexid-map-background", type: "background", paint: { "background-color": light ? "#eaf7fb" : "#061322" } },
-      { id: "nexid-map-basemap", type: "raster", source: "basemap", paint: { "raster-opacity": light ? 0.96 : 0.9 } },
+      {
+        id: "nexid-map-basemap",
+        type: "raster",
+        source: "basemap",
+        paint: light
+          ? { "raster-opacity": 0.96 }
+          : {
+              "raster-opacity": 0.92,
+              "raster-brightness-max": 0.58,
+              "raster-saturation": -0.32,
+              "raster-contrast": 0.16,
+            },
+      },
     ],
   };
 }
@@ -346,9 +355,14 @@ export function RealGeographicMap({
       const maplibre = await import("maplibre-gl");
       if (cancelled || !containerRef.current) return;
       maplibreRef.current = maplibre;
+      const baseStyle = trustMapSource.rasterTileTemplate
+        ? mapStyle(trustMapSource.rasterTileTemplate, trustMapSource.attribution, isLightTheme)
+        : isLightTheme
+          ? trustMapSource.styleUrl
+          : trustMapSource.darkStyleUrl;
       const map = new maplibre.Map({
         container: containerRef.current,
-        style: mapStyle(trustMapSource.rasterTileTemplate, trustMapSource.attribution, isLightTheme) as never,
+        style: baseStyle as never,
         center: [-64.2, -34.6],
         zoom: 3.2,
         attributionControl: false,
@@ -429,7 +443,7 @@ export function RealGeographicMap({
     };
     // Density changes cluster/source semantics, so rebuild the engine as well.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [density, mapTheme, trustMapSource.attribution, trustMapSource.rasterTileTemplate]);
+  }, [density, mapTheme, trustMapSource.attribution, trustMapSource.darkStyleUrl, trustMapSource.rasterTileTemplate, trustMapSource.styleUrl]);
 
   useEffect(() => {
     const canvas = mapRef.current?.getCanvas();

@@ -67,6 +67,10 @@ export function shouldPersistSunScanState(mode: unknown) {
   return mode === undefined || mode === "persist";
 }
 
+export function resolveSunReplayExecutionClass(source: ScanContext["source"] | null | undefined) {
+  return source === "demo" ? "demo" as const : "operational" as const;
+}
+
 type TTStatusProductState =
   | "VALID_CLOSED"
   | "VALID_OPENED"
@@ -280,6 +284,7 @@ export async function processSunScan(input: {
   sideEffectMode?: SunScanSideEffectMode;
 }) {
   const persistScanState = shouldPersistSunScanState(input.sideEffectMode);
+  const replayExecutionClass = resolveSunReplayExecutionClass(input.context?.source);
   const scanHashes = buildSunPayloadHashes(input);
   const requestId = input.context?.requestId || randomUUID();
   input.context = { ...input.context, requestId };
@@ -585,6 +590,7 @@ export async function processSunScan(input: {
       SELECT id
       FROM events
       WHERE batch_id = ${batch.id}
+        AND (CASE WHEN source::text = 'demo' THEN 'demo' ELSE 'operational' END) = ${replayExecutionClass}
         AND (
           (picc_data_hash = ${scanHashes.piccDataHash} AND cmac_hash = ${scanHashes.cmacHash})
           OR raw_url_hash = ${scanHashes.rawUrlHash}
@@ -602,6 +608,7 @@ export async function processSunScan(input: {
         SELECT id
         FROM events
         WHERE batch_id = ${batch.id}
+          AND (CASE WHEN source::text = 'demo' THEN 'demo' ELSE 'operational' END) = ${replayExecutionClass}
           AND UPPER(uid_hex) = UPPER(${resolvedUidHex})
           AND sdm_read_ctr = ${resolvedCtr}
         ORDER BY created_at ASC, id ASC
@@ -626,7 +633,13 @@ export async function processSunScan(input: {
         tagStatus = String(tag?.status || registeredPayloadMatch?.tagStatus || registeredPayloadMatch?.payloadStatus || "active");
         tagLifecycleState = String(tag?.lifecycle_state || registeredPayloadMatch?.lifecycleState || tagStatus);
         tagLifecycleRevision = Number(tag?.lifecycle_revision ?? registeredPayloadMatch?.lifecycleRevision ?? 0);
-        if (res.ok && typeof tag?.last_seen_ctr === 'number' && resolvedCtr != null && resolvedCtr <= tag.last_seen_ctr) replaySuspect = true;
+        if (
+          replayExecutionClass === "operational"
+          && res.ok
+          && typeof tag?.last_seen_ctr === 'number'
+          && resolvedCtr != null
+          && resolvedCtr <= tag.last_seen_ctr
+        ) replaySuspect = true;
       }
     }
   }

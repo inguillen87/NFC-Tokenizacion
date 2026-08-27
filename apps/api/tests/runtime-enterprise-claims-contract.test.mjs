@@ -187,7 +187,11 @@ test("SUN passport omits invented quality scores and routes when source data is 
   assert.match(sunRoute, /Map unavailable: the tap has no valid WGS84 coordinate pair/);
   assert.doesNotMatch(sunRoute, /atlasReferencePath|nexid-evidence-routes/);
   assert.doesNotMatch(sunRoute, /-33\.0086|-68\.7794/);
-  assert.match(sunRoute, /Lectura repetida \(TT reporta apertura\)/);
+  assert.match(sunRoute, /Estado electr[oó]nico del sello/);
+  assert.match(sunRoute, /Frescura del enlace SUN/);
+  assert.match(sunRoute, /const sealLabel =/);
+  assert.match(sunRoute, /const freshnessLabel = isRepeatedRead/);
+  assert.doesNotMatch(sunRoute, /Lectura repetida \(TT reporta apertura\)/);
 });
 
 test("public AI routes enforce cost, body and caller boundaries before expensive work", () => {

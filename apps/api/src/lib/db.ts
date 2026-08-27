@@ -111,6 +111,7 @@ export const DEFAULT_REQUIRED_SCHEMA_MIGRATIONS = [
   "20260802290000_0094_sun_runtime_acl_boundary.sql",
   "20260802300000_0095_sun_tt_conflict_target.sql",
   "20260802310000_0096_enterprise_rbac_risk_truth.sql",
+  "20260802320000_0097_sun_demo_replay_isolation.sql",
 ] as const;
 export const DEFAULT_REQUIRED_SCHEMA_MIGRATION = DEFAULT_REQUIRED_SCHEMA_MIGRATIONS.at(-1)!;
 export const SCHEMA_MIGRATION_ID_PATTERN = /^\d{14}_\d{4}[a-z]?_[a-z0-9_]+\.sql$/;

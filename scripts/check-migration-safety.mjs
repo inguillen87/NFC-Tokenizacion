@@ -59,6 +59,7 @@ const ids = [
   "20260802290000_0094_sun_runtime_acl_boundary.sql",
   "20260802300000_0095_sun_tt_conflict_target.sql",
   "20260802310000_0096_enterprise_rbac_risk_truth.sql",
+  "20260802320000_0097_sun_demo_replay_isolation.sql",
 ];
 const checks = [];
 for (const id of ids) {
@@ -113,6 +114,7 @@ const sql93 = await readSql("20260802280000_0093_sun_tt_durable_truth_binding.sq
 const sql94 = await readSql("20260802290000_0094_sun_runtime_acl_boundary.sql");
 const sql95 = await readSql("20260802300000_0095_sun_tt_conflict_target.sql");
 const sql96 = await readSql("20260802310000_0096_enterprise_rbac_risk_truth.sql");
+const sql97 = await readSql("20260802320000_0097_sun_demo_replay_isolation.sql");
 const executor = await fs.readFile(path.resolve(process.cwd(), "apps/executor/src/iota-idempotency.mjs"), "utf8");
 const runner = await fs.readFile(path.resolve(process.cwd(), "apps/api/scripts/db-apply.mjs"), "utf8");
 const runnerSafety = await fs.readFile(path.resolve(process.cwd(), "apps/api/scripts/lib/db-apply-safety.mjs"), "utf8");
@@ -688,6 +690,57 @@ const enterpriseRbacRiskTruthIsDurable = sql96.includes("ADD COLUMN IF NOT EXIST
   && !/(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+(?:public\.)?memberships\b/i.test(sql96)
   && !/hsm[_ -]?backed\s*[:=]\s*true|managed[_ -]?kms\s*[:=]\s*true/i.test(sql96);
 
+const sun97RepairStart = sql97.indexOf("DO $sun_demo_watermark_repair$");
+const sun97RepairEnd = sql97.indexOf("REVOKE ALL ON TABLE", sun97RepairStart);
+const sun97Repair = sun97RepairStart >= 0 && sun97RepairEnd > sun97RepairStart
+  ? sql97.slice(sun97RepairStart, sun97RepairEnd)
+  : "";
+const sun97QuarantineStart = sql97.indexOf("CREATE OR REPLACE FUNCTION public.nexid_classify_sun_automated_fetch_user_agent_v1");
+const sun97QuarantineEnd = sql97.indexOf("CREATE OR REPLACE FUNCTION public.nexid_sun_demo_replay_isolation_v1_capability", sun97QuarantineStart);
+const sun97Quarantine = sun97QuarantineStart >= 0 && sun97QuarantineEnd > sun97QuarantineStart
+  ? sql97.slice(sun97QuarantineStart, sun97QuarantineEnd)
+  : "";
+const sunDemoReplayIsolationIsDurable = sql97.includes("sun_demo_replay_isolation_requires_0096")
+  && sql97.includes("CREATE TABLE IF NOT EXISTS public.sun_replay_watermark_repairs")
+  && sql97.includes("PRIMARY KEY (repair_version, tag_id)")
+  && sql97.includes("CREATE TRIGGER trg_sun_replay_watermark_repairs_append_only")
+  && sql97.includes("sun_replay_watermark_repair_is_append_only")
+  && sql97.includes("CREATE OR REPLACE FUNCTION public.nexid_sun_demo_replay_isolation_v1_capability()")
+  && sql97.includes("SELECT 'sun-demo-replay-isolation/v1'::text")
+  && sql97.includes("ALTER FUNCTION public.nexid_persist_sun_scan_v1_base_pre_tt_0093(jsonb) SECURITY INVOKER")
+  && sql97.includes("SET search_path TO pg_catalog, public, pg_temp")
+  && sql97.includes("REVOKE ALL ON FUNCTION public.nexid_persist_sun_scan_v1_base_pre_tt_0093(jsonb) FROM PUBLIC")
+  && sql97.includes("REVOKE ALL ON TABLE public.sun_replay_watermark_repairs FROM PUBLIC")
+  && sun97Quarantine.includes("CREATE TABLE IF NOT EXISTS public.sun_automated_fetch_quarantines")
+  && sun97Quarantine.includes("FOREIGN KEY (event_id, event_created_at)")
+  && sun97Quarantine.includes("REFERENCES public.events(id, created_at) ON DELETE RESTRICT")
+  && sun97Quarantine.includes("CREATE TRIGGER trg_sun_automated_fetch_quarantines_append_only")
+  && sun97Quarantine.includes("sun_automated_fetch_quarantine_is_append_only")
+  && sun97Quarantine.includes("CREATE TRIGGER trg_events_capture_sun_automated_fetch_v1")
+  && sun97Quarantine.includes("AFTER INSERT ON public.events")
+  && sun97Quarantine.includes("SECURITY DEFINER")
+  && sun97Quarantine.includes("ON CONFLICT (classification_version, event_id, event_created_at) DO NOTHING")
+  && sun97Quarantine.includes("REVOKE ALL ON TABLE public.sun_automated_fetch_quarantines FROM PUBLIC")
+  && !/(?:DELETE\s+FROM|UPDATE)\s+(?:public\.)?events\b|TRUNCATE/i.test(sun97Quarantine)
+  && sql97.includes("REVOKE ALL ON FUNCTION public.nexid_sun_demo_replay_isolation_v1_capability() FROM PUBLIC")
+  && (sql97.split("CASE WHEN LOWER(COALESCE(e.source::text, 'real')) = 'demo' THEN 'demo' ELSE 'operational' END").length - 1) === 2
+  && sql97.includes("v_execution_class := CASE WHEN v_source = 'demo' THEN 'demo' ELSE 'operational' END")
+  && sql97.includes("IF v_execution_class = 'operational'")
+  && sql97.includes("IF v_tag_id IS NOT NULL AND v_execution_class = 'operational' THEN")
+  && sql97.includes("ELSIF v_tag_id IS NOT NULL THEN")
+  && sql97.includes("v_last_seen_ctr := v_previous_last_seen_ctr")
+  && sql97.includes("'replay_execution_class', v_execution_class")
+  && sun97Repair.includes("pg_advisory_xact_lock")
+  && sun97Repair.includes("MAX(COALESCE(event.sdm_read_ctr, event.read_counter))")
+  && sun97Repair.includes("event.cmac_ok IS TRUE")
+  && sun97Repair.includes("LOWER(COALESCE(event.source::text, 'real')) <> 'demo'")
+  && sun97Repair.includes("GET DIAGNOSTICS v_inserted = ROW_COUNT")
+  && /IF v_inserted = 1 THEN[\s\S]*SET last_seen_ctr = v_repaired_last_seen_ctr/m.test(sun97Repair)
+  && !/(?:DELETE\s+FROM|UPDATE)\s+(?:public\.)?events\b|TRUNCATE/i.test(sun97Repair)
+  && !/SET\s+(?:scan_count|first_seen_at|last_seen_at)\s*=/i.test(sun97Repair)
+  && sql97.includes("sun_demo_replay_isolation_postcondition_failed")
+  && !/hsm[_ -]?backed\s*[:=]\s*true|managed[_ -]?kms\s*[:=]\s*true/i.test(sql97);
+
 const allMigrationFiles = (await fs.readdir(root)).filter((file) => file.endsWith(".sql")).sort();
 let tenantApiKeysMaterialized = false;
 let tenantApiKeysCanonicalCreateFound = false;
@@ -767,6 +820,7 @@ const ok = checks.every((item) => item.bytes > 0)
   && sunRuntimeAclBoundaryIsDurable
   && sunTtConflictTargetIsDurable
   && enterpriseRbacRiskTruthIsDurable
+  && sunDemoReplayIsolationIsDurable
   && tenantApiKeysCleanOrderSafe && partitionedEventReferencesAreCompositeSafe
   && postgresTextNullDelimiterFree
   && runnerIsAtomic && unauthorizedCleanBootstrapFailsClosed && legacyBypassBlocked
@@ -823,6 +877,7 @@ console.log(JSON.stringify({
     sun_runtime_acl_boundary_is_durable: sunRuntimeAclBoundaryIsDurable,
     sun_tt_conflict_target_is_durable: sunTtConflictTargetIsDurable,
     enterprise_rbac_risk_truth_is_durable: enterpriseRbacRiskTruthIsDurable,
+    sun_demo_replay_isolation_is_durable: sunDemoReplayIsolationIsDurable,
     tenant_api_keys_clean_order_safe: tenantApiKeysCleanOrderSafe,
     partitioned_event_references_are_composite_safe: partitionedEventReferencesAreCompositeSafe,
     postgres_text_null_delimiter_free: postgresTextNullDelimiterFree,

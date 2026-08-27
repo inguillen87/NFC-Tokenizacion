@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
-import { ExternalLink, AlertTriangle } from "lucide-react";
+import { ArrowDown, ExternalLink, AlertTriangle, LockKeyhole, MapPin, MessageCircle, Package, RotateCcw, Search, ShieldCheck, ShoppingBag } from "lucide-react";
 import { CtaActions } from "./cta-actions";
 import { FreshHandoffUrlCleaner } from "./fresh-handoff-url-cleaner";
-import { SunProductHeroStage, type SunVisualKind } from "./sun-product-hero-stage";
 import { TapPrecisionTelemetry } from "./tap-precision-telemetry";
 import { QREngagementSuite } from "./qr-engagement-suite";
 import { PostTapNextStep } from "./post-tap-next-step";
@@ -15,11 +14,12 @@ import { resolveCommercialTapFreshness, resolvePostTapQuickActionAvailability } 
 import { fmtDistance, haversineKm, selectCanonicalSunMapRoutes } from "./sun-route-distance";
 import { clusterSunLocationObservations, classifySunLocationEvidence, describeSunLocationEvidence } from "./sun-location-evidence";
 import { qualifySunStatusForPreview, selectSunTruthCopy, SUN_DEMO_BADGE, SUN_DEMO_COPY } from "./sun-truth-copy";
+import { resolveSunTtEvidence, type SunTtTechnicalInput } from "./sun-tt-evidence";
 import { productUrls } from "@product/config";
 import { DeviceSignatureBadge, EmptyState, KeyValueSpec, LocaleSwitcher, ThemeToggle, TimelineRail } from "@product/ui";
 import { GlobalOpsMap, type GlobalOpsPoint, type GlobalOpsRoute } from "@product/ui/global-ops-map";
 import { getWebI18n } from "../../lib/locale";
-import { resolveProductAssetProfile, summarizeAssetReadiness } from "../../lib/product-asset-bank";
+import { resolveProductAssetProfile } from "../../lib/product-asset-bank";
 import { BrandHomeLink } from "../../components/brand-home-link";
 
 function apiBase(params?: Record<string, string | string[] | undefined>) {
@@ -136,6 +136,13 @@ type SunContract = {
     wineryLocation?: string | null; 
     wineryCoordinates?: { lat?: number | null; lng?: number | null } | null;
     sensorEvidenceKind?: "reported" | "simulated" | "none" | string;
+    sensorProvenance?: {
+      origin?: "tenant_manual" | "csv_import" | "json_import" | "live_sensor" | "event_reported_unknown" | "illustrative_scenario" | "none" | string | null;
+      capturedAt?: string | null;
+      privacyScope?: string | null;
+      responsible?: string | null;
+      supportedOrigins?: string[];
+    } | null;
     sensorSnapshot?: {
       cellarTemperature?: string | null;
       humidity?: string | null;
@@ -178,7 +185,10 @@ type SunContract = {
   verdict?: string | null;
   riskLevel?: string | null;
   troubleshooting?: string[];
-  technical?: SunCarrierFields & { raw?: { piccDataPrefix?: string; encPrefix?: string; cmacPrefix?: string } };
+  technical?: SunCarrierFields & {
+    raw?: { piccDataPrefix?: string; encPrefix?: string; cmacPrefix?: string };
+    tt?: SunTtTechnicalInput;
+  };
 };
 
 function fmtDate(value?: string | null, timezone?: string | null) {
@@ -208,28 +218,6 @@ function isUsableCoordinate(lat?: number | null, lng?: number | null) {
     && parsedLat <= 90
     && parsedLng >= -180
     && parsedLng <= 180;
-}
-
-function resolveSunVisualKind(result: SunContract): SunVisualKind {
-  const text = [
-    result.product?.name,
-    result.product?.category,
-    result.product?.vertical,
-    result.tenant?.vertical,
-    result.tenant?.productLabel,
-    result.rightsPolicy?.vertical,
-    result.rightsPolicy?.verticalLabel,
-  ].filter(Boolean).join(" ").toLowerCase();
-
-  if (/(sneaker|zapatilla|shoe|runner|calzado|footwear)/i.test(text)) return "sneaker";
-  if (/(apparel|ropa|prenda|campera|jacket|remera|hoodie|textil|fashion|moda)/i.test(text)) return "apparel";
-  if (/(ticket|entrada|pass|qr)/i.test(text)) return "ticket";
-  if (/(bracelet|brazalete|pulsera|evento|event|vip access)/i.test(text)) return "bracelet";
-  if (/(seed|semilla|agro|bolsa|saco|packet)/i.test(text)) return "seeds";
-  if (/(perfume|fragancia|fragrance|parfum)/i.test(text)) return "perfume";
-  if (/(tubo|tube|dermo|serum)/i.test(text)) return "creamTube";
-  if (/(crema|cream|cosmetic|cosmetica|cosmetico|jar|frasco)/i.test(text)) return "creamJar";
-  return "wine";
 }
 
 function readParam(params: Record<string, string | string[] | undefined>, key: string) {
@@ -396,10 +384,10 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       ? params.fresh_token.trim()
       : "";
   const resolvedApiBase = apiBase(params);
+  const isDemoPreview = !isQrScan && query.toString().length === 0 && !snapshotId;
 
   let result: SunContract;
   let snapshotResult: SunContract | null = null;
-  let isDemoPreview = false;
 
   if (isQrScan) {
     const requestedProduct = readParam(params, "product") || readParam(params, "productName");
@@ -457,6 +445,10 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       blockedActions: ["claim_ownership", "register_warranty", "provenance", "tokenize"],
       troubleshooting: ["Reintentá cuando la API esté disponible. No tomes esta vista como validación del producto ni del mensaje."],
     };
+  } else if (isDemoPreview) {
+    // Opening /sun as a guided demo is not a physical NFC read. Resolve it
+    // locally so it cannot generate false MALFORMED_URL noise in the SUN API.
+    result = sunFallbackResult(params, true);
   } else {
     snapshotResult = snapshotId && snapshotTrace && snapshotAccess
       ? await fetch(`${resolvedApiBase}/sun/snapshot/${encodeURIComponent(snapshotId)}?trace=${encodeURIComponent(snapshotTrace)}&access=${encodeURIComponent(snapshotAccess)}${freshToken ? `&fresh=${encodeURIComponent(freshToken)}` : ""}`, { cache: "no-store" })
@@ -464,12 +456,11 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         .then((payload) => payload?.contract || null)
         .catch(() => null) as SunContract | null
       : null;
-    isDemoPreview = query.toString().length === 0 && !snapshotId;
     const response = snapshotResult ? null : await fetch(`${resolvedApiBase}/sun?${query.toString()}`, { cache: "no-store" }).catch(() => null);
     const parsedResult = response?.ok
       ? await response.json().catch(() => null) as SunContract | null
       : null;
-    result = snapshotResult || parsedResult || sunFallbackResult(params, isDemoPreview);
+    result = snapshotResult || parsedResult || sunFallbackResult(params, false);
   }
 
   // Proactively fetch loyalty overview if we know the tenant
@@ -489,6 +480,17 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const statusReason = String(result.status?.reason || "").toLowerCase();
   const productState = String(result.status?.productState || "").toUpperCase();
   const ttStatus = String(result.tag_tamper?.status || "").toLowerCase();
+  const ttEvidence = resolveSunTtEvidence({
+    ...(result.technical?.tt || {}),
+    raw: result.technical?.tt?.raw ?? result.tag_tamper?.raw,
+    interpretedStatus: result.technical?.tt?.interpretedStatus
+      ?? result.status?.tamperStatus
+      ?? result.tag_tamper?.status
+      ?? productState,
+  });
+  const showTtTechnicalEvidence = ttEvidence.available
+    || Boolean(result.status?.tamperSupported)
+    || Boolean(result.tag_tamper?.available);
   const blockedActions = result.blockedActions || [];
   const allowedActions = result.allowedActions || [];
   const postTapQuickActions = resolvePostTapQuickActionAvailability({ allowedActions, blockedActions });
@@ -689,7 +691,27 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   );
   const usesDemoSensorEvidence = isDemoPreview && !hasReportedSensorEvidence;
   const hasSensorEvidence = hasReportedSensorEvidence || usesDemoSensorEvidence;
-  const sensorEvidenceLabel = hasReportedSensorEvidence ? "Telemetria reportada" : "Datos simulados del Demo Lab";
+  const sensorProvenance = result.iot?.sensorProvenance;
+  const sensorOriginLabels: Record<string, string> = {
+    tenant_manual: "Carga manual del tenant",
+    csv_import: "Importación CSV",
+    json_import: "Importación JSON",
+    live_sensor: "Sensor conectado",
+    event_reported_unknown: "Fuente reportada sin clasificar",
+    illustrative_scenario: "Escenario ilustrativo",
+    none: "Sin fuente",
+  };
+  const sensorOriginLabel = sensorOriginLabels[String(sensorProvenance?.origin || (usesDemoSensorEvidence ? "illustrative_scenario" : "none"))]
+    || "Fuente informada por el tenant";
+  const sensorPrivacyLabel = String(sensorProvenance?.privacyScope || "not_reported") === "public"
+    ? "Público"
+    : String(sensorProvenance?.privacyScope || "not_reported") === "tenant_only"
+      ? "Sólo tenant"
+      : String(sensorProvenance?.privacyScope || "not_reported") === "not_applicable"
+        ? "No aplica"
+        : "No informada";
+  const sensorCapturedAtLabel = sensorProvenance?.capturedAt ? fmtDate(sensorProvenance.capturedAt) : "Fecha no informada";
+  const sensorEvidenceLabel = hasReportedSensorEvidence ? "Telemetría reportada" : "Datos simulados del Demo Lab";
   const dynamicTemp = sensorSnapshot?.cellarTemperature || (usesDemoSensorEvidence ? "15.2°C" : "N/A");
   const dynamicHumidity = sensorSnapshot?.humidity || (usesDemoSensorEvidence ? "62%" : "N/A");
   const dynamicShock = sensorSnapshot?.transitShock || (usesDemoSensorEvidence ? "Sin golpes críticos en la simulación" : "N/A");
@@ -787,7 +809,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     toLabel: index === canonicalMapRoutes.length - 1 ? tapDisplay : undefined,
     productName: route.label || mapProductName,
   }));
-  const livePillLabel = isDemoPreview ? "Muestra demo" : isQrScan ? "QR / SDK" : isFreshHandoff ? "Tap fisico activo" : isSnapshotView ? "Consulta segura" : "Tap SUN";
+  const livePillLabel = isDemoPreview ? "Muestra demo" : isQrScan ? "Ficha QR" : isFreshHandoff ? "Lectura nueva" : isSnapshotView ? "Consulta guardada" : "Etiqueta NFC";
   const rawPrimaryStatusLabel = isQrScan
     ? "QR / Ficha Informativa"
     : isValid
@@ -1129,8 +1151,6 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     galleryUrls: productGalleryUrls,
     sku: result.product?.sku || result.product?.gtin,
   });
-  const assetReadinessLabel = summarizeAssetReadiness(assetProfile);
-  const productVisualKind = (assetProfile.visualKind || resolveSunVisualKind(result)) as SunVisualKind;
   const productDisplayName = assetProfile.productName || productName;
   const isWineProduct = [result.product?.vertical, result.tenant?.vertical, productDisplayName]
     .some((value) => /\b(wine|vino|malbec|reserva|bodega)\b/i.test(String(value || "")));
@@ -1138,11 +1158,6 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   const engagementWineryName = requestedBrandDisplay || result.product?.winery || "Bodega Premium";
   const engagementTenantSlug = readParam(params, "tenant") || tenantSlug || "demobodega";
   const productHeroImageUrl = assetProfile.primaryImageUrl || productImageUrl;
-  const productVisualState = (isReplay || isRiskBlocked)
-    ? "blocked"
-    : (sealOpened || isVerifiedOpenedState)
-      ? "opened"
-      : "idle";
   const realTrustCopy = isSunProfileMismatch
     ? "La evidencia se conserva y cualquier lector ve los registros declarados de producto, bodega, lote y trazabilidad. Garantia, club, marketplace y NFT esperan el perfil SUN correcto o el payload fisico registrado."
     : isReplay
@@ -1269,27 +1284,27 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     : isQrScan
       ? "Ficha publica del producto"
       : isSunProfileMismatch
-    ? "Activacion pendiente del batch"
+    ? "Esta lectura necesita revisión"
     : isRiskBlocked
-    ? "Necesitamos un nuevo tap fisico"
+    ? "Necesitamos un nuevo toque"
     : isSnapshotView
-      ? "Consulta segura del producto"
+      ? "Información del producto disponible"
       : isVerifiedOpenedState
-        ? "SUN válido · TT abierto"
-        : "Identidad NFC validada";
+        ? "Etiqueta verificada · sello abierto"
+        : "La etiqueta digital respondió correctamente";
   const friendlyStageBody = isDemoPreview
     ? SUN_DEMO_COPY.stageBody
     : isQrScan
-      ? "El QR permite leer informacion, hablar con el sommelier IA, dejar feedback o contacto opcional. Garantia, wallet, NFT y propiedad exigen compra validada o tap NFC seguro."
+      ? "Con el QR podés conocer el producto y acceder a las opciones que la marca dejó disponibles. Garantía o titularidad requieren una validación adicional."
       : isSunProfileMismatch
-    ? "El producto se muestra porque la bodega y el lote estan reconocidos. Para habilitar club, garantia, marketplace o NFT falta alinear el perfil SUN del lote o registrar el payload real del proveedor."
+    ? "Reconocimos el producto y el lote, pero no pudimos completar los controles de esta lectura. La información sigue visible y las acciones sensibles quedan protegidas."
     : isRiskBlocked
-    ? "Vemos la prueba, pero no habilitamos garantia, club ni NFT con una lectura sospechosa o repetida."
+    ? "Este enlace ya había sido usado. Acercá nuevamente el teléfono a la etiqueta para obtener una lectura nueva y continuar con seguridad."
     : isSnapshotView
-      ? "La evidencia digital y la ruta declarada se pueden revisar. Para activar beneficios sensibles, tocá de nuevo la etiqueta."
+      ? "Podés revisar la ficha y la información disponible. Para activar garantía o beneficios, tocá nuevamente la etiqueta."
       : isVerifiedOpenedState
-        ? "El mensaje SUN es válido y el tag reporta TT abierto. Podés leer la ficha; asociar el producto a una cuenta es opcional y separado."
-        : "La lectura es fresca. Primero lees la ficha; si queres, despues dejas contacto o acreditas compra.";
+        ? "La etiqueta respondió correctamente y reporta que el sello fue abierto. Podés consultar la ficha y elegir cómo seguir."
+        : "Ya podés conocer el producto, revisar la información de la marca y ver las opciones disponibles. No necesitás registrarte para leer la ficha.";
   const primaryPostTapAction = isQrScan && isAgroDpp
     ? { label: "Ver pasaporte agro", href: "#agro-dpp", tone: "trace" }
     : isQrScan
@@ -1298,11 +1313,30 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     ? { label: "Avisar a soporte", href: reportProblemHref, tone: "trace" }
     : isFreshCommercialTap
       ? { label: "Ver trivia y beneficios", href: showEngagementSuite ? "#qr-engagement" : consumerActionHref, tone: "trace" }
-      : isSnapshotView
+    : isSnapshotView
         ? { label: "Hacer nuevo tap fisico", href: "#fresh-tap-required", tone: "fresh" }
         : isRiskBlocked
-          ? { label: "Reintentar tap fisico", href: reportProblemHref, tone: "risk" }
+          ? { label: "Cómo hacer un nuevo toque", href: "#fresh-tap-required", tone: "risk" }
           : { label: "Ver mapa y fuentes", href: "#geo-trace", tone: "trace" };
+  const consumerSignalLabel = isQrScan
+    ? "Ficha digital disponible"
+    : isReplay
+      ? "Lectura repetida"
+      : isSunProfileMismatch
+        ? "Lectura por revisar"
+        : isTechnicallyAuthentic
+          ? "Etiqueta digital verificada"
+          : "Lectura no confirmada";
+  const consumerSealLabel = sealClosed
+    ? "Cerrado, según la etiqueta"
+    : sealOpened
+      ? "Abierto, según la etiqueta"
+      : "Sin dato de apertura";
+  const consumerResultTone = isReplay || isSunProfileMismatch || isTamperRisk
+    ? "review"
+    : isSnapshotView || isQrScan || isVerifiedOpenedState
+      ? "notice"
+      : "verified";
   const simpleJourneySteps = [
     {
       label: isDemoPreview ? SUN_DEMO_COPY.journeyLabel : isQrScan ? "Producto informado" : "Identidad NFC",
@@ -1398,17 +1432,17 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
       <div className="w-full max-w-[430px] z-10 space-y-5 mx-auto">
         
         {/* Modern minimal top bar */}
-        <header className="flex items-center justify-between px-1 mb-2">
+        <header className="sun-passport-topbar flex items-center justify-between px-2.5 py-2 mb-2">
           <div className="flex items-center gap-2">
             <BrandHomeLink locale={locale} size={36} />
             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
-              {isQrScan ? "qr passport" : "nfc passport"}
+              {isQrScan ? "pasaporte QR" : "pasaporte NFC"}
             </span>
           </div>
           <div className="flex items-center gap-2">
             <LocaleSwitcher value={locale} options={locales as any} />
             <ThemeToggle locale={locale} />
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/80 border border-white/5 backdrop-blur-md">
+            <div className="sun-passport-live flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/80 border border-white/5 backdrop-blur-md">
               <span className={`w-2 h-2 rounded-full ${pulseClass} animate-pulse`} />
               <span className="text-[9px] font-black text-slate-300 uppercase tracking-wider">{livePillLabel}</span>
             </div>
@@ -1435,162 +1469,82 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         ) : null}
 
         {!isAgroDpp ? <>
-        {/* 1. Main Authenticity Banner (Glassmorphism & Glowing border) */}
-        <section 
-          className={`relative rounded-3xl border border-white/10 p-6 backdrop-blur-2xl shadow-2xl overflow-hidden bg-gradient-to-br ${
-            isValid 
-              ? "from-emerald-950/40 via-slate-900/60 to-emerald-950/20 shadow-emerald-950/20" 
-              : isVerifiedOpenedState && isTechnicallyAuthentic
-                ? "from-amber-950/40 via-slate-900/60 to-amber-950/20 shadow-amber-950/20"
-                : isSunProfileMismatch
-                  ? "from-amber-950/40 via-slate-900/60 to-amber-950/20 shadow-amber-950/20"
-                  : "from-rose-950/40 via-slate-900/60 to-rose-950/20 shadow-rose-950/20"
-          }`}
-        >
-          {/* Status color glow */}
-          <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-[60px] opacity-25 pointer-events-none ${
-            isValid 
-              ? "bg-emerald-500" 
-              : isVerifiedOpenedState && isTechnicallyAuthentic
-                ? "bg-amber-500"
-                : isSunProfileMismatch
-                  ? "bg-amber-500"
-                  : "bg-rose-500"
-          }`} />
-
-          <div className="relative z-10 flex flex-col items-center text-center">
-            {isDemoPreview && (
-              <span className="mb-4 rounded-full border border-amber-300/30 bg-amber-500/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-amber-100">
-                {SUN_DEMO_BADGE}
-              </span>
-            )}
-            {/* Massive status icon */}
-            <div className="relative mb-4">
-              <div className={`w-20 h-20 rounded-full border-4 border-slate-900 flex items-center justify-center text-3xl shadow-inner relative z-10 ${
-                isValid 
-                  ? "bg-emerald-500/10 text-emerald-400" 
-                  : isVerifiedOpenedState && isTechnicallyAuthentic
-                    ? "bg-amber-500/10 text-amber-400"
-                    : isSunProfileMismatch
-                      ? "bg-amber-500/10 text-amber-400"
-                      : "bg-rose-500/10 text-rose-400"
-              }`}>
-                {isValid ? "✓" : isVerifiedOpenedState && isTechnicallyAuthentic ? "⚠️" : isSunProfileMismatch ? "⚠️" : "❌"}
-              </div>
-              <div className={`absolute -inset-1 rounded-full blur-md opacity-30 ${
-                isValid 
-                  ? "bg-emerald-500 animate-pulse" 
-                  : isVerifiedOpenedState && isTechnicallyAuthentic
-                    ? "bg-amber-500"
-                    : isSunProfileMismatch
-                      ? "bg-amber-500"
-                      : "bg-rose-500"
-              }`} />
-            </div>
-
-            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.2em] mb-2 ${
-              isValid
-                ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
-                : isVerifiedOpenedState && isTechnicallyAuthentic
-                  ? "bg-amber-500/10 border border-amber-500/20 text-amber-400"
-                  : isSunProfileMismatch
-                    ? "bg-amber-500/10 border border-amber-500/20 text-amber-400"
-                    : "bg-rose-500/10 border border-rose-500/20 text-rose-400"
-            }`}>
-              {primaryStatusLabel}
-            </span>
-
-            <h2 className="text-lg font-black text-white leading-snug tracking-tight mb-2">
-              {displayStatusHeadline}
-            </h2>
-            <p className="text-xs text-slate-300 max-w-[340px] leading-relaxed">
-              {replayDecisionText}
-            </p>
-
-            {/* Quick status dots for mobile */}
-            <div className="mt-4 w-full border-t border-white/5 pt-4 grid grid-cols-3 gap-2">
-              <div className="text-center">
-                <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Chip NFC</span>
-                <span className="text-[11px] font-bold text-slate-300 mt-0.5 block">{carrierLabel}</span>
-              </div>
-              <div className="text-center border-x border-white/5">
-                <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Estado TT</span>
-                <span className={`text-[11px] font-bold mt-0.5 block ${sealClosed ? "text-emerald-400" : "text-amber-400"}`}>{sealLabel}</span>
-              </div>
-              <div className="text-center">
-                <span className="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">{trustScore == null ? "Score" : isDemoPreview ? "Score demo reportado" : "Score técnico reportado"}</span>
-                <span className={`text-[11px] font-bold mt-0.5 block ${trustTone}`}>{trustScore == null ? "No reportado" : `${trustScore}/100`}</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* 2. Premium Product Profile Card */}
-        <section id="product-info" className="rounded-3xl border border-white/5 bg-slate-950 p-5 shadow-xl relative overflow-hidden">
-          <div className="flex flex-col items-center">
-            
-            {/* Floating Premium Image */}
-            <div className="w-full h-64 relative mb-4 rounded-2xl overflow-hidden bg-slate-900/30 flex items-center justify-center">
+        {/* 1. Consumer-first result. Technical evidence stays available on demand. */}
+        <section id="product-info" className={`sun-result-card sun-result-card--${consumerResultTone}`} aria-labelledby="sun-result-title">
+          <div className="sun-result-card__product">
+            <div className="sun-result-card__media">
               {productHeroImageUrl ? (
-                <img 
-                  src={productHeroImageUrl} 
-                  alt={productDisplayName}
-                  className="max-h-full max-w-full object-contain transform hover:scale-[1.05] transition-transform duration-500" 
-                />
+                <img src={productHeroImageUrl} alt={productDisplayName} />
               ) : (
-                <SunProductHeroStage
-                  kind={productVisualKind}
-                  productName={productDisplayName}
-                  imageUrl={productHeroImageUrl}
-                  originDisplay={originDisplay}
-                  tapDisplay={tapDisplay}
-                  distanceDisplay={distanceDisplay}
-                  state={productVisualState}
-                  originLat={wineryPoint[0]?.lat}
-                  originLng={wineryPoint[0]?.lng}
-                  tapLat={currentTapPoint[0]?.lat}
-                  tapLng={currentTapPoint[0]?.lng}
-                  isDemoPreview={isDemoPreview}
-                />
+                <Package aria-hidden="true" />
               )}
+              <span>{isDemoPreview ? "Perfil de muestra" : "Perfil oficial del piloto"}</span>
             </div>
-
-            <div className="text-center w-full">
-              <span className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-400">
-                {tenantDisplayName}
-              </span>
-              <h1 className="brand-editorial-gradient text-2xl font-black text-white leading-tight mt-1 tracking-tight">
-                {productDisplayName}
-              </h1>
-              <p className="text-xs text-slate-400 mt-1 leading-normal">
-                {productLine || verticalLabel}
-              </p>
-            </div>
-
-            {/* Spec grid for fast reading */}
-            <div className="w-full mt-5 bg-slate-900/40 rounded-2xl border border-white/5 p-4 grid grid-cols-2 gap-3 text-left">
+            <div className="sun-result-card__identity">
+              <small>{tenantDisplayName}</small>
+              <strong>{productDisplayName}</strong>
+              <span>{productLine || verticalLabel}</span>
               <div>
-                <span className="text-[9px] uppercase text-slate-500 block">Lote / Batch</span>
-                <span className="text-xs font-semibold text-slate-200 mt-0.5 block">{batchDisplay}</span>
-              </div>
-              <div>
-                <span className="text-[9px] uppercase text-slate-500 block">UID del Tag</span>
-                <span className="text-xs font-mono text-slate-200 mt-0.5 block">{visibleUid}</span>
-              </div>
-              <div className="border-t border-white/5 pt-2.5">
-                <span className="text-[9px] uppercase text-slate-500 block">Origen declarado</span>
-                <span className="text-xs font-semibold text-slate-200 mt-0.5 block">{originDisplay}</span>
-              </div>
-              <div className="border-t border-white/5 pt-2.5">
-                <span className="text-[9px] uppercase text-slate-500 block">Lectura</span>
-                <span className="text-xs font-semibold text-slate-200 mt-0.5 block">{tapDisplay}</span>
+                <em>{batchDisplay}</em>
+                <em>{consumerSealLabel}</em>
               </div>
             </div>
           </div>
+
+          <div className="sun-result-card__intro">
+            <div className="sun-result-card__icon" aria-hidden="true">
+              {isReplay ? <RotateCcw /> : isRiskBlocked ? <AlertTriangle /> : <ShieldCheck />}
+            </div>
+            <div>
+              {isDemoPreview && (
+                <span className="sun-result-card__demo">{SUN_DEMO_BADGE}</span>
+              )}
+              <span className="sun-result-card__eyebrow">{consumerSignalLabel}</span>
+              <h1 id="sun-result-title" className="brand-editorial-gradient">{friendlyStageTitle}</h1>
+              <p>{friendlyStageBody}</p>
+            </div>
+          </div>
+
+          <ol className="sun-result-journey" aria-label="Resumen de esta experiencia">
+            <li>
+              <span>01</span>
+              <div><small>Etiqueta</small><strong>{consumerSignalLabel}</strong></div>
+            </li>
+            <li>
+              <span>02</span>
+              <div><small>Sello</small><strong>{consumerSealLabel}</strong></div>
+            </li>
+            <li>
+              <span>03</span>
+              <div><small>Próximo paso</small><strong>{primaryPostTapAction.label}</strong></div>
+            </li>
+          </ol>
+
+          <a className="sun-result-card__primary" href={primaryPostTapAction.href}>
+            {primaryPostTapAction.label}
+            <ArrowDown aria-hidden="true" />
+          </a>
+
+          <details className="sun-result-card__details">
+            <summary>Ver controles de esta lectura</summary>
+            <div className="sun-result-card__controls">
+              <div><span>Etiqueta</span><strong>{consumerSignalLabel}</strong></div>
+              <div><span>Sello</span><strong>{consumerSealLabel}</strong></div>
+              <div><span>Tecnología</span><strong>{carrierLabel}</strong></div>
+              <div><span>Indicador técnico</span><strong>{trustScore == null ? "No reportado" : `${trustScore}/100`}</strong></div>
+              <div><span>Lote / batch</span><strong>{batchDisplay}</strong></div>
+              <div><span>UID del tag</span><strong>{visibleUid}</strong></div>
+              <div><span>Origen declarado</span><strong>{originDisplay}</strong></div>
+              <div><span>Lectura registrada</span><strong>{tapDisplay}</strong></div>
+            </div>
+            <p>{replayDecisionText}</p>
+            <small>{displayStatusHeadline} · {primaryStatusLabel}</small>
+          </details>
         </section>
+
         </> : null}
 
-        {/* 3. Contextual, policy-aware post-tap journey */}
+        {/* 2. Contextual, policy-aware post-tap journey */}
         {!isAgroDpp ? <section id="consumer-choice" className="space-y-3">
           <PostTapNextStep
             vertical={`${verticalLabel} ${result.product?.vertical || ""} ${result.product?.category || ""}`}
@@ -1609,13 +1563,17 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             blockedActions={blockedActions}
           />
 
-          {isSnapshotView || isQrScan ? (
+          {isSnapshotView || isQrScan || isRiskBlocked ? (
             <section id="fresh-tap-required" className="scroll-mt-24 rounded-2xl border border-amber-300/25 bg-amber-500/10 p-4" aria-labelledby="fresh-tap-required-title">
-              <h2 id="fresh-tap-required-title" className="text-sm font-black text-amber-100">{isQrScan ? "Toca el chip NFC para acciones protegidas" : "Hace un nuevo tap desde la etiqueta fisica"}</h2>
+              <h2 id="fresh-tap-required-title" className="text-sm font-black text-amber-100">
+                {isQrScan ? "Acercá el teléfono a la etiqueta NFC" : "Cómo hacer una lectura nueva"}
+              </h2>
               <p className="mt-1 text-xs leading-5 text-amber-50/80">
                 {isQrScan
-                  ? "El QR abre contenido y CRM, pero no prueba posesion ni autenticidad criptografica. Acerca el telefono al chip NFC para reclamar, registrar garantia o solicitar tokenizacion."
-                  : "Desbloquea el telefono, acerca la zona NFC a la etiqueta y abri el enlace que aparezca. Esta vista historica conserva la evidencia, pero no puede fabricar la frescura criptografica de otro tap."}
+                  ? "Desbloqueá el teléfono, acercalo a la etiqueta y abrí la notificación. El QR sirve para informarte; la etiqueta NFC permite realizar los controles de una lectura nueva."
+                  : isSunProfileMismatch
+                    ? "Acercá nuevamente el teléfono a la etiqueta y abrí la notificación. Si vuelve a aparecer este aviso, la marca debe revisar la configuración del lote; tus datos y la información del producto siguen protegidos."
+                    : "Desbloqueá el teléfono, acercá la zona NFC a la etiqueta y abrí la notificación que aparezca. No recargues ni reutilices este mismo enlace: cada toque físico genera una lectura nueva."}
               </p>
             </section>
           ) : null}
@@ -1659,11 +1617,11 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         <section className="sun-location-section rounded-3xl border border-white/5 bg-slate-900/30 p-5 backdrop-blur-md shadow-lg space-y-4" aria-labelledby="sun-location-title">
           <div>
             <span className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-400">
-              Ubicación de las lecturas
+              Mapa de actividad
             </span>
-            <h2 id="sun-location-title" className="mt-1 text-lg font-black text-white">Dónde se registró la actividad disponible</h2>
+            <h2 id="sun-location-title" className="mt-1 text-lg font-black text-white">Dónde se registraron los toques disponibles</h2>
             <p className="mt-2 text-xs leading-5 text-slate-400">
-              El mapa usa únicamente eventos que llegaron a la API SUN con un par WGS84 válido. El origen declarado se muestra aparte y ninguna línea implica un recorrido físico.
+              Mostramos sólo ubicaciones recibidas en lecturas reales. El origen informado por la marca aparece como referencia; ninguna línea implica un recorrido físico.
             </p>
           </div>
 
@@ -1671,16 +1629,16 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             <article className="rounded-2xl border border-cyan-300/20 bg-cyan-500/10 p-3">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <span className="block text-[9px] font-black uppercase tracking-[0.14em] text-cyan-300">Lectura actual</span>
+                  <span className="block text-[9px] font-black uppercase tracking-[0.14em] text-cyan-300">Este toque</span>
                   <strong className="mt-1 block text-sm text-white">{tapDisplay}</strong>
                 </div>
-                <span className="rounded-full border border-cyan-300/25 px-2 py-1 text-[9px] font-bold text-cyan-100">{tapLocationEvidenceKind === "measured" ? "MEDIDA" : tapLocationEvidenceKind === "approximate" ? "APROX." : "SIN GEO"}</span>
+                <span className="rounded-full border border-cyan-300/25 px-2 py-1 text-[9px] font-bold text-cyan-100">{tapLocationEvidenceKind === "measured" ? "DISPOSITIVO" : tapLocationEvidenceKind === "approximate" ? "APROXIMADA" : "SIN UBICACIÓN"}</span>
               </div>
               <p className="mt-2 text-[11px] font-semibold text-cyan-100">{tapLocationPrecisionLabel}</p>
               <p className="mt-1 text-[10px] leading-4 text-slate-400">{tapLocationSourceDetail}</p>
               {tapMapHref ? (
                 <a href={tapMapHref} target="_blank" rel="noreferrer" className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl border border-cyan-300/25 bg-white/5 px-3 text-xs font-bold text-cyan-100 transition hover:bg-cyan-300/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300">
-                  Abrir coordenada <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                  Abrir en el mapa <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
                 </a>
               ) : null}
             </article>
@@ -1688,16 +1646,16 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             <article className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-3">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <span className="block text-[9px] font-black uppercase tracking-[0.14em] text-emerald-300">Referencia de origen</span>
+                  <span className="block text-[9px] font-black uppercase tracking-[0.14em] text-emerald-300">Origen informado por la marca</span>
                   <strong className="mt-1 block text-sm text-white">{originDisplay}</strong>
                 </div>
                 <span className="rounded-full border border-emerald-300/25 px-2 py-1 text-[9px] font-bold text-emerald-100">{resolvedOriginCoords ? "DECLARADA" : "SIN GEO"}</span>
               </div>
               <p className="mt-2 text-[11px] font-semibold text-emerald-100">{originLocationLabel}</p>
-              <p className="mt-1 text-[10px] leading-4 text-slate-400">No suma intensidad al mapa de lecturas.</p>
+              <p className="mt-1 text-[10px] leading-4 text-slate-400">Se muestra como referencia y no altera la intensidad de los toques.</p>
               {originMapHref ? (
                 <a href={originMapHref} target="_blank" rel="noreferrer" className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl border border-emerald-300/25 bg-white/5 px-3 text-xs font-bold text-emerald-100 transition hover:bg-emerald-300/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300">
-                  Abrir origen declarado <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                  Ver origen en el mapa <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
                 </a>
               ) : null}
             </article>
@@ -1734,7 +1692,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               <div className="px-5 py-8 text-center" role="status">
                 <span aria-hidden="true" className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-300/20 bg-white/5 text-lg">⌖</span>
                 <p className="mt-3 text-sm font-black text-slate-200">Todavía no hay una ubicación para mostrar</p>
-                <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-slate-500">La API SUN no devolvió pares WGS84 válidos para estas lecturas. No completamos ciudades ni coordenadas con datos inventados.</p>
+                <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-slate-500">Estas lecturas todavía no incluyen una ubicación válida. No completamos ciudades ni coordenadas con datos inventados.</p>
               </div>
             )}
           </div>
@@ -1763,6 +1721,11 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                   <span className="block text-[8px] uppercase tracking-wider text-amber-300 font-bold">Monitoreo IoT en tránsito</span>
                   <span className="text-xs font-bold text-slate-200 mt-0.5 block">{hasReportedSensorEvidence ? "Ultima lectura reportada por metrica" : "Muestra simulada del Demo Lab"}</span>
                   <span className="mt-1 block text-[9px] text-slate-500">{sensorEvidenceLabel}</span>
+                  {hasReportedSensorEvidence ? (
+                    <span className="mt-1 block text-[9px] leading-4 text-slate-500">
+                      {sensorOriginLabel} · {sensorCapturedAtLabel} · Responsable: {sensorProvenance?.responsible || "no informado"} · Visibilidad: {sensorPrivacyLabel}
+                    </span>
+                  ) : null}
                 </div>
                 <span className={`rounded-full border px-2 py-0.5 text-[9px] font-bold ${usesDemoSensorEvidence ? "border-amber-500/30 bg-amber-500/10 text-amber-300" : "border-cyan-500/30 bg-cyan-500/10 text-cyan-300"}`}>
                   {usesDemoSensorEvidence ? "SIMULADO" : "REPORTADO"}
@@ -1872,7 +1835,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         <section>
           <details className="group border border-white/5 rounded-3xl bg-slate-900/20 backdrop-blur-md overflow-hidden transition-all duration-300">
             <summary className="flex items-center justify-between p-5 cursor-pointer font-bold text-xs text-slate-400 uppercase tracking-widest hover:text-slate-200 select-none">
-              <span>Especificaciones Técnicas & Cripto</span>
+              <span>Información técnica de la etiqueta</span>
               <span className="transition-transform group-open:rotate-180 duration-300 text-sm">▼</span>
             </summary>
             
@@ -1880,15 +1843,15 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               
               <div className="space-y-3 mt-4">
                 <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <span className="text-slate-500">UID Físico del Chip</span>
+                  <span className="text-slate-500">Identificador del chip</span>
                   <span className="font-mono text-slate-200">{result.identity?.uid || "Oculto / No disponible"}</span>
                 </div>
                 <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <span className="text-slate-500">Lote (Batch ID)</span>
+                  <span className="text-slate-500">Lote digital</span>
                   <span className="font-mono text-slate-200">{bid || "N/A"}</span>
                 </div>
                 <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <span className="text-slate-500">Contador de Lecturas</span>
+                  <span className="text-slate-500">Número de lectura</span>
                   <span className="font-mono text-slate-200">{result.identity?.readCounter ?? "N/A"}</span>
                 </div>
                 <div className="flex justify-between items-center border-b border-white/5 pb-2">
@@ -1896,7 +1859,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                   <span className="font-mono text-slate-200">{result.technical?.raw?.cmacPrefix || "No disponible"}</span>
                 </div>
                 <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                  <span className="text-slate-500">Registro Blockchain</span>
+                  <span className="text-slate-500">Registro público opcional</span>
                   <span className="font-semibold text-slate-200">{tokenEvidenceLabel}</span>
                 </div>
                 {hasOnChainTx && (
@@ -1913,6 +1876,68 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                   </div>
                 )}
               </div>
+
+              {showTtTechnicalEvidence && (
+                <div
+                  className={`rounded-2xl border p-4 ${
+                    ttEvidence.requiresReview
+                      ? "border-amber-400/30 bg-amber-400/5"
+                      : ttEvidence.available
+                        ? "border-emerald-400/25 bg-emerald-400/5"
+                        : "border-slate-700 bg-slate-900/50"
+                  }`}
+                  aria-label="Detalle técnico TagTamper byte por byte"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <span className="block text-[9px] font-bold uppercase tracking-[0.18em] text-cyan-300">Señal electrónica TagTamper</span>
+                      <strong className="mt-1 block text-sm text-slate-100">{ttEvidence.label}</strong>
+                      <p className="mt-1 max-w-xl text-[11px] leading-relaxed text-slate-400">{ttEvidence.summary}</p>
+                    </div>
+                    <span className={`rounded-full border px-3 py-1 font-mono text-[11px] font-bold ${
+                      ttEvidence.requiresReview
+                        ? "border-amber-300/30 bg-amber-300/10 text-amber-200"
+                        : ttEvidence.available
+                          ? "border-emerald-300/30 bg-emerald-300/10 text-emerald-200"
+                          : "border-slate-600 bg-slate-800 text-slate-300"
+                    }`}>
+                      TT {ttEvidence.rawHex || "N/D"}
+                    </span>
+                  </div>
+
+                  {ttEvidence.bytes.length === 2 && (
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      {ttEvidence.bytes.map((byte) => (
+                        <div key={byte.role} className="rounded-xl border border-white/10 bg-slate-950/55 p-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Byte {byte.index}</span>
+                            <code className="rounded-md bg-white/5 px-2 py-0.5 text-xs font-bold text-cyan-200">0x{byte.hex}</code>
+                          </div>
+                          <span className="mt-2 block text-[10px] text-slate-400">{byte.title}</span>
+                          <strong className={`mt-0.5 block text-xs ${
+                            byte.state === "invalid" || byte.state === "unknown"
+                              ? "text-amber-200"
+                              : byte.state === "opened"
+                                ? "text-orange-200"
+                                : "text-emerald-200"
+                          }`}>
+                            {byte.label}
+                          </strong>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[9px] text-slate-500">
+                    {ttEvidence.source && <span>fuente: {ttEvidence.source}</span>}
+                    {ttEvidence.offset !== null && <span>offset: {ttEvidence.offset}</span>}
+                    {ttEvidence.length !== null && <span>longitud: {ttEvidence.length} bytes</span>}
+                  </div>
+                  <p className="mt-3 border-t border-white/5 pt-3 text-[10px] leading-relaxed text-slate-500">
+                    Este detalle describe la señal electrónica TT reportada por la etiqueta. Por sí solo no prueba el contenido, la custodia ni la integridad física del producto.
+                  </p>
+                </div>
+              )}
 
               {carrierConsumerCopy && (
                 <div className="rounded-xl border border-cyan-500/10 bg-cyan-500/5 p-3 leading-normal text-cyan-200/90 text-[11px]">
@@ -1931,34 +1956,34 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           href="#qr-engagement" 
           className="fixed bottom-6 right-6 z-30 flex items-center gap-2 rounded-full bg-violet-600 px-4 py-3 text-xs font-black text-white shadow-lg hover:bg-violet-500 active:scale-95 transition-all lg:hidden"
         >
-          <span>💬</span> Sommelier IA
+          <MessageCircle className="h-4 w-4" aria-hidden="true" /> Sommelier IA
         </a>
       )}
 
       {/* Fixed Bottom Quick Nav Bar */}
-      <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-[390px] px-3 z-30 lg:hidden">
+      <nav className="sun-bottom-nav fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-[390px] px-3 z-30 lg:hidden" aria-label="Accesos rápidos del pasaporte">
         <div className="grid grid-cols-4 gap-1.5 rounded-2xl border border-white/10 bg-slate-950/80 p-2 backdrop-blur-xl shadow-xl">
           <a href={productSectionHref} className="flex flex-col items-center justify-center py-1.5 rounded-xl hover:bg-white/5 text-slate-300">
-            <span className="text-xs">🍷</span>
+            <Package className="h-4 w-4" aria-hidden="true" />
             <span className="text-[8px] font-bold mt-0.5">Ficha</span>
           </a>
           <a href={showEngagementSuite ? "#qr-engagement" : "#geo-trace"} className="flex flex-col items-center justify-center py-1.5 rounded-xl hover:bg-white/5 text-slate-300">
-            <span className="text-xs">📍</span>
+            <MapPin className="h-4 w-4" aria-hidden="true" />
             <span className="text-[8px] font-bold mt-0.5">Ruta</span>
           </a>
           {postTapQuickActions.marketplace ? (
             <Link href={tapMarketplaceHref} className="flex flex-col items-center justify-center py-1.5 rounded-xl hover:bg-white/5 text-slate-300">
-              <span className="text-xs">🛒</span>
+              <ShoppingBag className="h-4 w-4" aria-hidden="true" />
               <span className="text-[8px] font-bold mt-0.5">Comprar</span>
             </Link>
           ) : (
             <a href="#geo-trace" className="flex flex-col items-center justify-center py-1.5 rounded-xl hover:bg-white/5 text-slate-300">
-              <span className="text-xs">🔎</span>
+              <Search className="h-4 w-4" aria-hidden="true" />
               <span className="text-[8px] font-bold mt-0.5">Evidencia</span>
             </a>
           )}
           <a href={isAgroDpp ? "#agro-dpp" : showEngagementSuite ? "#qr-engagement" : "#consumer-choice"} className="flex flex-col items-center justify-center py-1.5 rounded-xl hover:bg-white/5 text-slate-300">
-            <span className="text-xs">🔒</span>
+            <LockKeyhole className="h-4 w-4" aria-hidden="true" />
             <span className="text-[8px] font-bold mt-0.5">Acciones</span>
           </a>
         </div>

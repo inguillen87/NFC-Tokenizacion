@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { GeoJSONSource, Map as MapLibreMap, MapLayerMouseEvent, Popup } from "maplibre-gl";
+import { resolveTrustMapSource } from "@product/ui/trust-map-source";
 import { resolveEventMapCoordinate, type MapCoordinatePrecision } from "../lib/geo-coordinates";
 import { isRealtimeRisk, type TenantTapRealtimeEvent } from "../lib/realtime-feed";
 
@@ -48,62 +49,83 @@ type TapFeatureCollection = {
   features: TapFeature[];
 };
 
-const MAP_STYLE = {
+const TRUST_MAP_SOURCE = resolveTrustMapSource({
+  styleUrl: process.env.NEXT_PUBLIC_NEXID_MAP_STYLE_URL,
+  darkStyleUrl: process.env.NEXT_PUBLIC_NEXID_DARK_MAP_STYLE_URL,
+  rasterTileTemplate: process.env.NEXT_PUBLIC_NEXID_RASTER_TILE_TEMPLATE,
+  attribution: process.env.NEXT_PUBLIC_NEXID_MAP_ATTRIBUTION,
+});
+
+const SATELLITE_MAP_STYLE = {
   version: 8,
   sources: {
-    cartoDark: {
-      type: "raster",
-      tiles: [
-        "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-        "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-        "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-      ],
-      tileSize: 256,
-      attribution: "OpenStreetMap / CARTO",
-    },
-    cartoLight: {
-      type: "raster",
-      tiles: [
-        "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
-        "https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
-        "https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
-      ],
-      tileSize: 256,
-      attribution: "OpenStreetMap / CARTO",
-    },
     esriWorldImagery: {
       type: "raster",
       tiles: ["https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
       tileSize: 256,
       attribution: "Esri",
     },
-    terrainSource: {
-      type: "raster-dem",
-      url: "https://tiles.mapterhorn.com/tilejson.json",
-    },
-    hillshadeSource: {
-      type: "raster-dem",
-      url: "https://tiles.mapterhorn.com/tilejson.json",
-    },
   },
   layers: [
-    { id: "carto-dark", type: "raster", source: "cartoDark" },
-    { id: "carto-light", type: "raster", source: "cartoLight", layout: { visibility: "none" } },
-    { id: "esri-satellite", type: "raster", source: "esriWorldImagery", layout: { visibility: "none" }, paint: { "raster-opacity": 0.9 } },
-    {
+    { id: "esri-satellite", type: "raster", source: "esriWorldImagery", paint: { "raster-opacity": 0.9 } },
+  ],
+};
+
+function rasterMapStyle(template: string) {
+  return {
+    version: 8,
+    sources: {
+      operatorRaster: {
+        type: "raster",
+        tiles: [template],
+        tileSize: 256,
+        attribution: TRUST_MAP_SOURCE.attribution,
+      },
+    },
+    layers: [
+      { id: "operator-raster", type: "raster", source: "operatorRaster" },
+    ],
+  };
+}
+
+function basemapStyle(layer: BaseMapLayer) {
+  if (layer === "satellite") return SATELLITE_MAP_STYLE;
+  if (TRUST_MAP_SOURCE.rasterTileTemplate) return rasterMapStyle(TRUST_MAP_SOURCE.rasterTileTemplate);
+  return layer === "dark" || layer === "terrain" ? TRUST_MAP_SOURCE.darkStyleUrl : TRUST_MAP_SOURCE.styleUrl;
+}
+
+function basemapStyleKey(layer: BaseMapLayer) {
+  if (layer === "satellite") return "satellite";
+  if (TRUST_MAP_SOURCE.rasterTileTemplate) return "operator-raster";
+  return layer === "dark" || layer === "terrain" ? "openfreemap-dark" : "openfreemap-light";
+}
+
+function ensureTerrainEnhancement(map: MapLibreMap, activeLayer: BaseMapLayer) {
+  if (activeLayer !== "terrain") {
+    try { map.setTerrain(null); } catch { /* Progressive enhancement only. */ }
+    return;
+  }
+  if (!map.getSource("terrainSource")) {
+    map.addSource("terrainSource", { type: "raster-dem", url: "https://tiles.mapterhorn.com/tilejson.json" });
+  }
+  if (!map.getSource("hillshadeSource")) {
+    map.addSource("hillshadeSource", { type: "raster-dem", url: "https://tiles.mapterhorn.com/tilejson.json" });
+  }
+  if (!map.getLayer("terrain-hillshade")) {
+    map.addLayer({
       id: "terrain-hillshade",
       type: "hillshade",
       source: "hillshadeSource",
-      layout: { visibility: "none" },
       paint: {
         "hillshade-exaggeration": 0.55,
         "hillshade-shadow-color": "#020617",
         "hillshade-highlight-color": "#67e8f9",
         "hillshade-accent-color": "#0f766e",
       },
-    },
-  ],
-};
+    });
+  }
+  try { map.setTerrain({ source: "terrainSource", exaggeration: 0.65 }); } catch { /* Progressive enhancement only. */ }
+}
 
 function escapeHtml(value: unknown) {
   return String(value ?? "")
@@ -339,14 +361,12 @@ function defaultBaseMapLayer(): BaseMapLayer {
 }
 
 function setBasemapLayer(map: MapLibreMap, layer: BaseMapLayer) {
-  if (map.getLayer("carto-dark")) map.setLayoutProperty("carto-dark", "visibility", layer === "dark" || layer === "terrain" ? "visible" : "none");
-  if (map.getLayer("carto-light")) map.setLayoutProperty("carto-light", "visibility", layer === "light" ? "visible" : "none");
-  if (map.getLayer("esri-satellite")) map.setLayoutProperty("esri-satellite", "visibility", layer === "satellite" ? "visible" : "none");
-  if (map.getLayer("terrain-hillshade")) map.setLayoutProperty("terrain-hillshade", "visibility", layer === "terrain" ? "visible" : "none");
-  try {
-    map.setTerrain(layer === "terrain" && map.getSource("terrainSource") ? { source: "terrainSource", exaggeration: 0.65 } : null);
-  } catch {
-    // Terrain is a progressive enhancement; keep the live map usable if the DEM source is unavailable.
+  ensureTerrainEnhancement(map, layer);
+  if (map.getLayer("operator-raster")) {
+    const dark = layer === "dark" || layer === "terrain";
+    map.setPaintProperty("operator-raster", "raster-brightness-max", dark ? 0.58 : 1);
+    map.setPaintProperty("operator-raster", "raster-saturation", dark ? -0.32 : 0);
+    map.setPaintProperty("operator-raster", "raster-contrast", dark ? 0.16 : 0);
   }
   map.easeTo({ pitch: layer === "terrain" ? 52 : 0, bearing: layer === "terrain" ? -18 : 0, duration: 500 });
   const pointStroke = layer === "light" ? "#0f172a" : "#ffffff";
@@ -393,6 +413,11 @@ export function RealtimeMapLibreMap({
   const mapRef = useRef<MapLibreMap | null>(null);
   const maplibreRef = useRef<typeof import("maplibre-gl") | null>(null);
   const popupRef = useRef<Popup | null>(null);
+  const geojsonRef = useRef<TapFeatureCollection>({ type: "FeatureCollection", features: [] });
+  const mapViewRef = useRef<MapView>(mapView);
+  const zoomRef = useRef(zoom);
+  const activeBaseMapRef = useRef<BaseMapLayer>(baseMap || "light");
+  const activeStyleKeyRef = useRef("");
   const mapTitleId = useId();
   const mapSummaryId = useId();
   const [loaded, setLoaded] = useState(false);
@@ -409,6 +434,9 @@ export function RealtimeMapLibreMap({
     return summary;
   }, { reported: 0, approximate: 0 } as Record<MapCoordinatePrecision, number>), [geojson]);
   const textualHotspots = hotspots.slice(0, 5);
+  geojsonRef.current = geojson;
+  mapViewRef.current = mapView;
+  zoomRef.current = zoom;
 
   useEffect(() => {
     setThemeBaseMap(defaultBaseMapLayer());
@@ -428,9 +456,12 @@ export function RealtimeMapLibreMap({
       if (cancelled || !containerRef.current || mapRef.current) return;
 
       maplibreRef.current = maplibre;
+      const initialBaseMap = baseMap || defaultBaseMapLayer();
+      activeBaseMapRef.current = initialBaseMap;
+      activeStyleKeyRef.current = basemapStyleKey(initialBaseMap);
       const map = new maplibre.Map({
         container: containerRef.current,
-        style: MAP_STYLE as any,
+        style: basemapStyle(initialBaseMap) as any,
         center: [-64.2, -34.6],
         zoom: 3.7,
         attributionControl: false,
@@ -442,12 +473,17 @@ export function RealtimeMapLibreMap({
       map.addControl(new maplibre.ScaleControl({ unit: "metric" }), "bottom-left");
       map.addControl(new maplibre.AttributionControl({ compact: true }), "bottom-right");
 
-      map.on("load", () => {
-        ensureLayers(map, geojson);
-        setLayerVisibility(map, mapView);
-        setBasemapLayer(map, baseMap || defaultBaseMapLayer());
-        fitData(maplibre, map, geojson, zoom);
-        if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      let pulseStarted = false;
+      map.on("style.load", () => {
+        if (cancelled) return;
+        const currentData = geojsonRef.current;
+        ensureTerrainEnhancement(map, activeBaseMapRef.current);
+        ensureLayers(map, currentData);
+        setLayerVisibility(map, mapViewRef.current);
+        setBasemapLayer(map, activeBaseMapRef.current);
+        fitData(maplibre, map, currentData, zoomRef.current);
+        if (!pulseStarted && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+          pulseStarted = true;
           let frame = 0;
           const animatePulse = () => {
             const wave = (Math.sin((performance.now() / 900) * Math.PI) + 1) / 2;
@@ -541,7 +577,16 @@ export function RealtimeMapLibreMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !loaded) return;
-    setBasemapLayer(map, baseMap || themeBaseMap);
+    const nextBaseMap = baseMap || themeBaseMap;
+    const nextStyleKey = basemapStyleKey(nextBaseMap);
+    activeBaseMapRef.current = nextBaseMap;
+    if (nextStyleKey !== activeStyleKeyRef.current) {
+      activeStyleKeyRef.current = nextStyleKey;
+      setLoaded(false);
+      map.setStyle(basemapStyle(nextBaseMap) as any);
+      return;
+    }
+    setBasemapLayer(map, nextBaseMap);
   }, [baseMap, loaded, themeBaseMap]);
 
   useEffect(() => {

@@ -154,3 +154,14 @@ test("shared operational maps never invent tokenization or physical-product veri
   assert.doesNotMatch(globalOpsMapSource, /\|\| "Producto verificado"/);
   assert.doesNotMatch(globalOpsMapSource, /mapa vivo nexID/);
 });
+
+test("dashboard heatmaps resolve a no-key shared basemap and keep visible attribution", () => {
+  assert.match(realtimeMapSource, /resolveTrustMapSource/);
+  assert.match(realtimeMapSource, /TRUST_MAP_SOURCE\.styleUrl/);
+  assert.match(realtimeMapSource, /TRUST_MAP_SOURCE\.darkStyleUrl/);
+  assert.match(realtimeMapSource, /TRUST_MAP_SOURCE\.rasterTileTemplate/);
+  assert.match(realtimeMapSource, /TRUST_MAP_SOURCE\.attribution/);
+  assert.match(realtimeMapSource, /AttributionControl/);
+  assert.match(realtimeMapSource, /raster-brightness-max/);
+  assert.doesNotMatch(realtimeMapSource, /basemaps\.cartocdn\.com|dark_all|light_all|voyager_nolabels|tile\.openstreetmap\.org/);
+});

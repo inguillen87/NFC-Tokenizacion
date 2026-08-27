@@ -52,6 +52,7 @@ export const expectedMigrations = Object.freeze([
   '20260802290000_0094_sun_runtime_acl_boundary.sql',
   '20260802300000_0095_sun_tt_conflict_target.sql',
   '20260802310000_0096_enterprise_rbac_risk_truth.sql',
+  '20260802320000_0097_sun_demo_replay_isolation.sql',
 ]);
 
 export class EnterpriseReleasePreflightError extends Error {
@@ -175,7 +176,8 @@ export async function runEnterpriseReleasePreflight(options = {}) {
                WHERE private_relation.oid IN (
                  to_regclass('public.batch_keys'),
                  to_regclass('public.batch_key_material'),
-                 to_regclass('public.enterprise_authority_scope_locks')
+                 to_regclass('public.enterprise_authority_scope_locks'),
+                 to_regclass('public.sun_replay_watermark_repairs')
                )
              )
            )
@@ -446,8 +448,69 @@ export async function runEnterpriseReleasePreflight(options = {}) {
               )
                 AND acl.grantee = 0
                 AND acl.privilege_type = 'EXECUTE'
-            ), false) AS has_sun_tt_conflict_target,
-          to_regprocedure('public.nexid_enterprise_rbac_risk_truth_v1_capability()') IS NOT NULL
+             ), false) AS has_sun_tt_conflict_target,
+           to_regprocedure('public.nexid_sun_demo_replay_isolation_v1_capability()') IS NOT NULL
+             AND to_regclass('public.sun_replay_watermark_repairs') IS NOT NULL
+             AND EXISTS (
+               SELECT 1
+               FROM pg_trigger trigger_row
+               WHERE NOT trigger_row.tgisinternal
+                 AND trigger_row.tgenabled <> 'D'
+                 AND trigger_row.tgname = 'trg_sun_replay_watermark_repairs_append_only'
+                 AND trigger_row.tgrelid = to_regclass('public.sun_replay_watermark_repairs')
+             )
+             AND COALESCE((
+               SELECT NOT historical_routine.prosecdef
+                 AND historical_routine.proconfig = ARRAY['search_path=pg_catalog, public, pg_temp']::text[]
+                 AND position(
+                   'v_execution_class := CASE WHEN v_source = ''demo'' THEN ''demo'' ELSE ''operational'' END'
+                   IN pg_get_functiondef(historical_routine.oid)
+                 ) > 0
+                 AND position(
+                   'IF v_execution_class = ''operational'''
+                   IN pg_get_functiondef(historical_routine.oid)
+                 ) > 0
+                 AND position(
+                   'IF v_tag_id IS NOT NULL AND v_execution_class = ''operational'''
+                   IN pg_get_functiondef(historical_routine.oid)
+                 ) > 0
+                 AND position(
+                   '''replay_execution_class'', v_execution_class'
+                   IN pg_get_functiondef(historical_routine.oid)
+                 ) > 0
+               FROM pg_proc historical_routine
+               WHERE historical_routine.oid = to_regprocedure(
+                 'public.nexid_persist_sun_scan_v1_base_pre_tt_0093(jsonb)'
+               )
+             ), false)
+             AND NOT COALESCE(has_table_privilege(
+               current_user,
+               to_regclass('public.sun_replay_watermark_repairs'),
+               'INSERT,UPDATE,DELETE,TRUNCATE'
+             ), false)
+             AND NOT COALESCE(EXISTS (
+               SELECT 1
+               FROM pg_proc routine
+               CROSS JOIN LATERAL aclexplode(
+                 COALESCE(routine.proacl, acldefault('f', routine.proowner))
+               ) acl
+               WHERE routine.oid IN (
+                 to_regprocedure('public.nexid_sun_demo_replay_isolation_v1_capability()'),
+                 to_regprocedure('public.nexid_sun_replay_watermark_repair_immutable_v1()')
+               )
+                 AND acl.grantee = 0
+                 AND acl.privilege_type = 'EXECUTE'
+             ), false)
+             AND NOT COALESCE(EXISTS (
+               SELECT 1
+               FROM pg_class relation_row
+               CROSS JOIN LATERAL aclexplode(
+                 COALESCE(relation_row.relacl, acldefault('r', relation_row.relowner))
+               ) acl
+               WHERE relation_row.oid = to_regclass('public.sun_replay_watermark_repairs')
+                 AND acl.grantee = 0
+             ), false) AS has_sun_demo_replay_isolation,
+           to_regprocedure('public.nexid_enterprise_rbac_risk_truth_v1_capability()') IS NOT NULL
             AND to_regprocedure('public.nexid_compute_event_risk_v1(uuid,uuid,text,text,text,text,jsonb)') IS NOT NULL
             AND to_regprocedure('public.nexid_backfill_event_risk_v1(integer)') IS NOT NULL
             AND to_regprocedure('public.nexid_actor_has_enterprise_capability_v1(uuid,uuid,text,text)') IS NOT NULL
@@ -1277,9 +1340,10 @@ export async function runEnterpriseReleasePreflight(options = {}) {
       ['supplier carrier scope integrity privileges', state.can_use_supplier_carrier_scope_integrity],
       ['SUN TT durable truth schema', state.has_sun_tt_durable_truth],
       ['SUN TT durable truth privileges', state.can_use_sun_tt_durable_truth],
-      ['SUN runtime ACL boundary', state.has_sun_runtime_acl_boundary],
-      ['SUN TT deterministic receipt conflict target', state.has_sun_tt_conflict_target],
-      ['enterprise RBAC and deterministic risk truth', state.has_enterprise_rbac_risk_truth],
+       ['SUN runtime ACL boundary', state.has_sun_runtime_acl_boundary],
+       ['SUN TT deterministic receipt conflict target', state.has_sun_tt_conflict_target],
+       ['SUN demo versus operational replay isolation', state.has_sun_demo_replay_isolation],
+       ['enterprise RBAC and deterministic risk truth', state.has_enterprise_rbac_risk_truth],
       ['supplier order lifecycle schema', state.has_supplier_order_lifecycle],
       ['EXECUTE supplier order lifecycle functions', state.can_use_supplier_order_lifecycle],
       ['idx_offline_scan_events_tenant_history', state.has_offline_scan_history_index],

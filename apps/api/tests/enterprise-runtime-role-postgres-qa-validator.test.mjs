@@ -16,7 +16,7 @@ import {
 
 const apiRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-test("runtime role surface is exact, current through 0096 and excludes internal helpers", () => {
+test("runtime role surface is exact, current through 0097 and excludes internal helpers", () => {
   assert.deepEqual(ENTERPRISE_RUNTIME_ROLE_REQUIRED_MIGRATIONS, [
     "20260802200000_0085_supplier_non_sun_qa_evidence.sql",
     "20260802260000_0091_supplier_keyless_qa_activation.sql",
@@ -25,6 +25,7 @@ test("runtime role surface is exact, current through 0096 and excludes internal 
     "20260802290000_0094_sun_runtime_acl_boundary.sql",
     "20260802300000_0095_sun_tt_conflict_target.sql",
     "20260802310000_0096_enterprise_rbac_risk_truth.sql",
+    "20260802320000_0097_sun_demo_replay_isolation.sql",
   ]);
   assert.equal(ENTERPRISE_RUNTIME_ROLE_FUNCTIONS.length, 9);
   assert.deepEqual(ENTERPRISE_RUNTIME_ROLE_RECEIPT_TABLES, [
@@ -40,6 +41,12 @@ test("runtime role surface is exact, current through 0096 and excludes internal 
   ));
   assert.ok(ENTERPRISE_RUNTIME_ROLE_INTERNAL_DENY_FUNCTIONS.includes(
     "public.nexid_backfill_event_risk_v1(integer)",
+  ));
+  assert.ok(ENTERPRISE_RUNTIME_ROLE_INTERNAL_DENY_FUNCTIONS.includes(
+    "public.nexid_sun_demo_replay_isolation_v1_capability()",
+  ));
+  assert.ok(ENTERPRISE_RUNTIME_ROLE_INTERNAL_DENY_FUNCTIONS.includes(
+    "public.nexid_sun_replay_watermark_repair_immutable_v1()",
   ));
   assert.equal(ENTERPRISE_RUNTIME_ROLE_FUNCTIONS.some((signature) => signature.includes("core_0081")), false);
   assert.equal(ENTERPRISE_RUNTIME_ROLE_FUNCTIONS.some((signature) => signature.includes("base_pre_tt_0093")), false);
@@ -118,6 +125,8 @@ test("runtime role validator is disposable, non-production and never makes KMS o
     /NOT historical_routine\.prosecdef[\s\S]*wrapper_routine\.proowner = base_routine\.proowner[\s\S]*wrapper_routine\.proowner = historical_routine\.proowner[\s\S]*wrapper_routine\.proconfig = ARRAY\['search_path=pg_catalog, public, pg_temp'\]::text\[\][\s\S]*base_routine\.proconfig = ARRAY\['search_path=pg_catalog, public, pg_temp'\]::text\[\][\s\S]*historical_routine\.proconfig = ARRAY\['search_path=pg_catalog, public, pg_temp'\]::text\[\][\s\S]*sun_definer_owner_and_search_path_exact/,
   );
   assert.match(source, /!bool\(sunBoundary\.sun_definer_owner_and_search_path_exact\)/);
+  assert.match(source, /!bool\(sunBoundary\.demo_replay_execution_boundary_exact\)/);
+  assert.match(source, /SELECT 1 FROM public\.sun_replay_watermark_repairs WHERE false/);
   assert.match(source, /await client\.query\("ROLLBACK"\)/);
   assert.match(source, /role_removed_after_transaction_rollback: true/);
   assert.match(source, /business_mutation_functions_executed: false/);

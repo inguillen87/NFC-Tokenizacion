@@ -22,10 +22,11 @@ test("SUN surfaces distinguish validated tag evidence from the physical product"
   assert.match(route, /\[process\.env\.VERCEL_ENV, process\.env\.NODE_ENV\]/);
   assert.match(route, /\.some\(\(value\) => String\(value \|\| ""\)\.trim\(\)\.toLowerCase\(\) === "production"\)/);
   assert.match(route, /la línea visual no prueba ruta física ni custodia/i);
-  assert.match(trustSurface, /normalizedProductState === "VALID_AUTHENTIC"[\s\S]*Autenticidad criptográfica confirmada\. Este producto no usa sello electrónico de apertura\./);
-  assert.match(trustSurface, /normalizedProductState === "VALID_CLOSED"[\s\S]*Autenticidad confirmada\. Sello intacto\.[\s\S]*TTStatus completo validado[\s\S]*construcción de empaque aprobada/);
-  assert.match(trustSurface, /normalizedProductState === "VALID_OPENED"[\s\S]*Producto auténtico · sello abierto[\s\S]*TTStatus completo validado[\s\S]*no certifica por sí solo el contenido ni la custodia/);
-  assert.match(trustSurface, /normalizedProductState === "VALID_OPENED_PREVIOUSLY"[\s\S]*apertura previa[\s\S]*TTStatus completo validado[\s\S]*no certifica por sí solo el contenido ni la custodia/);
+  assert.match(trustSurface, /normalizedProductState === "VALID_AUTHENTIC"[\s\S]*Etiqueta digital verificada[\s\S]*Este producto no usa sello electrónico de apertura\./);
+  assert.match(trustSurface, /normalizedProductState === "VALID_CLOSED"[\s\S]*Etiqueta digital verificada · sello cerrado[\s\S]*La marca define cómo se integra ese control al envase/);
+  assert.match(trustSurface, /normalizedProductState === "VALID_OPENED"[\s\S]*Etiqueta digital verificada · sello abierto[\s\S]*contenido físico y su custodia requieren controles propios de la marca/);
+  assert.match(trustSurface, /normalizedProductState === "VALID_OPENED_PREVIOUSLY"[\s\S]*Etiqueta digital verificada · apertura previa[\s\S]*contenido físico y su custodia requieren controles propios de la marca/);
+  assert.doesNotMatch(trustSurface, /Producto auténtico|Autenticidad confirmada|Sello intacto/i);
   assert.doesNotMatch(trustSurface, /normalizedReason\.includes\(['"]opened['"]\)/);
   assert.doesNotMatch(releaseSurface, /Producto auténtico|Autenticidad confirmada|Sello intacto|Authentic product|Authenticity confirmed|Seal intact|Produto autêntico|Autenticidade confirmada|Selo intacto/i);
 });

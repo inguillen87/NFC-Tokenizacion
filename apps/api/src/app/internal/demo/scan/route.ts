@@ -43,9 +43,15 @@ export async function POST(req: Request) {
   const body = parsed.data;
 
   const batchRows = await sql/*sql*/`
-    SELECT b.id, b.tenant_id, b.bid, b.meta_key_ct, b.file_key_ct, b.sdm_config, t.last_seen_ctr
+    SELECT b.id, b.tenant_id, b.bid, b.meta_key_ct, b.file_key_ct, b.sdm_config,
+      (
+        SELECT MAX(COALESCE(e.sdm_read_ctr, e.read_counter))::integer
+        FROM events e
+        WHERE e.batch_id = b.id
+          AND UPPER(e.uid_hex) = ${body.uidHex}
+          AND e.source::text = 'demo'
+      ) AS last_demo_ctr
     FROM batches b
-    LEFT JOIN tags t ON t.batch_id = b.id AND t.uid_hex = ${body.uidHex}
     WHERE b.id = ${batchScope.batch.id}
       AND b.tenant_id = ${batchScope.batch.tenantId}
     LIMIT 1
@@ -53,7 +59,9 @@ export async function POST(req: Request) {
   const batch = batchRows[0];
   if (!batch) return json({ ok: false, reason: 'batch not found' }, 404);
 
-  const currentCtr = Number(batch.last_seen_ctr ?? 0);
+  // Demo counters live only in the demo event stream. They must never borrow
+  // or advance the canonical physical-tag watermark in tags.last_seen_ctr.
+  const currentCtr = Number(batch.last_demo_ctr ?? 0);
   const nextCtr = body.action === 'retail_scan' ? currentCtr : currentCtr + 1;
   const keyVersion = Number((batch.sdm_config as { key_version?: unknown } | null)?.key_version || 1);
   const keyContext = {

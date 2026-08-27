@@ -2,40 +2,46 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const source = await readFile(new URL("../src/app/sun/route.ts", import.meta.url), "utf8");
+import {
+  DEFAULT_PUBLIC_DARK_MAP_STYLE_URL,
+  DEFAULT_PUBLIC_MAP_ATTRIBUTION,
+  DEFAULT_PUBLIC_MAP_STYLE_URL,
+  isNoKeyPublicMapStyleUrl,
+  isNoKeyPublicRasterTileTemplate,
+  normalizePublicMapStyleUrl,
+  normalizePublicRasterTileTemplate,
+} from "../src/lib/sun-map-source.ts";
 
-test("physical SUN HTML uses an interactive MapLibre map instead of the SVG atlas", () => {
-  assert.match(source, /maplibre-gl@5\.24\.0\/dist\/maplibre-gl\.css/);
-  assert.match(source, /maplibre-gl@5\.24\.0\/dist\/maplibre-gl\.js/);
-  assert.match(source, /data-nexid-map="maplibre-gl"/);
-  assert.match(source, /new window\.maplibregl\.Map/);
-  assert.match(source, /map\.on\('error'/);
-  assert.match(source, /data-map-state', 'degraded'/);
-  assert.match(source, /new window\.maplibregl\.NavigationControl/);
-  assert.match(source, /type: 'geojson'/);
-  assert.match(source, /id: 'sun-location-points'/);
-  assert.match(source, /No se pudo iniciar MapLibre/);
-  assert.doesNotMatch(source, /\$\{responsiveAtlasSvg\}/);
+const route = await readFile(new URL("../src/app/sun/route.ts", import.meta.url), "utf8");
+
+test("public SUN map defaults to real OpenFreeMap vector styles without an API key", () => {
+  assert.equal(DEFAULT_PUBLIC_MAP_STYLE_URL, "https://tiles.openfreemap.org/styles/positron");
+  assert.equal(DEFAULT_PUBLIC_DARK_MAP_STYLE_URL, "https://tiles.openfreemap.org/styles/dark");
+  assert.equal(DEFAULT_PUBLIC_MAP_ATTRIBUTION, "OpenFreeMap © OpenMapTiles · Data from OpenStreetMap");
+  assert.equal(isNoKeyPublicMapStyleUrl(DEFAULT_PUBLIC_MAP_STYLE_URL), true);
+  assert.equal(isNoKeyPublicRasterTileTemplate("/tiles/{z}/{x}/{y}.png"), true);
+  assert.equal(isNoKeyPublicRasterTileTemplate("https://tiles.example.test/{z}/{x}/{y}.png"), true);
 });
 
-test("SUN map separates an observed tap from a declared origin and does not invent a route", () => {
-  assert.match(source, /The declared origin is a reference marker only/);
-  assert.match(source, /no line is drawn as if it were a physical route/);
-  assert.match(source, /mapPoints = \[sunMapData\.origin, sunMapData\.tap\]\.filter\(Boolean\)/);
-  const initStart = source.indexOf("const initSunMap =");
-  const initEnd = source.indexOf("const ui =", initStart);
-  const initializer = source.slice(initStart, initEnd);
-  assert.doesNotMatch(initializer, /LineString|heatmap/);
+test("SUN map rejects key-gated providers, keyed URLs and stale production overrides", () => {
+  const forbiddenCarto = "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png";
+  const forbiddenKeyed = "https://tiles.example.test/{z}/{x}/{y}.png?api_key=secret";
+
+  assert.equal(isNoKeyPublicRasterTileTemplate(forbiddenCarto), false);
+  assert.equal(isNoKeyPublicRasterTileTemplate(forbiddenKeyed), false);
+  assert.equal(normalizePublicRasterTileTemplate(forbiddenCarto), "");
+  assert.equal(normalizePublicRasterTileTemplate(forbiddenKeyed), "");
+  assert.equal(normalizePublicMapStyleUrl("https://api.mapbox.com/styles/v1/demo?access_token=secret"), DEFAULT_PUBLIC_MAP_STYLE_URL);
 });
 
-test("physical SUN passport stays white-first even when the device prefers dark mode", () => {
-  assert.match(source, /id="nexid-white-first"/);
-  assert.match(source, /const prefersLight = true/);
-  assert.match(source, /\.sensor-evidence\{background:#f8fafc!important\}/);
-});
-
-test("SUN measured-location wording requires an explicit measured source and positive accuracy", () => {
-  assert.match(source, /rawTapAccuracyM > 0/);
-  assert.match(source, /new Set\(\["device_gnss_measured", "device_gps_measured", "gnss_measured", "gps_measured", "surveyed"\]\)/);
-  assert.doesNotMatch(source, /new Set\(\["gps", "gnss", "device_gps", "reader_gps"/);
+test("inline SUN passport keeps MapLibre, visible attribution and vector default with optional safe raster override", () => {
+  assert.match(route, /data-nexid-map="maplibre-gl"/);
+  assert.match(route, /new window\.maplibregl\.Map/);
+  assert.match(route, /AttributionControl/);
+  assert.match(route, /normalizePublicRasterTileTemplate\(requestedRasterTileTemplate\)/);
+  assert.match(route, /normalizePublicMapStyleUrl\(requestedMapStyleUrl\)/);
+  assert.match(route, /styleUrl: mapStyleUrl/);
+  assert.match(route, /baseMapStyle = sunMapData\.tileTemplate/);
+  assert.match(route, /tiles: \[sunMapData\.tileTemplate\]/);
+  assert.doesNotMatch(route, /lightTileTemplate|dark_all|voyager_nolabels|basemaps\.cartocdn\.com|tile\.openstreetmap\.org/);
 });

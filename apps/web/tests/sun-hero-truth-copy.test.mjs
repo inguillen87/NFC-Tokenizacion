@@ -4,14 +4,16 @@ import { readFile } from "node:fs/promises";
 
 import { getSunHeroTraceCopy } from "../src/app/sun/sun-hero-truth-copy.ts";
 
-test("SUN hero default fixture never presents simulated coordinates as physical evidence", async () => {
+test("SUN product-first card never renders the legacy simulated route hero", async () => {
   const hero = await readFile(new URL("../src/app/sun/sun-product-hero-stage.tsx", import.meta.url), "utf8");
   const page = await readFile(new URL("../src/app/sun/page.tsx", import.meta.url), "utf8");
   const demoCopy = Object.values(getSunHeroTraceCopy(true, "opened")).join("\n");
 
   assert.match(hero, /isDemoPreview: boolean/);
   assert.match(hero, /getSunHeroTraceCopy\(isDemoPreview, state\)/);
-  assert.match(page, /<SunProductHeroStage[\s\S]*?isDemoPreview=\{isDemoPreview\}[\s\S]*?\/>/);
+  assert.doesNotMatch(page, /<SunProductHeroStage/);
+  assert.match(page, /className="sun-result-card__product"/);
+  assert.match(page, /Perfil oficial del piloto/);
   assert.doesNotMatch(demoCopy, /Tap actual|Tap fisico|Lectura fisica del chip|Ruta real de confianza del producto/);
   assert.match(demoCopy, /sin tap físico/);
   assert.match(demoCopy, /simulad/);

@@ -118,6 +118,7 @@ export function buildSanitizedSunEnvelope({
   cryptographicVerification = true,
   payloadVerified = true,
   supplierPayloadOnly = false,
+  source = "real",
 }) {
   const namespace = `${tenantId}:${batchId}:${uidHex}:${counter}:${variant}`;
   const ttTruth = {
@@ -146,7 +147,7 @@ export function buildSanitizedSunEnvelope({
     cmac_hash: sha256(`${namespace}:cmac`),
     raw_url_hash: sha256(`${namespace}:url`),
     enc_hash: sha256(`${namespace}:enc`),
-    source: "demo",
+    source,
     pre_registry_result: claimedProductState,
     reason_if_not_replay: null,
     meta: {
@@ -346,6 +347,61 @@ async function assertTtTruthReceiptAppendOnly(client, atomicReceipt) {
   return Object.freeze({ update_sqlstate: updateSqlState, delete_sqlstate: deleteSqlState, row_preserved: true });
 }
 
+async function assertAutomatedFetchQuarantine(client, atomicReceipt, expectedUserAgent) {
+  const parameters = [atomicReceipt.event_id];
+  const rows = (await client.query(`SELECT
+      classification_version,
+      reason,
+      user_agent_digest,
+      had_geo,
+      classified_by,
+      event_created_at
+    FROM public.sun_automated_fetch_quarantines
+    WHERE event_id = $1::bigint`, parameters)).rows;
+  assert.equal(rows.length, 1, "automated fetch must have exactly one quarantine receipt");
+  const receipt = rows[0];
+  assert.equal(receipt.classification_version, "sun-automated-fetch/v1");
+  assert.equal(receipt.reason, "google_read_aloud");
+  assert.equal(receipt.user_agent_digest, sha256(expectedUserAgent));
+  assert.equal(receipt.had_geo, true);
+  assert.equal(receipt.classified_by, "event_insert_guard");
+
+  let updateSqlState = null;
+  await assert.rejects(
+    () => client.query(`UPDATE public.sun_automated_fetch_quarantines
+      SET reason = reason
+      WHERE event_id = $1::bigint`, parameters),
+    (error) => {
+      updateSqlState = String(error?.code || "");
+      return updateSqlState === "55000"
+        && String(error?.message || "").includes("sun_automated_fetch_quarantine_is_append_only");
+    },
+    "automated-fetch quarantine update must fail closed",
+  );
+  let deleteSqlState = null;
+  await assert.rejects(
+    () => client.query(`DELETE FROM public.sun_automated_fetch_quarantines
+      WHERE event_id = $1::bigint`, parameters),
+    (error) => {
+      deleteSqlState = String(error?.code || "");
+      return deleteSqlState === "55000"
+        && String(error?.message || "").includes("sun_automated_fetch_quarantine_is_append_only");
+    },
+    "automated-fetch quarantine delete must fail closed",
+  );
+
+  return Object.freeze({
+    classification_version: String(receipt.classification_version),
+    reason: String(receipt.reason),
+    user_agent_digest: String(receipt.user_agent_digest),
+    had_geo: receipt.had_geo === true,
+    classified_by: String(receipt.classified_by),
+    update_sqlstate: updateSqlState,
+    delete_sqlstate: deleteSqlState,
+    row_preserved: true,
+  });
+}
+
 async function runBlockedConcurrentPair({ config, observer, lock, firstEnvelope, secondEnvelope, label }) {
   const suffix = randomBytes(4).toString("hex");
   const blocker = new pg.Client(clientOptions(config, `nexid_sun_qa_${label}_blocker_${suffix}`));
@@ -461,6 +517,8 @@ function buildFixture() {
     scenarios: [
       makeScenario("same_payload"),
       makeScenario("uid_counter"),
+      makeScenario("demo_isolation"),
+      makeScenario("automated_fetch"),
       makeScenario("rollback"),
       ...SUN_TT_STATUS_MAPPINGS.map(({ ttRaw }) => makeScenario(`tt_${ttRaw.toLowerCase()}`)),
       makeScenario("tt_missing_raw"),
@@ -531,6 +589,76 @@ export async function runSunAtomicPostgresQa(env = process.env) {
     assert.equal(Number(uidCounterState?.scan_count), 2, "uid_counter: both serialized attempts increment the audit counter");
     assert.equal(Number(uidCounterState?.last_seen_ctr), 202, "uid_counter: canonical counter must remain 202");
     assert.equal(Number(uidCounterState?.event_count), 2, "uid_counter: both attempts must remain auditable");
+
+    const demoIsolationScenario = fixture.scenarios.find((scenario) => scenario.name === "demo_isolation");
+    const demoIsolationEnvelope = buildSanitizedSunEnvelope({
+      tenantId: fixture.tenantId,
+      tenantSlug: fixture.tenantSlug,
+      ...demoIsolationScenario,
+      counter: 901,
+      variant: "demo-high-counter",
+      source: "demo",
+    });
+    const demoIsolationReceipt = await invokeAtomicPersistence(observer, demoIsolationEnvelope);
+    assert.equal(summarizeSunReceipt(demoIsolationReceipt).database_receipt_handoff_eligible, true);
+    const stateAfterDemo = await scenarioState(observer, demoIsolationScenario);
+    assert.equal(Number(stateAfterDemo?.scan_count), 0, "demo must not increment the canonical physical scan counter");
+    assert.equal(stateAfterDemo?.last_seen_ctr ?? null, null, "demo must not set the canonical physical replay watermark");
+    assert.equal(Number(stateAfterDemo?.event_count), 1, "demo event remains auditable in its isolated lane");
+
+    const operationalAfterDemo = buildSanitizedSunEnvelope({
+      tenantId: fixture.tenantId,
+      tenantSlug: fixture.tenantSlug,
+      ...demoIsolationScenario,
+      counter: 1,
+      variant: "real-after-demo",
+      source: "real",
+    });
+    const operationalAfterDemoReceipt = await invokeAtomicPersistence(observer, operationalAfterDemo);
+    assert.equal(summarizeSunReceipt(operationalAfterDemoReceipt).database_receipt_handoff_eligible, true);
+    const stateAfterOperational = await scenarioState(observer, demoIsolationScenario);
+    assert.equal(Number(stateAfterOperational?.scan_count), 1);
+    assert.equal(Number(stateAfterOperational?.last_seen_ctr), 1, "real counter lower than demo remains fresh");
+
+    const operationalReplayEnvelope = buildSanitizedSunEnvelope({
+      tenantId: fixture.tenantId,
+      tenantSlug: fixture.tenantSlug,
+      ...demoIsolationScenario,
+      counter: 1,
+      variant: "real-replay-distinct-payload",
+      source: "real",
+    });
+    const operationalReplayReceipt = await invokeAtomicPersistence(observer, operationalReplayEnvelope);
+    const operationalReplaySummary = summarizeSunReceipt(operationalReplayReceipt);
+    assert.equal(operationalReplaySummary.replay_suspect, true, "real replay must still fail closed");
+    assert.equal(operationalReplaySummary.final_result, "REPLAY_SUSPECT");
+    assert.equal(operationalReplaySummary.replay_original_event_id, positiveEventId(operationalAfterDemoReceipt.event_id));
+    const demoIsolationState = await scenarioState(observer, demoIsolationScenario);
+    assert.equal(Number(demoIsolationState?.scan_count), 2, "only operational attempts increment the canonical counter");
+    assert.equal(Number(demoIsolationState?.last_seen_ctr), 1);
+    assert.equal(Number(demoIsolationState?.event_count), 3);
+
+    const automatedFetchScenario = fixture.scenarios.find((scenario) => scenario.name === "automated_fetch");
+    const automatedUserAgent = "Mozilla/5.0 (Linux; Android 15) Google-Read-Aloud";
+    const automatedFetchEnvelope = {
+      ...buildSanitizedSunEnvelope({
+        tenantId: fixture.tenantId,
+        tenantSlug: fixture.tenantSlug,
+        ...automatedFetchScenario,
+        counter: 701,
+        variant: "automated-fetch-trigger",
+        source: "real",
+      }),
+      user_agent: automatedUserAgent,
+      lat: -32.8895,
+      lng: -68.8458,
+    };
+    const automatedFetchReceipt = await invokeAtomicPersistence(observer, automatedFetchEnvelope);
+    const automatedFetchQuarantine = await assertAutomatedFetchQuarantine(
+      observer,
+      automatedFetchReceipt,
+      automatedUserAgent,
+    );
 
     const rollbackScenario = fixture.scenarios.find((scenario) => scenario.name === "rollback");
     const rollbackBefore = await scenarioState(observer, rollbackScenario);
@@ -732,7 +860,13 @@ export async function runSunAtomicPostgresQa(env = process.env) {
     const appendOnly = await assertTtTruthReceiptAppendOnly(observer, appendOnlyProbeReceipt);
     const committedCounts = (await observer.query(`SELECT
       (SELECT count(*)::integer FROM public.events WHERE tenant_id = $1::uuid) AS event_count,
-      (SELECT count(*)::integer FROM public.sun_tt_truth_receipts WHERE tenant_id = $1::uuid) AS receipt_count`, [
+      (SELECT count(*)::integer FROM public.sun_tt_truth_receipts WHERE tenant_id = $1::uuid) AS receipt_count,
+      (SELECT count(*)::integer
+        FROM public.sun_automated_fetch_quarantines quarantine
+        JOIN public.events event
+          ON event.id = quarantine.event_id
+         AND event.created_at = quarantine.event_created_at
+        WHERE event.tenant_id = $1::uuid) AS automated_fetch_quarantine_count`, [
       fixture.tenantId,
     ])).rows[0] || {};
     assert.equal(
@@ -740,6 +874,7 @@ export async function runSunAtomicPostgresQa(env = process.env) {
       Number(committedCounts.event_count),
       "every committed SUN attempt must have exactly one durable TT truth receipt",
     );
+    assert.equal(Number(committedCounts.automated_fetch_quarantine_count), 1);
 
     return Object.freeze({
       ok: true,
@@ -763,6 +898,15 @@ export async function runSunAtomicPostgresQa(env = process.env) {
           receipts: uidCounterReceipts,
           committed_event_count: Number(uidCounterState.event_count),
         },
+        demo_replay_lane_isolation: {
+          demo_event_id: positiveEventId(demoIsolationReceipt.event_id),
+          first_real_event_id: positiveEventId(operationalAfterDemoReceipt.event_id),
+          real_replay: operationalReplaySummary,
+          canonical_scan_count: Number(demoIsolationState.scan_count),
+          canonical_last_seen_ctr: Number(demoIsolationState.last_seen_ctr),
+          committed_event_count: Number(demoIsolationState.event_count),
+        },
+        automated_fetch_quarantine_trigger: automatedFetchQuarantine,
         forced_rollback_after_tag_update: {
           sqlstate: rollbackSqlState,
           state_unchanged: true,
@@ -779,6 +923,7 @@ export async function runSunAtomicPostgresQa(env = process.env) {
         committed_event_receipt_bijection: {
           event_count: Number(committedCounts.event_count),
           receipt_count: Number(committedCounts.receipt_count),
+          automated_fetch_quarantine_count: Number(committedCounts.automated_fetch_quarantine_count),
         },
       },
       boundaries: {

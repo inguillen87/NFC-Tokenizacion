@@ -61,6 +61,30 @@ test("consumer TT presentation requires the exact carrier and complete two-byte 
     carrierProfileCode: "ntag424_dna_tt",
     ttRaw: "4F",
   }), { raw: null, state: null });
+  assert.deepEqual(resolveTagTamperPresentationEvidence({
+    carrierProfileCode: "ntag424_dna_tt",
+    ttRaw: "4949",
+  }), { raw: "4949", state: null });
+  assert.deepEqual(resolveTagTamperPresentationEvidence({
+    carrierProfileCode: "ntag424_dna_tt",
+    ttRaw: "434F",
+  }), { raw: "434F", state: null });
+});
+
+test("public SUN presentation fails closed for invalid or contradictory full TT bytes", () => {
+  const presentationStart = route.indexOf("function resolveTrustState");
+  const presentationEnd = route.indexOf("function summarizeUserAgent", presentationStart);
+  const presentationDecision = route.slice(presentationStart, presentationEnd);
+
+  assert.match(presentationDecision, /if \(ttEvidence\.raw && !ttEvidence\.state\)/);
+  assert.match(presentationDecision, /code: "TAMPER_RISK"/);
+  assert.match(presentationDecision, /los dos bytes TT no forman un estado válido y coherente/);
+  assert.match(route, /technical: publicTechnicalEvidence/);
+  assert.match(route, /permanentHex: permanentHex\?\.toUpperCase\(\) \|\| null/);
+  assert.match(route, /currentHex: currentHex\?\.toUpperCase\(\) \|\| null/);
+  assert.match(route, /BYTE 1 · MEMORIA PERMANENTE/);
+  assert.match(route, /BYTE 2 · ESTADO ACTUAL/);
+  assert.match(route, /por sí sola no prueba el contenido, la custodia ni la integridad física del producto/);
 });
 
 test("legacy carrier inference never treats the substring 424 alone as TagTamper", () => {

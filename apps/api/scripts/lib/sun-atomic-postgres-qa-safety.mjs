@@ -5,6 +5,7 @@ export const SUN_ATOMIC_REQUIRED_MIGRATIONS = Object.freeze([
   "20260728180000_0066_tag_lifecycle_governance.sql",
   "20260802240000_0089_sun_carrier_trust_state.sql",
   "20260802280000_0093_sun_tt_durable_truth_binding.sql",
+  "20260802320000_0097_sun_demo_replay_isolation.sql",
 ]);
 
 const DATABASE_NAME_PATTERN = /^codex_qa_[a-z0-9][a-z0-9_]{0,47}$/;
@@ -121,10 +122,13 @@ export async function assertSunAtomicPostgresQaTarget(client, config) {
     to_regclass('public.tags') IS NOT NULL AS tags,
     to_regclass('public.events') IS NOT NULL AS events,
     to_regclass('public.sun_tt_truth_receipts') IS NOT NULL AS tt_truth_receipts,
+    to_regclass('public.sun_automated_fetch_quarantines') IS NOT NULL AS automated_fetch_quarantines,
     to_regprocedure('public.nexid_persist_sun_scan_v1(jsonb)') IS NOT NULL AS wrapper,
     to_regprocedure('public.nexid_persist_sun_scan_v1_base_0062(jsonb)') IS NOT NULL AS base_0062,
     to_regprocedure('public.nexid_persist_sun_scan_v1_base_pre_tt_0093(jsonb)') IS NOT NULL AS base_pre_tt_0093,
     to_regprocedure('public.nexid_sun_tt_durable_truth_v1_capability()') IS NOT NULL AS tt_truth_capability,
+    to_regprocedure('public.nexid_sun_demo_replay_isolation_v1_capability()') IS NOT NULL AS demo_replay_isolation_capability,
+    to_regprocedure('public.nexid_classify_sun_automated_fetch_user_agent_v1(text)') IS NOT NULL AS automated_fetch_classifier,
     COALESCE((
       SELECT procedure_row.prosecdef
       FROM pg_proc procedure_row
@@ -140,10 +144,37 @@ export async function assertSunAtomicPostgresQaTarget(client, config) {
         AND NOT trigger_row.tgisinternal
         AND trigger_row.tgenabled IN ('O', 'A')
     ) AS tt_truth_append_only,
+    EXISTS (
+      SELECT 1
+      FROM pg_trigger trigger_row
+      JOIN pg_proc trigger_function ON trigger_function.oid = trigger_row.tgfoid
+      WHERE trigger_row.tgrelid = to_regclass('public.sun_automated_fetch_quarantines')
+        AND trigger_row.tgname = 'trg_sun_automated_fetch_quarantines_append_only'
+        AND trigger_function.proname = 'nexid_sun_automated_fetch_quarantine_immutable_v1'
+        AND NOT trigger_row.tgisinternal
+        AND trigger_row.tgenabled IN ('O', 'A')
+    ) AS automated_fetch_append_only,
+    EXISTS (
+      SELECT 1
+      FROM pg_trigger trigger_row
+      JOIN pg_proc trigger_function ON trigger_function.oid = trigger_row.tgfoid
+      WHERE trigger_row.tgrelid = to_regclass('public.events')
+        AND trigger_row.tgname = 'trg_events_capture_sun_automated_fetch_v1'
+        AND trigger_function.proname = 'nexid_capture_sun_automated_fetch_quarantine_v1'
+        AND NOT trigger_row.tgisinternal
+        AND trigger_row.tgenabled IN ('O', 'A')
+    ) AS automated_fetch_capture,
     (SELECT count(*)::integer FROM tenants) AS tenant_count,
     (SELECT count(*)::integer FROM batches) AS batch_count,
     (SELECT count(*)::integer FROM tags) AS tag_count,
     (SELECT count(*)::integer FROM events) AS event_count,
+    (SELECT count(*)::integer FROM public.sun_automated_fetch_quarantines) AS automated_fetch_quarantine_count,
+    (SELECT count(*)::integer
+      FROM information_schema.columns column_row
+      WHERE column_row.table_schema = 'public'
+        AND column_row.table_name = 'sun_automated_fetch_quarantines'
+        AND lower(column_row.column_name) = 'user_agent'
+    ) AS automated_fetch_raw_ua_column_count,
     COALESCE((
       SELECT array_agg(id ORDER BY id)
       FROM schema_migrations
@@ -162,6 +193,14 @@ export async function assertSunAtomicPostgresQaTarget(client, config) {
     || !capability.base_0062_security_definer
     || !capability.tt_truth_append_only) {
     throw new Error("sun_atomic_qa_0093_durable_tt_contract_missing");
+  }
+  if (!capability.automated_fetch_quarantines
+    || !capability.demo_replay_isolation_capability
+    || !capability.automated_fetch_classifier
+    || !capability.automated_fetch_append_only
+    || !capability.automated_fetch_capture
+    || Number(capability.automated_fetch_raw_ua_column_count || 0) !== 0) {
+    throw new Error("sun_atomic_qa_0097_demo_isolation_quarantine_contract_missing");
   }
 
   const ttTruthContract = (await client.query(`SELECT
@@ -190,6 +229,7 @@ export async function assertSunAtomicPostgresQaTarget(client, config) {
     capability.batch_count,
     capability.tag_count,
     capability.event_count,
+    capability.automated_fetch_quarantine_count,
     ttTruthContract.receipt_count,
   ].reduce((total, value) => total + Number(value || 0), 0);
   if (businessRowCount !== 0) {

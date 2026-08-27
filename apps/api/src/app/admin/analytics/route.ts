@@ -5,6 +5,7 @@ import { checkAdminPermission, checkAdminWithPermission, getAdminTenantAccess } 
 import { sql } from "../../../lib/db";
 import { json } from "../../../lib/http";
 import { addBucket, normalizeBrowser, normalizeDeviceType, normalizeOs, normalizeTimezone, parseAnalyticsFilters, toSortedBuckets } from "../../../lib/analytics";
+import { SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE } from "../../../lib/sun-automated-fetch";
 import { aggregateTenantMetrics } from "@product/core";
 
 type TrendRow = { day: string; scans: number; duplicates: number; tamper: number; invalid: number; unregistered: number; inactive: number };
@@ -205,6 +206,7 @@ export async function GET(req: Request) {
         LEFT JOIN events e ON e.batch_id = b.id
           AND e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
+          AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
         WHERE tn.slug = ${tenant}
       `
       : sql/*sql*/`
@@ -224,6 +226,7 @@ export async function GET(req: Request) {
         LEFT JOIN events e ON e.batch_id = b.id
           AND e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
+          AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
       `,
     tenant
       ? sql/*sql*/`
@@ -241,6 +244,7 @@ export async function GET(req: Request) {
         WHERE tn.slug = ${tenant}
           AND e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
+          AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
           AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
         GROUP BY 1
         ORDER BY min(e.created_at)
@@ -257,6 +261,7 @@ export async function GET(req: Request) {
         FROM events e
         WHERE e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
+          AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
           AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
         GROUP BY 1
         ORDER BY min(e.created_at)
@@ -304,6 +309,7 @@ export async function GET(req: Request) {
         WHERE tn.slug = ${tenant}
           AND e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
+          AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
         GROUP BY 1, 2
         ORDER BY scans DESC
         LIMIT 20
@@ -335,6 +341,7 @@ export async function GET(req: Request) {
         FROM events e
         WHERE e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
+          AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
         GROUP BY 1, 2
         ORDER BY scans DESC
         LIMIT 20
@@ -352,6 +359,7 @@ export async function GET(req: Request) {
         WHERE tn.slug = ${tenant}
           AND e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
+          AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
           AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
         GROUP BY 1
         ORDER BY scans DESC
@@ -367,6 +375,7 @@ export async function GET(req: Request) {
         FROM events e
         WHERE e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
+          AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
           AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
         GROUP BY 1
         ORDER BY scans DESC
@@ -394,6 +403,7 @@ export async function GET(req: Request) {
             AND e.uid_hex IS NOT NULL
             AND e.created_at >= now() - ${rangeSql}::interval
             AND (${source} = '' OR e.source::text = ${source})
+            AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
         ),
         ranked AS (
           SELECT
@@ -446,6 +456,7 @@ export async function GET(req: Request) {
           WHERE e.uid_hex IS NOT NULL
             AND e.created_at >= now() - ${rangeSql}::interval
             AND (${source} = '' OR e.source::text = ${source})
+            AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
         ),
         ranked AS (
           SELECT
@@ -505,6 +516,7 @@ export async function GET(req: Request) {
         WHERE tn.slug = ${tenant}
           AND e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
+          AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
         GROUP BY 1
         ORDER BY scans DESC
         LIMIT 12
@@ -517,6 +529,7 @@ export async function GET(req: Request) {
         FROM events e
         WHERE e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
+          AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
         GROUP BY 1
         ORDER BY scans DESC
         LIMIT 12
@@ -552,6 +565,7 @@ export async function GET(req: Request) {
         WHERE tn.slug = ${tenant}
           AND e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
+          AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
           AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
         GROUP BY 1,2
         ORDER BY scans DESC
@@ -585,6 +599,7 @@ export async function GET(req: Request) {
         FROM events e
         WHERE e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
+          AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
           AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
         GROUP BY 1,2
         ORDER BY scans DESC
@@ -598,6 +613,7 @@ export async function GET(req: Request) {
         WHERE tn.slug = ${tenant}
           AND e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
+          AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
         GROUP BY 1
         ORDER BY count DESC
         LIMIT 8
@@ -607,6 +623,7 @@ export async function GET(req: Request) {
         FROM events e
         WHERE e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
+          AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
         GROUP BY 1
         ORDER BY count DESC
         LIMIT 8
@@ -619,6 +636,7 @@ export async function GET(req: Request) {
         WHERE tn.slug = ${tenant}
           AND e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
+          AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
         GROUP BY 1
         ORDER BY count DESC
         LIMIT 8
@@ -628,6 +646,7 @@ export async function GET(req: Request) {
         FROM events e
         WHERE e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
+          AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
         GROUP BY 1
         ORDER BY count DESC
         LIMIT 8
@@ -640,6 +659,7 @@ export async function GET(req: Request) {
         WHERE tn.slug = ${tenant}
           AND e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
+          AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
         GROUP BY 1
         ORDER BY count DESC
         LIMIT 8
@@ -649,6 +669,7 @@ export async function GET(req: Request) {
         FROM events e
         WHERE e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
+          AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
         GROUP BY 1
         ORDER BY count DESC
         LIMIT 8
@@ -663,6 +684,7 @@ export async function GET(req: Request) {
         WHERE tn.slug = ${tenant}
           AND e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
+          AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
       `
       : sql/*sql*/`
         SELECT
@@ -671,6 +693,7 @@ export async function GET(req: Request) {
         FROM events e
         WHERE e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
+          AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
       `,
     tenant
       ? sql/*sql*/`
@@ -689,6 +712,7 @@ export async function GET(req: Request) {
         WHERE tn.slug = ${tenant}
           AND e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
+          AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
           AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
         ORDER BY e.created_at DESC
         LIMIT 30
@@ -707,6 +731,7 @@ export async function GET(req: Request) {
         JOIN batches b ON b.id = e.batch_id
         WHERE e.created_at >= now() - ${rangeSql}::interval
           AND (${source} = '' OR e.source::text = ${source})
+          AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
           AND (${country} = '' OR COALESCE(NULLIF(e.country_code, ''), NULLIF(e.geo_country, '')) = ${country})
         ORDER BY e.created_at DESC
         LIMIT 30
@@ -720,9 +745,9 @@ export async function GET(req: Request) {
           COALESCE(pp.winery_name, tp.winery) AS winery,
           COALESCE(pp.region, tp.region) AS region,
           COALESCE(pp.vintage, tp.vintage) AS vintage,
-          t.scan_count,
-          t.first_seen_at::text AS first_seen_at,
-          t.last_seen_at::text AS last_seen_at,
+          operational_evt.scan_count,
+          operational_evt.first_seen_at::text AS first_seen_at,
+          operational_evt.last_seen_at::text AS last_seen_at,
           last_evt.city AS last_verified_city,
           last_evt.country_code AS last_verified_country,
           tok.status AS tokenization_status,
@@ -738,12 +763,25 @@ export async function GET(req: Request) {
         JOIN tenants tn ON tn.id = b.tenant_id
         LEFT JOIN tag_profiles tp ON tp.tag_id = t.id
         LEFT JOIN product_passports pp ON pp.tag_id = t.id
+        JOIN LATERAL (
+          SELECT
+            COUNT(*)::integer AS scan_count,
+            MIN(e.created_at) AS first_seen_at,
+            MAX(e.created_at) AS last_seen_at
+          FROM events e
+          WHERE e.batch_id = t.batch_id
+            AND e.uid_hex = t.uid_hex
+            AND (${source} = '' OR e.source::text = ${source})
+            AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
+            AND e.created_at >= now() - ${rangeSql}::interval
+        ) operational_evt ON operational_evt.scan_count > 0
         LEFT JOIN LATERAL (
           SELECT e.city, e.country_code, e.created_at
           FROM events e
           WHERE e.batch_id = t.batch_id
             AND e.uid_hex = t.uid_hex
             AND (${source} = '' OR e.source::text = ${source})
+            AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
             AND e.created_at >= now() - ${rangeSql}::interval
           ORDER BY e.created_at DESC
           LIMIT 1
@@ -756,7 +794,7 @@ export async function GET(req: Request) {
           LIMIT 1
         ) tok ON TRUE
         WHERE tn.slug = ${tenant}
-        ORDER BY COALESCE(t.last_seen_at, t.created_at) DESC
+        ORDER BY operational_evt.last_seen_at DESC
         LIMIT 30
       `
       : sql/*sql*/`
@@ -767,9 +805,9 @@ export async function GET(req: Request) {
           COALESCE(pp.winery_name, tp.winery) AS winery,
           COALESCE(pp.region, tp.region) AS region,
           COALESCE(pp.vintage, tp.vintage) AS vintage,
-          t.scan_count,
-          t.first_seen_at::text AS first_seen_at,
-          t.last_seen_at::text AS last_seen_at,
+          operational_evt.scan_count,
+          operational_evt.first_seen_at::text AS first_seen_at,
+          operational_evt.last_seen_at::text AS last_seen_at,
           last_evt.city AS last_verified_city,
           last_evt.country_code AS last_verified_country,
           tok.status AS tokenization_status,
@@ -784,12 +822,25 @@ export async function GET(req: Request) {
         JOIN batches b ON b.id = t.batch_id
         LEFT JOIN tag_profiles tp ON tp.tag_id = t.id
         LEFT JOIN product_passports pp ON pp.tag_id = t.id
+        JOIN LATERAL (
+          SELECT
+            COUNT(*)::integer AS scan_count,
+            MIN(e.created_at) AS first_seen_at,
+            MAX(e.created_at) AS last_seen_at
+          FROM events e
+          WHERE e.batch_id = t.batch_id
+            AND e.uid_hex = t.uid_hex
+            AND (${source} = '' OR e.source::text = ${source})
+            AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
+            AND e.created_at >= now() - ${rangeSql}::interval
+        ) operational_evt ON operational_evt.scan_count > 0
         LEFT JOIN LATERAL (
           SELECT e.city, e.country_code, e.created_at
           FROM events e
           WHERE e.batch_id = t.batch_id
             AND e.uid_hex = t.uid_hex
             AND (${source} = '' OR e.source::text = ${source})
+            AND COALESCE(e.user_agent, '') !~* ${SUN_AUTOMATED_FETCH_USER_AGENT_PATTERN_SOURCE}
             AND e.created_at >= now() - ${rangeSql}::interval
           ORDER BY e.created_at DESC
           LIMIT 1
@@ -801,7 +852,7 @@ export async function GET(req: Request) {
           ORDER BY tr.requested_at DESC
           LIMIT 1
         ) tok ON TRUE
-        ORDER BY COALESCE(t.last_seen_at, t.created_at) DESC
+        ORDER BY operational_evt.last_seen_at DESC
         LIMIT 30
       `,
   ]);

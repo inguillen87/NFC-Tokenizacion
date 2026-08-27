@@ -48,7 +48,7 @@ test("enterprise release preflight pins the expected non-secret runtime database
   );
 });
 
-test("enterprise release gate requires the reviewed ordered set through 0096", () => {
+test("enterprise release gate requires the reviewed ordered set through 0097", () => {
   assert.deepEqual(expectedMigrations, [
     "20260725230000_0057_sun_rate_limit_atomic_buckets.sql",
     "20260726103000_0058_webhook_signature_v2.sql",
@@ -94,10 +94,11 @@ test("enterprise release gate requires the reviewed ordered set through 0096", (
     "20260802290000_0094_sun_runtime_acl_boundary.sql",
     "20260802300000_0095_sun_tt_conflict_target.sql",
     "20260802310000_0096_enterprise_rbac_risk_truth.sql",
+    "20260802320000_0097_sun_demo_replay_isolation.sql",
   ]);
 });
 
-test("migration safety gate covers 0061-0096 and the historical clean-order boundaries", () => {
+test("migration safety gate covers 0061-0097 and the historical clean-order boundaries", () => {
   const repositoryRoot = fileURLToPath(new URL("../../../", import.meta.url));
   const script = fileURLToPath(new URL("../../../scripts/check-migration-safety.mjs", import.meta.url));
   const result = spawnSync(process.execPath, [script], {
@@ -107,7 +108,7 @@ test("migration safety gate covers 0061-0096 and the historical clean-order boun
   assert.equal(result.status, 0, result.stderr || result.stdout);
   const report = JSON.parse(result.stdout.trim());
   assert.equal(report.ok, true);
-  assert.deepEqual(report.migrations.slice(-39).map(({ id }) => id), [
+  assert.deepEqual(report.migrations.slice(-40).map(({ id }) => id), [
     "20260726190000_0061_supplier_export_artifact_delivery.sql",
     "20260728120000_0062_sun_atomic_persistence.sql",
     "20260728143000_0063_supplier_packaging_governance.sql",
@@ -147,6 +148,7 @@ test("migration safety gate covers 0061-0096 and the historical clean-order boun
     "20260802290000_0094_sun_runtime_acl_boundary.sql",
     "20260802300000_0095_sun_tt_conflict_target.sql",
     "20260802310000_0096_enterprise_rbac_risk_truth.sql",
+    "20260802320000_0097_sun_demo_replay_isolation.sql",
   ]);
   assert.equal(report.assertions.tenant_api_keys_clean_order_safe, true);
   assert.equal(report.assertions.sdk_idempotency_schema_is_durable, true);
@@ -180,6 +182,7 @@ test("migration safety gate covers 0061-0096 and the historical clean-order boun
   assert.equal(report.assertions.sun_runtime_acl_boundary_is_durable, true);
   assert.equal(report.assertions.sun_tt_conflict_target_is_durable, true);
   assert.equal(report.assertions.enterprise_rbac_risk_truth_is_durable, true);
+  assert.equal(report.assertions.sun_demo_replay_isolation_is_durable, true);
   assert.equal(report.assertions.unauthorized_clean_bootstrap_fails_closed, true);
 });
 
@@ -231,6 +234,7 @@ test("enterprise release gate fails closed when any reviewed migration is absent
           String(statement),
           /NOT historical_routine\.prosecdef[\s\S]*wrapper_routine\.proowner = base_routine\.proowner[\s\S]*wrapper_routine\.proowner = historical_routine\.proowner[\s\S]*wrapper_routine\.proconfig = ARRAY\['search_path=pg_catalog, public, pg_temp'\]::text\[\][\s\S]*base_routine\.proconfig = ARRAY\['search_path=pg_catalog, public, pg_temp'\]::text\[\][\s\S]*historical_routine\.proconfig = ARRAY\['search_path=pg_catalog, public, pg_temp'\]::text\[\]/,
         );
+        assert.match(String(statement), /sun_replay_watermark_repairs[\s\S]*has_sun_demo_replay_isolation/);
         return { rows: [{
           database_name: "nexid_test",
           database_role: runtimeRole,
@@ -278,6 +282,7 @@ test("enterprise release gate fails closed when any reviewed migration is absent
           can_use_sun_tt_durable_truth: true,
           has_sun_runtime_acl_boundary: true,
           has_sun_tt_conflict_target: true,
+          has_sun_demo_replay_isolation: true,
           has_enterprise_rbac_risk_truth: true,
           has_supplier_order_lifecycle: true,
           can_use_supplier_order_lifecycle: true,
@@ -354,7 +359,7 @@ test("enterprise release gate fails closed when any reviewed migration is absent
     }),
     (error) => error instanceof EnterpriseReleasePreflightError
       && error.reason === "required_migrations_missing"
-      && error.details.missing_migrations.includes("20260802310000_0096_enterprise_rbac_risk_truth.sql"),
+      && error.details.missing_migrations.includes("20260802320000_0097_sun_demo_replay_isolation.sql"),
   );
   assert.equal(ended, true);
 
@@ -495,6 +500,25 @@ test("enterprise release gate fails closed when any reviewed migration is absent
     (error) => error instanceof EnterpriseReleasePreflightError
       && error.reason === "required_schema_missing"
       && error.details.missing_schema.includes("enterprise RBAC and deterministic risk truth"),
+  );
+
+  class MissingSunDemoReplayIsolationClient extends MissingMigrationClient {
+    async query(statement) {
+      const result = await super.query(statement);
+      if (String(statement).includes("current_database()")) {
+        result.rows[0].has_sun_demo_replay_isolation = false;
+      }
+      return result;
+    }
+  }
+  await assert.rejects(
+    runEnterpriseReleasePreflight({
+      env: { DATABASE_URL: "postgres://unused", NEXID_RUNTIME_DB_ROLE: runtimeRole, SDK_IDEMPOTENCY_MASTER_KEY_HEX: validKey },
+      Client: MissingSunDemoReplayIsolationClient,
+    }),
+    (error) => error instanceof EnterpriseReleasePreflightError
+      && error.reason === "required_schema_missing"
+      && error.details.missing_schema.includes("SUN demo versus operational replay isolation"),
   );
 });
 

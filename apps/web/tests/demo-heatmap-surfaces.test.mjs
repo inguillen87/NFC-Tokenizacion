@@ -12,6 +12,7 @@ const investorUrl = new URL("../src/app/investor-snapshot/investor-snapshot-clie
 const heroSceneUrl = new URL("../src/components/hero-scene.tsx", import.meta.url);
 const cssUrl = new URL("../src/app/globals.css", import.meta.url);
 const sharedMapUrl = new URL("../../../packages/ui/src/real-geographic-map.tsx", import.meta.url);
+const trustMapSourceUrl = new URL("../../../packages/ui/src/trust-map-source.ts", import.meta.url);
 const webPackageUrl = new URL("../package.json", import.meta.url);
 
 test("Demo Lab separates API heat intensity from simulated relationships", async () => {
@@ -143,4 +144,20 @@ test("shared MapLibre map resolves white-first before boot and exposes its inter
   assert.match(source, /canvas\.setAttribute\("aria-label", mapCanvasLabel\)/);
   assert.match(source, /canvas\.setAttribute\("aria-describedby", summaryId\)/);
   assert.equal(webPackage.dependencies["maplibre-gl"], "^5.24.0");
+});
+
+test("shared maps use no-key OpenFreeMap vector styles and reject key-required providers", async () => {
+  const [source, mapSource] = await Promise.all([
+    readFile(sharedMapUrl, "utf8"),
+    readFile(trustMapSourceUrl, "utf8"),
+  ]);
+
+  assert.match(mapSource, /https:\/\/tiles\.openfreemap\.org\/styles\/positron/);
+  assert.match(mapSource, /https:\/\/tiles\.openfreemap\.org\/styles\/dark/);
+  assert.match(mapSource, /OpenFreeMap © OpenMapTiles · Data from OpenStreetMap/);
+  assert.match(mapSource, /normalizeNoKeyMapStyleUrl/);
+  assert.match(mapSource, /normalizeNoKeyRasterTileTemplate/);
+  assert.match(mapSource, /KEY_REQUIRED_HOST_PATTERN/);
+  assert.doesNotMatch(`${source}\n${mapSource}`, /dark_all|light_all|voyager_nolabels|basemaps\.cartocdn\.com|tile\.openstreetmap\.org/);
+  assert.match(source, /raster-brightness-max/);
 });

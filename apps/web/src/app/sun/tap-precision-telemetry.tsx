@@ -152,9 +152,9 @@ export function TapPrecisionTelemetry({
   if (state === "updated") {
     return (
       <div className="sun-location-consent rounded-2xl border border-emerald-300/30 bg-emerald-500/10 px-4 py-3 text-xs font-semibold text-emerald-100" aria-live="polite">
-        <span className="block font-black">Ubicación aproximada actualizada</span>
+        <span className="block font-black">Listo: mejoramos la ubicación del toque</span>
         <span className="mt-1 block font-normal leading-5 text-emerald-100/80">
-          El mapa usa la posición redondeada{accuracy ? ` con un radio informado de ±${accuracy} m` : ""}. No demuestra el recorrido físico del producto.
+          El mapa usa una posición aproximada y redondeada{accuracy ? `, con un radio de ±${accuracy} m` : ""}. No seguimos tu ubicación ni inferimos el recorrido del producto.
         </span>
       </div>
     );
@@ -162,9 +162,9 @@ export function TapPrecisionTelemetry({
 
   return (
     <div className="sun-location-consent rounded-2xl border border-cyan-300/25 bg-cyan-500/10 px-4 py-4 text-cyan-50" aria-live="polite" aria-busy={state === "pending"}>
-      <p className="text-xs font-black">¿Querés mejorar la ubicación de esta lectura?</p>
+      <p className="text-xs font-black">¿Querés ubicar mejor este toque en el mapa?</p>
       <p className="mt-1 text-[11px] leading-5 text-cyan-100/75">
-        Es opcional. Solo pedimos permiso al tocar el botón y enviamos una posición aproximada, redondeada y con un radio mínimo de 150 m.
+        Es opcional. Pedimos permiso sólo al tocar el botón y guardamos una zona aproximada, nunca una ubicación exacta.
       </p>
       <button
         type="button"
@@ -172,7 +172,7 @@ export function TapPrecisionTelemetry({
         disabled={state === "pending"}
         className="mt-3 min-h-11 w-full rounded-xl border border-cyan-200/35 bg-cyan-300/10 px-4 text-xs font-black transition hover:bg-cyan-300/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 disabled:cursor-wait disabled:opacity-60 sm:w-auto"
       >
-        {state === "pending" ? "Esperando permiso…" : "Compartir ubicación aproximada"}
+        {state === "pending" ? "Esperando permiso…" : "Mejorar ubicación del mapa"}
       </button>
       {state === "denied" || state === "unavailable" || state === "error" ? (
         <p className="mt-2 text-[11px] leading-5 text-amber-200">

@@ -19,6 +19,7 @@ export const ENTERPRISE_RUNTIME_ROLE_REQUIRED_MIGRATIONS = Object.freeze([
   "20260802290000_0094_sun_runtime_acl_boundary.sql",
   "20260802300000_0095_sun_tt_conflict_target.sql",
   "20260802310000_0096_enterprise_rbac_risk_truth.sql",
+  "20260802320000_0097_sun_demo_replay_isolation.sql",
 ]);
 
 export const ENTERPRISE_RUNTIME_ROLE_FUNCTIONS = Object.freeze([
@@ -43,6 +44,8 @@ export const ENTERPRISE_RUNTIME_ROLE_INTERNAL_DENY_FUNCTIONS = Object.freeze([
   "public.nexid_import_tag_manifest_v2_core_0081(jsonb)",
   "public.nexid_persist_sun_scan_v1_base_0062(jsonb)",
   "public.nexid_persist_sun_scan_v1_base_pre_tt_0093(jsonb)",
+  "public.nexid_sun_demo_replay_isolation_v1_capability()",
+  "public.nexid_sun_replay_watermark_repair_immutable_v1()",
   "public.nexid_enforce_supplier_batch_key_carrier_scope_v1()",
   "public.nexid_backfill_event_risk_v1(integer)",
 ]);
@@ -133,6 +136,38 @@ async function assertRequiredSchema(client) {
     to_regprocedure('public.nexid_sun_runtime_acl_v1_capability()') IS NOT NULL AS capability_exists,
     to_regprocedure('public.nexid_sun_tt_conflict_target_v1_capability()') IS NOT NULL
       AS conflict_capability_exists,
+    to_regprocedure('public.nexid_sun_demo_replay_isolation_v1_capability()') IS NOT NULL
+      AS demo_replay_isolation_capability_exists,
+    to_regclass('public.sun_replay_watermark_repairs') IS NOT NULL
+      AS replay_watermark_repair_table_exists,
+    EXISTS (
+      SELECT 1
+      FROM pg_trigger trigger_row
+      WHERE NOT trigger_row.tgisinternal
+        AND trigger_row.tgenabled <> 'D'
+        AND trigger_row.tgname = 'trg_sun_replay_watermark_repairs_append_only'
+        AND trigger_row.tgrelid = to_regclass('public.sun_replay_watermark_repairs')
+    ) AS replay_watermark_repair_append_only,
+    COALESCE((
+      SELECT NOT historical_routine.prosecdef
+        AND historical_routine.proconfig = ARRAY['search_path=pg_catalog, public, pg_temp']::text[]
+        AND position(
+          'v_execution_class := CASE WHEN v_source = ''demo'' THEN ''demo'' ELSE ''operational'' END'
+          IN pg_get_functiondef(historical_routine.oid)
+        ) > 0
+        AND position(
+          'IF v_tag_id IS NOT NULL AND v_execution_class = ''operational'''
+          IN pg_get_functiondef(historical_routine.oid)
+        ) > 0
+        AND position(
+          '''replay_execution_class'', v_execution_class'
+          IN pg_get_functiondef(historical_routine.oid)
+        ) > 0
+      FROM pg_proc historical_routine
+      WHERE historical_routine.oid = to_regprocedure(
+        'public.nexid_persist_sun_scan_v1_base_pre_tt_0093(jsonb)'
+      )
+    ), false) AS demo_replay_execution_boundary_exact,
     COALESCE(position(
       'ON CONFLICT ON CONSTRAINT sun_tt_truth_receipts_pkey DO NOTHING'
       IN pg_get_functiondef(to_regprocedure('public.nexid_persist_sun_scan_v1_base_0062(jsonb)'))
@@ -211,6 +246,10 @@ async function assertRequiredSchema(client) {
     ), false) AS public_can_execute_base`)).rows[0] || {};
   if (!bool(sunBoundary.capability_exists)
     || !bool(sunBoundary.conflict_capability_exists)
+    || !bool(sunBoundary.demo_replay_isolation_capability_exists)
+    || !bool(sunBoundary.replay_watermark_repair_table_exists)
+    || !bool(sunBoundary.replay_watermark_repair_append_only)
+    || !bool(sunBoundary.demo_replay_execution_boundary_exact)
     || !bool(sunBoundary.deterministic_conflict_target)
     || !bool(sunBoundary.ambiguous_conflict_target_absent)
     || !bool(sunBoundary.receipt_primary_key_exact)
@@ -472,6 +511,11 @@ async function validateEphemeralRole(client, roleName) {
         client,
         "deny_batch_key_read",
         "SELECT 1 FROM public.batch_keys WHERE false",
+      ),
+      private_sun_replay_watermark_repair_read: await expectPermissionDenied(
+        client,
+        "deny_sun_replay_watermark_repair_read",
+        "SELECT 1 FROM public.sun_replay_watermark_repairs WHERE false",
       ),
       tt_receipt_update: await expectPermissionDenied(
         client,

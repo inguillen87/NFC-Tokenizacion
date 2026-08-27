@@ -105,7 +105,7 @@ test("SUN PostgreSQL QA rejects every URL override surface before node-postgres 
   }
 });
 
-test("connected target preflight binds database, role, endpoint and the complete 0062/0066/0089/0093 contract", async () => {
+test("connected target preflight binds database, role, endpoint and the complete 0062/0066/0089/0093/0097 contract", async () => {
   const config = readSunAtomicPostgresQaConfig(validEnvironment);
   const identityRow = {
     database_name: databaseName,
@@ -120,16 +120,23 @@ test("connected target preflight binds database, role, endpoint and the complete
     tags: true,
     events: true,
     tt_truth_receipts: true,
+    automated_fetch_quarantines: true,
     wrapper: true,
     base_0062: true,
     base_pre_tt_0093: true,
     tt_truth_capability: true,
+    demo_replay_isolation_capability: true,
+    automated_fetch_classifier: true,
     base_0062_security_definer: true,
     tt_truth_append_only: true,
+    automated_fetch_append_only: true,
+    automated_fetch_capture: true,
     tenant_count: 0,
     batch_count: 0,
     tag_count: 0,
     event_count: 0,
+    automated_fetch_quarantine_count: 0,
+    automated_fetch_raw_ua_column_count: 0,
     applied_migrations: [...SUN_ATOMIC_REQUIRED_MIGRATIONS],
   };
   const ttContractRow = {
@@ -191,6 +198,12 @@ test("connected target preflight binds database, role, endpoint and the complete
       capability: { ...capabilityRow, tt_truth_append_only: false },
     }), config),
     /sun_atomic_qa_0093_durable_tt_contract_missing/,
+  );
+  await assert.rejects(
+    () => assertSunAtomicPostgresQaTarget(makeClient({
+      capability: { ...capabilityRow, automated_fetch_capture: false },
+    }), config),
+    /sun_atomic_qa_0097_demo_isolation_quarantine_contract_missing/,
   );
   await assert.rejects(
     () => assertSunAtomicPostgresQaTarget(makeClient({
@@ -263,6 +276,7 @@ test("sanitized fixture contains hashes and explicit non-physical evidence but n
   }
   assert.equal(envelope.meta.physical_nfc_tag_scanned, false);
   assert.equal(envelope.meta.raw_key_material_present, false);
+  assert.equal(envelope.source, "real");
   assert.deepEqual(envelope.tt_truth, {
     schema_version: "sun-tt-durable-truth-input/v1",
     carrier_profile_code: "ntag424_dna_tt",
@@ -365,6 +379,9 @@ test("validator syntax and static contract prove concurrency, durable TT truth a
   assert.match(source, /cmac_verification_gate_preserved/);
   assert.match(source, /sdm_payload_gate_preserved/);
   assert.match(source, /sun_tt_truth_receipt_append_only/);
+  assert.match(source, /demo_replay_lane_isolation/);
+  assert.match(source, /automated_fetch_quarantine_trigger/);
+  assert.match(source, /sun_automated_fetch_quarantine_is_append_only/);
   assert.match(source, /committed_event_receipt_bijection/);
   assert.match(source, /not_performed_disposable_database_or_branch_deletion_required/);
   assert.doesNotMatch(source, /DELETE FROM tenants/);
